@@ -1,6 +1,13 @@
+import type { ControlSurfaceHandler } from '../types'
+import { registerOperation } from '../registerOperation'
+import {
+  pluginViewPreferencesSetOperation,
+  pluginViewPreferencesGetOperation,
+  pluginPreferencesSetOperation,
+  pluginPreferencesGetOperation,
+} from '@shared/contracts/controlSurface/operations/domains/plugin'
 import type { ControlSurface } from '../controlSurface'
 import type { PluginInstallationManager } from '@contexts/plugins/application/PluginInstallationManager'
-import { pluginRecord, pluginString } from '@contexts/plugins/domain/localPluginValidation'
 import { createAppError } from '../../../../shared/errors/appError'
 
 export function registerPluginPreferenceHandlers(
@@ -9,24 +16,10 @@ export function registerPluginPreferenceHandlers(
 ): void {
   for (const view of [false, true]) {
     for (const write of [false, true]) {
-      control.register(`plugin.${view ? 'view.' : ''}preferences.${write ? 'set' : 'get'}`, {
-        kind: write ? 'command' : 'query',
-        validate: raw => {
-          const input = pluginRecord(raw)
-          const key = view ? 'viewId' : 'pluginId'
-          if (
-            Object.keys(input).some(
-              field => ![key, ...(write ? ['key', 'value'] : [])].includes(field),
-            )
-          ) {
-            throw new Error('Unexpected preference argument.')
-          }
-          return {
-            id: pluginString(input[key], key, 200),
-            key: write ? pluginString(input.key, 'preference key', 80) : '',
-            value: input.value,
-          }
-        },
+      const handler: Pick<
+        ControlSurfaceHandler<{ id: string; key: string; value: unknown }, unknown>,
+        'handle' | 'defaultErrorCode'
+      > = {
         handle: async (_ctx, input) => {
           try {
             if (view) {
@@ -46,7 +39,18 @@ export function registerPluginPreferenceHandlers(
           }
         },
         defaultErrorCode: 'common.invalid_input',
-      })
+      }
+      if (view) {
+        if (write) {
+          registerOperation(control, pluginViewPreferencesSetOperation, handler)
+        } else {
+          registerOperation(control, pluginViewPreferencesGetOperation, handler)
+        }
+      } else if (write) {
+        registerOperation(control, pluginPreferencesSetOperation, handler)
+      } else {
+        registerOperation(control, pluginPreferencesGetOperation, handler)
+      }
     }
   }
 }

@@ -1,12 +1,10 @@
-import type { ControlSurface } from '../controlSurface'
-import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
-import type {
-  ResolveGitHubPullRequestsInput,
-  ResolveGitHubPullRequestsResult,
-} from '../../../../shared/contracts/dto'
-import { createAppError } from '../../../../shared/errors/appError'
 import { resolveGitHubPullRequests } from '../../../../contexts/integration/infrastructure/github/GitHubPullRequestGhService'
-import { normalizeResolveGitHubPullRequestsPayload } from '../../../../contexts/integration/presentation/main-ipc/validate'
+import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
+import { integrationGithubResolvePullRequestsOperation } from '../../../../shared/contracts/controlSurface/operations/domains/integration'
+import type { ResolveGitHubPullRequestsResult } from '../../../../shared/contracts/dto'
+import { createAppError } from '../../../../shared/errors/appError'
+import type { ControlSurface } from '../controlSurface'
+import { registerOperation } from '../registerOperation'
 
 export function registerIntegrationGitHubHandlers(
   controlSurface: ControlSurface,
@@ -14,10 +12,7 @@ export function registerIntegrationGitHubHandlers(
     approvedWorkspaces: ApprovedWorkspaceStore
   },
 ): void {
-  controlSurface.register('integration.github.resolvePullRequests', {
-    kind: 'query',
-    validate: (payload: unknown): ResolveGitHubPullRequestsInput =>
-      normalizeResolveGitHubPullRequestsPayload(payload),
+  registerOperation(controlSurface, integrationGithubResolvePullRequestsOperation, {
     handle: async (_ctx, payload): Promise<ResolveGitHubPullRequestsResult> => {
       const isApproved = await deps.approvedWorkspaces.isPathApproved(payload.repoPath)
       if (!isApproved) {

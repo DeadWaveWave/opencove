@@ -1,3 +1,4 @@
+import { normalizePtySpawnPayload } from '../sessionStreamingNormalize'
 import * as z from 'zod'
 import { normalizePtySpawnInMount } from '../ptyMountHandlersNormalize'
 import { defineLegacyOperation, defineOperation } from '../defineOperation'
@@ -15,7 +16,44 @@ export const ptyListProfilesOperation = defineLegacyOperation({
   availability: 'always',
   summary: 'List available terminal profiles and the default profile id',
 })
-export const ptySpawnOperation = defineLegacyOperation({
+export const ptySpawnOperation = defineOperation({
+  input: z.looseObject({
+    cwd: z.string().describe('Approved absolute working directory'),
+    workspaceId: z.string().optional().describe('Project that owns the terminal'),
+    profileId: z
+      .unknown()
+      .optional()
+      .describe('Terminal profile id; blank or non-string values use the default profile'),
+    shell: z
+      .unknown()
+      .optional()
+      .describe('Shell executable; blank or non-string values use the configured shell'),
+    command: z
+      .unknown()
+      .optional()
+      .describe('Command to launch; blank or non-string values use the default shell'),
+    args: z
+      .unknown()
+      .optional()
+      .describe('Command argument strings; non-string arrays and non-arrays are ignored'),
+    env: z
+      .unknown()
+      .optional()
+      .describe(
+        'Environment overrides; shared environment normalizer filters invalid keys and values',
+      ),
+    cols: z
+      .unknown()
+      .optional()
+      .describe('Positive column count, rounded down; invalid values use the operation default'),
+    rows: z
+      .unknown()
+      .optional()
+      .describe('Positive row count, rounded down; invalid values use the operation default'),
+  }),
+  normalize: normalizePtySpawnPayload,
+  legacyNormalize: normalizePtySpawnPayload,
+  errors: ['terminal.spawn_failed', 'terminal.runtime_not_ready'],
   id: 'pty.spawn',
   kind: 'command',
   scope: 'interact',

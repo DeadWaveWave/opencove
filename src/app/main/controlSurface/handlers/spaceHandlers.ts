@@ -1,27 +1,27 @@
 import { toCompactNodeData } from '../../../../contexts/workspace/application/nodeControl/nodeDtos'
-import { registerOperation } from '../registerOperation'
-import {
-  spaceListOperation,
-  spaceGetOperation,
-} from '../../../../shared/contracts/controlSurface/operations/domains/space'
 import { randomUUID } from 'node:crypto'
-import type { ControlSurface } from '../controlSurface'
-import { createAppError } from '../../../../shared/errors/appError'
-import type {
-  CanvasNodeKind,
-  CanvasNodeSummary,
-  CreateChildSpaceInput as CreateChildSpaceDtoInput,
-  CreateChildSpaceResult,
-  GetSpaceResult,
-  ListSpacesResult,
-} from '../../../../shared/contracts/dto'
-import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
-import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 import { createChildSpace } from '../../../../contexts/space/application/createChildSpace'
+import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import type {
   NormalizedPersistedNode,
   NormalizedPersistedSpace,
 } from '../../../../platform/persistence/sqlite/normalize'
+import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
+import {
+  spaceCreateChildOperation,
+  spaceGetOperation,
+  spaceListOperation,
+} from '../../../../shared/contracts/controlSurface/operations/domains/space'
+import type {
+  CanvasNodeKind,
+  CanvasNodeSummary,
+  CreateChildSpaceResult,
+  GetSpaceResult,
+  ListSpacesResult,
+} from '../../../../shared/contracts/dto'
+import { createAppError } from '../../../../shared/errors/appError'
+import type { ControlSurface } from '../controlSurface'
+import { registerOperation } from '../registerOperation'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object'
@@ -60,131 +60,6 @@ function toNodeSummary(node: {
 }
 
 type NodeSummaryInput = Parameters<typeof toNodeSummary>[0]
-
-function normalizeOptionalIdArray(value: unknown, operationId: string): string[] | null {
-  if (value === undefined || value === null) {
-    return null
-  }
-
-  if (!Array.isArray(value)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId} initialNodeIds.`,
-    })
-  }
-
-  return [
-    ...new Set(
-      value
-        .map(item => {
-          if (typeof item !== 'string') {
-            throw createAppError('common.invalid_input', {
-              debugMessage: `Invalid payload for ${operationId} initialNodeIds item.`,
-            })
-          }
-          return item.trim()
-        })
-        .filter(Boolean),
-    ),
-  ]
-}
-
-function normalizeRect(
-  value: unknown,
-  operationId: string,
-): { x: number; y: number; width: number; height: number } | null {
-  if (value === undefined || value === null) {
-    return null
-  }
-
-  if (!isRecord(value)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId} rect.`,
-    })
-  }
-
-  if (
-    typeof value.x !== 'number' ||
-    typeof value.y !== 'number' ||
-    typeof value.width !== 'number' ||
-    typeof value.height !== 'number' ||
-    !Number.isFinite(value.x) ||
-    !Number.isFinite(value.y) ||
-    !Number.isFinite(value.width) ||
-    !Number.isFinite(value.height) ||
-    value.width <= 0 ||
-    value.height <= 0
-  ) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId} rect fields.`,
-    })
-  }
-
-  return {
-    x: value.x,
-    y: value.y,
-    width: value.width,
-    height: value.height,
-  }
-}
-
-function normalizeAnchor(value: unknown, operationId: string): { x: number; y: number } | null {
-  if (value === undefined || value === null) {
-    return null
-  }
-
-  if (
-    !isRecord(value) ||
-    typeof value.x !== 'number' ||
-    typeof value.y !== 'number' ||
-    !Number.isFinite(value.x) ||
-    !Number.isFinite(value.y)
-  ) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId} anchor.`,
-    })
-  }
-
-  return { x: value.x, y: value.y }
-}
-
-function normalizeCreateChildPayload(payload: unknown): CreateChildSpaceDtoInput {
-  const operationId = 'space.createChild'
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId}.`,
-    })
-  }
-
-  const parentSpaceIdRaw = payload.parentSpaceId
-  if (typeof parentSpaceIdRaw !== 'string' || parentSpaceIdRaw.trim().length === 0) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId} parentSpaceId.`,
-    })
-  }
-
-  const projectIdRaw = payload.projectId
-  if (projectIdRaw !== undefined && projectIdRaw !== null && typeof projectIdRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId} projectId.`,
-    })
-  }
-
-  const nameRaw = payload.name
-  if (nameRaw !== undefined && nameRaw !== null && typeof nameRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId} name.`,
-    })
-  }
-
-  return {
-    parentSpaceId: parentSpaceIdRaw.trim(),
-    projectId: typeof projectIdRaw === 'string' && projectIdRaw.trim() ? projectIdRaw.trim() : null,
-    name: typeof nameRaw === 'string' ? nameRaw.trim() : null,
-    initialNodeIds: normalizeOptionalIdArray(payload.initialNodeIds, operationId),
-    rect: normalizeRect(payload.rect, operationId),
-    anchor: normalizeAnchor(payload.anchor, operationId),
-  }
-}
 
 function toSpaceDto(space: NormalizedPersistedSpace, nodeById: Map<string, NodeSummaryInput>) {
   return {
@@ -308,9 +183,7 @@ export function registerSpaceHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('space.createChild', {
-    kind: 'command',
-    validate: normalizeCreateChildPayload,
+  registerOperation(controlSurface, spaceCreateChildOperation, {
     handle: async (_ctx, payload): Promise<CreateChildSpaceResult> => {
       const store = await getPersistenceStore()
       const expectedRevision = await store.readAppStateRevision()

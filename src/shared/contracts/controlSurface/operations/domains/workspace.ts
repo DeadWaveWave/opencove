@@ -1,19 +1,45 @@
-import { defineLegacyOperation } from '../defineOperation'
-export const workspaceAllocateProjectPlaceholderOperation = defineLegacyOperation({
+import * as z from 'zod'
+import { defineOperation } from '../defineOperation'
+import {
+  normalizeAllocateProjectPlaceholderPayload,
+  normalizePathPayload,
+} from '../workspaceNormalize'
+export const workspaceAllocateProjectPlaceholderOperation = defineOperation({
+  input: z.union([
+    z.object({ projectId: z.string().describe('Project identifier as a single path segment') }),
+    z.array(z.unknown()),
+  ]),
+  normalize: normalizeAllocateProjectPlaceholderPayload,
+  legacyNormalize: normalizeAllocateProjectPlaceholderPayload,
+  errors: [],
   id: 'workspace.allocateProjectPlaceholder',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
   summary: 'Create and approve a project directory under Worker user data',
 })
-export const workspaceApproveRootOperation = defineLegacyOperation({
+export const workspaceApproveRootOperation = defineOperation({
+  input: z.union([
+    z.object({ path: z.string().describe('Absolute directory path') }),
+    z.array(z.unknown()),
+  ]),
+  normalize: (payload: unknown) => normalizePathPayload(payload, 'workspace.approveRoot'),
+  legacyNormalize: (payload: unknown) => normalizePathPayload(payload, 'workspace.approveRoot'),
+  errors: [],
   id: 'workspace.approveRoot',
   kind: 'command',
   scope: 'admin',
   availability: 'always',
   summary: 'Approve a directory root for subsequent filesystem and runtime access',
 })
-export const workspaceEnsureDirectoryOperation = defineLegacyOperation({
+export const workspaceEnsureDirectoryOperation = defineOperation({
+  input: z.union([
+    z.object({ path: z.string().describe('Absolute directory path') }),
+    z.array(z.unknown()),
+  ]),
+  normalize: (payload: unknown) => normalizePathPayload(payload, 'workspace.ensureDirectory'),
+  legacyNormalize: (payload: unknown) => normalizePathPayload(payload, 'workspace.ensureDirectory'),
+  errors: ['workspace.ensure_directory_failed'],
   id: 'workspace.ensureDirectory',
   kind: 'command',
   scope: 'interact',

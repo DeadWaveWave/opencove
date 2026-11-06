@@ -1,3 +1,4 @@
+import { pluginRepositoryDetailsOperation } from '@shared/contracts/controlSurface/operations/domains/plugin'
 import { createAppError } from '@shared/errors/appError'
 import type * as z from 'zod'
 import type { SchemaOperation } from '@shared/contracts/controlSurface/operations/defineOperation'
@@ -13,8 +14,6 @@ import {
 import { registerOperation } from '../registerOperation'
 import type { ControlSurface } from '../controlSurface'
 import type { PluginDistributionService } from '@contexts/plugins/application/PluginDistributionService'
-import { distributionFields } from '@contexts/plugins/domain/pluginDistributionValidation'
-import { pluginString } from '@contexts/plugins/domain/localPluginValidation'
 
 export function registerPluginDistributionHandlers(
   surface: ControlSurface,
@@ -39,30 +38,6 @@ export function registerPluginDistributionHandlers(
       },
       defaultErrorCode: 'common.invalid_input',
     })
-  const register = <T>(
-    id: string,
-    kind: 'query' | 'command',
-    validate: (value: unknown) => T,
-    handle: (value: T) => Promise<unknown>,
-  ) =>
-    surface.register(id, {
-      kind,
-      validate: value => {
-        try {
-          return validate(value)
-        } catch (error) {
-          return fail(error)
-        }
-      },
-      handle: async (_ctx, value) => {
-        try {
-          return await handle(value)
-        } catch (error) {
-          return fail(error)
-        }
-      },
-      defaultErrorCode: 'common.invalid_input',
-    })
   registerSchema(pluginGitInstallOperation, value => service.install(value))
   registerSchema(pluginSourceOperation, value => service.inspect(value))
   registerSchema(pluginGitCheckOperation, value => service.check(value.pluginId, value.ref))
@@ -77,12 +52,7 @@ export function registerPluginDistributionHandlers(
 
     value => service.rollback(value.pluginId, value.revision),
   )
-  register(
-    'plugin.repository.details',
-    'query',
-    value => pluginString(distributionFields(value, ['repository']).repository, 'repository', 2000),
-    value => service.repositoryDetails(value),
-  )
+  registerSchema(pluginRepositoryDetailsOperation, value => service.repositoryDetails(value))
   registerSchema(
     pluginDiscoverOperation,
 

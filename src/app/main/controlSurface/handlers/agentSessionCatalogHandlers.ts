@@ -1,6 +1,7 @@
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
 import { listAgentSessions } from '../../../../contexts/agent/infrastructure/cli/AgentSessionCatalog'
-import { normalizeListSessionsPayload } from '../../../../contexts/agent/presentation/main-ipc/validate'
+import { registerOperation } from '../registerOperation'
+import { agentListSessionsOperation } from '@shared/contracts/controlSurface/operations/domains/agent'
 import type {
   ListAgentSessionsInput,
   ListAgentSessionsResult,
@@ -14,9 +15,7 @@ export function registerAgentSessionCatalogHandlers(
     approvedWorkspaces: ApprovedWorkspaceStore
   },
 ): void {
-  controlSurface.register('agent.listSessions', {
-    kind: 'query',
-    validate: normalizeListSessionsPayload,
+  registerOperation(controlSurface, agentListSessionsOperation, {
     handle: async (_ctx, payload: ListAgentSessionsInput): Promise<ListAgentSessionsResult> => {
       const isApproved = await deps.approvedWorkspaces.isPathApproved(payload.cwd)
       if (!isApproved) {

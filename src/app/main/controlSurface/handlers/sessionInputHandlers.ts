@@ -1,3 +1,8 @@
+import { registerOperation } from '../registerOperation'
+import {
+  sessionStopNodeOperation,
+  sessionWriteNodeOperation,
+} from '@shared/contracts/controlSurface/operations/domains/session'
 import { createAppError } from '../../../../shared/errors/appError'
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
@@ -23,15 +28,7 @@ export function registerSessionInputHandlers(
     }
     return node.sessionId
   }
-  control.register('session.stopNode', {
-    kind: 'command',
-    validate(value) {
-      const input = value as { nodeId?: unknown; sessionId?: unknown } | null
-      if (typeof input?.nodeId !== 'string' || typeof input.sessionId !== 'string') {
-        throw new Error('Stopping a node requires its exact nodeId and sessionId.')
-      }
-      return { nodeId: input.nodeId, sessionId: input.sessionId }
-    },
+  registerOperation(control, sessionStopNodeOperation, {
     async handle(ctx, input) {
       if ((await binding(input.nodeId)) !== input.sessionId) {
         throw new Error('Node session changed before stop; read it again.')
@@ -49,25 +46,7 @@ export function registerSessionInputHandlers(
     },
     defaultErrorCode: 'common.invalid_input',
   })
-  control.register('session.writeNode', {
-    kind: 'command',
-    validate(value) {
-      if (!value || typeof value !== 'object' || Array.isArray(value)) {
-        throw new Error('Invalid session input.')
-      }
-      const input = value as Record<string, unknown>
-      if (
-        typeof input.nodeId !== 'string' ||
-        !input.nodeId.trim() ||
-        typeof input.sessionId !== 'string' ||
-        !input.sessionId.trim() ||
-        typeof input.data !== 'string' ||
-        new TextEncoder().encode(input.data).byteLength > 32 * 1024
-      ) {
-        throw new Error('Session input requires a nodeId and at most 32 KiB of data.')
-      }
-      return { nodeId: input.nodeId.trim(), sessionId: input.sessionId.trim(), data: input.data }
-    },
+  registerOperation(control, sessionWriteNodeOperation, {
     async handle(ctx, input) {
       const sessionId = input.sessionId
       if ((await binding(input.nodeId)) !== sessionId) {
