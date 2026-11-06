@@ -66,11 +66,11 @@ describe('Working Agent patrol', () => {
     expect(node).toEqual(before)
   })
 
-  it('holds a still dotted outline without a clock (reduced motion)', () => {
+  it('holds a static frame highlight without a clock (reduced motion)', () => {
     const still = draw(null)
     expect(still.active).toBe(false)
-    expect(still.pixels.length).toBeGreaterThan(10)
-    expect(still.pixels.every(pixel => outsideFrame(pixel))).toBe(true)
+    expect(still.pixels).toHaveLength(4)
+    expect(still.pixels.every(pixel => pixel.alpha === 0.32)).toBe(true)
     expect(draw(null).pixels).toEqual(still.pixels)
   })
 

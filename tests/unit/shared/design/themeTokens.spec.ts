@@ -15,6 +15,7 @@ import {
 } from '@shared/design/themeGenerator'
 import {
   renderFamilyStylesheet,
+  renderFamilyInkStylesheet,
   resolveRoleColors,
   terminalScopeTokens,
   themeTokens,
@@ -173,9 +174,11 @@ describe('generated theme tokens', () => {
     },
   )
 
-  it('keeps exactly one generated stylesheet per family', () => {
+  it('keeps a palette and ink companion for each family', () => {
     const files = readdirSync(GENERATED_DIR).filter(name => name.endsWith('.css'))
-    expect(files.sort()).toEqual(FAMILIES.map(family => `${family}.css`).sort())
+    expect(files.sort()).toEqual(
+      FAMILIES.flatMap(family => [`${family}.css`, `${family}-ink.css`]).sort(),
+    )
   })
 
   it.each(FAMILIES)('matches the committed %s stylesheet (pnpm design:tokens)', async family => {
@@ -183,5 +186,10 @@ describe('generated theme tokens', () => {
     const options = (await prettier.resolveConfig(file)) ?? {}
     const css = await prettier.format(renderFamilyStylesheet(family), { ...options, parser: 'css' })
     await expect(css).toMatchFileSnapshot(file)
+    const ink = await prettier.format(renderFamilyInkStylesheet(family), {
+      ...options,
+      parser: 'css',
+    })
+    await expect(ink).toMatchFileSnapshot(resolve(GENERATED_DIR, `${family}-ink.css`))
   })
 })

@@ -1,3 +1,4 @@
+import type { WindowKindFamily } from '../../../../utils/windowKindFamily'
 import {
   pixelNoise,
   resolvePixelBuffer,
@@ -10,6 +11,7 @@ import { drawDotRipples } from './dotRipples'
 import type { Ripple } from '../pixelWall/ripples'
 
 export interface PixelTheme {
+  ink?: Record<WindowKindFamily, string>
   blue: string
   cyan: string
   mint: string
@@ -21,6 +23,19 @@ export function readPixelTheme(canvas: HTMLCanvasElement): PixelTheme {
   const style = getComputedStyle(canvas)
   const color = (token: string) => style.getPropertyValue(token).trim() || style.color
   return {
+    ink: Object.fromEntries(
+      Object.entries({
+        ai: '--cove-pixel-blue',
+        shell: '--cove-pixel-cyan',
+        plan: '--cove-pixel-mint',
+        knowledge: '--cove-pixel-blue',
+        media: '--cove-pixel-cyan',
+        neutral: '',
+      }).map(([family, fallback]) => [
+        family,
+        style.getPropertyValue(`--cove-kind-${family}-ink`).trim() || color(fallback),
+      ]),
+    ) as Record<WindowKindFamily, string>,
     blue: color('--cove-pixel-blue'),
     cyan: color('--cove-pixel-cyan'),
     mint: color('--cove-pixel-mint'),
@@ -126,8 +141,15 @@ export function drawPixelLayer({
     active = true
   }
   if (working) {
-    // Reduced motion keeps a still outline round working frames instead of the patrol.
-    drawWorkingPixels(context, nodes, viewport, theme, reducedMotion ? null : workingNow)
+    // Reduced motion keeps a static frame highlight instead of moving pixels.
+    drawWorkingPixels(
+      context,
+      nodes,
+      viewport,
+      theme,
+      reducedMotion ? null : workingNow,
+      buffer.dpr,
+    )
   }
   context.globalAlpha = 1
   return active

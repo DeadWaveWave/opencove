@@ -444,3 +444,12 @@
 - Terminal theme/Find E2E：`tests/e2e/workspace-canvas.terminal-theme.spec.ts`
 - Multi-client authority/FIFO：`tests/unit/app/ptyStreamHub.attach.authority.spec.ts`、
   `tests/unit/app/ptyStreamHub.resize.authority.spec.ts`、`tests/unit/app/BrowserPtyClient.spec.ts`
+
+### 工作中巡航
+
+- Working 外框巡航只消费现有 Agent 状态：两串各 8 粒，头部 3.5px、其余 2.5px，
+  间距 11px、外扩 6px，都是屏幕尺寸，不随画布缩放变化；位置按 DPR（最多 2）对齐。
+- 颜色来自 `--cove-kind-<族>-ink`（深色第 11 阶、浅色第 9 阶；中性第 10 / 9 阶），
+  Pixel 主题没有生成 token 时回退到已有像素调色板。减少动态效果显示静态细框，关闭信号则不画。
+- 速度沿用 Tide 原型的 240 世界像素/秒；实际外扩路径每圈多出 `48 / zoom` 世界像素。
+  尺寸与间距的回归用真实 Canvas 绘制记录，避免 runner 错过瞬时画面。

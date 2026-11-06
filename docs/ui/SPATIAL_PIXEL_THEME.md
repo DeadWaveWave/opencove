@@ -223,10 +223,16 @@ view. The pill pulses gently and holds still with reduced motion.
 ## Working patrol
 
 While an agent works (`resolveAgentPresentation`), two strings of pixels travel around the
-outside of its frame on opposite sides (Tide 5.4b), replacing the old side streams; only pixels in
-view are drawn. Every 2.4s it also sends a low sonar wave across the wall, or through the 「简约」
+outside of its frame (Tide 5.4b): two trains of eight pixels, spaced 11 screen px apart, with
+3.5px heads and 2.5px tails. The path stays 6 screen px outside the frame at every zoom; positions
+snap to the canvas DPR (capped at 2). The head advances 240 world px/s with an ID-derived seed,
+and the second train starts half the unexpanded world perimeter later. As in the prototype,
+the expanded path adds `48 / zoom` world px to a lap. Only windows within a 40px margin participate.
+The colour is the kind ink (`--cove-kind-<family>-ink`): step 11 in dark, step 9 in light
+(neutral: step 10 / 9); Pixel themes fall back to their blue/cyan/mint palette. Every 2.4s it also sends a low sonar wave across the wall, or through the 「简约」
 dots. Both follow the Agent working effect switch; 「关闭」 has no sonar. Reduced motion keeps a
-still dotted outline round the frame and no waves.
+static 1px frame highlight and no waves, following the spec table’s reduced-motion promise
+(the prototype drawFx itself skips the patrol). Turning signals off removes the highlight too.
 
 ## Finished and failed runs
 

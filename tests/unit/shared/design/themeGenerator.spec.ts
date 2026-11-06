@@ -12,6 +12,7 @@ import {
   THEME_FAMILIES,
   generateFamilyTheme,
   generateTheme,
+  kindRoles,
   type Appearance,
   type ThemeFamilyId,
 } from '@shared/design/themeGenerator'
@@ -21,6 +22,16 @@ const APPEARANCES: Appearance[] = ['dark', 'light']
 const CONTRAST_LEVELS = [0, 0.35, 1]
 
 describe('theme generator', () => {
+  it.each(APPEARANCES)('uses Tide ink scale steps in %s', appearance => {
+    const theme = generateFamilyTheme('cove', appearance)
+    for (const family of ['ai', 'shell', 'plan', 'knowledge', 'media', 'neutral'] as const) {
+      const scale = family === 'neutral' ? theme.neutral : theme.kinds[family]
+      expect(kindRoles(theme, family).ink).toEqual(
+        scale[appearance === 'light' ? 8 : family === 'neutral' ? 9 : 10],
+      )
+    }
+  })
+
   it('meets every contrast rule for all built-in families, appearances and contrast levels', () => {
     const failures: string[] = []
     for (const family of FAMILIES) {
