@@ -113,3 +113,42 @@ src/
 - Contract：验证 IPC、Control Surface、CLI DTO、错误语义和输入校验。
 - Integration：验证 hydration、persistence、mount routing、worker prepare/revive。
 - E2E：验证用户可感知主链路，例如 Space Explorer、mounts、Web UI、terminal recovery。
+
+## Headless workspace bootstrap
+
+`project.add` is an `admin` schema command accepting `{ path, name? }`. `path` must be an
+absolute local directory. Missing, inaccessible or non-directory paths return
+`common.invalid_input` before approval or mount creation. The root is approved, a local mount
+is allocated, and the project plus `Space 1` are persisted. An empty profile uses format version
+1 and `DEFAULT_AGENT_SETTINGS`. The result is `{ projectId, spaceId, mountId }`.
+
+Duplicate normalized paths reuse the existing project, preserve its name/content and activate
+it, matching the legacy directory-add action. Missing mounts/spaces are supplied. The Wizard
+historically permits duplicate paths and starts with no spaces; bootstrap deliberately supplies
+a default space so headless node creation has a usable target. Project and empty-space record
+construction is shared with the Wizard and canvas through `workspace/domain/workspaceBootstrap`.
+
+`space.create` is an `interact` schema command accepting `{ projectId, name, directoryPath? }`
+and returning `{ projectId, spaceId, mountId }`. It creates a top-level space bound to the first
+mount by `sortOrder`, defaulting its directory to that mount's root. Local directories must exist
+and remain inside the selected root after canonical-path resolution; traversal and symlink escapes
+are rejected before persistence. Internal symlinks are stored using their canonical relative
+destination under the mount's root spelling. Bootstrap space creation rejects remote mounts,
+including their default root: startup approval currently interprets Space directories as local
+approval roots. Remote support requires endpoint-aware approval hydration and canonical-path
+validation before this restriction can be lifted.
+It uses the canvas window
+size and collision-placement rules, centered initially at world origin (there is no pointer in
+a headless client). Unlike child creation, it has no parent containment or node-transfer step.
+
+Both commands share a runtime mutation owner and use revision-checked persistence writes.
+Conflicts are surfaced rather than silently overwriting another writer. A published mount is
+retained on write failure: renderer writers outside this queue may already have adopted it.
+This can leave an unreferenced mount requiring explicit removal, but cannot delete another
+writer's successful binding as compensation. Root
+approval is durable and is not revoked on failure, since approval can be shared by other projects.
+Topology and app-state storage are separate transactions; process crashes between them are not
+made atomic by these commands. HTTP command dispatch publishes the existing `app_state.updated`
+event when the revision changes, including bootstrap commands. No new event protocol or CLI
+command is introduced. Common validation errors are shared protocol errors; registry metadata
+also declares persistence errors. This documentation adds no executable architecture-rule impact.

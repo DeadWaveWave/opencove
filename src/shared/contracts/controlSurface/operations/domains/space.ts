@@ -1,4 +1,5 @@
 import * as z from 'zod'
+import { normalizeBootstrapInput } from '../workspaceBootstrapNormalize'
 import { defineOperation } from '../defineOperation'
 import { normalizeCreateChildPayload } from '../spaceCreateChildNormalize'
 import { normalizeGetSpacePayload, normalizeListSpacesPayload } from '../spaceQueriesNormalize'
@@ -76,7 +77,24 @@ export const spaceListOperation = defineOperation({
   legacyNormalize: normalizeListSpacesPayload,
   errors: ['persistence.unavailable'],
 })
+
+export const spaceCreateOperation = defineOperation({
+  id: 'space.create',
+  kind: 'command',
+  scope: 'interact',
+  availability: 'always',
+  summary: 'Create a top-level space bound to the project default mount',
+  input: z.object({
+    projectId: z.string(),
+    name: z.string(),
+    directoryPath: z.string().optional(),
+  }),
+  normalize: input => normalizeBootstrapInput(input),
+  errors: ['persistence.invalid_state', 'persistence.io_failed', 'persistence.unavailable'],
+})
+
 export const spaceOperations = [
+  spaceCreateOperation,
   spaceCreateChildOperation,
   spaceGetOperation,
   spaceListOperation,

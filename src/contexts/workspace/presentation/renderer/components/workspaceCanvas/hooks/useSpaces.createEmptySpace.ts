@@ -3,10 +3,12 @@ import { useTranslation } from '@app/renderer/i18n'
 import type { useWorkspaceCanvasCreateSpace } from './useSpaces.createSpace'
 import type { WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import { sanitizeSpaces } from '../helpers'
-import { resolveDefaultAgentWindowSize } from '../constants'
+import {
+  createTopLevelSpaceRecord,
+  emptySpaceSize,
+} from '@contexts/workspace/domain/workspaceBootstrap'
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
 import { resolveSpaceMountLaunchContext } from './spaceMountLaunchContext'
-import { SPACE_NODE_PADDING, SPACE_MIN_SIZE } from '../../../utils/spaceLayout'
 
 type Options = Pick<
   Parameters<typeof useWorkspaceCanvasCreateSpace>[0],
@@ -79,11 +81,7 @@ export function useCreateEmptySpace({
       const nextSpaceId = crypto.randomUUID()
       const normalizedName = resolveDefaultSpaceName()
 
-      const agentSize = resolveDefaultAgentWindowSize(standardWindowSizeBucket)
-      const size = {
-        width: Math.max(SPACE_MIN_SIZE.width, agentSize.width + SPACE_NODE_PADDING * 2),
-        height: Math.max(SPACE_MIN_SIZE.height, agentSize.height + SPACE_NODE_PADDING * 2),
-      }
+      const size = emptySpaceSize(standardWindowSizeBucket)
 
       const desiredAnchor = {
         x: Math.round(point.x - size.width / 2),
@@ -118,15 +116,13 @@ export function useCreateEmptySpace({
         height: size.height,
       }
 
-      const nextSpace: WorkspaceSpaceState = {
+      const nextSpace: WorkspaceSpaceState = createTopLevelSpaceRecord({
         id: nextSpaceId,
         name: normalizedName,
         directoryPath: context.workingDirectory,
         targetMountId: context.mountId,
-        labelColor: null,
-        nodeIds: [],
         rect,
-      }
+      })
 
       const nextSpaces = sanitizeSpaces([...spacesRef.current, nextSpace])
       spacesRef.current = nextSpaces

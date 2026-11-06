@@ -1,8 +1,7 @@
 import { useCallback } from 'react'
 import type { TranslateFn } from '@app/renderer/i18n'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
-import { DEFAULT_WORKSPACE_MINIMAP_VISIBLE } from '@contexts/workspace/presentation/renderer/types'
-import { createDefaultWorkspaceViewport } from '@contexts/workspace/presentation/renderer/utils/workspaceSpaces'
+import { createProjectRecord } from '@contexts/workspace/domain/workspaceBootstrap'
 import type { AllocateProjectPlaceholderResult, CreateMountResult } from '@shared/contracts/dto'
 import { useAppStore } from '../../store/useAppStore'
 import { toErrorMessage } from '../../utils/format'
@@ -165,18 +164,11 @@ export function useAddProjectWizardCreateProject(options: {
           })
         }, Promise.resolve())
 
-        const nextWorkspace: WorkspaceState = {
+        const nextWorkspace: WorkspaceState = createProjectRecord({
           id: projectId,
           name,
           path: workspacePath,
-          nodes: [],
-          worktreesRoot: '',
-          viewport: createDefaultWorkspaceViewport(),
-          isMinimapVisible: DEFAULT_WORKSPACE_MINIMAP_VISIBLE,
-          spaces: [],
-          activeSpaceId: null,
-          spaceArchiveRecords: [],
-        }
+        })
 
         const store = useAppStore.getState()
         store.setWorkspaces(prev => [...prev, nextWorkspace])
