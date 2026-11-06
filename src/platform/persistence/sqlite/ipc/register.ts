@@ -88,9 +88,12 @@ export function registerPersistenceIpcHandlers(
     IPC_CHANNELS.persistenceReadAppState,
     async (): Promise<ReadAppStateResult> => {
       const store = await getStore()
-      const state = await store.readAppState()
+      const snapshot = store.readAppStateSnapshot
+        ? await store.readAppStateSnapshot()
+        : { state: await store.readAppState(), revision: null }
+      const { state, revision } = snapshot
       const recovery = store.consumeRecovery()
-      return { state, recovery }
+      return { state, recovery, revision }
     },
     { defaultErrorCode: 'persistence.unavailable' },
   )
@@ -98,7 +101,11 @@ export function registerPersistenceIpcHandlers(
   registerHandledIpc(
     IPC_CHANNELS.persistenceWriteAppState,
     async (_event, payload: unknown): Promise<PersistWriteResult> => {
-      let normalized: { state: unknown; allowEmptyWorkspaceOverwrite?: boolean | null }
+      let normalized: {
+        baseRevision?: number | null
+        state: unknown
+        allowEmptyWorkspaceOverwrite?: boolean | null
+      }
 
       try {
         normalized = normalizeWriteAppStatePayload(payload)
@@ -122,6 +129,7 @@ export function registerPersistenceIpcHandlers(
 
         const store = await getStore()
         return await store.writeAppState(normalized.state, {
+          baseRevision: normalized.baseRevision,
           allowEmptyWorkspaceOverwrite: normalized.allowEmptyWorkspaceOverwrite === true,
         })
       } catch (error) {

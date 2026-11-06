@@ -81,7 +81,19 @@ export function normalizeWriteAppStatePayload(payload: unknown): WriteAppStateIn
     })
   }
 
+  if (
+    record.baseRevision !== undefined &&
+    record.baseRevision !== null &&
+    (typeof record.baseRevision !== 'number' ||
+      !Number.isSafeInteger(record.baseRevision) ||
+      record.baseRevision < 0)
+  ) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid persistence base revision',
+    })
+  }
   return {
+    baseRevision: record.baseRevision as number | null | undefined,
     state,
     allowEmptyWorkspaceOverwrite:
       typeof record.allowEmptyWorkspaceOverwrite === 'boolean'

@@ -14,6 +14,7 @@ export type PersistWriteResult =
       ok: true
       level: PersistWriteLevel
       bytes: number
+      merged?: true
       revision?: number
     }
   | {
@@ -29,11 +30,13 @@ export interface WriteWorkspaceStateRawInput {
 export type PersistenceRecoveryReason = 'corrupt_db' | 'migration_failed'
 
 export interface ReadAppStateResult {
+  revision: number | null
   state: unknown | null
   recovery: PersistenceRecoveryReason | null
 }
 
 export interface WriteAppStateInput {
+  baseRevision?: number | null
   state: unknown
   allowEmptyWorkspaceOverwrite?: boolean | null
 }

@@ -65,15 +65,63 @@ repair。Electron 的 `userData` 目录是安装版和 dev 版数据隔离的 du
 读取失败不能被当作“没有 durable state”。如果 `readAppState()`、IPC、Control Surface
 或 remote persistence transport 捕获异常，只能作为错误/不可用路径处理；不得让
 Renderer 用默认空状态覆盖原 DB。对任何会让读取失败回落到 `null` 的改动，必须补一条
-证明不会静默覆盖已有 durable state 的测试或断言。远端写入使用的 preflight 与 conflict
-snapshot 必须完整校验 revision 和嵌套 app-state 结构；首次 preflight 读到的 state 同时成为
-后续冲突合并的 base snapshot，不能只缓存 revision 后退化为 local-wins。跨进程 app-state
-raw/legacy 结构由 `src/shared/contracts/persistedAppState.ts` 完整描述，merge-ready 结构由
-`normalizedPersistedAppState.ts` 单独描述。Shared validator 允许既有 hydration 能补齐的字段缺省，
-但任何实际出现的 durable node payload、archive snapshot 或可选字段都必须通过类型校验；
-Settings domain 通过显式 normalizer port 提供 canonical settings。Adapter 只为冲突合并生成私有的
-normalized authority，并把原始读取结果留给既有 hydration/migration 流程；最新 snapshot 或
-local candidate 不能正规化时，冲突重试必须 fail closed，不能回退为未合并的 local overwrite。
+证明不会静默覆盖已有 durable state 的测试或断言。共享发布使用乐观并发控制，Worker 的 `sync.writeState` 契约保持不变。
+
+### 冲突合并与发布不变量
+
+- **S1（不静默回退）**：对共享内容路径 p，若 candidate[p] 与 ancestor[p] 相等，
+  合并结果取 latest[p]。普通对象递归按键三方合并，数组作为原子值；真正同字段冲突取 local。
+  workspaces、nodes、spaces 按 id 合并，祖先已有而任一侧删除的实体保持删除；新实体保留，
+  排序为 latest 顺序加 local 独有项。成员关系按 node 的 space id 三方合并。
+  `viewport`、`isMinimapVisible`、`activeSpaceId` 和 `activeWorkspaceId` 是客户端视图状态，
+  合并保留 latest 的共享占位值，不参与共享内容冲突决策。
+- **S2（精确祖先）**：Renderer 的 synced base 由接受的 snapshot 或自身非合并成功发布推进，
+  保存 portKind、canonical content 和 revision。读取但拒绝应用的 snapshot 不推进此基线。
+  IPC 同次返回 state/revision；适配器保存最近 16 个 revision 的 normalized snapshot，
+  发布首先 CAS against baseRevision，冲突重试始终使用同一个祖先，最多三次写尝试。
+  缺失或被淘汰的基线使用既有最近 snapshot 回退；显式 revision 缺失缓存时进程内告警一次。
+  该有界缓存回退不提供精确祖先保证；本地 SQLite 无 Worker 时忽略 baseRevision。
+- **S3（不回声发布）**：Renderer 以共享 normalizer 和稳定键序比较 candidate 与 synced base，
+  相等则不调用 IPC。冲突合并与 latest 内容相等时不再写、不增加 revision。
+  合并返回 `merged: true`，Renderer 不推进基线，也不抑制该 revision 的同步刷新；
+  待接受合并后的 snapshot 才推进基线。
+  此期间 writer 单独保存已合并发布的 candidate；后续 candidate 与它比较，而不是与旧基线
+  比较。若有后续编辑（包括撤销至旧基线），先读取 revisioned latest，再将相对前一 candidate
+  的变化合并到 latest，并以该 revision CAS。读失败保留 pending 状态并报告失败，不丢弃编辑。
+  重放后的内容仍未应用到 Renderer，因此保持刷新且不推进 synced base。
+  Worker refresh 在相同的生命周期和本地编辑检查后，将 settings 与 workspace 内容一起应用，
+  再接受 snapshot revision；不能确认尚未应用的共享字段。
+  节点 sync-overwrite guard 不阻止整个 snapshot 应用。投影读取 writer 已缓存的 accepted base，
+  对基线中已有的 guarded node，在 canonical persisted-node 表示上执行
+  `mergeValue(latestNode, localNode, baseNode)`，再走既有 shell conversion：保留真正的本地字段编辑，
+  同时立即应用该节点的其他外部字段、其他节点更新及新节点。无基线的 guarded 本地创建保留；
+  基线已有而 latest 删除的节点删除。应用后立即确认原始 snapshot 的 revision/content，
+  store 与它的差异仅表示待发布的本地编辑；保护持续续期也不延后刷新。
+  Guarded node 的 Space 归属也以每个 node 的单一 space id（含无归属）做三方合并，
+  不把旧、新 Space 的 nodeIds 取并集。未修改的本地归属接受外部移动或移除；真正的本地
+  归属修改及无基线的本地创建保留。重建成员列表时按 latest 顺序后接 local-only 成员，
+  排除已删除节点与 Space，确保每个节点最多属于一个 Space。
+  Shared settings 是 synced base 的一部分，refresh 必须同时应用 `readPersistedStateWithMeta`
+  通过 `normalizeAgentSettings` 得到的 `AgentSettings`，否则后续 publication 会回退外部设置。
+  Refresh 先 flush 排队的本地修改；失败不应用 snapshot，读取期间发生本地修改则拒绝该次读取。
+  因此已排队但尚未发布的 settings 编辑先持久化，再接受新快照。
+  Settings 内容未变时保留原对象：settings 驱动整个外壳，每次刷新都换新对象会让画布重新挂载，
+  打断用户正在输入的编辑器。
+  Canonical content 使用 UTF-16 code-unit 键序；writer 缓存 synced base 字符串，投影按该字符串
+  缓存解析后的基线，不在每次候选比较时重新规范化或序列化基线。
+
+
+Worker 是共享 durable state owner；Renderer 拥有待发布本地编辑及已接受基线；适配器缓存
+只用于祖先查找，不是共享状态 owner。重启仍以 Worker/SQLite 为准，不恢复内存缓存。
+跨进程 raw/legacy 结构由 `persistedAppState.ts` 描述，merge-ready 结构由
+`normalizedPersistedAppState.ts` 描述；Settings domain 通过 normalizer 提供 canonical settings。
+Adapter 保留原始读取结果给 hydration/migration；不能规范化的冲突 snapshot 或 candidate
+必须失败，不能降级为未合并覆盖。Hydration 将终端 durable `agent` 绑定投影到
+`terminalAgentBinding`；canonical normalizer 必须先将它还原到 `agent`，再移除投影字段。
+接受基线、发布与 guarded rebase 使用同一 durable 表示，不能把恢复绑定当作可丢弃的 UI 数据。
+Guarded rebase 重新解析 workspace 前，未受保护的节点也必须转换为 durable 表示，
+避免旁边节点的 guard 清空终端恢复绑定。
+没有 ancestor 的调用仍使用兼容合并规则；它不具备 S1 的完整三方保证。
 
 ## Installed Upgrade Contract
 

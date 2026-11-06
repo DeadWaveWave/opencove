@@ -1,15 +1,46 @@
+import { canonicalContent } from '@shared/sync/mergeValue'
+import { normalizePersistedAppStateForMerge } from '@shared/sync/normalizePersistedAppStateForMerge'
+import { normalizeAgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { PersistedAppState } from '../../types'
 import { createAppErrorDescriptor, toAppErrorDescriptor } from '@shared/errors/appError'
 import { PERSISTED_APP_STATE_FORMAT_VERSION } from './constants'
 import type { PersistWriteResult } from './types'
 import { getPersistencePort } from './port'
+import { publishSharedState } from './reconcilePublication'
 import {
   persistLocalViewStateFromAppState,
   stripLocalViewStateFromPersistedState,
 } from './viewState'
 
-let lastSuccessfulSharedState: { portKind: string; raw: string } | null = null
+let lastSuccessfulSharedState: { portKind: string; raw: string; revision: number | null } | null =
+  null
+let pendingMergedPublication: { portKind: string; raw: string } | null = null
 let allowNextEmptyWorkspaceOverwrite = false
+
+export function content(state: PersistedAppState): string {
+  return canonicalContent(
+    normalizePersistedAppStateForMerge(state, normalizeAgentSettings) ?? state,
+  )!
+}
+
+// Parse each accepted canonical base once; projection never reserializes the base.
+let parsedSyncedBase: { raw: string; state: PersistedAppState } | null = null
+
+export function getSyncedPersistedState(): PersistedAppState | null {
+  if (
+    !lastSuccessfulSharedState ||
+    lastSuccessfulSharedState.portKind !== getPersistencePort()?.kind
+  ) {
+    return null
+  }
+  if (parsedSyncedBase?.raw !== lastSuccessfulSharedState.raw) {
+    parsedSyncedBase = {
+      raw: lastSuccessfulSharedState.raw,
+      state: JSON.parse(lastSuccessfulSharedState.raw) as PersistedAppState,
+    }
+  }
+  return parsedSyncedBase.state
+}
 
 function stripScrollbackFromState(state: PersistedAppState): PersistedAppState {
   return {
@@ -56,9 +87,14 @@ export async function writePersistedState(state: PersistedAppState): Promise<Per
   }
   persistLocalViewStateFromAppState(normalizedState)
   const sharedState = stripLocalViewStateFromPersistedState(normalizedState)
-  const sharedStateRaw = JSON.stringify(sharedState)
+  const sharedStateRaw = content(sharedState)
 
+  const pending = pendingMergedPublication?.portKind === port.kind ? pendingMergedPublication : null
+  if (pending?.raw === sharedStateRaw) {
+    return { ok: true, level: 'full', bytes: 0, merged: true }
+  }
   if (
+    !pending &&
     lastSuccessfulSharedState?.portKind === port.kind &&
     lastSuccessfulSharedState.raw === sharedStateRaw
   ) {
@@ -67,12 +103,16 @@ export async function writePersistedState(state: PersistedAppState): Promise<Per
 
   let fullResult: PersistWriteResult
   const writeOptions = {
+    baseRevision:
+      lastSuccessfulSharedState?.portKind === port.kind
+        ? lastSuccessfulSharedState.revision
+        : undefined,
     allowEmptyWorkspaceOverwrite:
       shouldAllowNextEmptyWorkspaceOverwrite === true && sharedState.workspaces.length === 0,
   }
 
   try {
-    fullResult = await port.writeAppState(sharedState, writeOptions)
+    fullResult = await publishSharedState(port, sharedState, pending?.raw ?? null, writeOptions)
   } catch (error) {
     return {
       ok: false,
@@ -84,8 +124,17 @@ export async function writePersistedState(state: PersistedAppState): Promise<Per
   }
 
   if (fullResult.ok) {
-    lastSuccessfulSharedState = { portKind: port.kind, raw: sharedStateRaw }
-    return { ok: true, level: 'full', bytes: fullResult.bytes }
+    if (fullResult.merged) {
+      pendingMergedPublication = { portKind: port.kind, raw: sharedStateRaw }
+    } else {
+      pendingMergedPublication = null
+      lastSuccessfulSharedState = {
+        portKind: port.kind,
+        raw: sharedStateRaw,
+        revision: fullResult.revision ?? null,
+      }
+    }
+    return fullResult
   }
 
   if (fullResult.reason !== 'quota' && fullResult.reason !== 'payload_too_large') {
@@ -93,11 +142,25 @@ export async function writePersistedState(state: PersistedAppState): Promise<Per
   }
 
   const degradedState = stripScrollbackFromState(sharedState)
-  const degradedRaw = JSON.stringify(degradedState)
-  const degradedResult = await port.writeAppState(degradedState)
+  const degradedRaw = content(degradedState)
+  const degradedResult = await publishSharedState(
+    port,
+    degradedState,
+    pending?.raw ?? null,
+    writeOptions,
+  )
   if (degradedResult.ok) {
-    lastSuccessfulSharedState = { portKind: port.kind, raw: degradedRaw }
-    return { ok: true, level: 'no_scrollback', bytes: degradedResult.bytes }
+    if (degradedResult.merged) {
+      pendingMergedPublication = { portKind: port.kind, raw: degradedRaw }
+    } else {
+      pendingMergedPublication = null
+      lastSuccessfulSharedState = {
+        portKind: port.kind,
+        raw: degradedRaw,
+        revision: degradedResult.revision ?? null,
+      }
+    }
+    return { ...degradedResult, level: 'no_scrollback' }
   }
 
   if (degradedResult.reason !== 'quota' && degradedResult.reason !== 'payload_too_large') {
@@ -105,13 +168,23 @@ export async function writePersistedState(state: PersistedAppState): Promise<Per
   }
 
   const minimalState = settingsOnlyState(sharedState)
-  const minimalRaw = JSON.stringify(minimalState)
-  const minimalResult = await port.writeAppState(minimalState, {
+  const minimalRaw = content(minimalState)
+  const minimalResult = await publishSharedState(port, minimalState, pending?.raw ?? null, {
+    baseRevision: writeOptions.baseRevision,
     allowEmptyWorkspaceOverwrite: writeOptions.allowEmptyWorkspaceOverwrite,
   })
   if (minimalResult.ok) {
-    lastSuccessfulSharedState = { portKind: port.kind, raw: minimalRaw }
-    return { ok: true, level: 'settings_only', bytes: minimalResult.bytes }
+    if (minimalResult.merged) {
+      pendingMergedPublication = { portKind: port.kind, raw: minimalRaw }
+    } else {
+      pendingMergedPublication = null
+      lastSuccessfulSharedState = {
+        portKind: port.kind,
+        raw: minimalRaw,
+        revision: minimalResult.revision ?? null,
+      }
+    }
+    return { ...minimalResult, level: 'settings_only' }
   }
 
   return minimalResult
@@ -136,7 +209,10 @@ export async function writeRawPersistedState(raw: string): Promise<PersistWriteR
   }
 }
 
-export function markPersistedStateAsSynced(state: PersistedAppState): void {
+export function markPersistedStateAsSynced(
+  state: PersistedAppState,
+  revision: number | null = null,
+): void {
   const port = getPersistencePort()
   if (!port) {
     return
@@ -149,7 +225,8 @@ export function markPersistedStateAsSynced(state: PersistedAppState): void {
     }
     persistLocalViewStateFromAppState(normalizedState)
     const sharedState = stripLocalViewStateFromPersistedState(normalizedState)
-    lastSuccessfulSharedState = { portKind: port.kind, raw: JSON.stringify(sharedState) }
+    lastSuccessfulSharedState = { portKind: port.kind, raw: content(sharedState), revision }
+    pendingMergedPublication = null
   } catch {
     // ignore cache failures
   }
