@@ -133,7 +133,15 @@ world, under every window and the effects layer.
   neighbouring cloud colours (never a hard edge between two clouds) and drifts slowly. Bright
   patches wander across the open wall (shimmer, `PIXEL_WALL.shimmerA`); about one cell in six
   twinkles, more of them near working or waiting windows. Shimmer and twinkle never enter
-  glass. The wall does not follow the pointer: no spotlight (owner, 2026-11-06).
+  glass. Cursor illumination follows the ambient setting: off with twinkle or reduced motion,
+  including in showcase mode. It lights the finished tile after work light and ripples, before
+  the glass cap. Both appearances use accent step 9 (`--cove-pixel-spot`); Pixel falls back to
+  its public accent. Screen illumination preserves the hue/chroma of chromatic tiles in OKLab,
+  blending smoothly into the accent on neutral tiles. Light mode includes 65% diffuse light.
+  Strengths 0.45 dark / 0.95 light match the old peak luminance-change magnitude within 15%.
+  The radius remains 400 CSS px and the Gaussian denominator 52000. A 48px Gaussian fade
+  reaches zero at the original frame, with no contribution inside. In glass and chrome only
+  the remaining I6 budget is available; its influence eases in outside the glass band too.
 - Clouds, hue and shimmer keep fixed world sizes (640, 1150 and 300px); merging or splitting
   cells resamples the same colour field. Twinkle retains its 16% share plus active-window
   nearness at every level. Work-light falloff uses `max(80, 29.25 / zoom)` world px: continuous

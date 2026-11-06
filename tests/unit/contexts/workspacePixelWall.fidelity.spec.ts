@@ -8,6 +8,7 @@ const base: [number, number, number] = [17, 24, 30]
 // Four very different cloud colours, so a jump between them is unmistakable.
 const vivid: WallPalette = {
   appearance: 'dark',
+  spot: [0, 176, 213],
   cell: base,
   gap: [5, 9, 12],
   clouds: [

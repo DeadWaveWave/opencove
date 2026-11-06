@@ -116,6 +116,7 @@ export const PIXEL_WALL = {
     workA: 0.62,
     cap: 0.6,
     shimmerA: 0.18,
+    spotA: 0.45,
     sparkA: 0.85,
     tileJitter: 5,
     falloff: 0,
@@ -131,6 +132,7 @@ export const PIXEL_WALL = {
     workA: 0.72,
     cap: 0.5,
     shimmerA: 0.22,
+    spotA: 0.95,
     sparkA: 0.9,
     tileJitter: 9,
     falloff: 14,
@@ -220,7 +222,7 @@ export interface GeneratedTheme {
   red: Scale
   /** Roles every surface uses. */
   roles: { canvas: Rgb; surface: Rgb; text: Rgb; textSecondary: Rgb; onAccent: Rgb }
-  pixel: { cell: Rgb; gap: Rgb; clouds: readonly Rgb[]; sparks: readonly Rgb[] }
+  pixel: { spot: Rgb; cell: Rgb; gap: Rgb; clouds: readonly Rgb[]; sparks: readonly Rgb[] }
   ansi: Record<AnsiKey, Rgb>
   onSolid(solid: Rgb): Rgb
 }
@@ -276,6 +278,7 @@ export function generateTheme(input: ThemeInput): GeneratedTheme {
     contrastRatio(inkDark, solid) >= contrastRatio(white, solid) ? inkDark : white
   const P = PIXEL_WALL[ap]
   const pixel = {
+    spot: accent[8]!,
     cell: oklch(P.cell, input.baseChroma * 0.9, input.baseHue),
     gap: oklch(P.gap, input.baseChroma * 0.6, input.baseHue),
     clouds: CLOUD_HUES.map(h => oklch(P.cloudL, P.cloudC, h)),

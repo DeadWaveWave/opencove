@@ -7,6 +7,7 @@ import type { WallPalette } from '../../../src/contexts/workspace/presentation/r
 const base = [160, 160, 160] as const
 const plain: WallPalette = {
   appearance: 'light',
+  spot: [0, 162, 197],
   cell: base,
   gap: base,
   clouds: [base, base, base, base],

@@ -105,6 +105,7 @@ describe('pixel wall colour continuity across cell levels', () => {
     const black: Rgb = [0, 0, 0]
     const palette = {
       appearance: 'dark' as const,
+      spot: [0, 176, 213] as const,
       cell: black,
       gap: black,
       clouds: [black, black, black, black],

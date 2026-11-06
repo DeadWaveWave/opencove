@@ -3,6 +3,8 @@ import type { WindowKindFamily } from '../../../../utils/windowKindFamily'
 
 export interface WallPalette {
   appearance: 'dark' | 'light'
+  /** Accent step 9 (zero-based 8) in both appearances. */
+  spot: Rgb
   cell: Rgb
   gap: Rgb
   /** Four soft colours for the clouds, and the brighter twinkle of each. */
@@ -13,6 +15,7 @@ export interface WallPalette {
 /** Cove dark, for a theme that does not define the wall tokens. */
 const FALLBACK: WallPalette = {
   appearance: 'dark',
+  spot: [0, 176, 213],
   cell: [17, 24, 30],
   gap: [5, 9, 12],
   clouds: [
@@ -65,6 +68,7 @@ export function readWallPalette(element: Element): WallPalette {
   const appearance = relativeLightness(cell) > 0.5 ? 'light' : 'dark'
   return {
     appearance,
+    spot: read('--cove-pixel-spot', read('--cove-accent', FALLBACK.spot)),
     cell,
     gap: read('--cove-pixel-gap', FALLBACK.gap),
     clouds: FALLBACK.clouds.map((color, index) => read(`--cove-pixel-cloud-${index + 1}`, color)),

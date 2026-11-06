@@ -1,7 +1,8 @@
+import { castCursorSpotlight } from './wallSpotlight'
 import type { Rgb } from '@shared/design/oklch'
 import { PIXEL_WALL } from '@shared/design/themeGenerator'
 import type { WallScreenRect } from './wallChrome'
-import type { WallGrid } from './wallGrid'
+import { GLASS_REACH_CELLS, type WallGrid } from './wallGrid'
 import type { WallPalette } from './wallPalette'
 import { forEachRingCell, type Ripple } from './ripples'
 
@@ -26,10 +27,9 @@ export interface WallCellOptions {
   chrome?: readonly WallScreenRect[]
   /** How much faster than usual the clouds drift (showcase mode). */
   cloudSpeed?: number
+  /** Latest pointer in CSS pixels; only used with an ambient clock. */
+  spot?: { x: number; y: number } | null
 }
-
-/** Cells within this many cells of a window count as behind its glass, frame shadow included. */
-const GLASS_REACH_CELLS = 2
 
 const WHITE: Rgb = [255, 255, 255]
 
@@ -250,7 +250,7 @@ function markActiveNearness(
  * One colour per visible cell: the theme's cell colour with a little per-tile jitter, soft
  * colour clouds anchored to the world whose hue blends from one cloud colour into the next,
  * wandering bright patches (shimmer), a sparse twinkle in blank space that gathers around
- * working windows, each window's work light and the output ripples. Without a clock (`timeSeconds` null: reduced motion, twinkle off, or a lost GPU
+ * working windows, each window's work light, output ripples and finally cursor illumination. Without a clock (`timeSeconds` null: reduced motion, twinkle off, or a lost GPU
  * context) clouds, shimmer and twinkle are still; the lights keep whatever intensity the caller
  * resolved. Shimmer and twinkle never enter glass.
  *
@@ -262,7 +262,14 @@ export function fillWallCells(
   grid: WallGrid,
   palette: WallPalette,
   timeSeconds: number | null,
-  { out, windows = [], ripples = [], chrome = [], cloudSpeed = 1 }: WallCellOptions = {},
+  {
+    out,
+    windows = [],
+    ripples = [],
+    chrome = [],
+    cloudSpeed = 1,
+    spot = null,
+  }: WallCellOptions = {},
 ): Uint8ClampedArray {
   const count = grid.columns * grid.rows
   const cells = out && out.length === count * 4 ? out : new Uint8ClampedArray(count * 4)
@@ -358,6 +365,9 @@ export function fillWallCells(
         moved[cell] = mix(cells, cell * 4, WHITE, Math.min(1, k * (weight - 0.5) * 2), moved[cell]!)
       }
     })
+  }
+  if (spot && timeSeconds !== null) {
+    castCursorSpotlight(cells, moved, grid, palette, spot, windows, chrome)
   }
   if (behind) {
     for (let cell = 0; cell < count; cell++) {
