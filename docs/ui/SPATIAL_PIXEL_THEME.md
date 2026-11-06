@@ -128,10 +128,8 @@ world, under every window and the effects layer.
   from their base). Soft clouds drift with the world; their hue blends continuously between
   neighbouring cloud colours (never a hard edge between two clouds) and drifts slowly. Bright
   patches wander across the open wall (shimmer, `PIXEL_WALL.shimmerA`); about one cell in six
-  twinkles, more of them near working or waiting windows; the open wall near the pointer
-  brightens a little (`spotA`, white on dark walls, the accent in daylight). Shimmer, twinkle and
-  the spotlight never enter glass; the spotlight is ambient motion, so twinkle off or reduced
-  motion removes it.
+  twinkles, more of them near working or waiting windows. Shimmer and twinkle never enter
+  glass. The wall does not follow the pointer: no spotlight (owner, 2026-11-06).
 - Zoomed out, clouds, hue and shimmer grow with the cell size (from the 24px base cell) so they
   stay about as broad on screen as in near view, and twinkle thins out in proportion: the far
   wall stays calm. Within one cell size everything stays anchored to the world.

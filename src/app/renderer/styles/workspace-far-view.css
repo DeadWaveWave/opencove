@@ -4,9 +4,9 @@
  * content is skipped (content-visibility keeps runtimes and their geometry untouched and is the
  * cheapest way to stop painting them); one layer of glass tiles in the viewport portal draws them
  * instead. Collapsed windows keep their desktop icons. Tiles never take pointer events, so dragging,
- * selecting and right-clicking reach the windows underneath. Sizes are divided by the zoom, which
- * the portal layer carries, so they stay the same on screen; container units keep them inside
- * small tiles.
+ * selecting and right-clicking reach the windows underneath. A tile is the window's glass in canvas
+ * px; its face (glyph, title, status pixel) is laid out in screen px, so it keeps one size at every
+ * far zoom, and container queries drop what a small tile cannot hold instead of shrinking it.
  */
 .workspace-canvas[data-cove-lod='far']
   .cove-node-presentation:not([data-cove-collapsed])
@@ -71,15 +71,10 @@
   top: 0;
   left: 0;
   box-sizing: border-box;
-  container-type: size;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: min(calc(var(--cove-spacing-2) / var(--workspace-far-tile-zoom)), 6cqh);
-  padding: 7%;
   overflow: hidden;
-  border-radius: min(calc(var(--cove-radius-md) / var(--workspace-far-tile-zoom)), 12cqmin);
+  /* The window's own corner in canvas px: the wall frosts the glass under the tile with this
+     radius, so tile and frost share one corner at every zoom (as in the Tide prototype). */
+  border-radius: var(--cove-node-radius);
   /* As in the Tide prototype: the kind colour washes the window glass from the top left
      (--cove-glass-far-tint, the composition the contrast matrix checks) and fades to 40%. */
   background:
@@ -99,6 +94,30 @@
     var(--cove-node-surface);
   box-shadow: inset 0 0 0 calc(1px / var(--workspace-far-tile-zoom)) var(--cove-node-border);
   color: var(--workspace-far-tile-title);
+}
+
+/* The tile at screen scale: sized to the tile's on-screen box and scaled back by the zoom the
+   portal carries, so everything inside is in screen px, like map labels or Figma's frame names. */
+.workspace-far-tile__face {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  width: calc(100% * var(--workspace-far-tile-zoom));
+  height: calc(100% * var(--workspace-far-tile-zoom));
+  container: workspace-far-tile / size;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cove-spacing-1);
+  padding: var(--cove-spacing-1);
+  transform: scale(calc(1 / var(--workspace-far-tile-zoom)));
+  transform-origin: 0 0;
+  /* The title's size, so the container queries below measure in title lines (em). */
+  font-family: var(--cove-font-ui);
+  font-size: var(--cove-font-size-secondary);
+  line-height: 1.2;
   text-align: center;
 }
 
@@ -150,12 +169,12 @@
   outline-offset: calc(2px / var(--workspace-far-tile-zoom));
 }
 
-/* A large pixel glyph, about 26px on screen, smaller once the tile cannot hold it. */
+/* The 9×9 pixel glyph at twice its grid, so every glyph pixel is 2 screen px. */
 .workspace-far-tile__icon {
   display: block;
   flex: none;
-  width: min(calc(26px / var(--workspace-far-tile-zoom)), 26cqh);
-  height: min(calc(26px / var(--workspace-far-tile-zoom)), 26cqh);
+  width: 18px;
+  height: 18px;
   color: var(--workspace-far-tile-glyph);
 }
 
@@ -164,31 +183,54 @@
   height: 100%;
 }
 
-/* About 15px on screen; once the tile is too small to hold it, it shrinks with the tile. */
+/* The secondary size at any zoom (the face's font), up to two balanced lines; a longer title
+   ends in an ellipsis. */
 .workspace-far-tile__title {
   display: -webkit-box;
   max-width: 100%;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  font-family: var(--cove-font-ui);
-  font-size: min(
-    calc(var(--cove-font-size-emphasis) / var(--workspace-far-tile-zoom)),
-    12cqw,
-    22cqh
-  );
   font-weight: 800;
-  line-height: 1.14;
   overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+/* A smaller tile drops what it cannot hold, in this order: the second title line (under the
+   glyph, the gap and two lines), the glyph (under the glyph, the gap and one line), then the
+   title (under one line, or about two characters wide). 22px is the glyph and the gap. The glyph
+   comes back alone in a narrow tile and only there shrinks, once the tile is smaller than it. */
+@container workspace-far-tile (height < calc(2.4em + 22px)) {
+  .workspace-far-tile__title {
+    -webkit-line-clamp: 1;
+  }
+}
+
+@container workspace-far-tile (height < calc(1.2em + 22px)) {
+  .workspace-far-tile__icon {
+    display: none;
+  }
+}
+
+@container workspace-far-tile (height < 1.2em) or (width < 2.5em) {
+  .workspace-far-tile__title {
+    display: none;
+  }
+
+  .workspace-far-tile__icon {
+    display: block;
+    width: min(18px, 100cqmin);
+    height: min(18px, 100cqmin);
+  }
 }
 
 /* The status is one pixel in the corner: working blinks, waiting and failure hold their colour. */
 .workspace-far-tile__signal {
   position: absolute;
-  top: 7%;
-  right: 6%;
-  width: min(calc(7px / var(--workspace-far-tile-zoom)), 7cqh);
-  height: min(calc(7px / var(--workspace-far-tile-zoom)), 7cqh);
+  top: 5px;
+  right: 5px;
+  width: 6px;
+  height: 6px;
   background: var(--workspace-far-tile-title);
 }
 
