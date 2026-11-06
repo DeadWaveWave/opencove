@@ -1,4 +1,5 @@
 .role-node {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 320px;

@@ -81,6 +81,8 @@ async function readShell(window: Page) {
       sidebarFilter: getComputedStyle(document.querySelector('.workspace-sidebar')!).backdropFilter,
       headerAlpha: alpha('.app-header'),
       sidebarAlpha: alpha('.workspace-sidebar'),
+      headerImage: getComputedStyle(document.querySelector('.app-header')!).backgroundImage,
+      sidebarImage: getComputedStyle(document.querySelector('.workspace-sidebar')!).backgroundImage,
       chrome: api?.getChromeRects().map(r => r.map(Math.round)) ?? [],
       glass: api?.getGlassRects().map(r => r.map(Math.round)) ?? [],
     }
@@ -112,6 +114,11 @@ test.describe('Workspace Canvas - Pixel wall behind the shell', () => {
       expect(pinned.sidebarFilter).toBe('none')
       expect(pinned.headerAlpha).toBeLessThan(255)
       expect(pinned.sidebarAlpha).toBeLessThan(255)
+      // Lit like window glass: a sheen fading down from the top edge, over the grain.
+      for (const image of [pinned.headerImage, pinned.sidebarImage]) {
+        expect(image).toMatch(/^linear-gradient\(rgba\(255, 255, 255, 0\.\d+\)/)
+        expect(image).toContain('url("blob:')
+      }
       // The wall frosts exactly the chrome around the canvas.
       await expect.poll(async () => (await readShell(window)).chrome.length).toBe(2)
       const chrome = (await readShell(window)).chrome

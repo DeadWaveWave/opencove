@@ -58,16 +58,29 @@ export function wallBackdrops(theme: GeneratedTheme): Rgb[] {
   return out
 }
 
+const WHITE: Rgb = [255, 255, 255]
+const MID_GREY: Rgb = [127.5, 127.5, 127.5]
+
 export function glassBackgrounds(theme: GeneratedTheme) {
   const ap = theme.input.appearance
   const G = GLASS[ap]
   const frameColor = ap === 'dark' ? theme.neutral[1]! : theme.neutral[0]!
   const backs = wallBackdrops(theme)
-  const frames = backs.map(b => mixOver(frameColor, G.frame, b))
+  // Lit glass: titles sit under the full top sheen. The grain is uniform one-pixel noise that
+  // averages out under a glyph stroke, so text is checked against its mean grey, not its extremes.
+  const lit = (tints: Rgb[]): Rgb[] =>
+    tints.flatMap(tint => {
+      const grained = mixOver(MID_GREY, G.grain, tint)
+      return [tint, grained, mixOver(WHITE, G.sheen, tint), mixOver(WHITE, G.sheen, grained)]
+    })
+  const frameTints = backs.map(b => mixOver(frameColor, G.frame, b))
+  const frames = lit(frameTints)
   return {
     frames,
+    // Far tiles wash the bare frame tint with their kind colour; they carry no sheen or grain.
+    farFrames: frameTints,
     plates: frames.map(b => mixOver(theme.neutral[0]!, G.plate, b)),
-    chrome: backs.map(b => mixOver(frameColor, G.chrome, b)),
+    chrome: lit(backs.map(b => mixOver(frameColor, G.chrome, b))),
     sheet: backs.map(b => mixOver(frameColor, G.sheet, b)),
   }
 }
@@ -153,7 +166,7 @@ export function contrastChecks(theme: GeneratedTheme): ContrastCheck[] {
     const r = kindRoles(theme, id)
     checks.push({ id: `kind ${id} glyph / tile`, ratio: contrastRatio(r.glyph, r.tile), min: 3 })
     checks.push({ id: `kind ${id} glyph / solid`, ratio: contrastRatio(r.on, r.solid), min: 3 })
-    const farBacks = g.frames.map(b => mixOver(r.solid, GLASS[ap].farTint, b))
+    const farBacks = g.farFrames.map(b => mixOver(r.solid, GLASS[ap].farTint, b))
     checks.push({ id: `kind ${id} far title (worst)`, ratio: worst(r.far, farBacks), min: 4.5 })
   }
   for (const [label, s] of Object.entries(theme.labels)) {

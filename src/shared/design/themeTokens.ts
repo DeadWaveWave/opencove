@@ -133,6 +133,11 @@ export function themeTokens(theme: GeneratedTheme): ThemeTokens {
     '--cove-glass-sheet': percent(glass.sheet),
     '--cove-glass-acrylic': percent(glass.acrylic),
     '--cove-glass-far-tint': percent(glass.farTint),
+    '--cove-glass-sheen': `rgb(255 255 255 / ${glass.sheen})`,
+    '--cove-glass-rim-hi': `rgb(255 255 255 / ${glass.rimHi})`,
+    '--cove-glass-rim-lo': `rgb(255 255 255 / ${glass.rimLo})`,
+    // Drawn once at startup (bootstrap/installGlassGrain.ts); glass has no grain until then.
+    '--cove-glass-grain': `var(--cove-glass-grain-${ap}, none)`,
     '--cove-pixel-cell': hex(theme.pixel.cell),
     '--cove-pixel-gap': hex(theme.pixel.gap),
     ...Object.fromEntries(
@@ -148,6 +153,7 @@ export function themeTokens(theme: GeneratedTheme): ThemeTokens {
     '--cove-surface': glassOf('var(--cove-glass-chrome)'),
     '--cove-surface-strong': glassOf('var(--cove-glass-sheet)'),
     '--cove-acrylic-surface': glassOf('var(--cove-glass-acrylic)'),
+    '--cove-acrylic-grain': 'var(--cove-glass-grain)',
     '--cove-window-surface': hex(roles.frame),
     '--cove-surface-hover': inkOverlay(dark ? 7 : 5),
     '--cove-field': inkOverlay(dark ? 5 : 4),
@@ -180,7 +186,14 @@ export function themeTokens(theme: GeneratedTheme): ThemeTokens {
     '--cove-pixel-blue': 'var(--cove-kind-knowledge-solid)',
     '--cove-pixel-cyan': `var(--cove-accent-${PIXEL_CYAN_STEP[ap] + 1})`,
     '--cove-pixel-mint': 'var(--cove-kind-shell-solid)',
-    '--cove-node-background-image': 'none',
+    // Lit glass (Tide prototype): a sheen fading down from the top edge over the grain, and a
+    // specular rim lit from the top left. Reduced transparency zeroes all three.
+    '--cove-node-background-image':
+      'linear-gradient(180deg, var(--cove-glass-sheen), transparent 30%), var(--cove-glass-grain)',
+    '--cove-node-rim':
+      'linear-gradient(162deg, var(--cove-glass-rim-hi), var(--cove-glass-rim-lo) 30%, transparent 54%, var(--cove-glass-rim-lo))',
+    '--cove-chrome-background-image':
+      'linear-gradient(180deg, var(--cove-glass-sheen), transparent 60%), var(--cove-glass-grain)',
     '--cove-node-shadow': `0 10px 28px ${shadow}`,
     '--cove-node-shadow-hover': `0 14px 36px ${shadowHover}`,
     '--cove-node-shadow-focus': `0 0 0 1px var(--cove-focus-ring), 0 10px 28px ${shadow}`,

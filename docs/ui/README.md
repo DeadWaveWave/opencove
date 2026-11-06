@@ -119,13 +119,23 @@
   终端除外（透明终端在第 2.3 步）。
 - 亚克力的底色由生成器给出（`--cove-acrylic-surface`），对比度矩阵检查它压在纯黑、纯白和像素墙上的
   最坏情况；手写主题沿用自己的 `--cove-menu-surface`。
+- 玻璃受光（生成的主题族，照原型）：
+  - 光泽：白色从顶边向下渐隐（`--cove-glass-sheen`），窗口外框在 30% 处消失，顶栏和侧栏在 60% 处消失。
+  - 颗粒：180px 的均匀灰度噪点，同一 alpha（`--cove-glass-grain`，暗色 11/255，亮色 7/255）。启动时由
+    `bootstrap/installGlassGrain.ts` 用固定种子画一次，每次启动都一样；亚克力也用这张。每张颗粒按自身尺寸
+    平铺（默认 SVG 160px，玻璃颗粒 180px）。
+  - 高光边：左上亮（`rim-hi`）、其余暗（`rim-lo`）的 1px 环（`--cove-node-rim`，`node-chrome.css`）。
+    外框在内边距盒处裁切，所以环在边框内侧，而不是像原型那样压在边框上；它盖在窗口内容上，在标签小旗和
+    拖拽面之下。只有生成的主题族画它：像素族没有玻璃，空的遮罩层也要为每个窗口付一个合成层。
+  - 对比度矩阵在满强度光泽下检查受光的玻璃，颗粒按平均灰计入；远景格子对未受光的外框色检查。亮色颗粒
+    比原型（8）低一档：插件调色板里对比最低的绿到青底色在 k=0 时次要文字仍有 4.5:1。
 - 窗口材质：设置 → 外观 → 窗口 →「窗口材质」或控制中心选「实色」，或系统开启降低透明度时（实时跟随，不用重启），
   `useApplyWindowAppearance` 在根节点写 `data-cove-transparency="reduced"`；样式只读这个属性，不再各自
-  读媒体查询。此时生成的玻璃参数（`--cove-glass-*`）都变成 100%，窗口外框、底板、标题栏和面板变成
-  不透明的同色，Surface 的玻璃和亚克力改为 `--cove-window-surface`，所有元素去掉 `backdrop-filter`
+  读媒体查询。此时生成的玻璃参数（`--cove-glass-*`）都变成 100%，受光（光泽、高光边、颗粒）去掉，
+  窗口外框、底板、标题栏和面板变成不透明的同色，Surface 的玻璃和亚克力改为 `--cove-window-surface`，所有元素去掉 `backdrop-filter`
   （`themes/reduced-transparency.css`），透明终端露出终端底色。系统开启时「实色」被选中，「玻璃」不可选。
-  验证：`tests/unit/app/uiSurfaceStylesheet.spec.ts`；`ui-gallery.probes.spec.ts` 和
-  `workspace-canvas.window-material.spec.ts` 用 CDP 模拟系统设置。
+  验证：`tests/unit/app/uiSurfaceStylesheet.spec.ts`、`glassMaterialStylesheet.spec.ts`；
+  `ui-gallery.probes.spec.ts` 和 `workspace-canvas.window-material.spec.ts` 用 CDP 模拟系统设置。
 
 ### 3.2 文本系统
 

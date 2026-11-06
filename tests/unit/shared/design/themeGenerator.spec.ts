@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { contrastRatio, deltaE, mixOver, oklch, rgbToOklab } from '@shared/design/oklch'
-import { acrylicBackgrounds, contrastChecks, kindSeparation } from '@shared/design/themeContrast'
+import { contrastRatio, deltaE, mixOver, oklch, rgbToOklab, type Rgb } from '@shared/design/oklch'
+import {
+  acrylicBackgrounds,
+  contrastChecks,
+  glassBackgrounds,
+  kindSeparation,
+} from '@shared/design/themeContrast'
 import {
   ANSI_KEYS,
+  GLASS,
   THEME_FAMILIES,
   generateFamilyTheme,
   generateTheme,
@@ -40,6 +46,30 @@ describe('theme generator', () => {
       expect(ids).toContain('secondary / acrylic (worst)')
     }
     expect(acrylicBackgrounds(generateFamilyTheme('cove', 'dark', 0)).length).toBeGreaterThan(2)
+  })
+
+  it('checks text on window and chrome glass under the full sheen and the mean grain', () => {
+    for (const appearance of APPEARANCES) {
+      const theme = generateFamilyTheme('cove', appearance, 0)
+      const glass = GLASS[appearance]
+      const frameColor = appearance === 'dark' ? theme.neutral[1]! : theme.neutral[0]!
+      const backdrop = theme.roles.canvas
+      const frame = mixOver(frameColor, glass.frame, backdrop)
+      const chrome = mixOver(frameColor, glass.chrome, backdrop)
+      const backgrounds = glassBackgrounds(theme)
+      const lit = (color: Rgb) => mixOver([255, 255, 255], glass.sheen, color)
+      // One-pixel grey noise: text sees its mean.
+      const grained = (color: Rgb) => mixOver([127.5, 127.5, 127.5], glass.grain, color)
+      for (const [list, plain] of [
+        [backgrounds.frames, frame],
+        [backgrounds.chrome, chrome],
+      ] as const) {
+        expect(list).toContainEqual(plain)
+        expect(list).toContainEqual(lit(plain))
+        expect(list).toContainEqual(grained(plain))
+        expect(list).toContainEqual(lit(grained(plain)))
+      }
+    }
   })
 
   it('keeps the five kind families apart for normal vision and red-green colour blindness', () => {

@@ -204,9 +204,15 @@
   --cove-node-border: rgba(107, 138, 236, 0.65);
   --cove-node-surface: rgba(10, 17, 33, 0.94);
   --cove-node-background-image: none;
+  --cove-chrome-background-image: none;
+  /* Drawn at startup by bootstrap/installGlassGrain.ts, which sets them inline on the root. */
+  --cove-glass-grain-dark: none;
+  --cove-glass-grain-light: none;
   --cove-node-label-header-tint: 17%;
   --cove-node-label-border-tint: 30%;
   --cove-node-radius: var(--cove-radius-lg);
+  /* At a window's padding box, inside its 1px border: where frames clip their content. */
+  --cove-node-inner-radius: calc(var(--cove-node-radius) - 1px);
   --cove-node-header-surface: rgba(23, 36, 66, 0.96);
   --cove-node-header-border: rgba(104, 137, 226, 0.45);
   --cove-node-shadow-color: rgba(0, 0, 0, 0.45);

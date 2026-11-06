@@ -168,7 +168,9 @@ world, under every window and the effects layer.
   frosts it square-cornered, caps its cells like those behind windows and keeps twinkle and the
   shockwave crest out of it. With a wall in the layer the top bar, sidebar and project rail are
   `--cove-surface` (the generator's `--cove-glass-chrome` tint, contrast-checked against the
-  capped wall) with no backdrop-filter; the peeking sidebar keeps its own surface. Without a wall
+  capped wall) with no backdrop-filter, lit like window glass by `--cove-chrome-background-image`
+  (the glass sheen fading over 60% of the height, over the glass grain; `none` in Pixel); the
+  peeking sidebar keeps its own surface. Without a wall
   (「简约」, 「关闭」, a theme's own background, no project) the layer is empty and the shell keeps
   its usual surfaces. The layout never changes. Outside the app shell (no layer) a wall stays inside
   its canvas.
