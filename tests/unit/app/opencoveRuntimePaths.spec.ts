@@ -30,7 +30,7 @@ describe('opencoveRuntimePaths', () => {
 
     expect(basename(resolvePackagedAppRoot(resourcesDir))).toBe('app.asar')
     expect(resolvePackagedCliScriptPath(resourcesDir)).toBe(
-      resolve(resourcesDir, 'app.asar', 'src', 'app', 'cli', 'opencove.mjs'),
+      resolve(resourcesDir, 'app.asar', 'out', 'cli', 'opencove.mjs'),
     )
     expect(resolvePackagedWorkerScriptPath(resourcesDir)).toBe(
       resolve(resourcesDir, 'app.asar', 'out', 'main', 'worker.js'),

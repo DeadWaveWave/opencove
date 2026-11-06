@@ -34,9 +34,13 @@ case "$stage" in /tmp/opencove-overlay.*) ;; *) exit 1 ;; esac
 trap 'rm -rf -- "$stage"' EXIT INT TERM
 tar -xzf ${quote(basePath)} -C "$stage"
 app="$stage/"${quote(`${bundleName}/app`)}
-rm -rf -- "$app/out" "$app/src/app/cli"
+rm -rf -- "$app/out" "$app/src/app/cli" "$app/docs/plugins"
 cp -R ${quote(`${appPath}/out`)} "$app/out"
 cp -R ${quote(`${appPath}/src/app/cli`)} "$app/src/app/cli"
+mkdir -p "$app/docs"
+cp -R ${quote(`${appPath}/docs/plugins`)} "$app/docs/plugins"
+chmod 755 "$app/out/cli/opencove.mjs"
+cp ${quote(`${appPath}/../opencove-runtime.env`)} "$app/../opencove-runtime.env"
 cp ${quote(`${appPath}/package.json`)} "$app/package.json"
 tar -czf ${quote(archivePath)} -C "$stage" ${quote(bundleName)}
 `,

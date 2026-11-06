@@ -9,7 +9,7 @@ import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../src/app/cli/constants
 import { resolvePluginCommandTimeout } from '../../../src/app/cli/commands/plugins.mjs'
 
 let root: string
-const cli = resolve('src/app/cli/opencove.mjs')
+const cli = resolve('out/cli/opencove.mjs')
 
 beforeEach(async () => {
   root = await realpath(await mkdtemp(join(tmpdir(), 'opencove-plugin-command-')))

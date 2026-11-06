@@ -1,7 +1,9 @@
+import { withCliLauncherLock } from './cliLauncherLock'
+import { randomUUID } from 'node:crypto'
 import { app } from 'electron'
 import { execFile } from 'node:child_process'
 import { constants as fsConstants } from 'node:fs'
-import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import type { CliPathStatusResult } from '../../../shared/contracts/dto'
@@ -74,7 +76,7 @@ function resolveCliScriptPath(): string {
     return resolvePackagedCliScriptPath(process.resourcesPath)
   }
 
-  return resolve(app.getAppPath(), 'src', 'app', 'cli', 'opencove.mjs')
+  return resolve(app.getAppPath(), 'out', 'cli', 'opencove.mjs')
 }
 
 function buildWrapperScript(executablePath: string, cliScriptPath: string): string {
@@ -161,6 +163,11 @@ function readMetadataValue(wrapper: string, key: string): string | null {
   return line && line.length > 0 ? line : null
 }
 
+function readMetadataPath(wrapper: string, key: string): string | null {
+  const value = readMetadataValue(wrapper, key)
+  return process.platform === 'win32' ? (value?.replaceAll('%%', '%') ?? null) : value
+}
+
 function normalizeWrapperPath(value: string): string {
   const normalized = value.replace(/[\\/]+$/g, '')
   return process.platform === 'win32' ? normalized.toLowerCase() : normalized
@@ -176,8 +183,8 @@ function isDesktopManagedWrapper(wrapper: string): boolean {
     return false
   }
 
-  const electronBin = readMetadataValue(wrapper, CLI_WRAPPER_ELECTRON_BIN_KEY)
-  const cliScript = readMetadataValue(wrapper, CLI_WRAPPER_CLI_SCRIPT_KEY)
+  const electronBin = readMetadataPath(wrapper, CLI_WRAPPER_ELECTRON_BIN_KEY)
+  const cliScript = readMetadataPath(wrapper, CLI_WRAPPER_CLI_SCRIPT_KEY)
 
   // Older Desktop wrappers did not carry an owner marker. Treat them as
   // Desktop-managed only when they point back at this app runtime.
@@ -193,8 +200,8 @@ function isDesktopManagedWrapper(wrapper: string): boolean {
 
 async function isWrapperHealthy(wrapper: string): Promise<boolean> {
   const kind = readMetadataValue(wrapper, CLI_WRAPPER_KIND_KEY)
-  const electronBin = readMetadataValue(wrapper, CLI_WRAPPER_ELECTRON_BIN_KEY)
-  const cliScript = readMetadataValue(wrapper, CLI_WRAPPER_CLI_SCRIPT_KEY)
+  const electronBin = readMetadataPath(wrapper, CLI_WRAPPER_ELECTRON_BIN_KEY)
+  const cliScript = readMetadataPath(wrapper, CLI_WRAPPER_CLI_SCRIPT_KEY)
 
   if (kind !== 'runtime' || !electronBin || !cliScript) {
     return false
@@ -294,6 +301,57 @@ async function removeWindowsUserPathEntry(dirPath: string): Promise<void> {
   process.env.PATH = currentSegments.join(';')
 
   await updateWindowsUserPath(dirPath, 'remove')
+}
+
+/** Best-effort startup migration. Ownership and the exact old target must both match. */
+export async function repairLegacyCliLaunchers(): Promise<void> {
+  const cliScriptPath = resolveCliScriptPath()
+  const legacyPath = resolve(dirname(cliScriptPath), '../../src/app/cli/opencove.mjs')
+  await Promise.all(
+    resolveInstallCandidates(process.platform).map(async targetPath => {
+      // Most candidates hold no Desktop launcher; never create lock files in their directories.
+      const existing = await readWrapperIfOwned(targetPath)
+      if (!existing || !isDesktopManagedWrapper(existing)) {
+        return
+      }
+      await withCliLauncherLock(targetPath, async () => {
+        const wrapper = await readWrapperIfOwned(targetPath)
+        if (!wrapper || !isDesktopManagedWrapper(wrapper)) {
+          return
+        }
+        const script = readMetadataPath(wrapper, CLI_WRAPPER_CLI_SCRIPT_KEY)
+        const executable = readMetadataPath(wrapper, CLI_WRAPPER_ELECTRON_BIN_KEY)
+        if (
+          !script ||
+          !executable ||
+          normalizeWrapperPath(script) !== normalizeWrapperPath(legacyPath) ||
+          normalizeWrapperPath(executable) !== normalizeWrapperPath(process.execPath)
+        ) {
+          return
+        }
+        const replacement =
+          process.platform === 'win32'
+            ? buildWindowsWrapperScript(process.execPath, cliScriptPath)
+            : buildWrapperScript(process.execPath, cliScriptPath)
+        if (!(await isWrapperHealthy(replacement))) {
+          return
+        }
+        const temporary = `${targetPath}.${randomUUID()}.tmp`
+        try {
+          await writeFile(temporary, replacement, { encoding: 'utf8', mode: 0o755, flag: 'wx' })
+          // Defense against older publishers that do not participate in the lock protocol.
+          if ((await readWrapperIfOwned(targetPath)) !== wrapper) {
+            return
+          }
+          await rename(temporary, targetPath)
+        } catch {
+          // Permission failures retain the old launcher and its packaged compatibility shim.
+        } finally {
+          await rm(temporary, { force: true }).catch(() => {})
+        }
+      }).catch(() => {}) // Busy or inaccessible: retain the compatibility shim.
+    }),
+  )
 }
 
 export async function resolveCliPathStatus(): Promise<CliPathStatusResult> {
@@ -402,7 +460,9 @@ export async function installCliToPath(): Promise<CliPathStatusResult> {
       ? buildWindowsWrapperScript(process.execPath, cliScriptPath)
       : buildWrapperScript(process.execPath, cliScriptPath)
   await mkdir(dirname(targetPath), { recursive: true })
-  await writeFile(targetPath, script, { encoding: 'utf8', mode: 0o755 })
+  await withCliLauncherLock(targetPath, () =>
+    writeFile(targetPath, script, { encoding: 'utf8', mode: 0o755 }),
+  )
   if (process.platform === 'win32') {
     await ensureWindowsUserPathIncludes(dirname(targetPath))
   }
@@ -416,7 +476,18 @@ export async function uninstallCliFromPath(): Promise<CliPathStatusResult> {
     return { installed: false, path: null, healthy: false }
   }
 
-  await rm(status.path, { force: true })
+  const target = status.path
+  const removed = await withCliLauncherLock(target, async () => {
+    const wrapper = await readWrapperIfOwned(target)
+    if (wrapper && isDesktopManagedWrapper(wrapper)) {
+      await rm(target, { force: true })
+      return true
+    }
+    return false
+  })
+  if (!removed) {
+    return await resolveCliPathStatus()
+  }
   if (process.platform === 'win32') {
     await removeWindowsUserPathEntry(dirname(status.path))
   }

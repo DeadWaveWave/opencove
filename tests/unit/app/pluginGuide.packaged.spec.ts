@@ -48,11 +48,12 @@ afterEach(async () => {
 
 async function createFixture(name: string, readme = 'Plugin development guide') {
   const app = join(root, name)
-  const cli = join(app, 'src', 'app', 'cli')
+  const cli = join(app, 'out', 'cli')
   const docs = join(app, 'docs', 'plugins')
   await mkdir(cli, { recursive: true })
   await mkdir(join(docs, 'examples'), { recursive: true })
   await copyFile(resolve('src/app/cli/pluginGuide.mjs'), join(cli, 'pluginGuide.mjs'))
+  await copyFile(resolve('src/app/cli/appRoot.mjs'), join(cli, 'appRoot.mjs'))
   await writeFile(
     join(cli, 'guide.mjs'),
     [
@@ -86,15 +87,10 @@ async function packFixture(app: string) {
 }
 
 function runGuide(app: string, cacheDirectory = join(root, 'cache')) {
-  return runCommand(
-    electronBinary,
-    [join(app, 'src', 'app', 'cli', 'guide.mjs'), cacheDirectory],
-    root,
-    {
-      timeoutMs: 5_000,
-      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
-    },
-  )
+  return runCommand(electronBinary, [join(app, 'out', 'cli', 'guide.mjs'), cacheDirectory], root, {
+    timeoutMs: 5_000,
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+  })
 }
 
 describe('packaged plugin guide export', () => {

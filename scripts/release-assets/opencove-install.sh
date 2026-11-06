@@ -31,12 +31,24 @@ case "${1:-}" in
 esac
 
 cleanup() {
+  if [ "${LAUNCHER_LOCK_OWNED:-0}" = 1 ]; then
+    LAUNCHER_LOCK_OWNED=0
+    # Compare the full owner record: an expired publisher must not delete its successor.
+    "${NODE_BIN}" -e '
+      const fs = require("node:fs");
+      try {
+        if (fs.readFileSync(process.argv[1], "utf8") === process.argv[2]) fs.unlinkSync(process.argv[1]);
+      } catch (error) { if (error.code !== "ENOENT") throw error; }
+    ' "${LAUNCHER_LOCK}" "${LAUNCHER_LOCK_OWNER}"
+  fi
   if [ -n "${TMP_DIR:-}" ] && [ -d "${TMP_DIR}" ]; then
     rm -rf "${TMP_DIR}"
   fi
 }
 
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 quote_sh() {
   printf "'%s'" "$(printf "%s" "$1" | sed "s/'/'\"'\"'/g")"
@@ -223,8 +235,49 @@ fi
 NODE_BIN="${BUNDLE_DIR}/runtime/node/bin/node"
 BUNDLE_DIR="$("${NODE_BIN}" "${BUNDLE_DIR}/app/src/app/cli/publishRuntime.mjs" "${BUNDLE_DIR}" "${INSTALL_ROOT}/${BUNDLE_NAME}-${actual_checksum}" "${actual_checksum}")"
 NODE_BIN="${BUNDLE_DIR}/runtime/node/bin/node"
-CLI_SCRIPT="${BUNDLE_DIR}/app/src/app/cli/opencove.mjs"
+CLI_SCRIPT="${BUNDLE_DIR}/app/out/cli/opencove.mjs"
 
+# Same exclusive sentinel as Desktop repair: mtime older than 120s expires; retry once.
+# Use bundled Node for portable mtime/hostname/JSON handling (including macOS and Linux).
+LAUNCHER_LOCK="${LAUNCHER_PATH}.lock"
+LAUNCHER_LOCK_OWNER="$("${NODE_BIN}" -e '
+  const fs = require("node:fs");
+  const path = process.argv[1];
+  const owner = JSON.stringify({pid: Number(process.argv[2]), hostname: require("node:os").hostname(), createdAt: new Date().toISOString(), token: require("node:crypto").randomUUID()});
+  const create = () => fs.openSync(path, "wx", 0o600);
+  try {
+    let fd;
+    try { fd = create(); }
+    catch (error) {
+      if (error.code !== "EEXIST") throw error;
+      try {
+        const observed = fs.statSync(path);
+        const age = Math.max(0, Date.now() - observed.mtimeMs);
+        if (age <= 120000) {
+          let pid = "unknown";
+          try { pid = JSON.parse(fs.readFileSync(path, "utf8")).pid ?? pid; } catch {}
+          throw new Error(`Launcher publication busy or inaccessible: ${path}; owner pid=${pid}, age=${Math.floor(age / 1000)}s`);
+        }
+        const current = fs.statSync(path);
+        if (current.ino === observed.ino && current.mtimeMs === observed.mtimeMs) fs.unlinkSync(path);
+      } catch (inspectionError) { if (inspectionError.code !== "ENOENT") throw inspectionError; }
+      try { fd = create(); }
+      catch (retryError) {
+        if (retryError.code !== "EEXIST") throw retryError;
+        let pid = "unknown", age = "unknown";
+        try {
+          age = `${Math.floor(Math.max(0, Date.now() - fs.statSync(path).mtimeMs) / 1000)}s`;
+          pid = JSON.parse(fs.readFileSync(path, "utf8")).pid ?? pid;
+        } catch {}
+        throw new Error(`Launcher publication busy or inaccessible: ${path}; owner pid=${pid}, age=${age}`);
+      }
+    }
+    try { fs.writeFileSync(fd, owner); } finally { fs.closeSync(fd); }
+    process.stdout.write(owner);
+  } catch (error) { process.stderr.write(`${error.message}\n`); process.exitCode = 1; }
+' "${LAUNCHER_LOCK}" "$$")"
+LAUNCHER_LOCK_OWNED=1
+read_existing_wrapper || true
 LAUNCHER_TEMP="${LAUNCHER_PATH}.new.$$"
 cat > "${LAUNCHER_TEMP}" <<EOF
 #!/bin/sh

@@ -245,6 +245,43 @@ function Assert-OpenCoveArchiveChecksum([string]$Path, [string]$AssetName) {
   $script:VerifiedArtifactDigest = $actual
 }
 
+# Shared lease protocol: mtime older than 120 seconds expires; exclusive-create retry once.
+function Open-LauncherLock([string]$LockPath) {
+  try {
+    return [IO.File]::Open($LockPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
+  } catch {
+    $cause = $_.Exception
+    if ($cause.InnerException) { $cause = $cause.InnerException }
+    if (($cause.HResult -band 0xffff) -notin @(80, 183)) { throw }
+    try {
+      $observed = Get-Item -LiteralPath $LockPath -ErrorAction Stop
+      $mtime = $observed.LastWriteTimeUtc
+      $age = [Math]::Max(0, ([DateTime]::UtcNow - $mtime).TotalSeconds)
+      if ($age -le 120) {
+        $ownerPid = 'unknown'
+        try { $ownerPid = (Get-Content -LiteralPath $LockPath -Raw | ConvertFrom-Json).pid } catch {}
+        throw "Launcher publication busy or inaccessible: $LockPath; owner pid=$ownerPid, age=$([Math]::Floor($age))s"
+      }
+      $current = Get-Item -LiteralPath $LockPath -ErrorAction Stop
+      if ($current.LastWriteTimeUtc -eq $mtime -and $current.CreationTimeUtc -eq $observed.CreationTimeUtc) {
+        [IO.File]::Delete($LockPath)
+      }
+    } catch [System.Management.Automation.ItemNotFoundException] {
+      # Another contender removed the expired lock; still only one create retry.
+    }
+    try {
+      return [IO.File]::Open($LockPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
+    } catch {
+      $ownerPid = 'unknown'; $age = 'unknown'
+      try {
+        $age = "$([Math]::Floor([Math]::Max(0, ([DateTime]::UtcNow - (Get-Item -LiteralPath $LockPath).LastWriteTimeUtc).TotalSeconds)))s"
+        $ownerPid = (Get-Content -LiteralPath $LockPath -Raw | ConvertFrom-Json).pid
+      } catch {}
+      throw "Launcher publication busy or inaccessible: $LockPath; owner pid=$ownerPid, age=$age"
+    }
+  }
+}
+
 function Escape-CmdValue([string]$Value) {
   return $Value.Replace('%', '%%')
 }
@@ -277,8 +314,18 @@ if not exist "%CLI_SCRIPT%" (
 exit /b %ERRORLEVEL%
 "@
   $temporaryLauncher = "$LauncherPath.new.$([Guid]::NewGuid().ToString('N'))"
-  [IO.File]::WriteAllText($temporaryLauncher, $launcher, [Text.Encoding]::ASCII)
+  # Persist the owner before publication; keep the handle shareable for lease recovery.
+  $lockPath = "$LauncherPath.lock"
+  $owner = @{ pid = $PID; hostname = [Net.Dns]::GetHostName(); createdAt = [DateTime]::UtcNow.ToString('o'); token = [Guid]::NewGuid().ToString() } | ConvertTo-Json -Compress
+  $publicationLock = Open-LauncherLock $lockPath
   try {
+    $bytes = [Text.Encoding]::UTF8.GetBytes($owner)
+    $publicationLock.Write($bytes, 0, $bytes.Length)
+    $publicationLock.Flush()
+    if ((Test-Path -LiteralPath $LauncherPath) -and !(Test-OwnedLauncher $LauncherPath)) {
+      throw "Refusing to overwrite existing non-OpenCove launcher at $LauncherPath"
+    }
+    [IO.File]::WriteAllText($temporaryLauncher, $launcher, [Text.Encoding]::ASCII)
     if ([IO.File]::Exists($LauncherPath)) {
       [IO.File]::Replace($temporaryLauncher, $LauncherPath, $null)
     } else {
@@ -289,7 +336,14 @@ exit /b %ERRORLEVEL%
       }
     }
   } finally {
-    if ([IO.File]::Exists($temporaryLauncher)) { [IO.File]::Delete($temporaryLauncher) }
+    try {
+      if ([IO.File]::Exists($temporaryLauncher)) { [IO.File]::Delete($temporaryLauncher) }
+    } finally {
+      $publicationLock.Dispose()
+      if ([IO.File]::Exists($lockPath) -and [IO.File]::ReadAllText($lockPath) -eq $owner) {
+        [IO.File]::Delete($lockPath)
+      }
+    }
   }
 }
 
@@ -358,7 +412,7 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'Runtime publication failed.' }
   $BundleDir = [string]$published
   $nodeBin = Join-Path $BundleDir 'runtime\node\node.exe'
-  $cliScript = Join-Path $BundleDir 'app\src\app\cli\opencove.mjs'
+  $cliScript = Join-Path $BundleDir 'app\out\cli\opencove.mjs'
 
   Write-Launcher $nodeBin $cliScript
   if ($env:OPENCOVE_MANAGED_INSTALL -ne '1') { Set-OpenCoveUserPath $BinDir 'add' }
