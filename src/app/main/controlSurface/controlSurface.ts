@@ -10,6 +10,7 @@ export interface ControlSurface {
     id: string,
     handler: ControlSurfaceHandler<TPayload, TResult>,
   ) => void
+  hasOperation: (id: string) => boolean
   invoke: (
     ctx: ControlSurfaceContext,
     request: ControlSurfaceInvokeRequest,
@@ -22,6 +23,7 @@ export function createControlSurface(
   const handlers = new Map<string, ControlSurfaceHandler<unknown, unknown>>()
 
   return {
+    hasOperation: id => handlers.has(id),
     register: (id, handler) => {
       if (handlers.has(id)) {
         throw new Error(`Control surface handler already registered: ${id}`)

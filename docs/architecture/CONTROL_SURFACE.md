@@ -22,6 +22,29 @@ Control Surface 是 OpenCove 对外能力入口。Desktop、CLI、Web UI 和 rem
 
 Transport 只做鉴权、校验、mapping 和连接生命周期；业务 owner 仍在 context application/usecase、runtime manager 或 topology store。
 
+### Protocol Header And Operation Introspection
+
+Authenticated HTTP `/invoke` callers may send `x-opencove-protocol` equal to the decimal
+`CONTROL_SURFACE_PROTOCOL_VERSION`. A present, unequal value returns the normal HTTP 200
+error envelope with `common.protocol_incompatible` and params `{ client, server }` (the
+received header string and server version number), before operation dispatch or persistence
+access. Missing headers retain existing behavior. Desktop IPC is unaffected.
+
+`system.capabilities.features.operationRegistry` is `true`. The read-scope schema query
+`system.operations` accepts `{}` and returns `{ protocolVersion, operations }`, sorted by id.
+Each entry contains `id`, `kind`, `scope`, `availability`, `contract` and `summary`. Only
+operations actually registered in this runtime are listed, including conditional
+Desktop-managed Worker, managed-runtime and debug registrations when present. Metadata is
+not authorization; existing transport and handler authority checks remain in force.
+
+The read-scope schema query `system.operation.describe` accepts `{ id: string }` and returns
+that metadata plus `inputSchema` and `errors`. Schema inputs use
+`z.toJSONSchema(op.input, { io: 'input', unrepresentable: 'throw' })`, computed lazily and
+cached by id within the runtime. Legacy operations return `inputSchema: null` and `errors: []`;
+schema errors are the registry's declared non-common codes, not an exhaustive transport-error
+catalog. Unknown or unregistered ids return `common.invalid_input` with a diagnostic message.
+The actual handler map owns availability; the schema cache is derived, non-durable state.
+
 ### Runtime And Listener Lifecycle
 
 Desktop 管理的本机 Worker 把长期运行的 `ControlSurfaceRuntime` 与 HTTP listen socket 分开：
@@ -55,6 +78,9 @@ Worker private listener 始终绑定 loopback；只有 Web listener 可以显式
 
 Core system:
 
+- `system.capabilities`
+- `system.operations`
+- `system.operation.describe`
 - `system.ping`
 - `system.homeDirectory`
 

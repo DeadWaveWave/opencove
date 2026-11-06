@@ -1,3 +1,4 @@
+import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../shared/contracts/controlSurface'
 import type { PluginInstallationManager } from '../../../contexts/plugins/application/PluginInstallationManager'
 import { tryHandlePluginAssetRoute } from './pluginAssetRoutes'
 import type { IncomingMessage, ServerResponse } from 'node:http'
@@ -236,6 +237,24 @@ export function createControlSurfaceHttpRequestHandler(
     })
     if (!auth || !listenerAllowsAuth(listener.role, auth)) {
       sendJson(res, 401, buildUnauthorizedResult())
+      return
+    }
+
+    const clientProtocol = req.headers['x-opencove-protocol']
+    if (
+      clientProtocol !== undefined &&
+      clientProtocol !== String(CONTROL_SURFACE_PROTOCOL_VERSION)
+    ) {
+      sendJson(res, 200, {
+        __opencoveControlEnvelope: true,
+        ok: false,
+        error: createAppErrorDescriptor('common.protocol_incompatible', {
+          params: {
+            client: Array.isArray(clientProtocol) ? clientProtocol.join(', ') : clientProtocol,
+            server: CONTROL_SURFACE_PROTOCOL_VERSION,
+          },
+        }),
+      })
       return
     }
 
