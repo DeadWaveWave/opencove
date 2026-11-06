@@ -9,6 +9,10 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'common.approved_path_required': 'The selected path is outside approved workspaces.',
     'common.unavailable': 'This feature is unavailable.',
     'common.unexpected': 'Something went wrong. Please try again.',
+    'worker.external_owner_unreachable':
+      'Another Worker owns this data directory but is unreachable or incompatible. Stop it explicitly before retrying.',
+    'worker.stop_not_owned':
+      'This Worker was started outside OpenCove Desktop. Stop it where it was started, for example with opencove worker stop.',
     'worker.unavailable': 'Worker is unavailable.',
     'endpoint.operation_in_progress': 'Another endpoint operation is already in progress.',
     'space.not_found': 'Space not found.',

@@ -39,6 +39,12 @@ function getDateTimeFormatter(language: string): Intl.DateTimeFormat {
 
 export function toErrorMessage(error: unknown): string {
   if (error instanceof OpenCoveAppError) {
+    if (error.code === 'worker.stop_not_owned') {
+      return translate('common.workerStopNotOwned')
+    }
+    if (error.code === 'worker.external_owner_unreachable') {
+      return translate('common.workerExternalOwnerUnreachable')
+    }
     if (error.code === 'terminal.runtime_not_ready') {
       return translate('common.terminalRuntimeNotReady')
     }
@@ -46,6 +52,12 @@ export function toErrorMessage(error: unknown): string {
   }
 
   if (isAppErrorDescriptor(error)) {
+    if (error.code === 'worker.stop_not_owned') {
+      return translate('common.workerStopNotOwned')
+    }
+    if (error.code === 'worker.external_owner_unreachable') {
+      return translate('common.workerExternalOwnerUnreachable')
+    }
     if (error.code === 'terminal.runtime_not_ready') {
       return translate('common.terminalRuntimeNotReady')
     }

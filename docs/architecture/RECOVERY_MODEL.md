@@ -301,3 +301,37 @@ conversation history.
 The SQLite recovery contracts load `better-sqlite3` with Electron's native ABI. Run
 `pnpm test:terminal-recovery:native`; ordinary Node Vitest intentionally skips those suites, and CI
 runs the native gate separately.
+
+## Local Worker persistence ownership
+
+- I1：一个 userData 最多只有一个 Worker 持有 persistence 写入权。Worker 在任何
+  userData 状态写入前获取 `opencove-worker-owner.lock.db` 的 SQLite EXCLUSIVE 锁；
+  连接保持打开直到 persistence 关闭，进程死亡由内核释放锁。
+- I2：只有 owner 释放自己的锁。永久锁数据库不得删除；`opencove-worker.lock`
+  仅是 discovery/upgrade metadata，包含 PID 和每次启动的 `instanceId`。
+  release 仅在两者仍匹配时删除 metadata，且在删除完成后才关闭内核锁。
+- I3：Desktop 不杀死、遗弃或替换不归自己持有的 Worker。外部 owner 不可达或不兼容时
+  返回 `worker.external_owner_unreachable`，不以健康检查失败推断死亡。
+
+| State | Class | Owner | Write entry | Restart source |
+| --- | --- | --- | --- | --- |
+| Worker exclusive lease | runtime state | holding process / SQLite kernel lock | acquire / connection close | reacquire kernel lock |
+| PID + instanceId | discovery metadata | lease holder | startup / matching release | not authoritative |
+| connection file | discovery metadata | Worker | publish / shutdown; Desktop only cleans confirmed dead PID under lease | re-probe live owner |
+
+Desktop repair（包括没有传入 PID 的恢复分支）持有同一 lease 后重新读取 metadata，
+仅确认 connection PID 死亡才删除 connection，从不删除锁文件。Desktop 在未持有子进程
+handle 时不根据 `startedBy=desktop` 宣称生命周期所有权。
+
+持有 kernel lease 后，新格式（含 instanceId）metadata 可确认已过期，不受 PID 复用影响。
+升级期间，legacy PID 必须经进程身份验证；明确不相关的进程不阻止接管。
+取得真实 argv 时，以 realpath 和目录文件系统 identity 比较 userData；相对路径只使用被检查
+进程的 cwd。只有展平的命令行时，可能的 Worker 返回 unknown，不以路径文本不等排除 owner。
+无法检查进程身份（包括权限不足）时保守拒绝；不能将未知身份视为死亡。旧版进程不理解
+内核 lease，因此旧版并发启动/清理仍有残余竞争；升级时应先停止旧版。metadata 的
+compare-then-delete 不能与旧版写入实现原子互斥。Windows 文件锁行为需要 Windows CI
+验证；网络文件系统不保证本地 SQLite VFS 的锁语义，userData 应放在本地文件系统。
+
+回归：`tests/integration/worker/workerOwnerLock.spec.ts`、
+`tests/unit/app/worker.singleInstanceLock.spec.ts`、
+`tests/unit/app/localWorkerManager.connectionFile.spec.ts`。

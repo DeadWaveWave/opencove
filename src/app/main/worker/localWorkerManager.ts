@@ -1,3 +1,7 @@
+import {
+  inspectWorkerProcess,
+  legacyWorkerBlocksAcquisition,
+} from '../../../platform/process/workerProcessIdentity'
 import { app } from 'electron'
 import { spawn, type ChildProcessByStdio } from 'node:child_process'
 import { existsSync } from 'node:fs'
@@ -9,7 +13,12 @@ import { resolveControlSurfaceConnectionInfoFromUserData } from '../controlSurfa
 import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../../shared/constants/controlSurface'
 import { resolvePackagedWorkerScriptPath } from '../../../shared/runtime/opencoveRuntimePaths'
 import { removeConnectionFile } from '../controlSurface/http/connectionFile'
-import { removeWorkerSingleInstanceLock } from '../../../platform/process/workerSingleInstanceLockFile'
+import {
+  isWorkerPidPossiblyAlive,
+  readWorkerLockMetadata,
+} from '../../../platform/process/workerSingleInstanceLockFile'
+import { acquireWorkerOwnerLock } from '../../../platform/process/workerOwnerLock'
+import { createAppError } from '../../../shared/errors/appError'
 import {
   isReusableLocalWorkerConnection,
   resolveLocalWorkerReusePolicy,
@@ -21,7 +30,6 @@ import {
   isTruthyEnv,
   resolveForwardedLocalWorkerDiagnosticsEnv,
 } from './localWorkerSpawn'
-import { terminateStaleLocalWorkerTree } from './staleLocalWorkerProcessTree'
 import { LOCAL_WORKER_STOP_TIMEOUT_MS } from '../../../shared/runtime/controlSurfaceShutdown'
 import { resolveLocalWorkerWebUiUrl } from './localWorkerWebUiUrl'
 
@@ -114,30 +122,57 @@ async function stopChild(child: WorkerChildProcess): Promise<void> {
   })
 }
 
-async function stopByPid(pid: number): Promise<void> {
-  try {
-    process.kill(pid, 'SIGTERM')
-  } catch {
-    try {
-      process.kill(pid)
-    } catch {
-      // ignore
-    }
-  }
-}
+export type LocalWorkerRepairOutcome = { status: 'safe' } | { status: 'external_owner' }
 
 export async function repairStaleLocalWorkerFiles(
   userDataPath: string,
   stalePid?: number | null,
-): Promise<void> {
-  if (typeof stalePid === 'number' && Number.isFinite(stalePid) && stalePid > 0) {
-    await terminateStaleLocalWorkerTree({ stalePid, userDataPath }).catch(() => undefined)
+): Promise<LocalWorkerRepairOutcome> {
+  // Serialize cleanup against publication by a new owner, including repair(null).
+  const owner = acquireWorkerOwnerLock(userDataPath)
+  if (owner.status === 'busy') {
+    return { status: 'external_owner' }
   }
+  try {
+    const metadata = await readWorkerLockMetadata(userDataPath)
+    const connection = await resolveControlSurfaceConnectionInfoFromUserData({
+      userDataPath,
+      fileName: WORKER_CONTROL_SURFACE_CONNECTION_FILE,
+      requireLivePid: false,
+    })
+    if (await legacyWorkerBlocksAcquisition(metadata, userDataPath)) {
+      return { status: 'external_owner' }
+    }
+    const pids = [...new Set([stalePid, connection?.pid])].filter(
+      (pid): pid is number => typeof pid === 'number',
+    )
+    const identities = await Promise.all(
+      pids.map(pid =>
+        metadata?.instanceId && metadata.pid === pid
+          ? Promise.resolve('unrelated' as const)
+          : inspectWorkerProcess(pid, userDataPath),
+      ),
+    )
+    if (identities.some(identity => identity === 'worker' || identity === 'unknown')) {
+      return { status: 'external_owner' }
+    }
+    // A reused live PID is not an owner, but is also not permission to delete discovery.
+    if (connection && !isWorkerPidPossiblyAlive(connection.pid)) {
+      await removeConnectionFile(userDataPath, WORKER_CONTROL_SURFACE_CONNECTION_FILE)
+    }
+    return { status: 'safe' }
+  } finally {
+    owner.release()
+  }
+}
 
-  await removeConnectionFile(userDataPath, WORKER_CONTROL_SURFACE_CONNECTION_FILE).catch(
-    () => undefined,
-  )
-  await removeWorkerSingleInstanceLock(userDataPath).catch(() => undefined)
+async function requireSafeWorkerRepair(
+  userDataPath: string,
+  stalePid?: number | null,
+): Promise<void> {
+  if ((await repairStaleLocalWorkerFiles(userDataPath, stalePid)).status === 'external_owner') {
+    throw createAppError('worker.external_owner_unreachable')
+  }
 }
 
 export type OwnedLocalWorkerConfigurationState =
@@ -322,7 +357,7 @@ async function spawnWorkerAndWaitForLiveConnection(
 
   if (!(await isReusableLocalWorkerConnection(info))) {
     await stopOwnedLocalWorker().catch(() => undefined)
-    await repairStaleLocalWorkerFiles(userDataPath, null)
+    await requireSafeWorkerRepair(userDataPath, null)
     throw new Error('Worker ready payload endpoint is not reachable')
   }
 
@@ -339,7 +374,7 @@ async function recoverAfterFailedWorkerStart(
     return racedConnection
   }
 
-  await repairStaleLocalWorkerFiles(userDataPath, null)
+  await requireSafeWorkerRepair(userDataPath, null)
   return null
 }
 
@@ -363,8 +398,10 @@ async function startLocalWorkerInternal(): Promise<WorkerStatusResult> {
       return { status: 'running', connection: existing }
     }
 
-    await repairStaleLocalWorkerFiles(userDataPath, existing.pid)
+    await requireSafeWorkerRepair(userDataPath, existing.pid)
   }
+
+  await requireSafeWorkerRepair(userDataPath)
 
   const workerScriptPath = resolveWorkerScriptPath()
   if (!existsSync(workerScriptPath)) {
@@ -451,16 +488,11 @@ export function startLocalWorker(): Promise<WorkerStatusResult> {
 }
 
 export async function stopLocalWorker(): Promise<WorkerStatusResult> {
-  if (await stopOwnedLocalWorker()) {
-    return { status: 'stopped', connection: null }
+  if ((await stopOwnedLocalWorker()) || !(await resolveConnectionFromUserData())) {
+    return stoppedWorkerStatus()
   }
 
-  const connection = await resolveConnectionFromUserData()
-  if (connection) {
-    await stopByPid(connection.pid)
-  }
-
-  return await getLocalWorkerStatus()
+  throw createAppError('worker.stop_not_owned')
 }
 
 export async function getLocalWorkerWebUiUrl(): Promise<string | null> {

@@ -83,12 +83,6 @@ async function main(): Promise<void> {
     process.stdout.write('OpenCove worker: use opencove worker start --help for CLI usage.\n')
     return
   }
-  // The worker is frequently launched from GUI contexts (Desktop app, system services) where PATH
-  // can be incomplete. Hydrate the environment so git/ssh/etc behave consistently across Desktop,
-  // Web UI, and remote/headless installs.
-  await hydrateCliEnvironmentForAppLaunch(true)
-  reportLegacyManagedHookCleanupFailures(await cleanupLegacyManagedHooksAtStartup(homedir()))
-
   const userDataPath = readWorkerFlagValue(argv, '--user-data') ?? resolveWorkerUserDataDir()
   const bindHostname = readWorkerFlagValue(argv, '--hostname') ?? '127.0.0.1'
   const hostname = readWorkerFlagValue(argv, '--advertise-hostname') ?? bindHostname
@@ -136,10 +130,16 @@ async function main(): Promise<void> {
     }
 
     process.stderr.write(
-      '[opencove-worker] Worker lock exists but its connection is not reachable; launcher must repair stale worker state.\n',
+      '[opencove-worker] Worker owner is busy but its connection is not reachable; refusing replacement.\n',
     )
     process.exit(1)
   }
+
+  // The worker is frequently launched from GUI contexts (Desktop app, system services) where PATH
+  // can be incomplete. Hydrate the environment so git/ssh/etc behave consistently across Desktop,
+  // Web UI, and remote/headless installs.
+  await hydrateCliEnvironmentForAppLaunch(true)
+  reportLegacyManagedHookCleanupFailures(await cleanupLegacyManagedHooksAtStartup(homedir()))
 
   const approvedWorkspaces = createApprovedWorkspaceStoreForPath(
     resolve(userDataPath, 'approved-workspaces.json'),

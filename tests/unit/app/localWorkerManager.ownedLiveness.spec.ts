@@ -1,3 +1,6 @@
+vi.mock('../../../src/platform/process/workerOwnerLock', () => ({
+  acquireWorkerOwnerLock: () => ({ status: 'acquired', release: () => {} }),
+}))
 import { afterEach, expect, it, vi } from 'vitest'
 import { EventEmitter } from 'node:events'
 import { PassThrough } from 'node:stream'
@@ -24,6 +27,7 @@ vi.mock('../../../src/app/main/controlSurface/runtimeAppVersion', () => ({
 import {
   startLocalWorker,
   stopOwnedLocalWorker,
+  stopLocalWorker,
 } from '../../../src/app/main/worker/localWorkerManager'
 
 afterEach(async () => {
@@ -75,4 +79,6 @@ it('does not replace its live compatible child when a health probe reports it bu
   await expect(startLocalWorker()).resolves.toMatchObject({ status: 'running', connection })
   expect(mocks.spawn).toHaveBeenCalledTimes(1)
   expect(child.kill).not.toHaveBeenCalled()
+  await expect(stopLocalWorker()).resolves.toEqual({ status: 'stopped', connection: null })
+  expect(child.kill).toHaveBeenCalledWith('SIGTERM')
 })
