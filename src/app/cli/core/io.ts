@@ -85,11 +85,15 @@ export function createNodeCliIo(): CliIo {
       return ['opencove-dev', 'opencove'].map(name => path.join(root, name))
     },
     isProcessAlive(pid) {
+      if (!Number.isInteger(pid) || pid <= 0) {
+        return false
+      }
       try {
         process.kill(pid, 0)
         return true
-      } catch {
-        return false
+      } catch (error) {
+        // EPERM means the process exists but belongs to another user or sandbox.
+        return (error as NodeJS.ErrnoException).code === 'EPERM'
       }
     },
   }
