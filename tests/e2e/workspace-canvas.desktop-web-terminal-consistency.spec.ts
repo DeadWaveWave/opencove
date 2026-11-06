@@ -135,12 +135,16 @@ test('Desktop and Web share one canonical PTY grid while both remain interactive
       id => window.__opencoveTerminalSelectionTestApi?.getRuntimeSessionId(id) ?? null,
       nodeId,
     )
-    const webSessionId = await web.evaluate(
-      id => window.__opencoveTerminalSelectionTestApi?.getRuntimeSessionId(id) ?? null,
-      nodeId,
-    )
     expect(desktopSessionId).toBeTruthy()
-    expect(webSessionId).toBe(desktopSessionId)
+    // The Web client binds the node to its runtime session asynchronously after hydration.
+    await expect
+      .poll(() =>
+        web.evaluate(
+          id => window.__opencoveTerminalSelectionTestApi?.getRuntimeSessionId(id) ?? null,
+          nodeId,
+        ),
+      )
+      .toBe(desktopSessionId)
 
     await expect
       .poll(
@@ -333,12 +337,15 @@ test('Desktop and Web share one canonical PTY grid while both remain interactive
     await expect(reauthenticatedWeb.locator('.terminal-node')).toContainText(securityMarker, {
       timeout: 30_000,
     })
-    expect(
-      await reauthenticatedWeb.evaluate(
-        id => window.__opencoveTerminalSelectionTestApi?.getRuntimeSessionId(id) ?? null,
-        nodeId,
-      ),
-    ).toBe(desktopSessionId)
+    // Visible scrollback can arrive before the re-authenticated client binds the session.
+    await expect
+      .poll(() =>
+        reauthenticatedWeb.evaluate(
+          id => window.__opencoveTerminalSelectionTestApi?.getRuntimeSessionId(id) ?? null,
+          nodeId,
+        ),
+      )
+      .toBe(desktopSessionId)
     const reauthenticatedMarker = `WEB_REAUTHENTICATED_${Date.now()}`
     await writeMarker(reauthenticatedWeb, reauthenticatedMarker)
     await expect(desktop.locator('.terminal-node')).toContainText(reauthenticatedMarker, {
