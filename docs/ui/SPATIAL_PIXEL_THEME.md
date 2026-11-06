@@ -217,10 +217,12 @@ starts without it. A short hint says how to leave, then fades.
 
 ## Output ripples
 
-Received output (the PTY event hub) sends a ripple out from the window's centre (Tide phase 5.4a):
+Plain terminal output (the PTY event hub) sends a ripple out from the window's centre (Tide phase 5.4a):
 a true circle whose wavefront brightens the wall cells it passes, or the dots of the 「简约」 grid,
 in the window's kind colour, for about a second. Each window starts at most one ripple per 700ms
-and the canvas carries at most 24. A ripple only means output arrived, never a tool call, success
+and the canvas carries at most 24. Agent PTY repaints send neither output ripples nor output light
+flashes; authoritative state drives their sonar, waiting and completion signals. Future ACP message
+events may drive agent output ripples. A ripple only means output arrived, never a tool call, success
 or completion. It is cut to the visible grid and visits only the cells in its band, so its cost
 follows the ring, not the window count. Behind glass the cap still applies. Reduced motion shows
 none; 「关闭」 has none. The effects layer no longer draws output sparkles along window edges; it
@@ -289,7 +291,7 @@ The layer must:
 - Stay outside the terminal body and never resize or remount xterm/Monaco.
 - Coalesce output bursts into the decorative scheduler (30fps focused, 10fps in the background) at
   DPR 2.
-- Received output sends a ripple (below); an idle layer requests no frames.
+- Plain terminal output sends a ripple (below); an idle layer requests no frames.
 - Stop drawing when hidden/offscreen without pausing Agent execution or dropping runtime output.
 - Disable activity particles with reduced motion.
 - Discard stale activity on node/session changes and dispose all subscriptions and animation frames.

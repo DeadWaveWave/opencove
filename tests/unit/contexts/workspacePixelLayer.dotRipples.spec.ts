@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { drawDotRipples } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelLayer/dotRipples'
+import { createRippleField } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelWall/ripples'
+import {
+  drawDotRipples,
+  emitOutputRipple,
+} from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelLayer/dotRipples'
 
 function recorder() {
   const rects: Array<{ x: number; y: number; size: number; alpha: number }> = []
@@ -46,5 +50,38 @@ describe('dot ripples on the minimal background', () => {
     const { context, rects } = recorder()
     expect(drawDotRipples(context, viewport, [])).toBe(0)
     expect(rects).toEqual([])
+  })
+})
+
+describe('dot output signal authority', () => {
+  it('ignores an agent repaint stream but ripples for plain terminal output', () => {
+    const field = createRippleField()
+    const nodes = [
+      { id: 'agent', data: { kind: 'agent', status: 'running' } },
+      { id: 'terminal', data: { kind: 'terminal', status: null } },
+    ]
+    const projected = nodes.map(node => ({
+      id: node.id,
+      sessionId: node.id,
+      acceptsOutput: true,
+      tone: null,
+      rect: { x: 0, y: 0, width: 300, height: 200 },
+    }))
+    const seen = new Set<string | undefined>()
+    for (let now = 0; now <= 3040; now += 80) {
+      for (const node of nodes) {
+        emitOutputRipple(
+          field,
+          node.id,
+          projected,
+          nodes as never,
+          { x: 0, y: 0, zoom: 1, width: 1200, height: 900 },
+          document.body,
+          now,
+        )
+      }
+      field.sample(now).forEach(wave => seen.add(wave.key))
+    }
+    expect([...seen]).toEqual(['terminal'])
   })
 })

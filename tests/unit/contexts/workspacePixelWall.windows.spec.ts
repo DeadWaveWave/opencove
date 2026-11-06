@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { createWallWindowTracker } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelWall/wallWindows'
+import { createRippleField } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelWall/ripples'
 import type { WallLightPalette } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelWall/wallPalette'
 
 const lights: WallLightPalette = {
@@ -85,6 +86,38 @@ describe('pixel wall windows', () => {
     expect(tracker.observeOutput('missing', 500)).toBeNull()
     const [a, b] = tracker.resolve(500, lights).windows
     expect(b!.light!.intensity).toBeGreaterThan(a!.light!.intensity)
+  })
+
+  it('ignores an agent repaint stream while throttling terminal output and light together', () => {
+    const tracker = createWallWindowTracker()
+    const baseline = createWallWindowTracker()
+    const nodes = lookup(
+      windowNode('agent', { kind: 'agent', status: 'running' }),
+      windowNode('shell', {}),
+    )
+    tracker.sync(nodes, 0)
+    baseline.sync(nodes, 0)
+    const field = createRippleField()
+    const emitted: string[] = []
+    for (let now = 0; now <= 3040; now += 80) {
+      for (const id of ['agent', 'shell']) {
+        const source = tracker.observeOutput(`${id}-session`, now)
+        if (source && field.emit(source.id, source.center, lights[source.family], now)) {
+          emitted.push(source.id)
+        }
+      }
+      expect(tracker.resolve(now, lights).windows[0]!.light).toEqual(
+        baseline.resolve(now, lights).windows[0]!.light,
+      )
+    }
+    expect(emitted).toEqual(Array(5).fill('shell'))
+    // Repaints between accepted terminal output signals must not keep recharging the light.
+    const once = createWallWindowTracker()
+    once.sync(lookup(windowNode('shell', {})), 0)
+    once.observeOutput('shell-session', 2880)
+    expect(tracker.resolve(3040, lights).windows[1]!.light).toEqual(
+      once.resolve(3040, lights).windows[0]!.light,
+    )
   })
 
   it('holds fixed levels without a clock and forgets windows that are gone', () => {

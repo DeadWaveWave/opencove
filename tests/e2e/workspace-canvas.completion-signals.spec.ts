@@ -1,5 +1,13 @@
+import { mkdtemp, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 import { expect, test } from '@playwright/test'
-import { launchApp, seedWorkspaceState, testWorkspacePath } from './workspace-canvas.helpers'
+import {
+  launchApp,
+  removePathWithRetry,
+  seedWorkspaceState,
+  testWorkspacePath,
+} from './workspace-canvas.helpers'
 import {
   installPtySessionCapture,
   resolveFirstAgentSessionId,
@@ -14,10 +22,20 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
   browserName,
 }, testInfo) => {
   void browserName
+  const fixture = await mkdtemp(path.join(tmpdir(), 'opencove-repaint-'))
+  const stub = path.join(fixture, 'spinner.mjs')
+  await writeFile(
+    stub,
+    [
+      `void import(${JSON.stringify(path.join(testWorkspacePath, 'scripts/test-agent-session-stub.mjs'))})`,
+      "setInterval(() => process.stdout.write('\\r\\x1b[2K| working 00:01'), 80).unref()",
+    ].join('\n'),
+  )
   const { electronApp, window } = await launchApp({
     windowMode: 'inactive',
     env: {
       OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
+      OPENCOVE_TEST_AGENT_STUB_SCRIPT: stub,
       OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'claude-hook-lifecycle',
       OPENCOVE_TEST_CLAUDE_HOOK_INSTALL_FAILURE: '0',
     },
@@ -105,6 +123,27 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
         },
       )
       .toContain(`sonar:${agentId}`)
+    // Observe a complete 3s repaint stream in the renderer; retained keys cannot miss a wave.
+    const repaintCount = await window.evaluate(async observedSessionId => {
+      let count = 0
+      const dispose = window.opencoveApi.pty.onData(event => {
+        if (event.sessionId === observedSessionId && event.data.includes('working 00:01')) {
+          count++
+        }
+      })
+      try {
+        await new Promise(resolve => setTimeout(resolve, 3040))
+        return count
+      } finally {
+        dispose()
+      }
+    }, sessionId)
+    expect(repaintCount).toBeGreaterThan(20)
+    const keys = await window.evaluate(
+      () => window.__opencovePixelWallTestApi?.getSeenRippleKeys() ?? [],
+    )
+    expect(keys).toContain(`sonar:${agentId}`)
+    expect(keys).not.toContain(agentId)
     await installPixelDrawProbe(window)
     await writeToPty(window, { sessionId, data: '<test-hook-done>\r' })
 
@@ -147,5 +186,6 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
       contentType: 'application/json',
     })
     await electronApp.close()
+    await removePathWithRetry(fixture)
   }
 })

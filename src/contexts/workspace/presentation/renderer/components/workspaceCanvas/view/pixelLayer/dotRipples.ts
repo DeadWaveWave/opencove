@@ -1,5 +1,6 @@
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../../types'
+import { resolveAgentPresentation } from '../../../../utils/agentPresentation'
 import { resolveWindowKindFamily } from '../../../../utils/windowKindFamily'
 import { forEachRingCell, type createRippleField, type Ripple } from '../pixelWall/ripples'
 import { readWallLightPalette } from '../pixelWall/wallPalette'
@@ -73,7 +74,14 @@ export function emitOutputRipple(
 ): void {
   const source = sessionId ? projected.find(node => node.sessionId === sessionId) : undefined
   const data = source ? nodes.find(node => node.id === source.id)?.data : undefined
-  if (!source || !data || viewport.zoom <= 0) {
+  // Agent message events (ACP) may drive output signals later; raw PTY repaints cannot.
+  if (
+    !source ||
+    !data ||
+    data.kind !== 'terminal' ||
+    resolveAgentPresentation(data).isAgent ||
+    viewport.zoom <= 0
+  ) {
     return
   }
   const { x, y, width, height } = source.rect

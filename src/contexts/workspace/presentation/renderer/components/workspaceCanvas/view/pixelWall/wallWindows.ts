@@ -3,6 +3,7 @@ import type { TerminalNodeData } from '../../../../types'
 import { resolveAgentPresentation } from '../../../../utils/agentPresentation'
 import { resolveWindowKindFamily, type WindowKindFamily } from '../../../../utils/windowKindFamily'
 import type { WallWindowRect } from './wallCells'
+import { RIPPLE_WINDOW_INTERVAL_MS } from './ripples'
 import type { WallLightPalette } from './wallPalette'
 import { resolveWorkLight, resolveWorkLightState, type WorkLightState } from './workLight'
 
@@ -12,6 +13,7 @@ interface TrackedWindow {
   family: WindowKindFamily
   state: WorkLightState
   sessionId: string | null
+  acceptsOutput: boolean
 }
 
 interface WindowEvents {
@@ -57,6 +59,8 @@ export function createWallWindowTracker() {
           family: resolveWindowKindFamily(node.data),
           state,
           sessionId: node.data.sessionId,
+          // Agent message events (ACP) may drive output signals later; raw PTY repaints cannot.
+          acceptsOutput: node.data.kind === 'terminal' && !presentation.isAgent,
         })
       }
       const present = new Set(next.map(window => window.id))
@@ -77,7 +81,11 @@ export function createWallWindowTracker() {
       }
       const window = windows.find(candidate => candidate.sessionId === sessionId)
       const record = window ? events.get(window.id) : undefined
-      if (!window || !record) {
+      if (
+        !window?.acceptsOutput ||
+        !record ||
+        (record.outputAt !== null && now - record.outputAt < RIPPLE_WINDOW_INTERVAL_MS)
+      ) {
         return null
       }
       record.outputAt = now
