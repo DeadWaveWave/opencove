@@ -134,9 +134,12 @@ world, under every window and the effects layer.
   patches wander across the open wall (shimmer, `PIXEL_WALL.shimmerA`); about one cell in six
   twinkles, more of them near working or waiting windows. Shimmer and twinkle never enter
   glass. The wall does not follow the pointer: no spotlight (owner, 2026-11-06).
-- Zoomed out, clouds, hue and shimmer grow with the cell size (from the 24px base cell) so they
-  stay about as broad on screen as in near view, and twinkle thins out in proportion: the far
-  wall stays calm. Within one cell size everything stays anchored to the world.
+- Clouds, hue and shimmer keep fixed world sizes (640, 1150 and 300px); merging or splitting
+  cells resamples the same colour field. Twinkle retains its 16% share plus active-window
+  nearness at every level. Work-light falloff uses `max(80, 29.25 / zoom)` world px: continuous
+  across levels, unchanged at zoom ≥ 0.5, and visible beyond window frames in far view.
+  Tile jitter remains bounded to 5/9 RGB levels (dark/light); the two-cell glass band stays
+  level-based for contrast protection. Neither changes the open-wall colour field.
 - Behind a window's glass, including a two-cell ring around its frame, a cell moves at most the
   generator's `PIXEL_WALL.cap` toward any colour (I6), the bound the theme contrast checks assume.
 - Work light (5.3b): the cells around each window take its kind colour (`--cove-wall-light-*`:

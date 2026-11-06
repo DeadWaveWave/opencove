@@ -42,8 +42,6 @@ const CLOUD_DRIFT = 9
 const SPARK_SHARE = 0.16
 /** Cloud colours in the palette. */
 const CLOUD_COUNT = 4
-/** World cell size from which the wall's features grow with the cell (far zoom). */
-const CALM_FROM_CELL = 24
 
 function hash2(i: number, j: number): number {
   let h = (Math.imul(i, 374761393) + Math.imul(j, 668265263)) | 0
@@ -147,7 +145,8 @@ function castWorkLight(
   appearance: WallPalette['appearance'],
 ) {
   const strength = PIXEL_WALL[appearance].workA
-  const fall = Math.max(80, 1.5 * grid.worldCell)
+  // 1.5 × the 19.5px midpoint of the screen-cell band, continuous across grid levels.
+  const fall = Math.max(80, (29.25 * grid.worldCell) / grid.screenCell)
   const reach = fall * 2.6
   const shift = appearance === 'light' ? fall * 0.6 : 0
   for (const frame of windows) {
@@ -198,7 +197,7 @@ function markActiveNearness(
     return null
   }
   const near = new Float32Array(grid.columns * grid.rows)
-  const fall = Math.max(80, 1.5 * grid.worldCell) * 1.6
+  const fall = Math.max(80, (29.25 * grid.worldCell) / grid.screenCell) * 1.6
   const reach = fall * 4
   for (const frame of active) {
     const first = Math.max(0, Math.floor((frame.x - reach) / grid.worldCell) - grid.firstColumn)
@@ -251,14 +250,10 @@ export function fillWallCells(
   const weights = PIXEL_WALL[palette.appearance]
   const time = timeSeconds ?? 0
   const drift = time * CLOUD_DRIFT * cloudSpeed
-  // Zoomed out, a cell covers more canvas: clouds, hue and shimmer scale with it so they stay as
-  // broad on screen as in near view, and twinkle thins out, so the far wall stays calm. Within
-  // a cell size everything stays anchored to the world; a size change dissolves (5.3d).
-  const featureScale = Math.max(1, grid.worldCell / CALM_FROM_CELL)
-  const cloudSize = 640 * featureScale
-  const hueSize = 1150 * featureScale
-  const sheenSize = 300 * featureScale
-  const sparkShare = SPARK_SHARE / featureScale
+  // Tide's field sizes are world distances, independent of the discrete grid level.
+  const cloudSize = 640
+  const hueSize = 1150
+  const sheenSize = 300
   const [baseR, baseG, baseB] = palette.cell
   const cloud: [number, number, number] = [0, 0, 0]
   let index = 0
@@ -307,7 +302,7 @@ export function fillWallCells(
           shift = mix(cells, index, palette.sparks[hue]!, sheen * weights.shimmerA, shift)
         }
         const spark = hash2(worldColumn * 7, worldRow * 13)
-        const share = sparkShare + 0.2 * (near?.[cell] ?? 0)
+        const share = SPARK_SHARE + 0.2 * (near?.[cell] ?? 0)
         if (timeSeconds !== null && spark > 1 - share) {
           const twinkle =
             Math.max(0, Math.sin(time * (0.6 + spark * 1.6) + spark * 50)) ** 24 * 0.85

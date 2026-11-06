@@ -445,6 +445,9 @@
 - Multi-client authority/FIFO：`tests/unit/app/ptyStreamHub.attach.authority.spec.ts`、
   `tests/unit/app/ptyStreamHub.resize.authority.spec.ts`、`tests/unit/app/BrowserPtyClient.spec.ts`
 
+像素墙的云、色相与 shimmer 使用固定世界尺寸；网格合并或拆分只重采样同一色场。
+工作光的衰减距离随连续缩放变化，保持远景窗口外的可见光晕。参见 [Pixel wall](SPATIAL_PIXEL_THEME.md#pixel-wall)。
+
 ### 工作中巡航
 
 - Working 外框巡航只消费现有 Agent 状态：两串各 8 粒，头部 3.5px、其余 2.5px，
