@@ -49,9 +49,13 @@ change label inheritance, filtering, selection, geometry or persisted data. Remo
 this presentation attribute, so old tint cannot remain on the frame.
 
 A restrained tint fades across the header while reading surfaces retain their theme colors.
-Terminal, Task, Note, Document, Role, Website and Image use one family of decorative line icons.
-Agent windows use their resolved provider's identity glyph, including terminal Agent overlays.
-The existing presentation owner supplies the provider; titles are never parsed to guess a brand.
+Terminal, Task, Note, Document, Role, Website and Image use one family of 9×9 pixel glyphs in their
+kind colour. Agent windows, including terminal Agent overlays, draw their resolved provider's brand
+mark in the AI kind colour instead (owner, 2026-11-06): the vendor reads at a glance and the colour
+still names the kind. This applies to the header, the collapsed icon, the far tile, the sidebar and
+the command center. `resolveAgentPresentationProvider` supplies the provider; titles are never
+parsed to guess a brand, and an Agent without a known provider shows the AI pixel glyph. Provider
+chips that pick a provider (the dock, settings, task sessions) keep the vendor's own colour.
 Plain terminals retain the terminal icon. Image's icon and stripe are overlays, preserving its
 image-first layout. Header titles use medium weight, with existing sizes, action targets and terminal
 body geometry preserved.

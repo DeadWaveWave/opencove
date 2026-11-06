@@ -5,12 +5,13 @@ import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from '@app/renderer/i18n'
 import { AGENT_PROVIDER_LABEL } from '@contexts/settings/domain/agentSettings'
 import { KindTile } from '@app/renderer/components/ui/KindTile'
-import { PixelGlyph } from '@app/renderer/components/ui/PixelGlyph'
 import { toRelativeTime } from '../utils/format'
 import type { SidebarAgentItemModel } from '../utils/sidebarAgents'
 import type { ProjectContextMenuState } from '../types'
 import { createAgentSortableId, sidebarSortableTransition } from './SidebarDnd'
 import { resolveAgentTreatedProvider } from '@contexts/workspace/presentation/renderer/utils/terminalAgentOverlay'
+import { resolveAgentPresentationProvider } from '@contexts/workspace/presentation/renderer/utils/agentPresentation'
+import { NodeKindIcon } from '@contexts/workspace/presentation/renderer/components/shared/NodeKindIcon'
 import { useAppStore } from '../store/useAppStore'
 import {
   setSidebarAgentPinned,
@@ -26,7 +27,7 @@ function SidebarAgentItemContent({ item }: { item: SidebarAgentItemModel }): Rea
   return (
     <>
       <KindTile kind="ai" size="sm" className="workspace-agent-item__kind">
-        <PixelGlyph name="ai" />
+        <NodeKindIcon kind="agent" provider={resolveAgentPresentationProvider(item.node.data)} />
       </KindTile>
       <span className="workspace-agent-item__copy">
         <span className="workspace-agent-item__title">{item.displayTitle}</span>

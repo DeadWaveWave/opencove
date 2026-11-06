@@ -37,6 +37,7 @@ export function TerminalNodeHeader({
   title,
   fixedTitlePrefix = null,
   kind,
+  agentProvider = null,
   status,
   agentStateDegraded = false,
   labelColor,
@@ -108,7 +109,7 @@ export function TerminalNodeHeader({
       kind={isAgentNode ? 'ai' : 'shell'}
       labelColor={labelColor}
       onPointerDownCapture={onHeaderPointerDownCapture}
-      icon={<NodeKindIcon kind={isAgentNode ? 'agent' : kind} />}
+      icon={<NodeKindIcon kind={isAgentNode ? 'agent' : kind} provider={agentProvider} />}
       title={
         isTitleEditable ? (
           <InlineNodeTitleEditor

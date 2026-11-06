@@ -51,10 +51,9 @@ test.describe('Workspace Canvas - Agent Sidebar', () => {
       const agentItem = window.locator('.workspace-sidebar .workspace-agent-item').first()
       await expect(agentItem).toBeVisible()
       await expect(agentItem.locator('.workspace-agent-item__title')).toHaveText('gpt-5.2-codex')
-      await expect(agentItem.locator('.cove-pixel-glyph')).toHaveAttribute(
-        'data-cove-pixel-glyph',
-        'ai',
-      )
+      const icon = agentItem.locator('[data-cove-node-kind-icon="agent"]')
+      await expect(icon).toHaveAttribute('data-agent-provider', 'codex')
+      await expect(icon).not.toHaveAttribute('data-cove-pixel-glyph')
 
       const zoomInButton = window.locator('.react-flow__controls-zoomin')
       await expect(zoomInButton).toBeVisible()
@@ -312,6 +311,9 @@ test.describe('Workspace Canvas - Agent Sidebar', () => {
       await expect(doingItem).toBeVisible()
       await expect(requestItem).toBeVisible()
       await expect(doneItem).toBeVisible()
+      const icon = doingItem.locator('[data-cove-node-kind-icon="agent"]')
+      await expect(icon).toHaveAttribute('data-agent-provider', 'codex')
+      await expect(icon).not.toHaveAttribute('data-cove-pixel-glyph')
 
       await requestItem.click()
       await expect(requestNode).toBeVisible()

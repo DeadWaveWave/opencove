@@ -215,10 +215,9 @@ describe('window collapse presentation', () => {
     expect(icon.querySelector('.cove-collapsed-window__status')).toBeNull()
     expect(icon.querySelector('.cove-collapsed-window__message')).toBeNull()
     expect(screen.getByTestId('node-expand')).toHaveAttribute('aria-description', 'Working')
-    expect(icon.querySelector('[data-cove-node-kind-icon="agent"]')).toHaveAttribute(
-      'data-cove-pixel-glyph',
-      'ai',
-    )
+    const mark = icon.querySelector('[data-cove-node-kind-icon="agent"]')
+    expect(mark).toHaveAttribute('data-agent-provider', 'codex')
+    expect(mark).not.toHaveAttribute('data-cove-pixel-glyph')
     rerender(
       view({
         ...data,

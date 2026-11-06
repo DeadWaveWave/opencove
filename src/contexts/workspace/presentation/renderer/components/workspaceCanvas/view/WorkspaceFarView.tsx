@@ -31,7 +31,11 @@ const FarTileView = React.memo(function FarTileView({
     >
       <span className="workspace-far-tile__face">
         <span className="workspace-far-tile__icon">
-          <NodeKindIcon kind={provider ? 'agent' : kind} pluginId={pluginId ?? undefined} />
+          <NodeKindIcon
+            kind={provider ? 'agent' : kind}
+            provider={provider}
+            pluginId={pluginId ?? undefined}
+          />
         </span>
         <span className="workspace-far-tile__title">{title}</span>
         {signal ? <span className="workspace-far-tile__signal" data-signal={signal} /> : null}

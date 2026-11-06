@@ -148,6 +148,7 @@ export function CollapsedWindow({
         >
           <NodeKindIcon
             kind={presentation.isAgent ? 'agent' : data.kind}
+            provider={provider}
             pluginId={data.plugin?.pluginId}
           />
           <span className="cove-collapsed-window__pixels" data-cove-part="compact-pixels">

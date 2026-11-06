@@ -89,19 +89,23 @@ test.describe('Workspace Canvas - Color Identity', () => {
           }
           expect(appearance.ribbonHeight).toBe(2)
           expect(appearance.borderWidth).toBe('1px')
-          // Window headers put the pixel glyph on a 20px kind tile; image has no header.
+          // Window headers put the kind icon on a 20px tile; image has no header.
           const tiled = appearance.kind !== 'image'
           expect(appearance.icon).toMatchObject({
             kind: appearance.kind,
-            glyph: appearance.kind === 'agent' ? 'ai' : appearance.kind,
+            glyph: appearance.kind === 'agent' ? null : appearance.kind,
+            provider: appearance.kind === 'agent' ? 'codex' : null,
             fill: 'currentColor',
-            shapeRendering: 'crispEdges',
+            shapeRendering: appearance.kind === 'agent' ? null : 'crispEdges',
             width: tiled ? 12 : 16,
             tile: tiled ? 20 : null,
             pointer: 'none',
             hidden: 'true',
             focusable: 'false',
           })
+          if (appearance.kind === 'agent') {
+            expect(appearance.icon?.color).toEqual(appearance.aiGlyphColor)
+          }
           if (appearance.kind !== 'image') {
             expect(appearance.headerImage).toContain('linear-gradient')
             expect(

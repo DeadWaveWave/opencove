@@ -20,6 +20,7 @@ import { usePluginCommands } from '@contexts/plugins/presentation/renderer/usePl
 import { PluginIcon } from '@contexts/plugins/presentation/renderer/PluginIcon'
 import { NodeKindIcon } from '@contexts/workspace/presentation/renderer/components/shared/NodeKindIcon'
 import { resolveWindowKindFamily } from '@contexts/workspace/presentation/renderer/utils/windowKindFamily'
+import { resolveAgentPresentationProvider } from '@contexts/workspace/presentation/renderer/utils/agentPresentation'
 import { KindTile } from '@app/renderer/components/ui/KindTile'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { useWorkspaceMountDetails } from '../hooks/useWorkspaceMountSummaries'
@@ -119,6 +120,7 @@ export function useCommandCenterSections({
             const space = activeWorkspace.spaces.find(item => item.nodeIds.includes(node.id))
             const spaceName = space?.name ?? t('sidebar.rootCanvas')
             const agent = agentItems.get(node.id)
+            const provider = resolveAgentPresentationProvider(node.data)
             return {
               id: `window:${node.id}`,
               title: agent?.displayTitle || node.data.title || node.data.kind,
@@ -129,7 +131,11 @@ export function useCommandCenterSections({
                 : { trailing: spaceName }),
               icon: (
                 <KindTile kind={resolveWindowKindFamily(node.data)}>
-                  <NodeKindIcon kind={node.data.kind} />
+                  <NodeKindIcon
+                    kind={provider ? 'agent' : node.data.kind}
+                    provider={provider}
+                    pluginId={node.data.plugin?.pluginId}
+                  />
                 </KindTile>
               ),
               onSelect: () => actions.onSelectNode(activeWorkspace.id, node.id),

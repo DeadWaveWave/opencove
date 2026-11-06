@@ -2,7 +2,7 @@ import type { Node } from '@xyflow/react'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { TerminalNodeData, WorkspaceNodeKind } from '../../../types'
-import { resolveAgentPresentation } from '../../../utils/agentPresentation'
+import { resolveAgentPresentationProvider } from '../../../utils/agentPresentation'
 import { resolveWindowKindFamily, type WindowKindFamily } from '../../../utils/windowKindFamily'
 import { resolveWindowSignal, type WindowSignal } from '../../../utils/windowSignal'
 
@@ -23,16 +23,6 @@ export interface FarTile {
   y: number
   width: number
   height: number
-}
-
-function resolveProvider(data: TerminalNodeData): AgentProvider | null {
-  if (data.kind === 'agent') {
-    return data.agent?.provider ?? null
-  }
-  if (!resolveAgentPresentation(data).isAgent) {
-    return null
-  }
-  return data.agentOverlay?.provider ?? data.terminalAgentBinding?.provider ?? null
 }
 
 /**
@@ -56,7 +46,7 @@ export function buildFarTiles(nodes: readonly Node<TerminalNodeData>[]): FarTile
           (node.data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null })
             .effectiveLabelColor ?? null,
         selected: node.selected === true,
-        provider: resolveProvider(node.data),
+        provider: resolveAgentPresentationProvider(node.data),
         pluginId: node.data.plugin?.pluginId ?? null,
         filePath: node.data.document?.uri ?? null,
         x: node.position.x,

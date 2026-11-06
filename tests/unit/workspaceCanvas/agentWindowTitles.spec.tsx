@@ -155,7 +155,12 @@ describe('Agent window title presentation', () => {
     expect(container.querySelector('.cove-collapsed-window__title')?.textContent).toBe(expected)
     expect(container.querySelector('.terminal-node__title-prefix')).toBeNull()
     expect(data.title).toBe(title)
-    expect(container.querySelectorAll('[data-cove-pixel-glyph="ai"]')).toHaveLength(2)
+    const icons = container.querySelectorAll('[data-cove-node-kind-icon="agent"]')
+    expect(icons).toHaveLength(2)
+    for (const icon of icons) {
+      expect(icon).toHaveAttribute('data-agent-provider', 'codex')
+      expect(icon).not.toHaveAttribute('data-cove-pixel-glyph')
+    }
     fireEvent.click(screen.getByTestId('terminal-node-title-display'))
     const input = screen.getByTestId('terminal-node-inline-title-input')
     expect(input).toHaveValue(expected)
