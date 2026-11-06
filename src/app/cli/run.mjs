@@ -9,7 +9,6 @@ import { invokeAndPrint, invokeControlSurface } from './invoke.mjs'
 import { printUsage } from './usage.mjs'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from './constants.mjs'
 import { tryHandleMultiEndpointCommands } from './commands/multiEndpoint.mjs'
-import { tryHandleNodeControlCommands } from './commands/nodeControl.mjs'
 import { createPluginGuideResult } from './pluginGuide.mjs'
 import { parsePluginCommand, resolvePluginCommandTimeout } from './commands/plugins.mjs'
 import {
@@ -31,8 +30,7 @@ function toErrorMessage(error) {
   return 'unknown error'
 }
 
-async function main() {
-  const argv = process.argv.slice(2)
+export async function runLegacy(argv) {
   const wantsHelp = argv.includes('--help') || argv.includes('-h')
   const pretty = argv.includes('--pretty')
   const endpoint = readFlagValue(argv, '--endpoint')
@@ -168,16 +166,6 @@ async function main() {
     process.exit(2)
   }
 
-  if (command === 'ping') {
-    await invokeAndPrint(
-      connection,
-      { kind: 'query', id: 'system.ping', payload: null },
-      { pretty, timeoutMs },
-    )
-
-    return
-  }
-
   if (command === 'plugin') {
     const result = await invokeAndPrint(connection, pluginRequest, {
       pretty,
@@ -201,56 +189,10 @@ async function main() {
     return
   }
 
-  if (
-    await tryHandleNodeControlCommands({
-      command,
-      args,
-      connection,
-      pretty,
-      timeoutMs,
-    })
-  ) {
-    return
-  }
-
   if (isWorkerStatusCommand) {
     await invokeAndPrint(
       connection,
       { kind: 'query', id: 'system.ping', payload: null },
-      { pretty, timeoutMs },
-    )
-
-    return
-  }
-
-  if (command === 'project' && args[1] === 'list') {
-    await invokeAndPrint(
-      connection,
-      { kind: 'query', id: 'project.list', payload: null },
-      { pretty, timeoutMs },
-    )
-
-    return
-  }
-
-  if (command === 'space' && args[1] === 'list') {
-    const projectId = readFlagValue(args, '--project')
-    const payload = projectId ? { projectId } : null
-
-    await invokeAndPrint(
-      connection,
-      { kind: 'query', id: 'space.list', payload },
-      { pretty, timeoutMs },
-    )
-
-    return
-  }
-
-  if (command === 'space' && args[1] === 'get') {
-    const spaceId = requireFlagValue(args, '--space')
-    await invokeAndPrint(
-      connection,
-      { kind: 'query', id: 'space.get', payload: { spaceId } },
       { pretty, timeoutMs },
     )
 
@@ -410,8 +352,3 @@ async function main() {
   printUsage()
   process.exit(2)
 }
-
-main().catch(error => {
-  process.stderr.write(`[opencove] failed: ${toErrorMessage(error)}\n`)
-  process.exit(1)
-})

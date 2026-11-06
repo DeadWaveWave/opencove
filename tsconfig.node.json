@@ -2,7 +2,8 @@
   "extends": "@electron-toolkit/tsconfig/tsconfig.node.json",
   "include": [
     "electron.vite.config.*",
-    "src/app/cli/main.ts",
+    "src/app/cli/**/*.ts",
+    "package.json",
     "scripts/lib/runtime-build-identity.ts",
     "scripts/lib/runtime-build-plugin.ts",
     "src/app/main/**/*",

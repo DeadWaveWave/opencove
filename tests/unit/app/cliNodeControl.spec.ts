@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { tryHandleNodeControlCommands } from '../../../src/app/cli/commands/nodeControl.mjs'
+import { run } from '../../../src/app/cli/core/run'
 
 type CapturedRequest = {
   id: string
@@ -26,13 +26,17 @@ function stubInvokeRequests(): CapturedRequest[] {
 }
 
 async function invokeNodeArgs(args: string[]): Promise<boolean> {
-  return await tryHandleNodeControlCommands({
-    command: 'node',
-    args,
-    connection: { hostname: '127.0.0.1', port: 1, token: 'token' },
-    pretty: false,
-    timeoutMs: 1_000,
-  })
+  return (
+    (await run(args, {
+      stdout: { write() {} },
+      stderr: { write() {} },
+      env: { OPENCOVE_CONTROL_URL: 'http://localhost:1', OPENCOVE_CONTROL_TOKEN: 'token' },
+      fetch,
+      now: Date.now,
+      readTextFile: async () => '',
+      readStdinText: async () => '',
+    })) === 0
+  )
 }
 
 afterEach(() => {

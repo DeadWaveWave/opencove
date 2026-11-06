@@ -3,6 +3,8 @@ import { spawnSync } from 'node:child_process'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { help } from '../../../src/app/cli/core/help'
+import { commands } from '../../../src/app/cli/commands'
 import { resolveCliAppRoot } from '../../../src/app/cli/appRoot.mjs'
 
 describe('CLI build artifact', () => {
@@ -22,13 +24,13 @@ describe('CLI build artifact', () => {
     }
   })
   it.each(['out/cli/opencove.mjs', 'src/app/cli/opencove.mjs'])(
-    '%s preserves the pre-migration help bytes',
+    '%s prints generated root help',
     entry => {
       const result = spawnSync(process.execPath, [resolve(entry), '--help'])
       expect(result.error).toBeUndefined()
       expect(result.status).toBe(0)
       expect(result.stderr.length).toBe(0)
-      expect(result.stdout).toEqual(readFileSync(resolve('tests/unit/app/fixtures/cli-help.txt')))
+      expect(result.stdout).toEqual(Buffer.from(help(commands, [])))
     },
   )
 })
