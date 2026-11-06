@@ -201,7 +201,7 @@ describe('TypeScript CLI core', () => {
   )
   it('legacy schema error', async () => {
     const f = fixture()
-    expect(await run(['api', 'schema', 'node.list'], f.io)).toBe(1)
+    expect(await run(['api', 'schema', 'agent.listSessions'], f.io)).toBe(1)
     expect(f.err()).toContain('api.schema_unavailable')
   })
   it('routes session through the core', async () => {
@@ -291,10 +291,12 @@ it('reads API input from a file and invokes validated operation', async () => {
 it('filters local registry offline', async () => {
   const f = fixture()
   expect(await run(['api', 'ops', '--contract', 'schema', '--kind', 'query'], f.io)).toBe(0)
-  expect(JSON.parse(f.out()).map((op: { id: string }) => op.id)).toEqual([
-    'system.operations',
-    'system.operation.describe',
-  ])
+  const ops = JSON.parse(f.out()) as Array<{ id: string; kind: string; contract: string }>
+  expect(ops.length).toBeGreaterThan(0)
+  expect(ops.every(op => op.kind === 'query' && op.contract === 'schema')).toBe(true)
+  expect(ops.map(op => op.id)).toEqual(
+    expect.arrayContaining(['system.operations', 'system.operation.describe', 'node.list']),
+  )
   expect(f.fetch).not.toHaveBeenCalled()
 })
 
