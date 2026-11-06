@@ -35,7 +35,7 @@ Command:
 opencove node create note [space locator] [--title <text>] [--text <text>] [--frame <json>] [--focus] [--pretty]
 opencove node create task [space locator] --requirement <text> [--title <text>] [--priority <low|medium|high|urgent>] [--tag <tag>] [--frame <json>] [--focus] [--pretty]
 opencove node create website [space locator] --url <url> [--title <text>] [--pinned] [--session-mode <shared|incognito|profile>] [--profile <id>] [--frame <json>] [--focus] [--pretty]
-opencove node create agent [space locator] [--prompt <text>] [--provider <id>] [--model <id>] [--frame <json>] [--focus] [--pretty]
+opencove node create agent [space locator] [--prompt <text>] [--provider <id>] [--model <id>] [--task <nodeId>] [--frame <json>] [--focus] [--pretty]
 opencove node create terminal [space locator] [--shell <path>] [--command <text>] [--profile <id>] [--frame <json>] [--focus] [--pretty]
 opencove node update note --node <id> [--title <text>] [--text <text>] [--frame <json>] [--pretty]
 opencove node update task --node <id> [--title <text>] [--requirement <text>] [--priority <low|medium|high|urgent>] [--status <todo|doing|ai_done|done>] [--tag <tag>] [--frame <json>] [--pretty]
@@ -120,6 +120,7 @@ Website:
 Agent:
 
 - Create 会先通过 session launch path 启动 runtime。
+- `--task <nodeId>`（DTO: `data.taskNodeId`）把新 agent 链接到同一 Space 中已存在的任务节点：双向写入 `agent.taskId` 与 `task.linkedAgentNodeId`，并将任务 `status` 设为 `doing`。任务必须存在、类型为 task、且没有存活的已链接 agent；否则在启动前返回 `node.not_found`（任务不存在）或 `common.invalid_input`。链接与 agent node 在同一次持久化写入中提交；启动失败或持久化失败时不留下链接，任务状态不变。
 - 启动失败时不持久化 agent node。
 - 持久化失败时 best-effort kill 已启动 session。
 

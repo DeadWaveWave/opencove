@@ -206,7 +206,7 @@ export function createPluginCanvasHost(
         payload,
         terminal
           ? ['target', 'title', 'frame', 'profileId', 'shell', 'command']
-          : ['target', 'title', 'frame', 'prompt', 'provider', 'model'],
+          : ['target', 'title', 'frame', 'prompt', 'provider', 'model', 'taskNodeId'],
       )
       return create(
         authority,
@@ -214,7 +214,12 @@ export function createPluginCanvasHost(
         terminal ? 'terminal' : 'agent',
         terminal
           ? { profileId: input.profileId, shell: input.shell, command: input.command }
-          : { prompt: input.prompt, provider: input.provider, model: input.model },
+          : {
+              prompt: input.prompt,
+              provider: input.provider,
+              model: input.model,
+              ...(input.taskNodeId === undefined ? {} : { taskNodeId: input.taskNodeId }),
+            },
       )
     }
     if (operation === 'nodes.update') {

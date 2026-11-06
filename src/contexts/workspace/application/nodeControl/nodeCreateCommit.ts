@@ -13,6 +13,13 @@ import {
 import { resolvePlacement, workspaceWithNode } from './nodeCreatePlacement'
 import { resolveCreateFrame } from './nodeDataFactory'
 import { toCanvasNodeDetail } from './nodeDtos'
+import { assertTaskCanTakeAgent, linkAgentToTask } from './nodeTaskLink'
+
+function agentTaskNodeId(node: NodeControlNode): string | null {
+  const agent =
+    node.agent && typeof node.agent === 'object' ? (node.agent as Record<string, unknown>) : {}
+  return typeof agent.taskId === 'string' ? agent.taskId : null
+}
 
 function targetIdentity(target: ResolvedNodeCreationTarget) {
   return JSON.stringify([
@@ -33,6 +40,7 @@ export async function commitCreatedNode(options: {
   input: CreateNodeInput
   node: NodeControlNode
   initialTarget: ResolvedNodeCreationTarget
+  now: Date
 }): Promise<CreateNodeResult> {
   /* eslint-disable no-await-in-loop -- Each bounded CAS attempt must use a fresh snapshot. */
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -74,7 +82,22 @@ export async function commitCreatedNode(options: {
       height: frame.height,
     }
     const spaceId = current.space?.id ?? null
-    const workspace = workspaceWithNode(current.workspace, node, spaceId)
+    const taskNodeId = agentTaskNodeId(options.node)
+    if (taskNodeId) {
+      assertTaskCanTakeAgent({
+        workspace: current.workspace,
+        spaceNodeIds: current.space?.nodeIds ?? null,
+        taskNodeId,
+      })
+    }
+    const insertedWorkspace = workspaceWithNode(current.workspace, node, spaceId)
+    const workspace = taskNodeId
+      ? linkAgentToTask(insertedWorkspace, {
+          taskNodeId,
+          agentNodeId: node.id,
+          now: options.now.toISOString(),
+        })
+      : insertedWorkspace
     options.runtime.assertActive?.()
     const result = await options.store.writeAppState(
       replaceNodeControlWorkspace(state, workspace),

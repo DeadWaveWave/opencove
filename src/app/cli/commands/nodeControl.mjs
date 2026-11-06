@@ -114,6 +114,7 @@ function buildCreateData(kind, args) {
       prompt: readFlagValue(args, '--prompt') ?? '',
       provider: readFlagValue(args, '--provider'),
       model: readFlagValue(args, '--model'),
+      ...(args.includes('--task') ? { taskNodeId: requireFlagValue(args, '--task') } : {}),
     }
   }
   return {

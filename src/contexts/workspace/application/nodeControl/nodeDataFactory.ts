@@ -34,7 +34,13 @@ export type NodeControlCreateData =
       sessionMode: WebsiteWindowSessionMode
       profileId: string | null
     }
-  | { kind: 'agent'; prompt: string; provider: AgentProviderId | null; model: string | null }
+  | {
+      kind: 'agent'
+      prompt: string
+      provider: AgentProviderId | null
+      model: string | null
+      taskNodeId?: string
+    }
   | { kind: 'terminal'; shell: string | null; command: string | null; profileId: string | null }
 
 export interface AgentNodeRuntimeData {
@@ -134,6 +140,19 @@ function normalizeAgentProvider(value: unknown): AgentProviderId | null {
   throw createAppError('common.invalid_input', { debugMessage: 'Invalid agent provider.' })
 }
 
+function normalizeAgentTaskNodeId(value: unknown): { taskNodeId?: string } {
+  if (value === undefined) {
+    return {}
+  }
+  const taskNodeId = typeof value === 'string' ? value.trim() : ''
+  if (taskNodeId.length === 0) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'node.create agent data.taskNodeId must be a non-empty string.',
+    })
+  }
+  return { taskNodeId }
+}
+
 export function normalizeCreateNodeData(
   kind: ManagedCanvasNodeKind,
   data: unknown,
@@ -194,6 +213,7 @@ export function normalizeCreateNodeData(
       prompt: typeof record.prompt === 'string' ? record.prompt : '',
       provider: normalizeAgentProvider(record.provider),
       model: normalizeOptionalString(record.model),
+      ...normalizeAgentTaskNodeId(record.taskNodeId),
     }
   }
 
@@ -341,7 +361,7 @@ export function makeNode(options: {
           directoryMode: 'workspace',
           customDirectory: null,
           shouldCreateDirectory: false,
-          taskId: null,
+          taskId: options.data.kind === 'agent' ? (options.data.taskNodeId ?? null) : null,
         }
       : null
 

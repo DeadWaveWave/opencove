@@ -16,6 +16,7 @@ import { resolveNodeCreationTarget, type ResolvedNodeCreationTarget } from './no
 import { normalizeAgentSettings } from '../../../settings/domain/agentSettings'
 import { resolvePlacement } from './nodeCreatePlacement'
 import { commitCreatedNode, cleanupFailedNodeCreation } from './nodeCreateCommit'
+import { assertTaskCanTakeAgent } from './nodeTaskLink'
 import {
   listSpacesForNodeControl,
   resolveSpaceLocatorForNodeControl,
@@ -134,6 +135,13 @@ export async function createNodeForNodeControl(options: {
   const state = requireNodeControlState(await options.store.readAppState())
   const resolved = await resolveNodeCreationTarget(state, options.locatorDeps, options.input)
   const createData = normalizeCreateNodeData(options.input.kind, options.input.data)
+  if (createData.kind === 'agent' && createData.taskNodeId) {
+    assertTaskCanTakeAgent({
+      workspace: resolved.workspace,
+      spaceNodeIds: resolved.space?.nodeIds ?? null,
+      taskNodeId: createData.taskNodeId,
+    })
+  }
   const settings = normalizeAgentSettings(state.settings)
   const placement = resolvePlacement({
     workspace: resolved.workspace,

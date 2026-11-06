@@ -242,6 +242,14 @@ describe('plugin canvas routing over two authenticated Workers', () => {
       await expect(
         host('terminals.create', { target, command: 'echo unsafe-default-shell' }),
       ).rejects.toThrow('explicit target shell')
+      await expect(
+        host('agents.launch', {
+          target,
+          prompt: 'x',
+          provider: 'codex',
+          taskNodeId: 'missing-task',
+        }),
+      ).rejects.toThrow('was not found in the target project')
       const agent = await host<CreateNodeResult>('agents.launch', {
         target,
         prompt: 'Inspect the project',

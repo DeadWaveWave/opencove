@@ -85,8 +85,12 @@ const output = await host.terminals.read({ nodeId: terminal.node.id });
   selects its default shell/profile. `command` is shell command text, not an argv
   array; a remote command requires an explicit target `shell`. For an executable
   plus argv and temporary progress/result, use `host.operations` instead.
-- `agents.launch({ target, title?, frame?, prompt, provider?, model? })` launches a
-  regular Agent window with the target Worker's supported provider/runtime rules.
+- `agents.launch({ target, title?, frame?, prompt, provider?, model?, taskNodeId? })`
+  launches a regular Agent window with the target Worker's supported provider/runtime
+  rules. `taskNodeId` optionally links the new agent to an existing task node in the
+  same Space: both sides are linked and the task moves to `doing`. The task must exist,
+  be a task, and have no live linked agent. Otherwise the launch is rejected before it
+  starts, and nothing is linked.
   Supported provider IDs are `claude-code`, `codex`, `opencode`, `gemini`, `pi`,
   and `kimi` (availability depends on the target Worker).
 - Both create methods return `{ revision, projectId, spaceId, node }`. Save
