@@ -112,7 +112,7 @@ it.each([undefined, null, 42, {}, '', ' ', 'bad\nid', '\ud800', 'x'.repeat(257)]
     expect(JSON.stringify(envelope)).not.toContain('secret')
   },
 )
-it('extracts only UserPromptSubmit evidence and preserves a bounded ID verbatim', () => {
+it('extracts submission evidence and preserves a bounded ID verbatim', () => {
   const prompt_id = 'p'.repeat(256)
   expect(normalizeClaudeHookEnvelope({ ...input({}), prompt_id })).toMatchObject({
     promptId: prompt_id,
@@ -123,7 +123,7 @@ it('extracts only UserPromptSubmit evidence and preserves a bounded ID verbatim'
       prompt_id,
       prompt: 'secret',
     })
-    expect(envelope).not.toHaveProperty('promptId')
+    expect(envelope).toHaveProperty('promptId', prompt_id)
     expect(envelope).not.toHaveProperty('promptDigest')
   }
 })

@@ -44,6 +44,26 @@ export const agentListOperation = defineOperation({
     state: agentRunStateSchema.optional(),
   }),
 })
+const turnId = id.describe('OpenCove turn identifier returned by agent.prompt')
+const promptId = id.describe('Provider prompt identifier reported by Claude hooks')
+const nodeId = id.describe('Canvas node whose current agent incarnation is queried')
+const sessionId = id.describe('Agent session whose current incarnation is queried')
+export const agentFinalMessageOperation = defineOperation({
+  id: 'agent.finalMessage',
+  kind: 'query',
+  scope: 'interact',
+  availability: 'always',
+  summary: 'Read a retained message from an observed local Claude turn end',
+  errors: ['agent.final_message_unavailable'],
+  input: z.union([
+    z.strictObject({ nodeId }),
+    z.strictObject({ sessionId }),
+    z.strictObject({ nodeId, turnId }),
+    z.strictObject({ sessionId, turnId }),
+    z.strictObject({ nodeId, promptId }),
+    z.strictObject({ sessionId, promptId }),
+  ]),
+})
 export const agentPromptOperation = defineOperation({
   id: 'agent.prompt',
   kind: 'command',
@@ -105,6 +125,7 @@ export const agentPromptOperation = defineOperation({
 })
 export const agentOperations = [
   agentPromptOperation,
+  agentFinalMessageOperation,
   agentListSessionsOperation,
   agentGetOperation,
   agentListOperation,

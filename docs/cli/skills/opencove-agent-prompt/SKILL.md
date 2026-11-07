@@ -17,6 +17,23 @@ Use the requested target ID and exactly one text source:
 opencove agent prompt --node node-123 --text-file ./prompt.txt --timeout 20s
 ```
 
+Save prompt's returned `turnId`. After success, use this loop (replace `turn-123`
+with that ID):
+
+```sh
+opencove agent wait --node node-123 --until idle --timeout 2m
+opencove agent read --node node-123 --turn turn-123
+```
+
+The exact read never falls back. Hook history is private/in-memory, limited to the
+last 8 ended turns per incarnation; restart/replacement clears it. Currently
+correlated local Claude hooks supply messages. Unqualified read alone can fall
+back to the transcript for `no_ended_turn` or `provider_sent_no_message`.
+Default stdout is message text only; `-o json` includes `source` and `truncated`.
+A cut hook prefix prints a stderr notice with transcript/screen inspection commands.
+Unavailable exact reads preserve `agent.final_message_unavailable` reasons; never
+resend a prompt merely because a reply is unavailable.
+
 The command attempts one bracketed paste and Enter into the current editor; existing
 editor drafts may be submitted too. Resolve visible dialogs and inspect the editor.
 `terminal_agent_unsupported` means the target must be an agent window OpenCove launched.

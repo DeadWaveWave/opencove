@@ -36,7 +36,13 @@ export async function runClaudePromptStrictScenario(cwd, providerArgs) {
                 prompt: submission.text.replace(/\r\n|\r/g, '\n').replace(/[ \t\n]+$/, ''),
                 prompt_id: `strict-prompt-${submission.turn}`,
               }
-            : {}),
+            : event === 'Stop'
+              ? {
+                  prompt_id: `strict-prompt-${submission.turn}`,
+                  last_assistant_message: `Strict reply ${submission.turn}`,
+                  stop_hook_active: false,
+                }
+              : {}),
         }),
       )
       await new Promise((resolve, reject) => {

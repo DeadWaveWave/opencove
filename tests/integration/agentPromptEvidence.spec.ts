@@ -56,6 +56,8 @@ it('keeps prompt evidence on accepted internal receipts and out of public projec
     expect(getPromptSubmissionEvidence(event)).toEqual({
       promptId: 'private-provider-id',
       promptDigest: digest,
+      providerSessionId: 'provider',
+      finalMessage: undefined,
     })
     ingress.push(event)
     f.hub.registerSessionAgentState(event)

@@ -9,6 +9,7 @@ reuses `resolveAgentRunStateAuthority`; transport and consumers do not choose be
 
 | State | Owner | Write entry | Restart truth |
 | --- | --- | --- | --- |
+| Private ended-turn history and message text | Executing Worker registry entry | Selected reducer-accepted turn ends | None; discarded on replacement/restart |
 | Run snapshot and active turn | Executing Worker registry | Fenced provider observations and lease deadlines | New incarnation starts unknown |
 | Event epoch and sequence | Executing Worker registry | Accepted snapshot/turn transition | New Worker epoch; re-query |
 | Session-to-node/project/Space association | Registry binding projection | Initial durable read and successful workspace writes | Durable session binding, never node status |
@@ -191,3 +192,47 @@ Code/Codex agent windows OpenCove launched are eligible. Agents typed into shell
 with `terminal_agent_unsupported`, including when a suspended/killed agent leaves stale
 Stop evidence and the foreground scanner reports shell-only. Gateway coverage metadata
 remains useful for observation but never authorizes prompting.
+
+## Private observed-end messages
+
+`agent.finalMessage` (interact scope) reads private per-incarnation ended history;
+`agent.get/list` and `agent.state_changed` / `agent.turn_completed` remain content-free.
+The registry inserts history synchronously before notifying fences or publishing the
+completion. It retains at most eight ended turns (`turnId`, optional `promptId`,
+`outcome`, `endedAt`, optional message/truncation) and 512 KiB of UTF-8 text, evicting
+oldest whole records. Entry replacement, retirement and disposal release the store.
+No durable state, receipt-ring content, remote mirroring or restart reconstruction
+is added. Node lookup never searches old incarnations.
+
+Claude start identity is private: provider session, validated prompt ID, and the
+relay emitted-at time of the accepted UserPromptSubmit that opened the turn
+(`x-opencove-hook-emitted-at`, range-checked at ingress). Duplicate submits and
+state refreshes do not replace that start time. A conflicting identified end is
+rejected before source replacement/arbitration. A distinct-prompt UserPromptSubmit
+in the same provider session may supersede the active turn only when both relay
+emitted-at times are present and the candidate is strictly later. Missing, equal,
+or older times reject the conflicting submit; Worker arrival time/source sequence
+cannot stand in for relay-time ordering. This freshness fence belongs to the active
+identity and survives eviction of ended-message records: replaying an evicted old
+submit with its original timestamp cannot supersede live work, and its conflicting
+Stop cannot grant readiness. Retained-ID rejection applies even to newer timestamps.
+A trustworthy newer submit atomically ends the active turn as unknown (no content)
+and opens the new turn. This recovers a missing Stop, including user interruption or relay loss,
+without inventing reliable idle evidence. The supersession completion carries the
+old endedTurn and outcome unknown while its snapshot already shows the new active
+turn. The reducer still enforces incarnation, sequence, timestamp and authority
+fences. Late ends for retained superseded identities are ignored even when idle;
+replayed retained identities cannot reopen or replace a result. Missing IDs preserve
+legacy run state but cannot serve correlated content.
+Only a matching selected reliable Stop/StopFailure can attach message text. Baseline
+Stop, lease expiry, notify and arbitrary payloads cannot manufacture ended history.
+PTY exit may end an active turn as unknown, without hook content. Stop is an observed
+boundary; other provider hooks may continue it, and StopFailure remains failed.
+
+The query accepts one node/session locator and optionally one OpenCove `turnId` or
+provider `promptId`. It selects only the newest ended turn by default, even if that
+turn lacks content. Errors distinguish no ended history, unknown selected turn,
+active selected turn and no provider message; eviction cannot be distinguished from
+an unknown turn. Empty content is present. See [prompt delivery](PROMPT_DELIVERY.md)
+for budgets, errors, coarse interact access, and the `prompt → wait --until idle →
+read --turn <turnId>` loop. Idle waiting does not guarantee which turn ended.

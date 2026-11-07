@@ -10,6 +10,19 @@ const reply = {
 }
 function fixture(message: string | null, state = 'idle') {
   const f = identityFixture()
+  const originalFetch = f.io.fetch
+  f.io.fetch = async (url, init) =>
+    JSON.parse(String(init?.body)).id === 'agent.finalMessage'
+      ? new Response(
+          JSON.stringify({
+            ok: false,
+            error: {
+              code: 'agent.final_message_unavailable',
+              details: { reason: 'no_ended_turn' },
+            },
+          }),
+        )
+      : originalFetch(url, init)
   f.values['session.finalMessage'] = { ...reply, message }
   f.values['agent.get'] = {
     nodeId: node.id,

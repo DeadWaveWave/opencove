@@ -1,5 +1,5 @@
 import { replayScreen } from '../core/screenReplay'
-import { readFinalMessage } from '../core/finalMessage'
+import { readAgentFinalMessage, type HookFinalMessage } from '../core/agentFinalMessage'
 import { defineCommand, type CommandContext } from '../core/command'
 import { CliError, usage } from '../core/errors'
 import { stringOption } from './nodes'
@@ -10,9 +10,22 @@ import type {
   GetSessionPresentationSnapshotResult,
 } from '../../../shared/contracts/dto/controlSurface'
 
-const transcriptOutput = declaredOutput(
-  ['sessionId', 'provider', 'startedAt', 'cwd', 'resumeSessionId', 'message'],
-  { sessionId: 's' },
+const messageOutput = declaredOutput(
+  [
+    'nodeId',
+    'sessionId',
+    'turnId',
+    'promptId',
+    'outcome',
+    'message',
+    'truncated',
+    'source',
+    'provider',
+    'startedAt',
+    'cwd',
+    'resumeSessionId',
+  ],
+  { nodeId: 'node-123' },
 )
 const screenOutput = declaredOutput(['nodeId', 'sessionId', 'lines'], {
   nodeId: 'node-123',
@@ -42,23 +55,32 @@ async function readScreen(ctx: CommandContext): Promise<ScreenResult> {
 export const agentReadCommand = defineCommand({
   path: ['agent', 'read'],
   connect: true,
-  operation: 'session.finalMessage',
+  operation: 'agent.finalMessage',
   summary: 'Read an agent reply or inspect its current terminal screen',
   description: [
-    'By default, reads the last final message using session.finalMessage {nodeId}, including restored conversations. --last makes that default explicit. A null, empty or whitespace-only reply exits 1 with session.transcript_not_ready and the same recovery as session final; the server has no distinct empty-reply marker. Plain text goes to stdout even when piped; -o json returns {sessionId, provider, startedAt, cwd, resumeSessionId, message}. --fields also selects structured JSON.',
-    "Use --screen before prompting to inspect drafts and dialogs. It resolves the current session, replays its presentation snapshot at its columns/rows, preserving cursor-created spaces, overwrites and wide CJK/emoji cells. It selects the normal or alternate buffer, ignores styling/mode sequences, trims row-end spaces and trailing blank rows, then returns the last --lines rendered rows (default: 40). -o json returns {nodeId, sessionId, lines: [...]}. Screen-mode projectable fields are nodeId, sessionId, lines; the field list below applies to transcript mode. --lines requires --screen; --screen and --last are mutually exclusive. This is a read only snapshot, not permission to answer another agent's dialog.",
-    'If a completed idle agent has no readable transcript (for example transcript saving is disabled), inspect --screen and check provider settings; waiting cannot create that transcript. A working agent may need to reach idle first. Reading never sends input.',
+    'Reads agent.finalMessage first: the latest observed ended turn, or exactly --turn <turnId> from agent prompt. --turn never uses prefixes, another turn or a transcript fallback. --last makes the latest-turn default explicit and can accompany --turn.',
+    'Only an unqualified hook read reporting no_ended_turn or provider_sent_no_message falls back to session.finalMessage, including restored conversations. Other errors are preserved. Hook content, including empty or whitespace-only messages, wins. Exact-turn errors use agent.final_message_unavailable with details.reason: turn_not_ended (still active), turn_not_found (unknown/evicted), no_ended_turn, or provider_sent_no_message.',
+    'Plain message text goes to stdout even when piped. -o json or --fields returns structured data: hook results have nodeId, sessionId, turnId, optional promptId, outcome, message, truncated and source: hook; transcript results have sessionId, provider, startedAt, cwd, resumeSessionId, message, truncated: false and source: transcript. A cut hook message prints one stderr notice with transcript/screen recovery commands; it never automatically replaces the retained prefix.',
+    'After agent prompt, retain its turnId, run "opencove agent wait --node <selector> --until idle", then "opencove agent read --node <selector> --turn <turnId>". Hook history is private, in memory, and limited to the last 8 ended turns per incarnation; restart or replacement clears it. Hook replies currently require local Claude hooks with correlated prompt IDs.',
+    "Use --screen before prompting to inspect drafts and dialogs. It resolves the current session, replays its presentation snapshot at its columns/rows, preserving cursor-created spaces, overwrites and wide CJK/emoji cells. It selects the normal or alternate buffer, ignores styling/mode sequences, trims row-end spaces and trailing blank rows, then returns the last --lines rendered rows (default: 40). -o json returns {nodeId, sessionId, lines: [...]}. Screen-mode projectable fields are nodeId, sessionId, lines; the field list below applies to final-message mode. --lines requires --screen; --screen conflicts with --last and --turn. This is a read only snapshot, not permission to answer another agent's dialog.",
+    'If transcript fallback has no readable message, session.transcript_not_ready exits 1. A working agent may need to reach idle first; an idle agent may have transcript saving disabled. Inspect --screen and check provider settings; waiting cannot create a transcript. Reading never sends input.',
   ].join('\n\n'),
   options: {
     node: stringOption('Node ID', true),
     last: {
       type: 'boolean',
       conflicts: ['screen'],
-      description: 'Read the last final message (default; no transcript history)',
+      description: 'Read the latest ended turn (default; --turn selects an exact turn)',
+    },
+    turn: {
+      type: 'string',
+      valueName: 'turnId',
+      conflicts: ['screen'],
+      description: 'Read exactly this OpenCove turn ID from agent prompt; never falls back',
     },
     screen: {
       type: 'boolean',
-      conflicts: ['last'],
+      conflicts: ['last', 'turn'],
       description: 'Inspect the current terminal screen as plain text instead of the final message',
     },
     lines: {
@@ -75,24 +97,25 @@ export const agentReadCommand = defineCommand({
     if (o.lines !== undefined && (!Number.isSafeInteger(o.lines) || Number(o.lines) <= 0)) {
       usage('--lines must be a positive whole number.')
     }
-    return { nodeId: o.node }
+    return { nodeId: o.node, ...(o.turn !== undefined ? { turnId: o.turn } : {}) }
   },
-  render: transcriptOutput,
-  selectRender: ({ options }) => (options.screen ? screenOutput : transcriptOutput),
+  render: messageOutput,
+  selectRender: ({ options }) => (options.screen ? screenOutput : messageOutput),
   examples: [
     'opencove agent read --node "Reviewer" --screen',
     'opencove agent read --node "Reviewer" --screen --lines 20 -o json',
     'opencove agent read --node "Reviewer" --last',
-    'opencove agent read --node node-123 -o json',
+    'opencove agent read --node node-123 --turn turn-123',
+    'opencove agent read --node node-123 --turn turn-123 -o json',
   ],
   textOutput: result => {
-    const value = result as ScreenResult | GetSessionFinalMessageResult
+    const value = result as ScreenResult | HookFinalMessage | GetSessionFinalMessageResult
     const text = 'lines' in value ? value.lines.join('\n') : (value.message ?? '')
     return text.endsWith('\n') || !text ? text : text + '\n'
   },
   async execute(ctx) {
     try {
-      return ctx.options.screen ? await readScreen(ctx) : await readFinalMessage(ctx)
+      return ctx.options.screen ? await readScreen(ctx) : await readAgentFinalMessage(ctx)
     } catch (error) {
       if (!(error instanceof CliError)) {
         throw error

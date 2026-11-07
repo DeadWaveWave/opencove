@@ -108,8 +108,11 @@ opencove agent get --node "Reviewer" --pretty
 opencove agent read --node "Reviewer" --screen
 opencove agent prompt --node "Reviewer" --text-file ./assignment.txt
 opencove agent wait --node "Reviewer" --until idle --timeout 2m
-opencove agent read --node "Reviewer" --last
+opencove agent read --node "Reviewer" --turn turn-123
 ```
+
+Save the `turnId` returned by prompt and replace `turn-123` above. The normal loop
+is prompt → wait `--until idle` → read `--turn <turnId>`.
 
 All commands have offline `--help`, examples and declared projectable fields.
 Node/Space selectors reuse exact IDs, exact names, unique prefixes and `@self`.
@@ -117,14 +120,14 @@ Inside OpenCove, `agent list` defaults to the caller's Space; explicit `--projec
 selects project scope. `--state working|waiting|idle|exited|unknown` filters the
 Worker's `agent.list`. That operation lists live sessions only, excluding exited
 sessions; get/wait can address a known exited node. An unbound/deleted node's title
-is null. No new Control Surface operations are introduced.
+is null. Final-message reads use the Worker's `agent.finalMessage` query.
 
 | Command | Output contract | Projection / table |
 | --- | --- | --- |
 | `agent list` | `{epoch, seq, agents: [snapshot + title]}` | Snapshot fields + title; table columns: nodeId, title, provider, state, blockedReason, turn.startedAt, quality |
 | `agent get --node <selector>` | Snapshot + title; non-agent nodes or absent run state fail with agent.not_found (exit 1) | Snapshot fields + title; JSON only |
 | `agent wait --node <selector> ... --until <condition>` | `{until, mode, agents: [snapshot]}`; turn-end adds endedTurn and endedTurnOutcome | Snapshot fields + endedTurn/endedTurnOutcome; JSON only |
-| `agent read --node <selector> [--last]` | Plain final-message text; `-o json` keeps `{sessionId, provider, startedAt, cwd, resumeSessionId, message}` | Structured fields with `--fields`; no table |
+| `agent read --node <selector> [--last] [--turn <turnId>]` | Plain message text; JSON includes `source: hook\|transcript` and `truncated`; exact `--turn` never falls back | Hook: nodeId, sessionId, turnId, promptId, outcome, message, truncated, source; transcript: sessionId, provider, startedAt, cwd, resumeSessionId, message, truncated, source; no table |
 | `agent read --node <selector> --screen [--lines <n>]` | Rendered screen text at snapshot cols/rows: cursor spacing and wide cells preserved; trailing spaces/blank rows trimmed, last n rows (default 40); JSON is `{nodeId, sessionId, lines: [...]}` | nodeId, sessionId, lines; no table |
 | `skill` | Plain SKILL.md; `-o json` returns `{version, content}` | version, content; no table |
 
@@ -160,22 +163,47 @@ turn, rather than as the normal post-prompt wait. Timeout exits
 streams; neither condition stops the agent. Missing run state is a clear error
 with a start/resume hint.
 
-Transcript read uses `session.finalMessage {nodeId}` and defaults to text even when
-piped. Screen mode uses existing `session.get {nodeId}` then
+Final-message read tries `agent.finalMessage {nodeId}` first: newest observed ended
+turn, including empty/whitespace-only content. `--turn <turnId>` selects the exact
+OpenCove ID returned by prompt, never a prefix, another turn or a transcript.
+Only a read without `--turn` may fall back to `session.finalMessage {nodeId}`, and
+only for `agent.final_message_unavailable` with reason `no_ended_turn` or
+`provider_sent_no_message`. All other errors remain errors, including unsupported
+operations on an older Worker. Restart/restored conversations can use that
+unqualified transcript fallback; they cannot recover exact hook history.
+
+Hook JSON contains `{nodeId, sessionId, turnId, promptId?, outcome, message,
+truncated, source: 'hook'}`. Transcript JSON preserves the session fields and adds
+`source: 'transcript', truncated: false`. Neither reading nor content proves a
+successful outcome. Hook retention is private, in memory, last 8 ended turns per
+incarnation, with a 512 KiB aggregate message budget; incarnation replacement or
+restart clears history. Currently only correlated local Claude hooks supply it.
+Unavailable `details.reason` values are `no_ended_turn`, `provider_sent_no_message`,
+`turn_not_ended` (active) and `turn_not_found` (unknown/evicted). Exact reads preserve
+these reasons with exit 1; they never silently return an older message.
+
+Plain text remains the default even when piped. A cut hook prefix stays the result
+and prints exactly one stderr notice with commands to look for the rest via
+`session final --session <sessionId>` (provider transcript) or `agent read --screen`.
+Those inspection paths may be incomplete and are not exact-turn substitutes.
+
+Screen mode uses existing `session.get {nodeId}` then
 `session.presentationSnapshot {sessionId}`, never terminal input. A small virtual
 screen replays cursor movement, CR/LF/BS/TAB and line/display erase at the snapshot
 geometry, with two cells for wide CJK/emoji. It selects the declared normal or
 alternate buffer; SGR, OSC/hyperlinks and unrelated modes are ignored. Output
 contains only the rendered viewport rows, with trailing spaces and blank rows
 removed, then the requested last n rows. `--lines` requires
-`--screen` and a positive whole number; `--last` and `--screen` are mutually exclusive. `--fields` selects structured JSON, as does `-o json`.
+`--screen` and a positive whole number; `--screen` conflicts with `--last` and `--turn`.
+`--last` can accompany `--turn` and does not loosen exact selection. `--fields`
+selects structured JSON, as does `-o json`.
 `session.transcript_not_ready` queries agent.get: only working agents are advised
 to wait for idle. An idle agent with a completed turn is told that its provider has
 not written a readable transcript (for example transcript saving disabled), with
 `agent read --screen` as the inspection path and no wait recommendation. Other
 states get screen/provider-setting guidance. Not-found asks you to check the node
 and start/resume its session.
-Both `agent read` and `session final --session <id>` reject null, empty or
+Transcript fallback and `session final --session <id>` reject null, empty or
 whitespace-only final messages with `session.transcript_not_ready`, exit 1 and the
 same state-aware recovery. The server normalizes blank replies to null and supplies
 no separate empty-reply marker, so a genuine empty reply cannot be distinguished.

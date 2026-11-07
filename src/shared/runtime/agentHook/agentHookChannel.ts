@@ -15,6 +15,7 @@ import type { AgentSessionIdentityObservation } from '../../contracts/dto/agentS
 const MAX_HOOK_BODY_BYTES = 256 * 1024
 
 export interface AgentHookEnvelope extends PromptSubmissionEvidence {
+  claudeSessionId?: string
   emittedAtMs?: number
   hookEventName?: string
   tool?: { name: string }
@@ -187,10 +188,12 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
         hookInstallState: installState,
         ...observation?.stateMetadata,
       }
-      if (options.source === 'claude_hook' && envelope.hookEventName === 'UserPromptSubmit') {
+      if (options.source === 'claude_hook') {
         setPromptSubmissionEvidence(event, {
           promptId: envelope.promptId,
           promptDigest: envelope.promptDigest,
+          providerSessionId: envelope.claudeSessionId,
+          finalMessage: envelope.finalMessage,
         })
       }
       listeners.forEach(listener => listener(event))

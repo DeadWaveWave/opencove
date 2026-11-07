@@ -112,14 +112,16 @@ unchanged. This profile was verified through real PTY delivery for **Claude Code
 blank line, Unicode, a literal paste marker and CRLF. Other releases, configurations,
 wrappers, images and multimodal payloads are not attested by this text comparison.
 
-The provider's optional `promptId` is diagnostic and is returned on any comparison
-outcome when valid. It does not correlate completion or enable `wait --turn` or
-`read --prompt`. Codex has no comparison profile or prompt ID in this first cut.
+The provider's optional `promptId` is returned on any comparison outcome when valid.
+For Claude Code, matching session and prompt IDs also bind retained Stop/StopFailure
+messages to the observed start. `agent.finalMessage` can select that provider ID;
+the CLI uses the OpenCove `turnId` returned by `agent prompt`. Codex has no comparison
+profile or hook-carried final-message support in this cut.
 
 Equality is not proof of causation or model processing: another qualifying submission
 of identical text also matches, and another hook may block processing after this
 observation. Nor does it prove the turn finished. Use `agent.turn_completed`
-separately to observe an outcome; it is not correlated by this provider prompt ID.
+separately to observe an outcome. Public events contain no prompt ID or message text.
 There is no delivery-status store or idempotency key.
 
 On `different`, **stop automatic orchestration**, retain the delivery, session, turn
@@ -239,7 +241,7 @@ existing 256 KiB hook envelope budget; it never truncates before hashing. Option
 malformed fields are dropped without discarding valid lifecycle evidence. No trimming
 string helper is used on prompt content. The digest is SHA-256 over UTF-8 of
 `"opencove-prompt-evidence-claude-code-v1\0" + normalizedText` (the separator is a NUL).
-Raw hook prompt text is discarded during normalization and is never retained or logged.
+Raw hook prompt text is discarded during normalization; prompt correlation stores no prompt content beyond transient parsing/delivery buffers and never logs it. A relay-truncated prompt has no digest.
 
 The digest and prompt ID travel only through private, same-process channel metadata,
 runtime ingress and reducer-accepted internal fence receipts. They never enter public
@@ -285,3 +287,57 @@ DECSET/DECRST, RIS, DECSTR, controls and string transitions. Parity tests compar
 mode with xterm. See [xterm's modes API](https://xtermjs.org/docs/api/terminal/interfaces/imodes/).
 Automatic terminal protocol replies use a separate path and may bypass the input
 queue. There is no automatic resend, raw-typing fallback or wait-until-idle queue.
+
+## Reading the observed turn result
+
+Retain `turnId` from the successful prompt response:
+
+```sh
+opencove agent prompt --node node-123 --text "Review the changes"
+opencove agent wait --node node-123 --until idle --timeout 60s
+opencove agent read --node node-123 --turn <turnId>
+```
+
+`wait --until idle` requires non-degraded idle, but does not select a turn or prove
+success. `read --turn` selects that exact OpenCove turn and never substitutes a
+transcript message. Another turn can start or finish between these commands; use
+the returned outcome (`completed`, `failed`, `aborted`, `unknown`). History may be
+evicted between waiting and reading. There is no `wait --turn` in this cut.
+
+`agent.finalMessage` is an interact-scope query accepting exactly one of `nodeId`
+or `sessionId`, optionally exactly one of `turnId` or provider `promptId`. It returns
+`{ nodeId, sessionId, turnId, promptId?, outcome, message, truncated, source: 'hook' }`.
+The newest observed ended turn is selected by default, including when it has no
+message; older messages are never substituted. Empty strings are present messages.
+Unavailable results use `agent.final_message_unavailable` with `details.reason`:
+`no_ended_turn`, `turn_not_found`, `turn_not_ended`, or `provider_sent_no_message`.
+
+An unqualified `agent read --node …` tries this query first. Only `no_ended_turn`
+or `provider_sent_no_message` permits fallback to `session.finalMessage`, labelled
+`source: 'transcript'`. That reply is the latest provider transcript message and
+is **uncorrelated** with an OpenCove turn. Authorization, transport and other errors
+are returned directly. `--screen` reads buffered terminal output for inspection.
+
+This is the message at an **observed OpenCove turn end**, not proof of irrevocable
+provider completion: another Stop hook may continue processing. StopFailure keeps
+outcome `failed`; text does not imply success. Claude Code 2.1.319 supplies matching
+`session_id`/`prompt_id` and `last_assistant_message`. Missing/malformed IDs preserve
+legacy state transitions but withhold exact message content. Conflicting identified
+ends, overlapping different starts and replayed retained IDs are ignored before
+changing authoritative state. Overlapping Claude turns are unsupported.
+
+The generated relay reads at most 8 MiB. Above the 256 KiB POST budget it shrinks only
+`last_assistant_message` and `prompt` to 16 KiB UTF-8 prefixes, setting the corresponding
+`<field>_truncated: true`. This conservative prefix budget allows worst-case JSON
+escaping of both fields. Unshrinkable or over-hard-cap bodies retain the prior drop
+behavior. The receiver keeps its 256 KiB body limit; normalization separately bounds
+assistant content to 64 KiB UTF-8 at a code point boundary and preserves truncation.
+
+The executing Worker registry owns at most eight ended records and 512 KiB of message
+text per agent incarnation, evicting oldest whole records. Content is private memory,
+never persisted, mirrored, logged or included in snapshots, SSE events, or receipt
+rings. Replacement, retirement and Worker disposal release it. Node lookup uses only
+the current binding; an old exited session can be queried explicitly until retired.
+Replies may quote user content. Access uses the existing coarse interact scope, not
+a new project/target ACL; read-tier callers cannot retrieve this store. Remote hook
+history is unavailable; remote transcript retrieval remains the separate fallback.

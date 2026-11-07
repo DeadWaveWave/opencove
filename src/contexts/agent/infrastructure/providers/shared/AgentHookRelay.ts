@@ -87,6 +87,22 @@ function createWindowsLauncher(runtime: string, relay: string): string {
 
 const relayScript = String.raw`
 const emittedAtMs = Date.now();
+const postLimit = 256 * 1024;
+const rawLimit = 8 * 1024 * 1024;
+// Worst-case JSON escaping takes six wire bytes per UTF-8 byte. Leave metadata room.
+const textLimit = 16 * 1024;
+function shrinkText(value) {
+  if (Buffer.byteLength(value, 'utf8') <= textLimit) return value;
+  let bytes = 0, end = 0;
+  for (const codePoint of value) {
+    const size = Buffer.byteLength(codePoint, 'utf8');
+    if (bytes + size > textLimit) break;
+    bytes += size;
+    end += codePoint.length;
+  }
+  // Slice the original string: never repair malformed Unicode into invented content.
+  return value.slice(0, end);
+}
 // Telemetry cannot keep the provider waiting, including on an unclosed stdin or socket.
 const deadline = setTimeout(() => process.exit(0), 2000);
 try {
@@ -100,19 +116,34 @@ try {
       let bytes = 0;
       for await (const chunk of process.stdin) {
         bytes += chunk.length;
-        if (bytes > 256 * 1024) process.exit(0);
+        if (bytes > rawLimit) process.exit(0);
         chunks.push(chunk);
       }
       // Windows PowerShell/.NET Framework can prepend a UTF-8 BOM to redirected stdin.
       body = Buffer.concat(chunks).toString('utf8').replace(/^\uFEFF/u, '');
     }
-    if (Buffer.byteLength(body, 'utf8') > 256 * 1024) process.exit(0);
+    if (Buffer.byteLength(body, 'utf8') > rawLimit) process.exit(0);
+    if (Buffer.byteLength(body, 'utf8') > postLimit) {
+      const value = JSON.parse(body);
+      if (!value || typeof value !== 'object' || Array.isArray(value)) process.exit(0);
+      for (const field of ['last_assistant_message', 'prompt']) {
+        if (typeof value[field] !== 'string') continue;
+        const prefix = shrinkText(value[field]);
+        if (prefix !== value[field]) {
+          value[field] = prefix;
+          value[field + '_truncated'] = true;
+        }
+      }
+      body = JSON.stringify(value);
+    }
     if (provider === 'codex') {
       const value = JSON.parse(body);
       if (!value.hook_event_name && value.type === 'agent-turn-complete') {
         body = JSON.stringify({ version: 1, state: 'done', hookEventName: 'notify', codexSessionId: value['thread-id'] ?? 'unknown' });
       }
     }
+    // Enforce the receiver budget on the final wire body, after every provider rewrite.
+    if (Buffer.byteLength(body, 'utf8') > postLimit) process.exit(0);
     await fetch(endpoint, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-opencove-hook-token': token, 'x-opencove-hook-emitted-at': String(emittedAtMs) },

@@ -44,7 +44,8 @@ Usage errors exit 2. Local HTTP timeout exits 124; transport loss is outcome unk
 
 Inspect drafts and dialogs with `opencove agent read --node <selector> --screen`
 before sending. After success, use `opencove agent wait --node <selector> --until idle`,
-then `agent read`. A human editor draft is submitted with the text; unobserved dialogs cannot be excluded.
+then `opencove agent read --node <selector> --turn <turnId>` using the saved
+`turnId` from prompt. This exact read never falls back to a different turn or transcript. A human editor draft is submitted with the text; unobserved dialogs cannot be excluded.
 Submission observation means a token-authenticated UserPromptSubmit passed matching checks
 with a range-checked, caller-supplied relay timestamp at or after the pre-Enter boundary. It assumes
 the same wall clock without adjustments; any holder of the session's hook token can claim a
@@ -61,3 +62,29 @@ for reusable agent instructions; this source does not install or modify a user s
 A custom executable path refuses with `executable_override_unverified` for both providers.
 Remove the override in Settings → agent executable and launch a new agent window with
 the required lifecycle hooks; the running invocation's observation behavior is unchanged.
+
+
+## Read the submitted turn
+
+```sh
+opencove agent prompt --node node-123 --text-file ./prompt.txt
+opencove agent wait --node node-123 --until idle --timeout 2m
+opencove agent read --node node-123 --turn turn-123
+opencove agent read --node node-123 --turn turn-123 -o json
+```
+
+Replace `turn-123` with prompt's returned `turnId`. Reading defaults to message text
+only, even when piped. JSON includes `source: 'hook' | 'transcript'` and `truncated`;
+hook results include `outcome`, which can be failed/aborted/unknown.
+`--turn` uses hook history only. `agent.final_message_unavailable` preserves its
+`details.reason`: `turn_not_ended`, `turn_not_found` (including eviction),
+`provider_sent_no_message`, or `no_ended_turn`. History keeps the last 8 ended turns
+per incarnation in memory; restart or replacement clears it. Correlated local
+Claude hooks currently provide content. Never resend just because reading fails.
+
+Without `--turn`, read tries the latest hook end first and uses transcript fallback
+only for `no_ended_turn` or `provider_sent_no_message`; it never searches older
+hook messages. Present empty hook content is successful. A truncated hook message
+prints one stderr notice pointing to `session final --session <sessionId>` for the
+provider transcript or `agent read --node <selector> --screen` to inspect the screen.
+The retained prefix remains the result; those paths may not contain the rest.

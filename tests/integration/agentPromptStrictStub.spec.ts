@@ -155,7 +155,7 @@ it('compares strict Claude hook prompts through the real receiver and accepted r
       timeoutMs: 15000,
     })
     await vi.waitFor(async () => expect(await f.read(f.hooks)).toHaveLength(2))
-    const [submission] = await f.read(f.hooks)
+    const [submission, ended] = await f.read(f.hooks)
     expect(submission).toMatchObject({ prompt: 'one\ntwo\nthree', prompt_id: 'strict-prompt-1' })
     // Only the socket is replaced: feed the child relay's recorded payload into the HTTP receiver.
     expect(
@@ -170,6 +170,17 @@ it('compares strict Claude hook prompts through the real receiver and accepted r
       phase: 'submission_observed',
       textComparison: 'matched',
       comparisonProfile: 'claude-code-v1',
+      promptId: 'strict-prompt-1',
+    })
+    expect(ended).toMatchObject({
+      prompt_id: 'strict-prompt-1',
+      last_assistant_message: 'Strict reply 1',
+    })
+    expect(
+      await post(reservation.env!.OPENCOVE_CLAUDE_HOOK_TOKEN!, 'Stop', String(Date.now()), ended),
+    ).toBe(204)
+    expect(runtime.registry.finalMessage({ nodeId: 'n', turnId: 'turn' })).toMatchObject({
+      message: 'Strict reply 1',
       promptId: 'strict-prompt-1',
     })
     expect(runtime.write).toHaveBeenCalledTimes(2)

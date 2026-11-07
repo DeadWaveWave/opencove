@@ -17,6 +17,19 @@ const runState = {
 }
 function fixture() {
   const f = identityFixture()
+  const originalFetch = f.io.fetch
+  f.io.fetch = async (url, init) =>
+    JSON.parse(String(init?.body)).id === 'agent.finalMessage'
+      ? new Response(
+          JSON.stringify({
+            ok: false,
+            error: {
+              code: 'agent.final_message_unavailable',
+              details: { reason: 'no_ended_turn' },
+            },
+          }),
+        )
+      : originalFetch(url, init)
   f.values['session.get'] = { nodeId: node.id, sessionId: 'agent-session' }
   f.values['session.presentationSnapshot'] = {
     sessionId: 'agent-session',
