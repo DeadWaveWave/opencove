@@ -43,12 +43,26 @@ async function readHeaderSeamStep(window: Page, node: Locator): Promise<number> 
   }, png.toString('base64'))
 }
 
+/**
+ * A terminal draws on the reading plate only when its xterm is transparent (macOS by default).
+ * Opaque terminals (Windows and Linux by default) and solid windows fill the plate with the
+ * terminal colour, and the header must fade into that colour instead.
+ */
+const TERMINAL_CASES = [
+  { terminalBackground: 'transparent' },
+  { terminalBackground: 'opaque' },
+  { terminalBackground: 'transparent', windowMaterial: 'solid' },
+] as const
+const SEAM_CASES = (['dark', 'light'] as const).flatMap(uiTheme =>
+  TERMINAL_CASES.map(terminal => ({ uiTheme, terminal })),
+)
+
 test.describe('Workspace Canvas - Seamless window header', () => {
   test('header and reading plate meet without a visible line in dark and light', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
-      for (const uiTheme of ['dark', 'light'] as const) {
+      for (const { uiTheme, terminal } of SEAM_CASES) {
         await clearAndSeedWorkspace(
           window,
           [
@@ -86,7 +100,7 @@ test.describe('Workspace Canvas - Seamless window header', () => {
               task: { text: 'Release notes' },
             },
           ],
-          { settings: { uiTheme, ...PIXEL_EFFECTS_DISABLED } },
+          { settings: { uiTheme, ...terminal, ...PIXEL_EFFECTS_DISABLED } },
         )
         await expect
           .poll(() => window.evaluate(() => document.documentElement.dataset.coveTheme ?? null))
@@ -99,11 +113,16 @@ test.describe('Workspace Canvas - Seamless window header', () => {
             :root { --cove-glass-grain-dark: none !important; --cove-glass-grain-light: none !important; }`,
         })
 
-        for (const node of [
-          window.locator('.terminal-node').first(),
-          window.locator('.task-node').first(),
-          window.locator('.note-node').first(),
-        ]) {
+        const terminalNode = window.locator('.terminal-node').first()
+        await expect(terminalNode.locator('[data-cove-part="window-body"]')).toHaveAttribute(
+          'data-cove-terminal-background',
+          terminal.terminalBackground,
+        )
+        const nodes = [terminalNode]
+        if (terminal === TERMINAL_CASES[0]) {
+          nodes.push(window.locator('.task-node').first(), window.locator('.note-node').first())
+        }
+        for (const node of nodes) {
           await expect(node).toBeVisible()
           const body = node.locator('[data-cove-part="window-body"]')
           // The plate is as far from the frame's right edge as from its left (a note's plate is
@@ -119,7 +138,7 @@ test.describe('Workspace Canvas - Seamless window header', () => {
           await expect(body).toHaveCSS('border-top-left-radius', '0px')
           expect(
             await readHeaderSeamStep(window, node),
-            `${uiTheme} ${await node.getAttribute('class')}`,
+            `${uiTheme} ${JSON.stringify(terminal)} ${await node.getAttribute('class')}`,
           ).toBeLessThanOrEqual(4)
         }
       }

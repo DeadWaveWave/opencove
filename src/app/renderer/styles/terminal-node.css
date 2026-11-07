@@ -70,6 +70,15 @@
   background: var(--cove-terminal-background);
 }
 
+/* Where the terminal colour fills the plate, it is the plate: the seamless header fades into it
+   (window-plate.css), with no glare or side lines the opaque terminal would cut off. */
+.terminal-node[data-cove-terminal-background='opaque'],
+:root[data-cove-transparency='reduced'] .terminal-node {
+  --cove-reading-plate: var(--cove-terminal-background);
+  --cove-reading-plate-glare: transparent;
+  --cove-reading-plate-line: transparent;
+}
+
 .terminal-node__terminal:has(.xterm.enable-mouse-events) {
   cursor: default;
 }

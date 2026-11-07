@@ -221,6 +221,7 @@ export function SidebarAgentItemOverlay({
 }): React.JSX.Element {
   return (
     <div
+      data-cove-part="sidebar-agent"
       className="workspace-agent-item workspace-agent-item--sidebar workspace-agent-item--drag-overlay"
       data-testid="workspace-sidebar-drag-overlay"
       data-cove-label-color={item.effectiveLabelColor ?? undefined}
