@@ -151,6 +151,10 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
   }
   for (const [key, spec] of Object.entries(specs)) {
     const file = values[`${key}-file`]
+    if (file !== undefined && values.help) {
+      delete values[`${key}-file`]
+      continue
+    }
     if (file !== undefined) {
       if (values[key] !== undefined) {
         if (command.operation === 'agent.prompt' && key === 'text') {
@@ -250,6 +254,9 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
         'The delivery timeout must be a whole number of milliseconds from 1ms to 60s.',
         'For example, use --timeout 15s or --timeout 15000ms.',
       )
+    }
+    if (command.path.join(' ') === 'agent wait') {
+      usage('Wait timeout minimum is 250ms.')
     }
     usage('Timeout must be positive')
   }

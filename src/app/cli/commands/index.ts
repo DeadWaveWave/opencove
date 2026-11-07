@@ -1,4 +1,6 @@
 import { agentPromptCommand } from './agent'
+import { agentQueryCommands } from './agentQueries'
+import { skillCommand } from '../skill/command'
 import { declaredOutput } from './declaredOutput'
 import { identityCommands } from './identity'
 import { projectListOutput, spaceListOutput, spaceGetOutput } from './outputContracts'
@@ -19,6 +21,8 @@ import { nodeCommands, stringOption } from './nodes'
 export const commands: Command[] = [
   ...identityCommands,
   agentPromptCommand,
+  ...agentQueryCommands,
+  skillCommand,
   ...nodeCommands,
   ...lifecycleCommands,
   ptyAttach,

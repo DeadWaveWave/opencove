@@ -10,8 +10,10 @@ Workspace:
   space    List and inspect project spaces
   node     Create, read, update and delete canvas nodes
   canvas   Focus nodes and spaces on the canvas
+  agent    List, inspect, prompt, wait for and read agents
 
 Introspection:
+  skill    Print the bundled agent usage guide
   whoami   Show your caller identity and permission scope
   context  Orient yourself in a project and space
   api      Discover operations, inspect input schemas and invoke the Control Surface
@@ -52,6 +54,7 @@ Run "opencove <group> --help" for commands in a group.
 Start with "opencove api ops --domains" for a compact domain map.
 Then run "opencove api ops --prefix node --fields id,command" to explore one domain.
 Run "opencove api ops" only when you need the full catalog.
+AI agents: run \`opencove skill\` for a usage guide.
 "
 `;
 
@@ -174,7 +177,7 @@ List canvas nodes
 
 Lists per-kind summaries: data carries kind plus requirement, status, priority and tags for tasks, or url for websites; data carries only kind for notes, agents and terminals. Read full content, such as note text, with "opencove node get --node <id>".
 
-data.status is task status. Top-level status is the runtime status of agent and terminal sessions. STATE shows the applicable status.
+data.status is task status. Top-level status is session lifecycle (for example running or exited) for agents and terminals, not whether an agent is idle or working. STATE shows task status or session lifecycle. Use "opencove agent list" or "opencove agent get --node <selector>" for agent run state; context exposes it as state and keeps lifecycle as sessionStatus.
 
 When no target is given, inside OpenCove defaults to your own space; project options default to your own project.
 

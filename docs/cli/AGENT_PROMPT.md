@@ -31,7 +31,9 @@ Success is JSON with `deliveryId`, `nodeId`, `sessionId`, `phase: submission_obs
 `error.details` dispatch-attempt flags; a server deadline exits 124 and preserves those flags.
 Usage errors exit 2. Local HTTP timeout exits 124; transport loss is outcome unknown.
 
-A human editor draft is submitted with the text; unobserved dialogs cannot be excluded.
+Inspect drafts and dialogs with `opencove agent read --node <selector> --screen`
+before sending. After success, use `opencove agent wait --node <selector> --until idle`,
+then `agent read`. A human editor draft is submitted with the text; unobserved dialogs cannot be excluded.
 Submission observation means a token-authenticated UserPromptSubmit passed matching checks
 with a range-checked, caller-supplied relay timestamp at or after the pre-Enter boundary. It assumes
 the same wall clock without adjustments; any holder of the session's hook token can claim a

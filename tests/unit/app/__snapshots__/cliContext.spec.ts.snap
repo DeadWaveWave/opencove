@@ -5,7 +5,7 @@ exports[`documents context offline 1`] = `
 
 Show your project, space and neighboring nodes
 
-With no explicit target, inside OpenCove defaults to your own space. Terminals outside any space show their project with space: null and no neighbors. Outside OpenCove, provide --space or --project. An explicit project selects its active space. self is your caller identity (null outside OpenCove); project and space describe the target you asked about, which may differ from self. state is task status for tasks, runtime status for sessions, and null for other nodes.
+With no explicit target, inside OpenCove defaults to your own space. Terminals outside any space show their project with space: null and no neighbors. Outside OpenCove, provide --space or --project. An explicit project selects its active space. self is your caller identity (null outside OpenCove); project and space describe the target you asked about, which may differ from self. For agent nodes, state is the Worker run state (idle, working, waiting, exited or unknown) from agent.list; missing observations are unknown, never inferred from lifecycle. sessionStatus preserves the agent session lifecycle (for example running). For tasks, state is task status; for terminals, state remains session lifecycle; for other nodes it is null.
 
 When no project is given, inside OpenCove defaults to your own project.
 
@@ -14,7 +14,7 @@ Options:
   --project <id>  Orient yourself in this project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
-Projectable fields: self, self.caller, self.scope, self.projectId, self.spaceId, self.nodeId, self.sessionId, project, project.id, project.name, project.path, space, space.id, space.name, space.directory, nodes, nodes.id, nodes.kind, nodes.title, nodes.state, next
+Projectable fields: self, self.caller, self.scope, self.projectId, self.spaceId, self.nodeId, self.sessionId, project, project.id, project.name, project.path, space, space.id, space.name, space.directory, nodes, nodes.id, nodes.kind, nodes.title, nodes.state, nodes.sessionStatus, next
 
 Projection example:
   opencove context --space "@self" --fields space.name

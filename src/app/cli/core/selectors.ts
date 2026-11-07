@@ -170,53 +170,58 @@ export async function resolveSelectors(
     if (!command.options?.[kind]?.selector || o[kind] === undefined) {
       continue
     }
-    const selector = String(o[kind])
-    if (selector === '@self') {
-      // Resolution order matters: failure must prevent any later target lookup.
-      // eslint-disable-next-line no-await-in-loop
-      o[kind] = await identity.self(kind)
-      if (explicitProject) {
+    const resolveOne = async (selector: string): Promise<string> => {
+      if (selector === '@self') {
+        // Resolution order matters: failure must prevent any later target lookup.
         // eslint-disable-next-line no-await-in-loop
-        const target = await exactTarget(kind, String(o[kind]), invoke)
+        const ownId = await identity.self(kind)
+        if (explicitProject) {
+          // eslint-disable-next-line no-await-in-loop
+          const target = await exactTarget(kind, ownId, invoke)
+          if (target) {
+            checkProject(kind, selector, target.projectId)
+          }
+        }
+        return ownId
+      }
+      // Lists default to the active project. Probe a full UUID through the global
+      // read operation so an exact ID still works across projects. A UUID-shaped
+      // title may fall through to name resolution when no such ID exists.
+      if (uuidPattern.test(selector)) {
+        // eslint-disable-next-line no-await-in-loop
+        const target = await exactTarget(kind, selector, invoke)
         if (target) {
           checkProject(kind, selector, target.projectId)
+          return selector
         }
       }
-      continue
-    }
-    // Lists default to the active project. Probe a full UUID through the global
-    // read operation so an exact ID still works across projects. A UUID-shaped
-    // title may fall through to name resolution when no such ID exists.
-    if (uuidPattern.test(selector)) {
+      // One list call per selector, without retries or speculative writes.
       // eslint-disable-next-line no-await-in-loop
-      const target = await exactTarget(kind, selector, invoke)
-      if (target) {
-        checkProject(kind, selector, target.projectId)
-        o[kind] = selector
-        continue
-      }
-    }
-    // One list call per selector, without retries or speculative writes.
-    // eslint-disable-next-line no-await-in-loop
-    const project = await scopeProject()
-    // eslint-disable-next-line no-await-in-loop
-    const result = await invoke(kind === 'space' ? 'space.list' : 'node.list', {
-      projectId: project,
-    })
-    const candidates =
-      kind === 'space' ? (result as ListSpacesResult).spaces : (result as ListNodesResult).nodes
-    // Legacy IDs need the same global exact-ID precedence as UUIDs. Only probe
-    // when the list has no exact ID, before accepting a name or a prefix.
-    if (!uuidPattern.test(selector) && !candidates.some(candidate => candidate.id === selector)) {
+      const project = await scopeProject()
       // eslint-disable-next-line no-await-in-loop
-      const target = await exactTarget(kind, selector, invoke)
-      if (target) {
-        checkProject(kind, selector, target.projectId)
-        o[kind] = selector
-        continue
+      const result = await invoke(kind === 'space' ? 'space.list' : 'node.list', {
+        projectId: project,
+      })
+      const candidates =
+        kind === 'space' ? (result as ListSpacesResult).spaces : (result as ListNodesResult).nodes
+      // Legacy IDs need the same global exact-ID precedence as UUIDs. Only probe
+      // when the list has no exact ID, before accepting a name or a prefix.
+      if (!uuidPattern.test(selector) && !candidates.some(candidate => candidate.id === selector)) {
+        // eslint-disable-next-line no-await-in-loop
+        const target = await exactTarget(kind, selector, invoke)
+        if (target) {
+          checkProject(kind, selector, target.projectId)
+          return selector
+        }
       }
+      return match(kind, selector, candidates)
     }
-    o[kind] = match(kind, selector, candidates)
+    const resolved = Array.isArray(o[kind])
+      ? Promise.all((o[kind] as string[]).map(resolveOne))
+      : resolveOne(String(o[kind]))
+    // Space resolution establishes the scope before resolving node selectors.
+    // eslint-disable-next-line no-await-in-loop
+    o[kind] = await resolved
   }
   return identity
 }

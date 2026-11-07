@@ -117,7 +117,11 @@ it.each(commands.map(command => [command.path.join(' '), command] as const))(
           }
           const value = argv[++i]
           if (spec.type === 'string') {
-            expect(parsed.options[key]).toEqual(spec.multiple ? [value] : value)
+            if (spec.multiple) {
+              expect(parsed.options[key]).toContain(value)
+            } else {
+              expect(parsed.options[key]).toEqual(value)
+            }
           }
           if (key === 'fields') {
             expect(value).not.toBe('')

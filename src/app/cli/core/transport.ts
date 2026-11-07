@@ -220,7 +220,7 @@ export async function invoke(
         ? `Could not obtain a delivery result from OpenCove at ${connection.endpoint}. The outcome is unknown.`
         : `OpenCove endpoint ${connection.endpoint} is unreachable.`,
       request.id === 'agent.prompt'
-        ? 'Do not resend. Check the connection and inspect the agent terminal and conversation before retrying.'
+        ? promptUnknownRecovery
         : 'Check the endpoint URL and ensure the OpenCove app or worker is running.',
       { endpoint: connection.endpoint, ...(prompt ? { deliveryOutcome: 'unknown' } : {}) },
     )

@@ -16,6 +16,8 @@ CLI 是 Control Surface client；业务状态由 Worker/application owner 管理
 | `mount` | `list`, `create`, `resolve`, `remove` |
 | `fs` | `read`, `write`, `stat`, `ls`; 可选 `--mount <id>` |
 | `worktree` | `list`, `create`, `archive` |
+| `agent` | `list`, `get`, `prompt`, `wait`, `read` |
+| Agent guide | `skill` (bundled, offline) |
 | `session` | `run-agent`, `get`, `final`, `kill` |
 | `pty` | `spawn-in-mount`, `attach` |
 | `plugin` | `guide`, `list`, `details`, `install`, `install-git`, `source`, `check`, `update`, `apply`, `rollback`, `discover`, `reload`, `enable`, `disable`, `uninstall`, `run`, `skill`, `open`, `windows` |
@@ -48,8 +50,8 @@ Plugin distribution 返回 `failed`/`conflict` 时 exit 1，candidate 结果位�
 | 4 | 认证或授权失败 |
 | 5 | 协议不兼容 |
 | 6 | profile/space 歧义 |
-| 124 | 请求或 PTY 握手超时 |
-| 130 | 中断或 PTY detach |
+| 124 | 请求、agent wait 或 PTY 握手超时 |
+| 130 | 中断（agent wait 关闭流）或 PTY detach |
 
 `pty attach` 是流式例外：stdout 只有原始终端输出，远端退出 0 → CLI 0，其他退出 → CLI 1，Ctrl-C detach → 130。
 `worker start` 前台运行，结束后返回状态 JSON。Windows 通过父进程 IPC 请求 Worker 自身完成 drain 和 lock release；超过共享停止预算才强制终止。
@@ -76,6 +78,119 @@ Space locator 不推断 cwd：使用 `--space`、`--space-name` 或 `--worker` �
 
 CLI 测试先运行 `pnpm build:cli`，再运行 `pnpm exec vitest run tests/unit/app/cli*.spec.ts`。
 测试的 global setup 在系统临时目录重新构建并逐字节校验工作树中的 CLI 产物；产物缺失或过期时拒绝继续，不覆盖工作树，临时构建在成功或失败后都会清理。
+
+## Context state versus session lifecycle
+
+For agent neighbors, `context.nodes[].state` is the Worker run state from
+`agent.list`: idle, working, waiting, exited or unknown. Missing run observations
+are unknown; lifecycle is never used as readiness evidence. `sessionStatus` keeps
+the agent's raw session lifecycle (for example running or exited). Both fields are
+projectable, including `--fields nodes.id,nodes.state,nodes.sessionStatus`.
+Terminals keep lifecycle in state, tasks keep task status, and other nodes use null.
+The live agent.list operation excludes exited sessions; use agent get for a known
+exited node's snapshot. Context reports unknown when that run is absent from list.
+
+`node list` keeps its raw contract: `status` is session lifecycle for agents and
+terminals, `data.status` is task workflow status. Its table's STATE column shows
+one of those raw values. A running session can have an idle agent; use agent
+list/get or context's agent state to distinguish working, waiting and idle.
+
+## Agent orchestration and bundled skill
+
+`opencove skill` prints the version-matched SKILL.md bundled in the CLI, without a
+Worker connection or source checkout. `-o json` returns `{version, content}`. The
+guide covers identity, selectors, the notes/tasks blackboard, prompt recovery,
+waiting, reading, etiquette and exit codes. Start there when coordinating agents.
+
+```sh
+opencove agent list --space @self -o table
+opencove agent get --node "Reviewer" --pretty
+opencove agent read --node "Reviewer" --screen
+opencove agent prompt --node "Reviewer" --text-file ./assignment.txt
+opencove agent wait --node "Reviewer" --until idle --timeout 2m
+opencove agent read --node "Reviewer" --last
+```
+
+All commands have offline `--help`, examples and declared projectable fields.
+Node/Space selectors reuse exact IDs, exact names, unique prefixes and `@self`.
+Inside OpenCove, `agent list` defaults to the caller's Space; explicit `--project`
+selects project scope. `--state working|waiting|idle|exited|unknown` filters the
+Worker's `agent.list`. That operation lists live sessions only, excluding exited
+sessions; get/wait can address a known exited node. An unbound/deleted node's title
+is null. No new Control Surface operations are introduced.
+
+| Command | Output contract | Projection / table |
+| --- | --- | --- |
+| `agent list` | `{epoch, seq, agents: [snapshot + title]}` | Snapshot fields + title; table columns: nodeId, title, provider, state, blockedReason, turn.startedAt, quality |
+| `agent get --node <selector>` | Snapshot + title, or null when no run is registered | Snapshot fields + title; JSON only |
+| `agent wait --node <selector> ... --until <condition>` | `{until, mode, agents: [snapshot]}`; turn-end adds endedTurn and endedTurnOutcome | Snapshot fields + endedTurn/endedTurnOutcome; JSON only |
+| `agent read --node <selector> [--last]` | Plain final-message text; `-o json` keeps `{sessionId, provider, startedAt, cwd, resumeSessionId, message}` | Structured fields with `--fields`; no table |
+| `agent read --node <selector> --screen [--lines <n>]` | Rendered screen text at snapshot cols/rows: cursor spacing and wide cells preserved; trailing spaces/blank rows trimmed, last n rows (default 40); JSON is `{nodeId, sessionId, lines: [...]}` | nodeId, sessionId, lines; no table |
+| `skill` | Plain SKILL.md; `-o json` returns `{version, content}` | version, content; no table |
+
+Snapshot fields are `nodeId`, `sessionId`, `provider`, `state`, `blockedReason`,
+`turn` (id, startedAt, start), `lastTransitionAt`, `source`, `quality`, `turnOutcome`.
+Times are epoch milliseconds. List/get add `title`; wait's `endedTurn` has the same
+shape as `turn`. Projection is item-relative and preserves list envelopes.
+
+Wait defaults to `--all` and a 20s overall timeout. The minimum budget is 250ms;
+smaller budgets fail with usage exit 2 before any connection or selector lookup. Repeat `--node` to select several
+agents; `--any` stops on the first match. For idle/waiting/exited, an already true
+baseline counts; unknown or degraded evidence never satisfies idle. `--all` checks
+current states together; turn-end remembers each new completion. A turn boundary
+can be completed, failed, aborted or unknown: check `endedTurnOutcome` before
+claiming success. The latest snapshot's `turnOutcome` remains unchanged.
+
+The Worker owns run state. The CLI only holds cursor-fenced projections: since
+`agent.get` has no watermark, it brackets fresh get reads with matching `agent.list`
+epoch/seq watermarks, retrying a changing baseline within the overall deadline.
+It subscribes to `/events?stream=agent` from that cursor with one nodeId-filtered
+stream per node. It resumes each accepted cursor after disconnect and ignores
+old/duplicate events. On `resync_required` or epoch change, all streams close and
+all nodes re-baseline; turn-end evidence resets because lost history cannot prove
+a completion. No persistence, provider inference or prompt retry is added.
+
+After `agent prompt`, use `agent wait --node <selector> --until idle`: already-idle
+counts, so a fast completion before wait begins is not missed. `turn-end` remains
+available for observing a future turn boundary after the baseline; historical
+outcomes never satisfy it. Use it only when observation starts during a running
+turn, rather than as the normal post-prompt wait. Timeout exits
+124, leaves stdout empty and includes all last known snapshots in stderr's
+`error.details.lastKnown` (TTY also prints lastKnown). Ctrl-C exits 130 and closes
+streams; neither condition stops the agent. Missing run state is a clear error
+with a start/resume hint.
+
+Transcript read uses `session.finalMessage {nodeId}` and defaults to text even when
+piped. Screen mode uses existing `session.get {nodeId}` then
+`session.presentationSnapshot {sessionId}`, never terminal input. A small virtual
+screen replays cursor movement, CR/LF/BS/TAB and line/display erase at the snapshot
+geometry, with two cells for wide CJK/emoji. It selects the declared normal or
+alternate buffer; SGR, OSC/hyperlinks and unrelated modes are ignored. Output
+contains only the rendered viewport rows, with trailing spaces and blank rows
+removed, then the requested last n rows. `--lines` requires
+`--screen` and a positive whole number; `--last` and `--screen` are mutually exclusive. `--fields` selects structured JSON, as does `-o json`.
+`session.transcript_not_ready` queries agent.get: only working agents are advised
+to wait for idle. An idle agent with a completed turn is told that its provider has
+not written a readable transcript (for example transcript saving disabled), with
+`agent read --screen` as the inspection path and no wait recommendation. Other
+states get screen/provider-setting guidance. Not-found asks you to check the node
+and start/resume its session.
+Both `agent read` and `session final --session <id>` reject null, empty or
+whitespace-only final messages with `session.transcript_not_ready`, exit 1 and the
+same state-aware recovery. The server normalizes blank replies to null and supplies
+no separate empty-reply marker, so a genuine empty reply cannot be distinguished.
+Nonblank replies keep the existing text/JSON output forms.
+Reading can cache a discovered transcript identity under the existing server
+contract. Prompt admission and uncertainty rules are unchanged: never resend
+after stalled/interrupted or transport-unknown delivery. See
+[Prompt delivery](../agent/PROMPT_DELIVERY.md).
+
+Wait uses the condition-wait pattern documented by
+[Kubernetes](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_wait/)
+and UTF-8, multiline-data, comment and newline framing from the
+[HTML SSE standard](https://html.spec.whatwg.org/multipage/server-sent-events.html),
+adapted to OpenCove's explicit epoch/seq query cursors and bearer authentication.
+Fake-stream unit tests exercise these invariants without opening local listeners.
 
 ## 1.1 安装拓扑
 

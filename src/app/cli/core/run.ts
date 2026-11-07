@@ -39,11 +39,12 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
   try {
     const specs = { ...globals, ...Object.assign({}, ...commands.map(c => c.options)) }
     const words = commandWords(argv, specs)
+    const command = commands.find(c => c.path.every((part, i) => words[i] === part))
     promptCommand = words[0] === 'agent' && words[1] === 'prompt'
     const globalOptions = await parseCommand(
       globalArgv(argv, specs),
       {
-        path: [],
+        path: command?.path ?? [],
         summary: '',
         connect: false,
         ...(words[0] === 'agent' && words[1] === 'prompt'
@@ -53,7 +54,6 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       io,
     )
     json = globalOptions.options.output === 'json'
-    const command = commands.find(c => c.path.every((part, i) => words[i] === part))
     if (!command) {
       const parsed = await parseCommand(argv, { path: words, summary: '', connect: false }, io)
       json = parsed.options.output === 'json'
@@ -173,7 +173,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
     for (const [key, spec] of Object.entries(command.options ?? {})) {
       if (
         spec.selector &&
-        args.options[key] === '@self' &&
+        [args.options[key]].flat().includes('@self') &&
         io.env.OPENCOVE_ENV !== '1' &&
         !args.options.token &&
         !io.env.OPENCOVE_CONTROL_TOKEN
@@ -185,7 +185,11 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
     // Selector reads and the final query share a per-run snapshot. A write ends
     // that snapshot so a later read cannot reuse data from before its effects.
     const reads = new Map<string, Promise<unknown>>()
-    const call = async (operationId: OperationId, payload: unknown) => {
+    const call = async (
+      operationId: OperationId,
+      payload: unknown,
+      callOptions?: { fresh?: boolean; signal?: AbortSignal },
+    ) => {
       const op = getControlSurfaceOperation(operationId)!
       if (!connection) {
         throw new CliError('context.unreachable', 3, 'No connection')
@@ -193,7 +197,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       const key = JSON.stringify([operationId, payload])
       if (op.kind === 'command') {
         reads.clear()
-      } else if (reads.has(key)) {
+      } else if (!callOptions?.fresh && reads.has(key)) {
         return reads.get(key)!
       }
       if (operationId === 'agent.prompt') {
@@ -208,17 +212,17 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
               ? Number(args.options.timeout ?? 15000) + 5000
               : Number(args.options.timeout ?? command.timeoutMs ?? 20000),
           fetch: io.fetch,
-          signal: io.signal,
+          signal: callOptions?.signal ?? io.signal,
           errorTargets: command.errorTargets,
           inputOptions: commandForOperation(operationId)?.options,
         },
       )
-      if (op.kind === 'query') {
+      if (op.kind === 'query' && !callOptions?.fresh) {
         reads.set(key, pending)
       }
       return pending
     }
-    const selfSelected = Object.values(args.options).includes('@self')
+    const selfSelected = Object.values(args.options).flat().includes('@self')
     const identity = await resolveSelectors(command, args, io, call)
     input = command.buildInput?.(args)
     const result = command.execute
@@ -236,7 +240,11 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
     if (command.stream) {
       return Number(result)
     }
-    io.stdout.write(render(result, args.options, renderSpec))
+    io.stdout.write(
+      command.textOutput && !args.options.output && args.options.fields === undefined
+        ? command.textOutput(result)
+        : render(result, args.options, renderSpec),
+    )
     return 0
   } catch (error) {
     let cliError =

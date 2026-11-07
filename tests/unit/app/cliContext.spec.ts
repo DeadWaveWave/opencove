@@ -5,6 +5,7 @@ import { identityFixture, who, node, project, space } from './cliIdentity.helper
 
 it('orients a session, excludes self and chooses task versus runtime state', async () => {
   const f = identityFixture()
+  f.values['agent.list'] = { epoch: 'e', seq: 1, agents: [{ nodeId: 'agent', state: 'idle' }] }
   f.values['node.list'] = {
     nodes: [
       node,
@@ -27,7 +28,7 @@ it('orients a session, excludes self and chooses task versus runtime state', asy
     space: { id: space.id, name: space.name, directory: space.directoryPath },
     nodes: [
       { id: 'task', kind: 'task', title: 'Review', state: 'doing' },
-      { id: 'agent', kind: 'agent', title: 'Agent', state: 'running' },
+      { id: 'agent', kind: 'agent', title: 'Agent', state: 'idle', sessionStatus: 'running' },
       { id: 'note', kind: 'note', title: 'Notes', state: null },
     ],
     next: [

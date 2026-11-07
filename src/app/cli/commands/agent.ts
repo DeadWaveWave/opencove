@@ -14,9 +14,9 @@ export const agentPromptCommand = defineCommand({
   summary: 'Paste a prompt and press Enter in a local Claude Code session',
   description: [
     'The agent must have finished a turn that OpenCove observed. This command refuses while the agent is working, waiting for input, or not known to be ready. Use exactly one text source; --text-file - reads stdin. Text must be valid Unicode, nonblank and at most 32 KiB in UTF-8 before newline normalization; trailing newlines are removed.',
-    'This attempts to paste into the current editor; any existing draft may be submitted with it. Check for drafts and dialogs first: unseen dialogs, including one-time settings notices, may consume the input.',
-    'Success (submission_observed) means Claude Code reported a newly submitted prompt after this Enter. It does not prove the model read exactly this text, and the turn may still be running: wait for it with the agent event stream. The exact checks and their trust limits are in docs/agent/PROMPT_DELIVERY.md.',
-    'This command never retries automatically. After an interrupted or uncertain delivery, inspect the agent terminal and conversation. Do not resend a prompt that may already have been submitted.',
+    'This attempts to paste into the current editor; any existing draft may be submitted with it. Run "opencove agent read --node <selector> --screen" to check for drafts and dialogs first: unseen dialogs, including one-time settings notices, may consume the input.',
+    'Success (submission_observed) means Claude Code reported a newly submitted prompt after this Enter. It does not prove the model read exactly this text, and the turn may still be running: wait for it with "opencove agent wait --node <selector> --until idle". The exact checks and their trust limits are in docs/agent/PROMPT_DELIVERY.md.',
+    'This command never retries automatically. After an interrupted or uncertain delivery, inspect the terminal with "opencove agent read --node <selector> --screen" and read the conversation. Do not resend a prompt that may already have been submitted.',
     'Exit codes: 0 submission observed; 1 refused or delivery unconfirmed; 2 invalid input; 124 overall deadline; 130 interrupted. A timeout or interruption does not prove that nothing was sent.',
   ].join('\n\n'),
   options: {

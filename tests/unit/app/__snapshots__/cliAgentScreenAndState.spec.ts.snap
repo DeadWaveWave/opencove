@@ -1,0 +1,21 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`reads the screen as text, stripping ANSI and trailing blank lines before tailing 1`] = `
+"
+  Draft: hello
+Allow?
+"
+`;
+
+exports[`strips OSC hyperlinks, handles Unicode and keeps a JSON screen golden 1`] = `
+"{"nodeId":"node-123456","sessionId":"agent-session","lines":["你好🙂","Ready"]}
+"
+`;
+
+exports[`transcript recovery reflects state idle 1`] = `
+{
+  "code": "session.transcript_not_ready",
+  "hint": "Check whether provider transcript saving is disabled. Inspect the terminal with "opencove agent read --node node-123456 --screen".",
+  "message": "No readable final message is available for this session. The provider has not written a readable transcript for this session.",
+}
+`;
