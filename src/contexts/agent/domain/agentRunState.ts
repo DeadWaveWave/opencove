@@ -106,6 +106,7 @@ export function transitionAgentRun(
   observation: AgentRunObservation | null,
   now: number,
   createTurnId: () => string,
+  supersedeActiveTurn = false,
 ): { model: AgentRunModel; ended: AgentRunSnapshot['turn'] } {
   if (model.snapshot.state === 'exited') {
     return { model, ended: null }
@@ -186,8 +187,10 @@ export function transitionAgentRun(
     accepted &&
     (observation.boundary?.kind === 'start' || inferredStart) &&
     state === 'working' &&
-    !turn
+    (!turn || supersedeActiveTurn)
   ) {
+    // A distinct trustworthy submission proves the prior turn ended, not its outcome.
+    ended = turn
     turn = {
       id: createTurnId(),
       startedAt: observation.observedAt,
@@ -196,7 +199,7 @@ export function transitionAgentRun(
           ? 'inferred'
           : 'observed',
     }
-    turnOutcome = null
+    turnOutcome = ended ? 'unknown' : null
     boundaryAt = observation.observedAt
   } else if (
     turn &&

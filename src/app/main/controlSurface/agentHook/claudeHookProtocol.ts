@@ -1,3 +1,4 @@
+import { claudeFinalMessage } from '../../../../shared/runtime/agentHook/claudeFinalMessage'
 import {
   claudePromptDigest,
   claudePromptId,
@@ -26,6 +27,7 @@ export interface ClaudeHookEnvelope {
   claudeSessionId: string
   promptId?: string
   promptDigest?: string
+  finalMessage?: { message: string; truncated: boolean }
   tool?: {
     name: string
     useId: string | null
@@ -185,7 +187,17 @@ export function normalizeClaudeHookEnvelope(value: unknown): ClaudeHookEnvelope 
     ...(hookEventName === 'UserPromptSubmit'
       ? {
           promptId: claudePromptId(value.prompt_id),
-          promptDigest: claudePromptDigest(value.prompt),
+          promptDigest:
+            value.prompt_truncated === true ? undefined : claudePromptDigest(value.prompt),
+        }
+      : {}),
+    ...(['Stop', 'StopFailure'].includes(hookEventName)
+      ? {
+          promptId: claudePromptId(value.prompt_id),
+          finalMessage: claudeFinalMessage(
+            value.last_assistant_message,
+            value.last_assistant_message_truncated,
+          ),
         }
       : {}),
     ...(toolName

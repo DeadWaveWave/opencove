@@ -1,7 +1,9 @@
+import type { AgentTurnHistory } from './AgentTurnHistory'
 import type { AgentRuntimeFilter, AgentRuntimeEvent } from './AgentRunStateRegistry'
 import type { AgentRunModel } from '../domain/agentRunState'
 import type { RunStateFence } from './ports/PromptDeliveryPorts'
 export type AgentRunEntry = {
+  history: AgentTurnHistory
   model: AgentRunModel
   token: string
   bindingGeneration: number
@@ -50,4 +52,34 @@ export function matchesAgentRunFilter(
     (!filter.projectId || filter.projectId === item.projectId) &&
     (!filter.state || filter.state === item.event.snapshot.state)
   )
+}
+
+export function scheduleRunExpiry(
+  entry: AgentRunEntry,
+  schedule: (callback: () => void, delay: number) => () => void,
+  now: number,
+  update: () => void,
+): void {
+  entry.cancelExpiry?.()
+  entry.cancelExpiry = undefined
+  const deadline = entry.model.nextTransitionAtMs
+  if (deadline === null) {
+    return
+  }
+  let active = true
+  const cancel = schedule(
+    () => {
+      if (!active) {
+        return
+      }
+      active = false
+      entry.cancelExpiry = undefined
+      update()
+    },
+    Math.max(0, deadline - now),
+  )
+  entry.cancelExpiry = () => {
+    active = false
+    cancel()
+  }
 }

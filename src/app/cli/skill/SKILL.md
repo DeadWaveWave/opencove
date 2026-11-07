@@ -83,8 +83,8 @@ opencove agent get --node agent-123
 opencove agent read --node agent-123 --screen
 opencove agent prompt --node agent-123 --text-file ./assignment.txt --timeout 20s
 opencove agent wait --node agent-123 --until idle --timeout 10m
-opencove agent read --node agent-123 --last
-opencove agent read --node agent-123 -o json
+opencove agent read --node agent-123 --turn turn-123
+opencove agent read --node agent-123 --turn turn-123 -o json
 ```
 
 Prompt works only with **agent windows OpenCove launched** (from a task, the agent
@@ -92,6 +92,8 @@ launcher or `node create agent`) running **Claude Code**, or **Codex** with its
 lifecycle hooks, after an observed finished turn. Agents typed into a terminal and
 agent windows started with a custom executable path are refused.
 Newly opened/resumed sessions may need a completed turn first.
+Save the successful prompt's `turnId` (replace `turn-123` above). The normal loop is
+prompt → wait `--until idle` → read `--turn <turnId>`.
 A successful prompt reports `textComparison`: `matched` means Claude Code's reported
 text equals what you sent (newlines and trailing spaces aside); `different` (for
 example a draft was submitted with it) still exits 0 but means stop, inspect with
@@ -152,17 +154,33 @@ opencove agent get --node agent-123 --fields state,quality,turnOutcome
 
 Wait prints all selected snapshots; timeout prints lastKnown on stderr, stdout empty.
 Ctrl-C exits 130 and closes subscriptions. It never stops the target agent.
-Both `agent read` and `session final --session <id>` treat null/empty/whitespace-only
-messages as no readable final message: session.transcript_not_ready, exit 1, with
-the same recovery. The server has no separate marker for a genuine empty reply.
-Read defaults to plain text even when piped. `-o json` or `--fields` keeps structured
-results. For `session.transcript_not_ready`, a working agent can be awaited with
-`agent wait --node <selector> --until idle`, then read again. If it is already idle
-after a completed turn, the provider has not written a readable transcript (for
-example transcript saving is disabled): inspect
-`agent read --node <selector> --screen` and check provider settings; waiting cannot
-create that transcript. Missing conversation: check the selector and session, do not
-prompt just to create readable output. Reading may cache a discovered transcript identity.
+Read tries the latest ended turn's `agent.finalMessage` first. `--turn <turnId>`
+selects exactly the OpenCove turn ID returned by prompt: no prefixes or fallback.
+Hook content, including an empty message, wins. History is private and in memory:
+last 8 ended turns per incarnation; restart/replacement clears it. Hook messages
+currently require correlated local Claude hooks. A finished turn may have failed;
+check JSON `outcome` before claiming success.
+
+Only a read without `--turn` falls back to the transcript when the hook reports
+`no_ended_turn` or `provider_sent_no_message`. Exact-turn reads preserve
+`agent.final_message_unavailable` and `details.reason`: `turn_not_ended` means
+still active, `turn_not_found` means unknown/evicted, `provider_sent_no_message`
+means no correlated content, and `no_ended_turn` means no observed end.
+Do not resend a prompt because its reply is unavailable.
+
+Read defaults to plain message text even when piped. `-o json` or `--fields` keeps
+structured results, including `source: hook|transcript` and `truncated`. Hook JSON
+includes nodeId, sessionId, turnId, optional promptId and outcome; transcript JSON
+keeps provider, startedAt, cwd and resumeSessionId. A truncated hook prefix prints
+one stderr notice: look for the rest with `session final --session <sessionId>`
+(transcript) or `agent read --node <selector> --screen`; no automatic replacement.
+
+Transcript fallback and `session final` reject null/empty/whitespace-only messages
+with `session.transcript_not_ready`, exit 1. If working, wait `--until idle` and read
+again. If already idle after a completed turn, check provider transcript saving
+and inspect `--screen`; waiting cannot create a transcript. Missing conversation:
+check selector/session, do not prompt just to create output. Transcript reads may
+cache a discovered transcript identity.
 
 ## Exit codes and useful output
 

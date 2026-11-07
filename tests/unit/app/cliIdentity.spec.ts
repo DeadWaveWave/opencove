@@ -240,7 +240,12 @@ it.each(targets)(
       f.values['node.get'] = { node: { ...node, kind: 'agent' } }
     }
     f.values['agent.list'] = { epoch: 'e', seq: 1, agents: [] }
-    f.values['session.finalMessage'] = { sessionId: 's', message: 'Done' }
+    f.values['agent.finalMessage'] = {
+      sessionId: 's',
+      message: 'Done',
+      source: 'hook',
+      truncated: false,
+    }
     f.values['agent.get'] = {
       nodeId: node.id,
       sessionId: 's',

@@ -3,6 +3,8 @@ import { createHash } from 'node:crypto'
 export interface PromptSubmissionEvidence {
   promptId?: string
   promptDigest?: string
+  providerSessionId?: string
+  finalMessage?: { message: string; truncated: boolean }
 }
 
 // Private, same-process ingress metadata: never serialized, spread, or added to public DTOs.
@@ -11,7 +13,12 @@ export function setPromptSubmissionEvidence(
   event: object,
   evidence: PromptSubmissionEvidence,
 ): void {
-  evidenceByEvent.set(event, { promptId: evidence.promptId, promptDigest: evidence.promptDigest })
+  evidenceByEvent.set(event, {
+    promptId: evidence.promptId,
+    promptDigest: evidence.promptDigest,
+    providerSessionId: evidence.providerSessionId,
+    finalMessage: evidence.finalMessage,
+  })
 }
 export function getPromptSubmissionEvidence(event: object): PromptSubmissionEvidence | undefined {
   return evidenceByEvent.get(event)

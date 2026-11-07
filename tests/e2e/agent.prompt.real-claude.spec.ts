@@ -48,7 +48,7 @@ function sse(res: ServerResponse, events: Array<Record<string, unknown>>): void 
   res.end()
 }
 
-function reply(res: ServerResponse, body: MessagesRequest, toolUse: boolean): void {
+function reply(res: ServerResponse, body: MessagesRequest, toolUse: boolean, text = 'ACK'): void {
   const model = body.model ?? 'claude-test'
   const usage = { input_tokens: 12, output_tokens: 4 }
   const message = { id: `msg_${Date.now()}`, type: 'message', role: 'assistant', model }
@@ -73,13 +73,13 @@ function reply(res: ServerResponse, body: MessagesRequest, toolUse: boolean): vo
           ],
         }),
       }
-    : { type: 'text_delta', text: 'ACK' }
+    : { type: 'text_delta', text }
   if (!body.stream) {
     res.writeHead(200, { 'content-type': 'application/json' })
     res.end(
       JSON.stringify({
         ...message,
-        content: [{ type: 'text', text: 'ACK' }],
+        content: [{ type: 'text', text }],
         stop_reason: 'end_turn',
         stop_sequence: null,
         usage,
@@ -133,7 +133,14 @@ async function startMessagesApi(): Promise<{
         mainTurns.push(blocks)
       }
       const trigger = blocks.some(block => block.includes('TRIGGER_TOOL'))
-      reply(res, body, isMain && trigger && !hasToolResult(body))
+      // A very long final reply makes the Stop hook body exceed the relay's post limit.
+      const long = isMain && blocks.some(block => block.includes('LONG_REPLY'))
+      reply(
+        res,
+        body,
+        isMain && trigger && !hasToolResult(body),
+        long ? 'L'.repeat(300_000) : 'ACK',
+      )
       return
     }
     res.writeHead(200, { 'content-type': 'application/json' })
@@ -142,6 +149,26 @@ async function startMessagesApi(): Promise<{
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
   const { port } = server.address() as AddressInfo
   return { server, url: `http://127.0.0.1:${port}`, main: () => [...mainTurns] }
+}
+
+async function cli(userDataDir: string, args: string[]) {
+  return await new Promise<{ exitCode: number; stdout: string; stderr: string }>(done => {
+    execFile(
+      process.execPath,
+      [resolvePath('out/cli/opencove.mjs'), ...args],
+      {
+        env: { ...process.env, OPENCOVE_USER_DATA_DIR: userDataDir },
+        timeout: 60_000,
+        maxBuffer: 8 * 1024 * 1024,
+      },
+      (error, stdout, stderr) =>
+        done({
+          exitCode: error ? Number((error as { code?: unknown }).code ?? 1) : 0,
+          stdout,
+          stderr,
+        }),
+    )
+  })
 }
 
 // Drive delivery through the CLI with the desktop credential, as a script outside the app would.
@@ -304,6 +331,38 @@ test.describe('agent.prompt with the real Claude Code CLI', () => {
       )
       expect(final.message).toBe('ACK')
 
+      // The reply comes from the Stop hook of exactly that turn, not from a transcript file.
+      const readTurn = await cli(userDataDir, [
+        'agent',
+        'read',
+        '--node',
+        nodeId,
+        '--turn',
+        JSON.parse(delivered.stdout).turnId,
+      ])
+      expect(readTurn.exitCode, JSON.stringify(readTurn)).toBe(0)
+      expect(readTurn.stdout.trim()).toBe('ACK')
+
+      // A 300 KB reply still ends the turn (the Stop hook must not be dropped) and reads truncated.
+      const long = await prompt(userDataDir, nodeId, 'LONG_REPLY please')
+      expect(long.exitCode, JSON.stringify(long)).toBe(0)
+      await expect.poll(async () => (await snapshot()).state, { timeout: 30_000 }).toBe('idle')
+      const readLong = await cli(userDataDir, [
+        'agent',
+        'read',
+        '--node',
+        nodeId,
+        '--turn',
+        JSON.parse(long.stdout).turnId,
+        '-o',
+        'json',
+      ])
+      expect(readLong.exitCode, JSON.stringify(readLong).slice(0, 400)).toBe(0)
+      const longResult = JSON.parse(readLong.stdout)
+      expect(longResult.truncated).toBe(true)
+      expect(longResult.message.startsWith('LLLL')).toBe(true)
+      expect(longResult.message.length).toBeLessThan(300_000)
+
       // A draft someone left in the editor is submitted together with the prompt: the
       // submission is still observed, but its text is reported as different.
       await window.evaluate(async payload => await window.opencoveApi.pty.write(payload), {
@@ -311,6 +370,7 @@ test.describe('agent.prompt with the real Claude Code CLI', () => {
         data: 'leftover draft ',
       })
       await window.waitForTimeout(500)
+      const turnsBeforeDraft = api.main().length
       const withDraft = await prompt(userDataDir, nodeId, 'Second instruction')
       expect(withDraft.exitCode, JSON.stringify(withDraft)).toBe(0)
       expect(JSON.parse(withDraft.stdout)).toMatchObject({
@@ -318,8 +378,8 @@ test.describe('agent.prompt with the real Claude Code CLI', () => {
         textComparison: 'different',
       })
       expect(withDraft.stderr).toContain('Do not resend')
-      await expect.poll(() => api.main().length, { timeout: 30_000 }).toBe(3)
-      expect(api.main()[2].join('\n')).toContain('leftover draft Second instruction')
+      await expect.poll(() => api.main().length, { timeout: 30_000 }).toBe(turnsBeforeDraft + 1)
+      expect(api.main().at(-1)!.join('\n')).toContain('leftover draft Second instruction')
       await expect.poll(async () => (await snapshot()).state, { timeout: 30_000 }).toBe('idle')
 
       const tool = await prompt(userDataDir, nodeId, 'TRIGGER_TOOL run the probe')

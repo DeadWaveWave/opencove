@@ -26,6 +26,19 @@ const finalMessage = {
 }
 function fixture(inside = false) {
   const f = identityFixture(inside)
+  const originalFetch = f.io.fetch
+  f.io.fetch = async (url, init) =>
+    JSON.parse(String(init?.body)).id === 'agent.finalMessage'
+      ? new Response(
+          JSON.stringify({
+            ok: false,
+            error: {
+              code: 'agent.final_message_unavailable',
+              details: { reason: 'no_ended_turn' },
+            },
+          }),
+        )
+      : originalFetch(url, init)
   f.values['agent.list'] = { epoch: 'e', seq: 5, agents: [snapshot] }
   f.values['agent.get'] = snapshot
   f.values['node.get'] = { node: { ...node, kind: 'agent' } }

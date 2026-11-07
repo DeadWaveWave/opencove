@@ -91,6 +91,7 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'agent.list_models_failed': 'Unable to load models for this provider.',
     'agent.install_failed': 'Unable to install this agent provider.',
     'agent.launch_failed': 'Unable to start the agent.',
+    'agent.final_message_unavailable': 'No retained hook message is available for this turn.',
     'agent.read_last_message_failed': 'Unable to read the last agent message.',
     'agent.resume_session_resolve_failed': 'Unable to resolve the previous agent session.',
     'task.suggest_title_failed': 'Unable to generate task details.',

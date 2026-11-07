@@ -77,32 +77,40 @@ exports[`agent read help is offline and complete 1`] = `
 
 Read an agent reply or inspect its current terminal screen
 
-By default, reads the last final message using session.finalMessage {nodeId}, including restored conversations. --last makes that default explicit. A null, empty or whitespace-only reply exits 1 with session.transcript_not_ready and the same recovery as session final; the server has no distinct empty-reply marker. Plain text goes to stdout even when piped; -o json returns {sessionId, provider, startedAt, cwd, resumeSessionId, message}. --fields also selects structured JSON.
+Reads agent.finalMessage first: the latest observed ended turn, or exactly --turn <turnId> from agent prompt. --turn never uses prefixes, another turn or a transcript fallback. --last makes the latest-turn default explicit and can accompany --turn.
 
-Use --screen before prompting to inspect drafts and dialogs. It resolves the current session, replays its presentation snapshot at its columns/rows, preserving cursor-created spaces, overwrites and wide CJK/emoji cells. It selects the normal or alternate buffer, ignores styling/mode sequences, trims row-end spaces and trailing blank rows, then returns the last --lines rendered rows (default: 40). -o json returns {nodeId, sessionId, lines: [...]}. Screen-mode projectable fields are nodeId, sessionId, lines; the field list below applies to transcript mode. --lines requires --screen; --screen and --last are mutually exclusive. This is a read only snapshot, not permission to answer another agent's dialog.
+Only an unqualified hook read reporting no_ended_turn or provider_sent_no_message falls back to session.finalMessage, including restored conversations. Other errors are preserved. Hook content, including empty or whitespace-only messages, wins. Exact-turn errors use agent.final_message_unavailable with details.reason: turn_not_ended (still active), turn_not_found (unknown/evicted), no_ended_turn, or provider_sent_no_message.
 
-If a completed idle agent has no readable transcript (for example transcript saving is disabled), inspect --screen and check provider settings; waiting cannot create that transcript. A working agent may need to reach idle first. Reading never sends input.
+Plain message text goes to stdout even when piped. -o json or --fields returns structured data: hook results have nodeId, sessionId, turnId, optional promptId, outcome, message, truncated and source: hook; transcript results have sessionId, provider, startedAt, cwd, resumeSessionId, message, truncated: false and source: transcript. A cut hook message prints one stderr notice with transcript/screen recovery commands; it never automatically replaces the retained prefix.
+
+After agent prompt, retain its turnId, run "opencove agent wait --node <selector> --until idle", then "opencove agent read --node <selector> --turn <turnId>". Hook history is private, in memory, and limited to the last 8 ended turns per incarnation; restart or replacement clears it. Hook replies currently require local Claude hooks with correlated prompt IDs.
+
+Use --screen before prompting to inspect drafts and dialogs. It resolves the current session, replays its presentation snapshot at its columns/rows, preserving cursor-created spaces, overwrites and wide CJK/emoji cells. It selects the normal or alternate buffer, ignores styling/mode sequences, trims row-end spaces and trailing blank rows, then returns the last --lines rendered rows (default: 40). -o json returns {nodeId, sessionId, lines: [...]}. Screen-mode projectable fields are nodeId, sessionId, lines; the field list below applies to final-message mode. --lines requires --screen; --screen conflicts with --last and --turn. This is a read only snapshot, not permission to answer another agent's dialog.
+
+If transcript fallback has no readable message, session.transcript_not_ready exits 1. A working agent may need to reach idle first; an idle agent may have transcript saving disabled. Inspect --screen and check provider settings; waiting cannot create a transcript. Reading never sends input.
 
 Options:
   --node <id>         Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
-  --last              Read the last final message (default; no transcript history)
+  --last              Read the latest ended turn (default; --turn selects an exact turn)
+  --turn <turnId>     Read exactly this OpenCove turn ID from agent prompt; never falls back
   --screen            Inspect the current terminal screen as plain text instead of the final message
   --lines <n>         Return the last n screen lines after trimming trailing blank lines (positive integer; default: 40; requires --screen)
   --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
-Projectable fields: sessionId, provider, startedAt, cwd, resumeSessionId, message
+Projectable fields: nodeId, sessionId, turnId, promptId, outcome, message, truncated, source, provider, startedAt, cwd, resumeSessionId
 
 Projection example:
-  opencove agent read --node '<id>' --fields sessionId
-  {"sessionId":"s"}
+  opencove agent read --node '<id>' --fields nodeId
+  {"nodeId":"node-123"}
 
 Examples:
   opencove agent read --node "Reviewer" --screen
   opencove agent read --node "Reviewer" --screen --lines 20 -o json
   opencove agent read --node "Reviewer" --last
-  opencove agent read --node node-123 -o json
+  opencove agent read --node node-123 --turn turn-123
+  opencove agent read --node node-123 --turn turn-123 -o json
 
 Global options: see "opencove --help".
 "
@@ -172,7 +180,7 @@ exports[`lists titles and defaults to the caller space, preserving the cursor en
 `;
 
 exports[`preserves structured results for -o json and --fields 1`] = `
-"{"sessionId":"session-123456","provider":"claude-code","startedAt":"now","cwd":"/repo","resumeSessionId":"r","message":"Review complete.\\n第二行"}
+"{"sessionId":"session-123456","provider":"claude-code","startedAt":"now","cwd":"/repo","resumeSessionId":"r","message":"Review complete.\\n第二行","source":"transcript","truncated":false}
 "
 `;
 

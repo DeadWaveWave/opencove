@@ -1,6 +1,9 @@
+import { AgentTurnHistory, type FinalMessageSelector } from './AgentTurnHistory'
+import { createAppError } from '../../../shared/errors/appError'
 import type { PromptSubmissionEvidence } from '../../../shared/runtime/agentHook/claudePromptEvidence'
 import {
   projectRunStateFence,
+  scheduleRunExpiry,
   matchesAgentRunFilter,
   type AgentRunEntry as Entry,
   type AgentRunBinding as Binding,
@@ -90,6 +93,7 @@ export class AgentRunStateRegistry {
       this.releaseNodeBinding(existing)
     }
     const entry: Entry = {
+      history: new AgentTurnHistory(),
       token: `${input.incarnation}:${++this.tokenSequence}`,
       bindingGeneration: 0,
       cursor: this.fences.nextCursor(),
@@ -189,17 +193,22 @@ export class AgentRunStateRegistry {
     observation: AgentRunObservation | null,
     evidence?: PromptSubmissionEvidence,
   ): void {
+    if (observation && entry.history.rejects(observation, evidence)) {
+      return
+    }
     const result = transitionAgentRun(
       entry.model,
       observation,
       this.ports.now(),
       this.ports.createTurnId,
+      entry.history.supersedes(observation, evidence),
     )
     const accepted =
       observation &&
       result.model !== entry.model &&
       result.model.observations[observation.source] === observation
     const changed = JSON.stringify(result.model.snapshot) !== JSON.stringify(entry.model.snapshot)
+    entry.history.accept(entry.model, result.model, result.ended, observation, evidence)
     entry.model = result.model
     this.scheduleExpiry(entry)
     if (accepted || changed) {
@@ -220,28 +229,18 @@ export class AgentRunStateRegistry {
   }
 
   private scheduleExpiry(entry: Entry): void {
-    entry.cancelExpiry?.()
-    entry.cancelExpiry = undefined
-    const deadline = entry.model.nextTransitionAtMs
-    if (deadline === null) {
-      return
+    scheduleRunExpiry(entry, this.ports.schedule, this.ports.now(), () => this.update(entry, null))
+  }
+
+  finalMessage(input: ({ sessionId: string } | { nodeId: string }) & FinalMessageSelector) {
+    const entry =
+      'sessionId' in input ? this.entries.get(input.sessionId) : this.nodeBindings.get(input.nodeId)
+    if (!entry || entry.remote) {
+      throw createAppError('agent.final_message_unavailable', {
+        details: { reason: 'no_ended_turn' },
+      })
     }
-    let active = true
-    const cancel = this.ports.schedule(
-      () => {
-        if (!active || this.entries.get(entry.model.snapshot.sessionId) !== entry) {
-          return
-        }
-        active = false
-        entry.cancelExpiry = undefined
-        this.update(entry, null)
-      },
-      Math.max(0, deadline - this.ports.now()),
-    )
-    entry.cancelExpiry = () => {
-      active = false
-      cancel()
-    }
+    return entry.history.read(entry.model.snapshot, input)
   }
 
   get(locator: { sessionId: string } | { nodeId: string }): AgentRunSnapshot | null {
