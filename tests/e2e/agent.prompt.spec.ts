@@ -143,6 +143,12 @@ test.describe('agent.prompt from a canvas terminal', () => {
               expect(after.some(entry => entry.kind === 'dialog_bytes')).toBe(false)
               expect((await snapshot()).blockedReason).toBe('permission')
             } else {
+              // The CLI prints compact JSON that the terminal wraps at its width.
+              await expect
+                .poll(async () => (await canvasTerminal.innerText()).replace(/\s+/g, ''))
+                .toContain(
+                  `"textComparison":"${provider === 'claude-code' ? 'matched' : 'unavailable'}"`,
+                )
               expect(added.filter(entry => entry.kind === 'paste')).toEqual([
                 { kind: 'paste', text: 'first line\rsecond line\rthird line' },
               ])

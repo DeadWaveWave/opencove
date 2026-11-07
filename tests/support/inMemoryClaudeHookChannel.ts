@@ -34,18 +34,19 @@ function inMemoryHookChannel(provider: 'claude' | 'codex') {
   })
   return {
     channel,
-    post: async (token: string, event: string, emitted?: string) => {
+    post: async (token: string, event: string, emitted?: string, payload?: unknown) => {
       const request = Object.assign(
         Readable.from([
           JSON.stringify(
-            event === 'notify'
-              ? { version: 1, state: 'done', hookEventName: 'notify', codexSessionId: provider }
-              : {
-                  hook_event_name: event,
-                  session_id: provider,
-                  cwd: '/tmp',
-                  transcript_path: '/tmp/transcript.jsonl',
-                },
+            payload ??
+              (event === 'notify'
+                ? { version: 1, state: 'done', hookEventName: 'notify', codexSessionId: provider }
+                : {
+                    hook_event_name: event,
+                    session_id: provider,
+                    cwd: '/tmp',
+                    transcript_path: '/tmp/transcript.jsonl',
+                  }),
           ),
         ]),
         {

@@ -1,3 +1,5 @@
+import type { PromptSubmissionEvidence } from '../../../shared/runtime/agentHook/claudePromptEvidence'
+import type { AgentRunObservation } from '../domain/agentRunState'
 import type { RunStateFence, RunStateReceipt } from './ports/PromptDeliveryPorts'
 
 /** Internal accepted-receipt stream, independent of public snapshot transitions. */
@@ -103,5 +105,23 @@ export class AgentRunStateFences {
     }
     this.listeners.clear()
     this.history.clear()
+  }
+}
+
+/** Called only after the reducer accepts an observation; content never enters its model. */
+export function acceptedRunStateReceipt(
+  observation: AgentRunObservation,
+  turnId: string | undefined,
+  evidence?: PromptSubmissionEvidence,
+): Omit<RunStateReceipt, 'fence'> {
+  return {
+    source: observation.source,
+    hookEventName: observation.hookEventName,
+    emittedAtMs: observation.emittedAtMs,
+    sourceSequence: observation.sourceSequence,
+    turnId,
+    ...(observation.source === 'claude_hook' && observation.hookEventName === 'UserPromptSubmit'
+      ? { promptId: evidence?.promptId, promptDigest: evidence?.promptDigest }
+      : {}),
   }
 }

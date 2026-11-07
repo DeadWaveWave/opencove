@@ -297,6 +297,7 @@ it.each(targets)(
         nodeId: node.id,
         sessionId: 'session',
         phase: 'submission_observed',
+        textComparison: 'unavailable',
         turnId: 'turn',
       }
     }

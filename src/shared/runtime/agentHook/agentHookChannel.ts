@@ -1,3 +1,4 @@
+import { setPromptSubmissionEvidence, type PromptSubmissionEvidence } from './claudePromptEvidence'
 import { parseHookEmittedAt } from './hookEmittedAt'
 import { randomBytes } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server } from 'node:http'
@@ -13,7 +14,7 @@ import type { AgentSessionIdentityObservation } from '../../contracts/dto/agentS
 
 const MAX_HOOK_BODY_BYTES = 256 * 1024
 
-export interface AgentHookEnvelope {
+export interface AgentHookEnvelope extends PromptSubmissionEvidence {
   emittedAtMs?: number
   hookEventName?: string
   tool?: { name: string }
@@ -185,6 +186,12 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
               : {}),
         hookInstallState: installState,
         ...observation?.stateMetadata,
+      }
+      if (options.source === 'claude_hook' && envelope.hookEventName === 'UserPromptSubmit') {
+        setPromptSubmissionEvidence(event, {
+          promptId: envelope.promptId,
+          promptDigest: envelope.promptDigest,
+        })
       }
       listeners.forEach(listener => listener(event))
     }

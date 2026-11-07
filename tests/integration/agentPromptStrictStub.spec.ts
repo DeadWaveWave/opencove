@@ -1,3 +1,5 @@
+import { inMemoryClaudeHookChannel } from '../support/inMemoryClaudeHookChannel'
+import { promptDeliveryRuntimeFixture } from '../support/promptDeliveryRuntimeFixture'
 import { normalizeClaudeHookEnvelope } from '../../src/app/main/controlSurface/agentHook/claudeHookProtocol'
 // @vitest-environment node
 import { spawn } from 'node:child_process'
@@ -134,6 +136,47 @@ it('strict dialog records zero received bytes and fails on any subsequent byte',
     expect(await f.exit).toBe(1)
     expect(await f.read(f.record)).toContainEqual({ kind: 'dialog_bytes', bytes: 1 })
   } finally {
+    await f.cleanup()
+  }
+})
+
+it('compares strict Claude hook prompts through the real receiver and accepted receipt', async () => {
+  const f = await fixture()
+  const runtime = promptDeliveryRuntimeFixture()
+  const { channel, post } = inMemoryClaudeHookChannel()
+  const reservation = await channel.reserveSpawn()
+  reservation.commit('s')
+  const stop = channel.onState(event => runtime.hub.registerSessionAgentState(event))
+  runtime.write.mockImplementation((_sessionId, text) => f.child.stdin.write(text))
+  try {
+    const pending = runtime.service.deliver({
+      nodeId: 'n',
+      text: 'one\ntwo\nthree\n',
+      timeoutMs: 15000,
+    })
+    await vi.waitFor(async () => expect(await f.read(f.hooks)).toHaveLength(2))
+    const [submission] = await f.read(f.hooks)
+    expect(submission).toMatchObject({ prompt: 'one\ntwo\nthree', prompt_id: 'strict-prompt-1' })
+    // Only the socket is replaced: feed the child relay's recorded payload into the HTTP receiver.
+    expect(
+      await post(
+        reservation.env!.OPENCOVE_CLAUDE_HOOK_TOKEN!,
+        'UserPromptSubmit',
+        String(Date.now()),
+        submission,
+      ),
+    ).toBe(204)
+    expect(await pending).toMatchObject({
+      phase: 'submission_observed',
+      textComparison: 'matched',
+      comparisonProfile: 'claude-code-v1',
+      promptId: 'strict-prompt-1',
+    })
+    expect(runtime.write).toHaveBeenCalledTimes(2)
+  } finally {
+    stop()
+    runtime.dispose()
+    await channel.dispose()
     await f.cleanup()
   }
 })

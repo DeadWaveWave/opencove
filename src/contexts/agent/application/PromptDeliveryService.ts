@@ -1,3 +1,7 @@
+import {
+  claudePromptDigest,
+  claudePromptId,
+} from '../../../shared/runtime/agentHook/claudePromptEvidence'
 import { canonicalizePromptText } from '../domain/promptText'
 import { createAppError } from '../../../shared/errors/appError'
 import type { AgentPromptErrorDetails, AppErrorCode } from '../../../shared/contracts/dto/error'
@@ -14,13 +18,8 @@ export interface PromptDeliveryRequest {
   text: string
   timeoutMs: number
 }
-export interface PromptDeliveryResult {
-  deliveryId: string
-  nodeId: string | null
-  sessionId: string
-  phase: 'submission_observed'
-  turnId: string
-}
+export type { AgentPromptResult as PromptDeliveryResult } from '../../../shared/contracts/dto/agentPrompt'
+import type { AgentPromptResult as PromptDeliveryResult } from '../../../shared/contracts/dto/agentPrompt'
 /** Volatile delivery intent owner. No retries, renderer state, transport, or PTY dependencies. */
 export class PromptDeliveryService {
   private disposed = false
@@ -33,6 +32,7 @@ export class PromptDeliveryService {
     caller: { assertActive?: () => void; signal?: AbortSignal } = {},
   ): Promise<PromptDeliveryResult> {
     const text = canonicalizePromptText(request.text)
+    const expectedDigest = claudePromptDigest(text)
     const deadline = this.ports.now() + request.timeoutMs
     const locator = request.nodeId ? { nodeId: request.nodeId } : { sessionId: request.sessionId! }
     const initial = this.ports.runs.readFence(locator)
@@ -175,6 +175,20 @@ export class PromptDeliveryService {
             sessionId: admitted.snapshot.sessionId,
             phase: 'submission_observed',
             turnId: r.turnId,
+            textComparison:
+              admitted.snapshot.provider !== 'claude-code' ||
+              typeof r.promptDigest !== 'string' ||
+              !/^[a-f0-9]{64}$/.test(r.promptDigest)
+                ? 'unavailable'
+                : r.promptDigest === expectedDigest
+                  ? 'matched'
+                  : 'different',
+            ...(admitted.snapshot.provider === 'claude-code'
+              ? {
+                  comparisonProfile: 'claude-code-v1' as const,
+                  promptId: claudePromptId(r.promptId),
+                }
+              : {}),
           })
         }
       }

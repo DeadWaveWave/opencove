@@ -1,3 +1,4 @@
+import type { PromptSubmissionEvidence } from '../../../../shared/runtime/agentHook/claudePromptEvidence'
 import type { AgentRunTurnEnd } from '../../domain/agentRunState'
 import type { AgentRunSnapshot } from '../../../../shared/contracts/dto/agentRunState'
 import type {
@@ -20,7 +21,7 @@ export interface RunStateFence {
   hookCoverage?: AgentHookCoverage
   hookInstallState?: AgentHookInstallState
 }
-export interface RunStateReceipt {
+export interface RunStateReceipt extends PromptSubmissionEvidence {
   fence: RunStateFence | null
   source?: string
   emittedAtMs?: number

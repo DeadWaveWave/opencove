@@ -1,3 +1,4 @@
+import { getPromptSubmissionEvidence } from '../../../shared/runtime/agentHook/claudePromptEvidence'
 import type {
   AgentProviderId,
   AgentHookInstallState,
@@ -321,25 +322,29 @@ export class AgentRunStateRuntime {
     if (!event.observationUnavailable) {
       session.rawStates = { ...session.rawStates, [event.source ?? 'session_file']: event.state }
     }
-    this.registry.observe(event.sessionId, {
-      incarnation: session.incarnation,
-      sourceSequence: ++session.sequence,
-      source: event.source ?? 'session_file',
-      observedAt: event.observedAtMs ?? this.now(),
-      state: event.observationUnavailable
-        ? 'unknown'
-        : event.state === 'standby'
-          ? 'idle'
-          : event.state,
-      degraded:
-        event.degraded ||
-        (session.hookInstallState !== undefined &&
-          ['partial', 'error', 'not_installed', 'skipped'].includes(session.hookInstallState)),
-      blockedReason: event.blockedReason,
-      boundary,
-      hookEventName: name,
-      emittedAtMs: event.emittedAtMs,
-    })
+    this.registry.observe(
+      event.sessionId,
+      {
+        incarnation: session.incarnation,
+        sourceSequence: ++session.sequence,
+        source: event.source ?? 'session_file',
+        observedAt: event.observedAtMs ?? this.now(),
+        state: event.observationUnavailable
+          ? 'unknown'
+          : event.state === 'standby'
+            ? 'idle'
+            : event.state,
+        degraded:
+          event.degraded ||
+          (session.hookInstallState !== undefined &&
+            ['partial', 'error', 'not_installed', 'skipped'].includes(session.hookInstallState)),
+        blockedReason: event.blockedReason,
+        boundary,
+        hookEventName: name,
+        emittedAtMs: event.emittedAtMs,
+      },
+      getPromptSubmissionEvidence(event),
+    )
   }
 
   exit(sessionId: string): void {
