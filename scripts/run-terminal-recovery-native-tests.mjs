@@ -4,14 +4,21 @@ import { spawnSync } from 'node:child_process'
 import path from 'node:path'
 import electronPath from 'electron'
 
-const tests = [
-  'tests/contract/platform/persistenceStore.revision.native.spec.ts',
-  'tests/contract/platform/managedRuntime.native.spec.ts',
-  'tests/contract/controlSurface/controlSurfaceHttpServer.nodeWorkerBindingRecovery.spec.ts',
-  'tests/contract/controlSurface/controlSurfaceHttpServer.remoteTerminalRecovery.spec.ts',
-  'tests/contract/controlSurface/controlSurfaceHttpServer.terminalRecovery.spec.ts',
-  'tests/contract/platform/terminalRecovery.multiEpoch.spec.ts',
+const workerOwnershipTests = [
+  'tests/unit/app/worker.singleInstanceLock.spec.ts',
+  'tests/integration/worker/workerOwnerLock.spec.ts',
 ]
+const tests = process.argv.includes('--worker-ownership')
+  ? workerOwnershipTests
+  : [
+      ...workerOwnershipTests,
+      'tests/contract/platform/persistenceStore.revision.native.spec.ts',
+      'tests/contract/platform/managedRuntime.native.spec.ts',
+      'tests/contract/controlSurface/controlSurfaceHttpServer.nodeWorkerBindingRecovery.spec.ts',
+      'tests/contract/controlSurface/controlSurfaceHttpServer.remoteTerminalRecovery.spec.ts',
+      'tests/contract/controlSurface/controlSurfaceHttpServer.terminalRecovery.spec.ts',
+      'tests/contract/platform/terminalRecovery.multiEpoch.spec.ts',
+    ]
 const result = spawnSync(
   electronPath,
   [path.resolve('node_modules/vitest/vitest.mjs'), '--run', ...tests],

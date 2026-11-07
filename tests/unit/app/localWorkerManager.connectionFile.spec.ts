@@ -1,3 +1,6 @@
+vi.mock('../../../src/platform/process/workerOwnerLock', () => ({
+  acquireWorkerOwnerLock: () => ({ status: 'acquired', release: () => {} }),
+}))
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { EventEmitter } from 'node:events'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
@@ -80,7 +83,6 @@ vi.mock('../../../src/app/main/controlSurface/runtimeAppVersion', () => ({
 
 import {
   getLocalWorkerStatus,
-  repairStaleLocalWorkerFiles,
   startLocalWorker,
   stopOwnedLocalWorker,
 } from '../../../src/app/main/worker/localWorkerManager'
@@ -334,28 +336,6 @@ describe('local worker manager connection file', () => {
     })
   })
 
-  it('removes stale connection and lock files during repair', async () => {
-    const dir = await createTempUserDataDir()
-    const staleInfo = createConnectionInfo({ pid: 999_999, port: 4321 })
-    await writeFile(
-      resolve(dir, WORKER_CONTROL_SURFACE_CONNECTION_FILE),
-      `${JSON.stringify(staleInfo)}\n`,
-      'utf8',
-    )
-    await writeFile(
-      resolve(dir, 'opencove-worker.lock'),
-      `${JSON.stringify({ pid: process.pid, createdAt: new Date(0).toISOString() })}\n`,
-      'utf8',
-    )
-
-    await repairStaleLocalWorkerFiles(dir, 999_999)
-
-    await expect(readFile(resolve(dir, 'opencove-worker.lock'), 'utf8')).rejects.toBeDefined()
-    await expect(
-      readFile(resolve(dir, WORKER_CONTROL_SURFACE_CONNECTION_FILE), 'utf8'),
-    ).rejects.toBeDefined()
-  })
-
   it('repairs legacy worker files before starting a replacement worker', async () => {
     const dir = await createTempUserDataDir()
     const legacyInfo = createConnectionInfo({
@@ -384,7 +364,7 @@ describe('local worker manager connection file', () => {
     )
 
     expect(fetchMock).not.toHaveBeenCalled()
-    await expect(readFile(resolve(dir, 'opencove-worker.lock'), 'utf8')).rejects.toBeDefined()
+    expect(await readFile(resolve(dir, 'opencove-worker.lock'), 'utf8')).toContain('999999')
     await expect(
       readFile(resolve(dir, WORKER_CONTROL_SURFACE_CONNECTION_FILE), 'utf8'),
     ).rejects.toBeDefined()
@@ -454,7 +434,7 @@ describe('local worker manager connection file', () => {
       expect.objectContaining({ status: 'running' }),
     ])
     expect(concurrentStart).toBe(firstStart)
-    expect(removeConnectionFileMock).toHaveBeenCalledTimes(2)
+    expect(removeConnectionFileMock).toHaveBeenCalledTimes(1)
     expect(spawnMock).toHaveBeenCalledTimes(2)
   })
 

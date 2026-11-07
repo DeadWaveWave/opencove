@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { describeWithElectronNativeModules } from '../../contract/electronNativeSuite'
+import { afterEach, expect, it } from 'vitest'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -6,7 +7,7 @@ import { acquireWorkerSingleInstanceLock } from '../../../src/app/worker/singleI
 
 const LOCK_FILE_NAME = 'opencove-worker.lock'
 
-describe('acquireWorkerSingleInstanceLock', () => {
+describeWithElectronNativeModules('acquireWorkerSingleInstanceLock', () => {
   let userDataDir: string | null = null
 
   afterEach(async () => {

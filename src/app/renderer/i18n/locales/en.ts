@@ -41,6 +41,10 @@ export const en = {
   ...enCommandCenter,
   ...enSpaceCollapse,
   common: {
+    workerStopNotOwned:
+      'This Worker was started outside OpenCove Desktop. Stop it where it was started, for example with opencove worker stop.',
+    workerExternalOwnerUnreachable:
+      'Another Worker owns this data directory but is unreachable or incompatible. Stop it explicitly before retrying.',
     actions: 'Actions',
     back: 'Back',
     closeShortcutSelectWindow: 'Select the window you want to close.',

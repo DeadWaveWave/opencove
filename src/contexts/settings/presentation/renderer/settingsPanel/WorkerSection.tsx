@@ -4,7 +4,8 @@ import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { useTranslation } from '@app/renderer/i18n'
 import type { CliPathStatusResult, HomeWorkerMode, WorkerStatusResult } from '@shared/contracts/dto'
 import { SettingsGroup, SettingsGroupBody, SettingsModule } from './SettingsGroup'
-import { formatToken, toBaseUrl, toErrorMessage } from './workerSectionUtils'
+import { formatToken, toBaseUrl } from './workerSectionUtils'
+import { toErrorMessage } from '@app/renderer/shell/utils/format'
 
 export function WorkerSection(): React.JSX.Element {
   const { t } = useTranslation()

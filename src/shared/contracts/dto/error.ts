@@ -5,6 +5,8 @@ export const APP_ERROR_CODES = [
   'common.unavailable',
   'common.unexpected',
   'worker.unavailable',
+  'worker.stop_not_owned',
+  'worker.external_owner_unreachable',
   'endpoint.operation_in_progress',
   'space.not_found',
   'space.ambiguous',

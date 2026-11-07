@@ -1,3 +1,6 @@
+vi.mock('../../../src/platform/process/workerOwnerLock', () => ({
+  acquireWorkerOwnerLock: () => ({ status: 'acquired', release: () => {} }),
+}))
 import { afterEach, expect, it, vi } from 'vitest'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'

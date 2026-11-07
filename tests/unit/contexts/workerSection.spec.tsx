@@ -1,7 +1,11 @@
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createAppError } from '@shared/errors/appError'
+import { applyUiLanguage } from '@app/renderer/i18n'
 import { WorkerSection } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/WorkerSection'
+import { en } from '../../../src/app/renderer/i18n/locales/en'
+import { zhCN } from '../../../src/app/renderer/i18n/locales/zh-CN'
 
 function installWorkerApi(
   mode: 'standalone' | 'local' | 'remote',
@@ -52,9 +56,42 @@ function installWorkerApi(
 }
 
 describe('WorkerSection', () => {
-  afterEach(() => {
+  afterEach(async () => {
+    await applyUiLanguage('en')
     delete (window as { opencoveApi?: unknown }).opencoveApi
     vi.restoreAllMocks()
+  })
+
+  it.each([
+    ['en', 'worker.stop_not_owned', en.common.workerStopNotOwned],
+    ['zh-CN', 'worker.stop_not_owned', zhCN.common.workerStopNotOwned],
+    ['en', 'worker.external_owner_unreachable', en.common.workerExternalOwnerUnreachable],
+    ['zh-CN', 'worker.external_owner_unreachable', zhCN.common.workerExternalOwnerUnreachable],
+  ] as const)('shows %s text for %s', async (language, code, message) => {
+    await applyUiLanguage(language)
+    installWorkerApi('local')
+    vi.mocked(window.opencoveApi.worker.getStatus).mockResolvedValue({
+      status: 'running',
+      connection: {
+        version: 1,
+        pid: 12345,
+        hostname: '127.0.0.1',
+        port: 4321,
+        token: 'test',
+        createdAt: 'test',
+        appVersion: 'test',
+        startedBy: 'cli',
+      },
+    })
+    vi.mocked(window.opencoveApi.worker.stop).mockRejectedValue(
+      language === 'en' ? createAppError(code) : { code },
+    )
+    render(<WorkerSection />)
+    const button = await screen.findByTestId('settings-worker-local-stop')
+    await waitFor(() => expect(button).toBeEnabled())
+    fireEvent.click(button)
+    expect(await screen.findByText(message)).toBeVisible()
+    expect(window.opencoveApi.worker.stop).toHaveBeenCalledTimes(1)
   })
 
   it('explains unavailable local control without changing the session configuration', async () => {

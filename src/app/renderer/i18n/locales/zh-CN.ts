@@ -41,6 +41,10 @@ export const zhCN = {
   ...zhCNCommandCenter,
   ...zhCNSpaceCollapse,
   common: {
+    workerStopNotOwned:
+      '这个 Worker 不是由 OpenCove Desktop 启动的，请在启动它的地方停止，例如运行 opencove worker stop。',
+    workerExternalOwnerUnreachable:
+      '另一个 Worker 正在使用这个数据目录，但无法连接或版本不兼容。请先停止那个 Worker，再重试。',
     actions: '操作',
     back: '返回',
     closeShortcutSelectWindow: '请选择要关闭的窗口。',
