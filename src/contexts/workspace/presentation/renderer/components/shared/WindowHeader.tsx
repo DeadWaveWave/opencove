@@ -50,7 +50,17 @@ export function WindowHeader({
   close: WindowHeaderClose
   onPointerDownCapture?: (event: React.PointerEvent<HTMLElement>) => void
 }): React.JSX.Element {
-  const commitProbeRef = useWindowCommitProbe(kind)
+  const commitProbeRef = useWindowCommitProbe(kind, {
+    className,
+    kind,
+    labelColor,
+    icon,
+    title,
+    status,
+    actions,
+    close,
+    onPointerDownCapture,
+  })
   return (
     <header
       ref={commitProbeRef}
