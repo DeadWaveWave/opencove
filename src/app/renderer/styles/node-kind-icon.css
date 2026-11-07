@@ -7,18 +7,10 @@
   pointer-events: none;
 }
 
-/* The provider glyph sits on the header's kind tile, which sizes it. */
-.terminal-node__header .agent-provider-icon.cove-node-provider-icon {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  pointer-events: none;
-}
-
-.terminal-node__header .cove-node-provider-icon .agent-provider-icon__svg,
-.terminal-node__header .cove-node-provider-icon .agent-provider-icon__image {
-  width: 100%;
-  height: 100%;
+/* Kind tiles and far tiles colour their icon by window kind. */
+.cove-kind-tile > .cove-node-kind-icon,
+.workspace-far-tile__icon > .cove-node-kind-icon {
+  color: inherit;
 }
 
 .agent-provider-icon__monogram {

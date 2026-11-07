@@ -23,7 +23,7 @@
 
 .cove-window-header
   > .cove-window-header__tile
-  > :is(svg, img, .cove-node-kind-icon, .cove-node-provider-icon, [data-cove-part='icon']) {
+  > :is(svg, img, .cove-node-kind-icon, [data-cove-part='icon']) {
   flex: none;
   width: var(--cove-window-header-glyph-size);
   height: var(--cove-window-header-glyph-size);

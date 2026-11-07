@@ -1,3 +1,4 @@
+import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { AgentRuntimeObservation, AgentRuntimeStatus, TerminalNodeData } from '../types'
 import { canObserveAgentRunState } from './agentRuntimeObservation'
 
@@ -28,4 +29,15 @@ export function resolveAgentPresentation(data: TerminalNodeData): {
     status: observation?.status ?? data.agentOverlay?.status ?? data.status,
     observation,
   }
+}
+
+/** The provider whose mark a window shows, or null when it doesn't present as an Agent. */
+export function resolveAgentPresentationProvider(data: TerminalNodeData): AgentProvider | null {
+  if (data.kind === 'agent') {
+    return data.agent?.provider ?? null
+  }
+  if (!resolveAgentPresentation(data).isAgent) {
+    return null
+  }
+  return data.agentOverlay?.provider ?? data.terminalAgentBinding?.provider ?? null
 }

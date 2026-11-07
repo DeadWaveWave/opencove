@@ -155,20 +155,6 @@
   height: var(--cove-compact-icon-size);
 }
 
-.cove-collapsed-window__icon > .agent-provider-icon {
-  width: var(--cove-compact-icon-size);
-  height: var(--cove-compact-icon-size);
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: inherit;
-}
-
-.cove-collapsed-window__icon .agent-provider-icon > :is(svg, img) {
-  width: var(--cove-compact-icon-size);
-  height: var(--cove-compact-icon-size);
-}
-
 .cove-collapsed-window__title-slot {
   display: flex;
   justify-content: center;

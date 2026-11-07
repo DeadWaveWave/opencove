@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { fireEvent, render } from '@testing-library/react'
 import { ReactFlowProvider } from '@xyflow/react'
 import { describe, expect, it, vi } from 'vitest'
+import type { AgentProvider } from '../../../src/contexts/settings/domain/agentSettings'
 import { NodeKindIcon } from '../../../src/contexts/workspace/presentation/renderer/components/shared/NodeKindIcon'
 import { TerminalNodeHeader } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/TerminalNodeHeader'
 import { ImageNode } from '../../../src/contexts/workspace/presentation/renderer/components/ImageNode'
@@ -44,6 +45,63 @@ describe('node kind decoration', () => {
       expect(icon).toHaveAttribute('data-cove-pixel-glyph', kind === 'agent' ? 'ai' : kind)
       expect(icon).toHaveAttribute('data-cove-kind', kind)
       expect(icon).toHaveClass('cove-node-kind-icon', 'cove-pixel-glyph')
+    }
+  })
+
+  it('draws an agent with a known provider as its brand mark and other cases as pixel glyphs', () => {
+    const { container } = render(
+      <>
+        <NodeKindIcon kind="agent" provider="kimi" />
+        <NodeKindIcon kind="agent" provider={null} />
+        <NodeKindIcon kind="agent" provider={'retired-cli' as AgentProvider} />
+        <NodeKindIcon kind="terminal" provider="codex" />
+      </>,
+    )
+    const [kimi, unknown, retired, terminal] = Array.from(container.querySelectorAll('svg'))
+    expect(kimi).toHaveAttribute('data-agent-provider', 'kimi')
+    expect(kimi).toHaveAttribute('data-cove-node-kind-icon', 'agent')
+    expect(kimi).toHaveAttribute('data-cove-kind', 'agent')
+    expect(kimi).toHaveAttribute('data-cove-part', 'icon')
+    expect(container.querySelector('img')).toBeNull()
+    expect(unknown).toHaveAttribute('data-cove-pixel-glyph', 'ai')
+    expect(retired).toHaveAttribute('data-cove-pixel-glyph', 'ai')
+    expect(retired).not.toHaveAttribute('data-agent-provider')
+    expect(terminal).toHaveAttribute('data-cove-pixel-glyph', 'terminal')
+    expect(terminal).not.toHaveAttribute('data-agent-provider')
+  })
+
+  it('takes the kind colour from kind tiles and far tiles', () => {
+    const style = document.createElement('style')
+    style.textContent = [
+      'src/app/renderer/styles/ui-badges.css',
+      'src/app/renderer/styles/node-kind-icon.css',
+    ]
+      .map(path => readFileSync(path, 'utf8'))
+      .join('\n')
+    document.head.append(style)
+    try {
+      const { container } = render(
+        <div style={{ ['--cove-text-muted' as string]: 'rgb(9, 9, 9)' }}>
+          <span className="cove-kind-tile" style={{ color: 'rgb(1, 2, 3)' }}>
+            <NodeKindIcon kind="agent" provider="codex" />
+          </span>
+          <span className="workspace-far-tile__icon" style={{ color: 'rgb(4, 5, 6)' }}>
+            <NodeKindIcon kind="note" />
+          </span>
+          <NodeKindIcon kind="task" />
+        </div>,
+      )
+      // Happy DOM reports a cascaded `inherit` as written.
+      const colour = (element: Element): string => {
+        const value = getComputedStyle(element).color
+        return value === 'inherit' ? getComputedStyle(element.parentElement!).color : value
+      }
+      const [brand, glyph, bare] = Array.from(container.querySelectorAll('.cove-node-kind-icon'))
+      expect(colour(brand)).toBe('rgb(1, 2, 3)')
+      expect(colour(glyph)).toBe('rgb(4, 5, 6)')
+      expect(colour(bare)).toBe('rgb(9, 9, 9)')
+    } finally {
+      style.remove()
     }
   })
 

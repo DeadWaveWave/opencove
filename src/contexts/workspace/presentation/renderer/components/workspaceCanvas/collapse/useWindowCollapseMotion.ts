@@ -3,8 +3,8 @@ import type { Size } from '../../../types'
 import { readThemeTransition } from '@contexts/plugins/presentation/renderer/themeMotion'
 import { canAnimateCollapse, canvasScale, createCollapseAnimationGroup } from './collapseMotion'
 
-const HEADER_ICON = '.cove-node-kind-icon, .cove-node-provider-icon'
-const GLYPH = 'svg, img, .agent-provider-icon__monogram'
+const HEADER_ICON = '.cove-node-kind-icon'
+const GLYPH = 'svg, img'
 const HEADER_TEXT =
   '.node-title-editor__display, .document-node__title-text, .role-node__title, .cove-canvas-node-window__title'
 

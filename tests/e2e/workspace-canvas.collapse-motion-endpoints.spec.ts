@@ -42,9 +42,10 @@ for (const { kind, title, fontScale } of cases) {
       const node = window.locator(terminalSelector)
       if (kind === 'agent') {
         await expect(node.getByTestId('terminal-node-title-display')).toHaveText('Review')
-        await expect(
-          node.locator('.terminal-node__header [data-cove-pixel-glyph="ai"]'),
-        ).toBeVisible()
+        const icon = node.locator('.terminal-node__header [data-cove-node-kind-icon="agent"]')
+        await expect(icon).toBeVisible()
+        await expect(icon).toHaveAttribute('data-agent-provider', 'codex')
+        await expect(icon).not.toHaveAttribute('data-cove-pixel-glyph')
       }
       await node.getByTestId('terminal-node-title-display').click()
       await node.getByTestId('terminal-node-inline-title-input').fill(title)
@@ -95,6 +96,9 @@ for (const { kind, title, fontScale } of cases) {
         })
         expectIdentityEndpointContinuous(lastAnimated, settled)
         if (kind === 'agent' && direction === 'collapse') {
+          const icon = node.locator('.cove-collapsed-window [data-cove-node-kind-icon="agent"]')
+          await expect(icon).toHaveAttribute('data-agent-provider', 'codex')
+          await expect(icon).not.toHaveAttribute('data-cove-pixel-glyph')
           await expect(node.locator('.cove-collapsed-window__title')).toHaveText(title)
           await expect(node.locator('.cove-collapsed-window__message')).toHaveCount(0)
           await expect(node.locator('.cove-collapsed-window')).toHaveCSS('height', '96px')

@@ -51,9 +51,7 @@
   visibility: hidden;
 }
 
-.cove-node-presentation[data-cove-collapse-motion]
-  .cove-collapsed-window__icon
-  :is(svg, img, .agent-provider-icon__monogram) {
+.cove-node-presentation[data-cove-collapse-motion] .cove-collapsed-window__icon :is(svg, img) {
   transform-origin: 0 0;
   transform-box: border-box;
   overflow: visible;
