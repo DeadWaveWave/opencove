@@ -88,4 +88,52 @@ describe('pixel effects layer', () => {
     drawFrame(1600, false, viewport, [node])
     expect(node).toEqual(before)
   })
+
+  it('draws dot ripples under the patrol and the sparks without keeping the layer awake', () => {
+    const node: PixelNode = {
+      id: 'agent',
+      sessionId: 'session',
+      rect: { x: 300, y: 200, width: 420, height: 260 },
+      tone: 'working',
+      acceptsOutput: false,
+    }
+    const fills: string[] = []
+    const context = {
+      globalAlpha: 1,
+      fillStyle: '' as unknown,
+      setTransform: vi.fn(),
+      clearRect: vi.fn(),
+      createLinearGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
+      fillRect() {
+        fills.push(String(this.fillStyle))
+      },
+    }
+    const draw = (sparks: { x: number; y: number; size: number; color: string; alpha: number }[]) =>
+      drawPixelLayer({
+        canvas: document.createElement('canvas'),
+        context: context as unknown as CanvasRenderingContext2D,
+        viewport,
+        nodes: [node],
+        activity: createPixelActivity(),
+        theme,
+        now: 0,
+        reducedMotion: false,
+        background: false,
+        ripples: [{ x: 510, y: 330, radius: 240, band: 36, strength: 1, color: [0, 200, 0] }],
+        working: true,
+        sparks,
+      })
+
+    expect(draw([])).toBe(false)
+    fills.length = 0
+    expect(draw([{ x: 900, y: 100, size: 3, color: '#ff00ff', alpha: 1 }])).toBe(true)
+    const ripple = fills.flatMap((fill, index) => (fill.startsWith('rgb(0 200 0') ? [index] : []))
+    const patrol = fills.flatMap((fill, index) =>
+      fill.startsWith('rgb(0 200 0') || fill === '#ff00ff' ? [] : [index],
+    )
+    expect(ripple.length).toBeGreaterThan(0)
+    expect(patrol.length).toBeGreaterThan(0)
+    expect(Math.max(...ripple)).toBeLessThan(Math.min(...patrol))
+    expect(fills.at(-1)).toBe('#ff00ff')
+  })
 })

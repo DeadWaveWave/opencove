@@ -269,6 +269,24 @@ describe('pixel wall output ripples', () => {
     expect(green(cells, 600 + 400, 450)).toBeLessThan(10)
   })
 
+  it.each(['dark', 'light'] as const)(
+    'mixes %s ripple cells with the prototype Gaussian gain',
+    appearance => {
+      const palette = { ...black, appearance }
+      const still = fillWallCells(view, palette, null)
+      const cells = fillWallCells(view, palette, null, { ripples: [ripple] })
+      const gain = appearance === 'dark' ? 0.8 : 0.72
+      for (let row = 0; row < view.rows; row++) {
+        for (let col = 0; col < view.columns; col++) {
+          const x = (Math.hypot((col + 0.5) * 24 - 600, (row + 0.5) * 24 - 450) - 240) / 36
+          const at = (row * view.columns + col) * 4 + 1
+          const k = Math.abs(x) > 2.5 ? 0 : gain * Math.exp(-x * x)
+          expect(cells[at]).toBe(Math.round(still[at]! + (255 - still[at]!) * k))
+        }
+      }
+    },
+  )
+
   it('stays within the glass cap where the wavefront crosses a window', () => {
     const glass = { x: 780, y: 300, width: 200, height: 300 }
     // Two ripples on the same spot would pull a free cell well past the cap.
@@ -295,7 +313,6 @@ describe('pixel wall shockwave crest', () => {
     band: 40,
     strength: 1,
     color: [0, 0, 255] as const,
-    gain: 0.85,
     crest: true,
   }
   const at = (cells: Uint8ClampedArray, wx: number, wy: number) => {

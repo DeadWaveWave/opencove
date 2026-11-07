@@ -33,9 +33,6 @@ export interface WallCellOptions {
 
 const WHITE: Rgb = [255, 255, 255]
 
-/** How strongly a ripple's wavefront pulls a cell toward its colour. */
-const RIPPLE_GAIN = 0.62
-
 /** World px per second the clouds drift. */
 const CLOUD_DRIFT = 9
 /** Share of cells that can twinkle; up to 0.2 more around working windows. */
@@ -97,6 +94,7 @@ function markCellsBehindGlass(
   grid: WallGrid,
   windows: readonly WallWindowRect[],
   chrome: readonly WallScreenRect[],
+  reachCells = GLASS_REACH_CELLS,
 ): Uint8Array | null {
   if (windows.length === 0 && chrome.length === 0) {
     return null
@@ -118,7 +116,7 @@ function markCellsBehindGlass(
       behind.fill(1, row * grid.columns + first, row * grid.columns + last + 1)
     }
   }
-  const reach = GLASS_REACH_CELLS * grid.worldCell
+  const reach = reachCells * grid.worldCell
   for (const frame of windows) {
     const first = Math.max(0, Math.floor((frame.x - reach) / grid.worldCell) - grid.firstColumn)
     const last = Math.min(
@@ -352,18 +350,16 @@ export function fillWallCells(
   castWorkLight(cells, moved, grid, windows, palette.appearance)
   // Output ripples brighten the cells their wavefront passes, in the window's kind colour.
   for (const ripple of ripples) {
+    const crestBehind = ripple.crest ? markCellsBehindGlass(grid, windows, chrome, 1) : null
     forEachRingCell(grid, ripple, (column, row, weight) => {
-      const k = (ripple.gain ?? RIPPLE_GAIN) * ripple.strength * weight
-      if (k < 0.01) {
+      const cell = row * grid.columns + column
+      if (ripple.crest && crestBehind?.[cell]) {
         return
       }
-      const cell = row * grid.columns + column
-      moved[cell] = mix(cells, cell * 4, ripple.color, k, moved[cell]!)
-      // The shockwave's white crest stays in blank space: behind glass only the window colour
-      // may show, which keeps text over glass within its checked contrast (Tide).
-      if (ripple.crest && weight > 0.5 && !behind?.[cell]) {
-        moved[cell] = mix(cells, cell * 4, WHITE, Math.min(1, k * (weight - 0.5) * 2), moved[cell]!)
-      }
+      // Tide PIX (1233–1234): ordinary waves mix by appearance; the white crest uses 0.92.
+      const gain = ripple.crest ? 0.92 : palette.appearance === 'dark' ? 0.8 : 0.72
+      const k = Math.min(1, gain * ripple.strength * weight)
+      moved[cell] = mix(cells, cell * 4, ripple.crest ? WHITE : ripple.color, k, moved[cell]!)
     })
   }
   if (spot && timeSeconds !== null) {

@@ -16,10 +16,27 @@
   animation: cove-signal-fail 280ms steps(4);
 }
 
-/* A passing shockwave brightens another window's 1px edge in the sender's colour. */
-.react-flow__node[data-cove-signal='swept'] {
-  box-shadow: 0 0 0 1px var(--cove-signal-color);
-  animation: cove-signal-swept 500ms ease-out forwards;
+/* Tide's passing wave lights a masked 1.5px rim, independent of chrome pseudo-elements. */
+.react-flow__node[data-cove-swept] {
+  --cove-catch: 0;
+  --cove-glint: var(--cove-accent);
+}
+
+.cove-window-glint {
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--cove-node-radius);
+  padding: 1.5px;
+  pointer-events: none;
+  z-index: 3;
+  background: var(--cove-glint);
+  -webkit-mask-image: linear-gradient(currentColor 0 0), linear-gradient(currentColor 0 0);
+  -webkit-mask-clip: content-box, border-box;
+  -webkit-mask-composite: xor;
+  mask-image: linear-gradient(currentColor 0 0), linear-gradient(currentColor 0 0);
+  mask-clip: content-box, border-box;
+  mask-composite: exclude;
+  opacity: var(--cove-catch);
 }
 
 @keyframes cove-signal-complete {
@@ -48,14 +65,12 @@
   }
 }
 
-@keyframes cove-signal-swept {
-  to {
-    box-shadow: 0 0 0 1px transparent;
-  }
-}
-
 /* Reduced motion: the frame's colour flashes once and a failure keeps a still red outline. */
 @media (prefers-reduced-motion: reduce) {
+  .cove-window-glint {
+    display: none;
+  }
+
   .react-flow__node[data-cove-signal] {
     animation: none;
   }
