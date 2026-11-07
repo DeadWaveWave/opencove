@@ -1,5 +1,8 @@
+import { stripParentAgentSessionEnv } from '../../../shared/runtime/stripParentAgentSessionEnv'
+
 export function resolvePtyHostSpawnEnv(optionsEnv?: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const env = optionsEnv ? { ...optionsEnv } : { ...process.env }
+  stripParentAgentSessionEnv(env)
   const preserveElectronRunAsNode = optionsEnv?.ELECTRON_RUN_AS_NODE === '1'
 
   // In PTY-backed UIs we generally want a "real terminal" default. Some Node-based CLIs will

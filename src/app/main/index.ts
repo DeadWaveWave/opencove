@@ -36,6 +36,9 @@ import {
   cleanupLegacyManagedHooksAtStartup,
   reportLegacyManagedHookCleanupFailures,
 } from '../../contexts/agent/infrastructure/cleanupLegacyManagedHooksAtStartup'
+import { stripParentAgentSessionEnv } from '../../shared/runtime/stripParentAgentSessionEnv'
+
+stripParentAgentSessionEnv(process.env)
 
 let ipcDisposable: ReturnType<typeof registerIpcHandlers> | null = null
 
