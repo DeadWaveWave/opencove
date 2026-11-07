@@ -1,3 +1,4 @@
+import { getCommandExecutionEnvironment } from '../../../../platform/os/CommandEnvironmentService'
 import type { AgentProviderRegistry } from '../../../../contexts/agent/application/services/AgentProviderRegistry'
 import { createManagedAgentLaunchPlan } from '../../../../contexts/agent/application/use-cases/createManagedAgentLaunchPlan'
 import type { AgentLaunchCommand } from '../../../../contexts/agent/infrastructure/cli/AgentCommandFactory'
@@ -5,6 +6,7 @@ import type { AgentLaunchMode, AgentProviderId } from '../../../../shared/contra
 import { resolveWorkerAgentTestStub } from './sessionAgentTestStub'
 
 export async function prepareAgentLaunch(options: {
+  environment?: NodeJS.ProcessEnv
   profileId?: string | null
   agentFullAccess: boolean
   cwd: string
@@ -17,9 +19,11 @@ export async function prepareAgentLaunch(options: {
   registry: AgentProviderRegistry
   resumeSessionId: string | null
 }) {
+  const environment = await getCommandExecutionEnvironment(options.environment)
   const managedLaunch = await createManagedAgentLaunchPlan(
     options.registry.require(options.provider),
     {
+      environment,
       profileId: options.profileId,
       mode: options.mode,
       prompt: options.mode === 'new' ? options.prompt : '',

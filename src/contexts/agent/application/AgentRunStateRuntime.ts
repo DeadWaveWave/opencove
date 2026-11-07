@@ -1,6 +1,8 @@
 import type {
   AgentProviderId,
   AgentHookInstallState,
+  AgentHookCoverage,
+  AgentLaunchKind,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../../shared/contracts/dto'
@@ -31,6 +33,8 @@ export class AgentRunStateRuntime {
       sequence: number
       remote: boolean
       mirrored?: boolean
+      launchKind?: AgentLaunchKind
+      hookCoverage?: AgentHookCoverage
       hookInstallState?: AgentHookInstallState
       piConversation?: { pid: number; revision: number }
       /** Last raw state per source, for the legacy UI label only (never for decisions). */
@@ -135,6 +139,19 @@ export class AgentRunStateRuntime {
         remote: event.remote === true || (existing?.remote ?? false),
       })
       this.registry.register({ sessionId: event.sessionId, provider, incarnation })
+    }
+    const session = this.sessions.get(event.sessionId)!
+    // Only launch metadata grants managed provenance. A shim invocation is never upgraded
+    // by subsequent identity/launch refreshes, even if it has full lifecycle observations.
+    session.launchKind =
+      event.terminalAgentActivity || session.launchKind === 'terminal'
+        ? 'terminal'
+        : (event.agentLaunchKind ?? session.launchKind)
+    if (event.hookCoverage !== undefined) {
+      session.hookCoverage = event.hookCoverage
+    }
+    if (event.hookInstallState !== undefined) {
+      session.hookInstallState = event.hookInstallState
     }
     if (event.remote) {
       this.markRemote(event.sessionId)
@@ -292,6 +309,14 @@ export class AgentRunStateRuntime {
         outcome:
           name === 'StopFailure' ? 'failed' : name === 'turn_aborted' ? 'aborted' : 'completed',
       }
+    }
+    if (
+      name === 'SessionStart' ||
+      name === 'SessionEnd' ||
+      (!name && (event.source === 'codex_hook' || event.source === 'claude_hook'))
+    ) {
+      // Session lifecycle and shell-only synthetic idle are not turn-end evidence.
+      boundary = { kind: 'reset' }
     }
     if (!event.observationUnavailable) {
       session.rawStates = { ...session.rawStates, [event.source ?? 'session_file']: event.state }

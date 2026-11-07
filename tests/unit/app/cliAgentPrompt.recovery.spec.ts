@@ -184,8 +184,23 @@ it.each([false, true])(
       ['agent.not_running', 'caller_revoked', 'lost authorization'],
       ['agent.not_running', 'shutdown', 'stopped before delivery'],
       ['agent.not_running', 'binding_changed', 'target session changed'],
-      ['agent.prompt_unsupported', 'provider_unsupported', 'local Claude Code sessions only'],
+      [
+        'agent.prompt_unsupported',
+        'provider_unsupported',
+        'local Claude Code and lifecycle-hook Codex agent windows',
+      ],
       ['agent.prompt_unsupported', 'remote_unsupported', 'remote sessions'],
+      ['agent.prompt_unsupported', 'terminal_agent_unsupported', 'agent windows OpenCove launched'],
+      ['agent.prompt_unsupported', 'executable_override_unverified', 'custom executable path'],
+      ['agent.prompt_unsupported', 'codex_hooks_notify_only', 'only notify-level coverage'],
+      ['agent.prompt_unsupported', 'codex_hooks_skipped', 'skipped for daemon reuse'],
+      ['agent.prompt_unsupported', 'codex_hooks_not_required', 'including Windows'],
+      ['agent.prompt_unsupported', 'codex_hooks_not_installed', 'not installed'],
+      ['agent.prompt_unsupported', 'codex_hooks_partial', 'incomplete'],
+      ['agent.prompt_unsupported', 'codex_hooks_error', 'installation failed'],
+      ['agent.prompt_unsupported', 'codex_hooks_missing', 'no explicit lifecycle'],
+      ['agent.prompt_unsupported', 'codex_lifecycle_observation_missing', 'session file'],
+      ['agent.prompt_unsupported', 'claude_hooks_missing', 'no explicit lifecycle'],
       ['agent.prompt_unsupported', 'bracketed_paste_off', 'has not enabled bracketed paste'],
       ['agent.prompt_timeout', 'deadline', 'timeout expired before any text'],
     ] as const
@@ -201,6 +216,12 @@ it.each([false, true])(
       // eslint-disable-next-line no-await-in-loop
       expect(await run(args, f.io)).toBe(code === 'agent.prompt_timeout' ? 124 : 1)
       expect(f.text()).toContain(text)
+      if (reason === 'executable_override_unverified') {
+        expect(f.text()).toContain('Settings → agent executable')
+        expect(f.text()).toContain('cannot verify')
+        expect(f.text()).toContain('Remove the override')
+        expect(f.text()).toContain('launch a new agent window')
+      }
       expect(f.text()).not.toContain('Do not resend')
       if (tty) {
         expect(f.text()).toContain(

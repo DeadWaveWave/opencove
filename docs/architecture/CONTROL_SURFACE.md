@@ -321,8 +321,9 @@ Project scoping remains a follow-up; a scope tier is not a project isolation bou
 
 `agent.prompt` is a schema-backed **interact** command composed once per executing Worker.
 Its application service depends on SessionInputPort, RunStateFencePort and provider prompting
-capabilities. Claude Code contributes supported prompting with a 300 ms submit delay; all other
-providers refuse. Read-tier credentials cannot invoke it. The Hub reserves its existing session
+capabilities. Local Claude Code and lifecycle-hook Codex agent windows OpenCove launched
+contribute supported prompting with a 300 ms submit delay. Explicit managed PTY provenance
+is required; terminal shim invocations and other providers refuse. Read-tier credentials cannot invoke it. The Hub reserves its existing session
 operation queue once and exposes a scoped raw writer, live input generation, ingress mode and
 watermark; the callback never invokes enqueuing Hub APIs. Response disconnect and grant revocation
 propagate cancellation to the service. Internal receipt fields stay out of public snapshots.

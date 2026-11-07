@@ -1,5 +1,11 @@
+import type { AgentRunTurnEnd } from '../../domain/agentRunState'
 import type { AgentRunSnapshot } from '../../../../shared/contracts/dto/agentRunState'
-import type { AgentHookInstallState, AgentProviderId } from '../../../../shared/contracts/dto'
+import type {
+  AgentHookCoverage,
+  AgentLaunchKind,
+  AgentHookInstallState,
+  AgentProviderId,
+} from '../../../../shared/contracts/dto'
 
 export interface RunStateFence {
   epoch: string
@@ -7,9 +13,11 @@ export interface RunStateFence {
   bindingGeneration: number
   cursor: number
   snapshot: AgentRunSnapshot
-  selectedHookEventName?: string
+  lastTurnEnd: AgentRunTurnEnd | null
   watermarks: Partial<Record<string, number>>
   remote: boolean
+  launchKind?: AgentLaunchKind
+  hookCoverage?: AgentHookCoverage
   hookInstallState?: AgentHookInstallState
 }
 export interface RunStateReceipt {

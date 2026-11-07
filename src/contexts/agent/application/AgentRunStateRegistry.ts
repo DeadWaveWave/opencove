@@ -8,6 +8,7 @@ import { AgentRunStateFences } from './AgentRunStateFences'
 import type { RunStateFence, RunStateReceipt } from './ports/PromptDeliveryPorts'
 import {
   createAgentRunModel,
+  mirrorAgentRunModel,
   transitionAgentRun,
   type AgentRunObservation,
   type AgentRunSnapshot,
@@ -159,7 +160,7 @@ export class AgentRunStateRegistry {
     entry.cancelExpiry = undefined
     const next = { ...structuredClone(snapshot), sessionId, nodeId: entry.model.snapshot.nodeId }
     const changed = JSON.stringify(next) !== JSON.stringify(entry.model.snapshot)
-    entry.model = { ...entry.model, snapshot: next, observations: {}, nextTransitionAtMs: null }
+    entry.model = mirrorAgentRunModel(entry.model, next)
     if (changed) {
       this.notifyFence(entry)
       this.publish(entry, 'agent.state_changed', undefined, false)
@@ -267,12 +268,15 @@ export class AgentRunStateRegistry {
   }
   setRuntimeContext(
     sessionId: string,
-    context: { remote: boolean; hookInstallState?: RunStateFence['hookInstallState'] },
+    context: Pick<Entry, 'remote' | 'launchKind' | 'hookCoverage' | 'hookInstallState'>,
   ): void {
     const entry = this.entries.get(sessionId)
     if (
       !entry ||
-      (entry.remote === context.remote && entry.hookInstallState === context.hookInstallState)
+      (entry.remote === context.remote &&
+        entry.launchKind === context.launchKind &&
+        entry.hookInstallState === context.hookInstallState &&
+        entry.hookCoverage === context.hookCoverage)
     ) {
       return
     }

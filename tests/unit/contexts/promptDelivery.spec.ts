@@ -5,7 +5,7 @@ import { PromptDeliveryService } from '../../../src/contexts/agent/application/P
 import type { ReservedSessionInput } from '../../../src/contexts/agent/application/ports/PromptDeliveryPorts'
 import type { AgentRunObservation } from '../../../src/contexts/agent/domain/agentRunState'
 
-function fixture() {
+function fixture(provider: 'claude-code' | 'codex' = 'claude-code', ready = true) {
   const schedule = (cb: () => void, delay: number) => {
     const timer = setTimeout(cb, delay)
     return () => clearTimeout(timer)
@@ -16,8 +16,13 @@ function fixture() {
     createTurnId: () => 'turn',
     schedule,
   })
-  runs.register({ sessionId: 's', nodeId: 'n', incarnation: 'i', provider: 'claude-code' })
-  runs.setRuntimeContext('s', { remote: false, hookInstallState: 'installed' })
+  runs.register({ sessionId: 's', nodeId: 'n', incarnation: 'i', provider })
+  runs.setRuntimeContext('s', {
+    remote: false,
+    launchKind: 'managed',
+    hookCoverage: 'lifecycle',
+    hookInstallState: 'installed',
+  })
   let seq = 0
   const observe = (
     state: AgentRunObservation['state'],
@@ -26,7 +31,7 @@ function fixture() {
   ) =>
     runs.observe('s', {
       incarnation: 'i',
-      source: 'claude_hook',
+      source: provider === 'codex' ? 'codex_hook' : 'claude_hook',
       sourceSequence: ++seq,
       observedAt: Date.now(),
       emittedAtMs: Date.now(),
@@ -40,7 +45,9 @@ function fixture() {
             : undefined,
       ...extra,
     })
-  observe('idle')
+  if (ready) {
+    observe('idle')
+  }
   const writes: string[] = []
   const invalidations = new Set<() => void>()
   let mode = true,
@@ -73,8 +80,10 @@ function fixture() {
         return await fn(input)
       },
     },
-    capability: provider =>
-      provider === 'claude-code' ? { supported: true, submitDelayMs: 300 } : undefined,
+    capability: requestedProvider =>
+      ['claude-code', 'codex'].includes(requestedProvider)
+        ? { supported: true, submitDelayMs: 300 }
+        : undefined,
     now: Date.now,
     createDeliveryId: () => 'delivery',
     schedule,
@@ -109,7 +118,7 @@ afterEach(() => {
   vi.clearAllTimers()
   vi.useRealTimers()
 })
-describe('PromptDeliveryService', () => {
+describe.each(['claude-code', 'codex'] as const)('PromptDeliveryService %s', provider => {
   it.each([
     ['waiting', 'PermissionRequest', 'agent.blocked', 'waiting'],
     ['working', 'UserPromptSubmit', 'agent.busy', 'working'],
@@ -117,7 +126,7 @@ describe('PromptDeliveryService', () => {
     ['exited', 'Stop', 'agent.not_running', 'not_running'],
     ['idle', 'notify', 'agent.state_unknown', 'readiness_unobserved'],
   ] as const)('refuses %s from %s with zero bytes', async (state, name, code, reason) => {
-    const f = fixture()
+    const f = fixture(provider, name !== 'notify')
     f.observe(state, name, state === 'exited' ? { source: 'exit' } : {})
     await expect(f.deliver()).rejects.toMatchObject({
       code,
@@ -128,7 +137,7 @@ describe('PromptDeliveryService', () => {
   it.each(['remote', 'provider', 'degraded', 'fresh', 'active-turn'] as const)(
     'refuses %s admission',
     async condition => {
-      const f = fixture()
+      const f = fixture(provider)
       if (condition === 'remote') {
         f.runs.setRuntimeContext('s', { remote: true })
       }
@@ -155,7 +164,7 @@ describe('PromptDeliveryService', () => {
     },
   )
   it('writes one multiline paste and one Enter; waits for the exact accepted hook receipt', async () => {
-    const f = fixture()
+    const f = fixture(provider)
     const result = f.deliver()
     expect(f.writes).toEqual(['\x1b[200~one\rtwo\rthree\x1b[201~'])
     await vi.advanceTimersByTimeAsync(300)
@@ -187,7 +196,7 @@ describe('PromptDeliveryService', () => {
     'rebind',
     'shutdown',
   ] as const)('latches %s during submit delay', async condition => {
-    const f = fixture()
+    const f = fixture(provider)
     const controller = new AbortController()
     const result = f.deliver(15000, { signal: controller.signal })
     const assertion = expect(result).rejects.toMatchObject({
@@ -221,7 +230,7 @@ describe('PromptDeliveryService', () => {
     expect(f.writes).toHaveLength(1)
   })
   it('deadline settles a queued call and its eventual callback is a no-op', async () => {
-    const f = fixture()
+    const f = fixture(provider)
     f.queue()
     const result = f.deliver(100)
     const assertion = expect(result).rejects.toMatchObject({
@@ -234,7 +243,7 @@ describe('PromptDeliveryService', () => {
     expect(f.writes).toEqual([])
   })
   it('reserves the incarnation through receipt settlement and never resends', async () => {
-    const f = fixture()
+    const f = fixture(provider)
     const result = f.deliver()
     await expect(f.deliver()).rejects.toMatchObject({
       code: 'agent.busy',
@@ -252,7 +261,7 @@ describe('PromptDeliveryService', () => {
     expect(f.writes).toHaveLength(2)
   })
   it('rejects a late old hook below the submit fence', async () => {
-    const f = fixture()
+    const f = fixture(provider)
     const result = f.deliver()
     await vi.advanceTimersByTimeAsync(300)
     f.observe('working', 'UserPromptSubmit', { sourceSequence: 1 })
@@ -260,85 +269,91 @@ describe('PromptDeliveryService', () => {
     await vi.advanceTimersByTimeAsync(5000)
     await assertion
   })
-})
-it('a synchronous invalidation from paste dispatch cannot leak a timer or send Enter', async () => {
-  const f = fixture()
-  f.input.write = data => {
-    f.writes.push(data)
-    f.observe('waiting', 'PermissionRequest')
-  }
-  await expect(f.deliver()).rejects.toMatchObject({ code: 'agent.prompt_interrupted' })
-  await vi.advanceTimersByTimeAsync(1000)
-  expect(f.writes).toHaveLength(1)
-  f.service.dispose()
-  f.runs.dispose()
-  expect(vi.getTimerCount()).toBe(0)
-})
-it('queued admission reports the current permission reason and sends zero bytes', async () => {
-  const f = fixture()
-  f.queue()
-  const result = f.deliver()
-  f.observe('waiting', 'PermissionRequest', { blockedReason: 'permission' })
-  await f.release()
-  await expect(result).rejects.toMatchObject({
-    code: 'agent.blocked',
-    details: { blockedReason: 'permission', pasteDispatchAttempted: false },
-  })
-  expect(f.writes).toEqual([])
-  f.service.dispose()
-  f.runs.dispose()
-})
-it('does not count an inferred turn or a hook-labelled snapshot without a fresh submit receipt', async () => {
-  const f = fixture()
-  const result = f.deliver()
-  await vi.advanceTimersByTimeAsync(300)
-  const snapshot = f.runs.get({ sessionId: 's' })!
-  f.runs.mirror('s', {
-    ...snapshot,
-    state: 'working',
-    quality: 'inferred',
-    source: 'session_file',
-    turn: { id: 'inferred', start: 'inferred', startedAt: Date.now() },
-  })
-  f.runs.mirror('s', {
-    ...f.runs.get({ sessionId: 's' })!,
-    source: 'claude_hook',
-    quality: 'authoritative',
-  })
-  let observed = false
-  void result.then(() => {
-    observed = true
-  })
-  await Promise.resolve()
-  expect(observed).toBe(false)
-  f.observe('working', 'UserPromptSubmit')
-  await expect(result).resolves.toMatchObject({ phase: 'submission_observed', turnId: 'inferred' })
-  f.runs.dispose()
-  f.service.dispose()
-})
-
-it.each(['before paste', 'during delay'])(
-  'real ingress reset %s forbids subsequent writes',
-  async phase => {
-    const f = fixture(),
-      tracker = new BracketedPasteIngressTracker()
-    tracker.feed('\x1b[?2004h')
-    f.input.mode = () => ({ bracketedPaste: tracker.bracketedPaste, watermark: tracker.watermark })
-    f.input.watchInvalidation = listener => tracker.watchInvalidation(listener)
-    if (phase === 'before paste') {
-      tracker.feed('\x1b[0!p')
+  it('a synchronous invalidation from paste dispatch cannot leak a timer or send Enter', async () => {
+    const f = fixture(provider)
+    f.input.write = data => {
+      f.writes.push(data)
+      f.observe('waiting', 'PermissionRequest')
     }
-    const result = f.deliver()
-    const assertion = expect(result).rejects.toMatchObject({
-      code: phase === 'before paste' ? 'agent.prompt_unsupported' : 'agent.prompt_interrupted',
-    })
-    if (phase === 'during delay') {
-      tracker.feed('\x1b[0!p')
-    }
-    await vi.advanceTimersByTimeAsync(300)
-    await assertion
-    expect(f.writes).toHaveLength(phase === 'before paste' ? 0 : 1)
+    await expect(f.deliver()).rejects.toMatchObject({ code: 'agent.prompt_interrupted' })
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(f.writes).toHaveLength(1)
     f.service.dispose()
     f.runs.dispose()
-  },
-)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+  it('queued admission reports the current permission reason and sends zero bytes', async () => {
+    const f = fixture(provider)
+    f.queue()
+    const result = f.deliver()
+    f.observe('waiting', 'PermissionRequest', { blockedReason: 'permission' })
+    await f.release()
+    await expect(result).rejects.toMatchObject({
+      code: 'agent.blocked',
+      details: { blockedReason: 'permission', pasteDispatchAttempted: false },
+    })
+    expect(f.writes).toEqual([])
+    f.service.dispose()
+    f.runs.dispose()
+  })
+  it('does not count an inferred turn or a hook-labelled snapshot without a fresh submit receipt', async () => {
+    const f = fixture(provider)
+    const result = f.deliver()
+    await vi.advanceTimersByTimeAsync(300)
+    const snapshot = f.runs.get({ sessionId: 's' })!
+    f.runs.mirror('s', {
+      ...snapshot,
+      state: 'working',
+      quality: 'inferred',
+      source: 'session_file',
+      turn: { id: 'inferred', start: 'inferred', startedAt: Date.now() },
+    })
+    f.runs.mirror('s', {
+      ...f.runs.get({ sessionId: 's' })!,
+      source: 'claude_hook',
+      quality: 'authoritative',
+    })
+    let observed = false
+    void result.then(() => {
+      observed = true
+    })
+    await Promise.resolve()
+    expect(observed).toBe(false)
+    f.observe('working', 'UserPromptSubmit')
+    await expect(result).resolves.toMatchObject({
+      phase: 'submission_observed',
+      turnId: 'inferred',
+    })
+    f.runs.dispose()
+    f.service.dispose()
+  })
+
+  it.each(['before paste', 'during delay'])(
+    'real ingress reset %s forbids subsequent writes',
+    async phase => {
+      const f = fixture(provider),
+        tracker = new BracketedPasteIngressTracker()
+      tracker.feed('\x1b[?2004h')
+      f.input.mode = () => ({
+        bracketedPaste: tracker.bracketedPaste,
+        watermark: tracker.watermark,
+      })
+      f.input.watchInvalidation = listener => tracker.watchInvalidation(listener)
+      if (phase === 'before paste') {
+        tracker.feed('\x1b[0!p')
+      }
+      const result = f.deliver()
+      const assertion = expect(result).rejects.toMatchObject({
+        code: phase === 'before paste' ? 'agent.prompt_unsupported' : 'agent.prompt_interrupted',
+      })
+      if (phase === 'during delay') {
+        tracker.feed('\x1b[0!p')
+      }
+      await vi.advanceTimersByTimeAsync(300)
+      await assertion
+      expect(f.writes).toHaveLength(phase === 'before paste' ? 0 : 1)
+      f.service.dispose()
+      f.runs.dispose()
+    },
+  )
+})

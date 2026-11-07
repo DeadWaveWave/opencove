@@ -3,30 +3,36 @@ import { promptDeliveryRuntimeFixture } from '../../support/promptDeliveryRuntim
 afterEach(() => {
   vi.useRealTimers()
 })
-it('runtime ingress rejects late pre-Enter emission and missing provenance despite fresh local sequences', async () => {
-  vi.useFakeTimers()
-  vi.setSystemTime(1000)
-  const f = promptDeliveryRuntimeFixture()
-  try {
-    const result = f.deliver()
-    await vi.advanceTimersByTimeAsync(300)
-    vi.setSystemTime(1400)
-    f.observe('UserPromptSubmit', 1100) // Assigned a fresh sequence by real runtime ingress.
-    let done = false
-    void result.then(() => {
-      done = true
-    })
-    await Promise.resolve()
-    expect(done).toBe(false)
-    f.observe('UserPromptSubmit')
-    await Promise.resolve()
-    expect(done).toBe(false)
-    f.observe('UserPromptSubmit', 1300)
-    await expect(result).resolves.toMatchObject({ phase: 'submission_observed' })
-  } finally {
-    f.dispose()
-  }
-})
+it.each(['claude-code', 'codex'] as const)(
+  '%s rejects late pre-Enter emission and missing provenance despite fresh local sequences',
+  async provider => {
+    vi.useFakeTimers()
+    vi.setSystemTime(1000)
+    const f = promptDeliveryRuntimeFixture(undefined, provider)
+    try {
+      const result = f.deliver()
+      await vi.advanceTimersByTimeAsync(300)
+      vi.setSystemTime(1400)
+      f.observe('UserPromptSubmit', 1100) // Assigned a fresh sequence by real runtime ingress.
+      let done = false
+      void result.then(() => {
+        done = true
+      })
+      await Promise.resolve()
+      expect(done).toBe(false)
+      f.observe('UserPromptSubmit')
+      await Promise.resolve()
+      expect(done).toBe(false)
+      f.observe('notify', 1400) // Legacy done, even with a valid stamp, is never a receipt.
+      await Promise.resolve()
+      expect(done).toBe(false)
+      f.observe('UserPromptSubmit', 1300)
+      await expect(result).resolves.toMatchObject({ phase: 'submission_observed' })
+    } finally {
+      f.dispose()
+    }
+  },
+)
 it.each(['overall', 'receipt', 'caller'] as const)(
   'rejects %s overdue receipts before the overdue timer callback runs',
   async kind => {

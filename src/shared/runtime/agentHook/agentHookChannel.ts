@@ -288,7 +288,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
                 response.end()
                 return
               }
-              if (options.source === 'claude_hook') {
+              if (options.source === 'claude_hook' || options.source === 'codex_hook') {
                 envelope.emittedAtMs = parseHookEmittedAt(
                   request.headers['x-opencove-hook-emitted-at'],
                   Date.now(),

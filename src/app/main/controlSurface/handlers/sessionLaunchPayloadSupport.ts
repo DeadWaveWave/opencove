@@ -1,3 +1,8 @@
+import type {
+  AgentLaunchMode,
+  LaunchAgentSessionInMountInput,
+  LaunchAgentSessionInput,
+} from '../../../../shared/contracts/dto'
 import { fromFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import { AGENT_PROVIDER_IDS, type AgentProviderId } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
@@ -91,4 +96,25 @@ export function resolvePathFromFileSystemUriOrThrow(uri: string, operationId: st
   }
 
   return resolved
+}
+
+/** Preserve the launch allowlist when forwarding a mounted request to its executing Worker. */
+export function toLocalAgentLaunchInput(
+  payload: LaunchAgentSessionInMountInput,
+  cwd: string,
+  mode: AgentLaunchMode,
+): LaunchAgentSessionInput {
+  return {
+    cwd,
+    prompt: payload.prompt,
+    provider: payload.provider ?? null,
+    mode,
+    model: payload.model ?? null,
+    resumeSessionId: payload.resumeSessionId ?? null,
+    env: payload.env ?? null,
+    executablePathOverride: payload.executablePathOverride ?? null,
+    agentFullAccess: payload.agentFullAccess ?? null,
+    cols: payload.cols,
+    rows: payload.rows,
+  }
 }

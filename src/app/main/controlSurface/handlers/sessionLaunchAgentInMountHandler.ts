@@ -10,10 +10,7 @@ import {
   resolveAgentModel,
 } from '../../../../contexts/settings/domain/agentSettings'
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
-import type {
-  LaunchAgentSessionInput,
-  LaunchAgentSessionResult,
-} from '../../../../shared/contracts/dto'
+import type { LaunchAgentSessionResult } from '../../../../shared/contracts/dto'
 import {
   LOCAL_AGENT_SERVER_HOSTNAME,
   reserveLoopbackPort,
@@ -28,7 +25,7 @@ import type { WorkerTopologyStore } from '../topology/topologyStore'
 import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
 import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRuntime'
 import type { SessionRecord } from './sessionRecords'
-import { normalizeOptionalString } from './sessionLaunchPayloadSupport'
+import { normalizeOptionalString, toLocalAgentLaunchInput } from './sessionLaunchPayloadSupport'
 import { registerOperation } from '../registerOperation'
 import { sessionLaunchAgentInMountOperation } from '@shared/contracts/controlSurface/operations/domains/session'
 import type { TerminalSpawnAdmission } from '../../../../contexts/terminal/application/TerminalRuntimeAvailability'
@@ -111,19 +108,7 @@ export function registerSessionLaunchAgentInMountHandler(
           const agentLaunchResult = await invokeControlSurface(endpoint, {
             kind: 'command',
             id: 'session.launchAgent',
-            payload: {
-              cwd,
-              prompt: payload.prompt,
-              provider: payload.provider ?? null,
-              mode,
-              model: payload.model ?? null,
-              resumeSessionId: payload.resumeSessionId ?? null,
-              env: payload.env ?? null,
-              executablePathOverride: payload.executablePathOverride ?? null,
-              agentFullAccess: payload.agentFullAccess ?? null,
-              cols: payload.cols,
-              rows: payload.rows,
-            } satisfies LaunchAgentSessionInput,
+            payload: toLocalAgentLaunchInput(payload, cwd, mode),
           })
 
           if (!agentLaunchResult.result) {
@@ -282,6 +267,7 @@ export function registerSessionLaunchAgentInMountHandler(
 
       const resumeSessionId = mode === 'resume' ? (payload.resumeSessionId ?? null) : null
       const { launchCommand, managedLaunch, testStub } = await prepareAgentLaunch({
+        environment: { ...sessionEnv, ...payload.env },
         registry: deps.agentProviderRegistry,
         profileId: agentSettings.defaultTerminalProfileId,
         provider,
@@ -389,6 +375,7 @@ export function registerSessionLaunchAgentInMountHandler(
           ...(managedLaunch.plan.hookInstallState
             ? { hookInstallState: managedLaunch.plan.hookInstallState }
             : {}),
+          hookCoverage: managedLaunch.plan.hookCoverage,
           launchArtifacts: managedLaunch.artifacts,
         })
         .catch(error => {

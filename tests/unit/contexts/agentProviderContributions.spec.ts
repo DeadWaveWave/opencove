@@ -97,6 +97,7 @@ describe('ClaudeCodeAgentProviderContribution', () => {
     const plan = await provider.launcher.createLaunchPlan(launchCommand(artifacts))
     artifacts.seal()
 
+    expect(plan.hookCoverage).toBe('lifecycle')
     const settingsIndex = plan.args.indexOf('--settings')
     expect(settingsIndex).toBeGreaterThanOrEqual(0)
     const settingsPath = plan.args[settingsIndex + 1]
@@ -201,6 +202,7 @@ describe('CodexAgentProviderContribution', () => {
         artifacts.seal()
 
         await expect(readFile(marker, 'utf8')).resolves.toBe('0.3.0')
+        expect(plan.hookCoverage).toBe('notify_only')
         expect(plan.args.join('\n')).not.toContain('hooks.SessionEnd=')
         expect(plan.args.join('\n')).toContain(
           'notify=["/usr/bin/env","ELECTRON_RUN_AS_NODE=1","/runtime/node"',
@@ -235,6 +237,8 @@ describe('CodexAgentProviderContribution', () => {
     const plan = await provider.launcher.createLaunchPlan(launchCommand(artifacts))
     artifacts.seal()
 
+    expect(plan.hookCoverage).toBe('lifecycle')
+    expect(provider.prompting).toEqual({ supported: true, submitDelayMs: 300 })
     expect(resolveTrust).toHaveBeenCalledWith(
       expect.objectContaining({
         executable: 'codex',
@@ -270,6 +274,7 @@ describe('CodexAgentProviderContribution', () => {
     const plan = await provider.launcher.createLaunchPlan(launchCommand(artifacts))
     artifacts.seal()
 
+    expect(plan.hookCoverage).toBe('notify_only')
     expect(plan.args.join('\n')).not.toContain('hooks.SessionEnd=')
     expect(plan.args.join('\n')).toContain(
       'notify=["/usr/bin/env","ELECTRON_RUN_AS_NODE=1","/runtime/node"',
@@ -315,6 +320,7 @@ describe('CodexAgentProviderContribution', () => {
           OPENCOVE_CODEX_HOOK_TOKEN: 'codex-token',
         })
         expect(plan.hookInstallState).toBe('skipped')
+        expect(plan.hookCoverage).toBe('none')
 
         plan.onStarted?.('pty-daemon-1')
         expect(hook.commit).toHaveBeenCalledWith('pty-daemon-1')
@@ -362,6 +368,22 @@ describe('CodexAgentProviderContribution', () => {
       }
     },
   )
+
+  it('reports no coverage without a channel and allows an injected submit delay', async () => {
+    const artifacts = new AgentLaunchArtifactScope()
+    try {
+      const provider = new CodexAgentProviderContribution({
+        submitDelayMs: 17,
+        runtimePlatform: 'linux',
+      })
+      const plan = await provider.launcher.createLaunchPlan(launchCommand(artifacts))
+      expect(plan).toMatchObject({ hookCoverage: 'none', hookInstallState: 'not_installed' })
+      expect(provider.prompting).toEqual({ supported: true, submitDelayMs: 17 })
+    } finally {
+      artifacts.seal()
+      await artifacts.dispose()
+    }
+  })
 
   it('uses platform-safe TOML strings', () => {
     expect(serializeCodexTomlString('C:\\Open Cove\\relay.mjs', 'win32')).toBe(

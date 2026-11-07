@@ -1,7 +1,7 @@
-# Sending a prompt to Claude Code
+# Sending a prompt to Claude Code or Codex
 
-`opencove agent prompt` pastes text into a running local Claude Code session and
-attempts to press Enter once. It never retries automatically.
+`opencove agent prompt` pastes text into a local agent window OpenCove launched
+(Claude Code or Codex with lifecycle hooks) and attempts to press Enter once. It never retries automatically.
 
 ```sh
 opencove agent prompt --node node-123 --text "Review the changes"
@@ -18,6 +18,58 @@ submitted too. Check for drafts and dialogs with
 `opencove agent read --node <selector> --screen` before sending a prompt.
 After a successful prompt, use `opencove agent wait --node <selector> --until idle`,
 then read its final message.
+
+## Supported agent windows
+
+Only agent windows OpenCove launched from a task, the agent launcher, or
+`opencove node create agent` are promptable. Their PTY was spawned for the agent
+process; agent exit ends that PTY and OpenCove generates its full argument vector.
+Agents typed into terminal shells, including terminal shim/launcher invocations,
+refuse for both providers with `agent.prompt_unsupported` / `terminal_agent_unsupported`.
+A Stop, reliable idle, or installed lifecycle hooks cannot change that launch kind.
+Missing legacy launch provenance also refuses. Terminal invocation metadata still
+supports observation and session identity; it grants no prompt capability.
+
+Managed launches with a custom executable path (Settings → agent executable) report
+`hookCoverage: unverified_executable` for both Claude Code and Codex and refuse with
+`agent.prompt_unsupported` / `executable_override_unverified`. OpenCove cannot verify
+that a custom executable keeps the hooks required for prompting. This includes overrides
+that happen to name a direct provider binary. Remove the override and launch a new agent
+window with the required lifecycle hooks to make it promptable; changing the setting
+does not change an already running invocation's coverage. Hook installation and run-state
+observations are unchanged.
+
+Option-like model/resume values also have no verified lifecycle coverage: Codex reports
+conservative `notify_only` coverage and Claude reports `none`.
+The default provider executable must honor the generated argv; OpenCove cannot attest
+arbitrary code substituted on PATH. Generated Codex hook configuration takes precedence
+over lower config defaults, while disabled matching handlers fail trust resolution.
+Requested environment, including CODEX_HOME, is included in the trust probe. No user
+configuration is modified to force hooks on.
+
+## Supported providers and invocation coverage
+
+| Provider | Required for this invocation | Readiness and receipt |
+| --- | --- | --- |
+| Claude Code | Installed lifecycle hooks, `hookCoverage: lifecycle` | Selected reliable `claude_hook` Stop or StopFailure; `claude_hook` UserPromptSubmit receipt |
+| Codex (macOS/Linux) | Trusted lifecycle hook configuration actually passed at launch, `hookCoverage: lifecycle` | Selected reliable `codex_hook` Stop; `codex_hook` UserPromptSubmit receipt |
+
+Both require idle with no active turn and bracketed paste enabled. `installed` alone
+is insufficient. Trust resolution failure leaves Codex with `notify_only` coverage;
+notify cannot observe submissions or permission requests. Daemon reuse (`skipped`),
+Windows (`not_required`, session files), no hooks (`none`), and file-only readiness
+refuse with `agent.prompt_unsupported`. Reasons are `codex_hooks_notify_only`,
+`codex_hooks_skipped`, `codex_hooks_not_required`, `codex_hooks_not_installed`,
+`codex_hooks_partial`, `codex_hooks_error`, `codex_hooks_missing`, or
+`codex_lifecycle_observation_missing`. Missing Claude coverage reports
+`claude_hooks_missing`. Legacy launches without coverage fail closed.
+
+Codex PermissionRequest is observed as waiting and refuses with `agent.blocked`,
+including zero paste/submit attempts. Conversational questions in the normal editor
+are distinct from modal dialogs: Codex has no dedicated hook for every question or
+notice. Coverage names the configured events, not proof that every blocking surface
+is observable. The strict fixture verifies our protocol and delivery path, not a
+particular real Codex version. Real CLI acceptance is still required.
 
 ## What success means
 
@@ -36,7 +88,7 @@ A successful result contains:
 OpenCove received a token-authenticated UserPromptSubmit with a range-checked,
 caller-supplied relay timestamp at or after the pre-Enter boundary, and matching
 source/sequence/identity checks described below.
-This does not prove that this command caused the event, that Claude processed the
+This does not prove that this command caused the event, that the provider processed the
 exact text, or that the turn finished. Use `agent.turn_completed` separately to
 observe a turn's outcome. There is no delivery-status store or idempotency key.
 
@@ -50,8 +102,10 @@ observe a turn's outcome. There is no delivery-status store or idempotency key.
 | OpenCove has not observed a completed turn | `agent.state_unknown` / `readiness_unobserved` | Complete a turn in the terminal first. |
 | Hook observations are unavailable or unreliable | `agent.state_unknown` / `observation_degraded` | Check the hook setup and wait for a reliably observed turn end. |
 | No running agent exists at the target | `agent.not_running` | Check the node and start or resume its session. |
-| The target is remote or uses another provider | `agent.prompt_unsupported` | Select a local Claude Code session. |
-| The terminal has not enabled bracketed paste | `agent.prompt_unsupported` / `bracketed_paste_off` | Check that Claude Code is at its prompt. |
+| The agent window uses a custom executable path | `agent.prompt_unsupported` / `executable_override_unverified` | Remove the override in Settings → agent executable and launch a new agent window with lifecycle hooks. |
+| The target is an agent typed into a terminal | `agent.prompt_unsupported` / `terminal_agent_unsupported` | Launch an agent window from a task, the agent launcher, or `node create agent`. |
+| The target is remote or uses another provider | `agent.prompt_unsupported` | Select a local agent window OpenCove launched. |
+| The terminal has not enabled bracketed paste | `agent.prompt_unsupported` / `bracketed_paste_off` | Check that the agent is at its prompt. |
 | The timeout expires before the paste attempt | `agent.prompt_timeout` | Check the target, then retry if appropriate. |
 
 These refusals describe this call only. They do not cancel another delivery.
@@ -115,14 +169,16 @@ trailing newlines are removed. The entire text is sent as one bracketed paste.
 
 ## Submission-event checks and trust boundary
 
-A qualifying event must be an accepted, non-degraded `claude_hook`
+A qualifying event must be an accepted, non-degraded `claude_hook` (Claude Code) or `codex_hook` (Codex)
 `UserPromptSubmit` for the same Worker lifetime, agent incarnation and target
 binding, with a source sequence newer than the one captured before Enter and an
 assigned turn ID. Its `x-opencove-hook-emitted-at` value must be finite, within
 60 seconds before to 2 seconds after the receiver's current wall clock, and no
 earlier numerically than the timestamp captured immediately before the Enter write.
 
-The shipped relay records `Date.now()` before reading stdin. However, the receiver
+The shipped relay records `Date.now()` before reading stdin or argv. Codex lifecycle
+hooks use stdin; legacy notify uses argv. Both carry `x-opencove-hook-emitted-at`,
+but notify can never serve as a submission receipt. However, the receiver
 authenticates possession of the session's hook token; it does not authenticate the
 relay executable or independently verify when the event occurred. Any holder of
 the session's hook token can claim a submission and supply the timestamp. This contract assumes relay and Worker use the same wall clock without
@@ -144,12 +200,17 @@ observation sequences and identity generations; they are not public snapshot DTO
 
 Before paste, the service rechecks identity, caller authority, deadline, readiness
 and bracketed-paste mode inside the reserved input operation. Readiness requires a
-selected, non-degraded Claude `Stop` or `StopFailure` observation, idle state and no
-active turn.
+retained selected, non-degraded Claude `Stop` or `StopFailure`, or Codex `Stop`
+turn-end receipt, current idle state from that source and no active turn. A later
+same-source idle refresh (for example Codex notify or a Claude Notification) preserves
+that receipt but cannot establish it. A Stop from an argv launch prompt establishes
+readiness even without an observed turn start; it does not fabricate a completed-turn
+event. New turns, lifecycle resets, unavailable observations and source changes revoke
+the receipt; another qualifying Stop is needed. A notify `done`, SessionEnd, launch baseline or file observation never establishes prompt readiness.
 
 Between paste and Enter, an accepted observation, identity change, loss of paste
 mode, caller revocation, shutdown or deadline permanently cancels the remaining
-write. Returning to idle does not undo cancellation. The Claude provider policy
+write. Returning to idle does not undo cancellation. Both provider policies
 waits 300 ms before Enter; this delay does not prove that every dialog has closed.
 
 Immediately before Enter, the service captures fresh source watermarks and the

@@ -56,6 +56,7 @@ describe('agent.prompt contract', () => {
       provider: 'claude-code',
       incarnation: 'i',
     })
+    hub.agentRuns.registry.setRuntimeContext('s', { remote: false, launchKind: 'managed' })
     hub.agentRuns.registry.observe('s', {
       source: 'claude_hook',
       incarnation: 'i',

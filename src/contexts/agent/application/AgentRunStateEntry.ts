@@ -7,6 +7,8 @@ export type AgentRunEntry = {
   bindingGeneration: number
   cursor: number
   remote: boolean
+  launchKind?: RunStateFence['launchKind']
+  hookCoverage?: RunStateFence['hookCoverage']
   hookInstallState?: RunStateFence['hookInstallState']
   projectId?: string
   spaceId?: string
@@ -22,13 +24,13 @@ export function projectRunStateFence(entry: AgentRunEntry, epoch: string): RunSt
     bindingGeneration: entry.bindingGeneration,
     cursor: entry.cursor,
     snapshot: model.snapshot,
-    selectedHookEventName: model.snapshot.source
-      ? model.observations[model.snapshot.source]?.hookEventName
-      : undefined,
+    lastTurnEnd: model.lastTurnEnd,
     watermarks: Object.fromEntries(
       Object.entries(model.observations).map(([source, value]) => [source, value.sourceSequence]),
     ),
     remote: entry.remote,
+    launchKind: entry.launchKind,
+    hookCoverage: entry.hookCoverage,
     hookInstallState: entry.hookInstallState,
   })
 }

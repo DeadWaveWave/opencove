@@ -60,8 +60,20 @@ export function projectPtyStreamAgentMetadata(
         (incomingActivity.provider === previousActivity.provider &&
           incomingActivity.invocationId === previousActivity.invocationId &&
           incomingActivity.generation === previousActivity.generation)))
+  const preserveHookContext =
+    !newInvocation &&
+    retainedProvider === (previous?.agentProvider ?? previousActivity?.provider ?? null)
   const next = {
     ...incoming,
+    agentLaunchKind:
+      incomingActivity || (preserveHookContext && previous?.agentLaunchKind === 'terminal')
+        ? ('terminal' as const)
+        : (incoming.agentLaunchKind ??
+          (preserveHookContext ? previous?.agentLaunchKind : undefined)),
+    hookCoverage:
+      incoming.hookCoverage ?? (preserveHookContext ? previous?.hookCoverage : undefined),
+    hookInstallState:
+      incoming.hookInstallState ?? (preserveHookContext ? previous?.hookInstallState : undefined),
     ...(retainedProvider ? { agentProvider: retainedProvider } : {}),
     resumeSessionId: preservesVerifiedIdentity
       ? (previous?.resumeSessionId ?? null)
@@ -70,6 +82,9 @@ export function projectPtyStreamAgentMetadata(
     ...(retainedPi ? { piSnapshot: retainedPi } : {}),
   }
   const unchanged =
+    previous?.agentLaunchKind === next.agentLaunchKind &&
+    previous?.hookCoverage === next.hookCoverage &&
+    previous?.hookInstallState === next.hookInstallState &&
     previous?.resumeSessionId === next.resumeSessionId &&
     previous?.agentProvider === next.agentProvider &&
     previous?.profileId === next.profileId &&
