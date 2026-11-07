@@ -41,9 +41,9 @@ const bases: Record<string, Record<string, unknown>> = {
   'worktree.create': { spaceId: 'space-1', name: 'feature/test' },
   'worktree.list': { projectId: 'project-1' },
 }
-export const pr2aCorpus: Record<string, { name: string; payload: unknown }[]> = {}
+export const workspaceOperationCorpus: Record<string, { name: string; payload: unknown }[]> = {}
 for (const [id, base] of Object.entries(bases)) {
-  const cases = (pr2aCorpus[id] = [
+  const cases = (workspaceOperationCorpus[id] = [
     { name: 'baseline', payload: base },
     { name: 'extra', payload: { ...base, extra: 1 } },
     { name: 'array named properties', payload: Object.assign([], base) },
@@ -58,7 +58,8 @@ for (const [id, base] of Object.entries(bases)) {
     )
   }
 }
-const add = (id: string, name: string, payload: unknown) => pr2aCorpus[id].push({ name, payload })
+const add = (id: string, name: string, payload: unknown) =>
+  workspaceOperationCorpus[id].push({ name, payload })
 for (const kind of [
   'note',
   'task',

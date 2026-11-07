@@ -1,5 +1,5 @@
-// Explicit task scope: changes to unrelated operation counts cannot satisfy this migration.
-export const requiredSliceCOperations = [
+// Infrastructure contracts are enumerated explicitly so unrelated operations cannot mask gaps.
+export const requiredInfrastructureOperations = [
   'auth.issueWebSessionTicket',
   'endpoint.homeDirectory',
   'endpoint.overview.list',
@@ -36,7 +36,7 @@ export const requiredSliceCOperations = [
   'workspace.approveRoot',
   'workspace.ensureDirectory',
 ] as const
-export const sliceCCoreLimitations = [
+export const legacyNoInputOperations = [
   'endpoint.overview.list',
   'system.homeDirectory',
   'worker.maintenance.status',

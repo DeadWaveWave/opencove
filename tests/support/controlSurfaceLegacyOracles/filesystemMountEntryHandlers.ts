@@ -1,5 +1,5 @@
 // Frozen validator bodies from src/app/main/controlSurface/handlers/filesystemMountWriteHandlers.ts at 6df96903c64d6fb3c541c79815713996d3c1b186; imports relocated only.
-import { optionalFileMutationBoolean } from './migAMutationOptions'
+import { optionalFileMutationBoolean } from './filesystemMutationOptions'
 import { createAppError } from '../../../src/shared/errors/appError'
 import type {
   CopyEntryInMountInput,
@@ -13,7 +13,7 @@ import {
   normalizeFileSystemUri,
   normalizeMountId,
   normalizeSourceTargetPayload,
-} from './migAMountSupport'
+} from './filesystemMountSupport'
 
 export const normalizeFilesystemCreateDirectoryInMount = (
   payload: unknown,

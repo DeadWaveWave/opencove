@@ -76,7 +76,7 @@ const edges = [
   'x'.repeat(5000),
 ]
 for (const op of pluginOperations) {
-  // This frozen corpus covers the earlier slice; migB has its own composition parity suite.
+  // View, preference, host, and Sidebar payloads have a separate session and plugin parity suite.
   if (op.contract !== 'schema' || !(op.id in valid)) {
     continue
   }

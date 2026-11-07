@@ -1,6 +1,6 @@
 import { createAppError } from '../../../errors/appError'
 import type { ReadFileBytesInMountInput } from '../../dto'
-import { isRecord, normalizeFileSystemUri, normalizeMountId } from './migrationMountNormalize'
+import { isRecord, normalizeFileSystemUri, normalizeMountId } from './filesystemMountPayloadSupport'
 
 export const normalizeFilesystemReadFileBytesInMount = (
   payload: unknown,

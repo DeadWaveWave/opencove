@@ -7,7 +7,7 @@ import * as node from '../../support/controlSurfaceLegacyOracles/nodeQueries'
 import * as space from '../../support/controlSurfaceLegacyOracles/spaceQueries'
 import * as worktree from '../../support/controlSurfaceLegacyOracles/worktree'
 import { normalizeProjectListPayload } from '../../support/controlSurfaceLegacyOracles/project'
-import { pr2aCorpus } from '../../support/controlSurfaceLegacyOracles/pr2aCorpus'
+import { workspaceOperationCorpus } from '../../support/controlSurfaceLegacyOracles/workspaceOperationCorpus'
 import { OpenCoveAppError } from '../../../src/shared/errors/appError'
 
 const oracles: Record<string, (payload: unknown) => unknown> = {
@@ -52,7 +52,7 @@ function attempt(parse: (payload: unknown) => unknown, payload: unknown) {
     return { ok: false, error: error.toDescriptor() }
   }
 }
-for (const [id, cases] of Object.entries(pr2aCorpus)) {
+for (const [id, cases] of Object.entries(workspaceOperationCorpus)) {
   for (const [index, item] of cases.entries()) {
     it(`${id} ${index}: ${item.name}`, () => {
       if (id.startsWith('node.') || id === 'canvas.focus') {

@@ -12,7 +12,7 @@ import type {
 } from '../../../src/shared/contracts/dto'
 import { isAbsolute } from 'node:path'
 import type { AgentProviderId } from '../../../src/shared/contracts/dto'
-import { isWorktreeNameSuggestionProvider } from './migAProviders'
+import { isWorktreeNameSuggestionProvider } from './agentSettings.providers'
 import { createAppError } from '../../../src/shared/errors/appError'
 
 function normalizeTextValue(value: unknown): string {
