@@ -35,14 +35,17 @@ Global options:
   --user-data <dir>        Use this profile directory
   --timeout <ms>           Set the request timeout in milliseconds (default: 20000)
   --pretty                 Indent JSON output for readability
-  --fields <a,b,...>       Select item-relative fields; preserve envelopes and accept item-key prefixes. api call queries use raw output paths
+  --fields <a,b,...>       Select item-relative fields; preserve envelopes and accept item-key prefixes. api call queries also accept raw output paths
   -o, --output json|table  Choose JSON (default) or a supported table layout
   -h, --help               Show help for this command or group
   --version                Print the CLI version
 
 Exit codes: 0 success; 1 operation failure; 2 invalid input; 3 unreachable; 4 unauthorized; 5 incompatible protocol; 6 ambiguous target; 124 timeout; 130 interrupted.
 
-Run "opencove <group> --help" for commands in a group. Run "opencove api ops" to list every Control Surface operation.
+Run "opencove <group> --help" for commands in a group.
+Start with "opencove api ops --domains" for a compact domain map.
+Then run "opencove api ops --prefix node --fields id,command" to explore one domain.
+Run "opencove api ops" only when you need the full catalog.
 "
 `;
 
@@ -130,13 +133,16 @@ Global options:
   --user-data <dir>        Use this profile directory
   --timeout <ms>           Set the request timeout in milliseconds (default: 20000)
   --pretty                 Indent JSON output for readability
-  --fields <a,b,...>       Select item-relative fields; preserve envelopes and accept item-key prefixes. api call queries use raw output paths
+  --fields <a,b,...>       Select item-relative fields; preserve envelopes and accept item-key prefixes. api call queries also accept raw output paths
   -o, --output json|table  Choose JSON (default) or a supported table layout
   -h, --help               Show help for this command or group
   --version                Print the CLI version
 
 Exit codes: 0 success; 1 operation failure; 2 invalid input; 3 unreachable; 4 unauthorized; 5 incompatible protocol; 6 ambiguous target; 124 timeout; 130 interrupted.
 
-Run "opencove <group> --help" for commands in a group. Run "opencove api ops" to list every Control Surface operation.
+Run "opencove <group> --help" for commands in a group.
+Start with "opencove api ops --domains" for a compact domain map.
+Then run "opencove api ops --prefix node --fields id,command" to explore one domain.
+Run "opencove api ops" only when you need the full catalog.
 "
 `;

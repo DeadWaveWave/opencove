@@ -97,7 +97,10 @@ export const pluginCommands: Command[] = [
         ...(name === 'install-git'
           ? {
               directory: option('Select the plugin directory within the repository', 'path'),
-              build: option('Choose an explicit build strategy', 'none|npm|pnpm'),
+              build: {
+                ...option('Choose an explicit build strategy', 'none|npm|pnpm'),
+                choices: ['none', 'npm', 'pnpm'],
+              },
               script: option('Run this package script', 'name'),
               'build-output': option('Read the built plugin from this directory', 'path'),
             }
@@ -135,10 +138,7 @@ export const pluginCommands: Command[] = [
         }
         if (name === 'install-git') {
           const kind = o.build ?? 'none'
-          if (
-            !['none', 'npm', 'pnpm'].includes(String(kind)) ||
-            (kind === 'none' && (o.script !== undefined || o['build-output'] !== undefined))
-          ) {
+          if (kind === 'none' && (o.script !== undefined || o['build-output'] !== undefined)) {
             usage(
               'Invalid plugin build options',
               'Choose --build npm or --build pnpm before specifying --script or --build-output.',

@@ -1,8 +1,8 @@
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../shared/contracts/controlSurface/protocol'
 import type { Connection } from './context'
 import { get } from './render'
-import type { ErrorTarget } from './command'
-import { CliError, validationError } from './errors'
+import type { ErrorTarget, OptionSpec } from './command'
+import { CliError, inputChoiceIssues, inputErrorMessage, validationError } from './errors'
 export async function invoke(
   connection: Connection,
   request: { kind: string; id: string; payload: unknown },
@@ -11,6 +11,7 @@ export async function invoke(
     fetch?: typeof fetch
     signal?: AbortSignal
     errorTargets?: ErrorTarget[]
+    inputOptions?: Record<string, OptionSpec>
   },
 ) {
   const controller = new AbortController()
@@ -40,14 +41,22 @@ export async function invoke(
     const result = await response.json()
     if (result?.ok === false) {
       const error = result.error ?? {}
-      if (Array.isArray(error.details?.issues)) {
+      const serverIssues = error.details?.issues
+      const choices =
+        error.code === 'common.invalid_input' &&
+        (!Array.isArray(serverIssues) || !serverIssues.length)
+          ? inputChoiceIssues(request.payload, options.inputOptions)
+          : []
+      const issues = choices.length ? choices : serverIssues
+      if (Array.isArray(issues)) {
         const formatted = validationError(
           request.id,
-          error.details.issues,
+          issues,
           2,
           error.code ?? 'common.invalid_input',
+          request.payload,
         )
-        formatted.details = { ...error.details, issues: error.details.issues }
+        formatted.details = { ...error.details, issues }
         throw formatted
       }
       const target = options.errorTargets?.find(
@@ -80,7 +89,9 @@ export async function invoke(
               : 1,
         target?.entity && targetAction
           ? `${target.entity} ${JSON.stringify(Object.values(targetDetails)[0])} ${targetAction}`
-          : (error.debugMessage ?? error.code ?? 'Operation failed'),
+          : error.code === 'common.invalid_input'
+            ? inputErrorMessage(request.id, error.debugMessage)
+            : (error.debugMessage ?? error.code ?? 'Operation failed'),
         error.code === 'common.approved_path_required'
           ? 'Run "opencove mount list --project <id>" to see approved roots.'
           : target

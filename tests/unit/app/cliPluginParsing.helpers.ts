@@ -16,6 +16,11 @@ export function parsePluginCommand(argv: string[]) {
     throw Error('Invalid positionals')
   }
   for (const [key, spec] of Object.entries(specs)) {
+    const choices =
+      typeof spec.choices === 'function' ? spec.choices({ options, positionals }) : spec.choices
+    if (options[key] !== undefined && choices && !choices.includes(String(options[key]))) {
+      throw Error(`Invalid --${key}`)
+    }
     if (spec.type === 'json' && options[key] !== undefined) {
       options[key] = JSON.parse(String(options[key]))
     }

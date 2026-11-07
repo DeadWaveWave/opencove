@@ -47,18 +47,18 @@ const dataFields = [
   'taskId',
   'runtimeKind',
 ]
+const summaryDataFields = ['kind', 'status', 'priority', 'requirement', 'tags', 'url']
 export const nodeListOutput: RenderSpec = {
   listKey: 'nodes',
-  fields: [
-    ...nodeFields,
-    'data',
-    'data.kind',
-    'data.status',
-    'data.priority',
-    'data.requirement',
-    'data.tags',
-    'data.url',
-  ],
+  fields: [...nodeFields, 'data', ...summaryDataFields.map(field => `data.${field}`)],
+  fieldHints: Object.fromEntries(
+    dataFields
+      .filter(field => !summaryDataFields.includes(field))
+      .map(field => [
+        `data.${field}`,
+        `Read full node content with "opencove node get --node <id> --fields data.${field}".`,
+      ]),
+  ),
   columns: ['id', 'kind', 'title', 'STATE'],
   tableFields: { STATE: ['data.status', 'status'] },
   examples: [

@@ -88,6 +88,9 @@ export const commands: Command[] = [
   defineCommand({
     path: ['api', 'ops'],
     summary: 'List Control Surface operations with their kind, contract and CLI command',
+    get description() {
+      return `The full JSON catalog is large (about ${Math.round(Buffer.byteLength(JSON.stringify(operationCatalog())) / 1024)} KB). Start with --domains, then narrow with --prefix or --search and --fields.\n\nWith --domains, output is an array of summaries with these projectable fields:\n  domain: Operation ID prefix before the first dot\n  operations: Total operations in the domain after filtering\n  schema: Operations with a schema input contract\n  commands: Command-kind operations, not dedicated CLI commands`
+    },
     connect: false,
     options: {
       domains: {
@@ -104,34 +107,28 @@ export const commands: Command[] = [
         valueName: 'domain',
         description: 'Filter by operation domain, such as node or filesystem',
       },
-      kind: { type: 'string', valueName: 'query|command', description: 'Filter by operation kind' },
+      kind: {
+        type: 'string',
+        valueName: 'query|command',
+        choices: ['query', 'command'],
+        description: 'Filter by operation kind',
+      },
       contract: {
         type: 'string',
         valueName: 'schema|legacy',
+        choices: ['schema', 'legacy'],
         description: 'Filter by input contract availability',
       },
     },
     async execute({ options: o }) {
-      if (o.kind && !['query', 'command'].includes(String(o.kind))) {
-        usage('Invalid kind')
-      }
-      if (o.contract && !['schema', 'legacy'].includes(String(o.contract))) {
-        usage('Invalid contract')
-      }
-      const operations = CONTROL_SURFACE_OPERATIONS.filter(
+      const operations = operationCatalog().filter(
         op =>
           (!o.kind || op.kind === o.kind) &&
           (!o.contract || op.contract === o.contract) &&
           (!o.search ||
             `${op.id} ${op.summary}`.toLowerCase().includes(String(o.search).toLowerCase())) &&
           (!o.prefix || op.id.startsWith(String(o.prefix).replace(/\.$/, '') + '.')),
-      ).map(({ id, kind, contract, summary }) => ({
-        id,
-        kind,
-        contract,
-        summary,
-        command: dedicatedCommand(id),
-      }))
+      )
       if (!o.domains) {
         return operations
       }
@@ -198,6 +195,8 @@ export const commands: Command[] = [
       variant: {
         ...stringOption('Select one input kind from a discriminated union'),
         valueName: 'kind',
+        choices: ({ positionals }) =>
+          schemaVariants(positionals[0]).map(({ kind }) => String(kind)),
       },
     },
     async execute({ positionals, options }) {
@@ -206,32 +205,11 @@ export const commands: Command[] = [
         usage('Unknown operation')
       }
       if (op.contract !== 'schema') {
-        if (options.variant !== undefined) {
-          usage(`Unknown variant "${options.variant}" for ${op.id}. Available variants: none`)
-        }
         throw new CliError('api.schema_unavailable', 1, `No input schema for ${op.id}`)
       }
       let input: z.ZodType = op.input
       if (options.variant !== undefined) {
-        const variants =
-          input instanceof z.ZodDiscriminatedUnion
-            ? input.options.flatMap(branch => {
-                if (
-                  !(branch instanceof z.ZodObject) ||
-                  !(branch.shape.kind instanceof z.ZodLiteral)
-                ) {
-                  return []
-                }
-                return [...branch.shape.kind.values].map(kind => ({ kind, branch }))
-              })
-            : []
-        const match = variants.find(({ kind }) => kind === options.variant)
-        if (!match) {
-          usage(
-            `Unknown variant "${options.variant}" for ${op.id}. Available variants: ${variants.map(({ kind }) => kind).join(', ') || 'none'}`,
-          )
-        }
-        input = match.branch
+        input = schemaVariants(op.id).find(({ kind }) => kind === options.variant)!.branch
       }
       return z.toJSONSchema(input, { io: 'input', unrepresentable: 'throw', reused: 'ref' })
     },
@@ -301,4 +279,27 @@ function dedicatedCommand(id: string): string | undefined {
     c => c.operation === id || c.operationAliases?.some(alias => alias === id),
   )
   return command ? (command.operationCommand ?? `opencove ${command.path.join(' ')}`) : undefined
+}
+
+function operationCatalog() {
+  return CONTROL_SURFACE_OPERATIONS.map(({ id, kind, contract, summary }) => ({
+    id,
+    kind,
+    contract,
+    summary,
+    command: dedicatedCommand(id),
+  }))
+}
+
+function schemaVariants(id: string) {
+  const op = getControlSurfaceOperation(id)
+  const input = op?.contract === 'schema' ? op.input : undefined
+  return input instanceof z.ZodDiscriminatedUnion
+    ? input.options.flatMap(branch => {
+        if (!(branch instanceof z.ZodObject) || !(branch.shape.kind instanceof z.ZodLiteral)) {
+          return []
+        }
+        return [...branch.shape.kind.values].map(kind => ({ kind, branch }))
+      })
+    : []
 }

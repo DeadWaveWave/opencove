@@ -1,0 +1,194 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`F3/F5/F6 help golden:  1`] = `
+"OpenCove CLI — Control projects, spaces, canvas nodes and worker runtimes
+
+Usage: opencove <command> [options]
+
+Workspace:
+  project  List projects and find their IDs
+  space    List and inspect project spaces
+  node     Create, read, update and delete canvas nodes
+  canvas   Focus nodes and spaces on the canvas
+
+Introspection:
+  api  Discover operations, inspect input schemas and invoke the Control Surface
+
+Runtime:
+  ping      Check whether the Control Surface responds
+  status    Show protocol, app version and instance identity
+  worker    Start, inspect and stop local workers
+  runtime   Inspect, verify and prepare managed runtimes
+  endpoint  Register and manage remote worker connections
+  mount     Connect project folders to worker endpoints
+  fs        Read, write and inspect files through the Control Surface
+  worktree  List, create and archive Git worktrees
+  session   Run agents and inspect or stop their sessions
+  pty       Start and attach to terminal sessions
+
+Plugins:
+  plugin  Discover, install and manage plugins
+
+Global options:
+  --endpoint <url>         Connect to this Control Surface URL
+  --token <token>          Authenticate with this bearer token
+  --user-data <dir>        Use this profile directory
+  --timeout <ms>           Set the request timeout in milliseconds (default: 20000)
+  --pretty                 Indent JSON output for readability
+  --fields <a,b,...>       Select item-relative fields; preserve envelopes and accept item-key prefixes. api call queries also accept raw output paths
+  -o, --output json|table  Choose JSON (default) or a supported table layout
+  -h, --help               Show help for this command or group
+  --version                Print the CLI version
+
+Exit codes: 0 success; 1 operation failure; 2 invalid input; 3 unreachable; 4 unauthorized; 5 incompatible protocol; 6 ambiguous target; 124 timeout; 130 interrupted.
+
+Run "opencove <group> --help" for commands in a group.
+Start with "opencove api ops --domains" for a compact domain map.
+Then run "opencove api ops --prefix node --fields id,command" to explore one domain.
+Run "opencove api ops" only when you need the full catalog.
+"
+`;
+
+exports[`F3/F5/F6 help golden: api 1`] = `
+"Usage: opencove api <command> [options]
+
+Start with "opencove api ops --domains" for a compact domain map.
+Then run "opencove api ops --prefix node --fields id,command" to explore one domain.
+Run "opencove api ops" only when you need the full catalog.
+
+Commands:
+  ops     List Control Surface operations with their kind, contract and CLI command
+  schema  Show the input JSON Schema for an operation
+  call    Invoke a registered operation
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`F3/F5/F6 help golden: api call 1`] = `
+"Usage: opencove api call <operation-id> [options]
+
+Invoke a registered operation
+
+Options:
+  --input <json>         Pass the operation input as JSON
+  --input-file <path|->  Read input from a UTF-8 file, or use - for stdin
+
+Table output (-o table): not supported.
+Field projection (--fields): queries accept raw output dot paths and item-relative aliases from dedicated commands with declared output fields; validated after the read. Commands do not support projection.
+
+Examples:
+  opencove api call project.list
+  opencove api call node.create --input-file ./new-note.json
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`F3/F5/F6 help golden: api ops --domains 1`] = `
+"Usage: opencove api ops [options]
+
+List Control Surface operations with their kind, contract and CLI command
+
+The full JSON catalog is large (about 22 KB). Start with --domains, then narrow with --prefix or --search and --fields.
+
+With --domains, output is an array of summaries with these projectable fields:
+  domain: Operation ID prefix before the first dot
+  operations: Total operations in the domain after filtering
+  schema: Operations with a schema input contract
+  commands: Command-kind operations, not dedicated CLI commands
+
+Options:
+  --domains                   Count operations, schema contracts and command-kind operations by domain
+  --search <text>             Match operation IDs or summaries, ignoring case
+  --prefix <domain>           Filter by operation domain, such as node or filesystem
+  --kind <query|command>      Filter by operation kind
+  --contract <schema|legacy>  Filter by input contract availability
+
+Table output (-o table): supported.
+Projectable fields: id, kind, contract, summary, command
+
+Projection example:
+  opencove api ops --prefix node --fields id,command
+  [{"id":"node.create","command":"opencove node create"}, ...]
+
+Examples:
+  opencove api ops --domains
+  opencove api ops --search create
+  opencove api ops --prefix node --fields id,command
+  opencove api ops --kind query --contract schema
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`F3/F5/F6 help golden: api ops 1`] = `
+"Usage: opencove api ops [options]
+
+List Control Surface operations with their kind, contract and CLI command
+
+The full JSON catalog is large (about 22 KB). Start with --domains, then narrow with --prefix or --search and --fields.
+
+With --domains, output is an array of summaries with these projectable fields:
+  domain: Operation ID prefix before the first dot
+  operations: Total operations in the domain after filtering
+  schema: Operations with a schema input contract
+  commands: Command-kind operations, not dedicated CLI commands
+
+Options:
+  --domains                   Count operations, schema contracts and command-kind operations by domain
+  --search <text>             Match operation IDs or summaries, ignoring case
+  --prefix <domain>           Filter by operation domain, such as node or filesystem
+  --kind <query|command>      Filter by operation kind
+  --contract <schema|legacy>  Filter by input contract availability
+
+Table output (-o table): supported.
+Projectable fields: id, kind, contract, summary, command
+
+Projection example:
+  opencove api ops --prefix node --fields id,command
+  [{"id":"node.create","command":"opencove node create"}, ...]
+
+Examples:
+  opencove api ops --domains
+  opencove api ops --search create
+  opencove api ops --prefix node --fields id,command
+  opencove api ops --kind query --contract schema
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`F3/F5/F6 help golden: node list 1`] = `
+"Usage: opencove node list [options]
+
+List canvas nodes
+
+Lists per-kind summaries: data carries kind plus requirement, status, priority and tags for tasks, or url for websites; data carries only kind for notes, agents and terminals. Read full content, such as note text, with "opencove node get --node <id>".
+
+data.status is task status. Top-level status is the runtime status of agent and terminal sessions. STATE shows the applicable status.
+
+Target space (optional; choose one):
+  --space <id>                                  Select a space by its ID
+  --space-name <name> [--project <id>]          Find a named space, optionally within a project
+  --worker <id-or-name> --branch <branch>       Find a space by worker and Git branch
+  --worker <id-or-name> --path <absolute-path>  Find a space by worker and working directory
+  Add --project <id> to narrow a name, branch or path lookup
+
+Options:
+  --kind <kind>  Filter by note, task, website, agent, terminal, plugin, document, folder, image or role
+
+Table output (-o table): supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.status, data.priority, data.requirement, data.tags, data.url
+
+Projection example:
+  opencove node list --fields id,data.status
+  {"projectId":"p","spaceId":null,"nodes":[{"id":"n","data":{"status":"doing"}}]}
+
+Examples:
+  opencove node list --space space-123
+  opencove node list --space space-123 --fields nodes.id,nodes.title
+
+Global options: see "opencove --help".
+"
+`;

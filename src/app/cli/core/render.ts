@@ -1,6 +1,28 @@
 import type { RenderSpec } from './command'
 import { usage } from './errors'
-import { hasPath, project } from './projection'
+import { hasPath, outputPaths, project } from './projection'
+
+function ownValue<T>(dictionary: Record<string, T> | undefined, key: string): T | undefined {
+  return dictionary && Object.hasOwn(dictionary, key) ? dictionary[key] : undefined
+}
+
+/** Reuse dedicated item contracts while preserving generic query output paths. */
+export function rawRenderSpec(spec?: RenderSpec): RenderSpec {
+  const itemKey = spec?.listKey ?? spec?.itemKey
+  const aliases = Object.fromEntries(
+    (spec?.fields ?? []).map(field => [
+      field,
+      ownValue(spec?.envelopeFields, field) ?? (itemKey ? `${itemKey}.${field}` : field),
+    ]),
+  )
+  return {
+    rawPaths: true,
+    aliases,
+    declaredRawPaths: [...Object.values(aliases), ...(spec?.itemAtRoot ? (spec.fields ?? []) : [])],
+    rawItemKey: itemKey,
+    fieldHints: spec?.fieldHints,
+  }
+}
 export function get(value: unknown, key: string): unknown {
   return key
     .split('.')
@@ -30,18 +52,16 @@ function selectedFields(options: Record<string, unknown>, spec: RenderSpec): str
   if (!spec.fields) {
     usage('--fields is unavailable for this command. Available fields: none', spec.unavailable)
   }
-  const keys = String(options.fields)
-    .split(',')
-    .map(key => {
-      const trimmed = key.trim()
-      const itemKey = spec.listKey ?? spec.itemKey
-      return itemKey && trimmed.startsWith(itemKey + '.')
-        ? trimmed.slice(itemKey.length + 1)
-        : trimmed
-    })
+  const keys = requested.map(key => {
+    const itemKey = spec.listKey ?? spec.itemKey
+    return itemKey && key.startsWith(itemKey + '.') ? key.slice(itemKey.length + 1) : key
+  })
   const unknown = keys.filter(key => !spec.fields!.includes(key))
   if (unknown.length) {
-    usage(`Unknown fields: ${unknown.join(', ')}. Available fields: ${spec.fields.join(', ')}`)
+    usage(
+      `Unknown fields: ${unknown.join(', ')}. Available fields: ${spec.fields.join(', ')}`,
+      unknown.map(key => ownValue(spec.fieldHints, key)).find(Boolean),
+    )
   }
   return keys
 }
@@ -53,7 +73,7 @@ export function validateRenderOptions(options: Record<string, unknown>, spec: Re
 }
 export function render(value: unknown, options: Record<string, unknown>, spec: RenderSpec = {}) {
   validateRenderOptions(options, spec)
-  const keys = selectedFields(options, spec)
+  let keys = selectedFields(options, spec)
   const itemKey =
     spec.itemAtRoot && spec.itemKey && get(value, spec.itemKey) === undefined
       ? undefined
@@ -72,10 +92,36 @@ export function render(value: unknown, options: Record<string, unknown>, spec: R
     }
   })
   if (keys && spec.rawPaths) {
-    const unknown = keys.filter(key => !key || !hasPath(value, key.split('.')))
+    const declared = spec.declaredRawPaths ?? []
+    const valid = (key: string) => declared.includes(key) || hasPath(value, key.split('.'))
+    // A real raw path wins over a colliding item alias, preserving existing callers.
+    const resolved = keys.map(key => (valid(key) ? key : (ownValue(spec.aliases, key) ?? key)))
+    const unknown = keys.filter((key, i) => !key || !valid(resolved[i]))
     if (unknown.length) {
-      usage(`Unknown output paths: ${unknown.join(', ')}`)
+      const available = [...new Set([...declared, ...outputPaths(value)])]
+      const relative = unknown.filter(
+        key => spec.rawItemKey && !key.startsWith(spec.rawItemKey + '.'),
+      )
+      const example = Object.values(spec.aliases ?? {})[0]
+      const hint = unknown
+        .map(key =>
+          ownValue(
+            spec.fieldHints,
+            spec.rawItemKey && key.startsWith(spec.rawItemKey + '.')
+              ? key.slice(spec.rawItemKey.length + 1)
+              : key,
+          ),
+        )
+        .find(Boolean)
+      usage(
+        `Unknown output paths: ${unknown.join(', ')}. Available raw paths: ${available.join(', ') || 'none'}`,
+        hint ??
+          (relative.length
+            ? `Item-relative paths use the ${spec.rawItemKey} prefix (for example, ${example}); check ${relative.map(key => JSON.stringify(`${spec.rawItemKey}.${key}`)).join(', ')} against the available raw paths.`
+            : undefined),
+      )
     }
+    keys = resolved
   }
   if (keys) {
     const projected = rows.map(row =>
@@ -93,7 +139,7 @@ export function render(value: unknown, options: Record<string, unknown>, spec: R
       columns,
       ...rows.map(row =>
         columns.map(key => {
-          const paths = spec.tableFields?.[key] ?? [key]
+          const paths = ownValue(spec.tableFields, key) ?? [key]
           const v = paths
             .map(path => get(row, path))
             .find(item => item !== undefined && item !== null)
