@@ -1,3 +1,4 @@
+import { registerOperationIntrospectionHandlers } from './operationIntrospectionHandlers'
 import { hostname } from 'node:os'
 import type { ControlSurface } from '../controlSurface'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../../shared/contracts/controlSurface'
@@ -18,6 +19,7 @@ export function registerSystemHandlers(
     isReady?: () => boolean
   },
 ): void {
+  registerOperationIntrospectionHandlers(controlSurface)
   controlSurface.register('system.ping', {
     kind: 'query',
     validate: payload => payload ?? null,
@@ -59,7 +61,7 @@ export function registerSystemHandlers(
         deploymentId: deps.deploymentId ?? null,
         instanceId: deps.instanceId,
         runtimeReady: deps.isReady?.() ?? false,
-        features: ctx.capabilities,
+        features: { ...ctx.capabilities, operationRegistry: true },
       }) satisfies ControlSurfaceCapabilitiesResult,
     defaultErrorCode: 'common.unexpected',
   })
