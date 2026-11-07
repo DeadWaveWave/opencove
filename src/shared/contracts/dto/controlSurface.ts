@@ -267,9 +267,7 @@ export interface LaunchAgentSessionResult {
   args: string[]
 }
 
-export interface GetSessionInput {
-  sessionId: string
-}
+export type GetSessionInput = import('../controlSurface/operations/sessionAddress').SessionAddress
 
 export interface AttachAgentStateWatcherInput {
   sessionId: string
@@ -294,14 +292,12 @@ export interface GetSessionResult {
   args: string[]
 }
 
-export interface GetSessionFinalMessageInput {
-  sessionId: string
-}
+export type GetSessionFinalMessageInput = GetSessionInput
 
 export interface GetSessionFinalMessageResult {
   sessionId: string
   provider: AgentProviderId
-  startedAt: string
+  startedAt: string | null
   cwd: string
   resumeSessionId: string | null
   message: string | null
@@ -426,4 +422,17 @@ export interface SpawnTerminalSessionResult {
   command: string
   args: string[]
   executionContext: ExecutionContextDto
+}
+
+/** Node lookup does not invent launch-only metadata absent after restart. */
+export type GetNodeSessionResult = Omit<
+  GetSessionResult,
+  'provider' | 'startedAt' | 'prompt' | 'command' | 'args'
+> & {
+  nodeId: string
+  provider: AgentProviderId | null
+  startedAt: string | null
+  prompt: string | null
+  command: string | null
+  args: string[] | null
 }

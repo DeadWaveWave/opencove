@@ -68,27 +68,6 @@ const expected: Record<
       mountId: 'string',
     },
   },
-  'session.get': {
-    fields: ['sessionId'],
-    required: ['sessionId'],
-    types: {
-      sessionId: 'string',
-    },
-  },
-  'session.kill': {
-    fields: ['sessionId'],
-    required: ['sessionId'],
-    types: {
-      sessionId: 'string',
-    },
-  },
-  'session.finalMessage': {
-    fields: ['sessionId'],
-    required: ['sessionId'],
-    types: {
-      sessionId: 'string',
-    },
-  },
   'filesystem.readDirectory': {
     fields: ['uri', 'maxEntries'],
     required: ['uri'],

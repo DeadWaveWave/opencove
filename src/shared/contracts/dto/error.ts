@@ -15,6 +15,7 @@ export const APP_ERROR_CODES = [
   'node.not_found',
   'node.unsupported_operation',
   'session.not_found',
+  'session.transcript_not_ready',
   'control_surface.unauthorized',
   'integration.github.unavailable',
   'integration.github.resolve_failed',
