@@ -23,19 +23,43 @@ function isSettingsRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
 }
 
-function normalizeNodeForMerge(
+export function normalizeNodeForMerge(
   node: PersistedAppStateContract<Record<string, unknown>>['workspaces'][number]['nodes'][number],
 ): NormalizedPersistedNodeContract {
   return {
     ...node,
+    // Hydration projects terminal agent into terminalAgentBinding. Restore its
+    // durable representation below before excluding the projection from content.
+    ...('terminalAgentBinding' in node ? { terminalAgentBinding: undefined } : {}),
+    titlePinnedByUser: node.titlePinnedByUser ?? false,
+    profileId: node.profileId ?? null,
+    terminalGeometry: node.terminalGeometry ?? null,
+    workerBinding: node.workerBinding ?? null,
+    terminalProviderHint: node.terminalProviderHint ?? null,
+    labelColorOverride: node.labelColorOverride ?? null,
+    sidebarSortOrder: node.sidebarSortOrder ?? undefined,
+    executionDirectory: node.executionDirectory ?? null,
+    expectedDirectory: node.expectedDirectory ?? null,
     status: node.status ?? null,
     startedAt: node.startedAt ?? null,
     endedAt: node.endedAt ?? null,
     exitCode: node.exitCode ?? null,
     lastError: node.lastError ?? null,
     scrollback: node.scrollback ?? null,
-    agent: node.agent ?? null,
-    task: node.task ?? null,
+    agent:
+      node.kind === 'terminal'
+        ? (node.terminalAgentBinding ?? node.agent ?? null)
+        : (node.agent ?? null),
+    task:
+      node.kind === 'task' && node.task && 'requirement' in node.task
+        ? {
+            ...node.task,
+            linkedAgentNodeId:
+              'linkedAgentNodeId' in node.task && typeof node.task.linkedAgentNodeId === 'string'
+                ? node.task.linkedAgentNodeId.trim() || null
+                : null,
+          }
+        : (node.task ?? null),
   }
 }
 
@@ -211,6 +235,9 @@ function normalizeWorkspaceForMerge(
 
   return {
     ...workspace,
+    iconId: workspace.iconId ?? null,
+    environmentVariables: workspace.environmentVariables ?? {},
+    pullRequestBaseBranchOptions: workspace.pullRequestBaseBranchOptions ?? [],
     worktreesRoot: workspace.worktreesRoot ?? '',
     nodes: workspace.nodes.map(normalizeNodeForMerge),
     viewport: workspace.viewport ?? { x: 0, y: 0, zoom: 1 },

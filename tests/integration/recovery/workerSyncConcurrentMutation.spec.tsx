@@ -202,3 +202,63 @@ it('retains a failed local write and resumes the pending refresh after a success
     hook.unmount()
   }
 })
+
+it('applies external settings before acknowledging refresh and publishing geometry', async () => {
+  const workspace = createWorkspace()
+  useAppStore.setState({ workspaces: [workspace], activeWorkspaceId: workspace.id })
+  const produce = () => {
+    const current = useAppStore.getState()
+    return toPersistedState(current.workspaces, current.activeWorkspaceId, current.agentSettings)
+  }
+  const external = {
+    ...produce(),
+    settings: { ...produce().settings, releaseNotesSeenVersion: 'external-review' },
+  }
+  let durable = external
+  const writeAppState = vi.fn(async ({ state }: { state: PersistedAppState }) => {
+    durable = state
+    return { ok: true, level: 'full', bytes: 1, revision: 31 }
+  })
+  let emit!: (event: SyncEventPayload) => void
+  Object.defineProperty(window, 'opencoveApi', {
+    configurable: true,
+    value: {
+      persistence: {
+        readAppState: vi.fn(async () => ({ state: durable, revision: 30, recovery: null })),
+        writeAppState,
+      },
+      sync: {
+        onStateUpdated: (listener: typeof emit) => {
+          emit = listener
+          return vi.fn()
+        },
+      },
+    },
+  })
+  const hook = renderHook(() => useWorkerSyncStateUpdates({ enabled: true }))
+  try {
+    act(() => emit({ type: 'app_state.updated', operationId: 'sync.writeState', revision: 30 }))
+    await waitFor(() =>
+      expect(useAppStore.getState().agentSettings.releaseNotesSeenVersion).toBe('external-review'),
+    )
+    await act(async () => {
+      useAppStore.getState().setWorkspaces(previous =>
+        previous.map(project => ({
+          ...project,
+          nodes: project.nodes.map(node => ({
+            ...node,
+            position: { ...node.position, x: node.position.x + 10 },
+          })),
+        })),
+      )
+      schedulePersistedStateWrite(produce)
+      expect(await flushScheduledPersistedStateWriteAsync()).toBe(true)
+    })
+    expect(writeAppState).toHaveBeenCalledOnce()
+    expect(writeAppState.mock.calls[0][0]).toMatchObject({ baseRevision: 30 })
+    expect(durable.settings.releaseNotesSeenVersion).toBe('external-review')
+    expect(durable.workspaces[0].nodes[0].position.x).toBe(10)
+  } finally {
+    hook.unmount()
+  }
+})

@@ -7,7 +7,8 @@ import { markPersistedStateAsSynced } from './write'
 export function acceptPersistedStateSnapshot({
   state,
   isPersisted,
-}: Pick<PersistedStateReadResult, 'state' | 'isPersisted'>): void {
+  revision,
+}: Pick<PersistedStateReadResult, 'state' | 'isPersisted' | 'revision'>): void {
   if (!state) {
     return
   }
@@ -27,6 +28,6 @@ export function acceptPersistedStateSnapshot({
   // Restoring readable legacy data does not acknowledge a failed migration.
   // Leave the write cache untouched so the next publication retries durable IO.
   if (isPersisted) {
-    markPersistedStateAsSynced(state)
+    markPersistedStateAsSynced(state, revision)
   }
 }

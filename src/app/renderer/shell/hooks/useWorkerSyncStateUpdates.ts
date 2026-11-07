@@ -1,5 +1,6 @@
+import { getSyncedPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence/write'
 import { useEffect, useRef } from 'react'
-import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
+import { normalizeAgentSettings, type AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type {
   PersistedAppState,
   PersistedWorkspaceState,
@@ -13,6 +14,7 @@ import {
 } from '@contexts/workspace/presentation/renderer/utils/persistence'
 import { stripLocalViewStateFromPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence/viewState'
 import { useAppStore } from '../store/useAppStore'
+import { canonicalContent } from '@shared/sync/mergeValue'
 import type { SyncEventPayload } from '@shared/contracts/dto'
 import { toShellWorkspaceStateForSync } from './workerSync/mergeWorkspaceStateForSync'
 import { hasRuntimeBindingPublication } from './workerSync/runtimeSessionBinding'
@@ -84,9 +86,11 @@ export function shouldApplyWorkerSyncRefresh({
 export function resolveWorkspacesForWorkerSync({
   currentWorkspaces,
   persistedWorkspaces,
+  baseState = getSyncedPersistedState(),
 }: {
   currentWorkspaces: WorkspaceState[]
   persistedWorkspaces: PersistedWorkspaceState[]
+  baseState?: PersistedAppState | null
 }): WorkspaceState[] {
   const currentById = new Map(
     currentWorkspaces.map(workspace => [workspace.id, workspace] as const),
@@ -102,7 +106,11 @@ export function resolveWorkspacesForWorkerSync({
       buildCurrentWorkspacePersistedSignature(existingWorkspace) ===
         buildPersistedWorkspaceSignature(workspace)
       ? existingWorkspace
-      : toShellWorkspaceStateForSync(workspace, existingWorkspace)
+      : toShellWorkspaceStateForSync(
+          workspace,
+          existingWorkspace,
+          baseState?.workspaces.find(base => base.id === workspace.id),
+        )
   })
 
   if (nextWorkspaces.length !== currentWorkspaces.length) {
@@ -332,7 +340,6 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
 
         // Disclosure preferences and the write cache belong to the same accepted
         // snapshot. A rejected read must not mutate them before these guards.
-        acceptPersistedStateSnapshot(snapshot)
         const current = useAppStore.getState()
         if (
           !shouldApplyWorkerSyncRefresh({
@@ -340,6 +347,7 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
             persistedState: persisted,
           })
         ) {
+          acceptPersistedStateSnapshot(snapshot)
           lastAppliedRevisionRef.current = Math.max(lastAppliedRevisionRef.current, targetRevision)
           return
         }
@@ -353,13 +361,18 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
           current.activeWorkspaceId,
         )
 
-        if (nextWorkspaces !== current.workspaces) {
-          current.setWorkspaces(nextWorkspaces)
-        }
-
-        if (nextActiveWorkspaceId !== current.activeWorkspaceId) {
-          current.setActiveWorkspaceId(nextActiveWorkspaceId)
-        }
+        // Apply all shared content atomically before acknowledging its revision. Keep the
+        // settings object when its content is unchanged: settings feed the whole shell, and a
+        // new identity on every refresh re-renders it under the user's cursor.
+        const settingsChanged =
+          canonicalContent(normalizeAgentSettings(persisted.settings)) !==
+          canonicalContent(normalizeAgentSettings(current.agentSettings))
+        useAppStore.setState({
+          workspaces: nextWorkspaces,
+          activeWorkspaceId: nextActiveWorkspaceId,
+          ...(settingsChanged ? { agentSettings: persisted.settings } : {}),
+        })
+        acceptPersistedStateSnapshot(snapshot)
 
         lastAppliedRevisionRef.current = Math.max(lastAppliedRevisionRef.current, targetRevision)
       } catch {

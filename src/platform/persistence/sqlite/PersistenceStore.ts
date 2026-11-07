@@ -21,6 +21,7 @@ export interface PersistenceStore {
   readWorkspaceStateRaw: () => Promise<string | null>
   writeWorkspaceStateRaw: (raw: string) => Promise<PersistWriteResult>
 
+  readAppStateSnapshot?: () => Promise<{ state: unknown | null; revision: number | null }>
   readAppState: () => Promise<unknown | null>
   readAppStateRevision: () => Promise<number>
   writeAppState: (state: unknown, options?: WriteAppStateOptions) => Promise<PersistWriteResult>
@@ -39,6 +40,7 @@ export interface PersistenceStore {
 }
 
 export type WriteAppStateOptions = {
+  baseRevision?: number | null
   allowEmptyWorkspaceOverwrite?: boolean
   expectedRevision?: number
 }

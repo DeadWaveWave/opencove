@@ -382,7 +382,11 @@ describe('persistence IPC handlers', () => {
     const handler = handlers.get(IPC_CHANNELS.persistenceReadAppState)
     expect(handler).toBeTypeOf('function')
 
-    await expect(invokeHandledIpc(handler)).resolves.toEqual({ state, recovery: null })
+    await expect(invokeHandledIpc(handler)).resolves.toEqual({
+      state,
+      recovery: null,
+      revision: null,
+    })
     expect(store.readAppState).toHaveBeenCalledTimes(1)
   })
 

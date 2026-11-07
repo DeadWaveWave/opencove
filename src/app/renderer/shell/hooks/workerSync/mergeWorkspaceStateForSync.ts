@@ -1,3 +1,5 @@
+import { rebaseGuardedSpaceMembershipForSync } from './rebaseGuardedSpaceMembershipForSync'
+import { rebaseGuardedNodesForSync } from './rebaseGuardedNodesForSync'
 import type { Node } from '@xyflow/react'
 import type {
   PersistedWorkspaceState,
@@ -22,12 +24,14 @@ function mergeRuntimeNode(
   persistedNode: Node<TerminalNodeData>,
   existingNode: Node<TerminalNodeData> | undefined,
   workspaceHasActiveDrag: boolean,
+  hasAcceptedBase: boolean,
 ): Node<TerminalNodeData> {
   if (!existingNode) {
     return persistedNode
   }
 
-  if (isNodeGuardedFromSyncOverwrite(persistedNode.id)) {
+  const isGuarded = isNodeGuardedFromSyncOverwrite(persistedNode.id)
+  if (!hasAcceptedBase && isGuarded) {
     return existingNode
   }
 
@@ -69,7 +73,7 @@ function mergeRuntimeNode(
           }
         : {}),
       agent:
-        kind === 'agent'
+        kind === 'agent' && !(hasAcceptedBase && isGuarded)
           ? (existingNode.data.agent ?? persistedNode.data.agent)
           : persistedNode.data.agent,
       ...mergeRuntimeSessionBinding(persistedNode.data, existingNode.data),
@@ -82,23 +86,35 @@ function mergeRuntimeNode(
 export function toShellWorkspaceStateForSync(
   workspace: PersistedWorkspaceState,
   existingWorkspace: WorkspaceState | undefined,
+  baseWorkspace?: PersistedWorkspaceState,
 ): WorkspaceState {
   const existingNodes = existingWorkspace?.nodes ?? []
   const workspaceHasActiveDrag = existingNodes.some(node => node.dragging === true)
-  const persistedNodes = toRuntimeNodes(workspace).map(repairRuntimeNodeFrame)
+  const baseNodeIds = new Set(baseWorkspace?.nodes.map(node => node.id) ?? [])
+  const rebasedWorkspace = rebaseGuardedNodesForSync(workspace, existingWorkspace, baseWorkspace)
+  const persistedNodes = toRuntimeNodes(rebasedWorkspace).map(repairRuntimeNodeFrame)
   const existingNodeById = new Map(existingNodes.map(node => [node.id, node] as const))
   const persistedNodeIds = new Set(persistedNodes.map(node => node.id))
 
   const mergedNodeById = new Map<string, Node<TerminalNodeData>>()
   const mergedPersistedNodes = persistedNodes.map(node => {
-    const mergedNode = mergeRuntimeNode(node, existingNodeById.get(node.id), workspaceHasActiveDrag)
+    const mergedNode = mergeRuntimeNode(
+      node,
+      existingNodeById.get(node.id),
+      workspaceHasActiveDrag,
+      baseNodeIds.has(node.id),
+    )
     mergedNodeById.set(node.id, mergedNode)
     return mergedNode
   })
 
   const extraRuntimeNodes = existingNodes.filter(
-    node => !persistedNodeIds.has(node.id) && isNodeGuardedFromSyncOverwrite(node.id),
+    node =>
+      !persistedNodeIds.has(node.id) &&
+      !baseNodeIds.has(node.id) &&
+      isNodeGuardedFromSyncOverwrite(node.id),
   )
+  const extraRuntimeNodeIds = new Set(extraRuntimeNodes.map(node => node.id))
 
   const nodes = (() => {
     if (!existingNodes.length) {
@@ -116,7 +132,7 @@ export function toShellWorkspaceStateForSync(
         continue
       }
 
-      if (!persistedNodeIds.has(node.id) && isNodeGuardedFromSyncOverwrite(node.id)) {
+      if (extraRuntimeNodeIds.has(node.id)) {
         orderedNodes.push(node)
         usedNodeIds.add(node.id)
       }
@@ -147,28 +163,15 @@ export function toShellWorkspaceStateForSync(
     (existingWorkspace?.spaces ?? []).map(space => [space.id, space] as const),
   )
 
-  const mergedSpaces = workspace.spaces.map(space => {
+  const membershipSpaces = rebaseGuardedSpaceMembershipForSync(
+    workspace,
+    existingWorkspace,
+    baseWorkspace,
+    validNodeIds,
+  )
+  const mergedSpaces = membershipSpaces.map(space => {
     const existing = existingSpaceById.get(space.id) ?? null
-    const persistedNodeIdSet = new Set(space.nodeIds)
-    const extraNodeIds = existing
-      ? existing.nodeIds.filter(
-          nodeId => !persistedNodeIdSet.has(nodeId) && isNodeGuardedFromSyncOverwrite(nodeId),
-        )
-      : []
-
-    const nodeIds: string[] = []
-    const seenNodeIds = new Set<string>()
-    const appendNodeId = (nodeId: string) => {
-      if (!validNodeIds.has(nodeId) || seenNodeIds.has(nodeId)) {
-        return
-      }
-
-      seenNodeIds.add(nodeId)
-      nodeIds.push(nodeId)
-    }
-
-    space.nodeIds.forEach(appendNodeId)
-    extraNodeIds.forEach(appendNodeId)
+    const nodeIds = space.nodeIds
 
     if (
       existing &&

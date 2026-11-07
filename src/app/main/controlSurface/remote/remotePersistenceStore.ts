@@ -1,3 +1,7 @@
+import {
+  RevisionedSnapshotCache,
+  writeRevisionedSnapshot,
+} from '../../../../shared/sync/revisionedSnapshotCache'
 import { Buffer } from 'node:buffer'
 import type {
   AppErrorDescriptor,
@@ -185,21 +189,7 @@ async function invokePersistResult(
 export function createRemotePersistenceStore(
   endpointResolver: ControlSurfaceRemoteEndpointResolver,
 ): PersistenceStore {
-  let lastKnownSyncRevision: number | null = null
-  let lastKnownSyncState: RemotePersistedAppState | null = null
-
-  function setLastKnownSyncRevision(value: unknown): void {
-    if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
-      return
-    }
-
-    lastKnownSyncRevision = value
-  }
-
-  function setLastKnownSyncState(value: unknown): void {
-    lastKnownSyncState = normalizeRemotePersistedAppState(value)
-  }
-
+  const cache = new RevisionedSnapshotCache<RemotePersistedAppState>()
   function isRevisionConflictError(value: unknown): boolean {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
       return false
@@ -236,12 +226,19 @@ export function createRemotePersistenceStore(
         return resolveIoFailure(error)
       }
     },
+    readAppStateSnapshot: async () => {
+      const result = requireRemoteAppStateSnapshot(
+        await invokeRequiredValue<unknown>(endpointResolver, 'query', 'sync.state', null),
+      )
+      cache.set(result.revision, result.state)
+      return { state: result.rawState, revision: result.revision }
+    },
     readAppState: async () => {
       const result = requireRemoteAppStateSnapshot(
         await invokeRequiredValue<unknown>(endpointResolver, 'query', 'sync.state', null),
       )
-      setLastKnownSyncRevision(result.revision)
-      lastKnownSyncState = result.state
+
+      cache.set(result.revision, result.state)
       return result.rawState
     },
     readAppStateRevision: async () => {
@@ -249,8 +246,8 @@ export function createRemotePersistenceStore(
         const result = requireRemoteAppStateSnapshot(
           await invokeRequiredValue<unknown>(endpointResolver, 'query', 'sync.state', null),
         )
-        setLastKnownSyncRevision(result.revision)
-        setLastKnownSyncState(result.state)
+
+        cache.set(result.revision, result.state)
         return result.revision
       } catch {
         return 0
@@ -267,21 +264,6 @@ export function createRemotePersistenceStore(
           requireRemoteAppStateSnapshot(
             await invokeRequiredValueAtEndpoint<unknown>(endpoint, 'query', 'sync.state', null),
           )
-
-        const ensureBaseSnapshot = async (): Promise<RemoteAppStateSnapshot> => {
-          if (typeof lastKnownSyncRevision === 'number') {
-            return {
-              revision: lastKnownSyncRevision,
-              state: lastKnownSyncState,
-              rawState: lastKnownSyncState,
-            }
-          }
-
-          const latest = await readLatestSnapshot()
-          setLastKnownSyncRevision(latest.revision)
-          setLastKnownSyncState(latest.state)
-          return latest
-        }
 
         const attemptWrite = async (
           nextState: unknown,
@@ -314,55 +296,31 @@ export function createRemotePersistenceStore(
             throw new Error('sync.writeState returned an invalid revision.')
           }
 
-          setLastKnownSyncRevision(revision)
-          setLastKnownSyncState(nextState)
           return revision
         }
 
-        const base = await ensureBaseSnapshot()
-        const baseSnapshot = base.state
-
-        try {
-          const revision = await attemptWrite(state, base.revision)
-          const bytes = Buffer.byteLength(JSON.stringify(state), 'utf8')
-          return { ok: true, level: 'full', bytes, revision }
-        } catch (error) {
-          if (!isRevisionConflictError(error)) {
-            return {
-              ok: false,
-              reason: 'io',
-              error: isAppErrorDescriptor(error)
-                ? error
-                : createAppErrorDescriptor('persistence.io_failed', {
-                    debugMessage:
-                      error instanceof Error
-                        ? `${error.name}: ${error.message}`
-                        : 'Remote persistence failed.',
-                  }),
-            }
-          }
-
-          const latest = await readLatestSnapshot()
-          setLastKnownSyncRevision(latest.revision)
-          setLastKnownSyncState(latest.state)
-
-          const localState = normalizeLocalPersistedAppState(state)
-          if (!localState) {
-            throw new Error('Local persistence state was not canonical after revision conflict.', {
-              cause: error,
-            })
-          }
-          const merged = latest.state
-            ? mergePersistedAppStates(latest.state, localState, baseSnapshot)
-            : localState
-
-          const revision = await attemptWrite(merged, latest.revision)
-
-          const bytes = Buffer.byteLength(JSON.stringify(merged), 'utf8')
-          return { ok: true, level: 'full', bytes, revision }
+        const result = await writeRevisionedSnapshot({
+          cache,
+          baseRevision: options?.baseRevision,
+          state,
+          read: readLatestSnapshot,
+          write: attemptWrite,
+          normalize: normalizeLocalPersistedAppState,
+          merge: mergePersistedAppStates,
+          isConflict: isRevisionConflictError,
+        })
+        return {
+          ok: true,
+          level: 'full',
+          bytes: Buffer.byteLength(JSON.stringify(result.state), 'utf8'),
+          revision: result.revision,
+          merged: result.merged,
         }
       } catch (error) {
-        return resolveIoFailure(error)
+        // Keep the Worker's own rejection (for example the empty-workspace overwrite guard).
+        return isAppErrorDescriptor(error)
+          ? { ok: false, reason: 'io', error }
+          : resolveIoFailure(error)
       }
     },
     readNodeScrollback: async nodeId => {

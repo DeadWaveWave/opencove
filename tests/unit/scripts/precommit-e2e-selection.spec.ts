@@ -22,6 +22,7 @@ describe('local quick E2E selection', () => {
         'src/contexts/workspace/presentation/renderer/components/shared/CanvasNodeWindow.tsx',
       spaces: 'src/contexts/space/application/spaceLayout.ts',
       connections: 'src/app/main/controlSurface/http/requestAuth.ts',
+      persistence: 'src/shared/sync/mergePersistedAppStates.ts',
       sidebar: 'src/app/renderer/styles/workspace-sidebar.css',
       settings: 'src/app/renderer/styles/settings-panel.css',
       filesystem: 'src/contexts/filesystem/presentation/renderer/DirectoryBrowser.tsx',

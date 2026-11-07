@@ -54,6 +54,14 @@ export const QUICK_E2E_GROUPS = {
         path,
       ),
   },
+  persistence: {
+    reason: 'Control Surface writes survive concurrent renderer publications and merges.',
+    tests: [e2e('persistence.concurrent-control-surface-writes')],
+    matches: path =>
+      /\/persistence\/|\/sync\/|workersync|syncnodeguards|remotepersistencestore|browseropencoveapi\.persistence/.test(
+        path,
+      ),
+  },
   sidebar: {
     reason: 'Project navigation and sidebar state survive persistence.',
     tests: [e2e('sidebar-tree.persistence'), e2e('project-shortcuts')],

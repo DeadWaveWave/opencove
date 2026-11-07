@@ -14,7 +14,11 @@ export interface PersistencePort {
   readAppState: () => Promise<ReadAppStateResult | null>
   writeAppState: (
     state: unknown,
-    options?: { allowEmptyWorkspaceOverwrite?: boolean },
+    options?: {
+      requiresRefresh?: boolean
+      baseRevision?: number | null
+      allowEmptyWorkspaceOverwrite?: boolean
+    },
   ) => Promise<PersistWriteResult>
   readNodeScrollback: (nodeId: string) => Promise<string | null>
   writeNodeScrollback: (nodeId: string, scrollback: string | null) => Promise<PersistWriteResult>
@@ -76,9 +80,10 @@ function createIpcPort(): PersistencePort | null {
       try {
         const result = await persistenceApi.writeAppState({
           state,
+          baseRevision: options?.baseRevision,
           allowEmptyWorkspaceOverwrite: options?.allowEmptyWorkspaceOverwrite === true,
         })
-        if (result.ok) {
+        if (result.ok && !result.merged && !options?.requiresRefresh) {
           publishLocalSyncWriteRevision(result.revision)
         }
         return result
@@ -169,18 +174,18 @@ function createLocalStoragePort(): PersistencePort | null {
     readAppState: async () => {
       const raw = readWithLegacyFallback(STORAGE_KEY, LEGACY_STORAGE_KEY)
       if (!raw) {
-        return { state: null, recovery: null }
+        return { state: null, recovery: null, revision: null }
       }
 
       try {
         const parsed = JSON.parse(raw) as unknown
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-          return { state: null, recovery: null }
+          return { state: null, recovery: null, revision: null }
         }
 
-        return { state: parsed, recovery: null }
+        return { state: parsed, recovery: null, revision: null }
       } catch {
-        return { state: null, recovery: null }
+        return { state: null, recovery: null, revision: null }
       }
     },
     writeAppState: async state => {
