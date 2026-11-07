@@ -138,6 +138,7 @@ export function themeTokens(theme: GeneratedTheme): ThemeTokens {
     '--cove-glass-rim-lo': `rgb(255 255 255 / ${glass.rimLo})`,
     // Drawn once at startup (bootstrap/installGlassGrain.ts); glass has no grain until then.
     '--cove-glass-grain': `var(--cove-glass-grain-${ap}, none)`,
+    '--cove-pixel-spot': hex(theme.pixel.spot),
     '--cove-pixel-cell': hex(theme.pixel.cell),
     '--cove-pixel-gap': hex(theme.pixel.gap),
     ...Object.fromEntries(
@@ -292,7 +293,7 @@ export function renderFamilyStylesheet(family: ThemeFamilyId): string {
   const blocks = themeBlocks(`:root[data-cove-family='${family}']`, ['dark', 'light'], appearance =>
     generateFamilyTheme(family, appearance),
   )
-  return `${GENERATED_HEADER}\n\n${blocks.join('\n')}`
+  return `${GENERATED_HEADER}\n${blocks.join('\n')}`
 }
 
 /**

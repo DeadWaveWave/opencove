@@ -8,6 +8,7 @@ const base: [number, number, number] = [17, 24, 30]
 // Four very different cloud colours, so a jump between them is unmistakable.
 const vivid: WallPalette = {
   appearance: 'dark',
+  spot: [0, 176, 213],
   cell: base,
   gap: [5, 9, 12],
   clouds: [
@@ -125,29 +126,7 @@ describe('pixel wall twinkle near active windows', () => {
 describe('pixel wall in far view', () => {
   const near = resolveWallGrid({ x: 0, y: 0, zoom: 0.9, width: 1920, height: 1200 })
   const far = resolveWallGrid({ x: 0, y: 0, zoom: 0.18, width: 1920, height: 1200 })
-  const roughness = (view: typeof grid, cells: Uint8ClampedArray) => {
-    let total = 0
-    let pairs = 0
-    for (let row = 0; row < view.rows; row++) {
-      for (let column = 1; column < view.columns; column++) {
-        const a = (row * view.columns + column - 1) * 4
-        const b = a + 4
-        total += Math.abs(cells[a]! - cells[b]!) + Math.abs(cells[a + 1]! - cells[b + 1]!)
-        pairs++
-      }
-    }
-    return total / pairs
-  }
-
-  it('keeps clouds as broad on screen as in near view, so the zoomed-out wall stays calm', () => {
-    expect(far.worldCell).toBeGreaterThan(near.worldCell)
-    const calm = { ...vivid, sparks: vivid.sparks.map(() => base) }
-    expect(roughness(far, fillWallCells(far, calm, null))).toBeLessThan(
-      roughness(near, fillWallCells(near, calm, null)) * 1.25,
-    )
-  })
-
-  it('twinkles more sparsely per cell when each cell covers more of the canvas', () => {
+  it('keeps the same twinkle share at every cell level', () => {
     const flashes = (view: typeof grid) => {
       const lit = new Set<number>()
       for (let step = 0; step < 60; step++) {
@@ -160,6 +139,6 @@ describe('pixel wall in far view', () => {
       }
       return lit.size / (view.columns * view.rows)
     }
-    expect(flashes(far)).toBeLessThan(flashes(near) * 0.75)
+    expect(flashes(far)).toBeCloseTo(flashes(near), 1)
   })
 })

@@ -9,6 +9,7 @@ import {
 
 const dark: WallPalette = {
   appearance: 'dark',
+  spot: [0, 176, 213],
   cell: [17, 24, 30],
   gap: [5, 9, 12],
   clouds: [

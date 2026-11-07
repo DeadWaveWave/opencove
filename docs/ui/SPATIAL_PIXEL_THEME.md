@@ -133,16 +133,33 @@ world, under every window and the effects layer.
   neighbouring cloud colours (never a hard edge between two clouds) and drifts slowly. Bright
   patches wander across the open wall (shimmer, `PIXEL_WALL.shimmerA`); about one cell in six
   twinkles, more of them near working or waiting windows. Shimmer and twinkle never enter
-  glass. The wall does not follow the pointer: no spotlight (owner, 2026-11-06).
-- Zoomed out, clouds, hue and shimmer grow with the cell size (from the 24px base cell) so they
-  stay about as broad on screen as in near view, and twinkle thins out in proportion: the far
-  wall stays calm. Within one cell size everything stays anchored to the world.
+  glass. Cursor illumination follows the ambient setting: off with twinkle or reduced motion,
+  including in showcase mode. It lights the finished tile after work light and ripples, before
+  the glass cap. Both appearances use accent step 9 (`--cove-pixel-spot`); Pixel falls back to
+  its public accent. Dark walls are lit additively (screen), so a kind-lit tile turns brighter
+  and its hue moves part of the way toward the accent: the two lights mix instead of one
+  covering the other. Light walls keep Tide's tint toward the accent (owner, 2026-11-06: the
+  light-mode tint reads clean; the old dark-mode white did not). Strength 0.45 dark matches the
+  old white spot's peak luminance change within 15%; light keeps Tide's 0.2.
+  The radius remains 400 CSS px and the Gaussian denominator 52000. A 48px Gaussian fade
+  reaches zero at the original frame, with no contribution inside. In glass and chrome only
+  the remaining I6 budget is available; its influence eases in outside the glass band too.
+- Clouds, hue and shimmer keep fixed world sizes (640, 1150 and 300px); merging or splitting
+  cells resamples the same colour field. Twinkle retains its 16% share plus active-window
+  nearness at every level. Work-light falloff uses `max(80, 29.25 / zoom)` world px: continuous
+  across levels, unchanged at zoom ≥ 0.5, and visible beyond window frames in far view.
+  Tile jitter remains bounded to 5/9 RGB levels (dark/light); the two-cell glass band stays
+  level-based for contrast protection. Neither changes the open-wall colour field.
 - Behind a window's glass, including a two-cell ring around its frame, a cell moves at most the
   generator's `PIXEL_WALL.cap` toward any colour (I6), the bound the theme contrast checks assume.
 - Work light (5.3b): the cells around each window take its kind colour (`--cove-wall-light-*`:
   the kind solids in Cove, label colours in hand-written themes, neutral with window kind colours
   off). Dark themes spread the light out from the window; light themes cast it to the lower right,
-  as daylight through coloured glass. Strength follows the window: idle 0.46 (not an agent),
+  as daylight through coloured glass: offset `(0.09w + 30, 0.12h + 44)` world px,
+  with falloff `max(30, 13.65 / zoom)`. Glass and active nearness use the original frame.
+  Daylight tiles have 9-channel jitter and a 14-channel top-left to bottom-right screen gradient;
+  the brightest 5% of twinkle candidates flash white, at strength 0.9 (dark remains 0.85).
+  Strength follows the window: idle 0.46 (not an agent),
   standby 0.6, working breathing between 0.64 and 0.92, a flash on received output, a flare to
   full when a run finishes (seen live; a reload never flares), waiting yellow and failure red.
   It is derived per frame and never stored (I7). It keeps breathing with twinkle off; reduced

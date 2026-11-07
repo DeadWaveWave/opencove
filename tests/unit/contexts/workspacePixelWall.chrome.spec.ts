@@ -100,6 +100,7 @@ describe('pixel wall chrome', () => {
 describe('pixel wall cells behind the chrome', () => {
   const white: WallPalette = {
     appearance: 'dark',
+    spot: [0, 176, 213],
     cell: [0, 0, 0],
     gap: [0, 0, 0],
     clouds: [

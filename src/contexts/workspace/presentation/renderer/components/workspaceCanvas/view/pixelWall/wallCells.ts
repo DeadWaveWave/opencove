@@ -1,7 +1,8 @@
+import { castCursorSpotlight } from './wallSpotlight'
 import type { Rgb } from '@shared/design/oklch'
 import { PIXEL_WALL } from '@shared/design/themeGenerator'
 import type { WallScreenRect } from './wallChrome'
-import type { WallGrid } from './wallGrid'
+import { GLASS_REACH_CELLS, type WallGrid } from './wallGrid'
 import type { WallPalette } from './wallPalette'
 import { forEachRingCell, type Ripple } from './ripples'
 
@@ -26,10 +27,9 @@ export interface WallCellOptions {
   chrome?: readonly WallScreenRect[]
   /** How much faster than usual the clouds drift (showcase mode). */
   cloudSpeed?: number
+  /** Latest pointer in CSS pixels; only used with an ambient clock. */
+  spot?: { x: number; y: number } | null
 }
-
-/** Cells within this many cells of a window count as behind its glass, frame shadow included. */
-const GLASS_REACH_CELLS = 2
 
 const WHITE: Rgb = [255, 255, 255]
 
@@ -42,13 +42,32 @@ const CLOUD_DRIFT = 9
 const SPARK_SHARE = 0.16
 /** Cloud colours in the palette. */
 const CLOUD_COUNT = 4
-/** World cell size from which the wall's features grow with the cell (far zoom). */
-const CALM_FROM_CELL = 24
 
 function hash2(i: number, j: number): number {
   let h = (Math.imul(i, 374761393) + Math.imul(j, 668265263)) | 0
   h = Math.imul(h ^ (h >>> 13), 1274126177)
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296
+}
+
+/** Daylight falls across the whole screen, not across the rounded-up grid extent. */
+function tileVariation(
+  grid: WallGrid,
+  appearance: WallPalette['appearance'],
+  column: number,
+  row: number,
+): number {
+  const i = grid.firstColumn + column
+  const j = grid.firstRow + row
+  const weights = PIXEL_WALL[appearance]
+  if (appearance === 'dark') {
+    return (hash2(i, j) - 0.5) * weights.tileJitter
+  }
+  const cx = grid.originX + (column + 0.5) * grid.screenCell
+  const cy = grid.originY + (row + 0.5) * grid.screenCell
+  return (
+    (hash2(i * 3 + 7, j * 5 + 11) - 0.5) * weights.tileJitter +
+    (0.45 - (cx / grid.width) * 0.55 - (cy / grid.height) * 0.45) * weights.falloff
+  )
 }
 
 function valueNoise(x: number, y: number): number {
@@ -147,16 +166,18 @@ function castWorkLight(
   appearance: WallPalette['appearance'],
 ) {
   const strength = PIXEL_WALL[appearance].workA
-  const fall = Math.max(80, 1.5 * grid.worldCell)
+  // 1.5 × the 19.5px midpoint of the screen-cell band, continuous across grid levels.
+  const daylight = appearance === 'light'
+  const continuousCell = (19.5 * grid.worldCell) / grid.screenCell
+  const fall = daylight ? Math.max(30, 0.7 * continuousCell) : Math.max(80, 1.5 * continuousCell)
   const reach = fall * 2.6
-  const shift = appearance === 'light' ? fall * 0.6 : 0
   for (const frame of windows) {
     const light = frame.light
     if (!light || light.intensity <= 0) {
       continue
     }
-    const x = frame.x + shift
-    const y = frame.y + shift
+    const x = frame.x + (daylight ? 0.09 * frame.width + 30 : 0)
+    const y = frame.y + (daylight ? 0.12 * frame.height + 44 : 0)
     const first = Math.max(0, Math.floor((x - reach) / grid.worldCell) - grid.firstColumn)
     const last = Math.min(
       grid.columns - 1,
@@ -198,7 +219,7 @@ function markActiveNearness(
     return null
   }
   const near = new Float32Array(grid.columns * grid.rows)
-  const fall = Math.max(80, 1.5 * grid.worldCell) * 1.6
+  const fall = Math.max(80, (29.25 * grid.worldCell) / grid.screenCell) * 1.6
   const reach = fall * 4
   for (const frame of active) {
     const first = Math.max(0, Math.floor((frame.x - reach) / grid.worldCell) - grid.firstColumn)
@@ -229,7 +250,7 @@ function markActiveNearness(
  * One colour per visible cell: the theme's cell colour with a little per-tile jitter, soft
  * colour clouds anchored to the world whose hue blends from one cloud colour into the next,
  * wandering bright patches (shimmer), a sparse twinkle in blank space that gathers around
- * working windows, each window's work light and the output ripples. Without a clock (`timeSeconds` null: reduced motion, twinkle off, or a lost GPU
+ * working windows, each window's work light, output ripples and finally cursor illumination. Without a clock (`timeSeconds` null: reduced motion, twinkle off, or a lost GPU
  * context) clouds, shimmer and twinkle are still; the lights keep whatever intensity the caller
  * resolved. Shimmer and twinkle never enter glass.
  *
@@ -241,7 +262,14 @@ export function fillWallCells(
   grid: WallGrid,
   palette: WallPalette,
   timeSeconds: number | null,
-  { out, windows = [], ripples = [], chrome = [], cloudSpeed = 1 }: WallCellOptions = {},
+  {
+    out,
+    windows = [],
+    ripples = [],
+    chrome = [],
+    cloudSpeed = 1,
+    spot = null,
+  }: WallCellOptions = {},
 ): Uint8ClampedArray {
   const count = grid.columns * grid.rows
   const cells = out && out.length === count * 4 ? out : new Uint8ClampedArray(count * 4)
@@ -251,14 +279,10 @@ export function fillWallCells(
   const weights = PIXEL_WALL[palette.appearance]
   const time = timeSeconds ?? 0
   const drift = time * CLOUD_DRIFT * cloudSpeed
-  // Zoomed out, a cell covers more canvas: clouds, hue and shimmer scale with it so they stay as
-  // broad on screen as in near view, and twinkle thins out, so the far wall stays calm. Within
-  // a cell size everything stays anchored to the world; a size change dissolves (5.3d).
-  const featureScale = Math.max(1, grid.worldCell / CALM_FROM_CELL)
-  const cloudSize = 640 * featureScale
-  const hueSize = 1150 * featureScale
-  const sheenSize = 300 * featureScale
-  const sparkShare = SPARK_SHARE / featureScale
+  // Tide's field sizes are world distances, independent of the discrete grid level.
+  const cloudSize = 640
+  const hueSize = 1150
+  const sheenSize = 300
   const [baseR, baseG, baseB] = palette.cell
   const cloud: [number, number, number] = [0, 0, 0]
   let index = 0
@@ -268,7 +292,7 @@ export function fillWallCells(
     for (let column = 0; column < grid.columns; column++, index += 4) {
       const worldColumn = grid.firstColumn + column
       const wx = (worldColumn + 0.5) * grid.worldCell
-      const jitter = (hash2(worldColumn, worldRow) - 0.5) * weights.tileJitter
+      const jitter = tileVariation(grid, palette.appearance, column, row)
       cells[index] = baseR + jitter
       cells[index + 1] = baseG + jitter
       cells[index + 2] = baseB + jitter
@@ -307,12 +331,18 @@ export function fillWallCells(
           shift = mix(cells, index, palette.sparks[hue]!, sheen * weights.shimmerA, shift)
         }
         const spark = hash2(worldColumn * 7, worldRow * 13)
-        const share = sparkShare + 0.2 * (near?.[cell] ?? 0)
+        const share = SPARK_SHARE + 0.2 * (near?.[cell] ?? 0)
         if (timeSeconds !== null && spark > 1 - share) {
           const twinkle =
-            Math.max(0, Math.sin(time * (0.6 + spark * 1.6) + spark * 50)) ** 24 * 0.85
+            Math.max(0, Math.sin(time * (0.6 + spark * 1.6) + spark * 50)) ** 24 * weights.sparkA
           if (twinkle > 0.02) {
-            shift = mix(cells, index, palette.sparks[hue]!, twinkle, shift)
+            shift = mix(
+              cells,
+              index,
+              palette.appearance === 'light' && spark > 0.95 ? WHITE : palette.sparks[hue]!,
+              twinkle,
+              shift,
+            )
           }
         }
       }
@@ -336,6 +366,9 @@ export function fillWallCells(
       }
     })
   }
+  if (spot && timeSeconds !== null) {
+    castCursorSpotlight(cells, moved, grid, palette, spot, windows, chrome)
+  }
   if (behind) {
     for (let cell = 0; cell < count; cell++) {
       if (!behind[cell] || moved[cell]! <= weights.cap) {
@@ -343,9 +376,12 @@ export function fillWallCells(
       }
       // Pull the cell back toward its tile colour until it has moved exactly `cap`.
       const scale = weights.cap / moved[cell]!
-      const worldColumn = grid.firstColumn + (cell % grid.columns)
-      const worldRow = grid.firstRow + Math.floor(cell / grid.columns)
-      const jitter = (hash2(worldColumn, worldRow) - 0.5) * weights.tileJitter
+      const jitter = tileVariation(
+        grid,
+        palette.appearance,
+        cell % grid.columns,
+        Math.floor(cell / grid.columns),
+      )
       const at = cell * 4
       cells[at] = baseR + jitter + (cells[at]! - baseR - jitter) * scale
       cells[at + 1] = baseG + jitter + (cells[at + 1]! - baseG - jitter) * scale
