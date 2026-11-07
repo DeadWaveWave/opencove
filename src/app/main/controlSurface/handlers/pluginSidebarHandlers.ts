@@ -1,5 +1,6 @@
+import { registerOperation } from '../registerOperation'
+import { pluginSidebarItemsOperation } from '@shared/contracts/controlSurface/operations/domains/plugin'
 import type { PluginInstallationManager } from '@contexts/plugins/application/PluginInstallationManager'
-import { pluginRecord, pluginString } from '@contexts/plugins/domain/localPluginValidation'
 import { normalizePluginSidebarItems } from '@contexts/plugins/domain/pluginSidebar'
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
@@ -14,35 +15,7 @@ export function registerPluginSidebarHandlers(
     const reason = (cause instanceof Error ? cause.message : String(cause)).slice(0, 2000)
     throw createAppError('plugin.operation_failed', { params: { reason }, debugMessage: reason })
   }
-  control.register('plugin.sidebar.items', {
-    kind: 'query',
-    validate: value => {
-      const raw = pluginRecord(value)
-      if (
-        Object.keys(raw).some(
-          key =>
-            ![
-              'pluginId',
-              'sectionId',
-              'projectId',
-              'expectedRevision',
-              'expectedRuntimeGeneration',
-            ].includes(key),
-        )
-      ) {
-        throw new Error('Invalid plugin Sidebar request.')
-      }
-      if (!Number.isSafeInteger(raw.expectedRuntimeGeneration)) {
-        throw new Error('Plugin generation is required.')
-      }
-      return {
-        pluginId: pluginString(raw.pluginId, 'id', 80),
-        sectionId: pluginString(raw.sectionId, 'sectionId', 80),
-        projectId: pluginString(raw.projectId, 'projectId', 200),
-        expectedRevision: pluginString(raw.expectedRevision, 'revision', 200),
-        expectedRuntimeGeneration: raw.expectedRuntimeGeneration,
-      }
-    },
+  registerOperation(control, pluginSidebarItemsOperation, {
     handle: async (_ctx, input) => {
       try {
         const current = async () => {

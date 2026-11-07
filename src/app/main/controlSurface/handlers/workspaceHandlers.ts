@@ -1,85 +1,27 @@
 import { mkdir } from 'node:fs/promises'
-import { isAbsolute, resolve, win32 } from 'node:path'
-import type { ControlSurface } from '../controlSurface'
+import { resolve } from 'node:path'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
+import {
+  workspaceAllocateProjectPlaceholderOperation,
+  workspaceApproveRootOperation,
+  workspaceEnsureDirectoryOperation,
+} from '../../../../shared/contracts/controlSurface/operations/domains/workspace'
 import { createAppError } from '../../../../shared/errors/appError'
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object'
-}
-
-function normalizePath(value: unknown, operationId: string): string {
-  const path = typeof value === 'string' ? value.trim() : ''
-  if (path.length === 0) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid path for ${operationId}`,
-    })
-  }
-
-  if (!isAbsolute(path) && !win32.isAbsolute(path)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `${operationId} requires an absolute path`,
-    })
-  }
-
-  return path
-}
-
-function normalizePathPayload(payload: unknown, operationId: string): { path: string } {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId}`,
-    })
-  }
-
-  return { path: normalizePath(payload.path, operationId) }
-}
-
-function normalizeProjectId(value: unknown, operationId: string): string {
-  const projectId = typeof value === 'string' ? value.trim() : ''
-  if (projectId.length === 0) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid projectId for ${operationId}`,
-    })
-  }
-
-  if (projectId.includes('..') || projectId.includes('/') || projectId.includes('\\')) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `${operationId} projectId must be a single path segment`,
-    })
-  }
-
-  return projectId
-}
-
-function normalizeAllocateProjectPlaceholderPayload(payload: unknown): { projectId: string } {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for workspace.allocateProjectPlaceholder',
-    })
-  }
-
-  return {
-    projectId: normalizeProjectId(payload.projectId, 'workspace.allocateProjectPlaceholder'),
-  }
-}
+import type { ControlSurface } from '../controlSurface'
+import { registerOperation } from '../registerOperation'
 
 export function registerWorkspaceHandlers(
   controlSurface: ControlSurface,
   deps: { approvedWorkspaces: ApprovedWorkspaceStore; userDataPath: string },
 ): void {
-  controlSurface.register('workspace.approveRoot', {
-    kind: 'command',
-    validate: payload => normalizePathPayload(payload, 'workspace.approveRoot'),
+  registerOperation(controlSurface, workspaceApproveRootOperation, {
     handle: async (_ctx, payload): Promise<void> => {
       await deps.approvedWorkspaces.registerRoot(payload.path)
     },
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('workspace.ensureDirectory', {
-    kind: 'command',
-    validate: payload => normalizePathPayload(payload, 'workspace.ensureDirectory'),
+  registerOperation(controlSurface, workspaceEnsureDirectoryOperation, {
     handle: async (_ctx, payload): Promise<void> => {
       const isApproved = await deps.approvedWorkspaces.isPathApproved(payload.path)
       if (!isApproved) {
@@ -93,9 +35,7 @@ export function registerWorkspaceHandlers(
     defaultErrorCode: 'workspace.ensure_directory_failed',
   })
 
-  controlSurface.register('workspace.allocateProjectPlaceholder', {
-    kind: 'command',
-    validate: payload => normalizeAllocateProjectPlaceholderPayload(payload),
+  registerOperation(controlSurface, workspaceAllocateProjectPlaceholderOperation, {
     handle: async (_ctx, payload): Promise<{ path: string }> => {
       const placeholderPath = resolve(deps.userDataPath, 'projects', payload.projectId)
       await mkdir(placeholderPath, { recursive: true })

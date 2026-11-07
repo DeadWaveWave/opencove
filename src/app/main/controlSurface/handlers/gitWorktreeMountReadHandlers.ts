@@ -1,3 +1,11 @@
+import {
+  gitWorktreeListBranchesInMountOperation,
+  gitWorktreeListWorktreesInMountOperation,
+  gitWorktreeStatusSummaryInMountOperation,
+  gitWorktreeGetDefaultBranchInMountOperation,
+  gitWorktreeGraphInMountOperation,
+} from '../../../../shared/contracts/controlSurface/operations/domains/gitWorktree'
+import { registerOperation } from '../registerOperation'
 import type { ControlSurface } from '../controlSurface'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
@@ -19,9 +27,6 @@ import { createAppError } from '../../../../shared/errors/appError'
 import {
   assertFileUriWithinMountRoot,
   invokeRemoteValue,
-  isRecord,
-  normalizeFileSystemUri,
-  normalizeMountId,
   resolveMountTargetOrThrow,
 } from './filesystemMountSupport'
 import { fromFileUri } from '../../../../contexts/filesystem/domain/fileUri'
@@ -45,19 +50,7 @@ export function registerGitWorktreeMountReadHandlers(
     gitWorktreePort: GitWorktreePort
   },
 ): void {
-  controlSurface.register('gitWorktree.listBranchesInMount', {
-    kind: 'query',
-    validate: (payload: unknown): { mountId: string } => {
-      if (!isRecord(payload)) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Invalid payload for gitWorktree.listBranchesInMount.',
-        })
-      }
-
-      return {
-        mountId: normalizeMountId(payload.mountId, 'gitWorktree.listBranchesInMount'),
-      }
-    },
+  registerOperation(controlSurface, gitWorktreeListBranchesInMountOperation, {
     handle: async (_ctx, payload): Promise<ListGitBranchesResult> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,
@@ -86,19 +79,7 @@ export function registerGitWorktreeMountReadHandlers(
     defaultErrorCode: 'worktree.list_branches_failed',
   })
 
-  controlSurface.register('gitWorktree.listWorktreesInMount', {
-    kind: 'query',
-    validate: (payload: unknown): { mountId: string } => {
-      if (!isRecord(payload)) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Invalid payload for gitWorktree.listWorktreesInMount.',
-        })
-      }
-
-      return {
-        mountId: normalizeMountId(payload.mountId, 'gitWorktree.listWorktreesInMount'),
-      }
-    },
+  registerOperation(controlSurface, gitWorktreeListWorktreesInMountOperation, {
     handle: async (_ctx, payload): Promise<ListGitWorktreesResult> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,
@@ -127,20 +108,7 @@ export function registerGitWorktreeMountReadHandlers(
     defaultErrorCode: 'worktree.list_worktrees_failed',
   })
 
-  controlSurface.register('gitWorktree.statusSummaryInMount', {
-    kind: 'query',
-    validate: (payload: unknown): { mountId: string; uri: string } => {
-      if (!isRecord(payload)) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Invalid payload for gitWorktree.statusSummaryInMount.',
-        })
-      }
-
-      return {
-        mountId: normalizeMountId(payload.mountId, 'gitWorktree.statusSummaryInMount'),
-        uri: normalizeFileSystemUri(payload.uri, 'gitWorktree.statusSummaryInMount'),
-      }
-    },
+  registerOperation(controlSurface, gitWorktreeStatusSummaryInMountOperation, {
     handle: async (_ctx, payload): Promise<GetGitStatusSummaryResult> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,
@@ -180,19 +148,7 @@ export function registerGitWorktreeMountReadHandlers(
     defaultErrorCode: 'worktree.status_summary_failed',
   })
 
-  controlSurface.register('gitWorktree.getDefaultBranchInMount', {
-    kind: 'query',
-    validate: (payload: unknown): { mountId: string } => {
-      if (!isRecord(payload)) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Invalid payload for gitWorktree.getDefaultBranchInMount.',
-        })
-      }
-
-      return {
-        mountId: normalizeMountId(payload.mountId, 'gitWorktree.getDefaultBranchInMount'),
-      }
-    },
+  registerOperation(controlSurface, gitWorktreeGetDefaultBranchInMountOperation, {
     handle: async (_ctx, payload): Promise<GetGitDefaultBranchResult> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,
@@ -221,20 +177,7 @@ export function registerGitWorktreeMountReadHandlers(
     defaultErrorCode: 'worktree.get_default_branch_failed',
   })
 
-  controlSurface.register('gitWorktree.graphInMount', {
-    kind: 'query',
-    validate: (payload: unknown): { mountId: string; uri: string; limit?: number } => {
-      if (!isRecord(payload)) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Invalid payload for gitWorktree.graphInMount.',
-        })
-      }
-      return {
-        mountId: normalizeMountId(payload.mountId, 'gitWorktree.graphInMount'),
-        uri: normalizeFileSystemUri(payload.uri, 'gitWorktree.graphInMount'),
-        limit: typeof payload.limit === 'number' ? payload.limit : undefined,
-      }
-    },
+  registerOperation(controlSurface, gitWorktreeGraphInMountOperation, {
     handle: async (_ctx, payload): Promise<GetGitGraphResult> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,

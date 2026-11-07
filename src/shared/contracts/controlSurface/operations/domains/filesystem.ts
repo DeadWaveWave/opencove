@@ -1,3 +1,15 @@
+import { normalizeFilesystemReadFileBytes } from '../filesystemHandlersMigANormalize'
+import { normalizeFilesystemCreateDirectory } from '../filesystemHandlersMigANormalize'
+import { normalizeFilesystemCopyEntry } from '../filesystemHandlersMigANormalize'
+import { normalizeFilesystemMoveEntry } from '../filesystemHandlersMigANormalize'
+import { normalizeFilesystemRenameEntry } from '../filesystemHandlersMigANormalize'
+import { normalizeFilesystemDeleteEntry } from '../filesystemHandlersMigANormalize'
+import { normalizeFilesystemReadFileBytesInMount } from '../filesystemMountReadHandlersMigANormalize'
+import { normalizeFilesystemCreateDirectoryInMount } from '../filesystemMountWriteHandlersMigANormalize'
+import { normalizeFilesystemDeleteEntryInMount } from '../filesystemMountWriteHandlersMigANormalize'
+import { normalizeFilesystemCopyEntryInMount } from '../filesystemMountWriteHandlersMigANormalize'
+import { normalizeFilesystemMoveEntryInMount } from '../filesystemMountWriteHandlersMigANormalize'
+import { normalizeFilesystemRenameEntryInMount } from '../filesystemMountWriteHandlersMigANormalize'
 import {
   normalizeFilesystemReadDirectory,
   normalizeFilesystemReadFileText,
@@ -12,56 +24,142 @@ import { normalizeFilesystemWriteFileTextInMount } from '../filesystemMountWrite
 import { defineLegacyOperation, defineOperation } from '../defineOperation'
 import * as z from 'zod'
 import { normalizeWriteFileTextPayload } from '../filesystemNormalize'
-export const filesystemCopyEntryOperation = defineLegacyOperation({
+export const filesystemCopyEntryOperation = defineOperation({
+  input: z.union([
+    z.object({
+      sourceUri: z.string().describe('Source file URI within approved roots'),
+      targetUri: z.string().describe('Destination file URI within approved roots'),
+    }),
+    z.array(z.unknown()),
+  ]),
+  normalize: normalizeFilesystemCopyEntry,
+  legacyNormalize: normalizeFilesystemCopyEntry,
+  errors: ['filesystem.copy_entry_failed'],
   id: 'filesystem.copyEntry',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
   summary: 'Copy a file or directory between URIs within approved roots',
 })
-export const filesystemCopyEntryInMountOperation = defineLegacyOperation({
+export const filesystemCopyEntryInMountOperation = defineOperation({
+  input: z.object({
+    mountId: z
+      .string()
+      .describe('Mount identifier to resolve before accessing the repository or file'),
+    sourceUri: z.string().describe('Source file URI within approved roots'),
+    targetUri: z.string().describe('Destination file URI within approved roots'),
+  }),
+  normalize: normalizeFilesystemCopyEntryInMount,
+  legacyNormalize: normalizeFilesystemCopyEntryInMount,
+  errors: ['filesystem.copy_entry_failed', 'worker.unavailable'],
   id: 'filesystem.copyEntryInMount',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
   summary: 'Copy a file or directory between URIs within one mount root',
 })
-export const filesystemCreateDirectoryOperation = defineLegacyOperation({
+export const filesystemCreateDirectoryOperation = defineOperation({
+  input: z.union([
+    z.object({ uri: z.string().describe('File URI within approved roots') }),
+    z.array(z.unknown()),
+  ]),
+  normalize: normalizeFilesystemCreateDirectory,
+  legacyNormalize: normalizeFilesystemCreateDirectory,
+  errors: ['filesystem.create_directory_failed'],
   id: 'filesystem.createDirectory',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
   summary: 'Create a directory at a file URI within approved roots',
 })
-export const filesystemCreateDirectoryInMountOperation = defineLegacyOperation({
+export const filesystemCreateDirectoryInMountOperation = defineOperation({
+  input: z.object({
+    mountId: z
+      .string()
+      .describe('Mount identifier to resolve before accessing the repository or file'),
+    uri: z.string().describe('File URI within approved roots'),
+  }),
+  normalize: normalizeFilesystemCreateDirectoryInMount,
+  legacyNormalize: normalizeFilesystemCreateDirectoryInMount,
+  errors: ['filesystem.create_directory_failed', 'worker.unavailable'],
   id: 'filesystem.createDirectoryInMount',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
   summary: 'Create a directory within a local or remote mount root',
 })
-export const filesystemDeleteEntryOperation = defineLegacyOperation({
+export const filesystemDeleteEntryOperation = defineOperation({
+  input: z.union([
+    z.object({
+      uri: z.string().describe('File URI within approved roots'),
+      recursive: z
+        .boolean()
+        .optional()
+        .describe(
+          'Whether to delete directories recursively; omit to retain legacy deletion behavior',
+        ),
+    }),
+    z.array(z.unknown()),
+  ]),
+  normalize: normalizeFilesystemDeleteEntry,
+  legacyNormalize: normalizeFilesystemDeleteEntry,
+  errors: ['filesystem.delete_entry_failed'],
   id: 'filesystem.deleteEntry',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
   summary: 'Delete a file or directory within approved roots',
 })
-export const filesystemDeleteEntryInMountOperation = defineLegacyOperation({
+export const filesystemDeleteEntryInMountOperation = defineOperation({
+  input: z.object({
+    mountId: z
+      .string()
+      .describe('Mount identifier to resolve before accessing the repository or file'),
+    uri: z.string().describe('File URI within approved roots'),
+    recursive: z
+      .boolean()
+      .optional()
+      .describe(
+        'Whether to delete directories recursively; omit to retain legacy deletion behavior',
+      ),
+  }),
+  normalize: normalizeFilesystemDeleteEntryInMount,
+  legacyNormalize: normalizeFilesystemDeleteEntryInMount,
+  errors: ['filesystem.delete_entry_failed', 'worker.unavailable'],
   id: 'filesystem.deleteEntryInMount',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
   summary: 'Delete a file or directory within a local or remote mount root',
 })
-export const filesystemMoveEntryOperation = defineLegacyOperation({
+export const filesystemMoveEntryOperation = defineOperation({
+  input: z.union([
+    z.object({
+      sourceUri: z.string().describe('Source file URI within approved roots'),
+      targetUri: z.string().describe('Destination file URI within approved roots'),
+    }),
+    z.array(z.unknown()),
+  ]),
+  normalize: normalizeFilesystemMoveEntry,
+  legacyNormalize: normalizeFilesystemMoveEntry,
+  errors: ['filesystem.move_entry_failed'],
   id: 'filesystem.moveEntry',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
   summary: 'Move a file or directory between URIs within approved roots',
 })
-export const filesystemMoveEntryInMountOperation = defineLegacyOperation({
+export const filesystemMoveEntryInMountOperation = defineOperation({
+  input: z.object({
+    mountId: z
+      .string()
+      .describe('Mount identifier to resolve before accessing the repository or file'),
+    sourceUri: z.string().describe('Source file URI within approved roots'),
+    targetUri: z.string().describe('Destination file URI within approved roots'),
+  }),
+  normalize: normalizeFilesystemMoveEntryInMount,
+  legacyNormalize: normalizeFilesystemMoveEntryInMount,
+  errors: ['filesystem.move_entry_failed', 'worker.unavailable'],
   id: 'filesystem.moveEntryInMount',
   kind: 'command',
   scope: 'interact',
@@ -108,14 +206,30 @@ export const filesystemReadDirectoryInMountOperation = defineOperation({
   availability: 'always',
   summary: 'List directory entries within a local or remote mount root',
 })
-export const filesystemReadFileBytesOperation = defineLegacyOperation({
+export const filesystemReadFileBytesOperation = defineOperation({
+  input: z.union([
+    z.object({ uri: z.string().describe('File URI within approved roots') }),
+    z.array(z.unknown()),
+  ]),
+  normalize: normalizeFilesystemReadFileBytes,
+  legacyNormalize: normalizeFilesystemReadFileBytes,
+  errors: ['filesystem.read_file_bytes_failed'],
   id: 'filesystem.readFileBytes',
   kind: 'query',
   scope: 'read',
   availability: 'always',
   summary: 'Read binary file contents within approved roots',
 })
-export const filesystemReadFileBytesInMountOperation = defineLegacyOperation({
+export const filesystemReadFileBytesInMountOperation = defineOperation({
+  input: z.object({
+    mountId: z
+      .string()
+      .describe('Mount identifier to resolve before accessing the repository or file'),
+    uri: z.string().describe('File URI within approved roots'),
+  }),
+  normalize: normalizeFilesystemReadFileBytesInMount,
+  legacyNormalize: normalizeFilesystemReadFileBytesInMount,
+  errors: ['filesystem.read_file_bytes_failed', 'worker.unavailable'],
   id: 'filesystem.readFileBytesInMount',
   kind: 'query',
   scope: 'read',
@@ -155,14 +269,34 @@ export const filesystemReadFileTextInMountOperation = defineOperation({
   availability: 'always',
   summary: 'Read file text within a local or remote mount root',
 })
-export const filesystemRenameEntryOperation = defineLegacyOperation({
+export const filesystemRenameEntryOperation = defineOperation({
+  input: z.union([
+    z.object({
+      sourceUri: z.string().describe('Source file URI within approved roots'),
+      targetUri: z.string().describe('Destination file URI within approved roots'),
+    }),
+    z.array(z.unknown()),
+  ]),
+  normalize: normalizeFilesystemRenameEntry,
+  legacyNormalize: normalizeFilesystemRenameEntry,
+  errors: ['filesystem.rename_entry_failed'],
   id: 'filesystem.renameEntry',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
   summary: 'Rename a file or directory within approved roots',
 })
-export const filesystemRenameEntryInMountOperation = defineLegacyOperation({
+export const filesystemRenameEntryInMountOperation = defineOperation({
+  input: z.object({
+    mountId: z
+      .string()
+      .describe('Mount identifier to resolve before accessing the repository or file'),
+    sourceUri: z.string().describe('Source file URI within approved roots'),
+    targetUri: z.string().describe('Destination file URI within approved roots'),
+  }),
+  normalize: normalizeFilesystemRenameEntryInMount,
+  legacyNormalize: normalizeFilesystemRenameEntryInMount,
+  errors: ['filesystem.rename_entry_failed', 'worker.unavailable'],
   id: 'filesystem.renameEntryInMount',
   kind: 'command',
   scope: 'interact',

@@ -1,10 +1,11 @@
 import * as z from 'zod'
+import { defineOperation } from '../defineOperation'
+import { normalizePromoteMountPayload } from '../topologyBrowseNormalize'
 import {
   normalizeMountCreate,
   normalizeMountList,
   normalizeMountRemove,
 } from '../topologyHandlersNormalize'
-import { defineLegacyOperation, defineOperation } from '../defineOperation'
 export const mountCreateOperation = defineOperation({
   input: z.object({
     projectId: z.string(),
@@ -34,7 +35,11 @@ export const mountListOperation = defineOperation({
   availability: 'always',
   summary: 'List directory mounts belonging to a project',
 })
-export const mountPromoteOperation = defineLegacyOperation({
+export const mountPromoteOperation = defineOperation({
+  input: z.object({ mountId: z.string().describe('Mount identifier to move first') }),
+  normalize: normalizePromoteMountPayload,
+  legacyNormalize: normalizePromoteMountPayload,
+  errors: [],
   id: 'mount.promote',
   kind: 'command',
   scope: 'admin',

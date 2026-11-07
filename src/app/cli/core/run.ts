@@ -9,6 +9,21 @@ import { help } from './help'
 import type { CliIo } from './io'
 import type { OperationId } from './command'
 import { version } from '../../../../package.json'
+import type { ZodType } from 'zod'
+
+/**
+ * The part of an operation the CLI validates with. Narrowing to this view keeps the call path
+ * independent of the registry's full union, which grows past what TypeScript can represent.
+ */
+type CliOperation =
+  | { kind: 'query' | 'command'; contract: 'legacy' }
+  | {
+      kind: 'query' | 'command'
+      contract: 'schema'
+      input: ZodType
+      normalize(wire: never): unknown
+      legacyNormalize?(payload: unknown): unknown
+    }
 export async function run(argv: string[], io: CliIo): Promise<number> {
   let json = false
   try {
@@ -60,7 +75,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       command.path.join(' ') === 'api call'
         ? args.positionals[0]
         : (command.selectOperation?.(args) ?? command.operation)
-    const operation = id ? getControlSurfaceOperation(id) : undefined
+    const operation = (id ? getControlSurfaceOperation(id) : undefined) as CliOperation | undefined
     if (id && !operation) {
       usage(`Unknown operation: ${id}`)
     }

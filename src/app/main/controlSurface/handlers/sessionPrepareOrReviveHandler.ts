@@ -1,3 +1,5 @@
+import { registerOperation } from '../registerOperation'
+import { sessionPrepareOrReviveOperation } from '@shared/contracts/controlSurface/operations/domains/session'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import type {
   PrepareOrReviveSessionResult,
@@ -11,7 +13,6 @@ import { normalizeOptionalString } from './sessionLaunchPayloadSupport'
 import {
   normalizePersistedAppState,
   normalizePersistedAgent,
-  normalizeWorkspaceIdPayload,
   resolveNodeProfileId,
   resolvePreparedScrollback,
   resolveNodeRuntimeKind,
@@ -56,9 +57,7 @@ export function registerSessionPrepareOrReviveHandler(
     inFlightNodes.set(key, operation)
     return operation
   }
-  controlSurface.register('session.prepareOrRevive', {
-    kind: 'command',
-    validate: normalizeWorkspaceIdPayload,
+  registerOperation(controlSurface, sessionPrepareOrReviveOperation, {
     handle: async (ctx, payload): Promise<PrepareOrReviveSessionResult> =>
       await deps.terminalRecoverySpawnAdmission.reconcileWorkspace(
         payload.workspaceId,

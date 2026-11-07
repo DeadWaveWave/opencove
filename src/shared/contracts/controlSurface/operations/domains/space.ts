@@ -1,7 +1,49 @@
-import { normalizeGetSpacePayload, normalizeListSpacesPayload } from '../spaceQueriesNormalize'
 import * as z from 'zod'
-import { defineLegacyOperation, defineOperation } from '../defineOperation'
-export const spaceCreateChildOperation = defineLegacyOperation({
+import { defineOperation } from '../defineOperation'
+import { normalizeCreateChildPayload } from '../spaceCreateChildNormalize'
+import { normalizeGetSpacePayload, normalizeListSpacesPayload } from '../spaceQueriesNormalize'
+export const spaceCreateChildOperation = defineOperation({
+  input: z.union([
+    z.object({
+      parentSpaceId: z.string().describe('Parent space identifier'),
+      projectId: z
+        .string()
+        .nullish()
+        .describe('Owning project identifier; omit to resolve from parent'),
+      name: z.string().nullish().describe('Child space name'),
+      initialNodeIds: z
+        .array(z.string())
+        .nullish()
+        .describe('Node identifiers to move into the child'),
+      rect: z
+        .object({
+          x: z.number().describe('Horizontal canvas position'),
+          y: z.number().describe('Vertical canvas position'),
+          width: z.number().describe('Positive boundary width'),
+          height: z.number().describe('Positive boundary height'),
+        })
+        .or(z.array(z.unknown()))
+        .nullish()
+        .describe('Child boundary with positive width and height'),
+      anchor: z
+        .object({
+          x: z.number().describe('Horizontal anchor position'),
+          y: z.number().describe('Vertical anchor position'),
+        })
+        .or(z.array(z.unknown()))
+        .nullish()
+        .describe('Child anchor position'),
+    }),
+    z.array(z.unknown()),
+  ]),
+  normalize: normalizeCreateChildPayload,
+  legacyNormalize: normalizeCreateChildPayload,
+  errors: [
+    'space.not_found',
+    'persistence.invalid_state',
+    'persistence.unavailable',
+    'persistence.io_failed',
+  ],
   id: 'space.createChild',
   kind: 'command',
   scope: 'interact',

@@ -29,7 +29,8 @@ import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
 import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRuntime'
 import type { SessionRecord } from './sessionRecords'
 import { normalizeOptionalString } from './sessionLaunchPayloadSupport'
-import { normalizeLaunchAgentInMountPayload } from './sessionLaunchAgentInMountPayload'
+import { registerOperation } from '../registerOperation'
+import { sessionLaunchAgentInMountOperation } from '@shared/contracts/controlSurface/operations/domains/session'
 import type { TerminalSpawnAdmission } from '../../../../contexts/terminal/application/TerminalRuntimeAvailability'
 import { resolveAdmittedMountAgentLaunch } from './resolveAdmittedMountAgentLaunch'
 import {
@@ -59,9 +60,7 @@ export function registerSessionLaunchAgentInMountHandler(
     agentProviderRegistry: AgentProviderRegistry
   },
 ): void {
-  controlSurface.register('session.launchAgentInMount', {
-    kind: 'command',
-    validate: normalizeLaunchAgentInMountPayload,
+  registerOperation(controlSurface, sessionLaunchAgentInMountOperation, {
     handle: async (ctx, payload): Promise<LaunchAgentSessionResult> => {
       const { target, cwd, mode } = await resolveAdmittedMountAgentLaunch({
         ctx,
