@@ -9,15 +9,15 @@ import { registerOperation } from '../../../src/app/main/controlSurface/register
 import { defineOperation } from '../../../src/shared/contracts/controlSurface/operations/defineOperation'
 import { getControlSurfaceOperation } from '../../../src/shared/contracts/controlSurface/operations'
 import {
-  requiredSliceCOperations,
-  sliceCCoreLimitations,
-} from '../../support/controlSurfaceMigrationSliceC'
+  requiredInfrastructureOperations,
+  legacyNoInputOperations,
+} from '../../support/controlSurfaceInfrastructureOperations'
 
-it('accounts for every explicitly requested operation, independently of the global count', () => {
-  expect(requiredSliceCOperations).toHaveLength(35)
-  expect(new Set(requiredSliceCOperations).size).toBe(35)
-  const limitations: readonly string[] = sliceCCoreLimitations
-  for (const id of requiredSliceCOperations) {
+it('accounts for every infrastructure operation, independently of the global count', () => {
+  expect(requiredInfrastructureOperations).toHaveLength(35)
+  expect(new Set(requiredInfrastructureOperations).size).toBe(35)
+  const limitations: readonly string[] = legacyNoInputOperations
+  for (const id of requiredInfrastructureOperations) {
     expect(getControlSurfaceOperation(id)?.contract, id).toBe(
       limitations.includes(id) ? 'legacy' : 'schema',
     )
@@ -39,7 +39,7 @@ registerManagedRuntimeHandlers(surface, { instanceId: 'instance-1' } as Paramete
   typeof registerManagedRuntimeHandlers
 >[1])
 
-for (const id of sliceCCoreLimitations) {
+for (const id of legacyNoInputOperations) {
   for (const payload of [undefined, null, true, 1, NaN, Infinity, '', [], { extra: true }]) {
     it(`${id} proves strict empty input cannot preserve legacy admission: ${JSON.stringify(payload)}`, () => {
       expect(validators[id](payload)).toStrictEqual(oracles[id](payload))

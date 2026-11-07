@@ -1,6 +1,6 @@
-import { normalizeTerminalAgentActivityList } from '../../support/controlSurfaceLegacyOracles/migBSessionActivity'
+import { normalizeTerminalAgentActivityList } from '../../support/controlSurfaceLegacyOracles/terminalAgentActivityHandlers'
 import { registerPluginDistributionHandlers } from '../../../src/app/main/controlSurface/handlers/pluginDistributionHandlers'
-import { normalizeListSessionsPayload } from '../../support/controlSurfaceLegacyOracles/migBAgentCatalog'
+import { normalizeListSessionsPayload } from '../../support/controlSurfaceLegacyOracles/agentIpcValidation'
 // @vitest-environment node
 import { expect, it } from 'vitest'
 import * as z from 'zod'
@@ -19,28 +19,28 @@ import {
   normalizePluginPreferencesSet,
   normalizePluginViewPreferencesGet,
   normalizePluginViewPreferencesSet,
-} from '../../support/controlSurfaceLegacyOracles/migBPluginViews'
+} from '../../support/controlSurfaceLegacyOracles/pluginViewAndPreferenceHandlers'
 import {
   normalizePluginSidebar,
   normalizePluginHost,
   normalizePluginRepository,
-} from '../../support/controlSurfaceLegacyOracles/migBPluginRequests'
+} from '../../support/controlSurfaceLegacyOracles/pluginRequestHandlers'
 import {
   normalizeSnapshotPayload,
   normalizePresentationSnapshotPayload,
   normalizeSpawnTerminalPayload,
   normalizePtySpawnPayload,
-} from '../../support/controlSurfaceLegacyOracles/migBSessionStreaming'
+} from '../../support/controlSurfaceLegacyOracles/sessionStreamingPayloads'
 import {
   normalizeAttachPayload,
   normalizeDetachPayload,
-} from '../../support/controlSurfaceLegacyOracles/migBSessionWatcher'
-import { normalizeWorkspaceIdPayload } from '../../support/controlSurfaceLegacyOracles/migBSessionPrepare'
+} from '../../support/controlSurfaceLegacyOracles/sessionAgentWatcherHandlers'
+import { normalizeWorkspaceIdPayload } from '../../support/controlSurfaceLegacyOracles/sessionPrepareOrReviveShared'
 import {
   normalizeStopNode,
   normalizeWriteNode,
-} from '../../support/controlSurfaceLegacyOracles/migBSessionNodeInput'
-import { normalizeLaunchAgentInMountPayload } from '../../support/controlSurfaceLegacyOracles/migBSessionMount'
+} from '../../support/controlSurfaceLegacyOracles/sessionInputHandlers'
+import { normalizeLaunchAgentInMountPayload } from '../../support/controlSurfaceLegacyOracles/sessionLaunchAgentInMountPayload'
 const oracles: Record<string, (payload: unknown) => unknown> = {
   'session.terminalAgentActivity.list': normalizeTerminalAgentActivityList,
   'agent.listSessions': normalizeListSessionsPayload,

@@ -5,12 +5,12 @@ import { getControlSurfaceOperation } from '../../../src/shared/contracts/contro
 import { registerControlSurfaceHandlers } from '../../../src/app/main/controlSurface/registerControlSurfaceHandlers'
 import type { ControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import { toAppErrorDescriptor } from '../../../src/shared/errors/appError'
-import * as filesystemMountReadHandlers from '../../support/controlSurfaceLegacyOracles/filesystemMountReadHandlersMigA'
-import * as gitWorktreeMountWriteHandlers from '../../support/controlSurfaceLegacyOracles/gitWorktreeMountWriteHandlersMigA'
-import * as filesystemHandlers from '../../support/controlSurfaceLegacyOracles/filesystemHandlersMigA'
-import * as gitWorktreeHandlers from '../../support/controlSurfaceLegacyOracles/gitWorktreeHandlersMigA'
-import * as filesystemMountWriteHandlers from '../../support/controlSurfaceLegacyOracles/filesystemMountWriteHandlersMigA'
-import * as gitWorktreeMountReadHandlers from '../../support/controlSurfaceLegacyOracles/gitWorktreeMountReadHandlersMigA'
+import * as filesystemMountReadHandlers from '../../support/controlSurfaceLegacyOracles/filesystemMountByteReadHandlers'
+import * as gitWorktreeMountWriteHandlers from '../../support/controlSurfaceLegacyOracles/gitWorktreeMountWriteHandlers'
+import * as filesystemHandlers from '../../support/controlSurfaceLegacyOracles/filesystemEntryHandlers'
+import * as gitWorktreeHandlers from '../../support/controlSurfaceLegacyOracles/gitWorktreeHandlers'
+import * as filesystemMountWriteHandlers from '../../support/controlSurfaceLegacyOracles/filesystemMountEntryHandlers'
+import * as gitWorktreeMountReadHandlers from '../../support/controlSurfaceLegacyOracles/gitWorktreeMountReadHandlers'
 const oracles: Record<string, (payload: unknown) => unknown> = {
   'filesystem.readFileBytes': filesystemHandlers.normalizeFilesystemReadFileBytes,
   'filesystem.createDirectory': filesystemHandlers.normalizeFilesystemCreateDirectory,

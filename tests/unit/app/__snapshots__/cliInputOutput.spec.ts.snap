@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`F3/F5/F6 help golden:  1`] = `
+exports[`command help snapshots:  1`] = `
 "OpenCove CLI — Control projects, spaces, canvas nodes and worker runtimes
 
 Usage: opencove <command> [options]
@@ -58,7 +58,7 @@ AI agents: run \`opencove skill\` for a usage guide.
 "
 `;
 
-exports[`F3/F5/F6 help golden: api 1`] = `
+exports[`command help snapshots: api 1`] = `
 "Usage: opencove api <command> [options]
 
 Start with "opencove api ops --domains" for a compact domain map.
@@ -74,7 +74,7 @@ Global options: see "opencove --help".
 "
 `;
 
-exports[`F3/F5/F6 help golden: api call 1`] = `
+exports[`command help snapshots: api call 1`] = `
 "Usage: opencove api call <operation-id> [options]
 
 Invoke a registered operation
@@ -96,7 +96,7 @@ Global options: see "opencove --help".
 "
 `;
 
-exports[`F3/F5/F6 help golden: api ops --domains 1`] = `
+exports[`command help snapshots: api ops --domains 1`] = `
 "Usage: opencove api ops [options]
 
 List Control Surface operations with their kind, contract and CLI command
@@ -133,7 +133,7 @@ Global options: see "opencove --help".
 "
 `;
 
-exports[`F3/F5/F6 help golden: api ops 1`] = `
+exports[`command help snapshots: api ops 1`] = `
 "Usage: opencove api ops [options]
 
 List Control Surface operations with their kind, contract and CLI command
@@ -170,7 +170,7 @@ Global options: see "opencove --help".
 "
 `;
 
-exports[`F3/F5/F6 help golden: node list 1`] = `
+exports[`command help snapshots: node list 1`] = `
 "Usage: opencove node list [options]
 
 List canvas nodes
