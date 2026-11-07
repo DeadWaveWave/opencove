@@ -4,7 +4,7 @@ exports[`error golden texts (TTY=false) 1`] = `
 {
   "missing required option": "{"error":{"code":"cli.usage","message":"Missing required option --space (or another target space option) for \\"opencove node create note\\".","hint":"Run \\"opencove node create note --help\\" to see its options."}}
 ",
-  "not running": "{"error":{"code":"context.unreachable","message":"OpenCove is not running for this profile.","hint":"Start the OpenCove app, or run \\"opencove worker start\\". Use --user-data <dir> to target another profile.","details":{"profiles":[".codex-out/tmp/profile-a",".codex-out/tmp/profile-b"]}}}
+  "not running": "{"error":{"code":"context.unreachable","message":"OpenCove is not running for this profile.","hint":"Start the OpenCove app, or run \\"opencove worker start\\". Use --user-data <dir> to target another profile.","details":{"profiles":["/tmp/opencove-test/profile-a","/tmp/opencove-test/profile-b"]}}}
 ",
   "unknown command": "{"error":{"code":"cli.usage","message":"Unknown command \\"nodes list\\" for opencove.","hint":"Did you mean node list? Run \\"opencove --help\\" to see its commands."}}
 ",
@@ -19,7 +19,7 @@ exports[`error golden texts (TTY=true) 1`] = `
   hint: Run "opencove node create note --help" to see its options.
 ",
   "not running": "error[context.unreachable]: OpenCove is not running for this profile.
-  searched profiles: .codex-out/tmp/profile-a, .codex-out/tmp/profile-b
+  searched profiles: /tmp/opencove-test/profile-a, /tmp/opencove-test/profile-b
   hint: Start the OpenCove app, or run "opencove worker start". Use --user-data <dir> to target another profile.
 ",
   "unknown command": "error[cli.usage]: Unknown command "nodes list" for opencove.
@@ -153,6 +153,32 @@ Commands:
   list     List Git worktrees
   create   Create a worktree for a space
   archive  Archive a space worktree
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`shows required options and positional arguments in command usage 1`] = `
+"Usage: opencove space get [--space <id>] [options]
+
+Get a space
+
+When no target is given, inside OpenCove defaults to your own space; project options default to your own project.
+
+Options:
+  --space <id>    Select a space by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required outside OpenCove)
+  --project <id>  Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Table output (-o table): not supported.
+Projectable fields: id, name, directoryPath, targetMountId, parentSpaceId, boundary, sortOrder, nodeIds, nodes, nodes.id, nodes.kind, nodes.title, nodes.projectId, nodes.spaceId, nodes.frame, nodes.frame.x, nodes.frame.y, nodes.frame.width, nodes.frame.height, nodes.status, nodes.sessionId, nodes.data, nodes.data.kind, nodes.data.status, nodes.data.priority, nodes.data.requirement, nodes.data.tags, nodes.data.url
+
+Projection example:
+  opencove space get --space s --fields id,nodes
+  {"projectId":"p","activeSpaceId":"s","space":{"id":"s","nodes":[]}}
+
+Examples:
+  opencove space get --space space-123
+  opencove space get --space space-123 --pretty
 
 Global options: see "opencove --help".
 "

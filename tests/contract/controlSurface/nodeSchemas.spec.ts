@@ -5,6 +5,11 @@ import {
   nodeCreateOperation as create,
   nodeUpdateOperation as update,
 } from '../../../src/shared/contracts/controlSurface/operations/domains/node'
+// Compare the entire wire schema without a multi-thousand-line pretty-printed golden.
+expect.addSnapshotSerializer({
+  test: value => !!value && typeof value === 'object' && '$schema' in value,
+  serialize: value => JSON.stringify(value),
+})
 it.each([create, update])('$id exports a strict JSON Schema', op => {
   expect(z.toJSONSchema(op.input, { io: 'input', unrepresentable: 'throw' })).toMatchSnapshot()
 })

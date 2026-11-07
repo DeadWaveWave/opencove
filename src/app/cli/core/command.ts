@@ -1,8 +1,12 @@
 import type { CONTROL_SURFACE_OPERATIONS } from '../../../shared/contracts/controlSurface/operations'
 import type { Connection } from './context'
 import type { CliIo } from './io'
+import type { CallerIdentity } from './identity'
 export type OperationId = (typeof CONTROL_SURFACE_OPERATIONS)[number]['id']
 export interface OptionSpec {
+  selector?: 'node' | 'space' | 'project'
+  defaultSelf?: boolean
+  defaultSelfUnless?: string[]
   type: 'string' | 'boolean' | 'number' | 'json'
   multiple?: boolean
   required?: boolean
@@ -41,13 +45,17 @@ export interface RenderSpec {
 export interface CommandArgs {
   options: Record<string, unknown>
   positionals: string[]
+  explicitOptions?: ReadonlySet<string>
 }
 export type CommandResult = unknown
 export interface CommandContext extends CommandArgs {
+  selfSelected?: boolean
   connection?: Connection
   io: CliIo
   input: unknown
   invoke(id: OperationId, payload: unknown): Promise<unknown>
+  whoami(): Promise<CallerIdentity>
+  self(kind: NonNullable<OptionSpec['selector']>): Promise<string>
 }
 export interface Command {
   path: string[]
@@ -74,6 +82,26 @@ export interface Command {
   render?: RenderSpec
 }
 export function defineCommand(command: Command): Command {
+  const options = { ...command.options }
+  // Selector semantics and help share this metadata, including plugin targets.
+  for (const kind of ['node', 'space', 'project'] as const) {
+    if (options[kind]) {
+      options[kind] = {
+        ...options[kind],
+        selector: kind,
+        defaultSelf: options[kind].defaultSelf ?? kind !== 'node',
+      }
+    }
+  }
+  if ((options.node || options.space) && !options.project) {
+    options.project = {
+      type: 'string',
+      valueName: 'id',
+      description: 'Narrow target lookup to a project',
+      selector: 'project',
+    }
+  }
+  command.options = options
   return command
 }
 

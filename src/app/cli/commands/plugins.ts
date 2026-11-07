@@ -72,6 +72,10 @@ export const pluginCommands: Command[] = [
       path: ['plugin', name],
       render: pluginOutputs[name],
       summary: summaries[name as keyof typeof summaries],
+      description:
+        name === 'run'
+          ? 'Inside OpenCove, window commands without an explicit node or project default to your own project. Plugin-wide commands receive no default target.'
+          : undefined,
       connect: true,
       operation,
       timeoutMs: resolvePluginCommandTimeout({ id: operation }) ?? undefined,
@@ -107,12 +111,20 @@ export const pluginCommands: Command[] = [
           : {}),
         ...(name === 'discover' ? { query: option('Search for plugins', 'text') } : {}),
         ...(['run', 'open', 'windows'].includes(name)
-          ? { project: option('Select the project', 'id') }
+          ? {
+              project: {
+                ...option('Select the project', 'id'),
+                ...(name === 'run' ? { defaultSelf: false } : {}),
+                ...(name === 'open' ? { defaultSelfUnless: ['node'] } : {}),
+              },
+            }
           : {}),
         ...(['run', 'open'].includes(name)
           ? { node: option('Select an existing plugin window', 'id') }
           : {}),
-        ...(name === 'open' ? { space: option('Place a new window in this space', 'id') } : {}),
+        ...(name === 'open'
+          ? { space: { ...option('Place a new window in this space', 'id'), conflicts: ['node'] } }
+          : {}),
         ...(name === 'run'
           ? {
               view: option('Select the plugin view', 'id'),
@@ -187,7 +199,36 @@ export const pluginCommands: Command[] = [
           ...(['enable', 'disable'].includes(name) ? { enabled: name === 'enable' } : {}),
         }
       },
-      async execute({ invoke, input }) {
+      async execute({ invoke, input, options, io, self }) {
+        if (
+          name === 'run' &&
+          io.env.OPENCOVE_ENV === '1' &&
+          options.project === undefined &&
+          options.node === undefined
+        ) {
+          const request = input as { pluginId: string; commandId: string }
+          const details = (await invoke('plugin.details', { pluginId: request.pluginId })) as {
+            plugin?: {
+              revision?: string
+              runtimeGeneration?: number
+              commands?: { id: string; target: 'plugin' | 'window' }[]
+            }
+          }
+          input = {
+            ...request,
+            expectedRevision: details.plugin?.revision,
+            expectedRuntimeGeneration: details.plugin?.runtimeGeneration,
+          }
+          if (
+            details.plugin?.commands?.find(command => command.id === request.commandId)?.target ===
+            'window'
+          ) {
+            input = {
+              ...(input as object),
+              projectId: await self('project'),
+            }
+          }
+        }
         const result = await invoke(operation, input)
         if (
           result &&

@@ -12,7 +12,9 @@ Workspace:
   canvas   Focus nodes and spaces on the canvas
 
 Introspection:
-  api  Discover operations, inspect input schemas and invoke the Control Surface
+  whoami   Show your caller identity and permission scope
+  context  Orient yourself in a project and space
+  api      Discover operations, inspect input schemas and invoke the Control Surface
 
 Runtime:
   ping      Check whether the Control Surface responds
@@ -28,6 +30,10 @@ Runtime:
 
 Plugins:
   plugin  Discover, install and manage plugins
+
+Selectors:
+  Node, space and project options accept @self, an exact ID, an exact name (case-sensitive), or a unique ID prefix of 6+ characters.
+  @self uses your terminal identity. Names are scoped by --project or your own project inside OpenCove. Ambiguous targets require a full ID.
 
 Global options:
   --endpoint <url>         Connect to this Control Surface URL
@@ -69,6 +75,8 @@ exports[`F3/F5/F6 help golden: api call 1`] = `
 "Usage: opencove api call <operation-id> [options]
 
 Invoke a registered operation
+
+The input is sent as-is: IDs must be full IDs. Selectors such as @self, names and ID prefixes work only in the dedicated commands; resolve one first, for example: opencove node get --node "@self" --fields id
 
 Options:
   --input <json>         Pass the operation input as JSON
@@ -168,12 +176,14 @@ Lists per-kind summaries: data carries kind plus requirement, status, priority a
 
 data.status is task status. Top-level status is the runtime status of agent and terminal sessions. STATE shows the applicable status.
 
-Target space (optional; choose one):
-  --space <id>                                  Select a space by its ID
+When no target is given, inside OpenCove defaults to your own space; project options default to your own project.
+
+Target space (choose one; inside OpenCove defaults to your own space):
+  --space <id>                                  Select a space by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --space-name <name> [--project <id>]          Find a named space, optionally within a project
   --worker <id-or-name> --branch <branch>       Find a space by worker and Git branch
   --worker <id-or-name> --path <absolute-path>  Find a space by worker and working directory
-  Add --project <id> to narrow a name, branch or path lookup
+  --project <id>                                Narrow a space name, branch or path lookup to one project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Options:
   --kind <kind>  Filter by note, task, website, agent, terminal, plugin, document, folder, image or role

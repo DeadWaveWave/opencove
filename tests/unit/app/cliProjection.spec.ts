@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { expect, it, vi } from 'vitest'
-import { run } from '../../../src/app/cli/core/run'
+import { runWithTargetFixtures as run } from './cliTargetFixtures.helpers'
 import type { CliIo } from '../../../src/app/cli/core/io'
 function fixture(value: unknown = {}, error?: unknown) {
   let out = '',

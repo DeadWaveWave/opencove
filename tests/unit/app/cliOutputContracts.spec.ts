@@ -5,7 +5,7 @@ import {
   stopWorkerLifecycle,
 } from '../../../src/app/cli/workerLifecycle.mjs'
 import { commands } from '../../../src/app/cli/commands'
-import { run } from '../../../src/app/cli/core/run'
+import { runWithTargetFixtures as run } from './cliTargetFixtures.helpers'
 import type { CliIo } from '../../../src/app/cli/core/io'
 
 vi.mock('../../../src/app/cli/workerLifecycle.mjs', () => ({
@@ -78,7 +78,7 @@ it.each([
   { args: mount, fields: 'mountId,nope', value: {} },
   { args: ['plugin', 'install', './sample'], fields: 'id,nope', value: {} },
   {
-    args: ['worker', 'stop', '--user-data', '.codex-out/tmp/review1-worker'],
+    args: ['worker', 'stop', '--user-data', '/fixture/worker-profile'],
     fields: 'status,nope',
     value: {},
   },

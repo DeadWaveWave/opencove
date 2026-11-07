@@ -35,10 +35,25 @@ export async function invoke(
       body: JSON.stringify(request),
       signal: controller.signal,
     })
-    if ([401, 403].includes(response.status)) {
-      throw new CliError('context.unauthorized', 4, 'Unauthorized or forbidden')
+    const authStatus = [401, 403].includes(response.status)
+    const result = await response.json().catch(error => {
+      if (authStatus) {
+        return undefined
+      }
+      throw error
+    })
+    if (
+      authStatus ||
+      ['common.forbidden', 'control_surface.unauthorized'].includes(result?.error?.code)
+    ) {
+      throw new CliError(
+        result?.error?.code ?? 'context.unauthorized',
+        4,
+        'Authorization failed. An OpenCove session may read and interact, but cannot perform administrative actions or manage workers.',
+        'If you intend a broader action, run the command outside the OpenCove session with a desktop token.',
+        result?.error?.details,
+      )
     }
-    const result = await response.json()
     if (result?.ok === false) {
       const error = result.error ?? {}
       const serverIssues = error.details?.issues

@@ -9,6 +9,8 @@ import { help } from './help'
 import type { CliIo } from './io'
 import type { OperationId } from './command'
 import { version } from '../../../../package.json'
+import { resolveSelectors } from './selectors'
+import { selfUnavailable } from './identity'
 import type { ZodType } from 'zod'
 
 /**
@@ -28,6 +30,7 @@ type CliOperation =
 function commandForOperation(id: string) {
   return commands.find(c => c.operation === id || c.operationAliases?.includes(id as OperationId))
 }
+
 export async function run(argv: string[], io: CliIo): Promise<number> {
   let json = false
   try {
@@ -152,13 +155,33 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
         usage(error instanceof Error ? error.message : String(error))
       }
     }
+    for (const [key, spec] of Object.entries(command.options ?? {})) {
+      if (
+        spec.selector &&
+        args.options[key] === '@self' &&
+        io.env.OPENCOVE_ENV !== '1' &&
+        !args.options.token &&
+        !io.env.OPENCOVE_CONTROL_TOKEN
+      ) {
+        selfUnavailable(spec.selector)
+      }
+    }
     const connection = command.connect ? await resolveConnection(args.options, io) : undefined
+    // Selector reads and the final query share a per-run snapshot. A write ends
+    // that snapshot so a later read cannot reuse data from before its effects.
+    const reads = new Map<string, Promise<unknown>>()
     const call = async (operationId: OperationId, payload: unknown) => {
       const op = getControlSurfaceOperation(operationId)!
       if (!connection) {
         throw new CliError('context.unreachable', 3, 'No connection')
       }
-      return invoke(
+      const key = JSON.stringify([operationId, payload])
+      if (op.kind === 'command') {
+        reads.clear()
+      } else if (reads.has(key)) {
+        return reads.get(key)!
+      }
+      const pending = invoke(
         connection,
         { kind: op.kind, id: operationId, payload },
         {
@@ -169,9 +192,25 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
           inputOptions: commandForOperation(operationId)?.options,
         },
       )
+      if (op.kind === 'query') {
+        reads.set(key, pending)
+      }
+      return pending
     }
+    const selfSelected = Object.values(args.options).includes('@self')
+    const identity = await resolveSelectors(command, args, io, call)
+    input = command.buildInput?.(args)
     const result = command.execute
-      ? await command.execute({ ...args, io, input, invoke: call, connection })
+      ? await command.execute({
+          ...args,
+          io,
+          input,
+          invoke: call,
+          connection,
+          selfSelected,
+          whoami: identity.whoami,
+          self: identity.self,
+        })
       : await call(id as OperationId, input)
     if (command.stream) {
       return Number(result)

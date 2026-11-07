@@ -74,6 +74,9 @@ Space locator 不推断 cwd：使用 `--space`、`--space-name` 或 `--worker` �
 
 开发构建：`pnpm build:cli`；入口为 `node out/cli/opencove.mjs`。
 
+CLI 测试先运行 `pnpm build:cli`，再运行 `pnpm exec vitest run tests/unit/app/cli*.spec.ts`。
+测试的 global setup 在系统临时目录重新构建并逐字节校验工作树中的 CLI 产物；产物缺失或过期时拒绝继续，不覆盖工作树，临时构建在成功或失败后都会清理。
+
 ## 1.1 安装拓扑
 
 `runtime inspect` 只读取构建描述，`runtime verify` 在独立进程内验证执行环境；它们不会启动

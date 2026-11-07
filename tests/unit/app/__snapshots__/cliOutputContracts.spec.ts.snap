@@ -1,12 +1,14 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`projection help golden mount create 1`] = `
-"Usage: opencove mount create --project <id> --endpoint-id <id> --root-path <path> [options]
+"Usage: opencove mount create [--project <id>] --endpoint-id <id> --root-path <path> [options]
 
 Mount a worker folder in a project
 
+When no project is given, inside OpenCove defaults to your own project.
+
 Options:
-  --project <id>      Select the project (required)
+  --project <id>      Select the project; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required outside OpenCove)
   --endpoint-id <id>  Select the endpoint (required)
   --root-path <path>  Mount this absolute folder path (required)
   --name <name>       Name the mount
@@ -87,9 +89,11 @@ exports[`projection help golden plugin run 1`] = `
 
 Run a plugin command
 
+Inside OpenCove, window commands without an explicit node or project default to your own project. Plugin-wide commands receive no default target.
+
 Options:
-  --project <id>          Select the project
-  --node <id>             Select an existing plugin window
+  --project <id>          Select the project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --node <id>             Select an existing plugin window; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --view <id>             Select the plugin view
   --params <json>         Pass command parameters as JSON
   --params-file <path|->  Read params from a UTF-8 file, or use - for stdin
@@ -127,13 +131,16 @@ Global options: see "opencove --help".
 `;
 
 exports[`projection help golden worktree create 1`] = `
-"Usage: opencove worktree create --space <id> [options]
+"Usage: opencove worktree create [--space <id>] [options]
 
 Create a worktree for a space
 
+When no target is given, inside OpenCove defaults to your own space; project options default to your own project.
+
 Options:
-  --space <id>     Select the space (required)
+  --space <id>     Select the space; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required outside OpenCove)
   --name <branch>  Name the worktree branch
+  --project <id>   Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
 Projectable fields: path, head, branch

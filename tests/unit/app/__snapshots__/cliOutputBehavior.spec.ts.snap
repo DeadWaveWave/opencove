@@ -45,7 +45,8 @@ Get a canvas node
 data.status is task status; top-level status is agent or terminal runtime status.
 
 Options:
-  --node <id>  Select a canvas node by its ID (required)
+  --node <id>     Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
+  --project <id>  Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.content, data.text, data.requirement, data.status, data.priority, data.tags, data.linkedAgentNodeId, data.url, data.pinned, data.sessionMode, data.profileId, data.provider, data.prompt, data.model, data.effectiveModel, data.executionDirectory, data.expectedDirectory, data.taskId, data.runtimeKind
@@ -71,12 +72,14 @@ Lists per-kind summaries: data carries kind plus requirement, status, priority a
 
 data.status is task status. Top-level status is the runtime status of agent and terminal sessions. STATE shows the applicable status.
 
-Target space (optional; choose one):
-  --space <id>                                  Select a space by its ID
+When no target is given, inside OpenCove defaults to your own space; project options default to your own project.
+
+Target space (choose one; inside OpenCove defaults to your own space):
+  --space <id>                                  Select a space by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --space-name <name> [--project <id>]          Find a named space, optionally within a project
   --worker <id-or-name> --branch <branch>       Find a space by worker and Git branch
   --worker <id-or-name> --path <absolute-path>  Find a space by worker and working directory
-  Add --project <id> to narrow a name, branch or path lookup
+  --project <id>                                Narrow a space name, branch or path lookup to one project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Options:
   --kind <kind>  Filter by note, task, website, agent, terminal, plugin, document, folder, image or role
@@ -107,9 +110,10 @@ Options:
   --tag <tag>                          Replace all tags; repeat for each tag in the new list
   --clear-tags                         Remove all task tags
   --status <todo|doing|ai_done|done>   Set the task status
-  --node <id>                          Select a canvas node by its ID (required)
+  --node <id>                          Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
   --title <text>                       Set the node title
   --frame <json>                       Set x, y, width and height as a JSON object
+  --project <id>                       Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.requirement, data.status, data.priority, data.tags, data.linkedAgentNodeId
@@ -131,8 +135,10 @@ exports[`help golden space list 1`] = `
 
 List spaces
 
+When no project is given, inside OpenCove defaults to your own project.
+
 Options:
-  --project <id>  Filter by project ID
+  --project <id>  Filter by project ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): supported.
 Projectable fields: id, name, directoryPath, targetMountId, parentSpaceId, boundary, sortOrder, nodeIds, nodes, projectId

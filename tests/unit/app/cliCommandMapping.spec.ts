@@ -1,8 +1,13 @@
 import { resolve } from 'node:path'
 import { expect, it, vi } from 'vitest'
-import { run } from '../../../src/app/cli/core/run'
+import { runWithTargetFixtures as run } from './cliTargetFixtures.helpers'
 import { commands } from '../../../src/app/cli/commands'
 import type { CliIo } from '../../../src/app/cli/core/io'
+// Keep full help text in compact goldens; escaped newlines preserve the exact output.
+expect.addSnapshotSerializer({
+  test: value => typeof value === 'string',
+  serialize: value => JSON.stringify(value),
+})
 export function fixture() {
   let stdout = '',
     stderr = ''
