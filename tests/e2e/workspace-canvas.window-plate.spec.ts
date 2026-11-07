@@ -21,11 +21,46 @@ async function setBackdrop(window: Page, color: string): Promise<void> {
       document.head.appendChild(
         Object.assign(document.createElement('style'), { id: 'window-plate-backdrop' }),
       )
-    // The wall is one flat colour: no grid, no grain, so only the window's own layers vary.
+    // The wall is one flat colour: no grid, no grain and no canvas overlays (the dock, the minimap
+    // and the zoom controls can float over a window on a small screen), so only the window's own
+    // layers vary.
     style.textContent = `.workspace-canvas .react-flow { background: ${backdrop} !important; }
       .react-flow__background { display: none; }
+      .workspace-canvas__action-bar, .workspace-canvas__minimap, .workspace-canvas__minimap-toggle,
+      .react-flow__controls, .workspace-canvas-hud__lod { visibility: hidden !important; }
       :root { --cove-glass-grain-dark: none !important; --cove-glass-grain-light: none !important; }`
   }, color)
+}
+
+/**
+ * Glass shows the wall only where the system lets it: a CI Mac reports reduced transparency, which
+ * turns every frame solid (window-material spec). The probes need the see-through glass.
+ */
+async function showGlass(window: Page): Promise<void> {
+  const session = await window.context().newCDPSession(window)
+  await session.send('Emulation.setEmulatedMedia', {
+    features: [{ name: 'prefers-reduced-transparency', value: 'no-preference' }],
+  })
+}
+
+/** Clicks the canvas where nothing covers it, which clears the selection at any window size. */
+async function clickEmptyCanvas(window: Page): Promise<void> {
+  const point = await window.evaluate(() => {
+    const pane = document.querySelector('.react-flow__pane')!
+    const box = pane.getBoundingClientRect()
+    const bottom = Math.min(box.bottom, window.innerHeight) - 16
+    const right = Math.min(box.right, window.innerWidth) - 16
+    for (let y = bottom; y > box.top; y -= 24) {
+      for (let x = box.left + 16; x < right; x += 24) {
+        if (document.elementFromPoint(x, y) === pane) {
+          return { x, y }
+        }
+      }
+    }
+    return null
+  })
+  expect(point, 'an empty spot on the canvas').not.toBeNull()
+  await window.mouse.click(point!.x, point!.y)
 }
 
 /** The screen colours at `points` (page px) inside `clip`. */
@@ -226,6 +261,7 @@ test.describe('Workspace Canvas - Solid reading plate', () => {
     const { electronApp, window } = await launchApp()
 
     try {
+      await showGlass(window)
       for (const { uiTheme, terminalBackground, nodes } of CASES) {
         await clearAndSeedWorkspace(
           window,
@@ -269,11 +305,9 @@ test.describe('Workspace Canvas - Solid reading plate', () => {
         await expect
           .poll(() => window.evaluate(() => document.documentElement.dataset.coveTheme ?? null))
           .toBe(uiTheme)
+        await expect(window.locator('html')).toHaveAttribute('data-cove-transparency', 'full')
         // Nothing selected: a selection frame is not the plate's edge.
-        await window
-          .locator('.react-flow__pane')
-          .first()
-          .click({ position: { x: 300, y: 760 } })
+        await clickEmptyCanvas(window)
 
         for (const kind of nodes) {
           const node = window.locator(`.${kind}-node`).first()
@@ -359,6 +393,21 @@ test.describe('Workspace Canvas - Solid reading plate', () => {
     const { electronApp, window } = await launchApp({ deviceScaleFactor: 2 })
 
     try {
+      await showGlass(window)
+      // CI's virtual screen holds about 800×600 page px at 2×. With the sidebar folded away, the
+      // note sits in the middle of the canvas at its smallest size, so it stays on screen at 2× zoom.
+      const settings = { isPrimarySidebarCollapsed: true, ...PIXEL_EFFECTS_DISABLED }
+      await clearAndSeedWorkspace(window, [], { settings })
+      await expect(window.locator('.react-flow__pane').first()).toBeVisible()
+      const pane = await window.evaluate(() => {
+        const box = document.querySelector('.react-flow__pane')!.getBoundingClientRect()
+        return { width: Math.min(box.width, window.innerWidth - box.left), height: box.height }
+      })
+      const size = { width: 220, height: 140 }
+      const position = {
+        x: Math.round(pane.width / 2 - size.width / 2),
+        y: Math.round(pane.height / 2 - size.height / 2),
+      }
       for (const uiTheme of ['dark', 'light'] as const) {
         await clearAndSeedWorkspace(
           window,
@@ -366,26 +415,24 @@ test.describe('Workspace Canvas - Solid reading plate', () => {
             {
               id: 'plate-zoom-note',
               title: 'plate zoom note',
-              position: { x: 300, y: 200 },
-              width: 320,
-              height: 220,
+              position,
+              ...size,
               kind: 'note',
               task: { text: '' },
             },
           ],
-          { settings: { uiTheme, ...PIXEL_EFFECTS_DISABLED } },
+          { settings: { uiTheme, ...settings } },
         )
         const node = window.locator('.note-node').first()
         await expect(node).toBeVisible()
         await setBackdrop(window, BACKDROPS[0])
-        await window
-          .locator('.react-flow__pane')
-          .first()
-          .click({ position: { x: 300, y: 760 } })
+        await clickEmptyCanvas(window)
 
         for (const delta of ZOOM_WHEEL_DELTAS) {
           if (delta !== 0) {
-            await window.mouse.move(700, 450)
+            // Zoom about a point just under the note, so its bottom corners stay where they are.
+            const box = (await node.boundingBox())!
+            await window.mouse.move(box.x + box.width / 2, box.y + box.height + 8)
             await window.keyboard.down('Control')
             await window.mouse.wheel(0, delta)
             await window.keyboard.up('Control')
