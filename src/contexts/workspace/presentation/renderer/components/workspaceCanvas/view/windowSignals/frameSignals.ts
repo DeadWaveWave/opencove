@@ -1,8 +1,8 @@
 import type { Rgb } from '@shared/design/oklch'
 
 /** What a window frame is showing; a stronger signal replaces a weaker one, never the reverse. */
-export type FrameSignal = 'swept' | 'complete' | 'fail'
-const RANK: Record<FrameSignal, number> = { swept: 0, complete: 1, fail: 2 }
+export type FrameSignal = 'complete' | 'fail'
+const RANK: Record<FrameSignal, number> = { complete: 1, fail: 2 }
 
 const active = new Map<HTMLElement, { signal: FrameSignal; timer: ReturnType<typeof setTimeout> }>()
 
@@ -17,8 +17,8 @@ function clear(element: HTMLElement): void {
 }
 
 /**
- * Lights a window's frame for a moment: a finished run's flash, a failure's glitch, or the 1px
- * edge a passing shockwave brightens. It writes one attribute and one colour variable on the
+ * Lights a window's frame for a moment: a finished run's flash or a failure's glitch.
+ * It writes one attribute and one colour variable on the
  * window, only while the signal lasts, and never touches the fill behind its text (Tide).
  */
 export function showWindowSignal(

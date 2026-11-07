@@ -72,6 +72,9 @@ export function WorkspaceWindowSignals({
       performance.now(),
     )
     const scope = canvasRef.current
+    if (!enabled && scope) {
+      clearWindowSignals(scope)
+    }
     if (!enabled || !scope || signals.length === 0) {
       return
     }

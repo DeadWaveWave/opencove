@@ -16,7 +16,11 @@ import {
 
 import { installPixelDrawProbe, readPixelDrawProbe } from './workspace-canvas.pixel-draw-probe'
 
-type SignalWindow = Window & { __coveSignals?: string[] }
+type SignalWindow = Window & {
+  __coveSignals?: string[]
+  __coveCatches?: number[]
+  __coveGlints?: string[]
+}
 
 test('a working agent sends sonar, and a finished run flashes its window and sends a shockwave', async ({
   browserName,
@@ -41,7 +45,13 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
     },
   })
   try {
-    await window.emulateMedia({ reducedMotion: 'no-preference' })
+    const cdp = await window.context().newCDPSession(window)
+    await cdp.send('Emulation.setEmulatedMedia', {
+      features: [
+        { name: 'prefers-reduced-motion', value: 'no-preference' },
+        { name: 'prefers-reduced-transparency', value: 'no-preference' },
+      ],
+    })
     await seedWorkspaceState(window, {
       activeWorkspaceId: 'signals-project',
       workspaces: [
@@ -99,9 +109,18 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
     await window.evaluate(id => {
       const target = window as SignalWindow
       target.__coveSignals = []
+      target.__coveCatches = []
+      target.__coveGlints = []
       new MutationObserver(records => {
         for (const record of records) {
           const element = record.target as HTMLElement
+          if (element.dataset.id === 'signals-task') {
+            target.__coveCatches!.push(Number(element.style.getPropertyValue('--cove-catch')))
+            const glint = element.style.getPropertyValue('--cove-glint')
+            if (glint) {
+              target.__coveGlints!.push(glint)
+            }
+          }
           if (element.dataset.id === id && element.dataset.coveSignal) {
             target.__coveSignals!.push(element.dataset.coveSignal)
           }
@@ -109,7 +128,7 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
       }).observe(document.body, {
         subtree: true,
         attributes: true,
-        attributeFilter: ['data-cove-signal'],
+        attributeFilter: ['data-cove-signal', 'style'],
       })
     }, agentId)
     await writeToPty(window, { sessionId, data: '<test-hook-initial-working>\r' })
@@ -174,6 +193,28 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
         .locator(`.react-flow__node[data-id="${agentId}"]`)
         .evaluate(element => getComputedStyle(element, '::after').content),
     ).toBe('none')
+    await expect
+      .poll(() =>
+        window.evaluate(() => Math.max(0, ...((window as SignalWindow).__coveCatches ?? []))),
+      )
+      .toBeGreaterThan(0.1)
+    await expect(
+      window.locator('.react-flow__node[data-id="signals-task"] .cove-window-glint'),
+    ).toHaveCount(0)
+    const catches = await window.evaluate(() => (window as SignalWindow).__coveCatches ?? [])
+    // Retain multiple intensities; a sample after an await can miss the entire passing wave.
+    expect(new Set(catches.filter(value => value > 0)).size).toBeGreaterThan(2)
+    expect(catches.at(-1)).toBe(0)
+    // The rim glints in the sender's kind ink, as the prototype's colors.ink.
+    const glint = await window.evaluate(() => {
+      const wall = document.querySelector('[data-testid="workspace-pixel-wall"]')!
+      return {
+        seen: [...new Set((window as SignalWindow).__coveGlints)],
+        ink: getComputedStyle(wall).getPropertyValue('--cove-kind-ai-ink').trim(),
+      }
+    })
+    expect(glint.ink).not.toBe('')
+    expect(glint.seen).toEqual([glint.ink])
     // The flash ends on its own.
     await expect(window.locator(`.react-flow__node[data-id="${agentId}"]`)).not.toHaveAttribute(
       'data-cove-signal',

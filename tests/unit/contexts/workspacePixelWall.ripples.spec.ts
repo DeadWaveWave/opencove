@@ -19,6 +19,14 @@ describe('output ripples', () => {
     expect(field.sample(RIPPLE_WINDOW_INTERVAL_MS)).toHaveLength(3)
   })
 
+  it('does not apply the terminal output throttle to discrete failure or completion events', () => {
+    const field = createRippleField()
+    for (const type of ['fail', 'complete', 'crest'] as const) {
+      expect(field.emit(type, { x: 0, y: 0 }, red, 0, { type })).toBe(true)
+      expect(field.emit(type, { x: 0, y: 0 }, red, 80, { type })).toBe(true)
+    }
+  })
+
   it('keeps at most 24 ripples on the canvas at once', () => {
     const field = createRippleField()
     for (let index = 0; index < RIPPLE_LIMIT + 10; index++) {

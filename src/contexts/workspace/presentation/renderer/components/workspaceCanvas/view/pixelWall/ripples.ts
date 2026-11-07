@@ -19,6 +19,7 @@ export type RippleType = keyof typeof RIPPLE_SHAPES
 
 export interface Ripple {
   key?: string
+  glint?: string
   sourceId?: string
   x: number
   y: number
@@ -34,6 +35,7 @@ export interface Ripple {
 export interface WaveOptions {
   type?: RippleType
   initialRadius?: number
+  glint?: string
   sourceId?: string
   minIntervalMs?: number
 }
@@ -52,6 +54,7 @@ export function createRippleField() {
     startedAt: number
     type: RippleType
     initialRadius: number
+    glint?: string
     sourceId?: string
   }> = []
   const lastByWindow = new Map<string, number>()
@@ -77,8 +80,10 @@ export function createRippleField() {
       options: WaveOptions = {},
     ): boolean {
       prune(now)
+      const type = options.type ?? 'output'
+      const interval = options.minIntervalMs ?? (type === 'output' ? RIPPLE_WINDOW_INTERVAL_MS : 0)
       const last = lastByWindow.get(windowId)
-      if (last !== undefined && now - last < (options.minIntervalMs ?? RIPPLE_WINDOW_INTERVAL_MS)) {
+      if (last !== undefined && now - last < interval) {
         return false
       }
       lastByWindow.set(windowId, now)
@@ -90,9 +95,10 @@ export function createRippleField() {
         ...center,
         color,
         startedAt: now,
-        type: options.type ?? 'output',
+        type,
         initialRadius: options.initialRadius ?? 0,
         sourceId: options.sourceId,
+        glint: options.glint,
       })
       return true
     },
@@ -110,6 +116,7 @@ export function createRippleField() {
           return {
             key: ripple.key,
             sourceId: ripple.sourceId,
+            glint: ripple.glint,
             x: ripple.x,
             y: ripple.y,
             radius: ripple.initialRadius + shape.reach * (1 - (1 - t) ** 2.2),

@@ -14,7 +14,7 @@ import {
   SONAR_INTERVAL_MS,
   BEACON_INTERVAL_MS,
 } from './pixelWall/ripples'
-import { showWindowSignal } from './windowSignals/frameSignals'
+import { createWindowGlints } from './windowSignals/windowGlints'
 import { subscribeWindowSignal } from './windowSignals/windowSignalEvents'
 import { projectWallGlass, readWallGlassRadius } from './pixelWall/wallGlass'
 import {
@@ -33,8 +33,6 @@ import { resolveWallGrid } from './pixelWall/wallGrid'
 import { readWallLightPalette, readWallPalette } from './pixelWall/wallPalette'
 import { createWallWindowTracker } from './pixelWall/wallWindows'
 
-/** How long a window's edge glows when the shockwave passes it. */
-const SWEEP_MS = 500
 /** Showcase mode's clouds drift this many times faster (Tide 6.1). */
 const SHOWCASE_CLOUD_SPEED = 4
 
@@ -134,7 +132,7 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
     let dissolving = false
     const dissolve = createWallDissolve()
     const ripples = createRippleField()
-    const swept = new Map<string, Set<string>>()
+    const glints = createWindowGlints(() => store.getState().domNode ?? document)
 
     const buildFrame = (now: number | null): WallFrame => {
       const view = placeWallViewport({ x, y, zoom }, placement)
@@ -173,34 +171,7 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
         })
       }
       const waves = signalTime === null ? [] : ripples.sample(signalTime)
-      // As the shockwave passes another window, that window's 1px edge glows in the sender's
-      // colour for a moment; the fill behind its text never changes.
-      for (const wave of waves) {
-        if (!wave.sweep || wave.crest || !wave.key) {
-          continue
-        }
-        const done = swept.get(wave.key) ?? new Set([wave.sourceId ?? ''])
-        swept.set(wave.key, done)
-        for (const { id, rect } of tracker.frames()) {
-          const dx = Math.max(rect.x - wave.x, 0, wave.x - (rect.x + rect.width))
-          const dy = Math.max(rect.y - wave.y, 0, wave.y - (rect.y + rect.height))
-          if (!done.has(id) && Math.hypot(dx, dy) <= wave.radius) {
-            done.add(id)
-            showWindowSignal(
-              store.getState().domNode ?? document,
-              id,
-              'swept',
-              wave.color,
-              SWEEP_MS,
-            )
-          }
-        }
-      }
-      for (const key of swept.keys()) {
-        if (!waves.some(wave => wave.key === key)) {
-          swept.delete(key)
-        }
-      }
+      glints.update(tracker.frames(), coveredRef.current ? [] : waves)
       lightsAnimating = lit.animating || waves.length > 0 || pulsing.length > 0 || sonar.length > 0
       // Under a sheet that covers the canvas (settings) the whole wall is behind glass and the
       // windows are hidden, so it frosts everything and draws no window glass.
@@ -271,7 +242,12 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
         (ambientRef.current || showcaseRef.current || lightsAnimating || dissolving),
     })
     scheduler = activeScheduler
-    const repaint = () => activeScheduler.invalidate({ immediate: true })
+    const repaint = () => {
+      if (reducedMotion || !signalsRef.current || coveredRef.current) {
+        glints.clear()
+      }
+      activeScheduler.invalidate({ immediate: true })
+    }
     repaintRef.current = repaint
 
     const resizeObserver =
@@ -356,7 +332,14 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
         return
       }
       const at = performance.now()
-      const options = { initialRadius: rippleRadius(source.rect), sourceId: nodeId }
+      const family =
+        document.documentElement.dataset.coveKindColors === 'off' ? 'neutral' : source.family
+      const ink = getComputedStyle(host).getPropertyValue(`--cove-kind-${family}-ink`).trim()
+      const options = {
+        initialRadius: rippleRadius(source.rect),
+        sourceId: nodeId,
+        glint: ink || `rgb(${lights[family].join(' ')})`,
+      }
       if (kind === 'complete') {
         ripples.emit(`complete:${nodeId}`, source.center, lights[source.family], at, {
           ...options,
@@ -381,7 +364,13 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
       }
       repaint()
     }
-    const syncVisibility = () => activeScheduler.setVisible(document.visibilityState !== 'hidden')
+    const syncVisibility = () => {
+      const visible = document.visibilityState !== 'hidden'
+      if (!visible) {
+        glints.clear()
+      }
+      activeScheduler.setVisible(visible)
+    }
     const syncFocus = () => activeScheduler.setFocused(document.hasFocus())
     window.addEventListener('opencove-theme-changed', onThemeChange)
     media.addEventListener('change', onMotionChange)
@@ -418,6 +407,7 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
       window.removeEventListener('pointerout', onPointerOut)
       repaintRef.current = null
       activeScheduler.dispose()
+      glints.clear()
       controller.dispose()
     }
   }, [layer, store])

@@ -272,9 +272,13 @@ static 1px frame highlight and no waves, following the spec table’s reduced-mo
   base life 700ms); the wall sends a strong shockwave whose
   white crest stays outside windows and their one-cell margins (behind glass only the kind colour
   shows, within the cap). Both last 2100ms; the kind wave uses 860px reach / 56px width / amplitude 1,
-  the crest 900/22/0.95 with a 0.92 mixing weight. As
-  the shockwave passes another window, that window's 1px edge glows in the sender's colour for
-  half a second.
+  the crest 900/22/0.95 with a 0.92 mixing weight. A passing sweep continuously lights other
+  windows' rims in the sender's kind ink. Catch is the maximum `amp(t)*exp(-x²)` over sweeping
+  waves, where `x=(centreDistance-radius)/(width+halfShortSide)` and `|x|≤2.6`.
+  Values below 0.02 clear the rim; DOM amplitude writes require a change over 0.025, with an
+  unconditional reset to zero at the end. A dedicated 1.5px masked ring leaves the text fill and
+  glass chrome pseudo-elements untouched. Hidden windows, reduced motion, signals off and
+  unmount clear it; there is no independent sweep timer.
 - A change into failed: the frame jolts sideways in a 280ms glitch; the canvas sheds 14 red sparks
   (speed 150, base life 560ms, gravity 320), and the
   wall sends a red ripple over 820ms, with 190px reach, 26px width and 0.95 amplitude.
