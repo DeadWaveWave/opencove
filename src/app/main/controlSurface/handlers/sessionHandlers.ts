@@ -1,5 +1,9 @@
 import { registerOperation } from '../registerOperation'
-import { sessionLaunchAgentOperation } from '../../../../shared/contracts/controlSurface/operations/domains/session'
+import {
+  sessionGetOperation,
+  sessionKillOperation,
+  sessionLaunchAgentOperation,
+} from '../../../../shared/contracts/controlSurface/operations/domains/session'
 import type { ControlSurface } from '../controlSurface'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
@@ -15,7 +19,6 @@ import {
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 import { resolveSpaceMountContext } from '../../../../contexts/space/application/resolveSpaceMountContext'
 import type {
-  GetSessionInput,
   GetSessionResult,
   LaunchAgentSessionInput,
   LaunchAgentSessionResult,
@@ -39,7 +42,7 @@ import type {
   TerminalSpawnAdmission,
 } from '../../../../contexts/terminal/application/TerminalRuntimeAvailability'
 import { startAgentSessionStateWatcherIfEnabled } from './sessionStateWatcherStart'
-import { isRecord, normalizeOptionalString } from './sessionLaunchPayloadSupport'
+import { normalizeOptionalString } from './sessionLaunchPayloadSupport'
 import type { SessionRecord } from './sessionRecords'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRuntime'
@@ -56,31 +59,6 @@ import {
   mergeAgentLaunchEnvironment,
   prepareAgentSessionEnvironment,
 } from './agentLaunchEnvironment'
-
-function normalizeSessionIdPayload(payload: unknown, operationId: string): GetSessionInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId}.`,
-    })
-  }
-
-  const sessionIdRaw = payload.sessionId
-  if (typeof sessionIdRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId} sessionId.`,
-    })
-  }
-
-  const sessionId = sessionIdRaw.trim()
-  if (sessionId.length === 0) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Missing payload for ${operationId} sessionId.`,
-    })
-  }
-
-  return { sessionId }
-}
-
 export function registerSessionHandlers(
   controlSurface: ControlSurface,
   deps: {
@@ -444,9 +422,7 @@ export function registerSessionHandlers(
     terminalRecoverySpawnAdmission: deps.terminalRecoverySpawnAdmission,
   })
 
-  controlSurface.register('session.get', {
-    kind: 'query',
-    validate: payload => normalizeSessionIdPayload(payload, 'session.get'),
+  registerOperation(controlSurface, sessionGetOperation, {
     handle: async (_ctx, payload): Promise<GetSessionResult> => {
       const record = sessions.get(payload.sessionId)
       if (!record) {
@@ -463,9 +439,7 @@ export function registerSessionHandlers(
 
   registerSessionFinalMessageHandler(controlSurface, { sessions, topology: deps.topology })
 
-  controlSurface.register('session.kill', {
-    kind: 'command',
-    validate: payload => normalizeSessionIdPayload(payload, 'session.kill'),
+  registerOperation(controlSurface, sessionKillOperation, {
     handle: async (_ctx, payload): Promise<void> => {
       const record = sessions.get(payload.sessionId) ?? null
       if (!record && !deps.ptyStreamHub.hasSession(payload.sessionId)) {

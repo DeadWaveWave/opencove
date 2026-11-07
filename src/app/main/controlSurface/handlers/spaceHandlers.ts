@@ -1,3 +1,8 @@
+import { registerOperation } from '../registerOperation'
+import {
+  spaceListOperation,
+  spaceGetOperation,
+} from '../../../../shared/contracts/controlSurface/operations/domains/space'
 import { randomUUID } from 'node:crypto'
 import type { ControlSurface } from '../controlSurface'
 import { createAppError } from '../../../../shared/errors/appError'
@@ -6,9 +11,7 @@ import type {
   CanvasNodeSummary,
   CreateChildSpaceInput as CreateChildSpaceDtoInput,
   CreateChildSpaceResult,
-  GetSpaceInput,
   GetSpaceResult,
-  ListSpacesInput,
   ListSpacesResult,
 } from '../../../../shared/contracts/dto'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
@@ -54,60 +57,6 @@ function toNodeSummary(node: {
 }
 
 type NodeSummaryInput = Parameters<typeof toNodeSummary>[0]
-
-function normalizeListSpacesPayload(payload: unknown): ListSpacesInput {
-  if (payload === null || payload === undefined) {
-    return { projectId: null }
-  }
-
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for space.list.',
-    })
-  }
-
-  const projectIdRaw = payload.projectId
-  if (projectIdRaw === null || projectIdRaw === undefined) {
-    return { projectId: null }
-  }
-
-  if (typeof projectIdRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for space.list projectId.',
-    })
-  }
-
-  const projectId = projectIdRaw.trim()
-  if (projectId.length === 0) {
-    return { projectId: null }
-  }
-
-  return { projectId }
-}
-
-function normalizeGetSpacePayload(payload: unknown): GetSpaceInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for space.get.',
-    })
-  }
-
-  const spaceIdRaw = payload.spaceId
-  if (typeof spaceIdRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for space.get spaceId.',
-    })
-  }
-
-  const spaceId = spaceIdRaw.trim()
-  if (spaceId.length === 0) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Missing payload for space.get spaceId.',
-    })
-  }
-
-  return { spaceId }
-}
 
 function normalizeOptionalIdArray(value: unknown, operationId: string): string[] | null {
   if (value === undefined || value === null) {
@@ -304,9 +253,7 @@ export function registerSpaceHandlers(
   controlSurface: ControlSurface,
   getPersistenceStore: () => Promise<PersistenceStore>,
 ): void {
-  controlSurface.register('space.list', {
-    kind: 'query',
-    validate: normalizeListSpacesPayload,
+  registerOperation(controlSurface, spaceListOperation, {
     handle: async (_ctx, payload): Promise<ListSpacesResult> => {
       const store = await getPersistenceStore()
       const normalized = normalizePersistedAppState(await store.readAppState())
@@ -331,9 +278,7 @@ export function registerSpaceHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('space.get', {
-    kind: 'query',
-    validate: normalizeGetSpacePayload,
+  registerOperation(controlSurface, spaceGetOperation, {
     handle: async (_ctx, payload): Promise<GetSpaceResult> => {
       const store = await getPersistenceStore()
       const normalized = normalizePersistedAppState(await store.readAppState())

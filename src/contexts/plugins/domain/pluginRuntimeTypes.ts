@@ -53,13 +53,8 @@ export interface PluginViewContext {
   preview: boolean
 }
 
-export interface PluginHostContext {
-  surface: 'commandCenter' | 'canvas' | 'node' | 'space' | 'sidebar'
-  projectId?: string
-  spaceId?: string
-  nodeIds?: string[]
-}
-
+import type { PluginHostContext } from '@shared/contracts/controlSurface/operations/pluginInputTypes'
+export type { PluginHostContext } from '@shared/contracts/controlSurface/operations/pluginInputTypes'
 export interface PluginCommandContext {
   pluginId: string
   host?: PluginHostContext

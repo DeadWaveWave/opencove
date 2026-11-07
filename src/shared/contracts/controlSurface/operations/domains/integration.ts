@@ -4,14 +4,14 @@ export const integrationGithubResolvePullRequestsOperation = defineLegacyOperati
   kind: 'query',
   scope: 'read',
   availability: 'always',
-  summary: 'Perform integration github resolve Pull Requests.',
+  summary: 'Find GitHub pull requests for branches in an approved repository',
 })
 export const integrationGithubResolvePullRequestsInMountOperation = defineLegacyOperation({
   id: 'integration.github.resolvePullRequestsInMount',
   kind: 'query',
   scope: 'read',
   availability: 'always',
-  summary: 'Perform integration github resolve Pull Requests In Mount.',
+  summary: 'Find GitHub pull requests for branches in a mounted repository',
 })
 export const integrationOperations = [
   integrationGithubResolvePullRequestsOperation,

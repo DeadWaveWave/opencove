@@ -1,15 +1,10 @@
 import type { PluginManifest } from './pluginTypes'
 
-export type PluginBuildStrategy =
-  | { kind: 'none' }
-  | { kind: 'npm' | 'pnpm'; script: string; outputDirectory: string }
-
-export interface PluginGitInstallInput {
-  repository: string
-  ref?: string
-  directory?: string
-  build?: PluginBuildStrategy
-}
+import type { PluginBuildStrategy } from '@shared/contracts/controlSurface/operations/pluginInputTypes'
+export type {
+  PluginBuildStrategy,
+  PluginGitInstallInput,
+} from '@shared/contracts/controlSurface/operations/pluginInputTypes'
 export interface PluginGitSource {
   kind: 'git'
   repository: string

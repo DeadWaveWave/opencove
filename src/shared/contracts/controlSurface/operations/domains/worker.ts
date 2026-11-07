@@ -4,63 +4,63 @@ export const workerConfigGetOperation = defineLegacyOperation({
   kind: 'query',
   scope: 'admin',
   availability: 'desktop-managed-worker',
-  summary: 'Query worker config get.',
+  summary: 'Read configuration and Web access status (Desktop-managed Worker only)',
 })
 export const workerConfigSetOperation = defineLegacyOperation({
   id: 'worker.config.set',
   kind: 'command',
   scope: 'admin',
   availability: 'desktop-managed-worker',
-  summary: 'Perform worker config set.',
+  summary: 'Save Worker configuration with a revision check (Desktop-managed Worker only)',
 })
 export const workerMaintenanceAcquireOperation = defineLegacyOperation({
   id: 'worker.maintenance.acquire',
   kind: 'command',
   scope: 'admin',
   availability: 'managed-runtime',
-  summary: 'Perform worker maintenance acquire.',
+  summary: 'Acquire an idle managed runtime lease and block new work',
 })
 export const workerMaintenanceActivateOperation = defineLegacyOperation({
   id: 'worker.maintenance.activate',
   kind: 'command',
   scope: 'admin',
   availability: 'managed-runtime',
-  summary: 'Perform worker maintenance activate.',
+  summary: 'Activate a candidate managed runtime using its lease',
 })
 export const workerMaintenanceReleaseOperation = defineLegacyOperation({
   id: 'worker.maintenance.release',
   kind: 'command',
   scope: 'admin',
   availability: 'managed-runtime',
-  summary: 'Perform worker maintenance release.',
+  summary: 'Release a managed runtime lease and resume accepting work',
 })
 export const workerMaintenanceStatusOperation = defineLegacyOperation({
   id: 'worker.maintenance.status',
   kind: 'query',
   scope: 'admin',
   availability: 'managed-runtime',
-  summary: 'Perform worker maintenance status.',
+  summary: 'Read the maintenance phase and activation id of a managed runtime',
 })
 export const workerMaintenanceStopOperation = defineLegacyOperation({
   id: 'worker.maintenance.stop',
   kind: 'command',
   scope: 'admin',
   availability: 'managed-runtime',
-  summary: 'Perform worker maintenance stop.',
+  summary: 'Stop an idle managed runtime using its maintenance or activation lease',
 })
 export const workerWebAccessSetSecurityOperation = defineLegacyOperation({
   id: 'worker.webAccess.setSecurity',
   kind: 'command',
   scope: 'admin',
   availability: 'desktop-managed-worker',
-  summary: 'Perform worker web Access set Security.',
+  summary: 'Change Web access security and revoke sessions (Desktop-managed Worker only)',
 })
 export const workerWebAccessSetSettingsOperation = defineLegacyOperation({
   id: 'worker.webAccess.setSettings',
   kind: 'command',
   scope: 'admin',
   availability: 'desktop-managed-worker',
-  summary: 'Perform worker web Access set Settings.',
+  summary: 'Apply Web listener settings (Desktop-managed Worker only)',
 })
 export const workerOperations = [
   workerConfigGetOperation,

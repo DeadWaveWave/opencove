@@ -1,15 +1,19 @@
 import { registerOperationIntrospectionHandlers } from './operationIntrospectionHandlers'
+import {
+  systemCapabilitiesOperation,
+  systemPingOperation,
+} from '../../../../shared/contracts/controlSurface/operations/domains/system'
+import { registerOperation } from '../registerOperation'
 import { hostname } from 'node:os'
 import type { ControlSurface } from '../controlSurface'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../../shared/contracts/controlSurface'
 import type {
-  ControlSurfaceHomeDirectoryResult,
   ControlSurfaceCapabilitiesResult,
+  ControlSurfaceHomeDirectoryResult,
   ControlSurfacePingResult,
 } from '../../../../shared/contracts/dto'
 import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
 import { getRuntimeBuildIdentity } from '../../../../shared/runtime/runtimeBuildIdentity'
-
 export function registerSystemHandlers(
   controlSurface: ControlSurface,
   deps: {
@@ -20,9 +24,7 @@ export function registerSystemHandlers(
   },
 ): void {
   registerOperationIntrospectionHandlers(controlSurface)
-  controlSurface.register('system.ping', {
-    kind: 'query',
-    validate: payload => payload ?? null,
+  registerOperation(controlSurface, systemPingOperation, {
     handle: ctx =>
       ({
         ok: true,
@@ -47,9 +49,7 @@ export function registerSystemHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('system.capabilities', {
-    kind: 'query',
-    validate: payload => payload ?? null,
+  registerOperation(controlSurface, systemCapabilitiesOperation, {
     handle: ctx =>
       ({
         ok: true,

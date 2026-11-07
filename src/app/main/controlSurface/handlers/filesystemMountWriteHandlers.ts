@@ -1,3 +1,5 @@
+import { filesystemWriteFileTextInMountOperation } from '../../../../shared/contracts/controlSurface/operations/domains/filesystem'
+import { registerOperation } from '../registerOperation'
 import { optionalFileMutationBoolean } from '../../../../contexts/filesystem/domain/fileMutationOptions'
 import { assertRemoteMutationCapabilities } from './filesystemMutationCapabilities'
 import type { FileSystemPort } from '../../../../contexts/filesystem/application/ports'
@@ -21,7 +23,6 @@ import type {
   MoveEntryInput,
   RenameEntryInMountInput,
   RenameEntryInput,
-  WriteFileTextInMountInput,
   WriteFileTextInput,
 } from '../../../../shared/contracts/dto'
 import type { ControlSurface } from '../controlSurface'
@@ -35,7 +36,6 @@ import {
   normalizeSourceTargetPayload,
   resolveMountTargetOrThrow,
 } from './filesystemMountSupport'
-
 export function registerFilesystemMountWriteHandlers(
   controlSurface: ControlSurface,
   deps: {
@@ -51,29 +51,7 @@ export function registerFilesystemMountWriteHandlers(
       await deleteEntryUseCase(deps.port, { uri })
     })
 
-  controlSurface.register('filesystem.writeFileTextInMount', {
-    kind: 'command',
-    validate: (payload: unknown): WriteFileTextInMountInput => {
-      if (!isRecord(payload)) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Invalid payload for filesystem.writeFileTextInMount.',
-        })
-      }
-
-      const content = payload.content
-      if (typeof content !== 'string') {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Invalid payload for filesystem.writeFileTextInMount content.',
-        })
-      }
-
-      return {
-        mountId: normalizeMountId(payload.mountId, 'filesystem.writeFileTextInMount'),
-        uri: normalizeFileSystemUri(payload.uri, 'filesystem.writeFileTextInMount'),
-        content,
-        overwrite: optionalFileMutationBoolean(payload.overwrite),
-      }
-    },
+  registerOperation(controlSurface, filesystemWriteFileTextInMountOperation, {
     handle: async (ctx, payload): Promise<void> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,

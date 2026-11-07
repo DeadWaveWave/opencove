@@ -1,6 +1,14 @@
 import * as z from 'zod'
+import { normalizeSystemCapabilities, normalizeSystemPing } from '../systemHandlersNormalize'
 import { defineLegacyOperation, defineOperation } from '../defineOperation'
-export const systemCapabilitiesOperation = defineLegacyOperation({
+export const systemCapabilitiesOperation = defineOperation({
+  input: z
+    .unknown()
+    .describe(
+      'Legacy system.capabilities wire payload; normalization preserves the existing accept-domain.',
+    ),
+  normalize: normalizeSystemCapabilities,
+  errors: [],
   id: 'system.capabilities',
   kind: 'query',
   scope: 'read',
@@ -14,7 +22,14 @@ export const systemHomeDirectoryOperation = defineLegacyOperation({
   availability: 'always',
   summary: 'Get the Worker home directory, hostname and platform',
 })
-export const systemPingOperation = defineLegacyOperation({
+export const systemPingOperation = defineOperation({
+  input: z
+    .unknown()
+    .describe(
+      'Legacy system.ping wire payload; normalization preserves the existing accept-domain.',
+    ),
+  normalize: normalizeSystemPing,
+  errors: [],
   id: 'system.ping',
   kind: 'query',
   scope: 'read',
