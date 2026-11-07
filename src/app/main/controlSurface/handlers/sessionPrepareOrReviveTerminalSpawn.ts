@@ -225,16 +225,27 @@ export async function spawnFallbackTerminal(options: {
   }
 
   if (launchContext.mountId) {
-    const spawned = await invokeCommand<SpawnTerminalResult>(options.controlSurface, options.ctx, {
-      id: 'pty.spawnInMount',
-      payload: {
-        mountId: launchContext.mountId,
-        cwdUri: toFileUri(launchContext.workingDirectory),
-        profileId: options.profileId,
-        cols: geometry.cols,
-        rows: geometry.rows,
+    const spawned = await invokeCommand<SpawnTerminalResult>(
+      options.controlSurface,
+      {
+        ...options.ctx,
+        spawnIdentity: {
+          projectId: options.workspace.id,
+          spaceId: options.space?.id ?? '',
+          nodeId: options.node.id,
+        },
       },
-    })
+      {
+        id: 'pty.spawnInMount',
+        payload: {
+          mountId: launchContext.mountId,
+          cwdUri: toFileUri(launchContext.workingDirectory),
+          profileId: options.profileId,
+          cols: geometry.cols,
+          rows: geometry.rows,
+        },
+      },
+    )
     return {
       ...spawned,
       cwd: launchContext.workingDirectory,
@@ -242,16 +253,27 @@ export async function spawnFallbackTerminal(options: {
     }
   }
 
-  const spawned = await invokeCommand<SpawnTerminalResult>(options.controlSurface, options.ctx, {
-    id: 'pty.spawn',
-    payload: {
-      cwd: launchContext.workingDirectory,
-      workspaceId: options.workspace.id,
-      profileId: options.profileId,
-      cols: geometry.cols,
-      rows: geometry.rows,
+  const spawned = await invokeCommand<SpawnTerminalResult>(
+    options.controlSurface,
+    {
+      ...options.ctx,
+      spawnIdentity: {
+        projectId: options.workspace.id,
+        spaceId: options.space?.id ?? '',
+        nodeId: options.node.id,
+      },
     },
-  })
+    {
+      id: 'pty.spawn',
+      payload: {
+        cwd: launchContext.workingDirectory,
+        workspaceId: options.workspace.id,
+        profileId: options.profileId,
+        cols: geometry.cols,
+        rows: geometry.rows,
+      },
+    },
+  )
   return {
     ...spawned,
     cwd: launchContext.workingDirectory,

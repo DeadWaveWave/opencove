@@ -110,6 +110,9 @@ export interface ListAgentSessionsResult {
 }
 
 export interface LaunchAgentInput {
+  canvasNodeId?: string
+  workspaceId?: string
+  spaceId?: string
   provider: AgentProviderId
   cwd: string
   profileId?: string | null

@@ -308,7 +308,10 @@ function spawnPtySession(request: PtyHostSpawnRequest): void {
   const sessionId = crypto.randomUUID()
   const pty = spawn(request.command, request.args, {
     cwd: request.cwd,
-    env: request.env,
+    env: {
+      ...request.env,
+      ...(request.env?.OPENCOVE_ENV === '1' ? { OPENCOVE_SESSION_ID: sessionId } : {}),
+    },
     cols: request.cols,
     rows: request.rows,
     name: 'xterm-256color',

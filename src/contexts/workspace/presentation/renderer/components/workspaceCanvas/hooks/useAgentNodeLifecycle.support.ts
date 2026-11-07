@@ -120,6 +120,7 @@ export async function launchAgentRuntime({
       kind: 'command',
       id: 'session.launchAgentInMount',
       payload: {
+        canvasNodeId: node.id,
         mountId,
         cwdUri,
         prompt: node.data.agent.prompt,
@@ -153,6 +154,7 @@ export async function launchAgentRuntime({
   }
 
   const launched = await window.opencoveApi.agent.launch({
+    canvasNodeId: node.id,
     provider: node.data.agent.provider,
     cwd: executionDirectory,
     profileId: node.data.profileId ?? defaultTerminalProfileId,

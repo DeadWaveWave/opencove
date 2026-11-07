@@ -122,7 +122,11 @@ export function useWorkspaceCanvasAgentLauncher({
           )
           return
         }
+        const canvasNodeId = crypto.randomUUID()
         const launched = await launchWorkspaceAgentSession({
+          canvasNodeId,
+          workspaceId: workspaceId,
+          spaceId: anchorSpace?.id,
           mountId: initialBinding.mountId,
           workspacePath,
           executionDirectory: initialBinding.executionDirectory,
@@ -153,6 +157,7 @@ export function useWorkspaceCanvasAgentLauncher({
         const modelLabel = launched.effectiveModel ?? model
 
         const created = await createNodeForSession({
+          nodeId: canvasNodeId,
           sessionId: launched.sessionId,
           profileId: launched.profileId,
           runtimeKind: launched.runtimeKind as CreateNodeInput['runtimeKind'],

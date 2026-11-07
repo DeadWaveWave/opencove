@@ -241,6 +241,9 @@ export async function resolveWorkspaceAgentLaunchBinding({
 }
 
 export async function launchWorkspaceAgentSession({
+  canvasNodeId,
+  workspaceId,
+  spaceId,
   mountId,
   workspacePath,
   executionDirectory,
@@ -255,6 +258,9 @@ export async function launchWorkspaceAgentSession({
   launchGeometry,
   retryResolveMountBinding,
 }: {
+  canvasNodeId?: string
+  workspaceId?: string
+  spaceId?: string
   mountId: string | null
   workspacePath: string
   executionDirectory: string
@@ -279,6 +285,9 @@ export async function launchWorkspaceAgentSession({
       kind: 'command',
       id: 'session.launchAgentInMount',
       payload: {
+        canvasNodeId,
+        workspaceId,
+        spaceId,
         mountId: nextMountId,
         cwdUri,
         prompt,
@@ -349,12 +358,15 @@ export async function launchWorkspaceAgentSession({
   const controlSurfaceInvoke = resolveControlSurfaceInvoke()
   if (
     controlSurfaceInvoke &&
-    shouldUseControlSurfacePlainRuntime({ workspacePath, executionDirectory })
+    (canvasNodeId || shouldUseControlSurfacePlainRuntime({ workspacePath, executionDirectory }))
   ) {
     const launched = await controlSurfaceInvoke<LaunchAgentSessionResult>({
       kind: 'command',
       id: 'session.launchAgent',
       payload: {
+        canvasNodeId,
+        workspaceId,
+        spaceId,
         cwd: executionDirectory,
         prompt,
         provider,
@@ -384,6 +396,9 @@ export async function launchWorkspaceAgentSession({
   }
 
   const launched = await window.opencoveApi.agent.launch({
+    canvasNodeId,
+    workspaceId,
+    spaceId,
     provider,
     cwd: executionDirectory,
     profileId: agentSettings.defaultTerminalProfileId,

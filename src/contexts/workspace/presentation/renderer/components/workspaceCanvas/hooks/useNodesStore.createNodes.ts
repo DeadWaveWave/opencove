@@ -63,6 +63,7 @@ export function useWorkspaceCanvasNodeCreation({
   )
   const createNodeForSession = useCallback(
     async ({
+      nodeId,
       sessionId,
       profileId,
       runtimeKind,
@@ -105,7 +106,7 @@ export function useWorkspaceCanvasNodeCreation({
           ? (agent?.expectedDirectory ?? agent?.executionDirectory ?? null)
           : (expectedDirectory?.trim() ?? executionDirectory?.trim() ?? null)
       const nextNode: Node<TerminalNodeData> = {
-        id: crypto.randomUUID(),
+        id: nodeId ?? crypto.randomUUID(),
         type: 'terminalNode',
         position: resolvedPlacement.placement,
         data: {

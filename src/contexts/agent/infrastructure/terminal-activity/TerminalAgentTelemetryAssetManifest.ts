@@ -37,7 +37,18 @@ export function terminalAgentAssetManifest(
     content,
     mode,
   })
+  const quotedRuntime = "'" + runtime.replaceAll("'", "'\\''") + "'"
   return [
+    file(
+      join(shimDirectory, 'opencove'),
+      `#!/bin/sh\nELECTRON_RUN_AS_NODE=1 exec ${quotedRuntime} "$OPENCOVE_CLI" "$@"\n`,
+      0o700,
+    ),
+    file(
+      join(shimDirectory, 'opencove.cmd'),
+      `@echo off\r\nsetlocal\r\nset "ELECTRON_RUN_AS_NODE=1"\r\n"${runtime.replaceAll('%', '%%')}" "%OPENCOVE_CLI%" %*\r\n`,
+      0o700,
+    ),
     file(launcherPath, terminalAgentLauncherScript, 0o700),
     file(shellLauncherPath, terminalAgentPosixShellLauncherScript, 0o700),
     file(bashRcPath, terminalAgentBashRcScript),

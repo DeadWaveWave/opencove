@@ -220,6 +220,8 @@ export interface ArchiveWorktreeResult {
 }
 
 export interface LaunchAgentSessionInput {
+  canvasNodeId?: string
+  workspaceId?: string
   spaceId?: string | null
   cwd?: string | null
   prompt: string
@@ -235,6 +237,9 @@ export interface LaunchAgentSessionInput {
 }
 
 export interface LaunchAgentSessionInMountInput {
+  canvasNodeId?: string
+  workspaceId?: string
+  spaceId?: string
   mountId: string
   cwdUri?: string | null
   prompt: string
@@ -404,6 +409,8 @@ export interface PrepareOrReviveSessionResult {
 export type ControlSurfaceTerminalRuntime = 'shell' | 'node'
 
 export interface SpawnTerminalSessionInput {
+  canvasNodeId?: string
+  workspaceId?: string
   spaceId: string
   runtime?: ControlSurfaceTerminalRuntime | null
   command?: string | null

@@ -322,6 +322,7 @@ async function hydrateRuntimeNodeLocally({
 
   try {
     const spawned = await window.opencoveApi.pty.spawn({
+      canvasNodeId: node.id,
       cwd: resolveTerminalHydrationCwd(node, workspacePath),
       profileId: node.data.profileId ?? agentSettings.defaultTerminalProfileId ?? undefined,
       cols: 80,

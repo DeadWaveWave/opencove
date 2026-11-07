@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { createAppError } from '../../../../shared/errors/appError'
 import type {
   CreateNodeInput,
@@ -41,11 +42,11 @@ export interface NodeControlRuntimeDeps {
   assertActive?: () => void
   validateTarget?: (target: ResolvedNodeCreationTarget) => Promise<void>
   launchAgent: (
-    resolved: ResolvedNodeCreationTarget,
+    resolved: ResolvedNodeCreationTarget & { canvasNodeId?: string },
     data: Extract<NodeControlCreateData, { kind: 'agent' }>,
   ) => Promise<AgentNodeRuntimeData>
   spawnTerminal: (
-    resolved: ResolvedNodeCreationTarget,
+    resolved: ResolvedNodeCreationTarget & { canvasNodeId?: string },
     data: Extract<NodeControlCreateData, { kind: 'terminal' }>,
   ) => Promise<TerminalNodeRuntimeData>
   killSession: (sessionId: string) => Promise<void> | void
@@ -151,15 +152,18 @@ export async function createNodeForNodeControl(options: {
 
   await options.runtime.validateTarget?.(resolved)
   options.runtime.assertActive?.()
+  const canvasNodeId = randomUUID()
+  const spawnTarget = { ...resolved, canvasNodeId }
   let agentRuntime: AgentNodeRuntimeData | null = null
   let terminalRuntime: TerminalNodeRuntimeData | null = null
   if (createData.kind === 'agent') {
-    agentRuntime = await options.runtime.launchAgent(resolved, createData)
+    agentRuntime = await options.runtime.launchAgent(spawnTarget, createData)
   } else if (createData.kind === 'terminal') {
-    terminalRuntime = await options.runtime.spawnTerminal(resolved, createData)
+    terminalRuntime = await options.runtime.spawnTerminal(spawnTarget, createData)
   }
 
   const node = makeNode({
+    id: canvasNodeId,
     kind: options.input.kind,
     title: resolveNodeTitle({
       kind: options.input.kind,

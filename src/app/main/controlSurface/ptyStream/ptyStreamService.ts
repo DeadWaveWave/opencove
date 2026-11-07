@@ -1,5 +1,6 @@
 import { subscribeAgentRuntimeSocket } from './agentRuntimeSocket'
 import type { AgentRunStateRuntime } from '../../../../contexts/agent/application/AgentRunStateRuntime'
+import type { SessionGrantRegistry } from '../http/sessionGrantRegistry'
 import type { IncomingMessage } from 'node:http'
 import { randomBytes } from 'node:crypto'
 import { WebSocketServer, type WebSocket } from 'ws'
@@ -64,6 +65,7 @@ export interface PtyStreamService {
 export function createPtyStreamService(options: {
   token: string
   agentRuns?: AgentRunStateRuntime
+  sessionGrants?: SessionGrantRegistry
   webSessions: WebSessionManager
   now: () => Date
   ptyRuntime: ControlSurfacePtyRuntime
@@ -222,6 +224,13 @@ export function createPtyStreamService(options: {
       if (ingressFrozen) {
         return
       }
+      if (
+        state.auth.kind === 'session-grant' &&
+        !options.sessionGrants?.isActive(state.auth.grant.grantId)
+      ) {
+        ws.terminate()
+        return
+      }
       const text = typeof raw === 'string' ? raw : Buffer.isBuffer(raw) ? raw.toString('utf8') : ''
       if (text.trim().length === 0) {
         return
@@ -307,6 +316,10 @@ export function createPtyStreamService(options: {
         return
       }
 
+      if (state.auth.kind === 'session-grant' && type !== 'attach' && type !== 'detach') {
+        closeWithError(ws, 'common.forbidden', 'Session grants permit viewer attachment only.')
+        return
+      }
       if (type === 'attach') {
         const sessionId = normalizeSessionId(message.sessionId)
         if (!sessionId) {
@@ -318,7 +331,7 @@ export function createPtyStreamService(options: {
           clientId: state.clientId,
           sessionId,
           afterSeq: normalizeAfterSeq(message.afterSeq),
-          role: normalizeRole(message.role),
+          role: state.auth.kind === 'session-grant' ? 'viewer' : normalizeRole(message.role),
         })
         return
       }
@@ -437,6 +450,7 @@ export function createPtyStreamService(options: {
       context,
       ingressFrozen,
       token: options.token,
+      sessionGrants: options.sessionGrants,
       webSessions: options.webSessions,
       allowQueryToken,
       now: options.now,

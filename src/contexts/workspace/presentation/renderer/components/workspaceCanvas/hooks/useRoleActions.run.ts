@@ -149,6 +149,9 @@ export async function runRoleNodeAction(
 
   try {
     const launched = await launchWorkspaceAgentSession({
+      canvasNodeId: nodeId,
+      workspaceId: context.workspaceId,
+      spaceId: owningSpace?.id,
       mountId: initialBinding.mountId,
       workspacePath: context.workspacePath,
       executionDirectory: initialBinding.executionDirectory,

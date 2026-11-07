@@ -5,6 +5,7 @@ import type { IpcInvokeResult } from '../contracts/ipc'
 function createMessageMap(): Record<AppErrorCode, string> {
   return {
     'common.protocol_incompatible': 'Client and server protocol versions are incompatible.',
+    'common.forbidden': 'This credential does not permit the operation.',
     'common.invalid_input': 'The request was invalid.',
     'plugin.operation_failed': 'Plugin operation failed.',
     'common.approved_path_required': 'The selected path is outside approved workspaces.',

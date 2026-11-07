@@ -62,7 +62,7 @@ describe('terminal Agent asset lifetime', () => {
       const repaired = await Promise.all(Array.from({ length: 20 }, () => store.ensure()))
       expect(repaired.every(result => result.rootDirectory === assets.rootDirectory)).toBe(true)
       expect(await readFile(assets.shellLauncherPath, 'utf8')).toBe(original)
-      expect(await readdir(assets.shimDirectory)).toHaveLength(9)
+      expect(await readdir(assets.shimDirectory)).toHaveLength(11)
     },
   )
 
@@ -131,7 +131,7 @@ describe('terminal Agent asset lifetime', () => {
     }
     await closing
     expect((await pending).every(result => result.status === 'rejected')).toBe(true)
-    expect(write).toHaveBeenCalledTimes(16)
+    expect(write).toHaveBeenCalledTimes(18)
     await expect(lstat(assets.rootDirectory)).rejects.toMatchObject({ code: 'ENOENT' })
   })
 

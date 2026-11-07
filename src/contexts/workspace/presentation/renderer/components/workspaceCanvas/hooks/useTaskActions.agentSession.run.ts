@@ -186,7 +186,11 @@ export async function runTaskAgentAction(
   )
 
   try {
+    const canvasNodeId = crypto.randomUUID()
     const launched = await launchWorkspaceAgentSession({
+      canvasNodeId,
+      workspaceId: context.workspaceId,
+      spaceId: taskSpace?.id,
       mountId,
       workspacePath: context.workspacePath,
       executionDirectory: taskDirectory,
@@ -214,6 +218,7 @@ export async function runTaskAgentAction(
     })
 
     const createdAgentNode = await context.createNodeForSession({
+      nodeId: canvasNodeId,
       sessionId: launched.sessionId,
       profileId: launched.profileId,
       runtimeKind: launched.runtimeKind,

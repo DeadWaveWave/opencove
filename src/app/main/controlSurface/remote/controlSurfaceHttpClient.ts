@@ -1,3 +1,4 @@
+import { canvasSpawnIdentity, canvasSpawnOperations } from '../sessionSpawnIdentityContext'
 import type {
   ControlSurfaceInvokeRequest,
   ControlSurfaceInvokeResult,
@@ -29,7 +30,17 @@ export async function invokeControlSurface(
         authorization: `Bearer ${endpoint.token}`,
         'content-type': 'application/json',
       },
-      body: JSON.stringify(request),
+      body: JSON.stringify(
+        canvasSpawnOperations.has(request.id) && canvasSpawnIdentity.getStore()
+          ? {
+              ...request,
+              payload: {
+                ...(request.payload as object),
+                workerSpawnIdentity: canvasSpawnIdentity.getStore(),
+              },
+            }
+          : request,
+      ),
       signal: controller.signal,
     })
 

@@ -269,3 +269,50 @@ runtime. `architecture.rendererNoOperationRuntime` enforces this boundary, inclu
 `agent.list` returns an epoch/sequence watermark for the separate agent runtime stream on `/events`.
 See [Agent run state](../agent/RUN_STATE.md) for input fields, filters, retention, resynchronization
 and mounted-session compatibility. Runtime sequences are independent of durable app-state revisions.
+
+### Session grant authentication
+
+`SessionGrantRegistry` defines Worker-local, 256-bit random credentials with SHA-256-only
+storage and constant-time digest comparison. Its owner must supply authoritative session
+liveness. `requestAuth` accepts an injected registry and represents successful verification as
+`{ kind: 'session-grant', grant }`. An invalid explicit bearer does not fall back to a cookie.
+
+The authorization invariant is fail closed: a grant may invoke only registry operations with
+`read` or `interact` scope. `admin`, unknown IDs, `worker.*`, and ticket issuance are forbidden.
+The HTTP handler returns `403 / common.forbidden`; invalid or revoked credentials return 401.
+The same scope check runs in internal dispatch to preserve the fence across nested invocations.
+`system.whoami` is a schema-backed read operation returning explicit identity fields and build
+identity, never token values or token hashes.
+
+Invariants:
+
+- **I1** A session grant never authorizes an admin or unregistered operation.
+- **I2** A grant is valid only while its hosting session exists; kill/exit revokes it, including
+  across hosting Worker restarts.
+- **I3** Grant tokens are never logged or returned by operations, are stored only as hashes,
+  and the full Worker bearer never reaches spawned processes.
+
+Each hosting Worker creates one registry and supplies it to HTTP and PTY transports. Its local
+PTY wrapper reserves a hashed credential before spawn and activates it only after successful session
+registration. Pending/failed reservations cannot authenticate. Exit, kill and shutdown revoke grants
+and close associated streams. `SessionRegistrationOwner` fences exit-before-registration and late
+spawn completion after shutdown. The token exists in plaintext only in the temporary spawn environment.
+
+Canvas spawn identity comes from Worker workspace records or an authenticated new-node reservation.
+`node.create` allocates its ID before launching and uses the same ID when committing the node. Trusted
+UI launchers likewise supply their reserved node ID; existing node membership is resolved from Worker
+records. Session grants cannot supply arbitrary canvas node IDs. Recovery carries the persisted node
+identity in an in-process context. This context propagates across nested spawn operations, isolated
+per asynchronous invocation. Caller environment variables never determine identity.
+
+For remote mounts, the Home Worker forwards its resolved identity with the existing private Worker
+bearer. The hosting Worker accepts this delegation only from bearer-authenticated callers, creates
+its local session/grant binding, and injects its own private Control Surface URL. The Home Worker does
+not mint or forward a grant token. This is a trust relationship between Workers possessing each other's
+administrative bearer, not a new permission available to grant or cookie callers.
+
+`/events` provides the Worker-wide revision stream. `/pty` grants permit viewer attach/detach only;
+control, write, resize and agent reexec messages are refused. SSE and WebSocket connections subscribe
+to revocation; SSE membership is removed synchronously and sockets are terminated. Pending HTTP
+bodies and persistence preparation are followed by authoritative liveness checks before dispatch.
+Project scoping remains a follow-up; a scope tier is not a project isolation boundary.

@@ -54,7 +54,17 @@ export const systemOperationDescribeOperation = defineOperation({
   input: z.object({ id: z.string() }),
   errors: [],
 })
+export const systemWhoamiOperation = defineOperation({
+  id: 'system.whoami',
+  kind: 'query',
+  scope: 'read',
+  availability: 'always',
+  summary: 'Describe the authenticated caller and its scope without revealing credentials',
+  input: z.object({}),
+  errors: [],
+})
 export const systemOperations = [
+  systemWhoamiOperation,
   systemOperationsOperation,
   systemOperationDescribeOperation,
   systemCapabilitiesOperation,

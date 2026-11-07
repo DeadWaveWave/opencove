@@ -128,11 +128,41 @@ export async function prepareAgentNode(options: {
 
   const invokeAgentLaunch = async (mode: 'new' | 'resume'): Promise<LaunchAgentSessionResult> => {
     if (agentLaunchContext.mountId) {
-      return await invokeCommand<LaunchAgentSessionResult>(controlSurface, ctx, {
-        id: 'session.launchAgentInMount',
+      return await invokeCommand<LaunchAgentSessionResult>(
+        controlSurface,
+        {
+          ...ctx,
+          spawnIdentity: { projectId: workspace.id, spaceId: space?.id ?? '', nodeId: node.id },
+        },
+        {
+          id: 'session.launchAgentInMount',
+          payload: {
+            mountId: agentLaunchContext.mountId,
+            cwdUri: toFileUri(agentExecutionDirectory),
+            prompt: sanitizedAgent.prompt,
+            provider: sanitizedAgent.provider,
+            mode,
+            model: sanitizedAgent.model,
+            resumeSessionId: mode === 'resume' ? sanitizedAgent.resumeSessionId : null,
+            ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
+            agentFullAccess: settings.agentFullAccess,
+            cols: initialGeometry.cols,
+            rows: initialGeometry.rows,
+          },
+        },
+      )
+    }
+
+    return await invokeCommand<LaunchAgentSessionResult>(
+      controlSurface,
+      {
+        ...ctx,
+        spawnIdentity: { projectId: workspace.id, spaceId: space?.id ?? '', nodeId: node.id },
+      },
+      {
+        id: 'session.launchAgent',
         payload: {
-          mountId: agentLaunchContext.mountId,
-          cwdUri: toFileUri(agentExecutionDirectory),
+          cwd: agentExecutionDirectory,
           prompt: sanitizedAgent.prompt,
           provider: sanitizedAgent.provider,
           mode,
@@ -143,24 +173,8 @@ export async function prepareAgentNode(options: {
           cols: initialGeometry.cols,
           rows: initialGeometry.rows,
         },
-      })
-    }
-
-    return await invokeCommand<LaunchAgentSessionResult>(controlSurface, ctx, {
-      id: 'session.launchAgent',
-      payload: {
-        cwd: agentExecutionDirectory,
-        prompt: sanitizedAgent.prompt,
-        provider: sanitizedAgent.provider,
-        mode,
-        model: sanitizedAgent.model,
-        resumeSessionId: mode === 'resume' ? sanitizedAgent.resumeSessionId : null,
-        ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
-        agentFullAccess: settings.agentFullAccess,
-        cols: initialGeometry.cols,
-        rows: initialGeometry.rows,
       },
-    })
+    )
   }
 
   if (shouldAutoResumeAgent) {
