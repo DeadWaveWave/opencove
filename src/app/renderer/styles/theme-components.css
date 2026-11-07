@@ -18,8 +18,9 @@
   height: var(--cove-node-icon-size);
 }
 
+/* One line at the theme's row height plus its 1px borders, like a Space row (Tide sidebar). */
 [data-cove-part='sidebar-agent'] {
-  min-height: calc(var(--cove-sidebar-row-height) + 14px);
+  min-height: calc(var(--cove-sidebar-row-height) + 2px);
 }
 
 :is(button, input, textarea, select) {

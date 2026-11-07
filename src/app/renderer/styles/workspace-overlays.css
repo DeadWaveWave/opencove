@@ -105,8 +105,14 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--cove-label-color) 55%, transparent);
 }
 
+/* No colour: an empty ring struck through, so it never reads as the dashed "follow the Space" ring. */
 .workspace-label-color-menu__dot--none {
-  background: transparent;
+  background: linear-gradient(
+    135deg,
+    transparent calc(50% - 0.75px),
+    var(--cove-border) calc(50% - 0.75px) calc(50% + 0.75px),
+    transparent calc(50% + 0.75px)
+  );
   box-shadow: inset 0 0 0 1.5px var(--cove-border);
 }
 

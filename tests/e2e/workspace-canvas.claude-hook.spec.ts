@@ -109,12 +109,21 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
 
       const headerActivity = window.getByTestId('app-header-agent-activity')
       await expect(headerActivity).toHaveText('1 working')
+      // The pill sits on the header's centre line, level with the header's icon buttons.
+      const centreY = async (selector: string) => {
+        const box = await window.locator(selector).boundingBox()
+        return box ? box.y + box.height / 2 : Number.NaN
+      }
+      const buttonCentre = await centreY('[data-testid="app-header-control-center"]')
+      const pillSelector = '[data-testid="app-header-agent-activity"] .cove-status-pill'
+      expect(Math.abs((await centreY(pillSelector)) - buttonCentre)).toBeLessThanOrEqual(0.5)
 
       await writeToPty(window, { sessionId, data: '<test-hook-waiting>\r' })
       await expect(status).toHaveText('Waiting')
       await expect(sidebarStatus).toHaveText('Needs input')
       // The top bar summarizes it too, and one click reaches the waiting agent.
       await expect(headerActivity).toHaveText('1 waiting')
+      expect(Math.abs((await centreY(pillSelector)) - buttonCentre)).toBeLessThanOrEqual(0.5)
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await pane.click({ position: await findEmptyPanePoint(pane) })
       await headerActivity.click()

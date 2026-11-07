@@ -92,15 +92,9 @@
 }
 
 .workspace-canvas__action-bar-icon > :is(svg, img),
-.workspace-canvas__action-bar-icon .agent-provider-icon,
-.workspace-canvas__action-bar-icon .agent-provider-icon > :is(svg, img) {
+.workspace-canvas__action-bar-icon .agent-provider-icon {
   width: 21px;
   height: 21px;
-}
-
-.workspace-canvas__action-bar-icon .agent-provider-icon {
-  border: 0;
-  background: transparent;
 }
 
 .workspace-canvas__action-bar-label {

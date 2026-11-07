@@ -277,9 +277,6 @@ export function WorkspaceSpaceActionMenu({
               className="workspace-label-color-menu__dot workspace-label-color-menu__dot--none"
               aria-hidden="true"
             />
-            {currentLabelColor === null ? (
-              <Check className="workspace-space-action-menu__color-check" aria-hidden="true" />
-            ) : null}
           </button>
 
           {LABEL_COLORS.map(color => {
@@ -304,9 +301,6 @@ export function WorkspaceSpaceActionMenu({
                   data-cove-label-color={color}
                   aria-hidden="true"
                 />
-                {selected ? (
-                  <Check className="workspace-space-action-menu__color-check" aria-hidden="true" />
-                ) : null}
               </button>
             )
           })}

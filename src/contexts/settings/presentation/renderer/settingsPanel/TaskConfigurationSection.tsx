@@ -146,7 +146,6 @@ export function TaskConfigurationSection(props: {
             onKeyDown={event => event.key === 'Enter' && onAddTag()}
           />
           <Button
-            variant="primary"
             data-testid="settings-task-tag-add-button"
             disabled={addTaskTagInput.trim().length === 0}
             onClick={() => onAddTag()}

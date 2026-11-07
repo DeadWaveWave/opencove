@@ -31,7 +31,6 @@ function SidebarAgentItemContent({ item }: { item: SidebarAgentItemModel }): Rea
       <span className="workspace-agent-item__copy">
         <span className="workspace-agent-item__title">{item.displayTitle}</span>
         <span
-          data-cove-part="sidebar-agent"
           className={`workspace-agent-item__status workspace-agent-item__status--agent workspace-agent-item__status--${item.status}`}
           title={statusText}
         >

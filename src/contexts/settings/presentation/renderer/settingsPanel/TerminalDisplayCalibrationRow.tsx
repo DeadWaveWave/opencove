@@ -296,7 +296,6 @@ export function TerminalDisplayCalibrationRow({
         value={
           <>
             <Button
-              variant="primary"
               data-testid="settings-terminal-display-calibrate"
               disabled={isBusy || !activeReference}
               onClick={() => void calibrateThisDevice()}

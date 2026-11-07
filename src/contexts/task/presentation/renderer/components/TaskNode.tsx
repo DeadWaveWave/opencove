@@ -296,38 +296,39 @@ export function TaskNode({
         }}
       />
 
-      <div className="task-node__meta" data-testid="task-node-meta">
-        <span className={`task-node__priority task-node__priority--${priority}`}>
-          {getTaskPriorityLabel(t, priority).toUpperCase()}
-        </span>
-
-        <span className="task-node__tags" data-testid="task-node-tags">
-          {tags.length > 0 ? (
-            tags.map(tag => (
-              <span key={tag} className="task-node__tag">
-                #{tag}
-              </span>
-            ))
-          ) : (
-            <span className="task-node__tag task-node__tag--empty">{t('taskNode.noTags')}</span>
-          )}
-        </span>
-        <button
-          type="button"
-          className="task-node__meta-edit nodrag"
-          data-testid="task-node-edit-meta"
-          aria-label={t('taskNode.editMeta')}
-          title={t('taskNode.editMeta')}
-          onClick={event => {
-            event.stopPropagation()
-            onOpenEditor()
-          }}
-        >
-          <Pencil size={11} aria-hidden="true" />
-        </button>
-      </div>
-
       <div className="task-node__content" data-cove-part="window-body">
+        {/* The plate's first row: everything under the header sits on the reading plate. */}
+        <div className="task-node__meta" data-testid="task-node-meta">
+          <span className={`task-node__priority task-node__priority--${priority}`}>
+            {getTaskPriorityLabel(t, priority).toUpperCase()}
+          </span>
+
+          <span className="task-node__tags" data-testid="task-node-tags">
+            {tags.length > 0 ? (
+              tags.map(tag => (
+                <span key={tag} className="task-node__tag">
+                  #{tag}
+                </span>
+              ))
+            ) : (
+              <span className="task-node__tag task-node__tag--empty">{t('taskNode.noTags')}</span>
+            )}
+          </span>
+          <button
+            type="button"
+            className="task-node__meta-edit nodrag"
+            data-testid="task-node-edit-meta"
+            aria-label={t('taskNode.editMeta')}
+            title={t('taskNode.editMeta')}
+            onClick={event => {
+              event.stopPropagation()
+              onOpenEditor()
+            }}
+          >
+            <Pencil size={11} aria-hidden="true" />
+          </button>
+        </div>
+
         <label>{t('taskNode.requirement')}</label>
         <div className="task-node__inline-editor">
           <textarea

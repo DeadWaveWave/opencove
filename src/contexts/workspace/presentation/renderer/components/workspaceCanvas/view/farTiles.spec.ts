@@ -72,6 +72,27 @@ describe('far view tiles', () => {
     expect(agent).toMatchObject({ family: 'ai', signal: 'waiting', provider: 'codex' })
   })
 
+  it('titles an agent like its window header: the logo names the provider, not the title', () => {
+    const codex = { provider: 'codex', taskId: null } as unknown as TerminalNodeData['agent']
+    const tiles = buildFarTiles([
+      node('plain', 'agent', { title: 'codex · 默认模型', agent: codex }),
+      node('bare', 'agent', { title: 'codex', agent: codex }),
+      node('pinned', 'agent', { title: 'codex · hi', titlePinnedByUser: true, agent: codex }),
+      node('linked', 'agent', { title: 'codex · old', agent: codex }),
+      node('task', 'task', {
+        title: 'Write release notes',
+        task: { linkedAgentNodeId: 'linked' } as TerminalNodeData['task'],
+      }),
+    ])
+    expect(tiles.map(tile => tile.title)).toEqual([
+      '默认模型',
+      'codex',
+      'hi',
+      'Write release notes',
+      'Write release notes',
+    ])
+  })
+
   it('falls back to the measured size when React Flow has not sized the node', () => {
     const [tile] = buildFarTiles([
       node(

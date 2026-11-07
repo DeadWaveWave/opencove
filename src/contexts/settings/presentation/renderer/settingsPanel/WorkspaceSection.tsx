@@ -213,7 +213,6 @@ export function WorkspaceSection({
                 onKeyDown={event => event.key === 'Enter' && addEnvVar()}
               />
               <Button
-                variant="primary"
                 data-testid="settings-env-var-add-button"
                 disabled={envKeyInput.trim().length === 0}
                 onClick={() => addEnvVar()}

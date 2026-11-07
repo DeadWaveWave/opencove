@@ -187,7 +187,6 @@ export function AgentProviderConfigurePanel(props: {
                 }}
               />
               <Button
-                variant="primary"
                 size="sm"
                 data-testid={`settings-custom-model-add-button-${provider}`}
                 disabled={addModelInputValue.trim().length === 0}
@@ -317,7 +316,6 @@ export function AgentProviderConfigurePanel(props: {
           </div>
 
           <Button
-            variant="primary"
             className="settings-agent-configure-panel__add-env"
             data-testid={`settings-agent-env-add-${provider}`}
             onClick={() => {

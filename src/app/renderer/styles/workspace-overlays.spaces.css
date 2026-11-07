@@ -450,10 +450,6 @@
   height: 12px;
 }
 
-.workspace-space-action-menu__color-button--selected {
-  background: var(--cove-surface-hover);
-}
-
 .workspace-space-branch-rename-backdrop {
   z-index: 24;
 }

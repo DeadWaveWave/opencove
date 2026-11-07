@@ -21,7 +21,7 @@ export function QuickMenuSection({
   return (
     <SettingsGroup
       id="settings-section-quick-menu"
-      title={t('settingsPanel.groups.tasksShortcuts.quickActions')}
+      title={t('settingsPanel.groups.tasksShortcuts.contextMenu')}
     >
       <QuickCommandsSubsection
         quickCommands={quickCommands}

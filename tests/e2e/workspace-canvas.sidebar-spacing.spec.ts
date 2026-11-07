@@ -77,6 +77,14 @@ test.describe('Workspace Canvas - Sidebar Row Geometry', () => {
         dockedNavigation.x + dockedNavigation.width,
       )
       expect(agentRect.height).toBeGreaterThanOrEqual(28)
+      // One line at the theme's row height, like a Space row (only touch pointers get 44px), and the
+      // whole row selects the agent, not just its text.
+      const rowHeight = await sidebar.evaluate(element =>
+        parseFloat(getComputedStyle(element).getPropertyValue('--cove-sidebar-row-height')),
+      )
+      const row = await rect(window.locator('.workspace-agent-item--sidebar').first())
+      expect(Math.abs(row.height - (rowHeight + 2))).toBeLessThanOrEqual(1)
+      expect(row.height - agentRect.height).toBeLessThanOrEqual(2)
 
       // Pointing at the current project keeps its full edge bar.
       await window.emulateMedia({ reducedMotion: 'reduce' })

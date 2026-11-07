@@ -184,7 +184,7 @@ Values are CSS pixels before canvas zoom; no units in JSON.
 | `metrics.compactIconSize` | 16–36; glyph inside the compact node |
 | `metrics.controlGap` | 2–16 |
 | `metrics.menuRowHeight` | 28–48 |
-| `metrics.sidebarRowHeight` | 28–48; agent rows retain room for their additional information |
+| `metrics.sidebarRowHeight` | 28–48; Space and agent rows are one line at this height |
 | `metrics.controlHeight` | 28–48 |
 | `metrics.radius` | 0–24; node shell corner radius |
 

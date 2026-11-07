@@ -79,7 +79,7 @@ export const zhCNSettingsPanelLayout = {
     tasksShortcuts: {
       taskTitles: '任务标题',
       taskTags: '任务标签',
-      quickActions: '快捷操作',
+      contextMenu: '右键菜单',
       keyboard: '键盘快捷键',
     },
     worker: {

@@ -27,8 +27,11 @@
   background: transparent;
 }
 
+/* One column as wide as the card allows: an auto column would grow to the longest unbroken name
+   or branch and push both past the card's edge instead of ending them in an ellipsis. */
 .workspace-space-item--card > .workspace-space-item__select {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-content: center;
   gap: 2px;
   min-height: 0;

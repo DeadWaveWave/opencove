@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react'
 import { Button } from '@app/renderer/components/ui/Button'
 import { TextAreaField, TextField } from '@app/renderer/components/ui/TextField'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
-import { ChevronDown, ChevronUp, Power } from 'lucide-react'
+import { ChevronDown, ChevronUp, Plus, Power } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { QuickPhrase } from '@contexts/settings/domain/agentSettings'
 import { SettingsModule } from '../SettingsGroup'
@@ -185,11 +185,8 @@ export function QuickPhrasesSubsection({
       </div>
 
       <div style={{ marginTop: 12 }}>
-        <Button
-          variant="primary"
-          data-testid="settings-quick-phrase-add"
-          onClick={openNewPhraseEditor}
-        >
+        <Button data-testid="settings-quick-phrase-add" onClick={openNewPhraseEditor}>
+          <Plus size={15} aria-hidden="true" />
           {t('settingsPanel.quickMenu.phrases.add')}
         </Button>
       </div>

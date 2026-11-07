@@ -172,7 +172,7 @@ describe('ProjectContextMenu', () => {
 
     expect(children[0]?.className).toContain('workspace-project-context-menu__space-editor')
     expect(children[1]?.className).toContain('workspace-project-context-menu__color-space')
-    expect(children[2]?.className).toContain('workspace-context-menu__separator')
+    expect(children[2]?.className).toContain('cove-menu-separator')
   })
 
   it('pins an Agent for Sidebar Focus mode from its context menu', () => {
@@ -263,7 +263,7 @@ describe('ProjectContextMenu', () => {
 
     expect(children[0]?.className).toContain('workspace-project-context-menu__space-editor')
     expect(children[1]?.className).toContain('workspace-project-context-menu__color-space')
-    expect(children[2]?.className).toContain('workspace-context-menu__separator')
+    expect(children[2]?.className).toContain('cove-menu-separator')
   })
 
   it('updates an agent label color override from the context menu', () => {

@@ -16,7 +16,8 @@ export const lodOf = (window: Page): Promise<string | null> =>
 
 /**
  * A far tile's face as drawn on screen: the icon's width and the title's font size in screen px
- * (null when hidden), and how many lines the title takes.
+ * (null when hidden), how many lines the title takes, and the face's content box in screen px
+ * (what the face's container units measure).
  */
 export async function readFarTileFace(tile: Locator) {
   return await tile.evaluate(element => {
@@ -24,6 +25,9 @@ export async function readFarTileFace(tile: Locator) {
       const part = element.querySelector<HTMLElement>(selector)
       return part && part.getClientRects().length > 0 ? part : null
     }
+    const face = element.querySelector<HTMLElement>('.workspace-far-tile__face')!
+    const faceStyle = getComputedStyle(face)
+    const faceRect = face.getBoundingClientRect()
     const icon = shown('.workspace-far-tile__icon')
     const title = shown('.workspace-far-tile__title')
     const round = (value: number) => Math.round(value * 10) / 10
@@ -39,6 +43,16 @@ export async function readFarTileFace(tile: Locator) {
             )
           : null,
       lines: style ? Math.round(height / Number.parseFloat(style.lineHeight)) : 0,
+      box: {
+        width:
+          faceRect.width -
+          Number.parseFloat(faceStyle.paddingLeft) -
+          Number.parseFloat(faceStyle.paddingRight),
+        height:
+          faceRect.height -
+          Number.parseFloat(faceStyle.paddingTop) -
+          Number.parseFloat(faceStyle.paddingBottom),
+      },
     }
   })
 }
