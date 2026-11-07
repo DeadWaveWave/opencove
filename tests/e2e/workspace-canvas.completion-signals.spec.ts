@@ -6,9 +6,14 @@ import {
   writeToPty,
 } from './workspace-canvas.agent-status-watcher.helpers'
 
+import { installPixelDrawProbe, readPixelDrawProbe } from './workspace-canvas.pixel-draw-probe'
+
 type SignalWindow = Window & { __coveSignals?: string[] }
 
-test('a working agent sends sonar, and a finished run flashes its window and sends a shockwave', async () => {
+test('a working agent sends sonar, and a finished run flashes its window and sends a shockwave', async ({
+  browserName,
+}, testInfo) => {
+  void browserName
   const { electronApp, window } = await launchApp({
     windowMode: 'inactive',
     env: {
@@ -100,6 +105,7 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
         },
       )
       .toContain(`sonar:${agentId}`)
+    await installPixelDrawProbe(window)
     await writeToPty(window, { sessionId, data: '<test-hook-done>\r' })
 
     await expect
@@ -111,6 +117,24 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
         window.evaluate(() => window.__opencovePixelWallTestApi?.getSeenRippleKeys() ?? []),
       )
       .toContain(`complete:${agentId}`)
+    await expect
+      .poll(async () =>
+        (await readPixelDrawProbe(window)).some(
+          frame =>
+            frame.pixels.length === 26 &&
+            frame.pixels.every(
+              pixel =>
+                pixel.size >= 2 * Math.max(0.55, Math.min(1.2, frame.zoom)) &&
+                pixel.size <= 4.5 * Math.max(0.55, Math.min(1.2, frame.zoom)),
+            ),
+        ),
+      )
+      .toBe(true)
+    expect(
+      await window
+        .locator(`.react-flow__node[data-id="${agentId}"]`)
+        .evaluate(element => getComputedStyle(element, '::after').content),
+    ).toBe('none')
     // The flash ends on its own.
     await expect(window.locator(`.react-flow__node[data-id="${agentId}"]`)).not.toHaveAttribute(
       'data-cove-signal',
@@ -118,6 +142,10 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
       { timeout: 4_000 },
     )
   } finally {
+    await testInfo.attach('completion-pixel-draws', {
+      body: JSON.stringify(await readPixelDrawProbe(window).catch(() => [])),
+      contentType: 'application/json',
+    })
     await electronApp.close()
   }
 })

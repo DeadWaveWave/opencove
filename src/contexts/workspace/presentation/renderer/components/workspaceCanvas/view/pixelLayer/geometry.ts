@@ -42,6 +42,7 @@ export function projectPixelNodeFrame(
   node: Node<TerminalNodeData>,
   nodeLookup: ReadonlyMap<string, PixelGeometryNode>,
   viewport: PixelViewport,
+  margin = 8,
 ): PixelNodeFrame | null {
   if (
     node.hidden ||
@@ -66,10 +67,10 @@ export function projectPixelNodeFrame(
     !Object.values(rect).every(Number.isFinite) ||
     rect.width <= 0 ||
     rect.height <= 0 ||
-    rect.x + rect.width < -8 ||
-    rect.y + rect.height < -8 ||
-    rect.x > viewport.width + 8 ||
-    rect.y > viewport.height + 8
+    rect.x + rect.width < -margin ||
+    rect.y + rect.height < -margin ||
+    rect.x > viewport.width + margin ||
+    rect.y > viewport.height + margin
   ) {
     return null
   }

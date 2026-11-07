@@ -1,5 +1,6 @@
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../../types'
+import { resolveWindowKindFamily, type WindowKindFamily } from '../../../../utils/windowKindFamily'
 import { resolveAgentPresentation } from '../../../../utils/agentPresentation'
 import { projectPixelNodeFrame, type PixelGeometryNode, type PixelViewport } from './geometry'
 export { readPixelViewport } from './geometry'
@@ -10,6 +11,7 @@ export interface PixelNode {
   id: string
   sessionId: string
   rect: { x: number; y: number; width: number; height: number }
+  family?: WindowKindFamily
   tone: 'working' | 'warning' | 'danger' | null
   acceptsOutput: boolean
 }
@@ -27,7 +29,7 @@ export function projectPixelNodes(
     ) {
       continue
     }
-    const frame = projectPixelNodeFrame(node, nodeLookup, viewport)
+    const frame = projectPixelNodeFrame(node, nodeLookup, viewport, 40)
     if (!frame) {
       continue
     }
@@ -40,6 +42,7 @@ export function projectPixelNodes(
       Boolean(node.data.runtimeSessionBinding)
     projected.push({
       ...frame,
+      family: resolveWindowKindFamily(node.data),
       tone: unavailable
         ? null
         : status === 'waiting'
