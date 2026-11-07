@@ -8,6 +8,7 @@ import {
 const viewport = { x: 20, y: 10, zoom: 2, width: 1200, height: 800 }
 const node = {
   id: 'closed-node',
+  family: 'shell' as const,
   sessionId: 'closed-session',
   rect: { x: 220, y: 170, width: 600, height: 400 },
 }
@@ -18,10 +19,12 @@ describe('explicit node-close burst', () => {
     const source = structuredClone(node)
     burst.announce(source, viewport, 100)
     source.rect.x = 999
+    Object.assign(source, { family: 'ai' })
     const moved = { ...viewport, x: -50, y: 40, zoom: 0.5 }
     expect(burst.sample(moved, 180)[0]).toMatchObject({
       id: node.id,
       sessionId: node.sessionId,
+      family: node.family,
       age: 80,
       rect: { x: 0, y: 80, width: 150, height: 100 },
     })

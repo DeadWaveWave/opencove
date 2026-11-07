@@ -74,6 +74,7 @@ export function createPixelEffectPreview(
   let viewport: PixelViewport = { x: 0, y: 0, zoom: 1, width: 0, height: 0 }
   let nodeFrame: PixelNodeFrame = {
     id: 'settings-preview-terminal',
+    family: 'shell',
     sessionId: 'settings-preview',
     rect: { x: 0, y: 0, width: 0, height: 0 },
   }

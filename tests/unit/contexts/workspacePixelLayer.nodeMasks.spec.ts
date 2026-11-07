@@ -108,6 +108,7 @@ describe('creation-scoped first-paint alpha masks', () => {
       [160, 1600].map((width, index) => ({
         id: index ? 'wide' : 'narrow',
         sessionId: '',
+        family: 'shell' as const,
         rect: { x: 0, y: 0, width, height: 300 },
         age: 190,
       })),
@@ -159,7 +160,15 @@ describe('creation-scoped first-paint alpha masks', () => {
       masks.prepare(['c'], 0)
       masks.clear()
       masks.update(
-        [{ id: 'c', sessionId: '', rect: { x: 0, y: 0, width: 400, height: 300 }, age: 40 }],
+        [
+          {
+            id: 'c',
+            family: 'shell',
+            sessionId: '',
+            rect: { x: 0, y: 0, width: 400, height: 300 },
+            age: 40,
+          },
+        ],
         ['c'],
       )
       expect(css()).not.toContain('data-id=')

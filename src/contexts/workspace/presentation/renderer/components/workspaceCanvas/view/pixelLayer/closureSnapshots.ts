@@ -42,7 +42,9 @@ export function createPixelClosureSnapshots() {
         snapshots.delete(frame.id)
         snapshots.set(frame.id, {
           world: {
-            ...frame,
+            id: frame.id,
+            sessionId: frame.sessionId,
+            family: frame.family,
             rect: {
               x: (rect.x - viewport.x) / viewport.zoom,
               y: (rect.y - viewport.y) / viewport.zoom,
