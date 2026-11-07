@@ -1,4 +1,5 @@
 import { declaredOutput } from './declaredOutput'
+import { identityCommands } from './identity'
 import { projectListOutput, spaceListOutput, spaceGetOutput } from './outputContracts'
 import { errorTargets } from './errorTargets'
 import { lifecycleCommands } from './lifecycle'
@@ -15,6 +16,7 @@ import { defineCommand, type Command } from '../core/command'
 import { CliError, usage } from '../core/errors'
 import { nodeCommands, stringOption } from './nodes'
 export const commands: Command[] = [
+  ...identityCommands,
   ...nodeCommands,
   ...lifecycleCommands,
   ptyAttach,
@@ -219,6 +221,8 @@ export const commands: Command[] = [
     rawQueryFields: true,
     serverValidation: true,
     summary: 'Invoke a registered operation',
+    description:
+      'The input is sent as-is: IDs must be full IDs. Selectors such as @self, names and ID prefixes work only in the dedicated commands; resolve one first, for example: opencove node get --node "@self" --fields id',
     connect: true,
     positionals: [{ name: 'operation-id', required: true }],
     options: {

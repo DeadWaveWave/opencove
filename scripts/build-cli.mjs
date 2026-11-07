@@ -1,6 +1,12 @@
 import { chmod } from 'node:fs/promises'
-import { isAbsolute, resolve } from 'node:path'
+import { isAbsolute, join, resolve } from 'node:path'
 import { build } from 'vite'
+
+const args = process.argv.slice(2)
+if (args.length && (args.length !== 2 || args[0] !== '--out-dir' || !args[1])) {
+  throw new Error('Usage: node scripts/build-cli.mjs [--out-dir <directory>]')
+}
+const outDir = args.length ? resolve(args[1]) : 'out/cli'
 
 // Node 22 is the common baseline for Electron and the standalone Node runtime.
 // Never execute a target-platform runtime during a cross-platform build.
@@ -19,7 +25,7 @@ await build({
   resolve: { alias: aliases },
   build: {
     target: 'node22',
-    outDir: 'out/cli',
+    outDir,
     emptyOutDir: true,
     minify: false,
     lib: { entry: resolve('src/app/cli/main.ts'), formats: ['es'], fileName: () => 'opencove.mjs' },
@@ -30,4 +36,4 @@ await build({
     },
   },
 })
-await chmod('out/cli/opencove.mjs', 0o755)
+await chmod(join(outDir, 'opencove.mjs'), 0o755)

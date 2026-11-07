@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { CONTROL_SURFACE_OPERATIONS } from '../../../src/shared/contracts/controlSurface/operations'
 import { describe, it, expect, vi } from 'vitest'
-import { run } from '../../../src/app/cli/core/run'
+import { runWithTargetFixtures as run } from './cliTargetFixtures.helpers'
 import type { CliIo } from '../../../src/app/cli/core/io'
 function fixture(value: unknown = { pong: true }) {
   let stdout = '',

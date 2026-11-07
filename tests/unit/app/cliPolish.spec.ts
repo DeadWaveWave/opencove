@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { expect, it, vi } from 'vitest'
-import { run } from '../../../src/app/cli/core/run'
+import { runWithTargetFixtures as run } from './cliTargetFixtures.helpers'
 import { commands } from '../../../src/app/cli/commands'
 import { globals } from '../../../src/app/cli/core/args'
 import type { CliIo } from '../../../src/app/cli/core/io'

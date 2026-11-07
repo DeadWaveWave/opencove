@@ -10,7 +10,11 @@ export const sections: [string, [string, string][]][] = [
   ],
   [
     'Introspection',
-    [['api', 'Discover operations, inspect input schemas and invoke the Control Surface']],
+    [
+      ['whoami', 'Show your caller identity and permission scope'],
+      ['context', 'Orient yourself in a project and space'],
+      ['api', 'Discover operations, inspect input schemas and invoke the Control Surface'],
+    ],
   ],
   [
     'Runtime',

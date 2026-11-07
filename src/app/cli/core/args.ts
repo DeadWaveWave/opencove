@@ -3,6 +3,7 @@ import { parseArgs, type ParseArgsConfig } from 'node:util'
 import type { Command, OptionSpec } from './command'
 import type { CliIo } from './io'
 import { choiceMessage, CliError, usage } from './errors'
+import { applySelfDefaults } from './selectors'
 export const globals: Record<string, OptionSpec> = {
   endpoint: {
     type: 'string',
@@ -145,6 +146,9 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
   const specs = { ...globals, ...command.options }
   const parsed = parse(argv, specs, command.path)
   const values: Record<string, unknown> = { ...parsed.values }
+  if (!values.help) {
+    applySelfDefaults(values, command, io.env)
+  }
   for (const [key, spec] of Object.entries(specs)) {
     const file = values[`${key}-file`]
     if (file !== undefined) {
@@ -246,7 +250,7 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
       commandHelpHint(command.path),
     )
   }
-  return { options: values, positionals }
+  return { options: values, positionals, explicitOptions: new Set(Object.keys(parsed.values)) }
 }
 
 export function globalArgv(argv: string[], specs: Record<string, OptionSpec>): string[] {

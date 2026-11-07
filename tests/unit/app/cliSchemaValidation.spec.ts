@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { expect, it, vi } from 'vitest'
 import { getControlSurfaceOperation } from '../../../src/shared/contracts/controlSurface/operations'
-import { run } from '../../../src/app/cli/core/run'
+import { runWithTargetFixtures as run } from './cliTargetFixtures.helpers'
 import type { CliIo } from '../../../src/app/cli/core/io'
 import { nodeListOperation } from '../../../src/shared/contracts/controlSurface/operations/domains/node'
 import { OpenCoveAppError } from '../../../src/shared/errors/appError'

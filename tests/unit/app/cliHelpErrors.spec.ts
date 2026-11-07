@@ -3,6 +3,7 @@ import { expect, it, vi } from 'vitest'
 import { run } from '../../../src/app/cli/core/run'
 import type { CliIo } from '../../../src/app/cli/core/io'
 import { commands } from '../../../src/app/cli/commands'
+import { help } from '../../../src/app/cli/core/help'
 const groups = [
   'worker',
   'runtime',
@@ -37,7 +38,7 @@ function fixture(tty = false) {
       throw Error('ENOENT')
     }),
     readStdinText: vi.fn(async () => ''),
-    profileCandidates: () => ['.codex-out/tmp/profile-a', '.codex-out/tmp/profile-b'],
+    profileCandidates: () => ['/tmp/opencove-test/profile-a', '/tmp/opencove-test/profile-b'],
   }
   return { io, out: () => stdout, err: () => stderr }
 }
@@ -105,8 +106,8 @@ it('reports a missing scalar option in command context', async () => {
 })
 it('reports only the explicitly searched profile', async () => {
   const f = fixture()
-  expect(await run(['project', 'list', '--user-data', '.codex-out/tmp/selected'], f.io)).toBe(3)
-  expect(JSON.parse(f.err()).error.details).toEqual({ profiles: ['.codex-out/tmp/selected'] })
+  expect(await run(['project', 'list', '--user-data', '/tmp/opencove-test/selected'], f.io)).toBe(3)
+  expect(JSON.parse(f.err()).error.details).toEqual({ profiles: ['/tmp/opencove-test/selected'] })
 })
 it('distinguishes an unreachable explicit endpoint', async () => {
   const f = fixture()
@@ -126,7 +127,37 @@ it('shows required options and positional arguments in command usage', async () 
   expect(f.out()).toContain('Usage: opencove api schema <operation-id> [options]')
   const g = fixture()
   expect(await run(['space', 'get', '--help'], g.io)).toBe(0)
-  expect(g.out()).toContain('Usage: opencove space get --space <id> [options]')
+  expect(g.out()).toContain('Usage: opencove space get [--space <id>] [options]')
+  expect(g.out()).toContain('(required outside OpenCove)')
+  expect(g.out()).not.toContain('(required)')
+  expect(g.out()).toMatchSnapshot()
+})
+it('keeps required options without a self default mandatory in help', async () => {
+  const f = fixture()
+  expect(await run(['node', 'get', '--help'], f.io)).toBe(0)
+  expect(f.out()).toContain('Usage: opencove node get --node <id> [options]')
+  expect(f.out()).toContain('(required)')
+  expect(f.out()).not.toContain('(required outside OpenCove)')
+})
+it('renders defaultable target space groups as optional and preserves mandatory groups', async () => {
+  const f = fixture()
+  expect(await run(['node', 'create', 'note', '--help'], f.io)).toBe(0)
+  expect(f.out()).toContain(
+    'Usage: opencove node create note [--space <id> | <other-target-space-options>] [options]',
+  )
+  expect(f.out()).toContain(
+    'Target space (choose one; inside OpenCove defaults to your own space):',
+  )
+  const command = commands.find(candidate => candidate.path.join(' ') === 'node create note')!
+  const withoutDefault = {
+    ...command,
+    options: { ...command.options, space: { ...command.options!.space, defaultSelf: false } },
+  }
+  const text = help([withoutDefault], command.path)
+  expect(text).toContain(
+    'Usage: opencove node create note (--space <id> | <other-target-space-options>) [options]',
+  )
+  expect(text).toContain('Target space (choose exactly one):')
 })
 it('documents the supported browser modes and task priorities', async () => {
   const website = fixture()

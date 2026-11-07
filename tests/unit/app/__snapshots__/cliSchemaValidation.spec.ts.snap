@@ -1,16 +1,18 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`scopes create agent projectable fields and examples > create agent 1`] = `
-"Usage: opencove node create agent (--space <id> | <other-target-space-options>) [options]
+"Usage: opencove node create agent [--space <id> | <other-target-space-options>] [options]
 
 Create a agent node
 
-Target space (choose exactly one):
-  --space <id>                                  Select a space by its ID
+When no target is given, inside OpenCove defaults to your own space; project options default to your own project.
+
+Target space (choose one; inside OpenCove defaults to your own space):
+  --space <id>                                  Select a space by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --space-name <name> [--project <id>]          Find a named space, optionally within a project
   --worker <id-or-name> --branch <branch>       Find a space by worker and Git branch
   --worker <id-or-name> --path <absolute-path>  Find a space by worker and working directory
-  Add --project <id> to narrow a name, branch or path lookup
+  --project <id>                                Narrow a space name, branch or path lookup to one project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Options:
   --prompt <text>         Set the initial agent prompt
@@ -37,16 +39,18 @@ Global options: see "opencove --help".
 `;
 
 exports[`scopes create note projectable fields and examples > create note 1`] = `
-"Usage: opencove node create note (--space <id> | <other-target-space-options>) [options]
+"Usage: opencove node create note [--space <id> | <other-target-space-options>] [options]
 
 Create a note node
 
-Target space (choose exactly one):
-  --space <id>                                  Select a space by its ID
+When no target is given, inside OpenCove defaults to your own space; project options default to your own project.
+
+Target space (choose one; inside OpenCove defaults to your own space):
+  --space <id>                                  Select a space by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --space-name <name> [--project <id>]          Find a named space, optionally within a project
   --worker <id-or-name> --branch <branch>       Find a space by worker and Git branch
   --worker <id-or-name> --path <absolute-path>  Find a space by worker and working directory
-  Add --project <id> to narrow a name, branch or path lookup
+  --project <id>                                Narrow a space name, branch or path lookup to one project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Options:
   --text <text>         Set the note contents
@@ -72,16 +76,18 @@ Global options: see "opencove --help".
 `;
 
 exports[`scopes create task projectable fields and examples > create task 1`] = `
-"Usage: opencove node create task (--space <id> | <other-target-space-options>) --requirement <text> [options]
+"Usage: opencove node create task [--space <id> | <other-target-space-options>] --requirement <text> [options]
 
 Create a task node
 
-Target space (choose exactly one):
-  --space <id>                                  Select a space by its ID
+When no target is given, inside OpenCove defaults to your own space; project options default to your own project.
+
+Target space (choose one; inside OpenCove defaults to your own space):
+  --space <id>                                  Select a space by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --space-name <name> [--project <id>]          Find a named space, optionally within a project
   --worker <id-or-name> --branch <branch>       Find a space by worker and Git branch
   --worker <id-or-name> --path <absolute-path>  Find a space by worker and working directory
-  Add --project <id> to narrow a name, branch or path lookup
+  --project <id>                                Narrow a space name, branch or path lookup to one project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Options:
   --requirement <text>                 Describe the task requirement (required)
@@ -107,16 +113,18 @@ Global options: see "opencove --help".
 `;
 
 exports[`scopes create terminal projectable fields and examples > create terminal 1`] = `
-"Usage: opencove node create terminal (--space <id> | <other-target-space-options>) [options]
+"Usage: opencove node create terminal [--space <id> | <other-target-space-options>] [options]
 
 Create a terminal node
 
-Target space (choose exactly one):
-  --space <id>                                  Select a space by its ID
+When no target is given, inside OpenCove defaults to your own space; project options default to your own project.
+
+Target space (choose one; inside OpenCove defaults to your own space):
+  --space <id>                                  Select a space by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --space-name <name> [--project <id>]          Find a named space, optionally within a project
   --worker <id-or-name> --branch <branch>       Find a space by worker and Git branch
   --worker <id-or-name> --path <absolute-path>  Find a space by worker and working directory
-  Add --project <id> to narrow a name, branch or path lookup
+  --project <id>                                Narrow a space name, branch or path lookup to one project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Options:
   --shell <path>       Choose the terminal shell executable
@@ -142,16 +150,18 @@ Global options: see "opencove --help".
 `;
 
 exports[`scopes create website projectable fields and examples > create website 1`] = `
-"Usage: opencove node create website (--space <id> | <other-target-space-options>) --url <url> [options]
+"Usage: opencove node create website [--space <id> | <other-target-space-options>] --url <url> [options]
 
 Create a website node
 
-Target space (choose exactly one):
-  --space <id>                                  Select a space by its ID
+When no target is given, inside OpenCove defaults to your own space; project options default to your own project.
+
+Target space (choose one; inside OpenCove defaults to your own space):
+  --space <id>                                  Select a space by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --space-name <name> [--project <id>]          Find a named space, optionally within a project
   --worker <id-or-name> --branch <branch>       Find a space by worker and Git branch
   --worker <id-or-name> --path <absolute-path>  Find a space by worker and working directory
-  Add --project <id> to narrow a name, branch or path lookup
+  --project <id>                                Narrow a space name, branch or path lookup to one project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Options:
   --url <url>                                Set the website address (required)
@@ -185,9 +195,10 @@ Update a note node
 Options:
   --text <text>         Set the note contents
   --text-file <path|->  Read text from a UTF-8 file, or use - for stdin
-  --node <id>           Select a canvas node by its ID (required)
+  --node <id>           Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
   --title <text>        Set the node title
   --frame <json>        Set x, y, width and height as a JSON object
+  --project <id>        Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.text
@@ -215,9 +226,10 @@ Options:
   --tag <tag>                          Replace all tags; repeat for each tag in the new list
   --clear-tags                         Remove all task tags
   --status <todo|doing|ai_done|done>   Set the task status
-  --node <id>                          Select a canvas node by its ID (required)
+  --node <id>                          Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
   --title <text>                       Set the node title
   --frame <json>                       Set x, y, width and height as a JSON object
+  --project <id>                       Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.requirement, data.status, data.priority, data.tags, data.linkedAgentNodeId
@@ -244,9 +256,10 @@ Options:
   --pinned <true|false>                      Keep the website pinned
   --session-mode <shared|incognito|profile>  Choose the browser session mode
   --profile <id>                             Select a browser or terminal profile
-  --node <id>                                Select a canvas node by its ID (required)
+  --node <id>                                Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
   --title <text>                             Set the node title
   --frame <json>                             Set x, y, width and height as a JSON object
+  --project <id>                             Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.url, data.pinned, data.sessionMode, data.profileId

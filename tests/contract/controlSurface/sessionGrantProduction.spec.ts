@@ -4,8 +4,9 @@ import { AgentProviderRegistry } from '../../../src/contexts/agent/application/s
 import { createApprovedWorkspaceStoreForPath } from '../../../src/contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
 // @vitest-environment node
 import { EventEmitter } from 'node:events'
-import { mkdtemp, readFile, rm, mkdir, readdir, writeFile } from 'node:fs/promises'
-import { resolve, join, delimiter } from 'node:path'
+import { mkdtemp, readFile, rm, readdir, writeFile } from 'node:fs/promises'
+import { join, delimiter } from 'node:path'
+import { tmpdir } from 'node:os'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { expect, it, vi } from 'vitest'
 import type { ControlSurfaceHttpListener } from '../../../src/app/main/controlSurface/controlSurfaceHttpRuntime.contract'
@@ -36,9 +37,7 @@ vi.mock('../../../src/app/main/controlSurface/controlSurfaceHttpListener', () =>
 import { createControlSurfaceHttpRuntime } from '../../../src/app/main/controlSurface/controlSurfaceHttpRuntime'
 
 it('production Worker issues canvas credentials, exposes shim and whoami, and revokes on kill/exit/shutdown', async () => {
-  const root = resolve('.codex-out/tmp')
-  await mkdir(root, { recursive: true })
-  const dir = await mkdtemp(join(root, 'grant-production-'))
+  const dir = await mkdtemp(join(tmpdir(), 'opencove-grant-production-'))
   const store = createInMemoryPersistenceStore()
   await store.writeAppState(createMinimalState(dir, 'project', 'space'))
   const exits = new Set<(event: { sessionId: string; exitCode: number }) => void>()
