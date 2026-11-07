@@ -79,3 +79,53 @@
     box-shadow: 0 0 0 2px var(--cove-signal-color);
   }
 }
+
+/* Tide 408–411: a screen-sized halo, independent of the glass rim on chrome ::before. */
+.cove-window-halo {
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--cove-node-radius);
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0.8;
+  box-shadow:
+    0 0 0 calc(1px / var(--cove-canvas-zoom, 1)) var(--cove-status-waiting, var(--cove-warning)),
+    0 0 calc(28px / var(--cove-canvas-zoom, 1)) calc(3px / var(--cove-canvas-zoom, 1))
+      color-mix(in srgb, var(--cove-status-waiting, var(--cove-warning)) 42%, transparent);
+}
+
+[data-cove-frame-signals='on'] .cove-window-halo {
+  animation: cove-waiting-halo 1.3s ease-in-out infinite;
+}
+
+.workspace-canvas
+  .react-flow__node[data-cove-window-status='waiting']:not(.selected)
+  .terminal-node {
+  border-color: color-mix(
+    in srgb,
+    var(--cove-status-waiting, var(--cove-warning)) 70%,
+    var(--cove-node-border)
+  );
+}
+
+.workspace-canvas
+  .react-flow__node[data-cove-window-status='failed']:not(.selected)
+  .terminal-node {
+  border-color: var(--cove-status-failed, var(--cove-danger));
+}
+
+@keyframes cove-waiting-halo {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-cove-frame-signals='on'] .cove-window-halo {
+    animation: none;
+  }
+}

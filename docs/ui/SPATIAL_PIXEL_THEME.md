@@ -239,6 +239,14 @@ keeps the status corner marks. E2E reads `getRippleCount()` from the wall probe.
 
 ## Waiting for you
 
+Waiting frames derive their border and halo from `resolveAgentPresentation`, including restored
+windows: a 70% waiting-colour border and a halo with a 1px ring, 28px blur and 3px spread (42%
+waiting colour), all constant screen sizes across zoom. Only opacity pulses, 0.3 → 1 → 0.3 over
+1300ms, ease-in-out. Reduced motion or signals off holds the halo at 0.8. Failed windows keep
+the failed-colour border until their authoritative status changes, independently of transient signals.
+These layers sit above the glass rim without reusing its pseudo-element or painting behind text.
+Collapsed/hidden-in-Space windows keep their existing compact status presentation.
+
 A window whose agent waits for you (`resolveAgentPresentation` status `waiting`) sends a yellow
 beacon every 1300ms while within 120 screen px of the view (150px reach, 28px width, 0.9 amplitude); reduced motion keeps
 only the light. When the window is entirely out of view, an edge beacon (`WorkspaceEdgeBeacons`)

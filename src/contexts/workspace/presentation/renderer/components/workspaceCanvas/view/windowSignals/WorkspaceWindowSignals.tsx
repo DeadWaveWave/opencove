@@ -7,6 +7,7 @@ import { readWallLightPalette } from '../pixelWall/wallPalette'
 import { clearWindowSignals, showWindowSignal } from './frameSignals'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import { createRuntimeCompletionDetector, createWindowSignalDetector } from './signalDetector'
+import { createWindowStatusFrames } from './windowStatusFrames'
 import { publishWindowSignal } from './windowSignalEvents'
 
 /** How long a finished run's frame flash and a failure's glitch stay on the frame. */
@@ -27,10 +28,29 @@ export function WorkspaceWindowSignals({
   canvasRef: RefObject<HTMLDivElement | null>
   enabled: boolean
 }): null {
+  const statusFrames = useRef(createWindowStatusFrames())
   const detectorRef = useRef(createWindowSignalDetector())
   const runtimeSessions = useRef(new Set<string>())
   const current = useRef({ nodes, enabled })
   current.current = { nodes, enabled }
+
+  useEffect(() => {
+    const scope = canvasRef.current
+    if (!scope) {
+      return
+    }
+    scope.dataset.coveFrameSignals = enabled ? 'on' : 'off'
+    statusFrames.current.update(
+      scope,
+      nodes.map(node => ({
+        id: node.id,
+        status:
+          node.data.collapsePresentation?.collapsed || node.data.collapsePresentation?.spaceHidden
+            ? null
+            : resolveAgentPresentation(node.data).status,
+      })),
+    )
+  }, [nodes, enabled, canvasRef])
 
   useEffect(() => {
     const completed = createRuntimeCompletionDetector()
@@ -102,9 +122,12 @@ export function WorkspaceWindowSignals({
 
   useEffect(() => {
     const scope = canvasRef.current
+    const frames = statusFrames.current
     return () => {
+      frames.clear()
       if (scope) {
         clearWindowSignals(scope)
+        delete scope.dataset.coveFrameSignals
       }
     }
   }, [canvasRef])
