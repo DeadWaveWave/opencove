@@ -27,7 +27,7 @@ interface CliResult<T> {
 async function cli(userDataDir: string, args: string[]) {
   const execution = await runCommand(
     process.execPath,
-    [resolve(__dirname, '../../src/app/cli/opencove.mjs'), 'plugin', ...args],
+    [resolve(__dirname, '../../out/cli/opencove.mjs'), 'plugin', ...args],
     resolve(__dirname, '../..'),
     {
       timeoutMs: 45_000,

@@ -14,7 +14,7 @@ it.each([
   async ({ args, exitCode }) => {
     const result = await runCommand(
       process.execPath,
-      [resolve('src/app/cli/opencove.mjs'), ...args, '--endpoint', 'http://127.0.0.1:1'],
+      [resolve('out/cli/opencove.mjs'), ...args, '--endpoint', 'http://127.0.0.1:1'],
       process.cwd(),
       { timeoutMs: 3000 },
     )
@@ -30,7 +30,7 @@ it('worker start --help exits without a Worker or profile, even with runtime lau
     const result = await runCommand(
       process.execPath,
       [
-        resolve('src/app/cli/opencove.mjs'),
+        resolve('out/cli/opencove.mjs'),
         'worker',
         'start',
         '--help',

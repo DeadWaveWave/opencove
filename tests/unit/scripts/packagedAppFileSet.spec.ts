@@ -115,9 +115,10 @@ describe('packaged app file set', () => {
     )
 
     it('packages the standalone server CLI entry point', () => {
-      // scripts/create-standalone-server-bundle.mjs launches the headless server through
-      // `app/src/app/cli/opencove.mjs` inside the extracted asar, so this path is load-bearing --
-      // trimming the asar to out/ alone would break the Linux server that #353 exists to fix.
+      expect(isPackaged('out/cli/opencove.mjs')).toBe(true)
+      expect(isPackaged('src/app/cli/publishRuntime.mjs')).toBe(true)
+      expect(isPackaged('src/app/cli/run.mjs')).toBe(false)
+      expect(isPackaged('docs/plugins/README.md')).toBe(true)
       expect(isPackaged('src/app/cli/opencove.mjs')).toBe(true)
     })
 

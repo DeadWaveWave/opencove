@@ -35,7 +35,8 @@
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "files": [
       "out{,/**/*}",
-      "src/app/cli{,/**/*}",
+      "src/app/cli/opencove.mjs",
+      "src/app/cli/publishRuntime.mjs",
       "docs/plugins{,/**/*}",
       "package.json"
     ],
@@ -61,7 +62,7 @@
     }
   },
   "bin": {
-    "opencove": "src/app/cli/opencove.mjs"
+    "opencove": "out/cli/opencove.mjs"
   },
   "engines": {
     "node": ">=22.12.0",
@@ -69,7 +70,8 @@
   },
   "scripts": {
     "dev": "node scripts/run-electron-vite-dev.mjs",
-    "build": "node scripts/run-electron-vite-build.mjs",
+    "build": "node scripts/run-electron-vite-build.mjs && node scripts/build-cli.mjs",
+    "build:cli": "node scripts/build-cli.mjs",
     "check": "tsc -b tsconfig.node.json tsconfig.web.json --noEmit",
     "preview": "electron-vite preview",
     "postinstall": "electron-builder install-app-deps",
@@ -104,7 +106,7 @@
     "arch:results": "node harness/architecture/check.mjs --mode audit --write-results harness/architecture/results",
     "arch:results:check": "node harness/architecture/check-doc-sync.mjs --verify-results",
     "arch:test": "vitest --run --config harness/architecture/vitest.config.ts",
-    "opencove": "node src/app/cli/opencove.mjs",
+    "opencove": "node out/cli/opencove.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "format-check:staged": "node scripts/check-format-staged.mjs",

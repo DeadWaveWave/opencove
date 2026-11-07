@@ -12,7 +12,7 @@ export function resolvePackagedAppRoot(resourcesPath: string): string {
 }
 
 export function resolvePackagedCliScriptPath(resourcesPath: string): string {
-  return resolve(resolvePackagedAppRoot(resourcesPath), 'src', 'app', 'cli', 'opencove.mjs')
+  return resolve(resolvePackagedAppRoot(resourcesPath), 'out', 'cli', 'opencove.mjs')
 }
 
 export function resolvePackagedWorkerScriptPath(resourcesPath: string): string {

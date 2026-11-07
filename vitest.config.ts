@@ -22,6 +22,8 @@ export default defineConfig({
 
     // 自动加载 setup 文件
     setupFiles: ['./tests/support/vitest.setup.ts'],
+    // Build once before workers, including direct spec and coverage invocations.
+    globalSetup: ['./tests/support/buildCli.globalSetup.ts'],
 
     // Cap worker fan-out to avoid flaky fork startup timeouts on local and CI runs.
     maxWorkers: maxVitestWorkers,

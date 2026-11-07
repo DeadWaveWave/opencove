@@ -37,7 +37,7 @@ sh scripts/release-assets/opencove-install.sh
 LAUNCHER="${BIN_DIR}/opencove"
 NODE_BIN="$(sed -n 's/^# OPENCOVE_NODE_BIN=//p' "${LAUNCHER}")"
 CLI_SCRIPT="$(sed -n 's/^# OPENCOVE_CLI_SCRIPT=//p' "${LAUNCHER}")"
-APP_ROOT="$(dirname "$(dirname "$(dirname "$(dirname "${CLI_SCRIPT}")")")")"
+APP_ROOT="$(dirname "$(dirname "$(dirname "${CLI_SCRIPT}")")")"
 BUNDLE_ROOT="$(dirname "${APP_ROOT}")"
 CONNECTION_FILE="${USER_DATA}/worker-control-surface.json"
 

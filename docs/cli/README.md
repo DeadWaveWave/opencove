@@ -163,3 +163,13 @@ CLI 管理画布 Note / Task / Website / Agent / Terminal 窗口的当前能力�
 
 如果问题涉及 OpenCove 如何发现和解析外部命令（例如 `codex`、`claude`、`gh`），使用：
 `docs/cli/EXTERNAL_EXECUTABLE_RESOLUTION.md`。
+
+## CLI 构建与安装拓扑
+
+CLI 从 `src/app/cli/main.ts` 构建为单文件 ESM `out/cli/opencove.mjs`。首次使用 checkout 的 `pnpm opencove` 前运行 `pnpm build`；仅迭代 CLI 可运行 `pnpm build:cli`（启动 Worker 仍需完整构建）。CLI 不随 Desktop dev HMR 更新。
+
+Desktop launcher 指向 `app.asar/out/cli/opencove.mjs`（unpacked 为 `app/out/cli/opencove.mjs`），standalone launcher 指向 bundle 的 `app/out/cli/opencove.mjs`，使用各自绑定的运行时。构建固定使用 Node 22 target，bare package imports 保持 external，运行时依赖仍由 app 提供。
+
+旧 `src/app/cli/opencove.mjs` 保留一版 shim。Desktop 启动仅修复指向本 Desktop 旧入口的 launcher；权限失败保留旧文件，不接管 standalone launcher。安装器使用的 `src/app/cli/publishRuntime.mjs` 保持独立可执行模块。
+
+Desktop launcher 修复与 standalone installer 使用同一 `<launcher>.lock` 排他文件协调发布，写入 owner 的 `pid`、`hostname`、ISO `createdAt`。以文件 mtime 判定：超过 120 秒即过期，发现者删除旧锁后仅重试一次排他创建；新鲜锁立即拒绝，错误包含 owner pid 与锁龄。Desktop 遇到新鲜锁跳过本次迁移并保留 shim。发布必须在 120 秒内结束；释放前核对 owner，避免删除已接管者的锁。旧版本 installer 不参与此协议，升级期间应避免同时运行旧 installer。
