@@ -3,13 +3,13 @@ import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 
 interface ProviderMark {
   viewBox: string
-  paths: ReadonlyArray<{ d: string; evenOdd?: boolean }>
+  paths: ReadonlyArray<{ d: string; evenOdd?: boolean; opacity?: number }>
 }
 
 /**
- * Each provider's brand mark as one-colour paths in `currentColor`. The colour chip
- * (AgentProviderIcon) tints them with the provider's accent; window kind icons draw them in the AI
- * kind colour, so the vendor stays recognisable inside the Tide kind palette.
+ * Each provider's brand mark as one-colour paths in `currentColor`. Docks, menus and settings
+ * (AgentProviderIcon) draw them in the ink of the icons beside them; window kind icons draw them in
+ * the AI kind colour, so the vendor stays recognisable inside the Tide kind palette.
  */
 const PROVIDER_MARKS: Record<AgentProvider, ProviderMark> = {
   // Claude's brand mark, from Simple Icons (CC0): https://simpleicons.org/?q=claude
@@ -29,9 +29,14 @@ const PROVIDER_MARKS: Record<AgentProvider, ProviderMark> = {
       },
     ],
   },
+  // Official mark: https://opencode.ai/favicon.svg. The frame, and the block filling its lower half
+  // in a lighter tone of the same colour.
   opencode: {
     viewBox: '0 0 24 30',
-    paths: [{ d: 'M18 6H6V24H18V6ZM24 30H0V0H24V30Z' }],
+    paths: [
+      { d: 'M18 6H6V24H18V6ZM24 30H0V0H24V30Z', evenOdd: true },
+      { d: 'M18 24H6V12H18V24Z', opacity: 0.4 },
+    ],
   },
   gemini: {
     viewBox: '0 0 50 50',
@@ -52,7 +57,8 @@ const PROVIDER_MARKS: Record<AgentProvider, ProviderMark> = {
       { d: 'M517.36 400H634.72V634.72H517.36Z' },
     ],
   },
-  // The K and dot of the official logo (assets/agent-providers/kimi.png), traced on its 128px grid.
+  // The K and dot of the official logo, traced on its 128px grid:
+  // https://github.com/MoonshotAI/kimi-cli/blob/main/web/public/logo.png
   kimi: {
     viewBox: '37 21.5 71 71',
     paths: [
@@ -88,7 +94,12 @@ export function AgentProviderMark({
       {...data}
     >
       {mark.paths.map(path => (
-        <path key={path.d} d={path.d} fillRule={path.evenOdd ? 'evenodd' : undefined} />
+        <path
+          key={path.d}
+          d={path.d}
+          fillRule={path.evenOdd ? 'evenodd' : undefined}
+          fillOpacity={path.opacity}
+        />
       ))}
     </svg>
   )

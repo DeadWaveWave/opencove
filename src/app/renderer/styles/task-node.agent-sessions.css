@@ -24,16 +24,18 @@
   flex: 0 0 auto;
 }
 
+/* The provider mark in the muted ink icons use elsewhere, sized to the row's text. */
 .task-node__agent-provider {
-  width: 22px;
-  height: 22px;
-  flex-basis: 22px;
+  width: 18px;
+  height: 18px;
+  flex-basis: 18px;
+  color: var(--cove-text-muted);
 }
 
 .task-node__agent-session-state {
   position: absolute;
-  right: -1px;
-  bottom: -1px;
+  right: -3px;
+  bottom: -3px;
   width: 8px;
   height: 8px;
   border-radius: 999px;

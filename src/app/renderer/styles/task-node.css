@@ -121,6 +121,20 @@
   background: var(--cove-field);
 }
 
+/* On a task window the strip is the reading plate's first row, edge to edge across it: the
+   negative margins undo the plate's padding, and the bottom margin keeps the 10px the
+   requirement had below the strip. */
+.task-node__content > .task-node__meta {
+  margin: calc(-1 * var(--task-node-plate-padding)) calc(-1 * var(--task-node-plate-padding))
+    var(--cove-spacing-1);
+}
+
+/* In the generated families the plate rises into the header with no edge; a field band at its top
+   would draw that edge back, so the chips sit on the plate itself. */
+:root[data-cove-family='cove'] .task-node__meta {
+  background: transparent;
+}
+
 .task-node__priority {
   display: inline-flex;
   align-items: center;
@@ -199,7 +213,8 @@
 .task-node__content {
   flex: 1;
   min-height: 0;
-  padding: 10px;
+  --task-node-plate-padding: 10px;
+  padding: var(--task-node-plate-padding);
   display: flex;
   flex-direction: column;
   gap: 6px;

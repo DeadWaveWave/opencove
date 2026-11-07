@@ -387,7 +387,6 @@ export function ExperimentalWorkerWebUiSection(): React.JSX.Element {
                 data-testid="settings-experimental-worker-web-ui-port"
               />
               <Button
-                variant="primary"
                 disabled={!canConfigureWorkerWebUiSettings || workerWebUiBusy}
                 onClick={() => void saveWorkerWebUiPort()}
                 data-testid="settings-experimental-worker-web-ui-port-save"
@@ -410,7 +409,6 @@ export function ExperimentalWorkerWebUiSection(): React.JSX.Element {
                   {workerWebUiStatusLabel}
                 </span>
                 <Button
-                  variant="primary"
                   data-testid="settings-experimental-worker-web-ui-open"
                   disabled={workerWebUiBusy}
                   onClick={() => void openWorkerWebUi()}
@@ -470,7 +468,6 @@ export function ExperimentalWorkerWebUiSection(): React.JSX.Element {
                     : t('settingsPanel.experimental.workerWebUi.passwordShow')}
                 </Button>
                 <Button
-                  variant="primary"
                   disabled={!canConfigureWorkerWebUiSecurity || workerWebUiBusy}
                   onClick={() => void setWorkerWebUiPassword()}
                   data-testid="settings-experimental-worker-web-ui-password-save"

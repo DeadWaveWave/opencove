@@ -67,8 +67,12 @@
 
 .note-node__textarea {
   flex: 1;
+  align-self: stretch;
   min-height: 0;
-  width: 100%;
+  /* Stretched, not 100%: the textarea is the reading plate, and 100% plus the plate's side
+     margins ran past the frame's right edge. */
+  width: auto;
+  min-width: 0;
   resize: none;
   border: none;
   outline: none;

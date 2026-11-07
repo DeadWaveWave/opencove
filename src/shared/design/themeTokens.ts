@@ -31,6 +31,9 @@ const hex = (c: Rgb): string => `#${c.map(v => v.toString(16).padStart(2, '0')).
 const rgba = (c: Rgb, alpha: number): string => `rgb(${c[0]} ${c[1]} ${c[2]} / ${alpha})`
 const percent = (alpha: number): string => `${Math.round(alpha * 100)}%`
 const kebab = (key: AnsiKey): string => key.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`)
+/** A 1px inner edge on a reading plate's sides and bottom; its top flows into the header. */
+const openPlateEdge = (line: string): string =>
+  `inset 1px 0 0 ${line}, inset -1px 0 0 ${line}, inset 0 -1px 0 ${line}`
 
 /** Opaque role colours. Tokens and the contrast tests both read these, so they cannot drift apart. */
 export interface RoleColors {
@@ -169,13 +172,15 @@ export function themeTokens(theme: GeneratedTheme): ThemeTokens {
     '--cove-focus-ring': hex(roles.focusRing),
     '--cove-node-surface': glassOf('var(--cove-glass-frame)'),
     // Window content sits on an inset plate: neutral step 1 at the plate alpha over the frame
-    // (the composite the contrast matrix checks), with a faint top glare and an inner edge.
+    // (the composite the contrast matrix checks), with a faint top glare and an inner edge on the
+    // sides and bottom only: the plate has no top edge because it rises into the header and
+    // fades out there, side lines included (window-plate.css), so header and body read as one
+    // surface.
     '--cove-reading-plate':
       'color-mix(in srgb, var(--cove-neutral-1) var(--cove-glass-plate), transparent)',
     '--cove-reading-plate-glare': dark ? 'rgb(255 255 255 / 0.03)' : 'rgb(255 255 255 / 0)',
-    '--cove-reading-plate-edge': dark
-      ? 'inset 0 0 0 1px rgb(255 255 255 / 0.045), inset 0 1px 3px rgb(0 0 0 / 0.45)'
-      : `inset 0 0 0 1px ${rgba(theme.neutral[6]!, 0.5)}, inset 0 1px 2px ${rgba(ink, 0.06)}`,
+    '--cove-reading-plate-line': dark ? 'rgb(255 255 255 / 0.045)' : rgba(theme.neutral[6]!, 0.5),
+    '--cove-reading-plate-edge': openPlateEdge('var(--cove-reading-plate-line)'),
     '--cove-node-header-surface': 'transparent',
     '--cove-node-border': inkOverlay(dark ? 14 : 16),
     '--cove-terminal-background': hex(roles.terminalBackground),

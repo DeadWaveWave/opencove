@@ -73,7 +73,12 @@ describe('generated theme tokens', () => {
       expect(tokens['--cove-reading-plate']).toBe(
         'color-mix(in srgb, var(--cove-neutral-1) var(--cove-glass-plate), transparent)',
       )
-      expect(tokens['--cove-reading-plate-edge']).toMatch(/^inset 0 0 0 1px .+, inset 0 1px \dpx /)
+      // Sides and bottom only: the plate's top flows into the header with no edge or shadow.
+      // The header draws the side lines' fade from the same colour.
+      expect(tokens['--cove-reading-plate-edge']).toBe(
+        'inset 1px 0 0 var(--cove-reading-plate-line), inset -1px 0 0 var(--cove-reading-plate-line), inset 0 -1px 0 var(--cove-reading-plate-line)',
+      )
+      expect(tokens['--cove-reading-plate-line']).toMatch(/^rgb\(\d+ \d+ \d+ \/ 0?\.\d+\)$/)
       expect(tokens['--cove-reading-plate-glare']).toMatch(/^rgb\(255 255 255 \/ 0(\.\d+)?\)$/)
     },
   )

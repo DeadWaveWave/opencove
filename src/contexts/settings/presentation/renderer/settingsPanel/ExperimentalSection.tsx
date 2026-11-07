@@ -241,7 +241,6 @@ export function ExperimentalSection({
               onKeyDown={event => event.key === 'Enter' && addKeepAliveHost()}
             />
             <Button
-              variant="primary"
               data-testid="settings-website-keep-alive-add-button"
               disabled={!websiteWindowPolicy.enabled || keepAliveHostDraft.trim().length === 0}
               onClick={() => addKeepAliveHost()}

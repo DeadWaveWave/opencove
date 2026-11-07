@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react'
 import { Button } from '@app/renderer/components/ui/Button'
 import { TextAreaField, TextField } from '@app/renderer/components/ui/TextField'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
-import { ChevronDown, ChevronUp, Globe, Pin, Power, Terminal } from 'lucide-react'
+import { ChevronDown, ChevronUp, Globe, Pin, Plus, Power, Terminal } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { QuickCommand } from '@contexts/settings/domain/agentSettings'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
@@ -275,11 +275,8 @@ export function QuickCommandsSubsection({
       </div>
 
       <div style={{ marginTop: 12 }}>
-        <Button
-          variant="primary"
-          data-testid="settings-quick-command-add"
-          onClick={openNewCommandEditor}
-        >
+        <Button data-testid="settings-quick-command-add" onClick={openNewCommandEditor}>
+          <Plus size={15} aria-hidden="true" />
           {t('settingsPanel.quickMenu.commands.add')}
         </Button>
       </div>

@@ -1,45 +1,22 @@
+/* A provider's brand mark, bare, in the ink of the icons beside it (docks, menus, settings, task
+   sessions): no chip, no vendor colour. Window headers and the sidebar draw the same mark in the AI
+   kind colour instead (NodeKindIcon). */
 .agent-provider-icon {
-  --agent-provider-accent: var(--cove-text-muted);
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 20px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--agent-provider-accent) 45%, transparent);
-  background: color-mix(in srgb, var(--agent-provider-accent) 16%, transparent);
-  color: var(--agent-provider-accent);
+  flex: 0 0 auto;
+  color: inherit;
 }
 
-.agent-provider-icon[data-agent-provider='claude-code'] {
-  --agent-provider-accent: rgba(217, 119, 87, 0.96);
-}
-.agent-provider-icon[data-agent-provider='codex'] {
-  --agent-provider-accent: rgba(125, 211, 252, 0.96);
-}
-.agent-provider-icon[data-agent-provider='opencode'] {
-  --agent-provider-accent: rgba(96, 165, 250, 0.96);
-}
-.agent-provider-icon[data-agent-provider='gemini'] {
-  --agent-provider-accent: rgba(196, 181, 253, 0.96);
-}
-
-.agent-provider-icon__glyph,
-.agent-provider-icon__svg,
-.agent-provider-icon__image {
-  width: 11px;
-  height: 11px;
+/* Solid marks read heavier than the line icons around them, so they sit a little inside the box. */
+.agent-provider-icon__svg {
+  width: 82%;
+  height: 82%;
   display: block;
   flex-shrink: 0;
-}
-
-.agent-provider-icon[data-agent-provider='claude-code'] .agent-provider-icon__svg {
-  width: 16px;
-  height: 16px;
-}
-.agent-provider-icon__glyph {
-  stroke-width: 2.1;
 }
 
 .workspace-agent-item {
@@ -116,7 +93,6 @@
   flex-direction: row;
   align-items: center;
   gap: 0;
-  min-height: 44px;
   padding: 0 0 0 6px;
   border-radius: var(--cove-radius-xs);
   background: transparent;
@@ -144,9 +120,9 @@
 .workspace-agent-item__select {
   display: flex;
   flex: 1;
+  align-self: stretch;
   align-items: center;
   min-width: 0;
-  min-height: 42px;
   gap: 7px;
   padding: 0 3px;
   border: 0;
@@ -172,6 +148,7 @@
   flex-direction: row;
   align-items: center;
   gap: var(--cove-spacing-2);
+  padding-block: 0;
 }
 
 .workspace-agent-item--sidebar .workspace-agent-item__title {
@@ -196,13 +173,6 @@
   background: transparent;
   color: inherit;
   box-shadow: none;
-}
-
-.workspace-agent-item--sidebar .agent-provider-icon__svg,
-.workspace-agent-item--sidebar .agent-provider-icon__glyph,
-.workspace-agent-item--sidebar .agent-provider-icon__image {
-  width: 12px;
-  height: 12px;
 }
 
 .workspace-agent-item--sidebar .workspace-agent-item__status {

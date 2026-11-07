@@ -79,7 +79,7 @@ export const enSettingsPanelLayout = {
     tasksShortcuts: {
       taskTitles: 'Task Titles',
       taskTags: 'Task Tags',
-      quickActions: 'Quick Actions',
+      contextMenu: 'Context Menu',
       keyboard: 'Keyboard Shortcuts',
     },
     worker: {

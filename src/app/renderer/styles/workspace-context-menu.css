@@ -19,19 +19,16 @@
   width: 218px;
 }
 
-.workspace-project-context-menu button:not(:where(.cove-menu-item)),
 .workspace-space-action-menu button:not(:where(.cove-menu-item)) {
   gap: 10px;
 }
 
-.workspace-project-context-menu .workspace-context-menu__icon,
 .workspace-space-action-menu .workspace-context-menu__icon,
 .workspace-space-action-menu .workspace-context-menu__mark {
   width: 16px;
   height: 16px;
 }
 
-.workspace-project-context-menu .workspace-context-menu__separator,
 .workspace-space-action-menu .workspace-context-menu__separator {
   margin: 3px 4px;
 }
@@ -71,8 +68,8 @@
 
 .workspace-project-context-menu__color-button .workspace-label-color-menu__dot,
 .workspace-space-action-menu__color-button .workspace-label-color-menu__dot {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 
 .workspace-context-menu__mark {
@@ -140,25 +137,28 @@
   outline-offset: 1px;
 }
 
+/* A Space's or agent's name heads its menu as a quiet field, the shape of a menu row: it opens
+   focused for a quick rename, so focus only firms up its edge instead of lighting a glow. */
 .workspace-project-context-menu__space-editor {
-  padding: 5px 5px 1px;
+  padding-bottom: 4px;
 }
 
 .workspace-project-context-menu__space-editor input {
   width: 100%;
-  border: 1px solid var(--cove-control-border);
+  min-height: var(--cove-menu-row-height);
+  border: 1px solid var(--cove-border-subtle);
   background: var(--cove-field);
   color: var(--cove-text);
-  border-radius: 4px;
-  padding: 7px 8px;
-  font-size: calc(13px * var(--cove-ui-font-scale));
-  line-height: 1.15;
+  border-radius: var(--cove-radius-2xs);
+  padding: 0 var(--cove-spacing-2);
+  font-size: var(--cove-font-size-body);
+  font-weight: 600;
+  line-height: var(--cove-line-height-body);
 }
 
 .workspace-project-context-menu__space-editor input:focus {
   outline: none;
-  border-color: var(--cove-accent);
-  box-shadow: 0 0 0 2px var(--cove-menu-highlight);
+  border-color: color-mix(in srgb, var(--cove-accent) 55%, var(--cove-border));
 }
 
 .workspace-project-context-menu__rename-actions {
@@ -214,11 +214,12 @@
   color: var(--cove-text);
 }
 
+/* The swatches span the name field, the first dot under its text. */
 .workspace-project-context-menu__color-space {
   display: flex;
   align-items: center;
   min-height: 24px;
-  padding: 2px 4px;
+  padding: 0 2px 2px;
 }
 
 .workspace-project-context-menu__color-grid {
@@ -233,10 +234,10 @@
 
 .workspace-project-context-menu__color-space .workspace-project-context-menu__color-grid {
   display: flex;
+  flex: 1;
   align-items: center;
-  justify-content: flex-start;
-  gap: 2px;
-  height: 20px;
+  justify-content: space-between;
+  height: 22px;
 }
 
 .workspace-project-context-menu button.workspace-project-context-menu__color-button {
@@ -248,29 +249,9 @@
   max-width: 20px;
   max-height: 20px;
   flex: 0 0 20px;
-  border-radius: 6px;
+  border-radius: 999px;
   padding: 0 !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-
-.workspace-project-context-menu__color-button--selected {
-  background: var(--cove-surface-hover);
-  border-color: var(--cove-border-subtle);
-}
-
-.workspace-project-context-menu__color-check,
-.workspace-project-context-menu__icon-check,
-.workspace-space-action-menu__color-check {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 10px;
-  height: 10px;
-  transform: translate(-50%, -50%);
-  color: var(--cove-text);
-  filter: drop-shadow(0 0 1px var(--cove-surface-strong));
-  pointer-events: none;
-  stroke-width: 3;
 }

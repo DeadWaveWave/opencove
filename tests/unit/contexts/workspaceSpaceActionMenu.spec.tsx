@@ -297,7 +297,7 @@ describe('WorkspaceSpaceActionMenu', () => {
     expect(ids.at(-1)).toBe('workspace-space-action-arrange')
   })
 
-  it('shows the selected label color check in the swatch center', () => {
+  it('marks the selected label color by pressing its swatch, not with a tick', () => {
     renderMenu([], { currentLabelColor: 'blue' })
 
     expect(screen.getByTestId('workspace-space-action-label-color-blue')).toHaveAttribute(
@@ -309,9 +309,10 @@ describe('WorkspaceSpaceActionMenu', () => {
       'false',
     )
 
+    // The chosen dot is ringed in its own colour (menu-surfaces.css); a tick would cover it.
     expect(
       screen.getByTestId('workspace-space-action-label-color-blue').querySelector('svg'),
-    ).not.toBeNull()
+    ).toBeNull()
     expect(
       screen.getByTestId('workspace-space-action-label-color-green').querySelector('svg'),
     ).toBeNull()

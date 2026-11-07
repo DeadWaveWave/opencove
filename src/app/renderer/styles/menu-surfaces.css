@@ -41,6 +41,32 @@
   outline-offset: -1px;
 }
 
+/* Pickers mark their choice themselves, so the pressed outline stays off them (keyboard focus keeps
+   its ring): a label colour swatch, in every menu, rings the chosen dot in its own colour, with no
+   tick or tile on top; a project icon sits on a tile. */
+.workspace-context-menu
+  button:is(
+    .workspace-project-context-menu__color-button,
+    .workspace-space-action-menu__color-button,
+    .workspace-label-color-menu__swatch,
+    .workspace-project-context-menu__project-icon-button
+  )[aria-pressed='true']:not(:focus-visible) {
+  outline: none;
+}
+
+/* "No colour" and "follow the Space" dots have no colour of their own (the fallback keeps the ring
+   valid where --cove-label-color is unset) and ring in muted ink. */
+.workspace-context-menu button[aria-pressed='true'] > .workspace-label-color-menu__dot {
+  outline: 1.5px solid var(--cove-label-color, var(--cove-text-muted));
+  outline-offset: 2px;
+}
+
+.workspace-context-menu
+  button[aria-pressed='true']
+  > :is(.workspace-label-color-menu__dot--none, .workspace-label-color-menu__dot--auto) {
+  outline-color: var(--cove-text-muted);
+}
+
 /* Arrange and snapping use their checkmark as the state indicator. The
    generic pressed outline remains available to color pickers and other menu
    toggles, while these compact options stay visually quiet. Keyboard focus

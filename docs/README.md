@@ -53,6 +53,8 @@
 - `ui/WINDOW_UI_STANDARD.md`：窗口 UI 规范。
 - `ui/TASK_UI_STANDARD.md`：任务 UI 规范。
 - `ui/VIEWPORT_NAVIGATION_STANDARD.md`：视口导航规范。
+- `ui/SPATIAL_PIXEL_THEME.md`：像素墙、像素效果与类别色规范。
+- `ui/CANVAS_SIGNALS.md`：画布状态信号、光照与粒子契约。
 
 ## Development
 

@@ -6,7 +6,8 @@
 :root {
   --cove-reading-plate: var(--cove-node-surface);
   --cove-reading-plate-glare: transparent;
-  --cove-reading-plate-edge: inset 0 0 0 1px var(--cove-border-subtle);
+  --cove-reading-plate-line: var(--cove-border-subtle);
+  --cove-reading-plate-edge: inset 0 0 0 1px var(--cove-reading-plate-line);
   --cove-reading-plate-inset: 6px;
 }
 
@@ -18,4 +19,36 @@
     var(--cove-reading-plate);
   box-shadow: var(--cove-reading-plate-edge);
   overflow: hidden;
+}
+
+/*
+ * Seamless header (owner call, round 4): in the generated families no rule separates header and
+ * body. The plate has no top edge (see --cove-reading-plate-edge) and rises into the header,
+ * glare, fill and side lines fading out toward its top, so the window reads as one surface. The
+ * header's own rule stays 1px but clear, so its height does not change. The kind wash fades out
+ * before the header's bottom edge for the same reason (window-kind-identity.css).
+ */
+:root[data-cove-family='cove'] [data-cove-part='window'] [data-cove-part='window-header'] {
+  --cove-reading-plate-rise: linear-gradient(
+    180deg,
+    transparent 20%,
+    var(--cove-reading-plate-line)
+  );
+  border-bottom-color: transparent;
+  background:
+    var(--cove-reading-plate-rise) left var(--cove-reading-plate-inset) top 0 / 1px 100% no-repeat,
+    var(--cove-reading-plate-rise) right var(--cove-reading-plate-inset) top 0 / 1px 100% no-repeat,
+    linear-gradient(180deg, transparent 20%, var(--cove-reading-plate-glare))
+      var(--cove-reading-plate-inset) 0 / calc(100% - 2 * var(--cove-reading-plate-inset)) 100%
+      no-repeat,
+    linear-gradient(180deg, transparent 20%, var(--cove-reading-plate))
+      var(--cove-reading-plate-inset) 0 / calc(100% - 2 * var(--cove-reading-plate-inset)) 100%
+      no-repeat;
+  /* Down through the clear rule too, so the fade reaches the plate's first row. */
+  background-origin: border-box;
+}
+
+:root[data-cove-family='cove'] [data-cove-part='window'] [data-cove-part='window-body'] {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
 }

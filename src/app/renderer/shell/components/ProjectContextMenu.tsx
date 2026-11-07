@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Copy, FolderOpen, FolderX, HardDrive, Pencil, Pin, PinOff, X } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
+import { MenuItem, MenuSeparator } from '@app/renderer/components/ui/Menu'
 import {
   LABEL_COLORS,
   type LabelColor,
@@ -190,9 +191,6 @@ export function ProjectContextMenu({
           }
           aria-hidden="true"
         />
-        {selected ? (
-          <Check className="workspace-project-context-menu__color-check" aria-hidden="true" />
-        ) : null}
       </button>
     )
   }
@@ -258,9 +256,6 @@ export function ProjectContextMenu({
         }}
       >
         <ProjectIcon iconId={iconId} className="workspace-project-context-menu__project-icon" />
-        {selected ? (
-          <Check className="workspace-project-context-menu__icon-check" aria-hidden="true" />
-        ) : null}
       </button>
     )
   }
@@ -339,7 +334,7 @@ export function ProjectContextMenu({
             />
           </form>
           {renderColorRow('space')}
-          <div className="workspace-context-menu__separator" />
+          <MenuSeparator />
         </>
       ) : isRenaming ? (
         <form
@@ -383,112 +378,86 @@ export function ProjectContextMenu({
           </div>
         </form>
       ) : (
-        <button
-          type="button"
+        <MenuItem
+          icon={<Pencil />}
           data-testid="workspace-project-context-menu-rename"
           onClick={() => {
             setIsRenaming(true)
           }}
         >
-          <Pencil className="workspace-context-menu__icon" aria-hidden="true" />
-          <span className="workspace-context-menu__label">{t('projectContextMenu.rename')}</span>
-        </button>
+          {t('projectContextMenu.rename')}
+        </MenuItem>
       )}
       {!isRenaming && isProjectTarget ? renderProjectIconRow() : null}
       {!isRenaming && isProjectTarget ? (
-        <button
-          type="button"
+        <MenuItem
+          icon={<HardDrive />}
           data-testid={`workspace-project-manage-mounts-${workspaceId}`}
           onClick={() => {
             onRequestManageMounts(workspaceId)
           }}
         >
-          <HardDrive className="workspace-context-menu__icon" aria-hidden="true" />
-          <span className="workspace-context-menu__label">
-            {t('projectContextMenu.manageMounts')}
-          </span>
-        </button>
+          {t('projectContextMenu.manageMounts')}
+        </MenuItem>
       ) : null}
       {!isRenaming && canOpenInFileManager && isProjectTarget ? (
-        <button
-          type="button"
+        <MenuItem
+          icon={<FolderOpen />}
           data-testid={`workspace-project-open-in-file-manager-${workspaceId}`}
           onClick={() => {
             onRequestOpenInFileManager(workspaceId)
           }}
         >
-          <FolderOpen className="workspace-context-menu__icon" aria-hidden="true" />
-          <span className="workspace-context-menu__label">{openInFileManagerLabel}</span>
-        </button>
+          {openInFileManagerLabel}
+        </MenuItem>
       ) : null}
       {!isRenaming && isSpaceTarget ? (
         <>
-          <button
-            type="button"
+          <MenuItem
+            icon={isSpacePinned ? <PinOff /> : <Pin />}
             data-testid={`workspace-space-context-pin-${resolvedTarget.spaceId}`}
             onClick={toggleSpacePinned}
           >
-            {isSpacePinned ? (
-              <PinOff className="workspace-context-menu__icon" aria-hidden="true" />
-            ) : (
-              <Pin className="workspace-context-menu__icon" aria-hidden="true" />
-            )}
-            <span className="workspace-context-menu__label">
-              {isSpacePinned
-                ? t('projectContextMenu.unpinSpace')
-                : t('projectContextMenu.pinSpace')}
-            </span>
-          </button>
-          <button
-            type="button"
+            {isSpacePinned ? t('projectContextMenu.unpinSpace') : t('projectContextMenu.pinSpace')}
+          </MenuItem>
+          <MenuItem
+            icon={<Copy />}
             data-testid={`workspace-space-context-copy-path-${resolvedTarget.spaceId}`}
             onClick={copySpacePath}
           >
-            <Copy className="workspace-context-menu__icon" aria-hidden="true" />
-            <span className="workspace-context-menu__label">{t('spaceActions.copyPath')}</span>
-          </button>
-          <button
-            type="button"
+            {t('spaceActions.copyPath')}
+          </MenuItem>
+          <MenuItem
+            icon={<FolderOpen />}
             data-testid={`workspace-space-context-open-path-${resolvedTarget.spaceId}`}
             onClick={openSpacePath}
           >
-            <FolderOpen className="workspace-context-menu__icon" aria-hidden="true" />
-            <span className="workspace-context-menu__label">{t('spaceActions.open')}</span>
-          </button>
+            {t('spaceActions.open')}
+          </MenuItem>
         </>
       ) : null}
       {!isRenaming && isAgentTarget ? (
-        <button
-          type="button"
+        <MenuItem
+          icon={isAgentPinned ? <PinOff /> : <Pin />}
           data-testid={`workspace-agent-context-pin-${resolvedTarget.nodeId}`}
           onClick={toggleAgentPinned}
         >
-          {isAgentPinned ? (
-            <PinOff className="workspace-context-menu__icon" aria-hidden="true" />
-          ) : (
-            <Pin className="workspace-context-menu__icon" aria-hidden="true" />
-          )}
-          <span className="workspace-context-menu__label">
-            {isAgentPinned ? t('projectContextMenu.unpinAgent') : t('projectContextMenu.pinAgent')}
-          </span>
-        </button>
+          {isAgentPinned ? t('projectContextMenu.unpinAgent') : t('projectContextMenu.pinAgent')}
+        </MenuItem>
       ) : null}
       {!isRenaming && isProjectTarget ? (
         <>
-          <div className="workspace-context-menu__separator" />
-          <button
-            type="button"
+          <MenuSeparator />
+          <MenuItem
+            icon={<FolderX />}
+            tone="danger"
             data-testid={`workspace-project-remove-${workspaceId}`}
-            className="workspace-context-menu__item--danger"
             onClick={() => {
               onRequestRemove(workspaceId)
             }}
           >
-            <FolderX className="workspace-context-menu__icon" aria-hidden="true" />
-            <span className="workspace-context-menu__label">
-              {t('projectContextMenu.removeProject')}
-            </span>
-          </button>
+            {t('projectContextMenu.removeProject')}
+          </MenuItem>
         </>
       ) : null}
       {!isRenaming && supportsLabelColor && !isInlineEditorTarget

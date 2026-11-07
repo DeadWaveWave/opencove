@@ -128,7 +128,7 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
           await expect(body).toHaveCSS('margin-left', '6px')
           await expect(body).toHaveCSS('margin-right', '6px')
           await expect(body).toHaveCSS('margin-bottom', '6px')
-          await expect(body).toHaveCSS('border-top-left-radius', '6px')
+          await expect(body).toHaveCSS('border-bottom-left-radius', '6px')
           expect(
             await body.evaluate(element => getComputedStyle(element).backgroundImage),
           ).toContain('linear-gradient')

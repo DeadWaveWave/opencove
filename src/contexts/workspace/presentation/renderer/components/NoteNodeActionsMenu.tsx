@@ -407,12 +407,6 @@ export function NoteNodeActionsMenu({
                   data-cove-label-color={color}
                   aria-hidden="true"
                 />
-                {labelColorOverride === color ? (
-                  <Check
-                    className="workspace-project-context-menu__color-check"
-                    aria-hidden="true"
-                  />
-                ) : null}
               </button>
             ))}
           </div>

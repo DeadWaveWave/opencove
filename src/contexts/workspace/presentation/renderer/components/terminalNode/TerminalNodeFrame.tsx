@@ -137,6 +137,7 @@ export function TerminalNodeFrame({
       data-cove-part="window"
       data-cove-kind={kind}
       className={`terminal-node nowheel ${hasSelectedDragSurface ? 'terminal-node--selected-surface' : ''}`.trim()}
+      data-cove-terminal-background={transparentBackground ? 'transparent' : 'opaque'}
       data-agent-state-source={agentStateSource ?? undefined}
       data-agent-hook-install-state={agentHookInstallState ?? undefined}
       style={sizeStyle}

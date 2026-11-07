@@ -107,6 +107,14 @@ async function dragUpWithMeasuredFeedback({
   await expect(overlay).toHaveAttribute('data-cove-sidebar-drag-kind', kind)
   const overlayRect = await readLocatorClientRect(overlay)
   expect(overlayRect.height).toBeGreaterThan(20)
+  if (kind === 'agent') {
+    // The lifted row is the row it lifts: same height, not a shrunken copy of its text.
+    const rowHeight = await source.evaluate(
+      (element, selector) => element.closest(selector)!.getBoundingClientRect().height,
+      sortableSelector,
+    )
+    expect(Math.abs(overlayRect.height - rowHeight)).toBeLessThanOrEqual(1)
+  }
   expect(await readClosestOpacity(source, sortableSelector)).toBeLessThan(0.7)
 
   await drag.moveTo(

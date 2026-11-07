@@ -5,8 +5,8 @@
  * cheapest way to stop painting them); one layer of glass tiles in the viewport portal draws them
  * instead. Collapsed windows keep their desktop icons. Tiles never take pointer events, so dragging,
  * selecting and right-clicking reach the windows underneath. A tile is the window's glass in canvas
- * px; its face (glyph, title, status pixel) is laid out in screen px, so it keeps one size at every
- * far zoom, and container queries drop what a small tile cannot hold instead of shrinking it.
+ * px; its face (glyph, title, status pixel) is laid out in screen px, at the prototype's screen size
+ * while the tile can hold it and shrinking with the tile once it cannot (container units).
  */
 .workspace-canvas[data-cove-lod='far']
   .cove-node-presentation:not([data-cove-collapsed])
@@ -110,14 +110,11 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--cove-spacing-1);
-  padding: var(--cove-spacing-1);
+  /* 7% of the face's width (percentages resolve against the tile, in canvas px). */
+  padding: calc(7% * var(--workspace-far-tile-zoom));
   transform: scale(calc(1 / var(--workspace-far-tile-zoom)));
   transform-origin: 0 0;
-  /* The title's size, so the container queries below measure in title lines (em). */
   font-family: var(--cove-font-ui);
-  font-size: var(--cove-font-size-secondary);
-  line-height: 1.2;
   text-align: center;
 }
 
@@ -169,12 +166,14 @@
   outline-offset: calc(2px / var(--workspace-far-tile-zoom));
 }
 
-/* The 9×9 pixel glyph at twice its grid, so every glyph pixel is 2 screen px. */
+/* Tide prototype (.n-far): the glyph is 26px on screen, or 26% of a shorter tile's height, with
+   8px (or 6%) under it. */
 .workspace-far-tile__icon {
   display: block;
   flex: none;
-  width: 18px;
-  height: 18px;
+  width: min(26px, 26cqh);
+  height: min(26px, 26cqh);
+  margin-bottom: min(var(--cove-spacing-2), 6cqh);
   color: var(--workspace-far-tile-glyph);
 }
 
@@ -183,54 +182,28 @@
   height: 100%;
 }
 
-/* The secondary size at any zoom (the face's font), up to two balanced lines; a longer title
-   ends in an ellipsis. */
+/* The title is 15px on screen (with the UI font scale) until the tile is too small for it, then
+   12% of the tile's width or 22% of its height: it shrinks with the tile rather than being cut,
+   up to two lines. */
 .workspace-far-tile__title {
   display: -webkit-box;
   max-width: 100%;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  font-size: min(var(--cove-font-size-emphasis), 12cqw, 22cqh);
   font-weight: 800;
-  overflow-wrap: anywhere;
-  text-wrap: balance;
-}
-
-/* A smaller tile drops what it cannot hold, in this order: the second title line (under the
-   glyph, the gap and two lines), the glyph (under the glyph, the gap and one line), then the
-   title (under one line, or about two characters wide). 22px is the glyph and the gap. The glyph
-   comes back alone in a narrow tile and only there shrinks, once the tile is smaller than it. */
-@container workspace-far-tile (height < calc(2.4em + 22px)) {
-  .workspace-far-tile__title {
-    -webkit-line-clamp: 1;
-  }
-}
-
-@container workspace-far-tile (height < calc(1.2em + 22px)) {
-  .workspace-far-tile__icon {
-    display: none;
-  }
-}
-
-@container workspace-far-tile (height < 1.2em) or (width < 2.5em) {
-  .workspace-far-tile__title {
-    display: none;
-  }
-
-  .workspace-far-tile__icon {
-    display: block;
-    width: min(18px, 100cqmin);
-    height: min(18px, 100cqmin);
-  }
+  line-height: 1.14;
+  overflow-wrap: break-word;
 }
 
 /* The status is one pixel in the corner: working blinks, waiting and failure hold their colour. */
 .workspace-far-tile__signal {
   position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 6px;
-  height: 6px;
+  top: 7%;
+  right: 6%;
+  width: min(7px, 7cqh);
+  height: min(7px, 7cqh);
   background: var(--workspace-far-tile-title);
 }
 
