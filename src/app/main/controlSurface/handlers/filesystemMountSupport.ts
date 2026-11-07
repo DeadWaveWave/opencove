@@ -16,7 +16,7 @@ export {
   isRecord,
   normalizeMountId,
   normalizeFileSystemUri,
-} from '../../../../shared/contracts/controlSurface/operations/migrationMountNormalize'
+} from '../../../../shared/contracts/controlSurface/operations/filesystemMountPayloadSupport'
 
 export function createApprovedUriAsserter(
   approvedWorkspaces: ApprovedWorkspaceStore,

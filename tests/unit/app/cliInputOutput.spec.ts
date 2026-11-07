@@ -73,7 +73,7 @@ it.each([
     'notes',
     'note, task, website, agent, terminal',
   ],
-])('F2 diagnoses choice errors before IO: %j', async (args, field, value, choices) => {
+])('diagnoses choice errors before IO: %j', async (args, field, value, choices) => {
   const f = fixture()
   expect(await run(args as string[], f.io)).toBe(2)
   expect(f.out()).toBe('')
@@ -91,7 +91,7 @@ it.each([
     options: ['low', 'medium', 'high', 'urgent'],
     received: 'critical',
   },
-])('F2 formats server enum issues: $code', async issue => {
+])('formats server enum issues: $code', async issue => {
   const issues = [{ ...issue, path: ['data', 'priority'], message: 'The request was invalid.' }]
   const f = fixture(null, { code: 'common.invalid_input', details: { issues } })
   expect(
@@ -112,7 +112,7 @@ it.each([
     code: 'common.invalid_input',
     details: { issues: [{ path: ['nodeId'], message: 'The request was invalid.' }] },
   },
-])('F2 never prints the generic input message: %j', async error => {
+])('never prints the generic input message: %j', async error => {
   const f = fixture(null, error)
   expect(await run(['api', 'call', 'node.get'], f.io)).toBe(2)
   expect(f.error().message).toContain('Invalid input for node.get')
@@ -120,14 +120,14 @@ it.each([
   expect(f.out()).toBe('')
 })
 
-it('F2 keeps local semantic errors specific', async () => {
+it('keeps local semantic errors specific', async () => {
   const f = fixture()
   expect(await run(['node', 'get', '--node', ''], f.io)).toBe(2)
   expect(f.error().message).toBe('Invalid input for node.get: Missing nodeId.')
   expect(f.fetch).not.toHaveBeenCalled()
 })
 
-it('F2 declares fixed choices instead of checking help labels at runtime', () => {
+it('declares fixed choices instead of checking help labels at runtime', () => {
   for (const command of commands) {
     for (const [name, spec] of Object.entries({ ...globals, ...command.options })) {
       if (spec.type === 'string' && spec.valueName?.includes('|')) {
@@ -140,7 +140,7 @@ it('F2 declares fixed choices instead of checking help labels at runtime', () =>
 it.each([
   ['node', 'create', 'agent', '--space', 's'],
   ['session', 'run-agent', '--space', 's', '--prompt', 'Review'],
-])('F2 declares provider choices for %j', async (...args) => {
+])('declares provider choices for %j', async (...args) => {
   const f = fixture()
   expect(await run([...args, '--provider', 'unknown'], f.io)).toBe(2)
   expect(f.error().message).toBe(
@@ -149,7 +149,7 @@ it.each([
   expect(f.fetch).not.toHaveBeenCalled()
 })
 
-it.each([' codex ', ''])('F2 preserves session provider normalization: %j', async provider => {
+it.each([' codex ', ''])('preserves session provider normalization: %j', async provider => {
   const f = fixture()
   expect(
     await run(
@@ -160,7 +160,7 @@ it.each([' codex ', ''])('F2 preserves session provider normalization: %j', asyn
   expect(JSON.parse(String(f.fetch.mock.calls[0][1]?.body)).payload.provider).toBe(provider.trim())
 })
 
-it('F2 keeps the received value in normalized choice errors', async () => {
+it('keeps the received value in normalized choice errors', async () => {
   const f = fixture()
   expect(
     await run(
@@ -174,7 +174,7 @@ it('F2 keeps the received value in normalized choice errors', async () => {
 it.each([
   { path: ['items', 0, 'kind'], values: ['note', 'task'], input: 'notes' },
   { path: ['items', 0, 'kind'], values: ['note', 'task'] },
-])('F2 recovers nested enum input from issues or the request: %j', async issue => {
+])('recovers nested enum input from issues or the request: %j', async issue => {
   const f = fixture(null, { code: 'common.invalid_input', details: { issues: [issue] } })
   expect(
     await run(['api', 'call', 'node.get', '--input', '{"items":[{"kind":"notes"}]}'], f.io),
@@ -183,7 +183,7 @@ it.each([
   expect(f.out()).toBe('')
 })
 
-it('F3 projects domain summaries and lists their fields on errors', async () => {
+it('projects domain summaries and lists their fields on errors', async () => {
   const f = fixture()
   expect(
     await run(['api', 'ops', '--domains', '--fields', 'domain,operations,schema,commands'], f.io),
@@ -204,7 +204,7 @@ it('F3 projects domain summaries and lists their fields on errors', async () => 
 })
 
 it.each(['id,title', 'node.id,node.title', 'id,node.title'])(
-  'F4 accepts aliases and raw paths: %s',
+  'accepts aliases and raw paths: %s',
   async fields => {
     const f = fixture({ revision: 2, node: { id: 'n', title: 'Note', data: { text: 'Text' } } })
     expect(await run(['api', 'call', 'node.get', '--fields', fields], f.io)).toBe(0)
@@ -213,7 +213,7 @@ it.each(['id,title', 'node.id,node.title', 'id,node.title'])(
 )
 
 it.each([{ nodes: [] }, { nodes: [{ id: 'n', data: { kind: 'note' } }] }])(
-  'F4 maps list aliases with optional fields: %j',
+  'maps list aliases with optional fields: %j',
   async ({ nodes }) => {
     const f = fixture({ projectId: 'p', nodes })
     expect(await run(['api', 'call', 'node.list', '--fields', 'id,data.status'], f.io)).toBe(0)
@@ -221,7 +221,7 @@ it.each([{ nodes: [] }, { nodes: [{ id: 'n', data: { kind: 'note' } }] }])(
   },
 )
 
-it('F4 reuses alternate operation declarations', async () => {
+it('reuses alternate operation declarations', async () => {
   const f = fixture({ entries: [{ name: 'README.md', uri: 'file:///repo/README.md' }] })
   expect(
     await run(['api', 'call', 'filesystem.readDirectoryInMount', '--fields', 'name'], f.io),
@@ -229,7 +229,7 @@ it('F4 reuses alternate operation declarations', async () => {
   expect(JSON.parse(f.out())).toEqual({ entries: [{ name: 'README.md' }] })
 })
 
-it.each(['titel', 'node.titel'])('F4 lists valid raw paths for %s', async fields => {
+it.each(['titel', 'node.titel'])('lists valid raw paths for %s', async fields => {
   const f = fixture({ projectId: 'p', node: { id: 'n', title: 'Note' } })
   expect(await run(['api', 'call', 'node.get', '--fields', fields], f.io)).toBe(2)
   expect(f.error().message).toContain(`Unknown output paths: ${fields}. Available raw paths:`)
@@ -241,13 +241,13 @@ it.each(['titel', 'node.titel'])('F4 lists valid raw paths for %s', async fields
   expect(f.out()).toBe('')
 })
 
-it('F4 lists actual raw paths for operations without dedicated contracts', async () => {
+it('lists actual raw paths for operations without dedicated contracts', async () => {
   const f = fixture({ homeDirectory: '/home', platform: 'linux' })
   expect(await run(['api', 'call', 'system.homeDirectory', '--fields', 'home'], f.io)).toBe(2)
   expect(f.error().message).toContain('Available raw paths: homeDirectory, platform')
 })
 
-it('F4 keeps raw envelope paths and rejects unknown paths on populated lists', async () => {
+it('keeps raw envelope paths and rejects unknown paths on populated lists', async () => {
   const f = fixture({ projectId: 'p', nodes: [] })
   expect(await run(['api', 'call', 'node.list', '--fields', 'projectId,nodes.id'], f.io)).toBe(0)
   expect(JSON.parse(f.out())).toEqual({ projectId: 'p', nodes: [] })
@@ -256,7 +256,7 @@ it('F4 keeps raw envelope paths and rejects unknown paths on populated lists', a
 })
 
 it.each([{ sessions: [] }, { sessions: [{ sessionId: 's', provider: 'codex' }] }])(
-  'R1 preserves undeclared raw collection paths: %j',
+  'preserves undeclared raw collection paths: %j',
   async value => {
     expect(commands.some(command => command.operation === 'session.list')).toBe(false)
     const f = fixture(value)
@@ -274,7 +274,7 @@ it.each([
   { sessions: [] },
   { sessions: [{ children: [] }] },
   { sessions: [{ children: [{ sessionId: 's', extra: true }] }] },
-])('R1 preserves traversal through nested empty arrays: %j', async value => {
+])('preserves traversal through nested empty arrays: %j', async value => {
   const f = fixture(value)
   expect(
     await run(['api', 'call', 'session.list', '--fields', 'sessions.children.sessionId'], f.io),
@@ -286,7 +286,7 @@ it.each([
   })
 })
 
-it('R1 still rejects absent raw paths in populated undeclared collections', async () => {
+it('still rejects absent raw paths in populated undeclared collections', async () => {
   const f = fixture({ sessions: [{ sessionId: 's' }] })
   expect(await run(['api', 'call', 'session.list', '--fields', 'sessions.missing'], f.io)).toBe(2)
   expect(f.error().message).toContain('Available raw paths: sessions, sessions.sessionId')
@@ -300,7 +300,7 @@ it.each([
     'preferences.api.key',
     'preferences, preferences.theme',
   ],
-])('R2 rejects unaddressable literal keys: %j', async (value, fields, available) => {
+])('rejects unaddressable literal keys: %j', async (value, fields, available) => {
   const f = fixture(value)
   expect(
     await run(
@@ -322,7 +322,7 @@ it.each([
   expect(f.out()).toBe('')
 })
 
-it('R2 uses nested semantics when literal dotted and nested keys coexist', async () => {
+it('uses nested semantics when literal dotted and nested keys coexist', async () => {
   const f = fixture({ 'api.key': 'literal', api: { key: 'nested', extra: true } })
   expect(await run(['api', 'call', 'plugin.preferences.get', '--fields', 'api.key'], f.io)).toBe(0)
   expect(JSON.parse(f.out())).toEqual({ api: { key: 'nested' } })
@@ -373,29 +373,24 @@ it.each([
     ' unknown ',
     `${AGENT_PROVIDER_IDS.join(', ')}, ""`,
   ],
-])(
-  'R3 formats real registered enum failures for %s',
-  async (id, payload, field, value, allowed) => {
-    const descriptor = await registeredError(id as string, payload)
-    expect(descriptor.code).toBe('common.invalid_input')
-    expect(descriptor.details).toBeUndefined()
-    const f = fixture(null, descriptor)
-    expect(await run(['api', 'call', id as string, '--input', JSON.stringify(payload)], f.io)).toBe(
-      2,
-    )
-    expect(f.error().message).toBe(
-      `Invalid ${field} ${JSON.stringify(value)}: expected one of ${allowed}`,
-    )
-    expect(f.fetch).toHaveBeenCalledOnce()
-    expect(JSON.parse(String(f.fetch.mock.calls[0][1]?.body)).payload).toEqual(payload)
-    expect(f.out()).toBe('')
-  },
-)
+])('formats real registered enum failures for %s', async (id, payload, field, value, allowed) => {
+  const descriptor = await registeredError(id as string, payload)
+  expect(descriptor.code).toBe('common.invalid_input')
+  expect(descriptor.details).toBeUndefined()
+  const f = fixture(null, descriptor)
+  expect(await run(['api', 'call', id as string, '--input', JSON.stringify(payload)], f.io)).toBe(2)
+  expect(f.error().message).toBe(
+    `Invalid ${field} ${JSON.stringify(value)}: expected one of ${allowed}`,
+  )
+  expect(f.fetch).toHaveBeenCalledOnce()
+  expect(JSON.parse(String(f.fetch.mock.calls[0][1]?.body)).payload).toEqual(payload)
+  expect(f.out()).toBe('')
+})
 
 it.each([
   [{ provider: 'unknown', spaceId: 's' }, 'prompt: Invalid input: expected string'],
   [{ provider: ' codex ', prompt: 'Review' }, 'requires either spaceId or cwd'],
-])('R3 preserves unrelated real validation errors: %j', async (payload, message) => {
+])('preserves unrelated real validation errors: %j', async (payload, message) => {
   const descriptor = await registeredError('session.launchAgent', payload)
   const f = fixture(null, descriptor)
   expect(
@@ -405,7 +400,7 @@ it.each([
   expect(f.out()).toBe('')
 })
 
-it('F4 prefers raw paths when an envelope field collides with an item alias', async () => {
+it('prefers raw paths when an envelope field collides with an item alias', async () => {
   const f = fixture({ projectId: 'envelope', nodes: [{ projectId: 'item' }] })
   expect(
     await run(['api', 'call', 'node.list', '--fields', 'projectId,nodes.projectId'], f.io),
@@ -413,14 +408,14 @@ it('F4 prefers raw paths when an envelope field collides with an item alias', as
   expect(JSON.parse(f.out())).toEqual({ projectId: 'envelope', nodes: [{ projectId: 'item' }] })
 })
 
-it('F4 keeps generic mutation projection unavailable before IO', async () => {
+it('keeps generic mutation projection unavailable before IO', async () => {
   const f = fixture()
   expect(await run(['api', 'call', 'node.update', '--fields', 'id'], f.io)).toBe(2)
   expect(f.fetch).not.toHaveBeenCalled()
 })
 
 it.each(['data.text', 'nodes.data.text', 'data.prompt', 'data.linkedAgentNodeId'])(
-  'F5 directs omitted content to node get: %s',
+  'directs omitted content to node get: %s',
   async field => {
     const f = fixture()
     expect(await run(['node', 'list', '--fields', field], f.io)).toBe(2)
@@ -433,7 +428,7 @@ it.each(['data.text', 'nodes.data.text', 'data.prompt', 'data.linkedAgentNodeId'
 )
 
 it.each(['', 'api', 'api ops', 'api ops --domains', 'api call', 'node list'])(
-  'F3/F5/F6 help golden: %s',
+  'command help snapshots: %s',
   async path => {
     const f = fixture()
     expect(await run([...path.split(' ').filter(Boolean), '--help'], f.io)).toBe(0)
@@ -443,14 +438,14 @@ it.each(['', 'api', 'api ops', 'api ops --domains', 'api call', 'node list'])(
   },
 )
 
-it.each([[], ['api']])('F6 leads with filtered discovery: %j', async (...path) => {
+it.each([[], ['api']])('leads with filtered discovery: %j', async (...path) => {
   const f = fixture()
   expect(await run([...path, '--help'], f.io)).toBe(0)
   expect(f.out()).toContain('opencove api ops --domains')
   expect(f.out()).toContain('opencove api ops --prefix node --fields id,command')
 })
 
-it('F6 reports the approximate full JSON catalog size without changing its output', async () => {
+it('reports the approximate full JSON catalog size without changing its output', async () => {
   const f = fixture(),
     g = fixture()
   expect(await run(['api', 'ops'], f.io)).toBe(0)

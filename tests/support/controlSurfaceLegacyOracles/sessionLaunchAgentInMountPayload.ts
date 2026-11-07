@@ -8,7 +8,7 @@ import {
   normalizeFileSystemUri,
   normalizeOptionalPositiveInt,
   normalizeOptionalString,
-} from './migBMountSupport'
+} from './sessionLaunchPayloadSupport'
 
 export function normalizeLaunchAgentInMountPayload(
   payload: unknown,
