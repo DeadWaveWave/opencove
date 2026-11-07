@@ -84,6 +84,8 @@
 }
 
 .workspace-space-explorer {
+  /* Its reading plate (window-plate.css) rises through this header, taller than a window's. */
+  --cove-window-plate-top: 36px;
   position: absolute;
   top: 0;
   left: 0;

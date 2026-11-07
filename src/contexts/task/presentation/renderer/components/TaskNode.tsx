@@ -23,6 +23,7 @@ import type { LabelColor } from '@shared/types/labelColor'
 import { InlineNodeTitleEditor } from '@contexts/workspace/presentation/renderer/components/shared/InlineNodeTitleEditor'
 import { NodeKindIcon } from '@contexts/workspace/presentation/renderer/components/shared/NodeKindIcon'
 import { WindowHeader } from '@contexts/workspace/presentation/renderer/components/shared/WindowHeader'
+import { WindowPlate } from '@contexts/workspace/presentation/renderer/components/shared/WindowPlate'
 import { Pencil } from 'lucide-react'
 
 interface TaskNodeInteractionOptions {
@@ -296,7 +297,8 @@ export function TaskNode({
         }}
       />
 
-      {/* Everything under the header, requirement, sessions and footer, is one reading plate. */}
+      <WindowPlate />
+      {/* Everything under the header, requirement, sessions and footer, is one body on the plate. */}
       <div className="task-node__plate" data-cove-part="window-body">
         <div className="task-node__content">
           <div className="task-node__meta" data-testid="task-node-meta">

@@ -220,6 +220,9 @@
 }
 
 .settings-pixel-preview__node {
+  /* Its reading plate (window-plate.css) rises through this preview's shorter header. */
+  --cove-window-plate-top: 30px;
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;

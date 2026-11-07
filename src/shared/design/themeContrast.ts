@@ -79,8 +79,8 @@ export function glassBackgrounds(theme: GeneratedTheme) {
     frames,
     // Far tiles wash the bare frame tint with their kind colour; they carry no sheen or grain.
     farFrames: frameTints,
-    // The reading plate is solid: whatever the wall, window content reads on neutral step 1.
-    plates: [theme.neutral[0]!],
+    // The reading plate is solid: whatever the wall, window content reads on the one plate colour.
+    plates: [theme.roles.plate],
     chrome: lit(backs.map(b => mixOver(frameColor, G.chrome, b))),
     sheet: backs.map(b => mixOver(frameColor, G.sheet, b)),
   }

@@ -1,6 +1,7 @@
 import type { DocumentNavigationProps } from './useDocumentNodeNavigation'
 import { useEffect, type JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
+import { WindowPlate } from './shared/WindowPlate'
 import { DocumentNodeSystemOpen } from './DocumentNodeSystemOpen'
 import { DocumentNodeFilePlaceholder } from './DocumentNodeFilePlaceholder'
 import { DocumentNodeMonacoEditor } from './DocumentNode.monaco'
@@ -51,148 +52,151 @@ export function DocumentNodeBody({
   }, [isLoading, loadError, mediaSource, navigation, onNavigationApplied, unsupportedKind, uri])
 
   return (
-    <div className="document-node__body" data-cove-part="window-body">
-      {isLoading ? (
-        <div className="document-node__state">{t('common.loading')}</div>
-      ) : loadError ? (
-        <div className="document-node__state document-node__state--error">
-          <div className="document-node__state-title">{t('common.error')}</div>
-          <div className="document-node__state-message">{loadError}</div>
-          <button
-            type="button"
-            className="document-node__state-action nodrag"
-            onPointerDown={event => {
-              event.stopPropagation()
-            }}
-            onClick={event => {
-              event.stopPropagation()
-              onRetry()
-            }}
-          >
-            {t('documentNode.retry')}
-          </button>
-        </div>
-      ) : mediaLoadError ? (
-        <div className="document-node__state document-node__state--warning">
-          <div className="document-node__state-title">
-            {t(
-              mediaSource?.kind === 'image'
-                ? 'documentNode.imageUnsupportedTitle'
-                : 'documentNode.mediaUnsupportedTitle',
-            )}
+    <>
+      <WindowPlate />
+      <div className="document-node__body" data-cove-part="window-body">
+        {isLoading ? (
+          <div className="document-node__state">{t('common.loading')}</div>
+        ) : loadError ? (
+          <div className="document-node__state document-node__state--error">
+            <div className="document-node__state-title">{t('common.error')}</div>
+            <div className="document-node__state-message">{loadError}</div>
+            <button
+              type="button"
+              className="document-node__state-action nodrag"
+              onPointerDown={event => {
+                event.stopPropagation()
+              }}
+              onClick={event => {
+                event.stopPropagation()
+                onRetry()
+              }}
+            >
+              {t('documentNode.retry')}
+            </button>
           </div>
-          <div className="document-node__state-message">
-            {t(
-              mediaSource?.kind === 'image'
-                ? 'documentNode.imageUnsupportedMessage'
-                : 'documentNode.mediaUnsupportedMessage',
-            )}
-          </div>
-          <DocumentNodeSystemOpen uri={uri} mountId={mountId} />
-        </div>
-      ) : unsupportedKind === 'binary' ? (
-        <DocumentNodeFilePlaceholder uri={uri} mountId={mountId} />
-      ) : unsupportedKind ? (
-        <div className="document-node__state document-node__state--warning">
-          <div className="document-node__state-title">
-            {unsupportedKind === 'imageTooLarge'
-              ? t('documentNode.imageTooLargeTitle')
-              : t('documentNode.tooLargeTitle')}
-          </div>
-          <div className="document-node__state-message">
-            {unsupportedKind === 'imageTooLarge'
-              ? t('documentNode.imageTooLargeMessage')
-              : t('documentNode.tooLargeMessage')}
-          </div>
-          <DocumentNodeSystemOpen uri={uri} mountId={mountId} />
-        </div>
-      ) : mediaSource ? (
-        <div
-          className={`document-node__media-shell document-node__media-shell--${mediaSource.kind} ${interactiveContentClassName}`}
-          onPointerDownCapture={event => {
-            event.stopPropagation()
-          }}
-        >
-          {mediaSource.kind === 'image' ? (
-            <img
-              key={mediaSource.url}
-              className="document-node__media document-node__media--image nodrag"
-              data-testid="document-node-image"
-              src={mediaSource.url}
-              alt={uri}
-              draggable={false}
-              onError={onMediaError}
-            />
-          ) : mediaSource.kind === 'audio' ? (
-            <audio
-              className="document-node__media document-node__media--audio nodrag"
-              data-testid="document-node-audio"
-              controls
-              preload="metadata"
-              src={mediaSource.url}
-              onError={onMediaError}
-            />
-          ) : (
-            <video
-              className="document-node__media document-node__media--video nodrag"
-              data-testid="document-node-video"
-              controls
-              preload="metadata"
-              playsInline
-              src={mediaSource.url}
-              onError={onMediaError}
-            />
-          )}
-        </div>
-      ) : (
-        <>
-          {hasExternalConflict ? (
-            <div className="document-node__conflict-banner" role="status">
-              <div className="document-node__conflict-text">
-                <div className="document-node__state-title">
-                  {t('documentNode.externalChangeTitle')}
-                </div>
-                <div className="document-node__state-message">
-                  {t('documentNode.externalChangeMessage')}
-                </div>
-              </div>
-              <button
-                type="button"
-                className="document-node__state-action nodrag"
-                onPointerDown={event => {
-                  event.stopPropagation()
-                }}
-                onClick={event => {
-                  event.stopPropagation()
-                  onReloadFromDisk()
-                }}
-              >
-                {t('documentNode.reloadFromDisk')}
-              </button>
+        ) : mediaLoadError ? (
+          <div className="document-node__state document-node__state--warning">
+            <div className="document-node__state-title">
+              {t(
+                mediaSource?.kind === 'image'
+                  ? 'documentNode.imageUnsupportedTitle'
+                  : 'documentNode.mediaUnsupportedTitle',
+              )}
             </div>
-          ) : null}
-          {saveError ? (
-            <div className="document-node__save-error" role="status">
-              {saveError}
+            <div className="document-node__state-message">
+              {t(
+                mediaSource?.kind === 'image'
+                  ? 'documentNode.imageUnsupportedMessage'
+                  : 'documentNode.mediaUnsupportedMessage',
+              )}
             </div>
-          ) : null}
+            <DocumentNodeSystemOpen uri={uri} mountId={mountId} />
+          </div>
+        ) : unsupportedKind === 'binary' ? (
+          <DocumentNodeFilePlaceholder uri={uri} mountId={mountId} />
+        ) : unsupportedKind ? (
+          <div className="document-node__state document-node__state--warning">
+            <div className="document-node__state-title">
+              {unsupportedKind === 'imageTooLarge'
+                ? t('documentNode.imageTooLargeTitle')
+                : t('documentNode.tooLargeTitle')}
+            </div>
+            <div className="document-node__state-message">
+              {unsupportedKind === 'imageTooLarge'
+                ? t('documentNode.imageTooLargeMessage')
+                : t('documentNode.tooLargeMessage')}
+            </div>
+            <DocumentNodeSystemOpen uri={uri} mountId={mountId} />
+          </div>
+        ) : mediaSource ? (
           <div
-            className={`document-node__editor ${interactiveContentClassName}`}
+            className={`document-node__media-shell document-node__media-shell--${mediaSource.kind} ${interactiveContentClassName}`}
             onPointerDownCapture={event => {
               event.stopPropagation()
             }}
           >
-            <DocumentNodeMonacoEditor
-              navigation={navigation}
-              onNavigationApplied={onNavigationApplied}
-              uri={uri}
-              content={content}
-              onContentChange={onContentChange}
-              onSaveShortcut={onSaveShortcut}
-            />
+            {mediaSource.kind === 'image' ? (
+              <img
+                key={mediaSource.url}
+                className="document-node__media document-node__media--image nodrag"
+                data-testid="document-node-image"
+                src={mediaSource.url}
+                alt={uri}
+                draggable={false}
+                onError={onMediaError}
+              />
+            ) : mediaSource.kind === 'audio' ? (
+              <audio
+                className="document-node__media document-node__media--audio nodrag"
+                data-testid="document-node-audio"
+                controls
+                preload="metadata"
+                src={mediaSource.url}
+                onError={onMediaError}
+              />
+            ) : (
+              <video
+                className="document-node__media document-node__media--video nodrag"
+                data-testid="document-node-video"
+                controls
+                preload="metadata"
+                playsInline
+                src={mediaSource.url}
+                onError={onMediaError}
+              />
+            )}
           </div>
-        </>
-      )}
-    </div>
+        ) : (
+          <>
+            {hasExternalConflict ? (
+              <div className="document-node__conflict-banner" role="status">
+                <div className="document-node__conflict-text">
+                  <div className="document-node__state-title">
+                    {t('documentNode.externalChangeTitle')}
+                  </div>
+                  <div className="document-node__state-message">
+                    {t('documentNode.externalChangeMessage')}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="document-node__state-action nodrag"
+                  onPointerDown={event => {
+                    event.stopPropagation()
+                  }}
+                  onClick={event => {
+                    event.stopPropagation()
+                    onReloadFromDisk()
+                  }}
+                >
+                  {t('documentNode.reloadFromDisk')}
+                </button>
+              </div>
+            ) : null}
+            {saveError ? (
+              <div className="document-node__save-error" role="status">
+                {saveError}
+              </div>
+            ) : null}
+            <div
+              className={`document-node__editor ${interactiveContentClassName}`}
+              onPointerDownCapture={event => {
+                event.stopPropagation()
+              }}
+            >
+              <DocumentNodeMonacoEditor
+                navigation={navigation}
+                onNavigationApplied={onNavigationApplied}
+                uri={uri}
+                content={content}
+                onContentChange={onContentChange}
+                onSaveShortcut={onSaveShortcut}
+              />
+            </div>
+          </>
+        )}
+      </div>
+    </>
   )
 }

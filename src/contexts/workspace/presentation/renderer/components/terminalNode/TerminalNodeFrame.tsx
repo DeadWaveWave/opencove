@@ -10,6 +10,7 @@ import type {
   TerminalSessionStateSource,
 } from '@shared/contracts/dto'
 import { TerminalNodeHeader } from './TerminalNodeHeader'
+import { WindowPlate } from '../shared/WindowPlate'
 import { TerminalNodeFindBar } from './TerminalNodeFindBar'
 import { NodeResizeHandles } from '../shared/NodeResizeHandles'
 import { resolveTerminalNodeInteraction } from './interaction'
@@ -274,6 +275,7 @@ export function TerminalNodeFrame({
       ) : null}
 
       {geometryFeedback}
+      <WindowPlate />
       <div
         className="terminal-node__body"
         data-cove-part="window-body"

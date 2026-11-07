@@ -6,7 +6,7 @@ import postcss from 'postcss'
 import * as prettier from 'prettier'
 import { describe, expect, it } from 'vitest'
 import { PLUGIN_THEME_TOKENS } from '@contexts/plugins/domain/pluginThemeTypes'
-import { contrastRatio, type Rgb } from '@shared/design/oklch'
+import { contrastRatio, rgbToOklab, type Rgb } from '@shared/design/oklch'
 import {
   GLASS,
   THEME_FAMILY_LIST,
@@ -26,6 +26,7 @@ const FAMILIES = THEME_FAMILY_LIST.map(family => family.id)
 const APPEARANCES: Appearance[] = ['dark', 'light']
 const CASES = FAMILIES.flatMap(family => APPEARANCES.map(appearance => ({ family, appearance })))
 
+const hex = (c: Rgb): string => `#${c.map(v => v.toString(16).padStart(2, '0')).join('')}`
 const LITERAL_COLOR = /#[\da-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch)\(/i
 // Swatches preview other themes, and the mask colour only feeds mask luminance.
 const THEME_INDEPENDENT = /^--cove-(?:theme-preview-|mask-opaque$)/
@@ -68,12 +69,23 @@ describe('generated theme tokens', () => {
   it.each(CASES)(
     'lays window content on a solid plate with no edge for $family/$appearance',
     ({ family, appearance }) => {
-      const tokens = themeTokens(generateFamilyTheme(family, appearance))
-      // Solid neutral step 1, the colour the contrast matrix checks text on, and terminals fill
-      // with it when their xterm is opaque.
-      expect(tokens['--cove-reading-plate']).toBe('var(--cove-neutral-1)')
-      expect(tokens['--cove-terminal-background']).toBe(tokens['--cove-neutral-1'])
+      const theme = generateFamilyTheme(family, appearance)
+      const tokens = themeTokens(theme)
+      // One solid colour: the one the contrast matrix checks text on, and the one terminals fill
+      // with when their xterm is opaque.
+      expect(tokens['--cove-reading-plate']).toBe(hex(theme.roles.plate))
+      expect(tokens['--cove-terminal-background']).toBe(tokens['--cove-reading-plate'])
       expect(tokens['--cove-glass-plate']).toBeUndefined()
+      // Never pure black or white: a faint wash of the accent's hue (owner call, round 4).
+      const [L, a, b] = rgbToOklab(theme.roles.plate)
+      const chroma = Math.hypot(a, b)
+      const hue = (Math.atan2(b, a) * 180) / Math.PI
+      expect(chroma).toBeGreaterThanOrEqual(0.015)
+      expect(chroma).toBeLessThanOrEqual(0.035)
+      expect(Math.abs(((hue - theme.input.accentHue + 540) % 360) - 180)).toBeLessThanOrEqual(8)
+      // Lifted off the darkest (or lightest) neutral, the nearest the scale gets to black or white.
+      const extreme = rgbToOklab(theme.neutral[0]!)[0]
+      expect(appearance === 'dark' ? L - extreme : extreme - L).toBeGreaterThanOrEqual(0.01)
       // It melts into the frame (window-plate.css): no line, edge or glare of its own.
       expect(tokens['--cove-reading-plate-line']).toBeUndefined()
       expect(tokens['--cove-reading-plate-edge']).toBeUndefined()

@@ -138,6 +138,17 @@ export const PIXEL_WALL = {
 } as const
 const CLOUD_HUES = [348, 296, 250, 200] as const
 
+/**
+ * The solid reading plate under window content (owner call, round 4): never pure black or white,
+ * but a faint wash of the accent's hue, like Material 3's tinted surfaces. Dark lifts it off the
+ * darkest neutral; light settles it under white. Chroma follows the accent's down to grey.
+ */
+export const PLATE = {
+  dark: { l: 0.225, c: 0.03 },
+  light: { l: 0.978, c: 0.018 },
+} as const
+const PLATE_CHROMA_PER_ACCENT = 0.25
+
 export type Scale = readonly Rgb[]
 
 function lightness(ap: Appearance, k: number): number[] {
@@ -219,7 +230,7 @@ export interface GeneratedTheme {
   amber: Scale
   red: Scale
   /** Roles every surface uses. */
-  roles: { canvas: Rgb; surface: Rgb; text: Rgb; textSecondary: Rgb; onAccent: Rgb }
+  roles: { canvas: Rgb; surface: Rgb; plate: Rgb; text: Rgb; textSecondary: Rgb; onAccent: Rgb }
   pixel: { spot: Rgb; cell: Rgb; gap: Rgb; clouds: readonly Rgb[]; sparks: readonly Rgb[] }
   ansi: Record<AnsiKey, Rgb>
   onSolid(solid: Rgb): Rgb
@@ -306,6 +317,11 @@ export function generateTheme(input: ThemeInput): GeneratedTheme {
     roles: {
       canvas: dark ? neutral[0]! : neutral[2]!,
       surface: dark ? neutral[1]! : neutral[0]!,
+      plate: oklch(
+        PLATE[ap].l,
+        Math.min(PLATE[ap].c, input.accentChroma * PLATE_CHROMA_PER_ACCENT),
+        input.accentHue,
+      ),
       text: neutral[11]!,
       textSecondary: neutral[10]!,
       onAccent: onSolid(accent[8]!),

@@ -134,10 +134,10 @@
     var(--cove-neutral-2) var(--cove-glass-frame),
     transparent
   );
-  --cove-reading-plate: var(--cove-neutral-1);
+  --cove-reading-plate: #091f25;
   --cove-node-header-surface: transparent;
   --cove-node-border: rgb(239 243 247 / 0.14);
-  --cove-terminal-background: #080d11;
+  --cove-terminal-background: #091f25;
   --cove-terminal-foreground: #eff3f7;
   --cove-terminal-cursor: #00b0d5;
   --cove-terminal-selection: rgb(0 176 213 / 0.32);
@@ -384,10 +384,10 @@
     var(--cove-neutral-1) var(--cove-glass-frame),
     transparent
   );
-  --cove-reading-plate: var(--cove-neutral-1);
+  --cove-reading-plate: #edfaff;
   --cove-node-header-surface: transparent;
   --cove-node-border: rgb(27 29 32 / 0.16);
-  --cove-terminal-background: #fbfdff;
+  --cove-terminal-background: #edfaff;
   --cove-terminal-foreground: #1b1d20;
   --cove-terminal-cursor: #005d72;
   --cove-terminal-selection: rgb(0 162 197 / 0.24);
@@ -507,7 +507,7 @@
   --cove-node-selection-shadow: 0 0 0 1px rgb(49 190 227 / 0.42), 0 18px 40px rgb(0 0 0 / 0.52);
   --cove-terminal-node-surface: var(--cove-node-surface);
   --cove-terminal-node-header-surface: transparent;
-  --cove-terminal-background: #080d11;
+  --cove-terminal-background: #091f25;
   --cove-terminal-foreground: #eff3f7;
   --cove-terminal-selection: rgb(0 176 213 / 0.32);
   --cove-terminal-cursor: #00b0d5;

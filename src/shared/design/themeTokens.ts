@@ -67,8 +67,8 @@ export function resolveRoleColors(theme: GeneratedTheme): RoleColors {
     accentText: a[10]!,
     onAccent: theme.roles.onAccent,
     focusRing: dark ? a[8]! : a[10]!,
-    // Terminals read on the reading plate, which is solid neutral step 1.
-    terminalBackground: n[0]!,
+    // Terminals read on the reading plate.
+    terminalBackground: theme.roles.plate,
     terminalForeground: n[11]!,
     terminalCursor: dark ? a[8]! : a[10]!,
   }
@@ -165,7 +165,7 @@ export function themeTokens(theme: GeneratedTheme): ThemeTokens {
     // Window content sits on a solid plate, neutral step 1, so the wall never shows through what
     // is being read. It has no edge of its own: it melts into the glass frame on every side
     // (window-plate.css).
-    '--cove-reading-plate': 'var(--cove-neutral-1)',
+    '--cove-reading-plate': hex(theme.roles.plate),
     '--cove-node-header-surface': 'transparent',
     '--cove-node-border': inkOverlay(dark ? 14 : 16),
     '--cove-terminal-background': hex(roles.terminalBackground),

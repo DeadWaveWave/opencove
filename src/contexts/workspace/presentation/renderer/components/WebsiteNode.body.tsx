@@ -11,6 +11,7 @@ import { useWebsiteInitialSnapshot } from './WebsiteNode.snapshot'
 import { WebsiteNodeHomePage } from './WebsiteNode.homePage'
 import { WebsiteNodeIframe } from './WebsiteNode.iframe'
 import { WebsiteNodeNativePlaceholder } from './WebsiteNode.nativePlaceholder'
+import { WindowPlate } from './shared/WindowPlate'
 
 export function WebsiteNodeBody({
   nodeId,
@@ -61,34 +62,37 @@ export function WebsiteNodeBody({
   const showsNativePlaceholder = browserMode === 'native' && !nativeApiAvailable
 
   return (
-    <div className="website-node__body" data-cove-part="window-body">
-      <div ref={viewportRef} className="website-node__viewport" aria-label={displayTitle}>
-        {showsNativePlaceholder ? (
-          <WebsiteNodeNativePlaceholder onOpenAsIframe={onOpenAsIframe} />
-        ) : null}
-        {effectiveBrowserMode === 'iframe' && hasPageUrl ? (
-          <WebsiteNodeIframe url={url} displayTitle={displayTitle} />
-        ) : null}
-        {!showsNativePlaceholder && !hasPageUrl ? (
-          <WebsiteNodeHomePage
-            sessionMode={sessionMode}
-            profileId={profileId}
-            searchEngine={browserSearchEngine}
-            onNavigate={onNavigateFromHome}
-            onInteractionStart={onInteractionStart}
-          />
-        ) : null}
-        {nativeViewEnabled &&
-        snapshotDataUrl &&
-        (lifecycle !== 'active' || isCanvasZoomFrozen || isOccluded) ? (
-          <img
-            className="website-node__snapshot"
-            src={snapshotDataUrl}
-            alt={t('websiteNode.snapshotAlt')}
-            draggable={false}
-          />
-        ) : null}
+    <>
+      <WindowPlate />
+      <div className="website-node__body" data-cove-part="window-body">
+        <div ref={viewportRef} className="website-node__viewport" aria-label={displayTitle}>
+          {showsNativePlaceholder ? (
+            <WebsiteNodeNativePlaceholder onOpenAsIframe={onOpenAsIframe} />
+          ) : null}
+          {effectiveBrowserMode === 'iframe' && hasPageUrl ? (
+            <WebsiteNodeIframe url={url} displayTitle={displayTitle} />
+          ) : null}
+          {!showsNativePlaceholder && !hasPageUrl ? (
+            <WebsiteNodeHomePage
+              sessionMode={sessionMode}
+              profileId={profileId}
+              searchEngine={browserSearchEngine}
+              onNavigate={onNavigateFromHome}
+              onInteractionStart={onInteractionStart}
+            />
+          ) : null}
+          {nativeViewEnabled &&
+          snapshotDataUrl &&
+          (lifecycle !== 'active' || isCanvasZoomFrozen || isOccluded) ? (
+            <img
+              className="website-node__snapshot"
+              src={snapshotDataUrl}
+              alt={t('websiteNode.snapshotAlt')}
+              draggable={false}
+            />
+          ) : null}
+        </div>
       </div>
-    </div>
+    </>
   )
 }
