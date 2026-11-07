@@ -86,27 +86,60 @@ export function agentPromptErrorPresentation(
         'Check the target session and connection before retrying.',
       )
     case 'agent.prompt_unsupported':
+      if (reason === 'executable_override_unverified') {
+        return pair(
+          'Prompting is unavailable because this agent window was started with a custom executable path (Settings → agent executable). OpenCove cannot verify that it keeps the hooks required for prompting.',
+          'Remove the override in Settings → agent executable, then launch a new agent window with the required lifecycle hooks to make it promptable.',
+        )
+      }
+      if (reason === 'terminal_agent_unsupported') {
+        return pair(
+          'Prompting is available for agent windows OpenCove launched, not for an agent started inside a terminal.',
+          'Launch an agent window from a task, the agent launcher, or opencove node create agent.',
+        )
+      }
       if (reason === 'remote_unsupported') {
         return pair(
           'Prompt delivery to remote sessions is not supported.',
-          'Select a local Claude Code agent node.',
+          'Select a local Claude Code or lifecycle-hook Codex agent window OpenCove launched.',
         )
       }
       if (reason === 'provider_unsupported') {
         return pair(
-          'This command supports local Claude Code sessions only.',
-          'Select a local Claude Code agent node.',
+          'This command supports local Claude Code and lifecycle-hook Codex agent windows OpenCove launched.',
+          'Select a local Claude Code or lifecycle-hook Codex agent window OpenCove launched.',
+        )
+      }
+      const missing: Record<string, string> = {
+        codex_hooks_notify_only:
+          'Codex has only notify-level coverage; lifecycle hooks are not verified for this launch.',
+        codex_hooks_skipped: 'Codex hooks were skipped for daemon reuse.',
+        codex_hooks_not_required:
+          'This Codex launch uses session files instead of lifecycle hooks (including Windows).',
+        codex_hooks_not_installed: 'Codex lifecycle hooks are not installed for this invocation.',
+        codex_hooks_partial: 'Codex lifecycle hook installation is incomplete.',
+        codex_hooks_error: 'Codex lifecycle hook installation failed.',
+        codex_hooks_missing: 'This Codex invocation has no explicit lifecycle hook coverage.',
+        codex_lifecycle_observation_missing:
+          'Codex readiness comes from a session file; a lifecycle hook Stop is required.',
+        claude_hooks_missing:
+          'This Claude Code invocation has no explicit lifecycle hook coverage.',
+      }
+      if (typeof reason === 'string' && missing[reason]) {
+        return pair(
+          missing[reason],
+          'Start a local agent with lifecycle hooks, then complete a turn observed by those hooks before retrying.',
         )
       }
       if (reason === 'bracketed_paste_off') {
         return pair(
           'The terminal has not enabled bracketed paste.',
-          'Use "opencove agent read --node <selector> --screen" to check that Claude Code is at its prompt, then retry. This command does not fall back to raw typing.',
+          'Use "opencove agent read --node <selector> --screen" to check that the agent is at its prompt, then retry. This command does not fall back to raw typing.',
         )
       }
       return pair(
         'This session does not support prompt delivery.',
-        'Use a local Claude Code session with working hooks and bracketed paste enabled.',
+        'Use a local agent window OpenCove launched with lifecycle hooks and bracketed paste enabled.',
       )
     case 'agent.prompt_interrupted':
       return {

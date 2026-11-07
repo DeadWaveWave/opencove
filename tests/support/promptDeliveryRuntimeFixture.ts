@@ -9,6 +9,8 @@ export function promptDeliveryRuntimeFixture(
     const timer = setTimeout(cb, delay)
     return () => clearTimeout(timer)
   },
+  provider: 'claude-code' | 'codex' = 'claude-code',
+  ready = true,
 ) {
   const registry = new AgentRunStateRegistry({
     epoch: 'worker',
@@ -31,18 +33,31 @@ export function promptDeliveryRuntimeFixture(
       onExit: () => () => {},
     },
   })
-  runtime.metadata({ sessionId: 's', resumeSessionId: null, agentProvider: 'claude-code' })
+  runtime.metadata({
+    sessionId: 's',
+    resumeSessionId: null,
+    agentProvider: provider,
+    agentLaunchKind: 'managed',
+    hookCoverage: 'lifecycle',
+    hookInstallState: 'installed',
+  })
   hub.handlePtyData('s', '\x1b[?2004h')
   const observe = (name: string, emittedAtMs?: number) =>
     runtime.observe({
       sessionId: 's',
-      source: 'claude_hook',
+      source: provider === 'codex' ? 'codex_hook' : 'claude_hook',
       hookEventName: name,
       hookInstallState: 'installed',
-      state: name === 'Stop' ? 'standby' : 'working',
+      state: ['Stop', 'StopFailure', 'notify', 'Notification', 'SessionEnd'].includes(name)
+        ? 'standby'
+        : name === 'PermissionRequest'
+          ? 'waiting'
+          : 'working',
       emittedAtMs,
     })
-  observe('Stop')
+  if (ready) {
+    observe('Stop')
+  }
   const service = new PromptDeliveryService({
     runs: registry,
     input: hub,

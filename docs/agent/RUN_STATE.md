@@ -149,3 +149,45 @@ and bounded replay close the query/watch gap; unavailable history invalidates ra
 acceptance. Replaced entries, binding ABA, capability changes, lease expiry and disposal invalidate
 pending delivery. Only a fresh accepted claude_hook UserPromptSubmit above the submit fence can
 establish submission observation; session-file optimism cannot do so.
+
+## Invocation hook coverage
+
+Launch planning owns `hookCoverage` (`lifecycle`, `notify_only`, `none`, `unverified_executable`) next to
+`hookInstallState`. Managed launches and terminal shim invocations carry it as runtime
+metadata into the registry's internal RunStateFencePort. It is not a public run
+snapshot field or a durable workspace fact. New incarnations reset it; hook or file
+observations cannot infer or upgrade it. Missing legacy metadata remains unsupported.
+
+Codex reports lifecycle only when its trusted lifecycle configuration is passed;
+trust failure reports notify_only, and daemon reuse, Windows and absent hooks report
+none. Claude Code reports lifecycle when its hook settings are installed. Installation
+and coverage are separate: installed notify may inform run state but cannot establish
+promptability. See [prompt delivery](PROMPT_DELIVERY.md) for provider requirements.
+
+## Retained turn-end evidence
+
+The run-state reducer retains the last selected, reliable explicit turn-end receipt
+in the current idle interval. The internal fence exposes `lastTurnEnd` independently
+of each source's latest observation; same-source idle refreshes preserve it. Refreshes
+alone never establish readiness. Non-idle/active turns, source changes and invocation
+lifecycle resets clear the evidence. Synthetic shell-only idle is a reset, not a turn end.
+
+A selected Stop may establish readiness for a launch prompt whose start was not
+observed. It still emits no `agent.turn_completed` without an active turn (I2).
+The receipt is runtime-only, cleared by new incarnations and remote mirroring;
+public snapshots, completion events and durable workspace state are unchanged.
+
+## Launch provenance and prompting
+
+`AgentLaunchKind` is runtime metadata: headless PTY spawn with `agentProvider` supplies
+`managed`; the terminal invocation registry behind the gateway always supplies
+`terminal`. The run-state runtime carries it to the internal fence. Provider hooks,
+Stop evidence, durable node kind and renderer labels cannot infer managed provenance.
+A terminal invocation cannot be upgraded by a later metadata refresh. New incarnations
+clear missing provenance; remote sessions remain unsupported.
+
+Prompt admission requires managed provenance before readiness checks. Only local Claude
+Code/Codex agent windows OpenCove launched are eligible. Agents typed into shells refuse
+with `terminal_agent_unsupported`, including when a suspended/killed agent leaves stale
+Stop evidence and the foreground scanner reports shell-only. Gateway coverage metadata
+remains useful for observation but never authorizes prompting.

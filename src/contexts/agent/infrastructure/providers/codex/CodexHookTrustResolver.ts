@@ -41,7 +41,7 @@ export function createCodexHookTrustConfiguration(
       typeof hook.key === 'string' &&
       hook.key.length > 0,
   )
-  if (matches.length === 0) {
+  if (matches.length === 0 || matches.some(hook => hook.enabled === false)) {
     return null
   }
   const entries = matches.flatMap(hook => {

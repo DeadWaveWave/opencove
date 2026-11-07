@@ -1,3 +1,4 @@
+import { managedHookCoverage } from '../shared/ManagedHookCoverage'
 import { randomUUID } from 'node:crypto'
 import type { AgentHookChannel } from '../../../../../shared/runtime/agentHook/agentHookChannel'
 import type {
@@ -52,6 +53,7 @@ export class ClaudeCodeAgentProviderContribution implements AgentProviderContrib
         ...plan,
         env: telemetry.env,
         hookInstallState: telemetry.hookInstallState,
+        hookCoverage: managedHookCoverage(this.descriptor.id, plan.args, telemetry, command),
         ...(telemetry.onStarted ? { onStarted: telemetry.onStarted } : {}),
       }
     },
@@ -75,13 +77,19 @@ export class ClaudeCodeAgentProviderContribution implements AgentProviderContrib
     >,
   ) {
     if (!this.channel) {
-      return { args: [], env: {}, hookInstallState: 'not_installed' as const }
+      return {
+        args: [],
+        env: {},
+        hookCoverage: 'none' as const,
+        hookInstallState: 'not_installed' as const,
+      }
     }
     const reservation = await this.channel.reserveSpawn()
     if (!reservation.usesHook) {
       return {
         args: [],
         env: {},
+        hookCoverage: 'none' as const,
         hookInstallState: reservation.installState,
       }
     }
@@ -101,6 +109,7 @@ export class ClaudeCodeAgentProviderContribution implements AgentProviderContrib
     return {
       args: ['--settings', settings.path],
       env: { ...reservation.env },
+      hookCoverage: 'lifecycle' as const,
       hookInstallState: reservation.installState,
       onStarted: reservation.commit,
     }

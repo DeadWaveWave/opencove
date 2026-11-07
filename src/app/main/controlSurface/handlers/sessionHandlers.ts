@@ -233,6 +233,7 @@ export function registerSessionHandlers(
       })
 
       const { launchCommand, managedLaunch, testStub } = await prepareAgentLaunch({
+        environment: { ...sessionEnv, ...payload.env },
         registry: deps.agentProviderRegistry,
         profileId: agentSettings.defaultTerminalProfileId,
         provider,
@@ -326,6 +327,7 @@ export function registerSessionHandlers(
           ...(managedLaunch.plan.hookInstallState
             ? { hookInstallState: managedLaunch.plan.hookInstallState }
             : {}),
+          hookCoverage: managedLaunch.plan.hookCoverage,
           launchArtifacts: managedLaunch.artifacts,
         })
         .catch(error => {

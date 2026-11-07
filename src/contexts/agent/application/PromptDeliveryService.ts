@@ -6,7 +6,7 @@ import type {
   RunStateFence,
   RunStateReceipt,
 } from './ports/PromptDeliveryPorts'
-import { promptAdmission, samePromptEntry } from './promptAdmission'
+import { promptAdmission, promptHookSource, samePromptEntry } from './promptAdmission'
 
 export interface PromptDeliveryRequest {
   nodeId?: string
@@ -161,11 +161,12 @@ export class PromptDeliveryService {
           r.emittedAtMs !== undefined &&
           Number.isFinite(r.emittedAtMs) &&
           r.emittedAtMs >= submitAt &&
-          r.source === 'claude_hook' &&
+          r.source === promptHookSource(admitted.snapshot.provider) &&
           r.hookEventName === 'UserPromptSubmit' &&
-          (r.sourceSequence ?? 0) > (submitFence?.watermarks.claude_hook ?? 0) &&
+          (r.sourceSequence ?? 0) >
+            (submitFence?.watermarks[promptHookSource(admitted.snapshot.provider)] ?? 0) &&
           r.turnId &&
-          r.fence.snapshot.source === 'claude_hook' &&
+          r.fence.snapshot.source === promptHookSource(admitted.snapshot.provider) &&
           r.fence.snapshot.quality !== 'degraded'
         ) {
           finish(undefined, {

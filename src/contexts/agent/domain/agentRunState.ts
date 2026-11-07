@@ -31,12 +31,21 @@ export interface AgentRunObservation {
         inferred?: boolean
       }
     | { kind: 'end'; outcome: TurnOutcome }
+    /** Invocation boundary or synthetic shell state: revokes readiness without inventing a turn. */
+    | { kind: 'reset' }
 }
+
+/** Selected, reliable turn-end evidence; independent of later same-source state refreshes. */
+export type AgentRunTurnEnd = Pick<
+  AgentRunObservation,
+  'source' | 'sourceSequence' | 'observedAt' | 'hookEventName'
+>
 
 export interface AgentRunModel {
   incarnation: string
   snapshot: AgentRunSnapshot
   observations: Partial<Record<AgentRunObservation['source'], AgentRunObservation>>
+  lastTurnEnd: AgentRunTurnEnd | null
   boundaryAt: number
   nextTransitionAtMs: number | null
 }
@@ -50,6 +59,7 @@ export function createAgentRunModel(input: {
 }): AgentRunModel {
   return {
     incarnation: input.incarnation,
+    lastTurnEnd: null,
     boundaryAt: -Infinity,
     nextTransitionAtMs: null,
     observations: {},
@@ -66,6 +76,14 @@ export function createAgentRunModel(input: {
       turnOutcome: null,
     },
   }
+}
+
+/** Remote snapshots carry decisions, never local observation/readiness evidence. */
+export function mirrorAgentRunModel(
+  model: AgentRunModel,
+  snapshot: AgentRunSnapshot,
+): AgentRunModel {
+  return { ...model, snapshot, observations: {}, lastTurnEnd: null, nextTransitionAtMs: null }
 }
 
 function signal(observation: AgentRunObservation | undefined): AgentRunStateSignal | null {
@@ -203,6 +221,25 @@ export function transitionAgentRun(
   if (accepted && observation.boundary?.kind === 'end') {
     boundaryAt = Math.max(boundaryAt, observation?.observedAt ?? boundaryAt)
   }
+  // A Stop baseline can prove a settled editor even when an argv launch prompt had no
+  // observed start. It must not manufacture a completed-turn event (ended stays null).
+  let lastTurnEnd = model.lastTurnEnd
+  if (
+    state !== 'idle' ||
+    turn ||
+    decision.source !== lastTurnEnd?.source ||
+    (accepted && (observation.boundary?.kind === 'start' || observation.boundary?.kind === 'reset'))
+  ) {
+    lastTurnEnd = null
+  }
+  if (accepted && observation.boundary?.kind === 'end' && state === 'idle' && !turn) {
+    lastTurnEnd = {
+      source: observation.source,
+      sourceSequence: observation.sourceSequence,
+      observedAt: observation.observedAt,
+      hookEventName: observation.hookEventName,
+    }
+  }
   const snapshot: AgentRunSnapshot = {
     ...model.snapshot,
     state,
@@ -225,6 +262,7 @@ export function transitionAgentRun(
       ...model,
       snapshot,
       observations,
+      lastTurnEnd,
       boundaryAt,
       nextTransitionAtMs: state === 'exited' ? null : decision.nextTransitionAtMs,
     },

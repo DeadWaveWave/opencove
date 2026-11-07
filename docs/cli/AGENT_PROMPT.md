@@ -23,7 +23,10 @@ cat prompt.txt | opencove agent prompt --node node-123 --text-file -
 
 Exactly one text source is required. `--timeout` accepts milliseconds or durations (`15s`,
 `15000ms`, `1m`); default 15s, maximum 60s. HTTP timeout includes a five-second response margin.
-The target must be local Claude Code after an observed settled turn. `@self` resolves through the
+The target must be an agent window OpenCove launched: local Claude Code or Codex
+with lifecycle hooks for this invocation,
+after a hook-observed settled turn (Claude Stop/StopFailure; Codex Stop). Codex notify-only,
+daemon reuse, file-only telemetry and Windows are unsupported. `@self` resolves through the
 calling session grant; a canvas terminal is not an agent and is refused by the server.
 
 Success is JSON with `deliveryId`, `nodeId`, `sessionId`, `phase: submission_observed`, `turnId`.
@@ -39,3 +42,14 @@ with a range-checked, caller-supplied relay timestamp at or after the pre-Enter 
 the same wall clock without adjustments; any holder of the session's hook token can claim a
 submission. It does not prove causation, exact text processing or turn completion. Never resend automatically after interruption, stalled receipt, or transport loss.
 See [Prompt delivery](../agent/PROMPT_DELIVERY.md) for admission, errors and recovery.
+
+Agents typed into terminal shells (including terminal shim/launcher invocations) refuse
+with `agent.prompt_unsupported` / `terminal_agent_unsupported`, even after an observed Stop.
+Launch an agent window from a task, the agent launcher, or `opencove node create agent`.
+Executable-path overrides and option-like model/session values have no verified lifecycle
+coverage for prompting. See the repository [prompt skill source](skills/opencove-agent-prompt/SKILL.md)
+for reusable agent instructions; this source does not install or modify a user skill.
+
+A custom executable path refuses with `executable_override_unverified` for both providers.
+Remove the override in Settings → agent executable and launch a new agent window with
+the required lifecycle hooks; the running invocation's observation behavior is unchanged.

@@ -312,6 +312,8 @@ describe('TerminalAgentActivityGateway', () => {
         sessionId: 'pty-1',
         resumeSessionId: null,
         agentProvider: 'claude-code',
+        agentLaunchKind: 'terminal',
+        hookInstallState: 'installed', // Fixture supplies install state, no hook coverage.
         terminalAgentActivity: expect.objectContaining({
           provider: 'claude-code',
           invocationId: 'invocation-1',

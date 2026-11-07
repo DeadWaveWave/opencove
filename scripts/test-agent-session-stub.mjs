@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { runCodexPromptStrictScenario } from './test-agent-session-stub/codexPromptStrict.mjs'
 import { runClaudePromptStrictScenario } from './test-agent-session-stub/claudePromptStrict.mjs'
 
 import { resolve } from 'node:path'
@@ -98,6 +99,11 @@ async function main() {
 
   if (provider === 'codex' && scenario === 'codex-standby-no-newline') {
     await runCodexStandbyNoNewlineScenario(cwd)
+    return
+  }
+
+  if (provider === 'codex' && scenario === 'codex-prompt-strict') {
+    await runCodexPromptStrictScenario(cwd, providerArgs)
     return
   }
 

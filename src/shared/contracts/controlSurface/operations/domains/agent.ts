@@ -49,7 +49,7 @@ export const agentPromptOperation = defineOperation({
   kind: 'command',
   scope: 'interact',
   availability: 'always',
-  summary: 'Paste and submit text to a settled local Claude Code agent',
+  summary: 'Prompt an agent window OpenCove launched (Claude Code or Codex)',
   errors: [
     'agent.blocked',
     'agent.busy',

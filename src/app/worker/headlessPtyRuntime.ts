@@ -3,6 +3,7 @@ import type { AgentSessionDiscovery } from '../../contexts/agent/application/por
 import type {
   AgentProviderId,
   AgentHookInstallState,
+  AgentHookCoverage,
   ResizeTerminalInput,
   TerminalForegroundEvent,
   TerminalGeometryCommitResult,
@@ -32,6 +33,7 @@ type SpawnSessionOptions = {
   env?: NodeJS.ProcessEnv
   agentProvider?: AgentProviderId
   initialAgentState?: 'working' | 'standby'
+  hookCoverage?: AgentHookCoverage
   hookInstallState?: AgentHookInstallState
 }
 
@@ -179,6 +181,18 @@ export function createHeadlessPtyRuntime(options: {
         throw registrationError
       }
 
+      if (input.agentProvider) {
+        metadataListeners.forEach(listener =>
+          listener({
+            sessionId: spawned.sessionId,
+            resumeSessionId: null,
+            agentProvider: input.agentProvider,
+            agentLaunchKind: 'managed',
+            hookCoverage: input.hookCoverage,
+            hookInstallState: input.hookInstallState,
+          }),
+        )
+      }
       if (input.agentProvider && input.hookInstallState) {
         providerBySessionId.set(spawned.sessionId, input.agentProvider)
         hookInstallStateBySessionId.set(spawned.sessionId, input.hookInstallState)

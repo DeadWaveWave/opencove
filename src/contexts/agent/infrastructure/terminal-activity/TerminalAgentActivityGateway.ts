@@ -266,6 +266,8 @@ export class TerminalAgentActivityGateway {
     const invocation = credential.terminal.beginInvocation({
       invocationId,
       provider,
+      hookCoverage: plan.hookCoverage,
+      hookInstallState: plan.hookInstallState,
       expectedResumeSessionId: resolveExpectedResumeSessionId(provider, invocationArguments),
     })
     if (!invocation) {

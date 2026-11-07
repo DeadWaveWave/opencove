@@ -87,8 +87,11 @@ opencove agent read --node agent-123 --last
 opencove agent read --node agent-123 -o json
 ```
 
-Prompt works only with a **local Claude Code** session after an observed settled
-turn. Newly opened/resumed sessions may need a completed turn in the terminal.
+Prompt works only with **agent windows OpenCove launched** (from a task, the agent
+launcher or `node create agent`) running **Claude Code**, or **Codex** with its
+lifecycle hooks, after an observed finished turn. Agents typed into a terminal and
+agent windows started with a custom executable path are refused.
+Newly opened/resumed sessions may need a completed turn first.
 The command attempts one bracketed paste and one Enter; an existing editor draft
 is submitted too. Inspect drafts and dialogs first with
 `opencove agent read --node <selector> --screen`; unseen dialogs may consume input.
@@ -109,8 +112,10 @@ Refusals describe this call only; they do not cancel another delivery:
 - `agent.state_unknown` / `readiness_unobserved`: finish a turn in the terminal first.
 - `agent.state_unknown` / `observation_degraded`: check hooks and await reliable evidence.
 - `agent.not_running`: inspect the node; start/resume only when authorized.
-- `agent.prompt_unsupported`: select local Claude Code; `bracketed_paste_off` means
-  its terminal has not enabled bracketed paste. Check the terminal prompt.
+- `agent.prompt_unsupported`: the reason says what is missing (another provider,
+  `terminal_agent_unsupported`, `executable_override_unverified`, Codex
+  `codex_hooks_notify_only`); `bracketed_paste_off` means the terminal has not
+  enabled bracketed paste. Check the terminal prompt.
 - `agent.prompt_timeout` before paste: check target and attempt flags before deciding
   whether a new call is appropriate.
 

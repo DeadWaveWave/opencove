@@ -9,6 +9,7 @@ import type {
   TerminalAgentReexecInput,
   TerminalAgentReexecResult,
   AgentHookInstallState,
+  AgentHookCoverage,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
@@ -28,6 +29,7 @@ export interface ControlSurfacePtyRuntime {
     env?: NodeJS.ProcessEnv
     agentProvider?: AgentProviderId
     initialAgentState?: 'working' | 'standby'
+    hookCoverage?: AgentHookCoverage
     hookInstallState?: AgentHookInstallState
     launchArtifacts?: AgentLaunchArtifactScope
   }) => Promise<{ sessionId: string }>
