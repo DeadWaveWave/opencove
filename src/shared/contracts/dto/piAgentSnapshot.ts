@@ -2,6 +2,7 @@ import type { TerminalSessionState } from './terminal'
 
 /** Launch-scoped, complete Pi observation; never a replay of isolated lifecycle events. */
 export interface PiAgentSnapshot {
+  hookEventName?: 'agent_start' | 'agent_settled'
   version: 1
   pid: number
   sequence: number

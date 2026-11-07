@@ -49,8 +49,17 @@ it('uses runtime-owned discovery and fences old file callbacks after an invocati
     expect(onMetadata).toHaveBeenCalledWith({ sessionId: 'pty', resumeSessionId: 'owned-id' })
     const watcher = vi.mocked(createSessionFileStateWatcher).mock.calls[0][0]
     expect(watcher.filePath).toBe('owned.jsonl')
-    watcher.onState('pty', 'working')
+    watcher.onState('pty', 'working', { hookEventName: 'task_started' })
     expect(onState).toHaveBeenCalledTimes(1)
+    expect(onState).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        sessionId: 'pty',
+        agentProvider: 'codex',
+        source: 'session_file',
+        state: 'working',
+        hookEventName: 'task_started',
+      }),
+    )
 
     current = false
     watcher.onState('pty', 'standby')

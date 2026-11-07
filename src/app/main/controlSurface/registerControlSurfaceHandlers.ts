@@ -1,4 +1,5 @@
 import { registerWorkspaceBootstrapHandlers } from './handlers/workspaceBootstrapHandlers'
+import { registerAgentRunStateHandlers } from './handlers/agentRunStateHandlers'
 import { registerPluginHostHandlers } from './handlers/pluginHostHandlers'
 import type { ControlSurfaceContext } from './types'
 import type { PluginDistributionService } from '@contexts/plugins/application/PluginDistributionService'
@@ -72,6 +73,7 @@ export function registerControlSurfaceHandlers(
     terminalAgentActivity?: TerminalAgentActivityEnvironmentService
   },
 ): void {
+  registerAgentRunStateHandlers(controlSurface, deps.ptyStreamHub)
   registerSystemHandlers(controlSurface, {
     appVersion: deps.appVersion,
     deploymentId: deps.deploymentId,

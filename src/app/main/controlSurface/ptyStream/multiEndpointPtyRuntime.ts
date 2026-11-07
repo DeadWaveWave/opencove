@@ -154,7 +154,9 @@ export function createMultiEndpointPtyRuntime(options: {
           return
         }
 
-        stateListeners.forEach(listener => listener({ ...event, sessionId: homeSessionId }))
+        stateListeners.forEach(listener =>
+          listener({ ...event, sessionId: homeSessionId, remote: true }),
+        )
       },
       emitMetadata: (remoteSessionId, metadata) => {
         const homeSessionId = homeSessionIdByRemote.get(`${endpointId}:${remoteSessionId}`)
@@ -165,6 +167,7 @@ export function createMultiEndpointPtyRuntime(options: {
         metadataListeners.forEach(listener =>
           listener({
             ...metadata,
+            remote: true,
             sessionId: homeSessionId,
           }),
         )
@@ -256,6 +259,19 @@ export function createMultiEndpointPtyRuntime(options: {
         localSessionRegistrations.begin(),
         registeredSessionId => routes.set(registeredSessionId, { kind: 'local' }),
       )
+      if (spawnOptions.agentProvider) {
+        metadataListeners.forEach(listener =>
+          listener({ sessionId, resumeSessionId: null, agentProvider: spawnOptions.agentProvider }),
+        )
+        stateListeners.forEach(listener =>
+          listener({
+            sessionId,
+            agentProvider: spawnOptions.agentProvider,
+            source: 'launch',
+            state: spawnOptions.initialAgentState ?? 'standby',
+          }),
+        )
+      }
       return { sessionId }
     },
     waitForShellReady: async sessionId => {

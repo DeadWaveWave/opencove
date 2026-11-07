@@ -43,6 +43,9 @@ export class TerminalEventReplayCache {
     }
     const source = normalizeSource(event.source)
     const states = this.stateBySessionId.get(sessionId) ?? new Map()
+    if (event.agentRunState) {
+      states.clear()
+    }
     states.set(source, { ...event, sessionId, source })
     this.stateBySessionId.set(sessionId, states)
     this.touch(sessionId)

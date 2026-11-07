@@ -1,13 +1,9 @@
-import type {
-  CanvasNodeDetailDto,
-  ListSessionsResult,
-  TerminalSessionStateEvent,
-} from '../../../shared/contracts/dto'
+import type { CanvasNodeDetailDto, ListSessionsResult } from '../../../shared/contracts/dto'
 
 export interface PluginSessionState {
   node: CanvasNodeDetailDto
   session: ListSessionsResult['sessions'][number] | null
-  agentState: TerminalSessionStateEvent | null
+  agentState: import('../../../shared/contracts/dto/agentRunState').AgentRunSnapshot | null
 }
 export type PluginObservationType = 'project' | 'space' | 'node' | 'session' | 'preferences'
 export interface PluginObservationChange {

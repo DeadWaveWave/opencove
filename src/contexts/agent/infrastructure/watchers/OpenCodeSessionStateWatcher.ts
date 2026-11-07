@@ -7,7 +7,11 @@ interface OpenCodeSessionStateWatcherOptions {
   baseUrl: string
   cwd: string
   launchMode: AgentLaunchMode
-  onState: (sessionId: string, state: TerminalSessionState) => void
+  onState: (
+    sessionId: string,
+    state: TerminalSessionState,
+    options?: { hookEventName?: string; degraded?: boolean },
+  ) => void
   onError?: (error: unknown) => void
 }
 
@@ -19,13 +23,15 @@ export class OpenCodeSessionStateWatcher {
   private readonly opencodeSessionId: string
   private readonly baseUrl: string
   private readonly cwd: string
-  private readonly launchMode: AgentLaunchMode
-  private readonly onState: (sessionId: string, state: TerminalSessionState) => void
+  private readonly onState: (
+    sessionId: string,
+    state: TerminalSessionState,
+    options?: { hookEventName?: string; degraded?: boolean },
+  ) => void
   private readonly onError?: (error: unknown) => void
 
   private disposed = false
   private lastState: TerminalSessionState | null = null
-  private hasObservedActiveState = false
   private pendingState: TerminalSessionState | null = null
   private pendingStatePollCount = 0
   private timer: NodeJS.Timeout | null = null
@@ -35,7 +41,6 @@ export class OpenCodeSessionStateWatcher {
     this.opencodeSessionId = options.opencodeSessionId
     this.baseUrl = options.baseUrl
     this.cwd = options.cwd
-    this.launchMode = options.launchMode
     this.onState = options.onState
     this.onError = options.onError
   }
@@ -70,7 +75,6 @@ export class OpenCodeSessionStateWatcher {
 
   private resolveNextState(status: 'busy' | 'retry' | 'idle' | null): TerminalSessionState | null {
     if (status === 'busy' || status === 'retry') {
-      this.hasObservedActiveState = true
       return 'working'
     }
 
@@ -78,7 +82,7 @@ export class OpenCodeSessionStateWatcher {
       return 'standby'
     }
 
-    return this.launchMode === 'resume' || this.hasObservedActiveState ? 'standby' : null
+    return null
   }
 
   private async poll(): Promise<void> {
@@ -94,8 +98,20 @@ export class OpenCodeSessionStateWatcher {
       }
 
       const nextState = this.resolveNextState(status)
-      if (nextState) {
-        this.commitStateIfStable(nextState)
+      if (!nextState) {
+        this.lastState = null
+        this.pendingState = null
+        this.pendingStatePollCount = 0
+        this.onState(this.sessionId, 'standby', { degraded: true })
+      } else {
+        this.commitStateIfStable(
+          nextState,
+          status === 'idle'
+            ? 'task_complete'
+            : status === 'busy' || status === 'retry'
+              ? 'busy'
+              : undefined,
+        )
       }
 
       this.scheduleNextPoll()
@@ -108,12 +124,12 @@ export class OpenCodeSessionStateWatcher {
     }
   }
 
-  private commitStateIfStable(nextState: TerminalSessionState): void {
+  private commitStateIfStable(nextState: TerminalSessionState, hookEventName?: string): void {
     if (this.lastState === null) {
       this.lastState = nextState
       this.pendingState = null
       this.pendingStatePollCount = 0
-      this.onState(this.sessionId, nextState)
+      this.onState(this.sessionId, nextState, hookEventName ? { hookEventName } : undefined)
       return
     }
 
@@ -137,6 +153,6 @@ export class OpenCodeSessionStateWatcher {
     this.lastState = nextState
     this.pendingState = null
     this.pendingStatePollCount = 0
-    this.onState(this.sessionId, nextState)
+    this.onState(this.sessionId, nextState, hookEventName ? { hookEventName } : undefined)
   }
 }

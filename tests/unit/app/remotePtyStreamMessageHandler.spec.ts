@@ -288,6 +288,26 @@ describe('createRemotePtyStreamMessageHandler', () => {
     })
   })
 
+  it('forwards whether a degraded decision still has a reporting source', () => {
+    const { handler, sendToAllWindows } = createHandler()
+    for (const observationUnavailable of [false, true]) {
+      handler(
+        JSON.stringify({
+          type: 'state',
+          sessionId: 'session-1',
+          state: 'standby',
+          source: 'session_file',
+          degraded: true,
+          observationUnavailable,
+        }),
+      )
+      expect(sendToAllWindows).toHaveBeenLastCalledWith(
+        IPC_CHANNELS.ptyState,
+        expect.objectContaining({ observationUnavailable, degraded: true, state: 'standby' }),
+      )
+    }
+  })
+
   it('validates and broadcasts foreground reconciliation to every renderer window', () => {
     const { handler, sendToAllWindows, externalForegroundListener } = createHandler()
     const event = {

@@ -1,3 +1,5 @@
+import type { AgentRunStateRegistry } from '../../../contexts/agent/application/AgentRunStateRegistry'
+import { isAgentRuntimeStream, serveAgentRuntimeEvents } from './http/agentRuntimeSse'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../shared/contracts/controlSurface'
 import type { PluginInstallationManager } from '../../../contexts/plugins/application/PluginInstallationManager'
 import { tryHandlePluginAssetRoute } from './pluginAssetRoutes'
@@ -33,6 +35,8 @@ export interface ControlSurfaceHttpRequestHandlerDeps {
   webSessions: WebSessionManager
   controlSurface: ControlSurface
   getPersistenceStore: () => Promise<PersistenceStore>
+  agentRuns?: AgentRunStateRegistry
+  agentClients?: Set<ServerResponse>
   syncClients: Set<ServerResponse>
   syncEventBuffer: SyncEventPayload[]
   desktopSyncEventSink?: (payload: SyncEventPayload) => number
@@ -167,6 +171,22 @@ export function createControlSurfaceHttpRequestHandler(
           return
         }
 
+        if (isAgentRuntimeStream(url)) {
+          if (!deps.agentRuns || !deps.agentClients) {
+            res.statusCode = 503
+            res.end()
+            return
+          }
+          serveAgentRuntimeEvents({
+            req,
+            res,
+            url,
+            registry: deps.agentRuns,
+            clients: deps.agentClients,
+            listenerClients: listenerSyncClients,
+          })
+          return
+        }
         const afterRevisionRaw =
           url.searchParams.get('afterRevision') ??
           (req.headers['last-event-id'] as string | undefined)

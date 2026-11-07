@@ -1,3 +1,4 @@
+import { createSessionStatePublisher } from './sessionStateWatcherPublisher'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type { AgentSessionDiscovery } from '../../../agent/application/ports/AgentSessionDiscovery'
 import type {
@@ -153,30 +154,13 @@ export function createSessionStateWatcherController({
     broadcastSessionMetadata(sessionId, resumeSessionId)
   }
 
-  const broadcastSessionState = (
-    sessionId: string,
-    state: 'working' | 'waiting' | 'standby',
-    options: { degraded?: boolean; source?: TerminalSessionStateEvent['source'] } = {},
-  ): void => {
-    if (stateWatcherStartInputBySession.get(sessionId)?.discovery?.isCurrent() === false) {
-      return
-    }
-    const eventPayload: TerminalSessionStateEvent = {
-      sessionId,
-      state,
-      source: options.source ?? 'session_file',
-      ...(options.degraded === true ? { degraded: true } : {}),
-    }
-    logSessionStateWatcherDiagnostics('broadcast-state', {
-      sessionId,
-      state,
-    })
-    sendToAllWindows(IPC_CHANNELS.ptyState, eventPayload)
-    onState?.(eventPayload)
-  }
+  const broadcastSessionState = createSessionStatePublisher({
+    getInput: sessionId => stateWatcherStartInputBySession.get(sessionId),
+    onState,
+  })
 
   const broadcastObservationUnavailable = (sessionId: string): void =>
-    broadcastSessionState(sessionId, 'standby', { source: 'launch', degraded: true })
+    broadcastSessionState(sessionId, 'standby', { degraded: true })
 
   const scheduleRetry = (sessionId: string, watcherVersion: number): void => {
     const attempt = stateWatcherRetryCountBySession.get(sessionId) ?? 0
@@ -219,6 +203,7 @@ export function createSessionStateWatcherController({
       reportIssue(
         `[opencove] state watcher failed for ${input.provider} session ${sessionId}: ${detail}`,
       )
+      broadcastObservationUnavailable(sessionId)
       clearSessionStateWatcher(sessionId)
       scheduleSessionStateWatcherAttempt(
         sessionId,

@@ -126,9 +126,14 @@ export async function readOpenCodeSessionStatus({
   url.searchParams.set('directory', cwd)
 
   const payload = await fetchOpenCodeJson(url)
-  if (!isRecord(payload)) {
+  if (!isRecord(payload) || Array.isArray(payload)) {
     return null
   }
 
+  // OpenCode removes idle sessions from its status map; absence is the idle baseline.
+  // Keep malformed entries distinct so unavailable evidence cannot complete a turn.
+  if (!Object.hasOwn(payload, sessionId)) {
+    return 'idle'
+  }
   return normalizeOpenCodeStatus(payload[sessionId])
 }

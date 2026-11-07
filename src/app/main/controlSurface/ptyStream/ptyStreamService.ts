@@ -1,3 +1,5 @@
+import { subscribeAgentRuntimeSocket } from './agentRuntimeSocket'
+import type { AgentRunStateRuntime } from '../../../../contexts/agent/application/AgentRunStateRuntime'
 import type { IncomingMessage } from 'node:http'
 import { randomBytes } from 'node:crypto'
 import { WebSocketServer, type WebSocket } from 'ws'
@@ -61,6 +63,7 @@ export interface PtyStreamService {
 
 export function createPtyStreamService(options: {
   token: string
+  agentRuns?: AgentRunStateRuntime
   webSessions: WebSessionManager
   now: () => Date
   ptyRuntime: ControlSurfacePtyRuntime
@@ -73,6 +76,7 @@ export function createPtyStreamService(options: {
   let quiescePromise: Promise<void> | null = null
   const hub = new PtyStreamHub({
     ptyRuntime: options.ptyRuntime,
+    agentRuns: options.agentRuns,
     replayWindowMaxBytes: options.replayWindowMaxBytes,
     onPresentationMutation: sessionId => {
       recoveryOwner?.notePresentationMutation({ sessionId })
@@ -162,6 +166,7 @@ export function createPtyStreamService(options: {
         disposeMetadataListener?.()
         disposePresentationResetListener?.()
         disposePresentationResetCommittedListener?.()
+        hub.agentRuns.dispose()
         runtimeEventsQuiesced = true
       })()
     }
@@ -282,6 +287,7 @@ export function createPtyStreamService(options: {
                 replayWindow: { maxBytes: options.replayWindowMaxBytes },
                 geometryCommitAck: 1,
                 agentReexec: 1,
+                agentRunEvents: 1,
                 authorityEpoch: 1,
               },
             }),
@@ -290,6 +296,9 @@ export function createPtyStreamService(options: {
           // ignore
         }
 
+        if (message.agentRunEvents === 1) {
+          subscribeAgentRuntimeSocket(hub.agentRuns.registry, ws, message.agentRunCursor)
+        }
         return
       }
 

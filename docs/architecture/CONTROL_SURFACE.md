@@ -262,3 +262,10 @@ runtime. `architecture.rendererNoOperationRuntime` enforces this boundary, inclu
 - `tests/contract/controlSurface/controlSurfaceHttpServer.multiEndpoint.ptyProxy.spec.ts`
 - `tests/contract/controlSurface/controlSurfaceHttpServer.sessionStreaming.integration.spec.ts`
 - `tests/contract/controlSurface/controlSurfaceHttpServer.sessionPrepareOrRevive.spec.ts`
+
+## Agent runtime queries and events
+
+`agent.get` and `agent.list` expose the executing Worker’s decided run state with read scope.
+`agent.list` returns an epoch/sequence watermark for the separate agent runtime stream on `/events`.
+See [Agent run state](../agent/RUN_STATE.md) for input fields, filters, retention, resynchronization
+and mounted-session compatibility. Runtime sequences are independent of durable app-state revisions.

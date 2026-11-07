@@ -127,3 +127,36 @@ describe('Agent completion notification entry points', () => {
     expect(onAgentEnteredStandby).toHaveBeenCalledOnce()
   })
 })
+
+// Legacy UI contract (e2e: agent-status-watcher "first observed state is standby"): an unknown
+// decided state is skipped, and the first standby after it still notifies.
+it('still notifies when the first decided state after an unknown projection is idle', () => {
+  harness.kind = 'agent'
+  const onAgentEnteredStandby = vi.fn()
+  const onAgentEnteredWorking = vi.fn()
+  renderHook(() =>
+    useAgentStandbyNotificationWatcher({ onAgentEnteredStandby, onAgentEnteredWorking }),
+  )
+  const snapshot = {
+    sessionId: 'pty',
+    nodeId: 'node',
+    provider: 'codex' as const,
+    state: 'unknown' as const,
+    blockedReason: null,
+    turn: null,
+    turnOutcome: null,
+    lastTransitionAt: 1,
+    source: null,
+    quality: 'degraded' as const,
+  }
+  act(() => {
+    harness.onState?.({ sessionId: 'pty', state: 'working', agentRunState: snapshot })
+    harness.onState?.({
+      sessionId: 'pty',
+      state: 'standby',
+      agentRunState: { ...snapshot, state: 'idle', quality: 'inferred', source: 'session_file' },
+    })
+  })
+  expect(onAgentEnteredWorking).not.toHaveBeenCalled()
+  expect(onAgentEnteredStandby).toHaveBeenCalledTimes(1)
+})

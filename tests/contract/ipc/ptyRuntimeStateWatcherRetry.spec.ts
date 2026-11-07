@@ -73,6 +73,8 @@ describe('Pty runtime session state watcher', () => {
       await import('../../../src/contexts/terminal/presentation/main-ipc/runtime')
 
     const runtime = createPtyRuntime({ processEngine })
+    const stateListener = vi.fn()
+    const unsubscribe = runtime.onState(stateListener)
 
     runtime.startSessionStateWatcher({
       sessionId: 'session-1',
@@ -103,14 +105,16 @@ describe('Pty runtime session state watcher', () => {
           payload.resumeSessionId === 'resume-1',
       ),
     ).toBe(true)
-    expect(
-      send.mock.calls.some(
-        ([channel, payload]) =>
-          channel === IPC_CHANNELS.ptyState &&
-          payload.sessionId === 'session-1' &&
-          payload.state === 'working',
-      ),
-    ).toBe(true)
+    expect(stateListener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'session-1',
+        state: 'working',
+        agentProvider: 'codex',
+        source: 'session_file',
+      }),
+    )
+    expect(send.mock.calls.some(([channel]) => channel === IPC_CHANNELS.ptyState)).toBe(false)
+    unsubscribe()
 
     runtime.dispose()
     vi.useRealTimers()

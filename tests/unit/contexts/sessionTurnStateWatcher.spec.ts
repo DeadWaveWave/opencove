@@ -385,4 +385,33 @@ describe('SessionTurnStateWatcher', () => {
       expect(states).toEqual(['standby', 'standby'])
     })
   })
+  it('suppresses historical boundaries but forwards distinct live boundaries even without a state change', async () => {
+    const tempDir = await fs.mkdtemp(join(tmpdir(), 'cove-session-boundaries-'))
+    const filePath = join(tempDir, 'session.jsonl')
+    const line = (type: string) => JSON.stringify({ type: 'event_msg', payload: { type } }) + '\n'
+    await fs.writeFile(filePath, line('task_started'))
+    const events: { state: string; boundary?: string }[] = []
+    const watcher = new SessionTurnStateWatcher({
+      provider: 'codex',
+      sessionId: 's',
+      filePath,
+      onState: (_id, state, options) => {
+        events.push({ state, boundary: options?.hookEventName })
+      },
+    })
+    disposers.push(() => watcher.dispose())
+    watcher.start()
+    await waitForCondition(() =>
+      expect(events).toEqual([{ state: 'working', boundary: undefined }]),
+    )
+    await fs.appendFile(filePath, line('task_started') + line('turn_aborted'))
+    await waitForCondition(() =>
+      expect(events.slice(1)).toEqual([
+        { state: 'working', boundary: 'task_started' },
+        { state: 'standby', boundary: 'turn_aborted' },
+      ]),
+    )
+    watcher.dispose()
+    await fs.rm(tempDir, { recursive: true, force: true })
+  })
 })

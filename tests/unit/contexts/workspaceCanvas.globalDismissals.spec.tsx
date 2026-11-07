@@ -51,6 +51,12 @@ vi.mock(
   },
 )
 
+// Window signals subscribe to the PTY event hub, which this view test does not provide.
+vi.mock(
+  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/windowSignals/WorkspaceWindowSignals',
+  () => ({ WorkspaceWindowSignals: () => null }),
+)
+
 vi.mock(
   '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WorkspaceSpaceSwitcher',
   () => {

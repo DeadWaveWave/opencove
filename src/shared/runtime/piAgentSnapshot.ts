@@ -35,6 +35,9 @@ export function normalizePiAgentSnapshot(value: unknown): PiAgentSnapshot | null
     return null
   }
   return {
+    ...(input.hookEventName === 'agent_start' || input.hookEventName === 'agent_settled'
+      ? { hookEventName: input.hookEventName }
+      : {}),
     version,
     pid,
     sequence,

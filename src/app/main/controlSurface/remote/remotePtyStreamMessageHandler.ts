@@ -1,3 +1,4 @@
+import { agentRunSnapshotSchema } from '../../../../shared/contracts/dto/agentRunStateSchema'
 import type { PtyStreamMessage } from './remotePtyStreamMessage'
 import { normalizePiStateObservationMetadata } from '../../../../shared/runtime/piConversation'
 import { normalizePiAgentSnapshot } from '../../../../shared/runtime/piAgentSnapshot'
@@ -387,12 +388,19 @@ export function createRemotePtyStreamMessageHandler(options: {
       if (typeof message.degraded === 'boolean') {
         eventPayload.degraded = message.degraded
       }
+      if (typeof message.observationUnavailable === 'boolean') {
+        eventPayload.observationUnavailable = message.observationUnavailable
+      }
       if (
         typeof message.observedAtMs === 'number' &&
         Number.isFinite(message.observedAtMs) &&
         message.observedAtMs >= 0
       ) {
         eventPayload.observedAtMs = message.observedAtMs
+      }
+      const decided = agentRunSnapshotSchema.safeParse(message.agentRunState)
+      if (decided.success) {
+        eventPayload.agentRunState = decided.data
       }
       options.onSessionState(eventPayload)
       options.sendToAllWindows(IPC_CHANNELS.ptyState, eventPayload)

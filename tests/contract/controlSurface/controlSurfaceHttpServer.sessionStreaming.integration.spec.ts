@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto'
 import WebSocket from 'ws'
 import { describe, expect, it } from 'vitest'
 import { registerControlSurfaceHttpServer } from '../../../src/app/main/controlSurface/controlSurfaceHttpServer'
+import type { TerminalSessionStateEvent } from '../../../src/shared/contracts/dto'
 import type { ControlSurfacePtyRuntime } from '../../../src/app/main/controlSurface/handlers/sessionPtyRuntime'
 import { createApprovedWorkspaceStoreForPath } from '../../../src/contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
 import {
@@ -35,9 +36,7 @@ describe('Control Surface HTTP server (session streaming integration)', () => {
 
     const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
     const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
-    const stateListeners = new Set<
-      (event: { sessionId: string; state: 'working' | 'standby' }) => void
-    >()
+    const stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
     const metadataListeners = new Set<
       (event: {
         sessionId: string
@@ -119,7 +118,9 @@ describe('Control Surface HTTP server (session streaming integration)', () => {
         dataListeners.forEach(listener => listener({ sessionId, data }))
       },
       emitState: (sessionId: string, state: 'working' | 'standby') => {
-        stateListeners.forEach(listener => listener({ sessionId, state }))
+        stateListeners.forEach(listener =>
+          listener({ sessionId, state, agentProvider: 'gemini', source: 'session_file' }),
+        )
       },
       emitMetadata: event => {
         metadataListeners.forEach(listener => listener(event))
@@ -316,7 +317,8 @@ describe('Control Surface HTTP server (session streaming integration)', () => {
           message &&
           message.type === 'state' &&
           message.sessionId === sessionId &&
-          message.state === 'working',
+          message.state === 'working' &&
+          (message.agentRunState as { state?: string } | undefined)?.state === 'working',
       )
       const viewerStatePromise = waitForMessage<{ type: string; state: string }>(
         viewer,
@@ -324,7 +326,8 @@ describe('Control Surface HTTP server (session streaming integration)', () => {
           message &&
           message.type === 'state' &&
           message.sessionId === sessionId &&
-          message.state === 'working',
+          message.state === 'working' &&
+          (message.agentRunState as { state?: string } | undefined)?.state === 'working',
       )
       const controllerMetadataPromise = waitForMessage<{ type: string; resumeSessionId: string }>(
         controller,
@@ -417,7 +420,8 @@ describe('Control Surface HTTP server (session streaming integration)', () => {
           message &&
           message.type === 'state' &&
           message.sessionId === sessionId &&
-          message.state === 'working',
+          message.state === 'working' &&
+          (message.agentRunState as { state?: string } | undefined)?.state === 'working',
       )
       sendJson(lateJoiner, { type: 'attach', sessionId, role: 'viewer' })
       await waitForMessage(lateJoiner, message => message && message.type === 'attached')

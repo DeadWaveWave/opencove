@@ -13,6 +13,8 @@ import type { AgentSessionIdentityObservation } from '../../contracts/dto/agentS
 const MAX_HOOK_BODY_BYTES = 256 * 1024
 
 export interface AgentHookEnvelope {
+  hookEventName?: string
+  tool?: { name: string }
   state: 'working' | 'waiting' | 'standby' | 'done' | null
 }
 
@@ -170,6 +172,14 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
         sessionId,
         state: state === 'done' ? 'standby' : state,
         source: options.source,
+        hookEventName: envelope.hookEventName,
+        ...(envelope.hookEventName === 'PermissionRequest'
+          ? { blockedReason: 'permission' as const }
+          : envelope.tool?.name === 'AskUserQuestion'
+            ? { blockedReason: 'question' as const }
+            : envelope.tool?.name === 'ExitPlanMode'
+              ? { blockedReason: 'plan' as const }
+              : {}),
         hookInstallState: installState,
         ...observation?.stateMetadata,
       }

@@ -1,3 +1,4 @@
+import type { AgentRunSnapshot } from '@shared/contracts/dto/agentRunState'
 import { useEffect } from 'react'
 import type { Node } from '@xyflow/react'
 import type {
@@ -70,6 +71,8 @@ export function updateWorkspacesWithAgentRunState({
   source = 'session_file',
   hookInstallState = null,
   degraded = false,
+  agentRunState,
+  observationUnavailable,
 }: {
   workspaces: WorkspaceState[]
   sessionId: string
@@ -77,6 +80,8 @@ export function updateWorkspacesWithAgentRunState({
   source?: TerminalSessionStateSource
   hookInstallState?: AgentHookInstallState | null
   degraded?: boolean
+  agentRunState?: AgentRunSnapshot
+  observationUnavailable?: boolean
 }): { nextWorkspaces: WorkspaceState[]; didChange: boolean; durableDidChange: boolean } {
   let durableDidChange = false
   const result = updateWorkspacesWithAgentTreatedNodes(workspaces, {
@@ -87,6 +92,8 @@ export function updateWorkspacesWithAgentRunState({
         source,
         hookInstallState,
         degraded,
+        agentRunState,
+        observationUnavailable,
       })
       if (!projected) {
         return null
@@ -335,6 +342,8 @@ export function usePtyWorkspaceRuntimeSync({
           source: event.source,
           hookInstallState: event.hookInstallState,
           degraded: event.degraded,
+          agentRunState: event.agentRunState,
+          observationUnavailable: event.observationUnavailable,
         })
 
         didChange = result.didChange

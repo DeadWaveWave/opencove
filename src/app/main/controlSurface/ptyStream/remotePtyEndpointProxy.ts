@@ -1,3 +1,5 @@
+import type { RemotePtyEndpointProxyOptions } from './remotePtyEndpointProxy.types'
+import { RemoteAgentRunMirror } from './remoteAgentRunMirror'
 import WebSocket from 'ws'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import { PTY_STREAM_PROTOCOL_VERSION, PTY_STREAM_WS_SUBPROTOCOL } from './ptyStreamService'
@@ -67,6 +69,7 @@ export class RemotePtyEndpointProxy {
   private readonly socketAttempts = new PtyStreamSocketAttemptFence()
   private readonly messageHandler: (raw: string) => void
 
+  private readonly agentMirror: RemoteAgentRunMirror
   private socket: WebSocket | null = null
   private socketReadyPromise: Promise<void> | null = null
   private socketHandshakePromise: Promise<void> | null = null
@@ -80,20 +83,7 @@ export class RemotePtyEndpointProxy {
   private geometryCommitAckSupported: boolean | null = null
   private serverInstanceId: string | null = null
 
-  public constructor(options: {
-    endpointId: string
-    topology: WorkerTopologyStore
-    emitData: (remoteSessionId: string, data: string) => void
-    emitExit: (remoteSessionId: string, exitCode: number) => void
-    emitForeground: (remoteSessionId: string, event: TerminalForegroundEvent) => void
-    emitState: (remoteSessionId: string, event: TerminalSessionStateEvent) => void
-    emitMetadata: (remoteSessionId: string, metadata: TerminalSessionMetadataEvent) => void
-    emitPresentationReset: (
-      remoteSessionId: string,
-      snapshot: PresentationSnapshotTerminalResult,
-    ) => Promise<void>
-    emitPresentationResetCommitted: (remoteSessionId: string, committed: boolean) => void
-  }) {
+  public constructor(options: RemotePtyEndpointProxyOptions) {
     this.endpointId = options.endpointId
     this.topology = options.topology
     this.emitData = options.emitData
@@ -101,6 +91,11 @@ export class RemotePtyEndpointProxy {
     this.emitForeground = options.emitForeground
     this.emitState = options.emitState
     this.emitMetadata = options.emitMetadata
+    this.agentMirror = new RemoteAgentRunMirror({
+      sessions: () => this.attachedSessions.keys(),
+      emit: (id, event) => this.emitState(id, event),
+      reconnect: () => this.closeSocket(),
+    })
     this.emitPresentationReset = options.emitPresentationReset
     this.emitPresentationResetCommitted = options.emitPresentationResetCommitted
     this.overflowRecovery = createRemotePtyOverflowRecoveryCoordinator({
@@ -154,6 +149,7 @@ export class RemotePtyEndpointProxy {
   }
 
   private closeSocket(): void {
+    this.agentMirror.disconnect()
     const current = this.socket
     this.socket = null
     this.socketReadyPromise = null
@@ -189,7 +185,9 @@ export class RemotePtyEndpointProxy {
   }
 
   private handleMessage(raw: string): void {
-    this.messageHandler(raw)
+    if (!this.agentMirror.handleMessage(raw)) {
+      this.messageHandler(raw)
+    }
   }
 
   private handleSocketMessage(socket: WebSocket, raw: string): void {
@@ -276,6 +274,7 @@ export class RemotePtyEndpointProxy {
 
     trySendRemotePtyWs(ws, {
       type: 'hello',
+      ...this.agentMirror.hello(),
       protocolVersion: PTY_STREAM_PROTOCOL_VERSION,
       client: {
         kind: 'worker',
@@ -353,6 +352,7 @@ export class RemotePtyEndpointProxy {
     } else {
       existing.lastSeq = Math.max(existing.lastSeq, replayCursor)
     }
+    this.agentMirror.attach(remoteSessionId)
   }
 
   public attach(remoteSessionId: string, afterSeq?: number | null): void {
@@ -430,6 +430,7 @@ export class RemotePtyEndpointProxy {
     this.agentReexecAcks.rejectSession(remoteSessionId, new Error('Terminal session forgotten'))
     this.overflowRecovery.forget(remoteSessionId)
     this.attachedSessions.delete(remoteSessionId)
+    this.agentMirror.forget(remoteSessionId)
   }
 
   public write(remoteSessionId: string, data: string): void {

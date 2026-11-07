@@ -14,6 +14,7 @@ export type PtyStreamMessage =
     }
   | {
       type: 'state'
+      agentRunState?: unknown
       sessionId: string
       state?: string
       piConversation?: unknown

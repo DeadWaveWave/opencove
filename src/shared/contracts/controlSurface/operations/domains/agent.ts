@@ -1,4 +1,5 @@
 import * as z from 'zod'
+import { agentRunStateSchema } from '../../../dto/agentRunStateSchema'
 import { normalizeListSessionsPayload } from '../agentCatalogNormalize'
 import { defineOperation } from '../defineOperation'
 export const agentListSessionsOperation = defineOperation({
@@ -19,4 +20,31 @@ export const agentListSessionsOperation = defineOperation({
   availability: 'always',
   summary: 'List saved agent conversations in an approved working directory',
 })
-export const agentOperations = [agentListSessionsOperation] as const
+const id = z.string().trim().min(1)
+export const agentGetOperation = defineOperation({
+  id: 'agent.get',
+  kind: 'query',
+  scope: 'read',
+  availability: 'always',
+  summary: 'Get the current agent run state',
+  errors: [],
+  input: z.union([z.strictObject({ nodeId: id }), z.strictObject({ sessionId: id })]),
+})
+export const agentListOperation = defineOperation({
+  id: 'agent.list',
+  kind: 'query',
+  scope: 'read',
+  availability: 'always',
+  summary: 'List live agent run states with a subscription watermark',
+  errors: [],
+  input: z.strictObject({
+    projectId: id.optional(),
+    spaceId: id.optional(),
+    state: agentRunStateSchema.optional(),
+  }),
+})
+export const agentOperations = [
+  agentListSessionsOperation,
+  agentGetOperation,
+  agentListOperation,
+] as const
