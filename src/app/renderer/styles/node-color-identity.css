@@ -98,6 +98,22 @@
   z-index: 1;
 }
 
+/* Above the glass rim (node-chrome.css, z-index 3), as in the prototype. */
+:root[data-cove-family='cove']
+  .workspace-canvas
+  .react-flow__node
+  :is(
+    .terminal-node__header,
+    .cove-canvas-node-window__header,
+    .task-node__header,
+    .note-node__header,
+    .document-node__header,
+    .role-node__header,
+    .website-node__header
+  )::before {
+  z-index: 4;
+}
+
 /* Generated families: the label is a solid short flag, see window-kind-identity.css. */
 :root[data-cove-family='cove']
   .workspace-canvas

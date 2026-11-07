@@ -29,6 +29,35 @@
   background-image: var(--cove-node-background-image);
 }
 
+/* Lit glass: a specular rim lit from the top left (--cove-node-rim), in generated families only.
+   Frames clip at the padding box, so the 1px ring sits just inside the border rather than over it
+   as in the prototype. It paints above window content, so a tinted header cannot hide it, and
+   below the label flag and the drag surface. */
+:root[data-cove-family='cove']
+  :is(
+    .terminal-node,
+    .cove-canvas-node-window,
+    .task-node,
+    .role-node,
+    .note-node,
+    .document-node,
+    .folder-node,
+    .website-node
+  )::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  padding: 1px;
+  border-radius: var(--cove-node-inner-radius);
+  background: var(--cove-node-rim);
+  mask:
+    linear-gradient(var(--cove-mask-opaque) 0 0) content-box exclude,
+    linear-gradient(var(--cove-mask-opaque) 0 0);
+  opacity: 0.72;
+  pointer-events: none;
+}
+
 .workspace-canvas
   :is(
     .terminal-node__title,

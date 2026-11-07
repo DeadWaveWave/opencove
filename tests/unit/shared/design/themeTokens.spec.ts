@@ -79,6 +79,30 @@ describe('generated theme tokens', () => {
   )
 
   it.each(CASES)(
+    'lights window and chrome glass with a sheen, grain and a specular rim for $family/$appearance',
+    ({ family, appearance }) => {
+      const tokens = themeTokens(generateFamilyTheme(family, appearance))
+      const glass = GLASS[appearance]
+      expect(tokens['--cove-glass-sheen']).toBe(`rgb(255 255 255 / ${glass.sheen})`)
+      expect(tokens['--cove-glass-rim-hi']).toBe(`rgb(255 255 255 / ${glass.rimHi})`)
+      expect(tokens['--cove-glass-rim-lo']).toBe(`rgb(255 255 255 / ${glass.rimLo})`)
+      // The grain image is drawn at startup (bootstrap/installGlassGrain.ts); before that, and in
+      // tests, there is none.
+      expect(tokens['--cove-glass-grain']).toBe(`var(--cove-glass-grain-${appearance}, none)`)
+      expect(tokens['--cove-acrylic-grain']).toBe('var(--cove-glass-grain)')
+      expect(tokens['--cove-node-background-image']).toBe(
+        'linear-gradient(180deg, var(--cove-glass-sheen), transparent 30%), var(--cove-glass-grain)',
+      )
+      expect(tokens['--cove-chrome-background-image']).toBe(
+        'linear-gradient(180deg, var(--cove-glass-sheen), transparent 60%), var(--cove-glass-grain)',
+      )
+      expect(tokens['--cove-node-rim']).toBe(
+        'linear-gradient(162deg, var(--cove-glass-rim-hi), var(--cove-glass-rim-lo) 30%, transparent 54%, var(--cove-glass-rim-lo))',
+      )
+    },
+  )
+
+  it.each(CASES)(
     'references only tokens it defines for $family/$appearance',
     ({ family, appearance }) => {
       const tokens = themeTokens(generateFamilyTheme(family, appearance))

@@ -70,11 +70,37 @@ const NEUTRAL_CHROMA = [0.7, 0.75, 0.85, 0.9, 1, 1, 1, 1, 0.9, 0.85, 0.6, 0.35]
 /**
  * Glass alphas per appearance. The CSS and the worst-case contrast check read the same numbers.
  * Acrylic covers arbitrary window content rather than the wall, so it is checked against pure
- * black and white too.
+ * black and white too. Window and chrome glass are lit like the prototype: a white `sheen` fading
+ * down from the top edge, a specular rim (white at `rimHi` top left, `rimLo` elsewhere) and grey
+ * `grain` noise at one alpha (bootstrap/installGlassGrain.ts draws it).
  */
 export const GLASS = {
-  dark: { frame: 0.52, plate: 0.55, farTint: 0.2, chrome: 0.6, sheet: 0.72, acrylic: 0.76 },
-  light: { frame: 0.64, plate: 0.7, farTint: 0.22, chrome: 0.66, sheet: 0.8, acrylic: 0.86 },
+  dark: {
+    frame: 0.52,
+    plate: 0.55,
+    farTint: 0.2,
+    chrome: 0.6,
+    sheet: 0.72,
+    acrylic: 0.76,
+    sheen: 0.065,
+    rimHi: 0.36,
+    rimLo: 0.07,
+    grain: 11 / 255,
+  },
+  light: {
+    frame: 0.64,
+    plate: 0.7,
+    farTint: 0.22,
+    chrome: 0.66,
+    sheet: 0.8,
+    acrylic: 0.86,
+    sheen: 0.6,
+    rimHi: 1,
+    rimLo: 0.5,
+    // One step under the prototype's 8: the lowest-contrast plugin palettes (green to cyan bases)
+    // keep secondary text at 4.5:1 over the grain's mean grey.
+    grain: 7 / 255,
+  },
 } as const
 
 /** Pixel wall mixing weights. `cap` bounds how far a cell behind glass may move toward any colour (I6). */

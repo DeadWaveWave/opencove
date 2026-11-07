@@ -66,6 +66,12 @@ function shouldCheck(filePath) {
     return false
   }
 
+  // Theme stylesheets written by `pnpm design:tokens` grow with the token set; they cannot be split
+  // by hand, and the generator they come from is checked like any other source.
+  if (filePath.includes('src/app/renderer/styles/themes/generated/')) {
+    return false
+  }
+
   const dotIndex = filePath.lastIndexOf('.')
   if (dotIndex === -1) {
     return false

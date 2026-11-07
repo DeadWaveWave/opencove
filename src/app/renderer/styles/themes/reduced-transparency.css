@@ -1,9 +1,9 @@
 /*
  * Reduced transparency: Settings → Appearance → Reduce Transparency, or the system preference.
  * useApplyWindowAppearance owns `data-cove-transparency` on the root, so this stylesheet never
- * reads the media query itself. Generated glass turns into its opaque colour (the selector
- * outranks the generated family blocks and theme-scoped ones, which add the theme id) and
- * nothing behind a surface is blurred.
+ * reads the media query itself. Generated glass turns into its opaque colour and loses its sheen,
+ * grain and rim (the selector outranks the generated family blocks and theme-scoped ones, which
+ * add the theme id), and nothing behind a surface is blurred.
  */
 :root[data-cove-transparency='reduced'][data-cove-family][data-cove-theme][data-cove-theme-id] {
   --cove-glass-frame: 100%;
@@ -11,6 +11,10 @@
   --cove-glass-chrome: 100%;
   --cove-glass-sheet: 100%;
   --cove-glass-acrylic: 100%;
+  --cove-glass-sheen: transparent;
+  --cove-glass-rim-hi: transparent;
+  --cove-glass-rim-lo: transparent;
+  --cove-glass-grain: none;
 }
 
 /* An accessibility override, like reduced motion: it must win over every component's blur. */

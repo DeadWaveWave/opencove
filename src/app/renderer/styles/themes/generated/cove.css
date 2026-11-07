@@ -84,6 +84,10 @@
   --cove-glass-sheet: 72%;
   --cove-glass-acrylic: 76%;
   --cove-glass-far-tint: 20%;
+  --cove-glass-sheen: rgb(255 255 255 / 0.065);
+  --cove-glass-rim-hi: rgb(255 255 255 / 0.36);
+  --cove-glass-rim-lo: rgb(255 255 255 / 0.07);
+  --cove-glass-grain: var(--cove-glass-grain-dark, none);
   --cove-pixel-cell: #11181e;
   --cove-pixel-gap: #05090c;
   --cove-pixel-cloud-1: #53263f;
@@ -107,6 +111,7 @@
     var(--cove-neutral-2) var(--cove-glass-acrylic),
     transparent
   );
+  --cove-acrylic-grain: var(--cove-glass-grain);
   --cove-window-surface: #0c1217;
   --cove-surface-hover: rgb(239 243 247 / 0.07);
   --cove-field: rgb(239 243 247 / 0.05);
@@ -158,7 +163,17 @@
   --cove-pixel-blue: var(--cove-kind-knowledge-solid);
   --cove-pixel-cyan: var(--cove-accent-9);
   --cove-pixel-mint: var(--cove-kind-shell-solid);
-  --cove-node-background-image: none;
+  --cove-node-background-image:
+    linear-gradient(180deg, var(--cove-glass-sheen), transparent 30%), var(--cove-glass-grain);
+  --cove-node-rim: linear-gradient(
+    162deg,
+    var(--cove-glass-rim-hi),
+    var(--cove-glass-rim-lo) 30%,
+    transparent 54%,
+    var(--cove-glass-rim-lo)
+  );
+  --cove-chrome-background-image:
+    linear-gradient(180deg, var(--cove-glass-sheen), transparent 60%), var(--cove-glass-grain);
   --cove-node-shadow: 0 10px 28px rgb(0 0 0 / 0.4);
   --cove-node-shadow-hover: 0 14px 36px rgb(0 0 0 / 0.46);
   --cove-node-shadow-focus: 0 0 0 1px var(--cove-focus-ring), 0 10px 28px rgb(0 0 0 / 0.4);
@@ -320,6 +335,10 @@
   --cove-glass-sheet: 80%;
   --cove-glass-acrylic: 86%;
   --cove-glass-far-tint: 22%;
+  --cove-glass-sheen: rgb(255 255 255 / 0.6);
+  --cove-glass-rim-hi: rgb(255 255 255 / 1);
+  --cove-glass-rim-lo: rgb(255 255 255 / 0.5);
+  --cove-glass-grain: var(--cove-glass-grain-light, none);
   --cove-pixel-cell: #dbe4ed;
   --cove-pixel-gap: #f6fbff;
   --cove-pixel-cloud-1: #eeb9d3;
@@ -343,6 +362,7 @@
     var(--cove-neutral-1) var(--cove-glass-acrylic),
     transparent
   );
+  --cove-acrylic-grain: var(--cove-glass-grain);
   --cove-window-surface: #fbfdff;
   --cove-surface-hover: rgb(27 29 32 / 0.05);
   --cove-field: rgb(27 29 32 / 0.04);
@@ -394,7 +414,17 @@
   --cove-pixel-blue: var(--cove-kind-knowledge-solid);
   --cove-pixel-cyan: var(--cove-accent-10);
   --cove-pixel-mint: var(--cove-kind-shell-solid);
-  --cove-node-background-image: none;
+  --cove-node-background-image:
+    linear-gradient(180deg, var(--cove-glass-sheen), transparent 30%), var(--cove-glass-grain);
+  --cove-node-rim: linear-gradient(
+    162deg,
+    var(--cove-glass-rim-hi),
+    var(--cove-glass-rim-lo) 30%,
+    transparent 54%,
+    var(--cove-glass-rim-lo)
+  );
+  --cove-chrome-background-image:
+    linear-gradient(180deg, var(--cove-glass-sheen), transparent 60%), var(--cove-glass-grain);
   --cove-node-shadow: 0 10px 28px rgb(27 29 32 / 0.14);
   --cove-node-shadow-hover: 0 14px 36px rgb(27 29 32 / 0.18);
   --cove-node-shadow-focus: 0 0 0 1px var(--cove-focus-ring), 0 10px 28px rgb(27 29 32 / 0.14);

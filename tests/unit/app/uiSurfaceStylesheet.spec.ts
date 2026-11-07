@@ -54,11 +54,13 @@ describe('reduced transparency', () => {
     const generated = rulesOf('themes/generated/cove.css').filter(rule =>
       rule.selector.startsWith(':root'),
     )
-    // Glass opacities are the percentages a colour is mixed with `transparent` at.
+    // Glass opacities are the percentages a colour is mixed with `transparent` at, as in
+    // `color-mix(in srgb, <colour> var(--cove-glass-frame), transparent)`; a gradient stop such
+    // as the sheen's `var(--cove-glass-sheen), transparent 30%` is not one.
     const glassTokens = new Set(
       generated
         .flatMap(rule => Object.values(declarationsOf(rule)))
-        .flatMap(value => [...value.matchAll(/var\((--cove-glass-[a-z-]+)\),\s*transparent/g)])
+        .flatMap(value => [...value.matchAll(/var\((--cove-glass-[a-z-]+)\),\s*transparent\)/g)])
         .map(match => match[1]!),
     )
     expect(glassTokens.size).toBeGreaterThan(0)
@@ -76,6 +78,18 @@ describe('reduced transparency', () => {
         .flatMap(rule => rule.selector.split(',').map(part => rootSpecificity(part.trim()))),
     )
     expect(rootSpecificity(solid!.selector)).toBeGreaterThan(strongest)
+  })
+
+  it('takes the sheen, grain and rim off glass in the same rule', () => {
+    const solid = rules.find(
+      rule => rule.selector.includes(REDUCED) && rule.selector.startsWith(':root'),
+    )!
+    expect(declarationsOf(solid)).toMatchObject({
+      '--cove-glass-sheen': 'transparent',
+      '--cove-glass-rim-hi': 'transparent',
+      '--cove-glass-rim-lo': 'transparent',
+      '--cove-glass-grain': 'none',
+    })
   })
 
   it('also outranks a plugin palette, which narrows the family to one theme id', () => {
