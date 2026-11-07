@@ -6,15 +6,7 @@ import type { createRemoteRecoveryCheckpointFence } from './remoteRecoveryCheckp
 import type { RemotePtyEndpointProxy } from './remotePtyEndpointProxy'
 import { RemotePtyRecoveryBlockedError } from './RemotePtyRecoveryBlockedError'
 
-type SessionRoute =
-  | { kind: 'local' }
-  | { kind: 'remote'; endpointId: string; remoteSessionId: string }
-
-type RetiredRemoteCursor = {
-  endpointId: string
-  remoteSessionId: string
-  cursor: number | null
-}
+import type { RetiredRemoteSession, SessionRoute } from './remotePtyEndpointBridge'
 
 export async function restoreRemotePtySession(options: {
   homeSessionId: string
@@ -30,7 +22,7 @@ export async function restoreRemotePtySession(options: {
   routes: Map<string, SessionRoute>
   homeSessionIdByRemote: Map<string, string>
   remoteByHomeSessionId: Map<string, { endpointId: string; remoteSessionId: string }>
-  retiredRemoteCursorByHomeSessionId: Map<string, RetiredRemoteCursor>
+  retiredRemoteCursorByHomeSessionId: Map<string, RetiredRemoteSession>
   recoveryCheckpointFence: ReturnType<typeof createRemoteRecoveryCheckpointFence>
   getProxy: (endpointId: string) => RemotePtyEndpointProxy
 }): Promise<ListSessionsResult['sessions'][number] | null> {

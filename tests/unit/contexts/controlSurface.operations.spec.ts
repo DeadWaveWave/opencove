@@ -19,7 +19,7 @@ it('has unique, complete metadata and strictly exportable wire schemas', () => {
   expect(new Set(CONTROL_SURFACE_OPERATIONS.map(op => op.id)).size).toBe(
     CONTROL_SURFACE_OPERATIONS.length,
   )
-  expect(CONTROL_SURFACE_OPERATIONS.filter(op => op.contract === 'schema')).toHaveLength(145)
+  expect(CONTROL_SURFACE_OPERATIONS.filter(op => op.contract === 'schema')).toHaveLength(146)
   for (const op of CONTROL_SURFACE_OPERATIONS) {
     expect(Object.isFrozen(op)).toBe(true)
     expect(getControlSurfaceOperation(op.id)).toBe(op)
@@ -132,6 +132,7 @@ it('defaults normalization to identity and freezes constructors', async () => {
 it.each([
   ['endpoint.readDirectory', 'admin'],
   ['session.finalMessage', 'interact'],
+  ['session.finalMessageForNode', 'interact'],
   ['plugin.sidebar.items', 'interact'],
 ] as const)('classifies side-effecting query %s as %s', (id, scope) => {
   expect(getControlSurfaceOperation(id)).toMatchObject({ kind: 'query', scope })

@@ -27,11 +27,6 @@ import {
 import { normalizeFilesystemWriteFileTextInMount } from '../../support/controlSurfaceLegacyOracles/filesystemMountWriteHandlers'
 import { normalizePtySpawnInMount } from '../../support/controlSurfaceLegacyOracles/ptyMountHandlers'
 import {
-  normalizeSessionGet,
-  normalizeSessionKill,
-} from '../../support/controlSurfaceLegacyOracles/sessionHandlers'
-import { normalizeSessionFinalMessage } from '../../support/controlSurfaceLegacyOracles/sessionFinalMessageHandler'
-import {
   normalizeSystemPing,
   normalizeSystemCapabilities,
 } from '../../support/controlSurfaceLegacyOracles/systemHandlers'
@@ -52,9 +47,6 @@ const oracles: Record<string, (payload: unknown) => unknown> = {
   'filesystem.readDirectoryInMount': normalizeFilesystemReadDirectoryInMount,
   'filesystem.writeFileTextInMount': normalizeFilesystemWriteFileTextInMount,
   'pty.spawnInMount': normalizePtySpawnInMount,
-  'session.get': normalizeSessionGet,
-  'session.kill': normalizeSessionKill,
-  'session.finalMessage': normalizeSessionFinalMessage,
   'system.ping': normalizeSystemPing,
   'system.capabilities': normalizeSystemCapabilities,
 }
@@ -105,9 +97,6 @@ const bases: Record<string, Record<string, unknown>> = {
     content: 'hello',
     overwrite: true,
   },
-  'session.get': { sessionId: ' session-1 ' },
-  'session.kill': { sessionId: ' session-1 ' },
-  'session.finalMessage': { sessionId: ' session-1 ' },
 }
 const validators: Record<string, (payload: unknown) => unknown> = {}
 const defaults: Record<string, Parameters<typeof toAppErrorDescriptor>[1]> = {}

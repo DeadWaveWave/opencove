@@ -8,8 +8,7 @@ import {
   normalizePresentationSnapshotPayload,
   normalizeSpawnTerminalPayload,
 } from '../sessionStreamingNormalize'
-import { normalizeSessionFinalMessage } from '../sessionFinalMessageHandlerNormalize'
-import { normalizeSessionGet, normalizeSessionKill } from '../sessionHandlersNormalize'
+import { sessionAddressSchema, normalizeSessionAddress } from '../sessionAddress'
 import { defineLegacyOperation, defineOperation } from '../defineOperation'
 import * as z from 'zod'
 import { normalizeLaunchAgentPayload } from '../sessionNormalize'
@@ -45,40 +44,65 @@ export const sessionDetachAgentStateWatcherOperation = defineOperation({
   summary: 'Dispose the agent state watcher attached to a session',
 })
 export const sessionFinalMessageOperation = defineOperation({
-  input: z.object({
-    sessionId: z.string(),
-  }),
-  normalize: normalizeSessionFinalMessage,
-  legacyNormalize: normalizeSessionFinalMessage,
-  errors: ['session.not_found', 'worker.unavailable', 'agent.read_last_message_failed'],
   id: 'session.finalMessage',
+  input: sessionAddressSchema,
+  normalize: normalizeSessionAddress,
+  errors: [
+    'common.invalid_input',
+    'session.not_found',
+    'worker.unavailable',
+    'persistence.unavailable',
+    'session.transcript_not_ready',
+    'agent.read_last_message_failed',
+  ],
   kind: 'query',
   // Discovery writes resumeSessionId back into the live session record.
   scope: 'interact',
   availability: 'always',
   summary: 'Read the last agent reply and cache any discovered resume session id',
 })
+/** Worker-to-Worker query with node transcript readiness semantics. */
+export const sessionFinalMessageForNodeOperation = defineOperation({
+  id: 'session.finalMessageForNode',
+  input: z
+    .object({
+      sessionId: z.string().describe('Agent session whose transcript is read on this Worker'),
+    })
+    .strict(),
+  normalize: normalizeSessionAddress,
+  errors: sessionFinalMessageOperation.errors,
+  kind: 'query',
+  // Transcript discovery can cache resumeSessionId, as in session.finalMessage.
+  scope: 'interact',
+  availability: 'always',
+  summary: 'Read the last agent reply only when its transcript is ready',
+})
 export const sessionGetOperation = defineOperation({
-  input: z.object({
-    sessionId: z.string(),
-  }),
-  normalize: normalizeSessionGet,
-  legacyNormalize: normalizeSessionGet,
-  errors: ['session.not_found'],
   id: 'session.get',
+  input: sessionAddressSchema,
+  normalize: normalizeSessionAddress,
+  errors: [
+    'common.invalid_input',
+    'session.not_found',
+    'worker.unavailable',
+    'persistence.unavailable',
+  ],
   kind: 'query',
   scope: 'read',
   availability: 'always',
-  summary: 'Get a launched session by its id',
+  summary: 'Get terminal or agent session metadata by session or canvas node id',
 })
 export const sessionKillOperation = defineOperation({
-  input: z.object({
-    sessionId: z.string(),
-  }),
-  normalize: normalizeSessionKill,
-  legacyNormalize: normalizeSessionKill,
-  errors: ['session.not_found', 'terminal.kill_failed'],
   id: 'session.kill',
+  input: sessionAddressSchema,
+  normalize: normalizeSessionAddress,
+  errors: [
+    'common.invalid_input',
+    'session.not_found',
+    'worker.unavailable',
+    'persistence.unavailable',
+    'terminal.kill_failed',
+  ],
   kind: 'command',
   scope: 'interact',
   availability: 'always',
@@ -300,6 +324,7 @@ export const sessionOperations = [
   sessionAttachAgentStateWatcherOperation,
   sessionDetachAgentStateWatcherOperation,
   sessionFinalMessageOperation,
+  sessionFinalMessageForNodeOperation,
   sessionGetOperation,
   sessionKillOperation,
   sessionLaunchAgentOperation,

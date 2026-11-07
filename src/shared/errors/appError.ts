@@ -21,6 +21,7 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'space.ambiguous': 'Space locator matched multiple spaces.',
     'node.not_found': 'Node not found.',
     'node.unsupported_operation': 'This node operation is not supported.',
+    'session.transcript_not_ready': 'Session transcript is not available yet.',
     'session.not_found': 'Session not found.',
     'control_surface.unauthorized': 'Unauthorized request.',
     'integration.github.unavailable': 'GitHub integration is unavailable.',

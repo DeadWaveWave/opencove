@@ -175,6 +175,11 @@ export class PtyStreamHub {
     this.broadcastSessionMetadata(next)
   }
 
+  public getSessionMetadata(sessionId: string): SessionMetadata | null {
+    const metadata = this.sessions.get(sessionId)?.metadata
+    return metadata ? { ...metadata, args: [...metadata.args] } : null
+  }
+
   public hasSession(sessionId: string): boolean {
     return this.sessions.has(sessionId)
   }
