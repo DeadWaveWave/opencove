@@ -8,11 +8,7 @@ import {
   generateTheme,
   type Appearance,
 } from '@shared/design/themeGenerator'
-import {
-  renderFamilyStylesheet,
-  renderFamilyInkStylesheet,
-  renderPaletteStylesheet,
-} from '@shared/design/themeTokens'
+import { renderFamilyStylesheet, renderPaletteStylesheet } from '@shared/design/themeTokens'
 
 const SCOPE = ':root[data-cove-family=\'cove\'][data-cove-theme-id="plugin:fixture:dusk"]'
 
@@ -23,12 +19,7 @@ function blocks(css: string) {
     rule.walkDecls(decl => {
       tokens[decl.prop] = decl.value
     })
-    const previous = rules.find(entry => entry.selector === rule.selector)
-    if (previous) {
-      Object.assign(previous.tokens, tokens)
-    } else {
-      rules.push({ selector: rule.selector, tokens })
-    }
+    rules.push({ selector: rule.selector, tokens })
   })
   return rules
 }
@@ -66,7 +57,7 @@ describe('generated plugin palettes', () => {
   })
 
   it('renders the same tokens as the Cove family for Cove inputs, scoped to the theme', () => {
-    const family = blocks(renderFamilyInkStylesheet('cove') + renderFamilyStylesheet('cove'))
+    const family = blocks(renderFamilyStylesheet('cove'))
     for (const appearance of ['dark', 'light'] as Appearance[]) {
       const palette = blocks(
         renderPaletteStylesheet(SCOPE, {
@@ -87,7 +78,7 @@ describe('generated plugin palettes', () => {
   })
 
   it('outranks the family it builds on, for the window and for dark terminals', () => {
-    const family = blocks(renderFamilyInkStylesheet('cove') + renderFamilyStylesheet('cove'))
+    const family = blocks(renderFamilyStylesheet('cove'))
     const palette = blocks(
       renderPaletteStylesheet(SCOPE, {
         ...THEME_FAMILIES.cove,

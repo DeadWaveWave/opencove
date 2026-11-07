@@ -268,17 +268,9 @@ function themeBlocks(
   root: string,
   appearances: readonly Appearance[],
   generate: (appearance: Appearance) => GeneratedTheme,
-  includeInk = true,
 ): string[] {
   const blocks = appearances.map(appearance =>
-    rule(
-      `${root}[data-cove-theme='${appearance}']`,
-      Object.fromEntries(
-        Object.entries(themeTokens(generate(appearance))).filter(
-          ([name]) => includeInk || !/^--cove-kind-\w+-ink$/.test(name),
-        ),
-      ),
-    ),
+    rule(`${root}[data-cove-theme='${appearance}']`, themeTokens(generate(appearance))),
   )
   const dark = generate('dark')
   blocks.push(rule(`${root} ${DARK_TERMINAL}`, terminalScopeTokens(dark)))
@@ -297,27 +289,8 @@ function themeBlocks(
  * of the family's themes (or a plugin theme built on it) is applied.
  */
 export function renderFamilyStylesheet(family: ThemeFamilyId): string {
-  const blocks = themeBlocks(
-    `:root[data-cove-family='${family}']`,
-    ['dark', 'light'],
-    appearance => generateFamilyTheme(family, appearance),
-    false,
-  )
-  // Keep ink separate: the base palette is already at the file-size limit.
-  return `${GENERATED_HEADER}\n@import './${family}-ink.css';\n${blocks.join('\n')}`
-}
-
-/** Generated companion for the canvas ink roles; loaded in the same cascade layer. */
-export function renderFamilyInkStylesheet(family: ThemeFamilyId): string {
-  const blocks = (['dark', 'light'] as const).map(appearance =>
-    rule(
-      `:root[data-cove-family='${family}'][data-cove-theme='${appearance}']`,
-      Object.fromEntries(
-        Object.entries(themeTokens(generateFamilyTheme(family, appearance))).filter(([name]) =>
-          /^--cove-kind-\w+-ink$/.test(name),
-        ),
-      ),
-    ),
+  const blocks = themeBlocks(`:root[data-cove-family='${family}']`, ['dark', 'light'], appearance =>
+    generateFamilyTheme(family, appearance),
   )
   return `${GENERATED_HEADER}\n\n${blocks.join('\n')}`
 }
