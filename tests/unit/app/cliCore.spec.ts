@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { CONTROL_SURFACE_OPERATIONS } from '../../../src/shared/contracts/controlSurface/operations'
 import { describe, it, expect, vi } from 'vitest'
 import { run } from '../../../src/app/cli/core/run'
 import type { CliIo } from '../../../src/app/cli/core/io'
@@ -202,7 +203,10 @@ describe('TypeScript CLI core', () => {
   )
   it('legacy schema error', async () => {
     const f = fixture()
-    expect(await run(['api', 'schema', 'agent.listSessions'], f.io)).toBe(1)
+    // Any operation still on the legacy contract has no input schema to print.
+    const legacy = CONTROL_SURFACE_OPERATIONS.find(op => op.contract === 'legacy')
+    expect(legacy).toBeDefined()
+    expect(await run(['api', 'schema', legacy!.id], f.io)).toBe(1)
     expect(f.err()).toContain('api.schema_unavailable')
   })
   it('routes session through the core', async () => {
