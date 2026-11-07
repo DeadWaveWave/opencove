@@ -1,6 +1,7 @@
 import { remoteOutputs } from './outputContracts'
 import { defineCommand, type Command, type OptionSpec, type OperationId } from '../core/command'
 import { usage } from '../core/errors'
+import { AGENT_PROVIDER_IDS } from '../../../shared/contracts/dto'
 
 export function option(
   description: string,
@@ -23,7 +24,9 @@ export function mapped(
     summary,
     render: remoteOutputs[operation],
     connect: true,
-    options: Object.fromEntries(Object.entries(fields).map(([flag, [, spec]]) => [flag, spec])),
+    options: Object.fromEntries(
+      Object.entries(fields).map(([flag, [inputPath, spec]]) => [flag, { ...spec, inputPath }]),
+    ),
     buildInput: ({ options }) => {
       const payload = Object.fromEntries(
         Object.entries(fields)
@@ -85,7 +88,14 @@ export const remoteCommands: Command[] = [
   mapped('session run-agent', 'session.launchAgent', 'Launch an agent in a space', {
     space: ['spaceId', id('space')],
     prompt: ['prompt', { ...option('Give the agent its task', 'text', true), fileVariant: true }],
-    provider: ['provider', option('Select the agent provider', 'provider')],
+    provider: [
+      'provider',
+      {
+        ...option('Select the agent provider', 'provider'),
+        choices: [...AGENT_PROVIDER_IDS, ''],
+        normalize: value => value.trim(),
+      },
+    ],
     model: ['model', option('Select the agent model', 'model')],
   }),
   ...(

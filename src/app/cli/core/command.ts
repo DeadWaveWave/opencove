@@ -8,6 +8,10 @@ export interface OptionSpec {
   required?: boolean
   description: string
   valueName?: string
+  choices?: readonly string[] | ((args: CommandArgs) => readonly string[])
+  /** Wire payload path for enriching server errors from the same choice declaration. */
+  inputPath?: string
+  normalize?: (value: string) => string
   conflicts?: string[]
   fileVariant?: true
 }
@@ -24,6 +28,10 @@ export interface RenderSpec {
   unavailable?: string
   itemKey?: string
   rawPaths?: boolean
+  aliases?: Record<string, string>
+  declaredRawPaths?: string[]
+  rawItemKey?: string
+  fieldHints?: Record<string, string>
   examples?: string[]
   tableFields?: Record<string, string[]>
   listKey?: string

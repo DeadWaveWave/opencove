@@ -5,6 +5,14 @@ exports[`help golden api ops 1`] = `
 
 List Control Surface operations with their kind, contract and CLI command
 
+The full JSON catalog is large (about 22 KB). Start with --domains, then narrow with --prefix or --search and --fields.
+
+With --domains, output is an array of summaries with these projectable fields:
+  domain: Operation ID prefix before the first dot
+  operations: Total operations in the domain after filtering
+  schema: Operations with a schema input contract
+  commands: Command-kind operations, not dedicated CLI commands
+
 Options:
   --domains                   Count operations, schema contracts and command-kind operations by domain
   --search <text>             Match operation IDs or summaries, ignoring case
@@ -59,6 +67,8 @@ exports[`help golden node list 1`] = `
 
 List canvas nodes
 
+Lists per-kind summaries: data carries kind plus requirement, status, priority and tags for tasks, or url for websites; data carries only kind for notes, agents and terminals. Read full content, such as note text, with "opencove node get --node <id>".
+
 data.status is task status. Top-level status is the runtime status of agent and terminal sessions. STATE shows the applicable status.
 
 Target space (optional; choose one):
@@ -69,7 +79,7 @@ Target space (optional; choose one):
   Add --project <id> to narrow a name, branch or path lookup
 
 Options:
-  --kind <kind>  Filter by note, task, website, agent or terminal
+  --kind <kind>  Filter by note, task, website, agent, terminal, plugin, document, folder, image or role
 
 Table output (-o table): supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.status, data.priority, data.requirement, data.tags, data.url

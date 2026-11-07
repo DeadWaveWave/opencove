@@ -1,10 +1,10 @@
 import { commands } from '../commands'
 import { getControlSurfaceOperation } from '../../../shared/contracts/controlSurface/operations'
 import { commandWords, globalArgv, globals, parseCommand, suggest } from './args'
-import { CliError, printError, usage, validationError } from './errors'
+import { CliError, inputErrorMessage, printError, usage, validationError } from './errors'
 import { resolveConnection } from './context'
 import { invoke } from './transport'
-import { render, validateRenderOptions } from './render'
+import { rawRenderSpec, render, validateRenderOptions } from './render'
 import { help } from './help'
 import type { CliIo } from './io'
 import type { OperationId } from './command'
@@ -24,6 +24,10 @@ type CliOperation =
       normalize(wire: never): unknown
       legacyNormalize?(payload: unknown): unknown
     }
+
+function commandForOperation(id: string) {
+  return commands.find(c => c.operation === id || c.operationAliases?.includes(id as OperationId))
+}
 export async function run(argv: string[], io: CliIo): Promise<number> {
   let json = false
   try {
@@ -94,14 +98,15 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       )
     }
     const renderSpec =
-      command.selectRender?.(args) ?? (command.rawQueryFields ? { rawPaths: true } : command.render)
+      command.selectRender?.(args) ??
+      (command.rawQueryFields ? rawRenderSpec(commandForOperation(id!)?.render) : command.render)
     validateRenderOptions(args.options, renderSpec)
     if (operation?.contract === 'schema' && !command.serverValidation) {
       try {
         const validation = operation.input.safeParse(input)
         if (!validation.success) {
           operation.legacyNormalize?.(input)
-          throw validationError(id!, validation.error.issues)
+          throw validationError(id!, validation.error.issues, 2, 'cli.usage', input)
         }
         const parsed = validation.data
         operation.normalize(parsed as never)
@@ -119,7 +124,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
           'issues' in error.details &&
           Array.isArray(error.details.issues)
         ) {
-          throw validationError(id!, error.details.issues, 2, 'common.invalid_input')
+          throw validationError(id!, error.details.issues, 2, 'common.invalid_input', input)
         }
         if (
           error &&
@@ -127,7 +132,22 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
           'issues' in error &&
           Array.isArray(error.issues)
         ) {
-          throw validationError(id!, error.issues)
+          throw validationError(id!, error.issues, 2, 'cli.usage', input)
+        }
+        if (
+          error &&
+          typeof error === 'object' &&
+          'code' in error &&
+          error.code === 'common.invalid_input'
+        ) {
+          usage(
+            inputErrorMessage(
+              id!,
+              'debugMessage' in error && typeof error.debugMessage === 'string'
+                ? error.debugMessage
+                : undefined,
+            ),
+          )
         }
         usage(error instanceof Error ? error.message : String(error))
       }
@@ -146,6 +166,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
           fetch: io.fetch,
           signal: io.signal,
           errorTargets: command.errorTargets,
+          inputOptions: commandForOperation(operationId)?.options,
         },
       )
     }

@@ -2,9 +2,31 @@ import { nodeDeleteOutput, canvasFocusOutput } from './outputContracts'
 import { nodeListOutput, nodeGetOutput, nodeKindOutput } from './outputContracts'
 import { defineCommand, type CommandArgs, type OptionSpec } from '../core/command'
 import { CliError, usage } from '../core/errors'
+import { AGENT_PROVIDER_IDS } from '../../../shared/contracts/dto'
+const optionChoices: Record<string, readonly string[]> = {
+  'Node kind': [
+    'note',
+    'task',
+    'website',
+    'agent',
+    'terminal',
+    'plugin',
+    'document',
+    'folder',
+    'image',
+    'role',
+  ],
+  Priority: ['low', 'medium', 'high', 'urgent'],
+  Status: ['todo', 'doing', 'ai_done', 'done'],
+  'Session mode': ['shared', 'incognito', 'profile'],
+  Provider: [...AGENT_PROVIDER_IDS, ''],
+}
 const optionText: Record<string, [string, string]> = {
   'Node ID': ['id', 'Select a canvas node by its ID'],
-  'Node kind': ['kind', 'Filter by note, task, website, agent or terminal'],
+  'Node kind': [
+    'kind',
+    'Filter by note, task, website, agent, terminal, plugin, document, folder, image or role',
+  ],
   'Note text': ['text', 'Set the note contents'],
   Requirement: ['text', 'Describe the task requirement'],
   Priority: ['low|medium|high|urgent', 'Set the task priority'],
@@ -27,6 +49,7 @@ export const stringOption = (description: string, required = false): OptionSpec 
   description: optionText[description]?.[1] ?? description,
   valueName: optionText[description]?.[0] ?? description.toLowerCase().replaceAll(' ', '-'),
   required,
+  choices: optionChoices[description],
 })
 const locatorOptions: Record<string, OptionSpec> = {
   space: { ...stringOption('Space ID') },
@@ -94,9 +117,6 @@ function data(kind: string, o: Record<string, unknown>, create: boolean) {
   if (kind === 'terminal') {
     return { shell: o.shell, command: o.command, profileId: o.profile }
   }
-  if (!create && o.pinned !== undefined && !['true', 'false'].includes(String(o.pinned))) {
-    usage('--pinned must be true or false')
-  }
   return {
     url: o.url,
     pinned: create ? !!o.pinned : o.pinned === undefined ? undefined : o.pinned === 'true',
@@ -110,11 +130,11 @@ export const nodeCommands = [
     path: ['node', 'list'],
     summary: 'List canvas nodes',
     description:
-      'data.status is task status. Top-level status is the runtime status of agent and terminal sessions. STATE shows the applicable status.',
+      'Lists per-kind summaries: data carries kind plus requirement, status, priority and tags for tasks, or url for websites; data carries only kind for notes, agents and terminals. Read full content, such as note text, with "opencove node get --node <id>".\n\ndata.status is task status. Top-level status is the runtime status of agent and terminal sessions. STATE shows the applicable status.',
     targetSpace: 'optional',
     connect: true,
     operation: 'node.list',
-    options: { ...locatorOptions, kind: stringOption('Node kind') },
+    options: { ...locatorOptions, kind: { ...stringOption('Node kind'), inputPath: 'kind' } },
     buildInput: ({ options: o }) => ({ space: locator(o), projectId: o.project, kind: o.kind }),
     render: nodeListOutput,
   }),
@@ -168,6 +188,7 @@ export const nodeCommands = [
                     type: create ? 'boolean' : 'string',
                     description: 'Keep the website pinned',
                     valueName: 'true|false',
+                    ...(!create ? { choices: ['true', 'false'] } : {}),
                   },
                   'session-mode': stringOption('Session mode'),
                   profile: stringOption('Profile'),

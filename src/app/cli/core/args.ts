@@ -2,7 +2,7 @@ import { jsonErrorOffset } from './jsonLocation'
 import { parseArgs, type ParseArgsConfig } from 'node:util'
 import type { Command, OptionSpec } from './command'
 import type { CliIo } from './io'
-import { CliError, usage } from './errors'
+import { choiceMessage, CliError, usage } from './errors'
 export const globals: Record<string, OptionSpec> = {
   endpoint: {
     type: 'string',
@@ -21,9 +21,13 @@ export const globals: Record<string, OptionSpec> = {
     type: 'string',
     valueName: 'a,b,...',
     description:
-      'Select item-relative fields; preserve envelopes and accept item-key prefixes. api call queries use raw output paths',
+      'Select item-relative fields; preserve envelopes and accept item-key prefixes. api call queries also accept raw output paths',
   },
-  output: { type: 'string', description: 'Choose JSON (default) or a supported table layout' },
+  output: {
+    type: 'string',
+    choices: ['json', 'table'],
+    description: 'Choose JSON (default) or a supported table layout',
+  },
   help: { type: 'boolean', description: 'Show help for this command or group' },
   version: { type: 'boolean', description: 'Print the CLI version' },
 }
@@ -176,6 +180,20 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
       }
     }
     const convert = (value: unknown) => {
+      const received = value
+      if (spec.type === 'string' && spec.normalize) {
+        value = spec.normalize(String(value))
+      }
+      const choices =
+        typeof spec.choices === 'function'
+          ? spec.choices({
+              options: values,
+              positionals: parsed.positionals.slice(command.path.length),
+            })
+          : spec.choices
+      if (choices && !choices.includes(String(value))) {
+        usage(choiceMessage(`--${key}`, received, choices), commandHelpHint(command.path))
+      }
       if (spec.type === 'number') {
         const number = Number(value)
         if (!Number.isFinite(number)) {
@@ -203,9 +221,6 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
     values[key] = Array.isArray(values[key])
       ? (values[key] as unknown[]).map(convert)
       : convert(values[key])
-  }
-  if (values.output !== undefined && !['json', 'table'].includes(String(values.output))) {
-    usage('Output must be json or table')
   }
   if (values.timeout !== undefined && Number(values.timeout) <= 0) {
     usage('Timeout must be positive')

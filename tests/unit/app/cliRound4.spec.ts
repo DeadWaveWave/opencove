@@ -135,7 +135,7 @@ it.each([
 ])('lists available variants for %s', async (id, variant, variants) => {
   const f = fixture()
   expect(await run(['api', 'schema', id, '--variant', variant], f.io)).toBe(2)
-  expect(f.error().message).toContain(`Available variants: ${variants}`)
+  expect(f.error().message).toBe(`Invalid --variant "${variant}": expected one of ${variants}`)
   expect(f.fetch).not.toHaveBeenCalled()
 })
 it.each(

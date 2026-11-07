@@ -1,4 +1,21 @@
 /** Paths address properties of every array element, never array indexes. */
+export function outputPaths(value: unknown, prefix = ''): string[] {
+  if (Array.isArray(value)) {
+    return [...new Set(value.flatMap(item => outputPaths(item, prefix)))]
+  }
+  if (!value || typeof value !== 'object') {
+    return []
+  }
+  return Object.entries(value).flatMap(([key, child]) => {
+    // Dot paths cannot address literal dots, empty segments or array indexes.
+    if (!key || key.includes('.') || /^-?\d+$/.test(key)) {
+      return []
+    }
+    const path = prefix ? `${prefix}.${key}` : key
+    return [path, ...outputPaths(child, path)]
+  })
+}
+
 export function hasPath(value: unknown, path: string[]): boolean {
   if (!path.length) {
     return value !== undefined

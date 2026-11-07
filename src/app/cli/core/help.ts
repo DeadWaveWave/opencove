@@ -3,6 +3,11 @@ import type { Command, OptionSpec } from './command'
 import { globals } from './args'
 import { sections, commandExamples } from './helpCatalog'
 const footer = 'Global options: see "opencove --help".'
+const discovery = [
+  'Start with "opencove api ops --domains" for a compact domain map.',
+  'Then run "opencove api ops --prefix node --fields id,command" to explore one domain.',
+  'Run "opencove api ops" only when you need the full catalog.',
+]
 function rows(entries: [string, string][]) {
   const width = Math.max(...entries.map(([name]) => name.length))
   return entries.map(([name, description]) => `  ${name.padEnd(width)}  ${description}`)
@@ -32,7 +37,8 @@ export function help(commands: Command[], path: string[]) {
       '',
       'Exit codes: 0 success; 1 operation failure; 2 invalid input; 3 unreachable; 4 unauthorized; 5 incompatible protocol; 6 ambiguous target; 124 timeout; 130 interrupted.',
       '',
-      'Run "opencove <group> --help" for commands in a group. Run "opencove api ops" to list every Control Surface operation.',
+      'Run "opencove <group> --help" for commands in a group.',
+      ...discovery,
     )
     return lines.join('\n') + '\n'
   }
@@ -110,7 +116,7 @@ export function help(commands: Command[], path: string[]) {
       exact.render?.fields
         ? `Projectable fields: ${exact.render.fields.join(', ')}`
         : exact.rawQueryFields
-          ? 'Field projection (--fields): raw output dot paths for queries; validated after the read. Commands do not support projection.'
+          ? 'Field projection (--fields): queries accept raw output dot paths and item-relative aliases from dedicated commands with declared output fields; validated after the read. Commands do not support projection.'
           : `Field projection (--fields): not supported.${exact.render?.unavailable ? ' ' + exact.render.unavailable : ''}`,
     )
     if (exact.render?.examples) {
@@ -155,8 +161,14 @@ export function help(commands: Command[], path: string[]) {
       : [name, items[0].summary]
   })
   return (
-    [`Usage: ${prefix} <command> [options]`, '', 'Commands:', ...rows(entries), '', footer].join(
-      '\n',
-    ) + '\n'
+    [
+      `Usage: ${prefix} <command> [options]`,
+      ...(path.join(' ') === 'api' ? ['', ...discovery] : []),
+      '',
+      'Commands:',
+      ...rows(entries),
+      '',
+      footer,
+    ].join('\n') + '\n'
   )
 }
