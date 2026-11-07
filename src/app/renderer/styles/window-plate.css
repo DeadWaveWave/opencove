@@ -41,6 +41,33 @@
   --cove-reading-plate-feather: 16px;
 }
 
+/* Each kind of window reads on its own kind's plate (owner call, round 4); with kind colours off,
+   on the theme's. Terminals pick theirs in terminal-node.css, where it is also xterm's colour. */
+:root[data-cove-family='cove'] .cove-window-plate[data-cove-kind='ai'] {
+  --cove-reading-plate: var(--cove-kind-ai-plate);
+}
+
+:root[data-cove-family='cove'] .cove-window-plate[data-cove-kind='shell'] {
+  --cove-reading-plate: var(--cove-kind-shell-plate);
+}
+
+:root[data-cove-family='cove'] .cove-window-plate[data-cove-kind='plan'] {
+  --cove-reading-plate: var(--cove-kind-plan-plate);
+}
+
+:root[data-cove-family='cove'] .cove-window-plate[data-cove-kind='knowledge'] {
+  --cove-reading-plate: var(--cove-kind-knowledge-plate);
+}
+
+:root[data-cove-family='cove'] .cove-window-plate[data-cove-kind='media'] {
+  --cove-reading-plate: var(--cove-kind-media-plate);
+}
+
+:root[data-cove-family='cove'] .cove-window-plate[data-cove-kind='neutral'],
+:root[data-cove-family='cove'][data-cove-kind-colors='off'] .cove-window-plate[data-cove-kind] {
+  --cove-reading-plate: var(--cove-kind-neutral-plate);
+}
+
 /* Content that paints its own opaque background up to its edges hides the inner part of the
    ramp, so there the ramp stays in the gutter and is solid where the content begins. */
 :root[data-cove-family='cove'] .terminal-node[data-cove-terminal-background='opaque'],

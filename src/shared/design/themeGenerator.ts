@@ -139,15 +139,21 @@ export const PIXEL_WALL = {
 const CLOUD_HUES = [348, 296, 250, 200] as const
 
 /**
- * The solid reading plate under window content (owner call, round 4): never pure black or white,
- * but a faint wash of the accent's hue, like Material 3's tinted surfaces. Dark lifts it off the
- * darkest neutral; light settles it under white. Chroma follows the accent's down to grey.
+ * The solid reading plate under window content (owner calls, round 4): never pure black or white,
+ * but a faint wash of a hue, like Material 3's tinted surfaces. Each kind of window reads on its
+ * own kind's hue (KIND_PLATE); the theme's plate, at the accent's hue, is for neutral windows and
+ * for every window when kind colours are off. Dark lifts the plates off the darkest neutral;
+ * light settles them under white. The theme plate's chroma follows the accent's down to grey.
  */
 export const PLATE = {
   dark: { l: 0.225, c: 0.03 },
   light: { l: 0.978, c: 0.018 },
 } as const
 const PLATE_CHROMA_PER_ACCENT = 0.25
+export const KIND_PLATE = {
+  dark: { l: 0.225, c: 0.028 },
+  light: { l: 0.978, c: 0.018 },
+} as const
 
 export type Scale = readonly Rgb[]
 
@@ -226,6 +232,8 @@ export interface GeneratedTheme {
   neutral: Scale
   accent: Scale
   kinds: Record<KindFamilyId, Scale>
+  /** Each kind's reading plate (KIND_PLATE). */
+  kindPlates: Record<KindFamilyId, Rgb>
   labels: Record<LabelId, Scale>
   amber: Scale
   red: Scale
@@ -248,6 +256,7 @@ export function kindRoles(theme: GeneratedTheme, id: KindFamilyId | 'neutral') {
       solid: dark ? s[7]! : s[8]!,
       on: dark ? s[11]! : s[0]!,
       far: s[dark ? 10 : 11]!,
+      plate: theme.roles.plate,
     }
   }
   return {
@@ -258,6 +267,7 @@ export function kindRoles(theme: GeneratedTheme, id: KindFamilyId | 'neutral') {
     solid: s[8]!,
     on: theme.onSolid(s[8]!),
     far: s[dark ? 10 : 11]!,
+    plate: theme.kindPlates[id],
   }
 }
 
@@ -273,6 +283,12 @@ export function generateTheme(input: ThemeInput): GeneratedTheme {
       return [id, scale(f.hue, f.chroma[ap], ap, k, { anchor: f.anchor[ap] })]
     }),
   ) as Record<KindFamilyId, Scale>
+  const kindPlates = Object.fromEntries(
+    (Object.keys(KIND_FAMILIES) as KindFamilyId[]).map(id => [
+      id,
+      oklch(KIND_PLATE[ap].l, KIND_PLATE[ap].c, KIND_FAMILIES[id].hue),
+    ]),
+  ) as Record<KindFamilyId, Rgb>
   const labels = Object.fromEntries(
     (Object.keys(LABEL_HUES) as LabelId[]).map(id => [
       id,
@@ -311,6 +327,7 @@ export function generateTheme(input: ThemeInput): GeneratedTheme {
     neutral,
     accent,
     kinds,
+    kindPlates,
     labels,
     amber,
     red,

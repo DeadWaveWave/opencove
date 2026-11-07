@@ -297,7 +297,7 @@ export function TaskNode({
         }}
       />
 
-      <WindowPlate />
+      <WindowPlate kind="plan" />
       {/* Everything under the header, requirement, sessions and footer, is one body on the plate. */}
       <div className="task-node__plate" data-cove-part="window-body">
         <div className="task-node__content">

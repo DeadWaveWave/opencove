@@ -37,7 +37,7 @@ export function useTerminalThemeApplier({
     }
   }, [terminalLifecycleKey])
 
-  return useCallback(() => {
+  const applyTerminalTheme = useCallback(() => {
     const terminal = terminalRef.current
     if (!terminal) {
       return
@@ -102,4 +102,19 @@ export function useTerminalThemeApplier({
       coordinator.flushNow()
     }
   }, [containerRef, terminalRef, terminalThemeMode])
+
+  useEffect(() => {
+    // Kind colours pick the terminal's colour (terminal-node.css) without a theme change.
+    if (typeof MutationObserver === 'undefined') {
+      return undefined
+    }
+    const observer = new MutationObserver(applyTerminalTheme)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-cove-kind-colors'],
+    })
+    return () => observer.disconnect()
+  }, [applyTerminalTheme])
+
+  return applyTerminalTheme
 }

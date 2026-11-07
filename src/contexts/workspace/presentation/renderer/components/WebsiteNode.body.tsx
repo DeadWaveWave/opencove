@@ -63,7 +63,7 @@ export function WebsiteNodeBody({
 
   return (
     <>
-      <WindowPlate />
+      <WindowPlate kind="media" />
       <div className="website-node__body" data-cove-part="window-body">
         <div ref={viewportRef} className="website-node__viewport" aria-label={displayTitle}>
           {showsNativePlaceholder ? (

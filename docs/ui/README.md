@@ -116,9 +116,14 @@
   使用方只管边框、圆角和阴影，背景与 `backdrop-filter` 归材质。不要再手写 `backdrop-filter`。
 - 窗口内容放在阅读底板上（`window-plate.css`）：`window` 里的 `window-body` 左右和底部内缩 6px、紧贴标题栏。
   生成的主题族里底板（`--cove-reading-plate`）是实色，墙面不会透进正在阅读的内容，对比度矩阵检查的就是
-  这个颜色。它不是纯黑也不是纯白，而是带一点强调色色相的淡色（`PLATE`，生成器的 `roles.plate`，类似
-  Material 3 的着色表面），不透明终端也用它当底色。手写主题回退到自己的窗口底色和细边框。内容自身不要再
-  铺一层不透明底色，终端除外（透明终端在第 2.3 步）。
+  这些颜色。它不是纯黑也不是纯白，而是带一点色相的淡色（类似 Material 3 的着色表面），并且按窗口类别着色：
+  每个类别一块（`KIND_PLATE`，类别色相、固定的明度和彩度，令牌 `--cove-kind-<类别>-plate`），窗口把类别传给
+  `WindowPlate`；中性窗口和关闭「窗口类别颜色」时用主题自己的底板（`PLATE`，强调色色相，`roles.plate`，
+  即 `--cove-kind-neutral-plate`）。浅色下贴近白色时 sRGB 色域放不下多少彩度，各色相取它能放下的。
+  终端的颜色就是它类别的底板（`terminal-node.css`：终端用 shell，Agent 窗口用 AI），声明在窗口上，xterm 通过
+  复制窗口 class 的取色探针读到同一个颜色，所以 Agent 窗口带 `terminal-node--agent`；切换类别颜色时终端
+  重新取色，不必等主题变化。手写主题回退到自己的窗口底色和细边框。内容自身不要再铺一层不透明底色，终端
+  除外（透明终端在第 2.3 步）。
 - 实色底板、透明外框、四边无缝（生成的主题族）：底板是窗口下面的一整层（`WindowPlate`，放在 `window-body`
   前面），不是 body 的背景，body 本身透明。它用一张遮罩融进玻璃外框：横向和纵向各一条 smoothstep，从窗口
   边缘的全透明到向内 `--cove-reading-plate-feather`（16px，越过 6px 边距一直到内容自己的内边距）处的实色，
@@ -128,7 +133,8 @@
   优先级行、Agent 会话和底部状态栏。
   `workspace-canvas.window-seam.spec.ts` 逐行比较标题栏底边上下的像素；`workspace-canvas.window-plate.spec.ts`
   把墙面换成两种颜色，确认底板颜色不变，扫描各边确认过渡没有硬边且足够宽，并在 0.3 到 2 倍的缩放下检查
-  过渡区里没有接缝。
+  过渡区里没有接缝。`workspace-canvas.window-plate-kinds.spec.ts` 确认终端、Agent、任务和便签各自读在
+  自己类别的底板上，关闭类别颜色后都回到主题底板。
 - 亚克力的底色由生成器给出（`--cove-acrylic-surface`），对比度矩阵检查它压在纯黑、纯白和像素墙上的
   最坏情况；手写主题沿用自己的 `--cove-menu-surface`。
 - 玻璃受光（生成的主题族，照原型）：

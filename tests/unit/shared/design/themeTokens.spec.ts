@@ -9,9 +9,12 @@ import { PLUGIN_THEME_TOKENS } from '@contexts/plugins/domain/pluginThemeTypes'
 import { contrastRatio, rgbToOklab, type Rgb } from '@shared/design/oklch'
 import {
   GLASS,
+  KIND_FAMILIES,
   THEME_FAMILY_LIST,
   generateFamilyTheme,
+  kindRoles,
   type Appearance,
+  type KindFamilyId,
 } from '@shared/design/themeGenerator'
 import {
   renderFamilyStylesheet,
@@ -25,6 +28,7 @@ const GENERATED_DIR = resolve(STYLES_DIR, 'themes/generated')
 const FAMILIES = THEME_FAMILY_LIST.map(family => family.id)
 const APPEARANCES: Appearance[] = ['dark', 'light']
 const CASES = FAMILIES.flatMap(family => APPEARANCES.map(appearance => ({ family, appearance })))
+const KIND_IDS = Object.keys(KIND_FAMILIES) as KindFamilyId[]
 
 const hex = (c: Rgb): string => `#${c.map(v => v.toString(16).padStart(2, '0')).join('')}`
 const LITERAL_COLOR = /#[\da-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch)\(/i
@@ -67,25 +71,36 @@ describe('generated theme tokens', () => {
   )
 
   it.each(CASES)(
-    'lays window content on a solid plate with no edge for $family/$appearance',
+    'lays each kind of window on its own solid plate with no edge for $family/$appearance',
     ({ family, appearance }) => {
       const theme = generateFamilyTheme(family, appearance)
       const tokens = themeTokens(theme)
-      // One solid colour: the one the contrast matrix checks text on, and the one terminals fill
-      // with when their xterm is opaque.
+      // The theme's own plate: neutral windows, and every window with kind colours off.
       expect(tokens['--cove-reading-plate']).toBe(hex(theme.roles.plate))
-      expect(tokens['--cove-terminal-background']).toBe(tokens['--cove-reading-plate'])
+      expect(tokens['--cove-kind-neutral-plate']).toBe(tokens['--cove-reading-plate'])
+      // Outside a window (previews, scrims) the terminal colour is the shell plate; in one it is
+      // its own kind's plate (terminal-node.css).
+      expect(tokens['--cove-terminal-background']).toBe(tokens['--cove-kind-shell-plate'])
       expect(tokens['--cove-glass-plate']).toBeUndefined()
-      // Never pure black or white: a faint wash of the accent's hue (owner call, round 4).
-      const [L, a, b] = rgbToOklab(theme.roles.plate)
-      const chroma = Math.hypot(a, b)
-      const hue = (Math.atan2(b, a) * 180) / Math.PI
-      expect(chroma).toBeGreaterThanOrEqual(0.015)
-      expect(chroma).toBeLessThanOrEqual(0.035)
-      expect(Math.abs(((hue - theme.input.accentHue + 540) % 360) - 180)).toBeLessThanOrEqual(8)
-      // Lifted off the darkest (or lightest) neutral, the nearest the scale gets to black or white.
+      // Never pure black or white: a faint wash of the accent's hue, or of the window kind's
+      // (owner calls, round 4), lifted off the darkest (or lightest) neutral. Near white the sRGB
+      // gamut holds less chroma for most hues, so light plates carry what their hue can.
       const extreme = rgbToOklab(theme.neutral[0]!)[0]
-      expect(appearance === 'dark' ? L - extreme : extreme - L).toBeGreaterThanOrEqual(0.01)
+      const minChroma = appearance === 'dark' ? 0.015 : 0.01
+      const plates = [
+        ['neutral', theme.input.accentHue],
+        ...KIND_IDS.map(id => [id, KIND_FAMILIES[id].hue] as const),
+      ] as const
+      for (const [id, expectedHue] of plates) {
+        const plate = kindRoles(theme, id).plate
+        expect(tokens[`--cove-kind-${id}-plate`], id).toBe(hex(plate))
+        const [L, a, b] = rgbToOklab(plate)
+        const hue = (Math.atan2(b, a) * 180) / Math.PI
+        expect(Math.hypot(a, b), id).toBeGreaterThanOrEqual(minChroma)
+        expect(Math.hypot(a, b), id).toBeLessThanOrEqual(0.035)
+        expect(Math.abs(((hue - expectedHue + 540) % 360) - 180), id).toBeLessThanOrEqual(8)
+        expect(appearance === 'dark' ? L - extreme : extreme - L, id).toBeGreaterThanOrEqual(0.01)
+      }
       // It melts into the frame (window-plate.css): no line, edge or glare of its own.
       expect(tokens['--cove-reading-plate-line']).toBeUndefined()
       expect(tokens['--cove-reading-plate-edge']).toBeUndefined()
@@ -177,14 +192,24 @@ describe('generated theme tokens', () => {
         .walkDecls(/^--cove-/, decl => {
           shadowed.add(decl.prop)
         })
-      const scope = terminalScopeTokens(generateFamilyTheme(family, 'dark'))
+      const dark = generateFamilyTheme(family, 'dark')
+      const scope = terminalScopeTokens(dark)
       expect([...shadowed].filter(token => !(token in scope))).toEqual([])
       // Only the frame may follow the shell; everything else resolves without the shell's scales.
+      // The terminal colour is the window kind's plate (terminal-node.css), so the scope carries
+      // the dark plates a terminal window can pick from.
+      const follows = new Set(['--cove-terminal-node-surface', '--cove-terminal-background'])
       expect(
         Object.entries(scope).filter(
-          ([name, value]) => value.includes('var(') && name !== '--cove-terminal-node-surface',
+          ([name, value]) => value.includes('var(') && !follows.has(name),
         ),
       ).toEqual([])
+      expect(scope['--cove-terminal-background']).toBe(
+        `var(--cove-terminal-kind-plate, ${scope['--cove-kind-shell-plate']})`,
+      )
+      for (const id of ['shell', 'ai', 'neutral'] as const) {
+        expect(scope[`--cove-kind-${id}-plate`], id).toBe(hex(kindRoles(dark, id).plate))
+      }
     },
   )
 

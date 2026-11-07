@@ -79,6 +79,25 @@
   --cove-reading-plate-line: transparent;
 }
 
+/* Generated families: a terminal's colour is its kind's plate (owner call, round 4), the shell's
+   for terminals and the AI's for agents, the theme's own with kind colours off. It is declared on
+   the window, so a dark terminal under a light shell picks from the dark plates its scope declares
+   (cove.css), and the colour probe, which copies the window's classes, hands xterm the same one.
+   The plate under the content is that colour too, opaque or not. */
+:root[data-cove-family='cove'] .terminal-node {
+  --cove-terminal-kind-plate: var(--cove-kind-shell-plate);
+  --cove-terminal-background: var(--cove-terminal-kind-plate);
+  --cove-reading-plate: var(--cove-terminal-background);
+}
+
+:root[data-cove-family='cove'] .terminal-node--agent {
+  --cove-terminal-kind-plate: var(--cove-kind-ai-plate);
+}
+
+:root[data-cove-family='cove'][data-cove-kind-colors='off'] .terminal-node {
+  --cove-terminal-kind-plate: var(--cove-kind-neutral-plate);
+}
+
 .terminal-node__terminal:has(.xterm.enable-mouse-events) {
   cursor: default;
 }

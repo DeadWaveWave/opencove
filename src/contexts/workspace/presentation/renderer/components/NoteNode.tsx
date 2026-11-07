@@ -201,7 +201,7 @@ export function NoteNode({
         close={{ label: t('noteNode.deleteNote'), className: 'note-node__close', onClose }}
       />
 
-      <WindowPlate />
+      <WindowPlate kind="knowledge" />
       <textarea
         data-cove-part="window-body"
         className="note-node__textarea nodrag nowheel"

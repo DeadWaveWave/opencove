@@ -31,6 +31,7 @@
   --cove-kind-ai-solid: #7551ba;
   --cove-kind-ai-on: #ffffff;
   --cove-kind-ai-far: #cfbfff;
+  --cove-kind-ai-plate: #1d1927;
   --cove-kind-shell-tile: #002716;
   --cove-kind-shell-line: #004f31;
   --cove-kind-shell-glyph: #77e5ae;
@@ -38,6 +39,7 @@
   --cove-kind-shell-solid: #00ad72;
   --cove-kind-shell-on: #080d11;
   --cove-kind-shell-far: #77e5ae;
+  --cove-kind-shell-plate: #0f2017;
   --cove-kind-plan-tile: #321700;
   --cove-kind-plan-line: #633400;
   --cove-kind-plan-glyph: #ffba82;
@@ -45,6 +47,7 @@
   --cove-kind-plan-solid: #ab5e00;
   --cove-kind-plan-on: #ffffff;
   --cove-kind-plan-far: #ffba82;
+  --cove-kind-plan-plate: #25190e;
   --cove-kind-knowledge-tile: #02203c;
   --cove-kind-knowledge-line: #004377;
   --cove-kind-knowledge-glyph: #a2d0ff;
@@ -52,6 +55,7 @@
   --cove-kind-knowledge-solid: #2e91ea;
   --cove-kind-knowledge-on: #080d11;
   --cove-kind-knowledge-far: #a2d0ff;
+  --cove-kind-knowledge-plate: #111d28;
   --cove-kind-media-tile: #331224;
   --cove-kind-media-line: #68264b;
   --cove-kind-media-glyph: #ffaed7;
@@ -59,6 +63,7 @@
   --cove-kind-media-solid: #be5590;
   --cove-kind-media-on: #080d11;
   --cove-kind-media-far: #ffaed7;
+  --cove-kind-media-plate: #26161e;
   --cove-kind-neutral-tile: #192027;
   --cove-kind-neutral-line: #3a434b;
   --cove-kind-neutral-glyph: #c6ccd2;
@@ -66,6 +71,7 @@
   --cove-kind-neutral-solid: #525b64;
   --cove-kind-neutral-on: #eff3f7;
   --cove-kind-neutral-far: #c6ccd2;
+  --cove-kind-neutral-plate: #091f25;
   --cove-status-waiting: #f2c50e;
   --cove-status-failed: #f05653;
   --cove-status-working-surface: rgb(10 46 57);
@@ -137,7 +143,7 @@
   --cove-reading-plate: #091f25;
   --cove-node-header-surface: transparent;
   --cove-node-border: rgb(239 243 247 / 0.14);
-  --cove-terminal-background: #091f25;
+  --cove-terminal-background: #0f2017;
   --cove-terminal-foreground: #eff3f7;
   --cove-terminal-cursor: #00b0d5;
   --cove-terminal-selection: rgb(0 176 213 / 0.32);
@@ -281,6 +287,7 @@
   --cove-kind-ai-solid: #603aa2;
   --cove-kind-ai-on: #ffffff;
   --cove-kind-ai-far: #201438;
+  --cove-kind-ai-plate: #f8f6ff;
   --cove-kind-shell-tile: #d6fbe5;
   --cove-kind-shell-line: #7edaaa;
   --cove-kind-shell-glyph: #00633f;
@@ -288,6 +295,7 @@
   --cove-kind-shell-solid: #00915f;
   --cove-kind-shell-on: #1b1d20;
   --cove-kind-shell-far: #002414;
+  --cove-kind-shell-plate: #eefcf4;
   --cove-kind-plan-tile: #ffecde;
   --cove-kind-plan-line: #f4b47f;
   --cove-kind-plan-glyph: #7b4200;
@@ -295,6 +303,7 @@
   --cove-kind-plan-solid: #bb6800;
   --cove-kind-plan-on: #ffffff;
   --cove-kind-plan-far: #2f1600;
+  --cove-kind-plan-plate: #fff6ef;
   --cove-kind-knowledge-tile: #e5f2ff;
   --cove-kind-knowledge-line: #94c8ff;
   --cove-kind-knowledge-glyph: #005595;
@@ -302,6 +311,7 @@
   --cove-kind-knowledge-solid: #007dd6;
   --cove-kind-knowledge-on: #ffffff;
   --cove-kind-knowledge-far: #001e3a;
+  --cove-kind-knowledge-plate: #f2f9ff;
   --cove-kind-media-tile: #ffe9f3;
   --cove-kind-media-line: #fba4d1;
   --cove-kind-media-glyph: #872861;
@@ -309,6 +319,7 @@
   --cove-kind-media-solid: #a22f73;
   --cove-kind-media-on: #ffffff;
   --cove-kind-media-far: #330c23;
+  --cove-kind-media-plate: #fff4f9;
   --cove-kind-neutral-tile: #e0eaf3;
   --cove-kind-neutral-line: #bbc5cf;
   --cove-kind-neutral-glyph: #4f5459;
@@ -316,6 +327,7 @@
   --cove-kind-neutral-solid: #8b939c;
   --cove-kind-neutral-on: #fbfdff;
   --cove-kind-neutral-far: #1b1d20;
+  --cove-kind-neutral-plate: #edfaff;
   --cove-status-waiting: #a28300;
   --cove-status-failed: #cc3336;
   --cove-status-working-surface: rgb(216 240 247);
@@ -387,7 +399,7 @@
   --cove-reading-plate: #edfaff;
   --cove-node-header-surface: transparent;
   --cove-node-border: rgb(27 29 32 / 0.16);
-  --cove-terminal-background: #edfaff;
+  --cove-terminal-background: #eefcf4;
   --cove-terminal-foreground: #1b1d20;
   --cove-terminal-cursor: #005d72;
   --cove-terminal-selection: rgb(0 162 197 / 0.24);
@@ -507,7 +519,7 @@
   --cove-node-selection-shadow: 0 0 0 1px rgb(49 190 227 / 0.42), 0 18px 40px rgb(0 0 0 / 0.52);
   --cove-terminal-node-surface: var(--cove-node-surface);
   --cove-terminal-node-header-surface: transparent;
-  --cove-terminal-background: #091f25;
+  --cove-terminal-background: var(--cove-terminal-kind-plate, #0f2017);
   --cove-terminal-foreground: #eff3f7;
   --cove-terminal-selection: rgb(0 176 213 / 0.32);
   --cove-terminal-cursor: #00b0d5;
@@ -518,6 +530,9 @@
   --cove-border-subtle: #2a323a;
   --cove-field: rgb(239 243 247 / 0.05);
   --cove-surface-hover: rgb(239 243 247 / 0.07);
+  --cove-kind-shell-plate: #0f2017;
+  --cove-kind-ai-plate: #1d1927;
+  --cove-kind-neutral-plate: #091f25;
 }
 
 :root[data-cove-family='cove'][data-cove-theme='light']

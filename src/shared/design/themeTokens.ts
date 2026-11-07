@@ -67,8 +67,9 @@ export function resolveRoleColors(theme: GeneratedTheme): RoleColors {
     accentText: a[10]!,
     onAccent: theme.roles.onAccent,
     focusRing: dark ? a[8]! : a[10]!,
-    // Terminals read on the reading plate.
-    terminalBackground: theme.roles.plate,
+    // Terminals read on their kind's plate: this is the shell's, and an agent window picks the
+    // AI plate (terminal-node.css).
+    terminalBackground: theme.kindPlates.shell,
     terminalForeground: n[11]!,
     terminalCursor: dark ? a[8]! : a[10]!,
   }
@@ -162,9 +163,9 @@ export function themeTokens(theme: GeneratedTheme): ThemeTokens {
     '--cove-accent-foreground': hex(roles.onAccent),
     '--cove-focus-ring': hex(roles.focusRing),
     '--cove-node-surface': glassOf('var(--cove-glass-frame)'),
-    // Window content sits on a solid plate, neutral step 1, so the wall never shows through what
-    // is being read. It has no edge of its own: it melts into the glass frame on every side
-    // (window-plate.css).
+    // Window content sits on a solid plate, so the wall never shows through what is being read.
+    // This is the theme's own; each window picks its kind's (`--cove-kind-*-plate`). It has no
+    // edge of its own: it melts into the glass frame on every side (window-plate.css).
     '--cove-reading-plate': hex(theme.roles.plate),
     '--cove-node-header-surface': 'transparent',
     '--cove-node-border': inkOverlay(dark ? 14 : 16),
@@ -220,6 +221,10 @@ const TERMINAL_SCOPE_TOKENS = [
   '--cove-border-subtle',
   '--cove-field',
   '--cove-surface-hover',
+  // The plates a terminal window picks its colour from (terminal-node.css).
+  '--cove-kind-shell-plate',
+  '--cove-kind-ai-plate',
+  '--cove-kind-neutral-plate',
 ] as const
 
 /**
@@ -232,11 +237,14 @@ export function terminalScopeTokens(darkTheme: GeneratedTheme): ThemeTokens {
     const reference = /^var\((--cove-[a-z0-9-]+)\)$/.exec(value)
     return reference ? resolve(tokens[reference[1]!]!) : value
   }
+  // The frame follows the shell's glass; the terminal colour is the window kind's plate, picked
+  // on the window from the dark plates below (terminal-node.css), and the shell's where none is.
+  const follows: Partial<Record<(typeof TERMINAL_SCOPE_TOKENS)[number], string>> = {
+    '--cove-terminal-node-surface': 'var(--cove-node-surface)',
+    '--cove-terminal-background': `var(--cove-terminal-kind-plate, ${resolve(tokens['--cove-kind-shell-plate']!)})`,
+  }
   return Object.fromEntries(
-    TERMINAL_SCOPE_TOKENS.map(name => [
-      name,
-      name === '--cove-terminal-node-surface' ? 'var(--cove-node-surface)' : resolve(tokens[name]!),
-    ]),
+    TERMINAL_SCOPE_TOKENS.map(name => [name, follows[name] ?? resolve(tokens[name]!)]),
   )
 }
 

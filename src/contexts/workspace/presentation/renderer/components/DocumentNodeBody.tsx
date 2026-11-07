@@ -53,7 +53,7 @@ export function DocumentNodeBody({
 
   return (
     <>
-      <WindowPlate />
+      <WindowPlate kind="knowledge" />
       <div className="document-node__body" data-cove-part="window-body">
         {isLoading ? (
           <div className="document-node__state">{t('common.loading')}</div>

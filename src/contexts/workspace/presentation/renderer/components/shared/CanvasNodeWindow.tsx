@@ -118,7 +118,7 @@ export function CanvasNodeWindow({
           onClose,
         }}
       />
-      <WindowPlate />
+      <WindowPlate kind={kindFamily} />
       <div
         className="cove-canvas-node-window__body nodrag nowheel"
         data-cove-part="window-body"

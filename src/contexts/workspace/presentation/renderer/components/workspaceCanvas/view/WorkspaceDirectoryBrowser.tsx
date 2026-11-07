@@ -198,7 +198,7 @@ export function WorkspaceDirectoryBrowser({
 
   return (
     <>
-      <WindowPlate />
+      <WindowPlate kind="neutral" />
       <div
         className="workspace-space-explorer__body cove-directory-browser nodrag"
         data-cove-part="window-body"
