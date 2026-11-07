@@ -58,19 +58,17 @@ for (const appearance of ['dark', 'light'] as const) {
         base,
       )
       const oldChange = Math.abs(relativeLuminance(before) - relativeLuminance(base))
-      const change = relativeLuminance(pixel(lit, column, row)) - relativeLuminance(base)
-      console.info(
-        JSON.stringify({ appearance, base, oldChange, change, ratio: change / oldChange }),
-      )
+      // Dark walls brighten; light walls keep Tide's slightly darker accent tint.
+      const change = Math.abs(relativeLuminance(pixel(lit, column, row)) - relativeLuminance(base))
       expect(change / oldChange).toBeGreaterThanOrEqual(0.85)
       expect(change / oldChange).toBeLessThanOrEqual(1.15)
       const farColumn = column < grid.columns / 2 ? grid.columns - 1 : 0
       expect(pixel(lit, farColumn, 0)).toEqual(pixel(without, farColumn, 0))
     })
 
-    it('illuminates finished kind light and ripples without replacing their hue', () => {
+    it('mixes into finished kind light and ripples without replacing their hue', () => {
       let checked = 0
-      let maxHue = 0
+      let maxShare = 0
       for (const kind of Object.values(theme.kinds)) {
         const windows = [{ ...frame, light: { color: kind[8]!, intensity: 0.8 } }]
         const ripples = [{ x: 600, y: 384, radius: 180, band: 40, strength: 0.3, color: kind[8]! }]
@@ -84,13 +82,19 @@ for (const appearance of ['dark', 'light'] as const) {
           if (hue(a).c < 0.05) {
             continue
           }
-          expect(relativeLuminance(b)).toBeGreaterThan(relativeLuminance(a))
-          maxHue = Math.max(maxHue, hueShift(a, b))
-          expect(hueShift(a, b)).toBeLessThanOrEqual(15)
+          if (appearance === 'dark') {
+            expect(relativeLuminance(b)).toBeGreaterThan(relativeLuminance(a))
+          }
+          // The two colours mix: the hue moves toward the light's and stops between them.
+          const gap = hueShift(a, palette.spot)
+          if (gap > 20) {
+            expect(hueShift(b, palette.spot)).toBeLessThan(gap)
+            expect(hueShift(a, b) + hueShift(b, palette.spot)).toBeLessThanOrEqual(gap + 2)
+            maxShare = Math.max(maxShare, hueShift(a, b) / gap)
+          }
           checked++
         }
       }
-      console.info(JSON.stringify({ appearance, checked, maxHue }))
       expect(checked).toBeGreaterThan(5)
     })
 
@@ -120,12 +124,17 @@ for (const appearance of ['dark', 'light'] as const) {
         for (const column of columns) {
           const a = pixel(base, column, 4),
             b = pixel(lit, column, 4)
-          gains.push(Math.max(...b.map((value, channel) => value - a[channel]!)))
+          gains.push(Math.max(...b.map((value, channel) => Math.abs(value - a[channel]!))))
         }
         // |d exp(-x²/s²)/dx| ≤ sqrt(2/e)/s. Sum the footprint and frame-fade
         // slopes over one 24px step, with 2 RGB units for the two rounded frames.
+        // Screen moves a channel at most to 255; a tint at most to the light's own channel.
         const headroom = Math.max(
-          ...columns.flatMap(column => pixel(base, column, 4).map(value => 255 - value)),
+          ...columns.flatMap(column =>
+            pixel(base, column, 4).map((value, channel) =>
+              appearance === 'dark' ? 255 - value : Math.abs(palette.spot[channel]! - value),
+            ),
+          ),
         )
         const bound =
           headroom *
@@ -135,9 +144,6 @@ for (const appearance of ['dark', 'light'] as const) {
             (1 / Math.sqrt(52000) + 1 / 48) +
           2
         const drops = gains.slice(1).map((gain, i) => gains[i]! - gain)
-        console.info(
-          JSON.stringify({ appearance, workLight, gains, drop: Math.max(...drops), bound }),
-        )
         expect(Math.max(...drops)).toBeLessThanOrEqual(bound)
         expect(gains[12]).toBeGreaterThan(0) // The former hard two-cell exclusion ring.
         expect(gains[13]).toBeGreaterThan(0)

@@ -132,7 +132,7 @@ export const PIXEL_WALL = {
     workA: 0.72,
     cap: 0.5,
     shimmerA: 0.22,
-    spotA: 0.95,
+    spotA: 0.2,
     sparkA: 0.9,
     tileJitter: 9,
     falloff: 14,

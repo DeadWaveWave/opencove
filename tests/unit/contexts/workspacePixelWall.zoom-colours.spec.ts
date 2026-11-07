@@ -93,7 +93,6 @@ describe('pixel wall colour continuity across cell levels', () => {
           }
         }
         const result = { appearance, boundary, open: stats(open), band: stats(band) }
-        console.info(JSON.stringify(result))
         expect(result.open.mean).toBeLessThanOrEqual(1.5)
         expect(result.open.p99).toBeLessThanOrEqual(4)
       })

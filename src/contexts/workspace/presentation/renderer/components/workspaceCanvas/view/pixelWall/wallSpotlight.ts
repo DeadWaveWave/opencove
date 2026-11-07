@@ -1,4 +1,4 @@
-import { oklch, rgbToOklab, type Rgb } from '@shared/design/oklch'
+import type { Rgb } from '@shared/design/oklch'
 import { PIXEL_WALL } from '@shared/design/themeGenerator'
 import type { WallWindowRect } from './wallCells'
 import type { WallScreenRect } from './wallChrome'
@@ -16,26 +16,20 @@ const distance = (x: number, y: number, rect: WallWindowRect | WallScreenRect) =
     Math.max(rect.y - y, 0, y - rect.y - rect.height),
   )
 
-/** Screen illuminates the finished tile; chromatic tiles retain their own OKLab hue/chroma. */
+/**
+ * The light's own colour on a finished tile. Dark walls are lit additively (screen), so a
+ * kind-lit tile turns brighter and takes some of the light's hue: the two colours mix. Light walls
+ * keep Tide's tint toward the light colour (1805–1806), as daylight through coloured glass does.
+ */
 function illuminatedTile(tile: Rgb, light: Rgb, daylight: boolean): Rgb {
-  // Daylight includes diffuse illumination: a saturated channel alone cannot lift a pale wall.
-  const energy = (channel: number) => (daylight ? 0.65 + (0.35 * channel) / 255 : channel / 255)
-  const screen: Rgb = [
-    tile[0] + (255 - tile[0]) * energy(light[0]),
-    tile[1] + (255 - tile[1]) * energy(light[1]),
-    tile[2] + (255 - tile[2]) * energy(light[2]),
-  ]
-  const [, a, b] = rgbToOklab(tile)
-  const chroma = Math.hypot(a, b)
-  if (chroma <= 0.02) {
-    return screen
+  if (daylight) {
+    return light
   }
-  const [L, sa, sb] = rgbToOklab(screen)
-  const t = Math.min(1, (chroma - 0.02) / 0.03)
-  const retain = t * t * (3 - 2 * t)
-  const ca = sa + (a - sa) * retain
-  const cb = sb + (b - sb) * retain
-  return oklch(L, Math.hypot(ca, cb), (Math.atan2(cb, ca) * 180) / Math.PI)
+  return [
+    tile[0] + ((255 - tile[0]) * light[0]) / 255,
+    tile[1] + ((255 - tile[1]) * light[1]) / 255,
+    tile[2] + ((255 - tile[2]) * light[2]) / 255,
+  ]
 }
 
 /** Adds light last, reserving only the remaining I6 budget before the caller applies its cap. */

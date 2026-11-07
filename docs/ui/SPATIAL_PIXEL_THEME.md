@@ -136,9 +136,11 @@ world, under every window and the effects layer.
   glass. Cursor illumination follows the ambient setting: off with twinkle or reduced motion,
   including in showcase mode. It lights the finished tile after work light and ripples, before
   the glass cap. Both appearances use accent step 9 (`--cove-pixel-spot`); Pixel falls back to
-  its public accent. Screen illumination preserves the hue/chroma of chromatic tiles in OKLab,
-  blending smoothly into the accent on neutral tiles. Light mode includes 65% diffuse light.
-  Strengths 0.45 dark / 0.95 light match the old peak luminance-change magnitude within 15%.
+  its public accent. Dark walls are lit additively (screen), so a kind-lit tile turns brighter
+  and its hue moves part of the way toward the accent: the two lights mix instead of one
+  covering the other. Light walls keep Tide's tint toward the accent (owner, 2026-11-06: the
+  light-mode tint reads clean; the old dark-mode white did not). Strength 0.45 dark matches the
+  old white spot's peak luminance change within 15%; light keeps Tide's 0.2.
   The radius remains 400 CSS px and the Gaussian denominator 52000. A 48px Gaussian fade
   reaches zero at the original frame, with no contribution inside. In glass and chrome only
   the remaining I6 budget is available; its influence eases in outside the glass band too.
