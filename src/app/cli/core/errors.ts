@@ -7,6 +7,7 @@ export class CliError extends Error {
     message: string,
     public hint?: string,
     public details?: unknown,
+    public debugMessage?: string,
   ) {
     super(message)
   }
@@ -23,10 +24,21 @@ export function printError(io: CliIo, error: CliError, json: boolean) {
       ? error.details.profiles
       : []
   const searched = profiles.length ? `  searched profiles: ${profiles.join(', ')}\n` : ''
+  const flags =
+    error.details && typeof error.details === 'object'
+      ? (error.details as Record<string, unknown>)
+      : {}
+  const dispatch =
+    typeof flags.pasteDispatchAttempted === 'boolean' &&
+    typeof flags.submitDispatchAttempted === 'boolean'
+      ? `  paste attempted: ${flags.pasteDispatchAttempted ? 'yes' : 'no'}; Enter attempted: ${flags.submitDispatchAttempted ? 'yes' : 'no'}. ${flags.submitDispatchAttempted ? 'Submission is unconfirmed.' : flags.pasteDispatchAttempted ? 'Text may be in the editor.' : 'Nothing was sent by this call.'}\n`
+      : flags.deliveryOutcome === 'unknown'
+        ? '  delivery outcome: unknown.\n'
+        : ''
   io.stderr.write(
     io.stderr.isTTY && !json
-      ? `error[${error.code}]: ${error.message}\n${searched}${error.hint ? `  hint: ${error.hint}\n` : ''}`
-      : `${JSON.stringify({ error: { code: error.code, message: error.message, hint: error.hint, details: error.details } })}\n`,
+      ? `error[${error.code}]: ${error.message}\n${searched}${dispatch}${error.hint ? `  hint: ${error.hint}\n` : ''}`
+      : `${JSON.stringify({ error: { code: error.code, message: error.message, hint: error.hint, details: error.details, ...(error.debugMessage ? { debugMessage: error.debugMessage } : {}) } })}\n`,
   )
 }
 

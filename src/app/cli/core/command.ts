@@ -58,6 +58,8 @@ export interface CommandContext extends CommandArgs {
   self(kind: NonNullable<OptionSpec['selector']>): Promise<string>
 }
 export interface Command {
+  /** Explicit usage for cross-option constraints enforced by the command. */
+  usage?: string
   path: string[]
   summary: string
   description?: string

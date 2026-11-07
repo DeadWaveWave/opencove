@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { EventEmitter } from 'node:events'
 import { Readable } from 'node:stream'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { expect, it, vi } from 'vitest'
@@ -34,7 +35,7 @@ it.each([
       },
     },
   ) as IncomingMessage
-  const res = { setHeader: vi.fn(), end: vi.fn(), statusCode: 0 }
+  const res = Object.assign(new EventEmitter(), { setHeader: vi.fn(), end: vi.fn(), statusCode: 0 })
   try {
     await handler({
       req,

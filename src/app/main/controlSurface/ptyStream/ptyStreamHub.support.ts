@@ -1,3 +1,4 @@
+import { BracketedPasteIngressTracker } from './BracketedPasteIngressTracker'
 import { TerminalPresentationSession } from '../../../../platform/terminal/presentation/TerminalPresentationSession'
 import type {
   GetSessionPresentationSnapshotResult,
@@ -11,6 +12,8 @@ const PTY_DATA_MAX_BATCH_CHARS = 256_000
 export function createSessionState(sessionId: string): SessionState {
   return {
     sessionId,
+    inputGeneration: {},
+    ingress: new BracketedPasteIngressTracker(),
     metadata: null,
     status: 'running',
     exitCode: null,

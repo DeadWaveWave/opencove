@@ -208,3 +208,25 @@ export function broadcastSessionMetadata(options: {
     sendPtySessionMetadata(client.ws, options.metadata)
   }
 }
+
+/** Binds the Hub's session and client maps once, so call sites pass only event fields. */
+export function createPtyStreamBroadcaster(
+  sessions: Map<string, SessionState>,
+  clients: Map<string, ClientState>,
+) {
+  return {
+    data: (sessionId: string, seq: number, data: string) =>
+      broadcastData({ sessions, clients, sessionId, seq, data }),
+    exit: (sessionId: string, seq: number, exitCode: number) =>
+      broadcastExit({ sessions, clients, sessionId, seq, exitCode }),
+    geometry: (
+      sessionId: string,
+      cols: number,
+      rows: number,
+      reason: 'frame_commit' | 'appearance_commit',
+      revision?: number | null,
+    ) => broadcastGeometry({ sessions, clients, sessionId, cols, rows, reason, revision }),
+    controlChanged: (sessionId: string) =>
+      broadcastControlChanged({ sessions, clients, sessionId }),
+  }
+}

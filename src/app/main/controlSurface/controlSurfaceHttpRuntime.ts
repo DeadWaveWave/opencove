@@ -82,7 +82,9 @@ export function createControlSurfaceHttpRuntime(
   const pluginViews = new PluginViewLifecycle(plugins)
   const token = options.token ?? randomBytes(32).toString('base64url')
   const webSessions = new WebSessionManager(resolve(options.userDataPath))
+  const invocationLifetime = new AbortController()
   const ctx = createControlSurfaceHttpServerContext({
+    signal: invocationLifetime.signal,
     enableWebShell: options.enableWebShell === true,
     ptyProtocolVersion: PTY_STREAM_PROTOCOL_VERSION,
     replayWindowMaxBytes: PTY_STREAM_DEFAULT_REPLAY_WINDOW_MAX_BYTES,
@@ -296,6 +298,7 @@ export function createControlSurfaceHttpRuntime(
       return
     }
     closed = true
+    invocationLifetime.abort()
     sessionAccess.dispose()
     plugins.beginShutdown()
     pluginViews.dispose()

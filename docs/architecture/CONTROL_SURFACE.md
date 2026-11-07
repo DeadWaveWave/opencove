@@ -316,3 +316,15 @@ control, write, resize and agent reexec messages are refused. SSE and WebSocket 
 to revocation; SSE membership is removed synchronously and sockets are terminated. Pending HTTP
 bodies and persistence preparation are followed by authoritative liveness checks before dispatch.
 Project scoping remains a follow-up; a scope tier is not a project isolation boundary.
+
+### Prompt delivery
+
+`agent.prompt` is a schema-backed **interact** command composed once per executing Worker.
+Its application service depends on SessionInputPort, RunStateFencePort and provider prompting
+capabilities. Claude Code contributes supported prompting with a 300 ms submit delay; all other
+providers refuse. Read-tier credentials cannot invoke it. The Hub reserves its existing session
+operation queue once and exposes a scoped raw writer, live input generation, ingress mode and
+watermark; the callback never invokes enqueuing Hub APIs. Response disconnect and grant revocation
+propagate cancellation to the service. Internal receipt fields stay out of public snapshots.
+See [Prompt delivery](../agent/PROMPT_DELIVERY.md) for the precise promise and limitations.
+This adds an operation and internal ports within existing dependency boundaries; no executable-rule impact.

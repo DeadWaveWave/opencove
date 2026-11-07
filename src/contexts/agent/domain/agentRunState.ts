@@ -22,6 +22,8 @@ export interface AgentRunObservation {
   state: AgentRunState
   degraded?: boolean
   blockedReason?: AgentRunSnapshot['blockedReason']
+  emittedAtMs?: number
+  hookEventName?: string
   boundary?:
     | {
         kind: 'start'

@@ -18,6 +18,7 @@ export interface ClaudeCodeAgentProviderContributionOptions {
 }
 
 export class ClaudeCodeAgentProviderContribution implements AgentProviderContribution {
+  readonly prompting = { supported: true, submitDelayMs: 300 } as const
   readonly descriptor = {
     displayName: 'Claude Code',
     documentationUrl: 'https://docs.anthropic.com/claude/docs/claude-code',

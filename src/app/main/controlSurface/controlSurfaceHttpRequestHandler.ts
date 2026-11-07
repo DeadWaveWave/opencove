@@ -1,3 +1,4 @@
+import { invokeCallerLifetime } from './http/invokeCallerLifetime'
 import type { AgentRunStateRegistry } from '../../../contexts/agent/application/AgentRunStateRegistry'
 import { isAgentRuntimeStream, serveAgentRuntimeEvents } from './http/agentRuntimeSse'
 import type { SessionGrantRegistry } from './http/sessionGrantRegistry'
@@ -6,7 +7,7 @@ import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../shared/contracts/cont
 import type { PluginInstallationManager } from '../../../contexts/plugins/application/PluginInstallationManager'
 import { tryHandlePluginAssetRoute } from './pluginAssetRoutes'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { createAppError, createAppErrorDescriptor } from '../../../shared/errors/appError'
+import { createAppErrorDescriptor } from '../../../shared/errors/appError'
 import type { PersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
 import type { ControlSurface } from './controlSurface'
 import type { ControlSurfaceContext } from './types'
@@ -311,7 +312,10 @@ export function createControlSurfaceHttpRequestHandler(
         sendJson(res, 401, buildUnauthorizedResult())
         return
       }
-      if (auth.kind === 'session-grant' && !sessionGrantAllowsOperation(request.id)) {
+      if (
+        auth.kind === 'session-grant' &&
+        !sessionGrantAllowsOperation(request.id, auth.grant.tier)
+      ) {
         sendJson(res, 403, {
           __opencoveControlEnvelope: true,
           ok: false,
@@ -343,22 +347,21 @@ export function createControlSurfaceHttpRequestHandler(
         sendJson(res, 401, buildUnauthorizedResult())
         return
       }
-      const result = await deps.controlSurface.invoke(
-        {
-          ...deps.ctx,
-          requestAuth: auth,
-          assertActive: () => {
-            deps.ctx.assertActive?.()
-            if (
-              auth.kind === 'session-grant' &&
-              !deps.sessionGrants?.isActive(auth.grant.grantId)
-            ) {
-              throw createAppError('control_surface.unauthorized')
-            }
+      const caller = invokeCallerLifetime(deps.ctx, res, auth, deps.sessionGrants, deps.webSessions)
+      let result
+      try {
+        result = await deps.controlSurface.invoke(
+          {
+            ...deps.ctx,
+            requestAuth: auth,
+            signal: caller.signal,
+            assertActive: caller.assertActive,
           },
-        },
-        request,
-      )
+          request,
+        )
+      } finally {
+        caller.dispose()
+      }
       if (shouldCheckRevision) {
         try {
           const revisionAfter = await (await deps.getPersistenceStore()).readAppStateRevision()

@@ -1,3 +1,4 @@
+import { agentPromptCommand } from './agent'
 import { declaredOutput } from './declaredOutput'
 import { identityCommands } from './identity'
 import { projectListOutput, spaceListOutput, spaceGetOutput } from './outputContracts'
@@ -17,6 +18,7 @@ import { CliError, usage } from '../core/errors'
 import { nodeCommands, stringOption } from './nodes'
 export const commands: Command[] = [
   ...identityCommands,
+  agentPromptCommand,
   ...nodeCommands,
   ...lifecycleCommands,
   ptyAttach,

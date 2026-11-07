@@ -89,6 +89,7 @@ export interface AgentHookInjectionPlanner {
 }
 
 export interface AgentProviderContribution {
+  readonly prompting?: import('./PromptDeliveryPorts').PromptingCapability
   readonly descriptor: AgentProviderDescriptor
   readonly detector: AgentProviderDetector
   readonly hookInjection?: AgentHookInjectionPlanner
