@@ -183,6 +183,8 @@ export async function readNodeIdentity(page: Page) {
           ),
           labelColor: headerStyle.getPropertyValue('--cove-label-color').trim(),
           headerImage: header ? headerStyle.backgroundImage : null,
+          // Generated families wash the header in its kind colour from a layer under its content.
+          headerWash: header ? getComputedStyle(header, '::after').backgroundImage : null,
           ribbonImage: ribbon.backgroundImage,
           ribbonIsLabelColor:
             rgba(ribbon.backgroundColor).join() ===
