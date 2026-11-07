@@ -118,8 +118,8 @@ it.each([
     const json = fixture(error)
     expect(await run(['agent', 'prompt', '--node', 'n', '--text', 'hello'], json.io)).toBe(1)
     const hint = submitted
-      ? 'Do not resend. Inspect the agent terminal and conversation to determine whether the prompt was submitted.'
-      : 'Inspect the editor and resolve any dialog before continuing. Do not paste the text again if it is already there.'
+      ? 'Do not resend. Inspect "opencove agent read --node <selector> --screen" and the conversation to determine whether the prompt was submitted.'
+      : 'Inspect the editor with "opencove agent read --node <selector> --screen" and have the human resolve any dialog before continuing. Do not paste the text again if it is already there.'
     expect(json.err()).toEqual({ code, message, hint, details })
     const tty = fixture(error)
     tty.io.stderr.isTTY = true

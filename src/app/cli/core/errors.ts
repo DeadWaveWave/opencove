@@ -35,9 +35,10 @@ export function printError(io: CliIo, error: CliError, json: boolean) {
       : flags.deliveryOutcome === 'unknown'
         ? '  delivery outcome: unknown.\n'
         : ''
+  const lastKnown = flags.lastKnown ? `  lastKnown: ${JSON.stringify(flags.lastKnown)}\n` : ''
   io.stderr.write(
     io.stderr.isTTY && !json
-      ? `error[${error.code}]: ${error.message}\n${searched}${dispatch}${error.hint ? `  hint: ${error.hint}\n` : ''}`
+      ? `error[${error.code}]: ${error.message}\n${searched}${dispatch}${lastKnown}${error.hint ? `  hint: ${error.hint}\n` : ''}`
       : `${JSON.stringify({ error: { code: error.code, message: error.message, hint: error.hint, details: error.details, ...(error.debugMessage ? { debugMessage: error.debugMessage } : {}) } })}\n`,
   )
 }

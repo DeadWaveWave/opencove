@@ -10,8 +10,10 @@ Workspace:
   space    List and inspect project spaces
   node     Create, read, update and delete canvas nodes
   canvas   Focus nodes and spaces on the canvas
+  agent    List, inspect, prompt, wait for and read agents
 
 Introspection:
+  skill    Print the bundled agent usage guide
   whoami   Show your caller identity and permission scope
   context  Orient yourself in a project and space
   api      Discover operations, inspect input schemas and invoke the Control Surface
@@ -52,6 +54,7 @@ Run "opencove <group> --help" for commands in a group.
 Start with "opencove api ops --domains" for a compact domain map.
 Then run "opencove api ops --prefix node --fields id,command" to explore one domain.
 Run "opencove api ops" only when you need the full catalog.
+AI agents: run \`opencove skill\` for a usage guide.
 "
 `;
 
@@ -116,8 +119,10 @@ Workspace:
   space    List and inspect project spaces
   node     Create, read, update and delete canvas nodes
   canvas   Focus nodes and spaces on the canvas
+  agent    List, inspect, prompt, wait for and read agents
 
 Introspection:
+  skill    Print the bundled agent usage guide
   whoami   Show your caller identity and permission scope
   context  Orient yourself in a project and space
   api      Discover operations, inspect input schemas and invoke the Control Surface
@@ -158,5 +163,6 @@ Run "opencove <group> --help" for commands in a group.
 Start with "opencove api ops --domains" for a compact domain map.
 Then run "opencove api ops --prefix node --fields id,command" to explore one domain.
 Run "opencove api ops" only when you need the full catalog.
+AI agents: run \`opencove skill\` for a usage guide.
 "
 `;

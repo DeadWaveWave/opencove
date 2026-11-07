@@ -6,11 +6,13 @@ export const sections: [string, [string, string][]][] = [
       ['space', 'List and inspect project spaces'],
       ['node', 'Create, read, update and delete canvas nodes'],
       ['canvas', 'Focus nodes and spaces on the canvas'],
+      ['agent', 'List, inspect, prompt, wait for and read agents'],
     ],
   ],
   [
     'Introspection',
     [
+      ['skill', 'Print the bundled agent usage guide'],
       ['whoami', 'Show your caller identity and permission scope'],
       ['context', 'Orient yourself in a project and space'],
       ['api', 'Discover operations, inspect input schemas and invoke the Control Surface'],

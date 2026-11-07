@@ -14,7 +14,10 @@ that OpenCove observed. A newly opened or resumed session may need a turn comple
 in its terminal before this command can be used.
 
 The command attempts one bracketed paste into the current editor. If the paste reaches the editor and Enter submits it, any existing draft is
-submitted too. Check for drafts and dialogs before sending a prompt.
+submitted too. Check for drafts and dialogs with
+`opencove agent read --node <selector> --screen` before sending a prompt.
+After a successful prompt, use `opencove agent wait --node <selector> --until idle`,
+then read its final message.
 
 ## What success means
 

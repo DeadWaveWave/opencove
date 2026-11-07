@@ -1,6 +1,7 @@
 import type { AppErrorDescriptor } from '../contracts/dto'
 
-const inspect = 'Do not resend. Inspect the agent terminal and conversation before retrying.'
+const inspect =
+  'Do not resend. Inspect the terminal with "opencove agent read --node <selector> --screen" and the conversation before retrying.'
 export const promptUnknownRecovery = inspect
 
 /** Presentation only: never infer attempt flags from an absent descriptor field. */
@@ -19,7 +20,7 @@ export function agentPromptErrorPresentation(
     case 'agent.blocked':
       return pair(
         'The agent is waiting for input.',
-        'Resolve the pending dialog in the agent terminal, then retry after the agent is idle.',
+        'Inspect with "opencove agent read --node <selector> --screen"; have the human resolve the pending dialog, then retry after the agent is idle.',
       )
     case 'agent.busy':
       if (reason === 'delivery_in_progress') {
@@ -53,7 +54,7 @@ export function agentPromptErrorPresentation(
       }
       return pair(
         'OpenCove cannot confirm that the agent is ready.',
-        'Inspect the agent terminal and its reported state before retrying.',
+        'Inspect "opencove agent read --node <selector> --screen" and agent get before retrying.',
       )
     case 'agent.not_running':
       if (reason === 'caller_revoked') {
@@ -100,7 +101,7 @@ export function agentPromptErrorPresentation(
       if (reason === 'bracketed_paste_off') {
         return pair(
           'The terminal has not enabled bracketed paste.',
-          'Check that Claude Code is at its prompt, then retry. This command does not fall back to raw typing.',
+          'Use "opencove agent read --node <selector> --screen" to check that Claude Code is at its prompt, then retry. This command does not fall back to raw typing.',
         )
       }
       return pair(
@@ -111,13 +112,13 @@ export function agentPromptErrorPresentation(
       return {
         message:
           'Prompt delivery stopped after a paste attempt. Text may be in the editor; this command did not press Enter.',
-        hint: 'Inspect the editor and resolve any dialog before continuing. Do not paste the text again if it is already there.',
+        hint: 'Inspect the editor with "opencove agent read --node <selector> --screen" and have the human resolve any dialog before continuing. Do not paste the text again if it is already there.',
       }
     case 'agent.prompt_stalled':
       return {
         message:
           'OpenCove attempted to press Enter but did not observe a matching submission event.',
-        hint: 'Do not resend. Inspect the agent terminal and conversation to determine whether the prompt was submitted.',
+        hint: 'Do not resend. Inspect "opencove agent read --node <selector> --screen" and the conversation to determine whether the prompt was submitted.',
       }
     case 'agent.prompt_timeout':
       return {

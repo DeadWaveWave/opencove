@@ -235,6 +235,20 @@ it.each(targets)(
   'resolves $command.path --$flag using $form through run()',
   async ({ command, flag, kind, form }) => {
     const f = identityFixture()
+    f.values['agent.list'] = { epoch: 'e', seq: 1, agents: [] }
+    f.values['session.finalMessage'] = { sessionId: 's', message: 'Done' }
+    f.values['agent.get'] = {
+      nodeId: node.id,
+      sessionId: 's',
+      provider: 'claude-code',
+      state: 'idle',
+      blockedReason: null,
+      turn: null,
+      lastTransitionAt: 1,
+      source: 'claude_hook',
+      quality: 'authoritative',
+      turnOutcome: null,
+    }
     const target = {
       node: { id: node.id, name: node.title },
       space: { id: space.id, name: space.name },
@@ -262,7 +276,9 @@ it.each(targets)(
               ? 'https://example.com'
               : key === 'root-path'
                 ? '/repo'
-                : 'sample',
+                : Array.isArray(spec.choices)
+                  ? spec.choices[0]
+                  : 'sample',
         )
       }
     }

@@ -44,6 +44,7 @@ export function help(commands: Command[], path: string[]) {
       '',
       'Run "opencove <group> --help" for commands in a group.',
       ...discovery,
+      'AI agents: run `opencove skill` for a usage guide.',
     )
     return lines.join('\n') + '\n'
   }
@@ -175,8 +176,11 @@ export function help(commands: Command[], path: string[]) {
     }
   }
   const ordered = [...children]
-  if (path.join(' ') === 'node') {
-    const order = ['list', 'get', 'create', 'update', 'delete']
+  if (['node', 'agent'].includes(path.join(' '))) {
+    const order =
+      path[0] === 'agent'
+        ? ['list', 'get', 'prompt', 'wait', 'read']
+        : ['list', 'get', 'create', 'update', 'delete']
     ordered.sort(([a], [b]) => order.indexOf(a) - order.indexOf(b))
   }
   const entries: [string, string][] = ordered.map(([name, items]) => {

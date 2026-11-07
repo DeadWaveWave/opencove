@@ -53,7 +53,11 @@ export interface CommandContext extends CommandArgs {
   connection?: Connection
   io: CliIo
   input: unknown
-  invoke(id: OperationId, payload: unknown): Promise<unknown>
+  invoke(
+    id: OperationId,
+    payload: unknown,
+    options?: { fresh?: boolean; signal?: AbortSignal },
+  ): Promise<unknown>
   whoami(): Promise<CallerIdentity>
   self(kind: NonNullable<OptionSpec['selector']>): Promise<string>
 }
@@ -76,6 +80,7 @@ export interface Command {
   operationCommand?: string
   operation?: OperationId
   buildInput?(args: CommandArgs): unknown
+  textOutput?(result: unknown): string
   execute?(ctx: CommandContext): Promise<CommandResult>
   errorTargets?: ErrorTarget[]
   rawQueryFields?: boolean
