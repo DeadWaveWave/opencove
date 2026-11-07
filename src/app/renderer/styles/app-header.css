@@ -13,7 +13,9 @@
   -webkit-app-region: drag;
 }
 
-.app-header--mac {
+/* Room for the traffic lights. In native full screen macOS hides them, so the header keeps only
+   its own padding there. */
+.app-header--mac:not(.app-header--fullscreen) {
   padding-left: calc(10px + 72px);
 }
 

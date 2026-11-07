@@ -149,6 +149,9 @@ export function installBrowserOpenCoveApi(): void {
     },
     windowChrome: {
       setTheme: async () => undefined,
+      // A browser tab has no native full screen of its own to report.
+      getFullScreen: async () => ({ isFullScreen: false }),
+      onFullScreenChange: () => () => undefined,
     },
     windowMetrics: {
       getDisplayInfo: async () => ({

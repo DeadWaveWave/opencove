@@ -58,6 +58,8 @@ export const IPC_CHANNELS = {
   issueReportOpenGithub: 'issue-report:open-github',
   issueReportShowFile: 'issue-report:show-file',
   windowChromeSetTheme: 'window-chrome:set-theme',
+  windowChromeGetFullScreen: 'window-chrome:get-full-screen',
+  windowChromeFullScreenChanged: 'window-chrome:full-screen-changed',
   windowMetricsGetDisplayInfo: 'window-metrics:get-display-info',
   websiteWindowConfigurePolicy: 'website-window:configure-policy',
   websiteWindowSetOccluded: 'website-window:set-occluded',

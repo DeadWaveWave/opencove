@@ -26,6 +26,7 @@ import { PerformanceMonitorPanel } from './PerformanceMonitorPanel'
 import { IconButton } from '@app/renderer/components/ui/IconButton'
 import type { AgentActivitySummary } from '../utils/agentActivitySummary'
 import { AppHeaderAgentActivity } from './AppHeaderAgentActivity'
+import { useWindowFullScreen } from '../hooks/useWindowFullScreen'
 
 export function AppHeader({
   sidebarIsDrawer = false,
@@ -97,6 +98,7 @@ export function AppHeader({
   const { t } = useTranslation()
   const isMac = typeof window !== 'undefined' && window.opencoveApi?.meta?.platform === 'darwin'
   const isWindows = typeof window !== 'undefined' && window.opencoveApi?.meta?.platform === 'win32'
+  const isFullScreen = useWindowFullScreen()
   const isBrowserRuntime =
     typeof window !== 'undefined' && window.opencoveApi?.meta?.runtime === 'browser'
   const updateAction = useMemo(() => {
@@ -226,7 +228,14 @@ export function AppHeader({
   return (
     <>
       <header
-        className={`app-header ${isMac ? 'app-header--mac' : ''} ${isWindows ? 'app-header--windows' : ''}`.trim()}
+        className={[
+          'app-header',
+          isMac ? 'app-header--mac' : '',
+          isWindows ? 'app-header--windows' : '',
+          isFullScreen ? 'app-header--fullscreen' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         role="banner"
       >
         <div className="app-header__section app-header__section--left">

@@ -64,7 +64,6 @@ import type {
   SuggestTaskTitleResult,
   SuggestWorktreeNamesInput,
   SuggestWorktreeNamesResult,
-  SetWindowChromeThemeInput,
   SaveTextToDownloadsInput,
   SaveTextToDownloadsResult,
   ShowSystemNotificationInput,
@@ -119,6 +118,7 @@ import { createIssueReportPreloadApi } from './issueReportApi'
 import { resolveOpenCoveMeta } from './opencoveMeta'
 import { createPerformanceDiagnosticsPreloadApi } from './performanceDiagnosticsApi'
 import { createWebsiteWindowPreloadApi } from './websiteWindowApi'
+import { createWindowChromePreloadApi } from './windowChromeApi'
 import { createBrowserProfilePreloadApi } from './browserProfileApi'
 import { TerminalEventReplayCache } from './terminalEventReplayCache'
 type UnsubscribeFn = () => void
@@ -153,10 +153,7 @@ const opencoveApi = {
     invoke: async <TValue>(request: ControlSurfaceInvokeRequest): Promise<TValue> =>
       invokeIpc(IPC_CHANNELS.controlSurfaceInvoke, request),
   },
-  windowChrome: {
-    setTheme: (payload: SetWindowChromeThemeInput): Promise<void> =>
-      invokeIpc(IPC_CHANNELS.windowChromeSetTheme, payload),
-  },
+  windowChrome: createWindowChromePreloadApi(),
   windowMetrics: {
     getDisplayInfo: (): Promise<WindowDisplayInfo> =>
       invokeIpc(IPC_CHANNELS.windowMetricsGetDisplayInfo),

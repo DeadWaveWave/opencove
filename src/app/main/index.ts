@@ -26,6 +26,7 @@ import { createMainRuntimeDiagnosticsLogger } from './runtimeDiagnostics'
 import { registerQuickPhrasesContextMenu } from './contextMenu/registerQuickPhrasesContextMenu'
 import { registerQuitCoordinator } from './quitCoordinator'
 import { registerApplicationShortcuts } from './applicationShortcuts'
+import { broadcastWindowFullScreen } from './ipc/windowFullScreen'
 import {
   isAllowedNavigationTarget,
   resolveDevRendererOrigin,
@@ -135,6 +136,7 @@ function createWindow(): void {
   })
 
   const disposeApplicationShortcuts = registerApplicationShortcuts(mainWindow)
+  broadcastWindowFullScreen(mainWindow)
   const quickPhrasesContextMenuDisposable = registerQuickPhrasesContextMenu({
     window: mainWindow,
     userDataPath: app.getPath('userData'),
