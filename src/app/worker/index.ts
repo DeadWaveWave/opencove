@@ -32,6 +32,9 @@ import {
 import { readRepeatedWorkerFlagValues, readWorkerFlagValue } from './workerCliArguments'
 import { createWorkerShutdown } from './workerShutdown'
 import { getRuntimeBuildIdentity } from '../../shared/runtime/runtimeBuildIdentity'
+import { configureWorkerEnvironment } from './environment'
+
+configureWorkerEnvironment()
 
 const parentShutdown = createWorkerParentShutdown()
 
