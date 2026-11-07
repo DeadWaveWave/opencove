@@ -14,7 +14,7 @@ export function createSessionGrantPtyRuntime(options: {
   runtime: ControlSurfacePtyRuntime
   controlUrl: () => string
   cliPath: string
-  ensureAssets: () => Promise<{ shimDirectory: string }>
+  ensureAssets: () => Promise<{ cliShimDirectory: string }>
 }) {
   const sessions = new Set<string>()
   const registrations = new SessionRegistrationOwner()
@@ -76,7 +76,9 @@ export function createSessionGrantPtyRuntime(options: {
           OPENCOVE_CLI: options.cliPath,
         })
         const pathKey = Object.keys(env).find(key => key.toLowerCase() === 'path') ?? 'PATH'
-        env[pathKey] = [assets.shimDirectory, env[pathKey] ?? ''].join(delimiter)
+        // Only the CLI shim directory: provider shims on PATH would wrap a managed agent launch
+        // in the terminal launcher, which then resolves its own shim again (unbounded recursion).
+        env[pathKey] = [assets.cliShimDirectory, env[pathKey] ?? ''].join(delimiter)
         const spawned = await options.runtime.spawnSession({ ...input, env })
         const disposition = attempt.complete(spawned.sessionId)
         settled = true

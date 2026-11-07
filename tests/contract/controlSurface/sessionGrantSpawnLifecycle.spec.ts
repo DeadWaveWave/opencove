@@ -23,7 +23,7 @@ function fixture(spawn: ControlSurfacePtyRuntime['spawnSession']) {
         }
       },
     },
-    ensureAssets: async () => ({ shimDirectory: '/shim' }),
+    ensureAssets: async () => ({ cliShimDirectory: '/cli-shims' }),
     cliPath: '/app/out/cli/opencove.mjs',
     controlUrl: () => 'http://localhost:1234',
   })
@@ -149,7 +149,9 @@ it('treats a caller environment as complete and never re-adds the hosting proces
     expect(explicit.ELECTRON_RUN_AS_NODE).toBeUndefined()
     expect(explicit.OPENCOVE_TEST_HOST_ONLY).toBeUndefined()
     expect(explicit.LANG).toBe('C')
-    expect(explicit.PATH).toBe(['/shim', '/usr/bin'].join(process.platform === 'win32' ? ';' : ':'))
+    expect(explicit.PATH).toBe(
+      ['/cli-shims', '/usr/bin'].join(process.platform === 'win32' ? ';' : ':'),
+    )
     expect(explicit.OPENCOVE_NODE_ID).toBe('n')
     expect(inherited.ELECTRON_RUN_AS_NODE).toBeUndefined()
     expect(inherited.OPENCOVE_TEST_HOST_ONLY).toBe('host')

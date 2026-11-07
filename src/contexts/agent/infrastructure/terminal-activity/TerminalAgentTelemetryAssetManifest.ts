@@ -29,6 +29,7 @@ export function terminalAgentAssetManifest(
     shellLauncherPath,
     bashRcPath,
     zshDotDirectory,
+    cliShimDirectory,
     shimDirectory,
     planDirectory,
   } = assets
@@ -40,12 +41,12 @@ export function terminalAgentAssetManifest(
   const quotedRuntime = "'" + runtime.replaceAll("'", "'\\''") + "'"
   return [
     file(
-      join(shimDirectory, 'opencove'),
+      join(cliShimDirectory, 'opencove'),
       `#!/bin/sh\nELECTRON_RUN_AS_NODE=1 exec ${quotedRuntime} "$OPENCOVE_CLI" "$@"\n`,
       0o700,
     ),
     file(
-      join(shimDirectory, 'opencove.cmd'),
+      join(cliShimDirectory, 'opencove.cmd'),
       `@echo off\r\nsetlocal\r\nset "ELECTRON_RUN_AS_NODE=1"\r\n"${runtime.replaceAll('%', '%%')}" "%OPENCOVE_CLI%" %*\r\n`,
       0o700,
     ),
@@ -81,6 +82,7 @@ export function terminalAgentAssetPaths(rootDirectory: string): TerminalAgentTel
     launcherPath: join(rootDirectory, 'launcher.mjs'),
     shellLauncherPath: join(rootDirectory, 'shell-launcher.sh'),
     bashRcPath: join(rootDirectory, 'bashrc'),
+    cliShimDirectory: join(rootDirectory, 'cli'),
     shimDirectory: join(rootDirectory, 'bin'),
     planDirectory: join(rootDirectory, 'plans'),
     zshDotDirectory: join(rootDirectory, 'zsh'),

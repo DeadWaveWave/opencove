@@ -12,10 +12,13 @@ import {
 
 export interface TerminalAgentTelemetryAssets {
   readonly bashRcPath: string
+  /** Holds only the `opencove` CLI shims; safe to put on any canvas session's PATH. */
+  readonly cliShimDirectory: string
   readonly launcherPath: string
   readonly planDirectory: string
   readonly rootDirectory: string
   readonly shellLauncherPath: string
+  /** Provider shims (claude, codex, pi) that route through the launcher; interactive shells only. */
   readonly shimDirectory: string
   readonly zshDotDirectory: string
 }
@@ -69,9 +72,11 @@ export class TerminalAgentTelemetryAssetStore {
   }
 
   private async validateAndRepair(): Promise<TerminalAgentTelemetryAssets> {
-    const { rootDirectory, shimDirectory, planDirectory, zshDotDirectory } = this.assets
+    const { rootDirectory, cliShimDirectory, shimDirectory, planDirectory, zshDotDirectory } =
+      this.assets
     await this.files.ensureDirectories([
       rootDirectory,
+      cliShimDirectory,
       shimDirectory,
       planDirectory,
       zshDotDirectory,
