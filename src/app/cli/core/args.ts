@@ -153,6 +153,9 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
     const file = values[`${key}-file`]
     if (file !== undefined) {
       if (values[key] !== undefined) {
+        if (command.operation === 'agent.prompt' && key === 'text') {
+          usage('Use either --text or --text-file, not both.', 'Remove one of the two options.')
+        }
         usage(`Cannot use --${key} and --${key}-file together`, commandHelpHint(command.path))
       }
       try {
@@ -162,6 +165,12 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
       } catch (error) {
         if (error instanceof CliError && error.exitCode === 130) {
           throw error
+        }
+        if (command.operation === 'agent.prompt' && key === 'text') {
+          usage(
+            `Could not read prompt text from ${file}. Nothing was sent.`,
+            'Check that the file exists and is readable, or use --text-file - for stdin.',
+          )
         }
         usage(`Unable to read --${key}-file: ${file}`)
       }
@@ -199,8 +208,17 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
         usage(choiceMessage(`--${key}`, received, choices), commandHelpHint(command.path))
       }
       if (spec.type === 'number') {
-        const number = Number(value)
+        const duration = key === 'timeout' ? /^(\d+(?:\.\d+)?)(ms|s|m)$/.exec(String(value)) : null
+        const number = duration
+          ? Number(duration[1]) * ({ ms: 1, s: 1000, m: 60000 }[duration[2]] ?? 1)
+          : Number(value)
         if (!Number.isFinite(number)) {
+          if (command.operation === 'agent.prompt' && key === 'timeout') {
+            usage(
+              'The delivery timeout must be a whole number of milliseconds from 1ms to 60s.',
+              'For example, use --timeout 15s or --timeout 15000ms.',
+            )
+          }
           usage(`Invalid number for --${key}`)
         }
         return number
@@ -227,6 +245,12 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
       : convert(values[key])
   }
   if (values.timeout !== undefined && Number(values.timeout) <= 0) {
+    if (command.operation === 'agent.prompt') {
+      usage(
+        'The delivery timeout must be a whole number of milliseconds from 1ms to 60s.',
+        'For example, use --timeout 15s or --timeout 15000ms.',
+      )
+    }
     usage('Timeout must be positive')
   }
   if (

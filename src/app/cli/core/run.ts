@@ -1,3 +1,4 @@
+import { promptValidationPresentation } from '../../../shared/errors/agentPromptError'
 import { commands } from '../commands'
 import { getControlSurfaceOperation } from '../../../shared/contracts/controlSurface/operations'
 import { commandWords, globalArgv, globals, parseCommand, suggest } from './args'
@@ -32,16 +33,26 @@ function commandForOperation(id: string) {
 }
 
 export async function run(argv: string[], io: CliIo): Promise<number> {
-  let json = false
+  let json = false,
+    promptCommand = false,
+    invokeStarted = false
   try {
     const specs = { ...globals, ...Object.assign({}, ...commands.map(c => c.options)) }
+    const words = commandWords(argv, specs)
+    promptCommand = words[0] === 'agent' && words[1] === 'prompt'
     const globalOptions = await parseCommand(
       globalArgv(argv, specs),
-      { path: [], summary: '', connect: false },
+      {
+        path: [],
+        summary: '',
+        connect: false,
+        ...(words[0] === 'agent' && words[1] === 'prompt'
+          ? { operation: 'agent.prompt' as const }
+          : {}),
+      },
       io,
     )
     json = globalOptions.options.output === 'json'
-    const words = commandWords(argv, specs)
     const command = commands.find(c => c.path.every((part, i) => words[i] === part))
     if (!command) {
       const parsed = await parseCommand(argv, { path: words, summary: '', connect: false }, io)
@@ -127,6 +138,10 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
           'issues' in error.details &&
           Array.isArray(error.details.issues)
         ) {
+          if (id === 'agent.prompt') {
+            const text = promptValidationPresentation(error.details)
+            throw new CliError('common.invalid_input', 2, text.message, text.hint, error.details)
+          }
           throw validationError(id!, error.details.issues, 2, 'common.invalid_input', input)
         }
         if (
@@ -181,11 +196,17 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       } else if (reads.has(key)) {
         return reads.get(key)!
       }
+      if (operationId === 'agent.prompt') {
+        invokeStarted = true
+      }
       const pending = invoke(
         connection,
         { kind: op.kind, id: operationId, payload },
         {
-          timeoutMs: Number(args.options.timeout ?? command.timeoutMs ?? 20000),
+          timeoutMs:
+            operationId === 'agent.prompt'
+              ? Number(args.options.timeout ?? 15000) + 5000
+              : Number(args.options.timeout ?? command.timeoutMs ?? 20000),
           fetch: io.fetch,
           signal: io.signal,
           errorTargets: command.errorTargets,
@@ -218,10 +239,18 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
     io.stdout.write(render(result, args.options, renderSpec))
     return 0
   } catch (error) {
-    const cliError =
+    let cliError =
       error instanceof CliError
         ? error
         : new CliError('cli.failed', 1, error instanceof Error ? error.message : String(error))
+    if (promptCommand && !invokeStarted && cliError.code === 'cli.interrupted') {
+      cliError = new CliError(
+        'cli.interrupted',
+        130,
+        'Interrupted before delivery began. Nothing was sent.',
+        'Retry when ready.',
+      )
+    }
     printError(io, cliError, json)
     return cliError.exitCode
   }

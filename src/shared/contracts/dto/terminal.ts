@@ -219,6 +219,7 @@ export interface TerminalSessionStateEvent {
   agentProvider?: AgentProviderId
   remote?: boolean
   remoteAgentRun?: import('./agentRunState').RemoteAgentRunUpdate
+  emittedAtMs?: number
   hookEventName?: string
   blockedReason?: 'permission' | 'question' | 'plan' | null
 

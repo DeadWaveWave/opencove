@@ -9,7 +9,7 @@ export interface SessionGrantIdentity {
 
 export interface SessionGrant extends SessionGrantIdentity {
   readonly grantId: string
-  readonly tier: 'interact'
+  readonly tier: 'read' | 'interact'
   readonly createdAt: string
 }
 

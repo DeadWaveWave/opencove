@@ -1,3 +1,10 @@
+import { isPromptDeliveryResult } from './promptTransport'
+import {
+  agentPromptErrorPresentation,
+  promptValidationPresentation,
+  promptUnknownRecovery,
+} from '../../../shared/errors/agentPromptError'
+import { isAppErrorDescriptor, formatAppErrorMessage } from '../../../shared/errors/appError'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../shared/contracts/controlSurface/protocol'
 import type { Connection } from './context'
 import { get } from './render'
@@ -14,6 +21,8 @@ export async function invoke(
     inputOptions?: Record<string, OptionSpec>
   },
 ) {
+  const prompt = request.id === 'agent.prompt'
+  let dispatched = false
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), options.timeoutMs)
   const interrupt = () => controller.abort()
@@ -25,6 +34,7 @@ export async function invoke(
     if (options.signal?.aborted) {
       throw new CliError('cli.interrupted', 130, 'Interrupted')
     }
+    dispatched = true
     const response = await (options.fetch ?? fetch)(`${connection.endpoint}/invoke`, {
       method: 'POST',
       headers: {
@@ -56,6 +66,20 @@ export async function invoke(
     }
     if (result?.ok === false) {
       const error = result.error ?? {}
+      if (prompt && !isAppErrorDescriptor(error)) {
+        throw new CliError('transport.invalid_response', 1, 'Invalid control surface response')
+      }
+      if (prompt && error.code === 'common.invalid_input') {
+        const text = promptValidationPresentation(error.details)
+        throw new CliError(
+          error.code,
+          2,
+          text.message,
+          text.hint,
+          error.details,
+          error.debugMessage,
+        )
+      }
       const serverIssues = error.details?.issues
       const choices =
         error.code === 'common.invalid_input' &&
@@ -93,48 +117,112 @@ export async function invoke(
           : String(error.code).endsWith('.unsupported_operation')
             ? 'does not support this operation'
             : undefined
+      const promptError =
+        prompt && isAppErrorDescriptor(error) ? agentPromptErrorPresentation(error) : undefined
+      const attemptsKnown =
+        typeof error.details?.pasteDispatchAttempted === 'boolean' &&
+        typeof error.details?.submitDispatchAttempted === 'boolean'
       throw new CliError(
         error.code ?? 'operation.failed',
-        error.code === 'common.invalid_input'
-          ? 2
-          : error.code === 'common.protocol_incompatible'
-            ? 5
-            : error.code === 'space.ambiguous'
-              ? 6
-              : 1,
-        target?.entity && targetAction
-          ? `${target.entity} ${JSON.stringify(Object.values(targetDetails)[0])} ${targetAction}`
+        error.code === 'agent.prompt_timeout' ||
+          (request.id === 'agent.prompt' && error.details?.reason === 'deadline')
+          ? 124
           : error.code === 'common.invalid_input'
-            ? inputErrorMessage(request.id, error.debugMessage)
-            : (error.debugMessage ?? error.code ?? 'Operation failed'),
-        error.code === 'common.approved_path_required'
-          ? 'Run "opencove mount list --project <id>" to see approved roots.'
+            ? 2
+            : error.code === 'common.protocol_incompatible'
+              ? 5
+              : error.code === 'space.ambiguous'
+                ? 6
+                : 1,
+        // agent.prompt renders its own recovery text; other commands keep target-aware messages.
+        prompt
+          ? (promptError?.message ??
+              (!attemptsKnown
+                ? 'Prompt delivery failed. The outcome is unknown.'
+                : formatAppErrorMessage(error)))
+          : target?.entity && targetAction
+            ? `${target.entity} ${JSON.stringify(Object.values(targetDetails)[0])} ${targetAction}`
+            : error.code === 'common.invalid_input'
+              ? inputErrorMessage(request.id, error.debugMessage)
+              : (error.debugMessage ?? error.code ?? 'Operation failed'),
+        prompt
+          ? (promptError?.hint ?? promptUnknownRecovery)
+          : error.code === 'common.approved_path_required'
+            ? 'Run "opencove mount list --project <id>" to see approved roots.'
+            : target
+              ? `Run "${target.listCommand}" to find available targets.`
+              : undefined,
+        prompt && !attemptsKnown
+          ? { ...error.details, deliveryOutcome: 'unknown' }
           : target
-            ? `Run "${target.listCommand}" to find available targets.`
-            : undefined,
-        target ? { ...error.details, ...targetDetails } : error.details,
+            ? { ...error.details, ...targetDetails }
+            : error.details,
+        prompt ? error.debugMessage : undefined,
       )
     }
-    if (!response.ok || result?.ok !== true) {
+    if (!response.ok || result?.ok !== true || (prompt && !isPromptDeliveryResult(result.value))) {
       throw new CliError('transport.invalid_response', 1, 'Invalid control surface response')
     }
     return result.value
   } catch (error) {
     if (options.signal?.aborted) {
+      if (prompt) {
+        throw new CliError(
+          'cli.interrupted',
+          130,
+          dispatched
+            ? 'Prompt delivery was interrupted. The outcome is unknown.'
+            : 'Interrupted before delivery began. Nothing was sent.',
+          dispatched ? promptUnknownRecovery : 'Retry when ready.',
+          dispatched ? { deliveryOutcome: 'unknown' } : undefined,
+        )
+      }
       throw new CliError('cli.interrupted', 130, 'Interrupted')
     }
     if (error instanceof CliError) {
-      throw error
+      if (!prompt) {
+        throw error
+      }
+      if (error.code === 'context.unauthorized') {
+        throw new CliError(
+          error.code,
+          error.exitCode,
+          'OpenCove refused authorization for this request.',
+          'Check the endpoint and credentials before retrying.',
+        )
+      }
+      if (error.code !== 'transport.invalid_response') {
+        throw error
+      }
+      throw new CliError(
+        error.code,
+        error.exitCode,
+        'OpenCove returned an invalid delivery response. The outcome is unknown.',
+        promptUnknownRecovery,
+        { deliveryOutcome: 'unknown' },
+      )
     }
     if (controller.signal.aborted) {
-      throw new CliError('transport.timeout', 124, 'Request timed out')
+      throw new CliError(
+        'transport.timeout',
+        124,
+        request.id === 'agent.prompt'
+          ? 'Timed out waiting for the delivery result. The outcome is unknown.'
+          : 'Request timed out',
+        prompt ? promptUnknownRecovery : undefined,
+        prompt ? { deliveryOutcome: 'unknown' } : undefined,
+      )
     }
     throw new CliError(
       'context.unreachable',
       3,
-      `OpenCove endpoint ${connection.endpoint} is unreachable.`,
-      'Check the endpoint URL and ensure the OpenCove app or worker is running.',
-      { endpoint: connection.endpoint },
+      prompt
+        ? `Could not obtain a delivery result from OpenCove at ${connection.endpoint}. The outcome is unknown.`
+        : `OpenCove endpoint ${connection.endpoint} is unreachable.`,
+      request.id === 'agent.prompt'
+        ? 'Do not resend. Check the connection and inspect the agent terminal and conversation before retrying.'
+        : 'Check the endpoint URL and ensure the OpenCove app or worker is running.',
+      { endpoint: connection.endpoint, ...(prompt ? { deliveryOutcome: 'unknown' } : {}) },
     )
   } finally {
     clearTimeout(timer)

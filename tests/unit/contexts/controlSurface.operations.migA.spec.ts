@@ -60,9 +60,11 @@ registerControlSurfaceHandlers(
       defaults[id] = handler.defaultErrorCode
     },
   } as ControlSurface,
-  { ptyRuntime: {}, plugins: { configureHost() {} }, ptyStreamHub: {} } as Parameters<
-    typeof registerControlSurfaceHandlers
-  >[1],
+  {
+    ptyRuntime: {},
+    plugins: { configureHost() {} },
+    ptyStreamHub: { agentRuns: { registry: { onDispose() {} } } },
+  } as Parameters<typeof registerControlSurfaceHandlers>[1],
 )
 function attempt(parse: (payload: unknown) => unknown, payload: unknown, id: string) {
   try {

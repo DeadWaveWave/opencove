@@ -1,7 +1,14 @@
 import {
+  projectRunStateFence,
+  matchesAgentRunFilter,
+  type AgentRunEntry as Entry,
+  type AgentRunBinding as Binding,
+} from './AgentRunStateEntry'
+import { AgentRunStateFences } from './AgentRunStateFences'
+import type { RunStateFence, RunStateReceipt } from './ports/PromptDeliveryPorts'
+import {
   createAgentRunModel,
   transitionAgentRun,
-  type AgentRunModel,
   type AgentRunObservation,
   type AgentRunSnapshot,
 } from '../domain/agentRunState'
@@ -22,13 +29,6 @@ export interface AgentRuntimeResync {
   query: 'agent.list'
 }
 
-type Entry = {
-  model: AgentRunModel
-  projectId?: string
-  spaceId?: string
-  cancelExpiry?: () => void
-}
-type Binding = { nodeId: string | null; projectId?: string; spaceId?: string }
 type RetainedEvent = {
   event: AgentRuntimeEvent
   projectId?: string
@@ -38,6 +38,12 @@ type RetainedEvent = {
 
 /** Worker lifetime owner. Uses an injected scheduler; no persistence, transport or renderer dependencies. */
 export class AgentRunStateRegistry {
+  private readonly disposeListeners = new Set<() => void>()
+  onDispose(listener: () => void): void {
+    this.disposeListeners.add(listener)
+  }
+  private readonly fences = new AgentRunStateFences()
+  private tokenSequence = 0
   private readonly entries = new Map<string, Entry>()
   private readonly nodeBindings = new Map<string, Entry>()
   private readonly events: RetainedEvent[] = []
@@ -71,7 +77,10 @@ export class AgentRunStateRegistry {
     },
   ): void {
     const existing = this.entries.get(input.sessionId)
-    if (existing?.model.incarnation === input.incarnation) {
+    if (
+      existing?.model.incarnation === input.incarnation &&
+      existing.model.snapshot.provider === input.provider
+    ) {
       return
     }
     existing?.cancelExpiry?.()
@@ -79,14 +88,19 @@ export class AgentRunStateRegistry {
       this.releaseNodeBinding(existing)
     }
     const entry: Entry = {
+      token: `${input.incarnation}:${++this.tokenSequence}`,
+      bindingGeneration: 0,
+      cursor: this.fences.nextCursor(),
+      remote: false,
       model: createAgentRunModel({ ...input, now: this.ports.now() }),
       projectId: input.projectId,
       spaceId: input.spaceId,
     }
     this.entries.set(input.sessionId, entry)
     if (entry.model.snapshot.nodeId !== null) {
-      this.nodeBindings.set(entry.model.snapshot.nodeId, entry)
+      this.claimNodeBinding(entry.model.snapshot.nodeId, entry)
     }
+    this.notifyFence(entry)
     this.publish(
       entry,
       'agent.state_changed',
@@ -119,14 +133,16 @@ export class AgentRunStateRegistry {
     ) {
       return
     }
+    entry.bindingGeneration++
     const previousBinding = this.binding(entry)
     this.releaseNodeBinding(entry)
     entry.model.snapshot = { ...entry.model.snapshot, nodeId: binding.nodeId }
     entry.projectId = binding.projectId
     entry.spaceId = binding.spaceId
     if (binding.nodeId !== null) {
-      this.nodeBindings.set(binding.nodeId, entry)
+      this.claimNodeBinding(binding.nodeId, entry)
     }
+    this.notifyFence(entry)
     this.publish(entry, 'agent.state_changed', undefined, true, previousBinding)
   }
 
@@ -145,6 +161,7 @@ export class AgentRunStateRegistry {
     const changed = JSON.stringify(next) !== JSON.stringify(entry.model.snapshot)
     entry.model = { ...entry.model, snapshot: next, observations: {}, nextTransitionAtMs: null }
     if (changed) {
+      this.notifyFence(entry)
       this.publish(entry, 'agent.state_changed', undefined, false)
     }
     if (endedTurn) {
@@ -168,9 +185,27 @@ export class AgentRunStateRegistry {
       this.ports.now(),
       this.ports.createTurnId,
     )
+    const accepted =
+      observation &&
+      result.model !== entry.model &&
+      result.model.observations[observation.source] === observation
     const changed = JSON.stringify(result.model.snapshot) !== JSON.stringify(entry.model.snapshot)
     entry.model = result.model
     this.scheduleExpiry(entry)
+    if (accepted || changed) {
+      this.notifyFence(
+        entry,
+        accepted
+          ? {
+              source: observation.source,
+              hookEventName: observation.hookEventName,
+              emittedAtMs: observation.emittedAtMs,
+              sourceSequence: observation.sourceSequence,
+              turnId: result.model.snapshot.turn?.id,
+            }
+          : {},
+      )
+    }
     if (changed) {
       this.publish(entry, 'agent.state_changed', undefined, false)
     }
@@ -213,6 +248,45 @@ export class AgentRunStateRegistry {
     return entry ? structuredClone(entry.model.snapshot) : null
   }
 
+  readFence(locator: { sessionId: string } | { nodeId: string }): RunStateFence | null {
+    const entry =
+      'sessionId' in locator
+        ? this.entries.get(locator.sessionId)
+        : this.nodeBindings.get(locator.nodeId)
+    if (!entry) {
+      return null
+    }
+    return projectRunStateFence(entry, this.ports.epoch)
+  }
+  watchFence(fence: RunStateFence, listener: (receipt: RunStateReceipt) => void): () => void {
+    return this.fences.watch(
+      fence,
+      () => this.readFence({ sessionId: fence.snapshot.sessionId }),
+      listener,
+    )
+  }
+  setRuntimeContext(
+    sessionId: string,
+    context: { remote: boolean; hookInstallState?: RunStateFence['hookInstallState'] },
+  ): void {
+    const entry = this.entries.get(sessionId)
+    if (
+      !entry ||
+      (entry.remote === context.remote && entry.hookInstallState === context.hookInstallState)
+    ) {
+      return
+    }
+    Object.assign(entry, context)
+    this.notifyFence(entry)
+  }
+  private notifyFence(entry: Entry, receipt: Omit<RunStateReceipt, 'fence'> = {}): void {
+    entry.cursor = this.fences.nextCursor()
+    this.fences.emit(entry.model.snapshot.sessionId, {
+      ...receipt,
+      fence: this.readFence({ sessionId: entry.model.snapshot.sessionId }),
+    })
+  }
+
   /** Remove an exited incarnation only; late cleanup cannot remove its replacement. */
   retire(input: { sessionId: string; incarnation: string }): boolean {
     const entry = this.entries.get(input.sessionId)
@@ -225,10 +299,19 @@ export class AgentRunStateRegistry {
     }
     entry.cancelExpiry?.()
     this.entries.delete(input.sessionId)
+    this.fences.emit(input.sessionId, { fence: null })
     this.releaseNodeBinding(entry)
     return true
   }
 
+  private claimNodeBinding(nodeId: string, entry: Entry): void {
+    const displaced = this.nodeBindings.get(nodeId)
+    this.nodeBindings.set(nodeId, entry)
+    if (displaced && displaced !== entry) {
+      displaced.bindingGeneration++
+      this.notifyFence(displaced)
+    }
+  }
   private releaseNodeBinding(entry: Entry): void {
     const nodeId = entry.model.snapshot.nodeId
     if (nodeId !== null && this.nodeBindings.get(nodeId) === entry) {
@@ -244,7 +327,7 @@ export class AgentRunStateRegistry {
         .filter(
           entry =>
             entry.model.snapshot.state !== 'exited' &&
-            this.matches(
+            matchesAgentRunFilter(
               {
                 event: { snapshot: entry.model.snapshot } as AgentRuntimeEvent,
                 projectId: entry.projectId,
@@ -291,8 +374,8 @@ export class AgentRunStateRegistry {
       const previous = item.previousBinding
       if (
         previous &&
-        !this.matches(item, { ...filter, types: undefined }) &&
-        this.matches(
+        !matchesAgentRunFilter(item, { ...filter, types: undefined }) &&
+        matchesAgentRunFilter(
           {
             ...item,
             ...previous,
@@ -309,7 +392,7 @@ export class AgentRunStateRegistry {
           seq: item.event.seq,
           query: 'agent.list',
         })
-      } else if (this.matches(item, filter)) {
+      } else if (matchesAgentRunFilter(item, filter)) {
         listener(structuredClone(item.event))
       }
     }
@@ -336,6 +419,11 @@ export class AgentRunStateRegistry {
   }
 
   dispose(): void {
+    for (const listener of this.disposeListeners) {
+      listener()
+    }
+    this.disposeListeners.clear()
+    this.fences.dispose()
     this.subscribers.clear()
     for (const entry of this.entries.values()) {
       entry.cancelExpiry?.()
@@ -344,16 +432,6 @@ export class AgentRunStateRegistry {
     this.nodeBindings.clear()
     this.events.length = 0
     this.deliveryQueue.length = 0
-  }
-
-  private matches(item: RetainedEvent, filter: AgentRuntimeFilter): boolean {
-    return (
-      (!filter.types || filter.types.includes(item.event.type)) &&
-      (!filter.nodeId || filter.nodeId === item.event.snapshot.nodeId) &&
-      (!filter.spaceId || filter.spaceId === item.spaceId) &&
-      (!filter.projectId || filter.projectId === item.projectId) &&
-      (!filter.state || filter.state === item.event.snapshot.state)
-    )
   }
 
   private publish(

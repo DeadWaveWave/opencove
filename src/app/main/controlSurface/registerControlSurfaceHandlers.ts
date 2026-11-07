@@ -1,3 +1,4 @@
+import { registerAgentPromptHandlers } from './handlers/agentPromptHandlers'
 import { registerWorkspaceBootstrapHandlers } from './handlers/workspaceBootstrapHandlers'
 import { registerAgentRunStateHandlers } from './handlers/agentRunStateHandlers'
 import { registerPluginHostHandlers } from './handlers/pluginHostHandlers'
@@ -74,6 +75,7 @@ export function registerControlSurfaceHandlers(
   },
 ): void {
   registerAgentRunStateHandlers(controlSurface, deps.ptyStreamHub)
+  registerAgentPromptHandlers(controlSurface, deps.ptyStreamHub, deps.agentProviderRegistry)
   registerSystemHandlers(controlSurface, {
     appVersion: deps.appVersion,
     deploymentId: deps.deploymentId,

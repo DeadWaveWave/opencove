@@ -66,6 +66,9 @@ export class AgentRunStateRuntime {
       this.markRemote(sessionId)
     }
     this.registry.bind(sessionId, binding ?? { nodeId: null })
+    if (session) {
+      this.registry.setRuntimeContext(sessionId, session)
+    }
   }
   private markRemote(sessionId: string): void {
     const session = this.sessions.get(sessionId)
@@ -120,7 +123,11 @@ export class AgentRunStateRuntime {
     }
     const incarnation =
       event.terminalAgentActivity?.invocationId ?? existing?.invocationId ?? event.sessionId
-    if (!existing || existing.invocationId !== incarnation) {
+    if (
+      !existing ||
+      existing.invocationId !== incarnation ||
+      this.registry.get({ sessionId: event.sessionId })?.provider !== provider
+    ) {
       this.sessions.set(event.sessionId, {
         incarnation,
         invocationId: incarnation,
@@ -259,6 +266,7 @@ export class AgentRunStateRuntime {
     if (event.hookInstallState !== undefined) {
       session.hookInstallState = event.hookInstallState
     }
+    this.registry.setRuntimeContext(event.sessionId, session)
     const name = event.hookEventName
     let boundary: AgentRunObservation['boundary']
     if (
@@ -304,6 +312,8 @@ export class AgentRunStateRuntime {
           ['partial', 'error', 'not_installed', 'skipped'].includes(session.hookInstallState)),
       blockedReason: event.blockedReason,
       boundary,
+      hookEventName: name,
+      emittedAtMs: event.emittedAtMs,
     })
   }
 

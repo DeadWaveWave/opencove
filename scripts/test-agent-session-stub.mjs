@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { runClaudePromptStrictScenario } from './test-agent-session-stub/claudePromptStrict.mjs'
 
 import { resolve } from 'node:path'
 import { sleep } from './test-agent-session-stub/sleep.mjs'
@@ -57,7 +58,8 @@ function isLikelyScenarioArg(value) {
     value.startsWith('codex-') ||
     value.startsWith('gemini-') ||
     value.startsWith('opencode-') ||
-    value.startsWith('claude-hook-')
+    value.startsWith('claude-hook-') ||
+    value === 'claude-prompt-strict'
   )
 }
 
@@ -106,6 +108,11 @@ async function main() {
 
   if (provider === 'codex' && scenario === 'codex-hook-fallback') {
     await runCodexHookFallbackScenario(cwd)
+    return
+  }
+
+  if (provider === 'claude-code' && scenario === 'claude-prompt-strict') {
+    await runClaudePromptStrictScenario(cwd, providerArgs)
     return
   }
 

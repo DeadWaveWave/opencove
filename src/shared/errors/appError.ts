@@ -1,3 +1,4 @@
+import { agentPromptErrorPresentation } from './agentPromptError'
 import { fileSystemErrorReasonMessage } from './filesystemError'
 import type { AppErrorCode, AppErrorDescriptor, AppErrorParams } from '../contracts/dto'
 import type { IpcInvokeResult } from '../contracts/ipc'
@@ -77,6 +78,16 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'terminal.attach_failed': 'Unable to attach the terminal session.',
     'terminal.detach_failed': 'Unable to detach the terminal session.',
     'terminal.snapshot_failed': 'Unable to read terminal output.',
+    'agent.blocked': 'The agent is waiting for input.',
+    'agent.busy': 'The agent is busy.',
+    'agent.state_unknown': 'Agent readiness is not established.',
+    'agent.not_running': 'The agent is not running.',
+    'agent.prompt_unsupported': 'Prompt delivery is unsupported.',
+    'agent.prompt_interrupted':
+      'Text may have reached the terminal; Enter was not sent by this operation; inspect before retrying.',
+    'agent.prompt_stalled':
+      'Submission was not observed; do not resend; check the agent before retrying.',
+    'agent.prompt_timeout': 'Prompt delivery deadline expired before any write.',
     'agent.list_models_failed': 'Unable to load models for this provider.',
     'agent.install_failed': 'Unable to install this agent provider.',
     'agent.launch_failed': 'Unable to start the agent.',
@@ -200,6 +211,10 @@ export function toAppErrorDescriptor(
 
 export function formatAppErrorMessage(error: AppErrorDescriptor | OpenCoveAppError): string {
   const descriptor = error instanceof OpenCoveAppError ? error.toDescriptor() : error
+  const prompt = agentPromptErrorPresentation(descriptor)
+  if (prompt) {
+    return prompt.message
+  }
   const message = APP_ERROR_MESSAGES[descriptor.code] ?? APP_ERROR_MESSAGES['common.unexpected']
   if (descriptor.code.startsWith('filesystem.')) {
     const reason = fileSystemErrorReasonMessage(descriptor.params?.reason)

@@ -86,6 +86,7 @@ function createWindowsLauncher(runtime: string, relay: string): string {
 }
 
 const relayScript = String.raw`
+const emittedAtMs = Date.now();
 // Telemetry cannot keep the provider waiting, including on an unclosed stdin or socket.
 const deadline = setTimeout(() => process.exit(0), 2000);
 try {
@@ -114,7 +115,7 @@ try {
     }
     await fetch(endpoint, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-opencove-hook-token': token },
+      headers: { 'content-type': 'application/json', 'x-opencove-hook-token': token, 'x-opencove-hook-emitted-at': String(emittedAtMs) },
       body,
       signal: AbortSignal.timeout(1500),
     });

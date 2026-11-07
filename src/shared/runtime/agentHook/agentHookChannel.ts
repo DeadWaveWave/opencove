@@ -1,3 +1,4 @@
+import { parseHookEmittedAt } from './hookEmittedAt'
 import { randomBytes } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server } from 'node:http'
 import type {
@@ -13,6 +14,7 @@ import type { AgentSessionIdentityObservation } from '../../contracts/dto/agentS
 const MAX_HOOK_BODY_BYTES = 256 * 1024
 
 export interface AgentHookEnvelope {
+  emittedAtMs?: number
   hookEventName?: string
   tool?: { name: string }
   state: 'working' | 'waiting' | 'standby' | 'done' | null
@@ -173,6 +175,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
         state: state === 'done' ? 'standby' : state,
         source: options.source,
         hookEventName: envelope.hookEventName,
+        emittedAtMs: envelope.emittedAtMs,
         ...(envelope.hookEventName === 'PermissionRequest'
           ? { blockedReason: 'permission' as const }
           : envelope.tool?.name === 'AskUserQuestion'
@@ -284,6 +287,12 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
                 response.statusCode = 400
                 response.end()
                 return
+              }
+              if (options.source === 'claude_hook') {
+                envelope.emittedAtMs = parseHookEmittedAt(
+                  request.headers['x-opencove-hook-emitted-at'],
+                  Date.now(),
+                )
               }
               if (!handleEnvelope(token, envelope)) {
                 response.statusCode = 401

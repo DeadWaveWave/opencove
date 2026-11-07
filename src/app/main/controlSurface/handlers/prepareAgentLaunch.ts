@@ -41,7 +41,10 @@ export async function prepareAgentLaunch(options: {
   const launchCommand: AgentLaunchCommand = testStub
     ? {
         command: testStub.command,
-        args: testStub.args,
+        args:
+          process.env.OPENCOVE_TEST_AGENT_SESSION_SCENARIO === 'claude-prompt-strict'
+            ? [...testStub.args, ...managedLaunch.plan.args]
+            : testStub.args,
         effectiveModel: managedLaunch.plan.effectiveModel,
         launchMode: managedLaunch.plan.launchMode,
         resumeSessionId: managedLaunch.plan.resumeSessionId,

@@ -125,6 +125,8 @@ export type RequestAuth =
   | {
       kind: 'cookie'
       webSessionGeneration: number
+      /** Internal credential reference; never returned or logged. */
+      webSessionCookie?: string
     }
   | {
       kind: 'query_token'
@@ -165,7 +167,11 @@ export function resolveRequestAuth(options: {
       return null
     }
 
-    return { kind: 'cookie', webSessionGeneration }
+    return Object.defineProperty(
+      { kind: 'cookie' as const, webSessionGeneration },
+      'webSessionCookie',
+      { value: sessionCookie },
+    )
   }
 
   if (options.allowQueryToken) {

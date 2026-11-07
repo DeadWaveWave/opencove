@@ -64,6 +64,14 @@ export const APP_ERROR_CODES = [
   'terminal.attach_failed',
   'terminal.detach_failed',
   'terminal.snapshot_failed',
+  'agent.blocked',
+  'agent.busy',
+  'agent.state_unknown',
+  'agent.not_running',
+  'agent.prompt_unsupported',
+  'agent.prompt_interrupted',
+  'agent.prompt_stalled',
+  'agent.prompt_timeout',
   'agent.list_models_failed',
   'agent.install_failed',
   'agent.launch_failed',
@@ -95,4 +103,12 @@ export interface AppErrorDescriptor {
   params?: AppErrorParams
   details?: unknown
   debugMessage?: string
+}
+
+export interface AgentPromptErrorDetails {
+  reason: string
+  pasteDispatchAttempted: boolean
+  submitDispatchAttempted: boolean
+  retryable: boolean
+  blockedReason?: 'permission' | 'question' | 'plan' | null
 }

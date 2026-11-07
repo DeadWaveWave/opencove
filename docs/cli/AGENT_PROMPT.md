@@ -12,3 +12,28 @@
 8. focus.delivered 为 false 不算业务失败。PTY stdout 是原始终端流，Ctrl-C detach 返回 130。
 9. 汇报实际命令、结果、NOT RUN 和进程/节点清理状态，不把未运行测试写成通过。
 ```
+
+## Send to a running agent
+
+```sh
+opencove agent prompt --node node-123 --text 'Review the changes'
+opencove agent prompt --node node-123 --text-file ./prompt.txt --timeout 20s
+cat prompt.txt | opencove agent prompt --node node-123 --text-file -
+```
+
+Exactly one text source is required. `--timeout` accepts milliseconds or durations (`15s`,
+`15000ms`, `1m`); default 15s, maximum 60s. HTTP timeout includes a five-second response margin.
+The target must be local Claude Code after an observed settled turn. `@self` resolves through the
+calling session grant; a canvas terminal is not an agent and is refused by the server.
+
+Success is JSON with `deliveryId`, `nodeId`, `sessionId`, `phase: submission_observed`, `turnId`.
+`--fields` accepts those declared fields. Refusals exit 1 with the AppError code and typed
+`error.details` dispatch-attempt flags; a server deadline exits 124 and preserves those flags.
+Usage errors exit 2. Local HTTP timeout exits 124; transport loss is outcome unknown.
+
+A human editor draft is submitted with the text; unobserved dialogs cannot be excluded.
+Submission observation means a token-authenticated UserPromptSubmit passed matching checks
+with a range-checked, caller-supplied relay timestamp at or after the pre-Enter boundary. It assumes
+the same wall clock without adjustments; any holder of the session's hook token can claim a
+submission. It does not prove causation, exact text processing or turn completion. Never resend automatically after interruption, stalled receipt, or transport loss.
+See [Prompt delivery](../agent/PROMPT_DELIVERY.md) for admission, errors and recovery.

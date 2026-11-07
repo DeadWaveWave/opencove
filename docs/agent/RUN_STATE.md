@@ -137,3 +137,15 @@ State and turn-end frames share the PTY connection so remote turn boundaries pre
 PTY exit. Only the executing Worker emits a turn end; Home's exit handling does not synthesize one.
 Socket closure releases the remote registry subscription; forgetting an exited proxy releases its
 cached snapshot. Slow sockets disconnect and use the same resume/resynchronization protocol.
+
+## Internal prompt fences
+
+The registry exposes an internal RunStateFencePort for [prompt delivery](PROMPT_DELIVERY.md).
+It contains Worker epoch, entry incarnation token, binding generation, selected source/event name,
+active turn, accepted per-source sequence watermarks and a receipt cursor. These fields are not
+added to public DTOs. Receipts preserve hook event names through runtime ingress and are emitted
+for every reducer-accepted observation, including unchanged snapshots. Synchronous registration
+and bounded replay close the query/watch gap; unavailable history invalidates rather than inventing
+acceptance. Replaced entries, binding ABA, capability changes, lease expiry and disposal invalidate
+pending delivery. Only a fresh accepted claude_hook UserPromptSubmit above the submit fence can
+establish submission observation; session-file optimism cannot do so.

@@ -269,6 +269,17 @@ it.each(targets)(
     if (command.targetSpace === 'required' && flag === 'project') {
       args.push('--space', '@self')
     }
+    if (command.path.join(' ') === 'agent prompt') {
+      // Its text source is one of two options, so neither is marked required.
+      args.push('--text', 'sample')
+      f.values['agent.prompt'] = {
+        deliveryId: 'delivery',
+        nodeId: node.id,
+        sessionId: 'session',
+        phase: 'submission_observed',
+        turnId: 'turn',
+      }
+    }
     args.push(`--${flag}`, value)
     expect(await run(args, f.io), JSON.stringify(f.requests)).toBe(0)
     expect(f.requests.filter(request => request.id === `${kind}.list`).length).toBeLessThanOrEqual(

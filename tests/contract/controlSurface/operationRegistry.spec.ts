@@ -23,7 +23,7 @@ for (const variant of ['always', 'desktop-managed-worker', 'managed-runtime', 'd
     registerControlSurfaceHandlers(surface, {
       ptyRuntime: variant === 'debug' ? { debugCrashHost() {} } : {},
       plugins: { configureHost() {} },
-      ptyStreamHub: {},
+      ptyStreamHub: { agentRuns: { registry: { onDispose() {} } } },
     } as Parameters<typeof registerControlSurfaceHandlers>[1])
     if (variant === 'desktop-managed-worker') {
       registerWorkerConfigurationHandlers(

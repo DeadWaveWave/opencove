@@ -41,7 +41,10 @@ export function createControlSurface(
       handlers.set(id, handler as ControlSurfaceHandler<unknown, unknown>)
     },
     invoke: async (ctx, request) => {
-      if (ctx.requestAuth?.kind === 'session-grant' && !sessionGrantAllowsOperation(request.id)) {
+      if (
+        ctx.requestAuth?.kind === 'session-grant' &&
+        !sessionGrantAllowsOperation(request.id, ctx.requestAuth.grant.tier)
+      ) {
         return {
           __opencoveControlEnvelope: true,
           ok: false,

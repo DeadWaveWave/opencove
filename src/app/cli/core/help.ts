@@ -74,7 +74,7 @@ export function help(commands: Command[], path: string[]) {
           `--${name}${s.type === 'boolean' ? '' : ' ' + (s.type === 'number' ? '39291' : shellWord(`<${s.valueName ?? name}>`))}`,
       )
     const lines = [
-      `Usage: ${[prefix, ...positionals, ...target, ...required, '[options]'].join(' ')}`,
+      `Usage: ${exact.usage ? `${prefix} ${exact.usage}` : [prefix, ...positionals, ...target, ...required, '[options]'].join(' ')}`,
       '',
       exact.summary,
     ]
