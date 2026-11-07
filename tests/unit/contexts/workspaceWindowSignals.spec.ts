@@ -74,6 +74,23 @@ describe('window frame signals', () => {
     expect(node.style.getPropertyValue('--cove-signal-color')).toBe('')
   })
 
+  it('restarts the flash on a new layer and cancels the old cleanup deadline', () => {
+    const scope = document.createElement('div')
+    scope.innerHTML = '<div class="react-flow__node" data-id="a"></div>'
+    const node = scope.firstElementChild as HTMLElement
+    showWindowSignal(scope, 'a', 'complete', [1, 2, 3], 1000)
+    const first = node.querySelector('.cove-window-flash')
+    expect(first).not.toBeNull()
+    vi.advanceTimersByTime(700)
+    showWindowSignal(scope, 'a', 'complete', [1, 2, 3], 1000)
+    expect(node.querySelector('.cove-window-flash')).not.toBe(first)
+    vi.advanceTimersByTime(300)
+    expect(node.dataset.coveSignal).toBe('complete')
+    vi.advanceTimersByTime(700)
+    expect(node.querySelector('.cove-window-flash')).toBeNull()
+    expect(node.dataset.coveSignal).toBeUndefined()
+  })
+
   it('lets a stronger signal replace completion and clears everything on demand', () => {
     const scope = document.createElement('div')
     scope.innerHTML = '<div class="react-flow__node" data-id="a"></div>'

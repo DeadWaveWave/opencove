@@ -276,7 +276,8 @@ static 1px frame highlight and no waves, following the spec table’s reduced-mo
 `resolveAgentPresentation` and only counts transitions seen live (a reload never signals):
 
 - A run finishing (working → standby), at most once per window per 3s: the window's frame flashes
-  in its kind colour and the canvas sheds 26 ink sparks from random perimeter points (speed 260,
+  in its kind ink: a 2px ring plus 54px blur / 8px spread at 55%, all screen-sized;
+  only opacity fades from 1 to 0 over 1000ms ease-out. The canvas sheds 26 ink sparks from random perimeter points (speed 260,
   base life 700ms); the wall sends a strong shockwave whose
   white crest stays outside windows and their one-cell margins (behind glass only the kind colour
   shows, within the cap). Both last 2100ms; the kind wave uses 860px reach / 56px width / amplitude 1,
@@ -287,13 +288,15 @@ static 1px frame highlight and no waves, following the spec table’s reduced-mo
   unconditional reset to zero at the end. A dedicated 1.5px masked ring leaves the text fill and
   glass chrome pseudo-elements untouched. Hidden windows, reduced motion, signals off and
   unmount clear it; there is no independent sweep timer.
-- A change into failed: the frame jolts sideways in a 280ms glitch; the canvas sheds 14 red sparks
+- A change into failed: the frame uses five horizontal offsets and scanline slices over 280ms (`steps(1, end)`),
+  using individual `translate` so React Flow keeps its positioning transform; the canvas sheds 14 red sparks
   (speed 150, base life 560ms, gravity 320), and the
   wall sends a red ripple over 820ms, with 190px reach, 26px width and 0.95 amplitude.
 
-Frame signals write one attribute (`data-cove-signal`) and one colour variable on the window, only
+Frame signals own a dedicated flash layer, one attribute (`data-cove-signal`) and one colour variable on the window, only
 while they last, and never touch the fill behind its text. They follow the Agent working effect
-switch. Reduced motion: the frame's colour flashes once and a failure keeps a still red outline;
+switch, including completion flashes (unlike the prototype's unconditional flash). Reduced motion:
+the flash holds opacity 0.9 for 600ms, then disappears; a failure keeps its authoritative red border;
 no waves, sparks or glitch.
 
 ## Canvas effects

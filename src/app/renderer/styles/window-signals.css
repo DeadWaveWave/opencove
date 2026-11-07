@@ -5,15 +5,24 @@
   border-radius: var(--cove-node-radius);
 }
 
-/* A finished run: the frame flashes in the window's colour while the effects canvas sheds its sparks. */
-.react-flow__node[data-cove-signal='complete'] {
-  animation: cove-signal-complete 1.2s ease-out;
+/* Tide 412–414: a constant screen-sized glow; only opacity animates. */
+.cove-window-flash {
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--cove-node-radius);
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0;
+  box-shadow:
+    0 0 0 calc(2px / var(--cove-canvas-zoom, 1)) var(--cove-signal-color),
+    0 0 calc(54px / var(--cove-canvas-zoom, 1)) calc(8px / var(--cove-canvas-zoom, 1))
+      color-mix(in srgb, var(--cove-signal-color) 55%, transparent);
+  animation: cove-signal-complete 1s ease-out;
 }
 
-/* A failure: the frame jolts sideways in a short scanline glitch and red fragments fly off. */
+/* The spec's 280ms wins over the prototype's 320ms; translate preserves Flow positioning. */
 .react-flow__node[data-cove-signal='fail'] {
-  box-shadow: 0 0 0 1px var(--cove-signal-color);
-  animation: cove-signal-fail 280ms steps(4);
+  animation: cove-signal-fail 280ms steps(1, end);
 }
 
 /* Tide's passing wave lights a masked 1.5px rim, independent of chrome pseudo-elements. */
@@ -41,27 +50,46 @@
 
 @keyframes cove-signal-complete {
   0% {
-    box-shadow: 0 0 0 1px var(--cove-signal-color);
-  }
-  25% {
-    box-shadow:
-      0 0 0 2px var(--cove-signal-color),
-      0 0 28px 6px color-mix(in srgb, var(--cove-signal-color) 38%, transparent);
+    opacity: 1;
   }
   100% {
-    box-shadow: 0 0 0 1px transparent;
+    opacity: 0;
+  }
+}
+
+@keyframes cove-signal-complete-static {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
   }
 }
 
 @keyframes cove-signal-fail {
-  25% {
+  0% {
+    translate: -5px 0;
+    clip-path: inset(8% 0 58% 0);
+  }
+  20% {
+    translate: 4px 0;
+    clip-path: inset(48% 0 22% 0);
+  }
+  40% {
+    translate: -3px 0;
+    clip-path: inset(0 0 72% 0);
+  }
+  60% {
     translate: 3px 0;
+    clip-path: inset(70% 0 4% 0);
   }
-  50% {
+  80% {
     translate: -2px 0;
+    clip-path: inset(30% 0 40% 0);
   }
-  75% {
-    translate: 1px 0;
+  100% {
+    translate: none;
+    clip-path: inset(0 0 0 0);
   }
 }
 
@@ -75,8 +103,8 @@
     animation: none;
   }
 
-  .react-flow__node[data-cove-signal='complete'] {
-    box-shadow: 0 0 0 2px var(--cove-signal-color);
+  .cove-window-flash {
+    animation: cove-signal-complete-static 0.6s steps(1, end);
   }
 }
 

@@ -4,12 +4,16 @@ import type { Rgb } from '@shared/design/oklch'
 export type FrameSignal = 'complete' | 'fail'
 const RANK: Record<FrameSignal, number> = { complete: 1, fail: 2 }
 
-const active = new Map<HTMLElement, { signal: FrameSignal; timer: ReturnType<typeof setTimeout> }>()
+const active = new Map<
+  HTMLElement,
+  { signal: FrameSignal; timer: ReturnType<typeof setTimeout>; flash: HTMLElement | null }
+>()
 
 function clear(element: HTMLElement): void {
   const entry = active.get(element)
   if (entry) {
     clearTimeout(entry.timer)
+    entry.flash?.remove()
     active.delete(element)
   }
   delete element.dataset.coveSignal
@@ -25,7 +29,7 @@ export function showWindowSignal(
   scope: ParentNode,
   nodeId: string,
   signal: FrameSignal,
-  color: Rgb,
+  color: Rgb | string,
   durationMs: number,
 ): void {
   const element = scope.querySelector<HTMLElement>(
@@ -39,9 +43,23 @@ export function showWindowSignal(
     return
   }
   clear(element)
+  // Replacing the flash layer restarts its CSS animation, even inside the previous flash.
+  let flash: HTMLElement | null = null
+  if (signal === 'complete') {
+    flash = document.createElement('div')
+    flash.className = 'cove-window-flash'
+    flash.setAttribute('aria-hidden', 'true')
+    element.append(flash)
+  } else if (current?.signal === signal) {
+    // Tide retrigger: commit the removed glitch before starting the next one.
+    void element.offsetWidth
+  }
   element.dataset.coveSignal = signal
-  element.style.setProperty('--cove-signal-color', `rgb(${color[0]} ${color[1]} ${color[2]})`)
-  active.set(element, { signal, timer: setTimeout(() => clear(element), durationMs) })
+  element.style.setProperty(
+    '--cove-signal-color',
+    typeof color === 'string' ? color : `rgb(${color[0]} ${color[1]} ${color[2]})`,
+  )
+  active.set(element, { signal, flash, timer: setTimeout(() => clear(element), durationMs) })
 }
 
 export function clearWindowSignals(scope: ParentNode): void {

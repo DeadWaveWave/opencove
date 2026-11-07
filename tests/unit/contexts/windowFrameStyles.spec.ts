@@ -76,3 +76,44 @@ describe('Tide waiting frames', () => {
     ).toBe('var(--cove-status-failed, var(--cove-danger))')
   })
 })
+
+describe('Tide completion and failure frames', () => {
+  it('fades a constant screen-sized flash for 1s, with a 600ms static reduced-motion flash', () => {
+    expect(declarations('.cove-window-flash')).toMatchObject({
+      position: 'absolute',
+      inset: '-1px',
+      'pointer-events': 'none',
+      'z-index': '4',
+      opacity: '0',
+      animation: 'cove-signal-complete 1s ease-out',
+      'box-shadow':
+        '0 0 0 calc(2px / var(--cove-canvas-zoom, 1)) var(--cove-signal-color), 0 0 calc(54px / var(--cove-canvas-zoom, 1)) calc(8px / var(--cove-canvas-zoom, 1)) color-mix(in srgb, var(--cove-signal-color) 55%, transparent)',
+    })
+    expect(frames('cove-signal-complete')).toEqual({
+      '0%': { opacity: '1' },
+      '100%': { opacity: '0' },
+    })
+    expect(declarations('.cove-window-flash', true).animation).toBe(
+      'cove-signal-complete-static 0.6s steps(1, end)',
+    )
+    expect(frames('cove-signal-complete-static')).toEqual({
+      '0%': { opacity: '0.9' },
+      '100%': { opacity: '0' },
+    })
+  })
+  it('uses all five scanline slices over 280ms without overriding React Flow transforms', () => {
+    expect(declarations(".react-flow__node[data-cove-signal='fail']").animation).toBe(
+      'cove-signal-fail 280ms steps(1, end)',
+    )
+    expect(frames('cove-signal-fail')).toEqual({
+      '0%': { translate: '-5px 0', 'clip-path': 'inset(8% 0 58% 0)' },
+      '20%': { translate: '4px 0', 'clip-path': 'inset(48% 0 22% 0)' },
+      '40%': { translate: '-3px 0', 'clip-path': 'inset(0 0 72% 0)' },
+      '60%': { translate: '3px 0', 'clip-path': 'inset(70% 0 4% 0)' },
+      '80%': { translate: '-2px 0', 'clip-path': 'inset(30% 0 40% 0)' },
+      '100%': { translate: 'none', 'clip-path': 'inset(0 0 0 0)' },
+    })
+    expect(declarations('.react-flow__node[data-cove-signal]', true).animation).toBe('none')
+    expect(sheet.toString()).not.toMatch(/corner-spark|::after/)
+  })
+})

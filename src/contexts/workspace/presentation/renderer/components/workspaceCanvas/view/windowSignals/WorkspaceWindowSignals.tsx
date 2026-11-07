@@ -11,8 +11,19 @@ import { createWindowStatusFrames } from './windowStatusFrames'
 import { publishWindowSignal } from './windowSignalEvents'
 
 /** How long a finished run's frame flash and a failure's glitch stay on the frame. */
-const COMPLETE_MS = 1200
-const FAIL_MS = 900
+const COMPLETE_MS = 1000
+const FAIL_MS = 280
+
+function completionInk(scope: HTMLElement, data: TerminalNodeData) {
+  const family =
+    document.documentElement.dataset.coveKindColors === 'off'
+      ? 'neutral'
+      : resolveWindowKindFamily(data)
+  return (
+    getComputedStyle(scope).getPropertyValue(`--cove-kind-${family}-ink`).trim() ||
+    readWallLightPalette(scope)[family]
+  )
+}
 
 /**
  * The one owner of completion and failure signals (Tide 5.4d): it watches agent state, flashes
@@ -71,14 +82,7 @@ export function WorkspaceWindowSignals({
       if (!node || !resolveAgentPresentation(node.data).isAgent) {
         return
       }
-      const lights = readWallLightPalette(scope)
-      showWindowSignal(
-        scope,
-        node.id,
-        'complete',
-        lights[resolveWindowKindFamily(node.data)],
-        COMPLETE_MS,
-      )
+      showWindowSignal(scope, node.id, 'complete', completionInk(scope, node.data), COMPLETE_MS)
       publishWindowSignal({ kind: 'complete', nodeId: node.id })
     })
   }, [canvasRef])
@@ -107,8 +111,7 @@ export function WorkspaceWindowSignals({
       ) {
         continue
       }
-      const color =
-        signal.kind === 'fail' ? lights.failed : lights[resolveWindowKindFamily(node.data)]
+      const color = signal.kind === 'fail' ? lights.failed : completionInk(scope, node.data)
       showWindowSignal(
         scope,
         signal.id,
