@@ -209,6 +209,14 @@ export type AgentHookInstallState =
   | 'not_required'
 
 export interface TerminalSessionStateEvent {
+  /** Present only on Worker-decided projections. */
+  agentRunState?: import('./agentRunState').AgentRunSnapshot
+  agentProvider?: AgentProviderId
+  remote?: boolean
+  remoteAgentRun?: import('./agentRunState').RemoteAgentRunUpdate
+  hookEventName?: string
+  blockedReason?: 'permission' | 'question' | 'plan' | null
+
   piConversation?: { pid: number; revision: number }
   observationUnavailable?: boolean
   sessionId: string
@@ -267,6 +275,7 @@ export interface TerminalAgentReexecResult {
 }
 
 export interface TerminalSessionMetadataEvent {
+  remote?: boolean
   /** Validated, launch-scoped native Pi observation; runtime-only, not workspace persistence. */
   piSnapshot?: import('./piAgentSnapshot').PiAgentSnapshot
   sessionId: string

@@ -1,3 +1,5 @@
+import type { AgentRunStateRuntime } from '../../../../contexts/agent/application/AgentRunStateRuntime'
+import { createWorkerAgentRunState, connectAgentRunStateTransport } from './ptyStreamAgentRunState'
 import type { WebSocket } from 'ws'
 import type {
   GetSessionPresentationSnapshotResult,
@@ -40,7 +42,6 @@ import {
   restorePtyStreamPresentationBaseline,
 } from './ptyStreamHub.presentationRecovery'
 import { attachPtyStreamClient, detachPtyStreamClient } from './ptyStreamHub.attach'
-import { registerPtyStreamAgentState } from './ptyStreamAgentStateReplay'
 import { listPtyStreamAgentActivityMetadata } from './ptyStreamAgentActivityBaseline'
 import {
   reexecPtyStreamAgent,
@@ -49,10 +50,11 @@ import {
 import { PtyStreamRecoveryOperationTracker } from './ptyStreamRecoveryOperationTracker'
 import { projectPtyStreamAgentMetadata } from './ptyStreamAgentMetadataProjection'
 import { unregisterPtyClient } from './ptyStreamHub.clients'
-import { writeAutomationInput, currentAgentState } from './ptyStreamAutomation'
+import { writeAutomationInput } from './ptyStreamAutomation'
 import { forgetPtyStreamSession, PtyStreamRetiredSessions } from './ptyStreamHub.retirement'
 
 export class PtyStreamHub {
+  public readonly agentRuns: AgentRunStateRuntime
   private readonly ptyRuntime: ControlSurfacePtyRuntime
   private readonly replayWindowMaxBytes: number
   private readonly onPresentationMutation: ((sessionId: string) => void) | undefined
@@ -65,6 +67,7 @@ export class PtyStreamHub {
 
   public constructor(options: {
     ptyRuntime: ControlSurfacePtyRuntime
+    agentRuns?: AgentRunStateRuntime
     replayWindowMaxBytes: number
     onPresentationMutation?: (sessionId: string) => void
     now?: () => number
@@ -73,6 +76,12 @@ export class PtyStreamHub {
     this.replayWindowMaxBytes = Math.max(64_000, Math.floor(options.replayWindowMaxBytes))
     this.onPresentationMutation = options.onPresentationMutation
     this.now = options.now ?? Date.now
+    this.agentRuns = options.agentRuns ?? createWorkerAgentRunState(undefined, this.now)
+    connectAgentRunStateTransport(
+      this.agentRuns,
+      id => this.ensureSession(id),
+      event => broadcastState({ sessions: this.sessions, clients: this.clients, event }),
+    )
   }
 
   private ensureSession(sessionId: string): SessionState {
@@ -141,12 +150,8 @@ export class PtyStreamHub {
     if (this.retiredSessions.has(options.sessionId)) {
       return
     }
-    registerPtyStreamAgentState({
-      session: this.ensureSession(options.sessionId),
-      event: options,
-      now: this.now,
-      broadcast: event => this.broadcastState(event),
-    })
+    this.ensureSession(options.sessionId)
+    this.agentRuns.observe(options)
   }
 
   public registerSessionForeground(event: TerminalForegroundEvent): void {
@@ -165,6 +170,7 @@ export class PtyStreamHub {
     if (!next) {
       return
     }
+    this.agentRuns.metadata(next)
     session.agentMetadata = next
     this.broadcastSessionMetadata(next)
   }
@@ -178,6 +184,7 @@ export class PtyStreamHub {
   }
 
   public forgetSession(sessionId: string): void {
+    this.agentRuns.forget(sessionId)
     forgetPtyStreamSession(sessionId, this.sessions, this.clients)
   }
 
@@ -219,6 +226,7 @@ export class PtyStreamHub {
   }
 
   public handlePtyExit(sessionId: string, exitCode: number): void {
+    this.agentRuns.exit(sessionId)
     if (this.retiredSessions.has(sessionId)) {
       return
     }
@@ -363,14 +371,6 @@ export class PtyStreamHub {
     })
   }
 
-  private broadcastState(event: TerminalSessionStateEvent): void {
-    broadcastState({
-      sessions: this.sessions,
-      clients: this.clients,
-      event,
-    })
-  }
-
   private broadcastSessionMetadata(metadata: TerminalSessionMetadataEvent): void {
     broadcastSessionMetadata({
       sessions: this.sessions,
@@ -471,7 +471,7 @@ export class PtyStreamHub {
     return writeAutomationInput({ ...input, sessions: this.sessions, runtime: this.ptyRuntime })
   }
   public observeAgentState(sessionId: string) {
-    return currentAgentState(this.sessions.get(sessionId))
+    return this.agentRuns.registry.get({ sessionId })
   }
 
   public async resize(options: PtyStreamHubResizeOptions): Promise<TerminalGeometryCommitResult> {

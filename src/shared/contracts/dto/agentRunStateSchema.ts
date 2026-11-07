@@ -1,0 +1,43 @@
+import * as z from 'zod'
+import { AGENT_PROVIDER_IDS } from './agent'
+export const agentRunStateSchema = z.enum(['working', 'waiting', 'idle', 'exited', 'unknown'])
+export const agentRunSnapshotSchema = z.object({
+  sessionId: z.string().min(1),
+  nodeId: z.string().min(1).nullable(),
+  provider: z.enum(AGENT_PROVIDER_IDS),
+  state: agentRunStateSchema,
+  blockedReason: z.enum(['permission', 'question', 'plan']).nullable(),
+  turn: z
+    .object({
+      id: z.string().min(1),
+      startedAt: z.number().finite(),
+      start: z.enum(['observed', 'inferred']),
+    })
+    .nullable(),
+  lastTransitionAt: z.number().finite(),
+  source: z
+    .enum(['launch', 'session_file', 'claude_hook', 'codex_hook', 'pi_hook', 'exit'])
+    .nullable(),
+  quality: z.enum(['authoritative', 'inferred', 'degraded']),
+  turnOutcome: z.enum(['completed', 'failed', 'aborted', 'unknown']).nullable(),
+})
+
+const cursor = { epoch: z.string().min(1), seq: z.number().int().nonnegative().safe() }
+export const agentRunEventSchema = z
+  .object({
+    ...cursor,
+    type: z.enum(['agent.state_changed', 'agent.turn_completed']),
+    snapshot: agentRunSnapshotSchema,
+    endedTurn: agentRunSnapshotSchema.shape.turn.unwrap().optional(),
+  })
+  .refine(event => event.type !== 'agent.turn_completed' || event.endedTurn !== undefined)
+export const agentRuntimeFrameSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('agent.baseline'),
+    ...cursor,
+    agents: z.array(agentRunSnapshotSchema),
+  }),
+  z.object({ type: z.literal('agent.event'), event: agentRunEventSchema }),
+  z.object({ type: z.literal('agent.ready'), ...cursor }),
+  z.object({ type: z.literal('agent.resync_required'), ...cursor }),
+])

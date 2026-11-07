@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { TerminalSessionStateEvent } from '../../../src/shared/contracts/dto'
 import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
 import { FakeTerminalProcessEngine } from '../../support/FakeTerminalProcessEngine'
 
@@ -133,6 +134,8 @@ describe('Gemini session binding', () => {
       await import('../../../src/contexts/terminal/presentation/main-ipc/runtime')
 
     const runtime = createPtyRuntime({ processEngine })
+    const observations: TerminalSessionStateEvent[] = []
+    runtime.onState?.(event => observations.push(event))
 
     runtime.startSessionStateWatcher({
       sessionId: 'session-1',
@@ -190,11 +193,12 @@ describe('Gemini session binding', () => {
 
     await waitForCondition(() => {
       expect(
-        send.mock.calls.some(
-          ([channel, payload]) =>
-            channel === IPC_CHANNELS.ptyState &&
+        observations.some(
+          payload =>
             payload.sessionId === 'session-1' &&
-            payload.state === 'working',
+            payload.state === 'working' &&
+            payload.agentProvider === 'gemini' &&
+            payload.source === 'session_file',
         ),
       ).toBe(true)
     })

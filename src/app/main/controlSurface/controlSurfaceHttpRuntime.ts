@@ -1,3 +1,5 @@
+import { withAgentRunBindings } from './agentRunStatePersistence'
+import { createWorkerAgentRunState } from './ptyStream/ptyStreamAgentRunState'
 import { PluginDistributionService } from '@contexts/plugins/application/PluginDistributionService'
 import { GitPluginSources } from '@contexts/plugins/infrastructure/GitPluginSources'
 import { registerPluginDistributionHandlers } from './handlers/pluginDistributionHandlers'
@@ -44,6 +46,17 @@ const PTY_STREAM_DEFAULT_REPLAY_WINDOW_MAX_BYTES = 400_000
 export function createControlSurfaceHttpRuntime(
   options: RegisterControlSurfaceHttpServerOptions,
 ): ControlSurfaceHttpRuntime {
+  const instanceId = randomUUID()
+  const agentRuns = createWorkerAgentRunState(instanceId)
+  agentRuns.registry.subscribe(
+    { epoch: instanceId, afterSeq: 0 },
+    { types: ['agent.state_changed'] },
+    event => {
+      if (event.type !== 'resync_required') {
+        options.desktopPtyStateSink?.(agentRuns.project(event.snapshot))
+      }
+    },
+  )
   const appVersion = normalizeControlSurfaceAppVersion(options.appVersion)
   const pluginFiles = new LocalPluginFiles(options.userDataPath, process.platform, appVersion)
   const plugins = new PluginInstallationManager({
@@ -136,7 +149,7 @@ export function createControlSurfaceHttpRuntime(
     agentProviderRegistry: options.agentProviderRegistry,
     appVersion,
     desktopMetadataSink: options.desktopPtyMetadataSink,
-    desktopStateSink: options.desktopPtyStateSink,
+
     disposeSessionStateWatcher: options.ptyRuntime.disposeSessionStateWatcher,
   })
   const agentProviderRegistry = terminalAgents.agentProviderRegistry
@@ -148,6 +161,7 @@ export function createControlSurfaceHttpRuntime(
     agentMetadataSources: terminalAgents.metadataSources,
   })
   const ptyStreamService = createPtyStreamService({
+    agentRuns,
     token,
     webSessions,
     now: ctx.now,
@@ -161,7 +175,7 @@ export function createControlSurfaceHttpRuntime(
     dbPath: options.dbPath,
     createPersistenceStore: options.createPersistenceStore,
   })
-  const getPersistenceStore = persistence.getPersistenceStore
+  const getPersistenceStore = withAgentRunBindings(persistence.getPersistenceStore, agentRuns)
   const terminalRuntimeAvailability = new TerminalRuntimeAvailability()
   let runtimeReady = false
   void plugins.start()
@@ -184,6 +198,7 @@ export function createControlSurfaceHttpRuntime(
     ptyStreamService,
   })
   const syncClients = new Set<ServerResponse>()
+  const agentClients = new Set<ServerResponse>()
   const syncEventBuffer: SyncEventPayload[] = []
   const publishSyncEventToLiveClients = (payload: SyncEventPayload): number =>
     publishLiveSyncEvent({
@@ -191,7 +206,6 @@ export function createControlSurfaceHttpRuntime(
       payload,
       desktopSink: options.desktopSyncEventSink,
     })
-  const instanceId = randomUUID()
   const maintenance = options.deploymentId
     ? new ManagedRuntimeMaintenance(
         () => options.ptyRuntime.isIdle?.() === true && managedSshOperations.isIdle(),
@@ -266,6 +280,10 @@ export function createControlSurfaceHttpRuntime(
       }
     }
     syncClients.clear()
+    for (const client of agentClients) {
+      client.end()
+    }
+    agentClients.clear()
     listeners.forEach(listener => {
       void listener.stopAccepting({ drainTimeoutMs: 0 }).catch(() => undefined)
     })
@@ -277,9 +295,12 @@ export function createControlSurfaceHttpRuntime(
     token,
     webSessions,
     controlSurface,
-    getPersistenceStore,
+    // Revision probes must not hydrate agent bindings before operation admission.
+    getPersistenceStore: persistence.getPersistenceStore,
     syncClients,
     syncEventBuffer,
+    agentRuns: agentRuns.registry,
+    agentClients,
     desktopSyncEventSink: options.desktopSyncEventSink,
     getWebAccessPolicy: () => webAccessPolicy,
     isRuntimeClosed: () => closed,

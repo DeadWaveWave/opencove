@@ -1,3 +1,4 @@
+import type { AgentRunSnapshot } from '@shared/contracts/dto/agentRunState'
 import type { AgentHookInstallState, TerminalSessionStateSource } from '@shared/contracts/dto'
 import type { AgentRuntimeStatus, TerminalNodeData } from '../types'
 
@@ -6,6 +7,9 @@ export interface AgentRuntimeObservationInput {
   source?: TerminalSessionStateSource
   hookInstallState?: AgentHookInstallState | null
   degraded?: boolean
+  agentRunState?: AgentRunSnapshot
+  /** False only when the Worker's decision is unknown but a provider source still reported a state. */
+  observationUnavailable?: boolean
 }
 
 export function canObserveAgentRunState(data: TerminalNodeData): boolean {
@@ -24,12 +28,23 @@ export function projectAgentRuntimeObservation(
   data: TerminalNodeData,
   input: AgentRuntimeObservationInput,
 ): { data: TerminalNodeData; durableDidChange: boolean } | null {
-  if (!canObserveAgentRunState(data)) {
+  // An unknown decision with no reporting source keeps the previous label; a degraded source
+  // that still reports a state (e.g. session-file fallback after a failed hook install) shows it.
+  if (
+    !canObserveAgentRunState(data) ||
+    (input.agentRunState?.state === 'unknown' && input.observationUnavailable !== false)
+  ) {
     return null
   }
 
   const nextStatus: AgentRuntimeStatus =
-    input.state === 'standby' ? 'standby' : input.state === 'waiting' ? 'waiting' : 'running'
+    input.agentRunState?.state === 'exited'
+      ? 'exited'
+      : input.state === 'standby'
+        ? 'standby'
+        : input.state === 'waiting'
+          ? 'waiting'
+          : 'running'
   const source = input.source ?? 'session_file'
   const hookInstallState = input.hookInstallState ?? null
   const degraded = input.degraded === true
@@ -47,7 +62,12 @@ export function projectAgentRuntimeObservation(
     data: {
       ...data,
       ...(data.kind === 'terminal' && data.agentOverlay
-        ? { agentOverlay: { ...data.agentOverlay, status: nextStatus } }
+        ? {
+            agentOverlay: {
+              ...data.agentOverlay,
+              status: nextStatus,
+            },
+          }
         : {}),
       agentRuntimeObservation: nextObservation,
     },

@@ -5,7 +5,8 @@ import { resolveAgentPresentation } from '../../../../utils/agentPresentation'
 import { resolveWindowKindFamily } from '../../../../utils/windowKindFamily'
 import { readWallLightPalette } from '../pixelWall/wallPalette'
 import { clearWindowSignals, showWindowSignal } from './frameSignals'
-import { createWindowSignalDetector } from './signalDetector'
+import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
+import { createRuntimeCompletionDetector, createWindowSignalDetector } from './signalDetector'
 import { publishWindowSignal } from './windowSignalEvents'
 
 /** How long a finished run's frame flash and a failure's glitch stay on the frame. */
@@ -27,6 +28,40 @@ export function WorkspaceWindowSignals({
   enabled: boolean
 }): null {
   const detectorRef = useRef(createWindowSignalDetector())
+  const runtimeSessions = useRef(new Set<string>())
+  const current = useRef({ nodes, enabled })
+  current.current = { nodes, enabled }
+
+  useEffect(() => {
+    const completed = createRuntimeCompletionDetector()
+    return getPtyEventHub().onState(event => {
+      const snapshot = event.agentRunState
+      if (!snapshot) {
+        return
+      }
+      runtimeSessions.current.add(event.sessionId)
+      const didComplete = completed(snapshot)
+      const scope = canvasRef.current
+      if (!didComplete || !current.current.enabled || !scope) {
+        return
+      }
+      const node = current.current.nodes.find(
+        candidate => candidate.data.sessionId === event.sessionId,
+      )
+      if (!node || !resolveAgentPresentation(node.data).isAgent) {
+        return
+      }
+      const lights = readWallLightPalette(scope)
+      showWindowSignal(
+        scope,
+        node.id,
+        'complete',
+        lights[resolveWindowKindFamily(node.data)],
+        COMPLETE_MS,
+      )
+      publishWindowSignal({ kind: 'complete', nodeId: node.id })
+    })
+  }, [canvasRef])
 
   useEffect(() => {
     const signals = detectorRef.current.observe(
@@ -43,7 +78,10 @@ export function WorkspaceWindowSignals({
     const lights = readWallLightPalette(scope)
     for (const signal of signals) {
       const node = nodes.find(candidate => candidate.id === signal.id)
-      if (!node) {
+      if (
+        !node ||
+        (signal.kind === 'complete' && runtimeSessions.current.has(node.data.sessionId ?? ''))
+      ) {
         continue
       }
       const color =

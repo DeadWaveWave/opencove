@@ -107,6 +107,9 @@ export function useAgentStandbyNotificationWatcher({
         return
       }
 
+      if (event.agentRunState?.state === 'unknown') {
+        return
+      }
       const previous = lastStateBySessionIdRef.current.get(sessionId) ?? null
       lastStateBySessionIdRef.current.set(sessionId, event.state)
 

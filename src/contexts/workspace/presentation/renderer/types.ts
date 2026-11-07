@@ -111,7 +111,7 @@ export interface TerminalAgentOverlay {
 }
 
 export interface AgentRuntimeObservation {
-  status: 'running' | 'waiting' | 'standby'
+  status: 'running' | 'waiting' | 'standby' | 'exited'
   source: TerminalSessionStateSource
   hookInstallState: AgentHookInstallState | null
   degraded: boolean

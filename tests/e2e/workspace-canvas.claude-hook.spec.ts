@@ -1,3 +1,4 @@
+import type { AgentRunSnapshot } from '../../src/shared/contracts/dto/agentRunState'
 import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
 import { findEmptyPanePoint } from './workspace-canvas.pane.helpers'
@@ -72,8 +73,13 @@ async function waitForInitialHookWorkingSignal(
   // session_file legitimately wins arbitration, so gate hook authority on the real signal.
   await expect
     .poll(async () => {
-      return await window.evaluate(id => {
-        return window.__opencoveAgentRunStateTestApi?.getSession(id)?.lastHookSignal?.state ?? null
+      return await window.evaluate(async id => {
+        const snapshot = await window.opencoveApi.controlSurface.invoke<AgentRunSnapshot | null>({
+          kind: 'query',
+          id: 'agent.get',
+          payload: { sessionId: id },
+        })
+        return snapshot?.source === 'claude_hook' ? snapshot.state : null
       }, sessionId)
     })
     .toBe('working')
@@ -152,7 +158,7 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
     }
   })
 
-  test('arbitrates conflicting sources and falls back exactly when working goes stale', async () => {
+  test('keeps Worker hook authority across conflicting file evidence and renderer reload', async () => {
     const { electronApp, window } = await launchApp({
       windowMode: 'inactive',
       env: {
@@ -172,14 +178,7 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
       await expect(status).toHaveText('Waiting')
 
       await writeToPty(window, { sessionId, data: '<test-session-standby>\r' })
-      await expect
-        .poll(async () => {
-          return await window.evaluate(id => {
-            return window.__opencoveAgentRunStateTestApi?.getSession(id)?.lastSessionFileSignal
-              ?.state
-          }, sessionId)
-        })
-        .toBe('standby')
+      await expect(agentNode).toContainText('[opencove-test-hook] session-standby')
       await expect(status).toHaveText('Waiting')
       await expect(agentNode).toHaveAttribute('data-agent-state-source', 'claude_hook')
 
@@ -195,35 +194,13 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
       await expect(restoredAgentNode).toHaveAttribute('data-agent-state-source', 'claude_hook')
       expect(await resolveFirstAgentSessionId(window)).toBe(sessionId)
 
-      expect(
-        await window.evaluate(() => {
-          return window.__opencoveAgentRunStateTestApi?.advanceBy(1_200_000) ?? false
-        }),
-      ).toBe(true)
-      await expect(status).toHaveText('Waiting')
-      await expect(agentNode).toHaveAttribute('data-agent-state-source', 'claude_hook')
-      await window.evaluate(() => {
-        window.__opencoveAgentRunStateTestApi?.resetClock()
-      })
-
       await writeToPty(window, { sessionId, data: '<test-hook-done>\r' })
       await expect(status).toHaveText('Standby')
       await writeToPty(window, { sessionId, data: '<test-hook-tool>\r' })
       await expect(status).toHaveText('Working')
 
-      expect(
-        await window.evaluate(() => {
-          // Must exceed AGENT_HOOK_FRESHNESS_MS (180s) so the working lease actually expires.
-          return window.__opencoveAgentRunStateTestApi?.advanceBy(600_000) ?? false
-        }),
-      ).toBe(true)
-      await expect(status).toHaveText('Standby')
-      await expect(agentNode).toHaveAttribute('data-agent-state-source', 'session_file')
-      await expect(agentNode.locator('[data-testid="agent-hook-degraded"]')).toHaveText('Fallback')
-      await window.evaluate(() => {
-        window.__opencoveAgentRunStateTestApi?.resetClock()
-      })
-
+      // Working lease expiry is checked with the Worker registry's fake scheduler in unit tests.
+      // Advancing a renderer clock cannot change the Worker-owned decision.
       await writeToPty(window, { sessionId, data: '<test-hook-tool>\r' })
       await expect(status).toHaveText('Working')
       await expect(agentNode).toHaveAttribute('data-agent-state-source', 'claude_hook')

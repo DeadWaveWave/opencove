@@ -8,7 +8,11 @@ interface SessionTurnStateWatcherOptions {
   provider: AgentProviderId
   sessionId: string
   filePath: string
-  onState: (sessionId: string, state: TerminalSessionState) => void
+  onState: (
+    sessionId: string,
+    state: TerminalSessionState,
+    options?: { hookEventName?: string },
+  ) => void
   onError?: (error: unknown) => void
 }
 
@@ -121,11 +125,16 @@ export class SessionTurnStateWatcher {
   private readonly provider: AgentProviderId
   private readonly sessionId: string
   private readonly filePath: string
-  private readonly onState: (sessionId: string, state: TerminalSessionState) => void
+  private readonly onState: (
+    sessionId: string,
+    state: TerminalSessionState,
+    options?: { hookEventName?: string },
+  ) => void
   private readonly onError?: (error: unknown) => void
 
   private watcher: fs.FSWatcher | null = null
   private offset = 0
+  private readingBaseline = true
   private remainder = ''
   private decoder = new StringDecoder('utf8')
   private disposed = false
@@ -228,11 +237,13 @@ export class SessionTurnStateWatcher {
 
       if (stats.size < this.offset) {
         this.offset = 0
+        this.readingBaseline = true
         this.remainder = ''
         this.decoder = new StringDecoder('utf8')
       }
 
       if (stats.size === this.offset) {
+        this.readingBaseline = false
         return
       }
 
@@ -259,6 +270,7 @@ export class SessionTurnStateWatcher {
 
       this.offset = position
       this.flushRemainderIfComplete()
+      this.readingBaseline = false
     } finally {
       await handle.close()
     }
@@ -291,11 +303,27 @@ export class SessionTurnStateWatcher {
 
   private consumeLine(line: string): void {
     const state = detectTurnStateFromSessionLine(this.provider, line)
-    if (!state || state === this.lastState) {
+    let hookEventName: string | undefined
+    if (!this.readingBaseline && this.provider === 'codex') {
+      try {
+        const record = JSON.parse(line)
+        const name = record?.type === 'event_msg' ? record?.payload?.type : undefined
+        if (name === 'task_started' || name === 'task_complete' || name === 'turn_aborted') {
+          hookEventName = name
+        }
+      } catch {
+        /* The state detector rejects malformed records. */
+      }
+    }
+    if (!state || (state === this.lastState && !hookEventName)) {
       return
     }
 
     this.lastState = state
-    this.onState(this.sessionId, state)
+    if (hookEventName) {
+      this.onState(this.sessionId, state, { hookEventName })
+    } else {
+      this.onState(this.sessionId, state)
+    }
   }
 }

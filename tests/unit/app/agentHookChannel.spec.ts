@@ -235,6 +235,8 @@ describe('shared agent hook channel contract', () => {
         sessionId: 'pty-session',
         state: 'waiting',
         source: 'claude_hook',
+        hookEventName: 'PermissionRequest',
+        blockedReason: 'permission',
         hookInstallState: 'installed',
       },
     ])
@@ -270,6 +272,8 @@ describe('Codex hook channel', () => {
         sessionId: 'pty-session',
         state: 'waiting',
         source: 'codex_hook',
+        hookEventName: 'PermissionRequest',
+        blockedReason: 'permission',
         hookInstallState: 'installed',
       },
     ])

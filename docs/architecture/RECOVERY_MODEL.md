@@ -335,3 +335,9 @@ compare-then-delete 不能与旧版写入实现原子互斥。Windows 文件锁�
 回归：`tests/integration/worker/workerOwnerLock.spec.ts`、
 `tests/unit/app/worker.singleInstanceLock.spec.ts`、
 `tests/unit/app/localWorkerManager.connectionFile.spec.ts`。
+
+## Agent runtime state
+
+The executing Worker owns agent run-state decisions and turns. Durable `node.status` remains a UI
+projection and does not restore runtime authority. See [Agent run state](../agent/RUN_STATE.md) for
+incarnation fences, unknown/degraded semantics, turn completion and event recovery.

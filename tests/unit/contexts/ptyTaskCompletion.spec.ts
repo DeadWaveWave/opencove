@@ -73,6 +73,32 @@ describe('PTY task completion side effects', () => {
     })
     expect(unrelatedSessionResult.didChange).toBe(false)
     expect(unrelatedSessionResult.nextNodes).toBe(prevNodes)
+
+    const unavailable = applyAgentStateToNodes(prevNodes, {
+      sessionId: 'session-1',
+      state: 'standby',
+      degraded: true,
+    }).nextNodes[0].data
+    expect(unavailable.agentRuntimeObservation?.status).toBe('standby')
+    expect(unavailable.status).toBe('standby') // Durable UI projection is unchanged.
+    const exited = applyAgentStateToNodes(prevNodes, {
+      sessionId: 'session-1',
+      state: 'working',
+      agentRunState: {
+        sessionId: 'session-1',
+        nodeId: 'agent-1',
+        provider: 'opencode',
+        state: 'exited',
+        blockedReason: null,
+        turn: null,
+        turnOutcome: null,
+        lastTransitionAt: 1,
+        source: 'exit',
+        quality: 'authoritative',
+      },
+    }).nextNodes[0].data
+    expect(exited.agentRuntimeObservation?.status).toBe('exited')
+    expect(exited.status).toBe('standby')
   })
 
   it('updates the matching agent node when a state event changes runtime status', () => {

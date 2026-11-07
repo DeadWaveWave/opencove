@@ -16,7 +16,11 @@ export function createSessionFileStateWatcher(options: {
   sessionId: string
   filePath: string
   launchMode: AgentLaunchMode
-  onState: (sessionId: string, state: TerminalSessionState) => void
+  onState: (
+    sessionId: string,
+    state: TerminalSessionState,
+    options?: { hookEventName?: string },
+  ) => void
   onUnavailable: (sessionId: string) => void
   onError: (error: unknown) => void
 }): { dispose: () => void; start: () => void; noteInteraction?: (data?: string) => void } {

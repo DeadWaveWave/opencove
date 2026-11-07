@@ -60,3 +60,16 @@ export function createWindowSignalDetector() {
     },
   }
 }
+
+/** Consume Worker decisions before React can coalesce the working and idle renders. */
+export function createRuntimeCompletionDetector() {
+  const active = new Map<string, string>()
+  return (snapshot: import('@shared/contracts/dto/agentRunState').AgentRunSnapshot): boolean => {
+    if (snapshot.turn) {
+      active.set(snapshot.sessionId, snapshot.turn.id)
+      return false
+    }
+    const hadTurn = active.delete(snapshot.sessionId)
+    return hadTurn && snapshot.state === 'idle' && snapshot.turnOutcome === 'completed'
+  }
+}

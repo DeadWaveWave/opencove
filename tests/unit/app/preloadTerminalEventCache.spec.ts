@@ -1,3 +1,5 @@
+import { projectAgentRunState } from '../../../src/contexts/agent/application/AgentRunStateRuntime'
+import { BrowserPtyClientStateReplay } from '../../../src/app/renderer/browser/BrowserPtyClientStateReplay'
 import { describe, expect, it, vi } from 'vitest'
 import { TerminalEventReplayCache } from '../../../src/app/preload/terminalEventReplayCache'
 
@@ -15,6 +17,39 @@ function metadata(sessionId: string) {
 }
 
 describe('preload terminal event replay cache', () => {
+  it('replays only the newest decided snapshot across changing authority sources', () => {
+    const preload = new TerminalEventReplayCache()
+    const browser = new BrowserPtyClientStateReplay()
+    const snapshot = {
+      sessionId: 's',
+      nodeId: null,
+      provider: 'codex' as const,
+      state: 'waiting' as const,
+      blockedReason: null,
+      turn: null,
+      turnOutcome: null,
+      lastTransitionAt: 1,
+      source: 'codex_hook' as const,
+      quality: 'authoritative' as const,
+    }
+    const first = projectAgentRunState(snapshot)
+    const second = projectAgentRunState({
+      ...snapshot,
+      state: 'unknown',
+      source: 'session_file',
+      quality: 'degraded',
+    })
+    for (const event of [first, second]) {
+      preload.registerState(event)
+      browser.register(event)
+    }
+    const fromPreload = vi.fn(),
+      fromBrowser = vi.fn()
+    preload.replayStates(fromPreload)
+    browser.replay(fromBrowser)
+    expect(fromPreload.mock.calls).toEqual([[second]])
+    expect(fromBrowser.mock.calls).toEqual([[second]])
+  })
   it('replays one original observation per session and source without renewing freshness', () => {
     const cache = new TerminalEventReplayCache({ maxSessions: 4 })
     cache.registerState(state('session-1', 'claude_hook', 1_000))

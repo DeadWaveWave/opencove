@@ -25,11 +25,3 @@ export async function writeAutomationInput(options: {
     options.runtime.write(options.sessionId, options.data)
   })
 }
-
-export function currentAgentState(session: SessionState | undefined) {
-  return session
-    ? ([...session.agentStateBySource.values()].sort(
-        (a, b) => (b.observedAtMs ?? 0) - (a.observedAtMs ?? 0),
-      )[0] ?? null)
-    : null
-}

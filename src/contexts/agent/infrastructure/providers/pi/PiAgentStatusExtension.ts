@@ -83,7 +83,7 @@ export default function (pi) {
     } catch { finish(); }
   }
 
-  function publish(ctx) {
+  function publish(ctx, hookEventName) {
     if (!active || stopped || globalThis[key] !== shared) return;
     try {
       const sessionId = ctx.sessionManager.getSessionId();
@@ -98,6 +98,7 @@ export default function (pi) {
         version: 1, pid: process.pid, sequence: ++shared.sequence,
         conversationRevision: shared.conversationRevision, sessionId, sessionFile,
         persistence: sessionFile ? 'allocated' : 'ephemeral', state,
+        ...(hookEventName ? { hookEventName } : {}),
       };
       void drain();
     } catch { /* Observation failure must not interfere with Pi. */ }
@@ -108,7 +109,7 @@ export default function (pi) {
     catch { return false; }
   }
 
-  function setState(next, ctx) {
+  function setState(next, ctx, hookEventName) {
     if (!active || stopped) return;
     state = waiting ? 'waiting' : next;
     context = ctx;
@@ -118,7 +119,7 @@ export default function (pi) {
       heartbeat = setInterval(() => publish(context), 60_000);
       heartbeat.unref?.();
     }
-    publish(ctx);
+    publish(ctx, hookEventName);
   }
 
   pi.on('session_start', (_event, ctx) => {
@@ -139,7 +140,7 @@ export default function (pi) {
   pi.on('before_agent_start', (_event, ctx) => setState('working', ctx));
   pi.on('agent_start', (_event, ctx) => {
     clearTimeout(idleCheck);
-    setState('working', ctx);
+    setState('working', ctx, 'agent_start');
   });
   pi.on('ui_prompt_start', (_event, ctx) => { waiting = true; setState('waiting', ctx); });
   pi.on('ui_prompt_end', (_event, ctx) => {
@@ -148,14 +149,14 @@ export default function (pi) {
   });
   pi.on('agent_settled', (_event, ctx) => {
     clearTimeout(idleCheck);
-    if (idle(ctx)) setState('standby', ctx);
+    if (idle(ctx)) setState('standby', ctx, 'agent_settled');
   });
   // Compatibility for releases without agent_settled: defer beyond the low-level end callback
   // and require affirmative idle/pending evidence. Shutdown itself never emits completion.
   pi.on('agent_end', (_event, ctx) => {
     if (!active || stopped) return;
     clearTimeout(idleCheck);
-    idleCheck = setTimeout(() => { if (idle(ctx)) setState('standby', ctx); }, 0);
+    idleCheck = setTimeout(() => { if (idle(ctx)) setState('standby', ctx, 'agent_settled'); }, 0);
     idleCheck.unref?.();
   });
   pi.on('session_before_compact', (_event, ctx) => setState('working', ctx));
