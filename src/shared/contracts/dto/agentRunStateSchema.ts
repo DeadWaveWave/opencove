@@ -20,6 +20,15 @@ export const agentRunSnapshotSchema = z.object({
     .nullable(),
   quality: z.enum(['authoritative', 'inferred', 'degraded']),
   turnOutcome: z.enum(['completed', 'failed', 'aborted', 'unknown']).nullable(),
+  // Old Workers omit this field. Object schemas intentionally accept additive fields.
+  lastEndedTurn: z
+    .object({
+      id: z.string().min(1),
+      outcome: z.enum(['completed', 'failed', 'aborted', 'unknown']),
+      endedAt: z.number().finite(),
+    })
+    .nullable()
+    .default(null),
 })
 
 const cursor = { epoch: z.string().min(1), seq: z.number().int().nonnegative().safe() }

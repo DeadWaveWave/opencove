@@ -126,8 +126,8 @@ export class AgentTurnHistory {
   }
 
   read(snapshot: AgentRunSnapshot, selector: FinalMessageSelector) {
-    const unavailable = (reason: string): never => {
-      throw createAppError('agent.final_message_unavailable', { details: { reason } })
+    const unavailable = (reason: string, details: object = {}): never => {
+      throw createAppError('agent.final_message_unavailable', { details: { reason, ...details } })
     }
     const explicit = selector.turnId !== undefined || selector.promptId !== undefined
     const turn = explicit
@@ -149,7 +149,10 @@ export class AgentTurnHistory {
       return unavailable(explicit ? 'turn_not_found' : 'no_ended_turn')
     }
     if (turn.message === undefined) {
-      return unavailable('provider_sent_no_message')
+      return unavailable('provider_sent_no_message', {
+        outcome: turn.outcome,
+        endedAt: turn.endedAt,
+      })
     }
     return {
       nodeId: snapshot.nodeId,

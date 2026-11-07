@@ -15,6 +15,7 @@ const snapshot: AgentRunSnapshot = {
   source: 'claude_hook',
   quality: 'authoritative',
   turnOutcome: null,
+  lastEndedTurn: null,
 }
 const finalMessage = {
   sessionId: snapshot.sessionId,
@@ -154,6 +155,7 @@ it('resolves repeated node selectors using the existing scoped lookup policy', a
   const f = fixture(true)
   f.values['node.list'] = { nodes: [node, { ...node, id: 'other-123456', title: 'Other' }] }
   f.values['agent.get'] = { ...snapshot, state: 'idle' }
+  f.values['agent.list'] = { epoch: 'e', seq: 5, agents: [f.values['agent.get']] }
   expect(
     await run(
       [
@@ -195,6 +197,12 @@ it.each([
   ['agent', 'wait', '--node', 'x', '--until', 'idle', '--any', '--all'],
   ['agent', 'wait', '--node', 'x', '--until', 'idle', '--timeout', '0.5ms'],
   ['agent', 'wait', '--until', 'idle'],
+  ['agent', 'wait', '--node', 'x'],
+  ['agent', 'wait', '--node', 'x', '--turn', 'a', '--until', 'idle'],
+  ['agent', 'wait', '--node', 'x', '--turn', 'a', '--any'],
+  ['agent', 'wait', '--node', 'x', '--node', 'y', '--turn', 'a'],
+  ['agent', 'wait', '--node', 'x', '--node', 'x', '--turn', 'a'],
+  ['agent', 'wait', '--node', 'x', '--turn', ''],
   ['agent', 'read', '--node', 'x', '--fields', 'nope'],
 ])('rejects invalid input before connection: %j', async (...argv) => {
   const f = fixture()
@@ -214,6 +222,7 @@ it.each(['list', 'get', 'wait', 'read', ''])(
 it('prints final wait snapshots with a projectable ended outcome', async () => {
   const f = fixture()
   f.values['agent.get'] = { ...snapshot, state: 'idle', turn: null }
+  f.values['agent.list'] = { epoch: 'e', seq: 5, agents: [f.values['agent.get']] }
   expect(await run(['agent', 'wait', '--node', 'Shell', '--until', 'idle'], f.io)).toBe(0)
   expect(f.out()).toMatchSnapshot()
 })
@@ -239,9 +248,10 @@ it('re-baselines through uncached CLI queries and closes the SSE body on resync'
   const pending = run(['agent', 'wait', '--node', 'Shell', '--until', 'idle'], f.io)
   await vi.waitFor(() => expect(send).toBeTypeOf('function'))
   f.values['agent.get'] = { ...snapshot, state: 'idle', turn: null }
+  f.values['agent.list'] = { epoch: 'e', seq: 5, agents: [f.values['agent.get']] }
   send('data: {"type":"resync_required","epoch":"e","seq":5}\n\n')
   expect(await pending).toBe(0)
-  expect(f.requests.filter(r => r.id === 'agent.get')).toHaveLength(2)
+  expect(f.requests.filter(r => r.id === 'agent.list')).toHaveLength(4)
   expect(JSON.parse(f.out()).agents[0].state).toBe('idle')
   expect(cancelled).toHaveBeenCalledOnce()
 })
@@ -252,4 +262,78 @@ it('refuses repeated @self selectors before discovering profiles without session
   expect(await run(['agent', 'wait', '--node', '@self', '--until', 'idle'], f.io)).toBe(2)
   expect(f.fetch).not.toHaveBeenCalled()
   expect(f.io.readTextFile).not.toHaveBeenCalled()
+})
+
+it('renders exact-turn success at the root and projects its fields', async () => {
+  const f = fixture()
+  f.values['agent.get'] = {
+    ...snapshot,
+    turn: { ...snapshot.turn!, id: 'newer' },
+    lastEndedTurn: { id: 'a', outcome: 'failed', endedAt: 20 },
+  }
+  f.values['agent.list'] = { epoch: 'e', seq: 5, agents: [f.values['agent.get']] }
+  expect(
+    await run(
+      ['agent', 'wait', '--node', 'Shell', '--turn', 'a', '--fields', 'turnId,outcome,state'],
+      f.io,
+    ),
+  ).toBe(0)
+  expect(JSON.parse(f.out())).toEqual({ turnId: 'a', outcome: 'failed', state: 'working' })
+})
+it('normalizes an older Worker get snapshot with missing lastEndedTurn to null', async () => {
+  const f = fixture()
+  const { lastEndedTurn: _absent, ...legacy } = snapshot
+  f.values['agent.get'] = legacy
+  expect(await run(['agent', 'get', '--node', 'Shell', '--fields', 'lastEndedTurn'], f.io)).toBe(0)
+  expect(JSON.parse(f.out())).toEqual({ lastEndedTurn: null })
+})
+
+it('exact wait preserves the CLI timeout contract during a permission pause', async () => {
+  const f = fixture()
+  f.values['agent.get'] = { ...snapshot, state: 'waiting', blockedReason: 'permission' }
+  f.values['agent.list'] = { epoch: 'e', seq: 5, agents: [f.values['agent.get']] }
+  expect(
+    await run(['agent', 'wait', '--node', 'Shell', '--turn', 'turn', '--timeout', '250ms'], f.io),
+  ).toBe(124)
+  expect(f.out()).toBe('')
+  expect(f.error()).toMatchObject({
+    code: 'agent.wait_timeout',
+    details: {
+      lastKnown: {
+        agents: [
+          expect.objectContaining({
+            state: 'waiting',
+            blockedReason: 'permission',
+            turn: expect.objectContaining({ id: 'turn' }),
+          }),
+        ],
+      },
+    },
+  })
+})
+it('exact wait gives unknown-turn guidance through the CLI', async () => {
+  const f = fixture()
+  expect(await run(['agent', 'wait', '--node', 'Shell', '--turn', 'missing'], f.io)).toBe(1)
+  expect(f.out()).toBe('')
+  expect(f.error()).toMatchObject({
+    code: 'agent.wait_turn_unavailable',
+    hint: expect.stringContaining('agent get'),
+  })
+})
+
+it('leaves displaced live sessions untitled and enriches only the current node owner', async () => {
+  const f = fixture()
+  f.values['agent.list'] = {
+    epoch: 'e',
+    seq: 9,
+    agents: [
+      { ...snapshot, sessionId: 'displaced', nodeId: null, state: 'idle' },
+      { ...snapshot, sessionId: 'current', nodeId: node.id },
+    ],
+  }
+  expect(await run(['agent', 'list'], f.io)).toBe(0)
+  expect(JSON.parse(f.out()).agents).toMatchObject([
+    { sessionId: 'displaced', nodeId: null, title: null },
+    { sessionId: 'current', nodeId: node.id, title: 'Shell' },
+  ])
 })

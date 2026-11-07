@@ -34,7 +34,8 @@ export const globals: Record<string, OptionSpec> = {
   output: {
     type: 'string',
     choices: ['json', 'table'],
-    description: 'Choose JSON (default) or a supported table layout',
+    description:
+      'Choose JSON (default; agent read/session final default to message text) or a supported table layout',
   },
   help: { type: 'boolean', description: 'Show help for this command or group' },
   version: { type: 'boolean', description: 'Print the CLI version' },

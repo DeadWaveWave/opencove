@@ -45,7 +45,7 @@ Global options:
   --pretty                 Indent JSON output for readability
   --limit <n>              Limit output lists to n items (0 means all); cut object lists add truncated totals, bare arrays write one stderr notice
   --fields <a,b,...>       Select item-relative fields; preserve envelopes and accept item-key prefixes. api call queries also accept raw output paths
-  -o, --output json|table  Choose JSON (default) or a supported table layout
+  -o, --output json|table  Choose JSON (default; agent read/session final default to message text) or a supported table layout
   -h, --help               Show help for this command or group
   --version                Print the CLI version
 
@@ -155,7 +155,7 @@ Global options:
   --pretty                 Indent JSON output for readability
   --limit <n>              Limit output lists to n items (0 means all); cut object lists add truncated totals, bare arrays write one stderr notice
   --fields <a,b,...>       Select item-relative fields; preserve envelopes and accept item-key prefixes. api call queries also accept raw output paths
-  -o, --output json|table  Choose JSON (default) or a supported table layout
+  -o, --output json|table  Choose JSON (default; agent read/session final default to message text) or a supported table layout
   -h, --help               Show help for this command or group
   --version                Print the CLI version
 

@@ -272,6 +272,9 @@ it.each(targets)(
             ? target.name
             : target.id.slice(0, 8)
     const args = [...command.path, ...(command.positionals ?? []).map(() => 'sample')]
+    if (command.path.join(' ') === 'agent wait') {
+      args.push('--until', 'idle')
+    }
     for (const [key, spec] of Object.entries(command.options ?? {})) {
       if (key === flag) {
         continue

@@ -160,3 +160,44 @@ it('rejects screen plus turn before connecting', async () => {
   expect(await run([...args, '--screen', '--turn', hook.turnId], f.io)).toBe(2)
   expect(f.fetch).not.toHaveBeenCalled()
 })
+
+it('explains an exact active turn with a concrete wait command and identifiers', async () => {
+  const f = fixture(unavailable('turn_not_ended'))
+  expect(await run([...args, '--turn', 'turn-live'], f.io)).toBe(1)
+  expect(JSON.parse(f.stderr()).error).toMatchObject({
+    code: 'agent.final_message_unavailable',
+    message: expect.stringContaining('still running'),
+    hint: expect.stringContaining(`opencove agent wait --node ${node.id} --turn turn-live`),
+    details: { reason: 'turn_not_ended', nodeId: node.id, turnId: 'turn-live' },
+  })
+})
+
+it.each([
+  ['turn_not_found', 'last 8 ended turns', 'agent get'],
+  ['provider_sent_no_message', 'provider sent no final message', '--screen'],
+  ['no_ended_turn', 'no retained ended turn', 'session final'],
+  ['remote_history_unavailable', 'remote turn history', 'Worker that runs them'],
+])('explains exact %s without changing its code or reason', async (reason, message, hint) => {
+  const f = fixture({
+    code: 'agent.final_message_unavailable',
+    details: { reason, sessionId: hook.sessionId },
+  })
+  expect(await run([...args, '--turn', 'turn-live'], f.io)).toBe(1)
+  const error = JSON.parse(f.stderr()).error
+  expect(error).toMatchObject({
+    code: 'agent.final_message_unavailable',
+    message: expect.stringContaining(message),
+    hint: expect.stringContaining(hint),
+    details: { reason, nodeId: node.id, sessionId: hook.sessionId, turnId: 'turn-live' },
+  })
+  expect(error.hint).toContain(node.id)
+  expect(error.hint).not.toContain('<selector>')
+  if (['no_ended_turn', 'provider_sent_no_message'].includes(reason)) {
+    expect(error.hint).toContain(`opencove session final --session ${hook.sessionId}`)
+  }
+})
+it('shell-quotes diagnostic selectors and turn IDs', async () => {
+  const f = fixture(unavailable('turn_not_ended'))
+  expect(await run([...args, '--turn', 'turn with space'], f.io)).toBe(1)
+  expect(JSON.parse(f.stderr()).error.hint).toContain("--turn 'turn with space'")
+})

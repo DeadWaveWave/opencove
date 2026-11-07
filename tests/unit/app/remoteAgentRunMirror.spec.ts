@@ -1,3 +1,6 @@
+// @vitest-environment node
+import { waitForAgents } from '../../../src/app/cli/core/agentWait'
+import { CliError } from '../../../src/app/cli/core/errors'
 import { EventEmitter } from 'node:events'
 import type { WebSocket } from 'ws'
 import { describe, expect, it, vi } from 'vitest'
@@ -172,10 +175,20 @@ describe('two Worker decided-state mirroring', () => {
       expect(events).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({
           epoch: 'home-epoch',
-          snapshot: expect.objectContaining({ sessionId: 'home', turnOutcome: 'failed' }),
+          snapshot: expect.objectContaining({
+            sessionId: 'home',
+            turnOutcome: 'failed',
+            lastEndedTurn: { id: 'remote-epoch-turn-1', outcome: 'failed', endedAt: 102 },
+          }),
           endedTurn: { id: 'remote-epoch-turn-1', startedAt: 101, start: 'observed' },
         }),
       )
+      f.remote.observe('UserPromptSubmit', 'working')
+      expect(f.get().lastEndedTurn).toEqual({
+        id: 'remote-epoch-turn-1',
+        outcome: 'failed',
+        endedAt: 102,
+      })
       const seq = f.home.registry.list().seq
       const last = f.frames.filter(frame => JSON.parse(frame).type === 'agent.event').at(-1)!
       f.mirror.handleMessage(last)
@@ -277,4 +290,133 @@ describe('two Worker decided-state mirroring', () => {
       f.dispose()
     }
   })
+})
+
+it('waits for remote snapshot/events but identifies older history as unavailable on Home', async () => {
+  const f = fixture()
+  f.connect()
+  const query = vi.fn(async (id: string, payload: unknown): Promise<unknown> => {
+    if (id === 'agent.list') {
+      return f.home.registry.list()
+    }
+    if (id === 'agent.get') {
+      return f.home.registry.get(payload as { nodeId: string })
+    }
+    try {
+      return f.home.registry.finalMessage(payload as { sessionId: string; turnId: string })
+    } catch (error) {
+      const value = error as { code: string; details: unknown }
+      throw new CliError(value.code, 1, 'Unavailable', undefined, value.details)
+    }
+  })
+  const fetch = vi.fn(async (url: string | URL | Request) => {
+    const params = new URL(String(url)).searchParams
+    let dispose = () => {}
+    return new Response(
+      new ReadableStream({
+        start(controller) {
+          dispose = f.home.registry.subscribe(
+            { epoch: params.get('epoch')!, afterSeq: Number(params.get('afterSeq')) },
+            {},
+            event => {
+              controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`))
+            },
+          )
+        },
+        cancel() {
+          dispose()
+        },
+      }),
+      { headers: { 'content-type': 'text/event-stream' } },
+    )
+  })
+  const wait = (turnId: string) =>
+    waitForAgents({
+      nodeIds: ['node'],
+      turnId,
+      any: false,
+      timeoutMs: 500,
+      query,
+      fetch: fetch as typeof globalThis.fetch,
+      connection: { endpoint: 'http://fake', token: 't' },
+    })
+  try {
+    f.remote.observe('UserPromptSubmit', 'working')
+    const pending = wait('remote-epoch-turn-1')
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
+    f.remote.observe('Stop', 'standby')
+    expect(await pending).toMatchObject({ turnId: 'remote-epoch-turn-1', outcome: 'completed' })
+    expect(query.mock.calls.filter(([id]) => id === 'agent.finalMessage')).toHaveLength(0)
+    f.remote.observe('UserPromptSubmit', 'working')
+    f.remote.observe('StopFailure', 'standby')
+    expect(await wait('remote-epoch-turn-2')).toMatchObject({ outcome: 'failed' })
+    expect(() =>
+      f.remote.registry.finalMessage({ sessionId: 'remote', turnId: 'remote-epoch-turn-1' }),
+    ).toThrow(
+      expect.objectContaining({
+        details: expect.objectContaining({
+          reason: 'provider_sent_no_message',
+          outcome: 'completed',
+        }),
+      }),
+    )
+    await expect(wait('remote-epoch-turn-1')).rejects.toMatchObject({
+      code: 'agent.wait_turn_unavailable',
+      details: { reason: 'remote_history_unavailable' },
+      hint: expect.stringContaining('Worker that runs them'),
+    })
+    await expect(wait('remote-epoch-turn-1')).rejects.not.toMatchObject({
+      hint: expect.stringContaining('evict'),
+    })
+  } finally {
+    f.dispose()
+  }
+})
+
+it('mirrors remote displacement by session while Home retains its independent current node binding', () => {
+  const f = fixture()
+  try {
+    f.remote.registry.bind('remote', { nodeId: 'remote-node' })
+    f.connect()
+    f.remote.observe('UserPromptSubmit', 'working')
+    f.remote.registry.register({
+      sessionId: 'other',
+      nodeId: 'remote-node',
+      incarnation: 'other',
+      provider: 'codex',
+    })
+    expect(f.remote.registry.get({ sessionId: 'remote' })?.nodeId).toBeNull()
+    expect(
+      f.frames.map(raw => JSON.parse(raw)).filter(frame => frame.type === 'agent.event'),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: expect.objectContaining({
+            snapshot: expect.objectContaining({ sessionId: 'remote', nodeId: null }),
+          }),
+        }),
+      ]),
+    )
+    // Remote node IDs are not Home canvas bindings: the mapped session still owns Home's node.
+    expect(f.get()).toMatchObject({ sessionId: 'home', nodeId: 'node', state: 'working' })
+    f.home.runtime.metadata({
+      sessionId: 'new-home',
+      agentProvider: 'codex',
+      resumeSessionId: null,
+      remote: true,
+    })
+    f.home.registry.bind('new-home', { nodeId: 'node' })
+    expect(f.home.registry.get({ sessionId: 'home' })?.nodeId).toBeNull()
+    f.remote.observe('Stop', 'standby')
+    expect(f.home.registry.get({ sessionId: 'home' })).toMatchObject({
+      nodeId: null,
+      state: 'idle',
+    })
+    expect(f.home.registry.get({ nodeId: 'node' })?.sessionId).toBe('new-home')
+    f.home.registry.bind('home', { nodeId: 'node' })
+    expect(f.get()).toMatchObject({ sessionId: 'home', nodeId: 'node', state: 'idle' })
+    expect(f.home.registry.get({ sessionId: 'new-home' })?.nodeId).toBeNull()
+  } finally {
+    f.dispose()
+  }
 })

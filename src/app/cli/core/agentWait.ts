@@ -3,34 +3,47 @@ import {
   agentRunEventSchema,
   agentRunSnapshotSchema,
 } from '../../../shared/contracts/dto/agentRunStateSchema'
-import type { AgentRunSnapshot, AgentRunEvent } from '../../../shared/contracts/dto/agentRunState'
+import type { AgentRunEvent } from '../../../shared/contracts/dto/agentRunState'
 import type { Connection } from './context'
 import { agentEvents } from './agentEvents'
 import { CliError } from './errors'
+import type { TurnWaitResult } from './agentWaitTurn'
+import { AgentWaitProjection, type WaitSnapshot } from './agentWaitProjection'
+import { presentAgentTurnError } from './agentTurnError'
+import { AgentWaitEvidence, agentWaitWatermarkSchema } from './agentWaitEvidence'
 import * as z from 'zod'
 
-const watermarkSchema = z.object({
-  epoch: z.string().min(1),
-  seq: z.number().int().nonnegative().safe(),
-})
 export type WaitUntil = 'idle' | 'waiting' | 'exited' | 'turn-end'
-type WaitSnapshot = AgentRunSnapshot & {
-  endedTurn?: AgentRunEvent['endedTurn']
-  endedTurnOutcome?: AgentRunSnapshot['turnOutcome']
-}
 export interface WaitOptions {
   nodeIds: string[]
-  until: WaitUntil
+  until?: WaitUntil
+  turnId?: string
   any: boolean
   timeoutMs: number
   connection: Connection
   fetch: typeof fetch
   signal?: AbortSignal
-  query(id: 'agent.get' | 'agent.list', payload: unknown, signal: AbortSignal): Promise<unknown>
+  query(
+    id: 'agent.get' | 'agent.list' | 'agent.finalMessage',
+    payload: unknown,
+    signal: AbortSignal,
+  ): Promise<unknown>
 }
 
+type StateWaitResult = {
+  until: WaitUntil | undefined
+  mode: string
+  agents: (WaitSnapshot | { nodeId: string; state: 'unknown' })[]
+}
+export function waitForAgents(options: WaitOptions & { turnId: string }): Promise<TurnWaitResult>
+export function waitForAgents(
+  options: WaitOptions & { turnId?: undefined },
+): Promise<StateWaitResult>
+export function waitForAgents(options: WaitOptions): Promise<StateWaitResult | TurnWaitResult>
 /** Worker decisions are authoritative. Local state is only a cursor-fenced projection. */
-export async function waitForAgents(options: WaitOptions) {
+export async function waitForAgents(
+  options: WaitOptions,
+): Promise<StateWaitResult | TurnWaitResult> {
   const controller = new AbortController()
   const interrupt = () => controller.abort()
   options.signal?.addEventListener('abort', interrupt, { once: true })
@@ -43,56 +56,86 @@ export async function waitForAgents(options: WaitOptions) {
     controller.abort()
   }, options.timeoutMs)
   const nodeIds = [...new Set(options.nodeIds)]
-  const snapshots = new Map<string, WaitSnapshot>()
   const result = () => ({
     until: options.until,
     mode: options.any ? 'any' : 'all',
-    agents: nodeIds.map(nodeId => snapshots.get(nodeId) ?? { nodeId, state: 'unknown' as const }),
+    agents: nodeIds.map(
+      nodeId => projection.snapshot(nodeId) ?? { nodeId, state: 'unknown' as const },
+    ),
   })
+  let evidence: AgentWaitEvidence | undefined
+  const conflicts = new Map<string, Set<string>>()
+  let projection = new AgentWaitProjection(nodeIds, options.turnId, conflicts)
+  const success = () => {
+    const ended = evidence?.result
+    return ended
+      ? { ...ended, state: projection.snapshot(nodeIds[0])?.state ?? ended.state }
+      : result()
+  }
   const satisfied = () => {
+    if (options.turnId !== undefined) {
+      return !!evidence?.result
+    }
     const matches = nodeIds.map(nodeId => {
-      const s = snapshots.get(nodeId)
+      const snapshot = projection.snapshot(nodeId)
       return options.until === 'turn-end'
-        ? !!s?.endedTurn
-        : s?.state === options.until && (options.until !== 'idle' || s.quality !== 'degraded')
+        ? !!snapshot?.endedTurn
+        : snapshot?.state === options.until &&
+            (options.until !== 'idle' || snapshot?.quality !== 'degraded')
     })
     return options.any ? matches.some(Boolean) : matches.every(Boolean)
   }
-  const query = async (id: 'agent.get' | 'agent.list', payload: unknown) => {
+  const query = async (id: 'agent.get' | 'agent.list' | 'agent.finalMessage', payload: unknown) => {
     controller.signal.throwIfAborted()
     return options.query(id, payload, controller.signal)
   }
+  const watermark = async () => agentWaitWatermarkSchema.parse(await query('agent.list', {}))
+  const get = (nodeId: string) => query('agent.get', { nodeId })
   try {
     while (!controller.signal.aborted) {
-      // agent.get has no cursor. Equal surrounding watermarks prove a stable baseline.
+      const baseline = z
+        .object({ ...agentWaitWatermarkSchema.shape, agents: z.array(agentRunSnapshotSchema) })
+        .parse(
+          // eslint-disable-next-line no-await-in-loop
+          await query('agent.list', {}),
+        )
+      let cursor = { epoch: baseline.epoch, seq: baseline.seq }
+      projection = new AgentWaitProjection(nodeIds, options.turnId, conflicts)
+      evidence =
+        options.turnId === undefined ? undefined : new AgentWaitEvidence(options.turnId, query)
+      // Only the Worker's binding-aware get resolves owners, including exited sessions.
       // eslint-disable-next-line no-await-in-loop
-      let before = watermarkSchema.parse(await query('agent.list', {}))
-      while (true) {
-        // eslint-disable-next-line no-await-in-loop
-        const values = await Promise.all(nodeIds.map(nodeId => query('agent.get', { nodeId })))
-        // eslint-disable-next-line no-await-in-loop
-        const after = watermarkSchema.parse(await query('agent.list', {}))
-        values.forEach((value, i) => {
-          if (value === null) {
-            snapshots.delete(nodeIds[i])
-            throw new CliError(
-              'agent.not_running',
-              1,
-              `No agent run state for node ${nodeIds[i]}.`,
-              'Run opencove node get --node <selector> and start or resume its agent session.',
-            )
-          }
-          snapshots.set(nodeIds[i], agentRunSnapshotSchema.parse(value))
-        })
-        if (before.epoch === after.epoch && before.seq === after.seq) {
-          break
+      await projection.initialize(get)
+      // eslint-disable-next-line no-await-in-loop
+      projection.reconciliation.defer(await watermark())
+      const evaluate = async (event?: AgentRunEvent): Promise<'done' | 'pending' | 'resync'> => {
+        const selected = projection.snapshot(nodeIds[0])
+        // Retain monotonic identity evidence during replay; success still needs a coherent cursor.
+        if (selected) {
+          evidence?.retain(selected, event)
         }
-        before = after
+        const status = projection.reconciliation.status(cursor)
+        if (status !== 'ready') {
+          return status
+        }
+        if (selected) {
+          await evidence?.observe(selected, event)
+        }
+        controller.signal.throwIfAborted()
+        if (evidence?.reconcile(cursor)) {
+          return 'resync'
+        }
+        return satisfied() ? 'done' : 'pending'
       }
-      if (satisfied()) {
-        return result()
+      // eslint-disable-next-line no-await-in-loop
+      const initial = await evaluate()
+      if (initial === 'done') {
+        return success()
       }
-      // One filtered subscription per node: the existing server accepts one nodeId per stream.
+      if (initial === 'resync') {
+        continue
+      }
+      // One global ordered stream reconciles all selected owners to a common cursor.
       const subscription = new AbortController()
       const stop = () => subscription.abort()
       controller.signal.addEventListener('abort', stop, { once: true })
@@ -100,17 +143,15 @@ export async function waitForAgents(options: WaitOptions) {
         stop()
       }
       let resync = false
-      const watch = async (nodeId: string) => {
-        let seq = before.seq
+      const watch = async () => {
         while (!subscription.signal.aborted) {
           try {
-            // Preserve event ordering within each resumable subscription.
             // eslint-disable-next-line no-await-in-loop
             for await (const raw of agentEvents({
               ...options,
-              nodeId,
-              epoch: before.epoch,
-              afterSeq: seq,
+              nodeId: undefined,
+              epoch: cursor.epoch,
+              afterSeq: cursor.seq,
               signal: subscription.signal,
             })) {
               if (subscription.signal.aborted) {
@@ -127,28 +168,35 @@ export async function waitForAgents(options: WaitOptions) {
                 return
               }
               const event = agentRunEventSchema.parse(raw)
-              if (event.epoch !== before.epoch) {
+              if (event.epoch !== cursor.epoch) {
                 resync = true
                 stop()
                 return
               }
-              if (event.seq <= seq) {
+              if (event.seq <= cursor.seq) {
                 continue
               }
-              seq = event.seq
-              if (event.snapshot.nodeId !== nodeId) {
-                continue
+              cursor = { epoch: event.epoch, seq: event.seq }
+              const resolutions = projection.resolutions(event)
+              if (resolutions.length) {
+                const owner = projection.owner(nodeIds[0])
+                for (const nodeId of resolutions) {
+                  // eslint-disable-next-line no-await-in-loop
+                  await projection.resolve(nodeId, get)
+                }
+                projection.reconciliation.defer(await watermark())
+                if (options.turnId !== undefined && owner !== projection.owner(nodeIds[0])) {
+                  evidence = new AgentWaitEvidence(options.turnId, query)
+                }
               }
-              const previous = snapshots.get(nodeId)
-              snapshots.set(nodeId, {
-                ...event.snapshot,
-                ...(event.type === 'agent.turn_completed'
-                  ? { endedTurn: event.endedTurn, endedTurnOutcome: event.snapshot.turnOutcome }
-                  : previous?.endedTurn && previous.sessionId === event.snapshot.sessionId
-                    ? { endedTurn: previous.endedTurn, endedTurnOutcome: previous.endedTurnOutcome }
-                    : {}),
-              })
-              if (satisfied()) {
+              const applied = projection.apply(event)
+              const status = await evaluate(applied ? event : undefined)
+              if (status === 'resync') {
+                resync = true
+                stop()
+                return
+              }
+              if (status === 'done') {
                 stop()
                 return
               }
@@ -157,7 +205,6 @@ export async function waitForAgents(options: WaitOptions) {
             if (subscription.signal.aborted) {
               return
             }
-            // Protocol/auth failures require explicit recovery. Network EOF/loss resumes its cursor.
             if (error instanceof CliError || error instanceof z.ZodError) {
               throw error
             }
@@ -168,21 +215,17 @@ export async function waitForAgents(options: WaitOptions) {
           }
         }
       }
-      const watchers = nodeIds.map(watch)
       try {
         // eslint-disable-next-line no-await-in-loop
-        await Promise.all(watchers)
+        await watch()
       } finally {
         stop()
-        // eslint-disable-next-line no-await-in-loop
-        await Promise.allSettled(watchers)
         controller.signal.removeEventListener('abort', stop)
       }
       controller.signal.throwIfAborted()
       if (!resync && satisfied()) {
-        return result()
+        return success()
       }
-      // Lost history cannot certify an unobserved turn end. Re-baseline all selected nodes.
     }
     controller.signal.throwIfAborted()
     throw new Error('Unreachable wait state')
@@ -203,6 +246,13 @@ export async function waitForAgents(options: WaitOptions) {
         'Invalid agent snapshot or event.',
         'Use matching CLI/Worker versions and inspect agent get.',
       )
+    }
+    if (error instanceof CliError) {
+      throw presentAgentTurnError(error, {
+        nodeId: nodeIds[0],
+        sessionId: projection.snapshot(nodeIds[0])?.sessionId,
+        turnId: options.turnId,
+      })
     }
     throw error
   } finally {

@@ -1,3 +1,9 @@
+import { normalizeBrowserPtyStateMetadata } from '../../../src/app/renderer/browser/BrowserPtyWire'
+import { updateWorkspacesWithAgentRunState } from '../../../src/app/renderer/shell/hooks/usePtyWorkspaceRuntimeSync'
+import type {
+  TerminalNodeData,
+  WorkspaceState,
+} from '../../../src/contexts/workspace/presentation/renderer/types'
 import { createPluginCanvasHost } from '../../../src/app/main/controlSurface/handlers/pluginCanvasHost'
 import { describe, expect, it, vi } from 'vitest'
 import { PtyStreamHub } from '../../../src/app/main/controlSurface/ptyStream/ptyStreamHub'
@@ -349,4 +355,95 @@ describe('Worker agent authority consumers', () => {
       f.runtime.dispose()
     }
   })
+})
+
+it('keeps current-owner PTY, Web UI and renderer projections session-routed through displacement', () => {
+  const f = fixture()
+  const received: TerminalSessionStateEvent[] = []
+  f.hub.registerClient({
+    clientId: 'binding-ui',
+    kind: 'desktop',
+    ws: {
+      OPEN: 1,
+      readyState: 1,
+      send: (raw: string) => {
+        const event = JSON.parse(raw)
+        if (event.type === 'state') {
+          received.push(event)
+        }
+      },
+    } as unknown as WebSocket,
+  })
+  try {
+    f.hub.registerSessionAgentState({
+      sessionId: 's',
+      source: 'codex_hook',
+      hookEventName: 'UserPromptSubmit',
+      state: 'working',
+    })
+    f.hub.registerSessionAgentMetadata({
+      sessionId: 'replacement',
+      resumeSessionId: null,
+      agentProvider: 'codex',
+    })
+    f.registry.bind('replacement', { nodeId: 'node', projectId: 'project', spaceId: 'space' })
+    f.hub.registerSessionAgentState({
+      sessionId: 'replacement',
+      source: 'codex_hook',
+      hookEventName: 'UserPromptSubmit',
+      state: 'working',
+    })
+    const displaced = received.find(
+      event => event.sessionId === 's' && event.agentRunState?.nodeId === null,
+    )!
+    expect(displaced).toBeDefined()
+    expect(
+      normalizeBrowserPtyStateMetadata(displaced as unknown as Record<string, unknown>)
+        .agentRunState?.nodeId,
+    ).toBeNull()
+    let workspaces = [
+      {
+        id: 'project',
+        nodes: [
+          {
+            id: 'node',
+            type: 'terminal',
+            position: { x: 0, y: 0 },
+            data: { kind: 'agent', sessionId: 'replacement', status: 'running' },
+          },
+        ],
+      },
+    ] as WorkspaceState[]
+    const ignored = updateWorkspacesWithAgentRunState({ workspaces, ...displaced })
+    expect(ignored.didChange).toBe(false)
+    f.hub.registerSessionAgentState({
+      sessionId: 's',
+      source: 'codex_hook',
+      hookEventName: 'Stop',
+      state: 'standby',
+    })
+    const oldIdle = received.filter(event => event.sessionId === 's').at(-1)!
+    expect(updateWorkspacesWithAgentRunState({ workspaces, ...oldIdle }).didChange).toBe(false)
+    f.hub.registerSessionAgentState({
+      sessionId: 'replacement',
+      source: 'codex_hook',
+      hookEventName: 'Stop',
+      state: 'standby',
+    })
+    const current = received.filter(event => event.sessionId === 'replacement').at(-1)!
+    expect(
+      normalizeBrowserPtyStateMetadata(current as unknown as Record<string, unknown>).agentRunState,
+    ).toMatchObject({ sessionId: 'replacement', nodeId: 'node', state: 'idle' })
+    const projected = updateWorkspacesWithAgentRunState({ workspaces, ...current })
+    expect(projected.didChange).toBe(true)
+    expect(projected.durableDidChange).toBe(false)
+    workspaces = projected.nextWorkspaces
+    expect((workspaces[0].nodes[0].data as TerminalNodeData).agentRuntimeObservation?.status).toBe(
+      'standby',
+    )
+    expect(f.hub.observeAgentState('replacement')?.nodeId).toBe('node')
+    expect(f.hub.observeAgentState('s')?.nodeId).toBeNull()
+  } finally {
+    f.runtime.dispose()
+  }
 })

@@ -5,7 +5,7 @@ import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../shared/contracts/cont
 /** Fetch-based SSE keeps bearer authentication and cancellation in the CLI boundary. */
 export async function* agentEvents(options: {
   connection: Connection
-  nodeId: string
+  nodeId?: string
   epoch: string
   afterSeq: number
   fetch: typeof fetch
@@ -16,7 +16,7 @@ export async function* agentEvents(options: {
     stream: 'agent',
     epoch: options.epoch,
     afterSeq: String(options.afterSeq),
-    nodeId: options.nodeId,
+    ...(options.nodeId ? { nodeId: options.nodeId } : {}),
     types: 'agent.state_changed,agent.turn_completed',
   })) {
     url.searchParams.set(key, value)

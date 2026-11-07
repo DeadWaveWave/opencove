@@ -195,5 +195,10 @@ it('retains a valid agent snapshot when its node is concurrently deleted', async
       ? new Response(JSON.stringify({ ok: false, error: { code: 'node.not_found' } }))
       : original(url, init)
   expect(await run(['agent', 'get', '--node', '@self'], f.io)).toBe(0)
-  expect(JSON.parse(f.out())).toEqual({ nodeId: node.id, state: 'exited', title: null })
+  expect(JSON.parse(f.out())).toEqual({
+    nodeId: node.id,
+    state: 'exited',
+    lastEndedTurn: null,
+    title: null,
+  })
 })

@@ -48,7 +48,7 @@ function reason(read: () => unknown, expected: string) {
   expect(read).toThrow(
     expect.objectContaining({
       code: 'agent.final_message_unavailable',
-      details: { reason: expected },
+      details: expect.objectContaining({ reason: expected }),
     }),
   )
 }
@@ -95,6 +95,11 @@ it('stores ended content before callbacks, leaving all public projections and re
   expect(
     JSON.stringify([f.registry.get({ nodeId: 'n' }), f.registry.list(), publicValues]),
   ).not.toContain('secret')
+  expect(f.registry.get({ nodeId: 'n' })?.lastEndedTurn).toEqual({
+    id: 't1',
+    outcome: 'completed',
+    endedAt: expect.any(Number),
+  })
   f.runtime.dispose()
 })
 it('rejects conflicting provider sessions and replayed ends without overwriting results', () => {
@@ -202,7 +207,13 @@ it('does not retain degraded ends as a completion, and keeps PTY exit unknown', 
   reason(() => f.read({ turnId: 't1' }), 'turn_not_ended')
   f.runtime.exit('s')
   reason(() => f.read({ turnId: 't1' }), 'provider_sent_no_message')
-  expect(f.registry.get({ nodeId: 'n' })?.turnOutcome).toBe('unknown')
+  expect(f.registry.get({ nodeId: 'n' })?.lastEndedTurn).toMatchObject({
+    id: 't1',
+    outcome: 'unknown',
+  })
+  expect(() => f.read({ turnId: 't1' })).toThrow(
+    expect.objectContaining({ details: expect.objectContaining({ outcome: 'unknown' }) }),
+  )
   f.runtime.dispose()
 })
 
@@ -258,6 +269,7 @@ it('keeps each accepted start emission through duplicates and advances it on sup
     expect(f.registry.get({ nodeId: 'n' })).toMatchObject({
       turn: { id: 't2' },
       turnOutcome: 'unknown',
+      lastEndedTurn: { id: 't1', outcome: 'unknown', endedAt: expect.any(Number) },
     })
     reason(() => f.read({ promptId: 'a' }), 'provider_sent_no_message')
     f.runtime.observe({

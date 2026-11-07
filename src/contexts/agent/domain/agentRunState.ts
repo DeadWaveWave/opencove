@@ -74,6 +74,7 @@ export function createAgentRunModel(input: {
       source: null,
       quality: 'degraded',
       turnOutcome: null,
+      lastEndedTurn: null,
     },
   }
 }
@@ -248,6 +249,9 @@ export function transitionAgentRun(
     state,
     turn,
     turnOutcome,
+    lastEndedTurn: ended
+      ? { id: ended.id, outcome: turnOutcome ?? 'unknown', endedAt: observation?.observedAt ?? now }
+      : model.snapshot.lastEndedTurn,
     blockedReason: state === 'waiting' ? (selected?.blockedReason ?? null) : null,
     source: observation?.source === 'exit' ? 'exit' : decision.source,
     quality:

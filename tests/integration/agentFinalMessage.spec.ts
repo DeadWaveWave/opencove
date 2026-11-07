@@ -186,7 +186,11 @@ it.each(['none', 'while-b-active', 'after-b-ended', 'while-c-active', 'after-c-e
       expect(() => registry.finalMessage({ nodeId: 'n', turnId: 't1' })).toThrow(
         expect.objectContaining({
           code: 'agent.final_message_unavailable',
-          details: { reason: 'provider_sent_no_message' },
+          // A superseded turn's end was never observed: no message and an unknown outcome.
+          details: expect.objectContaining({
+            reason: 'provider_sent_no_message',
+            outcome: 'unknown',
+          }),
         }),
       )
     try {
@@ -240,7 +244,12 @@ it.each(['none', 'while-b-active', 'after-b-ended', 'while-c-active', 'after-c-e
       })
       unavailableA()
       expect(() => registry.finalMessage({ nodeId: 'n', promptId: 'a' })).toThrow(
-        expect.objectContaining({ details: { reason: 'provider_sent_no_message' } }),
+        expect.objectContaining({
+          details: expect.objectContaining({
+            reason: 'provider_sent_no_message',
+            outcome: 'unknown',
+          }),
+        }),
       )
       expect(completions.map(event => [event.endedTurn?.id, event.snapshot.turnOutcome])).toEqual([
         ['t1', 'unknown'],
