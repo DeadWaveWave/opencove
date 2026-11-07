@@ -278,7 +278,8 @@ static 1px frame highlight and no waves, following the spec table’s reduced-mo
 `resolveAgentPresentation` and only counts transitions seen live (a reload never signals):
 
 - A run finishing (working → standby), at most once per window per 3s: the window's frame flashes
-  in its kind ink: a 2px ring plus 54px blur / 8px spread at 55%, all screen-sized;
+  in its kind glyph colour (the prototype's `--ki`; the sparks and glint use the ink): a 2px ring
+  plus 54px blur / 8px spread at 55%, all screen-sized;
   only opacity fades from 1 to 0 over 1000ms ease-out. The canvas sheds 26 ink sparks from random perimeter points (speed 260,
   base life 700ms); the wall sends a strong shockwave whose
   white crest stays outside windows and their one-cell margins (behind glass only the kind colour

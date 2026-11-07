@@ -4,7 +4,7 @@ import type { TerminalNodeData } from '../../../../types'
 import { resolveAgentPresentation } from '../../../../utils/agentPresentation'
 import { resolveWindowKindFamily } from '../../../../utils/windowKindFamily'
 import { readWallLightPalette } from '../pixelWall/wallPalette'
-import { clearWindowSignals, showWindowSignal } from './frameSignals'
+import { clearWindowSignals, readCompletionColor, showWindowSignal } from './frameSignals'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import { createRuntimeCompletionDetector, createWindowSignalDetector } from './signalDetector'
 import { createWindowStatusFrames } from './windowStatusFrames'
@@ -14,15 +14,12 @@ import { publishWindowSignal } from './windowSignalEvents'
 const COMPLETE_MS = 1000
 const FAIL_MS = 280
 
-function completionInk(scope: HTMLElement, data: TerminalNodeData) {
+function completionColor(scope: HTMLElement, data: TerminalNodeData) {
   const family =
     document.documentElement.dataset.coveKindColors === 'off'
       ? 'neutral'
       : resolveWindowKindFamily(data)
-  return (
-    getComputedStyle(scope).getPropertyValue(`--cove-kind-${family}-ink`).trim() ||
-    readWallLightPalette(scope)[family]
-  )
+  return readCompletionColor(scope, family, readWallLightPalette(scope)[family])
 }
 
 /**
@@ -82,7 +79,7 @@ export function WorkspaceWindowSignals({
       if (!node || !resolveAgentPresentation(node.data).isAgent) {
         return
       }
-      showWindowSignal(scope, node.id, 'complete', completionInk(scope, node.data), COMPLETE_MS)
+      showWindowSignal(scope, node.id, 'complete', completionColor(scope, node.data), COMPLETE_MS)
       publishWindowSignal({ kind: 'complete', nodeId: node.id })
     })
   }, [canvasRef])
@@ -111,7 +108,7 @@ export function WorkspaceWindowSignals({
       ) {
         continue
       }
-      const color = signal.kind === 'fail' ? lights.failed : completionInk(scope, node.data)
+      const color = signal.kind === 'fail' ? lights.failed : completionColor(scope, node.data)
       showWindowSignal(
         scope,
         signal.id,

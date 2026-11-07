@@ -1,4 +1,5 @@
 import type { Rgb } from '@shared/design/oklch'
+import type { WindowKindFamily } from '../../../../utils/windowKindFamily'
 
 /** What a window frame is showing; a stronger signal replaces a weaker one, never the reverse. */
 export type FrameSignal = 'complete' | 'fail'
@@ -60,6 +61,19 @@ export function showWindowSignal(
     typeof color === 'string' ? color : `rgb(${color[0]} ${color[1]} ${color[2]})`,
   )
   active.set(element, { signal, flash, timer: setTimeout(() => clear(element), durationMs) })
+}
+
+/**
+ * The completion flash colour. The prototype's `.burst` uses `--ki`, the kind glyph colour; the
+ * patrol, sparks and rim glint use the ink. Themes without kind tokens fall back to `fallback`.
+ */
+export function readCompletionColor(
+  scope: Element,
+  family: WindowKindFamily,
+  fallback: Rgb,
+): string {
+  const glyph = getComputedStyle(scope).getPropertyValue(`--cove-kind-${family}-glyph`).trim()
+  return glyph || `rgb(${fallback[0]} ${fallback[1]} ${fallback[2]})`
 }
 
 export function clearWindowSignals(scope: ParentNode): void {

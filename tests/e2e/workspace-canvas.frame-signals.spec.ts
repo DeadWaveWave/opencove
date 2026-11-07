@@ -129,10 +129,10 @@ for (const mode of ['animated', 'reduced', 'off'] as const) {
         await expect
           .poll(async () => (await records()).flatMap(r => r.animations).map(a => a.name))
           .toContain(name)
-        const ink = await node.evaluate(el =>
-          getComputedStyle(el).getPropertyValue('--cove-kind-ai-ink').trim(),
+        const glyph = await node.evaluate(el =>
+          getComputedStyle(el).getPropertyValue('--cove-kind-ai-glyph').trim(),
         )
-        expect((await records()).find(r => r.signal === 'complete')?.color).toBe(ink)
+        expect((await records()).find(r => r.signal === 'complete')?.color).toBe(glyph)
         const flash = (await records()).flatMap(r => r.animations).find(a => a.name === name)!
         expect(flash.duration).toBe(mode === 'reduced' ? 600 : 1000)
         expect(flash.frames.map(f => f.opacity)).toEqual(
