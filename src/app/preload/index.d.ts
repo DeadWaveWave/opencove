@@ -63,6 +63,7 @@ import type {
   SuggestWorktreeNamesInput,
   SuggestWorktreeNamesResult,
   SetWindowChromeThemeInput,
+  WindowFullScreenState,
   SaveTextToDownloadsInput,
   SaveTextToDownloadsResult,
   ShowSystemNotificationInput,
@@ -180,6 +181,8 @@ export interface OpenCoveApi {
   }
   windowChrome: {
     setTheme: (payload: SetWindowChromeThemeInput) => Promise<void>
+    getFullScreen: () => Promise<WindowFullScreenState>
+    onFullScreenChange: (listener: (state: WindowFullScreenState) => void) => UnsubscribeFn
   }
   windowMetrics: {
     getDisplayInfo: () => Promise<WindowDisplayInfo>
