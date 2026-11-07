@@ -317,7 +317,10 @@ closes, canceled deletion and hydration do not publish this notification.
 The pixel layer hands off the last visible world rectangle across that commit for at most 160ms,
 retaining at most 256 geometry records. It then draws a 420ms radial burst: a fast initial snap,
 followed by drifting square fragments that shrink and fade. There is no circular ring or outline.
-The burst uses the applied theme's pixel gradient, tracks the current viewport, and never captures document or terminal text.
+The burst mixes the window kind's `--cove-kind-<family>-solid` and `-ink` equally, with a stable
+choice per fragment. The closure snapshot copies the family with geometry before node removal;
+no node reference or later lookup is retained. The burst tracks the current viewport and never
+captures document or terminal text.
 At most eight bursts run concurrently, with bounded fragments and no deferred playback queue.
 
 The original node is already removed while fragments remain. Ordinary pointer/keyboard interaction
@@ -416,5 +419,8 @@ coordinates; speed is multiplied by `0.5 + random()`, life by `0.7 + random() * 
 integrates from the event timestamp, gravity is analytic, and alpha is `(1 - age / life)^1.2`.
 The existing 30fps focused / 10fps unfocused / 0 hidden scheduler owns their frames. No CSS
 corner sparks remain; the frame flash and failure glitch retain their existing owner and timing.
-Creation/close assembly and burst retain their existing blue/cyan/mint gradients; their colour
-port is separate from these kind-ink signals. The wall’s glass cap is unchanged.
+Creation rims and assembly particles use the window kind's `--cove-kind-<family>-ink`, independent
+of screen position. Close fragments mix kind solid/ink 50/50 using a stable scene-index hash.
+Both reuse the shared theme reader and its Pixel palette/text fallbacks, refreshed on theme changes.
+Their existing shapes, timelines, readiness, caps and reduced-motion behavior remain unchanged.
+The wall’s glass cap is unchanged.

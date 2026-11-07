@@ -11,6 +11,11 @@ import { drawWorkingPixels } from './workingRenderer'
 import { drawDotRipples } from './dotRipples'
 import type { Ripple } from '../pixelWall/ripples'
 
+export interface PixelKindTheme {
+  ink: Record<WindowKindFamily, string>
+  solid: Record<WindowKindFamily, string>
+}
+
 export interface PixelTheme {
   ink?: Record<WindowKindFamily, string>
   blue: string
@@ -20,11 +25,11 @@ export interface PixelTheme {
   danger: string
 }
 
-export function readPixelTheme(canvas: HTMLCanvasElement): PixelTheme {
+export function readPixelTheme(canvas: HTMLCanvasElement): PixelTheme & PixelKindTheme {
   const style = getComputedStyle(canvas)
   const color = (token: string) => style.getPropertyValue(token).trim() || style.color
-  return {
-    ink: Object.fromEntries(
+  const kindColors = (role: 'ink' | 'solid') =>
+    Object.fromEntries(
       Object.entries({
         ai: '--cove-pixel-blue',
         shell: '--cove-pixel-cyan',
@@ -34,9 +39,12 @@ export function readPixelTheme(canvas: HTMLCanvasElement): PixelTheme {
         neutral: '',
       }).map(([family, fallback]) => [
         family,
-        style.getPropertyValue(`--cove-kind-${family}-ink`).trim() || color(fallback),
+        style.getPropertyValue(`--cove-kind-${family}-${role}`).trim() || color(fallback),
       ]),
-    ) as Record<WindowKindFamily, string>,
+    ) as Record<WindowKindFamily, string>
+  return {
+    ink: kindColors('ink'),
+    solid: kindColors('solid'),
     blue: color('--cove-pixel-blue'),
     cyan: color('--cove-pixel-cyan'),
     mint: color('--cove-pixel-mint'),

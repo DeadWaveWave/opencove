@@ -1,5 +1,6 @@
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../../types'
+import { resolveWindowKindFamily, type WindowKindFamily } from '../../../../utils/windowKindFamily'
 
 export interface PixelViewport {
   x: number
@@ -24,6 +25,7 @@ export interface PixelRect {
 }
 
 export interface PixelNodeFrame {
+  family: WindowKindFamily
   id: string
   sessionId: string
   rect: PixelRect
@@ -74,7 +76,12 @@ export function projectPixelNodeFrame(
   ) {
     return null
   }
-  return { id: node.id, sessionId: node.data.sessionId, rect }
+  return {
+    id: node.id,
+    sessionId: node.data.sessionId,
+    family: resolveWindowKindFamily(node.data),
+    rect,
+  }
 }
 
 export function projectPixelNodeFrames(

@@ -1,3 +1,8 @@
+import {
+  installPixelDrawProbe,
+  readPixelDrawProbe,
+  readKindEffectColors,
+} from './workspace-canvas.pixel-draw-probe'
 import { PIXEL_EFFECTS_ENABLED } from './workspace-canvas.pixel-effects.helpers'
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { writeFile } from 'node:fs/promises'
@@ -25,11 +30,11 @@ async function createNode(page: Page, kind: 'note' | 'terminal') {
   await action.evaluate(element => (element as HTMLElement).click())
 }
 
-async function seed(page: Page, kind: 'note' | 'terminal') {
+async function seed(page: Page, kind: 'note' | 'terminal', uiTheme = 'pixel') {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await clearAndSeedWorkspace(page, [], {
     settings: {
-      uiTheme: 'pixel',
+      uiTheme,
       ...PIXEL_EFFECTS_ENABLED,
       language: 'en',
       standardWindowSizeBucket: kind === 'note' ? 'compact' : 'large',
@@ -91,6 +96,44 @@ async function attachPng(testInfo: TestInfo, name: string, encoded: string) {
 }
 
 test.describe('Workspace Canvas - Pixel Reveal First Paint', () => {
+  test('paints creation rim and particles in each window kind ink', async ({
+    browserName,
+  }, testInfo) => {
+    void browserName
+    const { electronApp, window: page } = await launchApp()
+    try {
+      const inspectKind = async (kind: 'note' | 'terminal') => {
+        await seed(page, kind, 'dark')
+        // CI's macOS appearance still paints the same kind colours without transparency.
+        const media = await page.context().newCDPSession(page)
+        await media.send('Emulation.setEmulatedMedia', {
+          features: [
+            { name: 'prefers-reduced-motion', value: 'no-preference' },
+            { name: 'prefers-reduced-transparency', value: 'reduce' },
+          ],
+        })
+        const expected = await readKindEffectColors(page, kind === 'note' ? 'knowledge' : 'shell')
+        await installPixelDrawProbe(page, 'workspace-pixel-assembly')
+        await createNode(page, kind)
+        await expect
+          .poll(async () => (await readPixelDrawProbe(page)).some(frame => frame.pixels.length > 0))
+          .toBe(true)
+        const frames = await readPixelDrawProbe(page)
+        await testInfo.attach(`${kind}-creation-kind-colours`, {
+          body: JSON.stringify({ expected, frames }),
+          contentType: 'application/json',
+        })
+        expect([
+          ...new Set(frames.flatMap(frame => frame.pixels.map(pixel => pixel.color))),
+        ]).toEqual([expected.ink])
+      }
+      await inspectKind('note')
+      await inspectKind('terminal')
+    } finally {
+      await electronApp.close()
+    }
+  })
+
   test('starts on the first animation frames and gives note/terminal equal renderer-clock duration', async ({
     browserName,
   }, testInfo) => {

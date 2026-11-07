@@ -3,6 +3,7 @@ import { readReadyPixelNodeIds } from '../../../src/contexts/workspace/presentat
 
 const frame = {
   id: 'new-node',
+  family: 'shell' as const,
   sessionId: 'session-1',
   rect: { x: 0, y: 0, width: 400, height: 300 },
 }
