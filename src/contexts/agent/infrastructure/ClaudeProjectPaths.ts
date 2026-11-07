@@ -40,18 +40,30 @@ export function resolveClaudeWorkspacePathCandidates(cwd: string): string[] {
   return candidates
 }
 
+/**
+ * Claude Code keeps its state under CLAUDE_CONFIG_DIR when set, otherwise under ~/.claude.
+ * OpenCove-launched agents inherit the Worker environment, so the Worker's value is the one
+ * the agent wrote its transcripts with.
+ */
+export function resolveClaudeConfigDirectoryCandidates(
+  homeDirectories = resolveHomeDirectoryCandidates(),
+  configDirectory = process.env.CLAUDE_CONFIG_DIR,
+): string[] {
+  const explicit = configDirectory?.trim() ? [resolve(configDirectory.trim())] : []
+  return [...new Set([...explicit, ...homeDirectories.map(home => join(home, '.claude'))])]
+}
+
 export function resolveClaudeProjectDirectoryCandidateGroups(
   cwd: string,
   homeDirectories = resolveHomeDirectoryCandidates(),
+  configDirectory = process.env.CLAUDE_CONFIG_DIR,
 ): string[][] {
+  const configDirectories = resolveClaudeConfigDirectoryCandidates(homeDirectories, configDirectory)
   return resolveClaudeWorkspacePathCandidates(cwd).map(workspacePath => {
     const encodedPaths = resolveClaudeProjectPathEncodings(workspacePath)
-    const uniqueHomeDirectories = [...new Set(homeDirectories)]
 
     return encodedPaths.flatMap(encodedPath =>
-      uniqueHomeDirectories.map(homeDirectory =>
-        join(homeDirectory, '.claude', 'projects', encodedPath),
-      ),
+      configDirectories.map(configRoot => join(configRoot, 'projects', encodedPath)),
     )
   })
 }

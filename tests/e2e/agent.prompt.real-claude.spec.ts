@@ -288,6 +288,17 @@ test.describe('agent.prompt with the real Claude Code CLI', () => {
       // One submission whose user message carries the three lines as one exact text block.
       expect(api.main()[1]).toContain(text)
       await expect.poll(async () => (await snapshot()).state, { timeout: 30_000 }).toBe('idle')
+      // The transcript lives under CLAUDE_CONFIG_DIR, not ~/.claude: the final message must still be found.
+      const final = await window.evaluate(
+        id =>
+          window.opencoveApi.controlSurface.invoke<{ message: string | null }>({
+            kind: 'query',
+            id: 'session.finalMessage',
+            payload: { nodeId: id },
+          }),
+        nodeId,
+      )
+      expect(final.message).toBe('ACK')
 
       const tool = await prompt(userDataDir, nodeId, 'TRIGGER_TOOL run the probe')
       expect(tool.exitCode, JSON.stringify(tool)).toBe(0)
