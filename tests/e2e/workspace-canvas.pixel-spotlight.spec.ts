@@ -7,7 +7,40 @@ type FixedFrameWindow = Window & {
   __fixedWallFrame?: { frames: number; signature: number }
 }
 
-async function pointFrame(page: Page, x: number, y: number) {
+type Point = { x: number; y: number }
+
+/**
+ * Two far-apart points where the pointer is over bare canvas, measured in this window. Ubuntu CI
+ * clamps a scale-2 window to its 1600×1200 xvfb screen (800×600 CSS px), so fixed coordinates
+ * that suit a 1440×900 window can fall outside it and never light the wall.
+ */
+async function openWallPoints(page: Page): Promise<[Point, Point]> {
+  const points = await page.evaluate(() => {
+    const canvas = document.querySelector('.workspace-canvas .react-flow')!.getBoundingClientRect()
+    const open: { x: number; y: number }[] = []
+    for (let row = 1; row < 8; row++) {
+      for (let column = 1; column < 8; column++) {
+        const x = Math.round(canvas.left + (canvas.width * column) / 8)
+        const y = Math.round(canvas.top + (canvas.height * row) / 8)
+        if (document.elementFromPoint(x, y)?.classList.contains('react-flow__pane')) {
+          open.push({ x, y })
+        }
+      }
+    }
+    return open
+  })
+  expect(points.length).toBeGreaterThanOrEqual(2)
+  const [first] = points as [Point]
+  const far = points.reduce((best, point) =>
+    Math.hypot(point.x - first.x, point.y - first.y) >
+    Math.hypot(best.x - first.x, best.y - first.y)
+      ? point
+      : best,
+  )
+  return [first, far]
+}
+
+async function pointFrame(page: Page, { x, y }: Point) {
   await page.mouse.move(x, y)
   // Repaint at a fixed ambient time, so the signature isolates the pointer, not drifting clouds.
   const before = await page.evaluate(() => {
@@ -60,6 +93,7 @@ test('lights the pointer over finished wall tiles and disables it with ambient m
       },
     )
     await expectPaintedWall(page)
+    const [near, away] = await openWallPoints(page)
     await page.evaluate(() => {
       const original = window.requestAnimationFrame.bind(window)
       const fixedTime = performance.now() + 60000
@@ -79,7 +113,7 @@ test('lights the pointer over finished wall tiles and disables it with ambient m
         window.requestAnimationFrame = original
       }
     })
-    const layoutReads = await page.getByTestId('workspace-pixel-wall').evaluate(host => {
+    const layoutReads = await page.getByTestId('workspace-pixel-wall').evaluate((host, point) => {
       const read = host.getBoundingClientRect.bind(host)
       let reads = 0
       host.getBoundingClientRect = () => {
@@ -87,32 +121,34 @@ test('lights the pointer over finished wall tiles and disables it with ambient m
         return read()
       }
       for (let i = 0; i < 20; i++) {
-        window.dispatchEvent(new PointerEvent('pointermove', { clientX: 1000 + i, clientY: 180 }))
+        window.dispatchEvent(
+          new PointerEvent('pointermove', { clientX: point.x + i, clientY: point.y }),
+        )
       }
       host.getBoundingClientRect = read
       return reads
-    })
+    }, near)
     expect(layoutReads).toBe(0)
-    const first = await pointFrame(page, 1000, 180)
-    expect(await pointFrame(page, 1000, 180)).toBe(first)
-    const moved = await pointFrame(page, 1100, 700)
+    const first = await pointFrame(page, near)
+    expect(await pointFrame(page, near)).toBe(first)
+    const moved = await pointFrame(page, away)
     expect(moved).not.toBe(first)
-    expect(await pointFrame(page, 1000, 180)).toBe(first)
+    expect(await pointFrame(page, near)).toBe(first)
     await page.evaluate(() =>
       window.dispatchEvent(new PointerEvent('pointerout', { relatedTarget: null })),
     )
-    const left = await pointFrame(page, -10, -10)
+    const left = await pointFrame(page, { x: -10, y: -10 })
     expect(left).not.toBe(first)
 
     await media('reduce')
-    expect(await pointFrame(page, 1000, 180)).toBe(await pointFrame(page, 1100, 700))
+    expect(await pointFrame(page, near)).toBe(await pointFrame(page, away))
     await media('no-preference', 'reduce')
-    expect(await pointFrame(page, 1000, 180)).not.toBe(await pointFrame(page, 1100, 700))
+    expect(await pointFrame(page, near)).not.toBe(await pointFrame(page, away))
     await media('no-preference')
     await page.getByTestId('app-header-control-center').click()
     await page.getByTestId('control-center-toggle-background-twinkle').click()
     await page.keyboard.press('Escape')
-    expect(await pointFrame(page, 1000, 180)).toBe(await pointFrame(page, 1100, 700))
+    expect(await pointFrame(page, near)).toBe(await pointFrame(page, away))
     // Return to the native clock for scheduler/visibility evidence.
     await page.evaluate(() => (window as FixedFrameWindow).__restoreWallClock?.())
     await page.getByTestId('app-header-control-center').click()

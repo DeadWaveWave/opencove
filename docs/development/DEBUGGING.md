@@ -246,6 +246,13 @@ macOS Electron 截图可能带有不同的 PNG 元数据（例如可选的 `iCCP
 随后仍严格比较输出前后的像素，不能等待它们变回预期结果；不要为测试修改生产
 context 的 `willReadFrequently`，以免影响动画性能。
 
+### 7) 指定 `deviceScaleFactor` 时，Ubuntu CI 的窗口会被屏幕裁小
+
+Ubuntu CI 在 `xvfb-run -s "-screen 0 1600x1200x24"` 下运行。`launchApp({ deviceScaleFactor: 2 })` 时，1440×900 的窗口需要 2880×1800 物理像素，Linux 会把它限制在屏幕内，实际视口只有 800×600 CSS px。macOS 上 `enableLargerThanScreen` 生效，本地不会复现。
+
+- 不要写死 `page.mouse.move(1000, 180)` 这类坐标；从实测的 `getBoundingClientRect()` 推导命中点，并用 `document.elementFromPoint` 确认点上是预期元素。
+- 本地复现：在用例开头调用 `(await electronApp.browserWindow(page)).evaluate(w => w.setContentSize(800, 600))`。
+
 ## 持久化与状态污染排查
 
 ### 1) 测试优先使用 seed 状态
