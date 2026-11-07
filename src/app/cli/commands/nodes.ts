@@ -1,3 +1,5 @@
+import { nodeDeleteOutput, canvasFocusOutput } from './outputContracts'
+import { nodeListOutput, nodeGetOutput, nodeKindOutput } from './outputContracts'
 import { defineCommand, type CommandArgs, type OptionSpec } from '../core/command'
 import { CliError, usage } from '../core/errors'
 const optionText: Record<string, [string, string]> = {
@@ -47,7 +49,13 @@ function locator(o: Record<string, unknown>, required = false) {
     v => v !== undefined && v !== false,
   ).length
   if (modes > 1 || (o.worker && !o.branch && !o.path) || (!o.worker && (o.branch || o.path))) {
-    usage('Space locator must use exactly one mode')
+    usage(
+      `Conflicting space locator flags: ${['space', 'space-name', 'worker', 'branch', 'path']
+        .filter(key => o[key] !== undefined)
+        .map(key => '--' + key)
+        .join(', ')}`,
+      'Choose exactly one space locator mode.',
+    )
   }
   if (!modes) {
     if (required) {
@@ -64,8 +72,7 @@ function locator(o: Record<string, unknown>, required = false) {
   return {
     kind: o.branch !== undefined ? 'workerBranch' : 'workerPath',
     worker: o.worker,
-    branch: o.branch,
-    path: o.path,
+    ...(o.branch !== undefined ? { branch: o.branch } : { path: o.path }),
     projectId: o.project,
   }
 }
@@ -77,7 +84,7 @@ function data(kind: string, o: Record<string, unknown>, create: boolean) {
     return {
       requirement: o.requirement,
       priority: o.priority ?? (create ? 'medium' : undefined),
-      tags: o.tag ?? (create ? [] : undefined),
+      tags: o['clear-tags'] ? [] : (o.tag ?? (create ? [] : undefined)),
       status: o.status,
     }
   }
@@ -102,12 +109,14 @@ export const nodeCommands = [
   defineCommand({
     path: ['node', 'list'],
     summary: 'List canvas nodes',
+    description:
+      'data.status is task status. Top-level status is the runtime status of agent and terminal sessions. STATE shows the applicable status.',
     targetSpace: 'optional',
     connect: true,
     operation: 'node.list',
     options: { ...locatorOptions, kind: stringOption('Node kind') },
     buildInput: ({ options: o }) => ({ space: locator(o), projectId: o.project, kind: o.kind }),
-    render: { listKey: 'nodes', columns: ['id', 'kind', 'title'] },
+    render: nodeListOutput,
   }),
   ...(['get', 'delete'] as const).map(action =>
     defineCommand({
@@ -115,6 +124,11 @@ export const nodeCommands = [
       summary: `${action === 'get' ? 'Get' : 'Delete'} a canvas node`,
       connect: true,
       operation: `node.${action}`,
+      render: action === 'get' ? nodeGetOutput : nodeDeleteOutput,
+      description:
+        action === 'get'
+          ? 'data.status is task status; top-level status is agent or terminal runtime status.'
+          : undefined,
       options: { node: stringOption('Node ID', true) },
       buildInput: ({ options: o }) => ({ nodeId: o.node }),
     }),
@@ -129,7 +143,22 @@ export const nodeCommands = [
             ? {
                 requirement: stringOption('Requirement', create),
                 priority: stringOption('Priority'),
-                tag: { ...stringOption('Tag'), multiple: true },
+                tag: {
+                  ...stringOption('Tag'),
+                  description: create
+                    ? 'Set task tags; repeat for each tag'
+                    : 'Replace all tags; repeat for each tag in the new list',
+                  multiple: true,
+                },
+                ...(!create
+                  ? {
+                      'clear-tags': {
+                        type: 'boolean' as const,
+                        description: 'Remove all task tags',
+                        conflicts: ['tag'],
+                      },
+                    }
+                  : {}),
                 ...(!create ? { status: stringOption('Status') } : {}),
               }
             : kind === 'website'
@@ -160,6 +189,8 @@ export const nodeCommands = [
         targetSpace: create ? 'required' : undefined,
         connect: true,
         operation: `node.${action}`,
+        render: nodeKindOutput(kind, create),
+        operationCommand: `opencove node ${action}`,
         options: {
           ...specific,
           ...(create ? locatorOptions : { node: stringOption('Node ID', true) }),
@@ -181,7 +212,7 @@ export const nodeCommands = [
                 "printf 'Review the release notes\\n' | opencove node create note --space space-123 --text-file -",
               ]
             : [
-                `opencove node ${action} ${kind} ${create ? '--space space-123' : '--node node-123'}${kind === 'task' ? ' --requirement "Review release notes"' : kind === 'website' ? ' --url https://example.com' : kind === 'agent' ? ' --prompt "Review the test failures"' : ''}`,
+                `opencove node ${action} ${kind} ${create ? '--space space-123' : '--node node-123'}${kind === 'task' ? ' --requirement "Review release notes"' : kind === 'website' ? ' --url https://example.com' : kind === 'note' ? ' --text "Updated note"' : kind === 'agent' ? ' --prompt "Review the test failures"' : ''}`,
                 `opencove node ${action} ${kind} ${create ? '--space space-123' : '--node node-123'}${kind === 'task' ? ' --requirement "Review release notes"' : kind === 'website' ? ' --url https://example.com' : ''} --title "Release review" --pretty`,
               ],
         buildInput: ({ options: o }: CommandArgs) => {
@@ -209,7 +240,7 @@ export const nodeCommands = [
                 const created = value as { node: { id: string } }
                 try {
                   return {
-                    node: value,
+                    ...(value as object),
                     focus: await ctx.invoke('canvas.focus', {
                       target: { kind: 'node', nodeId: created.node.id },
                     }),
@@ -220,7 +251,7 @@ export const nodeCommands = [
                     throw error
                   }
                   return {
-                    node: value,
+                    ...(value as object),
                     focus: null,
                     focusError: { code: error.code, debugMessage: error.message },
                   }
@@ -238,6 +269,7 @@ export const nodeCommands = [
       targetSpace: kind === 'space' ? 'required' : undefined,
       connect: true,
       operation: 'canvas.focus',
+      render: canvasFocusOutput(kind),
       options: kind === 'node' ? { node: stringOption('Node ID', true) } : locatorOptions,
       buildInput: ({ options: o }) => ({
         target: kind === 'node' ? { kind, nodeId: o.node } : { kind, locator: locator(o, true) },

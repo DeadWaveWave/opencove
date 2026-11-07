@@ -1,3 +1,4 @@
+import { shellWord } from './shellWord'
 import type { Command, OptionSpec } from './command'
 import { globals } from './args'
 import { sections, commandExamples } from './helpCatalog'
@@ -29,6 +30,8 @@ export function help(commands: Command[], path: string[]) {
         ]),
       ),
       '',
+      'Exit codes: 0 success; 1 operation failure; 2 invalid input; 3 unreachable; 4 unauthorized; 5 incompatible protocol; 6 ambiguous target; 124 timeout; 130 interrupted.',
+      '',
       'Run "opencove <group> --help" for commands in a group. Run "opencove api ops" to list every Control Surface operation.',
     )
     return lines.join('\n') + '\n'
@@ -44,6 +47,15 @@ export function help(commands: Command[], path: string[]) {
     )
     const target =
       exact.targetSpace === 'required' ? ['(--space <id> | <other-target-space-options>)'] : []
+    const examplePositionals = (exact.positionals ?? [])
+      .filter(p => p.required)
+      .map(p => (p.name === 'operation-id' ? 'node.create' : shellWord(`<${p.name}>`)))
+    const exampleRequired = Object.entries(exact.options ?? {})
+      .filter(([, s]) => s.required)
+      .map(
+        ([name, s]) =>
+          `--${name}${s.type === 'boolean' ? '' : ' ' + (s.type === 'number' ? '39291' : shellWord(`<${s.valueName ?? name}>`))}`,
+      )
     const lines = [
       `Usage: ${[prefix, ...positionals, ...target, ...required, '[options]'].join(' ')}`,
       '',
@@ -90,11 +102,32 @@ export function help(commands: Command[], path: string[]) {
     if (entries.length) {
       lines.push('', 'Options:', ...rows(entries))
     }
+    lines.push(
+      '',
+      `Table output (-o table): ${exact.render?.columns?.length ? 'supported' : 'not supported'}.`,
+    )
+    lines.push(
+      exact.render?.fields
+        ? `Projectable fields: ${exact.render.fields.join(', ')}`
+        : exact.rawQueryFields
+          ? 'Field projection (--fields): raw output dot paths for queries; validated after the read. Commands do not support projection.'
+          : `Field projection (--fields): not supported.${exact.render?.unavailable ? ' ' + exact.render.unavailable : ''}`,
+    )
+    if (exact.render?.examples) {
+      lines.push(
+        '',
+        'Projection example:',
+        ...exact.render.examples.map(
+          e =>
+            `  ${e.startsWith('--') ? [prefix, ...examplePositionals, ...exampleRequired, ...(exact.targetSpace === 'required' ? ['--space space-123'] : []), e].join(' ') : e}`,
+        ),
+      )
+    }
     const examples = exact.examples ??
       commandExamples[path.join(' ')] ?? [
         prefix +
-          (required.length ? ' ' + required.join(' ') : '') +
-          (positionals.length ? ' ' + positionals.join(' ') : ''),
+          (exampleRequired.length ? ' ' + exampleRequired.join(' ') : '') +
+          (examplePositionals.length ? ' ' + examplePositionals.join(' ') : ''),
         prefix + ' --help',
       ]
     lines.push('', 'Examples:', ...examples.map(e => `  ${e}`), '', footer)

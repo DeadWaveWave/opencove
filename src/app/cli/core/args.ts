@@ -1,3 +1,4 @@
+import { jsonErrorOffset } from './jsonLocation'
 import { parseArgs, type ParseArgsConfig } from 'node:util'
 import type { Command, OptionSpec } from './command'
 import type { CliIo } from './io'
@@ -19,7 +20,8 @@ export const globals: Record<string, OptionSpec> = {
   fields: {
     type: 'string',
     valueName: 'a,b,...',
-    description: 'Select query result fields; dot paths are supported',
+    description:
+      'Select item-relative fields; preserve envelopes and accept item-key prefixes. api call queries use raw output paths',
   },
   output: { type: 'string', description: 'Choose JSON (default) or a supported table layout' },
   help: { type: 'boolean', description: 'Show help for this command or group' },
@@ -108,7 +110,7 @@ export function parse(argv: string[], specs: Record<string, OptionSpec>, path: s
     if (message.includes('ambiguous')) {
       usage(
         `Option ${flag} needs an explicit value for ${context}.`,
-        `Use ${flag}=-value or ${flag}-file <path|->. ${hint}`,
+        `Use ${flag}=-value${options[`${flag.slice(2)}-file`] ? ` or ${flag}-file <path|->` : ''}. ${hint}`,
       )
     }
     usage(`Invalid or missing value for option ${flag} for ${context}.`, hint)
@@ -166,6 +168,13 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
       }
       continue
     }
+    if (!values.help) {
+      for (const other of spec.conflicts ?? []) {
+        if (values[other] !== undefined) {
+          usage(`Cannot use --${key} and --${other} together`, commandHelpHint(command.path))
+        }
+      }
+    }
     const convert = (value: unknown) => {
       if (spec.type === 'number') {
         const number = Number(value)
@@ -177,8 +186,16 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
       if (spec.type === 'json') {
         try {
           return JSON.parse(String(value))
-        } catch {
-          usage(`Invalid JSON for --${key}`, commandHelpHint(command.path))
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error)
+          const source = String(value)
+          const position = Number(/position (\d+)/.exec(reason)?.[1] ?? jsonErrorOffset(source))
+          const before = source.slice(0, position).split('\n')
+          const location = /line (\d+) column (\d+)/.exec(reason)
+          usage(
+            `Invalid JSON for --${key} at line ${location?.[1] ?? before.length}, column ${location?.[2] ?? before.at(-1)!.length + 1}: ${reason.replace(/(?: in JSON)? at position \d+(?: \(line \d+ column \d+\))?$| \(line \d+ column \d+\)$/, '')}`,
+            commandHelpHint(command.path),
+          )
         }
       }
       return value

@@ -32,7 +32,7 @@ export const sections: [string, [string, string][]][] = [
 export const commandExamples: Record<string, string[]> = {
   ping: ['opencove ping', 'opencove --user-data ./profile ping'],
   status: ['opencove status', 'opencove status --pretty'],
-  'project list': ['opencove project list', 'opencove project list --fields id,name -o table'],
+  'project list': ['opencove project list', 'opencove project list --fields id,name'],
   'space list': ['opencove space list', 'opencove space list --project project-123'],
   'space get': [
     'opencove space get --space space-123',
@@ -40,7 +40,7 @@ export const commandExamples: Record<string, string[]> = {
   ],
   'node list': [
     'opencove node list --space space-123',
-    'opencove node list --worker local --branch main --kind note',
+    'opencove node list --space space-123 --fields nodes.id,nodes.title',
   ],
   'node get': [
     'opencove node get --node node-123',
@@ -58,9 +58,15 @@ export const commandExamples: Record<string, string[]> = {
     'opencove canvas focus space --space space-123',
     'opencove canvas focus space --space-name "Sprint planning" --project project-123',
   ],
-  'api ops': ['opencove api ops', 'opencove api ops --kind query --contract schema'],
+  'api ops': [
+    'opencove api ops --domains',
+    'opencove api ops --search create',
+    'opencove api ops --prefix node --fields id,command',
+    'opencove api ops --kind query --contract schema',
+  ],
   'api schema': [
     'opencove api schema node.create',
+    'opencove api schema node.create --variant note',
     'opencove api schema system.operation.describe --pretty',
   ],
   'api call': [

@@ -1,0 +1,140 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`help golden api ops 1`] = `
+"Usage: opencove api ops [options]
+
+List Control Surface operations with their kind, contract and CLI command
+
+Options:
+  --domains                   Count operations, schema contracts and command-kind operations by domain
+  --search <text>             Match operation IDs or summaries, ignoring case
+  --prefix <domain>           Filter by operation domain, such as node or filesystem
+  --kind <query|command>      Filter by operation kind
+  --contract <schema|legacy>  Filter by input contract availability
+
+Table output (-o table): supported.
+Projectable fields: id, kind, contract, summary, command
+
+Projection example:
+  opencove api ops --prefix node --fields id,command
+  [{"id":"node.create","command":"opencove node create"}, ...]
+
+Examples:
+  opencove api ops --domains
+  opencove api ops --search create
+  opencove api ops --prefix node --fields id,command
+  opencove api ops --kind query --contract schema
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`help golden node get 1`] = `
+"Usage: opencove node get --node <id> [options]
+
+Get a canvas node
+
+data.status is task status; top-level status is agent or terminal runtime status.
+
+Options:
+  --node <id>  Select a canvas node by its ID (required)
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.content, data.text, data.requirement, data.status, data.priority, data.tags, data.linkedAgentNodeId, data.url, data.pinned, data.sessionMode, data.profileId, data.provider, data.prompt, data.model, data.effectiveModel, data.executionDirectory, data.expectedDirectory, data.taskId, data.runtimeKind
+
+Projection example:
+  opencove node get --node '<id>' --fields id,title
+  {"node":{"id":"n","title":"Note"}}
+
+Examples:
+  opencove node get --node node-123
+  opencove node get --node node-123 --fields node.id,node.title
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`help golden node list 1`] = `
+"Usage: opencove node list [options]
+
+List canvas nodes
+
+data.status is task status. Top-level status is the runtime status of agent and terminal sessions. STATE shows the applicable status.
+
+Target space (optional; choose one):
+  --space <id>                                  Select a space by its ID
+  --space-name <name> [--project <id>]          Find a named space, optionally within a project
+  --worker <id-or-name> --branch <branch>       Find a space by worker and Git branch
+  --worker <id-or-name> --path <absolute-path>  Find a space by worker and working directory
+  Add --project <id> to narrow a name, branch or path lookup
+
+Options:
+  --kind <kind>  Filter by note, task, website, agent or terminal
+
+Table output (-o table): supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.status, data.priority, data.requirement, data.tags, data.url
+
+Projection example:
+  opencove node list --fields id,data.status
+  {"projectId":"p","spaceId":null,"nodes":[{"id":"n","data":{"status":"doing"}}]}
+
+Examples:
+  opencove node list --space space-123
+  opencove node list --space space-123 --fields nodes.id,nodes.title
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`help golden node update task 1`] = `
+"Usage: opencove node update task --node <id> [options]
+
+Update a task node
+
+Options:
+  --requirement <text>                 Describe the task requirement
+  --priority <low|medium|high|urgent>  Set the task priority
+  --tag <tag>                          Replace all tags; repeat for each tag in the new list
+  --clear-tags                         Remove all task tags
+  --status <todo|doing|ai_done|done>   Set the task status
+  --node <id>                          Select a canvas node by its ID (required)
+  --title <text>                       Set the node title
+  --frame <json>                       Set x, y, width and height as a JSON object
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.requirement, data.status, data.priority, data.tags, data.linkedAgentNodeId
+
+Projection example:
+  opencove node update task --node '<id>' --fields id,title
+  {"revision":1,"node":{"id":"n","title":"Task"}}
+
+Examples:
+  opencove node update task --node node-123 --requirement "Review release notes"
+  opencove node update task --node node-123 --requirement "Review release notes" --title "Release review" --pretty
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`help golden space list 1`] = `
+"Usage: opencove space list [options]
+
+List spaces
+
+Options:
+  --project <id>  Filter by project ID
+
+Table output (-o table): supported.
+Projectable fields: id, name, directoryPath, targetMountId, parentSpaceId, boundary, sortOrder, nodeIds, nodes, projectId
+
+Projection example:
+  opencove space list --fields id,name
+  {"projectId":"p","activeSpaceId":"s","spaces":[{"id":"s","name":"Main"}]}
+
+Examples:
+  opencove space list
+  opencove space list --project project-123
+
+Global options: see "opencove --help".
+"
+`;

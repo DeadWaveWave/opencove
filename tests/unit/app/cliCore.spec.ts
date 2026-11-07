@@ -55,7 +55,6 @@ describe('TypeScript CLI core', () => {
     ['node', 'get'],
     ['node', 'create', 'note', '--space', 's', '--text', '-value'],
     ['node', 'create', 'note', '--space', 's', '--text=x', '--text-file', '-'],
-    ['api', 'call', 'node.create', '--input', '{}'],
     ['ping', '--timeout', '0'],
   ])('usage has no IO %j', async (...items) => {
     const f = fixture()
@@ -176,9 +175,9 @@ describe('TypeScript CLI core', () => {
     expect(f.fetch).toHaveBeenCalledTimes(1)
   })
   it('projects list dot fields', async () => {
-    const f = fixture({ projects: [{ id: '1', meta: { name: 'N' }, secret: 1 }] })
-    await run(['project', 'list', '--fields', 'id,meta.name'], f.io)
-    expect(JSON.parse(f.out())).toEqual({ projects: [{ id: '1', meta: { name: 'N' } }] })
+    const f = fixture({ projects: [{ id: '1', name: 'N', secret: 1 }] })
+    await run(['project', 'list', '--fields', 'id,name'], f.io)
+    expect(JSON.parse(f.out())).toEqual({ projects: [{ id: '1', name: 'N' }] })
   })
   it('rejects unmatched fields', async () => {
     const f = fixture({ projects: [{ id: '1' }] })
@@ -195,7 +194,9 @@ describe('TypeScript CLI core', () => {
     async id => {
       const f = fixture()
       expect(await run(['api', 'schema', id], f.io)).toBe(0)
-      expect(JSON.parse(f.out()).type).toBe('object')
+      expect(JSON.parse(f.out())[id === 'node.create' ? 'oneOf' : 'type']).toEqual(
+        id === 'node.create' ? expect.any(Array) : 'object',
+      )
       expect(f.fetch).not.toHaveBeenCalled()
     },
   )
@@ -229,7 +230,7 @@ it('explicit JSON formats command parse errors on TTY', async () => {
   expect(await run(['ping', '-o', 'json', '--wat'], f.io)).toBe(2)
   expect(JSON.parse(f.err()).error.code).toBe('cli.usage')
 })
-it('api call validates normalize before connection reads', async () => {
+it('api call delegates input validation to the server', async () => {
   const f = fixture()
   expect(
     await run(
@@ -242,8 +243,8 @@ it('api call validates normalize before connection reads', async () => {
       ],
       f.io,
     ),
-  ).toBe(2)
-  expect(f.fetch).not.toHaveBeenCalled()
+  ).toBe(0)
+  expect(f.fetch).toHaveBeenCalledTimes(1)
   expect(f.io.readTextFile).not.toHaveBeenCalled()
 })
 it('supports end of options for positional operation IDs', async () => {
@@ -314,20 +315,19 @@ it.each([
 })
 
 it.each([
-  ['node', 'create', 'note', '--space', 's', '--fields', 'id'],
-  ['node', 'create', 'note', '--space', 's', '--focus', '--fields', 'node.id'],
-  ['node', 'update', 'note', '--node', 'n', '--text', 'hello', '--fields', 'node.id'],
   ['node', 'delete', '--node', 'n', '--fields', 'deleted'],
   ['canvas', 'focus', 'node', '--node', 'n', '--fields', 'id'],
   ['api', 'call', 'node.delete', '--input', '{"nodeId":"n"}', '--fields', 'deleted'],
   ['api', 'call', 'session.kill', '--input', '{"sessionId":"s"}', '--fields='],
-])('rejects mutation projection before invoking %j', async (...args) => {
+])('rejects invalid mutation projections before invoking %j', async (...args) => {
   const f = fixture({ node: { id: 'created-node' } })
   expect(await run(args, f.io)).toBe(2)
   expect(f.fetch).not.toHaveBeenCalled()
   expect(f.io.readTextFile).not.toHaveBeenCalled()
   expect(f.out()).toBe('')
-  expect(f.err()).toContain('--fields is unavailable for mutation operations')
+  expect(f.err()).toContain(
+    args[0] === 'api' ? '--fields is unavailable for mutation operations' : 'Unknown fields:',
+  )
 })
 it('keeps api query projections available', async () => {
   const f = fixture({ node: { id: 'n', title: 'note' } })
@@ -363,7 +363,8 @@ it('returns exit 6 for an ambiguous space locator and preserves server error', a
     error: {
       code: 'space.ambiguous',
       message: 'Multiple spaces match this name',
-      details,
+      details: { ...details, space: { kind: 'spaceName', name: 'same-name' } },
+      hint: 'Run "opencove space list" to find available targets.',
     },
   })
 })

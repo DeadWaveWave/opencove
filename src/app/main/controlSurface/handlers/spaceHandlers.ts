@@ -1,3 +1,4 @@
+import { toCompactNodeData } from '../../../../contexts/workspace/application/nodeControl/nodeDtos'
 import { registerOperation } from '../registerOperation'
 import {
   spaceListOperation,
@@ -47,8 +48,10 @@ function toNodeSummary(node: {
   kind: unknown
   title: unknown
   status?: unknown
+  task?: unknown
 }): CanvasNodeSummary {
   return {
+    data: toCompactNodeData(node),
     id: node.id,
     kind: normalizeCanvasNodeKind(node.kind),
     title: typeof node.title === 'string' ? node.title : '',

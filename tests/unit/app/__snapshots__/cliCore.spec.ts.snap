@@ -35,10 +35,12 @@ Global options:
   --user-data <dir>        Use this profile directory
   --timeout <ms>           Set the request timeout in milliseconds (default: 20000)
   --pretty                 Indent JSON output for readability
-  --fields <a,b,...>       Select query result fields; dot paths are supported
+  --fields <a,b,...>       Select item-relative fields; preserve envelopes and accept item-key prefixes. api call queries use raw output paths
   -o, --output json|table  Choose JSON (default) or a supported table layout
   -h, --help               Show help for this command or group
   --version                Print the CLI version
+
+Exit codes: 0 success; 1 operation failure; 2 invalid input; 3 unreachable; 4 unauthorized; 5 incompatible protocol; 6 ambiguous target; 124 timeout; 130 interrupted.
 
 Run "opencove <group> --help" for commands in a group. Run "opencove api ops" to list every Control Surface operation.
 "
@@ -76,6 +78,13 @@ Options:
   --title <text>        Set the node title
   --frame <json>        Set x, y, width and height as a JSON object
   --focus               Focus after creation
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.text
+
+Projection example:
+  opencove node create note --space space-123 --fields id,title
+  {"revision":1,"projectId":"p","spaceId":"space-123","node":{"id":"n","title":"Note"}}
 
 Examples:
   opencove node create note --space space-123 --title "Release checklist" --text "Run the smoke tests"
@@ -121,10 +130,12 @@ Global options:
   --user-data <dir>        Use this profile directory
   --timeout <ms>           Set the request timeout in milliseconds (default: 20000)
   --pretty                 Indent JSON output for readability
-  --fields <a,b,...>       Select query result fields; dot paths are supported
+  --fields <a,b,...>       Select item-relative fields; preserve envelopes and accept item-key prefixes. api call queries use raw output paths
   -o, --output json|table  Choose JSON (default) or a supported table layout
   -h, --help               Show help for this command or group
   --version                Print the CLI version
+
+Exit codes: 0 success; 1 operation failure; 2 invalid input; 3 unreachable; 4 unauthorized; 5 incompatible protocol; 6 ambiguous target; 124 timeout; 130 interrupted.
 
 Run "opencove <group> --help" for commands in a group. Run "opencove api ops" to list every Control Surface operation.
 "

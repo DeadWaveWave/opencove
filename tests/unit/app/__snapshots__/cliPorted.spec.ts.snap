@@ -5,6 +5,13 @@ exports[`help for [ 'endpoint', 'list' ] is offline 1`] = `
 
 List registered endpoints
 
+Table output (-o table): not supported.
+Projectable fields: endpointId, kind, displayName, createdAt, updatedAt, access, remote, remote.hostname, remote.port
+
+Projection example:
+  opencove endpoint list --fields endpointId
+  {"endpoints":[{"endpointId":"local"}]}
+
 Examples:
   opencove endpoint list
 
@@ -20,6 +27,13 @@ Check a remote worker connection
 Options:
   --endpoint-id <id>   Select the endpoint (required)
   --ping-timeout <ms>  Limit the remote ping duration
+
+Table output (-o table): not supported.
+Projectable fields: ok, endpointId, now, pid
+
+Projection example:
+  opencove endpoint ping --endpoint-id '<id>' --fields ok
+  {"ok":true}
 
 Examples:
   opencove endpoint ping --endpoint-id endpoint-id-123
@@ -39,6 +53,13 @@ Options:
   --remote-token <token>  Authenticate with the remote worker token (required)
   --display-name <name>   Name the worker connection
 
+Table output (-o table): not supported.
+Projectable fields: endpointId, kind, displayName, createdAt, updatedAt, access, remote, remote.hostname, remote.port
+
+Projection example:
+  opencove endpoint register --hostname '<host>' --port 39291 --remote-token '<token>' --fields endpointId
+  {"endpoint":{"endpointId":"remote"}}
+
 Examples:
   opencove endpoint register --hostname worker.example.com --port 4312 --remote-token remote-token
 
@@ -54,6 +75,13 @@ Remove a registered endpoint
 Options:
   --endpoint-id <id>  Select the endpoint (required)
 
+Table output (-o table): not supported.
+Projectable fields: removedMountCount
+
+Projection example:
+  opencove endpoint remove --endpoint-id '<id>' --fields removedMountCount
+  {"removedMountCount":0}
+
 Examples:
   opencove endpoint remove --endpoint-id endpoint-id-123
 
@@ -66,9 +94,18 @@ exports[`help for [ 'fs', 'ls' ] is offline 1`] = `
 
 List a directory
 
+File access is limited to approved roots. Run "opencove mount list --project <id>" to see approved root URIs; select a mount with --mount when needed.
+
 Options:
   --uri <uri>   Select the file or directory URI (required)
   --mount <id>  Resolve the URI within this mount
+
+Table output (-o table): not supported.
+Projectable fields: name, uri, kind
+
+Projection example:
+  opencove fs ls --uri file:///repo --fields name
+  {"entries":[{"name":"README.md"}]}
 
 Examples:
   opencove fs ls --uri file:///workspace/
@@ -82,9 +119,18 @@ exports[`help for [ 'fs', 'read' ] is offline 1`] = `
 
 Read a text file
 
+File access is limited to approved roots. Run "opencove mount list --project <id>" to see approved root URIs; select a mount with --mount when needed.
+
 Options:
   --uri <uri>   Select the file or directory URI (required)
   --mount <id>  Resolve the URI within this mount
+
+Table output (-o table): not supported.
+Projectable fields: content
+
+Projection example:
+  opencove fs read --uri file:///repo/README.md --fields content
+  {"content":"Hello"}
 
 Examples:
   opencove fs read --uri file:///workspace/notes.txt
@@ -98,9 +144,18 @@ exports[`help for [ 'fs', 'stat' ] is offline 1`] = `
 
 Inspect file metadata
 
+File access is limited to approved roots. Run "opencove mount list --project <id>" to see approved root URIs; select a mount with --mount when needed.
+
 Options:
   --uri <uri>   Select the file or directory URI (required)
   --mount <id>  Resolve the URI within this mount
+
+Table output (-o table): not supported.
+Projectable fields: uri, kind, sizeBytes, mtimeMs
+
+Projection example:
+  opencove fs stat --uri file:///repo --fields kind
+  {"kind":"directory"}
 
 Examples:
   opencove fs stat --uri file:///workspace/notes.txt
@@ -114,11 +169,16 @@ exports[`help for [ 'fs', 'write' ] is offline 1`] = `
 
 Write a text file
 
+File access is limited to approved roots. Run "opencove mount list --project <id>" to see approved root URIs; select a mount with --mount when needed.
+
 Options:
   --uri <uri>              Select the file or directory URI (required)
   --mount <id>             Resolve the URI within this mount
   --content <text>         Write these exact UTF-8 contents (required)
   --content-file <path|->  Read content from a UTF-8 file, or use - for stdin
+
+Table output (-o table): not supported.
+Field projection (--fields): not supported. This command returns no result fields. Omit --fields.
 
 Examples:
   opencove fs write --uri file:///workspace/notes.txt --content-file ./notes.txt
@@ -138,6 +198,13 @@ Options:
   --root-path <path>  Mount this absolute folder path (required)
   --name <name>       Name the mount
 
+Table output (-o table): not supported.
+Projectable fields: mountId, projectId, name, sortOrder, endpointId, targetId, rootPath, rootUri, createdAt, updatedAt
+
+Projection example:
+  opencove mount create --project '<id>' --endpoint-id '<id>' --root-path '<path>' --fields mountId
+  {"mount":{"mountId":"m"}}
+
 Examples:
   opencove mount create --project project-123 --endpoint-id endpoint-id-123 --root-path /workspace
 
@@ -152,6 +219,13 @@ List project mounts
 
 Options:
   --project <id>  Select the project (required)
+
+Table output (-o table): not supported.
+Projectable fields: mountId, projectId, name, sortOrder, endpointId, targetId, rootPath, rootUri, createdAt, updatedAt
+
+Projection example:
+  opencove mount list --project p --fields mountId,rootUri
+  {"projectId":"p","mounts":[{"mountId":"m","rootUri":"file:///repo"}]}
 
 Examples:
   opencove mount list --project project-123
@@ -168,6 +242,9 @@ Remove a project mount
 Options:
   --mount <id>  Select the mount (required)
 
+Table output (-o table): not supported.
+Field projection (--fields): not supported. This command returns no result fields. Omit --fields.
+
 Examples:
   opencove mount remove --mount mount-123
 
@@ -183,6 +260,13 @@ Resolve a mount location
 Options:
   --mount <id>  Select the mount (required)
 
+Table output (-o table): not supported.
+Projectable fields: mountId, projectId, endpointId, targetId, rootPath, rootUri
+
+Projection example:
+  opencove mount resolve --mount '<id>' --fields mountId
+  {"mountId":"m"}
+
 Examples:
   opencove mount resolve --mount mount-123
 
@@ -194,6 +278,13 @@ exports[`help for [ 'plugin', 'apply' ] is offline 1`] = `
 "Usage: opencove plugin apply <candidate-id> [options]
 
 Apply a prepared plugin update
+
+Table output (-o table): not supported.
+Projectable fields: id, version, displayName, description, icon, nodeKinds, actionBar, contextMenu, source, author, revision, runtimeGeneration, enabled, status, error, view, hasPreview, commands, skills, preferences, sidebar, themes, icon.type, icon.name, icon.path, icon.light, icon.dark, view.entry, view.instances, view.kind, view.width, view.height, view.minWidth, view.minHeight
+
+Projection example:
+  opencove plugin apply '<candidate-id>' --fields id
+  {"status":"installed","candidateId":"c","candidateDirectory":"/plugins/c","plugin":{"id":"sample"}}
 
 Examples:
   opencove plugin apply candidate-123
@@ -210,6 +301,13 @@ Check for a plugin update
 Options:
   --ref <ref>  Use this Git ref
 
+Table output (-o table): not supported.
+Projectable fields: currentCommit, availableCommit, ref, updateAvailable
+
+Projection example:
+  opencove plugin check '<id>' --fields currentCommit
+  {"currentCommit":"abc"}
+
 Examples:
   opencove plugin check sample
 
@@ -222,6 +320,13 @@ exports[`help for [ 'plugin', 'details' ] is offline 1`] = `
 
 Inspect plugin metadata
 
+Table output (-o table): not supported.
+Projectable fields: id, version, displayName, description, icon, nodeKinds, actionBar, contextMenu, source, author, revision, runtimeGeneration, enabled, status, error, view, hasPreview, commands, skills, preferences, sidebar, themes, icon.type, icon.name, icon.path, icon.light, icon.dark, view.entry, view.instances, view.kind, view.width, view.height, view.minWidth, view.minHeight
+
+Projection example:
+  opencove plugin details '<id>' --fields id
+  {"plugin":{"id":"sample"},"readme":"Documentation","assets":{},"sourceDirectory":null,"logs":[]}
+
 Examples:
   opencove plugin details sample
 
@@ -233,6 +338,13 @@ exports[`help for [ 'plugin', 'disable' ] is offline 1`] = `
 "Usage: opencove plugin disable <id> [options]
 
 Disable a plugin
+
+Table output (-o table): not supported.
+Projectable fields: id, version, displayName, description, icon, nodeKinds, actionBar, contextMenu, source, author, revision, runtimeGeneration, enabled, status, error, view, hasPreview, commands, skills, preferences, sidebar, themes, icon.type, icon.name, icon.path, icon.light, icon.dark, view.entry, view.instances, view.kind, view.width, view.height, view.minWidth, view.minHeight
+
+Projection example:
+  opencove plugin disable '<id>' --fields id
+  {"id":"sample"}
 
 Examples:
   opencove plugin disable sample
@@ -249,6 +361,13 @@ Find available plugins
 Options:
   --query <text>  Search for plugins
 
+Table output (-o table): not supported.
+Projectable fields: name, url, description, stars, updatedAt
+
+Projection example:
+  opencove plugin discover --fields name
+  {"repositories":[{"name":"sample"}],"source":"github","installAutomatically":false}
+
 Examples:
   opencove plugin discover
 
@@ -260,6 +379,13 @@ exports[`help for [ 'plugin', 'enable' ] is offline 1`] = `
 "Usage: opencove plugin enable <id> [options]
 
 Enable a plugin
+
+Table output (-o table): not supported.
+Projectable fields: id, version, displayName, description, icon, nodeKinds, actionBar, contextMenu, source, author, revision, runtimeGeneration, enabled, status, error, view, hasPreview, commands, skills, preferences, sidebar, themes, icon.type, icon.name, icon.path, icon.light, icon.dark, view.entry, view.instances, view.kind, view.width, view.height, view.minWidth, view.minHeight
+
+Projection example:
+  opencove plugin enable '<id>' --fields id
+  {"id":"sample"}
 
 Examples:
   opencove plugin enable sample
@@ -273,6 +399,13 @@ exports[`help for [ 'plugin', 'guide' ] is offline 1`] = `
 
 Read the plugin development and usage guide
 
+Table output (-o table): not supported.
+Projectable fields: directory, readme
+
+Projection example:
+  opencove plugin guide --fields directory
+  {"directory":"/plugins/guide"}
+
 Examples:
   opencove plugin guide
 
@@ -284,6 +417,13 @@ exports[`help for [ 'plugin', 'install' ] is offline 1`] = `
 "Usage: opencove plugin install <directory> [options]
 
 Install a plugin from a local directory
+
+Table output (-o table): not supported.
+Projectable fields: id, version, displayName, description, icon, nodeKinds, actionBar, contextMenu, source, author, revision, runtimeGeneration, enabled, status, error, view, hasPreview, commands, skills, preferences, sidebar, themes, icon.type, icon.name, icon.path, icon.light, icon.dark, view.entry, view.instances, view.kind, view.width, view.height, view.minWidth, view.minHeight
+
+Projection example:
+  opencove plugin install '<directory>' --fields id
+  {"id":"sample"}
 
 Examples:
   opencove plugin install ./plugin
@@ -304,6 +444,13 @@ Options:
   --script <name>          Run this package script
   --build-output <path>    Read the built plugin from this directory
 
+Table output (-o table): not supported.
+Projectable fields: id, version, displayName, description, icon, nodeKinds, actionBar, contextMenu, source, author, revision, runtimeGeneration, enabled, status, error, view, hasPreview, commands, skills, preferences, sidebar, themes, icon.type, icon.name, icon.path, icon.light, icon.dark, view.entry, view.instances, view.kind, view.width, view.height, view.minWidth, view.minHeight
+
+Projection example:
+  opencove plugin install-git '<repository>' --fields id
+  {"status":"installed","candidateId":"c","candidateDirectory":"/plugins/c","plugin":{"id":"sample"}}
+
 Examples:
   opencove plugin install-git https://github.com/example/plugin.git
 
@@ -315,6 +462,13 @@ exports[`help for [ 'plugin', 'list' ] is offline 1`] = `
 "Usage: opencove plugin list [options]
 
 List installed plugins
+
+Table output (-o table): not supported.
+Projectable fields: id, version, displayName, description, icon, nodeKinds, actionBar, contextMenu, source, author, revision, runtimeGeneration, enabled, status, error, view, hasPreview, commands, skills, preferences, sidebar, themes, icon.type, icon.name, icon.path, icon.light, icon.dark, view.entry, view.instances, view.kind, view.width, view.height, view.minWidth, view.minHeight
+
+Projection example:
+  opencove plugin list --fields id
+  {"plugins":[{"id":"sample"}]}
 
 Examples:
   opencove plugin list
@@ -333,6 +487,13 @@ Options:
   --node <id>     Select an existing plugin window
   --space <id>    Place a new window in this space
 
+Table output (-o table): not supported.
+Projectable fields: nodeId, projectId, spaceId, title, titlePinnedByUser, created, revision, deliveredClientCount
+
+Projection example:
+  opencove plugin open '<id>' --fields nodeId
+  {"nodeId":"n"}
+
 Examples:
   opencove plugin open sample
 
@@ -345,6 +506,13 @@ exports[`help for [ 'plugin', 'reload' ] is offline 1`] = `
 
 Reload a plugin
 
+Table output (-o table): not supported.
+Projectable fields: id, version, displayName, description, icon, nodeKinds, actionBar, contextMenu, source, author, revision, runtimeGeneration, enabled, status, error, view, hasPreview, commands, skills, preferences, sidebar, themes, icon.type, icon.name, icon.path, icon.light, icon.dark, view.entry, view.instances, view.kind, view.width, view.height, view.minWidth, view.minHeight
+
+Projection example:
+  opencove plugin reload '<id>' --fields id
+  {"status":"updated","candidateId":"c","candidateDirectory":"/plugins/c","plugin":{"id":"sample"}}
+
 Examples:
   opencove plugin reload sample
 
@@ -356,6 +524,13 @@ exports[`help for [ 'plugin', 'rollback' ] is offline 1`] = `
 "Usage: opencove plugin rollback <id> <revision> [options]
 
 Restore a previous plugin revision
+
+Table output (-o table): not supported.
+Projectable fields: id, version, displayName, description, icon, nodeKinds, actionBar, contextMenu, source, author, revision, runtimeGeneration, enabled, status, error, view, hasPreview, commands, skills, preferences, sidebar, themes, icon.type, icon.name, icon.path, icon.light, icon.dark, view.entry, view.instances, view.kind, view.width, view.height, view.minWidth, view.minHeight
+
+Projection example:
+  opencove plugin rollback '<id>' '<revision>' --fields id
+  {"id":"sample"}
 
 Examples:
   opencove plugin rollback sample revision-123
@@ -376,6 +551,9 @@ Options:
   --params <json>         Pass command parameters as JSON
   --params-file <path|->  Read params from a UTF-8 file, or use - for stdin
 
+Table output (-o table): not supported.
+Field projection (--fields): not supported. Plugin commands define their own results, so fields cannot be validated before execution. Omit --fields to receive the complete result.
+
 Examples:
   opencove plugin run sample status
 
@@ -387,6 +565,13 @@ exports[`help for [ 'plugin', 'skill' ] is offline 1`] = `
 "Usage: opencove plugin skill <id> <skill> [options]
 
 Read a plugin skill
+
+Table output (-o table): not supported.
+Projectable fields: id, description, path
+
+Projection example:
+  opencove plugin skill '<id>' '<skill>' --fields id
+  {"pluginId":"sample","skill":{"id":"usage"},"content":"Instructions","path":"/plugins/sample/usage.md","installPrompt":"Use this skill"}
 
 Examples:
   opencove plugin skill sample usage
@@ -400,6 +585,13 @@ exports[`help for [ 'plugin', 'source' ] is offline 1`] = `
 
 Inspect the plugin source
 
+Table output (-o table): not supported.
+Projectable fields: pluginId, sourceDirectory, distribution, distribution.kind, distribution.repository, distribution.ref, distribution.upstreamCommit, distribution.checkoutCommit, distribution.directory, distribution.packageDirectory, distribution.build, dirty, headCommit, history, candidates
+
+Projection example:
+  opencove plugin source '<id>' --fields pluginId
+  {"pluginId":"sample"}
+
 Examples:
   opencove plugin source sample
 
@@ -411,6 +603,13 @@ exports[`help for [ 'plugin', 'uninstall' ] is offline 1`] = `
 "Usage: opencove plugin uninstall <id> [options]
 
 Uninstall a plugin
+
+Table output (-o table): not supported.
+Projectable fields: ok
+
+Projection example:
+  opencove plugin uninstall '<id>' --fields ok
+  {"ok":true}
 
 Examples:
   opencove plugin uninstall sample
@@ -427,6 +626,13 @@ Prepare a plugin update
 Options:
   --ref <ref>  Use this Git ref
 
+Table output (-o table): not supported.
+Projectable fields: id, version, displayName, description, icon, nodeKinds, actionBar, contextMenu, source, author, revision, runtimeGeneration, enabled, status, error, view, hasPreview, commands, skills, preferences, sidebar, themes, icon.type, icon.name, icon.path, icon.light, icon.dark, view.entry, view.instances, view.kind, view.width, view.height, view.minWidth, view.minHeight
+
+Projection example:
+  opencove plugin update '<id>' --fields id
+  {"status":"installed","candidateId":"c","candidateDirectory":"/plugins/c","plugin":{"id":"sample"}}
+
 Examples:
   opencove plugin update sample
 
@@ -442,6 +648,13 @@ List plugin windows
 Options:
   --project <id>  Select the project
 
+Table output (-o table): not supported.
+Projectable fields: nodeId, projectId, spaceId, title, titlePinnedByUser, savedTitle, views
+
+Projection example:
+  opencove plugin windows '<id>' --fields nodeId
+  {"windows":[{"nodeId":"n"}]}
+
 Examples:
   opencove plugin windows sample
 
@@ -456,6 +669,9 @@ Stream terminal output until exit or Ctrl-C
 
 Options:
   --session <id>  Attach to this terminal session (required)
+
+Table output (-o table): not supported.
+Field projection (--fields): not supported.
 
 Examples:
   opencove pty attach --session session-123
@@ -477,6 +693,13 @@ Options:
   --cols <count>     Set terminal columns
   --rows <count>     Set terminal rows
 
+Table output (-o table): not supported.
+Projectable fields: sessionId, profileId, runtimeKind
+
+Projection example:
+  opencove pty spawn-in-mount --mount '<id>' --fields sessionId
+  {"sessionId":"s"}
+
 Examples:
   opencove pty spawn-in-mount --mount mount-123
 
@@ -488,6 +711,13 @@ exports[`help for [ 'runtime', 'inspect' ] is offline 1`] = `
 "Usage: opencove runtime inspect [options]
 
 Inspect the runtime build
+
+Table output (-o table): not supported.
+Projectable fields: schemaVersion, buildId, appVersion, channel, protocolVersion, ptyProtocolVersion, launchContractVersion, dataSchemaVersion
+
+Projection example:
+  opencove runtime inspect --fields schemaVersion
+  {"schemaVersion":1}
 
 Examples:
   opencove runtime inspect
@@ -504,6 +734,13 @@ Prepare a managed runtime deployment
 Options:
   --stream-progress  Stream raw progress and diagnostics to stderr instead of a single JSON error document
 
+Table output (-o table): not supported.
+Projectable fields: status
+
+Projection example:
+  opencove runtime prepare --fields status
+  {"status":"prepared"}
+
 Examples:
   opencove runtime prepare
 
@@ -518,6 +755,13 @@ Verify the runtime environment
 
 Options:
   --stream-progress  Stream raw progress and diagnostics to stderr instead of a single JSON error document
+
+Table output (-o table): not supported.
+Projectable fields: schemaVersion, buildId, appVersion, channel, protocolVersion, ptyProtocolVersion, launchContractVersion, dataSchemaVersion
+
+Projection example:
+  opencove runtime verify --fields schemaVersion
+  {"build":{"schemaVersion":1},"platform":"darwin","arch":"arm64","nodeAbi":"127","engine":"node"}
 
 Examples:
   opencove runtime verify
@@ -534,6 +778,13 @@ Read the final agent message
 Options:
   --session <id>  Select the session (required)
 
+Table output (-o table): not supported.
+Projectable fields: sessionId, provider, startedAt, cwd, resumeSessionId, message
+
+Projection example:
+  opencove session final --session s --fields message
+  {"message":"Done"}
+
 Examples:
   opencove session final --session session-123
 
@@ -549,6 +800,13 @@ Inspect an agent session
 Options:
   --session <id>  Select the session (required)
 
+Table output (-o table): not supported.
+Projectable fields: sessionId, provider, startedAt, cwd, prompt, model, effectiveModel, executionContext, resumeSessionId, command, args
+
+Projection example:
+  opencove session get --session s --fields sessionId
+  {"sessionId":"s"}
+
 Examples:
   opencove session get --session session-123
 
@@ -563,6 +821,9 @@ Stop an agent session
 
 Options:
   --session <id>  Select the session (required)
+
+Table output (-o table): not supported.
+Field projection (--fields): not supported. This command returns no result fields. Omit --fields.
 
 Examples:
   opencove session kill --session session-123
@@ -582,6 +843,13 @@ Options:
   --prompt-file <path|->  Read prompt from a UTF-8 file, or use - for stdin
   --provider <provider>   Select the agent provider
   --model <model>         Select the agent model
+
+Table output (-o table): not supported.
+Projectable fields: sessionId, provider, startedAt, executionContext, profileId, runtimeKind, resumeSessionId, effectiveModel, command, args
+
+Projection example:
+  opencove session run-agent --space '<id>' --prompt '<text>' --fields sessionId
+  {"sessionId":"s"}
 
 Examples:
   opencove session run-agent --space space-123 --prompt "Review the project"
@@ -604,6 +872,13 @@ Options:
   --web-ui-password-hash <hash>  Use this web UI password hash
   --approve-root <path>          Approve a filesystem root for the worker
 
+Table output (-o table): not supported.
+Projectable fields: status
+
+Projection example:
+  opencove worker start --fields status
+  {"status":"stopped"}
+
 Examples:
   opencove worker start
 
@@ -618,6 +893,13 @@ Inspect local worker status
 
 Options:
   --all  Include stopped worker records
+
+Table output (-o table): not supported.
+Projectable fields: pid, status, hostname, port, userDataPath, startedBy, appVersion, createdAt, reachable
+
+Projection example:
+  opencove worker status --fields pid
+  {"status":"running","workers":[{"pid":42}]}
 
 Examples:
   opencove worker status
@@ -634,6 +916,13 @@ Stop a local worker
 Options:
   --pid <pid>  Stop this worker process
   --force      Override ownership and reachability checks
+
+Table output (-o table): not supported.
+Projectable fields: status, stopped, reason, pid, userDataPath, startedBy, forced
+
+Projection example:
+  opencove worker stop --fields status
+  {"status":"stopped"}
 
 Examples:
   opencove worker stop
@@ -652,6 +941,13 @@ Options:
   --force          Archive despite uncommitted changes
   --delete-branch  Delete the worktree branch
 
+Table output (-o table): not supported.
+Projectable fields: deletedBranchName, branchDeleteError, directoryCleanupError
+
+Projection example:
+  opencove worktree archive --space '<id>' --fields deletedBranchName
+  {"projectId":"p","activeSpaceId":"s","spaceId":"s","spaceDirectoryPath":"/repo","removed":{"deletedBranchName":"branch"}}
+
 Examples:
   opencove worktree archive --space space-123
 
@@ -668,6 +964,13 @@ Options:
   --space <id>     Select the space (required)
   --name <branch>  Name the worktree branch
 
+Table output (-o table): not supported.
+Projectable fields: path, head, branch
+
+Projection example:
+  opencove worktree create --space '<id>' --fields path
+  {"projectId":"p","activeSpaceId":"s","spaceId":"s","spaceDirectoryPath":"/repo","spaceName":"Main","worktree":{"path":"/repo"}}
+
 Examples:
   opencove worktree create --space space-123
 
@@ -682,6 +985,13 @@ List Git worktrees
 
 Options:
   --project <id>  Select the project
+
+Table output (-o table): not supported.
+Projectable fields: path, head, branch
+
+Projection example:
+  opencove worktree list --fields path
+  {"projectId":"p","repoPath":"/repo","worktreesRoot":"/trees","worktrees":[{"path":"/repo"}]}
 
 Examples:
   opencove worktree list

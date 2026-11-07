@@ -45,7 +45,17 @@ export interface CanvasNodeFrameDto {
   height: number
 }
 
+export interface CompactNodeDataDto {
+  kind: string
+  requirement?: string
+  status?: NodeTaskStatus
+  priority?: NodeTaskPriority
+  tags?: string[]
+  url?: string
+}
+
 export interface CanvasNodeSummaryDto {
+  data?: CompactNodeDataDto
   id: string
   kind: ReadableCanvasNodeKind
   title: string

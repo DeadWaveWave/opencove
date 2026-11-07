@@ -68,6 +68,7 @@ export type CanvasNodeKind =
   | 'unknown'
 
 export interface CanvasNodeSummary {
+  data?: import('./nodeControl').CompactNodeDataDto
   id: string
   kind: CanvasNodeKind
   title: string

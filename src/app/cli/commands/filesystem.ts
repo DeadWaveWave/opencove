@@ -1,3 +1,4 @@
+import { noResultOutput } from './declaredOutput'
 import { defineCommand } from '../core/command'
 import { option } from './remote'
 export const filesystemCommands = (
@@ -11,8 +12,38 @@ export const filesystemCommands = (
   defineCommand({
     path: ['fs', name],
     summary,
+    description:
+      'File access is limited to approved roots. Run "opencove mount list --project <id>" to see approved root URIs; select a mount with --mount when needed.',
     connect: true,
+    render:
+      name === 'ls'
+        ? {
+            listKey: 'entries',
+            fields: ['name', 'uri', 'kind'],
+            examples: [
+              'opencove fs ls --uri file:///repo --fields name',
+              '{"entries":[{"name":"README.md"}]}',
+            ],
+          }
+        : name === 'read'
+          ? {
+              fields: ['content'],
+              examples: [
+                'opencove fs read --uri file:///repo/README.md --fields content',
+                '{"content":"Hello"}',
+              ],
+            }
+          : name === 'stat'
+            ? {
+                fields: ['uri', 'kind', 'sizeBytes', 'mtimeMs'],
+                examples: [
+                  'opencove fs stat --uri file:///repo --fields kind',
+                  '{"kind":"directory"}',
+                ],
+              }
+            : noResultOutput,
     operation,
+    operationAliases: [mountedOperation],
     selectOperation: ({ options }) => (options.mount === undefined ? operation : mountedOperation),
     options: {
       uri: option('Select the file or directory URI', 'uri', true),

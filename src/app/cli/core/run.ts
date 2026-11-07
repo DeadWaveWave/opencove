@@ -1,7 +1,7 @@
 import { commands } from '../commands'
 import { getControlSurfaceOperation } from '../../../shared/contracts/controlSurface/operations'
 import { commandWords, globalArgv, globals, parseCommand, suggest } from './args'
-import { CliError, printError, usage } from './errors'
+import { CliError, printError, usage, validationError } from './errors'
 import { resolveConnection } from './context'
 import { invoke } from './transport'
 import { render, validateRenderOptions } from './render'
@@ -38,10 +38,11 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       usage(
         `Unknown command "${words.join(' ')}" for opencove.`,
         [
-          suggest(
-            words.join(' '),
-            commands.map(c => c.path.join(' ')),
-          ),
+          suggest(words.join(' '), [
+            ...new Set(
+              commands.flatMap(c => c.path.map((_, i) => c.path.slice(0, i + 1).join(' '))),
+            ),
+          ]),
           `Run "opencove${commands.some(c => c.path[0] === words[0]) ? ' ' + words[0] : ''} --help" to see its commands.`,
         ]
           .filter(Boolean)
@@ -54,7 +55,6 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       io.stdout.write(help(commands, command.path))
       return 0
     }
-    validateRenderOptions(args.options, command.render)
     let input = command.buildInput?.(args)
     const id =
       command.path.join(' ') === 'api call'
@@ -67,20 +67,53 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
     // The registry describes inputs, not guaranteed result fields. Fail before mutations
     // rather than discover an invalid projection after their effects have completed.
     if (
-      (operation?.kind === 'command' || command.mutation || command.stream) &&
+      ((command.rawQueryFields && operation?.kind === 'command') ||
+        command.stream ||
+        ((operation?.kind === 'command' || command.mutation) && !command.render?.fields)) &&
       args.options.fields !== undefined
     ) {
       usage(
         '--fields is unavailable for mutation operations',
-        'Omit --fields to receive the complete operation result',
+        command.render?.unavailable ??
+          'Generic commands cannot validate output paths before writing. Omit --fields to receive the complete result.',
       )
     }
-    if (operation?.contract === 'schema') {
+    const renderSpec =
+      command.selectRender?.(args) ?? (command.rawQueryFields ? { rawPaths: true } : command.render)
+    validateRenderOptions(args.options, renderSpec)
+    if (operation?.contract === 'schema' && !command.serverValidation) {
       try {
-        const parsed = operation.input.parse(input)
+        const validation = operation.input.safeParse(input)
+        if (!validation.success) {
+          operation.legacyNormalize?.(input)
+          throw validationError(id!, validation.error.issues)
+        }
+        const parsed = validation.data
         operation.normalize(parsed as never)
         input = parsed
       } catch (error) {
+        if (error instanceof CliError) {
+          throw error
+        }
+        if (
+          error &&
+          typeof error === 'object' &&
+          'details' in error &&
+          error.details &&
+          typeof error.details === 'object' &&
+          'issues' in error.details &&
+          Array.isArray(error.details.issues)
+        ) {
+          throw validationError(id!, error.details.issues, 2, 'common.invalid_input')
+        }
+        if (
+          error &&
+          typeof error === 'object' &&
+          'issues' in error &&
+          Array.isArray(error.issues)
+        ) {
+          throw validationError(id!, error.issues)
+        }
         usage(error instanceof Error ? error.message : String(error))
       }
     }
@@ -97,6 +130,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
           timeoutMs: Number(args.options.timeout ?? command.timeoutMs ?? 20000),
           fetch: io.fetch,
           signal: io.signal,
+          errorTargets: command.errorTargets,
         },
       )
     }
@@ -106,7 +140,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
     if (command.stream) {
       return Number(result)
     }
-    io.stdout.write(render(result, args.options, command.render))
+    io.stdout.write(render(result, args.options, renderSpec))
     return 0
   } catch (error) {
     const cliError =

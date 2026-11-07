@@ -1,3 +1,4 @@
+import { pluginOutputs } from './pluginOutputs'
 import { resolve } from 'node:path'
 import { defineCommand, type Command, type OperationId } from '../core/command'
 import { CliError, usage } from '../core/errors'
@@ -61,6 +62,7 @@ export function resolvePluginCommandTimeout(
 export const pluginCommands: Command[] = [
   defineCommand({
     path: ['plugin', 'guide'],
+    render: pluginOutputs.guide,
     summary: 'Read the plugin development and usage guide',
     connect: false,
     execute: async () => createPluginGuideResult(),
@@ -68,6 +70,7 @@ export const pluginCommands: Command[] = [
   ...Object.entries(operations).map(([name, operation]) =>
     defineCommand({
       path: ['plugin', name],
+      render: pluginOutputs[name],
       summary: summaries[name as keyof typeof summaries],
       connect: true,
       operation,

@@ -1,4 +1,10 @@
-import { spaceLocatorWire, nodeFrameWire } from '../nodeWire'
+import {
+  nodeCreateInput,
+  nodeUpdateInput,
+  normalizeNodeCreateInput,
+  nodeSpaceLocator,
+} from './nodeInputs'
+import { withStrictInput } from './nodeInputValidation'
 import {
   normalizeDeletePayload,
   normalizeGetPayload,
@@ -7,50 +13,24 @@ import {
 } from '../nodeQueriesNormalize'
 import { defineOperation } from '../defineOperation'
 import * as z from 'zod'
-import { normalizeCreatePayload } from '../nodeNormalize'
+const nodeIdInput = z.strictObject({ nodeId: z.string() })
+const nodeListInput = z
+  .strictObject({
+    space: nodeSpaceLocator.nullish(),
+    projectId: z.unknown().optional(),
+    kind: z.unknown().optional(),
+  })
+  .nullish()
+
 export const nodeCreateOperation = defineOperation({
   id: 'node.create',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
   summary: 'Create a canvas node, launching an agent or terminal when requested',
-  input: z.object({
-    kind: z.enum(['note', 'task', 'website', 'agent', 'terminal']),
-    space: z
-      .discriminatedUnion('kind', [
-        z.object({ kind: z.literal('spaceId'), spaceId: z.string() }),
-        z.object({
-          kind: z.literal('spaceName'),
-          name: z.string(),
-          projectId: z.unknown().optional(),
-        }),
-        z.object({
-          kind: z.literal('workerBranch'),
-          worker: z.string(),
-          branch: z.string(),
-          projectId: z.unknown().optional(),
-        }),
-        z.object({
-          kind: z.literal('workerPath'),
-          worker: z.string(),
-          path: z.string(),
-          projectId: z.unknown().optional(),
-        }),
-      ])
-      .nullish(),
-    projectId: z.unknown().optional(),
-    title: z.unknown().optional(),
-    frame: z
-      .object({
-        x: z.number().nullish(),
-        y: z.number().nullish(),
-        width: z.number().nullish(),
-        height: z.number().nullish(),
-      })
-      .nullish(),
-    data: z.unknown().optional(),
-  }),
-  normalize: normalizeCreatePayload,
+  input: nodeCreateInput,
+  normalize: normalizeNodeCreateInput,
+  legacyNormalize: withStrictInput(nodeCreateInput, normalizeNodeCreateInput),
   errors: [
     'space.not_found',
     'space.ambiguous',
@@ -72,10 +52,9 @@ export const nodeDeleteOperation = defineOperation({
   scope: 'interact',
   availability: 'always',
   summary: 'Delete a canvas node and clean up its runtime',
-  // Keep legacy rejection diagnostics and validation ordering unchanged.
-  input: z.looseObject({ nodeId: z.string() }),
+  input: nodeIdInput,
   normalize: normalizeDeletePayload,
-  legacyNormalize: normalizeDeletePayload,
+  legacyNormalize: withStrictInput(nodeIdInput, normalizeDeletePayload),
   errors: [
     'node.not_found',
     'persistence.unavailable',
@@ -89,10 +68,9 @@ export const nodeGetOperation = defineOperation({
   scope: 'read',
   availability: 'always',
   summary: 'Get a canvas node with its owning project and space',
-  // Keep legacy rejection diagnostics and validation ordering unchanged.
-  input: z.looseObject({ nodeId: z.string() }),
+  input: nodeIdInput,
   normalize: normalizeGetPayload,
-  legacyNormalize: normalizeGetPayload,
+  legacyNormalize: withStrictInput(nodeIdInput, normalizeGetPayload),
   errors: [
     'node.not_found',
     'persistence.unavailable',
@@ -106,18 +84,9 @@ export const nodeListOperation = defineOperation({
   scope: 'read',
   availability: 'always',
   summary: 'List canvas nodes filtered by project, space or kind',
-  // Keep legacy rejection diagnostics and validation ordering unchanged.
-  input: z
-    .looseObject({
-      space: spaceLocatorWire.nullish(),
-      // Legacy optionalString maps non-strings to null.
-      projectId: z.unknown().optional(),
-      // Legacy readable-kind accepts String(value), including ['plugin'], unchanged.
-      kind: z.unknown().optional(),
-    })
-    .nullish(),
+  input: nodeListInput,
   normalize: normalizeListPayload,
-  legacyNormalize: normalizeListPayload,
+  legacyNormalize: withStrictInput(nodeListInput, normalizeListPayload),
   errors: [
     'space.not_found',
     'space.ambiguous',
@@ -136,19 +105,9 @@ export const nodeUpdateOperation = defineOperation({
   scope: 'interact',
   availability: 'always',
   summary: 'Update a note, task or website node title, frame or content',
-  // Keep legacy rejection diagnostics and validation ordering unchanged.
-  input: z.looseObject({
-    // agent/terminal reach normalize to retain node.unsupported_operation.
-    kind: z.enum(['note', 'task', 'website', 'agent', 'terminal']),
-    nodeId: z.string(),
-    // Legacy optionalString maps non-strings to null.
-    title: z.unknown().optional(),
-    frame: nodeFrameWire.nullish(),
-    // Legacy data is opaque and passed through unchanged, except nullish defaults.
-    data: z.unknown().optional(),
-  }),
+  input: nodeUpdateInput,
   normalize: normalizeUpdatePayload,
-  legacyNormalize: normalizeUpdatePayload,
+  legacyNormalize: withStrictInput(nodeUpdateInput, normalizeUpdatePayload),
   errors: [
     'node.not_found',
     'node.unsupported_operation',

@@ -1,3 +1,4 @@
+import { remoteOutputs } from './outputContracts'
 import { defineCommand, type Command, type OptionSpec, type OperationId } from '../core/command'
 import { usage } from '../core/errors'
 
@@ -20,6 +21,7 @@ export function mapped(
     path: path.split(' '),
     operation,
     summary,
+    render: remoteOutputs[operation],
     connect: true,
     options: Object.fromEntries(Object.entries(fields).map(([flag, [, spec]]) => [flag, spec])),
     buildInput: ({ options }) => {

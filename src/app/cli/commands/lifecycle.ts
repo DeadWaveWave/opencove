@@ -1,3 +1,4 @@
+import { lifecycleOutputs } from './lifecycleOutputs'
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -159,6 +160,7 @@ async function childCommand(ctx: CommandContext, worker: boolean, action: string
 export const lifecycleCommands = [
   defineCommand({
     path: ['worker', 'start'],
+    render: lifecycleOutputs.start,
     mutation: true,
     summary: 'Start a local worker in the foreground',
     connect: false,
@@ -184,6 +186,7 @@ export const lifecycleCommands = [
   ...(['status', 'stop'] as const).map(name =>
     defineCommand({
       path: ['worker', name],
+      render: lifecycleOutputs[name],
       mutation: name === 'stop',
       summary: name === 'status' ? 'Inspect local worker status' : 'Stop a local worker',
       connect: false,
@@ -229,6 +232,7 @@ export const lifecycleCommands = [
   ...(['inspect', 'verify', 'prepare'] as const).map(name =>
     defineCommand({
       path: ['runtime', name],
+      render: lifecycleOutputs[name],
       mutation: name === 'prepare',
       summary: {
         inspect: 'Inspect the runtime build',

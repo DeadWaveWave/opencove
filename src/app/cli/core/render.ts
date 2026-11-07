@@ -1,6 +1,7 @@
 import type { RenderSpec } from './command'
 import { usage } from './errors'
-function get(value: unknown, key: string): unknown {
+import { hasPath, project } from './projection'
+export function get(value: unknown, key: string): unknown {
   return key
     .split('.')
     .reduce<unknown>(
@@ -11,59 +12,91 @@ function get(value: unknown, key: string): unknown {
       value,
     )
 }
-function fields(value: unknown, prefix = ''): string[] {
-  return value && typeof value === 'object'
-    ? Object.entries(value).flatMap(([key, v]) => [prefix + key, ...fields(v, `${prefix}${key}.`)])
-    : []
+function selectedFields(options: Record<string, unknown>, spec: RenderSpec): string[] | undefined {
+  if (options.fields === undefined) {
+    return spec.defaultFields
+  }
+  const requested = String(options.fields)
+    .split(',')
+    .map(key => key.trim())
+  if (requested.some(key => key.split('.').some(part => /^-?\d+$/.test(part)))) {
+    usage(
+      'Numeric field segments are not supported. Use item fields such as nodes.id to select id from every array element; arrays remain arrays.',
+    )
+  }
+  if (spec.rawPaths) {
+    return requested
+  }
+  if (!spec.fields) {
+    usage('--fields is unavailable for this command. Available fields: none', spec.unavailable)
+  }
+  const keys = String(options.fields)
+    .split(',')
+    .map(key => {
+      const trimmed = key.trim()
+      const itemKey = spec.listKey ?? spec.itemKey
+      return itemKey && trimmed.startsWith(itemKey + '.')
+        ? trimmed.slice(itemKey.length + 1)
+        : trimmed
+    })
+  const unknown = keys.filter(key => !spec.fields!.includes(key))
+  if (unknown.length) {
+    usage(`Unknown fields: ${unknown.join(', ')}. Available fields: ${spec.fields.join(', ')}`)
+  }
+  return keys
 }
 export function validateRenderOptions(options: Record<string, unknown>, spec: RenderSpec = {}) {
+  selectedFields(options, spec)
   if (options.output === 'table' && !spec.columns?.length) {
     usage('Table output is unavailable for this command')
   }
 }
 export function render(value: unknown, options: Record<string, unknown>, spec: RenderSpec = {}) {
   validateRenderOptions(options, spec)
-  const list = spec.listKey ? get(value, spec.listKey) : value
-  const rows = Array.isArray(list) ? list : [list]
-  if (options.fields) {
-    const keys = String(options.fields).split(',')
-    let matches = 0
-    const projected = rows.map(row => {
-      const out: Record<string, unknown> = Object.create(null)
-      for (const key of keys) {
-        const v = get(row, key)
-        if (v === undefined) {
-          continue
-        }
-        matches++
-        let target = out
-        const parts = key.split('.')
-        for (const part of parts.slice(0, -1)) {
-          target = (target[part] ??= Object.create(null)) as Record<string, unknown>
-        }
-        target[parts.at(-1)!] = v
-      }
-      return out
-    })
-    if (!matches) {
-      usage(
-        `No matching fields. Available fields: ${[...new Set(rows.flatMap(row => fields(row)))].join(', ')}`,
-      )
+  const keys = selectedFields(options, spec)
+  const itemKey =
+    spec.itemAtRoot && spec.itemKey && get(value, spec.itemKey) === undefined
+      ? undefined
+      : (spec.listKey ?? spec.itemKey)
+  const list = itemKey ? get(value, itemKey) : value
+  const isList = !!spec.listKey || spec.list
+  const rows = (isList ? (Array.isArray(list) ? list : []) : [list]).map(row => {
+    if (!spec.envelopeFields) {
+      return row
     }
-    value =
-      spec.listKey && value && typeof value === 'object'
-        ? { ...value, [spec.listKey]: projected }
-        : Array.isArray(list)
-          ? projected
-          : projected[0]
+    return {
+      ...Object.fromEntries(
+        Object.entries(spec.envelopeFields).map(([field, path]) => [field, get(value, path)]),
+      ),
+      ...(row as object),
+    }
+  })
+  if (keys && spec.rawPaths) {
+    const unknown = keys.filter(key => !key || !hasPath(value, key.split('.')))
+    if (unknown.length) {
+      usage(`Unknown output paths: ${unknown.join(', ')}`)
+    }
+  }
+  if (keys) {
+    const projected = rows.map(row =>
+      project(
+        row,
+        keys.map(key => key.split('.')),
+      ),
+    )
+    const narrowed = isList ? projected : projected[0]
+    value = itemKey ? { ...(value as object), [itemKey]: narrowed } : narrowed
   }
   if (options.output === 'table') {
-    const columns = spec.columns!
+    const columns = options.fields !== undefined ? keys! : spec.columns!
     const cells = [
       columns,
       ...rows.map(row =>
         columns.map(key => {
-          const v = get(row, key)
+          const paths = spec.tableFields?.[key] ?? [key]
+          const v = paths
+            .map(path => get(row, path))
+            .find(item => item !== undefined && item !== null)
           return v === undefined ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v)
         }),
       ),

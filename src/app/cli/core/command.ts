@@ -8,6 +8,7 @@ export interface OptionSpec {
   required?: boolean
   description: string
   valueName?: string
+  conflicts?: string[]
   fileVariant?: true
 }
 export interface PositionalSpec {
@@ -15,7 +16,18 @@ export interface PositionalSpec {
   required?: boolean
 }
 export interface RenderSpec {
+  fields?: string[]
+  defaultFields?: string[]
+  list?: boolean
+  /** The same declared item can be returned at the root or inside itemKey. */
+  itemAtRoot?: boolean
+  unavailable?: string
+  itemKey?: string
+  rawPaths?: boolean
+  examples?: string[]
+  tableFields?: Record<string, string[]>
   listKey?: string
+  envelopeFields?: Record<string, string>
   columns?: string[]
 }
 export interface CommandArgs {
@@ -42,11 +54,24 @@ export interface Command {
   timeoutMs?: number
   connect: boolean
   selectOperation?(args: CommandArgs): OperationId
+  operationAliases?: OperationId[]
+  operationCommand?: string
   operation?: OperationId
   buildInput?(args: CommandArgs): unknown
   execute?(ctx: CommandContext): Promise<CommandResult>
+  errorTargets?: ErrorTarget[]
+  rawQueryFields?: boolean
+  serverValidation?: boolean
+  selectRender?(args: CommandArgs): RenderSpec
   render?: RenderSpec
 }
 export function defineCommand(command: Command): Command {
   return command
+}
+
+export interface ErrorTarget {
+  entity?: string
+  codes: string[]
+  fields: Record<string, string>
+  listCommand: string
 }
