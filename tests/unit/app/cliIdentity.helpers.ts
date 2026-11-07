@@ -38,7 +38,12 @@ export function identityFixture(inside = true) {
   const fetch = vi.fn(async (_url: unknown, init?: RequestInit) => {
     const request = JSON.parse(String(init?.body))
     requests.push(request)
-    return new Response(JSON.stringify({ ok: true, value: values[request.id] ?? {} }))
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        value: Object.hasOwn(values, request.id) ? values[request.id] : {},
+      }),
+    )
   })
   const io: CliIo = {
     stdout: {

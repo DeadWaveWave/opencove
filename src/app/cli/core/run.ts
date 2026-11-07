@@ -1,3 +1,7 @@
+import { unknownOperation } from './operationErrors'
+import { validateUriInputs } from './uriInputs'
+import { nodeFieldNotice } from './nodeFields'
+import { listLimitNotice } from './listOutput'
 import { promptValidationPresentation } from '../../../shared/errors/agentPromptError'
 import { commands } from '../commands'
 import { getControlSurfaceOperation } from '../../../shared/contracts/controlSurface/operations'
@@ -5,7 +9,7 @@ import { commandWords, globalArgv, globals, parseCommand, suggest } from './args
 import { CliError, inputErrorMessage, printError, usage, validationError } from './errors'
 import { resolveConnection } from './context'
 import { invoke } from './transport'
-import { rawRenderSpec, render, validateRenderOptions } from './render'
+import { get, rawRenderSpec, render, validateRenderOptions } from './render'
 import { help } from './help'
 import type { CliIo } from './io'
 import type { OperationId } from './command'
@@ -95,7 +99,16 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
         : (command.selectOperation?.(args) ?? command.operation)
     const operation = (id ? getControlSurfaceOperation(id) : undefined) as CliOperation | undefined
     if (id && !operation) {
-      usage(`Unknown operation: ${id}`)
+      unknownOperation(id)
+    }
+    if (
+      command.path.join(' ') === 'api schema' &&
+      !getControlSurfaceOperation(args.positionals[0])
+    ) {
+      unknownOperation(args.positionals[0])
+    }
+    if (id) {
+      validateUriInputs(id, input)
     }
     // The registry describes inputs, not guaranteed result fields. Fail before mutations
     // rather than discover an invalid projection after their effects have completed.
@@ -181,7 +194,9 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
         selfUnavailable(spec.selector)
       }
     }
-    const connection = command.connect ? await resolveConnection(args.options, io) : undefined
+    const needsConnection =
+      command.connect || (command.path.join(' ') === 'api ops' && io.env.OPENCOVE_ENV === '1')
+    const connection = needsConnection ? await resolveConnection(args.options, io) : undefined
     // Selector reads and the final query share a per-run snapshot. A write ends
     // that snapshot so a later read cannot reuse data from before its effects.
     const reads = new Map<string, Promise<unknown>>()
@@ -240,11 +255,28 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
     if (command.stream) {
       return Number(result)
     }
-    io.stdout.write(
+    const output =
       command.textOutput && !args.options.output && args.options.fields === undefined
         ? command.textOutput(result)
-        : render(result, args.options, renderSpec),
+        : render(result, args.options, renderSpec)
+    const notice = nodeFieldNotice(result, args.options, renderSpec)
+    if (notice) {
+      io.stderr.write(notice + '\n')
+    }
+    const tableListKey = args.options.output === 'table' ? renderSpec?.listKey : undefined
+    const listNotice = listLimitNotice(
+      tableListKey ? get(result, tableListKey) : result,
+      args.options.limit,
+      command.path.join(' ') === 'api ops'
+        ? args.options.domains
+          ? 'domains'
+          : 'operations'
+        : (tableListKey ?? 'items'),
     )
+    if (listNotice) {
+      io.stderr.write(listNotice + '\n')
+    }
+    io.stdout.write(output)
     return 0
   } catch (error) {
     let cliError =

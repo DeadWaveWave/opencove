@@ -13,8 +13,10 @@ Options:
   --space <id>    Orient yourself in this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>  Orient yourself in this project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
+List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
+
 Table output (-o table): not supported.
-Projectable fields: self, self.caller, self.scope, self.projectId, self.spaceId, self.nodeId, self.sessionId, project, project.id, project.name, project.path, space, space.id, space.name, space.directory, nodes, nodes.id, nodes.kind, nodes.title, nodes.state, nodes.sessionStatus, next
+Projectable fields: self, self.caller, self.scope, self.projectId, self.spaceId, self.nodeId, self.sessionId, project, project.id, project.name, project.path, space, space.id, space.name, space.directoryPath, nodes, nodes.id, nodes.kind, nodes.title, nodes.state, nodes.sessionStatus, next
 
 Projection example:
   opencove context --space "@self" --fields space.name
@@ -33,11 +35,12 @@ exports[`documents node get offline 1`] = `
 
 Get a canvas node
 
-data.status is task status; top-level status is agent or terminal runtime status.
+Content by kind: note → data.text; task → data.requirement, data.status, data.priority, data.tags; website → data.url; agent/terminal → status, sessionId. node list returns summaries: use node get for full note text and other content. A requested field absent on a returned kind produces one stderr notice; stdout remains projected JSON.
 
 Options:
-  --node <id>     Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
-  --project <id>  Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --node <id>         Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
+  --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.content, data.text, data.requirement, data.status, data.priority, data.tags, data.linkedAgentNodeId, data.url, data.pinned, data.sessionMode, data.profileId, data.provider, data.prompt, data.model, data.effectiveModel, data.executionDirectory, data.expectedDirectory, data.taskId, data.runtimeKind

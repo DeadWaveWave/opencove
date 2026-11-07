@@ -1,5 +1,6 @@
 import type { Command, CommandArgs, OptionSpec } from './command'
 import type { CliIo } from './io'
+import { closeNames } from './suggestions'
 import { CliError } from './errors'
 import { sessionIdentity, type Invoke } from './identity'
 import type {
@@ -16,6 +17,8 @@ type Candidate = {
   title?: string
   name?: string
   spaceId?: string | null
+  spaceName?: string | null
+  preview?: string
 }
 const locatorKeys = ['space', 'space-name', 'worker', 'branch', 'path']
 const uuidPattern = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i
@@ -32,6 +35,7 @@ async function exactTarget(kind: 'node' | 'space', selector: string, invoke: Inv
             kind === 'node'
               ? (found as GetNodeResult).node.projectId
               : (found as GetSpaceResult).projectId,
+          spaceId: kind === 'node' ? (found as GetNodeResult).node.spaceId : undefined,
         }
       : undefined
   } catch (error) {
@@ -78,7 +82,13 @@ export function selectorDescription(spec: OptionSpec): string {
   )
 }
 
-function match(kind: Kind, selector: string, candidates: Candidate[]): string {
+function match(
+  kind: Kind,
+  selector: string,
+  candidates: Candidate[],
+  scope = 'all projects',
+  wrongKind?: string,
+): string {
   const ids = candidates.filter(candidate => candidate.id === selector)
   const names = candidates.filter(candidate => (candidate.title ?? candidate.name) === selector)
   const matches = ids.length
@@ -94,10 +104,21 @@ function match(kind: Kind, selector: string, candidates: Candidate[]): string {
     throw new CliError(
       `${kind}.not_found`,
       1,
-      `${label} ${JSON.stringify(selector)} was not found`,
-      selector.length < 6 && candidates.some(candidate => candidate.id.startsWith(selector))
-        ? `ID prefixes need at least 6 characters. ${hint}`
-        : hint,
+      `${label} ${JSON.stringify(selector)} was not found; searched ${scope}.${wrongKind ? ` This is a known ${wrongKind} ID, not a ${kind} ID.` : ''}`,
+      [
+        selector.length < 6 && candidates.some(candidate => candidate.id.startsWith(selector))
+          ? 'ID prefixes need at least 6 characters.'
+          : '',
+        closeNames(
+          selector,
+          candidates.map(candidate => candidate.title ?? candidate.name ?? ''),
+        )
+          .map(name => `Suggested name: ${JSON.stringify(name)}.`)
+          .join(' '),
+        hint,
+      ]
+        .filter(Boolean)
+        .join(' '),
     )
   }
   if (matches.length > 1) {
@@ -112,6 +133,8 @@ function match(kind: Kind, selector: string, candidates: Candidate[]): string {
           kind: candidate.kind ?? kind,
           ...(kind === 'node' ? { title: candidate.title } : { name: candidate.name }),
           spaceId: candidate.spaceId ?? null,
+          ...(kind === 'node' ? { spaceName: candidate.spaceName ?? null } : {}),
+          ...(candidate.preview !== undefined ? { preview: candidate.preview } : {}),
         })),
       },
     )
@@ -128,20 +151,66 @@ export async function resolveSelectors(
   const identity = sessionIdentity(io.env, invoke)
   const o = args.options
   let projectId: string | undefined
+  const projects = async () =>
+    ((await invoke('project.list', null)) as ListProjectsResult).projects ?? []
+  const wrongKind = async (kind: Kind, selector: string) => {
+    if (kind !== 'project' && (await projects()).some(candidate => candidate.id === selector)) {
+      return 'project'
+    }
+    for (const other of ['space', 'node'] as const) {
+      // Probe in order so a known kind avoids further diagnostic reads.
+      // eslint-disable-next-line no-await-in-loop
+      if (other !== kind && (await exactTarget(other, selector, invoke))) {
+        return other
+      }
+    }
+    return undefined
+  }
+  const scopedMatch = async (
+    kind: Kind,
+    selector: string,
+    candidates: Candidate[],
+    scope: string,
+  ) => {
+    try {
+      return match(kind, selector, candidates, scope)
+    } catch (error) {
+      if (!(error instanceof CliError)) {
+        throw error
+      }
+      if (error.code === `${kind}.not_found`) {
+        return match(kind, selector, candidates, scope, await wrongKind(kind, selector))
+      }
+      if (error.code === 'cli.ambiguous' && kind === 'node') {
+        const details = error.details as { candidates: Candidate[] }
+        const spaces = ((await invoke('space.list', { projectId })) as ListSpacesResult).spaces
+        await Promise.all(
+          details.candidates.map(async candidate => {
+            candidate.spaceName = spaces.find(space => space.id === candidate.spaceId)?.name ?? null
+            if (candidate.kind === 'note') {
+              const detail = (await invoke('node.get', { nodeId: candidate.id })) as GetNodeResult
+              const text = detail.node.data.kind === 'note' ? detail.node.data.text : ''
+              const line = text.replace(/\s+/gu, ' ').trim()
+              candidate.preview =
+                line.length > 60 ? line.slice(0, 59).replace(/[\uD800-\uDBFF]$/, '') + '…' : line
+            }
+          }),
+        )
+      }
+      throw error
+    }
+  }
   if (command.options?.project?.selector && o.project !== undefined) {
     const selector = String(o.project)
     projectId =
       selector === '@self'
         ? await identity.self('project')
-        : match(
-            'project',
-            selector,
-            ((await invoke('project.list', null)) as ListProjectsResult).projects,
-          )
+        : await scopedMatch('project', selector, await projects(), 'all projects')
     o.project = projectId
   }
   // Only a project the caller chose constrains exact IDs; a defaulted one scopes names only.
   const explicitProject = projectId !== undefined && args.explicitOptions?.has('project')
+  const explicitSpace = args.explicitOptions?.has('space') === true
   const checkProject = (kind: 'node' | 'space', selector: string, targetProjectId: string) => {
     if (explicitProject && targetProjectId !== projectId) {
       throw new CliError(
@@ -199,9 +268,12 @@ export async function resolveSelectors(
       // eslint-disable-next-line no-await-in-loop
       const project = await scopeProject()
       // eslint-disable-next-line no-await-in-loop
-      const result = await invoke(kind === 'space' ? 'space.list' : 'node.list', {
+      const result = (await invoke(kind === 'space' ? 'space.list' : 'node.list', {
         projectId: project,
-      })
+        ...(kind === 'node' && o.space !== undefined
+          ? { space: { kind: 'spaceId', spaceId: o.space } }
+          : {}),
+      })) as ListSpacesResult | ListNodesResult
       const candidates =
         kind === 'space' ? (result as ListSpacesResult).spaces : (result as ListNodesResult).nodes
       // Legacy IDs need the same global exact-ID precedence as UUIDs. Only probe
@@ -214,7 +286,12 @@ export async function resolveSelectors(
           return selector
         }
       }
-      return match(kind, selector, candidates)
+      return scopedMatch(
+        kind,
+        selector,
+        candidates,
+        `${(project ?? result.projectId) ? `project ${JSON.stringify(project ?? result.projectId)}` : 'the active project'}${kind === 'node' && o.space !== undefined ? `, space ${JSON.stringify(o.space)}` : ''}`,
+      )
     }
     const resolved = Array.isArray(o[kind])
       ? Promise.all((o[kind] as string[]).map(resolveOne))
@@ -222,6 +299,38 @@ export async function resolveSelectors(
     // Space resolution establishes the scope before resolving node selectors.
     // eslint-disable-next-line no-await-in-loop
     o[kind] = await resolved
+    if (kind === 'node' && explicitSpace) {
+      // All selector forms pass the same membership check before execution.
+      // Exact-ID probes are reused by the per-run read cache.
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.all(
+        [o.node].flat().map(async id => {
+          const target = await exactTarget('node', String(id), invoke)
+          if (!target) {
+            throw new CliError(
+              'node.not_found',
+              1,
+              `Node ${JSON.stringify(id)} was not found in the selected space ${JSON.stringify(o.space)}`,
+              'Run "opencove node list --space <selector>" to find available targets.',
+            )
+          }
+          if (target.spaceId !== o.space) {
+            throw new CliError(
+              'node.not_found',
+              1,
+              `Node ${JSON.stringify(id)} belongs to ${target.spaceId === null ? 'no space' : `space ${JSON.stringify(target.spaceId)}`}, not to the selected space ${JSON.stringify(o.space)}`,
+              'Drop --space to address a node by its full ID across spaces.',
+            )
+          }
+        }),
+      )
+    }
+    if (kind === 'space' && command.options?.node && !explicitProject) {
+      // An explicitly chosen space may belong to a different project than the session.
+      // eslint-disable-next-line no-await-in-loop
+      const found = await exactTarget('space', String(o.space), invoke)
+      projectId = found?.projectId ?? projectId
+    }
   }
   return identity
 }

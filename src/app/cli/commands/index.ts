@@ -16,7 +16,8 @@ import {
   getControlSurfaceOperation,
 } from '../../../shared/contracts/controlSurface/operations'
 import { defineCommand, type Command } from '../core/command'
-import { CliError, usage } from '../core/errors'
+import { unknownOperation } from '../core/operationErrors'
+import { CliError } from '../core/errors'
 import { nodeCommands, stringOption } from './nodes'
 export const commands: Command[] = [
   ...identityCommands,
@@ -83,6 +84,25 @@ export const commands: Command[] = [
     options: { project: stringOption('Project ID') },
     buildInput: ({ options: o }) => (o.project ? { projectId: o.project } : null),
     render: spaceListOutput,
+    description:
+      'Lists space IDs, names, directories, nodeIds and nodeCount without full nodes. Use --fields nodes to include node objects.',
+    async execute({ input, invoke, options }) {
+      const result = (await invoke(
+        'space.list',
+        input,
+      )) as import('../../../shared/contracts/dto').ListSpacesResult
+      const includeNodes = String(options.fields ?? '')
+        .split(',')
+        .some(field => /^((spaces\.)?nodes)(\.|$)/.test(field.trim()))
+      return {
+        ...result,
+        spaces: result.spaces.map(({ nodes, ...space }) => ({
+          ...space,
+          nodeCount: space.nodeIds?.length ?? nodes?.length ?? 0,
+          ...(includeNodes ? { nodes } : {}),
+        })),
+      }
+    },
   }),
   defineCommand({
     path: ['space', 'get'],
@@ -97,7 +117,7 @@ export const commands: Command[] = [
     path: ['api', 'ops'],
     summary: 'List Control Surface operations with their kind, contract and CLI command',
     get description() {
-      return `The full JSON catalog is large (about ${Math.round(Buffer.byteLength(JSON.stringify(operationCatalog())) / 1024)} KB). Start with --domains, then narrow with --prefix or --search and --fields.\n\nWith --domains, output is an array of summaries with these projectable fields:\n  domain: Operation ID prefix before the first dot\n  operations: Total operations in the domain after filtering\n  schema: Operations with a schema input contract\n  commands: Command-kind operations, not dedicated CLI commands`
+      return `The full JSON catalog is large (about ${Math.round(Buffer.byteLength(JSON.stringify(operationCatalog())) / 1024)} KB). Start with --domains, then narrow with --prefix or --search and --fields. Each operation includes scope (read, interact or admin); inside OpenCove, allowed reflects your whoami scope. Outside OpenCove the catalog is offline and allowed is omitted.\n\nWith --domains, output is an array of summaries with these projectable fields:\n  domain: Operation ID prefix before the first dot\n  operations: Total operations in the domain after filtering\n  schema: Operations with a schema input contract\n  commandOperations: Command-kind operations, not dedicated CLI commands`
     },
     connect: false,
     options: {
@@ -128,8 +148,9 @@ export const commands: Command[] = [
         description: 'Filter by input contract availability',
       },
     },
-    async execute({ options: o }) {
-      const operations = operationCatalog().filter(
+    async execute({ options: o, io, whoami }) {
+      const scope = io.env.OPENCOVE_ENV === '1' ? (await whoami()).scope : undefined
+      const operations = operationCatalog(scope).filter(
         op =>
           (!o.kind || op.kind === o.kind) &&
           (!o.contract || op.contract === o.contract) &&
@@ -142,14 +163,19 @@ export const commands: Command[] = [
       }
       const domains = new Map<
         string,
-        { domain: string; operations: number; schema: number; commands: number }
+        { domain: string; operations: number; schema: number; commandOperations: number }
       >()
       for (const op of operations) {
         const domain = op.id.split('.')[0]
-        const row = domains.get(domain) ?? { domain, operations: 0, schema: 0, commands: 0 }
+        const row = domains.get(domain) ?? {
+          domain,
+          operations: 0,
+          schema: 0,
+          commandOperations: 0,
+        }
         row.operations++
         row.schema += Number(op.contract === 'schema')
-        row.commands += Number(op.kind === 'command')
+        row.commandOperations += Number(op.kind === 'command')
         domains.set(domain, row)
       }
       return [...domains.values()]
@@ -158,20 +184,18 @@ export const commands: Command[] = [
       options.domains
         ? {
             list: true,
-            fields: ['domain', 'operations', 'schema', 'commands'],
-            columns: ['domain', 'operations', 'schema', 'commands'],
+            fields: ['domain', 'operations', 'schema', 'commandOperations'],
+            columns: ['domain', 'operations', 'schema', 'commandOperations'],
           }
         : commands.find(c => c.path.join(' ') === 'api ops')!.render!,
     render: {
       list: true,
       examples: [
-        'opencove api ops --prefix node --fields id,command',
-        '[{"id":"node.create","command":"opencove node create"}, ...]',
+        'opencove api ops --prefix node --fields id,cliCommand',
+        '[{"id":"node.create","cliCommand":"opencove node create"}, ...]',
       ],
-      fields: ['id', 'kind', 'contract', 'summary', 'command'],
-      defaultFields: ['id', 'kind', 'contract', 'summary', 'command'],
-      columns: ['id', 'kind', 'contract', 'COMMAND'],
-      tableFields: { COMMAND: ['command'] },
+      fields: ['id', 'kind', 'contract', 'summary', 'cliCommand', 'scope', 'allowed'],
+      columns: ['id', 'kind', 'contract', 'cliCommand', 'scope', 'allowed'],
     },
   }),
   defineCommand({
@@ -210,7 +234,7 @@ export const commands: Command[] = [
     async execute({ positionals, options }) {
       const op = getControlSurfaceOperation(positionals[0])
       if (!op) {
-        usage('Unknown operation')
+        unknownOperation(positionals[0])
       }
       if (op.contract !== 'schema') {
         throw new CliError('api.schema_unavailable', 1, `No input schema for ${op.id}`)
@@ -291,18 +315,26 @@ function dedicatedCommand(id: string): string | undefined {
   return command ? (command.operationCommand ?? `opencove ${command.path.join(' ')}`) : undefined
 }
 
-function operationCatalog() {
-  return CONTROL_SURFACE_OPERATIONS.map(({ id, kind, contract, summary }) => ({
+function operationCatalog(callerScope?: string) {
+  const levels = ['read', 'interact', 'admin']
+  return CONTROL_SURFACE_OPERATIONS.map(({ id, kind, contract, summary, scope }) => ({
     id,
     kind,
     contract,
     summary,
-    command: dedicatedCommand(id),
+    cliCommand: dedicatedCommand(id),
+    scope,
+    ...(callerScope !== undefined
+      ? { allowed: levels.indexOf(callerScope) >= levels.indexOf(scope) }
+      : {}),
   }))
 }
 
 function schemaVariants(id: string) {
   const op = getControlSurfaceOperation(id)
+  if (!op && id) {
+    unknownOperation(id)
+  }
   const input = op?.contract === 'schema' ? op.input : undefined
   return input instanceof z.ZodDiscriminatedUnion
     ? input.options.flatMap(branch => {

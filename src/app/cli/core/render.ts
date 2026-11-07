@@ -1,4 +1,5 @@
 import type { RenderSpec } from './command'
+import { limitOutput } from './listOutput'
 import { usage } from './errors'
 import { hasPath, outputPaths, project } from './projection'
 
@@ -136,8 +137,8 @@ export function render(value: unknown, options: Record<string, unknown>, spec: R
   if (options.output === 'table') {
     const columns = options.fields !== undefined ? keys! : spec.columns!
     const cells = [
-      columns,
-      ...rows.map(row =>
+      columns.map(column => column.toUpperCase()),
+      ...rows.slice(0, Number(options.limit) > 0 ? Number(options.limit) : undefined).map(row =>
         columns.map(key => {
           const paths = ownValue(spec.tableFields, key) ?? [key]
           const v = paths
@@ -159,5 +160,11 @@ export function render(value: unknown, options: Record<string, unknown>, spec: R
         .join('\n') + '\n'
     )
   }
-  return JSON.stringify(value ?? null, null, options.pretty ? 2 : undefined) + '\n'
+  return (
+    JSON.stringify(
+      limitOutput(value ?? null, options.limit),
+      null,
+      options.pretty ? 2 : undefined,
+    ) + '\n'
+  )
 }

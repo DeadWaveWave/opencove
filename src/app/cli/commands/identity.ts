@@ -62,7 +62,7 @@ export const identityCommands = [
         'space',
         'space.id',
         'space.name',
-        'space.directory',
+        'space.directoryPath',
         'nodes',
         'nodes.id',
         'nodes.kind',
@@ -133,7 +133,9 @@ export const identityCommands = [
       return {
         self: identity ?? null,
         project: project ? { id: project.id, name: project.name, path: project.path } : null,
-        space: space ? { id: space.id, name: space.name, directory: space.directoryPath } : null,
+        space: space
+          ? { id: space.id, name: space.name, directoryPath: space.directoryPath }
+          : null,
         nodes: nodes
           .filter(node => node.id !== identity?.nodeId)
           .map(node => ({

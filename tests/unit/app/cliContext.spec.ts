@@ -25,7 +25,7 @@ it('orients a session, excludes self and chooses task versus runtime state', asy
       sessionId: who.sessionId,
     },
     project: { id: project.id, name: project.name, path: project.path },
-    space: { id: space.id, name: space.name, directory: space.directoryPath },
+    space: { id: space.id, name: space.name, directoryPath: space.directoryPath },
     nodes: [
       { id: 'task', kind: 'task', title: 'Review', state: 'doing' },
       { id: 'agent', kind: 'agent', title: 'Agent', state: 'idle', sessionStatus: 'running' },

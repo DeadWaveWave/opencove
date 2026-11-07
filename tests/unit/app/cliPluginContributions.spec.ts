@@ -32,6 +32,12 @@ describe('plugin contribution CLI parsing before connection', () => {
   })
   it.each([
     {
+      args: ['open', 'sample', '--node', 'x', '--space', 'space'],
+      id: 'plugin.window.open',
+      kind: 'command',
+      payload: { pluginId: 'sample', nodeId: 'x' },
+    },
+    {
       args: ['open', 'sample', '--project', 'project-a'],
       id: 'plugin.window.open',
       kind: 'command',
@@ -72,7 +78,6 @@ describe('plugin contribution CLI parsing before connection', () => {
     ['run', 'sample', 'status', '--params', '{}', '--params', '{}'],
     ['skill', 'sample', 'usage', 'extra'],
     ['open', 'sample', '--node', 'x', '--node', 'y'],
-    ['open', 'sample', '--node', 'x', '--space', 'space'],
     ['windows'],
   ])('rejects incomplete or ambiguous arguments %j', (...args) => {
     expect(() => parsePluginCommand(['plugin', ...args])).toThrow()

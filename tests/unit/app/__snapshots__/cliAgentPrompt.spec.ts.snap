@@ -20,6 +20,7 @@ Options:
   --text <text>         Prompt text; use this or --text-file
   --text-file <path|->  Read text from a UTF-8 file, or use - for stdin
   --timeout <duration>  Total delivery timeout, e.g. 15s or 15000ms (default: 15s; maximum: 60s)
+  --space <selector>    Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>        Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.

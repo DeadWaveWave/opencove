@@ -67,7 +67,7 @@ export const commandExamples: Record<string, string[]> = {
   'api ops': [
     'opencove api ops --domains',
     'opencove api ops --search create',
-    'opencove api ops --prefix node --fields id,command',
+    'opencove api ops --prefix node --fields id,cliCommand',
     'opencove api ops --kind query --contract schema',
   ],
   'api schema': [

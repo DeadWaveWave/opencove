@@ -71,7 +71,7 @@ Space locator 不推断 cwd：使用 `--space`、`--space-name` 或 `--worker` �
 ## Help and introspection
 
 `opencove --help` 显示分组及全局选项；`opencove <group> --help` 列子命令；命令级 `--help` 显示参数、示例与全局选项提示，不连接 Worker。
-`api ops` 离线列出 operation；`api schema` 只为有 schema 的 operation 提供输入 JSON Schema。
+`api ops` 在 OpenCove session 外离线列出 operation；session 内会读取 `whoami` 的 scope；`api schema` 只为有 schema 的 operation 提供输入 JSON Schema。
 `api call <operation-id> --input-file request.json` 使用同一验证与连接路径。
 
 开发构建：`pnpm build:cli`；入口为 `node out/cli/opencove.mjs`。
@@ -122,7 +122,7 @@ is null. No new Control Surface operations are introduced.
 | Command | Output contract | Projection / table |
 | --- | --- | --- |
 | `agent list` | `{epoch, seq, agents: [snapshot + title]}` | Snapshot fields + title; table columns: nodeId, title, provider, state, blockedReason, turn.startedAt, quality |
-| `agent get --node <selector>` | Snapshot + title, or null when no run is registered | Snapshot fields + title; JSON only |
+| `agent get --node <selector>` | Snapshot + title; non-agent nodes or absent run state fail with agent.not_found (exit 1) | Snapshot fields + title; JSON only |
 | `agent wait --node <selector> ... --until <condition>` | `{until, mode, agents: [snapshot]}`; turn-end adds endedTurn and endedTurnOutcome | Snapshot fields + endedTurn/endedTurnOutcome; JSON only |
 | `agent read --node <selector> [--last]` | Plain final-message text; `-o json` keeps `{sessionId, provider, startedAt, cwd, resumeSessionId, message}` | Structured fields with `--fields`; no table |
 | `agent read --node <selector> --screen [--lines <n>]` | Rendered screen text at snapshot cols/rows: cursor spacing and wide cells preserved; trailing spaces/blank rows trimmed, last n rows (default 40); JSON is `{nodeId, sessionId, lines: [...]}` | nodeId, sessionId, lines; no table |
@@ -296,3 +296,84 @@ scopeTier、instanceId 和 appVersion，不返回 token/hash。
 
 Windows 直接以 `wsl.exe` 启动 canvas PTY 暂时明确拒绝 scoped identity：Windows shim 路径与
 loopback URL 不能保证在 WSL 中可用。应在 WSL 内运行 hosting Worker，并通过 mount 使用它。
+
+
+## Selector diagnostics and bounded output
+
+Use `--space <selector>` with any `--node` selector to resolve a node name or
+unique ID prefix within that space. Explicit `--space` also validates full IDs
+and `@self`; a node outside that space fails with `node.not_found`, naming the
+actual and selected spaces. Drop `--space` to address full IDs across spaces. An
+explicitly selected project continues to constrain IDs. Names remain case-sensitive,
+and ambiguity always fails without choosing a target. For example:
+
+```sh
+opencove node get --node "Progress" --space "Main" --fields id,data.text
+opencove node update note --node "Progress" --space "Main" --text "Ready for review"
+opencove node delete --node "Progress" --space "Main"
+```
+
+Ambiguous node candidates include `spaceId` and `spaceName`. Note candidates also
+include a single-line `preview`, limited to 60 characters including an ellipsis
+when cut. Full note content is read only for the displayed ambiguity candidates.
+Missing selectors report the project and optional space searched, suggest up to
+three names within case-insensitive edit distance 2, and identify known IDs of a
+different kind. Suggestions never resolve selectors automatically.
+
+`--limit <n>` accepts a non-negative safe integer and caps each top-level output
+list after filtering and field projection. It does not limit selector lookup or
+change the operation sent to the Worker. Omit it or use `--limit 0` for complete
+output. A cut object-shaped list preserves its envelope and adds totals, for example:
+
+```json
+{"activeProjectId":"p","projects":[{"id":"p"}],"truncated":{"projects":4}}
+```
+
+Bare-array outputs such as `api ops` always remain arrays, including when cut. A
+cut array writes one stderr notice, for example `Showing 20 of 145 operations;
+use --limit 0 for all.` Object-shaped lists keep top-level `truncated` totals.
+Tables cap rows, use uppercase headers, and report truncation with one stderr
+notice, for example `Showing 1 of 5 nodes; use --limit 0 for all.` JSON object
+lists keep their top-level totals.
+Nested node data (for example tags) is not truncated. Server-side filesystem read bounds remain separate and do not
+provide a total beyond the entries returned by the Worker.
+
+`space list` keeps IDs, directoryPath, nodeIds and nodeCount but omits full node
+objects by default. Request them explicitly with `--fields nodes`, or select
+nested fields with `--fields id,name,nodes.id`. These compact queries remain useful
+for finding a space and checking its membership:
+
+```sh
+opencove space list --project "@self" --limit 10 --fields id,name,directoryPath,nodeCount
+opencove node list --space "Main" --limit 10 --fields id,kind,title
+```
+
+`context.space.directoryPath` uses the same spelling as `space get` and `space list`.
+Node content paths are `data.text` for notes; `data.requirement`, `data.status`,
+`data.priority`, `data.tags` for tasks; `data.url` for websites; and top-level
+`status` / `sessionId` for agents and terminals. `node list` returns summaries;
+read full note text with `node get`. If a declared projectable field is absent on
+a returned node kind, the CLI writes one notice to stderr and leaves stdout as
+projected JSON. Empty note text is a present value and does not trigger a notice.
+
+File URI inputs require an absolute `file://` URI, including with `--mount`.
+Errors give an example built from the input when possible; relative examples use
+`/path/to/project` as a placeholder, never the CLI cwd. Find the target's real root:
+
+```sh
+opencove mount list --project "@self" --fields mountId,rootUri
+opencove fs read --uri file:///workspace/README.md
+```
+
+Unknown `api schema` / `api call` IDs suggest nearby IDs and a domain catalog query.
+Catalog rows expose `cliCommand` (when a dedicated command exists) and `scope`
+(`read`, `interact`, `admin`). Inside OpenCove they also expose `allowed`, computed
+from the authenticated `whoami` scope. This describes the scope boundary; other
+operation preconditions and resource permissions still apply on the Worker.
+Outside OpenCove, `allowed` is omitted and no connection is needed. Domain summaries
+use `commandOperations` for the number of command-kind operations.
+
+```sh
+opencove api ops --domains --fields domain,operations,commandOperations
+opencove api ops --prefix node --fields id,cliCommand,scope,allowed --limit 10
+```

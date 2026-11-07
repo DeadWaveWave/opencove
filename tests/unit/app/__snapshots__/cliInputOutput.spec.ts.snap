@@ -35,7 +35,7 @@ Plugins:
 
 Selectors:
   Node, space and project options accept @self, an exact ID, an exact name (case-sensitive), or a unique ID prefix of 6+ characters.
-  @self uses your terminal identity. Names are scoped by --project or your own project inside OpenCove. Ambiguous targets require a full ID.
+  @self uses your terminal identity. Names are scoped by --project or your own project inside OpenCove; explicit --space constrains every node selector, including full IDs. Ambiguous targets require a full ID.
 
 Global options:
   --endpoint <url>         Connect to this Control Surface URL
@@ -43,6 +43,7 @@ Global options:
   --user-data <dir>        Use this profile directory
   --timeout <ms>           Set the request timeout in milliseconds (default: 20000)
   --pretty                 Indent JSON output for readability
+  --limit <n>              Limit output lists to n items (0 means all); cut object lists add truncated totals, bare arrays write one stderr notice
   --fields <a,b,...>       Select item-relative fields; preserve envelopes and accept item-key prefixes. api call queries also accept raw output paths
   -o, --output json|table  Choose JSON (default) or a supported table layout
   -h, --help               Show help for this command or group
@@ -52,7 +53,7 @@ Exit codes: 0 success; 1 operation failure; 2 invalid input; 3 unreachable; 4 un
 
 Run "opencove <group> --help" for commands in a group.
 Start with "opencove api ops --domains" for a compact domain map.
-Then run "opencove api ops --prefix node --fields id,command" to explore one domain.
+Then run "opencove api ops --prefix node --fields id,cliCommand" to explore one domain.
 Run "opencove api ops" only when you need the full catalog.
 AI agents: run \`opencove skill\` for a usage guide.
 "
@@ -62,7 +63,7 @@ exports[`command help snapshots: api 1`] = `
 "Usage: opencove api <command> [options]
 
 Start with "opencove api ops --domains" for a compact domain map.
-Then run "opencove api ops --prefix node --fields id,command" to explore one domain.
+Then run "opencove api ops --prefix node --fields id,cliCommand" to explore one domain.
 Run "opencove api ops" only when you need the full catalog.
 
 Commands:
@@ -85,6 +86,8 @@ Options:
   --input <json>         Pass the operation input as JSON
   --input-file <path|->  Read input from a UTF-8 file, or use - for stdin
 
+List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
+
 Table output (-o table): not supported.
 Field projection (--fields): queries accept raw output dot paths and item-relative aliases from dedicated commands with declared output fields; validated after the read. Commands do not support projection.
 
@@ -101,13 +104,13 @@ exports[`command help snapshots: api ops --domains 1`] = `
 
 List Control Surface operations with their kind, contract and CLI command
 
-The full JSON catalog is large (about 22 KB). Start with --domains, then narrow with --prefix or --search and --fields.
+The full JSON catalog is large (about 25 KB). Start with --domains, then narrow with --prefix or --search and --fields. Each operation includes scope (read, interact or admin); inside OpenCove, allowed reflects your whoami scope. Outside OpenCove the catalog is offline and allowed is omitted.
 
 With --domains, output is an array of summaries with these projectable fields:
   domain: Operation ID prefix before the first dot
   operations: Total operations in the domain after filtering
   schema: Operations with a schema input contract
-  commands: Command-kind operations, not dedicated CLI commands
+  commandOperations: Command-kind operations, not dedicated CLI commands
 
 Options:
   --domains                   Count operations, schema contracts and command-kind operations by domain
@@ -116,17 +119,19 @@ Options:
   --kind <query|command>      Filter by operation kind
   --contract <schema|legacy>  Filter by input contract availability
 
+List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
+
 Table output (-o table): supported.
-Projectable fields: id, kind, contract, summary, command
+Projectable fields: id, kind, contract, summary, cliCommand, scope, allowed
 
 Projection example:
-  opencove api ops --prefix node --fields id,command
-  [{"id":"node.create","command":"opencove node create"}, ...]
+  opencove api ops --prefix node --fields id,cliCommand
+  [{"id":"node.create","cliCommand":"opencove node create"}, ...]
 
 Examples:
   opencove api ops --domains
   opencove api ops --search create
-  opencove api ops --prefix node --fields id,command
+  opencove api ops --prefix node --fields id,cliCommand
   opencove api ops --kind query --contract schema
 
 Global options: see "opencove --help".
@@ -138,13 +143,13 @@ exports[`command help snapshots: api ops 1`] = `
 
 List Control Surface operations with their kind, contract and CLI command
 
-The full JSON catalog is large (about 22 KB). Start with --domains, then narrow with --prefix or --search and --fields.
+The full JSON catalog is large (about 25 KB). Start with --domains, then narrow with --prefix or --search and --fields. Each operation includes scope (read, interact or admin); inside OpenCove, allowed reflects your whoami scope. Outside OpenCove the catalog is offline and allowed is omitted.
 
 With --domains, output is an array of summaries with these projectable fields:
   domain: Operation ID prefix before the first dot
   operations: Total operations in the domain after filtering
   schema: Operations with a schema input contract
-  commands: Command-kind operations, not dedicated CLI commands
+  commandOperations: Command-kind operations, not dedicated CLI commands
 
 Options:
   --domains                   Count operations, schema contracts and command-kind operations by domain
@@ -153,17 +158,19 @@ Options:
   --kind <query|command>      Filter by operation kind
   --contract <schema|legacy>  Filter by input contract availability
 
+List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
+
 Table output (-o table): supported.
-Projectable fields: id, kind, contract, summary, command
+Projectable fields: id, kind, contract, summary, cliCommand, scope, allowed
 
 Projection example:
-  opencove api ops --prefix node --fields id,command
-  [{"id":"node.create","command":"opencove node create"}, ...]
+  opencove api ops --prefix node --fields id,cliCommand
+  [{"id":"node.create","cliCommand":"opencove node create"}, ...]
 
 Examples:
   opencove api ops --domains
   opencove api ops --search create
-  opencove api ops --prefix node --fields id,command
+  opencove api ops --prefix node --fields id,cliCommand
   opencove api ops --kind query --contract schema
 
 Global options: see "opencove --help".
@@ -174,6 +181,8 @@ exports[`command help snapshots: node list 1`] = `
 "Usage: opencove node list [options]
 
 List canvas nodes
+
+Content by kind: note → data.text; task → data.requirement, data.status, data.priority, data.tags; website → data.url; agent/terminal → status, sessionId. node list returns summaries: use node get for full note text and other content. A requested field absent on a returned kind produces one stderr notice; stdout remains projected JSON.
 
 Lists per-kind summaries: data carries kind plus requirement, status, priority and tags for tasks, or url for websites; data carries only kind for notes, agents and terminals. Read full content, such as note text, with "opencove node get --node <id>".
 
@@ -190,6 +199,8 @@ Target space (choose one; inside OpenCove defaults to your own space):
 
 Options:
   --kind <kind>  Filter by note, task, website, agent, terminal, plugin, document, folder, image or role
+
+List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
 
 Table output (-o table): supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.status, data.priority, data.requirement, data.tags, data.url

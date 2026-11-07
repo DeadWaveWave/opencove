@@ -130,17 +130,19 @@ it('includes dedicated commands by default and summarizes operation domains', as
   const f = fixture()
   expect(await run(['api', 'ops', '--prefix', 'node'], f.io)).toBe(0)
   const rows = JSON.parse(f.out())
-  expect(rows.find((row: { id: string }) => row.id === 'node.create').command).toBe(
+  expect(rows.find((row: { id: string }) => row.id === 'node.create').cliCommand).toBe(
     'opencove node create',
   )
   const raw = fixture()
   expect(await run(['api', 'ops', '--prefix', 'system'], raw.io)).toBe(0)
   expect(
     JSON.parse(raw.out()).find((row: { id: string }) => row.id === 'system.homeDirectory'),
-  ).not.toHaveProperty('command')
+  ).not.toHaveProperty('cliCommand')
   const g = fixture()
   expect(await run(['api', 'ops', '--domains', '--prefix', 'node'], g.io)).toBe(0)
-  expect(JSON.parse(g.out())).toEqual([{ domain: 'node', operations: 5, schema: 5, commands: 3 }])
+  expect(JSON.parse(g.out())).toEqual([
+    { domain: 'node', operations: 5, schema: 5, commandOperations: 3 },
+  ])
 })
 it('shows task state in node tables without changing runtime status', async () => {
   const f = fixture({

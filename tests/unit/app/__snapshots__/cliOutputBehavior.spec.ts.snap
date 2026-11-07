@@ -5,13 +5,13 @@ exports[`help golden api ops 1`] = `
 
 List Control Surface operations with their kind, contract and CLI command
 
-The full JSON catalog is large (about 22 KB). Start with --domains, then narrow with --prefix or --search and --fields.
+The full JSON catalog is large (about 25 KB). Start with --domains, then narrow with --prefix or --search and --fields. Each operation includes scope (read, interact or admin); inside OpenCove, allowed reflects your whoami scope. Outside OpenCove the catalog is offline and allowed is omitted.
 
 With --domains, output is an array of summaries with these projectable fields:
   domain: Operation ID prefix before the first dot
   operations: Total operations in the domain after filtering
   schema: Operations with a schema input contract
-  commands: Command-kind operations, not dedicated CLI commands
+  commandOperations: Command-kind operations, not dedicated CLI commands
 
 Options:
   --domains                   Count operations, schema contracts and command-kind operations by domain
@@ -20,17 +20,19 @@ Options:
   --kind <query|command>      Filter by operation kind
   --contract <schema|legacy>  Filter by input contract availability
 
+List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
+
 Table output (-o table): supported.
-Projectable fields: id, kind, contract, summary, command
+Projectable fields: id, kind, contract, summary, cliCommand, scope, allowed
 
 Projection example:
-  opencove api ops --prefix node --fields id,command
-  [{"id":"node.create","command":"opencove node create"}, ...]
+  opencove api ops --prefix node --fields id,cliCommand
+  [{"id":"node.create","cliCommand":"opencove node create"}, ...]
 
 Examples:
   opencove api ops --domains
   opencove api ops --search create
-  opencove api ops --prefix node --fields id,command
+  opencove api ops --prefix node --fields id,cliCommand
   opencove api ops --kind query --contract schema
 
 Global options: see "opencove --help".
@@ -42,11 +44,12 @@ exports[`help golden node get 1`] = `
 
 Get a canvas node
 
-data.status is task status; top-level status is agent or terminal runtime status.
+Content by kind: note → data.text; task → data.requirement, data.status, data.priority, data.tags; website → data.url; agent/terminal → status, sessionId. node list returns summaries: use node get for full note text and other content. A requested field absent on a returned kind produces one stderr notice; stdout remains projected JSON.
 
 Options:
-  --node <id>     Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
-  --project <id>  Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --node <id>         Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
+  --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.content, data.text, data.requirement, data.status, data.priority, data.tags, data.linkedAgentNodeId, data.url, data.pinned, data.sessionMode, data.profileId, data.provider, data.prompt, data.model, data.effectiveModel, data.executionDirectory, data.expectedDirectory, data.taskId, data.runtimeKind
@@ -68,6 +71,8 @@ exports[`help golden node list 1`] = `
 
 List canvas nodes
 
+Content by kind: note → data.text; task → data.requirement, data.status, data.priority, data.tags; website → data.url; agent/terminal → status, sessionId. node list returns summaries: use node get for full note text and other content. A requested field absent on a returned kind produces one stderr notice; stdout remains projected JSON.
+
 Lists per-kind summaries: data carries kind plus requirement, status, priority and tags for tasks, or url for websites; data carries only kind for notes, agents and terminals. Read full content, such as note text, with "opencove node get --node <id>".
 
 data.status is task status. Top-level status is session lifecycle (for example running or exited) for agents and terminals, not whether an agent is idle or working. STATE shows task status or session lifecycle. Use "opencove agent list" or "opencove agent get --node <selector>" for agent run state; context exposes it as state and keeps lifecycle as sessionStatus.
@@ -83,6 +88,8 @@ Target space (choose one; inside OpenCove defaults to your own space):
 
 Options:
   --kind <kind>  Filter by note, task, website, agent, terminal, plugin, document, folder, image or role
+
+List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
 
 Table output (-o table): supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.status, data.priority, data.requirement, data.tags, data.url
@@ -113,6 +120,7 @@ Options:
   --node <id>                          Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
   --title <text>                       Set the node title
   --frame <json>                       Set x, y, width and height as a JSON object
+  --space <selector>                   Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>                       Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
@@ -135,13 +143,17 @@ exports[`help golden space list 1`] = `
 
 List spaces
 
+Lists space IDs, names, directories, nodeIds and nodeCount without full nodes. Use --fields nodes to include node objects.
+
 When no project is given, inside OpenCove defaults to your own project.
 
 Options:
   --project <id>  Filter by project ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
+List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
+
 Table output (-o table): supported.
-Projectable fields: id, name, directoryPath, targetMountId, parentSpaceId, boundary, sortOrder, nodeIds, nodes, projectId
+Projectable fields: id, name, directoryPath, targetMountId, parentSpaceId, boundary, sortOrder, nodeIds, nodes, nodeCount, projectId, nodes.id, nodes.kind, nodes.title, nodes.projectId, nodes.spaceId, nodes.frame, nodes.frame.x, nodes.frame.y, nodes.frame.width, nodes.frame.height, nodes.status, nodes.sessionId, nodes.data, nodes.data.kind, nodes.data.status, nodes.data.priority, nodes.data.requirement, nodes.data.tags, nodes.data.url
 
 Projection example:
   opencove space list --fields id,name

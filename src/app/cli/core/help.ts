@@ -6,7 +6,7 @@ import { selectorDescription } from './selectors'
 const footer = 'Global options: see "opencove --help".'
 const discovery = [
   'Start with "opencove api ops --domains" for a compact domain map.',
-  'Then run "opencove api ops --prefix node --fields id,command" to explore one domain.',
+  'Then run "opencove api ops --prefix node --fields id,cliCommand" to explore one domain.',
   'Run "opencove api ops" only when you need the full catalog.',
 ]
 function rows(entries: [string, string][]) {
@@ -30,7 +30,7 @@ export function help(commands: Command[], path: string[]) {
       '',
       'Selectors:',
       '  Node, space and project options accept @self, an exact ID, an exact name (case-sensitive), or a unique ID prefix of 6+ characters.',
-      '  @self uses your terminal identity. Names are scoped by --project or your own project inside OpenCove. Ambiguous targets require a full ID.',
+      '  @self uses your terminal identity. Names are scoped by --project or your own project inside OpenCove; explicit --space constrains every node selector, including full IDs. Ambiguous targets require a full ID.',
       '',
       'Global options:',
       ...rows(
@@ -136,6 +136,17 @@ export function help(commands: Command[], path: string[]) {
     }
     if (entries.length) {
       lines.push('', 'Options:', ...rows(entries))
+    }
+    if (
+      exact.render?.listKey ||
+      exact.render?.list ||
+      exact.rawQueryFields ||
+      path.join(' ') === 'context'
+    ) {
+      lines.push(
+        '',
+        'List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.',
+      )
     }
     lines.push(
       '',

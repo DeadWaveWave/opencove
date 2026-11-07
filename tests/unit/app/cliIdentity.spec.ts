@@ -86,6 +86,7 @@ for (const [kind, args, id, name, operation, key] of [
       kind,
       [kind === 'node' ? 'title' : 'name']: 'Same',
       spaceId: 's',
+      ...(kind === 'node' ? { spaceName: null } : {}),
     })
     const mutation =
       kind === 'node' ? 'node.delete' : kind === 'space' ? 'worktree.archive' : operation
@@ -235,6 +236,9 @@ it.each(targets)(
   'resolves $command.path --$flag using $form through run()',
   async ({ command, flag, kind, form }) => {
     const f = identityFixture()
+    if (command.path.join(' ') === 'agent get') {
+      f.values['node.get'] = { node: { ...node, kind: 'agent' } }
+    }
     f.values['agent.list'] = { epoch: 'e', seq: 1, agents: [] }
     f.values['session.finalMessage'] = { sessionId: 's', message: 'Done' }
     f.values['agent.get'] = {

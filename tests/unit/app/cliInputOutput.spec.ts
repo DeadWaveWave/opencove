@@ -186,18 +186,21 @@ it.each([
 it('projects domain summaries and lists their fields on errors', async () => {
   const f = fixture()
   expect(
-    await run(['api', 'ops', '--domains', '--fields', 'domain,operations,schema,commands'], f.io),
+    await run(
+      ['api', 'ops', '--domains', '--fields', 'domain,operations,schema,commandOperations'],
+      f.io,
+    ),
   ).toBe(0)
   expect(JSON.parse(f.out())).toContainEqual({
     domain: 'node',
     operations: 5,
     schema: 5,
-    commands: 3,
+    commandOperations: 3,
   })
   const g = fixture()
   expect(await run(['api', 'ops', '--domains', '--fields', 'id'], g.io)).toBe(2)
   expect(g.error().message).toBe(
-    'Unknown fields: id. Available fields: domain, operations, schema, commands',
+    'Unknown fields: id. Available fields: domain, operations, schema, commandOperations',
   )
   expect(g.out()).toBe('')
   expect(f.fetch).not.toHaveBeenCalled()
@@ -442,7 +445,7 @@ it.each([[], ['api']])('leads with filtered discovery: %j', async (...path) => {
   const f = fixture()
   expect(await run([...path, '--help'], f.io)).toBe(0)
   expect(f.out()).toContain('opencove api ops --domains')
-  expect(f.out()).toContain('opencove api ops --prefix node --fields id,command')
+  expect(f.out()).toContain('opencove api ops --prefix node --fields id,cliCommand')
 })
 
 it('reports the approximate full JSON catalog size without changing its output', async () => {

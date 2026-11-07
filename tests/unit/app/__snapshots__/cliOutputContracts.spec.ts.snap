@@ -51,6 +51,8 @@ exports[`projection help golden plugin list 1`] = `
 
 List installed plugins
 
+List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
+
 Table output (-o table): not supported.
 Projectable fields: id, version, displayName, description, icon, nodeKinds, actionBar, contextMenu, source, author, revision, runtimeGeneration, enabled, status, error, view, hasPreview, commands, skills, preferences, sidebar, themes, icon.type, icon.name, icon.path, icon.light, icon.dark, view.entry, view.instances, view.kind, view.width, view.height, view.minWidth, view.minHeight
 
@@ -97,6 +99,7 @@ Options:
   --view <id>             Select the plugin view
   --params <json>         Pass command parameters as JSON
   --params-file <path|->  Read params from a UTF-8 file, or use - for stdin
+  --space <selector>      Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
 Field projection (--fields): not supported. Plugin commands define their own results, so fields cannot be validated before execution. Omit --fields to receive the complete result.
@@ -115,6 +118,8 @@ Inspect local worker status
 
 Options:
   --all  Include stopped worker records
+
+List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
 
 Table output (-o table): not supported.
 Projectable fields: pid, status, hostname, port, userDataPath, startedBy, appVersion, createdAt, reachable
