@@ -1,6 +1,7 @@
 import type { Node } from '@xyflow/react'
 import type {
   SpaceArchiveRecord,
+  TaskNodeData,
   TerminalNodeData,
   WorkspaceSpaceRect,
 } from '@contexts/workspace/presentation/renderer/types'
@@ -51,6 +52,24 @@ export function shallowEqualRecord(left: UnknownRecord, right: UnknownRecord): b
 }
 
 export { areStringArraysEqual }
+
+function isTaskDataEquivalent(left: TaskNodeData, right: TaskNodeData): boolean {
+  const { tags: leftTags, agentSessions: leftSessions, ...leftFields } = left
+  const { tags: rightTags, agentSessions: rightSessions, ...rightFields } = right
+  // Worker snapshots deserialize fresh arrays. Their identity is not a task edit; retaining
+  // the node also keeps the workspace's collapse context stable for the native website.
+  return (
+    shallowEqualRecord(leftFields, rightFields) &&
+    areStringArraysEqual(leftTags, rightTags) &&
+    leftSessions.length === rightSessions.length &&
+    leftSessions.every((session, index) =>
+      shallowEqualRecord(
+        session as unknown as UnknownRecord,
+        rightSessions[index] as unknown as UnknownRecord,
+      ),
+    )
+  )
+}
 
 export function isWorkspaceSpaceRectEqual(
   left: WorkspaceSpaceRect | null,
@@ -156,12 +175,7 @@ function isNodeDataEquivalent(persisted: TerminalNodeData, existing: TerminalNod
       return false
     }
 
-    if (
-      !shallowEqualRecord(
-        persistedTask as unknown as UnknownRecord,
-        existingTask as unknown as UnknownRecord,
-      )
-    ) {
+    if (!isTaskDataEquivalent(persistedTask, existingTask)) {
       return false
     }
   }

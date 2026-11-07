@@ -25,6 +25,7 @@ import type {
 import type { WorkspaceCanvasNodeTypeProps } from './nodeTypes.types'
 import { useTerminalDisplayAlignment } from './TerminalDisplayAlignmentContext'
 import { WindowCollapsePresentation } from './collapse/WindowCollapsePresentation'
+import { useWindowNodeCommitProbe } from '../shared/windowCommitProbe'
 
 interface WorkspaceCanvasNodeTypesParams {
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
@@ -301,16 +302,19 @@ export function useWorkspaceCanvasNodeTypes({
     return Object.fromEntries(
       Object.entries(nodeTypes).map(([type, NodeComponent]) => [
         type,
-        memo((props: WorkspaceCanvasNodeTypeProps) => (
-          <WindowCollapsePresentation
-            id={props.id}
-            data={props.data}
-            onToggleSelection={() => selectNode(props.id, { toggle: true })}
-            onSelect={() => selectNode(props.id)}
-          >
-            <NodeComponent {...props} />
-          </WindowCollapsePresentation>
-        )),
+        memo((props: WorkspaceCanvasNodeTypeProps) => {
+          useWindowNodeCommitProbe(props)
+          return (
+            <WindowCollapsePresentation
+              id={props.id}
+              data={props.data}
+              onToggleSelection={() => selectNode(props.id, { toggle: true })}
+              onSelect={() => selectNode(props.id)}
+            >
+              <NodeComponent {...props} />
+            </WindowCollapsePresentation>
+          )
+        }),
       ]),
     )
   }, [

@@ -3,6 +3,7 @@ import type { TerminalNodeData } from '../../types'
 import type { WorkspaceArrangeStyle } from '../../utils/workspaceArrange'
 import {
   readWindowCommitCounts,
+  readWindowCommitRecords,
   readWindowCommitCountsByNode,
   readWindowPresentationCommitCounts,
   resetWindowCommitCounts,
@@ -28,6 +29,7 @@ type WorkspaceCanvasTestApi = {
   setZoom: (zoom: number) => Promise<boolean>
   /** Window header commits by kind family since the last reset (Tide phase 4.3 probe). */
   getWindowCommitCounts: () => Record<string, number>
+  getWindowCommitRecords: typeof readWindowCommitRecords
   getWindowCommitCountsByNode: () => Record<string, number>
   getWindowPresentationCommitCounts: () => Record<string, number>
   resetWindowCommitCounts: () => void
@@ -102,6 +104,7 @@ function getWorkspaceCanvasTestApi(): WorkspaceCanvasTestApi | undefined {
         return true
       },
       getWindowCommitCounts: () => readWindowCommitCounts(),
+      getWindowCommitRecords: readWindowCommitRecords,
       getWindowCommitCountsByNode: () => readWindowCommitCountsByNode(),
       getWindowPresentationCommitCounts: () => readWindowPresentationCommitCounts(),
       resetWindowCommitCounts: () => resetWindowCommitCounts(),
