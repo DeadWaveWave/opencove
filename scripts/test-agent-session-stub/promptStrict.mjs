@@ -85,7 +85,7 @@ export async function runPromptStrictScenario(cwd, providerArgs, createHook) {
               const number = ++turn
               pending = pending.then(async () => {
                 await record({ kind: 'submit', text, turn: number })
-                await hook('UserPromptSubmit')
+                await hook('UserPromptSubmit', { text, turn: number })
                 await hook('Stop')
                 process.stdout.write(`\r\nSTRICT_TURN_${number}\r\n`)
               })

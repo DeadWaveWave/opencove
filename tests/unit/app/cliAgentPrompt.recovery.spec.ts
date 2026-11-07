@@ -22,6 +22,7 @@ function fixture(tty: boolean, error?: unknown) {
                   nodeId: 'n',
                   sessionId: 's',
                   phase: 'submission_observed',
+                  textComparison: 'unavailable',
                   turnId: 't',
                 },
               },

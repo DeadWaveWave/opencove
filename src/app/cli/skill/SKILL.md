@@ -92,6 +92,10 @@ launcher or `node create agent`) running **Claude Code**, or **Codex** with its
 lifecycle hooks, after an observed finished turn. Agents typed into a terminal and
 agent windows started with a custom executable path are refused.
 Newly opened/resumed sessions may need a completed turn first.
+A successful prompt reports `textComparison`: `matched` means Claude Code's reported
+text equals what you sent (newlines and trailing spaces aside); `different` (for
+example a draft was submitted with it) still exits 0 but means stop, inspect with
+`agent read --screen`, and never resend; Codex reports `unavailable`.
 The command attempts one bracketed paste and one Enter; an existing editor draft
 is submitted too. Inspect drafts and dialogs first with
 `opencove agent read --node <selector> --screen`; unseen dialogs may consume input.

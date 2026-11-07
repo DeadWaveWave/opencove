@@ -15,6 +15,8 @@ This attempts to paste into the current editor; any existing draft may be submit
 
 Success (submission_observed) means the provider reported a newly submitted prompt after this Enter. It does not prove the model read exactly this text, and the turn may still be running: wait for it with "opencove agent wait --node <selector> --until idle". The exact checks and their trust limits are in docs/agent/PROMPT_DELIVERY.md.
 
+textComparison is matched, different, or unavailable. claude-code-v1 compares equality modulo newline representation and trailing ASCII whitespace (space, tab, LF), verified for Claude Code 2.1.319; leading and interior whitespace remain significant. Codex comparison is unavailable until a profile is verified. Optional promptId is diagnostic, not turn correlation. Different is uncertainty and still exits 0: stop automatic orchestration, inspect with opencove agent read --node <id> --screen, and never resend or press Enter again because of the comparison.
+
 This command never retries automatically. After an interrupted or uncertain delivery, inspect the terminal with "opencove agent read --node <selector> --screen" and read the conversation. Do not resend a prompt that may already have been submitted.
 
 Exit codes: 0 submission observed; 1 refused or delivery unconfirmed; 2 invalid input; 124 overall deadline; 130 interrupted. A timeout or interruption does not prove that nothing was sent.
@@ -28,7 +30,7 @@ Options:
   --project <id>        Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
-Projectable fields: deliveryId, nodeId, sessionId, phase, turnId
+Projectable fields: deliveryId, nodeId, sessionId, phase, turnId, textComparison, comparisonProfile, promptId
 
 Projection example:
   opencove agent prompt --node node-123 --text "Review the changes" --fields deliveryId

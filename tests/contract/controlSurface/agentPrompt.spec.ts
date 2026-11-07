@@ -1,3 +1,4 @@
+import { agentPromptResultSchema } from '../../../src/shared/contracts/dto/agentPrompt'
 import { sessionGrantAllowsOperation } from '../../../src/app/main/controlSurface/http/sessionGrantAuthorization'
 import { describe, expect, it, vi } from 'vitest'
 import * as z from 'zod'
@@ -90,4 +91,36 @@ describe('agent.prompt contract', () => {
     }
     hub.agentRuns.dispose()
   })
+})
+
+it('declares bounded submission evidence without promising causation, completion or private content', () => {
+  const base = {
+    deliveryId: 'd',
+    nodeId: 'n',
+    sessionId: 's',
+    phase: 'submission_observed',
+    turnId: 't',
+  }
+  for (const textComparison of ['matched', 'different', 'unavailable']) {
+    expect(
+      agentPromptResultSchema.safeParse({
+        ...base,
+        textComparison,
+        comparisonProfile: 'claude-code-v1',
+        promptId: 'provider-id',
+      }).success,
+    ).toBe(true)
+  }
+  expect(
+    agentPromptResultSchema.safeParse({ ...base, textComparison: 'unavailable' }).success,
+  ).toBe(true)
+  for (const extra of [
+    { textComparison: 'matched' },
+    { textComparison: 'submission_matched' },
+    { textComparison: 'different', comparisonProfile: 'codex-v1' },
+    { textComparison: 'unavailable', promptId: 'x'.repeat(257) },
+    { textComparison: 'unavailable', promptId: 'bad\nid' },
+  ]) {
+    expect(agentPromptResultSchema.safeParse({ ...base, ...extra }).success).toBe(false)
+  }
 })

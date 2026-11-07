@@ -23,8 +23,19 @@ editor drafts may be submitted too. Resolve visible dialogs and inspect the edit
 Do not try raw PTY writes to work around that refusal. `agent.blocked` means resolve the
 pending dialog before trying delivery again.
 
-`submission_observed` confirms a matching authenticated submission observation, not
-exact text processing, causation, or turn completion. Never resend automatically after
+`submission_observed` confirms an authenticated submission observation that passed
+receipt fences. `textComparison` is `matched`, `different` or `unavailable`.
+`claude-code-v1`, verified for Claude Code 2.1.319, compares equality modulo newline
+representation (CRLF/CR → LF) and trailing ASCII whitespace (space, tab, LF).
+Leading/interior whitespace and all other characters remain significant. Codex
+comparison is `unavailable` until a profile is verified. Optional provider `promptId`
+is diagnostic; it does not correlate turn completion. Equality proves neither
+causation nor model processing or turn completion.
+
+`different` still exits 0 and prints a notice on stderr: stop automatic orchestration,
+retain the identifiers and inspect with `opencove agent read --node <id> --screen`.
+Never resend, clear the editor, press Enter again or cancel a turn automatically
+because of the comparison. Never resend automatically after
 an interrupted/stalled delivery, transport loss or unknown outcome; inspect the editor
 and conversation first. Missing attempt flags do not prove that nothing was sent.
 

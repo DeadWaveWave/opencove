@@ -2,6 +2,7 @@ import { unknownOperation } from './operationErrors'
 import { validateUriInputs } from './uriInputs'
 import { nodeFieldNotice } from './nodeFields'
 import { listLimitNotice } from './listOutput'
+import { promptComparisonNotice } from './promptTransport'
 import { promptValidationPresentation } from '../../../shared/errors/agentPromptError'
 import { commands } from '../commands'
 import { getControlSurfaceOperation } from '../../../shared/contracts/controlSurface/operations'
@@ -254,6 +255,12 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       : await call(id as OperationId, input)
     if (command.stream) {
       return Number(result)
+    }
+    if (promptCommand) {
+      const comparisonNotice = promptComparisonNotice(result)
+      if (comparisonNotice) {
+        io.stderr.write(comparisonNotice + '\n')
+      }
     }
     const output =
       command.textOutput && !args.options.output && args.options.fields === undefined

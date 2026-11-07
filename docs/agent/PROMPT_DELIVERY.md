@@ -81,16 +81,54 @@ A successful result contains:
   "nodeId": "…",
   "sessionId": "…",
   "phase": "submission_observed",
-  "turnId": "…"
+  "turnId": "…",
+  "textComparison": "matched",
+  "comparisonProfile": "claude-code-v1",
+  "promptId": "…"
 }
 ```
 
 OpenCove received a token-authenticated UserPromptSubmit with a range-checked,
 caller-supplied relay timestamp at or after the pre-Enter boundary, and matching
 source/sequence/identity checks described below.
-This does not prove that this command caused the event, that the provider processed the
-exact text, or that the turn finished. Use `agent.turn_completed` separately to
-observe a turn's outcome. There is no delivery-status store or idempotency key.
+`phase` always stays `submission_observed`. `textComparison` describes only the
+hook's submitted text evidence:
+
+- `matched`: both private digests are present and equal under `claude-code-v1`.
+- `different`: both digests are present and unequal. This is uncertainty, not a
+  delivery failure or proof of an existing draft. The CLI still exits **0** and
+  prints a notice on stderr, including when stdout is filtered with `--fields`.
+- `unavailable`: the receipt has no usable digest (missing, malformed or oversized
+  prompt metadata, or a legacy relay). Codex always reports `unavailable` until a
+  Codex comparison profile is verified.
+
+For Claude Code, `comparisonProfile: claude-code-v1` is included even when evidence
+is unavailable. It means equality **modulo newline representation and trailing
+ASCII whitespace**: first CRLF and CR become LF; then space, tab and LF are removed
+from the end of the whole text. Leading and interior whitespace, Unicode normalization
+forms, NBSP and other characters remain significant. Transport canonicalization is
+unchanged. This profile was verified through real PTY delivery for **Claude Code
+2.1.319**, covering three/five lines, 900 characters, edge spaces/tabs, an interior
+blank line, Unicode, a literal paste marker and CRLF. Other releases, configurations,
+wrappers, images and multimodal payloads are not attested by this text comparison.
+
+The provider's optional `promptId` is diagnostic and is returned on any comparison
+outcome when valid. It does not correlate completion or enable `wait --turn` or
+`read --prompt`. Codex has no comparison profile or prompt ID in this first cut.
+
+Equality is not proof of causation or model processing: another qualifying submission
+of identical text also matches, and another hook may block processing after this
+observation. Nor does it prove the turn finished. Use `agent.turn_completed`
+separately to observe an outcome; it is not correlated by this provider prompt ID.
+There is no delivery-status store or idempotency key.
+
+On `different`, **stop automatic orchestration**, retain the delivery, session, turn
+and optional prompt identifiers, and inspect the terminal/conversation with
+`opencove agent read --node <nodeId> --screen`. Decide explicitly whether to continue,
+correct or cancel. **Never resend, clear the editor, press Enter again or cancel a
+running turn automatically because of the comparison.** The CLI notice is:
+
+> Claude Code reported a submitted prompt whose text differs from what you sent — an existing draft may have been included. Do not resend; check the agent with `opencove agent read --node … --screen`.
 
 ## When nothing is sent
 
@@ -129,7 +167,8 @@ Service delivery errors contain `details.reason`, `pasteDispatchAttempted`,
 not confirmed receipt by the terminal. Validation errors and transport failures
 may not contain those details. Never infer false flags from missing fields.
 
-The CLI returns 1 for a refusal or unconfirmed delivery, 2 for invalid input, 124
+The CLI returns 0 for every observed submission, including `different` and
+`unavailable`. It returns 1 for a refusal or unconfirmed delivery, 2 for invalid input, 124
 for the overall deadline, and 130 for interruption. A deadline after a paste or
 Enter attempt preserves that phase's error and attempt flags. The separate
 five-second submission-observation limit returns `agent.prompt_stalled`, exit 1,
@@ -192,6 +231,22 @@ adjustments can misclassify older or newer events. Do not interpret a range-chec
 timestamp as proof of event ordering under clock changes or untrusted token holders.
 
 ## Implementation owners and invariants
+
+The Claude normalizer validates optional UserPromptSubmit `prompt_id` as a nonempty,
+well-formed string of at most 256 UTF-16 code units without whitespace or control
+characters. It hashes only full, well-formed string `prompt` values bounded by the
+existing 256 KiB hook envelope budget; it never truncates before hashing. Optional
+malformed fields are dropped without discarding valid lifecycle evidence. No trimming
+string helper is used on prompt content. The digest is SHA-256 over UTF-8 of
+`"opencove-prompt-evidence-claude-code-v1\0" + normalizedText` (the separator is a NUL).
+Raw hook prompt text is discarded during normalization and is never retained or logged.
+
+The digest and prompt ID travel only through private, same-process channel metadata,
+runtime ingress and reducer-accepted internal fence receipts. They never enter public
+run-state DTOs, SSE events or logs. PromptDeliveryService computes the expected digest
+from the delivered canonical text synchronously before the reserved input operation;
+comparison never changes receipt qualification or adds an await before Enter.
+There is no new durable state or restart reconstruction; metadata dies with its runtime.
 
 The Worker prompt service owns the in-memory delivery intent and one reservation
 per agent incarnation until settlement. The Hub owns the session input queue and

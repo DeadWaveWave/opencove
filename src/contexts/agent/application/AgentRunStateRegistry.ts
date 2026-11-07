@@ -1,10 +1,11 @@
+import type { PromptSubmissionEvidence } from '../../../shared/runtime/agentHook/claudePromptEvidence'
 import {
   projectRunStateFence,
   matchesAgentRunFilter,
   type AgentRunEntry as Entry,
   type AgentRunBinding as Binding,
 } from './AgentRunStateEntry'
-import { AgentRunStateFences } from './AgentRunStateFences'
+import { AgentRunStateFences, acceptedRunStateReceipt } from './AgentRunStateFences'
 import type { RunStateFence, RunStateReceipt } from './ports/PromptDeliveryPorts'
 import {
   createAgentRunModel,
@@ -171,15 +172,23 @@ export class AgentRunStateRegistry {
     this.flushDelivery()
   }
 
-  observe(sessionId: string, observation: AgentRunObservation): void {
+  observe(
+    sessionId: string,
+    observation: AgentRunObservation,
+    evidence?: PromptSubmissionEvidence,
+  ): void {
     const entry = this.entries.get(sessionId)
     if (!entry) {
       return
     }
-    this.update(entry, observation)
+    this.update(entry, observation, evidence)
   }
 
-  private update(entry: Entry, observation: AgentRunObservation | null): void {
+  private update(
+    entry: Entry,
+    observation: AgentRunObservation | null,
+    evidence?: PromptSubmissionEvidence,
+  ): void {
     const result = transitionAgentRun(
       entry.model,
       observation,
@@ -197,13 +206,7 @@ export class AgentRunStateRegistry {
       this.notifyFence(
         entry,
         accepted
-          ? {
-              source: observation.source,
-              hookEventName: observation.hookEventName,
-              emittedAtMs: observation.emittedAtMs,
-              sourceSequence: observation.sourceSequence,
-              turnId: result.model.snapshot.turn?.id,
-            }
+          ? acceptedRunStateReceipt(observation, result.model.snapshot.turn?.id, evidence)
           : {},
       )
     }

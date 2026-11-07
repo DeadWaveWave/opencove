@@ -3,7 +3,7 @@ import { createAppError } from '../../../src/shared/errors/appError'
 import { expect, it, vi } from 'vitest'
 import { runWithTargetFixtures as run } from './cliTargetFixtures.helpers'
 import type { CliIo } from '../../../src/app/cli/core/io'
-function fixture(error?: unknown) {
+function fixture(error?: unknown, result: Record<string, unknown> = {}) {
   let out = '',
     err = ''
   const fetch = vi.fn(
@@ -19,7 +19,9 @@ function fixture(error?: unknown) {
                   nodeId: 'n',
                   sessionId: 's',
                   phase: 'submission_observed',
+                  textComparison: 'unavailable',
                   turnId: 'turn',
+                  ...result,
                 },
               },
         ),
@@ -127,5 +129,60 @@ it.each([
     expect(tty.rawError()).toBe(
       `error[${code}]: ${message}\n  paste attempted: yes; Enter attempted: ${submitted ? 'yes' : 'no'}. ${submitted ? 'Submission is unconfirmed.' : 'Text may be in the editor.'}\n  hint: ${hint}\n`,
     )
+  },
+)
+
+it.each([false, true])(
+  'different remains success with an stderr notice even with field selection (TTY=%s)',
+  async tty => {
+    const f = fixture(undefined, {
+      textComparison: 'different',
+      comparisonProfile: 'claude-code-v1',
+      promptId: 'provider-id',
+    })
+    f.io.stdout.isTTY = tty
+    f.io.stderr.isTTY = tty
+    expect(
+      await run(
+        ['agent', 'prompt', '--node', 'n', '--text', 'hello', '--fields', 'deliveryId'],
+        f.io,
+      ),
+    ).toBe(0)
+    expect(f.out()).toContain('d')
+    expect(f.rawError()).toBe(
+      'Claude Code reported a submitted prompt whose text differs from what you sent — an existing draft may have been included. Do not resend; check the agent with `opencove agent read --node n --screen`.\n',
+    )
+    expect(f.fetch).toHaveBeenCalledTimes(1)
+  },
+)
+it.each(['matched', 'unavailable'])(
+  'prints %s without a notice and exposes declared evidence fields',
+  async textComparison => {
+    const f = fixture(undefined, {
+      textComparison,
+      comparisonProfile: 'claude-code-v1',
+      promptId: 'provider-id',
+    })
+    expect(
+      await run(
+        [
+          'agent',
+          'prompt',
+          '--node',
+          'n',
+          '--text',
+          'hello',
+          '--fields',
+          'textComparison,comparisonProfile,promptId',
+        ],
+        f.io,
+      ),
+    ).toBe(0)
+    expect(JSON.parse(f.out())).toEqual({
+      textComparison,
+      comparisonProfile: 'claude-code-v1',
+      promptId: 'provider-id',
+    })
+    expect(f.rawError()).toBe('')
   },
 )

@@ -1,3 +1,8 @@
+import {
+  claudePromptDigest,
+  claudePromptId,
+} from '../../../../shared/runtime/agentHook/claudePromptEvidence'
+
 export type ClaudeHookTurnState = 'working' | 'waiting' | 'done'
 
 export interface ClaudeHookInput {
@@ -8,6 +13,8 @@ export interface ClaudeHookInput {
   tool_name?: string
   tool_use_id?: string
   tool_input?: unknown
+  prompt?: unknown
+  prompt_id?: unknown
   notification_type?: string
 }
 
@@ -17,6 +24,8 @@ export interface ClaudeHookEnvelope {
   state: ClaudeHookTurnState | null
   hookEventName: string
   claudeSessionId: string
+  promptId?: string
+  promptDigest?: string
   tool?: {
     name: string
     useId: string | null
@@ -173,6 +182,12 @@ export function normalizeClaudeHookEnvelope(value: unknown): ClaudeHookEnvelope 
     state,
     hookEventName,
     claudeSessionId,
+    ...(hookEventName === 'UserPromptSubmit'
+      ? {
+          promptId: claudePromptId(value.prompt_id),
+          promptDigest: claudePromptDigest(value.prompt),
+        }
+      : {}),
     ...(toolName
       ? {
           tool: {

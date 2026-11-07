@@ -14,7 +14,7 @@ export async function runClaudePromptStrictScenario(cwd, providerArgs) {
       ? providerArgs.indexOf('--session-id')
       : providerArgs.indexOf('--resume')
     const providerSessionId = sessionIndex >= 0 ? providerArgs[sessionIndex + 1] : 'strict-claude'
-    return async event => {
+    return async (event, submission) => {
       const handler = settings.hooks[event][0].hooks[0]
       const child = spawn(handler.command, handler.args, {
         env: process.env,
@@ -31,6 +31,12 @@ export async function runClaudePromptStrictScenario(cwd, providerArgs) {
           cwd,
           hook_event_name: event,
           tool_name: 'Bash',
+          ...(event === 'UserPromptSubmit'
+            ? {
+                prompt: submission.text.replace(/\r\n|\r/g, '\n').replace(/[ \t\n]+$/, ''),
+                prompt_id: `strict-prompt-${submission.turn}`,
+              }
+            : {}),
         }),
       )
       await new Promise((resolve, reject) => {

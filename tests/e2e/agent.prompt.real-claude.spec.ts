@@ -283,7 +283,11 @@ test.describe('agent.prompt with the real Claude Code CLI', () => {
       const text = 'Line one of the prompt\nLine two of the prompt\nLine three of the prompt'
       const delivered = await prompt(userDataDir, nodeId, text)
       expect(delivered.exitCode, JSON.stringify(delivered)).toBe(0)
-      expect(JSON.parse(delivered.stdout)).toMatchObject({ phase: 'submission_observed' })
+      expect(JSON.parse(delivered.stdout)).toMatchObject({
+        phase: 'submission_observed',
+        textComparison: 'matched',
+        comparisonProfile: 'claude-code-v1',
+      })
       await expect.poll(() => api.main().length, { timeout: 30_000 }).toBe(2)
       // One submission whose user message carries the three lines as one exact text block.
       expect(api.main()[1]).toContain(text)
@@ -299,6 +303,24 @@ test.describe('agent.prompt with the real Claude Code CLI', () => {
         nodeId,
       )
       expect(final.message).toBe('ACK')
+
+      // A draft someone left in the editor is submitted together with the prompt: the
+      // submission is still observed, but its text is reported as different.
+      await window.evaluate(async payload => await window.opencoveApi.pty.write(payload), {
+        sessionId,
+        data: 'leftover draft ',
+      })
+      await window.waitForTimeout(500)
+      const withDraft = await prompt(userDataDir, nodeId, 'Second instruction')
+      expect(withDraft.exitCode, JSON.stringify(withDraft)).toBe(0)
+      expect(JSON.parse(withDraft.stdout)).toMatchObject({
+        phase: 'submission_observed',
+        textComparison: 'different',
+      })
+      expect(withDraft.stderr).toContain('Do not resend')
+      await expect.poll(() => api.main().length, { timeout: 30_000 }).toBe(3)
+      expect(api.main()[2].join('\n')).toContain('leftover draft Second instruction')
+      await expect.poll(async () => (await snapshot()).state, { timeout: 30_000 }).toBe('idle')
 
       const tool = await prompt(userDataDir, nodeId, 'TRIGGER_TOOL run the probe')
       expect(tool.exitCode, JSON.stringify(tool)).toBe(0)

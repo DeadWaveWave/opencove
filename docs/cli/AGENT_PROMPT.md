@@ -30,7 +30,15 @@ daemon reuse, file-only telemetry and Windows are unsupported. `@self` resolves 
 calling session grant; a canvas terminal is not an agent and is refused by the server.
 
 Success is JSON with `deliveryId`, `nodeId`, `sessionId`, `phase: submission_observed`, `turnId`.
-`--fields` accepts those declared fields. Refusals exit 1 with the AppError code and typed
+It also returns `textComparison` (`matched`, `different`, `unavailable`), Claude's
+`comparisonProfile: claude-code-v1` and optional diagnostic `promptId`.
+`--fields` accepts all these declared fields. The Claude profile, verified for
+2.1.319, compares equality modulo newline representation and trailing ASCII space,
+tab and LF; leading/interior whitespace remain significant. Codex comparison is
+`unavailable` until a profile is verified. Equality proves neither causation nor
+model processing. `different` still exits 0, with a notice on stderr: stop automatic
+orchestration, retain identifiers, inspect with `opencove agent read --node <id> --screen`,
+and never resend or press Enter again because of the comparison. Refusals exit 1 with the AppError code and typed
 `error.details` dispatch-attempt flags; a server deadline exits 124 and preserves those flags.
 Usage errors exit 2. Local HTTP timeout exits 124; transport loss is outcome unknown.
 

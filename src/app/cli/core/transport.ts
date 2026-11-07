@@ -1,4 +1,4 @@
-import { isPromptDeliveryResult } from './promptTransport'
+import { isPromptDeliveryResult, normalizePromptDeliveryResult } from './promptTransport'
 import {
   agentPromptErrorPresentation,
   promptValidationPresentation,
@@ -163,7 +163,7 @@ export async function invoke(
     if (!response.ok || result?.ok !== true || (prompt && !isPromptDeliveryResult(result.value))) {
       throw new CliError('transport.invalid_response', 1, 'Invalid control surface response')
     }
-    return result.value
+    return prompt ? normalizePromptDeliveryResult(result.value) : result.value
   } catch (error) {
     if (options.signal?.aborted) {
       if (prompt) {

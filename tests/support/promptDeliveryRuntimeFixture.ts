@@ -1,3 +1,8 @@
+import {
+  setPromptSubmissionEvidence,
+  type PromptSubmissionEvidence,
+} from '../../src/shared/runtime/agentHook/claudePromptEvidence'
+import type { TerminalSessionStateEvent } from '../../src/shared/contracts/dto'
 import { vi } from 'vitest'
 import { AgentRunStateRegistry } from '../../src/contexts/agent/application/AgentRunStateRegistry'
 import { AgentRunStateRuntime } from '../../src/contexts/agent/application/AgentRunStateRuntime'
@@ -42,8 +47,8 @@ export function promptDeliveryRuntimeFixture(
     hookInstallState: 'installed',
   })
   hub.handlePtyData('s', '\x1b[?2004h')
-  const observe = (name: string, emittedAtMs?: number) =>
-    runtime.observe({
+  const observe = (name: string, emittedAtMs?: number, evidence?: PromptSubmissionEvidence) => {
+    const event: TerminalSessionStateEvent = {
       sessionId: 's',
       source: provider === 'codex' ? 'codex_hook' : 'claude_hook',
       hookEventName: name,
@@ -54,7 +59,12 @@ export function promptDeliveryRuntimeFixture(
           ? 'waiting'
           : 'working',
       emittedAtMs,
-    })
+    }
+    if (evidence) {
+      setPromptSubmissionEvidence(event, evidence)
+    }
+    runtime.observe(event)
+  }
   if (ready) {
     observe('Stop')
   }
