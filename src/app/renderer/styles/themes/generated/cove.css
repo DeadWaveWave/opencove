@@ -84,7 +84,6 @@
   --cove-label-blue: #53a0ff;
   --cove-label-purple: #b97df7;
   --cove-glass-frame: 52%;
-  --cove-glass-plate: 55%;
   --cove-glass-chrome: 60%;
   --cove-glass-sheet: 72%;
   --cove-glass-acrylic: 76%;
@@ -135,19 +134,10 @@
     var(--cove-neutral-2) var(--cove-glass-frame),
     transparent
   );
-  --cove-reading-plate: color-mix(
-    in srgb,
-    var(--cove-neutral-1) var(--cove-glass-plate),
-    transparent
-  );
-  --cove-reading-plate-glare: rgb(255 255 255 / 0.03);
-  --cove-reading-plate-line: rgb(255 255 255 / 0.045);
-  --cove-reading-plate-edge:
-    inset 1px 0 0 var(--cove-reading-plate-line), inset -1px 0 0 var(--cove-reading-plate-line),
-    inset 0 -1px 0 var(--cove-reading-plate-line);
+  --cove-reading-plate: var(--cove-neutral-1);
   --cove-node-header-surface: transparent;
   --cove-node-border: rgb(239 243 247 / 0.14);
-  --cove-terminal-background: #090e12;
+  --cove-terminal-background: #080d11;
   --cove-terminal-foreground: #eff3f7;
   --cove-terminal-cursor: #00b0d5;
   --cove-terminal-selection: rgb(0 176 213 / 0.32);
@@ -344,7 +334,6 @@
   --cove-label-blue: #1a73d5;
   --cove-label-purple: #8e51c7;
   --cove-glass-frame: 64%;
-  --cove-glass-plate: 70%;
   --cove-glass-chrome: 66%;
   --cove-glass-sheet: 80%;
   --cove-glass-acrylic: 86%;
@@ -395,19 +384,10 @@
     var(--cove-neutral-1) var(--cove-glass-frame),
     transparent
   );
-  --cove-reading-plate: color-mix(
-    in srgb,
-    var(--cove-neutral-1) var(--cove-glass-plate),
-    transparent
-  );
-  --cove-reading-plate-glare: rgb(255 255 255 / 0);
-  --cove-reading-plate-line: rgb(187 197 207 / 0.5);
-  --cove-reading-plate-edge:
-    inset 1px 0 0 var(--cove-reading-plate-line), inset -1px 0 0 var(--cove-reading-plate-line),
-    inset 0 -1px 0 var(--cove-reading-plate-line);
+  --cove-reading-plate: var(--cove-neutral-1);
   --cove-node-header-surface: transparent;
   --cove-node-border: rgb(27 29 32 / 0.16);
-  --cove-terminal-background: #f9fcfe;
+  --cove-terminal-background: #fbfdff;
   --cove-terminal-foreground: #1b1d20;
   --cove-terminal-cursor: #005d72;
   --cove-terminal-selection: rgb(0 162 197 / 0.24);
@@ -527,7 +507,7 @@
   --cove-node-selection-shadow: 0 0 0 1px rgb(49 190 227 / 0.42), 0 18px 40px rgb(0 0 0 / 0.52);
   --cove-terminal-node-surface: var(--cove-node-surface);
   --cove-terminal-node-header-surface: transparent;
-  --cove-terminal-background: #090e12;
+  --cove-terminal-background: #080d11;
   --cove-terminal-foreground: #eff3f7;
   --cove-terminal-selection: rgb(0 176 213 / 0.32);
   --cove-terminal-cursor: #00b0d5;

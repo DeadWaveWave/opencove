@@ -200,7 +200,7 @@ function createBaseProps(
     setSpaceRenameDraft: () => undefined,
     commitSpaceRename: () => undefined,
     cancelSpaceRename: () => undefined,
-    startSpaceRename: () => undefined,
+    activateSpaceTitle: () => undefined,
     selectedNodeCount: 0,
     isMinimapVisible: false,
     minimapNodeColor: () => '#000000',

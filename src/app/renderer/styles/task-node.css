@@ -210,6 +210,13 @@
   outline-offset: 1px;
 }
 
+.task-node__plate {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .task-node__content {
   flex: 1;
   min-height: 0;

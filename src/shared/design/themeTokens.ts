@@ -3,7 +3,7 @@
  * tokens, every v1 public token so installed plugin themes keep resolving, and the host tokens
  * that replace the standard theme's literal colours.
  */
-import { mixOver, type Rgb } from './oklch'
+import type { Rgb } from './oklch'
 import { hostTokens } from './themeHostTokens'
 import { statusPillTokens } from './themeStatusTokens'
 import {
@@ -31,9 +31,6 @@ const hex = (c: Rgb): string => `#${c.map(v => v.toString(16).padStart(2, '0')).
 const rgba = (c: Rgb, alpha: number): string => `rgb(${c[0]} ${c[1]} ${c[2]} / ${alpha})`
 const percent = (alpha: number): string => `${Math.round(alpha * 100)}%`
 const kebab = (key: AnsiKey): string => key.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`)
-/** A 1px inner edge on a reading plate's sides and bottom; its top flows into the header. */
-const openPlateEdge = (line: string): string =>
-  `inset 1px 0 0 ${line}, inset -1px 0 0 ${line}, inset 0 -1px 0 ${line}`
 
 /** Opaque role colours. Tokens and the contrast tests both read these, so they cannot drift apart. */
 export interface RoleColors {
@@ -58,12 +55,6 @@ export function resolveRoleColors(theme: GeneratedTheme): RoleColors {
   const n = theme.neutral
   const a = theme.accent
   const frame = dark ? n[1]! : n[0]!
-  // Terminals read their plate over the frame over the canvas; this is that composite, opaque.
-  const plate = mixOver(
-    n[0]!,
-    GLASS[theme.input.appearance].plate,
-    mixOver(frame, GLASS[theme.input.appearance].frame, theme.roles.canvas),
-  )
   return {
     canvas: theme.roles.canvas,
     elevated: theme.roles.surface,
@@ -76,7 +67,8 @@ export function resolveRoleColors(theme: GeneratedTheme): RoleColors {
     accentText: a[10]!,
     onAccent: theme.roles.onAccent,
     focusRing: dark ? a[8]! : a[10]!,
-    terminalBackground: plate,
+    // Terminals read on the reading plate, which is solid neutral step 1.
+    terminalBackground: n[0]!,
     terminalForeground: n[11]!,
     terminalCursor: dark ? a[8]! : a[10]!,
   }
@@ -131,7 +123,6 @@ export function themeTokens(theme: GeneratedTheme): ThemeTokens {
     '--cove-label-gray': hex(theme.neutral[8]!),
     ...labels,
     '--cove-glass-frame': percent(glass.frame),
-    '--cove-glass-plate': percent(glass.plate),
     '--cove-glass-chrome': percent(glass.chrome),
     '--cove-glass-sheet': percent(glass.sheet),
     '--cove-glass-acrylic': percent(glass.acrylic),
@@ -171,16 +162,10 @@ export function themeTokens(theme: GeneratedTheme): ThemeTokens {
     '--cove-accent-foreground': hex(roles.onAccent),
     '--cove-focus-ring': hex(roles.focusRing),
     '--cove-node-surface': glassOf('var(--cove-glass-frame)'),
-    // Window content sits on an inset plate: neutral step 1 at the plate alpha over the frame
-    // (the composite the contrast matrix checks), with a faint top glare and an inner edge on the
-    // sides and bottom only: the plate has no top edge because it rises into the header and
-    // fades out there, side lines included (window-plate.css), so header and body read as one
-    // surface.
-    '--cove-reading-plate':
-      'color-mix(in srgb, var(--cove-neutral-1) var(--cove-glass-plate), transparent)',
-    '--cove-reading-plate-glare': dark ? 'rgb(255 255 255 / 0.03)' : 'rgb(255 255 255 / 0)',
-    '--cove-reading-plate-line': dark ? 'rgb(255 255 255 / 0.045)' : rgba(theme.neutral[6]!, 0.5),
-    '--cove-reading-plate-edge': openPlateEdge('var(--cove-reading-plate-line)'),
+    // Window content sits on a solid plate, neutral step 1, so the wall never shows through what
+    // is being read. It has no edge of its own: it melts into the glass frame on every side
+    // (window-plate.css).
+    '--cove-reading-plate': 'var(--cove-neutral-1)',
     '--cove-node-header-surface': 'transparent',
     '--cove-node-border': inkOverlay(dark ? 14 : 16),
     '--cove-terminal-background': hex(roles.terminalBackground),

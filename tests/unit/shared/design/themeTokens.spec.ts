@@ -66,20 +66,18 @@ describe('generated theme tokens', () => {
   )
 
   it.each(CASES)(
-    'lays the reading plate the contrast matrix checks over the frame for $family/$appearance',
+    'lays window content on a solid plate with no edge for $family/$appearance',
     ({ family, appearance }) => {
       const tokens = themeTokens(generateFamilyTheme(family, appearance))
-      // The matrix composes neutral step 1 at the plate alpha over the frame.
-      expect(tokens['--cove-reading-plate']).toBe(
-        'color-mix(in srgb, var(--cove-neutral-1) var(--cove-glass-plate), transparent)',
-      )
-      // Sides and bottom only: the plate's top flows into the header with no edge or shadow.
-      // The header draws the side lines' fade from the same colour.
-      expect(tokens['--cove-reading-plate-edge']).toBe(
-        'inset 1px 0 0 var(--cove-reading-plate-line), inset -1px 0 0 var(--cove-reading-plate-line), inset 0 -1px 0 var(--cove-reading-plate-line)',
-      )
-      expect(tokens['--cove-reading-plate-line']).toMatch(/^rgb\(\d+ \d+ \d+ \/ 0?\.\d+\)$/)
-      expect(tokens['--cove-reading-plate-glare']).toMatch(/^rgb\(255 255 255 \/ 0(\.\d+)?\)$/)
+      // Solid neutral step 1, the colour the contrast matrix checks text on, and terminals fill
+      // with it when their xterm is opaque.
+      expect(tokens['--cove-reading-plate']).toBe('var(--cove-neutral-1)')
+      expect(tokens['--cove-terminal-background']).toBe(tokens['--cove-neutral-1'])
+      expect(tokens['--cove-glass-plate']).toBeUndefined()
+      // It melts into the frame (window-plate.css): no line, edge or glare of its own.
+      expect(tokens['--cove-reading-plate-line']).toBeUndefined()
+      expect(tokens['--cove-reading-plate-edge']).toBeUndefined()
+      expect(tokens['--cove-reading-plate-glare']).toBeUndefined()
     },
   )
 

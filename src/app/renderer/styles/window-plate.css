@@ -1,7 +1,7 @@
 /*
  * Reading plate: window content sits on a plate inset 6px from the frame, flush under the
- * header. Generated themes compose it over the glass frame (the contrast matrix checks that
- * composite); hand-written themes fall back to their node surface and border.
+ * header. Generated themes make it solid neutral step 1 (the colour the contrast matrix checks);
+ * hand-written themes fall back to their node surface and border.
  */
 :root {
   --cove-reading-plate: var(--cove-node-surface);
@@ -22,33 +22,60 @@
 }
 
 /*
- * Seamless header (owner call, round 4): in the generated families no rule separates header and
- * body. The plate has no top edge (see --cove-reading-plate-edge) and rises into the header,
- * glare, fill and side lines fading out toward its top, so the window reads as one surface. The
- * header's own rule stays 1px but clear, so its height does not change. The kind wash fades out
- * before the header's bottom edge for the same reason (window-kind-identity.css).
+ * Solid plate, open frame (owner calls, round 4): in the generated families the plate is solid, so
+ * the wall never shows through what is being read, and nothing marks where it ends. It melts into
+ * the glass frame on every side: a halo in its own colour fills most of the gutter at the sides and
+ * bottom, and up top it rises through the header, fading out by the header's top fifth. The header
+ * draws its part on ::before, masked across its width to the halo's falloff (a 1.5px Gaussian
+ * edge, 3px out), so the two meet without a seam. The header's rule stays 1px but clear, so its
+ * height does not change. The kind wash fades out above the plate (window-kind-identity.css).
  */
-:root[data-cove-family='cove'] [data-cove-part='window'] [data-cove-part='window-header'] {
-  --cove-reading-plate-rise: linear-gradient(
-    180deg,
-    transparent 20%,
-    var(--cove-reading-plate-line)
-  );
-  border-bottom-color: transparent;
-  background:
-    var(--cove-reading-plate-rise) left var(--cove-reading-plate-inset) top 0 / 1px 100% no-repeat,
-    var(--cove-reading-plate-rise) right var(--cove-reading-plate-inset) top 0 / 1px 100% no-repeat,
-    linear-gradient(180deg, transparent 20%, var(--cove-reading-plate-glare))
-      var(--cove-reading-plate-inset) 0 / calc(100% - 2 * var(--cove-reading-plate-inset)) 100%
-      no-repeat,
-    linear-gradient(180deg, transparent 20%, var(--cove-reading-plate))
-      var(--cove-reading-plate-inset) 0 / calc(100% - 2 * var(--cove-reading-plate-inset)) 100%
-      no-repeat;
-  /* Down through the clear rule too, so the fade reaches the plate's first row. */
-  background-origin: border-box;
-}
-
 :root[data-cove-family='cove'] [data-cove-part='window'] [data-cove-part='window-body'] {
+  --cove-reading-plate-halo: calc(var(--cove-reading-plate-inset) / 2);
+
   border-top-left-radius: 0;
   border-top-right-radius: 0;
+  background: var(--cove-reading-plate);
+  box-shadow: 0 0 var(--cove-reading-plate-halo) var(--cove-reading-plate-halo)
+    var(--cove-reading-plate);
+}
+
+:root[data-cove-family='cove'] [data-cove-part='window'] [data-cove-part='window-header'] {
+  position: relative;
+  isolation: isolate;
+  border-bottom-color: transparent;
+  background: none;
+}
+
+:root[data-cove-family='cove'] [data-cove-part='window'] [data-cove-part='window-header']::before {
+  --cove-reading-plate-edge-0: calc(var(--cove-reading-plate-inset) * 0.25);
+  --cove-reading-plate-edge-1: calc(var(--cove-reading-plate-inset) * 0.5);
+  --cove-reading-plate-edge-2: calc(var(--cove-reading-plate-inset) * 0.75);
+
+  content: '';
+  position: absolute;
+  /* Down through the clear rule too, so the fade reaches the plate's first row. */
+  inset: 0 0 -1px;
+  z-index: -1;
+  background: var(--cove-reading-plate);
+  mask:
+    linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--cove-mask-opaque) 16%, transparent) var(--cove-reading-plate-edge-0),
+      color-mix(in srgb, var(--cove-mask-opaque) 50%, transparent) var(--cove-reading-plate-edge-1),
+      color-mix(in srgb, var(--cove-mask-opaque) 84%, transparent) var(--cove-reading-plate-edge-2),
+      var(--cove-mask-opaque) var(--cove-reading-plate-inset),
+      var(--cove-mask-opaque) calc(100% - var(--cove-reading-plate-inset)),
+      color-mix(in srgb, var(--cove-mask-opaque) 84%, transparent)
+        calc(100% - var(--cove-reading-plate-edge-2)),
+      color-mix(in srgb, var(--cove-mask-opaque) 50%, transparent)
+        calc(100% - var(--cove-reading-plate-edge-1)),
+      color-mix(in srgb, var(--cove-mask-opaque) 16%, transparent)
+        calc(100% - var(--cove-reading-plate-edge-0)),
+      transparent
+    ),
+    linear-gradient(180deg, transparent 20%, var(--cove-mask-opaque));
+  mask-composite: intersect;
+  pointer-events: none;
 }

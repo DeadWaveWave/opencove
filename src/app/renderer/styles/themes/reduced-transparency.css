@@ -7,7 +7,6 @@
  */
 :root[data-cove-transparency='reduced'][data-cove-family][data-cove-theme][data-cove-theme-id] {
   --cove-glass-frame: 100%;
-  --cove-glass-plate: 100%;
   --cove-glass-chrome: 100%;
   --cove-glass-sheet: 100%;
   --cove-glass-acrylic: 100%;

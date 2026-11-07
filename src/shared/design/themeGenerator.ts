@@ -77,7 +77,6 @@ const NEUTRAL_CHROMA = [0.7, 0.75, 0.85, 0.9, 1, 1, 1, 1, 0.9, 0.85, 0.6, 0.35]
 export const GLASS = {
   dark: {
     frame: 0.52,
-    plate: 0.55,
     farTint: 0.2,
     chrome: 0.6,
     sheet: 0.72,
@@ -89,7 +88,6 @@ export const GLASS = {
   },
   light: {
     frame: 0.64,
-    plate: 0.7,
     farTint: 0.22,
     chrome: 0.66,
     sheet: 0.8,

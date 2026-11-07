@@ -70,8 +70,8 @@
   background: var(--cove-terminal-background);
 }
 
-/* Where the terminal colour fills the plate, it is the plate: the seamless header fades into it
-   (window-plate.css), with no glare or side lines the opaque terminal would cut off. */
+/* Where the terminal colour fills the plate, it is the plate: the header and the gutter melt into
+   that colour (window-plate.css), with no glare or edge lines the opaque terminal would cut off. */
 .terminal-node[data-cove-terminal-background='opaque'],
 :root[data-cove-transparency='reduced'] .terminal-node {
   --cove-reading-plate: var(--cove-terminal-background);

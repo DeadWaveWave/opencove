@@ -6,6 +6,7 @@ import type { WorkspaceSpaceRect } from '../../../types'
 import type { SpaceVisual } from '../types'
 import type { SpaceFrameHandleMode } from '../../../utils/spaceLayout'
 import { resolveSpaceAnnotationCap } from './spaceVisualScale'
+import { readCanvasLodAt, type CanvasLod } from './canvasLod'
 import { useSpaceCaptionBorder } from './useSpaceCaptionBorder'
 import { WorkspaceSpaceOperationOverlay } from './WorkspaceSpaceOperationOverlay'
 import { WorkspaceSpaceCollapseActions } from './WorkspaceSpaceCollapseActions'
@@ -30,7 +31,7 @@ export function WorkspaceSpaceRegionItem({
   setSpaceRenameDraft,
   commitSpaceRename,
   cancelSpaceRename,
-  startSpaceRename,
+  activateSpaceTitle,
   handleSpaceDragHandlePointerDown,
   updateHandleCursor,
   resolvedWorktreeInfo,
@@ -55,7 +56,7 @@ export function WorkspaceSpaceRegionItem({
   setSpaceRenameDraft: React.Dispatch<React.SetStateAction<string>>
   commitSpaceRename: (spaceId: string) => void
   cancelSpaceRename: () => void
-  startSpaceRename: (spaceId: string) => void
+  activateSpaceTitle: (spaceId: string, lod: CanvasLod) => void
   handleSpaceDragHandlePointerDown: (
     event: React.PointerEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
     spaceId: string,
@@ -240,7 +241,7 @@ export function WorkspaceSpaceRegionItem({
                   title={space.name}
                   onClick={event => {
                     event.stopPropagation()
-                    startSpaceRename(space.id)
+                    activateSpaceTitle(space.id, readCanvasLodAt(event.currentTarget))
                   }}
                 >
                   {space.labelColor ? (

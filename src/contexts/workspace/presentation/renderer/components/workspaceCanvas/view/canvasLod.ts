@@ -15,6 +15,13 @@ export const FAR_VIEW_FLY_MIN_ZOOM = 0.6
 /** The canvas root carries the current level; useSpaceVisualScale is its only writer. */
 export const CANVAS_LOD_ATTRIBUTE = 'data-cove-lod'
 
+/** The level the canvas around `element` is drawn at, for an input handler to read as it runs. */
+export function readCanvasLodAt(element: Element): CanvasLod {
+  return element.closest(`[${CANVAS_LOD_ATTRIBUTE}]`)?.getAttribute(CANVAS_LOD_ATTRIBUTE) === 'far'
+    ? 'far'
+    : 'near'
+}
+
 export function resolveCanvasLod(zoom: number, previous: CanvasLod, enabled = true): CanvasLod {
   if (!enabled || !Number.isFinite(zoom) || zoom <= 0) {
     return 'near'

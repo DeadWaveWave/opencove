@@ -43,7 +43,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
         setSpaceRenameDraft={() => undefined}
         commitSpaceRename={() => undefined}
         cancelSpaceRename={() => undefined}
-        startSpaceRename={() => undefined}
+        activateSpaceTitle={() => undefined}
         onOpenSpaceMenu={onOpenSpaceMenu}
       />,
     )
@@ -88,7 +88,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
         setSpaceRenameDraft={() => undefined}
         commitSpaceRename={() => undefined}
         cancelSpaceRename={() => undefined}
-        startSpaceRename={() => undefined}
+        activateSpaceTitle={() => undefined}
       />
     )
     const { rerender } = render(view)
@@ -160,7 +160,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
           setSpaceRenameDraft={() => undefined}
           commitSpaceRename={() => undefined}
           cancelSpaceRename={() => undefined}
-          startSpaceRename={() => undefined}
+          activateSpaceTitle={() => undefined}
         />
       </div>,
     )
@@ -220,7 +220,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
         setSpaceRenameDraft={() => undefined}
         commitSpaceRename={() => undefined}
         cancelSpaceRename={() => undefined}
-        startSpaceRename={() => undefined}
+        activateSpaceTitle={() => undefined}
       />,
     )
 
@@ -286,7 +286,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
         setSpaceRenameDraft={() => undefined}
         commitSpaceRename={() => undefined}
         cancelSpaceRename={() => undefined}
-        startSpaceRename={() => undefined}
+        activateSpaceTitle={() => undefined}
       />,
     )
 
@@ -373,7 +373,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
         setSpaceRenameDraft={() => undefined}
         commitSpaceRename={() => undefined}
         cancelSpaceRename={() => undefined}
-        startSpaceRename={() => undefined}
+        activateSpaceTitle={() => undefined}
       />,
     )
 
@@ -436,7 +436,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
           setSpaceRenameDraft={() => undefined}
           commitSpaceRename={() => undefined}
           cancelSpaceRename={() => undefined}
-          startSpaceRename={() => undefined}
+          activateSpaceTitle={() => undefined}
         />,
       )
 
