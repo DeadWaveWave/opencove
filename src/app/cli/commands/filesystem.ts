@@ -46,7 +46,7 @@ export const filesystemCommands = (
     operationAliases: [mountedOperation],
     selectOperation: ({ options }) => (options.mount === undefined ? operation : mountedOperation),
     options: {
-      uri: option('Select the file or directory URI', 'uri', true),
+      uri: option('Select the absolute file:// URI of the file or directory', 'uri', true),
       mount: option('Resolve the URI within this mount', 'id'),
       ...(name === 'write'
         ? {

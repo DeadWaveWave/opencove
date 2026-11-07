@@ -35,7 +35,7 @@ Plugins:
 
 Selectors:
   Node, space and project options accept @self, an exact ID, an exact name (case-sensitive), or a unique ID prefix of 6+ characters.
-  @self uses your terminal identity. Names are scoped by --project or your own project inside OpenCove. Ambiguous targets require a full ID.
+  @self uses your terminal identity. Names are scoped by --project or your own project inside OpenCove; explicit --space constrains every node selector, including full IDs. Ambiguous targets require a full ID.
 
 Global options:
   --endpoint <url>         Connect to this Control Surface URL
@@ -43,6 +43,7 @@ Global options:
   --user-data <dir>        Use this profile directory
   --timeout <ms>           Set the request timeout in milliseconds (default: 20000)
   --pretty                 Indent JSON output for readability
+  --limit <n>              Limit output lists to n items (0 means all); cut object lists add truncated totals, bare arrays write one stderr notice
   --fields <a,b,...>       Select item-relative fields; preserve envelopes and accept item-key prefixes. api call queries also accept raw output paths
   -o, --output json|table  Choose JSON (default) or a supported table layout
   -h, --help               Show help for this command or group
@@ -52,7 +53,7 @@ Exit codes: 0 success; 1 operation failure; 2 invalid input; 3 unreachable; 4 un
 
 Run "opencove <group> --help" for commands in a group.
 Start with "opencove api ops --domains" for a compact domain map.
-Then run "opencove api ops --prefix node --fields id,command" to explore one domain.
+Then run "opencove api ops --prefix node --fields id,cliCommand" to explore one domain.
 Run "opencove api ops" only when you need the full catalog.
 AI agents: run \`opencove skill\` for a usage guide.
 "
@@ -144,7 +145,7 @@ Plugins:
 
 Selectors:
   Node, space and project options accept @self, an exact ID, an exact name (case-sensitive), or a unique ID prefix of 6+ characters.
-  @self uses your terminal identity. Names are scoped by --project or your own project inside OpenCove. Ambiguous targets require a full ID.
+  @self uses your terminal identity. Names are scoped by --project or your own project inside OpenCove; explicit --space constrains every node selector, including full IDs. Ambiguous targets require a full ID.
 
 Global options:
   --endpoint <url>         Connect to this Control Surface URL
@@ -152,6 +153,7 @@ Global options:
   --user-data <dir>        Use this profile directory
   --timeout <ms>           Set the request timeout in milliseconds (default: 20000)
   --pretty                 Indent JSON output for readability
+  --limit <n>              Limit output lists to n items (0 means all); cut object lists add truncated totals, bare arrays write one stderr notice
   --fields <a,b,...>       Select item-relative fields; preserve envelopes and accept item-key prefixes. api call queries also accept raw output paths
   -o, --output json|table  Choose JSON (default) or a supported table layout
   -h, --help               Show help for this command or group
@@ -161,7 +163,7 @@ Exit codes: 0 success; 1 operation failure; 2 invalid input; 3 unreachable; 4 un
 
 Run "opencove <group> --help" for commands in a group.
 Start with "opencove api ops --domains" for a compact domain map.
-Then run "opencove api ops --prefix node --fields id,command" to explore one domain.
+Then run "opencove api ops --prefix node --fields id,cliCommand" to explore one domain.
 Run "opencove api ops" only when you need the full catalog.
 AI agents: run \`opencove skill\` for a usage guide.
 "

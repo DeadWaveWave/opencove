@@ -90,6 +90,14 @@ export interface Command {
 }
 export function defineCommand(command: Command): Command {
   const options = { ...command.options }
+  if (options.node && !options.space) {
+    options.space = {
+      type: 'string',
+      valueName: 'selector',
+      description: 'Require every node selector, including full IDs, to belong to this space',
+      defaultSelf: false,
+    }
+  }
   // Selector semantics and help share this metadata, including plugin targets.
   for (const kind of ['node', 'space', 'project'] as const) {
     if (options[kind]) {

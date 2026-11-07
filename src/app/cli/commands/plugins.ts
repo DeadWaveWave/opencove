@@ -123,7 +123,15 @@ export const pluginCommands: Command[] = [
           ? { node: option('Select an existing plugin window', 'id') }
           : {}),
         ...(name === 'open'
-          ? { space: { ...option('Place a new window in this space', 'id'), conflicts: ['node'] } }
+          ? {
+              space: {
+                ...option(
+                  'Place a new window here, or narrow an existing node lookup to this space',
+                  'id',
+                ),
+                defaultSelfUnless: ['node'],
+              },
+            }
           : {}),
         ...(name === 'run'
           ? {
@@ -176,12 +184,6 @@ export const pluginCommands: Command[] = [
             `Run "opencove plugin ${name} --help" to see its arguments.`,
           )
         }
-        if (name === 'open' && o.node !== undefined && o.space !== undefined) {
-          usage(
-            'Cannot use --node and --space together',
-            'Use --node for an existing window, or --space for a new window.',
-          )
-        }
         if (name === 'run' && Buffer.byteLength(JSON.stringify(o.params ?? null)) > 1024 * 1024) {
           usage('Plugin --params exceeds 1 MiB', 'Pass a smaller JSON value.')
         }
@@ -189,7 +191,11 @@ export const pluginCommands: Command[] = [
           pluginId: p[0],
           ...Object.fromEntries(
             ['project', 'node', 'view', 'space']
-              .filter(k => o[k] !== undefined)
+              .filter(
+                k =>
+                  o[k] !== undefined &&
+                  (k !== 'space' || (name === 'open' && o.node === undefined)),
+              )
               .map(k => [`${k}Id`, o[k]]),
           ),
           ...(o.ref !== undefined ? { ref: o.ref } : {}),

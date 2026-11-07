@@ -19,11 +19,12 @@ exports[`agent get help is offline and complete 1`] = `
 
 Inspect an agent run-state snapshot with its node title
 
-Returns the Worker snapshot plus title, or null if this node has no registered agent session. State is runtime evidence, independent of persisted node status. Unknown/degraded is never ready. turnOutcome describes the last ended turn and may be failed, aborted or unknown.
+Returns the Worker snapshot plus title. A non-agent node or missing run state fails with agent.not_found (exit 1); use node get to inspect a terminal/note, or start/resume an agent window. State is runtime evidence, independent of persisted node status. Unknown/degraded is never ready. turnOutcome describes the last ended turn and may be failed, aborted or unknown.
 
 Options:
-  --node <id>     Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
-  --project <id>  Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --node <id>         Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
+  --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
 Projectable fields: nodeId, title, sessionId, provider, state, blockedReason, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome
@@ -54,6 +55,8 @@ Options:
   --state <working|waiting|idle|exited|unknown>  Filter the authoritative run state
   --project <id>                                 Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
+List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
+
 Table output (-o table): supported.
 Projectable fields: nodeId, title, sessionId, provider, state, blockedReason, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome
 
@@ -81,11 +84,12 @@ Use --screen before prompting to inspect drafts and dialogs. It resolves the cur
 If a completed idle agent has no readable transcript (for example transcript saving is disabled), inspect --screen and check provider settings; waiting cannot create that transcript. A working agent may need to reach idle first. Reading never sends input.
 
 Options:
-  --node <id>     Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
-  --last          Read the last final message (default; no transcript history)
-  --screen        Inspect the current terminal screen as plain text instead of the final message
-  --lines <n>     Return the last n screen lines after trimming trailing blank lines (positive integer; default: 40; requires --screen)
-  --project <id>  Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --node <id>         Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
+  --last              Read the last final message (default; no transcript history)
+  --screen            Inspect the current terminal screen as plain text instead of the final message
+  --lines <n>         Return the last n screen lines after trimming trailing blank lines (positive integer; default: 40; requires --screen)
+  --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
 Projectable fields: sessionId, provider, startedAt, cwd, resumeSessionId, message
@@ -121,7 +125,10 @@ Options:
   --any                                   Resolve when any selected node matches
   --all                                   Resolve when all selected nodes match (default)
   --timeout <duration>                    Overall wait budget, e.g. 30s, 2m or 20000ms (default: 20s; minimum: 250ms)
+  --space <selector>                      Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>                          Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
 
 Table output (-o table): not supported.
 Projectable fields: nodeId, sessionId, provider, state, blockedReason, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome, endedTurn, endedTurn.id, endedTurn.startedAt, endedTurn.start, endedTurnOutcome
@@ -175,7 +182,7 @@ exports[`prints final wait snapshots with a projectable ended outcome 1`] = `
 `;
 
 exports[`renders a golden table with all required columns 1`] = `
-"nodeId       title  provider     state    blockedReason  turn.startedAt  quality
+"NODEID       TITLE  PROVIDER     STATE    BLOCKEDREASON  TURN.STARTEDAT  QUALITY
 node-123456  Shell  claude-code  working                 10              authoritative
 "
 `;

@@ -149,7 +149,7 @@ it('filters operations offline and maps dedicated commands without expanding def
       `${op.id} ${op.summary}`.toLowerCase().includes('create'),
     ),
   ).toBe(true)
-  expect(Object.keys(result[0])).toEqual(['id', 'kind', 'contract', 'summary'])
+  expect(Object.keys(result[0])).toEqual(['id', 'kind', 'contract', 'summary', 'scope'])
   const g = fixture()
   expect(
     await run(
@@ -165,12 +165,12 @@ it('filters operations offline and maps dedicated commands without expanding def
         '--contract',
         'schema',
         '--fields',
-        'id,command',
+        'id,cliCommand',
       ],
       g.io,
     ),
   ).toBe(0)
-  expect(JSON.parse(g.out())).toEqual([{ id: 'node.create', command: 'opencove node create' }])
+  expect(JSON.parse(g.out())).toEqual([{ id: 'node.create', cliCommand: 'opencove node create' }])
   expect(f.fetch).not.toHaveBeenCalled()
 })
 it('matches summaries and returns an empty projected operation search', async () => {
@@ -198,7 +198,7 @@ it('declares table support consistently in every command help', async () => {
 it('fills space table projectId from the envelope', async () => {
   const f = fixture({ projectId: 'p', spaces: [{ id: 's', name: 'Main' }] })
   expect(await run(['space', 'list', '-o', 'table'], f.io)).toBe(0)
-  expect(f.out()).toBe('id  name  projectId\ns   Main  p\n')
+  expect(f.out()).toBe('ID  NAME  PROJECTID\ns   Main  p\n')
 })
 it.each(['node list', 'node get', 'node update task', 'space list', 'api ops'])(
   'help golden %s',
@@ -236,7 +236,9 @@ it('does not suggest a file variant for a file option itself', async () => {
 it('rejects unknown api ops projection fields before producing output', async () => {
   const f = fixture()
   expect(await run(['api', 'ops', '--fields', 'id,invented'], f.io)).toBe(2)
-  expect(f.error().message).toContain('Available fields: id, kind, contract, summary, command')
+  expect(f.error().message).toContain(
+    'Available fields: id, kind, contract, summary, cliCommand, scope, allowed',
+  )
   expect(f.out()).toBe('')
 })
 it('preserves full list envelopes when fields are omitted', async () => {
@@ -274,11 +276,11 @@ it.each([
     const f = fixture()
     expect(
       await run(
-        ['api', 'ops', '--search', search, '--prefix', prefix, '--fields', 'id,command'],
+        ['api', 'ops', '--search', search, '--prefix', prefix, '--fields', 'id,cliCommand'],
         f.io,
       ),
     ).toBe(0)
-    expect(JSON.parse(f.out())).toContainEqual({ id, command })
+    expect(JSON.parse(f.out())).toContainEqual({ id, cliCommand: command })
   },
 )
 

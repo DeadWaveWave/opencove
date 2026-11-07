@@ -26,7 +26,7 @@ Query:
 
 ```bash
 opencove node list [space locator] [--kind <kind>] [--pretty]
-opencove node get --node <id> [--pretty]
+opencove node get --node <selector> [--space <selector>] [--pretty]
 ```
 
 Command:
@@ -40,7 +40,7 @@ opencove node create terminal [space locator] [--shell <path>] [--command <text>
 opencove node update note --node <id> [--title <text>] [--text <text>] [--frame <json>] [--pretty]
 opencove node update task --node <id> [--title <text>] [--requirement <text>] [--priority <low|medium|high|urgent>] [--status <todo|doing|ai_done|done>] [--tag <tag>] [--frame <json>] [--pretty]
 opencove node update website --node <id> [--title <text>] [--url <url>] [--pinned <true|false>] [--session-mode <shared|incognito|profile>] [--profile <id>] [--frame <json>] [--pretty]
-opencove node delete --node <id> [--pretty]
+opencove node delete --node <selector> [--space <selector>] [--pretty]
 opencove canvas focus node --node <id> [--pretty]
 opencove canvas focus space [space locator] [--pretty]
 ```
@@ -160,3 +160,9 @@ Focus:
 ## CLI output
 
 成功 stdout 直接包含节点结果 JSON（例如 `node`、`revision`），没有 transport envelope。失败为非零 exit code，JSON 错误位于 stderr。查询支持 `--fields`；mutation 不支持字段投影。长文本使用 `--text-file`、`--requirement-file` 或 `--prompt-file`，`-` 表示 stdin。
+
+
+Node selectors also accept `--space <selector>` for names and prefixes. Exact IDs
+retain precedence; ambiguous names are refused with space names and note previews.
+Lists accept `--limit <n>` and report cut-list totals in `truncated`; see the
+[CLI output and selector guide](README.md#selector-diagnostics-and-bounded-output).

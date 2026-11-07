@@ -24,12 +24,12 @@ const runFields = [
   'quality',
   'turnOutcome',
 ]
-async function title(ctx: CommandContext, nodeId: string | null) {
+async function nodeMetadata(ctx: CommandContext, nodeId: string | null) {
   if (nodeId === null) {
     return null
   }
   try {
-    return ((await ctx.invoke('node.get', { nodeId })) as GetNodeResult).node.title
+    return ((await ctx.invoke('node.get', { nodeId })) as GetNodeResult).node
   } catch (error) {
     // A concurrent node deletion must not hide the authoritative runtime snapshot.
     if (error instanceof CliError && error.code === 'node.not_found') {
@@ -85,7 +85,10 @@ export const agentQueryCommands = [
       return {
         ...result,
         agents: await Promise.all(
-          result.agents.map(async agent => ({ ...agent, title: await title(ctx, agent.nodeId) })),
+          result.agents.map(async agent => ({
+            ...agent,
+            title: (await nodeMetadata(ctx, agent.nodeId))?.title ?? null,
+          })),
         ),
       }
     },
@@ -96,7 +99,7 @@ export const agentQueryCommands = [
     operation: 'agent.get',
     summary: 'Inspect an agent run-state snapshot with its node title',
     description:
-      'Returns the Worker snapshot plus title, or null if this node has no registered agent session. State is runtime evidence, independent of persisted node status. Unknown/degraded is never ready. turnOutcome describes the last ended turn and may be failed, aborted or unknown.',
+      'Returns the Worker snapshot plus title. A non-agent node or missing run state fails with agent.not_found (exit 1); use node get to inspect a terminal/note, or start/resume an agent window. State is runtime evidence, independent of persisted node status. Unknown/degraded is never ready. turnOutcome describes the last ended turn and may be failed, aborted or unknown.',
     options: { node: stringOption('Node ID', true) },
     buildInput: ({ options: o }) => ({ nodeId: o.node }),
     render: declaredOutput(runFields, { nodeId: 'node-123' }),
@@ -106,7 +109,25 @@ export const agentQueryCommands = [
     ],
     async execute(ctx) {
       const snapshot = (await ctx.invoke('agent.get', ctx.input)) as AgentRunSnapshot | null
-      return snapshot === null ? null : { ...snapshot, title: await title(ctx, snapshot.nodeId) }
+      const nodeId = String(ctx.options.node)
+      const node = await nodeMetadata(ctx, nodeId)
+      if (node && node.kind !== 'agent') {
+        throw new CliError(
+          'agent.not_found',
+          1,
+          `${JSON.stringify(node.title)} is a ${node.kind}, not an agent window.`,
+          'Use "opencove node get --node <selector>" to inspect this node, or "opencove agent list" to find agent windows.',
+        )
+      }
+      if (snapshot === null) {
+        throw new CliError(
+          'agent.not_found',
+          1,
+          `${JSON.stringify(node?.title ?? nodeId)} has no registered agent run state.`,
+          'Start or resume an agent window, then run "opencove agent list" to inspect its run state.',
+        )
+      }
+      return { ...snapshot, title: node?.title ?? null }
     },
   }),
   defineCommand({

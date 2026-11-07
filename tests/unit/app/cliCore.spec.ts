@@ -188,7 +188,7 @@ describe('TypeScript CLI core', () => {
   it('renders table', async () => {
     const f = fixture({ projects: [{ id: '1', name: 'N' }] })
     await run(['project', 'list', '-o', 'table'], f.io)
-    expect(f.out()).toBe('id  name\n1   N\n')
+    expect(f.out()).toBe('ID  NAME\n1   N\n')
   })
   it.each(['node.create', 'system.operations', 'system.operation.describe'])(
     'schema %s offline',

@@ -59,8 +59,8 @@ export const nodeListOutput: RenderSpec = {
         `Read full node content with "opencove node get --node <id> --fields data.${field}".`,
       ]),
   ),
-  columns: ['id', 'kind', 'title', 'STATE'],
-  tableFields: { STATE: ['data.status', 'status'] },
+  columns: ['id', 'kind', 'title', 'state'],
+  tableFields: { state: ['data.status', 'status'] },
   examples: [
     'opencove node list --fields id,data.status',
     '{"projectId":"p","spaceId":null,"nodes":[{"id":"n","data":{"status":"doing"}}]}',
@@ -120,7 +120,12 @@ export const spaceListOutput: RenderSpec = {
     'opencove space list --fields id,name',
     '{"projectId":"p","activeSpaceId":"s","spaces":[{"id":"s","name":"Main"}]}',
   ],
-  fields: [...spaceFields, 'projectId'],
+  fields: [
+    ...spaceFields,
+    'nodeCount',
+    'projectId',
+    ...nodeListOutput.fields!.map(field => `nodes.${field}`),
+  ],
   columns: ['id', 'name', 'projectId'],
   envelopeFields: { projectId: 'projectId' },
 }

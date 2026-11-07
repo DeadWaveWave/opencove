@@ -28,6 +28,7 @@ function fixture(inside = false) {
   const f = identityFixture(inside)
   f.values['agent.list'] = { epoch: 'e', seq: 5, agents: [snapshot] }
   f.values['agent.get'] = snapshot
+  f.values['node.get'] = { node: { ...node, kind: 'agent' } }
   f.values['session.finalMessage'] = finalMessage
   return f
 }
@@ -84,15 +85,19 @@ it('gets a snapshot plus title and supports @self', async () => {
   expect(f.out()).toMatchSnapshot()
   expect(f.requests.find(r => r.id === 'agent.get')?.payload).toEqual({ nodeId: node.id })
 })
-it('keeps absent get snapshots null even with projection', async () => {
+it('rejects absent get snapshots even with projection', async () => {
   const f = fixture()
   const original = f.io.fetch
   f.io.fetch = async (url, init) =>
     JSON.parse(String(init?.body)).id === 'agent.get'
       ? new Response(JSON.stringify({ ok: true, value: null }))
       : original(url, init)
-  expect(await run(['agent', 'get', '--node', 'Shell', '--fields', 'state'], f.io)).toBe(0)
-  expect(f.out()).toBe('null\n')
+  expect(await run(['agent', 'get', '--node', 'Shell', '--fields', 'state'], f.io)).toBe(1)
+  expect(f.out()).toBe('')
+  expect(f.error()).toMatchObject({
+    code: 'agent.not_found',
+    message: expect.stringContaining('no registered agent run state'),
+  })
 })
 it.each([false, true])('reads plain final text with TTY=%s and --last', async tty => {
   const f = fixture()

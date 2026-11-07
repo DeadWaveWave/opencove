@@ -1,3 +1,4 @@
+import { editDistance } from './suggestions'
 import { jsonErrorOffset } from './jsonLocation'
 import { parseArgs, type ParseArgsConfig } from 'node:util'
 import type { Command, OptionSpec } from './command'
@@ -18,6 +19,12 @@ export const globals: Record<string, OptionSpec> = {
     description: 'Set the request timeout in milliseconds (default: 20000)',
   },
   pretty: { type: 'boolean', description: 'Indent JSON output for readability' },
+  limit: {
+    type: 'number',
+    valueName: 'n',
+    description:
+      'Limit output lists to n items (0 means all); cut object lists add truncated totals, bare arrays write one stderr notice',
+  },
   fields: {
     type: 'string',
     valueName: 'a,b,...',
@@ -36,25 +43,12 @@ export function commandHelpHint(path: string[]) {
   return `Run "opencove${path.length ? ' ' + path.join(' ') : ''} --help" to see its options.`
 }
 export function suggest(value: string, choices: string[]): string {
-  const distance = (a: string, b: string) => {
-    const row = Array.from({ length: b.length + 1 }, (_, i) => i)
-    for (let i = 1; i <= a.length; i++) {
-      let prev = row[0]
-      row[0] = i
-      for (let j = 1; j <= b.length; j++) {
-        const old = row[j]
-        row[j] = Math.min(row[j] + 1, row[j - 1] + 1, prev + Number(a[i - 1] !== b[j - 1]))
-        prev = old
-      }
-    }
-    return row[b.length]
-  }
   const prefixes = choices.filter(c => c.startsWith(value))
   const best =
     prefixes.length === 1
       ? prefixes[0]
-      : [...choices].sort((a, b) => distance(value, a) - distance(value, b))[0]
-  return best && (prefixes.length === 1 || distance(value, best) <= 2)
+      : [...choices].sort((a, b) => editDistance(value, a) - editDistance(value, b))[0]
+  return best && (prefixes.length === 1 || editDistance(value, best) <= 2)
     ? `Did you mean ${best}?`
     : ''
 }
@@ -247,6 +241,12 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
     values[key] = Array.isArray(values[key])
       ? (values[key] as unknown[]).map(convert)
       : convert(values[key])
+  }
+  if (
+    values.limit !== undefined &&
+    (!Number.isSafeInteger(values.limit) || Number(values.limit) < 0)
+  ) {
+    usage('--limit must be a non-negative safe integer')
   }
   if (values.timeout !== undefined && Number(values.timeout) <= 0) {
     if (command.operation === 'agent.prompt') {
