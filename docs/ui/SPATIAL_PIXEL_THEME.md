@@ -254,7 +254,9 @@ sits where the line from the view's centre to the window crosses a frame inset f
 edges: a titled pill with an arrow, five at most (nearest first) and the rest as one "+N" pill.
 A click flies to the window at the current zoom, or 0.6 if further out. Beacons are derived from
 agent state and the viewport only; with no waiting windows the component does not follow the
-view. The pill pulses gently and holds still with reduced motion.
+view. The pill keeps a full waiting-colour 1px border and a still 4px outer ring at 16%; only its
+8px square dot pulses from 0.3 to 1 over 1300ms, ease-in-out. Reduced motion or signals off keeps
+the dot still. Sidebar working rows show their status in accent text colour, with no spinner.
 
 ## Working patrol
 

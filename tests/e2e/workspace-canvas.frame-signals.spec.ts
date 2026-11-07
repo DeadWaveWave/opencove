@@ -6,6 +6,20 @@ test('waiting frames pulse only opacity and retain static status with motion or 
   try {
     await send('<test-hook-initial-working>')
     await expect(node.locator('.terminal-node__status')).toContainText('Working')
+    const workingRow = window.locator(
+      '.workspace-agent-item--sidebar .workspace-agent-item__status--working',
+    )
+    await expect(workingRow).toContainText('Working')
+    await expect(workingRow.locator('svg')).toHaveCount(0)
+    const textColour = await workingRow.evaluate(el => {
+      const probe = document.createElement('span')
+      probe.style.color = 'var(--cove-accent-text)'
+      el.append(probe)
+      const color = getComputedStyle(probe).color
+      probe.remove()
+      return color
+    })
+    await expect(workingRow).toHaveCSS('color', textColour)
     await expect(node.locator('.cove-window-halo')).toHaveCount(0)
     await send('<test-hook-waiting>')
     await expect(node).toHaveAttribute('data-cove-window-status', 'waiting')

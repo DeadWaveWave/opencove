@@ -217,23 +217,9 @@
   white-space: nowrap;
 }
 
-.workspace-agent-item--sidebar .workspace-agent-item__status--working svg {
-  animation: sidebar-agent-working 2s linear infinite;
-}
 .workspace-agent-item--drag-overlay {
   background: var(--cove-popover);
   border-color: var(--cove-border);
   box-shadow: var(--cove-shadow-md);
   pointer-events: none;
-}
-
-@keyframes sidebar-agent-working {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .workspace-agent-item--sidebar .workspace-agent-item__status--working svg {
-    animation: none;
-  }
 }

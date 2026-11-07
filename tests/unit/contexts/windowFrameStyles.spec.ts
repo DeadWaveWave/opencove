@@ -7,9 +7,9 @@ import { describe, expect, it } from 'vitest'
 const sheet = postcss.parse(
   readFileSync(resolve(__dirname, '../../../src/app/renderer/styles/window-signals.css'), 'utf8'),
 )
-function declarations(selector: string, reduced = false) {
+function declarations(selector: string, reduced = false, source = sheet) {
   const result: Record<string, string> = {}
-  sheet.walkRules(rule => {
+  source.walkRules(rule => {
     if (rule.selector.replace(/\s+/g, ' ') !== selector) {
       return
     }
@@ -22,9 +22,9 @@ function declarations(selector: string, reduced = false) {
   })
   return result
 }
-function frames(name: string) {
+function frames(name: string, source = sheet) {
   const result: Record<string, Record<string, string>> = {}
-  sheet.walkAtRules('keyframes', rule => {
+  source.walkAtRules('keyframes', rule => {
     if (rule.params !== name) {
       return
     }
@@ -146,5 +146,50 @@ describe('Tide navigation focus', () => {
         '0 0 0 1.5px var(--cove-label-color, transparent), 0 0 0 1px var(--cove-navigation-accent), 0 0 26px 2px color-mix(in srgb, var(--cove-navigation-accent) 26%, transparent), var(--cove-node-shadow)',
       )
     })
+  })
+})
+
+describe('Tide beacon and sidebar signals', () => {
+  const beacon = postcss.parse(
+    readFileSync(
+      resolve(__dirname, '../../../src/app/renderer/styles/workspace-edge-beacons.css'),
+      'utf8',
+    ),
+  )
+  const sidebar = readFileSync(
+    resolve(__dirname, '../../../src/app/renderer/styles/workspace-agent-item.css'),
+    'utf8',
+  )
+  it('keeps a full amber border and 4px/16% ring still while only the 8px dot pulses', () => {
+    const pill = declarations('.workspace-edge-beacon', false, beacon)
+    expect(pill.border).toBe('1px solid var(--cove-status-waiting, var(--cove-warning))')
+    expect(pill['box-shadow']).toBe(
+      '0 0 0 4px color-mix(in srgb, var(--cove-status-waiting, var(--cove-warning)) 16%, transparent)',
+    )
+    expect(pill.animation).toBeUndefined()
+    expect(declarations('.workspace-edge-beacon__dot', false, beacon)).toMatchObject({
+      width: '8px',
+      height: '8px',
+      animation: 'workspace-edge-beacon-pulse 1.3s ease-in-out infinite',
+    })
+    expect(frames('workspace-edge-beacon-pulse', beacon)).toEqual({
+      '0%, 100%': { opacity: '0.3' },
+      '50%': { opacity: '1' },
+    })
+    expect(declarations('.workspace-edge-beacon__dot', true, beacon).animation).toBe('none')
+    expect(
+      declarations("[data-cove-frame-signals='off'] .workspace-edge-beacon__dot", false, beacon)
+        .animation,
+    ).toBe('none')
+  })
+  it('keeps working text in accent colour without a rotating spinner', () => {
+    expect(
+      declarations(
+        '.workspace-agent-item--sidebar .workspace-agent-item__status--working',
+        false,
+        postcss.parse(sidebar),
+      ).color,
+    ).toBe('var(--cove-accent-text)')
+    expect(sidebar).not.toMatch(/sidebar-agent-working|rotate\(/)
   })
 })
