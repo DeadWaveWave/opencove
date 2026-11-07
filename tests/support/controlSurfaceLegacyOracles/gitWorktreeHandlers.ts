@@ -9,7 +9,7 @@ import {
   normalizeRemoveGitWorktreePayload,
   normalizeRenameGitBranchPayload,
   normalizeSuggestWorktreeNamesPayload,
-} from './migAGitIpc'
+} from './gitWorktreeIpcValidation'
 
 export const normalizeGitWorktreeListBranches = normalizeListGitBranchesPayload
 export const normalizeGitWorktreeListWorktrees = normalizeListGitWorktreesPayload

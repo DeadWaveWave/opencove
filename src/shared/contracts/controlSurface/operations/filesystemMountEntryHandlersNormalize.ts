@@ -12,7 +12,7 @@ import {
   normalizeFileSystemUri,
   normalizeMountId,
   normalizeSourceTargetPayload,
-} from './migrationMountNormalize'
+} from './filesystemMountPayloadSupport'
 
 export const normalizeFilesystemCreateDirectoryInMount = (
   payload: unknown,

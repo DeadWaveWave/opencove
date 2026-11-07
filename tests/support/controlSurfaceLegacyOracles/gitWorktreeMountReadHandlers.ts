@@ -1,5 +1,6 @@
-import { createAppError } from '../../../errors/appError'
-import { isRecord, normalizeFileSystemUri, normalizeMountId } from './migrationMountNormalize'
+// Frozen validator bodies from src/app/main/controlSurface/handlers/gitWorktreeMountReadHandlers.ts at 6df96903c64d6fb3c541c79815713996d3c1b186; imports relocated only.
+import { createAppError } from '../../../src/shared/errors/appError'
+import { isRecord, normalizeFileSystemUri, normalizeMountId } from './filesystemMountSupport'
 
 export const normalizeGitWorktreeListBranchesInMount = (payload: unknown): { mountId: string } => {
   if (!isRecord(payload)) {
