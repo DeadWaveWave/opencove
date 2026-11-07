@@ -154,5 +154,9 @@ Focus:
 
 - `tests/unit/app/cliNodeControl.spec.ts`
 - `tests/unit/contexts/nodeControl.spec.ts`
-- `src/app/cli/commands/nodeControl.mjs`
+- `src/app/cli/commands/nodes.ts`
 - `src/app/main/controlSurface/handlers/nodeControlHandlers.ts`
+
+## CLI output
+
+成功 stdout 直接包含节点结果 JSON（例如 `node`、`revision`），没有 transport envelope。失败为非零 exit code，JSON 错误位于 stderr。查询支持 `--fields`；mutation 不支持字段投影。长文本使用 `--text-file`、`--requirement-file` 或 `--prompt-file`，`-` 表示 stdin。

@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  parsePluginCommand,
-  resolvePluginCommandTimeout,
-} from '../../../src/app/cli/commands/plugins.mjs'
+import { parsePluginCommand, resolvePluginCommandTimeout } from './cliPluginParsing.helpers'
 
 describe('plugin contribution CLI parsing before connection', () => {
   it('routes explicit window/client identity and JSON without shell interpretation', () => {
@@ -59,7 +56,7 @@ describe('plugin contribution CLI parsing before connection', () => {
       payload: { pluginId: 'sample', commandId: 'status', params: null },
     },
     {
-      args: ['run', 'sample', 'adjust', '--params', '-1'],
+      args: ['run', 'sample', 'adjust', '--params=-1'],
       id: 'plugin.command.run',
       kind: 'command',
       payload: { pluginId: 'sample', commandId: 'adjust', params: -1 },

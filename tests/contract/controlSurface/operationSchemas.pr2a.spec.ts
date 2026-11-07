@@ -44,7 +44,7 @@ function exported(id: string): JsonSchema {
 for (const [id, [properties, required]] of Object.entries(documented)) {
   it(`${id} exports documented properties and required fields`, () => {
     const shapes = objectShapes(exported(id))
-    expect(shapes).toHaveLength(1)
+    expect(shapes).toHaveLength(id === 'node.update' ? 3 : 1)
     expect(Object.keys(shapes[0].properties ?? {}).sort()).toEqual([...properties].sort())
     expect([...(shapes[0].required ?? [])].sort()).toEqual([...required].sort())
   })

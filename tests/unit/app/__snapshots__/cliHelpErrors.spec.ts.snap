@@ -1,0 +1,159 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`error golden texts (TTY=false) 1`] = `
+{
+  "missing required option": "{"error":{"code":"cli.usage","message":"Missing required option --space (or another target space option) for \\"opencove node create note\\".","hint":"Run \\"opencove node create note --help\\" to see its options."}}
+",
+  "not running": "{"error":{"code":"context.unreachable","message":"OpenCove is not running for this profile.","hint":"Start the OpenCove app, or run \\"opencove worker start\\". Use --user-data <dir> to target another profile.","details":{"profiles":[".codex-out/tmp/profile-a",".codex-out/tmp/profile-b"]}}}
+",
+  "unknown command": "{"error":{"code":"cli.usage","message":"Unknown command \\"nodes list\\" for opencove.","hint":"Did you mean node list? Run \\"opencove --help\\" to see its commands."}}
+",
+  "unknown option": "{"error":{"code":"cli.usage","message":"Unknown option --frobnicate for \\"opencove node list\\".","hint":"Run \\"opencove node list --help\\" to see its options."}}
+",
+}
+`;
+
+exports[`error golden texts (TTY=true) 1`] = `
+{
+  "missing required option": "error[cli.usage]: Missing required option --space (or another target space option) for "opencove node create note".
+  hint: Run "opencove node create note --help" to see its options.
+",
+  "not running": "error[context.unreachable]: OpenCove is not running for this profile.
+  searched profiles: .codex-out/tmp/profile-a, .codex-out/tmp/profile-b
+  hint: Start the OpenCove app, or run "opencove worker start". Use --user-data <dir> to target another profile.
+",
+  "unknown command": "error[cli.usage]: Unknown command "nodes list" for opencove.
+  hint: Did you mean node list? Run "opencove --help" to see its commands.
+",
+  "unknown option": "error[cli.usage]: Unknown option --frobnicate for "opencove node list".
+  hint: Run "opencove node list --help" to see its options.
+",
+}
+`;
+
+exports[`lists real endpoint subcommands offline 1`] = `
+"Usage: opencove endpoint <command> [options]
+
+Commands:
+  list      List registered endpoints
+  register  Register a remote worker
+  ping      Check a remote worker connection
+  remove    Remove a registered endpoint
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real fs subcommands offline 1`] = `
+"Usage: opencove fs <command> [options]
+
+Commands:
+  read   Read a text file
+  write  Write a text file
+  stat   Inspect file metadata
+  ls     List a directory
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real mount subcommands offline 1`] = `
+"Usage: opencove mount <command> [options]
+
+Commands:
+  list     List project mounts
+  create   Mount a worker folder in a project
+  resolve  Resolve a mount location
+  remove   Remove a project mount
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real plugin subcommands offline 1`] = `
+"Usage: opencove plugin <command> [options]
+
+Commands:
+  guide        Read the plugin development and usage guide
+  list         List installed plugins
+  details      Inspect plugin metadata
+  install      Install a plugin from a local directory
+  reload       Reload a plugin
+  uninstall    Uninstall a plugin
+  enable       Enable a plugin
+  disable      Disable a plugin
+  install-git  Install a plugin from a Git repository
+  source       Inspect the plugin source
+  check        Check for a plugin update
+  update       Prepare a plugin update
+  apply        Apply a prepared plugin update
+  rollback     Restore a previous plugin revision
+  discover     Find available plugins
+  run          Run a plugin command
+  skill        Read a plugin skill
+  open         Open a plugin window
+  windows      List plugin windows
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real pty subcommands offline 1`] = `
+"Usage: opencove pty <command> [options]
+
+Commands:
+  attach          Stream terminal output until exit or Ctrl-C
+  spawn-in-mount  Start a terminal in a mount
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real runtime subcommands offline 1`] = `
+"Usage: opencove runtime <command> [options]
+
+Commands:
+  inspect  Inspect the runtime build
+  verify   Verify the runtime environment
+  prepare  Prepare a managed runtime deployment
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real session subcommands offline 1`] = `
+"Usage: opencove session <command> [options]
+
+Commands:
+  run-agent  Launch an agent in a space
+  get        Inspect an agent session
+  final      Read the final agent message
+  kill       Stop an agent session
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real worker subcommands offline 1`] = `
+"Usage: opencove worker <command> [options]
+
+Commands:
+  start   Start a local worker in the foreground
+  status  Inspect local worker status
+  stop    Stop a local worker
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real worktree subcommands offline 1`] = `
+"Usage: opencove worktree <command> [options]
+
+Commands:
+  list     List Git worktrees
+  create   Create a worktree for a space
+  archive  Archive a space worktree
+
+Global options: see "opencove --help".
+"
+`;

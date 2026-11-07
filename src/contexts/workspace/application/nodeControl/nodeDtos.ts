@@ -71,6 +71,31 @@ function normalizeTaskStatus(value: unknown): NodeTaskStatus {
     : 'todo'
 }
 
+export function toCompactNodeData(node: { kind: unknown; task?: unknown }): {
+  kind: string
+  requirement?: string
+  status?: NodeTaskStatus
+  priority?: NodeTaskPriority
+  tags?: string[]
+  url?: string
+} {
+  const kind = typeof node.kind === 'string' ? node.kind : 'unknown'
+  const data = isRecord(node.task) ? node.task : {}
+  if (kind === 'task') {
+    return {
+      kind,
+      requirement: normalizeString(data.requirement),
+      status: normalizeTaskStatus(data.status),
+      priority: normalizeTaskPriority(data.priority),
+      tags: normalizeStringArray(data.tags),
+    }
+  }
+  if (kind === 'website') {
+    return { kind, url: normalizeString(data.url) }
+  }
+  return { kind }
+}
+
 function resolveNodeSpaceId(workspace: NodeControlWorkspace, nodeId: string): string | null {
   return workspace.spaces.find(space => space.nodeIds.includes(nodeId))?.id ?? null
 }
@@ -82,6 +107,7 @@ function toNodeSummaryBase(options: {
 }): CanvasNodeSummaryDto {
   const spaceId = options.spaceId ?? resolveNodeSpaceId(options.workspace, options.node.id)
   return {
+    data: toCompactNodeData(options.node),
     id: options.node.id,
     kind: isReadableNodeKind(options.node.kind) ? options.node.kind : 'terminal',
     title: options.node.title,

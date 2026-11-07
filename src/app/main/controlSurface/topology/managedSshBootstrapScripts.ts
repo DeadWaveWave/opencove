@@ -82,7 +82,7 @@ if ! runtime_matches; then
   exit 1
 fi
 printf '%s\\n' '[opencove-bootstrap-progress:v1] starting_runtime'
-printf '%s' ${shellQuote(request(access, options))} | "$launcher" runtime prepare
+printf '%s' ${shellQuote(request(access, options))} | "$launcher" runtime prepare --stream-progress
 `
 }
 
@@ -132,7 +132,7 @@ if (${options.reinstallRuntime ? '$true' : '$false'} -or !(Test-RuntimeBuild)) {
 }
 if (!(Test-RuntimeBuild)) { throw '[opencove-bootstrap:build_mismatch] Installed runtime does not match the Desktop build.' }
 [Console]::Out.WriteLine('[opencove-bootstrap-progress:v1] starting_runtime')
-${powershellQuote(request(access, options))} | & $launcher runtime prepare
+${powershellQuote(request(access, options))} | & $launcher runtime prepare --stream-progress
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 `
 }

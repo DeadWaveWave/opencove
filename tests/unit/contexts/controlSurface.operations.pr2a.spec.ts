@@ -55,6 +55,21 @@ function attempt(parse: (payload: unknown) => unknown, payload: unknown) {
 for (const [id, cases] of Object.entries(pr2aCorpus)) {
   for (const [index, item] of cases.entries()) {
     it(`${id} ${index}: ${item.name}`, () => {
+      if (id.startsWith('node.') || id === 'canvas.focus') {
+        const op = CONTROL_SURFACE_OPERATIONS.find(candidate => candidate.id === id)!
+        if (op.contract !== 'schema') {
+          throw new Error(id)
+        }
+        const parsed = op.input.safeParse(item.payload)
+        if (!parsed.success) {
+          expect(() => validators[id](item.payload)).toThrow(
+            expect.objectContaining({ code: 'common.invalid_input' }),
+          )
+        } else {
+          expect(attempt(validators[id], item.payload)).toEqual(attempt(oracles[id], parsed.data))
+        }
+        return
+      }
       expect(attempt(validators[id], item.payload)).toEqual(attempt(oracles[id], item.payload))
     })
   }

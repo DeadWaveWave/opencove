@@ -337,7 +337,7 @@ describe('node control handlers', () => {
     for (const result of results) {
       expect(result.ok).toBe(false)
       if (!result.ok) {
-        expect(result.error.code).toBe('node.unsupported_operation')
+        expect(result.error.code).toBe('common.invalid_input')
       }
     }
   })
@@ -411,4 +411,30 @@ describe('node control handlers', () => {
       }),
     )
   })
+})
+
+it('returns the same task data.status through list and get while keeping session status separate', async () => {
+  const { listNodesForNodeControl, getNodeForNodeControl } =
+    await import('../../../src/contexts/workspace/application/nodeControl/nodeControlUseCases')
+  const state = createAppState()
+  state.workspaces[0].nodes = [
+    createNode({
+      id: 'task',
+      kind: 'task',
+      task: { requirement: 'Fix', status: 'doing', priority: 'high', tags: ['a'] },
+    }),
+    createNode({ id: 'agent', kind: 'agent', status: 'running', sessionId: 'session' }),
+    createNode({ id: 'note', kind: 'note', task: { text: 'private text' } }),
+    createNode({ id: 'web', kind: 'website', task: { url: 'https://example.com', pinned: true } }),
+  ]
+  state.workspaces[0].spaces[0].nodeIds = ['task', 'agent', 'note', 'web']
+  const { store } = createStateStore(state)
+  const list = await listNodesForNodeControl({ store, locatorDeps: createLocatorDeps(), input: {} })
+  const get = await getNodeForNodeControl({ store, input: { nodeId: 'task' } })
+  expect(list.nodes[0].data).toMatchObject({ status: 'doing', priority: 'high', tags: ['a'] })
+  expect(get.node.data).toMatchObject(list.nodes[0].data!)
+  expect(list.nodes[1]).toMatchObject({ status: 'running', data: { kind: 'agent' } })
+  expect(list.nodes[2].data).toEqual({ kind: 'note' })
+  expect(list.nodes[3].data).toEqual({ kind: 'website', url: 'https://example.com' })
+  expect(JSON.stringify(list)).not.toContain('private text')
 })

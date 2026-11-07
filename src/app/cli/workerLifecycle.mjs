@@ -70,8 +70,9 @@ export function isProcessAlive(pid) {
   try {
     process.kill(pid, 0)
     return true
-  } catch {
-    return false
+  } catch (error) {
+    // EPERM means the process exists but belongs to another user or sandbox.
+    return error?.code === 'EPERM'
   }
 }
 
@@ -332,13 +333,4 @@ export async function stopWorkerLifecycle(options = {}) {
     startedBy: target.startedBy,
     forced: force,
   }
-}
-
-export function printWorkerLifecycleResult(value, pretty) {
-  const result = {
-    __opencoveControlEnvelope: true,
-    ok: true,
-    value,
-  }
-  process.stdout.write(`${pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)}\n`)
 }

@@ -1,22 +1,24 @@
-import { spaceLocatorWire } from '../nodeWire'
+import { nodeSpaceLocator } from './nodeInputs'
+import { withStrictInput } from './nodeInputValidation'
 import { normalizeFocusPayload } from '../nodeQueriesNormalize'
 import * as z from 'zod'
 import { defineOperation } from '../defineOperation'
+const focusInput = z.strictObject({
+  target: z.discriminatedUnion('kind', [
+    z.strictObject({ kind: z.literal('node'), nodeId: z.string() }),
+    z.strictObject({ kind: z.literal('space'), locator: nodeSpaceLocator }),
+  ]),
+})
+
 export const canvasFocusOperation = defineOperation({
   id: 'canvas.focus',
   kind: 'command',
   scope: 'interact',
   availability: 'always',
   summary: 'Move the canvas viewport to a node or space',
-  // Preserve legacy rejection diagnostics as well as the accept-domain.
-  input: z.looseObject({
-    target: z.discriminatedUnion('kind', [
-      z.looseObject({ kind: z.literal('node'), nodeId: z.string() }),
-      z.looseObject({ kind: z.literal('space'), locator: spaceLocatorWire }),
-    ]),
-  }),
+  input: focusInput,
   normalize: normalizeFocusPayload,
-  legacyNormalize: normalizeFocusPayload,
+  legacyNormalize: withStrictInput(focusInput, normalizeFocusPayload),
   errors: [
     'node.not_found',
     'space.not_found',

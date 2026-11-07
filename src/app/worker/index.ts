@@ -1,3 +1,4 @@
+import { createWorkerParentShutdown } from '../../shared/runtime/workerParentShutdown'
 import { createPiHookChannel } from '../main/controlSurface/agentHook/piHookChannel'
 import { resolve } from 'node:path'
 import { homedir } from 'node:os'
@@ -29,8 +30,10 @@ import {
   reportLegacyManagedHookCleanupFailures,
 } from '../../contexts/agent/infrastructure/cleanupLegacyManagedHooksAtStartup'
 import { readRepeatedWorkerFlagValues, readWorkerFlagValue } from './workerCliArguments'
-import { CONTROL_SURFACE_SHUTDOWN_WATCHDOG_MS } from '../../shared/runtime/controlSurfaceShutdown'
+import { createWorkerShutdown } from './workerShutdown'
 import { getRuntimeBuildIdentity } from '../../shared/runtime/runtimeBuildIdentity'
+
+const parentShutdown = createWorkerParentShutdown()
 
 function resolvePort(argv: string[]): number | null {
   const raw = readWorkerFlagValue(argv, '--port')
@@ -276,35 +279,14 @@ async function main(): Promise<void> {
     `[opencove-worker] auth required (use Authorization: Bearer <token>${passwordRequired ? ' or /auth/login password' : ' or a Desktop-issued /auth/claim ticket'})\n`,
   )
 
-  let shutdownRequested = false
-  const disposeAndExit = async (code: number): Promise<void> => {
-    if (shutdownRequested) {
-      return
-    }
+  const disposeAndExit = createWorkerShutdown(
+    () => server.dispose(),
+    () => lock.release(),
+  )
 
-    shutdownRequested = true
-
-    const forceExitTimer = setTimeout(() => {
-      process.exit(code)
-    }, CONTROL_SURFACE_SHUTDOWN_WATCHDOG_MS)
-    forceExitTimer.unref()
-
-    try {
-      await server.dispose()
-    } catch {
-      // ignore
-    }
-
-    try {
-      await lock.release()
-    } catch {
-      // ignore
-    } finally {
-      clearTimeout(forceExitTimer)
-    }
-
-    process.exit(code)
-  }
+  parentShutdown.activate(() => {
+    void disposeAndExit(0)
+  })
 
   process.once('SIGINT', () => {
     void disposeAndExit(0)

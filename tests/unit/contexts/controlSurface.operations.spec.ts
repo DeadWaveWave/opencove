@@ -68,6 +68,13 @@ function attempt(parse: (payload: unknown) => unknown, payload: unknown) {
 for (const [id, cases] of Object.entries(corpus)) {
   for (const [index, item] of cases.entries()) {
     it(`${id} ${index}: ${item.name}`, () => {
+      if (id === 'node.create') {
+        const parsed = nodeCreateOperation.input.safeParse(item.payload)
+        expect(attempt(validators[id], item.payload)).toStrictEqual(
+          parsed.success ? attempt(oracles[id], parsed.data) : { ok: false },
+        )
+        return
+      }
       expect(attempt(validators[id], item.payload)).toStrictEqual(
         attempt(oracles[id], item.payload),
       )
