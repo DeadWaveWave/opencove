@@ -63,7 +63,7 @@ describe('asset filesystem failure boundaries', () => {
       await symlink(moved, assets.shimDirectory)
       await expect(store.ensure()).rejects.toMatchObject({ code: 'UNSAFE_ASSET' })
       await store.dispose()
-      expect(await readdir(moved)).toHaveLength(11)
+      expect(await readdir(moved)).toHaveLength(9)
     },
   )
 

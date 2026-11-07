@@ -62,7 +62,8 @@ describe('terminal Agent asset lifetime', () => {
       const repaired = await Promise.all(Array.from({ length: 20 }, () => store.ensure()))
       expect(repaired.every(result => result.rootDirectory === assets.rootDirectory)).toBe(true)
       expect(await readFile(assets.shellLauncherPath, 'utf8')).toBe(original)
-      expect(await readdir(assets.shimDirectory)).toHaveLength(11)
+      expect(await readdir(assets.shimDirectory)).toHaveLength(9)
+      expect((await readdir(assets.cliShimDirectory)).sort()).toEqual(['opencove', 'opencove.cmd'])
     },
   )
 

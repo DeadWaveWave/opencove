@@ -343,6 +343,42 @@ describe.skipIf(process.platform === 'win32')('terminal Agent POSIX shim', () =>
     await assets.dispose()
   })
 
+  it('skips its own provider shims when the environment does not name them', async () => {
+    // A canvas agent launch resolves `claude` by name. If provider shims reach that PATH without
+    // OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY, the launcher must still find the real executable
+    // instead of re-entering its own shim forever.
+    const root = await mkdtemp(join(tmpdir(), 'opencove-terminal-shim-unnamed-'))
+    roots.push(root)
+    const realBin = join(root, 'real')
+    await mkdir(realBin)
+    const realClaude = join(realBin, 'claude')
+    await writeFile(realClaude, '#!/bin/sh\nprintf "REAL_EXECUTABLE=%s\\n" "$0"\nexit 23\n')
+    await chmod(realClaude, 0o700)
+    const assets = new TerminalAgentTelemetryAssetStore({
+      parentDirectory: root,
+      runtimeExecutable: process.execPath,
+      platform: process.platform,
+    })
+    const published = await assets.ensure()
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      ELECTRON_RUN_AS_NODE: '1',
+      PATH: `${published.cliShimDirectory}:${published.shimDirectory}:${realBin}:/usr/bin:/bin`,
+    }
+    delete env.OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY
+    delete env.OPENCOVE_TERMINAL_AGENT_ENDPOINT
+    delete env.OPENCOVE_TERMINAL_AGENT_TOKEN
+    const result = await run(join(published.shimDirectory, 'claude'), [], { cwd: root, env })
+
+    expect(result.stdout).toContain(`REAL_EXECUTABLE=${realClaude}`)
+    expect(result).toMatchObject({ code: 23, signal: null })
+    // The CLI shim directory is the only one a canvas session gets; it must not shadow providers.
+    expect(existsSync(join(published.cliShimDirectory, 'opencove'))).toBe(true)
+    expect(existsSync(join(published.cliShimDirectory, 'claude'))).toBe(false)
+    expect(existsSync(join(published.shimDirectory, 'opencove'))).toBe(false)
+    await assets.dispose()
+  })
+
   it.each(['SIGHUP', 'SIGINT', 'SIGTERM'] as const)(
     'forwards %s and boundedly kills a child that ignores it',
     async signal => {
