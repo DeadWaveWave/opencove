@@ -331,7 +331,7 @@ export function WorkspaceCanvasView({
           onMinimapVisibilityChange={onMinimapVisibilityChange}
         />
         <WorkspaceCanvasControls />
-        <WorkspaceEdgeBeacons nodes={filteredNodes} />
+        <WorkspaceEdgeBeacons nodes={filteredNodes} canvasRef={canvasRef} />
         <WorkspaceCanvasHud
           canvasRef={canvasRef}
           farViewEnabled={agentSettings.canvasFarViewEnabled}

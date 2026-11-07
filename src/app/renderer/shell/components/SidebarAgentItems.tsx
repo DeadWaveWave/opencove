@@ -1,5 +1,5 @@
 import React from 'react'
-import { Circle, EyeOff, LoaderCircle, MoreHorizontal, Pin, Pause } from 'lucide-react'
+import { Circle, EyeOff, MoreHorizontal, Pin, Pause } from 'lucide-react'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from '@app/renderer/i18n'
@@ -21,8 +21,7 @@ import {
 function SidebarAgentItemContent({ item }: { item: SidebarAgentItemModel }): React.JSX.Element {
   const { t } = useTranslation()
   const statusText = t(`sidebar.status.${item.status}`)
-  const StatusIcon =
-    item.status === 'working' ? LoaderCircle : item.status === 'waiting' ? Pause : Circle
+  const StatusIcon = item.status === 'working' ? null : item.status === 'waiting' ? Pause : Circle
 
   return (
     <>
@@ -36,7 +35,7 @@ function SidebarAgentItemContent({ item }: { item: SidebarAgentItemModel }): Rea
           className={`workspace-agent-item__status workspace-agent-item__status--agent workspace-agent-item__status--${item.status}`}
           title={statusText}
         >
-          <StatusIcon size={11} aria-hidden="true" />
+          {StatusIcon ? <StatusIcon size={11} aria-hidden="true" /> : null}
           <span className="workspace-agent-item__status-label">{statusText}</span>
         </span>
       </span>

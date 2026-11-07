@@ -2,9 +2,11 @@ import { useLayoutEffect, useRef } from 'react'
 import type { Edge, Node, ReactFlowInstance, Viewport } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../types'
 import { focusNodeInViewport } from '../helpers'
+import { clearWindowFocus, showWindowFocus } from '../view/windowSignals/windowFocus'
 import { requestViewportNodeInputFocus } from '../requestViewportNodeInputFocus'
 
 export function useWorkspaceCanvasViewportNavigation({
+  canvasRef,
   workspaceId,
   persistedViewport,
   restoredViewportWorkspaceIdRef,
@@ -19,6 +21,7 @@ export function useWorkspaceCanvasViewportNavigation({
   focusSpaceInViewport,
   focusNodeTargetZoom,
 }: {
+  canvasRef: React.RefObject<HTMLDivElement | null>
   workspaceId: string
   persistedViewport: Viewport
   restoredViewportWorkspaceIdRef: React.MutableRefObject<string | null>
@@ -36,10 +39,14 @@ export function useWorkspaceCanvasViewportNavigation({
   // Stop the underlying D3 transition before this canvas's lifecycle is released.
   // Interrupted React Flow promises do not settle, so cleanup must be synchronous.
   useLayoutEffect(() => {
+    const scope = canvasRef.current
     return () => {
+      if (scope) {
+        clearWindowFocus(scope)
+      }
       void reactFlow.setViewport(reactFlow.getViewport(), { duration: 0 })
     }
-  }, [reactFlow, workspaceId])
+  }, [canvasRef, reactFlow, workspaceId])
 
   const focusedNodeRequestKeyRef = useRef<string | null>(null)
   const focusedSpaceRequestKeyRef = useRef<string | null>(null)
@@ -90,6 +97,9 @@ export function useWorkspaceCanvasViewportNavigation({
             duration: 220,
             zoom: focusNodeTargetZoom,
           })
+          if (canvasRef.current) {
+            showWindowFocus(canvasRef.current, target.id)
+          }
           if (focusNodeInput === true) {
             cancelInputFocusRef.current = requestViewportNodeInputFocus(target.id)
           }
@@ -116,6 +126,7 @@ export function useWorkspaceCanvasViewportNavigation({
     // frame that could overwrite a newer navigation or user gesture.
     applyViewportIntent()
   }, [
+    canvasRef,
     focusNodeId,
     focusNodeInput,
     focusNodeTargetZoom,

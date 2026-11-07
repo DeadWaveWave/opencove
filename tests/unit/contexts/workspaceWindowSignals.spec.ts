@@ -10,6 +10,7 @@ import {
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/windowSignals/signalDetector'
 import {
   clearWindowSignals,
+  readCompletionColor,
   showWindowSignal,
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/windowSignals/frameSignals'
 
@@ -74,6 +75,23 @@ describe('window frame signals', () => {
     expect(node.style.getPropertyValue('--cove-signal-color')).toBe('')
   })
 
+  it('restarts the flash on a new layer and cancels the old cleanup deadline', () => {
+    const scope = document.createElement('div')
+    scope.innerHTML = '<div class="react-flow__node" data-id="a"></div>'
+    const node = scope.firstElementChild as HTMLElement
+    showWindowSignal(scope, 'a', 'complete', [1, 2, 3], 1000)
+    const first = node.querySelector('.cove-window-flash')
+    expect(first).not.toBeNull()
+    vi.advanceTimersByTime(700)
+    showWindowSignal(scope, 'a', 'complete', [1, 2, 3], 1000)
+    expect(node.querySelector('.cove-window-flash')).not.toBe(first)
+    vi.advanceTimersByTime(300)
+    expect(node.dataset.coveSignal).toBe('complete')
+    vi.advanceTimersByTime(700)
+    expect(node.querySelector('.cove-window-flash')).toBeNull()
+    expect(node.dataset.coveSignal).toBeUndefined()
+  })
+
   it('lets a stronger signal replace completion and clears everything on demand', () => {
     const scope = document.createElement('div')
     scope.innerHTML = '<div class="react-flow__node" data-id="a"></div>'
@@ -88,6 +106,16 @@ describe('window frame signals', () => {
     expect(node.dataset.coveSignal).toBeUndefined()
     vi.advanceTimersByTime(1000)
     expect(node.dataset.coveSignal).toBeUndefined()
+  })
+
+  it('flashes in the kind glyph colour, as the prototype burst uses --ki, not the ink', () => {
+    const scope = document.createElement('div')
+    scope.style.setProperty('--cove-kind-ai-glyph', '#5b3e95')
+    scope.style.setProperty('--cove-kind-ai-ink', '#603aa2')
+    document.body.append(scope)
+    expect(readCompletionColor(scope, 'ai', [1, 2, 3])).toBe('#5b3e95')
+    // Themes without kind tokens fall back to the wall light colour.
+    expect(readCompletionColor(scope, 'shell', [1, 2, 3])).toBe('rgb(1 2 3)')
   })
 })
 

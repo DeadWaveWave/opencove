@@ -58,10 +58,12 @@ function ViewportNavigationHarness({
   focusSpaceInViewport?: (spaceId: string) => boolean
 }): React.JSX.Element {
   const restoredViewportWorkspaceIdRef = useRef<string | null>(null)
+  const canvasRef = useRef<HTMLDivElement>(null)
   const nodesRef = useRef(nodes)
   nodesRef.current = nodes
 
   useWorkspaceCanvasViewportNavigation({
+    canvasRef,
     workspaceId,
     persistedViewport: PERSISTED_VIEWPORT,
     restoredViewportWorkspaceIdRef,
@@ -77,7 +79,13 @@ function ViewportNavigationHarness({
     focusNodeTargetZoom: 1,
   })
 
-  return <div />
+  return (
+    <div ref={canvasRef}>
+      {nodes.map(node => (
+        <div key={node.id} className="react-flow__node" data-id={node.id} />
+      ))}
+    </div>
+  )
 }
 
 describe('useWorkspaceCanvasViewportNavigation', () => {
@@ -117,6 +125,45 @@ describe('useWorkspaceCanvasViewportNavigation', () => {
       zoomTo: vi.fn(async () => true),
     } as unknown as ReactFlowInstance<Node<TerminalNodeData>, Edge>
   }
+
+  it('replaces navigation brackets and expires each new pulse after exactly 2400ms', () => {
+    vi.useFakeTimers()
+    const reactFlow = createReactFlow()
+    const nodes = [NODE, { ...NODE, id: 'other' }]
+    const view = render(
+      <ViewportNavigationHarness reactFlow={reactFlow} nodes={nodes} focusNodeId={NODE.id} />,
+    )
+    try {
+      const first = view.container.querySelector('[data-id="agent-1"]')!
+      const other = view.container.querySelector('[data-id="other"]')!
+      expect(first.querySelector('.cove-window-focus-brackets')).not.toBeNull()
+      act(() => vi.advanceTimersByTime(1200))
+      view.rerender(
+        <ViewportNavigationHarness reactFlow={reactFlow} nodes={nodes} focusNodeId="other" />,
+      )
+      expect(first.querySelector('.cove-window-focus-brackets')).toBeNull()
+      act(() => vi.advanceTimersByTime(2399))
+      expect(other.getAttribute('data-cove-navigation-focus')).toBe('true')
+      act(() => vi.advanceTimersByTime(1))
+      expect(other.querySelector('.cove-window-focus-brackets')).toBeNull()
+      expect(other.hasAttribute('data-cove-navigation-focus')).toBe(false)
+      view.rerender(
+        <ViewportNavigationHarness
+          reactFlow={reactFlow}
+          nodes={nodes}
+          focusNodeId={NODE.id}
+          focusSequence={2}
+        />,
+      )
+      expect(first.querySelector('.cove-window-focus-brackets')).not.toBeNull()
+      view.unmount()
+      expect(first.hasAttribute('data-cove-navigation-focus')).toBe(false)
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      view.unmount()
+      vi.useRealTimers()
+    }
+  })
 
   it('finishes initial restoration before a newly created node takes the viewport', () => {
     const reactFlow = createReactFlow()

@@ -239,6 +239,14 @@ keeps the status corner marks. E2E reads `getRippleCount()` from the wall probe.
 
 ## Waiting for you
 
+Waiting frames derive their border and halo from `resolveAgentPresentation`, including restored
+windows: a 70% waiting-colour border and a halo with a 1px ring, 28px blur and 3px spread (42%
+waiting colour), all constant screen sizes across zoom. Only opacity pulses, 0.3 → 1 → 0.3 over
+1300ms, ease-in-out. Reduced motion or signals off holds the halo at 0.8. Failed windows keep
+the failed-colour border until their authoritative status changes, independently of transient signals.
+These layers sit above the glass rim without reusing its pseudo-element or painting behind text.
+Collapsed/hidden-in-Space windows keep their existing compact status presentation.
+
 A window whose agent waits for you (`resolveAgentPresentation` status `waiting`) sends a yellow
 beacon every 1300ms while within 120 screen px of the view (150px reach, 28px width, 0.9 amplitude); reduced motion keeps
 only the light. When the window is entirely out of view, an edge beacon (`WorkspaceEdgeBeacons`)
@@ -246,7 +254,9 @@ sits where the line from the view's centre to the window crosses a frame inset f
 edges: a titled pill with an arrow, five at most (nearest first) and the rest as one "+N" pill.
 A click flies to the window at the current zoom, or 0.6 if further out. Beacons are derived from
 agent state and the viewport only; with no waiting windows the component does not follow the
-view. The pill pulses gently and holds still with reduced motion.
+view. The pill keeps a full waiting-colour 1px border and a still 4px outer ring at 16%; only its
+8px square dot pulses from 0.3 to 1 over 1300ms, ease-in-out. Reduced motion or signals off keeps
+the dot still. Sidebar working rows show their status in accent text colour, with no spinner.
 
 ## Working patrol
 
@@ -268,7 +278,9 @@ static 1px frame highlight and no waves, following the spec table’s reduced-mo
 `resolveAgentPresentation` and only counts transitions seen live (a reload never signals):
 
 - A run finishing (working → standby), at most once per window per 3s: the window's frame flashes
-  in its kind colour and the canvas sheds 26 ink sparks from random perimeter points (speed 260,
+  in its kind glyph colour (the prototype's `--ki`; the sparks and glint use the ink): a 2px ring
+  plus 54px blur / 8px spread at 55%, all screen-sized;
+  only opacity fades from 1 to 0 over 1000ms ease-out. The canvas sheds 26 ink sparks from random perimeter points (speed 260,
   base life 700ms); the wall sends a strong shockwave whose
   white crest stays outside windows and their one-cell margins (behind glass only the kind colour
   shows, within the cap). Both last 2100ms; the kind wave uses 860px reach / 56px width / amplitude 1,
@@ -279,13 +291,15 @@ static 1px frame highlight and no waves, following the spec table’s reduced-mo
   unconditional reset to zero at the end. A dedicated 1.5px masked ring leaves the text fill and
   glass chrome pseudo-elements untouched. Hidden windows, reduced motion, signals off and
   unmount clear it; there is no independent sweep timer.
-- A change into failed: the frame jolts sideways in a 280ms glitch; the canvas sheds 14 red sparks
+- A change into failed: the frame uses five horizontal offsets and scanline slices over 280ms (`steps(1, end)`),
+  using individual `translate` so React Flow keeps its positioning transform; the canvas sheds 14 red sparks
   (speed 150, base life 560ms, gravity 320), and the
   wall sends a red ripple over 820ms, with 190px reach, 26px width and 0.95 amplitude.
 
-Frame signals write one attribute (`data-cove-signal`) and one colour variable on the window, only
+Frame signals own a dedicated flash layer, one attribute (`data-cove-signal`) and one colour variable on the window, only
 while they last, and never touch the fill behind its text. They follow the Agent working effect
-switch. Reduced motion: the frame's colour flashes once and a failure keeps a still red outline;
+switch, including completion flashes (unlike the prototype's unconditional flash). Reduced motion:
+the flash holds opacity 0.9 for 600ms, then disappears; a failure keeps its authoritative red border;
 no waves, sparks or glitch.
 
 ## Canvas effects
@@ -364,6 +378,17 @@ Hidden/reduced-motion views clear both effects. Changing projects remounts only 
 decoration, leaving the existing node, terminal and viewport lifecycle owners intact.
 
 ## Interaction boundaries
+
+Jumping to a window from the inbox, command center, sidebar, activity summary or edge beacon
+marks the destination for 2400ms. The viewport navigation owner and beacon action share one
+canvas-scoped pulse; a new jump replaces the previous pulse and its deadline. Disposal or a
+workspace change clears it. Nothing is persisted and selected IDs never change.
+The highlight uses accent step 9 (Pixel falls back to accent), a label ring, and a 26px / 2px glow
+at 26% over the material shadow. Four square pixel brackets sit 7 world px outside the frame;
+each L uses 10×2 and 2×10 world-px bars, unlike the screen-sized status glows. Existing batch
+selection paint takes precedence. This is still navigation feedback, also with reduced motion
+or decorative signals off, independent of the brief dismissal focus-transition attribute.
+
 
 The illuminated active-window border follows real input focus (`:focus-within`), independently of
 canvas batch selection. Successful local creation can focus the window's primary input; it must not

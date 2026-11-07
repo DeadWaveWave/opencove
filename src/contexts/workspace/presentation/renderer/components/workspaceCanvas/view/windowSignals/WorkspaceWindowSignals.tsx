@@ -4,14 +4,23 @@ import type { TerminalNodeData } from '../../../../types'
 import { resolveAgentPresentation } from '../../../../utils/agentPresentation'
 import { resolveWindowKindFamily } from '../../../../utils/windowKindFamily'
 import { readWallLightPalette } from '../pixelWall/wallPalette'
-import { clearWindowSignals, showWindowSignal } from './frameSignals'
+import { clearWindowSignals, readCompletionColor, showWindowSignal } from './frameSignals'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import { createRuntimeCompletionDetector, createWindowSignalDetector } from './signalDetector'
+import { createWindowStatusFrames } from './windowStatusFrames'
 import { publishWindowSignal } from './windowSignalEvents'
 
 /** How long a finished run's frame flash and a failure's glitch stay on the frame. */
-const COMPLETE_MS = 1200
-const FAIL_MS = 900
+const COMPLETE_MS = 1000
+const FAIL_MS = 280
+
+function completionColor(scope: HTMLElement, data: TerminalNodeData) {
+  const family =
+    document.documentElement.dataset.coveKindColors === 'off'
+      ? 'neutral'
+      : resolveWindowKindFamily(data)
+  return readCompletionColor(scope, family, readWallLightPalette(scope)[family])
+}
 
 /**
  * The one owner of completion and failure signals (Tide 5.4d): it watches agent state, flashes
@@ -27,10 +36,29 @@ export function WorkspaceWindowSignals({
   canvasRef: RefObject<HTMLDivElement | null>
   enabled: boolean
 }): null {
+  const statusFrames = useRef(createWindowStatusFrames())
   const detectorRef = useRef(createWindowSignalDetector())
   const runtimeSessions = useRef(new Set<string>())
   const current = useRef({ nodes, enabled })
   current.current = { nodes, enabled }
+
+  useEffect(() => {
+    const scope = canvasRef.current
+    if (!scope) {
+      return
+    }
+    scope.dataset.coveFrameSignals = enabled ? 'on' : 'off'
+    statusFrames.current.update(
+      scope,
+      nodes.map(node => ({
+        id: node.id,
+        status:
+          node.data.collapsePresentation?.collapsed || node.data.collapsePresentation?.spaceHidden
+            ? null
+            : resolveAgentPresentation(node.data).status,
+      })),
+    )
+  }, [nodes, enabled, canvasRef])
 
   useEffect(() => {
     const completed = createRuntimeCompletionDetector()
@@ -51,14 +79,7 @@ export function WorkspaceWindowSignals({
       if (!node || !resolveAgentPresentation(node.data).isAgent) {
         return
       }
-      const lights = readWallLightPalette(scope)
-      showWindowSignal(
-        scope,
-        node.id,
-        'complete',
-        lights[resolveWindowKindFamily(node.data)],
-        COMPLETE_MS,
-      )
+      showWindowSignal(scope, node.id, 'complete', completionColor(scope, node.data), COMPLETE_MS)
       publishWindowSignal({ kind: 'complete', nodeId: node.id })
     })
   }, [canvasRef])
@@ -87,8 +108,7 @@ export function WorkspaceWindowSignals({
       ) {
         continue
       }
-      const color =
-        signal.kind === 'fail' ? lights.failed : lights[resolveWindowKindFamily(node.data)]
+      const color = signal.kind === 'fail' ? lights.failed : completionColor(scope, node.data)
       showWindowSignal(
         scope,
         signal.id,
@@ -102,9 +122,12 @@ export function WorkspaceWindowSignals({
 
   useEffect(() => {
     const scope = canvasRef.current
+    const frames = statusFrames.current
     return () => {
+      frames.clear()
       if (scope) {
         clearWindowSignals(scope)
+        delete scope.dataset.coveFrameSignals
       }
     }
   }, [canvasRef])

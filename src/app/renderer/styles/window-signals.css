@@ -5,15 +5,24 @@
   border-radius: var(--cove-node-radius);
 }
 
-/* A finished run: the frame flashes in the window's colour while the effects canvas sheds its sparks. */
-.react-flow__node[data-cove-signal='complete'] {
-  animation: cove-signal-complete 1.2s ease-out;
+/* Tide 412–414: a constant screen-sized glow; only opacity animates. */
+.cove-window-flash {
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--cove-node-radius);
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0;
+  box-shadow:
+    0 0 0 calc(2px / var(--cove-canvas-zoom, 1)) var(--cove-signal-color),
+    0 0 calc(54px / var(--cove-canvas-zoom, 1)) calc(8px / var(--cove-canvas-zoom, 1))
+      color-mix(in srgb, var(--cove-signal-color) 55%, transparent);
+  animation: cove-signal-complete 1s ease-out;
 }
 
-/* A failure: the frame jolts sideways in a short scanline glitch and red fragments fly off. */
+/* The spec's 280ms wins over the prototype's 320ms; translate preserves Flow positioning. */
 .react-flow__node[data-cove-signal='fail'] {
-  box-shadow: 0 0 0 1px var(--cove-signal-color);
-  animation: cove-signal-fail 280ms steps(4);
+  animation: cove-signal-fail 280ms steps(1, end);
 }
 
 /* Tide's passing wave lights a masked 1.5px rim, independent of chrome pseudo-elements. */
@@ -41,27 +50,46 @@
 
 @keyframes cove-signal-complete {
   0% {
-    box-shadow: 0 0 0 1px var(--cove-signal-color);
-  }
-  25% {
-    box-shadow:
-      0 0 0 2px var(--cove-signal-color),
-      0 0 28px 6px color-mix(in srgb, var(--cove-signal-color) 38%, transparent);
+    opacity: 1;
   }
   100% {
-    box-shadow: 0 0 0 1px transparent;
+    opacity: 0;
+  }
+}
+
+@keyframes cove-signal-complete-static {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
   }
 }
 
 @keyframes cove-signal-fail {
-  25% {
+  0% {
+    translate: -5px 0;
+    clip-path: inset(8% 0 58% 0);
+  }
+  20% {
+    translate: 4px 0;
+    clip-path: inset(48% 0 22% 0);
+  }
+  40% {
+    translate: -3px 0;
+    clip-path: inset(0 0 72% 0);
+  }
+  60% {
     translate: 3px 0;
+    clip-path: inset(70% 0 4% 0);
   }
-  50% {
+  80% {
     translate: -2px 0;
+    clip-path: inset(30% 0 40% 0);
   }
-  75% {
-    translate: 1px 0;
+  100% {
+    translate: none;
+    clip-path: inset(0 0 0 0);
   }
 }
 
@@ -75,7 +103,109 @@
     animation: none;
   }
 
-  .react-flow__node[data-cove-signal='complete'] {
-    box-shadow: 0 0 0 2px var(--cove-signal-color);
+  .cove-window-flash {
+    animation: cove-signal-complete-static 0.6s steps(1, end);
   }
+}
+
+/* Tide 408–411: a screen-sized halo, independent of the glass rim on chrome ::before. */
+.cove-window-halo {
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--cove-node-radius);
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0.8;
+  box-shadow:
+    0 0 0 calc(1px / var(--cove-canvas-zoom, 1)) var(--cove-status-waiting, var(--cove-warning)),
+    0 0 calc(28px / var(--cove-canvas-zoom, 1)) calc(3px / var(--cove-canvas-zoom, 1))
+      color-mix(in srgb, var(--cove-status-waiting, var(--cove-warning)) 42%, transparent);
+}
+
+[data-cove-frame-signals='on'] .cove-window-halo {
+  animation: cove-waiting-halo 1.3s ease-in-out infinite;
+}
+
+.workspace-canvas
+  .react-flow__node[data-cove-window-status='waiting']:not(.selected)
+  .terminal-node {
+  border-color: color-mix(
+    in srgb,
+    var(--cove-status-waiting, var(--cove-warning)) 70%,
+    var(--cove-node-border)
+  );
+}
+
+.workspace-canvas
+  .react-flow__node[data-cove-window-status='failed']:not(.selected)
+  .terminal-node {
+  border-color: var(--cove-status-failed, var(--cove-danger));
+}
+
+@keyframes cove-waiting-halo {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-cove-frame-signals='on'] .cove-window-halo {
+    animation: none;
+  }
+}
+
+.react-flow__node[data-cove-navigation-focus] {
+  --cove-navigation-accent: var(--cove-accent-9, var(--cove-accent));
+}
+
+/* Navigation has its own highlight; the batch-selection paint and selected IDs stay untouched. */
+.workspace-canvas
+  .react-flow__node[data-cove-navigation-focus]:not(.selected)
+  :is(
+    .terminal-node,
+    .cove-canvas-node-window,
+    .task-node,
+    .role-node,
+    .note-node,
+    .document-node,
+    .folder-node,
+    .website-node,
+    .image-node
+  ) {
+  border-color: var(--cove-navigation-accent);
+  box-shadow:
+    0 0 0 1.5px var(--cove-label-color, transparent),
+    0 0 0 1px var(--cove-navigation-accent),
+    0 0 26px 2px color-mix(in srgb, var(--cove-navigation-accent) 26%, transparent),
+    var(--cove-node-shadow);
+}
+
+/* Tide 415–420: unlike signal glows, these brackets are world pixels, matching Space corners. */
+.cove-window-focus-brackets {
+  position: absolute;
+  inset: -7px;
+  border-radius: 0;
+  pointer-events: none;
+  z-index: 4;
+  background:
+    linear-gradient(var(--cove-navigation-accent), var(--cove-navigation-accent)) top left / 10px
+      2px no-repeat,
+    linear-gradient(var(--cove-navigation-accent), var(--cove-navigation-accent)) top left / 2px
+      10px no-repeat,
+    linear-gradient(var(--cove-navigation-accent), var(--cove-navigation-accent)) top right / 10px
+      2px no-repeat,
+    linear-gradient(var(--cove-navigation-accent), var(--cove-navigation-accent)) top right / 2px
+      10px no-repeat,
+    linear-gradient(var(--cove-navigation-accent), var(--cove-navigation-accent)) bottom left / 10px
+      2px no-repeat,
+    linear-gradient(var(--cove-navigation-accent), var(--cove-navigation-accent)) bottom left / 2px
+      10px no-repeat,
+    linear-gradient(var(--cove-navigation-accent), var(--cove-navigation-accent)) bottom right /
+      10px 2px no-repeat,
+    linear-gradient(var(--cove-navigation-accent), var(--cove-navigation-accent)) bottom right / 2px
+      10px no-repeat;
 }
