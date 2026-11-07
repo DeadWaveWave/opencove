@@ -47,3 +47,38 @@ it('pairs remote state/revision and uses that ancestor after a rejected newer re
     vi.unstubAllGlobals()
   }
 })
+
+// e2e: recovery.empty-workspace-overwrite expects the Worker's own rejection, not a wrapped IO error.
+it('returns a non-conflict Worker rejection unchanged', async () => {
+  const durable = createMergeState(0, 'durable')
+  const rejection = {
+    code: 'persistence.invalid_state',
+    debugMessage: 'Refusing to overwrite existing workspaces with an empty state.',
+  }
+  const values = [
+    { ok: true, value: { revision: 3, state: durable } },
+    { ok: false, error: rejection },
+  ]
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({
+      status: 200,
+      text: async () => JSON.stringify({ __opencoveControlEnvelope: true, ...values.shift() }),
+    })),
+  )
+  try {
+    const store = createRemotePersistenceStore(async () => ({
+      hostname: '127.0.0.1',
+      port: 4310,
+      token: 'test',
+    }))
+    await store.readAppState()
+    expect(await store.writeAppState(createMergeState(0, 'empty'), { baseRevision: 3 })).toEqual({
+      ok: false,
+      reason: 'io',
+      error: rejection,
+    })
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})

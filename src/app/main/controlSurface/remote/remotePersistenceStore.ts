@@ -317,7 +317,10 @@ export function createRemotePersistenceStore(
           merged: result.merged,
         }
       } catch (error) {
-        return resolveIoFailure(error)
+        // Keep the Worker's own rejection (for example the empty-workspace overwrite guard).
+        return isAppErrorDescriptor(error)
+          ? { ok: false, reason: 'io', error }
+          : resolveIoFailure(error)
       }
     },
     readNodeScrollback: async nodeId => {
