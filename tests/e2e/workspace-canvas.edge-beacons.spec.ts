@@ -144,6 +144,8 @@ test('an edge beacon points at an out-of-view agent waiting for you and flies to
 
     await beacon.click()
     await expect.poll(() => isInView(window, agent)).toBe(true)
+    await expect(window.locator(agent)).toHaveAttribute('data-cove-navigation-focus', 'true')
+    await expect(window.locator(`${agent} .cove-window-focus-brackets`)).toHaveCount(1)
     await expect(beacon).toHaveCount(0)
   } finally {
     await electronApp.close()

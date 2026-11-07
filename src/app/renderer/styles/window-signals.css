@@ -157,3 +157,55 @@
     animation: none;
   }
 }
+
+.react-flow__node[data-cove-navigation-focus] {
+  --cove-navigation-accent: var(--cove-accent-9, var(--cove-accent));
+}
+
+/* Navigation has its own highlight; the batch-selection paint and selected IDs stay untouched. */
+.workspace-canvas
+  .react-flow__node[data-cove-navigation-focus]:not(.selected)
+  :is(
+    .terminal-node,
+    .cove-canvas-node-window,
+    .task-node,
+    .role-node,
+    .note-node,
+    .document-node,
+    .folder-node,
+    .website-node,
+    .image-node
+  ) {
+  border-color: var(--cove-navigation-accent);
+  box-shadow:
+    0 0 0 1.5px var(--cove-label-color, transparent),
+    0 0 0 1px var(--cove-navigation-accent),
+    0 0 26px 2px color-mix(in srgb, var(--cove-navigation-accent) 26%, transparent),
+    var(--cove-node-shadow);
+}
+
+/* Tide 415–420: unlike signal glows, these brackets are world pixels, matching Space corners. */
+.cove-window-focus-brackets {
+  position: absolute;
+  inset: -7px;
+  border-radius: 0;
+  pointer-events: none;
+  z-index: 4;
+  background:
+    linear-gradient(var(--cove-navigation-accent), var(--cove-navigation-accent)) top left / 10px
+      2px no-repeat,
+    linear-gradient(var(--cove-navigation-accent), var(--cove-navigation-accent)) top left / 2px
+      10px no-repeat,
+    linear-gradient(var(--cove-navigation-accent), var(--cove-navigation-accent)) top right / 10px
+      2px no-repeat,
+    linear-gradient(var(--cove-navigation-accent), var(--cove-navigation-accent)) top right / 2px
+      10px no-repeat,
+    linear-gradient(var(--cove-navigation-accent), var(--cove-navigation-accent)) bottom left / 10px
+      2px no-repeat,
+    linear-gradient(var(--cove-navigation-accent), var(--cove-navigation-accent)) bottom left / 2px
+      10px no-repeat,
+    linear-gradient(var(--cove-navigation-accent), var(--cove-navigation-accent)) bottom right /
+      10px 2px no-repeat,
+    linear-gradient(var(--cove-navigation-accent), var(--cove-navigation-accent)) bottom right / 2px
+      10px no-repeat;
+}

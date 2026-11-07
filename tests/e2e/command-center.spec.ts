@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { setFrameMotion } from './workspace-canvas.frame-signals.helpers'
 import {
   launchApp,
   readCanvasViewport,
@@ -375,6 +376,14 @@ test.describe('Command Center', () => {
 
       const canvas = window.locator('.workspace-canvas .react-flow')
       const noteNode = window.locator('.react-flow__node[data-id="command-window-note"]')
+      await expect(noteNode).toHaveAttribute('data-cove-navigation-focus', 'true')
+      await expect(noteNode.locator('.cove-window-focus-brackets')).toHaveCSS('inset', '-7px')
+      await expect(noteNode.locator('.cove-window-focus-brackets')).toHaveCSS(
+        'border-radius',
+        '0px',
+      )
+      await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
+
       await expect
         .poll(async () => {
           const canvasBox = await canvas.boundingBox()
@@ -388,6 +397,25 @@ test.describe('Command Center', () => {
           )
         })
         .toBeLessThan(40)
+
+      // Navigation feedback is static and remains available with decorative signals disabled.
+      await setFrameMotion(window, true)
+      await window.getByTestId('app-header-control-center').click()
+      await window.getByTestId('control-center-toggle-motion-signals').uncheck()
+      await window.keyboard.press('Escape')
+      await window.keyboard.press(`${commandCenterModifier}+P`)
+      await input.fill('Scratch')
+      await window.keyboard.press('Enter')
+      const scratch = window.locator('.react-flow__node[data-id="command-window-scratch"]')
+      await expect(scratch).toHaveAttribute('data-cove-navigation-focus', 'true')
+      await expect(noteNode).not.toHaveAttribute('data-cove-navigation-focus')
+      await expect(scratch.locator('.cove-window-focus-brackets')).toHaveCSS(
+        'animation-name',
+        'none',
+      )
+      await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
+      await expect(scratch).not.toHaveAttribute('data-cove-navigation-focus', { timeout: 4000 })
+      await expect(scratch.locator('.cove-window-focus-brackets')).toHaveCount(0)
     } finally {
       await electronApp.close()
     }

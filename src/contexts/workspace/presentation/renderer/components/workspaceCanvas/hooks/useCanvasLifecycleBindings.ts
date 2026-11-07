@@ -46,6 +46,7 @@ export function useWorkspaceCanvasLifecycleBindings({
 }): void {
   useWorkspaceCanvasCreationActivation({ workspaceId, canvasRef: canvasState.canvasRef, nodesRef })
   useWorkspaceCanvasViewportNavigation({
+    canvasRef: canvasState.canvasRef,
     workspaceId,
     persistedViewport: viewport,
     restoredViewportWorkspaceIdRef: canvasState.restoredViewportWorkspaceIdRef,

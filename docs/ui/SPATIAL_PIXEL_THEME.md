@@ -376,6 +376,17 @@ decoration, leaving the existing node, terminal and viewport lifecycle owners in
 
 ## Interaction boundaries
 
+Jumping to a window from the inbox, command center, sidebar, activity summary or edge beacon
+marks the destination for 2400ms. The viewport navigation owner and beacon action share one
+canvas-scoped pulse; a new jump replaces the previous pulse and its deadline. Disposal or a
+workspace change clears it. Nothing is persisted and selected IDs never change.
+The highlight uses accent step 9 (Pixel falls back to accent), a label ring, and a 26px / 2px glow
+at 26% over the material shadow. Four square pixel brackets sit 7 world px outside the frame;
+each L uses 10×2 and 2×10 world-px bars, unlike the screen-sized status glows. Existing batch
+selection paint takes precedence. This is still navigation feedback, also with reduced motion
+or decorative signals off, independent of the brief dismissal focus-transition attribute.
+
+
 The illuminated active-window border follows real input focus (`:focus-within`), independently of
 canvas batch selection. Successful local creation can focus the window's primary input; it must not
 add selected IDs or show a batch-selection count. Terminal/Agent autofocus remains owned by their

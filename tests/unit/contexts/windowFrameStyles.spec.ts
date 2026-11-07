@@ -117,3 +117,34 @@ describe('Tide completion and failure frames', () => {
     expect(sheet.toString()).not.toMatch(/corner-spark|::after/)
   })
 })
+
+describe('Tide navigation focus', () => {
+  it('draws four world-sized square corner brackets above the chrome', () => {
+    const corners = declarations('.cove-window-focus-brackets')
+    expect(corners).toMatchObject({
+      inset: '-7px',
+      'border-radius': '0',
+      'pointer-events': 'none',
+      'z-index': '4',
+    })
+    expect(corners.background.match(/10px 2px/g)).toHaveLength(4)
+    expect(corners.background.match(/2px 10px/g)).toHaveLength(4)
+    expect(corners.background).not.toContain('zoom')
+    expect(corners.animation).toBeUndefined()
+    expect(corners.background).toContain('var(--cove-navigation-accent)')
+    sheet.walkRules(rule => {
+      if (!rule.selector.includes('[data-cove-navigation-focus]:not(.selected)')) {
+        return
+      }
+      const styles = Object.fromEntries(
+        rule.nodes.flatMap(node =>
+          node.type === 'decl' ? [[node.prop, node.value.replace(/\s+/g, ' ')]] : [],
+        ),
+      )
+      expect(styles['border-color']).toBe('var(--cove-navigation-accent)')
+      expect(styles['box-shadow']).toBe(
+        '0 0 0 1.5px var(--cove-label-color, transparent), 0 0 0 1px var(--cove-navigation-accent), 0 0 26px 2px color-mix(in srgb, var(--cove-navigation-accent) 26%, transparent), var(--cove-node-shadow)',
+      )
+    })
+  })
+})
