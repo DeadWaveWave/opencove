@@ -1,0 +1,155 @@
+// Frozen oracle: copied from src/app/main/controlSurface/handlers/sessionLaunchPayloadSupport.ts at 90f8a89ba50d70147773c4e04ba15c31063d393c; do not edit; delete when the parity window closes.
+import {
+  AGENT_PROVIDER_IDS,
+  type AgentProviderId,
+  type LaunchAgentSessionInput,
+} from '../../../src/shared/contracts/dto'
+import { createAppError } from '../../../src/shared/errors/appError'
+import { normalizeLaunchAgentEnv } from './sessionLaunchAgentEnv'
+
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+export function normalizeOptionalString(value: unknown): string | null {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+export function normalizeOptionalPositiveInt(value: unknown): number | null {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return null
+  }
+
+  const normalized = Math.floor(value)
+  return normalized > 0 ? normalized : null
+}
+
+export function normalizeAgentProviderId(
+  value: unknown,
+  operationId: string,
+): AgentProviderId | null {
+  const provider = normalizeOptionalString(value)
+  if (!provider) {
+    return null
+  }
+
+  if (AGENT_PROVIDER_IDS.includes(provider as AgentProviderId)) {
+    return provider as AgentProviderId
+  }
+
+  throw createAppError('common.invalid_input', {
+    debugMessage: `Invalid payload for ${operationId}: ${provider}`,
+  })
+}
+
+export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput {
+  if (!isRecord(payload)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for session.launchAgent.',
+    })
+  }
+
+  const spaceIdRaw = payload.spaceId
+  if (spaceIdRaw !== undefined && spaceIdRaw !== null && typeof spaceIdRaw !== 'string') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for session.launchAgent spaceId.',
+    })
+  }
+
+  const spaceId = typeof spaceIdRaw === 'string' ? spaceIdRaw.trim() : ''
+  const cwdRaw = payload.cwd
+  if (cwdRaw !== undefined && cwdRaw !== null && typeof cwdRaw !== 'string') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for session.launchAgent cwd.',
+    })
+  }
+
+  const cwd = typeof cwdRaw === 'string' ? cwdRaw.trim() : ''
+  const promptRaw = payload.prompt
+  if (typeof promptRaw !== 'string') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for session.launchAgent prompt.',
+    })
+  }
+
+  const providerRaw = payload.provider
+  if (providerRaw !== undefined && providerRaw !== null && typeof providerRaw !== 'string') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for session.launchAgent provider.',
+    })
+  }
+
+  const modelRaw = payload.model
+  if (modelRaw !== undefined && modelRaw !== null && typeof modelRaw !== 'string') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for session.launchAgent model.',
+    })
+  }
+
+  const agentFullAccess = payload.agentFullAccess
+  const modeRaw = payload.mode
+  if (modeRaw !== undefined && modeRaw !== null && typeof modeRaw !== 'string') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for session.launchAgent mode.',
+    })
+  }
+
+  const resumeSessionIdRaw = payload.resumeSessionId
+  if (
+    resumeSessionIdRaw !== undefined &&
+    resumeSessionIdRaw !== null &&
+    typeof resumeSessionIdRaw !== 'string'
+  ) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for session.launchAgent resumeSessionId.',
+    })
+  }
+
+  if (
+    agentFullAccess !== undefined &&
+    agentFullAccess !== null &&
+    typeof agentFullAccess !== 'boolean'
+  ) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for session.launchAgent agentFullAccess.',
+    })
+  }
+
+  if (spaceId.length === 0 && cwd.length === 0) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'session.launchAgent requires either spaceId or cwd.',
+    })
+  }
+
+  return {
+    ...(spaceId.length > 0 ? { spaceId } : {}),
+    ...(cwd.length > 0 ? { cwd } : {}),
+    prompt: promptRaw.trim(),
+    provider: normalizeAgentProviderId(providerRaw, 'session.launchAgent provider'),
+    mode: modeRaw === 'resume' ? 'resume' : 'new',
+    model: modelRaw === null ? null : normalizeOptionalString(modelRaw),
+    resumeSessionId:
+      resumeSessionIdRaw === null ? null : normalizeOptionalString(resumeSessionIdRaw),
+    env: normalizeLaunchAgentEnv(payload.env),
+    executablePathOverride:
+      payload.executablePathOverride === undefined || payload.executablePathOverride === null
+        ? null
+        : normalizeOptionalString(payload.executablePathOverride),
+    agentFullAccess: agentFullAccess ?? null,
+    cols: normalizeOptionalPositiveInt(payload.cols),
+    rows: normalizeOptionalPositiveInt(payload.rows),
+  }
+}

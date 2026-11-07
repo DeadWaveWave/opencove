@@ -1,3 +1,5 @@
+import { registerOperation } from '../registerOperation'
+import { filesystemWriteFileTextOperation } from '../../../../shared/contracts/controlSurface/operations/domains/filesystem'
 import {
   FILE_MUTATION_CAPABILITIES,
   optionalFileMutationBoolean,
@@ -33,7 +35,6 @@ import type {
   RenameEntryInput,
   StatInput,
   FileSystemStat,
-  WriteFileTextInput,
   CreateDirectoryInput,
 } from '../../../../shared/contracts/dto'
 
@@ -95,27 +96,6 @@ function normalizeReadFileBytesPayload(payload: unknown): ReadFileBytesInput {
 
   return {
     uri: normalizeFileSystemUri(payload.uri, 'filesystem.readFileBytes'),
-  }
-}
-
-function normalizeWriteFileTextPayload(payload: unknown): WriteFileTextInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for filesystem.writeFileText.',
-    })
-  }
-
-  const content = payload.content
-  if (typeof content !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for filesystem.writeFileText content.',
-    })
-  }
-
-  return {
-    uri: normalizeFileSystemUri(payload.uri, 'filesystem.writeFileText'),
-    content,
-    overwrite: optionalFileMutationBoolean(payload.overwrite),
   }
 }
 
@@ -266,9 +246,7 @@ export function registerFilesystemHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('filesystem.writeFileText', {
-    kind: 'command',
-    validate: normalizeWriteFileTextPayload,
+  registerOperation(controlSurface, filesystemWriteFileTextOperation, {
     handle: async (ctx, payload): Promise<void> => {
       await assertApprovedUri(payload.uri, 'filesystem.writeFileText uri is outside approved roots')
       ctx.assertActive?.()

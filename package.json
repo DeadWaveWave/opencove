@@ -166,6 +166,7 @@
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.1",
     "ws": "^8.20.0",
+    "zod": "^4",
     "zustand": "^5.0.11"
   },
   "devDependencies": {

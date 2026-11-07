@@ -189,6 +189,19 @@
         "specifiers": ["electron", "better-sqlite3"],
         "specifierPrefixes": ["node:"],
         "doc": "docs/architecture/ARCHITECTURE.md#6-进程边界规则"
+      },
+      {
+        "id": "architecture.rendererNoOperationRuntime",
+        "severity": "error",
+        "fromLayers": ["app-renderer", "presentation-renderer", "app-preload"],
+        "ignoreTypeOnly": true,
+        "specifiers": ["zod"],
+        "specifierPrefixes": ["zod/"],
+        "toPatterns": [
+          "src/shared/contracts/controlSurface/operations",
+          "src/shared/contracts/controlSurface/operations/**"
+        ],
+        "doc": "docs/architecture/CONTROL_SURFACE.md#adding-a-capability"
       }
     ],
     "forbiddenText": [
