@@ -1,3 +1,4 @@
+import { registerWorkspaceBootstrapHandlers } from './handlers/workspaceBootstrapHandlers'
 import { registerPluginHostHandlers } from './handlers/pluginHostHandlers'
 import type { ControlSurfaceContext } from './types'
 import type { PluginDistributionService } from '@contexts/plugins/application/PluginDistributionService'
@@ -85,6 +86,7 @@ export function registerControlSurfaceHandlers(
     readSshConfigHosts,
   })
   registerProjectHandlers(controlSurface, deps.getPersistenceStore)
+  registerWorkspaceBootstrapHandlers(controlSurface, deps)
   registerSpaceHandlers(controlSurface, deps.getPersistenceStore)
   registerWorkspaceHandlers(controlSurface, {
     approvedWorkspaces: deps.approvedWorkspaces,
