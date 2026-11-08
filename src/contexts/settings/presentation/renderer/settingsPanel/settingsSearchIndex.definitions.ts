@@ -263,6 +263,20 @@ export const CORE_SEARCH_ENTRY_DEFINITIONS: Array<CoreSettingsSearchEntryDefinit
     keywords: ['sound', 'audio', 'volume', 'chime', '声音', '音量', '提示音'],
   },
   {
+    id: 'notifications.sound-tone',
+    pageId: 'notifications',
+    titleKey: 'settingsPanel.notifications.sound.choiceLabel',
+    anchorId: 'settings-section-notifications',
+    keywords: ['sound', 'tone', 'chime', '声音', '音效', '提示音'],
+  },
+  {
+    id: 'notifications.sound-volume',
+    pageId: 'notifications',
+    titleKey: 'settingsPanel.notifications.sound.volumeLabel',
+    anchorId: 'settings-section-notifications',
+    keywords: ['sound', 'audio', 'volume', '声音', '音量'],
+  },
+  {
     id: 'canvas.input-mode',
     pageId: 'canvas-windows',
     titleKey: 'settingsPanel.canvas.inputModeLabel',
