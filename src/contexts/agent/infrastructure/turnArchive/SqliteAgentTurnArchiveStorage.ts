@@ -162,6 +162,7 @@ export function createSqliteArchiveStorage(db: Database.Database): AgentTurnArch
     append: record => append.immediate(record),
     getExact: (nodeId, turnId) => decode(exact.get(nodeId, turnId)),
     getExactBySession: (sessionId, turnId) => decode(session.get(sessionId, turnId)),
+    clearNode: nodeId => revoke.run(nodeId).changes,
     revokeNodes: ids => revokeNodes.immediate(ids),
     captureWatermark,
     sweep: (now, existing, through) => sweep.immediate(now, existing, through),

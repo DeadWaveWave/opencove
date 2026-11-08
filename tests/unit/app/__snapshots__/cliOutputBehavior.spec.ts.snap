@@ -5,7 +5,7 @@ exports[`help golden api ops 1`] = `
 
 List Control Surface operations with their kind, contract and CLI command
 
-The full JSON catalog is large (about 25 KB). Start with --domains, then narrow with --prefix or --search and --fields. Each operation includes scope (read, interact or admin); inside OpenCove, allowed reflects your whoami scope. Outside OpenCove the catalog is offline and allowed is omitted.
+The full JSON catalog is large (about 26 KB). Start with --domains, then narrow with --prefix or --search and --fields. Each operation includes scope (read, interact or admin); inside OpenCove, allowed reflects your whoami scope. Outside OpenCove the catalog is offline and allowed is omitted.
 
 With --domains, output is an array of summaries with these projectable fields:
   domain: Operation ID prefix before the first dot

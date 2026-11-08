@@ -15,6 +15,7 @@ export class InMemoryAgentTurnArchive implements AgentTurnArchive {
   readonly append: AgentTurnArchive['append']
   readonly getExact: AgentTurnArchive['getExact']
   readonly getExactBySession: AgentTurnArchive['getExactBySession']
+  readonly clearNode: AgentTurnArchive['clearNode']
   readonly revokeNodes: AgentTurnArchive['revokeNodes']
   readonly captureWatermark: AgentTurnArchive['captureWatermark']
   readonly sweep: AgentTurnArchive['sweep']
@@ -53,6 +54,11 @@ export class InMemoryAgentTurnArchive implements AgentTurnArchive {
         rows.find(row => row.nodeId === nodeId && row.turnId === turnId),
       getExactBySession: (sessionId, turnId) =>
         rows.find(row => row.sessionId === sessionId && row.turnId === turnId),
+      clearNode: nodeId => {
+        const before = rows.length
+        rows = rows.filter(row => row.nodeId !== nodeId)
+        return before - rows.length
+      },
       revokeNodes: nodeIds => {
         const ids = new Set(nodeIds)
         rows = rows.filter(row => !ids.has(row.nodeId))

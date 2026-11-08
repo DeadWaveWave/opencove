@@ -15,6 +15,7 @@ function storage(overrides: Partial<AgentTurnArchiveStorage> = {}): AgentTurnArc
     checkpoint: vi.fn(),
     getExact: vi.fn(),
     getExactBySession: vi.fn(),
+    clearNode: vi.fn(() => 0),
     revokeNodes: vi.fn(),
     sweep: vi.fn(() => false),
     dispose: vi.fn(),

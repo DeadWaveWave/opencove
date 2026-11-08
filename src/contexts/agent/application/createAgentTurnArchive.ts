@@ -14,6 +14,7 @@ export interface AgentTurnArchiveStorage {
   append(record: StoredAgentTurnInput): 'persisted' | 'retention_backlog'
   getExact(nodeId: string, turnId: string): ArchivedAgentTurn | undefined
   getExactBySession(sessionId: string, turnId: string): ArchivedAgentTurn | undefined
+  clearNode(nodeId: string): number
   revokeNodes(nodeIds: readonly string[]): void
   captureWatermark(): number
   sweep(now: number, existingNodeIds?: ReadonlySet<string>, throughSeq?: number): boolean
@@ -114,6 +115,20 @@ export function createAgentTurnArchive(
     getExact: input => read(() => storage!.getExact(input.nodeId, input.turnId)),
     getExactBySession: input =>
       read(() => storage!.getExactBySession(input.sessionId, input.turnId)),
+    clearNode(nodeId) {
+      if (!enabled || entered) {
+        return { status: 'unavailable' }
+      }
+      entered = true
+      try {
+        return { status: 'cleared', removed: storage!.clearNode(nodeId) }
+      } catch {
+        dispose()
+        return { status: 'unavailable' }
+      } finally {
+        entered = false
+      }
+    },
     revokeNodes(nodeIds) {
       let overflow = false
       try {

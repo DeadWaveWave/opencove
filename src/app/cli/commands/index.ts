@@ -1,3 +1,4 @@
+import { agentHistoryClearCommand } from './agentHistory'
 import { agentDeliveryCommand } from './agentDelivery'
 import { agentPromptCommand } from './agent'
 import { agentQueryCommands } from './agentQueries'
@@ -24,6 +25,7 @@ export const commands: Command[] = [
   ...identityCommands,
   agentPromptCommand,
   agentDeliveryCommand,
+  agentHistoryClearCommand,
   ...agentQueryCommands,
   skillCommand,
   ...nodeCommands,
