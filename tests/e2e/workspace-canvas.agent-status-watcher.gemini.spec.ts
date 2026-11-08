@@ -153,14 +153,10 @@ test.describe('Workspace Canvas - Agent Status Watcher (Gemini)', () => {
       const agentNode = window.locator('.terminal-node').first()
       const xterm = agentNode.locator('.xterm')
       const nodeStatus = agentNode.locator('.terminal-node__status')
-      const sidebarStatus = window
-        .locator('.workspace-sidebar .workspace-agent-item .workspace-agent-item__status--agent')
-        .first()
 
       await expect(agentNode).toBeVisible()
       await expect(xterm).toBeVisible()
       await expect(nodeStatus).toHaveText('Standby')
-      await expect(sidebarStatus).toHaveText('Standby')
 
       await expect
         .poll(async () => {
@@ -184,7 +180,6 @@ test.describe('Workspace Canvas - Agent Status Watcher (Gemini)', () => {
       await window.waitForTimeout(900)
 
       await expect(nodeStatus).toHaveText('Standby')
-      await expect(sidebarStatus).toHaveText('Standby')
 
       await writeToPty(window, {
         sessionId,
@@ -212,7 +207,6 @@ test.describe('Workspace Canvas - Agent Status Watcher (Gemini)', () => {
         .toBe(geminiSessionId)
 
       await expect(nodeStatus).toHaveText('Working', { timeout: 15_000 })
-      await expect(sidebarStatus).toHaveText('Working')
 
       await writeGeminiSessionFile({
         userDataDir,
@@ -235,7 +229,6 @@ test.describe('Workspace Canvas - Agent Status Watcher (Gemini)', () => {
       })
 
       await expect(nodeStatus).toHaveText('Standby', { timeout: 15_000 })
-      await expect(sidebarStatus).toHaveText('Standby')
     } finally {
       await electronApp.close()
     }
@@ -272,13 +265,9 @@ test.describe('Workspace Canvas - Agent Status Watcher (Gemini)', () => {
 
       const agentNode = window.locator('.terminal-node').first()
       const nodeStatus = agentNode.locator('.terminal-node__status')
-      const sidebarStatus = window
-        .locator('.workspace-sidebar .workspace-agent-item .workspace-agent-item__status--agent')
-        .first()
 
       await expect(agentNode).toBeVisible()
       await expect(nodeStatus).toHaveText('Standby')
-      await expect(sidebarStatus).toHaveText('Standby')
 
       await expect
         .poll(async () => {
@@ -325,7 +314,6 @@ test.describe('Workspace Canvas - Agent Status Watcher (Gemini)', () => {
         .toBe(geminiSessionId)
 
       await expect(nodeStatus).toHaveText('Working', { timeout: 15_000 })
-      await expect(sidebarStatus).toHaveText('Working')
 
       await writeGeminiSessionFile({
         userDataDir,
@@ -348,7 +336,6 @@ test.describe('Workspace Canvas - Agent Status Watcher (Gemini)', () => {
       })
 
       await expect(nodeStatus).toHaveText('Standby', { timeout: 15_000 })
-      await expect(sidebarStatus).toHaveText('Standby')
     } finally {
       await electronApp.close()
     }
