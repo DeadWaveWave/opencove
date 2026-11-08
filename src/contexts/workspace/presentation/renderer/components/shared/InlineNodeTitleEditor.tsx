@@ -24,14 +24,14 @@ export interface InlineNodeTitleEditorProps {
   inputTestId: string
   prefix?: string | null
   spellCheck?: boolean
-  /**
-   * The title is its window's drag surface too: a click renames, a press held or dragged moves the
-   * window (the canvas drags it; the title only keeps that press from renaming).
-   */
-  movesWindow?: boolean
   onCommit: (value: string) => void
 }
 
+/**
+ * A window's title, renamed in place. It is its window's drag surface too: a click renames, a
+ * press held or dragged moves the window (the canvas drags it; the title only keeps that press
+ * from renaming). The window lets the title's clicks through (`isWindowTitleGesture`).
+ */
 export function InlineNodeTitleEditor({
   value,
   placeholder,
@@ -42,7 +42,6 @@ export function InlineNodeTitleEditor({
   inputTestId,
   prefix = null,
   spellCheck = false,
-  movesWindow = false,
   onCommit,
 }: InlineNodeTitleEditorProps): JSX.Element {
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -178,7 +177,6 @@ export function InlineNodeTitleEditor({
     'node-title-editor',
     `${classNamePrefix}__title`,
     isEditing ? 'node-title-editor--editing' : 'node-title-editor--display',
-    movesWindow ? 'node-title-editor--moves-window' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -186,7 +184,6 @@ export function InlineNodeTitleEditor({
     'node-title-editor__display',
     `${classNamePrefix}__title-display`,
     'nowheel',
-    movesWindow ? '' : 'nodrag',
     normalizedValue.length === 0
       ? `node-title-editor__display--placeholder ${classNamePrefix}__title-display--placeholder`
       : '',
@@ -245,15 +242,11 @@ export function InlineNodeTitleEditor({
         <span
           className={displayClassName}
           data-testid={displayTestId}
-          data-cove-title-gesture={movesWindow ? 'move' : undefined}
-          data-cove-title-held={movesWindow && isHeld ? 'true' : undefined}
+          data-cove-title-gesture="move"
+          data-cove-title-held={isHeld ? 'true' : undefined}
           title={`${prefix ?? ''}${displayText}`}
-          {...(movesWindow
-            ? {
-                onPointerDown: beginPress,
-                onPointerMove: trackPress,
-              }
-            : { onPointerDownCapture: stopPointerEvent, onPointerDown: stopPointerEvent })}
+          onPointerDown={beginPress}
+          onPointerMove={trackPress}
           onClick={handleDisplayClick}
         >
           {prefix ? (

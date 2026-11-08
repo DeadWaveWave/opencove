@@ -212,9 +212,12 @@
   单位也加入描述）。`CoveSelect` 在行里的名称是「行标签 + 当前值」（例如「显示语言 English」）。
   设置页里 `SettingRow` 与旧的 `.settings-panel__row` 版式一致，迁移不改变像素。
 - 窗口标题栏用 `WindowHeader`（`workspace/.../components/shared/`），顺序固定：标记圆点、类别图块、
-  标题（13px / 500）、状态、拖动空白、本类操作、折叠、关闭。各窗口只填这些位置，不自己排版。
+  标题（13px / 500）、状态、本类操作、折叠、关闭。各窗口只填这些位置，不自己排版。
   类别图块随主题的图标尺寸缩放（默认 20px 图块、12px 图标）。
-  任务窗口的标题兼作拖动面（`titleIsDragSurface`）：没有拖动空白，单击标题改名，按住或拖动移动窗口。
+  整条标题栏就是拖动面，不留单独的拖动空白，标题一直占到右侧控件前。可改名的标题
+  （`InlineNodeTitleEditor`：任务、便签、终端、Agent）单击改名，按住 400ms 或移动超过 4px 就是抓起窗口，
+  松开不改名；只读标题（文档、文件夹、网页、角色、插件窗口）单击选中窗口。类别图块是唯一只拖不改名的位置，
+  测试用的 `dragSurfaceTestId` 也挂在它上面。窗口自己的点击处理要放过标题的点击（`isWindowTitleGesture`）。
   右端的操作、折叠、关闭之间统一用 `--cove-control-gap`（插件主题的 `controlGap`）。
 - 类别色与标记色是两个通道（`window-kind-identity.css`）。类别（这个窗口是什么，由 `resolveWindowKindFamily`
   推导：Agent 与角色 AI、终端、任务计划、笔记与文档知识、网页与图片媒体）只画标题栏的 `KindTile` 和 9% 的

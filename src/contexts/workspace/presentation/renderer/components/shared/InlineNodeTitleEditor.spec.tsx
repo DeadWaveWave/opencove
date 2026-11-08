@@ -14,7 +14,6 @@ function renderMovableTitle(onWindowClick: () => void = () => {}) {
         classNamePrefix="task-node"
         displayTestId="title-display"
         inputTestId="title-input"
-        movesWindow
         onCommit={onCommit}
       />
     </div>,
@@ -93,28 +92,6 @@ describe('InlineNodeTitleEditor: a title that moves its window', () => {
     fireEvent.pointerUp(display, { button: 0, clientX: 40, clientY: 10 })
     fireEvent.click(display)
 
-    expect(screen.getByTestId('title-input')).toBeInTheDocument()
-  })
-})
-
-describe('InlineNodeTitleEditor: a title beside a drag space', () => {
-  it('keeps the canvas off the title and renames on a click', () => {
-    render(
-      <InlineNodeTitleEditor
-        value="Shell"
-        placeholder="Untitled"
-        ariaLabel="Terminal title"
-        classNamePrefix="terminal-node"
-        displayTestId="title-display"
-        inputTestId="title-input"
-        onCommit={() => {}}
-      />,
-    )
-
-    const display = screen.getByTestId('title-display')
-    expect(display).toHaveClass('nodrag')
-    expect(display).not.toHaveAttribute('data-cove-title-gesture')
-    fireEvent.click(display)
     expect(screen.getByTestId('title-input')).toBeInTheDocument()
   })
 })

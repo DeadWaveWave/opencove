@@ -24,6 +24,7 @@ import type { LabelColor } from '@shared/types/labelColor'
 import { InlineNodeTitleEditor } from '@contexts/workspace/presentation/renderer/components/shared/InlineNodeTitleEditor'
 import { NodeKindIcon } from '@contexts/workspace/presentation/renderer/components/shared/NodeKindIcon'
 import { WindowHeader } from '@contexts/workspace/presentation/renderer/components/shared/WindowHeader'
+import { isWindowTitleGesture } from '@contexts/workspace/presentation/renderer/components/shared/windowTitleGesture'
 import { WindowPlate } from '@contexts/workspace/presentation/renderer/components/shared/WindowPlate'
 import { EditIcon } from '@app/renderer/components/ui/pixelIcons'
 import { IconButton } from '@app/renderer/components/ui/IconButton'
@@ -231,7 +232,7 @@ export function TaskNode({
         }
 
         // The title owns its clicks: one renames, one ending a grab does nothing.
-        if (event.target.closest('[data-cove-title-gesture]')) {
+        if (isWindowTitleGesture(event.target)) {
           return
         }
 
@@ -282,11 +283,9 @@ export function TaskNode({
             classNamePrefix="task-node"
             displayTestId="task-node-title-display"
             inputTestId="task-node-inline-title-input"
-            movesWindow
             onCommit={onQuickTitleSave}
           />
         }
-        titleIsDragSurface
         dragSurfaceTestId="task-node-header-drag-surface"
         trailingClassName="task-node__header-actions"
         actions={

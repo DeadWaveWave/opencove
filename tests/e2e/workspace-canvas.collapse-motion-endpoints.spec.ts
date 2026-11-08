@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { toFileUri } from '../../src/contexts/filesystem/domain/fileUri'
 import { rejectDocumentWrites } from './workspace-canvas.document-save.helpers'
-import { launchApp, seedWorkspaceState } from './workspace-canvas.helpers'
+import { launchApp, readLocatorClientRect, seedWorkspaceState } from './workspace-canvas.helpers'
 import { EXPANSION_TERMINAL } from './workspace-canvas.collapse-expansion.helpers'
 import { terminalSelector } from './workspace-canvas.collapse-motion.helpers'
 import { createMaterialFixture } from './workspace-canvas.spatial-pixel.materials.fixture'
@@ -51,6 +51,17 @@ for (const { kind, title, fontScale } of cases) {
       await node.getByTestId('terminal-node-inline-title-input').fill(title)
       await node.getByTestId('terminal-node-inline-title-input').press('Enter')
       await expect(node.getByTestId('terminal-node-title-display')).toHaveText(title)
+      // The title is the window's handle: pressing it to rename selects the window, as any press
+      // on a title bar does. Clear that on the empty canvas, so the round trip below starts plain.
+      await expect(node).toHaveClass(/selected/)
+      const pane = await readLocatorClientRect(
+        window.locator('.workspace-canvas .react-flow__pane'),
+      )
+      await window.mouse.click(pane.x + pane.width / 2, pane.y + pane.height - 160)
+      await expect(node).not.toHaveClass(/selected/)
+      // The title's field fill answers the pointer, not the window's identity: park the pointer
+      // on the sidebar's empty lower half, clear of the window and of the title bar's drag region.
+      await window.mouse.move(pane.x - 60, pane.y + pane.height - 120)
 
       // Round-trip selection too: the final collapse starts from a selected
       // expanded node and must not paint its compact caption prematurely.
