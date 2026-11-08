@@ -1,4 +1,4 @@
-import { Play } from 'lucide-react'
+import { PlayIcon } from '@app/renderer/components/ui/pixelIcons'
 import { NodeKindIcon } from './shared/NodeKindIcon'
 import { WindowHeader } from './shared/WindowHeader'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -211,7 +211,7 @@ export function RoleNode({
             onRun(inputDraft)
           }}
         >
-          <Play aria-hidden="true" />
+          <PlayIcon />
           <span>{t('roleNode.run')}</span>
         </button>
         <div className="role-node__history">

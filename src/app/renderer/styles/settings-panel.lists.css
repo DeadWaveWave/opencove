@@ -406,8 +406,8 @@
 }
 
 .settings-agent-order__icon {
-  width: 14px;
-  height: 14px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
 }
 
 .settings-quick-menu__toggle {
@@ -417,8 +417,8 @@
 }
 
 .settings-quick-menu__toggle-icon {
-  width: 14px;
-  height: 14px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
   color: var(--cove-text-faint);
 }
 

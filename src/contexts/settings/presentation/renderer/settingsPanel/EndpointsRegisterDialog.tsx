@@ -1,7 +1,14 @@
 import React from 'react'
 import { TextField } from '@app/renderer/components/ui/TextField'
 import { SegmentedControl } from '@app/renderer/components/ui/SegmentedControl'
-import { Check, Network, Plus, Server, Terminal, X } from 'lucide-react'
+import {
+  CheckIcon,
+  CloseIcon,
+  NetworkIcon,
+  PlusIcon,
+  ServerIcon,
+  TerminalIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { Button } from '@app/renderer/components/ui/Button'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { IconButton } from '@app/renderer/components/ui/IconButton'
@@ -116,10 +123,10 @@ export function EndpointsRegisterDialog({
         data-testid="settings-endpoints-register-window"
       >
         <header className="settings-endpoint-dialog__header">
-          <Server size={18} aria-hidden="true" />
+          <ServerIcon size={18} />
           <h3>{title}</h3>
           <IconButton label={t('common.close')} disabled={isBusy} onClick={onCancel}>
-            <X size={16} aria-hidden="true" />
+            <CloseIcon size={18} />
           </IconButton>
         </header>
 
@@ -142,13 +149,13 @@ export function EndpointsRegisterDialog({
                 {
                   value: 'managed',
                   label: t('settingsPanel.endpoints.register.managedLabel'),
-                  icon: <Terminal />,
+                  icon: <TerminalIcon />,
                   testId: 'settings-endpoints-register-mode-managed',
                 },
                 {
                   value: 'manual',
                   label: t('settingsPanel.endpoints.register.manualLabel'),
-                  icon: <Network />,
+                  icon: <NetworkIcon />,
                   testId: 'settings-endpoints-register-mode-manual',
                 },
               ]}
@@ -314,11 +321,7 @@ export function EndpointsRegisterDialog({
             disabled={isBusy || !canSubmit}
             onClick={onSubmit}
           >
-            {mode === 'edit' ? (
-              <Check size={15} aria-hidden="true" />
-            ) : (
-              <Plus size={15} aria-hidden="true" />
-            )}
+            {mode === 'edit' ? <CheckIcon size={18} /> : <PlusIcon size={18} />}
             {isBusy
               ? t('common.saving')
               : mode === 'edit'

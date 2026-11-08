@@ -1,5 +1,5 @@
 import React from 'react'
-import { LoaderCircle } from 'lucide-react'
+import { PixelSpinner } from '@app/renderer/components/ui/PixelSpinner'
 import type { TranslateFn } from '@app/renderer/i18n'
 import type { WorkerEndpointOverviewDto } from '@shared/contracts/dto'
 import {
@@ -111,11 +111,7 @@ export function RemoteEndpointStatusPanel({
           >
             {overview.operation ? (
               <span role="progressbar" aria-label={summary}>
-                <LoaderCircle
-                  className="remote-endpoint-status__spinner"
-                  size={14}
-                  aria-hidden="true"
-                />
+                <PixelSpinner className="remote-endpoint-status__spinner" size={18} />
               </span>
             ) : null}
             {summary}

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDownIcon } from '@app/renderer/components/ui/pixelIcons'
 import {
   TRANSIENT_LAYER_OWNER_ATTRIBUTE,
   useTransientLayerOwner,
@@ -337,9 +337,8 @@ export function CoveSelect({
             <span className="cove-select__pill">{selectedOption.badge}</span>
           ) : null}
         </span>
-        <ChevronDown
-          aria-hidden="true"
-          size={16}
+        <ChevronDownIcon
+          size={18}
           className={`cove-select__chevron${isOpen ? ' cove-select__chevron--open' : ''}`}
         />
       </button>

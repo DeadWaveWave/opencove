@@ -1,5 +1,5 @@
 import { useMemo, useState, type JSX } from 'react'
-import { RotateCcw, Trash2 } from 'lucide-react'
+import { TrashIcon, UndoIcon } from '@app/renderer/components/ui/pixelIcons'
 import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { useTranslation } from '@app/renderer/i18n'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
@@ -217,7 +217,7 @@ export function TaskNodeAgentSessions({
                 setAgentSessionMenu(null)
               }}
             >
-              <RotateCcw className="workspace-context-menu__icon" aria-hidden="true" />
+              <UndoIcon className="workspace-context-menu__icon" />
               <span className="workspace-context-menu__label">{t('taskNode.resume')}</span>
             </button>
           ) : null}
@@ -230,7 +230,7 @@ export function TaskNodeAgentSessions({
               setAgentSessionMenu(null)
             }}
           >
-            <Trash2 className="workspace-context-menu__icon" aria-hidden="true" />
+            <TrashIcon className="workspace-context-menu__icon" />
             <span className="workspace-context-menu__label">{t('taskNode.removeRecord')}</span>
           </button>
         </ViewportMenuSurface>

@@ -139,8 +139,8 @@
 }
 
 .cove-directory-toolbar .workspace-space-explorer__header-action svg {
-  width: 14px;
-  height: 14px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
 }
 
 @media (prefers-reduced-motion: reduce) {

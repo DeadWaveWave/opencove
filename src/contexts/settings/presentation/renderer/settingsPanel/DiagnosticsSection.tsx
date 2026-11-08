@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@app/renderer/components/ui/Button'
 import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
-import { Copy, RefreshCw } from 'lucide-react'
+import { CopyIcon, RefreshIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   formatBytes,
@@ -108,7 +108,7 @@ export function DiagnosticsSection({
           disabled={isLoading || isRefreshing}
           onClick={() => void refreshSnapshot()}
         >
-          <RefreshCw size={14} aria-hidden="true" />
+          <RefreshIcon size={18} />
           {isLoading || isRefreshing
             ? t('settingsPanel.diagnostics.refreshing')
             : t('common.refresh')}
@@ -119,7 +119,7 @@ export function DiagnosticsSection({
           disabled={!snapshot}
           onClick={() => void copyDiagnostics()}
         >
-          <Copy size={14} aria-hidden="true" />
+          <CopyIcon size={18} />
           {t('settingsPanel.diagnostics.copy')}
         </Button>
         {copyStatus ? <span className="settings-panel__value">{copyStatus}</span> : null}

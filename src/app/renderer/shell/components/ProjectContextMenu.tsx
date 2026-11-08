@@ -1,5 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Copy, FolderOpen, FolderX, HardDrive, Pencil, Pin, PinOff, X } from 'lucide-react'
+import {
+  CheckIcon,
+  CloseIcon,
+  CopyIcon,
+  DriveIcon,
+  EditIcon,
+  FolderOpenIcon,
+  FolderXIcon,
+  PinIcon,
+  PinOffIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { MenuItem, MenuSeparator } from '@app/renderer/components/ui/Menu'
@@ -360,7 +370,7 @@ export function ProjectContextMenu({
           />
           <div className="workspace-project-context-menu__rename-actions">
             <button type="submit" data-testid="workspace-project-context-menu-rename-save">
-              <Check className="workspace-context-menu__icon" aria-hidden="true" />
+              <CheckIcon className="workspace-context-menu__icon" />
               <span className="workspace-context-menu__label">{t('projectContextMenu.save')}</span>
             </button>
             <button
@@ -370,7 +380,7 @@ export function ProjectContextMenu({
                 setIsRenaming(false)
               }}
             >
-              <X className="workspace-context-menu__icon" aria-hidden="true" />
+              <CloseIcon className="workspace-context-menu__icon" />
               <span className="workspace-context-menu__label">
                 {t('projectContextMenu.cancel')}
               </span>
@@ -379,7 +389,7 @@ export function ProjectContextMenu({
         </form>
       ) : (
         <MenuItem
-          icon={<Pencil />}
+          icon={<EditIcon />}
           data-testid="workspace-project-context-menu-rename"
           onClick={() => {
             setIsRenaming(true)
@@ -391,7 +401,7 @@ export function ProjectContextMenu({
       {!isRenaming && isProjectTarget ? renderProjectIconRow() : null}
       {!isRenaming && isProjectTarget ? (
         <MenuItem
-          icon={<HardDrive />}
+          icon={<DriveIcon />}
           data-testid={`workspace-project-manage-mounts-${workspaceId}`}
           onClick={() => {
             onRequestManageMounts(workspaceId)
@@ -402,7 +412,7 @@ export function ProjectContextMenu({
       ) : null}
       {!isRenaming && canOpenInFileManager && isProjectTarget ? (
         <MenuItem
-          icon={<FolderOpen />}
+          icon={<FolderOpenIcon />}
           data-testid={`workspace-project-open-in-file-manager-${workspaceId}`}
           onClick={() => {
             onRequestOpenInFileManager(workspaceId)
@@ -414,21 +424,21 @@ export function ProjectContextMenu({
       {!isRenaming && isSpaceTarget ? (
         <>
           <MenuItem
-            icon={isSpacePinned ? <PinOff /> : <Pin />}
+            icon={isSpacePinned ? <PinOffIcon /> : <PinIcon />}
             data-testid={`workspace-space-context-pin-${resolvedTarget.spaceId}`}
             onClick={toggleSpacePinned}
           >
             {isSpacePinned ? t('projectContextMenu.unpinSpace') : t('projectContextMenu.pinSpace')}
           </MenuItem>
           <MenuItem
-            icon={<Copy />}
+            icon={<CopyIcon />}
             data-testid={`workspace-space-context-copy-path-${resolvedTarget.spaceId}`}
             onClick={copySpacePath}
           >
             {t('spaceActions.copyPath')}
           </MenuItem>
           <MenuItem
-            icon={<FolderOpen />}
+            icon={<FolderOpenIcon />}
             data-testid={`workspace-space-context-open-path-${resolvedTarget.spaceId}`}
             onClick={openSpacePath}
           >
@@ -438,7 +448,7 @@ export function ProjectContextMenu({
       ) : null}
       {!isRenaming && isAgentTarget ? (
         <MenuItem
-          icon={isAgentPinned ? <PinOff /> : <Pin />}
+          icon={isAgentPinned ? <PinOffIcon /> : <PinIcon />}
           data-testid={`workspace-agent-context-pin-${resolvedTarget.nodeId}`}
           onClick={toggleAgentPinned}
         >
@@ -449,7 +459,7 @@ export function ProjectContextMenu({
         <>
           <MenuSeparator />
           <MenuItem
-            icon={<FolderX />}
+            icon={<FolderXIcon />}
             tone="danger"
             data-testid={`workspace-project-remove-${workspaceId}`}
             onClick={() => {

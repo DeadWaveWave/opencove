@@ -91,10 +91,11 @@
   height: 22px;
 }
 
+/* The kind glyphs the windows wear (9 cells at 2px each), the plugin's own icon or the Agent vendor's mark. */
 .workspace-canvas__action-bar-icon > :is(svg, img),
 .workspace-canvas__action-bar-icon .agent-provider-icon {
-  width: 21px;
-  height: 21px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
 }
 
 .workspace-canvas__action-bar-label {

@@ -1,6 +1,6 @@
 import { Button } from '@app/renderer/components/ui/Button'
 import { useEffect, useRef, useState, type JSX } from 'react'
-import { Copy, Terminal } from 'lucide-react'
+import { CopyIcon, TerminalIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import { SettingsGroup } from './SettingsGroup'
 
@@ -38,7 +38,7 @@ export function PluginDevelopmentGuide(): JSX.Element {
     >
       <div className="settings-plugin-guide">
         <span className="settings-plugin-guide__command">
-          <Terminal size={15} aria-hidden="true" />
+          <TerminalIcon size={18} />
           <code>{GUIDE_COMMAND}</code>
         </span>
         <Button
@@ -50,7 +50,7 @@ export function PluginDevelopmentGuide(): JSX.Element {
           disabled={copyState === 'copying'}
           onClick={() => void copyGuide()}
         >
-          <Copy size={14} aria-hidden="true" />
+          <CopyIcon size={18} />
           {t('settingsPanel.plugins.copyGuide')}
         </Button>
       </div>

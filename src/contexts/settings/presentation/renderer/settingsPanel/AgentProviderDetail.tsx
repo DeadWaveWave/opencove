@@ -1,7 +1,7 @@
 import React from 'react'
 import { Button } from '@app/renderer/components/ui/Button'
 import { SettingRow } from '@app/renderer/components/ui/SettingRow'
-import { ArrowLeft, RefreshCw } from 'lucide-react'
+import { ArrowLeftIcon, RefreshIcon } from '@app/renderer/components/ui/pixelIcons'
 import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { useTranslation } from '@app/renderer/i18n'
 import { AGENT_PROVIDER_LABEL } from '@contexts/settings/domain/agentSettings'
@@ -47,7 +47,7 @@ export function AgentProviderDetail({
         data-testid={`settings-agent-configure-done-${provider}`}
         onClick={onBack}
       >
-        <ArrowLeft size={14} aria-hidden="true" />
+        <ArrowLeftIcon size={18} />
         {t('settingsPanel.agentDetail.back')}
       </Button>
       <header className="settings-agent-detail__header">
@@ -91,7 +91,7 @@ export function AgentProviderDetail({
               onClick={onRefresh}
               data-testid={`settings-agent-refresh-${provider}`}
             >
-              <RefreshCw size={13} aria-hidden="true" />
+              <RefreshIcon size={12} />
               {t('settingsPanel.agentDetail.refresh')}
             </Button>
             <Button

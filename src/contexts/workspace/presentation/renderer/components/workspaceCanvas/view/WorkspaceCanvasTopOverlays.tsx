@@ -1,6 +1,6 @@
 import React from 'react'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
-import { ChevronDown, Tag, X } from 'lucide-react'
+import { ChevronDownIcon, CloseIcon, TagIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   isWorkspaceSpacePinned,
@@ -119,16 +119,15 @@ export function WorkspaceCanvasTopOverlays({
                   aria-hidden="true"
                 />
               ) : (
-                <Tag className="workspace-label-color-filter__icon" aria-hidden="true" />
+                <TagIcon className="workspace-label-color-filter__icon" />
               )}
               <span className="workspace-label-color-filter__label">
                 {activeLabelColorFilter
                   ? t(`labelColors.${activeLabelColorFilter}`)
                   : t('labelColors.title')}
               </span>
-              <ChevronDown
+              <ChevronDownIcon
                 className={`workspace-label-color-filter__chevron${isFilterMenuOpen ? ' workspace-label-color-filter__chevron--open' : ''}`}
-                aria-hidden="true"
               />
             </button>
 
@@ -145,7 +144,7 @@ export function WorkspaceCanvasTopOverlays({
                   setIsFilterMenuOpen(false)
                 }}
               >
-                <X className="workspace-label-color-filter__clear-icon" aria-hidden="true" />
+                <CloseIcon className="workspace-label-color-filter__clear-icon" />
               </button>
             ) : null}
           </div>

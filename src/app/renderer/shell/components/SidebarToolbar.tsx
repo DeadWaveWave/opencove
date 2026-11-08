@@ -1,5 +1,5 @@
 import React from 'react'
-import { Plus, X } from 'lucide-react'
+import { CloseIcon, PlusIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import { IconButton } from '@app/renderer/components/ui/IconButton'
 
@@ -24,7 +24,7 @@ export function SidebarToolbar({
           label={t('common.close')}
           onClick={onClose}
         >
-          <X aria-hidden="true" />
+          <CloseIcon />
         </IconButton>
       ) : null}
       <IconButton
@@ -40,7 +40,7 @@ export function SidebarToolbar({
           })
         }}
       >
-        <Plus aria-hidden="true" />
+        <PlusIcon />
       </IconButton>
     </div>
   )

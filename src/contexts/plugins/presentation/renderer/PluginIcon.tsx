@@ -1,5 +1,6 @@
 import { useState, useSyncExternalStore, type JSX } from 'react'
-import { GitBranch, Puzzle } from 'lucide-react'
+import type { PixelIconSize } from '@app/renderer/components/ui/PixelIcon'
+import { ExtensionIcon, GitBranchIcon } from '@app/renderer/components/ui/pixelIcons'
 import { usePluginManifest } from './usePluginRegistry'
 import { usePluginDetails } from './usePluginDetails'
 import type { PluginIconDeclaration } from '../../domain/pluginTypes'
@@ -7,11 +8,10 @@ import type { PluginIconDeclaration } from '../../domain/pluginTypes'
 interface PluginIconProps {
   pluginId: string
   className?: string
-  size?: number
-  strokeWidth?: number
+  size?: PixelIconSize
 }
 
-const BUILTIN_ICONS = { 'git-branch': GitBranch, puzzle: Puzzle }
+const BUILTIN_ICONS = { 'git-branch': GitBranchIcon, puzzle: ExtensionIcon }
 
 function subscribeTheme(notify: () => void): () => void {
   window.addEventListener('opencove-theme-changed', notify)
@@ -22,18 +22,15 @@ function readTheme(): 'light' | 'dark' {
   return document.documentElement.dataset.coveTheme === 'light' ? 'light' : 'dark'
 }
 
-function FallbackIcon({ pluginId, className, size, strokeWidth }: PluginIconProps): JSX.Element {
+function FallbackIcon({ pluginId, className, size }: PluginIconProps): JSX.Element {
   return (
-    <Puzzle
+    <ExtensionIcon
       className={className}
       size={size}
-      strokeWidth={strokeWidth}
       data-cove-part="icon"
       data-cove-kind="plugin"
       data-cove-plugin-icon={pluginId}
       data-plugin-icon-kind="fallback"
-      aria-hidden="true"
-      focusable="false"
     />
   )
 }
@@ -74,17 +71,12 @@ function AssetIcon({
 }
 
 /** One declarative identity for settings, creation actions and expanded/compact windows. */
-export function PluginIcon({
-  pluginId,
-  className,
-  size = 16,
-  strokeWidth = 1.75,
-}: PluginIconProps): JSX.Element {
+export function PluginIcon({ pluginId, className, size = 18 }: PluginIconProps): JSX.Element {
   const plugin = usePluginManifest(pluginId)
   const { detail } = usePluginDetails(plugin)
   const declaration = plugin?.icon
   const assets = detail?.assets ?? {}
-  const props = { pluginId, className, size, strokeWidth }
+  const props = { pluginId, className, size }
   if (declaration?.type === 'asset') {
     return <AssetIcon {...props} declaration={declaration} assets={assets} />
   }
@@ -97,13 +89,10 @@ export function PluginIcon({
         <Icon
           className={className}
           size={size}
-          strokeWidth={strokeWidth}
           data-cove-part="icon"
           data-cove-kind="plugin"
           data-cove-plugin-icon={pluginId}
           data-plugin-icon-kind="builtin"
-          aria-hidden="true"
-          focusable="false"
         />
       )
     }

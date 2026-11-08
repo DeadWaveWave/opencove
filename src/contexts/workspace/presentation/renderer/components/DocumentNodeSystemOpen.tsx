@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type JSX } from 'react'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLinkIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import { toAppErrorDescriptor } from '@shared/errors/appError'
 import {
@@ -90,7 +90,7 @@ function SystemOpenAction({ uri, mountId }: SystemFileReference): JSX.Element | 
           void open()
         }}
       >
-        <ExternalLink size={14} aria-hidden="true" />
+        <ExternalLinkIcon size={18} />
         {t('terminalLink.openWithDefaultApp')}
       </button>
       {error ? (

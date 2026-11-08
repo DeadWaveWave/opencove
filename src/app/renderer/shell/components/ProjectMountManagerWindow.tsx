@@ -13,7 +13,7 @@ import { ProjectMountManagerRemoteSection } from './ProjectMountManagerRemoteSec
 import { getEndpointActionExecution } from '../utils/endpointOverviewUi'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { WindowHeading } from '@app/renderer/components/WindowHeading'
-import { FolderOpen } from 'lucide-react'
+import { FolderOpenIcon } from '@app/renderer/components/ui/pixelIcons'
 
 export function ProjectMountManagerWindow({
   workspace,
@@ -335,7 +335,7 @@ export function ProjectMountManagerWindow({
       >
         <WindowHeading
           title={t('projectMountManager.title', { workspaceName: workspace.name })}
-          icon={<FolderOpen size={16} aria-hidden="true" />}
+          icon={<FolderOpenIcon size={18} />}
         />
         <p className="cove-window__intro">{t('projectMountManager.description')}</p>
 

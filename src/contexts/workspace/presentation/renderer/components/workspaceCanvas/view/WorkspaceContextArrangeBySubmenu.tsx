@@ -1,5 +1,5 @@
 import React from 'react'
-import { Check } from 'lucide-react'
+import { CheckIcon } from '@app/renderer/components/ui/pixelIcons'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspaceSpaceState } from '../../../types'
@@ -12,7 +12,7 @@ export type ArrangeScope = 'all' | 'canvas' | 'space'
 
 function renderMark(checked: boolean): React.JSX.Element {
   return checked ? (
-    <Check className="workspace-context-menu__mark" aria-hidden="true" />
+    <CheckIcon className="workspace-context-menu__mark" />
   ) : (
     <span className="workspace-context-menu__mark" aria-hidden="true" />
   )

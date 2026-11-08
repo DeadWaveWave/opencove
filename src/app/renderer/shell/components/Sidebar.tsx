@@ -1,6 +1,6 @@
 import { PluginSidebar } from '@contexts/plugins/presentation/renderer/PluginSidebar'
 import React, { useCallback, useEffect, useState } from 'react'
-import { MoreHorizontal, Settings } from 'lucide-react'
+import { MoreIcon, SettingsIcon } from '@app/renderer/components/ui/pixelIcons'
 import {
   DndContext,
   DragOverlay,
@@ -340,7 +340,7 @@ export function Sidebar({
                 label={t('common.settings')}
                 onClick={() => onOpenSettings()}
               >
-                <Settings aria-hidden="true" />
+                <SettingsIcon />
               </IconButton>
             ) : null}
           </div>
@@ -378,7 +378,7 @@ export function Sidebar({
                       })
                     }}
                   >
-                    <MoreHorizontal size={15} aria-hidden="true" />
+                    <MoreIcon size={18} />
                   </button>
                 </header>
                 <SidebarViewControls

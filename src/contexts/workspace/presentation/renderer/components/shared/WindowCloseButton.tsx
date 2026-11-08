@@ -1,5 +1,5 @@
 import type React from 'react'
-import { X } from 'lucide-react'
+import { CloseIcon } from '@app/renderer/components/ui/pixelIcons'
 import { IconButton } from '@app/renderer/components/ui/IconButton'
 
 /**
@@ -34,7 +34,7 @@ export function WindowCloseButton({
         onClose()
       }}
     >
-      <X aria-hidden="true" />
+      <CloseIcon />
     </IconButton>
   )
 }

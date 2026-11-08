@@ -2,7 +2,15 @@ import React, { useCallback, useMemo, useState } from 'react'
 import { Button } from '@app/renderer/components/ui/Button'
 import { TextAreaField, TextField } from '@app/renderer/components/ui/TextField'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
-import { ChevronDown, ChevronUp, Globe, Pin, Plus, Power, Terminal } from 'lucide-react'
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  GlobeIcon,
+  PinIcon,
+  PlusIcon,
+  PowerIcon,
+  TerminalIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import type { QuickCommand } from '@contexts/settings/domain/agentSettings'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
@@ -174,9 +182,9 @@ export function QuickCommandsSubsection({
           <div className="settings-list-item" key={command.id}>
             <div className="settings-list-item__left" style={{ cursor: 'default' }}>
               {command.kind === 'terminal' ? (
-                <Terminal className="workspace-context-menu__icon" aria-hidden="true" />
+                <TerminalIcon className="workspace-context-menu__icon" />
               ) : (
-                <Globe className="workspace-context-menu__icon" aria-hidden="true" />
+                <GlobeIcon className="workspace-context-menu__icon" />
               )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <span style={{ color: 'var(--cove-text)', fontWeight: 500 }}>{command.title}</span>
@@ -194,7 +202,7 @@ export function QuickCommandsSubsection({
                 data-active={command.enabled ? 'true' : 'false'}
                 title={t('settingsPanel.quickMenu.commands.enabled')}
               >
-                <Power className="settings-quick-menu__toggle-icon" aria-hidden="true" />
+                <PowerIcon className="settings-quick-menu__toggle-icon" />
                 <Toggle
                   data-testid={`settings-quick-command-enabled-${command.id}`}
                   checked={command.enabled}
@@ -214,7 +222,7 @@ export function QuickCommandsSubsection({
                 data-active={command.pinned ? 'true' : 'false'}
                 title={t('settingsPanel.quickMenu.commands.pinned')}
               >
-                <Pin className="settings-quick-menu__toggle-icon" aria-hidden="true" />
+                <PinIcon className="settings-quick-menu__toggle-icon" />
                 <Toggle
                   data-testid={`settings-quick-command-pinned-${command.id}`}
                   checked={command.pinned}
@@ -237,7 +245,7 @@ export function QuickCommandsSubsection({
                 aria-label={t('settingsPanel.agent.moveUp')}
                 onClick={() => onChangeQuickCommands(moveItem(quickCommands, index, index - 1))}
               >
-                <ChevronUp className="settings-agent-order__icon" aria-hidden="true" />
+                <ChevronUpIcon className="settings-agent-order__icon" />
               </button>
               <button
                 type="button"
@@ -247,7 +255,7 @@ export function QuickCommandsSubsection({
                 aria-label={t('settingsPanel.agent.moveDown')}
                 onClick={() => onChangeQuickCommands(moveItem(quickCommands, index, index + 1))}
               >
-                <ChevronDown className="settings-agent-order__icon" aria-hidden="true" />
+                <ChevronDownIcon className="settings-agent-order__icon" />
               </button>
 
               <Button
@@ -276,7 +284,7 @@ export function QuickCommandsSubsection({
 
       <div style={{ marginTop: 12 }}>
         <Button data-testid="settings-quick-command-add" onClick={openNewCommandEditor}>
-          <Plus size={15} aria-hidden="true" />
+          <PlusIcon size={18} />
           {t('settingsPanel.quickMenu.commands.add')}
         </Button>
       </div>

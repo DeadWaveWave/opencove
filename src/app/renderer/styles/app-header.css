@@ -226,20 +226,6 @@
   white-space: nowrap;
 }
 
-.app-header__update-icon--spinning {
-  animation: app-header-update-spin 1.2s linear infinite;
-}
-
-@keyframes app-header-update-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 @media (max-width: 620px) {
   .app-header {
     gap: 8px;

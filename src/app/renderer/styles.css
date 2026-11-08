@@ -7,6 +7,7 @@
 @import './styles/ui-controls.css' layer(opencove);
 @import './styles/ui-overlays.css' layer(opencove);
 @import './styles/ui-badges.css' layer(opencove);
+@import './styles/ui-icons.css' layer(opencove);
 @import './styles/ui-menu.css' layer(opencove);
 @import './styles/ui-segmented.css' layer(opencove);
 @import './styles/ui-surface.css' layer(opencove);

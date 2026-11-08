@@ -1,5 +1,11 @@
 import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Check, Search, Scan, Server, X } from 'lucide-react'
+import {
+  CheckIcon,
+  CloseIcon,
+  FocusIcon,
+  SearchIcon,
+  ServerIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { StatusPill } from '@app/renderer/components/ui/StatusPill'
@@ -148,7 +154,7 @@ export function CommandCenter({
       inertRootSelector=".app-shell"
     >
       <div className="command-center__input-row">
-        <Search aria-hidden="true" size={16} className="command-center__search-icon" />
+        <SearchIcon size={18} className="command-center__search-icon" />
         <input
           ref={inputRef}
           className="command-center__input"
@@ -224,7 +230,7 @@ export function CommandCenter({
           data-testid="command-center-close"
           onClick={onClose}
         >
-          <X size={16} aria-hidden="true" />
+          <CloseIcon size={18} />
         </button>
       </div>
       {activeWorkspace ? (
@@ -239,7 +245,7 @@ export function CommandCenter({
                 /
               </span>
               <span data-cove-label-color={activeSpace.labelColor ?? undefined}>
-                <Scan size={14} aria-hidden="true" />
+                <FocusIcon size={18} />
                 <span>{activeSpace.name}</span>
               </span>
             </>
@@ -336,11 +342,11 @@ export function CommandCenter({
                         aria-label={`${t('sidebar.remoteProject')}: ${item.remoteLabel}`}
                         title={item.remoteLabel}
                       >
-                        <Server size={12} aria-hidden="true" />
+                        <ServerIcon size={12} />
                       </span>
                     ) : null}
                     {item.showCurrentMarker ? (
-                      <Check className="command-center__current" size={13} aria-hidden="true" />
+                      <CheckIcon className="command-center__current" size={12} />
                     ) : null}
                   </button>
                 )

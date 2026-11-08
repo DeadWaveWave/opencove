@@ -1,5 +1,5 @@
 import React from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDownIcon, ChevronRightIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import type { FileSystemEntry } from '@shared/contracts/dto'
 import { decodeUriPathname } from '../../DocumentNode.helpers'
@@ -224,7 +224,7 @@ export function WorkspaceDirectoryEntry({
               }
             }}
           >
-            {row.isExpanded ? <ChevronDown /> : <ChevronRight />}
+            {row.isExpanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
           </button>
         ) : (
           <span className="workspace-space-explorer__entry-disclosure-placeholder" />

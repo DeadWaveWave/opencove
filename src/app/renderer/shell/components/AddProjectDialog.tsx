@@ -7,7 +7,7 @@ import { invokeBrowserControlSurface } from '@app/renderer/browser/browserContro
 import { toErrorMessage } from '../utils/format'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { WindowHeading } from '@app/renderer/components/WindowHeading'
-import { LayoutDashboard } from 'lucide-react'
+import { LayoutIcon } from '@app/renderer/components/ui/pixelIcons'
 
 function isAbsolutePath(pathValue: string): boolean {
   return /^([a-zA-Z]:[\\/]|\/)/.test(pathValue)
@@ -116,7 +116,7 @@ export function AddProjectDialog({
     >
       <WindowHeading
         title={t('addProjectDialog.title')}
-        icon={<LayoutDashboard size={16} aria-hidden="true" />}
+        icon={<LayoutIcon size={18} />}
         onClose={onCancel}
         disabled={isSubmitting}
       />

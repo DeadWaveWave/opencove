@@ -1,17 +1,17 @@
 import React from 'react'
 import {
-  Clipboard,
-  Copy,
-  FilePlus,
-  FileText,
-  FolderOpen,
-  FolderPlus,
-  Pencil,
-  RefreshCw,
-  Scissors,
-  Trash2,
-  X,
-} from 'lucide-react'
+  ClipboardIcon,
+  CloseIcon,
+  CopyIcon,
+  CutIcon,
+  EditIcon,
+  FilePlusIcon,
+  FileTextIcon,
+  FolderOpenIcon,
+  FolderPlusIcon,
+  RefreshIcon,
+  TrashIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { useTranslation } from '@app/renderer/i18n'
 import type { FileSystemEntry } from '@shared/contracts/dto'
@@ -92,7 +92,9 @@ function renderEntryActions({
     actions.push(
       <MenuButton
         key="open"
-        icon={entry.kind === 'directory' ? <FolderOpen size={16} /> : <FileText size={16} />}
+        icon={
+          entry.kind === 'directory' ? <FolderOpenIcon size={18} /> : <FileTextIcon size={18} />
+        }
         label={t('spaceActions.open')}
         onClick={onOpen}
       />,
@@ -103,13 +105,13 @@ function renderEntryActions({
     actions.push(
       <MenuButton
         key="new-file"
-        icon={<FilePlus size={16} />}
+        icon={<FilePlusIcon size={18} />}
         label={t('spaceExplorer.newFile')}
         onClick={onNewFile}
       />,
       <MenuButton
         key="new-folder"
-        icon={<FolderPlus size={16} />}
+        icon={<FolderPlusIcon size={18} />}
         label={t('spaceExplorer.newFolder')}
         onClick={onNewFolder}
       />,
@@ -120,44 +122,44 @@ function renderEntryActions({
   actions.push(
     <MenuButton
       key="rename"
-      icon={<Pencil size={16} />}
+      icon={<EditIcon size={18} />}
       label={t('spaceExplorer.rename')}
       onClick={onRename}
     />,
     <MenuButton
       key="cut"
-      icon={<Scissors size={16} />}
+      icon={<CutIcon size={18} />}
       label={t('spaceExplorer.cut')}
       onClick={onCut}
     />,
     <MenuButton
       key="copy"
-      icon={<Copy size={16} />}
+      icon={<CopyIcon size={18} />}
       label={t('spaceExplorer.copy')}
       onClick={onCopy}
     />,
     <MenuButton
       key="paste"
-      icon={<Clipboard size={16} />}
+      icon={<ClipboardIcon size={18} />}
       label={t('spaceExplorer.paste')}
       disabled={!canPaste}
       onClick={onPaste}
     />,
     <MenuButton
       key="copy-path"
-      icon={<Copy size={16} />}
+      icon={<CopyIcon size={18} />}
       label={t('spaceExplorer.copyPath')}
       onClick={onCopyPath}
     />,
     <MenuButton
       key="copy-relative-path"
-      icon={<Copy size={16} />}
+      icon={<CopyIcon size={18} />}
       label={t('spaceExplorer.copyRelativePath')}
       onClick={onCopyRelativePath}
     />,
     <MenuButton
       key="refresh"
-      icon={<RefreshCw size={16} />}
+      icon={<RefreshIcon size={18} />}
       label={t('spaceExplorer.refresh')}
       onClick={onRefresh}
     />,
@@ -165,7 +167,7 @@ function renderEntryActions({
     <MenuButton
       key="delete"
       danger
-      icon={<Trash2 size={16} />}
+      icon={<TrashIcon size={18} />}
       label={t('common.delete')}
       onClick={onDelete}
     />,
@@ -237,33 +239,33 @@ export function WorkspaceSpaceExplorerOverlayContextMenu({
       {menu.kind === 'root' ? (
         <>
           <MenuButton
-            icon={<FilePlus size={16} />}
+            icon={<FilePlusIcon size={18} />}
             label={t('spaceExplorer.newFile')}
             onClick={onNewFile}
           />
           <MenuButton
-            icon={<FolderPlus size={16} />}
+            icon={<FolderPlusIcon size={18} />}
             label={t('spaceExplorer.newFolder')}
             onClick={onNewFolder}
           />
           <MenuButton
-            icon={<Clipboard size={16} />}
+            icon={<ClipboardIcon size={18} />}
             label={t('spaceExplorer.paste')}
             disabled={!canPaste}
             onClick={onPaste}
           />
           <MenuButton
-            icon={<Copy size={16} />}
+            icon={<CopyIcon size={18} />}
             label={t('spaceExplorer.copyPath')}
             onClick={onCopyPath}
           />
           <MenuButton
-            icon={<Copy size={16} />}
+            icon={<CopyIcon size={18} />}
             label={t('spaceExplorer.copyRelativePath')}
             onClick={onCopyRelativePath}
           />
           <MenuButton
-            icon={<RefreshCw size={16} />}
+            icon={<RefreshIcon size={18} />}
             label={t('spaceExplorer.refresh')}
             onClick={onRefresh}
           />
@@ -287,7 +289,7 @@ export function WorkspaceSpaceExplorerOverlayContextMenu({
         })
       ) : null}
       <div className="workspace-context-menu__separator" />
-      <MenuButton icon={<X size={16} />} label={t('common.close')} onClick={onClose} />
+      <MenuButton icon={<CloseIcon size={18} />} label={t('common.close')} onClick={onClose} />
     </ViewportMenuSurface>
   )
 }

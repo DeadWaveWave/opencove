@@ -4,16 +4,16 @@ import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurfac
 import { menuHoverHandler } from '@app/renderer/components/menuHoverHandler'
 import { MenuCheckboxItem, MenuItem } from '@app/renderer/components/ui/Menu'
 import {
-  FileText,
-  Globe,
-  LayoutGrid,
-  ListTodo,
-  Magnet,
-  Play,
-  Scan,
-  SlidersHorizontal,
-  Terminal,
-} from 'lucide-react'
+  FileTextIcon,
+  FocusIcon,
+  GlobeIcon,
+  GridIcon,
+  MagnetIcon,
+  PlayIcon,
+  SlidersIcon,
+  TaskIcon,
+  TerminalIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { PluginIcon } from '@contexts/plugins/presentation/renderer/PluginIcon'
 import { useTranslation } from '@app/renderer/i18n'
 import {
@@ -102,7 +102,7 @@ export function WorkspaceContextPaneMenuContent({
   return (
     <>
       <MenuItem
-        icon={<Terminal />}
+        icon={<TerminalIcon />}
         shortcut={shortcuts.createTerminal}
         data-testid="workspace-context-new-terminal"
         onClick={() => {
@@ -112,7 +112,7 @@ export function WorkspaceContextPaneMenuContent({
         {t('workspaceContextMenu.newTerminal')}
       </MenuItem>
       <MenuItem
-        icon={<FileText />}
+        icon={<FileTextIcon />}
         shortcut={shortcuts.createNote}
         data-testid="workspace-context-new-note"
         onClick={createNoteNodeFromContextMenu}
@@ -121,7 +121,7 @@ export function WorkspaceContextPaneMenuContent({
       </MenuItem>
       {websiteWindowsEnabled ? (
         <MenuItem
-          icon={<Globe />}
+          icon={<GlobeIcon />}
           data-testid="workspace-context-new-website"
           onClick={createWebsiteNodeFromContextMenu}
         >
@@ -139,7 +139,7 @@ export function WorkspaceContextPaneMenuContent({
         </MenuItem>
       ))}
       <MenuItem
-        icon={<ListTodo />}
+        icon={<TaskIcon />}
         data-testid="workspace-context-new-task"
         onClick={openTaskCreator}
       >
@@ -154,7 +154,7 @@ export function WorkspaceContextPaneMenuContent({
 
       <div className="cove-menu-split">
         <MenuItem
-          icon={<Play />}
+          icon={<PlayIcon />}
           shortcut={shortcuts.createAgent}
           data-testid="workspace-context-run-default-agent"
           onClick={openAgentLauncher}
@@ -172,7 +172,7 @@ export function WorkspaceContextPaneMenuContent({
       </div>
       {canCreateSpace ? (
         <MenuItem
-          icon={<Scan />}
+          icon={<FocusIcon />}
           data-testid="workspace-context-create-space"
           onClick={createSpaceFromContextMenu}
         >
@@ -192,7 +192,7 @@ export function WorkspaceContextPaneMenuContent({
       />
 
       <MenuItem
-        icon={<LayoutGrid />}
+        icon={<GridIcon />}
         data-testid="workspace-context-arrange"
         disabled={!canArrangeCurrentScope}
         onClick={commitArrangeAndClose}
@@ -202,7 +202,7 @@ export function WorkspaceContextPaneMenuContent({
 
       <MenuItem
         ref={arrangeByButtonRef}
-        icon={<SlidersHorizontal />}
+        icon={<SlidersIcon />}
         data-testid="workspace-context-arrange-by"
         submenu={{ open: isArrangeSubmenuOpen }}
         onMouseEnter={menuHoverHandler(openArrangeSubmenu)}
@@ -212,7 +212,7 @@ export function WorkspaceContextPaneMenuContent({
       </MenuItem>
 
       <MenuCheckboxItem
-        icon={<Magnet />}
+        icon={<MagnetIcon />}
         data-testid="workspace-context-magnetic-snapping"
         checked={magneticSnappingEnabled}
         onCheckedChange={onToggleMagneticSnapping}

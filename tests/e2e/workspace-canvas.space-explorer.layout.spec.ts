@@ -145,7 +145,7 @@ test.describe('Workspace Canvas - Space Explorer', () => {
         ),
         expect(header.getByRole('button', { name: 'Close', exact: true })).toBeVisible(),
       ])
-      await expect(header.locator('.lucide-scan')).toHaveCount(0)
+      await expect(header.locator('[data-cove-pixel-icon="focus"]')).toHaveCount(0)
       const chrome = await header.evaluate(element => ({
         band: getComputedStyle(element, '::before').backgroundImage,
         material: getComputedStyle(element).backdropFilter,

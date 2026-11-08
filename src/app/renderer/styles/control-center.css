@@ -94,9 +94,8 @@
 }
 
 .control-center__row-icon > svg {
-  width: 16px;
-  height: 16px;
-  stroke-width: 1.8;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
 }
 
 .control-center__row-label {
@@ -170,9 +169,8 @@
 }
 
 .control-center__settings svg {
-  width: 16px;
-  height: 16px;
-  stroke-width: 1.8;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
 }
 
 .control-center__settings-chevron {

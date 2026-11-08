@@ -1,5 +1,5 @@
 import React from 'react'
-import { Globe, ListTodo, Scan, StickyNote, TerminalSquare } from 'lucide-react'
+import { PixelGlyph } from '@app/renderer/components/ui/PixelGlyph'
 import { PluginIcon } from '@contexts/plugins/presentation/renderer/PluginIcon'
 import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { useTranslation } from '@app/renderer/i18n'
@@ -129,31 +129,31 @@ export function WorkspaceCanvasActionBar({
       kind: 'terminal',
       label: t('workspaceCanvas.actionBar.terminal'),
       hint: t('workspaceCanvas.actionBar.terminalHint'),
-      icon: <TerminalSquare aria-hidden="true" />,
+      icon: <PixelGlyph name="terminal" />,
     },
     {
       kind: 'note',
       label: t('workspaceCanvas.actionBar.note'),
       hint: t('workspaceCanvas.actionBar.noteHint'),
-      icon: <StickyNote aria-hidden="true" />,
+      icon: <PixelGlyph name="note" />,
     },
     {
       kind: 'task',
       label: t('workspaceCanvas.actionBar.task'),
       hint: t('workspaceCanvas.actionBar.taskHint'),
-      icon: <ListTodo aria-hidden="true" />,
+      icon: <PixelGlyph name="task" />,
     },
     {
       kind: 'website',
       label: t('workspaceCanvas.actionBar.website'),
       hint: t('workspaceCanvas.actionBar.websiteHint'),
-      icon: <Globe aria-hidden="true" />,
+      icon: <PixelGlyph name="website" />,
     },
     {
       kind: 'space',
       label: t('workspaceCanvas.actionBar.space'),
       hint: t('workspaceCanvas.actionBar.spaceHint'),
-      icon: <Scan aria-hidden="true" />,
+      icon: <PixelGlyph name="space" />,
     },
   ]
   for (const plugin of localPlugins) {

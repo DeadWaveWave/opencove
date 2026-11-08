@@ -24,7 +24,7 @@ import { InlineNodeTitleEditor } from '@contexts/workspace/presentation/renderer
 import { NodeKindIcon } from '@contexts/workspace/presentation/renderer/components/shared/NodeKindIcon'
 import { WindowHeader } from '@contexts/workspace/presentation/renderer/components/shared/WindowHeader'
 import { WindowPlate } from '@contexts/workspace/presentation/renderer/components/shared/WindowPlate'
-import { Pencil } from 'lucide-react'
+import { EditIcon } from '@app/renderer/components/ui/pixelIcons'
 
 interface TaskNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -328,7 +328,7 @@ export function TaskNode({
                 onOpenEditor()
               }}
             >
-              <Pencil size={11} aria-hidden="true" />
+              <EditIcon size={12} />
             </button>
           </div>
 

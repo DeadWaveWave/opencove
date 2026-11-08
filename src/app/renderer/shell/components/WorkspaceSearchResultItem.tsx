@@ -1,5 +1,9 @@
 import { forwardRef } from 'react'
-import { GitBranch, GitPullRequest, Scan } from 'lucide-react'
+import {
+  FocusIcon,
+  GitBranchIcon,
+  GitPullRequestIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import type { WorkspaceSearchItem } from './workspaceSearchSections'
 
 export const WorkspaceSearchResultItem = forwardRef<
@@ -39,10 +43,10 @@ export const WorkspaceSearchResultItem = forwardRef<
             {item.metadata.map(metadata => {
               const Icon =
                 metadata.kind === 'space'
-                  ? Scan
+                  ? FocusIcon
                   : metadata.kind === 'branch'
-                    ? GitBranch
-                    : GitPullRequest
+                    ? GitBranchIcon
+                    : GitPullRequestIcon
               return (
                 <span
                   key={`${metadata.kind}-${metadata.value}`}

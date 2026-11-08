@@ -1,5 +1,5 @@
 import React from 'react'
-import { X } from 'lucide-react'
+import { CloseIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '../i18n'
 import { IconButton } from './ui/IconButton'
 
@@ -27,7 +27,7 @@ export function WindowHeading({
           disabled={disabled}
           onClick={onClose}
         >
-          <X size={16} aria-hidden="true" />
+          <CloseIcon size={18} />
         </IconButton>
       ) : null}
     </header>

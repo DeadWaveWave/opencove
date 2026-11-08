@@ -90,7 +90,9 @@ test('Space fold arranges real compact windows and leaves an ordinary movable re
     await expect(window.getByTestId(`workspace-space-collapse-${MOTION_SPACE}`)).toHaveCount(0)
     await expect(window.getByTestId(`collapsed-node-${EXPANSION_TERMINAL}`)).toBeVisible()
     await expect(window.getByTestId(`collapsed-node-${EXPANSION_PEER}`)).toBeVisible()
-    await expect(window.locator(spaceSelector).locator('.lucide-fold-vertical')).toBeVisible()
+    await expect(
+      window.locator(spaceSelector).locator('[data-cove-pixel-icon="fold"]'),
+    ).toBeVisible()
 
     const compactBeforeDrag = await readNodeFrame(window, EXPANSION_TERMINAL)
     const handle = await readLocatorClientRect(

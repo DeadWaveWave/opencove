@@ -1,4 +1,9 @@
-import { Minus, Square, Terminal, X } from 'lucide-react'
+import {
+  CloseIcon,
+  MinusIcon,
+  StopIcon,
+  TerminalIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import '@app/renderer/styles/settings-panel.terminal-preview.css'
 
@@ -19,13 +24,13 @@ export function TerminalTypographyPreview({
         aria-label={t('settingsPanel.appearanceNext.terminalPreview')}
       >
         <div className="settings-terminal-preview__header" aria-hidden="true">
-          <Terminal size={14} />
+          <TerminalIcon size={18} />
           <span>Terminal</span>
           <code>~/opencove</code>
           <div className="settings-terminal-preview__chrome">
-            <Minus size={12} />
-            <Square size={10} />
-            <X size={13} />
+            <MinusIcon size={12} />
+            <StopIcon size={12} />
+            <CloseIcon size={12} />
           </div>
         </div>
         <div

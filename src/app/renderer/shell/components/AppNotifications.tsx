@@ -1,12 +1,12 @@
 import React from 'react'
 import {
-  GitBranch,
-  GitCommitHorizontal,
-  GitPullRequest,
-  LayoutGrid,
-  ListTodo,
-  X,
-} from 'lucide-react'
+  CloseIcon,
+  GitBranchIcon,
+  GitCommitIcon,
+  GitPullRequestIcon,
+  GridIcon,
+  TaskIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 
 export type AgentStandbyNotificationGitContext =
@@ -119,11 +119,7 @@ export function AppNotifications({
                         title={`${taskKindLabel}: ${notification.taskTitle}`}
                         aria-label={`${taskKindLabel}: ${notification.taskTitle}`}
                       >
-                        <ListTodo
-                          size={12}
-                          className="app-notification__chip-icon"
-                          aria-hidden="true"
-                        />
+                        <TaskIcon size={12} className="app-notification__chip-icon" />
                         <span className="app-notification__chip-value">
                           {notification.taskTitle}
                         </span>
@@ -137,11 +133,7 @@ export function AppNotifications({
                         title={`${spaceKindLabel}: ${notification.spaceName}`}
                         aria-label={`${spaceKindLabel}: ${notification.spaceName}`}
                       >
-                        <LayoutGrid
-                          size={12}
-                          className="app-notification__chip-icon"
-                          aria-hidden="true"
-                        />
+                        <GridIcon size={12} className="app-notification__chip-icon" />
                         <span className="app-notification__chip-value">
                           {notification.spaceName}
                         </span>
@@ -164,17 +156,9 @@ export function AppNotifications({
                         }
                       >
                         {notification.gitContext.kind === 'branch' ? (
-                          <GitBranch
-                            size={12}
-                            className="app-notification__chip-icon"
-                            aria-hidden="true"
-                          />
+                          <GitBranchIcon size={12} className="app-notification__chip-icon" />
                         ) : (
-                          <GitCommitHorizontal
-                            size={12}
-                            className="app-notification__chip-icon"
-                            aria-hidden="true"
-                          />
+                          <GitCommitIcon size={12} className="app-notification__chip-icon" />
                         )}
                         <span className="app-notification__chip-value">
                           {notification.gitContext.kind === 'branch'
@@ -191,11 +175,7 @@ export function AppNotifications({
                         title={`${notification.pullRequest.title} (#${notification.pullRequest.number})`}
                         aria-label={`PR #${notification.pullRequest.number}: ${notification.pullRequest.title}`}
                       >
-                        <GitPullRequest
-                          size={12}
-                          className="app-notification__chip-icon"
-                          aria-hidden="true"
-                        />
+                        <GitPullRequestIcon size={12} className="app-notification__chip-icon" />
                         <span className="app-notification__chip-value">
                           {`#${notification.pullRequest.number}`}
                         </span>
@@ -217,7 +197,7 @@ export function AppNotifications({
                 onDismiss(notification.id)
               }}
             >
-              <X size={14} aria-hidden="true" />
+              <CloseIcon size={18} />
             </button>
           </div>
         )

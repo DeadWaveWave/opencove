@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import type { JSX } from 'react'
-import { FileText, MoreHorizontal, Pencil } from 'lucide-react'
+import { EditIcon, FileTextIcon, MoreIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { TaskPromptTemplatesMenu } from '../promptTemplates/TaskPromptTemplatesMenu'
@@ -86,7 +86,7 @@ export function TaskNodeActionsMenu({
         aria-label={t('taskNode.moreActions')}
         title={t('taskNode.moreActions')}
       >
-        <MoreHorizontal aria-hidden="true" />
+        <MoreIcon />
       </button>
 
       {menuPoint ? (
@@ -117,7 +117,7 @@ export function TaskNodeActionsMenu({
               openPromptTemplatesMenu()
             }}
           >
-            <FileText className="workspace-context-menu__icon" aria-hidden="true" />
+            <FileTextIcon className="workspace-context-menu__icon" />
             <span className="workspace-context-menu__label">
               {t('taskPromptTemplates.openMenu')}
             </span>
@@ -131,7 +131,7 @@ export function TaskNodeActionsMenu({
               openEditor()
             }}
           >
-            <Pencil className="workspace-context-menu__icon" aria-hidden="true" />
+            <EditIcon className="workspace-context-menu__icon" />
             <span className="workspace-context-menu__label">
               {t('taskNode.openFullTaskEditor')}
             </span>

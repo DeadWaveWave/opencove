@@ -417,10 +417,11 @@ Agent header and compact captions use the same provider-free display label along
 icon. Known generated provider prefixes are stripped only for display, including legacy renamed
 titles; the stored title and its owner remain unchanged.
 
-Files and folders share one decorative Lucide identity resolver across Explorer entries, window
-headers and compact nodes. Directory entries always use Folder; file basenames select FileJson,
-FileCode2 or the conservative FileText fallback. The resolver does not read content or claim a MIME
-type. Header and compact glyphs keep the same stroke and existing animation anchors. File/folder
+Files and folders share one decorative pixel-icon identity resolver across Explorer entries, window
+headers and compact nodes. Directory entries always use the folder icon; file basenames select the
+code-file icon (JSON and source files) or the conservative text-file fallback. The resolver does not
+read content or claim a MIME type. Header and compact glyphs keep the same pixel grid and existing
+animation anchors. File/folder
 compact nodes use a lightly tinted pedestal with two diagonal pixel corners, retain the shared
 112×96 interaction bounds, and display only the name beneath the icon. They never add a parent-path
 row, a floating Close control or a surrounding hover box. Their temporary motion surface and settled

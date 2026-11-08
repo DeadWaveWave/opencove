@@ -1,5 +1,5 @@
 import React from 'react'
-import { Eye, EyeOff } from 'lucide-react'
+import { EyeIcon, EyeOffIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import { MenuItem } from '@app/renderer/components/ui/Menu'
 import {
@@ -34,7 +34,7 @@ export function SidebarVisibilityMenuItem({
       return null
     }
   }
-  const Icon = hidden ? Eye : EyeOff
+  const Icon = hidden ? EyeIcon : EyeOffIcon
   return (
     <MenuItem
       icon={<Icon />}

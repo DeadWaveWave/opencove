@@ -118,7 +118,9 @@ async function expectSingleToolbarRow(browser: Locator) {
 
 async function expectHeaderAndFooter(browser: Locator) {
   const header = browser.locator('header').first()
-  await expect(header.locator('.workspace-space-explorer__subtitle, .lucide-scan')).toHaveCount(0)
+  await expect(
+    header.locator('.workspace-space-explorer__subtitle, [data-cove-pixel-icon="focus"]'),
+  ).toHaveCount(0)
   await expect(browser.getByRole('button', { name: 'Parent folder', exact: true })).toHaveCount(0)
   const icons = header.getByRole('radio', { name: 'Icons', exact: true })
   const list = header.getByRole('radio', { name: 'List', exact: true })

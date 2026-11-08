@@ -1,5 +1,5 @@
 import React from 'react'
-import { Trash2 } from 'lucide-react'
+import { TrashIcon } from '@app/renderer/components/ui/pixelIcons'
 import { AnchoredOperationPopover } from '@app/renderer/components/AnchoredOperationPopover'
 import { useTranslation } from '@app/renderer/i18n'
 import { type SpaceExplorerDeleteConfirmationState } from './WorkspaceSpaceExplorerOverlay.operations'
@@ -29,7 +29,7 @@ export function WorkspaceSpaceExplorerOverlayWindows({
           <section className="workspace-operation-guard workspace-operation-guard--danger">
             <header className="workspace-operation-guard__header">
               <span className="workspace-operation-guard__icon" aria-hidden="true">
-                <Trash2 size={16} />
+                <TrashIcon size={18} />
               </span>
               <div>
                 <h3>{t('spaceExplorer.deleteTitle')}</h3>

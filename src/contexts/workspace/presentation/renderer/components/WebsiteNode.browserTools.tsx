@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX, ReactNode } from 'react'
-import { Bookmark, Clock, Download, Home, Star } from 'lucide-react'
+import {
+  BookmarkIcon,
+  ClockIcon,
+  DownloadIcon,
+  HomeIcon,
+  StarIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { Checkbox } from '@app/renderer/components/ui/Checkbox'
 import { useTranslation } from '@app/renderer/i18n'
 import type {
@@ -270,7 +276,7 @@ export function WebsiteNodeBrowserTools({
           aria-label={t('websiteNode.home')}
           title={t('websiteNode.home')}
         >
-          <Home aria-hidden="true" />
+          <HomeIcon />
         </button>
 
         <button
@@ -286,7 +292,7 @@ export function WebsiteNodeBrowserTools({
           }
           title={activeBookmark ? t('websiteNode.removeBookmark') : t('websiteNode.addBookmark')}
         >
-          <Star aria-hidden="true" />
+          <StarIcon />
         </button>
 
         <button
@@ -300,7 +306,7 @@ export function WebsiteNodeBrowserTools({
           aria-label={t('websiteNode.bookmarks')}
           title={t('websiteNode.bookmarks')}
         >
-          <Bookmark aria-hidden="true" />
+          <BookmarkIcon />
         </button>
 
         <button
@@ -314,7 +320,7 @@ export function WebsiteNodeBrowserTools({
           aria-label={t('websiteNode.history')}
           title={t('websiteNode.history')}
         >
-          <Clock aria-hidden="true" />
+          <ClockIcon />
         </button>
 
         <button
@@ -328,7 +334,7 @@ export function WebsiteNodeBrowserTools({
           aria-label={t('websiteNode.downloads')}
           title={t('websiteNode.downloads')}
         >
-          <Download aria-hidden="true" />
+          <DownloadIcon />
         </button>
 
         {findOpen ? (

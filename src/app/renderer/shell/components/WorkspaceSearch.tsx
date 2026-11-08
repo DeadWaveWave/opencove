@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
-import { Search, X } from 'lucide-react'
+import { CloseIcon, SearchIcon } from '@app/renderer/components/ui/pixelIcons'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { IconButton } from '@app/renderer/components/ui/IconButton'
 import { useCompactViewport } from '@app/renderer/components/useCompactViewport'
@@ -144,7 +144,7 @@ export function WorkspaceSearch({
         />
       ) : null}
       <header className="workspace-search-panel__header">
-        <Search size={15} aria-hidden="true" />
+        <SearchIcon size={18} />
         <h2 id={`${id}-title`}>{t('workspaceSearch.title')}</h2>
         {activeWorkspace ? (
           <span className="workspace-search-panel__project" title={activeWorkspace.name}>
@@ -158,11 +158,11 @@ export function WorkspaceSearch({
           data-testid="workspace-search-close"
           onClick={onClose}
         >
-          <X size={16} aria-hidden="true" />
+          <CloseIcon size={18} />
         </IconButton>
       </header>
       <div className="workspace-search-panel__search">
-        <Search size={15} aria-hidden="true" />
+        <SearchIcon size={18} />
         <input
           ref={surface.inputRef}
           className="workspace-search-panel__input"

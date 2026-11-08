@@ -217,7 +217,7 @@ describe('WorkspaceSearch surface', () => {
       screen.getByTestId('workspace-search-item-note:note').hasAttribute('data-cove-label-color'),
     ).toBe(false)
     const space = screen.getByTestId('workspace-search-item-space:space')
-    expect(space.querySelector('.lucide-scan')).not.toBeNull()
+    expect(space.querySelector('[data-cove-pixel-icon="focus"]')).not.toBeNull()
     expect(space.textContent).toBe('ui/chrome')
     expect(space.textContent).not.toContain('/repo')
   })

@@ -117,7 +117,7 @@ test.describe('Command Center', () => {
       const space = window.getByTestId('command-center-item-space:ui')
       await expect(space).toHaveAttribute('data-cove-label-color', 'blue')
       await expect(space).toHaveAttribute('aria-current', 'location')
-      await expect(space.locator('svg.lucide-scan')).toHaveCount(1)
+      await expect(space.locator('svg[data-cove-pixel-icon="focus"]')).toHaveCount(1)
       const metrics = await center.evaluate(element => ({
         width: element.getBoundingClientRect().width,
         radius: getComputedStyle(element).borderTopLeftRadius,
