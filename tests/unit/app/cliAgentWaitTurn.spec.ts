@@ -42,6 +42,8 @@ it('waits for A via its ended event even when the event already starts B', async
 it('accepts A from the snapshot while B is already active', async () => {
   const f = turnFixture({ ...snapshot(), turn: { ...active, id: 'turn-b' }, lastEndedTurn: ended })
   expect(await f.wait()).toEqual({
+    persisted: false,
+    memoryOnlyReason: 'unavailable',
     nodeId: 'a',
     sessionId: 'session-a',
     turnId: active.id,
@@ -195,6 +197,8 @@ it('uses history with an older Worker snapshot and a message-free end lacking ou
     })
   })
   expect(await f.wait()).toEqual({
+    persisted: false,
+    memoryOnlyReason: 'unavailable',
     nodeId: 'a',
     sessionId: 'session-a',
     turnId: active.id,

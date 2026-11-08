@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3'
 
-export const AGENT_TURN_ARCHIVE_SCHEMA_VERSION = 1
+export const AGENT_TURN_ARCHIVE_SCHEMA_VERSION = 2
 export const AGENT_TURN_ARCHIVE_BUSY_MS = 50
 export const AGENT_TURN_ARCHIVE_FILE = 'agent-turn-archive.db'
 
@@ -18,7 +18,7 @@ export function assertArchiveVersion(db: Database.Database): void {
   const rows = db.prepare('SELECT version FROM archive_schema LIMIT 2').all() as {
     version: number
   }[]
-  if (rows.length !== 1 || rows[0].version !== AGENT_TURN_ARCHIVE_SCHEMA_VERSION) {
+  if (rows.length !== 1 || ![1, AGENT_TURN_ARCHIVE_SCHEMA_VERSION].includes(rows[0].version)) {
     throw new Error('unsupported archive schema')
   }
 }
@@ -50,7 +50,7 @@ export function validateArchiveBookkeeping(db: Database.Database): void {
   if (
     rows.length !== 1 ||
     row.id !== 1 ||
-    row.version !== AGENT_TURN_ARCHIVE_SCHEMA_VERSION ||
+    ![1, AGENT_TURN_ARCHIVE_SCHEMA_VERSION].includes(row.version) ||
     !Number.isSafeInteger(row.next_seq) ||
     row.next_seq <= totals.max_seq ||
     row.next_seq < 1 ||
@@ -68,14 +68,14 @@ export function createArchiveSchema(db: Database.Database): void {
       record_count INTEGER NOT NULL DEFAULT 0, message_bytes INTEGER NOT NULL DEFAULT 0,
       next_seq INTEGER NOT NULL DEFAULT 1
     );
-    INSERT INTO archive_schema (id, version) VALUES (1, 1) ON CONFLICT(id) DO NOTHING;
+    INSERT INTO archive_schema (id, version) VALUES (1, 2) ON CONFLICT(id) DO NOTHING;
     CREATE TABLE IF NOT EXISTS ended_turns (
       seq INTEGER NOT NULL UNIQUE,
       node_id TEXT NOT NULL, turn_id TEXT NOT NULL, session_id TEXT NOT NULL,
       provider TEXT NOT NULL, provider_session_id TEXT, prompt_id TEXT,
       outcome TEXT NOT NULL CHECK (outcome IN ('completed', 'failed', 'aborted', 'unknown')),
       ended_at INTEGER NOT NULL, archived_at INTEGER NOT NULL,
-      message TEXT, truncated INTEGER NOT NULL, superseded INTEGER NOT NULL,
+      message TEXT, message_kind TEXT CHECK (message_kind IS NULL OR message_kind = 'intermediate'), truncated INTEGER NOT NULL, superseded INTEGER NOT NULL,
       message_bytes INTEGER NOT NULL CHECK (message_bytes BETWEEN 0 AND 65536),
       PRIMARY KEY (node_id, turn_id)
     );
@@ -92,4 +92,13 @@ export function createArchiveSchema(db: Database.Database): void {
         message_bytes = message_bytes - OLD.message_bytes WHERE id = 1;
     END;
   `)
+  const version = (
+    db.prepare('SELECT version FROM archive_schema WHERE id = 1').get() as { version: number }
+  ).version
+  if (version === 1) {
+    db.exec(
+      "ALTER TABLE ended_turns ADD COLUMN message_kind TEXT CHECK (message_kind IS NULL OR message_kind = 'intermediate')",
+    )
+    db.exec('UPDATE archive_schema SET version = 2 WHERE id = 1')
+  }
 }

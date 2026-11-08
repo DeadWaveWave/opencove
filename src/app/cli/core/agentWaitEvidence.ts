@@ -1,6 +1,11 @@
 import * as z from 'zod'
 import type { AgentRunEvent, AgentRunSnapshot } from '../../../shared/contracts/dto/agentRunState'
-import { endedSelectedTurn, selectedTurnEnd, type TurnWaitResult } from './agentWaitTurn'
+import {
+  archivedSelectedTurn,
+  endedSelectedTurn,
+  selectedTurnEnd,
+  type TurnWaitResult,
+} from './agentWaitTurn'
 import { CliError } from './errors'
 
 export const agentWaitWatermarkSchema = z.object({
@@ -36,6 +41,8 @@ export class AgentWaitReconciliation {
 export class AgentWaitEvidence {
   result: TurnWaitResult | null = null
   private pending: CliError | null = null
+  private sawRetainedEnd = false
+  private sawCompletion = false
   private readonly reconciliation = new AgentWaitReconciliation()
   constructor(
     private readonly turnId: string,
@@ -43,18 +50,36 @@ export class AgentWaitEvidence {
       id: 'agent.list' | 'agent.finalMessage',
       payload: unknown,
     ) => Promise<unknown>,
+    private readonly exactArchive = false,
   ) {}
 
   retain(snapshot: AgentRunSnapshot, event?: AgentRunEvent): void {
-    this.result ??= selectedTurnEnd(snapshot, this.turnId, event)
+    const end = selectedTurnEnd(snapshot, this.turnId, event)
+    if (!this.exactArchive) {
+      this.result ??= end
+    } else if (end) {
+      const completion =
+        event?.type === 'agent.turn_completed' && event.endedTurn?.id === this.turnId
+      if (!this.sawRetainedEnd || (completion && !this.sawCompletion)) {
+        this.pending = null
+      }
+      this.sawRetainedEnd = true
+      this.sawCompletion ||= completion
+    }
   }
 
-  async observe(snapshot: AgentRunSnapshot, event?: AgentRunEvent): Promise<void> {
-    this.retain(snapshot, event)
+  async observe(
+    snapshot: AgentRunSnapshot | undefined,
+    event?: AgentRunEvent,
+    nodeId?: string,
+  ): Promise<void> {
+    if (snapshot) {
+      this.retain(snapshot, event)
+    }
     if (this.result) {
       return
     }
-    if (snapshot.turn?.id === this.turnId) {
+    if (snapshot?.turn?.id === this.turnId) {
       this.pending = null
       return
     }
@@ -62,15 +87,30 @@ export class AgentWaitEvidence {
       return
     }
     try {
-      this.result = await endedSelectedTurn(
-        snapshot,
-        this.turnId,
-        payload => this.query('agent.finalMessage', payload),
-        event,
-      )
+      this.result =
+        this.exactArchive || !snapshot
+          ? await archivedSelectedTurn(nodeId ?? snapshot!.nodeId!, this.turnId, payload =>
+              this.query('agent.finalMessage', payload),
+            )
+          : await endedSelectedTurn(
+              snapshot,
+              this.turnId,
+              payload => this.query('agent.finalMessage', payload),
+              event,
+            )
     } catch (error) {
       if (!(error instanceof CliError) || error.code !== 'agent.wait_turn_unavailable') {
         throw error
+      }
+      if (
+        snapshot &&
+        (error.details as { reason?: string } | undefined)?.reason === 'remote_history_unavailable'
+      ) {
+        const retained = selectedTurnEnd(snapshot, this.turnId, event)
+        if (retained) {
+          this.result = { ...retained, memoryOnlyReason: 'remote' }
+          return
+        }
       }
       this.pending = error
       this.reconciliation.defer(agentWaitWatermarkSchema.parse(await this.query('agent.list', {})))

@@ -142,9 +142,7 @@ it('updates read authority only after successful durable writes, including raw w
     { status: 'absent' },
   )
   await store.writeWorkspaceStateRaw(JSON.stringify(snapshot(['node'])))
-  expect(runtime.port.getExact({ nodeId: 'node', turnId: 'turn' })).toMatchObject({
-    status: 'found',
-  })
+  expect(runtime.port.getExact({ nodeId: 'node', turnId: 'turn' })).toEqual({ status: 'absent' }) // UUID reuse does not restore deleted rows.
   runtime.dispose()
 })
 

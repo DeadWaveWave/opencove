@@ -7,6 +7,9 @@ const historySchema = z.object({
   sessionId: z.string(),
   turnId: z.string(),
   outcome: z.enum(['completed', 'failed', 'aborted', 'unknown']),
+  nodeId: z.string().nullable().optional(),
+  persisted: z.boolean().default(false),
+  memoryOnlyReason: z.string().optional(),
   endedAt: z.number().finite().optional(),
 })
 const noMessageSchema = historySchema.pick({ outcome: true, endedAt: true }).extend({
@@ -19,6 +22,8 @@ export interface TurnWaitResult {
   turnId: string
   outcome: NonNullable<AgentRunSnapshot['turnOutcome']>
   endedAt?: number
+  persisted: boolean
+  memoryOnlyReason?: string
   state: AgentRunSnapshot['state']
 }
 export function turnUnavailable(
@@ -53,6 +58,8 @@ export function selectedTurnEnd(
     sessionId: snapshot.sessionId,
     turnId,
     outcome,
+    persisted: false,
+    memoryOnlyReason: 'unavailable',
     ...(endedAt !== undefined ? { endedAt } : {}),
     state: snapshot.state,
   })
@@ -85,6 +92,8 @@ export async function endedSelectedTurn(
     sessionId: snapshot.sessionId,
     turnId,
     outcome,
+    persisted: false,
+    memoryOnlyReason: 'unavailable',
     ...(endedAt !== undefined ? { endedAt } : {}),
     state: snapshot.state,
   })
@@ -122,6 +131,50 @@ export async function endedSelectedTurn(
           details.reason,
         )
       }
+    }
+    throw error
+  }
+}
+
+/** Historical lookup is independent of the current PTY/incarnation, and can prove metadata-only ends. */
+export async function archivedSelectedTurn(
+  nodeId: string,
+  turnId: string,
+  query: (payload: { nodeId: string; turnId: string }) => Promise<unknown>,
+): Promise<TurnWaitResult | null> {
+  const result = (value: z.infer<typeof historySchema>): TurnWaitResult => {
+    if (value.nodeId !== nodeId || value.turnId !== turnId) {
+      throw turnUnavailable(turnId, false, { nodeId })
+    }
+    return {
+      nodeId,
+      sessionId: value.sessionId,
+      turnId,
+      outcome: value.outcome,
+      persisted: value.persisted,
+      ...(value.memoryOnlyReason ? { memoryOnlyReason: value.memoryOnlyReason } : {}),
+      ...(value.endedAt !== undefined ? { endedAt: value.endedAt } : {}),
+      state: 'unknown',
+    }
+  }
+  try {
+    const value = historySchema.parse(await query({ nodeId, turnId }))
+    return result(value)
+  } catch (error) {
+    if (error instanceof CliError && error.code === 'agent.final_message_unavailable') {
+      const details = error.details as Record<string, unknown> | undefined
+      if (details?.reason === 'turn_not_ended') {
+        return null
+      }
+      if (details?.reason === 'provider_sent_no_message') {
+        return result(historySchema.parse(details))
+      }
+      throw turnUnavailable(
+        turnId,
+        false,
+        { nodeId },
+        typeof details?.reason === 'string' ? details.reason : 'archive_unavailable',
+      )
     }
     throw error
   }

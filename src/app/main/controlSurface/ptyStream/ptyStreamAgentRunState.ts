@@ -1,3 +1,7 @@
+import type {
+  AgentTurnArchive,
+  ArchiveMembership,
+} from '../../../../contexts/agent/application/AgentTurnArchive'
 import { randomUUID } from 'node:crypto'
 import { AgentRunStateRuntime } from '../../../../contexts/agent/application/AgentRunStateRuntime'
 import { AgentRunStateRegistry } from '../../../../contexts/agent/application/AgentRunStateRegistry'
@@ -7,9 +11,15 @@ import type { SessionState } from './ptyStreamState'
 export function createWorkerAgentRunState(
   epoch = randomUUID(),
   now = Date.now,
+  history: {
+    archive?: AgentTurnArchive
+    membership?: ArchiveMembership
+    isRemote?: (locator: { nodeId: string } | { sessionId: string }) => boolean
+  } = {},
 ): AgentRunStateRuntime {
   return new AgentRunStateRuntime(
     new AgentRunStateRegistry({
+      ...history,
       epoch,
       now,
       createTurnId: randomUUID,

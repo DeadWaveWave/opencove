@@ -43,6 +43,14 @@ export class AgentRunStateRuntime {
       rawStates?: Partial<Record<string, TerminalSessionStateEvent['state']>>
     }
   >()
+  private readonly launchNodes = new Map<string, string>()
+  captureLaunchIdentity(sessionId: string, nodeId: string): void {
+    if (this.launchNodes.has(sessionId)) {
+      return
+    }
+    this.launchNodes.set(sessionId, nodeId)
+    this.registry.captureLaunchIdentity(sessionId, nodeId)
+  }
   private readonly pending = new Map<string, TerminalSessionStateEvent[]>()
   private readonly bindings = new Map<
     string,
@@ -140,7 +148,12 @@ export class AgentRunStateRuntime {
         sequence: 0,
         remote: event.remote === true || (existing?.remote ?? false),
       })
-      this.registry.register({ sessionId: event.sessionId, provider, incarnation })
+      this.registry.register({
+        sessionId: event.sessionId,
+        provider,
+        incarnation,
+        launchNodeId: this.launchNodes.get(event.sessionId),
+      })
     }
     const session = this.sessions.get(event.sessionId)!
     // Only launch metadata grants managed provenance. A shim invocation is never upgraded
@@ -290,6 +303,7 @@ export class AgentRunStateRuntime {
         this.registry.register({
           sessionId: event.sessionId,
           provider: 'pi',
+          launchNodeId: this.launchNodes.get(event.sessionId),
           incarnation: session.incarnation,
         })
         this.applyBinding(event.sessionId)
@@ -405,9 +419,11 @@ export class AgentRunStateRuntime {
       this.registry.retire({ sessionId, incarnation: session.incarnation })
     }
     this.sessions.delete(sessionId)
+    this.launchNodes.delete(sessionId)
     this.pending.delete(sessionId)
   }
   dispose(): void {
+    this.launchNodes.clear()
     this.sessions.clear()
     this.bindings.clear()
     this.pending.clear()

@@ -96,6 +96,7 @@ export function createAgentTurnArchive(
           endedAt: input.endedAt,
           archivedAt: now(),
           message: content?.message ?? null,
+          messageKind: input.messageKind,
           messageBytes: Buffer.byteLength(content?.message ?? '', 'utf8'),
           truncated: content?.truncated ?? input.truncated,
           superseded: input.superseded,

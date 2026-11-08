@@ -13,12 +13,13 @@ export interface ArchivedAgentTurn {
   endedAt: number
   archivedAt: number
   message: string | null
+  messageKind?: 'intermediate'
   truncated: boolean
   superseded: boolean
   messageBytes: number
 }
 
-/** The caller supplies immutable local spawn ownership, never a read-time binding. */
+/** Ownership captured at end: launch/spawn node, else end-time binding; never a read-time binding. */
 export type AgentTurnArchiveInput = Omit<
   ArchivedAgentTurn,
   'seq' | 'archivedAt' | 'messageBytes' | 'nodeId'

@@ -168,9 +168,9 @@ export const agentQueryCommands = [
     summary: 'Wait until agents reach a state or finish a turn',
     description: [
       'Waits without sending any input. A state that already holds counts immediately. idle requires no active turn and never accepts an unknown or degraded state. After "agent prompt", save turnId and use --turn <turnId> to wait for that exact turn, even if a newer turn has started.',
-      '--turn requires one node and conflicts with --until, multiple --node options and --any. It waits through permission/question pauses and Claude queued provider continuations within that turn. Returns {nodeId, sessionId, turnId, outcome, endedAt?, state}; every ended outcome exits 0, including failed, aborted and unknown. Read outcome before claiming success. Unknown/evicted turns or restart without retained evidence exit 1; inspect agent get.',
-      'Local history retains only the last 8 ended turns per incarnation. For remote agents, --turn uses mirrored snapshots/events; older turns can only be checked on the Worker that runs them. Missing remote history reports details.reason: remote_history_unavailable, not eviction.',
-      'Waits follow each node’s current session; a displaced session cannot satisfy a condition. Exact-turn errors keep their code and details.reason, include known nodeId/sessionId/turnId, and suggest concrete agent get, --screen or session final commands.',
+      '--turn requires one node and conflicts with --until, multiple --node options and --any. It waits through permission/question pauses and Claude queued provider continuations within that turn. Returns {nodeId, sessionId, turnId, outcome, endedAt?, state, persisted, memoryOnlyReason?}; every ended outcome exits 0, including failed, aborted and unknown. Read outcome before claiming success. Exact archived local ends survive Worker restarts and can be read without a live agent. Unknown/evicted turns exit 1; archive_unavailable is distinct. Inspect persisted before relying on restart durability.',
+      'Local exact history retains at most 50 turns per node for 30 days, with global caps of 20,000 records and 128 MiB. For remote agents, --turn uses mirrored snapshots/events; older turns can only be checked on the Worker that runs them. Missing remote history reports details.reason: remote_history_unavailable, not eviction.',
+      'State waits follow the current session; exact archived turn waits return the original session independently. Exact-turn errors keep their code and details.reason, include known nodeId/sessionId/turnId, and suggest concrete agent get, --screen or session final commands.',
       '--until turn-end waits for a turn to finish after this command starts; use it only when you start waiting while the turn is still running. A finished turn is not necessarily a successful one: check turnOutcome (or endedTurnOutcome for turn-end).',
       'With several --node options, --all (default) waits until every agent matches and --any until the first one does. The result lists the latest state of every selected agent. Budgets below 250ms are rejected with usage exit 2 before connecting. On timeout (default 20s) it exits 124, prints the last known states on stderr and nothing on stdout; Ctrl-C exits 130. The agents keep running either way.',
     ].join('\n\n'),
@@ -227,17 +227,36 @@ export const agentQueryCommands = [
     },
     render: {
       ...stateWaitRender,
-      fields: [...stateWaitRender.fields!, 'turnId', 'outcome', 'endedAt'],
+      fields: [
+        ...stateWaitRender.fields!,
+        'turnId',
+        'outcome',
+        'endedAt',
+        'persisted',
+        'memoryOnlyReason',
+      ],
     },
     selectRender: ({ options: o }) =>
       o.turn !== undefined
-        ? declaredOutput(['nodeId', 'sessionId', 'turnId', 'outcome', 'endedAt', 'state'], {
-            nodeId: 'node-123',
-            sessionId: 'session-123',
-            turnId: 'turn-123',
-            outcome: 'completed',
-            state: 'idle',
-          })
+        ? declaredOutput(
+            [
+              'nodeId',
+              'sessionId',
+              'turnId',
+              'outcome',
+              'endedAt',
+              'persisted',
+              'memoryOnlyReason',
+              'state',
+            ],
+            {
+              nodeId: 'node-123',
+              sessionId: 'session-123',
+              turnId: 'turn-123',
+              outcome: 'completed',
+              state: 'idle',
+            },
+          )
         : stateWaitRender,
     examples: [
       'opencove agent wait --node node-123 --turn turn-123 --timeout 2m',

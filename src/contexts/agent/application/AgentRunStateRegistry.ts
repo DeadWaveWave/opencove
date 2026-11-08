@@ -1,3 +1,6 @@
+import { subscribeAgentRuns, type RetainedEvent } from './AgentRunSubscriptions'
+import type { AgentTurnArchive, ArchiveMembership } from './AgentTurnArchive'
+import { readExactArchivedTurn } from './AgentTurnArchiveRead'
 import { AgentSubmissionEvidence } from './AgentSubmissionEvidence'
 import { ClaudeTurnContinuation } from './ClaudeTurnContinuation'
 import { commitAgentRunUpdate } from './AgentRunStateUpdate'
@@ -39,13 +42,6 @@ export interface AgentRuntimeResync {
   query: 'agent.list'
 }
 
-type RetainedEvent = {
-  event: AgentRuntimeEvent
-  projectId?: string
-  spaceId?: string
-  previousBinding?: Binding
-}
-
 /** Worker lifetime owner. Uses an injected scheduler; no persistence, transport or renderer dependencies. */
 export class AgentRunStateRegistry {
   private readonly disposeListeners = new Set<() => void>()
@@ -72,6 +68,9 @@ export class AgentRunStateRegistry {
       /** Asynchronous callback; returns cancellation. Owned by the Worker, not a listener. */
       schedule: (callback: () => void, delayMs: number) => () => void
       retention?: number
+      archive?: AgentTurnArchive
+      membership?: ArchiveMembership
+      isRemote?: (locator: { nodeId: string } | { sessionId: string }) => boolean
       onSubscriberError?: (error: unknown) => void
     },
   ) {
@@ -83,6 +82,7 @@ export class AgentRunStateRegistry {
   register(
     input: Omit<Parameters<typeof createAgentRunModel>[0], 'now'> & {
       projectId?: string
+      launchNodeId?: string
       spaceId?: string
     },
   ): void {
@@ -98,7 +98,15 @@ export class AgentRunStateRegistry {
       this.releaseNodeBinding(existing)
     }
     const entry: Entry = {
-      history: new AgentTurnHistory(),
+      launchNodeId: input.launchNodeId ?? input.nodeId ?? null,
+      history: new AgentTurnHistory({
+        archive: this.ports.archive,
+        membership: this.ports.membership,
+        now: this.ports.now,
+        // Resolve once at acceptance: launches take priority; otherwise capture the end-time binding.
+        nodeId: () => entry.launchNodeId ?? entry.model.snapshot.nodeId,
+        remote: () => entry.remote,
+      }),
       continuation: new ClaudeTurnContinuation(),
       token: `${input.incarnation}:${++this.tokenSequence}`,
       bindingGeneration: 0,
@@ -225,7 +233,34 @@ export class AgentRunStateRegistry {
   finalMessage(input: ({ sessionId: string } | { nodeId: string }) & FinalMessageSelector) {
     const entry =
       'sessionId' in input ? this.entries.get(input.sessionId) : this.nodeBindings.get(input.nodeId)
+    if (input.turnId !== undefined) {
+      return readExactArchivedTurn(
+        input as ({ nodeId: string } | { sessionId: string }) & { turnId: string },
+        [...this.entries.values()],
+        this.ports,
+      )
+    }
     return readRunFinalMessage(entry, input)
+  }
+
+  captureLaunchIdentity(sessionId: string, nodeId: string): void {
+    const entry = this.entries.get(sessionId)
+    if (entry && entry.launchNodeId === null) {
+      entry.launchNodeId = nodeId
+    }
+  }
+  revokeNodes(nodeIds: readonly string[], revokeArchive = true): void {
+    const ids = new Set(nodeIds)
+    for (const entry of this.entries.values()) {
+      entry.history.revokeNodes(ids)
+    }
+    try {
+      if (revokeArchive) {
+        this.ports.archive?.revokeNodes(nodeIds)
+      }
+    } catch {
+      /* Runtime history remains usable. */
+    }
   }
 
   get(locator: { sessionId: string } | { nodeId: string }): AgentRunSnapshot | null {
@@ -326,6 +361,7 @@ export class AgentRunStateRegistry {
     return {
       epoch: this.ports.epoch,
       seq: this.sequence,
+      ...(this.ports.archive ? { turnArchive: true } : {}),
       agents: [...this.entries.values()]
         .filter(
           entry =>
@@ -349,76 +385,15 @@ export class AgentRunStateRegistry {
     filter: AgentRuntimeFilter,
     listener: (event: AgentRuntimeEvent | AgentRuntimeResync) => void,
   ): () => void {
-    const oldest = this.events[0]?.event.seq ?? this.sequence + 1
-    if (
-      cursor.epoch !== this.ports.epoch ||
-      !Number.isSafeInteger(cursor.afterSeq) ||
-      cursor.afterSeq < oldest - 1 ||
-      cursor.afterSeq > this.sequence
-    ) {
-      listener({
-        type: 'resync_required',
-        epoch: this.ports.epoch,
-        seq: this.sequence,
-        query: 'agent.list',
-      })
-      return () => undefined
-    }
-    // Queue live events during replay so reentrant publishers cannot invert sequence order.
-    const pending = this.events.filter(item => item.event.seq > cursor.afterSeq)
-    let draining = true
-    let deliveredSeq = cursor.afterSeq
-    let invalidated = false
-    const deliver = (item: RetainedEvent): void => {
-      if (invalidated || item.event.seq <= deliveredSeq) {
-        return
-      }
-      deliveredSeq = item.event.seq
-      const previous = item.previousBinding
-      if (
-        previous &&
-        !matchesAgentRunFilter(item, { ...filter, types: undefined }) &&
-        matchesAgentRunFilter(
-          {
-            ...item,
-            ...previous,
-            event: { ...item.event, snapshot: { ...item.event.snapshot, nodeId: previous.nodeId } },
-          },
-          { ...filter, types: undefined },
-        )
-      ) {
-        invalidated = true
-        this.subscribers.delete(subscriber)
-        listener({
-          type: 'resync_required',
-          epoch: this.ports.epoch,
-          seq: item.event.seq,
-          query: 'agent.list',
-        })
-      } else if (matchesAgentRunFilter(item, filter)) {
-        listener(structuredClone(item.event))
-      }
-    }
-    const subscriber = (item: RetainedEvent): void => {
-      if (draining) {
-        pending.push(item)
-      } else {
-        deliver(item)
-      }
-    }
-    this.subscribers.add(subscriber)
-    try {
-      while (pending.length) {
-        deliver(pending.shift()!)
-      }
-      draining = false
-    } catch (error) {
-      this.subscribers.delete(subscriber)
-      throw error
-    }
-    return () => {
-      this.subscribers.delete(subscriber)
-    }
+    return subscribeAgentRuns(
+      this.events,
+      this.subscribers,
+      this.ports.epoch,
+      this.sequence,
+      cursor,
+      filter,
+      listener,
+    )
   }
 
   dispose(): void {

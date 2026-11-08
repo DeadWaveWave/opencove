@@ -12,15 +12,15 @@ import {
 
 const columns = `node_id AS nodeId, turn_id AS turnId, seq, session_id AS sessionId,
   provider, provider_session_id AS providerSessionId, prompt_id AS promptId, outcome,
-  ended_at AS endedAt, archived_at AS archivedAt, message, truncated, superseded,
+  ended_at AS endedAt, archived_at AS archivedAt, message, message_kind AS messageKind, truncated, superseded,
   message_bytes AS messageBytes`
 
 export function createSqliteArchiveStorage(db: Database.Database): AgentTurnArchiveStorage {
   const insert = db.prepare(`INSERT INTO ended_turns (
     seq, node_id, turn_id, session_id, provider, provider_session_id, prompt_id, outcome,
-    ended_at, archived_at, message, truncated, superseded, message_bytes
+    ended_at, archived_at, message, message_kind, truncated, superseded, message_bytes
   ) VALUES ((SELECT next_seq FROM archive_schema WHERE id = 1), @nodeId, @turnId, @sessionId, @provider, @providerSessionId, @promptId, @outcome,
-    @endedAt, @archivedAt, @message, @truncated, @superseded, @messageBytes)
+    @endedAt, @archivedAt, @message, @messageKind, @truncated, @superseded, @messageBytes)
     ON CONFLICT(node_id, turn_id) DO NOTHING`)
   const duplicate = db.prepare('SELECT 1 FROM ended_turns WHERE node_id = ? AND turn_id = ?')
   const nodeRows = db.prepare(
@@ -70,6 +70,7 @@ export function createSqliteArchiveStorage(db: Database.Database): AgentTurnArch
     }
     insert.run({
       ...record,
+      messageKind: record.messageKind ?? null,
       truncated: Number(record.truncated),
       superseded: Number(record.superseded),
     })
@@ -147,7 +148,12 @@ export function createSqliteArchiveStorage(db: Database.Database): AgentTurnArch
       return undefined
     }
     const row = value as ArchivedAgentTurn
-    return { ...row, truncated: Boolean(row.truncated), superseded: Boolean(row.superseded) }
+    return {
+      ...row,
+      messageKind: row.messageKind ?? undefined,
+      truncated: Boolean(row.truncated),
+      superseded: Boolean(row.superseded),
+    }
   }
   const checkpoint = () => {
     db.pragma('wal_checkpoint(PASSIVE)')

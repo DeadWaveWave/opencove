@@ -225,7 +225,7 @@ describeWithElectronNativeModules('ended-turn archive SQLite', () => {
   it('disables a newer schema without modifying the database or creating sidecars', () => {
     const dir = root()
     const db = connect(dir)
-    db.exec('CREATE TABLE archive_schema (version INTEGER); INSERT INTO archive_schema VALUES (2)')
+    db.exec('CREATE TABLE archive_schema (version INTEGER); INSERT INTO archive_schema VALUES (3)')
     db.close()
     const path = join(dir, AGENT_TURN_ARCHIVE_FILE)
     const original = readFileSync(path)
@@ -296,5 +296,28 @@ describeWithElectronNativeModules('ended-turn archive SQLite', () => {
     } finally {
       locker.exec('ROLLBACK')
     }
+  })
+  it('upgrades the independent v1 archive and preserves intermediate semantics across reopen', () => {
+    const dir = root()
+    const archive = open(dir)
+    archive.append(endedTurn({ messageKind: 'intermediate', outcome: 'unknown' }))
+    archive.dispose()
+    const reopened = open(dir)
+    expect(reopened.getExact({ nodeId: 'node', turnId: 'turn' })).toMatchObject({
+      status: 'found',
+      record: { messageKind: 'intermediate', outcome: 'unknown' },
+    })
+    reopened.dispose()
+    const db = connect(dir)
+    db.exec(
+      'ALTER TABLE ended_turns DROP COLUMN message_kind; UPDATE archive_schema SET version = 1',
+    )
+    db.close()
+    const upgraded = open(dir)
+    expect(upgraded.getExact({ nodeId: 'node', turnId: 'turn' })).toMatchObject({
+      status: 'found',
+      record: { message: 'reply', outcome: 'unknown' },
+    })
+    expect(connect(dir).prepare('SELECT version FROM archive_schema').get()).toEqual({ version: 2 })
   })
 })

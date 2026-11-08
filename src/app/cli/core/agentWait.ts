@@ -68,8 +68,9 @@ export async function waitForAgents(
   let projection = new AgentWaitProjection(nodeIds, options.turnId, conflicts)
   const success = () => {
     const ended = evidence?.result
+    const current = projection.snapshot(nodeIds[0])
     return ended
-      ? { ...ended, state: projection.snapshot(nodeIds[0])?.state ?? ended.state }
+      ? { ...ended, state: current?.sessionId === ended.sessionId ? current.state : ended.state }
       : result()
   }
   const satisfied = () => {
@@ -95,7 +96,11 @@ export async function waitForAgents(
   try {
     while (!controller.signal.aborted) {
       const baseline = z
-        .object({ ...agentWaitWatermarkSchema.shape, agents: z.array(agentRunSnapshotSchema) })
+        .object({
+          ...agentWaitWatermarkSchema.shape,
+          agents: z.array(agentRunSnapshotSchema),
+          turnArchive: z.boolean().optional(),
+        })
         .parse(
           // eslint-disable-next-line no-await-in-loop
           await query('agent.list', {}),
@@ -103,7 +108,9 @@ export async function waitForAgents(
       let cursor = { epoch: baseline.epoch, seq: baseline.seq }
       projection = new AgentWaitProjection(nodeIds, options.turnId, conflicts)
       evidence =
-        options.turnId === undefined ? undefined : new AgentWaitEvidence(options.turnId, query)
+        options.turnId === undefined
+          ? undefined
+          : new AgentWaitEvidence(options.turnId, query, baseline.turnArchive === true)
       // Only the Worker's binding-aware get resolves owners, including exited sessions.
       // eslint-disable-next-line no-await-in-loop
       await projection.initialize(get)
@@ -119,9 +126,7 @@ export async function waitForAgents(
         if (status !== 'ready') {
           return status
         }
-        if (selected) {
-          await evidence?.observe(selected, event)
-        }
+        await evidence?.observe(selected, event, nodeIds[0])
         controller.signal.throwIfAborted()
         if (evidence?.reconcile(cursor)) {
           return 'resync'
@@ -187,7 +192,11 @@ export async function waitForAgents(
                 }
                 projection.reconciliation.defer(await watermark())
                 if (options.turnId !== undefined && owner !== projection.owner(nodeIds[0])) {
-                  evidence = new AgentWaitEvidence(options.turnId, query)
+                  evidence = new AgentWaitEvidence(
+                    options.turnId,
+                    query,
+                    baseline.turnArchive === true,
+                  )
                 }
               }
               const applied = projection.apply(event)

@@ -9,7 +9,7 @@ reuses `resolveAgentRunStateAuthority`; transport and consumers do not choose be
 
 | State                                             | Owner                           | Write entry                                                 | Restart truth                              |
 | ------------------------------------------------- | ------------------------------- | ----------------------------------------------------------- | ------------------------------------------ |
-| Private ended-turn history and message text       | Executing Worker registry entry | Selected reducer-accepted turn ends                         | None; discarded on replacement/restart     |
+| Private ended-turn history and message text       | Executing Worker registry entry | Selected reducer-accepted turn ends                         | Separate Worker archive for exact turns    |
 | Run snapshot, active turn and last ended identity | Executing Worker registry       | Fenced provider observations and lease deadlines            | New incarnation starts unknown             |
 | Event epoch and sequence                          | Executing Worker registry       | Accepted snapshot/turn transition                           | New Worker epoch; re-query                 |
 | Session-to-node/project/Space association         | Registry binding projection     | Initial durable read and successful workspace writes        | Durable session binding, never node status |
@@ -263,11 +263,12 @@ The registry inserts history synchronously before notifying fences or publishing
 completion. Remote wait --turn uses mirrored snapshots/events only; older remote
 turns must be checked on the Worker that runs them. Exact remote history requests
 report `remote_history_unavailable`, without implying eviction or restart. No
-cross-Worker history routing is added. Local history retains at most eight ended turns (`turnId`, optional `promptId`,
-`outcome`, `endedAt`, optional message/truncation) and 512 KiB of UTF-8 text, evicting
-oldest whole records. Entry replacement, retirement and disposal release the store.
-No durable state, receipt-ring content, remote mirroring or restart reconstruction
-is added. Node lookup never searches old incarnations.
+cross-Worker history routing is added. Local memory retains up to 50 ends and 512 KiB per
+incarnation, evicting whole records. Replacement/retirement/disposal release that cache;
+exact reads also query the separate Worker archive. Every record stamps its launch node, or otherwise its binding at the turn end,
+never its read-time binding. Prompt-ID selectors retain their eight-end window. Membership, age and revocation apply
+to memory too. No content enters receipt rings or remote mirroring; archive lookup never
+reconstructs readiness. Unqualified node lookup still selects the current incarnation.
 
 Claude start identity is private: provider session, validated prompt ID, and the
 relay emitted-at time of the accepted UserPromptSubmit that opened the turn
@@ -469,3 +470,25 @@ Set `OPENCOVE_DEBUG_AGENT_CONTINUATION=1` on the Worker/main process for content
 stderr diagnostics: decisions, pending counts, generations, positions and elapsed
 milliseconds, with eight-character sanitized ID prefixes. No message text, token,
 envelope, filesystem path or tool input is logged. The switch is off by default.
+
+## Archived exact turns
+
+Exact local `agent read --turn` and `agent wait --turn` survive Worker/app restarts,
+without relaunching the agent, and return the original node/session IDs. JSON includes
+`persisted`; false includes `memoryOnlyReason` (`unbound`, `remote`, `unavailable`,
+`write_failed`, `deleted`, or `retention_backlog`). Older Workers cannot certify it.
+`archive_unavailable` is distinct from missing/expired history; never resend to recover it.
+
+The executing Worker stores final reply text (≤64 KiB UTF-8), outcome, IDs, timestamps
+and truncation/intermediate metadata in a separate archive file. It stores no prompt
+text, hook evidence or S2 delivery records. S1 provider continuations archive once at
+the final OpenCove end; uncertainty stays `unknown`/`messageKind: intermediate` and
+never grants readiness or proves steering consumption. Retention upper bounds are
+50 turns/node, 30 days, 20,000 global records and 128 MiB of message text; metadata-only
+ends count. Smaller memory caches may evict earlier. Oversized purges leave new turns
+memory-only (`retention_backlog`) while bounded cleanup makes room for future records.
+
+Deleting the node removes queryable OpenCove history, including caches; it does not
+erase provider transcripts, existing backups or forensic remnants. No history-clear
+command exists. Unqualified reads, prompt-ID selectors and labelled transcript fallback
+retain current-incarnation semantics. Remote history is not routed across Workers.

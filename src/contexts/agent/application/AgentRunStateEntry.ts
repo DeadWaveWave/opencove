@@ -11,6 +11,7 @@ export type AgentRunEntry = {
   token: string
   bindingGeneration: number
   cursor: number
+  launchNodeId: string | null
   remote: boolean
   launchKind?: RunStateFence['launchKind']
   hookCoverage?: RunStateFence['hookCoverage']

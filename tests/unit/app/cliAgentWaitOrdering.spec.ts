@@ -10,7 +10,7 @@ it('consumes a queued completion after its idle event when history has already e
   f.observe('working', 'start')
   f.onSubscribe(() => {
     f.observe('idle', 'completed')
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 50; i++) {
       f.observe('working', 'start')
       f.observe('idle', 'completed')
     }

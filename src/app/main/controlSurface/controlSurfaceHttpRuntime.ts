@@ -52,7 +52,23 @@ export function createControlSurfaceHttpRuntime(
   options: RegisterControlSurfaceHttpServerOptions,
 ): ControlSurfaceHttpRuntime {
   const instanceId = randomUUID()
-  const agentRuns = createWorkerAgentRunState(instanceId)
+  const turnArchive = createWorkerAgentTurnArchiveRuntime({
+    enabled: options.enableAgentTurnArchive === true,
+    userDataPath: options.userDataPath,
+    getPersistenceStore: () => persistence.getPersistenceStore(),
+    onNodesRemoved: ids => agentRuns.registry.revokeNodes(ids, false),
+  })
+  const agentRuns = createWorkerAgentRunState(
+    instanceId,
+    Date.now,
+    options.enableAgentTurnArchive
+      ? {
+          archive: turnArchive.port,
+          membership: turnArchive.membership,
+          isRemote: turnArchive.isRemote,
+        }
+      : {},
+  )
   agentRuns.registry.subscribe(
     { epoch: instanceId, afterSeq: 0 },
     { types: ['agent.state_changed'] },
@@ -163,6 +179,7 @@ export function createControlSurfaceHttpRuntime(
   let privateControlUrl = ''
   const sessionAccess = createSessionGrantPtyRuntime({
     runtime: options.ptyRuntime,
+    onSpawnIdentity: (sessionId, nodeId) => agentRuns.captureLaunchIdentity(sessionId, nodeId),
     controlUrl: () => privateControlUrl,
     cliPath: resolveWorkerCliScriptPath(__dirname),
     ensureAssets: terminalAgents.ensureAssets,
@@ -189,11 +206,6 @@ export function createControlSurfaceHttpRuntime(
     userDataPath: options.userDataPath,
     dbPath: options.dbPath,
     createPersistenceStore: options.createPersistenceStore,
-  })
-  const turnArchive = createWorkerAgentTurnArchiveRuntime({
-    enabled: options.enableAgentTurnArchive === true,
-    userDataPath: options.userDataPath,
-    getPersistenceStore: persistence.getPersistenceStore,
   })
   const getPersistenceStore = withAgentRunBindings(turnArchive.getPersistenceStore, agentRuns)
   const terminalRuntimeAvailability = new TerminalRuntimeAvailability()

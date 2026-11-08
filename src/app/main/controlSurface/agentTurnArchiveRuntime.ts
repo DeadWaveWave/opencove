@@ -11,12 +11,15 @@ export function createWorkerAgentTurnArchiveRuntime(options: {
   enabled: boolean
   userDataPath: string
   getPersistenceStore: () => Promise<PersistenceStore>
+  onNodesRemoved?: (ids: readonly string[]) => void
   open?: (options: {
     userDataPath: string
     membership: (nodeId?: string) => 'member' | 'absent' | 'unknown'
   }) => AgentTurnArchive | Promise<AgentTurnArchive>
 }) {
   let members: ReadonlySet<string> | null = null
+  let remoteNodes = new Set<string>()
+  let remoteSessions = new Set<string>()
   let membershipGeneration = 0
   const membership = (id?: string) =>
     members === null
@@ -26,6 +29,12 @@ export function createWorkerAgentTurnArchiveRuntime(options: {
         : ('absent' as const)
   const project = (raw: unknown) => {
     const state = normalizePersistedAppState(raw)
+    const remote =
+      state?.workspaces
+        .flatMap(w => w.nodes)
+        .filter(n => n.workerBinding && n.workerBinding.endpointId !== 'local') ?? []
+    remoteNodes = new Set(remote.map(n => n.id))
+    remoteSessions = new Set(remote.flatMap(n => (n.sessionId ? [n.sessionId] : [])))
     members =
       raw === null || state
         ? new Set(state?.workspaces.flatMap(w => w.nodes.map(n => n.id)) ?? [])
@@ -40,8 +49,24 @@ export function createWorkerAgentTurnArchiveRuntime(options: {
     let wrapper = wrappers.get(store)
     if (!wrapper) {
       const committed = (raw: unknown) => {
+        const previous = members
         membershipGeneration++
         project(raw)
+        if (previous && members) {
+          const removed = [...previous].filter(id => !members!.has(id))
+          if (removed.length) {
+            try {
+              archive.revokeNodes(removed)
+            } catch {
+              /* Optional archive failure cannot undo a workspace commit. */
+            }
+            try {
+              options.onNodesRemoved?.(removed)
+            } catch {
+              /* Release durable write result even if a memory consumer fails. */
+            }
+          }
+        }
       }
       wrapper = {
         ...store,
@@ -165,6 +190,9 @@ export function createWorkerAgentTurnArchiveRuntime(options: {
   }
   return {
     port,
+    membership,
+    isRemote: (locator: { nodeId: string } | { sessionId: string }) =>
+      'nodeId' in locator ? remoteNodes.has(locator.nodeId) : remoteSessions.has(locator.sessionId),
     getPersistenceStore,
     start: () =>
       (startPromise ??= (async () => {

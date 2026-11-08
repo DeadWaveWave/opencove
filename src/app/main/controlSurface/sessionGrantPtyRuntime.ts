@@ -14,6 +14,7 @@ export function createSessionGrantPtyRuntime(options: {
   runtime: ControlSurfacePtyRuntime
   controlUrl: () => string
   cliPath: string
+  onSpawnIdentity?: (sessionId: string, nodeId: string) => void
   ensureAssets: () => Promise<{ cliShimDirectory: string }>
 }) {
   const sessions = new Set<string>()
@@ -94,6 +95,7 @@ export function createSessionGrantPtyRuntime(options: {
         }
         sessions.add(spawned.sessionId)
         reservation.commit(spawned.sessionId)
+        options.onSpawnIdentity?.(spawned.sessionId, identity.nodeId)
         return spawned
       } catch {
         if (!settled) {

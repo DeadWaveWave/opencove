@@ -14,6 +14,7 @@ function fixture() {
     schedule: () => () => {},
   })
   const runtime = new AgentRunStateRuntime(registry, () => ++time)
+  runtime.captureLaunchIdentity('s', 'n')
   runtime.metadata({ sessionId: 's', agentProvider: 'claude-code', resumeSessionId: null })
   registry.bind('s', { nodeId: 'n' })
   const event = (
@@ -91,6 +92,9 @@ it('stores ended content before callbacks, leaving all public projections and re
     message: 'secret',
     truncated: false,
     source: 'hook',
+    endedAt: expect.any(Number),
+    persisted: false,
+    memoryOnlyReason: 'unavailable',
   })
   expect(
     JSON.stringify([f.registry.get({ nodeId: 'n' }), f.registry.list(), publicValues]),
@@ -167,13 +171,13 @@ it('evicts oldest entries at eight turns and releases history on incarnation rep
 
 it('bounds total UTF-8 message bytes independently of the record count', () => {
   const f = fixture()
-  // Direct ingress stresses the registry budget independently of the normalizer's 64 KiB cap.
-  f.event('UserPromptSubmit', 'a')
-  f.event('Stop', 'a', '🙂'.repeat(75 * 1024))
-  f.event('UserPromptSubmit', 'b')
-  f.event('Stop', 'b', '🙂'.repeat(75 * 1024))
+  // The memory cache retains at most 512 KiB, after the shared 64 KiB per-reply cap.
+  for (let i = 1; i <= 9; i++) {
+    f.event('UserPromptSubmit', `p${i}`)
+    f.event('Stop', `p${i}`, '🙂'.repeat(75 * 1024))
+  }
   reason(() => f.read({ turnId: 't1' }), 'turn_not_found')
-  expect(f.read({ turnId: 't2' })).toMatchObject({ promptId: 'b' })
+  expect(f.read({ turnId: 't2' })).toMatchObject({ promptId: 'p2', truncated: true })
   f.runtime.dispose()
 })
 it('uses only current node binding while allowing an exited old session until retirement', () => {
