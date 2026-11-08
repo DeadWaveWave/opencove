@@ -14,4 +14,9 @@ export const zhCNAgentAttention = {
     waitingRow: '{{title}}，{{place}}，等待：{{waited}}',
     workingRow: '{{title}}，{{place}}，工作中',
   },
+  agentIsland: {
+    region: '需要你的 Agent',
+    waitingForInput: '等待你的输入',
+    project: '项目',
+  },
 } as const

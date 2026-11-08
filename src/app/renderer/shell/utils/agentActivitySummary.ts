@@ -14,6 +14,8 @@ export interface AgentActivityReference {
   spaceName: string | null
   /** Whose mark the agent wears; null when it cannot be told. */
   provider: AgentProvider | null
+  /** Set when the agent waits because it ended a turn you have not answered: since when. */
+  needsYouSinceMs?: number
 }
 
 export interface AgentActivitySummary {
@@ -23,15 +25,31 @@ export interface AgentActivitySummary {
   working: AgentActivityReference[]
 }
 
-/** Derived from the same agent model as the sidebar, so the header and rail always agree. */
+/** Keys the Agents that ended a turn you have not answered (docs/ui/AGENT_ISLAND.md). */
+export function agentAttentionKey(workspaceId: string, nodeId: string): string {
+  return `${workspaceId}\u0000${nodeId}`
+}
+
+const NO_ONE_NEEDS_YOU: ReadonlyMap<string, number> = new Map()
+
+/**
+ * Derived from the same agent model as the sidebar, so the header and rail always agree. An
+ * agent waits for you when it is blocked on you, or when it ended a turn that you have not
+ * answered yet (`needsYou`, keyed by `agentAttentionKey`, valued by when it started waiting).
+ */
 export function summarizeAgentActivity(
   workspaces: readonly WorkspaceState[],
+  needsYou: ReadonlyMap<string, number> = NO_ONE_NEEDS_YOU,
 ): AgentActivitySummary {
   const waiting: AgentActivityReference[] = []
   const working: AgentActivityReference[] = []
   for (const workspace of workspaces) {
     for (const item of buildSidebarAgentItems(workspace)) {
-      if (item.status !== 'waiting' && item.status !== 'working') {
+      const needsYouSinceMs =
+        item.status === 'standby'
+          ? needsYou.get(agentAttentionKey(workspace.id, item.node.id))
+          : undefined
+      if (item.status !== 'waiting' && item.status !== 'working' && needsYouSinceMs === undefined) {
         continue
       }
       const reference: AgentActivityReference = {
@@ -42,8 +60,9 @@ export function summarizeAgentActivity(
         title: item.displayTitle,
         spaceName: item.owningSpace?.name ?? null,
         provider: resolveAgentPresentationProvider(item.node.data),
+        ...(needsYouSinceMs === undefined ? {} : { needsYouSinceMs }),
       }
-      ;(item.status === 'waiting' ? waiting : working).push(reference)
+      ;(item.status === 'working' ? working : waiting).push(reference)
     }
   }
   return { waiting, working }

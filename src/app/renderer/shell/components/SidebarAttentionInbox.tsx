@@ -35,7 +35,10 @@ export function SidebarAttentionInbox({
         const place = `${item.projectName} · ${item.spaceName ?? t('sidebar.rootCanvas')}`
         const waited = describeWaitDuration(
           t,
-          resolveWaitDuration(observations.get(item.nodeId)?.waitingSinceMs ?? null, nowMs),
+          resolveWaitDuration(
+            observations.get(item.nodeId)?.waitingSinceMs ?? item.needsYouSinceMs ?? null,
+            nowMs,
+          ),
         )
         return (
           <Button

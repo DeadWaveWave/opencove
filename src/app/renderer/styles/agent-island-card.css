@@ -1,0 +1,290 @@
+/*
+ * The agent island's cards (shell/components/AgentIsland.tsx, docs/ui/AGENT_ISLAND.md): pixel
+ * windows that grow out of the pill for each Agent waiting for you. At most three show, the
+ * older ones tucked behind the newest; the stack fans out under the pointer or focus. Every
+ * move steps in three hard frames, like the pixel windows they are.
+ * The stack's left and top follow the pill (AgentIsland places them); the right and top here
+ * hold it under the header until the pill is measured.
+ */
+.agent-island {
+  position: fixed;
+  top: calc(var(--cove-app-header-height) + var(--cove-spacing-2));
+  right: var(--cove-spacing-3);
+  z-index: var(--cove-z-popover);
+  width: min(360px, calc(100vw - 24px));
+  -webkit-app-region: no-drag;
+  transition: height 120ms steps(3, jump-end);
+}
+
+.agent-island-card {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  overflow: hidden;
+  padding: 0;
+  background: var(--cove-popover);
+  color: var(--cove-text);
+  transform-origin: top right;
+  transition:
+    transform 120ms steps(3, jump-end),
+    height 120ms steps(3, jump-end);
+  animation: agent-island-card-in 150ms steps(3, jump-start);
+}
+
+/* Behind the front card only the lower edge shows, so a tucked card draws just its window. */
+.agent-island-card[data-tucked='true'] {
+  transform-origin: bottom center;
+}
+
+.agent-island-card[data-tucked='true'] > .agent-island-card__inner {
+  visibility: hidden;
+}
+
+/* Retracting, the card folds up into the pill. */
+.agent-island-card[data-leaving='true'] {
+  pointer-events: none;
+  animation: agent-island-card-retract 150ms steps(3, jump-end) forwards;
+}
+
+@keyframes agent-island-card-in {
+  from {
+    opacity: 0;
+    translate: 0 -8px;
+    scale: 1 0.4;
+  }
+}
+
+@keyframes agent-island-card-retract {
+  to {
+    opacity: 0;
+    translate: 0 -12px;
+    scale: 0.6 0.3;
+  }
+}
+
+.agent-island-card__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--cove-spacing-1);
+  padding: var(--cove-spacing-2);
+}
+
+.cove-button.agent-island-card__main {
+  height: auto;
+  justify-content: flex-start;
+  padding: var(--cove-spacing-1);
+  border: 0;
+  border-radius: 0;
+  clip-path: var(--cove-pixel-corners);
+  color: var(--cove-text);
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  text-align: left;
+  white-space: normal;
+}
+
+.agent-island-card__main > .cove-button__content {
+  display: grid;
+  width: 100%;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--cove-spacing-3);
+}
+
+.cove-button.agent-island-card__main:not(:disabled):hover {
+  background: var(--cove-pixel-fill);
+  color: var(--cove-text);
+}
+
+.cove-button.agent-island-card__main:focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+/* The window icon at twice the list's: a 24px mark on a 40px tile, its project at the corner. */
+.agent-activity-mark.agent-activity-mark--lg {
+  width: 40px;
+  height: 40px;
+  margin: 2px var(--cove-spacing-1) var(--cove-spacing-1) 2px;
+}
+
+.agent-activity-mark--lg > .cove-kind-tile {
+  --cove-node-icon-size: var(--cove-icon-size-lg);
+  width: 40px;
+  height: 40px;
+}
+
+.agent-activity-mark--lg > .cove-kind-tile > svg {
+  width: var(--cove-icon-size-lg);
+  height: var(--cove-icon-size-lg);
+}
+
+.agent-activity-mark--lg > .agent-activity-mark__project {
+  width: 20px;
+  height: 20px;
+}
+
+.agent-island-card__copy {
+  display: grid;
+  min-width: 0;
+  gap: var(--cove-spacing-1);
+}
+
+.agent-island-card__title {
+  overflow: hidden;
+  font-size: var(--cove-font-size-secondary);
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-island-card__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cove-spacing-2);
+  color: var(--cove-status-waiting-text);
+  font-size: var(--cove-font-size-caption);
+  line-height: 1.2;
+}
+
+/* One amber pixel that blinks while the Agent waits. */
+.agent-island-card__light {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  background: var(--cove-status-waiting);
+  animation: cove-pixel-blink 960ms steps(1, end) infinite;
+}
+
+.agent-island-card__chips {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: var(--cove-spacing-1);
+  padding-top: 2px;
+}
+
+.agent-island-card__chip {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  height: 20px;
+  align-items: center;
+  gap: var(--cove-spacing-1);
+  padding: 0 var(--cove-spacing-1);
+  background: var(--cove-pixel-fill);
+  clip-path: var(--cove-pixel-corners);
+  color: var(--cove-text-muted);
+  font-size: var(--cove-font-size-caption);
+  line-height: 1;
+}
+
+.agent-island-card__chip--code {
+  font-family: var(--cove-font-mono);
+}
+
+.agent-island-card__chip-icon {
+  flex: none;
+}
+
+/* The project's 9×9 glyph at one CSS pixel a cell, so it lands on whole device pixels. */
+.agent-island-card__chip > .cove-pixel-glyph {
+  width: 9px;
+  height: 9px;
+}
+
+.agent-island-card__chip-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cove-icon-button.agent-island-card__close {
+  border: 0;
+  border-radius: 0;
+  clip-path: var(--cove-pixel-corners);
+}
+
+.cove-icon-button.agent-island-card__close:not(:disabled):hover {
+  background: var(--cove-pixel-fill);
+}
+
+.cove-icon-button.agent-island-card__close:focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+/*
+ * The countdown: twelve 4px cells that go out right to left over the card's six seconds, one
+ * cell a step. Each cell takes 6px of the 72px row, so the clip lands between cells.
+ */
+.agent-island-card__countdown {
+  position: relative;
+  grid-column: 1 / -1;
+  justify-self: end;
+  width: 72px;
+  height: 4px;
+  margin-right: var(--cove-spacing-1);
+}
+
+.agent-island-card__countdown::before,
+.agent-island-card__countdown::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to right,
+    var(--agent-island-cell) 0 4px,
+    transparent 4px 6px
+  );
+}
+
+.agent-island-card__countdown::before {
+  --agent-island-cell: var(--cove-pixel-rule-color);
+}
+
+.agent-island-card__countdown::after {
+  --agent-island-cell: var(--cove-status-waiting);
+  animation: agent-island-countdown 6s steps(12, end) forwards;
+}
+
+.agent-island-card__countdown[data-paused='true']::after {
+  animation-play-state: paused;
+}
+
+/* Both ends are insets: from `none` the clip would not interpolate and all cells would go at once. */
+@keyframes agent-island-countdown {
+  from {
+    clip-path: inset(0 0 0 0);
+  }
+
+  to {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+
+/* The sparks' canvas sits over everything and catches nothing. */
+.agent-island-sparks {
+  position: fixed;
+  z-index: calc(var(--cove-z-popover) + 1);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-island,
+  .agent-island-card {
+    transition: none;
+  }
+
+  .agent-island-card,
+  .agent-island-card[data-leaving='true'],
+  .agent-island-card__light {
+    animation: none;
+  }
+}

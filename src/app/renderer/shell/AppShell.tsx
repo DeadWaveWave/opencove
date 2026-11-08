@@ -136,6 +136,7 @@ export default function App(): React.JSX.Element {
   )
 
   const controlCenterButtonRef = useRef<HTMLButtonElement | null>(null)
+  const agentPillRef = useRef<HTMLButtonElement | null>(null)
   const {
     isCommandCenterOpen,
     isControlCenterOpen,
@@ -295,6 +296,7 @@ export default function App(): React.JSX.Element {
             onFocusAgentNode={handleSelectAgentNode}
             isAgentActivityOpen={isAgentActivityOpen}
             onAgentActivityOpenChange={setAgentActivityOpen}
+            agentPillRef={agentPillRef}
             isControlCenterOpen={isControlCenterOpen}
             isCommandCenterOpen={isCommandCenterOpen}
             isPerformanceMonitorEnabled={agentSettings.performanceMonitorHeaderButtonEnabled}
@@ -404,6 +406,9 @@ export default function App(): React.JSX.Element {
         <AppShellOverlays
           floatingMessage={floatingMessage}
           notifications={agentAttention.notifications}
+          agentActivity={headerActivity.agentActivity}
+          agentPillRef={agentPillRef}
+          isAgentListOpen={isAgentActivityOpen}
           dismissNotification={agentAttention.dismiss}
           resolveSystemNotificationTarget={agentAttention.resolveSystemNotificationTarget}
           onFocusAgentNode={handleSelectAgentNode}

@@ -40,6 +40,7 @@ export function AppHeader({
   onFocusAgentNode,
   isAgentActivityOpen = false,
   onAgentActivityOpenChange,
+  agentPillRef,
   isControlCenterOpen,
   isCommandCenterOpen,
   isPerformanceMonitorEnabled,
@@ -76,6 +77,8 @@ export function AppHeader({
   onFocusAgentNode?: (workspaceId: string, nodeId: string) => void
   isAgentActivityOpen?: boolean
   onAgentActivityOpenChange?: (open: boolean) => void
+  /** The agent pill, which the island's cards grow out of. */
+  agentPillRef?: React.RefObject<HTMLButtonElement | null>
   isControlCenterOpen: boolean
   isCommandCenterOpen: boolean
   isPerformanceMonitorEnabled: boolean
@@ -311,6 +314,7 @@ export function AppHeader({
           {agentActivity && onFocusAgentNode && onAgentActivityOpenChange ? (
             <AppHeaderAgentActivity
               summary={agentActivity}
+              pillRef={agentPillRef}
               isOpen={isAgentActivityOpen}
               onOpenChange={onAgentActivityOpenChange}
               // A hover must not trade a panel you are using for the list; a click still does.

@@ -98,7 +98,10 @@ export function AgentActivityList({
           const place = `${item.projectName} · ${item.spaceName ?? t('sidebar.rootCanvas')}`
           const duration =
             tone === 'waiting'
-              ? resolveWaitDuration(observations.get(item.nodeId)?.waitingSinceMs ?? null, nowMs)
+              ? resolveWaitDuration(
+                  observations.get(item.nodeId)?.waitingSinceMs ?? item.needsYouSinceMs ?? null,
+                  nowMs,
+                )
               : null
           const waited = duration ? describeWaitDuration(t, duration) : null
           return (

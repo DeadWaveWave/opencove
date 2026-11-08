@@ -14,4 +14,9 @@ export const enAgentAttention = {
     waitingRow: '{{title}}, {{place}}, waiting: {{waited}}',
     workingRow: '{{title}}, {{place}}, working',
   },
+  agentIsland: {
+    region: 'Agents that need you',
+    waitingForInput: 'Waiting for your input',
+    project: 'Project',
+  },
 } as const

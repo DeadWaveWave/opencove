@@ -22,12 +22,15 @@ type OpenedBy = 'hover' | 'pointer' | 'keyboard'
  */
 export function AppHeaderAgentActivity({
   summary,
+  pillRef: externalPillRef,
   isOpen,
   onOpenChange,
   canPreviewOnHover = true,
   onFocusAgent,
 }: {
   summary: AgentActivitySummary
+  /** The pill's element, for the island's cards to grow out of. */
+  pillRef?: React.RefObject<HTMLButtonElement | null>
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   /** False while another top-bar panel is open: only a click may replace it. */
@@ -35,7 +38,8 @@ export function AppHeaderAgentActivity({
   onFocusAgent: (workspaceId: string, nodeId: string) => void
 }): React.JSX.Element | null {
   const { t } = useTranslation()
-  const pillRef = React.useRef<HTMLButtonElement | null>(null)
+  const ownPillRef = React.useRef<HTMLButtonElement | null>(null)
+  const pillRef = externalPillRef ?? ownPillRef
   const listRef = React.useRef<HTMLDivElement | null>(null)
   const [openedBy, setOpenedBy] = React.useState<OpenedBy>('pointer')
   const focusFirstRowRef = React.useRef(false)

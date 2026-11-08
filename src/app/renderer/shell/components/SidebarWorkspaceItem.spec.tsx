@@ -97,7 +97,6 @@ describe('SidebarWorkspaceItem', () => {
             },
             agentCount: 0,
             workingAgentCount: 0,
-            waitingAgentCount: 0,
           }}
           isActive
           collapsedSpaceGroupIds={{}}
@@ -182,7 +181,6 @@ describe('SidebarWorkspaceItem', () => {
               },
               agentCount: 0,
               workingAgentCount: 0,
-              waitingAgentCount: 0,
             }}
             isActive
             collapsedSpaceGroupIds={{}}

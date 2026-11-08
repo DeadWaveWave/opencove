@@ -93,7 +93,7 @@
 @import './styles/remote-ui.css' layer(opencove);
 @import './styles/remote-ui.settings.css' layer(opencove);
 @import './styles/app-message.css' layer(opencove);
-@import './styles/app-notifications.css' layer(opencove);
+@import './styles/agent-island-card.css' layer(opencove);
 @import './styles/issue-report.css' layer(opencove);
 @import './styles/whats-new.css' layer(opencove);
 @import './styles/space-archives-window.css' layer(opencove);

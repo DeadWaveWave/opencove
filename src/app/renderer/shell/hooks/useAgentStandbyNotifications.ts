@@ -1,8 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { AgentStandbyNotification } from '../components/AppNotifications'
+import type { AgentStandbyNotification } from '../utils/agentStandbyNotification'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { useAppStore } from '../store/useAppStore'
+import {
+  AGENT_ATTENTION_MAX_PENDING,
+  useAgentAttentionStore,
+} from '../store/useAgentAttentionStore'
 import {
   createAgentAttentionRouter,
   type AgentAttentionEffect,
@@ -104,11 +108,9 @@ export type AgentNotificationTarget = Pick<
   'id' | 'workspaceId' | 'nodeId'
 >
 
-export function useAgentStandbyNotifications({
-  maxVisible = 5,
-}: {
-  maxVisible?: number
-} = {}): {
+/** Mounted once by the shell: it routes each Agent that ends a turn into the attention store. */
+export function useAgentStandbyNotifications(): {
+  /** The Agents you have not answered, newest first. */
   notifications: AgentStandbyNotification[]
   dismiss: (id: string) => void
   /** The Agent a clicked system notification points at: the first one it names. */
@@ -126,7 +128,9 @@ export function useAgentStandbyNotifications({
   const showPullRequests =
     settings.standbyBannerShowPullRequest && settings.githubPullRequestsEnabled
 
-  const [notifications, setNotifications] = useState<AgentStandbyNotification[]>([])
+  const notifications = useAgentAttentionStore(state => state.notifications)
+  const setNotifications = useAgentAttentionStore(state => state.setNotifications)
+  const dismiss = useAgentAttentionStore(state => state.dismiss)
   const workspacesById = useMemo(() => {
     return new Map(workspaces.map(workspace => [workspace.id, workspace]))
   }, [workspaces])
@@ -142,7 +146,7 @@ export function useAgentStandbyNotifications({
             if (previous.some(notification => notification.id === effect.item.id)) {
               return previous
             }
-            return [effect.item, ...previous].slice(0, maxVisible)
+            return [effect.item, ...previous].slice(0, AGENT_ATTENTION_MAX_PENDING)
           })
           return
         case 'clear-card':
@@ -180,7 +184,7 @@ export function useAgentStandbyNotifications({
         }
       }
     },
-    [maxVisible, t],
+    [setNotifications, t],
   )
   const emitRef = useRef(emit)
   useEffect(() => {
@@ -252,11 +256,7 @@ export function useAgentStandbyNotifications({
     }
 
     setNotifications([])
-  }, [isStandbyBannerEnabled])
-
-  const dismiss = useCallback((id: string) => {
-    setNotifications(previous => previous.filter(notification => notification.id !== id))
-  }, [])
+  }, [isStandbyBannerEnabled, setNotifications])
 
   const resolveSystemNotificationTarget = useCallback(
     (id: string) => systemTargetsRef.current.get(id) ?? null,

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react'
-import type { AgentStandbyNotification } from '../components/AppNotifications'
+import type { AgentStandbyNotification } from '../utils/agentStandbyNotification'
 import type { GitHubPullRequestSummary, GitWorktreeInfo } from '@shared/contracts/dto'
 
 function normalizeComparablePath(pathValue: string, platform?: string): string {
