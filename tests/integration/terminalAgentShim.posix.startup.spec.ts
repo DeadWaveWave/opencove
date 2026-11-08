@@ -7,6 +7,10 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { TerminalAgentActivityEnvironmentService } from '../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityEnvironmentService'
 import { TerminalAgentTelemetryAssetStore } from '../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentTelemetryAssetStore'
 
+// macOS Terminal's zsh session restore (/etc/zshrc_Apple_Terminal) prints "Restored session"
+// when the inherited TERM_SESSION_ID has a saved session, which differs between runs.
+const noShellSessionRestore = { SHELL_SESSIONS_DISABLE: '1' }
+
 const roots: string[] = []
 
 afterEach(async () => {
@@ -93,7 +97,7 @@ describe.skipIf(process.platform === 'win32')(
             root,
             shell,
             args: [...args, '-c', 'command -v opencove; command -v claude; printf "%s\\n" "$PATH"'],
-            env: { ...process.env, HOME: home, ZDOTDIR: home },
+            env: { ...process.env, ...noShellSessionRestore, HOME: home, ZDOTDIR: home },
           })
           try {
             const assets = await wrapped.assets.ensure()
@@ -174,7 +178,7 @@ describe.skipIf(process.platform === 'win32')(
         await writeFile(join(zdot, '.zprofile'), 'export STARTUP_ORDER="$STARTUP_ORDER,profile"\n')
         await writeFile(join(zdot, '.zshrc'), 'export STARTUP_ORDER="$STARTUP_ORDER,rc"\n')
         await writeFile(join(zdot, '.zlogin'), 'export STARTUP_ORDER="$STARTUP_ORDER,login"\n')
-        const env = { ...process.env, HOME: home, ZDOTDIR: zdot }
+        const env = { ...process.env, ...noShellSessionRestore, HOME: home, ZDOTDIR: zdot }
 
         await Promise.all(
           [
@@ -220,7 +224,7 @@ describe.skipIf(process.platform === 'win32')(
       if (label === 'unreadable') {
         await chmod(bashRc, 0o000)
       }
-      const env = { ...process.env, HOME: home }
+      const env = { ...process.env, ...noShellSessionRestore, HOME: home }
       const command = 'printf \'RESULT=%s\\n\' "${STARTUP_SENTINEL:-missing}"'
       const baseline = await run(
         '/bin/bash',
