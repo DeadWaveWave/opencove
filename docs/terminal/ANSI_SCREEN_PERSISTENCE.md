@@ -53,6 +53,25 @@ envelopes. The archive evicts whole oldest epochs, and omits a single oversized 
 
 ## Restore Pipeline (Current)
 
+Authoritative snapshots include terminal state as well as cells: both buffers, input modes,
+mouse encoding, cursor visibility and active scrolling margins. SerializeAddon owns the cell and
+supported-mode representation; a read-only adapter to pinned xterm internals supplies omitted settings inside the
+same sequence FIFO. A blank authoritative screen still carries state. Restore it on a clean renderer
+parser; restored-agent visible-output gating remains separate. Buffered EL/partial ED replays in place.
+A full-frame replacement clears display/history without RIS, preserving input modes and buffer kind.
+
+Snapshot application revalidates the requested session and the renderer's latest acknowledged
+geometry revision after draining pending parser writes. Superseded checkpoints are refetched with a
+bounded budget. Geometry ACKs/events advance the revision immediately; physical resizes wait until
+the current snapshot write completes. The presentation `epoch` is not Worker-generation identity.
+Exhaustion returns a retryable result to the hydration lifecycle owner. It retains the same replay
+and input gates and coalesces a retry after the next settled geometry ACK/event or a short quiet
+period. Unmount/session cleanup cancels the retry, subscriptions and delayed input release.
+After replacing state, replay sequence-uncovered mode controls even if they ran before capture
+delivery; queries already answered during hydration are not answered again. Restoring scroll margins
+must preserve pending wrap: use SerializeAddon cell/style replay, never a CUP column beyond the grid.
+Reset SGR before cursor-row range replay; the range suffix restores the source's current rendition.
+
 1. Worker output path:
    - apply sequenced PTY output to `TerminalPresentationSession`
    - trailing-debounce a v11 current-epoch checkpoint and bounded raw tail
@@ -120,9 +139,9 @@ In addition, treat alternate-screen and epoch restores as explicit cases:
   an unrelated PTY resize/SIGWINCH. A later actual geometry commit is a presentation mutation and must
   make recovery dirty even when no output bytes arrive.
 - Worker shutdown orders `freeze client ingress -> drain complete per-session queues -> start flush
-  without awaiting a continuously dirty drain -> drain/stop presentation resets and re-drain queues
-  -> runtime-event cutoff -> await the in-flight flush -> flush post-cutoff dirtiness -> close
-  runtime/persistence`, so queued commands, reset output and output arriving during the first capture
+without awaiting a continuously dirty drain -> drain/stop presentation resets and re-drain queues
+-> runtime-event cutoff -> await the in-flight flush -> flush post-cutoff dirtiness -> close
+runtime/persistence`, so queued commands, reset output and output arriving during the first capture
   are not silently truncated or allowed to starve shutdown.
 
 ## Verification

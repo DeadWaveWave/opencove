@@ -13,7 +13,10 @@ import type { createRestoredAgentVisibilityGate } from './restoredAgentVisibilit
 import type { registerTerminalDiagnostics } from './registerDiagnostics'
 import type { createOptionalOpenCodeThemeBridge } from './openCodeThemeBridgeFactory'
 import type { TerminalRendererRecoveryRequest } from './runtimeRendererHealth'
-import { markTerminalGeometryAccepted } from './terminalGeometryCoordinator'
+import {
+  applyTerminalGeometryMutation,
+  markTerminalGeometryAccepted,
+} from './terminalGeometryCoordinator'
 
 type PtyEventHub = ReturnType<typeof getPtyEventHub>
 type TerminalDiagnostics = ReturnType<typeof registerTerminalDiagnostics>
@@ -71,12 +74,18 @@ export function subscribeRuntimeTerminalEvents({
   })
   const unsubscribeGeometry = ptyEventHub.onSessionGeometry(sessionId, event => {
     lastCommittedPtySizeRef.current = { cols: event.cols, rows: event.rows }
-    if (terminal.cols !== event.cols || terminal.rows !== event.rows) {
-      resizeTerminalPreservingScrollState(terminal, event.cols, event.rows)
-    }
     markTerminalGeometryAccepted(terminal, event.revision)
-    syncTerminalSize()
-    scheduleTranscriptSync()
+    applyTerminalGeometryMutation(
+      terminal,
+      () => {
+        if (terminal.cols !== event.cols || terminal.rows !== event.rows) {
+          resizeTerminalPreservingScrollState(terminal, event.cols, event.rows)
+        }
+        syncTerminalSize()
+        scheduleTranscriptSync()
+      },
+      event.revision,
+    )
   })
   const unsubscribeResync = ptyEventHub.onSessionResync(sessionId, () => {
     requestTerminalRendererRecovery({

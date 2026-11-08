@@ -23,6 +23,7 @@ import {
   markTerminalGeometryCommitSettled,
   markTerminalGeometryCommitFailed,
   isTerminalGeometryCommitCurrent,
+  applyTerminalGeometryMutation,
 } from './terminalGeometryCoordinator'
 
 type PtySize = { cols: number; rows: number }
@@ -63,26 +64,29 @@ function applyCanonicalGeometryLocally({
   containerRef,
   isPointerResizingRef,
   geometry,
+  revision,
 }: {
   terminalRef: MutableRefObject<Terminal | null>
   containerRef: MutableRefObject<HTMLElement | null>
   isPointerResizingRef: MutableRefObject<boolean>
   geometry: PtySize
+  revision?: number | null
 }): void {
   const terminal = terminalRef.current
   if (!terminal) {
     return
   }
 
-  if (terminal.cols !== geometry.cols || terminal.rows !== geometry.rows) {
-    resizeTerminalPreservingScrollState(terminal, geometry.cols, geometry.rows)
-  }
-
-  refreshTerminalNodeSize({
-    terminalRef,
-    containerRef,
-    isPointerResizingRef,
-  })
+  applyTerminalGeometryMutation(
+    terminal,
+    () => {
+      if (terminal.cols !== geometry.cols || terminal.rows !== geometry.rows) {
+        resizeTerminalPreservingScrollState(terminal, geometry.cols, geometry.rows)
+      }
+      refreshTerminalNodeSize({ terminalRef, containerRef, isPointerResizingRef })
+    },
+    revision,
+  )
 }
 
 export function resolveRuntimeInitialTerminalDimensions({
@@ -133,6 +137,7 @@ export function createRuntimeInitialGeometryCommitter({
     const canonicalGeometry = baselineSnapshot
       ? { cols: baselineSnapshot.cols, rows: baselineSnapshot.rows }
       : (canonicalInitialGeometry ?? null)
+    const canonicalGeometryRevision = baselineSnapshot?.geometryRevision ?? null
 
     const terminal = terminalRef.current
     if (terminal) {
@@ -154,8 +159,9 @@ export function createRuntimeInitialGeometryCommitter({
         containerRef,
         isPointerResizingRef,
         geometry: canonicalGeometry,
+        revision: canonicalGeometryRevision,
       })
-      return { ...canonicalGeometry, changed: false }
+      return { ...canonicalGeometry, changed: false, geometryRevision: canonicalGeometryRevision }
     }
 
     if (!allowMeasuredResizeCommit) {
@@ -169,8 +175,9 @@ export function createRuntimeInitialGeometryCommitter({
         containerRef,
         isPointerResizingRef,
         geometry: canonicalGeometry,
+        revision: canonicalGeometryRevision,
       })
-      return { ...canonicalGeometry, changed: false }
+      return { ...canonicalGeometry, changed: false, geometryRevision: canonicalGeometryRevision }
     }
 
     if (canonicalGeometry) {
@@ -245,8 +252,9 @@ export function createRuntimeInitialGeometryCommitter({
       containerRef,
       isPointerResizingRef,
       geometry: canonicalGeometry,
+      revision: canonicalGeometryRevision,
     })
-    return { ...canonicalGeometry, changed: false }
+    return { ...canonicalGeometry, changed: false, geometryRevision: canonicalGeometryRevision }
   }
 }
 

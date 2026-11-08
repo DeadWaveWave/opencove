@@ -2,7 +2,8 @@ import type { Terminal } from '@xterm/xterm'
 import { resolveSuffixPrefixOverlap } from './overlap'
 import { writeTerminalChunkAndCapture } from './committedScreenState'
 
-const TERMINAL_FULL_RESET = '\u001bc'
+// Replace display/history without resetting input modes or switching buffers.
+const TERMINAL_DISPLAY_CLEAR = '\u001b[2J\u001b[3J\u001b[H'
 
 export function replayBufferedHydrationOutput({
   terminal,
@@ -32,7 +33,7 @@ export function replayBufferedHydrationOutput({
 }): void {
   let shouldPrefixReset = resetTerminalBeforeFirstWrite
   const writeChunk = (data: string): void => {
-    const terminalData = shouldPrefixReset ? `${TERMINAL_FULL_RESET}${data}` : data
+    const terminalData = shouldPrefixReset ? `${TERMINAL_DISPLAY_CLEAR}${data}` : data
     shouldPrefixReset = false
     writeTerminalChunkAndCapture({
       terminal,

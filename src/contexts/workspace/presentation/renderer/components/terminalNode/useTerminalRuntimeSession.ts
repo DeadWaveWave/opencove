@@ -101,6 +101,8 @@ export function useTerminalRuntimeSession({
     if (sessionId.trim().length === 0 || !containerRef.current) {
       return undefined
     }
+    isTerminalHydratedRef.current = false
+    setIsTerminalHydrated(false)
     const cachedScreenState =
       kind === 'agent' ? null : getCachedTerminalScreenState(nodeId, sessionId)
     suppressPtyResizeRef.current = Boolean(cachedScreenState?.serialized.includes('\u001b[?1049h'))
@@ -354,7 +356,7 @@ export function useTerminalRuntimeSession({
     })
     const shouldSkipInitialPlaceholderWrite =
       hasPreservedVisibleBaseline && hasVisibleTerminalBufferContent(terminal)
-    startRuntimeTerminalHydration({
+    const disposeHydration = startRuntimeTerminalHydration({
       attachPromise,
       sessionId,
       terminal,
@@ -414,6 +416,7 @@ export function useTerminalRuntimeSession({
         })
       }
       isDisposed = true
+      disposeHydration()
       disposeRuntimeRendererAndThemeSync()
       disposeInteractionWindow()
       unsubscribeRuntimeEvents()

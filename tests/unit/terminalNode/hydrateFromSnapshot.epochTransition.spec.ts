@@ -5,11 +5,14 @@ describe('hydrateFromSnapshot terminal epoch transition', () => {
   it('keeps the previous terminal epoch in scrollback before revealing a new shell snapshot', async () => {
     const writes: string[] = []
     const terminal = {
+      reset: vi.fn(),
       cols: 80,
       rows: 3,
       resize: vi.fn(),
       write: vi.fn((data: string, callback?: () => void) => {
-        writes.push(data)
+        if (data.length > 0) {
+          writes.push(data)
+        }
         callback?.()
       }),
     }
@@ -42,6 +45,7 @@ describe('hydrateFromSnapshot terminal epoch transition', () => {
       finalizeHydration,
     })
 
+    expect(terminal.write).toHaveBeenNthCalledWith(1, '', expect.any(Function))
     expect(writes[0]).toBe('OLD_HISTORY\r\nOLD_PROMPT')
     expect(writes.at(-1)).toBe('NEW_PROMPT')
     expect(writes.slice(1, -1).join('')).toContain('\r\n\r\n\r\n')

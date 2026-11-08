@@ -52,7 +52,10 @@ describe('hydrationRouter', () => {
     router.finalizeHydration('[placeholder history]')
 
     expect(terminal.reset).not.toHaveBeenCalled()
-    expect(terminal.write).toHaveBeenCalledWith('\u001bcresume ready', expect.any(Function))
+    expect(terminal.write).toHaveBeenCalledWith(
+      '\u001b[2J\u001b[3J\u001b[Hresume ready',
+      expect.any(Function),
+    )
     expect(outputScheduler.handleChunk).not.toHaveBeenCalled()
 
     router.handleDataChunk('\u001b[2J\u001b[H')

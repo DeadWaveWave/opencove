@@ -4,6 +4,7 @@ import { startRuntimeTerminalHydration } from '../../../src/contexts/workspace/p
 describe('runtimeHydrationStarter', () => {
   it('preserves the worker presentation snapshot sequence baseline when finalizing hydration', async () => {
     const terminal = {
+      reset: vi.fn(),
       cols: 80,
       rows: 24,
       resize: vi.fn((cols: number, rows: number) => {
@@ -71,6 +72,7 @@ describe('runtimeHydrationStarter', () => {
 
   it('restores a preserved viewport after hydration finalizes', async () => {
     const terminal = {
+      reset: vi.fn(),
       cols: 80,
       rows: 24,
       buffer: {
