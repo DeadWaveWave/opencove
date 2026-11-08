@@ -191,7 +191,11 @@ it.each([false, true])(
         'local Claude Code and lifecycle-hook Codex agent windows',
       ],
       ['agent.prompt_unsupported', 'remote_unsupported', 'remote sessions'],
-      ['agent.prompt_unsupported', 'terminal_agent_unsupported', 'agent windows OpenCove launched'],
+      [
+        'agent.prompt_unsupported',
+        'terminal_agent_unsupported',
+        'shell would receive the input after the agent stops',
+      ],
       ['agent.prompt_unsupported', 'executable_override_unverified', 'custom executable path'],
       ['agent.prompt_unsupported', 'codex_hooks_notify_only', 'only notify-level coverage'],
       ['agent.prompt_unsupported', 'codex_hooks_skipped', 'skipped for daemon reuse'],

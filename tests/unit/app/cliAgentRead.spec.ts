@@ -77,21 +77,24 @@ it('returns the entire hook result as JSON and supports hook field projection', 
     truncated: false,
   })
 })
-it.each(['no_ended_turn', 'provider_sent_no_message'])(
-  'falls back only after latest hook reports %s',
-  async reason => {
-    const f = fixture(unavailable(reason))
-    expect(await run([...args, '-o', 'json'], f.io)).toBe(0)
-    expect(JSON.parse(f.out())).toEqual({ ...transcript, source: 'transcript', truncated: false })
-    expect(f.requests.filter(r => r.id.endsWith('.finalMessage')).map(r => r.id)).toEqual([
-      'agent.finalMessage',
-      'session.finalMessage',
-    ])
-    const plain = fixture(unavailable(reason))
-    expect(await run(args, plain.io)).toBe(0)
-    expect(plain.out()).toBe(transcript.message + '\n')
-  },
-)
+it.each(
+  ['agent', 'terminal'].flatMap(kind =>
+    ['no_ended_turn', 'provider_sent_no_message'].map(reason => ({ kind, reason })),
+  ),
+)('falls back for a $kind only after latest hook reports $reason', async ({ kind, reason }) => {
+  const f = fixture(unavailable(reason))
+  f.values['node.get'] = { node: { ...node, kind } }
+  expect(await run([...args, '-o', 'json'], f.io)).toBe(0)
+  expect(JSON.parse(f.out())).toEqual({ ...transcript, source: 'transcript', truncated: false })
+  expect(f.requests.filter(r => r.id.endsWith('.finalMessage')).map(r => r.id)).toEqual([
+    'agent.finalMessage',
+    'session.finalMessage',
+  ])
+  const plain = fixture(unavailable(reason))
+  plain.values['node.get'] = { node: { ...node, kind } }
+  expect(await run(args, plain.io)).toBe(0)
+  expect(plain.out()).toBe(transcript.message + '\n')
+})
 it.each([
   unavailable('turn_not_found'),
   unavailable('turn_not_ended'),
@@ -124,10 +127,17 @@ it('does not expand a turn prefix or retry after an exact miss', async () => {
   ])
   expect(JSON.parse(f.stderr()).error.details.reason).toBe('turn_not_found')
 })
-it.each(['no_ended_turn', 'provider_sent_no_message', 'turn_not_found', 'turn_not_ended'])(
-  'preserves exact-turn unavailable reason %s without fallback',
-  async reason => {
+it.each(
+  ['agent', 'terminal'].flatMap(kind =>
+    ['no_ended_turn', 'provider_sent_no_message', 'turn_not_found', 'turn_not_ended'].map(
+      reason => ({ kind, reason }),
+    ),
+  ),
+)(
+  'preserves $kind exact-turn unavailable reason $reason without fallback',
+  async ({ kind, reason }) => {
     const f = fixture(unavailable(reason))
+    f.values['node.get'] = { node: { ...node, kind } }
     expect(await run([...args, '--turn', 'turn-exact'], f.io)).toBe(1)
     expect(f.out()).toBe('')
     expect(JSON.parse(f.stderr()).error).toMatchObject(unavailable(reason))

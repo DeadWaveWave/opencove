@@ -94,8 +94,8 @@ export function agentPromptErrorPresentation(
       }
       if (reason === 'terminal_agent_unsupported') {
         return pair(
-          'Prompting is available for agent windows OpenCove launched, not for an agent started inside a terminal.',
-          'Launch an agent window from a task, the agent launcher, or opencove node create agent.',
+          'Agents typed into a terminal cannot receive prompts because the shell would receive the input after the agent stops.',
+          'Start an agent meant to receive prompts (for example a lead agent other agents report to) as an agent window: Run Agent on a task, the agent launcher, or "opencove node create agent --space <space> --prompt <text>"; it can still use the opencove CLI from there.',
         )
       }
       if (reason === 'remote_unsupported') {

@@ -38,7 +38,8 @@ or a unique ID prefix of at least six characters. Ambiguity exits 6: use a full 
 `@self` uses your authenticated terminal identity, not your working directory.
 Inside OpenCove, omitted space targets default to your space; explicit `--project`
 selects project scope for lists. Names/prefixes use your project unless overridden.
-A terminal is not an agent. Resolve actual agents from the list before prompting.
+Terminal nodes can report observed agents; only agent windows can receive prompts.
+Resolve targets from the agent list before prompting.
 
 ```sh
 opencove node list -o table
@@ -89,8 +90,10 @@ opencove agent read --node agent-123 --turn turn-123 -o json
 
 Prompt works only with **agent windows OpenCove launched** (from a task, the agent
 launcher or `node create agent`) running **Claude Code**, or **Codex** with its
-lifecycle hooks, after an observed finished turn. Agents typed into a terminal and
-agent windows started with a custom executable path are refused.
+lifecycle hooks, after an observed finished turn. Agent windows started with a custom
+executable path are refused.
+Agents typed into a terminal cannot receive prompts because the shell would receive the input after the agent stops.
+Start an agent meant to receive prompts, such as a lead agent other agents report to, as an agent window using Run Agent on a task, the agent launcher, or `opencove node create agent --space <space> --prompt <text>`; it can still use the opencove CLI from there.
 Newly opened/resumed sessions may need a completed turn first.
 Save the successful prompt's `turnId` (replace `turn-123` above). The normal loop is
 prompt (save turnId) → wait `--turn <turnId>` → read `--turn <turnId>`.

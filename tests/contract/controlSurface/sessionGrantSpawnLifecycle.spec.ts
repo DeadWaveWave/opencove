@@ -143,7 +143,10 @@ it('treats a caller environment as complete and never re-adds the hosting proces
     )
     // Without an explicit environment the hosting environment is inherited, minus Electron control mode.
     await canvasSpawnIdentity.run(identity, () => f.runtime.spawnSession(input))
-    await f.runtime.spawnSession({ ...input, env: { PATH: '/usr/bin' } })
+    await f.runtime.spawnSession({
+      ...input,
+      env: { PATH: '/usr/bin', OPENCOVE_CLI_SHIM_DIRECTORY: '/spoofed' },
+    })
 
     const [explicit, inherited, plain] = captured
     expect(explicit.ELECTRON_RUN_AS_NODE).toBeUndefined()
@@ -153,6 +156,8 @@ it('treats a caller environment as complete and never re-adds the hosting proces
       ['/cli-shims', '/usr/bin'].join(process.platform === 'win32' ? ';' : ':'),
     )
     expect(explicit.OPENCOVE_NODE_ID).toBe('n')
+    expect(explicit.OPENCOVE_CLI_SHIM_DIRECTORY).toBe('/cli-shims')
+    expect(plain.OPENCOVE_CLI_SHIM_DIRECTORY).toBeUndefined()
     expect(inherited.ELECTRON_RUN_AS_NODE).toBeUndefined()
     expect(inherited.OPENCOVE_TEST_HOST_ONLY).toBe('host')
     expect(plain.ELECTRON_RUN_AS_NODE).toBeUndefined()

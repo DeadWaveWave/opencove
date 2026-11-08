@@ -124,7 +124,7 @@ export const agentQueryCommands = [
     operation: 'agent.get',
     summary: 'Inspect an agent run-state snapshot with its node title',
     description:
-      'Returns the Worker snapshot plus title. A non-agent node or missing run state fails with agent.not_found (exit 1); use node get to inspect a terminal/note, or start/resume an agent window. State is runtime evidence, independent of persisted node status. Unknown/degraded is never ready. lastEndedTurn identifies the most recent ended turn with {id, outcome, endedAt} (epoch milliseconds), or null before any end in this incarnation. It persists while the next turn runs and resets on replacement/restart. turnOutcome keeps its legacy behavior: set on end (completed, failed, aborted or unknown), usually cleared on the next start; use lastEndedTurn for identity-bound results.',
+      'Returns the Worker snapshot plus title, including observed agents inside terminal nodes. A node without registered run state fails with agent.not_found (exit 1); use node get to inspect a terminal/note, or start/resume an agent window. State is runtime evidence, independent of persisted node status. Unknown/degraded is never ready. lastEndedTurn identifies the most recent ended turn with {id, outcome, endedAt} (epoch milliseconds), or null before any end in this incarnation. It persists while the next turn runs and resets on replacement/restart. turnOutcome keeps its legacy behavior: set on end (completed, failed, aborted or unknown), usually cleared on the next start; use lastEndedTurn for identity-bound results.',
     options: { node: stringOption('Node ID', true) },
     buildInput: ({ options: o }) => ({ nodeId: o.node }),
     render: declaredOutput(runFields, { nodeId: 'node-123' }),
@@ -136,7 +136,8 @@ export const agentQueryCommands = [
       const snapshot = (await ctx.invoke('agent.get', ctx.input)) as AgentRunSnapshot | null
       const nodeId = String(ctx.options.node)
       const node = await nodeMetadata(ctx, nodeId)
-      if (node && node.kind !== 'agent') {
+      // Terminals can host an agent typed into their shell; other node kinds never have run state.
+      if (node && node.kind !== 'agent' && (node.kind !== 'terminal' || snapshot === null)) {
         throw new CliError(
           'agent.not_found',
           1,
