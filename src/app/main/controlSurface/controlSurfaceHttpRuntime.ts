@@ -12,12 +12,13 @@ import { resolve } from 'node:path'
 import { PluginInstallationManager } from '../../../contexts/plugins/application/PluginInstallationManager'
 import { LocalPluginFiles } from '../../../contexts/plugins/infrastructure/LocalPluginFiles'
 import { NodePluginBackend } from '../../../contexts/plugins/infrastructure/NodePluginBackend'
-import { randomBytes, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import { ManagedSshEndpointOperationOwner } from '../../../contexts/topology/application/ManagedSshEndpointOperationOwner'
 import { createManagedSshOperationDiagnosticSink } from './topology/managedSshOperationDiagnostics'
 import type { ServerResponse } from 'node:http'
 import { createControlSurface } from './controlSurface'
 import { WebSessionManager } from './http/webSessionManager'
+import { createControlToken } from './http/createControlToken'
 import { createLazyPersistenceStore } from './http/lazyPersistenceStore'
 import { publishLiveSyncEvent } from './http/publishSyncEvent'
 import type { SyncEventPayload } from './http/syncSse'
@@ -97,7 +98,7 @@ export function createControlSurfaceHttpRuntime(
     new GitPluginSources(options.userDataPath),
   )
   const pluginViews = new PluginViewLifecycle(plugins)
-  const token = options.token ?? randomBytes(32).toString('base64url')
+  const token = options.token ?? createControlToken()
   const webSessions = new WebSessionManager(resolve(options.userDataPath))
   const invocationLifetime = new AbortController()
   const ctx = createControlSurfaceHttpServerContext({
