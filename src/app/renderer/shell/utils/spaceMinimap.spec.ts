@@ -8,6 +8,7 @@ import {
   type WorkspaceSpaceState,
   type WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
+import { agentAttentionKey } from './sidebarAgents'
 import { buildSpaceMinimap } from './spaceMinimap'
 
 function node(
@@ -96,6 +97,30 @@ describe('buildSpaceMinimap', () => {
     ])
     expect(model.waitingCount).toBe(1)
     expect(model.workingCount).toBe(0)
+  })
+
+  it('marks an Agent in standby that you have not answered as waiting, and no other', () => {
+    const root = space('build', ['unanswered', 'answered', 'exited'], null)
+    const needsYou = new Map([
+      [agentAttentionKey('project', 'unanswered'), 1_000],
+      // An Agent that exited waits for no one, even with its card still pending.
+      [agentAttentionKey('project', 'exited'), 1_000],
+    ])
+    const model = buildSpaceMinimap(
+      workspace(
+        [
+          node('unanswered', 'agent', { x: 0, y: 0, width: 100, height: 100 }, 'standby'),
+          node('answered', 'agent', { x: 100, y: 0, width: 100, height: 100 }, 'standby'),
+          node('exited', 'agent', { x: 200, y: 0, width: 100, height: 100 }, 'exited'),
+        ],
+        [root],
+      ),
+      root,
+      needsYou,
+    )
+
+    expect(model.windows.map(window => window.status)).toEqual(['waiting', null, null])
+    expect(model.waitingCount).toBe(1)
   })
 
   it('includes windows of child Spaces and clamps windows that overhang the frame', () => {

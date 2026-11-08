@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { create } from 'zustand'
-import { agentAttentionKey } from '../utils/agentActivitySummary'
+import { agentAttentionKey } from '../utils/sidebarAgents'
 import type { AgentStandbyNotification } from '../utils/agentStandbyNotification'
 
 /** Unanswered Agents kept at most; the oldest fall away first. */

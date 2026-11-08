@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
-import { agentAttentionKey } from '../utils/agentActivitySummary'
+import { agentAttentionKey } from '../utils/sidebarAgents'
 import type { AgentStandbyNotification } from '../utils/agentStandbyNotification'
 import { useAgentAttentionStore, useAgentsNeedingYou } from './useAgentAttentionStore'
 

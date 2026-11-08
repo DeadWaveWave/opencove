@@ -148,6 +148,9 @@ test.describe('Agent island', () => {
         await expect(stack).toHaveCount(0, { timeout: 10_000 })
         // Retracting only hides the card; the Agent still waits in the pill.
         await expect(pill).toHaveAttribute('data-tone', 'waiting')
+        // Its sidebar row waits for you too, rather than standing by.
+        const rowStatus = window.locator('.workspace-sidebar .workspace-agent-item__status-label')
+        await expect(rowStatus).toHaveText('Needs input')
 
         // Going to it from the list answers it; it only stood by, so the pill goes.
         await pill.click()
@@ -158,6 +161,7 @@ test.describe('Agent island', () => {
         await row.click()
         await expect(pill).toHaveCount(0)
         await expect(stack).toHaveCount(0)
+        await expect(rowStatus).toHaveText('Standby')
       } finally {
         await electronApp.close()
         await rm(commandDirectory, { recursive: true, force: true })

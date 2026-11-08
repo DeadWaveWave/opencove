@@ -6,7 +6,8 @@ import {
   type TerminalNodeData,
   type WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
-import { agentAttentionKey, summarizeAgentActivity } from './agentActivitySummary'
+import { summarizeAgentActivity } from './agentActivitySummary'
+import { agentAttentionKey } from './sidebarAgents'
 
 function agent(id: string, status: TerminalNodeData['status']): Node<TerminalNodeData> {
   return {
@@ -122,13 +123,20 @@ describe('summarizeAgentActivity', () => {
     expect(summary.working).toEqual([])
   })
 
-  it('keeps an Agent that works again, or never ended a turn, out of waiting', () => {
+  it('keeps an Agent that works again, exited, or never ended a turn, out of waiting', () => {
     const needsYou = new Map([
       [agentAttentionKey('alpha', 'a-1'), 1_000],
       [agentAttentionKey('beta', 'a-2'), 1_000],
+      [agentAttentionKey('alpha', 'a-3'), 1_000],
     ])
     const summary = summarizeAgentActivity(
-      [workspace('alpha', [agent('a-1', 'running'), agent('a-2', 'standby')])],
+      [
+        workspace('alpha', [
+          agent('a-1', 'running'),
+          agent('a-2', 'standby'),
+          agent('a-3', 'exited'),
+        ]),
+      ],
       needsYou,
     )
     expect(summary.waiting).toEqual([])

@@ -113,8 +113,8 @@ export function Sidebar({
   onPointerLeave,
 }: SidebarProps): React.JSX.Element {
   const { t } = useTranslation()
-  const trees = workspaces.map(buildSidebarProjectTree)
   const needsYou = useAgentsNeedingYou()
+  const trees = workspaces.map(workspace => buildSidebarProjectTree(workspace, needsYou))
   const waitingAgents = summarizeAgentActivity(workspaces, needsYou).waiting
   // Tile badges count the inbox's own rows, so an unanswered Agent shows in both.
   const waitingCountByWorkspace = new Map<string, number>()

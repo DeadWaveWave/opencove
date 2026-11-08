@@ -46,13 +46,9 @@ for (const providerCase of providerCases) {
 
         const agentNode = window.locator('.terminal-node').first()
         const nodeStatus = agentNode.locator('.terminal-node__status')
-        const sidebarStatus = window
-          .locator('.workspace-sidebar .workspace-agent-item .workspace-agent-item__status--agent')
-          .first()
 
         await expect(agentNode).toBeVisible()
         await expect(nodeStatus).toHaveText('Standby')
-        await expect(sidebarStatus).toHaveText('Standby')
 
         const xterm = agentNode.locator('.xterm')
         await xterm.click()
@@ -60,9 +56,7 @@ for (const providerCase of providerCases) {
         await window.keyboard.press('Enter')
 
         await expect(nodeStatus).toHaveText('Working', { timeout: 1000 })
-        await expect(sidebarStatus).toHaveText('Working')
         await expect(nodeStatus).toHaveText('Standby', { timeout: 15000 })
-        await expect(sidebarStatus).toHaveText('Standby')
       } finally {
         await electronApp.close()
       }
