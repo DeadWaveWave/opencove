@@ -25,13 +25,6 @@ export interface AgentActivitySummary {
   working: AgentActivityReference[]
 }
 
-/** Keys the Agents that ended a turn you have not answered (docs/ui/AGENT_ISLAND.md). */
-export function agentAttentionKey(workspaceId: string, nodeId: string): string {
-  return `${workspaceId}\u0000${nodeId}`
-}
-
-const NO_ONE_NEEDS_YOU: ReadonlyMap<string, number> = new Map()
-
 /**
  * Derived from the same agent model as the sidebar, so the header and rail always agree. An
  * agent waits for you when it is blocked on you, or when it ended a turn that you have not
@@ -39,17 +32,13 @@ const NO_ONE_NEEDS_YOU: ReadonlyMap<string, number> = new Map()
  */
 export function summarizeAgentActivity(
   workspaces: readonly WorkspaceState[],
-  needsYou: ReadonlyMap<string, number> = NO_ONE_NEEDS_YOU,
+  needsYou?: ReadonlyMap<string, number>,
 ): AgentActivitySummary {
   const waiting: AgentActivityReference[] = []
   const working: AgentActivityReference[] = []
   for (const workspace of workspaces) {
-    for (const item of buildSidebarAgentItems(workspace)) {
-      const needsYouSinceMs =
-        item.status === 'standby'
-          ? needsYou.get(agentAttentionKey(workspace.id, item.node.id))
-          : undefined
-      if (item.status !== 'waiting' && item.status !== 'working' && needsYouSinceMs === undefined) {
+    for (const item of buildSidebarAgentItems(workspace, needsYou)) {
+      if (item.status === 'standby') {
         continue
       }
       const reference: AgentActivityReference = {
@@ -60,7 +49,7 @@ export function summarizeAgentActivity(
         title: item.displayTitle,
         spaceName: item.owningSpace?.name ?? null,
         provider: resolveAgentPresentationProvider(item.node.data),
-        ...(needsYouSinceMs === undefined ? {} : { needsYouSinceMs }),
+        ...(item.needsYouSinceMs === undefined ? {} : { needsYouSinceMs: item.needsYouSinceMs }),
       }
       ;(item.status === 'working' ? working : waiting).push(reference)
     }

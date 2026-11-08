@@ -98,6 +98,7 @@ export function registerSessionHandlers(
           resumeSessionIdPresent: !!resumeSessionId,
           executablePathOverridePresent: !!payload.executablePathOverride,
           agentFullAccess: payload.agentFullAccess ?? null,
+          codexReuseRunningAppServer: payload.codexReuseRunningAppServer ?? null,
           cols: payload.cols ?? null,
           rows: payload.rows ?? null,
         },
@@ -148,6 +149,7 @@ export function registerSessionHandlers(
                 env: payload.env ?? null,
                 executablePathOverride: payload.executablePathOverride ?? null,
                 agentFullAccess: payload.agentFullAccess ?? null,
+                codexReuseRunningAppServer: payload.codexReuseRunningAppServer ?? null,
                 cols: payload.cols,
                 rows: payload.rows,
               } satisfies LaunchAgentSessionInput & { mountId: string; cwdUri: string | null },
@@ -207,6 +209,8 @@ export function registerSessionHandlers(
         payload.executablePathOverride ??
         resolveAgentExecutablePathOverride(agentSettings, provider)
       const agentFullAccess = payload.agentFullAccess ?? agentSettings.agentFullAccess
+      const codexReuseRunningAppServer =
+        payload.codexReuseRunningAppServer ?? agentSettings.codexReuseRunningAppServer
       logAgentLaunchInfo('control-surface-resolved-settings', 'Resolved agent launch settings.', {
         provider,
         mode,
@@ -214,6 +218,7 @@ export function registerSessionHandlers(
         modelPresent: !!model,
         executablePathOverridePresent: !!executablePathOverride,
         agentFullAccess,
+        codexReuseRunningAppServer,
         cols: payload.cols ?? 80,
         rows: payload.rows ?? 24,
       })
@@ -243,6 +248,7 @@ export function registerSessionHandlers(
         resumeSessionId,
         prompt: payload.prompt,
         agentFullAccess,
+        codexReuseRunningAppServer,
         opencodeServer,
         executablePathOverride,
       })

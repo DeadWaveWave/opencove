@@ -316,6 +316,8 @@ export function registerAgentIpcHandlers(
           model: normalized.model ?? null,
           resumeSessionId: normalized.resumeSessionId ?? null,
           agentFullAccess: normalized.agentFullAccess ?? true,
+          codexReuseRunningAppServer:
+            normalized.codexReuseRunningAppServer ?? agentSettings.codexReuseRunningAppServer,
           opencodeServer,
           executablePathOverride,
           workspaceDirectory: normalized.cwd,

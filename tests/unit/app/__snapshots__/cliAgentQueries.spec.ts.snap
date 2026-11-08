@@ -21,7 +21,7 @@ exports[`agent get help is offline and complete 1`] = `
 
 Inspect an agent run-state snapshot with its node title
 
-Returns the Worker snapshot plus title, including observed agents inside terminal nodes. A node without registered run state fails with agent.not_found (exit 1); use node get to inspect a terminal/note, or start/resume an agent window. State is runtime evidence, independent of persisted node status. Unknown/degraded is never ready. lastEndedTurn identifies the most recent ended turn with {id, outcome, endedAt} (epoch milliseconds), or null before any end in this incarnation. It persists while the next turn runs and resets on replacement/restart. turnOutcome keeps its legacy behavior: set on end (completed, failed, aborted or unknown), usually cleared on the next start; use lastEndedTurn for identity-bound results.
+Returns the Worker snapshot plus title and taskNodeId (reverse task-owned link, null if absent/ambiguous), including observed agents inside terminal nodes. A node without registered run state fails with agent.not_found (exit 1); use node get to inspect a terminal/note, or start/resume an agent window. State is runtime evidence, independent of persisted node status. Unknown/degraded is never ready. lastEndedTurn identifies the most recent ended turn with {id, outcome, endedAt} (epoch milliseconds), or null before any end in this incarnation. It persists while the next turn runs and resets on replacement/restart. turnOutcome keeps its legacy behavior: set on end (completed, failed, aborted or unknown), usually cleared on the next start; use lastEndedTurn for identity-bound results.
 
 Options:
   --node <id>         Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
@@ -29,7 +29,7 @@ Options:
   --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
-Projectable fields: nodeId, title, sessionId, provider, state, blockedReason, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome, lastEndedTurn, lastEndedTurn.id, lastEndedTurn.outcome, lastEndedTurn.endedAt
+Projectable fields: nodeId, title, taskNodeId, sessionId, provider, state, blockedReason, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome, lastEndedTurn, lastEndedTurn.id, lastEndedTurn.outcome, lastEndedTurn.endedAt
 
 Projection example:
   opencove agent get --node '<id>' --fields nodeId
@@ -48,7 +48,7 @@ exports[`agent list help is offline and complete 1`] = `
 
 List live agent run states and node titles
 
-Returns {epoch, seq, agents}, one row per live agent session. Exited sessions are excluded by agent.list (so --state exited returns no rows); use agent get or wait for a known exited node. Titles come from node metadata; null means unbound or deleted. turn.startedAt is epoch milliseconds, or absent when no turn is active. Inside OpenCove, the default scope is your space; --project selects a whole project.
+Returns {epoch, seq, agents}, one row per live agent session. Exited sessions are excluded by agent.list (so --state exited returns no rows); use agent get or wait for a known exited node. taskNodeId is the task whose linkedAgentNodeId points here (null if absent/ambiguous). Titles come from node metadata; null means unbound or deleted. turn.startedAt is epoch milliseconds, or absent when no turn is active. Inside OpenCove, the default scope is your space; --project selects a whole project.
 
 When no target is given, inside OpenCove defaults to your own space; project options default to your own project.
 
@@ -60,7 +60,7 @@ Options:
 List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
 
 Table output (-o table): supported.
-Projectable fields: nodeId, title, sessionId, provider, state, blockedReason, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome, lastEndedTurn, lastEndedTurn.id, lastEndedTurn.outcome, lastEndedTurn.endedAt
+Projectable fields: nodeId, title, taskNodeId, sessionId, provider, state, blockedReason, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome, lastEndedTurn, lastEndedTurn.id, lastEndedTurn.outcome, lastEndedTurn.endedAt
 
 Projection example:
   opencove agent list --fields nodeId
@@ -79,19 +79,15 @@ exports[`agent read help is offline and complete 1`] = `
 
 Read an agent reply or inspect its current terminal screen
 
-Reads agent.finalMessage first: the latest observed ended turn, or exactly --turn <turnId> from agent prompt. --turn never uses prefixes, another turn or a transcript fallback. --last makes the latest-turn default explicit and can accompany --turn.
+Read the latest ended reply, or exactly --turn <turnId> from agent prompt. Plain text is the default even when piped; -o json exposes outcome, durability and retained deliveryIds/promptIds. Exact reads never fall back to another turn or transcript.
 
-Only an unqualified hook read reporting no_ended_turn or provider_sent_no_message falls back to session.finalMessage, including restored conversations. Other errors are preserved. Hook content, including empty or whitespace-only messages, wins. Exact-turn errors use agent.final_message_unavailable with details.reason: turn_not_ended (still active), turn_not_found (unknown/evicted), no_ended_turn, provider_sent_no_message, archive_unavailable, or remote_history_unavailable. CLI errors retain code/reason and include known nodeId/sessionId/turnId plus concrete recovery commands: wait for a running turn, inspect agent get for missing history, or inspect --screen/session final for unavailable content.
+Loop: prompt → delivery status → wait --turn <turnId> → read --turn <turnId> -o json. Check outcome and reply; never resend because a read fails. Local archived exact reads survive restart. Claude continuations share one OpenCove turn; Codex reply reads remain uncorrelated.
 
-Plain message text goes to stdout even when piped. -o json or --fields returns structured data: hook results have nodeId, sessionId, turnId, optional promptId, outcome, persisted, optional memoryOnlyReason, message, truncated and source: hook; transcript results have sessionId, provider, startedAt, cwd, resumeSessionId, message, truncated: false and source: transcript. A cut hook message prints one stderr notice with transcript/screen recovery commands; it never automatically replaces the retained prefix.
+--screen inspects the current terminal (last 40 rendered lines); --lines requires --screen. Use it before prompting to inspect drafts/dialogs. Reading never sends input. --screen conflicts with --last/--turn; --last makes the latest-turn default explicit.
 
-Claude messages queued mid-turn continue the same OpenCove turn, including provider follow-ups. Exact reads return its final reply after all continuations. An unknown continuation outcome marks the last provider reply with messageKind: intermediate and prints a notice. After wait --until idle, read returns only the latest ended turn reply.
+Exit codes: 0 readable result (including empty content); 1 unavailable reply/transcript; 2 invalid input. Detailed fallback rules, truncation, retention and recovery: opencove skill.
 
-After agent prompt, retain its turnId, run "opencove agent wait --node <selector> --turn <turnId>", then "opencove agent read --node <selector> --turn <turnId>". Exact --turn reads survive Worker restarts for archived local turns. The private archive stores final replies up to 64 KiB, outcome and IDs: at most 60 turns per node, 30 days, 20,000 global records and 128 MiB of message text. JSON reports persisted and a memoryOnlyReason when false. Deleting the node removes OpenCove history, not provider transcripts or existing backups. Unqualified reads remain current-incarnation reads. Remote wait --turn uses mirrored snapshots/events; older remote turns can only be checked on the Worker that runs them (remote_history_unavailable). Hook replies currently require local Claude hooks with correlated prompt IDs.
-
-Use --screen before prompting to inspect drafts and dialogs. It resolves the current session, replays its presentation snapshot at its columns/rows, preserving cursor-created spaces, overwrites and wide CJK/emoji cells. It selects the normal or alternate buffer, ignores styling/mode sequences, trims row-end spaces and trailing blank rows, then returns the last --lines rendered rows (default: 40). -o json returns {nodeId, sessionId, lines: [...]}. Screen-mode projectable fields are nodeId, sessionId, lines; the field list below applies to final-message mode. --lines requires --screen; --screen conflicts with --last and --turn. This is a read only snapshot, not permission to answer another agent's dialog.
-
-If transcript fallback has no readable message, session.transcript_not_ready exits 1. A working agent may need to reach idle first; an idle agent may have transcript saving disabled. Inspect --screen and check provider settings; waiting cannot create a transcript. Reading never sends input.
+deliveryIds are retained correlations of OpenCove deliveries with this turn, including refused or uncertain attempts. Membership proves neither submission nor consumption, and an empty list proves nothing either: delivery records live in memory only, are cleared when OpenCove restarts and expire 30 minutes after resolving; inspect each deliveryId with opencove agent delivery <id>. promptIds are the provider prompt IDs for this turn (Claude continuations included); agent delivery does not accept them.
 
 Options:
   --node <id>         Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
@@ -103,7 +99,7 @@ Options:
   --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
-Projectable fields: nodeId, sessionId, turnId, promptId, outcome, persisted, memoryOnlyReason, message, messageKind, truncated, source, provider, startedAt, cwd, resumeSessionId
+Projectable fields: nodeId, sessionId, turnId, promptId, deliveryIds, promptIds, outcome, persisted, memoryOnlyReason, message, messageKind, truncated, source, provider, startedAt, cwd, resumeSessionId
 
 Projection example:
   opencove agent read --node '<id>' --fields nodeId
@@ -125,17 +121,15 @@ exports[`agent wait help is offline and complete 1`] = `
 
 Wait until agents reach a state or finish a turn
 
-Waits without sending any input. A state that already holds counts immediately. idle requires no active turn and never accepts an unknown or degraded state. After "agent prompt", save turnId and use --turn <turnId> to wait for that exact turn, even if a newer turn has started.
+Wait without sending input. After prompting, save turnId: prompt → delivery status → wait --turn <turnId> → read --turn <turnId> -o json. Never resend because waiting times out.
 
---turn requires one node and conflicts with --until, multiple --node options and --any. It waits through permission/question pauses and Claude queued provider continuations within that turn. Returns {nodeId, sessionId, turnId, outcome, endedAt?, state, persisted, memoryOnlyReason?}; every ended outcome exits 0, including failed, aborted and unknown. Read outcome before claiming success. Exact archived local ends survive Worker restarts and can be read without a live agent. Unknown/evicted turns exit 1; archive_unavailable is distinct. Inspect persisted before relying on restart durability.
+--turn selects one exact turn on one node, conflicts with --until/--any, and waits through permission/question pauses and provider continuations. Ended results include outcome, state, durability and retained deliveryIds/promptIds. Every ended outcome exits 0: check outcome and reply before claiming success.
 
-Local exact history retains at most 60 turns per node for 30 days, with global caps of 20,000 records and 128 MiB. For remote agents, --turn uses mirrored snapshots/events; older turns can only be checked on the Worker that runs them. Missing remote history reports details.reason: remote_history_unavailable, not eviction.
+--until waits for idle, waiting, exited or turn-end. Existing state matches immediately; idle requires no active turn and known, nondegraded state. turn-end observes an end after waiting starts. Multiple nodes use --all (default) or --any.
 
-State waits follow the current session; exact archived turn waits return the original session independently. Exact-turn errors keep their code and details.reason, include known nodeId/sessionId/turnId, and suggest concrete agent get, --screen or session final commands.
+Exit codes: 0 condition met; 1 unavailable history; 2 invalid input; 124 timeout (lastKnown on stderr); 130 interruption. Agents keep running. Retention, restart/remote limits and error recovery: opencove skill.
 
---until turn-end waits for a turn to finish after this command starts; use it only when you start waiting while the turn is still running. A finished turn is not necessarily a successful one: check turnOutcome (or endedTurnOutcome for turn-end).
-
-With several --node options, --all (default) waits until every agent matches and --any until the first one does. The result lists the latest state of every selected agent. Budgets below 250ms are rejected with usage exit 2 before connecting. On timeout (default 20s) it exits 124, prints the last known states on stderr and nothing on stdout; Ctrl-C exits 130. The agents keep running either way.
+deliveryIds are retained correlations of OpenCove deliveries with this turn, including refused or uncertain attempts. Membership proves neither submission nor consumption, and an empty list proves nothing either: delivery records live in memory only, are cleared when OpenCove restarts and expire 30 minutes after resolving; inspect each deliveryId with opencove agent delivery <id>. promptIds are the provider prompt IDs for this turn (Claude continuations included); agent delivery does not accept them.
 
 Options:
   --node <id>                             Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
@@ -150,7 +144,7 @@ Options:
 List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
 
 Table output (-o table): not supported.
-Projectable fields: nodeId, sessionId, provider, state, blockedReason, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome, lastEndedTurn, lastEndedTurn.id, lastEndedTurn.outcome, lastEndedTurn.endedAt, endedTurn, endedTurn.id, endedTurn.startedAt, endedTurn.start, endedTurnOutcome, turnId, outcome, endedAt, persisted, memoryOnlyReason
+Projectable fields: nodeId, taskNodeId, sessionId, provider, state, blockedReason, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome, lastEndedTurn, lastEndedTurn.id, lastEndedTurn.outcome, lastEndedTurn.endedAt, endedTurn, endedTurn.id, endedTurn.startedAt, endedTurn.start, endedTurnOutcome, turnId, deliveryIds, promptIds, outcome, endedAt, persisted, memoryOnlyReason
 
 Projection example:
   opencove agent wait --node node-123 --until idle --fields nodeId,state
@@ -182,12 +176,12 @@ exports[`explains session.transcript_not_ready and next steps 1`] = `
 `;
 
 exports[`gets a snapshot plus title and supports @self 1`] = `
-"{"sessionId":"session-123456","nodeId":"node-123456","provider":"claude-code","state":"working","blockedReason":null,"turn":{"id":"turn","startedAt":10,"start":"observed"},"lastTransitionAt":10,"source":"claude_hook","quality":"authoritative","turnOutcome":null,"lastEndedTurn":null,"title":"Shell"}
+"{"sessionId":"session-123456","nodeId":"node-123456","provider":"claude-code","state":"working","blockedReason":null,"turn":{"id":"turn","startedAt":10,"start":"observed"},"lastTransitionAt":10,"source":"claude_hook","quality":"authoritative","turnOutcome":null,"lastEndedTurn":null,"taskNodeId":null,"title":"Shell"}
 "
 `;
 
 exports[`lists titles and defaults to the caller space, preserving the cursor envelope 1`] = `
-"{"epoch":"e","seq":5,"agents":[{"sessionId":"session-123456","nodeId":"node-123456","provider":"claude-code","state":"working","blockedReason":null,"turn":{"id":"turn","startedAt":10,"start":"observed"},"lastTransitionAt":10,"source":"claude_hook","quality":"authoritative","turnOutcome":null,"lastEndedTurn":null,"title":"Shell"}]}
+"{"epoch":"e","seq":5,"agents":[{"sessionId":"session-123456","nodeId":"node-123456","provider":"claude-code","state":"working","blockedReason":null,"turn":{"id":"turn","startedAt":10,"start":"observed"},"lastTransitionAt":10,"source":"claude_hook","quality":"authoritative","turnOutcome":null,"lastEndedTurn":null,"title":"Shell","taskNodeId":null}]}
 "
 `;
 

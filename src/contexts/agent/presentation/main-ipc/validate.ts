@@ -248,6 +248,12 @@ export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput 
   const executablePathOverride =
     typeof record.executablePathOverride === 'string' ? record.executablePathOverride.trim() : ''
 
+  const codexReuseRunningAppServer = record.codexReuseRunningAppServer ?? undefined
+  if (codexReuseRunningAppServer !== undefined && typeof codexReuseRunningAppServer !== 'boolean') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid codexReuseRunningAppServer for agent:launch',
+    })
+  }
   const agentFullAccess =
     typeof record.agentFullAccess === 'boolean' ? record.agentFullAccess : true
 
@@ -286,6 +292,7 @@ export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput 
     env,
     executablePathOverride: executablePathOverride.length > 0 ? executablePathOverride : null,
     agentFullAccess,
+    codexReuseRunningAppServer,
     cols,
     rows,
   }

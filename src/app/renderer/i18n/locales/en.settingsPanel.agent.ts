@@ -20,6 +20,9 @@ export const enSettingsPanelAgent = {
   envSummaryNone: 'No environment variables',
   moveUp: 'Move up',
   moveDown: 'Move down',
+  codexReuseRunningAppServerLabel: 'Reuse a running Codex app-server',
+  codexReuseRunningAppServerHelp:
+    "When a running Codex app-server is reused, OpenCove can't send prompts to the agent and has only limited status. Applies to newly launched agents.",
   fullAccessLabel: 'Full Access Mode',
   fullAccessHelp: 'Let agents leave their sandbox and act without asking for approval.',
   fullAccessOffHelp:

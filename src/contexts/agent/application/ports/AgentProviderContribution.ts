@@ -54,6 +54,7 @@ export interface CreateAgentLaunchPlanCommand {
   readonly environment?: Readonly<NodeJS.ProcessEnv>
   readonly profileId?: string | null
   readonly agentFullAccess: boolean
+  readonly codexReuseRunningAppServer?: boolean
   readonly artifacts: AgentLaunchArtifactRegistrar
   readonly executablePathOverride?: string | null
   readonly mode: AgentLaunchMode
@@ -80,6 +81,7 @@ export interface AgentHookInjectionPlan {
 }
 
 export interface PrepareAgentHookInjectionCommand {
+  readonly codexReuseRunningAppServer?: boolean
   readonly arguments?: readonly string[]
   readonly artifacts: AgentLaunchArtifactRegistrar
   readonly environment?: Readonly<NodeJS.ProcessEnv>

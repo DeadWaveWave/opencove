@@ -1,5 +1,8 @@
+import { execFile } from 'node:child_process'
+import { writeFile } from 'node:fs/promises'
 import { createServer, type Server, type ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
+import { join, resolve as resolvePath } from 'node:path'
 
 type ResponsesInputItem = {
   type?: string
@@ -29,7 +32,8 @@ function respond(
   res: ServerResponse,
   approvalProbe: boolean,
   slowTool = false,
-  slowToolCommand = 'sleep 3',
+  slowToolSeconds = 3,
+  slowToolCommand = `sleep ${slowToolSeconds}`,
 ): void {
   const id = `resp_${Date.now()}`
   const item = slowTool
@@ -79,7 +83,9 @@ function respond(
   res.end()
 }
 
-export async function startResponsesApi(slowToolCommand = 'sleep 3'): Promise<{
+export async function startResponsesApi(
+  options: { slowToolSeconds?: number; slowToolCommand?: string } = {},
+): Promise<{
   server: Server
   url: string
   main: () => string[][]
@@ -119,7 +125,8 @@ export async function startResponsesApi(slowToolCommand = 'sleep 3'): Promise<{
         res,
         isMain && !resumed && blocks.some(block => block.includes('TRIGGER_TOOL')),
         isMain && !resumed && blocks.some(block => block.includes('SLOW_TOOL')),
-        slowToolCommand,
+        options.slowToolSeconds,
+        options.slowToolCommand,
       )
       return
     }
@@ -134,4 +141,71 @@ export async function startResponsesApi(slowToolCommand = 'sleep 3'): Promise<{
     main: () => [...mainTurns],
     all: () => [...allUserText],
   }
+}
+
+// Drive delivery through the CLI with the desktop credential, as a script outside the app would.
+export async function prompt(userDataDir: string, nodeId: string, text: string) {
+  return await new Promise<{ exitCode: number; stdout: string; stderr: string }>(done => {
+    const child = execFile(
+      process.execPath,
+      [
+        resolvePath('out/cli/opencove.mjs'),
+        'agent',
+        'prompt',
+        '--node',
+        nodeId,
+        '--text-file',
+        '-',
+      ],
+      { env: { ...process.env, OPENCOVE_USER_DATA_DIR: userDataDir }, timeout: 60_000 },
+      (error, stdout, stderr) =>
+        done({
+          exitCode: error ? Number((error as { code?: unknown }).code ?? 1) : 0,
+          stdout,
+          stderr,
+        }),
+    )
+    child.stdin?.end(text)
+  })
+}
+
+export async function cli(userDataDir: string, args: string[]) {
+  return await new Promise<{ exitCode: number; stdout: string; stderr: string }>(done => {
+    execFile(
+      process.execPath,
+      [resolvePath('out/cli/opencove.mjs'), ...args],
+      { env: { ...process.env, OPENCOVE_USER_DATA_DIR: userDataDir }, timeout: 60_000 },
+      (error, stdout, stderr) =>
+        done({
+          exitCode: error ? Number((error as { code?: unknown }).code ?? 1) : 0,
+          stdout,
+          stderr,
+        }),
+    )
+  })
+}
+
+export async function writeCodexConfig(
+  codexHome: string,
+  workspace: string,
+  apiUrl: string,
+): Promise<void> {
+  await writeFile(
+    join(codexHome, 'config.toml'),
+    [
+      'model = "test-model"',
+      'model_provider = "mock"',
+      'check_for_update_on_startup = false',
+      '',
+      '[model_providers.mock]',
+      'name = "mock"',
+      `base_url = "${apiUrl}"`,
+      'wire_api = "responses"',
+      'env_key = "OPENCOVE_TEST_MOCK_API_KEY"',
+      '',
+      `[projects."${workspace}"]`,
+      'trust_level = "trusted"',
+      '',
+    ].join('\n'),
+  )
 }

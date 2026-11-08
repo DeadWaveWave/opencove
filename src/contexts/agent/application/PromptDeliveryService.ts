@@ -37,6 +37,10 @@ export class PromptDeliveryService {
     return this.records.get(id)
   }
 
+  forTurn(sessionId: string, turnId: string): string[] {
+    return this.records.forTurn(sessionId, turnId)
+  }
+
   deliver(
     request: PromptDeliveryRequest,
     caller: { assertActive?: () => void; signal?: AbortSignal } = {},

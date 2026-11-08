@@ -174,7 +174,7 @@ describe('Sidebar navigation semantics', () => {
     ).toBe(false)
   })
 
-  it('counts an Agent whose card you have not answered on its project tile, like the inbox', () => {
+  it('shows an Agent whose card you have not answered as waiting, on its row and its tile', () => {
     const workspace = project('local')
     workspace.nodes = [agentNode('agent-0', 'standby'), agentNode('agent-1', 'standby')]
     useAgentAttentionStore.setState({
@@ -203,7 +203,18 @@ describe('Sidebar navigation semantics', () => {
     renderSidebar({ workspaces: [workspace] })
     expect(screen.getByTestId('workspace-project-attention-local').textContent).toBe('1')
 
+    const row = () => screen.getByTestId('workspace-agent-item-local-agent-0')
+    expect(row().querySelector('.workspace-agent-item__status--waiting')?.textContent).toBe(
+      'Needs input',
+    )
+    expect(screen.getByTestId('workspace-agent-item-local-agent-1').textContent).toContain(
+      'Standby',
+    )
+
     act(() => useAgentAttentionStore.getState().acknowledgeNode('local', 'agent-0'))
     expect(screen.queryByTestId('workspace-project-attention-local')).toBeNull()
+    expect(row().querySelector('.workspace-agent-item__status--standby')?.textContent).toBe(
+      'Standby',
+    )
   })
 })

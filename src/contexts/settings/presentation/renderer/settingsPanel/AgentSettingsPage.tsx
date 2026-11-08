@@ -30,6 +30,7 @@ export function AgentSettingsPage({
   onChangeDefaultProvider,
   onChangeAgentProviderOrder,
   onChangeAgentFullAccess,
+  onChangeCodexReuseRunningAppServer,
   onToggleCustomModelEnabled,
   onSelectProviderModel,
   onRemoveCustomModelOption,
@@ -45,6 +46,7 @@ export function AgentSettingsPage({
   onChangeDefaultProvider: (provider: AgentProvider) => void
   onChangeAgentProviderOrder: (providers: AgentProvider[]) => void
   onChangeAgentFullAccess: (enabled: boolean) => void
+  onChangeCodexReuseRunningAppServer: (enabled: boolean) => void
   onToggleCustomModelEnabled: (provider: AgentProvider, enabled: boolean) => void
   onSelectProviderModel: (provider: AgentProvider, model: string) => void
   onRemoveCustomModelOption: (provider: AgentProvider, model: string) => void
@@ -133,6 +135,7 @@ export function AgentSettingsPage({
     <div ref={viewRef} className="settings-agent-page">
       {activeProvider ? (
         <AgentProviderDetail
+          onChangeCodexReuseRunningAppServer={onChangeCodexReuseRunningAppServer}
           key={activeProvider}
           provider={activeProvider}
           settings={settings}

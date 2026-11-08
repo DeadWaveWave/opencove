@@ -64,8 +64,12 @@ because of the comparison. Never resend automatically after
 an interrupted/stalled delivery, transport loss or unknown outcome; inspect the editor
 and conversation first. Missing attempt flags do not prove that nothing was sent.
 
-See [CLI prompt guidance](../../AGENT_PROMPT.md) and
-[delivery contract](../../../agent/PROMPT_DELIVERY.md) for input limits and recovery.
+Run `opencove skill` for the bundled input limits, trust details and recovery guidance.
+
+deliveryIds are retained correlations of OpenCove deliveries with this turn, including
+refused or uncertain attempts. Membership proves neither submission nor consumption;
+inspect each deliveryId with `opencove agent delivery <id>`. promptIds are the provider's
+own prompt IDs and are not delivery IDs. Missing IDs never justify resending.
 
 ## Steering an existing turn
 

@@ -14,12 +14,35 @@ import { resolveAgentTreatedProvider } from '@contexts/workspace/presentation/re
 
 export type SidebarAgentStatus = 'working' | 'waiting' | 'standby'
 
+/** Keys the Agents that ended a turn you have not answered (docs/ui/AGENT_ISLAND.md). */
+export function agentAttentionKey(workspaceId: string, nodeId: string): string {
+  return `${workspaceId}\u0000${nodeId}`
+}
+
+const NO_ONE_NEEDS_YOU: ReadonlyMap<string, number> = new Map()
+
+/**
+ * Since when an Agent has waited for you because you have not answered the turn it ended, or
+ * undefined. Only an Agent in standby can: working, blocked on a prompt or gone outranks the card.
+ */
+export function resolveNeedsYouSinceMs(
+  workspaceId: string,
+  node: Node<TerminalNodeData>,
+  needsYou: ReadonlyMap<string, number>,
+): number | undefined {
+  return resolveAgentPresentation(node.data).status === 'standby'
+    ? needsYou.get(agentAttentionKey(workspaceId, node.id))
+    : undefined
+}
+
 export interface SidebarAgentItemModel {
   node: Node<TerminalNodeData>
   displayTitle: string
   effectiveLabelColor: LabelColor | null
   owningSpace: WorkspaceSpaceState | null
   status: SidebarAgentStatus
+  /** Set when a standby Agent waits because you have not answered its turn: since when. */
+  needsYouSinceMs?: number
   sidebarHidden?: boolean
   sidebarHiddenBySpace?: boolean
 }
@@ -75,7 +98,14 @@ export function getWorkspaceAgents(workspace: WorkspaceState): Array<Node<Termin
     })
 }
 
-export function buildSidebarAgentItems(workspace: WorkspaceState): SidebarAgentItemModel[] {
+/**
+ * `needsYou` holds the Agents whose turn you have not answered, keyed by `agentAttentionKey` and
+ * valued by when they started waiting; those still in standby show as waiting for you.
+ */
+export function buildSidebarAgentItems(
+  workspace: WorkspaceState,
+  needsYou: ReadonlyMap<string, number> = NO_ONE_NEEDS_YOU,
+): SidebarAgentItemModel[] {
   const spaceByNodeId = buildSpaceByNodeId(workspace.spaces)
 
   return getWorkspaceAgents(workspace).map(node => {
@@ -85,6 +115,8 @@ export function buildSidebarAgentItems(workspace: WorkspaceState): SidebarAgentI
       node.data.agent?.taskId ?? null,
     )
     const provider = resolveAgentTreatedProvider(node)
+    const status = resolveSidebarAgentStatus(resolveAgentPresentation(node.data).status)
+    const needsYouSinceMs = resolveNeedsYouSinceMs(workspace.id, node, needsYou)
 
     return {
       node,
@@ -106,7 +138,9 @@ export function buildSidebarAgentItems(workspace: WorkspaceState): SidebarAgentI
             : node.data.title,
       effectiveLabelColor: resolveEffectiveLabelColor(node),
       owningSpace: spaceByNodeId.get(node.id) ?? null,
-      status: resolveSidebarAgentStatus(resolveAgentPresentation(node.data).status),
+      ...(needsYouSinceMs === undefined
+        ? { status }
+        : { status: 'waiting' as const, needsYouSinceMs }),
     }
   })
 }

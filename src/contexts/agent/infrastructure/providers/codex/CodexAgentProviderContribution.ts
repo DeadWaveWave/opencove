@@ -105,6 +105,7 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
       CreateAgentLaunchPlanCommand,
       'artifacts' | 'executablePathOverride' | 'workspaceDirectory'
     > & {
+      readonly codexReuseRunningAppServer?: boolean
       readonly environment?: Readonly<NodeJS.ProcessEnv>
       readonly resumeSessionId?: string | null
       readonly arguments?: readonly string[]
@@ -150,7 +151,10 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
         hookInstallState: reservation.installState,
       }
     }
-    if (await shouldDeferToCodexDaemon(command.environment ?? {})) {
+    if (
+      command.codexReuseRunningAppServer === true &&
+      (await shouldDeferToCodexDaemon(command.environment ?? {}))
+    ) {
       // Codex only reuses the implicit local app-server daemon when the CLI carries no
       // --config overrides, and the running daemon cannot adopt this invocation's hook
       // configuration, so keep the launch override-free and run telemetry degraded (#375).

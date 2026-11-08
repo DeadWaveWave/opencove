@@ -28,6 +28,7 @@ export async function resolveAdmittedMountAgentLaunch(input: {
       resumeSessionIdPresent: !!payload.resumeSessionId,
       executablePathOverridePresent: !!payload.executablePathOverride,
       agentFullAccess: payload.agentFullAccess ?? null,
+      codexReuseRunningAppServer: payload.codexReuseRunningAppServer ?? null,
       cols: payload.cols ?? null,
       rows: payload.rows ?? null,
     },

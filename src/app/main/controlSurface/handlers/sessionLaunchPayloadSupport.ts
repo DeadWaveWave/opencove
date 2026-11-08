@@ -114,6 +114,7 @@ export function toLocalAgentLaunchInput(
     env: payload.env ?? null,
     executablePathOverride: payload.executablePathOverride ?? null,
     agentFullAccess: payload.agentFullAccess ?? null,
+    codexReuseRunningAppServer: payload.codexReuseRunningAppServer ?? null,
     cols: payload.cols,
     rows: payload.rows,
   }

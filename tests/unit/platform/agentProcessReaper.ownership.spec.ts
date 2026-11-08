@@ -127,19 +127,32 @@ it('preserves orphan ownership through a partially malformed stdout sample and l
   await task
   expect(h.signal).toHaveBeenCalledWith(20, 'SIGKILL')
 })
-it('coalesces twenty sequential foreground observations within one sample interval', async () => {
+it('gives every sequential foreground observation a read started after it, never the interval cache', async () => {
   const h = harness()
   await h.reaper.track('a', 10)
   h.readTable.mockClear()
-  for (let index = 0; index < 20; index++) {
+  for (let index = 0; index < 5; index++) {
     // eslint-disable-next-line no-await-in-loop -- Replay sequential probes, not simultaneous calls.
     await h.reaper.readTable()
     // eslint-disable-next-line no-await-in-loop -- Probe spacing stays within the same 5s sample interval.
     await vi.advanceTimersByTimeAsync(100)
   }
-  expect(h.readTable).not.toHaveBeenCalled()
-  await vi.advanceTimersByTimeAsync(3_000)
-  expect(h.readTable).toHaveBeenCalledOnce()
+  expect(h.readTable).toHaveBeenCalledTimes(5)
+  const drain = h.reaper.drain()
+  await vi.advanceTimersByTimeAsync(2_000)
+  await drain
+})
+
+it('reports the current foreground process even when an interval sample is younger than 5s', async () => {
+  const h = harness()
+  h.setRows([row(10, 1), row(20, 10, 'codex')])
+  await h.reaper.track('a', 10)
+  await vi.advanceTimersByTimeAsync(5_000)
+  // The agent exits back to the shell right after the periodic sample.
+  h.setRows([row(10, 1)])
+  await vi.advanceTimersByTimeAsync(100)
+  const rows = await h.reaper.readTable()
+  expect(rows?.map(member => member.pid)).toEqual([10])
   const drain = h.reaper.drain()
   await vi.advanceTimersByTimeAsync(2_000)
   await drain
@@ -183,7 +196,7 @@ it('rejects recycled retirement-only seeds and their unrelated descendants', asy
   expect(h.signal).not.toHaveBeenCalledWith(5000, 'SIGTERM')
   expect(h.signal).not.toHaveBeenCalledWith(5000, 'SIGKILL')
 })
-it('piggybacks foreground observations onto a pending periodic sample', async () => {
+it('shares one fresh read among observations requested during a pending periodic sample', async () => {
   const h = harness()
   await h.reaper.track('a', 10)
   let finish!: (rows: ProcessIdentity[]) => void
@@ -197,10 +210,14 @@ it('piggybacks foreground observations onto a pending periodic sample', async ()
   await vi.advanceTimersByTimeAsync(5_000)
   const pending = Array.from({ length: 20 }, () => h.reaper.readTable())
   expect(h.readTable).toHaveBeenCalledOnce()
-  const rows = [row(10, 1), row(20, 10)]
-  finish(rows)
-  expect((await Promise.all(pending)).every(value => value === rows)).toBe(true)
-  expect(h.readTable).toHaveBeenCalledOnce()
+  const stale = [row(10, 1), row(20, 10)]
+  const current = [row(10, 1)]
+  h.setRows(current)
+  finish(stale)
+  const results = await Promise.all(pending)
+  // The periodic read began before these requests, so they wait for one read of their own.
+  expect(h.readTable).toHaveBeenCalledTimes(2)
+  expect(results.every(value => value?.length === 1 && value[0].pid === 10)).toBe(true)
   const drain = h.reaper.drain()
   await vi.advanceTimersByTimeAsync(2_000)
   await drain

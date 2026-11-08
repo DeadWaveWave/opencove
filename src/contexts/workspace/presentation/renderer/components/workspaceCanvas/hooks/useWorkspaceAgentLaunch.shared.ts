@@ -271,7 +271,10 @@ export async function launchWorkspaceAgentSession({
   resumeSessionId?: string | null
   executablePathOverride?: string | null
   mergedEnv: Record<string, string>
-  agentSettings: Pick<AgentSettings, 'agentFullAccess' | 'defaultTerminalProfileId'>
+  agentSettings: Pick<
+    AgentSettings,
+    'agentFullAccess' | 'codexReuseRunningAppServer' | 'defaultTerminalProfileId'
+  >
   launchGeometry: { terminalGeometry: { cols: number; rows: number } }
   retryResolveMountBinding?: (failedMountId: string) => Promise<WorkspaceAgentLaunchBinding | null>
 }): Promise<WorkspaceAgentSessionLaunchResult> {
@@ -298,6 +301,7 @@ export async function launchWorkspaceAgentSession({
         ...(executablePathOverride ? { executablePathOverride } : {}),
         ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
         agentFullAccess: agentSettings.agentFullAccess,
+        codexReuseRunningAppServer: agentSettings.codexReuseRunningAppServer,
         cols: launchGeometry.terminalGeometry.cols,
         rows: launchGeometry.terminalGeometry.rows,
       },
@@ -376,6 +380,7 @@ export async function launchWorkspaceAgentSession({
         ...(executablePathOverride ? { executablePathOverride } : {}),
         ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
         agentFullAccess: agentSettings.agentFullAccess,
+        codexReuseRunningAppServer: agentSettings.codexReuseRunningAppServer,
         cols: launchGeometry.terminalGeometry.cols,
         rows: launchGeometry.terminalGeometry.rows,
       },
@@ -409,6 +414,7 @@ export async function launchWorkspaceAgentSession({
     ...(executablePathOverride ? { executablePathOverride } : {}),
     ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
     agentFullAccess: agentSettings.agentFullAccess,
+    codexReuseRunningAppServer: agentSettings.codexReuseRunningAppServer,
     cols: launchGeometry.terminalGeometry.cols,
     rows: launchGeometry.terminalGeometry.rows,
   })

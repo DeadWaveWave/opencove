@@ -123,6 +123,7 @@ export interface LaunchAgentInput {
   env?: Record<string, string> | null
   executablePathOverride?: string | null
   agentFullAccess?: boolean
+  codexReuseRunningAppServer?: boolean | null
   cols?: number
   rows?: number
 }

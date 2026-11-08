@@ -7,17 +7,15 @@ import {
 
 export class AgentProcessSampler {
   private inFlight: Promise<ProcessIdentity[] | null> | null = null
+  private pendingObservation: Promise<ProcessIdentity[] | null> | null = null
   private timer: NodeJS.Timeout | null = null
   private paused = false
-  private latest: ProcessIdentity[] | null = null
-  private sampledAt = -Infinity
   public constructor(
     public readonly ownership: AgentProcessOwnership,
     private readonly readTable: (
       signal?: AbortSignal,
     ) => Promise<ProcessIdentity[]> = readPosixProcessTable,
     private readonly log: (message: string) => void,
-    private readonly now: () => number = () => performance.now(),
   ) {}
   public maintainTimer(): void {
     if (this.ownership.size > 0 && !this.paused && !this.timer) {
@@ -42,15 +40,27 @@ export class AgentProcessSampler {
     return await this.sample()
   }
   public observation(): Promise<ProcessIdentity[] | null> {
-    if (this.inFlight) {
-      return this.inFlight
+    // Foreground probes are control evidence (terminal agent re-entry trusts them as current),
+    // so each needs a table read that starts after it was requested: never the interval cache
+    // and never a read already in flight. Probes that arrive before that read starts share it.
+    if (this.pendingObservation) {
+      return this.pendingObservation
     }
-    // Foreground hints may reuse one interval's observation. Retirement and
-    // launch identity capture deliberately bypass this cache through sample/fresh.
-    if (this.paused || this.now() - this.sampledAt < 5_000) {
-      return Promise.resolve(this.latest)
-    }
-    return this.sample()
+    const slot: { promise?: Promise<ProcessIdentity[] | null> } = {}
+    slot.promise = (async () => {
+      // Yield first so this observation is registered before it can start its read.
+      await Promise.resolve()
+      while (this.inFlight) {
+        // eslint-disable-next-line no-await-in-loop -- wait for every read that began earlier
+        await this.inFlight
+      }
+      if (this.pendingObservation === slot.promise) {
+        this.pendingObservation = null
+      }
+      return await this.sample()
+    })()
+    this.pendingObservation = slot.promise
+    return slot.promise
   }
   public sample(): Promise<ProcessIdentity[] | null> {
     if (this.inFlight) {
@@ -70,18 +80,15 @@ export class AgentProcessSampler {
             }, PROCESS_TABLE_READ_TIMEOUT_MS)
           }),
         ])
-        this.latest = rows
         this.ownership.observe(rows, captureIds)
         return rows
       } catch (error) {
         // Never bind an unknown launch identity on a later, potentially recycled PID.
-        this.latest = null
         this.ownership.abandonCapture(captureIds)
         this.log(`process table read failed: ${String(error)}`)
         return null
       } finally {
         clearTimeout(timer)
-        this.sampledAt = this.now()
         this.inFlight = null
       }
     })

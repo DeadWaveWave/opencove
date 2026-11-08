@@ -38,6 +38,7 @@ it('keeps space membership and counts while omitting full nodes by default', asy
     nodes: undefined,
     nodeIds: [node.id],
     nodeCount: 1,
+    projectId: project.id,
   })
 })
 

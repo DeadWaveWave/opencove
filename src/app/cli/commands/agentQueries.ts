@@ -1,3 +1,4 @@
+import { projectTaskLinks } from '../core/agentMetadata'
 import { defineCommand } from '../core/command'
 import { agentReadCommand } from './agentRead'
 import { CliError, usage } from '../core/errors'
@@ -11,6 +12,7 @@ import type { CommandContext } from '../core/command'
 const runFields = [
   'nodeId',
   'title',
+  'taskNodeId',
   'sessionId',
   'provider',
   'state',
@@ -69,7 +71,7 @@ export const agentQueryCommands = [
     operation: 'agent.list',
     summary: 'List live agent run states and node titles',
     description:
-      'Returns {epoch, seq, agents}, one row per live agent session. Exited sessions are excluded by agent.list (so --state exited returns no rows); use agent get or wait for a known exited node. Titles come from node metadata; null means unbound or deleted. turn.startedAt is epoch milliseconds, or absent when no turn is active. Inside OpenCove, the default scope is your space; --project selects a whole project.',
+      'Returns {epoch, seq, agents}, one row per live agent session. Exited sessions are excluded by agent.list (so --state exited returns no rows); use agent get or wait for a known exited node. taskNodeId is the task whose linkedAgentNodeId points here (null if absent/ambiguous). Titles come from node metadata; null means unbound or deleted. turn.startedAt is epoch milliseconds, or absent when no turn is active. Inside OpenCove, the default scope is your space; --project selects a whole project.',
     options: {
       space: stringOption('Space ID'),
       state: {
@@ -106,15 +108,36 @@ export const agentQueryCommands = [
         seq: number
         agents: AgentRunSnapshot[]
       }
+      const rows = await Promise.all(
+        result.agents.map(async agent => ({
+          agent,
+          node: await nodeMetadata(ctx, agent.nodeId),
+        })),
+      )
+      const projects = [
+        ...new Set(
+          rows.map(({ node }) => node?.projectId ?? (ctx.options.project as string | undefined)),
+        ),
+      ]
+      const linksByProject = new Map(
+        await Promise.all(
+          projects.map(
+            async projectId => [projectId, await projectTaskLinks(ctx, projectId)] as const,
+          ),
+        ),
+      )
       return {
         ...result,
-        agents: await Promise.all(
-          result.agents.map(async agent => ({
-            ...agent,
-            lastEndedTurn: agent.lastEndedTurn ?? null,
-            title: (await nodeMetadata(ctx, agent.nodeId))?.title ?? null,
-          })),
-        ),
+        agents: rows.map(({ agent, node }) => ({
+          ...agent,
+          lastEndedTurn: agent.lastEndedTurn ?? null,
+          title: node?.title ?? null,
+          taskNodeId: agent.nodeId
+            ? (linksByProject
+                .get(node?.projectId ?? (ctx.options.project as string | undefined))
+                ?.get(agent.nodeId) ?? null)
+            : null,
+        })),
       }
     },
   }),
@@ -124,7 +147,7 @@ export const agentQueryCommands = [
     operation: 'agent.get',
     summary: 'Inspect an agent run-state snapshot with its node title',
     description:
-      'Returns the Worker snapshot plus title, including observed agents inside terminal nodes. A node without registered run state fails with agent.not_found (exit 1); use node get to inspect a terminal/note, or start/resume an agent window. State is runtime evidence, independent of persisted node status. Unknown/degraded is never ready. lastEndedTurn identifies the most recent ended turn with {id, outcome, endedAt} (epoch milliseconds), or null before any end in this incarnation. It persists while the next turn runs and resets on replacement/restart. turnOutcome keeps its legacy behavior: set on end (completed, failed, aborted or unknown), usually cleared on the next start; use lastEndedTurn for identity-bound results.',
+      'Returns the Worker snapshot plus title and taskNodeId (reverse task-owned link, null if absent/ambiguous), including observed agents inside terminal nodes. A node without registered run state fails with agent.not_found (exit 1); use node get to inspect a terminal/note, or start/resume an agent window. State is runtime evidence, independent of persisted node status. Unknown/degraded is never ready. lastEndedTurn identifies the most recent ended turn with {id, outcome, endedAt} (epoch milliseconds), or null before any end in this incarnation. It persists while the next turn runs and resets on replacement/restart. turnOutcome keeps its legacy behavior: set on end (completed, failed, aborted or unknown), usually cleared on the next start; use lastEndedTurn for identity-bound results.',
     options: { node: stringOption('Node ID', true) },
     buildInput: ({ options: o }) => ({ nodeId: o.node }),
     render: declaredOutput(runFields, { nodeId: 'node-123' }),
@@ -155,6 +178,7 @@ export const agentQueryCommands = [
       }
       return {
         ...snapshot,
+        taskNodeId: (await projectTaskLinks(ctx, node?.projectId)).get(nodeId) ?? null,
         lastEndedTurn: snapshot.lastEndedTurn ?? null,
         title: node?.title ?? null,
       }
@@ -167,12 +191,11 @@ export const agentQueryCommands = [
       '--node <selector> (--turn <turnId> | --until idle|waiting|exited|turn-end [--node <selector> ...] [--any|--all]) [--timeout <duration>] [options]',
     summary: 'Wait until agents reach a state or finish a turn',
     description: [
-      'Waits without sending any input. A state that already holds counts immediately. idle requires no active turn and never accepts an unknown or degraded state. After "agent prompt", save turnId and use --turn <turnId> to wait for that exact turn, even if a newer turn has started.',
-      '--turn requires one node and conflicts with --until, multiple --node options and --any. It waits through permission/question pauses and Claude queued provider continuations within that turn. Returns {nodeId, sessionId, turnId, outcome, endedAt?, state, persisted, memoryOnlyReason?}; every ended outcome exits 0, including failed, aborted and unknown. Read outcome before claiming success. Exact archived local ends survive Worker restarts and can be read without a live agent. Unknown/evicted turns exit 1; archive_unavailable is distinct. Inspect persisted before relying on restart durability.',
-      'Local exact history retains at most 60 turns per node for 30 days, with global caps of 20,000 records and 128 MiB. For remote agents, --turn uses mirrored snapshots/events; older turns can only be checked on the Worker that runs them. Missing remote history reports details.reason: remote_history_unavailable, not eviction.',
-      'State waits follow the current session; exact archived turn waits return the original session independently. Exact-turn errors keep their code and details.reason, include known nodeId/sessionId/turnId, and suggest concrete agent get, --screen or session final commands.',
-      '--until turn-end waits for a turn to finish after this command starts; use it only when you start waiting while the turn is still running. A finished turn is not necessarily a successful one: check turnOutcome (or endedTurnOutcome for turn-end).',
-      'With several --node options, --all (default) waits until every agent matches and --any until the first one does. The result lists the latest state of every selected agent. Budgets below 250ms are rejected with usage exit 2 before connecting. On timeout (default 20s) it exits 124, prints the last known states on stderr and nothing on stdout; Ctrl-C exits 130. The agents keep running either way.',
+      'Wait without sending input. After prompting, save turnId: prompt → delivery status → wait --turn <turnId> → read --turn <turnId> -o json. Never resend because waiting times out.',
+      '--turn selects one exact turn on one node, conflicts with --until/--any, and waits through permission/question pauses and provider continuations. Ended results include outcome, state, durability and retained deliveryIds/promptIds. Every ended outcome exits 0: check outcome and reply before claiming success.',
+      '--until waits for idle, waiting, exited or turn-end. Existing state matches immediately; idle requires no active turn and known, nondegraded state. turn-end observes an end after waiting starts. Multiple nodes use --all (default) or --any.',
+      'Exit codes: 0 condition met; 1 unavailable history; 2 invalid input; 124 timeout (lastKnown on stderr); 130 interruption. Agents keep running. Retention, restart/remote limits and error recovery: opencove skill.',
+      'deliveryIds are retained correlations of OpenCove deliveries with this turn, including refused or uncertain attempts. Membership proves neither submission nor consumption, and an empty list proves nothing either: delivery records live in memory only, are cleared when OpenCove restarts and expire 30 minutes after resolving; inspect each deliveryId with opencove agent delivery <id>. promptIds are the provider prompt IDs for this turn (Claude continuations included); agent delivery does not accept them.',
     ].join('\n\n'),
     options: {
       node: { ...stringOption('Node ID', true), multiple: true },
@@ -230,6 +253,8 @@ export const agentQueryCommands = [
       fields: [
         ...stateWaitRender.fields!,
         'turnId',
+        'deliveryIds',
+        'promptIds',
         'outcome',
         'endedAt',
         'persisted',
@@ -243,6 +268,8 @@ export const agentQueryCommands = [
               'nodeId',
               'sessionId',
               'turnId',
+              'deliveryIds',
+              'promptIds',
               'outcome',
               'endedAt',
               'persisted',

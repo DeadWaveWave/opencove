@@ -127,7 +127,11 @@ describe('remote project agent launch', () => {
       mode: 'new',
       model: null,
       mergedEnv: {},
-      agentSettings: { agentFullAccess: true, defaultTerminalProfileId: null },
+      agentSettings: {
+        agentFullAccess: true,
+        codexReuseRunningAppServer: false,
+        defaultTerminalProfileId: null,
+      },
       launchGeometry: { terminalGeometry: { cols: 80, rows: 24 } },
     })
 

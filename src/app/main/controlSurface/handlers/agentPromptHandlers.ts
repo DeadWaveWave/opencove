@@ -14,7 +14,7 @@ export function registerAgentPromptHandlers(
   surface: ControlSurface,
   hub: PtyStreamHub,
   providers: AgentProviderRegistry,
-): void {
+): PromptDeliveryService {
   const service = new PromptDeliveryService({
     runs: hub.agentRuns.registry,
     input: hub,
@@ -45,4 +45,5 @@ export function registerAgentPromptHandlers(
       ),
     defaultErrorCode: 'common.unexpected',
   })
+  return service
 }

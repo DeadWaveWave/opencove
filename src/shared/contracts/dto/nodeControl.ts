@@ -46,6 +46,7 @@ export interface CanvasNodeFrameDto {
 }
 
 export interface CompactNodeDataDto {
+  linkedAgentNodeId?: string | null
   kind: string
   requirement?: string
   status?: NodeTaskStatus

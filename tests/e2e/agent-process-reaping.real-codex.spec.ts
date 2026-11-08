@@ -39,9 +39,9 @@ test.describe('managed Agent tool process reaping with real Codex', () => {
       await mkdir(workspace)
       await mkdir(codexHome)
       // The shell records its identity, then exec preserves that PID as the detached sleep.
-      const api = await startResponsesApi(
-        `printf '%s %s\\n' "$$" "$PPID" > '${marker}'; exec sleep 30`,
-      )
+      const api = await startResponsesApi({
+        slowToolCommand: `printf '%s %s\\n' "$$" "$PPID" > '${marker}'; exec sleep 30`,
+      })
       await writeFile(
         join(codexHome, 'config.toml'),
         [

@@ -110,6 +110,7 @@ describe('registerRemoteAgentIpcHandlers', () => {
           resumeSessionId: null,
           env: null,
           agentFullAccess: null,
+          codexReuseRunningAppServer: null,
         },
       },
     )
@@ -157,6 +158,7 @@ describe('registerRemoteAgentIpcHandlers', () => {
 
     await invokeHandledIpc(launchHandler, null, {
       provider: 'codex',
+      codexReuseRunningAppServer: true,
       cwd: '/tmp/persisted-workspace',
       prompt: 'hello',
       executablePathOverride: '/opt/bin/codex',
@@ -169,6 +171,7 @@ describe('registerRemoteAgentIpcHandlers', () => {
       expect.objectContaining({
         payload: expect.objectContaining({
           executablePathOverride: '/opt/bin/codex',
+          codexReuseRunningAppServer: true,
           cols: 132,
           rows: 41,
         }),

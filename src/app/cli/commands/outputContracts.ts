@@ -1,3 +1,4 @@
+import { agentMetadataFields } from '../core/agentMetadata'
 import { declaredOutput, noResultOutput } from './declaredOutput'
 import type { RenderSpec } from '../core/command'
 const nodeFields = [
@@ -47,10 +48,24 @@ const dataFields = [
   'taskId',
   'runtimeKind',
 ]
-const summaryDataFields = ['kind', 'status', 'priority', 'requirement', 'tags', 'url']
+const summaryDataFields = [
+  'kind',
+  'status',
+  'priority',
+  'requirement',
+  'tags',
+  'url',
+  'linkedAgentNodeId',
+]
 export const nodeListOutput: RenderSpec = {
   listKey: 'nodes',
-  fields: [...nodeFields, 'data', ...summaryDataFields.map(field => `data.${field}`)],
+  fields: [
+    ...nodeFields,
+    ...agentMetadataFields,
+    'taskNodeId',
+    'data',
+    ...summaryDataFields.map(field => `data.${field}`),
+  ],
   fieldHints: Object.fromEntries(
     dataFields
       .filter(field => !summaryDataFields.includes(field))
@@ -131,7 +146,12 @@ export const spaceListOutput: RenderSpec = {
 }
 export const spaceGetOutput: RenderSpec = {
   itemKey: 'space',
-  fields: [...spaceFields, ...nodeListOutput.fields!.map(field => `nodes.${field}`)],
+  fields: [
+    ...spaceFields,
+    'projectId',
+    'nodeCount',
+    ...nodeListOutput.fields!.map(field => `nodes.${field}`),
+  ],
   examples: [
     'opencove space get --space s --fields id,nodes',
     '{"projectId":"p","activeSpaceId":"s","space":{"id":"s","nodes":[]}}',

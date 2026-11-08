@@ -51,11 +51,8 @@ export class AgentProcessReaper {
     const platform = dependencies.platform ?? process.platform
     this.enabled = platform === 'darwin' || platform === 'linux'
     this.ownership = new AgentProcessOwnership(message => this.log(message))
-    this.sampler = new AgentProcessSampler(
-      this.ownership,
-      dependencies.readTable,
-      message => this.log(message),
-      this.now,
+    this.sampler = new AgentProcessSampler(this.ownership, dependencies.readTable, message =>
+      this.log(message),
     )
   }
   public async track(sessionId: string, rootPid: number): Promise<void> {

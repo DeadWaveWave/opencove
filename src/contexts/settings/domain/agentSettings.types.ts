@@ -97,6 +97,7 @@ export interface AgentSettings
   defaultProvider: AgentProvider
   agentProviderOrder: AgentProvider[]
   agentFullAccess: boolean
+  codexReuseRunningAppServer: boolean
   defaultTerminalProfileId: TerminalProfileId
   agentExecutablePathOverrideByProvider: AgentExecutablePathOverrideByProvider<AgentProvider>
   customModelEnabledByProvider: AgentCustomModelEnabledByProvider<AgentProvider>

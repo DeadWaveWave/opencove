@@ -23,9 +23,10 @@ Each has its own switch in Settings › Notifications and a tile in the Control 
 ## Unanswered Agents
 
 An Agent whose card was shown and not yet answered **needs you**, though its runtime status is only
-standby: the pill, its list, the sidebar inbox and its project tile badge count it with the
-Agents blocked on a prompt (`summarizeAgentActivity(workspaces, needsYou)`), waiting since its
-card arrived.
+standby. Everywhere the shell counts or labels Agents waiting for you, it is one of them, waiting
+since its card arrived: the pill and its list, the sidebar inbox, project tile badges, Agent rows
+and each Space's count and mini map. One rule decides it (`resolveNeedsYouSinceMs`); window
+signals on the canvas keep following the runtime status.
 
 - The pending list is `useAgentAttentionStore`: transient, never persisted, newest first, at most 20.
   The router adds to it (`show-card`) and takes an Agent out when it works again (`clear-card`).
@@ -34,6 +35,8 @@ card arrived.
   acknowledges the Agent before it focuses it.
 - A card that retracts, by its countdown or because the list opened, answers nothing.
 - With in-app cards switched off nothing is pending, so a standby Agent is not counted.
+- Only standby counts: an Agent that works, is blocked on a prompt, exits or fails keeps the
+  status it shows without the card, even while its card is still pending.
 
 ## Owners
 

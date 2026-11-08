@@ -108,6 +108,7 @@ describe('agent terminal layout sync', () => {
         bumpAgentLaunchToken: () => 1,
         isAgentLaunchTokenCurrent: () => true,
         agentFullAccess: true,
+        codexReuseRunningAppServer: false,
         defaultTerminalProfileId: 'wsl:Ubuntu',
         agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
       })

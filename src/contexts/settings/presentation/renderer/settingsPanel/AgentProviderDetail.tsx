@@ -1,4 +1,5 @@
 import React from 'react'
+import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { Button } from '@app/renderer/components/ui/Button'
 import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { ArrowLeftIcon, RefreshIcon } from '@app/renderer/components/ui/pixelIcons'
@@ -19,6 +20,7 @@ export function AgentProviderDetail({
   onBack,
   isDefaultProvider,
   onMakeDefault,
+  onChangeCodexReuseRunningAppServer,
   ...configuration
 }: React.ComponentProps<typeof AgentProviderConfigurePanel> & {
   availability?: AgentProviderAvailability
@@ -29,6 +31,7 @@ export function AgentProviderDetail({
   onRefresh: () => void
   onBack: () => void
   isDefaultProvider: boolean
+  onChangeCodexReuseRunningAppServer: (enabled: boolean) => void
   onMakeDefault: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
@@ -142,6 +145,21 @@ export function AgentProviderDetail({
           </div>
         </details>
       </section>
+      {provider === 'codex' ? (
+        <SettingRow
+          id="settings-codex-reuse-running-app-server"
+          label={t('settingsPanel.agent.codexReuseRunningAppServerLabel')}
+          description={t('settingsPanel.agent.codexReuseRunningAppServerHelp')}
+          control={
+            <Toggle
+              data-testid="settings-codex-reuse-running-app-server"
+              checked={settings.codexReuseRunningAppServer}
+              label={t('settingsPanel.agent.codexReuseRunningAppServerLabel')}
+              onCheckedChange={onChangeCodexReuseRunningAppServer}
+            />
+          }
+        />
+      ) : null}
       <AgentProviderConfigurePanel {...configuration} />
     </div>
   )

@@ -1,8 +1,8 @@
-import { execFile, execFileSync } from 'node:child_process'
-import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
+import { execFileSync } from 'node:child_process'
+import { mkdir, mkdtemp, realpath, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve as resolvePath } from 'node:path'
-import { startResponsesApi } from './agent.prompt.real-codex.helpers'
+import { join } from 'node:path'
+import { cli, prompt, startResponsesApi, writeCodexConfig } from './agent.prompt.real-codex.helpers'
 import { expect, test } from '@playwright/test'
 import type { AgentRunSnapshot } from '../../src/shared/contracts/dto/agentRunState'
 import { launchApp, seedWorkspaceState } from './workspace-canvas.helpers'
@@ -11,48 +11,6 @@ import { resolveFirstAgentSessionId } from './workspace-canvas.agent-status-watc
 // Opt-in local acceptance with the installed Codex CLI, an isolated CODEX_HOME and a local
 // Responses API stand-in (no credentials, no model calls). Run with
 // OPENCOVE_TEST_USE_REAL_AGENTS=1 pnpm exec playwright test tests/e2e/agent.prompt.real-codex.spec.ts
-
-// Drive delivery through the CLI with the desktop credential, as a script outside the app would.
-async function prompt(userDataDir: string, nodeId: string, text: string) {
-  return await new Promise<{ exitCode: number; stdout: string; stderr: string }>(done => {
-    const child = execFile(
-      process.execPath,
-      [
-        resolvePath('out/cli/opencove.mjs'),
-        'agent',
-        'prompt',
-        '--node',
-        nodeId,
-        '--text-file',
-        '-',
-      ],
-      { env: { ...process.env, OPENCOVE_USER_DATA_DIR: userDataDir }, timeout: 60_000 },
-      (error, stdout, stderr) =>
-        done({
-          exitCode: error ? Number((error as { code?: unknown }).code ?? 1) : 0,
-          stdout,
-          stderr,
-        }),
-    )
-    child.stdin?.end(text)
-  })
-}
-
-async function cli(userDataDir: string, args: string[]) {
-  return await new Promise<{ exitCode: number; stdout: string; stderr: string }>(done => {
-    execFile(
-      process.execPath,
-      [resolvePath('out/cli/opencove.mjs'), ...args],
-      { env: { ...process.env, OPENCOVE_USER_DATA_DIR: userDataDir }, timeout: 60_000 },
-      (error, stdout, stderr) =>
-        done({
-          exitCode: error ? Number((error as { code?: unknown }).code ?? 1) : 0,
-          stdout,
-          stderr,
-        }),
-    )
-  })
-}
 
 test.describe('agent.prompt with the real Codex CLI', () => {
   test.skip(process.env.OPENCOVE_TEST_USE_REAL_AGENTS !== '1', 'Requires installed real Codex CLI')
@@ -74,25 +32,8 @@ test.describe('agent.prompt with the real Codex CLI', () => {
     await mkdir(workspace, { recursive: true })
     await mkdir(codexHome, { recursive: true })
     const api = await startResponsesApi()
-    await writeFile(
-      join(codexHome, 'config.toml'),
-      [
-        'model = "test-model"',
-        'model_provider = "mock"',
-        'check_for_update_on_startup = false',
-        '',
-        '[model_providers.mock]',
-        'name = "mock"',
-        `base_url = "${api.url}"`,
-        'wire_api = "responses"',
-        'env_key = "OPENCOVE_TEST_MOCK_API_KEY"',
-        '',
-        `[projects."${workspace}"]`,
-        'trust_level = "trusted"',
-        '',
-      ].join('\n'),
-    )
-    const { electronApp, window } = await launchApp({
+    await writeCodexConfig(codexHome, workspace, api.url)
+    const { electronApp, window: page } = await launchApp({
       userDataDir,
       cleanupUserDataDir: false,
       env: {
@@ -103,7 +44,7 @@ test.describe('agent.prompt with the real Codex CLI', () => {
       },
     })
     try {
-      await seedWorkspaceState(window, {
+      await seedWorkspaceState(page, {
         activeWorkspaceId: 'real-codex',
         settings: {
           defaultProvider: 'codex',
@@ -136,13 +77,11 @@ test.describe('agent.prompt with the real Codex CLI', () => {
           },
         ],
       })
-      await window.locator('[data-testid="task-node-run-agent"]').click()
-      await expect
-        .poll(() => resolveFirstAgentSessionId(window), { timeout: 30_000 })
-        .not.toBeNull()
-      const sessionId = (await resolveFirstAgentSessionId(window))!
+      await page.locator('[data-testid="task-node-run-agent"]').click()
+      await expect.poll(() => resolveFirstAgentSessionId(page), { timeout: 30_000 }).not.toBeNull()
+      const sessionId = (await resolveFirstAgentSessionId(page))!
       const snapshot = () =>
-        window.evaluate(
+        page.evaluate(
           id =>
             window.opencoveApi.controlSurface.invoke<AgentRunSnapshot>({
               kind: 'query',
@@ -203,7 +142,7 @@ test.describe('agent.prompt with the real Codex CLI', () => {
       expect(busy.exitCode, JSON.stringify(busy)).toBe(0)
       const busyTurn = JSON.parse(busy.stdout).turnId
       await expect.poll(async () => (await snapshot()).turn?.id, { timeout: 15_000 }).toBe(busyTurn)
-      await window.waitForTimeout(800)
+      await page.waitForTimeout(800)
       const steer = await prompt(userDataDir, nodeId, 'Steer: also mention CHERRY')
       expect(steer.exitCode, JSON.stringify(steer)).toBe(0)
       const steered = JSON.parse(steer.stdout)
@@ -239,16 +178,16 @@ test.describe('agent.prompt with the real Codex CLI', () => {
       expect(refused.exitCode, JSON.stringify(refused)).toBe(1)
       expect(refused.stdout).toBe('')
       expect(refused.stderr).toContain('agent.blocked')
-      await window.waitForTimeout(2_000)
+      await page.waitForTimeout(2_000)
       expect(api.main()).toHaveLength(turnsBefore)
-      const screen = await window
+      const screen = await page
         .locator('.terminal-node')
-        .filter({ has: window.locator('.terminal-node__status') })
+        .filter({ has: page.locator('.terminal-node__status') })
         .first()
         .innerText()
       expect(screen).not.toContain('MUST_NOT_ARRIVE')
       await testInfo.attach('approval-dialog', {
-        body: await window.screenshot(),
+        body: await page.screenshot(),
         contentType: 'image/png',
       })
     } finally {

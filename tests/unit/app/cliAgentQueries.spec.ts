@@ -56,7 +56,7 @@ it('lists titles and defaults to the caller space, preserving the cursor envelop
   expect(JSON.parse(f.out())).toEqual({
     epoch: 'e',
     seq: 5,
-    agents: [{ ...snapshot, title: 'Shell' }],
+    agents: [{ ...snapshot, title: 'Shell', taskNodeId: null }],
   })
   expect(f.out()).toMatchSnapshot()
 })
@@ -108,7 +108,9 @@ it.each([undefined, 'state,title'])(
       await run(['agent', 'get', '--node', '@self', ...(fields ? ['--fields', fields] : [])], f.io),
     ).toBe(0)
     expect(JSON.parse(f.out())).toEqual(
-      fields ? { state: snapshot.state, title: 'Shell' } : { ...snapshot, title: 'Shell' },
+      fields
+        ? { state: snapshot.state, title: 'Shell' }
+        : { ...snapshot, title: 'Shell', taskNodeId: null },
     )
   },
 )

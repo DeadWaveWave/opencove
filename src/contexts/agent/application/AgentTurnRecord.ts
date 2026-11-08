@@ -59,6 +59,12 @@ export function finalTurnMessage(record: RetainedAgentTurn) {
     sessionId: record.sessionId,
     turnId: record.turnId,
     outcome: record.outcome,
+    // Older archived turns retained only the final prompt identity.
+    promptIds: record.promptIds
+      ? [...new Set([...record.promptIds, ...(record.promptId ? [record.promptId] : [])])]
+      : record.promptId
+        ? [record.promptId]
+        : [],
     endedAt: record.endedAt,
     ...turnDurability(record.persistence),
   }

@@ -66,7 +66,8 @@ export async function waitForAgents(
   let evidence: AgentWaitEvidence | undefined
   const conflicts = new Map<string, Set<string>>()
   let projection = new AgentWaitProjection(nodeIds, options.turnId, conflicts)
-  const success = () => {
+  const success = async () => {
+    await evidence?.enrichIdentifiers()
     const ended = evidence?.result
     const current = projection.snapshot(nodeIds[0])
     return ended
@@ -136,7 +137,9 @@ export async function waitForAgents(
       // eslint-disable-next-line no-await-in-loop
       const initial = await evaluate()
       if (initial === 'done') {
-        return success()
+        // Complete optional IO before finally aborts/cleans up this wait.
+        // eslint-disable-next-line no-await-in-loop
+        return await success()
       }
       if (initial === 'resync') {
         continue
@@ -234,7 +237,9 @@ export async function waitForAgents(
       }
       controller.signal.throwIfAborted()
       if (!resync && satisfied()) {
-        return success()
+        // Complete optional IO before finally aborts/cleans up this wait.
+        // eslint-disable-next-line no-await-in-loop
+        return await success()
       }
     }
     controller.signal.throwIfAborted()
