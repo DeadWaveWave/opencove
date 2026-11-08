@@ -9,6 +9,8 @@ export interface HookFinalMessage {
   nodeId: string | null
   sessionId: string
   turnId: string
+  deliveryIds?: string[]
+  promptIds?: string[]
   promptId?: string
   outcome: TurnOutcome
   message: string

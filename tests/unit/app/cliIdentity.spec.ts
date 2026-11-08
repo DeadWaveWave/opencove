@@ -40,9 +40,11 @@ for (const [kind, args, id, name, operation, key] of [
     const f = identityFixture()
     expect(await run([...args, `--${kind}`, selector], f.io), JSON.stringify(f.requests)).toBe(0)
     expect(f.requests.at(-1)).toMatchObject({ id: operation, payload: { [key]: id } })
-    expect(f.requests.filter(request => request.id === `${kind}.list`).length).toBeLessThanOrEqual(
-      1,
-    )
+    expect(
+      f.requests.filter(
+        request => request.id === `${kind}.list` && request.payload?.kind !== 'task',
+      ).length,
+    ).toBeLessThanOrEqual(1)
   })
   it.each(['missing', id.slice(0, 5), name.toUpperCase()])(
     `reports ${kind} not found: %s`,
@@ -170,7 +172,7 @@ it('uses the session project for names and an explicit project overrides it', as
 it('keeps explicit locators rather than adding a default space', async () => {
   const f = identityFixture()
   expect(await run(['node', 'list', '--space-name', 'Main'], f.io)).toBe(0)
-  expect(f.requests.at(-1)?.payload.space).toEqual({
+  expect(f.requests.find(r => r.id === 'node.list')?.payload.space).toEqual({
     kind: 'spaceName',
     name: 'Main',
     projectId: project.id,
@@ -311,9 +313,11 @@ it.each(targets)(
     }
     args.push(`--${flag}`, value)
     expect(await run(args, f.io), JSON.stringify(f.requests)).toBe(0)
-    expect(f.requests.filter(request => request.id === `${kind}.list`).length).toBeLessThanOrEqual(
-      1,
-    )
+    expect(
+      f.requests.filter(
+        request => request.id === `${kind}.list` && request.payload?.kind !== 'task',
+      ).length,
+    ).toBeLessThanOrEqual(1)
     // No symbolic selector may cross the CLI boundary into an operation payload.
     expect(JSON.stringify(f.requests.map(request => request.payload))).not.toContain('@self')
   },

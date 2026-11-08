@@ -170,7 +170,13 @@ test('exact turn read and wait survive a complete Worker restart, then disappear
     // No second prompt or provider relaunch is needed to read the historical original session.
     const after = await cli(['agent', 'read', '--node', nodeId, '--turn', turnId])
     expect(after.code, after.stderr).toBe(0)
-    expect(JSON.parse(after.stdout)).toMatchObject({ ...reply, persisted: true })
+    // Delivery records are volatile: the restarted Worker cannot correlate earlier deliveries.
+    const { deliveryIds: _deliveriesBeforeRestart, ...durableReply } = reply
+    expect(JSON.parse(after.stdout)).toMatchObject({
+      ...durableReply,
+      persisted: true,
+      deliveryIds: [],
+    })
     const waited = await cli([
       'agent',
       'wait',

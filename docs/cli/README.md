@@ -90,10 +90,19 @@ Terminals keep lifecycle in state, tasks keep task status, and other nodes use n
 The live agent.list operation excludes exited sessions; use agent get for a known
 exited node's snapshot. Context reports unknown when that run is absent from list.
 
-`node list` keeps its raw contract: `status` is session lifecycle for agents and
-terminals, `data.status` is task workflow status. Its table's STATE column shows
-one of those raw values. A running session can have an idle agent; use agent
-list/get or context's agent state to distinguish working, waiting and idle.
+`node list` preserves `status` (session lifecycle) and adds `sessionStatus` as its
+explicit alias on agents and terminals. Both node list and context add
+`agentState: {state, quality, turnId}` for agent nodes and observed agents inside
+terminal nodes. `agentState.state: working` means **the agent is working**;
+`sessionStatus: running` only means the session is alive. Missing or displaced
+observations yield unknown/degraded for agent nodes; plain terminals have no
+agentState. Context retains its existing state field semantics above.
+
+`agent get`, `agent list`, and context agent neighbors include `taskNodeId`: the
+ID of the task whose `linkedAgentNodeId` points to the agent, or null for no unique
+link. The task pointer is authoritative; stale agent data.taskId never creates a
+link. Compact task summaries include data.linkedAgentNodeId, avoiding task detail
+queries. Joins cover the target project, including tasks outside the agent's space.
 
 ## Agent orchestration and bundled skill
 
@@ -363,6 +372,9 @@ lists keep their top-level totals.
 Nested node data (for example tags) is not truncated. Server-side filesystem read bounds remain separate and do not
 provide a total beyond the entries returned by the Worker.
 
+`space list` and `space get` use the same space-row fields: id, name, directoryPath,
+targetMountId, parentSpaceId, boundary, sortOrder, nodeIds, projectId and nodeCount.
+The legacy projectId/activeSpaceId envelopes remain. `space get` retains nodes;
 `space list` keeps IDs, directoryPath, nodeIds and nodeCount but omits full node
 objects by default. Request them explicitly with `--fields nodes`, or select
 nested fields with `--fields id,name,nodes.id`. These compact queries remain useful

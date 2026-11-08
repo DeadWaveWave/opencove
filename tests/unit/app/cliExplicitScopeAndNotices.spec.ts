@@ -200,5 +200,6 @@ it('retains a valid agent snapshot when its node is concurrently deleted', async
     state: 'exited',
     lastEndedTurn: null,
     title: null,
+    taskNodeId: null,
   })
 })

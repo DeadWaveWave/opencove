@@ -170,7 +170,7 @@ Options:
   --project <id>  Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
-Projectable fields: id, name, directoryPath, targetMountId, parentSpaceId, boundary, sortOrder, nodeIds, nodes, nodes.id, nodes.kind, nodes.title, nodes.projectId, nodes.spaceId, nodes.frame, nodes.frame.x, nodes.frame.y, nodes.frame.width, nodes.frame.height, nodes.status, nodes.sessionId, nodes.data, nodes.data.kind, nodes.data.status, nodes.data.priority, nodes.data.requirement, nodes.data.tags, nodes.data.url
+Projectable fields: id, name, directoryPath, targetMountId, parentSpaceId, boundary, sortOrder, nodeIds, nodes, projectId, nodeCount, nodes.id, nodes.kind, nodes.title, nodes.projectId, nodes.spaceId, nodes.frame, nodes.frame.x, nodes.frame.y, nodes.frame.width, nodes.frame.height, nodes.status, nodes.sessionId, nodes.sessionStatus, nodes.agentState, nodes.agentState.state, nodes.agentState.quality, nodes.agentState.turnId, nodes.taskNodeId, nodes.data, nodes.data.kind, nodes.data.status, nodes.data.priority, nodes.data.requirement, nodes.data.tags, nodes.data.url, nodes.data.linkedAgentNodeId
 
 Projection example:
   opencove space get --space s --fields id,nodes

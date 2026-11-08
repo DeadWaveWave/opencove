@@ -1,3 +1,4 @@
+import type { GetSpaceResult } from '../../../shared/contracts/dto'
 import { agentDeliveryCommand } from './agentDelivery'
 import { agentPromptCommand } from './agent'
 import { agentQueryCommands } from './agentQueries'
@@ -100,6 +101,7 @@ export const commands: Command[] = [
         ...result,
         spaces: result.spaces.map(({ nodes, ...space }) => ({
           ...space,
+          ...(result.projectId ? { projectId: result.projectId } : {}),
           nodeCount: space.nodeIds?.length ?? nodes?.length ?? 0,
           ...(includeNodes ? { nodes } : {}),
         })),
@@ -114,6 +116,17 @@ export const commands: Command[] = [
     render: spaceGetOutput,
     options: { space: stringOption('Space ID', true) },
     buildInput: ({ options: o }) => ({ spaceId: o.space }),
+    async execute({ invoke, input }) {
+      const result = (await invoke('space.get', input)) as GetSpaceResult
+      return {
+        ...result,
+        space: {
+          ...result.space,
+          projectId: result.projectId,
+          nodeCount: result.space.nodeIds?.length ?? result.space.nodes?.length ?? 0,
+        },
+      }
+    },
   }),
   defineCommand({
     path: ['api', 'ops'],

@@ -94,7 +94,7 @@ Options:
   --priority <low|medium|high|urgent>  Set the task priority
   --tag <tag>                          Set task tags; repeat for each tag
   --title <text>                       Set the node title
-  --frame <json>                       Set x, y, width and height as a JSON object
+  --frame <json>                       Set x, y, width and height as a JSON object; task minimum: width 220, height 260; adjusted sizes are reported
   --focus                              Focus after creation
 
 Table output (-o table): not supported.
@@ -229,7 +229,7 @@ Options:
   --status <todo|doing|ai_done|done>   Set the task status
   --node <id>                          Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
   --title <text>                       Set the node title
-  --frame <json>                       Set x, y, width and height as a JSON object
+  --frame <json>                       Set x, y, width and height as a JSON object; task minimum: width 220, height 260; adjusted sizes are reported
   --space <selector>                   Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>                       Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 

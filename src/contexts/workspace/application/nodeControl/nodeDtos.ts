@@ -78,6 +78,7 @@ export function toCompactNodeData(node: { kind: unknown; task?: unknown }): {
   priority?: NodeTaskPriority
   tags?: string[]
   url?: string
+  linkedAgentNodeId?: string | null
 } {
   const kind = typeof node.kind === 'string' ? node.kind : 'unknown'
   const data = isRecord(node.task) ? node.task : {}
@@ -88,6 +89,7 @@ export function toCompactNodeData(node: { kind: unknown; task?: unknown }): {
       status: normalizeTaskStatus(data.status),
       priority: normalizeTaskPriority(data.priority),
       tags: normalizeStringArray(data.tags),
+      linkedAgentNodeId: normalizeOptionalString(data.linkedAgentNodeId),
     }
   }
   if (kind === 'website') {

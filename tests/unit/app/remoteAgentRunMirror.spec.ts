@@ -345,8 +345,17 @@ it('waits for remote snapshot/events but identifies older history as unavailable
     const pending = wait('remote-epoch-turn-1')
     await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
     f.remote.observe('Stop', 'standby')
-    expect(await pending).toMatchObject({ turnId: 'remote-epoch-turn-1', outcome: 'completed' })
-    expect(query.mock.calls.filter(([id]) => id === 'agent.finalMessage')).toHaveLength(0)
+    const completed = await pending
+    expect(completed).toMatchObject({
+      turnId: 'remote-epoch-turn-1',
+      outcome: 'completed',
+      persisted: false,
+    })
+    expect(completed).not.toHaveProperty('deliveryIds')
+    expect(completed).not.toHaveProperty('promptIds')
+    expect(
+      query.mock.calls.filter(([id]) => id === 'agent.finalMessage').map(([, payload]) => payload),
+    ).toEqual([{ nodeId: 'node', turnId: 'remote-epoch-turn-1' }])
     f.remote.observe('UserPromptSubmit', 'working')
     f.remote.observe('StopFailure', 'standby')
     expect(await wait('remote-epoch-turn-2')).toMatchObject({ outcome: 'failed' })

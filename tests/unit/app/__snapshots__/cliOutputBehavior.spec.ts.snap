@@ -75,7 +75,7 @@ Content by kind: note → data.text; task → data.requirement, data.status, dat
 
 Lists per-kind summaries: data carries kind plus requirement, status, priority and tags for tasks, or url for websites; data carries only kind for notes, agents and terminals. Read full content, such as note text, with "opencove node get --node <id>".
 
-data.status is task status. Top-level status is session lifecycle (for example running or exited) for agents and terminals, not whether an agent is idle or working. STATE shows task status or session lifecycle. Use "opencove agent list" or "opencove agent get --node <selector>" for agent run state; context exposes it as state and keeps lifecycle as sessionStatus.
+data.status is task status. Top-level status is session lifecycle (for example running or exited) for agents and terminals, not whether an agent is idle or working. STATE shows task status or session lifecycle; agentState is the separate work-state field. sessionStatus aliases lifecycle status. agentState {state, quality, turnId} reports work for agents and observed agents in terminals; state working means the agent is working. Missing observations are unknown/degraded. context keeps its legacy state field.
 
 When no target is given, inside OpenCove defaults to your own space; project options default to your own project.
 
@@ -92,7 +92,7 @@ Options:
 List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
 
 Table output (-o table): supported.
-Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.status, data.priority, data.requirement, data.tags, data.url
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, sessionStatus, agentState, agentState.state, agentState.quality, agentState.turnId, taskNodeId, data, data.kind, data.status, data.priority, data.requirement, data.tags, data.url, data.linkedAgentNodeId
 
 Projection example:
   opencove node list --fields id,data.status
@@ -119,7 +119,7 @@ Options:
   --status <todo|doing|ai_done|done>   Set the task status
   --node <id>                          Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
   --title <text>                       Set the node title
-  --frame <json>                       Set x, y, width and height as a JSON object
+  --frame <json>                       Set x, y, width and height as a JSON object; task minimum: width 220, height 260; adjusted sizes are reported
   --space <selector>                   Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>                       Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
@@ -153,7 +153,7 @@ Options:
 List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
 
 Table output (-o table): supported.
-Projectable fields: id, name, directoryPath, targetMountId, parentSpaceId, boundary, sortOrder, nodeIds, nodes, nodeCount, projectId, nodes.id, nodes.kind, nodes.title, nodes.projectId, nodes.spaceId, nodes.frame, nodes.frame.x, nodes.frame.y, nodes.frame.width, nodes.frame.height, nodes.status, nodes.sessionId, nodes.data, nodes.data.kind, nodes.data.status, nodes.data.priority, nodes.data.requirement, nodes.data.tags, nodes.data.url
+Projectable fields: id, name, directoryPath, targetMountId, parentSpaceId, boundary, sortOrder, nodeIds, nodes, nodeCount, projectId, nodes.id, nodes.kind, nodes.title, nodes.projectId, nodes.spaceId, nodes.frame, nodes.frame.x, nodes.frame.y, nodes.frame.width, nodes.frame.height, nodes.status, nodes.sessionId, nodes.sessionStatus, nodes.agentState, nodes.agentState.state, nodes.agentState.quality, nodes.agentState.turnId, nodes.taskNodeId, nodes.data, nodes.data.kind, nodes.data.status, nodes.data.priority, nodes.data.requirement, nodes.data.tags, nodes.data.url, nodes.data.linkedAgentNodeId
 
 Projection example:
   opencove space list --fields id,name

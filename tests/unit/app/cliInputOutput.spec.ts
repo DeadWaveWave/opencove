@@ -417,7 +417,7 @@ it('keeps generic mutation projection unavailable before IO', async () => {
   expect(f.fetch).not.toHaveBeenCalled()
 })
 
-it.each(['data.text', 'nodes.data.text', 'data.prompt', 'data.linkedAgentNodeId'])(
+it.each(['data.text', 'nodes.data.text', 'data.prompt'])(
   'directs omitted content to node get: %s',
   async field => {
     const f = fixture()

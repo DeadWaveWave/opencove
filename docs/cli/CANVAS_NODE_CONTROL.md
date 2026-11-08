@@ -107,6 +107,12 @@ Note:
 Task:
 
 - Create 要求 `requirement`。
+- Minimum task frame: width 220, height 260 canvas units; supplied dimensions are
+  clamped by canonical sizing (maximum width 360, height 520). CLI results retain
+  node.frame and add appliedFrame (the full applied frame) and frameAdjusted.
+  Only explicitly supplied frame components count as adjusted; defaults do not.
+  An adjustment prints one stderr notice, including with --focus; JSON stdout
+  remains directly parseable. No CLI-side resizing or second mutation occurs.
 - Priority 默认 `medium`。
 - Tags 可重复传入。
 - Update 可修改 title、requirement、priority、status、tags 和 frame。

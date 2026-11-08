@@ -84,8 +84,10 @@ only, even when piped. JSON includes `source: 'hook' | 'transcript'` and `trunca
 hook results include `outcome`, which can be failed/aborted/unknown.
 `--turn` uses hook history only. `agent.final_message_unavailable` preserves its
 `details.reason`: `turn_not_ended`, `turn_not_found` (including eviction),
-`provider_sent_no_message`, or `no_ended_turn`. History keeps the last 8 ended turns
-per incarnation in memory; restart or replacement clears it. Remote exact waits use mirrored
+`provider_sent_no_message`, or `no_ended_turn`. Prompt-ID selection keeps the last 8 ended turns per incarnation in memory.
+Exact turn-ID selection retains up to 50 local turns for 30 days in the private
+archive (global caps: 20,000 records / 128 MiB); inspect persisted and memoryOnlyReason.
+Restart or replacement clears incarnation memory, not archived exact turns. Remote exact waits use mirrored
 snapshots/events only. Older remote turns require the Worker that runs them;
 `details.reason: remote_history_unavailable` identifies that limit, not eviction. Correlated local
 Claude hooks currently provide content. Never resend just because reading fails.
@@ -100,8 +102,9 @@ The retained prefix remains the result; those paths may not contain the rest.
 Exact-read errors include a plain message and a concrete recovery hint while keeping
 `code` and `details.reason` unchanged. Known `nodeId`, `sessionId` and `turnId` are
 included in details. `turn_not_ended` suggests waiting for that exact turn;
-`turn_not_found` means it is not in the session's last eight ended turns (eviction,
-a different session, or restart) and suggests `agent get`. Message-free, absent
+`turn_not_found` means it is not in retained history (eviction, a different session,
+or restart without archived evidence) and suggests `agent get`. Provider prompt-ID
+selection has an eight-ended-turn window; exact local turn IDs use archive retention. Message-free, absent
 ended-history, and remote-history errors point to `--screen` or `session final`;
 inspect older remote turns on the Worker that runs the agent. Waiting follows the
 node's current session and ignores displaced-session state.
@@ -144,3 +147,74 @@ agent's work; a closed window does not mean that the containing turn finished.
 A completed turn means the agent stopped, not that your request was fulfilled —
 check the reply covers what you asked before marking work done.
 Scripts should read replies with `-o json`.
+
+## Prompt command reference
+
+Prompting works only for agent windows OpenCove launched from tasks, the agent launcher, or node create agent. Agents typed into terminal shells (including shim/launcher invocations) are unsupported for both Claude Code and Codex. Option-like model/session values have no verified lifecycle coverage.
+
+Supported providers: local Claude Code with installed lifecycle hooks (Stop or StopFailure); local Codex with trusted lifecycle hooks for this invocation (Stop). Both require the default executable path (no override in Settings → agent executable), authoritative hook state and bracketed paste. Custom executable paths refuse with executable_override_unverified; remove the override and launch a new agent window. Codex notify-only, daemon reuse, file-only telemetry and Windows are unsupported.
+
+Idle agents need a hook-observed completed turn. Working agents receive steering in the current OpenCove turn by default; --if-busy refuse preserves busy refusal. Use --expect-turn <turnId> to require steering into that exact active turn: idle or a changed turn refuses before paste, and the same condition is rechecked before Enter. A Worker without expectTurnId support refuses this option without input. Waiting, unknown or degraded agents refuse. The CLI negotiates whenBusy through system.operation.describe before sending; older Workers retain busy refusal. Use exactly one text source; --text-file - reads stdin. Text must be valid Unicode, nonblank and at most 32 KiB in UTF-8 before newline normalization; trailing newlines are removed.
+
+This attempts to paste into the current editor; any existing draft may be submitted with it. Run "opencove agent read --node <selector> --screen" to check for drafts and dialogs first: unseen dialogs, including one-time settings notices, may consume the input.
+
+Success (submission_observed) means the provider reported a qualifying submission after this Enter. Codex steering returns dispatched (exit 0) until consumption is confirmed; check opencove agent delivery <deliveryId> --wait. The CLI generates and prints the deliveryId before sending so a lost response remains queryable. It does not prove the model read exactly this text, and the turn may still be running: wait for it with "opencove agent wait --node <selector> --turn <turnId>". Save the returned turnId, check its outcome, then read the correlated Claude reply with "opencove agent read --node <selector> --turn <turnId>". The exact checks and their trust limits are in docs/agent/PROMPT_DELIVERY.md.
+
+textComparison is matched, different, or unavailable. claude-code-v1 compares equality modulo newline representation and trailing ASCII whitespace (space, tab, LF), verified for Claude Code 2.1.319; leading and interior whitespace remain significant. Codex comparison is unavailable until a profile is verified. Optional promptId is diagnostic. The submitted text differed from what you sent; an existing draft may have been included. Do not resend; inspect the screen. Different still exits 0: stop automatic orchestration, inspect with opencove agent read --node <id> --screen, and never resend or press Enter again because of the comparison.
+
+The loop is prompt → delivery status → wait --turn (the containing turn ended; check outcome) → read --turn (Claude correlated; Codex reply reads stay uncorrelated). This command never retries automatically. After an interrupted or uncertain delivery, inspect the terminal with "opencove agent read --node <selector> --screen" and read the conversation. Do not resend a prompt that may already have been submitted.
+
+Exit codes: 0 submission observed or Codex steer dispatched; 1 refused or delivery unconfirmed; 2 invalid input; 124 overall deadline; 130 interrupted. A timeout or interruption does not prove that nothing was sent.
+
+## Wait command reference
+
+Waits without sending any input. A state that already holds counts immediately. idle requires no active turn and never accepts an unknown or degraded state. After "agent prompt", save turnId and use --turn <turnId> to wait for that exact turn, even if a newer turn has started.
+
+--turn requires one node and conflicts with --until, multiple --node options and --any. It waits through permission/question pauses and Claude queued provider continuations within that turn. Returns {nodeId, sessionId, turnId, outcome, endedAt?, state, persisted, memoryOnlyReason?}; every ended outcome exits 0, including failed, aborted and unknown. Read outcome before claiming success. Exact archived local ends survive Worker restarts and can be read without a live agent. Unknown/evicted turns exit 1; archive_unavailable is distinct. Inspect persisted before relying on restart durability.
+
+Local exact history retains at most 50 turns per node for 30 days, with global caps of 20,000 records and 128 MiB. For remote agents, --turn uses mirrored snapshots/events; older turns can only be checked on the Worker that runs them. Missing remote history reports details.reason: remote_history_unavailable, not eviction.
+
+State waits follow the current session; exact archived turn waits return the original session independently. Exact-turn errors keep their code and details.reason, include known nodeId/sessionId/turnId, and suggest concrete agent get, --screen or session final commands.
+
+--until turn-end waits for a turn to finish after this command starts; use it only when you start waiting while the turn is still running. A finished turn is not necessarily a successful one: check turnOutcome (or endedTurnOutcome for turn-end).
+
+With several --node options, --all (default) waits until every agent matches and --any until the first one does. The result lists the latest state of every selected agent. Budgets below 250ms are rejected with usage exit 2 before connecting. On timeout (default 20s) it exits 124, prints the last known states on stderr and nothing on stdout; Ctrl-C exits 130. The agents keep running either way.
+
+## Read command reference
+
+Reads agent.finalMessage first: the latest observed ended turn, or exactly --turn <turnId> from agent prompt. --turn never uses prefixes, another turn or a transcript fallback. --last makes the latest-turn default explicit and can accompany --turn.
+
+Only an unqualified hook read reporting no_ended_turn or provider_sent_no_message falls back to session.finalMessage, including restored conversations. Other errors are preserved. Hook content, including empty or whitespace-only messages, wins. Exact-turn errors use agent.final_message_unavailable with details.reason: turn_not_ended (still active), turn_not_found (unknown/evicted), no_ended_turn, provider_sent_no_message, archive_unavailable, or remote_history_unavailable. CLI errors retain code/reason and include known nodeId/sessionId/turnId plus concrete recovery commands: wait for a running turn, inspect agent get for missing history, or inspect --screen/session final for unavailable content.
+
+Plain message text goes to stdout even when piped. -o json or --fields returns structured data: hook results have nodeId, sessionId, turnId, optional promptId, outcome, persisted, optional memoryOnlyReason, message, truncated and source: hook; transcript results have sessionId, provider, startedAt, cwd, resumeSessionId, message, truncated: false and source: transcript. A cut hook message prints one stderr notice with transcript/screen recovery commands; it never automatically replaces the retained prefix.
+
+Claude messages queued mid-turn continue the same OpenCove turn, including provider follow-ups. Exact reads return its final reply after all continuations. An unknown continuation outcome marks the last provider reply with messageKind: intermediate and prints a notice. After wait --until idle, read returns only the latest ended turn reply.
+
+After agent prompt, retain its turnId, run "opencove agent wait --node <selector> --turn <turnId>", then "opencove agent read --node <selector> --turn <turnId>". Exact --turn reads survive Worker restarts for archived local turns. The private archive stores final replies up to 64 KiB, outcome and IDs: at most 50 turns per node, 30 days, 20,000 global records and 128 MiB of message text. JSON reports persisted and a memoryOnlyReason when false. Deleting the node removes OpenCove history, not provider transcripts or existing backups. Unqualified reads remain current-incarnation reads. Remote wait --turn uses mirrored snapshots/events; older remote turns can only be checked on the Worker that runs them (remote_history_unavailable). Hook replies currently require local Claude hooks with correlated prompt IDs.
+
+Use --screen before prompting to inspect drafts and dialogs. It resolves the current session, replays its presentation snapshot at its columns/rows, preserving cursor-created spaces, overwrites and wide CJK/emoji cells. It selects the normal or alternate buffer, ignores styling/mode sequences, trims row-end spaces and trailing blank rows, then returns the last --lines rendered rows (default: 40). -o json returns {nodeId, sessionId, lines: [...]}. Screen-mode projectable fields are nodeId, sessionId, lines; the field list below applies to final-message mode. --lines requires --screen; --screen conflicts with --last and --turn. This is a read only snapshot, not permission to answer another agent's dialog.
+
+If transcript fallback has no readable message, session.transcript_not_ready exits 1. A working agent may need to reach idle first; an idle agent may have transcript saving disabled. Inspect --screen and check provider settings; waiting cannot create a transcript. Reading never sends input.
+
+## Turn correlation identifiers
+
+JSON `agent read --turn` and exact `agent wait --turn` expose `deliveryIds` and
+`promptIds`, with no submitted text, digests, tokens or hook payloads. Existing
+promptId remains the final provider prompt ID. promptIds lists unique retained
+provider prompt IDs in encounter order, including the final ID; Claude steering
+and queued follow-ups can span several IDs inside one OpenCove turn.
+
+Delivery IDs come from the existing volatile delivery ledger, joined by exact
+sessionId and turnId. They include all retained attempts assigned to that turn,
+including uncertain/refused attempts: **membership is not proof of receipt or
+consumption**. Check each `agent delivery <id>` and verify the reply. Message-free
+ended turns expose the same metadata to wait; read still reports its existing
+provider_sent_no_message error. Waiting never returns message content.
+
+These are retained identifiers, not a complete durable audit log. Delivery records
+expire after 30 minutes when resolved and have existing per-session/global capacity
+limits; restart clears them. Live turn history keeps up to 64 previous prompt IDs
+plus the final ID; archived records currently retain only the final promptId.
+Thus older/restarted turns may report empty deliveryIds and only the final
+promptIds entry. Older Workers or mirrored remote end evidence may omit these
+fields entirely. Missing identifiers never justify resending a prompt.
