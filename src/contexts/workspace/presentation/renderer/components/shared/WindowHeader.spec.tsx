@@ -99,4 +99,29 @@ describe('WindowHeader', () => {
     expect(screen.queryByTestId('node-collapse')).toBeNull()
     expect(screen.getByRole('button', { name: 'Close window' }).parentElement).toBe(trailing)
   })
+
+  it('gives a title that moves the window the drag space, the tile the one spot that only grabs', () => {
+    const { container } = render(
+      <WindowHeader
+        className="task-node__header"
+        kind="plan"
+        icon={<svg />}
+        title={<span data-testid="title">Release notes</span>}
+        titleIsDragSurface
+        dragSurfaceTestId="task-node-header-drag-surface"
+        close={{ label: 'Delete task', onClose: () => {} }}
+      />,
+    )
+
+    const header = container.firstElementChild as HTMLElement
+    expect(header).toHaveAttribute('data-cove-title-drag', 'true')
+    expect(header.querySelector('.cove-window-header__drag')).toBeNull()
+    expect(screen.getByTestId('task-node-header-drag-surface')).toHaveAttribute(
+      'data-cove-part',
+      'kind-tile',
+    )
+    expect(screen.getByTestId('title').nextElementSibling).toHaveClass(
+      'cove-window-header__trailing',
+    )
+  })
 })

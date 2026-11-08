@@ -118,6 +118,7 @@ export interface SeedWorkspace {
     } | null
   }>
   activeSpaceId?: string | null
+  spaceArchiveRecords?: unknown[]
 }
 
 function isRetryableNavigationError(error: unknown): boolean {

@@ -58,6 +58,9 @@
   --cove-shadow-color-panel: rgba(0, 0, 0, 0.58);
   --cove-font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
   --cove-mask-opaque: #000;
+  /* A pixel control's bevel: lit along its top, shaded along its bottom (ui-pixel.css). */
+  --cove-pixel-light: rgb(255 255 255 / 0.2);
+  --cove-pixel-shade: rgb(0 0 0 / 0.24);
 
   /* Shared interaction vocabulary. Components consume these semantic tokens
      instead of rebuilding theme colors and geometry locally. */

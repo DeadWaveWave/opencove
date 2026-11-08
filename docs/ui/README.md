@@ -214,6 +214,7 @@
 - 窗口标题栏用 `WindowHeader`（`workspace/.../components/shared/`），顺序固定：标记圆点、类别图块、
   标题（13px / 500）、状态、拖动空白、本类操作、折叠、关闭。各窗口只填这些位置，不自己排版。
   类别图块随主题的图标尺寸缩放（默认 20px 图块、12px 图标）。
+  任务窗口的标题兼作拖动面（`titleIsDragSurface`）：没有拖动空白，单击标题改名，按住或拖动移动窗口。
   右端的操作、折叠、关闭之间统一用 `--cove-control-gap`（插件主题的 `controlGap`）。
 - 类别色与标记色是两个通道（`window-kind-identity.css`）。类别（这个窗口是什么，由 `resolveWindowKindFamily`
   推导：Agent 与角色 AI、终端、任务计划、笔记与文档知识、网页与图片媒体）只画标题栏的 `KindTile` 和 9% 的
@@ -244,6 +245,10 @@
   （18px），和新建出来的窗口一致；Agent 按钮用提供方标记，插件按钮用插件声明的图标。
 - `tests/e2e/app-shell.pixel-icons.spec.ts` 在工作区、画布菜单和设置各页检查：没有 lucide 图标，
   每个可见的像素图标都是正方形且尺寸在上述几档。`PixelIcon.spec.tsx` 检查画稿、路径和每个导出组件。
+- 像素基础件在 `styles/ui-pixel.css`：2px 台阶圆角（`--cove-pixel-corners`，`clip-path` 用）、
+  填充代替描边（`--cove-pixel-fill` / `-hover`）、上亮下暗的可按质感（`--cove-pixel-raised` /
+  `-pressed`）和按 `steps(1, end)` 跳变的闪烁（`cove-pixel-blink`，减少动态效果时停用）。
+  首个使用者是任务卡（`docs/ui/TASK_UI_STANDARD.md` 2.2）。
 
 ---
 

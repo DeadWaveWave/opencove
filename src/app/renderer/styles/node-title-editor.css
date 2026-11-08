@@ -103,3 +103,29 @@
   outline: none;
   box-shadow: none;
 }
+
+/*
+ * A title that moves its window (WindowHeader `titleIsDragSurface`): it takes the header's free
+ * space, so the whole bar between the tile and the controls is the title. A click renames and
+ * reads it as a field (pixel fill on hover and while editing); a hold or a drag grabs the window.
+ */
+.node-title-editor--moves-window .node-title-editor__display,
+.node-title-editor--moves-window .node-title-editor__editable {
+  flex: 1 1 auto;
+  align-self: center;
+  height: var(--cove-control-height-xs);
+  margin: 0 calc(-1 * var(--cove-spacing-1));
+  padding: 0 var(--cove-spacing-1);
+  clip-path: var(--cove-pixel-corners);
+}
+
+.node-title-editor--moves-window .node-title-editor__display:hover,
+.node-title-editor--moves-window .node-title-editor__editable {
+  background: var(--cove-pixel-fill);
+}
+
+.node-title-editor--moves-window .node-title-editor__display[data-cove-title-held='true'],
+.react-flow__node.dragging .node-title-editor--moves-window .node-title-editor__display {
+  background: none;
+  cursor: grabbing;
+}

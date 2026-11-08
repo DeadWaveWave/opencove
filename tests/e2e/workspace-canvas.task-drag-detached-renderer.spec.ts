@@ -97,12 +97,12 @@ test.describe('Workspace Canvas - Task Drag Renderer Recovery', () => {
       // Reuse the drag target that accounts for title, icon and action hit areas.
       const source = await resolveHeaderDragTarget(taskNode.locator('.task-node__header'))
       const sourceBox = await readLocatorClientRect(source.header)
-      const targetBox = await readLocatorClientRect(pane)
+      const start = {
+        x: sourceBox.x + source.position.x,
+        y: sourceBox.y + source.position.y,
+      }
       const drag = await beginDragMouse(window, {
-        start: {
-          x: sourceBox.x + source.position.x,
-          y: sourceBox.y + source.position.y,
-        },
+        start,
         settleAfterPressMs: 0,
         settleBeforeReleaseMs: 0,
         settleAfterReleaseMs: 0,
@@ -120,7 +120,8 @@ test.describe('Workspace Canvas - Task Drag Renderer Recovery', () => {
         })
         expect(injection).toEqual({ injected: true, pending: true })
 
-        await drag.moveTo({ x: targetBox.x + 260, y: targetBox.y + 220 })
+        // Relative to the grab point, so the distance holds wherever the header's drag spot is.
+        await drag.moveTo({ x: start.x - 140, y: start.y + 60 })
       } finally {
         await drag.release()
       }

@@ -1,0 +1,37 @@
+/*
+ * Pixel primitives (owner call, round 4: pixel is the app's main tone). A pixel control has 2px
+ * stepped corners instead of a radius, a fill instead of a hairline border, and rows part on a
+ * 2px dotted rule. Something pressable is lit 2px along its top and shaded 2px along its bottom.
+ * A clip-path also clips an outline drawn outside the box, so a clipped control draws its focus
+ * ring inside (outline-offset: -2px), where the corners step it too.
+ */
+:root {
+  --cove-pixel-corners: polygon(
+    0 2px,
+    2px 2px,
+    2px 0,
+    calc(100% - 2px) 0,
+    calc(100% - 2px) 2px,
+    100% 2px,
+    100% calc(100% - 2px),
+    calc(100% - 2px) calc(100% - 2px),
+    calc(100% - 2px) 100%,
+    2px 100%,
+    2px calc(100% - 2px),
+    0 calc(100% - 2px)
+  );
+  --cove-pixel-fill: color-mix(in srgb, var(--cove-text) 7%, transparent);
+  --cove-pixel-fill-hover: color-mix(in srgb, var(--cove-text) 12%, transparent);
+  --cove-pixel-rule-color: var(--cove-border);
+  --cove-pixel-raised:
+    inset 0 2px 0 var(--cove-pixel-light), inset 0 -2px 0 var(--cove-pixel-shade);
+  --cove-pixel-pressed: inset 0 2px 0 var(--cove-pixel-shade);
+}
+
+/* A live light: on for half the beat, dim for the other half. Run it with steps(1, end) so each
+   half holds; a smooth timing function would fade it. */
+@keyframes cove-pixel-blink {
+  50% {
+    opacity: 0.25;
+  }
+}

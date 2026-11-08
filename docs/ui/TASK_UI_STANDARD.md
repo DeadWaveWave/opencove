@@ -31,20 +31,40 @@
 ## 2. Task 卡片行为规范
 
 ### 2.1 头部（Header）
-- 标题支持 inline 编辑。
+- 标题栏即拖动面：标题占满类别图块与右侧按钮之间的空间，没有单独的拖动空白
+  （`WindowHeader` 的 `titleIsDragSurface`）。在标题上单击改名；按住 400ms 或移动超过 4px 就是
+  抓起窗口，松开后不进入改名，悬停底色退去、光标变成抓手。类别图块是唯一只拖不改名的位置，
+  单击它或卡片空白处选中窗口。
 - 右上角与 Note 保持一致：使用 `...` 操作菜单收纳低频功能，并保留独立 `×` 删除按钮。
 - `...` 菜单内至少包含：
   - 模板：打开提示词模板菜单（选择/新增模板，并前置插入到任务要求）；
   - 编辑：打开完整编辑弹窗。
 - `×` 删除任务时必须触发确认弹窗。
 
-### 2.2 内容区（Requirement）
-- 点击需求文本进入多行 inline 编辑。
-- 需求为空时禁止提交，恢复到原值。
+### 2.2 任务卡（Tide 第 4 期，方案 A）
 
-### 2.3 底部（Footer）
-- 状态下拉、Assign、运行按钮保持操作分区，不与编辑态冲突。
-- 编辑态下不应阻断节点拖拽/缩放的基本能力。
+标题栏以下是一张任务卡，全部内容在同一块底板上，行与行之间用 2px 点线分隔，由像素基础件
+（`ui-pixel.css`，见 `docs/ui/README.md` 3.5）搭成：
+
+- **进度**：4 格进度条（待办 → 进行中 → AI 完成 → 完成），填到当前状态，颜色随状态
+  （AI 完成用 AI 类别色）。它是一个分段控件：点格子或用方向键直接切换状态；旁边的状态名
+  是同一选择的下拉菜单。每格的命中区 24×24，画出的格子 22×8。
+- **标签**：优先级是像素小旗（颜色随优先级）加文字，后面是标签，再后面是编辑按钮（打开完整
+  编辑弹窗）。标签最先让位：放不下的标签换到被裁掉的第二行，单个过长的标签以省略号结尾。
+- **要求**：占满中间，没有「任务要求」标签；为空时显示占位文字。
+- **会话**：一排 26px 像素头像，关联的 Agent 窗口在前，其余按最近运行排序；运行中的头像带
+  绿色指示灯，按 `steps(1)` 闪烁，减少动态效果时静止。点关联头像聚焦它的窗口，点历史会话
+  打开菜单（恢复 / 删除记录），右键在指针处打开同一菜单；放不下的折进最后一格「+N」。头像
+  后面的会话摘要最先让位，放不下时整段隐去，不显示残字。
+- **运行**：右下角的主按钮，2px 上亮下暗，按下时反过来。
+- **窄卡**：任务窗口默认两列宽（约 250px），一行放不下进度和标签。底板宽度小于 320px 时
+  （容器查询 `task-card`），标签换到进度下面单独一行，编辑按钮在行尾。
+- **归档回放**：空间归档里的任务也是这张卡，只读：进度格与状态名是一张图（不可点），标签、
+  要求（只读、可选中复制）照常，会话头像只显示关联的 Agent（不可点，指示灯不闪），没有运行
+  按钮。与画布上的卡共用 `TaskNodeLabels`、`TaskNodeStatusReadout`、`TaskNodeSessionsReadout`。
+
+### 2.3 编辑态
+- 编辑态下不应阻断节点拖拽/缩放的基本能力；空需求不提交，恢复原值。
 
 ## 3. 弹窗视觉规范
 
@@ -86,14 +106,26 @@
   - `task-node-inline-title-input`
   - `task-node-inline-requirement-trigger`
   - `task-node-inline-requirement-input`
+  - `task-node-status-step-<status>`（进度格）、`task-node-status-select`、`task-node-edit-meta`
+  - `task-node-agent-session-linked-<nodeId>`、`task-node-agent-session-record-<id>`、
+    `task-node-agent-session-more`、`task-node-run-agent`
 - E2E 用例必须覆盖：
   1. 卡片内需求直接编辑并持久化；
   2. 铅笔按钮打开弹窗编辑；
-  3. 删除确认流程。
+  3. 删除确认流程；
+  4. 默认宽度下卡片不溢出、控件命中区不小于 24px、进度格可点可用方向键、标题单击改名而按住或
+     拖动移动窗口、运行中的指示灯在减少动态效果时静止（`workspace-canvas.tasks.card.spec.ts`）；
+  5. 归档回放以只读任务卡呈现（`space-archives.task-card.spec.ts`）。
 
 ## 6. 当前实现锚点（便于追踪）
 
 - 组件：`src/contexts/task/presentation/renderer/components/TaskNode.tsx`
 - 数据编排：`src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas.tsx`
-- 样式：`src/app/renderer/styles/task-node.css`（弹窗复用 `src/app/renderer/styles/cove-window.css`）
-- E2E：`tests/e2e/workspace-canvas.tasks.edit-delete.spec.ts`
+- 归档回放：`src/app/renderer/shell/components/SpaceArchiveReplayTaskNode.tsx`
+- 样式：`src/app/renderer/styles/task-node.card.css`（任务卡）、`task-node.agent-sessions.css`
+  （会话头像）、`task-node.css`（标题栏）、`node-title-editor.css`（可拖动的标题）；弹窗复用
+  `cove-window.css`
+- 单元测试：`tests/unit/contexts/taskNode.card.spec.tsx`、`InlineNodeTitleEditor.spec.tsx`、
+  `SpaceArchiveReplayTaskNode.spec.tsx`
+- E2E：`tests/e2e/workspace-canvas.tasks.edit-delete.spec.ts`、`workspace-canvas.tasks.card.spec.ts`、
+  `space-archives.task-card.spec.ts`

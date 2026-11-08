@@ -22,6 +22,7 @@ export interface WindowHeaderClose {
 /**
  * Every window header has the same anatomy: label dot, kind tile, title, status, drag space,
  * kind actions, collapse, close. Kinds fill the slots; the order and the controls stay shared.
+ * A kind whose title moves the window (`titleIsDragSurface`) gives the drag space to the title.
  */
 export function WindowHeader({
   className,
@@ -31,6 +32,7 @@ export function WindowHeader({
   title,
   status,
   dragSurfaceTestId,
+  titleIsDragSurface = false,
   actions,
   trailingClassName,
   close,
@@ -45,6 +47,13 @@ export function WindowHeader({
   title: React.ReactNode
   status?: React.ReactNode
   dragSurfaceTestId?: string
+  /**
+   * The title is the drag surface: a click on it renames, a hold or a drag moves the window
+   * (InlineNodeTitleEditor `movesWindow`). The header keeps no drag space of its own; the tile is
+   * the one spot that only grabs, so a click there selects the window, and it carries
+   * `dragSurfaceTestId`.
+   */
+  titleIsDragSurface?: boolean
   actions?: React.ReactNode
   trailingClassName?: string
   close: WindowHeaderClose
@@ -68,6 +77,7 @@ export function WindowHeader({
       data-cove-part="window-header"
       data-cove-kind={kind}
       data-node-drag-handle="true"
+      data-cove-title-drag={titleIsDragSurface ? 'true' : undefined}
       onPointerDownCapture={onPointerDownCapture}
     >
       {labelColor ? (
@@ -77,16 +87,22 @@ export function WindowHeader({
           aria-hidden="true"
         />
       ) : null}
-      <KindTile kind={kind} className="cove-window-header__tile">
+      <KindTile
+        kind={kind}
+        className="cove-window-header__tile"
+        testId={titleIsDragSurface ? dragSurfaceTestId : undefined}
+      >
         {icon}
       </KindTile>
       {title}
       {status ? <div className="cove-window-header__status">{status}</div> : null}
-      <div
-        className="cove-window-header__drag"
-        data-testid={dragSurfaceTestId}
-        aria-hidden="true"
-      />
+      {titleIsDragSurface ? null : (
+        <div
+          className="cove-window-header__drag"
+          data-testid={dragSurfaceTestId}
+          aria-hidden="true"
+        />
+      )}
       <div className={classNames('cove-window-header__trailing nodrag', trailingClassName)}>
         {actions}
         <WindowCollapseButton onClose={close.onClose} revealBeforeClose={close.revealBeforeClose} />

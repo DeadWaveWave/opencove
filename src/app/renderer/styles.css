@@ -11,6 +11,7 @@
 @import './styles/ui-menu.css' layer(opencove);
 @import './styles/ui-segmented.css' layer(opencove);
 @import './styles/ui-surface.css' layer(opencove);
+@import './styles/ui-pixel.css' layer(opencove);
 @import './styles/app-startup-state.css' layer(opencove);
 @import './styles/cove-fields.css' layer(opencove);
 @import './styles/app-header.css' layer(opencove);
@@ -48,6 +49,7 @@
 @import './styles/terminal-node.font-rendering.css' layer(opencove);
 @import './styles/terminal-node.theme-opencode.css' layer(opencove);
 @import './styles/task-node.css' layer(opencove);
+@import './styles/task-node.card.css' layer(opencove);
 @import './styles/task-node.agent-sessions.css' layer(opencove);
 @import './styles/role-node.css' layer(opencove);
 @import './styles/note-node.css' layer(opencove);

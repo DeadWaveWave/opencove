@@ -142,7 +142,7 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
     }
   })
 
-  test('edits task and terminal titles only from the title text hit area', async () => {
+  test('edits titles only from the title hit area, which fills a task’s title bar', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -265,13 +265,20 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
         ),
         y: terminalHeaderBox.y + terminalHeaderBox.height / 2,
       }
+      // A task's title is its drag surface and runs up to the controls; only the kind tile beside
+      // it grabs without renaming.
+      const taskTileBox = await readLocatorClientRect(
+        taskHeader.locator('[data-cove-part="kind-tile"]'),
+      )
       const taskBlankProbe = {
-        x: Math.min(
-          taskHeaderBox.x + taskHeaderBox.width - 120,
-          taskTitleBox.x + taskTitleBox.width + 80,
-        ),
-        y: taskHeaderBox.y + taskHeaderBox.height / 2,
+        x: taskTileBox.x + taskTileBox.width / 2,
+        y: taskTileBox.y + taskTileBox.height / 2,
       }
+      const taskTitleEndProbe = {
+        x: taskTitleBox.x + taskTitleBox.width - 8,
+        y: taskTitleBox.y + taskTitleBox.height / 2,
+      }
+      expect(taskTitleEndProbe.x).toBeGreaterThan(taskHeaderBox.x + taskHeaderBox.width - 140)
       const agentBlankProbe = {
         x: Math.min(
           agentHeaderBox.x + agentHeaderBox.width - 160,
@@ -281,7 +288,7 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
       }
 
       const cursors = await window.evaluate(
-        ({ terminalTitle, terminalBlank, taskTitle, taskBlank }) => {
+        ({ terminalTitle, terminalBlank, taskTitle, taskTitleEnd, taskBlank }) => {
           const readCursorAt = (point: { x: number; y: number }): string | null => {
             const element = document.elementFromPoint(point.x, point.y)
             return element ? window.getComputedStyle(element).cursor : null
@@ -291,6 +298,7 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
             terminalTitle: readCursorAt(terminalTitle),
             terminalBlank: readCursorAt(terminalBlank),
             taskTitle: readCursorAt(taskTitle),
+            taskTitleEnd: readCursorAt(taskTitleEnd),
             taskBlank: readCursorAt(taskBlank),
           }
         },
@@ -304,6 +312,7 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
             x: taskTitleBox.x + Math.min(taskTitleBox.width - 2, 8),
             y: taskTitleBox.y + taskTitleBox.height / 2,
           },
+          taskTitleEnd: taskTitleEndProbe,
           taskBlank: taskBlankProbe,
         },
       )
@@ -311,6 +320,7 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
       expect(cursors.terminalTitle).toBe('text')
       expect(cursors.terminalBlank).not.toBe('text')
       expect(cursors.taskTitle).toBe('text')
+      expect(cursors.taskTitleEnd).toBe('text')
       expect(cursors.taskBlank).not.toBe('text')
 
       await terminalHeader.click({
