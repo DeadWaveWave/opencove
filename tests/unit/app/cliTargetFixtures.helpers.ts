@@ -39,6 +39,9 @@ export function runWithTargetFixtures(argv: string[], io: CliIo) {
           JSON.stringify({ ok: true, value: { kind: 'bearer', scopeTier: 'admin' } }),
         )
       }
+      if (id === 'agent.list' && argv[0] === 'node') {
+        return new Response(JSON.stringify({ ok: true, value: { agents: [] } }))
+      }
       const target = pending.get(id)
       if (target) {
         pending.delete(id)

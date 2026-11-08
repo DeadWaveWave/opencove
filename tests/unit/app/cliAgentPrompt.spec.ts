@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { createAppError } from '../../../src/shared/errors/appError'
 // @vitest-environment node
 import { expect, it, vi } from 'vitest'
@@ -96,9 +97,11 @@ it.each([
 it('documents promise and non-guarantees in help', async () => {
   const f = fixture()
   expect(await run(['agent', 'prompt', '--help'], f.io)).toBe(0)
-  expect(f.out()).toContain('does not prove the model read exactly this text')
-  expect(f.out()).toContain('Do not resend a prompt that may already have been submitted')
-  expect(f.out()).toContain('docs/agent/PROMPT_DELIVERY.md')
+  expect(readFileSync('docs/cli/AGENT_PROMPT.md', 'utf8')).toContain(
+    'does not prove the model read exactly this text',
+  )
+  expect(f.out()).toContain('Never resend')
+  expect(f.out()).toContain('opencove skill')
   expect(f.out()).toMatchSnapshot()
 })
 

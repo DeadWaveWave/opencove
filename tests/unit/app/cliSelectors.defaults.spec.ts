@@ -66,8 +66,11 @@ it.each(['Beta', '@self'])(
     const f = twoProjects()
     const target = selector === '@self' ? project : beta
     expect(await run(['node', 'list', '--project', selector], f.io)).toBe(0)
-    expect(f.requests.at(-1)).toMatchObject({ id: 'node.list', payload: { projectId: target.id } })
-    expect(f.requests.at(-1)?.payload).not.toHaveProperty('space')
+    expect(f.requests.find(r => r.id === 'node.list')).toMatchObject({
+      id: 'node.list',
+      payload: { projectId: target.id },
+    })
+    expect(f.requests.find(r => r.id === 'node.list')?.payload).not.toHaveProperty('space')
     expect(JSON.parse(f.out()).nodes[0].projectId).toBe(target.id)
   },
 )

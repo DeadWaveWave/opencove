@@ -42,6 +42,12 @@ export class PromptDeliveryRecords {
     const r = this.records.get(id)
     return r ? structuredClone(r.dto) : { available: false, deliveryId: id, reason: 'unavailable' }
   }
+  forTurn(sessionId: string, turnId: string): string[] {
+    this.prune()
+    return [...this.records.values()]
+      .filter(r => r.dto.sessionId === sessionId && r.dto.turnId === turnId)
+      .map(r => r.dto.deliveryId)
+  }
   allocate(id: string, fence: RunStateFence, mode: 'turn' | 'steer'): DeliveryRecord | undefined {
     this.prune()
     const session = [...this.records.values()].filter(

@@ -38,9 +38,21 @@ export class AgentWaitReconciliation {
 }
 
 /** A negative history read cannot outrank end evidence still queued on the ordered stream. */
+/** Local Control Surface lookups answer in milliseconds; past this the identifiers are omitted. */
+export const IDENTIFIER_LOOKUP_BUDGET_MS = 1_000
+const identifiersSchema = z.object({
+  nodeId: z.string().nullable().optional(),
+  sessionId: z.string(),
+  turnId: z.string(),
+  deliveryIds: z.array(z.string()).optional(),
+  promptIds: z.array(z.string()).optional(),
+})
+
 export class AgentWaitEvidence {
   result: TurnWaitResult | null = null
   private pending: CliError | null = null
+  private snapshotResult = false
+  private identifiersAttempted = false
   private sawRetainedEnd = false
   private sawCompletion = false
   private readonly reconciliation = new AgentWaitReconciliation()
@@ -56,7 +68,10 @@ export class AgentWaitEvidence {
   retain(snapshot: AgentRunSnapshot, event?: AgentRunEvent): void {
     const end = selectedTurnEnd(snapshot, this.turnId, event)
     if (!this.exactArchive) {
-      this.result ??= end
+      if (!this.result && end) {
+        this.result = end
+        this.snapshotResult = true
+      }
     } else if (end) {
       const completion =
         event?.type === 'agent.turn_completed' && event.endedTurn?.id === this.turnId
@@ -109,11 +124,64 @@ export class AgentWaitEvidence {
         const retained = selectedTurnEnd(snapshot, this.turnId, event)
         if (retained) {
           this.result = { ...retained, memoryOnlyReason: 'remote' }
+          this.snapshotResult = true
           return
         }
       }
       this.pending = error
       this.reconciliation.defer(agentWaitWatermarkSchema.parse(await this.query('agent.list', {})))
+    }
+  }
+
+  /** Optional correlation never changes completion authority, outcome or durability. */
+  async enrichIdentifiers(budgetMs = IDENTIFIER_LOOKUP_BUDGET_MS): Promise<void> {
+    const result = this.result
+    if (!result || !this.snapshotResult || this.identifiersAttempted) {
+      return
+    }
+    this.identifiersAttempted = true
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const lookup = this.query('agent.finalMessage', {
+      nodeId: result.nodeId,
+      turnId: result.turnId,
+    }).then(
+      value => ({ value }),
+      (error: unknown) => {
+        // A message-free end still reports its identity and correlations in the error details.
+        if (
+          error instanceof CliError &&
+          error.code === 'agent.final_message_unavailable' &&
+          (error.details as { reason?: string } | undefined)?.reason === 'provider_sent_no_message'
+        ) {
+          return { value: error.details }
+        }
+        return null
+      },
+    )
+    // A completed wait must not spend its remaining budget on optional metadata. The wait's
+    // cleanup aborts a lookup still in flight after this returns.
+    const outcome = await Promise.race([
+      lookup,
+      new Promise<null>(resolve => {
+        timer = setTimeout(() => resolve(null), budgetMs)
+      }),
+    ])
+    clearTimeout(timer)
+    const parsed = identifiersSchema.safeParse(outcome?.value)
+    if (!parsed.success) {
+      return
+    }
+    const value = parsed.data
+    if (
+      value.sessionId === result.sessionId &&
+      value.turnId === result.turnId &&
+      (value.nodeId === undefined || value.nodeId === result.nodeId)
+    ) {
+      this.result = {
+        ...result,
+        ...(value.deliveryIds ? { deliveryIds: value.deliveryIds } : {}),
+        ...(value.promptIds ? { promptIds: value.promptIds } : {}),
+      }
     }
   }
 

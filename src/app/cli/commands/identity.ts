@@ -1,8 +1,8 @@
+import { agentMetadataFields, nodeAgentMetadata } from '../core/agentMetadata'
 import { defineCommand } from '../core/command'
 import { identityFields } from '../core/identity'
 import { usage } from '../core/errors'
 import type { ListProjectsResult, GetSpaceResult } from '../../../shared/contracts/dto'
-import type { AgentRunSnapshot } from '../../../shared/contracts/dto/agentRunState'
 import type { ListNodesResult } from '../../../shared/contracts/dto/nodeControl'
 import { shellWord } from '../core/shellWord'
 const selfSelector = shellWord('@self')
@@ -30,7 +30,7 @@ export const identityCommands = [
     path: ['context'],
     summary: 'Show your project, space and neighboring nodes',
     description:
-      'With no explicit target, inside OpenCove defaults to your own space. Terminals outside any space show their project with space: null and no neighbors. Outside OpenCove, provide --space or --project. An explicit project selects its active space. self is your caller identity (null outside OpenCove); project and space describe the target you asked about, which may differ from self. For agent nodes, state is the Worker run state (idle, working, waiting, exited or unknown) from agent.list; missing observations are unknown, never inferred from lifecycle. sessionStatus preserves the agent session lifecycle (for example running). For tasks, state is task status; for terminals, state remains session lifecycle; for other nodes it is null.',
+      'With no explicit target, inside OpenCove defaults to your own space. Terminals outside any space show their project with space: null and no neighbors. Outside OpenCove, provide --space or --project. An explicit project selects its active space. self is your caller identity (null outside OpenCove); project and space describe the target you asked about, which may differ from self. For agent nodes, state is the Worker run state (idle, working, waiting, exited or unknown) from agent.list; missing observations are unknown, never inferred from lifecycle. sessionStatus preserves the agent session lifecycle (for example running). For tasks, state is task status; for terminals, state remains session lifecycle; for other nodes it is null. agentState {state, quality, turnId} exposes work state for agent nodes and observed agents in terminals: working means the agent is working. taskNodeId is the reverse task link, or null when absent or ambiguous.',
     connect: true,
     options: {
       space: {
@@ -68,7 +68,8 @@ export const identityCommands = [
         'nodes.kind',
         'nodes.title',
         'nodes.state',
-        'nodes.sessionStatus',
+        ...agentMetadataFields.map(field => `nodes.${field}`),
+        'nodes.taskNodeId',
         'next',
       ],
     },
@@ -99,13 +100,12 @@ export const identityCommands = [
         ? ((await invoke('node.list', { space: { kind: 'spaceId', spaceId } })) as ListNodesResult)
             .nodes
         : []
-      const agentStates = new Map<string | null, AgentRunSnapshot['state']>()
-      if (nodes.some(node => node.kind === 'agent')) {
-        const result = (await invoke('agent.list', { spaceId })) as { agents: AgentRunSnapshot[] }
-        for (const agent of result.agents) {
-          agentStates.set(agent.nodeId, agent.state)
-        }
-      }
+      const enrichedNodes = await nodeAgentMetadata(
+        nodes,
+        { invoke, io, options },
+        { spaceId, projectId },
+        true,
+      )
       const target =
         spaceId && spaceId === identity?.spaceId
           ? selfSelector
@@ -136,7 +136,7 @@ export const identityCommands = [
         space: space
           ? { id: space.id, name: space.name, directoryPath: space.directoryPath }
           : null,
-        nodes: nodes
+        nodes: enrichedNodes
           .filter(node => node.id !== identity?.nodeId)
           .map(node => ({
             id: node.id,
@@ -146,11 +146,14 @@ export const identityCommands = [
               node.kind === 'task'
                 ? (node.data?.status ?? null)
                 : node.kind === 'agent'
-                  ? (agentStates.get(node.id) ?? 'unknown')
+                  ? (node.agentState?.state ?? 'unknown')
                   : node.kind === 'terminal'
                     ? (node.status ?? null)
                     : null,
-            ...(node.kind === 'agent' ? { sessionStatus: node.status ?? null } : {}),
+            ...(node.sessionStatus !== undefined ? { sessionStatus: node.sessionStatus } : {}),
+            ...(node.agentState ? { agentState: node.agentState } : {}),
+            // Task links come from the task join alone, so a projection that skips agent state keeps them.
+            ...(node.taskNodeId !== undefined ? { taskNodeId: node.taskNodeId } : {}),
           })),
         next,
       }

@@ -74,8 +74,12 @@ export function registerControlSurfaceHandlers(
     terminalAgentActivity?: TerminalAgentActivityEnvironmentService
   },
 ): void {
-  registerAgentRunStateHandlers(controlSurface, deps.ptyStreamHub)
-  registerAgentPromptHandlers(controlSurface, deps.ptyStreamHub, deps.agentProviderRegistry)
+  const deliveries = registerAgentPromptHandlers(
+    controlSurface,
+    deps.ptyStreamHub,
+    deps.agentProviderRegistry,
+  )
+  registerAgentRunStateHandlers(controlSurface, deps.ptyStreamHub, deliveries)
   registerSystemHandlers(controlSurface, {
     appVersion: deps.appVersion,
     deploymentId: deps.deploymentId,

@@ -88,6 +88,7 @@ it('stores ended content before callbacks, leaving all public projections and re
     sessionId: 's',
     turnId: 't1',
     promptId: 'p',
+    promptIds: ['p'],
     outcome: 'completed',
     message: 'secret',
     truncated: false,

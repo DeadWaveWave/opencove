@@ -4,6 +4,8 @@ import { CliError } from './errors'
 import { presentAgentTurnError, type AgentTurnErrorContext } from './agentTurnError'
 
 const historySchema = z.object({
+  deliveryIds: z.array(z.string()).optional(),
+  promptIds: z.array(z.string()).optional(),
   sessionId: z.string(),
   turnId: z.string(),
   outcome: z.enum(['completed', 'failed', 'aborted', 'unknown']),
@@ -12,15 +14,19 @@ const historySchema = z.object({
   memoryOnlyReason: z.string().optional(),
   endedAt: z.number().finite().optional(),
 })
-const noMessageSchema = historySchema.pick({ outcome: true, endedAt: true }).extend({
-  // Older Workers did not include the outcome of a message-free end.
-  outcome: historySchema.shape.outcome.default('unknown'),
-})
+const noMessageSchema = historySchema
+  .pick({ outcome: true, endedAt: true, deliveryIds: true, promptIds: true })
+  .extend({
+    // Older Workers did not include the outcome of a message-free end.
+    outcome: historySchema.shape.outcome.default('unknown'),
+  })
 export interface TurnWaitResult {
   nodeId: string
   sessionId: string
   turnId: string
   outcome: NonNullable<AgentRunSnapshot['turnOutcome']>
+  deliveryIds?: string[]
+  promptIds?: string[]
   endedAt?: number
   persisted: boolean
   memoryOnlyReason?: string
@@ -106,13 +112,13 @@ export async function endedSelectedTurn(
         sessionId: snapshot.sessionId,
       })
     }
-    return result(history.outcome, history.endedAt)
+    return { ...result(history.outcome, history.endedAt), ...turnIdentifiers(history) }
   } catch (error) {
     if (error instanceof CliError && error.code === 'agent.final_message_unavailable') {
       const details = error.details as { reason?: string } | undefined
       if (details?.reason === 'provider_sent_no_message') {
         const end = noMessageSchema.parse(details)
-        return result(end.outcome, end.endedAt)
+        return { ...result(end.outcome, end.endedAt), ...turnIdentifiers(end) }
       }
       if (details?.reason === 'turn_not_ended') {
         return null
@@ -147,6 +153,7 @@ export async function archivedSelectedTurn(
       throw turnUnavailable(turnId, false, { nodeId })
     }
     return {
+      ...turnIdentifiers(value),
       nodeId,
       sessionId: value.sessionId,
       turnId,
@@ -177,5 +184,12 @@ export async function archivedSelectedTurn(
       )
     }
     throw error
+  }
+}
+
+function turnIdentifiers(value: { deliveryIds?: string[]; promptIds?: string[] }) {
+  return {
+    ...(value.deliveryIds ? { deliveryIds: value.deliveryIds } : {}),
+    ...(value.promptIds ? { promptIds: value.promptIds } : {}),
   }
 }

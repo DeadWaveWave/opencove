@@ -259,7 +259,15 @@ it('keeps terminal lifecycle state unchanged in context', async () => {
   f.values['node.list'] = { nodes: [{ ...node, id: 'other-terminal', title: 'Build' }] }
   expect(await run(['context'], f.io)).toBe(0)
   expect(JSON.parse(f.out()).nodes).toEqual([
-    { id: 'other-terminal', kind: 'terminal', title: 'Build', state: 'running' },
+    {
+      id: 'other-terminal',
+      kind: 'terminal',
+      title: 'Build',
+      state: 'running',
+      sessionStatus: 'running',
+      // Same reverse-link field as node list; no task points at this terminal.
+      taskNodeId: null,
+    },
   ])
-  expect(f.requests.some(r => r.id === 'agent.list')).toBe(false)
+  expect(f.requests.some(r => r.id === 'agent.list')).toBe(true)
 })

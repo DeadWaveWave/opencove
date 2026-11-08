@@ -1,3 +1,9 @@
+import { nodeAgentMetadata } from '../core/agentMetadata'
+import type {
+  ListNodesResult,
+  CreateNodeResult,
+  CanvasNodeFrameDto,
+} from '../../../shared/contracts/dto/nodeControl'
 import { nodeDeleteOutput, canvasFocusOutput } from './outputContracts'
 import { nodeListOutput, nodeGetOutput, nodeKindOutput } from './outputContracts'
 import { defineCommand, type CommandArgs, type OptionSpec } from '../core/command'
@@ -134,13 +140,17 @@ export const nodeCommands = [
     description:
       nodeContentHelp +
       '\n\n' +
-      'Lists per-kind summaries: data carries kind plus requirement, status, priority and tags for tasks, or url for websites; data carries only kind for notes, agents and terminals. Read full content, such as note text, with "opencove node get --node <id>".\n\ndata.status is task status. Top-level status is session lifecycle (for example running or exited) for agents and terminals, not whether an agent is idle or working. STATE shows task status or session lifecycle. Use "opencove agent list" or "opencove agent get --node <selector>" for agent run state; context exposes it as state and keeps lifecycle as sessionStatus.',
+      'Lists per-kind summaries: data carries kind plus requirement, status, priority and tags for tasks, or url for websites; data carries only kind for notes, agents and terminals. Read full content, such as note text, with "opencove node get --node <id>".\n\ndata.status is task status. Top-level status is session lifecycle (for example running or exited) for agents and terminals, not whether an agent is idle or working. STATE shows task status or session lifecycle; agentState is the separate work-state field. sessionStatus aliases lifecycle status. agentState {state, quality, turnId} reports work for agents and observed agents in terminals; state working means the agent is working. Missing observations are unknown/degraded. context keeps its legacy state field.',
     targetSpace: 'optional',
     connect: true,
     operation: 'node.list',
     options: { ...locatorOptions, kind: { ...stringOption('Node kind'), inputPath: 'kind' } },
     buildInput: ({ options: o }) => ({ space: locator(o), projectId: o.project, kind: o.kind }),
     render: nodeListOutput,
+    async execute(ctx) {
+      const result = (await ctx.invoke('node.list', ctx.input)) as ListNodesResult
+      return { ...result, nodes: await nodeAgentMetadata(result.nodes, ctx, result) }
+    },
   }),
   ...(['get', 'delete'] as const).map(action =>
     defineCommand({
@@ -219,7 +229,11 @@ export const nodeCommands = [
           title: stringOption('Title'),
           frame: {
             type: 'json',
-            description: 'Set x, y, width and height as a JSON object',
+            description:
+              'Set x, y, width and height as a JSON object' +
+              (kind === 'task'
+                ? '; task minimum: width 220, height 260; adjusted sizes are reported'
+                : ''),
             valueName: 'json',
           },
           ...(create
@@ -255,7 +269,22 @@ export const nodeCommands = [
         ...(create
           ? {
               async execute(ctx) {
-                const value = await ctx.invoke('node.create', ctx.input)
+                let value = await ctx.invoke('node.create', ctx.input)
+                if (kind === 'task') {
+                  const appliedFrame = (value as CreateNodeResult).node.frame
+                  const requested = ctx.options.frame as Partial<CanvasNodeFrameDto> | undefined
+                  const frameAdjusted =
+                    !!requested &&
+                    (['x', 'y', 'width', 'height'] as const).some(
+                      key => requested[key] !== undefined && requested[key] !== appliedFrame[key],
+                    )
+                  value = { ...(value as object), appliedFrame, frameAdjusted }
+                  if (frameAdjusted) {
+                    ctx.io.stderr.write(
+                      `Notice: task frame adjusted; applied frame: ${JSON.stringify(appliedFrame)}.\n`,
+                    )
+                  }
+                }
                 if (!ctx.options.focus) {
                   return value
                 }

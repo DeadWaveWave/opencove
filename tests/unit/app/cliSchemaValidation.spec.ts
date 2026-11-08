@@ -6,7 +6,7 @@ import type { CliIo } from '../../../src/app/cli/core/io'
 import { nodeListOperation } from '../../../src/shared/contracts/controlSurface/operations/domains/node'
 import { OpenCoveAppError } from '../../../src/shared/errors/appError'
 
-function fixture(value: unknown = {}, error?: unknown) {
+function fixture(value: unknown = { nodes: [] }, error?: unknown) {
   let out = '',
     err = ''
   const fetch = vi.fn(

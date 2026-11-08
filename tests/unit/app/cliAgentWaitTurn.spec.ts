@@ -54,11 +54,15 @@ it('accepts A from the snapshot while B is already active', async () => {
   expect(f.streams).toHaveLength(0)
 })
 it.each(['completed', 'failed', 'aborted', 'unknown'] as const)(
-  'accepts already ended %s without history IO',
+  'accepts already ended %s independently of optional identifier IO',
   async outcome => {
     const f = turnFixture({ ...snapshot('a', 'idle'), lastEndedTurn: { ...ended, outcome } })
     expect(await f.wait()).toMatchObject({ turnId: active.id, outcome, state: 'idle' })
-    expect(f.query.mock.calls.some(([id]) => id === 'agent.finalMessage')).toBe(false)
+    expect(
+      f.query.mock.calls
+        .filter(([id]) => id === 'agent.finalMessage')
+        .map(([, payload]) => payload),
+    ).toEqual([{ nodeId: 'a', turnId: active.id }])
   },
 )
 it.each([false, true])(

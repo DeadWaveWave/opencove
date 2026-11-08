@@ -32,7 +32,9 @@ export function identityFixture(inside = true) {
     'space.list': { projectId: project.id, spaces: [space] },
     'space.get': { projectId: project.id, space },
     'node.list': { nodes: [node] },
+    'agent.list': { agents: [] },
     'node.get': { node },
+    'node.create': { node: { ...node, frame: { x: 0, y: 0, width: 220, height: 260 } } },
   }
   const requests: { id: string; payload: Record<string, unknown> }[] = []
   const fetch = vi.fn(async (_url: unknown, init?: RequestInit) => {
