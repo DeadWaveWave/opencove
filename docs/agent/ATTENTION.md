@@ -3,7 +3,9 @@
 When an Agent ends a turn and waits for you, OpenCove tells you once. Three channels can carry it.
 Each has its own switch in Settings › Notifications and a tile in the Control Center:
 
-- **In-app card**: the card at the top right. Clicking it focuses the Agent.
+- **In-app card**: a pixel card that grows out of the agent pill ([Agent Island](../ui/AGENT_ISLAND.md)).
+  Clicking it focuses the Agent. After six seconds it retracts into the pill, where the Agent keeps
+  waiting until you answer it.
 - **System notification**: the operating system's banner, sent only while OpenCove is not in front.
 - **Sound**: one synthesised alert (`bit` pixel default, `tide`, `pebble`), at its own volume.
 
@@ -18,12 +20,28 @@ Each has its own switch in Settings › Notifications and a tile in the Control 
   an alert never chimes twice.
 - Clicking a system notification focuses that Agent through the same jump as clicking its card.
 
+## Unanswered Agents
+
+An Agent whose card was shown and not yet answered **needs you**, though its runtime status is only
+standby: the pill, its list, the sidebar inbox and its project tile badge count it with the
+Agents blocked on a prompt (`summarizeAgentActivity(workspaces, needsYou)`), waiting since its
+card arrived.
+
+- The pending list is `useAgentAttentionStore`: transient, never persisted, newest first, at most 20.
+  The router adds to it (`show-card`) and takes an Agent out when it works again (`clear-card`).
+- You answer an Agent by closing its card (✕) or by going to it from anywhere: card, list, sidebar,
+  command center or system notification. All of these call `handleSelectAgentNode`, which
+  acknowledges the Agent before it focuses it.
+- A card that retracts, by its countdown or because the list opened, answers nothing.
+- With in-app cards switched off nothing is pending, so a standby Agent is not counted.
+
 ## Owners
 
 | Decision                      | Owner                                                           |
 | ----------------------------- | --------------------------------------------------------------- |
 | Did an Agent start waiting?   | `useAgentStandbyNotificationWatcher` (renderer, from PTY state) |
 | Which channels fire, and when | `createAgentAttentionRouter` (`agentAttentionRouter.ts`)        |
+| Which Agents are unanswered   | `useAgentAttentionStore` (renderer, transient)                  |
 | Is OpenCove in front?         | Main (`systemNotifications.ts`): any focused app window         |
 | What the sound is             | `notificationSound.ts`: Web Audio, no files                     |
 
@@ -46,6 +64,7 @@ moment it would show the notification.
 ## Tests
 
 - Decision table, coalescing, debounce: `agentAttentionRouter.spec.ts`.
+- Unanswered Agents: `useAgentAttentionStore.spec.ts`, `agentActivitySummary.spec.ts`.
 - Startup baseline: `tests/unit/app/agentStandbyTerminalNotification.spec.ts`.
 - Foreground gate, silent delivery, replacement and click: `tests/contract/ipc/systemNotificationIpc.spec.ts`.
 - End to end, in front and behind: `tests/e2e/workspace-canvas.agent-attention-routing.spec.ts`.

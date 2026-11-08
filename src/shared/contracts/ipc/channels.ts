@@ -60,6 +60,8 @@ export const IPC_CHANNELS = {
   windowChromeSetTheme: 'window-chrome:set-theme',
   windowChromeGetFullScreen: 'window-chrome:get-full-screen',
   windowChromeFullScreenChanged: 'window-chrome:full-screen-changed',
+  windowChromeGetFocus: 'window-chrome:get-focus',
+  windowChromeFocusChanged: 'window-chrome:focus-changed',
   windowMetricsGetDisplayInfo: 'window-metrics:get-display-info',
   websiteWindowConfigurePolicy: 'website-window:configure-policy',
   websiteWindowSetOccluded: 'website-window:set-occluded',

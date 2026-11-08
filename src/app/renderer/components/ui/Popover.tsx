@@ -25,6 +25,8 @@ export interface PopoverProps extends Omit<
   offset?: number
   collisionPadding?: number
   returnFocus?: React.RefObject<HTMLElement | null> | false
+  /** False leaves Escape to whatever has focus, as a surface that only previews should. */
+  dismissOnEscape?: boolean
   branchRefs?: readonly React.RefObject<HTMLElement | null>[]
   portalContainer?: HTMLElement
 }
@@ -71,6 +73,7 @@ export const Popover = React.forwardRef<HTMLDivElement, PopoverProps>(function P
     offset = 8,
     collisionPadding = 12,
     returnFocus,
+    dismissOnEscape = true,
     branchRefs = [],
     portalContainer,
     className,
@@ -193,6 +196,7 @@ export const Popover = React.forwardRef<HTMLDivElement, PopoverProps>(function P
       data-side={placement?.side ?? side}
       data-align={align}
       branchRefs={[anchorRef, ...branchRefs]}
+      dismissOnEscape={dismissOnEscape}
       onDismiss={handleDismiss}
       style={{
         ...style,

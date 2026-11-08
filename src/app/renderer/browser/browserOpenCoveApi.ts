@@ -144,6 +144,18 @@ export function installBrowserOpenCoveApi(): void {
       // A browser tab has no native full screen of its own to report.
       getFullScreen: async () => ({ isFullScreen: false }),
       onFullScreenChange: () => () => undefined,
+      // A browser tab answers for itself: there is no main process to ask.
+      getFocus: async () => ({ isFocused: document.hasFocus() }),
+      onFocusChange: listener => {
+        const onFocus = () => listener({ isFocused: true })
+        const onBlur = () => listener({ isFocused: false })
+        window.addEventListener('focus', onFocus)
+        window.addEventListener('blur', onBlur)
+        return () => {
+          window.removeEventListener('focus', onFocus)
+          window.removeEventListener('blur', onBlur)
+        }
+      },
     },
     windowMetrics: {
       getDisplayInfo: async () => ({

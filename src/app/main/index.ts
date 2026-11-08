@@ -28,6 +28,7 @@ import { registerQuickPhrasesContextMenu } from './contextMenu/registerQuickPhra
 import { registerQuitCoordinator } from './quitCoordinator'
 import { registerApplicationShortcuts } from './applicationShortcuts'
 import { broadcastWindowFullScreen } from './ipc/windowFullScreen'
+import { broadcastWindowFocus } from './ipc/windowFocus'
 import {
   isAllowedNavigationTarget,
   resolveDevRendererOrigin,
@@ -139,6 +140,7 @@ function createWindow(): void {
 
   const disposeApplicationShortcuts = registerApplicationShortcuts(mainWindow)
   broadcastWindowFullScreen(mainWindow)
+  broadcastWindowFocus(mainWindow)
   const quickPhrasesContextMenuDisposable = registerQuickPhrasesContextMenu({
     window: mainWindow,
     userDataPath: app.getPath('userData'),

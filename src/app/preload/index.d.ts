@@ -63,6 +63,7 @@ import type {
   SuggestWorktreeNamesInput,
   SuggestWorktreeNamesResult,
   SetWindowChromeThemeInput,
+  WindowFocusState,
   WindowFullScreenState,
   SaveTextToDownloadsInput,
   SaveTextToDownloadsResult,
@@ -184,6 +185,9 @@ export interface OpenCoveApi {
     setTheme: (payload: SetWindowChromeThemeInput) => Promise<void>
     getFullScreen: () => Promise<WindowFullScreenState>
     onFullScreenChange: (listener: (state: WindowFullScreenState) => void) => UnsubscribeFn
+    /** Whether this window has focus, as main sees it; the renderer's own signals cannot tell. */
+    getFocus: () => Promise<WindowFocusState>
+    onFocusChange: (listener: (state: WindowFocusState) => void) => UnsubscribeFn
   }
   windowMetrics: {
     getDisplayInfo: () => Promise<WindowDisplayInfo>

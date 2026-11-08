@@ -150,8 +150,6 @@ export const en = {
     agentsWaiting_other: '{{count}} waiting',
     agentsWorking_one: '{{count}} working',
     agentsWorking_other: '{{count}} working',
-    goToWaitingAgent_one: 'An agent is waiting. Go to {{title}}',
-    goToWaitingAgent_other: '{{count}} agents waiting. Go to {{title}}',
   },
   whatsNew: {
     title: "What's New",
