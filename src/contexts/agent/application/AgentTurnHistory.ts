@@ -43,11 +43,18 @@ export class AgentTurnHistory {
     if (owner && ids.has(owner)) {
       this.revoked = true
     }
+    this.clearNodes(ids)
+  }
+
+  clearNodes(ids: ReadonlySet<string>): number {
+    let removed = 0
     for (let i = this.ended.length - 1; i >= 0; i--) {
       if (this.ended[i].nodeId && ids.has(this.ended[i].nodeId!)) {
         this.ended.splice(i, 1)
+        removed++
       }
     }
+    return removed
   }
 
   identity(): Identity & { endedTurnIds: string[] } {
@@ -220,7 +227,7 @@ export class AgentTurnHistory {
       })
       this.active = undefined
       while (
-        this.ended.length > 50 ||
+        this.ended.length > AGENT_TURN_ARCHIVE_LIMITS.perNode ||
         this.ended.reduce((sum, turn) => sum + Buffer.byteLength(turn.message ?? '', 'utf8'), 0) >
           512 * 1024
       ) {

@@ -166,10 +166,11 @@ Ctrl-C exits 130 and closes subscriptions. It never stops the target agent.
 Read tries the latest ended turn's `agent.finalMessage` first. `--turn <turnId>`
 selects exactly the OpenCove turn ID returned by prompt: no prefixes or fallback.
 Hook replies (≤64 KiB), outcome and IDs are private; exact local --turn reads survive restarts.
-Archive caps: 50 turns/node, 30 days, 20,000 global records and 128 MiB of message text.
+Archive caps: 60 turns/node, 30 days, 20,000 global records and 128 MiB of message text.
 JSON includes persisted and memoryOnlyReason when false; archive_unavailable differs from a miss.
 Deleting the node removes OpenCove history, not provider transcripts or existing backups.
-No prompt text or delivery records are archived; no history-clear command exists.
+No prompt text or delivery records are archived.
+`opencove agent history clear --node <selector>` deletes that node’s archived and in-memory replies, leaving the node, provider transcripts, backups, run state, active turns and delivery records unchanged; later ends store normally, and archive unavailability clears memory but exits 1.
 Remote waits use mirrored snapshots/events; older history requires the executing Worker.
 Correlated local Claude hooks supply messages. Check outcome; ended does not mean successful.
 

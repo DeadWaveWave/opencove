@@ -53,15 +53,39 @@ export function agentTurnArchiveContract(
     }
   })
 
-  it('retains fifty whole records per node by insertion order, including metadata', () => {
+  it('retains sixty whole records per node by insertion order, including metadata', () => {
     const archive = create({ now: () => 100 })
     try {
-      for (let i = 0; i < 51; i++) {
+      for (let i = 0; i < 61; i++) {
         archive.append(endedTurn({ turnId: String(i), endedAt: 100 - i, message: null }))
       }
       expect(archive.getExact({ nodeId: 'node', turnId: '0' })).toEqual({ status: 'absent' })
       expect(archive.getExact({ nodeId: 'node', turnId: '1' })).toMatchObject({ status: 'found' })
-      expect(archive.getExact({ nodeId: 'node', turnId: '50' })).toMatchObject({ status: 'found' })
+      expect(archive.getExact({ nodeId: 'node', turnId: '60' })).toMatchObject({ status: 'found' })
+    } finally {
+      archive.dispose()
+    }
+  })
+
+  it('clears only the selected node across sessions, counts metadata, and permits later appends', () => {
+    const archive = create({ now: () => 100 })
+    try {
+      archive.append(endedTurn())
+      archive.append(endedTurn({ turnId: 'metadata', sessionId: 'older', message: null }))
+      archive.append(endedTurn({ nodeId: 'other' }))
+      expect(archive.clearNode('node')).toEqual({ status: 'cleared', removed: 2 })
+      expect(archive.getExact({ nodeId: 'node', turnId: 'turn' })).toEqual({ status: 'absent' })
+      expect(archive.getExactBySession({ sessionId: 'older', turnId: 'metadata' })).toEqual({
+        status: 'absent',
+      })
+      expect(archive.getExact({ nodeId: 'other', turnId: 'turn' })).toMatchObject({
+        status: 'found',
+      })
+      expect(archive.clearNode('node')).toEqual({ status: 'cleared', removed: 0 })
+      expect(archive.append(endedTurn({ turnId: 'later' }))).toEqual({ status: 'persisted' })
+      expect(archive.getExact({ nodeId: 'node', turnId: 'later' })).toMatchObject({
+        status: 'found',
+      })
     } finally {
       archive.dispose()
     }

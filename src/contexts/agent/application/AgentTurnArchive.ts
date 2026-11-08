@@ -45,6 +45,8 @@ export type AgentTurnArchiveReadResult =
   | { status: 'unavailable' }
 
 export type ArchiveMembership = (nodeId?: string) => 'member' | 'absent' | 'unknown'
+export type ArchiveClearResult = { status: 'cleared'; removed: number } | { status: 'unavailable' }
+
 export type ArchiveSweepResult = { status: 'complete' | 'more' | 'unavailable' }
 
 /** Synchronous, non-reentrant, never throws; the membership oracle is a Worker-owned projection. */
@@ -52,6 +54,7 @@ export interface AgentTurnArchive {
   append(record: AgentTurnArchiveInput): AgentTurnArchiveAppendResult
   getExact(input: { nodeId: string; turnId: string }): AgentTurnArchiveReadResult
   getExactBySession(input: { sessionId: string; turnId: string }): AgentTurnArchiveReadResult
+  clearNode(nodeId: string): ArchiveClearResult
   revokeNodes(nodeIds: readonly string[]): void
   captureWatermark(): number | null
   sweep(now: number, existingNodeIds?: ReadonlySet<string>, throughSeq?: number): ArchiveSweepResult
@@ -60,7 +63,7 @@ export interface AgentTurnArchive {
 }
 
 export const AGENT_TURN_ARCHIVE_LIMITS = {
-  perNode: 50,
+  perNode: 60,
   records: 20_000,
   messageBytes: 128 * 1024 * 1024,
   ageMs: 30 * 24 * 60 * 60 * 1000,

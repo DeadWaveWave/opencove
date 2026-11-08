@@ -1,5 +1,5 @@
 import { subscribeAgentRuns, type RetainedEvent } from './AgentRunSubscriptions'
-import type { AgentTurnArchive, ArchiveMembership } from './AgentTurnArchive'
+import type { AgentTurnArchive, ArchiveMembership, ArchiveClearResult } from './AgentTurnArchive'
 import { readExactArchivedTurn } from './AgentTurnArchiveRead'
 import { AgentSubmissionEvidence } from './AgentSubmissionEvidence'
 import { ClaudeTurnContinuation } from './ClaudeTurnContinuation'
@@ -249,6 +249,26 @@ export class AgentRunStateRegistry {
       entry.launchNodeId = nodeId
     }
   }
+  clearHistory(nodeId: string) {
+    const ids = new Set([nodeId])
+    let memoryRemoved = 0
+    for (const entry of this.entries.values()) {
+      memoryRemoved += entry.history.clearNodes(ids)
+    }
+    let archive: ArchiveClearResult = { status: 'unavailable' }
+    try {
+      archive = this.ports.archive?.clearNode(nodeId) ?? archive
+    } catch {
+      /* Clear private memory even when optional storage fails. */
+    }
+    // A remote agent keeps its replies on the Worker that runs it; this Worker cannot clear them.
+    const remote =
+      [...this.entries.values()].some(
+        entry => entry.remote && entry.model.snapshot.nodeId === nodeId,
+      ) || this.ports.isRemote?.({ nodeId }) === true
+    return { nodeId, memoryRemoved, archive, ...(remote ? { remote } : {}) }
+  }
+
   revokeNodes(nodeIds: readonly string[], revokeArchive = true): void {
     const ids = new Set(nodeIds)
     for (const entry of this.entries.values()) {

@@ -68,6 +68,19 @@ export const agentFinalMessageOperation = defineOperation({
     z.strictObject({ sessionId, promptId }),
   ]),
 })
+export const agentHistoryClearOperation = defineOperation({
+  id: 'agent.history.clear',
+  kind: 'command',
+  scope: 'interact',
+  availability: 'always',
+  summary: 'Delete stored OpenCove replies for a node from archive and memory',
+  errors: ['common.unavailable'],
+  input: z.strictObject({
+    nodeId: id.describe(
+      'Canvas node whose stored ended-turn replies will be deleted across all retained incarnations',
+    ),
+  }),
+})
 export const agentPromptOperation = defineOperation({
   id: 'agent.prompt',
   kind: 'command',
@@ -148,6 +161,7 @@ export const agentDeliveryGetOperation = defineOperation({
   input: z.strictObject({ deliveryId: id }),
 })
 export const agentOperations = [
+  agentHistoryClearOperation,
   agentDeliveryGetOperation,
   agentPromptOperation,
   agentFinalMessageOperation,
