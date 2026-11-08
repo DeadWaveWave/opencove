@@ -3,6 +3,7 @@ import { CONTROL_SURFACE_OPERATIONS } from '../../../src/shared/contracts/contro
 import { describe, it, expect, vi } from 'vitest'
 import { runWithTargetFixtures as run } from './cliTargetFixtures.helpers'
 import type { CliIo } from '../../../src/app/cli/core/io'
+import { createControlToken } from '../../../src/app/main/controlSurface/http/createControlToken'
 function fixture(value: unknown = { pong: true }) {
   let stdout = '',
     stderr = ''
@@ -77,6 +78,22 @@ describe('TypeScript CLI core', () => {
     )
     expect(f.fetch.mock.calls[0][0]).toBe('http://localhost:2/invoke')
     expect(f.io.readTextFile).not.toHaveBeenCalled()
+    expect(f.out()).toBe('{"pong":true}\n')
+    expect(f.err()).toBe('')
+  })
+  it('accepts a generated token in the documented --token <value> form', async () => {
+    const token = createControlToken(() => Buffer.alloc(32, 0xf8))
+    const f = fixture()
+
+    const code = await run(['ping', '--endpoint', 'http://localhost:2', '--token', token], f.io)
+
+    expect(code, f.err()).toBe(0)
+    expect(f.fetch).toHaveBeenCalledWith(
+      'http://localhost:2/invoke',
+      expect.objectContaining({
+        headers: expect.objectContaining({ authorization: `Bearer ${token}` }),
+      }),
+    )
     expect(f.out()).toBe('{"pong":true}\n')
     expect(f.err()).toBe('')
   })
