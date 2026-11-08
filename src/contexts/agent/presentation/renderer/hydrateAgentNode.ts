@@ -172,6 +172,7 @@ export async function hydrateAgentNode({
     sanitizedAgent.prompt.trim().length === 0
   const terminalProfileId = node.data.profileId ?? agentSettings.defaultTerminalProfileId ?? null
   const agentFullAccess = agentSettings.agentFullAccess
+  const codexReuseRunningAppServer = agentSettings.codexReuseRunningAppServer
   const env = resolveAgentLaunchEnv(agentSettings, sanitizedAgent.provider)
   const executablePathOverride = resolveAgentExecutablePathOverride(
     agentSettings,
@@ -192,6 +193,7 @@ export async function hydrateAgentNode({
         ...(executablePathOverride ? { executablePathOverride } : {}),
         ...(Object.keys(env).length > 0 ? { env } : {}),
         agentFullAccess,
+        codexReuseRunningAppServer,
         cols: 80,
         rows: 24,
       })
@@ -246,6 +248,7 @@ export async function hydrateAgentNode({
         ...(executablePathOverride ? { executablePathOverride } : {}),
         ...(Object.keys(env).length > 0 ? { env } : {}),
         agentFullAccess,
+        codexReuseRunningAppServer,
         cols: 80,
         rows: 24,
       })

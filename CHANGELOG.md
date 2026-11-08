@@ -70,6 +70,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐛 Fixed
 
+- Agent: Codex windows get OpenCove's lifecycle hooks even when the shared Codex app-server daemon is running, so their working/idle state is reliable and `opencove agent prompt` can reach them; they used to skip hooks to reuse the daemon. Settings → Agent → Codex → Reuse a running Codex app-server restores the old behavior. (#574)
 - Website windows: a frozen website window now always gets its snapshot; a snapshot requested before the page's first frame was presented used to be dropped. (#474)
 - Agent: give each managed Claude launch its own conversation ID and preserve it across recovery, preventing same-directory nodes from binding to the newest unrelated transcript. (#425)
 - Terminal: probe WebGL support once and release the probe, so workspaces with many terminals no longer evict active terminal renderers. (#428)

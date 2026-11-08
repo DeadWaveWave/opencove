@@ -213,10 +213,12 @@ snapshot field or a durable workspace fact. New incarnations reset it; hook or f
 observations cannot infer or upgrade it. Missing legacy metadata remains unsupported.
 
 Codex reports lifecycle only when its trusted lifecycle configuration is passed;
-trust failure reports notify_only, and daemon reuse, Windows and absent hooks report
+trust failure reports notify_only, and opt-in daemon reuse, Windows and absent hooks report
 none. Claude Code reports lifecycle when its hook settings are installed. Installation
 and coverage are separate: installed notify may inform run state but cannot establish
-promptability. See [prompt delivery](PROMPT_DELIVERY.md) for provider requirements.
+promptability. Codex daemon reuse is disabled by default; enable
+`codexReuseRunningAppServer` in Agent → Codex settings to accept degraded observation and
+unavailable prompt delivery when the shared daemon is reachable. See [prompt delivery](PROMPT_DELIVERY.md) for provider requirements.
 
 For Codex lifecycle coverage, runtime ingress discards legacy `notify` before it can replace
 hook observations or the legacy UI projection. Stop/StopFailure own turn ends; notify cannot

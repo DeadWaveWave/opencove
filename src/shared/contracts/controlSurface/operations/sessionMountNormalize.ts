@@ -67,6 +67,7 @@ export function normalizeLaunchAgentInMountPayload(
   }
 
   const agentFullAccess = payload.agentFullAccess
+  const codexReuseRunningAppServer = payload.codexReuseRunningAppServer
   if (
     agentFullAccess !== undefined &&
     agentFullAccess !== null &&
@@ -74,6 +75,15 @@ export function normalizeLaunchAgentInMountPayload(
   ) {
     throw createAppError('common.invalid_input', {
       debugMessage: 'Invalid payload for session.launchAgentInMount agentFullAccess.',
+    })
+  }
+  if (
+    codexReuseRunningAppServer !== undefined &&
+    codexReuseRunningAppServer !== null &&
+    typeof codexReuseRunningAppServer !== 'boolean'
+  ) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for session.launchAgentInMount codexReuseRunningAppServer.',
     })
   }
 
@@ -98,6 +108,7 @@ export function normalizeLaunchAgentInMountPayload(
     env,
     executablePathOverride,
     agentFullAccess: agentFullAccess ?? null,
+    codexReuseRunningAppServer: codexReuseRunningAppServer ?? null,
     cols: normalizeOptionalPositiveInt(payload.cols),
     rows: normalizeOptionalPositiveInt(payload.rows),
   }

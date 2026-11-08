@@ -342,6 +342,7 @@ export function registerRemoteAgentIpcHandlers(options: {
           env: payload?.env ?? null,
           ...(executablePathOverride ? { executablePathOverride } : {}),
           agentFullAccess: payload?.agentFullAccess ?? null,
+          codexReuseRunningAppServer: payload?.codexReuseRunningAppServer ?? null,
           ...(cols ? { cols } : {}),
           ...(rows ? { rows } : {}),
         },

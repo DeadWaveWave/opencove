@@ -55,7 +55,11 @@ registerOperation(surface, filesystemWriteFileTextOperation, {
 })
 const oracles: Record<string, (payload: unknown) => unknown> = {
   'node.create': normalizeCreatePayload,
-  'session.launchAgent': normalizeLaunchAgentPayload,
+  // The frozen oracle predates this opt-in field; legacy corpus inputs omit it.
+  'session.launchAgent': payload => ({
+    ...normalizeLaunchAgentPayload(payload),
+    codexReuseRunningAppServer: null,
+  }),
   'filesystem.writeFileText': normalizeWriteFileTextPayload,
 }
 function attempt(parse: (payload: unknown) => unknown, payload: unknown) {

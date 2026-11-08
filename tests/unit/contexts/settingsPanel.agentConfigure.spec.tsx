@@ -104,6 +104,12 @@ describe('SettingsPanel agent configure panel', () => {
       screen.getByTestId('settings-custom-model-enabled-codex'),
     )
 
+    fireEvent.click(screen.getByTestId('settings-codex-reuse-running-app-server'))
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_AGENT_SETTINGS,
+      codexReuseRunningAppServer: true,
+    })
+
     fireEvent.click(screen.getByTestId('settings-agent-env-add-codex'))
     expect(onChange).toHaveBeenCalledWith({
       ...DEFAULT_AGENT_SETTINGS,

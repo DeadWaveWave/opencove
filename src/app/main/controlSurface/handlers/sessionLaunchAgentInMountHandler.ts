@@ -235,6 +235,8 @@ export function registerSessionLaunchAgentInMountHandler(
         payload.executablePathOverride ??
         resolveAgentExecutablePathOverride(agentSettings, provider)
       const agentFullAccess = payload.agentFullAccess ?? agentSettings.agentFullAccess
+      const codexReuseRunningAppServer =
+        payload.codexReuseRunningAppServer ?? agentSettings.codexReuseRunningAppServer
       logAgentLaunchInfo(
         'control-surface-mount-local-resolved-settings',
         'Resolved local mount agent launch settings.',
@@ -246,6 +248,7 @@ export function registerSessionLaunchAgentInMountHandler(
           modelPresent: !!model,
           executablePathOverridePresent: !!executablePathOverride,
           agentFullAccess,
+          codexReuseRunningAppServer,
           cols: payload.cols ?? 80,
           rows: payload.rows ?? 24,
         },
@@ -277,6 +280,7 @@ export function registerSessionLaunchAgentInMountHandler(
         resumeSessionId,
         prompt: payload.prompt,
         agentFullAccess,
+        codexReuseRunningAppServer,
         opencodeServer,
         executablePathOverride,
       })

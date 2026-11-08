@@ -125,6 +125,7 @@ describe('session prepare/revive agent runtime metadata', () => {
         }
 
         expect(request.id).toBe('session.launchAgentInMount')
+        expect(request.payload).toMatchObject({ codexReuseRunningAppServer: true })
         return {
           ok: true,
           value: {
@@ -185,6 +186,7 @@ describe('session prepare/revive agent runtime metadata', () => {
       settings: {
         ...DEFAULT_AGENT_SETTINGS,
         defaultTerminalProfileId: 'wsl:Ubuntu',
+        codexReuseRunningAppServer: true,
       },
     })
 

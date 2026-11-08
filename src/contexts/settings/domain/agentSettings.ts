@@ -196,6 +196,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     defaultProvider,
   )
 
+  const codexReuseRunningAppServer =
+    normalizeBoolean(value.codexReuseRunningAppServer) ??
+    DEFAULT_AGENT_SETTINGS.codexReuseRunningAppServer
   const agentFullAccess =
     normalizeBoolean(value.agentFullAccess) ??
     (Object.keys(value).length > 0
@@ -421,6 +424,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     defaultProvider,
     agentProviderOrder,
     agentFullAccess,
+    codexReuseRunningAppServer,
     defaultTerminalProfileId:
       defaultTerminalProfileId.length > 0
         ? defaultTerminalProfileId

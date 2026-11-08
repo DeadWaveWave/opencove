@@ -75,6 +75,7 @@ describe('agent relaunch session binding', () => {
           bumpAgentLaunchToken: () => 1,
           isAgentLaunchTokenCurrent: () => true,
           agentFullAccess: false,
+          codexReuseRunningAppServer: false,
           defaultTerminalProfileId: null,
           terminalFontSize: 13,
           terminalDisplayMetrics: { fontSize: 13 },

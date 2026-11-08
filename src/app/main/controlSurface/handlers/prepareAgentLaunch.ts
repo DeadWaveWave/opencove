@@ -9,6 +9,7 @@ export async function prepareAgentLaunch(options: {
   environment?: NodeJS.ProcessEnv
   profileId?: string | null
   agentFullAccess: boolean
+  codexReuseRunningAppServer: boolean
   cwd: string
   executablePathOverride: string | null
   mode: AgentLaunchMode
@@ -30,6 +31,7 @@ export async function prepareAgentLaunch(options: {
       model: options.model,
       resumeSessionId: options.resumeSessionId,
       agentFullAccess: options.agentFullAccess,
+      codexReuseRunningAppServer: options.codexReuseRunningAppServer,
       opencodeServer: options.opencodeServer,
       executablePathOverride: options.executablePathOverride,
       workspaceDirectory: options.cwd,

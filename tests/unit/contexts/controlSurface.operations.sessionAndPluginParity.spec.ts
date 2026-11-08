@@ -66,7 +66,11 @@ const oracles: Record<string, (payload: unknown) => unknown> = {
   'session.stopNode': normalizeStopNode,
   'session.writeNode': normalizeWriteNode,
   'session.prepareOrRevive': normalizeWorkspaceIdPayload,
-  'session.launchAgentInMount': normalizeLaunchAgentInMountPayload,
+  // The frozen oracle predates this opt-in field; legacy corpus inputs omit it.
+  'session.launchAgentInMount': payload => ({
+    ...normalizeLaunchAgentInMountPayload(payload),
+    codexReuseRunningAppServer: null,
+  }),
 }
 const bases: Record<string, Record<string, unknown>> = {
   'session.terminalAgentActivity.list': {},
