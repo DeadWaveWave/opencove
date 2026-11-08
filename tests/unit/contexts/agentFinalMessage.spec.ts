@@ -250,13 +250,14 @@ it.each([
   expect(f.read({ promptId: 'a' })).toMatchObject({ turnId: 't1', message: 'a answer' })
   f.runtime.dispose()
 })
-it('does not supersede a duplicate identified submit', () => {
+it('keeps repeated identified submissions in the current turn until queue evidence resolves', () => {
   const f = fixture()
   f.event('UserPromptSubmit', 'a')
   f.event('UserPromptSubmit', 'a')
   expect(f.registry.get({ nodeId: 'n' })?.turn?.id).toBe('t1')
   f.event('Stop', 'a', 'a answer')
-  expect(f.read()).toMatchObject({ turnId: 't1', message: 'a answer' })
+  reason(() => f.read({ turnId: 't1' }), 'turn_not_ended')
+  expect(f.registry.get({ nodeId: 'n' })?.turn?.id).toBe('t1')
   f.runtime.dispose()
 })
 

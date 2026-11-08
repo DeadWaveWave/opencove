@@ -12,14 +12,17 @@ type Identity = Pick<
   'promptId' | 'providerSessionId' | 'providerTurnId'
 > & {
   emittedAtMs?: number
+  promptIds?: string[]
 }
 type EndedTurn = {
   turnId: string
   promptId?: string
+  promptIds?: string[]
   outcome: TurnOutcome
   endedAt: number
   message?: string
   truncated?: boolean
+  messageKind?: 'intermediate'
   superseded?: boolean
 }
 export type FinalMessageSelector = { turnId?: string; promptId?: string }
@@ -28,6 +31,36 @@ export type FinalMessageSelector = { turnId?: string; promptId?: string }
 export class AgentTurnHistory {
   private active: Identity | undefined
   private readonly ended: EndedTurn[] = []
+
+  matchesSession(id: string): boolean {
+    return this.active?.providerSessionId === id
+  }
+  hasPrompt(id?: string): boolean {
+    return !!id && (this.active?.promptId === id || !!this.active?.promptIds?.includes(id))
+  }
+  hasEndedPrompt(id?: string): boolean {
+    return !!id && this.ended.some(turn => turn.promptId === id || turn.promptIds?.includes(id))
+  }
+  hasCurrentPrompt(evidence?: PromptSubmissionEvidence): boolean {
+    return (
+      !!evidence?.promptId &&
+      this.active?.promptId === evidence.promptId &&
+      this.active?.providerSessionId === evidence.providerSessionId
+    )
+  }
+  sameSubmission(observation: AgentRunObservation, evidence?: PromptSubmissionEvidence): boolean {
+    return observation.hookEventName === 'UserPromptSubmit' && this.hasCurrentPrompt(evidence)
+  }
+  continueWith(promptId?: string): void {
+    if (!this.active || !promptId) {
+      return
+    }
+    const ids = this.active.promptIds ?? []
+    if (this.active.promptId) {
+      ids.push(this.active.promptId)
+    }
+    this.active = { ...this.active, promptId, promptIds: ids.slice(-64) }
+  }
 
   /** Relay-time ordering survives message eviction; reducer authority checks still apply. */
   supersedes(
@@ -42,6 +75,7 @@ export class AgentTurnHistory {
       this.active?.promptId &&
       evidence?.promptId &&
       this.active.promptId !== evidence.promptId &&
+      !this.hasPrompt(evidence.promptId) &&
       this.active.emittedAtMs !== undefined &&
       observation.emittedAtMs !== undefined &&
       observation.emittedAtMs > this.active.emittedAtMs &&
@@ -68,9 +102,17 @@ export class AgentTurnHistory {
     if (observation.boundary?.kind !== 'start' && observation.boundary?.kind !== 'end') {
       return false
     }
+    if (
+      this.active?.promptId !== evidence.promptId &&
+      this.active?.promptIds?.includes(evidence.promptId)
+    ) {
+      return true
+    }
     // Superseded ends are late. Replays cannot reopen or close another active turn. A repeated
     // Stop with no active turn can still refresh idle after provider continuation.
-    const retained = this.ended.find(turn => turn.promptId === evidence.promptId)
+    const retained = this.ended.find(
+      turn => turn.promptId === evidence.promptId || turn.promptIds?.includes(evidence.promptId!),
+    )
     if (retained) {
       return (
         retained.superseded === true ||
@@ -84,6 +126,7 @@ export class AgentTurnHistory {
     return !!(
       (this.active.promptId &&
         this.active.promptId !== evidence.promptId &&
+        !this.hasPrompt(evidence.promptId) &&
         !this.supersedes(observation, evidence)) ||
       (this.active.providerSessionId &&
         evidence.providerSessionId &&
@@ -97,6 +140,7 @@ export class AgentTurnHistory {
     ended: AgentRunSnapshot['turn'],
     observation: AgentRunObservation | null,
     evidence?: PromptSubmissionEvidence,
+    intermediate = false,
   ): void {
     if (ended) {
       const correlated =
@@ -106,13 +150,15 @@ export class AgentTurnHistory {
         this.active.promptId === evidence?.promptId &&
         this.active.providerSessionId !== undefined &&
         this.active.providerSessionId === evidence?.providerSessionId
-      const content = correlated ? evidence?.finalMessage : undefined
+      const content = correlated || intermediate ? evidence?.finalMessage : undefined
       this.ended.push({
         turnId: ended.id,
         promptId: this.active?.promptId,
+        promptIds: this.active?.promptIds,
         outcome: next.snapshot.turnOutcome ?? 'unknown',
         endedAt: observation?.observedAt ?? next.snapshot.lastTransitionAt,
         ...(next.snapshot.turn ? { superseded: true } : {}),
+        ...(intermediate ? { messageKind: 'intermediate' as const } : {}),
         ...(content ? { message: content.message, truncated: content.truncated } : {}),
       })
       this.active = undefined
@@ -153,7 +199,8 @@ export class AgentTurnHistory {
       ? this.ended.find(candidate =>
           selector.turnId !== undefined
             ? candidate.turnId === selector.turnId
-            : candidate.promptId === selector.promptId,
+            : candidate.promptId === selector.promptId ||
+              !!candidate.promptIds?.includes(selector.promptId!),
         )
       : this.ended.at(-1)
     if (!turn) {
@@ -161,7 +208,7 @@ export class AgentTurnHistory {
         explicit &&
         snapshot.turn &&
         (selector.turnId === snapshot.turn.id ||
-          (selector.promptId !== undefined && selector.promptId === this.active?.promptId))
+          (selector.promptId !== undefined && this.hasPrompt(selector.promptId)))
       ) {
         unavailable('turn_not_ended')
       }
@@ -180,6 +227,7 @@ export class AgentTurnHistory {
       ...(turn.promptId !== undefined ? { promptId: turn.promptId } : {}),
       outcome: turn.outcome,
       message: turn.message,
+      ...(turn.messageKind ? { messageKind: turn.messageKind } : {}),
       truncated: turn.truncated ?? false,
       source: 'hook' as const,
     }

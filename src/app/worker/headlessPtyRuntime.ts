@@ -1,3 +1,7 @@
+import {
+  ClaudeTranscriptChannel,
+  type ClaudeTranscriptPort,
+} from '../../shared/runtime/agentHook/claudeTranscript'
 import { randomUUID } from 'node:crypto'
 import type { AgentSessionDiscovery } from '../../contexts/agent/application/ports/AgentSessionDiscovery'
 import type {
@@ -37,7 +41,7 @@ type SpawnSessionOptions = {
   hookInstallState?: AgentHookInstallState
 }
 
-export interface HeadlessPtyRuntime {
+export interface HeadlessPtyRuntime extends ClaudeTranscriptPort {
   isIdle: () => boolean
   listProfiles: () => Promise<ListTerminalProfilesResult>
   spawnSession: (options: SpawnSessionOptions) => Promise<{ sessionId: string }>
@@ -65,6 +69,7 @@ export function createHeadlessPtyRuntime(options: {
   const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
   const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
   const foregroundListeners = new Set<(event: TerminalForegroundEvent) => void>()
+  const transcripts = new ClaudeTranscriptChannel()
   const stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
   const metadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
   const profileResolver = new TerminalProfileResolver()
@@ -85,6 +90,7 @@ export function createHeadlessPtyRuntime(options: {
     reportIssue: message => {
       process.stderr.write(`${message}\n`)
     },
+    onClaudeTranscript: transcripts.emit,
     onState: event => {
       emitState({
         ...event,
@@ -273,6 +279,7 @@ export function createHeadlessPtyRuntime(options: {
         foregroundListeners.delete(listener)
       }
     },
+    onClaudeTranscript: transcripts.subscribe,
     onState: listener => {
       stateListeners.add(listener)
       return () => {
@@ -310,6 +317,7 @@ export function createHeadlessPtyRuntime(options: {
       dataListeners.clear()
       exitListeners.clear()
       foregroundListeners.clear()
+      transcripts.dispose()
       stateListeners.clear()
       metadataListeners.clear()
       hookInstallStateBySessionId.clear()

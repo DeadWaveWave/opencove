@@ -1,3 +1,4 @@
+import type { ClaudeTranscriptObservation } from '../../../../shared/runtime/agentHook/claudeTranscript'
 import type { ReservedSessionInput } from '../../../../contexts/agent/application/ports/PromptDeliveryPorts'
 import { withSessionInputOperation } from './ptyStreamSessionInput'
 import type { AgentRunStateRuntime } from '../../../../contexts/agent/application/AgentRunStateRuntime'
@@ -140,6 +141,12 @@ export class PtyStreamHub {
     const session = this.ensureSession(metadata.sessionId)
     session.metadata = metadata
     session.presentationSession.resize(metadata.cols, metadata.rows)
+  }
+
+  public registerClaudeTranscript(record: ClaudeTranscriptObservation): void {
+    if (!this.retiredSessions.has(record.sessionId)) {
+      this.agentRuns.observeClaudeTranscript(record)
+    }
   }
 
   public registerSessionAgentState(options: TerminalSessionStateEvent): void {

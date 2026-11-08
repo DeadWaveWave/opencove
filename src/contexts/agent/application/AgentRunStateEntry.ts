@@ -1,9 +1,11 @@
+import type { ClaudeTurnContinuation } from './ClaudeTurnContinuation'
 import { createAppError } from '../../../shared/errors/appError'
 import type { AgentTurnHistory, FinalMessageSelector } from './AgentTurnHistory'
 import type { AgentRuntimeFilter, AgentRuntimeEvent } from './AgentRunStateRegistry'
 import type { AgentRunModel } from '../domain/agentRunState'
 import type { RunStateFence } from './ports/PromptDeliveryPorts'
 export type AgentRunEntry = {
+  continuation: ClaudeTurnContinuation
   history: AgentTurnHistory
   model: AgentRunModel
   token: string

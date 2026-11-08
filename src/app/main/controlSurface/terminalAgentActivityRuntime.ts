@@ -29,7 +29,7 @@ export function createTerminalAgentActivityRuntime(options: {
   >
   agentProviderRegistry: AgentProviderRegistry
   metadataSources: readonly Pick<AgentHookChannel, 'onMetadata'>[]
-  stateSources: readonly Pick<AgentHookChannel, 'onState'>[]
+  stateSources: readonly Pick<AgentHookChannel, 'onState' | 'onClaudeTranscript'>[]
   dispose: () => Promise<void>
 } {
   const agentProviderRegistry =

@@ -1,3 +1,6 @@
+import { ClaudeTurnContinuation } from './ClaudeTurnContinuation'
+import { commitAgentRunUpdate } from './AgentRunStateUpdate'
+import type { ClaudeTranscriptObservation } from '../../../shared/runtime/agentHook/claudeTranscript'
 import { AgentTurnHistory, type FinalMessageSelector } from './AgentTurnHistory'
 import type { PromptSubmissionEvidence } from '../../../shared/runtime/agentHook/claudePromptEvidence'
 import {
@@ -5,17 +8,15 @@ import {
   claimRunNodeBinding,
   publishRunTransition,
   readRunFinalMessage,
-  scheduleRunExpiry,
   matchesAgentRunFilter,
   type AgentRunEntry as Entry,
   type AgentRunBinding as Binding,
 } from './AgentRunStateEntry'
-import { AgentRunStateFences, acceptedRunStateReceipt } from './AgentRunStateFences'
+import { AgentRunStateFences } from './AgentRunStateFences'
 import type { RunStateFence, RunStateReceipt } from './ports/PromptDeliveryPorts'
 import {
   createAgentRunModel,
   mirrorAgentRunModel,
-  transitionAgentRun,
   type AgentRunObservation,
   type AgentRunSnapshot,
 } from '../domain/agentRunState'
@@ -96,6 +97,7 @@ export class AgentRunStateRegistry {
     }
     const entry: Entry = {
       history: new AgentTurnHistory(),
+      continuation: new ClaudeTurnContinuation(),
       token: `${input.incarnation}:${++this.tokenSequence}`,
       bindingGeneration: 0,
       cursor: this.fences.nextCursor(),
@@ -191,47 +193,33 @@ export class AgentRunStateRegistry {
     this.update(entry, observation, evidence)
   }
 
+  observeClaudeTranscript(
+    sessionId: string,
+    incarnation: string,
+    record: ClaudeTranscriptObservation,
+  ): void {
+    const entry = this.entries.get(sessionId)
+    if (!entry || entry.model.incarnation !== incarnation) {
+      return
+    }
+    entry.continuation.transcript(record, entry.history, this.ports.now())
+    this.update(entry, null)
+  }
+
   private update(
     entry: Entry,
     observation: AgentRunObservation | null,
     evidence?: PromptSubmissionEvidence,
   ): void {
-    if (observation && entry.history.rejects(observation, evidence)) {
-      return
-    }
-    const result = transitionAgentRun(
-      entry.model,
-      observation,
-      this.ports.now(),
-      this.ports.createTurnId,
-      entry.history.supersedes(observation, evidence),
-    )
-    const accepted =
-      observation &&
-      result.model !== entry.model &&
-      result.model.observations[observation.source] === observation
-    const changed = JSON.stringify(result.model.snapshot) !== JSON.stringify(entry.model.snapshot)
-    entry.history.accept(entry.model, result.model, result.ended, observation, evidence)
-    entry.model = result.model
-    this.scheduleExpiry(entry)
-    publishRunTransition(entry, changed, result.ended ?? undefined, {
+    commitAgentRunUpdate(entry, observation, evidence, {
+      now: this.ports.now(),
+      createTurnId: this.ports.createTurnId,
+      schedule: this.ports.schedule,
+      update: () => this.update(entry, null),
       publish: (...args) => this.publish(...args),
-      notify: () => {
-        if (accepted || changed) {
-          this.notifyFence(
-            entry,
-            accepted
-              ? acceptedRunStateReceipt(observation, result.model.snapshot.turn?.id, evidence)
-              : {},
-          )
-        }
-      },
+      notify: receipt => this.notifyFence(entry, receipt),
       flush: () => this.flushDelivery(),
     })
-  }
-
-  private scheduleExpiry(entry: Entry): void {
-    scheduleRunExpiry(entry, this.ports.schedule, this.ports.now(), () => this.update(entry, null))
   }
 
   finalMessage(input: ({ sessionId: string } | { nodeId: string }) & FinalMessageSelector) {

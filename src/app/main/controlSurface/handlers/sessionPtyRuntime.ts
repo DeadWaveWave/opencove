@@ -1,3 +1,4 @@
+import type { ClaudeTranscriptPort } from '../../../../shared/runtime/agentHook/claudeTranscript'
 import type { SessionStateWatcherStartInput } from '../../../../contexts/terminal/presentation/main-ipc/sessionStateWatcher'
 import type {
   AgentProviderId,
@@ -17,7 +18,7 @@ import type { AgentLaunchArtifactScope } from '../../../../contexts/agent/applic
 
 export type TerminalAgentReexecRuntimeInput = TerminalAgentReexecInput & { operationId: string }
 
-export interface ControlSurfacePtyRuntime {
+export interface ControlSurfacePtyRuntime extends ClaudeTranscriptPort {
   isIdle?: () => boolean
   listProfiles?: () => Promise<ListTerminalProfilesResult>
   spawnSession: (options: {

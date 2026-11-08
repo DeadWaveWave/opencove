@@ -167,7 +167,7 @@ it.each(['session.transcript_not_ready', 'session.not_found'])(
 it('resolves repeated node selectors using the existing scoped lookup policy', async () => {
   const f = fixture(true)
   f.values['node.list'] = { nodes: [node, { ...node, id: 'other-123456', title: 'Other' }] }
-  f.values['agent.get'] = { ...snapshot, state: 'idle' }
+  f.values['agent.get'] = { ...snapshot, state: 'idle', turn: null }
   f.values['agent.list'] = { epoch: 'e', seq: 5, agents: [f.values['agent.get']] }
   expect(
     await run(

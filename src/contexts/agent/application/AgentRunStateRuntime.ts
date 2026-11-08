@@ -1,3 +1,4 @@
+import type { ClaudeTranscriptObservation } from '../../../shared/runtime/agentHook/claudeTranscript'
 import { getPromptSubmissionEvidence } from '../../../shared/runtime/agentHook/claudePromptEvidence'
 import type {
   AgentProviderId,
@@ -217,6 +218,17 @@ export class AgentRunStateRuntime {
         ? update.event.endedTurn
         : undefined,
     )
+  }
+
+  observeClaudeTranscript(record: ClaudeTranscriptObservation): void {
+    const session = this.sessions.get(record.sessionId)
+    if (!session || session.remote) {
+      return
+    }
+    if (!record.incarnation) {
+      return
+    }
+    this.registry.observeClaudeTranscript(record.sessionId, record.incarnation, record)
   }
 
   observe(event: TerminalSessionStateEvent): void {
