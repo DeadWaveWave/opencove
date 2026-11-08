@@ -293,7 +293,9 @@ export class ClaudeTurnContinuation {
     }
     if (
       !this.pending().length &&
-      !this.reconciling &&
+      // An ordinary turn does not need transcript EOF. Once a continuation exists,
+      // even resolved items must wait for the batch to finish before granting readiness.
+      (!this.reconciling || (!this.items.length && !this.baselineAttached)) &&
       !this.uncertain &&
       !this.earlyUser &&
       (!this.baselineAttached || this.checkpointReady)

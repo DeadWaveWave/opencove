@@ -11,6 +11,7 @@ export class ClaudeTranscriptGeneration {
     const at = event.emittedAtMs,
       id = event.claudeSessionId
     if (event.hookEventName === 'SessionStart') {
+      const replacement = !!this.current || this.ended || event.sessionStartSource === 'clear'
       if (this.current || this.ended) {
         if (at === undefined) {
           return !this.ended && id === this.current ? 'event' : 'ignore'
@@ -36,7 +37,9 @@ export class ClaudeTranscriptGeneration {
       this.startAt = at
       this.watermark = at
       this.ended = false
-      return 'start'
+      // First attachment belongs to the fresh invocation, not a conversation handoff.
+      // In particular a resumed editor may report Stop without a new prompt submission.
+      return replacement ? 'start' : 'event'
     }
     if (
       this.ended ||
