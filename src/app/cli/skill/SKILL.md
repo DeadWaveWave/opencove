@@ -165,10 +165,11 @@ State waits print all selected latest snapshots; exact-turn waits print one resu
 stdout empty. Ctrl-C exits 130 and closes subscriptions. It never stops the target agent. Read tries the latest
 ended turn's `agent.finalMessage` first. `--turn <turnId>` selects exactly the OpenCove turn ID returned by prompt:
 no prefixes or fallback. Hook replies (≤64 KiB), outcome and IDs are private; exact archived local --turn reads/waits survive
-restarts without a live agent. Archive caps: 50 turns/node, 30 days, 20,000 global records and 128 MiB of message text. JSON includes
+restarts without a live agent. Archive caps: 60 turns/node, 30 days, 20,000 global records and 128 MiB of message text. JSON includes
 persisted and memoryOnlyReason when false; archive_unavailable differs from a miss. Deleting the node removes
-OpenCove history, not provider transcripts or existing backups. No prompt text or delivery records are archived; no
-history-clear command exists. Remote waits use mirrored snapshots/events; older history requires the executing
+OpenCove history, not provider transcripts or existing backups. No prompt text or delivery records are archived.
+`opencove agent history clear --node <selector>` deletes a node's stored replies (archive and memory) and keeps the
+node, transcripts, run state and deliveries; archive unavailability clears memory but exits 1. Remote waits use mirrored snapshots/events; older history requires the executing
 Worker. Correlated local Claude hooks with correlated prompt IDs supply messages. Claude queued messages/provider
 follow-ups stay in one OpenCove turn; exact reads return its final reply after continuations. An unknown
 continuation marks the last provider reply messageKind: intermediate and prints a notice. After wait --until idle,

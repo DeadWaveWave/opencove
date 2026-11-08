@@ -115,18 +115,37 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
         return box ? box.y + box.height / 2 : Number.NaN
       }
       const buttonCentre = await centreY('[data-testid="app-header-control-center"]')
-      const pillSelector = '[data-testid="app-header-agent-activity"] .cove-status-pill'
+      const pillSelector = '[data-testid="app-header-agent-activity"]'
       expect(Math.abs((await centreY(pillSelector)) - buttonCentre)).toBeLessThanOrEqual(0.5)
+      // A hover previews every agent; the control center then takes the corner back.
+      const agentList = window.getByTestId('app-header-agent-activity-list')
+      await headerActivity.hover()
+      await expect(agentList.getByRole('group', { name: 'Working' })).toBeVisible()
+      await window.getByTestId('app-header-control-center').click()
+      await expect(agentList).toHaveCount(0)
+      await expect(window.getByTestId('control-center')).toBeVisible()
+      await window.getByTestId('control-center-close').click()
+      await expect(window.getByTestId('control-center')).toHaveCount(0)
+      // From the keyboard the list opens onto its first line, once the list is placed.
+      await headerActivity.focus()
+      await window.keyboard.press('ArrowDown')
+      await expect(agentList.locator('[data-agent-activity-row]').first()).toBeFocused()
+      await window.keyboard.press('Escape')
+      await expect(agentList).toHaveCount(0)
+      await expect(headerActivity).toBeFocused()
 
       await writeToPty(window, { sessionId, data: '<test-hook-waiting>\r' })
       await expect(status).toHaveText('Waiting')
       await expect(sidebarStatus).toHaveText('Needs input')
-      // The top bar summarizes it too, and one click reaches the waiting agent.
+      // The top bar summarizes it too; its list names the agent, and the line reaches it.
       await expect(headerActivity).toHaveText('1 waiting')
       expect(Math.abs((await centreY(pillSelector)) - buttonCentre)).toBeLessThanOrEqual(0.5)
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await pane.click({ position: await findEmptyPanePoint(pane) })
       await headerActivity.click()
+      await expect(agentList.getByRole('group', { name: 'Waiting for you' })).toBeVisible()
+      await agentList.locator('[data-agent-activity-row]').first().click()
+      await expect(agentList).toHaveCount(0)
       await expect(agentNode.locator('.xterm-helper-textarea')).toBeFocused()
 
       await writeToPty(window, { sessionId, data: '<test-hook-done>\r' })

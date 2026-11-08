@@ -32,7 +32,7 @@ so check `outcome`. It requires one node and conflicts with `--until` and `--any
 Unknown/evicted turns or missing retained evidence exit 1: inspect `agent get`
 and its `lastEndedTurn`. Timeout exits 124 with `lastKnown` on stderr.
 The exact read never falls back. Hook history is private/in-memory, limited to the
-up to 50 ended turns per node in the private Worker archive; exact --turn lookup survives restart. Remote exact waits use only mirrored
+up to 60 ended turns per node in the private Worker archive; exact --turn lookup survives restart. Remote exact waits use only mirrored
 snapshots/events. Older remote turns require the Worker that runs them;
 `details.reason: remote_history_unavailable` identifies this limit, not eviction. Currently
 correlated local Claude hooks supply messages. Unqualified read alone can fall
@@ -123,11 +123,11 @@ and truncation/intermediate metadata in a separate archive file. It stores no pr
 text, hook evidence or S2 delivery records. S1 provider continuations archive once at
 the final OpenCove end; uncertainty stays `unknown`/`messageKind: intermediate` and
 never grants readiness or proves steering consumption. Retention upper bounds are
-50 turns/node, 30 days, 20,000 global records and 128 MiB of message text; metadata-only
+60 turns/node, 30 days, 20,000 global records and 128 MiB of message text; metadata-only
 ends count. Smaller memory caches may evict earlier. Oversized purges leave new turns
 memory-only (`retention_backlog`) while bounded cleanup makes room for future records.
 
 Deleting the node removes queryable OpenCove history, including caches; it does not
-erase provider transcripts, existing backups or forensic remnants. No history-clear
-command exists. Unqualified reads, prompt-ID selectors and labelled transcript fallback
+erase provider transcripts, existing backups or forensic remnants.
+`opencove agent history clear --node <selector>` (`agent.history.clear`, interact scope) deletes the node’s archived and in-memory replies across retained incarnations, leaving the node, provider transcripts, backups, run state, active turns and delivery records unchanged; later ends store normally, and archive unavailability clears memory but exits 1. Unqualified reads, prompt-ID selectors and labelled transcript fallback
 retain current-incarnation semantics. Remote history is not routed across Workers.

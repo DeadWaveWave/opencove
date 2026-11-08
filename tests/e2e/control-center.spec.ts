@@ -59,7 +59,7 @@ test.describe('Control Center', () => {
         const thumbnails = element.querySelectorAll<SVGElement>(
           '.cove-appearance-picker__thumbnail',
         )
-        if (!body || sections.length !== 3 || faces.length !== 3 || thumbnails.length !== 3) {
+        if (!body || sections.length !== 3 || faces.length !== 4 || thumbnails.length !== 3) {
           throw new Error('Control Center pixel primitives are missing')
         }
         const style = getComputedStyle(element)
@@ -89,6 +89,7 @@ test.describe('Control Center', () => {
       expect(visuals.rules[0]).toBe('none')
       expect(visuals.rules.slice(1).every(rule => rule.includes('linear-gradient'))).toBe(true)
       expect(visuals.faces).toEqual([
+        [44, 44],
         [44, 44],
         [44, 44],
         [44, 44],
@@ -207,12 +208,13 @@ test.describe('Control Center', () => {
       await expect(window.locator('html')).toHaveAttribute('data-cove-theme-id', 'dark')
 
       const tiles = controlCenter.locator('[data-cove-part="toggle-tile"]')
-      await expect(tiles).toHaveCount(3)
+      await expect(tiles).toHaveCount(4)
       await Promise.all(
         [
           'control-center-toggle-minimap',
           'control-center-toggle-in-app-notifications',
           'control-center-toggle-system-notifications',
+          'control-center-toggle-sound',
         ].map(testId =>
           expect(window.getByTestId(testId)).toHaveAttribute('aria-pressed', /true|false/),
         ),
@@ -280,6 +282,13 @@ test.describe('Control Center', () => {
               '.control-center__link-label, .cove-appearance-picker__label',
             ),
           ).every(label => label.scrollWidth <= label.clientWidth),
+          // Four tiles share a row: each label wraps to at most its two lines, never clipped.
+          tileLabelsFit: Array.from(
+            element.querySelectorAll<HTMLElement>('.cove-toggle-tile__label'),
+          ).every(
+            label =>
+              label.scrollWidth <= label.clientWidth && label.scrollHeight <= label.clientHeight,
+          ),
         }
       })
       expect(metrics.left).toBeGreaterThanOrEqual(8)
@@ -291,6 +300,7 @@ test.describe('Control Center', () => {
       expect(metrics.background).not.toBe('rgba(0, 0, 0, 0)')
       expect(Math.min(...metrics.touchHeights)).toBeGreaterThanOrEqual(43.99)
       expect(metrics.labelsFit).toBe(true)
+      expect(metrics.tileLabelsFit).toBe(true)
 
       const screenshotPath = testInfo.outputPath('control-center-narrow-light.png')
       await window.screenshot({ path: screenshotPath })

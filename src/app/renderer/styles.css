@@ -19,6 +19,7 @@
 @import './styles/app-header.css' layer(opencove);
 @import './styles/command-center.css' layer(opencove);
 @import './styles/control-center.css' layer(opencove);
+@import './styles/agent-island.css' layer(opencove);
 @import './styles/performance-monitor.css' layer(opencove);
 @import './styles/workspace-search-panel.css' layer(opencove);
 @import './styles/workspace-sidebar.css' layer(opencove);
@@ -92,7 +93,7 @@
 @import './styles/remote-ui.css' layer(opencove);
 @import './styles/remote-ui.settings.css' layer(opencove);
 @import './styles/app-message.css' layer(opencove);
-@import './styles/app-notifications.css' layer(opencove);
+@import './styles/agent-island-card.css' layer(opencove);
 @import './styles/issue-report.css' layer(opencove);
 @import './styles/whats-new.css' layer(opencove);
 @import './styles/space-archives-window.css' layer(opencove);

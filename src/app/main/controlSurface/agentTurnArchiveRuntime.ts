@@ -178,6 +178,7 @@ export function createWorkerAgentTurnArchiveRuntime(options: {
           : filter(archive.getExact(input)),
     getExactBySession: input =>
       members === null ? { status: 'unavailable' } : filter(archive.getExactBySession(input)),
+    clearNode: nodeId => archive.clearNode(nodeId),
     revokeNodes: ids => archive.revokeNodes(ids),
     captureWatermark: () => archive.captureWatermark(),
     sweep: (now, existing, through) => archive.sweep(now, existing, through),

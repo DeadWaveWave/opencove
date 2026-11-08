@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { useViewportSpaceStore } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/viewportSpace'
+import { useAgentsNeedingYou } from '../store/useAgentAttentionStore'
 import { summarizeAgentActivity, type AgentActivitySummary } from '../utils/agentActivitySummary'
 import { useAgentWaitingSinceTracker } from './useAgentWaitingSince'
 
@@ -14,7 +15,11 @@ export function useAppHeaderActivity(
   )
   const activeSpaceName =
     activeWorkspace?.spaces.find(space => space.id === viewportSpaceId)?.name ?? null
-  const agentActivity = useMemo(() => summarizeAgentActivity(workspaces), [workspaces])
+  const needsYou = useAgentsNeedingYou()
+  const agentActivity = useMemo(
+    () => summarizeAgentActivity(workspaces, needsYou),
+    [needsYou, workspaces],
+  )
   useAgentWaitingSinceTracker(workspaces)
   return { activeSpaceName, agentActivity }
 }

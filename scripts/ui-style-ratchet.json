@@ -3,7 +3,6 @@
     "src/app/renderer/styles/anchored-operation-popover.css": 2,
     "src/app/renderer/styles/app-header.css": 3,
     "src/app/renderer/styles/app-message.css": 2,
-    "src/app/renderer/styles/app-notifications.css": 4,
     "src/app/renderer/styles/app-startup-state.css": 3,
     "src/app/renderer/styles/base.css": 1,
     "src/app/renderer/styles/canvas-node-window.css": 1,
@@ -80,7 +79,6 @@
   "radius": {
     "src/app/renderer/styles/anchored-operation-popover.css": 4,
     "src/app/renderer/styles/app-header.css": 2,
-    "src/app/renderer/styles/app-notifications.css": 1,
     "src/app/renderer/styles/app-startup-state.css": 12,
     "src/app/renderer/styles/base.css": 1,
     "src/app/renderer/styles/command-center.css": 4,
@@ -140,7 +138,6 @@
     "src/app/renderer/styles/anchored-operation-popover.css": 2,
     "src/app/renderer/styles/app-header.css": 13,
     "src/app/renderer/styles/app-message.css": 2,
-    "src/app/renderer/styles/app-notifications.css": 7,
     "src/app/renderer/styles/app-startup-state.css": 19,
     "src/app/renderer/styles/command-center.css": 18,
     "src/app/renderer/styles/cove-fields.css": 9,
@@ -215,7 +212,6 @@
   "z-index": {
     "src/app/renderer/styles/anchored-operation-popover.css": 2,
     "src/app/renderer/styles/app-message.css": 1,
-    "src/app/renderer/styles/app-notifications.css": 1,
     "src/app/renderer/styles/node-selected-drag-surface.css": 1,
     "src/app/renderer/styles/performance-monitor.css": 1,
     "src/app/renderer/styles/task-node.css": 3,

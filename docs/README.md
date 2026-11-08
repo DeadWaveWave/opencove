@@ -55,6 +55,7 @@
 - `ui/VIEWPORT_NAVIGATION_STANDARD.md`：视口导航规范。
 - `ui/SPATIAL_PIXEL_THEME.md`：像素墙、像素效果与类别色规范。
 - `ui/CANVAS_SIGNALS.md`：画布状态信号、光照与粒子契约。
+- `ui/AGENT_ISLAND.md`：顶栏 Agent 胶囊、通知卡与「需要你」的收回和回应。
 
 ## Development
 

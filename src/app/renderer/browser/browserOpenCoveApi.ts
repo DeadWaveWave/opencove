@@ -1,12 +1,4 @@
-import {
-  normalizeReadFileBytesResult,
-  type ListSystemFontsResult,
-  type SaveTextToDownloadsInput,
-  type SaveTextToDownloadsResult,
-  type ShowSystemNotificationInput,
-  type ShowSystemNotificationResult,
-  type WorkspaceDirectory,
-} from '@shared/contracts/dto'
+import { normalizeReadFileBytesResult, type WorkspaceDirectory } from '@shared/contracts/dto'
 import { BrowserPtyClient } from './BrowserPtyClient'
 import { invokeBrowserControlSurface } from './browserControlSurface'
 import type { ControlSurfaceInvokeRequest } from '@shared/contracts/controlSurface'
@@ -21,7 +13,7 @@ import {
 } from './browserOpenCoveApi.helpers'
 import { createBrowserPersistenceApi } from './browserOpenCoveApi.persistence'
 import { createBrowserAgentApi } from './browserOpenCoveApi.agent'
-import { saveTextToDownloadsInBrowser } from './browserOpenCoveApi.downloads'
+import { createBrowserSystemApi } from './browserOpenCoveApi.system'
 import {
   WORKSPACE_SELECT_DIRECTORY_REQUEST_EVENT,
   WORKSPACE_SELECT_DIRECTORY_RESPONSE_EVENT,
@@ -152,6 +144,18 @@ export function installBrowserOpenCoveApi(): void {
       // A browser tab has no native full screen of its own to report.
       getFullScreen: async () => ({ isFullScreen: false }),
       onFullScreenChange: () => () => undefined,
+      // A browser tab answers for itself: there is no main process to ask.
+      getFocus: async () => ({ isFocused: document.hasFocus() }),
+      onFocusChange: listener => {
+        const onFocus = () => listener({ isFocused: true })
+        const onBlur = () => listener({ isFocused: false })
+        window.addEventListener('focus', onFocus)
+        window.addEventListener('blur', onBlur)
+        return () => {
+          window.removeEventListener('focus', onFocus)
+          window.removeEventListener('blur', onBlur)
+        }
+      },
     },
     windowMetrics: {
       getDisplayInfo: async () => ({
@@ -400,39 +404,7 @@ export function installBrowserOpenCoveApi(): void {
         effectiveModel: payload.model ?? null,
       }),
     },
-    system: {
-      listFonts: async (): Promise<ListSystemFontsResult> => ({ fonts: [] }),
-      saveTextToDownloads: async (
-        payload: SaveTextToDownloadsInput,
-      ): Promise<SaveTextToDownloadsResult> => await saveTextToDownloadsInBrowser(payload),
-      showNotification: async (
-        payload: ShowSystemNotificationInput,
-      ): Promise<ShowSystemNotificationResult> => {
-        if (typeof window === 'undefined' || !('Notification' in window)) {
-          return { shown: false }
-        }
-
-        if (Notification.permission === 'default') {
-          await Notification.requestPermission()
-        }
-
-        if (Notification.permission !== 'granted') {
-          return { shown: false }
-        }
-
-        const title = payload.title.trim()
-        if (title.length === 0) {
-          return { shown: false }
-        }
-
-        const notification = new Notification(title, {
-          body: typeof payload.body === 'string' ? payload.body : undefined,
-          silent: payload.silent ?? false,
-        })
-        void notification
-        return { shown: true }
-      },
-    },
+    system: createBrowserSystemApi(),
     worker: {
       getStatus: async () => unsupportedWorkerStatus(),
       start: async () => unsupportedWorkerStatus(),

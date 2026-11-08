@@ -84,7 +84,8 @@ test.describe('Terminal Agent completion banner', () => {
         await window.keyboard.type('<test-overlay-advance>')
         await expect(terminal.locator('.terminal-node__status')).toHaveText('Standby')
         await expect(cards).toHaveCount(1)
-        await expect(cards.first()).toContainText('Standby')
+        // The card says what the Agent wants of you, not its runtime status.
+        await expect(cards.first()).toContainText('Waiting for your input')
         await window.screenshot({
           path: test.info().outputPath(`${provider}-terminal-complete.png`),
         })

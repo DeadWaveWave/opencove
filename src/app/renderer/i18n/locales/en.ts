@@ -16,6 +16,7 @@ import { enCanvasCollapse } from './en.canvasCollapse'
 import { enEdgeBeacons } from './en.edgeBeacons'
 import { enCanvasHud } from './en.canvasHud'
 import { enControlCenter } from './en.controlCenter'
+import { enAgentAttention } from './en.agentAttention'
 import { enCommandCenter } from './en.commandCenter'
 import { enSpaceCollapse } from './en.spaceCollapse'
 
@@ -38,6 +39,7 @@ export const en = {
   ...enEdgeBeacons,
   ...enCanvasHud,
   ...enControlCenter,
+  ...enAgentAttention,
   ...enCommandCenter,
   ...enSpaceCollapse,
   common: {
@@ -148,8 +150,6 @@ export const en = {
     agentsWaiting_other: '{{count}} waiting',
     agentsWorking_one: '{{count}} working',
     agentsWorking_other: '{{count}} working',
-    goToWaitingAgent_one: 'An agent is waiting. Go to {{title}}',
-    goToWaitingAgent_other: '{{count}} agents waiting. Go to {{title}}',
   },
   whatsNew: {
     title: "What's New",

@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import type { TranslateFn } from '@app/renderer/i18n'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import type { ListMountsResult } from '@shared/contracts/dto'
+import { useAgentAttentionStore } from '../store/useAgentAttentionStore'
 import { useAppStore } from '../store/useAppStore'
 import { toErrorMessage } from '../utils/format'
 import { isAbsolutePath } from '../utils/pathHelpers'
@@ -84,6 +85,8 @@ export function useAppShellWorkspaceActions({
 
   const handleSelectAgentNode = useCallback(
     (workspaceId: string, nodeId: string, options?: { focusInput?: boolean }): void => {
+      // Every way to an Agent (card, list, sidebar, system notification) answers it.
+      useAgentAttentionStore.getState().acknowledgeNode(workspaceId, nodeId)
       const store = useAppStore.getState()
       store.setIsSettingsOpen(false)
       store.setActiveWorkspaceId(workspaceId)

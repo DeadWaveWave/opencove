@@ -9,6 +9,7 @@ export const enControlCenter = {
     minimapUnavailable: 'Open a workspace to show its minimap.',
     inAppNotifications: 'In-app alerts',
     systemNotifications: 'System alerts',
+    sound: 'Alert sound',
     notificationSettings: 'Notification settings',
     moreSettings: 'All settings',
     showcaseExitHint: 'Showcase mode · press Esc to leave',

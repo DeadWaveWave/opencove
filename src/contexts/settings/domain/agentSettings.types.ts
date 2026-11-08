@@ -62,7 +62,29 @@ export interface WindowAppearanceSettings {
   canvasFarViewEnabled: boolean
 }
 
-export interface AgentSettings extends PixelEffectSettings, WindowAppearanceSettings {
+/** The synthesised alert sounds; `bit` is the pixel default (round 4). */
+export const NOTIFICATION_SOUNDS = ['bit', 'tide', 'pebble'] as const
+export type NotificationSound = (typeof NOTIFICATION_SOUNDS)[number]
+
+/** How an Agent that needs you is announced: in-app card, system notification and one sound. */
+export interface NotificationSettings {
+  /** Sent only while OpenCove is in the background; always silent, the app plays the sound. */
+  systemNotificationsEnabled: boolean
+  /** The in-app card at the top right. */
+  standbyBannerEnabled: boolean
+  standbyBannerShowTask: boolean
+  standbyBannerShowSpace: boolean
+  standbyBannerShowBranch: boolean
+  standbyBannerShowPullRequest: boolean
+  /** The one sound for both channels, in the foreground and the background. */
+  notificationSoundEnabled: boolean
+  notificationSound: NotificationSound
+  /** 0–100. */
+  notificationSoundVolume: number
+}
+
+export interface AgentSettings
+  extends PixelEffectSettings, WindowAppearanceSettings, NotificationSettings {
   language: UiLanguage
   uiTheme: UiTheme
   disabledPluginIds: string[]
@@ -93,12 +115,6 @@ export interface AgentSettings extends PixelEffectSettings, WindowAppearanceSett
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
   focusNodeUseVisibleCanvasCenter: boolean
-  systemNotificationsEnabled: boolean
-  standbyBannerEnabled: boolean
-  standbyBannerShowTask: boolean
-  standbyBannerShowSpace: boolean
-  standbyBannerShowBranch: boolean
-  standbyBannerShowPullRequest: boolean
   disableAppShortcutsWhenTerminalFocused: boolean
   keybindings: KeybindingOverrides
   canvasInputMode: CanvasInputMode

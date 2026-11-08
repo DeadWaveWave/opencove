@@ -4,12 +4,13 @@ exports[`agent  help is offline and complete 1`] = `
 "Usage: opencove agent <command> [options]
 
 Commands:
-  delivery  Check retained delivery evidence; never resends input
-  list      List live agent run states and node titles
-  get       Inspect an agent run-state snapshot with its node title
-  prompt    Send a prompt to an agent window OpenCove launched
-  wait      Wait until agents reach a state or finish a turn
-  read      Read an agent reply or inspect its current terminal screen
+  delivery         Check retained delivery evidence; never resends input
+  history <clear>  History canvas targets
+  list             List live agent run states and node titles
+  get              Inspect an agent run-state snapshot with its node title
+  prompt           Send a prompt to an agent window OpenCove launched
+  wait             Wait until agents reach a state or finish a turn
+  read             Read an agent reply or inspect its current terminal screen
 
 Global options: see "opencove --help".
 "

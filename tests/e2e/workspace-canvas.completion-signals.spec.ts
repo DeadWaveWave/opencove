@@ -15,11 +15,17 @@ import {
 } from './workspace-canvas.agent-status-watcher.helpers'
 
 import { installPixelDrawProbe, readPixelDrawProbe } from './workspace-canvas.pixel-draw-probe'
+import {
+  createCompletionSignalsStubScript,
+  START_COMPLETION_REPAINT,
+} from './workspace-canvas.completion-signals.fixture'
 
 type SignalWindow = Window & {
   __coveSignals?: string[]
   __coveCatches?: number[]
   __coveGlints?: string[]
+  __completionPtyOutput?: Record<string, { data: string; exitCode?: number }>
+  __disposeCompletionPtyCapture?: () => void
 }
 
 test('a working agent sends sonar, and a finished run flashes its window and sends a shockwave', async ({
@@ -30,10 +36,9 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
   const stub = path.join(fixture, 'spinner.mjs')
   await writeFile(
     stub,
-    [
-      `void import(${JSON.stringify(path.join(testWorkspacePath, 'scripts/test-agent-session-stub.mjs'))})`,
-      "setInterval(() => process.stdout.write('\\r\\x1b[2K| working 00:01'), 80).unref()",
-    ].join('\n'),
+    createCompletionSignalsStubScript(
+      path.join(testWorkspacePath, 'scripts/test-agent-session-stub.mjs'),
+    ),
   )
   const { electronApp, window } = await launchApp({
     windowMode: 'inactive',
@@ -93,7 +98,29 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
       },
     })
     await installPtySessionCapture(window)
+    // Retain raw output before launch: a rendered screen can lose startup text on redraw.
+    await window.evaluate(() => {
+      const target = window as SignalWindow
+      const output: NonNullable<SignalWindow['__completionPtyOutput']> = {}
+      target.__completionPtyOutput = output
+      const disposeData = window.opencoveApi.pty.onData(event => {
+        const session = (output[event.sessionId] ??= { data: '' })
+        session.data = (session.data + event.data).slice(-64_000)
+      })
+      const disposeExit = window.opencoveApi.pty.onExit(event => {
+        const session = (output[event.sessionId] ??= { data: '' })
+        session.exitCode = event.exitCode
+      })
+      target.__disposeCompletionPtyCapture = () => {
+        disposeData()
+        disposeExit()
+      }
+    })
     await window.locator('.task-node [data-testid="task-node-run-agent"]').click()
+    await expect(window.locator('.terminal-node__terminal').first()).toHaveAttribute(
+      'aria-busy',
+      'false',
+    )
     await expect(window.locator('.terminal-node').first()).toContainText(
       '[opencove-test-hook] ready',
     )
@@ -131,6 +158,9 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
         attributeFilter: ['data-cove-signal', 'style'],
       })
     }, agentId)
+    // A destructive repaint buffered during hydration can replace the ready screen.
+    // Start after hydration and ready; retain the same repaint stream for all signal checks.
+    await writeToPty(window, { sessionId, data: `${START_COMPLETION_REPAINT}\r` })
     await writeToPty(window, { sessionId, data: '<test-hook-initial-working>\r' })
     await expect(window.locator(`.react-flow__node[data-id="${agentId}"]`)).toContainText('Working')
     // While it works, the agent sends a low sonar wave across the wall every 2.4s.
@@ -222,6 +252,30 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
       { timeout: 4_000 },
     )
   } finally {
+    await testInfo.attach('completion-pty-output', {
+      body: JSON.stringify(
+        await window
+          .evaluate(
+            async sessionId => {
+              const target = window as SignalWindow
+              target.__disposeCompletionPtyCapture?.()
+              return {
+                output: target.__completionPtyOutput ?? {},
+                // Include output emitted before the renderer subscribed to live PTY events.
+                snapshot: sessionId
+                  ? await window.opencoveApi.pty
+                      .snapshot({ sessionId })
+                      .catch(error => ({ snapshotError: String(error) }))
+                  : null,
+                renderedText: document.querySelector('.terminal-node')?.textContent ?? null,
+              }
+            },
+            await resolveFirstAgentSessionId(window).catch(() => null),
+          )
+          .catch(error => ({ captureError: String(error) })),
+      ),
+      contentType: 'application/json',
+    })
     await testInfo.attach('completion-pixel-draws', {
       body: JSON.stringify(await readPixelDrawProbe(window).catch(() => [])),
       contentType: 'application/json',

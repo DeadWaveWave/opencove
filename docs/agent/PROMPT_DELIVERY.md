@@ -394,7 +394,7 @@ active or the mirrored `lastEndedTurn`, unavailable history reports
 Check older remote turns on the Worker that runs the agent; this is not eviction.
 
 The executing Worker owns private ended-turn memory and a separate exact-turn archive.
-Memory retains up to 50 ends and 512 KiB per incarnation. Content never enters public
+Memory retains up to 60 ends and 512 KiB per incarnation. Content never enters public
 snapshots, events, receipt rings, logs or mirrors. Replacement/retirement release memory;
 exact node/turn and original-session/turn lookups can still use retained archive records.
 Replies may quote user content. Access uses the existing coarse interact scope, not
@@ -488,10 +488,10 @@ The executing Worker stores replies (≤64 KiB UTF-8), outcome, IDs, timestamps 
 truncation/intermediate metadata, never prompt text, hook evidence or delivery records. S1 provider continuations archive once at
 the final OpenCove end; uncertainty stays `unknown`/`messageKind: intermediate` and
 never grants readiness or proves steering consumption. Retention upper bounds are
-50 turns/node, 30 days, 20,000 global records and 128 MiB of message text; metadata-only
+60 turns/node, 30 days, 20,000 global records and 128 MiB of message text; metadata-only
 ends count. Smaller memory caches may evict earlier. Oversized purges leave new turns
 memory-only (`retention_backlog`) while bounded cleanup makes room for future records.
 
 Deleting the node removes queryable OpenCove history, including caches; it does not
-erase provider transcripts, existing backups or forensic remnants. No history-clear
-command exists. Unqualified reads, prompt-ID selectors and transcript fallback keep current-incarnation semantics; remote history stays on its executing Worker.
+erase provider transcripts, existing backups or forensic remnants.
+`opencove agent history clear --node <selector>` (`agent.history.clear`, interact scope) deletes the node’s archived and in-memory replies across retained incarnations, leaving the node, provider transcripts, backups, run state, active turns and delivery records unchanged; later ends store normally, and archive unavailability clears memory but exits 1. Unqualified reads, prompt-ID selectors and transcript fallback keep current-incarnation semantics; remote history stays on its executing Worker.

@@ -1,3 +1,4 @@
+import { agentHistoryClearCommand } from './agentHistory'
 import type { GetSpaceResult } from '../../../shared/contracts/dto'
 import { agentDeliveryCommand } from './agentDelivery'
 import { agentPromptCommand } from './agent'
@@ -25,6 +26,7 @@ export const commands: Command[] = [
   ...identityCommands,
   agentPromptCommand,
   agentDeliveryCommand,
+  agentHistoryClearCommand,
   ...agentQueryCommands,
   skillCommand,
   ...nodeCommands,
