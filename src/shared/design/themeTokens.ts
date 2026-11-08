@@ -136,6 +136,9 @@ export function themeTokens(theme: GeneratedTheme): ThemeTokens {
     '--cove-pixel-spot': hex(theme.pixel.spot),
     '--cove-pixel-cell': hex(theme.pixel.cell),
     '--cove-pixel-gap': hex(theme.pixel.gap),
+    // A pixel control's bevel (ui-pixel.css): lit along its top, shaded along its bottom.
+    '--cove-pixel-light': rgba([255, 255, 255], 0.2),
+    '--cove-pixel-shade': rgba([0, 0, 0], 0.24),
     ...Object.fromEntries(
       theme.pixel.clouds.map((c, i) => [`--cove-pixel-cloud-${i + 1}`, hex(c)]),
     ),

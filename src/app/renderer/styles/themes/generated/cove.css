@@ -101,6 +101,8 @@
   --cove-pixel-spot: #00b0d5;
   --cove-pixel-cell: #11181e;
   --cove-pixel-gap: #05090c;
+  --cove-pixel-light: rgb(255 255 255 / 0.2);
+  --cove-pixel-shade: rgb(0 0 0 / 0.24);
   --cove-pixel-cloud-1: #53263f;
   --cove-pixel-cloud-2: #3c2f5a;
   --cove-pixel-cloud-3: #153a5d;
@@ -357,6 +359,8 @@
   --cove-pixel-spot: #00a2c5;
   --cove-pixel-cell: #dbe4ed;
   --cove-pixel-gap: #f6fbff;
+  --cove-pixel-light: rgb(255 255 255 / 0.2);
+  --cove-pixel-shade: rgb(0 0 0 / 0.24);
   --cove-pixel-cloud-1: #eeb9d3;
   --cove-pixel-cloud-2: #cec2f4;
   --cove-pixel-cloud-3: #a8cff7;
