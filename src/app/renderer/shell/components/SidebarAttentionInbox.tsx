@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { Button } from '@app/renderer/components/ui/Button'
-import type { WaitingAgentReference } from '../utils/agentActivitySummary'
+import type { AgentActivityReference } from '../utils/agentActivitySummary'
 import { describeWaitDuration, resolveWaitDuration } from '../utils/waitDuration'
 import { useAgentWaitingSinceStore, useMinuteClock } from '../hooks/useAgentWaitingSince'
 import { ProjectTile } from './ProjectTile'
@@ -11,7 +11,7 @@ export function SidebarAttentionInbox({
   items,
   onSelectAgentNode,
 }: {
-  items: readonly WaitingAgentReference[]
+  items: readonly AgentActivityReference[]
   onSelectAgentNode: (workspaceId: string, nodeId: string) => void
 }): React.JSX.Element | null {
   const { t } = useTranslation()

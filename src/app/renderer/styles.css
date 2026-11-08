@@ -19,6 +19,7 @@
 @import './styles/app-header.css' layer(opencove);
 @import './styles/command-center.css' layer(opencove);
 @import './styles/control-center.css' layer(opencove);
+@import './styles/agent-island.css' layer(opencove);
 @import './styles/performance-monitor.css' layer(opencove);
 @import './styles/workspace-search-panel.css' layer(opencove);
 @import './styles/workspace-sidebar.css' layer(opencove);

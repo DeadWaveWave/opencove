@@ -38,6 +38,8 @@ export function AppHeader({
   activeSpaceName = null,
   agentActivity = null,
   onFocusAgentNode,
+  isAgentActivityOpen = false,
+  onAgentActivityOpenChange,
   isControlCenterOpen,
   isCommandCenterOpen,
   isPerformanceMonitorEnabled,
@@ -72,6 +74,8 @@ export function AppHeader({
   activeSpaceName?: string | null
   agentActivity?: AgentActivitySummary | null
   onFocusAgentNode?: (workspaceId: string, nodeId: string) => void
+  isAgentActivityOpen?: boolean
+  onAgentActivityOpenChange?: (open: boolean) => void
   isControlCenterOpen: boolean
   isCommandCenterOpen: boolean
   isPerformanceMonitorEnabled: boolean
@@ -304,8 +308,20 @@ export function AppHeader({
         </div>
 
         <div className="app-header__section app-header__section--right">
-          {agentActivity && onFocusAgentNode ? (
-            <AppHeaderAgentActivity summary={agentActivity} onFocusAgent={onFocusAgentNode} />
+          {agentActivity && onFocusAgentNode && onAgentActivityOpenChange ? (
+            <AppHeaderAgentActivity
+              summary={agentActivity}
+              isOpen={isAgentActivityOpen}
+              onOpenChange={onAgentActivityOpenChange}
+              // A hover must not trade a panel you are using for the list; a click still does.
+              canPreviewOnHover={
+                !isControlCenterOpen &&
+                !isCommandCenterOpen &&
+                !isPerformanceMonitorOpen &&
+                !isIssueReportOpen
+              }
+              onFocusAgent={onFocusAgentNode}
+            />
           ) : null}
           {updateAction ? (
             <button

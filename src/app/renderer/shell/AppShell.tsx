@@ -1,13 +1,6 @@
 import { subscribePluginCommandFeedback } from '@contexts/plugins/presentation/renderer/pluginCommandFeedback'
 import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import { resolvePerformanceStatus } from '@app/renderer/performanceDiagnostics/performanceDiagnosticsFormatting'
-import { usePerformanceIncidentRecorder } from '@app/renderer/performanceDiagnostics/performanceIncidentRecorder'
-import {
-  useRendererDomSampler,
-  useRendererFrameSampler,
-  useRendererMemoryTrend,
-} from '@app/renderer/performanceDiagnostics/rendererDiagnosticsSampling'
 import { toPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence'
 import { EndpointOverviewProvider } from './components/EndpointOverviewProvider'
 import { AppHeader } from './components/AppHeader'
@@ -39,6 +32,7 @@ import { useWorkspaceStateHandlers } from './hooks/useWorkspaceStateHandlers'
 import { useAppUpdates } from './hooks/useAppUpdates'
 import { useAppShellWorkspaceActions } from './hooks/useAppShellWorkspaceActions'
 import { useShellOverlayState } from './hooks/useShellOverlayState'
+import { useShellPerformanceDiagnostics } from './hooks/useShellPerformanceDiagnostics'
 import { useAddProjectRequest } from './hooks/useAddProjectWizardRequest'
 import { useWhatsNew } from './hooks/useWhatsNew'
 import { useAppShellRuntimeLifecycles } from './hooks/useAppShellRuntimeLifecycles'
@@ -52,24 +46,7 @@ import { useIssueReportUiDiagnostics } from './hooks/useIssueReportUiDiagnostics
 export default function App(): React.JSX.Element {
   useIssueReportUiDiagnostics()
   const { t } = useTranslation()
-  const rendererSnapshot = useRendererDomSampler()
-  const frameSnapshot = useRendererFrameSampler()
-  const memoryTrend = useRendererMemoryTrend(rendererSnapshot)
-  const performanceStatus = useMemo(
-    () =>
-      resolvePerformanceStatus({
-        frames: frameSnapshot,
-        dom: rendererSnapshot,
-        memoryTrend,
-      }),
-    [frameSnapshot, memoryTrend, rendererSnapshot],
-  )
-  const performanceIncidents = usePerformanceIncidentRecorder({
-    status: performanceStatus,
-    frameSnapshot,
-    rendererSnapshot,
-    memoryTrend,
-  })
+  const performanceDiagnostics = useShellPerformanceDiagnostics()
   const {
     workspaces,
     activeWorkspaceId,
@@ -167,6 +144,7 @@ export default function App(): React.JSX.Element {
     isWorkspaceSearchOpen,
     isSpaceArchivesOpen,
     isAddProjectWizardOpen,
+    isAgentActivityOpen,
     addProjectWizardAnchor,
     hasBlockingOverlay,
     toggleCommandCenter,
@@ -183,6 +161,7 @@ export default function App(): React.JSX.Element {
     closeSpaceArchives,
     openAddProjectWizard,
     closeAddProjectWizard,
+    setAgentActivityOpen,
     closeTransientOverlays,
   } = useShellOverlayState()
 
@@ -194,7 +173,10 @@ export default function App(): React.JSX.Element {
     hasBlockingOverlay: hasBlockingShellOverlay || isAddProjectWizardOpen,
     onTogglePinned: toggleSidebarPinned,
   })
-  useWebsiteWindowOcclusionSync(isSettingsOpen || hasBlockingShellOverlay || sidebar.isDrawerOpen)
+  // The agent list drops over the canvas, so native website views must step aside for it too.
+  useWebsiteWindowOcclusionSync(
+    isSettingsOpen || hasBlockingShellOverlay || sidebar.isDrawerOpen || isAgentActivityOpen,
+  )
   const {
     isFocusNodeTargetZoomPreviewing,
     setFocusNodeZoomPreviewing,
@@ -311,17 +293,15 @@ export default function App(): React.JSX.Element {
             activeWorkspacePath={activeWorkspace?.path ?? null}
             {...headerActivity}
             onFocusAgentNode={handleSelectAgentNode}
+            isAgentActivityOpen={isAgentActivityOpen}
+            onAgentActivityOpenChange={setAgentActivityOpen}
             isControlCenterOpen={isControlCenterOpen}
             isCommandCenterOpen={isCommandCenterOpen}
             isPerformanceMonitorEnabled={agentSettings.performanceMonitorHeaderButtonEnabled}
             isPerformanceMonitorOpen={isPerformanceMonitorOpen}
             isIssueReportOpen={isIssueReportOpen}
             commandCenterShortcutHint={commandCenterShortcutHint}
-            performanceStatus={performanceStatus}
-            rendererSnapshot={rendererSnapshot}
-            frameSnapshot={frameSnapshot}
-            memoryTrend={memoryTrend}
-            performanceIncidents={performanceIncidents}
+            {...performanceDiagnostics}
             updateState={updateState}
             controlCenterButtonRef={controlCenterButtonRef}
             onToggleControlCenter={toggleControlCenter}
