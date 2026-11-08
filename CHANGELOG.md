@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### 🚀 Added
 
 - Plugin themes: a theme can declare four inputs (light or dark, a base tint, an accent colour and contrast) instead of individual colours, and OpenCove generates the whole palette with the same checked contrast as its built-in Cove themes. (#477)
+- CLI: `opencove` is rebuilt for AI agents and scripts: grouped help with examples, compact JSON on stdout with `--fields` selection that keeps the response shape, optional table output, `--limit` for lists, `--<option>-file <path|->` for long values, actionable errors on stderr with typo and close-name suggestions, and stable exit codes. `opencove api ops`, `api schema` and `api call` discover and call every Control Surface operation, most of them with a described input schema. (#521, #524, #525, #529, #532, #538, #551)
+- Agents and terminals started on the canvas know which node, Space and project they belong to and get `opencove` on their PATH with a token limited to their own session; inside such a terminal `opencove whoami`, `opencove context` and `@self`, name and ID-prefix selectors let an agent orient itself. (#528, #540)
+- Agents can hand work to each other: `opencove agent prompt` pastes a prompt into an agent window OpenCove launched (Claude Code, and Codex with lifecycle hooks), confirms that the agent submitted it and says whether the submitted text matches what was sent; it refuses without sending anything while the agent is working or waiting for an answer. `agent wait --turn` waits for that prompt's turn and `agent read --turn` returns its reply (the last 8 turns are kept); `agent list`, `agent get` and `agent read --screen` complete the loop, and `opencove skill` prints a usage guide matching the CLI version. (#544, #549, #550, #553, #554, #556)
+- Control Surface: create projects and Spaces, so a headless Worker can be set up from the CLI. (#526)
+- Control Surface: address agent and terminal sessions by canvas node, including sessions opened from the UI or restored after a restart. (#527)
+- Control Surface: read an agent's run state (`agent.get`, `agent.list`) and subscribe to state changes and completed turns, decided once by the Worker that runs the agent. (#533)
 
 ### 💅 Changed
 
@@ -60,6 +66,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Canvas: a small HUD shows the zoom at the top right, and a Far / Near switch at the top left fits every window in far view or returns to 100%. (#500)
 - Canvas: below 25% zoom each window turns into a tile in its kind colour, with its icon, title, agent status and label, and comes back above 28%. Terminals, editors and pages keep running. Click a tile to fly to its window, drag it to move the window, or right-click it for the window menu. Settings → Appearance → Far View turns it off. (#481)
 - Windows: the header's icon tile shows what a window is in its kind colour (agents purple, terminals green, tasks orange, notes and documents blue, websites and images pink), with a light tint on Cove headers, and the canvas minimap uses the same colours; colour labels now draw only the window frame and a short flag, and unlabeled Cove windows keep a neutral frame. Settings → Appearance → Window Kind Colours turns the kind colours off, and plugin windows can choose a kind with `view.kind`. (#478)
+- CLI: ships as one built file inside the app; launchers installed by earlier versions keep working. (#522)
 
 ### 🐛 Fixed
 
@@ -68,6 +75,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Terminal: probe WebGL support once and release the probe, so workspaces with many terminals no longer evict active terminal renderers. (#428)
 - Canvas: keep zooming smooth in large workspaces by no longer restyling every window on each zoom step. (#429)
 - Terminal: when a terminal is restored or redrawn, questions programs asked the terminal earlier (such as its background colour) are no longer answered again into the shell, which could show errors like "command not found: 11". (#455)
+- Sync: changes made through the CLI, agents, plugins or the Web UI are no longer reverted by the desktop window a moment later. (#530)
+- Worker: only one Worker can own a profile at a time, so Desktop can no longer start a second Worker that writes the same database. (#523)
+- Agents: when OpenCove is started from inside a Claude Code session, its terminals and agents no longer inherit that session's markers and messaging credentials, which had turned off transcript saving for canvas Claude Code agents. (#547)
+- Agents: Claude Code transcripts are found under `CLAUDE_CONFIG_DIR` when it is set, so session observation, resume and final messages work with a custom Claude config directory. (#548)
 
 ## [0.4.0] - 2026-10-12
 
