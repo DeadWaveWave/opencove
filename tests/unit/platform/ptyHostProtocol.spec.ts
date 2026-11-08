@@ -15,6 +15,7 @@ function createSpawnRequest(): Record<string, unknown> {
     hostInstanceId: HOST_INSTANCE_ID,
     requestId: 'request-1',
     launchId: 'launch-1',
+    sessionKind: 'shell',
     command: '/bin/zsh',
     args: ['-lc', 'echo OK'],
     cwd: '/',
@@ -40,7 +41,7 @@ function createForegroundMessage(): Record<string, unknown> {
 
 describe('PTY host private protocol validation', () => {
   it('uses the hardened protocol version', () => {
-    expect(PTY_HOST_PROTOCOL_VERSION).toBe(6)
+    expect(PTY_HOST_PROTOCOL_VERSION).toBe(7)
   })
 
   it('accepts every complete request shape for the current host instance', () => {
@@ -77,6 +78,8 @@ describe('PTY host private protocol validation', () => {
     ['missing host identity', { ...createSpawnRequest(), hostInstanceId: undefined }],
     ['wrong host identity', { ...createSpawnRequest(), hostInstanceId: 'stale-host' }],
     ['empty request id', { ...createSpawnRequest(), requestId: ' ' }],
+    ['invalid session kind', { ...createSpawnRequest(), sessionKind: 'terminal' }],
+    ['missing session kind', { ...createSpawnRequest(), sessionKind: undefined }],
     ['empty launch id', { ...createSpawnRequest(), launchId: '' }],
     ['empty command', { ...createSpawnRequest(), command: ' ' }],
     ['non-string argument', { ...createSpawnRequest(), args: ['ok', 2] }],

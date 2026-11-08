@@ -78,7 +78,7 @@ export interface PtyRuntime extends ClaudeTranscriptPort {
   startSessionStateWatcher: (input: StartSessionStateWatcherInput) => void
   disposeSessionStateWatcher: (sessionId: string) => void
   debugCrashHost?: () => void | Promise<void>
-  dispose: () => void
+  dispose: () => void | Promise<void>
 }
 
 function reportStateWatcherIssue(message: string): void {
@@ -347,6 +347,7 @@ export function createPtyRuntime(deps: {
       const { sessionId } = await sessionRegistrations
         .spawn({
           cwd: options.cwd,
+          sessionKind: options.agentProvider ? 'agent' : options.sessionKind,
           command,
           args,
           env,
@@ -493,7 +494,7 @@ export function createPtyRuntime(deps: {
       externalMetadataListeners.clear()
       warnedWriteSessions.clear()
       geometryCommitter.dispose()
-      processEngine.dispose()
+      return processEngine.dispose()
     },
   }
 }

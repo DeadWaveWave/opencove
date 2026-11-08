@@ -12,6 +12,7 @@ import {
   type PtyHostForegroundEvent,
   type PtyHostResponseMessage,
 } from './protocol'
+import { retirePtyHostProcess } from './retireProcess'
 import { resolvePtyHostSpawnEnv } from './spawnEnv'
 import {
   nowMs,
@@ -59,6 +60,7 @@ export class PtyHostSupervisor {
   private readonly hostExitEvidence = new PtyHostExitEvidence()
   private hostInstanceId: string | null = null
 
+  private disposal: Promise<void> | null = null
   private isDisposed = false
   private restartAttempt = 0
   private nextStartAllowedAtMs = 0
@@ -357,6 +359,7 @@ export class PtyHostSupervisor {
         hostInstanceId,
         requestId,
         launchId,
+        sessionKind: options.sessionKind ?? 'shell',
         command: options.command,
         args: options.args,
         cwd: options.cwd,
@@ -469,7 +472,10 @@ export class PtyHostSupervisor {
     await confirmedExit
   }
 
-  public dispose(): void {
+  public dispose(): Promise<void> {
+    if (this.disposal) {
+      return this.disposal
+    }
     this.isDisposed = true
 
     this.ambiguousExitRecovery.dispose()
@@ -483,18 +489,9 @@ export class PtyHostSupervisor {
     this.process = null
     this.hostInstanceId = null
 
-    if (child) {
-      if (hostInstanceId) {
-        postPtyHostMessage(child, { type: 'shutdown', hostInstanceId }, () => {
-          // The host can already be gone during shutdown; cleanup continues via kill below.
-        })
-      }
-
-      try {
-        child.kill()
-      } catch {
-        // ignore
-      }
-    }
+    this.disposal = child
+      ? retirePtyHostProcess(child, hostInstanceId, this.reportIssue)
+      : Promise.resolve()
+    return this.disposal
   }
 }

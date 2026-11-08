@@ -7,6 +7,7 @@ export interface TerminalProcessSpawnInput {
   command: string
   args: string[]
   cwd: string
+  sessionKind?: 'agent' | 'shell'
   env?: NodeJS.ProcessEnv
   cols: number
   rows: number
@@ -26,5 +27,5 @@ export interface TerminalProcessEnginePort {
   onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => () => void
   onForeground: (listener: (event: TerminalForegroundEvent) => void) => () => void
   crashForDebug?: () => void | Promise<void>
-  dispose: () => void
+  dispose: () => void | Promise<void>
 }

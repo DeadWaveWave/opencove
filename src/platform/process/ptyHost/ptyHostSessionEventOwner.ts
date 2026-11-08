@@ -4,6 +4,7 @@ type PendingSessionEvents = {
 }
 
 export class PtyHostSessionEventOwner {
+  private readonly requestedTerminations = new Set<string>()
   private readonly activeSessionIds = new Set<string>()
   private readonly terminatingSessionIds = new Set<string>()
   private readonly completedSessionIds = new Set<string>()
@@ -94,14 +95,24 @@ export class PtyHostSessionEventOwner {
   }
 
   public beginTermination(sessionId: string): boolean {
+    if (this.requestedTerminations.has(sessionId)) {
+      return false
+    }
+    // A naturally exited managed Agent can still own observed descendants.
+    if (this.completedSessionIds.has(sessionId)) {
+      this.requestedTerminations.add(sessionId)
+      return true
+    }
     if (!this.activeSessionIds.delete(sessionId)) {
       return false
     }
+    this.requestedTerminations.add(sessionId)
     this.terminatingSessionIds.add(sessionId)
     return true
   }
 
   public retire(sessionId: string): void {
+    this.requestedTerminations.add(sessionId)
     this.activeSessionIds.delete(sessionId)
     this.terminatingSessionIds.delete(sessionId)
     this.pendingBySessionId.delete(sessionId)
@@ -117,6 +128,7 @@ export class PtyHostSessionEventOwner {
   }
 
   public clear(): void {
+    this.requestedTerminations.clear()
     this.activeSessionIds.clear()
     this.terminatingSessionIds.clear()
     this.completedSessionIds.clear()

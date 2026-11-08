@@ -247,8 +247,9 @@ export function registerIpcHandlers(deps?: {
 
   return {
     dispose: () => {
+      const pending: Array<void | Promise<void>> = []
       for (let index = disposables.length - 1; index >= 0; index -= 1) {
-        disposables[index]?.dispose()
+        pending.push(disposables[index]?.dispose())
       }
 
       const storePromise = persistenceStorePromise
@@ -278,6 +279,7 @@ export function registerIpcHandlers(deps?: {
         .catch(() => {
           // ignore
         })
+      return Promise.allSettled(pending).then(() => undefined)
     },
   }
 }

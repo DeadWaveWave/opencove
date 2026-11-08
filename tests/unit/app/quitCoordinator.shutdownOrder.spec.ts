@@ -30,10 +30,16 @@ describe('quit coordinator local Worker ownership', () => {
       observeQuit = resolve
     })
     electronState.quit.mockImplementationOnce(observeQuit)
+    let finishCleanup!: () => void
+    const cleanup = new Promise<void>(resolve => {
+      finishCleanup = resolve
+    })
     registerQuitCoordinator({
       hasOwnedLocalWorkerProcess: () => true,
-      disconnectRuntimeClients: () => {
+      disconnectRuntimeClients: async () => {
         order.push('disconnect-clients')
+        await cleanup
+        order.push('host-reaped')
       },
       stopOwnedLocalWorker: async () => {
         order.push('stop-worker')
@@ -41,9 +47,12 @@ describe('quit coordinator local Worker ownership', () => {
     })
 
     electronState.beforeQuit?.({ preventDefault })
+    await vi.waitFor(() => expect(order).toEqual(['disconnect-clients']))
+    expect(electronState.quit).not.toHaveBeenCalled()
+    finishCleanup()
     await quitObserved
 
-    expect(order).toEqual(['disconnect-clients', 'stop-worker'])
+    expect(order).toEqual(['disconnect-clients', 'host-reaped', 'stop-worker'])
     expect(electronState.quit).toHaveBeenCalledTimes(1)
     expect(preventDefault).toHaveBeenCalledTimes(1)
   })

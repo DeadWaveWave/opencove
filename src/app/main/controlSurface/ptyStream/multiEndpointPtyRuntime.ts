@@ -54,11 +54,11 @@ export type MultiEndpointPtyRuntime = ControlSurfacePtyRuntime & {
   }>
   drainPresentationRecovery: () => Promise<void>
   drainLaunchArtifacts: () => Promise<void>
-  dispose: () => void
+  dispose: () => void | Promise<void>
 }
 
 export function createMultiEndpointPtyRuntime(options: {
-  localRuntime: ControlSurfacePtyRuntime & { dispose?: () => void }
+  localRuntime: ControlSurfacePtyRuntime & { dispose?: () => void | Promise<void> }
   topology: WorkerTopologyStore
   disposeLocalRuntime: boolean
   agentStateSources?: readonly Pick<ControlSurfacePtyRuntime, 'onState' | 'onClaudeTranscript'>[]
@@ -317,6 +317,14 @@ export function createMultiEndpointPtyRuntime(options: {
       }
     },
     kill: sessionId => {
+      // Exited remote windows retain a cursor identity, not a live route. Cleanup
+      // must still reach the Worker that owns their observed descendants.
+      const retired = retiredRemoteCursorByHomeSessionId.get(sessionId)
+      if (!routes.has(sessionId) && retired) {
+        getProxy(retired.endpointId).kill(retired.remoteSessionId)
+        retiredRemoteCursorByHomeSessionId.delete(sessionId)
+        return
+      }
       const route = routes.get(sessionId)
       if (!route || route.kind === 'local') {
         options.localRuntime.kill(sessionId)
@@ -401,7 +409,7 @@ export function createMultiEndpointPtyRuntime(options: {
 
       if (options.disposeLocalRuntime) {
         try {
-          options.localRuntime.dispose?.()
+          return options.localRuntime.dispose?.()
         } catch {
           // ignore
         }

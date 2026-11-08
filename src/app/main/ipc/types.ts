@@ -1,3 +1,3 @@
 export interface IpcRegistrationDisposable {
-  dispose: () => void
+  dispose: () => void | Promise<void>
 }

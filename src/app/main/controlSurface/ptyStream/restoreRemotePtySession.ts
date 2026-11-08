@@ -85,6 +85,11 @@ export async function restoreRemotePtySession(options: {
     throw error
   }
   if (restoredSession.status !== 'running') {
+    options.retiredRemoteCursorByHomeSessionId.set(homeSessionId, {
+      endpointId,
+      remoteSessionId,
+      cursor: resumeAfterSeq ?? null,
+    })
     options.routes.delete(homeSessionId)
     options.homeSessionIdByRemote.delete(remoteKey)
     options.remoteByHomeSessionId.delete(homeSessionId)
