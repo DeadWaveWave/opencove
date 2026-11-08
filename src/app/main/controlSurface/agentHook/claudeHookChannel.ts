@@ -1,3 +1,6 @@
+import { claudeTranscriptLaunchRoots } from './ClaudeTranscriptLaunchRoots'
+import { ClaudeHookTranscriptObserver } from './ClaudeHookTranscriptObserver'
+import { ClaudeTranscriptChannel } from '../../../../shared/runtime/agentHook/claudeTranscript'
 import { createServer } from 'node:http'
 import {
   createAgentHookChannel,
@@ -14,7 +17,10 @@ export function createClaudeHookChannel(options: {
   prepare?: () => Promise<{ state: 'installed' | 'error'; detail: string | null }>
   createHttpServer?: typeof createServer
 }): ClaudeHookChannel {
-  return createAgentHookChannel({
+  const transcripts = new ClaudeTranscriptChannel()
+  const channel = createAgentHookChannel({
+    createPrivateObserver: environment =>
+      new ClaudeHookTranscriptObserver(transcripts.emit, claudeTranscriptLaunchRoots(environment)),
     ...options,
     hookPath: '/hooks/claude',
     source: 'claude_hook',
@@ -30,4 +36,12 @@ export function createClaudeHookChannel(options: {
       OPENCOVE_CLAUDE_HOOK_TOKEN: token,
     }),
   })
+  return {
+    ...channel,
+    onClaudeTranscript: transcripts.subscribe,
+    dispose: async () => {
+      transcripts.dispose()
+      await channel.dispose()
+    },
+  }
 }

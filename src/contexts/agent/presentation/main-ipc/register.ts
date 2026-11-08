@@ -1,3 +1,4 @@
+import { getCommandExecutionEnvironment } from '../../../../platform/os/CommandEnvironmentService'
 import * as electron from 'electron'
 import { createServer } from 'node:net'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
@@ -305,9 +306,11 @@ export function registerAgentIpcHandlers(
             }
           : null
 
+      const environment = await getCommandExecutionEnvironment(normalized.env ?? undefined)
       const managedLaunch = await createManagedAgentLaunchPlan(
         providerRegistry.require(normalized.provider),
         {
+          environment,
           mode: normalized.mode ?? 'new',
           prompt: normalized.prompt,
           model: normalized.model ?? null,
@@ -364,10 +367,7 @@ export function registerAgentIpcHandlers(
         normalized.env || internalSessionEnv
           ? { ...(normalized.env ?? {}), ...(internalSessionEnv ?? {}) }
           : undefined
-      const launchEnv =
-        sessionEnv || Object.keys(managedLaunch.plan.env).length > 0
-          ? { ...managedLaunch.plan.env, ...(sessionEnv ?? {}) }
-          : undefined
+      const launchEnv = { ...environment, ...managedLaunch.plan.env, ...(sessionEnv ?? {}) }
 
       const resolvedInvocation = testStub
         ? await resolveAgentCliInvocation({

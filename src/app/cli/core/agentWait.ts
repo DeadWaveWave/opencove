@@ -81,7 +81,8 @@ export async function waitForAgents(
       return options.until === 'turn-end'
         ? !!snapshot?.endedTurn
         : snapshot?.state === options.until &&
-            (options.until !== 'idle' || snapshot?.quality !== 'degraded')
+            (options.until !== 'idle' ||
+              (snapshot?.turn === null && snapshot?.quality !== 'degraded'))
     })
     return options.any ? matches.some(Boolean) : matches.every(Boolean)
   }

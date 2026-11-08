@@ -1,3 +1,4 @@
+import { ClaudeTranscriptChannel } from '../../../../shared/runtime/agentHook/claudeTranscript'
 import { randomUUID } from 'node:crypto'
 import type {
   ListSessionsResult,
@@ -60,7 +61,7 @@ export function createMultiEndpointPtyRuntime(options: {
   localRuntime: ControlSurfacePtyRuntime & { dispose?: () => void }
   topology: WorkerTopologyStore
   disposeLocalRuntime: boolean
-  agentStateSources?: readonly Pick<ControlSurfacePtyRuntime, 'onState'>[]
+  agentStateSources?: readonly Pick<ControlSurfacePtyRuntime, 'onState' | 'onClaudeTranscript'>[]
   agentMetadataSources?: readonly Pick<ControlSurfacePtyRuntime, 'onMetadata'>[]
 }): MultiEndpointPtyRuntime {
   const listeners: PtyRuntimeListenerSets = {
@@ -138,6 +139,13 @@ export function createMultiEndpointPtyRuntime(options: {
 
   const disposeLocalForegroundListener = options.localRuntime.onForeground?.(event => {
     foregroundListeners.forEach(listener => listener(event))
+  })
+
+  const transcripts = new ClaudeTranscriptChannel()
+  const disposeTranscripts = options.localRuntime.onClaudeTranscript?.(transcripts.emit)
+  const disposeHookTranscripts = (options.agentStateSources ?? []).flatMap(source => {
+    const dispose = source.onClaudeTranscript?.(transcripts.emit)
+    return dispose ? [dispose] : []
   })
 
   const disposeLocalStateListener = options.localRuntime.onState?.(event => {
@@ -320,6 +328,7 @@ export function createMultiEndpointPtyRuntime(options: {
     onData: listener => subscribePtyRuntimeListener(dataListeners, listener),
     onExit: listener => subscribePtyRuntimeListener(exitListeners, listener),
     onForeground: listener => subscribePtyRuntimeListener(foregroundListeners, listener),
+    onClaudeTranscript: transcripts.subscribe,
     onState: listener => subscribePtyRuntimeListener(stateListeners, listener),
     onMetadata: listener => subscribePtyRuntimeListener(metadataListeners, listener),
     onPresentationReset: listener => {
@@ -363,6 +372,9 @@ export function createMultiEndpointPtyRuntime(options: {
       disposeLocalDataListener()
       disposeLocalExitListener()
       disposeLocalForegroundListener?.()
+      disposeHookTranscripts.forEach(dispose => dispose())
+      disposeTranscripts?.()
+      transcripts.dispose()
       disposeLocalStateListener?.()
       disposeLocalMetadataListener?.()
       agentSourceDisposers.forEach(disposeListener => disposeListener())

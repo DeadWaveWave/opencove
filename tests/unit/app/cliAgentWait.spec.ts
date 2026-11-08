@@ -158,3 +158,13 @@ it('uses get for an exited session missing from the atomic live list', async () 
   expect((await f.wait('exited')).agents[0].state).toBe('exited')
   expect(f.query.mock.calls.map(([id]) => id)).toEqual(['agent.list', 'agent.get', 'agent.list'])
 })
+it('idle wait rejects an authoritative idle snapshot that still has an active turn', async () => {
+  vi.useFakeTimers()
+  const f = fixture([
+    { ...snapshot('a', 'idle'), turn: { id: 'active', startedAt: 1, start: 'observed' } },
+  ])
+  const pending = f.wait('idle', ['a'], false, 100)
+  const assertion = expect(pending).rejects.toMatchObject({ exitCode: 124 })
+  await vi.advanceTimersByTimeAsync(100)
+  await assertion
+})

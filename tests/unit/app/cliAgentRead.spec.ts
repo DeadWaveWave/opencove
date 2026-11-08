@@ -211,3 +211,10 @@ it('shell-quotes diagnostic selectors and turn IDs', async () => {
   expect(await run([...args, '--turn', 'turn with space'], f.io)).toBe(1)
   expect(JSON.parse(f.stderr()).error.hint).toContain("--turn 'turn with space'")
 })
+it('labels an intermediate reply when continuation reconciliation ended unknown even with field projection', async () => {
+  const f = fixture()
+  f.values['agent.finalMessage'] = { ...hook, outcome: 'unknown', messageKind: 'intermediate' }
+  expect(await run([...args, '--fields', 'messageKind,outcome'], f.io)).toBe(0)
+  expect(JSON.parse(f.out())).toEqual({ messageKind: 'intermediate', outcome: 'unknown' })
+  expect(f.stderr()).toContain('last intermediate provider reply')
+})

@@ -13,6 +13,7 @@ export interface HookFinalMessage {
   outcome: TurnOutcome
   message: string
   truncated: boolean
+  messageKind?: 'intermediate'
   source: 'hook'
 }
 type TranscriptFinalMessage = GetSessionFinalMessageResult & {
@@ -44,6 +45,11 @@ export async function readAgentFinalMessage(
       return { ...(await readFinalMessage(ctx)), source: 'transcript', truncated: false }
     }
     throw error
+  }
+  if (result.messageKind === 'intermediate') {
+    ctx.io.stderr.write(
+      'The continuation outcome is unknown. This is the last intermediate provider reply; the agent is not known to be ready.\n',
+    )
   }
   if (result.truncated) {
     ctx.io.stderr.write(

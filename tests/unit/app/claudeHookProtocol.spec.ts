@@ -127,3 +127,40 @@ it('extracts submission evidence and preserves a bounded ID verbatim', () => {
     expect(envelope).not.toHaveProperty('promptDigest')
   }
 })
+it.each(['startup', 'resume', 'clear', 'compact', 'fork'])(
+  'retains only the private SessionStart source for both envelope formats: %s',
+  source => {
+    expect(
+      normalizeClaudeHookEnvelope({ ...input({ hook_event_name: 'SessionStart' }), source }),
+    ).toMatchObject({ sessionStartSource: source, state: null })
+    expect(
+      validateClaudeHookEnvelope({
+        version: 1,
+        state: null,
+        hookEventName: 'SessionStart',
+        claudeSessionId: 's',
+        source,
+      }),
+    ).toMatchObject({ sessionStartSource: source })
+    expect(
+      validateClaudeHookEnvelope({
+        version: 1,
+        state: null,
+        hookEventName: 'SessionStart',
+        claudeSessionId: 's',
+        sessionStartSource: source,
+      }),
+    ).toMatchObject({ sessionStartSource: source })
+    expect(normalizeClaudeHookEnvelope({ ...input({}), source })).not.toHaveProperty(
+      'sessionStartSource',
+    )
+  },
+)
+it.each([undefined, null, {}, '', ' compact ', 'private source text'])(
+  'invalid SessionStart source is discarded without losing lifecycle evidence: %#',
+  source => {
+    expect(
+      normalizeClaudeHookEnvelope({ ...input({ hook_event_name: 'SessionStart' }), source }),
+    ).not.toHaveProperty('sessionStartSource')
+  },
+)

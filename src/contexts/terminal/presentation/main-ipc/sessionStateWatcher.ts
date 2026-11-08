@@ -1,3 +1,4 @@
+import type { ClaudeTranscriptObservation } from '../../../../shared/runtime/agentHook/claudeTranscript'
 import { createSessionStatePublisher } from './sessionStateWatcherPublisher'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type { AgentSessionDiscovery } from '../../../agent/application/ports/AgentSessionDiscovery'
@@ -35,12 +36,14 @@ export function createSessionStateWatcherController({
   sendToAllWindows,
   reportIssue,
   onState,
+  onClaudeTranscript,
   onMetadata,
   sessionDiscovery,
 }: {
   sendToAllWindows: SendToAllWindows
   reportIssue: (message: string) => void
   onState?: (event: TerminalSessionStateEvent) => void
+  onClaudeTranscript?: (record: ClaudeTranscriptObservation) => void
   onMetadata?: (event: TerminalSessionMetadataEvent) => void
   sessionDiscovery?: AgentSessionDiscovery
 }): {
@@ -316,6 +319,18 @@ export function createSessionStateWatcherController({
         filePath: sessionFilePath,
         launchMode: input.launchMode,
         onState: onWatcherState,
+        onClaudeTranscript: record => {
+          if (!isCurrent()) {
+            return
+          }
+          onClaudeTranscript?.({
+            ...record,
+            sessionId,
+            providerSessionId: resolvedSessionId,
+            incarnation: sessionId,
+            generation: watcherVersion,
+          })
+        },
         onUnavailable: unavailableSessionId => {
           if (isCurrent()) {
             broadcastObservationUnavailable(unavailableSessionId)

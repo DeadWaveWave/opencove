@@ -83,6 +83,8 @@ Only an unqualified hook read reporting no_ended_turn or provider_sent_no_messag
 
 Plain message text goes to stdout even when piped. -o json or --fields returns structured data: hook results have nodeId, sessionId, turnId, optional promptId, outcome, message, truncated and source: hook; transcript results have sessionId, provider, startedAt, cwd, resumeSessionId, message, truncated: false and source: transcript. A cut hook message prints one stderr notice with transcript/screen recovery commands; it never automatically replaces the retained prefix.
 
+Claude messages queued mid-turn continue the same OpenCove turn, including provider follow-ups. Exact reads return its final reply after all continuations. An unknown continuation outcome marks the last provider reply with messageKind: intermediate and prints a notice. After wait --until idle, read returns only the latest ended turn reply.
+
 After agent prompt, retain its turnId, run "opencove agent wait --node <selector> --turn <turnId>", then "opencove agent read --node <selector> --turn <turnId>". Hook history is private, in memory, and limited to the last 8 ended turns per incarnation; restart or replacement clears it. Remote wait --turn uses mirrored snapshots/events; older remote turns can only be checked on the Worker that runs them (remote_history_unavailable). Hook replies currently require local Claude hooks with correlated prompt IDs.
 
 Use --screen before prompting to inspect drafts and dialogs. It resolves the current session, replays its presentation snapshot at its columns/rows, preserving cursor-created spaces, overwrites and wide CJK/emoji cells. It selects the normal or alternate buffer, ignores styling/mode sequences, trims row-end spaces and trailing blank rows, then returns the last --lines rendered rows (default: 40). -o json returns {nodeId, sessionId, lines: [...]}. Screen-mode projectable fields are nodeId, sessionId, lines; the field list below applies to final-message mode. --lines requires --screen; --screen conflicts with --last and --turn. This is a read only snapshot, not permission to answer another agent's dialog.
@@ -99,7 +101,7 @@ Options:
   --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
-Projectable fields: nodeId, sessionId, turnId, promptId, outcome, message, truncated, source, provider, startedAt, cwd, resumeSessionId
+Projectable fields: nodeId, sessionId, turnId, promptId, outcome, message, messageKind, truncated, source, provider, startedAt, cwd, resumeSessionId
 
 Projection example:
   opencove agent read --node '<id>' --fields nodeId
@@ -121,9 +123,9 @@ exports[`agent wait help is offline and complete 1`] = `
 
 Wait until agents reach a state or finish a turn
 
-Waits without sending any input. A state that already holds counts immediately. idle never accepts an unknown or degraded state. After "agent prompt", save turnId and use --turn <turnId> to wait for that exact turn, even if a newer turn has started.
+Waits without sending any input. A state that already holds counts immediately. idle requires no active turn and never accepts an unknown or degraded state. After "agent prompt", save turnId and use --turn <turnId> to wait for that exact turn, even if a newer turn has started.
 
---turn requires one node and conflicts with --until, multiple --node options and --any. It waits through permission/question pauses within that turn. Returns {nodeId, sessionId, turnId, outcome, endedAt?, state}; every ended outcome exits 0, including failed, aborted and unknown. Read outcome before claiming success. Unknown/evicted turns or restart without retained evidence exit 1; inspect agent get.
+--turn requires one node and conflicts with --until, multiple --node options and --any. It waits through permission/question pauses and Claude queued provider continuations within that turn. Returns {nodeId, sessionId, turnId, outcome, endedAt?, state}; every ended outcome exits 0, including failed, aborted and unknown. Read outcome before claiming success. Unknown/evicted turns or restart without retained evidence exit 1; inspect agent get.
 
 Local history retains only the last 8 ended turns per incarnation. For remote agents, --turn uses mirrored snapshots/events; older turns can only be checked on the Worker that runs them. Missing remote history reports details.reason: remote_history_unavailable, not eviction.
 

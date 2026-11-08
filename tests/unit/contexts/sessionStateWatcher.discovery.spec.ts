@@ -106,3 +106,59 @@ it('discards a discovery result received after controller teardown', async () =>
   expect(onMetadata).not.toHaveBeenCalled()
   expect(createSessionFileStateWatcher).not.toHaveBeenCalled()
 })
+
+it('routes private Claude records independently of state and fences disposed watcher generations', async () => {
+  vi.useFakeTimers()
+  const onState = vi.fn(),
+    onClaudeTranscript = vi.fn()
+  const controller = createSessionStateWatcherController({
+    sendToAllWindows: vi.fn(),
+    reportIssue: vi.fn(),
+    onState,
+    onClaudeTranscript,
+    sessionDiscovery: {
+      capture: () => ({
+        isCurrent: () => true,
+        resolve: async () => ({ resumeSessionId: 'provider', filePath: 'owned.jsonl' }),
+      }),
+    },
+  })
+  const input = {
+    sessionId: 'pty',
+    provider: 'claude-code' as const,
+    cwd: process.cwd(),
+    startedAtMs: Date.now(),
+    launchMode: 'new' as const,
+    resumeSessionId: null,
+  }
+  controller.start(input)
+  await vi.advanceTimersByTimeAsync(0)
+  const first = vi.mocked(createSessionFileStateWatcher).mock.calls[0][0]
+  const record = {
+    fileIdentity: 'file',
+    position: 1,
+    baseline: false,
+    record: { kind: 'queue' as const, operation: 'enqueue' as const },
+  }
+  first.onClaudeTranscript?.(record)
+  expect(onState).not.toHaveBeenCalled()
+  expect(onClaudeTranscript).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      ...record,
+      sessionId: 'pty',
+      providerSessionId: 'provider',
+      generation: expect.any(Number),
+    }),
+  )
+  const oldGeneration = onClaudeTranscript.mock.calls[0][0].generation
+  controller.start(input)
+  await vi.advanceTimersByTimeAsync(0)
+  first.onClaudeTranscript?.(record)
+  expect(onClaudeTranscript).toHaveBeenCalledTimes(1)
+  const second = vi.mocked(createSessionFileStateWatcher).mock.calls[1][0]
+  second.onClaudeTranscript?.(record)
+  expect(onClaudeTranscript.mock.calls[1][0].generation).toBeGreaterThan(oldGeneration)
+  controller.dispose()
+  second.onClaudeTranscript?.(record)
+  expect(onClaudeTranscript).toHaveBeenCalledTimes(2)
+})

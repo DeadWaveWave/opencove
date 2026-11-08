@@ -49,10 +49,10 @@ configuration is modified to force hooks on.
 
 ## Supported providers and invocation coverage
 
-| Provider | Required for this invocation | Readiness and receipt |
-| --- | --- | --- |
-| Claude Code | Installed lifecycle hooks, `hookCoverage: lifecycle` | Selected reliable `claude_hook` Stop or StopFailure; `claude_hook` UserPromptSubmit receipt |
-| Codex (macOS/Linux) | Trusted lifecycle hook configuration actually passed at launch, `hookCoverage: lifecycle` | Selected reliable `codex_hook` Stop; `codex_hook` UserPromptSubmit receipt |
+| Provider            | Required for this invocation                                                              | Readiness and receipt                                                                       |
+| ------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Claude Code         | Installed lifecycle hooks, `hookCoverage: lifecycle`                                      | Selected reliable `claude_hook` Stop or StopFailure; `claude_hook` UserPromptSubmit receipt |
+| Codex (macOS/Linux) | Trusted lifecycle hook configuration actually passed at launch, `hookCoverage: lifecycle` | Selected reliable `codex_hook` Stop; `codex_hook` UserPromptSubmit receipt                  |
 
 Both require idle with no active turn and bracketed paste enabled. `installed` alone
 is insufficient. Trust resolution failure leaves Codex with `notify_only` coverage;
@@ -134,19 +134,19 @@ running turn automatically because of the comparison.** The CLI notice is:
 
 ## When nothing is sent
 
-| Condition | Error | Next step |
-| --- | --- | --- |
-| The agent is waiting for input, even when the reason is unknown | `agent.blocked` | Resolve the dialog in the terminal. |
-| The agent is working | `agent.busy` / `working` | Wait for the turn to finish. |
-| Another delivery is in progress | `agent.busy` / `delivery_in_progress` | Wait for that delivery's result before deciding whether another is needed. |
-| OpenCove has not observed a completed turn | `agent.state_unknown` / `readiness_unobserved` | Complete a turn in the terminal first. |
-| Hook observations are unavailable or unreliable | `agent.state_unknown` / `observation_degraded` | Check the hook setup and wait for a reliably observed turn end. |
-| No running agent exists at the target | `agent.not_running` | Check the node and start or resume its session. |
-| The agent window uses a custom executable path | `agent.prompt_unsupported` / `executable_override_unverified` | Remove the override in Settings → agent executable and launch a new agent window with lifecycle hooks. |
-| The target is an agent typed into a terminal | `agent.prompt_unsupported` / `terminal_agent_unsupported` | Launch an agent window from a task, the agent launcher, or `node create agent`. |
-| The target is remote or uses another provider | `agent.prompt_unsupported` | Select a local agent window OpenCove launched. |
-| The terminal has not enabled bracketed paste | `agent.prompt_unsupported` / `bracketed_paste_off` | Check that the agent is at its prompt. |
-| The timeout expires before the paste attempt | `agent.prompt_timeout` | Check the target, then retry if appropriate. |
+| Condition                                                       | Error                                                         | Next step                                                                                              |
+| --------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| The agent is waiting for input, even when the reason is unknown | `agent.blocked`                                               | Resolve the dialog in the terminal.                                                                    |
+| The agent is working                                            | `agent.busy` / `working`                                      | Wait for the turn to finish.                                                                           |
+| Another delivery is in progress                                 | `agent.busy` / `delivery_in_progress`                         | Wait for that delivery's result before deciding whether another is needed.                             |
+| OpenCove has not observed a completed turn                      | `agent.state_unknown` / `readiness_unobserved`                | Complete a turn in the terminal first.                                                                 |
+| Hook observations are unavailable or unreliable                 | `agent.state_unknown` / `observation_degraded`                | Check the hook setup and wait for a reliably observed turn end.                                        |
+| No running agent exists at the target                           | `agent.not_running`                                           | Check the node and start or resume its session.                                                        |
+| The agent window uses a custom executable path                  | `agent.prompt_unsupported` / `executable_override_unverified` | Remove the override in Settings → agent executable and launch a new agent window with lifecycle hooks. |
+| The target is an agent typed into a terminal                    | `agent.prompt_unsupported` / `terminal_agent_unsupported`     | Launch an agent window from a task, the agent launcher, or `node create agent`.                        |
+| The target is remote or uses another provider                   | `agent.prompt_unsupported`                                    | Select a local agent window OpenCove launched.                                                         |
+| The terminal has not enabled bracketed paste                    | `agent.prompt_unsupported` / `bracketed_paste_off`            | Check that the agent is at its prompt.                                                                 |
+| The timeout expires before the paste attempt                    | `agent.prompt_timeout`                                        | Check the target, then retry if appropriate.                                                           |
 
 These refusals describe this call only. They do not cancel another delivery.
 `agent.not_running` can also report cancellation before delivery, such as caller
@@ -331,12 +331,58 @@ is **uncorrelated** with an OpenCove turn. Authorization, transport and other er
 are returned directly. `--screen` reads buffered terminal output for inspection.
 
 This is the message at an **observed OpenCove turn end**, not proof of irrevocable
-provider completion: another Stop hook may continue processing. StopFailure keeps
-outcome `failed`; text does not imply success. Claude Code 2.1.319 supplies matching
-`session_id`/`prompt_id` and `last_assistant_message`. Missing/malformed IDs preserve
-legacy state transitions but withhold exact message content. Conflicting identified
-ends, overlapping different starts and replayed retained IDs are ignored before
-changing authoritative state. Overlapping Claude turns are unsupported.
+provider completion: another Stop hook may continue processing. Claude messages
+humans submit mid-turn continue the same OpenCove turn, whether consumed at a tool
+boundary or dequeued into a new provider prompt without a start hook. While queue
+evidence is unresolved the first Stop is intermediate: no idle/readiness, completion
+event or final read. `wait --turn` includes provider continuations; `read --turn`
+returns the final post-queue reply. Same-ID submission receipts never clear a
+permission/question wait. This does not enable busy-state `agent prompt` admission.
+
+Unavailable or stale transcript evidence ends a stopped continuation as `unknown`,
+with state unknown/degraded and no readiness. Its retained reply is explicitly
+`messageKind: intermediate`; CLI reads print a notice even with `--fields`.
+Reconciliation deadlines never grant readiness. A removal accounting for the queue
+can resolve a retained Stop; dequeue without its queued user record remains
+ambiguous. A single pending continuation plus a unique unmatched Stop permits a
+bounded identity fallback, which still withholds readiness if decided by timeout.
+Late queued-user records correlate a buffered or later follow-up Stop, including
+a continuation first identified after timeout. Readiness recovers only at the whole
+read's complete queue-empty terminal EOF for that correlated Stop; no user record
+or intermediate batch callback grants it. Later activity in the same batch keeps
+the agent not ready. Unidentified user records invalidate the proof. Equal/older
+relay-time Stop replays cannot release the degraded latch; newer correlated
+lifecycle evidence or validated transcript completion is required. Recovery never
+revises the recorded outcome/history or emits another completion.
+
+Managed hooks observe only regular nonsymlink transcripts named for the authenticated
+session inside the captured launch config's canonical `projects` tree. Explicit
+`CLAUDE_CONFIG_DIR` is exclusive; defaults follow the captured launch home. Secured
+observation polls at 250 ms while reconciliation needs it or for two seconds after
+a hook; otherwise idle sessions perform no periodic filesystem IO. Hooks always
+refresh immediately. Same-session compaction/resume refreshes preserve the active
+turn and its queued follow-ups, permission wait and recovery chain. Conversation
+changes retire observer generations: different session IDs, clear, or an ordered
+startup/resume after an end. Invocation-authenticated state hooks continue;
+new-generation turn/completion evidence restores readiness. Historical queued
+identities and paired Stops roll out of bounded caches; the current EOF candidate
+and Stops awaiting user correlation stay protected.
+See [run state](RUN_STATE.md#claude-queued-continuations) for generation fences,
+EOF proof, the same-user directory-write threat-model limit, diagnostics and
+platform verification limits.
+
+After `wait --until idle`, unqualified `read` selects the **latest ended turn's reply
+only**; it does not collect intermediate replies. Human activity/rebinding between
+the commands can change that selection. Save the exact turn ID when correlation
+matters. The existing explicitly labelled, uncorrelated transcript fallback still
+applies when hook history has no message.
+
+StopFailure keeps outcome `failed`; text does not imply success. Claude Code
+2.1.319 supplies matching `session_id`/`prompt_id` and `last_assistant_message`.
+Missing/malformed IDs preserve legacy state transitions but withhold exact message
+content. Conflicting identified ends and replayed retained IDs are ignored before
+changing authoritative state. Fresh distinct submissions retain P2-E supersession
+with unknown outcome; transcript times never manufacture relay freshness.
 
 The generated relay reads at most 8 MiB. Above the 256 KiB POST budget it shrinks only
 `last_assistant_message` and `prompt` to 16 KiB UTF-8 prefixes, setting the corresponding
