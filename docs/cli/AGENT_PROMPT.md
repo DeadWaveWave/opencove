@@ -27,7 +27,7 @@ The target must be an agent window OpenCove launched: local Claude Code or Codex
 with lifecycle hooks for this invocation,
 after a hook-observed settled turn (Claude Stop/StopFailure; Codex Stop). Codex notify-only,
 daemon reuse, file-only telemetry and Windows are unsupported. `@self` resolves through the
-calling session grant; a canvas terminal is not an agent and is refused by the server.
+calling session grant; prompting an observed agent inside a canvas terminal is refused by the server.
 
 Success is JSON with `deliveryId`, `nodeId`, `sessionId`, `phase: submission_observed`, `turnId`.
 It also returns `textComparison` (`matched`, `different`, `unavailable`), Claude's
@@ -54,7 +54,8 @@ See [Prompt delivery](../agent/PROMPT_DELIVERY.md) for admission, errors and rec
 
 Agents typed into terminal shells (including terminal shim/launcher invocations) refuse
 with `agent.prompt_unsupported` / `terminal_agent_unsupported`, even after an observed Stop.
-Launch an agent window from a task, the agent launcher, or `opencove node create agent`.
+Agents typed into a terminal cannot receive prompts because the shell would receive the input after the agent stops.
+Start an agent meant to receive prompts, such as a lead agent other agents report to, as an agent window using Run Agent on a task, the agent launcher, or `opencove node create agent --space <space> --prompt <text>`; it can still use the opencove CLI from there.
 Executable-path overrides and option-like model/session values have no verified lifecycle
 coverage for prompting. See the repository [prompt skill source](skills/opencove-agent-prompt/SKILL.md)
 for reusable agent instructions; this source does not install or modify a user skill.
@@ -62,7 +63,6 @@ for reusable agent instructions; this source does not install or modify a user s
 A custom executable path refuses with `executable_override_unverified` for both providers.
 Remove the override in Settings → agent executable and launch a new agent window with
 the required lifecycle hooks; the running invocation's observation behavior is unchanged.
-
 
 ## Read the submitted turn
 

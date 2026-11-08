@@ -5,7 +5,8 @@ description: Send a prompt to an existing OpenCove agent window with the OpenCov
 
 Use `opencove agent prompt` only for local agent windows OpenCove launched from a task,
 the agent launcher, or `node create agent`: Claude Code or Codex with lifecycle hooks.
-Agents typed into a terminal shell, including shim/launcher invocations, are unsupported.
+Agents typed into a terminal cannot receive prompts because the shell would receive the input after the agent stops.
+Start an agent meant to receive prompts, such as a lead agent other agents report to, as an agent window using Run Agent on a task, the agent launcher, or `opencove node create agent --space <space> --prompt <text>`; it can still use the opencove CLI from there.
 A terminal node that reports agent activity or Stop remains a terminal invocation.
 Executable overrides and option-like model/resume values have no verified lifecycle
 coverage. `executable_override_unverified` means remove the override in Settings →

@@ -262,14 +262,36 @@ export const terminalAgentPosixShellLauncherScript = [
   '',
 ].join('\n')
 
+// Shared by Bash and every Zsh startup relay; use builtins even when user PATH is empty.
+// Prepend providers first, then the CLI, removing only our own duplicate entries.
+const restoreSessionShimPaths = [
+  'for _opencove_directory in "${OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY:-}" "${OPENCOVE_CLI_SHIM_DIRECTORY:-}"; do',
+  '  [ -n "$_opencove_directory" ] || continue',
+  '  _opencove_remaining_path=$PATH',
+  '  _opencove_filtered_path=',
+  '  _opencove_path_separator=',
+  '  while :; do',
+  '    _opencove_path_entry=${_opencove_remaining_path%%:*}',
+  '    if [ "$_opencove_path_entry" != "$_opencove_directory" ]; then',
+  '      _opencove_filtered_path="$_opencove_filtered_path$_opencove_path_separator$_opencove_path_entry"',
+  '      _opencove_path_separator=:',
+  '    fi',
+  '    case "$_opencove_remaining_path" in',
+  '      *:*) _opencove_remaining_path=${_opencove_remaining_path#*:} ;;',
+  '      *) break ;;',
+  '    esac',
+  '  done',
+  '  export PATH="$_opencove_directory${_opencove_path_separator:+:$_opencove_filtered_path}"',
+  'done',
+  'unset _opencove_directory _opencove_remaining_path _opencove_filtered_path _opencove_path_separator _opencove_path_entry',
+]
+
 export const terminalAgentBashRcScript = [
   '_opencove_user_bash_rc=${HOME:+$HOME/.bashrc}',
   'if [ -n "$_opencove_user_bash_rc" ] && [ -r "$_opencove_user_bash_rc" ] && [ "$_opencove_user_bash_rc" != "$OPENCOVE_TERMINAL_AGENT_BASH_RC" ]; then',
   '  . "$_opencove_user_bash_rc"',
   'fi',
-  'if [ -n "$OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY" ] && [ "${PATH%%:*}" != "$OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY" ]; then',
-  '  export PATH="$OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY${PATH:+:$PATH}"',
-  'fi',
+  ...restoreSessionShimPaths,
   'unset _opencove_user_bash_rc',
   '',
 ].join('\n')
@@ -282,9 +304,7 @@ export const terminalAgentZshEnvScript = [
   '  . "$_opencove_user_zdotdir/.zshenv"',
   '  _opencove_user_zdotdir=${ZDOTDIR:-${HOME:-}}',
   'fi',
-  'if [ -n "$OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY" ] && [ "${PATH%%:*}" != "$OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY" ]; then',
-  '  export PATH="$OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY${PATH:+:$PATH}"',
-  'fi',
+  ...restoreSessionShimPaths,
   'export OPENCOVE_TERMINAL_AGENT_USER_ZDOTDIR="$_opencove_user_zdotdir"',
   'export ZDOTDIR="$_opencove_wrapper_zdotdir"',
   'unset _opencove_user_zdotdir _opencove_wrapper_zdotdir',
@@ -310,13 +330,7 @@ function createZshStartupRelay(
     '  _opencove_user_zdotdir=${ZDOTDIR:-$_opencove_user_zdotdir}',
     'fi',
     'export OPENCOVE_TERMINAL_AGENT_USER_ZDOTDIR="$_opencove_user_zdotdir"',
-    ...(prependShimPath
-      ? [
-          'if [ -n "$OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY" ] && [ "${PATH%%:*}" != "$OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY" ]; then',
-          '  export PATH="$OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY${PATH:+:$PATH}"',
-          'fi',
-        ]
-      : []),
+    ...(prependShimPath ? restoreSessionShimPaths : []),
     ...(restoreOnlyForNonLogin
       ? [
           'if [[ ! -o login ]]; then export ZDOTDIR="$_opencove_user_zdotdir"; else export ZDOTDIR="$_opencove_wrapper_zdotdir"; fi',

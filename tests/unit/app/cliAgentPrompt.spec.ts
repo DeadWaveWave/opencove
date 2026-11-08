@@ -186,3 +186,26 @@ it.each(['matched', 'unavailable'])(
     expect(f.rawError()).toBe('')
   },
 )
+
+it.each([false, true])(
+  'explains terminal prompt refusal and agent-window recovery (TTY=%s)',
+  async tty => {
+    const details = {
+      reason: 'terminal_agent_unsupported',
+      pasteDispatchAttempted: false,
+      submitDispatchAttempted: false,
+    }
+    const f = fixture(createAppError('agent.prompt_unsupported', { details }).toDescriptor())
+    f.io.stderr.isTTY = tty
+    expect(await run(['agent', 'prompt', '--node', 'n', '--text', 'hello'], f.io)).toBe(1)
+    expect(f.out()).toBe('')
+    expect(f.rawError()).toContain('shell would receive the input after the agent stops')
+    expect(f.rawError()).toContain('lead agent other agents report to')
+    expect(f.rawError()).toContain('Run Agent on a task')
+    expect(f.rawError()).toContain('opencove node create agent --space <space> --prompt <text>')
+    expect(f.rawError()).toContain('can still use the opencove CLI')
+    if (!tty) {
+      expect(f.err().details).toEqual(details)
+    }
+  },
+)

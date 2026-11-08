@@ -179,11 +179,11 @@ it('keeps agent list title enrichment for non-agent metadata unaffected', async 
   expect(JSON.parse(f.out()).agents[0]).toMatchObject({ nodeId: node.id, title: node.title })
 })
 
-it('refuses non-agent metadata even when a stale run snapshot exists', async () => {
+it('returns Worker run state despite terminal node metadata', async () => {
   const f = identityFixture()
   f.values['agent.get'] = { nodeId: node.id, state: 'idle' }
-  expect(await run(['agent', 'get', '--node', '@self'], f.io)).toBe(1)
-  expect(f.error().message).toContain('terminal, not an agent window')
+  expect(await run(['agent', 'get', '--node', '@self'], f.io)).toBe(0)
+  expect(JSON.parse(f.out())).toMatchObject({ nodeId: node.id, state: 'idle', title: node.title })
 })
 
 it('retains a valid agent snapshot when its node is concurrently deleted', async () => {

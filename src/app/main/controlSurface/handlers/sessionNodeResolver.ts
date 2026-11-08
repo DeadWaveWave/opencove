@@ -13,6 +13,10 @@ import {
 } from './sessionPrepareOrReviveShared'
 import { resolveExecutionContextDto } from './sessionLaunchSupport'
 import type { SessionRoute } from './sessionRecords'
+import {
+  isResumeSessionBindingVerified,
+  normalizeResumeSessionBinding,
+} from '../../../../contexts/agent/domain/agentResumeBinding'
 
 export function createSessionNodeResolver(deps: {
   getPersistenceStore(): Promise<PersistenceStore>
@@ -53,6 +57,18 @@ export function createSessionNodeResolver(deps: {
     }
     const metadata = deps.ptyStreamHub.getSessionMetadata(node.sessionId)
     const agent = node.kind === 'agent' ? normalizePersistedAgent(node.agent) : null
+    const terminalCandidate =
+      node.kind === 'terminal' ? normalizeResumeSessionBinding(node.agent) : null
+    const terminalBinding =
+      terminalCandidate && isResumeSessionBindingVerified(terminalCandidate)
+        ? terminalCandidate
+        : null
+    // Runtime observation wins over a persisted terminal overlay from a previous provider.
+    const terminalRun =
+      node.kind === 'terminal' ? deps.ptyStreamHub.observeAgentState?.(node.sessionId) : null
+    const provider = agent?.provider ?? terminalRun?.provider ?? terminalBinding?.provider ?? null
+    const terminalResumeSessionId =
+      terminalBinding?.provider === provider ? terminalBinding.resumeSessionId : null
     const cwd =
       agent?.executionDirectory ?? metadata?.cwd ?? resolveTerminalRecoveryCwd(node, workspace.path)
     return {
@@ -60,13 +76,13 @@ export function createSessionNodeResolver(deps: {
       value: {
         nodeId,
         sessionId: node.sessionId,
-        provider: agent?.provider ?? null,
+        provider,
         startedAt: node.startedAt ?? metadata?.startedAt ?? null,
         cwd,
         prompt: agent?.prompt ?? null,
         model: agent?.model ?? null,
         effectiveModel: agent?.effectiveModel ?? null,
-        resumeSessionId: agent?.resumeSessionId ?? null,
+        resumeSessionId: agent?.resumeSessionId ?? terminalResumeSessionId,
         command: metadata?.command ?? null,
         args: metadata?.args ?? null,
         executionContext: resolveExecutionContextDto(cwd, {

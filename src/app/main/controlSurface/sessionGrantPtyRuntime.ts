@@ -40,7 +40,9 @@ export function createSessionGrantPtyRuntime(options: {
       // Inherited credentials and user overrides never become authority for a new session.
       for (const key of Object.keys(env)) {
         if (
-          /^OPENCOVE_(CONTROL_|NODE_ID$|SPACE_ID$|PROJECT_ID$|SESSION_ID$|CLI$|ENV$)/i.test(key)
+          /^OPENCOVE_(CONTROL_|NODE_ID$|SPACE_ID$|PROJECT_ID$|SESSION_ID$|CLI$|CLI_SHIM_DIRECTORY$|ENV$)/i.test(
+            key,
+          )
         ) {
           delete env[key]
         }
@@ -74,6 +76,7 @@ export function createSessionGrantPtyRuntime(options: {
           OPENCOVE_CONTROL_URL: url,
           OPENCOVE_CONTROL_TOKEN: reservation.token,
           OPENCOVE_CLI: options.cliPath,
+          OPENCOVE_CLI_SHIM_DIRECTORY: assets.cliShimDirectory,
         })
         const pathKey = Object.keys(env).find(key => key.toLowerCase() === 'path') ?? 'PATH'
         // Only the CLI shim directory: provider shims on PATH would wrap a managed agent launch

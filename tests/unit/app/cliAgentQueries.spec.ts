@@ -99,6 +99,19 @@ it('gets a snapshot plus title and supports @self', async () => {
   expect(f.out()).toMatchSnapshot()
   expect(f.requests.find(r => r.id === 'agent.get')?.payload).toEqual({ nodeId: node.id })
 })
+it.each([undefined, 'state,title'])(
+  'gets an observed terminal agent snapshot (fields=%s)',
+  async fields => {
+    const f = fixture(true)
+    f.values['node.get'] = { node: { ...node, kind: 'terminal' } }
+    expect(
+      await run(['agent', 'get', '--node', '@self', ...(fields ? ['--fields', fields] : [])], f.io),
+    ).toBe(0)
+    expect(JSON.parse(f.out())).toEqual(
+      fields ? { state: snapshot.state, title: 'Shell' } : { ...snapshot, title: 'Shell' },
+    )
+  },
+)
 it('rejects absent get snapshots even with projection', async () => {
   const f = fixture()
   const original = f.io.fetch
