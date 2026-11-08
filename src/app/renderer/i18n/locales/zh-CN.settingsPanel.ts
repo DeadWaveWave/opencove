@@ -34,8 +34,6 @@ export const zhCNSettingsPanel = {
       dark: 'Cove',
       light: '浅色 Cove',
       system: 'Cove（跟随系统）',
-      pixel: '空间点阵',
-      pixelLight: '浅色点阵',
     },
     interfaceFontSize: '界面字体大小',
     terminalFontSize: '终端字体大小',

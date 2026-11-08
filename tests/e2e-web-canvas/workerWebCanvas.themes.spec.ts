@@ -38,7 +38,7 @@ async function selectTheme(page: Page, id: string) {
 async function selectPluginTheme(page: Page, id: string, title: string) {
   await selectTheme(page, id)
   await page.getByTestId('app-header-control-center').click()
-  await expect(page.getByTestId('control-center-current-theme')).toHaveText(title)
+  await expect(page.getByTestId('control-center-current-theme')).toHaveText(`Theme: ${title}`)
   await page.getByTestId('control-center-close').click()
 }
 
@@ -98,7 +98,7 @@ test('remote theme assets, typography and iframe context survive switches, recov
         ],
         settings: {
           language: 'en',
-          uiTheme: 'pixel',
+          uiTheme: 'dark',
           uiFontSize: 16,
           canvasInputMode: 'mouse',
           nodeCreationPixelEffectEnabled: false,
@@ -125,10 +125,10 @@ test('remote theme assets, typography and iframe context survive switches, recov
       .locator(`.react-flow__node[data-id="${opened.nodeId}"]`)
       .frameLocator('iframe')
     const context = observer.locator('#context')
-    await expect(context).toContainText('"themeId":"pixel"')
+    await expect(context).toContainText('"themeId":"dark"')
     await observer.locator('#draft').fill('Keep my remote view alive')
     await selectPluginTheme(page, selectedTheme, 'Studio')
-    await expect(page.locator('html')).toHaveAttribute('data-cove-theme-base', 'pixel')
+    await expect(page.locator('html')).toHaveAttribute('data-cove-theme-base', 'dark')
 
     const note = page.locator('.react-flow__node[data-id="theme-note"]')
     const header = note.locator('[data-cove-part="window-header"]')
@@ -179,12 +179,12 @@ test('remote theme assets, typography and iframe context survive switches, recov
       contentType: 'image/png',
     })
 
-    await selectTheme(page, 'pixel-light')
+    await selectTheme(page, 'light')
     await expect(header).toHaveCSS('height', '34px')
     await expect(icon).toHaveCSS('background-image', 'none')
     await expect(icon.locator(':scope > *').first()).toHaveCSS('visibility', 'visible')
     await expect(page.locator('style[data-cove-theme-stylesheet]')).toHaveCount(0)
-    await expect(context).toContainText('"themeId":"pixel-light"')
+    await expect(context).toContainText('"themeId":"light"')
     await expect(context).toContainText('"fonts":[]')
     await expect(observer.locator('#draft')).toHaveValue('Keep my remote view alive')
 
@@ -193,7 +193,7 @@ test('remote theme assets, typography and iframe context survive switches, recov
     await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', selectedTheme)
     await expect(header).toHaveCSS('height', '44px')
     await page.getByTestId('app-header-control-center').click()
-    await expect(page.getByTestId('control-center-current-theme')).toHaveText('Studio')
+    await expect(page.getByTestId('control-center-current-theme')).toHaveText('Theme: Studio')
     await invokeValue(page.request, 'command', 'plugin.setEnabled', {
       pluginId: themePluginId,
       enabled: false,
@@ -212,15 +212,14 @@ test('remote theme assets, typography and iframe context survive switches, recov
     })
     await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', selectedTheme)
     await expect(context).toContainText(`"themeId":"${selectedTheme}"`)
-    await expect(page.getByTestId('control-center-current-theme')).toHaveText('Studio')
+    await expect(page.getByTestId('control-center-current-theme')).toHaveText('Theme: Studio')
     await page.getByTestId('control-center-close').click()
 
     await page.setViewportSize({ width: 390, height: 560 })
     await page.getByTestId('app-header-control-center').tap()
     await expectFits(page.getByTestId('control-center'))
-    await page.getByTestId('control-center-theme-family-pixel').check()
     await page.getByTestId('control-center-theme-mode-light').check()
-    await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'pixel-light')
+    await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'light')
     await info.attach('web-theme-narrow-control-center', {
       body: await page.screenshot(),
       contentType: 'image/png',
@@ -232,7 +231,7 @@ test('remote theme assets, typography and iframe context survive switches, recov
     await openAppearance(page)
     await expectFits(page.getByTestId('settings-panel'))
     await page.getByTestId(`settings-ui-theme-${themeIdentity('light-copy')}`).click()
-    await expect(page.locator('html')).toHaveAttribute('data-cove-theme-base', 'pixel-light')
+    await expect(page.locator('html')).toHaveAttribute('data-cove-theme-base', 'light')
     await expect(context).toContainText(`"themeId":"${themeIdentity('light-copy')}"`)
     await info.attach('web-theme-narrow-settings', {
       body: await page.screenshot(),

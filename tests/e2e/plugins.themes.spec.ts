@@ -35,7 +35,7 @@ import {
   seekCollapseEndpoint,
 } from './workspace-canvas.collapse-motion-endpoints.helpers'
 
-test('independent theme plugins reproduce both Pixel bases and recover persisted selection', async ({
+test('independent theme plugins reproduce both Cove bases and recover persisted selection', async ({
   browserName: _browserName,
 }, info) => {
   test.setTimeout(120_000)
@@ -46,26 +46,29 @@ test('independent theme plugins reproduce both Pixel bases and recover persisted
     await seedThemeWorkspace(page)
     await pluginCli(userDataDir, ['install', directory])
     for (const [base, copy] of [
-      ['pixel', 'pixel-copy'],
-      ['pixel-light', 'light-copy'],
+      ['dark', 'dark-copy'],
+      ['light', 'light-copy'],
     ]) {
       await chooseTheme(page, base!)
       const header = page.locator(
         `.react-flow__node[data-id="${themeNoteId}"] [data-cove-part="window-header"]`,
       )
-      await expect(header).toHaveCSS('background-image', /linear-gradient/)
+      // The base's kind wash: Cove paints it over the header, in its ::after.
+      const kindWash = () =>
+        header.evaluate(element => getComputedStyle(element, '::after').backgroundImage)
+      await expect.poll(kindWash).toContain('linear-gradient')
       const inherited = await readThemePaint(page)
       await chooseTheme(page, themeIdentity(copy!))
       await expect(page.locator('html')).toHaveAttribute('data-cove-theme-base', base!)
       await expect.poll(() => readThemePaint(page)).toEqual(inherited)
-      await expect(header).toHaveCSS('background-image', /linear-gradient/)
+      await expect.poll(kindWash).toContain('linear-gradient')
       await capturePlugins(page, info, `independent-${copy}`)
     }
     const selectedId = themeIdentity('light-copy')
     await electronApp.close()
     ;({ electronApp, window: page } = await launchApp({ userDataDir, cleanupUserDataDir: false }))
     await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', selectedId)
-    await expect(page.locator('html')).toHaveAttribute('data-cove-theme-base', 'pixel-light')
+    await expect(page.locator('html')).toHaveAttribute('data-cove-theme-base', 'light')
     await pluginCommand(page, 'plugin.setEnabled', { pluginId: themePluginId, enabled: false })
     await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'dark')
     await pluginCommand(page, 'plugin.setEnabled', { pluginId: themePluginId, enabled: true })
@@ -141,11 +144,11 @@ test('author CSS, assets and metrics follow real window geometry and the live if
       .locator(`.react-flow__node[data-id="${opened.nodeId}"]`)
       .frameLocator('iframe')
     const context = observer.locator('#context')
-    await expect(context).toContainText('"themeId":"pixel"')
+    await expect(context).toContainText('"themeId":"dark"')
     await observer.locator('#draft').fill('Preserve this view across theme changes')
     await chooseTheme(page, themeIdentity('studio'))
     await expect(context).toContainText(`"themeId":"${themeIdentity('studio')}"`)
-    await expect(context).toContainText('"baseThemeId":"pixel"')
+    await expect(context).toContainText('"baseThemeId":"dark"')
     await expect(context).toContainText('"themeVersion":1')
     await expect(context).toContainText('"--cove-node-header-height":"44px"')
     await expect(observer.locator('html')).toHaveAttribute(
@@ -215,12 +218,12 @@ test('author CSS, assets and metrics follow real window geometry and the live if
     expect(await layoutSize(note)).toEqual(expandedSize)
     await expect.poll(() => layoutSize(header)).toMatchObject({ height: 44 })
     await capturePlugins(page, info, 'independent-theme-custom-materials')
-    await chooseTheme(page, 'pixel-light')
+    await chooseTheme(page, 'light')
     await expect(page.locator('style[data-cove-theme-stylesheet]')).toHaveCount(0)
     await expect.poll(() => layoutSize(header)).toMatchObject({ height: 34 })
     await expect(noteIcon).toHaveCSS('background-image', 'none')
     await expect(noteIcon.locator(':scope > *').first()).toHaveCSS('visibility', 'visible')
-    await expect(context).toContainText('"themeId":"pixel-light"')
+    await expect(context).toContainText('"themeId":"light"')
     await expect(context).toContainText('"--cove-node-header-height":"34px"')
     await expect(observer.locator('#draft')).toHaveValue('Preserve this view across theme changes')
   } finally {

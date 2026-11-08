@@ -45,8 +45,6 @@ export function useApplyUiTheme(uiTheme: UiTheme): void {
           : DEFAULT_UI_THEME
     const descriptor = theme ?? UI_THEME_DESCRIPTORS[themeId as keyof typeof UI_THEME_DESCRIPTORS]
     const baseId = theme?.extends ?? theme?.appearance ?? themeId
-    // Plugin themes inherit the family of their foundation; generated tokens key off it.
-    const family = UI_THEME_DESCRIPTORS[baseId as keyof typeof UI_THEME_DESCRIPTORS].family
     const tokens = { ...(theme?.tokens ?? {}), ...pluginThemeMetricTokens(theme ?? {}) }
     const previous = new Map<string, string>()
     const paletteCss = theme ? pluginThemePaletteCss(themeId, theme) : null
@@ -82,7 +80,8 @@ export function useApplyUiTheme(uiTheme: UiTheme): void {
       root.dataset.coveTheme = baseScheme
       root.dataset.coveThemeId = themeId
       root.dataset.coveThemeBase = baseId === 'system' ? baseScheme : baseId
-      root.dataset.coveFamily = family
+      // Every theme, plugin themes too, stands on Cove; generated tokens key off the family.
+      root.dataset.coveFamily = 'cove'
       root.style.colorScheme = baseScheme
       publishThemeApplication(
         {

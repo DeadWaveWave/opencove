@@ -162,9 +162,9 @@ test('collapses all window kinds without remounting editors or resizing a live P
     ).toBeVisible()
 
     await openPixelAppearance(window)
-    await selectCoveOption(window, 'settings-ui-theme', 'pixel-light')
+    await selectCoveOption(window, 'settings-ui-theme', 'light')
     await window.locator('.settings-panel__close').click()
-    await testInfo.attach('collapse-pixel-light', {
+    await testInfo.attach('collapse-light', {
       body: await window.screenshot(),
       contentType: 'image/png',
     })

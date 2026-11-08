@@ -135,7 +135,7 @@ test('dirty Document disclosure hands its title back beside the unsaved indicato
     await seedWorkspaceState(window, {
       activeWorkspaceId: 'document-endpoint-project',
       settings: {
-        uiTheme: 'pixel',
+        uiTheme: 'dark',
         language: 'en',
         canvasInputMode: 'mouse',
         focusNodeOnClick: false,

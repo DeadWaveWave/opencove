@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { setFrameMotion } from './workspace-canvas.frame-signals.helpers'
 import { launchApp, seedWorkspaceState, testWorkspacePath } from './workspace-canvas.helpers'
+import { setMotionSignals } from './workspace-canvas.pixel-effects.helpers'
 import {
   installPtySessionCapture,
   resolveFirstAgentSessionId,
@@ -137,9 +138,7 @@ test('an edge beacon points at an out-of-view agent waiting for you and flies to
     await expect(dot).toHaveCSS('animation-name', 'none')
     await expect(beacon).toHaveCSS('box-shadow', ring)
     await setFrameMotion(window, false)
-    await window.getByTestId('app-header-control-center').click()
-    await window.getByTestId('control-center-toggle-motion-signals').uncheck()
-    await window.keyboard.press('Escape')
+    await setMotionSignals(window, false)
     await expect(dot).toHaveCSS('animation-name', 'none')
     await expect(beacon).toHaveCSS('box-shadow', ring)
     // The beacon sits on the edge facing the agent.

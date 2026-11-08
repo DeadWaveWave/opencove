@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { launchFrameSignals, setFrameMotion } from './workspace-canvas.frame-signals.helpers'
+import { setMotionSignals } from './workspace-canvas.pixel-effects.helpers'
 
 test('waiting frames pulse only opacity and retain static status with motion or signals off', async () => {
   const { window, node, send, close } = await launchFrameSignals()
@@ -41,9 +42,7 @@ test('waiting frames pulse only opacity and retain static status with motion or 
     await expect(halo).toHaveCSS('animation-name', 'none')
     await expect(halo).toHaveCSS('opacity', '0.8')
     await setFrameMotion(window, false)
-    await window.getByTestId('app-header-control-center').click()
-    await window.getByTestId('control-center-toggle-motion-signals').uncheck()
-    await window.keyboard.press('Escape')
+    await setMotionSignals(window, false)
     await expect(halo).toHaveCSS('animation-name', 'none')
     await expect(halo).toHaveCSS('opacity', '0.8')
     await expect(node.locator('.terminal-node')).toHaveCSS('border-color', border)
@@ -82,9 +81,7 @@ for (const mode of ['animated', 'reduced', 'off'] as const) {
     try {
       await setFrameMotion(window, mode === 'reduced')
       if (mode === 'off') {
-        await window.getByTestId('app-header-control-center').click()
-        await window.getByTestId('control-center-toggle-motion-signals').uncheck()
-        await window.keyboard.press('Escape')
+        await setMotionSignals(window, false)
       }
       await send('<test-hook-initial-working>')
       await expect(node.locator('.terminal-node')).toHaveAttribute(

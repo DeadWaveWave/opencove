@@ -26,7 +26,7 @@ async function seedDropWorkspace(page: Page, root: string, zoom: number) {
   await seedWorkspaceState(page, {
     activeWorkspaceId: PROJECT,
     settings: {
-      uiTheme: 'pixel',
+      uiTheme: 'dark',
       language: 'en',
       canvasInputMode: 'mouse',
       focusNodeOnClick: false,

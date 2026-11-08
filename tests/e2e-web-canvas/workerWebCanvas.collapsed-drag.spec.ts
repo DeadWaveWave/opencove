@@ -7,8 +7,11 @@ import {
   readSharedState,
   writeAppState,
 } from './helpers'
+import { getCollapsedNodeSize } from '../../src/contexts/workspace/domain/collapsedNodeGeometry'
 
 const NODE_ID = 'compact-drag-note'
+// The compact icon's frame is its collision size, the one the Worker packs with.
+const COMPACT_SIZE = getCollapsedNodeSize()
 
 async function readFrame(page: Page) {
   return page.locator(`.react-flow__node[data-id="${NODE_ID}"]`).evaluate(element => {
@@ -135,7 +138,7 @@ for (const nested of [false, true]) {
         ],
         settings: {
           language: 'en',
-          uiTheme: 'pixel',
+          uiTheme: 'dark',
           canvasInputMode: 'mouse',
           focusNodeOnClick: false,
           standbyBannerEnabled: false,
@@ -148,7 +151,7 @@ for (const nested of [false, true]) {
       await node.getByTestId('node-collapse').click()
       const compact = page.getByTestId(`collapsed-node-${NODE_ID}`)
       await expect(compact).toBeVisible()
-      await expect.poll(() => readFrame(page)).toMatchObject({ width: 128, height: 112 })
+      await expect.poll(() => readFrame(page)).toMatchObject(COMPACT_SIZE)
       if (nested) {
         // Replacing an existing sibling selection exposed React's update-depth loop.
         const peer = page.locator('.react-flow__node[data-id="peer-note"]')
@@ -174,7 +177,7 @@ for (const nested of [false, true]) {
       await dragCompactIcon(page, { x: 120, y: 70 })
       expect(renderErrors()).toEqual([])
       await expect(compact).toBeVisible()
-      await expect.poll(() => readFrame(page)).toMatchObject({ width: 128, height: 112 })
+      await expect.poll(() => readFrame(page)).toMatchObject(COMPACT_SIZE)
       const first = await readFrame(page)
       expect(Math.hypot(first.x - before.x, first.y - before.y)).toBeGreaterThan(40)
       await expect(node).toHaveClass(/selected/)

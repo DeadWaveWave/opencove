@@ -78,7 +78,7 @@ async function createStandardPlugin(page: Page, withNote = false) {
       : [],
     {
       settings: {
-        uiTheme: 'pixel',
+        uiTheme: 'dark',
         language: 'en',
         canvasInputMode: 'mouse',
         focusNodeOnClick: false,
@@ -295,12 +295,12 @@ test.describe('Installed plugin window standard', () => {
       await assertFrameMatches(page, node, resized)
       await openPluginSettings(page)
       await page.getByTestId('settings-section-nav-appearance').click()
-      await selectCoveOption(page, 'settings-ui-theme', 'pixel-light')
+      await selectCoveOption(page, 'settings-ui-theme', 'light')
       await page.locator('.settings-panel__close').click()
       expect(await readHeaderMetrics(pluginHeader, '.cove-canvas-node-window__title')).toEqual(
         await readHeaderMetrics(noteHeader, '.note-node__title'),
       )
-      await capture(page, testInfo, 'hello-clock-standard-window-pixel-light')
+      await capture(page, testInfo, 'hello-clock-standard-window-light')
     } finally {
       await electronApp.close()
     }
@@ -372,9 +372,9 @@ test.describe('Installed plugin window standard', () => {
       await expect(item).toBeVisible()
       await expect(page.getByTestId('settings-plugin-enabled-hello-clock')).not.toBeChecked()
       await page.getByTestId('settings-section-nav-appearance').click()
-      await selectCoveOption(page, 'settings-ui-theme', 'pixel-light')
+      await selectCoveOption(page, 'settings-ui-theme', 'light')
       await page.getByTestId('settings-section-nav-plugins').click()
-      await capture(page, testInfo, 'plugins-settings-pixel-light')
+      await capture(page, testInfo, 'plugins-settings-light')
       await page.getByTestId('settings-plugin-enabled-hello-clock').click()
       await expect(page.getByTestId('settings-plugin-enabled-hello-clock')).toBeChecked()
       await expect.poll(async () => (await readPluginState(page)).disabled).toEqual([])
@@ -401,7 +401,7 @@ test.describe('Installed plugin window standard', () => {
     const { electronApp, window: page } = await launchApp()
     try {
       await clearAndSeedWorkspace(page, [], {
-        settings: { language: 'zh-CN', uiTheme: 'pixel-light' },
+        settings: { language: 'zh-CN', uiTheme: 'light' },
       })
       await installPlugin(page, source)
       await page.getByTestId('app-header-settings').click()
@@ -431,7 +431,7 @@ test.describe('Installed plugin window standard', () => {
       await toggle.click()
       await expect(toggle).not.toBeChecked()
       await expect.poll(async () => (await readPluginState(page)).disabled).toEqual(['hello-clock'])
-      await capture(page, testInfo, 'plugins-settings-zh-narrow-pixel-light')
+      await capture(page, testInfo, 'plugins-settings-zh-narrow-light')
     } finally {
       await electronApp.close()
     }

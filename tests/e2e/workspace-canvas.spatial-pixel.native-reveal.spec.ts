@@ -61,7 +61,7 @@ test('clips native website reveal without shrinking or reloading the browser vie
       ],
       {
         settings: {
-          uiTheme: 'pixel',
+          uiTheme: 'dark',
           ...PIXEL_EFFECTS_ENABLED,
           websiteWindowPolicy: { enabled: true },
         },

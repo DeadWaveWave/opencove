@@ -90,7 +90,6 @@ describe('independent Pixel effect controls in Appearance', () => {
     fireEvent.click(backgroundStyle('Minimal'))
     fireEvent.click(screen.getByRole('switch', { name: 'Node Closing Effect' }))
     fireEvent.click(screen.getByRole('switch', { name: 'Agent Working Effect' }))
-    fireEvent.click(screen.getByTestId('settings-ui-theme-family-cove'))
     fireEvent.click(screen.getByTestId('settings-ui-theme-mode-light'))
     expect(screen.getByRole('switch', { name: 'Node Creation Effect' })).toBeChecked()
     expect(screen.getByRole('switch', { name: 'Node Closing Effect' })).not.toBeChecked()
@@ -106,11 +105,11 @@ describe('independent Pixel effect controls in Appearance', () => {
         agentWorkingPixelEffectEnabled: false,
       }),
     )
-    fireEvent.click(screen.getByTestId('settings-ui-theme-family-pixel'))
+    fireEvent.click(screen.getByTestId('settings-ui-theme-mode-dark'))
     expect(screen.getByRole('switch', { name: 'Node Creation Effect' })).toBeChecked()
     expect(backgroundStyle('Minimal')).toBeChecked()
     expect(screen.getByRole('switch', { name: 'Node Closing Effect' })).not.toBeChecked()
-    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ uiTheme: 'pixel-light' }))
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ uiTheme: 'dark' }))
   })
 
   it('provides localized labels and explains each background style', async () => {

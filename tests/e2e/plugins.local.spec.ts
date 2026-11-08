@@ -26,7 +26,7 @@ import {
 
 const settings = {
   language: 'en' as const,
-  uiTheme: 'pixel' as const,
+  uiTheme: 'dark' as const,
   focusNodeOnClick: false,
   canvasInputMode: 'mouse' as const,
   nodeCreationPixelEffectEnabled: false,
@@ -259,7 +259,7 @@ test.describe('Independently installed plugins', () => {
         '2030-01-01T12:34:56.000Z',
       )
       await page.getByTestId('settings-section-nav-appearance').click()
-      await selectCoveOption(page, 'settings-ui-theme', 'pixel-light')
+      await selectCoveOption(page, 'settings-ui-theme', 'light')
       await page.getByTestId('settings-section-nav-plugins').click()
       await page.getByTestId(`settings-plugin-details-${pluginId}`).click()
       detail = page.getByTestId(`settings-plugin-detail-${pluginId}`)
@@ -267,7 +267,7 @@ test.describe('Independently installed plugins', () => {
       preview = detail.frameLocator('iframe')
       await expect(preview.locator('html')).toHaveAttribute('data-theme', 'light')
       await expect(preview.locator('#invoke')).toBeEnabled()
-      await capturePlugins(page, info, 'installed-plugin-detail-pixel-light')
+      await capturePlugins(page, info, 'installed-plugin-detail-light')
       await page.locator('.settings-panel__close').click()
       await real.getByTestId('plugin-hello-clock-close').click()
       const recreated = await createPluginNode(page)

@@ -7,7 +7,7 @@ const parentSpaceId = 'space-with-agent'
 const leafSpaceId = 'space-without-agent'
 
 test.describe('Primary Sidebar Space Marker', () => {
-  for (const uiTheme of ['pixel', 'pixel-light'] as const) {
+  for (const uiTheme of ['dark', 'light'] as const) {
     test(`keeps Space color independent from navigation and disclosure in ${uiTheme}`, async ({
       browserName: _browserName,
     }, testInfo) => {

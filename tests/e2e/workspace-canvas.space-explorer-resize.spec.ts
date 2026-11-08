@@ -11,7 +11,7 @@ test('resizes Explorer through the left and footer edges and lower corners at ca
     env: { OPENCOVE_TEST_WORKSPACE: fixture.root },
   })
   try {
-    await seedFilesystemWorkspace(window, fixture.root, 'pixel')
+    await seedFilesystemWorkspace(window, fixture.root, 'dark')
     const explorer = window.getByTestId('workspace-space-explorer')
     await window.locator('.react-flow__controls-zoomout').click()
     await expect

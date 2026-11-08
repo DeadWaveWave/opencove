@@ -32,8 +32,8 @@ const KIND_IDS = Object.keys(KIND_FAMILIES) as KindFamilyId[]
 
 const hex = (c: Rgb): string => `#${c.map(v => v.toString(16).padStart(2, '0')).join('')}`
 const LITERAL_COLOR = /#[\da-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch)\(/i
-// Swatches preview other themes, and the mask colour only feeds mask luminance.
-const THEME_INDEPENDENT = /^--cove-(?:theme-preview-|mask-opaque$)/
+// The mask colour only feeds mask luminance.
+const THEME_INDEPENDENT = /^--cove-mask-opaque$/
 
 /** Standard-theme colours in base.css that would show through a family that does not replace them. */
 function baseLiteralColorTokens(): string[] {

@@ -120,16 +120,10 @@ export function normalizePluginThemes(value: unknown): PluginThemeDeclaration[] 
     if (base !== undefined && !(PLUGIN_THEME_BASES as readonly unknown[]).includes(base)) {
       throw new Error('Plugin theme extends must name a built-in visual foundation.')
     }
-    if (
-      base !== undefined &&
-      (String(base).endsWith('light') ? 'light' : 'dark') !== raw.appearance
-    ) {
+    if (base !== undefined && base !== raw.appearance) {
       throw new Error('Plugin theme appearance must match its visual foundation.')
     }
     const palette = normalizePluginThemePalette(raw.palette)
-    if (palette && base !== undefined && base !== 'dark' && base !== 'light') {
-      throw new Error('Plugin theme palette needs the generated Cove foundation (dark or light).')
-    }
     const entries = Object.entries(raw.tokens === undefined ? {} : object(raw.tokens))
     if (
       entries.some(

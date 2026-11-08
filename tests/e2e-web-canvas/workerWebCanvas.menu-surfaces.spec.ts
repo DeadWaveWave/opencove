@@ -36,7 +36,7 @@ async function createTaskAndOpenEditor(page: Page) {
   await page.getByTestId('task-node-open-editor').click()
 }
 
-for (const theme of ['pixel', 'pixel-light']) {
+for (const theme of ['dark', 'light']) {
   test(`menus and dialogs keep their context on desktop and mobile in ${theme}`, async ({
     page,
   }, testInfo) => {

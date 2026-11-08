@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { setFrameMotion } from './workspace-canvas.frame-signals.helpers'
+import { setMotionSignals } from './workspace-canvas.pixel-effects.helpers'
 import {
   launchApp,
   readCanvasViewport,
@@ -106,7 +107,7 @@ test.describe('Command Center', () => {
             activeSpaceId: 'ui',
           },
         ],
-        settings: { uiTheme: 'pixel', isPrimarySidebarCollapsed: false },
+        settings: { uiTheme: 'dark', isPrimarySidebarCollapsed: false },
       })
       const trigger = window.getByTestId('app-header-command-center')
       const center = window.getByTestId('command-center')
@@ -127,7 +128,7 @@ test.describe('Command Center', () => {
       expect(metrics.width).toBeLessThanOrEqual(642)
       expect(metrics.radius).toBe('8px')
       expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth)
-      await testInfo.attach('command-center-pixel', {
+      await testInfo.attach('command-center-dark', {
         body: await center.screenshot(),
         contentType: 'image/png',
       })
@@ -138,12 +139,11 @@ test.describe('Command Center', () => {
       await expect(window.getByTestId('workspace-search-input')).toBeFocused()
       await window.getByTestId('workspace-search-close').click()
       await window.getByTestId('app-header-control-center').click()
-      await window.getByTestId('control-center-theme-family-pixel').check()
       await window.getByTestId('control-center-theme-mode-light').check()
       await window.keyboard.press('Escape')
       await trigger.click()
-      await expect(window.locator('html')).toHaveAttribute('data-cove-theme-id', 'pixel-light')
-      await testInfo.attach('command-center-pixel-light', {
+      await expect(window.locator('html')).toHaveAttribute('data-cove-theme-id', 'light')
+      await testInfo.attach('command-center-light', {
         body: await center.screenshot(),
         contentType: 'image/png',
       })
@@ -173,7 +173,7 @@ test.describe('Command Center', () => {
             nodes: [],
           },
         ],
-        settings: { uiTheme: 'pixel-light', uiFontSize: 24 },
+        settings: { uiTheme: 'light', uiFontSize: 24 },
       })
       const trigger = window.getByTestId('app-header-command-center')
       await trigger.click()
@@ -197,7 +197,7 @@ test.describe('Command Center', () => {
       expect(metrics.right).toBeLessThanOrEqual(metrics.viewportWidth - 8)
       expect(metrics.overflow).toBe(false)
       expect(Math.min(...metrics.touchHeights)).toBeGreaterThanOrEqual(44)
-      await testInfo.attach('command-center-mobile-pixel-light', {
+      await testInfo.attach('command-center-mobile-light', {
         body: await window.screenshot(),
         contentType: 'image/png',
       })
@@ -400,9 +400,7 @@ test.describe('Command Center', () => {
 
       // Navigation feedback is static and remains available with decorative signals disabled.
       await setFrameMotion(window, true)
-      await window.getByTestId('app-header-control-center').click()
-      await window.getByTestId('control-center-toggle-motion-signals').uncheck()
-      await window.keyboard.press('Escape')
+      await setMotionSignals(window, false)
       await window.keyboard.press(`${commandCenterModifier}+P`)
       await input.fill('Scratch')
       await window.keyboard.press('Enter')

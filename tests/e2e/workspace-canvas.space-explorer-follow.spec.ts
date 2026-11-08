@@ -41,7 +41,7 @@ for (const draggedId of [FILESYSTEM_SPACE, 'files-parent']) {
       await seedWorkspaceState(window, {
         activeWorkspaceId: 'files-project',
         settings: {
-          uiTheme: 'pixel',
+          uiTheme: 'dark',
           language: 'en',
           canvasInputMode: 'mouse',
         },

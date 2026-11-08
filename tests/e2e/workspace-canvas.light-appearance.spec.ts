@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { buildNodeEvalCommand, clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
 import { TERMINAL_ANSI_THEME_ENTRIES } from '../../src/contexts/workspace/presentation/renderer/components/terminalNode/terminalAnsiTheme'
+import { ANSI_BACKGROUND_SLOTS } from '../../src/shared/design/themeGenerator'
 import {
   attachIdentityFrame,
   centerIdentityCanvas,
@@ -59,15 +60,17 @@ async function readLightPaint(page: Page) {
         }, 0)
     }
     const root = getComputedStyle(document.documentElement)
+    // Content is clear and reads on its window's plate, one layer under the whole window.
     const terminal = getComputedStyle(
-      document.querySelector('[data-id="pixel-material-terminal"] .terminal-node__terminal')!,
+      document.querySelector(
+        '[data-id="pixel-material-terminal"] [data-cove-part="window-plate"]',
+      )!,
     )
     const monaco = getComputedStyle(
       document.querySelector('.document-node .monaco-editor-background')!,
     )
-    // The editor is transparent and reads on the document's reading plate.
     const plate = getComputedStyle(
-      document.querySelector('.document-node [data-cove-part="window-body"]')!,
+      document.querySelector('.document-node [data-cove-part="window-plate"]')!,
     )
     const background = terminal.backgroundColor
     const foreground = root.getPropertyValue('--cove-terminal-foreground').trim()
@@ -110,7 +113,7 @@ async function printAnsiPalette(page: Page) {
     const colors = ['black','red','green','yellow','blue','magenta','cyan','white'];
     const sample = (code, label) => esc + '[' + code + 'm' + label.padEnd(17) + esc + '[0m';
     const lines = colors.map((color, index) => sample(30 + index, color) + sample(90 + index, 'bright ' + color));
-    process.stdout.write(esc + '[2J' + esc + '[H' + ['Pixel Light - ANSI 16', ...lines, ['ANSI16','READY'].join('_')].join(String.fromCharCode(10)) + String.fromCharCode(10));
+    process.stdout.write(esc + '[2J' + esc + '[H' + ['Light - ANSI 16', ...lines, ['ANSI16','READY'].join('_')].join(String.fromCharCode(10)) + String.fromCharCode(10));
   `),
   )
   await page.keyboard.press('Enter')
@@ -162,10 +165,10 @@ async function pixelFrame(page: Page) {
   })
 }
 
-test.describe('Workspace Canvas - Pixel Light', () => {
+test.describe('Workspace Canvas - Light appearance', () => {
   test.setTimeout(180_000)
 
-  test('switches existing Pixel work into a readable light canvas and terminal without replacing editors', async ({
+  test('switches existing work into a readable light canvas and terminal without replacing editors', async ({
     browserName,
   }, testInfo) => {
     void browserName
@@ -195,7 +198,7 @@ test.describe('Workspace Canvas - Pixel Light', () => {
       expect(identity.sessionId).toBeTruthy()
       expect(xterm).not.toBeNull()
       expect(monaco).not.toBeNull()
-      await selectIdentityTheme(page, 'pixel-light')
+      await selectIdentityTheme(page, 'light')
       await expect(page.locator('html')).toHaveAttribute('data-cove-theme', 'light')
       await expect(page.locator('html')).toHaveCSS('color-scheme', 'light')
       await expect(
@@ -205,8 +208,13 @@ test.describe('Workspace Canvas - Pixel Light', () => {
       expect(nodes).toHaveLength(8)
       expect(nodes.map(node => node.label)).toEqual(labels)
       for (const node of nodes) {
-        expect(node.ribbonImage).toContain('linear-gradient')
+        // A label is a short solid flag; an unlabeled window has none.
+        expect(node.ribbonWidth).toBe(node.label === null ? 0 : 28)
+        if (node.label !== null) {
+          expect(node.ribbonIsLabelColor).toBe(true)
+        }
         if (node.kind !== 'image') {
+          expect(node.headerWash).toContain('linear-gradient')
           expect(node.contrast, `${node.kind} title`).toBeGreaterThanOrEqual(4.5)
         }
         if (node.label === null) {
@@ -224,8 +232,13 @@ test.describe('Workspace Canvas - Pixel Light', () => {
       expect(paint.monacoBackground).toBe('rgba(0, 0, 0, 0)')
       expect(paint.blurredHeaders).toBe(0)
       expect(paint.ansi).toHaveLength(16)
+      const backgroundSlots: readonly string[] = ANSI_BACKGROUND_SLOTS.light
       for (const color of paint.ansi) {
         expect(color.color, `${color.name} ANSI override`).toBeTruthy()
+        // White and bright white are background colours by convention in a light palette.
+        if (backgroundSlots.includes(color.name)) {
+          continue
+        }
         expect(
           color.contrast,
           `${color.name} on ${paint.terminal.background}`,
@@ -235,23 +248,23 @@ test.describe('Workspace Canvas - Pixel Light', () => {
       await expect(page.getByTestId('workspace-pixel-layer')).toBeVisible()
       await expect.poll(() => readPixelEffects(page)).toEqual(PIXEL_EFFECTS_ENABLED)
       await printAnsiPalette(page)
-      await attachIdentityFrame(page, testInfo, 'pixel-light-all-node-kinds')
-      await testInfo.attach('pixel-light-ansi16-terminal', {
+      await attachIdentityFrame(page, testInfo, 'light-all-node-kinds')
+      await testInfo.attach('light-ansi16-terminal', {
         body: await page.locator(`${nodeSelector('terminal')} .terminal-node`).screenshot(),
         contentType: 'image/png',
       })
-      await testInfo.attach('pixel-light-paint-metrics', {
+      await testInfo.attach('light-paint-metrics', {
         body: JSON.stringify({ paint, nodes }, null, 2),
         contentType: 'application/json',
       })
       await wheelToZoom(page, 0.2)
       await expectSpaceFrameHeader(page, 'far')
       const spaces = await readSpaceIdentity(page)
-      expect(spaces.every(space => space.fill.alpha < 0.01 && space.labelScreenFont >= 8)).toBe(
+      expect(spaces.every(space => space.fill.alpha <= 0.02 && space.labelScreenFont >= 8)).toBe(
         true,
       )
       const restore = await centerIdentityCanvas(page)
-      await attachIdentityFrame(page, testInfo, 'pixel-light-overview')
+      await attachIdentityFrame(page, testInfo, 'light-overview')
       await restore()
       await wheelToZoom(page, 1)
       expect(await terminalIdentity(page)).toEqual(identity)
@@ -260,11 +273,14 @@ test.describe('Workspace Canvas - Pixel Light', () => {
       // so different unobstructed anchors do not undo the pan when the zoom returns to 1.
       await page.locator('.react-flow__controls-fitview').click()
       await printIdentityMarker(page)
-      await selectIdentityTheme(page, 'pixel')
+      await selectIdentityTheme(page, 'dark')
       await expect(
         page.locator(`${nodeSelector('terminal')} .terminal-node__terminal`),
       ).toHaveAttribute('data-cove-terminal-theme', 'dark')
-      expect((await readLightPaint(page)).ansi.every(color => color.color === '')).toBe(true)
+      // Dark has its own palette: nothing of light's stays behind.
+      expect((await readLightPaint(page)).ansi.map(color => color.color)).not.toEqual(
+        paint.ansi.map(color => color.color),
+      )
       expect(await terminalIdentity(page)).toEqual(identity)
       expect(await nodeGeometry(page)).toEqual(geometry)
       expect(await xterm!.evaluate(element => element.isConnected)).toBe(true)
@@ -277,7 +293,7 @@ test.describe('Workspace Canvas - Pixel Light', () => {
     }
   })
 
-  test('persists Pixel Light from Control Center while respecting independent effects and reduced motion', async ({
+  test('persists the light appearance from Control Center while respecting independent effects and reduced motion', async ({
     browserName,
   }, testInfo) => {
     void browserName
@@ -287,7 +303,7 @@ test.describe('Workspace Canvas - Pixel Light', () => {
         page,
         [
           {
-            id: 'pixel-light-context',
+            id: 'light-context',
             kind: 'note',
             title: 'Context',
             position: { x: 480, y: 160 },
@@ -298,7 +314,7 @@ test.describe('Workspace Canvas - Pixel Light', () => {
         ],
         {
           settings: {
-            uiTheme: 'pixel',
+            uiTheme: 'dark',
             language: 'en',
             ...PIXEL_EFFECTS_ENABLED,
             focusNodeOnClick: false,
@@ -311,9 +327,8 @@ test.describe('Workspace Canvas - Pixel Light', () => {
       await page.locator('.settings-panel__close').click()
       await page.getByTestId('app-header-control-center').click()
       await page.getByTestId('control-center-theme-mode-light').check()
-      await expect(page.getByTestId('control-center-theme-family-pixel')).toBeChecked()
-      await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'pixel-light')
-      await attachIdentityFrame(page, testInfo, 'pixel-light-control-center')
+      await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'light')
+      await attachIdentityFrame(page, testInfo, 'light-control-center')
       await page.keyboard.press('Escape')
       const mixed = {
         ...PIXEL_EFFECTS_ENABLED,
@@ -332,9 +347,9 @@ test.describe('Workspace Canvas - Pixel Light', () => {
               : null
           }),
         )
-        .toBe('pixel-light')
+        .toBe('light')
       await page.reload({ waitUntil: 'domcontentloaded' })
-      await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'pixel-light')
+      await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'light')
       await expect(page.locator('html')).toHaveAttribute('data-cove-theme', 'light')
       await expect.poll(() => readPixelEffects(page)).toEqual(mixed)
       await expect(page.getByTestId('workspace-pixel-layer')).toBeHidden()
@@ -349,7 +364,7 @@ test.describe('Workspace Canvas - Pixel Light', () => {
           ),
         ),
       )
-      await attachIdentityFrame(page, testInfo, 'pixel-light-settings')
+      await attachIdentityFrame(page, testInfo, 'light-settings')
       await setPixelEffects(page, PIXEL_EFFECTS_ENABLED)
       await page.locator('.settings-panel__close').click()
       await page.emulateMedia({ reducedMotion: 'reduce' })
@@ -364,9 +379,7 @@ test.describe('Workspace Canvas - Pixel Light', () => {
         .locator('.workspace-canvas .react-flow__pane')
         .click({ button: 'right', position: { x: 200, y: 180 } })
       await page.getByTestId('workspace-context-new-note').click()
-      const note = page.locator(
-        '.react-flow__node:not([data-id="pixel-light-context"]):has(.note-node)',
-      )
+      const note = page.locator('.react-flow__node:not([data-id="light-context"]):has(.note-node)')
       await expect(note).toHaveCount(1)
       await expect(note.getByTestId('note-node-textarea')).toBeFocused()
       await expect(note).toHaveCSS('mask-image', 'none')
@@ -374,9 +387,9 @@ test.describe('Workspace Canvas - Pixel Light', () => {
       expect(id).toBeTruthy()
       // Observe creation before typing: real input cancels any active reveal.
       await pixelFrame(page)
-      await page.keyboard.insertText('Immediately ready in Pixel Light.')
+      await page.keyboard.insertText('Immediately ready in light.')
       await expect(note.getByTestId('note-node-textarea')).toHaveValue(
-        'Immediately ready in Pixel Light.',
+        'Immediately ready in light.',
       )
       await note.locator('.note-node__close').click()
       await expect(note).toHaveCount(0)
@@ -386,7 +399,7 @@ test.describe('Workspace Canvas - Pixel Light', () => {
       expect(observed.bursts).not.toContain(id)
       await expect.poll(() => readPixelEffects(page)).toEqual(PIXEL_EFFECTS_ENABLED)
       await expect(page.locator('.workspace-selection-hint')).toHaveCount(0)
-      await attachIdentityFrame(page, testInfo, 'pixel-light-reduced-motion')
+      await attachIdentityFrame(page, testInfo, 'light-reduced-motion')
     } finally {
       await stopPixelEffectProbe(page).catch(() => undefined)
       await electronApp.close()

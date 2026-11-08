@@ -36,7 +36,7 @@ export async function seedExpansionFixture(page: Page, behavior?: 'find-space') 
   await seedWorkspaceState(page, {
     activeWorkspaceId: EXPANSION_PROJECT,
     settings: {
-      uiTheme: 'pixel',
+      uiTheme: 'dark',
       language: 'en',
       canvasInputMode: 'mouse',
       focusNodeOnClick: false,

@@ -3,62 +3,42 @@ import type { ResolvedUiTheme } from '../../../shared/contracts/dto'
 export const UI_LANGUAGES = ['en', 'zh-CN'] as const
 export type UiLanguage = (typeof UI_LANGUAGES)[number]
 
-/** Built-in themes in picker order. `dark`, `light` and `system` are the Cove family's ids. */
-export const UI_THEMES = ['dark', 'light', 'system', 'pixel', 'pixel-light'] as const
+/** Built-in themes in picker order: Cove dark, light, and following the system. */
+export const UI_THEMES = ['dark', 'light', 'system'] as const
 export type BuiltinUiTheme = (typeof UI_THEMES)[number]
 export type PluginUiTheme = `plugin:${string}:${string}`
 export type UiTheme = BuiltinUiTheme | PluginUiTheme
 
 export type UiThemeBaseScheme = ResolvedUiTheme | 'system'
-/** Cove is generated (`src/shared/design`); Pixel is hand-written. */
-export type UiThemeFamily = 'cove' | 'pixel'
 
 export interface UiThemeDescriptor {
   id: UiTheme
-  family: UiThemeFamily
   baseScheme: UiThemeBaseScheme
   terminalScheme: UiThemeBaseScheme
   i18nKey: string
 }
 
 export const UI_THEME_DESCRIPTORS: Record<BuiltinUiTheme, UiThemeDescriptor> = {
-  dark: { id: 'dark', family: 'cove', baseScheme: 'dark', terminalScheme: 'dark', i18nKey: 'dark' },
-  light: {
-    id: 'light',
-    family: 'cove',
-    baseScheme: 'light',
-    terminalScheme: 'light',
-    i18nKey: 'light',
-  },
-  system: {
-    id: 'system',
-    family: 'cove',
-    baseScheme: 'system',
-    terminalScheme: 'system',
-    i18nKey: 'system',
-  },
-  pixel: {
-    id: 'pixel',
-    family: 'pixel',
-    baseScheme: 'dark',
-    terminalScheme: 'dark',
-    i18nKey: 'pixel',
-  },
-  'pixel-light': {
-    id: 'pixel-light',
-    family: 'pixel',
-    baseScheme: 'light',
-    terminalScheme: 'light',
-    i18nKey: 'pixelLight',
-  },
+  dark: { id: 'dark', baseScheme: 'dark', terminalScheme: 'dark', i18nKey: 'dark' },
+  light: { id: 'light', baseScheme: 'light', terminalScheme: 'light', i18nKey: 'light' },
+  system: { id: 'system', baseScheme: 'system', terminalScheme: 'system', i18nKey: 'system' },
 }
 
 export const DEFAULT_UI_THEME: BuiltinUiTheme = 'dark'
 
-/** Retired built-in themes and the Cove theme of the same appearance that replaces them. */
+/**
+ * Retired built-in themes and the Cove theme of the same appearance that replaces them. Pixel's
+ * pixel look now belongs to Cove itself (the wall, the frames, the icons), so only its palette went.
+ */
 export const RETIRED_UI_THEMES: Readonly<Record<string, 'dark' | 'light'>> = {
   ember: 'dark',
   'ember-light': 'light',
+  pixel: 'dark',
+  'pixel-light': 'light',
+}
+
+export function isBuiltinUiTheme(value: unknown): value is BuiltinUiTheme {
+  return typeof value === 'string' && (UI_THEMES as readonly string[]).includes(value)
 }
 
 export const DEFAULT_UI_LANGUAGE: UiLanguage = 'en'
@@ -70,8 +50,7 @@ export function isValidUiLanguage(value: unknown): value is UiLanguage {
 export function isValidUiTheme(value: unknown): value is UiTheme {
   return (
     typeof value === 'string' &&
-    ((UI_THEMES as readonly string[]).includes(value) ||
-      /^plugin:[a-z][a-z0-9-]{0,79}:[a-z][a-z0-9.-]{0,79}$/.test(value))
+    (isBuiltinUiTheme(value) || /^plugin:[a-z][a-z0-9-]{0,79}:[a-z][a-z0-9.-]{0,79}$/.test(value))
   )
 }
 

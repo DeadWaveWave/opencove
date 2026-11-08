@@ -57,7 +57,7 @@ test('reports acknowledged SDK titles to CLI while preserving the saved window n
     await clearAndSeedWorkspace(page, [], {
       settings: {
         language: 'en',
-        uiTheme: 'pixel',
+        uiTheme: 'dark',
         focusNodeOnClick: false,
         canvasInputMode: 'mouse',
         nodeCreationPixelEffectEnabled: false,

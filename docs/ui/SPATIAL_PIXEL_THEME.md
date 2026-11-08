@@ -1,37 +1,39 @@
 # Spatial Pixel Theme
 
-Pixel is an opt-in theme family for OpenCove's spatial workspace. Pixel uses deep blue surfaces;
-Pixel Light uses cool paper surfaces, dark ink text and deeper blue/cyan/mint accents. Both share
-clear node boundaries, solid Space corner brackets and bounded output activity feedback.
-Select it through the existing Appearance theme picker or Control Center. Its node materials stay
-theme-specific; pixel background, creation and close effects can independently accompany any theme.
-These effects do not change terminal execution behavior.
+Pixel is OpenCove's main tone, not a theme to opt into (owner, 2026-11-08): Cove's own dark and
+light appearances carry it through the pixel wall, window frames, pixel icons and the pixel
+control center. Both appearances share clear node boundaries, solid Space corner brackets and
+bounded output activity feedback. The pixel background, creation and close effects can be switched
+independently in Settings → Appearance. These effects do not change terminal execution behavior.
 
 ## Theme ownership
 
-`settings.uiTheme` remains the single source of truth. Both are registered through `UI_THEMES`
-and `UI_THEME_DESCRIPTORS`: `pixel` uses dark UI/terminal schemes and `pixel-light` uses light
-UI/terminal schemes. Their palettes are defined in `styles/themes/pixel.css` and `pixel-light.css`,
-with shared material rules in `pixel-material.css`, and consumed through semantic
-`--cove-*` tokens. Terminal colors continue through the existing applied appearance snapshot owner.
+`settings.uiTheme` remains the single source of truth. The former hand-written Pixel themes
+(`pixel`, `pixel-light`) are retired: `RETIRED_UI_THEMES` loads them as Cove `dark` and `light`,
+and plugin themes that `extends` them resolve the same way. Colors come from the generated Cove
+stylesheet and are consumed through semantic `--cove-*` tokens. Terminal colors continue through
+the existing applied appearance snapshot owner.
 
 Node surface color and node material are separate tokens: consumers such as Document Node use the
 surface color in `color-mix`, so the surface token must not become a gradient. Node header, input,
 resize, selection and Find geometry keep their existing contracts.
 
-Pixel Light retains the same default color stripe, label semantics, focus distinction and Space
-geometry. It supplies darker effect colors for visible particles on a light canvas. Its ordinary
+The light appearance retains the same default color stripe, label semantics, focus distinction and
+Space geometry. It supplies darker effect colors for visible particles on a light canvas. Its ordinary
 terminal and Monaco editor use light reading surfaces; explicit dark terminal mode keeps its own
 dark scope. Switching either direction must preserve live terminal/editor instances and dimensions.
-Its 16 ANSI foreground colors are tuned for the light terminal surface. These optional colors travel
+Each appearance generates its own 16 ANSI colors; light's foreground colors are tuned for the light
+terminal surface, with white and bright white kept as background colors. These colors travel
 through the same revisioned appearance snapshot as the background and cursor, including OSC palette
-queries. Returning to Pixel or explicitly using a dark terminal removes the light ANSI overrides.
+queries. Returning to dark or explicitly using a dark terminal removes the light ANSI overrides.
 
-All nine node kinds share blue-ink reading surfaces and restrained translucent chrome. Headers are
+All nine node kinds share one anatomy: a clear glass header washed in the window's kind colour, and
+a solid reading plate, faintly tinted by kind, under the content (`window-plate.css`). Headers are
 flat, with low-contrast separators and consistent controls; they have no beveled highlight bands.
-Terminal content stays opaque and readable. Images retain their image-first layout with matching
-frame treatment. Spaces are lightweight region boundaries, with very faint fill that recedes as the
-canvas zooms out. Large Spaces have no broad blur, gradient, shadow or decorative corner patches.
+Terminal content sits on its kind's plate and stays opaque and readable. Images retain their
+image-first layout with matching frame treatment. Spaces are lightweight region boundaries: one
+faint neutral wash inside a neutral contour, the same at every zoom. Large Spaces have no broad
+blur, gradient, shadow or decorative corner patches.
 Space titles, branches and worktree metadata use lightweight text and line icons on the frame,
 with an interaction surface only on hover/focus. Entity labels and semantic
 warning/error colors remain independent of the blue/cyan/mint brand gradient.
@@ -60,8 +62,8 @@ Plain terminals retain the terminal icon. Image's icon and stripe are overlays, 
 image-first layout. Header titles use medium weight, with existing sizes, action targets and terminal
 body geometry preserved.
 
-Space identity is visible in its fine colored contour, four solid corner brackets and approximately 2.5% label-color
-fill at normal zoom. Its large-area tint recedes toward 0.5% in the far view. Bounded annotation and
+Space identity is its four solid corner brackets, in the label colour (cyan without a label). The
+contour and the 2% ink wash stay neutral, so a Space never reads as a panel. Bounded annotation and
 stroke compensation keep overview labels and edges recognizable without allowing a small Space's
 caption to spill over neighboring regions. This is shared presentation state derived from the canvas
 zoom, independent of optional pixel effects.
@@ -107,8 +109,8 @@ Appearance (and the Control Center) expose these persisted preferences:
 - `nodeCreationPixelEffectEnabled`: transparent assembly, converging fragments and virtual pixel rim.
 - `nodeClosePixelEffectEnabled`: square fragments scattering from a successfully closed window.
 
-The settings owner normalizes missing preferences to on (and `pixel`) for Pixel-family settings and
-off (and `off`) for other legacy themes. Explicit choices survive theme changes and reload. Theme switching changes colors,
+The settings owner normalizes missing preferences to on (and `pixel`) for settings saved with a
+retired Pixel theme and off (and `off`) for other legacy themes. Explicit choices survive theme changes and reload. Theme switching changes colors,
 not preferences, and never replays creation or closing. Turning off an effect clears only its own
 visual state immediately. With all three off the effect layer is unmounted; with only creation/close
 enabled it schedules frames only while those effects are active. Pixel Space zoom detail is material
@@ -116,7 +118,7 @@ state and remains independent of these optional effects.
 
 Shared `--cove-pixel-*` tokens follow the applied theme: Cove maps them to its generated knowledge
 blue, accent cyan and shell green, with the cyan one step darker in light mode to keep 3:1 on
-surfaces. Pixel retains its original ice-blue/cyan/mint palette. System follows the resolved light/dark palette. No pixel color encodes
+surfaces. System follows the resolved light/dark palette. No pixel color encodes
 selection, Agent status or success.
 
 ## Pixel wall
@@ -128,15 +130,15 @@ world, under every window and the effects layer.
   The step does not jump: each new cell flips from the old grid's colour at its centre to its own
   at its own moment within 120ms (5.3d); reduced motion switches at once.
 - Colours come from `--cove-pixel-cell`, `--cove-pixel-gap`, `--cove-pixel-cloud-1…4` and
-  `--cove-pixel-spark-1…4` (generated for Cove, hand-set for Pixel; plugin themes inherit them
+  `--cove-pixel-spark-1…4` (generated for Cove; plugin themes inherit them
   from their base). Soft clouds drift with the world; their hue blends continuously between
   neighbouring cloud colours (never a hard edge between two clouds) and drifts slowly. Bright
   patches wander across the open wall (shimmer, `PIXEL_WALL.shimmerA`); about one cell in six
   twinkles, more of them near working or waiting windows. Shimmer and twinkle never enter
   glass. Cursor illumination follows the ambient setting: off with twinkle or reduced motion,
   including in showcase mode. It lights the finished tile after work light and ripples, before
-  the glass cap. Both appearances use accent step 9 (`--cove-pixel-spot`); Pixel falls back to
-  its public accent. Dark walls are lit additively (screen), so a kind-lit tile turns brighter
+  the glass cap. Both appearances use accent step 9 (`--cove-pixel-spot`); a theme without it falls
+  back to its public accent. Dark walls are lit additively (screen), so a kind-lit tile turns brighter
   and its hue moves part of the way toward the accent: the two lights mix instead of one
   covering the other. Light walls keep Tide's tint toward the accent (owner, 2026-11-06: the
   light-mode tint reads clean; the old dark-mode white did not). Strength 0.45 dark matches the
@@ -194,7 +196,7 @@ world, under every window and the effects layer.
   shockwave crest out of it. With a wall in the layer the top bar, sidebar and project rail are
   `--cove-surface` (the generator's `--cove-glass-chrome` tint, contrast-checked against the
   capped wall) with no backdrop-filter, lit like window glass by `--cove-chrome-background-image`
-  (the glass sheen fading over 60% of the height, over the glass grain; `none` in Pixel); the
+  (the glass sheen fading over 60% of the height, over the glass grain); the
   peeking sidebar keeps its own surface. Without a wall
   (「简约」, 「关闭」, a theme's own background, no project) the layer is empty and the shell keeps
   its usual surfaces. The layout never changes. Outside the app shell (no layer) a wall stays inside
@@ -267,7 +269,7 @@ snap to the canvas DPR (capped at 2). The head advances 240 world px/s with an I
 and the second train starts half the unexpanded world perimeter later. As in the prototype,
 the expanded path adds `48 / zoom` world px to a lap. Only windows within a 40px margin participate.
 The colour is the kind ink (`--cove-kind-<family>-ink`): step 11 in dark, step 9 in light
-(neutral: step 10 / 9); Pixel themes fall back to their blue/cyan/mint palette. Every 2.4s it also sends a low sonar wave across the wall, or through the 「简约」
+(neutral: step 10 / 9); a theme without kind roles falls back to its blue/cyan/mint palette. Every 2.4s it also sends a low sonar wave across the wall, or through the 「简约」
 dots. Wall sonar includes windows within 200 screen px of the view. Both follow the Agent working effect switch; 「关闭」 has no sonar. Reduced motion keeps a
 static 1px frame highlight and no waves, following the spec table’s reduced-motion promise
 (the prototype drawFx itself skips the patrol). Turning signals off removes the highlight too.
@@ -383,7 +385,7 @@ Jumping to a window from the inbox, command center, sidebar, activity summary or
 marks the destination for 2400ms. The viewport navigation owner and beacon action share one
 canvas-scoped pulse; a new jump replaces the previous pulse and its deadline. Disposal or a
 workspace change clears it. Nothing is persisted and selected IDs never change.
-The highlight uses accent step 9 (Pixel falls back to accent), a label ring, and a 26px / 2px glow
+The highlight uses accent step 9 (a theme without it falls back to accent), a label ring, and a 26px / 2px glow
 at 26% over the material shadow. Four square pixel brackets sit 7 world px outside the frame;
 each L uses 10×2 and 2×10 world-px bars, unlike the screen-sized status glows. Existing batch
 selection paint takes precedence. This is still navigation feedback, also with reduced motion
@@ -482,6 +484,6 @@ The existing 30fps focused / 10fps unfocused / 0 hidden scheduler owns their fra
 corner sparks remain; the frame flash and failure glitch retain their existing owner and timing.
 Creation rims and assembly particles use the window kind's `--cove-kind-<family>-ink`, independent
 of screen position. Close fragments mix kind solid/ink 50/50 using a stable scene-index hash.
-Both reuse the shared theme reader and its Pixel palette/text fallbacks, refreshed on theme changes.
+Both reuse the shared theme reader and its pixel palette/text fallbacks, refreshed on theme changes.
 Their existing shapes, timelines, readiness, caps and reduced-motion behavior remain unchanged.
 The wall’s glass cap is unchanged.

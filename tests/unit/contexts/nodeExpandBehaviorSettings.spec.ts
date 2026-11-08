@@ -32,7 +32,7 @@ describe('window expansion settings', () => {
 
   it('updates the layout preference through the settings owner while preserving other settings', () => {
     const onChange = vi.fn()
-    const settings = { ...DEFAULT_AGENT_SETTINGS, uiTheme: 'pixel-light' as const }
+    const settings = { ...DEFAULT_AGENT_SETTINGS, uiTheme: 'light' as const }
     createSettingsPanelUpdaters({ settings, onChange }).updateNodeExpandBehavior('find-space')
     expect(onChange).toHaveBeenCalledWith({ ...settings, nodeExpandBehavior: 'find-space' })
   })

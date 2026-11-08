@@ -21,7 +21,7 @@ function terminalNode(window: Page) {
   return window.locator(`.react-flow__node[data-id="${NODE_ID}"] .terminal-node`)
 }
 
-async function seedTerminal(window: Page, uiTheme: 'dark' | 'pixel', language = 'en') {
+async function seedTerminal(window: Page, effects: 'on' | 'off', language = 'en') {
   await clearAndSeedWorkspace(
     window,
     [
@@ -44,9 +44,9 @@ async function seedTerminal(window: Page, uiTheme: 'dark' | 'pixel', language = 
     ],
     {
       settings: {
-        uiTheme,
+        uiTheme: 'dark',
         language,
-        ...(uiTheme === 'pixel' ? PIXEL_EFFECTS_ENABLED : PIXEL_EFFECTS_DISABLED),
+        ...(effects === 'on' ? PIXEL_EFFECTS_ENABLED : PIXEL_EFFECTS_DISABLED),
       },
     },
   )
@@ -58,7 +58,7 @@ async function openAppearance(window: Page) {
   await window.getByTestId('settings-section-nav-appearance').click()
 }
 
-async function expectTheme(window: Page, themeId: 'pixel' | 'dark' | 'light') {
+async function expectTheme(window: Page, themeId: 'dark' | 'light') {
   await expect(window.locator('html')).toHaveAttribute('data-cove-theme-id', themeId)
   await expect(window.locator('html')).toHaveAttribute(
     'data-cove-theme',
@@ -155,36 +155,29 @@ test.describe('Workspace Canvas - Spatial Pixel', () => {
     void browserName
     const { electronApp, window } = await launchApp()
     try {
-      await seedTerminal(window, 'dark')
+      await seedTerminal(window, 'off')
       const layer = window.getByTestId('workspace-pixel-layer')
       await expect(layer).toHaveCount(0)
 
       await openAppearance(window)
-      await selectCoveOption(window, 'settings-ui-theme', 'pixel')
-      await expect(window.getByTestId('settings-ui-theme-family-pixel')).toHaveAttribute(
-        'aria-pressed',
-        'true',
-      )
-      await expect(window.getByTestId('settings-ui-theme-mode-dark')).toBeChecked()
-      await expectTheme(window, 'pixel')
+      await selectCoveOption(window, 'settings-ui-theme', 'light')
+      await expect(window.getByTestId('settings-ui-theme-mode-light')).toBeChecked()
+      await expectTheme(window, 'light')
+      // A theme change leaves the effects as the user set them: still off.
       await expect(layer).toHaveCount(0)
       await setPixelEffects(window, PIXEL_EFFECTS_ENABLED)
       await expect(layer).toHaveCount(1)
       await expect(layer).toHaveJSProperty('hidden', false)
       await expect(layer).toHaveAttribute('aria-hidden', 'true')
       await expect(layer).toHaveCSS('pointer-events', 'none')
-      await expect(terminalNode(window).locator('.terminal-node__terminal')).toHaveCSS(
-        'background-color',
-        'rgb(10, 20, 32)',
-      )
       await attachScreenshot(window, testInfo, 'spatial-pixel-appearance')
       await window.locator('.settings-panel__close').click()
       await expect(layer).toBeVisible()
       await attachScreenshot(window, testInfo, 'spatial-pixel-workspace')
-      await expect.poll(() => readPersistedTheme(window)).toBe('pixel')
+      await expect.poll(() => readPersistedTheme(window)).toBe('light')
 
       await window.reload({ waitUntil: 'domcontentloaded' })
-      await expectTheme(window, 'pixel')
+      await expectTheme(window, 'light')
       await expect(layer).toBeVisible()
       await expect(terminalNode(window).locator('.terminal-node__terminal .xterm')).toBeVisible()
 
@@ -199,8 +192,8 @@ test.describe('Workspace Canvas - Spatial Pixel', () => {
         await expect(layer).toBeVisible()
         await expect(window.locator('.react-flow__background')).toHaveCount(0)
       }
-      await switchThemeWithEffects('light')
       await switchThemeWithEffects('dark')
+      await switchThemeWithEffects('light')
       await openAppearance(window)
       await setPixelEffects(window, PIXEL_EFFECTS_DISABLED)
       await expect(layer).toHaveCount(0)
@@ -212,13 +205,13 @@ test.describe('Workspace Canvas - Spatial Pixel', () => {
     }
   })
 
-  test('preserves terminal identity, geometry and input when enabling Pixel and using Find', async ({
+  test('preserves terminal identity, geometry and input across a theme change, pixel effects and Find', async ({
     browserName,
   }, testInfo) => {
     void browserName
     const { electronApp, window } = await launchApp()
     try {
-      await seedTerminal(window, 'dark')
+      await seedTerminal(window, 'off')
       await printThroughTerminal(window, 'BEFORE')
       await expect.poll(() => readTerminalContinuity(window)).toBeTruthy()
       const baseline = await readTerminalContinuity(window)
@@ -227,8 +220,8 @@ test.describe('Workspace Canvas - Spatial Pixel', () => {
       expect(xtermHandle).not.toBeNull()
 
       await openAppearance(window)
-      await selectCoveOption(window, 'settings-ui-theme', 'pixel')
-      await expectTheme(window, 'pixel')
+      await selectCoveOption(window, 'settings-ui-theme', 'light')
+      await expectTheme(window, 'light')
       await setPixelEffects(window, PIXEL_EFFECTS_ENABLED)
       await window.locator('.settings-panel__close').click()
       await expect.poll(() => readTerminalContinuity(window)).toEqual(baseline)
@@ -280,7 +273,7 @@ test.describe('Workspace Canvas - Spatial Pixel', () => {
     const { electronApp, window } = await launchApp()
     try {
       await window.emulateMedia({ reducedMotion: 'reduce' })
-      await seedTerminal(window, 'pixel', 'zh-CN')
+      await seedTerminal(window, 'on', 'zh-CN')
       const layer = window.getByTestId('workspace-pixel-layer')
       await expect(layer).toBeVisible()
       // A real terminal click normalizes the viewport; settle that user action before sampling.
@@ -298,9 +291,6 @@ test.describe('Workspace Canvas - Spatial Pixel', () => {
       await attachScreenshot(window, testInfo, 'spatial-pixel-reduced-motion')
 
       await openAppearance(window)
-      await expect(window.getByTestId('settings-ui-theme-family-pixel')).toHaveAccessibleName(
-        'Pixel',
-      )
       await expect(window.getByTestId('settings-ui-theme-mode-dark')).toHaveAccessibleName('深色')
     } finally {
       await electronApp.close()

@@ -6,6 +6,7 @@ import { AppMessage } from './AppMessage'
 import { AppNotifications, type AppNotification } from './AppNotifications'
 import { ControlCenter } from './ControlCenter'
 import { formatKeyChord, resolveCommandKeybinding } from '@contexts/settings/domain/keybindings'
+import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
 
 type SetStateAction<T> = T | ((prev: T) => T)
 
@@ -34,7 +35,8 @@ export function AppShellOverlays({
   controlCenterAnchorRef: React.RefObject<HTMLButtonElement | null>
   onCloseControlCenter: () => void
   onMinimapVisibilityChange: (isVisible: boolean) => void
-  onOpenSettings: () => void
+  /** Opens Settings at a page, or where it was left. */
+  onOpenSettings: (pageId?: SettingsPageId | null) => void
 }): React.JSX.Element {
   return (
     <>
@@ -63,15 +65,9 @@ export function AppShellOverlays({
         anchorRef={controlCenterAnchorRef}
         uiTheme={agentSettings.uiTheme}
         isMinimapVisible={activeWorkspace?.isMinimapVisible ?? false}
-        backgroundStyle={agentSettings.canvasBackgroundStyle}
-        isBackgroundTwinkleEnabled={agentSettings.canvasBackgroundTwinkleEnabled}
-        areMotionSignalsEnabled={
-          agentSettings.nodeCreationPixelEffectEnabled &&
-          agentSettings.nodeClosePixelEffectEnabled &&
-          agentSettings.agentWorkingPixelEffectEnabled
-        }
         hasActiveWorkspace={activeWorkspace !== null}
-        windowMaterial={agentSettings.windowMaterial}
+        inAppNotificationsEnabled={agentSettings.standbyBannerEnabled}
+        systemNotificationsEnabled={agentSettings.systemNotificationsEnabled}
         settingsShortcut={formatKeyChord(
           window.opencoveApi?.meta?.platform,
           resolveCommandKeybinding({
@@ -80,9 +76,6 @@ export function AppShellOverlays({
             platform: window.opencoveApi?.meta?.platform,
           }),
         )}
-        onChangeWindowMaterial={material => {
-          setAgentSettings(prev => ({ ...prev, windowMaterial: material }))
-        }}
         onClose={() => {
           onCloseControlCenter()
         }}
@@ -99,23 +92,13 @@ export function AppShellOverlays({
 
           onMinimapVisibilityChange(!activeWorkspace.isMinimapVisible)
         }}
-        onChangeBackgroundStyle={style => {
-          setAgentSettings(prev => ({ ...prev, canvasBackgroundStyle: style }))
+        onChangeInAppNotifications={enabled => {
+          setAgentSettings(prev => ({ ...prev, standbyBannerEnabled: enabled }))
         }}
-        onChangeBackgroundTwinkle={enabled => {
-          setAgentSettings(prev => ({ ...prev, canvasBackgroundTwinkleEnabled: enabled }))
+        onChangeSystemNotifications={enabled => {
+          setAgentSettings(prev => ({ ...prev, systemNotificationsEnabled: enabled }))
         }}
-        onChangeMotionSignals={enabled => {
-          setAgentSettings(prev => ({
-            ...prev,
-            nodeCreationPixelEffectEnabled: enabled,
-            nodeClosePixelEffectEnabled: enabled,
-            agentWorkingPixelEffectEnabled: enabled,
-          }))
-        }}
-        onOpenSettings={() => {
-          onOpenSettings()
-        }}
+        onOpenSettings={onOpenSettings}
       />
     </>
   )

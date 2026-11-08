@@ -99,7 +99,7 @@ test.describe('Workspace Canvas - Showcase mode', () => {
     }
   })
 
-  test('comes from the control center, shows the pixel wall over any background and ends with the session', async ({
+  test('comes from the command center, shows the pixel wall over any background and ends with the session', async ({
     browserName,
   }) => {
     void browserName
@@ -108,10 +108,8 @@ test.describe('Workspace Canvas - Showcase mode', () => {
       await seed(window, { canvasBackgroundStyle: 'minimal' })
       await expect(window.getByTestId('workspace-pixel-wall')).toHaveCount(0)
 
-      await window.getByTestId('app-header-control-center').click()
-      await window.getByTestId('control-center-toggle-showcase').click()
+      await runCommand(window, 'showcase', 'command:showcase-mode')
       await expect(window.locator('html')).toHaveAttribute('data-cove-showcase', '')
-      await expect(window.getByTestId('control-center')).toHaveCount(0)
       await expectPaintedWall(window)
 
       // Leaving restores the saved background.
@@ -120,8 +118,7 @@ test.describe('Workspace Canvas - Showcase mode', () => {
       await expect(window.getByTestId('workspace-pixel-wall')).toHaveCount(0)
 
       // Nothing is saved: a reload starts without it.
-      await window.getByTestId('app-header-control-center').click()
-      await window.getByTestId('control-center-toggle-showcase').click()
+      await runCommand(window, 'showcase', 'command:showcase-mode')
       await expect(window.locator('html')).toHaveAttribute('data-cove-showcase', '')
       await window.reload({ waitUntil: 'domcontentloaded' })
       await expect(window.locator('.app-header')).toBeVisible()

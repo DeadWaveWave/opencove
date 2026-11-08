@@ -20,12 +20,41 @@
     2px calc(100% - 2px),
     0 calc(100% - 2px)
   );
+  /* A window's corners step twice: a panel that stands on its own reads as a game window. */
+  --cove-pixel-corners-lg: polygon(
+    0 4px,
+    2px 4px,
+    2px 2px,
+    4px 2px,
+    4px 0,
+    calc(100% - 4px) 0,
+    calc(100% - 4px) 2px,
+    calc(100% - 2px) 2px,
+    calc(100% - 2px) 4px,
+    100% 4px,
+    100% calc(100% - 4px),
+    calc(100% - 2px) calc(100% - 4px),
+    calc(100% - 2px) calc(100% - 2px),
+    calc(100% - 4px) calc(100% - 2px),
+    calc(100% - 4px) 100%,
+    4px 100%,
+    4px calc(100% - 2px),
+    2px calc(100% - 2px),
+    2px calc(100% - 4px),
+    0 calc(100% - 4px)
+  );
   --cove-pixel-fill: color-mix(in srgb, var(--cove-text) 7%, transparent);
   --cove-pixel-fill-hover: color-mix(in srgb, var(--cove-text) 12%, transparent);
   --cove-pixel-rule-color: var(--cove-border);
   --cove-pixel-raised:
     inset 0 2px 0 var(--cove-pixel-light), inset 0 -2px 0 var(--cove-pixel-shade);
   --cove-pixel-pressed: inset 0 2px 0 var(--cove-pixel-shade);
+  /* A dotted rule, 2px on and 2px off: lay it as a 4px × 2px tile along an edge. */
+  --cove-pixel-dots: linear-gradient(
+    90deg,
+    var(--cove-pixel-rule-color) 0 2px,
+    transparent 2px 4px
+  );
 }
 
 /* A live light: on for half the beat, dim for the other half. Run it with steps(1, end) so each
@@ -33,5 +62,56 @@
 @keyframes cove-pixel-blink {
   50% {
     opacity: 0.25;
+  }
+}
+
+/*
+ * A pixel window: a panel that stands on its own over the app, like a game's menu window. Its
+ * corners step twice and a 2px ring follows the steps; it opens in three hard frames, not a fade.
+ * The clip-path sits on the window itself, so its acrylic still samples what lies beneath. A
+ * clip-path clips a box-shadow too, so the ring alone parts the window from the app.
+ * The ring is a ::before, so the window must be positioned (a popover is fixed).
+ */
+.cove-pixel-window {
+  --cove-pixel-window-ring: var(--cove-border-strong);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  clip-path: var(--cove-pixel-corners-lg);
+  animation: cove-pixel-window-open 120ms steps(3, jump-start);
+}
+
+/* The inset band draws the straight runs; the four 2px squares are the steps between them. */
+.cove-pixel-window::before {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--cove-pixel-window-ring) 0 0) left 2px top 2px / 2px 2px no-repeat,
+    linear-gradient(var(--cove-pixel-window-ring) 0 0) right 2px top 2px / 2px 2px no-repeat,
+    linear-gradient(var(--cove-pixel-window-ring) 0 0) left 2px bottom 2px / 2px 2px no-repeat,
+    linear-gradient(var(--cove-pixel-window-ring) 0 0) right 2px bottom 2px / 2px 2px no-repeat;
+  box-shadow: inset 0 0 0 2px var(--cove-pixel-window-ring);
+}
+
+/* The clip-path would cut an outline, so focus lights the ring. */
+.cove-pixel-window:focus-visible {
+  --cove-pixel-window-ring: var(--cove-focus-ring);
+  outline: none;
+  box-shadow: none;
+}
+
+@keyframes cove-pixel-window-open {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cove-pixel-window {
+    animation: none;
   }
 }

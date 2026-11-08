@@ -50,7 +50,7 @@ export async function seedCollapseMotionFixture(page: Page, withSpace: boolean |
   await seedWorkspaceState(page, {
     activeWorkspaceId: EXPANSION_PROJECT,
     settings: {
-      uiTheme: 'pixel',
+      uiTheme: 'dark',
       language: 'en',
       canvasInputMode: 'mouse',
       focusNodeOnClick: false,

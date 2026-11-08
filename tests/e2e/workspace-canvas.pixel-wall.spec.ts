@@ -1,6 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, readCanvasViewport } from './workspace-canvas.helpers'
-import { PIXEL_EFFECTS_ENABLED } from './workspace-canvas.pixel-effects.helpers'
+import {
+  PIXEL_EFFECTS_ENABLED,
+  changePixelAppearance,
+  setBackgroundStyle,
+  setPixelEffect,
+} from './workspace-canvas.pixel-effects.helpers'
 import {
   expectAnimatedWall,
   expectPaintedWall,
@@ -147,22 +152,26 @@ test.describe('Workspace Canvas - Background style', () => {
     try {
       await seed(window)
       await expectPaintedWall(window)
-      await window.getByTestId('app-header-control-center').click()
-      await window.getByTestId('control-center-toggle-background-twinkle').click()
+      await changePixelAppearance(window, () =>
+        setPixelEffect(window, 'canvasBackgroundTwinkleEnabled', false),
+      )
       await expectStillWall(window)
 
-      await window.getByTestId('control-center-background-style-minimal').check()
+      await changePixelAppearance(window, async () => {
+        await setBackgroundStyle(window, 'minimal')
+        // Twinkle belongs to the wall alone.
+        await expect(window.getByTestId('settings-canvas-background-twinkle')).toBeDisabled()
+      })
       await expect(window.getByTestId('workspace-pixel-wall')).toHaveCount(0)
       await expect(window.locator('.react-flow__background')).toBeVisible()
       // The quiet grid keeps the effects layer for event signals.
       await expect(window.getByTestId('workspace-pixel-layer')).toHaveCount(1)
-      await expect(window.getByTestId('control-center-toggle-background-twinkle')).toBeDisabled()
       await testInfo.attach('background-minimal', {
         body: await window.screenshot(),
         contentType: 'image/png',
       })
 
-      await window.getByTestId('control-center-background-style-off').check()
+      await changePixelAppearance(window, () => setBackgroundStyle(window, 'off'))
       await expect(window.getByTestId('workspace-pixel-wall')).toHaveCount(0)
       await expect(window.locator('.react-flow__background')).toBeVisible()
       await expect

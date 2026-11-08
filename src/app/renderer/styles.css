@@ -12,6 +12,8 @@
 @import './styles/ui-segmented.css' layer(opencove);
 @import './styles/ui-surface.css' layer(opencove);
 @import './styles/ui-pixel.css' layer(opencove);
+@import './styles/ui-toggle-tile.css' layer(opencove);
+@import './styles/appearance-picker.css' layer(opencove);
 @import './styles/app-startup-state.css' layer(opencove);
 @import './styles/cove-fields.css' layer(opencove);
 @import './styles/app-header.css' layer(opencove);
@@ -96,12 +98,6 @@
 @import './styles/space-archives-window.css' layer(opencove);
 @import './styles/menu-surfaces.css' layer(opencove);
 
-/* Base styles are inherited through data-cove-theme-base. The selected
-   data-cove-theme-id remains the user's builtin or plugin theme identity. */
-@import './styles/themes/pixel.css' layer(opencove);
-@import './styles/themes/pixel-light.css' layer(opencove);
-@import './styles/themes/pixel-light.terminal.css' layer(opencove);
-@import './styles/themes/pixel-material.css' layer(opencove);
 @import './styles/themes/space-color-identity.css' layer(opencove);
 /* Generated Cove tokens (pnpm design:tokens); the theme owner sets data-cove-family='cove' for Cove. */
 @import './styles/themes/generated/cove.css' layer(opencove);

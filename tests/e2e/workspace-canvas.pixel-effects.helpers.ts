@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test'
+import { selectCoveOption } from './workspace-canvas.viewState'
 import type {
   CanvasBackgroundStyle,
   PixelEffectSettings,
@@ -28,7 +29,15 @@ export const EFFECT_CONTROL_IDS: Record<PixelEffectToggle, string> = {
 
 export async function openPixelAppearance(page: Page) {
   await page.getByTestId('app-header-settings').click({ noWaitAfter: true })
-  await page.getByTestId('settings-section-nav-appearance').click()
+  // A settings page narrower than 760px trades its sidebar for a page selector.
+  const sidebarLink = page.getByTestId('settings-section-nav-appearance')
+  const pageSelector = page.getByTestId('settings-panel-page-selector-trigger')
+  await expect(sidebarLink.or(pageSelector).filter({ visible: true })).toHaveCount(1)
+  if (await sidebarLink.isVisible()) {
+    await sidebarLink.click()
+  } else {
+    await selectCoveOption(page, 'settings-panel-page-selector', 'appearance')
+  }
 }
 
 export async function setPixelEffect(page: Page, key: PixelEffectToggle, enabled: boolean) {
@@ -36,6 +45,30 @@ export async function setPixelEffect(page: Page, key: PixelEffectToggle, enabled
   await control.scrollIntoViewIfNeeded()
   await control.setChecked(enabled)
   await expect(control).toHaveJSProperty('checked', enabled)
+}
+
+/** Opens Settings → Appearance, makes a change there and returns to the canvas. */
+export async function changePixelAppearance(page: Page, change: () => Promise<void>) {
+  await openPixelAppearance(page)
+  await change()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.settings-panel')).toHaveCount(0)
+  // The wall stays frosted for a frame or two after the sheet unmounts; wait until it paints
+  // uncovered, so a check of the wall reads the canvas and not the sheet that just left.
+  if ((await page.getByTestId('workspace-pixel-wall').count()) > 0) {
+    await expect
+      .poll(() => page.evaluate(() => window.__opencovePixelWallTestApi?.isCovered() ?? false))
+      .toBe(false)
+  }
+}
+
+/** Creation, closing and working light together: the canvas's motion signals. */
+export async function setMotionSignals(page: Page, enabled: boolean) {
+  await changePixelAppearance(page, async () => {
+    await setPixelEffect(page, 'agentWorkingPixelEffectEnabled', enabled)
+    await setPixelEffect(page, 'nodeCreationPixelEffectEnabled', enabled)
+    await setPixelEffect(page, 'nodeClosePixelEffectEnabled', enabled)
+  })
 }
 
 export async function setBackgroundStyle(page: Page, style: CanvasBackgroundStyle) {

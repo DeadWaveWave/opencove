@@ -34,8 +34,9 @@ const plugin: PluginManifest = {
     {
       id: 'night',
       title: 'Night',
-      appearance: 'dark',
-      extends: 'pixel',
+      // A light foundation, so loading (foundation) and failure (default dark) differ.
+      appearance: 'light',
+      extends: 'light',
       tokens: { '--cove-accent': '#77aaff' },
       stylesheet: 'theme.css',
       typography: { fontFamily: 'Studio Sans, sans-serif' },
@@ -61,7 +62,7 @@ afterEach(() => {
 it('uses the foundation while loading, publishes immutable assets and cleans every override on switch', () => {
   state.plugins = [plugin]
   const { rerender } = render(<Hook theme="plugin:studio:night" />)
-  expect(document.documentElement.dataset.coveThemeId).toBe('pixel')
+  expect(document.documentElement.dataset.coveThemeId).toBe('light')
   expect(document.querySelector('[data-cove-theme-stylesheet]')).toBeNull()
   state.detail = {
     plugin,
@@ -77,18 +78,18 @@ it('uses the foundation while loading, publishes immutable assets and cleans eve
   rerender(<Hook theme="plugin:studio:night" />)
   const root = document.documentElement
   expect(root.dataset.coveThemeId).toBe('plugin:studio:night')
-  expect(root.dataset.coveThemeBase).toBe('pixel')
+  expect(root.dataset.coveThemeBase).toBe('light')
   expect(root.style.getPropertyValue('--cove-node-header-height')).toBe('42px')
   expect(readThemeMotion().fold?.durationMs).toBe(410)
   expect(pluginThemeContext()).toMatchObject({
     themeVersion: 1,
     themeId: 'plugin:studio:night',
-    baseThemeId: 'pixel',
+    baseThemeId: 'light',
     fonts: [{ family: 'Studio Sans' }],
   })
   expect(document.querySelectorAll('[data-cove-theme-stylesheet]')).toHaveLength(1)
-  rerender(<Hook theme="pixel-light" />)
-  expect(root.dataset.coveThemeBase).toBe('pixel-light')
+  rerender(<Hook theme="dark" />)
+  expect(root.dataset.coveThemeBase).toBe('dark')
   expect(root.style.getPropertyValue('--cove-node-header-height')).toBe('')
   expect(root.style.getPropertyValue('--cove-font-ui')).toBe('')
   expect(document.querySelector('[data-cove-theme-stylesheet]')).toBeNull()

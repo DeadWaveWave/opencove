@@ -22,7 +22,7 @@ function node(page: Page, id: string) {
   return page.locator(`.react-flow__node[data-id="${id}"]`)
 }
 
-async function seedCloseScene(page: Page, uiTheme = 'pixel') {
+async function seedCloseScene(page: Page, uiTheme = 'dark') {
   await clearAndSeedWorkspace(
     page,
     [
@@ -249,7 +249,7 @@ test.describe('Workspace Canvas - Spatial Pixel Close', () => {
             },
           },
         ],
-        { settings: { uiTheme: 'pixel', ...PIXEL_EFFECTS_ENABLED } },
+        { settings: { uiTheme: 'dark', ...PIXEL_EFFECTS_ENABLED } },
       )
       await observeBursts(page)
       const taskNode = node(page, 'pixel-cancel-task')

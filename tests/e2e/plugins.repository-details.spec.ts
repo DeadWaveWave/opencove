@@ -75,7 +75,7 @@ test('reads community documentation before selecting a commit without activating
       }),
     )
     await page.setViewportSize({ width: 1300, height: 1000 })
-    await clearAndSeedWorkspace(page, [], { settings: { language: 'en', uiTheme: 'pixel' } })
+    await clearAndSeedWorkspace(page, [], { settings: { language: 'en', uiTheme: 'dark' } })
     await page.getByTestId('app-header-settings').click()
     await page.getByTestId('settings-section-nav-plugins').click()
     await page.getByTestId('settings-plugins-install').click()
@@ -102,7 +102,7 @@ test('reads community documentation before selecting a commit without activating
     await testInfo.attach('plugin-repository-dark', { path: dark, contentType: 'image/png' })
     await page.evaluate(() => {
       document.documentElement.dataset.coveTheme = 'light'
-      document.documentElement.dataset.coveThemeId = 'pixel-light'
+      document.documentElement.dataset.coveThemeId = 'light'
     })
     await page.setViewportSize({ width: 390, height: 900 })
     await details.scrollIntoViewIfNeeded()

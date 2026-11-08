@@ -35,8 +35,6 @@ export const enSettingsPanel = {
       dark: 'Cove',
       light: 'Cove Light',
       system: 'Cove (System)',
-      pixel: 'Pixel',
-      pixelLight: 'Pixel Light',
     },
     interfaceFontSize: 'Interface Font Size',
     terminalFontSize: 'Terminal Font Size',
