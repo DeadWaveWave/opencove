@@ -18,6 +18,8 @@ export interface PixelWallTestApi {
   /** Every wave key drawn since the page loaded, so a test cannot miss a one-second wave. */
   getSeenRippleKeys: () => string[]
   getFrameCount: () => number
+  /** Whether the last frame was painted under a sheet that covers the canvas (settings). */
+  isCovered: () => boolean
   /** Frames painted with a clock; a still wall (reduced motion, lost context) adds none. */
   getAnimatedFrameCount: () => number
   /** A checksum of the last painted cells: it changes when the wall visibly changes. */
@@ -41,6 +43,7 @@ let lastGlass: WallGlass | null = null
 let lastChrome: WallGlass | null = null
 let lastRippleCount = 0
 let lastRippleKeys: readonly string[] = []
+let lastCovered = false
 const seenRippleKeys = new Set<string>()
 
 function unpackRects(glass: WallGlass | null): number[][] {
@@ -60,6 +63,7 @@ export function recordWallFrame(
     chrome = null,
     rippleCount = 0,
     rippleKeys = [],
+    covered = false,
   }: {
     animated: boolean
     lights?: readonly WallWindowRect[]
@@ -68,6 +72,7 @@ export function recordWallFrame(
     chrome?: WallGlass | null
     rippleCount?: number
     rippleKeys?: readonly string[]
+    covered?: boolean
   },
 ): void {
   frames++
@@ -81,6 +86,7 @@ export function recordWallFrame(
   lastChrome = chrome
   lastRippleCount = rippleCount
   lastRippleKeys = rippleKeys
+  lastCovered = covered
   for (const key of rippleKeys) {
     seenRippleKeys.add(key)
   }
@@ -96,6 +102,7 @@ export function recordWallFrame(
     getRippleKeys: () => [...lastRippleKeys],
     getSeenRippleKeys: () => [...seenRippleKeys],
     getFrameCount: () => frames,
+    isCovered: () => lastCovered,
     getAnimatedFrameCount: () => animatedFrames,
     getSignature: () => {
       let hash = 2166136261

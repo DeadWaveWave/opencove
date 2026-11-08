@@ -205,6 +205,7 @@ export const WorkspacePixelWall = memo(function WorkspacePixelWall({
         chrome: chromeGlass,
         rippleCount: waves.length,
         rippleKeys: waves.map(wave => wave.key ?? ''),
+        covered: coveredRef.current,
       })
       if (grid.screenCell !== screenCell) {
         screenCell = grid.screenCell
