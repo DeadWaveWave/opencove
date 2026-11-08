@@ -26,7 +26,8 @@ Exactly one text source is required. `--timeout` accepts milliseconds or duratio
 The target must be an agent window OpenCove launched: local Claude Code or Codex
 with lifecycle hooks for this invocation,
 at authoritative working state or after a hook-observed settled turn (Claude Stop/StopFailure; Codex Stop). Codex notify-only,
-daemon reuse, file-only telemetry and Windows are unsupported. `@self` resolves through the
+opt-in daemon reuse (`codexReuseRunningAppServer`), file-only telemetry and Windows are unsupported.
+OpenCove launches Codex with hooks by default even when a shared daemon is running. `@self` resolves through the
 calling session grant; prompting an observed agent inside a canvas terminal is refused by the server.
 
 Success is JSON with `deliveryId`, `nodeId`, `sessionId`, `phase: submission_observed`, `turnId`.

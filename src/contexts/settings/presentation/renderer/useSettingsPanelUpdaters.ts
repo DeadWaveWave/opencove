@@ -83,6 +83,8 @@ export function createSettingsPanelUpdaters({
       updateSetting(key, enabled),
     updateCanvasBackgroundStyle: (style: CanvasBackgroundStyle): void =>
       updateSetting('canvasBackgroundStyle', style),
+    updateCodexReuseRunningAppServer: (enabled: boolean): void =>
+      updateSetting('codexReuseRunningAppServer', enabled),
     updateAgentFullAccess: (enabled: boolean): void => updateSetting('agentFullAccess', enabled),
     updateDefaultTerminalProfileId: (profileId: string | null): void =>
       updateSetting('defaultTerminalProfileId', profileId),

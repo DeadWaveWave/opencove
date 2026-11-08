@@ -180,6 +180,7 @@ describe('useHydrateAppState agent session restore', () => {
       mode: 'new',
       model: 'gpt-5.2-codex',
       agentFullAccess: DEFAULT_AGENT_SETTINGS.agentFullAccess,
+      codexReuseRunningAppServer: false,
       cols: 80,
       rows: 24,
     })
@@ -301,6 +302,7 @@ describe('useHydrateAppState agent session restore', () => {
       model: 'gpt-5.2-codex',
       resumeSessionId: 'resolved-codex-session',
       agentFullAccess: DEFAULT_AGENT_SETTINGS.agentFullAccess,
+      codexReuseRunningAppServer: false,
       cols: 80,
       rows: 24,
     })
@@ -361,6 +363,7 @@ describe('useHydrateAppState agent session restore', () => {
       model: 'gpt-5.2-codex',
       resumeSessionId: 'resolved-codex-session',
       agentFullAccess: DEFAULT_AGENT_SETTINGS.agentFullAccess,
+      codexReuseRunningAppServer: false,
       cols: 80,
       rows: 24,
     })

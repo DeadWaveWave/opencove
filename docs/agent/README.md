@@ -191,11 +191,22 @@ continue using session-file state without a failure badge until evidence indicat
 Startup silence has no lease: legacy notify may first emit at the end of a turn. Explicit installation
 failure, an unavailable source, and expiry of a previously observed working hook still report degradation.
 
-On POSIX, Codex launches first probe the existing local app-server control socket. When reachable,
-the provider omits its Hook and notify overrides so Codex can reuse that daemon. The already-running
-daemon cannot adopt per-launch Hook configuration, so this path explicitly reports telemetry as
-`skipped` and uses session-file observations. A missing or unreachable socket retains the headless
-relay path. The probe is per launch and does not create a daemon or persist daemon state.
+OpenCove-launched Codex Agent windows keep their per-launch Hook and notify overrides by default,
+so Codex uses its embedded app-server even if a shared local daemon is running. This preserves
+lifecycle status tracking and `opencove agent prompt`; the shared daemon is left running.
+
+On POSIX, **Settings → Agent → Codex → Reuse a running Codex app-server** opts into daemon reuse
+(`codexReuseRunningAppServer`, default `false`, including older saved settings). Only with this
+setting enabled does each launch probe the local app-server control socket. When reachable, the
+provider omits its Hook and notify overrides because an already-running daemon cannot adopt them.
+This path reports telemetry as `skipped`, uses degraded session-file observations, and cannot accept
+`opencove agent prompt`. A missing or unreachable socket retains the headless relay path. The probe
+does not create a daemon or persist daemon state. Relaunch or resume a window to apply a changed
+setting; existing live processes retain their launch configuration. The same setting governs Codex
+commands typed in ordinary OpenCove terminals: each new command reads the current persisted setting,
+so an already-open shell does not need to be recreated. Windows keeps its existing
+session-file observation behavior.
+
 
 Every source switch is reflected in runtime observation metadata and degraded fallback is visible in the
 Agent header. Neither source may write run-state into durable node status; persistence strips the runtime

@@ -232,6 +232,7 @@ export interface LaunchAgentSessionInput {
   env?: Record<string, string> | null
   executablePathOverride?: string | null
   agentFullAccess?: boolean | null
+  codexReuseRunningAppServer?: boolean | null
   cols?: number | null
   rows?: number | null
 }
@@ -250,6 +251,7 @@ export interface LaunchAgentSessionInMountInput {
   env?: Record<string, string> | null
   executablePathOverride?: string | null
   agentFullAccess?: boolean | null
+  codexReuseRunningAppServer?: boolean | null
   cols?: number | null
   rows?: number | null
 }

@@ -1,4 +1,7 @@
 import { join } from 'node:path'
+import type { PersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
+import { normalizePersistedAppState } from '../../../platform/persistence/sqlite/normalize'
+import { normalizeAgentSettings } from '../../../contexts/settings/domain/agentSettings'
 import { appendBoundedRuntimeDiagnosticsLine } from '../../../platform/persistence/runtimeDiagnosticsFile'
 import type { TerminalAgentDiagnosticSink } from '../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentDiagnostics'
 import type {
@@ -16,6 +19,7 @@ import { TerminalAgentInvocationRegistry } from '../../../contexts/agent/applica
 
 export function createTerminalAgentActivityRuntime(options: {
   userDataPath: string
+  getPersistenceStore?: () => Promise<Pick<PersistenceStore, 'readAppState'>>
   agentHookChannels: readonly AgentHookChannel[]
   agentProviderRegistry?: AgentProviderRegistry
   appVersion?: string | null
@@ -38,6 +42,11 @@ export function createTerminalAgentActivityRuntime(options: {
   const invocationRegistry = new TerminalAgentInvocationRegistry()
   const gateway = new TerminalAgentActivityGateway({
     registry: invocationRegistry,
+    resolveCodexReuseRunningAppServer: async () => {
+      const store = await options.getPersistenceStore?.()
+      const persisted = store ? normalizePersistedAppState(await store.readAppState()) : null
+      return normalizeAgentSettings(persisted?.settings).codexReuseRunningAppServer
+    },
     resolveHookInjection: provider => agentProviderRegistry.require(provider).hookInjection ?? null,
   })
   const diagnostic: TerminalAgentDiagnosticSink = event => {

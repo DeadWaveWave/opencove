@@ -194,6 +194,7 @@ export function createBrowserAgentApi(): AgentApi {
           resumeSessionId,
           env: payload.env ?? null,
           agentFullAccess: payload.agentFullAccess ?? null,
+          codexReuseRunningAppServer: payload.codexReuseRunningAppServer ?? null,
         },
       })
 

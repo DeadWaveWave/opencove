@@ -26,6 +26,7 @@ it.each([
   ['null-trust', 'notify_only', 'installed'],
   ['throw-trust', 'notify_only', 'installed'],
   ['daemon', 'none', 'skipped'],
+  ['daemon-default', 'lifecycle', 'installed'],
   ['windows', 'none', 'not_required'],
   ['no-channel', 'none', 'not_installed'],
   ['unavailable', 'none', 'error'],
@@ -44,7 +45,8 @@ it.each([
     }
     return branch === 'null-trust' ? null : 'hooks.state={}'
   })
-  daemon.live = branch === 'daemon'
+  // A live shared daemon is skipped only when the user opted into reusing it.
+  daemon.live = branch === 'daemon' || branch === 'daemon-default'
   const provider = new CodexAgentProviderContribution({
     channel:
       branch === 'no-channel' ? undefined : ({ reserveSpawn } as unknown as AgentHookChannel),
@@ -59,9 +61,12 @@ it.each([
       artifacts,
       workspaceDirectory: '/tmp',
       environment: { CODEX_HOME: '/tmp/opencove-coverage-fixture' },
+      ...(branch === 'daemon' ? { codexReuseRunningAppServer: true } : {}),
     })
     expect(plan).toMatchObject({ hookCoverage, hookInstallState })
-    expect(plan.args.some(arg => arg.startsWith('hooks.Stop='))).toBe(branch === 'trusted')
+    expect(plan.args.some(arg => arg.startsWith('hooks.Stop='))).toBe(
+      branch === 'trusted' || branch === 'daemon-default',
+    )
     if (['daemon', 'windows', 'no-channel', 'unavailable'].includes(branch)) {
       expect(hookTrustResolver).not.toHaveBeenCalled()
     }

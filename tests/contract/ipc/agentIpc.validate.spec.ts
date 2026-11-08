@@ -2,6 +2,31 @@ import { describe, expect, it } from 'vitest'
 import { getAppErrorDebugMessage, OpenCoveAppError } from '../../../src/shared/errors/appError'
 
 describe('agent IPC validation', () => {
+  it.each([undefined, null, false, true])('preserves Codex reuse policy for %j', async value => {
+    const { normalizeLaunchAgentPayload } =
+      await import('../../../src/contexts/agent/presentation/main-ipc/validate')
+    expect(
+      normalizeLaunchAgentPayload({
+        provider: 'codex',
+        cwd: '/tmp/repo',
+        prompt: '',
+        codexReuseRunningAppServer: value,
+      }).codexReuseRunningAppServer,
+    ).toBe(value ?? undefined)
+  })
+  it.each(['true', 1, {}, []])('rejects invalid Codex reuse policy %j', async value => {
+    const { normalizeLaunchAgentPayload } =
+      await import('../../../src/contexts/agent/presentation/main-ipc/validate')
+    expect(() =>
+      normalizeLaunchAgentPayload({
+        provider: 'codex',
+        cwd: '/tmp/repo',
+        prompt: '',
+        codexReuseRunningAppServer: value,
+      }),
+    ).toThrow(OpenCoveAppError)
+  })
+
   it('accepts Windows absolute cwd values on non-Windows runners', async () => {
     const {
       normalizeLaunchAgentPayload,

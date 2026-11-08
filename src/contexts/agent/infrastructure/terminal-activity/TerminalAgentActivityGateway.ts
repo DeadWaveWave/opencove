@@ -54,6 +54,7 @@ export class TerminalAgentActivityGateway {
       resolveHookInjection: (
         provider: TerminalAgentShimProvider,
       ) => AgentHookInjectionPlanner | null
+      resolveCodexReuseRunningAppServer?: () => Promise<boolean>
       createHttpServer?: typeof createServer
     },
   ) {}
@@ -239,7 +240,18 @@ export class TerminalAgentActivityGateway {
     const artifacts = new AgentLaunchArtifactScope()
     let plan: AgentHookInjectionPlan
     try {
+      const codexReuseRunningAppServer =
+        provider === 'codex'
+          ? ((await this.options.resolveCodexReuseRunningAppServer?.()) ?? false)
+          : false
+      if (!this.isCredentialLive(credential)) {
+        artifacts.seal()
+        await artifacts.dispose()
+        this.respond(response, 410)
+        return
+      }
       plan = await planner.prepareHookInjection({
+        codexReuseRunningAppServer,
         arguments: invocationArguments,
         artifacts,
         environment,

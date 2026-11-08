@@ -123,6 +123,7 @@ export const sessionLaunchAgentOperation = defineOperation({
     mode: z.string().nullish(),
     resumeSessionId: z.string().nullish(),
     agentFullAccess: z.boolean().nullish(),
+    codexReuseRunningAppServer: z.boolean().nullish(),
     env: z.unknown().optional(),
     executablePathOverride: z.unknown().optional(),
     cols: z.unknown().optional(),
@@ -142,6 +143,10 @@ export const sessionLaunchAgentInMountOperation = defineOperation({
     mountId: z.string().describe('Project mount to run the agent in'),
     cwdUri: z.string().nullish().describe('File URI within the mount'),
     prompt: z.string().describe('Agent prompt'),
+    codexReuseRunningAppServer: z
+      .boolean()
+      .nullish()
+      .describe('Reuse a running Codex app-server; disables hooks and prompt delivery'),
     agentFullAccess: z
       .boolean()
       .nullish()

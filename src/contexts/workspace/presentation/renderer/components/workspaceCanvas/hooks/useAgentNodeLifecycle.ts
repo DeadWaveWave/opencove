@@ -44,6 +44,7 @@ interface UseAgentNodeLifecycleParams {
   bumpAgentLaunchToken: (nodeId: string) => number
   isAgentLaunchTokenCurrent: (nodeId: string, token: number) => boolean
   agentFullAccess: boolean
+  codexReuseRunningAppServer: boolean
   defaultTerminalProfileId: string | null
   terminalFontSize: number
   terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
@@ -63,6 +64,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   bumpAgentLaunchToken,
   isAgentLaunchTokenCurrent,
   agentFullAccess,
+  codexReuseRunningAppServer,
   defaultTerminalProfileId,
   terminalFontSize,
   agentEnvByProvider,
@@ -252,6 +254,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
           executionDirectory: requestedExecutionDirectory,
           resumeSessionId: requestedResumeSessionId,
           agentFullAccess,
+          codexReuseRunningAppServer,
           defaultTerminalProfileId,
           executablePathOverride,
           terminalFontSize,
@@ -351,6 +354,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       t,
       agentExecutablePathOverrideByProvider,
       agentFullAccess,
+      codexReuseRunningAppServer,
       defaultTerminalProfileId,
       terminalDisplayMetrics,
       terminalFontSize,
