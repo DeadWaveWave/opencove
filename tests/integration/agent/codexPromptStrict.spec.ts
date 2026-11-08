@@ -152,7 +152,14 @@ it.skipIf(process.platform === 'win32')(
       const [command, ...args] = JSON.parse(notifyConfig.slice('notify='.length)) as string[]
       const notify = spawn(
         command,
-        [...args, JSON.stringify({ type: 'agent-turn-complete', 'thread-id': 'strict-codex' })],
+        [
+          ...args,
+          JSON.stringify({
+            type: 'agent-turn-complete',
+            'thread-id': 'strict-codex',
+            'turn-id': 'T1',
+          }),
+        ],
         { env: { ...env, ...plan.env } },
       )
       notify.stdin.end()
@@ -161,6 +168,7 @@ it.skipIf(process.platform === 'win32')(
       expect(validateCodexHookEnvelope(last.body)).toMatchObject({
         state: 'done',
         hookEventName: 'notify',
+        providerTurnId: 'T1',
       })
       expect(normalizeCodexHookEnvelope(last.body)).toBeNull()
       expect(Number.isFinite(Number(last.headers['x-opencove-hook-emitted-at']))).toBe(true)

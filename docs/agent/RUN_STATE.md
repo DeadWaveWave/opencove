@@ -219,6 +219,15 @@ none. Claude Code reports lifecycle when its hook settings are installed. Instal
 and coverage are separate: installed notify may inform run state but cannot establish
 promptability. See [prompt delivery](PROMPT_DELIVERY.md) for provider requirements.
 
+For Codex lifecycle coverage, runtime ingress discards legacy `notify` before it can replace
+hook observations or the legacy UI projection. Stop/StopFailure own turn ends; notify cannot
+alter state, active turn, outcome or retained `lastTurnEnd`. For `notify_only`, notify remains
+an explicit completion signal. The relay preserves a validated, content-free `turn-id`;
+native hook `turn_id` uses the same validation. Private channel evidence carries these IDs
+to the registry, which rejects notify before arbitration when it conflicts with a known active
+provider turn/session. Missing IDs retain uncorrelated fallback behavior. These IDs do not
+enter public snapshots, receipts or durable state.
+
 ## Retained turn-end evidence
 
 The run-state reducer retains the last selected, reliable explicit turn-end receipt
@@ -282,7 +291,8 @@ fences. Late ends for retained superseded identities are ignored even when idle;
 replayed retained identities cannot reopen or replace a result. Missing IDs preserve
 legacy run state but cannot serve correlated content.
 Only a matching selected reliable Stop/StopFailure can attach message text. Baseline
-Stop, lease expiry, notify and arbitrary payloads cannot manufacture ended history.
+Stop and lease expiry cannot manufacture ended history; notify and arbitrary payloads
+cannot attach message text.
 PTY exit may end an active turn as unknown, without hook content. Stop is an observed
 boundary; other provider hooks may continue it, and StopFailure remains failed.
 

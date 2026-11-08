@@ -252,6 +252,15 @@ export class AgentRunStateRuntime {
     if (session.remote) {
       return
     }
+    // Lifecycle hooks own turn state. Codex's separately spawned legacy notify can arrive
+    // after the next submit; it must not replace hook evidence or the legacy UI label.
+    if (
+      event.source === 'codex_hook' &&
+      event.hookEventName === 'notify' &&
+      session.hookCoverage === 'lifecycle'
+    ) {
+      return
+    }
     const conversation = event.piConversation
     if (event.source === 'pi_hook' && conversation) {
       if (
@@ -303,7 +312,8 @@ export class AgentRunStateRuntime {
       name === 'StopFailure' ||
       name === 'agent_settled' ||
       name === 'task_complete' ||
-      name === 'turn_aborted'
+      name === 'turn_aborted' ||
+      (event.source === 'codex_hook' && name === 'notify')
     ) {
       boundary = {
         kind: 'end',

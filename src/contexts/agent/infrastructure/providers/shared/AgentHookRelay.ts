@@ -139,7 +139,9 @@ try {
     if (provider === 'codex') {
       const value = JSON.parse(body);
       if (!value.hook_event_name && value.type === 'agent-turn-complete') {
-        body = JSON.stringify({ version: 1, state: 'done', hookEventName: 'notify', codexSessionId: value['thread-id'] ?? 'unknown' });
+        const id = value['turn-id'];
+        const providerTurnId = typeof id === 'string' && id.length > 0 && id.length <= 256 && id.isWellFormed() && !/[\s\p{Cc}]/u.test(id) ? id : undefined;
+        body = JSON.stringify({ version: 1, state: 'done', hookEventName: 'notify', codexSessionId: value['thread-id'] ?? 'unknown', providerTurnId });
       }
     }
     // Enforce the receiver budget on the final wire body, after every provider rewrite.

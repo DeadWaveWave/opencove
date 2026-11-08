@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   normalizeCodexHookEnvelope,
+  validateCodexHookEnvelope,
   type CodexHookInput,
 } from '../../../src/app/main/controlSurface/agentHook/codexHookProtocol'
 
@@ -47,6 +48,39 @@ describe('Codex hook protocol', () => {
       tool: { name: 'Bash', useId: 'tool-1', input: { command: 'pnpm test' } },
     })
   })
+
+  it('preserves content-free turn IDs from native hooks and converted notify', () => {
+    expect(normalizeCodexHookEnvelope({ ...input({}), turn_id: 'T2' })).toMatchObject({
+      providerTurnId: 'T2',
+    })
+    expect(
+      validateCodexHookEnvelope({
+        version: 1,
+        state: 'done',
+        hookEventName: 'notify',
+        codexSessionId: 'codex',
+        providerTurnId: 'T1',
+      }),
+    ).toMatchObject({ providerTurnId: 'T1' })
+  })
+
+  it.each(['', 'bad id', 'bad\n', '\u0000', 'x'.repeat(257), '\ud800', 12, {}])(
+    'discards invalid optional turn identity %j without losing state evidence',
+    id => {
+      const native = normalizeCodexHookEnvelope({ ...input({}), turn_id: id })
+      const notify = validateCodexHookEnvelope({
+        version: 1,
+        state: 'done',
+        hookEventName: 'notify',
+        codexSessionId: 'codex',
+        providerTurnId: id,
+      })
+      expect(native).not.toBeNull()
+      expect(native).not.toHaveProperty('providerTurnId')
+      expect(notify).not.toBeNull()
+      expect(notify).not.toHaveProperty('providerTurnId')
+    },
+  )
 
   it('rejects malformed and unrecognized external payloads', () => {
     expect(normalizeCodexHookEnvelope(null)).toBeNull()
