@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { vi } from 'vitest'
 import { AgentRunStateRegistry } from '../../../src/contexts/agent/application/AgentRunStateRegistry'
+import type { AgentTurnArchive } from '../../../src/contexts/agent/application/AgentTurnArchive'
 import { waitForAgents } from '../../../src/app/cli/core/agentWait'
 import { CliError } from '../../../src/app/cli/core/errors'
 import type {
@@ -8,7 +9,11 @@ import type {
   AgentRunSnapshot,
 } from '../../../src/shared/contracts/dto/agentRunState'
 
-export function registryWaitFixture(legacy = false, staleBindings = false) {
+export function registryWaitFixture(
+  legacy = false,
+  staleBindings = false,
+  archive?: AgentTurnArchive,
+) {
   let time = 100,
     sequence = 0,
     turn = 0
@@ -17,6 +22,7 @@ export function registryWaitFixture(legacy = false, staleBindings = false) {
     now: () => time,
     createTurnId: () => `t${++turn}`,
     schedule: () => () => {},
+    archive,
   })
   registry.register({ sessionId: 's', nodeId: 'n', incarnation: 'i', provider: 'codex' })
   const observe = (state: AgentRunSnapshot['state'], boundary?: 'start' | 'completed' | 'failed') =>

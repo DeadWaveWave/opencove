@@ -42,8 +42,12 @@ export function presentAgentTurnError(error: CliError, context: AgentTurnErrorCo
       hint = commands(`opencove agent wait --node ${node} --turn ${turn}`)
       break
     case 'turn_not_found':
-      message = `${label} is not in the last 8 ended turns of this agent session; it may have been evicted, belong to another session, or have been cleared by restart.`
+      message = `${label} is not in retained OpenCove history; it may have expired, been evicted, belonged to another node, or never been archived.`
       hint = commands(get)
+      break
+    case 'archive_unavailable':
+      message = `${label} cannot be checked because the turn archive is unavailable.`
+      hint = `Inspect the Worker diagnostics and current agent; do not resend a prompt to recover history.\n${commands(get, screen)}`
       break
     case 'provider_sent_no_message':
       message = `${label} ended, but the provider sent no final message.`

@@ -2,7 +2,6 @@ import type { AgentRunEvent, AgentRunSnapshot } from '../../../shared/contracts/
 import { agentRunSnapshotSchema } from '../../../shared/contracts/dto/agentRunStateSchema'
 import { AgentWaitReconciliation } from './agentWaitEvidence'
 import { CliError } from './errors'
-import { turnUnavailable } from './agentWaitTurn'
 
 export type WaitSnapshot = AgentRunSnapshot & {
   endedTurn?: AgentRunEvent['endedTurn']
@@ -42,7 +41,7 @@ export class AgentWaitProjection {
     if (value === null) {
       this.owners.delete(nodeId)
       if (this.turnId !== undefined) {
-        throw turnUnavailable(this.turnId, false, { nodeId })
+        return
       }
       throw new CliError(
         'agent.not_running',

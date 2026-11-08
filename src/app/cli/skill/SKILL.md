@@ -145,7 +145,7 @@ This selects that exact end, even if a newer turn starts, and keeps waiting duri
 permission/question pauses. It returns `{nodeId, sessionId, turnId, outcome, endedAt?, state}`;
 all ended outcomes exit 0. Check `outcome` (completed, failed, aborted or unknown).
 `--turn` requires exactly one node and conflicts with `--until`, multiple nodes and
-`--any`. Unknown/evicted turns or restart without retained evidence exit 1; inspect
+`--any`. Unknown/evicted turns or missing retained evidence exit 1; inspect
 `agent get`. Its `lastEndedTurn` identifies the latest end and persists during the
 next turn; replacement/restart clears it. Older Workers omit it; events/history
 remain usable. History fallback requires interact scope.
@@ -165,12 +165,13 @@ State waits print all selected snapshots; exact-turn waits print one result. Tim
 Ctrl-C exits 130 and closes subscriptions. It never stops the target agent.
 Read tries the latest ended turn's `agent.finalMessage` first. `--turn <turnId>`
 selects exactly the OpenCove turn ID returned by prompt: no prefixes or fallback.
-Hook content, including an empty message, wins. History is private and in memory:
-last 8 ended turns per incarnation; restart/replacement clears it. Remote exact waits use only mirrored
-snapshots/events. Older remote turns require the Worker that runs them;
-`details.reason: remote_history_unavailable` identifies this limit, not eviction. Hook messages
-currently require correlated local Claude hooks. A finished turn may have failed;
-check JSON `outcome` before claiming success.
+Hook replies (≤64 KiB), outcome and IDs are private; exact local --turn reads survive restarts.
+Archive caps: 50 turns/node, 30 days, 20,000 global records and 128 MiB of message text.
+JSON includes persisted and memoryOnlyReason when false; archive_unavailable differs from a miss.
+Deleting the node removes OpenCove history, not provider transcripts or existing backups.
+No prompt text or delivery records are archived; no history-clear command exists.
+Remote waits use mirrored snapshots/events; older history requires the executing Worker.
+Correlated local Claude hooks supply messages. Check outcome; ended does not mean successful.
 
 Only a read without `--turn` falls back to the transcript when the hook reports
 `no_ended_turn` or `provider_sent_no_message`. Exact-turn reads preserve

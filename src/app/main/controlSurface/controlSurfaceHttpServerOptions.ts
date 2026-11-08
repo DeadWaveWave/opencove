@@ -22,6 +22,7 @@ export interface RegisterControlSurfaceHttpServerOptions {
   deploymentId?: string | null
   activationId?: string | null
   strictPersistence?: boolean
+  enableAgentTurnArchive?: boolean
   requestManagedShutdown?: () => void
   connectionFileName?: string
   connectionStartedBy?: 'cli' | 'desktop'

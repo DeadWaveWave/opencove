@@ -4,23 +4,23 @@ CLI 是 Control Surface client；业务状态由 Worker/application owner 管理
 
 ## Commands
 
-| Group | Commands |
-| --- | --- |
-| `project` | `list` |
-| `space` | `list`, `get` |
-| `node` | `list`, `get`, `create note/task/website/agent/terminal`, `update note/task/website`, `delete` |
-| `canvas` | `focus node`, `focus space` |
-| `api` | `ops`, `schema <operation-id>`, `call <operation-id>` |
-| Runtime | `ping`, `status`, `worker start/status/stop`, `runtime inspect/verify/prepare` |
-| `endpoint` | `list`, `register`, `ping`, `remove` |
-| `mount` | `list`, `create`, `resolve`, `remove` |
-| `fs` | `read`, `write`, `stat`, `ls`; 可选 `--mount <id>` |
-| `worktree` | `list`, `create`, `archive` |
-| `agent` | `list`, `get`, `prompt`, `wait`, `read` |
-| Agent guide | `skill` (bundled, offline) |
-| `session` | `run-agent`, `get`, `final`, `kill` |
-| `pty` | `spawn-in-mount`, `attach` |
-| `plugin` | `guide`, `list`, `details`, `install`, `install-git`, `source`, `check`, `update`, `apply`, `rollback`, `discover`, `reload`, `enable`, `disable`, `uninstall`, `run`, `skill`, `open`, `windows` |
+| Group       | Commands                                                                                                                                                                                          |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `project`   | `list`                                                                                                                                                                                            |
+| `space`     | `list`, `get`                                                                                                                                                                                     |
+| `node`      | `list`, `get`, `create note/task/website/agent/terminal`, `update note/task/website`, `delete`                                                                                                    |
+| `canvas`    | `focus node`, `focus space`                                                                                                                                                                       |
+| `api`       | `ops`, `schema <operation-id>`, `call <operation-id>`                                                                                                                                             |
+| Runtime     | `ping`, `status`, `worker start/status/stop`, `runtime inspect/verify/prepare`                                                                                                                    |
+| `endpoint`  | `list`, `register`, `ping`, `remove`                                                                                                                                                              |
+| `mount`     | `list`, `create`, `resolve`, `remove`                                                                                                                                                             |
+| `fs`        | `read`, `write`, `stat`, `ls`; 可选 `--mount <id>`                                                                                                                                                |
+| `worktree`  | `list`, `create`, `archive`                                                                                                                                                                       |
+| `agent`     | `list`, `get`, `prompt`, `wait`, `read`                                                                                                                                                           |
+| Agent guide | `skill` (bundled, offline)                                                                                                                                                                        |
+| `session`   | `run-agent`, `get`, `final`, `kill`                                                                                                                                                               |
+| `pty`       | `spawn-in-mount`, `attach`                                                                                                                                                                        |
+| `plugin`    | `guide`, `list`, `details`, `install`, `install-git`, `source`, `check`, `update`, `apply`, `rollback`, `discover`, `reload`, `enable`, `disable`, `uninstall`, `run`, `skill`, `open`, `windows` |
 
 旧拼写不提供 aliases。Mount 的项目选项只有 `--project`。
 长文本支持 `--content-file`、`--prompt-file`、`--params-file`；文件路径 `-` 读取 stdin。
@@ -41,17 +41,17 @@ opencove plugin run sample status --params-file ./params.json
 TTY stderr 使用可读错误；`-o json` 强制 JSON 错误。
 Plugin distribution 返回 `failed`/`conflict` 时 exit 1，candidate 结果位于 `error.details`。
 
-| Exit | Meaning |
-| --- | --- |
-| 0 | 成功（`worker status` 也可能返回 `status: stopped`） |
-| 1 | operation、runtime 或远端进程失败 |
-| 2 | 参数错误 |
-| 3 | 无可用连接或 endpoint 不可达 |
-| 4 | 认证或授权失败 |
-| 5 | 协议不兼容 |
-| 6 | profile/space 歧义 |
-| 124 | 请求、agent wait 或 PTY 握手超时 |
-| 130 | 中断（agent wait 关闭流）或 PTY detach |
+| Exit | Meaning                                              |
+| ---- | ---------------------------------------------------- |
+| 0    | 成功（`worker status` 也可能返回 `status: stopped`） |
+| 1    | operation、runtime 或远端进程失败                    |
+| 2    | 参数错误                                             |
+| 3    | 无可用连接或 endpoint 不可达                         |
+| 4    | 认证或授权失败                                       |
+| 5    | 协议不兼容                                           |
+| 6    | profile/space 歧义                                   |
+| 124  | 请求、agent wait 或 PTY 握手超时                     |
+| 130  | 中断（agent wait 关闭流）或 PTY detach               |
 
 `pty attach` 是流式例外：stdout 只有原始终端输出，远端退出 0 → CLI 0，其他退出 → CLI 1，Ctrl-C detach → 130。
 `worker start` 前台运行，结束后返回状态 JSON。Windows 通过父进程 IPC 请求 Worker 自身完成 drain 和 lock release；超过共享停止预算才强制终止。
@@ -122,14 +122,14 @@ Worker's `agent.list`. That operation lists live sessions only, excluding exited
 sessions; get/wait can address a known exited node. An unbound/deleted node's title
 is null. Final-message reads use the Worker's `agent.finalMessage` query.
 
-| Command | Output contract | Projection / table |
-| --- | --- | --- |
-| `agent list` | `{epoch, seq, agents: [snapshot + title]}` | Snapshot fields + title; table columns: nodeId, title, provider, state, blockedReason, turn.startedAt, quality |
-| `agent get --node <selector>` | Snapshot + title; non-agent nodes or absent run state fail with agent.not_found (exit 1) | Snapshot fields + title; JSON only |
-| `agent wait --node <selector> ... --until <condition>` | `{until, mode, agents: [snapshot]}`; turn-end adds endedTurn and endedTurnOutcome | Snapshot fields + endedTurn/endedTurnOutcome; JSON only |
-| `agent read --node <selector> [--last] [--turn <turnId>]` | Plain message text; JSON includes `source: hook\|transcript` and `truncated`; exact `--turn` never falls back | Hook: nodeId, sessionId, turnId, promptId, outcome, message, truncated, source; transcript: sessionId, provider, startedAt, cwd, resumeSessionId, message, truncated, source; no table |
-| `agent read --node <selector> --screen [--lines <n>]` | Rendered screen text at snapshot cols/rows: cursor spacing and wide cells preserved; trailing spaces/blank rows trimmed, last n rows (default 40); JSON is `{nodeId, sessionId, lines: [...]}` | nodeId, sessionId, lines; no table |
-| `skill` | Plain SKILL.md; `-o json` returns `{version, content}` | version, content; no table |
+| Command                                                   | Output contract                                                                                                                                                                                | Projection / table                                                                                                                                                                     |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `agent list`                                              | `{epoch, seq, agents: [snapshot + title]}`                                                                                                                                                     | Snapshot fields + title; table columns: nodeId, title, provider, state, blockedReason, turn.startedAt, quality                                                                         |
+| `agent get --node <selector>`                             | Snapshot + title; non-agent nodes or absent run state fail with agent.not_found (exit 1)                                                                                                       | Snapshot fields + title; JSON only                                                                                                                                                     |
+| `agent wait --node <selector> ... --until <condition>`    | `{until, mode, agents: [snapshot]}`; turn-end adds endedTurn and endedTurnOutcome                                                                                                              | Snapshot fields + endedTurn/endedTurnOutcome; JSON only                                                                                                                                |
+| `agent read --node <selector> [--last] [--turn <turnId>]` | Plain message text; JSON includes `source: hook\|transcript` and `truncated`; exact `--turn` never falls back                                                                                  | Hook: nodeId, sessionId, turnId, promptId, outcome, message, truncated, source; transcript: sessionId, provider, startedAt, cwd, resumeSessionId, message, truncated, source; no table |
+| `agent read --node <selector> --screen [--lines <n>]`     | Rendered screen text at snapshot cols/rows: cursor spacing and wide cells preserved; trailing spaces/blank rows trimmed, last n rows (default 40); JSON is `{nodeId, sessionId, lines: [...]}` | nodeId, sessionId, lines; no table                                                                                                                                                     |
+| `skill`                                                   | Plain SKILL.md; `-o json` returns `{version, content}`                                                                                                                                         | version, content; no table                                                                                                                                                             |
 
 Snapshot fields are `nodeId`, `sessionId`, `provider`, `state`, `blockedReason`,
 `turn` (id, startedAt, start), `lastTransitionAt`, `source`, `quality`, `turnOutcome`.
@@ -170,14 +170,12 @@ Only a read without `--turn` may fall back to `session.finalMessage {nodeId}`, a
 only for `agent.final_message_unavailable` with reason `no_ended_turn` or
 `provider_sent_no_message`. All other errors remain errors, including unsupported
 operations on an older Worker. Restart/restored conversations can use that
-unqualified transcript fallback; they cannot recover exact hook history.
+unqualified transcript fallback; exact local --turn reads use the independent Worker archive across restarts.
 
 Hook JSON contains `{nodeId, sessionId, turnId, promptId?, outcome, message,
 truncated, source: 'hook'}`. Transcript JSON preserves the session fields and adds
 `source: 'transcript', truncated: false`. Neither reading nor content proves a
-successful outcome. Hook retention is private, in memory, last 8 ended turns per
-incarnation, with a 512 KiB aggregate message budget; incarnation replacement or
-restart clears history. Currently only correlated local Claude hooks supply it.
+successful outcome. Exact local turns are retained in the private Worker archive across restarts; unqualified reads remain scoped to the current incarnation. Currently only correlated local Claude hooks supply it.
 Unavailable `details.reason` values are `no_ended_turn`, `provider_sent_no_message`,
 `turn_not_ended` (active) and `turn_not_found` (unknown/evicted). Exact reads preserve
 these reasons with exit 1; they never silently return an older message.
@@ -325,7 +323,6 @@ scopeTier、instanceId 和 appVersion，不返回 token/hash。
 Windows 直接以 `wsl.exe` 启动 canvas PTY 暂时明确拒绝 scoped identity：Windows shim 路径与
 loopback URL 不能保证在 WSL 中可用。应在 WSL 内运行 hosting Worker，并通过 mount 使用它。
 
-
 ## Selector diagnostics and bounded output
 
 Use `--space <selector>` with any `--node` selector to resolve a node name or
@@ -354,7 +351,7 @@ change the operation sent to the Worker. Omit it or use `--limit 0` for complete
 output. A cut object-shaped list preserves its envelope and adds totals, for example:
 
 ```json
-{"activeProjectId":"p","projects":[{"id":"p"}],"truncated":{"projects":4}}
+{ "activeProjectId": "p", "projects": [{ "id": "p" }], "truncated": { "projects": 4 } }
 ```
 
 Bare-array outputs such as `api ops` always remain arrays, including when cut. A
@@ -405,3 +402,25 @@ use `commandOperations` for the number of command-kind operations.
 opencove api ops --domains --fields domain,operations,commandOperations
 opencove api ops --prefix node --fields id,cliCommand,scope,allowed --limit 10
 ```
+
+## Archived exact turns
+
+Exact local `agent read --turn` and `agent wait --turn` survive Worker/app restarts,
+without relaunching the agent, and return the original node/session IDs. JSON includes
+`persisted`; false includes `memoryOnlyReason` (`unbound`, `remote`, `unavailable`,
+`write_failed`, `deleted`, or `retention_backlog`). Older Workers cannot certify it.
+`archive_unavailable` is distinct from missing/expired history; never resend to recover it.
+
+The executing Worker stores final reply text (≤64 KiB UTF-8), outcome, IDs, timestamps
+and truncation/intermediate metadata in a separate archive file. It stores no prompt
+text, hook evidence or S2 delivery records. S1 provider continuations archive once at
+the final OpenCove end; uncertainty stays `unknown`/`messageKind: intermediate` and
+never grants readiness or proves steering consumption. Retention upper bounds are
+50 turns/node, 30 days, 20,000 global records and 128 MiB of message text; metadata-only
+ends count. Smaller memory caches may evict earlier. Oversized purges leave new turns
+memory-only (`retention_backlog`) while bounded cleanup makes room for future records.
+
+Deleting the node removes queryable OpenCove history, including caches; it does not
+erase provider transcripts, existing backups or forensic remnants. No history-clear
+command exists. Unqualified reads, prompt-ID selectors and labelled transcript fallback
+retain current-incarnation semantics. Remote history is not routed across Workers.

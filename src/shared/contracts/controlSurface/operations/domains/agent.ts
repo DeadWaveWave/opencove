@@ -46,8 +46,12 @@ export const agentListOperation = defineOperation({
 })
 const turnId = id.describe('OpenCove turn identifier returned by agent.prompt')
 const promptId = id.describe('Provider prompt identifier reported by Claude hooks')
-const nodeId = id.describe('Canvas node whose current agent incarnation is queried')
-const sessionId = id.describe('Agent session whose current incarnation is queried')
+const nodeId = id.describe(
+  'Canvas node owning the turn; exact turn lookup also includes archived incarnations',
+)
+const sessionId = id.describe(
+  'Original agent session; exact turn lookup also includes archived incarnations',
+)
 export const agentFinalMessageOperation = defineOperation({
   id: 'agent.finalMessage',
   kind: 'query',

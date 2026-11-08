@@ -14,9 +14,12 @@ export interface HookFinalMessage {
   message: string
   truncated: boolean
   messageKind?: 'intermediate'
+  persisted: boolean
+  memoryOnlyReason?: string
   source: 'hook'
 }
 type TranscriptFinalMessage = GetSessionFinalMessageResult & {
+  persisted: false
   source: 'transcript'
   truncated: false
 }
@@ -27,7 +30,14 @@ export async function readAgentFinalMessage(
 ): Promise<HookFinalMessage | TranscriptFinalMessage> {
   let result: HookFinalMessage
   try {
-    result = (await ctx.invoke('agent.finalMessage', ctx.input)) as HookFinalMessage
+    const raw = (await ctx.invoke('agent.finalMessage', ctx.input)) as HookFinalMessage
+    result = {
+      ...raw,
+      persisted: raw.persisted === true,
+      ...(raw.persisted === true
+        ? {}
+        : { memoryOnlyReason: raw.memoryOnlyReason ?? 'unavailable' }),
+    }
   } catch (error) {
     const reason =
       error instanceof CliError &&
@@ -42,7 +52,12 @@ export async function readAgentFinalMessage(
       ctx.options.turn === undefined &&
       (reason === 'no_ended_turn' || reason === 'provider_sent_no_message')
     ) {
-      return { ...(await readFinalMessage(ctx)), source: 'transcript', truncated: false }
+      return {
+        ...(await readFinalMessage(ctx)),
+        source: 'transcript',
+        truncated: false,
+        persisted: false,
+      }
     }
     throw error
   }

@@ -1,11 +1,13 @@
+import {
+  captureTurn,
+  finalTurnMessage,
+  type RetainedAgentTurn,
+  type TurnArchiveContext,
+} from './AgentTurnRecord'
+import { AGENT_TURN_ARCHIVE_LIMITS } from './AgentTurnArchive'
 import { createAppError } from '../../../shared/errors/appError'
 import type { PromptSubmissionEvidence } from '../../../shared/runtime/agentHook/claudePromptEvidence'
-import type {
-  AgentRunModel,
-  AgentRunObservation,
-  AgentRunSnapshot,
-  TurnOutcome,
-} from '../domain/agentRunState'
+import type { AgentRunModel, AgentRunObservation, AgentRunSnapshot } from '../domain/agentRunState'
 
 type Identity = Pick<
   PromptSubmissionEvidence,
@@ -14,23 +16,39 @@ type Identity = Pick<
   emittedAtMs?: number
   promptIds?: string[]
 }
-type EndedTurn = {
-  turnId: string
-  promptId?: string
-  promptIds?: string[]
-  outcome: TurnOutcome
-  endedAt: number
-  message?: string
-  truncated?: boolean
-  messageKind?: 'intermediate'
-  superseded?: boolean
-}
-export type FinalMessageSelector = { turnId?: string; promptId?: string }
+export type FinalMessageSelector = { turnId?: string; promptId?: string; nodeId?: string }
 
 /** Private per-incarnation content owner. No references enter event or receipt rings. */
 export class AgentTurnHistory {
+  private revoked = false
   private active: Identity | undefined
-  private readonly ended: EndedTurn[] = []
+  private readonly ended: RetainedAgentTurn[] = []
+  constructor(
+    private readonly archiveContext: TurnArchiveContext = {
+      now: Date.now,
+      nodeId: () => null,
+      remote: () => false,
+    },
+  ) {}
+  exact(turnId: string, nodeId?: string): RetainedAgentTurn | undefined {
+    return this.ended.find(
+      turn =>
+        turn.turnId === turnId &&
+        (nodeId === undefined || turn.nodeId === nodeId) &&
+        turn.archivedAt >= this.archiveContext.now() - AGENT_TURN_ARCHIVE_LIMITS.ageMs,
+    )
+  }
+  revokeNodes(ids: ReadonlySet<string>): void {
+    const owner = this.archiveContext.nodeId()
+    if (owner && ids.has(owner)) {
+      this.revoked = true
+    }
+    for (let i = this.ended.length - 1; i >= 0; i--) {
+      if (this.ended[i].nodeId && ids.has(this.ended[i].nodeId!)) {
+        this.ended.splice(i, 1)
+      }
+    }
+  }
 
   identity(): Identity & { endedTurnIds: string[] } {
     return {
@@ -42,7 +60,7 @@ export class AgentTurnHistory {
             providerTurnId: this.active.providerTurnId,
           }
         : this.ended.at(-1)?.promptId
-          ? { promptId: this.ended.at(-1)!.promptId }
+          ? { promptId: this.ended.at(-1)!.promptId ?? undefined }
           : {}),
     }
   }
@@ -170,7 +188,7 @@ export class AgentTurnHistory {
     evidence?: PromptSubmissionEvidence,
     intermediate = false,
   ): void {
-    if (ended) {
+    if (ended && !this.revoked) {
       const correlated =
         observation?.source === 'claude_hook' &&
         observation.boundary?.kind === 'end' &&
@@ -180,23 +198,37 @@ export class AgentTurnHistory {
         this.active.providerSessionId === evidence?.providerSessionId
       const content = correlated || intermediate ? evidence?.finalMessage : undefined
       this.ended.push({
-        turnId: ended.id,
-        promptId: this.active?.promptId,
+        ...captureTurn(
+          {
+            nodeId: null,
+            sessionId: next.snapshot.sessionId,
+            provider: next.snapshot.provider,
+            providerSessionId: this.active?.providerSessionId ?? null,
+            turnId: ended.id,
+            promptId: this.active?.promptId ?? null,
+            outcome: next.snapshot.turnOutcome ?? 'unknown',
+            endedAt: observation?.observedAt ?? next.snapshot.lastTransitionAt,
+            ...(next.snapshot.turn ? { superseded: true } : {}),
+            ...(intermediate ? { messageKind: 'intermediate' as const } : {}),
+            message: content?.message ?? null,
+            truncated: content?.truncated ?? false,
+            superseded: next.snapshot.turn !== null,
+          },
+          this.archiveContext,
+        ),
         promptIds: this.active?.promptIds,
-        outcome: next.snapshot.turnOutcome ?? 'unknown',
-        endedAt: observation?.observedAt ?? next.snapshot.lastTransitionAt,
-        ...(next.snapshot.turn ? { superseded: true } : {}),
-        ...(intermediate ? { messageKind: 'intermediate' as const } : {}),
-        ...(content ? { message: content.message, truncated: content.truncated } : {}),
       })
       this.active = undefined
       while (
-        this.ended.length > 8 ||
+        this.ended.length > 50 ||
         this.ended.reduce((sum, turn) => sum + Buffer.byteLength(turn.message ?? '', 'utf8'), 0) >
           512 * 1024
       ) {
         this.ended.shift()
       }
+    }
+    if (ended && this.revoked) {
+      this.active = undefined
     }
     if (next.snapshot.turn && previous.snapshot.turn?.id !== next.snapshot.turn.id) {
       this.active =
@@ -223,14 +255,46 @@ export class AgentTurnHistory {
       throw createAppError('agent.final_message_unavailable', { details: { reason, ...details } })
     }
     const explicit = selector.turnId !== undefined || selector.promptId !== undefined
+    // More exact-turn retention must not widen the existing provider-prompt selector window.
+    const candidates = selector.promptId === undefined ? this.ended : this.ended.slice(-8)
+    const retained = candidates.filter(record => {
+      if (selector.nodeId !== undefined && record.nodeId !== selector.nodeId) {
+        return false
+      }
+      if (
+        record.nodeId &&
+        this.archiveContext.membership &&
+        this.archiveContext.membership(record.nodeId) !== 'member'
+      ) {
+        return false
+      }
+      if (record.archivedAt < this.archiveContext.now() - AGENT_TURN_ARCHIVE_LIMITS.ageMs) {
+        return false
+      }
+      if (
+        record.persistence.status === 'persisted' &&
+        record.nodeId &&
+        this.archiveContext.archive
+      ) {
+        try {
+          return (
+            this.archiveContext.archive.getExact({ nodeId: record.nodeId, turnId: record.turnId })
+              .status !== 'absent'
+          )
+        } catch {
+          return true
+        }
+      }
+      return true
+    })
     const turn = explicit
-      ? this.ended.find(candidate =>
+      ? retained.find(candidate =>
           selector.turnId !== undefined
             ? candidate.turnId === selector.turnId
             : candidate.promptId === selector.promptId ||
               !!candidate.promptIds?.includes(selector.promptId!),
         )
-      : this.ended.at(-1)
+      : retained.at(-1)
     if (!turn) {
       if (
         explicit &&
@@ -242,22 +306,6 @@ export class AgentTurnHistory {
       }
       return unavailable(explicit ? 'turn_not_found' : 'no_ended_turn')
     }
-    if (turn.message === undefined) {
-      return unavailable('provider_sent_no_message', {
-        outcome: turn.outcome,
-        endedAt: turn.endedAt,
-      })
-    }
-    return {
-      nodeId: snapshot.nodeId,
-      sessionId: snapshot.sessionId,
-      turnId: turn.turnId,
-      ...(turn.promptId !== undefined ? { promptId: turn.promptId } : {}),
-      outcome: turn.outcome,
-      message: turn.message,
-      ...(turn.messageKind ? { messageKind: turn.messageKind } : {}),
-      truncated: turn.truncated ?? false,
-      source: 'hook' as const,
-    }
+    return finalTurnMessage(turn)
   }
 }

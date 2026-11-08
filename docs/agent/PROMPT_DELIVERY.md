@@ -300,7 +300,7 @@ It returns `{ nodeId, sessionId, turnId, outcome, endedAt?, state }` and exits 0
 every ended outcome (`completed`, `failed`, `aborted`, `unknown`); inspect `outcome`.
 `read --turn` selects the same turn and never substitutes a transcript message.
 History can be evicted between waiting and reading. An unknown/evicted turn or a
-restart without retained evidence makes waiting fail with exit 1 and an `agent get`
+missing retained evidence makes waiting fail with exit 1 and an `agent get`
 hint. Timeout remains exit 124 with `lastKnown` on stderr. `--turn` requires one node
 and conflicts with `--until`, multiple nodes and `--any`.
 
@@ -393,11 +393,10 @@ active or the mirrored `lastEndedTurn`, unavailable history reports
 `agent.wait_turn_unavailable` with `details.reason: remote_history_unavailable`.
 Check older remote turns on the Worker that runs the agent; this is not eviction.
 
-The executing Worker registry owns at most eight ended records and 512 KiB of message
-text per agent incarnation, evicting oldest whole records. Content is private memory,
-never persisted, mirrored, logged or included in snapshots, SSE events, or receipt
-rings. Replacement, retirement and Worker disposal release it. Node lookup uses only
-the current binding; an old exited session can be queried explicitly until retired.
+The executing Worker owns private ended-turn memory and a separate exact-turn archive.
+Memory retains up to 50 ends and 512 KiB per incarnation. Content never enters public
+snapshots, events, receipt rings, logs or mirrors. Replacement/retirement release memory;
+exact node/turn and original-session/turn lookups can still use retained archive records.
 Replies may quote user content. Access uses the existing coarse interact scope, not
 a new project/target ACL; read-tier callers cannot retrieve this store. Remote hook
 history is unavailable; remote transcript retrieval remains the separate fallback.
@@ -447,9 +446,8 @@ digest is exposed. `not_sent` means this attempt wrote no CR; a pasted draft may
 remain. `submitted` means qualifying evidence; `dispatched` awaits consumption.
 evidenceWindow describes collecting delivery evidence, not the agent’s work; closed never proves completion or retry safety.
 
-Unresolved records are pinned. The Worker retains at most 32 records per session
-and 1024 globally; completed (`submitted`/`not_sent`) records evict first and expire
-30 minutes after settlement, using a private resolvedAt timestamp. Capacity refusal happens before bytes, with
+Unresolved deliveries are pinned; limits are 32/session and 1024 globally. Completed
+(`submitted`/`not_sent`) records evict first and expire 30 minutes after resolvedAt. Capacity refusal happens before bytes, with
 `agent.delivery_unsettled` (legacy: `agent.busy`) and delivery lookup guidance.
 Retirement or identity/binding loss disposes subscriptions while retaining the DTO.
 Caller deadlines/disconnects end only their waiter, while passive receipts can upgrade
@@ -478,3 +476,22 @@ before paste, with `agent.busy`, `reason: expected_turn_mismatch`, expectedTurnI
 currentState details. The condition is checked again before CR; a later mismatch
 cancels Enter (`prompt_interrupted` if already pasted). Workers lacking this field
 refuse the option without any mutation. Without it, turn/steer behavior is unchanged.
+
+## Archived exact turns
+
+Exact local `agent read --turn` and `agent wait --turn` survive Worker/app restarts,
+without relaunching the agent, and return the original node/session IDs. JSON includes
+`persisted`; false includes `memoryOnlyReason` (`unbound`, `remote`, `unavailable`,
+`write_failed`, `deleted`, or `retention_backlog`). Older Workers cannot certify it.
+`archive_unavailable` is distinct from a history miss; never resend to recover it.
+The executing Worker stores replies (≤64 KiB UTF-8), outcome, IDs, timestamps and
+truncation/intermediate metadata, never prompt text, hook evidence or delivery records. S1 provider continuations archive once at
+the final OpenCove end; uncertainty stays `unknown`/`messageKind: intermediate` and
+never grants readiness or proves steering consumption. Retention upper bounds are
+50 turns/node, 30 days, 20,000 global records and 128 MiB of message text; metadata-only
+ends count. Smaller memory caches may evict earlier. Oversized purges leave new turns
+memory-only (`retention_backlog`) while bounded cleanup makes room for future records.
+
+Deleting the node removes queryable OpenCove history, including caches; it does not
+erase provider transcripts, existing backups or forensic remnants. No history-clear
+command exists. Unqualified reads, prompt-ID selectors and transcript fallback keep current-incarnation semantics; remote history stays on its executing Worker.

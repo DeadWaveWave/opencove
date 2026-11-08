@@ -126,7 +126,12 @@ describe('AgentRunState domain', () => {
       f.observe({ state: 'idle', boundary: { kind: 'end', outcome } })
       expect(() => f.registry.finalMessage({ sessionId: 's', turnId: 'turn-1' })).toThrow(
         expect.objectContaining({
-          details: { reason: 'provider_sent_no_message', outcome, endedAt: 120 },
+          details: expect.objectContaining({
+            reason: 'provider_sent_no_message',
+            outcome,
+            endedAt: 120,
+            persisted: false,
+          }),
         }),
       )
       expect(f.get()).toMatchObject({

@@ -12,6 +12,8 @@ const hook = {
   message: 'Hook reply.\n第二行',
   truncated: false,
   source: 'hook',
+  persisted: false,
+  memoryOnlyReason: 'unavailable',
 }
 const transcript = {
   sessionId: hook.sessionId,
@@ -85,7 +87,12 @@ it.each(
   const f = fixture(unavailable(reason))
   f.values['node.get'] = { node: { ...node, kind } }
   expect(await run([...args, '-o', 'json'], f.io)).toBe(0)
-  expect(JSON.parse(f.out())).toEqual({ ...transcript, source: 'transcript', truncated: false })
+  expect(JSON.parse(f.out())).toEqual({
+    ...transcript,
+    source: 'transcript',
+    truncated: false,
+    persisted: false,
+  })
   expect(f.requests.filter(r => r.id.endsWith('.finalMessage')).map(r => r.id)).toEqual([
     'agent.finalMessage',
     'session.finalMessage',
@@ -183,7 +190,7 @@ it('explains an exact active turn with a concrete wait command and identifiers',
 })
 
 it.each([
-  ['turn_not_found', 'last 8 ended turns', 'agent get'],
+  ['turn_not_found', 'retained OpenCove history', 'agent get'],
   ['provider_sent_no_message', 'provider sent no final message', '--screen'],
   ['no_ended_turn', 'no retained ended turn', 'session final'],
   ['remote_history_unavailable', 'remote turn history', 'Worker that runs them'],
@@ -217,4 +224,12 @@ it('labels an intermediate reply when continuation reconciliation ended unknown 
   expect(await run([...args, '--fields', 'messageKind,outcome'], f.io)).toBe(0)
   expect(JSON.parse(f.out())).toEqual({ messageKind: 'intermediate', outcome: 'unknown' })
   expect(f.stderr()).toContain('last intermediate provider reply')
+})
+
+it('adds conservative durability fields for an older Worker hook response', async () => {
+  const f = fixture()
+  const { persisted: _persisted, memoryOnlyReason: _reason, ...older } = hook
+  f.values['agent.finalMessage'] = older
+  expect(await run([...args, '-o', 'json'], f.io)).toBe(0)
+  expect(JSON.parse(f.out())).toMatchObject({ persisted: false, memoryOnlyReason: 'unavailable' })
 })

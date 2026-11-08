@@ -1,3 +1,4 @@
+import type { AgentTurnArchive } from '../../../src/contexts/agent/application/AgentTurnArchive'
 import { readFileSync } from 'node:fs'
 import { AgentRunStateRegistry } from '../../../src/contexts/agent/application/AgentRunStateRegistry'
 import { AgentRunStateRuntime } from '../../../src/contexts/agent/application/AgentRunStateRuntime'
@@ -27,12 +28,14 @@ export const toolRecords = readFileSync(
   .map(parseClaudeTranscript)
   .filter((record): record is ClaudeTranscriptRecord => !!record)
 
-export function continuationFixture() {
+export function continuationFixture(archive?: AgentTurnArchive) {
   let time = 100,
     id = 0,
     position = 0
   const timers = new Set<{ at: number; run: () => void }>()
   const registry = new AgentRunStateRegistry({
+    archive,
+    membership: () => 'member',
     epoch: 'e',
     now: () => time,
     createTurnId: () => `t${++id}`,
@@ -45,6 +48,7 @@ export function continuationFixture() {
     },
   })
   const runtime = new AgentRunStateRuntime(registry, () => ++time)
+  runtime.captureLaunchIdentity('s', 'n')
   runtime.metadata({ sessionId: 's', agentProvider: 'claude-code', resumeSessionId: null })
   const hook = (
     name: string,
