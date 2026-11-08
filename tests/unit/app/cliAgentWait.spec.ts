@@ -1,82 +1,8 @@
 // @vitest-environment node
 import { afterEach, expect, it, vi } from 'vitest'
-import { waitForAgents } from '../../../src/app/cli/core/agentWait'
-import type { AgentRunSnapshot } from '../../../src/shared/contracts/dto/agentRunState'
 
-const snapshot = (
-  nodeId = 'a',
-  state: AgentRunSnapshot['state'] = 'working',
-): AgentRunSnapshot => ({
-  nodeId,
-  sessionId: `session-${nodeId}`,
-  provider: 'claude-code',
-  state,
-  blockedReason: null,
-  turn: null,
-  lastTransitionAt: 1,
-  source: 'claude_hook',
-  quality: 'authoritative',
-  turnOutcome: null,
-})
-function fixture(states = [snapshot()]) {
-  let seq = 5
-  const streams: { url: URL; send(value: unknown): void; cancelled: boolean }[] = []
-  const controller = new AbortController()
-  const query = vi.fn(async (id: string, payload: unknown) =>
-    id === 'agent.list'
-      ? { epoch: 'epoch', seq, agents: states }
-      : (states.find(s => s.nodeId === (payload as { nodeId: string }).nodeId) ?? null),
-  )
-  const fetch = vi.fn(async (url: string | URL | Request) => {
-    let enqueue!: (chunk: Uint8Array) => void
-    let close!: () => void
-    const stream = {
-      url: new URL(String(url)),
-      cancelled: false,
-      close() {
-        close()
-      },
-      send(value: unknown) {
-        enqueue(new TextEncoder().encode(`data: ${JSON.stringify(value)}\n\n`))
-      },
-    }
-    const body = new ReadableStream<Uint8Array>({
-      start(c) {
-        enqueue = chunk => c.enqueue(chunk)
-        close = () => c.close()
-      },
-      cancel() {
-        stream.cancelled = true
-      },
-    })
-    streams.push(stream)
-    return new Response(body, { headers: { 'content-type': 'text/event-stream' } })
-  })
-  const wait = (until = 'idle', nodes = ['a'], any = false, timeoutMs = 1000) =>
-    waitForAgents({
-      nodeIds: nodes,
-      until: until as 'idle',
-      any,
-      timeoutMs,
-      connection: { endpoint: 'http://fake', token: 'secret' },
-      fetch: fetch as typeof globalThis.fetch,
-      signal: controller.signal,
-      query,
-    })
-  const event = (
-    nodeId = 'a',
-    state: AgentRunSnapshot['state'] = 'idle',
-    turnEnd = false,
-    eventSeq = ++seq,
-  ) => ({
-    type: turnEnd ? 'agent.turn_completed' : 'agent.state_changed',
-    epoch: 'epoch',
-    seq: eventSeq,
-    snapshot: { ...snapshot(nodeId, state), turnOutcome: turnEnd ? 'failed' : null },
-    ...(turnEnd ? { endedTurn: { id: 'turn', startedAt: 2, start: 'observed' } } : {}),
-  })
-  return { wait, streams, controller, query, event, states }
-}
+import { fixture, snapshot } from './cliAgentWait.helpers'
+
 afterEach(() => vi.useRealTimers())
 it('accepts an already satisfied baseline without subscribing', async () => {
   const f = fixture([snapshot('a', 'idle')])
@@ -88,7 +14,7 @@ it('subscribes from the baseline and resolves on a later event, closing the stre
     pending = f.wait()
   await vi.waitFor(() => expect(f.streams).toHaveLength(1))
   expect(f.streams[0].url.searchParams.get('afterSeq')).toBe('5')
-  expect(f.streams[0].url.searchParams.get('nodeId')).toBe('a')
+  expect(f.streams[0].url.searchParams.has('nodeId')).toBe(false)
   f.streams[0].send(f.event())
   expect((await pending).agents[0].state).toBe('idle')
   expect(f.streams[0].cancelled).toBe(true)
@@ -100,7 +26,7 @@ it('re-baselines on resync using fresh queries', async () => {
   f.states[0] = snapshot('a', 'waiting')
   f.streams[0].send({ type: 'resync_required', epoch: 'epoch', seq: 5 })
   await vi.waitFor(() => expect(f.streams).toHaveLength(2))
-  expect(f.query.mock.calls.filter(([id]) => id === 'agent.get')).toHaveLength(2)
+  expect(f.query.mock.calls.filter(([id]) => id === 'agent.list')).toHaveLength(4)
   f.streams[1].send(f.event())
   expect((await pending).agents[0].state).toBe('idle')
   expect(f.streams.every(s => s.cancelled)).toBe(true)
@@ -120,7 +46,7 @@ it('times out with 124 and last known state, including degraded idle', async () 
 it.each([true, false])('supports multiple nodes with any=%s', async any => {
   const f = fixture([snapshot('a'), snapshot('b')]),
     pending = f.wait('idle', ['a', 'b'], any)
-  await vi.waitFor(() => expect(f.streams).toHaveLength(2))
+  await vi.waitFor(() => expect(f.streams).toHaveLength(1))
   f.streams[0].send(f.event('a'))
   if (!any) {
     let settled = false
@@ -129,7 +55,7 @@ it.each([true, false])('supports multiple nodes with any=%s', async any => {
     })
     await new Promise(resolve => setTimeout(resolve, 10))
     expect(settled).toBe(false)
-    f.streams[1].send(f.event('b'))
+    f.streams[0].send(f.event('b'))
   }
   expect((await pending).agents).toHaveLength(2)
   expect(f.streams.every(s => s.cancelled)).toBe(true)
@@ -175,30 +101,31 @@ it.each(['waiting', 'exited'] as const)('accepts an already %s baseline', async 
   expect((await f.wait(state)).agents[0].state).toBe(state)
   expect(f.streams).toHaveLength(0)
 })
-it('retries an unstable baseline rather than replaying a completion before get', async () => {
+it('reconciles one get against a fixed post-get cursor without requiring quiescence', async () => {
   const f = fixture([snapshot('a', 'idle')])
   let calls = 0
   const original = f.query.getMockImplementation()!
   f.query.mockImplementation(async (id, payload) =>
     id === 'agent.list'
-      ? { epoch: 'epoch', seq: ++calls === 1 ? 4 : 5, agents: [] }
+      ? { epoch: 'epoch', seq: 4 + calls++, agents: f.states }
       : original(id, payload),
   )
   const pending = f.wait('turn-end')
   await vi.waitFor(() => expect(f.streams).toHaveLength(1))
-  expect(f.query.mock.calls.filter(([id]) => id === 'agent.get')).toHaveLength(2)
-  expect(f.streams[0].url.searchParams.get('afterSeq')).toBe('5')
-  f.streams[0].send(f.event('a', 'idle', true, 6))
+  expect(f.query.mock.calls.map(([id]) => id)).toEqual(['agent.list', 'agent.get', 'agent.list'])
+  expect(f.streams[0].url.searchParams.get('afterSeq')).toBe('4')
+  f.streams[0].send(f.event('a', 'idle', true, 4))
+  f.streams[0].send(f.event('a', 'idle', true, 5))
   await pending
 })
 it('keeps ended outcome separate from later snapshots while waiting for all nodes', async () => {
   const f = fixture([snapshot('a'), snapshot('b')]),
     pending = f.wait('turn-end', ['a', 'b'])
-  await vi.waitFor(() => expect(f.streams).toHaveLength(2))
+  await vi.waitFor(() => expect(f.streams).toHaveLength(1))
   f.streams[0].send(f.event('a', 'idle', true, 6))
   f.streams[0].send(f.event('a', 'working', false, 7))
   await new Promise(resolve => setTimeout(resolve, 10))
-  f.streams[1].send(f.event('b', 'idle', true, 8))
+  f.streams[0].send(f.event('b', 'idle', true, 8))
   expect((await pending).agents[0]).toMatchObject({
     state: 'working',
     turnOutcome: null,
@@ -220,4 +147,14 @@ it('never accepts unknown as idle', async () => {
   const assertion = expect(pending).rejects.toMatchObject({ exitCode: 124 })
   await vi.advanceTimersByTimeAsync(10)
   await assertion
+})
+
+it('uses get for an exited session missing from the atomic live list', async () => {
+  const f = fixture([snapshot('a', 'exited')])
+  const original = f.query.getMockImplementation()!
+  f.query.mockImplementation(async (id, payload) =>
+    id === 'agent.list' ? { epoch: 'epoch', seq: 5, agents: [] } : original(id, payload),
+  )
+  expect((await f.wait('exited')).agents[0].state).toBe('exited')
+  expect(f.query.mock.calls.map(([id]) => id)).toEqual(['agent.list', 'agent.get', 'agent.list'])
 })

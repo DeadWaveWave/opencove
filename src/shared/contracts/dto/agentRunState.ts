@@ -12,6 +12,8 @@ export interface AgentRunSnapshot {
   source: TerminalSessionStateSource | 'exit' | null
   quality: 'authoritative' | 'inferred' | 'degraded'
   turnOutcome: TurnOutcome | null
+  /** Most recent reducer-ended turn in this incarnation; preserved across subsequent starts. */
+  lastEndedTurn: { id: string; outcome: TurnOutcome; endedAt: number } | null
 }
 
 /** Executing Worker decision, transported separately from PTY replay sequence. */

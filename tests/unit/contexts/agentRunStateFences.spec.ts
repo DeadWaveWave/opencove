@@ -1,3 +1,7 @@
+import {
+  samePromptEntry,
+  promptAdmission,
+} from '../../../src/contexts/agent/application/promptAdmission'
 import { expect, it, vi } from 'vitest'
 import { AgentRunStateRegistry } from '../../../src/contexts/agent/application/AgentRunStateRegistry'
 it('delivers every accepted receipt including unchanged snapshots, and rejects stale receipts', () => {
@@ -89,4 +93,53 @@ it('revokes an old entry token when provider capability changes without a new ex
   expect(listener).toHaveBeenCalledTimes(1)
   expect(runs.readFence({ nodeId: 'n' })!.incarnation).not.toBe(before.incarnation)
   runs.dispose()
+})
+
+it('revokes displaced prompt fences while admission and node lookup follow the current owner', () => {
+  const runs = new AgentRunStateRegistry({
+    epoch: 'e',
+    now: () => 100,
+    createTurnId: () => 't',
+    schedule: () => () => {},
+  })
+  const ready = (sessionId: string) => {
+    runs.setRuntimeContext(sessionId, {
+      remote: false,
+      launchKind: 'managed',
+      hookCoverage: 'lifecycle',
+      hookInstallState: 'installed',
+    })
+    runs.observe(sessionId, {
+      incarnation: sessionId,
+      source: 'claude_hook',
+      state: 'idle',
+      hookEventName: 'Stop',
+      sourceSequence: 1,
+      observedAt: 100,
+      boundary: { kind: 'end', outcome: 'completed' },
+    })
+  }
+  try {
+    runs.register({ sessionId: 's', nodeId: 'n', incarnation: 's', provider: 'claude-code' })
+    ready('s')
+    const initial = runs.readFence({ nodeId: 'n' })!
+    const receipts = vi.fn()
+    runs.watchFence(initial, receipts)
+    runs.register({ sessionId: 'r', nodeId: 'n', incarnation: 'r', provider: 'claude-code' })
+    ready('r')
+    const displaced = runs.readFence({ sessionId: 's' })!
+    expect(displaced.snapshot.nodeId).toBeNull()
+    expect(displaced.bindingGeneration).toBeGreaterThan(initial.bindingGeneration)
+    expect(samePromptEntry(initial, displaced)).toBe(false)
+    expect(receipts).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fence: expect.objectContaining({ snapshot: expect.objectContaining({ nodeId: null }) }),
+      }),
+    )
+    const current = runs.readFence({ nodeId: 'n' })!
+    expect(current.snapshot.sessionId).toBe('r')
+    expect(promptAdmission(current, () => ({ supported: true, submitDelayMs: 300 }))).toBeNull()
+  } finally {
+    runs.dispose()
+  }
 })

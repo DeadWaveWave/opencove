@@ -1,8 +1,10 @@
 import { AgentTurnHistory, type FinalMessageSelector } from './AgentTurnHistory'
-import { createAppError } from '../../../shared/errors/appError'
 import type { PromptSubmissionEvidence } from '../../../shared/runtime/agentHook/claudePromptEvidence'
 import {
   projectRunStateFence,
+  claimRunNodeBinding,
+  publishRunTransition,
+  readRunFinalMessage,
   scheduleRunExpiry,
   matchesAgentRunFilter,
   type AgentRunEntry as Entry,
@@ -103,17 +105,17 @@ export class AgentRunStateRegistry {
       spaceId: input.spaceId,
     }
     this.entries.set(input.sessionId, entry)
-    if (entry.model.snapshot.nodeId !== null) {
-      this.claimNodeBinding(entry.model.snapshot.nodeId, entry)
-    }
-    this.notifyFence(entry)
+    const notifyDisplaced = this.claimNodeBinding(entry.model.snapshot.nodeId, entry)
     this.publish(
       entry,
       'agent.state_changed',
       undefined,
-      true,
+      false,
       existing ? this.binding(existing) : undefined,
     )
+    notifyDisplaced()
+    this.notifyFence(entry)
+    this.flushDelivery()
   }
 
   private binding(entry: Entry): Binding {
@@ -145,11 +147,11 @@ export class AgentRunStateRegistry {
     entry.model.snapshot = { ...entry.model.snapshot, nodeId: binding.nodeId }
     entry.projectId = binding.projectId
     entry.spaceId = binding.spaceId
-    if (binding.nodeId !== null) {
-      this.claimNodeBinding(binding.nodeId, entry)
-    }
+    const notifyDisplaced = this.claimNodeBinding(binding.nodeId, entry)
+    this.publish(entry, 'agent.state_changed', undefined, false, previousBinding)
+    notifyDisplaced()
     this.notifyFence(entry)
-    this.publish(entry, 'agent.state_changed', undefined, true, previousBinding)
+    this.flushDelivery()
   }
 
   mirror(
@@ -166,14 +168,15 @@ export class AgentRunStateRegistry {
     const next = { ...structuredClone(snapshot), sessionId, nodeId: entry.model.snapshot.nodeId }
     const changed = JSON.stringify(next) !== JSON.stringify(entry.model.snapshot)
     entry.model = mirrorAgentRunModel(entry.model, next)
-    if (changed) {
-      this.notifyFence(entry)
-      this.publish(entry, 'agent.state_changed', undefined, false)
-    }
-    if (endedTurn) {
-      this.publish(entry, 'agent.turn_completed', structuredClone(endedTurn), false)
-    }
-    this.flushDelivery()
+    publishRunTransition(entry, changed, endedTurn, {
+      publish: (...args) => this.publish(...args),
+      notify: () => {
+        if (changed) {
+          this.notifyFence(entry)
+        }
+      },
+      flush: () => this.flushDelivery(),
+    })
   }
 
   observe(
@@ -211,21 +214,20 @@ export class AgentRunStateRegistry {
     entry.history.accept(entry.model, result.model, result.ended, observation, evidence)
     entry.model = result.model
     this.scheduleExpiry(entry)
-    if (accepted || changed) {
-      this.notifyFence(
-        entry,
-        accepted
-          ? acceptedRunStateReceipt(observation, result.model.snapshot.turn?.id, evidence)
-          : {},
-      )
-    }
-    if (changed) {
-      this.publish(entry, 'agent.state_changed', undefined, false)
-    }
-    if (result.ended) {
-      this.publish(entry, 'agent.turn_completed', result.ended, false)
-    }
-    this.flushDelivery()
+    publishRunTransition(entry, changed, result.ended ?? undefined, {
+      publish: (...args) => this.publish(...args),
+      notify: () => {
+        if (accepted || changed) {
+          this.notifyFence(
+            entry,
+            accepted
+              ? acceptedRunStateReceipt(observation, result.model.snapshot.turn?.id, evidence)
+              : {},
+          )
+        }
+      },
+      flush: () => this.flushDelivery(),
+    })
   }
 
   private scheduleExpiry(entry: Entry): void {
@@ -235,12 +237,7 @@ export class AgentRunStateRegistry {
   finalMessage(input: ({ sessionId: string } | { nodeId: string }) & FinalMessageSelector) {
     const entry =
       'sessionId' in input ? this.entries.get(input.sessionId) : this.nodeBindings.get(input.nodeId)
-    if (!entry || entry.remote) {
-      throw createAppError('agent.final_message_unavailable', {
-        details: { reason: 'no_ended_turn' },
-      })
-    }
-    return entry.history.read(entry.model.snapshot, input)
+    return readRunFinalMessage(entry, input)
   }
 
   get(locator: { sessionId: string } | { nodeId: string }): AgentRunSnapshot | null {
@@ -310,13 +307,11 @@ export class AgentRunStateRegistry {
     return true
   }
 
-  private claimNodeBinding(nodeId: string, entry: Entry): void {
-    const displaced = this.nodeBindings.get(nodeId)
-    this.nodeBindings.set(nodeId, entry)
-    if (displaced && displaced !== entry) {
-      displaced.bindingGeneration++
-      this.notifyFence(displaced)
-    }
+  private claimNodeBinding(nodeId: string | null, entry: Entry): () => void {
+    return claimRunNodeBinding(this.nodeBindings, nodeId, entry, {
+      publish: (...args) => this.publish(...args),
+      notify: displaced => this.notifyFence(displaced),
+    })
   }
   private releaseNodeBinding(entry: Entry): void {
     const nodeId = entry.model.snapshot.nodeId

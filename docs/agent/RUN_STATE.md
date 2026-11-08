@@ -10,7 +10,7 @@ reuses `resolveAgentRunStateAuthority`; transport and consumers do not choose be
 | State | Owner | Write entry | Restart truth |
 | --- | --- | --- | --- |
 | Private ended-turn history and message text | Executing Worker registry entry | Selected reducer-accepted turn ends | None; discarded on replacement/restart |
-| Run snapshot and active turn | Executing Worker registry | Fenced provider observations and lease deadlines | New incarnation starts unknown |
+| Run snapshot, active turn and last ended identity | Executing Worker registry | Fenced provider observations and lease deadlines | New incarnation starts unknown |
 | Event epoch and sequence | Executing Worker registry | Accepted snapshot/turn transition | New Worker epoch; re-query |
 | Session-to-node/project/Space association | Registry binding projection | Initial durable read and successful workspace writes | Durable session binding, never node status |
 | Durable node metadata | Existing workspace owner | Existing workspace mutations | Existing persistence |
@@ -103,6 +103,51 @@ leaves a subscriber's binding filter, that subscriber receives `resync_required`
 even when its `types` filter excludes state changes. This applies to live delivery and replay from a
 query watermark, including node unbinding. Subscribers in the new scope receive the new snapshot.
 
+Public snapshots include `lastEndedTurn: { id, outcome, endedAt } | null`: the most
+recent turn ended by the reducer in this incarnation. The end transition sets it
+atomically, including supersession and PTY exit (unknown outcome). It persists across
+subsequent starts, refreshes and degraded states, and resets on a new incarnation.
+No idle baseline or degraded observation invents an end. `endedAt` uses the accepted
+end observation's epoch milliseconds, including exit even if the clock moved backwards.
+The legacy `turnOutcome` is unchanged: ends set it, ordinary starts clear it, and
+supersession sets unknown while opening the next turn. Use `lastEndedTurn.outcome`
+when correlating an end's identity; the two fields can differ while a new turn runs.
+The field carries no content, prompt text or provider prompt ID and flows through
+get/list, events, remote mirrors and UI snapshots. Shared snapshot/event/frame
+schemas accept additive fields; older Workers without it normalize to null.
+
+`snapshot.nodeId === N` if and only if this Worker's binding for N points to that
+session. Null means unbound or displaced, including a displaced session that is
+still live. A move from S to R clears S's nodeId and queues an ordered
+`agent.state_changed` for S before R's claim event. Both payloads are captured
+before any fence/listener callback. Re-binding S publishes its nodeId again; a late
+exit/retirement of the displaced session cannot detach the current owner.
+`agent.get {sessionId}` still returns the displaced session with nodeId null.
+Live list rows may be unbound; the CLI gives these rows title null rather than the
+current owner's node title. Node-filtered subscriptions resync when S leaves N.
+
+CLI waits always resolve every requested node through binding-aware `agent.get`,
+even if list has one candidate: older Workers may leave a stale nodeId on a live
+session while omitting its exited replacement. The atomic list provides the cursor;
+a post-get list watermark and ordered replay reconcile the selected owners before
+state, any/all, or exact-turn satisfaction. No global-quiescence loop is used.
+A distinct conflicting session causes at most one get/reconciliation for that node
+per observed binding interval; repeated events retaining that node are ignored.
+An event showing that session moved to another node or null ends its suppression
+for the old node, so its next claim triggers a fresh get even on older Workers
+without automatic loss notifications. A null-node event for the current owner
+also forces a fresh get. Only matching current-owner events update state.
+
+Baseline and negative-history reads share the CLI reconciliation barrier. A negative
+history query retains its post-query watermark and drains ordered events through
+that sequence before failing. All waits consume one global content-free stream so
+unrelated sequence advances can reconcile either fence; only resolved owners of
+selected nodes update lastKnown. Resync discards provisional evidence and resolves
+a fresh baseline. Exact CLI read/wait errors preserve code/reason while adding
+plain messages, concrete recovery commands and known node/session/turn IDs.
+The registry captures and queues both state and completion payloads before notifying
+fences, so reentrant starts/ends cannot overwrite a prior completion's snapshot.
+
 Turn-end events include `endedTurn` because the snapshot has cleared its active turn. Inspect
 `turnOutcome`: the event name `agent.turn_completed` denotes a turn boundary, not proof of success.
 
@@ -128,6 +173,15 @@ the executing Worker's state, quality, turn identity, transition time and outcom
 or local lease timers. Mirrored events receive Home's epoch/sequence for Home clients to resume.
 
 An unsupported peer or disconnected stream reports unknown/degraded while its PTY remains live.
+Home's snapshot nodeId follows Home's own proxy binding, not the executing
+Worker's canvas node ID. A remote displacement frame is still cached/routed by
+session and does not erase an independently current Home binding. When Home moves
+that binding, it publishes the same local null/claim sequence; later old-session
+remote frames cannot restore it. PTY, Web and renderer state routing is session
+based, so displaced-session events cannot update a replacement node. Prompt fences
+invalidate on displacement (binding generation and nodeId); current-node admission
+reads the new binding. Explicit session lookup remains available.
+
 Home never arbitrates raw remote hook/file observations. Reconnect resumes from the remote cursor;
 duplicate events are ignored, while unexpected gaps or malformed frames invalidate the mirror and
 restart synchronization. Replaced sockets cannot update the mirror. Retention overflow or epoch
@@ -198,7 +252,10 @@ remains useful for observation but never authorizes prompting.
 `agent.finalMessage` (interact scope) reads private per-incarnation ended history;
 `agent.get/list` and `agent.state_changed` / `agent.turn_completed` remain content-free.
 The registry inserts history synchronously before notifying fences or publishing the
-completion. It retains at most eight ended turns (`turnId`, optional `promptId`,
+completion. Remote wait --turn uses mirrored snapshots/events only; older remote
+turns must be checked on the Worker that runs them. Exact remote history requests
+report `remote_history_unavailable`, without implying eviction or restart. No
+cross-Worker history routing is added. Local history retains at most eight ended turns (`turnId`, optional `promptId`,
 `outcome`, `endedAt`, optional message/truncation) and 512 KiB of UTF-8 text, evicting
 oldest whole records. Entry replacement, retirement and disposal release the store.
 No durable state, receipt-ring content, remote mirroring or restart reconstruction
@@ -234,5 +291,13 @@ provider `promptId`. It selects only the newest ended turn by default, even if t
 turn lacks content. Errors distinguish no ended history, unknown selected turn,
 active selected turn and no provider message; eviction cannot be distinguished from
 an unknown turn. Empty content is present. See [prompt delivery](PROMPT_DELIVERY.md)
-for budgets, errors, coarse interact access, and the `prompt → wait --until idle →
-read --turn <turnId>` loop. Idle waiting does not guarantee which turn ended.
+for budgets, errors, coarse interact access, and the `prompt (save turnId) →
+wait --turn <turnId> → read --turn <turnId>` loop. Exact waiting uses the retained
+snapshot identity, subscribed `endedTurn`, or ended history when the turn is no
+longer active. `provider_sent_no_message` includes `details.outcome` and `endedAt`
+and also proves an end. History fallback retains interact scope. Idle waiting
+remains a node-level condition and does not identify which turn ended.
+
+Recovery command hints put each shell-quoted command on its own indented line,
+without trailing prose punctuation. Copying an exact-wait command preserves the
+turn ID, including apostrophes and spaces; known node/session IDs remain literal.

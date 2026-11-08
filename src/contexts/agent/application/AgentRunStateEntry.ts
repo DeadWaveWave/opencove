@@ -1,4 +1,5 @@
-import type { AgentTurnHistory } from './AgentTurnHistory'
+import { createAppError } from '../../../shared/errors/appError'
+import type { AgentTurnHistory, FinalMessageSelector } from './AgentTurnHistory'
 import type { AgentRuntimeFilter, AgentRuntimeEvent } from './AgentRunStateRegistry'
 import type { AgentRunModel } from '../domain/agentRunState'
 import type { RunStateFence } from './ports/PromptDeliveryPorts'
@@ -82,4 +83,82 @@ export function scheduleRunExpiry(
     active = false
     cancel()
   }
+}
+
+/** Queue immutable transition payloads before fences can re-enter the registry. */
+export function publishRunTransition(
+  entry: AgentRunEntry,
+  changed: boolean,
+  endedTurn: AgentRuntimeEvent['endedTurn'],
+  ports: {
+    publish(
+      entry: AgentRunEntry,
+      type: AgentRuntimeEvent['type'],
+      endedTurn?: AgentRuntimeEvent['endedTurn'],
+      flush?: boolean,
+      previousBinding?: AgentRunBinding,
+    ): void
+    notify(): void
+    flush(): void
+  },
+): void {
+  const captured = {
+    ...entry,
+    model: { ...entry.model, snapshot: structuredClone(entry.model.snapshot) },
+  }
+  if (changed) {
+    ports.publish(captured, 'agent.state_changed', undefined, false)
+  }
+  if (endedTurn) {
+    ports.publish(captured, 'agent.turn_completed', structuredClone(endedTurn), false)
+  }
+  ports.notify()
+  ports.flush()
+}
+
+export function readRunFinalMessage(
+  entry: AgentRunEntry | undefined,
+  selector: FinalMessageSelector,
+) {
+  if (!entry || entry.remote) {
+    throw createAppError('agent.final_message_unavailable', {
+      details: {
+        reason:
+          entry?.remote && selector.turnId !== undefined
+            ? 'remote_history_unavailable'
+            : 'no_ended_turn',
+      },
+    })
+  }
+  return entry.history.read(entry.model.snapshot, selector)
+}
+
+/** Queue the displaced snapshot first; defer its fence callback until the claimant is captured. */
+export function claimRunNodeBinding(
+  bindings: Map<string, AgentRunEntry>,
+  nodeId: string | null,
+  entry: AgentRunEntry,
+  ports: {
+    publish: Parameters<typeof publishRunTransition>[3]['publish']
+    notify(entry: AgentRunEntry): void
+  },
+): () => void {
+  if (nodeId === null) {
+    return () => {}
+  }
+  const displaced = bindings.get(nodeId)
+  bindings.set(nodeId, entry)
+  if (!displaced || displaced === entry) {
+    return () => {}
+  }
+  const previousBinding = { nodeId, projectId: displaced.projectId, spaceId: displaced.spaceId }
+  displaced.bindingGeneration++
+  displaced.model = { ...displaced.model, snapshot: { ...displaced.model.snapshot, nodeId: null } }
+  publishRunTransition(displaced, true, undefined, {
+    publish: (captured, type, endedTurn, flush) =>
+      ports.publish(captured, type, endedTurn, flush, previousBinding),
+    notify: () => {},
+    flush: () => {},
+  })
+  return () => ports.notify(displaced)
 }

@@ -193,6 +193,7 @@ describe.each(['claude-code', 'codex'] as const)('PromptDeliveryService %s', pro
     'mode',
     'revocation',
     'replacement',
+    'displaced',
     'rebind',
     'shutdown',
   ] as const)('latches %s during submit delay', async condition => {
@@ -218,6 +219,11 @@ describe.each(['claude-code', 'codex'] as const)('PromptDeliveryService %s', pro
     }
     if (condition === 'replacement') {
       f.runs.register({ sessionId: 's', nodeId: 'n', incarnation: 'new', provider: 'claude-code' })
+    }
+    if (condition === 'displaced') {
+      f.runs.register({ sessionId: 'other', nodeId: 'n', incarnation: 'other', provider })
+      expect(f.runs.get({ sessionId: 's' })?.nodeId).toBeNull()
+      expect(f.runs.get({ nodeId: 'n' })?.sessionId).toBe('other')
     }
     if (condition === 'rebind') {
       f.runs.bind('s', { nodeId: 'other' })

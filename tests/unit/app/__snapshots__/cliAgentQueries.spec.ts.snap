@@ -19,7 +19,7 @@ exports[`agent get help is offline and complete 1`] = `
 
 Inspect an agent run-state snapshot with its node title
 
-Returns the Worker snapshot plus title. A non-agent node or missing run state fails with agent.not_found (exit 1); use node get to inspect a terminal/note, or start/resume an agent window. State is runtime evidence, independent of persisted node status. Unknown/degraded is never ready. turnOutcome describes the last ended turn and may be failed, aborted or unknown.
+Returns the Worker snapshot plus title. A non-agent node or missing run state fails with agent.not_found (exit 1); use node get to inspect a terminal/note, or start/resume an agent window. State is runtime evidence, independent of persisted node status. Unknown/degraded is never ready. lastEndedTurn identifies the most recent ended turn with {id, outcome, endedAt} (epoch milliseconds), or null before any end in this incarnation. It persists while the next turn runs and resets on replacement/restart. turnOutcome keeps its legacy behavior: set on end (completed, failed, aborted or unknown), usually cleared on the next start; use lastEndedTurn for identity-bound results.
 
 Options:
   --node <id>         Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
@@ -27,7 +27,7 @@ Options:
   --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
-Projectable fields: nodeId, title, sessionId, provider, state, blockedReason, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome
+Projectable fields: nodeId, title, sessionId, provider, state, blockedReason, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome, lastEndedTurn, lastEndedTurn.id, lastEndedTurn.outcome, lastEndedTurn.endedAt
 
 Projection example:
   opencove agent get --node '<id>' --fields nodeId
@@ -58,7 +58,7 @@ Options:
 List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
 
 Table output (-o table): supported.
-Projectable fields: nodeId, title, sessionId, provider, state, blockedReason, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome
+Projectable fields: nodeId, title, sessionId, provider, state, blockedReason, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome, lastEndedTurn, lastEndedTurn.id, lastEndedTurn.outcome, lastEndedTurn.endedAt
 
 Projection example:
   opencove agent list --fields nodeId
@@ -79,11 +79,11 @@ Read an agent reply or inspect its current terminal screen
 
 Reads agent.finalMessage first: the latest observed ended turn, or exactly --turn <turnId> from agent prompt. --turn never uses prefixes, another turn or a transcript fallback. --last makes the latest-turn default explicit and can accompany --turn.
 
-Only an unqualified hook read reporting no_ended_turn or provider_sent_no_message falls back to session.finalMessage, including restored conversations. Other errors are preserved. Hook content, including empty or whitespace-only messages, wins. Exact-turn errors use agent.final_message_unavailable with details.reason: turn_not_ended (still active), turn_not_found (unknown/evicted), no_ended_turn, or provider_sent_no_message.
+Only an unqualified hook read reporting no_ended_turn or provider_sent_no_message falls back to session.finalMessage, including restored conversations. Other errors are preserved. Hook content, including empty or whitespace-only messages, wins. Exact-turn errors use agent.final_message_unavailable with details.reason: turn_not_ended (still active), turn_not_found (unknown/evicted), no_ended_turn, provider_sent_no_message, or remote_history_unavailable. CLI errors retain code/reason and include known nodeId/sessionId/turnId plus concrete recovery commands: wait for a running turn, inspect agent get for missing history, or inspect --screen/session final for unavailable content.
 
 Plain message text goes to stdout even when piped. -o json or --fields returns structured data: hook results have nodeId, sessionId, turnId, optional promptId, outcome, message, truncated and source: hook; transcript results have sessionId, provider, startedAt, cwd, resumeSessionId, message, truncated: false and source: transcript. A cut hook message prints one stderr notice with transcript/screen recovery commands; it never automatically replaces the retained prefix.
 
-After agent prompt, retain its turnId, run "opencove agent wait --node <selector> --until idle", then "opencove agent read --node <selector> --turn <turnId>". Hook history is private, in memory, and limited to the last 8 ended turns per incarnation; restart or replacement clears it. Hook replies currently require local Claude hooks with correlated prompt IDs.
+After agent prompt, retain its turnId, run "opencove agent wait --node <selector> --turn <turnId>", then "opencove agent read --node <selector> --turn <turnId>". Hook history is private, in memory, and limited to the last 8 ended turns per incarnation; restart or replacement clears it. Remote wait --turn uses mirrored snapshots/events; older remote turns can only be checked on the Worker that runs them (remote_history_unavailable). Hook replies currently require local Claude hooks with correlated prompt IDs.
 
 Use --screen before prompting to inspect drafts and dialogs. It resolves the current session, replays its presentation snapshot at its columns/rows, preserving cursor-created spaces, overwrites and wide CJK/emoji cells. It selects the normal or alternate buffer, ignores styling/mode sequences, trims row-end spaces and trailing blank rows, then returns the last --lines rendered rows (default: 40). -o json returns {nodeId, sessionId, lines: [...]}. Screen-mode projectable fields are nodeId, sessionId, lines; the field list below applies to final-message mode. --lines requires --screen; --screen conflicts with --last and --turn. This is a read only snapshot, not permission to answer another agent's dialog.
 
@@ -117,11 +117,17 @@ Global options: see "opencove --help".
 `;
 
 exports[`agent wait help is offline and complete 1`] = `
-"Usage: opencove agent wait --node <selector> [--node <selector> ...] --until idle|waiting|exited|turn-end [--any|--all] [--timeout <duration>] [options]
+"Usage: opencove agent wait --node <selector> (--turn <turnId> | --until idle|waiting|exited|turn-end [--node <selector> ...] [--any|--all]) [--timeout <duration>] [options]
 
 Wait until agents reach a state or finish a turn
 
-Waits without sending any input. A state that already holds counts immediately, so after "agent prompt" use --until idle: it returns as soon as the turn has ended, even if it ended before you started waiting. idle never accepts an unknown or degraded state.
+Waits without sending any input. A state that already holds counts immediately. idle never accepts an unknown or degraded state. After "agent prompt", save turnId and use --turn <turnId> to wait for that exact turn, even if a newer turn has started.
+
+--turn requires one node and conflicts with --until, multiple --node options and --any. It waits through permission/question pauses within that turn. Returns {nodeId, sessionId, turnId, outcome, endedAt?, state}; every ended outcome exits 0, including failed, aborted and unknown. Read outcome before claiming success. Unknown/evicted turns or restart without retained evidence exit 1; inspect agent get.
+
+Local history retains only the last 8 ended turns per incarnation. For remote agents, --turn uses mirrored snapshots/events; older turns can only be checked on the Worker that runs them. Missing remote history reports details.reason: remote_history_unavailable, not eviction.
+
+Waits follow each node’s current session; a displaced session cannot satisfy a condition. Exact-turn errors keep their code and details.reason, include known nodeId/sessionId/turnId, and suggest concrete agent get, --screen or session final commands.
 
 --until turn-end waits for a turn to finish after this command starts; use it only when you start waiting while the turn is still running. A finished turn is not necessarily a successful one: check turnOutcome (or endedTurnOutcome for turn-end).
 
@@ -129,7 +135,8 @@ With several --node options, --all (default) waits until every agent matches and
 
 Options:
   --node <id>                             Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
-  --until <idle|waiting|exited|turn-end>  Condition to observe (required)
+  --until <idle|waiting|exited|turn-end>  Condition to observe
+  --turn <turnId>                         Exact OpenCove turn ID returned by agent prompt
   --any                                   Resolve when any selected node matches
   --all                                   Resolve when all selected nodes match (default)
   --timeout <duration>                    Overall wait budget, e.g. 30s, 2m or 20000ms (default: 20s; minimum: 250ms)
@@ -139,13 +146,14 @@ Options:
 List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
 
 Table output (-o table): not supported.
-Projectable fields: nodeId, sessionId, provider, state, blockedReason, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome, endedTurn, endedTurn.id, endedTurn.startedAt, endedTurn.start, endedTurnOutcome
+Projectable fields: nodeId, sessionId, provider, state, blockedReason, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome, lastEndedTurn, lastEndedTurn.id, lastEndedTurn.outcome, lastEndedTurn.endedAt, endedTurn, endedTurn.id, endedTurn.startedAt, endedTurn.start, endedTurnOutcome, turnId, outcome, endedAt
 
 Projection example:
   opencove agent wait --node node-123 --until idle --fields nodeId,state
   {"until":"idle","mode":"all","agents":[{"nodeId":"node-123","state":"idle"}]}
 
 Examples:
+  opencove agent wait --node node-123 --turn turn-123 --timeout 2m
   opencove agent wait --node "Reviewer" --until idle --timeout 2m
   opencove agent wait --node node-123 --node node-456 --until waiting --any --timeout 30s
 
@@ -170,12 +178,12 @@ exports[`explains session.transcript_not_ready and next steps 1`] = `
 `;
 
 exports[`gets a snapshot plus title and supports @self 1`] = `
-"{"sessionId":"session-123456","nodeId":"node-123456","provider":"claude-code","state":"working","blockedReason":null,"turn":{"id":"turn","startedAt":10,"start":"observed"},"lastTransitionAt":10,"source":"claude_hook","quality":"authoritative","turnOutcome":null,"title":"Shell"}
+"{"sessionId":"session-123456","nodeId":"node-123456","provider":"claude-code","state":"working","blockedReason":null,"turn":{"id":"turn","startedAt":10,"start":"observed"},"lastTransitionAt":10,"source":"claude_hook","quality":"authoritative","turnOutcome":null,"lastEndedTurn":null,"title":"Shell"}
 "
 `;
 
 exports[`lists titles and defaults to the caller space, preserving the cursor envelope 1`] = `
-"{"epoch":"e","seq":5,"agents":[{"sessionId":"session-123456","nodeId":"node-123456","provider":"claude-code","state":"working","blockedReason":null,"turn":{"id":"turn","startedAt":10,"start":"observed"},"lastTransitionAt":10,"source":"claude_hook","quality":"authoritative","turnOutcome":null,"title":"Shell"}]}
+"{"epoch":"e","seq":5,"agents":[{"sessionId":"session-123456","nodeId":"node-123456","provider":"claude-code","state":"working","blockedReason":null,"turn":{"id":"turn","startedAt":10,"start":"observed"},"lastTransitionAt":10,"source":"claude_hook","quality":"authoritative","turnOutcome":null,"lastEndedTurn":null,"title":"Shell"}]}
 "
 `;
 
@@ -185,7 +193,7 @@ exports[`preserves structured results for -o json and --fields 1`] = `
 `;
 
 exports[`prints final wait snapshots with a projectable ended outcome 1`] = `
-"{"until":"idle","mode":"all","agents":[{"sessionId":"session-123456","nodeId":"node-123456","provider":"claude-code","state":"idle","blockedReason":null,"turn":null,"lastTransitionAt":10,"source":"claude_hook","quality":"authoritative","turnOutcome":null}]}
+"{"until":"idle","mode":"all","agents":[{"sessionId":"session-123456","nodeId":"node-123456","provider":"claude-code","state":"idle","blockedReason":null,"turn":null,"lastTransitionAt":10,"source":"claude_hook","quality":"authoritative","turnOutcome":null,"lastEndedTurn":null}]}
 "
 `;
 

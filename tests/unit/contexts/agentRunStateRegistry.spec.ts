@@ -104,6 +104,7 @@ describe('AgentRunState domain', () => {
     f.observe()
     f.observe({ state: 'idle', boundary: end })
     expect(f.get().turn).toBeNull()
+    expect(f.get().lastEndedTurn).toBeNull()
     expect(events.some(e => e.type === 'agent.turn_completed')).toBe(false)
   })
   it.each(['prompt_submit', 'task_started', 'agent_start', 'busy'] as const)(
@@ -123,9 +124,32 @@ describe('AgentRunState domain', () => {
       const f = fixture()
       f.observe({ boundary: start })
       f.observe({ state: 'idle', boundary: { kind: 'end', outcome } })
-      expect(f.get()).toMatchObject({ turn: null, turnOutcome: outcome })
+      expect(() => f.registry.finalMessage({ sessionId: 's', turnId: 'turn-1' })).toThrow(
+        expect.objectContaining({
+          details: { reason: 'provider_sent_no_message', outcome, endedAt: 120 },
+        }),
+      )
+      expect(f.get()).toMatchObject({
+        turn: null,
+        turnOutcome: outcome,
+        lastEndedTurn: { id: 'turn-1', outcome, endedAt: 120 },
+      })
     },
   )
+  it('retains the last ended identity when the next turn starts, and clears on replacement', () => {
+    const f = fixture()
+    f.observe({ boundary: start })
+    f.observe({ state: 'idle', boundary: end })
+    const lastEndedTurn = { id: 'turn-1', outcome: 'completed', endedAt: 120 }
+    expect(f.get().lastEndedTurn).toEqual(lastEndedTurn)
+    f.observe({ boundary: start })
+    expect(f.get()).toMatchObject({ turn: { id: 'turn-2' }, turnOutcome: null, lastEndedTurn })
+    f.observe({ state: 'unknown', degraded: true })
+    expect(f.get().lastEndedTurn).toEqual(lastEndedTurn)
+    f.registry.register({ sessionId: 's', provider: 'codex', incarnation: 'next' })
+    expect(f.get().lastEndedTurn).toBeNull()
+    f.registry.dispose()
+  })
   it('rejects duplicate, out-of-order, wrong-incarnation and post-exit observations', () => {
     const f = fixture()
     f.observe({ boundary: start, observedAt: 200 })
@@ -139,7 +163,12 @@ describe('AgentRunState domain', () => {
     }
     expect(f.get()).toEqual(baseline)
     f.observe({ source: 'exit', state: 'exited' })
-    expect(f.get()).toMatchObject({ state: 'exited', turn: null, turnOutcome: 'unknown' })
+    expect(f.get()).toMatchObject({
+      state: 'exited',
+      turn: null,
+      turnOutcome: 'unknown',
+      lastEndedTurn: { id: 'turn-1', outcome: 'unknown' },
+    })
     f.observe({ boundary: start, observedAt: 1000 })
     expect(f.get().state).toBe('exited')
   })
@@ -162,6 +191,15 @@ describe('AgentRunState domain', () => {
     f.observe({ source: 'session_file', state: 'idle', observedAt: 500, boundary: end })
     f.observe({ source: 'codex_hook', state: 'working', observedAt: 400, boundary: start })
     expect(f.get().turn).toBeNull()
+  })
+  it('records an inferred file end without manufacturing one from a baseline', () => {
+    const f = fixture()
+    f.observe({ source: 'session_file', state: 'idle' })
+    expect(f.get().lastEndedTurn).toBeNull()
+    f.observe({ source: 'session_file', state: 'working' })
+    f.observe({ source: 'session_file', state: 'idle' })
+    expect(f.get().lastEndedTurn).toEqual({ id: 'turn-1', outcome: 'completed', endedAt: 130 })
+    f.registry.dispose()
   })
   it('records inferred starts and never mutates its input model', () => {
     const model = createAgentRunModel({
@@ -205,7 +243,10 @@ describe('AgentRunStateRegistry', () => {
         type: 'agent.turn_completed',
         seq: 4,
         endedTurn: { id: 'turn-1' },
-        snapshot: { turnOutcome: 'completed' },
+        snapshot: {
+          turnOutcome: 'completed',
+          lastEndedTurn: { id: 'turn-1', outcome: 'completed', endedAt: 120 },
+        },
       },
     ])
     unsubscribe()

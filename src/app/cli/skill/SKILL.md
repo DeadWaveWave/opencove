@@ -82,7 +82,7 @@ opencove agent list -o table
 opencove agent get --node agent-123
 opencove agent read --node agent-123 --screen
 opencove agent prompt --node agent-123 --text-file ./assignment.txt --timeout 20s
-opencove agent wait --node agent-123 --until idle --timeout 10m
+opencove agent wait --node agent-123 --turn turn-123 --timeout 10m
 opencove agent read --node agent-123 --turn turn-123
 opencove agent read --node agent-123 --turn turn-123 -o json
 ```
@@ -93,7 +93,7 @@ lifecycle hooks, after an observed finished turn. Agents typed into a terminal a
 agent windows started with a custom executable path are refused.
 Newly opened/resumed sessions may need a completed turn first.
 Save the successful prompt's `turnId` (replace `turn-123` above). The normal loop is
-prompt → wait `--until idle` → read `--turn <turnId>`.
+prompt (save turnId) → wait `--turn <turnId>` → read `--turn <turnId>`.
 A successful prompt reports `textComparison`: `matched` means Claude Code's reported
 text equals what you sent (newlines and trailing spaces aside); `different` (for
 example a draft was submitted with it) still exits 0 but means stop, inspect with
@@ -137,11 +137,17 @@ or Worker restart also leaves a potentially submitted prompt: do not resend.
 `pasteDispatchAttempted` and `submitDispatchAttempted` describe attempts, not receipt.
 Missing flags do not mean false. A deadline preserves the phase and attempt flags.
 
-Wait never sends input. After a prompt, wait `--until idle`: a state that already
-holds counts, so it returns even if the turn finished before you started waiting.
-Unknown or degraded never counts as idle. Use `--until turn-end` only when you start
-waiting while a turn is still running. A finished turn is not a successful one:
-check `turnOutcome` (completed, failed, aborted or unknown) before claiming success.
+Wait never sends input. After a prompt, save `turnId` and wait `--turn <turnId>`.
+This selects that exact end, even if a newer turn starts, and keeps waiting during
+permission/question pauses. It returns `{nodeId, sessionId, turnId, outcome, endedAt?, state}`;
+all ended outcomes exit 0. Check `outcome` (completed, failed, aborted or unknown).
+`--turn` requires exactly one node and conflicts with `--until`, multiple nodes and
+`--any`. Unknown/evicted turns or restart without retained evidence exit 1; inspect
+`agent get`. Its `lastEndedTurn` identifies the latest end and persists during the
+next turn; replacement/restart clears it. Older Workers omit it; events/history
+remain usable. History fallback requires interact scope.
+For node-level state waits, a state that already holds counts immediately; unknown
+or degraded never counts as idle. `--until turn-end` observes a subsequent end.
 Default is `--all`, timeout 20s; minimum is 250ms (smaller budgets exit 2 before
 connection/target lookup). Set `--timeout` for real work.
 Live list excludes exited sessions; inspect a known exited node with get or wait.
@@ -152,12 +158,14 @@ opencove agent wait --node agent-123 --node agent-456 --until idle --all --timeo
 opencove agent get --node agent-123 --fields state,quality,turnOutcome
 ```
 
-Wait prints all selected snapshots; timeout prints lastKnown on stderr, stdout empty.
+State waits print all selected snapshots; exact-turn waits print one result. Timeout prints lastKnown on stderr, stdout empty.
 Ctrl-C exits 130 and closes subscriptions. It never stops the target agent.
 Read tries the latest ended turn's `agent.finalMessage` first. `--turn <turnId>`
 selects exactly the OpenCove turn ID returned by prompt: no prefixes or fallback.
 Hook content, including an empty message, wins. History is private and in memory:
-last 8 ended turns per incarnation; restart/replacement clears it. Hook messages
+last 8 ended turns per incarnation; restart/replacement clears it. Remote exact waits use only mirrored
+snapshots/events. Older remote turns require the Worker that runs them;
+`details.reason: remote_history_unavailable` identifies this limit, not eviction. Hook messages
 currently require correlated local Claude hooks. A finished turn may have failed;
 check JSON `outcome` before claiming success.
 
@@ -184,7 +192,7 @@ cache a discovered transcript identity.
 
 ## Exit codes and useful output
 
-- 0: success (check turnOutcome or endedTurnOutcome; a turn boundary alone does not mean successful work).
+- 0: success (check outcome, turnOutcome or endedTurnOutcome; a turn boundary alone does not mean successful work).
 - 1: operation refused/failed or prompt delivery unconfirmed.
 - 2: invalid arguments; use command `--help`.
 - 3: connection unavailable; check endpoint and authorized Worker.

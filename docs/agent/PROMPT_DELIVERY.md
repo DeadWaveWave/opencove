@@ -16,7 +16,7 @@ in its terminal before this command can be used.
 The command attempts one bracketed paste into the current editor. If the paste reaches the editor and Enter submits it, any existing draft is
 submitted too. Check for drafts and dialogs with
 `opencove agent read --node <selector> --screen` before sending a prompt.
-After a successful prompt, use `opencove agent wait --node <selector> --until idle`,
+After a successful prompt, save its `turnId` and use `opencove agent wait --node <selector> --turn <turnId>`,
 then read its final message.
 
 ## Supported agent windows
@@ -294,15 +294,27 @@ Retain `turnId` from the successful prompt response:
 
 ```sh
 opencove agent prompt --node node-123 --text "Review the changes"
-opencove agent wait --node node-123 --until idle --timeout 60s
+opencove agent wait --node node-123 --turn turn-123 --timeout 60s
 opencove agent read --node node-123 --turn <turnId>
 ```
 
-`wait --until idle` requires non-degraded idle, but does not select a turn or prove
-success. `read --turn` selects that exact OpenCove turn and never substitutes a
-transcript message. Another turn can start or finish between these commands; use
-the returned outcome (`completed`, `failed`, `aborted`, `unknown`). History may be
-evicted between waiting and reading. There is no `wait --turn` in this cut.
+Replace `turn-123` with prompt's saved `turnId`. `wait --turn` waits for that exact
+OpenCove turn, including permission/question pauses, even if another turn has started.
+It returns `{ nodeId, sessionId, turnId, outcome, endedAt?, state }` and exits 0 for
+every ended outcome (`completed`, `failed`, `aborted`, `unknown`); inspect `outcome`.
+`read --turn` selects the same turn and never substitutes a transcript message.
+History can be evicted between waiting and reading. An unknown/evicted turn or a
+restart without retained evidence makes waiting fail with exit 1 and an `agent get`
+hint. Timeout remains exit 124 with `lastKnown` on stderr. `--turn` requires one node
+and conflicts with `--until`, multiple nodes and `--any`.
+
+`lastEndedTurn` in the public snapshot retains the latest end's identity, outcome
+and time while a newer turn runs. Older Workers omit it; the CLI treats it as null
+and uses subscribed ended-turn events or local `agent.finalMessage` history when the turn
+is no longer active. A `provider_sent_no_message` response also proves an end and
+carries content-free `details.outcome` and `details.endedAt` (older Workers without
+outcome report unknown). History fallback uses the existing interact scope.
+`wait --until idle` remains available for node-level readiness, without selecting a turn.
 
 `agent.finalMessage` is an interact-scope query accepting exactly one of `nodeId`
 or `sessionId`, optionally exactly one of `turnId` or provider `promptId`. It returns
@@ -332,6 +344,12 @@ The generated relay reads at most 8 MiB. Above the 256 KiB POST budget it shrink
 escaping of both fields. Unshrinkable or over-hard-cap bodies retain the prior drop
 behavior. The receiver keeps its 256 KiB body limit; normalization separately bounds
 assistant content to 64 KiB UTF-8 at a code point boundary and preserves truncation.
+
+Remote exact waits use mirrored snapshots and events (the latest retained end),
+without routing history across Workers. When an older remote turn is no longer
+active or the mirrored `lastEndedTurn`, unavailable history reports
+`agent.wait_turn_unavailable` with `details.reason: remote_history_unavailable`.
+Check older remote turns on the Worker that runs the agent; this is not eviction.
 
 The executing Worker registry owns at most eight ended records and 512 KiB of message
 text per agent incarnation, evicting oldest whole records. Content is private memory,

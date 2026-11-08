@@ -43,7 +43,7 @@ and never resend or press Enter again because of the comparison. Refusals exit 1
 Usage errors exit 2. Local HTTP timeout exits 124; transport loss is outcome unknown.
 
 Inspect drafts and dialogs with `opencove agent read --node <selector> --screen`
-before sending. After success, use `opencove agent wait --node <selector> --until idle`,
+before sending. After success, save `turnId` and use `opencove agent wait --node <selector> --turn <turnId>`,
 then `opencove agent read --node <selector> --turn <turnId>` using the saved
 `turnId` from prompt. This exact read never falls back to a different turn or transcript. A human editor draft is submitted with the text; unobserved dialogs cannot be excluded.
 Submission observation means a token-authenticated UserPromptSubmit passed matching checks
@@ -68,18 +68,26 @@ the required lifecycle hooks; the running invocation's observation behavior is u
 
 ```sh
 opencove agent prompt --node node-123 --text-file ./prompt.txt
-opencove agent wait --node node-123 --until idle --timeout 2m
+opencove agent wait --node node-123 --turn turn-123 --timeout 2m
 opencove agent read --node node-123 --turn turn-123
 opencove agent read --node node-123 --turn turn-123 -o json
 ```
 
-Replace `turn-123` with prompt's returned `turnId`. Reading defaults to message text
+Replace `turn-123` with prompt's returned `turnId`. Exact waiting survives a newer
+turn starting and keeps waiting through permission/question pauses in the selected
+turn. It returns `{nodeId, sessionId, turnId, outcome, endedAt?, state}` and exits 0
+for every ended outcome; inspect `outcome`. Use one node, without `--until` or `--any`.
+Unknown/evicted turns or restart without retained evidence exit 1; inspect `agent get`
+and its `lastEndedTurn`. Timeout exits 124 with `lastKnown` on stderr. Older Workers
+without `lastEndedTurn` still work via events/history (history requires interact scope). Reading defaults to message text
 only, even when piped. JSON includes `source: 'hook' | 'transcript'` and `truncated`;
 hook results include `outcome`, which can be failed/aborted/unknown.
 `--turn` uses hook history only. `agent.final_message_unavailable` preserves its
 `details.reason`: `turn_not_ended`, `turn_not_found` (including eviction),
 `provider_sent_no_message`, or `no_ended_turn`. History keeps the last 8 ended turns
-per incarnation in memory; restart or replacement clears it. Correlated local
+per incarnation in memory; restart or replacement clears it. Remote exact waits use mirrored
+snapshots/events only. Older remote turns require the Worker that runs them;
+`details.reason: remote_history_unavailable` identifies that limit, not eviction. Correlated local
 Claude hooks currently provide content. Never resend just because reading fails.
 
 Without `--turn`, read tries the latest hook end first and uses transcript fallback
@@ -88,3 +96,12 @@ hook messages. Present empty hook content is successful. A truncated hook messag
 prints one stderr notice pointing to `session final --session <sessionId>` for the
 provider transcript or `agent read --node <selector> --screen` to inspect the screen.
 The retained prefix remains the result; those paths may not contain the rest.
+
+Exact-read errors include a plain message and a concrete recovery hint while keeping
+`code` and `details.reason` unchanged. Known `nodeId`, `sessionId` and `turnId` are
+included in details. `turn_not_ended` suggests waiting for that exact turn;
+`turn_not_found` means it is not in the session's last eight ended turns (eviction,
+a different session, or restart) and suggests `agent get`. Message-free, absent
+ended-history, and remote-history errors point to `--screen` or `session final`;
+inspect older remote turns on the Worker that runs the agent. Waiting follows the
+node's current session and ignores displaced-session state.

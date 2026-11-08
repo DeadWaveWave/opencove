@@ -318,7 +318,21 @@ test.describe('agent.prompt with the real Claude Code CLI', () => {
       await expect.poll(() => api.main().length, { timeout: 30_000 }).toBe(2)
       // One submission whose user message carries the three lines as one exact text block.
       expect(api.main()[1]).toContain(text)
-      await expect.poll(async () => (await snapshot()).state, { timeout: 30_000 }).toBe('idle')
+      // Wait for exactly the turn this prompt started, as an orchestrating agent would.
+      const turnId = JSON.parse(delivered.stdout).turnId
+      const waited = await cli(userDataDir, [
+        'agent',
+        'wait',
+        '--node',
+        nodeId,
+        '--turn',
+        turnId,
+        '--timeout',
+        '30s',
+      ])
+      expect(waited.exitCode, JSON.stringify(waited)).toBe(0)
+      expect(JSON.parse(waited.stdout)).toMatchObject({ nodeId, turnId, outcome: 'completed' })
+      expect((await snapshot()).lastEndedTurn).toMatchObject({ id: turnId, outcome: 'completed' })
       // The transcript lives under CLAUDE_CONFIG_DIR, not ~/.claude: the final message must still be found.
       const final = await window.evaluate(
         id =>
@@ -346,7 +360,32 @@ test.describe('agent.prompt with the real Claude Code CLI', () => {
       // A 300 KB reply still ends the turn (the Stop hook must not be dropped) and reads truncated.
       const long = await prompt(userDataDir, nodeId, 'LONG_REPLY please')
       expect(long.exitCode, JSON.stringify(long)).toBe(0)
-      await expect.poll(async () => (await snapshot()).state, { timeout: 30_000 }).toBe('idle')
+      const waitedLong = await cli(userDataDir, [
+        'agent',
+        'wait',
+        '--node',
+        nodeId,
+        '--turn',
+        JSON.parse(long.stdout).turnId,
+        '--timeout',
+        '30s',
+      ])
+      expect(waitedLong.exitCode, JSON.stringify(waitedLong)).toBe(0)
+      // The first turn is no longer the latest, but waiting for it still answers from history.
+      const waitedEarlier = await cli(userDataDir, [
+        'agent',
+        'wait',
+        '--node',
+        nodeId,
+        '--turn',
+        turnId,
+      ])
+      expect(waitedEarlier.exitCode, JSON.stringify(waitedEarlier)).toBe(0)
+      expect(JSON.parse(waitedEarlier.stdout)).toMatchObject({ turnId, outcome: 'completed' })
+      // State waits share the same ordered stream; an agent that already settled counts at once.
+      const settled = await cli(userDataDir, ['agent', 'wait', '--node', nodeId, '--until', 'idle'])
+      expect(settled.exitCode, JSON.stringify(settled)).toBe(0)
+      expect(JSON.parse(settled.stdout).agents[0]).toMatchObject({ nodeId, state: 'idle' })
       const readLong = await cli(userDataDir, [
         'agent',
         'read',

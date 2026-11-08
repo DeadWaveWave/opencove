@@ -17,16 +17,23 @@ Use the requested target ID and exactly one text source:
 opencove agent prompt --node node-123 --text-file ./prompt.txt --timeout 20s
 ```
 
-Save prompt's returned `turnId`. After success, use this loop (replace `turn-123`
+Save prompt's returned `turnId`. After success, save `turnId` and use this loop (replace `turn-123`
 with that ID):
 
 ```sh
-opencove agent wait --node node-123 --until idle --timeout 2m
+opencove agent wait --node node-123 --turn turn-123 --timeout 2m
 opencove agent read --node node-123 --turn turn-123
 ```
 
+Exact waiting returns the selected `turnId` and `outcome`, even if a newer turn has
+started; permission/question pauses keep it pending. All ended outcomes exit 0,
+so check `outcome`. It requires one node and conflicts with `--until` and `--any`.
+Unknown/evicted turns or restart without retained evidence exit 1: inspect `agent get`
+and its `lastEndedTurn`. Timeout exits 124 with `lastKnown` on stderr.
 The exact read never falls back. Hook history is private/in-memory, limited to the
-last 8 ended turns per incarnation; restart/replacement clears it. Currently
+last 8 ended turns per incarnation; restart/replacement clears it. Remote exact waits use only mirrored
+snapshots/events. Older remote turns require the Worker that runs them;
+`details.reason: remote_history_unavailable` identifies this limit, not eviction. Currently
 correlated local Claude hooks supply messages. Unqualified read alone can fall
 back to the transcript for `no_ended_turn` or `provider_sent_no_message`.
 Default stdout is message text only; `-o json` includes `source` and `truncated`.
