@@ -87,6 +87,14 @@ async function main() {
   const effectiveMode = providerInvocation?.mode ?? mode
   const resumeSessionId = providerInvocation?.resumeSessionId ?? positionalResumeSessionId
 
+  if (scenario === 'raw-late-first-output') {
+    // No banner or hooks: the first visible output must arrive after presentation attach.
+    await sleep(400)
+    process.stdout.write('late plain\r\n')
+    await sleep(120_000)
+    return
+  }
+
   process.stdout.write(`[opencove-test-agent] ${provider} ${effectiveMode} ${model}\n`)
 
   if (provider === 'codex' && effectiveMode === 'resume' && scenario === 'codex-active-writer') {

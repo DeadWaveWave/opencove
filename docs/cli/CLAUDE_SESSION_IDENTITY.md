@@ -13,6 +13,12 @@ node creation. The node persists this assigned ID as a verified binding. This
 verification establishes ownership; it does not claim that Claude has already
 written a transcript or successfully contacted a model.
 
+A verified binding does not make a window restored either. The terminal treats an
+agent as restored only when it was launched with `resume`, or when a legacy record
+has no launch mode. A `new` launch reveals its live output as soon as Claude
+prints anything, however late that first output arrives; only restored windows
+wait for output that matches their committed size.
+
 An explicit resume uses the existing ID with `--resume`. Managed resume without
 an ID is rejected; it must never turn into `--continue` and select the latest
 conversation in the directory. These rules do not change commands a user types

@@ -245,6 +245,18 @@ describe('terminal geometry commit helpers', () => {
     ).toBe(true)
   })
 
+  it('measures a new agent even when its session ID is already verified', () => {
+    expect(
+      shouldPreferMeasuredInitialGeometryCommit({
+        kind: 'agent',
+        isLiveSessionReattach: false,
+        suppressPtyResize: false,
+        agentResumeSessionIdVerified: true,
+        agentLaunchMode: 'new',
+      }),
+    ).toBe(true)
+  })
+
   it.each(['terminal', 'agent'])('keeps canonical geometry when rebuilding a %s renderer', kind => {
     for (const isLiveSessionReattach of [false, true]) {
       expect(
