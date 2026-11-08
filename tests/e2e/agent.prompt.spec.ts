@@ -130,9 +130,10 @@ test.describe('agent.prompt from a canvas terminal', () => {
               { projectId: seededWorkspaceId, command: cliCommand },
             )
             const canvasTerminal = window.locator(`[data-id="${terminal.node.id}"] .terminal-node`)
-            await expect(canvasTerminal).toContainText(
-              blocked ? 'agent.blocked' : 'submission_observed',
-            )
+            // The CLI prints compact JSON that the terminal wraps at its width (a word can be split).
+            await expect
+              .poll(async () => (await canvasTerminal.innerText()).replace(/\s+/g, ''))
+              .toContain(blocked ? 'agent.blocked' : '"phase":"submission_observed"')
             const after = (await readFile(record, 'utf8'))
               .trim()
               .split('\n')
@@ -143,7 +144,6 @@ test.describe('agent.prompt from a canvas terminal', () => {
               expect(after.some(entry => entry.kind === 'dialog_bytes')).toBe(false)
               expect((await snapshot()).blockedReason).toBe('permission')
             } else {
-              // The CLI prints compact JSON that the terminal wraps at its width.
               await expect
                 .poll(async () => (await canvasTerminal.innerText()).replace(/\s+/g, ''))
                 .toContain(
