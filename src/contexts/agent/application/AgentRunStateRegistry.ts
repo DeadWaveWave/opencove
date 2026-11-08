@@ -1,3 +1,4 @@
+import { AgentSubmissionEvidence } from './AgentSubmissionEvidence'
 import { ClaudeTurnContinuation } from './ClaudeTurnContinuation'
 import { commitAgentRunUpdate } from './AgentRunStateUpdate'
 import type { ClaudeTranscriptObservation } from '../../../shared/runtime/agentHook/claudeTranscript'
@@ -5,6 +6,7 @@ import { AgentTurnHistory, type FinalMessageSelector } from './AgentTurnHistory'
 import type { PromptSubmissionEvidence } from '../../../shared/runtime/agentHook/claudePromptEvidence'
 import {
   projectRunStateFence,
+  readRunPromptIdentity,
   claimRunNodeBinding,
   publishRunTransition,
   readRunFinalMessage,
@@ -50,6 +52,7 @@ export class AgentRunStateRegistry {
   onDispose(listener: () => void): void {
     this.disposeListeners.add(listener)
   }
+  private readonly submissionEvidence = new AgentSubmissionEvidence()
   private readonly fences = new AgentRunStateFences()
   private tokenSequence = 0
   private readonly entries = new Map<string, Entry>()
@@ -77,7 +80,6 @@ export class AgentRunStateRegistry {
       throw new Error('Agent event retention must be a positive integer')
     }
   }
-
   register(
     input: Omit<Parameters<typeof createAgentRunModel>[0], 'now'> & {
       projectId?: string
@@ -119,7 +121,6 @@ export class AgentRunStateRegistry {
     this.notifyFence(entry)
     this.flushDelivery()
   }
-
   private binding(entry: Entry): Binding {
     return {
       nodeId: entry.model.snapshot.nodeId,
@@ -127,7 +128,6 @@ export class AgentRunStateRegistry {
       spaceId: entry.spaceId,
     }
   }
-
   bind(
     sessionId: string,
     binding: { nodeId: string | null; projectId?: string; spaceId?: string },
@@ -155,7 +155,6 @@ export class AgentRunStateRegistry {
     this.notifyFence(entry)
     this.flushDelivery()
   }
-
   mirror(
     sessionId: string,
     snapshot: AgentRunSnapshot,
@@ -180,7 +179,6 @@ export class AgentRunStateRegistry {
       flush: () => this.flushDelivery(),
     })
   }
-
   observe(
     sessionId: string,
     observation: AgentRunObservation,
@@ -192,7 +190,6 @@ export class AgentRunStateRegistry {
     }
     this.update(entry, observation, evidence)
   }
-
   observeClaudeTranscript(
     sessionId: string,
     incarnation: string,
@@ -205,7 +202,6 @@ export class AgentRunStateRegistry {
     entry.continuation.transcript(record, entry.history, this.ports.now())
     this.update(entry, null)
   }
-
   private update(
     entry: Entry,
     observation: AgentRunObservation | null,
@@ -218,10 +214,14 @@ export class AgentRunStateRegistry {
       update: () => this.update(entry, null),
       publish: (...args) => this.publish(...args),
       notify: receipt => this.notifyFence(entry, receipt),
+      notifyEvidence: receipt =>
+        this.submissionEvidence.emit(entry.model.snapshot.sessionId, {
+          ...receipt,
+          fence: this.readFence({ sessionId: entry.model.snapshot.sessionId }),
+        }),
       flush: () => this.flushDelivery(),
     })
   }
-
   finalMessage(input: ({ sessionId: string } | { nodeId: string }) & FinalMessageSelector) {
     const entry =
       'sessionId' in input ? this.entries.get(input.sessionId) : this.nodeBindings.get(input.nodeId)
@@ -253,6 +253,20 @@ export class AgentRunStateRegistry {
       listener,
     )
   }
+  promptIdentity(fence: RunStateFence) {
+    return readRunPromptIdentity(
+      this.entries.get(fence.snapshot.sessionId),
+      fence,
+      this.ports.epoch,
+    )
+  }
+  watchSubmissionEvidence(
+    fence: RunStateFence,
+    listener: (receipt: RunStateReceipt) => void,
+  ): () => void {
+    return this.submissionEvidence.watch(fence, listener)
+  }
+
   setRuntimeContext(
     sessionId: string,
     context: Pick<Entry, 'remote' | 'launchKind' | 'hookCoverage' | 'hookInstallState'>,
@@ -413,6 +427,7 @@ export class AgentRunStateRegistry {
     }
     this.disposeListeners.clear()
     this.fences.dispose()
+    this.submissionEvidence.dispose()
     this.subscribers.clear()
     for (const entry of this.entries.values()) {
       entry.cancelExpiry?.()

@@ -44,7 +44,13 @@ function fixture(error?: unknown, result: Record<string, unknown> = {}) {
     readTextFile: vi.fn(async () => 'one\ntwo'),
     readStdinText: vi.fn(async () => 'stdin\ntext'),
   }
-  return { io, fetch, rawError: () => err, out: () => out, err: () => JSON.parse(err).error }
+  return {
+    io,
+    fetch,
+    rawError: () => err,
+    out: () => out,
+    err: () => JSON.parse(err.trim().split('\n').at(-1)!).error,
+  }
 }
 it.each([
   ['--text', 'literal'],
@@ -127,7 +133,7 @@ it.each([
     tty.io.stderr.isTTY = true
     expect(await run(['agent', 'prompt', '--node', 'n', '--text', 'hello'], tty.io)).toBe(1)
     expect(tty.rawError()).toBe(
-      `error[${code}]: ${message}\n  paste attempted: yes; Enter attempted: ${submitted ? 'yes' : 'no'}. ${submitted ? 'Submission is unconfirmed.' : 'Text may be in the editor.'}\n  hint: ${hint}\n`,
+      `This Worker cannot steer; busy refusal remains unchanged.\nerror[${code}]: ${message}\n  paste attempted: yes; Enter attempted: ${submitted ? 'yes' : 'no'}. ${submitted ? 'Submission is unconfirmed.' : 'Text may be in the editor.'}\n  hint: ${hint}\n`,
     )
   },
 )
@@ -150,7 +156,7 @@ it.each([false, true])(
     ).toBe(0)
     expect(f.out()).toContain('d')
     expect(f.rawError()).toBe(
-      'Claude Code reported a submitted prompt whose text differs from what you sent — an existing draft may have been included. Do not resend; check the agent with `opencove agent read --node n --screen`.\n',
+      'This Worker cannot steer; busy refusal remains unchanged.\nThe submitted text differed from what you sent; an existing draft may have been included. Do not resend; inspect the screen.\n',
     )
     expect(f.fetch).toHaveBeenCalledTimes(1)
   },
@@ -183,7 +189,7 @@ it.each(['matched', 'unavailable'])(
       comparisonProfile: 'claude-code-v1',
       promptId: 'provider-id',
     })
-    expect(f.rawError()).toBe('')
+    expect(f.rawError()).toBe('This Worker cannot steer; busy refusal remains unchanged.\n')
   },
 )
 
@@ -209,3 +215,14 @@ it.each([false, true])(
     }
   },
 )
+
+it('sends --expect-turn through negotiated CLI input without dropping the guard', async () => {
+  const f = fixture()
+  expect(
+    await run(['agent', 'prompt', '--node', 'n', '--text', 'steer', '--expect-turn', 'turn'], f.io),
+  ).toBe(0)
+  expect(JSON.parse(String(f.fetch.mock.calls[0][1].body)).payload).toMatchObject({
+    expectTurnId: 'turn',
+    whenBusy: 'steer',
+  })
+})

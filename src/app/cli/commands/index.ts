@@ -1,3 +1,4 @@
+import { agentDeliveryCommand } from './agentDelivery'
 import { agentPromptCommand } from './agent'
 import { agentQueryCommands } from './agentQueries'
 import { skillCommand } from '../skill/command'
@@ -22,6 +23,7 @@ import { nodeCommands, stringOption } from './nodes'
 export const commands: Command[] = [
   ...identityCommands,
   agentPromptCommand,
+  agentDeliveryCommand,
   ...agentQueryCommands,
   skillCommand,
   ...nodeCommands,

@@ -9,8 +9,8 @@ opencove agent prompt --node node-123 --text-file ./prompt.txt --timeout 20s
 cat prompt.txt | opencove agent prompt --node node-123 --text-file -
 ```
 
-Use exactly one of `--text` or `--text-file`. The agent must have finished a turn
-that OpenCove observed. A newly opened or resumed session may need a turn completed
+Use exactly one of `--text` or `--text-file`. Idle agents must have finished a turn
+that OpenCove observed; authoritative working agents accept steering in the current turn. A newly opened or resumed session may need a turn completed
 in its terminal before this command can be used.
 
 The command attempts one bracketed paste into the current editor. If the paste reaches the editor and Enter submits it, any existing draft is
@@ -54,7 +54,7 @@ configuration is modified to force hooks on.
 | Claude Code         | Installed lifecycle hooks, `hookCoverage: lifecycle`                                      | Selected reliable `claude_hook` Stop or StopFailure; `claude_hook` UserPromptSubmit receipt |
 | Codex (macOS/Linux) | Trusted lifecycle hook configuration actually passed at launch, `hookCoverage: lifecycle` | Selected reliable `codex_hook` Stop; `codex_hook` UserPromptSubmit receipt                  |
 
-Both require idle with no active turn and bracketed paste enabled. `installed` alone
+Both require bracketed paste and authoritative lifecycle observations. Idle admission requires a completed turn; working admission requires whenBusy: steer and an active turn. `installed` alone
 is insufficient. Trust resolution failure leaves Codex with `notify_only` coverage;
 notify cannot observe submissions or permission requests. Daemon reuse (`skipped`),
 Windows (`not_required`, session files), no hooks (`none`), and file-only readiness
@@ -91,7 +91,7 @@ A successful result contains:
 OpenCove received a token-authenticated UserPromptSubmit with a range-checked,
 caller-supplied relay timestamp at or after the pre-Enter boundary, and matching
 source/sequence/identity checks described below.
-`phase` always stays `submission_observed`. `textComparison` describes only the
+`phase` is `submission_observed` for a receipt, or `dispatched` for a Codex steer awaiting consumption. `textComparison` describes only the
 hook's submitted text evidence:
 
 - `matched`: both private digests are present and equal under `claude-code-v1`.
@@ -122,7 +122,7 @@ Equality is not proof of causation or model processing: another qualifying submi
 of identical text also matches, and another hook may block processing after this
 observation. Nor does it prove the turn finished. Use `agent.turn_completed`
 separately to observe an outcome. Public events contain no prompt ID or message text.
-There is no delivery-status store or idempotency key.
+The Worker retains volatile delivery records; the CLI ID is a lookup key, never a resend/idempotency authorization.
 
 On `different`, **stop automatic orchestration**, retain the delivery, session, turn
 and optional prompt identifiers, and inspect the terminal/conversation with
@@ -130,14 +130,14 @@ and optional prompt identifiers, and inspect the terminal/conversation with
 correct or cancel. **Never resend, clear the editor, press Enter again or cancel a
 running turn automatically because of the comparison.** The CLI notice is:
 
-> Claude Code reported a submitted prompt whose text differs from what you sent — an existing draft may have been included. Do not resend; check the agent with `opencove agent read --node … --screen`.
+> The submitted text differed from what you sent; an existing draft may have been included. Do not resend; inspect the screen.
 
 ## When nothing is sent
 
 | Condition                                                       | Error                                                         | Next step                                                                                              |
 | --------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | The agent is waiting for input, even when the reason is unknown | `agent.blocked`                                               | Resolve the dialog in the terminal.                                                                    |
-| The agent is working                                            | `agent.busy` / `working`                                      | Wait for the turn to finish.                                                                           |
+| The agent is working and whenBusy is absent/refuse              | `agent.busy` / `working`                                      | Wait for the turn to finish.                                                                           |
 | Another delivery is in progress                                 | `agent.busy` / `delivery_in_progress`                         | Wait for that delivery's result before deciding whether another is needed.                             |
 | OpenCove has not observed a completed turn                      | `agent.state_unknown` / `readiness_unobserved`                | Complete a turn in the terminal first.                                                                 |
 | Hook observations are unavailable or unreliable                 | `agent.state_unknown` / `observation_degraded`                | Check the hook setup and wait for a reliably observed turn end.                                        |
@@ -170,7 +170,7 @@ not confirmed receipt by the terminal. Validation errors and transport failures
 may not contain those details. Never infer false flags from missing fields.
 
 The CLI returns 0 for every observed submission, including `different` and
-`unavailable`. It returns 1 for a refusal or unconfirmed delivery, 2 for invalid input, 124
+`unavailable`, and for Codex `dispatched` steering (not confirmation). It returns 1 for a refusal or unconfirmed delivery, 2 for invalid input, 124
 for the overall deadline, and 130 for interruption. A deadline after a paste or
 Enter attempt preserves that phase's error and attempt flags. The separate
 five-second submission-observation limit returns `agent.prompt_stalled`, exit 1,
@@ -200,7 +200,7 @@ Code version or platform.
 ## Input and timeout
 
 The Control Surface operation is `agent.prompt`, with exactly one of `nodeId` or
-`sessionId`, plus `text` and optional `timeoutMs`. The timeout defaults to 15000 ms
+`sessionId`, plus `text`, optional `timeoutMs`, `whenBusy: steer | refuse`, and a CLI-generated UUID `deliveryId`. The timeout defaults to 15000 ms
 and accepts integer values from 1 to 60000 ms.
 
 Text must be valid Unicode, nonblank, and at most 32768 UTF-8 bytes before
@@ -210,10 +210,9 @@ trailing newlines are removed. The entire text is sent as one bracketed paste.
 
 ## Submission-event checks and trust boundary
 
-A qualifying event must be an accepted, non-degraded `claude_hook` (Claude Code) or `codex_hook` (Codex)
+A qualifying event must be an incarnation-matched, non-degraded `claude_hook` (Claude Code) or `codex_hook` (Codex)
 `UserPromptSubmit` for the same Worker lifetime, agent incarnation and target
-binding, with a source sequence newer than the one captured before Enter and an
-assigned turn ID. Its `x-opencove-hook-emitted-at` value must be finite, within
+binding, with a source sequence newer than the one captured before Enter and a correlated turn identity (retained for late steer evidence). Its `x-opencove-hook-emitted-at` value must be finite, within
 60 seconds before to 2 seconds after the receiver's current wall clock, and no
 earlier numerically than the timestamp captured immediately before the Enter write.
 
@@ -244,18 +243,17 @@ string helper is used on prompt content. The digest is SHA-256 over UTF-8 of
 Raw hook prompt text is discarded during normalization; prompt correlation stores no prompt content beyond transient parsing/delivery buffers and never logs it. A relay-truncated prompt has no digest.
 
 The digest and prompt ID travel only through private, same-process channel metadata,
-runtime ingress and reducer-accepted internal fence receipts. They never enter public
+runtime ingress and private internal fence receipts. They never enter public
 run-state DTOs, SSE events or logs. PromptDeliveryService computes the expected digest
 from the delivered canonical text synchronously before the reserved input operation;
 comparison never changes receipt qualification or adds an await before Enter.
 There is no new durable state or restart reconstruction; metadata dies with its runtime.
 
-The Worker prompt service owns the in-memory delivery intent and one reservation
-per agent incarnation until settlement. The Hub owns the session input queue and
+The Worker prompt service owns volatile records and exclusive pre-Enter admission per incarnation. Unresolved attempts block later delivery except already-dispatched Codex steers. The Hub owns the session input queue and
 the writer valid within its reserved operation. The run-state registry owns
 observation sequences and identity generations; they are not public snapshot DTOs.
 
-Before paste, the service rechecks identity, caller authority, deadline, readiness
+Before paste and Enter, the service rechecks identity, caller authority, deadline, admission
 and bracketed-paste mode inside the reserved input operation. Readiness requires a
 retained selected, non-degraded Claude `Stop` or `StopFailure`, or Codex `Stop`
 turn-end receipt, current idle state from that source and no active turn. A later
@@ -265,9 +263,7 @@ readiness even without an observed turn start; it does not fabricate a completed
 event. New turns, lifecycle resets, unavailable observations and source changes revoke
 the receipt; another qualifying Stop is needed. A notify `done`, SessionEnd, launch baseline or file observation never establishes prompt readiness.
 
-Between paste and Enter, an accepted observation, identity change, loss of paste
-mode, caller revocation, shutdown or deadline permanently cancels the remaining
-write. Returning to idle does not undo cancellation. Both provider policies
+From watch registration through CR, including queue acquisition, unsafe admission/turn transitions latch cancellation. Inside the reservation, immediately before paste and CR, unresolved deliveries (excluding this record) and competing-input evidence are rechecked. Same-turn refreshes (including S1 provider-segment changes) are safe. A steer may downgrade to a new turn if its active turn ends at authoritative ready idle. Waiting, degradation, unrelated turn replacement/reset, identity change, capability loss, caller revocation, shutdown or deadline permanently cancel Enter. Returning to idle does not undo cancellation; a request without steer permission never gains it. Both provider policies
 waits 300 ms before Enter; this delay does not prove that every dialog has closed.
 
 Immediately before Enter, the service captures fresh source watermarks and the
@@ -337,7 +333,7 @@ boundary or dequeued into a new provider prompt without a start hook. While queu
 evidence is unresolved the first Stop is intermediate: no idle/readiness, completion
 event or final read. `wait --turn` includes provider continuations; `read --turn`
 returns the final post-queue reply. Same-ID submission receipts never clear a
-permission/question wait. This does not enable busy-state `agent prompt` admission.
+permission/question wait. Steering admission additionally requires the S2 policy and capability checks below.
 
 Unavailable or stale transcript evidence ends a stopped continuation as `unknown`,
 with state unknown/degraded and no readiness. Its retained reply is explicitly
@@ -405,3 +401,80 @@ the current binding; an old exited session can be queried explicitly until retir
 Replies may quote user content. Access uses the existing coarse interact scope, not
 a new project/target ACL; read-tier callers cannot retrieve this store. Remote hook
 history is unavailable; remote transcript retrieval remains the separate fallback.
+
+## Steering and delivery status
+
+The CLI negotiates `whenBusy` using `system.operation.describe` for `agent.prompt`
+(cached within the connection). With support, it sends `steer` by default; use
+`--if-busy refuse` to retain busy refusal. Without the described field, it sends
+neither `whenBusy` nor `deliveryId`, emits a capability notice, and preserves the
+older Worker's result. A specifically recognized unknown/unavailable describe operation also selects one legacy request; authorization, transport, interruption and unrelated validation errors stay errors. There is no retry-after-error path. Requests without
+`whenBusy` receive no new phases/statuses/error codes: unresolved-delivery refusal
+uses `agent.busy` / `delivery_in_progress` with additive lookup details.
+
+Claude steering confirms from a same-prompt-ID UserPromptSubmit for the captured
+provider session/incarnation after the pre-Enter fence. Text comparison never
+controls confirmation. These private receipts are independent of run-state
+acceptance: a same-ID or late submission may confirm a retained delivery without
+reopening an ended turn, clearing waiting, or granting readiness. A turn delivery
+uses a new prompt ID when a prior ID is known; any mapping to a turn already ended
+at the pre-Enter fence is rejected. Post-fence turn identity remains available for
+genuinely late receipts after that turn ends. S1 provider-segment changes retain
+the OpenCove turn; the pre-Enter identity is captured afresh.
+
+Codex steering returns `phase: dispatched`, `mode: steer`, exit 0. This means input
+was attempted, not consumed. Multiple outstanding steers are allowed. Consumption
+hooks confirm them once each in dispatch order within the same Codex turn, only
+while no other input bytes have reached that PTY since the earliest outstanding
+dispatch. Human/automation input makes outstanding records `ambiguous`; interrupt
+input (Esc/Ctrl-C), an ended or replaced turn leaves them `unknown`. Textless hooks
+never select a message out of order. Waiting is passive and releases the PTY queue
+immediately after CR; human input remains available. An uncertain CR write failure
+is unknown, never FIFO-eligible, and blocks further deliveries.
+
+```sh
+opencove agent prompt --node node-123 --text 'Focus on lifecycle cleanup'
+opencove agent delivery <deliveryId>
+opencove agent delivery <deliveryId> --wait --timeout 2m
+```
+
+The CLI generates and prints its UUID before sending. A lost HTTP response can be
+looked up with that ID on the executing Worker. `agent.delivery.get` requires
+interact scope. Its separate DTO has `pending | submitted | dispatched | ambiguous |
+not_sent | unknown`, `evidenceWindow: open | closed`, mode, containing turn ID,
+Worker epoch, incarnation, timestamps and evidence kind/time. No prompt text or
+digest is exposed. `not_sent` means this attempt wrote no CR; a pasted draft may
+remain. `submitted` means qualifying evidence; `dispatched` awaits consumption.
+evidenceWindow describes collecting delivery evidence, not the agent’s work; closed never proves completion or retry safety.
+
+Unresolved records are pinned. The Worker retains at most 32 records per session
+and 1024 globally; completed (`submitted`/`not_sent`) records evict first and expire
+30 minutes after settlement, using a private resolvedAt timestamp. Capacity refusal happens before bytes, with
+`agent.delivery_unsettled` (legacy: `agent.busy`) and delivery lookup guidance.
+Retirement or identity/binding loss disposes subscriptions while retaining the DTO.
+Caller deadlines/disconnects end only their waiter, while passive receipts can upgrade
+retained records within the existing 60-second relay trust window. The passive
+evidence window is two minutes; its end never establishes submission or
+non-submission. Queries do not extend it. Worker restart discards all records;
+unknown/expired/restarted IDs return `available: false, reason: unavailable`, never
+`not_sent`. IDs are unique among retained records; repeating one never retypes it.
+
+Delivery queries poll fresh evidence. Exit 0 means submitted (a confirmed dispatch);
+exit 1 means not_sent, ambiguous, unknown, unavailable, or a nonwaiting unconfirmed
+snapshot; `--wait` exits 124 at its deadline. A caller targeting its own session
+returns the current snapshot immediately even with `--wait`, to avoid blocking
+consumption. `dispatched` is not a confirmed result.
+
+Use prompt → delivery status → `wait --turn` = **the containing turn ended**
+(check outcome) → `read --turn`. Claude reply reads are correlated; Codex reply
+reads stay uncorrelated (use an unqualified read/screen). A containing turn ending
+does not prove a steer was handled. Never resend; check delivery status or the
+screen. Claude transcript-based reconciliation of uncertain deliveries is a known
+limit and remains out of scope; no transcript/rollout fallback confirms deliveries.
+
+`agent prompt --expect-turn <turnId>` negotiates the `expectTurnId` input field.
+It only steers that exact active working turn: idle or a different turn refuses
+before paste, with `agent.busy`, `reason: expected_turn_mismatch`, expectedTurnId and
+currentState details. The condition is checked again before CR; a later mismatch
+cancels Enter (`prompt_interrupted` if already pasted). Workers lacking this field
+refuse the option without any mutation. Without it, turn/steer behavior is unchanged.

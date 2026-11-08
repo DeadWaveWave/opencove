@@ -71,6 +71,7 @@ function fixture(provider: 'claude-code' | 'codex' = 'claude-code', ready = true
   const service = new PromptDeliveryService({
     runs,
     input: {
+      watchInputInvalidation: (_id, listener) => input.watchInvalidation(listener),
       withSessionInputOperation: async (_id, fn) => {
         if (queue) {
           return await new Promise(resolve => {
@@ -189,7 +190,6 @@ describe.each(['claude-code', 'codex'] as const)('PromptDeliveryService %s', pro
   })
   it.each([
     'waiting-idle',
-    'unchanged',
     'mode',
     'revocation',
     'replacement',

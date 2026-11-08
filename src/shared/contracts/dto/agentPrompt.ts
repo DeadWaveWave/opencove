@@ -6,7 +6,8 @@ export const agentPromptResultSchema = z
     deliveryId: z.string().min(1),
     nodeId: z.string().nullable(),
     sessionId: z.string().min(1),
-    phase: z.literal('submission_observed'),
+    phase: z.enum(['submission_observed', 'dispatched']),
+    mode: z.enum(['turn', 'steer']).optional(),
     turnId: z.string().min(1),
     textComparison: z
       .enum(['matched', 'different', 'unavailable'])

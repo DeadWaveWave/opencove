@@ -90,9 +90,12 @@ async function startResponsesApi(): Promise<{
   server: Server
   url: string
   main: () => string[][]
+  all: () => string[]
 }> {
   // Text blocks of the latest user message in each agent-loop request that starts a turn.
   const mainTurns: string[][] = []
+  // User text of every agent-loop request, including requests that resume after a tool call.
+  const allUserText: string[] = []
   const server = createServer(async (req, res) => {
     const chunks: Buffer[] = []
     for await (const chunk of req) {
@@ -111,6 +114,14 @@ async function startResponsesApi(): Promise<{
       if (isMain && !resumed) {
         mainTurns.push(blocks)
       }
+      if (isMain) {
+        allUserText.push(
+          (body.input ?? [])
+            .filter(item => item.type === 'message' && item.role === 'user')
+            .flatMap(item => (item.content ?? []).map(block => block.text ?? ''))
+            .join('\n'),
+        )
+      }
       respond(
         res,
         isMain && !resumed && blocks.some(block => block.includes('TRIGGER_TOOL')),
@@ -123,7 +134,12 @@ async function startResponsesApi(): Promise<{
   })
   await new Promise<void>(done => server.listen(0, '127.0.0.1', done))
   const { port } = server.address() as AddressInfo
-  return { server, url: `http://127.0.0.1:${port}/v1`, main: () => [...mainTurns] }
+  return {
+    server,
+    url: `http://127.0.0.1:${port}/v1`,
+    main: () => [...mainTurns],
+    all: () => [...allUserText],
+  }
 }
 
 // Drive delivery through the CLI with the desktop credential, as a script outside the app would.
@@ -149,6 +165,22 @@ async function prompt(userDataDir: string, nodeId: string, text: string) {
         }),
     )
     child.stdin?.end(text)
+  })
+}
+
+async function cli(userDataDir: string, args: string[]) {
+  return await new Promise<{ exitCode: number; stdout: string; stderr: string }>(done => {
+    execFile(
+      process.execPath,
+      [resolvePath('out/cli/opencove.mjs'), ...args],
+      { env: { ...process.env, OPENCOVE_USER_DATA_DIR: userDataDir }, timeout: 60_000 },
+      (error, stdout, stderr) =>
+        done({
+          exitCode: error ? Number((error as { code?: unknown }).code ?? 1) : 0,
+          stdout,
+          stderr,
+        }),
+    )
   })
 }
 
@@ -293,6 +325,33 @@ test.describe('agent.prompt with the real Codex CLI', () => {
       const duringSlowTurn = seen.filter(entry => entry.endsWith(`:${slowTurn}`))
       expect(duringSlowTurn.length).toBeGreaterThan(10)
       expect(duringSlowTurn.filter(entry => !entry.startsWith('working:'))).toEqual([])
+
+      // A prompt sent while Codex works is typed in as steering. Codex shows it queued and submits
+      // it after the running tool call, inside the same turn; the CLI reports it dispatched and the
+      // delivery record confirms it once Codex submits it.
+      const busy = await prompt(userDataDir, nodeId, 'SLOW_TOOL wait again')
+      expect(busy.exitCode, JSON.stringify(busy)).toBe(0)
+      const busyTurn = JSON.parse(busy.stdout).turnId
+      await expect.poll(async () => (await snapshot()).turn?.id, { timeout: 15_000 }).toBe(busyTurn)
+      await window.waitForTimeout(800)
+      const steer = await prompt(userDataDir, nodeId, 'Steer: also mention CHERRY')
+      expect(steer.exitCode, JSON.stringify(steer)).toBe(0)
+      const steered = JSON.parse(steer.stdout)
+      expect(steered).toMatchObject({ mode: 'steer', phase: 'dispatched', turnId: busyTurn })
+      const confirmed = await cli(userDataDir, [
+        'agent',
+        'delivery',
+        steered.deliveryId,
+        '--wait',
+        '--timeout',
+        '30s',
+      ])
+      expect(confirmed.exitCode, JSON.stringify(confirmed)).toBe(0)
+      expect(JSON.parse(confirmed.stdout)).toMatchObject({ status: 'submitted', turnId: busyTurn })
+      expect(api.all().some(userText => userText.includes('Steer: also mention CHERRY'))).toBe(true)
+      await expect
+        .poll(async () => (await snapshot()).lastEndedTurn?.id, { timeout: 30_000 })
+        .toBe(busyTurn)
 
       const tool = await prompt(userDataDir, nodeId, 'TRIGGER_TOOL run the probe')
       expect(tool.exitCode, JSON.stringify(tool)).toBe(0)

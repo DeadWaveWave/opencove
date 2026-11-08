@@ -16,11 +16,13 @@ export function promptDeliveryRuntimeFixture(
   },
   provider: 'claude-code' | 'codex' = 'claude-code',
   ready = true,
+  createTurnId?: () => string,
 ) {
+  let nextTurn = 0
   const registry = new AgentRunStateRegistry({
     epoch: 'worker',
     now: Date.now,
-    createTurnId: () => 'turn',
+    createTurnId: createTurnId ?? (() => (++nextTurn === 1 ? 'turn' : `turn-${nextTurn}`)),
     schedule,
   })
   const runtime = new AgentRunStateRuntime(registry, Date.now)
@@ -53,7 +55,14 @@ export function promptDeliveryRuntimeFixture(
       source: provider === 'codex' ? 'codex_hook' : 'claude_hook',
       hookEventName: name,
       hookInstallState: 'installed',
-      state: ['Stop', 'StopFailure', 'notify', 'Notification', 'SessionEnd'].includes(name)
+      state: [
+        'Stop',
+        'StopFailure',
+        'notify',
+        'Notification',
+        'SessionEnd',
+        'turn_aborted',
+      ].includes(name)
         ? 'standby'
         : name === 'PermissionRequest'
           ? 'waiting'

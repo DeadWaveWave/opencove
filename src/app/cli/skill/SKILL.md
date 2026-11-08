@@ -90,13 +90,13 @@ opencove agent read --node agent-123 --turn turn-123 -o json
 
 Prompt works only with **agent windows OpenCove launched** (from a task, the agent
 launcher or `node create agent`) running **Claude Code**, or **Codex** with its
-lifecycle hooks, after an observed finished turn. Agent windows started with a custom
+lifecycle hooks, at authoritative working state or after an observed finished turn. Agent windows started with a custom
 executable path are refused.
 Agents typed into a terminal cannot receive prompts because the shell would receive the input after the agent stops.
 Start an agent meant to receive prompts, such as a lead agent other agents report to, as an agent window using Run Agent on a task, the agent launcher, or `opencove node create agent --space <space> --prompt <text>`; it can still use the opencove CLI from there.
 Newly opened/resumed sessions may need a completed turn first.
 Save the successful prompt's `turnId` (replace `turn-123` above). The normal loop is
-prompt (save turnId) → wait `--turn <turnId>` → read `--turn <turnId>`.
+prompt (save deliveryId/turnId) → delivery status → wait `--turn <turnId>` (the containing turn ended; check outcome) → read `--turn <turnId>` (Claude correlated; Codex reply reads stay uncorrelated).
 A successful prompt reports `textComparison`: `matched` means Claude Code's reported
 text equals what you sent (newlines and trailing spaces aside); `different` (for
 example a draft was submitted with it) still exits 0 but means stop, inspect with
@@ -116,7 +116,7 @@ not exact text processing, causation, successful work, or turn completion.
 Refusals describe this call only; they do not cancel another delivery:
 
 - `agent.blocked`: waiting for input (reason may be null); human resolves the dialog.
-- `agent.busy` / `working`: wait for completion.
+- `agent.busy` / `working`: legacy Worker or `--if-busy refuse`; wait for completion.
 - `agent.busy` / `delivery_in_progress`: await that delivery's result before deciding.
 - `agent.state_unknown` / `readiness_unobserved`: finish a turn in the terminal first.
 - `agent.state_unknown` / `observation_degraded`: check hooks and await reliable evidence.
@@ -209,3 +209,38 @@ cache a discovered transcript identity.
 `-o table` works only where command help says supported.
 Do not stop Workers or delete nodes owned by someone else. Summarize actual work,
 remaining questions, failures and verification in the shared task/note.
+
+## Steering an existing turn
+
+`agent prompt` defaults to steering an authoritative working Claude Code or Codex
+agent; the message belongs to the current OpenCove turn. Use `--if-busy refuse` for
+busy refusal. The CLI checks `system.operation.describe` first; an older Worker
+without `whenBusy` receives no new fields, and busy refusal stays visible. No retry
+is made after an error. Waiting/dialogs and unknown/degraded states refuse.
+
+The CLI prints its generated deliveryId before sending; retain it even if the
+response is lost. Codex steering returns `dispatched`, exit 0, while awaiting
+consumption. Check `opencove agent delivery <id> --wait --timeout 2m` before treating
+it as submitted. Confirmation is in order only while no other PTY input intervenes;
+other input makes it ambiguous, and interruption/end can leave it unknown.
+Claude same-ID receipts confirm submission independently of run-state acceptance.
+textComparison never decides submission. The submitted text differed from what you
+sent; an existing draft may have been included. Do not resend; inspect the screen.
+
+The orchestration loop is prompt → delivery status → `wait --turn` = **the containing
+turn ended** (check outcome) → `read --turn` (Claude correlated; Codex reply reads
+stay uncorrelated). Turn end does not prove a steer was handled. `agent delivery`
+exits 0 for submitted, 1 for not_sent/ambiguous/unknown/unavailable or an unconfirmed
+snapshot, 124 for a wait timeout. Self-wait returns immediately so consumption can
+proceed. Unresolved records are pinned; capacity refuses before bytes. A closed evidenceWindow is not a result. Worker restart/expiry makes lookup unavailable, never
+proof of not_sent. A pasted draft may remain after not_sent (no CR).
+Late qualifying hooks can upgrade retained uncertainty within the existing 60 s
+trust window. Claude transcript-based reconciliation is out of scope, a known
+limit. Never resend; check delivery status or the screen.
+
+Use `agent prompt --expect-turn <turnId>` to steer only that exact active turn; idle or a changed turn refuses before paste and is checked again before Enter.
+The CLI negotiates `expectTurnId`; unsupported Workers refuse without writing.
+Without the option, an ended turn may become a new turn; `--if-busy refuse` still refuses working agents.
+`evidenceWindow: open | closed` describes collecting delivery evidence, not the agent's work; closed does not mean the containing turn finished.
+A completed turn means the agent stopped, not that your request was fulfilled — check the reply covers what you asked before marking work done.
+Scripts should read replies with `-o json`.

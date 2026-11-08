@@ -188,3 +188,42 @@ it('compares synchronous receipts during Enter without delaying or bypassing the
     f.dispose()
   }
 })
+
+it('late idle-turn receipt correlates after an un-timestamped start and an observed end', async () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(1000)
+  const f = promptDeliveryRuntimeFixture()
+  try {
+    const p = f.deliver()
+    const failed = expect(p).rejects.toMatchObject({ code: 'agent.prompt_stalled' })
+    await vi.advanceTimersByTimeAsync(300)
+    f.observe('UserPromptSubmit', undefined, { promptId: 'new', providerSessionId: 'provider' })
+    f.observe('Stop', Date.now(), { promptId: 'new', providerSessionId: 'provider' })
+    await vi.advanceTimersByTimeAsync(5000)
+    await failed
+    const before = f.registry.get({ nodeId: 'n' })
+    f.observe('UserPromptSubmit', Date.now(), { promptId: 'new', providerSessionId: 'provider' })
+    expect(f.service.get('d')).toMatchObject({ status: 'submitted', mode: 'turn', turnId: 'turn' })
+    expect(f.registry.get({ nodeId: 'n' })).toEqual(before)
+  } finally {
+    f.dispose()
+  }
+})
+
+it('idle delivery requires a new prompt ID rather than a replay of the last ended prompt', async () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(1000)
+  const f = promptDeliveryRuntimeFixture()
+  try {
+    f.observe('UserPromptSubmit', Date.now(), { promptId: 'prior', providerSessionId: 'provider' })
+    f.observe('Stop', Date.now(), { promptId: 'prior', providerSessionId: 'provider' })
+    const p = f.deliver()
+    await vi.advanceTimersByTimeAsync(300)
+    f.observe('UserPromptSubmit', Date.now(), { promptId: 'prior', providerSessionId: 'provider' })
+    expect(f.service.get('d')).toMatchObject({ status: 'pending' })
+    f.observe('UserPromptSubmit', Date.now(), { promptId: 'new', providerSessionId: 'provider' })
+    await expect(p).resolves.toMatchObject({ promptId: 'new' })
+  } finally {
+    f.dispose()
+  }
+})

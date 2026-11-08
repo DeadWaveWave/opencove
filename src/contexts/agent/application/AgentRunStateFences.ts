@@ -120,6 +120,8 @@ export function acceptedRunStateReceipt(
     emittedAtMs: observation.emittedAtMs,
     sourceSequence: observation.sourceSequence,
     turnId,
+    providerSessionId: evidence?.providerSessionId,
+    providerTurnId: evidence?.providerTurnId,
     ...(observation.source === 'claude_hook' && observation.hookEventName === 'UserPromptSubmit'
       ? { promptId: evidence?.promptId, promptDigest: evidence?.promptDigest }
       : {}),

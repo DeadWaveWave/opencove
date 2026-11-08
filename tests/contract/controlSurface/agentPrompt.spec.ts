@@ -2,7 +2,10 @@ import { agentPromptResultSchema } from '../../../src/shared/contracts/dto/agent
 import { sessionGrantAllowsOperation } from '../../../src/app/main/controlSurface/http/sessionGrantAuthorization'
 import { describe, expect, it, vi } from 'vitest'
 import * as z from 'zod'
-import { agentPromptOperation as op } from '../../../src/shared/contracts/controlSurface/operations/domains/agent'
+import {
+  agentDeliveryGetOperation,
+  agentPromptOperation as op,
+} from '../../../src/shared/contracts/controlSurface/operations/domains/agent'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import { registerAgentPromptHandlers } from '../../../src/app/main/controlSurface/handlers/agentPromptHandlers'
 import { PtyStreamHub } from '../../../src/app/main/controlSurface/ptyStream/ptyStreamHub'
@@ -123,4 +126,26 @@ it('declares bounded submission evidence without promising causation, completion
   ]) {
     expect(agentPromptResultSchema.safeParse({ ...base, ...extra }).success).toBe(false)
   }
+})
+
+it('negotiates steering and validates caller UUIDs; delivery lookup requires interact scope', () => {
+  expect(sessionGrantAllowsOperation(agentDeliveryGetOperation.id, 'interact')).toBe(true)
+  expect(sessionGrantAllowsOperation(agentDeliveryGetOperation.id, 'read')).toBe(false)
+  const valid = {
+    nodeId: 'n',
+    text: 'hello',
+    whenBusy: 'steer',
+    deliveryId: 'd0e2d356-aecf-4784-84ce-9a49c8ed0b78',
+  }
+  expect(op.input.safeParse(valid).success).toBe(true)
+  expect(op.input.safeParse({ ...valid, whenBusy: 'queue' }).success).toBe(false)
+  expect(op.input.safeParse({ ...valid, deliveryId: 'not-uuid' }).success).toBe(false)
+  expect(z.toJSONSchema(op.input).properties).toHaveProperty('whenBusy')
+})
+
+it('exports the negotiated exact-turn guard and rejects empty expectations', () => {
+  const base = { nodeId: 'n', text: 'steer', whenBusy: 'steer' }
+  expect(op.input.safeParse({ ...base, expectTurnId: 'turn' }).success).toBe(true)
+  expect(op.input.safeParse({ ...base, expectTurnId: '  ' }).success).toBe(false)
+  expect(z.toJSONSchema(op.input).properties).toHaveProperty('expectTurnId')
 })

@@ -54,7 +54,7 @@ function fixture(tty: boolean, error?: unknown) {
     fetch,
     output: () => output,
     text: () => diagnostic,
-    error: () => JSON.parse(diagnostic).error,
+    error: () => JSON.parse(diagnostic.trim().split('\n').at(-1)!).error,
   }
 }
 const args = ['agent', 'prompt', '--node', 'n', '--text', 'hello']

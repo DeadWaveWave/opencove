@@ -164,3 +164,14 @@ export function claimRunNodeBinding(
   })
   return () => ports.notify(displaced)
 }
+
+/** Private identity read: never part of the content-free fence projection. */
+export function readRunPromptIdentity(
+  entry: AgentRunEntry | undefined,
+  fence: RunStateFence,
+  epoch: string,
+) {
+  return entry && entry.token === fence.incarnation && epoch === fence.epoch
+    ? entry.history.identity()
+    : undefined
+}

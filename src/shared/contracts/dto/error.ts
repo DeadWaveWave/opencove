@@ -66,6 +66,7 @@ export const APP_ERROR_CODES = [
   'terminal.snapshot_failed',
   'agent.blocked',
   'agent.busy',
+  'agent.delivery_unsettled',
   'agent.state_unknown',
   'agent.not_running',
   'agent.prompt_unsupported',
@@ -107,6 +108,9 @@ export interface AppErrorDescriptor {
 }
 
 export interface AgentPromptErrorDetails {
+  expectedTurnId?: string
+  currentState?: import('./agentRunState').AgentRunSnapshot | null
+  deliveryId?: string
   reason: string
   pasteDispatchAttempted: boolean
   submitDispatchAttempted: boolean

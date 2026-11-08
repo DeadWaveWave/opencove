@@ -1,3 +1,4 @@
+import { PromptDeliveryEvidence } from './PromptDeliveryEvidence'
 import {
   claudePromptDigest,
   claudePromptId,
@@ -10,22 +11,31 @@ import type {
   RunStateFence,
   RunStateReceipt,
 } from './ports/PromptDeliveryPorts'
-import { promptAdmission, promptHookSource, samePromptEntry } from './promptAdmission'
+import { promptAdmission, samePromptEntry } from './promptAdmission'
+import { PromptDeliveryRecords } from './PromptDeliveryRecords'
+export type { AgentPromptResult as PromptDeliveryResult } from '../../../shared/contracts/dto/agentPrompt'
+import type { AgentPromptResult as PromptDeliveryResult } from '../../../shared/contracts/dto/agentPrompt'
 
 export interface PromptDeliveryRequest {
   nodeId?: string
   sessionId?: string
   text: string
   timeoutMs: number
+  whenBusy?: 'steer' | 'refuse'
+  expectTurnId?: string
+  deliveryId?: string
 }
-export type { AgentPromptResult as PromptDeliveryResult } from '../../../shared/contracts/dto/agentPrompt'
-import type { AgentPromptResult as PromptDeliveryResult } from '../../../shared/contracts/dto/agentPrompt'
-/** Volatile delivery intent owner. No retries, renderer state, transport, or PTY dependencies. */
+/** Attempt lifetime is independent of the HTTP waiter after CR. Never retries input. */
 export class PromptDeliveryService {
   private disposed = false
-  private readonly reservations = new Set<string>()
   private readonly cancellations = new Set<() => void>()
-  constructor(private readonly ports: PromptDeliveryPorts) {}
+  private readonly records: PromptDeliveryRecords
+  constructor(private readonly ports: PromptDeliveryPorts) {
+    this.records = new PromptDeliveryRecords(ports.now)
+  }
+  get(id: string) {
+    return this.records.get(id)
+  }
 
   deliver(
     request: PromptDeliveryRequest,
@@ -36,13 +46,26 @@ export class PromptDeliveryService {
     const deadline = this.ports.now() + request.timeoutMs
     const locator = request.nodeId ? { nodeId: request.nodeId } : { sessionId: request.sessionId! }
     const initial = this.ports.runs.readFence(locator)
-    const refusal = promptAdmission(initial, this.ports.capability)
-    const error = (code: AppErrorCode, reason: string, paste = false, submit = false) => {
+    const id = request.deliveryId ?? this.ports.createDeliveryId()
+    const error = (
+      code: AppErrorCode,
+      reason: string,
+      paste = false,
+      submit = false,
+      deliveryId = id,
+    ) => {
       const details: AgentPromptErrorDetails = {
         reason,
         pasteDispatchAttempted: paste,
         submitDispatchAttempted: submit,
         retryable: !paste,
+        deliveryId,
+        ...(reason === 'expected_turn_mismatch'
+          ? {
+              expectedTurnId: request.expectTurnId,
+              currentState: this.ports.runs.readFence(locator)?.snapshot ?? null,
+            }
+          : {}),
         ...(code === 'agent.blocked'
           ? { blockedReason: this.ports.runs.readFence(locator)?.snapshot.blockedReason ?? null }
           : {}),
@@ -52,40 +75,62 @@ export class PromptDeliveryService {
     if (this.disposed) {
       return Promise.reject(error('agent.not_running', 'shutdown'))
     }
+    const expected = (f: RunStateFence | null) =>
+      !request.expectTurnId ||
+      (f?.snapshot.state === 'working' && f.snapshot.turn?.id === request.expectTurnId)
+    if (!expected(initial)) {
+      return Promise.reject(error('agent.busy', 'expected_turn_mismatch'))
+    }
+    const refusal = promptAdmission(initial, this.ports.capability, request.whenBusy)
     if (refusal) {
       return Promise.reject(error(refusal.code, refusal.reason))
     }
     const admitted = initial!
-    const key = `${admitted.epoch}:${admitted.incarnation}`
-    if (this.reservations.has(key)) {
-      return Promise.reject(error('agent.busy', 'delivery_in_progress'))
+    const initialIdentity = this.ports.runs.promptIdentity?.(admitted)
+    const blocking = this.records.blocking(admitted)
+    if (blocking) {
+      return Promise.reject(
+        error(
+          request.whenBusy ? 'agent.delivery_unsettled' : 'agent.busy',
+          'delivery_in_progress',
+          false,
+          false,
+          blocking.dto.deliveryId,
+        ),
+      )
     }
-    this.reservations.add(key)
+    if (request.deliveryId && this.records.records.has(id)) {
+      return Promise.reject(error('common.invalid_input', 'delivery_id_reused'))
+    }
+    const record = this.records.allocate(
+      id,
+      admitted,
+      admitted.snapshot.state === 'working' ? 'steer' : 'turn',
+    )
+    if (!record) {
+      return Promise.reject(
+        error(
+          request.whenBusy ? 'agent.delivery_unsettled' : 'agent.busy',
+          request.whenBusy ? 'delivery_capacity' : 'delivery_in_progress',
+        ),
+      )
+    }
     return new Promise<PromptDeliveryResult>((resolve, reject) => {
       let settled = false,
         paste = false,
         submit = false,
         latched = false
-      let submitAt = Infinity,
-        receiptDeadline = Infinity
-      let submitFence: RunStateFence | undefined
-      const cleanups: (() => void)[] = []
-      const cleanup = (dispose: () => void) => {
-        if (settled) {
-          dispose()
-        } else {
-          cleanups.push(dispose)
-        }
-      }
+      const evidence = new PromptDeliveryEvidence(request.whenBusy !== undefined)
+      let otherInput = false
+      let receiptDeadline = Infinity
+      const waiterCleanups: (() => void)[] = []
+      const cleanup = (stop: () => void) => (settled ? stop() : waiterCleanups.push(stop))
       const finish = (failure?: unknown, result?: PromptDeliveryResult) => {
         if (settled) {
           return
         }
         settled = true
-        for (const dispose of cleanups) {
-          dispose()
-        }
-        this.reservations.delete(key)
+        waiterCleanups.splice(0).forEach(stop => stop())
         this.cancellations.delete(cancel)
         if (failure) {
           reject(failure)
@@ -93,20 +138,46 @@ export class PromptDeliveryService {
           resolve(result!)
         }
       }
-      const fail = (reason: string) => {
+      const closeEvidenceWindow = () => {
+        record.dto.evidenceWindow = 'closed'
+      }
+      const fail = (
+        reason: string,
+        code?: AppErrorCode,
+        uncertainWrite = false,
+        deliveryId = id,
+      ) => {
         latched = true
+        if (record.dto.status !== 'submitted') {
+          if (submit) {
+            if (!record.codexSteer || uncertainWrite) {
+              record.dto.status = 'unknown'
+            }
+          } else {
+            this.records.settle(record, 'not_sent')
+          }
+          if (!submit) {
+            record.dto.evidence = { kind: 'no_enter', at: this.ports.now() }
+          }
+        }
+        closeEvidenceWindow()
+        if (!submit || (record.codexSteer && uncertainWrite)) {
+          this.records.stopReconciliation(record)
+        }
         finish(
           error(
-            submit
-              ? 'agent.prompt_stalled'
-              : paste
-                ? 'agent.prompt_interrupted'
-                : reason === 'deadline'
-                  ? 'agent.prompt_timeout'
-                  : 'agent.not_running',
+            code ??
+              (submit
+                ? 'agent.prompt_stalled'
+                : paste
+                  ? 'agent.prompt_interrupted'
+                  : reason === 'deadline'
+                    ? 'agent.prompt_timeout'
+                    : 'agent.not_running'),
             reason,
             paste,
             submit,
+            deliveryId,
           ),
         )
       }
@@ -123,7 +194,7 @@ export class PromptDeliveryService {
         try {
           caller.assertActive?.()
           if (caller.signal?.aborted) {
-            throw new Error('Caller revoked')
+            throw new Error('revoked')
           }
         } catch {
           fail('caller_revoked')
@@ -135,65 +206,159 @@ export class PromptDeliveryService {
       caller.signal?.addEventListener('abort', onAbort, { once: true })
       cleanup(() => caller.signal?.removeEventListener('abort', onAbort))
       cleanup(this.ports.schedule(() => fail('deadline'), Math.max(0, deadline - this.ports.now())))
+      const inputAdmitted = (fence: RunStateFence) => {
+        const blocker = this.records.blocking(fence, record)
+        if (!blocker && !otherInput) {
+          return true
+        }
+        fail(
+          blocker ? 'delivery_in_progress' : 'competing_input',
+          paste
+            ? undefined
+            : blocker && request.whenBusy
+              ? 'agent.delivery_unsettled'
+              : 'agent.busy',
+          false,
+          blocker?.dto.deliveryId,
+        )
+        return false
+      }
+      const result = (
+        phase: PromptDeliveryResult['phase'],
+        r?: RunStateReceipt,
+      ): PromptDeliveryResult => ({
+        deliveryId: id,
+        nodeId: admitted.snapshot.nodeId,
+        sessionId: admitted.snapshot.sessionId,
+        phase,
+        ...(request.whenBusy ? { mode: record.dto.mode } : {}),
+        turnId: record.dto.turnId!,
+        textComparison:
+          r &&
+          admitted.snapshot.provider === 'claude-code' &&
+          typeof r.promptDigest === 'string' &&
+          /^[a-f0-9]{64}$/.test(r.promptDigest)
+            ? r.promptDigest === expectedDigest
+              ? 'matched'
+              : 'different'
+            : 'unavailable',
+        ...(admitted.snapshot.provider === 'claude-code'
+          ? { comparisonProfile: 'claude-code-v1' as const, promptId: claudePromptId(r?.promptId) }
+          : {}),
+      })
+      const safe = (f: RunStateFence | null) => {
+        if (
+          !expected(f) ||
+          !samePromptEntry(admitted, f) ||
+          promptAdmission(f, this.ports.capability, request.whenBusy)
+        ) {
+          return false
+        }
+        const turn = admitted.snapshot.turn?.id
+        return !f.snapshot.turn || (turn !== undefined && f.snapshot.turn.id === turn)
+      }
       const receipt = (r: RunStateReceipt) => {
-        if (settled) {
-          return
-        }
-        if (!active()) {
-          return
-        }
-        if (submit && this.ports.now() >= receiptDeadline) {
-          fail('receipt_deadline')
-          return
-        }
-        if (!samePromptEntry(admitted, r.fence)) {
-          fail('binding_changed')
-          return
-        }
         if (!submit) {
-          if (paste) {
-            latched = true
-            fail('observation_received')
+          if (!safe(r.fence)) {
+            const observedRefusal = promptAdmission(
+              r.fence,
+              this.ports.capability,
+              request.whenBusy,
+            )
+            fail(
+              expected(r.fence)
+                ? (observedRefusal?.reason ?? 'observation_received')
+                : 'expected_turn_mismatch',
+              paste ? undefined : !expected(r.fence) ? 'agent.busy' : observedRefusal?.code,
+            )
+          } else if (!samePromptEntry(admitted, r.fence)) {
+            fail('binding_changed')
           }
           return
         }
-        if (
-          r.emittedAtMs !== undefined &&
-          Number.isFinite(r.emittedAtMs) &&
-          r.emittedAtMs >= submitAt &&
-          r.source === promptHookSource(admitted.snapshot.provider) &&
-          r.hookEventName === 'UserPromptSubmit' &&
-          (r.sourceSequence ?? 0) >
-            (submitFence?.watermarks[promptHookSource(admitted.snapshot.provider)] ?? 0) &&
-          r.turnId &&
-          r.fence.snapshot.source === promptHookSource(admitted.snapshot.provider) &&
-          r.fence.snapshot.quality !== 'degraded'
-        ) {
-          finish(undefined, {
-            deliveryId: this.ports.createDeliveryId(),
-            nodeId: admitted.snapshot.nodeId,
-            sessionId: admitted.snapshot.sessionId,
-            phase: 'submission_observed',
-            turnId: r.turnId,
-            textComparison:
-              admitted.snapshot.provider !== 'claude-code' ||
-              typeof r.promptDigest !== 'string' ||
-              !/^[a-f0-9]{64}$/.test(r.promptDigest)
-                ? 'unavailable'
-                : r.promptDigest === expectedDigest
-                  ? 'matched'
-                  : 'different',
-            ...(admitted.snapshot.provider === 'claude-code'
-              ? {
-                  comparisonProfile: 'claude-code-v1' as const,
-                  promptId: claudePromptId(r.promptId),
-                }
-              : {}),
-          })
+        // The waiter can expire; passive evidence still upgrades its retained record.
+        if (!settled && (!active() || this.ports.now() >= receiptDeadline)) {
+          if (!settled) {
+            fail('receipt_deadline')
+          }
+          // Do not resolve an overdue waiter, but continue evidence reconciliation.
         }
+        if (!samePromptEntry(admitted, r.fence)) {
+          this.records.stopReconciliation(record)
+          if (record.dto.status !== 'submitted') {
+            record.dto.status = 'unknown'
+          }
+          closeEvidenceWindow()
+          if (!settled) {
+            fail('binding_changed')
+          }
+          return
+        }
+        if (record.codexSteer && r.fence.snapshot.turn?.id !== record.dto.turnId) {
+          if (record.dto.status === 'dispatched') {
+            record.dto.status = 'unknown'
+            record.dto.evidence = { kind: 'turn_end', at: this.ports.now() }
+            this.records.stopReconciliation(record)
+          }
+        }
+        const qualified = evidence.qualify(r, record, this.ports.now())
+        if (
+          !qualified ||
+          (record.codexSteer && !this.records.claimCodex(record, r.sourceSequence ?? 0))
+        ) {
+          return
+        }
+        r = qualified
+        if (record.dto.status === 'submitted' || record.dto.status === 'not_sent') {
+          return
+        }
+        record.dto.turnId ??= r.turnId
+        const output = result('submission_observed', r)
+        this.records.settle(record, 'submitted')
+        record.dto.evidence = { kind: 'hook', at: this.ports.now() }
+        record.dto.textComparison = output.textComparison
+        record.dto.comparisonProfile = output.comparisonProfile
+        record.dto.promptId = output.promptId
+        closeEvidenceWindow()
+        this.records.stopReconciliation(record)
+        finish(undefined, output)
       }
-      // Watch before enqueue: replacement and caller cancellation must release a queued reservation.
-      cleanup(this.ports.runs.watchFence(admitted, receipt))
+      this.records.keepCleanup(record, this.ports.runs.watchFence(admitted, receipt))
+      this.records.keepCleanup(
+        record,
+        this.ports.runs.watchSubmissionEvidence?.(admitted, receipt) ?? (() => {}),
+      )
+      this.records.keepCleanup(
+        record,
+        this.ports.input.watchInput?.(admitted.snapshot.sessionId, (writer, data) => {
+          if (writer === id) {
+            return
+          }
+          const own = writer ? this.records.records.get(writer) : undefined
+          if (own?.codexSteer && own.dto.incarnation === record.dto.incarnation) {
+            return
+          }
+          if (!submit) {
+            otherInput = true
+            return
+          }
+          if (!record.codexSteer || record.dto.status !== 'dispatched') {
+            return
+          }
+          record.dto.status = data?.includes('\x03') || data === '\x1b' ? 'unknown' : 'ambiguous'
+          record.dto.evidence = { kind: 'other_input', at: this.ports.now() }
+          this.records.stopReconciliation(record)
+        }) ?? (() => {}),
+      )
+      const stopInputWatch = this.ports.input.watchInputInvalidation(
+        admitted.snapshot.sessionId,
+        () => {
+          if (!submit) {
+            fail('capability_lost')
+          }
+        },
+      )
+      cleanup(stopInputWatch)
       void this.ports.input
         .withSessionInputOperation(admitted.snapshot.sessionId, async input => {
           if (!active()) {
@@ -204,22 +369,28 @@ export class PromptDeliveryService {
             fail('binding_changed')
             return
           }
-          const refused = promptAdmission(current, this.ports.capability)
+          if (!expected(current)) {
+            fail('expected_turn_mismatch', 'agent.busy')
+            return
+          }
+          if (!inputAdmitted(current)) {
+            return
+          }
+          const refused = promptAdmission(current, this.ports.capability, request.whenBusy)
           if (refused) {
-            finish(error(refused.code, refused.reason))
+            fail(refused.reason, refused.code)
             return
           }
           if (!input.mode().bracketedPaste) {
-            finish(error('agent.prompt_unsupported', 'bracketed_paste_off'))
+            fail('bracketed_paste_off', 'agent.prompt_unsupported')
             return
           }
-          if (!active()) {
+          if (!safe(current)) {
+            fail('capability_lost')
             return
           }
-          const stopInputWatch = input.watchInvalidation(() => fail('capability_lost'))
-          cleanup(stopInputWatch)
           paste = true
-          input.write(`\x1b[200~${text}\x1b[201~`)
+          input.write(`\x1b[200~${text}\x1b[201~`, id)
           await new Promise<void>(wake => {
             const stop = this.ports.schedule(
               wake,
@@ -234,26 +405,40 @@ export class PromptDeliveryService {
             return
           }
           const fresh = this.ports.runs.readFence(locator)
-          if (
-            !samePromptEntry(admitted, fresh) ||
-            !input.isLive() ||
-            !input.mode().bracketedPaste ||
-            promptAdmission(fresh, this.ports.capability)
-          ) {
+          if (!expected(fresh)) {
+            fail('expected_turn_mismatch')
+            return
+          }
+          if (!inputAdmitted(admitted)) {
+            return
+          }
+          if (!safe(fresh) || !input.isLive() || !input.mode().bracketedPaste) {
             fail('capability_lost')
             return
           }
-          // No await between the source fence and Enter. Synchronous receipts during write are visible.
-          submitFence = fresh
-          if (!active()) {
-            return
-          }
+          // No await between full admission/identity check, source watermark and CR.
+          evidence.capture(fresh!, this.ports.runs.promptIdentity?.(fresh!) ?? initialIdentity)
+          record.dto.mode = fresh!.snapshot.state === 'working' ? 'steer' : 'turn'
+          record.dto.turnId = fresh!.snapshot.turn?.id
+          record.codexSteer = record.dto.mode === 'steer' && admitted.snapshot.provider === 'codex'
           submit = true
-          stopInputWatch()
-          submitAt = this.ports.now()
-          receiptDeadline = Math.min(deadline, submitAt + 5000)
-          input.write('\r')
-          if (!settled) {
+          record.submitAt = this.ports.now()
+          record.dto.dispatchedAt = record.submitAt
+          if (record.codexSteer) {
+            record.dto.status = 'dispatched'
+          }
+          receiptDeadline = Math.min(deadline, record.submitAt + 5000)
+          try {
+            input.write('\r', id)
+          } catch (cause) {
+            fail(cause instanceof Error ? cause.message : 'write_failed', undefined, true)
+            return
+          } finally {
+            stopInputWatch()
+          }
+          if (record.codexSteer) {
+            finish(undefined, result('dispatched'))
+          } else if (!settled) {
             cleanup(
               this.ports.schedule(
                 () => fail(this.ports.now() >= deadline ? 'deadline' : 'receipt_deadline'),
@@ -261,20 +446,20 @@ export class PromptDeliveryService {
               ),
             )
           }
+          if (record.dto.status !== 'submitted') {
+            this.records.keepCleanup(
+              record,
+              this.ports.schedule(() => {
+                closeEvidenceWindow()
+                if (record.dto.status === 'pending') {
+                  record.dto.status = 'unknown'
+                }
+              }, 120_000),
+            )
+          }
         })
         .catch(cause =>
-          finish(
-            error(
-              paste
-                ? submit
-                  ? 'agent.prompt_stalled'
-                  : 'agent.prompt_interrupted'
-                : 'agent.not_running',
-              cause instanceof Error ? cause.message : 'write_failed',
-              paste,
-              submit,
-            ),
-          ),
+          fail(cause instanceof Error ? cause.message : 'write_failed', undefined, submit),
         )
     })
   }
@@ -283,5 +468,6 @@ export class PromptDeliveryService {
     for (const cancel of [...this.cancellations]) {
       cancel()
     }
+    this.records.dispose()
   }
 }
