@@ -36,11 +36,16 @@ export function shouldGateRestoredAgentInput(options: {
   return options.kind === 'agent'
 }
 
-function isRestoredAgentRuntime(options: {
+export function isRestoredAgentRuntime(options: {
   kind: WorkspaceNodeKind
   agentResumeSessionIdVerified: boolean
   agentLaunchMode: AgentLaunchMode | null
+  isLiveSessionReattach?: boolean
 }): boolean {
+  // A new Claude launch already owns its --session-id; verified identity is not a resume.
+  if (options.agentLaunchMode === 'new' && !options.isLiveSessionReattach) {
+    return false
+  }
   return (
     options.kind === 'agent' &&
     (options.agentResumeSessionIdVerified || options.agentLaunchMode === 'resume')
@@ -51,6 +56,7 @@ export function shouldAwaitRestoredAgentVisibleOutput(options: {
   kind: WorkspaceNodeKind
   agentResumeSessionIdVerified: boolean
   agentLaunchMode: AgentLaunchMode | null
+  isLiveSessionReattach?: boolean
 }): boolean {
   return isRestoredAgentRuntime(options)
 }

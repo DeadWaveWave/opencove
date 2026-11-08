@@ -16,7 +16,10 @@ import {
 import { resizeTerminalPreservingScrollState } from './effectiveDevicePixelRatio'
 import type { CachedTerminalScreenState } from './screenStateCache'
 import type { XtermSession } from './xtermSession'
-import type { TerminalHydrationBaselineSource } from './useTerminalRuntimeSession.support'
+import {
+  isRestoredAgentRuntime,
+  type TerminalHydrationBaselineSource,
+} from './useTerminalRuntimeSession.support'
 import {
   beginTerminalGeometryCommit,
   initializeTerminalGeometryCommitBaseline,
@@ -46,11 +49,11 @@ export function shouldPreferMeasuredInitialGeometryCommit({
     return false
   }
 
-  const isRestoredAgentRuntime =
+  if (
     kind === 'agent' &&
     !isLiveSessionReattach &&
-    (agentResumeSessionIdVerified || agentLaunchMode === 'resume')
-  if (isRestoredAgentRuntime) {
+    isRestoredAgentRuntime({ kind, agentResumeSessionIdVerified, agentLaunchMode })
+  ) {
     return false
   }
 

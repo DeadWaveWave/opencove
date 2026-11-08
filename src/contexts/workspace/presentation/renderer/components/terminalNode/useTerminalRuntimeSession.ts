@@ -120,6 +120,7 @@ export function useTerminalRuntimeSession({
     })
     const shouldAwaitAgentVisibleOutput = shouldAwaitRestoredAgentVisibleOutput({
       kind,
+      isLiveSessionReattach,
       agentResumeSessionIdVerified: agentResumeSessionIdVerifiedRef.current === true,
       agentLaunchMode: agentLaunchModeRef.current,
     })
