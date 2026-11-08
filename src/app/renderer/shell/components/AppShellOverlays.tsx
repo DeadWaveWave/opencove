@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import type { FloatingMessageState } from '../hooks/useFloatingMessage'
+import type { AgentNotificationTarget } from '../hooks/useAgentStandbyNotifications'
 import { AppMessage } from './AppMessage'
 import { AppNotifications, type AppNotification } from './AppNotifications'
 import { ControlCenter } from './ControlCenter'
@@ -14,6 +15,7 @@ export function AppShellOverlays({
   floatingMessage,
   notifications,
   dismissNotification,
+  resolveSystemNotificationTarget,
   onFocusAgentNode,
   agentSettings,
   setAgentSettings,
@@ -27,6 +29,8 @@ export function AppShellOverlays({
   floatingMessage: FloatingMessageState
   notifications: AppNotification[]
   dismissNotification: (id: string) => void
+  /** The Agent a clicked system notification names, while it is still known. */
+  resolveSystemNotificationTarget: (id: string) => AgentNotificationTarget | null
   onFocusAgentNode: (workspaceId: string, nodeId: string) => void
   agentSettings: AgentSettings
   setAgentSettings: (action: SetStateAction<AgentSettings>) => void
@@ -38,6 +42,19 @@ export function AppShellOverlays({
   /** Opens Settings at a page, or where it was left. */
   onOpenSettings: (pageId?: SettingsPageId | null) => void
 }): React.JSX.Element {
+  // A clicked system notification jumps exactly like a clicked card.
+  useEffect(
+    () =>
+      window.opencoveApi?.system?.onNotificationActivated?.(({ id }) => {
+        const target = resolveSystemNotificationTarget(id)
+        if (target) {
+          dismissNotification(target.id)
+          onFocusAgentNode(target.workspaceId, target.nodeId)
+        }
+      }),
+    [dismissNotification, onFocusAgentNode, resolveSystemNotificationTarget],
+  )
+
   return (
     <>
       {floatingMessage ? (
@@ -68,6 +85,7 @@ export function AppShellOverlays({
         hasActiveWorkspace={activeWorkspace !== null}
         inAppNotificationsEnabled={agentSettings.standbyBannerEnabled}
         systemNotificationsEnabled={agentSettings.systemNotificationsEnabled}
+        soundEnabled={agentSettings.notificationSoundEnabled}
         settingsShortcut={formatKeyChord(
           window.opencoveApi?.meta?.platform,
           resolveCommandKeybinding({
@@ -97,6 +115,9 @@ export function AppShellOverlays({
         }}
         onChangeSystemNotifications={enabled => {
           setAgentSettings(prev => ({ ...prev, systemNotificationsEnabled: enabled }))
+        }}
+        onChangeSound={enabled => {
+          setAgentSettings(prev => ({ ...prev, notificationSoundEnabled: enabled }))
         }}
         onOpenSettings={onOpenSettings}
       />

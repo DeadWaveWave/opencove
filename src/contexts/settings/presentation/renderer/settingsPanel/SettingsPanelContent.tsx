@@ -87,12 +87,7 @@ export function SettingsPanelContent({
     updateFocusNodeUseVisibleCanvasCenter,
     updateArchiveSpaceDeleteWorktreeByDefault,
     updateArchiveSpaceDeleteBranchByDefault,
-    updateSystemNotificationsEnabled,
-    updateStandbyBannerEnabled,
-    updateStandbyBannerShowTask,
-    updateStandbyBannerShowSpace,
-    updateStandbyBannerShowBranch,
-    updateStandbyBannerShowPullRequest,
+    updateNotificationSetting,
     updateCanvasInputMode,
     updateCanvasWheelBehavior,
     updateCanvasWheelZoomModifier,
@@ -254,21 +249,7 @@ export function SettingsPanelContent({
       ) : null}
 
       {canonicalPageId === 'general' ? (
-        <NotificationsSection
-          systemNotificationsEnabled={settings.systemNotificationsEnabled}
-          standbyBannerEnabled={settings.standbyBannerEnabled}
-          standbyBannerShowTask={settings.standbyBannerShowTask}
-          standbyBannerShowSpace={settings.standbyBannerShowSpace}
-          standbyBannerShowBranch={settings.standbyBannerShowBranch}
-          standbyBannerShowPullRequest={settings.standbyBannerShowPullRequest}
-          githubPullRequestsEnabled={settings.githubPullRequestsEnabled}
-          onChangeSystemNotificationsEnabled={updateSystemNotificationsEnabled}
-          onChangeStandbyBannerEnabled={updateStandbyBannerEnabled}
-          onChangeStandbyBannerShowTask={updateStandbyBannerShowTask}
-          onChangeStandbyBannerShowSpace={updateStandbyBannerShowSpace}
-          onChangeStandbyBannerShowBranch={updateStandbyBannerShowBranch}
-          onChangeStandbyBannerShowPullRequest={updateStandbyBannerShowPullRequest}
-        />
+        <NotificationsSection settings={settings} onChange={updateNotificationSetting} />
       ) : null}
 
       {canonicalPageId === 'worker' ? (

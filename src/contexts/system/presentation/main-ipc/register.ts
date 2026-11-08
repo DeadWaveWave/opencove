@@ -1,7 +1,6 @@
-import { execFile } from 'node:child_process'
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { app, BrowserWindow, Notification, dialog, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import type { IpcMainInvokeEvent, SaveDialogOptions } from 'electron'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
@@ -14,8 +13,8 @@ import type {
 import type { IpcRegistrationDisposable } from '../../../../app/main/ipc/types'
 import { registerHandledIpc } from '../../../../app/main/ipc/handle'
 import { createAppError } from '../../../../shared/errors/appError'
+import { showSystemNotification } from './systemNotifications'
 
-const NOTIFY_SEND_TIMEOUT_MS = 5_000
 const MAX_DOWNLOAD_FILE_NAME_LENGTH = 180
 const MAX_DOWNLOAD_TEXT_BYTES = 10 * 1024 * 1024
 const DISALLOWED_DOWNLOAD_FILE_NAME_CHARACTERS = new Set([
@@ -145,11 +144,15 @@ function normalizeShowSystemNotificationPayload(payload: unknown): ShowSystemNot
 
   const body = normalizeNotificationText(record.body, 500)
   const silent = typeof record.silent === 'boolean' ? record.silent : false
+  const id = normalizeNotificationText(record.id, 128)
+  const replacesId = normalizeNotificationText(record.replacesId, 128)
 
   return {
     title,
     body: body.length > 0 ? body : null,
     silent,
+    id: id.length > 0 ? id : null,
+    replacesId: replacesId.length > 0 ? replacesId : null,
   }
 }
 
@@ -272,61 +275,6 @@ async function saveTextToDownloads(
     fileName: path.basename(targetPath),
     path: targetPath,
   }
-}
-
-function focusFirstAppWindow(): void {
-  const target = BrowserWindow.getAllWindows().find(window => !window.isDestroyed())
-  if (!target) {
-    return
-  }
-
-  if (target.isMinimized()) {
-    target.restore()
-  }
-
-  target.show()
-  target.focus()
-}
-
-async function showSystemNotification(
-  payload: ShowSystemNotificationInput,
-): Promise<ShowSystemNotificationResult> {
-  if (Notification.isSupported()) {
-    const notification = new Notification({
-      title: payload.title,
-      ...(payload.body ? { body: payload.body } : {}),
-      silent: payload.silent ?? false,
-    })
-
-    notification.once('click', focusFirstAppWindow)
-    notification.show()
-
-    return { shown: true }
-  }
-
-  if (process.platform === 'linux') {
-    const args: string[] = []
-    if (payload.silent) {
-      args.push('--urgency=low')
-    }
-    args.push(payload.title)
-    if (payload.body) {
-      args.push(payload.body)
-    }
-
-    return new Promise<ShowSystemNotificationResult>(resolve => {
-      execFile(
-        'notify-send',
-        args,
-        { timeout: NOTIFY_SEND_TIMEOUT_MS, windowsHide: true },
-        error => {
-          resolve({ shown: error === null })
-        },
-      )
-    })
-  }
-
-  return { shown: false }
 }
 
 export function registerSystemIpcHandlers(): IpcRegistrationDisposable {

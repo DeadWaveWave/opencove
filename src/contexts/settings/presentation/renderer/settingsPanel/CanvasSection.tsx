@@ -23,23 +23,7 @@ import {
 } from '@app/renderer/i18n/labels'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
 import { SettingsGroup, SettingsGroupBody } from './SettingsGroup'
-
-/** A range input on the neutral-marker track; SettingRow names it through the input. */
-function RangeField({
-  wrapperStyle,
-  ...inputProps
-}: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> & {
-  wrapperStyle?: React.CSSProperties
-}): React.JSX.Element {
-  return (
-    <div
-      className="settings-panel__range settings-panel__range--neutral-marker"
-      style={wrapperStyle}
-    >
-      <input {...inputProps} type="range" />
-    </div>
-  )
-}
+import { RangeField } from './RangeField'
 
 export function CanvasSection(props: {
   canvasInputMode: CanvasInputMode
@@ -241,6 +225,7 @@ export function CanvasSection(props: {
             description={t('settingsPanel.canvas.focusTargetZoomHelp')}
             control={
               <RangeField
+                neutralMarker
                 wrapperStyle={focusTargetZoomRangeStyle}
                 id="settings-focus-node-target-zoom"
                 data-testid="settings-focus-node-target-zoom"

@@ -1,3 +1,4 @@
+import { zhCNSettingsPanelNotifications } from './zh-CN.settingsPanel.notifications'
 import { zhCNSettingsPanelAgent } from './zh-CN.settingsPanel.agent'
 import { zhCNSettingsPanelPlugins } from './zh-CN.settingsPanel.plugins'
 import { zhCNSettingsPanelAppearanceNext } from './zh-CN.settingsPanel.appearanceNext'
@@ -147,23 +148,7 @@ export const zhCNSettingsPanel = {
       enabled: '启用',
     },
   },
-  notifications: {
-    title: '通知',
-    systemNotifications: {
-      enabledLabel: '系统通知',
-      enabledHelp: '当 Agent 从工作状态变为待命时，显示原生系统通知。',
-    },
-    agentStandbyBanner: {
-      enabledLabel: '通知横幅',
-      enabledHelp: '当 Agent 从工作状态变为待命时，在应用内显示通知横幅。',
-      contextTitle: '横幅信息',
-      contextHelp: '控制右上角提醒横幅中显示的上下文信息。',
-      showTask: '显示任务',
-      showSpace: '显示空间',
-      showBranch: '显示分支',
-      showPullRequest: '显示 PR',
-    },
-  },
+  notifications: zhCNSettingsPanelNotifications,
   canvas: {
     title: '画布',
     inputModeLabel: '输入模式',

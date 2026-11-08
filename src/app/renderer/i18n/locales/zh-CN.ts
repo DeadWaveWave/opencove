@@ -9,6 +9,7 @@ import { zhCNCanvasCollapse } from './zh-CN.canvasCollapse'
 import { zhCNEdgeBeacons } from './zh-CN.edgeBeacons'
 import { zhCNCanvasHud } from './zh-CN.canvasHud'
 import { zhCNControlCenter } from './zh-CN.controlCenter'
+import { zhCNAgentAttention } from './zh-CN.agentAttention'
 import { zhCNCommandCenter } from './zh-CN.commandCenter'
 import { zhCNSpaceCollapse } from './zh-CN.spaceCollapse'
 import { zhCNShell } from './zh-CN.shell'
@@ -38,6 +39,7 @@ export const zhCN = {
   ...zhCNEdgeBeacons,
   ...zhCNCanvasHud,
   ...zhCNControlCenter,
+  ...zhCNAgentAttention,
   ...zhCNCommandCenter,
   ...zhCNSpaceCollapse,
   common: {

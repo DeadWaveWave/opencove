@@ -14,6 +14,7 @@ const actions = {
   onToggleMinimap: vi.fn(),
   onChangeInAppNotifications: vi.fn(),
   onChangeSystemNotifications: vi.fn(),
+  onChangeSound: vi.fn(),
 }
 
 const openSettingsAt = vi.fn()
@@ -46,6 +47,7 @@ function Harness({
         hasActiveWorkspace={hasActiveWorkspace}
         inAppNotificationsEnabled
         systemNotificationsEnabled={false}
+        soundEnabled
         settingsShortcut="⌘,"
         onClose={() => setOpen(false)}
         onOpenSettings={pageId => {
@@ -115,7 +117,7 @@ describe('Control Center surfaces', () => {
     setViewportWidth(originalWidth)
   })
 
-  it('keeps desktop nonmodal: an appearance, three quick switches and two lines into Settings', () => {
+  it('keeps desktop nonmodal: an appearance, four quick switches and two lines into Settings', () => {
     render(<Harness hasActiveWorkspace={false} />)
     openControls()
     const surface = screen.getByRole('dialog', { name: 'Control Center' })
@@ -148,6 +150,10 @@ describe('Control Center surfaces', () => {
     expect(actions.onChangeInAppNotifications).toHaveBeenCalledWith(false)
     fireEvent.click(system)
     expect(actions.onChangeSystemNotifications).toHaveBeenCalledWith(true)
+    const sound = screen.getByRole('button', { name: 'Alert sound' })
+    expect(sound).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(sound)
+    expect(actions.onChangeSound).toHaveBeenCalledWith(false)
     expect(actions.onToggleMinimap).not.toHaveBeenCalled()
 
     expect(screen.getByTestId('control-center-open-settings').textContent).toContain('⌘,')
