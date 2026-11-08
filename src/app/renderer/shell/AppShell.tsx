@@ -123,8 +123,7 @@ export default function App(): React.JSX.Element {
     useFloatingMessage()
   useEffect(() => subscribePluginCommandFeedback(handleShowMessage), [handleShowMessage])
   const floatingMessage = useQuitShortcutHint() ?? generalFloatingMessage
-  const { notifications: agentNotifications, dismiss: handleDismissAgentNotification } =
-    useAgentStandbyNotifications()
+  const agentAttention = useAgentStandbyNotifications()
 
   const terminalDisplayCalibration = useAppShellRuntimeLifecycles({
     isPersistReady,
@@ -424,8 +423,9 @@ export default function App(): React.JSX.Element {
 
         <AppShellOverlays
           floatingMessage={floatingMessage}
-          notifications={agentNotifications}
-          dismissNotification={handleDismissAgentNotification}
+          notifications={agentAttention.notifications}
+          dismissNotification={agentAttention.dismiss}
+          resolveSystemNotificationTarget={agentAttention.resolveSystemNotificationTarget}
           onFocusAgentNode={handleSelectAgentNode}
           agentSettings={agentSettings}
           setAgentSettings={setAgentSettings}

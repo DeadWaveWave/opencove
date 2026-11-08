@@ -7,6 +7,7 @@ import {
   NotificationIcon,
   PlayIcon,
   SlidersIcon,
+  SoundIcon,
 } from '@app/renderer/components/ui/pixelIcons'
 import { Button } from '@app/renderer/components/ui/Button'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
@@ -56,7 +57,7 @@ function ControlCenterLink({
 
 /**
  * The quick menu behind the top bar's sliders, drawn as a pixel game window: the appearance as
- * three miniatures, three switches as tiles, and two lines into Settings. Everything else about
+ * three miniatures, four switches as tiles, and two lines into Settings. Everything else about
  * the look (window material, the wall, motion) lives in Settings › Appearance.
  */
 export function ControlCenter({
@@ -67,12 +68,14 @@ export function ControlCenter({
   hasActiveWorkspace,
   inAppNotificationsEnabled,
   systemNotificationsEnabled,
+  soundEnabled,
   settingsShortcut,
   onClose,
   onChangeUiTheme,
   onToggleMinimap,
   onChangeInAppNotifications,
   onChangeSystemNotifications,
+  onChangeSound,
   onOpenSettings,
 }: {
   isOpen: boolean
@@ -84,6 +87,8 @@ export function ControlCenter({
   inAppNotificationsEnabled: boolean
   /** Alerts through the operating system. */
   systemNotificationsEnabled: boolean
+  /** The one sound an alert plays, in front or behind. */
+  soundEnabled: boolean
   /** The current Open Settings shortcut, shown beside "All settings". */
   settingsShortcut: string | null
   onClose: () => void
@@ -91,6 +96,7 @@ export function ControlCenter({
   onToggleMinimap: () => void
   onChangeInAppNotifications: (enabled: boolean) => void
   onChangeSystemNotifications: (enabled: boolean) => void
+  onChangeSound: (enabled: boolean) => void
   /** Opens Settings at a page, or where it was left. */
   onOpenSettings: (pageId: SettingsPageId | null) => void
 }): React.JSX.Element | null {
@@ -206,6 +212,13 @@ export function ControlCenter({
               pressed={systemNotificationsEnabled}
               testId="control-center-toggle-system-notifications"
               onPressedChange={onChangeSystemNotifications}
+            />
+            <ToggleTile
+              icon={<SoundIcon />}
+              label={t('controlCenter.sound')}
+              pressed={soundEnabled}
+              testId="control-center-toggle-sound"
+              onPressedChange={onChangeSound}
             />
           </div>
         </section>

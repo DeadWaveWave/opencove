@@ -341,6 +341,14 @@
   flex: 1;
 }
 
+/* A control and the action beside it, e.g. a sound and its preview. */
+.settings-panel__inline-controls {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--cove-spacing-2);
+}
+
 /* --- Vertical Section Layout --- */
 .settings-panel__section--vertical {
   display: flex;

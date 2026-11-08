@@ -100,6 +100,8 @@ export function useAgentStandbyNotificationWatcher({
       return
     }
 
+    // A wait that began before we listened was already there at startup: a baseline, not news.
+    const listeningSinceMs = Date.now()
     const ptyEventHub = getPtyEventHub()
     const unsubscribe = ptyEventHub.onState((event: TerminalSessionStateEvent) => {
       const sessionId = normalizeSessionId(event.sessionId)
@@ -122,14 +124,23 @@ export function useAgentStandbyNotificationWatcher({
         return
       }
 
+      if (
+        previous === null &&
+        typeof event.observedAtMs === 'number' &&
+        event.observedAtMs < listeningSinceMs
+      ) {
+        return
+      }
+
       const resolved = resolveAgentNodeForSessionId(sessionId)
       if (!resolved) {
         return
       }
 
+      // A restoring Agent replays the state it had: it was not seen working, so it is a baseline.
       const inferredPrevious: TerminalSessionState | null =
         previous ??
-        (resolved.runtimeStatus === 'running' || resolved.runtimeStatus === 'restoring'
+        (resolved.runtimeStatus === 'running'
           ? 'working'
           : resolved.runtimeStatus === 'standby'
             ? 'standby'

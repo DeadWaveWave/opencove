@@ -5,6 +5,7 @@ import type {
   CanvasWheelBehavior,
   CanvasWheelZoomModifier,
   FocusNodeTargetZoom,
+  NotificationSettings,
   CanvasBackgroundStyle,
   PixelEffectToggle,
   StandardWindowSizeBucket,
@@ -99,18 +100,10 @@ export function createSettingsPanelUpdaters({
       updateSetting('archiveSpaceDeleteWorktreeByDefault', enabled),
     updateArchiveSpaceDeleteBranchByDefault: (enabled: boolean): void =>
       updateSetting('archiveSpaceDeleteBranchByDefault', enabled),
-    updateSystemNotificationsEnabled: (enabled: boolean): void =>
-      updateSetting('systemNotificationsEnabled', enabled),
-    updateStandbyBannerEnabled: (enabled: boolean): void =>
-      updateSetting('standbyBannerEnabled', enabled),
-    updateStandbyBannerShowTask: (enabled: boolean): void =>
-      updateSetting('standbyBannerShowTask', enabled),
-    updateStandbyBannerShowSpace: (enabled: boolean): void =>
-      updateSetting('standbyBannerShowSpace', enabled),
-    updateStandbyBannerShowBranch: (enabled: boolean): void =>
-      updateSetting('standbyBannerShowBranch', enabled),
-    updateStandbyBannerShowPullRequest: (enabled: boolean): void =>
-      updateSetting('standbyBannerShowPullRequest', enabled),
+    updateNotificationSetting: <Key extends keyof NotificationSettings>(
+      key: Key,
+      value: NotificationSettings[Key],
+    ): void => onChange({ ...settings, [key]: value }),
     updateCanvasInputMode: (mode: CanvasInputMode): void => updateSetting('canvasInputMode', mode),
     updateCanvasWheelBehavior: (behavior: CanvasWheelBehavior): void =>
       updateSetting('canvasWheelBehavior', behavior),

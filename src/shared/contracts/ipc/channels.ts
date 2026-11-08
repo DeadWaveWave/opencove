@@ -125,6 +125,7 @@ export const IPC_CHANNELS = {
   systemListFonts: 'system:list-fonts',
   systemSaveTextToDownloads: 'system:save-text-to-downloads',
   systemShowNotification: 'system:show-notification',
+  systemNotificationActivated: 'system:notification-activated',
   workerGetStatus: 'worker:get-status',
   workerStart: 'worker:start',
   workerStop: 'worker:stop',

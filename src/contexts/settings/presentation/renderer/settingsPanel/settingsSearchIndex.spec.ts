@@ -38,6 +38,21 @@ function createWorkspace(overrides: Partial<WorkspaceState> = {}): WorkspaceStat
 
 describe('settingsSearchIndex', () => {
   it.each([
+    ['Tone', en, 'notifications.sound-tone'],
+    ['Volume', en, 'notifications.sound-volume'],
+    ['音效', zhCN, 'notifications.sound-tone'],
+    ['音量', zhCN, 'notifications.sound-volume'],
+  ] as const)('finds the notification row %s by its own label', (query, dictionary, id) => {
+    const entries = createSettingsSearchEntries({ t: createTranslator(dictionary), workspaces: [] })
+    expect(searchSettingsEntries(entries, query)[0]).toMatchObject({
+      id,
+      title: query,
+      pageId: 'notifications',
+      anchorId: 'settings-section-notifications',
+    })
+  })
+
+  it.each([
     { dictionary: en, query: 'extensions' },
     { dictionary: zhCN, query: '插件' },
   ])('finds the plugin manager using $query', ({ dictionary, query }) => {

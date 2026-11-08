@@ -9,6 +9,7 @@ export const zhCNControlCenter = {
     minimapUnavailable: '打开一个工作区后可显示它的缩略图。',
     inAppNotifications: '应用内通知',
     systemNotifications: '系统通知',
+    sound: '提示音',
     notificationSettings: '通知设置',
     moreSettings: '全部设置',
     showcaseExitHint: '展示模式 · 按 Esc 退出',

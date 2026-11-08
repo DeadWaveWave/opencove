@@ -5,6 +5,7 @@ import { useAgentStandbyNotificationWatcher } from '../../../src/app/renderer/sh
 
 const harness = vi.hoisted(() => ({
   kind: 'agent' as 'agent' | 'terminal',
+  status: 'running' as 'running' | 'restoring',
   overlay: 'active' as 'active' | 'exited' | 'none',
   onState: null as ((event: TerminalSessionStateEvent) => void) | null,
 }))
@@ -24,7 +25,7 @@ vi.mock('../../../src/app/renderer/shell/store/useAppStore', () => ({
                 kind: harness.kind,
                 sessionId: 'pty',
                 title: 'Codex',
-                status: harness.kind === 'agent' ? 'running' : null,
+                status: harness.kind === 'agent' ? harness.status : null,
                 agent: null,
                 agentOverlay:
                   harness.kind === 'terminal' && harness.overlay !== 'none'
@@ -62,6 +63,7 @@ vi.mock('../../../src/app/renderer/shell/utils/ptyEventHub', () => ({
 afterEach(cleanup)
 beforeEach(() => {
   harness.overlay = 'active'
+  harness.status = 'running'
 })
 
 describe('Agent completion notification entry points', () => {
@@ -159,4 +161,47 @@ it('still notifies when the first decided state after an unknown projection is i
   })
   expect(onAgentEnteredWorking).not.toHaveBeenCalled()
   expect(onAgentEnteredStandby).toHaveBeenCalledTimes(1)
+})
+
+describe('Agents already waiting at startup', () => {
+  it('are a baseline when their wait began before the watcher listened', () => {
+    harness.kind = 'agent'
+    const onAgentEnteredStandby = vi.fn()
+    renderHook(() =>
+      useAgentStandbyNotificationWatcher({ onAgentEnteredStandby, onAgentEnteredWorking: vi.fn() }),
+    )
+    act(() =>
+      harness.onState?.({ sessionId: 'pty', state: 'standby', observedAtMs: Date.now() - 60_000 }),
+    )
+    expect(onAgentEnteredStandby).not.toHaveBeenCalled()
+
+    act(() => {
+      harness.onState?.({ sessionId: 'pty', state: 'working', observedAtMs: Date.now() })
+      harness.onState?.({ sessionId: 'pty', state: 'standby', observedAtMs: Date.now() })
+    })
+    expect(onAgentEnteredStandby).toHaveBeenCalledOnce()
+  })
+
+  it('are a baseline while they are being restored', () => {
+    harness.kind = 'agent'
+    harness.status = 'restoring'
+    const onAgentEnteredStandby = vi.fn()
+    renderHook(() =>
+      useAgentStandbyNotificationWatcher({ onAgentEnteredStandby, onAgentEnteredWorking: vi.fn() }),
+    )
+    act(() => harness.onState?.({ sessionId: 'pty', state: 'standby' }))
+    expect(onAgentEnteredStandby).not.toHaveBeenCalled()
+  })
+
+  it('still announce a wait that began after the watcher listened', () => {
+    harness.kind = 'agent'
+    const onAgentEnteredStandby = vi.fn()
+    renderHook(() =>
+      useAgentStandbyNotificationWatcher({ onAgentEnteredStandby, onAgentEnteredWorking: vi.fn() }),
+    )
+    act(() =>
+      harness.onState?.({ sessionId: 'pty', state: 'standby', observedAtMs: Date.now() + 5 }),
+    )
+    expect(onAgentEnteredStandby).toHaveBeenCalledOnce()
+  })
 })

@@ -68,6 +68,7 @@ import type {
   SaveTextToDownloadsResult,
   ShowSystemNotificationInput,
   ShowSystemNotificationResult,
+  SystemNotificationActivatedEvent,
   TerminalDataEvent,
   TerminalAgentReexecInput,
   TerminalAgentReexecResult,
@@ -350,6 +351,10 @@ export interface OpenCoveApi {
     showNotification: (
       payload: ShowSystemNotificationInput,
     ) => Promise<ShowSystemNotificationResult>
+    /** A system notification was clicked; main has already focused the app. */
+    onNotificationActivated: (
+      listener: (event: SystemNotificationActivatedEvent) => void,
+    ) => UnsubscribeFn
   }
   worker: {
     getStatus: () => Promise<WorkerStatusResult>

@@ -12,6 +12,7 @@ import {
   resolveE2EWindowMode,
 } from './appRuntimeConfig'
 import { setRuntimeIconTestState } from './iconTestHarness'
+import { installSystemNotificationTestHarness } from '../../contexts/system/presentation/main-ipc/systemNotifications'
 import { resolveRuntimeIconPath } from './runtimeIcon'
 import { resolveTitleBarOverlay } from './ipc/registerWindowChromeIpcHandlers'
 import { createApprovedWorkspaceStore } from '../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
@@ -95,6 +96,7 @@ function createWindow(): void {
   const runtimeIconPath = resolveRuntimeIconPath()
   if (isTestEnv) {
     setRuntimeIconTestState(runtimeIconPath)
+    installSystemNotificationTestHarness()
   }
   const initialWidth = isTestEnv ? 1440 : 1200
   const initialHeight = isTestEnv ? 900 : 800
