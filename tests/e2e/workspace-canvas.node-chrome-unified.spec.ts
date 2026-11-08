@@ -142,7 +142,7 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
     }
   })
 
-  test('edits task and terminal titles only from the title text hit area', async () => {
+  test('edits titles only from the title hit area, which fills each title bar', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -252,85 +252,55 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
       await expect(agentTitleDisplay).toBeVisible()
       await expect(taskTitleDisplay).toBeVisible()
 
-      const terminalHeaderBox = await readLocatorClientRect(terminalHeader)
-      const terminalTitleBox = await readLocatorClientRect(terminalTitleDisplay)
-      const agentHeaderBox = await readLocatorClientRect(agentHeader)
-      const agentTitleBox = await readLocatorClientRect(agentTitleDisplay)
-      const taskHeaderBox = await readLocatorClientRect(taskHeader)
-      const taskTitleBox = await readLocatorClientRect(taskTitleDisplay)
-      const terminalBlankProbe = {
-        x: Math.min(
-          terminalHeaderBox.x + terminalHeaderBox.width - 80,
-          terminalTitleBox.x + terminalTitleBox.width + 80,
-        ),
-        y: terminalHeaderBox.y + terminalHeaderBox.height / 2,
-      }
-      const taskBlankProbe = {
-        x: Math.min(
-          taskHeaderBox.x + taskHeaderBox.width - 120,
-          taskTitleBox.x + taskTitleBox.width + 80,
-        ),
-        y: taskHeaderBox.y + taskHeaderBox.height / 2,
-      }
-      const agentBlankProbe = {
-        x: Math.min(
-          agentHeaderBox.x + agentHeaderBox.width - 160,
-          agentTitleBox.x + agentTitleBox.width + 48,
-        ),
-        y: agentHeaderBox.y + agentHeaderBox.height / 2,
-      }
-
-      const cursors = await window.evaluate(
-        ({ terminalTitle, terminalBlank, taskTitle, taskBlank }) => {
-          const readCursorAt = (point: { x: number; y: number }): string | null => {
-            const element = document.elementFromPoint(point.x, point.y)
-            return element ? window.getComputedStyle(element).cursor : null
-          }
-
+      // Every renaming title is its window's drag surface and runs up to the controls; only the
+      // kind tile beside it grabs without renaming.
+      const probes = await Promise.all(
+        [
+          { header: terminalHeader, title: terminalTitleDisplay },
+          { header: agentHeader, title: agentTitleDisplay },
+          { header: taskHeader, title: taskTitleDisplay },
+        ].map(async ({ header, title }) => {
+          const titleBox = await readLocatorClientRect(title)
+          const tile = header.locator('[data-cove-part="kind-tile"]')
+          const tileBox = await readLocatorClientRect(tile)
+          const gapToControls = await title.evaluate(element => {
+            const slot = element.closest('[data-cove-part="window-title"]')
+            const next = slot?.nextElementSibling
+            return next
+              ? next.getBoundingClientRect().left - element.getBoundingClientRect().right
+              : Number.POSITIVE_INFINITY
+          })
           return {
-            terminalTitle: readCursorAt(terminalTitle),
-            terminalBlank: readCursorAt(terminalBlank),
-            taskTitle: readCursorAt(taskTitle),
-            taskBlank: readCursorAt(taskBlank),
+            tile,
+            gapToControls,
+            title: {
+              x: titleBox.x + Math.min(titleBox.width - 2, 8),
+              y: titleBox.y + titleBox.height / 2,
+            },
+            titleEnd: { x: titleBox.x + titleBox.width - 8, y: titleBox.y + titleBox.height / 2 },
+            tileCenter: { x: tileBox.x + tileBox.width / 2, y: tileBox.y + tileBox.height / 2 },
           }
-        },
-        {
-          terminalTitle: {
-            x: terminalTitleBox.x + Math.min(terminalTitleBox.width - 2, 8),
-            y: terminalTitleBox.y + terminalTitleBox.height / 2,
-          },
-          terminalBlank: terminalBlankProbe,
-          taskTitle: {
-            x: taskTitleBox.x + Math.min(taskTitleBox.width - 2, 8),
-            y: taskTitleBox.y + taskTitleBox.height / 2,
-          },
-          taskBlank: taskBlankProbe,
-        },
+        }),
       )
 
-      expect(cursors.terminalTitle).toBe('text')
-      expect(cursors.terminalBlank).not.toBe('text')
-      expect(cursors.taskTitle).toBe('text')
-      expect(cursors.taskBlank).not.toBe('text')
-
-      await terminalHeader.click({
-        position: {
-          x: terminalBlankProbe.x - terminalHeaderBox.x,
-          y: terminalBlankProbe.y - terminalHeaderBox.y,
-        },
-      })
-      await agentHeader.click({
-        position: {
-          x: agentBlankProbe.x - agentHeaderBox.x,
-          y: agentBlankProbe.y - agentHeaderBox.y,
-        },
-      })
-      await taskHeader.click({
-        position: {
-          x: taskBlankProbe.x - taskHeaderBox.x,
-          y: taskBlankProbe.y - taskHeaderBox.y,
-        },
-      })
+      for (const probe of probes) {
+        expect(probe.gapToControls).toBeLessThanOrEqual(12)
+      }
+      const cursors = await window.evaluate(
+        points =>
+          points.map(point => {
+            const element = document.elementFromPoint(point.x, point.y)
+            return element ? window.getComputedStyle(element).cursor : null
+          }),
+        probes.flatMap(probe => [probe.title, probe.titleEnd, probe.tileCenter]),
+      )
+      expect(cursors).toEqual(
+        probes.flatMap(() => ['text', 'text', expect.not.stringMatching(/^text$/)]),
+      )
+      for (const probe of probes) {
+        // eslint-disable-next-line no-await-in-loop -- one pointer presses each tile in turn
+        await probe.tile.click()
+      }
       await expect(terminalTitleInput).toHaveCount(0)
       await expect(agentTitleInput).toHaveCount(0)
       await expect(taskTitleInput).toHaveCount(0)

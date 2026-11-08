@@ -54,6 +54,19 @@ describe('NoteNode title editing', () => {
     expect(screen.getByTestId('note-node-title-display')).toHaveTextContent('Original title')
   })
 
+  it('makes the title bar the drag surface: the title moves the note, the tile only grabs', () => {
+    const { container } = renderNoteNode({ title: 'note' })
+
+    const display = screen.getByTestId('note-node-title-display')
+    expect(display).toHaveAttribute('data-cove-title-gesture', 'move')
+    expect(display).not.toHaveClass('nodrag')
+    expect(container.querySelector('.note-node__header .cove-window-header__drag')).toBeNull()
+    expect(screen.getByTestId('note-node-header-drag-surface')).toHaveAttribute(
+      'data-cove-part',
+      'kind-tile',
+    )
+  })
+
   it('shows the untitled placeholder for an empty title', () => {
     renderNoteNode({ title: '' })
 

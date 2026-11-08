@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
+  clickHeaderDragSurface,
   launchApp,
   readCanvasViewport,
   testWorkspacePath,
@@ -116,7 +117,7 @@ test.describe('Workspace Canvas - Agent Sidebar', () => {
       await expect(agentNode.locator('.terminal-node__status')).toHaveText('Standby')
 
       const agentHeader = agentNode.locator('.terminal-node__header')
-      await agentHeader.click()
+      await clickHeaderDragSurface(agentHeader)
 
       const fitViewButton = window.locator('.react-flow__controls-fitview')
       await expect(fitViewButton).toBeVisible()

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { launchApp, seedWorkspaceState, testWorkspacePath } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Tasks (Agent Session Menu)', () => {
-  test('anchors the task agent session menu to the right-click point', async () => {
+  test('anchors the task agent session menu to the right-click point, or under the avatar', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -67,7 +67,8 @@ test.describe('Workspace Canvas - Tasks (Agent Session Menu)', () => {
         return
       }
 
-      const clickPosition = { x: 28, y: 22 }
+      // A point inside the 26px avatar, off its centre.
+      const clickPosition = { x: 18, y: 18 }
       await sessionRecord.click({
         button: 'right',
         position: clickPosition,
@@ -84,6 +85,20 @@ test.describe('Workspace Canvas - Tasks (Agent Session Menu)', () => {
 
       expect(Math.abs(menuBox.x - (recordBox.x + clickPosition.x))).toBeLessThanOrEqual(16)
       expect(Math.abs(menuBox.y - (recordBox.y + clickPosition.y))).toBeLessThanOrEqual(16)
+
+      // A plain click opens the same menu under the avatar instead.
+      await window.keyboard.press('Escape')
+      await expect(menu).toBeHidden()
+      await sessionRecord.click()
+      await expect(menu).toBeVisible()
+      const anchoredBox = await menu.boundingBox()
+      expect(anchoredBox).not.toBeNull()
+      if (!anchoredBox) {
+        return
+      }
+
+      expect(Math.abs(anchoredBox.x - recordBox.x)).toBeLessThanOrEqual(16)
+      expect(Math.abs(anchoredBox.y - (recordBox.y + recordBox.height))).toBeLessThanOrEqual(16)
     } finally {
       await electronApp.close()
     }

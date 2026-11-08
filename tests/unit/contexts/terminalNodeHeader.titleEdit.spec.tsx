@@ -51,4 +51,28 @@ describe('TerminalNodeHeader title editing', () => {
 
     expect(onTitleCommit).toHaveBeenCalledWith('')
   })
+
+  it.each(['terminal', 'agent'] as const)(
+    'makes the %s title bar the drag surface: the title moves the window, the tile only grabs',
+    kind => {
+      const { container } = render(
+        <TerminalNodeHeader
+          title="Terminal"
+          kind={kind}
+          status={kind === 'agent' ? 'standby' : null}
+          onTitleCommit={() => undefined}
+          onClose={() => undefined}
+        />,
+      )
+
+      const display = screen.getByTestId('terminal-node-title-display')
+      expect(display).toHaveAttribute('data-cove-title-gesture', 'move')
+      expect(display).not.toHaveClass('nodrag')
+      expect(container.querySelector('.cove-window-header__drag')).toBeNull()
+      expect(screen.getByTestId('terminal-node-header-drag-surface')).toHaveAttribute(
+        'data-cove-part',
+        'kind-tile',
+      )
+    },
+  )
 })

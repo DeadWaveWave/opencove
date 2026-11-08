@@ -354,7 +354,6 @@ export async function resolveHeaderDragTarget(header: Locator): Promise<{
 }> {
   const className = String(await header.evaluate(element => element.className))
   const surface = header.getByTestId(resolveHeaderDragSurfaceTestId(className))
-  const isTerminalHeader = isTerminalHeaderClassName(className)
   const surfaceMetrics = await surface
     .evaluate(element => {
       const headerElement = element.parentElement
@@ -374,8 +373,9 @@ export async function resolveHeaderDragTarget(header: Locator): Promise<{
       }
     })
     .catch(() => null)
+  // The tile is the one spot of every header that only grabs: the title beside it renames.
+  // Terminal headers press it by coordinates, since a selected terminal's surface sits on top.
   const canUseSurfacePosition =
-    !isTerminalHeader &&
     surfaceMetrics &&
     surfaceMetrics.width > 0 &&
     surfaceMetrics.height > 0 &&

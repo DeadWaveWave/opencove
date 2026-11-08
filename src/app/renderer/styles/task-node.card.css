@@ -1,0 +1,318 @@
+/*
+ * The task card (owner call, round 4, proposal A): under the header, one row of status and labels,
+ * the requirement filling the middle, then the sessions and the run button, parted by dotted
+ * rules. Built from the pixel primitives (ui-pixel.css).
+ */
+.task-node {
+  --task-node-status: var(--cove-text-faint);
+  --task-node-status-text: var(--cove-text-muted);
+}
+
+.task-node[data-task-status='doing'] {
+  --task-node-status: var(--cove-accent);
+  --task-node-status-text: var(--cove-accent-text);
+}
+
+/* AI done reads in the AI kind's colour, the colour of the Agent window that did it. */
+.task-node[data-task-status='ai_done'] {
+  --task-node-status: var(--cove-kind-ai-solid, var(--cove-info));
+  --task-node-status-text: var(--cove-kind-ai-ink, var(--cove-info));
+}
+
+.task-node[data-task-status='done'] {
+  --task-node-status: var(--cove-success);
+  --task-node-status-text: var(--cove-success);
+}
+
+.task-node__plate {
+  padding: var(--cove-spacing-1) var(--cove-spacing-3) var(--cove-spacing-2);
+  gap: var(--cove-spacing-1);
+  container: task-card / inline-size;
+}
+
+.task-node__plate > .task-node__meta {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  min-width: 0;
+  gap: var(--cove-spacing-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+/* The meta row: the progress (steps and status) on the left, the labels and their edit button
+   on the right. */
+.task-node__progress {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  min-width: 0;
+  gap: var(--cove-spacing-2);
+}
+
+.task-node__labels {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  gap: var(--cove-spacing-2);
+}
+
+/* A task window opens two grid columns wide (about 250px), too narrow for one row: there the
+   labels take a line of their own under the progress, the edit button at its end. */
+@container task-card (max-width: 319px) {
+  .task-node__plate > .task-node__meta {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .task-node__labels {
+    flex: 0 0 auto;
+    justify-content: flex-start;
+  }
+
+  .task-node__labels .task-node__meta-edit {
+    margin-left: auto;
+  }
+}
+
+/* The steps: a cell per status, filled up to the current one. Each step is a segment 24px tall
+   at a 24px pitch, so it is easy to hit; the cell it draws is 22×8. */
+.task-node__steps.cove-segmented {
+  flex: 0 0 auto;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.task-node__steps.cove-segmented .cove-segmented__option {
+  width: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.task-node__step {
+  display: block;
+  width: 22px;
+  height: 8px;
+  background: var(--cove-pixel-fill);
+  clip-path: var(--cove-pixel-corners);
+}
+
+.task-node__steps.cove-segmented
+  .cove-segmented__option[data-state='off']:hover:not(:has(.cove-segmented__input:disabled)) {
+  background: none;
+}
+
+.task-node__steps .cove-segmented__option:hover .task-node__step {
+  background: var(--cove-pixel-fill-hover);
+}
+
+.task-node__steps .task-node__step[data-filled='true'],
+.task-node__steps .cove-segmented__option:hover .task-node__step[data-filled='true'] {
+  background: var(--task-node-status);
+}
+
+.task-node__steps.cove-segmented .cove-segmented__option:has(.cove-segmented__input:focus-visible) {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: -2px;
+}
+
+/* The progress to read only (the archive replay): the same cells at the same 24px pitch, and the
+   status's name where the live card has its menu. */
+.task-node__steps--readout {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  height: var(--cove-control-height-xs);
+}
+
+.task-node__steps--readout .task-node__step {
+  margin: 0 1px;
+}
+
+.task-node__status-name {
+  min-width: 0;
+  padding: 0 var(--cove-spacing-1);
+  overflow: hidden;
+  color: var(--task-node-status-text);
+  font-size: var(--cove-font-size-secondary);
+  font-weight: var(--cove-font-weight-semibold);
+  line-height: var(--cove-control-height-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-node__status-select {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+/* The status menu's trigger is the status's name in its colour, not a field. */
+.task-node__meta .cove-select__trigger.task-node__status-trigger {
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 24px;
+  gap: var(--cove-spacing-1);
+  padding: 0 var(--cove-spacing-1);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--task-node-status-text);
+  font-weight: var(--cove-font-weight-semibold);
+  clip-path: var(--cove-pixel-corners);
+}
+
+.task-node__meta .cove-select__trigger.task-node__status-trigger:hover {
+  background: var(--cove-pixel-fill);
+}
+
+.task-node__meta .cove-select__trigger.task-node__status-trigger:focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+.task-node__status-trigger .cove-select__chevron {
+  width: var(--cove-icon-size-sm);
+  height: var(--cove-icon-size-sm);
+}
+
+/* Labels: filled chips with stepped corners; the priority's flag carries its colour. */
+.task-node__plate .task-node__priority,
+.task-node__plate .task-node__tag {
+  flex: 0 0 auto;
+  height: 20px;
+  gap: var(--cove-spacing-1);
+  padding: 0 var(--cove-spacing-2);
+  border: 0;
+  border-radius: 0;
+  background: var(--cove-pixel-fill);
+  color: var(--cove-text-muted);
+  font-size: var(--cove-font-size-caption);
+  white-space: nowrap;
+  clip-path: var(--cove-pixel-corners);
+}
+
+.task-node__priority-flag {
+  color: var(--cove-info);
+}
+
+.task-node__priority--low .task-node__priority-flag {
+  color: var(--cove-text-faint);
+}
+
+.task-node__priority--high .task-node__priority-flag {
+  color: var(--cove-warning);
+}
+
+.task-node__priority--urgent .task-node__priority-flag {
+  color: var(--cove-danger);
+}
+
+/* Tags give way first. They show as many as fit on their one line; the rest wrap onto a line
+   that is clipped away (the editor lists them all), and a first tag too long alone ends in an
+   ellipsis. */
+.task-node__plate .task-node__tags {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  height: 20px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.task-node__plate .task-node__tag {
+  display: block;
+  flex: 0 1 auto;
+  max-width: 100%;
+  min-width: 0;
+  line-height: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-node__plate .task-node__tag--empty {
+  background: none;
+  color: var(--cove-text-faint);
+}
+
+.task-node__meta .cove-icon-button.task-node__meta-edit {
+  border: 0;
+  border-radius: 0;
+  color: var(--cove-text-faint);
+  clip-path: var(--cove-pixel-corners);
+}
+
+.task-node__meta .cove-icon-button.task-node__meta-edit:not(:disabled):hover {
+  background: var(--cove-pixel-fill);
+  color: var(--cove-text);
+}
+
+.task-node__meta .cove-icon-button.task-node__meta-edit:focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+/* The requirement fills the card between two dotted rules. */
+.task-node__plate > .task-node__content {
+  padding: var(--cove-spacing-2) 0;
+  background:
+    linear-gradient(90deg, var(--cove-pixel-rule-color) 0 2px, transparent 2px 4px) left top / 4px
+      2px repeat-x,
+    linear-gradient(90deg, var(--cove-pixel-rule-color) 0 2px, transparent 2px 4px) left bottom /
+      4px 2px repeat-x;
+}
+
+.task-node__plate .task-node__requirement-input {
+  font-size: var(--cove-font-size-body);
+  line-height: var(--cove-line-height-body);
+}
+
+.task-node__plate .task-node__requirement-input::placeholder {
+  color: var(--cove-text-faint);
+}
+
+/* The bottom row: the sessions on the left, the run button on the right. */
+.task-node__plate > .task-node__footer {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  gap: var(--cove-spacing-2);
+}
+
+/* The run button: the primary button, pressable in pixels. */
+.task-node__footer .cove-button.task-node__run-agent {
+  flex: 0 0 auto;
+  height: 28px;
+  margin-left: auto;
+  padding: 0 var(--cove-spacing-3);
+  border: 0;
+  border-radius: 0;
+  box-shadow: var(--cove-pixel-raised);
+  clip-path: var(--cove-pixel-corners);
+}
+
+.task-node__footer .cove-button.task-node__run-agent:not(:disabled):active {
+  box-shadow: var(--cove-pixel-pressed);
+}
+
+.task-node__footer .cove-button.task-node__run-agent:focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: -2px;
+  box-shadow: var(--cove-pixel-raised);
+}

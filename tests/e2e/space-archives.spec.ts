@@ -161,7 +161,7 @@ test.describe('Space Archives', () => {
 
         await expect(archivesWindow).toContainText('Note full text')
         await expect(archivesWindow).toContainText('Task requirement full text')
-        await expect(archivesWindow).toContainText('Agent Sessions')
+        await expect(archivesWindow.locator('.task-node__session--readout')).toHaveCount(1)
       } finally {
         await electronApp.close()
       }
@@ -204,7 +204,7 @@ test.describe('Space Archives', () => {
 
         await expect(archivesWindow).toContainText('Note full text')
         await expect(archivesWindow).toContainText('Task requirement full text')
-        await expect(archivesWindow).toContainText('Agent Sessions')
+        await expect(archivesWindow.locator('.task-node__session--readout')).toHaveCount(1)
 
         await record.click({ button: 'right' })
         const contextMenu = relaunch.window.locator(

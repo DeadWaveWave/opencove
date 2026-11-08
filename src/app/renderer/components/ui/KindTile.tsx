@@ -7,6 +7,7 @@ export interface KindTileProps {
   kind: KindTileFamily
   size?: 'sm' | 'md'
   className?: string
+  testId?: string
   /** The kind's icon. The tile is decorative: the window title names it. */
   children: React.ReactNode
 }
@@ -16,11 +17,13 @@ export function KindTile({
   kind,
   size = 'md',
   className,
+  testId,
   children,
 }: KindTileProps): React.JSX.Element {
   return (
     <span
       data-cove-part="kind-tile"
+      data-testid={testId}
       data-kind={kind}
       data-size={size}
       aria-hidden="true"

@@ -18,7 +18,7 @@ function collapseControls(): WindowCollapseControls {
 }
 
 describe('WindowHeader', () => {
-  it('lays out label, kind tile, title, drag space, actions, collapse and close in order', () => {
+  it('lays out label, kind tile, title, actions, collapse and close in order', () => {
     const onClose = vi.fn()
     const controls = collapseControls()
     const { container } = render(
@@ -55,23 +55,17 @@ describe('WindowHeader', () => {
             ? 'label'
             : element.dataset.testid === 'title'
               ? 'title'
-              : element.dataset.testid === 'note-node-header-drag-surface'
-                ? 'drag'
-                : element.dataset.testid === 'node-collapse'
-                  ? 'collapse'
-                  : (element.getAttribute('aria-label') ?? element.textContent),
+              : element.dataset.testid === 'node-collapse'
+                ? 'collapse'
+                : (element.getAttribute('aria-label') ?? element.textContent),
       )
-    expect(parts).toEqual(['label', 'tile', 'title', 'drag', 'More', 'collapse', 'Delete note'])
+    expect(parts).toEqual(['label', 'tile', 'title', 'More', 'collapse', 'Delete note'])
 
     const tile = header.querySelector('[data-cove-part="kind-tile"]')
     // The tile wears the window's kind; the label stays on the dot and the frame.
     expect(tile).toHaveAttribute('data-kind', 'shell')
     expect(header).toHaveAttribute('data-cove-kind', 'shell')
     expect(tile).toContainElement(screen.getByTestId('kind-icon'))
-    expect(screen.getByTestId('note-node-header-drag-surface')).toHaveAttribute(
-      'aria-hidden',
-      'true',
-    )
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete note' }))
     expect(onClose).toHaveBeenCalledOnce()
@@ -95,8 +89,33 @@ describe('WindowHeader', () => {
     expect(status).toHaveClass('cove-window-header__status')
     expect(status.previousElementSibling).toHaveTextContent('zsh')
     const trailing = header.querySelector('.cove-window-header__trailing')
+    expect(status.nextElementSibling).toBe(trailing)
     expect(trailing).toHaveClass('nodrag', 'terminal-node__header-trailing')
     expect(screen.queryByTestId('node-collapse')).toBeNull()
     expect(screen.getByRole('button', { name: 'Close window' }).parentElement).toBe(trailing)
+  })
+
+  it('keeps no drag space: the bar is the drag surface, and the tile the one spot that only grabs', () => {
+    const { container } = render(
+      <WindowHeader
+        className="website-node__header"
+        kind="media"
+        icon={<svg />}
+        title={<span data-testid="title">Release notes</span>}
+        dragSurfaceTestId="website-node-header-drag-surface"
+        close={{ label: 'Close window', onClose: () => {} }}
+      />,
+    )
+
+    const header = container.firstElementChild as HTMLElement
+    expect(header.querySelector('.cove-window-header__drag')).toBeNull()
+    expect(screen.getByTestId('website-node-header-drag-surface')).toHaveAttribute(
+      'data-cove-part',
+      'kind-tile',
+    )
+    // The title runs to the controls, whatever it is: an editable title or plain words.
+    expect(screen.getByTestId('title').nextElementSibling).toHaveClass(
+      'cove-window-header__trailing',
+    )
   })
 })

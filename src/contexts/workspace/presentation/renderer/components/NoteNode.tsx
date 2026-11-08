@@ -14,6 +14,7 @@ import { NoteNodeActionsMenu } from './NoteNodeActionsMenu'
 import { NodeKindIcon } from './shared/NodeKindIcon'
 import { WindowHeader } from './shared/WindowHeader'
 import { WindowPlate } from './shared/WindowPlate'
+import { isWindowTitleGesture } from './shared/windowTitleGesture'
 
 interface NoteNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -143,6 +144,11 @@ export function NoteNode({
               ? event.target.parentElement
               : null
         if (!targetElement) {
+          return
+        }
+
+        // The title owns its clicks: one renames, one ending a grab does nothing.
+        if (isWindowTitleGesture(targetElement)) {
           return
         }
 

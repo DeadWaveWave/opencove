@@ -14,6 +14,7 @@ import { TerminalNodeHeader } from './TerminalNodeHeader'
 import { WindowPlate } from '../shared/WindowPlate'
 import { TerminalNodeFindBar } from './TerminalNodeFindBar'
 import { NodeResizeHandles } from '../shared/NodeResizeHandles'
+import { isWindowTitleGesture } from '../shared/windowTitleGesture'
 import { resolveTerminalNodeInteraction } from './interaction'
 import { shouldStopWheelPropagation } from './wheel'
 import type { AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
@@ -174,6 +175,11 @@ export function TerminalNodeFrame({
           event.target.closest('.terminal-node__header') &&
           !event.target.closest('.nodrag')
         ) {
+          return
+        }
+
+        // The title owns its clicks: one renames, one ending a grab does nothing.
+        if (isWindowTitleGesture(event.target)) {
           return
         }
 

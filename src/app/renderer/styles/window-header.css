@@ -36,11 +36,6 @@
   align-items: center;
 }
 
-.cove-window-header__drag {
-  flex: 0 0 48px;
-  align-self: stretch;
-}
-
 .cove-window-header > .cove-window-header__trailing {
   display: flex;
   flex: none;
