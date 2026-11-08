@@ -102,18 +102,6 @@
   --cove-info: var(--cove-accent-text);
   --cove-info-surface: var(--cove-control-selected);
   --cove-info-border: color-mix(in srgb, var(--cove-accent) 34%, transparent);
-  /* Theme picker swatches stay constant across themes: Cove (generated values) and Pixel. */
-  --cove-theme-preview-light: #f2f9ff;
-  --cove-theme-preview-dark: #0c1217;
-  --cove-theme-preview-accent: #00b0d5;
-  --cove-theme-preview-pixel-accent: #5b9cf0;
-  --cove-theme-preview-pixel-light: linear-gradient(
-    135deg,
-    #e7f0f6 48%,
-    #3c79bb 49%,
-    #26859b 74%,
-    #308b6f
-  );
   /* Shared effect palette; named themes can remap these three color stops. */
   --cove-pixel-blue: #5b9cf0;
   --cove-pixel-cyan: #55bddc;

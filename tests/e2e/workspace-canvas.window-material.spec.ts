@@ -85,11 +85,12 @@ test('the window material turns glass solid from Settings, the control center an
       )
       .toBe('solid')
 
-    // The control center writes the same setting.
-    await window.getByTestId('app-header-control-center').click()
-    await expect(window.getByTestId('control-center-window-material-solid')).toBeChecked()
-    await window.getByTestId('control-center-window-material-glass').check()
-    await window.keyboard.press('Escape')
+    // Choosing glass again brings the material back.
+    await window.getByTestId('app-header-settings').click()
+    await window.getByTestId('settings-section-nav-appearance').click()
+    await expect(solidOption).toBeChecked()
+    await glassOption.check()
+    await window.getByTestId('settings-panel-close').click()
     await expect.poll(async () => (await readMaterials(window)).attribute).toBe('full')
 
     // While the system reduces transparency, windows are solid and glass is unavailable.

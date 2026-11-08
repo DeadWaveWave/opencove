@@ -28,9 +28,9 @@ function createValue(overrides: Partial<TerminalAppearanceValue> = {}): Terminal
 }
 
 describe('terminal appearance', () => {
-  it('uses light terminal semantics for Pixel Light while retaining explicit dark overrides', () => {
+  it('uses light terminal semantics for Cove light while retaining explicit dark overrides', () => {
     const value = {
-      themeId: 'pixel-light' as const,
+      themeId: 'light' as const,
       uiScheme: 'light' as const,
       xtermTheme: {
         background: '#f7fbfd',
@@ -39,14 +39,14 @@ describe('terminal appearance', () => {
         selectionBackground: 'rgba(33, 108, 190, 0.18)',
       },
     }
-    expect(UI_THEME_DESCRIPTORS['pixel-light']).toMatchObject({
+    expect(UI_THEME_DESCRIPTORS.light).toMatchObject({
       baseScheme: 'light',
       terminalScheme: 'light',
     })
     expect(
       resolveTerminalAppearanceValue({ ...value, terminalThemeMode: 'sync-with-ui' }),
     ).toMatchObject({
-      themeId: 'pixel-light',
+      themeId: 'light',
       uiScheme: 'light',
       terminalScheme: 'light',
       xtermTheme: value.xtermTheme,

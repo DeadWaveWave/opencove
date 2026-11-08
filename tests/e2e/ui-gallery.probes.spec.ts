@@ -3,7 +3,7 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { launchApp } from './workspace-canvas.helpers'
 import { auditUiAccessibility } from './ui-accessibility.probe'
 
-const THEMES = ['dark', 'light', 'pixel', 'pixel-light'] as const
+const THEMES = ['dark', 'light'] as const
 type GalleryWindow = Window & { __opencoveUiGalleryTestApi?: { setTheme: (theme: string) => void } }
 
 async function probe(

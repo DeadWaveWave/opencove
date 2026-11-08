@@ -31,7 +31,7 @@ export async function seedIdentityEndpointFixture(
   await seedWorkspaceState(page, {
     activeWorkspaceId: EXPANSION_PROJECT,
     settings: {
-      uiTheme: 'pixel',
+      uiTheme: 'dark',
       uiFontSize: 16 * fontScale,
       // Use short localized placeholder copy to measure actual text centering,
       // rather than a Range extending beyond the compact caption's ellipsis.

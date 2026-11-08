@@ -90,7 +90,7 @@ describe('createOpenCodeTuiThemeBridge', () => {
     appliedAppearance = {
       ...appliedAppearance,
       revision: 2,
-      themeId: 'pixel-light',
+      themeId: 'light',
       xtermTheme: { ...appliedAppearance.xtermTheme, background: '#19120e' },
     }
     bridge.reportThemeMode()

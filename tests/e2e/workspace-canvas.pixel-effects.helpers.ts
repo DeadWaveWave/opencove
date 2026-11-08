@@ -38,6 +38,23 @@ export async function setPixelEffect(page: Page, key: PixelEffectToggle, enabled
   await expect(control).toHaveJSProperty('checked', enabled)
 }
 
+/** Opens Settings → Appearance, makes a change there and returns to the canvas. */
+export async function changePixelAppearance(page: Page, change: () => Promise<void>) {
+  await openPixelAppearance(page)
+  await change()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.settings-panel')).toHaveCount(0)
+}
+
+/** Creation, closing and working light together: the canvas's motion signals. */
+export async function setMotionSignals(page: Page, enabled: boolean) {
+  await changePixelAppearance(page, async () => {
+    await setPixelEffect(page, 'agentWorkingPixelEffectEnabled', enabled)
+    await setPixelEffect(page, 'nodeCreationPixelEffectEnabled', enabled)
+    await setPixelEffect(page, 'nodeClosePixelEffectEnabled', enabled)
+  })
+}
+
 export async function setBackgroundStyle(page: Page, style: CanvasBackgroundStyle) {
   const option = page.getByTestId(`settings-canvas-background-style-${style}`)
   await option.scrollIntoViewIfNeeded()

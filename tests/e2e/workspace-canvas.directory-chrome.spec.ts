@@ -205,7 +205,7 @@ async function exerciseSearch(
   await expectSingleToolbarRow(browser)
 }
 
-for (const theme of ['pixel', 'pixel-light'] as const) {
+for (const theme of ['dark', 'light'] as const) {
   for (const kind of ['explorer', 'folder'] as const) {
     test(`${kind} keeps stable directory chrome and compact search in ${theme}`, async ({
       browserName: _browserName,

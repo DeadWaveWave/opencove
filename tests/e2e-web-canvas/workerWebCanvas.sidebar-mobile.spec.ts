@@ -11,7 +11,7 @@ async function readCanvasGeometry(page: Page) {
   })
 }
 
-for (const theme of ['pixel', 'pixel-light']) {
+for (const theme of ['dark', 'light']) {
   test(`mobile navigation overlays the canvas in ${theme}`, async ({ page }, testInfo) => {
     const workspacePath = await createWorkspaceDir(`sidebar-${theme}`)
     const state = buildAppState({

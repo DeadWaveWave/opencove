@@ -2,8 +2,7 @@
  * Kind and label are separate channels (Tide phase 3).
  * - Kind (what the window is): the header's KindTile and a 9% header wash.
  * - Label (how you sort it): the window frame and a short flag at the top.
- * Kind never draws the frame and labels never colour the tile. Generated families (Cove) use
- * both channels; hand-written themes such as Pixel keep their own identity decoration.
+ * Kind never draws the frame and labels never colour the tile.
  */
 .cove-window-header {
   --cove-window-kind-tint: transparent;

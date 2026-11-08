@@ -30,7 +30,7 @@ async function createNode(page: Page, kind: 'note' | 'terminal') {
   await action.evaluate(element => (element as HTMLElement).click())
 }
 
-async function seed(page: Page, kind: 'note' | 'terminal', uiTheme = 'pixel') {
+async function seed(page: Page, kind: 'note' | 'terminal', uiTheme = 'dark') {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await clearAndSeedWorkspace(page, [], {
     settings: {

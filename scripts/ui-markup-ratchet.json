@@ -44,7 +44,7 @@
     "src/contexts/settings/presentation/renderer/settingsPanel/SshConfigHostPicker.tsx": 1,
     "src/contexts/settings/presentation/renderer/settingsPanel/TaskConfigurationSection.tsx": 1,
     "src/contexts/settings/presentation/renderer/settingsPanel/TerminalFontFamilyRow.tsx": 3,
-    "src/contexts/settings/presentation/renderer/settingsPanel/ThemeGallery.tsx": 3,
+    "src/contexts/settings/presentation/renderer/settingsPanel/ThemeGallery.tsx": 2,
     "src/contexts/task/presentation/renderer/components/promptTemplates/TaskPromptTemplatesMenu.tsx": 8,
     "src/contexts/task/presentation/renderer/components/taskNode/TaskNodeActionsMenu.tsx": 3,
     "src/contexts/workspace/presentation/renderer/components/DocumentNodeBody.tsx": 2,

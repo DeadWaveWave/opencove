@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { normalizePluginThemes } from './pluginHostExtensionValidation'
 
-const theme = { id: 'night', title: 'Night', appearance: 'dark', extends: 'pixel' }
+const theme = { id: 'night', title: 'Night', appearance: 'dark', extends: 'dark' }
 describe('advanced theme contract', () => {
   it('accepts a pure visual inheritance package and structured material/metrics/motion overrides', () => {
-    expect(normalizePluginThemes([theme])[0]).toMatchObject({ extends: 'pixel', tokens: {} })
+    expect(normalizePluginThemes([theme])[0]).toMatchObject({ extends: 'dark', tokens: {} })
     expect(
       normalizePluginThemes([
         {
@@ -30,6 +30,8 @@ describe('advanced theme contract', () => {
   it.each([
     ['ember', 'dark', 'dark'],
     ['ember-light', 'light', 'light'],
+    ['pixel', 'dark', 'dark'],
+    ['pixel-light', 'light', 'light'],
   ])('keeps a retired %s foundation working as Cove %s', (retired, appearance, cove) => {
     expect(normalizePluginThemes([{ ...theme, appearance, extends: retired }])[0]?.extends).toBe(
       cove,

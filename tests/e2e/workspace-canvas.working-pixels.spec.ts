@@ -113,8 +113,7 @@ test('uses Cove by default and shows theme-adaptive, switchable Working rims fro
         contentType: 'image/png',
       })
     }
-    await inspectTheme('pixel')
-    await inspectTheme('pixel-light')
+    await inspectTheme('light')
     await inspectTheme('dark')
     await send('waiting')
     await expect(status).toHaveText('Waiting')

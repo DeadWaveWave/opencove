@@ -120,7 +120,7 @@ test.describe('Workspace Canvas - Space Explorer', () => {
             },
           ],
           activeSpaceId: 'space-root-explorer',
-          settings: { uiTheme: 'pixel-light' },
+          settings: { uiTheme: 'light' },
         },
       )
 
@@ -185,7 +185,7 @@ test.describe('Workspace Canvas - Space Explorer', () => {
 
       await window.waitForTimeout(1_500)
       await expect(branchBadge).toHaveCount(0)
-      await testInfo.attach(`space-explorer-pixel-light-${browserName}`, {
+      await testInfo.attach(`space-explorer-light-${browserName}`, {
         body: await explorer.screenshot(),
         contentType: 'image/png',
       })

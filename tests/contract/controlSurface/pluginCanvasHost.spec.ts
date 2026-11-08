@@ -188,7 +188,7 @@ describe('plugin canvas routing over two authenticated Workers', () => {
       spawnLocal.mockImplementationOnce(async input => {
         const snapshot = structuredClone(await store.readAppState()) as typeof state
         snapshot.workspaces[0].viewport = { x: 444, y: 222, zoom: 0.75 }
-        snapshot.settings = { language: 'zh-CN', uiTheme: 'pixel-light' }
+        snapshot.settings = { language: 'zh-CN', uiTheme: 'light' }
         const edited = snapshot.workspaces[0].nodes.find(item => item.id === note.node.id)!
         edited.task = { text: 'Edited in Web UI while terminal starts' }
         await call('sync.writeState', {
@@ -203,7 +203,7 @@ describe('plugin canvas routing over two authenticated Workers', () => {
       })
       const afterCreate = (await store.readAppState()) as typeof state
       expect(afterCreate.workspaces[0].viewport).toEqual({ x: 444, y: 222, zoom: 0.75 })
-      expect(afterCreate.settings).toMatchObject({ language: 'zh-CN', uiTheme: 'pixel-light' })
+      expect(afterCreate.settings).toMatchObject({ language: 'zh-CN', uiTheme: 'light' })
       expect(
         afterCreate.workspaces[0].nodes.find(item => item.id === note.node.id)?.task,
       ).toMatchObject({ text: 'Edited in Web UI while terminal starts' })

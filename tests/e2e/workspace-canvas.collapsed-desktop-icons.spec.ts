@@ -47,7 +47,7 @@ async function expectTransparentHitArea(launch: Locator) {
     })
 }
 
-test('compact desktop icons keep hover, selection and keyboard feedback local in both Pixel themes', async ({
+test('compact desktop icons keep hover, selection and keyboard feedback local in both appearances', async ({
   browserName: _browserName,
 }, testInfo) => {
   const { electronApp, window } = await launchApp()
@@ -78,8 +78,8 @@ test('compact desktop icons keep hover, selection and keyboard feedback local in
     const launch = compact.getByTestId('node-expand')
     const icon = compact.locator('.cove-collapsed-window__icon')
     const title = compact.locator('.cove-collapsed-window__title')
-    for (const theme of ['pixel', 'pixel-light'] as const) {
-      if (theme === 'pixel-light') {
+    for (const theme of ['dark', 'light'] as const) {
+      if (theme === 'light') {
         await openPixelAppearance(window)
         await selectCoveOption(window, 'settings-ui-theme', theme)
         await window.locator('.settings-panel__close').click()

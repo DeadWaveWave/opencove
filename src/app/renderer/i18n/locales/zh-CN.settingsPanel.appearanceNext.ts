@@ -3,7 +3,7 @@ export const zhCNSettingsPanelAppearanceNext = {
   light: '浅色',
   dark: '深色',
   mode: '外观',
-  modeHelp: '跟随系统时随系统的浅色和深色切换；Pixel 只有浅色和深色。',
+  modeHelp: '跟随系统时随系统的浅色和深色切换。',
   system: '跟随系统',
   interfaceText: '界面文字',
   preview: '画布预览',

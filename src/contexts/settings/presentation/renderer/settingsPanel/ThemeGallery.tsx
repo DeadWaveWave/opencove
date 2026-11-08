@@ -3,34 +3,12 @@ import { usePluginRegistry } from '@contexts/plugins/presentation/renderer/usePl
 import { availablePluginThemes } from '@contexts/plugins/domain/pluginThemes'
 import { CheckIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
-import { SegmentedControl } from '@app/renderer/components/ui/SegmentedControl'
-import { SettingRow } from '@app/renderer/components/ui/SettingRow'
-import {
-  DEFAULT_UI_THEME,
-  type UiTheme,
-  type UiThemeFamily,
-} from '@contexts/settings/domain/uiSettings'
-import {
-  describeUiThemeChoice,
-  resolveUiThemeChoice,
-  uiThemeModesFor,
-  type UiThemeMode,
-} from '@contexts/settings/domain/uiThemeChoice'
-import { SettingsGroupBody } from './SettingsGroup'
-
-// Family names are product names and stay untranslated.
-const families: Array<{ id: UiThemeFamily; title: string }> = [
-  { id: 'cove', title: 'Cove' },
-  { id: 'pixel', title: 'Pixel' },
-]
-
-const prefersDark = () =>
-  typeof window.matchMedia === 'function' &&
-  window.matchMedia('(prefers-color-scheme: dark)').matches
+import { DEFAULT_UI_THEME, type UiTheme } from '@contexts/settings/domain/uiSettings'
+import { AppearancePicker } from '../AppearancePicker'
 
 /**
- * The theme is a family (the cards) plus an appearance (one segmented row), as in the Tide
- * settings and the control center. Plugin themes are listed below and carry their own appearance.
+ * The theme is one of Cove's three appearances, each shown as the app in pixel miniature, as in
+ * the control center. Plugin themes are listed below and carry their own appearance.
  */
 export function ThemeGallery({
   value,
@@ -43,12 +21,6 @@ export function ThemeGallery({
   const applied = useThemeApplicationStatus()
   const { plugins } = usePluginRegistry()
   const pluginThemes = availablePluginThemes(plugins)
-  const choice = describeUiThemeChoice(value)
-  const family = choice.family ?? 'cove'
-  // A plugin theme has no mode here; picking a family keeps what the window shows now.
-  const mode: UiThemeMode =
-    choice.mode ?? (document.documentElement.dataset.coveTheme === 'light' ? 'light' : 'dark')
-  const modes = uiThemeModesFor(family)
   return (
     <div
       className="settings-theme-gallery"
@@ -57,45 +29,14 @@ export function ThemeGallery({
       role="group"
       aria-label={t('settingsPanel.general.uiThemeLabel')}
     >
-      <div className="settings-theme-gallery__families">
-        {families.map(item => (
-          <button
-            type="button"
-            className="settings-theme-gallery__family"
-            data-theme-family={item.id}
-            data-testid={`settings-ui-theme-family-${item.id}`}
-            aria-pressed={choice.family === item.id}
-            key={item.id}
-            onClick={() => onChange(resolveUiThemeChoice(item.id, mode, prefersDark()))}
-          >
-            <span className="settings-theme-gallery__sample" aria-hidden="true">
-              <span className="settings-theme-gallery__sample-window" />
-              <span className="settings-theme-gallery__sample-window" />
-            </span>
-            <span className="settings-theme-gallery__name">{item.title}</span>
-          </button>
-        ))}
-      </div>
-      <SettingsGroupBody>
-        <SettingRow
-          label={t('settingsPanel.appearanceNext.mode')}
-          description={t('settingsPanel.appearanceNext.modeHelp')}
-          control={
-            <SegmentedControl
-              testId="settings-ui-theme-mode"
-              value={mode}
-              disabled={choice.family === null}
-              onValueChange={next => onChange(resolveUiThemeChoice(family, next, prefersDark()))}
-              options={(['light', 'dark', 'system'] as const).map(option => ({
-                value: option,
-                label: t(`settingsPanel.appearanceNext.${option}`),
-                testId: `settings-ui-theme-mode-${option}`,
-                disabled: !modes.includes(option),
-              }))}
-            />
-          }
-        />
-      </SettingsGroupBody>
+      <AppearancePicker
+        value={value}
+        label={t('settingsPanel.appearanceNext.mode')}
+        size="lg"
+        testIdPrefix="settings-ui-theme-mode"
+        onValueChange={onChange}
+      />
+      <p className="settings-theme-gallery__help">{t('settingsPanel.appearanceNext.modeHelp')}</p>
       {value.startsWith('plugin:') && !pluginThemes.some(item => item.id === value) ? (
         <p role="status">{t('pluginHostExtensions.unavailableTheme')}</p>
       ) : null}

@@ -299,6 +299,12 @@ export async function readSpaceIdentity(page: Page) {
         return { rgb: numbers.slice(0, 3), alpha: numbers[3] ?? 1, css: value }
       }
       const edge = getComputedStyle(region, '::before')
+      // The identity colour as the region paints it, for comparing with its corner brackets.
+      const probe = document.createElement('span')
+      probe.style.color = 'var(--cove-space-identity-color)'
+      region.append(probe)
+      const identityPaint = getComputedStyle(probe).color
+      probe.remove()
       const zoom = rect.width / Number.parseFloat((region as HTMLElement).style.width)
       const clipPoints = edge.clipPath.startsWith('polygon(')
         ? edge.clipPath
@@ -388,6 +394,8 @@ export async function readSpaceIdentity(page: Page) {
         identityColor: style.getPropertyValue('--cove-space-identity-color').trim(),
         defaultIdentityColor: style.getPropertyValue('--cove-pixel-cyan').trim(),
         fill: color(style.backgroundColor),
+        bracket: color(getComputedStyle(region, '::after').borderTopColor),
+        identityPaint: color(identityPaint),
         background: style.backgroundImage,
         blur: style.backdropFilter,
         shadow: style.boxShadow,

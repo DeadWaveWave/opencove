@@ -41,7 +41,7 @@ export async function seedThemeWorkspace(page: Page) {
     {
       settings: {
         language: 'en',
-        uiTheme: 'pixel',
+        uiTheme: 'dark',
         uiFontSize: 16,
         canvasInputMode: 'mouse',
         focusNodeOnClick: false,

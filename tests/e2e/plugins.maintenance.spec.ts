@@ -30,7 +30,7 @@ test('retains conflicting source, displays recovery, and applies the explicitly 
   const { electronApp, window: page } = await launchApp()
   try {
     await page.setViewportSize({ width: 1300, height: 1000 })
-    await clearAndSeedWorkspace(page, [], { settings: { language: 'en', uiTheme: 'pixel' } })
+    await clearAndSeedWorkspace(page, [], { settings: { language: 'en', uiTheme: 'dark' } })
     await page.getByTestId('app-header-settings').click()
     await page.getByTestId('settings-section-nav-plugins').click()
     await page.getByTestId('settings-plugins-install').click()

@@ -24,45 +24,32 @@ afterEach(async () => {
   vi.restoreAllMocks()
 })
 
-describe('appearance families and terminal scope', () => {
-  it('picks a family on the cards and the appearance on one segmented row', () => {
+describe('appearance and terminal scope', () => {
+  it("offers Cove's three appearances as one radio group, with no theme families", () => {
     const onChange = vi.fn()
-    const view = render(<ThemeGallery value="pixel-light" onChange={onChange} />)
-    const pressed = () =>
-      [...view.container.querySelectorAll<HTMLElement>('[data-theme-family]')].map(family => [
-        family.dataset.themeFamily,
-        family.getAttribute('aria-pressed'),
-      ])
-    expect(pressed()).toEqual([
-      ['cove', 'false'],
-      ['pixel', 'true'],
-    ])
+    const view = render(<ThemeGallery value="light" onChange={onChange} />)
     const modes = screen.getByRole('radiogroup', { name: 'Appearance' })
     expect(modes).toBeVisible()
-    expect(screen.getByRole('radio', { name: 'Light' })).toBeChecked()
-    // Pixel has light and dark only.
-    expect(screen.getByRole('radio', { name: 'Follow System' })).toBeDisabled()
-    fireEvent.click(screen.getByRole('radio', { name: 'Dark' }))
-    expect(onChange).toHaveBeenLastCalledWith('pixel')
-    // Switching family keeps the appearance.
-    fireEvent.click(screen.getByRole('button', { name: 'Cove' }))
-    expect(onChange).toHaveBeenLastCalledWith('light')
-
-    view.rerender(<ThemeGallery value="dark" onChange={onChange} />)
-    expect(pressed()).toEqual([
-      ['cove', 'true'],
-      ['pixel', 'false'],
+    expect(screen.getAllByRole('radio').map(radio => radio.getAttribute('value'))).toEqual([
+      'light',
+      'dark',
+      'system',
     ])
+    expect(screen.getByRole('radio', { name: 'Light' })).toBeChecked()
+    fireEvent.click(screen.getByRole('radio', { name: 'Dark' }))
+    expect(onChange).toHaveBeenLastCalledWith('dark')
     fireEvent.click(screen.getByRole('radio', { name: 'Follow System' }))
     expect(onChange).toHaveBeenLastCalledWith('system')
+
     view.rerender(<ThemeGallery value="system" onChange={onChange} />)
     expect(screen.getByRole('radio', { name: 'Follow System' })).toBeChecked()
     expect(
-      screen.getByText(
-        'Follow System switches with your system’s light and dark appearance. Pixel has light and dark only.',
-      ),
+      screen.getByText('Follow System switches with your system’s light and dark appearance.'),
     ).toBeVisible()
-    for (const theme of UI_THEMES.filter(id => id !== 'system')) {
+    // Pixel is retired: its look is Cove's own now, so there is no family to pick.
+    expect(view.container.querySelector('[data-theme-family]')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Pixel' })).toBeNull()
+    for (const theme of UI_THEMES) {
       expect(screen.queryByTestId(`settings-ui-theme-${theme}`)).toBeNull()
     }
   })
@@ -107,16 +94,13 @@ describe('appearance families and terminal scope', () => {
     expect(screen.queryByRole('textbox')).toBeNull()
   })
 
-  it('localizes the appearance row without inventing a Pixel automatic mode', async () => {
+  it('localizes the appearance row', async () => {
     await applyUiLanguage('zh-CN')
-    render(<ThemeGallery value="pixel" onChange={vi.fn()} />)
+    render(<ThemeGallery value="dark" onChange={vi.fn()} />)
     expect(screen.getByRole('radiogroup', { name: '外观' })).toBeVisible()
-    expect(screen.getByRole('radio', { name: '跟随系统' })).toBeDisabled()
+    expect(screen.getByRole('radio', { name: '跟随系统' })).toBeEnabled()
     expect(screen.getByRole('radio', { name: '深色' })).toBeChecked()
-    expect(
-      screen.getByText('跟随系统时随系统的浅色和深色切换；Pixel 只有浅色和深色。'),
-    ).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Cove' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Pixel' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('跟随系统时随系统的浅色和深色切换。')).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Pixel' })).toBeNull()
   })
 })

@@ -10,7 +10,6 @@ import {
   changeNodeIdentity,
   clearCanvasSelection,
   createIdentityFixture,
-  headerSelector,
   IDENTITY_COLORS,
   nodeSelector,
   persistedLabels,
@@ -45,21 +44,17 @@ const KIND_FAMILY: Record<string, string | null> = {
 }
 
 /**
- * Generated families keep the header clear glass, washed in its kind colour from a layer under
- * its content, with the window's reading plate a separate layer under the whole window
- * (window-plate.css). The hand-written themes tint the header itself with its label colour.
+ * The header stays clear glass, washed in its kind colour from a layer under its content, with
+ * the window's reading plate a separate layer under the whole window (window-plate.css).
  */
 function expectHeaderIdentity(node: {
   family: string | null
   headerImage: string | null
   headerWash: string | null
 }) {
-  if (node.family === 'cove') {
-    expect(node.headerImage).toBe('none')
-    expect(node.headerWash).toContain('linear-gradient')
-  } else {
-    expect(node.headerImage).toContain('linear-gradient')
-  }
+  expect(node.family).toBe('cove')
+  expect(node.headerImage).toBe('none')
+  expect(node.headerWash).toContain('linear-gradient')
 }
 
 test.describe('Workspace Canvas - Color Identity', () => {
@@ -95,16 +90,12 @@ test.describe('Workspace Canvas - Color Identity', () => {
             appearance.labelColor,
             appearance.labelColor,
           ])
-          if (appearance.family === 'cove') {
-            // Generated families: the label is a short solid flag; the kind colours the tile.
-            expect(appearance.ribbonImage).toBe('none')
-            expect(appearance.ribbonWidth).toBe(28)
-            expect(appearance.ribbonIsLabelColor).toBe(true)
-            expect(appearance.tileKind).toBe(KIND_FAMILY[appearance.kind])
-            expect(appearance.headerKind).toBe(KIND_FAMILY[appearance.kind])
-          } else {
-            expect(appearance.ribbonImage).toContain('linear-gradient')
-          }
+          // The label is a short solid flag; the kind colours the tile.
+          expect(appearance.ribbonImage).toBe('none')
+          expect(appearance.ribbonWidth).toBe(28)
+          expect(appearance.ribbonIsLabelColor).toBe(true)
+          expect(appearance.tileKind).toBe(KIND_FAMILY[appearance.kind])
+          expect(appearance.headerKind).toBe(KIND_FAMILY[appearance.kind])
           expect(appearance.ribbonHeight).toBe(2)
           expect(appearance.borderWidth).toBe('1px')
           // Window headers put the kind icon on a 20px tile; image has no header.
@@ -135,7 +126,6 @@ test.describe('Workspace Canvas - Color Identity', () => {
         expect(await geometry(page)).toEqual(originalGeometry)
         await attachIdentityFrame(page, testInfo, `color-identity-${theme}`)
       }
-      await inspectTheme('pixel')
       await inspectTheme('dark')
       await inspectTheme('light')
       await expect(page.locator(`${nodeSelector('image')} .image-node__header`)).toHaveCount(0)
@@ -218,12 +208,13 @@ test.describe('Workspace Canvas - Color Identity', () => {
       await changeNodeIdentity(page, 'document', 'orange')
       const changed = await readNodeIdentity(page)
       expect(changed.map(node => node.body)).toEqual(before.map(node => node.body))
-      expect(changed.find(node => node.kind === 'terminal')?.headerImage).not.toBe(
-        before.find(node => node.kind === 'terminal')?.headerImage,
-      )
-      expect(changed.find(node => node.kind === 'document')?.headerImage).not.toBe(
-        before.find(node => node.kind === 'document')?.headerImage,
-      )
+      // A label recolours the frame and its flag; the header keeps its kind wash.
+      for (const kind of ['terminal', 'document']) {
+        const [was, now] = [before, changed].map(nodes => nodes.find(node => node.kind === kind)!)
+        expect(now.border).not.toBe(was.border)
+        expect(now.ribbonIsLabelColor).toBe(true)
+        expect(now.headerWash).toBe(was.headerWash)
+      }
       await changeNodeIdentity(page, 'terminal', 'none')
       await changeNodeIdentity(page, 'document', 'none')
       const cleared = await readNodeIdentity(page)
@@ -233,16 +224,9 @@ test.describe('Workspace Canvas - Color Identity', () => {
           await expect(page.locator(nodeSelector(kind))).not.toHaveAttribute(
             'data-cove-label-color',
           )
-          await expect(page.locator(nodeSelector(kind)).locator(headerSelector(kind))).toHaveCSS(
-            'background-image',
-            /linear-gradient/,
-          )
-          const clearedNode = cleared.find(node => node.kind === kind)
-          if (clearedNode?.family === 'cove') {
-            expect(clearedNode.ribbonWidth).toBe(0)
-          } else {
-            expect(clearedNode?.ribbonImage).toContain('linear-gradient')
-          }
+          const clearedNode = cleared.find(node => node.kind === kind)!
+          expectHeaderIdentity(clearedNode)
+          expect(clearedNode.ribbonWidth).toBe(0)
         }),
       )
       const palettes = new Set<string>()
@@ -255,12 +239,8 @@ test.describe('Workspace Canvas - Color Identity', () => {
           expect(node.label).toBeNull()
           expect(Object.values(node.identity)).toEqual(node.themePalette)
           expectHeaderIdentity(node)
-          if (node.family === 'cove') {
-            // Unlabeled windows in generated families have no flag and a neutral frame.
-            expect(node.ribbonWidth).toBe(0)
-          } else {
-            expect(node.ribbonImage).toContain('linear-gradient')
-          }
+          // Unlabeled windows have no flag and a neutral frame.
+          expect(node.ribbonWidth).toBe(0)
           expect(
             node.contrast,
             `${theme}/${node.kind} default title contrast`,
@@ -273,20 +253,20 @@ test.describe('Workspace Canvas - Color Identity', () => {
         })
         await attachIdentityFrame(page, testInfo, `color-identity-default-${theme}`)
       }
-      await inspectDefaultTheme('pixel')
       await inspectDefaultTheme('dark')
       await inspectDefaultTheme('light')
-      expect(palettes.size).toBe(3)
-      await selectIdentityTheme(page, 'pixel')
+      expect(palettes.size).toBe(2)
+      await selectIdentityTheme(page, 'dark')
       const defaultTerminal = (await readNodeIdentity(page)).find(node => node.kind === 'terminal')!
       await changeNodeIdentity(page, 'terminal', 'purple')
+      // The label raises its flag; clearing it lowers the flag and leaves the kind wash.
       expect(
-        (await readNodeIdentity(page)).find(node => node.kind === 'terminal')?.ribbonImage,
-      ).not.toBe(defaultTerminal.ribbonImage)
+        (await readNodeIdentity(page)).find(node => node.kind === 'terminal')?.ribbonWidth,
+      ).toBe(28)
       await changeNodeIdentity(page, 'terminal', 'none')
       const restored = (await readNodeIdentity(page)).find(node => node.kind === 'terminal')!
-      expect(restored.ribbonImage).toBe(defaultTerminal.ribbonImage)
-      expect(restored.headerImage).toBe(defaultTerminal.headerImage)
+      expect(restored.ribbonWidth).toBe(defaultTerminal.ribbonWidth)
+      expect(restored.headerWash).toBe(defaultTerminal.headerWash)
       await page.locator(`${nodeSelector('terminal')} .xterm`).click()
       await expect(page.locator(`${nodeSelector('terminal')} .xterm-helper-textarea`)).toBeFocused()
       await expect(page.locator('.react-flow__node.selected')).toHaveCount(0)
@@ -298,7 +278,7 @@ test.describe('Workspace Canvas - Color Identity', () => {
         .not.toBe(defaultTerminal.border)
       const focused = (await readNodeIdentity(page)).find(node => node.kind === 'terminal')!
       expect(focused.label).toBeNull()
-      expect(focused.ribbonImage).toBe(defaultTerminal.ribbonImage)
+      expect(focused.ribbonWidth).toBe(defaultTerminal.ribbonWidth)
       expect(focused.border).not.toBe(defaultTerminal.border)
       expect(focused.body).toEqual(defaultTerminal.body)
       await clearCanvasSelection(page)
@@ -353,16 +333,14 @@ test.describe('Workspace Canvas - Color Identity', () => {
           expect(space.background).toBe('none')
           expect(space.blur).toBe('none')
           expect(space.shadow).toBe('none')
-          expect(space.fill.alpha).toBeGreaterThanOrEqual(0.006)
-          expect(space.fill.alpha).toBeLessThanOrEqual(0.0251)
-          if (zoom === 1) {
-            expect(space.fill.alpha).toBeCloseTo(0.025, 3)
-          }
+          // Cove keeps the region neutral at every zoom, one faint ink wash inside a neutral
+          // contour, so a Space never reads as a panel. Its colour is the four corner brackets.
+          expect(space.fill.alpha).toBeCloseTo(0.02, 3)
+          expect(space.bracket).toEqual(space.identityPaint)
+          expect(space.edge.color.rgb).not.toEqual(space.bracket.rgb)
           if (zoom === 0.2) {
-            expect(space.fill.alpha).toBeLessThan(0.01)
             expect(space.labelScreenFont).toBeGreaterThanOrEqual(8)
           }
-          expect(space.edge.color.rgb).toEqual(space.fill.rgb)
           expect(space.edge.width * zoom).toBeGreaterThanOrEqual(0.65)
           expect(space.edge.width * zoom).toBeLessThanOrEqual(1.1)
           for (const group of space.groups) {

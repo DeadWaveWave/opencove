@@ -22,7 +22,7 @@ function expectStableProjectRail(result: SidebarAnimationResult): void {
 }
 
 test.describe('Primary Sidebar Animation', () => {
-  for (const uiTheme of ['pixel', 'pixel-light'] as const) {
+  for (const uiTheme of ['dark', 'light'] as const) {
     test(`keeps the project rail stable while hiding and reopening navigation in ${uiTheme}`, async ({
       browserName: _browserName,
     }, testInfo) => {

@@ -1,0 +1,113 @@
+/*
+ * Toggle tile (components/ui/ToggleTile.tsx): a quick switch in a control center. A raised pixel
+ * face holds the icon and a light in its corner, the name sits underneath. On fills the face with
+ * the accent and lights the light; off is a neutral fill with the light dark. Pressing sinks the
+ * face 2px. The face is clipped to stepped corners, so its focus ring is drawn inside.
+ */
+.cove-toggle-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--cove-spacing-1);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cove-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.cove-toggle-tile__face {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  background: var(--cove-pixel-fill);
+  box-shadow: var(--cove-pixel-raised);
+  clip-path: var(--cove-pixel-corners);
+  color: var(--cove-text);
+}
+
+.cove-toggle-tile__icon {
+  display: inline-flex;
+}
+
+.cove-toggle-tile__icon > svg {
+  width: var(--cove-icon-size-lg);
+  height: var(--cove-icon-size-lg);
+}
+
+.cove-toggle-tile__light {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 4px;
+  height: 4px;
+  background: color-mix(in srgb, var(--cove-text) 24%, transparent);
+}
+
+.cove-toggle-tile__label {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: var(--cove-font-size-caption);
+  line-height: var(--cove-line-height-caption);
+  text-align: center;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.cove-toggle-tile:hover:not(:disabled) .cove-toggle-tile__face {
+  background: var(--cove-pixel-fill-hover);
+}
+
+.cove-toggle-tile:hover:not(:disabled) {
+  color: var(--cove-text);
+}
+
+.cove-toggle-tile[data-state='on'] {
+  color: var(--cove-text);
+}
+
+.cove-toggle-tile[data-state='on'] .cove-toggle-tile__face,
+.cove-toggle-tile[data-state='on']:hover:not(:disabled) .cove-toggle-tile__face {
+  background: var(--cove-accent);
+  color: var(--cove-accent-foreground);
+}
+
+.cove-toggle-tile[data-state='on'] .cove-toggle-tile__light {
+  background: var(--cove-accent-foreground);
+  /* Switching on blinks the light twice, then it holds. */
+  animation: cove-pixel-blink 160ms steps(1, end) 2;
+}
+
+.cove-toggle-tile:active:not(:disabled) .cove-toggle-tile__face {
+  box-shadow: var(--cove-pixel-pressed);
+}
+
+.cove-toggle-tile:active:not(:disabled) .cove-toggle-tile__icon {
+  transform: translateY(2px);
+}
+
+.cove-toggle-tile:focus-visible {
+  outline: none;
+}
+
+.cove-toggle-tile:focus-visible .cove-toggle-tile__face {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: -2px;
+}
+
+.cove-toggle-tile:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cove-toggle-tile[data-state='on'] .cove-toggle-tile__light {
+    animation: none;
+  }
+}

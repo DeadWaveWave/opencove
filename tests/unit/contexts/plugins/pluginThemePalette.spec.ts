@@ -53,10 +53,10 @@ describe('plugin theme palette (theme API v2)', () => {
     expect(() => themeOf({ palette })).toThrow(new RegExp(field, 'i'))
   })
 
-  it('needs the generated Cove foundation; Pixel is hand-written', () => {
-    expect(() =>
-      themeOf({ extends: 'pixel', palette: { accent: { hue: 330, chroma: 0.14 } } }),
-    ).toThrow(/Cove/)
+  it('takes a palette on every foundation, retired Pixel included (now Cove dark)', () => {
+    expect(
+      themeOf({ extends: 'pixel', palette: { accent: { hue: 330, chroma: 0.14 } } }).extends,
+    ).toBe('dark')
     expect(
       themeOf({ extends: 'dark', palette: { accent: { hue: 330, chroma: 0.14 } } }).extends,
     ).toBe('dark')

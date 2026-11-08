@@ -86,7 +86,7 @@ test('keeps creation shortcut preferences independent across plugin disablement 
     await page.setViewportSize({ width: 1500, height: 1050 })
     await clearAndSeedWorkspace(page, [], {
       settings: {
-        uiTheme: 'pixel',
+        uiTheme: 'dark',
         language: 'en',
         focusNodeOnClick: false,
         nodeCreationPixelEffectEnabled: false,
@@ -188,10 +188,10 @@ test('keeps creation shortcut preferences independent across plugin disablement 
     await expect(actionToggle()).toBeChecked()
     await expect(contextToggle()).not.toBeChecked()
     await page.getByTestId('settings-section-nav-appearance').click()
-    await selectCoveOption(page, 'settings-ui-theme', 'pixel-light')
+    await selectCoveOption(page, 'settings-ui-theme', 'light')
     await page.getByTestId('settings-section-nav-plugins').click()
     await page.getByTestId('settings-plugin-details-hello-clock').click()
-    await capture(page, testInfo, 'plugin-creation-shortcuts-pixel-light')
+    await capture(page, testInfo, 'plugin-creation-shortcuts-light')
     await page.getByTestId('settings-plugin-enabled-hello-clock').click()
     await expect(page.getByTestId('settings-plugin-enabled-hello-clock')).toBeChecked()
     await expect.poll(async () => (await readPluginPreferences(page)).disabled).toEqual([])

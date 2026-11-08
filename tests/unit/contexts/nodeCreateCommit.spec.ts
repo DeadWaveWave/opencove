@@ -120,7 +120,7 @@ describe('node creation pure persistence rebase', () => {
         write = f.writeAppState.getMockImplementation()!
       f.writeAppState.mockImplementationOnce(async (next, options) => {
         f.advance(state => {
-          state.settings = { language: 'zh-CN', uiTheme: 'pixel-light' }
+          state.settings = { language: 'zh-CN', uiTheme: 'light' }
           const workspace = state.workspaces[0]
           workspace.viewport = { x: 512, y: 90, zoom: 0.7 }
           workspace.nodes.push(concurrentNote())
@@ -134,7 +134,7 @@ describe('node creation pure persistence rebase', () => {
       ).toHaveBeenCalledTimes(1)
       expect(f.writeAppState).toHaveBeenCalledTimes(2)
       expect(f.runtime.killSession).not.toHaveBeenCalled()
-      expect(f.state().settings).toEqual({ language: 'zh-CN', uiTheme: 'pixel-light' })
+      expect(f.state().settings).toEqual({ language: 'zh-CN', uiTheme: 'light' })
       expect(f.state().workspaces[0].viewport).toEqual({ x: 512, y: 90, zoom: 0.7 })
       expect(f.state().workspaces[0].nodes.map(node => node.id)).toEqual([
         'neighbor',

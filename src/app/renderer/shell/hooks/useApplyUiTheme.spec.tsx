@@ -48,7 +48,7 @@ describe('useApplyUiTheme', () => {
     expect(document.documentElement.dataset.coveFamily).toBe('cove')
   })
 
-  it('switches Pixel to its light counterpart and notifies chrome with the light base scheme', () => {
+  it('switches Cove dark to light and notifies chrome with the light base scheme', () => {
     const setTheme = vi.fn(async () => undefined)
     Object.defineProperty(window, 'opencoveApi', {
       configurable: true,
@@ -57,18 +57,18 @@ describe('useApplyUiTheme', () => {
     const listener = vi.fn()
     window.addEventListener('opencove-theme-changed', listener)
     try {
-      const { rerender } = render(<HookHost uiTheme="pixel" />)
-      rerender(<HookHost uiTheme="pixel-light" />)
+      const { rerender } = render(<HookHost uiTheme="dark" />)
+      rerender(<HookHost uiTheme="light" />)
       expect(document.documentElement.dataset.coveTheme).toBe('light')
-      expect(document.documentElement.dataset.coveThemeId).toBe('pixel-light')
-      expect(document.documentElement.dataset.coveFamily).toBe('pixel')
+      expect(document.documentElement.dataset.coveThemeId).toBe('light')
+      expect(document.documentElement.dataset.coveFamily).toBe('cove')
       expect(document.documentElement.style.colorScheme).toBe('light')
       expect(setTheme).toHaveBeenLastCalledWith({ theme: 'light' })
       expect(listener).toHaveBeenLastCalledWith(
-        expect.objectContaining({ detail: { theme: 'light', themeId: 'pixel-light' } }),
+        expect.objectContaining({ detail: { theme: 'light', themeId: 'light' } }),
       )
       const eventCount = listener.mock.calls.length
-      rerender(<HookHost uiTheme="pixel-light" />)
+      rerender(<HookHost uiTheme="light" />)
       expect(listener).toHaveBeenCalledTimes(eventCount)
     } finally {
       window.removeEventListener('opencove-theme-changed', listener)
@@ -87,6 +87,12 @@ describe('useApplyUiTheme', () => {
       events.push((event as CustomEvent).detail)
     }
     window.addEventListener('opencove-theme-changed', listener)
+    // The system is dark, so moving from Cove dark to Cove (System) keeps the base scheme.
+    vi.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: true,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    } as unknown as MediaQueryList)
 
     const { rerender } = render(<HookHost uiTheme="dark" />)
     expect(document.documentElement.dataset.coveTheme).toBe('dark')
@@ -94,16 +100,16 @@ describe('useApplyUiTheme', () => {
     expect(document.documentElement.dataset.coveFamily).toBe('cove')
     expect(setTheme).toHaveBeenCalledTimes(1)
 
-    rerender(<HookHost uiTheme="pixel" />)
+    rerender(<HookHost uiTheme="system" />)
 
     expect(document.documentElement.dataset.coveTheme).toBe('dark')
-    expect(document.documentElement.dataset.coveThemeId).toBe('pixel')
-    expect(document.documentElement.dataset.coveFamily).toBe('pixel')
+    expect(document.documentElement.dataset.coveThemeId).toBe('system')
+    expect(document.documentElement.dataset.coveFamily).toBe('cove')
     expect(document.documentElement.style.colorScheme).toBe('dark')
     expect(setTheme).toHaveBeenCalledTimes(1)
     expect(events).toEqual([
       { theme: 'dark', themeId: 'dark' },
-      { theme: 'dark', themeId: 'pixel' },
+      { theme: 'dark', themeId: 'system' },
     ])
 
     window.removeEventListener('opencove-theme-changed', listener)

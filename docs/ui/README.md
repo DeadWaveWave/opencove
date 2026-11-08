@@ -39,10 +39,10 @@
 - 持久化设置：`settings.uiTheme: UiTheme`，取值见 `src/contexts/settings/domain/uiSettings.ts`（内置主题及 `plugin:<plugin-id>:<theme-id>` 扩展标识）。
 - Renderer 主题入口（**两个互补的 hook**，共同构成命名主题扩展点）：
   - `<html data-cove-theme="light|dark">` —— 解析后的基础配色，所有 `--cove-*` token 默认基于此切换；`system` 会跟随 `prefers-color-scheme` 计算出 light/dark。
-  - `<html data-cove-theme-id="<UiTheme>">` —— 当前选中的命名主题 id。命名主题通过 `:root[data-cove-theme-id='<id>']` 选择器覆盖 `--cove-*` token，与基础配色解耦。内置主题分为两个主题族：Cove（`dark`、`light`、`system`，由生成器产出，默认 `dark`）与 Pixel（`pixel`、`pixel-light`，手写）；插件可以通过声明式 `contributes.themes` 接入颜色、材质、尺寸、字体、动效与受作用域约束的组件样式；详见 [插件主题契约](../plugins/THEMES.md)。
-  - `<html data-cove-family="cove|pixel">` —— 生效的基础主题所属的主题族。插件主题取 `extends` 所属的主题族，未声明时为同明暗的 Cove。生成的主题族 token（2.4）只在 `data-cove-family` 匹配时生效。
-- 添加一个新内置主题的步骤：① 在 `UI_THEMES` 中登记 id；② 在 `UI_THEME_DESCRIPTORS` 声明 `family`、`baseScheme`、`terminalScheme` 与 `i18nKey`；③ 生成的主题族由 `src/shared/design` 产出（2.4）；手写主题提供 `styles/themes/<id>.css`，以 `:root[data-cove-theme-base='<id>']` 选择器覆盖需要的 `--cove-*` token。
-- 退役的内置主题在读取设置时迁移（`RETIRED_UI_THEMES`）：`ember` → `dark`，`ember-light` → `light`；插件 `extends` 的同名旧值按同样规则解析。没有有效主题的设置使用当前默认值：Cove 深色，像素效果全部开启。已保存的 Pixel 选择保持不变。
+  - `<html data-cove-theme-id="<UiTheme>">` —— 当前选中的命名主题 id。命名主题通过 `:root[data-cove-theme-id='<id>']` 选择器覆盖 `--cove-*` token，与基础配色解耦。内置主题只有 Cove 的三个外观：`dark`、`light`、`system`，由生成器产出，默认 `dark`。像素风格是 Cove 本身的主调（像素墙、窗口外框、像素图标），不再是单独的主题；插件可以通过声明式 `contributes.themes` 接入颜色、材质、尺寸、字体、动效与受作用域约束的组件样式；详见 [插件主题契约](../plugins/THEMES.md)。
+  - `<html data-cove-family="cove">` —— 生效的主题族，目前总是 `cove`，插件主题也一样（它们只能 `extends` Cove 的 `dark` 或 `light`）。生成的主题族 token（2.4）只在 `data-cove-family` 匹配时生效。
+- 添加一个新内置主题的步骤：① 在 `UI_THEMES` 中登记 id；② 在 `UI_THEME_DESCRIPTORS` 声明 `baseScheme`、`terminalScheme` 与 `i18nKey`；③ 它的配色由 `src/shared/design` 生成（2.4），不手写主题样式表。
+- 退役的内置主题在读取设置时迁移（`RETIRED_UI_THEMES`）：`ember`、`pixel` → `dark`，`ember-light`、`pixel-light` → `light`；插件 `extends` 的同名旧值按同样规则解析。没有有效主题的设置使用当前默认值：Cove 深色，像素效果全部开启。保存过 Pixel 的设置迁移时保留像素效果全部开启（`pixelEffectSettings.ts` 读迁移前的原值判断）。
 - `baseScheme` 与 `terminalScheme` 是两个独立语义：前者决定应用 shell 的 light/dark token，后者决定 xterm 与内嵌 TUI 的配色协议。内置主题的 `terminalScheme` 目前都与 `baseScheme` 一致；终端设置可以在浅色 shell 下把终端固定为深色。
 - 每个 xterm 实例必须通过一个 revisioned `TerminalAppearanceSnapshot` 应用主题。快速连续切换采用 final-wins：每帧至多应用/刷新一次最新 snapshot；xterm theme、OpenCode OSC/CSI 与 Find decoration 必须消费同一份 **applied** snapshot，不能各自读取时序不同的 desired theme。
 - 同一 xterm 在 placeholder handoff/DOM remount 后必须从 live `containerRef` 定位主题 scope，不能
@@ -89,7 +89,7 @@
   文件过期时 CI 失败。改生成器后重新运行该命令并提交生成文件。
 - 生成的 token 作用在 `:root[data-cove-family='<id>'][data-cove-theme='dark|light']` 上，并完整映射
   插件契约的全部 v1 公共 token（`PLUGIN_THEME_TOKENS`），已安装的插件主题继续可用。主题 owner
-  按生效基础主题所属的主题族设置 `data-cove-family`（见 2.1）；Pixel 是手写主题族，没有生成样式表。
+  设置 `data-cove-family`（见 2.1）。
 - `base.css` 的 `:root` 与浅色块里写着字面颜色的 token，主题族必须全部替换（`themeHostTokens.ts`），
   否则标准主题的旧色会透出来；单测逐个检查。给 `base.css` 新增字面颜色 token 时，同步在生成器里映射。
   只有主题预览色块（`--cove-theme-preview-*`）与遮罩色（`--cove-mask-opaque`）不随主题族变化。
@@ -173,7 +173,7 @@
 - 共享组件（`src/app/renderer/components/ui/`）的每种状态都放进测试专用的组件图库
   `src/app/renderer/gallery/UiGallery.tsx`。图库只在 `NODE_ENV=test` 且
   `OPENCOVE_TEST_UI_GALLERY=1` 时代替应用外壳渲染，并按需加载，不进入正常启动路径。
-- `tests/e2e/ui-gallery.probes.spec.ts` 在 Cove 与 Pixel 的明暗四个内置主题下扫描图库、
+- `tests/e2e/ui-gallery.probes.spec.ts` 在 Cove 的深色与浅色下扫描图库、
   对话框和浮层：文字对比度不低于 4.5:1（大字 3:1，禁用控件除外），点击区不小于 24×24
   CSS px（WCAG 2.5.8）。探针在 `tests/e2e/ui-accessibility.probe.ts`，测量前等待有限动画结束。
 - 新增或修改共享组件时，先把它的各个状态加进图库；探针不通过不能合并。
@@ -222,7 +222,7 @@
 - 类别色与标记色是两个通道（`window-kind-identity.css`）。类别（这个窗口是什么，由 `resolveWindowKindFamily`
   推导：Agent 与角色 AI、终端、任务计划、笔记与文档知识、网页与图片媒体）只画标题栏的 `KindTile` 和 9% 的
   标题栏色调（照原型从左向右在 72% 处淡出，并在标题栏下半部向下淡出）；标记（你怎么归类它）只画窗口外框和标题栏左上角的短旗标。类别色从不画外框，标记色从不画图块。
-  未标记的窗口外框是中性色，没有旗标。生成的主题族（Cove）使用两个通道；手写主题（Pixel）保留自己的装饰。
+  未标记的窗口外框是中性色，没有旗标。
   设置 → 外观 →「窗口类别色」关闭后，图块、标题栏色调和侧栏 Space 小地图都变成中性，标记色不受影响。
 - 折叠和关闭由 `WindowHeader` 渲染（`WindowCollapseButton`、`WindowCloseButton`），都是 24px 的
   `IconButton`，名称即提示文字。关闭按钮按实际效果命名（关闭、删除便签、删除任务），关闭前的确认仍由
@@ -459,10 +459,10 @@
 - 模态界面复用共享 Dialog 的 inert、Tab 约束与焦点恢复。手机打开搜索先聚焦关闭控件，
   避免自动唤起软键盘；定位后关闭搜索，返回导航控件，不聚焦终端输入。
   弹层交接后旧界面不得通过延迟恢复抢走新界面的焦点。
-- 控制中心只放快捷设置：主题族（Cove / Pixel）、明暗（Pixel 没有跟随系统，切到 Pixel 时按系统当前
-  的明暗选）、像素背景、动态信号（新建、关闭、工作中三种像素效果一起开关）和缩略图。开关保留标签与真实
-  checked 状态，不重复显示开/关状态文字。主题详情、预览和插件主题在设置 → 外观；当前是插件主题时，
-  控制中心显示它的名字，不可用或加载失败时给出提示，但不改写用户保存的主题选择。通知横幅在设置 → 通用。
+- 控制中心是一个像素游戏窗口（`.cove-pixel-window`），只放快捷设置：外观三张像素缩略图（与设置 → 外观共用
+  `AppearancePicker`）、三个 `aria-pressed` 快捷开关（`ToggleTile`：小地图、应用内通知、系统通知），以及「通知设置」
+  「全部设置」两行菜单（指针或焦点所在行前有闪烁的像素光标）。材质、像素背景、闪烁和动态效果只在设置 → 外观。当前是插件主题时，
+  控制中心显示它的名字，三个外观都不选中；不可用或加载失败时给出提示，但不改写用户保存的主题选择。
 
 参考：WAI-ARIA APG Dialog (Modal) 与 Combobox 的焦点约束、返回目标与输入焦点模型。
 

@@ -6,7 +6,7 @@ const projectId = 'sidebar-visibility-project'
 const spaceId = 'sidebar-visibility-space'
 const agentId = 'sidebar-visibility-agent'
 
-async function seed(page: Page, theme: 'pixel' | 'pixel-light') {
+async function seed(page: Page, theme: 'dark' | 'light') {
   await seedWorkspaceState(page, {
     activeWorkspaceId: projectId,
     settings: { uiTheme: theme, language: 'en' },
@@ -38,7 +38,7 @@ async function seed(page: Page, theme: 'pixel' | 'pixel-light') {
   })
 }
 
-for (const theme of ['pixel', 'pixel-light'] as const) {
+for (const theme of ['dark', 'light'] as const) {
   test(`Sidebar view mode switches restore hidden items in ${theme}`, async ({
     browserName: _browserName,
   }, testInfo) => {
@@ -113,7 +113,7 @@ test('Sidebar view mode and hidden restoration remain usable in the mobile drawe
 }, testInfo) => {
   const { electronApp, window } = await launchApp()
   try {
-    await seed(window, 'pixel')
+    await seed(window, 'dark')
     await window.setViewportSize({ width: 390, height: 800 })
     await window.getByTestId('primary-sidebar-open').click()
     await expect(window.getByTestId('primary-sidebar-drawer')).toBeVisible()

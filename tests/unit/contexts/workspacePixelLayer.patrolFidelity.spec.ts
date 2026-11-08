@@ -61,7 +61,7 @@ describe('Tide patrol screen metrics', () => {
     expect(frame(zoom, 1000 + lapMs)).toEqual(frame(zoom, 1000))
   })
 
-  it('reads each kind ink and falls back for Pixel themes without generated roles', () => {
+  it('reads each kind ink and falls back for themes without generated roles', () => {
     const canvas = document.createElement('canvas')
     document.body.append(canvas)
     const families = ['ai', 'shell', 'plan', 'knowledge', 'media', 'neutral'] as const

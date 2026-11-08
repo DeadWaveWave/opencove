@@ -143,7 +143,7 @@ test.describe('Independent pixel effects settings', () => {
       )
       await openPixelAppearance(window)
       await setPixelEffects(window, PIXEL_EFFECTS_DISABLED)
-      await selectCoveOption(window, 'settings-ui-theme', 'pixel')
+      await selectCoveOption(window, 'settings-ui-theme', 'dark')
       await window.locator('.settings-panel__close').click()
       await expect.poll(() => readPixelEffects(window)).toEqual(PIXEL_EFFECTS_DISABLED)
       await expect(window.getByTestId('workspace-pixel-layer')).toHaveCount(0)
@@ -206,8 +206,6 @@ test.describe('Independent pixel effects settings', () => {
       }
       await inspect('dark', 'dark')
       await inspect('light', 'light')
-      await inspect('pixel', 'dark')
-      await inspect('pixel-light', 'light')
       await window.emulateMedia({ colorScheme: 'light' })
       await inspect('system', 'light')
       await window.emulateMedia({ colorScheme: 'dark' })

@@ -4,14 +4,14 @@ import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
 for (const scenario of [
   {
     language: 'en',
-    theme: 'pixel-light',
+    theme: 'light',
     title: 'Plugin library',
     article: 'Your first plugin, with Hello Clock',
     link: 'API reference',
   },
   {
     language: 'zh-CN',
-    theme: 'pixel',
+    theme: 'dark',
     title: '插件文档库',
     article: '用 Hello Clock 制作第一个插件',
     link: 'API 参考',

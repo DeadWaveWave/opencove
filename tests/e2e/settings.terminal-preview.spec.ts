@@ -8,36 +8,38 @@ test('updates terminal preview material through the theme buttons without replac
 }, testInfo) => {
   const { electronApp, window: page } = await launchApp()
   try {
-    await clearAndSeedWorkspace(page, [], { settings: { uiTheme: 'dark' } })
+    await clearAndSeedWorkspace(page, [], { settings: { uiTheme: 'light' } })
     await page.getByTestId('app-header-settings').click()
     await page.getByTestId('settings-section-nav-appearance').click()
-    await chooseSettingsUiTheme(page, 'pixel')
-    await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'pixel')
+    await chooseSettingsUiTheme(page, 'dark')
+    await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'dark')
     const preview = page.getByTestId('settings-pixel-effects-preview')
     const original = await preview.elementHandle()
     const terminal = preview.locator('[data-id="settings-preview-terminal"]')
     await expect(terminal.locator('svg[data-cove-pixel-icon="terminal"]')).toHaveCount(1)
     const body = terminal.locator('.settings-pixel-preview__body')
+    // Cove paints the reading plate on its own layer under the window; the body is clear.
+    const plate = terminal.locator('[data-cove-part="window-plate"]')
     const header = terminal.locator('.settings-pixel-preview__header')
     await expect(header).toHaveCSS('overflow', 'hidden')
     const headerRadius = await header.evaluate(
       element => getComputedStyle(element).borderTopLeftRadius,
     )
     expect(parseFloat(headerRadius)).toBeGreaterThan(0)
-    const dark = await body.evaluate(element => ({
-      body: getComputedStyle(element).backgroundColor,
-      accent: getComputedStyle(element).getPropertyValue('--cove-pixel-blue'),
-    }))
-    await chooseSettingsUiTheme(page, 'pixel-light')
-    await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'pixel-light')
+    const dark = {
+      plate: await plate.evaluate(element => getComputedStyle(element).backgroundColor),
+      accent: await body.evaluate(element =>
+        getComputedStyle(element).getPropertyValue('--cove-accent'),
+      ),
+    }
+    await chooseSettingsUiTheme(page, 'light')
+    await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', 'light')
     expect(await preview.evaluate((element, previous) => element === previous, original)).toBe(true)
     await expect
-      .poll(() => body.evaluate(element => getComputedStyle(element).backgroundColor))
-      .not.toBe(dark.body)
+      .poll(() => plate.evaluate(element => getComputedStyle(element).backgroundColor))
+      .not.toBe(dark.plate)
     expect(
-      await body.evaluate(element =>
-        getComputedStyle(element).getPropertyValue('--cove-pixel-blue'),
-      ),
+      await body.evaluate(element => getComputedStyle(element).getPropertyValue('--cove-accent')),
     ).not.toBe(dark.accent)
     await expect(terminal.locator('svg[data-cove-pixel-icon="terminal"]')).toHaveCount(1)
     const bodyBottomGap = await terminal.evaluate(element => {
@@ -48,9 +50,9 @@ test('updates terminal preview material through the theme buttons without replac
     expect(bodyBottomGap).toBeGreaterThanOrEqual(6)
     expect(bodyBottomGap).toBeLessThanOrEqual(7)
     await preview.scrollIntoViewIfNeeded()
-    const path = testInfo.outputPath('theme-preview-live-pixel-light.png')
+    const path = testInfo.outputPath('theme-preview-live-light.png')
     await preview.screenshot({ path, animations: 'disabled' })
-    await testInfo.attach('theme-preview-live-pixel-light', { path, contentType: 'image/png' })
+    await testInfo.attach('theme-preview-live-light', { path, contentType: 'image/png' })
     await original?.dispose()
   } finally {
     await electronApp.close()
@@ -62,7 +64,7 @@ test('previews terminal typography in a stable themed window', async ({
 }, testInfo) => {
   const { electronApp, window: page } = await launchApp()
   try {
-    for (const uiTheme of ['pixel', 'pixel-light', 'dark', 'light']) {
+    for (const uiTheme of ['dark', 'light']) {
       await electronApp.evaluate(({ BrowserWindow }) => {
         BrowserWindow.getAllWindows()[0].setContentSize(1200, 900, false)
       })
@@ -103,7 +105,7 @@ test('previews terminal typography in a stable themed window', async ({
         overflow: getComputedStyle(element).overflow,
       }))
       expect(chrome.band).toContain('linear-gradient')
-      // Window headers are a pre-composited tint; Pixel sets no header blur.
+      // Window headers are a pre-composited tint, with no blur of their own.
       expect(chrome.material).toBe('none')
       expect(chrome.radius).not.toBe('0px')
       expect(parseFloat(chrome.headerRadius)).toBeGreaterThan(0)

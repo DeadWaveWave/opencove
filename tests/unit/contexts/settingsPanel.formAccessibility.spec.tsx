@@ -155,7 +155,7 @@ describe('Settings form accessible names', () => {
     )
 
     expectNamedTestId('settings-ui-theme', 'Appearance')
-    expectNamedTestId('settings-ui-theme-family-pixel', 'Pixel')
+    expectNamedTestId('settings-ui-theme-mode-dark', 'Dark')
     expectNamedTestId('settings-ui-theme-mode', 'Appearance')
     expectNamedTestId('settings-ui-theme-mode-system', 'Follow System')
     expectNamedTestId('settings-node-creation-pixel-effect', 'Node Creation Effect')

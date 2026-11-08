@@ -177,7 +177,7 @@ export async function seedMaterialFixture(
       { id: MATERIAL_WORKSPACE, name: 'Glacier workspace', path: fixture.repo, nodes: [] },
     ],
     settings: {
-      uiTheme: 'pixel',
+      uiTheme: 'dark',
       ...PIXEL_EFFECTS_ENABLED,
       language: 'en',
       uiFontSize: 16,
@@ -272,7 +272,7 @@ export async function seedMaterialFixture(
     },
   )
   await window.reload({ waitUntil: 'domcontentloaded' })
-  await expect(window.locator('html')).toHaveAttribute('data-cove-theme-id', 'pixel')
+  await expect(window.locator('html')).toHaveAttribute('data-cove-theme-id', 'dark')
   await expect(window.locator('.react-flow__node')).toHaveCount(8)
   await expect(window.locator('.document-node .monaco-editor')).toBeVisible()
   await expect(window.locator('.image-node__img')).toBeVisible()

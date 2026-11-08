@@ -56,18 +56,6 @@ test.describe('Workspace Canvas - Terminal Theme', () => {
       // Cove Light's shell plate (#eefcf4): a terminal reads on its window kind's plate.
       await expect(terminalBody).toHaveCSS('background-color', 'rgb(238, 252, 244)')
 
-      await selectCoveOption(window, 'settings-ui-theme', 'pixel-light')
-      await expect
-        .poll(() =>
-          window.evaluate(() => ({
-            baseScheme: document.documentElement.dataset.coveTheme ?? null,
-            themeId: document.documentElement.dataset.coveThemeId ?? null,
-          })),
-        )
-        .toEqual({ baseScheme: 'light', themeId: 'pixel-light' })
-      await expect(terminalBody).toHaveAttribute('data-cove-terminal-theme', 'light')
-      await expect(terminalBody).toHaveCSS('background-color', 'rgb(248, 251, 253)')
-
       await window.locator('.settings-panel__close').click()
 
       const readTerminalSize = async () =>
@@ -88,9 +76,9 @@ test.describe('Workspace Canvas - Terminal Theme', () => {
         .poll(() => terminalBody.evaluate(element => element.clientHeight))
         .toBe(terminalHeightBeforeFind)
 
-      const screenshotPath = testInfo.outputPath('terminal-theme-pixel-light-find.png')
+      const screenshotPath = testInfo.outputPath('terminal-theme-light-find.png')
       await window.screenshot({ path: screenshotPath })
-      await testInfo.attach('terminal-theme-pixel-light-find', {
+      await testInfo.attach('terminal-theme-light-find', {
         path: screenshotPath,
         contentType: 'image/png',
       })

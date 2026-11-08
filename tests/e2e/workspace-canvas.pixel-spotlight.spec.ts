@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import { changePixelAppearance, setPixelEffect } from './workspace-canvas.pixel-effects.helpers'
 import { expectPaintedWall, readWallProbe } from './workspace-canvas.pixel-wall.helpers'
 
 type FixedFrameWindow = Window & {
@@ -145,15 +146,15 @@ test('lights the pointer over finished wall tiles and disables it with ambient m
     await media('no-preference', 'reduce')
     expect(await pointFrame(page, near)).not.toBe(await pointFrame(page, away))
     await media('no-preference')
-    await page.getByTestId('app-header-control-center').click()
-    await page.getByTestId('control-center-toggle-background-twinkle').click()
-    await page.keyboard.press('Escape')
+    await changePixelAppearance(page, () =>
+      setPixelEffect(page, 'canvasBackgroundTwinkleEnabled', false),
+    )
     expect(await pointFrame(page, near)).toBe(await pointFrame(page, away))
     // Return to the native clock for scheduler/visibility evidence.
     await page.evaluate(() => (window as FixedFrameWindow).__restoreWallClock?.())
-    await page.getByTestId('app-header-control-center').click()
-    await page.getByTestId('control-center-toggle-background-twinkle').click()
-    await page.keyboard.press('Escape')
+    await changePixelAppearance(page, () =>
+      setPixelEffect(page, 'canvasBackgroundTwinkleEnabled', true),
+    )
     const budget = await page.evaluate(async () => {
       const api = window.__opencovePixelWallTestApi!
       const frames = api.getFrameCount(),

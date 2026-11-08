@@ -33,7 +33,7 @@ describe('registerOpenCodeOscColorQueryResponder', () => {
     const ptyWriteQueue = { enqueue: vi.fn(), flush: vi.fn() }
     let appliedAppearance: TerminalAppearanceSnapshot = {
       revision: 1,
-      themeId: 'pixel-light',
+      themeId: 'light',
       uiScheme: 'light',
       terminalScheme: 'light',
       xtermTheme: {
@@ -58,7 +58,7 @@ describe('registerOpenCodeOscColorQueryResponder', () => {
     appliedAppearance = {
       ...appliedAppearance,
       revision: 2,
-      themeId: 'pixel',
+      themeId: 'dark',
       terminalScheme: 'dark',
       xtermTheme: {
         background: '#0a1420',

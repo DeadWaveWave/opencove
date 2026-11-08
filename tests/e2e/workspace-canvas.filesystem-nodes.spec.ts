@@ -12,7 +12,7 @@ import {
   seedFilesystemWorkspace,
 } from './workspace-canvas.filesystem-nodes.helpers'
 
-for (const theme of ['pixel', 'pixel-light'] as const) {
+for (const theme of ['dark', 'light'] as const) {
   test(`filesystem nodes drag from Explorer and preserve folder navigation in ${theme}`, async ({
     browserName: _browserName,
   }, testInfo) => {

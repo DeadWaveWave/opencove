@@ -4,7 +4,7 @@ import { createRailAgent } from './sidebar-test-fixtures'
 import { readCanvasGeometry } from './app-header.primary-sidebar-animation.helpers'
 
 test.describe('Primary Sidebar Project Preview', () => {
-  for (const uiTheme of ['pixel', 'pixel-light'] as const) {
+  for (const uiTheme of ['dark', 'light'] as const) {
     test(`previews another project without switching or resizing its canvas in ${uiTheme}`, async ({
       browserName: _browserName,
     }, testInfo) => {
