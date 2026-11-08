@@ -37,29 +37,38 @@ function continuesToolCall(body: ResponsesRequest): boolean {
   return (body.input ?? []).at(-1)?.type === 'function_call_output'
 }
 
-function respond(res: ServerResponse, approvalProbe: boolean): void {
+function respond(res: ServerResponse, approvalProbe: boolean, slowTool = false): void {
   const id = `resp_${Date.now()}`
-  const item = approvalProbe
+  const item = slowTool
     ? {
         type: 'function_call',
-        id: 'fc_probe',
-        call_id: 'call_probe',
+        id: 'fc_sleep',
+        call_id: `call_sleep_${Date.now()}`,
         name: 'exec_command',
         status: 'completed',
-        // Escalation outside the sandbox needs the user's approval under on-request.
-        arguments: JSON.stringify({
-          cmd: 'touch opencove-approval-probe.txt',
-          sandbox_permissions: 'require_escalated',
-          justification: 'Create the approval probe file',
-        }),
+        arguments: JSON.stringify({ cmd: 'sleep 3' }),
       }
-    : {
-        type: 'message',
-        id: 'msg_ack',
-        role: 'assistant',
-        status: 'completed',
-        content: [{ type: 'output_text', text: 'ACK', annotations: [] }],
-      }
+    : approvalProbe
+      ? {
+          type: 'function_call',
+          id: 'fc_probe',
+          call_id: 'call_probe',
+          name: 'exec_command',
+          status: 'completed',
+          // Escalation outside the sandbox needs the user's approval under on-request.
+          arguments: JSON.stringify({
+            cmd: 'touch opencove-approval-probe.txt',
+            sandbox_permissions: 'require_escalated',
+            justification: 'Create the approval probe file',
+          }),
+        }
+      : {
+          type: 'message',
+          id: 'msg_ack',
+          role: 'assistant',
+          status: 'completed',
+          content: [{ type: 'output_text', text: 'ACK', annotations: [] }],
+        }
   res.writeHead(200, { 'content-type': 'text/event-stream' })
   const send = (type: string, data: Record<string, unknown>) =>
     res.write(`event: ${type}\ndata: ${JSON.stringify({ type, ...data })}\n\n`)
@@ -102,7 +111,11 @@ async function startResponsesApi(): Promise<{
       if (isMain && !resumed) {
         mainTurns.push(blocks)
       }
-      respond(res, isMain && !resumed && blocks.some(block => block.includes('TRIGGER_TOOL')))
+      respond(
+        res,
+        isMain && !resumed && blocks.some(block => block.includes('TRIGGER_TOOL')),
+        isMain && !resumed && blocks.some(block => block.includes('SLOW_TOOL')),
+      )
       return
     }
     res.writeHead(200, { 'content-type': 'application/json' })
@@ -260,6 +273,26 @@ test.describe('agent.prompt with the real Codex CLI', () => {
       // One submission whose user message carries the three lines as one exact text block.
       expect(api.main().at(-1)).toContain(text)
       await expect.poll(async () => (await snapshot()).state, { timeout: 30_000 }).toBe('idle')
+
+      // Codex sends its legacy notify for the previous turn about a second after that turn ends.
+      // It must not show the next, still-running turn as idle.
+      const slow = await prompt(userDataDir, nodeId, 'SLOW_TOOL wait a moment')
+      expect(slow.exitCode, JSON.stringify(slow)).toBe(0)
+      const slowTurn = JSON.parse(slow.stdout).turnId
+      const seen: string[] = []
+      await expect
+        .poll(
+          async () => {
+            const value = await snapshot()
+            seen.push(`${value.state}:${value.turn?.id ?? ''}`)
+            return value.lastEndedTurn?.id
+          },
+          { timeout: 30_000, intervals: [100] },
+        )
+        .toBe(slowTurn)
+      const duringSlowTurn = seen.filter(entry => entry.endsWith(`:${slowTurn}`))
+      expect(duringSlowTurn.length).toBeGreaterThan(10)
+      expect(duringSlowTurn.filter(entry => !entry.startsWith('working:'))).toEqual([])
 
       const tool = await prompt(userDataDir, nodeId, 'TRIGGER_TOOL run the probe')
       expect(tool.exitCode, JSON.stringify(tool)).toBe(0)

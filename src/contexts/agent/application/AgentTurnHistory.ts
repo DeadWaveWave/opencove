@@ -7,7 +7,10 @@ import type {
   TurnOutcome,
 } from '../domain/agentRunState'
 
-type Identity = Pick<PromptSubmissionEvidence, 'promptId' | 'providerSessionId'> & {
+type Identity = Pick<
+  PromptSubmissionEvidence,
+  'promptId' | 'providerSessionId' | 'providerTurnId'
+> & {
   emittedAtMs?: number
 }
 type EndedTurn = {
@@ -48,6 +51,17 @@ export class AgentTurnHistory {
   }
 
   rejects(observation: AgentRunObservation, evidence?: PromptSubmissionEvidence): boolean {
+    if (observation.source === 'codex_hook' && observation.hookEventName === 'notify') {
+      // Reject before arbitration: refusing only completion would still project false idle.
+      return !!(
+        (this.active?.providerTurnId &&
+          evidence?.providerTurnId &&
+          this.active.providerTurnId !== evidence.providerTurnId) ||
+        (this.active?.providerSessionId &&
+          evidence?.providerSessionId &&
+          this.active.providerSessionId !== evidence.providerSessionId)
+      )
+    }
     if (observation.source !== 'claude_hook' || !evidence?.promptId) {
       return false
     }
@@ -121,7 +135,12 @@ export class AgentTurnHistory {
                   ? observation.emittedAtMs
                   : undefined,
             }
-          : {}
+          : observation?.source === 'codex_hook'
+            ? {
+                providerTurnId: evidence?.providerTurnId,
+                providerSessionId: evidence?.providerSessionId,
+              }
+            : {}
     }
   }
 

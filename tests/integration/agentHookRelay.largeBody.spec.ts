@@ -182,13 +182,13 @@ it('delivers converted Codex notify at exactly the POST limit to the real receiv
     await channel.dispose()
   }
 })
-it('preserves native Codex hook input and converts a small notify', async () => {
+it('preserves native Codex hook input and the turn identity of a small notify', async () => {
   const input = JSON.stringify({ hook_event_name: 'Stop', session_id: 'provider' })
   expect(await relay(input, 'codex')).toBe(input)
   expect(
     JSON.parse(
       (await relay(
-        JSON.stringify({ type: 'agent-turn-complete', 'thread-id': 'provider' }),
+        JSON.stringify({ type: 'agent-turn-complete', 'thread-id': 'provider', 'turn-id': 'T1' }),
         'codex',
       ))!,
     ),
@@ -197,5 +197,26 @@ it('preserves native Codex hook input and converts a small notify', async () => 
     state: 'done',
     hookEventName: 'notify',
     codexSessionId: 'provider',
+    providerTurnId: 'T1',
   })
 })
+
+it.each(['', 'bad id', 'x'.repeat(257), '\ud800', { prompt: 'private text' }])(
+  'omits invalid Codex notify identity %j from the relay POST',
+  async id => {
+    const body = await relay(
+      JSON.stringify({
+        type: 'agent-turn-complete',
+        'thread-id': 'provider',
+        'turn-id': id,
+      }),
+      'codex',
+    )
+    expect(JSON.parse(body!)).toEqual({
+      version: 1,
+      state: 'done',
+      hookEventName: 'notify',
+      codexSessionId: 'provider',
+    })
+  },
+)

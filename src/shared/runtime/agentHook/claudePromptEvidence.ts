@@ -4,6 +4,7 @@ export interface PromptSubmissionEvidence {
   promptId?: string
   promptDigest?: string
   providerSessionId?: string
+  providerTurnId?: string
   finalMessage?: { message: string; truncated: boolean }
 }
 
@@ -17,6 +18,7 @@ export function setPromptSubmissionEvidence(
     promptId: evidence.promptId,
     promptDigest: evidence.promptDigest,
     providerSessionId: evidence.providerSessionId,
+    providerTurnId: evidence.providerTurnId,
     finalMessage: evidence.finalMessage,
   })
 }

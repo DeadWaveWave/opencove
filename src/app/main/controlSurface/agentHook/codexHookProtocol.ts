@@ -1,3 +1,5 @@
+import { claudePromptId } from '../../../../shared/runtime/agentHook/claudePromptEvidence'
+
 export type CodexHookTurnState = 'working' | 'waiting' | 'done'
 
 export interface CodexHookInput {
@@ -6,6 +8,7 @@ export interface CodexHookInput {
   cwd: string
   hook_event_name: string
   model: string
+  turn_id?: string
   tool_name?: string
   tool_use_id?: string
   tool_input?: unknown
@@ -16,6 +19,7 @@ export interface CodexHookEnvelope {
   state: CodexHookTurnState
   hookEventName: string
   codexSessionId: string
+  providerTurnId?: string
   tool?: {
     name: string
     useId: string | null
@@ -92,11 +96,13 @@ export function validateCodexHookEnvelope(value: unknown): CodexHookEnvelope | n
     tool = { name, useId, input: value.tool.input ?? null }
   }
 
+  const providerTurnId = claudePromptId(value.providerTurnId)
   return {
     version: 1,
     state,
     hookEventName,
     codexSessionId,
+    ...(providerTurnId ? { providerTurnId } : {}),
     ...(tool ? { tool } : {}),
   }
 }
@@ -121,11 +127,13 @@ export function normalizeCodexHookEnvelope(value: unknown): CodexHookEnvelope | 
     return null
   }
 
+  const providerTurnId = claudePromptId(value.turn_id)
   return {
     version: 1,
     state,
     hookEventName,
     codexSessionId,
+    ...(providerTurnId ? { providerTurnId } : {}),
     ...(toolName
       ? {
           tool: {

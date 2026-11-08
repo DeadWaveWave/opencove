@@ -31,7 +31,11 @@ describe.each(['codex', 'claude-code'] as const)(
           const settled = f.registry.readFence({ sessionId: 's' })!
           f.observe(refresh)
           const refreshed = f.registry.readFence({ sessionId: 's' })!
-          expect(refreshed.watermarks[source]).toBeGreaterThan(settled.watermarks[source]!)
+          if (provider === 'codex') {
+            expect(refreshed).toEqual(settled) // Lifecycle coverage ignores legacy notify entirely.
+          } else {
+            expect(refreshed.watermarks[source]).toBeGreaterThan(settled.watermarks[source]!)
+          }
           expect(refreshed.lastTurnEnd).toEqual(settled.lastTurnEnd)
           expect(refreshed.lastTurnEnd).toMatchObject({ source, hookEventName: 'Stop' })
           expect(promptAdmission(refreshed, capability)).toBeNull()
@@ -45,7 +49,11 @@ describe.each(['codex', 'claude-code'] as const)(
       try {
         f.observe(refresh)
         const fence = f.registry.readFence({ sessionId: 's' })!
-        expect(fence.snapshot).toMatchObject({ state: 'idle', source, turn: null })
+        expect(fence.snapshot).toMatchObject({
+          state: provider === 'codex' ? 'unknown' : 'idle',
+          source: provider === 'codex' ? null : source,
+          turn: null,
+        })
         expect(fence.lastTurnEnd).toBeNull()
         expect(promptAdmission(fence, capability)).toEqual({
           code: 'agent.state_unknown',
@@ -55,20 +63,21 @@ describe.each(['codex', 'claude-code'] as const)(
         f.dispose()
       }
     })
-    it('invalidates readiness on a new turn even when a later refresh says idle', async () => {
+    it('invalidates readiness on a new turn despite a later idle refresh', async () => {
       const f = fixture()
       try {
         f.observe('Stop')
         f.observe('UserPromptSubmit')
         f.observe(refresh)
         const fence = f.registry.readFence({ sessionId: 's' })!
-        expect(fence.snapshot.state).toBe('idle')
+        expect(fence.snapshot.state).toBe(provider === 'codex' ? 'working' : 'idle')
         expect(fence.snapshot.turn).not.toBeNull()
         expect(fence.lastTurnEnd).toBeNull()
-        await expect(f.deliver()).rejects.toMatchObject({
-          code: 'agent.state_unknown',
-          details: { reason: 'readiness_unobserved' },
-        })
+        await expect(f.deliver()).rejects.toMatchObject(
+          provider === 'codex'
+            ? { code: 'agent.busy', details: { reason: 'working' } }
+            : { code: 'agent.state_unknown', details: { reason: 'readiness_unobserved' } },
+        )
         expect(f.write).not.toHaveBeenCalled()
       } finally {
         f.dispose()
@@ -88,7 +97,7 @@ describe.each(['codex', 'claude-code'] as const)(
               invalidation === 'shell'
                 ? undefined
                 : invalidation === 'degraded'
-                  ? refresh
+                  ? 'Stop'
                   : invalidation,
             degraded: invalidation === 'degraded',
           })
