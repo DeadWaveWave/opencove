@@ -216,6 +216,7 @@ async function main(): Promise<void> {
     appVersion,
     deploymentId: readWorkerFlagValue(argv, '--deployment-id'),
     strictPersistence: hasFlag(argv, '--managed-runtime'),
+    enableAgentTurnArchive: true,
     activationId: readWorkerFlagValue(argv, '--activation-id'),
     requestManagedShutdown: () => {
       void disposeAndExit(0)

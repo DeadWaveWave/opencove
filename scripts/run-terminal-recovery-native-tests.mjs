@@ -12,6 +12,8 @@ const tests = process.argv.includes('--worker-ownership')
   ? workerOwnershipTests
   : [
       ...workerOwnershipTests,
+      'tests/contract/agentTurnArchive/agentTurnArchive.native.spec.ts',
+      'tests/contract/agentTurnArchive/agentTurnArchiveReview.native.spec.ts',
       'tests/contract/platform/persistenceStore.revision.native.spec.ts',
       'tests/contract/platform/managedRuntime.native.spec.ts',
       'tests/contract/controlSurface/controlSurfaceHttpServer.nodeWorkerBindingRecovery.spec.ts',
