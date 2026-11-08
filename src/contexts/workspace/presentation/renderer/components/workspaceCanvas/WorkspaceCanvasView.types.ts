@@ -34,6 +34,7 @@ import type {
 } from './types'
 import type { SpaceExplorerClipboardItem } from './view/WorkspaceSpaceExplorerOverlay.operations'
 import type { WorkspaceCanvasActionKind } from './view/WorkspaceCanvasActionBar'
+import type { CanvasLod } from './view/canvasLod'
 
 export type SelectionDraftUiState = Pick<
   SelectionDraftState,
@@ -128,7 +129,7 @@ export interface WorkspaceCanvasViewProps {
   setSpaceRenameDraft: React.Dispatch<React.SetStateAction<string>>
   commitSpaceRename: (spaceId: string) => void
   cancelSpaceRename: () => void
-  startSpaceRename: (spaceId: string) => void
+  activateSpaceTitle: (spaceId: string, lod: CanvasLod) => void
   setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
   selectedNodeCount: number
   isMinimapVisible: boolean

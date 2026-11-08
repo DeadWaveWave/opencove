@@ -423,7 +423,7 @@ export function WorkspaceCanvasInner({
         setSpaceRenameDraft={spacesApi.setSpaceRenameDraft}
         commitSpaceRename={spacesApi.commitSpaceRename}
         cancelSpaceRename={spacesApi.cancelSpaceRename}
-        startSpaceRename={spacesApi.startSpaceRename}
+        activateSpaceTitle={spacesApi.activateSpaceTitle}
         setSpaceLabelColor={spacesApi.setSpaceLabelColor}
         selectedNodeCount={canvasState.selectedNodeIds.length}
         isMinimapVisible={canvasState.isMinimapVisible}

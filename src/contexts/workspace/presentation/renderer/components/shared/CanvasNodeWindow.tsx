@@ -7,6 +7,7 @@ import { resolveCanonicalNodeMinSize } from '../../utils/workspaceNodeSizing'
 import { NodeKindIcon } from './NodeKindIcon'
 import { NodeResizeHandles } from './NodeResizeHandles'
 import { WindowHeader } from './WindowHeader'
+import { WindowPlate } from './WindowPlate'
 
 export interface CanvasNodeWindowProps {
   id: string
@@ -117,6 +118,7 @@ export function CanvasNodeWindow({
           onClose,
         }}
       />
+      <WindowPlate kind={kindFamily} />
       <div
         className="cove-canvas-node-window__body nodrag nowheel"
         data-cove-part="window-body"

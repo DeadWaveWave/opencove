@@ -121,17 +121,20 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
         }),
       )
 
-      // Content sits on a reading plate inset 6px from the frame's sides and bottom.
+      // Content is inset 6px from the frame's sides and bottom, and reads on the window's one
+      // reading plate, a layer under the whole window that fades into the frame.
       await Promise.all(
         [terminalNode, taskNode, noteNode].map(async node => {
           const body = node.locator('[data-cove-part="window-body"]')
           await expect(body).toHaveCSS('margin-left', '6px')
           await expect(body).toHaveCSS('margin-right', '6px')
           await expect(body).toHaveCSS('margin-bottom', '6px')
-          await expect(body).toHaveCSS('border-bottom-left-radius', '6px')
-          expect(
-            await body.evaluate(element => getComputedStyle(element).backgroundImage),
-          ).toContain('linear-gradient')
+          await expect(body).toHaveCSS('background-image', 'none')
+          const plate = node.locator(':scope > [data-cove-part="window-plate"]')
+          await expect(plate).toHaveCSS('position', 'absolute')
+          expect(await plate.evaluate(element => getComputedStyle(element).maskImage)).toContain(
+            'linear-gradient',
+          )
         }),
       )
     } finally {

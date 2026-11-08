@@ -96,7 +96,7 @@ export function WorkspaceCanvasView({
   setSpaceRenameDraft,
   commitSpaceRename,
   cancelSpaceRename,
-  startSpaceRename,
+  activateSpaceTitle,
   setSpaceLabelColor,
   selectedNodeCount,
   isMinimapVisible,
@@ -320,7 +320,7 @@ export function WorkspaceCanvasView({
           setSpaceRenameDraft={setSpaceRenameDraft}
           commitSpaceRename={commitSpaceRename}
           cancelSpaceRename={cancelSpaceRename}
-          startSpaceRename={startSpaceRename}
+          activateSpaceTitle={activateSpaceTitle}
           onOpenSpaceMenu={openSpaceActionMenu}
         />
         <WorkspaceFarView canvasRef={canvasRef} nodes={filteredNodes} />

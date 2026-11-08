@@ -53,8 +53,8 @@ test.describe('Workspace Canvas - Terminal Theme', () => {
         )
         .toBe('light')
       await expect(terminalBody).toHaveAttribute('data-cove-terminal-theme', 'light')
-      // Cove Light's generated reading plate (#f9fcfe).
-      await expect(terminalBody).toHaveCSS('background-color', 'rgb(249, 252, 254)')
+      // Cove Light's shell plate (#eefcf4): a terminal reads on its window kind's plate.
+      await expect(terminalBody).toHaveCSS('background-color', 'rgb(238, 252, 244)')
 
       await selectCoveOption(window, 'settings-ui-theme', 'pixel-light')
       await expect

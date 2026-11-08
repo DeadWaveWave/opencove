@@ -39,6 +39,7 @@ import {
   useWorkspaceSpacePullRequests,
 } from './WorkspaceSpaceRegionsOverlay.pullRequests'
 import { useWorktreeInfoByPath } from '../../../worktreeInfo/useWorktreeInfo'
+import type { CanvasLod } from './canvasLod'
 
 interface WorkspaceSpaceRegionsOverlayProps {
   workspacePath: string
@@ -59,7 +60,7 @@ interface WorkspaceSpaceRegionsOverlayProps {
   setSpaceRenameDraft: React.Dispatch<React.SetStateAction<string>>
   commitSpaceRename: (spaceId: string) => void
   cancelSpaceRename: () => void
-  startSpaceRename: (spaceId: string) => void
+  activateSpaceTitle: (spaceId: string, lod: CanvasLod) => void
   onOpenSpaceMenu?: (spaceId: string, anchor: { x: number; y: number }) => void
 }
 
@@ -78,7 +79,7 @@ export function WorkspaceSpaceRegionsOverlay({
   setSpaceRenameDraft,
   commitSpaceRename,
   cancelSpaceRename,
-  startSpaceRename,
+  activateSpaceTitle,
   onOpenSpaceMenu,
 }: WorkspaceSpaceRegionsOverlayProps): React.JSX.Element {
   const { t } = useTranslation()
@@ -368,7 +369,7 @@ export function WorkspaceSpaceRegionsOverlay({
               setSpaceRenameDraft={setSpaceRenameDraft}
               commitSpaceRename={commitSpaceRename}
               cancelSpaceRename={cancelSpaceRename}
-              startSpaceRename={startSpaceRename}
+              activateSpaceTitle={activateSpaceTitle}
               handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
               updateHandleCursor={updateHandleCursor}
               resolvedWorktreeInfo={resolvedWorktreeInfo}

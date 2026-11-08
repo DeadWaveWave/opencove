@@ -77,7 +77,6 @@ const NEUTRAL_CHROMA = [0.7, 0.75, 0.85, 0.9, 1, 1, 1, 1, 0.9, 0.85, 0.6, 0.35]
 export const GLASS = {
   dark: {
     frame: 0.52,
-    plate: 0.55,
     farTint: 0.2,
     chrome: 0.6,
     sheet: 0.72,
@@ -89,7 +88,6 @@ export const GLASS = {
   },
   light: {
     frame: 0.64,
-    plate: 0.7,
     farTint: 0.22,
     chrome: 0.66,
     sheet: 0.8,
@@ -139,6 +137,23 @@ export const PIXEL_WALL = {
   },
 } as const
 const CLOUD_HUES = [348, 296, 250, 200] as const
+
+/**
+ * The solid reading plate under window content (owner calls, round 4): never pure black or white,
+ * but a faint wash of a hue, like Material 3's tinted surfaces. Each kind of window reads on its
+ * own kind's hue (KIND_PLATE); the theme's plate, at the accent's hue, is for neutral windows and
+ * for every window when kind colours are off. Dark lifts the plates off the darkest neutral;
+ * light settles them under white. The theme plate's chroma follows the accent's down to grey.
+ */
+export const PLATE = {
+  dark: { l: 0.225, c: 0.03 },
+  light: { l: 0.978, c: 0.018 },
+} as const
+const PLATE_CHROMA_PER_ACCENT = 0.25
+export const KIND_PLATE = {
+  dark: { l: 0.225, c: 0.028 },
+  light: { l: 0.978, c: 0.018 },
+} as const
 
 export type Scale = readonly Rgb[]
 
@@ -217,11 +232,13 @@ export interface GeneratedTheme {
   neutral: Scale
   accent: Scale
   kinds: Record<KindFamilyId, Scale>
+  /** Each kind's reading plate (KIND_PLATE). */
+  kindPlates: Record<KindFamilyId, Rgb>
   labels: Record<LabelId, Scale>
   amber: Scale
   red: Scale
   /** Roles every surface uses. */
-  roles: { canvas: Rgb; surface: Rgb; text: Rgb; textSecondary: Rgb; onAccent: Rgb }
+  roles: { canvas: Rgb; surface: Rgb; plate: Rgb; text: Rgb; textSecondary: Rgb; onAccent: Rgb }
   pixel: { spot: Rgb; cell: Rgb; gap: Rgb; clouds: readonly Rgb[]; sparks: readonly Rgb[] }
   ansi: Record<AnsiKey, Rgb>
   onSolid(solid: Rgb): Rgb
@@ -239,6 +256,7 @@ export function kindRoles(theme: GeneratedTheme, id: KindFamilyId | 'neutral') {
       solid: dark ? s[7]! : s[8]!,
       on: dark ? s[11]! : s[0]!,
       far: s[dark ? 10 : 11]!,
+      plate: theme.roles.plate,
     }
   }
   return {
@@ -249,6 +267,7 @@ export function kindRoles(theme: GeneratedTheme, id: KindFamilyId | 'neutral') {
     solid: s[8]!,
     on: theme.onSolid(s[8]!),
     far: s[dark ? 10 : 11]!,
+    plate: theme.kindPlates[id],
   }
 }
 
@@ -264,6 +283,12 @@ export function generateTheme(input: ThemeInput): GeneratedTheme {
       return [id, scale(f.hue, f.chroma[ap], ap, k, { anchor: f.anchor[ap] })]
     }),
   ) as Record<KindFamilyId, Scale>
+  const kindPlates = Object.fromEntries(
+    (Object.keys(KIND_FAMILIES) as KindFamilyId[]).map(id => [
+      id,
+      oklch(KIND_PLATE[ap].l, KIND_PLATE[ap].c, KIND_FAMILIES[id].hue),
+    ]),
+  ) as Record<KindFamilyId, Rgb>
   const labels = Object.fromEntries(
     (Object.keys(LABEL_HUES) as LabelId[]).map(id => [
       id,
@@ -302,12 +327,18 @@ export function generateTheme(input: ThemeInput): GeneratedTheme {
     neutral,
     accent,
     kinds,
+    kindPlates,
     labels,
     amber,
     red,
     roles: {
       canvas: dark ? neutral[0]! : neutral[2]!,
       surface: dark ? neutral[1]! : neutral[0]!,
+      plate: oklch(
+        PLATE[ap].l,
+        Math.min(PLATE[ap].c, input.accentChroma * PLATE_CHROMA_PER_ACCENT),
+        input.accentHue,
+      ),
       text: neutral[11]!,
       textSecondary: neutral[10]!,
       onAccent: onSolid(accent[8]!),

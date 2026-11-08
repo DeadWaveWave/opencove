@@ -23,6 +23,7 @@ import type { LabelColor } from '@shared/types/labelColor'
 import { InlineNodeTitleEditor } from '@contexts/workspace/presentation/renderer/components/shared/InlineNodeTitleEditor'
 import { NodeKindIcon } from '@contexts/workspace/presentation/renderer/components/shared/NodeKindIcon'
 import { WindowHeader } from '@contexts/workspace/presentation/renderer/components/shared/WindowHeader'
+import { WindowPlate } from '@contexts/workspace/presentation/renderer/components/shared/WindowPlate'
 import { Pencil } from 'lucide-react'
 
 interface TaskNodeInteractionOptions {
@@ -296,119 +297,122 @@ export function TaskNode({
         }}
       />
 
-      <div className="task-node__content" data-cove-part="window-body">
-        {/* The plate's first row: everything under the header sits on the reading plate. */}
-        <div className="task-node__meta" data-testid="task-node-meta">
-          <span className={`task-node__priority task-node__priority--${priority}`}>
-            {getTaskPriorityLabel(t, priority).toUpperCase()}
-          </span>
+      <WindowPlate kind="plan" />
+      {/* Everything under the header, requirement, sessions and footer, is one body on the plate. */}
+      <div className="task-node__plate" data-cove-part="window-body">
+        <div className="task-node__content">
+          <div className="task-node__meta" data-testid="task-node-meta">
+            <span className={`task-node__priority task-node__priority--${priority}`}>
+              {getTaskPriorityLabel(t, priority).toUpperCase()}
+            </span>
 
-          <span className="task-node__tags" data-testid="task-node-tags">
-            {tags.length > 0 ? (
-              tags.map(tag => (
-                <span key={tag} className="task-node__tag">
-                  #{tag}
-                </span>
-              ))
-            ) : (
-              <span className="task-node__tag task-node__tag--empty">{t('taskNode.noTags')}</span>
-            )}
-          </span>
-          <button
-            type="button"
-            className="task-node__meta-edit nodrag"
-            data-testid="task-node-edit-meta"
-            aria-label={t('taskNode.editMeta')}
-            title={t('taskNode.editMeta')}
-            onClick={event => {
-              event.stopPropagation()
-              onOpenEditor()
-            }}
-          >
-            <Pencil size={11} aria-hidden="true" />
-          </button>
-        </div>
+            <span className="task-node__tags" data-testid="task-node-tags">
+              {tags.length > 0 ? (
+                tags.map(tag => (
+                  <span key={tag} className="task-node__tag">
+                    #{tag}
+                  </span>
+                ))
+              ) : (
+                <span className="task-node__tag task-node__tag--empty">{t('taskNode.noTags')}</span>
+              )}
+            </span>
+            <button
+              type="button"
+              className="task-node__meta-edit nodrag"
+              data-testid="task-node-edit-meta"
+              aria-label={t('taskNode.editMeta')}
+              title={t('taskNode.editMeta')}
+              onClick={event => {
+                event.stopPropagation()
+                onOpenEditor()
+              }}
+            >
+              <Pencil size={11} aria-hidden="true" />
+            </button>
+          </div>
 
-        <label>{t('taskNode.requirement')}</label>
-        <div className="task-node__inline-editor">
-          <textarea
-            ref={requirementInputRef}
-            className="task-node__requirement-input nodrag nowheel"
-            data-testid="task-node-inline-requirement-input"
-            value={requirementDraft}
-            onFocus={() => {
-              setIsRequirementEditing(true)
-            }}
-            onPointerDown={event => {
-              event.stopPropagation()
-            }}
-            onClick={event => {
-              event.stopPropagation()
-            }}
-            onDragOver={event => {
-              if (
-                event.dataTransfer?.files.length ||
-                event.dataTransfer?.types.includes('text/uri-list')
-              ) {
+          <label>{t('taskNode.requirement')}</label>
+          <div className="task-node__inline-editor">
+            <textarea
+              ref={requirementInputRef}
+              className="task-node__requirement-input nodrag nowheel"
+              data-testid="task-node-inline-requirement-input"
+              value={requirementDraft}
+              onFocus={() => {
+                setIsRequirementEditing(true)
+              }}
+              onPointerDown={event => {
+                event.stopPropagation()
+              }}
+              onClick={event => {
+                event.stopPropagation()
+              }}
+              onDragOver={event => {
+                if (
+                  event.dataTransfer?.files.length ||
+                  event.dataTransfer?.types.includes('text/uri-list')
+                ) {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  event.dataTransfer.dropEffect = 'copy'
+                }
+              }}
+              onDrop={event => {
                 event.preventDefault()
                 event.stopPropagation()
-                event.dataTransfer.dropEffect = 'copy'
-              }
-            }}
-            onDrop={event => {
-              event.preventDefault()
-              event.stopPropagation()
-              insertFilePaths(
-                event.currentTarget,
-                event.dataTransfer.files,
-                event.dataTransfer.getData('text/uri-list'),
-              )
-            }}
-            onPaste={event => {
-              const files = event.clipboardData.files
-              const uriList = event.clipboardData.getData('text/uri-list')
-              if (files.length === 0 && !uriList) {
-                return
-              }
+                insertFilePaths(
+                  event.currentTarget,
+                  event.dataTransfer.files,
+                  event.dataTransfer.getData('text/uri-list'),
+                )
+              }}
+              onPaste={event => {
+                const files = event.clipboardData.files
+                const uriList = event.clipboardData.getData('text/uri-list')
+                if (files.length === 0 && !uriList) {
+                  return
+                }
 
-              if (insertFilePaths(event.currentTarget, files, uriList)) {
-                event.preventDefault()
-                event.stopPropagation()
-              }
-            }}
-            onChange={event => {
-              setRequirementDraft(event.target.value)
-            }}
-            onBlur={() => {
-              commitRequirementDraft()
-              setIsRequirementEditing(false)
-            }}
-            onKeyDown={event => {
-              if (event.key === 'Escape') {
-                event.preventDefault()
-                cancelRequirementEdit()
-                event.currentTarget.blur()
-                return
-              }
+                if (insertFilePaths(event.currentTarget, files, uriList)) {
+                  event.preventDefault()
+                  event.stopPropagation()
+                }
+              }}
+              onChange={event => {
+                setRequirementDraft(event.target.value)
+              }}
+              onBlur={() => {
+                commitRequirementDraft()
+                setIsRequirementEditing(false)
+              }}
+              onKeyDown={event => {
+                if (event.key === 'Escape') {
+                  event.preventDefault()
+                  cancelRequirementEdit()
+                  event.currentTarget.blur()
+                  return
+                }
 
-              if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-                event.preventDefault()
-                event.currentTarget.blur()
-              }
-            }}
-          />
+                if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                  event.preventDefault()
+                  event.currentTarget.blur()
+                }
+              }}
+            />
+          </div>
         </div>
+
+        <TaskNodeAgentSessions
+          linkedAgentNode={linkedAgentNode}
+          agentSessions={agentSessions}
+          currentDirectory={currentDirectory}
+          onResumeAgentSession={onResumeAgentSession}
+          onRemoveAgentSessionRecord={onRemoveAgentSessionRecord}
+        />
+
+        <TaskNodeFooter status={status} onStatusChange={onStatusChange} onRunAgent={onRunAgent} />
       </div>
-
-      <TaskNodeAgentSessions
-        linkedAgentNode={linkedAgentNode}
-        agentSessions={agentSessions}
-        currentDirectory={currentDirectory}
-        onResumeAgentSession={onResumeAgentSession}
-        onRemoveAgentSessionRecord={onRemoveAgentSessionRecord}
-      />
-
-      <TaskNodeFooter status={status} onStatusChange={onStatusChange} onRunAgent={onRunAgent} />
 
       <NodeResizeHandles
         classNamePrefix="task-node"

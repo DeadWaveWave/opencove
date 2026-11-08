@@ -1,6 +1,7 @@
 import { TerminalLinkHost, type TerminalLinkHostOptions } from './links/TerminalLinkHost'
 import React, { useId, type JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
+import { classNames } from '@app/renderer/components/ui/classNames'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { Handle, Position } from '@xyflow/react'
 import type {
@@ -10,6 +11,7 @@ import type {
   TerminalSessionStateSource,
 } from '@shared/contracts/dto'
 import { TerminalNodeHeader } from './TerminalNodeHeader'
+import { WindowPlate } from '../shared/WindowPlate'
 import { TerminalNodeFindBar } from './TerminalNodeFindBar'
 import { NodeResizeHandles } from '../shared/NodeResizeHandles'
 import { resolveTerminalNodeInteraction } from './interaction'
@@ -136,7 +138,12 @@ export function TerminalNodeFrame({
     <div
       data-cove-part="window"
       data-cove-kind={kind}
-      className={`terminal-node nowheel ${hasSelectedDragSurface ? 'terminal-node--selected-surface' : ''}`.trim()}
+      className={classNames(
+        'terminal-node nowheel',
+        // A class, not only `data-cove-kind`: the terminal colour probe copies classes.
+        isAgentNode && 'terminal-node--agent',
+        hasSelectedDragSurface && 'terminal-node--selected-surface',
+      )}
       data-cove-terminal-background={transparentBackground ? 'transparent' : 'opaque'}
       data-agent-state-source={agentStateSource ?? undefined}
       data-agent-hook-install-state={agentHookInstallState ?? undefined}
@@ -274,6 +281,7 @@ export function TerminalNodeFrame({
       ) : null}
 
       {geometryFeedback}
+      <WindowPlate />
       <div
         className="terminal-node__body"
         data-cove-part="window-body"

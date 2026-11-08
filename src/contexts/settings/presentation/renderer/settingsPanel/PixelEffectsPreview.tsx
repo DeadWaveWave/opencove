@@ -3,6 +3,7 @@ import { FileText, GitBranch, Play, Terminal } from 'lucide-react'
 import { Button } from '@app/renderer/components/ui/Button'
 import { useTranslation } from '@app/renderer/i18n'
 import type { PixelEffectSettings } from '@contexts/settings/domain/agentSettings'
+import { WindowPlate } from '@contexts/workspace/presentation/renderer/components/shared/WindowPlate'
 import { createPixelEffectPreview, type PixelEffectPreviewState } from './pixelEffectPreview'
 
 export function PixelEffectsPreview({ effects }: { effects: PixelEffectSettings }) {
@@ -115,6 +116,7 @@ export function PixelEffectsPreview({ effects }: { effects: PixelEffectSettings 
                 <FileText size={14} />
                 {t('settingsPanel.appearanceNext.previewDocument')}
               </div>
+              <WindowPlate kind="knowledge" />
               <div className="settings-pixel-preview__body" data-cove-part="window-body">
                 {t('settingsPanel.appearanceNext.previewDocumentBody')}
               </div>
@@ -129,6 +131,7 @@ export function PixelEffectsPreview({ effects }: { effects: PixelEffectSettings 
                 <Terminal size={14} />
                 {t('settingsPanel.appearanceNext.previewTerminal')}
               </div>
+              <WindowPlate kind="shell" />
               <div className="settings-pixel-preview__body" data-cove-part="window-body">
                 <code>
                   ~/projects/cove

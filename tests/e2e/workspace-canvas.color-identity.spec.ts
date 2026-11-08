@@ -44,6 +44,24 @@ const KIND_FAMILY: Record<string, string | null> = {
   image: null,
 }
 
+/**
+ * Generated families keep the header clear glass, washed in its kind colour from a layer under
+ * its content, with the window's reading plate a separate layer under the whole window
+ * (window-plate.css). The hand-written themes tint the header itself with its label colour.
+ */
+function expectHeaderIdentity(node: {
+  family: string | null
+  headerImage: string | null
+  headerWash: string | null
+}) {
+  if (node.family === 'cove') {
+    expect(node.headerImage).toBe('none')
+    expect(node.headerWash).toContain('linear-gradient')
+  } else {
+    expect(node.headerImage).toContain('linear-gradient')
+  }
+}
+
 test.describe('Workspace Canvas - Color Identity', () => {
   test.setTimeout(180_000)
 
@@ -107,7 +125,7 @@ test.describe('Workspace Canvas - Color Identity', () => {
             expect(appearance.icon?.color).toEqual(appearance.aiGlyphColor)
           }
           if (appearance.kind !== 'image') {
-            expect(appearance.headerImage).toContain('linear-gradient')
+            expectHeaderIdentity(appearance)
             expect(
               appearance.contrast,
               `${theme}/${appearance.kind} title contrast`,
@@ -236,7 +254,7 @@ test.describe('Workspace Canvas - Color Identity', () => {
         for (const node of defaults) {
           expect(node.label).toBeNull()
           expect(Object.values(node.identity)).toEqual(node.themePalette)
-          expect(node.headerImage).toContain('linear-gradient')
+          expectHeaderIdentity(node)
           if (node.family === 'cove') {
             // Unlabeled windows in generated families have no flag and a neutral frame.
             expect(node.ribbonWidth).toBe(0)

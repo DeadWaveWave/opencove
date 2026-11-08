@@ -83,6 +83,16 @@ describe('theme generator', () => {
     }
   })
 
+  it("checks text and the terminal palette on every window kind's plate", () => {
+    for (const appearance of APPEARANCES) {
+      const theme = generateFamilyTheme('cove', appearance, 0)
+      const { plates } = glassBackgrounds(theme)
+      for (const id of ['ai', 'shell', 'plan', 'knowledge', 'media', 'neutral'] as const) {
+        expect(plates, `${appearance} ${id}`).toContainEqual(kindRoles(theme, id).plate)
+      }
+    }
+  })
+
   it('keeps the five kind families apart for normal vision and red-green colour blindness', () => {
     // ΔE (OKLab × 100): 15 is the normal-vision floor, 8 the colour-vision-deficiency target.
     for (const appearance of APPEARANCES) {
