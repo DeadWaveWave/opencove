@@ -60,7 +60,7 @@ for (const theme of ['pixel', 'pixel-light']) {
     await expectFits(canvasMenu)
     expect(await canvasMenu.evaluate(element => getComputedStyle(element).borderRadius)).toBe('8px')
     await expect(
-      page.getByTestId('workspace-context-create-space').locator('.lucide-scan'),
+      page.getByTestId('workspace-context-create-space').locator('[data-cove-pixel-icon="focus"]'),
     ).toBeVisible()
     await testInfo.attach(`menu-${theme}-desktop`, {
       body: await page.screenshot(),

@@ -1,7 +1,7 @@
 import React from 'react'
 import { MiniMap, useReactFlow, type Edge, type Node, type XYPosition } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
-import { Map as MapIcon } from 'lucide-react'
+import { MapIcon } from '@app/renderer/components/ui/pixelIcons'
 import type { TerminalNodeData } from '../../../types'
 import { centerFlowPositionInViewportPreservingZoom } from '../helpers'
 
@@ -70,7 +70,7 @@ export function WorkspaceMinimapDock({
           })
         }}
       >
-        <MapIcon aria-hidden="true" />
+        <MapIcon />
       </button>
     </div>
   )

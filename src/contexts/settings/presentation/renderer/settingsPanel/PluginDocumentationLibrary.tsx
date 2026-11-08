@@ -1,6 +1,6 @@
 import { Button } from '@app/renderer/components/ui/Button'
 import { useLayoutEffect, useMemo, useRef, useState, type JSX } from 'react'
-import { ArrowLeft, BookOpen, ChevronRight } from 'lucide-react'
+import { ArrowLeftIcon, BookIcon, ChevronRightIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import { PluginReadme } from '@contexts/plugins/presentation/renderer/PluginReadme'
 import {
@@ -49,7 +49,7 @@ export function PluginDocumentationLibrary({ onBack }: { onBack: () => void }): 
         onClick={article ? () => setRoute(null) : onBack}
         data-testid="plugin-library-back"
       >
-        <ArrowLeft size={14} aria-hidden="true" />
+        <ArrowLeftIcon size={18} />
         {t(`settingsPanel.plugins.${article ? 'library.back' : 'back'}`)}
       </Button>
       {article ? (
@@ -69,7 +69,7 @@ export function PluginDocumentationLibrary({ onBack }: { onBack: () => void }): 
       ) : (
         <>
           <header className="settings-plugin-library__intro">
-            <BookOpen size={24} aria-hidden="true" />
+            <BookIcon size={24} />
             <h3 tabIndex={-1} data-library-heading>
               {t('settingsPanel.plugins.library.title')}
             </h3>
@@ -109,7 +109,7 @@ export function PluginDocumentationLibrary({ onBack }: { onBack: () => void }): 
                         <strong>{item.title}</strong>
                         <span>{item.description}</span>
                       </span>
-                      <ChevronRight size={16} aria-hidden="true" />
+                      <ChevronRightIcon size={18} />
                     </Button>
                   ))}
               </div>

@@ -7,7 +7,7 @@ import { normalizeTaskTagSelection } from '../helpers'
 import type { TaskCreatorState } from '../types'
 import { getTaskPriorityLabel } from '@app/renderer/i18n/labels'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
-import { FileText } from 'lucide-react'
+import { FileTextIcon } from '@app/renderer/components/ui/pixelIcons'
 import { TaskPromptTemplatesMenu } from '@contexts/task/presentation/renderer/components/promptTemplates/TaskPromptTemplatesMenu'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
@@ -73,7 +73,7 @@ export function TaskCreatorWindow({
     >
       <WindowHeading
         title={t('taskWindow.newTask')}
-        icon={<FileText size={16} aria-hidden="true" />}
+        icon={<FileTextIcon size={18} />}
         onClose={closeTaskCreator}
         disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
       />
@@ -104,7 +104,7 @@ export function TaskCreatorWindow({
             aria-label={t('taskPromptTemplates.openMenu')}
             title={t('taskPromptTemplates.openMenu')}
           >
-            <FileText size={14} strokeWidth={2.2} />
+            <FileTextIcon size={18} />
           </button>
         </div>
         <textarea

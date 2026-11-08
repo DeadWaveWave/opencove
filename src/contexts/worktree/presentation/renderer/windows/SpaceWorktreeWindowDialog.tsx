@@ -1,5 +1,5 @@
 import React from 'react'
-import { GitBranch, X } from 'lucide-react'
+import { CloseIcon, GitBranchIcon } from '@app/renderer/components/ui/pixelIcons'
 import {
   AnchoredOperationPopover,
   type AnchoredOperationPopoverAnchor,
@@ -170,7 +170,7 @@ export function SpaceWorktreeWindowDialog({
               className="workspace-space-worktree__status-line"
               data-testid="space-worktree-status"
             >
-              <GitBranch size={14} aria-hidden="true" />
+              <GitBranchIcon size={18} />
               <span>{statusLabel}</span>
               <span className="workspace-space-worktree__status-divider" aria-hidden="true">
                 ·
@@ -190,7 +190,7 @@ export function SpaceWorktreeWindowDialog({
                 disabled={isBusy || guardIsBusy}
                 onClick={onClose}
               >
-                <X size={16} aria-hidden="true" />
+                <CloseIcon size={18} />
               </button>
             ) : null}
           </div>

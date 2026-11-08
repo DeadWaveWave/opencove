@@ -1,6 +1,6 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowLeft, X } from 'lucide-react'
+import { ArrowLeftIcon, CloseIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import { Dialog } from './ui/Dialog'
 import { DismissableLayer } from './ui/DismissableLayer'
@@ -344,7 +344,7 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
                 aria-label={t('common.back')}
                 title={t('common.back')}
               >
-                <ArrowLeft size={18} aria-hidden="true" />
+                <ArrowLeftIcon size={18} />
               </button>
             ) : null}
             <span id={titleId} ref={titleRef} tabIndex={-1} className="cove-menu-sheet__title">
@@ -356,7 +356,7 @@ export const ViewportMenuSurface = React.forwardRef<HTMLDivElement, ViewportMenu
               aria-label={t('common.close')}
               title={t('common.close')}
             >
-              <X size={18} aria-hidden="true" />
+              <CloseIcon size={18} />
             </button>
           </div>
           <div

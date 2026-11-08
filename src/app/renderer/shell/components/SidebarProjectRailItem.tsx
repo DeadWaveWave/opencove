@@ -1,5 +1,5 @@
 import React from 'react'
-import { Server } from 'lucide-react'
+import { ServerIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from '@app/renderer/i18n'
@@ -126,7 +126,7 @@ export function SidebarProjectRailItem({
               data-testid={`workspace-project-remote-${workspace.id}`}
               aria-hidden="true"
             >
-              <Server size={10} />
+              <ServerIcon size={12} />
             </span>
           ) : null}
         </ProjectTile>

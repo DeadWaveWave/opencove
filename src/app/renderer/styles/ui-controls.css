@@ -168,20 +168,19 @@
 }
 
 .cove-icon-button > svg {
-  width: 16px;
-  height: 16px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
   flex: 0 0 auto;
-  stroke-width: 1.8;
 }
 
 .cove-icon-button--xs > svg {
-  width: 13px;
-  height: 13px;
+  width: var(--cove-icon-size-sm);
+  height: var(--cove-icon-size-sm);
 }
 
 .cove-icon-button--md > svg {
-  width: 18px;
-  height: 18px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
 }
 
 .cove-toggle {
@@ -313,9 +312,8 @@
 }
 
 .cove-checkbox__check {
-  width: 12px;
-  height: 12px;
-  stroke-width: 3;
+  width: var(--cove-icon-size-sm);
+  height: var(--cove-icon-size-sm);
 }
 
 .cove-checkbox__input:not(:disabled):hover + .cove-checkbox__box {
@@ -400,8 +398,8 @@
 }
 
 .cove-chip__icon > svg {
-  width: 12px;
-  height: 12px;
+  width: var(--cove-icon-size-sm);
+  height: var(--cove-icon-size-sm);
 }
 
 @media (pointer: coarse) {

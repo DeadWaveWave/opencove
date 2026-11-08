@@ -1,18 +1,26 @@
 import React, { useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { AudioLines, Copy, ExternalLink, FileText, FolderOpen, Image, Video } from 'lucide-react'
+import {
+  AudioIcon,
+  CopyIcon,
+  ExternalLinkIcon,
+  FileTextIcon,
+  FolderOpenIcon,
+  ImageIcon,
+  VideoIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { useTranslation } from '@app/renderer/i18n'
 import type { TerminalLinkIntent } from './linkHostEvent'
 import type { DocumentNodeMediaKind } from '../../DocumentNode.media'
 
 const ACTION_ICONS = {
-  url: ExternalLink,
-  directory: FolderOpen,
-  file: FileText,
-  image: Image,
-  audio: AudioLines,
-  video: Video,
+  url: ExternalLinkIcon,
+  directory: FolderOpenIcon,
+  file: FileTextIcon,
+  image: ImageIcon,
+  audio: AudioIcon,
+  video: VideoIcon,
 }
 
 export function TerminalLinkSurface({
@@ -109,7 +117,7 @@ export function TerminalLinkSurface({
           aria-label={t('terminalLink.copy')}
           onClick={onCopy}
         >
-          <Copy size={13} aria-hidden="true" />
+          <CopyIcon size={12} />
         </button>
       </div>
       {message ? (
@@ -124,7 +132,7 @@ export function TerminalLinkSurface({
         disabled={disabled}
         onClick={() => onOpen()}
       >
-        <Icon size={14} aria-hidden="true" />
+        <Icon size={18} />
         <span>{primaryLabel}</span>
         {shortcut()}
       </button>
@@ -135,7 +143,7 @@ export function TerminalLinkSurface({
           disabled={disabled}
           onClick={() => onOpen(true)}
         >
-          <ExternalLink size={14} aria-hidden="true" />
+          <ExternalLinkIcon size={18} />
           <span>{t('terminalLink.openWithDefaultApp')}</span>
           {shortcut(true)}
         </button>

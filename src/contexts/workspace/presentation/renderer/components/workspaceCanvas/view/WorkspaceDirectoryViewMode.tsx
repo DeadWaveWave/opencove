@@ -1,5 +1,5 @@
 import React from 'react'
-import { LayoutGrid, ListTree } from 'lucide-react'
+import { GridIcon, ListTreeIcon } from '@app/renderer/components/ui/pixelIcons'
 import { SegmentedControl } from '@app/renderer/components/ui/SegmentedControl'
 import { useTranslation } from '@app/renderer/i18n'
 
@@ -27,13 +27,13 @@ export function WorkspaceDirectoryViewMode({
           {
             value: 'icons',
             label: t('spaceExplorer.iconsView'),
-            icon: <LayoutGrid />,
+            icon: <GridIcon />,
             iconOnly: true,
           },
           {
             value: 'list',
             label: t('spaceExplorer.listView'),
-            icon: <ListTree />,
+            icon: <ListTreeIcon />,
             iconOnly: true,
           },
         ]}

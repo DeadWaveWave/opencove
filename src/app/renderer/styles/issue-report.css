@@ -109,20 +109,6 @@
   gap: 6px;
 }
 
-.issue-report-window__spin {
-  animation: issue-report-spin 1.2s linear infinite;
-}
-
-@keyframes issue-report-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 @media (max-width: 640px) {
   .issue-report-window__actions {
     flex-wrap: wrap;

@@ -66,11 +66,10 @@
 }
 
 .workspace-space-explorer__entry-icon {
-  width: 15px;
-  height: 15px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
   flex: 0 0 auto;
   color: var(--cove-text-muted);
-  stroke-width: 1.6px;
 }
 
 .workspace-space-explorer__entry--selected .workspace-space-explorer__entry-icon {

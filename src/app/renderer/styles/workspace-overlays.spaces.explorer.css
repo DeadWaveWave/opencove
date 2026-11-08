@@ -57,8 +57,8 @@
 }
 
 .workspace-space-region__files-pill-icon {
-  width: 14px;
-  height: 14px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
   flex: 0 0 auto;
   opacity: 0.75;
 }
@@ -157,8 +157,8 @@
 }
 
 .workspace-space-explorer__identity-icon {
-  width: 16px;
-  height: 16px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
   flex: 0 0 auto;
   color: var(--cove-accent-text);
 }
@@ -229,8 +229,8 @@
 }
 
 .workspace-space-explorer__header-action svg {
-  width: 16px;
-  height: 16px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
 }
 
 .workspace-space-explorer__header-action:hover {
@@ -306,8 +306,8 @@
 }
 
 .workspace-space-explorer__filter-icon {
-  width: 14px;
-  height: 14px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
   color: var(--cove-text-muted);
   opacity: 0.82;
 }
@@ -347,8 +347,8 @@
 }
 
 .workspace-space-explorer__filter-clear svg {
-  width: 14px;
-  height: 14px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
 }
 
 .workspace-space-explorer__state {

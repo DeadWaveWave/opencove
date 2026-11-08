@@ -6,7 +6,7 @@ import { PluginBuildOptions } from './PluginBuildOptions'
 import { PluginRepositoryDetail } from './PluginRepositoryDetail'
 import { PluginCandidateList, type PluginCandidateInfo } from './PluginCandidateList'
 import type { PluginBuildStrategy } from '@contexts/plugins/domain/pluginDistributionTypes'
-import { ArrowRight, Search, X } from 'lucide-react'
+import { ArrowRightIcon, CloseIcon, SearchIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import { changeInstalledPlugin } from '@contexts/plugins/presentation/renderer/usePluginRegistry'
 import { pluginErrorMessage } from '@contexts/plugins/presentation/renderer/pluginErrorMessage'
@@ -149,7 +149,7 @@ export function PluginInstallPanel({
           disabled={busy}
           label={t('settingsPanel.plugins.install.close')}
         >
-          <X size={16} aria-hidden="true" />
+          <CloseIcon size={18} />
         </IconButton>
       </div>
       <SegmentedControl
@@ -264,11 +264,7 @@ export function PluginInstallPanel({
               disabled={busy}
               data-testid="settings-plugin-install-submit"
             >
-              {mode === 'discover' ? (
-                <Search size={14} aria-hidden="true" />
-              ) : (
-                <ArrowRight size={14} aria-hidden="true" />
-              )}
+              {mode === 'discover' ? <SearchIcon size={18} /> : <ArrowRightIcon size={18} />}
               {t(
                 `settingsPanel.plugins.install.${busy ? 'working' : mode === 'discover' ? 'search' : 'confirm'}`,
               )}

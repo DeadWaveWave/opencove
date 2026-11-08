@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react'
-import { Server } from 'lucide-react'
+import { ServerIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import { Popover } from '@app/renderer/components/ui/Popover'
 import type { WorkspaceMountDetails } from '../hooks/useWorkspaceMountSummaries'
@@ -41,7 +41,7 @@ export function SidebarRemoteDetails({
         title={`${remote.displayName}\n${remote.rootPath}`}
         onClick={() => setIsOpen(value => !value)}
       >
-        <Server size={14} aria-hidden="true" />
+        <ServerIcon size={18} />
       </button>
       <Popover
         open={isOpen}

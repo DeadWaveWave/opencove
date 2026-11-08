@@ -86,20 +86,9 @@
 }
 
 .website-node__spinner {
-  width: 16px;
-  height: 16px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
   color: var(--cove-text-muted);
-  animation: website-node-spin 0.8s linear infinite;
-}
-
-@keyframes website-node-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .website-node__session {
@@ -236,8 +225,8 @@
 }
 
 .website-node__home-search svg {
-  width: 17px;
-  height: 17px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
   color: var(--cove-text-muted);
   flex: 0 0 auto;
 }

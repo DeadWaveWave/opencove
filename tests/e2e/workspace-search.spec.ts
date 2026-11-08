@@ -199,7 +199,7 @@ test.describe('Workspace Search', () => {
       await expect(spaceItem).toBeVisible()
 
       const panel = window.getByTestId('workspace-search')
-      await expect(spaceItem.locator('svg.lucide-scan')).toHaveCount(1)
+      await expect(spaceItem.locator('svg[data-cove-pixel-icon="focus"]')).toHaveCount(1)
       await expect(taskItem).toHaveAttribute('data-cove-label-color', 'blue')
       await expect(noteItem).not.toHaveAttribute('data-cove-label-color')
       await expect(panel.locator('[class*="__pill"]')).toHaveCount(0)

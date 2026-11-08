@@ -1,4 +1,4 @@
-import { Puzzle } from 'lucide-react'
+import { ExtensionIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import { CanvasNodeWindow, type CanvasNodeWindowProps } from './shared/CanvasNodeWindow'
@@ -13,7 +13,7 @@ export function PluginUnavailableNode({
   return (
     <CanvasNodeWindow {...windowProps}>
       <div className="plugin-node-unavailable" data-testid={`plugin-node-${reason}`} role="status">
-        <Puzzle size={24} strokeWidth={1.5} aria-hidden="true" />
+        <ExtensionIcon size={24} />
         <strong>{t(`plugins.${reason}`)}</strong>
         <p>{t('plugins.retained')}</p>
         <button

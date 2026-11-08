@@ -1,6 +1,11 @@
 import { Button } from '@app/renderer/components/ui/Button'
 import { useEffect, useState, type JSX } from 'react'
-import { ArrowLeft, ExternalLink, GitBranch, Puzzle } from 'lucide-react'
+import {
+  ArrowLeftIcon,
+  ExternalLinkIcon,
+  GitBranchIcon,
+  ExtensionIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import type { PluginRepositoryDetails } from '@contexts/plugins/domain/pluginRepositoryTypes'
 import { PluginReadme } from '@contexts/plugins/presentation/renderer/PluginReadme'
@@ -72,7 +77,7 @@ export function PluginRepositoryDetail({
         className="cove-window__action cove-window__action--ghost"
         onClick={onBack}
       >
-        <ArrowLeft size={14} aria-hidden="true" />
+        <ArrowLeftIcon size={18} />
         {t('settingsPanel.plugins.repository.back')}
       </Button>
       {error ? (
@@ -95,7 +100,7 @@ export function PluginRepositoryDetail({
       {details ? (
         <>
           <header className="settings-plugin-repository__heading">
-            <Puzzle size={28} strokeWidth={1.5} aria-hidden="true" />
+            <ExtensionIcon size={24} />
             <div>
               <h4>{details.manifest?.displayName ?? details.name}</h4>
               <p>{details.description}</p>
@@ -103,11 +108,11 @@ export function PluginRepositoryDetail({
           </header>
           <div className="settings-plugin-repository__metadata">
             <a href={details.repository} target="_blank" rel="noopener noreferrer">
-              <ExternalLink size={13} aria-hidden="true" />
+              <ExternalLinkIcon size={12} />
               {details.name}
             </a>
             <span>
-              <GitBranch size={13} aria-hidden="true" />
+              <GitBranchIcon size={12} />
               {details.ref} · {details.commit.slice(0, 10)}
             </span>
             {details.manifest ? <span>{details.manifest.version}</span> : null}

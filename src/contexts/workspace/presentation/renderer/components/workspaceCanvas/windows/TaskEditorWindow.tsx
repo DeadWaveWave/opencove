@@ -7,7 +7,7 @@ import { normalizeTaskTagSelection } from '../helpers'
 import type { TaskEditorState } from '../types'
 import { getTaskPriorityLabel } from '@app/renderer/i18n/labels'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
-import { FileText } from 'lucide-react'
+import { FileTextIcon } from '@app/renderer/components/ui/pixelIcons'
 import { TaskPromptTemplatesMenu } from '@contexts/task/presentation/renderer/components/promptTemplates/TaskPromptTemplatesMenu'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import { Checkbox } from '@app/renderer/components/ui/Checkbox'
@@ -73,7 +73,7 @@ export function TaskEditorWindow({
     >
       <WindowHeading
         title={t('taskWindow.editTask')}
-        icon={<FileText size={16} aria-hidden="true" />}
+        icon={<FileTextIcon size={18} />}
         onClose={closeTaskEditor}
         disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
       />
@@ -138,7 +138,7 @@ export function TaskEditorWindow({
               })
             }}
           >
-            <FileText aria-hidden="true" />
+            <FileTextIcon />
           </IconButton>
         }
         value={taskEditor.requirement}

@@ -1,5 +1,5 @@
 import React from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { WarningIcon } from '@app/renderer/components/ui/pixelIcons'
 import { Dialog } from './ui/Dialog'
 
 function joinClassNames(...values: Array<string | null | undefined | false>): string {
@@ -64,7 +64,7 @@ export function WarningDialog({
           </div>
           {statusLabel ? (
             <div className="workspace-warning-dialog__status" aria-label={statusAriaLabel}>
-              <AlertTriangle size={14} aria-hidden="true" />
+              <WarningIcon size={18} />
               <span>{statusLabel}</span>
             </div>
           ) : null}

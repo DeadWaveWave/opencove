@@ -1,5 +1,5 @@
 import React from 'react'
-import { LoaderCircle } from 'lucide-react'
+import { PixelSpinner } from '@app/renderer/components/ui/PixelSpinner'
 import type { WorkspaceSpaceRect } from '../../../types'
 
 export function WorkspaceSpaceOperationOverlay({
@@ -26,7 +26,7 @@ export function WorkspaceSpaceOperationOverlay({
       }}
     >
       <span className="workspace-space-region__operation-pill">
-        <LoaderCircle aria-hidden="true" />
+        <PixelSpinner />
         <span>{label}</span>
       </span>
     </div>

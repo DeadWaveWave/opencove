@@ -1,13 +1,13 @@
 import React from 'react'
 import {
-  ChevronDown,
-  ChevronRight,
-  EyeOff,
-  LayoutDashboard,
-  MoreHorizontal,
-  Pin,
-  Scan,
-} from 'lucide-react'
+  ChevronDownIcon,
+  ChevronRightIcon,
+  EyeOffIcon,
+  FocusIcon,
+  LayoutIcon,
+  MoreIcon,
+  PinIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from '@app/renderer/i18n'
@@ -169,11 +169,7 @@ function SpaceGroup({
               : onSelectProjectCanvas(workspaceId)
           }
         >
-          {minimap ? null : isRoot ? (
-            <LayoutDashboard size={14} aria-hidden="true" />
-          ) : (
-            <Scan size={16} aria-hidden="true" />
-          )}
+          {minimap ? null : isRoot ? <LayoutIcon size={18} /> : <FocusIcon size={18} />}
           <span className="workspace-space-item__name">{label}</span>
           {minimap ? <SpaceMeta minimap={minimap} branch={branch} /> : null}
         </button>
@@ -186,7 +182,7 @@ function SpaceGroup({
             title={t('sidebar.restore')}
             onClick={() => onRestoreSidebarItem?.('space', group.id, label)}
           >
-            <EyeOff size={14} aria-hidden="true" />
+            <EyeOffIcon size={18} />
           </button>
         ) : !isRoot ? (
           <>
@@ -207,7 +203,7 @@ function SpaceGroup({
                   }
                 }}
               >
-                <Pin size={14} aria-hidden="true" />
+                <PinIcon size={18} />
               </button>
             ) : null}
             <button
@@ -221,7 +217,7 @@ function SpaceGroup({
                 openMenu(rect.right, rect.bottom)
               }}
             >
-              <MoreHorizontal size={14} aria-hidden="true" />
+              <MoreIcon size={18} />
             </button>
           </>
         ) : null}
@@ -236,11 +232,7 @@ function SpaceGroup({
             aria-expanded={isExpanded}
             onClick={() => onToggleSpaceGroup(`${workspaceId}:${group.id}`)}
           >
-            {isExpanded ? (
-              <ChevronDown size={14} aria-hidden="true" />
-            ) : (
-              <ChevronRight size={14} aria-hidden="true" />
-            )}
+            {isExpanded ? <ChevronDownIcon size={18} /> : <ChevronRightIcon size={18} />}
           </button>
         ) : null}
       </div>
@@ -360,11 +352,7 @@ export function SpaceItemOverlay({
     >
       <div className="workspace-space-item workspace-space-item--drag-overlay">
         <span className="workspace-space-item__select">
-          {group.kind === 'project-root' ? (
-            <LayoutDashboard size={14} aria-hidden="true" />
-          ) : (
-            <Scan size={16} aria-hidden="true" />
-          )}
+          {group.kind === 'project-root' ? <LayoutIcon size={18} /> : <FocusIcon size={18} />}
           <span className="workspace-space-item__name">
             {group.kind === 'project-root' ? t('sidebar.rootCanvas') : group.name}
           </span>

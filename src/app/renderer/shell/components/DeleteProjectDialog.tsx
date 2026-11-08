@@ -2,7 +2,7 @@ import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { WindowHeading } from '@app/renderer/components/WindowHeading'
-import { Trash2 } from 'lucide-react'
+import { TrashIcon } from '@app/renderer/components/ui/pixelIcons'
 
 export function DeleteProjectDialog({
   workspaceName,
@@ -30,10 +30,7 @@ export function DeleteProjectDialog({
       dismissOnPointerDownOutside={!isRemoving}
       onDismiss={onCancel}
     >
-      <WindowHeading
-        title={t('deleteProjectDialog.title')}
-        icon={<Trash2 size={16} aria-hidden="true" />}
-      />
+      <WindowHeading title={t('deleteProjectDialog.title')} icon={<TrashIcon size={18} />} />
       <p id="workspace-project-delete-description">
         {t('deleteProjectDialog.description', { workspaceName })}
       </p>

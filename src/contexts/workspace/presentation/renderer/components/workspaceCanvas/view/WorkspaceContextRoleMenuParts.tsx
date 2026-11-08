@@ -2,7 +2,13 @@ import React from 'react'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { menuHoverHandler } from '@app/renderer/components/menuHoverHandler'
 import { MenuItem } from '@app/renderer/components/ui/Menu'
-import { Bot, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
+import {
+  EditIcon,
+  MoreIcon,
+  PlusIcon,
+  RobotIcon,
+  TrashIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import type { ProjectRoleDefinition } from '@contexts/settings/domain/agentSettings'
 
@@ -20,7 +26,7 @@ export function WorkspaceContextRoleMenuItems({
   return (
     <MenuItem
       ref={roleButtonRef}
-      icon={<Bot />}
+      icon={<RobotIcon />}
       data-testid="workspace-context-run-role"
       submenu={{ open: isProjectRolesSubmenuOpen }}
       onMouseEnter={menuHoverHandler(openProjectRolesSubmenu)}
@@ -93,7 +99,7 @@ export function WorkspaceContextProjectRolesSubmenu({
                   runProjectRoleFromContextMenu(role.id)
                 }}
               >
-                <Bot className="workspace-context-menu__icon" aria-hidden="true" />
+                <RobotIcon className="workspace-context-menu__icon" />
                 <span className="workspace-context-menu__label">{role.name}</span>
               </button>
               <button
@@ -108,10 +114,7 @@ export function WorkspaceContextProjectRolesSubmenu({
                   setActiveActionsRoleId(current => (current === role.id ? null : role.id))
                 }}
               >
-                <MoreHorizontal
-                  className="workspace-context-menu__icon workspace-context-menu__more"
-                  aria-hidden="true"
-                />
+                <MoreIcon className="workspace-context-menu__icon workspace-context-menu__more" />
               </button>
             </div>
             {activeActionsRoleId === role.id ? (
@@ -124,7 +127,7 @@ export function WorkspaceContextProjectRolesSubmenu({
                     openRoleEditor(role.id)
                   }}
                 >
-                  <Pencil className="workspace-context-menu__icon" aria-hidden="true" />
+                  <EditIcon className="workspace-context-menu__icon" />
                   <span className="workspace-context-menu__label">{t('common.edit')}</span>
                 </button>
                 <button
@@ -141,7 +144,7 @@ export function WorkspaceContextProjectRolesSubmenu({
                     setPendingDeleteRoleId(role.id)
                   }}
                 >
-                  <Trash2 className="workspace-context-menu__icon" aria-hidden="true" />
+                  <TrashIcon className="workspace-context-menu__icon" />
                   <span className="workspace-context-menu__label">
                     {pendingDeleteRoleId === role.id
                       ? t('roleActions.confirmDelete')
@@ -154,7 +157,7 @@ export function WorkspaceContextProjectRolesSubmenu({
         ))
       ) : (
         <button type="button" data-testid="workspace-context-run-role-empty" disabled>
-          <Bot className="workspace-context-menu__icon" aria-hidden="true" />
+          <RobotIcon className="workspace-context-menu__icon" />
           <span className="workspace-context-menu__label">
             {t('workspaceContextMenu.noProjectRoles')}
           </span>
@@ -168,7 +171,7 @@ export function WorkspaceContextProjectRolesSubmenu({
           openRoleCreator()
         }}
       >
-        <Plus className="workspace-context-menu__icon" aria-hidden="true" />
+        <PlusIcon className="workspace-context-menu__icon" />
         <span className="workspace-context-menu__label">{t('workspaceContextMenu.newRole')}</span>
       </button>
     </ViewportMenuSurface>

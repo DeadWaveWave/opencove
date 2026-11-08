@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { JSX, ReactNode } from 'react'
-import { Search } from 'lucide-react'
+import { SearchIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   resolveBrowserNavigationTarget,
@@ -99,7 +99,7 @@ export function WebsiteNodeHomePage({
             submitSearch()
           }}
         >
-          <Search aria-hidden="true" />
+          <SearchIcon />
           <input
             value={query}
             className="website-node__home-search-input"

@@ -234,9 +234,8 @@
 
 .workspace-canvas .workspace-space-region__branch-icon {
   flex: 0 0 auto;
-  width: 13px;
-  height: 13px;
-  stroke-width: 1.5;
+  width: var(--cove-icon-size-sm);
+  height: var(--cove-icon-size-sm);
   color: var(--cove-text-muted);
 }
 

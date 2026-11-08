@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react'
-import { FilePlus2, FileText } from 'lucide-react'
+import { FilePlusIcon, FileTextIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
@@ -249,13 +249,13 @@ export function TaskPromptTemplatesMenu({
                 handleUseTemplate(template.content)
               }}
             >
-              <FileText className="workspace-context-menu__icon" aria-hidden="true" />
+              <FileTextIcon className="workspace-context-menu__icon" />
               <span className="workspace-context-menu__label">{template.name}</span>
             </button>
           ))
         ) : (
           <button type="button" disabled>
-            <FileText className="workspace-context-menu__icon" aria-hidden="true" />
+            <FileTextIcon className="workspace-context-menu__icon" />
             <span className="workspace-context-menu__label">
               {t('taskPromptTemplates.noGlobalTemplates')}
             </span>
@@ -269,7 +269,7 @@ export function TaskPromptTemplatesMenu({
             openCreateDialog('global')
           }}
         >
-          <FilePlus2 className="workspace-context-menu__icon" aria-hidden="true" />
+          <FilePlusIcon className="workspace-context-menu__icon" />
           <span className="workspace-context-menu__label">
             {t('taskPromptTemplates.addGlobal')}
           </span>
@@ -291,13 +291,13 @@ export function TaskPromptTemplatesMenu({
                 handleUseTemplate(template.content)
               }}
             >
-              <FileText className="workspace-context-menu__icon" aria-hidden="true" />
+              <FileTextIcon className="workspace-context-menu__icon" />
               <span className="workspace-context-menu__label">{template.name}</span>
             </button>
           ))
         ) : (
           <button type="button" disabled>
-            <FileText className="workspace-context-menu__icon" aria-hidden="true" />
+            <FileTextIcon className="workspace-context-menu__icon" />
             <span className="workspace-context-menu__label">
               {workspaceId
                 ? t('taskPromptTemplates.noProjectTemplates')
@@ -314,7 +314,7 @@ export function TaskPromptTemplatesMenu({
             openCreateDialog('project')
           }}
         >
-          <FilePlus2 className="workspace-context-menu__icon" aria-hidden="true" />
+          <FilePlusIcon className="workspace-context-menu__icon" />
           <span className="workspace-context-menu__label">
             {t('taskPromptTemplates.addProject')}
           </span>

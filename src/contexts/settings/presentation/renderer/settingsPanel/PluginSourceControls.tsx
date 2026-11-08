@@ -1,7 +1,7 @@
 import { Button } from '@app/renderer/components/ui/Button'
 import { useEffect, useRef, useState, type JSX } from 'react'
 import { PluginCandidateList, type PluginCandidateInfo } from './PluginCandidateList'
-import { Download, History } from 'lucide-react'
+import { DownloadIcon, HistoryIcon } from '@app/renderer/components/ui/pixelIcons'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
 import { useTranslation } from '@app/renderer/i18n'
 import type { PluginManifest } from '@contexts/plugins/domain/pluginTypes'
@@ -179,7 +179,7 @@ export function PluginSourceControls({ plugin }: { plugin: PluginManifest }): JS
               onClick={() => void run('check')}
               data-testid="settings-plugin-check-update"
             >
-              <Download size={14} aria-hidden="true" />
+              <DownloadIcon size={18} />
               {t('settingsPanel.plugins.source.check')}
             </Button>
             {update?.updateAvailable ? (
@@ -206,7 +206,7 @@ export function PluginSourceControls({ plugin }: { plugin: PluginManifest }): JS
       {previous.length ? (
         <details className="settings-plugin-source__history">
           <summary>
-            <History size={13} aria-hidden="true" />
+            <HistoryIcon size={12} />
             {t('settingsPanel.plugins.source.history')}
           </summary>
           <p>{t('settingsPanel.plugins.source.rollbackHelp')}</p>

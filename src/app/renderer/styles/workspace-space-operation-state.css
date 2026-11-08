@@ -43,11 +43,10 @@
 }
 
 .workspace-space-region__operation-pill svg {
-  width: 14px;
-  height: 14px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
   flex: 0 0 auto;
   color: var(--cove-accent);
-  animation: workspace-space-operation-spinner 850ms linear infinite;
 }
 
 @keyframes workspace-space-operation-state-in {
@@ -57,12 +56,6 @@
 
   to {
     opacity: 1;
-  }
-}
-
-@keyframes workspace-space-operation-spinner {
-  to {
-    transform: rotate(360deg);
   }
 }
 

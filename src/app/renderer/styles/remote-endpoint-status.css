@@ -164,17 +164,4 @@
   display: inline-block;
   vertical-align: middle;
   margin-inline-end: 6px;
-  animation: cove-endpoint-progress-spin 1s linear infinite;
-}
-
-@keyframes cove-endpoint-progress-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .remote-endpoint-status__spinner {
-    animation: none;
-  }
 }

@@ -2,16 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import {
-  ArrowLeft,
-  ArrowRight,
-  LoaderCircle,
-  Maximize2,
-  Minimize2,
-  Pin,
-  PinOff,
-  RotateCw,
-  Square,
-} from 'lucide-react'
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  MaximizeIcon,
+  MinimizeIcon,
+  PinIcon,
+  PinOffIcon,
+  RefreshIcon,
+  StopIcon,
+} from '@app/renderer/components/ui/pixelIcons'
+import { PixelSpinner } from '@app/renderer/components/ui/PixelSpinner'
 import { useTranslation } from '@app/renderer/i18n'
 import { resolveBrowserNavigationTarget } from '@contexts/settings/domain/browserSettings'
 import type { WebsiteWindowSessionMode } from '@shared/contracts/dto'
@@ -267,7 +267,7 @@ export function WebsiteNode({
                   togglePinned()
                 }}
               >
-                {pinned ? <PinOff aria-hidden="true" /> : <Pin aria-hidden="true" />}
+                {pinned ? <PinOffIcon /> : <PinIcon />}
               </IconButton>
               <IconButton
                 size="xs"
@@ -279,7 +279,7 @@ export function WebsiteNode({
                   toggleFullscreen()
                 }}
               >
-                {isFullscreen ? <Minimize2 aria-hidden="true" /> : <Maximize2 aria-hidden="true" />}
+                {isFullscreen ? <MinimizeIcon /> : <MaximizeIcon />}
               </IconButton>
             </>
           }
@@ -324,7 +324,7 @@ export function WebsiteNode({
                 aria-label={t('websiteNode.back')}
                 title={t('websiteNode.back')}
               >
-                <ArrowLeft aria-hidden="true" />
+                <ArrowLeftIcon />
               </button>
 
               <button
@@ -340,7 +340,7 @@ export function WebsiteNode({
                 aria-label={t('websiteNode.forward')}
                 title={t('websiteNode.forward')}
               >
-                <ArrowRight aria-hidden="true" />
+                <ArrowRightIcon />
               </button>
 
               <button
@@ -359,7 +359,7 @@ export function WebsiteNode({
                 aria-label={isLoading ? t('websiteNode.stop') : t('websiteNode.reload')}
                 title={isLoading ? t('websiteNode.stop') : t('websiteNode.reload')}
               >
-                {isLoading ? <Square aria-hidden="true" /> : <RotateCw aria-hidden="true" />}
+                {isLoading ? <StopIcon /> : <RefreshIcon />}
               </button>
               <form
                 className="website-node__address nodrag"
@@ -382,9 +382,7 @@ export function WebsiteNode({
                     onInteractionStart?.({ normalizeViewport: false, selectNode: false })
                   }}
                 />
-                {isLoading ? (
-                  <LoaderCircle className="website-node__spinner" aria-hidden="true" />
-                ) : null}
+                {isLoading ? <PixelSpinner className="website-node__spinner" /> : null}
               </form>
             </>
           }

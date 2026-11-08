@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type Ref } from 'react'
-import { Search } from 'lucide-react'
+import { SearchIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import {
@@ -102,7 +102,7 @@ export function SettingsPanelSearch({
   return (
     <div className="settings-panel__search">
       <div className="settings-panel__search-input-shell">
-        <Search className="settings-panel__search-icon" size={14} aria-hidden="true" />
+        <SearchIcon className="settings-panel__search-icon" size={18} />
         <input
           ref={searchInputRef}
           id="settings-panel-search"

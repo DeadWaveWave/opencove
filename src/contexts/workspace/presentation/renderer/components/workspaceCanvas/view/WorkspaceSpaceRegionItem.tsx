@@ -1,5 +1,5 @@
 import React from 'react'
-import { Folder, GitBranch, MoreHorizontal } from 'lucide-react'
+import { FolderIcon, GitBranchIcon, MoreIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import type { GitHubPullRequestSummary, GitWorktreeInfo } from '@shared/contracts/dto'
 import type { WorkspaceSpaceRect } from '../../../types'
@@ -271,7 +271,7 @@ export function WorkspaceSpaceRegionItem({
                     onToggleExplorer?.(space.id)
                   }}
                 >
-                  <Folder className="workspace-space-region__files-pill-icon" aria-hidden="true" />
+                  <FolderIcon className="workspace-space-region__files-pill-icon" />
                   <span className="workspace-space-region__files-pill-label">
                     {t('spaceActions.files')}
                   </span>
@@ -298,7 +298,7 @@ export function WorkspaceSpaceRegionItem({
                     })
                   }}
                 >
-                  <MoreHorizontal size={15} aria-hidden="true" />
+                  <MoreIcon size={18} />
                 </button>
               </div>
 
@@ -337,7 +337,7 @@ export function WorkspaceSpaceRegionItem({
                       })
                     }}
                   >
-                    <GitBranch className="workspace-space-region__branch-icon" aria-hidden="true" />
+                    <GitBranchIcon className="workspace-space-region__branch-icon" />
                     <span className="workspace-space-region__branch-badge-kind">
                       {resolvedBranchBadge.kind}
                     </span>
@@ -353,7 +353,7 @@ export function WorkspaceSpaceRegionItem({
                     data-branch-kind={branchName ? 'branch' : 'detached'}
                     title={resolvedBranchBadge.title}
                   >
-                    <GitBranch className="workspace-space-region__branch-icon" aria-hidden="true" />
+                    <GitBranchIcon className="workspace-space-region__branch-icon" />
                     <span className="workspace-space-region__branch-badge-kind">
                       {resolvedBranchBadge.kind}
                     </span>

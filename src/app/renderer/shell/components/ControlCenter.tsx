@@ -1,14 +1,14 @@
 import React, { useEffect, useId, useRef, useState } from 'react'
 import {
-  ChevronRight,
-  Grid3x3,
-  Map as MapIcon,
-  MonitorPlay,
-  Settings,
-  SlidersHorizontal,
-  Sparkles,
-  X,
-} from 'lucide-react'
+  ChevronRightIcon,
+  CloseIcon,
+  Grid3x3Icon,
+  MapIcon,
+  SettingsIcon,
+  ShowcaseIcon,
+  SlidersIcon,
+  SparklesIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { Button } from '@app/renderer/components/ui/Button'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { IconButton } from '@app/renderer/components/ui/IconButton'
@@ -129,7 +129,7 @@ export function ControlCenter({
   const content = (
     <>
       <header className="control-center__header">
-        <SlidersHorizontal size={16} aria-hidden="true" />
+        <SlidersIcon size={18} />
         <h2 id={titleId} className="control-center__title">
           {t('controlCenter.title')}
         </h2>
@@ -139,7 +139,7 @@ export function ControlCenter({
           data-testid="control-center-close"
           onClick={onClose}
         >
-          <X size={16} aria-hidden="true" />
+          <CloseIcon size={18} />
         </IconButton>
       </header>
 
@@ -251,7 +251,7 @@ export function ControlCenter({
           data-disabled={backgroundStyle !== 'pixel' ? '' : undefined}
         >
           <span className="control-center__row-icon" aria-hidden="true">
-            <Grid3x3 />
+            <Grid3x3Icon />
           </span>
           <span className="control-center__row-label">{t('controlCenter.backgroundTwinkle')}</span>
           <Toggle
@@ -266,7 +266,7 @@ export function ControlCenter({
         </label>
         <label className="control-center__row">
           <span className="control-center__row-icon" aria-hidden="true">
-            <Sparkles />
+            <SparklesIcon />
           </span>
           <span className="control-center__row-label">{t('controlCenter.motionSignals')}</span>
           <Toggle
@@ -294,7 +294,7 @@ export function ControlCenter({
         </label>
         <label className="control-center__row">
           <span className="control-center__row-icon" aria-hidden="true">
-            <MonitorPlay />
+            <ShowcaseIcon />
           </span>
           <span className="control-center__row-label">{t('controlCenter.showcase')}</span>
           <Toggle
@@ -324,14 +324,14 @@ export function ControlCenter({
             onClose()
           }}
         >
-          <Settings aria-hidden="true" />
+          <SettingsIcon />
           <span>{t('controlCenter.moreSettings')}</span>
           {settingsShortcut ? (
             <kbd className="control-center__settings-shortcut" aria-hidden="true">
               {settingsShortcut}
             </kbd>
           ) : (
-            <ChevronRight className="control-center__settings-chevron" aria-hidden="true" />
+            <ChevronRightIcon className="control-center__settings-chevron" />
           )}
         </Button>
       </footer>

@@ -25,8 +25,8 @@
 
 .workspace-space-action-menu .workspace-context-menu__icon,
 .workspace-space-action-menu .workspace-context-menu__mark {
-  width: 16px;
-  height: 16px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
 }
 
 .workspace-space-action-menu .workspace-context-menu__separator {
@@ -73,8 +73,8 @@
 }
 
 .workspace-context-menu__mark {
-  width: 16px;
-  height: 16px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;

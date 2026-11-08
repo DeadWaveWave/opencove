@@ -17,7 +17,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
-import { RefreshCw } from 'lucide-react'
+import { RefreshIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   AGENT_PROVIDER_LABEL,
@@ -101,7 +101,7 @@ export function AgentSection({
               disabled={isRefreshingAvailability || Boolean(installingProvider)}
               onClick={onRefreshAvailability}
             >
-              <RefreshCw size={13} aria-hidden="true" />
+              <RefreshIcon size={12} />
               {t('settingsPanel.agentDetail.refresh')}
             </Button>
           </div>

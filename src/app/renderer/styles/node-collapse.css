@@ -284,8 +284,8 @@
 .cove-collapsed-window:is([data-node-kind='document'], [data-node-kind='folder'])
   .cove-collapsed-window__icon
   > svg {
-  width: 31px;
-  height: 31px;
+  width: var(--cove-icon-size-lg);
+  height: var(--cove-icon-size-lg);
   color: var(--cove-collapsed-ink);
 }
 

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Check } from 'lucide-react'
+import { CheckIcon } from '@app/renderer/components/ui/pixelIcons'
 import { classNames } from './classNames'
 
 export interface CheckboxProps extends Omit<
@@ -45,7 +45,7 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(functi
           onChange={event => onCheckedChange(event.currentTarget.checked)}
         />
         <span className="cove-checkbox__box" aria-hidden="true">
-          <Check className="cove-checkbox__check" />
+          <CheckIcon className="cove-checkbox__check" />
         </span>
       </span>
       <span className="cove-checkbox__text">

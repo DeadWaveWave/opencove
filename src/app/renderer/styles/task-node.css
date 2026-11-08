@@ -102,8 +102,8 @@
 }
 
 .task-node__icon-button svg {
-  width: 14px;
-  height: 14px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
 }
 
 .task-node__icon-button:focus-visible {

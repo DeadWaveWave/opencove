@@ -105,7 +105,7 @@ describe('CanvasNodeWindow host contract', () => {
       </WindowCollapseContext.Provider>,
     )
     expect(registerCloseHandler).toHaveBeenCalledWith(expect.any(Function))
-    expect(container.querySelector('.cove-node-kind-icon')).toHaveAttribute('width', '16')
+    expect(container.querySelector('.cove-node-kind-icon')).toHaveAttribute('width', '18')
     const header = container.querySelector('[data-node-drag-handle="true"]')!
     fireEvent.pointerDown(header, { button: 0, shiftKey: true })
     expect(onInteractionStart).toHaveBeenCalledExactlyOnceWith({ shiftKey: true })

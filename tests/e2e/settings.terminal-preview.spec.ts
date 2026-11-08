@@ -16,7 +16,7 @@ test('updates terminal preview material through the theme buttons without replac
     const preview = page.getByTestId('settings-pixel-effects-preview')
     const original = await preview.elementHandle()
     const terminal = preview.locator('[data-id="settings-preview-terminal"]')
-    await expect(terminal.locator('svg.lucide-terminal')).toHaveCount(1)
+    await expect(terminal.locator('svg[data-cove-pixel-icon="terminal"]')).toHaveCount(1)
     const body = terminal.locator('.settings-pixel-preview__body')
     const header = terminal.locator('.settings-pixel-preview__header')
     await expect(header).toHaveCSS('overflow', 'hidden')
@@ -39,7 +39,7 @@ test('updates terminal preview material through the theme buttons without replac
         getComputedStyle(element).getPropertyValue('--cove-pixel-blue'),
       ),
     ).not.toBe(dark.accent)
-    await expect(terminal.locator('svg.lucide-terminal')).toHaveCount(1)
+    await expect(terminal.locator('svg[data-cove-pixel-icon="terminal"]')).toHaveCount(1)
     const bodyBottomGap = await terminal.evaluate(element => {
       const contentElement = element.querySelector('.settings-pixel-preview__body')!
       return element.getBoundingClientRect().bottom - contentElement.getBoundingClientRect().bottom
@@ -84,7 +84,7 @@ test('previews terminal typography in a stable themed window', async ({
       await expect(content).toHaveCSS('font-size', '22px')
       await expect(header).toHaveCSS('font-size', headerFont)
       expect(await preview.evaluate(element => element.clientHeight)).toBe(initialHeight)
-      await expect(header.locator('svg.lucide-terminal')).toHaveCount(1)
+      await expect(header.locator('svg[data-cove-pixel-icon="terminal"]')).toHaveCount(1)
       const palette = await content.evaluate(element => {
         const swatch = document.createElement('span')
         swatch.style.backgroundColor = 'var(--cove-terminal-background)'

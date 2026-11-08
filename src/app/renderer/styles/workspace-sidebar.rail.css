@@ -24,8 +24,8 @@
 }
 
 .workspace-sidebar__toolbar-button svg {
-  width: 16px;
-  height: 16px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
 }
 
 .workspace-sidebar__toolbar-button--active {

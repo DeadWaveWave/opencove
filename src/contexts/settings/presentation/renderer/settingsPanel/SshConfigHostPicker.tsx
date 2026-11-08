@@ -1,5 +1,9 @@
 import React from 'react'
-import { ArrowRight, FileCode, FolderOpen } from 'lucide-react'
+import {
+  ArrowRightIcon,
+  FileCodeIcon,
+  FolderOpenIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { Button } from '@app/renderer/components/ui/Button'
 import { useTranslation } from '@app/renderer/i18n'
 import type { SshConfigHost } from '@shared/contracts/dto'
@@ -55,7 +59,7 @@ export function SshConfigHostPicker({
     <div className="cove-window__ssh-config-picker">
       <div className="cove-window__ssh-config-picker-header">
         <div className="settings-endpoint-dialog__config-source">
-          <FileCode size={15} aria-hidden="true" />
+          <FileCodeIcon size={18} />
           <code>~/.ssh/config</code>
         </div>
         <Button
@@ -67,7 +71,7 @@ export function SshConfigHostPicker({
             void openPicker()
           }}
         >
-          <FolderOpen size={14} aria-hidden="true" />
+          <FolderOpenIcon size={18} />
           {pickerState === 'loading'
             ? t('settingsPanel.endpoints.register.sshConfig.loading')
             : t('settingsPanel.endpoints.register.sshConfig.action')}
@@ -127,7 +131,7 @@ export function SshConfigHostPicker({
                       {t('settingsPanel.endpoints.register.sshConfig.alreadyAdded')}
                     </span>
                   ) : (
-                    <ArrowRight size={14} aria-hidden="true" />
+                    <ArrowRightIcon size={18} />
                   )}
                 </button>
               )

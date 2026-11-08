@@ -1,5 +1,5 @@
 import React from 'react'
-import { Check } from 'lucide-react'
+import { CheckIcon } from '@app/renderer/components/ui/pixelIcons'
 import { classNames } from './classNames'
 
 export interface ChipProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'type'> {
@@ -18,7 +18,7 @@ export const Chip = React.forwardRef<HTMLButtonElement, ChipProps>(function Chip
   forwardedRef,
 ) {
   const selectable = selected !== undefined
-  const leading = selected ? <Check /> : icon
+  const leading = selected ? <CheckIcon /> : icon
   return (
     <button
       {...buttonProps}

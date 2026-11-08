@@ -3,7 +3,12 @@ import { Button } from '@app/renderer/components/ui/Button'
 import { IconButton } from '@app/renderer/components/ui/IconButton'
 import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
-import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  PlusIcon,
+  TrashIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   AGENT_PROVIDER_LABEL,
@@ -286,7 +291,7 @@ export function AgentProviderConfigurePanel(props: {
                     label={t('settingsPanel.agent.moveUp')}
                     onClick={() => updateProviderRows(moveItem(rows, index, index - 1))}
                   >
-                    <ChevronUp className="settings-agent-order__icon" aria-hidden="true" />
+                    <ChevronUpIcon className="settings-agent-order__icon" />
                   </IconButton>
                   <IconButton
                     variant="secondary"
@@ -296,7 +301,7 @@ export function AgentProviderConfigurePanel(props: {
                     label={t('settingsPanel.agent.moveDown')}
                     onClick={() => updateProviderRows(moveItem(rows, index, index + 1))}
                   >
-                    <ChevronDown className="settings-agent-order__icon" aria-hidden="true" />
+                    <ChevronDownIcon className="settings-agent-order__icon" />
                   </IconButton>
 
                   <IconButton
@@ -308,7 +313,7 @@ export function AgentProviderConfigurePanel(props: {
                       updateProviderRows(rows.filter(existing => existing.id !== row.id))
                     }}
                   >
-                    <Trash2 className="settings-agent-order__icon" aria-hidden="true" />
+                    <TrashIcon className="settings-agent-order__icon" />
                   </IconButton>
                 </div>
               </div>
@@ -322,7 +327,7 @@ export function AgentProviderConfigurePanel(props: {
               updateProviderRows([...rows, createEnvRow()])
             }}
           >
-            <Plus className="settings-agent-order__icon" aria-hidden="true" />
+            <PlusIcon className="settings-agent-order__icon" />
             {t('settingsPanel.agentEnv.add')}
           </Button>
         </div>

@@ -1,5 +1,5 @@
 import { Controls, ControlButton, useReactFlow, type Node } from '@xyflow/react'
-import { Scan } from 'lucide-react'
+import { FocusIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import { useWorkspaceCollapse } from './WorkspaceCollapseContext'
 import { fitCanvasPresentation } from './fitCanvasPresentation'
@@ -25,7 +25,7 @@ export function WorkspaceCanvasControls() {
             fitCanvasPresentation(reactFlow, collapse.nodes, collapse.spaces, collapse)
           }
         >
-          <Scan aria-hidden="true" />
+          <FocusIcon />
         </ControlButton>
       ) : null}
     </Controls>

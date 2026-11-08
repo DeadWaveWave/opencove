@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { WarningIcon } from '@app/renderer/components/ui/pixelIcons'
 import { AnchoredOperationPopover } from '@app/renderer/components/AnchoredOperationPopover'
 import { Checkbox } from '@app/renderer/components/ui/Checkbox'
 import { useTranslation } from '@app/renderer/i18n'
@@ -49,7 +49,7 @@ export function SpaceWorktreeMismatchDropWarningWindow({
       <section className="workspace-operation-guard">
         <header className="workspace-operation-guard__header">
           <span className="workspace-operation-guard__icon" aria-hidden="true">
-            <AlertTriangle size={16} />
+            <WarningIcon size={18} />
           </span>
           <div>
             <h3>{t('spaceDropGuard.title', { name: warning.spaceName })}</h3>

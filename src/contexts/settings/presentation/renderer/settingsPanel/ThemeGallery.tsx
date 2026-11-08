@@ -1,7 +1,7 @@
 import { useThemeApplicationStatus } from '@contexts/plugins/presentation/renderer/themeApplication'
 import { usePluginRegistry } from '@contexts/plugins/presentation/renderer/usePluginRegistry'
 import { availablePluginThemes } from '@contexts/plugins/domain/pluginThemes'
-import { Check } from 'lucide-react'
+import { CheckIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import { SegmentedControl } from '@app/renderer/components/ui/SegmentedControl'
 import { SettingRow } from '@app/renderer/components/ui/SettingRow'
@@ -120,7 +120,7 @@ export function ThemeGallery({
             {theme.title} · {plugin.displayName}
           </span>
           <span>{t(`settingsPanel.appearanceNext.${theme.appearance}`)}</span>
-          {value === id ? <Check size={13} aria-hidden="true" /> : null}
+          {value === id ? <CheckIcon size={12} /> : null}
         </button>
       ))}
     </div>

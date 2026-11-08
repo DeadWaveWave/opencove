@@ -46,8 +46,8 @@
 }
 
 .note-node__action svg {
-  width: 14px;
-  height: 14px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
 }
 
 .note-node__action:hover:not(:disabled) {

@@ -1,5 +1,5 @@
 import React, { memo, useMemo } from 'react'
-import { ArrowRight, Bot } from 'lucide-react'
+import { ArrowRightIcon, RobotIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useReactFlow, useStore, type Node, type ReactFlowState } from '@xyflow/react'
 import { Button } from '@app/renderer/components/ui/Button'
 import { KindTile } from '@app/renderer/components/ui/KindTile'
@@ -106,14 +106,13 @@ export const WorkspaceEdgeBeacons = memo(function WorkspaceEdgeBeacons({
         >
           <span className="workspace-edge-beacon__dot" aria-hidden="true" />
           <KindTile kind="ai" size="sm">
-            <Bot aria-hidden="true" />
+            <RobotIcon />
           </KindTile>
           <span className="workspace-edge-beacon__title">{beacon.title}</span>
           <span className="workspace-edge-beacon__status">· {t('edgeBeacons.waiting')}</span>
-          <ArrowRight
+          <ArrowRightIcon
             className="workspace-edge-beacon__arrow"
-            size={14}
-            aria-hidden="true"
+            size={18}
             style={{ transform: `rotate(${ARROW_ROTATION[beacon.side]}deg)` }}
           />
         </Button>

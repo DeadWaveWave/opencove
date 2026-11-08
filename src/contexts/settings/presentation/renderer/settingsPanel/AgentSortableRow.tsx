@@ -1,7 +1,7 @@
 import React from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { ChevronRight, GripVertical } from 'lucide-react'
+import { ChevronRightIcon, GripIcon } from '@app/renderer/components/ui/pixelIcons'
 import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { useTranslation } from '@app/renderer/i18n'
 import {
@@ -77,7 +77,7 @@ export function AgentSortableRow({
           aria-label={reorderLabel}
           title={reorderLabel}
         >
-          <GripVertical size={16} aria-hidden="true" />
+          <GripIcon size={18} />
         </button>
         <button
           type="button"
@@ -101,7 +101,7 @@ export function AgentSortableRow({
               <span>{resolveEnvSummary(settings, provider, t)}</span>
             </span>
           </span>
-          <ChevronRight size={15} className="settings-agent-identity__chevron" aria-hidden="true" />
+          <ChevronRightIcon size={18} className="settings-agent-identity__chevron" />
         </button>
         <div className="settings-agent-list-row__actions">
           <button

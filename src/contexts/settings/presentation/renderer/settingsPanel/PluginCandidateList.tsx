@@ -1,6 +1,6 @@
 import { Button } from '@app/renderer/components/ui/Button'
 import { useEffect, useRef, useState, type JSX } from 'react'
-import { Copy, GitMerge, RefreshCw } from 'lucide-react'
+import { CopyIcon, GitMergeIcon, RefreshIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 
 export interface PluginCandidateInfo {
@@ -61,7 +61,7 @@ export function PluginCandidateList({
           data-testid={`settings-plugin-candidate-${candidate.id}`}
         >
           <div className="settings-plugin-candidate__heading">
-            <GitMerge size={16} aria-hidden="true" />
+            <GitMergeIcon size={18} />
             <strong>
               {t(
                 `settingsPanel.plugins.source.${candidate.stale ? 'stale' : candidate.status === 'failed' ? 'candidateFailed' : candidate.status}`,
@@ -82,7 +82,7 @@ export function PluginCandidateList({
               className="cove-window__action cove-window__action--ghost"
               onClick={() => void copy(candidate.directory)}
             >
-              <Copy size={13} aria-hidden="true" />
+              <CopyIcon size={12} />
               {t('settingsPanel.plugins.source.copyPath')}
             </Button>
           </details>
@@ -96,7 +96,7 @@ export function PluginCandidateList({
               onClick={() => onApply(candidate.id)}
               data-testid={`settings-plugin-candidate-apply-${candidate.id}`}
             >
-              <RefreshCw size={14} aria-hidden="true" />
+              <RefreshIcon size={18} />
               {t('settingsPanel.plugins.source.applyCandidate')}
             </Button>
             <Button
@@ -113,7 +113,7 @@ export function PluginCandidateList({
                 )
               }
             >
-              <Copy size={13} aria-hidden="true" />
+              <CopyIcon size={12} />
               {t('settingsPanel.plugins.source.copyResolution')}
             </Button>
           </div>

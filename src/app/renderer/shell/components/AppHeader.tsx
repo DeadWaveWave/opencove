@@ -1,17 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  Activity,
-  ChevronDown,
-  Bug,
-  Download,
-  LoaderCircle,
-  Maximize2,
-  PanelLeft,
-  Minimize2,
-  RotateCcw,
-  Search,
-  SlidersHorizontal,
-} from 'lucide-react'
+  ActivityIcon,
+  BugIcon,
+  ChevronDownIcon,
+  DownloadIcon,
+  MaximizeIcon,
+  MinimizeIcon,
+  SearchIcon,
+  SidebarIcon,
+  SlidersIcon,
+  UndoIcon,
+} from '@app/renderer/components/ui/pixelIcons'
+import { PixelSpinner } from '@app/renderer/components/ui/PixelSpinner'
 import { useTranslation } from '@app/renderer/i18n'
 import type { PerformanceStatus } from '@app/renderer/performanceDiagnostics/performanceDiagnosticsFormatting'
 import type { PerformanceIncident } from '@app/renderer/performanceDiagnostics/performanceIncidentRecorder'
@@ -112,7 +112,7 @@ export function AppHeader({
         title: t('appHeader.updateAvailableTitle', {
           version: updateState.latestVersion ?? updateState.currentVersion,
         }),
-        icon: Download,
+        icon: DownloadIcon,
         disabled: false,
         onClick: onDownloadUpdate,
       }
@@ -125,7 +125,7 @@ export function AppHeader({
           version: updateState.latestVersion ?? updateState.currentVersion,
           percent: `${Math.round(updateState.downloadPercent ?? 0)}%`,
         }),
-        icon: LoaderCircle,
+        icon: PixelSpinner,
         disabled: true,
         onClick: onCheckForUpdates,
       }
@@ -137,7 +137,7 @@ export function AppHeader({
         title: t('appHeader.restartToUpdateTitle', {
           version: updateState.latestVersion ?? updateState.currentVersion,
         }),
-        icon: RotateCcw,
+        icon: UndoIcon,
         disabled: false,
         onClick: onInstallUpdate,
       }
@@ -145,7 +145,7 @@ export function AppHeader({
 
     return null
   }, [onCheckForUpdates, onDownloadUpdate, onInstallUpdate, t, updateState])
-  const UpdateActionIcon = updateAction?.icon ?? Download
+  const UpdateActionIcon = updateAction?.icon ?? DownloadIcon
   const performanceStatusLabel = t(`performanceMonitor.status.${performanceStatus}`)
 
   const resolveFullscreenElement = useCallback((): Element | null => {
@@ -256,7 +256,7 @@ export function AppHeader({
             aria-haspopup={sidebarIsDrawer ? 'dialog' : undefined}
             onClick={onToggleSidebar}
           >
-            <PanelLeft size={18} aria-hidden="true" />
+            <SidebarIcon size={18} />
           </IconButton>
         </div>
 
@@ -279,7 +279,7 @@ export function AppHeader({
               onToggleCommandCenter()
             }}
           >
-            <Search aria-hidden="true" size={16} className="app-header__command-center-icon" />
+            <SearchIcon size={18} className="app-header__command-center-icon" />
             <span className="app-header__command-center-title">
               {activeWorkspaceName ?? t('appHeader.commandCenterFallbackTitle')}
               {activeWorkspaceName && activeSpaceName ? (
@@ -299,11 +299,7 @@ export function AppHeader({
             <span className="app-header__command-center-keycap" aria-hidden="true">
               {commandCenterShortcutHint}
             </span>
-            <ChevronDown
-              aria-hidden="true"
-              size={16}
-              className="app-header__command-center-chevron"
-            />
+            <ChevronDownIcon size={18} className="app-header__command-center-chevron" />
           </button>
         </div>
 
@@ -323,13 +319,7 @@ export function AppHeader({
               }}
               disabled={updateAction.disabled}
             >
-              <UpdateActionIcon
-                aria-hidden="true"
-                size={16}
-                className={
-                  updateState?.status === 'downloading' ? 'app-header__update-icon--spinning' : ''
-                }
-              />
+              <UpdateActionIcon size={18} />
               <span>{updateAction.label}</span>
             </button>
           ) : null}
@@ -344,7 +334,7 @@ export function AppHeader({
               }}
               disabled={!canToggleFullscreen}
             >
-              {isFullscreen ? <Minimize2 aria-hidden="true" /> : <Maximize2 aria-hidden="true" />}
+              {isFullscreen ? <MinimizeIcon /> : <MaximizeIcon />}
             </IconButton>
           ) : null}
           <IconButton
@@ -357,7 +347,7 @@ export function AppHeader({
               onToggleControlCenter()
             }}
           >
-            <SlidersHorizontal aria-hidden="true" />
+            <SlidersIcon />
           </IconButton>
           {isPerformanceMonitorEnabled ? (
             <IconButton
@@ -374,7 +364,7 @@ export function AppHeader({
                 onTogglePerformanceMonitor()
               }}
             >
-              <Activity aria-hidden="true" />
+              <ActivityIcon />
               <span className="app-header__performance-dot" aria-hidden="true" />
             </IconButton>
           ) : null}
@@ -387,7 +377,7 @@ export function AppHeader({
               onToggleIssueReport()
             }}
           >
-            <Bug aria-hidden="true" />
+            <BugIcon />
           </IconButton>
         </div>
       </header>

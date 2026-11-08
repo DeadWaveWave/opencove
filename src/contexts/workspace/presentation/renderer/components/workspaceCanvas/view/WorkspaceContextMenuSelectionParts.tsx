@@ -1,5 +1,10 @@
 import React from 'react'
-import { ArrowRight, Scan, Tag, X } from 'lucide-react'
+import {
+  ArrowRightIcon,
+  CloseIcon,
+  FocusIcon,
+  TagIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import { menuHoverHandler } from '@app/renderer/components/menuHoverHandler'
 import { MenuItem, MenuSeparator, type MenuItemShortcut } from '@app/renderer/components/ui/Menu'
@@ -55,7 +60,7 @@ export function WorkspaceContextSelectionMenuContent({
         </>
       ) : null}
       <MenuItem
-        icon={<Scan />}
+        icon={<FocusIcon />}
         shortcut={createSpaceShortcut}
         data-testid="workspace-selection-create-space"
         onClick={createSpaceFromSelectedNodes}
@@ -64,7 +69,7 @@ export function WorkspaceContextSelectionMenuContent({
       </MenuItem>
       {canConvertSelectedNoteToTask ? (
         <MenuItem
-          icon={<ArrowRight />}
+          icon={<ArrowRightIcon />}
           data-testid="workspace-selection-convert-note-to-task"
           disabled={isConvertSelectedNoteToTaskDisabled}
           onClick={convertSelectedNoteToTask}
@@ -74,7 +79,7 @@ export function WorkspaceContextSelectionMenuContent({
       ) : null}
       <MenuItem
         ref={labelColorButtonRef}
-        icon={<Tag />}
+        icon={<TagIcon />}
         data-testid="workspace-selection-label-color"
         submenu={{ open: isLabelColorSubmenuOpen }}
         onMouseEnter={menuHoverHandler(openLabelColorSubmenu)}
@@ -83,7 +88,7 @@ export function WorkspaceContextSelectionMenuContent({
         {t('labelColors.title')}
       </MenuItem>
       <MenuItem
-        icon={<X />}
+        icon={<CloseIcon />}
         data-testid="workspace-selection-clear"
         onClick={() => {
           clearNodeSelection()
@@ -96,7 +101,7 @@ export function WorkspaceContextSelectionMenuContent({
         <>
           <MenuSeparator />
           <MenuItem
-            icon={<X />}
+            icon={<CloseIcon />}
             tone="danger"
             data-testid="workspace-node-close"
             onClick={() => {

@@ -1,5 +1,12 @@
 import React, { useEffect, useMemo, useRef, type JSX } from 'react'
-import { CaseSensitive, ChevronDown, ChevronUp, Regex, Search, X } from 'lucide-react'
+import {
+  CaseIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  CloseIcon,
+  RegexIcon,
+  SearchIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 
 function isFindShortcut(event: React.KeyboardEvent<HTMLInputElement>): boolean {
@@ -86,7 +93,7 @@ export function TerminalNodeFindBar({
       role="search"
       aria-label={t('terminalFind.placeholder')}
     >
-      <Search aria-hidden="true" size={14} className="terminal-node__find-icon" />
+      <SearchIcon size={18} className="terminal-node__find-icon" />
       <input
         ref={inputRef}
         className="terminal-node__find-input nowheel"
@@ -139,7 +146,7 @@ export function TerminalNodeFindBar({
             onToggleCaseSensitive()
           }}
         >
-          <CaseSensitive size={14} aria-hidden="true" />
+          <CaseIcon size={18} />
         </button>
         <button
           type="button"
@@ -154,7 +161,7 @@ export function TerminalNodeFindBar({
             onToggleUseRegex()
           }}
         >
-          <Regex size={14} aria-hidden="true" />
+          <RegexIcon size={18} />
         </button>
       </div>
 
@@ -180,7 +187,7 @@ export function TerminalNodeFindBar({
             onFindPrevious()
           }}
         >
-          <ChevronUp size={14} aria-hidden="true" />
+          <ChevronUpIcon size={18} />
         </button>
         <button
           type="button"
@@ -194,7 +201,7 @@ export function TerminalNodeFindBar({
             onFindNext()
           }}
         >
-          <ChevronDown size={14} aria-hidden="true" />
+          <ChevronDownIcon size={18} />
         </button>
         <button
           type="button"
@@ -208,7 +215,7 @@ export function TerminalNodeFindBar({
             onClose()
           }}
         >
-          <X size={14} aria-hidden="true" />
+          <CloseIcon size={18} />
         </button>
       </div>
     </div>

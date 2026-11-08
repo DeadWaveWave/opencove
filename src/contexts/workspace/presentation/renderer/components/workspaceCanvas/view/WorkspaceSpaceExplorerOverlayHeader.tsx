@@ -1,5 +1,5 @@
 import React from 'react'
-import { FolderTree, X } from 'lucide-react'
+import { CloseIcon, FolderIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import { WorkspaceDirectoryViewMode } from './WorkspaceDirectoryViewMode'
 
@@ -26,7 +26,7 @@ export function WorkspaceSpaceExplorerOverlayHeader({
       onPointerDown={onWindowDragStart}
     >
       <div className="workspace-space-explorer__identity" title={title}>
-        <FolderTree className="workspace-space-explorer__identity-icon" aria-hidden="true" />
+        <FolderIcon className="workspace-space-explorer__identity-icon" />
         <div className="workspace-space-explorer__identity-copy">
           <span className="workspace-space-explorer__title" data-cove-part="window-title">
             {title}
@@ -48,7 +48,7 @@ export function WorkspaceSpaceExplorerOverlayHeader({
             onClose()
           }}
         >
-          <X aria-hidden="true" />
+          <CloseIcon />
         </button>
       </div>
     </header>

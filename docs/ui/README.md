@@ -227,6 +227,24 @@
   取得 `menuitem` / `menuitemcheckbox` 角色，其他地方仍是普通按钮。所以一个菜单的所有行都换成
   菜单项之后，才给它加 `role="menu"` 与名称。键盘方向键跳过禁用项。
 
+### 3.5 像素图标
+
+- 应用里的图标都是像素画（Tide：像素是主调），不再使用 lucide。界面图标用
+  `components/ui/pixelIcons.ts` 的具名组件（`CloseIcon`、`FolderOpenIcon` 等），按含义命名，不按外形。
+  画稿在 `components/ui/pixelIconArt/`：每个 12×12 格，`#` 画一格，`.` 留空；多数由 pixelarticons
+  （MIT，许可随画稿保留）的 24 格画稿对折而来，其余按同一网格手画。新增图标先补画稿，再导出组件。
+- 尺寸只用 12、18、24（`--cove-icon-size-sm/md/lg`），单独的插图（例如无法打开的文件）用 36，
+  在 2× 屏上每格都落在整设备像素上。组件的 `size` 只接受这几档；CSS 在上下文里改尺寸时用这些 token，
+  不写 14、16、20 这类让格子跨像素的值。
+- 图标用 `currentColor` 填色、`crispEdges` 绘制；默认是装饰（`aria-hidden`），名称由所在的按钮或
+  菜单行提供，传了 `aria-label` 才成为 `img`。
+- 像素图标不做任意角度的旋转（箭头转 90° 或 180° 仍在格子上）。忙碌状态用 `PixelSpinner`：环上八个
+  2×2 块依次点亮；减少动态效果时放慢到三分之一，不静止。
+- 窗口类别仍用 9 格的 `PixelGlyph`（`NodeKindIcon`、`KindTile`）。Dock 的新建按钮用同一套类别字形
+  （18px），和新建出来的窗口一致；Agent 按钮用提供方标记，插件按钮用插件声明的图标。
+- `tests/e2e/app-shell.pixel-icons.spec.ts` 在工作区、画布菜单和设置各页检查：没有 lucide 图标，
+  每个可见的像素图标都是正方形且尺寸在上述几档。`PixelIcon.spec.tsx` 检查画稿、路径和每个导出组件。
+
 ---
 
 ## 4) Canvas 特化约束

@@ -7,7 +7,7 @@ import type { PluginManifest } from '@contexts/plugins/domain/pluginTypes'
 export function PluginSettingsGlyph({ pluginId }: { pluginId: string }): JSX.Element {
   return (
     <span className="settings-plugin__glyph" aria-hidden="true">
-      <PluginIcon pluginId={pluginId} size={24} strokeWidth={1.55} />
+      <PluginIcon pluginId={pluginId} size={24} />
     </span>
   )
 }
