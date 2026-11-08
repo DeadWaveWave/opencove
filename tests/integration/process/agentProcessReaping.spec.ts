@@ -4,7 +4,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { canReadProcessTable as probeProcessTable } from '../../support/processTableAvailability'
-import { isZombieProcess } from '../../support/processLiveness'
+import { isZombieProcess, observedProcessAlive } from '../../support/processLiveness'
 import { build } from 'vite'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
@@ -67,11 +67,15 @@ afterAll(async () => {
   }
 })
 
-async function alive(identity: ProcessIdentity): Promise<boolean> {
+async function alive(identity: ProcessIdentity): Promise<boolean | 'unknown'> {
+  const sample = await readPosixProcessTable()
   return (
     !isZombieProcess(identity.pid) &&
-    (await readPosixProcessTable()).find(row => row.pid === identity.pid)?.startTime ===
-      identity.startTime
+    observedProcessAlive(
+      identity,
+      new Map(sample.rows.map(row => [row.pid, row.startTime])),
+      sample.complete,
+    )
   )
 }
 
@@ -131,7 +135,7 @@ describe.skipIf(
           )
           .not.toBeNull()
         const pids = JSON.parse(await readFile(pidFile, 'utf8')) as { root: number; child: number }
-        owned = (await readPosixProcessTable()).filter(
+        owned = (await readPosixProcessTable()).rows.filter(
           row => row.pid === pids.root || row.pid === pids.child,
         )
         expect(owned).toHaveLength(2)
@@ -175,13 +179,14 @@ describe.skipIf(
           await expect
             .poll(
               async () => {
-                const current = new Map(
-                  (await readPosixProcessTable()).map(row => [row.pid, row.startTime]),
-                )
+                const sample = await readPosixProcessTable()
+                const current = new Map(sample.rows.map(row => [row.pid, row.startTime]))
                 return {
                   survivors: owned
                     .filter(
-                      row => !isZombieProcess(row.pid) && current.get(row.pid) === row.startTime,
+                      row =>
+                        !isZombieProcess(row.pid) &&
+                        observedProcessAlive(row, current, sample.complete) !== false,
                     )
                     .map(row => row.pid),
                   hostExitCode: host.exitCode,
@@ -211,7 +216,7 @@ describe.skipIf(
       } finally {
         // Only exact identities created by this test; never kill by name or the test runner group.
         const cleanupRows = new Map(
-          (await readPosixProcessTable()).map(row => [row.pid, row.startTime]),
+          (await readPosixProcessTable()).rows.map(row => [row.pid, row.startTime]),
         )
         for (const identity of owned.reverse()) {
           if (

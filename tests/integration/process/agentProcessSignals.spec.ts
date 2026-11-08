@@ -68,7 +68,7 @@ it.skipIf(process.platform === 'win32').each(['agent', 'shell', 'exitedAgent'] a
         },
       ]
       const reaper = new AgentProcessReaper({
-        readTable: async () => table.filter(row => running(row.pid)),
+        readTable: async () => ({ rows: table.filter(row => running(row.pid)), complete: true }),
       })
       if (kind !== 'shell') {
         await reaper.track('fixture', pids.root)

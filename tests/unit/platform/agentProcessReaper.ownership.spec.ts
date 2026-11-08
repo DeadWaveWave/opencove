@@ -16,7 +16,7 @@ const row = (pid: number, parentPid: number, startTime = `birth-${pid}`): Proces
 function harness() {
   let rows = [row(10, 1), row(20, 10), row(100, 1)]
   const signal = vi.fn()
-  const readTable = vi.fn(async () => rows)
+  const readTable = vi.fn(async () => ({ rows, complete: true }))
   const reaper = new AgentProcessReaper({
     platform: 'linux',
     now: () => Date.now(),
@@ -50,13 +50,13 @@ it('a close arriving during another HUP read waits for its own post-close snapsh
     .mockImplementationOnce(
       () =>
         new Promise(resolve => {
-          finishA = resolve
+          finishA = rows => resolve({ rows, complete: true })
         }),
     )
     .mockImplementationOnce(
       () =>
         new Promise(resolve => {
-          finishB = resolve
+          finishB = rows => resolve({ rows, complete: true })
         }),
     )
   const a = h.reaper.terminate('a')
@@ -116,11 +116,11 @@ it('preserves orphan ownership through a partially malformed stdout sample and l
   const h = harness()
   const root = '10 1 10 Mon Nov 9 12:00:00 2026 S root\n'
   const orphan = '20 1 20 Mon Nov 9 12:00:01 2026 S sleep\n'
-  h.setRows(parseProcessTable(root + orphan.replace('20 1 20', '20 10 20')))
+  h.setRows(parseProcessTable(root + orphan.replace('20 1 20', '20 10 20')).rows)
   await h.reaper.track('a', 10)
   h.readTable.mockImplementationOnce(async () => parseProcessTable(root + '20 incomplete\n'))
   await vi.advanceTimersByTimeAsync(5_000)
-  h.setRows(parseProcessTable(orphan))
+  h.setRows(parseProcessTable(orphan).rows)
   await vi.advanceTimersByTimeAsync(5_000)
   const task = h.reaper.terminate('a')
   await vi.advanceTimersByTimeAsync(2_000)
@@ -152,7 +152,7 @@ it('reports the current foreground process even when an interval sample is young
   h.setRows([row(10, 1)])
   await vi.advanceTimersByTimeAsync(100)
   const rows = await h.reaper.readTable()
-  expect(rows?.map(member => member.pid)).toEqual([10])
+  expect(rows?.rows.map(member => member.pid)).toEqual([10])
   const drain = h.reaper.drain()
   await vi.advanceTimersByTimeAsync(2_000)
   await drain
@@ -166,7 +166,7 @@ it('preserves the 40-session staggered-close bound with 399ms fresh reads and no
   h.readTable.mockImplementation(async () => {
     const snapshot = rows.map(member => ({ ...member }))
     await new Promise(resolve => setTimeout(resolve, 399))
-    return snapshot
+    return { rows: snapshot, complete: true }
   })
   const elapsed: number[] = []
   rows.forEach((member, index) =>
@@ -204,7 +204,7 @@ it('shares one fresh read among observations requested during a pending periodic
   h.readTable.mockImplementationOnce(
     () =>
       new Promise(resolve => {
-        finish = resolve
+        finish = rows => resolve({ rows, complete: true })
       }),
   )
   await vi.advanceTimersByTimeAsync(5_000)
@@ -217,7 +217,7 @@ it('shares one fresh read among observations requested during a pending periodic
   const results = await Promise.all(pending)
   // The periodic read began before these requests, so they wait for one read of their own.
   expect(h.readTable).toHaveBeenCalledTimes(2)
-  expect(results.every(value => value?.length === 1 && value[0].pid === 10)).toBe(true)
+  expect(results.every(value => value?.rows.length === 1 && value.rows[0].pid === 10)).toBe(true)
   const drain = h.reaper.drain()
   await vi.advanceTimersByTimeAsync(2_000)
   await drain

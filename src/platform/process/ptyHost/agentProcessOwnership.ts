@@ -60,7 +60,11 @@ export class AgentProcessOwnership {
       }
     }
   }
-  public observe(rows: readonly ProcessIdentity[], captureIds: readonly string[]): void {
+  public observe(
+    rows: readonly ProcessIdentity[],
+    captureIds: readonly string[],
+    complete: boolean,
+  ): void {
     const table = new ProcessTreeSnapshot(rows)
     const { byPid } = table
     const eligible = new Set(captureIds)
@@ -68,13 +72,15 @@ export class AgentProcessOwnership {
       if (session.capturePending && eligible.has(id)) {
         session.capturePending = false
         // Accepted first-sample gap: the just-spawned root can exit and its PID
-        // can be reused within milliseconds before this async read/exit notification.
-        // This first observation cannot distinguish that replacement from the launch.
+        // can be reused before this async read/exit notification (even within milliseconds).
+        // Slow ps extends this gap until the first read; it cannot distinguish that
+        // replacement from the launch. A failed first read must never bind later.
         const root = !session.exited ? byPid.get(session.rootPid) : null
         session.root = root ? { ...root } : null
       }
       for (const [identity, member] of session.members) {
-        if (!sameProcess(member, byPid.get(member.pid))) {
+        // Missing rows in a partial sample are not evidence of process death.
+        if (complete && !sameProcess(member, byPid.get(member.pid))) {
           session.members.delete(identity)
         }
       }

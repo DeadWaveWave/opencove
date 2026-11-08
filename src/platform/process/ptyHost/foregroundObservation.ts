@@ -1,6 +1,6 @@
 import { resolveForegroundAgentObservation } from '../../../shared/runtime/agentForegroundRecognition'
 import type { PtyHostMessage } from './protocol'
-import type { ProcessIdentity } from './posixProcessTable'
+import type { ProcessTableSample } from './posixProcessTable'
 
 /** Foreground probes share the async reader; no blocking ps on the host thread. */
 export async function observePtyForeground(options: {
@@ -10,7 +10,7 @@ export async function observePtyForeground(options: {
   hostInstanceId: string
   rootPid: number | null
   platform: NodeJS.Platform
-  readTable: () => Promise<ProcessIdentity[] | null>
+  readTable: () => Promise<ProcessTableSample | null>
   send: (message: PtyHostMessage) => void
   isCurrent: () => boolean
 }): Promise<void> {
@@ -32,7 +32,7 @@ export async function observePtyForeground(options: {
     )
     return
   }
-  const rows = options.rootPid ? await options.readTable() : null
+  const sample = options.rootPid ? await options.readTable() : null
   if (!options.isCurrent()) {
     return
   }
@@ -40,9 +40,9 @@ export async function observePtyForeground(options: {
     ...common,
     source: 'process_scan',
     exitCode: null,
-    ...(rows && options.rootPid
+    ...(sample && options.rootPid
       ? resolveForegroundAgentObservation(
-          rows
+          sample.rows
             .map(row => `${row.pid} ${row.parentPid} ${row.state ?? 'S'} ${row.command}`)
             .join('\n'),
           options.rootPid,

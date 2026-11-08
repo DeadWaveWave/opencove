@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { isZombieProcess } from '../support/processLiveness'
+import { isZombieProcess, observedProcessAlive } from '../support/processLiveness'
 import { expect, test } from '@playwright/test'
 import type { AgentRunSnapshot } from '../../src/shared/contracts/dto/agentRunState'
 import {
@@ -138,7 +138,7 @@ test.describe('managed Agent tool process reaping with real Codex', () => {
           )
           .not.toBe('')
         const [toolPid, cliPid] = (await readFile(marker, 'utf8')).trim().split(/\s+/u).map(Number)
-        const rows = await readPosixProcessTable()
+        const { rows } = await readPosixProcessTable()
         captured = snapshotProcessTree(rows, cliPid!)
         expect(captured.find(row => row.pid === toolPid)).toMatchObject({ pgid: toolPid })
         expect(captured.length).toBeGreaterThanOrEqual(2)
@@ -161,11 +161,14 @@ test.describe('managed Agent tool process reaping with real Codex', () => {
         await expect
           .poll(
             async () => {
-              const current = new Map(
-                (await readPosixProcessTable()).map(row => [row.pid, row.startTime]),
-              )
+              const sample = await readPosixProcessTable()
+              const current = new Map(sample.rows.map(row => [row.pid, row.startTime]))
               return captured
-                .filter(row => current.get(row.pid) === row.startTime && !isZombieProcess(row.pid))
+                .filter(
+                  row =>
+                    !isZombieProcess(row.pid) &&
+                    observedProcessAlive(row, current, sample.complete) !== false,
+                )
                 .map(row => row.pid)
             },
             { timeout: 5_000, intervals: [50, 100, 200] },
@@ -174,7 +177,7 @@ test.describe('managed Agent tool process reaping with real Codex', () => {
       } finally {
         await electronApp.close()
         const cleanupRows = new Map(
-          (await readPosixProcessTable()).map(row => [row.pid, row.startTime]),
+          (await readPosixProcessTable()).rows.map(row => [row.pid, row.startTime]),
         )
         for (const row of captured) {
           if (cleanupRows.get(row.pid) === row.startTime) {

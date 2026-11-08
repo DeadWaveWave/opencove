@@ -14,7 +14,7 @@ function harness() {
   let rows = [row(10, 1), row(20, 10)]
   const signal = vi.fn()
   const log = vi.fn()
-  const readTable = vi.fn(async () => rows)
+  const readTable = vi.fn(async () => ({ rows, complete: true }))
   const reaper = new AgentProcessReaper({
     readTable,
     signal,
@@ -116,7 +116,7 @@ it('20 simultaneous sessions use exactly three shared async stage reads and reac
   h.readTable.mockClear()
   h.readTable.mockImplementation(async () => {
     await new Promise(done => setTimeout(done, 200))
-    return rows
+    return { rows, complete: true }
   })
   const started = Date.now()
   const tasks = Array.from({ length: 20 }, (_, i) => h.reaper.terminate(`s${i}`))
@@ -131,9 +131,9 @@ it('reserves KILL even when TERM sampling hangs, logging the failed stage', asyn
   const h = harness()
   await h.reaper.track('a', 10)
   h.readTable
-    .mockImplementationOnce(async () => [row(10, 1), row(20, 10)])
+    .mockImplementationOnce(async () => ({ rows: [row(10, 1), row(20, 10)], complete: true }))
     .mockImplementationOnce(() => new Promise(() => {}))
-    .mockImplementationOnce(async () => [row(20, 1)])
+    .mockImplementationOnce(async () => ({ rows: [row(20, 1)], complete: true }))
   const task = h.reaper.terminate('a')
   await vi.advanceTimersByTimeAsync(2_999)
   await task
@@ -172,7 +172,7 @@ it('does not bind a root which exits before its first sample completes', async (
   h.readTable.mockImplementationOnce(
     () =>
       new Promise(resolve => {
-        finish = resolve
+        finish = rows => resolve({ rows, complete: true })
       }),
   )
   const tracking = h.reaper.track('a', 10)

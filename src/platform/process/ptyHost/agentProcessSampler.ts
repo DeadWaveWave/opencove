@@ -2,57 +2,76 @@ import { AgentProcessOwnership } from './agentProcessOwnership'
 import {
   PROCESS_TABLE_READ_TIMEOUT_MS,
   readPosixProcessTable,
-  type ProcessIdentity,
+  type ProcessTableReadOptions,
+  type ProcessTableSample,
 } from './posixProcessTable'
 
+type Read = {
+  promise: Promise<ProcessTableSample | null>
+  retirement: boolean
+  cancel: () => void
+}
 export class AgentProcessSampler {
-  private inFlight: Promise<ProcessIdentity[] | null> | null = null
-  private pendingObservation: Promise<ProcessIdentity[] | null> | null = null
+  private inFlight: Read | null = null
+  private pendingObservation: Promise<ProcessTableSample | null> | null = null
   private timer: NodeJS.Timeout | null = null
-  private paused = false
+  private resumed: Promise<void> | null = null
+  private resume: (() => void) | null = null
   public constructor(
     public readonly ownership: AgentProcessOwnership,
     private readonly readTable: (
-      signal?: AbortSignal,
-    ) => Promise<ProcessIdentity[]> = readPosixProcessTable,
+      options: ProcessTableReadOptions,
+    ) => Promise<ProcessTableSample> = readPosixProcessTable,
     private readonly log: (message: string) => void,
   ) {}
   public maintainTimer(): void {
-    if (this.ownership.size > 0 && !this.paused && !this.timer) {
+    if (this.ownership.size > 0 && !this.resumed && !this.timer) {
       this.timer = setInterval(() => {
         void this.sample()
       }, 5_000)
       this.timer.unref()
-    } else if ((this.paused || this.ownership.size === 0) && this.timer) {
+    } else if ((this.resumed || this.ownership.size === 0) && this.timer) {
       clearInterval(this.timer)
       this.timer = null
     }
   }
   public pause(value: boolean): void {
-    this.paused = value
+    if (value) {
+      this.resumed ??= new Promise(resolve => {
+        this.resume = resolve
+      })
+      // A foreground/periodic 2s read must not consume the retirement KILL reserve.
+      if (this.inFlight && !this.inFlight.retirement) {
+        this.inFlight.cancel()
+      }
+    } else {
+      this.resume?.()
+      this.resumed = null
+      this.resume = null
+    }
     this.maintainTimer()
   }
-  public async fresh(): Promise<ProcessIdentity[] | null> {
-    // A scan begun before close cannot be its pre-HUP sample. Drain it first.
+  public async fresh(timeoutMs: number): Promise<ProcessTableSample | null> {
+    // The pre-HUP read must start after close. Ordinary reads are cancelled on pause;
+    // retirement reads are serialized by the host-wide scheduler.
     if (this.inFlight) {
-      await this.inFlight
+      await this.inFlight.promise
     }
-    return await this.sample()
+    return await this.startRead(timeoutMs, true)
   }
-  public observation(): Promise<ProcessIdentity[] | null> {
+  public observation(): Promise<ProcessTableSample | null> {
     // Foreground probes are control evidence (terminal agent re-entry trusts them as current),
     // so each needs a table read that starts after it was requested: never the interval cache
     // and never a read already in flight. Probes that arrive before that read starts share it.
     if (this.pendingObservation) {
       return this.pendingObservation
     }
-    const slot: { promise?: Promise<ProcessIdentity[] | null> } = {}
+    const slot: { promise?: Promise<ProcessTableSample | null> } = {}
     slot.promise = (async () => {
-      // Yield first so this observation is registered before it can start its read.
       await Promise.resolve()
-      while (this.inFlight) {
-        // eslint-disable-next-line no-await-in-loop -- wait for every read that began earlier
-        await this.inFlight
+      while (this.inFlight || this.resumed) {
+        // eslint-disable-next-line no-await-in-loop -- Wait for earlier reads and retirement.
+        await (this.resumed ?? this.inFlight!.promise)
       }
       if (this.pendingObservation === slot.promise) {
         this.pendingObservation = null
@@ -62,36 +81,64 @@ export class AgentProcessSampler {
     this.pendingObservation = slot.promise
     return slot.promise
   }
-  public sample(): Promise<ProcessIdentity[] | null> {
-    if (this.inFlight) {
-      return this.inFlight
+  public sample(): Promise<ProcessTableSample | null> {
+    if (this.resumed) {
+      return this.resumed.then(() => this.sample())
     }
-    this.inFlight = Promise.resolve().then(async () => {
-      const captureIds = this.ownership.ids()
-      const controller = new AbortController()
-      let timer: NodeJS.Timeout | undefined
-      try {
-        const rows = await Promise.race([
-          this.readTable(controller.signal),
-          new Promise<never>((_resolve, reject) => {
-            timer = setTimeout(() => {
-              controller.abort()
-              reject(new Error('process table deadline exceeded'))
-            }, PROCESS_TABLE_READ_TIMEOUT_MS)
-          }),
-        ])
-        this.ownership.observe(rows, captureIds)
-        return rows
-      } catch (error) {
-        // Never bind an unknown launch identity on a later, potentially recycled PID.
-        this.ownership.abandonCapture(captureIds)
-        this.log(`process table read failed: ${String(error)}`)
-        return null
-      } finally {
-        clearTimeout(timer)
-        this.inFlight = null
+    return this.startRead(PROCESS_TABLE_READ_TIMEOUT_MS, false)
+  }
+  private startRead(timeoutMs: number, retirement: boolean): Promise<ProcessTableSample | null> {
+    if (this.inFlight) {
+      return this.inFlight.promise
+    }
+    const controller = new AbortController()
+    let cancelled = false
+    let cancel!: () => void
+    const cancellation = new Promise<never>((_resolve, reject) => {
+      cancel = () => {
+        cancelled = true
+        reject(new Error('process table read preempted for retirement'))
+        controller.abort()
       }
     })
-    return this.inFlight
+    const read: Read = {
+      retirement,
+      cancel,
+      promise: Promise.resolve().then(async () => {
+        const captureIds = this.ownership.ids()
+        let timer: NodeJS.Timeout | undefined
+        try {
+          const sample = await Promise.race([
+            // Never launch an already preempted query.
+            cancelled ? cancellation : this.readTable({ signal: controller.signal, timeoutMs }),
+            cancellation,
+            new Promise<never>((_resolve, reject) => {
+              timer = setTimeout(() => {
+                reject(new Error('process table deadline exceeded'))
+                controller.abort()
+              }, timeoutMs)
+            }),
+          ])
+          this.ownership.observe(sample.rows, captureIds, sample.complete)
+          return sample
+        } catch (error) {
+          if (!cancelled) {
+            // Never bind an unknown launch identity after a failed first read.
+            // Scheduling preemption instead replaces that read with the fresh pre-HUP
+            // query, still inside the accepted initial asynchronous identity gap.
+            this.ownership.abandonCapture(captureIds)
+            this.log(`process table read failed: ${String(error)}`)
+          }
+          return null
+        } finally {
+          clearTimeout(timer)
+          if (this.inFlight === read) {
+            this.inFlight = null
+          }
+        }
+      }),
+    }
+    this.inFlight = read
+    return read.promise
   }
 }

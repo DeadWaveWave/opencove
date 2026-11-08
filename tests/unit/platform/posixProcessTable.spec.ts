@@ -22,21 +22,24 @@ function respond(error: Error | null, stdout = output) {
 it('bounds an async whole-table read with command, normalized locale/timezone, and abort support', async () => {
   respond(null)
   const signal = new AbortController().signal
-  expect(await readPosixProcessTable(signal)).toEqual([
-    {
-      pid: 20,
-      parentPid: 10,
-      pgid: 20,
-      startTime: 'Mon Nov 9 12:00:00 2026',
-      state: 'Ss',
-      command: '/bin/sleep 30',
-    },
-  ])
+  expect(await readPosixProcessTable({ signal })).toEqual({
+    complete: true,
+    rows: [
+      {
+        pid: 20,
+        parentPid: 10,
+        pgid: 20,
+        startTime: 'Mon Nov 9 12:00:00 2026',
+        state: 'Ss',
+        command: '/bin/sleep 30',
+      },
+    ],
+  })
   expect(execFile).toHaveBeenCalledWith(
     '/bin/ps',
     ['-ax', '-o', 'pid=,ppid=,pgid=,lstart=,stat=,command='],
     expect.objectContaining({
-      timeout: 400,
+      timeout: 2_000,
       signal,
       maxBuffer: 4 * 1024 * 1024,
       env: expect.objectContaining({ LC_ALL: 'C', TZ: 'UTC' }),
@@ -49,15 +52,44 @@ it('rejects adapter failures rather than interpreting failed output as a valid e
   await expect(readPosixProcessTable()).rejects.toThrow('adapter broken')
 })
 it('parses valid kernel/init rows without mistaking them for malformed stdout', () => {
-  expect(parseProcessTable(`${output}1 0 1 Mon Nov 9 12:00:00 2026 S init\n`)).toHaveLength(2)
+  expect(parseProcessTable(`${output}1 0 1 Mon Nov 9 12:00:00 2026 S init\n`).rows).toHaveLength(2)
 })
-it.each(['', '  \n', 'entirely malformed\n', `${output}20 incomplete\n`])(
-  'rejects incomplete or empty table output: %j',
-  async stdout => {
-    respond(null, stdout)
-    await expect(readPosixProcessTable()).rejects.toThrow(/process table/iu)
+it.each([
+  '',
+  '  \n',
+  'entirely malformed\n',
+  '20 incomplete\n',
+  '20 1 20 Mon Nov 9 12:00:00 2026 S   \n',
+])('rejects empty or entirely unparseable output: %j', async stdout => {
+  respond(null, stdout)
+  await expect(readPosixProcessTable()).rejects.toThrow(/process table/iu)
+})
+it.each(['20 incomplete\n', '21 1 21 Mon Nov 9 12:00:00 2026 S   \n'])(
+  'retains usable rows and marks the table incomplete: %j',
+  line => {
+    expect(parseProcessTable(output + line)).toEqual({
+      rows: [expect.objectContaining({ pid: 20 })],
+      complete: false,
+    })
   },
 )
+it('omits ambiguous duplicate PIDs while retaining unrelated valid rows', () => {
+  const valid = '21 1 21 Mon Nov 9 12:00:00 2026 S shell\n'
+  expect(parseProcessTable(output + output + valid)).toEqual({
+    rows: [expect.objectContaining({ pid: 21 })],
+    complete: false,
+  })
+})
+it('passes a shorter retirement deadline through to the async adapter', async () => {
+  respond(null)
+  await readPosixProcessTable({ timeoutMs: 716 })
+  expect(execFile).toHaveBeenCalledWith(
+    expect.any(String),
+    expect.any(Array),
+    expect.objectContaining({ timeout: 716, killSignal: 'SIGKILL' }),
+    expect.any(Function),
+  )
+})
 it('only permits code EPERM as an integration skip', async () => {
   expect(
     await canReadProcessTable(async () => {

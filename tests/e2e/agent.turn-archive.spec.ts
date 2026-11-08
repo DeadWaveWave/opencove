@@ -52,7 +52,14 @@ test('exact turn read and wait survive a complete Worker restart, then disappear
           timeout: 20_000,
         },
         (error, stdout, stderr) =>
-          done({ code: error ? Number(error.code ?? 1) : 0, stdout, stderr }),
+          done({
+            code: typeof error?.code === 'number' ? error.code : error ? 1 : 0,
+            stdout,
+            // Preserve timeout/signal evidence without printing argv (which contains the token).
+            stderr: error
+              ? `${stderr}\nCLI failure: ${JSON.stringify({ code: error.code, signal: error.signal, killed: error.killed })}`
+              : stderr,
+          }),
       )
     })
   }
@@ -141,7 +148,10 @@ test('exact turn read and wait survive a complete Worker restart, then disappear
     expect(before.code, before.stderr).toBe(0)
     const reply = JSON.parse(before.stdout)
     expect(reply).toMatchObject({ turnId, sessionId, persisted: true, message: 'Strict reply 2' })
-    const oldEpoch = JSON.parse((await cli(['agent', 'list'])).stdout).epoch
+    const beforeRestartList = await cli(['agent', 'list'])
+    expect(beforeRestartList.code, JSON.stringify(beforeRestartList)).toBe(0)
+    expect(beforeRestartList.stdout, JSON.stringify(beforeRestartList)).not.toBe('')
+    const oldEpoch = JSON.parse(beforeRestartList.stdout).epoch
     const oldPid = (await connection()).pid
     await app.close()
     app = undefined
@@ -166,7 +176,10 @@ test('exact turn read and wait survive a complete Worker restart, then disappear
       env,
     })
     app = second.electronApp
-    expect(JSON.parse((await cli(['agent', 'list'])).stdout).epoch).not.toBe(oldEpoch)
+    const afterRestartList = await cli(['agent', 'list'])
+    expect(afterRestartList.code, JSON.stringify(afterRestartList)).toBe(0)
+    expect(afterRestartList.stdout, JSON.stringify(afterRestartList)).not.toBe('')
+    expect(JSON.parse(afterRestartList.stdout).epoch).not.toBe(oldEpoch)
     // No second prompt or provider relaunch is needed to read the historical original session.
     const after = await cli(['agent', 'read', '--node', nodeId, '--turn', turnId])
     expect(after.code, after.stderr).toBe(0)

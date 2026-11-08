@@ -7,11 +7,16 @@ import {
   ProcessTreeSnapshot,
   PROCESS_TABLE_READ_TIMEOUT_MS,
   type ProcessIdentity,
+  type ProcessTableSample,
+  type ProcessTableReadOptions,
 } from './posixProcessTable'
 export type { ProcessIdentity } from './posixProcessTable'
 export type PtySessionKind = 'agent' | 'shell'
 
 type Stage = 'hup' | 'term' | 'kill'
+const HUP_GRACE_MS = 150
+const TERM_GRACE_MS = 500
+const SIGNAL_RESERVE_MS = 200
 type Retirement = {
   targets: Map<string, ProcessIdentity>
   stage: Stage
@@ -24,7 +29,7 @@ type Retirement = {
 interface ReaperDependencies {
   platform?: NodeJS.Platform
   now?: () => number
-  readTable?: (signal?: AbortSignal) => Promise<ProcessIdentity[]>
+  readTable?: (options: ProcessTableReadOptions) => Promise<ProcessTableSample>
   signal?: (pid: number, signal: NodeJS.Signals) => void
   reportIssue?: (message: string) => void
 }
@@ -69,7 +74,7 @@ export class AgentProcessReaper {
   public noteExit(sessionId: string): void {
     this.ownership.noteExit(sessionId)
   }
-  public readTable(): Promise<ProcessIdentity[] | null> {
+  public readTable(): Promise<ProcessTableSample | null> {
     return this.sampler.observation()
   }
   public terminate(sessionId: string, hangup?: () => void): Promise<void> {
@@ -145,8 +150,22 @@ export class AgentProcessReaper {
         if (batch.length === 0) {
           continue
         }
-        const rows = await this.sampler.fresh()
-        const table = new ProcessTreeSnapshot(rows ?? [])
+        // Divide the remaining budget among the outstanding reads and grace periods.
+        // The most urgent phase controls a mixed batch; younger jobs can share its read.
+        const phase = batch[0]!.stage
+        const remainingReads = phase === 'hup' ? 3 : phase === 'term' ? 2 : 1
+        const grace =
+          phase === 'hup' ? HUP_GRACE_MS + TERM_GRACE_MS : phase === 'term' ? TERM_GRACE_MS : 0
+        const deadline = Math.min(...batch.map(({ job }) => job.deadline))
+        const readTimeout = Math.max(
+          1,
+          Math.min(
+            PROCESS_TABLE_READ_TIMEOUT_MS,
+            Math.floor((deadline - this.now() - grace - SIGNAL_RESERVE_MS) / remainingReads),
+          ),
+        )
+        const sample = await this.sampler.fresh(readTimeout)
+        const table = new ProcessTreeSnapshot(sample?.rows ?? [])
         const { byPid } = table
         const signalled = new Set<number>()
         for (const { id, job, stage } of batch) {
@@ -157,7 +176,7 @@ export class AgentProcessReaper {
             job.targets.set(`${target.pid}:${target.startTime}`, target)
           }
           for (const [identity, target] of job.targets) {
-            if (rows && !sameProcess(target, byPid.get(target.pid))) {
+            if (sample?.complete && !sameProcess(target, byPid.get(target.pid))) {
               job.targets.delete(identity)
             }
           }
@@ -170,9 +189,9 @@ export class AgentProcessReaper {
               }
             }
             job.stage = 'term'
-            job.dueAt = this.now() + 150
+            job.dueAt = this.now() + HUP_GRACE_MS
           } else {
-            const cutoff = job.deadline - PROCESS_TABLE_READ_TIMEOUT_MS - 200
+            const cutoff = job.deadline - readTimeout - SIGNAL_RESERVE_MS
             const targets = [...job.targets.values()].filter(target =>
               sameProcess(target, byPid.get(target.pid)),
             )
@@ -195,7 +214,7 @@ export class AgentProcessReaper {
             }
             if (stage === 'term') {
               job.stage = 'kill'
-              job.dueAt = Math.min(this.now() + 500, cutoff)
+              job.dueAt = Math.min(this.now() + TERM_GRACE_MS, cutoff)
             } else {
               this.ownership.remove(id)
               this.jobs.delete(id)
