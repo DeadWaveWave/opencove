@@ -5,11 +5,8 @@ import { agentPromptResultSchema } from '../../../shared/contracts/dto/agentProm
  * textComparison; treat that as unavailable evidence instead of an invalid response.
  */
 export function normalizePromptDeliveryResult(value: unknown): unknown {
-  return value !== null &&
-    typeof value === 'object' &&
-    !Array.isArray(value) &&
-    !('textComparison' in value)
-    ? { ...value, textComparison: 'unavailable' }
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? { textComparison: 'unavailable', mode: 'turn', ...value }
     : value
 }
 
@@ -21,11 +18,7 @@ export function isPromptDeliveryResult(value: unknown): boolean {
 export function promptComparisonNotice(value: unknown): string | undefined {
   const result = agentPromptResultSchema.safeParse(value)
   if (result.success && result.data.textComparison === 'different') {
-    return (
-      'Claude Code reported a submitted prompt whose text differs from what you sent — an existing draft may have been included. Do not resend; check the agent with `opencove agent read --node ' +
-      (result.data.nodeId ?? '…') +
-      ' --screen`.'
-    )
+    return 'The submitted text differed from what you sent; an existing draft may have been included. Do not resend; inspect the screen.'
   }
   return undefined
 }

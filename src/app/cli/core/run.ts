@@ -284,6 +284,10 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       io.stderr.write(listNotice + '\n')
     }
     io.stdout.write(output)
+    if (id === 'agent.delivery.get') {
+      const delivery = result as { available?: boolean; status?: string }
+      return delivery.available && delivery.status === 'submitted' ? 0 : 1
+    }
     return 0
   } catch (error) {
     let cliError =

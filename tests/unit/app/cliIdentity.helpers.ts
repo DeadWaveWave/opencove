@@ -73,5 +73,12 @@ export function identityFixture(inside = true) {
         : {}),
     },
   }
-  return { io, values, fetch, requests, out: () => out, error: () => JSON.parse(err).error }
+  return {
+    io,
+    values,
+    fetch,
+    requests,
+    out: () => out,
+    error: () => JSON.parse(err.trim().split('\n').at(-1)!).error,
+  }
 }

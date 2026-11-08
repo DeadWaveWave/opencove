@@ -1,3 +1,4 @@
+import { PtyStreamInputEvidence } from './ptyStreamInputEvidence'
 import type { ClaudeTranscriptObservation } from '../../../../shared/runtime/agentHook/claudeTranscript'
 import type { ReservedSessionInput } from '../../../../contexts/agent/application/ports/PromptDeliveryPorts'
 import { withSessionInputOperation } from './ptyStreamSessionInput'
@@ -59,6 +60,23 @@ export class PtyStreamHub {
   private readonly replayWindowMaxBytes: number
   private readonly onPresentationMutation: ((sessionId: string) => void) | undefined
 
+  private readonly inputEvidence: PtyStreamInputEvidence
+  public watchInput(
+    sessionId: string,
+    listener: (deliveryId?: string, data?: string) => void,
+  ): () => void {
+    return this.inputEvidence.watch(sessionId, listener)
+  }
+
+  public watchInputInvalidation(sessionId: string, listener: () => void): () => void {
+    const session = this.sessions.get(sessionId)
+    if (!session) {
+      listener()
+      return () => {}
+    }
+    return session.ingress.watchInvalidation(listener)
+  }
+
   private readonly sessions = new Map<string, SessionState>()
   private readonly clients = new Map<string, ClientState>()
   private readonly broadcast = createPtyStreamBroadcaster(this.sessions, this.clients)
@@ -72,7 +90,8 @@ export class PtyStreamHub {
     onPresentationMutation?: (sessionId: string) => void
     now?: () => number
   }) {
-    this.ptyRuntime = options.ptyRuntime
+    this.inputEvidence = new PtyStreamInputEvidence(options.ptyRuntime)
+    this.ptyRuntime = this.inputEvidence.observedRuntime()
     this.replayWindowMaxBytes = Math.max(64_000, Math.floor(options.replayWindowMaxBytes))
     this.onPresentationMutation = options.onPresentationMutation
     this.agentRuns =
@@ -428,7 +447,7 @@ export class PtyStreamHub {
   ): Promise<T> {
     return withSessionInputOperation<T>(
       this.sessions,
-      (id, data) => this.ptyRuntime.write(id, data),
+      (id, data, deliveryId) => this.inputEvidence.write(id, data, deliveryId),
       sessionId,
       callback,
     )

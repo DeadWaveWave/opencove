@@ -11,6 +11,7 @@ export type PromptRefusal = {
 export function promptAdmission(
   fence: RunStateFence | null,
   capability: PromptDeliveryPorts['capability'],
+  whenBusy?: 'steer' | 'refuse',
 ): PromptRefusal | null {
   if (!fence || fence.snapshot.state === 'exited') {
     return { code: 'agent.not_running', reason: 'not_running' }
@@ -45,7 +46,7 @@ export function promptAdmission(
   if (s.state === 'waiting') {
     return { code: 'agent.blocked', reason: 'waiting' }
   }
-  if (s.state === 'working') {
+  if (s.state === 'working' && whenBusy !== 'steer') {
     return { code: 'agent.busy', reason: 'working' }
   }
   if (fence.hookInstallState !== undefined && fence.hookInstallState !== 'installed') {
@@ -62,6 +63,15 @@ export function promptAdmission(
   }
   if (s.quality === 'degraded') {
     return { code: 'agent.state_unknown', reason: 'observation_degraded' }
+  }
+  if (
+    s.state === 'working' &&
+    s.quality === 'authoritative' &&
+    s.source === promptHookSource(s.provider) &&
+    s.turn?.start === 'observed' &&
+    whenBusy === 'steer'
+  ) {
+    return null
   }
   if (
     s.state !== 'idle' ||

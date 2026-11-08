@@ -4,7 +4,10 @@ import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 import type { AgentProviderRegistry } from '../../../../contexts/agent/application/services/AgentProviderRegistry'
 import { PromptDeliveryService } from '../../../../contexts/agent/application/PromptDeliveryService'
 import { registerOperation } from '../registerOperation'
-import { agentPromptOperation } from '../../../../shared/contracts/controlSurface/operations/domains/agent'
+import {
+  agentDeliveryGetOperation,
+  agentPromptOperation,
+} from '../../../../shared/contracts/controlSurface/operations/domains/agent'
 
 /** One service per Worker composition, never one reservation map per HTTP request. */
 export function registerAgentPromptHandlers(
@@ -24,6 +27,10 @@ export function registerAgentPromptHandlers(
     },
   })
   hub.agentRuns.registry.onDispose(() => service.dispose())
+  registerOperation(surface, agentDeliveryGetOperation, {
+    handle: (_ctx, input) => service.get(input.deliveryId),
+    defaultErrorCode: 'common.unexpected',
+  })
   registerOperation(surface, agentPromptOperation, {
     handle: (ctx, input) =>
       service.deliver(

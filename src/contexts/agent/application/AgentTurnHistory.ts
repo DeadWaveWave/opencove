@@ -32,6 +32,34 @@ export class AgentTurnHistory {
   private active: Identity | undefined
   private readonly ended: EndedTurn[] = []
 
+  identity(): Identity & { endedTurnIds: string[] } {
+    return {
+      endedTurnIds: this.ended.map(turn => turn.turnId),
+      ...(this.active
+        ? {
+            promptId: this.active.promptId,
+            providerSessionId: this.active.providerSessionId,
+            providerTurnId: this.active.providerTurnId,
+          }
+        : this.ended.at(-1)?.promptId
+          ? { promptId: this.ended.at(-1)!.promptId }
+          : {}),
+    }
+  }
+
+  submissionTurnId(
+    evidence: PromptSubmissionEvidence | undefined,
+    currentTurnId?: string,
+  ): string | undefined {
+    return (
+      (evidence?.promptId &&
+        this.ended.find(
+          turn =>
+            turn.promptId === evidence.promptId || turn.promptIds?.includes(evidence.promptId!),
+        )?.turnId) ||
+      currentTurnId
+    )
+  }
   matchesSession(id: string): boolean {
     return this.active?.providerSessionId === id
   }

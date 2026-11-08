@@ -70,6 +70,38 @@ test.describe('mid-turn messages with the real Claude Code CLI', () => {
       expect(readSlow.exitCode, JSON.stringify(readSlow)).toBe(0)
       expect(readSlow.stdout.trim()).toBe('ACK')
 
+      // The same through agent prompt: a prompt sent while Claude works is delivered as steering
+      // into the current turn and confirmed by Claude's submission hook.
+      const second = await prompt(userDataDir, nodeId, 'Please SLOW_TEXT again')
+      expect(second.exitCode, JSON.stringify(second)).toBe(0)
+      const secondTurn = JSON.parse(second.stdout).turnId
+      await window.waitForTimeout(2_000)
+      const steer = await prompt(userDataDir, nodeId, 'Steer: also say KIWI')
+      expect(steer.exitCode, JSON.stringify(steer)).toBe(0)
+      const steered = JSON.parse(steer.stdout)
+      expect(steered).toMatchObject({
+        mode: 'steer',
+        phase: 'submission_observed',
+        turnId: secondTurn,
+        textComparison: 'matched',
+      })
+      const status = await cli(userDataDir, ['agent', 'delivery', steered.deliveryId])
+      expect(status.exitCode, JSON.stringify(status)).toBe(0)
+      expect(JSON.parse(status.stdout)).toMatchObject({ status: 'submitted', turnId: secondTurn })
+      await expect
+        .poll(async () => (await snapshot()).lastEndedTurn?.id, { timeout: 40_000 })
+        .toBe(secondTurn)
+      expect(api.main().at(-1)?.join('\n')).toContain('Steer: also say KIWI')
+      const readSecond = await cli(userDataDir, [
+        'agent',
+        'read',
+        '--node',
+        nodeId,
+        '--turn',
+        secondTurn,
+      ])
+      expect(readSecond.stdout.trim(), JSON.stringify(readSecond)).toBe('ACK')
+
       // /compact starts a new SessionStart (source compact) for the same conversation; the
       // agent must stay promptable afterwards.
       await window.evaluate(async payload => await window.opencoveApi.pty.write(payload), {

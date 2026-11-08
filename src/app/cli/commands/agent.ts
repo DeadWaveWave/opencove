@@ -1,3 +1,4 @@
+import { sendAgentPrompt } from '../core/agentPromptRequest'
 import { defineCommand } from '../core/command'
 import { CliError, usage } from '../core/errors'
 import { stringOption } from './nodes'
@@ -14,15 +15,27 @@ export const agentPromptCommand = defineCommand({
   summary: 'Send a prompt to an agent window OpenCove launched',
   description: [
     'Prompting works only for agent windows OpenCove launched from tasks, the agent launcher, or node create agent. Agents typed into terminal shells (including shim/launcher invocations) are unsupported for both Claude Code and Codex. Option-like model/session values have no verified lifecycle coverage.',
-    'Supported providers: local Claude Code with installed lifecycle hooks (Stop or StopFailure); local Codex with trusted lifecycle hooks for this invocation (Stop). Both require the default executable path (no override in Settings → agent executable), reliable hook idle, no active turn, and bracketed paste. Custom executable paths refuse with executable_override_unverified; remove the override and launch a new agent window. Codex notify-only, daemon reuse, file-only telemetry and Windows are unsupported.',
-    'The agent must have finished a turn that OpenCove observed. This command refuses while the agent is working, waiting for input, or not known to be ready. Use exactly one text source; --text-file - reads stdin. Text must be valid Unicode, nonblank and at most 32 KiB in UTF-8 before newline normalization; trailing newlines are removed.',
+    'Supported providers: local Claude Code with installed lifecycle hooks (Stop or StopFailure); local Codex with trusted lifecycle hooks for this invocation (Stop). Both require the default executable path (no override in Settings → agent executable), authoritative hook state and bracketed paste. Custom executable paths refuse with executable_override_unverified; remove the override and launch a new agent window. Codex notify-only, daemon reuse, file-only telemetry and Windows are unsupported.',
+    'Idle agents need a hook-observed completed turn. Working agents receive steering in the current OpenCove turn by default; --if-busy refuse preserves busy refusal. Use --expect-turn <turnId> to require steering into that exact active turn: idle or a changed turn refuses before paste, and the same condition is rechecked before Enter. A Worker without expectTurnId support refuses this option without input. Waiting, unknown or degraded agents refuse. The CLI negotiates whenBusy through system.operation.describe before sending; older Workers retain busy refusal. Use exactly one text source; --text-file - reads stdin. Text must be valid Unicode, nonblank and at most 32 KiB in UTF-8 before newline normalization; trailing newlines are removed.',
     'This attempts to paste into the current editor; any existing draft may be submitted with it. Run "opencove agent read --node <selector> --screen" to check for drafts and dialogs first: unseen dialogs, including one-time settings notices, may consume the input.',
-    'Success (submission_observed) means the provider reported a newly submitted prompt after this Enter. It does not prove the model read exactly this text, and the turn may still be running: wait for it with "opencove agent wait --node <selector> --turn <turnId>". Save the returned turnId, then read exactly that reply with "opencove agent read --node <selector> --turn <turnId>". The exact checks and their trust limits are in docs/agent/PROMPT_DELIVERY.md.',
-    'textComparison is matched, different, or unavailable. claude-code-v1 compares equality modulo newline representation and trailing ASCII whitespace (space, tab, LF), verified for Claude Code 2.1.319; leading and interior whitespace remain significant. Codex comparison is unavailable until a profile is verified. Optional promptId is diagnostic, not turn correlation. Different is uncertainty and still exits 0: stop automatic orchestration, inspect with opencove agent read --node <id> --screen, and never resend or press Enter again because of the comparison.',
-    'This command never retries automatically. After an interrupted or uncertain delivery, inspect the terminal with "opencove agent read --node <selector> --screen" and read the conversation. Do not resend a prompt that may already have been submitted.',
-    'Exit codes: 0 submission observed; 1 refused or delivery unconfirmed; 2 invalid input; 124 overall deadline; 130 interrupted. A timeout or interruption does not prove that nothing was sent.',
+    'Success (submission_observed) means the provider reported a qualifying submission after this Enter. Codex steering returns dispatched (exit 0) until consumption is confirmed; check opencove agent delivery <deliveryId> --wait. The CLI generates and prints the deliveryId before sending so a lost response remains queryable. It does not prove the model read exactly this text, and the turn may still be running: wait for it with "opencove agent wait --node <selector> --turn <turnId>". Save the returned turnId, check its outcome, then read the correlated Claude reply with "opencove agent read --node <selector> --turn <turnId>". The exact checks and their trust limits are in docs/agent/PROMPT_DELIVERY.md.',
+    'textComparison is matched, different, or unavailable. claude-code-v1 compares equality modulo newline representation and trailing ASCII whitespace (space, tab, LF), verified for Claude Code 2.1.319; leading and interior whitespace remain significant. Codex comparison is unavailable until a profile is verified. Optional promptId is diagnostic. The submitted text differed from what you sent; an existing draft may have been included. Do not resend; inspect the screen. Different still exits 0: stop automatic orchestration, inspect with opencove agent read --node <id> --screen, and never resend or press Enter again because of the comparison.',
+    'The loop is prompt → delivery status → wait --turn (the containing turn ended; check outcome) → read --turn (Claude correlated; Codex reply reads stay uncorrelated). This command never retries automatically. After an interrupted or uncertain delivery, inspect the terminal with "opencove agent read --node <selector> --screen" and read the conversation. Do not resend a prompt that may already have been submitted.',
+    'Exit codes: 0 submission observed or Codex steer dispatched; 1 refused or delivery unconfirmed; 2 invalid input; 124 overall deadline; 130 interrupted. A timeout or interruption does not prove that nothing was sent.',
   ].join('\n\n'),
+  execute: sendAgentPrompt,
   options: {
+    'expect-turn': {
+      type: 'string',
+      valueName: 'turnId',
+      description:
+        'Steer only into this exact active turn; idle or another turn refuses before paste',
+    },
+    'if-busy': {
+      type: 'string',
+      choices: ['steer', 'refuse'],
+      description: 'Steer the current working turn (default), or refuse',
+    },
     node: stringOption('Node ID', true),
     text: {
       type: 'string',
@@ -39,6 +52,7 @@ export const agentPromptCommand = defineCommand({
   examples: [
     'opencove agent prompt --node node-123 --text "Review the changes"',
     'opencove agent prompt --node node-123 --text-file ./prompt.txt --timeout 20s',
+    'opencove agent prompt --node node-123 --expect-turn turn-123 --text "Include refunds"',
     'cat prompt.txt | opencove agent prompt --node node-123 --text-file -',
   ],
   render: {
@@ -48,6 +62,7 @@ export const agentPromptCommand = defineCommand({
         'nodeId',
         'sessionId',
         'phase',
+        'mode',
         'turnId',
         'textComparison',
         'comparisonProfile',
@@ -81,6 +96,11 @@ export const agentPromptCommand = defineCommand({
         text = promptValidationPresentation(descriptor.details)
       throw new CliError(descriptor.code, 2, text.message, text.hint, descriptor.details)
     }
-    return { nodeId: options.node, text: options.text, timeoutMs }
+    return {
+      nodeId: options.node,
+      text: options.text,
+      timeoutMs,
+      ...(options['expect-turn'] !== undefined ? { expectTurnId: options['expect-turn'] } : {}),
+    }
   },
 })

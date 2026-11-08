@@ -1,0 +1,27 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`delivery help distinguishes evidence collection from the agent work lifecycle 1`] = `
+"Usage: opencove agent delivery <id> [options]
+
+Check retained delivery evidence; never resends input
+
+evidenceWindow (open/closed) describes collecting delivery evidence, not the agent’s work. Records live in the executing Worker. Missing, expired or restarted records are unavailable, never proof that nothing was sent. --wait polls fresh evidence. Self-wait returns immediately so the caller can release its tool call. Exit 0 submitted; 1 not_sent/ambiguous/unknown/unavailable; 124 timeout. Dispatched is still awaiting confirmation.
+
+Options:
+  --wait                Wait for submission evidence
+  --timeout <duration>  Wait deadline (default: 20s)
+
+Table output (-o table): not supported.
+Projectable fields: available, deliveryId, epoch, incarnation, sessionId, nodeId, mode, turnId, status, evidenceWindow, createdAt, dispatchedAt, evidence, textComparison, comparisonProfile, promptId, reason
+
+Projection example:
+  opencove agent delivery '<id>' --fields available
+  {"available":true}
+
+Examples:
+  opencove agent delivery delivery-123
+  opencove agent delivery delivery-123 --wait --timeout 2m
+
+Global options: see "opencove --help".
+"
+`;

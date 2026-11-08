@@ -73,6 +73,7 @@ export const agentPromptOperation = defineOperation({
   errors: [
     'agent.blocked',
     'agent.busy',
+    'agent.delivery_unsettled',
     'agent.state_unknown',
     'agent.not_running',
     'agent.prompt_unsupported',
@@ -83,6 +84,16 @@ export const agentPromptOperation = defineOperation({
   input: z.strictObject({
     nodeId: z.string().optional().describe('Canvas agent node ID or selector; exactly one locator'),
     sessionId: z.string().optional().describe('Live local agent session ID; exactly one locator'),
+    whenBusy: z.enum(['steer', 'refuse']).optional(),
+    expectTurnId: z
+      .string()
+      .trim()
+      .min(1)
+      .optional()
+      .describe(
+        'Steer only into this exact active OpenCove turn; idle or a different turn refuses before input',
+      ),
+    deliveryId: z.uuid().optional(),
     text: z
       .string()
       .describe(
@@ -123,7 +134,17 @@ export const agentPromptOperation = defineOperation({
     }
   },
 })
+export const agentDeliveryGetOperation = defineOperation({
+  id: 'agent.delivery.get',
+  kind: 'query',
+  scope: 'interact',
+  availability: 'always',
+  summary: 'Look up a volatile delivery without resending input',
+  errors: [],
+  input: z.strictObject({ deliveryId: id }),
+})
 export const agentOperations = [
+  agentDeliveryGetOperation,
   agentPromptOperation,
   agentFinalMessageOperation,
   agentListSessionsOperation,

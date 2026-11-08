@@ -20,6 +20,20 @@ export function runWithTargetFixtures(argv: string[], io: CliIo) {
     ...io,
     fetch: async (url, init) => {
       const { id } = JSON.parse(String(init?.body))
+      if (id === 'system.operation.describe' && argv[0] === 'agent' && argv[1] === 'prompt') {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            value: {
+              inputSchema: {
+                properties: argv.includes('--expect-turn')
+                  ? { whenBusy: {}, expectTurnId: {} }
+                  : {},
+              },
+            },
+          }),
+        )
+      }
       if (id === 'system.whoami' && (pending.has('node.list') || pending.has('space.list'))) {
         return new Response(
           JSON.stringify({ ok: true, value: { kind: 'bearer', scopeTier: 'admin' } }),

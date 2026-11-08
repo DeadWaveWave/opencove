@@ -5,7 +5,7 @@ import type { SessionState } from './ptyStreamState'
 const reservation = new AsyncLocalStorage<Set<SessionState>>()
 export const withSessionInputOperation = <T>(
   sessions: Map<string, SessionState>,
-  write: (id: string, data: string) => void,
+  write: (id: string, data: string, deliveryId?: string) => void,
   sessionId: string,
   callback: (input: ReservedSessionInput) => Promise<T>,
 ): Promise<T> => {
@@ -35,11 +35,11 @@ export const withSessionInputOperation = <T>(
             bracketedPaste: session.ingress.bracketedPaste,
             watermark: session.ingress.watermark,
           }),
-          write: data => {
+          write: (data, deliveryId) => {
             if (!isLive()) {
               throw new Error('Session input reservation expired')
             }
-            write(sessionId, data)
+            write(sessionId, data, deliveryId)
           },
         })
       } finally {

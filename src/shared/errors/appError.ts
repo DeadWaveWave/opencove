@@ -79,6 +79,8 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'terminal.detach_failed': 'Unable to detach the terminal session.',
     'terminal.snapshot_failed': 'Unable to read terminal output.',
     'agent.blocked': 'The agent is waiting for input.',
+    'agent.delivery_unsettled':
+      'A previous delivery is unresolved. Check its delivery status; never resend.',
     'agent.busy': 'The agent is busy.',
     'agent.state_unknown': 'Agent readiness is not established.',
     'agent.not_running': 'The agent is not running.',

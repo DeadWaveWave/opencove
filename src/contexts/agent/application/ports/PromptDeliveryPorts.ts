@@ -29,7 +29,16 @@ export interface RunStateReceipt extends PromptSubmissionEvidence {
   sourceSequence?: number
   turnId?: string
 }
+export type PromptDeliveryIdentity = Pick<
+  PromptSubmissionEvidence,
+  'promptId' | 'providerSessionId' | 'providerTurnId'
+> & { endedTurnIds?: string[] }
 export interface RunStateFencePort {
+  promptIdentity?(fence: RunStateFence): PromptDeliveryIdentity | undefined
+  watchSubmissionEvidence?(
+    fence: RunStateFence,
+    listener: (receipt: RunStateReceipt) => void,
+  ): () => void
   readFence(locator: { nodeId: string } | { sessionId: string }): RunStateFence | null
   /** Synchronous registration with receipt replay from the fence cursor; history gaps invalidate. */
   watchFence(fence: RunStateFence, listener: (receipt: RunStateReceipt) => void): () => void
@@ -40,9 +49,12 @@ export interface ReservedSessionInput {
   watchInvalidation(listener: () => void): () => void
   mode(): { bracketedPaste: boolean; watermark: number }
   /** Raw write; never calls another enqueuing Hub method. Invalid outside reservation. */
-  write(data: string): void
+  write(data: string, deliveryId?: string): void
 }
 export interface SessionInputPort {
+  /** Observe capability loss before queue acquisition; dispose after CR or cancellation. */
+  watchInputInvalidation(sessionId: string, listener: () => void): () => void
+  watchInput?(sessionId: string, listener: (deliveryId?: string, data?: string) => void): () => void
   withSessionInputOperation<T>(
     sessionId: string,
     callback: (input: ReservedSessionInput) => Promise<T>,

@@ -22,7 +22,24 @@ export function agentPromptErrorPresentation(
         'The agent is waiting for input.',
         'Inspect with "opencove agent read --node <selector> --screen"; have the human resolve the pending dialog, then retry after the agent is idle.',
       )
+    case 'agent.delivery_unsettled':
+      return pair(
+        'A previous delivery is unresolved.',
+        `Never resend; check opencove agent delivery ${details.deliveryId ?? '<id>'} --wait or inspect the screen.`,
+      )
     case 'agent.busy':
+      if (reason === 'competing_input') {
+        return pair(
+          'Other input reached the agent before this delivery could submit.',
+          'Inspect the screen and editor before deciding what to do next.',
+        )
+      }
+      if (reason === 'expected_turn_mismatch') {
+        return pair(
+          'The requested turn is no longer the active working turn.',
+          'Inspect currentState in the error details and agent get; no new turn is started by --expect-turn.',
+        )
+      }
       if (reason === 'delivery_in_progress') {
         return pair(
           'Another prompt delivery is in progress for this agent.',

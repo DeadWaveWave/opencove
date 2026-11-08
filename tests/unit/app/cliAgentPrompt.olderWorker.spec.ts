@@ -19,6 +19,7 @@ it('accepts an older Worker success and reports its evidence as unavailable', ()
   expect(normalizePromptDeliveryResult(olderWorkerResult)).toEqual({
     ...olderWorkerResult,
     textComparison: 'unavailable',
+    mode: 'turn',
   })
 })
 
@@ -28,6 +29,6 @@ it('keeps evidence a current Worker sent', () => {
     textComparison: 'different',
     comparisonProfile: 'claude-code-v1',
   }
-  expect(normalizePromptDeliveryResult(current)).toBe(current)
+  expect(normalizePromptDeliveryResult(current)).toEqual({ ...current, mode: 'turn' })
   expect(isPromptDeliveryResult({ ...olderWorkerResult, phase: 'something_else' })).toBe(false)
 })

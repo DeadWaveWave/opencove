@@ -310,10 +310,17 @@ export function commitAgentRunUpdate(
     schedule: (callback: () => void, delay: number) => () => void
     update: () => void
     publish: Parameters<typeof publishRunTransition>[3]['publish']
+    notifyEvidence: (receipt: Omit<RunStateReceipt, 'fence'>) => void
     notify: (receipt: Omit<RunStateReceipt, 'fence'>) => void
     flush: () => void
   },
 ): void {
+  const priorTurnId = entry.model.snapshot.turn?.id
+  const deliveryEvidence =
+    observation?.incarnation === entry.model.incarnation &&
+    observation?.hookEventName === 'UserPromptSubmit' &&
+    ['claude_hook', 'codex_hook'].includes(observation.source) &&
+    !observation.degraded
   const canRelease =
     !entry.continuation.degraded ||
     !!(
@@ -361,12 +368,25 @@ export function commitAgentRunUpdate(
       if (result.accepted || changed) {
         ports.notify(
           result.accepted && observation
-            ? acceptedRunStateReceipt(observation, result.model.snapshot.turn?.id, evidence)
+            ? acceptedRunStateReceipt(
+                observation,
+                result.model.snapshot.turn?.id ?? priorTurnId,
+                evidence,
+              )
             : {},
         )
       }
     },
     flush: ports.flush,
   })
+  if (deliveryEvidence && !result.accepted && observation) {
+    ports.notifyEvidence(
+      acceptedRunStateReceipt(
+        observation,
+        entry.history.submissionTurnId(evidence, result.model.snapshot.turn?.id ?? priorTurnId),
+        evidence,
+      ),
+    )
+  }
   entry.continuation.syncPollingDemand()
 }
