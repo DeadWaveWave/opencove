@@ -18,6 +18,7 @@ import { SidebarAgentItems } from './SidebarAgentItems'
 import { createSpaceSortableId, sidebarSortableTransition } from './SidebarDnd'
 import { ProjectIcon } from './ProjectIcon'
 import { useAppStore } from '../store/useAppStore'
+import { useAgentsNeedingYou } from '../store/useAgentAttentionStore'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { buildSpaceMinimap, type SpaceMinimapModel } from '../utils/spaceMinimap'
 import { SidebarSpaceMinimap } from './SidebarSpaceMinimap'
@@ -104,7 +105,8 @@ function SpaceGroup({
   const label = isRoot ? t('sidebar.rootCanvas') : group.name
   const hasAgents = group.agents.length > 0
   const isPinned = group.space?.pinned === true
-  const minimap = group.space ? buildSpaceMinimap(workspace, group.space) : null
+  const needsYou = useAgentsNeedingYou()
+  const minimap = group.space ? buildSpaceMinimap(workspace, group.space, needsYou) : null
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: isRoot ? `${workspaceId}:${group.id}` : createSpaceSortableId(workspaceId, group.id),
     disabled: isRoot,

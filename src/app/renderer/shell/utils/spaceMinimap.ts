@@ -12,6 +12,7 @@ import {
   resolveWindowSignal,
   type WindowSignal,
 } from '@contexts/workspace/presentation/renderer/utils/windowSignal'
+import { resolveNeedsYouSinceMs } from './sidebarAgents'
 
 export type SpaceMinimapStatus = WindowSignal
 
@@ -77,10 +78,16 @@ function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value))
 }
 
-/** Every window in a root Space and its child Spaces, placed in the Space's own frame. */
+const NO_ONE_NEEDS_YOU: ReadonlyMap<string, number> = new Map()
+
+/**
+ * Every window in a root Space and its child Spaces, placed in the Space's own frame. An Agent
+ * whose turn you have not answered (`needsYou`, as in `buildSidebarAgentItems`) waits for you.
+ */
 export function buildSpaceMinimap(
   workspace: WorkspaceState,
   space: WorkspaceSpaceState,
+  needsYou: ReadonlyMap<string, number> = NO_ONE_NEEDS_YOU,
 ): SpaceMinimapModel {
   const spaceIds = collectSpaceIds(space, workspace.spaces)
   const nodeIds = new Set(
@@ -106,7 +113,10 @@ export function buildSpaceMinimap(
       nodeId: node.id,
       title: node.data.title,
       family: resolveWindowKindFamily(node.data),
-      status: resolveWindowSignal(node.data),
+      status:
+        resolveNeedsYouSinceMs(workspace.id, node, needsYou) === undefined
+          ? resolveWindowSignal(node.data)
+          : 'waiting',
       left,
       top,
       width: clamp01((rect.x + rect.width - frame.x) / frame.width) - left,

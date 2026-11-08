@@ -13,7 +13,7 @@ Agent island。三者读同一份 Agent 模型（`summarizeAgentActivity`，与�
   带三个像素点；没有 Agent 等待或工作时隐藏。
 - 「等你」包括两种：卡在提示上的 Agent（运行状态 `waiting`），以及结束了一轮、卡片出过但你还没回应的
   Agent（`useAgentAttentionStore`，见 [Agent attention](../agent/ATTENTION.md#unanswered-agents)）。
-  后者的等待时长从卡片出现算起。侧栏收件箱与项目角标读同一份。
+  后者的等待时长从卡片出现算起。侧栏的收件箱、项目角标、Agent 行和 Space 计数与小地图都读同一份。
 - 悬停 150ms 预览列表，离开留 300ms 余量；单击或 Enter 固定打开，ArrowDown 打开并聚焦第一行。
   悬停预览不抢焦点，也不替换顶栏里已经打开的其他面板。列表与控制中心共用右上角，打开一个会关闭另一个。
 
