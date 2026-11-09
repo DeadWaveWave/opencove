@@ -70,6 +70,8 @@ export interface Command {
   examples?: string[]
   options?: Record<string, OptionSpec>
   positionals?: PositionalSpec[]
+  /** Use the caller node's current container for implicit node create/list targets. */
+  currentContainer?: boolean
   targetSpace?: 'required' | 'optional'
   mutation?: boolean
   stream?: boolean

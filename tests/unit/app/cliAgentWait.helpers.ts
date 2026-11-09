@@ -24,7 +24,7 @@ export const snapshot = (
 })
 export function fixture(states = [snapshot()]) {
   let seq = 5
-  const streams: { url: URL; send(value: unknown): void; cancelled: boolean }[] = []
+  const streams: { url: URL; send(value: unknown): void; close(): void; cancelled: boolean }[] = []
   const controller = new AbortController()
   const query = vi.fn(
     async (id: string, payload: unknown): Promise<unknown> =>

@@ -68,9 +68,12 @@ export function registryWaitFixture(
     }
   })
   let onSubscribe = () => {}
+  let subscriptions = 0,
+    cancellations = 0
   const events: AgentRunEvent[] = []
   const fetch = vi.fn(async (url: string | URL | Request) => {
     onSubscribe()
+    subscriptions++
     const params = new URL(String(url)).searchParams
     let unsubscribe = () => {}
     return new Response(
@@ -90,6 +93,7 @@ export function registryWaitFixture(
           )
         },
         cancel() {
+          cancellations++
           unsubscribe()
         },
       }),
@@ -109,6 +113,7 @@ export function registryWaitFixture(
     })
   return {
     registry,
+    subscriptions: () => ({ opened: subscriptions, closed: cancellations }),
     observe,
     query,
     fetch,

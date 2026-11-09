@@ -25,18 +25,18 @@ Agent 和 Terminal 的运行时行为不通过通用 `node.update` 表达；它�
 Query:
 
 ```bash
-opencove node list [space locator] [--kind <kind>] [--pretty]
+opencove node list [--root-canvas | space locator] [--kind <kind>] [--pretty]
 opencove node get --node <selector> [--space <selector>] [--pretty]
 ```
 
 Command:
 
 ```bash
-opencove node create note [space locator] [--title <text>] [--text <text>] [--frame <json>] [--focus] [--pretty]
-opencove node create task [space locator] --requirement <text> [--title <text>] [--priority <low|medium|high|urgent>] [--tag <tag>] [--frame <json>] [--focus] [--pretty]
-opencove node create website [space locator] --url <url> [--title <text>] [--pinned] [--session-mode <shared|incognito|profile>] [--profile <id>] [--frame <json>] [--focus] [--pretty]
-opencove node create agent [space locator] [--prompt <text>] [--provider <id>] [--model <id>] [--frame <json>] [--focus] [--pretty]
-opencove node create terminal [space locator] [--shell <path>] [--command <text>] [--profile <id>] [--frame <json>] [--focus] [--pretty]
+opencove node create note [--root-canvas | space locator] [--title <text>] [--text <text>] [--frame <json>] [--focus] [--pretty]
+opencove node create task [--root-canvas | space locator] --requirement <text> [--title <text>] [--priority <low|medium|high|urgent>] [--tag <tag>] [--frame <json>] [--focus] [--pretty]
+opencove node create website [--root-canvas | space locator] --url <url> [--title <text>] [--pinned] [--session-mode <shared|incognito|profile>] [--profile <id>] [--frame <json>] [--focus] [--pretty]
+opencove node create agent [--root-canvas | space locator] [--prompt <text>] [--provider <id>] [--model <id>] [--frame <json>] [--focus] [--pretty]
+opencove node create terminal [--root-canvas | space locator] [--shell <path>] [--command <text>] [--profile <id>] [--frame <json>] [--focus] [--pretty]
 opencove node update note --node <id> [--title <text>] [--text <text>] [--frame <json>] [--pretty]
 opencove node update task --node <id> [--title <text>] [--requirement <text>] [--priority <low|medium|high|urgent>] [--status <todo|doing|ai_done|done>] [--tag <tag>] [--frame <json>] [--pretty]
 opencove node update website --node <id> [--title <text>] [--url <url>] [--pinned <true|false>] [--session-mode <shared|incognito|profile>] [--profile <id>] [--frame <json>] [--pretty]
@@ -51,7 +51,7 @@ opencove canvas focus space [space locator] [--pretty]
 2. 成功后调用 `canvas.focus`。
 3. 返回 node result 和 focus delivery metadata。
 
-Focus 失败不会回滚已创建的 node。
+Focus 失败不会回滚已创建的 node。显示 root canvas 上的新节点时，用创建命令的 `--focus`，或 `opencove canvas focus node --node <id>`。
 
 ## Space Locator
 
@@ -73,6 +73,25 @@ CLI 将 locator flags 转成 DTO，真正解析在 workspace application logic �
 - `--project` 可用于收窄 `--space-name`、`--worker --branch` 或 `--worker --path`。
 - 匹配必须唯一；无匹配返回 `space.not_found`，多匹配返回 ambiguity error。
 - CLI 不自行推断 cwd、branch、mount 或 worktree 归属。
+
+## Root canvas and defaults
+
+`--root-canvas` 把新节点放在项目画布上，不加入任何 Space。可用 `--project <selector>` 选择项目；在 OpenCove 内省略时使用调用者项目，外部调用必须显式指定项目。该选项不能与 `--space`、`--space-name`、`--worker`、`--branch` 或 `--path` 同用。
+
+```sh
+opencove node create note --root-canvas --project project-123 --text "Canvas note" --focus
+opencove node list --root-canvas --project project-123
+```
+
+在 OpenCove 内，`node create` 未指定目标时读取调用者节点的当前归属：在 Space 内则创建到该 Space，在所有 Space 外则创建到 root canvas。启动后移动终端也采用新归属；读取调用者失败会报错，不会默认为 root。显式 `--project` 不会自动选择 root，创建时还需指定 Space 或 `--root-canvas`。
+
+`node list` 在 Space 内默认列该 Space，在所有 Space 外默认列调用者项目的全部节点。`--root-canvas` 仅列选定项目中 `spaceId: null` 的节点；`--kind`、`--fields`、`--limit` 和 table 输出仍可组合使用。在 OpenCove 外未指定项目的 list 沿用当前活跃项目。
+
+root 创建未指定 x/y 时，在 OpenCove 内优先放在你旁边：你在 Space 内时，从该 Space 的右侧开始寻找空位；你在所有 Space 外时，从你的节点右侧开始。定位以目标项目中调用者的当前归属和位置为准，避开已有节点及所有具有边界矩形的 Space。无法在该项目定位调用者时（包括远端身份在当前 Worker 不存在），或在 OpenCove 外调用时，从画布原点开始寻找空位。
+
+这只是尽力靠近调用者的提示，不保证可见；需要显示新节点时使用 `--focus` 或 `opencove canvas focus node --node <id>`。仅指定 width/height 的 `--frame` 仍会自动定位；指定 x/y 时沿用既有坐标规则，完整 x/y 精确定位且不做避让。root 创建要求项目已有默认 mount 和可用 endpoint。
+
+远端托管 agent 的连接方式和限制与其他画布命令一致；本次不新增远端路由或授权能力。结果结构不变，root 节点的 `spaceId` 为 `null`。
 
 ## Control Surface Contracts
 

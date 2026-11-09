@@ -23,10 +23,10 @@ it('re-baselines on resync using fresh queries', async () => {
   const f = fixture(),
     pending = f.wait()
   await vi.waitFor(() => expect(f.streams).toHaveLength(1))
-  f.states[0] = snapshot('a', 'waiting')
+  f.states[0] = snapshot('a', 'working')
   f.streams[0].send({ type: 'resync_required', epoch: 'epoch', seq: 5 })
   await vi.waitFor(() => expect(f.streams).toHaveLength(2))
-  expect(f.query.mock.calls.filter(([id]) => id === 'agent.list')).toHaveLength(4)
+  expect(f.query.mock.calls.filter(([id]) => id === 'agent.list')).toHaveLength(6)
   f.streams[1].send(f.event())
   expect((await pending).agents[0].state).toBe('idle')
   expect(f.streams.every(s => s.cancelled)).toBe(true)
@@ -112,10 +112,16 @@ it('reconciles one get against a fixed post-get cursor without requiring quiesce
   )
   const pending = f.wait('turn-end')
   await vi.waitFor(() => expect(f.streams).toHaveLength(1))
-  expect(f.query.mock.calls.map(([id]) => id)).toEqual(['agent.list', 'agent.get', 'agent.list'])
+  expect(f.query.mock.calls.map(([id]) => id)).toEqual([
+    'agent.list',
+    'agent.get',
+    'agent.list',
+    'agent.list',
+  ])
   expect(f.streams[0].url.searchParams.get('afterSeq')).toBe('4')
   f.streams[0].send(f.event('a', 'idle', true, 4))
   f.streams[0].send(f.event('a', 'idle', true, 5))
+  f.streams[0].send(f.event('other', 'working', false, 6))
   await pending
 })
 it('keeps ended outcome separate from later snapshots while waiting for all nodes', async () => {

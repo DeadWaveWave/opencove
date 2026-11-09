@@ -130,6 +130,8 @@ export function registerNodeControlHandlers(
           runtime,
           input,
           now: ctx.now(),
+          callerNodeId:
+            ctx.requestAuth?.kind === 'session-grant' ? ctx.requestAuth.grant.nodeId : null,
         })
       }),
   })

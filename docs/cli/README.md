@@ -12,7 +12,7 @@ Agent terminals cannot answer permission dialogs, read or change private setting
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `project`   | `list`                                                                                                                                                                                            |
 | `space`     | `list`, `get`                                                                                                                                                                                     |
-| `node`      | `list`, `get`, `create note/task/website/agent/terminal`, `update note/task/website`, `delete`                                                                                                    |
+| `node`      | `list [--root-canvas]`, `get`, `create note/task/website/agent/terminal [--root-canvas]`, `update note/task/website`, `delete`                                                                                                    |
 | `canvas`    | `focus node`, `focus space`                                                                                                                                                                       |
 | `api`       | `ops`, `schema <operation-id>`, `call <operation-id>`                                                                                                                                             |
 | Runtime     | `ping`, `status`, `worker start/status/stop`, `runtime inspect/verify/prepare`                                                                                                                    |
@@ -54,6 +54,8 @@ Plugin distribution 返回 `failed`/`conflict` 时 exit 1，candidate 结果位�
 | 4    | 认证或授权失败                                       |
 | 5    | 协议不兼容                                           |
 | 6    | profile/space 歧义                                   |
+| 10   | 观察到 agent 等待；可能需要用户处理，先查看再行动       |
+| 11   | 等待条件满足前，未完成目标已退出                       |
 | 124  | 请求、agent wait 或 PTY 握手超时                     |
 | 130  | 中断（agent wait 关闭流）或 PTY detach               |
 
@@ -72,6 +74,8 @@ Plugin distribution 返回 `failed`/`conflict` 时 exit 1，candidate 结果位�
 `worker status/stop` 使用本地生命周期模块，仅检查 worker 记录；不接受 `--endpoint`。
 Space locator 不推断 cwd：使用 `--space`、`--space-name` 或 `--worker` 与 `--branch`/`--path`，必要时用 `--project` 收窄。
 
+`node create` 支持 `--root-canvas`，在项目画布上创建、不加入任何 Space；外部调用需同时指定 `--project <selector>`。在 OpenCove 内不指定目标时，`node create` 使用调用者节点的当前 Space，或在调用者不属于任何 Space 时使用 root canvas。`node list` 在后一种情况下默认列整个项目；`node list --root-canvas` 仅列 root 节点。显式 `--project` 单独用于创建仍会报错，需补 Space 目标或 `--root-canvas`。未指定 x/y 时，在 OpenCove 内优先放在你的节点或所在 Space 旁边；无法在目标项目定位调用者时从原点寻找空位，不保证可见；用 `--focus` 显示新节点。详见 [Canvas node control](CANVAS_NODE_CONTROL.md)。
+
 ## Help and introspection
 
 `opencove --help` 显示分组及全局选项；`opencove <group> --help` 列子命令；命令级 `--help` 显示参数、示例与全局选项提示，不连接 Worker。
@@ -83,6 +87,8 @@ Space locator 不推断 cwd：使用 `--space`、`--space-name` 或 `--worker` �
 CLI help golden 更新使用 `pnpm exec vitest run tests/unit/app/cliInputOutput.spec.ts tests/unit/app/cliOutputBehavior.spec.ts --update`，不要手改生成的 snapshot。
 
 CLI 测试先运行 `pnpm build:cli`，再运行 `pnpm exec vitest run tests/unit/app/cli*.spec.ts`。
+更新帮助 golden snapshots：`pnpm build:cli` 后运行 `pnpm exec vitest run tests/unit/app/cliCore.spec.ts tests/unit/app/cliHelpErrors.spec.ts tests/unit/app/cliSchemaValidation.spec.ts --update`；由 Vitest 生成，不手改 `.snap`。
+
 测试的 global setup 在系统临时目录重新构建并逐字节校验工作树中的 CLI 产物；产物缺失或过期时拒绝继续，不覆盖工作树，临时构建在成功或失败后都会清理。
 
 ## Context state versus session lifecycle
@@ -141,7 +147,7 @@ is null. Final-message reads use the Worker's `agent.finalMessage` query.
 | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `agent list`                                              | `{epoch, seq, agents: [snapshot + title]}`                                                                                                                                                     | Snapshot fields + title; table columns: nodeId, title, provider, state, blockedReason, turn.startedAt, quality                                                                         |
 | `agent get --node <selector>`                             | Snapshot + title; non-agent nodes or absent run state fail with agent.not_found (exit 1)                                                                                                       | Snapshot fields + title; JSON only                                                                                                                                                     |
-| `agent wait --node <selector> ... --until <condition>`    | `{until, mode, agents: [snapshot]}`; turn-end adds endedTurn and endedTurnOutcome                                                                                                              | Snapshot fields + endedTurn/endedTurnOutcome; JSON only                                                                                                                                |
+| `agent wait --node <selector> ... --until <condition>`    | `{until, mode, agents: [snapshot]}`; turn-end adds completion, endedTurn and endedTurnOutcome                                                                                                              | Snapshot fields + completion/endedTurn/endedTurnOutcome; JSON only                                                                                                                                |
 | `agent read --node <selector> [--last] [--turn <turnId>]` | Plain message text; JSON includes `source: hook\|transcript` and `truncated`; exact `--turn` never falls back                                                                                  | Hook: nodeId, sessionId, turnId, promptId, outcome, message, truncated, source; transcript: sessionId, provider, startedAt, cwd, resumeSessionId, message, truncated, source; no table |
 | `agent read --node <selector> --screen [--lines <n>]`     | Rendered screen text at snapshot cols/rows: cursor spacing and wide cells preserved; trailing spaces/blank rows trimmed, last n rows (default 40); JSON is `{nodeId, sessionId, lines: [...]}` | nodeId, sessionId, lines; no table                                                                                                                                                     |
 | `skill`                                                   | Plain SKILL.md; `-o json` returns `{version, content}`                                                                                                                                         | version, content; no table                                                                                                                                                             |
@@ -153,20 +159,25 @@ shape as `turn`. Projection is item-relative and preserves list envelopes.
 
 Wait defaults to `--all` and a 20s overall timeout. The minimum budget is 250ms;
 smaller budgets fail with usage exit 2 before any connection or selector lookup. Repeat `--node` to select several
-agents; `--any` stops on the first match. For idle/waiting/exited, an already true
-baseline counts; unknown or degraded evidence never satisfies idle. `--all` checks
-current states together; turn-end remembers each new completion. A turn boundary
-can be completed, failed, aborted or unknown: check `endedTurnOutcome` before
-claiming success. The latest snapshot's `turnOutcome` remains unchanged.
+agents. **`--any` stops on the first success OR waiting/exited observation of an unfulfilled target.**
+`--all` remembers fulfilled node/session bindings, including each new `turn-end` completion.
+A session change or unbinding resets progress; another node cannot inherit that completion.
+Results include `completion: {nodeId, sessionId, turnId, outcome}` with the completion’s own identity.
+Unknown or degraded evidence never satisfies idle; degraded waiting does not satisfy `--until waiting`. Inspect `endedTurnOutcome` before
+claiming success; the latest snapshot's `turnOutcome` remains unchanged.
 
-The Worker owns run state. The CLI only holds cursor-fenced projections: since
-`agent.get` has no watermark, it brackets fresh get reads with matching `agent.list`
-epoch/seq watermarks, retrying a changing baseline within the overall deadline.
-It subscribes to `/events?stream=agent` from that cursor with one nodeId-filtered
-stream per node. It resumes each accepted cursor after disconnect and ignores
-old/duplicate events. On `resync_required` or epoch change, all streams close and
-all nodes re-baseline; turn-end evidence resets because lost history cannot prove
-a completion. No persistence, provider inference or prompt retry is added.
+Wait now stops by default at waiting (exit 10) or an unfulfilled target's exit (11).
+Waiting observed; the agent may need the user — inspect before acting. Ask the user
+to resolve it in OpenCove (Desktop or this Worker's Web UI); inspect with
+`opencove agent read --node <id> --screen` using the same connection options and
+matching session/turn IDs, then repeat the wait. Prefer `--turn` for resumable completion.
+`--through-waiting` continues when waiting is reported, without suppressing 11.
+See [wait semantics](../agent/WAIT.md) for status details, precedence and freshness.
+
+The Worker owns run state. CLI uses binding-aware get and cursor watermarks with one
+global ordered stream. Each (re)subscription captures a new watermark before attention
+decisions; stale replay alone cannot stop the wait. Resync refreshes provisional state
+and retains fulfilled progress only for unchanged bindings. Initial satisfied states still return immediately.
 
 After `agent prompt`, use `agent wait --node <selector> --until idle`: already-idle
 counts, so a fast completion before wait begins is not missed. `turn-end` remains
@@ -443,3 +454,5 @@ Deleting the node removes queryable OpenCove history, including caches; it does 
 erase provider transcripts, existing backups or forensic remnants.
 `opencove agent history clear --node <selector>` (`agent.history.clear`, interact scope) deletes the node’s archived and in-memory replies across retained incarnations, leaving the node, provider transcripts, backups, run state, active turns and delivery records unchanged; later ends store normally, and archive unavailability clears memory but exits 1. Unqualified reads, prompt-ID selectors and labelled transcript fallback
 retain current-incarnation semantics. Remote history is not routed across Workers.
+
+Help goldens are generated by Vitest: `pnpm exec vitest run tests/unit/app/cliCore.spec.ts tests/unit/app/cliInputOutput.spec.ts tests/unit/app/cliAgentQueries.spec.ts --update`. Never edit generated snapshots by hand.

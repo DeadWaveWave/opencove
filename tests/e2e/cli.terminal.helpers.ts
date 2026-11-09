@@ -1,6 +1,7 @@
 import { expect, type Page } from '@playwright/test'
 import { randomUUID } from 'node:crypto'
 import { stripVTControlCharacters } from 'node:util'
+import { terminalExitStatus } from '../support/cliTerminalCommand'
 
 // Construct markers in the shell: neither complete marker occurs in the echoed input.
 function printMarker(suffix: string): string {
@@ -19,10 +20,7 @@ export async function terminalCommand(
   const begin = `${label}_BEGIN_${nonce}`
   const end = `${label}_END_${nonce}`
   // Capture the CLI process status immediately, before printing the end marker.
-  const status =
-    process.platform === 'win32'
-      ? 'Write-Output ("`nexit=" + $LASTEXITCODE)'
-      : 'printf \'\\nexit=%s\\n\' "$?"'
+  const status = terminalExitStatus(process.platform)
   const input = [printMarker(begin), command, status, printMarker(end)].join('; ')
   const accepted = await page.evaluate(
     async payload => {
