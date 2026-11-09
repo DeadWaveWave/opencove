@@ -35,6 +35,11 @@ const stateWaitRender = {
     runFields
       .filter(field => field !== 'title')
       .concat([
+        'completion',
+        'completion.nodeId',
+        'completion.sessionId',
+        'completion.turnId',
+        'completion.outcome',
         'endedTurn',
         'endedTurn.id',
         'endedTurn.startedAt',
@@ -191,11 +196,10 @@ export const agentQueryCommands = [
       '--node <selector> (--turn <turnId> | --until idle|waiting|exited|turn-end [--node <selector> ...] [--any|--all]) [--timeout <duration>] [options]',
     summary: 'Wait until agents reach a state or finish a turn',
     description: [
-      'Wait without sending input. After prompting, save turnId: prompt → delivery status → wait --turn <turnId> → read --turn <turnId> -o json. Never resend because waiting times out.',
-      '--turn selects one exact turn on one node, conflicts with --until/--any, and waits through permission/question pauses and provider continuations. Ended results include outcome, state, durability and retained deliveryIds/promptIds. Every ended outcome exits 0: check outcome and reply before claiming success.',
-      '--until waits for idle, waiting, exited or turn-end. Existing state matches immediately; idle requires no active turn and known, nondegraded state. turn-end observes an end after waiting starts. Multiple nodes use --all (default) or --any.',
-      'Exit codes: 0 condition met; 1 unavailable history; 2 invalid input; 124 timeout (lastKnown on stderr); 130 interruption. Agents keep running. Retention, restart/remote limits and error recovery: opencove skill.',
-      'deliveryIds are retained correlations of OpenCove deliveries with this turn, including refused or uncertain attempts. Membership proves neither submission nor consumption, and an empty list proves nothing either: delivery records live in memory only, are cleared when OpenCove restarts and expire 30 minutes after resolving; inspect each deliveryId with opencove agent delivery <id>. promptIds are the provider prompt IDs for this turn (Claude continuations included); agent delivery does not accept them.',
+      'Wait without sending input. Save turnId: prompt → delivery status → wait --turn <turnId> → read --turn <turnId>. Never resend after timeout.',
+      '--turn selects one exact turn and includes provider continuations. All ended outcomes exit 0; check outcome. --until selects idle, waiting, exited or a future turn-end. Idle requires no active turn and nondegraded evidence. --all remembers fulfilled bindings; a session change resets progress; --any stops on the first success OR waiting/exited observation of an unfulfilled target.',
+      'Exit codes: 0 condition met; 1 unavailable history; 2 invalid input; 10 waiting observed (the agent may need the user — inspect before acting); 11 target exited; 124 timeout; 130 interruption. --through-waiting continues when waiting is reported; it does not suppress 11. Resolve in OpenCove, inspect agent read --screen with the same connection options and matching session/turn IDs, then repeat the wait. Prefer --turn: turn-end cannot resume an already observed completion. Details: opencove skill.',
+      'deliveryIds are retained correlations, including refused or uncertain attempts; membership proves neither submission nor consumption. Records expire 30 minutes after resolving and clear on restart: inspect each deliveryId with opencove agent delivery <id>. promptIds are the provider prompt IDs, not delivery IDs.',
     ].join('\n\n'),
     options: {
       node: { ...stringOption('Node ID', true), multiple: true },
@@ -214,12 +218,17 @@ export const agentQueryCommands = [
       any: {
         type: 'boolean',
         conflicts: ['all'],
-        description: 'Resolve when any selected node matches',
+        description:
+          'Stop on the first success or waiting/exited observation of an unfulfilled target',
       },
       all: {
         type: 'boolean',
         conflicts: ['any'],
         description: 'Resolve when all selected nodes match (default)',
+      },
+      'through-waiting': {
+        type: 'boolean',
+        description: 'Continue waiting when a target reports waiting',
       },
       timeout: {
         type: 'number',
@@ -296,6 +305,7 @@ export const agentQueryCommands = [
         until: ctx.options.until as WaitUntil,
         turnId: ctx.options.turn as string | undefined,
         any: ctx.options.any === true,
+        throughWaiting: ctx.options['through-waiting'] === true,
         timeoutMs: Number(ctx.options.timeout ?? 20000),
         connection: ctx.connection!,
         fetch: ctx.io.fetch,

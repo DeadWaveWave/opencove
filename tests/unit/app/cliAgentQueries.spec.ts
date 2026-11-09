@@ -2,6 +2,7 @@
 import { expect, it, vi } from 'vitest'
 import { run } from '../../../src/app/cli/core/run'
 import { identityFixture, node, who } from './cliIdentity.helpers'
+import { fixture as streamFixture } from './cliAgentWait.helpers'
 import type { AgentRunSnapshot } from '../../../src/shared/contracts/dto/agentRunState'
 
 const snapshot: AgentRunSnapshot = {
@@ -28,23 +29,26 @@ const finalMessage = {
 function fixture(inside = false) {
   const f = identityFixture(inside)
   const originalFetch = f.io.fetch
+  const stream = streamFixture()
   f.io.fetch = async (url, init) =>
-    JSON.parse(String(init?.body)).id === 'agent.finalMessage'
-      ? new Response(
-          JSON.stringify({
-            ok: false,
-            error: {
-              code: 'agent.final_message_unavailable',
-              details: { reason: 'no_ended_turn' },
-            },
-          }),
-        )
-      : originalFetch(url, init)
+    String(url).includes('/events?')
+      ? stream.fetch(url)
+      : JSON.parse(String(init?.body)).id === 'agent.finalMessage'
+        ? new Response(
+            JSON.stringify({
+              ok: false,
+              error: {
+                code: 'agent.final_message_unavailable',
+                details: { reason: 'no_ended_turn' },
+              },
+            }),
+          )
+        : originalFetch(url, init)
   f.values['agent.list'] = { epoch: 'e', seq: 5, agents: [snapshot] }
   f.values['agent.get'] = snapshot
   f.values['node.get'] = { node: { ...node, kind: 'agent' } }
   f.values['session.finalMessage'] = finalMessage
-  return f
+  return { ...f, streams: stream.streams }
 }
 it('lists titles and defaults to the caller space, preserving the cursor envelope', async () => {
   const f = fixture(true)
@@ -200,6 +204,8 @@ it('wait timeout exits 124 with lastKnown on stderr and no stdout', async () => 
   expect(
     await run(['agent', 'wait', '--node', 'Shell', '--until', 'idle', '--timeout', '250ms'], f.io),
   ).toBe(124)
+  expect(f.streams).toHaveLength(1)
+  expect(f.streams[0].cancelled).toBe(true)
   expect(f.out()).toBe('')
   expect(f.error()).toMatchObject({
     code: 'agent.wait_timeout',
@@ -266,7 +272,7 @@ it('re-baselines through uncached CLI queries and closes the SSE body on resync'
   f.values['agent.list'] = { epoch: 'e', seq: 5, agents: [f.values['agent.get']] }
   send('data: {"type":"resync_required","epoch":"e","seq":5}\n\n')
   expect(await pending).toBe(0)
-  expect(f.requests.filter(r => r.id === 'agent.list')).toHaveLength(4)
+  expect(f.requests.filter(r => r.id === 'agent.list')).toHaveLength(5)
   expect(JSON.parse(f.out()).agents[0].state).toBe('idle')
   expect(cancelled).toHaveBeenCalledOnce()
 })
@@ -303,29 +309,58 @@ it('normalizes an older Worker get snapshot with missing lastEndedTurn to null',
   expect(JSON.parse(f.out())).toEqual({ lastEndedTurn: null })
 })
 
-it('exact wait preserves the CLI timeout contract during a permission pause', async () => {
-  const f = fixture()
-  f.values['agent.get'] = { ...snapshot, state: 'waiting', blockedReason: 'permission' }
-  f.values['agent.list'] = { epoch: 'e', seq: 5, agents: [f.values['agent.get']] }
-  expect(
-    await run(['agent', 'wait', '--node', 'Shell', '--turn', 'turn', '--timeout', '250ms'], f.io),
-  ).toBe(124)
-  expect(f.out()).toBe('')
-  expect(f.error()).toMatchObject({
-    code: 'agent.wait_timeout',
-    details: {
-      lastKnown: {
-        agents: [
-          expect.objectContaining({
-            state: 'waiting',
-            blockedReason: 'permission',
-            turn: expect.objectContaining({ id: 'turn' }),
-          }),
-        ],
-      },
-    },
-  })
-})
+it.each([false, true])(
+  'exact permission waiting uses a live SSE (through-waiting=%s)',
+  async through => {
+    const f = fixture()
+    f.values['agent.get'] = { ...snapshot, state: 'waiting', blockedReason: 'permission' }
+    f.values['agent.list'] = { epoch: 'e', seq: 5, agents: [f.values['agent.get']] }
+    const args = ['agent', 'wait', '--node', 'Shell', '--turn', 'turn', '--timeout', '250ms']
+    if (through) {
+      args.push('--through-waiting')
+    }
+    expect(await run(args, f.io)).toBe(through ? 124 : 10)
+    expect(f.out()).toBe('')
+    expect(f.error()).toMatchObject(
+      through
+        ? {
+            code: 'agent.wait_timeout',
+            details: {
+              lastKnown: {
+                agents: [
+                  expect.objectContaining({
+                    state: 'waiting',
+                    blockedReason: 'permission',
+                    turn: expect.objectContaining({ id: 'turn' }),
+                  }),
+                ],
+              },
+            },
+          }
+        : {
+            code: 'agent.wait_attention',
+            details: {
+              mode: 'all',
+              turnId: 'turn',
+              targets: [
+                {
+                  nodeId: node.id,
+                  sessionId: snapshot.sessionId,
+                  status: 'waiting',
+                  state: 'waiting',
+                  blockedReason: 'permission',
+                  turnId: 'turn',
+                },
+              ],
+            },
+            hint: expect.stringContaining('same --turn'),
+          },
+    )
+    expect(f.streams).toHaveLength(1)
+    expect(f.streams[0].cancelled).toBe(true)
+    expect(f.requests.every(r => !r.id.includes('write') && !r.id.includes('prompt'))).toBe(true)
+  },
+)
 it('exact wait gives unknown-turn guidance through the CLI', async () => {
   const f = fixture()
   expect(await run(['agent', 'wait', '--node', 'Shell', '--turn', 'missing'], f.io)).toBe(1)
@@ -351,4 +386,40 @@ it('leaves displaced live sessions untitled and enriches only the current node o
     { sessionId: 'displaced', nodeId: null, title: null },
     { sessionId: 'current', nodeId: node.id, title: 'Shell' },
   ])
+})
+it('projects completion identity separately from the current snapshot through the CLI', async () => {
+  const f = fixture()
+  const pending = run(
+    [
+      'agent',
+      'wait',
+      '--node',
+      'Shell',
+      '--until',
+      'turn-end',
+      '--fields',
+      'sessionId,completion.sessionId,completion.turnId,completion.outcome',
+    ],
+    f.io,
+  )
+  await vi.waitFor(() => expect(f.streams).toHaveLength(1))
+  f.streams[0].send({
+    type: 'agent.turn_completed',
+    epoch: 'e',
+    seq: 6,
+    snapshot: { ...snapshot, state: 'idle', turn: null, turnOutcome: 'failed' },
+    endedTurn: snapshot.turn,
+  })
+  expect(await pending).toBe(0)
+  expect(JSON.parse(f.out())).toEqual({
+    until: 'turn-end',
+    mode: 'all',
+    agents: [
+      {
+        sessionId: snapshot.sessionId,
+        completion: { sessionId: snapshot.sessionId, turnId: 'turn', outcome: 'failed' },
+      },
+    ],
+  })
+  expect(f.streams[0].cancelled).toBe(true)
 })

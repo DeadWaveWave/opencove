@@ -24,9 +24,11 @@ it.each(
       )
       if (mode === 'idle') {
         await expect(pending).rejects.toMatchObject({
-          exitCode: 124,
+          exitCode: 11,
           details: {
-            lastKnown: { agents: [expect.objectContaining({ sessionId: 'r', state: 'exited' })] },
+            targets: [
+              expect.objectContaining({ sessionId: 'r', state: 'exited', status: 'exited' }),
+            ],
           },
         })
       } else {
@@ -88,7 +90,7 @@ it.each(
       expect(gets).toBeGreaterThanOrEqual(1)
       expect(gets).toBeLessThanOrEqual(2)
       expect(traffic).toBeGreaterThan(5)
-      expect(f.query.mock.calls.filter(([id]) => id === 'agent.list').length).toBeLessThanOrEqual(3)
+      expect(f.query.mock.calls.filter(([id]) => id === 'agent.list').length).toBeLessThanOrEqual(4)
     } finally {
       clearInterval(timer)
       clearTimeout(completion)

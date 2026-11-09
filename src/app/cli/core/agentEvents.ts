@@ -10,6 +10,7 @@ export async function* agentEvents(options: {
   afterSeq: number
   fetch: typeof fetch
   signal: AbortSignal
+  onOpen?: () => Promise<void>
 }): AsyncGenerator<unknown> {
   const url = new URL(`${options.connection.endpoint}/events`)
   for (const [key, value] of Object.entries({
@@ -55,6 +56,7 @@ export async function* agentEvents(options: {
     data: string[] = [],
     pendingCr = false
   try {
+    await options.onOpen?.()
     while (!options.signal.aborted) {
       // eslint-disable-next-line no-await-in-loop
       const chunk = await reader.read()

@@ -120,17 +120,15 @@ it.each(['turn_not_found', 'no_ended_turn'])(
   },
 )
 it.each(['permission', 'question'] as const)(
-  'times out with 124 and lastKnown while A waits for %s',
+  'stops with 10 while A reports waiting for %s',
   async blockedReason => {
     vi.useFakeTimers()
     const f = turnFixture({ ...snapshot('a', 'waiting'), blockedReason, turn: active })
     const pending = f.wait()
     const assertion = expect(pending).rejects.toMatchObject({
-      exitCode: 124,
+      exitCode: 10,
       details: {
-        lastKnown: {
-          agents: [expect.objectContaining({ turn: active, state: 'waiting', blockedReason })],
-        },
+        targets: [expect.objectContaining({ turnId: active.id, state: 'waiting', blockedReason })],
       },
     })
     await vi.advanceTimersByTimeAsync(1000)

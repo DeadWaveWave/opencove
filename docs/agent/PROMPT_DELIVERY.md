@@ -295,7 +295,8 @@ opencove agent read --node node-123 --turn <turnId>
 ```
 
 Replace `turn-123` with prompt's saved `turnId`. `wait --turn` waits for that exact
-OpenCove turn, including permission/question pauses, even if another turn has started.
+OpenCove turn, including continuations, even if another turn has started. Matching waiting
+now stops with 10 by default; `--through-waiting` continues. See [wait recovery](WAIT.md).
 It returns `{ nodeId, sessionId, turnId, outcome, endedAt?, state }` and exits 0 for
 every ended outcome (`completed`, `failed`, `aborted`, `unknown`); inspect `outcome`.
 `read --turn` selects the same turn and never substitutes a transcript message.

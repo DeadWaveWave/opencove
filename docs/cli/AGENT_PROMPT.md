@@ -75,8 +75,8 @@ opencove agent read --node node-123 --turn turn-123 -o json
 ```
 
 Replace `turn-123` with prompt's returned `turnId`. Exact waiting survives a newer
-turn starting and keeps waiting through permission/question pauses in the selected
-turn. It returns `{nodeId, sessionId, turnId, outcome, endedAt?, state}` and exits 0
+turn starting. Matching waiting now stops with exit 10; use `--through-waiting` to
+continue waiting when a target reports waiting. See [wait recovery](../agent/WAIT.md). It returns `{nodeId, sessionId, turnId, outcome, endedAt?, state}` and exits 0
 for every ended outcome; inspect `outcome`. Use one node, without `--until` or `--any`.
 Unknown/evicted turns or restart without retained evidence exit 1; inspect `agent get`
 and its `lastEndedTurn`. Timeout exits 124 with `lastKnown` on stderr. Older Workers
@@ -86,7 +86,7 @@ hook results include `outcome`, which can be failed/aborted/unknown.
 `--turn` uses hook history only. `agent.final_message_unavailable` preserves its
 `details.reason`: `turn_not_ended`, `turn_not_found` (including eviction),
 `provider_sent_no_message`, or `no_ended_turn`. Prompt-ID selection keeps the last 8 ended turns per incarnation in memory.
-Exact turn-ID selection retains up to 50 local turns for 30 days in the private
+Exact turn-ID selection retains up to 60 local turns for 30 days in the private
 archive (global caps: 20,000 records / 128 MiB); inspect persisted and memoryOnlyReason.
 Restart or replacement clears incarnation memory, not archived exact turns. Remote exact waits use mirrored
 snapshots/events only. Older remote turns require the Worker that runs them;
@@ -171,7 +171,7 @@ Exit codes: 0 submission observed or Codex steer dispatched; 1 refused or delive
 
 Waits without sending any input. A state that already holds counts immediately. idle requires no active turn and never accepts an unknown or degraded state. After "agent prompt", save turnId and use --turn <turnId> to wait for that exact turn, even if a newer turn has started.
 
---turn requires one node and conflicts with --until, multiple --node options and --any. It waits through permission/question pauses and Claude queued provider continuations within that turn. Returns {nodeId, sessionId, turnId, outcome, endedAt?, state, persisted, memoryOnlyReason?}; every ended outcome exits 0, including failed, aborted and unknown. Read outcome before claiming success. Exact archived local ends survive Worker restarts and can be read without a live agent. Unknown/evicted turns exit 1; archive_unavailable is distinct. Inspect persisted before relying on restart durability.
+--turn requires one node and conflicts with --until, multiple --node options and --any. It includes Claude queued provider continuations. Matching waiting now stops with exit 10 by default; --through-waiting continues when waiting is reported, without suppressing exit 11 for an unfulfilled exited target. Returns {nodeId, sessionId, turnId, outcome, endedAt?, state, persisted, memoryOnlyReason?}; every ended outcome exits 0, including failed, aborted and unknown. Read outcome before claiming success. Exact archived local ends survive Worker restarts and can be read without a live agent. Unknown/evicted turns exit 1; archive_unavailable is distinct. Inspect persisted before relying on restart durability.
 
 Local exact history retains at most 60 turns per node for 30 days, with global caps of 20,000 records and 128 MiB. For remote agents, --turn uses mirrored snapshots/events; older turns can only be checked on the Worker that runs them. Missing remote history reports details.reason: remote_history_unavailable, not eviction.
 
@@ -179,7 +179,7 @@ State waits follow the current session; exact archived turn waits return the ori
 
 --until turn-end waits for a turn to finish after this command starts; use it only when you start waiting while the turn is still running. A finished turn is not necessarily a successful one: check turnOutcome (or endedTurnOutcome for turn-end).
 
-With several --node options, --all (default) waits until every agent matches and --any until the first one does. The result lists the latest state of every selected agent. Budgets below 250ms are rejected with usage exit 2 before connecting. On timeout (default 20s) it exits 124, prints the last known states on stderr and nothing on stdout; Ctrl-C exits 130. The agents keep running either way.
+With several --node options, --all (default) remembers each fulfilled node/session binding; session changes or unbinding reset progress. State turn-end results include completion with its own sessionId/turnId/outcome; --any stops on the first success OR waiting/exited observation of an unfulfilled target. Waiting observed: the agent may need the user — inspect before acting. Success wins over attention; 11 wins over 10. Ask the user to resolve it in OpenCove (Desktop or this Worker's Web UI), inspect agent read --screen with the same connection options and matching session/turn IDs, then repeat the wait. Event waits cannot resume an already observed completion: prefer --turn. The result lists the latest state of every selected agent. Budgets below 250ms are rejected with usage exit 2 before connecting. On timeout (default 20s) it exits 124, prints the last known states on stderr and nothing on stdout; Ctrl-C exits 130. The agents keep running either way.
 
 ## Read command reference
 
