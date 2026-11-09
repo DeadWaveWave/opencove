@@ -48,7 +48,7 @@ describe('terminal live reattach geometry', () => {
         sessionId: 'session-live-controller',
         authority: { role: 'controller', epoch: 3 },
       }),
-    ).resolves.toEqual({ cols: 105, rows: 31, changed: true })
+    ).resolves.toEqual({ cols: 105, rows: 31, changed: true, geometryRevision: 8 })
     expect(ptyResize).toHaveBeenCalledWith({
       sessionId: 'session-live-controller',
       cols: 105,
@@ -80,7 +80,7 @@ describe('terminal live reattach geometry', () => {
         sessionId: 'session-live-viewer',
         authority: { role: 'viewer', epoch: 3 },
       }),
-    ).resolves.toEqual({ cols: 60, rows: 15, changed: false })
+    ).resolves.toEqual({ cols: 60, rows: 15, changed: false, geometryRevision: 7 })
     expect(fitAddon.proposeDimensions).not.toHaveBeenCalled()
     expect(ptyResize).not.toHaveBeenCalled()
   })

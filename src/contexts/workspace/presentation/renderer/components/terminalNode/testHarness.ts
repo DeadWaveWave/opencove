@@ -7,6 +7,11 @@ import {
   simulateDetachedTerminalRendererReadOnceForTests,
 } from './renderServiceSafety'
 import {
+  observeTerminalWritesForTest,
+  readTerminalEmulationStateForTest,
+  readTerminalWritesForTest,
+  type TerminalEmulationTestProjection,
+  type TerminalWriteTestRecord,
   readTerminalBufferTextForTest,
   readTerminalRenderMetricsForTest,
   simulateRendererDevicePixelRatioChangeForTest,
@@ -40,6 +45,9 @@ type TerminalOptionsIntrospection = {
 }
 
 type TerminalSelectionTestApi = {
+  flushOutput: (nodeId: string) => Promise<void>
+  getEmulationState: (nodeId: string) => TerminalEmulationTestProjection
+  getOutputWrites: (nodeId: string) => TerminalWriteTestRecord[]
   clearSelection: (nodeId: string) => boolean
   simulateDetachedRendererOnce: (nodeId: string) => boolean
   hasPendingDetachedRendererRead: (nodeId: string) => boolean | null
@@ -102,6 +110,14 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
 
   if (!window.__opencoveTerminalSelectionTestApi) {
     window.__opencoveTerminalSelectionTestApi = {
+      flushOutput: async nodeId => {
+        const terminal = terminalHandles.get(nodeId) as Terminal | undefined
+        if (terminal) {
+          await new Promise<void>(resolve => terminal.write('', resolve))
+        }
+      },
+      getEmulationState: nodeId => readTerminalEmulationStateForTest(terminalHandles.get(nodeId)),
+      getOutputWrites: nodeId => readTerminalWritesForTest(terminalHandles.get(nodeId)),
       clearSelection: nodeId => {
         const terminal = terminalHandles.get(nodeId)
         if (!terminal) {
@@ -360,11 +376,13 @@ export function registerTerminalSelectionTestHandle(
   const owner = Symbol(nodeId)
   terminalSelectionHandleOwners.set(nodeId, owner)
   terminalHandles.set(nodeId, terminal)
+  const stopWriteCapture = observeTerminalWritesForTest(terminal)
   if (fitAddon) {
     terminalFitAddons.set(nodeId, fitAddon)
   }
 
   return () => {
+    stopWriteCapture()
     if (terminalSelectionHandleOwners.get(nodeId) !== owner) {
       return
     }

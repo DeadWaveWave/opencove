@@ -13,6 +13,7 @@ import {
 } from './effectiveDevicePixelRatio'
 import { stripTerminalQuerySequences } from '@shared/terminal/automaticTerminalSequences'
 import { writeTerminalAsync } from './writeTerminal'
+import { applyPresentationSnapshot } from './applyPresentationSnapshot'
 import { containsMeaningfulTerminalDisplayContent } from './hydrationReplacement'
 import {
   resetTerminalCwdObservation,
@@ -22,6 +23,8 @@ import {
 const ALT_BUFFER_ENTER_MARKER = '\u001b[?1049h'
 const ALT_BUFFER_EXIT_MARKER = '\u001b[?1049l'
 const PRESENTATION_SNAPSHOT_ATTACH_TIMEOUT_MS = 1_500
+
+export type TerminalHydrationResult = 'complete' | 'retryable' | 'disposed'
 
 async function writeHydrationSnapshotAsync(terminal: Terminal, data: string): Promise<void> {
   const suspendedCwdObservation = suspendTerminalCwdObservation(terminal)
@@ -109,25 +112,12 @@ function createTerminalEpochTransition(options: {
   return `${exitAlternateBuffer}${archivedAlternateScreen}${scrollPreviousViewportIntoHistory}`
 }
 
-function shouldUsePresentationSnapshotAsVisibleBaseline(options: {
-  kind: 'terminal' | 'agent'
-  persistedSnapshot: string
-  presentationSnapshot: PresentationSnapshotTerminalResult | null
-}): options is {
-  kind: 'terminal' | 'agent'
-  persistedSnapshot: string
-  presentationSnapshot: PresentationSnapshotTerminalResult
-} {
-  const serializedScreen = options.presentationSnapshot?.serializedScreen ?? ''
-  if (serializedScreen.length === 0) {
-    return false
-  }
-
-  if (options.kind === 'agent' && !containsMeaningfulTerminalDisplayContent(serializedScreen)) {
-    return false
-  }
-
-  return true
+function hasPresentationSnapshotState(
+  snapshot: PresentationSnapshotTerminalResult | null,
+): snapshot is PresentationSnapshotTerminalResult {
+  // An authoritative blank screen still carries buffer and input-mode truth.
+  // Restored-agent visibility is handled separately by the visible-output gate.
+  return snapshot !== null && snapshot.serializedScreen.length > 0
 }
 
 function applyPresentationSnapshotGeometry(
@@ -189,7 +179,7 @@ export async function hydrateTerminalFromSnapshot({
       scrollStateToRestore?: TerminalScrollStateSnapshot | null
     },
   ) => void
-}): Promise<void> {
+}): Promise<TerminalHydrationResult> {
   const rendererPlaceholderSnapshot = kind === 'agent' ? '' : persistedSnapshot
   const cachedSerializedScreen = kind === 'agent' ? '' : (cachedScreenState?.serialized ?? '')
   const placeholderPayload =
@@ -203,6 +193,9 @@ export async function hydrateTerminalFromSnapshot({
       presentationSnapshot = null
     }
   }
+  if (isDisposed()) {
+    return 'disposed'
+  }
 
   const baseRawSnapshot = rendererPlaceholderSnapshot
   let rawSnapshot = baseRawSnapshot
@@ -210,50 +203,56 @@ export async function hydrateTerminalFromSnapshot({
     placeholderPayload.length > 0 ? 'placeholder_snapshot' : 'empty'
   let pendingScrollStateToRestore = scrollStateToRestore ?? null
 
-  const visiblePresentationSnapshot = shouldUsePresentationSnapshotAsVisibleBaseline({
-    kind,
-    persistedSnapshot: rendererPlaceholderSnapshot,
-    presentationSnapshot,
-  })
-    ? presentationSnapshot
-    : null
-  const hasPresentationSnapshotPayload = (presentationSnapshot?.serializedScreen.length ?? 0) > 0
-  const shouldArchivePreviousTerminalEpoch =
-    runtimeEpochChanged &&
-    kind === 'terminal' &&
-    rendererPlaceholderSnapshot.length > 0 &&
-    visiblePresentationSnapshot !== null
-
-  applyPresentationSnapshotGeometry(terminal, presentationSnapshot)
-  onPresentationSnapshotGeometryApplied?.()
-
-  if (shouldArchivePreviousTerminalEpoch && visiblePresentationSnapshot) {
-    await writeHydrationSnapshotAsync(terminal, rendererPlaceholderSnapshot)
-    const alternateScreenPreview = captureActiveScreenText(terminal)
-    const epochTransition = createTerminalEpochTransition({
-      terminal,
-      previousSnapshot: rendererPlaceholderSnapshot,
-      alternateScreenPreview,
-    })
-    await writeHydrationSnapshotAsync(terminal, epochTransition)
-    await writeHydrationSnapshotAsync(terminal, visiblePresentationSnapshot.serializedScreen)
-    onPresentationSnapshotAccepted?.(visiblePresentationSnapshot)
-    rawSnapshot = `${rendererPlaceholderSnapshot}${epochTransition}${visiblePresentationSnapshot.serializedScreen}`
-    hydrationBaselineSource = 'presentation_snapshot'
-    onHydratedWriteCommitted(rawSnapshot)
-    await awaitAttachForPresentationSnapshot(attachPromise)
-  } else if (visiblePresentationSnapshot) {
-    await writeHydrationSnapshotAsync(terminal, visiblePresentationSnapshot.serializedScreen)
-    onPresentationSnapshotAccepted?.(visiblePresentationSnapshot)
-    rawSnapshot = visiblePresentationSnapshot.serializedScreen
-    hydrationBaselineSource = 'presentation_snapshot'
-    onHydratedWriteCommitted(rawSnapshot)
-    await awaitAttachForPresentationSnapshot(attachPromise)
-  } else if (!skipInitialPlaceholderWrite && placeholderPayload.length > 0) {
-    await writeHydrationSnapshotAsync(terminal, placeholderPayload)
-    onHydratedWriteCommitted(rawSnapshot)
+  const presentationBaseline: { snapshot: PresentationSnapshotTerminalResult | null } = {
+    snapshot: null,
   }
-
+  const hasPresentationSnapshotPayload = hasPresentationSnapshotState(presentationSnapshot)
+  if (hasPresentationSnapshotPayload && presentationSnapshot) {
+    const applied = await applyPresentationSnapshot({
+      terminal,
+      sessionId,
+      snapshot: presentationSnapshot,
+      isDisposed,
+      apply: async candidate => {
+        applyPresentationSnapshotGeometry(terminal, candidate)
+        onPresentationSnapshotGeometryApplied?.()
+        terminal.reset()
+        const shouldArchivePreviousTerminalEpoch =
+          runtimeEpochChanged && kind === 'terminal' && rendererPlaceholderSnapshot.length > 0
+        if (shouldArchivePreviousTerminalEpoch) {
+          await writeHydrationSnapshotAsync(terminal, rendererPlaceholderSnapshot)
+          const epochTransition = createTerminalEpochTransition({
+            terminal,
+            previousSnapshot: rendererPlaceholderSnapshot,
+            alternateScreenPreview: captureActiveScreenText(terminal),
+          })
+          await writeHydrationSnapshotAsync(terminal, epochTransition)
+          await writeHydrationSnapshotAsync(terminal, candidate.serializedScreen)
+          return `${rendererPlaceholderSnapshot}${epochTransition}${candidate.serializedScreen}`
+        }
+        await writeHydrationSnapshotAsync(terminal, candidate.serializedScreen)
+        return candidate.serializedScreen
+      },
+      onAccepted: (candidate, data) => {
+        presentationBaseline.snapshot = candidate
+        rawSnapshot = data
+        hydrationBaselineSource = 'presentation_snapshot'
+        onPresentationSnapshotAccepted?.(candidate)
+        onHydratedWriteCommitted(data)
+      },
+    })
+    // Stale snapshots never fall back to raw history or reveal an invalid baseline.
+    if (!applied || isDisposed()) {
+      return isDisposed() ? 'disposed' : 'retryable'
+    }
+    await awaitAttachForPresentationSnapshot(attachPromise)
+  } else {
+    onPresentationSnapshotGeometryApplied?.()
+    if (!skipInitialPlaceholderWrite && placeholderPayload.length > 0) {
+      await writeHydrationSnapshotAsync(terminal, placeholderPayload)
+      onHydratedWriteCommitted(rawSnapshot)
+    }
+  }
   const restoreFromLivePtySnapshot = async (): Promise<string> => {
     await attachPromise.catch(() => undefined)
     const snapshot = await takePtySnapshot({ sessionId })
@@ -301,9 +300,7 @@ export async function hydrateTerminalFromSnapshot({
   }
 
   try {
-    if (hasPresentationSnapshotPayload && !visiblePresentationSnapshot) {
-      void attachPromise.catch(() => undefined)
-    } else if (!hasPresentationSnapshotPayload && !useLivePtySnapshotDuringHydration) {
+    if (!hasPresentationSnapshotPayload && !useLivePtySnapshotDuringHydration) {
       // Agent CLIs restore their own history after attach. Do not block hydration on snapshot
       // polling: delaying terminal replies can cause some CLIs to fall back to no-color mode, and
       // it can also surface echoed escape sequences (for example `^[[...` / `^[]...`) when replies
@@ -321,12 +318,12 @@ export async function hydrateTerminalFromSnapshot({
   }
 
   if (isDisposed()) {
-    return
+    return 'disposed'
   }
 
   onHydrationBaselineResolved?.(hydrationBaselineSource)
   onHydratedWriteCommitted(rawSnapshot)
-  const baselineAppliedSeq = visiblePresentationSnapshot?.appliedSeq ?? null
+  const baselineAppliedSeq = presentationBaseline.snapshot?.appliedSeq ?? null
   const finalizeOptions =
     baselineAppliedSeq === null && pendingScrollStateToRestore === null
       ? undefined
@@ -338,8 +335,9 @@ export async function hydrateTerminalFromSnapshot({
         }
   if (finalizeOptions === undefined) {
     finalizeHydration(rawSnapshot)
-    return
+    return 'complete'
   }
 
   finalizeHydration(rawSnapshot, finalizeOptions)
+  return 'complete'
 }

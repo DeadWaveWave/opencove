@@ -11,6 +11,8 @@ type TerminalGeometryCoordinatorState = {
   authorityEpoch: number | null
   failed: boolean
   listeners: Set<GateListener>
+  acceptedGeometryListeners: Set<GateListener>
+  snapshotApplication: { pendingGeometry: (() => void) | null } | null
 }
 
 const terminalGeometryStates = new WeakMap<Terminal, TerminalGeometryCoordinatorState>()
@@ -29,6 +31,8 @@ function getTerminalGeometryState(terminal: Terminal): TerminalGeometryCoordinat
     authorityEpoch: null,
     failed: false,
     listeners: new Set(),
+    acceptedGeometryListeners: new Set(),
+    snapshotApplication: null,
   }
   terminalGeometryStates.set(terminal, created)
   return created
@@ -117,6 +121,7 @@ export function markTerminalGeometryAccepted(
     }
 
     state.acceptedRevision = acceptedRevision
+    state.acceptedGeometryListeners.forEach(listener => listener())
   }
 }
 
@@ -128,8 +133,59 @@ export function resetTerminalGeometryRevisionDomain(terminal: Terminal): void {
   state.acceptedRevision = null
   state.authorityEpoch = null
   state.failed = false
+  state.snapshotApplication = null
   if (hadPendingCommit) {
     notifyGateListeners(state)
+  }
+}
+
+export function getAcceptedTerminalGeometryRevision(terminal: Terminal): number | null {
+  return getTerminalGeometryState(terminal).acceptedRevision
+}
+
+/** Keep a snapshot's parser write and its geometry together across async writes. */
+export function beginTerminalSnapshotApplication(
+  terminal: Terminal,
+): (applyPending: boolean) => void {
+  const state = getTerminalGeometryState(terminal)
+  if (state.snapshotApplication) {
+    throw new Error('Terminal snapshot application is already in progress')
+  }
+  const application = { pendingGeometry: null as (() => void) | null }
+  state.snapshotApplication = application
+  return applyPending => {
+    if (state.snapshotApplication !== application) {
+      return
+    }
+    state.snapshotApplication = null
+    if (applyPending) {
+      application.pendingGeometry?.()
+    }
+  }
+}
+
+/** ACK/event revisions advance immediately; physical resize waits for parser commit. */
+export function applyTerminalGeometryMutation(
+  terminal: Terminal,
+  mutation: () => void,
+  revision?: number | null,
+): void {
+  const accepted = getAcceptedTerminalGeometryRevision(terminal)
+  if (typeof revision === 'number' && accepted !== null && revision < accepted) {
+    return
+  }
+  const guarded = () => {
+    const currentRevision = getAcceptedTerminalGeometryRevision(terminal)
+    if (typeof revision === 'number' && currentRevision !== null && revision < currentRevision) {
+      return
+    }
+    mutation()
+  }
+  const application = getTerminalGeometryState(terminal).snapshotApplication
+  if (application) {
+    application.pendingGeometry = guarded
+  } else {
+    guarded()
   }
 }
 
@@ -163,6 +219,7 @@ export function recordTerminalGeometryCommitResult(
       authorityDomainChanged)
   ) {
     state.acceptedRevision = acceptedRevision
+    state.acceptedGeometryListeners.forEach(listener => listener())
   }
 
   if (normalizedAuthorityEpoch !== null) {
@@ -225,5 +282,16 @@ export function subscribeTerminalGeometryWriteGate(
 
   return () => {
     state.listeners.delete(listener)
+  }
+}
+
+export function subscribeAcceptedTerminalGeometry(
+  terminal: Terminal,
+  listener: GateListener,
+): () => void {
+  const state = getTerminalGeometryState(terminal)
+  state.acceptedGeometryListeners.add(listener)
+  return () => {
+    state.acceptedGeometryListeners.delete(listener)
   }
 }

@@ -63,6 +63,11 @@ test('exact turn read and wait survive a complete Worker restart, then disappear
       )
     })
   }
+  const epoch = async () => {
+    const listed = await cli(['agent', 'list'])
+    expect(listed.code, listed.stderr).toBe(0)
+    return (JSON.parse(listed.stdout) as { epoch: string }).epoch
+  }
   try {
     const first = await launchApp({
       userDataDir,
@@ -148,10 +153,7 @@ test('exact turn read and wait survive a complete Worker restart, then disappear
     expect(before.code, before.stderr).toBe(0)
     const reply = JSON.parse(before.stdout)
     expect(reply).toMatchObject({ turnId, sessionId, persisted: true, message: 'Strict reply 2' })
-    const beforeRestartList = await cli(['agent', 'list'])
-    expect(beforeRestartList.code, JSON.stringify(beforeRestartList)).toBe(0)
-    expect(beforeRestartList.stdout, JSON.stringify(beforeRestartList)).not.toBe('')
-    const oldEpoch = JSON.parse(beforeRestartList.stdout).epoch
+    const oldEpoch = await epoch()
     const oldPid = (await connection()).pid
     await app.close()
     app = undefined
@@ -176,10 +178,7 @@ test('exact turn read and wait survive a complete Worker restart, then disappear
       env,
     })
     app = second.electronApp
-    const afterRestartList = await cli(['agent', 'list'])
-    expect(afterRestartList.code, JSON.stringify(afterRestartList)).toBe(0)
-    expect(afterRestartList.stdout, JSON.stringify(afterRestartList)).not.toBe('')
-    expect(JSON.parse(afterRestartList.stdout).epoch).not.toBe(oldEpoch)
+    expect(await epoch()).not.toBe(oldEpoch)
     // No second prompt or provider relaunch is needed to read the historical original session.
     const after = await cli(['agent', 'read', '--node', nodeId, '--turn', turnId])
     expect(after.code, after.stderr).toBe(0)

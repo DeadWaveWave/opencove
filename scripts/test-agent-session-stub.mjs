@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { runCodexPromptStrictScenario } from './test-agent-session-stub/codexPromptStrict.mjs'
 import { runClaudePromptStrictScenario } from './test-agent-session-stub/claudePromptStrict.mjs'
+import { runTerminalStateRestoreScenario } from './test-agent-session-stub/terminalStateRestore.mjs'
 
 import { resolve } from 'node:path'
 import { sleep } from './test-agent-session-stub/sleep.mjs'
@@ -87,7 +88,19 @@ async function main() {
   const effectiveMode = providerInvocation?.mode ?? mode
   const resumeSessionId = providerInvocation?.resumeSessionId ?? positionalResumeSessionId
 
+  if (scenario === 'raw-late-first-output') {
+    // No banner or hooks: the first visible output must arrive after presentation attach.
+    await sleep(400)
+    process.stdout.write('late plain\r\n')
+    await sleep(120_000)
+    return
+  }
+
   process.stdout.write(`[opencove-test-agent] ${provider} ${effectiveMode} ${model}\n`)
+  if (scenario === 'raw-agent-terminal-state-restore') {
+    await runTerminalStateRestoreScenario()
+    return
+  }
 
   if (provider === 'codex' && effectiveMode === 'resume' && scenario === 'codex-active-writer') {
     // Reproduce a provider that rejects after the original short startup observation window.

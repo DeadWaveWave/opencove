@@ -4,6 +4,7 @@ import { hydrateTerminalFromSnapshot } from '../../../src/contexts/workspace/pre
 describe('hydrateFromSnapshot', () => {
   it('prefers the presentation snapshot baseline when available', async () => {
     const terminal = {
+      reset: vi.fn(),
       cols: 80,
       rows: 24,
       resize: vi.fn((cols: number, rows: number) => {
@@ -69,6 +70,7 @@ describe('hydrateFromSnapshot', () => {
       resolveWrite = resolve
     })
     const terminal = {
+      reset: vi.fn(),
       cols: 80,
       rows: 24,
       resize: vi.fn((cols: number, rows: number) => {
@@ -77,7 +79,9 @@ describe('hydrateFromSnapshot', () => {
       }),
       write: vi.fn((data: string, callback?: () => void) => {
         callback?.()
-        resolveWrite()
+        if (data === 'READY_PROMPT') {
+          resolveWrite()
+        }
         return data
       }),
     }
@@ -125,6 +129,7 @@ describe('hydrateFromSnapshot', () => {
       resolveWrite = resolve
     })
     const terminal = {
+      reset: vi.fn(),
       cols: 80,
       rows: 24,
       resize: vi.fn((cols: number, rows: number) => {
@@ -179,6 +184,7 @@ describe('hydrateFromSnapshot', () => {
 
   it('does not treat cached raw snapshot as correctness truth once worker presentation exists', async () => {
     const terminal = {
+      reset: vi.fn(),
       cols: 80,
       rows: 24,
       resize: vi.fn((cols: number, rows: number) => {
@@ -237,8 +243,9 @@ describe('hydrateFromSnapshot', () => {
     )
   })
 
-  it('does not reveal a control-only agent presentation snapshot as visible history', async () => {
+  it('restores control-only authoritative state without inventing visible history', async () => {
     const terminal = {
+      reset: vi.fn(),
       cols: 80,
       rows: 24,
       resize: vi.fn(),
@@ -276,9 +283,9 @@ describe('hydrateFromSnapshot', () => {
       finalizeHydration,
     })
 
-    expect(terminal.write).not.toHaveBeenCalled()
-    expect(onHydrationBaselineResolved).toHaveBeenCalledWith('empty')
-    expect(finalizeHydration).toHaveBeenCalledWith('')
+    expect(terminal.write).toHaveBeenCalledWith('\u001b[?2004h', expect.any(Function))
+    expect(onHydrationBaselineResolved).toHaveBeenCalledWith('presentation_snapshot')
+    expect(finalizeHydration).toHaveBeenCalledWith('\u001b[?2004h', { baselineAppliedSeq: 2 })
   })
 
   it('uses cached screen only as a visual placeholder before replacing with live snapshot fallback', async () => {
@@ -329,6 +336,7 @@ describe('hydrateFromSnapshot', () => {
 
   it('uses the live PTY snapshot for agent live reattach hydration', async () => {
     const terminal = {
+      reset: vi.fn(),
       cols: 80,
       rows: 24,
       resize: vi.fn(),
@@ -366,6 +374,7 @@ describe('hydrateFromSnapshot', () => {
 
   it('does not use persisted agent scrollback as a live reattach baseline', async () => {
     const terminal = {
+      reset: vi.fn(),
       cols: 80,
       rows: 24,
       resize: vi.fn(),
@@ -405,8 +414,9 @@ describe('hydrateFromSnapshot', () => {
     )
   })
 
-  it('does not reveal blank-only agent presentation snapshots as restored history', async () => {
+  it('honors authoritative blank state without resurrecting persisted history', async () => {
     const terminal = {
+      reset: vi.fn(),
       cols: 80,
       rows: 24,
       resize: vi.fn(),
@@ -453,11 +463,13 @@ describe('hydrateFromSnapshot', () => {
       'persisted restored history',
       expect.any(Function),
     )
-    expect(terminal.write).not.toHaveBeenCalled()
-    expect(onPresentationSnapshotAccepted).not.toHaveBeenCalled()
-    expect(onHydrationBaselineResolved).toHaveBeenCalledWith('empty')
-    expect(onHydratedWriteCommitted).toHaveBeenLastCalledWith('')
-    expect(finalizeHydration).toHaveBeenCalledWith('')
+    expect(terminal.write).toHaveBeenCalledWith('\u001b[2J\u001b[H   \n', expect.any(Function))
+    expect(onPresentationSnapshotAccepted).toHaveBeenCalled()
+    expect(onHydrationBaselineResolved).toHaveBeenCalledWith('presentation_snapshot')
+    expect(onHydratedWriteCommitted).toHaveBeenLastCalledWith('\u001b[2J\u001b[H   \n')
+    expect(finalizeHydration).toHaveBeenCalledWith('\u001b[2J\u001b[H   \n', {
+      baselineAppliedSeq: 2,
+    })
     expect(takePtySnapshot).not.toHaveBeenCalled()
   })
 })
