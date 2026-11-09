@@ -1,3 +1,6 @@
+import type { CreateAgentLaunchPlanCommand } from '../../../src/contexts/agent/application/ports/AgentProviderContribution'
+import { checkProductionGrantPolicy } from './sessionGrantPolicy.productionChecks'
+import type { ControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { AgentProviderRegistry } from '../../../src/contexts/agent/application/services/AgentProviderRegistry'
@@ -46,6 +49,19 @@ it('production Worker issues canvas credentials, exposes shim and whoami, and re
   }))
   const approvedWorkspaces = createApprovedWorkspaceStoreForPath(join(dir, 'approved.json'))
   await approvedWorkspaces.registerRoot(dir)
+  const write = vi.fn()
+  const kill = vi.fn((sessionId: string) => {
+    exits.forEach(emit => emit({ sessionId, exitCode: 0 }))
+  })
+  const createLaunchPlan = vi.fn(async (_command: CreateAgentLaunchPlanCommand) => ({
+    command: '/bin/sh',
+    args: [],
+    env: {},
+    effectiveModel: null,
+    launchMode: 'new' as const,
+    resumeSessionId: null,
+  }))
+  let surface!: ControlSurface
   const runtime = createControlSurfaceHttpRuntime({
     agentProviderRegistry: new AgentProviderRegistry([
       {
@@ -57,14 +73,7 @@ it('production Worker issues canvas credentials, exposes shim and whoami, and re
         },
         detector: { inspect: vi.fn() },
         launcher: {
-          createLaunchPlan: async () => ({
-            command: '/bin/sh',
-            args: [],
-            env: {},
-            effectiveModel: null,
-            launchMode: 'new',
-            resumeSessionId: null,
-          }),
+          createLaunchPlan,
         },
       },
     ]),
@@ -74,11 +83,9 @@ it('production Worker issues canvas credentials, exposes shim and whoami, and re
     approvedWorkspaces,
     ptyRuntime: {
       spawnSession: spawn,
-      write: () => {},
+      write,
       resize: async () => ({ status: 'session_not_found' }) as never,
-      kill: sessionId => {
-        exits.forEach(emit => emit({ sessionId, exitCode: 0 }))
-      },
+      kill,
       onData: () => () => {},
       onExit: listener => {
         exits.add(listener)
@@ -89,6 +96,9 @@ it('production Worker issues canvas credentials, exposes shim and whoami, and re
     },
   })
   try {
+    runtime.registerHandlers(control => {
+      surface = control
+    })
     await runtime.ready
     await runtime.listen({
       role: 'private',
@@ -129,7 +139,7 @@ it('production Worker issues canvas credentials, exposes shim and whoami, and re
           isWebUiAuthRevisionCurrent: () => true,
         },
       })
-      await vi.waitFor(() => expect(req.listenerCount('end')).toBe(1))
+      await vi.waitFor(() => expect(req.listenerCount('end')).toBe(1), { interval: 1 })
       req.emit('data', JSON.stringify({ kind, id, payload }))
       req.emit('end')
       await pending
@@ -179,6 +189,40 @@ it('production Worker issues canvas credentials, exposes shim and whoami, and re
       ok: true,
       value: { kind: 'session-grant', nodeId: 'node', sessionId: launched.result.value.sessionId },
     })
+    await checkProductionGrantPolicy({
+      invoke,
+      token,
+      surface,
+      store,
+      spawnCount: () => spawn.mock.calls.length,
+      writeCount: () => write.mock.calls.length,
+      killCount: () => kill.mock.calls.length,
+    })
+    expect(createLaunchPlan).toHaveBeenCalledWith(
+      expect.objectContaining({ agentFullAccess: false }),
+    )
+    const mount = await invoke('mount.create', {
+      projectId: 'project',
+      endpointId: 'local',
+      rootPath: dir,
+    })
+    expect(mount.result.error).toBeUndefined()
+    const forwarded = await invoke(
+      'session.launchAgent',
+      { spaceId: 'space', prompt: 'mounted review' },
+      token,
+    )
+    expect(forwarded.result).toMatchObject({ ok: true })
+    await invoke('session.kill', { sessionId: forwarded.result.value.sessionId }, token)
+    await checkProductionGrantPolicy({
+      invoke,
+      token,
+      surface,
+      store,
+      spawnCount: () => spawn.mock.calls.length,
+      writeCount: () => write.mock.calls.length,
+      killCount: () => kill.mock.calls.length,
+    })
     await invoke('session.kill', { sessionId: launched.result.value.sessionId })
     // Invalid auth returns before reading a body, so invoke directly with a completed fixture below.
     const unauthorized = async (credential = token) => {
@@ -219,14 +263,8 @@ it('production Worker issues canvas credentials, exposes shim and whoami, and re
     })
     expect(second.result.ok).toBe(true)
     exits.forEach(emit => emit({ sessionId: second.result.value.sessionId, exitCode: 0 }))
-    const secondToken = spawn.mock.calls[1][0].env!.OPENCOVE_CONTROL_TOKEN!
+    const secondToken = spawn.mock.calls.at(-1)![0].env!.OPENCOVE_CONTROL_TOKEN!
     expect(await unauthorized(secondToken)).toBe(401)
-    const mount = await invoke('mount.create', {
-      projectId: 'project',
-      endpointId: 'local',
-      rootPath: dir,
-    })
-    expect(mount.result.error).toBeUndefined()
     const mounted = await invoke('pty.spawnInMount', {
       mountId: mount.result.value.mount.mountId,
       workspaceId: 'project',

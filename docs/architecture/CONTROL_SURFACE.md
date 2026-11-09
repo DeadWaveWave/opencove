@@ -277,12 +277,79 @@ storage and constant-time digest comparison. Its owner must supply authoritative
 liveness. `requestAuth` accepts an injected registry and represents successful verification as
 `{ kind: 'session-grant', grant }`. An invalid explicit bearer does not fall back to a cookie.
 
-The authorization invariant is fail closed: a grant may invoke only registry operations with
-`read` or `interact` scope. `admin`, unknown IDs, `worker.*`, and ticket issuance are forbidden.
-The HTTP handler returns `403 / common.forbidden`; invalid or revoked credentials return 401.
-The same scope check runs in internal dispatch to preserve the fence across nested invocations.
-`system.whoami` is a schema-backed read operation returning explicit identity fields and build
-identity, never token values or token hashes.
+A session grant is a guardrail for agents running as the same OS user, not an OS sandbox.
+It prevents prompt-injected or confused agents from using the documented API to make decisions
+that belong to a human. **Project isolation is not yet enforced**; cross-project reads and
+mutations remain possible and are the separate S1b work.
+
+`http/sessionGrantPolicy.ts` is the exhaustive, fail-closed authority table. Unknown IDs,
+`admin`, `worker.*` and `auth.*` operations are denied. Both HTTP admission and internal
+`controlSurface.invoke` use it; constrained checks run after validation and before execution.
+The read/interact tier remains a ceiling, not an authorization heuristic.
+
+| Denied operations | Reason |
+| --- | --- |
+| `session.writeNode` | Send messages with `agent.prompt`; only the user answers permission prompts and dialogs in OpenCove |
+| `sync.state`, `sync.readWorkspaceStateRaw` | Application settings can contain private credentials |
+| `sync.writeState`, `sync.writeWorkspaceStateRaw` | Settings, permission policy and persisted roots belong to the user |
+| `sync.writeNodeScrollback`, `sync.writeAgentNodePlaceholderScrollback` | OpenCove owns saved terminal history |
+| `session.attachAgentStateWatcher`, `session.detachAgentStateWatcher`, `session.prepareOrRevive` | OpenCove owns observation and recovery |
+| `workspace.allocateProjectPlaceholder`, `workspace.ensureDirectory` | Project setup and root approval belong to the user; use filesystem operations within approved roots |
+| `plugin.command.run`, `plugin.invoke`, `plugin.host.request`, `plugin.sidebar.items`, `plugin.view.open`, `plugin.window.open` | These paths can execute code with plugin authority |
+| `plugin.storage.set`, `plugin.preferences.set`, `plugin.view.preferences.set` | Installation-wide plugin state belongs to the user |
+
+Grant launches (`session.launchAgent`, `session.launchAgentInMount`) accept only target fields
+(`spaceId` / `cwd` or `mountId` / `cwdUri`), `prompt`, `provider`, `model`, `cols`, `rows`.
+Explicit `agentFullAccess`, `env`, `executablePathOverride`, `resumeSessionId`,
+`codexReuseRunningAppServer`, `mode` and unknown fields are refused, including null/false values.
+Grant launches also refuse nonempty prompts whose trimmed text is a single whitespace-free token,
+including ordinary words, because providers may dispatch them as commands. Describe the task in a sentence.
+This check also applies to nested agent creation and runs before remote bearer forwarding.
+The existing launch owner reads the user’s configured permission policy and environment.
+For remote grant launches, Home resolves and forwards its saved `agentFullAccess` and
+`codexReuseRunningAppServer` values explicitly, so the destination Worker does not replace
+them with its own defaults. Trusted callers retain their existing override behavior.
+
+Launch responses and session listings describe the public command. Private process arguments
+and environment transport, including WSL environment assignments, stay out of session metadata.
+Home omits arguments from older Workers' WSL wrapper metadata when no public command is available.
+Process failures retain their error code without returning private launch details.
+Known application refusals retain their typed reason and fixed recovery guidance; arbitrary
+process error payloads remain private for every caller.
+
+Provider launch planners preserve option-like prompts using the provider's literal input channel.
+Codex terminates parsing before every initial prompt; Pi uses text-file input only for
+option-like prompts, including older versions. Trusted Pi single-word prompts stay inline;
+Pi and Claude retain native command dispatch for trusted single-word prompts. Pi prompt files belong to the executing Worker's
+launch artifact owner and follow session cleanup; Home forwards prompt text, never a local file.
+Terminal profiles translate marked host-file arguments only after selecting the actual runtime;
+WSL profiles refuse files that cannot be mapped into that runtime.
+Model option values use the same literal encoding when their parser could interpret them as options.
+Grant-originated launch and delivery prompts also reject the target provider's command prefixes
+at the first non-whitespace character: Claude Code ! / # & (including legacy memory and background-task entry),
+Codex/OpenCode/Pi/Gemini ! /, and Kimi /. Delivery checks the resolved run fence before
+allocating a delivery record or writing input; launch checks the resolved provider before
+preparation or remote bearer forwarding. Trusted callers retain native provider behavior.
+
+
+Forbidden envelopes include `details.reason` (`operation_denied` or `field_denied`),
+`operationId`, a human-readable `message`, and `field` for launch restrictions. Invalid or
+revoked credentials return 401; policy refusals return `common.forbidden` (HTTP admission uses
+403). CLI authorization failures exit 4 without suggesting a broader credential.
+`system.whoami` returns the actual tier and identity, never credentials. For grant callers,
+`system.operations` adds `policyVersion` and per-operation `access` (`allowed`, `denied`,
+`constrained`), with denial reasons and `rejectedFields` reasons for constrained launches.
+Grant calls to `system.operation.describe` include the same access information and `policyVersion`
+beside the full input schema. Inside OpenCove, CLI schema output keeps the schema and adds these
+access annotations; schema fields alone do not authorize their use. Older Workers show unknown
+access. Outside OpenCove, schema export stays offline without asserting caller permissions.
+The CLI operation catalog reports `access: unknown` offline or with older Workers and omits
+`allowed`; constrained operations also omit `allowed`.
+
+CLI environment credentials are paired with `OPENCOVE_CONTROL_URL`. An explicit `--endpoint`
+requires `--token`; profile discovery never borrows an environment token. `pty attach` sends
+Authorization in a header and requests viewer access, keeping tokens out of URLs.
+These changes stay within the existing process and dependency boundaries: no executable-rule impact.
 
 Invariants:
 

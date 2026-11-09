@@ -23,7 +23,7 @@ function fixture(path = '/invoke') {
   })
   const surface = createControlSurface()
   const execute = vi.fn()
-  surface.register('session.writeNode', {
+  surface.register('node.update', {
     kind: 'command',
     validate: x => x,
     handle: execute,
@@ -71,7 +71,7 @@ function fixture(path = '/invoke') {
       },
     })
   const body = () => {
-    req.emit('data', JSON.stringify({ kind: 'command', id: 'session.writeNode', payload: {} }))
+    req.emit('data', JSON.stringify({ kind: 'command', id: 'node.update', payload: {} }))
     req.emit('end')
   }
   return { grants, grant, req, res, deps, execute, run, body, listenerSyncClients }

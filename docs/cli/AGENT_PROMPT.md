@@ -39,9 +39,15 @@ tab and LF; leading/interior whitespace remain significant. Codex comparison is
 `unavailable` until a profile is verified. Equality proves neither causation nor
 model processing. `different` still exits 0, with a notice on stderr: stop automatic
 orchestration, retain identifiers, inspect with `opencove agent read --node <id> --screen`,
-and never resend or press Enter again because of the comparison. Refusals exit 1 with the AppError code and typed
+and never resend or press Enter again because of the comparison. State and delivery refusals exit 1 with the AppError code and typed
 `error.details` dispatch-attempt flags; a server deadline exits 124 and preserves those flags.
 Usage errors exit 2. Local HTTP timeout exits 124; transport loss is outcome unknown.
+
+Agent terminals cannot start delivery or launch prompts with the target provider's command prefixes:
+Claude Code `!`, `/`, legacy `#` or `&`; Codex, OpenCode, Pi and Gemini `!` or `/`; Kimi `/`.
+These grant refusals exit 4 with `field_denied` before input or a delivery record. Start with words;
+`!` or `/` later in a message remains ordinary text. Only the user runs provider commands and answers permission dialogs.
+
 
 Inspect drafts and dialogs with `opencove agent read --node <selector> --screen`
 before sending. After success, save `turnId` and use `opencove agent wait --node <selector> --turn <turnId>`,

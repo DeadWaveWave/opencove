@@ -166,8 +166,7 @@ it.each([200, 403])('maps server scope denial to exit 4 (HTTP %s)', async status
   ).toBe(4)
   expect(f.error()).toMatchObject({
     code: 'common.forbidden',
-    message: expect.stringContaining('may read and interact'),
-    hint: expect.stringContaining('outside the OpenCove session'),
+    message: 'This credential does not permit the operation.',
     details: { scope: 'interact' },
   })
 })

@@ -79,10 +79,18 @@ it('renames context directory and catalog fields', async () => {
 })
 
 it.each(['read', 'interact', 'admin'])(
-  'catalog uses whoami scope %s inside a session',
+  'catalog uses the Worker policy rather than whoami scope %s',
   async scopeTier => {
     const f = identityFixture()
     f.values['system.whoami'] = { kind: 'session-grant', scopeTier }
+    f.values['system.operations'] = {
+      policyVersion: 'test',
+      operations: [
+        { id: 'node.get', access: 'allowed' },
+        { id: 'node.delete', access: 'denied' },
+        { id: 'mount.create', access: 'denied' },
+      ],
+    }
     expect(await run(['api', 'ops'], f.io)).toBe(0)
     const catalog = JSON.parse(f.out())
     expect(catalog.find((op: { id: string }) => op.id === 'node.get')).toMatchObject({
@@ -90,12 +98,8 @@ it.each(['read', 'interact', 'admin'])(
       allowed: true,
       cliCommand: 'opencove node get',
     })
-    expect(catalog.find((op: { id: string }) => op.id === 'node.delete').allowed).toBe(
-      scopeTier !== 'read',
-    )
-    expect(catalog.find((op: { id: string }) => op.id === 'mount.create').allowed).toBe(
-      scopeTier === 'admin',
-    )
+    expect(catalog.find((op: { id: string }) => op.id === 'node.delete').allowed).toBe(false)
+    expect(catalog.find((op: { id: string }) => op.id === 'mount.create').allowed).toBe(false)
   },
 )
 

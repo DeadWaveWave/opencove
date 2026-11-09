@@ -1,3 +1,5 @@
+import { sessionGrantAccess } from '../http/sessionGrantAuthorization'
+import { SESSION_GRANT_POLICY_VERSION } from '../http/sessionGrantPolicy'
 import * as z from 'zod'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../../shared/contracts/controlSurface'
 import {
@@ -28,16 +30,24 @@ export function registerOperationIntrospectionHandlers(controlSurface: ControlSu
   const schemas = new Map<string, object>()
   registerOperation(controlSurface, systemOperationsOperation, {
     defaultErrorCode: 'common.unexpected',
-    handle: () => ({
+    handle: ctx => ({
       protocolVersion: CONTROL_SURFACE_PROTOCOL_VERSION,
+      ...(ctx.requestAuth?.kind === 'session-grant'
+        ? { policyVersion: SESSION_GRANT_POLICY_VERSION }
+        : {}),
       operations: CONTROL_SURFACE_OPERATIONS.filter(op => controlSurface.hasOperation(op.id))
-        .map(metadata)
+        .map(op => ({
+          ...metadata(op),
+          ...(ctx.requestAuth?.kind === 'session-grant'
+            ? sessionGrantAccess(op.id, ctx.requestAuth.grant.tier)
+            : {}),
+        }))
         .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)),
     }),
   })
   registerOperation(controlSurface, systemOperationDescribeOperation, {
     defaultErrorCode: 'common.unexpected',
-    handle: (_ctx, { id }) => {
+    handle: (ctx, { id }) => {
       const op = getControlSurfaceOperation(id)
       if (!op || !controlSurface.hasOperation(id)) {
         throw createAppError('common.invalid_input', {
@@ -52,6 +62,12 @@ export function registerOperationIntrospectionHandlers(controlSurface: ControlSu
       }
       return {
         ...metadata(op),
+        ...(ctx.requestAuth?.kind === 'session-grant'
+          ? {
+              policyVersion: SESSION_GRANT_POLICY_VERSION,
+              ...sessionGrantAccess(op.id, ctx.requestAuth.grant.tier),
+            }
+          : {}),
         inputSchema,
         errors: op.contract === 'schema' ? [...op.errors] : [],
       }

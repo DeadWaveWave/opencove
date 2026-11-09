@@ -10,6 +10,7 @@ import type { Connection } from './context'
 import { get } from './render'
 import type { ErrorTarget, OptionSpec } from './command'
 import { CliError, inputChoiceIssues, inputErrorMessage, validationError } from './errors'
+import { authorizationError } from './authorizationError'
 export async function invoke(
   connection: Connection,
   request: { kind: string; id: string; payload: unknown },
@@ -52,17 +53,9 @@ export async function invoke(
       }
       throw error
     })
-    if (
-      authStatus ||
-      ['common.forbidden', 'control_surface.unauthorized'].includes(result?.error?.code)
-    ) {
-      throw new CliError(
-        result?.error?.code ?? 'context.unauthorized',
-        4,
-        'Authorization failed. An OpenCove session may read and interact, but cannot perform administrative actions or manage workers.',
-        'If you intend a broader action, run the command outside the OpenCove session with a desktop token.',
-        result?.error?.details,
-      )
+    const authError = authorizationError(response.status, result?.error)
+    if (authError) {
+      throw authError
     }
     if (result?.ok === false) {
       const error = result.error ?? {}
@@ -182,14 +175,6 @@ export async function invoke(
     if (error instanceof CliError) {
       if (!prompt) {
         throw error
-      }
-      if (error.code === 'context.unauthorized') {
-        throw new CliError(
-          error.code,
-          error.exitCode,
-          'OpenCove refused authorization for this request.',
-          'Check the endpoint and credentials before retrying.',
-        )
       }
       if (error.code !== 'transport.invalid_response') {
         throw error

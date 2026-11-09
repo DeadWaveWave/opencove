@@ -196,7 +196,8 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       }
     }
     const needsConnection =
-      command.connect || (command.path.join(' ') === 'api ops' && io.env.OPENCOVE_ENV === '1')
+      command.connect ||
+      (['api ops', 'api schema'].includes(command.path.join(' ')) && io.env.OPENCOVE_ENV === '1')
     const connection = needsConnection ? await resolveConnection(args.options, io) : undefined
     // Selector reads and the final query share a per-run snapshot. A write ends
     // that snapshot so a later read cannot reuse data from before its effects.
