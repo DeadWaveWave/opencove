@@ -33,6 +33,7 @@ export async function commitCreatedNode(options: {
   input: CreateNodeInput
   node: NodeControlNode
   initialTarget: ResolvedNodeCreationTarget
+  callerNodeId?: string | null
 }): Promise<CreateNodeResult> {
   /* eslint-disable no-await-in-loop -- Each bounded CAS attempt must use a fresh snapshot. */
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -60,6 +61,7 @@ export async function commitCreatedNode(options: {
       kind: options.input.kind,
       bucket: normalizeAgentSettings(state.settings).standardWindowSizeBucket,
       frame: options.input.frame,
+      callerNodeId: options.callerNodeId,
     })
     const frame = resolveCreateFrame({
       kind: options.input.kind,

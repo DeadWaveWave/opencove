@@ -3,6 +3,7 @@ import type { CliIo } from './io'
 import { closeNames } from './suggestions'
 import { CliError } from './errors'
 import { sessionIdentity, type Invoke } from './identity'
+import { resolveCurrentContainer } from './currentContainer'
 import type {
   GetSpaceResult,
   ListProjectsResult,
@@ -150,7 +151,8 @@ export async function resolveSelectors(
 ) {
   const identity = sessionIdentity(io.env, invoke)
   const o = args.options
-  let projectId: string | undefined
+  const currentContainer = await resolveCurrentContainer(command, args, io, invoke, identity.self)
+  let projectId: string | undefined = currentContainer ? String(o.project) : undefined
   const projects = async () =>
     ((await invoke('project.list', null)) as ListProjectsResult).projects ?? []
   const wrongKind = async (kind: Kind, selector: string) => {
@@ -200,7 +202,7 @@ export async function resolveSelectors(
       throw error
     }
   }
-  if (command.options?.project?.selector && o.project !== undefined) {
+  if (!currentContainer && command.options?.project?.selector && o.project !== undefined) {
     const selector = String(o.project)
     projectId =
       selector === '@self'
@@ -236,7 +238,11 @@ export async function resolveSelectors(
     return projectId
   }
   for (const kind of ['space', 'node'] as const) {
-    if (!command.options?.[kind]?.selector || o[kind] === undefined) {
+    if (
+      (currentContainer && kind === 'space') ||
+      !command.options?.[kind]?.selector ||
+      o[kind] === undefined
+    ) {
       continue
     }
     const resolveOne = async (selector: string): Promise<string> => {

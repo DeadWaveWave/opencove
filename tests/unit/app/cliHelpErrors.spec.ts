@@ -143,19 +143,21 @@ it('renders defaultable target space groups as optional and preserves mandatory 
   const f = fixture()
   expect(await run(['node', 'create', 'note', '--help'], f.io)).toBe(0)
   expect(f.out()).toContain(
-    'Usage: opencove node create note [--space <id> | <other-target-space-options>] [options]',
+    'Usage: opencove node create note [--root-canvas | --space <id> | <other-target-space-options>] [options]',
   )
+  expect(f.out()).toContain('Target container (choose one):')
+  expect(f.out()).toContain("Create on the project's root canvas, outside every Space")
   expect(f.out()).toContain(
-    'Target space (choose one; inside OpenCove defaults to your own space):',
+    'inside OpenCove: your current Space, or the root canvas when you are outside any Space',
   )
-  const command = commands.find(candidate => candidate.path.join(' ') === 'node create note')!
+  const command = commands.find(candidate => candidate.path.join(' ') === 'canvas focus space')!
   const withoutDefault = {
     ...command,
     options: { ...command.options, space: { ...command.options!.space, defaultSelf: false } },
   }
   const text = help([withoutDefault], command.path)
   expect(text).toContain(
-    'Usage: opencove node create note (--space <id> | <other-target-space-options>) [options]',
+    'Usage: opencove canvas focus space (--space <id> | <other-target-space-options>) [options]',
   )
   expect(text).toContain('Target space (choose exactly one):')
 })

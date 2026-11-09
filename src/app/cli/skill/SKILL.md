@@ -6,8 +6,7 @@ description: Coordinate agents and share work inside OpenCove using its bundled 
 # OpenCove agent guide
 
 This guide ships inside the CLI build. Use `opencove --version` to identify it; `opencove skill -o json` includes
-the matching version and guide content. All example IDs, names and paths must be replaced with actual query
-results.
+the matching version and guide content. Replace example IDs, names and paths with actual query results.
 
 ## Establish identity before acting
 
@@ -30,10 +29,10 @@ go to stderr; non-TTY or `-o json` uses a structured `error` object.
 
 ## Select targets explicitly
 
-Node, space and project selectors accept a full ID, exact case-sensitive title/name, or a unique ID prefix of at
-least six characters. Ambiguity exits 6: use a full ID. `@self` uses your authenticated terminal identity, not your
-working directory. Inside OpenCove, omitted space targets default to your space; explicit `--project` selects
-project scope for lists. Names/prefixes use your project unless overridden. Terminal nodes can report observed
+Node, space and project selectors accept a full ID, exact case-sensitive name, or a unique ID prefix (6+ characters). Ambiguity exits 6: use a full ID. `@self` uses your authenticated terminal identity, not your
+working directory. Inside OpenCove, `node create` and `node list` read your current container: your Space,
+or the root canvas when you are outside every Space. There, `node list` lists the whole project; use `node list --root-canvas` for only root nodes. Explicit `--project` selects project scope for lists;
+creation also needs a Space target or `--root-canvas`. Other commands keep their existing Space defaults. Names/prefixes use your project unless overridden. Terminal nodes can report observed
 agents; only agent windows can receive prompts. Resolve targets from the agent list before prompting.
 
 ```sh
@@ -41,6 +40,9 @@ opencove node list -o table
 opencove agent list --space @self -o table
 opencove agent get --node "Reviewer" --pretty
 ```
+
+To put a node on the canvas outside any Space: `opencove node create note --root-canvas --text …`.
+Outside OpenCove, add `--project <id>`. Placement searches next to you when run inside OpenCove, or from the origin if your node is unavailable. Use `--focus` to reveal it.
 
 ## Notes and tasks are a shared blackboard
 
@@ -61,8 +63,7 @@ opencove node get --node task-123
 opencove node update task --node task-123 --status ai_done
 ```
 
-Long text accepts `--text-file` or `--requirement-file` and `-` for stdin. Do not supply both inline and file
-variants. Preserve others' findings and claims.
+Long text accepts `--text-file` or `--requirement-file` and `-` for stdin. Use either inline or file input. Preserve others' findings and claims.
 
 ## Coordinate: list → prompt → wait → read
 
