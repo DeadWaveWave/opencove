@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import type { CreateNodeResult } from '../../src/shared/contracts/dto/nodeControl'
 import { cli, launchRealClaude, prompt } from './agent.prompt.real-claude.helpers'
-import { terminalCommand } from './cli-terminal.helpers'
+import { terminalCommand } from './cli.terminal.helpers'
 
 test.describe('parent CLI attention for a real Claude child', () => {
   test.skip(process.env.OPENCOVE_TEST_USE_REAL_AGENTS !== '1', 'Requires installed real Claude CLI')

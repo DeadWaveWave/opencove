@@ -208,6 +208,7 @@ it('uses one whoami fallback for multiple missing environment identities', async
   const f = identityFixture()
   delete f.io.env.OPENCOVE_PROJECT_ID
   delete f.io.env.OPENCOVE_SPACE_ID
+  delete f.io.env.OPENCOVE_NODE_ID
   expect(await run(['node', 'create', 'note'], f.io)).toBe(0)
   expect(f.requests.filter(request => request.id === 'system.whoami')).toHaveLength(1)
   expect(f.requests.at(-1)).toMatchObject({

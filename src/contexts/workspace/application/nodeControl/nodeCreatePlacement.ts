@@ -1,4 +1,5 @@
 import type { CreateNodeInput, ManagedCanvasNodeKind } from '../../../../shared/contracts/dto'
+import { clampFrameSize } from './nodeDataFactory'
 import { createAppError } from '../../../../shared/errors/appError'
 import type { NodeControlNode, NodeControlSpace, NodeControlWorkspace } from './nodeControlState'
 import {
@@ -84,12 +85,27 @@ function resolveSpaceRect(
   )
 }
 
+/** The boundary supplies only an authenticated caller ID; geometry stays workspace-owned. */
+function rootCreationAnchor(workspace: NodeControlWorkspace, callerNodeId?: string | null) {
+  const caller = callerNodeId ? workspace.nodes.find(node => node.id === callerNodeId) : undefined
+  if (!caller) {
+    return { x: 0, y: 0 }
+  }
+  const space = workspace.spaces.find(candidate => candidate.nodeIds.includes(caller.id))
+  const rect = space ? resolveSpaceRect(workspace, space) : null
+  return {
+    x: (rect ? rect.x + rect.width : caller.position.x + caller.width) + SPACE_NODE_PADDING,
+    y: caller.position.y,
+  }
+}
+
 export function resolvePlacement(options: {
   workspace: NodeControlWorkspace
   space: NodeControlSpace | null
   kind: ManagedCanvasNodeKind
   bucket: WorkspaceCanonicalSizeBucket
   frame?: CreateNodeInput['frame']
+  callerNodeId?: string | null
 }): { placement: { x: number; y: number }; size: { width: number; height: number } } {
   const defaultSize = resolveCanonicalNodeSize({ kind: options.kind, bucket: options.bucket })
   const explicitX =
@@ -106,9 +122,20 @@ export function resolvePlacement(options: {
   }
 
   const targetSpaceRect = options.space ? resolveSpaceRect(options.workspace, options.space) : null
+  const automaticRoot = !options.space && explicitX === null && explicitY === null
+  const rootAnchor = automaticRoot
+    ? rootCreationAnchor(options.workspace, options.callerNodeId)
+    : { x: 0, y: 0 }
+  const size = automaticRoot
+    ? clampFrameSize({
+        kind: options.kind,
+        width: options.frame?.width ?? defaultSize.width,
+        height: options.frame?.height ?? defaultSize.height,
+      })
+    : defaultSize
   const anchor = targetSpaceRect
     ? { x: targetSpaceRect.x + SPACE_NODE_PADDING, y: targetSpaceRect.y + SPACE_NODE_PADDING }
-    : { x: 0, y: 0 }
+    : rootAnchor
   const spaceRects = options.workspace.spaces
     .map(space => space.rect)
     .filter((rect): rect is { x: number; y: number; width: number; height: number } =>
@@ -116,7 +143,7 @@ export function resolvePlacement(options: {
     )
   const resolved = resolveWorkspaceNodesPlacement({
     anchor,
-    size: defaultSize,
+    size,
     nodes: options.workspace.nodes.map(node => ({
       id: node.id,
       position: node.position,
@@ -132,5 +159,5 @@ export function resolvePlacement(options: {
     })
   }
 
-  return { placement: resolved.placement, size: defaultSize }
+  return { placement: resolved.placement, size }
 }

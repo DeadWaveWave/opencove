@@ -131,6 +131,8 @@ export async function createNodeForNodeControl(options: {
   runtime: NodeControlRuntimeDeps
   input: CreateNodeInput
   now: Date
+  /** Internal identity from an authenticated session grant, never a wire field. */
+  callerNodeId?: string | null
 }): Promise<CreateNodeResult> {
   const state = requireNodeControlState(await options.store.readAppState())
   const resolved = await resolveNodeCreationTarget(state, options.locatorDeps, options.input)
@@ -142,6 +144,7 @@ export async function createNodeForNodeControl(options: {
     kind: options.input.kind,
     bucket: settings.standardWindowSizeBucket,
     frame: options.input.frame,
+    callerNodeId: options.callerNodeId,
   })
   const frame = resolveCreateFrame({
     kind: options.input.kind,

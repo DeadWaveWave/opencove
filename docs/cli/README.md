@@ -8,7 +8,7 @@ CLI 是 Control Surface client；业务状态由 Worker/application owner 管理
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `project`   | `list`                                                                                                                                                                                            |
 | `space`     | `list`, `get`                                                                                                                                                                                     |
-| `node`      | `list`, `get`, `create note/task/website/agent/terminal`, `update note/task/website`, `delete`                                                                                                    |
+| `node`      | `list [--root-canvas]`, `get`, `create note/task/website/agent/terminal [--root-canvas]`, `update note/task/website`, `delete`                                                                                                    |
 | `canvas`    | `focus node`, `focus space`                                                                                                                                                                       |
 | `api`       | `ops`, `schema <operation-id>`, `call <operation-id>`                                                                                                                                             |
 | Runtime     | `ping`, `status`, `worker start/status/stop`, `runtime inspect/verify/prepare`                                                                                                                    |
@@ -70,6 +70,8 @@ Plugin distribution 返回 `failed`/`conflict` 时 exit 1，candidate 结果位�
 `worker status/stop` 使用本地生命周期模块，仅检查 worker 记录；不接受 `--endpoint`。
 Space locator 不推断 cwd：使用 `--space`、`--space-name` 或 `--worker` 与 `--branch`/`--path`，必要时用 `--project` 收窄。
 
+`node create` 支持 `--root-canvas`，在项目画布上创建、不加入任何 Space；外部调用需同时指定 `--project <selector>`。在 OpenCove 内不指定目标时，`node create` 使用调用者节点的当前 Space，或在调用者不属于任何 Space 时使用 root canvas。`node list` 在后一种情况下默认列整个项目；`node list --root-canvas` 仅列 root 节点。显式 `--project` 单独用于创建仍会报错，需补 Space 目标或 `--root-canvas`。未指定 x/y 时，在 OpenCove 内优先放在你的节点或所在 Space 旁边；无法在目标项目定位调用者时从原点寻找空位，不保证可见；用 `--focus` 显示新节点。详见 [Canvas node control](CANVAS_NODE_CONTROL.md)。
+
 ## Help and introspection
 
 `opencove --help` 显示分组及全局选项；`opencove <group> --help` 列子命令；命令级 `--help` 显示参数、示例与全局选项提示，不连接 Worker。
@@ -79,6 +81,8 @@ Space locator 不推断 cwd：使用 `--space`、`--space-name` 或 `--worker` �
 开发构建：`pnpm build:cli`；入口为 `node out/cli/opencove.mjs`。
 
 CLI 测试先运行 `pnpm build:cli`，再运行 `pnpm exec vitest run tests/unit/app/cli*.spec.ts`。
+更新帮助 golden snapshots：`pnpm build:cli` 后运行 `pnpm exec vitest run tests/unit/app/cliCore.spec.ts tests/unit/app/cliHelpErrors.spec.ts tests/unit/app/cliSchemaValidation.spec.ts --update`；由 Vitest 生成，不手改 `.snap`。
+
 测试的 global setup 在系统临时目录重新构建并逐字节校验工作树中的 CLI 产物；产物缺失或过期时拒绝继续，不覆盖工作树，临时构建在成功或失败后都会清理。
 
 ## Context state versus session lifecycle

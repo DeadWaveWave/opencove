@@ -74,18 +74,21 @@ Global options: see "opencove --help".
 `;
 
 exports[`TypeScript CLI core > help snapshot "node" 2`] = `
-"Usage: opencove node create note [--space <id> | <other-target-space-options>] [options]
+"Usage: opencove node create note [--root-canvas | --space <id> | <other-target-space-options>] [options]
 
 Create a note node
 
-When no target is given, inside OpenCove defaults to your own space; project options default to your own project.
+Without explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node is unavailable in the selected project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.
 
-Target space (choose one; inside OpenCove defaults to your own space):
+Default target inside OpenCove: your current Space, or the root canvas when you are outside any Space. An explicit --project selects project scope for lists; creation also needs --root-canvas or a Space target.
+
+Target container (choose one):
+  --root-canvas                                 Create on the project's root canvas, outside every Space
   --space <id>                                  Select a space by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --space-name <name> [--project <id>]          Find a named space, optionally within a project
   --worker <id-or-name> --branch <branch>       Find a space by worker and Git branch
   --worker <id-or-name> --path <absolute-path>  Find a space by worker and working directory
-  --project <id>                                Narrow a space name, branch or path lookup to one project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>                                Select the root-canvas project, or narrow a Space lookup; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Options:
   --text <text>         Set the note contents
@@ -103,6 +106,7 @@ Projection example:
 
 Examples:
   opencove node create note --space space-123 --title "Release checklist" --text "Run the smoke tests"
+  opencove node create note --root-canvas --project project-123 --text "Canvas note" --focus
   opencove node create note --space-name "Sprint planning" --project project-123 --text-file ./notes.md --focus
   printf 'Review the release notes\\n' | opencove node create note --space space-123 --text-file -
 

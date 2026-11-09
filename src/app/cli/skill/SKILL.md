@@ -5,7 +5,8 @@ description: Coordinate agents and share work inside OpenCove using its bundled 
 
 # OpenCove agent guide
 
-This guide ships inside the CLI build. Use `opencove --version` to identify it; `opencove skill -o json` includes the matching version and guide content. All example IDs, names and paths must be replaced with actual query results.
+This guide ships inside the CLI build. Use `opencove --version` to identify it; `opencove skill -o json` includes
+the matching version and guide content. Replace example IDs, names and paths with actual query results.
 
 ## Establish identity before acting
 
@@ -28,10 +29,10 @@ go to stderr; non-TTY or `-o json` uses a structured `error` object.
 
 ## Select targets explicitly
 
-Node, space and project selectors accept a full ID, exact case-sensitive title/name, or a unique ID prefix of at
-least six characters. Ambiguity exits 6: use a full ID. `@self` uses your authenticated terminal identity, not your
-working directory. Inside OpenCove, omitted space targets default to your space; explicit `--project` selects
-project scope for lists. Names/prefixes use your project unless overridden. Terminal nodes can report observed
+Node, space and project selectors accept a full ID, exact case-sensitive name, or a unique ID prefix (6+ characters). Ambiguity exits 6: use a full ID. `@self` uses your authenticated terminal identity, not your
+working directory. Inside OpenCove, `node create` and `node list` read your current container: your Space,
+or the root canvas when you are outside every Space. There, `node list` lists the whole project; use `node list --root-canvas` for only root nodes. Explicit `--project` selects project scope for lists;
+creation also needs a Space target or `--root-canvas`. Other commands keep their existing Space defaults. Names/prefixes use your project unless overridden. Terminal nodes can report observed
 agents; only agent windows can receive prompts. Resolve targets from the agent list before prompting.
 
 ```sh
@@ -39,6 +40,9 @@ opencove node list -o table
 opencove agent list --space @self -o table
 opencove agent get --node "Reviewer" --pretty
 ```
+
+To put a node on the canvas outside any Space: `opencove node create note --root-canvas --text …`.
+Outside OpenCove, add `--project <id>`. Placement searches next to you when run inside OpenCove, or from the origin if your node is unavailable. Use `--focus` to reveal it.
 
 ## Notes and tasks are a shared blackboard
 
@@ -59,8 +63,7 @@ opencove node get --node task-123
 opencove node update task --node task-123 --status ai_done
 ```
 
-Long text accepts `--text-file` or `--requirement-file` and `-` for stdin. Do not supply both inline and file
-variants. Preserve others' findings and claims.
+Long text accepts `--text-file` or `--requirement-file` and `-` for stdin. Use either inline or file input. Preserve others' findings and claims.
 
 ## Coordinate: list → prompt → wait → read
 
@@ -157,12 +160,9 @@ opencove agent wait --node agent-123 --node agent-456 --until idle --all --timeo
 opencove agent get --node agent-123 --fields state,quality,turnOutcome
 ```
 
-Waiting observed (exit 10): the agent may need the user — inspect before acting. Ask the user to resolve it in OpenCove (Desktop or this Worker's Web UI); inspect `opencove agent read --node <id> --screen` with the same connection options
-and matching session/turn IDs. Repeat the wait; reuse the same --turn. Event waits cannot resume an already observed completion: prefer --turn. --through-waiting continues when waiting is reported; it does not suppress exit 11 (target exited).
-Success wins over attention; 11 wins over 10. --any stops on the first success OR waiting/exited of an unfulfilled target. Fulfilled bindings cannot stop --all later; session changes or unbinding reset progress. State turn-end results include completion with its own sessionId/turnId/outcome. Exact PTY exit normally returns 0/unknown from retained end evidence.
+Exit 10 = waiting observed: the agent may need the user. Never answer its dialog; ask the user to resolve it in OpenCove (Desktop or this Worker's Web UI), inspect `agent read --node <id> --screen` (same connection options, matching session/turn IDs), then repeat the wait with the same --turn. Exit 11 = an unfulfilled target exited. Success beats both; 11 beats 10. --any stops on the first success or attention event; fulfilled bindings never stop --all, and a session change resets progress. turn-end results carry `completion` {sessionId, turnId, outcome}; event waits cannot resume an observed completion, so prefer --turn. --through-waiting keeps waiting through waiting (not exit 11). Exact PTY exit normally returns 0/unknown.
 
-State waits print all selected latest snapshots; exact-turn waits print one result. Timeout prints lastKnown on stderr,
-stdout empty. Ctrl-C exits 130 and closes subscriptions. It never stops the target agent. Read tries the latest
+State waits print all selected latest snapshots; exact-turn waits print one result. Timeout prints lastKnown on stderr, stdout empty. Ctrl-C exits 130 and closes subscriptions. It never stops the target agent. Read tries the latest
 ended turn's `agent.finalMessage` first. `--turn <turnId>` selects exactly the OpenCove turn ID returned by prompt:
 no prefixes or fallback. Hook replies (≤64 KiB), outcome and IDs are private; exact archived local --turn reads/waits survive
 restarts without a live agent. Archive caps: 60 turns/node, 30 days, 20,000 global records and 128 MiB of message text. JSON includes

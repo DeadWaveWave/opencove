@@ -132,6 +132,16 @@ function data(kind: string, o: Record<string, unknown>, create: boolean) {
     profileId: o.profile,
   }
 }
+const rootCanvasOption: OptionSpec = {
+  type: 'boolean',
+  description: "Create on the project's root canvas, outside every Space",
+  conflicts: ['space', 'space-name', 'worker', 'branch', 'path'],
+}
+const nodeLocatorOptions: Record<string, OptionSpec> = {
+  ...locatorOptions,
+  space: { ...locatorOptions.space, defaultSelfUnless: ['root-canvas'] },
+  'root-canvas': rootCanvasOption,
+}
 const kinds = ['note', 'task', 'website', 'agent', 'terminal']
 export const nodeCommands = [
   defineCommand({
@@ -142,14 +152,25 @@ export const nodeCommands = [
       '\n\n' +
       'Lists per-kind summaries: data carries kind plus requirement, status, priority and tags for tasks, or url for websites; data carries only kind for notes, agents and terminals. Read full content, such as note text, with "opencove node get --node <id>".\n\ndata.status is task status. Top-level status is session lifecycle (for example running or exited) for agents and terminals, not whether an agent is idle or working. STATE shows task status or session lifecycle; agentState is the separate work-state field. sessionStatus aliases lifecycle status. agentState {state, quality, turnId} reports work for agents and observed agents in terminals; state working means the agent is working. Missing observations are unknown/degraded. context keeps its legacy state field.',
     targetSpace: 'optional',
+    currentContainer: true,
     connect: true,
     operation: 'node.list',
-    options: { ...locatorOptions, kind: { ...stringOption('Node kind'), inputPath: 'kind' } },
+    options: {
+      ...nodeLocatorOptions,
+      'root-canvas': {
+        ...rootCanvasOption,
+        description: "List only nodes on the project's root canvas, outside every Space",
+      },
+      kind: { ...stringOption('Node kind'), inputPath: 'kind' },
+    },
     buildInput: ({ options: o }) => ({ space: locator(o), projectId: o.project, kind: o.kind }),
     render: nodeListOutput,
     async execute(ctx) {
       const result = (await ctx.invoke('node.list', ctx.input)) as ListNodesResult
-      return { ...result, nodes: await nodeAgentMetadata(result.nodes, ctx, result) }
+      const nodes = ctx.options['root-canvas']
+        ? result.nodes.filter(node => node.spaceId === null)
+        : result.nodes
+      return { ...result, nodes: await nodeAgentMetadata(nodes, ctx, result) }
     },
   }),
   ...(['get', 'delete'] as const).map(action =>
@@ -218,14 +239,18 @@ export const nodeCommands = [
       return defineCommand({
         path: ['node', action, kind],
         summary: `${create ? 'Create' : 'Update'} a ${kind} node`,
+        description: create
+          ? 'Without explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node is unavailable in the selected project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.'
+          : undefined,
         targetSpace: create ? 'required' : undefined,
+        currentContainer: create,
         connect: true,
         operation: `node.${action}`,
         render: nodeKindOutput(kind, create),
         operationCommand: `opencove node ${action}`,
         options: {
           ...specific,
-          ...(create ? locatorOptions : { node: stringOption('Node ID', true) }),
+          ...(create ? nodeLocatorOptions : { node: stringOption('Node ID', true) }),
           title: stringOption('Title'),
           frame: {
             type: 'json',
@@ -244,12 +269,13 @@ export const nodeCommands = [
           create && kind === 'note'
             ? [
                 'opencove node create note --space space-123 --title "Release checklist" --text "Run the smoke tests"',
+                'opencove node create note --root-canvas --project project-123 --text "Canvas note" --focus',
                 'opencove node create note --space-name "Sprint planning" --project project-123 --text-file ./notes.md --focus',
                 "printf 'Review the release notes\\n' | opencove node create note --space space-123 --text-file -",
               ]
             : [
                 `opencove node ${action} ${kind} ${create ? '--space space-123' : '--node node-123'}${kind === 'task' ? ' --requirement "Review release notes"' : kind === 'website' ? ' --url https://example.com' : kind === 'note' ? ' --text "Updated note"' : kind === 'agent' ? ' --prompt "Review the test failures"' : ''}`,
-                `opencove node ${action} ${kind} ${create ? '--space space-123' : '--node node-123'}${kind === 'task' ? ' --requirement "Review release notes"' : kind === 'website' ? ' --url https://example.com' : ''} --title "Release review" --pretty`,
+                `opencove node ${action} ${kind} ${create ? '--root-canvas --project project-123' : '--node node-123'}${kind === 'task' ? ' --requirement "Review release notes"' : kind === 'website' ? ' --url https://example.com' : ''} --title "Release review" --pretty`,
               ],
         buildInput: ({ options: o }: CommandArgs) => {
           if (
@@ -258,9 +284,14 @@ export const nodeCommands = [
           ) {
             usage('--frame must be a JSON object')
           }
+          const targetSpace = create ? locator(o) : undefined
           return {
             kind,
-            ...(create ? { space: locator(o, true) } : { nodeId: o.node }),
+            ...(create
+              ? targetSpace
+                ? { space: targetSpace }
+                : { projectId: o.project }
+              : { nodeId: o.node }),
             title: o.title,
             frame: o.frame,
             data: data(kind, o, create),

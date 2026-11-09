@@ -2,7 +2,7 @@
 import { execFileSync } from 'node:child_process'
 import type { Page } from '@playwright/test'
 import { expect, it, vi } from 'vitest'
-import { terminalCommand } from '../../e2e/cli-terminal.helpers'
+import { terminalCommand } from '../../e2e/cli.terminal.helpers'
 
 it.skipIf(process.platform === 'win32').each([0, 11])(
   'frames output without a trailing newline and preserves exit %s',

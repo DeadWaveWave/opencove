@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import type { CreateNodeResult } from '../../src/shared/contracts/dto/nodeControl'
 import { launchApp, removePathWithRetry, seedWorkspaceState } from './workspace-canvas.helpers'
 
-import { terminalCommand, jsonOutput } from './cli-terminal.helpers'
+import { terminalCommand, jsonOutput } from './cli.terminal.helpers'
 
 const projectId = 'cli-identity-project'
 const mainSpaceId = 'cli-identity-main'
