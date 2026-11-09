@@ -60,3 +60,57 @@ it.each(['new', 'resume'] as const)(
     terminal.release()
   },
 )
+
+it.each([
+  ['claude-code', 'new'],
+  ['codex', 'new'],
+  ['claude-code', 'resume'],
+  ['codex', 'resume'],
+] as const)(
+  'does not use the previous Claude binding for a %s %s invocation',
+  async (provider, launchMode) => {
+    const registry = new TerminalAgentInvocationRegistry({ now: () => 200 })
+    const invoke = vi.fn(async () => undefined)
+    const owner = createTerminalAgentWatcherOwner({ invoke })
+    let workspaces = [createTerminalAgentWorkspace('claude-code', true)]
+    workspaces[0].nodes[0].data.agentOverlay = null
+    const unsubscribe = registry.onMetadata(event => {
+      workspaces = updateWorkspacesWithTerminalAgentActivityMetadata({
+        workspaces,
+        event: event as never,
+      }).nextWorkspaces
+      owner.sync(workspaces)
+    })
+    const terminal = registry.reserve({ sourceId: 'terminal-shim' })
+    terminal.bind('pty-1')
+    const invocation = terminal.beginInvocation({
+      provider,
+      invocationId: 'invocation-2',
+      launchMode,
+      expectedResumeSessionId: launchMode === 'resume' ? 'current-session' : null,
+    })!
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(1))
+    expect(invoke).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({ provider, launchMode, resumeSessionId: null }),
+      }),
+    )
+    expect(workspaces[0].nodes[0].data.terminalAgentBinding?.resumeSessionId).toBe('resume-1')
+    invocation.observe({
+      identityAuthority: 'provider_session_start',
+      resumeSessionId: 'current-session',
+    })
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(invoke).toHaveBeenCalledTimes(launchMode === 'new' ? 1 : 3)
+    if (launchMode === 'resume') {
+      expect(invoke).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({ resumeSessionId: 'current-session' }),
+        }),
+      )
+    }
+    unsubscribe()
+    owner.dispose()
+    terminal.release()
+  },
+)

@@ -53,9 +53,9 @@ cannot provide end-to-end exactly-once delivery; the HTTP runtime sequence is th
 
 Session-file history folds to one baseline across chunks, partial records and file replacement;
 it cannot start or end turns or override live work. New invocations read their new file as live.
-Terminal invocation intent is independent of verified identity; identity discovery preserves the
-watcher cursor. Resumed Codex files are located by ID, regardless of date/mtime. Codex SessionStart
-publishes identity only. Appended Codex task_started/task_complete/turn_aborted records
+Terminal invocation intent is independent of verified identity; watchers use the current invocation's
+verified ID, never a prior durable binding. Identity discovery preserves the cursor. Resumed Codex files
+are located by ID, regardless of date/mtime. Codex SessionStart publishes identity only. Appended Codex task_started/task_complete/turn_aborted records
 carry explicit boundaries. A selected, non-degraded session-file idle → working edge also starts an
 inferred turn, and a subsequent selected idle observation completes that turn. A working baseline or
 refresh alone never starts one. These decisions remain fenced by source sequence and incarnation. Pi agent_start/agent_settled snapshots carry explicit evidence, while heartbeats and

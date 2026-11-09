@@ -98,21 +98,29 @@ export function createTerminalAgentWatcherOwner(options: {
           continue
         }
 
-        const binding = node.data.terminalAgentBinding ?? null
         const provider = resolveAgentTreatedProvider(node)
         const sessionId = node.data.sessionId.trim()
         if (!provider || !canObserveAgentRunState(node.data) || sessionId.length === 0) {
           continue
         }
 
+        const binding =
+          node.data.terminalAgentBinding?.provider === provider
+            ? node.data.terminalAgentBinding
+            : null
+        const activity = node.data.agentOverlay?.activity
+        // Durable bindings are resume affordances, not identity for a new invocation.
+        const resumeSessionId = activity?.launchMode
+          ? (activity.verifiedProviderSessionId ?? null)
+          : (binding?.resumeSessionId ?? null)
+
         desiredBySessionId.set(sessionId, {
           sessionId,
           provider,
           cwd: node.data.executionDirectory?.trim() || workspace.path,
           launchMode:
-            node.data.agentOverlay?.activity?.launchMode ??
-            (binding?.resumeSessionIdVerified === true ? 'resume' : 'new'),
-          resumeSessionId: binding?.resumeSessionId ?? null,
+            activity?.launchMode ?? (binding?.resumeSessionIdVerified === true ? 'resume' : 'new'),
+          resumeSessionId,
           startedAtMs: node.data.agentOverlay?.startedAtMs ?? now(),
         })
       }
