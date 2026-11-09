@@ -102,7 +102,8 @@ it('forwards only Worker-owned spawn context and requires bearer authority at th
         request.payload,
         noStore,
       ),
-    ).toEqual(identity)
+      // The hosting Worker marks forwarded Home identities as delegated (no resident context).
+    ).toEqual({ ...identity, delegated: true })
     expect(noStore).not.toHaveBeenCalled()
     await expect(
       resolveCanvasSpawnIdentity(
