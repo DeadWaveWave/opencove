@@ -39,6 +39,13 @@ export function createTerminalAgentActivityRuntime(options: {
   const agentProviderRegistry =
     options.agentProviderRegistry ??
     new Registry(createBuiltinAgentProviderContributions({ appVersion: options.appVersion }))
+  for (const channel of options.agentHookChannels) {
+    channel.setResidentContextEnabled?.(async () => {
+      const store = await options.getPersistenceStore?.()
+      const persisted = store ? normalizePersistedAppState(await store.readAppState()) : null
+      return normalizeAgentSettings(persisted?.settings).agentResidentContext !== 'off'
+    })
+  }
   const invocationRegistry = new TerminalAgentInvocationRegistry()
   const gateway = new TerminalAgentActivityGateway({
     registry: invocationRegistry,

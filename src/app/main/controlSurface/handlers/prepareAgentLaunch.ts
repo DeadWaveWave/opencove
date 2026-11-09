@@ -1,3 +1,4 @@
+import { localCanvasResidentContext } from '../sessionSpawnIdentityContext'
 import { getCommandExecutionEnvironment } from '../../../../platform/os/CommandEnvironmentService'
 import type { AgentProviderRegistry } from '../../../../contexts/agent/application/services/AgentProviderRegistry'
 import { createManagedAgentLaunchPlan } from '../../../../contexts/agent/application/use-cases/createManagedAgentLaunchPlan'
@@ -25,6 +26,7 @@ export async function prepareAgentLaunch(options: {
     options.registry.require(options.provider),
     {
       environment,
+      residentContext: localCanvasResidentContext(),
       profileId: options.profileId,
       mode: options.mode,
       prompt: options.mode === 'new' ? options.prompt : '',

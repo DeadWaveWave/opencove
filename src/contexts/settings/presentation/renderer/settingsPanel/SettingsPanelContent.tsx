@@ -79,6 +79,7 @@ export function SettingsPanelContent({
     updatePluginContributionEnabled,
     updateAgentFullAccess,
     updateCodexReuseRunningAppServer,
+    updateAgentResidentContext,
     updateDefaultTerminalProfileId,
     updateTaskTitleProvider,
     updateTaskTitleModel,
@@ -238,6 +239,7 @@ export function SettingsPanelContent({
               onChangeDefaultProvider={updateDefaultProvider}
               onChangeAgentProviderOrder={updateAgentProviderOrder}
               onChangeAgentFullAccess={updateAgentFullAccess}
+              onChangeAgentResidentContext={updateAgentResidentContext}
               onChangeCodexReuseRunningAppServer={updateCodexReuseRunningAppServer}
               onToggleCustomModelEnabled={updateProviderCustomModelEnabled}
               onSelectProviderModel={selectProviderModel}

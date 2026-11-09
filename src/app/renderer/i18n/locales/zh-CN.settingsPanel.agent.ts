@@ -1,4 +1,9 @@
 export const zhCNSettingsPanelAgent = {
+  residentContextLabel: '向智能体介绍 OpenCove',
+  residentContextSuggest: '建议使用',
+  residentContextOff: '关闭',
+  residentContextHelp:
+    '为支持此功能的本地智能体提供简短的画布使用指南。更改将在会话启动或上下文重置时生效；关闭后，已发送的指南仍会保留。',
   title: 'Agent',
   defaultAgentLabel: '默认 Agent',
   defaultAgentHelp: '新任务和终端默认使用的 AI 提供方。',

@@ -424,6 +424,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     defaultProvider,
     agentProviderOrder,
     agentFullAccess,
+    agentResidentContext: value.agentResidentContext === 'off' ? 'off' : 'suggest',
     codexReuseRunningAppServer,
     defaultTerminalProfileId:
       defaultTerminalProfileId.length > 0

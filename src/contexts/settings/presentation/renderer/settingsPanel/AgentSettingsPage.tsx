@@ -30,6 +30,7 @@ export function AgentSettingsPage({
   onChangeDefaultProvider,
   onChangeAgentProviderOrder,
   onChangeAgentFullAccess,
+  onChangeAgentResidentContext,
   onChangeCodexReuseRunningAppServer,
   onToggleCustomModelEnabled,
   onSelectProviderModel,
@@ -46,6 +47,7 @@ export function AgentSettingsPage({
   onChangeDefaultProvider: (provider: AgentProvider) => void
   onChangeAgentProviderOrder: (providers: AgentProvider[]) => void
   onChangeAgentFullAccess: (enabled: boolean) => void
+  onChangeAgentResidentContext: (mode: AgentSettings['agentResidentContext']) => void
   onChangeCodexReuseRunningAppServer: (enabled: boolean) => void
   onToggleCustomModelEnabled: (provider: AgentProvider, enabled: boolean) => void
   onSelectProviderModel: (provider: AgentProvider, model: string) => void
@@ -185,6 +187,7 @@ export function AgentSettingsPage({
           isRefreshingAvailability={isRefreshingAvailability}
           settings={settings}
           onChangeAgentProviderOrder={onChangeAgentProviderOrder}
+          onChangeAgentResidentContext={onChangeAgentResidentContext}
           onChangeAgentFullAccess={onChangeAgentFullAccess}
           onConfigureProvider={openProvider}
           onRefreshAvailability={refreshAvailability}

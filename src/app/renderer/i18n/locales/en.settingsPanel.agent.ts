@@ -1,4 +1,9 @@
 export const enSettingsPanelAgent = {
+  residentContextLabel: 'Tell agents about OpenCove',
+  residentContextSuggest: 'Suggest',
+  residentContextOff: 'Off',
+  residentContextHelp:
+    'Give supported local agents a short guide to the canvas. Changes apply when a session starts or its context resets. Turning this off does not remove guidance already sent.',
   title: 'Agent',
   defaultAgentLabel: 'Default Agent',
   defaultAgentHelp: 'The default AI provider for new tasks and terminals.',
