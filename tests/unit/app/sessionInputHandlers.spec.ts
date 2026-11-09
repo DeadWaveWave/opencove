@@ -35,6 +35,7 @@ it('refuses input to a replacement session when the host captured an older bindi
   const control = createControlSurface()
   registerSessionInputHandlers(control, {
     getPersistenceStore: async () => store,
+    ptyRuntime: { kill: vi.fn() },
     ptyStreamHub: { writeAutomation } as unknown as PtyStreamHub,
   })
   const result = await control.invoke(
@@ -83,6 +84,7 @@ describe('queued node binding validation', () => {
     const control = createControlSurface()
     registerSessionInputHandlers(control, {
       getPersistenceStore: async () => store,
+      ptyRuntime: { kill: vi.fn() },
       ptyStreamHub: { writeAutomation } as unknown as PtyStreamHub,
     })
     const result = await control.invoke(
@@ -96,4 +98,115 @@ describe('queued node binding validation', () => {
     expect(result.ok).toBe(false)
     expect(writeAutomation).toHaveBeenCalledTimes(1)
   })
+})
+
+it.each([true, false])(
+  'preserves generic cleanup for a bound PTY regardless of active state: %s',
+  async live => {
+    const store = createInMemoryPersistenceStore()
+    const state = createMinimalState('/repo', 'project', 'space')
+    state.workspaces[0].nodes = [
+      {
+        id: 'node',
+        kind: 'agent',
+        sessionId: 'session',
+        title: 'Lead',
+        position: { x: 0, y: 0 },
+        width: 400,
+        height: 300,
+        status: 'running',
+        startedAt: null,
+        endedAt: null,
+        exitCode: null,
+        lastError: null,
+        agent: null,
+        task: null,
+        scrollback: null,
+        labelColorOverride: null,
+      },
+    ]
+    await store.writeAppState(state)
+    const kill = vi.fn(),
+      writeAutomation = vi.fn()
+    const control = createControlSurface()
+    registerSessionInputHandlers(control, {
+      getPersistenceStore: async () => store,
+      ptyRuntime: { kill },
+      ptyStreamHub: { isSessionActive: () => live, writeAutomation } as unknown as PtyStreamHub,
+    })
+    const stop = (sessionId = 'session') =>
+      control.invoke(
+        { now: () => new Date() },
+        { id: 'session.stopNode', kind: 'command', payload: { nodeId: 'node', sessionId } },
+      )
+    expect(await stop('old')).toMatchObject({ ok: false, error: { code: 'common.invalid_input' } })
+    expect(kill).not.toHaveBeenCalled()
+    expect(await stop()).toMatchObject({
+      ok: true,
+      value: {
+        nodeId: 'node',
+        sessionId: 'session',
+        requested: true,
+        stopped: true,
+      },
+    })
+    expect(kill).toHaveBeenCalledExactlyOnceWith('session')
+    expect(writeAutomation).not.toHaveBeenCalled()
+    expect(await store.readAppState()).toEqual(state)
+  },
+)
+
+it('does not kill after the request generation retires during binding lookup', async () => {
+  const kill = vi.fn()
+  const control = createControlSurface()
+  const store = createInMemoryPersistenceStore()
+  const state = createMinimalState('/repo', 'project', 'space')
+  state.workspaces[0].nodes = [
+    {
+      id: 'node',
+      kind: 'terminal',
+      sessionId: 'session',
+      title: 'Shell',
+      position: { x: 0, y: 0 },
+      width: 400,
+      height: 300,
+      status: null,
+      startedAt: null,
+      endedAt: null,
+      exitCode: null,
+      lastError: null,
+      agent: null,
+      task: null,
+      scrollback: null,
+      labelColorOverride: null,
+    },
+  ]
+  await store.writeAppState(state)
+  let active = true
+  registerSessionInputHandlers(control, {
+    getPersistenceStore: async () => {
+      active = false
+      return store
+    },
+    ptyRuntime: { kill },
+    ptyStreamHub: { isSessionActive: () => true } as unknown as PtyStreamHub,
+  })
+  expect(
+    await control.invoke(
+      {
+        now: () => new Date(),
+        assertActive: () => {
+          if (!active) {
+            throw new Error('retired')
+          }
+        },
+      },
+      {
+        id: 'session.stopNode',
+        kind: 'command',
+        payload: { nodeId: 'node', sessionId: 'session' },
+      },
+    ),
+  ).toMatchObject({ ok: false })
+  expect(kill).not.toHaveBeenCalled()
 })

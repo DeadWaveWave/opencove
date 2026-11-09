@@ -86,12 +86,17 @@ export function resolveAgentDisplayLabel({
   linkedTaskTitle,
   fallbackTitle,
   preferFallbackTitle = false,
+  titleIsLiteral = false,
 }: {
   provider: AgentProvider
   linkedTaskTitle: string | null
   fallbackTitle: string | null
   preferFallbackTitle?: boolean
+  titleIsLiteral?: boolean
 }): string {
+  if (preferFallbackTitle && titleIsLiteral) {
+    return fallbackTitle ?? providerTitlePrefix(provider)
+  }
   const normalizedFallbackLabel = stripAgentProviderPrefix(provider, fallbackTitle)
   if (preferFallbackTitle) {
     return normalizedFallbackLabel.length > 0

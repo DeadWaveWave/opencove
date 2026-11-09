@@ -216,6 +216,7 @@ export interface TerminalNodeData {
   sidebarSortOrder?: number
   title: string
   titlePinnedByUser?: boolean
+  titleIsLiteral?: boolean
   width: number
   height: number
   kind: WorkspaceNodeKind

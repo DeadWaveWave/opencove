@@ -1,9 +1,16 @@
 export function normalizeStopNode(value: unknown) {
-  const input = value as { nodeId?: unknown; sessionId?: unknown } | null
+  const input = value as { nodeId?: unknown; sessionId?: unknown; agentOnly?: unknown } | null
   if (typeof input?.nodeId !== 'string' || typeof input.sessionId !== 'string') {
     throw new Error('Stopping a node requires its exact nodeId and sessionId.')
   }
-  return { nodeId: input.nodeId, sessionId: input.sessionId }
+  if (input.agentOnly !== undefined && input.agentOnly !== true) {
+    throw new Error('agentOnly must be true when provided.')
+  }
+  return {
+    nodeId: input.nodeId,
+    sessionId: input.sessionId,
+    ...(input.agentOnly === true ? { agentOnly: true as const } : {}),
+  }
 }
 export function normalizeWriteNode(value: unknown) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {

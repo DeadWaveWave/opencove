@@ -239,6 +239,10 @@ it.each(targets)(
   'resolves $command.path --$flag using $form through run()',
   async ({ command, flag, kind, form }) => {
     const f = identityFixture()
+    if (command.path.join(' ') === 'agent stop') {
+      f.values['node.get'] = { node: { ...node, kind: 'agent', sessionId: 's' } }
+      f.values['session.stopNode'] = { stopped: true }
+    }
     if (command.path.join(' ') === 'agent get') {
       f.values['node.get'] = { node: { ...node, kind: 'agent' } }
     }

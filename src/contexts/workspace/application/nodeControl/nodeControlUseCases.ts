@@ -167,6 +167,9 @@ export async function createNodeForNodeControl(options: {
 
   const node = makeNode({
     id: canvasNodeId,
+    titlePinnedByUser:
+      (options.input.kind === 'agent' || options.input.kind === 'terminal') &&
+      Boolean(options.input.title?.trim()),
     kind: options.input.kind,
     title: resolveNodeTitle({
       kind: options.input.kind,

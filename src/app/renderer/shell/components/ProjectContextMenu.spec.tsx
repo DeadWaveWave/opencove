@@ -334,3 +334,26 @@ describe('ProjectContextMenu', () => {
     expect(screen.queryByTestId('menu')).toBeNull()
   })
 })
+
+it('edits a literal agent name without removing or adding provider decoration', async () => {
+  const { resolveTargetName, renameTarget } = await import('./ProjectContextMenu.state')
+  const workspace = createWorkspace()
+  workspace.nodes[0].data = {
+    ...workspace.nodes[0].data,
+    title: 'codex · Reviewer',
+    titlePinnedByUser: true,
+    titleIsLiteral: true,
+  }
+  useAppStore.setState({ workspaces: [workspace] })
+  const target = {
+    kind: 'agent' as const,
+    workspaceId: workspace.id,
+    nodeId: workspace.nodes[0].id,
+  }
+  expect(resolveTargetName([workspace], target)).toBe('codex · Reviewer')
+  renameTarget(target, 'codex · Lead')
+  expect(useAppStore.getState().workspaces[0].nodes[0].data).toMatchObject({
+    title: 'codex · Lead',
+    titleIsLiteral: true,
+  })
+})

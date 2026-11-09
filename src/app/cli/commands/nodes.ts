@@ -186,62 +186,69 @@ export const nodeCommands = [
     }),
   ),
   ...(['create', 'update'] as const).flatMap(action =>
-    (action === 'create' ? kinds : kinds.slice(0, 3)).map(kind => {
+    kinds.map(kind => {
       const create = action === 'create'
       const specific: Record<string, OptionSpec> =
-        kind === 'note'
-          ? { text: { ...stringOption('Note text'), fileVariant: true } }
-          : kind === 'task'
-            ? {
-                requirement: stringOption('Requirement', create),
-                priority: stringOption('Priority'),
-                tag: {
-                  ...stringOption('Tag'),
-                  description: create
-                    ? 'Set task tags; repeat for each tag'
-                    : 'Replace all tags; repeat for each tag in the new list',
-                  multiple: true,
-                },
-                ...(!create
-                  ? {
-                      'clear-tags': {
-                        type: 'boolean' as const,
-                        description: 'Remove all task tags',
-                        conflicts: ['tag'],
-                      },
-                    }
-                  : {}),
-                ...(!create ? { status: stringOption('Status') } : {}),
-              }
-            : kind === 'website'
+        !create && (kind === 'agent' || kind === 'terminal')
+          ? {}
+          : kind === 'note'
+            ? { text: { ...stringOption('Note text'), fileVariant: true } }
+            : kind === 'task'
               ? {
-                  url: stringOption('URL', create),
-                  pinned: {
-                    type: create ? 'boolean' : 'string',
-                    description: 'Keep the website pinned',
-                    valueName: 'true|false',
-                    ...(!create ? { choices: ['true', 'false'] } : {}),
+                  requirement: stringOption('Requirement', create),
+                  priority: stringOption('Priority'),
+                  tag: {
+                    ...stringOption('Tag'),
+                    description: create
+                      ? 'Set task tags; repeat for each tag'
+                      : 'Replace all tags; repeat for each tag in the new list',
+                    multiple: true,
                   },
-                  'session-mode': stringOption('Session mode'),
-                  profile: stringOption('Profile'),
+                  ...(!create
+                    ? {
+                        'clear-tags': {
+                          type: 'boolean' as const,
+                          description: 'Remove all task tags',
+                          conflicts: ['tag'],
+                        },
+                      }
+                    : {}),
+                  ...(!create ? { status: stringOption('Status') } : {}),
                 }
-              : kind === 'agent'
+              : kind === 'website'
                 ? {
-                    prompt: { ...stringOption('Agent prompt'), fileVariant: true },
-                    provider: stringOption('Provider'),
-                    model: stringOption('Model'),
-                  }
-                : {
-                    shell: stringOption('Shell'),
-                    command: stringOption('Command'),
+                    url: stringOption('URL', create),
+                    pinned: {
+                      type: create ? 'boolean' : 'string',
+                      description: 'Keep the website pinned',
+                      valueName: 'true|false',
+                      ...(!create ? { choices: ['true', 'false'] } : {}),
+                    },
+                    'session-mode': stringOption('Session mode'),
                     profile: stringOption('Profile'),
                   }
+                : kind === 'agent'
+                  ? {
+                      prompt: { ...stringOption('Agent prompt'), fileVariant: true },
+                      provider: stringOption('Provider'),
+                      model: stringOption('Model'),
+                    }
+                  : {
+                      shell: stringOption('Shell'),
+                      command: stringOption('Command'),
+                      profile: stringOption('Profile'),
+                    }
       return defineCommand({
         path: ['node', action, kind],
-        summary: `${create ? 'Create' : 'Update'} a ${kind} node`,
+        summary:
+          !create && kind === 'agent'
+            ? 'Update an agent node'
+            : `${create ? 'Create' : 'Update'} a ${kind} node`,
         description: create
           ? 'Without explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node is unavailable in the selected project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.'
-          : undefined,
+          : kind === 'agent' || kind === 'terminal'
+            ? 'Rename this window and keep its name when the agent session changes. The name is saved as provided, with surrounding whitespace removed. Use --frame to also move or resize it.'
+            : undefined,
         targetSpace: create ? 'required' : undefined,
         currentContainer: create,
         connect: true,
@@ -274,7 +281,7 @@ export const nodeCommands = [
                 "printf 'Review the release notes\\n' | opencove node create note --space space-123 --text-file -",
               ]
             : [
-                `opencove node ${action} ${kind} ${create ? '--space space-123' : '--node node-123'}${kind === 'task' ? ' --requirement "Review release notes"' : kind === 'website' ? ' --url https://example.com' : kind === 'note' ? ' --text "Updated note"' : kind === 'agent' ? ' --prompt "Review the test failures"' : ''}`,
+                `opencove node ${action} ${kind} ${create ? '--space space-123' : '--node node-123'}${kind === 'task' ? ' --requirement "Review release notes"' : kind === 'website' ? ' --url https://example.com' : kind === 'note' ? ' --text "Updated note"' : kind === 'agent' && create ? ' --prompt "Review the test failures"' : !create && (kind === 'agent' || kind === 'terminal') ? ' --title "Lead"' : ''}`,
                 `opencove node ${action} ${kind} ${create ? '--root-canvas --project project-123' : '--node node-123'}${kind === 'task' ? ' --requirement "Review release notes"' : kind === 'website' ? ' --url https://example.com' : ''} --title "Release review" --pretty`,
               ],
         buildInput: ({ options: o }: CommandArgs) => {
@@ -294,7 +301,9 @@ export const nodeCommands = [
               : { nodeId: o.node }),
             title: o.title,
             frame: o.frame,
-            data: data(kind, o, create),
+            ...(create || (kind !== 'agent' && kind !== 'terminal')
+              ? { data: data(kind, o, create) }
+              : {}),
           }
         },
         ...(create

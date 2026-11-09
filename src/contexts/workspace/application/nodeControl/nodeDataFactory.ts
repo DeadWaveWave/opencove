@@ -205,10 +205,7 @@ export function normalizeCreateNodeData(
   }
 }
 
-export function normalizeUpdateNodeData(
-  _kind: 'note' | 'task' | 'website',
-  data: unknown,
-): unknown {
+export function normalizeUpdateNodeData(_kind: ManagedCanvasNodeKind, data: unknown): unknown {
   return isRecord(data) ? data : {}
 }
 
@@ -291,6 +288,7 @@ export function makeNode(options: {
   id?: string
   kind: ManagedCanvasNodeKind
   title: string
+  titlePinnedByUser?: boolean
   frame: CanvasNodeFrameDto
   data: NodeControlCreateData
   now: string
@@ -350,7 +348,8 @@ export function makeNode(options: {
     id: options.id ?? randomUUID(),
     sessionId: runtime?.sessionId ?? null,
     title: options.title,
-    titlePinnedByUser: false,
+    titlePinnedByUser: options.titlePinnedByUser === true,
+    titleIsLiteral: options.titlePinnedByUser === true,
     position: { x: options.frame.x, y: options.frame.y },
     width: options.frame.width,
     height: options.frame.height,

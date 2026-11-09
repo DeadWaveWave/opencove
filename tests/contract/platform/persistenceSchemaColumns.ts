@@ -23,6 +23,7 @@ export const CURRENT_SCHEMA_COLUMNS = {
     'session_id',
     'title',
     'title_pinned_by_user',
+    'title_is_literal',
     'position_x',
     'position_y',
     'width',

@@ -40,6 +40,7 @@ function agentTileTitle(
         : null,
     fallbackTitle: node.data.title,
     preferFallbackTitle: node.data.titlePinnedByUser === true,
+    titleIsLiteral: node.data.titleIsLiteral === true,
   })
 }
 

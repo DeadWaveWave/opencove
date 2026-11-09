@@ -99,6 +99,7 @@ export type NormalizedPersistedNode = {
   sessionId: string | null
   title: string
   titlePinnedByUser?: boolean
+  titleIsLiteral?: boolean
   position: { x: number; y: number }
   width: number
   height: number
@@ -336,6 +337,7 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
         sessionId,
         title: normalizeString(node.title),
         titlePinnedByUser: node.titlePinnedByUser === true,
+        titleIsLiteral: node.titleIsLiteral === true,
         position,
         width: normalizeFiniteNumber(node.width, 0),
         height: normalizeFiniteNumber(node.height, 0),

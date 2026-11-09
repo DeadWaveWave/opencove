@@ -8,6 +8,7 @@ export type NodeControlNode = {
   sessionId: string | null
   title: string
   titlePinnedByUser?: boolean
+  titleIsLiteral?: boolean
   position: { x: number; y: number }
   width: number
   height: number

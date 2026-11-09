@@ -13,7 +13,7 @@ export type ReadableCanvasNodeKind =
   | 'image'
   | 'role'
 
-export type UpdatableCanvasNodeKind = 'note' | 'task' | 'website'
+export type UpdatableCanvasNodeKind = ManagedCanvasNodeKind
 
 export type NodeTaskPriority = 'low' | 'medium' | 'high' | 'urgent'
 

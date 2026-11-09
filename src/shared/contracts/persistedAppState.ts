@@ -192,6 +192,7 @@ export interface PersistedNodeContract {
   sessionId?: string | null
   title: string
   titlePinnedByUser?: boolean
+  titleIsLiteral?: boolean
   position: PersistedPoint
   width: number
   height: number

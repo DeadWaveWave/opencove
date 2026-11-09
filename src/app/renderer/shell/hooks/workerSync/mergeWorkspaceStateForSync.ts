@@ -1,3 +1,4 @@
+import { mergeNodeNaming } from '@shared/sync/mergePersistedNode'
 import { rebaseGuardedSpaceMembershipForSync } from './rebaseGuardedSpaceMembershipForSync'
 import { rebaseGuardedNodesForSync } from './rebaseGuardedNodesForSync'
 import type { Node } from '@xyflow/react'
@@ -32,7 +33,11 @@ function mergeRuntimeNode(
 
   const isGuarded = isNodeGuardedFromSyncOverwrite(persistedNode.id)
   if (!hasAcceptedBase && isGuarded) {
-    return existingNode
+    const guarded = {
+      ...existingNode,
+      data: { ...existingNode.data, ...mergeNodeNaming(persistedNode.data, existingNode.data) },
+    }
+    return isNodeEquivalent(guarded, existingNode) ? existingNode : guarded
   }
 
   const isDragging = existingNode.dragging === true

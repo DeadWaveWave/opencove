@@ -1,5 +1,4 @@
 import fs from 'node:fs/promises'
-import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -8,34 +7,7 @@ import {
   readLastAssistantMessageFromSessionFile,
 } from '../../../src/contexts/agent/infrastructure/watchers/SessionLastAssistantMessage'
 import { afterEach, describe, expect, it } from 'vitest'
-
-interface SqliteWriteStatementLike {
-  run: (...params: unknown[]) => unknown
-}
-
-interface SqliteWriteDbLike {
-  exec: (sql: string) => void
-  prepare: (sql: string) => SqliteWriteStatementLike
-  close: () => void
-}
-
-async function openWritableSqliteDb(dbPath: string): Promise<SqliteWriteDbLike> {
-  try {
-    const module = await import('better-sqlite3')
-    const BetterSqlite3 = module.default as unknown as new (
-      filePath: string,
-      options?: Record<string, unknown>,
-    ) => SqliteWriteDbLike
-    return new BetterSqlite3(dbPath)
-  } catch {
-    // Avoid `import('node:sqlite')` in tests because Vite's client transformer can reject it.
-    const require = createRequire(import.meta.url)
-    const sqlite = require('node:sqlite') as {
-      DatabaseSync: new (filePath: string, options?: Record<string, unknown>) => unknown
-    }
-    return new sqlite.DatabaseSync(dbPath) as SqliteWriteDbLike
-  }
-}
+import { openWritableSqliteDb, type SqliteWriteDbLike } from '../../support/sqlite'
 
 describe('readLastAssistantMessageFromSessionFile', () => {
   const tempDirs: string[] = []
