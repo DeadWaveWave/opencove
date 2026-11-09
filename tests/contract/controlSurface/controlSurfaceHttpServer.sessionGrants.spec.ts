@@ -71,7 +71,7 @@ it('enforces grant scope over HTTP and rejects revoked credentials', async () =>
       })
     for (const [id, kind, status] of [
       ['system.whoami', 'query', 200],
-      ['session.writeNode', 'command', 200],
+      ['session.writeNode', 'command', 403],
       ['worker.shutdown', 'command', 403],
       ['unknown', 'query', 403],
       ['auth.issueWebSessionTicket', 'command', 403],
@@ -90,7 +90,7 @@ it('enforces grant scope over HTTP and rejects revoked credentials', async () =>
         expect(body.ok).toBe(true)
       }
     }
-    expect(invoke).toHaveBeenCalledTimes(2)
+    expect(invoke).toHaveBeenCalledTimes(1)
     sessionGrants.revokeSession('session')
     const revoked = await invokeHttp('system.whoami', 'query')
     expect(revoked.status).toBe(401)

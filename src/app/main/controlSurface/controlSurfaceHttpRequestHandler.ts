@@ -2,7 +2,10 @@ import { invokeCallerLifetime } from './http/invokeCallerLifetime'
 import type { AgentRunStateRegistry } from '../../../contexts/agent/application/AgentRunStateRegistry'
 import { isAgentRuntimeStream, serveAgentRuntimeEvents } from './http/agentRuntimeSse'
 import type { SessionGrantRegistry } from './http/sessionGrantRegistry'
-import { sessionGrantAllowsOperation } from './http/sessionGrantAuthorization'
+import {
+  sessionGrantAllowsOperation,
+  sessionGrantDeniedError,
+} from './http/sessionGrantAuthorization'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../shared/contracts/controlSurface'
 import type { PluginInstallationManager } from '../../../contexts/plugins/application/PluginInstallationManager'
 import { tryHandlePluginAssetRoute } from './pluginAssetRoutes'
@@ -319,7 +322,7 @@ export function createControlSurfaceHttpRequestHandler(
         sendJson(res, 403, {
           __opencoveControlEnvelope: true,
           ok: false,
-          error: createAppErrorDescriptor('common.forbidden'),
+          error: sessionGrantDeniedError(request.id, auth.grant.tier),
         })
         return
       }

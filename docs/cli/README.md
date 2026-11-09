@@ -2,6 +2,10 @@
 
 CLI 是 Control Surface client；业务状态由 Worker/application owner 管理。CLI 不直接修改业务数据库。
 
+Agent terminals cannot answer permission dialogs, read or change private settings, override launch policy, run provider commands through prompts, or run plugin code through the API: those decisions belong to the human. Project isolation is not yet enforced.
+
+智能体终端不能通过 API 回答权限弹窗、读取或修改私密设置、覆盖启动权限策略或执行插件代码；这些决定由用户作出。目前尚未实施项目隔离。
+
 ## Commands
 
 | Group       | Commands                                                                                                                                                                                          |
@@ -63,7 +67,7 @@ Plugin distribution 返回 `failed`/`conflict` 时 exit 1，candidate 结果位�
 
 ## Connection and context
 
-连接 URL/token：命令行 `--endpoint`/`--token` 优先于 `OPENCOVE_CONTROL_URL`/`OPENCOVE_CONTROL_TOKEN`。
+连接 URL/token：环境 token 只随 `OPENCOVE_CONTROL_URL` 使用。显式 `--endpoint` 必须配 `--token`，即使 URL 与环境相同；profile discovery 使用该记录自己的 token，不借用环境 token。
 没有 URL 时，`--user-data` 优先于 `OPENCOVE_USER_DATA_DIR`；显式 profile 不回退到其他目录。
 未指定 profile 时搜索平台应用数据目录中的 `opencove-dev` 和 `opencove`。
 普通命令检查 `control-surface.json` 和 `worker-control-surface.json`，忽略无效/已退出 PID；多个有效连接记录返回歧义错误。
@@ -75,10 +79,12 @@ Space locator 不推断 cwd：使用 `--space`、`--space-name` 或 `--worker` �
 ## Help and introspection
 
 `opencove --help` 显示分组及全局选项；`opencove <group> --help` 列子命令；命令级 `--help` 显示参数、示例与全局选项提示，不连接 Worker。
-`api ops` 在 OpenCove session 外离线列出 operation；session 内会读取 `whoami` 的 scope；`api schema` 只为有 schema 的 operation 提供输入 JSON Schema。
+`api ops` 在 OpenCove session 外离线列出 operation；session 内使用 Worker 返回的 `access` 和 `policyVersion`，旧 Worker 则报告 `access: unknown`；`api schema` 只为有 schema 的 operation 提供输入 JSON Schema；session 内同时附带 Worker 的 access、reason、policyVersion 和受限字段 rejectedFields，字段出现在 schema 中不代表允许使用。
 `api call <operation-id> --input-file request.json` 使用同一验证与连接路径。
 
 开发构建：`pnpm build:cli`；入口为 `node out/cli/opencove.mjs`。
+
+CLI help golden 更新使用 `pnpm exec vitest run tests/unit/app/cliInputOutput.spec.ts tests/unit/app/cliOutputBehavior.spec.ts --update`，不要手改生成的 snapshot。
 
 CLI 测试先运行 `pnpm build:cli`，再运行 `pnpm exec vitest run tests/unit/app/cli*.spec.ts`。
 更新帮助 golden snapshots：`pnpm build:cli` 后运行 `pnpm exec vitest run tests/unit/app/cliCore.spec.ts tests/unit/app/cliHelpErrors.spec.ts tests/unit/app/cliSchemaValidation.spec.ts tests/unit/app/cliAgentQueries.spec.ts --update`；由 Vitest 生成，不手改 `.snap`。新增命令的完整帮助 golden 由 `cliHelpErrors.spec.ts` 生成；节点 wire schema golden 使用 `pnpm exec vitest run tests/contract/controlSurface/nodeSchemas.spec.ts --update` 更新。
@@ -346,7 +352,7 @@ bearer 不进入该环境，调用者提供的身份/控制环境变量会被覆
 
 现有 shim directory 提供 `opencove`（POSIX sh）和 `opencove.cmd`，并被放在 PATH 首部。
 Launcher 使用本 Worker 的 runtime executable；CLI 从环境读取 endpoint/token，显式 CLI
-flags 优先。`OPENCOVE_CLI` 指向构建产物 `out/cli/opencove.mjs`。
+指定 `--endpoint` 时必须配 `--token`。`OPENCOVE_CLI` 指向构建产物 `out/cli/opencove.mjs`。
 
 `node.create` 和 UI 创建流程在 spawn 前预留 node ID；Worker 校验已有节点的所属记录，
 恢复使用 Worker 保存的身份。远端由实际 hosting Worker 签发 grant。凭证在 spawn 注册完成后
@@ -428,15 +434,16 @@ opencove fs read --uri file:///workspace/README.md
 
 Unknown `api schema` / `api call` IDs suggest nearby IDs and a domain catalog query.
 Catalog rows expose `cliCommand` (when a dedicated command exists) and `scope`
-(`read`, `interact`, `admin`). Inside OpenCove they also expose `allowed`, computed
-from the authenticated `whoami` scope. This describes the scope boundary; other
-operation preconditions and resource permissions still apply on the Worker.
-Outside OpenCove, `allowed` is omitted and no connection is needed. Domain summaries
-use `commandOperations` for the number of command-kind operations.
+(`read`, `interact`, `admin`). Inside OpenCove, `access` comes from the Worker policy:
+`allowed`, `denied` (with a reason), or `constrained`, plus `policyVersion`.
+`allowed` is a compatibility boolean only for allowed/denied rows; constrained or
+unknown access omits it. Offline or with an older Worker, `access` is `unknown`.
+`api schema` keeps the input JSON Schema and adds the same Worker access information inside OpenCove, including `rejectedFields` and their reasons for constrained launches. A schema field does not grant permission to use it. Operation preconditions and resource permissions still apply. Domain summaries use
+`commandOperations` for the number of command-kind operations.
 
 ```sh
 opencove api ops --domains --fields domain,operations,commandOperations
-opencove api ops --prefix node --fields id,cliCommand,scope,allowed --limit 10
+opencove api ops --prefix node --fields id,cliCommand,scope,access --limit 10
 ```
 
 ## Archived exact turns

@@ -72,3 +72,10 @@ export interface PromptDeliveryPorts {
   createDeliveryId(): string
   schedule(callback: () => void, delayMs: number): () => void
 }
+
+/** Per-call authority is checked against the same resolved fence used for delivery. */
+export interface PromptDeliveryCaller {
+  assertActive?: () => void
+  signal?: AbortSignal
+  authorizePrompt?: (provider: AgentProviderId, canonicalText: string) => void
+}

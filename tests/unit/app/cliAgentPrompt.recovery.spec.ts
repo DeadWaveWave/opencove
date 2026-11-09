@@ -326,9 +326,11 @@ it.each([401, 403])('authorization refusal %s is explicit and preserves exit 4',
   f.fetch.mockImplementation(async () => new Response('{}', { status }))
   expect(await run(args, f.io)).toBe(4)
   expect(f.error()).toMatchObject({
-    code: 'context.unauthorized',
-    message: 'OpenCove refused authorization for this request.',
-    hint: 'Check the endpoint and credentials before retrying.',
+    code: status === 401 ? 'context.unauthorized' : 'common.forbidden',
+    message:
+      status === 401
+        ? 'The control token is invalid or has been revoked.'
+        : 'This credential does not permit the operation.',
   })
   expect(f.error().details).toBeUndefined()
 })

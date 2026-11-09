@@ -1,5 +1,8 @@
-import { sessionGrantAllowsOperation } from './http/sessionGrantAuthorization'
-import { createAppErrorDescriptor } from '../../../shared/errors/appError'
+import { sessionGrantRule } from './http/sessionGrantPolicy'
+import {
+  sessionGrantAllowsOperation,
+  sessionGrantDeniedError,
+} from './http/sessionGrantAuthorization'
 import { toAppErrorDescriptor } from '../../../shared/errors/appError'
 import type {
   ControlSurfaceInvokeRequest,
@@ -48,7 +51,7 @@ export function createControlSurface(
         return {
           __opencoveControlEnvelope: true,
           ok: false,
-          error: createAppErrorDescriptor('common.forbidden'),
+          error: sessionGrantDeniedError(request.id, ctx.requestAuth.grant.tier),
         }
       }
       const handler = handlers.get(request.id)
@@ -68,6 +71,16 @@ export function createControlSurface(
         leave = options.enter?.(request.id)
         ctx.assertActive?.()
         const payload = handler.validate(request.payload)
+        if (ctx.requestAuth?.kind === 'session-grant') {
+          const rule = sessionGrantRule(request.id)
+          if (rule.access === 'constrained') {
+            rule.check(payload, {
+              grant: ctx.requestAuth.grant,
+              wirePayload: request.payload,
+              operationId: request.id,
+            })
+          }
+        }
         const execute = async () => await handler.handle(ctx, payload)
         const value = options.run ? await options.run(ctx, request, execute) : await execute()
 

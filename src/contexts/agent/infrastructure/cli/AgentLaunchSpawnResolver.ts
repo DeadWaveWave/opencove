@@ -4,12 +4,14 @@ import {
   type ResolveCommandSpawnInput,
 } from '../../../../platform/terminal/TerminalProfileResolver'
 import type { ResolvedTerminalSpawn } from '../../../../platform/terminal/TerminalProfileResolver.windows'
+import type { CommandFileArgument } from '../../../../shared/types/commandFileArgument'
 
 interface ResolveAgentLaunchSpawnInput {
   cwd: string
   profileId?: string | null
   command: string
   args: string[]
+  fileArguments?: readonly CommandFileArgument[]
   executablePathOverride?: string | null
   env?: NodeJS.ProcessEnv
 }
@@ -34,6 +36,7 @@ export async function resolveAgentLaunchSpawn(
     args: input.args,
     env,
     commandEnv: explicitEnv,
+    ...(input.fileArguments ? { fileArguments: input.fileArguments } : {}),
   }
 
   return await terminalProfileResolver.resolveCommandSpawn(commandSpawn)

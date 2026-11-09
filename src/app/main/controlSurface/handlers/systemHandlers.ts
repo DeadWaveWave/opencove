@@ -33,7 +33,7 @@ export function registerSystemHandlers(
         auth?.kind === 'session-grant'
           ? {
               kind: auth.kind,
-              scopeTier: 'interact' as const,
+              scopeTier: auth.grant.tier,
               projectId: auth.grant.projectId,
               spaceId: auth.grant.spaceId,
               nodeId: auth.grant.nodeId,

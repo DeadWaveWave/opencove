@@ -1,3 +1,4 @@
+import { getPublicTerminalSpawnCommand } from '../../../../platform/terminal/publicTerminalSpawnCommand'
 import { ptySpawnInMountOperation } from '../../../../shared/contracts/controlSurface/operations/domains/pty'
 import { registerOperation } from '../registerOperation'
 import { fromFileUri } from '../../../../contexts/filesystem/domain/fileUri'
@@ -156,8 +157,7 @@ export function registerPtyMountHandlers(
           kind: 'terminal',
           startedAt,
           cwd: resolvedSpawn.cwd,
-          command: resolvedSpawn.command,
-          args: resolvedSpawn.args,
+          ...getPublicTerminalSpawnCommand(resolvedSpawn),
           cols,
           rows,
         })

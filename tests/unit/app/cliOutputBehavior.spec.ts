@@ -149,7 +149,7 @@ it('filters operations offline and maps dedicated commands without expanding def
       `${op.id} ${op.summary}`.toLowerCase().includes('create'),
     ),
   ).toBe(true)
-  expect(Object.keys(result[0])).toEqual(['id', 'kind', 'contract', 'summary', 'scope'])
+  expect(Object.keys(result[0])).toEqual(['id', 'kind', 'contract', 'summary', 'scope', 'access'])
   const g = fixture()
   expect(
     await run(
@@ -200,7 +200,7 @@ it('fills space table projectId from the envelope', async () => {
   expect(await run(['space', 'list', '-o', 'table'], f.io)).toBe(0)
   expect(f.out()).toBe('ID  NAME  PROJECTID\ns   Main  p\n')
 })
-it.each(['node list', 'node get', 'node update task', 'space list', 'api ops'])(
+it.each(['node list', 'node get', 'node update task', 'space list', 'api ops', 'api schema'])(
   'help golden %s',
   async path => {
     const f = fixture()
@@ -237,7 +237,7 @@ it('rejects unknown api ops projection fields before producing output', async ()
   const f = fixture()
   expect(await run(['api', 'ops', '--fields', 'id,invented'], f.io)).toBe(2)
   expect(f.error().message).toContain(
-    'Available fields: id, kind, contract, summary, cliCommand, scope, allowed',
+    'Available fields: id, kind, contract, summary, cliCommand, scope, access, allowed, reason, policyVersion, rejectedFields',
   )
   expect(f.out()).toBe('')
 })
