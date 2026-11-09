@@ -303,7 +303,7 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
     }
   })
 
-  test('shows a notification even if the first observed state is standby after switching projects', async () => {
+  test('keeps an idle observation without a turn quiet after switching projects', async () => {
     const { electronApp, window } = await launchApp({
       windowMode: 'offscreen',
       env: {
@@ -334,17 +334,14 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
       )
       await window.getByTestId('workspace-item-workspace-a').hover()
 
-      await expect(workspaceAStatus).toHaveText('Needs input', { timeout: 15_000 })
+      await expect(workspaceAStatus).toHaveText('Standby', { timeout: 15_000 })
       await expect(window.getByTestId('workspace-item-workspace-b')).toHaveAttribute(
         'aria-current',
         'page',
       )
 
-      const notification = window
-        .locator('[data-testid="app-notifications"] .app-notification')
-        .first()
-      await expect(notification).toBeVisible()
-      await notification.click()
+      await expect(window.locator('.app-notification')).toHaveCount(0)
+      await window.getByTestId('workspace-item-workspace-a').click()
 
       await expect(window.locator('.workspace-item.workspace-item--active')).toContainText(
         'workspace-a',

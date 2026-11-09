@@ -80,6 +80,7 @@ export function updateWorkspacesWithTerminalAgentActivityMetadata({
             ? (node.data.agentOverlay?.startedAtMs ?? activity.observedAtMs)
             : activity.observedAtMs,
         activity: {
+          ...(activity.launchMode ? { launchMode: activity.launchMode } : {}),
           invocationId: activity.invocationId,
           generation: activity.generation,
           phase: activity.phase,
@@ -107,6 +108,7 @@ export function updateWorkspacesWithTerminalAgentActivityMetadata({
         previousActivity?.invocationId !== nextOverlay.activity.invocationId ||
         previousActivity?.generation !== nextOverlay.activity.generation ||
         previousActivity?.phase !== nextOverlay.activity.phase ||
+        previousActivity?.launchMode !== nextOverlay.activity.launchMode ||
         previousActivity?.observedAtMs !== nextOverlay.activity.observedAtMs ||
         previousActivity?.sourceRevision !== nextOverlay.activity.sourceRevision ||
         previousActivity?.revision !== nextOverlay.activity.revision

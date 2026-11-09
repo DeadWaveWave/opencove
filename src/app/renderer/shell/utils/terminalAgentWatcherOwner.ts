@@ -14,7 +14,13 @@ interface SessionWatcherOwnership {
 }
 
 function watcherKey(input: AttachAgentStateWatcherInput | null): string | null {
-  return input ? JSON.stringify(input) : null
+  // Identity discovery does not restart a new invocation's file cursor at byte zero.
+  return input
+    ? JSON.stringify({
+        ...input,
+        resumeSessionId: input.launchMode === 'new' ? null : input.resumeSessionId,
+      })
+    : null
 }
 
 export function createTerminalAgentWatcherOwner(options: {
@@ -103,7 +109,9 @@ export function createTerminalAgentWatcherOwner(options: {
           sessionId,
           provider,
           cwd: node.data.executionDirectory?.trim() || workspace.path,
-          launchMode: binding?.resumeSessionIdVerified === true ? 'resume' : 'new',
+          launchMode:
+            node.data.agentOverlay?.activity?.launchMode ??
+            (binding?.resumeSessionIdVerified === true ? 'resume' : 'new'),
           resumeSessionId: binding?.resumeSessionId ?? null,
           startedAtMs: node.data.agentOverlay?.startedAtMs ?? now(),
         })

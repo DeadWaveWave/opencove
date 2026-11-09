@@ -45,6 +45,16 @@ Worker 的独立查询响应、CPU、内存和打开的文件数；不要仅凭�
 
 ## 测试层级选择（策略）
 
+### Agent 启动反复完成提醒或误显 Working
+
+对齐 Worker `agent.list`、运行事件和 transcript 的真实写入时间；短时间内多次完成可能是
+历史回放，而非新任务。恢复读取应折叠为一次 baseline，不能发布历史 turn 边界；文件重写、
+分块和半条 JSON 也遵循此规则。通知消费 Worker 的完成 ID 并去重，不从持久化的 UI 状态推断。
+Codex SessionStart 只绑定身份；Working 需要任务证据。可信会话 ID 不代表 resume 启动，
+身份发现也不能重置新 invocation 的 watcher 游标。旧 Codex rollout 按 ID 定位，不按近期目录
+或 mtime 判断是否存在。回归入口：`agentSessionStartupBaseline.spec.ts`、
+`terminalAgentWatcherStartup.spec.ts` 和 `recovery.agent-startup-history.spec.ts`。
+
 目标：用 **最低成本** 的测试层级先定位问题；确认根因后再补足能防回归的覆盖。
 
 ### Unit（最快）

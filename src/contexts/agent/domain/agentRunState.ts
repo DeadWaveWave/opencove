@@ -20,6 +20,7 @@ export interface AgentRunObservation {
   /** Monotonic within source + incarnation; redelivery retains the original sequence. */
   sourceSequence: number
   state: AgentRunState
+  baseline?: boolean
   degraded?: boolean
   blockedReason?: AgentRunSnapshot['blockedReason']
   emittedAtMs?: number
@@ -114,6 +115,10 @@ export function transitionAgentRun(
   }
   if (observation) {
     const previous = model.observations[observation.source]
+    // Reattachment must not overwrite work already observed in this incarnation.
+    if (observation.baseline && (model.snapshot.turn || (previous && !previous.baseline))) {
+      return { model, ended: null }
+    }
     // Ingress sequence reflects arrival order, not evidence freshness. Reject old evidence
     // before it can replace a source or decide state; equal timestamps are not duplicates.
     // PTY exit is a lifecycle fact even if the Worker clock has moved backwards.
@@ -164,6 +169,7 @@ export function transitionAgentRun(
   // Only a selected trustworthy signal may open/close a turn. Arrival order is not authority.
   const accepted =
     observation !== null &&
+    !observation.baseline &&
     selected === observation &&
     !unavailable &&
     !decision.degraded &&

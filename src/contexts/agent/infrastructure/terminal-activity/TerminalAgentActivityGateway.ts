@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { resolveCodexInvocationArguments } from '../cli/CodexInvocationArguments'
+import { resolveTerminalAgentInvocationArguments } from './TerminalAgentInvocationArguments'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import type { TerminalAgentShimProvider } from '../../../../shared/contracts/dto'
 import type {
@@ -237,6 +237,7 @@ export class TerminalAgentActivityGateway {
       return
     }
 
+    const intent = resolveTerminalAgentInvocationArguments(provider, invocationArguments)
     const artifacts = new AgentLaunchArtifactScope()
     let plan: AgentHookInjectionPlan
     try {
@@ -257,7 +258,7 @@ export class TerminalAgentActivityGateway {
         environment,
         executablePathOverride: executablePath,
         workspaceDirectory: cwd,
-        resumeSessionId: resolveExpectedResumeSessionId(provider, invocationArguments),
+        resumeSessionId: intent.expectedResumeSessionId,
       })
       artifacts.seal()
     } catch (error) {
@@ -280,7 +281,7 @@ export class TerminalAgentActivityGateway {
       provider,
       hookCoverage: plan.hookCoverage,
       hookInstallState: plan.hookInstallState,
-      expectedResumeSessionId: resolveExpectedResumeSessionId(provider, invocationArguments),
+      ...intent,
     })
     if (!invocation) {
       await artifacts.dispose().catch(() => undefined)
@@ -452,21 +453,6 @@ function normalizeArguments(value: unknown): string[] | null {
   return Array.isArray(value) && value.every(argument => typeof argument === 'string')
     ? value
     : null
-}
-
-function resolveExpectedResumeSessionId(
-  provider: TerminalAgentShimProvider,
-  args: readonly string[],
-): string | null {
-  if (provider === 'claude-code') {
-    const resumeIndex = args.findIndex(argument => argument === '--resume')
-    if (resumeIndex >= 0) {
-      return normalizeNonEmptyString(args[resumeIndex + 1])
-    }
-    const inline = args.find(argument => argument.startsWith('--resume='))
-    return inline ? normalizeNonEmptyString(inline.slice('--resume='.length)) : null
-  }
-  return provider === 'codex' ? resolveCodexInvocationArguments(args, '.').resumeSessionId : null
 }
 
 function normalizeEnvironment(value: unknown): NodeJS.ProcessEnv | null {

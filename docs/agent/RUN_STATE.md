@@ -37,9 +37,9 @@ agent sessions. A session needs live provider metadata or a provider observation
 The legacy PTY state field retains working/waiting/standby for compatibility. New consumers use
 `agentRunState` (the full snapshot). For unknown it accompanies `degraded: true` and
 `observationUnavailable: true`; renderer retains its previous UI projection rather than treating the
-legacy working placeholder as a decision. Completion cues consume decided turn transitions directly,
-so a coalesced React render cannot erase a completed turn. An idle baseline never triggers a cue. Exit is explicit in the snapshot and existing PTY lifecycle. Reconnect
-caches retain only the latest decided projection, not a set of competing raw sources.
+legacy working placeholder as a decision. Completion cues consume `lastEndedTurn.id` once per session,
+never UI working/standby edges. Cached delivery seeds deduplication without a cue. Exit is explicit in
+the snapshot and existing PTY lifecycle. Reconnect caches retain the latest decided projection.
 
 ## Observation and turn boundaries
 
@@ -51,7 +51,11 @@ registry observations must retain their sequence. Existing hook credentials and 
 fences remain in place; Pi also rejects stale conversation revisions. Sources without an event ID
 cannot provide end-to-end exactly-once delivery; the HTTP runtime sequence is the consumer cursor.
 
-Session-file history is a baseline. Appended Codex task_started/task_complete/turn_aborted records
+Session-file history folds to one baseline across chunks, partial records and file replacement;
+it cannot start or end turns or override live work. New invocations read their new file as live.
+Terminal invocation intent is independent of verified identity; identity discovery preserves the
+watcher cursor. Resumed Codex files are located by ID, regardless of date/mtime. Codex SessionStart
+publishes identity only. Appended Codex task_started/task_complete/turn_aborted records
 carry explicit boundaries. A selected, non-degraded session-file idle → working edge also starts an
 inferred turn, and a subsequent selected idle observation completes that turn. A working baseline or
 refresh alone never starts one. These decisions remain fenced by source sequence and incarnation. Pi agent_start/agent_settled snapshots carry explicit evidence, while heartbeats and

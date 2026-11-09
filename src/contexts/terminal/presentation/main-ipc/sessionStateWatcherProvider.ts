@@ -17,10 +17,11 @@ export function createSessionFileStateWatcher(options: {
   sessionId: string
   filePath: string
   launchMode: AgentLaunchMode
+  initialRead?: 'baseline' | 'live'
   onState: (
     sessionId: string,
     state: TerminalSessionState,
-    options?: { hookEventName?: string },
+    options?: { hookEventName?: string; baseline?: boolean },
   ) => void
   onClaudeTranscript?: (
     record: Omit<ClaudeTranscriptObservation, 'sessionId' | 'providerSessionId' | 'generation'>,
@@ -33,6 +34,7 @@ export function createSessionFileStateWatcher(options: {
       provider: options.provider,
       sessionId: options.sessionId,
       filePath: options.filePath,
+      initialRead: options.initialRead ?? 'baseline',
       onState: options.onState,
       onClaudeTranscript: options.onClaudeTranscript,
       onError: options.onError,

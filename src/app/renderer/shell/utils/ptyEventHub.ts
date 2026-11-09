@@ -16,6 +16,7 @@ import type {
 } from '@shared/contracts/dto'
 
 type UnsubscribeFn = () => void
+export type PtyStateDelivery = { replay: boolean }
 
 interface PtyEventSource {
   onData: (listener: (event: TerminalDataEvent) => void) => UnsubscribeFn
@@ -41,7 +42,9 @@ export interface PtyEventHub {
     sessionId: string,
     listener: (event: TerminalResyncEvent) => void,
   ) => UnsubscribeFn
-  onState: (listener: (event: TerminalSessionStateEvent) => void) => UnsubscribeFn
+  onState: (
+    listener: (event: TerminalSessionStateEvent, delivery?: PtyStateDelivery) => void,
+  ) => UnsubscribeFn
   onSessionState: (
     sessionId: string,
     listener: (event: TerminalSessionStateEvent) => void,
@@ -290,11 +293,13 @@ export function createPtyEventHub(source: PtyEventSource): PtyEventHub {
     }
   }
 
-  const onState = (listener: (event: TerminalSessionStateEvent) => void): UnsubscribeFn => {
+  const onState = (
+    listener: (event: TerminalSessionStateEvent, delivery?: PtyStateDelivery) => void,
+  ): UnsubscribeFn => {
     const unsubscribe = subscribeGlobal(stateListeners, listener)
     ensureStateSourceSubscription()
     latestStateBySessionId.forEach(event => {
-      listener(event)
+      listener(event, { replay: true })
     })
     return () => {
       unsubscribe()

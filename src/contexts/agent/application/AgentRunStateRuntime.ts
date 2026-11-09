@@ -377,6 +377,7 @@ export class AgentRunStateRuntime {
         blockedReason: event.blockedReason,
         boundary,
         hookEventName: name,
+        baseline: event.baseline,
         emittedAtMs: event.emittedAtMs,
       },
       getPromptSubmissionEvidence(event),
