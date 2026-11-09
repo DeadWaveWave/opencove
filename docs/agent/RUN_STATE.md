@@ -129,28 +129,14 @@ exit/retirement of the displaced session cannot detach the current owner.
 Live list rows may be unbound; the CLI gives these rows title null rather than the
 current owner's node title. Node-filtered subscriptions resync when S leaves N.
 
-CLI waits always resolve every requested node through binding-aware `agent.get`,
-even if list has one candidate: older Workers may leave a stale nodeId on a live
-session while omitting its exited replacement. The atomic list provides the cursor;
-a post-get list watermark and ordered replay reconcile the selected owners before
-state, any/all, or exact-turn satisfaction. No global-quiescence loop is used.
-A distinct conflicting session causes at most one get/reconciliation for that node
-per observed binding interval; repeated events retaining that node are ignored.
-An event showing that session moved to another node or null ends its suppression
-for the old node, so its next claim triggers a fresh get even on older Workers
-without automatic loss notifications. A null-node event for the current owner
-also forces a fresh get. Only matching current-owner events update state.
-
-Baseline and negative-history reads share the CLI reconciliation barrier. A negative
-history query retains its post-query watermark and drains ordered events through
-that sequence before failing. All waits consume one global content-free stream so
-unrelated sequence advances can reconcile either fence; only resolved owners of
-selected nodes update lastKnown. Resync discards provisional evidence and resolves
-a fresh baseline. Exact CLI read/wait errors preserve code/reason while adding
-plain messages, concrete recovery commands and known node/session/turn IDs.
+CLI waits resolve requested nodes through binding-aware `agent.get` and reconcile one
+global stream with post-get and post-subscription watermarks. Distinct conflicting
+sessions trigger one get per observed binding interval; only current-owner events
+update selected state. Negative-history reads drain their fence before failing.
+See [wait semantics](WAIT.md) for exits 10/11, fulfilled progress, exact-turn recovery
+and the remote-ready limitation. Initial satisfied conditions remain immediate.
 The registry captures and queues both state and completion payloads before notifying
 fences, so reentrant starts/ends cannot overwrite a prior completion's snapshot.
-
 Turn-end events include `endedTurn` because the snapshot has cleared its active turn. Inspect
 `turnOutcome`: the event name `agent.turn_completed` denotes a turn boundary, not proof of success.
 

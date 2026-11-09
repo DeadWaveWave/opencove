@@ -185,18 +185,18 @@ export class AgentWaitEvidence {
     }
   }
 
-  /** True requests a new baseline. All global events advance this reconciliation cursor. */
-  reconcile(cursor: AgentWaitCursor): boolean {
+  /** Attention must wait for negative-history reconciliation, including unrelated global events. */
+  reconcile(cursor: AgentWaitCursor): 'pending' | 'ready' | 'resync' {
     if (this.result || !this.pending) {
-      return false
+      return 'ready'
     }
     const status = this.reconciliation.status(cursor)
     if (status === 'resync') {
-      return true
+      return status
     }
     if (status === 'ready') {
       throw this.pending
     }
-    return false
+    return status
   }
 }

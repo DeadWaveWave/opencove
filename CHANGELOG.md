@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 💅 Changed
 
+- CLI: `opencove agent wait` stops with exit 10 when a target agent is waiting for the user (a permission, question or plan dialog) and with exit 11 when it exits, instead of waiting until the timeout; the error lists each target's state and tells the coordinating agent to ask the user. `--through-waiting` keeps the old behavior. (#582)
 - Canvas: the pixel wall's colour clouds blend smoothly from one colour into the next instead of meeting at hard edges; bright patches drift across the open wall, twinkle gathers around working agents, the wall brightens softly under the pointer, and the zoomed-out wall stays calm, as in the Tide prototype.
 - Appearance: replace the Standard theme with Cove, whose colors are generated with checked contrast, and use Cove Dark for new installs. Ember is retired and existing Ember choices move to Cove; Pixel is unchanged. (#439)
 - Appearance: icon buttons show themed tooltips that follow the theme, appear sooner and also open on keyboard focus. (#442)

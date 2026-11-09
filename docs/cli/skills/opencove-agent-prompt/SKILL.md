@@ -27,10 +27,20 @@ opencove agent read --node node-123 --turn turn-123
 ```
 
 Exact waiting returns the selected `turnId` and `outcome`, even if a newer turn has
-started; permission/question pauses keep it pending. All ended outcomes exit 0,
+started; matching waiting now stops with 10 by default. All ended outcomes exit 0,
 so check `outcome`. It requires one node and conflicts with `--until` and `--any`.
 Unknown/evicted turns or missing retained evidence exit 1: inspect `agent get`
 and its `lastEndedTurn`. Timeout exits 124 with `lastKnown` on stderr.
+Waiting observed (10): the agent may need the user — inspect before acting. Ask the user
+to resolve it in OpenCove (Desktop or this Worker's Web UI). Inspect with
+`opencove agent read --node <id> --screen` using the same connection options and matching
+session/turn IDs, then repeat the wait with the same --turn. --through-waiting continues
+when waiting is reported; it does not suppress exit 11 for an unfulfilled exited target.
+Success wins over attention; 11 wins over 10. Exact PTY exit normally returns 0/unknown.
+--any stops on the first success OR waiting/exited observation of an unfulfilled target;
+fulfilled bindings cannot stop --all later; a session change or unbinding resets progress.
+State turn-end results include completion with its own sessionId/turnId/outcome. Event waits (--until turn-end) cannot resume
+an already observed completion: prefer --turn.
 The exact read never falls back. Hook history is private/in-memory, limited to the
 up to 60 ended turns per node in the private Worker archive; exact --turn lookup survives restart. Remote exact waits use only mirrored
 snapshots/events. Older remote turns require the Worker that runs them;

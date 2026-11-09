@@ -40,7 +40,7 @@ export function help(commands: Command[], path: string[]) {
         ]),
       ),
       '',
-      'Exit codes: 0 success; 1 operation failure; 2 invalid input; 3 unreachable; 4 unauthorized; 5 incompatible protocol; 6 ambiguous target; 124 timeout; 130 interrupted.',
+      'Exit codes: 0 success; 1 operation failure; 2 invalid input; 3 unreachable; 4 unauthorized; 5 incompatible protocol; 6 ambiguous target; 10 waiting observed; 11 agent exited during wait; 124 timeout; 130 interrupted.',
       '',
       'Run "opencove <group> --help" for commands in a group.',
       ...discovery,

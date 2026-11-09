@@ -58,7 +58,12 @@ export function reply(
   const message = { id: `msg_${Date.now()}`, type: 'message', role: 'assistant', model }
   // AskUserQuestion opens a blocking dialog in every permission mode (auto mode runs Bash).
   const block = toolUse
-    ? { type: 'tool_use', id: `toolu_${Date.now()}`, name: 'AskUserQuestion', input: {} }
+    ? {
+        type: 'tool_use',
+        id: `toolu_${Date.now()}`,
+        name: 'AskUserQuestion',
+        input: {},
+      }
     : { type: 'text', text: '' }
   const delta = toolUse
     ? {
@@ -259,6 +264,16 @@ export async function launchRealClaude(testInfo: TestInfo) {
         id: 'real-prompt',
         name: 'Real prompt',
         path: workspace,
+        activeSpaceId: 'real-prompt-main',
+        spaces: [
+          {
+            id: 'real-prompt-main',
+            name: 'Main',
+            directoryPath: workspace,
+            nodeIds: ['real-prompt-task'],
+            rect: { x: 20, y: 20, width: 1600, height: 900 },
+          },
+        ],
         nodes: [
           {
             id: 'real-prompt-task',

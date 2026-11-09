@@ -143,10 +143,8 @@ restart also leaves a potentially submitted prompt: do not resend. `pasteDispatc
 `submitDispatchAttempted` describe attempts, not receipt. Missing flags do not mean false. A deadline preserves the
 phase and attempt flags.
 
-Wait never sends input. After a prompt, save `turnId` and wait `--turn <turnId>`. This selects that exact end, even
-if a newer turn starts, and keeps waiting during permission/question pauses. It returns `{nodeId, sessionId,
-turnId, outcome, endedAt?, state}`; all ended outcomes exit 0. Check `outcome` (completed, failed, aborted or
-unknown). `--turn` requires exactly one node and conflicts with `--until`, multiple nodes and `--any`.
+Wait never sends input. After a prompt, save `turnId` and wait `--turn <turnId>`. This selects that exact end, even if a newer turn starts; matching waiting now stops with 10 by default. It returns `{nodeId, sessionId,
+turnId, outcome, endedAt?, state}`; all ended outcomes exit 0. Check `outcome` (completed, failed, aborted or unknown). `--turn` requires exactly one node and conflicts with `--until`, multiple nodes and `--any`.
 Unknown/evicted turns or missing retained evidence exit 1; inspect `agent get`. Its `lastEndedTurn` identifies the
 latest end and persists during the next turn; replacement/restart clears it. Older Workers omit it; events/history
 remain usable. History fallback requires interact scope. State waits follow the current session; exact archived
@@ -162,8 +160,9 @@ opencove agent wait --node agent-123 --node agent-456 --until idle --all --timeo
 opencove agent get --node agent-123 --fields state,quality,turnOutcome
 ```
 
-State waits print all selected latest snapshots; exact-turn waits print one result. Timeout prints lastKnown on stderr,
-stdout empty. Ctrl-C exits 130 and closes subscriptions. It never stops the target agent. Read tries the latest
+Exit 10 = waiting observed: the agent may need the user. Never answer its dialog; ask the user to resolve it in OpenCove (Desktop or this Worker's Web UI), inspect `agent read --node <id> --screen` (same connection options, matching session/turn IDs), then repeat the wait with the same --turn. Exit 11 = an unfulfilled target exited. Success beats both; 11 beats 10. --any stops on the first success or attention event; fulfilled bindings never stop --all, and a session change resets progress. turn-end results carry `completion` {sessionId, turnId, outcome}; event waits cannot resume an observed completion, so prefer --turn. --through-waiting keeps waiting through waiting (not exit 11). Exact PTY exit normally returns 0/unknown.
+
+State waits print all selected latest snapshots; exact-turn waits print one result. Timeout prints lastKnown on stderr, stdout empty. Ctrl-C exits 130 and closes subscriptions. It never stops the target agent. Read tries the latest
 ended turn's `agent.finalMessage` first. `--turn <turnId>` selects exactly the OpenCove turn ID returned by prompt:
 no prefixes or fallback. Hook replies (≤64 KiB), outcome and IDs are private; exact archived local --turn reads/waits survive
 restarts without a live agent. Archive caps: 60 turns/node, 30 days, 20,000 global records and 128 MiB of message text. JSON includes
@@ -208,6 +207,7 @@ discovered transcript identity.
 - 4: authorization refused; do not seek another agent's credentials.
 - 5: protocol incompatible or invalid stream; use matching CLI/Worker versions.
 - 6: ambiguous target; select a full ID.
+- 10: waiting observed; inspect before acting. 11: unfulfilled target exited.
 - 124: deadline/timeout; wait includes lastKnown; prompt may already have sent input.
 - 130: interrupted; wait closes streams; prompt outcome may be unknown.
 
