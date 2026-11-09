@@ -8,6 +8,7 @@ import { createAppError } from '../../../shared/errors/appError'
 import type { AgentPromptErrorDetails, AppErrorCode } from '../../../shared/contracts/dto/error'
 import type {
   PromptDeliveryPorts,
+  PromptDeliveryCaller,
   RunStateFence,
   RunStateReceipt,
 } from './ports/PromptDeliveryPorts'
@@ -43,13 +44,16 @@ export class PromptDeliveryService {
 
   deliver(
     request: PromptDeliveryRequest,
-    caller: { assertActive?: () => void; signal?: AbortSignal } = {},
+    caller: PromptDeliveryCaller = {},
   ): Promise<PromptDeliveryResult> {
     const text = canonicalizePromptText(request.text)
     const expectedDigest = claudePromptDigest(text)
     const deadline = this.ports.now() + request.timeoutMs
     const locator = request.nodeId ? { nodeId: request.nodeId } : { sessionId: request.sessionId! }
     const initial = this.ports.runs.readFence(locator)
+    if (initial) {
+      caller.authorizePrompt?.(initial.snapshot.provider, text)
+    }
     const id = request.deliveryId ?? this.ports.createDeliveryId()
     const error = (
       code: AppErrorCode,

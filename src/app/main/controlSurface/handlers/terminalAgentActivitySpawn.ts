@@ -4,6 +4,7 @@ import { AgentLaunchArtifactScope as ArtifactScope } from '../../../../contexts/
 import type { TerminalAgentActivityEnvironmentService } from '../../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityEnvironmentService'
 import type { ControlSurfacePtyRuntime } from './sessionPtyRuntime'
 import type { TerminalRuntimeKind } from '../../../../shared/contracts/dto'
+import { publicTerminalSpawnError } from '../../../../shared/errors/terminalSpawnError'
 
 export async function prepareTerminalAgentActivitySpawn(options: {
   activity: TerminalAgentActivityEnvironmentService | undefined
@@ -72,10 +73,14 @@ export async function spawnTerminalWithActivity(
   options: Parameters<typeof prepareTerminalAgentActivitySpawn>[0],
 ): Promise<{ sessionId: string }> {
   const prepared = await prepareTerminalAgentActivitySpawn(options)
-  const spawned = await runtime.spawnSession({
-    ...prepared.spawn,
-    ...(prepared.launchArtifacts ? { launchArtifacts: prepared.launchArtifacts } : {}),
-  })
+  const spawned = await runtime
+    .spawnSession({
+      ...prepared.spawn,
+      ...(prepared.launchArtifacts ? { launchArtifacts: prepared.launchArtifacts } : {}),
+    })
+    .catch(error => {
+      throw publicTerminalSpawnError(error, 'terminal.spawn_failed')
+    })
   prepared.commit(spawned.sessionId)
   return spawned
 }

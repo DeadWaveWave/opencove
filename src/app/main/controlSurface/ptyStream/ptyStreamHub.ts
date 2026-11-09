@@ -1,3 +1,4 @@
+import { getPublicTerminalSpawnCommand } from '../../../../platform/terminal/publicTerminalSpawnCommand'
 import { PtyStreamInputEvidence } from './ptyStreamInputEvidence'
 import type { ClaudeTranscriptObservation } from '../../../../shared/runtime/agentHook/claudeTranscript'
 import type { ReservedSessionInput } from '../../../../contexts/agent/application/ports/PromptDeliveryPorts'
@@ -158,7 +159,7 @@ export class PtyStreamHub {
       return
     }
     const session = this.ensureSession(metadata.sessionId)
-    session.metadata = metadata
+    session.metadata = { ...metadata, ...getPublicTerminalSpawnCommand(metadata) }
     session.presentationSession.resize(metadata.cols, metadata.rows)
   }
 

@@ -1,3 +1,4 @@
+import { getPublicTerminalSpawnCommand } from '../../../../platform/terminal/publicTerminalSpawnCommand'
 import { registerOperation } from '../registerOperation'
 import {
   sessionSnapshotOperation,
@@ -221,8 +222,7 @@ export function registerSessionStreamingHandlers(
         kind: 'terminal',
         startedAt,
         cwd: resolvedSpawn.cwd,
-        command: resolvedSpawn.command,
-        args: resolvedSpawn.args,
+        ...getPublicTerminalSpawnCommand(resolvedSpawn),
         cols,
         rows,
       })
@@ -231,8 +231,7 @@ export function registerSessionStreamingHandlers(
         sessionId,
         startedAt,
         cwd: resolvedSpawn.cwd,
-        command: resolvedSpawn.command,
-        args: resolvedSpawn.args,
+        ...getPublicTerminalSpawnCommand(resolvedSpawn),
         executionContext: resolveExecutionContextDto(workingDirectory, {
           projectId,
           spaceId: payload.spaceId,
@@ -299,8 +298,7 @@ export function registerSessionStreamingHandlers(
         kind: 'terminal',
         startedAt: new Date().toISOString(),
         cwd: resolvedSpawn.cwd,
-        command: resolvedSpawn.command,
-        args: resolvedSpawn.args,
+        ...getPublicTerminalSpawnCommand(resolvedSpawn),
         cols: payload.cols,
         rows: payload.rows,
       })

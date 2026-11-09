@@ -1,4 +1,5 @@
 import type { AgentLaunchMode, AgentProviderId } from '@shared/contracts/dto'
+import type { CommandFileArgument } from '../../../../shared/types/commandFileArgument'
 
 export type BuiltinAgentCommandProviderId = Exclude<AgentProviderId, 'pi' | 'kimi'>
 
@@ -21,6 +22,7 @@ export interface BuildAgentLaunchCommandInput {
 export interface AgentLaunchCommand {
   command: string
   args: string[]
+  fileArguments?: readonly CommandFileArgument[]
   launchMode: AgentLaunchMode
   effectiveModel: string | null
   resumeSessionId: string | null
@@ -54,6 +56,14 @@ function normalizePrompt(value: string | undefined): string {
 function maybeTerminateOptionParsing(args: string[], value: string): void {
   if (value.startsWith('-')) {
     args.push('--')
+  }
+}
+
+function appendStringOption(args: string[], option: string, value: string): void {
+  if (value.startsWith('-')) {
+    args.push(`${option}=${value}`)
+  } else {
+    args.push(option, value)
   }
 }
 
@@ -129,7 +139,7 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
     ]
 
     if (effectiveModel) {
-      args.push('--model', effectiveModel)
+      appendStringOption(args, '--model', effectiveModel)
     }
 
     args.push(...(input.injectedArgs ?? []))
@@ -152,7 +162,7 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
 
     const prompt = normalizePrompt(input.prompt)
     if (prompt.length > 0) {
-      args.push('--prompt', prompt)
+      appendStringOption(args, '--prompt', prompt)
     }
 
     args.push('.')
@@ -174,7 +184,7 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
     }
 
     if (effectiveModel) {
-      args.push('--model', effectiveModel)
+      appendStringOption(args, '--model', effectiveModel)
     }
 
     args.push(...(input.injectedArgs ?? []))
@@ -197,7 +207,7 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
 
     const prompt = normalizePrompt(input.prompt)
     if (prompt.length > 0) {
-      args.push('--prompt-interactive', prompt)
+      appendStringOption(args, '--prompt-interactive', prompt)
     }
 
     return {
@@ -243,7 +253,7 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
 
   const prompt = normalizePrompt(input.prompt)
   if (prompt.length > 0) {
-    maybeTerminateOptionParsing(args, prompt)
+    args.push('--')
     args.push(prompt)
   }
 

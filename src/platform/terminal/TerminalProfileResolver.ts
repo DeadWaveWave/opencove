@@ -4,6 +4,8 @@ import process from 'node:process'
 import type { ListTerminalProfilesResult, SpawnTerminalInput } from '../../shared/contracts/dto'
 import { stripParentAgentSessionEnv } from '../../shared/runtime/stripParentAgentSessionEnv'
 import { removeElectronRunAsNode } from '../os/ElectronControlEnvironment'
+import type { CommandFileArgument } from '../../shared/types/commandFileArgument'
+import { createTerminalSpawnApplicationError } from '../../shared/errors/terminalSpawnError'
 import {
   buildPowerShellExecArgs,
   findProfileById,
@@ -12,6 +14,7 @@ import {
   isPowerShellCommand,
   loadWindowsProfiles,
   resolveWindowsHostCwd,
+  convertWindowsPathToWslPath,
   type ResolvedTerminalSpawn,
   type TerminalProfileResolverDeps,
 } from './TerminalProfileResolver.windows'
@@ -22,6 +25,7 @@ export interface ResolveCommandSpawnInput {
   cwd: string
   command: string
   args: string[]
+  fileArguments?: readonly CommandFileArgument[]
   profileId?: string | null
   env?: NodeJS.ProcessEnv
   commandEnv?: NodeJS.ProcessEnv
@@ -266,6 +270,18 @@ export class TerminalProfileResolver {
     const profileId = profile.id
 
     if (profile.runtimeKind === 'wsl') {
+      for (const file of input.fileArguments ?? []) {
+        const argument = args[file.index]
+        if (typeof argument !== 'string' || !argument.startsWith(file.prefix)) {
+          throw new Error('Invalid command file argument.')
+        }
+        const path = argument.slice(file.prefix.length)
+        const translated = convertWindowsPathToWslPath(path, profile.id.slice(4))
+        if (!translated) {
+          throw createTerminalSpawnApplicationError('wsl_input_file_unavailable')
+        }
+        args[file.index] = `${file.prefix}${translated}`
+      }
       const commandEnv = { ...(input.commandEnv ?? input.env ?? {}) }
       stripParentAgentSessionEnv(commandEnv)
       const envPairs = Object.entries(commandEnv).flatMap(([key, value]) =>
@@ -283,6 +299,7 @@ export class TerminalProfileResolver {
         env: shellSpawn.env,
         profileId,
         runtimeKind: 'wsl',
+        publicCommand: { command, args: [...args] },
       }
     }
 

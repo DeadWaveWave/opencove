@@ -18,6 +18,7 @@ async function pluginFixture(
   inside: boolean,
   target: 'plugin' | 'window',
   existingWindow: boolean | 'other' = false,
+  sessionGrant = false,
 ) {
   const f = identityFixture(inside)
   const manifest: PluginManifest = {
@@ -89,7 +90,7 @@ async function pluginFixture(
   registerSystemHandlers(control, { appVersion: null })
   const ctx = {
     now: () => new Date(),
-    requestAuth: inside
+    requestAuth: sessionGrant
       ? {
           kind: 'session-grant',
           grant: {
@@ -120,14 +121,17 @@ async function pluginFixture(
   })
   let existingNodeId: string | undefined
   if (existingWindow) {
-    const result = await control.invoke(ctx, {
-      kind: 'command',
-      id: 'plugin.window.open',
-      payload: {
-        pluginId: 'sample',
-        projectId: existingWindow === 'other' ? 'project-other' : who.projectId,
+    const result = await control.invoke(
+      { ...ctx, requestAuth: { kind: 'bearer' } },
+      {
+        kind: 'command',
+        id: 'plugin.window.open',
+        payload: {
+          pluginId: 'sample',
+          projectId: existingWindow === 'other' ? 'project-other' : who.projectId,
+        },
       },
-    })
+    )
     expect(result.ok).toBe(true)
     if (result.ok) {
       existingNodeId = (result.value as { nodeId: string }).nodeId
@@ -138,6 +142,9 @@ async function pluginFixture(
   f.io.fetch = vi.fn(async (_url, init) => {
     const request = JSON.parse(String(init?.body))
     f.requests.push(request)
+    if (request.id === 'system.whoami' && inside && !sessionGrant) {
+      return new Response(JSON.stringify({ ok: true, value: who }))
+    }
     if (request.id === 'project.list') {
       return new Response(JSON.stringify({ ok: true, value: f.values['project.list'] }))
     }
@@ -299,3 +306,15 @@ it.each(['revision', 'generation'])(
     expect(f.write).not.toHaveBeenCalled()
   },
 )
+
+it('refuses plugin execution under a session grant before side effects', async () => {
+  const f = await pluginFixture(true, 'plugin', false, true)
+  const args = ['plugin', 'run', 'sample', 'inspect']
+  expect(await run(args, f.io)).toBe(4)
+  expect(f.error()).toMatchObject({
+    code: 'common.forbidden',
+    details: { reason: 'operation_denied' },
+  })
+  expect(f.plugins.runCommand).not.toHaveBeenCalled()
+  expect(f.write).not.toHaveBeenCalled()
+})

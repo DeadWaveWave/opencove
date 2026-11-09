@@ -5,8 +5,9 @@ description: Coordinate agents and share work inside OpenCove using its bundled 
 
 # OpenCove agent guide
 
-OpenCove may give supported local agents a short canvas guide at session start; Settings → Agent → Tell agents about OpenCove controls future injections.
 This guide ships inside the CLI build. Use `opencove --version` to identify it; `opencove skill -o json` includes the matching version and guide content. Replace example IDs, names and paths with actual query results.
+
+Agent terminals cannot read or change private settings, override launch policy, run provider commands through prompts, or run plugin code through the API; only the user answers permission prompts and dialogs in OpenCove and changes agent permissions in Settings → Agent → Providers → Permissions → Full Access Mode. Project isolation is not yet enforced. OpenCove may give supported local agents a short canvas guide at session start (Settings → Agent → Tell agents about OpenCove).
 
 ## Establish identity before acting
 
@@ -24,7 +25,7 @@ opencove node get --node @self
 `context.nodes[].state` is run state; `sessionStatus` is session lifecycle (running does not mean working). node
 list keeps raw status as lifecycle; agentState exposes work state in node list/context; use agent list/get for
 details. Missing context run observations are unknown, never inferred idle. Use command `--help` without a
-connection whenever an option is unclear. Success stdout is the result itself, without an ok/value wrapper. Errors
+connection whenever an option is unclear; inside OpenCove, `api schema` also reports access and rejectedFields, since schema fields alone do not authorize their use. Success stdout is the result itself, without an ok/value wrapper. Errors
 go to stderr; non-TTY or `-o json` uses a structured `error` object.
 
 ## Select targets explicitly
@@ -245,5 +246,4 @@ Membership proves neither submission nor consumption; inspect each deliveryId wi
 promptIds are the provider's own prompt IDs (Claude continuations included); agent delivery does not accept them. Best-effort
 wait lookup failures omit IDs without changing completion/outcome/durability. Resolved delivery records expire
 after 30 minutes and existing capacity limits apply; restart clears them. Live history keeps up to 64 previous
-provider prompt IDs plus the final ID; archives retain only the final prompt ID. Missing IDs never justify
-resending.
+provider prompt IDs plus the final ID; archives retain only the final prompt ID. Missing IDs never justify resending.

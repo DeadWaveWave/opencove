@@ -141,6 +141,14 @@ function summarizeArgs(
       continue
     }
 
+    const equals = arg.indexOf('=')
+    const inlineFlag = arg.slice(0, equals)
+    if (equals > 0 && SENSITIVE_VALUE_ARG_FLAGS.has(inlineFlag)) {
+      summary.push(`<redacted:${inlineFlag}:len=${arg.length - equals - 1}>`)
+      previousFlag = null
+      continue
+    }
+
     if (arg.startsWith('-')) {
       summary.push(arg)
       previousFlag = arg

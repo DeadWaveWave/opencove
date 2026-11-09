@@ -6,6 +6,7 @@ import type {
 import { fromFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import { AGENT_PROVIDER_IDS, type AgentProviderId } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
+import type { RequestAuth } from '../http/requestAuth'
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -118,4 +119,31 @@ export function toLocalAgentLaunchInput(
     cols: payload.cols,
     rows: payload.rows,
   }
+}
+
+/** Forward admitted grant input without turning normalized defaults into explicit overrides. */
+export function toMountedAgentLaunchInput(
+  payload: LaunchAgentSessionInput,
+  target: { mountId: string; cwdUri: string | null },
+  auth: RequestAuth | undefined,
+): LaunchAgentSessionInMountInput {
+  const base = {
+    ...target,
+    prompt: payload.prompt,
+    provider: payload.provider ?? null,
+    model: payload.model ?? null,
+    cols: payload.cols,
+    rows: payload.rows,
+  }
+  return auth?.kind === 'session-grant'
+    ? base
+    : {
+        ...base,
+        mode: payload.mode === 'resume' ? 'resume' : 'new',
+        resumeSessionId: normalizeOptionalString(payload.resumeSessionId),
+        env: payload.env ?? null,
+        executablePathOverride: payload.executablePathOverride ?? null,
+        agentFullAccess: payload.agentFullAccess ?? null,
+        codexReuseRunningAppServer: payload.codexReuseRunningAppServer ?? null,
+      }
 }
