@@ -31,6 +31,7 @@ function finish(
   const endedAt = Math.max(now, observation.observedAt)
   const model: AgentRunModel = {
     ...previous,
+    blockingEpisode: null,
     boundaryAt: endedAt,
     nextTransitionAtMs: null,
     observations: {
@@ -57,6 +58,7 @@ function finish(
       state: ready ? 'idle' : 'unknown',
       quality: ready ? 'authoritative' : 'degraded',
       blockedReason: null,
+      blockedSummary: null,
       source: 'claude_hook',
       turnOutcome: outcome,
       lastTransitionAt: endedAt,
@@ -105,6 +107,7 @@ export function updateAgentRunEntry(
     const ended = current.snapshot.turn
     const model: AgentRunModel = {
       ...current,
+      blockingEpisode: null,
       observations: {},
       lastTurnEnd: null,
       nextTransitionAtMs: null,
@@ -114,6 +117,7 @@ export function updateAgentRunEntry(
         state: 'unknown',
         quality: 'degraded',
         blockedReason: null,
+        blockedSummary: null,
         source: null,
         lastTransitionAt: now,
         ...(ended
@@ -160,6 +164,7 @@ export function updateAgentRunEntry(
       return {
         model: {
           ...current,
+          blockingEpisode: null,
           observations: {
             ...current.observations,
             claude_hook: {
@@ -181,6 +186,7 @@ export function updateAgentRunEntry(
             state: 'idle' as const,
             quality: 'authoritative' as const,
             blockedReason: null,
+            blockedSummary: null,
             source: 'claude_hook' as const,
             lastTransitionAt: now,
           },
@@ -289,8 +295,14 @@ export function updateAgentRunEntry(
   ) {
     result.model = {
       ...result.model,
+      blockingEpisode: null,
       lastTurnEnd: null,
-      snapshot: { ...result.model.snapshot, state: 'working', blockedReason: null },
+      snapshot: {
+        ...result.model.snapshot,
+        state: 'working',
+        blockedReason: null,
+        blockedSummary: null,
+      },
     }
   }
   entry.history.accept(current, result.model, result.ended, observation, evidence)
@@ -349,6 +361,7 @@ export function commitAgentRunUpdate(
         state: 'unknown',
         quality: 'degraded',
         blockedReason: null,
+        blockedSummary: null,
       },
     }
   }

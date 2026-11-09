@@ -42,6 +42,7 @@ export interface ClaudeHookEnvelope {
   state: ClaudeHookTurnState | null
   hookEventName: string
   claudeSessionId: string
+  notificationType?: string
   sessionStartSource?: ClaudeSessionStartSource
   transcriptPath?: string
   promptId?: string
@@ -92,6 +93,9 @@ export function validateClaudeHookEnvelope(value: unknown): ClaudeHookEnvelope |
     state: hookEventName === 'SessionStart' ? null : state,
     hookEventName,
     claudeSessionId,
+    ...(typeof value.notificationType === 'string'
+      ? { notificationType: value.notificationType }
+      : {}),
     ...(sessionStartSourceValue ? { sessionStartSource: sessionStartSourceValue } : {}),
     ...(typeof value.transcriptPath === 'string' &&
     isAbsolute(value.transcriptPath) &&
@@ -214,6 +218,7 @@ export function normalizeClaudeHookEnvelope(value: unknown): ClaudeHookEnvelope 
   return {
     version: 1,
     state,
+    ...(notificationType ? { notificationType } : {}),
     hookEventName,
     claudeSessionId,
     ...(sessionStartSourceValue ? { sessionStartSource: sessionStartSourceValue } : {}),

@@ -7,7 +7,12 @@ import {
   type AgentStandbyCardContextVisibility,
   type AgentStandbyNotification,
 } from '../utils/agentStandbyNotification'
-import { AgentIslandCard, islandCardKey, type AgentIslandCardLayout } from './AgentIslandCard'
+import {
+  AgentIslandCard,
+  islandCardKey,
+  type AgentIslandCardLayout,
+  type AgentIslandLiveAgent,
+} from './AgentIslandCard'
 import { AgentIslandSparks, type AgentIslandSparksHandle } from './AgentIslandSparks'
 
 /** The gap between the pill and the stack, and between expanded cards. */
@@ -26,10 +31,15 @@ function prefersReducedMotion(): boolean {
 function findLive(
   summary: AgentActivitySummary,
   notification: AgentStandbyNotification,
-): AgentActivityReference | null {
+): AgentIslandLiveAgent | null {
   const matches = (item: AgentActivityReference) =>
     item.workspaceId === notification.workspaceId && item.nodeId === notification.nodeId
-  return summary.waiting.find(matches) ?? summary.working.find(matches) ?? null
+  const waiting = summary.waiting.find(matches)
+  if (waiting) {
+    return { ...waiting, state: 'waiting' }
+  }
+  const working = summary.working.find(matches)
+  return working ? { ...working, state: 'working' } : null
 }
 
 /** Under the pill, its right edge on the pill's, kept inside the window. */

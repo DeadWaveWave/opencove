@@ -1,4 +1,5 @@
 import React from 'react'
+import { agentAttentionLabelKey } from '@contexts/workspace/presentation/renderer/utils/agentAttentionLabel'
 import {
   CircleIcon,
   EyeOffIcon,
@@ -26,7 +27,9 @@ import {
 
 function SidebarAgentItemContent({ item }: { item: SidebarAgentItemModel }): React.JSX.Element {
   const { t } = useTranslation()
-  const statusText = t(`sidebar.status.${item.status}`)
+  const statusText = t(
+    item.status === 'waiting' ? agentAttentionLabelKey(item) : `sidebar.status.${item.status}`,
+  )
   const StatusIcon =
     item.status === 'working' ? null : item.status === 'waiting' ? PauseIcon : CircleIcon
 
@@ -109,7 +112,7 @@ function SidebarAgentItem({
         title={[
           provider ? AGENT_PROVIDER_LABEL[provider] : t('sidebar.fallbackAgentLabel'),
           displayTitle,
-          t(`sidebar.status.${status}`),
+          t(status === 'waiting' ? agentAttentionLabelKey(item) : `sidebar.status.${status}`),
           toRelativeTime(node.data.startedAt),
         ].join(' · ')}
         onClick={() => onSelectAgentNode(workspaceId, node.id)}

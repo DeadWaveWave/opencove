@@ -1,5 +1,6 @@
 import type { TranslateFn } from '@app/renderer/i18n'
 import type { TerminalNodeData } from '../../../types'
+import { agentAttentionLabelKey } from '../../../utils/agentAttentionLabel'
 import { resolveAgentPresentation } from '../../../utils/agentPresentation'
 
 export function resolveSpaceSummaryStatus(
@@ -11,7 +12,11 @@ export function resolveSpaceSummaryStatus(
     const state = agent.status ?? 'observing'
     return {
       state,
-      label: t(`agentRuntime.${state === 'running' ? 'working' : state}`),
+      label: t(
+        state === 'waiting'
+          ? agentAttentionLabelKey({ blockedReason: agent.observation?.blockedReason })
+          : `agentRuntime.${state === 'running' ? 'working' : state}`,
+      ),
     }
   }
   if (data.kind !== 'terminal') {

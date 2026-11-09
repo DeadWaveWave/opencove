@@ -1,3 +1,4 @@
+import { resolveHookBlockedDetails } from './hookBlockedDetails'
 import type { ClaudeTranscriptPort } from './claudeTranscript'
 import { setPromptSubmissionEvidence, type PromptSubmissionEvidence } from './claudePromptEvidence'
 import { parseHookEmittedAt } from './hookEmittedAt'
@@ -19,7 +20,8 @@ export interface AgentHookEnvelope extends PromptSubmissionEvidence {
   claudeSessionId?: string
   emittedAtMs?: number
   hookEventName?: string
-  tool?: { name: string }
+  notificationType?: string
+  tool?: { name: string; input?: unknown }
   state: 'working' | 'waiting' | 'standby' | 'done' | null
 }
 
@@ -209,13 +211,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
         source: options.source,
         hookEventName: envelope.hookEventName,
         emittedAtMs: envelope.emittedAtMs,
-        ...(envelope.hookEventName === 'PermissionRequest'
-          ? { blockedReason: 'permission' as const }
-          : envelope.tool?.name === 'AskUserQuestion'
-            ? { blockedReason: 'question' as const }
-            : envelope.tool?.name === 'ExitPlanMode'
-              ? { blockedReason: 'plan' as const }
-              : {}),
+        ...resolveHookBlockedDetails({ ...envelope, state }),
         hookInstallState: installState,
         ...observation?.stateMetadata,
       }

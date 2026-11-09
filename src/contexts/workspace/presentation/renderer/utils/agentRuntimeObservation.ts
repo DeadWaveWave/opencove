@@ -48,13 +48,16 @@ export function projectAgentRuntimeObservation(
   const source = input.source ?? 'session_file'
   const hookInstallState = input.hookInstallState ?? null
   const degraded = input.degraded === true
-  const nextObservation = { status: nextStatus, source, hookInstallState, degraded }
+  const blockedReason =
+    nextStatus === 'waiting' ? (input.agentRunState?.blockedReason ?? null) : null
+  const nextObservation = { status: nextStatus, source, hookInstallState, degraded, blockedReason }
   if (
     (data.kind !== 'terminal' || data.agentOverlay?.status === nextStatus) &&
     data.agentRuntimeObservation?.status === nextStatus &&
     data.agentRuntimeObservation.source === source &&
     data.agentRuntimeObservation.hookInstallState === hookInstallState &&
-    data.agentRuntimeObservation.degraded === degraded
+    data.agentRuntimeObservation.degraded === degraded &&
+    (data.agentRuntimeObservation.blockedReason ?? null) === blockedReason
   ) {
     return null
   }

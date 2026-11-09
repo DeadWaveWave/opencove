@@ -30,7 +30,7 @@ Options:
   --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
-Projectable fields: nodeId, title, taskNodeId, sessionId, provider, state, blockedReason, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome, lastEndedTurn, lastEndedTurn.id, lastEndedTurn.outcome, lastEndedTurn.endedAt
+Projectable fields: nodeId, title, taskNodeId, sessionId, provider, state, blockedReason, blockedSummary, blockedSummary.kind, blockedSummary.questions, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome, lastEndedTurn, lastEndedTurn.id, lastEndedTurn.outcome, lastEndedTurn.endedAt
 
 Projection example:
   opencove agent get --node '<id>' --fields nodeId
@@ -61,7 +61,7 @@ Options:
 List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
 
 Table output (-o table): supported.
-Projectable fields: nodeId, title, taskNodeId, sessionId, provider, state, blockedReason, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome, lastEndedTurn, lastEndedTurn.id, lastEndedTurn.outcome, lastEndedTurn.endedAt
+Projectable fields: nodeId, title, taskNodeId, sessionId, provider, state, blockedReason, blockedSummary, blockedSummary.kind, blockedSummary.questions, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome, lastEndedTurn, lastEndedTurn.id, lastEndedTurn.outcome, lastEndedTurn.endedAt
 
 Projection example:
   opencove agent list --fields nodeId
@@ -144,7 +144,7 @@ Options:
 List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
 
 Table output (-o table): not supported.
-Projectable fields: nodeId, taskNodeId, sessionId, provider, state, blockedReason, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome, lastEndedTurn, lastEndedTurn.id, lastEndedTurn.outcome, lastEndedTurn.endedAt, completion, completion.nodeId, completion.sessionId, completion.turnId, completion.outcome, endedTurn, endedTurn.id, endedTurn.startedAt, endedTurn.start, endedTurnOutcome, turnId, deliveryIds, promptIds, outcome, endedAt, persisted, memoryOnlyReason
+Projectable fields: nodeId, taskNodeId, sessionId, provider, state, blockedReason, blockedSummary, blockedSummary.kind, blockedSummary.questions, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome, lastEndedTurn, lastEndedTurn.id, lastEndedTurn.outcome, lastEndedTurn.endedAt, completion, completion.nodeId, completion.sessionId, completion.turnId, completion.outcome, endedTurn, endedTurn.id, endedTurn.startedAt, endedTurn.start, endedTurnOutcome, turnId, deliveryIds, promptIds, outcome, endedAt, persisted, memoryOnlyReason
 
 Projection example:
   opencove agent wait --node node-123 --until idle --fields nodeId,state
@@ -176,12 +176,12 @@ exports[`explains session.transcript_not_ready and next steps 1`] = `
 `;
 
 exports[`gets a snapshot plus title and supports @self 1`] = `
-"{"sessionId":"session-123456","nodeId":"node-123456","provider":"claude-code","state":"working","blockedReason":null,"turn":{"id":"turn","startedAt":10,"start":"observed"},"lastTransitionAt":10,"source":"claude_hook","quality":"authoritative","turnOutcome":null,"lastEndedTurn":null,"taskNodeId":null,"title":"Shell"}
+"{"sessionId":"session-123456","nodeId":"node-123456","provider":"claude-code","state":"working","blockedReason":null,"blockedSummary":null,"turn":{"id":"turn","startedAt":10,"start":"observed"},"lastTransitionAt":10,"source":"claude_hook","quality":"authoritative","turnOutcome":null,"lastEndedTurn":null,"taskNodeId":null,"title":"Shell"}
 "
 `;
 
 exports[`lists titles and defaults to the caller space, preserving the cursor envelope 1`] = `
-"{"epoch":"e","seq":5,"agents":[{"sessionId":"session-123456","nodeId":"node-123456","provider":"claude-code","state":"working","blockedReason":null,"turn":{"id":"turn","startedAt":10,"start":"observed"},"lastTransitionAt":10,"source":"claude_hook","quality":"authoritative","turnOutcome":null,"lastEndedTurn":null,"title":"Shell","taskNodeId":null}]}
+"{"epoch":"e","seq":5,"agents":[{"sessionId":"session-123456","nodeId":"node-123456","provider":"claude-code","state":"working","blockedReason":null,"blockedSummary":null,"turn":{"id":"turn","startedAt":10,"start":"observed"},"lastTransitionAt":10,"source":"claude_hook","quality":"authoritative","turnOutcome":null,"lastEndedTurn":null,"title":"Shell","taskNodeId":null}]}
 "
 `;
 
@@ -191,7 +191,7 @@ exports[`preserves structured results for -o json and --fields 1`] = `
 `;
 
 exports[`prints final wait snapshots with a projectable ended outcome 1`] = `
-"{"until":"idle","mode":"all","agents":[{"sessionId":"session-123456","nodeId":"node-123456","provider":"claude-code","state":"idle","blockedReason":null,"turn":null,"lastTransitionAt":10,"source":"claude_hook","quality":"authoritative","turnOutcome":null,"lastEndedTurn":null}]}
+"{"until":"idle","mode":"all","agents":[{"sessionId":"session-123456","nodeId":"node-123456","provider":"claude-code","state":"idle","blockedReason":null,"blockedSummary":null,"turn":null,"lastTransitionAt":10,"source":"claude_hook","quality":"authoritative","turnOutcome":null,"lastEndedTurn":null}]}
 "
 `;
 

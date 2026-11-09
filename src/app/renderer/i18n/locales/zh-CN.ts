@@ -121,7 +121,7 @@ export const zhCN = {
     collapseProjectAgents: '折叠项目 Agent 列表',
     status: {
       working: '运行中',
-      waiting: '待确认',
+      waiting: '需要你回复',
       standby: '待命',
     },
     terminals_one: '{{count}} 个终端',
@@ -145,8 +145,8 @@ export const zhCN = {
     updateDownloadingTitle: '正在下载 {{version}}（{{percent}}）',
     restartToUpdateShort: '重启更新',
     restartToUpdateTitle: '版本 {{version}} 已准备好安装',
-    agentsWaiting_one: '{{count}} 个等你',
-    agentsWaiting_other: '{{count}} 个等你',
+    agentsWaiting_one: '{{count}} 个需要你',
+    agentsWaiting_other: '{{count}} 个需要你',
     agentsWorking_one: '{{count}} 个工作中',
     agentsWorking_other: '{{count}} 个工作中',
   },
@@ -244,7 +244,7 @@ export const zhCN = {
   agentRuntime: {
     working: '运行中',
     observing: '观测中',
-    waiting: '等待中',
+    waiting: '需要你回复',
     standby: '待命',
     hookDegraded: '降级',
     hookDegradedDetail: 'Agent Hook 不可用或已过期；当前状态由会话活动驱动。',

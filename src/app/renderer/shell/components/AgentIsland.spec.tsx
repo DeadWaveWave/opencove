@@ -58,6 +58,7 @@ const summary: AgentActivitySummary = {
       title: 'codex · Fix tests',
       spaceName: 'PR Space',
       provider: 'codex',
+      needsYouSinceMs: 1,
     },
   ],
   working: [],
@@ -246,7 +247,7 @@ describe('AgentIsland', () => {
     render(<Harness />)
     await settle()
 
-    expect(screen.getByText('Waiting for your input')).toBeTruthy()
+    expect(screen.getByText('Finished')).toBeTruthy()
     expect(screen.getByTestId('app-notification-chip-project').textContent).toBe('Alpha')
     expect(screen.getByTestId('app-notification-chip-task').textContent).toBe('Trace flaky status')
     expect(screen.getByTestId('app-notification-chip-space').textContent).toBe('PR Space')

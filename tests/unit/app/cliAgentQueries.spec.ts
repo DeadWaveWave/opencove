@@ -11,6 +11,7 @@ const snapshot: AgentRunSnapshot = {
   provider: 'claude-code',
   state: 'working',
   blockedReason: null,
+  blockedSummary: null,
   turn: { id: 'turn', startedAt: 10, start: 'observed' },
   lastTransitionAt: 10,
   source: 'claude_hook',
@@ -422,4 +423,31 @@ it('projects completion identity separately from the current snapshot through th
     ],
   })
   expect(f.streams[0].cancelled).toBe(true)
+})
+it('exposes bounded dialog fields in get/list JSON and rejects dialog table columns', async () => {
+  const f = fixture()
+  const blockedSummary = { kind: 'question', questions: [{ question: 'Which?', options: ['One'] }] }
+  f.values['agent.get'] = {
+    ...snapshot,
+    state: 'waiting',
+    blockedReason: 'question',
+    blockedSummary,
+  }
+  f.values['agent.list'] = { epoch: 'e', seq: 5, agents: [f.values['agent.get']] }
+  expect(
+    await run(
+      ['agent', 'get', '--node', 'Shell', '--fields', 'blockedReason,blockedSummary'],
+      f.io,
+    ),
+  ).toBe(0)
+  expect(JSON.parse(f.out())).toEqual({ blockedReason: 'question', blockedSummary })
+  const listed = fixture()
+  listed.values['agent.list'] = f.values['agent.list']
+  expect(await run(['agent', 'list', '--fields', 'blockedSummary'], listed.io)).toBe(0)
+  expect(JSON.parse(listed.out()).agents).toEqual([{ blockedSummary }])
+  const table = fixture()
+  expect(
+    await run(['agent', 'list', '-o', 'table', '--fields', 'blockedSummary.questions'], table.io),
+  ).toBe(2)
+  expect(JSON.stringify(table.error())).toContain('JSON output only')
 })

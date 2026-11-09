@@ -8,7 +8,7 @@ import { normalizeBrowserPtyStateMetadata } from '../../../src/app/renderer/brow
 import { snapshot } from './cliAgentWait.helpers'
 
 const lastEndedTurn = { id: 'turn-a', outcome: 'failed' as const, endedAt: 20 }
-const current = { ...snapshot(), lastEndedTurn }
+const current = { ...snapshot(), lastEndedTurn, blockedSummary: null }
 it('defaults missing lastEndedTurn to null for older Worker snapshots and events', () => {
   const { lastEndedTurn: _absent, ...legacy } = current
   expect(agentRunSnapshotSchema.parse(legacy).lastEndedTurn).toBeNull()
@@ -57,4 +57,22 @@ it.each([
   expect(agentRunSnapshotSchema.safeParse({ ...current, lastEndedTurn: invalidEnd }).success).toBe(
     false,
   )
+})
+it('serializes bounded question and plan data across snapshot and event contracts', () => {
+  const question = agentRunSnapshotSchema.parse({
+    ...current,
+    state: 'waiting',
+    blockedReason: 'question',
+    blockedSummary: {
+      kind: 'question',
+      questions: [{ question: 'Which?', options: ['One', 'Two'] }],
+    },
+  })
+  const plan = agentRunEventSchema.parse({
+    type: 'agent.state_changed',
+    epoch: 'e',
+    seq: 1,
+    snapshot: { ...question, blockedReason: 'plan', blockedSummary: { kind: 'plan' } },
+  })
+  expect({ question, plan }).toMatchSnapshot()
 })

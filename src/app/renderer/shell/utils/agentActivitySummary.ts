@@ -16,6 +16,7 @@ export interface AgentActivityReference {
   provider: AgentProvider | null
   /** Set when the agent waits because it ended a turn you have not answered: since when. */
   needsYouSinceMs?: number
+  blockedReason?: import('@shared/contracts/dto/agentRunState').AgentRunSnapshot['blockedReason']
 }
 
 export interface AgentActivitySummary {
@@ -49,6 +50,7 @@ export function summarizeAgentActivity(
         title: item.displayTitle,
         spaceName: item.owningSpace?.name ?? null,
         provider: resolveAgentPresentationProvider(item.node.data),
+        ...(item.blockedReason ? { blockedReason: item.blockedReason } : {}),
         ...(item.needsYouSinceMs === undefined ? {} : { needsYouSinceMs: item.needsYouSinceMs }),
       }
       ;(item.status === 'working' ? working : waiting).push(reference)

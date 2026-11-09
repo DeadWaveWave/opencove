@@ -165,7 +165,7 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
       await expect(nodeStatus).toHaveText('Working')
       await expect(sidebarStatus).toHaveText('Working')
       await expect(nodeStatus).toHaveText('Standby', { timeout: 15_000 })
-      await expect(sidebarStatus).toHaveText('Needs input')
+      await expect(sidebarStatus).toHaveText('Finished')
 
       const notification = window
         .locator('[data-testid="app-notifications"] .app-notification')
@@ -219,7 +219,7 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
       )
       await window.getByTestId('workspace-item-workspace-a').hover()
 
-      await expect(workspaceAStatus).toHaveText('Needs input', { timeout: 15_000 })
+      await expect(workspaceAStatus).toHaveText('Finished', { timeout: 15_000 })
       await expect(window.getByTestId('workspace-item-workspace-b')).toHaveAttribute(
         'aria-current',
         'page',
