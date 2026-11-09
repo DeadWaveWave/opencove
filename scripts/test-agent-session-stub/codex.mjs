@@ -9,6 +9,7 @@ import {
 } from '../test-agent-session-jsonl.mjs'
 import { runRawClickRedrawAfterClickScenario } from './raw.mjs'
 import { sleep } from './sleep.mjs'
+import { reportInjectedTerminalTurnStarted } from './terminalShimHook.mjs'
 import { runTwoStageCtrlCFixture } from './twoStageCtrlC.mjs'
 
 const IDLE_SCENARIO_LIFETIME_MS = 180_000
@@ -234,6 +235,7 @@ export async function runJsonlOverlayLifecycleScenario(
   })
 
   if (isClaude) {
+    await reportInjectedTerminalTurnStarted(provider, cwd, sessionFilePath)
     await appendClaudeRecord(sessionFilePath, {
       type: 'assistant',
       message: {
