@@ -172,7 +172,6 @@ export function AgentSection({
       >
         <SettingsGroupBody>
           <SettingRow
-            id="settings-agent-resident-context"
             label={t('settingsPanel.agent.residentContextLabel')}
             description={t('settingsPanel.agent.residentContextHelp')}
             control={
