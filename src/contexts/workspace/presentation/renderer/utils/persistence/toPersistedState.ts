@@ -85,6 +85,7 @@ export function toPersistedState(
             ...(sessionId ? { sessionId } : {}),
             title: node.data.title,
             titlePinnedByUser: node.data.titlePinnedByUser === true,
+            titleIsLiteral: node.data.titleIsLiteral === true,
             position: node.position,
             width: node.data.width,
             height: node.data.height,

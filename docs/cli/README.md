@@ -12,7 +12,7 @@ Agent terminals cannot answer permission dialogs, read or change private setting
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `project`   | `list`                                                                                                                                                                                            |
 | `space`     | `list`, `get`                                                                                                                                                                                     |
-| `node`      | `list [--root-canvas]`, `get`, `create note/task/website/agent/terminal [--root-canvas]`, `update note/task/website`, `delete`                                                                                                    |
+| `node`      | `list [--root-canvas]`, `get`, `create note/task/website/agent/terminal [--root-canvas]`, `update note/task/website/agent/terminal`, `delete`                                                                                                    |
 | `canvas`    | `focus node`, `focus space`                                                                                                                                                                       |
 | `api`       | `ops`, `schema <operation-id>`, `call <operation-id>`                                                                                                                                             |
 | Runtime     | `ping`, `status`, `worker start/status/stop`, `runtime inspect/verify/prepare`                                                                                                                    |
@@ -20,7 +20,7 @@ Agent terminals cannot answer permission dialogs, read or change private setting
 | `mount`     | `list`, `create`, `resolve`, `remove`                                                                                                                                                             |
 | `fs`        | `read`, `write`, `stat`, `ls`; 可选 `--mount <id>`                                                                                                                                                |
 | `worktree`  | `list`, `create`, `archive`                                                                                                                                                                       |
-| `agent`     | `list`, `get`, `prompt`, `wait`, `read`                                                                                                                                                           |
+| `agent`     | `list`, `get`, `prompt`, `wait`, `read`, `stop`                                                                                                                                                           |
 | Agent guide | `skill` (bundled, offline)                                                                                                                                                                        |
 | `session`   | `run-agent`, `get`, `final`, `kill`                                                                                                                                                               |
 | `pty`       | `spawn-in-mount`, `attach`                                                                                                                                                                        |
@@ -87,7 +87,7 @@ Space locator 不推断 cwd：使用 `--space`、`--space-name` 或 `--worker` �
 CLI help golden 更新使用 `pnpm exec vitest run tests/unit/app/cliInputOutput.spec.ts tests/unit/app/cliOutputBehavior.spec.ts --update`，不要手改生成的 snapshot。
 
 CLI 测试先运行 `pnpm build:cli`，再运行 `pnpm exec vitest run tests/unit/app/cli*.spec.ts`。
-更新帮助 golden snapshots：`pnpm build:cli` 后运行 `pnpm exec vitest run tests/unit/app/cliCore.spec.ts tests/unit/app/cliHelpErrors.spec.ts tests/unit/app/cliSchemaValidation.spec.ts --update`；由 Vitest 生成，不手改 `.snap`。
+更新帮助 golden snapshots：`pnpm build:cli` 后运行 `pnpm exec vitest run tests/unit/app/cliCore.spec.ts tests/unit/app/cliHelpErrors.spec.ts tests/unit/app/cliSchemaValidation.spec.ts tests/unit/app/cliAgentQueries.spec.ts --update`；由 Vitest 生成，不手改 `.snap`。新增命令的完整帮助 golden 由 `cliHelpErrors.spec.ts` 生成；节点 wire schema golden 使用 `pnpm exec vitest run tests/contract/controlSurface/nodeSchemas.spec.ts --update` 更新。
 
 测试的 global setup 在系统临时目录重新构建并逐字节校验工作树中的 CLI 产物；产物缺失或过期时拒绝继续，不覆盖工作树，临时构建在成功或失败后都会清理。
 
@@ -131,6 +131,21 @@ opencove agent prompt --node "Reviewer" --text-file ./assignment.txt
 opencove agent wait --node "Reviewer" --until idle --timeout 2m
 opencove agent read --node "Reviewer" --turn turn-123
 ```
+
+Give a window a stable name with `node create agent --title "Reviewer"` (also supported for terminals).
+Rename it with `node update agent --node "Reviewer" --title "Lead"`; use `terminal` for terminal windows.
+Names are trimmed, saved and displayed literally, including any provider prefix you include. Auto titles and older UI-decorated titles keep their existing presentation. Automatic titles remain enabled when creation has no nonblank title.
+Pinned names also take precedence over pending renderer auto-titles during publication and guarded rebasing. Title and pin/literal flags are reconciled as one naming intent; competing explicit renames retain the existing three-way conflict rules.
+Agent/terminal updates accept a nonblank title and/or a frame and reject all data fields. A frame-only update preserves the existing title and pin.
+
+`opencove agent stop --node "Lead"` stops the bound session and keeps the canvas node.
+It supports agent windows and terminals with a live observed agent; for terminals it stops the entire session, including the shell.
+An exited terminal agent is an idempotent no-op: its surviving shell and unrelated foreground work are kept running. The Worker rechecks agent eligibility immediately before stopping.
+Remote agent-stop targets are refused before dispatch until the executing Worker can perform a conditional stop. No unconditional remote session kill is sent.
+Plain terminals are refused with a `session kill --session <id>` hint.
+The result is `{nodeId, sessionId, stopped: true}` when stopping is requested; process exit is asynchronous.
+An already-exited bound session returns `{nodeId, sessionId, stopped: false, reason: "not_running"}` with exit 0.
+A changed binding fails with exit 2; inspect the node again before deciding what to stop. A node with no session binding fails with exit 1.
 
 Save the `turnId` returned by prompt and replace `turn-123` above. The normal loop
 is prompt → wait `--until idle` → read `--turn <turnId>`.

@@ -249,3 +249,63 @@ it('disconnect drains every Agent session together before exiting', async () => 
   expect(h.signal).toHaveBeenCalledWith(200, 'SIGKILL')
   expect(state.exit).toHaveBeenCalledExactlyOnceWith(0)
 })
+
+it('routes a generic stopNode after natural exit into the existing descendant reaper', async () => {
+  const h = await host('agent')
+  state.onExit?.({ exitCode: 0 })
+  state.rows = '20 1 20 Mon Nov 9 12:00:01 2026 S sleep\n'
+  const { createControlSurface } = await import('@app/main/controlSurface/controlSurface')
+  const { registerSessionInputHandlers } =
+    await import('@app/main/controlSurface/handlers/sessionInputHandlers')
+  const { createInMemoryPersistenceStore, createMinimalState } =
+    await import('../../contract/controlSurface/controlSurfaceHttpServer.sessionStreaming.testUtils')
+  const store = createInMemoryPersistenceStore()
+  const persisted = createMinimalState('/repo', 'project', 'space')
+  persisted.workspaces[0].nodes = [
+    {
+      id: 'node',
+      sessionId: h.sessionId,
+      title: 'Reviewer',
+      kind: 'agent',
+      position: { x: 0, y: 0 },
+      width: 400,
+      height: 300,
+      status: 'exited',
+      startedAt: null,
+      endedAt: null,
+      exitCode: 0,
+      lastError: null,
+      agent: null,
+      task: null,
+      scrollback: null,
+      labelColorOverride: null,
+    },
+  ]
+  await store.writeAppState(persisted)
+  const control = createControlSurface()
+  registerSessionInputHandlers(control, {
+    getPersistenceStore: async () => store,
+    ptyRuntime: { kill: sessionId => h.send({ type: 'kill', sessionId }) },
+    ptyStreamHub: { isSessionActive: () => false } as unknown as Parameters<
+      typeof registerSessionInputHandlers
+    >[1]['ptyStreamHub'],
+  })
+  try {
+    expect(
+      await control.invoke(
+        { now: () => new Date() },
+        {
+          id: 'session.stopNode',
+          kind: 'command',
+          payload: { nodeId: 'node', sessionId: h.sessionId },
+        },
+      ),
+    ).toMatchObject({ ok: true, value: { requested: true } })
+    await vi.advanceTimersByTimeAsync(2_000)
+    expect(state.kill).not.toHaveBeenCalled()
+    expect(h.signal).toHaveBeenCalledWith(20, 'SIGKILL')
+  } finally {
+    h.send({ type: 'shutdown' })
+    await vi.runAllTimersAsync()
+  }
+})

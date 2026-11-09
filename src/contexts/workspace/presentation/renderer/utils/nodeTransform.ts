@@ -139,6 +139,7 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
         sidebarSortOrder: node.sidebarSortOrder,
         title: folder ? resolveFileUriName(folder.uri, node.title) : node.title,
         titlePinnedByUser: node.titlePinnedByUser === true,
+        titleIsLiteral: node.titleIsLiteral === true,
         width: node.width,
         height: node.height,
         kind: node.kind,

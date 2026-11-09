@@ -250,6 +250,7 @@ export function isPersistedNode(value: unknown): value is PersistedNodeContract 
     isOptionalNullableString(value.sessionId) &&
     typeof value.title === 'string' &&
     isOptionalBoolean(value.titlePinnedByUser) &&
+    isOptionalBoolean(value.titleIsLiteral) &&
     isPoint(value.position) &&
     isFiniteNumber(value.width) &&
     isFiniteNumber(value.height) &&

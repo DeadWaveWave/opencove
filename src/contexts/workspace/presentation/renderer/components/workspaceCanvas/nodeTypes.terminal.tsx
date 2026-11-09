@@ -132,6 +132,7 @@ function WorkspaceCanvasTerminalNodeTypeComponent({
         linkedTaskTitle,
         fallbackTitle: data.title,
         preferFallbackTitle: data.titlePinnedByUser === true,
+        titleIsLiteral: data.titleIsLiteral === true,
       })
     : data.title
   const executionDirectory =

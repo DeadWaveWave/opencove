@@ -94,6 +94,9 @@ function updateNode(
   return {
     ...node,
     title,
+    ...((input.kind === 'agent' || input.kind === 'terminal') && input.title?.trim()
+      ? { titlePinnedByUser: true, titleIsLiteral: true }
+      : {}),
     position: nextFrame?.position ?? node.position,
     width: nextFrame?.size.width ?? node.width,
     height: nextFrame?.size.height ?? node.height,
@@ -103,9 +106,12 @@ function updateNode(
 
 function updateKindData(
   node: NodeControlNode,
-  kind: 'note' | 'task' | 'website',
+  kind: UpdateNodeInput['kind'],
   data: Record<string, unknown>,
 ): unknown | null {
+  if (kind === 'agent' || kind === 'terminal') {
+    return node.task
+  }
   const current =
     node.task && typeof node.task === 'object' ? (node.task as Record<string, unknown>) : {}
   if (kind === 'note') {

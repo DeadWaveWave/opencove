@@ -8,6 +8,7 @@ import { normalizePersistedAppState } from '../../../../platform/persistence/sql
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import { findNodeForNodeControl } from '../../../../contexts/workspace/application/nodeControl/nodeDtos'
 import type { ControlSurface } from '../controlSurface'
+import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRuntime'
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 
 /** Exact durable node -> current PTY binding, rechecked after queued readiness work. */
@@ -16,6 +17,7 @@ export function registerSessionInputHandlers(
   deps: {
     getPersistenceStore(): Promise<PersistenceStore>
     ptyStreamHub: PtyStreamHub
+    ptyRuntime: Pick<MultiEndpointPtyRuntime, 'kill' | 'getSessionRoute'>
   },
 ) {
   async function binding(nodeId: string) {
@@ -26,30 +28,67 @@ export function registerSessionInputHandlers(
     if (!node || !['agent', 'terminal'].includes(node.kind) || !node.sessionId) {
       throw createAppError('session.not_found')
     }
-    return node.sessionId
+    return { sessionId: node.sessionId, kind: node.kind, workerBinding: node.workerBinding }
   }
   registerOperation(control, sessionStopNodeOperation, {
     async handle(ctx, input) {
-      if ((await binding(input.nodeId)) !== input.sessionId) {
-        throw new Error('Node session changed before stop; read it again.')
+      const bound = await binding(input.nodeId)
+      if (bound.sessionId !== input.sessionId) {
+        throw createAppError('common.invalid_input', {
+          debugMessage: 'Node session changed before stop; read it again.',
+        })
       }
       ctx.assertActive?.()
-      const result = await control.invoke(ctx, {
-        kind: 'command',
-        id: 'session.kill',
-        payload: { sessionId: input.sessionId },
-      })
-      if (!result.ok) {
-        throw createAppError(result.error)
+      // No await between the final binding check and the local runtime side effect.
+      if (input.agentOnly) {
+        const route = deps.ptyRuntime.getSessionRoute?.(input.sessionId)
+        if (
+          route?.kind === 'remote' ||
+          (bound.workerBinding && bound.workerBinding.endpointId !== 'local')
+        ) {
+          throw createAppError('node.unsupported_operation', {
+            debugMessage:
+              'Agent-only stopping is unavailable for remote targets. No stop was sent. Stop the agent from the Worker that runs it.',
+            details: { reason: 'remote_agent_stop_unsupported' },
+          })
+        }
+        if (!deps.ptyStreamHub.isSessionActive(input.sessionId)) {
+          return { ...input, requested: false, stopped: false, reason: 'not_running' as const }
+        }
+        const agent = deps.ptyStreamHub.observeAgentState(input.sessionId)
+        if (agent && (agent.nodeId !== input.nodeId || agent.sessionId !== input.sessionId)) {
+          throw createAppError('common.invalid_input', {
+            debugMessage: 'Node agent session changed before stop; inspect the node again.',
+          })
+        }
+        if (agent?.state === 'exited') {
+          return { ...input, requested: false, stopped: false, reason: 'not_running' as const }
+        }
+        if (
+          bound.kind === 'terminal' &&
+          (agent?.state === 'unknown' || agent?.quality === 'degraded')
+        ) {
+          throw createAppError('agent.state_unknown', {
+            debugMessage:
+              'This terminal’s current agent could not be confirmed. Inspect the node before stopping it.',
+          })
+        }
+        if (bound.kind === 'terminal' && !agent) {
+          throw createAppError('agent.not_running', {
+            debugMessage:
+              'This terminal no longer has an observed agent. Use session kill to stop its shell.',
+          })
+        }
       }
-      return { ...input, requested: true }
+      deps.ptyRuntime.kill(input.sessionId)
+      return { ...input, requested: true, stopped: true }
     },
-    defaultErrorCode: 'common.invalid_input',
+    defaultErrorCode: 'terminal.kill_failed',
   })
   registerOperation(control, sessionWriteNodeOperation, {
     async handle(ctx, input) {
       const sessionId = input.sessionId
-      if ((await binding(input.nodeId)) !== sessionId) {
+      if ((await binding(input.nodeId)).sessionId !== sessionId) {
         throw new Error('Node session changed before input; read it again.')
       }
       await deps.ptyStreamHub.writeAutomation({
@@ -57,7 +96,7 @@ export function registerSessionInputHandlers(
         data: input.data,
         assertActive: () => ctx.assertActive?.(),
         validateBinding: async () => {
-          if ((await binding(input.nodeId)) !== sessionId) {
+          if ((await binding(input.nodeId)).sessionId !== sessionId) {
             throw new Error('Node session changed before input; read it again.')
           }
         },

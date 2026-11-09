@@ -123,3 +123,21 @@ it.each([
     }),
   )
 })
+
+it.each(['agent', 'terminal'])(
+  'accepts title/frame updates and rejects every data field for %s',
+  kind => {
+    const op = operations.find(candidate => candidate.id === 'node.update')!
+    const input = { kind, nodeId: 'n', title: ' Lead ', frame: { x: 20, width: 400 } }
+    expect(op.input.safeParse(input).success).toBe(true)
+    expect(op.legacyNormalize!(input)).toMatchObject({ kind, title: 'Lead' })
+    for (const data of [null, {}, { prompt: 'x' }, { command: 'pwd' }, { provider: 'codex' }]) {
+      expect(op.input.safeParse({ ...input, data }).success).toBe(false)
+      expect(() => op.legacyNormalize!({ ...input, data })).toThrow()
+    }
+    expect(op.input.safeParse({ kind, nodeId: 'n', frame: { x: 20 } }).success).toBe(true)
+    for (const title of [null, '', '   ']) {
+      expect(op.input.safeParse({ ...input, title }).success).toBe(false)
+    }
+  },
+)

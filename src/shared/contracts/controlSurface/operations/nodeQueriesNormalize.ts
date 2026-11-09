@@ -62,11 +62,8 @@ function managedKind(value: unknown): ManagedCanvasNodeKind {
 }
 
 function updatableKind(value: unknown): UpdatableCanvasNodeKind {
-  if (value === 'note' || value === 'task' || value === 'website') {
+  if (isManagedNodeKind(value)) {
     return value
-  }
-  if (value === 'agent' || value === 'terminal') {
-    throw createAppError('node.unsupported_operation')
   }
   throw createAppError('common.invalid_input', { debugMessage: 'Invalid node update kind.' })
 }

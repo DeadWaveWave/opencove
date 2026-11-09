@@ -1,5 +1,91 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`documents named-window commands offline: "agent" 1`] = `
+"Usage: opencove agent stop --node <id> [options]
+
+Stop the agent session bound to a canvas node
+
+Stop an agent window, or a terminal that still hosts a live observed agent, while keeping the canvas node. A terminal’s entire session stops, including its shell. An exited agent is a no-op even if its shell is still running. Plain terminals are refused; use session kill --session <id> to stop a shell session. Remote targets are refused before dispatch because safe agent-only stopping is not supported there yet.
+
+Returns {nodeId, sessionId, stopped: true} when the stop is requested. An already-exited session returns stopped: false and reason: not_running (exit 0). A changed node/session binding refuses the stop (exit 2); inspect the node again before deciding what to stop. Stopping never sends terminal input.
+
+Options:
+  --node <id>         Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
+  --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Table output (-o table): not supported.
+Projectable fields: nodeId, sessionId, stopped, reason
+
+Projection example:
+  opencove agent stop --node '<id>' --fields nodeId
+  {"nodeId":"node-123","sessionId":"session-123","stopped":true}
+
+Examples:
+  opencove agent stop --node "Lead"
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`documents named-window commands offline: "node" 1`] = `
+"Usage: opencove node update agent --node <id> [options]
+
+Update an agent node
+
+Rename this window and keep its name when the agent session changes. The name is saved as provided, with surrounding whitespace removed. Use --frame to also move or resize it.
+
+Options:
+  --node <id>         Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
+  --title <text>      Set the node title
+  --frame <json>      Set x, y, width and height as a JSON object
+  --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.provider, data.prompt, data.model, data.effectiveModel, data.executionDirectory, data.expectedDirectory, data.taskId
+
+Projection example:
+  opencove node update agent --node '<id>' --fields id,title
+  {"revision":1,"node":{"id":"n","title":"Agent"}}
+
+Examples:
+  opencove node update agent --node node-123 --title "Lead"
+  opencove node update agent --node node-123 --title "Release review" --pretty
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`documents named-window commands offline: "node" 2`] = `
+"Usage: opencove node update terminal --node <id> [options]
+
+Update a terminal node
+
+Rename this window and keep its name when the agent session changes. The name is saved as provided, with surrounding whitespace removed. Use --frame to also move or resize it.
+
+Options:
+  --node <id>         Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
+  --title <text>      Set the node title
+  --frame <json>      Set x, y, width and height as a JSON object
+  --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.profileId, data.runtimeKind, data.executionDirectory, data.expectedDirectory
+
+Projection example:
+  opencove node update terminal --node '<id>' --fields id,title
+  {"revision":1,"node":{"id":"n","title":"Terminal"}}
+
+Examples:
+  opencove node update terminal --node node-123 --title "Lead"
+  opencove node update terminal --node node-123 --title "Release review" --pretty
+
+Global options: see "opencove --help".
+"
+`;
+
 exports[`error golden texts (TTY=false) 1`] = `
 {
   "missing required option": "{"error":{"code":"cli.usage","message":"Missing required option --space (or another target space option) for \\"opencove node create note\\".","hint":"Choose a Space, or add --root-canvas to create outside every Space."}}
@@ -29,6 +115,23 @@ exports[`error golden texts (TTY=true) 1`] = `
   hint: Run "opencove node list --help" to see its options.
 ",
 }
+`;
+
+exports[`lists real agent subcommands offline 1`] = `
+"Usage: opencove agent <command> [options]
+
+Commands:
+  stop             Stop the agent session bound to a canvas node
+  delivery         Check retained delivery evidence; never resends input
+  history <clear>  History canvas targets
+  list             List live agent run states and node titles
+  get              Inspect an agent run-state snapshot with its node title
+  prompt           Send a prompt to an agent window OpenCove launched
+  wait             Wait until agents reach a state or finish a turn
+  read             Read an agent reply or inspect its current terminal screen
+
+Global options: see "opencove --help".
+"
 `;
 
 exports[`lists real endpoint subcommands offline 1`] = `
@@ -65,6 +168,20 @@ Commands:
   create   Mount a worker folder in a project
   resolve  Resolve a mount location
   remove   Remove a project mount
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real node subcommands offline 1`] = `
+"Usage: opencove node <command> [options]
+
+Commands:
+  list                                       List canvas nodes
+  get                                        Get a canvas node
+  create <note|task|website|agent|terminal>  Create canvas nodes
+  update <note|task|website|agent|terminal>  Update canvas nodes
+  delete                                     Delete a canvas node
 
 Global options: see "opencove --help".
 "

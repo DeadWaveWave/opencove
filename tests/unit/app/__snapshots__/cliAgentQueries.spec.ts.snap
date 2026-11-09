@@ -4,6 +4,7 @@ exports[`agent  help is offline and complete 1`] = `
 "Usage: opencove agent <command> [options]
 
 Commands:
+  stop             Stop the agent session bound to a canvas node
   delivery         Check retained delivery evidence; never resends input
   history <clear>  History canvas targets
   list             List live agent run states and node titles

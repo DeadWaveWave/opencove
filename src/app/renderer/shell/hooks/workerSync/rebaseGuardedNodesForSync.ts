@@ -6,7 +6,7 @@ import type {
 import { toPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence/toPersistedState'
 import { isNodeGuardedFromSyncOverwrite } from '@contexts/workspace/presentation/renderer/utils/syncNodeGuards'
 import { normalizeNodeForMerge } from '@shared/sync/normalizePersistedAppStateForMerge'
-import { mergeValue } from '@shared/sync/mergeValue'
+import { mergePersistedNode } from '@shared/sync/mergePersistedNode'
 
 /** Guards preserve local deltas, not stale copies of unrelated shared fields. */
 export function rebaseGuardedNodesForSync(
@@ -29,7 +29,7 @@ export function rebaseGuardedNodesForSync(
       const localNode = localNodes.get(node.id)
       const baseNode = baseNodes.get(node.id)
       return localNode && baseNode && isNodeGuardedFromSyncOverwrite(node.id)
-        ? mergeValue(
+        ? mergePersistedNode(
             normalizeNodeForMerge(node),
             normalizeNodeForMerge(localNode),
             normalizeNodeForMerge(baseNode),

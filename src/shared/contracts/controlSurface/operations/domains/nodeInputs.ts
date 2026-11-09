@@ -113,6 +113,24 @@ export const nodeCreateInput = z.discriminatedUnion('kind', [
 export const nodeUpdateInput = z.discriminatedUnion('kind', [
   z.strictObject({
     ...update,
+    kind: z.literal('agent'),
+    title: z
+      .string()
+      .regex(/\S/)
+      .describe('Replacement name; kept until you rename the node again')
+      .optional(),
+  }),
+  z.strictObject({
+    ...update,
+    kind: z.literal('terminal'),
+    title: z
+      .string()
+      .regex(/\S/)
+      .describe('Replacement name; kept until you rename the node again')
+      .optional(),
+  }),
+  z.strictObject({
+    ...update,
     kind: z.literal('note'),
     data: z.strictObject({ text: optionalText('Replacement note contents') }).nullish(),
   }),

@@ -358,6 +358,7 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
     ...(sessionId ? { sessionId } : {}),
     title: kind === 'folder' && folder ? resolveFileUriName(folder.uri, title) : title,
     titlePinnedByUser: record.titlePinnedByUser === true,
+    titleIsLiteral: record.titleIsLiteral === true,
     width,
     height,
     kind,

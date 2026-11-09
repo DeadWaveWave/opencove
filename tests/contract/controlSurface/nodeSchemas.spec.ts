@@ -58,8 +58,8 @@ it.each([
   expect(update.input.safeParse({ nodeId: 'n', ...input }).success).toBe(true),
 )
 it.each([
-  { kind: 'agent' },
-  { kind: 'terminal' },
+  { kind: 'agent', data: {} },
+  { kind: 'terminal', data: null },
   { kind: 'task', data: { tags: [1] } },
   { kind: 'website', data: { pinned: 'true' } },
   { kind: 'note', data: { text: false } },
