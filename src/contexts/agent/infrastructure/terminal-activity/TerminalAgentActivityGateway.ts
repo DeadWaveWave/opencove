@@ -30,6 +30,7 @@ interface TerminalCredential {
   sessionId: string | null
   terminal: TerminalAgentInvocationTerminal
   token: string
+  residentContext: 'canvas' | 'none'
 }
 
 export interface TerminalAgentGatewayReservation {
@@ -115,7 +116,9 @@ export class TerminalAgentActivityGateway {
     }
   }
 
-  public async reserveTerminal(): Promise<TerminalAgentGatewayReservation> {
+  public async reserveTerminal(input?: {
+    residentContext?: 'canvas' | 'none'
+  }): Promise<TerminalAgentGatewayReservation> {
     await this.start()
     this.assertNotDisposed()
     const endpoint = this.endpoint
@@ -129,6 +132,7 @@ export class TerminalAgentActivityGateway {
       sessionId: null,
       terminal: this.options.registry.reserve({ sourceId: 'terminal-shim' }),
       token,
+      residentContext: input?.residentContext ?? 'none',
     }
     this.credentials.set(token, credential)
     return {
@@ -253,6 +257,7 @@ export class TerminalAgentActivityGateway {
       }
       plan = await planner.prepareHookInjection({
         codexReuseRunningAppServer,
+        residentContext: credential.residentContext,
         arguments: invocationArguments,
         artifacts,
         environment,

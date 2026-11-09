@@ -29,7 +29,7 @@ globalThis.fetch = async (_url, options) => { process.stdout.write(JSON.stringif
     env: {
       ...process.env,
       NODE_OPTIONS: `--import=${pathToFileURL(preload).href}`,
-      OPENCOVE_CLAUDE_HOOK_ENDPOINT: 'http://unused',
+      OPENCOVE_CLAUDE_HOOK_ENDPOINT: 'http://127.0.0.1:1234/hooks/claude',
       OPENCOVE_CLAUDE_HOOK_TOKEN: 'test',
     },
     stdio: ['pipe', 'pipe', 'pipe'],

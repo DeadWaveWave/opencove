@@ -1,3 +1,4 @@
+import { CoveSelect } from '@app/renderer/components/CoveSelect'
 import React, { useRef } from 'react'
 import { Button } from '@app/renderer/components/ui/Button'
 import { SettingRow } from '@app/renderer/components/ui/SettingRow'
@@ -39,6 +40,7 @@ export function AgentSection({
   settings,
   onChangeAgentProviderOrder,
   onChangeAgentFullAccess,
+  onChangeAgentResidentContext,
   onInstallProvider,
   onConfigureProvider,
   onRefreshAvailability,
@@ -53,6 +55,7 @@ export function AgentSection({
   settings: AgentSettings
   onChangeAgentProviderOrder: (providers: AgentProvider[]) => void
   onChangeAgentFullAccess: (enabled: boolean) => void
+  onChangeAgentResidentContext: (mode: AgentSettings['agentResidentContext']) => void
   onInstallProvider: (provider: AgentProvider) => void
   onConfigureProvider: (provider: AgentProvider) => void
   onRefreshAvailability: () => void
@@ -168,6 +171,26 @@ export function AgentSection({
         title={t('settingsPanel.groups.agent.permissions')}
       >
         <SettingsGroupBody>
+          <SettingRow
+            id="settings-agent-resident-context"
+            label={t('settingsPanel.agent.residentContextLabel')}
+            description={t('settingsPanel.agent.residentContextHelp')}
+            control={
+              <CoveSelect
+                id="settings-agent-resident-context"
+                testId="settings-agent-resident-context"
+                ariaLabel={t('settingsPanel.agent.residentContextLabel')}
+                value={settings.agentResidentContext}
+                options={[
+                  { value: 'suggest', label: t('settingsPanel.agent.residentContextSuggest') },
+                  { value: 'off', label: t('settingsPanel.agent.residentContextOff') },
+                ]}
+                onChange={value =>
+                  onChangeAgentResidentContext(value === 'off' ? 'off' : 'suggest')
+                }
+              />
+            }
+          />
           <SettingRow
             id="settings-agent-full-access"
             label={t('settingsPanel.agent.fullAccessLabel')}

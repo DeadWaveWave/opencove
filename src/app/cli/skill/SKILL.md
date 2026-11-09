@@ -5,8 +5,8 @@ description: Coordinate agents and share work inside OpenCove using its bundled 
 
 # OpenCove agent guide
 
-This guide ships inside the CLI build. Use `opencove --version` to identify it; `opencove skill -o json` includes
-the matching version and guide content. Replace example IDs, names and paths with actual query results.
+OpenCove may give supported local agents a short canvas guide at session start; Settings → Agent → Tell agents about OpenCove controls future injections.
+This guide ships inside the CLI build. Use `opencove --version` to identify it; `opencove skill -o json` includes the matching version and guide content. Replace example IDs, names and paths with actual query results.
 
 ## Establish identity before acting
 

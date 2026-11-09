@@ -105,6 +105,7 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
       CreateAgentLaunchPlanCommand,
       'artifacts' | 'executablePathOverride' | 'workspaceDirectory'
     > & {
+      readonly residentContext?: 'canvas' | 'none'
       readonly codexReuseRunningAppServer?: boolean
       readonly environment?: Readonly<NodeJS.ProcessEnv>
       readonly resumeSessionId?: string | null
@@ -142,32 +143,28 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
         hookInstallState: 'not_installed' as const,
       }
     }
-    const reservation = await this.channel.reserveSpawn()
-    if (!reservation.usesHook) {
-      return {
-        args: [],
-        env: {},
-        hookCoverage: 'none' as const,
-        hookInstallState: reservation.installState,
-      }
+    await this.channel.start()
+    const installState = this.channel.getInstallState()
+    if (installState !== 'installed') {
+      return { args: [], env: {}, hookCoverage: 'none' as const, hookInstallState: installState }
     }
     if (
       command.codexReuseRunningAppServer === true &&
       (await shouldDeferToCodexDaemon(command.environment ?? {}))
     ) {
-      // Codex only reuses the implicit local app-server daemon when the CLI carries no
-      // --config overrides, and the running daemon cannot adopt this invocation's hook
-      // configuration, so keep the launch override-free and run telemetry degraded (#375).
-      command.artifacts.track('codex-hook-reservation', reservation)
+      // A shared daemon cannot adopt this invocation's hooks or resident context.
+      const reservation = command.artifacts.track(
+        'codex-hook-reservation',
+        await this.channel.reserveSpawn(),
+      )
       return {
         args: [],
         env: reservation.env ?? {},
         hookCoverage: 'none' as const,
-        hookInstallState: 'skipped' as const,
+        hookInstallState: reservation.usesHook ? ('skipped' as const) : reservation.installState,
         onStarted: reservation.commit,
       }
     }
-    command.artifacts.track('codex-hook-reservation', reservation)
     const relay = await createAgentHookRelay({
       provider: 'codex',
       runtimeExecutable: this.runtimeExecutable,
@@ -192,6 +189,20 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
       [relay.command, ...relay.args],
       this.runtimePlatform,
     )}`
+    const reservation = command.artifacts.track(
+      'codex-hook-reservation',
+      await this.channel.reserveSpawn({
+        residentContext: trust ? command.residentContext : 'none',
+      }),
+    )
+    if (!reservation.usesHook) {
+      return {
+        args: [],
+        env: {},
+        hookCoverage: 'none' as const,
+        hookInstallState: reservation.installState,
+      }
+    }
     return {
       args: [
         ...(trust ? hook.configurations.flatMap(configuration => ['--config', configuration]) : []),

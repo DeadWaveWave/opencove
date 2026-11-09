@@ -25,6 +25,8 @@ vi.mock('node:net', async importOriginal => {
   }
 })
 const channel = {
+  async start() {},
+  getInstallState: () => 'installed',
   reserveSpawn: async () => ({
     usesHook: true,
     installState: 'installed',
