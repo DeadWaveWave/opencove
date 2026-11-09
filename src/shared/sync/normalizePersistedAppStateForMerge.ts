@@ -32,6 +32,7 @@ export function normalizeNodeForMerge(
     // durable representation below before excluding the projection from content.
     ...('terminalAgentBinding' in node ? { terminalAgentBinding: undefined } : {}),
     titlePinnedByUser: node.titlePinnedByUser ?? false,
+    titleIsLiteral: node.titleIsLiteral ?? false,
     profileId: node.profileId ?? null,
     terminalGeometry: node.terminalGeometry ?? null,
     workerBinding: node.workerBinding ?? null,

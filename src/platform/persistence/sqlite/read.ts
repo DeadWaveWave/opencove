@@ -134,6 +134,7 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
             : null,
         title: node.title,
         titlePinnedByUser: node.titlePinnedByUser === 1,
+        titleIsLiteral: node.titleIsLiteral === 1,
         position: { x: node.positionX, y: node.positionY },
         width: node.width,
         height: node.height,

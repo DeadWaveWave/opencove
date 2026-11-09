@@ -127,6 +127,7 @@ export function buildSidebarAgentItems(
               linkedTaskTitle,
               fallbackTitle: node.data.title,
               preferFallbackTitle: node.data.titlePinnedByUser === true,
+              titleIsLiteral: node.data.titleIsLiteral === true,
             })
           : provider
             ? resolveAgentDisplayLabel({
@@ -134,6 +135,7 @@ export function buildSidebarAgentItems(
                 linkedTaskTitle: null,
                 fallbackTitle: node.data.title,
                 preferFallbackTitle: node.data.titlePinnedByUser === true,
+                titleIsLiteral: node.data.titleIsLiteral === true,
               })
             : node.data.title,
       effectiveLabelColor: resolveEffectiveLabelColor(node),

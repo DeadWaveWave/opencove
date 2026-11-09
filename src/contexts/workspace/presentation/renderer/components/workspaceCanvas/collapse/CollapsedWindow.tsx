@@ -41,6 +41,7 @@ export function CollapsedWindow({
               : null,
           fallbackTitle: data.title,
           preferFallbackTitle: data.titlePinnedByUser === true,
+          titleIsLiteral: data.titleIsLiteral === true,
         })
       : data.title
   const status = resolveSpaceSummaryStatus(data, t)

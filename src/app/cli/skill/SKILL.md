@@ -28,7 +28,6 @@ connection whenever an option is unclear. Success stdout is the result itself, w
 go to stderr; non-TTY or `-o json` uses a structured `error` object.
 
 ## Select targets explicitly
-
 Node, space and project selectors accept a full ID, exact case-sensitive name, or a unique ID prefix (6+ characters). Ambiguity exits 6: use a full ID. `@self` uses your authenticated terminal identity, not your
 working directory. Inside OpenCove, `node create` and `node list` read your current container: your Space,
 or the root canvas when you are outside every Space. There, `node list` lists the whole project; use `node list --root-canvas` for only root nodes. Explicit `--project` selects project scope for lists;
@@ -45,7 +44,6 @@ To put a node on the canvas outside any Space: `opencove node create note --root
 Outside OpenCove, add `--project <id>`. Placement searches next to you when run inside OpenCove, or from the origin if your node is unavailable. Use `--focus` to reveal it.
 
 ## Notes and tasks are a shared blackboard
-
 Read existing notes/tasks before changing them. Keep task ownership visible. Claim a task by setting status `doing`
 and putting your actual node ID from `whoami` in a tag or requirement note. This is a coordination convention, not
 an atomic lock: re-read and negotiate any conflicting claim. `--tag` replaces the provided tag list, so preserve
@@ -66,11 +64,13 @@ opencove node update task --node task-123 --status ai_done
 Long text accepts `--text-file` or `--requirement-file` and `-` for stdin. Use either inline or file input. Preserve others' findings and claims.
 
 ## Coordinate: list → prompt → wait → read
-
-Only create an agent when authorized for its provider, model and workspace. Do not close or prompt nodes you did
+Only create an agent when authorized for its provider, model and workspace. Do not close, stop or prompt nodes you did
 not create unless explicitly asked. Never answer another agent's permission prompt; ask the human to handle it. A
 `waiting` agent may be asking a question or permission, even with null blockedReason.
 
+Name an agent at creation: `opencove node create agent --title "Reviewer"`; its name stays fixed.
+Rename a window: `opencove node update agent --node "Reviewer" --title "Lead"` (use `terminal` for a terminal).
+Stop its session, keeping the node: `opencove agent stop --node "Lead"`; already exited returns not_running, exit 0.
 ```sh
 opencove agent list -o table
 opencove agent get --node agent-123

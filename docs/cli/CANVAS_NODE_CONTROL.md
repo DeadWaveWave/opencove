@@ -18,6 +18,8 @@ OpenCove CLI 可以通过 Control Surface 管理画布节点。CLI 是 client，
 - `task`
 - `website`
 
+- `agent`、`terminal`：重命名，也可同时更新 frame；不接受任何 data 字段。
+
 Agent 和 Terminal 的运行时行为不通过通用 `node.update` 表达；它们通过 session / PTY contracts 管理。
 
 ## Commands
@@ -35,11 +37,14 @@ Command:
 opencove node create note [--root-canvas | space locator] [--title <text>] [--text <text>] [--frame <json>] [--focus] [--pretty]
 opencove node create task [--root-canvas | space locator] --requirement <text> [--title <text>] [--priority <low|medium|high|urgent>] [--tag <tag>] [--frame <json>] [--focus] [--pretty]
 opencove node create website [--root-canvas | space locator] --url <url> [--title <text>] [--pinned] [--session-mode <shared|incognito|profile>] [--profile <id>] [--frame <json>] [--focus] [--pretty]
-opencove node create agent [--root-canvas | space locator] [--prompt <text>] [--provider <id>] [--model <id>] [--frame <json>] [--focus] [--pretty]
-opencove node create terminal [--root-canvas | space locator] [--shell <path>] [--command <text>] [--profile <id>] [--frame <json>] [--focus] [--pretty]
+opencove node create agent [--root-canvas | space locator] [--title <text>] [--prompt <text>] [--provider <id>] [--model <id>] [--frame <json>] [--focus] [--pretty]
+opencove node create terminal [--root-canvas | space locator] [--title <text>] [--shell <path>] [--command <text>] [--profile <id>] [--frame <json>] [--focus] [--pretty]
 opencove node update note --node <id> [--title <text>] [--text <text>] [--frame <json>] [--pretty]
 opencove node update task --node <id> [--title <text>] [--requirement <text>] [--priority <low|medium|high|urgent>] [--status <todo|doing|ai_done|done>] [--tag <tag>] [--frame <json>] [--pretty]
 opencove node update website --node <id> [--title <text>] [--url <url>] [--pinned <true|false>] [--session-mode <shared|incognito|profile>] [--profile <id>] [--frame <json>] [--pretty]
+opencove node update agent --node <selector> [--title <text>] [--frame <json>] [--pretty]
+opencove node update terminal --node <selector> [--title <text>] [--frame <json>] [--pretty]
+opencove agent stop --node <selector>
 opencove node delete --node <selector> [--space <selector>] [--pretty]
 opencove canvas focus node --node <id> [--pretty]
 opencove canvas focus space [space locator] [--pretty]
@@ -153,6 +158,16 @@ Terminal:
 - Create 会通过 `pty.spawn` 或 `pty.spawnInMount` 创建 runtime。
 - `command` 通过用户指定 shell 或平台默认 shell 执行。
 - Spawn 失败时不持久化 terminal node。
+
+命名与停止：
+
+- 创建 agent/terminal 时，非空 `title` 会固定名称；省略或仅空白则继续使用自动标题。
+- 重命名要求非空 title，去除首尾空白后按字面保存和显示，调用者提供的 provider 前缀也保留；旧 UI 装饰和自动标题维持原展示规则；可同时更新 frame，也可只更新 frame 并保留名称和固定状态。
+- 固定名称由 Worker 持久化；会话标题同步和启动标题不能覆盖它，已有未固定节点保持自动标题行为。
+- `agent stop` 支持 agent 节点和当前会话中有存活 agent 观测的 terminal，停止整个会话但保留节点，不发送终端输入。
+- 已退出 agent 的保留观测只返回 not_running，不停止仍存活的 shell 或后续无关工作；Worker 在真正停止前再次检查准入。
+- 返回 `{nodeId, sessionId, stopped: true}` 表示已请求停止，进程退出异步完成；已退出返回 `stopped: false, reason: "not_running"`，exit 0。
+- 绑定变化返回 exit 2；无绑定返回 exit 1。普通 terminal 会提示使用 `session kill --session <id>`。
 
 Delete:
 

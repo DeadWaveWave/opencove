@@ -52,6 +52,7 @@ function createTables(db: Database.Database): void {
       session_id TEXT,
       title TEXT NOT NULL,
       title_pinned_by_user INTEGER NOT NULL,
+      title_is_literal INTEGER NOT NULL DEFAULT 0,
       position_x REAL NOT NULL,
       position_y REAL NOT NULL,
       width INTEGER NOT NULL,
@@ -300,6 +301,12 @@ function ensureCurrentSchema(db: Database.Database): void {
     tableName: 'workspaces',
     columnName: 'space_archive_records_json',
     definitionSql: `TEXT NOT NULL DEFAULT '[]'`,
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'nodes',
+    columnName: 'title_is_literal',
+    definitionSql: 'INTEGER NOT NULL DEFAULT 0',
   })
 
   const addedWorkspaceSortOrder = ensureTableColumn(db, {

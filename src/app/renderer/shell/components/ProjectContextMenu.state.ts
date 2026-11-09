@@ -34,7 +34,9 @@ export function resolveTargetName(
     return null
   }
 
-  return stripAgentProviderPrefix(node.data.agent.provider, node.data.title)
+  return node.data.titleIsLiteral === true
+    ? node.data.title
+    : stripAgentProviderPrefix(node.data.agent.provider, node.data.title)
 }
 
 export function resolveTargetSpacePath(
@@ -100,7 +102,10 @@ export function renameTarget(target: ProjectContextMenuTarget, nextName: string)
           return node
         }
 
-        const title = buildAgentNodeTitle(node.data.agent.provider, normalizedName)
+        const title =
+          node.data.titleIsLiteral === true
+            ? normalizedName
+            : buildAgentNodeTitle(node.data.agent.provider, normalizedName)
         if (node.data.title === title && node.data.titlePinnedByUser === true) {
           return node
         }

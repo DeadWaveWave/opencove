@@ -104,7 +104,7 @@ export const nodeUpdateOperation = defineOperation({
   kind: 'command',
   scope: 'interact',
   availability: 'always',
-  summary: 'Update a note, task or website node title, frame or content',
+  summary: 'Rename or resize a canvas node, or edit note, task or website content',
   input: nodeUpdateInput,
   normalize: normalizeUpdatePayload,
   legacyNormalize: withStrictInput(nodeUpdateInput, normalizeUpdatePayload),

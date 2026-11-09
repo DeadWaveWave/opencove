@@ -47,6 +47,7 @@ export const nodes = sqliteTable('nodes', {
   sessionId: text('session_id'),
   title: text('title').notNull(),
   titlePinnedByUser: integer('title_pinned_by_user', { mode: 'number' }).notNull(),
+  titleIsLiteral: integer('title_is_literal', { mode: 'number' }).notNull().default(0),
   positionX: real('position_x').notNull(),
   positionY: real('position_y').notNull(),
   width: integer('width').notNull(),

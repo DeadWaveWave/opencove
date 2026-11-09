@@ -329,7 +329,7 @@ describe('node control handlers', () => {
         controlSurface.invoke(ctx, {
           kind: 'command',
           id: 'node.update',
-          payload: { kind, nodeId: 'node-1' },
+          payload: { kind, nodeId: 'node-1', title: 'Lead', data: { prompt: 'forbidden' } },
         }),
       ),
     )

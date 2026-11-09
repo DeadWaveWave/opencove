@@ -33,6 +33,9 @@ export function identityFixture(inside = true) {
     'space.get': { projectId: project.id, space },
     'node.list': { nodes: [node] },
     'agent.list': { agents: [] },
+    'system.operation.describe': {
+      inputSchema: { anyOf: [{ properties: { agentOnly: { const: true } } }] },
+    },
     'node.get': { node },
     'node.create': { node: { ...node, frame: { x: 0, y: 0, width: 220, height: 260 } } },
   }

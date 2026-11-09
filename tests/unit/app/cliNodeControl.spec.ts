@@ -99,3 +99,49 @@ describe('CLI node control commands', () => {
     })
   })
 })
+
+it.each(['agent', 'terminal'])(
+  'renames a %s without sending data or launch options',
+  async kind => {
+    const requests = stubInvokeRequests()
+    expect(
+      await invokeNodeArgs(['node', 'update', kind, '--node', 'node-1', '--title', 'Lead']),
+    ).toBe(true)
+    expect(requests[0]).toMatchObject({
+      id: 'node.update',
+      payload: { kind, nodeId: 'node-1', title: 'Lead' },
+    })
+    expect(requests[0].payload).not.toHaveProperty('data')
+  },
+)
+
+it.each([
+  ['agent', '--prompt', 'unexpected'],
+  ['terminal', '--command', 'pwd'],
+  ['agent', '--title', '   '],
+])(
+  'rejects unsupported or blank rename options before connecting: %j',
+  async (kind, option, value) => {
+    const requests = stubInvokeRequests()
+    expect(await invokeNodeArgs(['node', 'update', kind, '--node', 'node-1', option, value])).toBe(
+      false,
+    )
+    expect(requests).toHaveLength(0)
+  },
+)
+
+it('keeps a literal provider-prefixed name when renaming through the CLI', async () => {
+  const requests = stubInvokeRequests()
+  expect(
+    await invokeNodeArgs([
+      'node',
+      'update',
+      'agent',
+      '--node',
+      'node-1',
+      '--title',
+      'codex · Lead',
+    ]),
+  ).toBe(true)
+  expect(requests[0]).toMatchObject({ id: 'node.update', payload: { title: 'codex · Lead' } })
+})

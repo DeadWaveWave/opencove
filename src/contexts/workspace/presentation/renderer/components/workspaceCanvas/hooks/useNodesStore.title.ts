@@ -17,7 +17,7 @@ export function resolveRenamedWorkspaceNodeTitle(
     return ''
   }
 
-  if (node.data.kind !== 'agent' || !node.data.agent) {
+  if (node.data.titleIsLiteral === true || node.data.kind !== 'agent' || !node.data.agent) {
     return normalizedTitle
   }
 

@@ -196,3 +196,18 @@ describe('agentTitle', () => {
     expect(findLinkedTaskTitleForAgent(nodes, 'agent-c', null)).toBeNull()
   })
 })
+
+it.each(['codex · Reviewer', 'codex · codex · Lead'])(
+  'preserves the full pinned literal name %s',
+  title => {
+    expect(
+      resolveAgentDisplayLabel({
+        provider: 'codex',
+        linkedTaskTitle: 'Other task',
+        fallbackTitle: title,
+        preferFallbackTitle: true,
+        titleIsLiteral: true,
+      }),
+    ).toBe(title)
+  },
+)

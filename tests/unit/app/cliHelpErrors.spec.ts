@@ -5,6 +5,8 @@ import type { CliIo } from '../../../src/app/cli/core/io'
 import { commands } from '../../../src/app/cli/commands'
 import { help } from '../../../src/app/cli/core/help'
 const groups = [
+  'agent',
+  'node',
   'worker',
   'runtime',
   'endpoint',
@@ -47,7 +49,9 @@ it.each(groups)('lists real %s subcommands offline', async group => {
   expect(await run([group, '--help'], f.io)).toBe(0)
   for (const { path, summary } of commands.filter(c => c.path[0] === group)) {
     expect(f.out()).toContain(path[1])
-    expect(f.out()).toContain(summary)
+    if (path.length === 2) {
+      expect(f.out()).toContain(summary)
+    }
   }
   expect(f.out()).toMatchSnapshot()
   expect(f.out()).not.toContain('(legacy)')
@@ -170,4 +174,15 @@ it('documents the supported browser modes and task priorities', async () => {
   ])
   expect(website.out()).toContain('--session-mode <shared|incognito|profile>')
   expect(task.out()).toContain('--priority <low|medium|high|urgent>')
+})
+
+it.each([
+  ['agent', 'stop'],
+  ['node', 'update', 'agent'],
+  ['node', 'update', 'terminal'],
+])('documents named-window commands offline: %j', async (...path) => {
+  const f = fixture()
+  expect(await run([...path, '--help'], f.io)).toBe(0)
+  expect(f.out()).toMatchSnapshot()
+  expect(f.io.fetch).not.toHaveBeenCalled()
 })

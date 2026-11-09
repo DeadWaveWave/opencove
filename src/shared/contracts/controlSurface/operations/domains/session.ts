@@ -282,12 +282,16 @@ export const sessionStopNodeOperation = defineOperation({
     z.looseObject({
       nodeId: z.string().describe('Canvas node that owns the session'),
       sessionId: z.string().describe('Terminal or agent session identifier'),
+      agentOnly: z
+        .literal(true)
+        .optional()
+        .describe('Stop only if this session still hosts a live agent'),
     }),
     z.array(z.unknown()),
   ]),
   normalize: normalizeStopNode,
   legacyNormalize: normalizeStopNode,
-  errors: ['session.not_found', 'terminal.kill_failed'],
+  errors: ['session.not_found', 'terminal.kill_failed', 'agent.not_running', 'agent.state_unknown'],
   id: 'session.stopNode',
   kind: 'command',
   scope: 'interact',
