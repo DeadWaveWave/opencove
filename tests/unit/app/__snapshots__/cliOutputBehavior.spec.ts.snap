@@ -77,14 +77,15 @@ Lists per-kind summaries: data carries kind plus requirement, status, priority a
 
 data.status is task status. Top-level status is session lifecycle (for example running or exited) for agents and terminals, not whether an agent is idle or working. STATE shows task status or session lifecycle; agentState is the separate work-state field. sessionStatus aliases lifecycle status. agentState {state, quality, turnId} reports work for agents and observed agents in terminals; state working means the agent is working. Missing observations are unknown/degraded. context keeps its legacy state field.
 
-When no target is given, inside OpenCove defaults to your own space; project options default to your own project.
+Default target inside OpenCove: your current Space. Outside every Space, list all nodes in your project; use --root-canvas to list only root nodes. An explicit --project lists that project.
 
-Target space (choose one; inside OpenCove defaults to your own space):
+Target container (choose one):
+  --root-canvas                                 List only nodes on the project's root canvas, outside every Space
   --space <id>                                  Select a space by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --space-name <name> [--project <id>]          Find a named space, optionally within a project
   --worker <id-or-name> --branch <branch>       Find a space by worker and Git branch
   --worker <id-or-name> --path <absolute-path>  Find a space by worker and working directory
-  --project <id>                                Narrow a space name, branch or path lookup to one project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>                                Select the project to list, or narrow a Space lookup; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Options:
   --kind <kind>  Filter by note, task, website, agent, terminal, plugin, document, folder, image or role

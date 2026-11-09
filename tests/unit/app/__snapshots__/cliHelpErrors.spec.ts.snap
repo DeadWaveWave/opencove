@@ -2,7 +2,7 @@
 
 exports[`error golden texts (TTY=false) 1`] = `
 {
-  "missing required option": "{"error":{"code":"cli.usage","message":"Missing required option --space (or another target space option) for \\"opencove node create note\\".","hint":"Run \\"opencove node create note --help\\" to see its options."}}
+  "missing required option": "{"error":{"code":"cli.usage","message":"Missing required option --space (or another target space option) for \\"opencove node create note\\".","hint":"Choose a Space, or add --root-canvas to create outside every Space."}}
 ",
   "not running": "{"error":{"code":"context.unreachable","message":"OpenCove is not running for this profile.","hint":"Start the OpenCove app, or run \\"opencove worker start\\". Use --user-data <dir> to target another profile.","details":{"profiles":["/tmp/opencove-test/profile-a","/tmp/opencove-test/profile-b"]}}}
 ",
@@ -16,7 +16,7 @@ exports[`error golden texts (TTY=false) 1`] = `
 exports[`error golden texts (TTY=true) 1`] = `
 {
   "missing required option": "error[cli.usage]: Missing required option --space (or another target space option) for "opencove node create note".
-  hint: Run "opencove node create note --help" to see its options.
+  hint: Choose a Space, or add --root-canvas to create outside every Space.
 ",
   "not running": "error[context.unreachable]: OpenCove is not running for this profile.
   searched profiles: /tmp/opencove-test/profile-a, /tmp/opencove-test/profile-b

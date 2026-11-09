@@ -10,6 +10,7 @@ import type {
   NodeControlNode,
 } from '../../../src/contexts/workspace/application/nodeControl/nodeControlState'
 import { createMinimalState } from '../../contract/controlSurface/controlSurfaceHttpServer.sessionStreaming.testUtils'
+import { SPACE_NODE_PADDING } from '../../../src/contexts/workspace/domain/workspaceSpaceLayout'
 import { createAppErrorDescriptor } from '../../../src/shared/errors/appError'
 import type { SpaceLocatorResolverDeps } from '../../../src/contexts/workspace/application/nodeControl/spaceLocator'
 
@@ -67,17 +68,25 @@ function fixture() {
     listWorktreesForMount: async () => [],
     listWorktreesForWorkspace: async () => [],
   }
-  const run = (kind: 'terminal' | 'agent' = 'terminal') =>
+  const run = (kind: 'terminal' | 'agent' = 'terminal', root = false, callerNodeId?: string) =>
     createNodeForNodeControl({
       store,
       locatorDeps,
       runtime,
       now: new Date(),
-      input: { kind, space: { kind: 'spaceId', spaceId: 'space' }, data: { prompt: 'Inspect' } },
+      callerNodeId,
+      input: {
+        kind,
+        ...(root
+          ? { projectId: 'project' }
+          : { space: { kind: 'spaceId' as const, spaceId: 'space' } }),
+        data: { prompt: 'Inspect' },
+      },
     })
   return {
     store,
     runtime,
+    locatorDeps,
     run,
     readAppState,
     writeAppState,
@@ -113,6 +122,72 @@ function concurrentNote(id = 'neighbor'): NodeControlNode {
 }
 
 describe('node creation pure persistence rebase', () => {
+  it.each(['moved', 'deleted', 'space'] as const)(
+    'recomputes root placement after a CAS conflict when the caller is %s',
+    async change => {
+      const f = fixture(),
+        write = f.writeAppState.getMockImplementation()!
+      f.locatorDeps.listMounts = async () => [
+        {
+          mountId: 'default',
+          projectId: 'project',
+          name: 'Default',
+          sortOrder: 0,
+          endpointId: 'local',
+          targetId: 'local',
+          rootPath: '/repo',
+          rootUri: 'file:///repo',
+          createdAt: '',
+          updatedAt: '',
+        },
+      ]
+      f.locatorDeps.listEndpoints = async () => [
+        {
+          endpointId: 'local',
+          kind: 'local',
+          displayName: 'Local',
+          remote: null,
+          createdAt: '',
+          updatedAt: '',
+        },
+      ]
+      f.advance(state => {
+        state.workspaces[0].nodes.push({
+          ...concurrentNote('caller'),
+          position: { x: 2000, y: 2000 },
+        })
+      })
+      f.writeAppState.mockImplementationOnce(async (next, options) => {
+        f.advance(state => {
+          const workspace = state.workspaces[0]
+          if (change === 'deleted') {
+            workspace.nodes = []
+          } else {
+            workspace.nodes[0].position = { x: 4000, y: 3000 }
+            if (change === 'space') {
+              workspace.spaces[0].nodeIds = ['caller']
+              workspace.spaces[0].rect = { x: 3900, y: 2800, width: 1400, height: 1000 }
+            }
+          }
+        })
+        return write(next, options)
+      })
+      const result = await f.run('terminal', true, 'caller')
+      expect(result.node.frame).toMatchObject(
+        change === 'deleted'
+          ? { x: 0, y: 0 }
+          : { x: (change === 'space' ? 5300 : 4600) + SPACE_NODE_PADDING, y: 3000 },
+      )
+      expect(result.spaceId).toBeNull()
+      expect(
+        f.state().workspaces[0].spaces.every(space => !space.nodeIds.includes(result.node.id)),
+      ).toBe(true)
+      expect(f.writeAppState).toHaveBeenCalledTimes(2)
+      expect(f.runtime.spawnTerminal).toHaveBeenCalledTimes(1)
+      expect(f.runtime.killSession).not.toHaveBeenCalled()
+    },
+  )
+
   it.each(['terminal', 'agent'] as const)(
     'rebases %s insertion once without relaunch and preserves concurrent content/settings/geometry',
     async kind => {

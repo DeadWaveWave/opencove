@@ -263,12 +263,24 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
   }
   if (
     !values.help &&
+    command.operation === 'node.create' &&
+    values['root-canvas'] &&
+    values.project === undefined &&
+    io.env.OPENCOVE_ENV !== '1'
+  ) {
+    usage('--root-canvas needs a project outside OpenCove: add --project <id>')
+  }
+  if (
+    !values.help &&
+    !values['root-canvas'] &&
     command.targetSpace === 'required' &&
     !['space', 'space-name', 'worker', 'branch', 'path'].some(key => values[key] !== undefined)
   ) {
     usage(
       `Missing required option --space (or another target space option) for "opencove ${command.path.join(' ')}".`,
-      commandHelpHint(command.path),
+      command.operation === 'node.create'
+        ? 'Choose a Space, or add --root-canvas to create outside every Space.'
+        : commandHelpHint(command.path),
     )
   }
   const positionals = parsed.positionals.slice(command.path.length)
