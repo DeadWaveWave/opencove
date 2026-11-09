@@ -33,6 +33,7 @@ function respond(
   approvalProbe: boolean,
   slowTool = false,
   slowToolSeconds = 3,
+  slowToolCommand = `sleep ${slowToolSeconds}`,
 ): void {
   const id = `resp_${Date.now()}`
   const item = slowTool
@@ -42,7 +43,7 @@ function respond(
         call_id: `call_sleep_${Date.now()}`,
         name: 'exec_command',
         status: 'completed',
-        arguments: JSON.stringify({ cmd: `sleep ${slowToolSeconds}` }),
+        arguments: JSON.stringify({ cmd: slowToolCommand }),
       }
     : approvalProbe
       ? {
@@ -82,7 +83,9 @@ function respond(
   res.end()
 }
 
-export async function startResponsesApi(options: { slowToolSeconds?: number } = {}): Promise<{
+export async function startResponsesApi(
+  options: { slowToolSeconds?: number; slowToolCommand?: string } = {},
+): Promise<{
   server: Server
   url: string
   main: () => string[][]
@@ -123,6 +126,7 @@ export async function startResponsesApi(options: { slowToolSeconds?: number } = 
         isMain && !resumed && blocks.some(block => block.includes('TRIGGER_TOOL')),
         isMain && !resumed && blocks.some(block => block.includes('SLOW_TOOL')),
         options.slowToolSeconds,
+        options.slowToolCommand,
       )
       return
     }

@@ -100,6 +100,9 @@ test.describe('Codex orchestration beside a shared app-server daemon', () => {
               customModelEnabledByProvider: { codex: false },
               // Omit the field in the default case to exercise persisted-setting compatibility.
               ...(reuse ? { codexReuseRunningAppServer: true } : {}),
+              // Completion notifications stack over window headers; this test closes windows.
+              standbyBannerEnabled: false,
+              systemNotificationsEnabled: false,
             },
             workspaces: [
               {

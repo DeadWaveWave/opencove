@@ -57,7 +57,7 @@ export interface HeadlessPtyRuntime extends ClaudeTranscriptPort {
   startSessionStateWatcher: (input: SessionStateWatcherStartInput) => void
   disposeSessionStateWatcher: (sessionId: string) => void
   debugCrashHost?: () => void | Promise<void>
-  dispose: () => void
+  dispose: () => void | Promise<void>
 }
 
 export function createHeadlessPtyRuntime(options: {
@@ -158,7 +158,10 @@ export function createHeadlessPtyRuntime(options: {
       const registration = sessionRegistrations.begin()
       let spawned: { sessionId: string }
       try {
-        spawned = await processEngine.spawn(input)
+        spawned = await processEngine.spawn({
+          ...input,
+          sessionKind: input.agentProvider ? 'agent' : 'shell',
+        })
       } catch (error) {
         registration.cancel()
         throw error
@@ -324,7 +327,7 @@ export function createHeadlessPtyRuntime(options: {
       providerBySessionId.clear()
       sessionRegistrations.dispose()
       sessionStateWatcher.dispose()
-      processEngine.dispose()
+      return processEngine.dispose()
     },
   }
 }

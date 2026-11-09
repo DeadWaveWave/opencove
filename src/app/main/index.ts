@@ -45,10 +45,10 @@ stripParentAgentSessionEnv(process.env)
 
 let ipcDisposable: ReturnType<typeof registerIpcHandlers> | null = null
 
-function disconnectRuntimeClients(): void {
+function disconnectRuntimeClients(): void | Promise<void> {
   const disposable = ipcDisposable
   ipcDisposable = null
-  disposable?.dispose()
+  return disposable?.dispose()
 }
 
 let workerEndpointResolverForContextMenu: ReturnType<

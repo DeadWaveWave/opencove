@@ -52,7 +52,14 @@ test('exact turn read and wait survive a complete Worker restart, then disappear
           timeout: 20_000,
         },
         (error, stdout, stderr) =>
-          done({ code: error ? Number(error.code ?? 1) : 0, stdout, stderr }),
+          done({
+            code: typeof error?.code === 'number' ? error.code : error ? 1 : 0,
+            stdout,
+            // Preserve timeout/signal evidence without printing argv (which contains the token).
+            stderr: error
+              ? `${stderr}\nCLI failure: ${JSON.stringify({ code: error.code, signal: error.signal, killed: error.killed })}`
+              : stderr,
+          }),
       )
     })
   }

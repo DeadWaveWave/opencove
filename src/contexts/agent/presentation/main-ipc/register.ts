@@ -416,6 +416,7 @@ export function registerAgentIpcHandlers(
         spawn: async () =>
           await ptyRuntime.spawnSession({
             cwd: resolvedSpawn.cwd,
+            sessionKind: 'agent',
             cols: normalized.cols ?? 80,
             rows: normalized.rows ?? 24,
             command: resolvedSpawn.command,

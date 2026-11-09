@@ -454,7 +454,7 @@ export function createControlSurfaceHttpRuntime(
         }
 
         try {
-          ptyRuntime.dispose()
+          await ptyRuntime.dispose()
           await ptyRuntime.drainLaunchArtifacts()
         } catch {
           // ignore

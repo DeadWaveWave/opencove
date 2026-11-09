@@ -164,29 +164,16 @@ export async function assertAgentProcessesGone(
       // eslint-disable-next-line no-await-in-loop
       const rows = await readProcesses(Math.max(1_000, Math.floor(deadline - performance.now())))
       remaining = classifyRemainingAgentProcesses(rows, ownership)
-      if (!remaining.some(isCodexOrGit)) {
-        break
+      if (remaining.length === 0) {
+        return
       }
       // eslint-disable-next-line no-await-in-loop
       await delay(Math.min(100, Math.max(0, deadline - performance.now())))
     }
     expect(
-      remaining.filter(isCodexOrGit),
-      'Codex and git processes must disappear within 5s of closing; shared daemon is excluded',
+      remaining,
+      'Agent processes, including tool commands it started, must disappear within 5s of closing; shared daemon is excluded',
     ).toEqual([])
-    const toolChildren = remaining.filter(row => !isCodexOrGit(row))
-    if (toolChildren.length > 0) {
-      // Known issue on main: closing a window ends Codex, but tool commands Codex started in their
-      // own process group survive. Reaping them is a separate PTY lifecycle fix.
-      testInfo.annotations.push({
-        type: 'known-issue',
-        description: `tool processes survived close: ${toolChildren.map(row => row.command).join('; ')}`,
-      })
-      await testInfo.attach('surviving-tool-processes', {
-        body: JSON.stringify(toolChildren, null, 2),
-        contentType: 'application/json',
-      })
-    }
   } catch (error) {
     const failures = new AcceptanceFailures()
     failures.add('process cleanup', error)
@@ -200,11 +187,6 @@ export async function assertAgentProcessesGone(
     )
     failures.throwIfAny()
   }
-}
-
-function isCodexOrGit(row: ProcessRow): boolean {
-  const executable = row.command.trim().split(/\s+/u)[0]?.split('/').at(-1) ?? ''
-  return executable === 'codex' || executable === 'git' || executable.startsWith('git-')
 }
 
 async function dismissNotifications(page: Page): Promise<void> {

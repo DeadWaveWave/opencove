@@ -71,6 +71,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐛 Fixed
 
+- Agent: closing or deleting an agent window, or quitting OpenCove, now also stops the commands and servers the agent started; they used to keep running in the background after Codex or Claude Code exited. Plain terminals are unchanged, so `nohup` still works there. (#576)
 - Agent windows: after a workspace switch, reload, reopen, restart or font change, an agent window keeps the terminal state Claude Code set up (alternate screen, bracketed paste, mouse tracking), so multi-line pastes stay one message and the mouse wheel keeps working; a spinner redraw during restore no longer resets the terminal. (#579)
 - Agent: Codex windows get OpenCove's lifecycle hooks even when the shared Codex app-server daemon is running, so their working/idle state is reliable and `opencove agent prompt` can reach them; they used to skip hooks to reuse the daemon. Settings → Agent → Codex → Reuse a running Codex app-server restores the old behavior. (#574)
 - Website windows: a frozen website window now always gets its snapshot; a snapshot requested before the page's first frame was presented used to be dropped. (#474)

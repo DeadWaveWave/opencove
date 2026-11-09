@@ -1,6 +1,6 @@
 import type { ForegroundAgentReconciliationEvent } from '../../../shared/runtime/agentForegroundRecognition'
 
-export const PTY_HOST_PROTOCOL_VERSION = 6 as const
+export const PTY_HOST_PROTOCOL_VERSION = 7 as const
 export const PTY_HOST_MAX_GEOMETRY_DIMENSION = 32_767
 
 const PTY_HOST_MAX_ID_LENGTH = 256
@@ -16,6 +16,7 @@ export type PtyHostSpawnRequest = PtyHostInstanceIdentity & {
   type: 'spawn'
   requestId: string
   launchId: string
+  sessionKind: 'agent' | 'shell'
   command: string
   args: string[]
   cwd: string
@@ -406,6 +407,7 @@ export function isPtyHostRequest(
         'hostInstanceId',
         'requestId',
         'launchId',
+        'sessionKind',
         'command',
         'args',
         'cwd',
@@ -415,6 +417,7 @@ export function isPtyHostRequest(
       ]) &&
       isIdentifier(value.requestId) &&
       isIdentifier(value.launchId) &&
+      (value.sessionKind === 'agent' || value.sessionKind === 'shell') &&
       isNonBlankString(value.command) &&
       isStringArray(value.args) &&
       isNonBlankString(value.cwd) &&

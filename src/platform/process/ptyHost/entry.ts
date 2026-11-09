@@ -1,8 +1,9 @@
-import { spawnSync } from 'node:child_process'
 import process from 'node:process'
 import type { IPty } from 'node-pty'
 import { spawn } from 'node-pty'
-import { parentPort as workerParentPort } from 'node:worker_threads'
+import { resolvePtyHostParentPort } from './parentPort'
+import { createPtyHostShutdown } from './shutdown'
+import { AgentProcessReaper, type PtySessionKind } from './agentProcessReaper'
 import { killWindowsProcessTree } from './windowsProcessTree'
 import { ensureNodePtySpawnHelperExecutable } from './spawnHelperPermissions'
 import {
@@ -19,67 +20,13 @@ import {
 import { convertHighByteX10MouseReportsToSgr } from '../pty/x10Mouse'
 import { PtyHostSpawnIdentityRegistry } from './spawnIdentityRegistry'
 import { resizePtyAndReadAck } from './resizeAck'
-import { resolveForegroundAgentObservation } from '../../../shared/runtime/agentForegroundRecognition'
+import { observePtyForeground } from './foregroundObservation'
 import { resolveShellCommandFinishedMarker } from '../../../shared/terminal/shellIntegration'
 import { PtyHostForegroundObservationScheduler } from './foregroundObservationScheduler'
 import { WindowsConsoleGeometryObserver } from './windowsConsoleObserver'
 import { WindowsPtyResizeOwner } from './windowsPtyResizeOwner'
 
-type ParentPort = {
-  on: (event: 'message', listener: (messageEvent: { data: unknown }) => void) => void
-  postMessage: (message: unknown) => void
-  start: () => void
-}
-
-type ChildProcessPort = {
-  on: (event: 'message', listener: (message: unknown) => void) => void
-  send?: (message: unknown) => void
-}
-
-function resolveParentPort(): ParentPort {
-  const parentPort = (process as unknown as { parentPort?: ParentPort }).parentPort
-  if (!parentPort) {
-    const port = workerParentPort
-    if (!port) {
-      const childProcessPort = process as unknown as ChildProcessPort
-      if (typeof childProcessPort.send !== 'function') {
-        throw new Error('[pty-host] missing parent port')
-      }
-
-      return {
-        on: (_event, listener) => {
-          childProcessPort.on('message', message => {
-            listener({ data: message })
-          })
-        },
-        postMessage: message => {
-          childProcessPort.send?.(message)
-        },
-        start: () => {
-          // Node.js child_process IPC does not require an explicit start call.
-        },
-      }
-    }
-
-    return {
-      on: (_event, listener) => {
-        port.on('message', message => {
-          listener({ data: message })
-        })
-      },
-      postMessage: message => {
-        port.postMessage(message)
-      },
-      start: () => {
-        // Node.js worker_threads parentPort does not require an explicit start call.
-      },
-    }
-  }
-
-  return parentPort
-}
-
-const parentPort = resolveParentPort()
+const parentPort = resolvePtyHostParentPort()
 parentPort.start()
 const hostInstanceId = crypto.randomUUID()
 
@@ -87,6 +34,8 @@ type PtySession = {
   pty: IPty
   rootPid: number | null
   launchId: string
+  kind: PtySessionKind
+  exited: boolean
   resizeOwner: WindowsPtyResizeOwner | null
 }
 
@@ -95,10 +44,18 @@ const foregroundScheduler = new PtyHostForegroundObservationScheduler()
 const shellIntegrationBuffers = new Map<string, string>()
 const spawnIdentities = new PtyHostSpawnIdentityRegistry()
 const consoleObserver = process.platform === 'win32' ? new WindowsConsoleGeometryObserver() : null
+const reaper = new AgentProcessReaper()
 let hasCleanedSessions = false
 
-function terminatePtySession(session: PtySession): void {
+function terminatePtySession(sessionId: string, session: PtySession): void {
   session.resizeOwner?.dispose()
+  if (session.kind === 'agent' && process.platform !== 'win32') {
+    void reaper.terminate(sessionId, session.exited ? undefined : () => session.pty.kill())
+    return
+  }
+  if (session.exited) {
+    return
+  }
   const killResult = killWindowsProcessTree(session.rootPid)
   if (killResult === 'terminated' || killResult === 'not_found') {
     return
@@ -106,8 +63,8 @@ function terminatePtySession(session: PtySession): void {
 
   try {
     session.pty.kill()
-  } catch {
-    // ignore
+  } catch (error) {
+    process.stderr.write(`[pty-host] PTY hangup failed: ${String(error)}\n`)
   }
 }
 
@@ -121,7 +78,7 @@ const cleanupSessions = (): void => {
   for (const [sessionId, session] of sessions.entries()) {
     sessions.delete(sessionId)
     spawnIdentities.release(session.launchId, sessionId)
-    terminatePtySession(session)
+    terminatePtySession(sessionId, session)
   }
   foregroundScheduler.dispose()
   consoleObserver?.dispose()
@@ -131,24 +88,20 @@ const cleanupSessions = (): void => {
 
 ensureNodePtySpawnHelperExecutable()
 
-process.once('SIGINT', () => {
-  cleanupSessions()
-  process.exit(0)
+const shutdownHost = createPtyHostShutdown({
+  cleanup: cleanupSessions,
+  drain: () => reaper.drain(),
 })
-
-process.once('SIGTERM', () => {
-  cleanupSessions()
-  process.exit(0)
+for (const signal of ['SIGINT', 'SIGTERM', 'disconnect'] as const) {
+  process.once(signal, () => {
+    void shutdownHost()
+  })
+}
+parentPort.on('close', () => {
+  void shutdownHost()
 })
-
-process.once('disconnect', () => {
-  cleanupSessions()
-  process.exit(0)
-})
-
-process.once('exit', () => {
-  cleanupSessions()
-})
+// Abrupt process.exit cannot await reapers; clean shutdown always uses shutdownHost.
+process.once('exit', cleanupSessions)
 
 const send = (message: PtyHostMessage): void => {
   try {
@@ -182,79 +135,25 @@ const respondError = (requestType: 'spawn' | 'resize', requestId: string, error:
   })
 }
 
-const observeForeground = (
-  sessionId: string,
-  observedAtMs: number,
-  windowsExitCode: number | null,
-): void => {
-  const rootPid = sessions.get(sessionId)?.rootPid
-  if (process.platform === 'win32') {
-    const common = {
-      type: 'foreground' as const,
-      hostInstanceId,
-      sessionId,
-      observedAtMs,
-      availability: 'unavailable' as const,
-      agent: null,
-      shellOnly: false as const,
-    }
-    send(
-      windowsExitCode === null
-        ? { ...common, source: 'windows_prompt_timeout', exitCode: null }
-        : { ...common, source: 'windows_exit_code', exitCode: windowsExitCode },
-    )
-    return
-  }
-  if (!rootPid) {
-    send({
-      type: 'foreground',
-      hostInstanceId,
-      sessionId,
-      observedAtMs,
-      source: 'process_scan',
-      exitCode: null,
-      availability: 'unavailable',
-      agent: null,
-      shellOnly: false,
-    })
-    return
-  }
-  const result = spawnSync('ps', ['ax', '-o', 'pid=,ppid=,stat=,command='], {
-    encoding: 'utf8',
-    env: process.env,
-  })
-  if (result.status !== 0 || typeof result.stdout !== 'string') {
-    send({
-      type: 'foreground',
-      hostInstanceId,
-      sessionId,
-      observedAtMs,
-      source: 'process_scan',
-      exitCode: null,
-      availability: 'unavailable',
-      agent: null,
-      shellOnly: false,
-    })
-    return
-  }
-  send({
-    type: 'foreground',
-    hostInstanceId,
-    sessionId,
-    observedAtMs,
-    source: 'process_scan',
-    exitCode: null,
-    ...resolveForegroundAgentObservation(result.stdout, rootPid),
-  })
-}
-
 const scheduleForegroundObservation = (
   kind: 'marker' | 'probe',
   sessionId: string,
   windowsExitCode: number | null,
 ): void => {
   const observedAtMs = Date.now()
-  const observation = (): void => observeForeground(sessionId, observedAtMs, windowsExitCode)
+  const observation = (): void => {
+    void observePtyForeground({
+      sessionId,
+      observedAtMs,
+      windowsExitCode,
+      hostInstanceId,
+      rootPid: sessions.get(sessionId)?.rootPid ?? null,
+      platform: process.platform,
+      readTable: () => reaper.readTable(),
+      send,
+      isCurrent: () => sessions.get(sessionId)?.exited === false,
+    })
+  }
   if (kind === 'marker') {
     foregroundScheduler.scheduleMarker(sessionId, observation)
   } else {
@@ -290,15 +189,23 @@ const onPtyExit = (sessionId: string, exitCode: number): void => {
   const session = sessions.get(sessionId)
   if (session) {
     session.resizeOwner?.dispose()
-    sessions.delete(sessionId)
+    session.exited = true
+    reaper.noteExit(sessionId)
+    if (session.kind !== 'agent') {
+      sessions.delete(sessionId)
+    }
     spawnIdentities.release(session.launchId, sessionId)
   }
   send({ type: 'exit', hostInstanceId, sessionId, exitCode })
 }
 
 function spawnPtySession(request: PtyHostSpawnRequest): void {
-  const existingSessionId = spawnIdentities.findLiveSession(request.launchId, sessionId =>
-    sessions.has(sessionId),
+  if (hasCleanedSessions) {
+    throw new Error('[pty-host] shutting down')
+  }
+  const existingSessionId = spawnIdentities.findLiveSession(
+    request.launchId,
+    sessionId => sessions.get(sessionId)?.exited === false,
   )
   if (existingSessionId) {
     respondSpawnOk(request.requestId, existingSessionId)
@@ -321,8 +228,13 @@ function spawnPtySession(request: PtyHostSpawnRequest): void {
     pty,
     rootPid: Number.isFinite(pty.pid) && pty.pid > 0 ? pty.pid : null,
     launchId: request.launchId,
+    kind: request.sessionKind,
+    exited: false,
     resizeOwner: consoleObserver ? new WindowsPtyResizeOwner(pty, consoleObserver) : null,
   })
+  if (request.sessionKind === 'agent' && pty.pid > 0) {
+    void reaper.track(sessionId, pty.pid)
+  }
   spawnIdentities.bind(request.launchId, sessionId)
 
   pty.onData(data => {
@@ -341,7 +253,7 @@ function spawnPtySession(request: PtyHostSpawnRequest): void {
 
 function writeToSession(request: PtyHostWriteRequest): void {
   const pty = sessions.get(request.sessionId)
-  if (!pty) {
+  if (!pty || pty.exited) {
     return
   }
 
@@ -359,7 +271,7 @@ function writeToSession(request: PtyHostWriteRequest): void {
 
 async function resizeSession(request: PtyHostResizeRequest): Promise<void> {
   const session = sessions.get(request.sessionId)
-  if (!session) {
+  if (!session || session.exited) {
     throw new Error(`Unknown PTY session: ${request.sessionId}`)
   }
 
@@ -388,15 +300,13 @@ function killSession(request: PtyHostKillRequest): void {
   sessions.delete(request.sessionId)
   spawnIdentities.release(session.launchId, request.sessionId)
   clearSessionObservationState(request.sessionId)
-  terminatePtySession(session)
+  terminatePtySession(request.sessionId, session)
 }
 
 function shutdown(request: PtyHostShutdownRequest): void {
   void request
 
-  cleanupSessions()
-
-  process.exit(0)
+  void shutdownHost()
 }
 
 function crash(request: PtyHostCrashRequest): void {

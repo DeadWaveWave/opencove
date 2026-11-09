@@ -340,6 +340,11 @@ describe('createMultiEndpointPtyRuntime', () => {
     await expect(
       runtime.resolveRecoveryRoute('home-session-exited', 'home-worker'),
     ).resolves.toBeNull()
+    const kill = vi
+      .spyOn(RemotePtyEndpointProxy.prototype, 'kill')
+      .mockImplementation(() => undefined)
+    runtime.kill('home-session-exited')
+    expect(kill).toHaveBeenCalledWith('remote-session-exited')
 
     runtime.dispose()
   })

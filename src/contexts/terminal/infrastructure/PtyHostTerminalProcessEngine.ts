@@ -78,7 +78,7 @@ export class PtyHostTerminalProcessEngine implements TerminalProcessEnginePort {
     await this.supervisor.crash()
   }
 
-  public dispose(): void {
+  public dispose(): void | Promise<void> {
     if (this.isDisposed) {
       return
     }
@@ -88,7 +88,7 @@ export class PtyHostTerminalProcessEngine implements TerminalProcessEnginePort {
     this.dataListeners.clear()
     this.exitListeners.clear()
     this.foregroundListeners.clear()
-    this.supervisor.dispose()
+    return this.supervisor.dispose()
   }
 
   private subscribe<Event>(

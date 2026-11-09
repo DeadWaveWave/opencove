@@ -27,7 +27,7 @@ export interface RegisterControlSurfaceHttpServerOptions {
   connectionFileName?: string
   connectionStartedBy?: 'cli' | 'desktop'
   approvedWorkspaces: ApprovedWorkspaceStore
-  ptyRuntime: ControlSurfacePtyRuntime & { dispose?: () => void }
+  ptyRuntime: ControlSurfacePtyRuntime & { dispose?: () => void | Promise<void> }
   ownsPtyRuntime?: boolean
   deleteEntry?: (uri: string) => Promise<void>
   enableWebShell?: boolean

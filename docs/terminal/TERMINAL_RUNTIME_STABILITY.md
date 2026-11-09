@@ -210,3 +210,24 @@ Regression evidence covers controlled pending recovery at the HTTP boundary for 
 Agent creation, and Windows cold startup with new-session input before old-node recovery is released.
 Existing per-node preparation deduplication and session registration fences continue to own process
 identity and cleanup; opening admission does not replace or republish an old node's binding.
+
+## Agent session teardown
+
+Closing or deleting a managed agent window, quitting the app, shutting down the Worker or
+disconnecting the PTY host retires the agent session's processes, not only its PTY root.
+Agent CLIs run tool commands in their own process groups, so a hangup to the root does not
+reach them and they would otherwise survive, reparented to launchd/init.
+
+- The PTY host owns an ownership set per agent session. One shared sampler reads the whole
+  process table (`ps`) every 5 s while agent sessions exist and records every descendant of
+  an owned, identity-validated process, keyed by pid and start time. Members stay owned after
+  reparenting; a malformed or partial read never prunes ownership.
+- Retirement sends HUP to the root, then TERM and KILL to owned processes that are still
+  alive with the same identity. All sessions closing together share one schedule with one
+  table read per stage, and the 3 s budget always reaches the KILL stage. A PTY host that
+  does not exit is killed at its deadline.
+- Plain terminal sessions are never reaped, so `nohup` and `disown` keep working there. An
+  agent that exits on its own keeps its leftovers until its window is closed.
+- Limits: identity uses `ps` start times with one-second resolution; a process forked and
+  detached between two samples can escape; a PTY host crash cannot run the escalation;
+  Windows keeps its existing behavior.
