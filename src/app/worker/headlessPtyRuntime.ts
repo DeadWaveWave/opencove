@@ -128,7 +128,7 @@ export function createHeadlessPtyRuntime(options: {
         hookInstallState: hookInstallStateBySessionId.get(event.sessionId),
       })
     }
-    sessionStateWatcher.disposeSession(event.sessionId)
+    sessionStateWatcher.disposeSession(event.sessionId, true)
     providerBySessionId.delete(event.sessionId)
     hookInstallStateBySessionId.delete(event.sessionId)
     exitListeners.forEach(listener => listener(event))
@@ -259,7 +259,7 @@ export function createHeadlessPtyRuntime(options: {
       }
     },
     kill: sessionId => {
-      sessionStateWatcher.disposeSession(sessionId)
+      sessionStateWatcher.disposeSession(sessionId, true)
       providerBySessionId.delete(sessionId)
       hookInstallStateBySessionId.delete(sessionId)
       processEngine.kill(sessionId)

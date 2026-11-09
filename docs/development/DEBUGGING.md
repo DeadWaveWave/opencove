@@ -28,7 +28,32 @@
 进程存活状态由持有的 `ChildProcess` 决定；自动恢复不得仅因探测失败替换仍存活的进程。
 应同时检查 PID/端口是否保持一致，以及同一终端会话在负载和刷新后是否仍能接受输入。
 
+### 持久化提示 I/O 失败，但数据库仍可读写
+
+该提示也可能来自 Desktop 到 Worker 的请求超时。先在数据库隔离副本上验证读写，并检查
+Worker 的独立查询响应、CPU、内存和打开的文件数；不要仅凭通用提示判断数据库损坏。
+大量重复打开同一个 Agent transcript 时，检查会话标题同步是否因画布重渲染而重新订阅，
+以及缓存未命中的并发请求是否重复扫描。
+
+标题是派生展示，不能占满与持久化共享的 Worker 资源。PTY 订阅以运行生命周期为边界，
+回调变化不能触发 cached metadata 重放；同一路径和文件指纹共享在途扫描，只有最新指纹
+拥有缓存发布权。目录扫描必须限制并发，失败、文件变化和清理后允许正确重读。
+恢复时 Worker 状态事件可能早于节点绑定；节点更新后应从事件中心补读运行时状态，
+不能依赖回调变化触发的重新订阅补齐，也不能为补齐状态重新启动标题扫描。
+回归入口：`ptyTaskCompletion.lifecycle.spec.tsx`、`agentSessionCatalog.cache.concurrent.spec.ts`
+和 `agentSessionCatalog.scanBudget.spec.ts`。
+
 ## 测试层级选择（策略）
+
+### Agent 启动反复完成提醒或误显 Working
+
+对齐 Worker `agent.list`、运行事件和 transcript 的真实写入时间；短时间内多次完成可能是
+历史回放，而非新任务。恢复读取应折叠为一次 baseline，不能发布历史 turn 边界；文件重写、
+分块和半条 JSON 也遵循此规则。通知消费 Worker 的完成 ID 并去重，不从持久化的 UI 状态推断。
+Codex SessionStart 只绑定身份；Working 需要任务证据。可信会话 ID 不代表 resume 启动，
+身份发现也不能重置新 invocation 的 watcher 游标。旧 Codex rollout 按 ID 定位，不按近期目录
+或 mtime 判断是否存在。回归入口：`agentSessionStartupBaseline.spec.ts`、
+`terminalAgentWatcherStartup.spec.ts` 和 `recovery.agent-startup-history.spec.ts`。
 
 目标：用 **最低成本** 的测试层级先定位问题；确认根因后再补足能防回归的覆盖。
 

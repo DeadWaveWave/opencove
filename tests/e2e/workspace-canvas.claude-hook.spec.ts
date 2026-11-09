@@ -150,6 +150,11 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
 
       await writeToPty(window, { sessionId, data: '<test-hook-done>\r' })
       await expect(status).toHaveText('Standby')
+      // Runtime is idle; the shell keeps a real completion waiting until acknowledged.
+      const completion = window.locator('.agent-island-card')
+      await expect(completion).toHaveCount(1)
+      await expect(sidebarStatus).toHaveText('Needs input')
+      await completion.locator('.agent-island-card__close').click()
       await expect(sidebarStatus).toHaveText('Standby')
       await expect(headerActivity).toHaveCount(0)
       await expect(agentNode).toHaveAttribute('data-agent-hook-install-state', 'installed')

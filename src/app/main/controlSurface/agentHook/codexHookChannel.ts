@@ -18,6 +18,7 @@ export function createCodexHookChannel(options: {
     ...options,
     hookPath: '/hooks/codex',
     source: 'codex_hook',
+    publishManagedSessionIdentity: true,
     validateEnvelope: value =>
       normalizeCodexHookEnvelope(value) ?? validateCodexHookEnvelope(value),
     resolveSessionIdentity: envelope => ({

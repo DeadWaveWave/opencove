@@ -316,7 +316,7 @@ export class TerminalSessionManager {
 
   handleExit(sessionId: string, exitCode: number): void {
     this.flushPtyDataBroadcast(sessionId)
-    this.sessionStateWatcher.disposeSession(sessionId)
+    this.sessionStateWatcher.disposeSession(sessionId, true)
     this.cleanupSessionPtyDataSubscriptions(sessionId)
     this.activeSessions.delete(sessionId)
     this.terminatedSessions.add(sessionId)
@@ -458,7 +458,7 @@ export class TerminalSessionManager {
 
   kill(sessionId: string): void {
     this.flushPtyDataBroadcast(sessionId)
-    this.sessionStateWatcher.disposeSession(sessionId)
+    this.sessionStateWatcher.disposeSession(sessionId, true)
     this.cleanupSessionPtyDataSubscriptions(sessionId)
     this.activeSessions.delete(sessionId)
     this.terminatedSessions.add(sessionId)

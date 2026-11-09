@@ -51,6 +51,7 @@ vi.mock('../../../src/app/renderer/shell/store/useAppStore', () => ({
 }))
 vi.mock('../../../src/app/renderer/shell/utils/ptyEventHub', () => ({
   getPtyEventHub: () => ({
+    onExit: () => () => {},
     onState: (listener: (event: TerminalSessionStateEvent) => void) => {
       harness.onState = listener
       return () => {
@@ -59,6 +60,31 @@ vi.mock('../../../src/app/renderer/shell/utils/ptyEventHub', () => ({
     },
   }),
 }))
+
+function decided(
+  state: 'working' | 'standby',
+  ended?: string,
+  at = Date.now(),
+): TerminalSessionStateEvent {
+  return {
+    sessionId: 'pty',
+    state,
+    observedAtMs: at,
+    agentRunState: {
+      sessionId: 'pty',
+      nodeId: 'node',
+      provider: 'codex',
+      state: state === 'standby' ? 'idle' : 'working',
+      source: 'codex_hook',
+      quality: 'authoritative',
+      blockedReason: null,
+      turn: null,
+      turnOutcome: ended ? 'completed' : null,
+      lastTransitionAt: at,
+      lastEndedTurn: ended ? { id: ended, outcome: 'completed', endedAt: at } : null,
+    },
+  }
+}
 
 afterEach(cleanup)
 beforeEach(() => {
@@ -79,8 +105,8 @@ describe('Agent completion notification entry points', () => {
         }),
       )
       act(() => {
-        harness.onState?.({ sessionId: 'pty', state: 'working', source: 'codex_hook' })
-        harness.onState?.({ sessionId: 'pty', state: 'standby', source: 'codex_hook' })
+        harness.onState?.(decided('working'))
+        harness.onState?.(decided('standby', 'first'))
       })
       expect(onAgentEnteredStandby).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({
@@ -89,11 +115,11 @@ describe('Agent completion notification entry points', () => {
           title: 'Codex',
         }),
       )
-      act(() => harness.onState?.({ sessionId: 'pty', state: 'standby' }))
+      act(() => harness.onState?.(decided('standby', 'first')))
       expect(onAgentEnteredStandby).toHaveBeenCalledTimes(1)
       act(() => {
-        harness.onState?.({ sessionId: 'pty', state: 'working' })
-        harness.onState?.({ sessionId: 'pty', state: 'standby' })
+        harness.onState?.(decided('working'))
+        harness.onState?.(decided('standby', 'second'))
       })
       expect(onAgentEnteredStandby).toHaveBeenCalledTimes(2)
     },
@@ -112,27 +138,26 @@ describe('Agent completion notification entry points', () => {
         }),
       )
       act(() => {
-        harness.onState?.({ sessionId: 'pty', state: 'working' })
-        harness.onState?.({ sessionId: 'pty', state: 'standby' })
+        harness.onState?.(decided('working'))
+        harness.onState?.(decided('standby', 'second'))
       })
       expect(onAgentEnteredStandby).not.toHaveBeenCalled()
     },
   )
 
-  it('uses the live terminal projection when the working event preceded subscription', () => {
+  it('uses a Worker completion identity when the working event preceded subscription', () => {
     harness.kind = 'terminal'
     const onAgentEnteredStandby = vi.fn()
     renderHook(() =>
       useAgentStandbyNotificationWatcher({ onAgentEnteredStandby, onAgentEnteredWorking: vi.fn() }),
     )
-    act(() => harness.onState?.({ sessionId: 'pty', state: 'standby' }))
+    act(() => harness.onState?.(decided('standby', 'second')))
     expect(onAgentEnteredStandby).toHaveBeenCalledOnce()
   })
 })
 
-// Legacy UI contract (e2e: agent-status-watcher "first observed state is standby"): an unknown
-// decided state is skipped, and the first standby after it still notifies.
-it('still notifies when the first decided state after an unknown projection is idle', () => {
+// An idle baseline carries no task completion, regardless of the persisted UI label.
+it('does not infer a completion when the first decided state after unknown is idle', () => {
   harness.kind = 'agent'
   const onAgentEnteredStandby = vi.fn()
   const onAgentEnteredWorking = vi.fn()
@@ -160,7 +185,7 @@ it('still notifies when the first decided state after an unknown projection is i
     })
   })
   expect(onAgentEnteredWorking).not.toHaveBeenCalled()
-  expect(onAgentEnteredStandby).toHaveBeenCalledTimes(1)
+  expect(onAgentEnteredStandby).not.toHaveBeenCalled()
 })
 
 describe('Agents already waiting at startup', () => {
@@ -170,14 +195,12 @@ describe('Agents already waiting at startup', () => {
     renderHook(() =>
       useAgentStandbyNotificationWatcher({ onAgentEnteredStandby, onAgentEnteredWorking: vi.fn() }),
     )
-    act(() =>
-      harness.onState?.({ sessionId: 'pty', state: 'standby', observedAtMs: Date.now() - 60_000 }),
-    )
+    act(() => harness.onState?.(decided('standby', 'old', Date.now() - 60_000)))
     expect(onAgentEnteredStandby).not.toHaveBeenCalled()
 
     act(() => {
-      harness.onState?.({ sessionId: 'pty', state: 'working', observedAtMs: Date.now() })
-      harness.onState?.({ sessionId: 'pty', state: 'standby', observedAtMs: Date.now() })
+      harness.onState?.(decided('working'))
+      harness.onState?.(decided('standby', 'fresh'))
     })
     expect(onAgentEnteredStandby).toHaveBeenCalledOnce()
   })
@@ -189,7 +212,7 @@ describe('Agents already waiting at startup', () => {
     renderHook(() =>
       useAgentStandbyNotificationWatcher({ onAgentEnteredStandby, onAgentEnteredWorking: vi.fn() }),
     )
-    act(() => harness.onState?.({ sessionId: 'pty', state: 'standby' }))
+    act(() => harness.onState?.(decided('standby')))
     expect(onAgentEnteredStandby).not.toHaveBeenCalled()
   })
 
@@ -199,9 +222,7 @@ describe('Agents already waiting at startup', () => {
     renderHook(() =>
       useAgentStandbyNotificationWatcher({ onAgentEnteredStandby, onAgentEnteredWorking: vi.fn() }),
     )
-    act(() =>
-      harness.onState?.({ sessionId: 'pty', state: 'standby', observedAtMs: Date.now() + 5 }),
-    )
+    act(() => harness.onState?.(decided('standby', 'fresh')))
     expect(onAgentEnteredStandby).toHaveBeenCalledOnce()
   })
 })

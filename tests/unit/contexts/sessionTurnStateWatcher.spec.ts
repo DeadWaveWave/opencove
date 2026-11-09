@@ -262,7 +262,7 @@ describe('SessionTurnStateWatcher', () => {
     watcher.start()
 
     await waitForCondition(() => {
-      expect(states).toEqual(['working', 'standby'])
+      expect(states).toEqual(['standby'])
     })
   })
 

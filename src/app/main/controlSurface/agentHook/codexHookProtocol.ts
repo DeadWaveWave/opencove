@@ -16,7 +16,7 @@ export interface CodexHookInput {
 
 export interface CodexHookEnvelope {
   version: 1
-  state: CodexHookTurnState
+  state: CodexHookTurnState | null
   hookEventName: string
   codexSessionId: string
   providerTurnId?: string
@@ -32,7 +32,6 @@ const DONE_EVENTS = new Set(['Stop', 'SessionEnd'])
 const WORKING_EVENTS = new Set([
   'PreToolUse',
   'PostToolUse',
-  'SessionStart',
   'UserPromptSubmit',
   'SubagentStart',
   'SubagentStop',
@@ -76,7 +75,10 @@ export function validateCodexHookEnvelope(value: unknown): CodexHookEnvelope | n
   const hookEventName = requiredString(value, 'hookEventName')
   const codexSessionId = requiredString(value, 'codexSessionId')
   if (
-    (state !== 'working' && state !== 'waiting' && state !== 'done') ||
+    (state !== 'working' &&
+      state !== 'waiting' &&
+      state !== 'done' &&
+      !(state === null && hookEventName === 'SessionStart')) ||
     !hookEventName ||
     !codexSessionId
   ) {
@@ -99,7 +101,7 @@ export function validateCodexHookEnvelope(value: unknown): CodexHookEnvelope | n
   const providerTurnId = claudePromptId(value.providerTurnId)
   return {
     version: 1,
-    state,
+    state: hookEventName === 'SessionStart' ? null : state,
     hookEventName,
     codexSessionId,
     ...(providerTurnId ? { providerTurnId } : {}),
@@ -123,7 +125,7 @@ export function normalizeCodexHookEnvelope(value: unknown): CodexHookEnvelope | 
     return null
   }
   const state = resolveCodexHookState(hookEventName)
-  if (!state) {
+  if (!state && hookEventName !== 'SessionStart') {
     return null
   }
 

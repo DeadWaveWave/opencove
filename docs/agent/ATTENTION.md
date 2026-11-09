@@ -42,7 +42,7 @@ signals on the canvas keep following the runtime status.
 
 | Decision                      | Owner                                                           |
 | ----------------------------- | --------------------------------------------------------------- |
-| Did an Agent start waiting?   | `useAgentStandbyNotificationWatcher` (renderer, from PTY state) |
+| Did an Agent complete a turn? | Worker turn owner; renderer consumes `lastEndedTurn.id` once    |
 | Which channels fire, and when | `createAgentAttentionRouter` (`agentAttentionRouter.ts`)        |
 | Which Agents are unanswered   | `useAgentAttentionStore` (renderer, transient)                  |
 | Is OpenCove in front?         | Main (`systemNotifications.ts`): any focused app window         |

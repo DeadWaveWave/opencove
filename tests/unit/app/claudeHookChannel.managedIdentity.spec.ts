@@ -194,8 +194,8 @@ describe('managed Claude SessionStart identity', () => {
     },
   )
 
-  it('leaves managed Codex identity discovery unchanged', async () => {
-    const { channel, metadata } = await createChannel(createCodexHookChannel({}))
+  it('binds managed Codex identity without a working observation', async () => {
+    const { channel, metadata, states } = await createChannel(createCodexHookChannel({}))
     const reservation = await channel.reserveSpawn()
     reservation.commit('codex-pty')
     expect(
@@ -206,6 +206,7 @@ describe('managed Claude SessionStart identity', () => {
         codexSessionId: 'codex-session',
       }),
     ).toBe(204)
-    expect(metadata).toEqual([])
+    expect(metadata).toEqual([{ sessionId: 'codex-pty', resumeSessionId: 'codex-session' }])
+    expect(states).toEqual([])
   })
 })

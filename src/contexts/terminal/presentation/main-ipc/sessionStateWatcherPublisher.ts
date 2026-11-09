@@ -17,6 +17,7 @@ export function createSessionStatePublisher({
       degraded?: boolean
       source?: TerminalSessionStateEvent['source']
       hookEventName?: string
+      baseline?: boolean
     } = {},
   ): void => {
     if (getInput(sessionId)?.discovery?.isCurrent() === false) {
@@ -25,6 +26,7 @@ export function createSessionStatePublisher({
     const eventPayload: TerminalSessionStateEvent = {
       agentProvider: getInput(sessionId)?.provider,
       hookEventName: options.hookEventName,
+      ...(options.baseline === true ? { baseline: true } : {}),
       sessionId,
       state,
       source: options.source ?? 'session_file',

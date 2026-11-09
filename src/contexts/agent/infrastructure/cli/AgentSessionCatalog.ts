@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises'
+import { mapWithConcurrency } from '@shared/utils/mapWithConcurrency'
 import { basename, extname, join, resolve } from 'node:path'
 import type {
   AgentSessionSummary,
@@ -133,48 +134,42 @@ async function listClaudeSessions(
   }
 
   const sessions = (
-    await Promise.all(
-      files.map(async filePath => {
-        const sessionId = normalizeSessionIdFromPath(filePath)
-        if (!sessionId) {
-          return null
-        }
+    await mapWithConcurrency(files, 8, async filePath => {
+      const sessionId = normalizeSessionIdFromPath(filePath)
+      if (!sessionId) {
+        return null
+      }
 
-        try {
-          const stats = await fs.stat(filePath)
-          const { title, preview } = await readSessionFileWithCache(
-            filePath,
-            { mtimeMs: stats.mtimeMs, size: stats.size },
-            async () => {
-              // preview(首条用户消息)在文件开头,默认 64KB 上限足够;
-              // ai-title 可能埋得很深,需深度扫描(命中即停,内存仍受控)。
-              const [firstUserPreview, aiTitle] = await Promise.all([
-                readFirstMatchingJsonlValue(filePath, parseClaudeFirstUserPreview),
-                readFirstMatchingJsonlValue(
-                  filePath,
-                  parseClaudeAiTitle,
-                  JSONL_DEEP_SCAN_MAX_BYTES,
-                ),
-              ])
-              return { title: aiTitle ?? firstUserPreview, preview: firstUserPreview }
-            },
-            titleCache ? { store: titleCache, provider: 'claude-code' } : undefined,
-          )
-          return {
-            sessionId,
-            provider: 'claude-code' as const,
-            cwd: resolvedCwd,
-            title,
-            preview,
-            startedAt: null,
-            updatedAt: toIsoString(stats.mtimeMs),
-            source: 'claude-jsonl' as const,
-          }
-        } catch {
-          return null
+      try {
+        const stats = await fs.stat(filePath)
+        const { title, preview } = await readSessionFileWithCache(
+          filePath,
+          { mtimeMs: stats.mtimeMs, size: stats.size },
+          async () => {
+            // preview(首条用户消息)在文件开头,默认 64KB 上限足够;
+            // ai-title 可能埋得很深,需深度扫描(命中即停,内存仍受控)。
+            const [firstUserPreview, aiTitle] = await Promise.all([
+              readFirstMatchingJsonlValue(filePath, parseClaudeFirstUserPreview),
+              readFirstMatchingJsonlValue(filePath, parseClaudeAiTitle, JSONL_DEEP_SCAN_MAX_BYTES),
+            ])
+            return { title: aiTitle ?? firstUserPreview, preview: firstUserPreview }
+          },
+          titleCache ? { store: titleCache, provider: 'claude-code' } : undefined,
+        )
+        return {
+          sessionId,
+          provider: 'claude-code' as const,
+          cwd: resolvedCwd,
+          title,
+          preview,
+          startedAt: null,
+          updatedAt: toIsoString(stats.mtimeMs),
+          source: 'claude-jsonl' as const,
         }
-      }),
-    )
+      } catch {
+        return null
+      }
+    })
   ).filter(isNonNull)
 
   return sortSessionSummaries(sessions, limit)
@@ -247,23 +242,21 @@ async function listGeminiSessions(
           return filePath.endsWith('.json') && basename(filePath).startsWith('session-')
         })
 
-        return await Promise.all(
-          chatFiles.map(async chatFile => {
-            const fingerprint = await fs
-              .stat(chatFile)
-              .then(stats => ({ mtimeMs: stats.mtimeMs, size: stats.size }))
-              .catch(() => null)
-            return await readSessionFileWithCache(
-              chatFile,
-              fingerprint,
-              async () => {
-                const contents = await fs.readFile(chatFile, 'utf8').catch(() => null)
-                return contents ? parseGeminiSessionSummary(contents, resolvedCwd) : null
-              },
-              titleCache ? { store: titleCache, provider: 'gemini' } : undefined,
-            )
-          }),
-        )
+        return await mapWithConcurrency(chatFiles, 8, async chatFile => {
+          const fingerprint = await fs
+            .stat(chatFile)
+            .then(stats => ({ mtimeMs: stats.mtimeMs, size: stats.size }))
+            .catch(() => null)
+          return await readSessionFileWithCache(
+            chatFile,
+            fingerprint,
+            async () => {
+              const contents = await fs.readFile(chatFile, 'utf8').catch(() => null)
+              return contents ? parseGeminiSessionSummary(contents, resolvedCwd) : null
+            },
+            titleCache ? { store: titleCache, provider: 'gemini' } : undefined,
+          )
+        })
       }),
     )
   )

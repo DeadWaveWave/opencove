@@ -24,6 +24,7 @@ import {
   resolveSessionStateWatcherRetryDelay,
 } from './sessionStateWatcherShared'
 import { createSessionFileStateWatcher } from './sessionStateWatcherProvider'
+import { SessionFileReadHistory } from './sessionFileReadHistory'
 
 const SESSION_STATE_WATCHER_LOCATE_TIMEOUT_MS = 1_500
 const SESSION_STATE_WATCHER_FILE_TIMEOUT_MS = 1_500
@@ -49,9 +50,10 @@ export function createSessionStateWatcherController({
 }): {
   start: (input: SessionStateWatcherStartInput) => void
   noteInteraction: (sessionId: string, data?: string) => void
-  disposeSession: (sessionId: string) => void
+  disposeSession: (sessionId: string, forgetHistory?: boolean) => void
   dispose: () => void
 } {
+  const readHistory = new SessionFileReadHistory()
   const stateWatcherBySession = new Map<string, DisposableSessionWatcher>()
   const stateWatcherVersionBySession = new Map<string, number>()
   const stateWatcherStartInputBySession = new Map<string, OwnedSessionStateWatcherInput>()
@@ -318,6 +320,7 @@ export function createSessionStateWatcherController({
         sessionId,
         filePath: sessionFilePath,
         launchMode: input.launchMode,
+        initialRead: readHistory.take(input),
         onState: onWatcherState,
         onClaudeTranscript: record => {
           if (!isCurrent()) {
@@ -363,9 +366,7 @@ export function createSessionStateWatcherController({
 
     const watcherVersion = stateWatcherVersionBySession.get(input.sessionId) ?? 0
     if (input.provider === 'gemini' && input.launchMode === 'new' && !input.resumeSessionId) {
-      // If the caller already captured (or explicitly skipped) the discovery cursor,
-      // avoid capturing it again after the agent has started, which can race with
-      // Gemini writing the session file and lead to missing resume bindings.
+      // Recapturing after launch can miss Gemini's new file; explicit null also skips capture.
       if (input.geminiDiscoveryCursor !== undefined) {
         if (input.geminiDiscoveryCursor) {
           geminiDiscoveryCursorBySession.set(input.sessionId, input.geminiDiscoveryCursor)
@@ -462,11 +463,13 @@ export function createSessionStateWatcherController({
     )
   }
 
-  const disposeSession = (sessionId: string): void => {
+  const disposeSession = (sessionId: string, forgetHistory = false): void => {
     clearSessionStateWatcher(sessionId, { disposeStartInput: true })
+    readHistory.release(sessionId, forgetHistory)
   }
 
   const dispose = (): void => {
+    readHistory.clear()
     stateWatcherBySession.forEach(watcher => {
       watcher.dispose()
     })

@@ -36,6 +36,10 @@ interface CachedSessionFileEntry {
 const MAX_CACHED_SESSION_FILES = 4096
 
 const sessionFileCache = new Map<string, CachedSessionFileEntry>()
+const pendingScans = new Map<
+  string,
+  { byFingerprint: Map<string, Promise<unknown>>; publisher: Promise<unknown> | null }
+>()
 
 function isUsableFingerprint(
   fingerprint: SessionFileFingerprint | null,
@@ -78,10 +82,20 @@ export async function readSessionFileWithCache<T>(
   l2?: SessionTitleL2,
 ): Promise<T> {
   const cacheable = isUsableFingerprint(fingerprint)
+  const fingerprintKey = cacheable ? `${fingerprint.mtimeMs}:${fingerprint.size}` : ''
+  const pending = pendingScans.get(filePath)
 
   if (cacheable) {
+    const matching = pending?.byFingerprint.get(fingerprintKey)
+    if (matching) {
+      return matching as Promise<T>
+    }
+
     const cached = sessionFileCache.get(filePath)
     if (cached && cached.mtimeMs === fingerprint.mtimeMs && cached.size === fingerprint.size) {
+      if (pending) {
+        pending.publisher = null
+      }
       return cached.value as T
     }
 
@@ -89,6 +103,9 @@ export async function readSessionFileWithCache<T>(
       try {
         const hit = l2.store.read(filePath, fingerprint)
         if (hit) {
+          if (pending) {
+            pending.publisher = null
+          }
           storeWithEviction(filePath, fingerprint, hit.value)
           return hit.value as T
         }
@@ -98,23 +115,39 @@ export async function readSessionFileWithCache<T>(
     }
   }
 
-  const value = await compute()
-
-  if (cacheable) {
-    storeWithEviction(filePath, fingerprint, value)
-    if (l2) {
-      try {
-        l2.store.write({ filePath, provider: l2.provider, fingerprint, value })
-      } catch {
-        // 写盘失败仅丢失一次缓存收益,忽略。
-      }
-    }
+  if (!cacheable) {
+    return compute()
   }
 
-  return value
+  // Claim ownership before compute can yield. Only the latest fingerprint may publish a result.
+  const scans = pending ?? { byFingerprint: new Map(), publisher: null }
+  const scan = Promise.resolve().then(compute)
+  scans.byFingerprint.set(fingerprintKey, scan)
+  scans.publisher = scan
+  pendingScans.set(filePath, scans)
+  try {
+    const value = await scan
+    if (pendingScans.get(filePath) === scans && scans.publisher === scan) {
+      storeWithEviction(filePath, fingerprint, value)
+      if (l2) {
+        try {
+          l2.store.write({ filePath, provider: l2.provider, fingerprint, value })
+        } catch {
+          // 写盘失败仅丢失一次缓存收益,忽略。
+        }
+      }
+    }
+    return value
+  } finally {
+    scans.byFingerprint.delete(fingerprintKey)
+    if (scans.byFingerprint.size === 0 && pendingScans.get(filePath) === scans) {
+      pendingScans.delete(filePath)
+    }
+  }
 }
 
 /** 清空缓存。仅供测试用于隔离用例之间的状态。 */
 export function clearSessionFileCache(): void {
+  pendingScans.clear()
   sessionFileCache.clear()
 }

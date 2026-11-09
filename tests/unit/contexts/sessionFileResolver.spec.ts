@@ -111,7 +111,10 @@ describe('resolveSessionFilePath', () => {
     try {
       await fs.mkdir(sessionsDir, { recursive: true })
 
-      const firstLine = JSON.stringify({ payload: { id: sessionId, cwd } })
+      const firstLine = JSON.stringify({
+        type: 'session_meta',
+        payload: { id: sessionId, cwd, timestamp: new Date(startedAtMs).toISOString() },
+      })
       await fs.writeFile(expectedPath, `${firstLine}\n${'x'.repeat(100_000)}\n`, 'utf8')
 
       const resolved = await resolveSessionFilePath({

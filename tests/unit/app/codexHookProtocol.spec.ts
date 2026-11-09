@@ -21,7 +21,7 @@ describe('Codex hook protocol', () => {
     ['PreToolUse', 'working'],
     ['PermissionRequest', 'waiting'],
     ['PostToolUse', 'working'],
-    ['SessionStart', 'working'],
+    ['SessionStart', null],
     ['UserPromptSubmit', 'working'],
     ['SubagentStart', 'working'],
     ['SubagentStop', 'working'],
@@ -32,6 +32,17 @@ describe('Codex hook protocol', () => {
       hookEventName,
       codexSessionId: 'codex-session-1',
     })
+  })
+
+  it('normalizes legacy SessionStart working envelopes to identity-only evidence', () => {
+    expect(
+      validateCodexHookEnvelope({
+        version: 1,
+        state: 'working',
+        hookEventName: 'SessionStart',
+        codexSessionId: 'saved',
+      }),
+    ).toMatchObject({ state: null, codexSessionId: 'saved' })
   })
 
   it('keeps tool metadata when Codex supplies it', () => {

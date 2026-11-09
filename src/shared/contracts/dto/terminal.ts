@@ -1,4 +1,4 @@
-import type { AgentProviderId } from './agent'
+import type { AgentLaunchMode, AgentProviderId } from './agent'
 
 export interface PseudoTerminalSession {
   sessionId: string
@@ -220,6 +220,8 @@ export type AgentHookInstallState =
   | 'not_required'
 
 export interface TerminalSessionStateEvent {
+  /** Provider history reconstruction; never a live turn boundary. Consumed by the Worker. */
+  baseline?: boolean
   /** Present only on Worker-decided projections. */
   agentRunState?: import('./agentRunState').AgentRunSnapshot
   agentProvider?: AgentProviderId
@@ -243,6 +245,8 @@ export type TerminalAgentShimProvider = 'claude-code' | 'codex' | 'pi'
 
 export interface TerminalAgentActivitySnapshot {
   provider: TerminalAgentShimProvider
+  /** Invocation intent, independent of subsequent provider identity discovery. */
+  launchMode?: AgentLaunchMode
   invocationId: string
   generation: number
   phase: 'active' | 'exited'

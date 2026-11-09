@@ -68,7 +68,7 @@ test.describe('Terminal Agent completion banner', () => {
           )
           expect(sessionFiles).toHaveLength(1)
           const expectedSessionId = path.basename(sessionFiles[0], '.jsonl')
-          // SessionStart supplies identity only; the thinking JSONL must drive Working.
+          // SessionStart supplies identity only; the fixture submits before producing work.
           await expect
             .poll(
               async () => (await readPersistedTerminalAgentNode(window, 'banner-terminal'))?.agent,

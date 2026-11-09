@@ -12,6 +12,7 @@ type RuntimeBindings = Parameters<typeof useWorkspaceCanvasRuntimeBindings>[0]
 type NodeChanges = Parameters<typeof useWorkspaceCanvasApplyNodeChanges>[0]
 
 export function useWorkspaceCanvasRuntimeIntegrations({
+  workspaceId,
   actionRefs,
   nodeStore,
   taskUi,
@@ -26,6 +27,7 @@ export function useWorkspaceCanvasRuntimeIntegrations({
   nodeDragSession,
   exclusiveNodeDragAnchorIdRef,
 }: {
+  workspaceId: string
   actionRefs: ReturnType<typeof useWorkspaceCanvasActionRefs>
   nodeStore: ReturnType<typeof useWorkspaceCanvasNodesStore>
   taskUi: Pick<ReturnType<typeof useWorkspaceCanvasTaskUi>, 'requestNodeClose'>
@@ -41,6 +43,8 @@ export function useWorkspaceCanvasRuntimeIntegrations({
   exclusiveNodeDragAnchorIdRef: NodeChanges['exclusiveNodeDragAnchorIdRef']
 }) {
   useWorkspaceCanvasRuntimeBindings({
+    workspaceId,
+    nodes: canvasState.flowNodes,
     setNodes: nodeStore.setNodes,
     onRequestPersistFlush,
     actionRefs,

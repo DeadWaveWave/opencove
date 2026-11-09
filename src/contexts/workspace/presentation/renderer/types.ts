@@ -103,7 +103,13 @@ export interface TerminalAgentOverlay {
   activity?:
     | (Pick<
         TerminalAgentActivitySnapshot,
-        'invocationId' | 'generation' | 'phase' | 'observedAtMs' | 'sourceRevision' | 'revision'
+        | 'invocationId'
+        | 'generation'
+        | 'phase'
+        | 'observedAtMs'
+        | 'sourceRevision'
+        | 'revision'
+        | 'launchMode'
       > & {
         verifiedProviderSessionId?: string | null
       })
