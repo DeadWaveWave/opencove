@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { launchRealClaude, prompt } from './agent.prompt.real-claude.helpers'
+import { launchRealClaude } from './agent.prompt.real-claude.helpers'
 import {
   claudeContext,
   clearConversation,
@@ -19,12 +19,17 @@ test.describe('Claude resident OpenCove context', () => {
         expectResidentContext(claudeContext(real.api.requests()[0]), mode === 'suggest')
         const count = real.api.requests().length
         await clearConversation(real.window, real.sessionId)
-        const sent = await prompt(real.userDataDir, real.nodeId, 'AFTER_CLEAR reply with ACK.')
-        expect(sent.exitCode, JSON.stringify(sent)).toBe(0)
+        // Main clears readiness on /clear; a real user can start the next turn in the TUI.
+        await real.window
+          .locator(`.react-flow__node[data-id="${real.nodeId}"] .xterm-helper-textarea`)
+          .click()
+        await real.window.keyboard.type('AFTER_CLEAR reply with ACK.', { delay: 30 })
+        await real.window.keyboard.press('Enter')
         await expect
           .poll(() => real.api.requests().length, { timeout: 30_000 })
           .toBeGreaterThan(count)
-        const body = real.api.requests().at(-1)!
+        const body = real.api.requests()[count]
+        expect(claudeContext(body)).toContain('AFTER_CLEAR reply with ACK.')
         expectResidentContext(claudeContext(body), mode === 'suggest')
         // A new provider conversation must drop its original user prompt.
         expect(claudeContext(body)).not.toContain('Reply with ACK.')

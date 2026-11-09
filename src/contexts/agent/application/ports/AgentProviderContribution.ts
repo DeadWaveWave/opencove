@@ -57,6 +57,7 @@ export interface CreateAgentLaunchPlanCommand {
   readonly profileId?: string | null
   readonly agentFullAccess: boolean
   readonly residentContext?: 'canvas' | 'none'
+  readonly isInvocationCurrent?: () => boolean
   readonly codexReuseRunningAppServer?: boolean
   readonly artifacts: AgentLaunchArtifactRegistrar
   readonly executablePathOverride?: string | null
@@ -85,6 +86,7 @@ export interface AgentHookInjectionPlan {
 
 export interface PrepareAgentHookInjectionCommand {
   readonly residentContext?: 'canvas' | 'none'
+  readonly isInvocationCurrent?: () => boolean
   readonly codexReuseRunningAppServer?: boolean
   readonly arguments?: readonly string[]
   readonly artifacts: AgentLaunchArtifactRegistrar

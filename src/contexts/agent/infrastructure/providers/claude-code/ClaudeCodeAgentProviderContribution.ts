@@ -78,6 +78,7 @@ export class ClaudeCodeAgentProviderContribution implements AgentProviderContrib
       | 'workspaceDirectory'
       | 'environment'
       | 'residentContext'
+      | 'isInvocationCurrent'
     >,
   ) {
     if (!this.channel) {
@@ -91,6 +92,7 @@ export class ClaudeCodeAgentProviderContribution implements AgentProviderContrib
     const reservation = await this.channel.reserveSpawn({
       environment: command.environment,
       residentContext: command.residentContext,
+      isInvocationCurrent: command.isInvocationCurrent,
     })
     if (!reservation.usesHook) {
       return {

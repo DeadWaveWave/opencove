@@ -34,6 +34,7 @@ export interface AgentHookChannel extends ClaudeTranscriptPort {
   reserveSpawn: (options?: {
     environment?: Readonly<NodeJS.ProcessEnv>
     residentContext?: 'canvas' | 'none'
+    isInvocationCurrent?: () => boolean
   }) => Promise<AgentHookSpawnReservation>
   setResidentContextEnabled?: (resolve: () => Promise<boolean>) => void
   onState: (listener: (event: TerminalSessionStateEvent) => void) => () => void

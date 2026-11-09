@@ -106,6 +106,7 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
       'artifacts' | 'executablePathOverride' | 'workspaceDirectory'
     > & {
       readonly residentContext?: 'canvas' | 'none'
+      readonly isInvocationCurrent?: () => boolean
       readonly codexReuseRunningAppServer?: boolean
       readonly environment?: Readonly<NodeJS.ProcessEnv>
       readonly resumeSessionId?: string | null
@@ -193,6 +194,7 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
       'codex-hook-reservation',
       await this.channel.reserveSpawn({
         residentContext: trust ? command.residentContext : 'none',
+        isInvocationCurrent: command.isInvocationCurrent,
       }),
     )
     if (!reservation.usesHook) {

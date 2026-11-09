@@ -244,6 +244,7 @@ export class TerminalAgentActivityGateway {
     const intent = resolveTerminalAgentInvocationArguments(provider, invocationArguments)
     const artifacts = new AgentLaunchArtifactScope()
     let plan: AgentHookInjectionPlan
+    let invocation: TerminalAgentInvocation | null = null
     try {
       const codexReuseRunningAppServer =
         provider === 'codex'
@@ -258,6 +259,9 @@ export class TerminalAgentActivityGateway {
       plan = await planner.prepareHookInjection({
         codexReuseRunningAppServer,
         residentContext: credential.residentContext,
+        // The reservation is fail-closed until prepare owns an invocation, even before PTY bind.
+        isInvocationCurrent: () =>
+          this.isCredentialLive(credential) && invocation?.isCurrent() === true,
         arguments: invocationArguments,
         artifacts,
         environment,
@@ -281,7 +285,7 @@ export class TerminalAgentActivityGateway {
       this.respond(response, 409)
       return
     }
-    const invocation = credential.terminal.beginInvocation({
+    invocation = credential.terminal.beginInvocation({
       invocationId,
       provider,
       hookCoverage: plan.hookCoverage,

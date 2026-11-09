@@ -1,3 +1,4 @@
+import { HookReplyEligibility, type HookReplyReceipt } from './HookReplyEligibility'
 import { readBody } from './readHookBody'
 import { residentContextV1 } from './residentContext'
 import { setPromptSubmissionEvidence } from './claudePromptEvidence'
@@ -24,11 +25,14 @@ import type {
 interface CredentialRecord<TEnvelope extends AgentHookEnvelope> {
   token: string
   residentContext: 'canvas' | 'none'
+  isInvocationCurrent: (() => boolean) | undefined
+  replies: HookReplyEligibility
   privateObserver: PrivateHookObserver<TEnvelope> | null
   observationOwner: AgentHookObservationOwner<TEnvelope> | null
   sessionId: string | null
   pending: {
     envelope: TEnvelope
+    receipt: HookReplyReceipt
     observation: ReturnType<AgentHookObservationOwner<TEnvelope>['accept']>
   }[]
   providerSessionId: string | null
@@ -67,6 +71,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
     !!record &&
     !disposed &&
     record.residentContext === 'canvas' &&
+    (record.isInvocationCurrent?.() ?? true) &&
     credentials.get(record.token) === record &&
     (!record.sessionId || tokenBySessionId.get(record.sessionId) === record.token) &&
     (record.terminalActivity?.isCurrent() ?? true)
@@ -199,7 +204,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
     return observerAccepted !== false
   }
 
-  const handleEnvelope = (token: string, envelope: TEnvelope): boolean | null => {
+  const handleEnvelope = (token: string, envelope: TEnvelope): HookReplyReceipt | false | null => {
     const credential = credentials.get(token)
     if (!credential) {
       return false
@@ -208,15 +213,23 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
     if (credential.observationOwner && !observation) {
       return null
     }
+    const receipt = credential.replies.begin(envelope.hookEventName)
     if (!credential.sessionId) {
       // Only complete snapshots can be coalesced; preserve legacy event ordering/identity.
       if (credential.observationOwner) {
+        credential.pending.forEach(pending => pending.receipt.reject())
         credential.pending.length = 0
       }
-      credential.pending.push({ envelope, observation })
-      return true
+      receipt.accept()
+      credential.pending.push({ envelope, observation, receipt })
+      return receipt
     }
-    return emit(credential.sessionId, envelope, credential, observation) ? true : null
+    if (!emit(credential.sessionId, envelope, credential, observation)) {
+      receipt.reject()
+      return null
+    }
+    receipt.accept()
+    return receipt
   }
 
   const start = async (): Promise<void> => {
@@ -265,23 +278,27 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
                   Date.now(),
                 )
               }
-              const accepted = handleEnvelope(token, envelope)
-              if (accepted === false) {
+              const receipt = handleEnvelope(token, envelope)
+              if (receipt === false) {
                 response.statusCode = 401
                 response.end()
                 return
               }
               const credential = credentials.get(token)
-              if (accepted && envelope.hookEventName === 'SessionStart' && eligible(credential)) {
+              if (
+                receipt?.isCurrent() &&
+                envelope.hookEventName === 'SessionStart' &&
+                eligible(credential)
+              ) {
                 let enabled = false
                 try {
                   enabled = await residentContextEnabled()
                 } catch {
                   /* Fail open. */
                 }
-                if (enabled && eligible(credential)) {
+                if (enabled && receipt.isCurrent() && eligible(credential)) {
                   const body = JSON.stringify({ v: 1, context: residentContextV1 })
-                  if (eligible(credential)) {
+                  if (receipt.isCurrent() && eligible(credential)) {
                     response.statusCode = 200
                     response.setHeader('content-type', 'application/json')
                     response.end(body)
@@ -357,6 +374,8 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       const credential: CredentialRecord<TEnvelope> = {
         token,
         residentContext: input?.residentContext ?? 'none',
+        isInvocationCurrent: input?.isInvocationCurrent,
+        replies: new HookReplyEligibility(),
         observationOwner: options.createObservationOwner?.() ?? null,
         privateObserver:
           options.createPrivateObserver?.({ ...(input?.environment ?? process.env) }) ?? null,
@@ -392,11 +411,16 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
           credential.sessionId = sessionId
           credential.terminalActivity = terminalActivity ?? null
           tokenBySessionId.set(sessionId, token)
-          credential.pending
-            .splice(0)
-            .forEach(({ envelope, observation }) =>
-              emit(sessionId, envelope, credential, observation),
-            )
+          credential.pending.splice(0).forEach(({ envelope, observation, receipt }) => {
+            let accepted = false
+            try {
+              accepted = emit(sessionId, envelope, credential, observation)
+            } finally {
+              if (!accepted) {
+                receipt.reject()
+              }
+            }
+          })
         },
         dispose,
       }
