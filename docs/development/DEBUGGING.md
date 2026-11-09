@@ -38,6 +38,8 @@ Worker 的独立查询响应、CPU、内存和打开的文件数；不要仅凭�
 标题是派生展示，不能占满与持久化共享的 Worker 资源。PTY 订阅以运行生命周期为边界，
 回调变化不能触发 cached metadata 重放；同一路径和文件指纹共享在途扫描，只有最新指纹
 拥有缓存发布权。目录扫描必须限制并发，失败、文件变化和清理后允许正确重读。
+恢复时 Worker 状态事件可能早于节点绑定；节点更新后应从事件中心补读运行时状态，
+不能依赖回调变化触发的重新订阅补齐，也不能为补齐状态重新启动标题扫描。
 回归入口：`ptyTaskCompletion.lifecycle.spec.tsx`、`agentSessionCatalog.cache.concurrent.spec.ts`
 和 `agentSessionCatalog.scanBudget.spec.ts`。
 

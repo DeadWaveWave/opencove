@@ -44,6 +44,7 @@ export function useWorkspaceCanvasRuntimeIntegrations({
 }) {
   useWorkspaceCanvasRuntimeBindings({
     workspaceId,
+    nodes: canvasState.flowNodes,
     setNodes: nodeStore.setNodes,
     onRequestPersistFlush,
     actionRefs,

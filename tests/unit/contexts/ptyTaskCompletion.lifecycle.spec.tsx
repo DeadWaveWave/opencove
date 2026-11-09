@@ -1,7 +1,11 @@
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
-import type { AgentSessionSummary, TerminalSessionMetadataEvent } from '@shared/contracts/dto'
+import type {
+  AgentSessionSummary,
+  TerminalSessionMetadataEvent,
+  TerminalSessionStateEvent,
+} from '@shared/contracts/dto'
 import type { TerminalNodeData } from '@contexts/workspace/presentation/renderer/types'
 import { createPtyEventHub, type PtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import { useWorkspaceCanvasPtyTaskCompletion } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/usePtyTaskCompletion'
@@ -14,9 +18,14 @@ vi.mock('@app/renderer/shell/utils/ptyEventHub', async importOriginal => ({
 
 function setup() {
   let emitMetadata!: (event: TerminalSessionMetadataEvent) => void
+  let emitState!: (event: TerminalSessionStateEvent) => void
   shared.hub = createPtyEventHub({
     onData: () => () => undefined,
     onExit: () => () => undefined,
+    onState: listener => {
+      emitState = listener
+      return () => undefined
+    },
     onMetadata: listener => {
       emitMetadata = listener
       return () => undefined
@@ -63,7 +72,15 @@ function setup() {
     updatedAt: null,
     source: 'codex-file',
   }
-  return { nodesRef, query, update, flush, resolve, summary }
+  return {
+    nodesRef,
+    query,
+    update,
+    flush,
+    resolve,
+    summary,
+    emitState: (event: TerminalSessionStateEvent) => emitState(event),
+  }
 }
 
 describe('PTY title subscription lifetime', () => {
@@ -78,6 +95,7 @@ describe('PTY title subscription lifetime', () => {
     const { rerender } = renderHook(useWorkspaceCanvasPtyTaskCompletion, {
       initialProps: {
         nodesRef: state.nodesRef,
+        nodes: state.nodesRef.current,
         listAgentSessions: state.query,
         setNodes: state.update,
         onRequestPersistFlush: state.flush,
@@ -88,6 +106,7 @@ describe('PTY title subscription lifetime', () => {
     for (let index = 0; index < 10; index++) {
       rerender({
         nodesRef: state.nodesRef,
+        nodes: [...state.nodesRef.current],
         listAgentSessions: vi.fn(state.query),
         setNodes: latestUpdate,
         onRequestPersistFlush: latestFlush,
@@ -147,4 +166,35 @@ describe('PTY title subscription lifetime', () => {
     expect(requests).toBe(2)
     expect(state.nodesRef.current[0].data.title).toBe('codex · Review persistence')
   })
+
+  it.each(['claude_hook', 'pi_hook'] as const)(
+    'projects cached %s state when recovery binds a node after the event arrived',
+    source => {
+      const state = setup()
+      const originalNodes = state.nodesRef.current
+      state.nodesRef.current = []
+      const props = {
+        nodesRef: state.nodesRef,
+        nodes: state.nodesRef.current,
+        setNodes: state.update,
+        listAgentSessions: state.query,
+      }
+      const { rerender } = renderHook(useWorkspaceCanvasPtyTaskCompletion, { initialProps: props })
+      act(() =>
+        state.emitState({
+          sessionId: 'runtime-1',
+          state: 'standby',
+          source,
+          hookInstallState: 'installed',
+        }),
+      )
+      state.nodesRef.current = originalNodes
+      rerender({ ...props, nodes: originalNodes, setNodes: vi.fn(state.update) })
+      expect(state.nodesRef.current[0].data.agentRuntimeObservation).toMatchObject({
+        status: 'standby',
+        source,
+        hookInstallState: 'installed',
+      })
+    },
+  )
 })

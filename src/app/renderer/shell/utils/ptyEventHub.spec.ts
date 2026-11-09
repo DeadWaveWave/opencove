@@ -143,6 +143,10 @@ describe('createPtyEventHub', () => {
       sessionId: 'session-1',
       resumeSessionId: 'resume-1',
     })
+    expect(hub.getLatestSessionState('session-1')).toEqual({
+      sessionId: 'session-1',
+      state: 'standby',
+    })
 
     exitListener?.({ sessionId: 'session-1', exitCode: 0 })
     const afterExitState = vi.fn()
@@ -152,6 +156,7 @@ describe('createPtyEventHub', () => {
     expect(afterExitState).not.toHaveBeenCalled()
     expect(afterExitMetadata).not.toHaveBeenCalled()
     expect(hub.getLatestSessionMetadata('session-1')).toBeNull()
+    expect(hub.getLatestSessionState('session-1')).toBeNull()
   })
 
   it('forwards Worker decisions unchanged and never schedules local arbitration', () => {

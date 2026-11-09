@@ -121,12 +121,14 @@ export function applyAgentMetadataToNodes(
 
 export function useWorkspaceCanvasPtyTaskCompletion({
   workspaceId,
+  nodes,
   nodesRef,
   setNodes,
   listAgentSessions,
   onRequestPersistFlush,
 }: {
   workspaceId?: string
+  nodes?: Node<TerminalNodeData>[]
   nodesRef?: MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: (
     updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -268,4 +270,32 @@ export function useWorkspaceCanvasPtyTaskCompletion({
       unsubscribeExit()
     }
   }, [hasSessionCatalog, nodesRef, workspaceId])
+
+  useEffect(() => {
+    if (!nodes) {
+      return
+    }
+    // Recovery can bind a runtime after its hook event arrived. Reconcile from the existing
+    // event owner without re-subscribing to metadata or restarting catalog scans.
+    const hub = getPtyEventHub()
+    updateNodes(
+      previous => {
+        let didChange = false
+        const next = previous.map(node => {
+          if (node.data.kind !== 'agent') {
+            return node
+          }
+          const cached = hub.getLatestSessionState(node.data.sessionId)
+          const projected = cached ? projectAgentRuntimeObservation(node.data, cached) : null
+          if (!projected) {
+            return node
+          }
+          didChange = true
+          return { ...node, data: projected.data }
+        })
+        return didChange ? next : previous
+      },
+      { syncLayout: false },
+    )
+  }, [nodes])
 }
