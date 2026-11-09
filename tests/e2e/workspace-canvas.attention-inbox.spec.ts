@@ -127,6 +127,11 @@ test('the needs-you inbox reaches a waiting agent in another project', async () 
     await expect(agentNode.locator('.xterm-helper-textarea')).toBeFocused()
 
     await writeToPty(window, { sessionId, data: '<test-hook-done>\r' })
+    await expect(agentNode.locator('.terminal-node__status')).toHaveText('Standby')
+    // A real completion is a new unanswered turn, even after visiting the permission wait.
+    await expect(window.locator('.agent-island-card')).toHaveCount(1)
+    await expect(item).toBeVisible()
+    await item.click()
     await expect(inbox).toHaveCount(0)
   } finally {
     await electronApp.close()
