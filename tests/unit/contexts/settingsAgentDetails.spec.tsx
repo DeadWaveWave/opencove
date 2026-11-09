@@ -32,6 +32,7 @@ function createProps(): Props {
     onChangeDefaultProvider: vi.fn(),
     onChangeAgentProviderOrder: vi.fn(),
     onChangeAgentFullAccess: vi.fn(),
+    onChangeAgentResidentContext: vi.fn(),
     onChangeCodexReuseRunningAppServer: vi.fn(),
     onToggleCustomModelEnabled: vi.fn(),
     onSelectProviderModel: vi.fn(),
@@ -67,6 +68,20 @@ afterEach(async () => {
 })
 
 describe('Agent list and provider detail', () => {
+  it.each(['en', 'zh-CN'] as const)(
+    'changes resident guidance in %s without changing other settings',
+    async language => {
+      await applyUiLanguage(language)
+      const props = createProps()
+      render(<AgentSettingsPage {...props} />)
+      const select = screen.getByTestId('settings-agent-resident-context-trigger')
+      fireEvent.click(select)
+      fireEvent.click(screen.getByRole('option', { name: language === 'en' ? 'Off' : '关闭' }))
+      expect(props.onChangeAgentResidentContext).toHaveBeenCalledWith('off')
+      expect(props.onChangeAgentFullAccess).not.toHaveBeenCalled()
+    },
+  )
+
   it.each([false, true])(
     'toggles Codex daemon reuse with an accessible warning when enabled=%s',
     enabled => {

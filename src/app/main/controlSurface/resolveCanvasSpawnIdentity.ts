@@ -34,6 +34,7 @@ export async function resolveCanvasSpawnIdentity(
       throw createAppError('common.invalid_input')
     }
     return {
+      delegated: true,
       projectId: identity.projectId as string,
       spaceId: identity.spaceId as string,
       nodeId: identity.nodeId as string,

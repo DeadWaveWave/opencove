@@ -32,48 +32,58 @@ function inMemoryHookChannel(provider: 'claude' | 'codex') {
       return server
     }) as typeof createServer,
   })
+  const postReply = async (token: string, event: string, emitted?: string, payload?: unknown) => {
+    const request = Object.assign(
+      Readable.from([
+        JSON.stringify(
+          payload ??
+            (event === 'notify'
+              ? { version: 1, state: 'done', hookEventName: 'notify', codexSessionId: provider }
+              : {
+                  hook_event_name: event,
+                  session_id: provider,
+                  cwd: '/tmp',
+                  transcript_path: '/tmp/transcript.jsonl',
+                }),
+        ),
+      ]),
+      {
+        method: 'POST',
+        url: `/hooks/${provider}`,
+        setTimeout() {},
+        headers: {
+          'content-type': 'application/json',
+          'x-opencove-hook-token': token,
+          ...(emitted === undefined ? {} : { 'x-opencove-hook-emitted-at': emitted }),
+        },
+      },
+    ) as unknown as IncomingMessage
+    let status = 0
+    let body = ''
+    const headers: Record<string, string> = {}
+    await new Promise<void>(resolve => {
+      const response = {
+        get statusCode() {
+          return status
+        },
+        set statusCode(value: number) {
+          status = value
+        },
+        setHeader(key: string, value: string) {
+          headers[key] = value
+        },
+        end(value = '') {
+          body = value
+          resolve()
+        },
+      } as unknown as ServerResponse
+      handler.call(server as never, request, response)
+    })
+    return { status, body, headers }
+  }
   return {
     channel,
-    post: async (token: string, event: string, emitted?: string, payload?: unknown) => {
-      const request = Object.assign(
-        Readable.from([
-          JSON.stringify(
-            payload ??
-              (event === 'notify'
-                ? { version: 1, state: 'done', hookEventName: 'notify', codexSessionId: provider }
-                : {
-                    hook_event_name: event,
-                    session_id: provider,
-                    cwd: '/tmp',
-                    transcript_path: '/tmp/transcript.jsonl',
-                  }),
-          ),
-        ]),
-        {
-          method: 'POST',
-          url: `/hooks/${provider}`,
-          setTimeout() {},
-          headers: {
-            'content-type': 'application/json',
-            'x-opencove-hook-token': token,
-            ...(emitted === undefined ? {} : { 'x-opencove-hook-emitted-at': emitted }),
-          },
-        },
-      ) as unknown as IncomingMessage
-      let status = 0
-      await new Promise<void>(resolve => {
-        const response = {
-          get statusCode() {
-            return status
-          },
-          set statusCode(value: number) {
-            status = value
-          },
-          end: resolve,
-        } as unknown as ServerResponse
-        handler.call(server as never, request, response)
-      })
-      return status
-    },
+    postReply,
+    post: async (...args: Parameters<typeof postReply>) => (await postReply(...args)).status,
   }
 }

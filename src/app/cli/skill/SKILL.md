@@ -7,7 +7,7 @@ description: Coordinate agents and share work inside OpenCove using its bundled 
 
 This guide ships inside the CLI build. Use `opencove --version` to identify it; `opencove skill -o json` includes the matching version and guide content. Replace example IDs, names and paths with actual query results.
 
-Agent terminals cannot read or change private settings, override launch policy, run provider commands through prompts, or run plugin code through the API; only the user answers permission prompts and dialogs in OpenCove and changes agent permissions in Settings → Agent → Providers → Permissions → Full Access Mode. Project isolation is not yet enforced.
+Agent terminals cannot read or change private settings, override launch policy, run provider commands through prompts, or run plugin code through the API; only the user answers permission prompts and dialogs in OpenCove and changes agent permissions in Settings → Agent → Providers → Permissions → Full Access Mode. Project isolation is not yet enforced. OpenCove may give supported local agents a short canvas guide at session start (Settings → Agent → Tell agents about OpenCove).
 
 ## Establish identity before acting
 
