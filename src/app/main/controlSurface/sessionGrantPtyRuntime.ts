@@ -1,4 +1,8 @@
 import { createAppError } from '../../../shared/errors/appError'
+import {
+  createTerminalSpawnApplicationError,
+  publicTerminalSpawnApplicationError,
+} from '../../../shared/errors/terminalSpawnError'
 import { basename, delimiter } from 'node:path'
 import { removeElectronRunAsNode } from '../../../platform/os/ElectronControlEnvironment'
 import type { ControlSurfacePtyRuntime } from './handlers/sessionPtyRuntime'
@@ -53,9 +57,7 @@ export function createSessionGrantPtyRuntime(options: {
         return await options.runtime.spawnSession({ ...input, env })
       }
       if (process.platform === 'win32' && /^wsl(?:\.exe)?$/i.test(basename(input.command))) {
-        throw createAppError('common.unavailable', {
-          debugMessage: 'Canvas identity requires a native hosting Worker inside WSL.',
-        })
+        throw createTerminalSpawnApplicationError('native_wsl_worker_required')
       }
       const assets = await options.ensureAssets()
       if (closed) {
@@ -97,12 +99,17 @@ export function createSessionGrantPtyRuntime(options: {
         reservation.commit(spawned.sessionId)
         options.onSpawnIdentity?.(spawned.sessionId, identity.nodeId)
         return spawned
-      } catch {
+      } catch (error) {
         if (!settled) {
           attempt.cancel()
         }
         reservation.cancel()
+        const application = publicTerminalSpawnApplicationError(error)
+        if (application) {
+          throw createAppError(application)
+        }
         // Never propagate a spawn error that might serialize its environment.
+        // eslint-disable-next-line preserve-caught-error -- Private process data must not survive as a cause.
         throw new Error('Canvas PTY spawn failed.')
       }
     },

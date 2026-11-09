@@ -132,16 +132,18 @@ test('a canvas terminal discovers its identity, neighbors and scope through the 
 
     // The server checks admin scope before payload validation. If the scope fence regresses,
     // this empty payload still cannot approve an unrelated filesystem root.
-    const denied = await terminalCommand(
-      page,
-      binding,
-      "opencove api call workspace.approveRoot --input '{}' -o json",
-      'SCOPE',
-    )
+    const denied = (
+      await terminalCommand(
+        page,
+        binding,
+        "opencove api call workspace.approveRoot --input '{}' -o json",
+        'SCOPE',
+      )
+    ).replaceAll('\n', '')
     expect(denied).toMatch(/\bexit=4\b/)
     expect(denied).toContain('common.forbidden')
-    expect(denied).toContain('An OpenCove session may read and interact')
-    expect(denied).toContain('outside the OpenCove session')
+    expect(denied).toContain('operation_denied')
+    expect(denied).toContain('requires a human decision')
   } finally {
     try {
       await app?.close()

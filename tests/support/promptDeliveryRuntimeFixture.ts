@@ -2,7 +2,7 @@ import {
   setPromptSubmissionEvidence,
   type PromptSubmissionEvidence,
 } from '../../src/shared/runtime/agentHook/claudePromptEvidence'
-import type { TerminalSessionStateEvent } from '../../src/shared/contracts/dto'
+import type { AgentProviderId, TerminalSessionStateEvent } from '../../src/shared/contracts/dto'
 import { vi } from 'vitest'
 import { AgentRunStateRegistry } from '../../src/contexts/agent/application/AgentRunStateRegistry'
 import { AgentRunStateRuntime } from '../../src/contexts/agent/application/AgentRunStateRuntime'
@@ -14,7 +14,7 @@ export function promptDeliveryRuntimeFixture(
     const timer = setTimeout(cb, delay)
     return () => clearTimeout(timer)
   },
-  provider: 'claude-code' | 'codex' = 'claude-code',
+  provider: AgentProviderId = 'claude-code',
   ready = true,
   createTurnId?: () => string,
 ) {

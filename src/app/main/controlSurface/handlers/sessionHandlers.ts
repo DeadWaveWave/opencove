@@ -9,6 +9,7 @@ import type { ControlSurface } from '../controlSurface'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createAppError } from '../../../../shared/errors/appError'
+import { publicTerminalSpawnError } from '../../../../shared/errors/terminalSpawnError'
 import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import type { AgentProviderRegistry } from '../../../../contexts/agent/application/services/AgentProviderRegistry'
 import { captureGeminiSessionDiscoveryCursor } from '../../../../contexts/agent/infrastructure/cli/AgentSessionLocatorProviders'
@@ -22,7 +23,6 @@ import { resolveSpaceMountContext } from '../../../../contexts/space/application
 import type {
   GetNodeSessionResult,
   GetSessionResult,
-  LaunchAgentSessionInput,
   LaunchAgentSessionResult,
 } from '../../../../shared/contracts/dto'
 import {
@@ -30,8 +30,8 @@ import {
   reserveLoopbackPort,
   resolveAgentPtySpawnState,
   resolveExecutionContextDto,
-  resolveProviderFromSettings,
   resolveSessionLaunchSpawn,
+  getPublicTerminalSpawnCommand,
 } from './sessionLaunchSupport'
 import { resolveSpaceWorkingDirectoryFromStore } from './resolveSpaceWorkingDirectoryFromStore'
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
@@ -44,7 +44,7 @@ import type {
   TerminalSpawnAdmission,
 } from '../../../../contexts/terminal/application/TerminalRuntimeAvailability'
 import { startAgentSessionStateWatcherIfEnabled } from './sessionStateWatcherStart'
-import { normalizeOptionalString } from './sessionLaunchPayloadSupport'
+import { normalizeOptionalString, toMountedAgentLaunchInput } from './sessionLaunchPayloadSupport'
 import type { SessionRecord } from './sessionRecords'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRuntime'
@@ -58,8 +58,10 @@ import { registerSessionAgentWatcherHandlers } from './sessionAgentWatcherHandle
 import { prepareAgentLaunch } from './prepareAgentLaunch'
 import { rollbackAgentLaunchArtifacts } from '../../../../contexts/agent/application/services/AgentLaunchArtifactOwner'
 import {
+  admitLaunchProvider,
   mergeAgentLaunchEnvironment,
   prepareAgentSessionEnvironment,
+  resolveAgentLaunchCallerEnv,
 } from './agentLaunchEnvironment'
 
 export function registerSessionHandlers(
@@ -138,21 +140,11 @@ export function registerSessionHandlers(
             ctx,
             {
               id: 'session.launchAgentInMount',
-              payload: {
-                mountId: mountContext.mount.mountId,
-                cwdUri,
-                prompt: payload.prompt,
-                provider: payload.provider ?? null,
-                mode,
-                model: payload.model ?? null,
-                resumeSessionId,
-                env: payload.env ?? null,
-                executablePathOverride: payload.executablePathOverride ?? null,
-                agentFullAccess: payload.agentFullAccess ?? null,
-                codexReuseRunningAppServer: payload.codexReuseRunningAppServer ?? null,
-                cols: payload.cols,
-                rows: payload.rows,
-              } satisfies LaunchAgentSessionInput & { mountId: string; cwdUri: string | null },
+              payload: toMountedAgentLaunchInput(
+                payload,
+                { mountId: mountContext.mount.mountId, cwdUri },
+                ctx.requestAuth,
+              ),
             },
           )
 
@@ -203,7 +195,8 @@ export function registerSessionHandlers(
         })
       }
 
-      const provider = resolveProviderFromSettings(payload.provider ?? null, agentSettings, mode)
+      const provider = admitLaunchProvider(ctx, payload, agentSettings, mode)
+      const env = resolveAgentLaunchCallerEnv(ctx, agentSettings, provider, payload.env)
       const model = payload.model ?? resolveAgentModel(agentSettings, provider)
       const executablePathOverride =
         payload.executablePathOverride ??
@@ -238,7 +231,7 @@ export function registerSessionHandlers(
       })
 
       const { launchCommand, managedLaunch, testStub } = await prepareAgentLaunch({
-        environment: { ...sessionEnv, ...payload.env },
+        environment: { ...sessionEnv, ...env },
         registry: deps.agentProviderRegistry,
         profileId: agentSettings.defaultTerminalProfileId,
         provider,
@@ -271,7 +264,7 @@ export function registerSessionHandlers(
       const mergedEnv = mergeAgentLaunchEnvironment({
         testEnvironment: testStub?.env,
         sessionEnvironment: sessionEnv,
-        requestedEnvironment: payload.env,
+        requestedEnvironment: env,
         providerEnvironment: managedLaunch.plan.env,
       })
 
@@ -280,6 +273,7 @@ export function registerSessionHandlers(
         defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
         command: launchCommand.command,
         args: launchCommand.args,
+        fileArguments: launchCommand.fileArguments,
         provider: testStub ? null : provider,
         executablePathOverride,
         ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
@@ -290,7 +284,10 @@ export function registerSessionHandlers(
           cwd: workingDirectory,
           ...describeAgentLaunchError(error),
         })
-        return rollbackAgentLaunchArtifacts(error, managedLaunch.artifacts)
+        return rollbackAgentLaunchArtifacts(
+          publicTerminalSpawnError(error, 'agent.launch_failed'),
+          managedLaunch.artifacts,
+        )
       })
       logAgentLaunchInfo(
         'control-surface-spawn-resolved',
@@ -305,6 +302,7 @@ export function registerSessionHandlers(
           env: resolvedSpawn.env,
         }),
       )
+      const publicCommand = getPublicTerminalSpawnCommand(resolvedSpawn)
       const geminiDiscoveryCursor =
         provider === 'gemini' && mode === 'new' && !resumeSessionId
           ? await captureGeminiSessionDiscoveryCursor(workingDirectory).catch(() => null)
@@ -321,6 +319,11 @@ export function registerSessionHandlers(
         command: resolvedSpawn.command,
         argCount: resolvedSpawn.args.length,
       })
+      try {
+        ctx.assertActive?.()
+      } catch (error) {
+        return rollbackAgentLaunchArtifacts(error, managedLaunch.artifacts)
+      }
       const { sessionId } = await deps.ptyRuntime
         .spawnSession({
           cwd: resolvedSpawn.cwd,
@@ -346,7 +349,7 @@ export function registerSessionHandlers(
             command: resolvedSpawn.command,
             ...describeAgentLaunchError(error),
           })
-          throw error
+          throw publicTerminalSpawnError(error, 'agent.launch_failed')
         })
       managedLaunch.plan.onStarted?.(sessionId)
       logAgentLaunchInfo('control-surface-pty-spawn-succeeded', 'Agent PTY session spawned.', {
@@ -389,8 +392,7 @@ export function registerSessionHandlers(
         executionContext,
         resumeSessionId: managedLaunch.plan.resumeSessionId,
         startedAtMs,
-        command: resolvedSpawn.command,
-        args: resolvedSpawn.args,
+        ...publicCommand,
         launchMode: mode,
         ...(geminiDiscoveryCursor !== undefined ? { geminiDiscoveryCursor } : {}),
         route: { kind: 'local' },
@@ -402,8 +404,7 @@ export function registerSessionHandlers(
         kind: 'agent',
         startedAt,
         cwd: workingDirectory,
-        command: resolvedSpawn.command,
-        args: resolvedSpawn.args,
+        ...publicCommand,
         cols: payload.cols ?? 80,
         rows: payload.rows ?? 24,
       })
@@ -417,8 +418,7 @@ export function registerSessionHandlers(
         runtimeKind: resolvedSpawn.runtimeKind,
         resumeSessionId: managedLaunch.plan.resumeSessionId,
         effectiveModel: launchCommand.effectiveModel,
-        command: resolvedSpawn.command,
-        args: resolvedSpawn.args,
+        ...publicCommand,
       }
     },
     defaultErrorCode: 'agent.launch_failed',

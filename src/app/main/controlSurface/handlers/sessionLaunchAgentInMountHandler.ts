@@ -2,6 +2,7 @@ import type { ControlSurface } from '../controlSurface'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createAppError } from '../../../../shared/errors/appError'
+import { publicTerminalSpawnError } from '../../../../shared/errors/terminalSpawnError'
 import type { AgentProviderRegistry } from '../../../../contexts/agent/application/services/AgentProviderRegistry'
 import { captureGeminiSessionDiscoveryCursor } from '../../../../contexts/agent/infrastructure/cli/AgentSessionLocatorProviders'
 import {
@@ -16,8 +17,8 @@ import {
   reserveLoopbackPort,
   resolveAgentPtySpawnState,
   resolveExecutionContextDto,
-  resolveProviderFromSettings,
   resolveSessionLaunchSpawn,
+  getPublicTerminalSpawnCommand,
 } from './sessionLaunchSupport'
 import { startAgentSessionStateWatcherIfEnabled } from './sessionStateWatcherStart'
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
@@ -39,8 +40,11 @@ import {
 import { prepareAgentLaunch } from './prepareAgentLaunch'
 import { rollbackAgentLaunchArtifacts } from '../../../../contexts/agent/application/services/AgentLaunchArtifactOwner'
 import {
+  admitLaunchProvider,
   mergeAgentLaunchEnvironment,
   prepareAgentSessionEnvironment,
+  resolveAgentLaunchCallerEnv,
+  resolveRemoteAgentLaunchSettings,
 } from './agentLaunchEnvironment'
 
 export function registerSessionLaunchAgentInMountHandler(
@@ -88,6 +92,7 @@ export function registerSessionLaunchAgentInMountHandler(
             debugMessage: `Remote endpoint unavailable: ${target.endpointId}`,
           })
         }
+        const remoteInput = await resolveRemoteAgentLaunchSettings(ctx, payload, deps)
         ctx.assertActive?.()
         const remoteResult = await (async () => {
           const { result } = await invokeControlSurface(endpoint, {
@@ -108,7 +113,7 @@ export function registerSessionLaunchAgentInMountHandler(
           const agentLaunchResult = await invokeControlSurface(endpoint, {
             kind: 'command',
             id: 'session.launchAgent',
-            payload: toLocalAgentLaunchInput(payload, cwd, mode),
+            payload: toLocalAgentLaunchInput(remoteInput, cwd, mode),
           })
 
           if (!agentLaunchResult.result) {
@@ -129,10 +134,11 @@ export function registerSessionLaunchAgentInMountHandler(
                 errorStack: null,
               },
             )
-            throw createAppError(agentLaunchResult.result.error)
+            throw publicTerminalSpawnError(agentLaunchResult.result.error, 'agent.launch_failed')
           }
 
-          return agentLaunchResult.result.value as LaunchAgentSessionResult
+          const value = agentLaunchResult.result.value as LaunchAgentSessionResult
+          return { ...value, ...getPublicTerminalSpawnCommand(value) }
         })()
 
         const remoteSessionId = normalizeOptionalString(remoteResult.sessionId)
@@ -229,7 +235,8 @@ export function registerSessionLaunchAgentInMountHandler(
       const normalized = normalizePersistedAppState(await store.readAppState())
       const agentSettings = normalizeAgentSettings(normalized?.settings)
 
-      const provider = resolveProviderFromSettings(payload.provider ?? null, agentSettings, mode)
+      const provider = admitLaunchProvider(ctx, payload, agentSettings, mode)
+      const env = resolveAgentLaunchCallerEnv(ctx, agentSettings, provider, payload.env)
       const model = payload.model ?? resolveAgentModel(agentSettings, provider)
       const executablePathOverride =
         payload.executablePathOverride ??
@@ -270,7 +277,7 @@ export function registerSessionLaunchAgentInMountHandler(
 
       const resumeSessionId = mode === 'resume' ? (payload.resumeSessionId ?? null) : null
       const { launchCommand, managedLaunch, testStub } = await prepareAgentLaunch({
-        environment: { ...sessionEnv, ...payload.env },
+        environment: { ...sessionEnv, ...env },
         registry: deps.agentProviderRegistry,
         profileId: agentSettings.defaultTerminalProfileId,
         provider,
@@ -303,7 +310,7 @@ export function registerSessionLaunchAgentInMountHandler(
       const mergedEnv = mergeAgentLaunchEnvironment({
         testEnvironment: testStub?.env,
         sessionEnvironment: sessionEnv,
-        requestedEnvironment: payload.env,
+        requestedEnvironment: env,
         providerEnvironment: managedLaunch.plan.env,
       })
 
@@ -312,6 +319,7 @@ export function registerSessionLaunchAgentInMountHandler(
         defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
         command: launchCommand.command,
         args: launchCommand.args,
+        fileArguments: launchCommand.fileArguments,
         provider: testStub ? null : provider,
         executablePathOverride,
         ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
@@ -327,7 +335,10 @@ export function registerSessionLaunchAgentInMountHandler(
             ...describeAgentLaunchError(error),
           },
         )
-        return rollbackAgentLaunchArtifacts(error, managedLaunch.artifacts)
+        return rollbackAgentLaunchArtifacts(
+          publicTerminalSpawnError(error, 'agent.launch_failed'),
+          managedLaunch.artifacts,
+        )
       })
       logAgentLaunchInfo(
         'control-surface-mount-local-spawn-resolved',
@@ -342,6 +353,7 @@ export function registerSessionLaunchAgentInMountHandler(
           env: resolvedSpawn.env,
         }),
       )
+      const publicCommand = getPublicTerminalSpawnCommand(resolvedSpawn)
       const geminiDiscoveryCursor =
         provider === 'gemini' && mode === 'new'
           ? await captureGeminiSessionDiscoveryCursor(cwd).catch(() => null)
@@ -397,7 +409,7 @@ export function registerSessionLaunchAgentInMountHandler(
               ...describeAgentLaunchError(error),
             },
           )
-          throw error
+          throw publicTerminalSpawnError(error, 'agent.launch_failed')
         })
       managedLaunch.plan.onStarted?.(sessionId)
       logAgentLaunchInfo(
@@ -453,8 +465,7 @@ export function registerSessionLaunchAgentInMountHandler(
         executionContext,
         resumeSessionId: managedLaunch.plan.resumeSessionId,
         startedAtMs,
-        command: resolvedSpawn.command,
-        args: resolvedSpawn.args,
+        ...publicCommand,
         launchMode: mode,
         ...(geminiDiscoveryCursor !== undefined ? { geminiDiscoveryCursor } : {}),
         route: { kind: 'local' },
@@ -466,8 +477,7 @@ export function registerSessionLaunchAgentInMountHandler(
         kind: 'agent',
         startedAt,
         cwd,
-        command: resolvedSpawn.command,
-        args: resolvedSpawn.args,
+        ...publicCommand,
         cols: payload.cols ?? 80,
         rows: payload.rows ?? 24,
       })
@@ -481,8 +491,7 @@ export function registerSessionLaunchAgentInMountHandler(
         runtimeKind: resolvedSpawn.runtimeKind,
         resumeSessionId: record.resumeSessionId ?? null,
         effectiveModel: launchCommand.effectiveModel,
-        command: resolvedSpawn.command,
-        args: resolvedSpawn.args,
+        ...publicCommand,
       }
     },
     defaultErrorCode: 'agent.launch_failed',

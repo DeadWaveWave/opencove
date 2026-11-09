@@ -1,3 +1,4 @@
+import { assertSessionGrantMessagePrompt } from '../http/sessionGrantPromptPolicy'
 import { randomUUID } from 'node:crypto'
 import type { ControlSurface } from '../controlSurface'
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
@@ -41,7 +42,18 @@ export function registerAgentPromptHandlers(
               ? ctx.requestAuth.grant.nodeId
               : input.nodeId,
         },
-        ctx,
+        {
+          ...ctx,
+          authorizePrompt:
+            ctx.requestAuth?.kind === 'session-grant'
+              ? (provider, text) =>
+                  assertSessionGrantMessagePrompt(text, {
+                    provider,
+                    operationId: 'agent.prompt',
+                    field: 'text',
+                  })
+              : undefined,
+        },
       ),
     defaultErrorCode: 'common.unexpected',
   })

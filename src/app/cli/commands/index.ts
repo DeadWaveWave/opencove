@@ -1,3 +1,4 @@
+import { operationAccessCatalog, operationAccessInfo } from './operationAccessCatalog'
 import { agentHistoryClearCommand } from './agentHistory'
 import type { GetSpaceResult } from '../../../shared/contracts/dto'
 import { agentDeliveryCommand } from './agentDelivery'
@@ -18,7 +19,7 @@ import {
   CONTROL_SURFACE_OPERATIONS,
   getControlSurfaceOperation,
 } from '../../../shared/contracts/controlSurface/operations'
-import { defineCommand, type Command } from '../core/command'
+import { defineCommand, type Command, type CommandContext } from '../core/command'
 import { unknownOperation } from '../core/operationErrors'
 import { CliError } from '../core/errors'
 import { nodeCommands, stringOption } from './nodes'
@@ -134,7 +135,7 @@ export const commands: Command[] = [
     path: ['api', 'ops'],
     summary: 'List Control Surface operations with their kind, contract and CLI command',
     get description() {
-      return `The full JSON catalog is large (about ${Math.round(Buffer.byteLength(JSON.stringify(operationCatalog())) / 1024)} KB). Start with --domains, then narrow with --prefix or --search and --fields. Each operation includes scope (read, interact or admin); inside OpenCove, allowed reflects your whoami scope. Outside OpenCove the catalog is offline and allowed is omitted.\n\nWith --domains, output is an array of summaries with these projectable fields:\n  domain: Operation ID prefix before the first dot\n  operations: Total operations in the domain after filtering\n  schema: Operations with a schema input contract\n  commandOperations: Command-kind operations, not dedicated CLI commands`
+      return `The full JSON catalog is large (about ${Math.round(Buffer.byteLength(JSON.stringify(operationCatalog())) / 1024)} KB). Start with --domains, then narrow with --prefix or --search and --fields. Each operation includes scope (read, interact or admin); inside OpenCove, access comes from the Worker policy (allowed, denied or constrained). Offline or with an older Worker, access is unknown. The allowed flag is omitted for unknown or constrained access.\n\nWith --domains, output is an array of summaries with these projectable fields:\n  domain: Operation ID prefix before the first dot\n  operations: Total operations in the domain after filtering\n  schema: Operations with a schema input contract\n  commandOperations: Command-kind operations, not dedicated CLI commands`
     },
     connect: false,
     options: {
@@ -165,9 +166,9 @@ export const commands: Command[] = [
         description: 'Filter by input contract availability',
       },
     },
-    async execute({ options: o, io, whoami }) {
-      const scope = io.env.OPENCOVE_ENV === '1' ? (await whoami()).scope : undefined
-      const operations = operationCatalog(scope).filter(
+    async execute({ options: o, io, invoke }) {
+      const policy = await readWorkerPolicy({ io, invoke }, 'system.operations', {})
+      const operations = operationCatalog(policy).filter(
         op =>
           (!o.kind || op.kind === o.kind) &&
           (!o.contract || op.contract === o.contract) &&
@@ -211,8 +212,20 @@ export const commands: Command[] = [
         'opencove api ops --prefix node --fields id,cliCommand',
         '[{"id":"node.create","cliCommand":"opencove node create"}, ...]',
       ],
-      fields: ['id', 'kind', 'contract', 'summary', 'cliCommand', 'scope', 'allowed'],
-      columns: ['id', 'kind', 'contract', 'cliCommand', 'scope', 'allowed'],
+      fields: [
+        'id',
+        'kind',
+        'contract',
+        'summary',
+        'cliCommand',
+        'scope',
+        'access',
+        'allowed',
+        'reason',
+        'policyVersion',
+        'rejectedFields',
+      ],
+      columns: ['id', 'kind', 'contract', 'cliCommand', 'scope', 'access'],
     },
   }),
   defineCommand({
@@ -234,10 +247,17 @@ export const commands: Command[] = [
         'enum',
         'const',
         'not',
+        'access',
+        'allowed',
+        'reason',
+        'policyVersion',
+        'rejectedFields',
       ],
       { $schema: 'https://json-schema.org/draft/2020-12/schema' },
     ),
     summary: 'Show the input JSON Schema for an operation',
+    description:
+      'Inside OpenCove, access, reason, policyVersion and rejectedFields describe your Worker permissions; a field in the schema may still be refused. Outside OpenCove this command works offline.',
     connect: false,
     positionals: [{ name: 'operation-id', required: true }],
     options: {
@@ -248,7 +268,7 @@ export const commands: Command[] = [
           schemaVariants(positionals[0]).map(({ kind }) => String(kind)),
       },
     },
-    async execute({ positionals, options }) {
+    async execute({ positionals, options, io, invoke }) {
       const op = getControlSurfaceOperation(positionals[0])
       if (!op) {
         unknownOperation(positionals[0])
@@ -260,7 +280,16 @@ export const commands: Command[] = [
       if (options.variant !== undefined) {
         input = schemaVariants(op.id).find(({ kind }) => kind === options.variant)!.branch
       }
-      return z.toJSONSchema(input, { io: 'input', unrepresentable: 'throw', reused: 'ref' })
+      const schema = z.toJSONSchema(input, { io: 'input', unrepresentable: 'throw', reused: 'ref' })
+      const policy = await readWorkerPolicy({ io, invoke }, 'system.operation.describe', {
+        id: op.id,
+      })
+      return {
+        ...schema,
+        ...(io.env.OPENCOVE_ENV === '1'
+          ? (operationAccessInfo(policy) ?? { access: 'unknown' })
+          : {}),
+      }
     },
   }),
   defineCommand({
@@ -283,6 +312,29 @@ export const commands: Command[] = [
     buildInput: ({ options: o }) => o.input ?? null,
   }),
 ]
+
+async function readWorkerPolicy(
+  ctx: Pick<CommandContext, 'io' | 'invoke'>,
+  id: Parameters<CommandContext['invoke']>[0],
+  payload: unknown,
+): Promise<unknown> {
+  if (ctx.io.env.OPENCOVE_ENV !== '1') {
+    return
+  }
+  try {
+    return await ctx.invoke(id, payload)
+  } catch (error) {
+    // Older Workers can lack discovery; authorization and transport errors stay visible.
+    if (
+      !(error instanceof CliError) ||
+      error.exitCode === 4 ||
+      error.code !== 'common.invalid_input'
+    ) {
+      throw error
+    }
+    return undefined
+  }
+}
 
 for (const command of [...remoteCommands, ...pluginCommands, ...lifecycleCommands, ptyAttach]) {
   if (command.examples) {
@@ -332,8 +384,8 @@ function dedicatedCommand(id: string): string | undefined {
   return command ? (command.operationCommand ?? `opencove ${command.path.join(' ')}`) : undefined
 }
 
-function operationCatalog(callerScope?: string) {
-  const levels = ['read', 'interact', 'admin']
+function operationCatalog(policy?: unknown) {
+  const access = operationAccessCatalog(policy)
   return CONTROL_SURFACE_OPERATIONS.map(({ id, kind, contract, summary, scope }) => ({
     id,
     kind,
@@ -341,9 +393,7 @@ function operationCatalog(callerScope?: string) {
     summary,
     cliCommand: dedicatedCommand(id),
     scope,
-    ...(callerScope !== undefined
-      ? { allowed: levels.indexOf(callerScope) >= levels.indexOf(scope) }
-      : {}),
+    ...(access.get(id) ?? { access: 'unknown' as const }),
   }))
 }
 

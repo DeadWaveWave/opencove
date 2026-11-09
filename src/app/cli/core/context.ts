@@ -9,8 +9,18 @@ export async function resolveConnection(
   options: Record<string, unknown>,
   io: CliIo,
 ): Promise<Connection> {
+  if (options.endpoint !== undefined && !options.token && io.env.OPENCOVE_CONTROL_TOKEN) {
+    usage(
+      'An explicit endpoint requires a paired token.',
+      'Use --endpoint <url> --token <token>, or omit both to use the OpenCove terminal connection.',
+    )
+  }
   const endpoint = options.endpoint ?? io.env.OPENCOVE_CONTROL_URL
-  const token = options.token ?? io.env.OPENCOVE_CONTROL_TOKEN
+  const token =
+    options.token ??
+    (options.endpoint === undefined && io.env.OPENCOVE_CONTROL_URL
+      ? io.env.OPENCOVE_CONTROL_TOKEN
+      : undefined)
   if (endpoint !== undefined) {
     if (!token) {
       usage('Missing connection token', 'Use --token <token>')
@@ -57,7 +67,7 @@ export async function resolveConnection(
           }
           candidates.push({
             endpoint: `http://${value.hostname}:${value.port}`,
-            token: String(token ?? value.token),
+            token: String(options.token ?? value.token),
             userData,
             pid: value.pid,
             startedBy: value.startedBy ?? 'unknown',
