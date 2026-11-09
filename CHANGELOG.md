@@ -73,6 +73,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐛 Fixed
 
+- Agent terminals can no longer use the OpenCove API to make the user's decisions: they cannot type into another session (and so answer its permission dialog), read or change settings, launch agents with broader permissions than the user configured, send prompts that start a provider's shell or slash commands, or run plugin code. `opencove api ops` and `api schema` show what an agent terminal may call and why not, and the session token is only sent to its own endpoint. Project isolation is not yet enforced. (#583)
 - Persistence: repeated Agent title queries no longer flood the Worker with transcript scans and cause workspace saves to fail with “Unable to save data to storage.” (#580)
 - Agents: restoring sessions no longer replays past completions or repeatedly shows completion alerts. Codex startup only binds its session identity, and each observed turn completion notifies once. (#580)
 - Agent: closing or deleting an agent window, or quitting OpenCove, now also stops the commands and servers the agent started; they used to keep running in the background after Codex or Claude Code exited. Plain terminals are unchanged, so `nohup` still works there. (#576)
