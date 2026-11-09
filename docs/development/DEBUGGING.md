@@ -28,6 +28,19 @@
 进程存活状态由持有的 `ChildProcess` 决定；自动恢复不得仅因探测失败替换仍存活的进程。
 应同时检查 PID/端口是否保持一致，以及同一终端会话在负载和刷新后是否仍能接受输入。
 
+### 持久化提示 I/O 失败，但数据库仍可读写
+
+该提示也可能来自 Desktop 到 Worker 的请求超时。先在数据库隔离副本上验证读写，并检查
+Worker 的独立查询响应、CPU、内存和打开的文件数；不要仅凭通用提示判断数据库损坏。
+大量重复打开同一个 Agent transcript 时，检查会话标题同步是否因画布重渲染而重新订阅，
+以及缓存未命中的并发请求是否重复扫描。
+
+标题是派生展示，不能占满与持久化共享的 Worker 资源。PTY 订阅以运行生命周期为边界，
+回调变化不能触发 cached metadata 重放；同一路径和文件指纹共享在途扫描，只有最新指纹
+拥有缓存发布权。目录扫描必须限制并发，失败、文件变化和清理后允许正确重读。
+回归入口：`ptyTaskCompletion.lifecycle.spec.tsx`、`agentSessionCatalog.cache.concurrent.spec.ts`
+和 `agentSessionCatalog.scanBudget.spec.ts`。
+
 ## 测试层级选择（策略）
 
 目标：用 **最低成本** 的测试层级先定位问题；确认根因后再补足能防回归的覆盖。

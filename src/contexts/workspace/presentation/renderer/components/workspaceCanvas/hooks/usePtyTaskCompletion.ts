@@ -1,4 +1,4 @@
-import { useEffect, type MutableRefObject } from 'react'
+import { useEffect, useEffectEvent, type MutableRefObject } from 'react'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import type { Node } from '@xyflow/react'
 import { resolveAgentMetadataResumeBindingUpdate } from '@contexts/agent/domain/agentResumeBinding'
@@ -120,11 +120,13 @@ export function applyAgentMetadataToNodes(
 }
 
 export function useWorkspaceCanvasPtyTaskCompletion({
+  workspaceId,
   nodesRef,
   setNodes,
   listAgentSessions,
   onRequestPersistFlush,
 }: {
+  workspaceId?: string
   nodesRef?: MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: (
     updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -133,6 +135,15 @@ export function useWorkspaceCanvasPtyTaskCompletion({
   listAgentSessions?: (nodeId: string, limit?: number) => Promise<AgentSessionSummary[]>
   onRequestPersistFlush?: () => void
 }): void {
+  // Callback changes are not a new runtime lifetime. Re-subscribing replays cached metadata and
+  // restarts title scans while the previous Worker's request is still running.
+  const updateNodes = useEffectEvent(setNodes)
+  const requestPersistFlush = useEffectEvent(() => onRequestPersistFlush?.())
+  const querySessionTitles = useEffectEvent(
+    async (nodeId: string) => (await listAgentSessions?.(nodeId, 20)) ?? [],
+  )
+  const hasSessionCatalog = Boolean(listAgentSessions)
+
   useEffect(() => {
     const ptyEventHub = getPtyEventHub()
     const titleSyncByNodeId = new Map<string, { key: string; abortController: AbortController }>()
@@ -144,7 +155,7 @@ export function useWorkspaceCanvasPtyTaskCompletion({
         ? resolveAgentSessionTitleSyncTarget(nodesRef.current, event)
         : null
 
-      if (!titleSyncTarget || !nodesRef || !listAgentSessions) {
+      if (!titleSyncTarget || !nodesRef || !hasSessionCatalog) {
         return
       }
 
@@ -172,7 +183,7 @@ export function useWorkspaceCanvasPtyTaskCompletion({
 
       void loadAgentSessionTitle({
         resumeSessionId: titleSyncTarget.resumeSessionId,
-        listSessions: () => listAgentSessions(titleSyncTarget.nodeId, 20),
+        listSessions: () => querySessionTitles(titleSyncTarget.nodeId),
         isCurrent: () =>
           !disposed && isAgentSessionTitleSyncTargetCurrent(nodesRef.current, titleSyncTarget),
         signal: abortController.signal,
@@ -182,7 +193,7 @@ export function useWorkspaceCanvasPtyTaskCompletion({
         }
 
         let titleDidChange = false
-        setNodes(
+        updateNodes(
           prevNodes => {
             const result = applyAgentSessionTitleToNodes(prevNodes, titleSyncTarget, sessionTitle)
             titleDidChange = result.didChange
@@ -192,13 +203,13 @@ export function useWorkspaceCanvasPtyTaskCompletion({
         )
 
         if (titleDidChange) {
-          onRequestPersistFlush?.()
+          requestPersistFlush()
         }
       })
     }
 
     const unsubscribeState = ptyEventHub.onState(event => {
-      setNodes(prevNodes => applyAgentStateToNodes(prevNodes, event).nextNodes, {
+      updateNodes(prevNodes => applyAgentStateToNodes(prevNodes, event).nextNodes, {
         syncLayout: false,
       })
 
@@ -214,7 +225,7 @@ export function useWorkspaceCanvasPtyTaskCompletion({
       metadataByRuntimeSessionId.set(event.sessionId, event)
       let didChange = false
 
-      setNodes(
+      updateNodes(
         prevNodes => {
           const result = applyAgentMetadataToNodes(prevNodes, event)
           didChange = result.didChange
@@ -224,7 +235,7 @@ export function useWorkspaceCanvasPtyTaskCompletion({
       )
 
       if (didChange) {
-        onRequestPersistFlush?.()
+        requestPersistFlush()
       }
 
       startTitleSync(event, false)
@@ -233,7 +244,7 @@ export function useWorkspaceCanvasPtyTaskCompletion({
     const unsubscribeExit = ptyEventHub.onExit(event => {
       let didChange = false
 
-      setNodes(
+      updateNodes(
         prevNodes => {
           const result = applyAgentExitToNodes(prevNodes, event)
           didChange = result.didChange
@@ -243,7 +254,7 @@ export function useWorkspaceCanvasPtyTaskCompletion({
       )
 
       if (didChange) {
-        onRequestPersistFlush?.()
+        requestPersistFlush()
       }
     })
 
@@ -256,5 +267,5 @@ export function useWorkspaceCanvasPtyTaskCompletion({
       unsubscribeMetadata()
       unsubscribeExit()
     }
-  }, [listAgentSessions, nodesRef, onRequestPersistFlush, setNodes])
+  }, [hasSessionCatalog, nodesRef, workspaceId])
 }

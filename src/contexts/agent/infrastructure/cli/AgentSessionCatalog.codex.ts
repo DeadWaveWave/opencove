@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import { StringDecoder } from 'node:string_decoder'
 import type { AgentSessionSummary } from '@shared/contracts/dto'
+import { mapWithConcurrency } from '@shared/utils/mapWithConcurrency'
 import { resolveCodexHomeDirectoryCandidates } from '../../../../platform/os/HomeDirectory'
 import { listDirectories, listFiles, parseTimestampMs } from './AgentSessionLocatorProviders.utils'
 import { readSessionFileWithCache } from './AgentSessionCatalog.cache'
@@ -138,39 +139,37 @@ export async function listCodexSessions(
   ).flat()
 
   const sessions = (
-    await Promise.all(
-      rolloutFiles.map(async filePath => {
-        const firstLine = await readFirstLine(filePath)
-        const parsed = firstLine ? parseCodexSessionMeta(firstLine) : null
-        if (!parsed || parsed.cwd !== resolvedCwd) {
-          return null
-        }
+    await mapWithConcurrency(rolloutFiles, 8, async filePath => {
+      const firstLine = await readFirstLine(filePath)
+      const parsed = firstLine ? parseCodexSessionMeta(firstLine) : null
+      if (!parsed || parsed.cwd !== resolvedCwd) {
+        return null
+      }
 
-        const startedAtMs = parsed.payloadTimestampMs ?? parsed.recordTimestampMs
-        const updatedAtMs = parsed.recordTimestampMs ?? parsed.payloadTimestampMs
-        const fingerprint = await fs
-          .stat(filePath)
-          .then(stats => ({ mtimeMs: stats.mtimeMs, size: stats.size }))
-          .catch(() => null)
-        const preview = await readSessionFileWithCache(
-          filePath,
-          fingerprint,
-          async () => readFirstMatchingJsonlValue(filePath, parseCodexFirstUserPreview),
-          titleCache ? { store: titleCache, provider: 'codex' } : undefined,
-        )
+      const startedAtMs = parsed.payloadTimestampMs ?? parsed.recordTimestampMs
+      const updatedAtMs = parsed.recordTimestampMs ?? parsed.payloadTimestampMs
+      const fingerprint = await fs
+        .stat(filePath)
+        .then(stats => ({ mtimeMs: stats.mtimeMs, size: stats.size }))
+        .catch(() => null)
+      const preview = await readSessionFileWithCache(
+        filePath,
+        fingerprint,
+        async () => readFirstMatchingJsonlValue(filePath, parseCodexFirstUserPreview),
+        titleCache ? { store: titleCache, provider: 'codex' } : undefined,
+      )
 
-        return {
-          sessionId: parsed.sessionId,
-          provider: 'codex' as const,
-          cwd: resolvedCwd,
-          title: preview,
-          preview,
-          startedAt: toIsoString(startedAtMs),
-          updatedAt: toIsoString(updatedAtMs ?? startedAtMs),
-          source: 'codex-file' as const,
-        }
-      }),
-    )
+      return {
+        sessionId: parsed.sessionId,
+        provider: 'codex' as const,
+        cwd: resolvedCwd,
+        title: preview,
+        preview,
+        startedAt: toIsoString(startedAtMs),
+        updatedAt: toIsoString(updatedAtMs ?? startedAtMs),
+        source: 'codex-file' as const,
+      }
+    })
   ).filter(isNonNull)
 
   return sortSessionSummaries(sessions, limit)

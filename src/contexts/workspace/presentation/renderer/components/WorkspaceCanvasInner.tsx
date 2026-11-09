@@ -323,6 +323,7 @@ export function WorkspaceCanvasInner({
     terminalDisplayMetrics,
   })
   const applyChanges = workspaceCanvasHooks.useWorkspaceCanvasRuntimeIntegrations({
+    workspaceId,
     actionRefs,
     nodeStore,
     taskUi,
