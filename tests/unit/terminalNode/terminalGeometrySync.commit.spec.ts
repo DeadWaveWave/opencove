@@ -12,6 +12,13 @@ import {
   ptyResize,
 } from './terminalGeometrySync.testHarness'
 
+const expectedGeometryResult = (
+  cols: number,
+  rows: number,
+  changed: boolean,
+  geometryRevision: number | null,
+) => ({ cols, rows, changed, geometryRevision })
+
 describe('terminal geometry commit helpers', () => {
   beforeEach(() => {
     installTerminalGeometrySyncTestWindow()
@@ -68,7 +75,7 @@ describe('terminal geometry commit helpers', () => {
       authority: { role: 'controller', epoch: 3 },
     })
 
-    await expect(pendingCommit).resolves.toStrictEqual({ cols: 65, rows: 44, changed: true })
+    await expect(pendingCommit).resolves.toStrictEqual(expectedGeometryResult(65, 44, true, 7))
     expect(terminal.resize).toHaveBeenCalledTimes(1)
     expect(terminal.resize).toHaveBeenCalledWith(65, 44)
     expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 65, rows: 44 })
@@ -104,7 +111,7 @@ describe('terminal geometry commit helpers', () => {
       geometryRevision,
     })
 
-    expect(result).toStrictEqual({ cols: 80, rows: 24, changed: false })
+    expect(result).toStrictEqual(expectedGeometryResult(80, 24, false, 9))
     expect(terminal.resize).not.toHaveBeenCalled()
     expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 80, rows: 24 })
   })
@@ -129,7 +136,7 @@ describe('terminal geometry commit helpers', () => {
       reason: 'frame_commit',
     })
 
-    expect(size).toStrictEqual({ cols: 64, rows: 44, changed: true })
+    expect(size).toStrictEqual(expectedGeometryResult(64, 44, true, 1))
     expect(terminal.resize).toHaveBeenCalledWith(64, 44)
     expect(ptyResize).toHaveBeenCalledOnce()
   })
@@ -156,7 +163,7 @@ describe('terminal geometry commit helpers', () => {
       geometryRevision,
     })
 
-    expect(size).toStrictEqual({ cols: 64, rows: 44, changed: true })
+    expect(size).toStrictEqual(expectedGeometryResult(64, 44, true, 1))
     expect(terminal.resize).toHaveBeenCalledWith(64, 44)
     expect(ptyResize).toHaveBeenCalledOnce()
   })
@@ -182,7 +189,7 @@ describe('terminal geometry commit helpers', () => {
 
     const size = await commitInitialGeometry(null)
 
-    expect(size).toStrictEqual({ cols: 64, rows: 44, changed: false })
+    expect(size).toStrictEqual(expectedGeometryResult(64, 44, false, null))
     expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 64, rows: 44 })
     expect(fitAddon.proposeDimensions).not.toHaveBeenCalled()
     expect(terminal.resize).toHaveBeenCalledWith(64, 44)
@@ -210,7 +217,7 @@ describe('terminal geometry commit helpers', () => {
 
     const size = await commitInitialGeometry(null)
 
-    expect(size).toStrictEqual({ cols: 65, rows: 44, changed: true })
+    expect(size).toStrictEqual(expectedGeometryResult(65, 44, true, 1))
     expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 65, rows: 44 })
     expect(fitAddon.proposeDimensions).toHaveBeenCalled()
     expect(terminal.resize).toHaveBeenCalledWith(65, 44)
@@ -340,7 +347,7 @@ describe('terminal geometry commit helpers', () => {
       serializedScreen: '',
     } as never)
 
-    expect(size).toStrictEqual({ cols: 72, rows: 20, changed: false })
+    expect(size).toStrictEqual(expectedGeometryResult(72, 20, false, null))
     expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 72, rows: 20 })
     expect(fitAddon.proposeDimensions).not.toHaveBeenCalled()
     expect(terminal.resize).toHaveBeenCalledWith(72, 20)
@@ -380,7 +387,7 @@ describe('terminal geometry commit helpers', () => {
       serializedScreen: 'opencode',
     } as never)
 
-    expect(size).toStrictEqual({ cols: 92, rows: 40, changed: false })
+    expect(size).toStrictEqual(expectedGeometryResult(92, 40, false, null))
     expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 92, rows: 40 })
     expect(fitAddon.proposeDimensions).not.toHaveBeenCalled()
     expect(terminal.resize).toHaveBeenCalledWith(92, 40)
@@ -420,7 +427,7 @@ describe('terminal geometry commit helpers', () => {
       serializedScreen: 'opencode',
     } as never)
 
-    expect(size).toStrictEqual({ cols: 69, rows: 44, changed: true })
+    expect(size).toStrictEqual(expectedGeometryResult(69, 44, true, 1))
     expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 69, rows: 44 })
     expect(fitAddon.proposeDimensions).toHaveBeenCalled()
     expect(terminal.resize).toHaveBeenCalledWith(69, 44)
@@ -468,7 +475,7 @@ describe('terminal geometry commit helpers', () => {
       serializedScreen: 'codex',
     } as never)
 
-    expect(size).toStrictEqual({ cols: 68, rows: 40, changed: true })
+    expect(size).toStrictEqual(expectedGeometryResult(68, 40, true, 1))
     expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 68, rows: 40 })
     expect(fitAddon.proposeDimensions).toHaveBeenCalled()
     expect(terminal.resize).toHaveBeenCalledWith(68, 40)

@@ -48,9 +48,9 @@ exports[`replays a real presentation-session serialization of alternate content 
     "  Permission   needed",
     "  你  ready",
   ],
-  "serializedScreen": "NORMAL HISTORY[?1049h[HClaude[1CCode
+  "serializedScreen": "[!p[?9;1000;1002;1003lNORMAL HISTORY[?1049h[HClaude[1CCode
 [2CPermission[3Cneeded
-[2C你[2Cready[?2004h",
+[2C你[2Cready[?2004h[?1006l[?1016l[?25h",
 }
 `;
 
@@ -61,8 +61,8 @@ exports[`replays a real presentation-session serialization of normal content 1`]
     "  Permission   needed",
     "  你  ready",
   ],
-  "serializedScreen": "Claude[1CCode
+  "serializedScreen": "[!p[?9;1000;1002;1003lClaude[1CCode
 [2CPermission[3Cneeded
-[2C你[2Cready[?2004h",
+[2C你[2Cready[?2004h[?1006l[?1016l[?25h",
 }
 `;

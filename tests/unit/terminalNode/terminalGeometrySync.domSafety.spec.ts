@@ -71,7 +71,7 @@ describe('terminal geometry stable measurement', () => {
       reason: 'frame_commit',
     })
 
-    expect(size).toStrictEqual({ cols: 132, rows: 41, changed: true })
+    expect(size).toStrictEqual({ cols: 132, rows: 41, changed: true, geometryRevision: 1 })
     expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 132, rows: 41 })
     expect(ptyResize).toHaveBeenCalledWith({
       sessionId: 'session-initial-geometry',
@@ -109,7 +109,7 @@ describe('terminal geometry stable measurement', () => {
       reason: 'frame_commit',
     })
 
-    expect(size).toStrictEqual({ cols: 104, rows: 41, changed: true })
+    expect(size).toStrictEqual({ cols: 104, rows: 41, changed: true, geometryRevision: 1 })
     expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 104, rows: 41 })
     expect(terminal.resize).toHaveBeenLastCalledWith(104, 41)
     expect(ptyResize).toHaveBeenCalledWith({
@@ -145,7 +145,7 @@ describe('terminal geometry stable measurement', () => {
       reason: 'frame_commit',
     })
 
-    expect(size).toStrictEqual({ cols: 97, rows: 40, changed: true })
+    expect(size).toStrictEqual({ cols: 97, rows: 40, changed: true, geometryRevision: 1 })
     expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 97, rows: 40 })
     expect(terminal.resize).toHaveBeenCalledWith(97, 40)
     expect(terminal.resize).toHaveBeenCalledTimes(1)
@@ -186,7 +186,7 @@ describe('terminal geometry stable measurement', () => {
       reason: 'appearance_commit',
     })
 
-    expect(size).toStrictEqual({ cols: 104, rows: 41, changed: true })
+    expect(size).toStrictEqual({ cols: 104, rows: 41, changed: true, geometryRevision: 1 })
     expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 104, rows: 41 })
     expect(terminal.resize).toHaveBeenLastCalledWith(104, 41)
     expect(ptyResize).toHaveBeenCalledWith({

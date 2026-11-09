@@ -14,6 +14,11 @@ import { registerRuntimeTerminalRendererHealth } from './runtimeRendererHealth'
 import type { TerminalRendererRecoveryRequest } from './runtimeRendererHealth'
 import type { TerminalRendererKind } from './useWebglCanvasTransformCleanupScheduler'
 import type { XtermSession } from './xtermSession'
+import type { InitialTerminalNodeGeometryCommitResult } from './terminalGeometryTypes'
+import {
+  requestPresentationSnapshot,
+  requestPresentationSnapshotAfterGeometry,
+} from './presentationSnapshotGeometry'
 
 export { attachAfterPresentationSnapshot } from './presentationSnapshotReplayCursor'
 
@@ -292,86 +297,10 @@ export function scheduleTestEnvironmentTerminalAutoFocus(options: {
   })
 }
 
-export function requestPresentationSnapshot(
-  sessionId: string,
-): Promise<PresentationSnapshotTerminalResult | null> {
-  return typeof window.opencoveApi.pty.presentationSnapshot === 'function'
-    ? window.opencoveApi.pty
-        .presentationSnapshot({ sessionId })
-        .then(snapshot => snapshot ?? null)
-        .catch(() => null)
-    : Promise.resolve(null)
-}
-
-export async function requestPresentationSnapshotAfterGeometry({
-  sessionId,
-  expectedGeometry,
-  minAppliedSeqExclusive = null,
-  requireMeaningfulSerializedScreen = false,
-  requestSnapshot = requestPresentationSnapshot,
-  wait = attempt =>
-    new Promise<void>(resolve => {
-      window.setTimeout(resolve, Math.min(50 + attempt * 25, 150))
-    }),
-  maxAttempts = 8,
-}: {
-  sessionId: string
-  expectedGeometry: { cols: number; rows: number } | null
-  minAppliedSeqExclusive?: number | null
-  requireMeaningfulSerializedScreen?: boolean
-  requestSnapshot?: (sessionId: string) => Promise<PresentationSnapshotTerminalResult | null>
-  wait?: (attempt: number) => Promise<void>
-  maxAttempts?: number
-}): Promise<PresentationSnapshotTerminalResult | null> {
-  const minAppliedSeq =
-    typeof minAppliedSeqExclusive === 'number' && Number.isFinite(minAppliedSeqExclusive)
-      ? Math.max(0, Math.floor(minAppliedSeqExclusive))
-      : null
-
-  if (expectedGeometry === null && minAppliedSeq === null && !requireMeaningfulSerializedScreen) {
-    return await requestSnapshot(sessionId)
-  }
-
-  const attemptRequest = async (
-    attempt: number,
-    bestSequenceFenceSnapshot: PresentationSnapshotTerminalResult | null,
-  ): Promise<PresentationSnapshotTerminalResult | null> => {
-    if (attempt >= maxAttempts) {
-      return bestSequenceFenceSnapshot
-    }
-
-    const snapshot = await requestSnapshot(sessionId)
-    if (!snapshot) {
-      if (attempt < maxAttempts - 1) {
-        await wait(attempt)
-      }
-
-      return attemptRequest(attempt + 1, bestSequenceFenceSnapshot)
-    }
-
-    const hasExpectedGeometry =
-      expectedGeometry === null ||
-      (snapshot.cols === expectedGeometry.cols && snapshot.rows === expectedGeometry.rows)
-    const hasRequiredOutput = minAppliedSeq === null || snapshot.appliedSeq > minAppliedSeq
-    const hasRequiredScreen =
-      !requireMeaningfulSerializedScreen ||
-      containsMeaningfulTerminalDisplayContent(snapshot.serializedScreen)
-    const nextSequenceFenceSnapshot =
-      hasExpectedGeometry && hasRequiredOutput ? snapshot : bestSequenceFenceSnapshot
-
-    if (hasExpectedGeometry && hasRequiredOutput && hasRequiredScreen) {
-      return snapshot
-    }
-
-    if (attempt < maxAttempts - 1) {
-      await wait(attempt)
-    }
-
-    return attemptRequest(attempt + 1, nextSequenceFenceSnapshot)
-  }
-
-  return attemptRequest(0, null)
-}
+export {
+  requestPresentationSnapshot,
+  requestPresentationSnapshotAfterGeometry,
+} from './presentationSnapshotGeometry'
 
 export function prepareRuntimePresentationAttach(options: {
   ptyApi: AttachablePtyApi
@@ -380,7 +309,7 @@ export function prepareRuntimePresentationAttach(options: {
   commitInitialGeometry: (
     baselineSnapshot: PresentationSnapshotTerminalResult | null,
     attached: AttachTerminalResult | undefined,
-  ) => Promise<{ cols: number; rows: number; changed: boolean } | null>
+  ) => Promise<InitialTerminalNodeGeometryCommitResult | null>
   requirePostGeometrySnapshotOutput?: boolean
 }): {
   attachPromise: Promise<AttachTerminalResult | undefined>
@@ -404,6 +333,13 @@ export function prepareRuntimePresentationAttach(options: {
     preAttachPresentationSnapshotPromise,
     initialGeometryCommitPromise,
   ]).then(([baselineSnapshot, initialGeometry]) => {
+    const expectedGeometry = initialGeometry
+      ? {
+          cols: initialGeometry.cols,
+          rows: initialGeometry.rows,
+          geometryRevision: initialGeometry.geometryRevision,
+        }
+      : null
     if (options.isLiveSessionReattach) {
       if (!initialGeometry) {
         return baselineSnapshot
@@ -411,7 +347,7 @@ export function prepareRuntimePresentationAttach(options: {
 
       return requestPresentationSnapshotAfterGeometry({
         sessionId: options.sessionId,
-        expectedGeometry: { cols: initialGeometry.cols, rows: initialGeometry.rows },
+        expectedGeometry,
         maxAttempts: initialGeometry.changed === true ? 8 : 1,
       }).then(snapshot => snapshot ?? (initialGeometry.changed === true ? null : baselineSnapshot))
     }
@@ -425,9 +361,7 @@ export function prepareRuntimePresentationAttach(options: {
 
     return requestPresentationSnapshotAfterGeometry({
       sessionId: options.sessionId,
-      expectedGeometry: initialGeometry
-        ? { cols: initialGeometry.cols, rows: initialGeometry.rows }
-        : null,
+      expectedGeometry,
       minAppliedSeqExclusive: shouldRequireFreshMeaningfulScreen
         ? (baselineSnapshot?.appliedSeq ?? 0)
         : null,

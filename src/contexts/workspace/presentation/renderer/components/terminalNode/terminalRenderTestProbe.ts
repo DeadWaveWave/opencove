@@ -1,3 +1,111 @@
+import type { Terminal } from '@xterm/xterm'
+
+export type TerminalEmulationTestProjection = {
+  bufferKind: 'normal' | 'alternate' | null
+  bracketedPasteMode: boolean | null
+  applicationCursorKeysMode: boolean | null
+  applicationKeypadMode: boolean | null
+  sendFocusMode: boolean | null
+  originMode: boolean | null
+  wraparoundMode: boolean | null
+  mouseTrackingMode: string | null
+  mouseEncoding: string | null
+  cursorVisible: boolean | null
+}
+
+export function readTerminalEmulationStateForTest(value: unknown): TerminalEmulationTestProjection {
+  const terminal = value as Partial<Pick<Terminal, 'buffer' | 'modes'>> & {
+    _core?: {
+      coreService?: { isCursorHidden?: boolean }
+      coreMouseService?: { activeEncoding?: string }
+    }
+  }
+  const type = terminal?.buffer?.active?.type
+  const hidden = terminal?._core?.coreService?.isCursorHidden
+  return {
+    bufferKind: type === 'normal' || type === 'alternate' ? type : null,
+    bracketedPasteMode: terminal?.modes?.bracketedPasteMode ?? null,
+    applicationCursorKeysMode: terminal?.modes?.applicationCursorKeysMode ?? null,
+    applicationKeypadMode: terminal?.modes?.applicationKeypadMode ?? null,
+    sendFocusMode: terminal?.modes?.sendFocusMode ?? null,
+    originMode: terminal?.modes?.originMode ?? null,
+    wraparoundMode: terminal?.modes?.wraparoundMode ?? null,
+    mouseTrackingMode: terminal?.modes?.mouseTrackingMode ?? null,
+    mouseEncoding: terminal?._core?.coreMouseService?.activeEncoding ?? null,
+    cursorVisible: typeof hidden === 'boolean' ? !hidden : null,
+  }
+}
+
+export type TerminalWriteTestRecord = {
+  at: number
+  data: string
+  containsRIS: boolean
+  truncated: boolean
+}
+const writeCaptures = new WeakMap<
+  object,
+  {
+    records: TerminalWriteTestRecord[]
+    owners: Set<symbol>
+    restore: () => void
+  }
+>()
+
+// Installed only by the enabled terminal test API. Observe the exact renderer write
+// (including local RIS), without changing its bytes, callback, or parser ordering.
+export function observeTerminalWritesForTest(value: unknown): () => void {
+  const terminal = value as Pick<Terminal, 'write'>
+  if (typeof terminal?.write !== 'function') {
+    return () => undefined
+  }
+  const owner = Symbol('write-capture')
+  const existing = writeCaptures.get(terminal)
+  if (existing) {
+    existing.owners.add(owner)
+  } else {
+    const original = terminal.write
+    const records: TerminalWriteTestRecord[] = []
+    let chars = 0
+    const wrapped: Terminal['write'] = function (data, callback) {
+      const text = typeof data === 'string' ? data : new TextDecoder().decode(data)
+      // Bound capture to 256k UTF-16 characters, including any oversized single write.
+      const captured = text.slice(-256_000)
+      records.push({
+        at: Date.now(),
+        data: captured,
+        containsRIS: text.includes('\x1bc'),
+        truncated: text !== captured,
+      })
+      chars += captured.length
+      while (chars > 256_000 || records.length > 256) {
+        chars -= records.shift()!.data.length
+      }
+      original.call(terminal, data, callback)
+    }
+    terminal.write = wrapped
+    writeCaptures.set(terminal, {
+      records,
+      owners: new Set([owner]),
+      restore: () => {
+        if (terminal.write === wrapped) {
+          terminal.write = original
+        }
+      },
+    })
+  }
+  return () => {
+    const capture = writeCaptures.get(terminal)
+    if (capture?.owners.delete(owner) && capture.owners.size === 0) {
+      capture.restore()
+      writeCaptures.delete(terminal)
+    }
+  }
+}
+
+export function readTerminalWritesForTest(value: object | undefined): TerminalWriteTestRecord[] {
+  return value ? [...(writeCaptures.get(value)?.records ?? [])] : []
+}
+
 export type TerminalRenderMetricsTestProjection = {
   rendererConstructorName: string | null
   rendererDomRowElementCount: number | null
