@@ -163,8 +163,10 @@ Terminal:
 
 - 创建 agent/terminal 时，非空 `title` 会固定名称；省略或仅空白则继续使用自动标题。
 - 重命名要求非空 title，去除首尾空白后按字面保存和显示，调用者提供的 provider 前缀也保留；旧 UI 装饰和自动标题维持原展示规则；可同时更新 frame，也可只更新 frame 并保留名称和固定状态。
+- 标题与 pin/literal 标志是同一命名意图；未固定的 Renderer 自动标题不能在待发布状态合并或 guarded rebase 中覆盖它，其他本地编辑继续合并。
 - 固定名称由 Worker 持久化；会话标题同步和启动标题不能覆盖它，已有未固定节点保持自动标题行为。
 - `agent stop` 支持 agent 节点和当前会话中有存活 agent 观测的 terminal，停止整个会话但保留节点，不发送终端输入。
+- agent-only 远端停止暂不支持：请求在派发前拒绝，不会降级成无条件 session.kill。
 - 已退出 agent 的保留观测只返回 not_running，不停止仍存活的 shell 或后续无关工作；Worker 在真正停止前再次检查准入。
 - 返回 `{nodeId, sessionId, stopped: true}` 表示已请求停止，进程退出异步完成；已退出返回 `stopped: false, reason: "not_running"`，exit 0。
 - 绑定变化返回 exit 2；无绑定返回 exit 1。普通 terminal 会提示使用 `session kill --session <id>`。
@@ -206,3 +208,5 @@ Node selectors also accept `--space <selector>` for names and prefixes. Exact ID
 retain precedence; ambiguous names are refused with space names and note previews.
 Lists accept `--limit <n>` and report cut-list totals in `truncated`; see the
 [CLI output and selector guide](README.md#selector-diagnostics-and-bounded-output).
+
+`session.stopNode` 不带 `agentOnly` 时保留通用清理语义：自然退出的 agent 仍可有受其拥有的子进程，清理请求继续交给 termination owner；这与 CLI `agent stop` 的 exited no-op 是两种明确用途。

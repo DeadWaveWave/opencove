@@ -8,7 +8,7 @@ import { normalizePersistedAppState } from '../../../../platform/persistence/sql
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import { findNodeForNodeControl } from '../../../../contexts/workspace/application/nodeControl/nodeDtos'
 import type { ControlSurface } from '../controlSurface'
-import type { ControlSurfacePtyRuntime } from './sessionPtyRuntime'
+import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRuntime'
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 
 /** Exact durable node -> current PTY binding, rechecked after queued readiness work. */
@@ -17,7 +17,7 @@ export function registerSessionInputHandlers(
   deps: {
     getPersistenceStore(): Promise<PersistenceStore>
     ptyStreamHub: PtyStreamHub
-    ptyRuntime: Pick<ControlSurfacePtyRuntime, 'kill'>
+    ptyRuntime: Pick<MultiEndpointPtyRuntime, 'kill' | 'getSessionRoute'>
   },
 ) {
   async function binding(nodeId: string) {
@@ -28,7 +28,7 @@ export function registerSessionInputHandlers(
     if (!node || !['agent', 'terminal'].includes(node.kind) || !node.sessionId) {
       throw createAppError('session.not_found')
     }
-    return { sessionId: node.sessionId, kind: node.kind }
+    return { sessionId: node.sessionId, kind: node.kind, workerBinding: node.workerBinding }
   }
   registerOperation(control, sessionStopNodeOperation, {
     async handle(ctx, input) {
@@ -39,11 +39,22 @@ export function registerSessionInputHandlers(
         })
       }
       ctx.assertActive?.()
-      // No await between the final binding check and the runtime side effect.
-      if (!deps.ptyStreamHub.isSessionActive(input.sessionId)) {
-        return { ...input, requested: false, stopped: false, reason: 'not_running' as const }
-      }
+      // No await between the final binding check and the local runtime side effect.
       if (input.agentOnly) {
+        const route = deps.ptyRuntime.getSessionRoute?.(input.sessionId)
+        if (
+          route?.kind === 'remote' ||
+          (bound.workerBinding && bound.workerBinding.endpointId !== 'local')
+        ) {
+          throw createAppError('node.unsupported_operation', {
+            debugMessage:
+              'Agent-only stopping is unavailable for remote targets. No stop was sent. Stop the agent from the Worker that runs it.',
+            details: { reason: 'remote_agent_stop_unsupported' },
+          })
+        }
+        if (!deps.ptyStreamHub.isSessionActive(input.sessionId)) {
+          return { ...input, requested: false, stopped: false, reason: 'not_running' as const }
+        }
         const agent = deps.ptyStreamHub.observeAgentState(input.sessionId)
         if (agent && (agent.nodeId !== input.nodeId || agent.sessionId !== input.sessionId)) {
           throw createAppError('common.invalid_input', {

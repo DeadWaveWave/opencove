@@ -150,6 +150,43 @@ test('CLI names survive session titles, rename by name and stop without removing
     await expect(
       page.locator(`[data-id="${named.id}"] [data-testid="terminal-node-title-display"]`),
     ).toHaveText('codex · Lead')
+    // Capture an unpinned renderer candidate, then publish it after a concurrent CLI rename.
+    const stale = await page.evaluate(async nodeId => {
+      const snapshot = await window.opencoveApi.persistence.readAppState()
+      const state = snapshot.state as {
+        workspaces: Array<{
+          nodes: Array<{ id: string; title: string; titlePinnedByUser?: boolean }>
+        }>
+      }
+      const pending = state.workspaces
+        .flatMap(project => project.nodes)
+        .find(node => node.id === nodeId)
+      if (!pending || pending.titlePinnedByUser || snapshot.revision === null) {
+        throw new Error('Expected an unpinned agent and a revisioned snapshot')
+      }
+      pending.title = 'codex · Pending renderer title'
+      return { state, baseRevision: snapshot.revision }
+    }, automatic.id)
+    expect(
+      await cli(
+        `opencove node update agent --node ${automatic.id} --title "Auto lead" --fields id,title`,
+        'PIN_AUTOMATIC',
+      ),
+    ).toMatchObject({ node: { id: automatic.id, title: 'Auto lead' } })
+    const published = await page.evaluate(
+      async payload => await window.opencoveApi.persistence.writeAppState(payload),
+      stale,
+    )
+    expect(published.ok).toBe(true)
+    expect(
+      await cli(
+        'opencove node get --node "Auto lead" --fields id,title',
+        'PIN_SURVIVES_PUBLICATION',
+      ),
+    ).toEqual({ node: { id: automatic.id, title: 'Auto lead' } })
+    await expect(
+      page.locator(`[data-id="${automatic.id}"] [data-testid="terminal-node-title-display"]`),
+    ).toHaveText('Auto lead')
     expect(await cli('opencove agent stop --node "codex · Lead"', 'STOP_AGENT')).toEqual({
       nodeId: named.id,
       sessionId: named.sessionId,

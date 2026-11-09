@@ -1,5 +1,4 @@
 // @vitest-environment node
-import { DatabaseSync } from 'node:sqlite'
 import type Database from 'better-sqlite3'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { getTableColumns, getTableName, type Table } from 'drizzle-orm'
@@ -12,17 +11,22 @@ import { ensurePersistedWorkspace } from '../../../src/contexts/workspace/presen
 import { toRuntimeNodes } from '../../../src/contexts/workspace/presentation/renderer/utils/nodeTransform'
 import { toPersistedState } from '../../../src/contexts/workspace/presentation/renderer/utils/persistence/toPersistedState'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
+import { openWritableSqliteDb } from '../../support/sqlite'
 import { createMinimalState } from '../controlSurface/controlSurfaceHttpServer.sessionStreaming.testUtils'
 
-// Use Node's bundled SQLite engine: real SQL/migration checks without an Electron ABI or rebuild.
-function database() {
-  const sql = new DatabaseSync(':memory:')
+// Reuse the real SQLite loader used by transcript tests; no experimental import at collection.
+async function database() {
+  const sql = await openWritableSqliteDb(':memory:')
   const writeDb = {
     exec: (query: string) => sql.exec(query),
     prepare: (query: string) => sql.prepare(query),
     pragma: (query: string, options?: { simple: boolean }) => {
+      if (!options?.simple) {
+        sql.exec(`PRAGMA ${query}`)
+        return
+      }
       const rows = sql.prepare(`PRAGMA ${query}`).all()
-      return options?.simple ? Object.values(rows[0] ?? {})[0] : rows
+      return Object.values(rows[0] ?? {})[0]
     },
     transaction: (callback: () => unknown) => () => {
       sql.exec('BEGIN')
@@ -57,8 +61,8 @@ function database() {
   return { sql, writeDb, readDb }
 }
 
-it('repairs an old database and round-trips literal names through SQL, hydration and Renderer persistence', () => {
-  const db = database()
+it('repairs an old database and round-trips literal names through SQL, hydration and Renderer persistence', async () => {
+  const db = await database()
   try {
     migrate(db.writeDb)
     // Model an installed database that predates the additive literal column.

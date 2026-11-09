@@ -101,7 +101,7 @@ describe('queued node binding validation', () => {
 })
 
 it.each([true, false])(
-  'stops only a live bound PTY (live=%s) without deleting or writing input',
+  'preserves generic cleanup for a bound PTY regardless of active state: %s',
   async live => {
     const store = createInMemoryPersistenceStore()
     const state = createMinimalState('/repo', 'project', 'space')
@@ -146,14 +146,11 @@ it.each([true, false])(
       value: {
         nodeId: 'node',
         sessionId: 'session',
-        stopped: live,
-        ...(live ? {} : { reason: 'not_running' }),
+        requested: true,
+        stopped: true,
       },
     })
-    expect(kill).toHaveBeenCalledTimes(live ? 1 : 0)
-    if (live) {
-      expect(kill).toHaveBeenCalledWith('session')
-    }
+    expect(kill).toHaveBeenCalledExactlyOnceWith('session')
     expect(writeAutomation).not.toHaveBeenCalled()
     expect(await store.readAppState()).toEqual(state)
   },

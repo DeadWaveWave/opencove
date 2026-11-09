@@ -135,11 +135,13 @@ opencove agent read --node "Reviewer" --turn turn-123
 Give a window a stable name with `node create agent --title "Reviewer"` (also supported for terminals).
 Rename it with `node update agent --node "Reviewer" --title "Lead"`; use `terminal` for terminal windows.
 Names are trimmed, saved and displayed literally, including any provider prefix you include. Auto titles and older UI-decorated titles keep their existing presentation. Automatic titles remain enabled when creation has no nonblank title.
+Pinned names also take precedence over pending renderer auto-titles during publication and guarded rebasing. Title and pin/literal flags are reconciled as one naming intent; competing explicit renames retain the existing three-way conflict rules.
 Agent/terminal updates accept a nonblank title and/or a frame and reject all data fields. A frame-only update preserves the existing title and pin.
 
 `opencove agent stop --node "Lead"` stops the bound session and keeps the canvas node.
 It supports agent windows and terminals with a live observed agent; for terminals it stops the entire session, including the shell.
 An exited terminal agent is an idempotent no-op: its surviving shell and unrelated foreground work are kept running. The Worker rechecks agent eligibility immediately before stopping.
+Remote agent-stop targets are refused before dispatch until the executing Worker can perform a conditional stop. No unconditional remote session kill is sent.
 Plain terminals are refused with a `session kill --session <id>` hint.
 The result is `{nodeId, sessionId, stopped: true}` when stopping is requested; process exit is asynchronous.
 An already-exited bound session returns `{nodeId, sessionId, stopped: false, reason: "not_running"}` with exit 0.

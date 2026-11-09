@@ -27,7 +27,7 @@ export const agentStopCommand = defineCommand({
   operationAliases: ['session.stopNode'],
   summary: 'Stop the agent session bound to a canvas node',
   description: [
-    'Stop an agent window, or a terminal that still hosts a live observed agent, while keeping the canvas node. A terminal’s entire session stops, including its shell. An exited agent is a no-op even if its shell is still running. Plain terminals are refused; use session kill --session <id> to stop a shell session.',
+    'Stop an agent window, or a terminal that still hosts a live observed agent, while keeping the canvas node. A terminal’s entire session stops, including its shell. An exited agent is a no-op even if its shell is still running. Plain terminals are refused; use session kill --session <id> to stop a shell session. Remote targets are refused before dispatch because safe agent-only stopping is not supported there yet.',
     'Returns {nodeId, sessionId, stopped: true} when the stop is requested. An already-exited session returns stopped: false and reason: not_running (exit 0). A changed node/session binding refuses the stop (exit 2); inspect the node again before deciding what to stop. Stopping never sends terminal input.',
   ].join('\n\n'),
   options: { node: stringOption('Node ID', true) },
