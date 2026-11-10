@@ -10,8 +10,8 @@ Agent terminals cannot answer permission dialogs, read or change private setting
 
 | Group       | Commands                                                                                                                                                                                          |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `project`   | `list`                                                                                                                                                                                            |
-| `space`     | `list`, `get`                                                                                                                                                                                     |
+| `project`   | `list`, `add`                                                                                                                                                                                            |
+| `space`     | `list`, `get`, `create`                                                                                                                                                                                     |
 | `node`      | `list [--root-canvas]`, `get`, `create note/task/website/agent/terminal [--root-canvas]`, `update note/task/website/agent/terminal`, `delete`                                                                                                    |
 | `canvas`    | `focus node`, `focus space`                                                                                                                                                                       |
 | `api`       | `ops`, `schema <operation-id>`, `call <operation-id>`                                                                                                                                             |
@@ -36,6 +36,8 @@ opencove fs write --mount mount-123 --uri file:///notes.txt --content-file ./not
 opencove session run-agent --space space-123 --prompt-file ./task.txt
 opencove plugin run sample status --params-file ./params.json
 ```
+
+Space 创建与项目添加 / Space creation and project addition: [命令、输出与授权说明](SPACE_PROJECT_CREATION.md)。
 
 ## Output and exit codes
 

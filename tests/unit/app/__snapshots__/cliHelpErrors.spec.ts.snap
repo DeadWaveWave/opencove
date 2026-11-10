@@ -86,6 +86,64 @@ Global options: see "opencove --help".
 "
 `;
 
+exports[`documents named-window commands offline: "project" 1`] = `
+"Usage: opencove project add --path <dir> [options]
+
+Add a local directory as a project
+
+The path must be an existing absolute local directory on the Worker. An existing project at the same path is reused with its saved name. Agents cannot add projects: ask the user to add the project in OpenCove.
+
+Options:
+  --path <dir>   Add this local directory (required)
+  --name <name>  Name a new project; defaults to the directory name
+
+Table output (-o table): not supported.
+Projectable fields: id, name, path, defaultSpace, defaultSpace.id, defaultSpace.name, defaultSpace.directoryPath, defaultSpace.rect, defaultSpace.rect.x, defaultSpace.rect.y, defaultSpace.rect.width, defaultSpace.rect.height
+
+Projection example:
+  opencove project add --path '<dir>' --fields id
+  {"id":"project-123"}
+
+Examples:
+  opencove project add --path /workspace/app --name "App"
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`documents named-window commands offline: "space" 1`] = `
+"Usage: opencove space create --name <name> [--project <selector>] [--directory <path>] | --name <name> --in <selector> [--frame <json>] [--move <selector>]...
+
+Create a top-level or child space
+
+Top-level spaces use your terminal node’s current project unless --project is given; outside OpenCove, supply --project. Placement is automatic. --directory must be an existing absolute local directory within the project’s default mount; symlinks cannot escape that mount. Omit it to use the mount root.
+
+With --in, create a child space in the selected parent and inherit its directory. --move selects direct members of that parent. Without --frame, the boundary encloses the moved nodes, or defaults to 420×300 at the parent’s center. The server fits the boundary inside the parent and reports the applied rect.
+
+Options:
+  --name <name>         Name the new space (required)
+  --project <selector>  Select the project, or narrow the parent lookup; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --directory <path>    Set a top-level space’s working directory
+  --in <selector>       Create inside a parent space; accepts @self, an exact ID, exact name or unique ID prefix (6+ characters)
+  --frame <json>        Set the child boundary: {"x":0,"y":0,"width":420,"height":300}; requires --in
+  --move <selector>     Move a node from the parent; repeat for more nodes. Accepts @self, an exact ID, exact name or unique ID prefix (6+ characters); requires --in
+
+Table output (-o table): not supported.
+Projectable fields: id, name, projectId, parentSpaceId, rect, rect.x, rect.y, rect.width, rect.height, directoryPath, movedNodeIds
+
+Projection example:
+  opencove space create --name '<name>' --fields id
+  {"id":"space-123"}
+
+Examples:
+  opencove space create --name "Review"
+  opencove space create --name "Migration" --project project-123 --directory /workspace/migration
+  opencove space create --name "Review notes" --in @self --move "Brief" --move "Checklist"
+
+Global options: see "opencove --help".
+"
+`;
+
 exports[`error golden texts (TTY=false) 1`] = `
 {
   "missing required option": "{"error":{"code":"cli.usage","message":"Missing required option --space (or another target space option) for \\"opencove node create note\\".","hint":"Choose a Space, or add --root-canvas to create outside every Space."}}
@@ -215,6 +273,17 @@ Global options: see "opencove --help".
 "
 `;
 
+exports[`lists real project subcommands offline 1`] = `
+"Usage: opencove project <command> [options]
+
+Commands:
+  add   Add a local directory as a project
+  list  List projects
+
+Global options: see "opencove --help".
+"
+`;
+
 exports[`lists real pty subcommands offline 1`] = `
 "Usage: opencove pty <command> [options]
 
@@ -246,6 +315,18 @@ Commands:
   get        Inspect an agent session
   final      Read the final agent message
   kill       Stop an agent session
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real space subcommands offline 1`] = `
+"Usage: opencove space <command> [options]
+
+Commands:
+  create  Create a top-level or child space
+  list    List spaces
+  get     Get a space
 
 Global options: see "opencove --help".
 "

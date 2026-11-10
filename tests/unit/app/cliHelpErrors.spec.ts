@@ -5,6 +5,8 @@ import type { CliIo } from '../../../src/app/cli/core/io'
 import { commands } from '../../../src/app/cli/commands'
 import { help } from '../../../src/app/cli/core/help'
 const groups = [
+  'project',
+  'space',
   'agent',
   'node',
   'worker',
@@ -177,6 +179,8 @@ it('documents the supported browser modes and task priorities', async () => {
 })
 
 it.each([
+  ['space', 'create'],
+  ['project', 'add'],
   ['agent', 'stop'],
   ['node', 'update', 'agent'],
   ['node', 'update', 'terminal'],

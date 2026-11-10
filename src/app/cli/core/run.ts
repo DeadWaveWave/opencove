@@ -93,6 +93,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       io.stdout.write(help(commands, command.path))
       return 0
     }
+    command.validateBeforeConnect?.(args, io.env)
     let input = command.buildInput?.(args)
     const id =
       command.path.join(' ') === 'api call'

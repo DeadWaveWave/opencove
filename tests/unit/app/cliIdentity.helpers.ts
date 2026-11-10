@@ -29,6 +29,12 @@ export function identityFixture(inside = true) {
   const values: Record<string, unknown> = {
     'system.whoami': inside ? who : { kind: 'bearer', scopeTier: 'admin' },
     'project.list': { projects: [project] },
+    'space.create': {
+      projectId: project.id,
+      spaceId: space.id,
+      mountId: 'mount',
+      space: { ...space, rect: { x: 0, y: 0, width: 420, height: 300 } },
+    },
     'space.list': { projectId: project.id, spaces: [space] },
     'space.get': { projectId: project.id, space },
     'node.list': { nodes: [node] },

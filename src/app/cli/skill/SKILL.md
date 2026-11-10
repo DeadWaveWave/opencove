@@ -21,11 +21,7 @@ opencove context
 opencove node get --node @self
 ```
 
-`whoami` reports your grant and scope; `context` orients you in the project/space. For agents,
-`context.nodes[].state` is run state; `sessionStatus` is session lifecycle (running does not mean working). node
-list keeps raw status as lifecycle; agentState exposes work state in node list/context; use agent list/get for
-details. Missing context run observations are unknown, never inferred idle. Use command `--help` without a
-connection whenever an option is unclear; inside OpenCove, `api schema` also reports access and rejectedFields, since schema fields alone do not authorize their use. Success stdout is the result itself, without an ok/value wrapper. Errors
+`whoami` reports your grant and scope; `context` orients you in the project/space. For agents, `context.nodes[].state` is run state; `sessionStatus` is session lifecycle (running does not mean working). node list keeps raw status as lifecycle; agentState exposes work state in node list/context; use agent list/get for details. Missing context run observations are unknown, never inferred idle. Use command `--help` without a connection whenever an option is unclear; inside OpenCove, `api schema` also reports access and rejectedFields, since schema fields alone do not authorize their use. Success stdout is the result itself, without an ok/value wrapper. Errors
 go to stderr; non-TTY or `-o json` uses a structured `error` object.
 
 ## Select targets explicitly
@@ -43,6 +39,10 @@ opencove agent get --node "Reviewer" --pretty
 
 To put a node on the canvas outside any Space: `opencove node create note --root-canvas --text …`.
 Outside OpenCove, add `--project <id>`. Placement searches next to you when run inside OpenCove, or from the origin if your node is unavailable. Use `--focus` to reveal it.
+
+`opencove space create --name "Review"` creates a top-level Space in your terminal’s current project; outside OpenCove, add `--project <selector>`. Top-level --directory must be an existing absolute local directory within the default mount (symlinks cannot escape); children inherit the parent directory. --frame and --move require --in; output includes the applied rect and movedNodeIds.
+`opencove space create --name "Review notes" --in @self --move "Brief"` creates a child and moves direct members of the parent; repeat --move. Without --frame, the server encloses moved nodes or centers a 420×300 boundary in the parent, then fits it inside.
+`opencove project add --path /workspace/app [--name "App"]` requires a human decision: agents cannot add projects. Ask the user to add the project in OpenCove; do not retry the refusal.
 
 ## Notes and tasks are a shared blackboard
 Read existing notes/tasks before changing them. Keep task ownership visible. Claim a task by setting status `doing`

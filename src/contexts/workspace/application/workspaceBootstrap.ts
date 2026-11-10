@@ -1,3 +1,7 @@
+import type {
+  AddProjectResult,
+  CreateSpaceResult,
+} from '../../../shared/contracts/dto/workspaceBootstrap'
 import type { WorkspaceBootstrapMutationOwner } from './workspaceBootstrapMutationOwner'
 import { DEFAULT_AGENT_SETTINGS, normalizeAgentSettings } from '../../settings/domain/agentSettings'
 import { createAppError } from '../../../shared/errors/appError'
@@ -58,7 +62,7 @@ function newSpace(
 async function addProjectMutation(
   ports: WorkspaceBootstrapPorts,
   input: { path: string; name?: string },
-) {
+): Promise<AddProjectResult> {
   const path = await ports.validateDirectory(input.path)
   const revision = await ports.store.readAppStateRevision()
   const state = (await ports.store.readAppState()) ?? {
@@ -113,13 +117,19 @@ async function addProjectMutation(
     },
     revision,
   )
-  return { projectId: workspace.id, spaceId: space.id, mountId: mount.mountId }
+  return {
+    projectId: workspace.id,
+    spaceId: space.id,
+    mountId: mount.mountId,
+    project: { id: workspace.id, name: workspace.name, path: workspace.path },
+    space,
+  }
 }
 
 async function createSpaceMutation(
   ports: WorkspaceBootstrapPorts,
   input: { projectId: string; name: string; directoryPath?: string },
-) {
+): Promise<CreateSpaceResult> {
   const revision = await ports.store.readAppStateRevision()
   const state = await ports.store.readAppState()
   const workspace = state?.workspaces.find(item => item.id === input.projectId)
@@ -149,7 +159,7 @@ async function createSpaceMutation(
     },
     revision,
   )
-  return { projectId: workspace.id, spaceId: space.id, mountId: mount.mountId }
+  return { projectId: workspace.id, spaceId: space.id, mountId: mount.mountId, space }
 }
 
 export function addProject(ports: WorkspaceBootstrapPorts, input: { path: string; name?: string }) {
@@ -159,6 +169,6 @@ export function addProject(ports: WorkspaceBootstrapPorts, input: { path: string
 export function createSpace(
   ports: WorkspaceBootstrapPorts,
   input: { projectId: string; name: string; directoryPath?: string },
-) {
+): Promise<CreateSpaceResult> {
   return ports.mutationOwner.run(() => createSpaceMutation(ports, input))
 }
