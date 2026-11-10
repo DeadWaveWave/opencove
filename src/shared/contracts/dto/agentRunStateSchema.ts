@@ -7,7 +7,19 @@ export const agentBlockedSummarySchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('question'),
     questions: z
-      .array(z.object({ question: boundedText, options: z.array(boundedText).max(4) }))
+      .array(
+        z
+          .object({
+            question: boundedText,
+            options: z.array(boundedText).max(4),
+            optionDescriptions: z.array(boundedText.nullable()).max(4).optional(),
+          })
+          .refine(
+            question =>
+              question.optionDescriptions === undefined ||
+              question.optionDescriptions.length === question.options.length,
+          ),
+      )
       .max(3),
   }),
 ])

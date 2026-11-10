@@ -2,6 +2,10 @@ import { randomUUID } from 'node:crypto'
 import type { PluginManifest } from '../../../plugins/domain/pluginTypes'
 import type { NodeControlAppState, NodeControlNode, NodeControlWorkspace } from './nodeControlState'
 import { resolveWorkspaceNodesPlacement } from '../../domain/workspaceNodePlacement'
+import {
+  expandRectToContain,
+  growSpaceAncestors,
+} from '../../../space/application/spaceGeometryGrowth'
 import { SPACE_NODE_PADDING } from '../../domain/workspaceSpaceLayout'
 import { getCollapsedNodeSize } from '../../domain/collapsedNodeGeometry'
 
@@ -180,38 +184,19 @@ function appendWindow(
   node: NodeControlNode,
   spaceId?: string,
 ): NodeControlWorkspace {
+  const nodeRect = { ...node.position, width: node.width, height: node.height }
   const spaces = workspace.spaces.map(space =>
-    space.id === spaceId ? { ...space, nodeIds: [...space.nodeIds, node.id] } : space,
+    space.id === spaceId
+      ? {
+          ...space,
+          nodeIds: [...space.nodeIds, node.id],
+          rect: expandRectToContain(space.rect, nodeRect, SPACE_NODE_PADDING),
+        }
+      : space,
   )
-  // Growing a child also grows its ancestors; existing positions and ownership stay intact.
-  const byId = new Map(spaces.map(space => [space.id, space]))
-  let id = spaceId
-  const visited = new Set<string>()
-  let bounds = { x: node.position.x, y: node.position.y, width: node.width, height: node.height }
-  while (id && !visited.has(id)) {
-    visited.add(id)
-    const space = byId.get(id)
-    if (!space) {
-      break
-    }
-    const current = space.rect
-    const x = Math.min(current?.x ?? Infinity, bounds.x - SPACE_NODE_PADDING)
-    const y = Math.min(current?.y ?? Infinity, bounds.y - SPACE_NODE_PADDING)
-    const right = Math.max(
-      current ? current.x + current.width : -Infinity,
-      bounds.x + bounds.width + SPACE_NODE_PADDING,
-    )
-    const bottom = Math.max(
-      current ? current.y + current.height : -Infinity,
-      bounds.y + bounds.height + SPACE_NODE_PADDING,
-    )
-    bounds = { x, y, width: right - x, height: bottom - y }
-    byId.set(id, { ...space, rect: bounds })
-    id = space.parentSpaceId ?? undefined
-  }
   return {
     ...workspace,
     nodes: [...workspace.nodes, node],
-    spaces: spaces.map(space => byId.get(space.id)!),
+    spaces: spaceId ? growSpaceAncestors(spaces, spaceId, SPACE_NODE_PADDING) : spaces,
   }
 }

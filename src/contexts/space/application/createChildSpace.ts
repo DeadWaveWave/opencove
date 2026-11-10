@@ -2,6 +2,7 @@ import type { LabelColor } from '../../../shared/types/labelColor'
 import type { SpaceBoundary } from '../../../shared/types/spaceBoundary'
 import type { RectLike } from './spaceContainment'
 import { clampRectInsideRect } from './spaceContainment'
+import { expandRectToContain, growSpaceAncestors } from './spaceGeometryGrowth'
 import {
   createBoundaryFromSpaceProjection,
   deriveDirectoryPathFromBoundary,
@@ -206,7 +207,11 @@ export function createChildSpace<TSpace extends ChildSpaceRecord>(options: {
     return { ok: false, code: 'invalid_rect' }
   }
 
-  const rect = clampRectInsideRect(desiredRect, parent.rect, CHILD_SPACE_PADDING)
+  // Fit first, then restore containment of moved frames; shrinking must never strand members.
+  const rect = selectedNodeFrames.reduce(
+    (current, frame) => expandRectToContain(current, frame, CHILD_SPACE_PADDING),
+    clampRectInsideRect(desiredRect, parent.rect, CHILD_SPACE_PADDING),
+  )
   const boundary = createBoundaryFromSpaceProjection(parent)
   const directoryPath = deriveDirectoryPathFromBoundary(
     {
@@ -254,7 +259,7 @@ export function createChildSpace<TSpace extends ChildSpaceRecord>(options: {
   return {
     ok: true,
     childSpace,
-    nextSpaces,
+    nextSpaces: growSpaceAncestors(nextSpaces, childId, CHILD_SPACE_PADDING),
     movedNodeIds,
   }
 }

@@ -129,3 +129,46 @@ describe('createChildSpace', () => {
     expect(result).toEqual({ ok: false, code: 'nodes_not_in_parent' })
   })
 })
+
+it.each([undefined, { x: 10, y: 10, width: 30, height: 30 }])(
+  'preserves moved frames and grows two ancestors after fitting (%j)',
+  rect => {
+    const parent = createParentSpace({
+      parentSpaceId: 'grandparent',
+      rect: { x: 0, y: 0, width: 100, height: 100 },
+    })
+    const grandparent = createParentSpace({
+      id: 'grandparent',
+      nodeIds: [],
+      rect: { x: -20, y: -20, width: 140, height: 140 },
+    })
+    const frame = { id: 'node-a', x: 80, y: 90, width: 280, height: 300 }
+    const result = createChildSpace({
+      spaces: [parent, grandparent],
+      workspacePath: '/repo',
+      nodeFrames: [frame],
+      input: { parentSpaceId: parent.id, initialNodeIds: [frame.id], rect },
+      createId: () => 'child',
+      defaultName: () => 'Child',
+    })
+    expect(result.ok).toBe(true)
+    if (!result.ok) {
+      throw new Error(result.code)
+    }
+    const child = result.childSpace.rect!
+    expect(child.x).toBeLessThanOrEqual(frame.x - 18)
+    expect(child.y).toBeLessThanOrEqual(frame.y - 18)
+    expect(child.x + child.width).toBeGreaterThanOrEqual(frame.x + frame.width + 18)
+    expect(child.y + child.height).toBeGreaterThanOrEqual(frame.y + frame.height + 18)
+    let inner = child
+    for (const id of [parent.id, grandparent.id]) {
+      const outer = result.nextSpaces.find(s => s.id === id)!.rect!
+      expect(outer.x).toBeLessThanOrEqual(inner.x - 18)
+      expect(outer.y).toBeLessThanOrEqual(inner.y - 18)
+      expect(outer.x + outer.width).toBeGreaterThanOrEqual(inner.x + inner.width + 18)
+      expect(outer.y + outer.height).toBeGreaterThanOrEqual(inner.y + inner.height + 18)
+      inner = outer
+    }
+    expect(parent.rect!.width).toBe(100)
+  },
+)

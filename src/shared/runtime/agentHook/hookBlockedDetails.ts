@@ -38,10 +38,20 @@ function dialogSummary(tool: HookDialogInput['tool']): AgentBlockedSummary | nul
     const options = Array.isArray(value.options)
       ? value.options.slice(0, 4).flatMap(option => {
           const label = isRecord(option) ? boundedText(option.label) : null
-          return label ? [label] : []
+          return label
+            ? [{ label, description: isRecord(option) ? boundedText(option.description) : null }]
+            : []
         })
       : []
-    return [{ question, options }]
+    return [
+      {
+        question,
+        options: options.map(option => option.label),
+        ...(options.some(option => option.description !== null)
+          ? { optionDescriptions: options.map(option => option.description) }
+          : {}),
+      },
+    ]
   })
   return questions.length ? { kind: 'question', questions } : null
 }

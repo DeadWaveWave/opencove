@@ -2,7 +2,15 @@ import type { AgentProviderId, TerminalSessionStateSource } from '../dto'
 export type AgentRunState = 'working' | 'waiting' | 'idle' | 'exited' | 'unknown'
 export type TurnOutcome = 'completed' | 'failed' | 'aborted' | 'unknown'
 export type AgentBlockedSummary =
-  | { kind: 'question'; questions: readonly { question: string; options: readonly string[] }[] }
+  | {
+      kind: 'question'
+      questions: readonly {
+        question: string
+        options: readonly string[]
+        /** Aligned with options; null denotes an option without a description. */
+        optionDescriptions?: readonly (string | null)[]
+      }[]
+    }
   | { kind: 'plan' }
 
 export interface AgentRunSnapshot {
