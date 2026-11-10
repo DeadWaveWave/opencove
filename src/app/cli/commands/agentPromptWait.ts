@@ -1,6 +1,11 @@
 import { agentPromptResultSchema } from '../../../shared/contracts/dto/agentPrompt'
 import { sendAgentPrompt } from '../core/agentPromptRequest'
-import { retainTurnError, turnContinuation, waitAndReadTurn } from '../core/agentTurnComposition'
+import {
+  retainTurnError,
+  turnContinuation,
+  turnWaitProgress,
+  waitAndReadTurn,
+} from '../core/agentTurnComposition'
 import type { CommandContext } from '../core/command'
 import { CliError } from '../core/errors'
 import { promptComparisonNotice } from '../core/promptTransport'
@@ -38,7 +43,7 @@ export async function promptAndWait(ctx: CommandContext): Promise<unknown> {
     ...(delivery.promptId ? { promptId: delivery.promptId } : {}),
   }
   const recovery = `Never resend. Check opencove agent delivery ${shellWord(deliveryId)}; once confirmed, ${turnContinuation({ nodeId, turnId })}`
-  ctx.io.stderr.write(`Delivery ID: ${deliveryId}; turn ID: ${turnId}. ${recovery}\n`)
+  ctx.io.stderr.write(turnWaitProgress({ nodeId, turnId }))
   // The send operation has its own short budget; this deadline is shared by both observers.
   const deadline = ctx.io.now() + Number(ctx.options.timeout ?? 20000)
   try {

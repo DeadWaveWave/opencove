@@ -11,6 +11,8 @@ Working agents receive steering by default; --if-busy refuse rejects busy agents
 
 --wait confirms delivery, then waits for its exact turn to end. Add --read for the correlated reply; missing replies return reply: null with replyUnavailableReason. Check outcome and reply. Without --wait, save deliveryId and turnId for delivery → wait --turn → read --turn.
 
+Stderr shows "Sending prompt (delivery <id>)." before sending and, with --wait, "Waiting for turn <turnId> of node <nodeId>..." with an interruption-only continuation command. These progress lines preserve IDs; the final JSON and exit status report the result.
+
 With --wait, --timeout covers confirmation and turn waiting (default 20s; minimum 250ms); sending has a separate 15s budget. Without --wait, --timeout controls sending (default 15s; maximum 60s).
 
 Never resend after uncertainty, interruption or textComparison: different. Resume with agent delivery or agent wait --turn using the returned IDs. This command never retries.

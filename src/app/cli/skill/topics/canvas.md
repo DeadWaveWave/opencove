@@ -64,6 +64,8 @@ opencove node create agent --space space-123 --title "Reviewer" --prompt "Review
 ```
 
 For one-shot delegation, --wait --read returns the initial exact reply; check outcome and reply.
+Stderr first prints `Created agent node <nodeId> (session <sessionId>).`, then a
+`Waiting for turn <turnId> of node <nodeId>...` progress line with an interruption-only continuation.
 The agent remains created on timeout, attention or read failure. No observed first turn can mean
 unavailable lifecycle telemetry, even if the agent is running or has finished; inspect the existing
 session without recreating the node or resending the prompt. Use the known node/session/turn IDs

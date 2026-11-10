@@ -105,7 +105,14 @@ it('attention preserves blockedSummary and all known IDs without retrying creati
       targets: [{ blockedSummary: { kind: 'question' } }],
     },
   })
-  expect(messages.join('').match(/opencove agent wait --node/g)).toHaveLength(1)
+  // The conditional progress continuation precedes the unchanged error recovery hint.
+  expect(messages.filter(text => text.startsWith('Waiting for turn '))).toHaveLength(1)
+  expect(
+    messages
+      .filter(text => !text.startsWith('Waiting for turn '))
+      .join('')
+      .match(/opencove agent wait --node/g),
+  ).toHaveLength(1)
   expect(f.error().message).toBe('The agent needs the user’s approval or input in OpenCove.')
   expect(f.error().hint).toBe(
     `The agent node was created. Do not repeat node create agent. Resume with opencove agent wait --node ${node.id} --turn t.`,

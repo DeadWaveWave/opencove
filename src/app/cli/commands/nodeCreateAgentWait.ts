@@ -3,7 +3,12 @@ import type { CommandContext } from '../core/command'
 import { CliError } from '../core/errors'
 import { shellWord } from '../core/shellWord'
 import { identifyInitialTurn } from '../core/agentInitialTurn'
-import { retainTurnError, turnContinuation, waitAndReadTurn } from '../core/agentTurnComposition'
+import {
+  retainTurnError,
+  turnContinuation,
+  turnWaitProgress,
+  waitAndReadTurn,
+} from '../core/agentTurnComposition'
 
 /** Creation has already succeeded. Everything here is read-only and must retain its IDs. */
 export async function waitForCreatedAgent(
@@ -18,7 +23,9 @@ export async function waitForCreatedAgent(
   }
   const recovery = () =>
     `The agent node was created. Do not repeat node create agent. ${turnContinuation({ nodeId: ids.nodeId, turnId: ids.turnId })}`
-  ctx.io.stderr.write(`Created node ${ids.nodeId}; session ${ids.sessionId ?? 'unavailable'}.\n`)
+  ctx.io.stderr.write(
+    `Created agent node ${ids.nodeId} (session ${ids.sessionId ?? 'unavailable'}).\n`,
+  )
   try {
     if (!ids.sessionId) {
       throw new CliError('transport.invalid_response', 1, 'The created agent has no session ID.')
@@ -38,7 +45,7 @@ export async function waitForCreatedAgent(
       { nodeId: ids.nodeId, sessionId: ids.sessionId },
       deadline,
     )
-    ctx.io.stderr.write(`Turn ID: ${ids.turnId}.\n`)
+    ctx.io.stderr.write(turnWaitProgress({ nodeId: ids.nodeId, turnId: ids.turnId }))
     return {
       ...created,
       ...(await waitAndReadTurn(

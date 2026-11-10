@@ -20,6 +20,10 @@ in the hint. If no first turn was observed, lifecycle telemetry may be unavailab
 still be running or may already have finished. Inspect the existing session with agent get/read
 --screen and check its sessionId. Do not recreate the node or resend the prompt.
 
+Stderr preserves IDs: `Created agent node <nodeId> (session <sessionId>).` or, before sending,
+`Sending prompt (delivery <id>).` even without --wait. `Waiting for turn <turnId> of node <nodeId>...`
+gives an interruption-only continuation; the final JSON and exit status report the result.
+
 When you need to keep working, omit --wait, save node.id and node.sessionId, inspect agent get for
 the matching session’s turn or lastEndedTurn, then use agent wait --turn and agent read --turn.
 

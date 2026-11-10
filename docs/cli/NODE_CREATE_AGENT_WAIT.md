@@ -17,6 +17,11 @@ deadline, the CLI exits 124 with the known node/session IDs. Lifecycle telemetry
 finished. Inspect the existing session without recreating the node or resending the prompt.
 The CLI never follows a replacement session.
 
+Stderr prints `Created agent node <nodeId> (session <sessionId>).` before identification, then
+`Waiting for turn <turnId> of node <nodeId>...` with an exact-wait command introduced by
+“If interrupted, continue with:”. These progress lines preserve recovery IDs; the final JSON and
+exit status report the result.
+
 The result keeps the ordinary create fields (`node.id`, `node.sessionId`, placement and lineage)
 and adds `turnId`, `outcome`, `endedAt` and, with `--read`, `reply`. A missing exact reply returns
 `reply: null` with `replyUnavailableReason`. Check outcome and reply: exit 0 means the turn ended,
@@ -51,3 +56,5 @@ read. For follow-up messages use `agent prompt --wait --read`; see `opencove ski
 
 未观测到首个回合不代表智能体尚未开始：生命周期遥测可能不可用，智能体可能仍在运行或已经完成。
 请用已返回的 sessionId 检查现有会话，不要重新创建节点或重发提示。
+
+创建后的 stderr 进度行先保留 node/session ID，再给出中断时继续等待的命令；请以最终 JSON 和退出码判断结果。
