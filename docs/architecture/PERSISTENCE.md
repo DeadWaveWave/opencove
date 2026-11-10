@@ -354,4 +354,8 @@ Workspace application owner 从已验证的 session grant 推导 parent、root �
 迁移和 schema-current repair 只创建表及索引，不回填历史节点；无记录的节点投影为 root、depth 1。
 Renderer snapshot 字段没有 lineage 写权；query 投影不写入数据库。移动、删除父节点和重启保持血缘。
 Snapshot export 不含血缘，数据库备份包含血缘。降级仅尽力兼容，不保证安全。
+带 caller node 的 grant 创建必须能读取 lineage 并原子提交 node 与 lineage；缺少任一端口
+或存储不可读时，在启动进程前拒绝，不把未知来源伪装成 root。`nodeLineageV1` 同时检查
+repository 与 creation commit。node-less standalone grant 不记录血缘；standalone Worker
+仍使用完整 SQLite store。Desktop/Web/remote clients 将创建命令交给 owning Worker。
 本节为现有 owner/边界的说明：no executable-rule impact。

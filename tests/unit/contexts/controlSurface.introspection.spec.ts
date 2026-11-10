@@ -9,6 +9,7 @@ import { registerPluginDistributionHandlers } from '../../../src/app/main/contro
 import { CONTROL_SURFACE_OPERATIONS } from '../../../src/shared/contracts/controlSurface/operations'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../src/shared/contracts/controlSurface'
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
+import { createInMemoryPersistenceStore } from '../../contract/controlSurface/controlSurfaceHttpServer.sessionStreaming.testUtils'
 
 vi.mock('zod', async importOriginal => {
   const actual = await importOriginal<typeof import('zod')>()
@@ -20,11 +21,13 @@ for (const variant of ['always', 'desktop-managed-worker', 'managed-runtime', 'd
   it(`introspects actual composition: ${variant}`, async () => {
     vi.mocked(z.toJSONSchema).mockClear()
     const surface = createControlSurface()
+    const store = createInMemoryPersistenceStore()
     registerPluginDistributionHandlers(
       surface,
       {} as Parameters<typeof registerPluginDistributionHandlers>[1],
     )
     registerControlSurfaceHandlers(surface, {
+      getPersistenceStore: async () => store,
       ptyRuntime: variant === 'debug' ? { debugCrashHost() {} } : {},
       plugins: { configureHost() {} },
       ptyStreamHub: { agentRuns: { registry: { onDispose() {} } } },
@@ -102,7 +105,7 @@ for (const variant of ['always', 'desktop-managed-worker', 'managed-runtime', 'd
     expect(z.toJSONSchema).not.toHaveBeenCalled()
     expect(await invoke('system.capabilities')).toMatchObject({
       ok: true,
-      value: { features: { operationRegistry: true } },
+      value: { features: { operationRegistry: true, nodeLineageV1: true } },
     })
   })
 }

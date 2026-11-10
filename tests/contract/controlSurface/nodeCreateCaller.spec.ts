@@ -2,7 +2,7 @@
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import { registerNodeControlHandlers } from '../../../src/app/main/controlSurface/handlers/nodeControlHandlers'
 import { createWorkerTopologyStore } from '../../../src/app/main/controlSurface/topology/topologyStore'
@@ -16,7 +16,7 @@ import {
   createInMemoryPersistenceStore,
 } from './controlSurfaceHttpServer.sessionStreaming.testUtils'
 
-it.each(['none', 'bearer', 'missing', 'other-project', 'root'] as const)(
+it.each(['none', 'bearer', 'missing', 'other-project', 'root', 'no-reader', 'no-commit'] as const)(
   'uses only a grant caller from the target project (%s)',
   async mode => {
     const root = await mkdtemp(join(tmpdir(), 'opencove-node-caller-'))
@@ -86,6 +86,13 @@ it.each(['none', 'bearer', 'missing', 'other-project', 'root'] as const)(
         spawnIdentity: { projectId: 'project', spaceId: '', nodeId: caller.id },
       }
       const before = await store.readAppStateRevision()
+      if (mode === 'no-reader') {
+        store.nodeLineage = undefined
+      }
+      if (mode === 'no-commit') {
+        store.commitCreatedNodeState = undefined
+      }
+      const invokes = vi.spyOn(surface, 'invoke')
       const injected = await surface.invoke(ctx, {
         kind: 'command',
         id: 'node.create',
@@ -100,8 +107,17 @@ it.each(['none', 'bearer', 'missing', 'other-project', 'root'] as const)(
       const created = await surface.invoke(ctx, {
         kind: 'command',
         id: 'node.create',
-        payload: { kind: 'note', projectId: 'project' },
+        payload: {
+          kind: mode === 'no-reader' || mode === 'no-commit' ? 'agent' : 'note',
+          projectId: 'project',
+        },
       })
+      if (mode === 'no-reader' || mode === 'no-commit') {
+        expect(created).toMatchObject({ ok: false, error: { code: 'persistence.unavailable' } })
+        expect(invokes.mock.calls.every(([, request]) => request.id === 'node.create')).toBe(true)
+        expect(await store.readAppStateRevision()).toBe(before)
+        return
+      }
       if (mode === 'missing') {
         expect(created).toMatchObject({ ok: false, error: { code: 'node.not_found' } })
         return

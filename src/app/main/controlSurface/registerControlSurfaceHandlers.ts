@@ -92,7 +92,7 @@ export function registerControlSurfaceHandlers(
     isReady: deps.isReady,
     hasNodeLineage: () =>
       deps.getPersistenceStore().then(
-        store => Boolean(store.nodeLineage),
+        store => Boolean(store.nodeLineage && store.commitCreatedNodeState),
         () => false,
       ),
   })
