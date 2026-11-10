@@ -38,6 +38,12 @@ function getDateTimeFormatter(language: string): Intl.DateTimeFormat {
 }
 
 export function toErrorMessage(error: unknown): string {
+  if (
+    (error instanceof OpenCoveAppError || isAppErrorDescriptor(error)) &&
+    error.code === 'persistence.owned_node_identity_conflict'
+  ) {
+    return translate('messages.managedAgentChanged')
+  }
   if (error instanceof OpenCoveAppError) {
     if (error.code === 'worker.stop_not_owned') {
       return translate('common.workerStopNotOwned')

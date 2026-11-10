@@ -310,7 +310,7 @@ describe('PersistenceStore (migrations)', () => {
       store.dispose()
 
       const migratedState = mockDbByPath.get(dbPath)
-      expect(migratedState?.userVersion).toBe(13)
+      expect(migratedState?.userVersion).toBe(14)
       expect(migratedState?.tables.get('terminal_recovery_records')).toEqual(
         expect.arrayContaining([...CURRENT_SCHEMA_COLUMNS.terminal_recovery_records]),
       )

@@ -85,6 +85,7 @@ export const APP_ERROR_CODES = [
   'persistence.payload_too_large',
   'persistence.io_failed',
   'persistence.invalid_state',
+  'persistence.owned_node_identity_conflict',
   'persistence.invalid_node_id',
   'update.get_state_failed',
   'update.configure_failed',

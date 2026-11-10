@@ -1,4 +1,15 @@
 export const CURRENT_SCHEMA_COLUMNS = {
+  managed_claude_resume_bindings: [
+    'node_id',
+    'runtime_session_id',
+    'resume_session_id',
+    'resume_session_id_verified',
+    'activation_id',
+    'node_seen',
+    'updated_revision',
+    'updated_at',
+  ],
+  retired_managed_nodes: ['node_id', 'retired_revision', 'retired_at'],
   app_meta: ['key', 'value'],
   app_settings: ['id', 'value'],
   workspaces: [

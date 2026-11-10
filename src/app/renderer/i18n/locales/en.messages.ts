@@ -1,4 +1,5 @@
 export const enMessages = {
+  managedAgentChanged: 'This agent has changed. Refresh the workspace and try again.',
   agentLaunchFailed: 'Agent launch failed: {{message}}',
   agentResumeFailed: 'Agent resume failed: {{message}}',
   terminalAgentReexecFailed: 'Failed to restart the agent in this terminal: {{message}}',

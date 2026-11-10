@@ -39,14 +39,14 @@ export function withAgentRunBindings(
       writeAppState: async (state, options) => {
         const result = await store.writeAppState(state, options)
         if (result.ok) {
-          project(state)
+          project(result.effectiveState ?? state)
         }
         return result
       },
       writeWorkspaceStateRaw: async raw => {
         const result = await store.writeWorkspaceStateRaw(raw)
         if (result.ok) {
-          project(JSON.parse(raw))
+          project(result.effectiveState ?? JSON.parse(raw))
         }
         return result
       },

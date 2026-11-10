@@ -10,7 +10,7 @@ SQLite:
 - Store：`src/platform/persistence/sqlite/PersistenceStore.ts`
 - Schema：`src/platform/persistence/sqlite/schema.ts`
 - Migration：`src/platform/persistence/sqlite/migrate.ts`
-- 当前 `DB_SCHEMA_VERSION = 13`
+- 当前 `DB_SCHEMA_VERSION = 14`
 - Agent/Terminal node Worker binding：`nodes.worker_binding_json`
 - Terminal durable recovery：`terminal_recovery_records`
 - Legacy terminal presentation/scrollback mirror：`node_scrollback`（兼容读取，不是独立 truth owner）
@@ -314,3 +314,26 @@ the Sidebar does not maintain a second local persistence store.
   CI 必须在 Electron runtime 下单独执行该命令。不能用 Node ABI 的绿色结果替代该门禁。
 - 补充 IPC/Control Surface payload validation 测试。
 - 运行最低 meaningful layer；提交前按 `DEVELOPMENT.md` 执行门禁。
+
+## Managed Claude resume ledger（存储契约，尚未启用生产接入）
+
+Worker 是 managed Claude resume tuple 的 owner。`managed_claude_resume_bindings` 保存
+canonical tuple、runtime、activation ID 和单调的 `node_seen`；`nodes.agent_json` 是持久化投影。
+仅内部 `activateManagedClaudeRuntime` / `commitManagedClaudeRebind` 可提交绑定；本阶段没有
+生产调用方，也不从 provider、verified 或快照推断 ownership。schema repair 只重建表结构。
+
+最终 app-state writer 在同一事务内纠正 owned tuple 与非空 runtime，保留其他编辑；不兼容的
+agent/kind/provider/route 或 retired ID 拒绝整次写入。真实删除将 ID 写入
+`retired_managed_nodes`，两张表都不关联 node cascade。store open 只回收超过 24 小时、
+`node_seen=0` 且不存在 node 的 orphan。
+缺失或无效的 node binding 会继承 Space 路由，与显式 local binding 不等价；owned node
+不能通过遗漏或清空 binding 撤销其显式路由。
+
+内部写回返回 `{revision, corrected, effectiveState}`，回调与 runtime binding 消费 effective
+state；wire 只增加 `corrected`。revision 是自身提交值，不在异步回调后重读。
+本地 `readAppStateSnapshot` 在单一 SQLite read transaction 中返回 revision 与 state。
+身份冲突使用 `persistence.owned_node_identity_conflict` 与 `{nodeId, field, reason}`：SQLite/raw/
+Desktop IPC 返回与 revision conflict 相同的 `{ok:false, reason:'unknown', error}`；
+revisioned sync 采用 Control Surface `{ok:false, error}`；raw sync 保留嵌套写入结果。
+Remote/Web 把该 code 纳入既有 conflict refresh/rebase，并在重试耗尽时保留 typed descriptor。
+retired ID 的 Renderer rebase 策略以及 corrected 的 cache/ack 处理留待启用前补齐。

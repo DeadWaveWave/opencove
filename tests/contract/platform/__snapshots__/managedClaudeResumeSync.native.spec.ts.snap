@@ -1,0 +1,69 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`managed Claude resume persistence boundaries > preserves no-ledger persisted bytes and exposes only additive wire fields for all writes > unowned app state 1`] = `
+{
+  "activeWorkspaceId": "project",
+  "formatVersion": 1,
+  "settings": {
+    "theme": "dark",
+  },
+  "workspaces": [
+    {
+      "activeSpaceId": null,
+      "environmentVariables": {},
+      "iconId": null,
+      "id": "project",
+      "isMinimapVisible": true,
+      "name": "Project",
+      "nodes": [
+        {
+          "agent": {
+            "model": "old",
+            "provider": "claude-code",
+            "resumeSessionId": "A",
+            "resumeSessionIdVerified": true,
+          },
+          "endedAt": null,
+          "executionDirectory": null,
+          "exitCode": null,
+          "expectedDirectory": null,
+          "height": 400,
+          "id": "agent",
+          "kind": "agent",
+          "labelColorOverride": null,
+          "lastError": null,
+          "position": {
+            "x": 1,
+            "y": 2,
+          },
+          "profileId": null,
+          "runtimeKind": null,
+          "scrollback": null,
+          "sessionId": "old",
+          "sidebarSortOrder": null,
+          "startedAt": null,
+          "status": null,
+          "task": null,
+          "terminalGeometry": null,
+          "terminalProviderHint": null,
+          "title": "Claude",
+          "titleIsLiteral": false,
+          "titlePinnedByUser": false,
+          "width": 500,
+          "workerBinding": null,
+        },
+      ],
+      "path": "/repo",
+      "pullRequestBaseBranchOptions": [],
+      "spaceArchiveRecords": [],
+      "spaces": [],
+      "viewport": {
+        "x": 0,
+        "y": 0,
+        "zoom": 1,
+      },
+      "worktreesRoot": "",
+    },
+  ],
+}
+`;

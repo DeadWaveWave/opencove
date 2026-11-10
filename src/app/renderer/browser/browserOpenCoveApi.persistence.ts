@@ -76,8 +76,9 @@ export function createBrowserPersistenceApi(): PersistenceApi {
           isConflict: error => {
             const descriptor = toAppErrorDescriptor(error, 'persistence.invalid_state')
             return (
-              descriptor.code === 'persistence.invalid_state' &&
-              (descriptor.debugMessage ?? '').includes('revision conflict')
+              descriptor.code === 'persistence.owned_node_identity_conflict' ||
+              (descriptor.code === 'persistence.invalid_state' &&
+                (descriptor.debugMessage ?? '').includes('revision conflict'))
             )
           },
         })
