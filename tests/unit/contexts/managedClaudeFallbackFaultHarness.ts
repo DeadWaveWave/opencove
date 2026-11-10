@@ -9,13 +9,15 @@ import { registerPtyMountHandlers } from '../../../src/app/main/controlSurface/h
 import { registerOperation } from '../../../src/app/main/controlSurface/registerOperation'
 import { mountListOperation } from '../../../src/shared/contracts/controlSurface/operations/domains/mount'
 import { TerminalProfileResolver } from '../../../src/platform/terminal/TerminalProfileResolver'
-import type { PersistenceStore } from '../../../src/platform/persistence/sqlite/PersistenceStore'
 import type { AppStateCommittedObservation } from '../../../src/shared/contracts/managedClaudeLaunch'
 import type { TerminalAgentActivityEnvironmentService } from '../../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityEnvironmentService'
 import { ManagedClaudeFaultModel, type FallbackStep } from './managedClaudeFaultModel'
 import { ManagedClaudeFaultOracle } from './managedClaudeFaultOracle'
 import { assertFallbackOutcomes } from './managedClaudeFallbackFaultAssertions'
 import type { ShellCase } from './managedClaudeFallbackFaultCases'
+import { fallbackFaultStorage } from './managedClaudeFallbackFaultStorage'
+import { shellExecution } from './managedClaudeFallbackFaultContext'
+import { instrumentFallbackLifecycle } from './managedClaudeFallbackFaultLifecycle'
 import {
   drainFaultMicrotasks,
   waitForFaultTask,
@@ -30,6 +32,7 @@ import {
 export async function fallbackFaultHarness(config: ShellCase) {
   const model = new ManagedClaudeFaultModel('fallback', 'agent', true)
   model.nodeRuntime = null
+  model.fallbackExecution = shellExecution(config)
   model.changedByOther = true
   model.workerBinding = config.route === 'mount' ? { endpointId: 'local', mountId: 'mount' } : null
   model.committed.set('initial', { runtimeSessionId: null, tuple: model.tuple })
@@ -52,7 +55,7 @@ export async function fallbackFaultHarness(config: ShellCase) {
   let publishedShell: string | undefined
   const mount = {
     mountId: 'mount',
-    endpointId: 'local',
+    endpointId: config.initialContext === 'inheritedRemote' ? 'remote' : 'local',
     rootUri: 'file:///repo',
     rootPath: '/repo',
     projectId: 'workspace',
@@ -135,7 +138,16 @@ export async function fallbackFaultHarness(config: ShellCase) {
                       : {}),
                     provider: 'claude-code',
                     prompt: 'fixture',
-                    intent: { kind: 'resumeCurrent' },
+                    intent:
+                      requestName === 'replacement-rejected'
+                        ? {
+                            kind: 'launchNew',
+                            expected: {
+                              activationId: 'invalid',
+                              tuple: { resumeSessionId: null, resumeSessionIdVerified: false },
+                            },
+                          }
+                        : { kind: 'resumeCurrent' },
                   },
                 },
           )
@@ -191,6 +203,10 @@ export async function fallbackFaultHarness(config: ShellCase) {
         model.changedByOther = true
         request('replacement', 'agent', 'launch')
       }
+      if (config.event === 'replaceRejected') {
+        model.changedByOther = true
+        request('replacement-rejected', 'agent', 'launch')
+      }
       if (config.event === 'persist') {
         persist()
       }
@@ -216,51 +232,18 @@ export async function fallbackFaultHarness(config: ShellCase) {
       }
     }
   }
-  const store = {
-    readAppState: async () => {
-      const state = model.appState()
-      state.workspaces[0].nodes.push(...peer.appState().workspaces[0].nodes)
-      for (const value of state.workspaces[0].nodes) {
-        if (value.id === 'agent') {
-          value.status = config.mode === 'stopped' ? 'stopped' : 'standby'
-          if (config.route === 'mount') {
-            Object.assign(value, { workerBinding: { endpointId: 'local', mountId: 'mount' } })
-          }
-        }
-      }
-      oracle.identity(name())
-      return state
-    },
-    observeManagedClaudeNode: (id: string) => {
-      const value = node(id),
-        observed = value.observation(id)
-      if (id === 'agent' && observed.context && config.route === 'mount') {
-        observed.context.route = JSON.stringify({ endpointId: 'local', mountId: 'mount' })
-      }
-      return observed
-    },
-    isManagedClaudeRuntimeReferenced: (id: string) => {
-      boundary('referenceRead', 'before')
-      fail('referenceRead')
-      const result = models.some(value => value.referenced(id))
-      boundary('referenceRead', 'after')
-      return result
-    },
-    managedClaudePreparationCandidates: (_workspace: string, ids?: string[]) =>
-      models
-        .filter(value => value.present && (!ids || ids.includes(value.nodeId)))
-        .map(value => value.nodeId),
-    onAppStateCommitted: (listener: (event: AppStateCommittedObservation) => void) => {
-      commits.add(listener)
-      return () => {
-        commits.delete(listener)
-      }
-    },
-    activateManagedClaudeRuntime: async input => {
-      oracle.effect(name())
-      return node(input.nodeId).activate(input)
-    },
-  } as PersistenceStore
+  const store = fallbackFaultStorage({
+    model,
+    peer,
+    models,
+    config,
+    oracle,
+    name,
+    node,
+    boundary,
+    fail,
+    commits,
+  })
   const boot = async () => {
     runtime = createManagedClaudeLaunchRuntime({
       getPersistenceStore: async () => store,
@@ -276,6 +259,7 @@ export async function fallbackFaultHarness(config: ShellCase) {
         boundary('cleanupKill', 'after')
       },
     })
+    instrumentFallbackLifecycle(runtime.owner, boundary)
     const admission = createReadyTerminalAdmissionDeps()
     const run = createCanvasSpawnRunner({
       managedClaude: runtime,
@@ -335,7 +319,16 @@ export async function fallbackFaultHarness(config: ShellCase) {
           return true
         },
       } as never,
-      topology: { resolveMountTarget: async () => mount } as never,
+      topology: {
+        resolveMountTarget: async () => ({
+          ...mount,
+          endpointId: config.initialContext === 'retargetRemote' ? 'remote' : mount.endpointId,
+        }),
+        resolveRemoteEndpointConnection: async () => {
+          node().verify(false, 'remote fallback reached forwarding')
+          return null
+        },
+      } as never,
       agentProviderRegistry: registry,
       terminalAgentActivity: {
         prepare: async (input: { command: string; args: string[]; environment: object }) => {
@@ -364,6 +357,7 @@ export async function fallbackFaultHarness(config: ShellCase) {
       ptyRuntime: {
         spawnSession: async (input: {
           agentProvider?: string
+          cwd: string
           launchArtifacts?: { dispose(): Promise<void> }
         }) => {
           if (input.agentProvider) {
@@ -373,7 +367,7 @@ export async function fallbackFaultHarness(config: ShellCase) {
             oracle.effect(name())
             return { sessionId: node().spawn(name()) }
           }
-          oracle.shellStart(name())
+          oracle.shellStart(name(), { ...shellExecution(config), cwd: input.cwd })
           try {
             fail('spawn')
           } catch (error) {

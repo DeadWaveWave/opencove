@@ -15,6 +15,7 @@ import type { ControlSurfaceContext } from './types'
 import type { CanvasSpawnIdentity } from './sessionSpawnIdentityContext'
 import { createAppError, toAppErrorDescriptor } from '../../../shared/errors/appError'
 import { runManagedClaudeFallback } from './managedClaudeFallbackRuntime'
+import type { FallbackExecution, FallbackSpawn } from './managedClaudeFallbackRuntime'
 
 interface LaunchScope {
   attempt: ManagedClaudeLaunchAttempt
@@ -397,9 +398,10 @@ export function assertManagedClaudeLaunchCurrent(): void {
 }
 
 export function withManagedClaudeFallback<T extends { sessionId: string }>(
-  spawn: (assertActive?: () => void) => Promise<T>,
+  execution: FallbackExecution,
+  spawn: FallbackSpawn<T>,
 ) {
-  return runManagedClaudeFallback(scope.getStore(), spawn)
+  return runManagedClaudeFallback(scope.getStore(), execution, spawn)
 }
 
 export function rethrowManagedClaudeLaunchError(error: unknown): void {

@@ -15,6 +15,7 @@ export const shellEvents = [
   'delete',
   'newer',
   'replace',
+  'replaceRejected',
   'persist',
   'prepare',
   'peerLaunch',
@@ -29,4 +30,5 @@ export type ShellCase = {
   event: (typeof shellEvents)[number]
   edge: Edge
   handoff: 'hold' | 'persist'
+  initialContext?: 'boundary' | 'inheritedLocal' | 'inheritedRemote' | 'retargetRemote'
 }

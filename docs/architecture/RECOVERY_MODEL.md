@@ -430,6 +430,10 @@ Managed launch result 的 ownership 判定包含新取得的 receipt；`nodeSeen
 保留唯一 cleanup claim；已提交 snapshot 的 reference proof 才交回 durable node owner，删除或确认替换
 则释放捕获的精确 ID 并执行 reference-checked cleanup。读取失败保留 custody 并定时重试。
 新 fallback 的 predecessor claims 同样保持 hold，直到新 shell 持久化；仅 spawn 成功不构成 durable 替换。
+Fallback admission 验证 resolver 的实际 directory/mount/endpoint，已有 effect admission 也须重验，
+不能用 stored context 替代请求执行上下文。PTY target 再解析后通过同一内部 hook 检查，owned 不允许 remote。
+成功交接在 finish await 之后以同步 fence 确认；此后没有可能拒绝交接的 async 工作。若此前失败，
+helper 只放弃本 attempt 新 shell 的 hold，并 reference-check cleanup，保留前驱 hold 与未来清理义务。
 Fallback 的 PTY profile/activity preparation 之后，以进程内 `terminalSpawnLifecycle` hook 在
 实际 spawn 前检查原 attempt，spawn 返回 ID 后立即登记 custody，再提交 activity/metadata。
 该 hook 不接受 wire payload，legacy PTY 不注入；取消后的 finally 仍结算已创建 runtime。

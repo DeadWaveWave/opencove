@@ -255,6 +255,11 @@ export function registerSessionStreamingHandlers(
 
   registerOperation(controlSurface, ptySpawnOperation, {
     handle: async (ctx, payload): Promise<SpawnTerminalResult> => {
+      ctx.terminalSpawnLifecycle?.assertExecution?.({
+        cwd: payload.cwd,
+        mountId: null,
+        endpointId: 'local',
+      })
       deps.terminalSpawnAdmission.assertSpawnAllowed(
         payload.workspaceId ?? null,
         ctx.terminalRecoverySpawnScope,

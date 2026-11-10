@@ -202,27 +202,39 @@ export class RemoteWorkerBindingUnresolvedError extends Error {
 }
 
 export function spawnPreparedFallbackTerminal(
-  options: Parameters<typeof spawnFallbackTerminal>[0],
+  options: Parameters<typeof spawnFallbackTerminal>[0] & {
+    launchContext: PrepareOrReviveLaunchContext
+  },
 ) {
-  return withManagedClaudeFallback(assertActive => {
-    const guard = () => {
-      options.ctx.assertActive?.()
-      assertActive?.()
-    }
-    return spawnFallbackTerminal({
-      ...options,
-      ctx: assertActive
-        ? {
-            ...options.ctx,
-            assertActive: guard,
-            terminalSpawnLifecycle: {
+  const { launchContext } = options
+  return withManagedClaudeFallback(
+    {
+      cwd: launchContext.workingDirectory,
+      mountId: launchContext.mountId,
+      endpointId: launchContext.endpointId,
+    },
+    (assertActive, assertExecution) => {
+      const guard = () => {
+        options.ctx.assertActive?.()
+        assertActive?.()
+      }
+      return spawnFallbackTerminal({
+        ...options,
+        launchContext,
+        ctx: assertActive
+          ? {
+              ...options.ctx,
               assertActive: guard,
-              onSpawned: noteManagedClaudeRuntimeCreated,
-            },
-          }
-        : options.ctx,
-    })
-  })
+              terminalSpawnLifecycle: {
+                assertActive: guard,
+                onSpawned: noteManagedClaudeRuntimeCreated,
+                assertExecution,
+              },
+            }
+          : options.ctx,
+      })
+    },
+  )
 }
 
 export async function spawnFallbackTerminal(options: {

@@ -1,9 +1,18 @@
 import type { ManagedClaudeLaunchPorts } from './ports'
 import type { ManagedClaudeRuntimeCleanup } from './ManagedClaudeRuntimeCleanup'
+import type { ManagedClaudeLaunchAttempt } from './types'
 
 /** A returned shell is held until durable reference proof, deletion or confirmed replacement. */
 export class ManagedClaudeFallbackCustody {
-  private readonly nodes = new Map<string, { nodeId: string; predecessors: readonly string[] }>()
+  private readonly nodes = new Map<
+    string,
+    {
+      nodeId: string
+      attempt: ManagedClaudeLaunchAttempt
+      predecessors: readonly string[]
+      heldPredecessors: Set<string>
+    }
+  >()
   private readonly retries = new Map<string, () => void>()
   constructor(
     private readonly cleanup: ManagedClaudeRuntimeCleanup,
@@ -15,7 +24,7 @@ export class ManagedClaudeFallbackCustody {
 
   held(id: string): boolean {
     return (
-      this.nodes.has(id) || [...this.nodes.values()].some(value => value.predecessors.includes(id))
+      this.nodes.has(id) || [...this.nodes.values()].some(value => value.heldPredecessors.has(id))
     )
   }
 
@@ -23,11 +32,23 @@ export class ManagedClaudeFallbackCustody {
     return [...this.nodes].filter(([, node]) => node.nodeId === nodeId).map(([id]) => id)
   }
 
-  retain(nodeId: string, id: string, predecessors: readonly string[]): void {
+  retain(attempt: ManagedClaudeLaunchAttempt, id: string, predecessors: readonly string[]): void {
+    const { nodeId } = attempt
     this.cleanup.retain(id, nodeId)
-    this.nodes.set(id, { nodeId, predecessors })
+    this.nodes.set(id, { nodeId, attempt, predecessors, heldPredecessors: new Set(predecessors) })
     for (const previous of predecessors) {
       this.cleanup.retain(previous, nodeId)
+    }
+  }
+
+  abandon(attempt: ManagedClaudeLaunchAttempt, id: string): void {
+    const current = this.nodes.get(id)
+    if (current && current.attempt !== attempt) {
+      return
+    }
+    this.release([id])
+    for (const custody of this.nodes.values()) {
+      custody.heldPredecessors.delete(id)
     }
   }
 
@@ -57,6 +78,9 @@ export class ManagedClaudeFallbackCustody {
         // A fallback replaces its predecessors only when its node association is durable.
         for (const previous of custody?.predecessors ?? []) {
           this.release([previous])
+          if (this.cleanup.capture(previous) === undefined) {
+            this.cleanup.retain(previous, custody!.nodeId)
+          }
           void this.cleanup.cleanupRetained(previous)
         }
       }

@@ -67,6 +67,37 @@ async function detected(
   }
 }
 
+it.each(['shellRetention:after', 'shellFinalization:after'] as const)(
+  'detects omitted failed-handoff cleanup at %s',
+  async edge => {
+    await detected(
+      { event: 'replaceRejected', edge },
+      () => {
+        vi.spyOn(Owner.prototype, 'abandonFallbackRuntime').mockResolvedValue()
+      },
+      ['cleanup did not converge'],
+    )
+  },
+)
+
+it('detects admission that substitutes the stored directory for actual execution', async () => {
+  await detected(
+    { initialContext: 'boundary' },
+    () => {
+      const validate = Owner.prototype.validateExecution
+      vi.spyOn(Owner.prototype, 'validateExecution').mockImplementation(
+        function (attempt, execution) {
+          return validate.call(this, attempt, {
+            ...execution,
+            cwd: attempt.context?.directory ?? execution.cwd,
+          })
+        },
+      )
+    },
+    ['shell started in incompatible execution context', 'fallback outcome: expected rejected'],
+  )
+})
+
 it('detects a returned shell without persistence custody', async () => {
   await detected(
     {},

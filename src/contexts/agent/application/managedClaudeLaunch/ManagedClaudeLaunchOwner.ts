@@ -6,6 +6,10 @@ import { sameManagedResumeBinding } from '../../../../shared/contracts/managedCl
 import { createAppError } from '../../../../shared/errors/appError'
 import { ManagedClaudeRuntimeCleanup } from './ManagedClaudeRuntimeCleanup'
 import { ManagedClaudeAttemptEffects } from './ManagedClaudeAttemptEffects'
+import {
+  managedClaudeAdmissionDecision,
+  type ManagedClaudeExecution,
+} from './managedClaudeAdmission'
 
 export function rejectManagedLaunch(nodeId: string, reason: string): never {
   throw createAppError('agent.managed_launch_rejected', { details: { nodeId, reason } })
@@ -93,40 +97,23 @@ export class ManagedClaudeLaunchOwner {
     }
   }
 
+  validateExecution(attempt: ManagedClaudeLaunchAttempt, execution: ManagedClaudeExecution) {
+    this.assertCurrent(attempt)
+    const observation = this.ports.observeNode(attempt.nodeId)
+    const decision = managedClaudeAdmissionDecision(attempt, observation, execution)
+    if (decision === 'identityConflict' || decision === 'conflict') {
+      rejectManagedLaunch(attempt.nodeId, decision)
+    }
+    return { observation, decision }
+  }
+
   async admit(
     attempt: ManagedClaudeLaunchAttempt,
-    execution: { provider: string; cwd: string; mountId: string | null },
+    execution: ManagedClaudeExecution,
   ): Promise<'managed' | 'legacy'> {
     await this.assertReady(attempt)
-    const observation = this.ports.observeNode(attempt.nodeId)
-    const context = attempt.context
-    if (
-      JSON.stringify(observation.context) !== JSON.stringify(context) ||
-      (context &&
-        (context.kind !== 'agent' ||
-          context.provider !== execution.provider ||
-          (observation.binding && context.directory && context.directory !== execution.cwd)))
-    ) {
-      rejectManagedLaunch(attempt.nodeId, 'identityConflict')
-    }
-    const route = context
-      ? (JSON.parse(context.route) as { endpointId: string; mountId: string | null } | null)
-      : null
-    if (route && (route.endpointId !== 'local' || route.mountId !== execution.mountId)) {
-      rejectManagedLaunch(attempt.nodeId, 'identityConflict')
-    }
-    if (
-      attempt.expected &&
-      (attempt.expected.activationId !== (observation.binding?.activationId ?? null) ||
-        !sameManagedResumeBinding(
-          attempt.expected.tuple,
-          observation.binding?.tuple ?? { resumeSessionId: null, resumeSessionIdVerified: false },
-        ))
-    ) {
-      rejectManagedLaunch(attempt.nodeId, 'conflict')
-    }
-    if (!observation.binding && context?.directory && context.directory !== execution.cwd) {
-      // PR2 cannot atomically adopt a changed execution directory. Keep this legacy switch.
+    const { observation, decision } = this.validateExecution(attempt, execution)
+    if (decision === 'legacy') {
       return 'legacy'
     }
     await this.effects.admit(attempt, async () => {
@@ -192,10 +179,11 @@ export class ManagedClaudeLaunchOwner {
     this.assertCurrent(attempt)
     this.effects.retainFallback(attempt, id)
     this.effects.fallbacks.observeReferences()
-    if (!this.isCurrent(attempt)) {
-      this.effects.fallbacks.release([id])
-      this.assertCurrent(attempt)
-    }
+    this.assertCurrent(attempt)
+  }
+
+  abandonFallbackRuntime(attempt: ManagedClaudeLaunchAttempt, id: string): Promise<void> {
+    return this.effects.abandonFallback(attempt, id)
   }
 
   observeFallbackReferences = (): void => this.effects.fallbacks.observeReferences()

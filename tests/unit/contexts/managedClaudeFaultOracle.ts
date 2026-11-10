@@ -75,11 +75,17 @@ export class ManagedClaudeFaultOracle {
   permitted(name: string): boolean {
     const request = this.requests.get(name)
     const current = request?.node.context()
+    const execution = request?.kind === 'prepare' ? request.node.fallbackExecution : undefined
+    const route = current ? JSON.parse(current.route) : null
     return Boolean(
       current?.kind === 'agent' &&
       current.provider === 'claude-code' &&
       current.directory === '/repo' &&
       (JSON.parse(current.route)?.endpointId ?? 'local') === 'local' &&
+      (!execution ||
+        (execution.cwd === current.directory &&
+          execution.endpointId === 'local' &&
+          (!route || route.mountId === execution.mountId))) &&
       JSON.stringify(request?.node.binding?.tuple ?? request?.node.tuple) ===
         JSON.stringify(request?.node.tuple) &&
       request &&
@@ -95,9 +101,21 @@ export class ManagedClaudeFaultOracle {
     const request = this.requests.get(name)
     request?.node.verify(this.permitted(name), 'effect without independent admission permission')
   }
-  shellStart(name: string): void {
+  shellStart(
+    name: string,
+    execution?: { cwd: string; endpointId: string; mountId: string | null },
+  ): void {
     const request = this.requests.get(name)!
     request.node.verify(this.permitted(name), 'shell started after supersession or deletion')
+    const stored = request.node.context()
+    const route = stored ? JSON.parse(stored.route) : null
+    request.node.verify(
+      !execution ||
+        (execution.cwd === stored?.directory &&
+          execution.endpointId === 'local' &&
+          (!route || (route.endpointId === 'local' && route.mountId === execution.mountId))),
+      'shell started in incompatible execution context',
+    )
     this.effect(name)
   }
 

@@ -1,5 +1,6 @@
 import type { ShellCase } from './managedClaudeFallbackFaultCases'
 import type { ManagedClaudeFaultOracle } from './managedClaudeFaultOracle'
+import { shellContextPermitted } from './managedClaudeFallbackFaultContext'
 
 export function assertFallbackOutcomes(input: {
   tasks: { name: string; nodeId: string; kind: 'launch' | 'prepare'; value?: unknown }[]
@@ -11,6 +12,10 @@ export function assertFallbackOutcomes(input: {
 }) {
   const { tasks, config, eventReached, eventAfterReturn, faultReached, oracle } = input
   for (const task of tasks) {
+    if (task.name === 'replacement-rejected') {
+      oracle.fallbackOutcome(task.name, task.value, 'rejected', false)
+      continue
+    }
     if (
       task.kind === 'launch' ||
       task.nodeId === 'peer' ||
@@ -30,7 +35,7 @@ export function assertFallbackOutcomes(input: {
       const cancelled =
         eventReached &&
         !eventAfterReturn &&
-        ['delete', 'newer', 'replace', 'restart'].includes(config.event) &&
+        ['delete', 'newer', 'replace', 'replaceRejected', 'restart'].includes(config.event) &&
         !config.edge.startsWith('shellReturn') &&
         !config.edge.startsWith('shellPersistence')
       const empty =
@@ -39,7 +44,7 @@ export function assertFallbackOutcomes(input: {
       oracle.fallbackOutcome(
         task.name,
         task.value,
-        task.name === 'primary' && cancelled
+        task.name === 'primary' && (cancelled || !shellContextPermitted(config))
           ? 'rejected'
           : empty &&
               (task.name === 'primary' ||

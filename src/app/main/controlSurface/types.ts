@@ -26,6 +26,11 @@ export interface ControlSurfaceContext {
   readonly terminalSpawnLifecycle?: {
     assertActive(): void
     onSpawned(sessionId: string): void
+    assertExecution?: (execution: {
+      cwd: string
+      mountId: string | null
+      endpointId: string
+    }) => void
   }
   readonly validateNodeTarget?: (
     target: import('../../../contexts/workspace/application/nodeControl/nodeCreationTarget').ResolvedNodeCreationTarget,

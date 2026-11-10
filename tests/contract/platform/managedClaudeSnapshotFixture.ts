@@ -219,6 +219,7 @@ export async function snapshotFixture(
     invoke,
     launch,
     state,
+    mount,
     alive,
     inactive,
     spawn,

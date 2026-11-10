@@ -27,7 +27,14 @@ export class ManagedClaudeAttemptEffects {
   }
 
   retainFallback(attempt: ManagedClaudeLaunchAttempt, id: string): void {
-    this.fallbacks.retain(attempt.nodeId, id, [...(this.previous.get(attempt) ?? [])])
+    this.fallbacks.retain(attempt, id, [...(this.previous.get(attempt) ?? [])])
+  }
+
+  async abandonFallback(attempt: ManagedClaudeLaunchAttempt, id: string): Promise<void> {
+    if (this.created.get(attempt)?.has(id)) {
+      this.fallbacks.abandon(attempt, id)
+      await this.cleanup.cleanup(id)
+    }
   }
 
   begin(attempt: ManagedClaudeLaunchAttempt): void {

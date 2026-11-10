@@ -23,6 +23,8 @@ export const fallbackSteps = [
   'shellActivity',
   'shellSpawn',
   'shellRegistration',
+  'shellRetention',
+  'shellFinalization',
   'shellReturn',
   'shellPersistence',
   'referenceRead',
@@ -95,6 +97,7 @@ export class ManagedClaudeFaultModel {
   changedByOther = false
   blockedRead = false
   workerBinding: { endpointId: string; mountId: string | null } | null = null
+  fallbackExecution?: { cwd: string; endpointId: string; mountId: string | null }
   private nextRuntime = 0
 
   constructor(

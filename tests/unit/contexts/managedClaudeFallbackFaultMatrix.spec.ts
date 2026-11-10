@@ -46,6 +46,25 @@ const cases: ShellCase[] = (['plain', 'mount'] as const).flatMap(route =>
     ),
   ),
 )
+cases.push(
+  ...(['plain', 'mount'] as const).flatMap(route =>
+    (['stopped', 'failedResume'] as const).flatMap(mode =>
+      (['hold', 'persist'] as const).flatMap(handoff =>
+        (['boundary', 'inheritedLocal', 'inheritedRemote', 'retargetRemote'] as const).map(
+          initialContext => ({
+            route,
+            mode,
+            handoff,
+            initialContext,
+            fault: 'none' as const,
+            event: 'none' as const,
+            edge: 'shellProfile:before' as const,
+          }),
+        ),
+      ),
+    ),
+  ),
+)
 const selected =
   process.env.OPENCOVE_FALLBACK_FAULT_CASES === 'eventless'
     ? cases.filter(value => value.event === 'none')
@@ -79,18 +98,21 @@ afterAll(() => {
   }
 })
 describe('managed Claude fallback shell fault matrix', () => {
-  it.each(selected)('$route / $mode / $handoff / $fault / $event at $edge', async config => {
-    const f = await fallbackFaultHarness(config)
-    try {
-      f.start()
-      await f.settle()
-      coverage.push({ ...config, ...f.coverage() })
-      if (f.models.some(model => model.violations.length)) {
-        throw new Error(f.models.flatMap(model => model.violations).join('\n'))
+  it.each(selected)(
+    '$route / $mode / $handoff / context=$initialContext / $fault / $event at $edge',
+    async config => {
+      const f = await fallbackFaultHarness(config)
+      try {
+        f.start()
+        await f.settle()
+        coverage.push({ ...config, ...f.coverage() })
+        if (f.models.some(model => model.violations.length)) {
+          throw new Error(f.models.flatMap(model => model.violations).join('\n'))
+        }
+        f.models.forEach(model => model.assertValid())
+      } finally {
+        f.dispose()
       }
-      f.models.forEach(model => model.assertValid())
-    } finally {
-      f.dispose()
-    }
-  })
+    },
+  )
 })
