@@ -62,6 +62,22 @@ export async function invoke(
       if (prompt && !isAppErrorDescriptor(error)) {
         throw new CliError('transport.invalid_response', 1, 'Invalid control surface response')
       }
+      const unknownHandler = `Unknown control surface ${request.kind}: ${request.id}`
+      if (
+        error.code === 'common.invalid_input' &&
+        (request.kind === 'query' || request.kind === 'command') &&
+        (error.debugMessage === unknownHandler || error.debugMessage === `Error: ${unknownHandler}`)
+      ) {
+        throw new CliError(
+          error.code,
+          5,
+          `The connected OpenCove Worker is older than this CLI and does not support ${request.id}. Restart or update OpenCove.`,
+          undefined,
+          error.details,
+          // Capability negotiation still needs the canonical diagnostic.
+          unknownHandler,
+        )
+      }
       if (prompt && error.code === 'common.invalid_input') {
         const text = promptValidationPresentation(error.details)
         throw new CliError(

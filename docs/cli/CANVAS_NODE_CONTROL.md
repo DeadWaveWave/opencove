@@ -121,6 +121,15 @@ Usecases：
 
 - `src/contexts/workspace/application/nodeControl/*`
 
+## Frame results
+
+With `--frame`, every supported kind reports `appliedFrame` and `frameAdjusted`
+after create or update. Only explicitly requested components count as adjusted;
+automatic placement does not. Adjustments print one stderr notice naming the kind,
+including with `--focus`, while stdout remains JSON. Notes are clamped to width
+220–360 and height 140–260 canvas units; a 400×300 request applies 360×260.
+Task creation keeps these result fields even without `--frame`.
+
 ## Node Semantics
 
 Note:

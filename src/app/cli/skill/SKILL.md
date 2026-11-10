@@ -10,7 +10,6 @@ This guide ships inside the CLI build. Use `opencove --version` to identify it; 
 Agent terminals cannot read or change private settings, override launch policy, run provider commands through prompts, or run plugin code through the API; only the user answers permission prompts and dialogs in OpenCove and changes agent permissions in Settings → Agent → Providers → Permissions → Full Access Mode. Project isolation is not yet enforced.
 
 ## Establish identity before acting
-
 Check the environment variable `OPENCOVE_ENV=1` before using session defaults. If it is absent, stop and obtain an
 explicitly authorized endpoint/profile; do not search or modify a real user's profile. Never print control tokens.
 
@@ -21,7 +20,7 @@ opencove context
 opencove node get --node @self
 ```
 
-`whoami` reports your grant and scope; `context` orients you in the project/space. For agents,
+`whoami` reports your grant and scope; `context` includes your own node in `self.node` alongside identity. For agents,
 `context.nodes[].state` is run state; `sessionStatus` is session lifecycle (running does not mean working). node
 list keeps raw status as lifecycle; agentState exposes work state in node list/context; use agent list/get for
 details. Missing context run observations are unknown, never inferred idle. Use command `--help` without a
@@ -62,7 +61,8 @@ opencove node get --node task-123
 opencove node update task --node task-123 --status ai_done
 ```
 
-Long text accepts `--text-file` or `--requirement-file` and `-` for stdin. Use either inline or file input. Preserve others' findings and claims.
+Long text accepts `--text-file` or `--requirement-file` and `-` for stdin. Use either inline or file input. Values after text options are literal, even with leading dashes (`--text "-v"`, `--title "--draft"`). Preserve others' findings and claims.
+With `--frame`, create/update results include `appliedFrame` and `frameAdjusted`; adjustments print a notice. Notes are limited to 220–360 wide and 140–260 high. `fs write` returns `{uri, bytes}` after success; bytes counts UTF-8 content.
 
 ## Coordinate: list → prompt → wait → read
 Only create an agent when authorized for its provider, model and workspace. Do not close, stop or prompt nodes you did
@@ -180,7 +180,7 @@ Only a read without `--turn` falls back to the transcript when the hook reports 
 `provider_sent_no_message`, including restored conversations; other errors are preserved. An empty or
 whitespace-only hook reply succeeds and wins. Unqualified reads never search older hook messages and remain
 current-incarnation reads. --last makes the default explicit and may accompany --turn. Exact-turn reads preserve
-`agent.final_message_unavailable` and `details.reason`: `turn_not_ended` means still active, `turn_not_found` means
+`agent.final_message_unavailable` and `details.reason`: `turn_not_ended` includes current state and blockedReason; waiting asks the user to resolve it in OpenCove, working suggests an exact-turn wait; `turn_not_found` means
 unknown/evicted, `provider_sent_no_message` means no correlated content, and `no_ended_turn` means no observed end.
 Exact errors include known nodeId/sessionId/turnId and recovery commands: wait for turn_not_ended; agent get for
 turn_not_found; --screen/session final for absent content/history. remote_history_unavailable means older remote
@@ -206,7 +206,7 @@ discovered transcript identity.
 - 2: invalid arguments; use command `--help`.
 - 3: connection unavailable; check endpoint and authorized Worker.
 - 4: authorization refused; do not seek another agent's credentials.
-- 5: protocol incompatible or invalid stream; use matching CLI/Worker versions.
+- 5: incompatible protocol, unsupported Worker operation or invalid stream; restart or update OpenCove.
 - 6: ambiguous target; select a full ID.
 - 10: waiting observed; inspect before acting. 11: unfulfilled target exited.
 - 124: deadline/timeout; wait includes lastKnown; prompt may already have sent input.

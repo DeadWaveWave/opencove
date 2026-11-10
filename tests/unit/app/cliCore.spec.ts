@@ -55,7 +55,7 @@ describe('TypeScript CLI core', () => {
     ['nodes', 'list'],
     ['ping', '--unknown'],
     ['node', 'get'],
-    ['node', 'create', 'note', '--space', 's', '--text', '-value'],
+    ['node', 'create', 'note', '--space', 's', '--text'],
     ['node', 'create', 'note', '--space', 's', '--text=x', '--text-file', '-'],
     ['ping', '--timeout', '0'],
   ])('usage has no IO %j', async (...items) => {

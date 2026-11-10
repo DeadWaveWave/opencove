@@ -1,4 +1,4 @@
-import { noResultOutput } from './declaredOutput'
+import { declaredOutput } from './declaredOutput'
 import { defineCommand } from '../core/command'
 import { option } from './remote'
 export const filesystemCommands = (
@@ -41,7 +41,7 @@ export const filesystemCommands = (
                   '{"kind":"directory"}',
                 ],
               }
-            : noResultOutput,
+            : declaredOutput(['uri', 'bytes'], { uri: 'file:///repo/notes.txt' }),
     operation,
     operationAliases: [mountedOperation],
     selectOperation: ({ options }) => (options.mount === undefined ? operation : mountedOperation),
@@ -62,6 +62,20 @@ export const filesystemCommands = (
       ...(o.mount !== undefined ? { mountId: o.mount } : {}),
       ...(name === 'write' ? { content: o.content } : {}),
     }),
+    ...(name === 'write'
+      ? {
+          async execute(ctx) {
+            await ctx.invoke(
+              ctx.options.mount === undefined ? operation : mountedOperation,
+              ctx.input,
+            )
+            return {
+              uri: String(ctx.options.uri).trim(),
+              bytes: Buffer.byteLength(String(ctx.options.content), 'utf8'),
+            }
+          },
+        }
+      : {}),
     examples: [
       `opencove fs ${name} --uri file:///workspace/${name === 'ls' ? '' : 'notes.txt'}${name === 'write' ? ' --content-file ./notes.txt' : ''}`,
     ],

@@ -23,7 +23,7 @@ Options:
   --provider <id>         Select the agent provider
   --model <id>            Select the agent model
   --title <text>          Set the node title
-  --frame <json>          Set x, y, width and height as a JSON object
+  --frame <json>          Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
   --focus                 Focus after creation
 
 Table output (-o table): not supported.
@@ -62,7 +62,7 @@ Options:
   --text <text>         Set the note contents
   --text-file <path|->  Read text from a UTF-8 file, or use - for stdin
   --title <text>        Set the node title
-  --frame <json>        Set x, y, width and height as a JSON object
+  --frame <json>        Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
   --focus               Focus after creation
 
 Table output (-o table): not supported.
@@ -104,7 +104,7 @@ Options:
   --priority <low|medium|high|urgent>  Set the task priority
   --tag <tag>                          Set task tags; repeat for each tag
   --title <text>                       Set the node title
-  --frame <json>                       Set x, y, width and height as a JSON object; task minimum: width 220, height 260; adjusted sizes are reported
+  --frame <json>                       Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes; task minimum: width 220, height 260
   --focus                              Focus after creation
 
 Table output (-o table): not supported.
@@ -144,7 +144,7 @@ Options:
   --command <command>  Run this command in the terminal
   --profile <id>       Select a browser or terminal profile
   --title <text>       Set the node title
-  --frame <json>       Set x, y, width and height as a JSON object
+  --frame <json>       Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
   --focus              Focus after creation
 
 Table output (-o table): not supported.
@@ -185,7 +185,7 @@ Options:
   --session-mode <shared|incognito|profile>  Choose the browser session mode
   --profile <id>                             Select a browser or terminal profile
   --title <text>                             Set the node title
-  --frame <json>                             Set x, y, width and height as a JSON object
+  --frame <json>                             Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
   --focus                                    Focus after creation
 
 Table output (-o table): not supported.
@@ -213,7 +213,7 @@ Options:
   --text-file <path|->  Read text from a UTF-8 file, or use - for stdin
   --node <id>           Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
   --title <text>        Set the node title
-  --frame <json>        Set x, y, width and height as a JSON object
+  --frame <json>        Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
   --space <selector>    Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>        Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
@@ -245,7 +245,7 @@ Options:
   --status <todo|doing|ai_done|done>   Set the task status
   --node <id>                          Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
   --title <text>                       Set the node title
-  --frame <json>                       Set x, y, width and height as a JSON object; task minimum: width 220, height 260; adjusted sizes are reported
+  --frame <json>                       Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes; task minimum: width 220, height 260
   --space <selector>                   Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>                       Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
@@ -276,7 +276,7 @@ Options:
   --profile <id>                             Select a browser or terminal profile
   --node <id>                                Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
   --title <text>                             Set the node title
-  --frame <json>                             Set x, y, width and height as a JSON object
+  --frame <json>                             Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
   --space <selector>                         Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>                             Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
