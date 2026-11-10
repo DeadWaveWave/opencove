@@ -223,6 +223,7 @@ it.each(
     expect(f.text()).toBe('')
     expect(f.err()).toEqual({
       code: 'plugin.failed',
+      retryable: false,
       message: 'Plugin operation needs attention',
       hint: 'Inspect the candidate details before retrying.',
       details: receipt,

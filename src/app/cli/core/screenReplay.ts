@@ -10,7 +10,7 @@ type Snapshot = Pick<
 >
 
 /** A disposable text projection of the canonical snapshot, never a PTY or run-state owner. */
-export function replayScreen(snapshot: Snapshot): string[] {
+export function replayScreen(snapshot: Snapshot, scrollbackLines = 0): string[] {
   const { cols, rows } = snapshot
   if (
     !Number.isSafeInteger(cols) ||
@@ -28,6 +28,7 @@ export function replayScreen(snapshot: Snapshot): string[] {
     y: 0,
     wrap: false,
   })
+  const history: (string | null)[][] = []
   const normal = create()
   let alternate: Screen | undefined
   let active = normal
@@ -38,7 +39,13 @@ export function replayScreen(snapshot: Snapshot): string[] {
     if (active.y < rows - 1) {
       active.y++
     } else {
-      active.cells.shift()
+      const scrolled = active.cells.shift()!
+      if (active === normal && scrollbackLines > 0) {
+        history.push(scrolled)
+        if (history.length > scrollbackLines) {
+          history.shift()
+        }
+      }
       active.cells.push(blank())
     }
   }
@@ -163,6 +170,10 @@ export function replayScreen(snapshot: Snapshot): string[] {
         case 'd':
           active.y = clampY(n() - 1)
           break
+        case 'X':
+          active.wrap = false
+          erase(active.y, active.x, Math.min(cols - 1, active.x + n() - 1))
+          break
         case 'K': {
           const mode = n(0, 0)
           if ([0, 1, 2].includes(mode)) {
@@ -177,6 +188,8 @@ export function replayScreen(snapshot: Snapshot): string[] {
             for (let y = mode === 0 ? active.y + 1 : 0; y < (mode === 0 ? rows : active.y); y++) {
               erase(y, 0, cols - 1)
             }
+          } else if (mode === 3) {
+            history.length = 0
           } else if (mode === 2) {
             active.cells = Array.from({ length: rows }, blank)
           }
@@ -191,7 +204,7 @@ export function replayScreen(snapshot: Snapshot): string[] {
       : snapshot.bufferKind === 'alternate'
         ? (alternate ?? normal)
         : active
-  const lines = selected.cells.map(row =>
+  const lines = [...(selected === normal ? history : []), ...selected.cells].map(row =>
     row
       .map(cell => cell ?? '')
       .join('')

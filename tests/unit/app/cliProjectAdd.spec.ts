@@ -56,7 +56,8 @@ it.each([false, true])('presents policy refusal as a final human decision (TTY=%
   expect(f.out()).toBe('')
   expect(stderr).toContain('requires a human decision in OpenCove')
   expect(stderr).toContain('Ask the user to add the project in OpenCove')
-  expect(stderr).not.toMatch(/retry/i)
+  // The envelope's retryable:false is fine; the message and hint must not suggest retrying.
+  expect(stderr.replace(/"retryable":false/g, '')).not.toMatch(/retry/i)
   expect(f.fetch).toHaveBeenCalledTimes(1)
 })
 

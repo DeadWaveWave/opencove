@@ -3,7 +3,7 @@ import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypt
 export interface SessionGrantIdentity {
   readonly projectId: string
   readonly spaceId: string
-  readonly nodeId: string
+  readonly nodeId: string | null
   readonly sessionId: string
 }
 

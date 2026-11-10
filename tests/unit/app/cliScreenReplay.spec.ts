@@ -119,3 +119,15 @@ it.each([
 ])('rejects invalid or unbounded geometry %s/%s', (cols, rows) => {
   expect(() => replay('x', cols, rows)).toThrow('Invalid terminal snapshot geometry')
 })
+
+it.each([
+  ['abcdef\x1b[3G\x1b[X', ['ab def']],
+  ['abcdef\x1b[3G\x1b[0X', ['ab def']],
+  ['abcdef\x1b[3G\x1b[2X!', ['ab! ef']],
+  ['abcdef\x1b[2G\x1b[999Xz', ['az']],
+  ['你好\x1b[2G\x1b[X!', [' !好']],
+  ['abcdef\x1b[X!', ['abcde!']],
+  ['abc\x9b2G\x9bX!', ['a!c']],
+] as const)('erases characters in place with ECH: %j', (serializedScreen, expected) => {
+  expect(replay(serializedScreen, 6, 3)).toEqual(expected)
+})

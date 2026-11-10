@@ -276,7 +276,7 @@ export async function waitForAgents(
         timedOut ? 124 : 130,
         timedOut ? 'Timed out waiting for agents.' : 'Agent wait interrupted.',
         'Inspect with opencove agent get --node <selector>; waiting never sends input.',
-        { lastKnown: result() },
+        { ...(timedOut ? { reason: 'wait_timeout' } : {}), lastKnown: result() },
       )
     }
     if (error instanceof z.ZodError) {

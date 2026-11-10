@@ -249,6 +249,7 @@ export const nodeCommands = [
         targetSpace: create ? 'required' : undefined,
         currentContainer: create,
         connect: true,
+        quietIdPath: create ? 'node.id' : undefined,
         operation: `node.${action}`,
         render: nodeKindOutput(kind, create),
         operationCommand: `opencove node ${action}`,

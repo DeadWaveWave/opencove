@@ -96,6 +96,7 @@ Options:
   --title <text>        Set the node title
   --frame <json>        Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
   --focus               Focus after creation
+  -q, --quiet           Print only the created object identifier followed by a newline
 
 Table output (-o table): not supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.text

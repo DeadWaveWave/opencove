@@ -21,6 +21,7 @@ export function mapped(
 ): Command {
   return defineCommand({
     path: path.split(' '),
+    ...(operation === 'worktree.create' ? { quietIdPath: 'worktree.path' } : {}),
     operation,
     summary,
     render: remoteOutputs[operation],

@@ -76,6 +76,7 @@ resending.
 ```sh
 opencove agent read --node agent-123 --screen
 opencove agent read --node agent-123 --screen --lines 20 -o json
+opencove agent read --node agent-123 --scrollback --lines 500
 opencove agent read --node agent-123 --turn turn-123 -o json
 opencove agent history clear --node agent-123
 ```
@@ -83,6 +84,8 @@ opencove agent history clear --node agent-123
 Screen reads replay the snapshot at its columns/rows, preserving cursor-created spaces, overwrites
 and wide CJK/emoji cells. They select its normal/alternate buffer, ignore styling/modes, trim
 row-end spaces and trailing blank rows, and return the last 40 rendered viewport rows by default.
-JSON/projectable fields: nodeId, sessionId, lines. --lines requires --screen and a positive integer;
---screen conflicts with --last and --turn. Reading never sends input or grants permission to answer
+`--scrollback` adds retained normal-buffer history (last 200 lines; `--lines` 1–5000); the active
+alternate screen has no scrollback. Both work for plain terminals and agent windows.
+JSON/projectable fields: nodeId, sessionId, lines. --lines requires --screen or --scrollback;
+--screen and --scrollback conflict with each other and with --last and --turn. Reading never sends input or grants permission to answer
 another agent's dialog.
