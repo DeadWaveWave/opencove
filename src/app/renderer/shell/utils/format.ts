@@ -38,6 +38,21 @@ function getDateTimeFormatter(language: string): Intl.DateTimeFormat {
 }
 
 export function toErrorMessage(error: unknown): string {
+  if (
+    (error instanceof OpenCoveAppError || isAppErrorDescriptor(error)) &&
+    error.code === 'node.parent_unavailable'
+  ) {
+    const reason = (error.details as { reason?: string } | undefined)?.reason
+    return translate(
+      reason === 'no_parent'
+        ? 'messages.nodeNoParent'
+        : reason === 'parent_deleted'
+          ? 'messages.nodeParentDeleted'
+          : reason === 'caller_identity_required'
+            ? 'messages.nodeParentIdentityRequired'
+            : 'messages.nodeParentUnavailable',
+    )
+  }
   if (error instanceof OpenCoveAppError) {
     if (error.code === 'worker.stop_not_owned') {
       return translate('common.workerStopNotOwned')

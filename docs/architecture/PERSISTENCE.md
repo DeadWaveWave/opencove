@@ -10,7 +10,7 @@ SQLite:
 - Store：`src/platform/persistence/sqlite/PersistenceStore.ts`
 - Schema：`src/platform/persistence/sqlite/schema.ts`
 - Migration：`src/platform/persistence/sqlite/migrate.ts`
-- 当前 `DB_SCHEMA_VERSION = 13`
+- 当前 `DB_SCHEMA_VERSION = 14`
 - Agent/Terminal node Worker binding：`nodes.worker_binding_json`
 - Terminal durable recovery：`terminal_recovery_records`
 - Legacy terminal presentation/scrollback mirror：`node_scrollback`（兼容读取，不是独立 truth owner）
@@ -314,3 +314,14 @@ the Sidebar does not maintain a second local persistence store.
   CI 必须在 Electron runtime 下单独执行该命令。不能用 Node ABI 的绿色结果替代该门禁。
 - 补充 IPC/Control Surface payload validation 测试。
 - 运行最低 meaningful layer；提交前按 `DEVELOPMENT.md` 执行门禁。
+
+## 节点创建血缘（schema 14）
+
+Workspace application owner 从已验证的 session grant 推导 parent、root 和 depth，
+在节点创建提交时通过原 SQLite 连接与 CAS node writer 同事务写入 `node_lineage`。
+该表只保存 node_id、spawned_by_node_id、root_node_id、lineage_depth，insert-once；
+相同记录幂等，冲突拒绝。无 FK，snapshot/raw writer 和 node deletion 不清理它。
+迁移和 schema-current repair 只创建表及索引，不回填历史节点；无记录的节点投影为 root、depth 1。
+Renderer snapshot 字段没有 lineage 写权；query 投影不写入数据库。移动、删除父节点和重启保持血缘。
+Snapshot export 不含血缘，数据库备份包含血缘。降级仅尽力兼容，不保证安全。
+本节为现有 owner/边界的说明：no executable-rule impact。

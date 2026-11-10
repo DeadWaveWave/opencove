@@ -1,3 +1,9 @@
+import {
+  createSqliteNodeLineageRepository,
+  insertNodeLineage,
+} from '../../../contexts/workspace/infrastructure/nodeLineage/SqliteNodeLineageRepository'
+import type { NodeLineageRecord } from '../../../contexts/workspace/domain/nodeLineage'
+import type { NodeLineageRepository } from '../../../contexts/workspace/application/nodeLineage/NodeLineageRepository'
 import { mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import Database from 'better-sqlite3'
@@ -12,12 +18,21 @@ import { readAppStateFromDb, readWorkspaceStateRawFromDb } from './read'
 import { agentNodePlaceholderScrollback, nodeScrollback } from './schema'
 import { safeJsonParse, safeJsonStringify, toErrorMessage, utf8ByteLength } from './utils'
 import { writeNormalizedAppState, writeNormalizedScrollbacks } from './write'
-import { createAppError, createAppErrorDescriptor } from '../../../shared/errors/appError'
+import {
+  createAppError,
+  createAppErrorDescriptor,
+  OpenCoveAppError,
+} from '../../../shared/errors/appError'
 import { PersistenceRevisionConflict } from './revisionConflict'
 
 export type PersistenceRecoveryReason = 'corrupt_db' | 'migration_failed'
 
 export interface PersistenceStore {
+  nodeLineage?: NodeLineageRepository
+  commitCreatedNodeState?: (
+    state: unknown,
+    options: { expectedRevision: number; lineage: NodeLineageRecord },
+  ) => Promise<PersistWriteResult>
   readWorkspaceStateRaw: () => Promise<string | null>
   writeWorkspaceStateRaw: (raw: string) => Promise<PersistWriteResult>
 
@@ -235,7 +250,7 @@ export async function createPersistenceStore(storeOptions: {
 
   const writeAppState = async (
     state: unknown,
-    options?: WriteAppStateOptions,
+    options?: WriteAppStateOptions & { lineage?: NodeLineageRecord },
   ): Promise<PersistWriteResult> => {
     const normalized = normalizePersistedAppState(state)
     if (!normalized) {
@@ -255,11 +270,25 @@ export async function createPersistenceStore(storeOptions: {
     }
 
     try {
-      const revision = writeNormalizedAppState(sqlite, normalized, options?.expectedRevision)
+      const revision = sqlite.transaction(() => {
+        const next = writeNormalizedAppState(sqlite, normalized, options?.expectedRevision)
+        if (options?.lineage) {
+          if (
+            !normalized.workspaces.some(w => w.nodes.some(n => n.id === options.lineage?.nodeId))
+          ) {
+            throw createAppError('persistence.invalid_state')
+          }
+          insertNodeLineage(sqlite, options.lineage)
+        }
+        return next
+      })()
       const bytes = utf8ByteLength(safeJsonStringify(normalized))
       return { ok: true, level: 'full', bytes, revision }
     } catch (error) {
-      if (error instanceof PersistenceRevisionConflict) {
+      if (
+        error instanceof PersistenceRevisionConflict ||
+        (error instanceof OpenCoveAppError && error.code === 'persistence.invalid_state')
+      ) {
         return invalidStateResult(error.message)
       }
       return {
@@ -428,6 +457,8 @@ export async function createPersistenceStore(storeOptions: {
   }
 
   return {
+    nodeLineage: createSqliteNodeLineageRepository(sqlite),
+    commitCreatedNodeState: (state, options) => writeAppState(state, options),
     readWorkspaceStateRaw,
     writeWorkspaceStateRaw,
     readAppState,

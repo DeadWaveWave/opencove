@@ -1,4 +1,8 @@
 export const enMessages = {
+  nodeNoParent: 'This node has no recorded parent.',
+  nodeParentDeleted: 'The parent node has been deleted.',
+  nodeParentIdentityRequired: 'Select @parent from a session bound to an OpenCove canvas node.',
+  nodeParentUnavailable: 'The parent node is unavailable.',
   agentLaunchFailed: 'Agent launch failed: {{message}}',
   agentResumeFailed: 'Agent resume failed: {{message}}',
   terminalAgentReexecFailed: 'Failed to restart the agent in this terminal: {{message}}',

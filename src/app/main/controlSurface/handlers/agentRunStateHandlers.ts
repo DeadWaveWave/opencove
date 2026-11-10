@@ -1,3 +1,5 @@
+import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
+import { projectNodeLineages } from '../../../../contexts/workspace/application/nodeLineage/NodeLineageOwner'
 import { createAppError } from '../../../../shared/errors/appError'
 import { withTurnDeliveryIds } from '../../../../contexts/agent/application/turnDeliveryIds'
 import type { PromptDeliveryService } from '../../../../contexts/agent/application/PromptDeliveryService'
@@ -14,6 +16,7 @@ export function registerAgentRunStateHandlers(
   surface: ControlSurface,
   hub: PtyStreamHub,
   deliveries?: Pick<PromptDeliveryService, 'forTurn'>,
+  getPersistenceStore?: () => Promise<PersistenceStore>,
 ): void {
   registerOperation(surface, agentHistoryClearOperation, {
     handle: (_ctx, input) => {
@@ -42,7 +45,23 @@ export function registerAgentRunStateHandlers(
     defaultErrorCode: 'common.unexpected',
   })
   registerOperation(surface, agentListOperation, {
-    handle: (_ctx, input) => hub.agentRuns.registry.list(input),
+    handle: async (_ctx, input) => {
+      const result = hub.agentRuns.registry.list(input)
+      if (!input.spawnedByNodeId) {
+        return result
+      }
+      if (!getPersistenceStore) {
+        throw createAppError('persistence.unavailable')
+      }
+      const store = await getPersistenceStore()
+      if (!store.nodeLineage) {
+        throw createAppError('persistence.unavailable')
+      }
+      const candidates = result.agents.filter(a => a.nodeId !== null).map(a => ({ id: a.nodeId! }))
+      const selected = await projectNodeLineages(store, candidates, input.spawnedByNodeId)
+      const ids = new Set(selected.map(n => n.id))
+      return { ...result, agents: result.agents.filter(a => a.nodeId && ids.has(a.nodeId)) }
+    },
     defaultErrorCode: 'common.unexpected',
   })
 }

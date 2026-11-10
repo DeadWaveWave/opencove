@@ -1,3 +1,4 @@
+import { ensureNodeLineageSchema } from '../../../contexts/workspace/infrastructure/nodeLineage/SqliteNodeLineageRepository'
 import type Database from 'better-sqlite3'
 import { DB_SCHEMA_VERSION, LEGACY_WORKSPACE_STATE_KEY } from './constants'
 import { normalizePersistedAppState } from './normalize'
@@ -13,6 +14,7 @@ function quoteSqliteIdentifier(value: string): string {
 }
 
 function createTables(db: Database.Database): void {
+  ensureNodeLineageSchema(db)
   db.exec(`
     PRAGMA journal_mode = WAL;
     PRAGMA synchronous = NORMAL;

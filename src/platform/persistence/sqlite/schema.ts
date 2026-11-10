@@ -71,6 +71,14 @@ export const nodes = sqliteTable('nodes', {
   taskJson: text('task_json'),
 })
 
+/** Worker-owned creation provenance; deliberately has no foreign keys. */
+export const nodeLineage = sqliteTable('node_lineage', {
+  nodeId: text('node_id').primaryKey().notNull(),
+  spawnedBy: text('spawned_by_node_id').notNull(),
+  rootNodeId: text('root_node_id').notNull(),
+  lineageDepth: integer('lineage_depth').notNull(),
+})
+
 export const spaces = sqliteTable('workspace_spaces', {
   id: text('id').primaryKey(),
   workspaceId: text('workspace_id').notNull(),

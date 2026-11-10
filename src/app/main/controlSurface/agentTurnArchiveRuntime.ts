@@ -70,6 +70,15 @@ export function createWorkerAgentTurnArchiveRuntime(options: {
       }
       wrapper = {
         ...store,
+        commitCreatedNodeState: store.commitCreatedNodeState
+          ? async (state, commitOptions) => {
+              const result = await store.commitCreatedNodeState!(state, commitOptions)
+              if (result.ok) {
+                committed(state)
+              }
+              return result
+            }
+          : undefined,
         writeAppState: async (state, opts) => {
           const result = await store.writeAppState(state, opts)
           if (result.ok) {

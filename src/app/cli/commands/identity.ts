@@ -1,3 +1,4 @@
+import { lineageFields } from '../core/nodeLineage'
 import { contextNodeSummary, contextSelf } from './contextNodes'
 import { agentMetadataFields, nodeAgentMetadata } from '../core/agentMetadata'
 import { defineCommand } from '../core/command'
@@ -57,9 +58,15 @@ export const identityCommands = [
         'self',
         ...identityFields.map(field => `self.${field}`),
         'self.node',
-        ...['id', 'kind', 'title', 'state', ...agentMetadataFields, 'taskNodeId'].map(
-          field => `self.node.${field}`,
-        ),
+        ...[
+          'id',
+          'kind',
+          'title',
+          'state',
+          ...lineageFields,
+          ...agentMetadataFields,
+          'taskNodeId',
+        ].map(field => `self.node.${field}`),
         'project',
         'project.id',
         'project.name',
@@ -73,6 +80,7 @@ export const identityCommands = [
         'nodes.kind',
         'nodes.title',
         'nodes.state',
+        ...lineageFields.map(field => `nodes.${field}`),
         ...agentMetadataFields.map(field => `nodes.${field}`),
         'nodes.taskNodeId',
         'next',

@@ -169,7 +169,7 @@ export const spaceCreateCommand = defineCommand({
       valueName: 'selector',
       multiple: true,
       description:
-        'Move a node from the parent; repeat for more nodes. Accepts @self, an exact ID, exact name or unique ID prefix (6+ characters); requires --in',
+        'Move a node from the parent; repeat for more nodes. Accepts @self, @parent, an exact ID, exact name or unique ID prefix (6+ characters); requires --in',
     },
   },
   render: declaredOutput(

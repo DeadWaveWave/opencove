@@ -3,6 +3,7 @@ import type { CliIo } from './io'
 import { closeNames } from './suggestions'
 import { CliError } from './errors'
 import { sessionIdentity, type Invoke } from './identity'
+import { requireNodeLineage } from './nodeLineage'
 import { resolveCurrentContainer } from './currentContainer'
 import type {
   GetSpaceResult,
@@ -78,7 +79,7 @@ export function selectorDescription(spec: OptionSpec): string {
   return (
     spec.description +
     (spec.selector
-      ? '; also accepts @self, an exact name or a unique ID prefix (6+ characters)'
+      ? `; also accepts @self${spec.selector === 'node' ? ', @parent' : ''}, an exact name or a unique ID prefix (6+ characters)`
       : '')
   )
 }
@@ -158,6 +159,9 @@ export async function resolveSelectors(
 ) {
   const identity = sessionIdentity(io.env, invoke)
   const o = args.options
+  if (o['spawned-by'] !== undefined) {
+    await requireNodeLineage(invoke)
+  }
   const currentContainer = await resolveCurrentContainer(command, args, io, invoke, identity.self)
   let projectId: string | undefined = currentContainer ? String(o.project) : undefined
   const projects = async () =>
@@ -211,6 +215,9 @@ export async function resolveSelectors(
   }
   if (!currentContainer && command.options?.project?.selector && o.project !== undefined) {
     const selector = String(o.project)
+    if (selector === '@parent') {
+      throw new CliError('cli.usage', 2, '@parent selects a node. Use a project selector here.')
+    }
     projectId =
       selector === '@self'
         ? await identity.self('project')
@@ -244,15 +251,47 @@ export async function resolveSelectors(
     }
     return projectId
   }
-  for (const kind of ['space', 'node'] as const) {
+  const selectorKeys = [
+    'space',
+    'node',
+    ...Object.keys(command.options ?? {}).filter(
+      key => key !== 'node' && command.options?.[key].selector === 'node',
+    ),
+  ]
+  for (const key of selectorKeys) {
+    const kind = command.options?.[key]?.selector as 'space' | 'node'
+    const isTarget = key === kind
     if (
       (currentContainer && kind === 'space') ||
-      !command.options?.[kind]?.selector ||
-      o[kind] === undefined
+      !command.options?.[key]?.selector ||
+      o[key] === undefined
     ) {
       continue
     }
     const resolveOne = async (selector: string): Promise<string> => {
+      if (selector === '@parent') {
+        if (kind !== 'node') {
+          throw new CliError(
+            'cli.usage',
+            2,
+            '@parent selects a node. Use a Space or project selector here.',
+          )
+        }
+        await requireNodeLineage(invoke)
+        const result = (await invoke('node.resolveCallerSelector', {
+          selector: '@parent',
+          ...(io.env.OPENCOVE_ENV === '1' && io.env.OPENCOVE_NODE_ID
+            ? { expectedCallerNodeId: io.env.OPENCOVE_NODE_ID }
+            : {}),
+        })) as { id: string }
+        if (explicitProject) {
+          const target = await exactTarget('node', result.id, invoke)
+          if (target) {
+            checkProject('node', selector, target.projectId)
+          }
+        }
+        return result.id
+      }
       if (selector === '@self') {
         // Resolution order matters: failure must prevent any later target lookup.
         // eslint-disable-next-line no-await-in-loop
@@ -283,7 +322,7 @@ export async function resolveSelectors(
       // eslint-disable-next-line no-await-in-loop
       const result = (await invoke(kind === 'space' ? 'space.list' : 'node.list', {
         projectId: project,
-        ...(kind === 'node' && o.space !== undefined
+        ...(kind === 'node' && isTarget && o.space !== undefined
           ? { space: { kind: 'spaceId', spaceId: o.space } }
           : {}),
       })) as ListSpacesResult | ListNodesResult
@@ -303,16 +342,24 @@ export async function resolveSelectors(
         kind,
         selector,
         candidates,
-        `${(project ?? result.projectId) ? `project ${JSON.stringify(project ?? result.projectId)}` : 'the active project'}${kind === 'node' && o.space !== undefined ? `, space ${JSON.stringify(o.space)}` : ''}`,
+        `${(project ?? result.projectId) ? `project ${JSON.stringify(project ?? result.projectId)}` : 'the active project'}${kind === 'node' && isTarget && o.space !== undefined ? `, space ${JSON.stringify(o.space)}` : ''}`,
       )
     }
-    const resolved = Array.isArray(o[kind])
-      ? Promise.all((o[kind] as string[]).map(resolveOne))
-      : resolveOne(String(o[kind]))
+    const resolved = Array.isArray(o[key])
+      ? Promise.all((o[key] as string[]).map(resolveOne))
+      : resolveOne(String(o[key]))
     // Space resolution establishes the scope before resolving node selectors.
     // eslint-disable-next-line no-await-in-loop
-    o[kind] = await resolved
-    if (kind === 'node' && explicitSpace) {
+    o[key] = await resolved
+    // A relationship filter spans the selected creator's current project unless explicitly scoped.
+    if (!isTarget && !explicitProject && !explicitSpace) {
+      // eslint-disable-next-line no-await-in-loop -- Resolve the filter before deriving its project scope.
+      const target = await exactTarget('node', String(o[key]), invoke)
+      if (target) {
+        o.project = target.projectId
+      }
+    }
+    if (kind === 'node' && isTarget && explicitSpace) {
       // All selector forms pass the same membership check before execution.
       // Exact-ID probes are reused by the per-run read cache.
       // eslint-disable-next-line no-await-in-loop

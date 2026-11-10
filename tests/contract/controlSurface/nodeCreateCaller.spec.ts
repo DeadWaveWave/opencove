@@ -22,6 +22,18 @@ it.each(['none', 'bearer', 'missing', 'other-project', 'root'] as const)(
     const root = await mkdtemp(join(tmpdir(), 'opencove-node-caller-'))
     try {
       const store = createInMemoryPersistenceStore()
+      const rows = new Map<
+        string,
+        import('../../../src/contexts/workspace/domain/nodeLineage').NodeLineageRecord
+      >()
+      store.nodeLineage = { readMany: async () => rows }
+      store.commitCreatedNodeState = async (state, options) => {
+        const result = await store.writeAppState(state, options)
+        if (result.ok) {
+          rows.set(options.lineage.nodeId, options.lineage)
+        }
+        return result
+      }
       const initial = createMinimalState(root, 'project', 'unused')
       initial.workspaces[0].spaces = []
       await store.writeAppState(initial)
@@ -90,11 +102,20 @@ it.each(['none', 'bearer', 'missing', 'other-project', 'root'] as const)(
         id: 'node.create',
         payload: { kind: 'note', projectId: 'project' },
       })
+      if (mode === 'missing') {
+        expect(created).toMatchObject({ ok: false, error: { code: 'node.not_found' } })
+        return
+      }
       if (!created.ok) {
         throw new Error(JSON.stringify(created.error))
       }
       const result = created.value as CreateNodeResult
       expect(result.spaceId).toBeNull()
+      expect(result.node).toMatchObject(
+        mode === 'none' || mode === 'bearer'
+          ? { spawnedBy: null, lineageDepth: 1, lineageStatus: 'root' }
+          : { spawnedBy: caller.id, lineageDepth: 2, lineageStatus: 'recorded' },
+      )
       expect(result.node.frame).toMatchObject(
         mode === 'root'
           ? { x: caller.frame.x + caller.frame.width + SPACE_NODE_PADDING, y: caller.frame.y }

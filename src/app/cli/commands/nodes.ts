@@ -1,3 +1,4 @@
+import { spawnedByOption } from '../core/nodeLineage'
 import { reportNodeFrame } from './nodeFrame'
 import { nodeAgentMetadata } from '../core/agentMetadata'
 import type { ListNodesResult } from '../../../shared/contracts/dto/nodeControl'
@@ -136,7 +137,7 @@ const rootCanvasOption: OptionSpec = {
 }
 const nodeLocatorOptions: Record<string, OptionSpec> = {
   ...locatorOptions,
-  space: { ...locatorOptions.space, defaultSelfUnless: ['root-canvas'] },
+  space: { ...locatorOptions.space, defaultSelfUnless: ['root-canvas', 'spawned-by'] },
   'root-canvas': rootCanvasOption,
 }
 const kinds = ['note', 'task', 'website', 'agent', 'terminal']
@@ -159,8 +160,14 @@ export const nodeCommands = [
         description: "List only nodes on the project's root canvas, outside every Space",
       },
       kind: { ...stringOption('Node kind'), inputPath: 'kind' },
+      'spawned-by': spawnedByOption,
     },
-    buildInput: ({ options: o }) => ({ space: locator(o), projectId: o.project, kind: o.kind }),
+    buildInput: ({ options: o }) => ({
+      space: locator(o),
+      projectId: o.project,
+      kind: o.kind,
+      spawnedByNodeId: o['spawned-by'],
+    }),
     render: nodeListOutput,
     async execute(ctx) {
       const result = (await ctx.invoke('node.list', ctx.input)) as ListNodesResult
@@ -242,7 +249,7 @@ export const nodeCommands = [
             ? 'Update an agent node'
             : `${create ? 'Create' : 'Update'} a ${kind} node`,
         description: create
-          ? 'Without explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node is unavailable in the selected project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.'
+          ? 'Without explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node belongs to another project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.'
           : kind === 'agent' || kind === 'terminal'
             ? 'Rename this window and keep its name when the agent session changes. The name is saved as provided, with surrounding whitespace removed. Use --frame to also move or resize it.'
             : undefined,

@@ -1,3 +1,4 @@
+import { lineageFields } from '../core/nodeLineage'
 import { agentMetadataFields } from '../core/agentMetadata'
 import { declaredOutput, noResultOutput } from './declaredOutput'
 import type { RenderSpec } from '../core/command'
@@ -14,6 +15,7 @@ const nodeFields = [
   'frame.height',
   'status',
   'sessionId',
+  ...lineageFields,
 ]
 const spaceFields = [
   'id',
@@ -228,6 +230,7 @@ export const remoteOutputs: Record<string, RenderSpec> = {
   'session.launchAgent': declaredOutput(
     [
       'sessionId',
+      ...lineageFields,
       'provider',
       'startedAt',
       'executionContext',
@@ -269,6 +272,7 @@ export const remoteOutputs: Record<string, RenderSpec> = {
   'session.get': {
     fields: [
       'sessionId',
+      ...lineageFields,
       'provider',
       'startedAt',
       'cwd',

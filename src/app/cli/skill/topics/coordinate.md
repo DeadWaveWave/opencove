@@ -127,3 +127,11 @@ tool return the CLI's result. Exit 10 requires inspection and the user, not repe
 opencove agent delivery delivery-123 --wait --timeout 2m
 opencove agent prompt --node agent-123 --text "Include boundary tests" --expect-turn turn-123
 ```
+
+## Report back to your parent
+
+When delegated work is complete, inspect `node get --node @self` for `spawnedBy` and report
+through `opencove agent prompt --node @parent --text "Review complete; boundary tests passed" --wait --read`.
+Use this only for authorized coordination. A terminal parent needs registered agent run state;
+a root has no parent, and `parent_deleted` means the original node was removed. Keep findings in a
+shared note if messaging is unavailable. Do not substitute a node named `@parent` or retry a refusal.

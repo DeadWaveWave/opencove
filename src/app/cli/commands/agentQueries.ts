@@ -1,3 +1,4 @@
+import { spawnedByOption, lineageFields, lineageProjection } from '../core/nodeLineage'
 import { projectTaskLinks } from '../core/agentMetadata'
 import { defineCommand } from '../core/command'
 import { agentReadCommand } from './agentRead'
@@ -32,11 +33,12 @@ const runFields = [
   'lastEndedTurn.id',
   'lastEndedTurn.outcome',
   'lastEndedTurn.endedAt',
+  ...lineageFields,
 ]
 const stateWaitRender = {
   ...declaredOutput(
     runFields
-      .filter(field => field !== 'title')
+      .filter(field => field !== 'title' && !lineageFields.includes(field))
       .concat([
         'completion',
         'completion.nodeId',
@@ -81,7 +83,8 @@ export const agentQueryCommands = [
     description:
       'Returns {epoch, seq, agents}, one row per live agent session. Exited sessions are excluded by agent.list (so --state exited returns no rows); use agent get or wait for a known exited node. taskNodeId is the task whose linkedAgentNodeId points here (null if absent/ambiguous). Titles come from node metadata; null means unbound or deleted. turn.startedAt is epoch milliseconds, or absent when no turn is active. Inside OpenCove, the default scope is your space; --project selects a whole project.',
     options: {
-      space: stringOption('Space ID'),
+      space: { ...stringOption('Space ID'), defaultSelfUnless: ['spawned-by'] },
+      'spawned-by': spawnedByOption,
       state: {
         type: 'string',
         choices: ['working', 'waiting', 'idle', 'exited', 'unknown'],
@@ -98,7 +101,12 @@ export const agentQueryCommands = [
       ) {
         usage('Dialog summaries are available in JSON output only. Use -o json.')
       }
-      return { spaceId: o.space, projectId: o.project, state: o.state }
+      return {
+        spaceId: o.space,
+        projectId: o.project,
+        state: o.state,
+        spawnedByNodeId: o['spawned-by'],
+      }
     },
     render: {
       ...declaredOutput(
@@ -149,6 +157,7 @@ export const agentQueryCommands = [
         ...result,
         agents: rows.map(({ agent, node }) => ({
           ...agent,
+          ...lineageProjection(node),
           lastEndedTurn: agent.lastEndedTurn ?? null,
           title: node?.title ?? null,
           taskNodeId: agent.nodeId
@@ -197,6 +206,7 @@ export const agentQueryCommands = [
       }
       return {
         ...snapshot,
+        ...lineageProjection(node),
         taskNodeId: (await projectTaskLinks(ctx, node?.projectId)).get(nodeId) ?? null,
         lastEndedTurn: snapshot.lastEndedTurn ?? null,
         title: node?.title ?? null,

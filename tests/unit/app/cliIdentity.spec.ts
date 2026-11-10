@@ -42,7 +42,10 @@ for (const [kind, args, id, name, operation, key] of [
     expect(f.requests.at(-1)).toMatchObject({ id: operation, payload: { [key]: id } })
     expect(
       f.requests.filter(
-        request => request.id === `${kind}.list` && request.payload?.kind !== 'task',
+        request =>
+          request.id === `${kind}.list` &&
+          request.payload?.kind !== 'task' &&
+          !request.payload?.spawnedByNodeId,
       ).length,
     ).toBeLessThanOrEqual(1)
   })
@@ -320,7 +323,10 @@ it.each(targets)(
     expect(await run(args, f.io), JSON.stringify(f.requests)).toBe(0)
     expect(
       f.requests.filter(
-        request => request.id === `${kind}.list` && request.payload?.kind !== 'task',
+        request =>
+          request.id === `${kind}.list` &&
+          request.payload?.kind !== 'task' &&
+          !request.payload?.spawnedByNodeId,
       ).length,
     ).toBeLessThanOrEqual(1)
     // No symbolic selector may cross the CLI boundary into an operation payload.

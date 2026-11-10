@@ -130,7 +130,17 @@ test('a canvas terminal discovers its identity, neighbors and scope through the 
       project: { id: projectId, name: 'CLI identity project', path: workspace },
       space: { id: mainSpaceId, name: 'Main', directoryPath: workspace },
     })
-    expect(context.nodes).toEqual([{ id: briefId, kind: 'note', title: 'Brief', state: null }])
+    expect(context.nodes).toEqual([
+      {
+        id: briefId,
+        kind: 'note',
+        title: 'Brief',
+        state: null,
+        spawnedBy: null,
+        lineageDepth: 1,
+        lineageStatus: 'root',
+      },
+    ])
     expect((context.nodes as { id: string }[]).some(node => node.id === nodeId)).toBe(false)
 
     const self = jsonOutput(

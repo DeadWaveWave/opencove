@@ -34,6 +34,7 @@ export interface ControlSurfaceCapabilitiesResult {
   protocolVersion: number
   appVersion: string | null
   features: {
+    nodeLineageV1?: boolean
     operationRegistry?: boolean
     webShell: boolean
     sync: {

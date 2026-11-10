@@ -36,6 +36,15 @@ export function withAgentRunBindings(
     }
     const wrapper: PersistenceStore = {
       ...store,
+      commitCreatedNodeState: store.commitCreatedNodeState
+        ? async (state, options) => {
+            const result = await store.commitCreatedNodeState!(state, options)
+            if (result.ok) {
+              project(state)
+            }
+            return result
+          }
+        : undefined,
       writeAppState: async (state, options) => {
         const result = await store.writeAppState(state, options)
         if (result.ok) {

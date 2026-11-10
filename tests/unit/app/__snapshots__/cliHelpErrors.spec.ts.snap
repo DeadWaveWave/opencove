@@ -10,7 +10,7 @@ Stop an agent window, or a terminal that still hosts a live observed agent, whil
 Returns {nodeId, sessionId, stopped: true} when the stop is requested. An already-exited session returns stopped: false and reason: not_running (exit 0). A changed node/session binding refuses the stop (exit 2); inspect the node again before deciding what to stop. Stopping never sends terminal input.
 
 Options:
-  --node <id>         Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
+  --node <id>         Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
   --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
@@ -36,14 +36,14 @@ Update an agent node
 Rename this window and keep its name when the agent session changes. The name is saved as provided, with surrounding whitespace removed. Use --frame to also move or resize it.
 
 Options:
-  --node <id>         Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
+  --node <id>         Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
   --title <text>      Set a fixed window name; omit on creation to keep automatic titles
   --frame <json>      Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
   --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
-Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.provider, data.prompt, data.model, data.effectiveModel, data.executionDirectory, data.expectedDirectory, data.taskId
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, spawnedBy, lineageDepth, lineageStatus, data, data.kind, data.provider, data.prompt, data.model, data.effectiveModel, data.executionDirectory, data.expectedDirectory, data.taskId
 
 Projection example:
   opencove node update agent --node '<id>' --fields id,title
@@ -65,14 +65,14 @@ Update a terminal node
 Rename this window and keep its name when the agent session changes. The name is saved as provided, with surrounding whitespace removed. Use --frame to also move or resize it.
 
 Options:
-  --node <id>         Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
+  --node <id>         Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
   --title <text>      Set a fixed window name; omit on creation to keep automatic titles
   --frame <json>      Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
   --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
-Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.profileId, data.runtimeKind, data.executionDirectory, data.expectedDirectory
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, spawnedBy, lineageDepth, lineageStatus, data, data.kind, data.profileId, data.runtimeKind, data.executionDirectory, data.expectedDirectory
 
 Projection example:
   opencove node update terminal --node '<id>' --fields id,title
@@ -126,7 +126,7 @@ Options:
   --directory <path>    Set a top-level space’s working directory
   --in <selector>       Create inside a parent space; accepts @self, an exact ID, exact name or unique ID prefix (6+ characters)
   --frame <json>        Set the child boundary: {"x":0,"y":0,"width":420,"height":300}; requires --in
-  --move <selector>     Move a node from the parent; repeat for more nodes. Accepts @self, an exact ID, exact name or unique ID prefix (6+ characters); requires --in
+  --move <selector>     Move a node from the parent; repeat for more nodes. Accepts @self, @parent, an exact ID, exact name or unique ID prefix (6+ characters); requires --in
 
 Table output (-o table): not supported.
 Projectable fields: id, name, projectId, parentSpaceId, rect, rect.x, rect.y, rect.width, rect.height, directoryPath, movedNodeIds
@@ -370,7 +370,7 @@ Options:
   --project <id>  Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
-Projectable fields: id, name, directoryPath, targetMountId, parentSpaceId, boundary, rect, rect.x, rect.y, rect.width, rect.height, sortOrder, nodeIds, nodes, projectId, nodeCount, nodes.id, nodes.kind, nodes.title, nodes.projectId, nodes.spaceId, nodes.frame, nodes.frame.x, nodes.frame.y, nodes.frame.width, nodes.frame.height, nodes.status, nodes.sessionId, nodes.sessionStatus, nodes.agentState, nodes.agentState.state, nodes.agentState.quality, nodes.agentState.turnId, nodes.taskNodeId, nodes.data, nodes.data.kind, nodes.data.status, nodes.data.priority, nodes.data.requirement, nodes.data.tags, nodes.data.url, nodes.data.linkedAgentNodeId
+Projectable fields: id, name, directoryPath, targetMountId, parentSpaceId, boundary, rect, rect.x, rect.y, rect.width, rect.height, sortOrder, nodeIds, nodes, projectId, nodeCount, nodes.id, nodes.kind, nodes.title, nodes.projectId, nodes.spaceId, nodes.frame, nodes.frame.x, nodes.frame.y, nodes.frame.width, nodes.frame.height, nodes.status, nodes.sessionId, nodes.spawnedBy, nodes.lineageDepth, nodes.lineageStatus, nodes.sessionStatus, nodes.agentState, nodes.agentState.state, nodes.agentState.quality, nodes.agentState.turnId, nodes.taskNodeId, nodes.data, nodes.data.kind, nodes.data.status, nodes.data.priority, nodes.data.requirement, nodes.data.tags, nodes.data.url, nodes.data.linkedAgentNodeId
 
 Projection example:
   opencove space get --space s --fields id,nodes

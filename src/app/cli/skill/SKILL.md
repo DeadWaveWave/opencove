@@ -16,7 +16,8 @@ Run `opencove whoami` first. Inside an OpenCove terminal it reports your session
 identity with no setup (`OPENCOVE_ENV=1` is set there). If it fails with exit 3 or 4,
 ask the user for an authorized endpoint or profile.
 Never search for or modify a real user's profile or tokens. Never print control tokens.
-`@self` uses authenticated terminal identity, not cwd.
+`@self` uses authenticated terminal identity, not cwd. `@parent` selects your recorded creator;
+see `opencove skill canvas` for selectors and `opencove skill coordinate` for reporting back.
 
 ```sh
 opencove whoami

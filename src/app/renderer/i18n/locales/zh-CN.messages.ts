@@ -1,4 +1,8 @@
 export const zhCNMessages = {
+  nodeNoParent: '此节点没有记录的父节点。',
+  nodeParentDeleted: '父节点已被删除。',
+  nodeParentIdentityRequired: '请在绑定到 OpenCove 画布节点的会话中使用 @parent。',
+  nodeParentUnavailable: '父节点不可用。',
   agentLaunchFailed: 'Agent 启动失败：{{message}}',
   agentResumeFailed: 'Agent 继续失败：{{message}}',
   terminalAgentReexecFailed: '无法在此终端中重新启动 Agent：{{message}}',

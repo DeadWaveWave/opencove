@@ -37,10 +37,11 @@ export const agentListOperation = defineOperation({
   scope: 'read',
   availability: 'always',
   summary: 'List live agent run states with a subscription watermark',
-  errors: [],
+  errors: ['persistence.unavailable'],
   input: z.strictObject({
     projectId: id.optional(),
     spaceId: id.optional(),
+    spawnedByNodeId: id.optional(),
     state: agentRunStateSchema.optional(),
   }),
 })

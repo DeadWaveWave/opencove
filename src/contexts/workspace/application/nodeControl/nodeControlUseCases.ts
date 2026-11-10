@@ -1,3 +1,4 @@
+import { prepareNodeLineage, projectNodeLineages } from '../nodeLineage/NodeLineageOwner'
 import { randomUUID } from 'node:crypto'
 import { createAppError } from '../../../../shared/errors/appError'
 import type {
@@ -72,17 +73,21 @@ export async function listNodesForNodeControl(options: {
     return {
       projectId: resolved.workspace.id,
       spaceId: resolved.space.id,
-      nodes: resolved.space.nodeIds
-        .map(nodeId => nodeById.get(nodeId))
-        .filter((node): node is NodeControlNode => !!node && isReadableNodeKind(node.kind))
-        .filter(node => !kind || node.kind === kind)
-        .map(node =>
-          toCanvasNodeSummary({
-            node,
-            workspace: resolved.workspace,
-            spaceId: resolved.space.id,
-          }),
-        ),
+      nodes: await projectNodeLineages(
+        options.store,
+        resolved.space.nodeIds
+          .map(nodeId => nodeById.get(nodeId))
+          .filter((node): node is NodeControlNode => !!node && isReadableNodeKind(node.kind))
+          .filter(node => !kind || node.kind === kind)
+          .map(node =>
+            toCanvasNodeSummary({
+              node,
+              workspace: resolved.workspace,
+              spaceId: resolved.space.id,
+            }),
+          ),
+        options.input.spawnedByNodeId,
+      ),
     }
   }
 
@@ -101,13 +106,17 @@ export async function listNodesForNodeControl(options: {
   return {
     projectId,
     spaceId: null,
-    nodes: workspaces.flatMap(workspace =>
-      workspace.nodes
-        .filter(node => isReadableNodeKind(node.kind))
-        .filter(node => !kind || node.kind === kind)
-        .map(node =>
-          toCanvasNodeSummary({ node, workspace, spaceId: spaceByNodeId.get(node.id) ?? null }),
-        ),
+    nodes: await projectNodeLineages(
+      options.store,
+      workspaces.flatMap(workspace =>
+        workspace.nodes
+          .filter(node => isReadableNodeKind(node.kind))
+          .filter(node => !kind || node.kind === kind)
+          .map(node =>
+            toCanvasNodeSummary({ node, workspace, spaceId: spaceByNodeId.get(node.id) ?? null }),
+          ),
+      ),
+      options.input.spawnedByNodeId,
     ),
   }
 }
@@ -122,7 +131,7 @@ export async function getNodeForNodeControl(options: {
     throw createAppError('node.not_found')
   }
 
-  return { node: toCanvasNodeDetail(matched) }
+  return { node: (await projectNodeLineages(options.store, [toCanvasNodeDetail(matched)]))[0] }
 }
 
 export async function createNodeForNodeControl(options: {
@@ -156,6 +165,8 @@ export async function createNodeForNodeControl(options: {
   await options.runtime.validateTarget?.(resolved)
   options.runtime.assertActive?.()
   const canvasNodeId = randomUUID()
+  const lineage = await prepareNodeLineage(options.store, canvasNodeId, options.callerNodeId)
+  options.runtime.assertActive?.()
   const spawnTarget = { ...resolved, canvasNodeId }
   let agentRuntime: AgentNodeRuntimeData | null = null
   let terminalRuntime: TerminalNodeRuntimeData | null = null
@@ -185,7 +196,7 @@ export async function createNodeForNodeControl(options: {
   })
 
   try {
-    return await commitCreatedNode({ ...options, node, initialTarget: resolved })
+    return await commitCreatedNode({ ...options, node, lineage, initialTarget: resolved })
   } catch (error) {
     return cleanupFailedNodeCreation(options.store, options.runtime, node, error)
   }

@@ -1,3 +1,4 @@
+import { lineageProjection } from '../core/nodeLineage'
 import type { CanvasNodeSummaryDto, GetNodeResult } from '../../../shared/contracts/dto/nodeControl'
 import { nodeAgentMetadata } from '../core/agentMetadata'
 import type { CommandContext } from '../core/command'
@@ -7,6 +8,7 @@ import type { CallerIdentity } from '../core/identity'
 type ContextNode = Awaited<ReturnType<typeof nodeAgentMetadata>>[number]
 export function contextNodeSummary(node: ContextNode) {
   return {
+    ...lineageProjection(node),
     id: node.id,
     kind: node.kind,
     title: node.title,

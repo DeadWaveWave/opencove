@@ -52,3 +52,43 @@ it('projects only successful durable bindings and never restores a persisted run
   expect(registry.get({ nodeId: 'node' })?.sessionId).toBe('new')
   runtime.dispose()
 })
+
+it('projects bindings through the lineage-aware commit and leaves rejected commits unchanged', async () => {
+  const registry = new AgentRunStateRegistry({
+    epoch: 'lineage',
+    now: () => 1,
+    createTurnId: () => 'turn',
+    schedule: () => () => {},
+  })
+  const runtime = new AgentRunStateRuntime(registry, () => 1)
+  const store = createInMemoryPersistenceStore()
+  let accept = true
+  store.commitCreatedNodeState = async (state, options) =>
+    accept
+      ? store.writeAppState(state, options)
+      : { ok: false, reason: 'unknown', error: { code: 'persistence.invalid_state' } }
+  const wrapped = await withAgentRunBindings(async () => store, runtime)()
+  const initial = createMinimalState('/repo', 'p', 'space')
+  const state = {
+    ...initial,
+    workspaces: [
+      {
+        ...initial.workspaces[0],
+        nodes: [{ id: 'child', kind: 'agent', sessionId: 'session', title: 'Child' }],
+      },
+    ],
+  }
+  runtime.metadata({ sessionId: 'session', resumeSessionId: null, agentProvider: 'codex' })
+  await wrapped.commitCreatedNodeState!(state, {
+    expectedRevision: 0,
+    lineage: { nodeId: 'child', spawnedBy: 'parent', rootNodeId: 'parent', lineageDepth: 2 },
+  })
+  expect(registry.get({ nodeId: 'child' })).toMatchObject({ sessionId: 'session' })
+  accept = false
+  await wrapped.commitCreatedNodeState!(initial, {
+    expectedRevision: 1,
+    lineage: { nodeId: 'other', spawnedBy: 'parent', rootNodeId: 'parent', lineageDepth: 2 },
+  })
+  expect(registry.get({ nodeId: 'child' })).toMatchObject({ sessionId: 'session' })
+  runtime.dispose()
+})

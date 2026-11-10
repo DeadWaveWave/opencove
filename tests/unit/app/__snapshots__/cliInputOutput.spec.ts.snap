@@ -201,13 +201,14 @@ Target container (choose one):
 Shows up to 50 results in Worker order. Use --full or --limit 0 for all; --limit <n> overrides the default.
 
 Options:
-  --kind <kind>  Filter by note, task, website, agent, terminal, plugin, document, folder, image or role
-  --full         Show all results unless --limit is specified
+  --kind <kind>            Filter by note, task, website, agent, terminal, plugin, document, folder, image or role
+  --spawned-by <selector>  List direct children created by this node across its project; use --space to narrow the results; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
+  --full                   Show all results unless --limit is specified
 
 List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
 
 Table output (-o table): supported.
-Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, sessionStatus, agentState, agentState.state, agentState.quality, agentState.turnId, taskNodeId, data, data.kind, data.status, data.priority, data.requirement, data.tags, data.url, data.linkedAgentNodeId
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, spawnedBy, lineageDepth, lineageStatus, sessionStatus, agentState, agentState.state, agentState.quality, agentState.turnId, taskNodeId, data, data.kind, data.status, data.priority, data.requirement, data.tags, data.url, data.linkedAgentNodeId
 
 Projection example:
   opencove node list --fields id,data.status

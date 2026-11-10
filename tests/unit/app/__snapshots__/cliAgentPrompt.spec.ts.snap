@@ -20,7 +20,7 @@ Exit codes: 0 submission observed or Codex steer dispatched; 1 refusal/unconfirm
 Options:
   --expect-turn <turnId>  Steer only into this exact active turn; idle or another turn refuses before paste
   --if-busy <if-busy>     Steer the current working turn (default), or refuse
-  --node <id>             Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
+  --node <id>             Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
   --text <text>           Prompt text; use this or --text-file
   --text-file <path|->    Read text from a UTF-8 file, or use - for stdin
   --timeout <duration>    Total delivery timeout, e.g. 15s or 15000ms (default: 15s; maximum: 60s)
