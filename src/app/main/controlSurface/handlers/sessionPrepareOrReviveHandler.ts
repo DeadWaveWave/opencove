@@ -101,6 +101,9 @@ export function registerSessionPrepareOrReviveHandler(
                   await ctx.managedClaudePreparation?.awaitPending(node.id)
                   ctx.assertActive?.()
                   const observed = store.observeManagedClaudeNode?.(node.id)
+                  if (observed?.retired) {
+                    return null
+                  }
                   const existingSessionId = normalizeOptionalString(
                     observed?.binding ? observed.nodeRuntimeSessionId : node.sessionId,
                   )

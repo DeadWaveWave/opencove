@@ -177,4 +177,79 @@ describeWithElectronNativeModules('managed Claude fallback runtime replacement',
       owner.dispose()
     }
   })
+
+  it('retries a failed deletion kill after confirmation has queued deferred finalization', async () => {
+    await store.writeAppState(stateWithAgent())
+    await store.activateManagedClaudeRuntime({
+      nodeId: 'agent',
+      activationId: 'settled',
+      runtimeSessionId: null,
+      tuple: tupleA,
+    })
+    const state = stateWithAgent()
+    state.workspaces[0].nodes[0].sessionId = 'fallback-shell'
+    await store.writeAppState(state)
+    const deleted = stateWithAgent()
+    deleted.workspaces[0].nodes = []
+    const steps: string[] = []
+    let queued = false,
+      candidateKills = 0
+    let deletion: ReturnType<typeof store.writeAppState> | undefined
+    let deletionCleanup: Promise<boolean> | undefined
+    const owner = new ManagedClaudeLaunchOwner({
+      observeNode: id => {
+        const observation = store.observeManagedClaudeNode(id)
+        if (observation.binding?.activationId === 'replacement' && !queued) {
+          queued = true
+          queueMicrotask(() => {
+            deletion = store.writeAppState(deleted)
+          })
+        }
+        return observation
+      },
+      activateManagedClaudeRuntime: store.activateManagedClaudeRuntime,
+      isRuntimeReferenced: store.isManagedClaudeRuntimeReferenced,
+      killExactRuntime: async id => {
+        expect(store.isManagedClaudeRuntimeReferenced(id)).toBe(false)
+        if (id === 'candidate' && ++candidateKills === 1) {
+          throw new Error('kill unavailable')
+        }
+      },
+      createId: () => 'replacement',
+      publishCommittedActivation: () => {
+        steps.push('finalization')
+      },
+    })
+    const unsubscribe = store.onAppStateCommitted(event => {
+      if (event.removedNodeIds.includes('agent')) {
+        steps.push('deletion')
+      }
+      owner.noteNodesDeleted(event.removedNodeIds)
+      for (const id of event.removedManagedRuntimeSessionIds) {
+        deletionCleanup = owner.cleanup(id)
+      }
+    })
+    try {
+      const before = store.observeManagedClaudeNode('agent')
+      const attempt = owner.reserve('agent')
+      attempt.context = before.context
+      attempt.expected = {
+        activationId: before.binding!.activationId,
+        tuple: before.binding!.tuple,
+      }
+      await owner.admit(attempt, { provider: 'claude-code', cwd: '/repo', mountId: null })
+      await owner.complete(attempt, { runtimeSessionId: 'candidate', tuple: tupleB })
+      await deletion
+      await deletionCleanup
+      expect(steps).toEqual(['deletion', 'finalization'])
+      expect(candidateKills).toBe(1)
+      await owner.assertReady(owner.reserve('next'))
+      expect(candidateKills).toBe(2)
+      await owner.assertReady(owner.reserve('next'))
+      expect(candidateKills).toBe(2)
+    } finally {
+      unsubscribe()
+      owner.dispose()
+    }
+  })
 })

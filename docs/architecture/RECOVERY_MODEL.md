@@ -396,3 +396,6 @@ unknown outcome 同时保护二者。清理 owner 保留读取 references 或 ki
 只有确认引用或完成 kill 才解除清理责任，已引用 runtime 的责任交回 durable binding/node owner。
 Renderer 的 placement cleanup 按 managed receipt 选择 Worker 路径，并先协商 operation support；
 legacy launch 保留直接 PTY cleanup，不因 provider 或预分配 node ID 改变责任。
+Cleanup obligation 按 runtime ID 带独立代际；reference proof 和已完成的 kill 只能解除其观察到的代际，
+不能删除 await 期间新增的清理责任。Recovery 每次等待完成都重新检查 node 当前的 pending launch，
+然后读取 durable observation；已 retired 的 node 不从较早的 workspace snapshot 重连。

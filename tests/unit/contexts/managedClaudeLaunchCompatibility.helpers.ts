@@ -7,7 +7,10 @@ import { sessionLaunchAgentOperation } from '../../../src/shared/contracts/contr
 import { normalizePersistedAppState } from '../../../src/platform/persistence/sqlite/normalize'
 import type { PersistenceStore } from '../../../src/platform/persistence/sqlite/PersistenceStore'
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
-import type { ManagedClaudeBindingObservation } from '../../../src/shared/contracts/managedClaudeLaunch'
+import type {
+  ManagedClaudeBindingObservation,
+  ManagedClaudeNodeObservation,
+} from '../../../src/shared/contracts/managedClaudeLaunch'
 import { createReadyTerminalAdmissionDeps } from './controlSurfaceTestTerminalAvailability'
 
 export function deferred<T>() {
@@ -61,16 +64,18 @@ export function compatibilityFixture(
   let binding: ManagedClaudeBindingObservation | null = null
   const store = {
     readAppState: vi.fn(async () => state),
-    observeManagedClaudeNode: vi.fn((nodeId: string) => ({
-      nodeId,
-      binding,
-      retired: options.retired ?? false,
-      nodeRuntimeSessionId: binding?.runtimeSessionId ?? 'live',
-      context:
-        options.persisted === false
-          ? null
-          : { kind: 'agent', provider, directory: '/repo', route: 'null' },
-    })),
+    observeManagedClaudeNode: vi.fn(
+      (nodeId: string): ManagedClaudeNodeObservation => ({
+        nodeId,
+        binding,
+        retired: options.retired ?? false,
+        nodeRuntimeSessionId: binding?.runtimeSessionId ?? 'live',
+        context:
+          options.persisted === false
+            ? null
+            : { kind: 'agent', provider, directory: '/repo', route: 'null' },
+      }),
+    ),
     managedClaudePreparationCandidates: () => (options.persisted === false ? [] : ['agent']),
     isManagedClaudeRuntimeReferenced: vi.fn(() => false),
     activateManagedClaudeRuntime: vi.fn(async input => {

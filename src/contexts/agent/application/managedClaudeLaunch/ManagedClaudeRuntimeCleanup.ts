@@ -2,7 +2,7 @@ import type { ManagedClaudeLaunchPorts } from './ports'
 
 /** Own exact runtime IDs until a definitive reference or successful kill resolves cleanup. */
 export class ManagedClaudeRuntimeCleanup {
-  private readonly pending = new Set<string>()
+  private readonly pending = new Map<string, symbol>()
   private readonly inFlight = new Map<string, Promise<boolean>>()
 
   constructor(
@@ -14,15 +14,22 @@ export class ManagedClaudeRuntimeCleanup {
   ) {}
 
   retain(id: string): void {
-    this.pending.add(id)
+    this.pending.set(id, Symbol(id))
   }
 
-  confirmReferenced(id: string): void {
-    this.pending.delete(id)
+  /** The claim covered by the next synchronous reference observation. */
+  capture(id: string | null): symbol | undefined {
+    return id === null ? undefined : this.pending.get(id)
+  }
+
+  confirmReferenced(id: string, claim: symbol | undefined): void {
+    if (claim !== undefined && this.pending.get(id) === claim) {
+      this.pending.delete(id)
+    }
   }
 
   async flush(): Promise<void> {
-    await Promise.all([...this.pending].map(id => this.cleanup(id)))
+    await Promise.all([...this.pending.keys()].map(id => this.cleanup(id)))
   }
 
   cleanup(id: string): Promise<boolean> {
@@ -31,7 +38,8 @@ export class ManagedClaudeRuntimeCleanup {
   }
 
   cleanupRetained(id: string): Promise<boolean> {
-    if (!this.pending.has(id)) {
+    const claim = this.pending.get(id)
+    if (claim === undefined) {
       return Promise.resolve(false)
     }
     const existing = this.inFlight.get(id)
@@ -42,7 +50,7 @@ export class ManagedClaudeRuntimeCleanup {
       return Promise.resolve(false)
     }
     // Install the shared work before invoking an async kill or a reentrant port.
-    const work = Promise.resolve()
+    const work: Promise<boolean> = Promise.resolve()
       .then(async () => {
         if (this.held(id)) {
           return false
@@ -52,7 +60,9 @@ export class ManagedClaudeRuntimeCleanup {
           if (!referenced) {
             await this.ports.killExactRuntime(id)
           }
-          this.pending.delete(id)
+          if (this.pending.get(id) === claim) {
+            this.pending.delete(id)
+          }
           return !referenced
         } catch {
           // A failed read/kill retains the obligation for the next request or deletion event.
@@ -60,7 +70,9 @@ export class ManagedClaudeRuntimeCleanup {
         }
       })
       .finally(() => {
-        this.inFlight.delete(id)
+        if (this.inFlight.get(id) === work) {
+          this.inFlight.delete(id)
+        }
       })
     this.inFlight.set(id, work)
     return work

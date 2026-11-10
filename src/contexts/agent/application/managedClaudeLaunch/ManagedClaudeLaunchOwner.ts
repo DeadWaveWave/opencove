@@ -66,12 +66,21 @@ export class ManagedClaudeLaunchOwner {
   }
 
   async assertReady(attempt: ManagedClaudeLaunchAttempt): Promise<void> {
-    const pending = this.obligations.get(attempt.nodeId)
-    if (pending) {
-      await this.reconcile(pending)
+    for (;;) {
+      const pending = this.obligations.get(attempt.nodeId)
+      if (pending) {
+        // The next obligation is known only after the current one settles.
+        // oxlint-disable-next-line no-await-in-loop
+        await this.reconcile(pending)
+      }
+      // Cleanup may yield to another activation for this node; recheck after it finishes.
+      // oxlint-disable-next-line no-await-in-loop
+      await this.runtimeCleanup.flush()
+      this.assertCurrent(attempt)
+      if (!this.obligations.has(attempt.nodeId)) {
+        return
+      }
     }
-    await this.runtimeCleanup.flush()
-    this.assertCurrent(attempt)
   }
 
   async admit(
@@ -156,6 +165,7 @@ export class ManagedClaudeLaunchOwner {
     input: ActivateManagedClaudeRuntimeInput,
   ): Promise<ManagedClaudeLifecycleReceipt | null> {
     let observation
+    const claim = this.runtimeCleanup.capture(input.runtimeSessionId)
     try {
       observation = this.ports.observeNode(input.nodeId)
     } catch {
@@ -170,7 +180,13 @@ export class ManagedClaudeLaunchOwner {
       // The row's exact revision is attributable; a later observation is not a commit revision.
       const appCommit =
         this.activationNodePresence.get(input) === true && !this.duplicateActivations.has(input)
-      return this.finalize(input, binding, appCommit ? binding.bindingRevision : null)
+      return this.finalize(
+        input,
+        binding,
+        appCommit ? binding.bindingRevision : null,
+        undefined,
+        claim,
+      )
     }
     return this.finalize(input, null, null)
   }
@@ -180,6 +196,7 @@ export class ManagedClaudeLaunchOwner {
     binding: ManagedClaudeLifecycleReceipt['binding'] | null,
     commitRevision: number | null,
     effectiveState?: unknown,
+    claim?: symbol,
   ): Promise<ManagedClaudeLifecycleReceipt | null> {
     const existing = this.finalizations.get(input)
     if (existing) {
@@ -195,7 +212,7 @@ export class ManagedClaudeLaunchOwner {
         this.publish(input, commitRevision, effectiveState)
       }
       if (binding && input.runtimeSessionId) {
-        this.runtimeCleanup.confirmReferenced(input.runtimeSessionId)
+        this.runtimeCleanup.confirmReferenced(input.runtimeSessionId, claim)
       } else if (input.runtimeSessionId) {
         await this.runtimeCleanup.cleanupRetained(input.runtimeSessionId)
       }
@@ -225,7 +242,12 @@ export class ManagedClaudeLaunchOwner {
       return
     }
     this.reconciliationTimers.get(input.nodeId)?.()
-    const cancel = this.ports.scheduleReconciliation(() => {
+    const timer = { cancel: () => {} }
+    const cancel = () => timer.cancel()
+    timer.cancel = this.ports.scheduleReconciliation(() => {
+      if (this.reconciliationTimers.get(input.nodeId) !== cancel) {
+        return
+      }
       this.reconciliationTimers.delete(input.nodeId)
       if (this.disposed || this.obligations.get(input.nodeId) !== input) {
         return
@@ -317,6 +339,7 @@ export class ManagedClaudeLaunchOwner {
         this.duplicateActivations.add(input)
       }
       let binding
+      const claim = this.runtimeCleanup.capture(input.runtimeSessionId)
       try {
         binding = this.ports.observeNode(attempt.nodeId).binding
       } catch {
@@ -331,6 +354,7 @@ export class ManagedClaudeLaunchOwner {
         binding,
         result.status === 'committed' ? (result.revision ?? null) : null,
         result.effectiveState,
+        claim,
       ))!
     } catch (error) {
       const unresolved = this.obligations.get(input.nodeId) === input

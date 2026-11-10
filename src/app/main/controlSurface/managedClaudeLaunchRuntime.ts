@@ -107,7 +107,15 @@ export function createManagedClaudeLaunchRuntime(deps: {
     owner,
     ready,
     awaitPending: async (nodeId: string) => {
-      await pendingLaunches.get(nodeId)?.promise
+      for (;;) {
+        const pending = pendingLaunches.get(nodeId)
+        if (!pending) {
+          return
+        }
+        // Supersession can replace this entry while it is pending.
+        // oxlint-disable-next-line no-await-in-loop
+        await pending.promise
+      }
     },
     reservePreparation: (workspaceId: string, nodeIds?: readonly string[]) => {
       const attempts = new Map<string, ManagedClaudeLaunchAttempt>()
@@ -241,7 +249,9 @@ export function createManagedClaudeLaunchRuntime(deps: {
         if (!localStore.observeManagedClaudeNode) {
           rejectManagedLaunch(attempt.nodeId, 'capabilityUnavailable')
         }
-        const observation = localStore.observeManagedClaudeNode(attempt.nodeId)
+        let observation = localStore.observeManagedClaudeNode(attempt.nodeId)
+        const capturedContext =
+          attempt.context === undefined ? observation.context : attempt.context
         if (observation.retired) {
           rejectManagedLaunch(attempt.nodeId, 'nodeGone')
         }
@@ -257,6 +267,13 @@ export function createManagedClaudeLaunchRuntime(deps: {
         if (observation.binding) {
           trackPending()
           await owner.assertReady(attempt)
+          observation = localStore.observeManagedClaudeNode(attempt.nodeId)
+          if (observation.retired) {
+            rejectManagedLaunch(attempt.nodeId, 'nodeGone')
+          }
+          if (!observation.binding) {
+            rejectManagedLaunch(attempt.nodeId, 'conflict')
+          }
         }
         const decision = observation.binding
           ? resolveManagedClaudeLaunchIntent(observation, { ...payload, intent })
@@ -264,7 +281,7 @@ export function createManagedClaudeLaunchRuntime(deps: {
         if (observation.binding && !localStore.activateManagedClaudeRuntime) {
           rejectManagedLaunch(attempt.nodeId, 'capabilityUnavailable')
         }
-        attempt.context = observation.context
+        attempt.context = capturedContext
         attempt.expected =
           decision?.expected ??
           (intent && intent.kind !== 'resumeCurrent'
