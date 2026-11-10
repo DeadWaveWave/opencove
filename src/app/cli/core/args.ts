@@ -59,7 +59,13 @@ export function parse(argv: string[], specs: Record<string, OptionSpec>, path: s
     options[key] = {
       type: spec.type === 'boolean' ? 'boolean' : 'string',
       multiple: spec.multiple ?? false,
-      ...(key === 'help' ? { short: 'h' } : key === 'output' ? { short: 'o' } : {}),
+      ...(spec.short
+        ? { short: spec.short }
+        : key === 'help'
+          ? { short: 'h' }
+          : key === 'output'
+            ? { short: 'o' }
+            : {}),
     }
     if (spec.fileVariant) {
       options[`${key}-file`] = { type: 'string' }

@@ -93,6 +93,9 @@ stdout empty and use stderr (`error` JSON when non-TTY or `-o json`). `agent del
 always prints its evidence snapshot on a normal return, even with exit 1: parse it.
 `--fields a,b` projects declared fields, including supported dedicated mutations;
 generic `api call` mutations and streaming commands do not support projection.
+`error.retryable` is true only for transient conditions (connection refused, read or wait
+timeout); it never makes a prompt safe to resend. Ambiguity candidates are in `error.candidates`.
+`node list` and `agent list` return 50 rows by default (`truncated`, `total`); add `--full`.
 
 - 0: command succeeded; inspect outcome, delivery status and reply as appropriate.
 - 1: refused, failed or unconfirmed; 2: invalid input; 3: connection unavailable.

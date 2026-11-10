@@ -104,6 +104,7 @@ it('formats server validation issues as structured JSON', async () => {
   expect(await run(['node', 'get', '--node', 'n'], f.io)).toBe(2)
   expect(f.error()).toEqual({
     code: 'common.invalid_input',
+    retryable: false,
     message: 'Invalid input for node.get: nodeId: expected string',
     details: { issues },
   })
@@ -330,6 +331,7 @@ it.each([
     })
     expect(f.error()).toEqual({
       code,
+      retryable: false,
       message: expect.stringMatching(/is unavailable$/),
       details: { reason: 'offline', ...target },
       hint: 'Run "opencove endpoint list" to find available targets.',

@@ -146,13 +146,13 @@ Global options: see "opencove --help".
 
 exports[`error golden texts (TTY=false) 1`] = `
 {
-  "missing required option": "{"error":{"code":"cli.usage","message":"Missing required option --space (or another target space option) for \\"opencove node create note\\".","hint":"Choose a Space, or add --root-canvas to create outside every Space."}}
+  "missing required option": "{"error":{"code":"cli.usage","retryable":false,"message":"Missing required option --space (or another target space option) for \\"opencove node create note\\".","hint":"Choose a Space, or add --root-canvas to create outside every Space."}}
 ",
-  "not running": "{"error":{"code":"context.unreachable","message":"OpenCove is not running for this profile.","hint":"Start the OpenCove app, or run \\"opencove worker start\\". Use --user-data <dir> to target another profile.","details":{"profiles":["/tmp/opencove-test/profile-a","/tmp/opencove-test/profile-b"]}}}
+  "not running": "{"error":{"code":"context.unreachable","retryable":false,"message":"OpenCove is not running for this profile.","hint":"Start the OpenCove app, or run \\"opencove worker start\\". Use --user-data <dir> to target another profile.","details":{"profiles":["/tmp/opencove-test/profile-a","/tmp/opencove-test/profile-b"]}}}
 ",
-  "unknown command": "{"error":{"code":"cli.usage","message":"Unknown command \\"nodes list\\" for opencove.","hint":"Did you mean node list? Run \\"opencove --help\\" to see its commands."}}
+  "unknown command": "{"error":{"code":"cli.usage","retryable":false,"message":"Unknown command \\"nodes list\\" for opencove.","hint":"Did you mean node list? Run \\"opencove --help\\" to see its commands."}}
 ",
-  "unknown option": "{"error":{"code":"cli.usage","message":"Unknown option --frobnicate for \\"opencove node list\\".","hint":"Run \\"opencove node list --help\\" to see its options."}}
+  "unknown option": "{"error":{"code":"cli.usage","retryable":false,"message":"Unknown option --frobnicate for \\"opencove node list\\".","hint":"Run \\"opencove node list --help\\" to see its options."}}
 ",
 }
 `;

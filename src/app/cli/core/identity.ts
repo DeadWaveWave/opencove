@@ -47,6 +47,18 @@ export function sessionIdentity(env: Record<string, string | undefined>, invoke:
       }
       const identity = await whoami()
       const id = identity[`${kind}Id`]
+      if (identity.caller === 'session-grant' && kind === 'node' && !id) {
+        usage(
+          'This session is not bound to a canvas node.',
+          'Use --node <selector> to choose a node, or --space <selector> for node list and node create.',
+        )
+      }
+      if (identity.caller === 'session-grant' && kind === 'space' && !id && !identity.nodeId) {
+        usage(
+          'This session has no Space.',
+          'Use --space <selector> to choose a Space, or --project <selector> for project scope.',
+        )
+      }
       if (identity.caller === 'session-grant' && kind === 'space' && !id) {
         usage(
           'This OpenCove terminal does not belong to a space.',

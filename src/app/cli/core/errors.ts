@@ -1,3 +1,4 @@
+import { candidateText, errorCandidates, errorRetryable } from './errorPresentation'
 import type { CliIo } from './io'
 import type { OptionSpec } from './command'
 export class CliError extends Error {
@@ -15,7 +16,9 @@ export class CliError extends Error {
 export function usage(message: string, hint?: string): never {
   throw new CliError('cli.usage', 2, message, hint)
 }
-export function printError(io: CliIo, error: CliError, json: boolean) {
+export function printError(io: CliIo, error: CliError, json: boolean, safeToRepeat = true) {
+  const candidates = errorCandidates(error)
+  const retryable = errorRetryable(error, safeToRepeat)
   const profiles =
     error.details &&
     typeof error.details === 'object' &&
@@ -38,8 +41,8 @@ export function printError(io: CliIo, error: CliError, json: boolean) {
   const lastKnown = flags.lastKnown ? `  lastKnown: ${JSON.stringify(flags.lastKnown)}\n` : ''
   io.stderr.write(
     io.stderr.isTTY && !json
-      ? `error[${error.code}]: ${error.message}\n${searched}${dispatch}${lastKnown}${error.hint ? `  hint: ${error.hint}\n` : ''}`
-      : `${JSON.stringify({ error: { code: error.code, message: error.message, hint: error.hint, details: error.details, ...(error.debugMessage ? { debugMessage: error.debugMessage } : {}) } })}\n`,
+      ? `error[${error.code}]: ${error.message}\n${searched}${dispatch}${lastKnown}${candidateText(candidates)}${error.hint ? `  hint: ${error.hint}\n` : ''}`
+      : `${JSON.stringify({ error: { code: error.code, retryable, ...(candidates ? { candidates } : {}), message: error.message, hint: error.hint, details: error.details, ...(error.debugMessage ? { debugMessage: error.debugMessage } : {}) } })}\n`,
   )
 }
 

@@ -17,6 +17,12 @@ opencove agent list --space @self -o table
 opencove agent get --node "Reviewer" --pretty
 ```
 
+`node list` and `agent list` return at most 50 rows by default; JSON then has `truncated: true`
+and `total`, and stderr says how many were omitted. Use `--full` or `--limit <n>` for more.
+Create commands accept `-q` to print only the new id (worktree create prints its path), for `$(…)`.
+A standalone `session run-agent` has a session grant but no canvas node: `@self` node selectors
+fail there, so pass `--node` and `--space` explicitly.
+
 To put a node on the canvas outside any Space: `opencove node create note --root-canvas --text …`.
 Outside OpenCove, add `--project <id>`. Placement searches next to you when run inside OpenCove, or
 from the origin if your node is unavailable. Use `--focus` to reveal it.

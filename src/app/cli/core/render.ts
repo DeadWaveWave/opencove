@@ -162,7 +162,7 @@ export function render(value: unknown, options: Record<string, unknown>, spec: R
   }
   return (
     JSON.stringify(
-      limitOutput(value ?? null, options.limit),
+      limitOutput(value ?? null, options.limit, spec.defaultLimit ? spec.listKey : undefined),
       null,
       options.pretty ? 2 : undefined,
     ) + '\n'

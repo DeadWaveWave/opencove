@@ -28,7 +28,7 @@ it.each([0, 1, 2, 3])(
       projectId: project.id,
       spaceId: space.id,
       nodes: [{ id: node.id }, { id: 'n2' }].slice(0, limit || undefined),
-      ...(limit > 0 && limit < 2 ? { truncated: { nodes: 2 } } : {}),
+      ...(limit > 0 && limit < 2 ? { truncated: true, total: 2 } : {}),
     })
   },
 )

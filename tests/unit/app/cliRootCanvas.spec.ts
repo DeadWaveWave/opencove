@@ -125,7 +125,8 @@ it('filters root nodes before list limits and preserves the output envelope', as
   expect(JSON.parse(f.out())).toMatchObject({
     projectId: project.id,
     nodes: [{ id: 'root-one', spaceId: null }],
-    truncated: { nodes: 2 },
+    truncated: true,
+    total: 2,
   })
   expect(f.requests.find(r => r.id === 'node.list')?.payload).toEqual({ projectId: project.id })
 })

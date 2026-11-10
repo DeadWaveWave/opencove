@@ -92,6 +92,40 @@ describe('agent.prompt contract', () => {
     for (const code of op.errors) {
       expect(isAppErrorDescriptor(createAppError(code).toDescriptor())).toBe(true)
     }
+    const nodeless = await surface.invoke(
+      {
+        ...ctx,
+        requestAuth: {
+          kind: 'session-grant',
+          grant: {
+            grantId: 'standalone-grant',
+            projectId: 'p',
+            spaceId: 's',
+            nodeId: null,
+            sessionId: 'standalone',
+            tier: 'interact',
+            createdAt: '',
+          },
+        },
+      },
+      { kind: 'command', id: 'agent.prompt', payload: { nodeId: '@self', text: 'hello' } },
+    )
+    expect(nodeless).toMatchObject({
+      ok: false,
+      error: {
+        code: 'common.invalid_input',
+        details: {
+          issues: [
+            {
+              path: ['nodeId'],
+              message: expect.stringContaining('not bound to a canvas node'),
+              hint: expect.stringContaining('--node'),
+            },
+          ],
+        },
+      },
+    })
+    expect(write).not.toHaveBeenCalled()
     hub.agentRuns.dispose()
   })
 })

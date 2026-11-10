@@ -145,6 +145,7 @@ When no target is given, inside OpenCove defaults to your own space; project opt
 Options:
   --space <id>     Select the space; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required outside OpenCove)
   --name <branch>  Name the worktree branch
+  -q, --quiet      Print only the created object identifier followed by a newline
   --project <id>   Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.

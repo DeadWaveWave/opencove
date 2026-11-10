@@ -61,6 +61,27 @@ it('preserves real attention envelope, summary and delivery IDs with exit 10', a
   })
   expect(stream.streams[0].cancelled).toBe(true)
 })
+it('never marks a wait timeout after delivery as retryable, since repeating would resend', async () => {
+  const f = completedPromptFixture()
+  f.values['agent.get'] = {
+    ...snapshot(node.id, 'working'),
+    sessionId: 's',
+    turn: { id: 't', startedAt: 2, start: 'observed' },
+  }
+  const stream = fixture()
+  const original = f.io.fetch
+  f.io.fetch = (url, init) =>
+    String(url).includes('/events?') ? stream.fetch(url) : original(url, init)
+  expect(
+    await run(['agent', 'prompt', '--node', node.id, '--wait', '--timeout', '300ms', 'hello'], f.io),
+  ).toBe(124)
+  expect(f.out()).toBe('')
+  expect(f.error()).toMatchObject({
+    code: 'agent.wait_timeout',
+    retryable: false,
+    details: { deliveryId: 'd', turnId: 't' },
+  })
+})
 it.each([
   ['--read', '--text', 'x'],
   ['--wait', '--text', 'x', '--timeout', '249ms'],
@@ -118,6 +139,6 @@ it('keeps the prompt HTTP deadline separate from a short wait budget', async () 
   await vi.advanceTimersByTimeAsync(1)
   expect(await pending).toBe(124)
   expect(f.out()).toBe('')
-  expect(f.error()).toMatchObject({ details: { deliveryId: expect.any(String) } })
+  expect(f.error()).toMatchObject({ retryable: false, details: { deliveryId: expect.any(String) } })
   expect(vi.getTimerCount()).toBe(0)
 })
