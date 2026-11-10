@@ -144,6 +144,35 @@ Global options: see "opencove --help".
 "
 `;
 
+exports[`documents named-window commands offline: "space" 2`] = `
+"Usage: opencove space update --space <selector> [--name <text>] [--frame <json>]
+
+Rename a space or adjust its boundary
+
+Rename a space or change its canvas boundary without moving any member node or child space. Names follow the same rules as space create. Supply a name, a frame, or both. The requested boundary expands as needed to contain the fixed contents with padding; requested x and y may also be adjusted. Ancestors grow when necessary. appliedFrame and frameAdjusted report changes to requested frame values. To move a space together with its contents, drag it in OpenCove. Directory and worktree bindings are preserved.
+
+Options:
+  --space <selector>  Select the space to rename or arrange; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
+  --name <text>       Set a nonblank name; surrounding whitespace is removed
+  --frame <json>      Set boundary x, y, width or height; dimensions must be positive and contents stay in place
+  --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Table output (-o table): not supported.
+Projectable fields: id, name, projectId, parentSpaceId, rect, rect.x, rect.y, rect.width, rect.height, directoryPath, movedNodeIds, frameAdjusted, appliedFrame, appliedFrame.x, appliedFrame.y, appliedFrame.width, appliedFrame.height
+
+Projection example:
+  opencove space update --space '<selector>' --fields id
+  {"id":"space-123"}
+
+Examples:
+  opencove space update --space @self --name "Review"
+  opencove space update --space "Review" --frame '{"width":1200,"height":800}'
+  opencove space update --space space-123 --frame '{"x":100,"y":200}'
+
+Global options: see "opencove --help".
+"
+`;
+
 exports[`error golden texts (TTY=false) 1`] = `
 {
   "missing required option": "{"error":{"code":"cli.usage","retryable":false,"message":"Missing required option --space (or another target space option) for \\"opencove node create note\\".","hint":"Choose a Space, or add --root-canvas to create outside every Space."}}
@@ -325,6 +354,7 @@ exports[`lists real space subcommands offline 1`] = `
 
 Commands:
   create  Create a top-level or child space
+  update  Rename a space or adjust its boundary
   list    List spaces
   get     Get a space
 

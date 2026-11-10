@@ -1,4 +1,5 @@
 import * as z from 'zod'
+import { spaceUpdateInput, normalizeSpaceUpdateInput } from '../spaceUpdateInput'
 import { normalizeBootstrapInput } from '../workspaceBootstrapNormalize'
 import { defineOperation } from '../defineOperation'
 import { normalizeCreateChildPayload } from '../spaceCreateChildNormalize'
@@ -93,7 +94,25 @@ export const spaceCreateOperation = defineOperation({
   errors: ['persistence.invalid_state', 'persistence.io_failed', 'persistence.unavailable'],
 })
 
+export const spaceUpdateOperation = defineOperation({
+  id: 'space.update',
+  kind: 'command',
+  scope: 'interact',
+  availability: 'always',
+  summary: 'Rename a space or adjust its boundary around fixed contents',
+  input: spaceUpdateInput,
+  normalize: normalizeSpaceUpdateInput,
+  errors: [
+    'space.not_found',
+    'persistence.invalid_state',
+    'persistence.io_failed',
+    'persistence.unavailable',
+    'persistence.payload_too_large',
+  ],
+})
+
 export const spaceOperations = [
+  spaceUpdateOperation,
   spaceCreateOperation,
   spaceCreateChildOperation,
   spaceGetOperation,

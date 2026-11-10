@@ -180,6 +180,7 @@ it('documents the supported browser modes and task priorities', async () => {
 
 it.each([
   ['space', 'create'],
+  ['space', 'update'],
   ['project', 'add'],
   ['agent', 'stop'],
   ['node', 'update', 'agent'],
