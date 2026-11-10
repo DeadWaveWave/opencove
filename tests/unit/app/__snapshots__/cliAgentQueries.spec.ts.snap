@@ -32,6 +32,11 @@ Options:
 Table output (-o table): not supported.
 Projectable fields: nodeId, title, taskNodeId, sessionId, provider, state, blockedReason, blockedSummary, blockedSummary.kind, blockedSummary.questions, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome, lastEndedTurn, lastEndedTurn.id, lastEndedTurn.outcome, lastEndedTurn.endedAt, spawnedBy, lineageDepth, lineageStatus
 
+Field descriptions:
+  spawnedBy      ID of the node that created this node; null for a root or unavailable lineage
+  lineageDepth   A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable
+  lineageStatus  recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read
+
 Projection example:
   opencove agent get --node '<id>' --fields nodeId
   {"nodeId":"node-123"}
@@ -66,6 +71,11 @@ List output: --limit <n> keeps up to n items per list; 0 means all. Cut object l
 
 Table output (-o table): supported.
 Projectable fields: nodeId, title, taskNodeId, sessionId, provider, state, blockedReason, blockedSummary, blockedSummary.kind, blockedSummary.questions, turn, turn.id, turn.startedAt, turn.start, lastTransitionAt, source, quality, turnOutcome, lastEndedTurn, lastEndedTurn.id, lastEndedTurn.outcome, lastEndedTurn.endedAt, spawnedBy, lineageDepth, lineageStatus
+
+Field descriptions:
+  spawnedBy      ID of the node that created this node; null for a root or unavailable lineage
+  lineageDepth   A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable
+  lineageStatus  recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read
 
 Projection example:
   opencove agent list --fields nodeId

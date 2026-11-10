@@ -18,6 +18,7 @@ ask the user for an authorized endpoint or profile.
 Never search for or modify a real user's profile or tokens. Never print control tokens.
 `@self` uses authenticated terminal identity, not cwd. `@parent` selects your recorded creator;
 see `opencove skill canvas` for selectors and `opencove skill coordinate` for reporting back.
+A node started by the user has `lineageDepth` 1; each agent-created generation adds one.
 
 ```sh
 opencove whoami

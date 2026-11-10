@@ -1,4 +1,4 @@
-import { lineageFields } from '../core/nodeLineage'
+import { lineageFields, lineageFieldDescriptions } from '../core/nodeLineage'
 import { agentMetadataFields } from '../core/agentMetadata'
 import { declaredOutput, noResultOutput } from './declaredOutput'
 import type { RenderSpec } from '../core/command'
@@ -74,6 +74,7 @@ export const nodeListOutput: RenderSpec = {
   defaultLimit: 50,
   listKey: 'nodes',
   fields: [...nodeFields, ...lineageFields, ...nodeSummaryMetadataFields],
+  fieldDescriptions: lineageFieldDescriptions,
   fieldHints: Object.fromEntries(
     dataFields
       .filter(field => !summaryDataFields.includes(field))
@@ -92,6 +93,7 @@ export const nodeListOutput: RenderSpec = {
 export const nodeGetOutput: RenderSpec = {
   itemKey: 'node',
   fields: [...nodeFields, ...lineageFields, 'data', ...dataFields.map(f => `data.${f}`)],
+  fieldDescriptions: lineageFieldDescriptions,
   examples: ['--fields id,title', '{"node":{"id":"n","title":"Note"}}'],
 }
 const kindDataFields: Record<string, string[]> = {
@@ -112,6 +114,7 @@ const kindDataFields: Record<string, string[]> = {
 export function nodeKindOutput(kind: string, create: boolean): RenderSpec {
   return {
     itemKey: 'node',
+    ...(create ? { fieldDescriptions: lineageFieldDescriptions } : {}),
     fields: [
       ...nodeFields,
       ...(create ? lineageFields : []),

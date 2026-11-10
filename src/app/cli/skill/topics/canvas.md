@@ -113,9 +113,12 @@ kind; each command still checks whether the target supports that action. A root 
 and a deleted parent cannot be addressed. A node literally named `@parent` must be selected by ID.
 `@self` keeps its injected identity and `whoami` fallback; Space selection keeps its existing behavior.
 
-Node get/list/create, agent get/list and context node summaries expose `spawnedBy`, `lineageDepth`
-and `lineageStatus`. No recorded parent means `null`, depth `1`, status `root`. Grant-created nodes
-are `recorded`; unreadable lineage is `unavailable`. Missing fields mean an older Worker.
+Node get/list/create, agent get/list and context node summaries expose creation lineage:
+
+- `spawnedBy`: the creator node ID, or `null` for a root or unavailable lineage.
+- `lineageDepth`: A node started by the user has `lineageDepth` 1; each agent-created generation adds one (1 → 2 → 3). Unavailable lineage has `null` depth.
+- `lineageStatus`: `recorded` for recorded creations, `root` without a recorded parent, or `unavailable` when lineage cannot be read. Missing fields mean an older Worker.
+
 Lineage survives renames, moves, parent deletion, renderer saves and restart.
 
 Use `node list --spawned-by @self` or `agent list --spawned-by @self` for direct children across

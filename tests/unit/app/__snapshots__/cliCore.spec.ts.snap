@@ -101,6 +101,11 @@ Options:
 Table output (-o table): not supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, spawnedBy, lineageDepth, lineageStatus, data, data.kind, data.text
 
+Field descriptions:
+  spawnedBy      ID of the node that created this node; null for a root or unavailable lineage
+  lineageDepth   A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable
+  lineageStatus  recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read
+
 Projection example:
   opencove node create note --space space-123 --fields id,title
   {"revision":1,"projectId":"p","spaceId":"space-123","node":{"id":"n","title":"Note"}}

@@ -1,4 +1,5 @@
 import { spawnedByOption } from '../core/nodeLineage'
+import { kindWithArticle } from '../core/kindWording'
 import { reportNodeFrame } from './nodeFrame'
 import { nodeAgentMetadata } from '../core/agentMetadata'
 import type { ListNodesResult } from '../../../shared/contracts/dto/nodeControl'
@@ -42,7 +43,10 @@ const optionText: Record<string, [string, string]> = {
   'Session mode': ['shared|incognito|profile', 'Choose the browser session mode'],
   Profile: ['id', 'Select a browser or terminal profile'],
   'Agent prompt': ['text', 'Set the initial agent prompt'],
-  Provider: ['id', 'Select the agent provider'],
+  Provider: [
+    'id',
+    `Select the agent provider. Accepted IDs: ${AGENT_PROVIDER_IDS.join(', ')}; omit to use the configured default`,
+  ],
   Model: ['id', 'Select the agent model'],
   Shell: ['path', 'Choose the terminal shell executable'],
   Command: ['command', 'Run this command in the terminal'],
@@ -244,10 +248,7 @@ export const nodeCommands = [
                     }
       return defineCommand({
         path: ['node', action, kind],
-        summary:
-          !create && kind === 'agent'
-            ? 'Update an agent node'
-            : `${create ? 'Create' : 'Update'} a ${kind} node`,
+        summary: `${create ? 'Create' : 'Update'} ${kindWithArticle(kind)} node`,
         description: create
           ? 'Without explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node belongs to another project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.'
           : kind === 'agent' || kind === 'terminal'
@@ -348,7 +349,7 @@ export const nodeCommands = [
   ...(['node', 'space'] as const).map(kind =>
     defineCommand({
       path: ['canvas', 'focus', kind],
-      summary: `Focus a ${kind}`,
+      summary: `Focus ${kindWithArticle(kind)}`,
       targetSpace: kind === 'space' ? 'required' : undefined,
       connect: true,
       operation: 'canvas.focus',

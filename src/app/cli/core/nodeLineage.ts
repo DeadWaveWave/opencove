@@ -12,7 +12,14 @@ export async function requireNodeLineage(invoke: Invoke): Promise<void> {
     )
   }
 }
-export const lineageFields = ['spawnedBy', 'lineageDepth', 'lineageStatus']
+export const lineageFieldDescriptions = {
+  spawnedBy: 'ID of the node that created this node; null for a root or unavailable lineage',
+  lineageDepth:
+    'A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable',
+  lineageStatus:
+    'recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read',
+}
+export const lineageFields = Object.keys(lineageFieldDescriptions)
 export function lineageProjection(
   value:
     | import('../../../shared/contracts/dto/nodeLineage').NodeLineageProjection

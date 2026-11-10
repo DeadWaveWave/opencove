@@ -1,8 +1,19 @@
 export const enMessages = {
-  nodeNoParent: 'This node has no recorded parent.',
-  nodeParentDeleted: 'The parent node has been deleted.',
-  nodeParentIdentityRequired: 'Select @parent from a session bound to an OpenCove canvas node.',
-  nodeParentUnavailable: 'The parent node is unavailable.',
+  nodeNoParent: 'This node was started by the user, so it has no parent agent.',
+  nodeNoParentHint:
+    'Use "opencove agent list" to choose a recipient, or report your findings to the user.',
+  nodeParentDeleted: 'The agent that created this node has been deleted.',
+  nodeParentDeletedHint:
+    'Use "opencove agent list" to choose another recipient, or leave your findings in a shared note.',
+  nodeParentIdentityRequired: '@parent works only inside an OpenCove terminal.',
+  nodeParentIdentityRequiredHint:
+    'Run this command inside OpenCove, or replace @parent with a node ID from "opencove node list".',
+  nodeParentIdentityMismatch: 'The current terminal identity does not match its OpenCove session.',
+  nodeParentIdentityMismatchHint:
+    'Open a new OpenCove terminal and run "opencove whoami" before choosing a recipient.',
+  nodeParentUnavailable: 'The parent node could not be resolved.',
+  nodeParentUnavailableHint:
+    'Run "opencove node get --node @self" to inspect your lineage, then choose a recipient with "opencove node list".',
   agentLaunchFailed: 'Agent launch failed: {{message}}',
   agentResumeFailed: 'Agent resume failed: {{message}}',
   terminalAgentReexecFailed: 'Failed to restart the agent in this terminal: {{message}}',

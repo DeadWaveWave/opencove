@@ -1,6 +1,7 @@
 import type { Command, CommandArgs, OptionSpec } from './command'
 import type { CliIo } from './io'
 import { closeNames } from './suggestions'
+import { kindWithArticle } from './kindWording'
 import { CliError } from './errors'
 import { sessionIdentity, type Invoke } from './identity'
 import { requireNodeLineage } from './nodeLineage'
@@ -110,7 +111,7 @@ function match(
     throw new CliError(
       `${kind}.not_found`,
       1,
-      `${label} ${JSON.stringify(selector)} was not found; searched ${scope}.${wrongKind ? ` This is a known ${wrongKind} ID, not a ${kind} ID.` : ''}`,
+      `${label} ${JSON.stringify(selector)} was not found; searched ${scope}.${wrongKind ? ` This is a known ${wrongKind} ID, not ${kindWithArticle(kind)} ID.` : ''}`,
       [
         selector.length < 6 && candidates.some(candidate => candidate.id.startsWith(selector))
           ? 'ID prefixes need at least 6 characters.'
@@ -236,7 +237,7 @@ export async function resolveSelectors(
         `${kind}.not_found`,
         1,
         `${kind === 'node' ? 'Node' : 'Space'} ${JSON.stringify(selector)} belongs to project ${JSON.stringify(targetProjectId)}, not to the selected project ${JSON.stringify(projectId)}`,
-        `Drop --project to address a ${kind} by its full ID across projects.`,
+        `Drop --project to address ${kindWithArticle(kind)} by its full ID across projects.`,
       )
     }
   }

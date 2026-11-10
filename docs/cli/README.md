@@ -458,9 +458,12 @@ kind; each command still checks whether the target supports that action. A root 
 and a deleted parent cannot be addressed. A node literally named `@parent` must be selected by ID.
 `@self` keeps its injected identity and `whoami` fallback; Space selection keeps its existing behavior.
 
-Node get/list/create, agent get/list and context node summaries expose `spawnedBy`, `lineageDepth`
-and `lineageStatus`. No recorded parent means `null`, depth `1`, status `root`. Grant-created nodes
-are `recorded`; unreadable lineage is `unavailable`. Missing fields mean an older Worker.
+Node get/list/create, agent get/list and context node summaries expose creation lineage:
+
+- `spawnedBy`: the creator node ID, or `null` for a root or unavailable lineage.
+- `lineageDepth`: A node started by the user has `lineageDepth` 1; each agent-created generation adds one (1 → 2 → 3). Unavailable lineage has `null` depth.
+- `lineageStatus`: `recorded` for recorded creations, `root` without a recorded parent, or `unavailable` when lineage cannot be read. Missing fields mean an older Worker.
+
 Lineage survives renames, moves, parent deletion, renderer saves and restart.
 
 Use `node list --spawned-by @self` or `agent list --spawned-by @self` for direct children across
@@ -468,7 +471,7 @@ the project; an explicit `--space` or `--project` narrows results. Filtering pre
 `@parent` and `--spawned-by` require `features.nodeLineageV1`; older Workers fail with exit 5.
 
 中文：`@parent` 由 Worker 根据已验证的会话身份解析，指向创建当前节点的父节点；父节点可以是终端。
-无记录的节点显示为 root（深度 1），子节点深度为父节点加 1。父节点删除后返回 `parent_deleted`，
+用户启动的节点为 root，`lineageDepth` 为 1；Agent 每创建下一代，深度加 1（1 → 2 → 3）。父节点删除后返回 `parent_deleted`，
 不会改变子节点的血缘记录。`--spawned-by @self` 只列出直接子节点，默认跨当前项目的所有 Space；
 显式 Space／项目筛选仍有效。旧 Worker 不支持这些选择器或筛选时退出码为 5。
 

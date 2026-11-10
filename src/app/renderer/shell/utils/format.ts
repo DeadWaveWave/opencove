@@ -1,4 +1,5 @@
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
+import { nodeParentErrorPresentation } from '@shared/errors/nodeParentError'
 import { getActiveUiLanguage, translate } from '@app/renderer/i18n'
 import {
   formatAppErrorMessage,
@@ -38,20 +39,11 @@ function getDateTimeFormatter(language: string): Intl.DateTimeFormat {
 }
 
 export function toErrorMessage(error: unknown): string {
-  if (
-    (error instanceof OpenCoveAppError || isAppErrorDescriptor(error)) &&
-    error.code === 'node.parent_unavailable'
-  ) {
-    const reason = (error.details as { reason?: string } | undefined)?.reason
-    return translate(
-      reason === 'no_parent'
-        ? 'messages.nodeNoParent'
-        : reason === 'parent_deleted'
-          ? 'messages.nodeParentDeleted'
-          : reason === 'caller_identity_required'
-            ? 'messages.nodeParentIdentityRequired'
-            : 'messages.nodeParentUnavailable',
-    )
+  if (error instanceof OpenCoveAppError || isAppErrorDescriptor(error)) {
+    const parent = nodeParentErrorPresentation(error)
+    if (parent) {
+      return `${translate(`messages.${parent.key}`)} ${translate(`messages.${parent.key}Hint`)}`
+    }
   }
   if (error instanceof OpenCoveAppError) {
     if (error.code === 'worker.stop_not_owned') {

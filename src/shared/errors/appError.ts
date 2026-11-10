@@ -1,4 +1,5 @@
 import { agentPromptErrorPresentation } from './agentPromptError'
+import { nodeParentErrorPresentation } from './nodeParentError'
 import { fileSystemErrorReasonMessage } from './filesystemError'
 import { publicTerminalSpawnApplicationError } from './terminalSpawnErrorReasons'
 import type { AppErrorCode, AppErrorDescriptor, AppErrorParams } from '../contracts/dto'
@@ -21,8 +22,7 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'endpoint.operation_in_progress': 'Another endpoint operation is already in progress.',
     'space.not_found': 'Space not found.',
     'space.ambiguous': 'Space locator matched multiple spaces.',
-    'node.parent_unavailable':
-      'Your parent node is unavailable. Inspect your node lineage for details.',
+    'node.parent_unavailable': 'The parent node could not be resolved.',
     'node.not_found': 'Node not found.',
     'node.unsupported_operation': 'This node operation is not supported.',
     'session.transcript_not_ready': 'Session transcript is not available yet.',
@@ -225,17 +225,9 @@ export function formatAppErrorMessage(error: AppErrorDescriptor | OpenCoveAppErr
   if (prompt) {
     return prompt.message
   }
-  if (descriptor.code === 'node.parent_unavailable') {
-    const reason = (descriptor.details as { reason?: string } | undefined)?.reason
-    if (reason === 'no_parent') {
-      return 'This node has no recorded parent.'
-    }
-    if (reason === 'parent_deleted') {
-      return 'The parent node has been deleted.'
-    }
-    if (reason === 'caller_identity_required') {
-      return '@parent requires a session bound to an OpenCove canvas node.'
-    }
+  const parent = nodeParentErrorPresentation(descriptor)
+  if (parent) {
+    return parent.message
   }
   const message = APP_ERROR_MESSAGES[descriptor.code] ?? APP_ERROR_MESSAGES['common.unexpected']
   if (descriptor.code.startsWith('filesystem.')) {

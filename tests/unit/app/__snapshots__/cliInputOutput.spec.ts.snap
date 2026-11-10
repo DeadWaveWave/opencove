@@ -210,6 +210,11 @@ List output: --limit <n> keeps up to n items per list; 0 means all. Cut object l
 Table output (-o table): supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, spawnedBy, lineageDepth, lineageStatus, sessionStatus, agentState, agentState.state, agentState.quality, agentState.turnId, taskNodeId, data, data.kind, data.status, data.priority, data.requirement, data.tags, data.url, data.linkedAgentNodeId
 
+Field descriptions:
+  spawnedBy      ID of the node that created this node; null for a root or unavailable lineage
+  lineageDepth   A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable
+  lineageStatus  recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read
+
 Projection example:
   opencove node list --fields id,data.status
   {"projectId":"p","spaceId":null,"nodes":[{"id":"n","data":{"status":"doing"}}]}

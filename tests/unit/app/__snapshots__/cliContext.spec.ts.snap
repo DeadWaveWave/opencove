@@ -18,6 +18,14 @@ List output: --limit <n> keeps up to n items per list; 0 means all. Cut object l
 Table output (-o table): not supported.
 Projectable fields: self, self.caller, self.scope, self.projectId, self.spaceId, self.nodeId, self.sessionId, self.node, self.node.id, self.node.kind, self.node.title, self.node.state, self.node.spawnedBy, self.node.lineageDepth, self.node.lineageStatus, self.node.sessionStatus, self.node.agentState, self.node.agentState.state, self.node.agentState.quality, self.node.agentState.turnId, self.node.taskNodeId, project, project.id, project.name, project.path, space, space.id, space.name, space.directoryPath, nodes, nodes.id, nodes.kind, nodes.title, nodes.state, nodes.spawnedBy, nodes.lineageDepth, nodes.lineageStatus, nodes.sessionStatus, nodes.agentState, nodes.agentState.state, nodes.agentState.quality, nodes.agentState.turnId, nodes.taskNodeId, next
 
+Field descriptions:
+  self.node.spawnedBy      ID of the node that created this node; null for a root or unavailable lineage
+  self.node.lineageDepth   A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable
+  self.node.lineageStatus  recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read
+  nodes.spawnedBy          ID of the node that created this node; null for a root or unavailable lineage
+  nodes.lineageDepth       A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable
+  nodes.lineageStatus      recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read
+
 Projection example:
   opencove context --space "@self" --fields space.name
   {"space":{"name":"Main"}}
@@ -44,6 +52,11 @@ Options:
 
 Table output (-o table): not supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, spawnedBy, lineageDepth, lineageStatus, data, data.kind, data.content, data.text, data.requirement, data.status, data.priority, data.tags, data.linkedAgentNodeId, data.url, data.pinned, data.sessionMode, data.profileId, data.provider, data.prompt, data.model, data.effectiveModel, data.executionDirectory, data.expectedDirectory, data.taskId, data.runtimeKind
+
+Field descriptions:
+  spawnedBy      ID of the node that created this node; null for a root or unavailable lineage
+  lineageDepth   A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable
+  lineageStatus  recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read
 
 Projection example:
   opencove node get --node '<id>' --fields id,title

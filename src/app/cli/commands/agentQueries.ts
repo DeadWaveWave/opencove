@@ -1,5 +1,11 @@
-import { spawnedByOption, lineageFields, lineageProjection } from '../core/nodeLineage'
+import {
+  spawnedByOption,
+  lineageFields,
+  lineageProjection,
+  lineageFieldDescriptions,
+} from '../core/nodeLineage'
 import { projectTaskLinks } from '../core/agentMetadata'
+import { kindWithArticle } from '../core/kindWording'
 import { defineCommand } from '../core/command'
 import { agentReadCommand } from './agentRead'
 import { CliError, usage } from '../core/errors'
@@ -115,6 +121,7 @@ export const agentQueryCommands = [
         { listKey: 'agents' },
       ),
       defaultLimit: 50,
+      fieldDescriptions: lineageFieldDescriptions,
       columns: [
         'nodeId',
         'title',
@@ -178,7 +185,10 @@ export const agentQueryCommands = [
       'Returns the Worker snapshot plus title and taskNodeId (reverse task-owned link, null if absent/ambiguous), including observed agents inside terminal nodes. A node without registered run state fails with agent.not_found (exit 1); use node get to inspect a terminal/note, or start/resume an agent window. State is runtime evidence, independent of persisted node status. Unknown/degraded is never ready. lastEndedTurn identifies the most recent ended turn with {id, outcome, endedAt} (epoch milliseconds), or null before any end in this incarnation. It persists while the next turn runs and resets on replacement/restart. turnOutcome keeps its legacy behavior: set on end (completed, failed, aborted or unknown), usually cleared on the next start; use lastEndedTurn for identity-bound results.',
     options: { node: stringOption('Node ID', true) },
     buildInput: ({ options: o }) => ({ nodeId: o.node }),
-    render: declaredOutput(runFields, { nodeId: 'node-123' }),
+    render: {
+      ...declaredOutput(runFields, { nodeId: 'node-123' }),
+      fieldDescriptions: lineageFieldDescriptions,
+    },
     examples: [
       'opencove agent get --node "Reviewer" --pretty',
       'opencove agent get --node @self --fields state,quality,turn',
@@ -192,7 +202,7 @@ export const agentQueryCommands = [
         throw new CliError(
           'agent.not_found',
           1,
-          `${JSON.stringify(node.title)} is a ${node.kind}, not an agent window.`,
+          `${JSON.stringify(node.title)} is ${kindWithArticle(node.kind)}, not an agent window.`,
           'Use "opencove node get --node <selector>" to inspect this node, or "opencove agent list" to find agent windows.',
         )
       }
