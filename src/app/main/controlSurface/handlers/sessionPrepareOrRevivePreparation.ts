@@ -1,6 +1,5 @@
 import { resolvePreparationAgentBinding } from './sessionPrepareOrReviveAgentBinding'
 import {
-  withManagedClaudeFallback,
   rethrowManagedClaudeLaunchError,
   assertManagedClaudeLaunchCurrent,
 } from '../managedClaudeLaunchRuntime'
@@ -39,7 +38,7 @@ import {
 } from './sessionPrepareOrReviveShared'
 import {
   resolvePrepareOrReviveLaunchContext,
-  spawnFallbackTerminal,
+  spawnPreparedFallbackTerminal,
 } from './sessionPrepareOrReviveTerminalSpawn'
 import { resolveNodeInitialPtyGeometry } from './sessionPrepareOrReviveGeometry'
 import {
@@ -197,19 +196,17 @@ export async function prepareAgentNode(options: {
   }
 
   const spawnFallback = () =>
-    withManagedClaudeFallback(() =>
-      spawnFallbackTerminal({
-        controlSurface,
-        ctx,
-        workspace,
-        node,
-        space,
-        cwd: agentExecutionDirectory,
-        profileId: terminalProfileId,
-        geometry: initialGeometry,
-        launchContext: agentLaunchContext,
-      }),
-    )
+    spawnPreparedFallbackTerminal({
+      controlSurface,
+      ctx,
+      workspace,
+      node,
+      space,
+      cwd: agentExecutionDirectory,
+      profileId: terminalProfileId,
+      geometry: initialGeometry,
+      launchContext: agentLaunchContext,
+    })
 
   if (shouldAutoResumeAgent) {
     try {

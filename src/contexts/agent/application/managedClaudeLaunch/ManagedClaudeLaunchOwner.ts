@@ -42,6 +42,7 @@ export class ManagedClaudeLaunchOwner {
     this.runtimeCleanup = new ManagedClaudeRuntimeCleanup(
       ports,
       id =>
+        this.effects.fallbacks.held(id) ||
         this.effects.candidateHeld(id) ||
         this.effects.retirementHeld(id) ||
         [...this.obligations.values()].some(input => {
@@ -52,7 +53,7 @@ export class ManagedClaudeLaunchOwner {
           )
         }),
     )
-    this.effects = new ManagedClaudeAttemptEffects(this.runtimeCleanup)
+    this.effects = new ManagedClaudeAttemptEffects(this.runtimeCleanup, ports)
   }
 
   reserve(nodeId: string): ManagedClaudeLaunchAttempt {
@@ -130,6 +131,7 @@ export class ManagedClaudeLaunchOwner {
     }
     await this.effects.admit(attempt, async () => {
       this.assertCurrent(attempt)
+      this.effects.retainFallbackPredecessors(attempt)
       const previous = observation.nodeRuntimeSessionId
       if (previous) {
         this.effects.retainPrevious(attempt, previous)
@@ -166,10 +168,6 @@ export class ManagedClaudeLaunchOwner {
     return 'managed'
   }
 
-  private async cleanupPrevious(attempt: ManagedClaudeLaunchAttempt): Promise<void> {
-    await this.effects.cleanupPrevious(attempt)
-  }
-
   hasEffectAdmission(attempt: ManagedClaudeLaunchAttempt): boolean {
     return this.effects.admitted(attempt)
   }
@@ -189,6 +187,18 @@ export class ManagedClaudeLaunchOwner {
       this.assertCurrent(attempt)
     }
   }
+
+  async retainFallbackRuntime(attempt: ManagedClaudeLaunchAttempt, id: string): Promise<void> {
+    this.assertCurrent(attempt)
+    this.effects.retainFallback(attempt, id)
+    this.effects.fallbacks.observeReferences()
+    if (!this.isCurrent(attempt)) {
+      this.effects.fallbacks.release([id])
+      this.assertCurrent(attempt)
+    }
+  }
+
+  observeFallbackReferences = (): void => this.effects.fallbacks.observeReferences()
 
   canAdmitRuntimeWrite(nodeId: string, runtimeSessionId: string): boolean {
     return (
@@ -266,7 +276,7 @@ export class ManagedClaudeLaunchOwner {
       } else if (input.runtimeSessionId) {
         await this.runtimeCleanup.cleanupRetained(input.runtimeSessionId)
       }
-      await this.cleanupPrevious(attempt)
+      await this.effects.cleanupPrevious(attempt, Boolean(binding && input.runtimeSessionId))
       await this.effects.cleanupCreated(attempt, input.runtimeSessionId)
       return receipt
     })
@@ -467,12 +477,14 @@ export class ManagedClaudeLaunchOwner {
     for (const id of nodeIds) {
       this.attempts.delete(id)
       this.admitted.delete(id)
+      this.effects.fallbacks.release(this.effects.fallbacks.ids(id))
       void this.effects.cleanupNode(id)
     }
   }
 
   dispose(): void {
     this.disposed = true
+    this.effects.fallbacks.dispose()
     this.runtimeCleanup.dispose()
     for (const cancel of this.reconciliationTimers.values()) {
       cancel()

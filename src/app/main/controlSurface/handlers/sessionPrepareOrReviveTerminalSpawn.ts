@@ -10,6 +10,10 @@ import type { ControlSurface } from '../controlSurface'
 import type { ControlSurfaceContext } from '../types'
 import { invokeCommand } from './sessionPrepareOrReviveShared'
 import {
+  withManagedClaudeFallback,
+  noteManagedClaudeRuntimeCreated,
+} from '../managedClaudeLaunchRuntime'
+import {
   DEFAULT_PTY_COLS,
   DEFAULT_PTY_ROWS,
   type PtyGeometry,
@@ -195,6 +199,30 @@ export class RemoteWorkerBindingUnresolvedError extends Error {
     super(`Remote worker binding could not be resolved (${launchContext.reason}).`)
     this.name = 'RemoteWorkerBindingUnresolvedError'
   }
+}
+
+export function spawnPreparedFallbackTerminal(
+  options: Parameters<typeof spawnFallbackTerminal>[0],
+) {
+  return withManagedClaudeFallback(assertActive => {
+    const guard = () => {
+      options.ctx.assertActive?.()
+      assertActive?.()
+    }
+    return spawnFallbackTerminal({
+      ...options,
+      ctx: assertActive
+        ? {
+            ...options.ctx,
+            assertActive: guard,
+            terminalSpawnLifecycle: {
+              assertActive: guard,
+              onSpawned: noteManagedClaudeRuntimeCreated,
+            },
+          }
+        : options.ctx,
+    })
+  })
 }
 
 export async function spawnFallbackTerminal(options: {

@@ -22,6 +22,11 @@ export interface ControlSurfaceContext {
   /** In-process caller lifecycle fence; never accepted from a transport payload. */
   readonly signal?: AbortSignal
   readonly assertActive?: () => void
+  /** In-process spawn handoff; never accepted from a transport payload. */
+  readonly terminalSpawnLifecycle?: {
+    assertActive(): void
+    onSpawned(sessionId: string): void
+  }
   readonly validateNodeTarget?: (
     target: import('../../../contexts/workspace/application/nodeControl/nodeCreationTarget').ResolvedNodeCreationTarget,
   ) => Promise<void>

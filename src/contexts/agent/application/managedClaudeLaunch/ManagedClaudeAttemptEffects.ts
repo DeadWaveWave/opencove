@@ -1,5 +1,7 @@
 import type { ManagedClaudeLaunchAttempt } from './types'
 import type { ManagedClaudeRuntimeCleanup } from './ManagedClaudeRuntimeCleanup'
+import { ManagedClaudeFallbackCustody } from './ManagedClaudeFallbackCustody'
+import type { ManagedClaudeLaunchPorts } from './ports'
 
 /** Effect permission and runtime custody are separate from durable ownership. */
 export class ManagedClaudeAttemptEffects {
@@ -10,7 +12,23 @@ export class ManagedClaudeAttemptEffects {
   private readonly finished = new WeakMap<ManagedClaudeLaunchAttempt, Promise<void>>()
   private readonly retiring = new Map<string, Set<ManagedClaudeLaunchAttempt>>()
 
-  constructor(private readonly cleanup: ManagedClaudeRuntimeCleanup) {}
+  readonly fallbacks: ManagedClaudeFallbackCustody
+  constructor(
+    private readonly cleanup: ManagedClaudeRuntimeCleanup,
+    ports: ManagedClaudeLaunchPorts,
+  ) {
+    this.fallbacks = new ManagedClaudeFallbackCustody(cleanup, ports)
+  }
+
+  retainFallbackPredecessors(attempt: ManagedClaudeLaunchAttempt): void {
+    for (const id of this.fallbacks.ids(attempt.nodeId)) {
+      this.retainPrevious(attempt, id)
+    }
+  }
+
+  retainFallback(attempt: ManagedClaudeLaunchAttempt, id: string): void {
+    this.fallbacks.retain(attempt.nodeId, id, [...(this.previous.get(attempt) ?? [])])
+  }
 
   begin(attempt: ManagedClaudeLaunchAttempt): void {
     this.launching.add(attempt)
@@ -113,7 +131,10 @@ export class ManagedClaudeAttemptEffects {
     this.previous.get(attempt)?.delete(id)
   }
 
-  async cleanupPrevious(attempt: ManagedClaudeLaunchAttempt): Promise<void> {
+  async cleanupPrevious(attempt: ManagedClaudeLaunchAttempt, replacement = false): Promise<void> {
+    if (replacement) {
+      this.fallbacks.release([...(this.previous.get(attempt) ?? [])])
+    }
     await Promise.all(
       [...(this.previous.get(attempt) ?? [])].map(id => this.cleanup.cleanupRetained(id)),
     )

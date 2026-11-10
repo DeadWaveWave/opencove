@@ -28,9 +28,6 @@ export function createAppStateCommitObservation(db: Database.Database) {
     ): AppStateCommittedObservation | null => {
       const after = new Set(capture().map(node => node.id))
       const removed = before.filter(node => !after.has(node.id))
-      if (!removed.length) {
-        return null
-      }
       return {
         revision,
         removedManagedRuntimeSessionIds: [

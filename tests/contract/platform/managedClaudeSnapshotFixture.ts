@@ -14,6 +14,7 @@ import { createAppError } from '../../../src/shared/errors/appError'
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
 import type { ControlSurfaceInvokeRequest } from '../../../src/shared/contracts/controlSurface'
 import type { NodeWorkerBinding } from '../../../src/shared/types/nodeWorkerBinding'
+import type { TerminalAgentActivityEnvironmentService } from '../../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityEnvironmentService'
 import {
   createReadyTerminalAdmissionDeps,
   createTestAgentProviderRegistry,
@@ -48,6 +49,10 @@ export async function snapshotFixture(
   operation: Operation,
   inheritedMount = false,
   preSettled = false,
+  options: {
+    terminalAgentActivity?: TerminalAgentActivityEnvironmentService
+    adoptionEnabled?: boolean
+  } = {},
 ) {
   const store = await createPersistenceStore({ dbPath, strictRecovery: true })
   const blank = operation === 'prepareBlank'
@@ -123,10 +128,19 @@ export async function snapshotFixture(
   const publications: { nodeId: string; activationId: string; revision: number }[] = []
   const results: { id: string; value: unknown }[] = []
   const alive = new Set<string>()
+  const inactive = new Set<string>()
   let sequence = 0
+  const spawn = vi.fn(async (input: { agentProvider?: string }) => {
+    if (operation === 'prepareFailedResumeFallback' && input.agentProvider) {
+      throw new Error('fixture resume failed')
+    }
+    const sessionId = `runtime-${++sequence}`
+    alive.add(sessionId)
+    return { sessionId }
+  })
   const runtime = createManagedClaudeLaunchRuntime({
     getPersistenceStore: async () => store,
-    adoptionEnabled: () => true,
+    adoptionEnabled: () => options.adoptionEnabled ?? true,
     publishCommittedActivation: event => {
       publications.push(event)
     },
@@ -171,23 +185,15 @@ export async function snapshotFixture(
   })
   const deps = {
     ...admission,
+    terminalAgentActivity: options.terminalAgentActivity,
     userDataPath: '/tmp/opencove-snapshot-contract',
     getPersistenceStore: async () => store,
     approvedWorkspaces: { isPathApproved: async () => true } as never,
     agentProviderRegistry: registry,
     topology,
-    ptyRuntime: {
-      spawnSession: async (input: { agentProvider?: string }) => {
-        if (operation === 'prepareFailedResumeFallback' && input.agentProvider) {
-          throw new Error('fixture resume failed')
-        }
-        const sessionId = `runtime-${++sequence}`
-        alive.add(sessionId)
-        return { sessionId }
-      },
-    } as never,
+    ptyRuntime: { spawnSession: spawn } as never,
     ptyStreamHub: {
-      isSessionActive: (id: string) => alive.has(id),
+      isSessionActive: (id: string) => alive.has(id) && !inactive.has(id),
       registerSessionMetadata: () => {},
     } as never,
   }
@@ -214,6 +220,8 @@ export async function snapshotFixture(
     launch,
     state,
     alive,
+    inactive,
+    spawn,
     initialRevision,
     publications,
     results,

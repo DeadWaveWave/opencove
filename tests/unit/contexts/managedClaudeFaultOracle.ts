@@ -79,7 +79,7 @@ export class ManagedClaudeFaultOracle {
       current?.kind === 'agent' &&
       current.provider === 'claude-code' &&
       current.directory === '/repo' &&
-      current.route === 'null' &&
+      (JSON.parse(current.route)?.endpointId ?? 'local') === 'local' &&
       JSON.stringify(request?.node.binding?.tuple ?? request?.node.tuple) ===
         JSON.stringify(request?.node.tuple) &&
       request &&
@@ -94,6 +94,90 @@ export class ManagedClaudeFaultOracle {
   effect(name: string): void {
     const request = this.requests.get(name)
     request?.node.verify(this.permitted(name), 'effect without independent admission permission')
+  }
+  shellStart(name: string): void {
+    const request = this.requests.get(name)!
+    request.node.verify(this.permitted(name), 'shell started after supersession or deletion')
+    this.effect(name)
+  }
+
+  fallbackOutcome(
+    name: string,
+    value: unknown,
+    expected: 'shell' | 'empty' | 'rejected' | 'joined',
+    stable: boolean,
+  ): void {
+    const request = this.requests.get(name)!,
+      node = request.node
+    const result = value as Result
+    const prepared = result.value?.nodes?.find(preparedNode => preparedNode.nodeId === node.nodeId)
+    node.verify(result.ok === (expected !== 'rejected'), `fallback outcome: expected ${expected}`)
+    if (expected === 'rejected') {
+      node.verify(
+        result.error?.code === 'agent.managed_launch_rejected',
+        'fallback outcome: wrong rejection kind',
+      )
+      return
+    }
+    if (expected === 'empty') {
+      node.verify(prepared?.sessionId === '', 'fallback outcome: expected no runtime')
+      return
+    }
+    const shell = prepared?.sessionId ?? ''
+    const receipt = (
+      prepared as unknown as {
+        managedClaudeLifecycle?: {
+          binding: { runtimeSessionId: string | null; tuple: unknown; activationId: string }
+        }
+      }
+    )?.managedClaudeLifecycle
+    node.verify(node.runtimeKinds.get(shell) === 'shell', 'fallback outcome: wrong runtime kind')
+    node.verify(
+      expected === 'joined' || node.created.get(shell) === name,
+      'fallback outcome: foreign runtime',
+    )
+    node.verify(
+      JSON.stringify(
+        prepared?.agent && {
+          resumeSessionId: prepared.agent.resumeSessionId,
+          resumeSessionIdVerified: true,
+        },
+      ) === JSON.stringify(node.tuple),
+      'fallback outcome: wrong tuple',
+    )
+    const live = prepared as unknown as {
+      recoveryState: string
+      managedClaudeBinding?: { tuple: unknown; runtimeSessionId: string | null }
+    }
+    const liveProof =
+      expected === 'joined' &&
+      live?.recoveryState === 'live' &&
+      node.referenced(shell) &&
+      live.managedClaudeBinding?.runtimeSessionId === null &&
+      JSON.stringify(live.managedClaudeBinding.tuple) === JSON.stringify(node.tuple)
+    node.verify(
+      liveProof ||
+        (receipt?.binding.runtimeSessionId === null &&
+          JSON.stringify(receipt.binding.tuple) === JSON.stringify(node.tuple) &&
+          node.committed.has(receipt.binding.activationId)),
+      'fallback outcome: wrong settlement receipt',
+    )
+    if (node.present && node.binding?.runtimeSessionId === null && node.nodeRuntime === null) {
+      node.verify(
+        node.alive.has(shell),
+        'fallback outcome: shell retired before persistence handoff',
+      )
+    }
+    if (stable) {
+      node.verify(node.alive.has(shell), 'fallback outcome: returned shell is not alive')
+      node.verify(
+        node.binding?.runtimeSessionId === null,
+        'fallback outcome: shell acquired managed write authority',
+      )
+    }
+    if (node.present && node.alive.has(shell) && !node.referenced(shell)) {
+      node.awaitingPersistence.add(shell)
+    }
   }
   outcome(
     name: string,
@@ -119,8 +203,14 @@ export class ManagedClaudeFaultOracle {
       )
     }
     const sessionId = prepared?.sessionId ?? result.value?.sessionId
-    if (name.startsWith('peer-') || name.startsWith('restart-')) {
+    if (name.startsWith('peer-') || name.startsWith('restart-') || name === 'replacement') {
       node.verify(result.ok === true, 'outcome: expected independent peer success')
+      if (result.ok) {
+        node.verify(
+          node.nodeRuntime === sessionId && node.alive.has(sessionId ?? ''),
+          'outcome: wrong independent runtime association',
+        )
+      }
     }
     if (name === 'primary' && !interfered) {
       const failure =

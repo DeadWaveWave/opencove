@@ -16,6 +16,8 @@ export async function prepareTerminalAgentActivitySpawn(options: {
   interactiveShell: boolean
   runtimeKind?: TerminalRuntimeKind
   rows: number
+  assertActive?: () => void
+  onSpawned?: (sessionId: string) => void
 }): Promise<{
   commit: (sessionId: string) => void
   launchArtifacts?: AgentLaunchArtifactScope
@@ -73,6 +75,12 @@ export async function spawnTerminalWithActivity(
   options: Parameters<typeof prepareTerminalAgentActivitySpawn>[0],
 ): Promise<{ sessionId: string }> {
   const prepared = await prepareTerminalAgentActivitySpawn(options)
+  try {
+    options.assertActive?.()
+  } catch (error) {
+    await prepared.launchArtifacts?.dispose()
+    throw error
+  }
   const spawned = await runtime
     .spawnSession({
       ...prepared.spawn,
@@ -81,6 +89,7 @@ export async function spawnTerminalWithActivity(
     .catch(error => {
       throw publicTerminalSpawnError(error, 'terminal.spawn_failed')
     })
+  options.onSpawned?.(spawned.sessionId)
   prepared.commit(spawned.sessionId)
   return spawned
 }

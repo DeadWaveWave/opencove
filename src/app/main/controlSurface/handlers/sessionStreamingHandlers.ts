@@ -205,6 +205,8 @@ export function registerSessionStreamingHandlers(
           })
 
       const { sessionId } = await spawnTerminalWithActivity(deps.ptyRuntime, {
+        assertActive: ctx.terminalSpawnLifecycle?.assertActive,
+        onSpawned: ctx.terminalSpawnLifecycle?.onSpawned,
         activity: deps.terminalAgentActivity,
         args: resolvedSpawn.args,
         cols,
@@ -282,6 +284,8 @@ export function registerSessionStreamingHandlers(
           })
 
       const { sessionId } = await spawnTerminalWithActivity(deps.ptyRuntime, {
+        assertActive: ctx.terminalSpawnLifecycle?.assertActive,
+        onSpawned: ctx.terminalSpawnLifecycle?.onSpawned,
         activity: deps.terminalAgentActivity,
         args: resolvedSpawn.args,
         cols: payload.cols,

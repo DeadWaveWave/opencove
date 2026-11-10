@@ -18,7 +18,18 @@ export const steps = [
   'cleanupKill',
 ] as const
 export type EffectStep = (typeof steps)[number]
-export type Edge = `${EffectStep}:${'before' | 'after'}`
+export const fallbackSteps = [
+  'shellProfile',
+  'shellActivity',
+  'shellSpawn',
+  'shellRegistration',
+  'shellReturn',
+  'shellPersistence',
+  'referenceRead',
+  'cleanupKill',
+] as const
+export type FallbackStep = (typeof fallbackSteps)[number]
+export type Edge = `${EffectStep | FallbackStep}:${'before' | 'after'}`
 export type ConcurrentEvent =
   | 'none'
   | 'delete'
@@ -70,6 +81,8 @@ export class ManagedClaudeFaultModel {
   readonly tuple: { resumeSessionId: string; resumeSessionIdVerified: boolean }
   readonly committed = new Map<string, { runtimeSessionId: string | null; tuple: unknown }>()
   readonly created = new Map<string, string>()
+  readonly runtimeKinds = new Map<string, 'agent' | 'shell'>()
+  readonly awaitingPersistence = new Set<string>()
   readonly original: string
   readonly initiallyAlive: boolean
   binding: ManagedClaudeBindingObservation | null
@@ -81,6 +94,7 @@ export class ManagedClaudeFaultModel {
   effectAdmitted = false
   changedByOther = false
   blockedRead = false
+  workerBinding: { endpointId: string; mountId: string | null } | null = null
   private nextRuntime = 0
 
   constructor(
@@ -115,7 +129,12 @@ export class ManagedClaudeFaultModel {
 
   context() {
     return this.present
-      ? { kind: 'agent', provider: 'claude-code', directory: '/repo', route: 'null' }
+      ? {
+          kind: 'agent',
+          provider: 'claude-code',
+          directory: '/repo',
+          route: JSON.stringify(this.workerBinding),
+        }
       : null
   }
 
@@ -206,11 +225,12 @@ export class ManagedClaudeFaultModel {
     return { status: 'committed' as const, revision: this.revision }
   }
 
-  spawn(actor: string): string {
+  spawn(actor: string, kind: 'agent' | 'shell' = 'agent'): string {
     const id = `${this.nodeId}-runtime-${++this.nextRuntime}`
     this.alive.set(id, this.nodeId)
     this.created.set(id, actor)
     this.technical.set(id, actor)
+    this.runtimeKinds.set(id, kind)
     return id
   }
 
@@ -268,7 +288,13 @@ export class ManagedClaudeFaultModel {
       this.verify(nodeId === this.nodeId, `${id}: foreign runtime`)
     }
     if (quiescent) {
-      this.verify(cleanupIds.length === 0, 'cleanup did not converge after recovery of its ports')
+      const ownIds = cleanupIds.filter(id => id === this.original || this.created.has(id))
+      this.verify(
+        ownIds.every(
+          id => this.awaitingPersistence.has(id) && this.present && !this.referenced(id),
+        ),
+        'cleanup did not converge after recovery of its ports',
+      )
       this.verify(this.technical.size === 0, 'technical runtime custody was not handed off')
       for (const id of [this.binding?.runtimeSessionId, this.present ? this.nodeRuntime : null]) {
         if (id) {

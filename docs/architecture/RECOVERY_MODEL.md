@@ -425,3 +425,11 @@ Managed launch result 的 ownership 判定包含新取得的 receipt；`nodeSeen
 保留 SQLite 中的 Worker route，不能用本次解析出的 explicit local/mount route 替换 null inheritance。
 `nodeSeen=false` 的首次保存仍可建立 route。Renderer lifecycle 与成功 prepare 投影都遵循这一规则，
 其下一次 snapshot 通过同一 final writer；kind/provider/route identity 与 execution directory 必须 round-trip。
+
+成功 fallback shell 也属于 Worker 创建的 runtime。在 renderer 保存其 ID 前，node-scoped custody
+保留唯一 cleanup claim；已提交 snapshot 的 reference proof 才交回 durable node owner，删除或确认替换
+则释放捕获的精确 ID 并执行 reference-checked cleanup。读取失败保留 custody 并定时重试。
+新 fallback 的 predecessor claims 同样保持 hold，直到新 shell 持久化；仅 spawn 成功不构成 durable 替换。
+Fallback 的 PTY profile/activity preparation 之后，以进程内 `terminalSpawnLifecycle` hook 在
+实际 spawn 前检查原 attempt，spawn 返回 ID 后立即登记 custody，再提交 activity/metadata。
+该 hook 不接受 wire payload，legacy PTY 不注入；取消后的 finally 仍结算已创建 runtime。

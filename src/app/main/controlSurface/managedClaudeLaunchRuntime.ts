@@ -11,13 +11,10 @@ import type {
   LaunchAgentSessionInput,
   LaunchAgentSessionResult,
 } from '../../../shared/contracts/dto'
-import type {
-  ManagedClaudeLifecycleReceipt,
-  ManagedClaudeBindingObservation,
-} from '../../../shared/contracts/managedClaudeLaunch'
 import type { ControlSurfaceContext } from './types'
 import type { CanvasSpawnIdentity } from './sessionSpawnIdentityContext'
 import { createAppError, toAppErrorDescriptor } from '../../../shared/errors/appError'
+import { runManagedClaudeFallback } from './managedClaudeFallbackRuntime'
 
 interface LaunchScope {
   attempt: ManagedClaudeLaunchAttempt
@@ -99,6 +96,7 @@ export function createManagedClaudeLaunchRuntime(deps: {
         for (const id of event.removedManagedRuntimeSessionIds) {
           void owner.cleanup(id)
         }
+        owner.observeFallbackReferences()
       })
     }
     return store
@@ -398,38 +396,10 @@ export function assertManagedClaudeLaunchCurrent(): void {
   }
 }
 
-export async function withManagedClaudeFallback<T extends { sessionId: string }>(
-  spawn: () => Promise<T>,
-): Promise<
-  T & {
-    managedClaudeLifecycle?: ManagedClaudeLifecycleReceipt
-    managedClaudeBinding?: ManagedClaudeBindingObservation
-  }
-> {
-  const current = scope.getStore()
-  if (current?.phase !== 'managed') {
-    return spawn()
-  }
-  if (!current.owner.hasEffectAdmission(current.attempt)) {
-    const context = current.attempt.context
-    const route = context ? (JSON.parse(context.route) as { mountId?: string } | null) : null
-    await current.owner.admit(current.attempt, {
-      provider: 'claude-code',
-      cwd: context?.directory ?? '',
-      mountId: route?.mountId ?? null,
-    })
-  }
-  const receipt = await current.owner.fail(current.attempt)
-  assertManagedClaudeLaunchCurrent()
-  const result = await spawn()
-  if (!current.owner.isCurrent(current.attempt)) {
-    await current.owner.cleanup(result.sessionId)
-    rejectManagedLaunch(current.attempt.nodeId, 'superseded')
-  }
-  return {
-    ...result,
-    ...(receipt ? { managedClaudeLifecycle: receipt, managedClaudeBinding: receipt.binding } : {}),
-  }
+export function withManagedClaudeFallback<T extends { sessionId: string }>(
+  spawn: (assertActive?: () => void) => Promise<T>,
+) {
+  return runManagedClaudeFallback(scope.getStore(), spawn)
 }
 
 export function rethrowManagedClaudeLaunchError(error: unknown): void {

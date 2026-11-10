@@ -141,6 +141,8 @@ export function registerPtyMountHandlers(
 
         ctx.assertActive?.()
         const { sessionId } = await spawnTerminalWithActivity(deps.ptyRuntime, {
+          assertActive: ctx.terminalSpawnLifecycle?.assertActive,
+          onSpawned: ctx.terminalSpawnLifecycle?.onSpawned,
           activity: deps.terminalAgentActivity,
           args: resolvedSpawn.args,
           cols,

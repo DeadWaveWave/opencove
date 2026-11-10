@@ -341,6 +341,7 @@ retired ID 的 Renderer rebase 策略以及 corrected 的 cache/ack 处理留待
 Managed launch 的读取适配器只在 clean transaction boundary 返回 definitive ledger/node/
 retirement observation；同一连接仍在 transaction 中时必须报告 unavailable，不能把可见行当作
 已提交事实。生命周期保留 unknown obligation，直到 definitive read 确认结果。
-`onAppStateCommitted` 对比真实 node 集合，raw write 只在外层提交后通知；rollback 无通知，
+`onAppStateCommitted` 对比真实 node 集合，每次成功 snapshot commit 都通知（未删除时 IDs 为空），
+让 fallback custody 读取已持久化的 runtime reference。raw write 只在外层提交后通知；rollback 无通知，
 observer/cleanup 失败不改变成功的持久化结果。Activation receipt 使用该事务的精确 revision，
 row-only activation 的 commit revision 为 null；`alreadyApplied` 的当前 revision 不冒充历史提交。
