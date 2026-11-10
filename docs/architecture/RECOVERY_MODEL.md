@@ -418,3 +418,8 @@ created/predecessor IDs 做 reference-checked cleanup；首次 adoption 无 ledg
 失败 read/kill 与旧 work 留下的新 claim 使用按 exact ID 的 single-flight timer 重试；unknown
 activation 以有上限的延迟持续 reconciliation，不再因尝试次数耗尽而等待外部请求。dispose 取消
 该 owner 的 timer；timer、scope completion 和新 claim 仍保留各自 identity/generation guards。
+
+Managed launch result 的 ownership 判定包含新取得的 receipt；`nodeSeen=true` 的既有节点继续
+保留 SQLite 中的 Worker route，不能用本次解析出的 explicit local/mount route 替换 null inheritance。
+`nodeSeen=false` 的首次保存仍可建立 route。Renderer lifecycle 与成功 prepare 投影都遵循这一规则，
+其下一次 snapshot 通过同一 final writer；kind/provider/route identity 与 execution directory 必须 round-trip。

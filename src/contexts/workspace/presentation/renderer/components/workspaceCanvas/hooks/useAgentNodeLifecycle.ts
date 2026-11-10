@@ -282,6 +282,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
           terminalDisplayMetrics,
         })
 
+        const ownsNode = binding || launched.managedClaudeLifecycle?.binding.nodeSeen
         if (!isAgentLaunchTokenCurrent(nodeId, launchToken)) {
           if (!launched.managedClaudeLifecycle) {
             void window.opencoveApi.pty
@@ -334,7 +335,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
                   profileId: launched.profileId,
                   runtimeKind: launched.runtimeKind,
                   terminalGeometry: launched.terminalGeometry,
-                  workerBinding: binding ? item.data.workerBinding : launched.workerBinding,
+                  workerBinding: ownsNode ? item.data.workerBinding : launched.workerBinding,
                   width: launched.frameSize.width,
                   height: launched.frameSize.height,
                   title:

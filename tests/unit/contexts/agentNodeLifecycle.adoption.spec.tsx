@@ -260,3 +260,11 @@ describe('existing unowned Claude renderer launches', () => {
     )
   })
 })
+
+it('takes the resolved route for a managed row-only node without a stored identity', async () => {
+  const f = fixture(false, false)
+  f.nodesRef.current[0].data.workerBinding = null
+  await act(() => f.result.current.launchAgentInNode('agent', 'new'))
+  expect(f.response.managedClaudeLifecycle?.binding.nodeSeen).toBe(false)
+  expect(f.nodesRef.current[0].data.workerBinding).toEqual({ endpointId: 'local', mountId: null })
+})

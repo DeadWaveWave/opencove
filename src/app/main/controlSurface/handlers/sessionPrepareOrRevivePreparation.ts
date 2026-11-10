@@ -222,6 +222,7 @@ export async function prepareAgentNode(options: {
               ...(options.ptyRuntime ? { ptyRuntime: options.ptyRuntime } : {}),
             })
           : await invokeAgentLaunch('resume')
+      const ownsNode = binding || launched.managedClaudeLifecycle?.binding.nodeSeen
       return toPreparedNodeResult(node, {
         ...(launched.managedClaudeLifecycle
           ? {
@@ -243,7 +244,7 @@ export async function prepareAgentNode(options: {
         recoveryIssue: null,
         scrollback,
         terminalGeometry: initialGeometry,
-        workerBinding: binding ? node.workerBinding : agentLaunchContext.workerBinding,
+        workerBinding: ownsNode ? node.workerBinding : agentLaunchContext.workerBinding,
         executionDirectory: agentExecutionDirectory,
         expectedDirectory: agentExpectedDirectory,
         agent: {
@@ -334,6 +335,7 @@ export async function prepareAgentNode(options: {
   if (shouldRelaunchBlankAgent) {
     try {
       const launched = await invokeAgentLaunch('new')
+      const ownsNode = binding || launched.managedClaudeLifecycle?.binding.nodeSeen
       return toPreparedNodeResult(node, {
         ...(launched.managedClaudeLifecycle
           ? {
@@ -354,7 +356,7 @@ export async function prepareAgentNode(options: {
         lastError: null,
         scrollback,
         terminalGeometry: initialGeometry,
-        workerBinding: binding ? node.workerBinding : agentLaunchContext.workerBinding,
+        workerBinding: ownsNode ? node.workerBinding : agentLaunchContext.workerBinding,
         executionDirectory: agentExecutionDirectory,
         expectedDirectory: agentExpectedDirectory,
         agent: {
