@@ -28,6 +28,8 @@ it('ignores extra lineage options on snapshots while preserving the dedicated cr
   const repository =
     await import('../../../src/contexts/workspace/infrastructure/nodeLineage/SqliteNodeLineageRepository')
   const insert = vi.spyOn(repository, 'insertNodeLineage')
+  const gate = await import('../../../src/platform/persistence/sqlite/managedClaudeResumeGate')
+  const enforce = vi.spyOn(gate, 'enforceManagedClaudeResumeBindings')
   const { createPersistenceStore } =
     await import('../../../src/platform/persistence/sqlite/PersistenceStore')
   const store = await createPersistenceStore({ dbPath })
@@ -44,8 +46,16 @@ it('ignores extra lineage options on snapshots while preserving the dedicated cr
   try {
     expect(await store.writeAppState(state, options)).toMatchObject({ ok: true })
     expect(insert).not.toHaveBeenCalled()
-    expect(await store.commitCreatedNodeState!(state, options)).toMatchObject({ ok: true })
+    const result = await store.commitCreatedNodeState!(state, options)
+    expect(result).toMatchObject({ ok: true, revision: 1, corrected: false })
+    expect(result.effectiveState).toMatchObject({ workspaces: [{ id: 'project' }] })
+    if (!result.ok) {
+      throw Error('Creation commit failed')
+    }
+    expect(result.bytes).toBe(Buffer.byteLength(JSON.stringify(result.effectiveState)))
     expect(insert).toHaveBeenCalledExactlyOnceWith(expect.anything(), options.lineage)
+    expect(enforce).toHaveBeenCalledTimes(2)
+    expect(enforce.mock.calls[1][0]).toBe(insert.mock.calls[0][0])
   } finally {
     store.dispose()
   }

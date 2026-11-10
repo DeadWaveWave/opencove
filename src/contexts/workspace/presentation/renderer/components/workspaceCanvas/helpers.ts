@@ -398,6 +398,12 @@ export function validateSpaceTransfer(
 }
 
 export function toErrorMessage(error: unknown): string {
+  if (
+    (error instanceof OpenCoveAppError || isAppErrorDescriptor(error)) &&
+    error.code === 'persistence.owned_node_identity_conflict'
+  ) {
+    return translate('messages.managedAgentChanged')
+  }
   if (error instanceof OpenCoveAppError) {
     if (error.code === 'terminal.runtime_not_ready') {
       return translate('common.terminalRuntimeNotReady')

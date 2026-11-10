@@ -12,7 +12,7 @@ Agent terminals cannot answer permission dialogs, read or change private setting
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Identity | `whoami`, `context` |
 | `project`   | `list`, `add`                                                                                                                                                                                            |
-| `space`     | `list`, `get`, `create`                                                                                                                                                                                     |
+| `space`     | `list`, `get`, `create`, `update`                                                                                                                                                                                     |
 | `node`      | `list [--root-canvas]`, `get`, `create note/task/website/agent/terminal [--root-canvas]`, `update note/task/website/agent/terminal`, `delete`                                                                                                    |
 | `canvas`    | `focus node`, `focus space`                                                                                                                                                                       |
 | `api`       | `ops`, `schema <operation-id>`, `call <operation-id>`                                                                                                                                             |
@@ -39,7 +39,7 @@ opencove session run-agent --space space-123 --prompt-file ./task.txt
 opencove plugin run sample status --params-file ./params.json
 ```
 
-Space 创建与项目添加 / Space creation and project addition: [命令、输出与授权说明](SPACE_PROJECT_CREATION.md)。
+Space 创建、更新与项目添加 / Space creation, updates and project addition: [命令、输出与授权说明](SPACE_PROJECT_CREATION.md)。
 
 ## Output and exit codes
 

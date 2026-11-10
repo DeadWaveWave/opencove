@@ -44,6 +44,9 @@ export function toErrorMessage(error: unknown): string {
     if (parent) {
       return `${translate(`messages.${parent.key}`)} ${translate(`messages.${parent.key}Hint`)}`
     }
+    if (error.code === 'persistence.owned_node_identity_conflict') {
+      return translate('messages.managedAgentChanged')
+    }
   }
   if (error instanceof OpenCoveAppError) {
     if (error.code === 'worker.stop_not_owned') {

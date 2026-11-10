@@ -14,6 +14,7 @@ export type PersistWriteResult =
       ok: true
       level: PersistWriteLevel
       bytes: number
+      corrected?: boolean
       merged?: true
       revision?: number
     }

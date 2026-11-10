@@ -10,6 +10,7 @@ import { normalizeSpaceBoundary } from '../../../shared/types/spaceBoundary'
 import { normalizeNodeWorkerBinding } from '../../../shared/types/nodeWorkerBinding'
 import { normalizeTerminalGeometry } from './normalize'
 import {
+  agentNodePlaceholderScrollback,
   appMeta,
   appSettings,
   nodeScrollback,
@@ -297,4 +298,25 @@ export function readWorkspaceStateRawFromDb(
   }
 
   return JSON.stringify(hydrated)
+}
+
+export function readNodeScrollbackFromDb(db: BetterSQLite3Database, nodeId: string): string | null {
+  const row = db
+    .select({ scrollback: nodeScrollback.scrollback })
+    .from(nodeScrollback)
+    .where(eq(nodeScrollback.nodeId, nodeId))
+    .get()
+  return typeof row?.scrollback === 'string' ? row.scrollback : null
+}
+
+export function readAgentNodePlaceholderScrollbackFromDb(
+  db: BetterSQLite3Database,
+  nodeId: string,
+): string | null {
+  const row = db
+    .select({ scrollback: agentNodePlaceholderScrollback.scrollback })
+    .from(agentNodePlaceholderScrollback)
+    .where(eq(agentNodePlaceholderScrollback.nodeId, nodeId))
+    .get()
+  return typeof row?.scrollback === 'string' ? row.scrollback : null
 }

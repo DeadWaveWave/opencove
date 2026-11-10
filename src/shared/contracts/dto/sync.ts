@@ -31,6 +31,7 @@ export interface WriteSyncStateInput {
 
 export interface WriteSyncStateResult {
   revision: number
+  corrected?: boolean
 }
 
 export interface CreateNoteInput {

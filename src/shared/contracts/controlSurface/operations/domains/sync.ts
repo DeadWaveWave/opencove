@@ -101,7 +101,12 @@ export const syncWriteStateOperation = defineOperation({
   }),
   normalize: normalizeWriteSyncStatePayload,
   legacyNormalize: normalizeWriteSyncStatePayload,
-  errors: ['persistence.invalid_state', 'persistence.io_failed', 'persistence.unavailable'],
+  errors: [
+    'persistence.invalid_state',
+    'persistence.io_failed',
+    'persistence.unavailable',
+    'persistence.owned_node_identity_conflict',
+  ],
   id: 'sync.writeState',
   kind: 'command',
   scope: 'interact',

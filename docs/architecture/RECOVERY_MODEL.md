@@ -356,3 +356,11 @@ reservation cannot authenticate, and late completion cannot reactivate a dispose
 persistence schema is introduced. Cold revival creates a new credential for the persisted node ID;
 reattaching a live remote session preserves the hosting Worker's existing credential. A grant must
 never be revived from a renderer cache.
+
+## Managed Claude resume binding storage
+
+Managed Claude 的 Worker-owned tuple 存在 `managed_claude_resume_bindings`，`nodes.agent_json`
+只保存受最终 writer 保护的投影。绑定、节点与 revision 原子提交，真实删除留下 retirement，
+普通快照不能回退 tuple 或改变其 kind/provider/route。内部 lifecycle API 尚无生产调用方；
+现有无 ledger row 的节点保持原恢复行为。此存储层不判定 transcript qualification，也不恢复
+runtime authority。详见 [Persistence](PERSISTENCE.md#managed-claude-resume-ledger存储契约尚未启用生产接入)。

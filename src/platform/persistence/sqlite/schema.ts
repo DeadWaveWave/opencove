@@ -242,3 +242,21 @@ export const browserPermissionDecisions = sqliteTable(
     ).on(table.profileKey, table.origin, table.permission),
   }),
 )
+
+// Independent from nodes: whole-state saves mechanically delete and reinsert every node.
+export const managedClaudeResumeBindings = sqliteTable('managed_claude_resume_bindings', {
+  nodeId: text('node_id').primaryKey(),
+  runtimeSessionId: text('runtime_session_id'),
+  resumeSessionId: text('resume_session_id'),
+  resumeSessionIdVerified: integer('resume_session_id_verified').notNull(),
+  activationId: text('activation_id').notNull(),
+  nodeSeen: integer('node_seen').notNull().default(0),
+  updatedRevision: integer('updated_revision').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+})
+
+export const retiredManagedNodes = sqliteTable('retired_managed_nodes', {
+  nodeId: text('node_id').primaryKey(),
+  retiredRevision: integer('retired_revision').notNull(),
+  retiredAt: integer('retired_at').notNull(),
+})

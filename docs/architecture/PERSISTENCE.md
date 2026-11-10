@@ -10,7 +10,8 @@ SQLite:
 - Store：`src/platform/persistence/sqlite/PersistenceStore.ts`
 - Schema：`src/platform/persistence/sqlite/schema.ts`
 - Migration：`src/platform/persistence/sqlite/migrate.ts`
-- 当前 `DB_SCHEMA_VERSION = 14`
+- 当前 `DB_SCHEMA_VERSION = 15`
+- schema 14：managed Claude resume ledger 与 retired IDs；schema 15：node lineage
 - Agent/Terminal node Worker binding：`nodes.worker_binding_json`
 - Terminal durable recovery：`terminal_recovery_records`
 - Legacy terminal presentation/scrollback mirror：`node_scrollback`（兼容读取，不是独立 truth owner）
@@ -315,10 +316,39 @@ the Sidebar does not maintain a second local persistence store.
 - 补充 IPC/Control Surface payload validation 测试。
 - 运行最低 meaningful layer；提交前按 `DEVELOPMENT.md` 执行门禁。
 
-## 节点创建血缘（schema 14）
+## Managed Claude resume ledger（schema 14，尚未启用生产接入）
+
+Worker 是 managed Claude resume tuple 的 owner。`managed_claude_resume_bindings` 保存
+canonical tuple、runtime、activation ID 和单调的 `node_seen`；`nodes.agent_json` 是持久化投影。
+仅内部 `activateManagedClaudeRuntime` / `commitManagedClaudeRebind` 可提交绑定；本阶段没有
+生产调用方，也不从 provider、verified 或快照推断 ownership。schema repair 只重建表结构。
+
+最终 app-state writer 在同一事务内纠正 owned tuple 与非空 runtime，保留其他编辑；不兼容的
+agent/kind/provider/route 或 retired ID 拒绝整次写入。真实删除将 ID 写入
+`retired_managed_nodes`，两张表都不关联 node cascade。store open 只回收超过 24 小时、
+`node_seen=0` 且不存在 node 的 orphan。
+缺失或无效的 node binding 会继承 Space 路由，与显式 local binding 不等价；owned node
+不能通过遗漏或清空 binding 撤销其显式路由。
+
+内部写回返回 `{revision, corrected, effectiveState}`，回调与 runtime binding 消费 effective
+state；wire 只增加 `corrected`。revision 是自身提交值，不在异步回调后重读。
+本地 `readAppStateSnapshot` 在单一 SQLite read transaction 中返回 revision 与 state。
+身份冲突使用 `persistence.owned_node_identity_conflict` 与 `{nodeId, field, reason}`：SQLite/raw/
+Desktop IPC 返回与 revision conflict 相同的 `{ok:false, reason:'unknown', error}`；
+revisioned sync 采用 Control Surface `{ok:false, error}`；raw sync 保留嵌套写入结果。
+Remote/Web 把该 code 纳入既有 conflict refresh/rebase，并在重试耗尽时保留 typed descriptor。
+retired ID 的 Renderer rebase 策略以及 corrected 的 cache/ack 处理留待启用前补齐。
+
+## 节点创建血缘（schema 15）
+
+升级按 v14 ledger → v15 lineage 初始化。v13 与 v14 profile 均可升级到 v15；
+v1 legacy writer 运行前两套 side table 已就绪，schema-current repair 也同时修复两套结构。
+升级和 repair 均不推断或补写 ledger / lineage 记录。
 
 Workspace application owner 从已验证的 session grant 推导 parent、root 和 depth，
 在节点创建提交时通过原 SQLite 连接与 CAS node writer 同事务写入 `node_lineage`。
+创建提交与普通 snapshot 共用最终 writer，保留 managed Claude gate、retirement 和
+`{revision, corrected, effectiveState}` receipt；lineage 插入失败时一并回滚。
 该表只保存 node_id、spawned_by_node_id、root_node_id、lineage_depth，insert-once；
 相同记录幂等，冲突拒绝。无 FK，snapshot/raw writer 和 node deletion 不清理它。
 迁移和 schema-current repair 只创建表及索引，不回填历史节点；无记录的节点投影为 root、depth 1。

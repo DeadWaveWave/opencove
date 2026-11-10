@@ -7,14 +7,19 @@ import type { NodeLineageRepository } from '../../../contexts/workspace/applicat
 import { mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import Database from 'better-sqlite3'
-import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { eq } from 'drizzle-orm'
 import type { PersistWriteResult } from '../../../shared/contracts/dto'
 import { backupDbFile, moveCorruptDbAside } from './dbFiles'
 import { DB_SCHEMA_VERSION, DEFAULT_MAX_WORKSPACE_STATE_RAW_BYTES } from './constants'
 import { migrate } from './migrate'
 import { normalizePersistedAppState, normalizeScrollback } from './normalize'
-import { readAppStateFromDb, readWorkspaceStateRawFromDb } from './read'
+import {
+  readAppStateFromDb,
+  readWorkspaceStateRawFromDb,
+  readNodeScrollbackFromDb,
+  readAgentNodePlaceholderScrollbackFromDb,
+} from './read'
 import { agentNodePlaceholderScrollback, nodeScrollback } from './schema'
 import { safeJsonParse, safeJsonStringify, toErrorMessage, utf8ByteLength } from './utils'
 import { writeNormalizedAppState, writeNormalizedScrollbacks } from './write'
@@ -24,6 +29,13 @@ import {
   OpenCoveAppError,
 } from '../../../shared/errors/appError'
 import { PersistenceRevisionConflict } from './revisionConflict'
+import type { ManagedClaudeResumeBindingStore } from '../../../shared/contracts/managedClaudeResumeBinding'
+import {
+  createManagedClaudeResumeStore,
+  readAppStateRevisionFromDb,
+} from './managedClaudeResumeStore'
+import { sweepManagedClaudeResumeOrphans } from './managedClaudeResumeSchema'
+import { invalidStateResult, type InternalPersistWriteResult } from './appStateWriteResult'
 
 export type PersistenceRecoveryReason = 'corrupt_db' | 'migration_failed'
 
@@ -32,14 +44,17 @@ export interface PersistenceStore {
   commitCreatedNodeState?: (
     state: unknown,
     options: { expectedRevision: number; lineage: NodeLineageRecord },
-  ) => Promise<PersistWriteResult>
+  ) => Promise<InternalPersistWriteResult>
   readWorkspaceStateRaw: () => Promise<string | null>
-  writeWorkspaceStateRaw: (raw: string) => Promise<PersistWriteResult>
+  writeWorkspaceStateRaw: (raw: string) => Promise<InternalPersistWriteResult>
 
   readAppStateSnapshot?: () => Promise<{ state: unknown | null; revision: number | null }>
   readAppState: () => Promise<unknown | null>
   readAppStateRevision: () => Promise<number>
-  writeAppState: (state: unknown, options?: WriteAppStateOptions) => Promise<PersistWriteResult>
+  writeAppState: (
+    state: unknown,
+    options?: WriteAppStateOptions,
+  ) => Promise<InternalPersistWriteResult>
 
   readNodeScrollback: (nodeId: string) => Promise<string | null>
   writeNodeScrollback: (nodeId: string, scrollback: string | null) => Promise<PersistWriteResult>
@@ -58,16 +73,6 @@ export type WriteAppStateOptions = {
   baseRevision?: number | null
   allowEmptyWorkspaceOverwrite?: boolean
   expectedRevision?: number
-}
-
-function invalidStateResult(debugMessage: string): PersistWriteResult {
-  return {
-    ok: false,
-    reason: 'unknown',
-    error: createAppErrorDescriptor('persistence.invalid_state', {
-      debugMessage,
-    }),
-  }
 }
 
 function hasExistingWorkspaces(sqlite: Database.Database): boolean {
@@ -89,32 +94,11 @@ function shouldRejectEmptyWorkspaceOverwrite(
   return hasExistingWorkspaces(sqlite)
 }
 
-function readNodeScrollbackFromDb(db: BetterSQLite3Database, nodeId: string): string | null {
-  const row = db
-    .select({ scrollback: nodeScrollback.scrollback })
-    .from(nodeScrollback)
-    .where(eq(nodeScrollback.nodeId, nodeId))
-    .get()
-  return typeof row?.scrollback === 'string' ? row.scrollback : null
-}
-
-function readAgentNodePlaceholderScrollbackFromDb(
-  db: BetterSQLite3Database,
-  nodeId: string,
-): string | null {
-  const row = db
-    .select({ scrollback: agentNodePlaceholderScrollback.scrollback })
-    .from(agentNodePlaceholderScrollback)
-    .where(eq(agentNodePlaceholderScrollback.nodeId, nodeId))
-    .get()
-  return typeof row?.scrollback === 'string' ? row.scrollback : null
-}
-
 export async function createPersistenceStore(storeOptions: {
   dbPath: string
   maxRawBytes?: number
   strictRecovery?: boolean
-}): Promise<PersistenceStore> {
+}): Promise<PersistenceStore & ManagedClaudeResumeBindingStore> {
   const maxRawBytes = storeOptions.maxRawBytes ?? DEFAULT_MAX_WORKSPACE_STATE_RAW_BYTES
 
   await mkdir(dirname(storeOptions.dbPath), { recursive: true })
@@ -163,6 +147,12 @@ export async function createPersistenceStore(storeOptions: {
     migrate(sqlite)
   }
 
+  try {
+    sweepManagedClaudeResumeOrphans(sqlite)
+  } catch (error) {
+    sqlite.close()
+    throw error
+  }
   const db = drizzle(sqlite)
 
   const readAppState = async (): Promise<unknown | null> => {
@@ -175,21 +165,22 @@ export async function createPersistenceStore(storeOptions: {
     }
   }
 
+  const readAppStateSnapshot = async () => {
+    try {
+      return sqlite.transaction(() => ({
+        revision: readAppStateRevisionFromDb(sqlite),
+        state: readAppStateFromDb(db),
+      }))()
+    } catch (error) {
+      throw createAppError('persistence.unavailable', {
+        debugMessage: toErrorMessage(error),
+      })
+    }
+  }
+
   const readAppStateRevision = async (): Promise<number> => {
     try {
-      const row = sqlite
-        .prepare(
-          `
-            SELECT value
-            FROM app_meta
-            WHERE key = 'app_state_revision'
-            LIMIT 1
-          `,
-        )
-        .get() as { value?: unknown } | undefined
-
-      const parsed = typeof row?.value === 'string' ? Number.parseInt(row.value, 10) : 0
-      return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+      return readAppStateRevisionFromDb(sqlite)
     } catch {
       return 0
     }
@@ -204,7 +195,7 @@ export async function createPersistenceStore(storeOptions: {
     }
   }
 
-  const writeWorkspaceStateRaw = async (raw: string): Promise<PersistWriteResult> => {
+  const writeWorkspaceStateRaw = async (raw: string): Promise<InternalPersistWriteResult> => {
     const rawBytes = utf8ByteLength(raw)
     if (rawBytes > maxRawBytes) {
       return {
@@ -230,14 +221,19 @@ export async function createPersistenceStore(storeOptions: {
     }
 
     try {
-      let revision = 0
-      sqlite.transaction(() => {
-        revision = writeNormalizedAppState(sqlite, normalized)
-        writeNormalizedScrollbacks(sqlite, normalized)
+      const result = sqlite.transaction(() => {
+        const written = writeNormalizedAppState(sqlite, normalized)
+        writeNormalizedScrollbacks(sqlite, written.effectiveState)
+        return written
       })()
-
-      return { ok: true, level: 'full', bytes: rawBytes, revision }
+      return { ok: true, level: 'full', bytes: rawBytes, ...result }
     } catch (error) {
+      if (
+        error instanceof OpenCoveAppError &&
+        error.code === 'persistence.owned_node_identity_conflict'
+      ) {
+        return { ok: false, reason: 'unknown', error: error.toDescriptor() }
+      }
       return {
         ok: false,
         reason: 'io',
@@ -252,7 +248,7 @@ export async function createPersistenceStore(storeOptions: {
     state: unknown,
     options?: WriteAppStateOptions,
     lineage?: NodeLineageRecord,
-  ): Promise<PersistWriteResult> => {
+  ): Promise<InternalPersistWriteResult> => {
     const normalized = normalizePersistedAppState(state)
     if (!normalized) {
       return invalidStateResult('Invalid app state payload.')
@@ -271,19 +267,27 @@ export async function createPersistenceStore(storeOptions: {
     }
 
     try {
-      const revision = sqlite.transaction(() => {
-        const next = writeNormalizedAppState(sqlite, normalized, options?.expectedRevision)
+      const result = sqlite.transaction(() => {
+        const written = writeNormalizedAppState(sqlite, normalized, options?.expectedRevision)
         if (lineage) {
-          if (!normalized.workspaces.some(w => w.nodes.some(n => n.id === lineage.nodeId))) {
+          if (
+            !written.effectiveState.workspaces.some(w => w.nodes.some(n => n.id === lineage.nodeId))
+          ) {
             throw createAppError('persistence.invalid_state')
           }
           insertNodeLineage(sqlite, lineage)
         }
-        return next
+        return written
       })()
-      const bytes = utf8ByteLength(safeJsonStringify(normalized))
-      return { ok: true, level: 'full', bytes, revision }
+      const bytes = utf8ByteLength(safeJsonStringify(result.effectiveState))
+      return { ok: true, level: 'full', bytes, ...result }
     } catch (error) {
+      if (
+        error instanceof OpenCoveAppError &&
+        error.code === 'persistence.owned_node_identity_conflict'
+      ) {
+        return { ok: false, reason: 'unknown', error: error.toDescriptor() }
+      }
       if (
         error instanceof PersistenceRevisionConflict ||
         (error instanceof OpenCoveAppError && error.code === 'persistence.invalid_state')
@@ -459,6 +463,8 @@ export async function createPersistenceStore(storeOptions: {
     nodeLineage: createSqliteNodeLineageRepository(sqlite),
     commitCreatedNodeState: (state, options) =>
       persistAppState(state, { expectedRevision: options.expectedRevision }, options.lineage),
+    ...createManagedClaudeResumeStore(sqlite, () => readAppStateFromDb(db)),
+    readAppStateSnapshot,
     readWorkspaceStateRaw,
     writeWorkspaceStateRaw,
     readAppState,

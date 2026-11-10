@@ -1,5 +1,9 @@
 import { prepareNodeLineage } from '../../../../contexts/workspace/application/nodeLineage/NodeLineageOwner'
 import { randomUUID } from 'node:crypto'
+import {
+  persistWriteWireResult,
+  type InternalPersistWriteResult,
+} from '../../../../platform/persistence/sqlite/appStateWriteResult'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import {
   normalizePersistedAppState,
@@ -30,11 +34,12 @@ async function persistNextAppState(
   store: PersistenceStore,
   nextState: unknown,
   options?: { allowEmptyWorkspaceOverwrite?: boolean; expectedRevision?: number },
-): Promise<void> {
+): Promise<InternalPersistWriteResult & { ok: true }> {
   const result = await store.writeAppState(nextState, options)
   if (!result.ok) {
     throw createAppError(result.error)
   }
+  return result
 }
 
 export function registerSyncHandlers(
@@ -47,6 +52,12 @@ export function registerSyncHandlers(
   registerOperation(controlSurface, syncStateOperation, {
     handle: async (): Promise<GetSyncStateResult> => {
       const store = await getPersistenceStore()
+      if (store.readAppStateSnapshot) {
+        const snapshot = await store.readAppStateSnapshot()
+        if (snapshot.revision !== null) {
+          return { revision: snapshot.revision, state: snapshot.state }
+        }
+      }
       const [revision, state] = await Promise.all([
         store.readAppStateRevision(),
         store.readAppState(),
@@ -70,7 +81,8 @@ export function registerSyncHandlers(
       const result = await store.writeWorkspaceStateRaw(payload.raw)
       if (result.ok && options.onStatePersisted) {
         try {
-          const normalized = normalizePersistedAppState(JSON.parse(payload.raw) as unknown)
+          const normalized =
+            result.effectiveState ?? normalizePersistedAppState(JSON.parse(payload.raw) as unknown)
           if (normalized) {
             await options.onStatePersisted(normalized)
           }
@@ -78,7 +90,7 @@ export function registerSyncHandlers(
           // Persistence validation remains authoritative; recovery binding is best-effort here.
         }
       }
-      return result
+      return persistWriteWireResult(result)
     },
     defaultErrorCode: 'common.unexpected',
   })
@@ -132,16 +144,16 @@ export function registerSyncHandlers(
         })
       }
 
-      await persistNextAppState(store, payload.state, {
+      const result = await persistNextAppState(store, payload.state, {
         allowEmptyWorkspaceOverwrite: payload.allowEmptyWorkspaceOverwrite === true,
         expectedRevision: payload.baseRevision ?? currentRevision,
       })
-      const normalizedState = normalizePersistedAppState(payload.state)
+      const nextRevision = result.revision ?? (await store.readAppStateRevision())
+      const normalizedState = result.effectiveState ?? normalizePersistedAppState(payload.state)
       if (normalizedState && options.onStatePersisted) {
         await options.onStatePersisted(normalizedState).catch(() => undefined)
       }
-      const nextRevision = await store.readAppStateRevision()
-      return { revision: nextRevision }
+      return { revision: nextRevision, corrected: result.corrected ?? false }
     },
     defaultErrorCode: 'common.unexpected',
   })

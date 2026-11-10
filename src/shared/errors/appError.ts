@@ -104,6 +104,8 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'persistence.quota_exceeded': 'Storage quota was exceeded.',
     'persistence.payload_too_large': 'Workspace state is too large to save.',
     'persistence.io_failed': 'Unable to save data to storage.',
+    'persistence.owned_node_identity_conflict':
+      'This agent has changed. Refresh the workspace and try again.',
     'persistence.invalid_state': 'The workspace state could not be saved.',
     'persistence.invalid_node_id': 'The terminal history could not be saved.',
     'update.get_state_failed': 'Unable to read the update status.',

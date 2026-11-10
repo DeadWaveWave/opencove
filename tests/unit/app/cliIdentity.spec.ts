@@ -307,6 +307,10 @@ it.each(targets)(
     if (command.targetSpace === 'required' && flag === 'project') {
       args.push('--space', '@self')
     }
+    if (command.path.join(' ') === 'space update') {
+      // It needs --name or --frame; neither is required alone.
+      args.push('--name', 'sample')
+    }
     if (command.path.join(' ') === 'agent prompt') {
       // The positional 'sample' above is its text; adding --text too would be rejected.
       f.values['agent.prompt'] = {

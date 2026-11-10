@@ -8,6 +8,7 @@ import { describeWithElectronNativeModules } from '../electronNativeSuite'
 import { createPersistenceStore } from '../../../src/platform/persistence/sqlite/PersistenceStore'
 import { createMinimalState } from '../controlSurface/controlSurfaceHttpServer.sessionStreaming.testUtils'
 import { deriveNodeLineage } from '../../../src/contexts/workspace/domain/nodeLineage'
+import { DB_SCHEMA_VERSION } from '../../../src/platform/persistence/sqlite/constants'
 
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), 'opencove-lineage-'))
@@ -169,7 +170,7 @@ describeWithElectronNativeModules('durable node lineage', () => {
       await f.cleanup()
     }
   })
-  it.each([13, 14])(
+  it.each([13, 14, DB_SCHEMA_VERSION])(
     'creates or repairs schema v%s without adopting existing nodes',
     async version => {
       const f = await fixture()
@@ -178,6 +179,9 @@ describeWithElectronNativeModules('durable node lineage', () => {
         f.store.dispose()
         const db = new Database(f.dbPath)
         db.exec('DROP TABLE node_lineage')
+        if (version < 14) {
+          db.exec('DROP TABLE managed_claude_resume_bindings; DROP TABLE retired_managed_nodes')
+        }
         db.pragma(`user_version = ${version}`)
         db.close()
         const repaired = await createPersistenceStore({ dbPath: f.dbPath })
@@ -185,7 +189,11 @@ describeWithElectronNativeModules('durable node lineage', () => {
           expect((await repaired.nodeLineage!.readMany(['parent', 'child'])).size).toBe(0)
           const inspect = new Database(f.dbPath)
           try {
-            expect(inspect.pragma('user_version', { simple: true })).toBe(14)
+            expect(inspect.pragma('user_version', { simple: true })).toBe(DB_SCHEMA_VERSION)
+            expect(inspect.prepare('SELECT * FROM managed_claude_resume_bindings').all()).toEqual(
+              [],
+            )
+            expect(inspect.prepare('SELECT * FROM retired_managed_nodes').all()).toEqual([])
             expect(inspect.pragma('foreign_key_list(node_lineage)')).toEqual([])
             expect(inspect.pragma('index_list(node_lineage)')).toEqual(
               expect.arrayContaining([
