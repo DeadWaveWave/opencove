@@ -18,6 +18,7 @@ export interface PrepareTerminalAgentActivityCommand {
   command: string
   cwd: string
   environment: Readonly<NodeJS.ProcessEnv> | undefined
+  residentContext?: 'canvas' | 'none'
   interactiveShell: boolean
   runtimeKind?: TerminalRuntimeKind
 }
@@ -59,7 +60,9 @@ export class TerminalAgentActivityEnvironmentService {
     try {
       const assets = await this.options.assets.ensure()
       stage = 'reservation'
-      reservation = await this.options.gateway.reserveTerminal()
+      reservation = await this.options.gateway.reserveTerminal({
+        residentContext: command.residentContext,
+      })
       stage = 'environment'
       return this.createPrepared(command, assets, reservation)
     } catch (error) {

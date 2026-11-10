@@ -9,7 +9,7 @@ type ResponsesInputItem = {
   role?: string
   content?: Array<{ type: string; text?: string }>
 }
-type ResponsesRequest = {
+export type ResponsesRequest = {
   stream?: boolean
   tools?: Array<{ name?: string }>
   input?: ResponsesInputItem[]
@@ -90,9 +90,11 @@ export async function startResponsesApi(
   url: string
   main: () => string[][]
   all: () => string[]
+  requests: () => ResponsesRequest[]
 }> {
   // Text blocks of the latest user message in each agent-loop request that starts a turn.
   const mainTurns: string[][] = []
+  const requests: ResponsesRequest[] = []
   // User text of every agent-loop request, including requests that resume after a tool call.
   const allUserText: string[] = []
   const server = createServer(async (req, res) => {
@@ -108,6 +110,9 @@ export async function startResponsesApi(
     }
     if (req.method === 'POST' && (req.url ?? '').includes('/responses') && body) {
       const isMain = (body.tools ?? []).some(tool => tool.name === 'exec_command')
+      if (isMain) {
+        requests.push(structuredClone(body))
+      }
       const blocks = lastUserBlocks(body)
       const resumed = continuesToolCall(body)
       if (isMain && !resumed) {
@@ -140,6 +145,7 @@ export async function startResponsesApi(
     url: `http://127.0.0.1:${port}/v1`,
     main: () => [...mainTurns],
     all: () => [...allUserText],
+    requests: () => structuredClone(requests),
   }
 }
 

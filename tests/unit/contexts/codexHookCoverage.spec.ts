@@ -49,7 +49,13 @@ it.each([
   daemon.live = branch === 'daemon' || branch === 'daemon-default'
   const provider = new CodexAgentProviderContribution({
     channel:
-      branch === 'no-channel' ? undefined : ({ reserveSpawn } as unknown as AgentHookChannel),
+      branch === 'no-channel'
+        ? undefined
+        : ({
+            reserveSpawn,
+            async start() {},
+            getInstallState: () => (branch === 'unavailable' ? 'error' : 'installed'),
+          } as unknown as AgentHookChannel),
     runtimePlatform: branch === 'windows' ? 'win32' : 'linux',
     hookTrustResolver,
     sessionDiscovery: {

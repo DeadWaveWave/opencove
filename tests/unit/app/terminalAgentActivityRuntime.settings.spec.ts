@@ -35,3 +35,32 @@ it('normalizes persisted Codex reuse settings at each gateway prepare instead of
     await runtime.dispose()
   }
 })
+
+it('reads resident guidance from the executing Worker settings on every SessionStart', async () => {
+  let settings: Record<string, unknown> = {}
+  let resolveEnabled!: () => Promise<boolean>
+  const runtime = createTerminalAgentActivityRuntime({
+    userDataPath: '/tmp/opencove-runtime-policy-unit',
+    agentHookChannels: [
+      {
+        setResidentContextEnabled(resolve) {
+          resolveEnabled = resolve
+        },
+        async start() {},
+        async dispose() {},
+        onMetadata: () => () => {},
+      } as unknown as import('../../../src/shared/runtime/agentHook/agentHookChannel').AgentHookChannel,
+    ],
+    agentProviderRegistry: new AgentProviderRegistry([]),
+    getPersistenceStore: async () => ({ readAppState: async () => ({ settings }) }),
+  })
+  try {
+    await expect(resolveEnabled()).resolves.toBe(true)
+    settings = { agentResidentContext: 'off' }
+    await expect(resolveEnabled()).resolves.toBe(false)
+    settings = { agentResidentContext: 'invalid' }
+    await expect(resolveEnabled()).resolves.toBe(true)
+  } finally {
+    await runtime.dispose()
+  }
+})
