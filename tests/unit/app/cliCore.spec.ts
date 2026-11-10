@@ -383,6 +383,8 @@ it('returns exit 6 for an ambiguous space locator and preserves server error', a
   expect(JSON.parse(f.err())).toEqual({
     error: {
       code: 'space.ambiguous',
+      retryable: false,
+      candidates: ['space-a', 'space-b'],
       message: 'Multiple spaces match this name',
       details: { ...details, space: { kind: 'spaceName', name: 'same-name' } },
       hint: 'Run "opencove space list" to find available targets.',

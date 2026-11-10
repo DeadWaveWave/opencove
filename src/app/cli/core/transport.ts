@@ -1,3 +1,4 @@
+import { isConnectionRefused } from '../../../shared/errors/connectionRefused'
 import { isPromptDeliveryResult, normalizePromptDeliveryResult } from './promptTransport'
 import {
   agentPromptErrorPresentation,
@@ -211,7 +212,11 @@ export async function invoke(
           ? 'Timed out waiting for the delivery result. The outcome is unknown.'
           : 'Request timed out',
         prompt ? promptUnknownRecovery : undefined,
-        prompt ? { deliveryOutcome: 'unknown' } : undefined,
+        prompt
+          ? { deliveryOutcome: 'unknown' }
+          : request.kind === 'query'
+            ? { reason: 'read_timeout' }
+            : undefined,
       )
     }
     throw new CliError(
@@ -223,7 +228,14 @@ export async function invoke(
       request.id === 'agent.prompt'
         ? promptUnknownRecovery
         : 'Check the endpoint URL and ensure the OpenCove app or worker is running.',
-      { endpoint: connection.endpoint, ...(prompt ? { deliveryOutcome: 'unknown' } : {}) },
+      {
+        endpoint: connection.endpoint,
+        ...(prompt
+          ? { deliveryOutcome: 'unknown' }
+          : request.kind === 'query' && isConnectionRefused(error)
+            ? { reason: 'connection_refused' }
+            : {}),
+      },
     )
   } finally {
     clearTimeout(timer)

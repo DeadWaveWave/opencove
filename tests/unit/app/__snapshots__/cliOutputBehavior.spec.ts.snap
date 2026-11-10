@@ -113,8 +113,11 @@ Target container (choose one):
   --worker <id-or-name> --path <absolute-path>  Find a space by worker and working directory
   --project <id>                                Select the project to list, or narrow a Space lookup; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
+Shows up to 50 results in Worker order. Use --full or --limit 0 for all; --limit <n> overrides the default.
+
 Options:
   --kind <kind>  Filter by note, task, website, agent, terminal, plugin, document, folder, image or role
+  --full         Show all results unless --limit is specified
 
 List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
 

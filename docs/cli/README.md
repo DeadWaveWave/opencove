@@ -12,7 +12,7 @@ Agent terminals cannot answer permission dialogs, read or change private setting
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `project`   | `list`                                                                                                                                                                                            |
 | `space`     | `list`, `get`                                                                                                                                                                                     |
-| `node`      | `list [--root-canvas]`, `get`, `create note/task/website/agent/terminal [--root-canvas]`, `update note/task/website/agent/terminal`, `delete`                                                                                                    |
+| `node`      | `list [--root-canvas]`, `get`, `create note/task/website/agent/terminal [--root-canvas]`, `update note/task/website/agent/terminal`, `delete`                                                     |
 | `canvas`    | `focus node`, `focus space`                                                                                                                                                                       |
 | `api`       | `ops`, `schema <operation-id>`, `call <operation-id>`                                                                                                                                             |
 | Runtime     | `ping`, `status`, `worker start/status/stop`, `runtime inspect/verify/prepare`                                                                                                                    |
@@ -20,7 +20,7 @@ Agent terminals cannot answer permission dialogs, read or change private setting
 | `mount`     | `list`, `create`, `resolve`, `remove`                                                                                                                                                             |
 | `fs`        | `read`, `write`, `stat`, `ls`; 可选 `--mount <id>`                                                                                                                                                |
 | `worktree`  | `list`, `create`, `archive`                                                                                                                                                                       |
-| `agent`     | `list`, `get`, `prompt`, `wait`, `read`, `stop`                                                                                                                                                           |
+| `agent`     | `list`, `get`, `prompt`, `wait`, `read`, `stop`                                                                                                                                                   |
 | Agent guide | `skill` (bundled, offline)                                                                                                                                                                        |
 | `session`   | `run-agent`, `get`, `final`, `kill`                                                                                                                                                               |
 | `pty`       | `spawn-in-mount`, `attach`                                                                                                                                                                        |
@@ -40,26 +40,28 @@ opencove plugin run sample status --params-file ./params.json
 
 ## Output and exit codes
 
+默认列表上限、错误重试表、终端历史读取和 quiet 创建输出见 [CLI output](OUTPUT.md)。
+
 成功 stdout 是 operation value JSON，不包含 `{ok,value}` 或 transport envelope。
 `fs write` returns `{uri, bytes}` after a successful write; `bytes` is the UTF-8 byte count, including whitespace and newlines. JSON output ends with a newline.
 `--pretty` 格式化 JSON；`--fields a,b` 只用于查询；`-o table` 仅支持声明了 columns 的命令。
-失败 stdout 为空，非 TTY stderr 为 `{"error":{"code":"...","message":"...","hint":"...","details":...}}`。
-TTY stderr 使用可读错误；`-o json` 强制 JSON 错误。
+失败 stdout 为空，非 TTY stderr 为 `{"error":{"code":"...","message":"...","hint":"...","retryable":false,"candidates":[],"details":...}}`。
+`error.candidates` 提供歧义或建议候选项；旧的 `details.candidates` 保留但已弃用。TTY stderr 使用可读错误；`-o json` 强制 JSON 错误。
 Plugin distribution 返回 `failed`/`conflict` 时 exit 1，candidate 结果位于 `error.details`。
 
-| Exit | Meaning                                              |
-| ---- | ---------------------------------------------------- |
-| 0    | 成功（`worker status` 也可能返回 `status: stopped`） |
-| 1    | operation、runtime 或远端进程失败                    |
-| 2    | 参数错误                                             |
-| 3    | 无可用连接或 endpoint 不可达                         |
-| 4    | 认证或授权失败                                       |
+| Exit | Meaning                                                           |
+| ---- | ----------------------------------------------------------------- |
+| 0    | 成功（`worker status` 也可能返回 `status: stopped`）              |
+| 1    | operation、runtime 或远端进程失败                                 |
+| 2    | 参数错误                                                          |
+| 3    | 无可用连接或 endpoint 不可达                                      |
+| 4    | 认证或授权失败                                                    |
 | 5    | Protocol incompatible or operation unsupported by an older Worker |
-| 6    | profile/space 歧义                                   |
-| 10   | 观察到 agent 等待；可能需要用户处理，先查看再行动       |
-| 11   | 等待条件满足前，未完成目标已退出                       |
-| 124  | 请求、agent wait 或 PTY 握手超时                     |
-| 130  | 中断（agent wait 关闭流）或 PTY detach               |
+| 6    | profile/space 歧义                                                |
+| 10   | 观察到 agent 等待；可能需要用户处理，先查看再行动                 |
+| 11   | 等待条件满足前，未完成目标已退出                                  |
+| 124  | 请求、agent wait 或 PTY 握手超时                                  |
+| 130  | 中断（agent wait 关闭流）或 PTY detach                            |
 
 Exit 5 also covers operations missing from an older Worker. Restart or update OpenCove, then retry. Ordinary invalid input still exits 2.
 
@@ -91,7 +93,7 @@ Space locator 不推断 cwd：使用 `--space`、`--space-name` 或 `--worker` �
 CLI help golden 更新使用 `pnpm exec vitest run tests/unit/app/cliInputOutput.spec.ts tests/unit/app/cliOutputBehavior.spec.ts --update`，不要手改生成的 snapshot。
 
 CLI 测试先运行 `pnpm build:cli`，再运行 `pnpm exec vitest run tests/unit/app/cli*.spec.ts`。
-更新帮助 golden snapshots：`pnpm build:cli` 后运行 `pnpm exec vitest run tests/unit/app/cliCore.spec.ts tests/unit/app/cliHelpErrors.spec.ts tests/unit/app/cliSchemaValidation.spec.ts tests/unit/app/cliAgentQueries.spec.ts --update`；由 Vitest 生成，不手改 `.snap`。Context 和 filesystem 帮助随对应测试更新：`pnpm exec vitest run tests/unit/app/cliContext.spec.ts tests/unit/app/cliOutputContracts.spec.ts tests/unit/app/cliCommandMapping.spec.ts --update`。新增命令的完整帮助 golden 由 `cliHelpErrors.spec.ts` 生成；节点 wire schema golden 使用 `pnpm exec vitest run tests/contract/controlSurface/nodeSchemas.spec.ts --update` 更新。
+更新帮助 golden snapshots：`pnpm build:cli` 后运行 `pnpm exec vitest run tests/unit/app/cliCore.spec.ts tests/unit/app/cliHelpErrors.spec.ts tests/unit/app/cliSchemaValidation.spec.ts tests/unit/app/cliAgentQueries.spec.ts --update`；由 Vitest 生成，不手改 `.snap`。错误恢复 golden 使用 `pnpm exec vitest run tests/unit/app/cliAgentPrompt.spec.ts tests/unit/app/cliAgentScreenAndState.spec.ts --update` 更新。Context 和 filesystem 帮助随对应测试更新：`pnpm exec vitest run tests/unit/app/cliContext.spec.ts tests/unit/app/cliOutputContracts.spec.ts tests/unit/app/cliCommandMapping.spec.ts --update`。新增命令的完整帮助 golden 由 `cliHelpErrors.spec.ts` 生成；节点 wire schema golden 使用 `pnpm exec vitest run tests/contract/controlSurface/nodeSchemas.spec.ts --update` 更新。
 
 测试的 global setup 在系统临时目录重新构建并逐字节校验工作树中的 CLI 产物；产物缺失或过期时拒绝继续，不覆盖工作树，临时构建在成功或失败后都会清理。
 
@@ -168,7 +170,7 @@ is null. Final-message reads use the Worker's `agent.finalMessage` query.
 | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `agent list`                                              | `{epoch, seq, agents: [snapshot + title]}`                                                                                                                                                     | Snapshot fields + title; table columns: nodeId, title, provider, state, blockedReason, turn.startedAt, quality                                                                         |
 | `agent get --node <selector>`                             | Snapshot + title; non-agent nodes or absent run state fail with agent.not_found (exit 1)                                                                                                       | Snapshot fields + title; JSON only                                                                                                                                                     |
-| `agent wait --node <selector> ... --until <condition>`    | `{until, mode, agents: [snapshot]}`; turn-end adds completion, endedTurn and endedTurnOutcome                                                                                                              | Snapshot fields + completion/endedTurn/endedTurnOutcome; JSON only                                                                                                                                |
+| `agent wait --node <selector> ... --until <condition>`    | `{until, mode, agents: [snapshot]}`; turn-end adds completion, endedTurn and endedTurnOutcome                                                                                                  | Snapshot fields + completion/endedTurn/endedTurnOutcome; JSON only                                                                                                                     |
 | `agent read --node <selector> [--last] [--turn <turnId>]` | Plain message text; JSON includes `source: hook\|transcript` and `truncated`; exact `--turn` never falls back                                                                                  | Hook: nodeId, sessionId, turnId, promptId, outcome, message, truncated, source; transcript: sessionId, provider, startedAt, cwd, resumeSessionId, message, truncated, source; no table |
 | `agent read --node <selector> --screen [--lines <n>]`     | Rendered screen text at snapshot cols/rows: cursor spacing and wide cells preserved; trailing spaces/blank rows trimmed, last n rows (default 40); JSON is `{nodeId, sessionId, lines: [...]}` | nodeId, sessionId, lines; no table                                                                                                                                                     |
 | `skill`                                                   | Plain SKILL.md; `-o json` returns `{version, content}`                                                                                                                                         | version, content; no table                                                                                                                                                             |

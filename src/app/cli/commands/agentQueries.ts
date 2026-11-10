@@ -106,6 +106,7 @@ export const agentQueryCommands = [
         { epoch: 'e', seq: 1, agents: [{ nodeId: 'node-123' }] },
         { listKey: 'agents' },
       ),
+      defaultLimit: 50,
       columns: [
         'nodeId',
         'title',

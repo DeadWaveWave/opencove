@@ -53,9 +53,12 @@ Returns {epoch, seq, agents}, one row per live agent session. Exited sessions ar
 
 When no target is given, inside OpenCove defaults to your own space; project options default to your own project.
 
+Shows up to 50 results in Worker order. Use --full or --limit 0 for all; --limit <n> overrides the default.
+
 Options:
   --space <id>                                   Select a space by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --state <working|waiting|idle|exited|unknown>  Filter the authoritative run state
+  --full                                         Show all results unless --limit is specified
   --project <id>                                 Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
@@ -84,7 +87,7 @@ Read the latest ended reply, or exactly --turn <turnId> from agent prompt. Plain
 
 Loop: prompt → delivery status → wait --turn <turnId> → read --turn <turnId> -o json. Check outcome and reply; never resend because a read fails. Local archived exact reads survive restart. Claude continuations share one OpenCove turn; Codex reply reads remain uncorrelated.
 
---screen inspects the current terminal (last 40 rendered lines); --lines requires --screen. Use it before prompting to inspect drafts/dialogs. Reading never sends input. --screen conflicts with --last/--turn; --last makes the latest-turn default explicit.
+--screen inspects the visible terminal (last 40 rendered lines). --scrollback includes retained normal-buffer history (last 200 lines; --lines 1–5000). Both support plain terminals and agent windows, strip ANSI and trim trailing blank lines; --lines requires one of them. The active alternate screen has no scrollback. Reading never sends input. --screen and --scrollback conflict with each other and --last/--turn; --last makes the latest-turn default explicit.
 
 Exit codes: 0 readable result (including empty content); 1 unavailable reply/transcript; 2 invalid input. Detailed fallback rules, truncation, retention and recovery: opencove skill.
 
@@ -95,7 +98,8 @@ Options:
   --last              Read the latest ended turn (default; --turn selects an exact turn)
   --turn <turnId>     Read exactly this OpenCove turn ID from agent prompt; never falls back
   --screen            Inspect the current terminal screen as plain text instead of the final message
-  --lines <n>         Return the last n screen lines after trimming trailing blank lines (positive integer; default: 40; requires --screen)
+  --scrollback        Read retained terminal history and screen (default: 200 lines; maximum: 5000)
+  --lines <n>         Return the last n rendered lines (positive integer; requires --screen or --scrollback)
   --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
@@ -108,6 +112,7 @@ Projection example:
 
 Examples:
   opencove agent read --node "Reviewer" --screen
+  opencove agent read --node "Shell" --scrollback --lines 200
   opencove agent read --node "Reviewer" --screen --lines 20 -o json
   opencove agent read --node "Reviewer" --last
   opencove agent read --node node-123 --turn turn-123
@@ -164,6 +169,7 @@ exports[`explains session.not_found and next steps 1`] = `
   "code": "session.not_found",
   "hint": "Run opencove node list to check the selector, then start or resume its agent session before reading.",
   "message": "No agent conversation was found for this node.",
+  "retryable": false,
 }
 `;
 
@@ -172,6 +178,7 @@ exports[`explains session.transcript_not_ready and next steps 1`] = `
   "code": "session.transcript_not_ready",
   "hint": "Use "opencove agent wait --node node-123456 --until idle", then read again. Inspect the terminal with "opencove agent read --node node-123456 --screen".",
   "message": "No readable final message is available for this session.",
+  "retryable": false,
 }
 `;
 

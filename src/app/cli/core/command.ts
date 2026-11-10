@@ -7,6 +7,7 @@ export interface OptionSpec {
   selector?: 'node' | 'space' | 'project'
   defaultSelf?: boolean
   defaultSelfUnless?: string[]
+  short?: string
   type: 'string' | 'boolean' | 'number' | 'json'
   multiple?: boolean
   required?: boolean
@@ -24,6 +25,8 @@ export interface PositionalSpec {
   required?: boolean
 }
 export interface RenderSpec {
+  /** Presentation-only cap for the declared list; never sent to the Worker. */
+  defaultLimit?: number
   fields?: string[]
   defaultFields?: string[]
   list?: boolean
@@ -73,6 +76,8 @@ export interface Command {
   /** Use the caller node's current container for implicit node create/list targets. */
   currentContainer?: boolean
   targetSpace?: 'required' | 'optional'
+  /** Stable identifier to print for --quiet, relative to the operation result. */
+  quietIdPath?: string
   mutation?: boolean
   stream?: boolean
   timeoutMs?: number
@@ -92,6 +97,17 @@ export interface Command {
 }
 export function defineCommand(command: Command): Command {
   const options = { ...command.options }
+  if (command.quietIdPath) {
+    options.quiet = {
+      type: 'boolean',
+      short: 'q',
+      conflicts: ['fields', 'output'],
+      description: 'Print only the created object identifier followed by a newline',
+    }
+  }
+  if (command.render?.defaultLimit) {
+    options.full = { type: 'boolean', description: 'Show all results unless --limit is specified' }
+  }
   if (options.node && !options.space) {
     options.space = {
       type: 'string',

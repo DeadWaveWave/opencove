@@ -25,6 +25,7 @@ Options:
   --title <text>          Set the node title
   --frame <json>          Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
   --focus                 Focus after creation
+  -q, --quiet             Print only the created object identifier followed by a newline
 
 Table output (-o table): not supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.provider, data.prompt, data.model, data.effectiveModel, data.executionDirectory, data.expectedDirectory, data.taskId
@@ -64,6 +65,7 @@ Options:
   --title <text>        Set the node title
   --frame <json>        Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
   --focus               Focus after creation
+  -q, --quiet           Print only the created object identifier followed by a newline
 
 Table output (-o table): not supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.text
@@ -106,6 +108,7 @@ Options:
   --title <text>                       Set the node title
   --frame <json>                       Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes; task minimum: width 220, height 260
   --focus                              Focus after creation
+  -q, --quiet                          Print only the created object identifier followed by a newline
 
 Table output (-o table): not supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.requirement, data.status, data.priority, data.tags, data.linkedAgentNodeId
@@ -146,6 +149,7 @@ Options:
   --title <text>       Set the node title
   --frame <json>       Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
   --focus              Focus after creation
+  -q, --quiet          Print only the created object identifier followed by a newline
 
 Table output (-o table): not supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.profileId, data.runtimeKind, data.executionDirectory, data.expectedDirectory
@@ -187,6 +191,7 @@ Options:
   --title <text>                             Set the node title
   --frame <json>                             Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
   --focus                                    Focus after creation
+  -q, --quiet                                Print only the created object identifier followed by a newline
 
 Table output (-o table): not supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.url, data.pinned, data.sessionMode, data.profileId

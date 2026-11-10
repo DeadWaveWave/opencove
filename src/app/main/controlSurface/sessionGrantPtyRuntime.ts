@@ -73,7 +73,7 @@ export function createSessionGrantPtyRuntime(options: {
       try {
         Object.assign(env, {
           OPENCOVE_ENV: '1',
-          OPENCOVE_NODE_ID: identity.nodeId,
+          ...(identity.nodeId ? { OPENCOVE_NODE_ID: identity.nodeId } : {}),
           OPENCOVE_SPACE_ID: identity.spaceId,
           OPENCOVE_PROJECT_ID: identity.projectId,
           OPENCOVE_CONTROL_URL: url,
@@ -97,7 +97,9 @@ export function createSessionGrantPtyRuntime(options: {
         }
         sessions.add(spawned.sessionId)
         reservation.commit(spawned.sessionId)
-        options.onSpawnIdentity?.(spawned.sessionId, identity.nodeId)
+        if (identity.nodeId) {
+          options.onSpawnIdentity?.(spawned.sessionId, identity.nodeId)
+        }
         return spawned
       } catch (error) {
         if (!settled) {

@@ -58,6 +58,7 @@ const summaryDataFields = [
   'linkedAgentNodeId',
 ]
 export const nodeListOutput: RenderSpec = {
+  defaultLimit: 50,
   listKey: 'nodes',
   fields: [
     ...nodeFields,
