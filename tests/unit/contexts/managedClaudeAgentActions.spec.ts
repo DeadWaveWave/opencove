@@ -25,6 +25,18 @@ vi.mock(
   }),
 )
 const tuple = { resumeSessionId: 'committed', resumeSessionIdVerified: true }
+const receipt = {
+  commitRevision: null,
+  binding: {
+    nodeId: 'new-agent',
+    activationId: 'owned',
+    runtimeSessionId: 'runtime',
+    tuple,
+    nodeSeen: false,
+    bindingRevision: 0,
+    observedRevision: 0,
+  },
+}
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(readManagedClaudeExecutionContext).mockResolvedValue({
@@ -50,9 +62,12 @@ function taskContext(): TaskActionContext {
       current: [
         {
           id: 'task',
+          position: { x: 0, y: 0 },
           data: {
             kind: 'task',
             title: 'Task',
+            width: 300,
+            height: 200,
             task: { requirement: 'Next task', linkedAgentNodeId: 'agent' },
           },
         },
@@ -116,6 +131,7 @@ describe('managed Claude task and role actions', () => {
   it('role launch uses one fresh agent identity and retains role provenance', async () => {
     vi.mocked(launchWorkspaceAgentSession).mockResolvedValue({
       sessionId: 'runtime',
+      managedClaudeLifecycle: receipt,
       resumeSessionId: 'committed',
       profileId: null,
       runtimeKind: 'posix',
@@ -162,7 +178,10 @@ describe('managed Claude task and role actions', () => {
     const launchInput = vi.mocked(launchWorkspaceAgentSession).mock.calls[0][0]
     expect(launchInput.canvasNodeId).not.toBe('role-node')
     expect(createNodeForSession).toHaveBeenCalledWith(
-      expect.objectContaining({ nodeId: launchInput.canvasNodeId }),
+      expect.objectContaining({
+        nodeId: launchInput.canvasNodeId,
+        managedClaudeLifecycle: receipt,
+      }),
     )
     expect(context.appendRoleRunRecord).toHaveBeenCalledWith(
       'role-node',
@@ -223,7 +242,28 @@ it('task history records the effective committed tuple returned by a managed res
   }))
   await resumeTaskAgentSessionAction('task', 'history', context)
   expect(context.createNodeForSession).toHaveBeenCalledWith(
-    expect.objectContaining({ agent: expect.objectContaining(tuple) }),
+    expect.objectContaining({
+      agent: expect.objectContaining(tuple),
+      managedClaudeLifecycle: { binding, commitRevision: null },
+    }),
   )
   expect(context.nodesRef.current[0].data.task?.agentSessions?.[0]).toMatchObject(tuple)
+})
+
+it('carries the task launch receipt into new-node placement', async () => {
+  const context = taskContext()
+  context.nodesRef.current[0].data.task!.linkedAgentNodeId = null
+  context.createNodeForSession = vi.fn(async () => null)
+  vi.mocked(launchWorkspaceAgentSession).mockResolvedValue({
+    sessionId: 'runtime',
+    resumeSessionId: 'committed',
+    profileId: null,
+    effectiveModel: null,
+    executionDirectory: '/repo',
+    managedClaudeLifecycle: receipt,
+  })
+  await runTaskAgentAction('task', context)
+  expect(context.createNodeForSession).toHaveBeenCalledWith(
+    expect.objectContaining({ managedClaudeLifecycle: receipt }),
+  )
 })

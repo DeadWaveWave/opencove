@@ -1,6 +1,8 @@
 import { createAppError, toAppErrorDescriptor } from '@shared/errors/appError'
 import type { GetManagedClaudeBindingResult } from '@shared/contracts/managedClaudeLaunch'
 import type { ManagedClaudeBindingObservation } from '@shared/contracts/managedClaudeLaunch'
+import type { ManagedClaudeLifecycleReceipt } from '@shared/contracts/managedClaudeLaunch'
+import { supportsWorkerOperation } from './controlSurfaceOperationSupport'
 
 async function readOwnership(nodeId: string): Promise<GetManagedClaudeBindingResult> {
   let result: GetManagedClaudeBindingResult
@@ -14,20 +16,7 @@ async function readOwnership(nodeId: string): Promise<GetManagedClaudeBindingRes
     if (toAppErrorDescriptor(error).code !== 'common.invalid_input') {
       throw error
     }
-    // Negotiate with the runtime registry, never infer support from error text or app version.
-    const registry = await window.opencoveApi.controlSurface.invoke<{
-      protocolVersion: number
-      operations: { id: string }[]
-    }>({ kind: 'query', id: 'system.operations', payload: {} })
-    if (
-      !registry ||
-      typeof registry.protocolVersion !== 'number' ||
-      !Array.isArray(registry.operations) ||
-      !registry.operations.every(operation => operation && typeof operation.id === 'string')
-    ) {
-      throw createAppError('persistence.unavailable')
-    }
-    if (registry.operations.some(operation => operation.id === 'node.managedClaudeBinding')) {
+    if (await supportsWorkerOperation('node.managedClaudeBinding')) {
       throw error
     }
     return { managedClaudeBinding: null, retired: false, executionDirectory: null }
@@ -41,6 +30,32 @@ async function readOwnership(nodeId: string): Promise<GetManagedClaudeBindingRes
     })
   }
   return result
+}
+
+export async function cleanupFailedNodePlacement(input: {
+  sessionId: string
+  managedClaudeLifecycle?: ManagedClaudeLifecycleReceipt
+}): Promise<void> {
+  if (!input.managedClaudeLifecycle) {
+    await window.opencoveApi.pty.kill({ sessionId: input.sessionId })
+    return
+  }
+  if (
+    !window.opencoveApi?.controlSurface?.invoke ||
+    !(await supportsWorkerOperation('session.cleanupUnreferenced'))
+  ) {
+    throw createAppError('agent.managed_launch_rejected', {
+      details: {
+        nodeId: input.managedClaudeLifecycle.binding.nodeId,
+        reason: 'capabilityUnavailable',
+      },
+    })
+  }
+  await window.opencoveApi.controlSurface.invoke({
+    kind: 'command',
+    id: 'session.cleanupUnreferenced',
+    payload: { sessionId: input.sessionId },
+  })
 }
 
 /** Query durable ownership at interaction start; never infer it from renderer metadata. */

@@ -106,4 +106,75 @@ describeWithElectronNativeModules('managed Claude fallback runtime replacement',
       },
     })
   })
+  it('cleans both runtimes after deletion between a committed replacement and deferred reconciliation', async () => {
+    await store.writeAppState(stateWithAgent())
+    await store.activateManagedClaudeRuntime({
+      nodeId: 'agent',
+      activationId: 'settled',
+      runtimeSessionId: null,
+      tuple: tupleA,
+    })
+    const state = stateWithAgent()
+    state.workspaces[0].nodes[0].sessionId = 'fallback-shell'
+    await store.writeAppState(state)
+    let unavailable = false
+    let reconcile!: () => void
+    const kill = vi.fn(async (id: string) => {
+      expect(store.isManagedClaudeRuntimeReferenced(id)).toBe(false)
+    })
+    const owner = new ManagedClaudeLaunchOwner({
+      observeNode: id => {
+        if (unavailable) {
+          throw new Error('confirmation unavailable')
+        }
+        return store.observeManagedClaudeNode(id)
+      },
+      activateManagedClaudeRuntime: async input => {
+        const result = await store.activateManagedClaudeRuntime(input)
+        unavailable = true
+        return result
+      },
+      isRuntimeReferenced: store.isManagedClaudeRuntimeReferenced,
+      killExactRuntime: kill,
+      createId: () => 'replacement',
+      publishCommittedActivation: () => {},
+      scheduleReconciliation: callback => {
+        reconcile = callback
+        return () => {}
+      },
+    })
+    const unsubscribe = store.onAppStateCommitted(event =>
+      owner.noteNodesDeleted(event.removedNodeIds),
+    )
+    try {
+      const before = store.observeManagedClaudeNode('agent')
+      const attempt = owner.reserve('agent')
+      attempt.context = before.context
+      attempt.expected = {
+        activationId: before.binding!.activationId,
+        tuple: before.binding!.tuple,
+      }
+      await owner.admit(attempt, { provider: 'claude-code', cwd: '/repo', mountId: null })
+      await expect(
+        owner.complete(attempt, { runtimeSessionId: 'candidate', tuple: tupleB }),
+      ).rejects.toMatchObject({ details: { outcome: 'unknown' } })
+      expect(store.observeManagedClaudeNode('agent').binding?.runtimeSessionId).toBe('candidate')
+      expect(kill).not.toHaveBeenCalled()
+      state.workspaces[0].nodes = []
+      await store.writeAppState(state)
+      expect(store.observeManagedClaudeNode('agent')).toMatchObject({
+        retired: true,
+        binding: null,
+      })
+      expect(kill).not.toHaveBeenCalled()
+      unavailable = false
+      reconcile()
+      await vi.waitFor(() =>
+        expect(kill.mock.calls.map(([id]) => id).sort()).toEqual(['candidate', 'fallback-shell']),
+      )
+    } finally {
+      unsubscribe()
+      owner.dispose()
+    }
+  })
 })

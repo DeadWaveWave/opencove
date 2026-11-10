@@ -19,6 +19,7 @@ import type { LabelColor } from '@shared/types/labelColor'
 import type { SpaceBoundary } from '@shared/types/spaceBoundary'
 import type { TerminalPtyGeometryDisplayMetrics } from '@contexts/workspace/domain/terminalPtyGeometry'
 import type { CanvasCollapseState } from '../../utils/canvasCollapse'
+import type { ManagedClaudeLifecycleReceipt } from '@shared/contracts/managedClaudeLaunch'
 
 export type WorkspaceCanvasMessageTone = 'info' | 'warning' | 'error'
 
@@ -233,6 +234,7 @@ export interface SpaceWorktreeMismatchDropWarningState {
 export interface CreateNodeInput {
   nodeId?: string
   sessionId: string
+  managedClaudeLifecycle?: ManagedClaudeLifecycleReceipt
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind
   terminalGeometry?: TerminalPtyGeometry | null

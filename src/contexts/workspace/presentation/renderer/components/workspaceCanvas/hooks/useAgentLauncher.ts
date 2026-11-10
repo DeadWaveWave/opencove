@@ -159,6 +159,9 @@ export function useWorkspaceCanvasAgentLauncher({
         const created = await createNodeForSession({
           nodeId: canvasNodeId,
           sessionId: launched.sessionId,
+          ...(launched.managedClaudeLifecycle
+            ? { managedClaudeLifecycle: launched.managedClaudeLifecycle }
+            : {}),
           profileId: launched.profileId,
           runtimeKind: launched.runtimeKind as CreateNodeInput['runtimeKind'],
           terminalGeometry: launchGeometry.terminalGeometry,

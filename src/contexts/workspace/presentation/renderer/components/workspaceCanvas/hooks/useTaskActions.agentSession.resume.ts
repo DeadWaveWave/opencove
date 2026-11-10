@@ -135,6 +135,9 @@ export async function resumeTaskAgentSessionAction(
     const createdAgentNode = await context.createNodeForSession({
       nodeId: canvasNodeId,
       sessionId: launched.sessionId,
+      ...(launched.managedClaudeLifecycle
+        ? { managedClaudeLifecycle: launched.managedClaudeLifecycle }
+        : {}),
       profileId: launched.profileId,
       runtimeKind: launched.runtimeKind,
       terminalGeometry: launchGeometry.terminalGeometry,

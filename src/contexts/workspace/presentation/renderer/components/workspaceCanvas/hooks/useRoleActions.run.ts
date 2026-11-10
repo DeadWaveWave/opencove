@@ -182,6 +182,9 @@ export async function runRoleNodeAction(
     const createdAgentNode = await context.createNodeForSession({
       nodeId: agentNodeId,
       sessionId: launched.sessionId,
+      ...(launched.managedClaudeLifecycle
+        ? { managedClaudeLifecycle: launched.managedClaudeLifecycle }
+        : {}),
       profileId: launched.profileId,
       runtimeKind: launched.runtimeKind,
       terminalGeometry: launchGeometry.terminalGeometry,

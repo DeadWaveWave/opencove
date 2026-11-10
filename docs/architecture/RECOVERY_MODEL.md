@@ -391,3 +391,8 @@ operation 已注册但读取失败时仍拒绝操作，不能把 persistence fai
 Owned fallback shell 的 node runtime 与 null ledger runtime 不同；确认新 managed runtime activation
 后，owner 才对捕获的旧 shell ID 执行 reference-checked cleanup，unknown outcome 不触发此清理。
 即时完成、后台 timer 与下一请求触发的 reconciliation 共用一次 finalization，始终使用原 attempt 的清理上下文。
+无论 activation 被确认、删除或替换，finalization 都结算 candidate 与被替换的 node runtime；
+unknown outcome 同时保护二者。清理 owner 保留读取 references 或 kill 失败的 exact ID，后续请求及删除事件重试；
+只有确认引用或完成 kill 才解除清理责任，已引用 runtime 的责任交回 durable binding/node owner。
+Renderer 的 placement cleanup 按 managed receipt 选择 Worker 路径，并先协商 operation support；
+legacy launch 保留直接 PTY cleanup，不因 provider 或预分配 node ID 改变责任。
