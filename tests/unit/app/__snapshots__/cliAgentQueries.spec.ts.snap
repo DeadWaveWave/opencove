@@ -87,7 +87,7 @@ Read the latest ended reply, or exactly --turn <turnId> from agent prompt. Plain
 
 Loop: prompt → delivery status → wait --turn <turnId> → read --turn <turnId> -o json. Check outcome and reply; never resend because a read fails. Local archived exact reads survive restart. Claude and Codex lifecycle hooks supply exact-turn replies. Codex keeps the first matching Stop reply that ends the local turn; later continuation does not replace it.
 
---screen inspects the visible terminal (last 40 rendered lines). --scrollback includes retained normal-buffer history (last 200 lines; --lines 1–5000). Both support plain terminals and agent windows, strip ANSI and trim trailing blank lines; --lines requires one of them. Use --screen before prompting to inspect drafts/dialogs. The active alternate screen has no scrollback. Reading never sends input. --screen and --scrollback conflict with each other and --last/--turn; --last makes the latest-turn default explicit.
+--screen shows the visible terminal (last 40 lines); --scrollback adds retained history (last 200; --lines 1–5000; none on the alternate screen). Both work for terminals and agent windows and strip ANSI. Inspect --screen for drafts/dialogs before prompting. Reading never sends input. --screen and --scrollback exclude each other and --last/--turn.
 
 Exit codes: 0 readable result (including empty content); 1 unavailable reply/transcript; 2 invalid input; 4 authentication or grant-policy refusal. Detailed fallback rules, truncation, retention and recovery: opencove skill read.
 
