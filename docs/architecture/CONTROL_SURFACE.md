@@ -287,8 +287,17 @@ mutations remain possible and are the separate S1b work.
 `controlSurface.invoke` use it; constrained checks run after validation and before execution.
 The read/interact tier remains a ceiling, not an authorization heuristic.
 
+Grants allow the listed canvas, filesystem, worktree and session operations, including Space
+creation and node updates. Launches and prompts are constrained. Use `api ops` and `api schema`
+inside OpenCove to inspect current access; schema fields do not grant permission.
+The table below is a selective index, not the exhaustive policy. Endpoint/mount administration,
+project addition/root approval and plugin distribution or execution require a human decision.
+
 | Denied operations | Reason |
 | --- | --- |
+| `endpoint.prepare/register/registerManagedSsh/remove/repair/updateManagedSsh/readDirectory`, `mount.create/promote/remove` | Endpoint and mount administration belongs to the user |
+| `project.add`, `workspace.approveRoot` | Project addition and root approval require a human decision |
+| Plugin install/update/apply/rollback/discover/reload/enable/remove and repository operations | Plugin distribution belongs to the user; consult the policy for exact IDs |
 | `session.writeNode` | Send messages with `agent.prompt`; only the user answers permission prompts and dialogs in OpenCove |
 | `sync.state`, `sync.readWorkspaceStateRaw` | Application settings can contain private credentials |
 | `sync.writeState`, `sync.writeWorkspaceStateRaw` | Settings, permission policy and persisted roots belong to the user |

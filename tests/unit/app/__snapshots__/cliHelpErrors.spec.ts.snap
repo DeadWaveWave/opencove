@@ -37,7 +37,7 @@ Rename this window and keep its name when the agent session changes. The name is
 
 Options:
   --node <id>         Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
-  --title <text>      Set the node title
+  --title <text>      Set a fixed window name; omit on creation to keep automatic titles
   --frame <json>      Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
   --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
@@ -66,7 +66,7 @@ Rename this window and keep its name when the agent session changes. The name is
 
 Options:
   --node <id>         Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
-  --title <text>      Set the node title
+  --title <text>      Set a fixed window name; omit on creation to keep automatic titles
   --frame <json>      Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
   --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
