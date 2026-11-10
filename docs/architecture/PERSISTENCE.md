@@ -10,7 +10,8 @@ SQLite:
 - Store：`src/platform/persistence/sqlite/PersistenceStore.ts`
 - Schema：`src/platform/persistence/sqlite/schema.ts`
 - Migration：`src/platform/persistence/sqlite/migrate.ts`
-- 当前 `DB_SCHEMA_VERSION = 14`
+- 当前 `DB_SCHEMA_VERSION = 15`
+- schema 14：managed Claude resume ledger 与 retired IDs；schema 15：node lineage
 - Agent/Terminal node Worker binding：`nodes.worker_binding_json`
 - Terminal durable recovery：`terminal_recovery_records`
 - Legacy terminal presentation/scrollback mirror：`node_scrollback`（兼容读取，不是独立 truth owner）
@@ -315,7 +316,7 @@ the Sidebar does not maintain a second local persistence store.
 - 补充 IPC/Control Surface payload validation 测试。
 - 运行最低 meaningful layer；提交前按 `DEVELOPMENT.md` 执行门禁。
 
-## Managed Claude resume ledger（存储契约，尚未启用生产接入）
+## Managed Claude resume ledger（schema 14，尚未启用生产接入）
 
 Worker 是 managed Claude resume tuple 的 owner。`managed_claude_resume_bindings` 保存
 canonical tuple、runtime、activation ID 和单调的 `node_seen`；`nodes.agent_json` 是持久化投影。
@@ -337,3 +338,24 @@ Desktop IPC 返回与 revision conflict 相同的 `{ok:false, reason:'unknown', 
 revisioned sync 采用 Control Surface `{ok:false, error}`；raw sync 保留嵌套写入结果。
 Remote/Web 把该 code 纳入既有 conflict refresh/rebase，并在重试耗尽时保留 typed descriptor。
 retired ID 的 Renderer rebase 策略以及 corrected 的 cache/ack 处理留待启用前补齐。
+
+## 节点创建血缘（schema 15）
+
+升级按 v14 ledger → v15 lineage 初始化。v13 与 v14 profile 均可升级到 v15；
+v1 legacy writer 运行前两套 side table 已就绪，schema-current repair 也同时修复两套结构。
+升级和 repair 均不推断或补写 ledger / lineage 记录。
+
+Workspace application owner 从已验证的 session grant 推导 parent、root 和 depth，
+在节点创建提交时通过原 SQLite 连接与 CAS node writer 同事务写入 `node_lineage`。
+创建提交与普通 snapshot 共用最终 writer，保留 managed Claude gate、retirement 和
+`{revision, corrected, effectiveState}` receipt；lineage 插入失败时一并回滚。
+该表只保存 node_id、spawned_by_node_id、root_node_id、lineage_depth，insert-once；
+相同记录幂等，冲突拒绝。无 FK，snapshot/raw writer 和 node deletion 不清理它。
+迁移和 schema-current repair 只创建表及索引，不回填历史节点；无记录的节点投影为 root、depth 1。
+Renderer snapshot 字段没有 lineage 写权；query 投影不写入数据库。移动、删除父节点和重启保持血缘。
+Snapshot export 不含血缘，数据库备份包含血缘。降级仅尽力兼容，不保证安全。
+带 caller node 的 grant 创建必须能读取 lineage 并原子提交 node 与 lineage；缺少任一端口
+或存储不可读时，在启动进程前拒绝，不把未知来源伪装成 root。`nodeLineageV1` 同时检查
+repository 与 creation commit。node-less standalone grant 不记录血缘；standalone Worker
+仍使用完整 SQLite store。Desktop/Web/remote clients 将创建命令交给 owning Worker。
+本节为现有 owner/边界的说明：no executable-rule impact。

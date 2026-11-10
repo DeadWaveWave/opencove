@@ -10,7 +10,7 @@ Deletes this node’s stored ended-turn replies from the Worker archive and in-m
 Returns nodeId, memoryRemoved and archive: {status: cleared, removed}. Counts are per store; the same reply may have a copy in each. Repeating the command succeeds with zero counts. Requires interact scope. If the archive is unavailable, memory is still cleared; exits 1 with archive: {status: unavailable} and memoryRemoved in the error details, without claiming archive deletion. For an agent on a remote Worker it clears only local copies and exits 1 with details.reason: remote_history_unavailable.
 
 Options:
-  --node <id>         Select a canvas node by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
+  --node <id>         Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
   --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 

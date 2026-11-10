@@ -111,6 +111,7 @@ export const SESSION_GRANT_POLICY = {
   'node.delete': allow,
   'node.get': allow,
   'node.list': allow,
+  'node.resolveCallerSelector': allow,
   'node.update': allow,
   'note.create': allow,
   'plugin.command.run': deny(

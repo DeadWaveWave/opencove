@@ -1,5 +1,18 @@
 export const zhCNMessages = {
   managedAgentChanged: '此智能体已发生变更，请刷新工作区后重试。',
+  nodeNoParent: '此节点由用户启动，没有父级 Agent。',
+  nodeNoParentHint: '运行“opencove agent list”选择接收方，或直接向用户汇报。',
+  nodeParentDeleted: '创建此节点的 Agent 已被删除。',
+  nodeParentDeletedHint: '运行“opencove agent list”选择其他接收方，或将结果写入共享便签。',
+  nodeParentIdentityMismatch: '当前终端的身份与其 OpenCove 会话不一致。',
+  nodeParentIdentityMismatchHint:
+    '请新建一个 OpenCove 终端，运行“opencove whoami”确认身份后再选择接收方。',
+  nodeParentIdentityRequired: '@parent 只能在 OpenCove 终端内使用。',
+  nodeParentIdentityRequiredHint:
+    '请在 OpenCove 中运行此命令，或运行“opencove node list”获取节点 ID，用它替换 @parent。',
+  nodeParentUnavailable: '无法确定父节点。',
+  nodeParentUnavailableHint:
+    '运行“opencove node get --node @self”查看创建关系，再运行“opencove node list”选择接收方。',
   agentLaunchFailed: 'Agent 启动失败：{{message}}',
   agentResumeFailed: 'Agent 继续失败：{{message}}',
   terminalAgentReexecFailed: '无法在此终端中重新启动 Agent：{{message}}',

@@ -181,6 +181,12 @@ export function help(commands: Command[], path: string[]) {
           ? 'Field projection (--fields): queries accept raw output dot paths and item-relative aliases from dedicated commands with declared output fields; validated after the read. Commands do not support projection.'
           : `Field projection (--fields): not supported.${exact.render?.unavailable ? ' ' + exact.render.unavailable : ''}`,
     )
+    const fieldDescriptions = Object.entries(exact.render?.fieldDescriptions ?? {}).filter(
+      ([field]) => exact.render?.fields?.includes(field),
+    )
+    if (fieldDescriptions.length) {
+      lines.push('', 'Field descriptions:', ...rows(fieldDescriptions))
+    }
     if (exact.render?.examples) {
       lines.push(
         '',

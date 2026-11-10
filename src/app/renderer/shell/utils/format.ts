@@ -1,4 +1,5 @@
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
+import { nodeParentErrorPresentation } from '@shared/errors/nodeParentError'
 import { getActiveUiLanguage, translate } from '@app/renderer/i18n'
 import {
   formatAppErrorMessage,
@@ -38,11 +39,14 @@ function getDateTimeFormatter(language: string): Intl.DateTimeFormat {
 }
 
 export function toErrorMessage(error: unknown): string {
-  if (
-    (error instanceof OpenCoveAppError || isAppErrorDescriptor(error)) &&
-    error.code === 'persistence.owned_node_identity_conflict'
-  ) {
-    return translate('messages.managedAgentChanged')
+  if (error instanceof OpenCoveAppError || isAppErrorDescriptor(error)) {
+    const parent = nodeParentErrorPresentation(error)
+    if (parent) {
+      return `${translate(`messages.${parent.key}`)} ${translate(`messages.${parent.key}Hint`)}`
+    }
+    if (error.code === 'persistence.owned_node_identity_conflict') {
+      return translate('messages.managedAgentChanged')
+    }
   }
   if (error instanceof OpenCoveAppError) {
     if (error.code === 'worker.stop_not_owned') {

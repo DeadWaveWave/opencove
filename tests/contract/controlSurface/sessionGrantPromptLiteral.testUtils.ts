@@ -24,6 +24,10 @@ export const rootUri = pathToFileURL(cwd).href
 export async function createPromptWorker(options: { remote?: boolean; fullAccess: boolean }) {
   const store = createInMemoryPersistenceStore()
   const state = createMinimalState(cwd, 'project', 'space')
+  state.workspaces[0].nodes = [
+    { id: 'caller', kind: 'terminal', title: 'Caller', sessionId: 'caller-session' },
+  ]
+  state.workspaces[0].spaces[0].nodeIds = ['caller']
   state.settings = {
     defaultProvider: 'codex',
     agentFullAccess: options.fullAccess,

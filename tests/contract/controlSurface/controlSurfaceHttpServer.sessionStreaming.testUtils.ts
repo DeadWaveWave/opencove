@@ -1,5 +1,12 @@
 import { readFile, rm } from 'node:fs/promises'
-import type { PersistenceStore } from '../../../src/platform/persistence/sqlite/PersistenceStore'
+import type {
+  PersistenceStore,
+  WriteAppStateOptions,
+} from '../../../src/platform/persistence/sqlite/PersistenceStore'
+import type { PersistWriteResult } from '../../../src/shared/contracts/dto'
+import type { NodeLineageRecord } from '../../../src/contexts/workspace/domain/nodeLineage'
+import { normalizePersistedAppState } from '../../../src/platform/persistence/sqlite/normalize'
+import { PersistenceRevisionConflict } from '../../../src/platform/persistence/sqlite/revisionConflict'
 import { createAppErrorDescriptor } from '../../../src/shared/errors/appError'
 import WebSocket from 'ws'
 
@@ -208,6 +215,7 @@ export function createInMemoryPersistenceStore(): PersistenceStore {
   let revision = 0
   const nodeScrollbacks = new Map<string, string>()
   const agentPlaceholderScrollbacks = new Map<string, string>()
+  const lineageRows = new Map<string, NodeLineageRecord>()
 
   const hasExistingWorkspaces = (): boolean =>
     !!state &&
@@ -223,31 +231,75 @@ export function createInMemoryPersistenceStore(): PersistenceStore {
     Array.isArray((nextState as { workspaces?: unknown }).workspaces) &&
     (nextState as { workspaces: unknown[] }).workspaces.length === 0
 
+  const invalid = (debugMessage: string): PersistWriteResult => ({
+    ok: false,
+    reason: 'unknown',
+    error: createAppErrorDescriptor('persistence.invalid_state', { debugMessage }),
+  })
+  const persistAppState = (
+    nextState: unknown,
+    options?: WriteAppStateOptions,
+  ): PersistWriteResult => {
+    if (options?.expectedRevision !== undefined && options.expectedRevision !== revision) {
+      return invalid(new PersistenceRevisionConflict(options.expectedRevision, revision).message)
+    }
+    if (
+      isEmptyWorkspaceState(nextState) &&
+      hasExistingWorkspaces() &&
+      options?.allowEmptyWorkspaceOverwrite !== true
+    ) {
+      return invalid('Refusing to overwrite existing workspace state with an empty workspace list.')
+    }
+
+    state = nextState
+    revision += 1
+    return { ok: true, level: 'full', bytes: 0 }
+  }
+
   return {
+    nodeLineage: {
+      readMany: async ids =>
+        new Map(
+          ids.flatMap(id => {
+            const row = lineageRows.get(id)
+            return row ? [[id, structuredClone(row)] as const] : []
+          }),
+        ),
+    },
+    commitCreatedNodeState: async (nextState, options) => {
+      const row = options.lineage
+      const existing = lineageRows.get(row.nodeId)
+      const normalized = normalizePersistedAppState(nextState)
+      if (
+        !normalized?.workspaces.some(w => w.nodes.some(n => n.id === row.nodeId)) ||
+        row.nodeId === row.spawnedBy ||
+        row.nodeId === row.rootNodeId ||
+        !Number.isSafeInteger(row.lineageDepth) ||
+        row.lineageDepth < 2 ||
+        (existing &&
+          (existing.spawnedBy !== row.spawnedBy ||
+            existing.rootNodeId !== row.rootNodeId ||
+            existing.lineageDepth !== row.lineageDepth)) ||
+        (!existing &&
+          [...lineageRows.values()].some(
+            r => r.spawnedBy === row.nodeId || r.rootNodeId === row.nodeId,
+          ))
+      ) {
+        return invalid('Invalid or conflicting node lineage.')
+      }
+      // Synchronous body: state, revision and insert-once lineage publish together.
+      const result = persistAppState(nextState, { expectedRevision: options.expectedRevision })
+      if (result.ok) {
+        lineageRows.set(row.nodeId, structuredClone(row))
+        return { ...result, revision }
+      }
+      return result
+    },
     readWorkspaceStateRaw: async () => null,
     writeWorkspaceStateRaw: async raw => ({ ok: true, level: 'full', bytes: raw.length }),
     readAppState: async () => state,
     readAppStateRevision: async () => revision,
-    writeAppState: async (nextState, options) => {
-      if (
-        isEmptyWorkspaceState(nextState) &&
-        hasExistingWorkspaces() &&
-        options?.allowEmptyWorkspaceOverwrite !== true
-      ) {
-        return {
-          ok: false,
-          reason: 'unknown',
-          error: createAppErrorDescriptor('persistence.invalid_state', {
-            debugMessage:
-              'Refusing to overwrite existing workspace state with an empty workspace list.',
-          }),
-        }
-      }
-
-      state = nextState
-      revision += 1
-      return { ok: true, level: 'full', bytes: 0 }
-    },
+    writeAppState: async (nextState, options) => persistAppState(nextState, options),
     readNodeScrollback: async nodeId => nodeScrollbacks.get(nodeId) ?? null,
     writeNodeScrollback: async (nodeId, scrollback) => {
       if (scrollback) {

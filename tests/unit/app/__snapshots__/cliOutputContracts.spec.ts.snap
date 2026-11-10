@@ -95,7 +95,7 @@ Inside OpenCove, window commands without an explicit node or project default to 
 
 Options:
   --project <id>          Select the project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
-  --node <id>             Select an existing plugin window; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --node <id>             Select an existing plugin window; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
   --view <id>             Select the plugin view
   --params <json>         Pass command parameters as JSON
   --params-file <path|->  Read params from a UTF-8 file, or use - for stdin

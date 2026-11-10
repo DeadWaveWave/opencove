@@ -39,6 +39,8 @@ export interface RenderSpec {
   declaredRawPaths?: string[]
   rawItemKey?: string
   fieldHints?: Record<string, string>
+  /** Help text for declared projectable fields; never changes output validation. */
+  fieldDescriptions?: Record<string, string>
   examples?: string[]
   tableFields?: Record<string, string[]>
   listKey?: string

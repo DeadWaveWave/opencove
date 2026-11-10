@@ -92,7 +92,7 @@ opencove node list --root-canvas --project project-123
 
 `node list` 在 Space 内默认列该 Space，在所有 Space 外默认列调用者项目的全部节点。`--root-canvas` 仅列选定项目中 `spaceId: null` 的节点；`--kind`、`--fields`、`--limit` 和 table 输出仍可组合使用。在 OpenCove 外未指定项目的 list 沿用当前活跃项目。
 
-root 创建未指定 x/y 时，在 OpenCove 内优先放在你旁边：你在 Space 内时，从该 Space 的右侧开始寻找空位；你在所有 Space 外时，从你的节点右侧开始。定位以目标项目中调用者的当前归属和位置为准，避开已有节点及所有具有边界矩形的 Space。无法在该项目定位调用者时（包括远端身份在当前 Worker 不存在），或在 OpenCove 外调用时，从画布原点开始寻找空位。
+root 创建未指定 x/y 时，在 OpenCove 内优先放在你旁边：你在 Space 内时，从该 Space 的右侧开始寻找空位；你在所有 Space 外时，从你的节点右侧开始。定位以目标项目中调用者的当前归属和位置为准，避开已有节点及所有具有边界矩形的 Space。调用者节点属于其他项目，或在 OpenCove 外调用时，从画布原点开始寻找空位。若会话绑定的节点已删除或不属于当前 Worker，创建会返回 node.not_found；请从有效的 OpenCove 节点继续。
 
 这只是尽力靠近调用者的提示，不保证可见；需要显示新节点时使用 `--focus` 或 `opencove canvas focus node --node <id>`。仅指定 width/height 的 `--frame` 仍会自动定位；指定 x/y 时沿用既有坐标规则，完整 x/y 精确定位且不做避让。root 创建要求项目已有默认 mount 和可用 endpoint。
 
@@ -219,3 +219,35 @@ Lists accept `--limit <n>` and report cut-list totals in `truncated`; see the
 [CLI output and selector guide](README.md#selector-diagnostics-and-bounded-output).
 
 `session.stopNode` 不带 `agentOnly` 时保留通用清理语义：自然退出的 agent 仍可有受其拥有的子进程，清理请求继续交给 termination owner；这与 CLI `agent stop` 的 exited no-op 是两种明确用途。
+
+## Creation lineage and parent selectors
+
+`@parent` selects the node that created your node through an OpenCove session grant.
+The Worker resolves it from your authenticated identity. It can be a terminal or another node
+kind; each command still checks whether the target supports that action. A root has no parent,
+and a deleted parent cannot be addressed. A node literally named `@parent` must be selected by ID.
+`@self` keeps its injected identity and `whoami` fallback; Space selection keeps its existing behavior.
+
+Node get/list/create, agent get/list and context node summaries expose creation lineage:
+
+- `spawnedBy`: the creator node ID, or `null` for a root or unavailable lineage.
+- `lineageDepth`: A node started by the user has `lineageDepth` 1; each agent-created generation adds one (1 → 2 → 3). Unavailable lineage has `null` depth.
+- `lineageStatus`: `recorded` for recorded creations, `root` without a recorded parent, or `unavailable` when lineage cannot be read. Missing fields mean an older Worker.
+
+Lineage survives renames, moves, parent deletion, renderer saves and restart.
+
+Use `node list --spawned-by @self` or `agent list --spawned-by @self` for direct children across
+the project; an explicit `--space` or `--project` narrows results. Filtering precedes output limits.
+`@parent` and `--spawned-by` require `features.nodeLineageV1`; older Workers fail with exit 5.
+
+中文：`@parent` 由 Worker 根据已验证的会话身份解析，指向创建当前节点的父节点；父节点可以是终端。
+用户启动的节点为 root，`lineageDepth` 为 1；Agent 每创建下一代，深度加 1（1 → 2 → 3）。父节点删除后返回 `parent_deleted`，
+不会改变子节点的血缘记录。`--spawned-by @self` 只列出直接子节点，默认跨当前项目的所有 Space；
+显式 Space／项目筛选仍有效。旧 Worker 不支持这些选择器或筛选时退出码为 5。
+
+With `--spawned-by`, `--project` filters child results; the creator may belong to another project.
+Full IDs, `@self` and `@parent` resolve the creator independently of that filter. Creator names
+and prefixes use your session project, or an explicit Space’s project. Without session identity,
+the selected project supplies the name lookup context. Use a full ID for a creator outside that context.
+中文：`--project` 只筛选子节点，不要求创建者属于该项目。创建者名称／前缀默认在当前会话项目中查找；
+显式 Space 提供其所属项目作为查找范围。没有会话身份时，使用选定项目查找名称。跨查找范围请用完整 ID。

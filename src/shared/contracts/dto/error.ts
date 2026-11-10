@@ -12,6 +12,7 @@ export const APP_ERROR_CODES = [
   'endpoint.operation_in_progress',
   'space.not_found',
   'space.ambiguous',
+  'node.parent_unavailable',
   'node.not_found',
   'node.unsupported_operation',
   'session.not_found',

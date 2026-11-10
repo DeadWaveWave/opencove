@@ -93,6 +93,10 @@ Space and its ancestors grow with padding; existing nodes keep their positions.
 在 Space 内创建节点且未指定位置时，Worker 优先寻找内部的完整空位；空间不足时依次
 向右、向下搜索，最后才考虑左侧和上方。目标 Space 及其祖先逐级扩展，已有节点保持原位。
 
+`space create --in <space> --move @parent` can move your recorded parent when it is a direct
+member of the selected Space. The Worker resolves parentage; moving never changes lineage.
+中文：`--move @parent` 可以移动记录中的父节点，但该节点必须直接属于 `--in` 指定的 Space。
+
 ## Rename Spaces and adjust their boundaries
 
 ```sh

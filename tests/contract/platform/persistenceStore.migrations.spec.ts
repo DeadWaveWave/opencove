@@ -2,6 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { DB_SCHEMA_VERSION } from '../../../src/platform/persistence/sqlite/constants'
 import {
   PERSISTENCE_STORE_TEST_TIMEOUT_MS,
   type PersistenceMigrationMockDbState as MockDbState,
@@ -310,7 +311,7 @@ describe('PersistenceStore (migrations)', () => {
       store.dispose()
 
       const migratedState = mockDbByPath.get(dbPath)
-      expect(migratedState?.userVersion).toBe(14)
+      expect(migratedState?.userVersion).toBe(DB_SCHEMA_VERSION)
       expect(migratedState?.tables.get('terminal_recovery_records')).toEqual(
         expect.arrayContaining([...CURRENT_SCHEMA_COLUMNS.terminal_recovery_records]),
       )
@@ -339,7 +340,7 @@ describe('PersistenceStore (migrations)', () => {
       tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
       const dbPath = join(tempDir, 'opencove.db')
       const mockDbByPath = new Map<string, MockDbState>([
-        [dbPath, createMockDbState({ userVersion: 13, version2Schema: true })],
+        [dbPath, createMockDbState({ userVersion: DB_SCHEMA_VERSION, version2Schema: true })],
       ])
       vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
 

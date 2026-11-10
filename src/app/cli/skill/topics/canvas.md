@@ -8,7 +8,7 @@ current container: your Space, or the root canvas when you are outside every Spa
 list` lists the whole project; use `node list --root-canvas` for only root nodes. Explicit
 `--project` selects project scope for lists; creation also needs a Space target or `--root-canvas`.
 Other commands keep their existing Space defaults. Names/prefixes use your project unless
-overridden. Terminal nodes can report observed agents; only agent windows can receive prompts.
+overridden. Terminal nodes can report observed agents; agent windows and terminals with registered agent run state can receive prompts.
 Resolve targets from the agent list before prompting.
 
 ```sh
@@ -25,7 +25,7 @@ fail there, so pass `--node` and `--space` explicitly.
 
 To put a node on the canvas outside any Space: `opencove node create note --root-canvas --text …`.
 Outside OpenCove, add `--project <id>`. Placement searches next to you when run inside OpenCove, or
-from the origin if your node is unavailable. Use `--focus` to reveal it.
+from the origin if your node belongs to another project. Use `--focus` to reveal it.
 
 `opencove space create --name "Review"` creates a top-level Space in your terminal’s current
 project; outside OpenCove, add `--project <selector>`. Top-level --directory must be an existing
@@ -113,3 +113,28 @@ opencove agent stop --node "Lead"
 Stop keeps the canvas node; an already exited session returns not_running, exit 0. An exited
 observed terminal agent is also a no-op: its surviving shell is kept running. Plain terminals and
 remote agent-stop targets are refused; inspect before choosing another action.
+
+## Creation lineage and parent selectors
+
+`@parent` selects the node that created your node through an OpenCove session grant.
+The Worker resolves it from your authenticated identity. It can be a terminal or another node
+kind; each command still checks whether the target supports that action. A root has no parent,
+and a deleted parent cannot be addressed. A node literally named `@parent` must be selected by ID.
+`@self` keeps its injected identity and `whoami` fallback; Space selection keeps its existing behavior.
+
+Node get/list/create, agent get/list and context node summaries expose creation lineage:
+
+- `spawnedBy`: the creator node ID, or `null` for a root or unavailable lineage.
+- `lineageDepth`: A node started by the user has `lineageDepth` 1; each agent-created generation adds one (1 → 2 → 3). Unavailable lineage has `null` depth.
+- `lineageStatus`: `recorded` for recorded creations, `root` without a recorded parent, or `unavailable` when lineage cannot be read. Missing fields mean an older Worker.
+
+Lineage survives renames, moves, parent deletion, renderer saves and restart.
+
+Use `node list --spawned-by @self` or `agent list --spawned-by @self` for direct children across
+the project; an explicit `--space` or `--project` narrows results. Filtering precedes output limits.
+`@parent` and `--spawned-by` require `features.nodeLineageV1`; older Workers fail with exit 5.
+
+With `--spawned-by`, `--project` filters child results; the creator may belong to another project.
+Full IDs, `@self` and `@parent` resolve the creator independently of that filter. Creator names
+and prefixes use your session project, or an explicit Space’s project. Without session identity,
+the selected project supplies the name lookup context. Use a full ID for a creator outside that context.

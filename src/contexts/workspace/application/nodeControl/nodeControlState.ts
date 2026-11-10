@@ -66,6 +66,14 @@ export type NodeControlAppState = {
 }
 
 export interface NodeControlAppStateStore {
+  nodeLineage?: import('../nodeLineage/NodeLineageRepository').NodeLineageRepository
+  commitCreatedNodeState?: (
+    state: NodeControlAppState,
+    options: {
+      expectedRevision: number
+      lineage: import('../../domain/nodeLineage').NodeLineageRecord
+    },
+  ) => Promise<PersistWriteResult>
   readAppState: () => Promise<NodeControlAppState | null>
   readAppStateRevision: () => Promise<number>
   writeAppState: (

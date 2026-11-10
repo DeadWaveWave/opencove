@@ -26,6 +26,7 @@ export const noteCreateOperation = defineOperation({
   normalize: normalizeCreateNotePayload,
   legacyNormalize: normalizeCreateNotePayload,
   errors: [
+    'node.not_found',
     'space.not_found',
     'persistence.invalid_state',
     'persistence.io_failed',

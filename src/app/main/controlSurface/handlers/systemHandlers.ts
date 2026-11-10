@@ -22,6 +22,7 @@ export function registerSystemHandlers(
     deploymentId?: string | null
     instanceId?: string
     isReady?: () => boolean
+    hasNodeLineage?: () => Promise<boolean>
   },
 ): void {
   registerOperationIntrospectionHandlers(controlSurface)
@@ -72,7 +73,7 @@ export function registerSystemHandlers(
   })
 
   registerOperation(controlSurface, systemCapabilitiesOperation, {
-    handle: ctx =>
+    handle: async ctx =>
       ({
         ok: true,
         now: ctx.now().toISOString(),
@@ -83,7 +84,13 @@ export function registerSystemHandlers(
         deploymentId: deps.deploymentId ?? null,
         instanceId: deps.instanceId,
         runtimeReady: deps.isReady?.() ?? false,
-        features: { ...ctx.capabilities, operationRegistry: true },
+        features: {
+          ...ctx.capabilities,
+          operationRegistry: true,
+          nodeLineageV1:
+            controlSurface.hasOperation('node.resolveCallerSelector') &&
+            ((await deps.hasNodeLineage?.()) ?? false),
+        },
       }) satisfies ControlSurfaceCapabilitiesResult,
     defaultErrorCode: 'common.unexpected',
   })

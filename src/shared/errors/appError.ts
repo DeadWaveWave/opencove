@@ -1,4 +1,5 @@
 import { agentPromptErrorPresentation } from './agentPromptError'
+import { nodeParentErrorPresentation } from './nodeParentError'
 import { fileSystemErrorReasonMessage } from './filesystemError'
 import { publicTerminalSpawnApplicationError } from './terminalSpawnErrorReasons'
 import type { AppErrorCode, AppErrorDescriptor, AppErrorParams } from '../contracts/dto'
@@ -21,6 +22,7 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'endpoint.operation_in_progress': 'Another endpoint operation is already in progress.',
     'space.not_found': 'Space not found.',
     'space.ambiguous': 'Space locator matched multiple spaces.',
+    'node.parent_unavailable': 'The parent node could not be resolved.',
     'node.not_found': 'Node not found.',
     'node.unsupported_operation': 'This node operation is not supported.',
     'session.transcript_not_ready': 'Session transcript is not available yet.',
@@ -224,6 +226,10 @@ export function formatAppErrorMessage(error: AppErrorDescriptor | OpenCoveAppErr
   const prompt = agentPromptErrorPresentation(descriptor)
   if (prompt) {
     return prompt.message
+  }
+  const parent = nodeParentErrorPresentation(descriptor)
+  if (parent) {
+    return parent.message
   }
   const message = APP_ERROR_MESSAGES[descriptor.code] ?? APP_ERROR_MESSAGES['common.unexpected']
   if (descriptor.code.startsWith('filesystem.')) {

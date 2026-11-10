@@ -1,14 +1,25 @@
+import {
+  createSqliteNodeLineageRepository,
+  insertNodeLineage,
+} from '../../../contexts/workspace/infrastructure/nodeLineage/SqliteNodeLineageRepository'
+import type { NodeLineageRecord } from '../../../contexts/workspace/domain/nodeLineage'
+import type { NodeLineageRepository } from '../../../contexts/workspace/application/nodeLineage/NodeLineageRepository'
 import { mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import Database from 'better-sqlite3'
-import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { eq } from 'drizzle-orm'
 import type { PersistWriteResult } from '../../../shared/contracts/dto'
 import { backupDbFile, moveCorruptDbAside } from './dbFiles'
 import { DB_SCHEMA_VERSION, DEFAULT_MAX_WORKSPACE_STATE_RAW_BYTES } from './constants'
 import { migrate } from './migrate'
 import { normalizePersistedAppState, normalizeScrollback } from './normalize'
-import { readAppStateFromDb, readWorkspaceStateRawFromDb } from './read'
+import {
+  readAppStateFromDb,
+  readWorkspaceStateRawFromDb,
+  readNodeScrollbackFromDb,
+  readAgentNodePlaceholderScrollbackFromDb,
+} from './read'
 import { agentNodePlaceholderScrollback, nodeScrollback } from './schema'
 import { safeJsonParse, safeJsonStringify, toErrorMessage, utf8ByteLength } from './utils'
 import { writeNormalizedAppState, writeNormalizedScrollbacks } from './write'
@@ -24,11 +35,16 @@ import {
   readAppStateRevisionFromDb,
 } from './managedClaudeResumeStore'
 import { sweepManagedClaudeResumeOrphans } from './managedClaudeResumeSchema'
-import type { InternalPersistWriteResult } from './appStateWriteResult'
+import { invalidStateResult, type InternalPersistWriteResult } from './appStateWriteResult'
 
 export type PersistenceRecoveryReason = 'corrupt_db' | 'migration_failed'
 
 export interface PersistenceStore {
+  nodeLineage?: NodeLineageRepository
+  commitCreatedNodeState?: (
+    state: unknown,
+    options: { expectedRevision: number; lineage: NodeLineageRecord },
+  ) => Promise<InternalPersistWriteResult>
   readWorkspaceStateRaw: () => Promise<string | null>
   writeWorkspaceStateRaw: (raw: string) => Promise<InternalPersistWriteResult>
 
@@ -59,16 +75,6 @@ export type WriteAppStateOptions = {
   expectedRevision?: number
 }
 
-function invalidStateResult(debugMessage: string): PersistWriteResult {
-  return {
-    ok: false,
-    reason: 'unknown',
-    error: createAppErrorDescriptor('persistence.invalid_state', {
-      debugMessage,
-    }),
-  }
-}
-
 function hasExistingWorkspaces(sqlite: Database.Database): boolean {
   const row = sqlite.prepare('SELECT 1 FROM workspaces LIMIT 1').get() as
     | { '1'?: unknown }
@@ -86,27 +92,6 @@ function shouldRejectEmptyWorkspaceOverwrite(
   }
 
   return hasExistingWorkspaces(sqlite)
-}
-
-function readNodeScrollbackFromDb(db: BetterSQLite3Database, nodeId: string): string | null {
-  const row = db
-    .select({ scrollback: nodeScrollback.scrollback })
-    .from(nodeScrollback)
-    .where(eq(nodeScrollback.nodeId, nodeId))
-    .get()
-  return typeof row?.scrollback === 'string' ? row.scrollback : null
-}
-
-function readAgentNodePlaceholderScrollbackFromDb(
-  db: BetterSQLite3Database,
-  nodeId: string,
-): string | null {
-  const row = db
-    .select({ scrollback: agentNodePlaceholderScrollback.scrollback })
-    .from(agentNodePlaceholderScrollback)
-    .where(eq(agentNodePlaceholderScrollback.nodeId, nodeId))
-    .get()
-  return typeof row?.scrollback === 'string' ? row.scrollback : null
 }
 
 export async function createPersistenceStore(storeOptions: {
@@ -259,9 +244,10 @@ export async function createPersistenceStore(storeOptions: {
     }
   }
 
-  const writeAppState = async (
+  const persistAppState = async (
     state: unknown,
     options?: WriteAppStateOptions,
+    lineage?: NodeLineageRecord,
   ): Promise<InternalPersistWriteResult> => {
     const normalized = normalizePersistedAppState(state)
     if (!normalized) {
@@ -281,7 +267,18 @@ export async function createPersistenceStore(storeOptions: {
     }
 
     try {
-      const result = writeNormalizedAppState(sqlite, normalized, options?.expectedRevision)
+      const result = sqlite.transaction(() => {
+        const written = writeNormalizedAppState(sqlite, normalized, options?.expectedRevision)
+        if (lineage) {
+          if (
+            !written.effectiveState.workspaces.some(w => w.nodes.some(n => n.id === lineage.nodeId))
+          ) {
+            throw createAppError('persistence.invalid_state')
+          }
+          insertNodeLineage(sqlite, lineage)
+        }
+        return written
+      })()
       const bytes = utf8ByteLength(safeJsonStringify(result.effectiveState))
       return { ok: true, level: 'full', bytes, ...result }
     } catch (error) {
@@ -291,7 +288,10 @@ export async function createPersistenceStore(storeOptions: {
       ) {
         return { ok: false, reason: 'unknown', error: error.toDescriptor() }
       }
-      if (error instanceof PersistenceRevisionConflict) {
+      if (
+        error instanceof PersistenceRevisionConflict ||
+        (error instanceof OpenCoveAppError && error.code === 'persistence.invalid_state')
+      ) {
         return invalidStateResult(error.message)
       }
       return {
@@ -460,13 +460,16 @@ export async function createPersistenceStore(storeOptions: {
   }
 
   return {
+    nodeLineage: createSqliteNodeLineageRepository(sqlite),
+    commitCreatedNodeState: (state, options) =>
+      persistAppState(state, { expectedRevision: options.expectedRevision }, options.lineage),
     ...createManagedClaudeResumeStore(sqlite, () => readAppStateFromDb(db)),
     readAppStateSnapshot,
     readWorkspaceStateRaw,
     writeWorkspaceStateRaw,
     readAppState,
     readAppStateRevision,
-    writeAppState,
+    writeAppState: (state, options) => persistAppState(state, options),
     readNodeScrollback,
     writeNodeScrollback,
     readAgentNodePlaceholderScrollback,

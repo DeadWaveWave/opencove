@@ -79,12 +79,22 @@ export function registerControlSurfaceHandlers(
     deps.ptyStreamHub,
     deps.agentProviderRegistry,
   )
-  registerAgentRunStateHandlers(controlSurface, deps.ptyStreamHub, deliveries)
+  registerAgentRunStateHandlers(
+    controlSurface,
+    deps.ptyStreamHub,
+    deliveries,
+    deps.getPersistenceStore,
+  )
   registerSystemHandlers(controlSurface, {
     appVersion: deps.appVersion,
     deploymentId: deps.deploymentId,
     instanceId: deps.instanceId,
     isReady: deps.isReady,
+    hasNodeLineage: () =>
+      deps.getPersistenceStore().then(
+        store => Boolean(store.nodeLineage && store.commitCreatedNodeState),
+        () => false,
+      ),
   })
   registerAuthHandlers(controlSurface, { webSessions: deps.webSessions })
   registerTopologyHandlers(controlSurface, {

@@ -158,6 +158,12 @@ it('production Worker issues canvas credentials, exposes shim and whoami, and re
     })
     expect(launched.result).toMatchObject({ ok: true })
     const env = spawn.mock.calls[0][0].env!
+    const published = createMinimalState(dir, 'project', 'space')
+    published.workspaces[0].nodes = [
+      { id: 'node', kind: 'terminal', title: 'Caller', sessionId: launched.result.value.sessionId },
+    ]
+    published.workspaces[0].spaces[0].nodeIds = ['node']
+    expect(await store.writeAppState(published)).toMatchObject({ ok: true })
     expect(env).toMatchObject({
       OPENCOVE_ENV: '1',
       OPENCOVE_NODE_ID: 'node',

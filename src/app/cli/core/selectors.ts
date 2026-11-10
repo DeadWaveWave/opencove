@@ -1,8 +1,10 @@
 import type { Command, CommandArgs, OptionSpec } from './command'
 import type { CliIo } from './io'
 import { closeNames } from './suggestions'
+import { kindWithArticle } from './kindWording'
 import { CliError } from './errors'
 import { sessionIdentity, type Invoke } from './identity'
+import { requireNodeLineage } from './nodeLineage'
 import { resolveCurrentContainer } from './currentContainer'
 import type {
   GetSpaceResult,
@@ -78,7 +80,7 @@ export function selectorDescription(spec: OptionSpec): string {
   return (
     spec.description +
     (spec.selector
-      ? '; also accepts @self, an exact name or a unique ID prefix (6+ characters)'
+      ? `; also accepts @self${spec.selector === 'node' ? ', @parent' : ''}, an exact name or a unique ID prefix (6+ characters)`
       : '')
   )
 }
@@ -109,7 +111,7 @@ function match(
     throw new CliError(
       `${kind}.not_found`,
       1,
-      `${label} ${JSON.stringify(selector)} was not found; searched ${scope}.${wrongKind ? ` This is a known ${wrongKind} ID, not a ${kind} ID.` : ''}`,
+      `${label} ${JSON.stringify(selector)} was not found; searched ${scope}.${wrongKind ? ` This is a known ${wrongKind} ID, not ${kindWithArticle(kind)} ID.` : ''}`,
       [
         selector.length < 6 && candidates.some(candidate => candidate.id.startsWith(selector))
           ? 'ID prefixes need at least 6 characters.'
@@ -158,6 +160,9 @@ export async function resolveSelectors(
 ) {
   const identity = sessionIdentity(io.env, invoke)
   const o = args.options
+  if (o['spawned-by'] !== undefined) {
+    await requireNodeLineage(invoke)
+  }
   const currentContainer = await resolveCurrentContainer(command, args, io, invoke, identity.self)
   let projectId: string | undefined = currentContainer ? String(o.project) : undefined
   const projects = async () =>
@@ -180,6 +185,7 @@ export async function resolveSelectors(
     selector: string,
     candidates: Candidate[],
     scope: string,
+    lookupProjectId = projectId,
   ) => {
     try {
       return match(kind, selector, candidates, scope)
@@ -192,7 +198,9 @@ export async function resolveSelectors(
       }
       if (error.code === 'cli.ambiguous' && kind === 'node') {
         const details = error.details as { candidates: Candidate[] }
-        const spaces = ((await invoke('space.list', { projectId })) as ListSpacesResult).spaces
+        const spaces = (
+          (await invoke('space.list', { projectId: lookupProjectId })) as ListSpacesResult
+        ).spaces
         await Promise.all(
           details.candidates.map(async candidate => {
             candidate.spaceName = spaces.find(space => space.id === candidate.spaceId)?.name ?? null
@@ -211,6 +219,9 @@ export async function resolveSelectors(
   }
   if (!currentContainer && command.options?.project?.selector && o.project !== undefined) {
     const selector = String(o.project)
+    if (selector === '@parent') {
+      throw new CliError('cli.usage', 2, '@parent selects a node. Use a project selector here.')
+    }
     projectId =
       selector === '@self'
         ? await identity.self('project')
@@ -226,7 +237,7 @@ export async function resolveSelectors(
         `${kind}.not_found`,
         1,
         `${kind === 'node' ? 'Node' : 'Space'} ${JSON.stringify(selector)} belongs to project ${JSON.stringify(targetProjectId)}, not to the selected project ${JSON.stringify(projectId)}`,
-        `Drop --project to address a ${kind} by its full ID across projects.`,
+        `Drop --project to address ${kindWithArticle(kind)} by its full ID across projects.`,
       )
     }
   }
@@ -244,24 +255,73 @@ export async function resolveSelectors(
     }
     return projectId
   }
-  for (const kind of ['space', 'node'] as const) {
+  const scopeCreatorLookup = async () => {
+    // An explicit Space supplies lookup context; --project alone filters child results.
+    if (!explicitProject || explicitSpace) {
+      return scopeProject()
+    }
+    if (io.env.OPENCOVE_ENV === '1') {
+      return identity.self('project')
+    }
+    const caller = await identity.whoami()
+    return caller.caller === 'session-grant' ? (caller.projectId ?? undefined) : projectId
+  }
+  const selectorKeys = [
+    'space',
+    'node',
+    ...Object.keys(command.options ?? {}).filter(
+      key => key !== 'node' && command.options?.[key].selector === 'node',
+    ),
+  ]
+  for (const key of selectorKeys) {
+    const kind = command.options?.[key]?.selector as 'space' | 'node'
+    const isTarget = key === kind
     if (
       (currentContainer && kind === 'space') ||
-      !command.options?.[kind]?.selector ||
-      o[kind] === undefined
+      !command.options?.[key]?.selector ||
+      o[key] === undefined
     ) {
       continue
     }
+    // Project/Space membership filters constrain results and action targets, not creators.
+    const checkResolvedProject = (selector: string, targetProjectId: string) => {
+      if (isTarget) {
+        checkProject(kind, selector, targetProjectId)
+      }
+    }
     const resolveOne = async (selector: string): Promise<string> => {
+      if (selector === '@parent') {
+        if (kind !== 'node') {
+          throw new CliError(
+            'cli.usage',
+            2,
+            '@parent selects a node. Use a Space or project selector here.',
+          )
+        }
+        await requireNodeLineage(invoke)
+        const result = (await invoke('node.resolveCallerSelector', {
+          selector: '@parent',
+          ...(io.env.OPENCOVE_ENV === '1' && io.env.OPENCOVE_NODE_ID
+            ? { expectedCallerNodeId: io.env.OPENCOVE_NODE_ID }
+            : {}),
+        })) as { id: string }
+        if (explicitProject && isTarget) {
+          const target = await exactTarget('node', result.id, invoke)
+          if (target) {
+            checkResolvedProject(selector, target.projectId)
+          }
+        }
+        return result.id
+      }
       if (selector === '@self') {
         // Resolution order matters: failure must prevent any later target lookup.
         // eslint-disable-next-line no-await-in-loop
         const ownId = await identity.self(kind)
-        if (explicitProject) {
+        if (explicitProject && isTarget) {
           // eslint-disable-next-line no-await-in-loop
           const target = await exactTarget(kind, ownId, invoke)
           if (target) {
-            checkProject(kind, selector, target.projectId)
+            checkResolvedProject(selector, target.projectId)
           }
         }
         return ownId
@@ -273,17 +333,17 @@ export async function resolveSelectors(
         // eslint-disable-next-line no-await-in-loop
         const target = await exactTarget(kind, selector, invoke)
         if (target) {
-          checkProject(kind, selector, target.projectId)
+          checkResolvedProject(selector, target.projectId)
           return selector
         }
       }
       // One list call per selector, without retries or speculative writes.
       // eslint-disable-next-line no-await-in-loop
-      const project = await scopeProject()
+      const project = await (isTarget ? scopeProject() : scopeCreatorLookup())
       // eslint-disable-next-line no-await-in-loop
       const result = (await invoke(kind === 'space' ? 'space.list' : 'node.list', {
         projectId: project,
-        ...(kind === 'node' && o.space !== undefined
+        ...(kind === 'node' && isTarget && o.space !== undefined
           ? { space: { kind: 'spaceId', spaceId: o.space } }
           : {}),
       })) as ListSpacesResult | ListNodesResult
@@ -295,7 +355,7 @@ export async function resolveSelectors(
         // eslint-disable-next-line no-await-in-loop
         const target = await exactTarget(kind, selector, invoke)
         if (target) {
-          checkProject(kind, selector, target.projectId)
+          checkResolvedProject(selector, target.projectId)
           return selector
         }
       }
@@ -303,16 +363,25 @@ export async function resolveSelectors(
         kind,
         selector,
         candidates,
-        `${(project ?? result.projectId) ? `project ${JSON.stringify(project ?? result.projectId)}` : 'the active project'}${kind === 'node' && o.space !== undefined ? `, space ${JSON.stringify(o.space)}` : ''}`,
+        `${(project ?? result.projectId) ? `project ${JSON.stringify(project ?? result.projectId)}` : 'the active project'}${kind === 'node' && isTarget && o.space !== undefined ? `, space ${JSON.stringify(o.space)}` : ''}`,
+        project,
       )
     }
-    const resolved = Array.isArray(o[kind])
-      ? Promise.all((o[kind] as string[]).map(resolveOne))
-      : resolveOne(String(o[kind]))
+    const resolved = Array.isArray(o[key])
+      ? Promise.all((o[key] as string[]).map(resolveOne))
+      : resolveOne(String(o[key]))
     // Space resolution establishes the scope before resolving node selectors.
     // eslint-disable-next-line no-await-in-loop
-    o[kind] = await resolved
-    if (kind === 'node' && explicitSpace) {
+    o[key] = await resolved
+    // A relationship filter spans the selected creator's current project unless explicitly scoped.
+    if (!isTarget && !explicitProject && !explicitSpace) {
+      // eslint-disable-next-line no-await-in-loop -- Resolve the filter before deriving its project scope.
+      const target = await exactTarget('node', String(o[key]), invoke)
+      if (target) {
+        o.project = target.projectId
+      }
+    }
+    if (kind === 'node' && isTarget && explicitSpace) {
       // All selector forms pass the same membership check before execution.
       // Exact-ID probes are reused by the per-run read cache.
       // eslint-disable-next-line no-await-in-loop
@@ -338,7 +407,11 @@ export async function resolveSelectors(
         }),
       )
     }
-    if (kind === 'space' && command.options?.node && !explicitProject) {
+    if (
+      kind === 'space' &&
+      !explicitProject &&
+      Object.values(command.options ?? {}).some(option => option.selector === 'node')
+    ) {
       // An explicitly chosen space may belong to a different project than the session.
       // eslint-disable-next-line no-await-in-loop
       const found = await exactTarget('space', String(o.space), invoke)

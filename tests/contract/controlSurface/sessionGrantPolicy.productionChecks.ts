@@ -114,7 +114,7 @@ export async function checkProductionGrantPolicy(options: {
   }
   const stateBeforeFailure = await store.readAppState()
   const killsBeforeFailure = options.killCount()
-  const save = vi.spyOn(store, 'writeAppState').mockResolvedValueOnce({
+  const save = vi.spyOn(store, 'commitCreatedNodeState').mockResolvedValueOnce({
     ok: false,
     reason: 'unknown',
     error: { code: 'persistence.io_failed' },
@@ -128,6 +128,8 @@ export async function checkProductionGrantPolicy(options: {
     expect(failed.result).toMatchObject({ ok: false, error: { code: 'persistence.io_failed' } })
     expect(options.killCount()).toBe(killsBeforeFailure + 1)
     expect(await store.readAppState()).toEqual(stateBeforeFailure)
+    const failedId = save.mock.calls[0][1].lineage.nodeId
+    expect((await store.nodeLineage!.readMany([failedId])).size).toBe(0)
   } finally {
     save.mockRestore()
   }

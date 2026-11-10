@@ -34,6 +34,8 @@ function fixture() {
     return { ok: true, level: 'full', bytes: 1, revision }
   })
   const store: NodeControlAppStateStore = {
+    nodeLineage: { readMany: async () => new Map() },
+    commitCreatedNodeState: (next, options) => writeAppState(next, options),
     readAppState,
     readAppStateRevision: async () => revision,
     writeAppState,
@@ -372,4 +374,18 @@ it('rebases ancestor growth on the latest hierarchy and preserves concurrent par
   )
   expect(f.writeAppState).toHaveBeenCalledTimes(2)
   expect(f.runtime.spawnTerminal).toHaveBeenCalledTimes(1)
+})
+
+it('does not start a runtime after authority is revoked during lineage preparation', async () => {
+  const f = fixture()
+  f.advance(state => {
+    state.workspaces[0].nodes.push(concurrentNote('caller'))
+  })
+  f.store.nodeLineage!.readMany = async () => {
+    f.retire()
+    return new Map()
+  }
+  await expect(f.run('terminal', false, 'caller')).rejects.toThrow('retired')
+  expect(f.runtime.spawnTerminal).not.toHaveBeenCalled()
+  expect(f.writeAppState).not.toHaveBeenCalled()
 })

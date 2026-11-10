@@ -201,13 +201,19 @@ Target container (choose one):
 Shows up to 50 results in Worker order. Use --full or --limit 0 for all; --limit <n> overrides the default.
 
 Options:
-  --kind <kind>  Filter by note, task, website, agent, terminal, plugin, document, folder, image or role
-  --full         Show all results unless --limit is specified
+  --kind <kind>            Filter by note, task, website, agent, terminal, plugin, document, folder, image or role
+  --spawned-by <selector>  Filter direct children; --project filters results. Creator names use your project, or the selected Space’s project; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
+  --full                   Show all results unless --limit is specified
 
 List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
 
 Table output (-o table): supported.
-Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, sessionStatus, agentState, agentState.state, agentState.quality, agentState.turnId, taskNodeId, data, data.kind, data.status, data.priority, data.requirement, data.tags, data.url, data.linkedAgentNodeId
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, spawnedBy, lineageDepth, lineageStatus, sessionStatus, agentState, agentState.state, agentState.quality, agentState.turnId, taskNodeId, data, data.kind, data.status, data.priority, data.requirement, data.tags, data.url, data.linkedAgentNodeId
+
+Field descriptions:
+  spawnedBy      ID of the node that created this node; null for a root or unavailable lineage
+  lineageDepth   A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable
+  lineageStatus  recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read
 
 Projection example:
   opencove node list --fields id,data.status

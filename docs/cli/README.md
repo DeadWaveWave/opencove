@@ -83,7 +83,7 @@ Exit 5 also covers operations missing from an older Worker. Restart or update Op
 `worker status/stop` 使用本地生命周期模块，仅检查 worker 记录；不接受 `--endpoint`。
 Space locator 不推断 cwd：使用 `--space`、`--space-name` 或 `--worker` 与 `--branch`/`--path`，必要时用 `--project` 收窄。
 
-`node create` 支持 `--root-canvas`，在项目画布上创建、不加入任何 Space；外部调用需同时指定 `--project <selector>`。在 OpenCove 内不指定目标时，`node create` 使用调用者节点的当前 Space，或在调用者不属于任何 Space 时使用 root canvas。`node list` 在后一种情况下默认列整个项目；`node list --root-canvas` 仅列 root 节点。显式 `--project` 单独用于创建仍会报错，需补 Space 目标或 `--root-canvas`。未指定 x/y 时，在 OpenCove 内优先放在你的节点或所在 Space 旁边；无法在目标项目定位调用者时从原点寻找空位，不保证可见；用 `--focus` 显示新节点。详见 [Canvas node control](CANVAS_NODE_CONTROL.md)。
+`node create` 支持 `--root-canvas`，在项目画布上创建、不加入任何 Space；外部调用需同时指定 `--project <selector>`。在 OpenCove 内不指定目标时，`node create` 使用调用者节点的当前 Space，或在调用者不属于任何 Space 时使用 root canvas。`node list` 在后一种情况下默认列整个项目；`node list --root-canvas` 仅列 root 节点。显式 `--project` 单独用于创建仍会报错，需补 Space 目标或 `--root-canvas`。未指定 x/y 时，在 OpenCove 内优先放在你的节点或所在 Space 旁边；调用者节点属于其他项目时从原点寻找空位，不保证可见；若会话绑定的节点已删除，需从有效节点继续；用 `--focus` 显示新节点。详见 [Canvas node control](CANVAS_NODE_CONTROL.md)。
 
 ## Help and introspection
 
@@ -96,7 +96,7 @@ Space locator 不推断 cwd：使用 `--space`、`--space-name` 或 `--worker` �
 CLI help golden 更新使用 `pnpm exec vitest run tests/unit/app/cliInputOutput.spec.ts tests/unit/app/cliOutputBehavior.spec.ts --update`，不要手改生成的 snapshot。
 
 CLI 测试先运行 `pnpm build:cli`，再运行 `pnpm exec vitest run tests/unit/app/cli*.spec.ts`。
-更新帮助 golden snapshots：`pnpm build:cli` 后运行 `pnpm exec vitest run tests/unit/app/cliCore.spec.ts tests/unit/app/cliHelpErrors.spec.ts tests/unit/app/cliSchemaValidation.spec.ts tests/unit/app/cliAgentQueries.spec.ts --update`；由 Vitest 生成，不手改 `.snap`。错误恢复 golden 使用 `pnpm exec vitest run tests/unit/app/cliAgentPrompt.spec.ts tests/unit/app/cliAgentScreenAndState.spec.ts --update` 更新。Context 和 filesystem 帮助随对应测试更新：`pnpm exec vitest run tests/unit/app/cliContext.spec.ts tests/unit/app/cliOutputContracts.spec.ts tests/unit/app/cliCommandMapping.spec.ts --update`。新增命令的完整帮助 golden 由 `cliHelpErrors.spec.ts` 生成；节点 wire schema golden 使用 `pnpm exec vitest run tests/contract/controlSurface/nodeSchemas.spec.ts --update` 更新。
+更新帮助 golden snapshots：`pnpm build:cli` 后运行 `pnpm exec vitest run tests/unit/app/cliCore.spec.ts tests/unit/app/cliHelpErrors.spec.ts tests/unit/app/cliSchemaValidation.spec.ts tests/unit/app/cliAgentQueries.spec.ts --update`；由 Vitest 生成，不手改 `.snap`。错误恢复 golden 使用 `pnpm exec vitest run tests/unit/app/cliAgentPrompt.spec.ts tests/unit/app/cliAgentScreenAndState.spec.ts tests/unit/app/cliAgentHistoryClear.spec.ts --update` 更新。Context 和 filesystem 帮助随对应测试更新：`pnpm exec vitest run tests/unit/app/cliContext.spec.ts tests/unit/app/cliOutputContracts.spec.ts tests/unit/app/cliCommandMapping.spec.ts --update`。新增命令的完整帮助 golden 由 `cliHelpErrors.spec.ts` 生成；节点 wire schema golden 使用 `pnpm exec vitest run tests/contract/controlSurface/nodeSchemas.spec.ts --update` 更新。
 
 测试的 global setup 在系统临时目录重新构建并逐字节校验工作树中的 CLI 产物；产物缺失或过期时拒绝继续，不覆盖工作树，临时构建在成功或失败后都会清理。
 
@@ -449,3 +449,35 @@ retains the exact-turn wait command. Unavailable or replaced observations report
 unknown; they never replace the original read error or trigger another prompt.
 
 Question summaries and their compatibility rules: [Agent dialog summaries](AGENT_DIALOG_SUMMARIES.md).
+
+## Creation lineage and parent selectors
+
+`@parent` selects the node that created your node through an OpenCove session grant.
+The Worker resolves it from your authenticated identity. It can be a terminal or another node
+kind; each command still checks whether the target supports that action. A root has no parent,
+and a deleted parent cannot be addressed. A node literally named `@parent` must be selected by ID.
+`@self` keeps its injected identity and `whoami` fallback; Space selection keeps its existing behavior.
+
+Node get/list/create, agent get/list and context node summaries expose creation lineage:
+
+- `spawnedBy`: the creator node ID, or `null` for a root or unavailable lineage.
+- `lineageDepth`: A node started by the user has `lineageDepth` 1; each agent-created generation adds one (1 → 2 → 3). Unavailable lineage has `null` depth.
+- `lineageStatus`: `recorded` for recorded creations, `root` without a recorded parent, or `unavailable` when lineage cannot be read. Missing fields mean an older Worker.
+
+Lineage survives renames, moves, parent deletion, renderer saves and restart.
+
+Use `node list --spawned-by @self` or `agent list --spawned-by @self` for direct children across
+the project; an explicit `--space` or `--project` narrows results. Filtering precedes output limits.
+`@parent` and `--spawned-by` require `features.nodeLineageV1`; older Workers fail with exit 5.
+
+中文：`@parent` 由 Worker 根据已验证的会话身份解析，指向创建当前节点的父节点；父节点可以是终端。
+用户启动的节点为 root，`lineageDepth` 为 1；Agent 每创建下一代，深度加 1（1 → 2 → 3）。父节点删除后返回 `parent_deleted`，
+不会改变子节点的血缘记录。`--spawned-by @self` 只列出直接子节点，默认跨当前项目的所有 Space；
+显式 Space／项目筛选仍有效。旧 Worker 不支持这些选择器或筛选时退出码为 5。
+
+With `--spawned-by`, `--project` filters child results; the creator may belong to another project.
+Full IDs, `@self` and `@parent` resolve the creator independently of that filter. Creator names
+and prefixes use your session project, or an explicit Space’s project. Without session identity,
+the selected project supplies the name lookup context. Use a full ID for a creator outside that context.
+中文：`--project` 只筛选子节点，不要求创建者属于该项目。创建者名称／前缀默认在当前会话项目中查找；
+显式 Space 提供其所属项目作为查找范围。没有会话身份时，使用选定项目查找名称。跨查找范围请用完整 ID。
