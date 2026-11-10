@@ -73,6 +73,25 @@ it('retains a newer cleanup request while an earlier exact kill is awaiting comp
   expect(kills).toBe(1)
 })
 
+it('rechecks later claims without killing a successfully terminated exact ID again', async () => {
+  const read = vi.fn(() => false)
+  const kill = vi.fn(async () => {})
+  const cleanup = new ManagedClaudeRuntimeCleanup(
+    { isRuntimeReferenced: read, killExactRuntime: kill },
+    () => false,
+  )
+  expect(await cleanup.cleanup('runtime')).toBe(true)
+  read.mockImplementationOnce(() => {
+    throw new Error('reference read unavailable')
+  })
+  expect(await cleanup.cleanup('runtime')).toBe(false)
+  expect(cleanup.pendingRuntimeIds()).toEqual(['runtime'])
+  await cleanup.flush()
+  expect(read).toHaveBeenCalledTimes(3)
+  expect(kill).toHaveBeenCalledExactlyOnceWith('runtime')
+  expect(cleanup.pendingRuntimeIds()).toEqual([])
+})
+
 it('keeps the current reconciliation timer when a canceled older callback arrives late', async () => {
   const f = cleanupFixture()
   const callbacks: (() => void)[] = [],
@@ -88,7 +107,9 @@ it('keeps the current reconciliation timer when a canceled older callback arrive
   const activate = f.ports.activateManagedClaudeRuntime.getMockImplementation()!
   f.ports.activateManagedClaudeRuntime.mockImplementation(async input => {
     const result = await activate(input)
-    f.setUnavailable(true)
+    if (input.runtimeSessionId !== null) {
+      f.setUnavailable(true)
+    }
     return result
   })
   try {
@@ -128,7 +149,9 @@ it('rechecks current readiness when a newer obligation appears during finalizati
       committed.resolve()
       return firstResponse.promise
     }
-    f.setUnavailable(true)
+    if (input.runtimeSessionId !== null) {
+      f.setUnavailable(true)
+    }
     return result
   })
   f.ports.killExactRuntime.mockImplementation(async id => {

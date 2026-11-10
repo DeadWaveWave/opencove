@@ -399,3 +399,14 @@ legacy launch 保留直接 PTY cleanup，不因 provider 或预分配 node ID �
 Cleanup obligation 按 runtime ID 带独立代际；reference proof 和已完成的 kill 只能解除其观察到的代际，
 不能删除 await 期间新增的清理责任。Recovery 每次等待完成都重新检查 node 当前的 pending launch，
 然后读取 durable observation；已 retired 的 node 不从较早的 workspace snapshot 重连。
+
+Durable ownership 与 effect admission 分开管理。路径审批、identity read 或 admission 的最终验证失败，
+不能结算原有健康 runtime。验证通过后的 owned replacement 先提交并确认保留 tuple 的
+null-runtime handoff，再对旧 runtime 执行 reference-checked kill；kill 失败仍由 cleanup owner
+持有 exact ID，失败 settlement 不抹除重试责任。后续 readiness 或 deletion event 重试未完成的清理。
+spawn 返回 ID 后立即交给同一 cleanup owner，早于 onStarted、watcher 与 metadata registration；
+这些步骤失败、attempt 被替换或删除，也不会丢失新进程的清理责任。unknown write 同时保留
+candidate 与 predecessor，只有 definitive reconciliation 才能释放保护。
+Cleanup owner 保留成功 exact-ID kill 的终止证据；后续 claim 仍复查 references，读取失败仍保留责任，
+但不重复 kill 已成功终止的同一 ID。该证据仅在当前 Worker owner 生命周期内有效；新 PTY 使用新 UUID，
+不能把 stream hub 缺少 active session 当作成功 kill 的证明。

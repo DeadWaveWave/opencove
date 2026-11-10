@@ -2,6 +2,7 @@ import { registerSessionQueryHandlers } from './sessionQueryHandlers'
 import {
   admitManagedClaudeLaunch,
   noteManagedClaudeSpawnStarted,
+  noteManagedClaudeRuntimeCreated,
 } from '../managedClaudeLaunchRuntime'
 import { createSessionNodeResolver } from './sessionNodeResolver'
 import { registerOperation } from '../registerOperation'
@@ -361,6 +362,7 @@ export function registerSessionHandlers(
           })
           throw publicTerminalSpawnError(error, 'agent.launch_failed')
         })
+      noteManagedClaudeRuntimeCreated(sessionId)
       managedLaunch.plan.onStarted?.(sessionId)
       logAgentLaunchInfo('control-surface-pty-spawn-succeeded', 'Agent PTY session spawned.', {
         provider,

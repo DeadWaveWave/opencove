@@ -328,7 +328,10 @@ export function createManagedClaudeLaunchRuntime(deps: {
             ) {
               throw error
             }
-            await owner.fail(attempt)
+            const effectAdmitted = owner.hasEffectAdmission(attempt)
+            if (effectAdmitted) {
+              await owner.fail(attempt)
+            }
             const descriptor = toAppErrorDescriptor(error, 'agent.launch_failed')
             throw createAppError({
               ...descriptor,
@@ -337,6 +340,7 @@ export function createManagedClaudeLaunchRuntime(deps: {
                   ? descriptor.details
                   : {}),
                 managedClaudeLaunch: true,
+                effectAdmitted,
                 phase: scope.getStore()?.spawnStarted ? 'afterSpawn' : 'beforeSpawn',
               },
             })
@@ -397,6 +401,15 @@ export async function withManagedClaudeFallback<T extends { sessionId: string }>
   if (current?.phase !== 'managed') {
     return spawn()
   }
+  if (!current.owner.hasEffectAdmission(current.attempt)) {
+    const context = current.attempt.context
+    const route = context ? (JSON.parse(context.route) as { mountId?: string } | null) : null
+    await current.owner.admit(current.attempt, {
+      provider: 'claude-code',
+      cwd: context?.directory ?? '',
+      mountId: route?.mountId ?? null,
+    })
+  }
   const receipt = await current.owner.fail(current.attempt)
   assertManagedClaudeLaunchCurrent()
   const result = await spawn()
@@ -416,7 +429,14 @@ export function rethrowManagedClaudeLaunchError(error: unknown): void {
     typeof error === 'object' &&
     'code' in error &&
     (String(error.code).startsWith('agent.managed_launch_') ||
-      (scope.getStore()?.phase === 'managed' && error.code === 'persistence.unavailable'))
+      (scope.getStore()?.phase === 'managed' && error.code === 'persistence.unavailable') ||
+      ('details' in error &&
+        error.details &&
+        typeof error.details === 'object' &&
+        'managedClaudeLaunch' in error.details &&
+        error.details.managedClaudeLaunch === true &&
+        'effectAdmitted' in error.details &&
+        error.details.effectAdmitted === false))
   ) {
     throw error
   }
@@ -438,5 +458,12 @@ export function noteManagedClaudeSpawnStarted(): void {
   if (current?.phase === 'managed') {
     current.owner.assertCurrent(current.attempt)
     current.spawnStarted = true
+  }
+}
+
+export function noteManagedClaudeRuntimeCreated(id: string): void {
+  const current = scope.getStore()
+  if (current?.phase === 'managed') {
+    current.owner.trackCreatedRuntime(current.attempt, id)
   }
 }

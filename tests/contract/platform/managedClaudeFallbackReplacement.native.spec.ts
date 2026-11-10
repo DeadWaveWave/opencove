@@ -10,6 +10,13 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { createPersistenceStore } from '../../../src/platform/persistence/sqlite/PersistenceStore'
 import { ManagedClaudeLaunchOwner } from '../../../src/contexts/agent/application/managedClaudeLaunch/ManagedClaudeLaunchOwner'
 import { stateWithAgent, tupleA, tupleB } from './managedClaudeResumeBindingFixtures'
+import { createManagedClaudeLaunchRuntime } from '../../../src/app/main/controlSurface/managedClaudeLaunchRuntime'
+import { createCanvasSpawnRunner } from '../../../src/app/main/controlSurface/createCanvasSpawnRunner'
+import { registerSessionHandlers } from '../../../src/app/main/controlSurface/handlers/sessionHandlers'
+import {
+  createReadyTerminalAdmissionDeps,
+  createTestAgentProviderRegistry,
+} from '../../unit/contexts/controlSurfaceTestTerminalAvailability'
 
 describeWithElectronNativeModules('managed Claude fallback runtime replacement', () => {
   let root: string
@@ -21,6 +28,115 @@ describeWithElectronNativeModules('managed Claude fallback runtime replacement',
   afterEach(async () => {
     store?.dispose()
     await rm(root, { recursive: true, force: true })
+  })
+  it('preserves the healthy owned runtime when actual path approval rejects before admission', async () => {
+    await store.writeAppState(stateWithAgent())
+    await store.activateManagedClaudeRuntime({
+      nodeId: 'agent',
+      activationId: 'initial',
+      runtimeSessionId: 'original',
+      tuple: tupleA,
+    })
+    const before = store.observeManagedClaudeNode('agent')
+    const kill = vi.fn(async () => {})
+    const runtime = createManagedClaudeLaunchRuntime({
+      getPersistenceStore: async () => store,
+      adoptionEnabled: () => false,
+      hasRuntime: () => true,
+      killExactRuntime: kill,
+    })
+    await runtime.ready()
+    const admission = createReadyTerminalAdmissionDeps()
+    const surface = createControlSurface({
+      run: createCanvasSpawnRunner({
+        managedClaude: runtime,
+        terminalRuntimeAvailability: admission.terminalSpawnAdmission,
+        getPersistenceStore: async () => store,
+      }),
+    })
+    const spawn = vi.fn()
+    registerSessionHandlers(surface, {
+      ...admission,
+      userDataPath: root,
+      getPersistenceStore: async () => store,
+      approvedWorkspaces: { isPathApproved: async () => false } as never,
+      agentProviderRegistry: createTestAgentProviderRegistry(),
+      topology: {} as never,
+      ptyRuntime: { spawnSession: spawn } as never,
+      ptyStreamHub: {} as never,
+    })
+    try {
+      expect(
+        await surface.invoke({ now: () => new Date(), capabilities: {} } as ControlSurfaceContext, {
+          kind: 'command',
+          id: 'session.launchAgent',
+          payload: {
+            canvasNodeId: 'agent',
+            cwd: '/repo',
+            provider: 'claude-code',
+            prompt: 'fixture',
+            intent: { kind: 'resumeCurrent' },
+          },
+        }),
+      ).toMatchObject({ ok: false, error: { code: 'common.approved_path_required' } })
+      expect(store.observeManagedClaudeNode('agent')).toEqual(before)
+      expect(kill).not.toHaveBeenCalled()
+      expect(spawn).not.toHaveBeenCalled()
+      expect(runtime.owner.pendingCleanupRuntimeIds()).toEqual([])
+    } finally {
+      runtime.dispose()
+    }
+  })
+
+  it('retains a failed admission kill through null settlement and a later reference-checked retry', async () => {
+    await store.writeAppState(stateWithAgent())
+    await store.activateManagedClaudeRuntime({
+      nodeId: 'agent',
+      activationId: 'initial',
+      runtimeSessionId: 'original',
+      tuple: tupleA,
+    })
+    const alive = new Set(['original'])
+    const kill = vi.fn(async (id: string) => {
+      expect(store.isManagedClaudeRuntimeReferenced(id)).toBe(false)
+      if (kill.mock.calls.length === 1) {
+        throw new Error('kill unavailable')
+      }
+      alive.delete(id)
+    })
+    const owner = new ManagedClaudeLaunchOwner({
+      observeNode: store.observeManagedClaudeNode,
+      activateManagedClaudeRuntime: store.activateManagedClaudeRuntime,
+      isRuntimeReferenced: store.isManagedClaudeRuntimeReferenced,
+      killExactRuntime: kill,
+      createId: () => 'settled',
+      publishCommittedActivation: () => {},
+    })
+    try {
+      const before = store.observeManagedClaudeNode('agent')
+      const attempt = owner.reserve('agent')
+      attempt.context = before.context
+      attempt.expected = { activationId: before.binding!.activationId, tuple: tupleA }
+      await expect(
+        owner.admit(attempt, { provider: 'claude-code', cwd: '/repo', mountId: null }),
+      ).rejects.toMatchObject({ code: 'agent.launch_failed' })
+      expect(store.observeManagedClaudeNode('agent')).toMatchObject({
+        nodeRuntimeSessionId: null,
+        binding: { runtimeSessionId: null, tuple: tupleA },
+      })
+      expect(alive.has('original')).toBe(true)
+      expect(owner.pendingCleanupRuntimeIds()).toEqual(['original'])
+      expect(await owner.fail(attempt)).toMatchObject({
+        binding: { runtimeSessionId: null, tuple: tupleA },
+      })
+      expect(kill).toHaveBeenCalledTimes(1)
+      await owner.assertReady(owner.reserve('maintenance'))
+      expect(kill).toHaveBeenCalledTimes(2)
+      expect(alive.size).toBe(0)
+      expect(owner.pendingCleanupRuntimeIds()).toEqual([])
+    } finally {
+      owner.dispose()
+    }
   })
   it.each([
     { mode: 'resume', tuple: tupleA },

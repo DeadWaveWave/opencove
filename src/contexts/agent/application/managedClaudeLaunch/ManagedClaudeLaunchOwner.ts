@@ -5,6 +5,7 @@ import type { ActivateManagedClaudeRuntimeInput } from '../../../../shared/contr
 import { sameManagedResumeBinding } from '../../../../shared/contracts/managedClaudeResumeBinding'
 import { createAppError } from '../../../../shared/errors/appError'
 import { ManagedClaudeRuntimeCleanup } from './ManagedClaudeRuntimeCleanup'
+import { ManagedClaudeAttemptEffects } from './ManagedClaudeAttemptEffects'
 
 export function rejectManagedLaunch(nodeId: string, reason: string): never {
   throw createAppError('agent.managed_launch_rejected', { details: { nodeId, reason } })
@@ -16,8 +17,7 @@ export class ManagedClaudeLaunchOwner {
   private readonly obligations = new Map<string, ActivateManagedClaudeRuntimeInput>()
   private readonly admitted = new Map<string, string>()
   private readonly reconciliationTimers = new Map<string, () => void>()
-  private readonly previousNodeRuntimes = new WeakMap<ManagedClaudeLaunchAttempt, string>()
-  private readonly effectAdmissions = new WeakSet<ManagedClaudeLaunchAttempt>()
+  private readonly effects: ManagedClaudeAttemptEffects
   private readonly activationNodePresence = new WeakMap<
     ActivateManagedClaudeRuntimeInput,
     boolean
@@ -35,15 +35,19 @@ export class ManagedClaudeLaunchOwner {
   private disposed = false
 
   constructor(private readonly ports: ManagedClaudeLaunchPorts) {
-    this.runtimeCleanup = new ManagedClaudeRuntimeCleanup(ports, id =>
-      [...this.obligations.values()].some(input => {
-        const attempt = this.activationAttempts.get(input)
-        return (
-          input.runtimeSessionId === id ||
-          (attempt !== undefined && this.previousNodeRuntimes.get(attempt) === id)
-        )
-      }),
+    this.runtimeCleanup = new ManagedClaudeRuntimeCleanup(
+      ports,
+      id =>
+        this.effects.retirementHeld(id) ||
+        [...this.obligations.values()].some(input => {
+          const attempt = this.activationAttempts.get(input)
+          return (
+            input.runtimeSessionId === id ||
+            (attempt !== undefined && this.effects.owns(attempt, id))
+          )
+        }),
     )
+    this.effects = new ManagedClaudeAttemptEffects(this.runtimeCleanup)
   }
 
   reserve(nodeId: string): ManagedClaudeLaunchAttempt {
@@ -119,29 +123,58 @@ export class ManagedClaudeLaunchOwner {
       // PR2 cannot atomically adopt a changed execution directory. Keep this legacy switch.
       return 'legacy'
     }
-    if (!this.effectAdmissions.has(attempt)) {
-      this.effectAdmissions.add(attempt)
+    await this.effects.admit(attempt, async () => {
+      this.assertCurrent(attempt)
       const previous = observation.nodeRuntimeSessionId
-      if (previous && previous !== observation.binding?.runtimeSessionId) {
-        this.previousNodeRuntimes.set(attempt, previous)
-        this.runtimeCleanup.retain(previous)
+      if (previous) {
+        this.effects.retainPrevious(attempt, previous)
       }
       const runtime = observation.binding?.runtimeSessionId
       if (runtime) {
+        this.effects.retainPrevious(attempt, runtime)
+        const release = this.effects.holdRetirement(attempt, runtime)
+        try {
+          const receipt = await this.complete(attempt, {
+            runtimeSessionId: null,
+            tuple: observation.binding!.tuple,
+          })
+          attempt.expected = {
+            activationId: receipt.binding.activationId,
+            tuple: receipt.binding.tuple,
+          }
+        } finally {
+          release()
+        }
         this.assertCurrent(attempt)
-        await this.ports.killExactRuntime(runtime)
+        const killed = await this.runtimeCleanup.cleanupRetained(runtime)
+        if (this.runtimeCleanup.capture(runtime) !== undefined) {
+          throw createAppError('agent.launch_failed', {
+            debugMessage: 'Previous agent runtime could not be stopped.',
+          })
+        }
+        if (killed) {
+          this.effects.releasePrevious(attempt, runtime)
+        }
         this.assertCurrent(attempt)
       }
-    }
+    })
     return 'managed'
   }
 
   private async cleanupPrevious(attempt: ManagedClaudeLaunchAttempt): Promise<void> {
-    const previous = this.previousNodeRuntimes.get(attempt)
-    if (!previous) {
-      return
+    await this.effects.cleanupPrevious(attempt)
+  }
+
+  hasEffectAdmission(attempt: ManagedClaudeLaunchAttempt): boolean {
+    return this.effects.admitted(attempt)
+  }
+
+  trackCreatedRuntime(attempt: ManagedClaudeLaunchAttempt, id: string): void {
+    this.effects.retainCreated(attempt, id)
+    if (!this.isCurrent(attempt)) {
+      void this.runtimeCleanup.cleanupRetained(id)
+      this.assertCurrent(attempt)
     }
-    await this.runtimeCleanup.cleanupRetained(previous)
   }
 
   canAdmitRuntimeWrite(nodeId: string, runtimeSessionId: string): boolean {
@@ -217,6 +250,7 @@ export class ManagedClaudeLaunchOwner {
         await this.runtimeCleanup.cleanupRetained(input.runtimeSessionId)
       }
       await this.cleanupPrevious(attempt)
+      await this.effects.cleanupCreated(attempt, input.runtimeSessionId)
       return binding ? { binding, commitRevision } : null
     })
     this.finalizations.set(input, completion)
@@ -278,6 +312,10 @@ export class ManagedClaudeLaunchOwner {
     return this.runtimeCleanup.cleanup(runtimeSessionId)
   }
 
+  pendingCleanupRuntimeIds(): readonly string[] {
+    return this.runtimeCleanup.pendingRuntimeIds()
+  }
+
   private activate(attempt: ManagedClaudeLaunchAttempt, input: ActivateManagedClaudeRuntimeInput) {
     this.assertCurrent(attempt)
     const observation = this.ports.observeNode(attempt.nodeId)
@@ -294,10 +332,7 @@ export class ManagedClaudeLaunchOwner {
     this.assertCurrent(attempt)
     this.activationNodePresence.set(input, observation.context !== null)
     this.obligations.set(input.nodeId, input)
-    const previous = this.previousNodeRuntimes.get(attempt)
-    if (previous) {
-      this.runtimeCleanup.retain(previous)
-    }
+    this.effects.renewPrevious(attempt)
     return this.ports.activateManagedClaudeRuntime(input)
   }
 
@@ -313,7 +348,7 @@ export class ManagedClaudeLaunchOwner {
     }
     this.activationAttempts.set(input, attempt)
     if (candidate.runtimeSessionId) {
-      this.runtimeCleanup.retain(candidate.runtimeSessionId)
+      this.effects.retainCreated(attempt, candidate.runtimeSessionId)
     }
     try {
       let result = await this.activate(attempt, input)
@@ -370,7 +405,13 @@ export class ManagedClaudeLaunchOwner {
   }
 
   async fail(attempt: ManagedClaudeLaunchAttempt): Promise<ManagedClaudeLifecycleReceipt | null> {
-    await this.assertReady(attempt)
+    this.assertCurrent(attempt)
+    if (!this.effects.admitted(attempt)) {
+      return null
+    }
+    if (this.obligations.has(attempt.nodeId)) {
+      await this.assertReady(attempt)
+    }
     const observation = this.ports.observeNode(attempt.nodeId)
     if (!observation.binding) {
       return null
@@ -383,6 +424,7 @@ export class ManagedClaudeLaunchOwner {
       rejectManagedLaunch(attempt.nodeId, 'superseded')
     }
     if (observation.binding.runtimeSessionId === null) {
+      await this.effects.cleanupCreated(attempt)
       return { binding: observation.binding, commitRevision: null }
     }
     attempt.expected = {

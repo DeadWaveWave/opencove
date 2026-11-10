@@ -163,6 +163,9 @@ it('preserves the tuple after failed replacement and never restores old runtime 
   expect(owner.canAdmitRuntimeWrite('agent', 'old')).toBe(true)
   const replacement = owner.reserve('agent')
   expect(owner.canAdmitRuntimeWrite('agent', 'old')).toBe(false)
+  replacement.context = null
+  replacement.expected = { activationId: 'activation-1', tuple }
+  await owner.admit(replacement, { provider: 'claude-code', cwd: '/repo', mountId: null })
   const settlement = await owner.fail(replacement)
   expect(settlement?.binding).toMatchObject({ runtimeSessionId: null, tuple })
   expect(owner.canAdmitRuntimeWrite('agent', 'old')).toBe(false)

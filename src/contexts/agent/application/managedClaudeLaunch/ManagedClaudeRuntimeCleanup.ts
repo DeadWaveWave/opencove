@@ -4,6 +4,8 @@ import type { ManagedClaudeLaunchPorts } from './ports'
 export class ManagedClaudeRuntimeCleanup {
   private readonly pending = new Map<string, symbol>()
   private readonly inFlight = new Map<string, Promise<boolean>>()
+  // Runtime IDs are never reused within a Worker. Keep terminal proof across later claims.
+  private readonly terminated = new Set<string>()
 
   constructor(
     private readonly ports: Pick<
@@ -15,6 +17,10 @@ export class ManagedClaudeRuntimeCleanup {
 
   retain(id: string): void {
     this.pending.set(id, Symbol(id))
+  }
+
+  pendingRuntimeIds(): readonly string[] {
+    return [...this.pending.keys()]
   }
 
   /** The claim covered by the next synchronous reference observation. */
@@ -57,8 +63,10 @@ export class ManagedClaudeRuntimeCleanup {
         }
         try {
           const referenced = this.ports.isRuntimeReferenced(id)
-          if (!referenced) {
+          if (!referenced && !this.terminated.has(id)) {
             await this.ports.killExactRuntime(id)
+            // Successful termination remains true even when a later claim needs a new read.
+            this.terminated.add(id)
           }
           if (this.pending.get(id) === claim) {
             this.pending.delete(id)

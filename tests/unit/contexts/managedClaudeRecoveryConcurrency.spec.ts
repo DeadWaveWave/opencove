@@ -88,7 +88,7 @@ it('recovery follows P2 when the owned P1 launch it joined is superseded during 
       },
     })
     expect(f.kill).toHaveBeenCalledExactlyOnceWith('live')
-    expect(f.store.activateManagedClaudeRuntime).toHaveBeenCalledTimes(2)
+    expect(f.store.activateManagedClaudeRuntime).toHaveBeenCalledTimes(3)
   } finally {
     firstRead.resolve(f.state)
     secondRead.resolve(f.state)
@@ -138,7 +138,10 @@ it('uses the current owned tuple after readiness waits for reconciliation', asyn
     expect(await launching).toMatchObject({ ok: true })
     expect(f.store.activateManagedClaudeRuntime).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        expected: { activationId: 'owned', tuple: reboundTuple },
+        expected: {
+          activationId: f.store.activateManagedClaudeRuntime.mock.calls[1][0].activationId,
+          tuple: reboundTuple,
+        },
         tuple: reboundTuple,
       }),
     )

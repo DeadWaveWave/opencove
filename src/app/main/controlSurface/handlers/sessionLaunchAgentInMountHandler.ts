@@ -2,6 +2,7 @@ import { launchRemoteAgentInMount } from './sessionRemoteAgentLaunch'
 import {
   admitManagedClaudeLaunch,
   noteManagedClaudeSpawnStarted,
+  noteManagedClaudeRuntimeCreated,
 } from '../managedClaudeLaunchRuntime'
 import type { ControlSurface } from '../controlSurface'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
@@ -266,6 +267,7 @@ export function registerSessionLaunchAgentInMountHandler(
           )
           throw publicTerminalSpawnError(error, 'agent.launch_failed')
         })
+      noteManagedClaudeRuntimeCreated(sessionId)
       managedLaunch.plan.onStarted?.(sessionId)
       logAgentLaunchInfo(
         'control-surface-mount-local-pty-spawn-succeeded',

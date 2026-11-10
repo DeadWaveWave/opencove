@@ -162,7 +162,9 @@ it('retains a displaced shell that another node still references after deferred 
   const activate = f.ports.activateManagedClaudeRuntime.getMockImplementation()!
   f.ports.activateManagedClaudeRuntime.mockImplementation(async input => {
     const result = await activate(input)
-    f.setUnavailable(true)
+    if (input.runtimeSessionId !== null) {
+      f.setUnavailable(true)
+    }
     return result
   })
   try {
@@ -196,7 +198,9 @@ it('preserves a newer unknown obligation when an older activation response arriv
       committed.resolve()
       return firstResponse.promise
     }
-    f.setUnavailable(true)
+    if (input.runtimeSessionId !== null) {
+      f.setUnavailable(true)
+    }
     return result
   })
   let first!: Promise<unknown>

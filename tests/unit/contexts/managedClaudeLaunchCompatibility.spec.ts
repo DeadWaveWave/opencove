@@ -72,7 +72,7 @@ describe('managed Claude launch legacy compatibility', () => {
         },
       })
       expect(f.kill).toHaveBeenCalledExactlyOnceWith('live')
-      expect(f.store.activateManagedClaudeRuntime).toHaveBeenCalledTimes(2)
+      expect(f.store.activateManagedClaudeRuntime).toHaveBeenCalledTimes(3)
     } finally {
       identityRead.resolve(f.state)
       await Promise.all([launching, preparing])
