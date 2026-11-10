@@ -81,15 +81,11 @@ it('projects object paths relative to the printed object, including absent optio
   ).toBe(0)
   expect(JSON.parse(f.out())).toEqual({ node: { id: 'n' } })
 })
-it.each([
-  [['node', 'update', 'note', '--node', 'n', '--text', '-value'], '--text', true],
-  [['node', 'update', 'note', '--node', 'n', '--title', '-value'], '--title', false],
-])('suggests only real value options %j', async (args, flag, file) => {
+it.each(['text', 'title'])('accepts a literal dash-prefixed --%s value', async flag => {
   const f = fixture()
-  expect(await run(args as string[], f.io)).toBe(2)
-  expect(f.error().hint).toContain(`${flag}=-value`)
-  expect(f.error().hint.includes(`${flag}-file`)).toBe(file)
-  expect(f.fetch).not.toHaveBeenCalled()
+  expect(await run(['node', 'update', 'note', '--node', 'n', `--${flag}`, '-value'], f.io)).toBe(0)
+  const request = JSON.parse(String(f.fetch.mock.calls[0][1]?.body))
+  expect(flag === 'text' ? request.payload.data.text : request.payload.title).toBe('-value')
 })
 const issues = [
   {
@@ -225,13 +221,14 @@ it('rejects unknown object fields even alongside a valid field', async () => {
   expect(f.error().message).toContain('Available fields: id')
   expect(f.fetch).not.toHaveBeenCalled()
 })
-it('does not suggest a file variant for a file option itself', async () => {
+it('accepts a dash-prefixed file path without treating it as an option', async () => {
   const f = fixture()
+  f.io.readTextFile = vi.fn(async () => 'File contents')
   expect(await run(['node', 'update', 'note', '--node', 'n', '--text-file', '-value'], f.io)).toBe(
-    2,
+    0,
   )
-  expect(f.error().hint).toContain('--text-file=-value')
-  expect(f.error().hint).not.toContain('--text-file-file')
+  expect(f.io.readTextFile).toHaveBeenCalledWith('-value')
+  expect(JSON.parse(String(f.fetch.mock.calls[0][1]?.body)).payload.data.text).toBe('File contents')
 })
 it('rejects unknown api ops projection fields before producing output', async () => {
   const f = fixture()

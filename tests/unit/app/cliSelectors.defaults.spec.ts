@@ -115,9 +115,16 @@ it.each(['', undefined])('orients an ungrouped terminal with space env=%s', asyn
   expect(result.next).toHaveLength(4)
   expect(result.next.join(' ')).toContain('--project "@self"')
   expect(result.next.join(' ')).not.toContain('--space')
-  expect(f.requests.some(request => request.id === 'space.get' || request.id === 'node.list')).toBe(
-    false,
-  )
+  expect(result.self.node).toMatchObject({
+    id: node.id,
+    kind: 'terminal',
+    title: 'Shell',
+    state: 'running',
+  })
+  expect(f.requests.some(request => request.id === 'space.get')).toBe(false)
+  expect(f.requests.filter(request => request.id === 'node.list')).toEqual([
+    { id: 'node.list', kind: 'query', payload: { projectId: project.id, kind: 'task' } },
+  ])
 })
 
 it('reports absent space membership rather than absent session identity for explicit @self', async () => {
