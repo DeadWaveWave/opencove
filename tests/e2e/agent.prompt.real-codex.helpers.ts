@@ -34,6 +34,7 @@ function respond(
   slowTool = false,
   slowToolSeconds = 3,
   slowToolCommand = `sleep ${slowToolSeconds}`,
+  replyText = 'ACK',
 ): void {
   const id = `resp_${Date.now()}`
   const item = slowTool
@@ -64,7 +65,7 @@ function respond(
           id: 'msg_ack',
           role: 'assistant',
           status: 'completed',
-          content: [{ type: 'output_text', text: 'ACK', annotations: [] }],
+          content: [{ type: 'output_text', text: replyText, annotations: [] }],
         }
   res.writeHead(200, { 'content-type': 'text/event-stream' })
   const send = (type: string, data: Record<string, unknown>) =>
@@ -84,7 +85,11 @@ function respond(
 }
 
 export async function startResponsesApi(
-  options: { slowToolSeconds?: number; slowToolCommand?: string } = {},
+  options: {
+    slowToolSeconds?: number
+    slowToolCommand?: string
+    replyText?: (blocks: string[]) => string
+  } = {},
 ): Promise<{
   server: Server
   url: string
@@ -127,6 +132,7 @@ export async function startResponsesApi(
         isMain && !resumed && blocks.some(block => block.includes('SLOW_TOOL')),
         options.slowToolSeconds,
         options.slowToolCommand,
+        options.replyText?.(blocks),
       )
       return
     }

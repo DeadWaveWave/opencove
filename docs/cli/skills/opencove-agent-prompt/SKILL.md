@@ -45,7 +45,7 @@ The exact read never falls back. Hook history is private/in-memory, limited to t
 up to 60 ended turns per node in the private Worker archive; exact --turn lookup survives restart. Remote exact waits use only mirrored
 snapshots/events. Older remote turns require the Worker that runs them;
 `details.reason: remote_history_unavailable` identifies this limit, not eviction. Currently
-correlated local Claude hooks supply messages. Unqualified read alone can fall
+correlated local Claude and Codex lifecycle hooks supply messages. Unqualified read alone can fall
 back to the transcript for `no_ended_turn` or `provider_sent_no_message`.
 Default stdout is message text only; `-o json` includes `source` and `truncated`.
 A cut hook prefix prints a stderr notice with transcript/screen inspection commands.
@@ -99,8 +99,7 @@ textComparison never decides submission. The submitted text differed from what y
 sent; an existing draft may have been included. Do not resend; inspect the screen.
 
 The orchestration loop is prompt → delivery status → `wait --turn` = **the containing
-turn ended** (check outcome) → `read --turn` (Claude correlated; Codex reply reads
-stay uncorrelated). Turn end does not prove a steer was handled. `agent delivery`
+turn ended** (check outcome) → `read --turn` (Claude and Codex lifecycle replies are correlated). Turn end does not prove a steer was handled. `agent delivery`
 exits 0 for submitted, 1 for not_sent/ambiguous/unknown/unavailable or an unconfirmed
 snapshot, 124 for a wait timeout. Self-wait returns immediately so consumption can
 proceed. Unresolved records are pinned; capacity refuses before bytes. A closed evidenceWindow is not a result. Worker restart/expiry makes lookup unavailable, never

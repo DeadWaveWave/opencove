@@ -227,6 +227,28 @@ export function updateAgentRunEntry(
   if (selected && observation?.boundary?.kind === 'start') {
     entry.continuation.acceptGenerationStart()
   }
+  if (observation?.source === 'codex_hook' && entry.history.rejects(observation, evidence)) {
+    return unchanged()
+  }
+  if (
+    selected &&
+    observation?.source === 'codex_hook' &&
+    current.snapshot.turn &&
+    entry.history.sameSubmission(observation, evidence)
+  ) {
+    const prior = current.observations.codex_hook!
+    return {
+      model: {
+        ...current,
+        observations: {
+          ...current.observations,
+          codex_hook: { ...prior, sourceSequence: observation.sourceSequence },
+        },
+      },
+      ended: null,
+      accepted: true,
+    }
+  }
   if (selected && observation && current.snapshot.turn && observation.source === 'claude_hook') {
     if (entry.history.sameSubmission(observation, evidence)) {
       entry.continuation.hint()
@@ -271,7 +293,11 @@ export function updateAgentRunEntry(
       }
     }
   }
-  if (observation && entry.history.rejects(observation, evidence)) {
+  if (
+    observation?.source !== 'codex_hook' &&
+    observation &&
+    entry.history.rejects(observation, evidence)
+  ) {
     return unchanged()
   }
   const result = transitionAgentRun(
@@ -370,7 +396,12 @@ export function commitAgentRunUpdate(
           result.accepted && observation
             ? acceptedRunStateReceipt(
                 observation,
-                result.model.snapshot.turn?.id ?? priorTurnId,
+                observation.source === 'codex_hook'
+                  ? entry.history.submissionTurnId(
+                      evidence,
+                      result.model.snapshot.turn?.id ?? priorTurnId,
+                    )
+                  : (result.model.snapshot.turn?.id ?? priorTurnId),
                 evidence,
               )
             : {},

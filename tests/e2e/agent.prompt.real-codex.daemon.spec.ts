@@ -1,3 +1,4 @@
+import { readExact, replyMarker } from './agent.turn-reply.helpers'
 import { AcceptanceFailures } from './agent.prompt.real-codex.daemon.failures'
 import { execFile } from 'node:child_process'
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
@@ -34,7 +35,7 @@ test.describe('Codex orchestration beside a shared app-server daemon', () => {
         const codexHome = join(root, 'codex')
         const workspace = join(root, 'workspace')
         const userDataDir = join(root, 'user-data')
-        const api = await startResponsesApi({ slowToolSeconds })
+        const api = await startResponsesApi({ slowToolSeconds, replyText: replyMarker })
         let app: ElectronApplication | undefined
         const environment = {
           ...process.env,
@@ -61,6 +62,16 @@ test.describe('Codex orchestration beside a shared app-server daemon', () => {
         await failures.capture('acceptance', async () => {
           await mkdir(workspace)
           await mkdir(codexHome)
+          const installed = await exec('codex', ['--version'], {
+            env: environment,
+            cwd: workspace,
+            timeout: 10_000,
+          })
+          await testInfo.attach('real-cli-version', {
+            body: installed.stdout,
+            contentType: 'text/plain',
+          })
+          expect(installed.stdout.trim()).toBe('codex-cli 0.166.0')
           await writeCodexConfig(codexHome, workspace, api.url)
           await mkdir(join(codexHome, 'app-server-daemon'))
           await writeFile(
@@ -158,6 +169,23 @@ test.describe('Codex orchestration beside a shared app-server daemon', () => {
             expect(refused.exitCode, JSON.stringify(refused)).toBe(1)
             expect(refused.stderr).toContain('agent.prompt_unsupported')
             expect(refused.stderr).toContain('codex_hooks_skipped')
+            const unavailable = await cli(userDataDir, [
+              'agent',
+              'read',
+              '--node',
+              nodeId,
+              '--turn',
+              'unobserved-daemon-turn',
+              '-o',
+              'json',
+            ])
+            expect(unavailable.exitCode, JSON.stringify(unavailable)).toBe(1)
+            expect(JSON.parse(unavailable.stderr)).toMatchObject({
+              error: {
+                code: 'agent.final_message_unavailable',
+                details: { reason: 'turn_not_found' },
+              },
+            })
             expect(api.main()).toHaveLength(1)
             expect((await snapshot()).source).not.toBe('codex_hook')
           } else {
@@ -171,7 +199,7 @@ test.describe('Codex orchestration beside a shared app-server daemon', () => {
               )
               .toBe('idle:codex_hook')
             const nodeId = (await snapshot()).nodeId!
-            const text = 'DAEMON_COEXISTENCE: reply with ACK.'
+            const text = 'DAEMON_COEXISTENCE: REPLY_A'
             const delivered = await prompt(userDataDir, nodeId, text)
             expect(delivered.exitCode, JSON.stringify(delivered)).toBe(0)
             expect(JSON.parse(delivered.stdout)).toMatchObject({ phase: 'submission_observed' })
@@ -193,6 +221,7 @@ test.describe('Codex orchestration beside a shared app-server daemon', () => {
               turnId,
               outcome: 'completed',
             })
+            await readExact(userDataDir, nodeId, turnId, 'REPLY_A: complete 🙂')
             expect(api.main().at(-1)).toContain(text)
           }
           // Inspect the actual rendered terminal buffer, including errors that have scrolled away.

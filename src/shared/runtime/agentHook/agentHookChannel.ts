@@ -229,6 +229,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       } else if (options.source === 'codex_hook') {
         setPromptSubmissionEvidence(event, {
           providerTurnId: envelope.providerTurnId,
+          finalMessage: envelope.hookEventName === 'Stop' ? envelope.finalMessage : undefined,
           providerSessionId: options.resolveSessionIdentity?.(envelope)?.providerSessionId,
         })
       }

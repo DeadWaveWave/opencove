@@ -217,7 +217,13 @@ an explicit completion signal. The relay preserves a validated, content-free `tu
 native hook `turn_id` uses the same validation. Private channel evidence carries these IDs
 to the registry, which rejects notify before arbitration when it conflicts with a known active
 provider turn/session. Missing IDs retain uncorrelated fallback behavior. These IDs do not
-enter public snapshots, receipts or durable state.
+enter public snapshots or durable state; delivery fences carry them privately.
+
+Native Codex Stop uses the same conflict fence. Fresh distinct-pair submits supersede an active
+identified turn as unknown with no reply; retained-pair submits cannot reopen it. Same-pair
+submits are receipt-only and preserve waiting and the original start. Session switches require
+a fresh submit; compact SessionStart remains identity-only. See [Codex turn replies](CODEX_TURN_REPLIES.md)
+for identity retention, missing-ID compatibility and observed-end semantics.
 
 ## Retained turn-end evidence
 

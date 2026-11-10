@@ -12,7 +12,12 @@ export class PromptDeliveryEvidence {
   private fence?: RunStateFence
   private identity?: PromptDeliveryIdentity
   private ended = new Set<string>()
-  private postFence?: { turnId: string; promptId?: string; providerSessionId?: string }
+  private postFence?: {
+    turnId: string
+    promptId?: string
+    providerSessionId?: string
+    providerTurnId?: string
+  }
   constructor(private readonly negotiated: boolean) {}
   capture(fence: RunStateFence, identity?: PromptDeliveryIdentity): void {
     this.fence = fence
@@ -51,17 +56,32 @@ export class PromptDeliveryEvidence {
       if (record.dto.mode === 'turn' && identity?.promptId && identity.promptId === r.promptId) {
         return
       }
-    } else if (record.codexSteer) {
+    } else if (provider === 'codex') {
+      // Once a complete pair is known, legacy/missing IDs cannot confirm a steer.
+      const knownPair = !!identity?.providerSessionId && !!identity.providerTurnId
+      if (knownPair && (!r.providerSessionId || !r.providerTurnId)) {
+        return
+      }
       if (
-        (identity?.providerSessionId &&
-          r.providerSessionId &&
-          identity.providerSessionId !== r.providerSessionId) ||
-        (identity?.providerTurnId &&
-          r.providerTurnId &&
-          identity.providerTurnId !== r.providerTurnId) ||
-        r.turnId !== record.dto.turnId
+        record.dto.mode === 'turn' &&
+        knownPair &&
+        identity.providerSessionId === r.providerSessionId &&
+        identity.providerTurnId === r.providerTurnId
       ) {
         return
+      }
+      if (record.codexSteer) {
+        if (
+          (identity?.providerSessionId &&
+            r.providerSessionId &&
+            identity.providerSessionId !== r.providerSessionId) ||
+          (identity?.providerTurnId &&
+            r.providerTurnId &&
+            identity.providerTurnId !== r.providerTurnId) ||
+          r.turnId !== record.dto.turnId
+        ) {
+          return
+        }
       }
     }
     // A post-fence start without a usable timestamp does not confirm submission, but
@@ -71,12 +91,15 @@ export class PromptDeliveryEvidence {
         turnId: r.turnId,
         promptId: r.promptId,
         providerSessionId: r.providerSessionId,
+        providerTurnId: r.providerTurnId,
       }
     }
     const turnId =
       r.turnId ??
-      (r.promptId &&
-      r.promptId === this.postFence?.promptId &&
+      ((provider === 'codex'
+        ? !!r.providerTurnId && r.providerTurnId === this.postFence?.providerTurnId
+        : !!r.promptId && r.promptId === this.postFence?.promptId) &&
+      this.postFence &&
       r.providerSessionId === this.postFence.providerSessionId
         ? this.postFence.turnId
         : undefined)
