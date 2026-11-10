@@ -426,7 +426,10 @@ it('projects completion identity separately from the current snapshot through th
 })
 it('exposes bounded dialog fields in get/list JSON and rejects dialog table columns', async () => {
   const f = fixture()
-  const blockedSummary = { kind: 'question', questions: [{ question: 'Which?', options: ['One'] }] }
+  const blockedSummary = {
+    kind: 'question',
+    questions: [{ question: 'Which?', options: ['One'], optionDescriptions: ['First choice'] }],
+  }
   f.values['agent.get'] = {
     ...snapshot,
     state: 'waiting',

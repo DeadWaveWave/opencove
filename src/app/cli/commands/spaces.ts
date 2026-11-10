@@ -132,7 +132,7 @@ export const spaceCreateCommand = defineCommand({
   usage:
     '--name <name> [--project <selector>] [--directory <path>] | --name <name> --in <selector> [--frame <json>] [--move <selector>]...',
   description:
-    'Top-level spaces use your terminal node’s current project unless --project is given; outside OpenCove, supply --project. Placement is automatic. --directory must be an existing absolute local directory within the project’s default mount; symlinks cannot escape that mount. Omit it to use the mount root.\n\nWith --in, create a child space in the selected parent and inherit its directory. --move selects direct members of that parent. Without --frame, the boundary encloses the moved nodes, or defaults to 420×300 at the parent’s center. The server fits the boundary inside the parent and reports the applied rect.',
+    'Top-level spaces use your terminal node’s current project unless --project is given; outside OpenCove, supply --project. Placement is automatic. --directory must be an existing absolute local directory within the project’s default mount; symlinks cannot escape that mount. Omit it to use the mount root.\n\nWith --in, create a child space in the selected parent and inherit its directory. --move selects direct members of that parent. Without --frame, the boundary encloses the moved nodes, or defaults to 420×300 at the parent’s center. The server fits the boundary inside the parent, preserves room for moved nodes, and grows ancestors when needed. The result reports rect as {x,y,width,height} in canvas coordinates.',
   connect: true,
   operation: 'space.create',
   operationAliases: ['space.createChild'],

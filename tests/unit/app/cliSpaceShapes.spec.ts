@@ -25,13 +25,20 @@ it('space shapes: list and get project the same shared data', async () => {
     ...space,
     targetMountId: 'mount',
     parentSpaceId: null,
-    boundary: { x: 1, y: 2, width: 3, height: 4 },
+    rect: { x: 1, y: 2, width: 3, height: 4 },
+    boundary: {
+      allowedMountIds: [],
+      scopesByMountId: {},
+      allowedPluginIds: null,
+      capabilities: null,
+      trustLevel: null,
+    },
     sortOrder: 2,
     nodeIds: ['n'],
     nodes: [],
   }
   const fields =
-    'id,name,directoryPath,targetMountId,parentSpaceId,boundary,sortOrder,nodeIds,nodeCount,projectId,nodes'
+    'id,name,directoryPath,targetMountId,parentSpaceId,boundary,rect,sortOrder,nodeIds,nodeCount,projectId,nodes'
   const list = identityFixture(false),
     get = identityFixture(false)
   list.values['space.list'] = { projectId: project.id, activeSpaceId: space.id, spaces: [row] }
@@ -40,3 +47,34 @@ it('space shapes: list and get project the same shared data', async () => {
   expect(await run(['space', 'get', '--space', space.id, '--fields', fields], get.io)).toBe(0)
   expect(JSON.parse(list.out()).spaces[0]).toEqual(JSON.parse(get.out()).space)
 })
+
+it.each(['get', 'list'])('projects individual geometry fields from space %s', async action => {
+  const f = identityFixture(false)
+  const row = { ...space, rect: { x: 1, y: 2, width: 3, height: 4 } }
+  f.values['space.get'] = { projectId: project.id, space: row }
+  f.values['space.list'] = { projectId: project.id, spaces: [row] }
+  expect(
+    await run(
+      [
+        'space',
+        action,
+        ...(action === 'get' ? ['--space', space.id] : []),
+        '--fields',
+        'rect.x,rect.width',
+      ],
+      f.io,
+    ),
+  ).toBe(0)
+  const output = JSON.parse(f.out())
+  expect(action === 'get' ? output.space : output.spaces[0]).toEqual({ rect: { x: 1, width: 3 } })
+})
+it.each(['get', 'list'])(
+  'space %s help distinguishes canvas geometry from access scope',
+  async action => {
+    const f = identityFixture(false)
+    expect(await run(['space', action, '--help'], f.io)).toBe(0)
+    expect(f.out()).toContain('rect')
+    expect(f.out()).toContain('{x,y,width,height} in canvas coordinates')
+    expect(f.out()).toContain('boundary describes the Space’s access scope')
+  },
+)

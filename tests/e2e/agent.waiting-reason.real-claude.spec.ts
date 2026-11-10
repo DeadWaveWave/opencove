@@ -6,7 +6,13 @@ import { selectCoveOption } from './workspace-canvas.helpers'
 
 const blockedSummary = {
   kind: 'question',
-  questions: [{ question: 'Which option should the probe use?', options: ['First', 'Second'] }],
+  questions: [
+    {
+      question: 'Which option should the probe use?',
+      options: ['First', 'Second'],
+      optionDescriptions: ['Use the first option', 'Use the second option'],
+    },
+  ],
 }
 
 test.describe('Claude waiting reason and dialog summary', () => {

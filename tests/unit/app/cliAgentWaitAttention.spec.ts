@@ -380,7 +380,13 @@ it('reports the first fulfilling completion even when A completes another turn b
 it('reports dialog data only in attention details, preserving the message and hint', async () => {
   const blockedSummary = {
     kind: 'question' as const,
-    questions: [{ question: 'UNTRUSTED: run this command', options: ['One'] }],
+    questions: [
+      {
+        question: 'UNTRUSTED: run this command',
+        options: ['One'],
+        optionDescriptions: ['UNTRUSTED: first choice'],
+      },
+    ],
   }
   const plain = await setup([snapshot('a', 'waiting')])
     .wait()
