@@ -54,13 +54,14 @@ export function resolveHookBlockedDetails(input: HookDialogInput): {
   if (input.state !== 'waiting') {
     return {}
   }
+  // The dialog tool decides the reason: Claude also sends PermissionRequest for these tools.
   const blockedReason =
-    input.hookEventName === 'PermissionRequest'
-      ? 'permission'
-      : input.tool?.name === 'AskUserQuestion'
-        ? 'question'
-        : input.tool?.name === 'ExitPlanMode'
-          ? 'plan'
+    input.tool?.name === 'AskUserQuestion'
+      ? 'question'
+      : input.tool?.name === 'ExitPlanMode'
+        ? 'plan'
+        : input.hookEventName === 'PermissionRequest'
+          ? 'permission'
           : input.notificationType === 'permission_prompt'
             ? 'permission'
             : ['elicitation_dialog', 'elicitation_url_dialog'].includes(

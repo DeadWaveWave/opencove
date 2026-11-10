@@ -70,7 +70,14 @@ describe('Claude blocking dialogs', () => {
         hookEventName: 'PermissionRequest',
         tool: { name: 'ExitPlanMode', input: { plan: 'SECRET' } },
       }),
-    ).toEqual({ blockedReason: 'permission', blockedSummary: { kind: 'plan' } })
+    ).toEqual({ blockedReason: 'plan', blockedSummary: { kind: 'plan' } })
+    expect(
+      resolveHookBlockedDetails({
+        state: 'waiting',
+        hookEventName: 'PermissionRequest',
+        tool: { name: 'Bash', input: { command: 'rm -rf build' } },
+      }),
+    ).toEqual({ blockedReason: 'permission' })
     expect(
       resolveHookBlockedDetails({ state: 'working', tool: { name: 'AskUserQuestion' } }),
     ).toEqual({})

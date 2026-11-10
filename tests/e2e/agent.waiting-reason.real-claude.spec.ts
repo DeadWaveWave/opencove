@@ -56,9 +56,14 @@ test.describe('Claude waiting reason and dialog summary', () => {
           ),
         )
       const initial = await get()
-      expect(initial).toMatchObject({ nodeId, sessionId, state: 'waiting', blockedSummary })
-      // Claude versions that additionally emit PermissionRequest must retain its priority.
-      expect(['question', 'permission']).toContain(initial.blockedReason)
+      // Claude also sends PermissionRequest for AskUserQuestion; the user still sees a question.
+      expect(initial).toMatchObject({
+        nodeId,
+        sessionId,
+        state: 'waiting',
+        blockedReason: 'question',
+        blockedSummary,
+      })
       const listed = jsonOutput(
         await terminalCommand(
           page,
@@ -96,11 +101,13 @@ test.describe('Claude waiting reason and dialog summary', () => {
         await expect(page.locator('html')).toHaveAttribute('data-cove-theme-id', theme)
         await page.locator('.settings-panel__close').click()
         const current = await get()
-        expect(current).toMatchObject({ state: 'waiting', blockedSummary })
+        expect(current).toMatchObject({
+          state: 'waiting',
+          blockedReason: 'question',
+          blockedSummary,
+        })
         const sidebar = page.locator('.workspace-sidebar .workspace-agent-item__status-label')
-        await expect(sidebar).toContainText(
-          current.blockedReason === 'permission' ? 'Needs approval' : 'Has a question',
-        )
+        await expect(sidebar).toContainText('Has a question')
         await testInfo.attach(`question-attention-${theme}`, {
           body: await page.screenshot(),
           contentType: 'image/png',

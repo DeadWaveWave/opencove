@@ -59,7 +59,8 @@ it('transports bounded dialogs through the authenticated channel, Worker, and We
       blocked,
     )
     expect(await send('PermissionRequest', { tool_name: 'AskUserQuestion' })).toBe(204)
-    expect(snapshot()).toMatchObject({ blockedReason: 'permission', blockedSummary: summary })
+    // Claude asks permission to show the question; the user still sees a question.
+    expect(snapshot()).toMatchObject({ blockedReason: 'question', blockedSummary: summary })
     expect(await send('PostToolUse', { tool_name: 'AskUserQuestion' })).toBe(204)
     expect(snapshot()).toMatchObject({
       state: 'working',

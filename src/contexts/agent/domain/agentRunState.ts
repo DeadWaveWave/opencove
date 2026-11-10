@@ -280,10 +280,7 @@ export function transitionAgentRun(
     const previous = blockingEpisode?.source === selected.source ? blockingEpisode : null
     blockingEpisode = {
       source: selected.source,
-      reason:
-        previous?.reason === 'permission'
-          ? 'permission'
-          : (selected.blockedReason ?? previous?.reason ?? null),
+      reason: episodeReason(previous?.reason ?? null, selected.blockedReason ?? null),
       summary: selected.blockedSummary ?? previous?.summary ?? null,
     }
   }
@@ -322,4 +319,18 @@ export function transitionAgentRun(
     },
     ended,
   }
+}
+
+/**
+ * One blocking episode is one dialog. A question or plan names the dialog the user sees, even when
+ * the provider also asks permission to show it, so it outranks a generic permission; a permission
+ * outranks a reason-less refresh. Equal ranks keep the latest.
+ */
+function episodeReason(
+  previous: AgentRunSnapshot['blockedReason'],
+  next: AgentRunSnapshot['blockedReason'],
+): AgentRunSnapshot['blockedReason'] {
+  const rank = (reason: AgentRunSnapshot['blockedReason']) =>
+    reason === 'question' || reason === 'plan' ? 2 : reason === 'permission' ? 1 : 0
+  return rank(next) >= rank(previous) && next ? next : previous
 }

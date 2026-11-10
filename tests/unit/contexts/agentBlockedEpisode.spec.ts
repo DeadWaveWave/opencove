@@ -40,15 +40,26 @@ describe('blocking episodes', () => {
       blockedSummary: summary,
     })
   })
-  it('keeps PermissionRequest priority through later question notifications', () => {
+  it('keeps the question when the provider also asks permission to show it', () => {
     const observe = fixture()
     observe({ blockedReason: 'question', blockedSummary: summary })
     expect(
       observe({ hookEventName: 'PermissionRequest', blockedReason: 'permission' }),
-    ).toMatchObject({ blockedReason: 'permission', blockedSummary: summary })
+    ).toMatchObject({ blockedReason: 'question', blockedSummary: summary })
     expect(
-      observe({ hookEventName: 'Notification', blockedReason: 'question' }).blockedReason,
+      observe({ hookEventName: 'Notification', blockedReason: 'permission' }).blockedReason,
+    ).toBe('question')
+  })
+  it('upgrades a permission episode to a question or plan, never back', () => {
+    const observe = fixture()
+    expect(
+      observe({ hookEventName: 'PermissionRequest', blockedReason: 'permission' }).blockedReason,
     ).toBe('permission')
+    expect(observe({ hookEventName: 'Notification' }).blockedReason).toBe('permission')
+    expect(observe({ blockedReason: 'plan', blockedSummary: { kind: 'plan' } }).blockedReason).toBe(
+      'plan',
+    )
+    expect(observe({ blockedReason: 'permission' }).blockedReason).toBe('plan')
   })
   it.each([
     { state: 'working' },
