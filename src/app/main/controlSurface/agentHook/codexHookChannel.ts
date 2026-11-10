@@ -19,12 +19,15 @@ export function createCodexHookChannel(options: {
     hookPath: '/hooks/codex',
     source: 'codex_hook',
     publishManagedSessionIdentity: true,
-    validateEnvelope: value =>
-      normalizeCodexHookEnvelope(value) ?? validateCodexHookEnvelope(value),
-    resolveSessionIdentity: envelope => ({
-      hookEventName: envelope.hookEventName,
-      providerSessionId: envelope.codexSessionId,
-    }),
+    validateEnvelope: value => {
+      const envelope = normalizeCodexHookEnvelope(value) ?? validateCodexHookEnvelope(value)
+      // Child hooks share the invocation credential, but have no authority over its parent.
+      return envelope?.agentId ? { ...envelope, state: null } : envelope
+    },
+    resolveSessionIdentity: envelope =>
+      envelope.agentId
+        ? null
+        : { hookEventName: envelope.hookEventName, providerSessionId: envelope.codexSessionId },
     buildReservationEnv: (endpoint, token) => ({
       OPENCOVE_CODEX_HOOK_ENDPOINT: endpoint,
       OPENCOVE_CODEX_HOOK_TOKEN: token,

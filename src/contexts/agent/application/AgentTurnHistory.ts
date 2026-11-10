@@ -4,6 +4,7 @@ import {
   type RetainedAgentTurn,
   type TurnArchiveContext,
 } from './AgentTurnRecord'
+import { CodexTurnIdentity, sameCodexPair } from './CodexTurnIdentity'
 import { AGENT_TURN_ARCHIVE_LIMITS } from './AgentTurnArchive'
 import { createAppError } from '../../../shared/errors/appError'
 import type { PromptSubmissionEvidence } from '../../../shared/runtime/agentHook/claudePromptEvidence'
@@ -20,6 +21,7 @@ export type FinalMessageSelector = { turnId?: string; promptId?: string; nodeId?
 
 /** Private per-incarnation content owner. No references enter event or receipt rings. */
 export class AgentTurnHistory {
+  private readonly codexIdentity = new CodexTurnIdentity()
   private revoked = false
   private active: Identity | undefined
   private readonly ended: RetainedAgentTurn[] = []
@@ -59,7 +61,9 @@ export class AgentTurnHistory {
 
   identity(): Identity & { endedTurnIds: string[] } {
     return {
-      endedTurnIds: this.ended.map(turn => turn.turnId),
+      endedTurnIds: [
+        ...new Set([...this.ended.map(turn => turn.turnId), ...this.codexIdentity.endedTurnIds()]),
+      ],
       ...(this.active
         ? {
             promptId: this.active.promptId,
@@ -68,7 +72,7 @@ export class AgentTurnHistory {
           }
         : this.ended.at(-1)?.promptId
           ? { promptId: this.ended.at(-1)!.promptId ?? undefined }
-          : {}),
+          : (this.codexIdentity.identity() ?? {})),
     }
   }
 
@@ -76,6 +80,9 @@ export class AgentTurnHistory {
     evidence: PromptSubmissionEvidence | undefined,
     currentTurnId?: string,
   ): string | undefined {
+    if (evidence?.providerTurnId || (!evidence?.promptId && this.codexIdentity.identity())) {
+      return this.codexIdentity.submissionTurnId(evidence, currentTurnId, this.active)
+    }
     return (
       (evidence?.promptId &&
         this.ended.find(
@@ -102,7 +109,12 @@ export class AgentTurnHistory {
     )
   }
   sameSubmission(observation: AgentRunObservation, evidence?: PromptSubmissionEvidence): boolean {
-    return observation.hookEventName === 'UserPromptSubmit' && this.hasCurrentPrompt(evidence)
+    return (
+      observation.hookEventName === 'UserPromptSubmit' &&
+      (observation.source === 'codex_hook'
+        ? sameCodexPair(this.active, evidence)
+        : this.hasCurrentPrompt(evidence))
+    )
   }
   continueWith(promptId?: string): void {
     if (!this.active || !promptId) {
@@ -120,6 +132,9 @@ export class AgentTurnHistory {
     observation: AgentRunObservation | null,
     evidence?: PromptSubmissionEvidence,
   ): boolean {
+    if (observation?.source === 'codex_hook') {
+      return this.codexIdentity.supersedes(observation, evidence, this.active)
+    }
     return !!(
       observation?.source === 'claude_hook' &&
       observation.hookEventName === 'UserPromptSubmit' &&
@@ -138,16 +153,8 @@ export class AgentTurnHistory {
   }
 
   rejects(observation: AgentRunObservation, evidence?: PromptSubmissionEvidence): boolean {
-    if (observation.source === 'codex_hook' && observation.hookEventName === 'notify') {
-      // Reject before arbitration: refusing only completion would still project false idle.
-      return !!(
-        (this.active?.providerTurnId &&
-          evidence?.providerTurnId &&
-          this.active.providerTurnId !== evidence.providerTurnId) ||
-        (this.active?.providerSessionId &&
-          evidence?.providerSessionId &&
-          this.active.providerSessionId !== evidence.providerSessionId)
-      )
+    if (observation.source === 'codex_hook') {
+      return this.codexIdentity.rejects(observation, evidence, this.active)
     }
     if (observation.source !== 'claude_hook' || !evidence?.promptId) {
       return false
@@ -197,12 +204,16 @@ export class AgentTurnHistory {
   ): void {
     if (ended && !this.revoked) {
       const correlated =
-        observation?.source === 'claude_hook' &&
-        observation.boundary?.kind === 'end' &&
-        this.active?.promptId !== undefined &&
-        this.active.promptId === evidence?.promptId &&
-        this.active.providerSessionId !== undefined &&
-        this.active.providerSessionId === evidence?.providerSessionId
+        (observation?.source === 'codex_hook' &&
+          observation.hookEventName === 'Stop' &&
+          observation.boundary?.kind === 'end' &&
+          sameCodexPair(this.active, evidence)) ||
+        (observation?.source === 'claude_hook' &&
+          observation.boundary?.kind === 'end' &&
+          this.active?.promptId !== undefined &&
+          this.active.promptId === evidence?.promptId &&
+          this.active.providerSessionId !== undefined &&
+          this.active.providerSessionId === evidence?.providerSessionId)
       const content = correlated || intermediate ? evidence?.finalMessage : undefined
       this.ended.push({
         ...captureTurn(
@@ -225,6 +236,7 @@ export class AgentTurnHistory {
         ),
         promptIds: this.active?.promptIds,
       })
+      this.codexIdentity.end(this.active, next.snapshot.turn !== null)
       this.active = undefined
       while (
         this.ended.length > AGENT_TURN_ARCHIVE_LIMITS.perNode ||
@@ -251,9 +263,19 @@ export class AgentTurnHistory {
           : observation?.source === 'codex_hook'
             ? {
                 providerTurnId: evidence?.providerTurnId,
+                emittedAtMs:
+                  observation.hookEventName === 'UserPromptSubmit'
+                    ? observation.emittedAtMs
+                    : undefined,
                 providerSessionId: evidence?.providerSessionId,
               }
             : {}
+      if (
+        observation?.source === 'codex_hook' &&
+        observation.hookEventName === 'UserPromptSubmit'
+      ) {
+        this.codexIdentity.bind(evidence, next.snapshot.turn.id, observation.emittedAtMs)
+      }
     }
   }
 

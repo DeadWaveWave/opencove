@@ -213,8 +213,9 @@ added to public DTOs. Receipts preserve hook event names through runtime ingress
 for every reducer-accepted observation, including unchanged snapshots. Synchronous registration
 and bounded replay close the query/watch gap; unavailable history invalidates rather than inventing
 acceptance. Replaced entries, binding ABA, capability changes, lease expiry and disposal invalidate
-pending delivery. Only a fresh accepted claude_hook UserPromptSubmit above the submit fence can
-establish submission observation; session-file optimism cannot do so.
+pending delivery. Only a qualifying provider lifecycle UserPromptSubmit receipt above the submit fence can
+confirm delivery: `claude_hook` for Claude Code or `codex_hook` for Codex.
+Session-file observations cannot confirm submission.
 
 ## Invocation hook coverage
 
@@ -239,7 +240,13 @@ an explicit completion signal. The relay preserves a validated, content-free `tu
 native hook `turn_id` uses the same validation. Private channel evidence carries these IDs
 to the registry, which rejects notify before arbitration when it conflicts with a known active
 provider turn/session. Missing IDs retain uncorrelated fallback behavior. These IDs do not
-enter public snapshots, receipts or durable state.
+enter public snapshots or durable state; delivery fences carry them privately.
+
+Native Codex Stop uses the same conflict fence. Fresh distinct-pair submits supersede an active
+identified turn as unknown with no reply; retained-pair submits cannot reopen it. Same-pair
+submits are receipt-only and preserve waiting and the original start. Session switches require
+a fresh submit; compact SessionStart remains identity-only. See [Codex turn replies](CODEX_TURN_REPLIES.md)
+for identity retention, missing-ID compatibility and observed-end semantics.
 
 ## Retained turn-end evidence
 

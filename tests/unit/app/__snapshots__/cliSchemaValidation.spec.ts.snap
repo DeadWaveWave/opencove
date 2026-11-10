@@ -22,7 +22,7 @@ Options:
   --prompt-file <path|->  Read prompt from a UTF-8 file, or use - for stdin
   --provider <id>         Select the agent provider
   --model <id>            Select the agent model
-  --title <text>          Set the node title
+  --title <text>          Set a fixed window name; omit on creation to keep automatic titles
   --frame <json>          Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
   --focus                 Focus after creation
   -q, --quiet             Print only the created object identifier followed by a newline
@@ -146,7 +146,7 @@ Options:
   --shell <path>       Choose the terminal shell executable
   --command <command>  Run this command in the terminal
   --profile <id>       Select a browser or terminal profile
-  --title <text>       Set the node title
+  --title <text>       Set a fixed window name; omit on creation to keep automatic titles
   --frame <json>       Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
   --focus              Focus after creation
   -q, --quiet          Print only the created object identifier followed by a newline

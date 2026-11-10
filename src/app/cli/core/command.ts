@@ -86,6 +86,7 @@ export interface Command {
   operationAliases?: OperationId[]
   operationCommand?: string
   operation?: OperationId
+  validateBeforeConnect?(args: CommandArgs, env: CliIo['env']): void
   buildInput?(args: CommandArgs): unknown
   textOutput?(result: unknown): string
   execute?(ctx: CommandContext): Promise<CommandResult>

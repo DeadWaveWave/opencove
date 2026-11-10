@@ -3,6 +3,8 @@ import { CONTROL_SURFACE_OPERATIONS } from '../../../src/shared/contracts/contro
 import { describe, it, expect, vi } from 'vitest'
 import { runWithTargetFixtures as run } from './cliTargetFixtures.helpers'
 import type { CliIo } from '../../../src/app/cli/core/io'
+import { commands } from '../../../src/app/cli/commands'
+import { CliError } from '../../../src/app/cli/core/errors'
 import { createControlToken } from '../../../src/app/main/controlSurface/http/createControlToken'
 function fixture(value: unknown = { pong: true }) {
   let stdout = '',
@@ -390,4 +392,90 @@ it('returns exit 6 for an ambiguous space locator and preserves server error', a
       hint: 'Run "opencove space list" to find available targets.',
     },
   })
+})
+
+it('validates parsed command arguments once before connection discovery', async () => {
+  const f = fixture()
+  f.io.env = { OPENCOVE_PROJECT_ID: 'untrusted-project' }
+  f.io.profileCandidates = vi.fn(() => ['/isolated/profile'])
+  const validateBeforeConnect = vi.fn(() => {
+    throw new CliError('cli.usage', 2, 'Choose --project before connecting.')
+  })
+  commands.push({
+    path: ['preflight-fixture'],
+    summary: 'Validate command arguments',
+    connect: true,
+    options: { count: { type: 'number', description: 'Count' } },
+    validateBeforeConnect,
+  })
+  try {
+    expect(await run(['preflight-fixture', '--count', '2'], f.io)).toBe(2)
+    expect(validateBeforeConnect).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ options: { count: 2 }, positionals: [] }),
+      f.io.env,
+    )
+    expect(JSON.parse(f.err()).error).toMatchObject({
+      code: 'cli.usage',
+      message: 'Choose --project before connecting.',
+    })
+    expect(f.io.profileCandidates).not.toHaveBeenCalled()
+    expect(f.io.readTextFile).not.toHaveBeenCalled()
+    expect(f.fetch).not.toHaveBeenCalled()
+    expect(f.out()).toBe('')
+  } finally {
+    commands.pop()
+  }
+})
+
+it.each([['--help'], ['--unknown']])(
+  'skips command preflight for help or invalid arguments: %j',
+  async (...flags) => {
+    const f = fixture()
+    f.io.env = {}
+    const validateBeforeConnect = vi.fn(() => {
+      throw new Error('Preflight must not run')
+    })
+    commands.push({
+      path: ['preflight-fixture'],
+      summary: 'Validate command arguments',
+      connect: true,
+      validateBeforeConnect,
+    })
+    try {
+      expect(await run(['preflight-fixture', ...flags], f.io)).toBe(flags[0] === '--help' ? 0 : 2)
+      expect(validateBeforeConnect).not.toHaveBeenCalled()
+      expect(f.fetch).not.toHaveBeenCalled()
+      expect(f.io.readTextFile).not.toHaveBeenCalled()
+    } finally {
+      commands.pop()
+    }
+  },
+)
+
+it('runs a successful command preflight once before invoking its operation', async () => {
+  const f = fixture()
+  const order: string[] = []
+  const validateBeforeConnect = vi.fn(() => {
+    order.push('validate')
+  })
+  f.fetch.mockImplementation(async () => {
+    order.push('invoke')
+    return new Response(JSON.stringify({ ok: true, value: { pong: true } }))
+  })
+  commands.push({
+    path: ['preflight-fixture'],
+    summary: 'Validate command arguments',
+    connect: true,
+    operation: 'system.ping',
+    buildInput: () => null,
+    validateBeforeConnect,
+  })
+  try {
+    expect(await run(['preflight-fixture'], f.io)).toBe(0)
+    expect(validateBeforeConnect).toHaveBeenCalledTimes(1)
+    expect(order).toEqual(['validate', 'invoke'])
+    expect(f.out()).toBe('{"pong":true}\n')
+  } finally {
+    commands.pop()
+  }
 })

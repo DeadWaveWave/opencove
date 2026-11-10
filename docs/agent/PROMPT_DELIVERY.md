@@ -116,7 +116,7 @@ The provider's optional `promptId` is returned on any comparison outcome when va
 For Claude Code, matching session and prompt IDs also bind retained Stop/StopFailure
 messages to the observed start. `agent.finalMessage` can select that provider ID;
 the CLI uses the OpenCove `turnId` returned by `agent prompt`. Codex has no comparison
-profile or hook-carried final-message support in this cut.
+profile; lifecycle replies match the private session/turn pair.
 
 Equality is not proof of causation or model processing: another qualifying submission
 of identical text also matches, and another hook may block processing after this
@@ -170,7 +170,7 @@ not confirmed receipt by the terminal. Validation errors and transport failures
 may not contain those details. Never infer false flags from missing fields.
 
 The CLI returns 0 for every observed submission, including `different` and
-`unavailable`, and for Codex `dispatched` steering (not confirmation). It returns 1 for a refusal or unconfirmed delivery, 2 for invalid input, 124
+`unavailable`, and for Codex `dispatched` steering (not confirmation). It returns 1 for a refusal or unconfirmed delivery, 2 for invalid input, 4 for authentication or grant-policy refusal, 124
 for the overall deadline, and 130 for interruption. A deadline after a paste or
 Enter attempt preserves that phase's error and attempt flags. The separate
 five-second submission-observation limit returns `agent.prompt_stalled`, exit 1,
@@ -257,8 +257,8 @@ Before paste and Enter, the service rechecks identity, caller authority, deadlin
 and bracketed-paste mode inside the reserved input operation. Readiness requires a
 retained selected, non-degraded Claude `Stop` or `StopFailure`, or Codex `Stop`
 turn-end receipt, current idle state from that source and no active turn. A later
-same-source idle refresh (for example Codex notify or a Claude Notification) preserves
-that receipt but cannot establish it. A Stop from an argv launch prompt establishes
+qualifying same-source idle refresh preserves that receipt but cannot establish it.
+Codex legacy notify is ignored when lifecycle hooks own the invocation. A Stop from an argv launch prompt establishes
 readiness even without an observed turn start; it does not fabricate a completed-turn
 event. New turns, lifecycle resets, unavailable observations and source changes revoke
 the receipt; another qualifying Stop is needed. A notify `done`, SessionEnd, launch baseline or file observation never establishes prompt readiness.
@@ -286,15 +286,16 @@ queue. There is no automatic resend, raw-typing fallback or wait-until-idle queu
 
 ## Reading the observed turn result
 
-Retain `turnId` from the successful prompt response:
+Retain `deliveryId` and `turnId` from prompt; confirm delivery before waiting:
 
 ```sh
 opencove agent prompt --node node-123 --text "Review the changes"
+opencove agent delivery delivery-123 --wait --timeout 2m
 opencove agent wait --node node-123 --turn turn-123 --timeout 60s
-opencove agent read --node node-123 --turn <turnId>
+opencove agent read --node node-123 --turn turn-123
 ```
 
-Replace `turn-123` with prompt's saved `turnId`. `wait --turn` waits for that exact
+Replace `delivery-123` and `turn-123` with prompt's saved IDs. `wait --turn` waits for that exact
 OpenCove turn, including continuations, even if another turn has started. Matching waiting
 now stops with 10 by default; `--through-waiting` continues. See [wait recovery](WAIT.md).
 It returns `{ nodeId, sessionId, turnId, outcome, endedAt?, state }` and exits 0 for
@@ -466,7 +467,7 @@ consumption. `dispatched` is not a confirmed result.
 
 Use prompt → delivery status → `wait --turn` = **the containing turn ended**
 (check outcome) → `read --turn`. Claude reply reads are correlated; Codex reply
-reads stay uncorrelated (use an unqualified read/screen). A containing turn ending
+reads are correlated with lifecycle hooks (see [Codex replies](CODEX_TURN_REPLIES.md)). A containing turn ending
 does not prove a steer was handled. Never resend; check delivery status or the
 screen. Claude transcript-based reconciliation of uncertain deliveries is a known
 limit and remains out of scope; no transcript/rollout fallback confirms deliveries.

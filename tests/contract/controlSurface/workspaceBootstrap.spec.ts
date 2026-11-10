@@ -45,3 +45,68 @@ it.each(['relative', '/definitely-missing-opencove-p1c', resolve('package.json')
     expect(approve).not.toHaveBeenCalled()
   },
 )
+
+it('returns committed creation details while retaining the original IDs', async () => {
+  const { mkdtemp, rm } = await import('node:fs/promises')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const root = await mkdtemp(join(tmpdir(), 'opencove-bootstrap-output-'))
+  try {
+    const store = createInMemoryPersistenceStore()
+    const surface = createControlSurface()
+    const mounts: import('../../../src/shared/contracts/dto').MountDto[] = []
+    registerWorkspaceBootstrapHandlers(surface, {
+      getPersistenceStore: async () => store,
+      approvedWorkspaces: { registerRoot: vi.fn() },
+      topology: {
+        listMounts: async () => ({ mounts }),
+        createMount: async (input: object) => {
+          const mount = {
+            ...input,
+            mountId: 'default-mount',
+            sortOrder: 0,
+          } as import('../../../src/shared/contracts/dto').MountDto
+          mounts.push(mount)
+          return { mount }
+        },
+      },
+    } as unknown as Parameters<typeof registerWorkspaceBootstrapHandlers>[1])
+    const ctx = { now: () => new Date() } as ControlSurfaceContext
+    const added = await surface.invoke(ctx, {
+      kind: 'command',
+      id: 'project.add',
+      payload: { path: root, name: 'Project' },
+    })
+    expect(added.ok).toBe(true)
+    if (!added.ok) {
+      throw new Error('project.add failed')
+    }
+    const value =
+      added.value as import('../../../src/shared/contracts/dto/workspaceBootstrap').AddProjectResult
+    expect(value.project).toMatchObject({ id: value.projectId, name: 'Project' })
+    expect(value.space).toMatchObject({ id: value.spaceId, name: 'Space 1' })
+    const created = await surface.invoke(ctx, {
+      kind: 'command',
+      id: 'space.create',
+      payload: { projectId: value.projectId, name: 'Review' },
+    })
+    expect(created.ok).toBe(true)
+    if (!created.ok) {
+      throw new Error('space.create failed')
+    }
+    const result =
+      created.value as import('../../../src/shared/contracts/dto/workspaceBootstrap').CreateSpaceResult
+    const state = (await store.readAppState()) as { workspaces: Array<{ spaces: unknown[] }> }
+    expect(state.workspaces[0].spaces).toEqual(expect.arrayContaining([result.space]))
+    expect(result.space).toMatchObject({
+      id: result.spaceId,
+      name: 'Review',
+      directoryPath: value.project.path,
+      targetMountId: result.mountId,
+    })
+    expect(result.space.rect?.width).toBeGreaterThan(0)
+    expect(result.space.rect?.height).toBeGreaterThan(0)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})

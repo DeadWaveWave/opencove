@@ -210,7 +210,7 @@ Focus:
 
 ## CLI output
 
-成功 stdout 直接包含节点结果 JSON（例如 `node`、`revision`），没有 transport envelope。失败为非零 exit code，JSON 错误位于 stderr。查询支持 `--fields`；mutation 不支持字段投影。长文本使用 `--text-file`、`--requirement-file` 或 `--prompt-file`，`-` 表示 stdin。
+成功 stdout 直接包含节点结果 JSON（例如 `node`、`revision`），没有 transport envelope。失败为非零 exit code，JSON 错误位于 stderr。`--fields` 投影已声明的输出字段，包括支持投影的专用 mutation 命令；generic `api call` mutation 和流式命令不支持。长文本使用 `--text-file`、`--requirement-file` 或 `--prompt-file`，`-` 表示 stdin。
 
 
 Node selectors also accept `--space <selector>` for names and prefixes. Exact IDs
