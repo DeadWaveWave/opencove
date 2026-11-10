@@ -66,7 +66,8 @@ export async function writeRevisionedSnapshot<T>(options: {
       cache.set(latest.revision, latest.state)
       const local = options.normalize(options.state)
       if (!local) {
-        throw new Error('Local persistence state was not canonical.', { cause: error })
+        // Rebase cannot repair this candidate; retain the authoritative write failure.
+        throw error
       }
       candidate = latest.state ? options.merge(latest.state, local, ancestor) : local
       merged = true

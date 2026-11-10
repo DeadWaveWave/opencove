@@ -1,4 +1,5 @@
 export const zhCNMessages = {
+  managedAgentChanged: '此智能体已发生变更，请刷新工作区后重试。',
   agentLaunchFailed: 'Agent 启动失败：{{message}}',
   agentResumeFailed: 'Agent 继续失败：{{message}}',
   terminalAgentReexecFailed: '无法在此终端中重新启动 Agent：{{message}}',

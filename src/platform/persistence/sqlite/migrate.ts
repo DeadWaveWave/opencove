@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3'
+import { ensureManagedClaudeResumeSchema } from './managedClaudeResumeSchema'
 import { DB_SCHEMA_VERSION, LEGACY_WORKSPACE_STATE_KEY } from './constants'
 import { normalizePersistedAppState } from './normalize'
 import { safeJsonParse } from './utils'
@@ -13,6 +14,7 @@ function quoteSqliteIdentifier(value: string): string {
 }
 
 function createTables(db: Database.Database): void {
+  ensureManagedClaudeResumeSchema(db)
   db.exec(`
     PRAGMA journal_mode = WAL;
     PRAGMA synchronous = NORMAL;

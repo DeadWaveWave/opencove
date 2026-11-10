@@ -196,6 +196,9 @@ export function createRemotePersistenceStore(
     }
 
     const record = value as { code?: unknown; debugMessage?: unknown }
+    if (record.code === 'persistence.owned_node_identity_conflict') {
+      return true
+    }
     if (record.code !== 'persistence.invalid_state') {
       return false
     }

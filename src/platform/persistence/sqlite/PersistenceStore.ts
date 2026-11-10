@@ -12,19 +12,33 @@ import { readAppStateFromDb, readWorkspaceStateRawFromDb } from './read'
 import { agentNodePlaceholderScrollback, nodeScrollback } from './schema'
 import { safeJsonParse, safeJsonStringify, toErrorMessage, utf8ByteLength } from './utils'
 import { writeNormalizedAppState, writeNormalizedScrollbacks } from './write'
-import { createAppError, createAppErrorDescriptor } from '../../../shared/errors/appError'
+import {
+  createAppError,
+  createAppErrorDescriptor,
+  OpenCoveAppError,
+} from '../../../shared/errors/appError'
 import { PersistenceRevisionConflict } from './revisionConflict'
+import type { ManagedClaudeResumeBindingStore } from '../../../shared/contracts/managedClaudeResumeBinding'
+import {
+  createManagedClaudeResumeStore,
+  readAppStateRevisionFromDb,
+} from './managedClaudeResumeStore'
+import { sweepManagedClaudeResumeOrphans } from './managedClaudeResumeSchema'
+import type { InternalPersistWriteResult } from './appStateWriteResult'
 
 export type PersistenceRecoveryReason = 'corrupt_db' | 'migration_failed'
 
 export interface PersistenceStore {
   readWorkspaceStateRaw: () => Promise<string | null>
-  writeWorkspaceStateRaw: (raw: string) => Promise<PersistWriteResult>
+  writeWorkspaceStateRaw: (raw: string) => Promise<InternalPersistWriteResult>
 
   readAppStateSnapshot?: () => Promise<{ state: unknown | null; revision: number | null }>
   readAppState: () => Promise<unknown | null>
   readAppStateRevision: () => Promise<number>
-  writeAppState: (state: unknown, options?: WriteAppStateOptions) => Promise<PersistWriteResult>
+  writeAppState: (
+    state: unknown,
+    options?: WriteAppStateOptions,
+  ) => Promise<InternalPersistWriteResult>
 
   readNodeScrollback: (nodeId: string) => Promise<string | null>
   writeNodeScrollback: (nodeId: string, scrollback: string | null) => Promise<PersistWriteResult>
@@ -99,7 +113,7 @@ export async function createPersistenceStore(storeOptions: {
   dbPath: string
   maxRawBytes?: number
   strictRecovery?: boolean
-}): Promise<PersistenceStore> {
+}): Promise<PersistenceStore & ManagedClaudeResumeBindingStore> {
   const maxRawBytes = storeOptions.maxRawBytes ?? DEFAULT_MAX_WORKSPACE_STATE_RAW_BYTES
 
   await mkdir(dirname(storeOptions.dbPath), { recursive: true })
@@ -148,6 +162,12 @@ export async function createPersistenceStore(storeOptions: {
     migrate(sqlite)
   }
 
+  try {
+    sweepManagedClaudeResumeOrphans(sqlite)
+  } catch (error) {
+    sqlite.close()
+    throw error
+  }
   const db = drizzle(sqlite)
 
   const readAppState = async (): Promise<unknown | null> => {
@@ -160,21 +180,22 @@ export async function createPersistenceStore(storeOptions: {
     }
   }
 
+  const readAppStateSnapshot = async () => {
+    try {
+      return sqlite.transaction(() => ({
+        revision: readAppStateRevisionFromDb(sqlite),
+        state: readAppStateFromDb(db),
+      }))()
+    } catch (error) {
+      throw createAppError('persistence.unavailable', {
+        debugMessage: toErrorMessage(error),
+      })
+    }
+  }
+
   const readAppStateRevision = async (): Promise<number> => {
     try {
-      const row = sqlite
-        .prepare(
-          `
-            SELECT value
-            FROM app_meta
-            WHERE key = 'app_state_revision'
-            LIMIT 1
-          `,
-        )
-        .get() as { value?: unknown } | undefined
-
-      const parsed = typeof row?.value === 'string' ? Number.parseInt(row.value, 10) : 0
-      return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+      return readAppStateRevisionFromDb(sqlite)
     } catch {
       return 0
     }
@@ -189,7 +210,7 @@ export async function createPersistenceStore(storeOptions: {
     }
   }
 
-  const writeWorkspaceStateRaw = async (raw: string): Promise<PersistWriteResult> => {
+  const writeWorkspaceStateRaw = async (raw: string): Promise<InternalPersistWriteResult> => {
     const rawBytes = utf8ByteLength(raw)
     if (rawBytes > maxRawBytes) {
       return {
@@ -215,14 +236,19 @@ export async function createPersistenceStore(storeOptions: {
     }
 
     try {
-      let revision = 0
-      sqlite.transaction(() => {
-        revision = writeNormalizedAppState(sqlite, normalized)
-        writeNormalizedScrollbacks(sqlite, normalized)
+      const result = sqlite.transaction(() => {
+        const written = writeNormalizedAppState(sqlite, normalized)
+        writeNormalizedScrollbacks(sqlite, written.effectiveState)
+        return written
       })()
-
-      return { ok: true, level: 'full', bytes: rawBytes, revision }
+      return { ok: true, level: 'full', bytes: rawBytes, ...result }
     } catch (error) {
+      if (
+        error instanceof OpenCoveAppError &&
+        error.code === 'persistence.owned_node_identity_conflict'
+      ) {
+        return { ok: false, reason: 'unknown', error: error.toDescriptor() }
+      }
       return {
         ok: false,
         reason: 'io',
@@ -236,7 +262,7 @@ export async function createPersistenceStore(storeOptions: {
   const writeAppState = async (
     state: unknown,
     options?: WriteAppStateOptions,
-  ): Promise<PersistWriteResult> => {
+  ): Promise<InternalPersistWriteResult> => {
     const normalized = normalizePersistedAppState(state)
     if (!normalized) {
       return invalidStateResult('Invalid app state payload.')
@@ -255,10 +281,16 @@ export async function createPersistenceStore(storeOptions: {
     }
 
     try {
-      const revision = writeNormalizedAppState(sqlite, normalized, options?.expectedRevision)
-      const bytes = utf8ByteLength(safeJsonStringify(normalized))
-      return { ok: true, level: 'full', bytes, revision }
+      const result = writeNormalizedAppState(sqlite, normalized, options?.expectedRevision)
+      const bytes = utf8ByteLength(safeJsonStringify(result.effectiveState))
+      return { ok: true, level: 'full', bytes, ...result }
     } catch (error) {
+      if (
+        error instanceof OpenCoveAppError &&
+        error.code === 'persistence.owned_node_identity_conflict'
+      ) {
+        return { ok: false, reason: 'unknown', error: error.toDescriptor() }
+      }
       if (error instanceof PersistenceRevisionConflict) {
         return invalidStateResult(error.message)
       }
@@ -428,6 +460,8 @@ export async function createPersistenceStore(storeOptions: {
   }
 
   return {
+    ...createManagedClaudeResumeStore(sqlite, () => readAppStateFromDb(db)),
+    readAppStateSnapshot,
     readWorkspaceStateRaw,
     writeWorkspaceStateRaw,
     readAppState,
