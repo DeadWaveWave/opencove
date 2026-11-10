@@ -45,7 +45,11 @@ export async function identifyInitialTurn(
         )
       }
       const snapshot = parsed.data
-      if (snapshot && snapshot.sessionId === ids.sessionId && snapshot.nodeId === ids.nodeId) {
+      if (
+        snapshot &&
+        snapshot.sessionId === ids.sessionId &&
+        (snapshot.nodeId === null || snapshot.nodeId === ids.nodeId)
+      ) {
         if (!['claude-code', 'codex'].includes(snapshot.provider)) {
           throw new CliError(
             'agent.wait_unsupported',
@@ -80,8 +84,8 @@ export async function identifyInitialTurn(
       throw new CliError(
         'agent.wait_timeout',
         124,
-        'The agent did not start its first turn before the deadline.',
-        undefined,
+        'No first turn was observed before the deadline. Lifecycle telemetry may be unavailable; the agent may still be running or may have finished.',
+        'Do not recreate the node or resend the prompt. Inspect the existing session before continuing.',
         { reason: 'wait_timeout' },
       )
     }

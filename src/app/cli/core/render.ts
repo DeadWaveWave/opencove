@@ -13,7 +13,12 @@ export function rawRenderSpec(spec?: RenderSpec): RenderSpec {
   const aliases = Object.fromEntries(
     (spec?.fields ?? []).map(field => [
       field,
-      ownValue(spec?.envelopeFields, field) ?? (itemKey ? `${itemKey}.${field}` : field),
+      ownValue(spec?.envelopeFields, field) ??
+        (spec?.projectedEnvelopeFields?.includes(field)
+          ? field
+          : itemKey
+            ? `${itemKey}.${field}`
+            : field),
     ]),
   )
   return {
@@ -125,14 +130,32 @@ export function render(value: unknown, options: Record<string, unknown>, spec: R
     keys = resolved
   }
   if (keys) {
+    const envelopeFields = new Set(spec.projectedEnvelopeFields ?? [])
+    const envelopeKeys = keys.filter(key => envelopeFields.has(key))
+    const itemKeys = keys.filter(key => !envelopeFields.has(key))
     const projected = rows.map(row =>
       project(
         row,
-        keys.map(key => key.split('.')),
+        itemKeys.map(key => key.split('.')),
       ),
     )
     const narrowed = isList ? projected : projected[0]
-    value = itemKey ? { ...(value as object), [itemKey]: narrowed } : narrowed
+    if (itemKey) {
+      const envelope = { ...(value as Record<string, unknown>) }
+      for (const field of envelopeFields) {
+        delete envelope[field.split('.')[0]]
+      }
+      value = {
+        ...envelope,
+        ...(project(
+          value,
+          envelopeKeys.map(key => key.split('.')),
+        ) as object),
+        [itemKey]: narrowed,
+      }
+    } else {
+      value = narrowed
+    }
   }
   if (options.output === 'table') {
     const columns = options.fields !== undefined ? keys! : spec.columns!

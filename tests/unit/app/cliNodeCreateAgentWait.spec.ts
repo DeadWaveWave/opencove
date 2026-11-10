@@ -272,3 +272,13 @@ it('keeps IDs when a created node has no session', async () => {
     details: { nodeId: 'n', sessionId: null },
   })
 })
+it('ignores a non-null binding to a different node on the created session', async () => {
+  vi.useFakeTimers()
+  const f = fixture()
+  f.invoke.mockResolvedValueOnce({ ...f.state, nodeId: 'other-node' })
+  const pending = f.execute()
+  await vi.advanceTimersByTimeAsync(1)
+  expect(waitForAgents).not.toHaveBeenCalled()
+  await vi.advanceTimersByTimeAsync(100)
+  await expect(pending).resolves.toMatchObject({ turnId: 't' })
+})

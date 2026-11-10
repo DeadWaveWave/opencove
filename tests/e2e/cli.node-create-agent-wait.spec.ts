@@ -1,3 +1,5 @@
+import { createAgentWaitArgs } from '../support/cliNodeCreateAgentWait'
+import { shellWord } from '../../src/app/cli/core/shellWord'
 import { expect, test, type ElectronApplication } from '@playwright/test'
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -114,7 +116,19 @@ for (const scenario of [
       const output = await terminalCommand(
         page,
         binding,
-        `opencove node create agent --root-canvas --provider ${scenario.provider} --prompt "${scenario.dialog === 'permission' ? 'Permission check' : scenario.dialog === 'question' ? 'Question check' : 'Initial reply'}" --wait --read --timeout 10s`,
+        [
+          'opencove',
+          ...createAgentWaitArgs(
+            scenario.provider,
+            scenario.dialog === 'permission'
+              ? 'Permission check'
+              : scenario.dialog === 'question'
+                ? 'Question check'
+                : 'Initial reply',
+          ),
+        ]
+          .map(shellWord)
+          .join(' '),
         'CREATE_WAIT',
       )
       const compact = output.replaceAll('\n', '')

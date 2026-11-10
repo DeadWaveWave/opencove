@@ -1,3 +1,4 @@
+import { createAgentWaitArgs } from '../../support/cliNodeCreateAgentWait'
 // @vitest-environment node
 import { afterEach, expect, it, vi } from 'vitest'
 import { run } from '../../../src/app/cli/core/run'
@@ -36,6 +37,9 @@ it('creates once and projects a fast ended initial reply alongside existing crea
   const f = fixture()
   expect(await run([...args, '--fields', 'id,turnId,outcome,reply.message'], f.io)).toBe(0)
   expect(JSON.parse(f.out())).toEqual({
+    revision: 1,
+    projectId: 'p',
+    spaceId: 'space-123456',
     node: { id: node.id },
     turnId: 't',
     outcome: 'completed',
@@ -71,6 +75,12 @@ it('does not observe without --wait', async () => {
 })
 it('attention preserves blockedSummary and all known IDs without retrying creation', async () => {
   const f = fixture()
+  const messages: string[] = []
+  const write = f.io.stderr.write
+  f.io.stderr.write = text => {
+    messages.push(text)
+    write(text)
+  }
   f.values['agent.get'] = {
     ...snapshot(node.id, 'waiting'),
     sessionId: 's',
@@ -95,6 +105,11 @@ it('attention preserves blockedSummary and all known IDs without retrying creati
       targets: [{ blockedSummary: { kind: 'question' } }],
     },
   })
+  expect(messages.join('').match(/opencove agent wait --node/g)).toHaveLength(1)
+  expect(f.error().message).toBe('The agent needs the user’s approval or input in OpenCove.')
+  expect(f.error().hint).toBe(
+    `The agent node was created. Do not repeat node create agent. Resume with opencove agent wait --node ${node.id} --turn t.`,
+  )
   expect(f.requests.filter(r => r.id === 'node.create')).toHaveLength(1)
   expect(stream.streams[0].cancelled).toBe(true)
 })
@@ -105,7 +120,9 @@ it('no initial turn times out with IDs and cannot be retried as a create', async
   expect(f.error()).toMatchObject({
     code: 'agent.wait_timeout',
     retryable: false,
-    message: expect.stringContaining('first turn'),
+    message:
+      'No first turn was observed before the deadline. Lifecycle telemetry may be unavailable; the agent may still be running or may have finished.',
+    hint: expect.stringContaining('Do not recreate the node or resend the prompt'),
     details: { nodeId: node.id, sessionId: 's' },
   })
   expect(f.requests.filter(r => r.id === 'node.create')).toHaveLength(1)
@@ -203,3 +220,65 @@ it('focus authorization failure retains the created IDs and never retries', asyn
   expect(f.requests.filter(r => r.id === 'node.create')).toHaveLength(1)
   expect(f.requests.some(r => r.id === 'agent.get')).toBe(false)
 })
+
+it.each(['id', 'node.id', 'id,reply.message', 'reply.message'])(
+  'preserves the create envelope for --fields %s',
+  async fields => {
+    const f = fixture()
+    const frame = { x: 10, y: 20, width: 640, height: 480 }
+    f.values['node.create'] = {
+      ...(f.values['node.create'] as object),
+      node: { ...(f.values['node.create'] as { node: object }).node, frame },
+    }
+    f.values['canvas.focus'] = { delivered: true, deliveredClientCount: 1 }
+    expect(
+      await run([...args, '--focus', '--frame', JSON.stringify(frame), '--fields', fields], f.io),
+    ).toBe(0)
+    const output = JSON.parse(f.out())
+    expect(output).toEqual({
+      revision: 1,
+      projectId: 'p',
+      spaceId: 'space-123456',
+      appliedFrame: frame,
+      frameAdjusted: false,
+      focus: { delivered: true, deliveredClientCount: 1 },
+      focusError: null,
+      node: fields.includes('id') ? { id: node.id } : {},
+      ...(fields.includes('reply.message') ? { reply: { message: 'Fast reply' } } : {}),
+    })
+  },
+)
+it.each(['permission', 'question'])(
+  'requests JSON for the %s PTY E2E command even with TTY stderr',
+  async blockedReason => {
+    const f = fixture()
+    f.io.stderr.isTTY = true
+    f.values['agent.get'] = {
+      ...snapshot(node.id, 'waiting'),
+      sessionId: 's',
+      blockedReason,
+      turn: { id: 't', startedAt: 2, start: 'observed' },
+    }
+    const stream = eventFixture(),
+      original = f.io.fetch
+    f.io.fetch = (url, init) =>
+      String(url).includes('/events?') ? stream.fetch(url) : original(url, init)
+    expect(
+      await run(
+        [
+          ...createAgentWaitArgs(
+            'claude-code',
+            blockedReason === 'permission' ? 'Permission check' : 'Question check',
+          ),
+          '--project',
+          'project-123456',
+        ],
+        f.io,
+      ),
+    ).toBe(10)
+    expect(f.error()).toMatchObject({
+      code: 'agent.wait_attention',
+      details: { targets: [{ blockedReason }] },
+    })
+  },
+)

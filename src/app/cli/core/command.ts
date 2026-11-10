@@ -34,6 +34,8 @@ export interface RenderSpec {
   itemAtRoot?: boolean
   unavailable?: string
   itemKey?: string
+  /** Declared envelope fields to project alongside the item while retaining other metadata. */
+  projectedEnvelopeFields?: string[]
   rawPaths?: boolean
   aliases?: Record<string, string>
   declaredRawPaths?: string[]

@@ -307,12 +307,5 @@ export const canvasFocusOutput = (kind: 'node' | 'space') =>
 
 /** Creation keeps node-relative selectors; composed turn fields select the result envelope. */
 export function createdAgentWaitOutput(): RenderSpec {
-  const base = nodeKindOutput('agent', true)
-  const relativeFields = base.fields!.filter(field => !turnReplyFields.includes(field))
-  return {
-    ...base,
-    itemKey: undefined,
-    fields: [...base.fields!, ...relativeFields.map(field => `node.${field}`)],
-    aliases: Object.fromEntries(relativeFields.map(field => [field, `node.${field}`])),
-  }
+  return { ...nodeKindOutput('agent', true), projectedEnvelopeFields: turnReplyFields }
 }

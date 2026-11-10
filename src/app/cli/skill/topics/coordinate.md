@@ -16,8 +16,9 @@ reply: all ended outcomes exit 0; missing reply is null with replyUnavailableRea
 Errors retain known nodeId/sessionId/turnId and never permit retrying creation: the node remains.
 Exit 10 needs the user; 11 means exited; 124 means timeout; 130 means interrupted. Unsupported
 providers return agent.wait_unsupported after creation. Resume the exact agent wait/read commands
-in the hint. If no turn was identified, inspect agent get/read --screen; never create a replacement
-just because observation failed.
+in the hint. If no first turn was observed, lifecycle telemetry may be unavailable: the agent may
+still be running or may already have finished. Inspect the existing session with agent get/read
+--screen and check its sessionId. Do not recreate the node or resend the prompt.
 
 When you need to keep working, omit --wait, save node.id and node.sessionId, inspect agent get for
 the matching session’s turn or lastEndedTurn, then use agent wait --turn and agent read --turn.
