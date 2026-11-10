@@ -110,6 +110,7 @@ export const SESSION_GRANT_POLICY = {
   'node.create': allow,
   'node.delete': allow,
   'node.get': allow,
+  'node.managedClaudeBinding': allow,
   'node.list': allow,
   'node.update': allow,
   'note.create': allow,

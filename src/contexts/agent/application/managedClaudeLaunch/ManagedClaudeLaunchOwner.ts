@@ -15,12 +15,21 @@ export class ManagedClaudeLaunchOwner {
   private readonly obligations = new Map<string, ActivateManagedClaudeRuntimeInput>()
   private readonly admitted = new Map<string, string>()
   private readonly reconciliationTimers = new Map<string, () => void>()
+  private readonly previousNodeRuntimes = new WeakMap<ManagedClaudeLaunchAttempt, string>()
   private readonly effectAdmissions = new WeakSet<ManagedClaudeLaunchAttempt>()
   private readonly activationNodePresence = new WeakMap<
     ActivateManagedClaudeRuntimeInput,
     boolean
   >()
   private readonly duplicateActivations = new WeakSet<ActivateManagedClaudeRuntimeInput>()
+  private readonly activationAttempts = new WeakMap<
+    ActivateManagedClaudeRuntimeInput,
+    ManagedClaudeLaunchAttempt
+  >()
+  private readonly finalizations = new WeakMap<
+    ActivateManagedClaudeRuntimeInput,
+    Promise<ManagedClaudeLifecycleReceipt>
+  >()
   private disposed = false
 
   constructor(private readonly ports: ManagedClaudeLaunchPorts) {}
@@ -55,7 +64,7 @@ export class ManagedClaudeLaunchOwner {
   async admit(
     attempt: ManagedClaudeLaunchAttempt,
     execution: { provider: string; cwd: string; mountId: string | null },
-  ): Promise<void> {
+  ): Promise<'managed' | 'legacy'> {
     await this.assertReady(attempt)
     const observation = this.ports.observeNode(attempt.nodeId)
     const context = attempt.context
@@ -64,7 +73,7 @@ export class ManagedClaudeLaunchOwner {
       (context &&
         (context.kind !== 'agent' ||
           context.provider !== execution.provider ||
-          (context.directory && context.directory !== execution.cwd)))
+          (observation.binding && context.directory && context.directory !== execution.cwd)))
     ) {
       rejectManagedLaunch(attempt.nodeId, 'identityConflict')
     }
@@ -84,8 +93,16 @@ export class ManagedClaudeLaunchOwner {
     ) {
       rejectManagedLaunch(attempt.nodeId, 'conflict')
     }
+    if (!observation.binding && context?.directory && context.directory !== execution.cwd) {
+      // PR2 cannot atomically adopt a changed execution directory. Keep this legacy switch.
+      return 'legacy'
+    }
     if (!this.effectAdmissions.has(attempt)) {
       this.effectAdmissions.add(attempt)
+      const previous = observation.nodeRuntimeSessionId
+      if (previous && previous !== observation.binding?.runtimeSessionId) {
+        this.previousNodeRuntimes.set(attempt, previous)
+      }
       const runtime = observation.binding?.runtimeSessionId
       if (runtime) {
         this.assertCurrent(attempt)
@@ -93,6 +110,18 @@ export class ManagedClaudeLaunchOwner {
         this.assertCurrent(attempt)
       }
     }
+    return 'managed'
+  }
+
+  private async cleanupPrevious(
+    attempt: ManagedClaudeLaunchAttempt,
+    runtimeSessionId: string | null,
+  ): Promise<void> {
+    const previous = this.previousNodeRuntimes.get(attempt)
+    if (!runtimeSessionId || !previous || previous === runtimeSessionId) {
+      return
+    }
+    await this.cleanup(previous)
   }
 
   canAdmitRuntimeWrite(nodeId: string, runtimeSessionId: string): boolean {
@@ -122,7 +151,6 @@ export class ManagedClaudeLaunchOwner {
       return this.uncertain(input, 'unknown')
     }
     const binding = observation.binding
-    this.obligations.delete(input.nodeId)
     if (
       binding?.activationId === input.activationId &&
       binding.runtimeSessionId === input.runtimeSessionId &&
@@ -131,19 +159,49 @@ export class ManagedClaudeLaunchOwner {
       // The row's exact revision is attributable; a later observation is not a commit revision.
       const appCommit =
         this.activationNodePresence.get(input) === true && !this.duplicateActivations.has(input)
-      if (appCommit) {
-        this.publish(input, binding.bindingRevision, undefined)
-      }
-      return { binding, commitRevision: appCommit ? binding.bindingRevision : null }
+      return this.finalize(input, binding, appCommit ? binding.bindingRevision : null)
+    }
+    if (this.obligations.get(input.nodeId) === input) {
+      this.obligations.delete(input.nodeId)
+    }
+    if (input.runtimeSessionId) {
+      await this.cleanup(input.runtimeSessionId)
     }
     return null
   }
 
-  private scheduleReconciliation(
-    attempt: ManagedClaudeLaunchAttempt,
+  private finalize(
     input: ActivateManagedClaudeRuntimeInput,
-    retry = 0,
-  ): void {
+    binding: ManagedClaudeLifecycleReceipt['binding'],
+    commitRevision: number | null,
+    effectiveState?: unknown,
+  ): Promise<ManagedClaudeLifecycleReceipt> {
+    const existing = this.finalizations.get(input)
+    if (existing) {
+      return existing
+    }
+    // Install before callbacks or async cleanup can reenter. Every entry point shares the origin.
+    const completion = Promise.resolve().then(async () => {
+      const attempt = this.activationAttempts.get(input)!
+      if (this.isCurrent(attempt) && input.runtimeSessionId) {
+        this.admitted.set(input.nodeId, input.runtimeSessionId)
+      }
+      if (commitRevision !== null) {
+        this.publish(input, commitRevision, effectiveState)
+      }
+      await this.cleanupPrevious(attempt, input.runtimeSessionId)
+      return { binding, commitRevision }
+    })
+    this.finalizations.set(input, completion)
+    if (this.obligations.get(input.nodeId) === input) {
+      this.obligations.delete(input.nodeId)
+      this.reconciliationTimers.get(input.nodeId)?.()
+      this.reconciliationTimers.delete(input.nodeId)
+    }
+    return completion
+  }
+
+  private scheduleReconciliation(input: ActivateManagedClaudeRuntimeInput, retry = 0): void {
     if (
       !this.ports.scheduleReconciliation ||
       this.disposed ||
@@ -158,16 +216,7 @@ export class ManagedClaudeLaunchOwner {
       if (this.disposed || this.obligations.get(input.nodeId) !== input) {
         return
       }
-      void this.reconcile(input)
-        .then(receipt => {
-          if (receipt && this.isCurrent(attempt) && input.runtimeSessionId) {
-            this.admitted.set(input.nodeId, input.runtimeSessionId)
-          }
-          if (!receipt && input.runtimeSessionId) {
-            void this.cleanup(input.runtimeSessionId)
-          }
-        })
-        .catch(() => this.scheduleReconciliation(attempt, input, retry + 1))
+      void this.reconcile(input).catch(() => this.scheduleReconciliation(input, retry + 1))
     }, [250, 1000, 3000][retry])
     this.reconciliationTimers.set(input.nodeId, cancel)
   }
@@ -219,6 +268,7 @@ export class ManagedClaudeLaunchOwner {
     // No await between the final guard and synchronous local transaction invocation.
     this.assertCurrent(attempt)
     this.activationNodePresence.set(input, observation.context !== null)
+    this.activationAttempts.set(input, attempt)
     this.obligations.set(input.nodeId, input)
     return this.ports.activateManagedClaudeRuntime(input)
   }
@@ -244,9 +294,6 @@ export class ManagedClaudeLaunchOwner {
           this.obligations.set(input.nodeId, input)
           const receipt = await this.reconcile(input)
           if (receipt) {
-            if (this.isCurrent(attempt) && candidate.runtimeSessionId) {
-              this.admitted.set(attempt.nodeId, candidate.runtimeSessionId)
-            }
             return receipt
           }
         }
@@ -267,24 +314,20 @@ export class ManagedClaudeLaunchOwner {
       } catch {
         return this.uncertain(input, 'unknown')
       }
-      this.obligations.delete(input.nodeId)
       if (!binding || binding.activationId !== input.activationId) {
+        this.obligations.delete(input.nodeId)
         rejectManagedLaunch(attempt.nodeId, 'superseded')
       }
-      if (this.isCurrent(attempt) && candidate.runtimeSessionId) {
-        this.admitted.set(attempt.nodeId, candidate.runtimeSessionId)
-      }
-      if (result.status === 'committed' && result.revision !== undefined) {
-        this.publish(input, result.revision, result.effectiveState)
-      }
-      return {
+      return await this.finalize(
+        input,
         binding,
-        commitRevision: result.status === 'committed' ? (result.revision ?? null) : null,
-      }
+        result.status === 'committed' ? (result.revision ?? null) : null,
+        result.effectiveState,
+      )
     } catch (error) {
       const unresolved = this.obligations.get(input.nodeId) === input
       if (unresolved) {
-        this.scheduleReconciliation(attempt, input)
+        this.scheduleReconciliation(input)
       }
       if (candidate.runtimeSessionId) {
         await this.cleanup(candidate.runtimeSessionId)

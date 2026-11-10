@@ -1,6 +1,7 @@
 import { canvasFocusOperation } from '../../../../shared/contracts/controlSurface/operations/domains/canvas'
 import { registerOperation } from '../registerOperation'
 import {
+  nodeManagedClaudeBindingOperation,
   nodeCreateOperation,
   nodeListOperation,
   nodeGetOperation,
@@ -107,6 +108,21 @@ export function registerNodeControlHandlers(
     runtime: createRuntimeDeps(controlSurface, ctx, deps.closeWebsiteNode, deps.closePluginNode),
   })
 
+  registerOperation(controlSurface, nodeManagedClaudeBindingOperation, {
+    defaultErrorCode: 'persistence.unavailable',
+    handle: async (_ctx, input) => {
+      const store = await deps.getPersistenceStore()
+      if (!store.observeManagedClaudeNode) {
+        throw createAppError('persistence.unavailable')
+      }
+      const observed = store.observeManagedClaudeNode(input.nodeId)
+      return {
+        managedClaudeBinding: observed.binding,
+        retired: observed.retired,
+        executionDirectory: observed.context?.directory ?? null,
+      }
+    },
+  })
   registerOperation(controlSurface, nodeListOperation, {
     defaultErrorCode: 'common.unexpected',
     handle: async (ctx, input) => {

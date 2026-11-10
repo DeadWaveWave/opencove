@@ -46,3 +46,10 @@ export const ABSENT_MANAGED_CLAUDE_BINDING: ManagedClaudeLaunchExpected = {
   activationId: null,
   tuple: { resumeSessionId: null, resumeSessionIdVerified: false },
 }
+
+/** A definitive ledger lookup; a canvas node need not have been persisted yet. */
+export interface GetManagedClaudeBindingResult {
+  managedClaudeBinding: ManagedClaudeBindingObservation | null
+  retired: boolean
+  executionDirectory: string | null
+}

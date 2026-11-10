@@ -21,10 +21,12 @@ import { createAppError, toAppErrorDescriptor } from '../../../shared/errors/app
 
 interface LaunchScope {
   attempt: ManagedClaudeLaunchAttempt
-  managed: boolean
+  phase: 'candidate' | 'managed' | 'legacy'
   owner: ManagedClaudeLaunchOwner
   launching?: boolean
   spawnStarted?: boolean
+  releasePending?: () => void
+  trackPending?: () => void
   store?: PersistenceStore
 }
 const scope = new AsyncLocalStorage<LaunchScope>()
@@ -36,19 +38,27 @@ export async function admitManagedClaudeLaunch(
   mountId: string | null = null,
 ): Promise<void> {
   const current = scope.getStore()
-  if (!current?.managed) {
+  if (!current || current.phase === 'legacy') {
     return
   }
   const { attempt } = current
-  current.owner.assertCurrent(attempt)
   if (provider !== 'claude-code') {
     if (attempt.expected?.activationId) {
       rejectManagedLaunch(attempt.nodeId, 'identityConflict')
     }
-    current.managed = false
+    current.phase = 'legacy'
+    current.releasePending?.()
     return
   }
-  await current.owner.admit(attempt, { provider, cwd, mountId })
+  if (!current.store?.activateManagedClaudeRuntime) {
+    rejectManagedLaunch(attempt.nodeId, 'capabilityUnavailable')
+  }
+  current.phase = 'managed'
+  current.trackPending?.()
+  if ((await current.owner.admit(attempt, { provider, cwd, mountId })) === 'legacy') {
+    current.phase = 'legacy'
+    current.releasePending?.()
+  }
 }
 
 export function createManagedClaudeLaunchRuntime(deps: {
@@ -138,10 +148,20 @@ export function createManagedClaudeLaunchRuntime(deps: {
       if (!managed) {
         return execute()
       }
-      await owner.assertReady(attempt)
+      if (observation?.binding) {
+        await owner.assertReady(attempt)
+      }
       attempt.context = observation?.context
       try {
-        return await scope.run({ attempt, managed, owner, store: localStore }, execute)
+        return await scope.run(
+          {
+            attempt,
+            phase: observation?.binding ? 'managed' : 'candidate',
+            owner,
+            store: localStore,
+          },
+          execute,
+        )
       } finally {
         if (preparing.get(attempt.nodeId) === attempt) {
           preparing.delete(attempt.nodeId)
@@ -187,10 +207,23 @@ export function createManagedClaudeLaunchRuntime(deps: {
         }),
         resolve: () => resolvePending(),
       }
-      if (attempt) {
-        pendingLaunches.set(attempt.nodeId, pending)
+      const releasePending = () => {
+        pending.resolve()
+        if (attempt && pendingLaunches.get(attempt.nodeId) === pending) {
+          pendingLaunches.delete(attempt.nodeId)
+        }
+      }
+      const trackPending = () => {
+        if (attempt && owner.isCurrent(attempt)) {
+          pendingLaunches.set(attempt.nodeId, pending)
+        }
       }
       try {
+        // Ready-store ownership is definitive before asynchronous identity resolution.
+        // Unowned candidates coordinate only after managed local admission.
+        if (attempt && store?.observeManagedClaudeNode?.(attempt.nodeId).binding) {
+          trackPending()
+        }
         let identity: CanvasSpawnIdentity | undefined
         try {
           identity = await resolveIdentity()
@@ -209,6 +242,9 @@ export function createManagedClaudeLaunchRuntime(deps: {
           rejectManagedLaunch(attempt.nodeId, 'capabilityUnavailable')
         }
         const observation = localStore.observeManagedClaudeNode(attempt.nodeId)
+        if (observation.retired) {
+          rejectManagedLaunch(attempt.nodeId, 'nodeGone')
+        }
         const managed = Boolean(
           observation.binding ||
           (deps.adoptionEnabled() &&
@@ -218,94 +254,108 @@ export function createManagedClaudeLaunchRuntime(deps: {
         if (!managed) {
           return execute(ctx)
         }
-        await owner.assertReady(attempt)
-        const decision = resolveManagedClaudeLaunchIntent(observation, { ...payload, intent })
-        if (!localStore.activateManagedClaudeRuntime) {
+        if (observation.binding) {
+          trackPending()
+          await owner.assertReady(attempt)
+        }
+        const decision = observation.binding
+          ? resolveManagedClaudeLaunchIntent(observation, { ...payload, intent })
+          : null
+        if (observation.binding && !localStore.activateManagedClaudeRuntime) {
           rejectManagedLaunch(attempt.nodeId, 'capabilityUnavailable')
         }
         attempt.context = observation.context
-        attempt.expected = decision?.expected ?? {
-          activationId: null,
-          tuple: { resumeSessionId: null, resumeSessionIdVerified: false },
-        }
+        attempt.expected =
+          decision?.expected ??
+          (intent && intent.kind !== 'resumeCurrent'
+            ? intent.expected
+            : {
+                activationId: null,
+                tuple: { resumeSessionId: null, resumeSessionIdVerified: false },
+              })
         if (decision) {
           Object.assign(payload, { mode: decision.mode, resumeSessionId: decision.resumeSessionId })
+        }
+        const executionScope: LaunchScope = {
+          attempt,
+          phase: observation.binding ? 'managed' : 'candidate',
+          store: localStore,
+          owner,
+          launching: true,
+          releasePending,
+          trackPending,
         }
         const context = {
           ...ctx,
           assertActive: () => {
             ctx.assertActive?.()
-            owner.assertCurrent(attempt)
+            if (executionScope.phase === 'managed') {
+              owner.assertCurrent(attempt)
+            }
           },
         }
-        return await scope.run(
-          {
-            attempt,
-            managed,
-            store: localStore,
-            owner,
-            launching: true,
-          },
-          async () => {
-            let candidate: LaunchAgentSessionResult
-            try {
-              candidate = (await execute(context)) as LaunchAgentSessionResult
-            } catch (error) {
-              // Typed lifecycle failures must never become a generic fallback/settlement.
-              if (
-                error &&
-                typeof error === 'object' &&
-                'code' in error &&
-                String(error.code).startsWith('agent.managed_launch_')
-              ) {
-                throw error
-              }
-              await owner.fail(attempt)
-              const descriptor = toAppErrorDescriptor(error, 'agent.launch_failed')
-              throw createAppError({
-                ...descriptor,
-                details: {
-                  ...(descriptor.details && typeof descriptor.details === 'object'
-                    ? descriptor.details
-                    : {}),
-                  managedClaudeLaunch: true,
-                  phase: scope.getStore()?.spawnStarted ? 'afterSpawn' : 'beforeSpawn',
-                },
-              })
+        return await scope.run(executionScope, async () => {
+          let candidate: LaunchAgentSessionResult
+          try {
+            candidate = (await execute(context)) as LaunchAgentSessionResult
+          } catch (error) {
+            if (executionScope.phase !== 'managed') {
+              throw error
             }
-            if (candidate.managedClaudeLifecycle) {
-              return candidate
-            }
+            // Typed lifecycle failures must never become a generic fallback/settlement.
             if (
-              candidate.executionContext.endpoint.kind === 'remote_worker' ||
-              candidate.provider !== 'claude-code'
+              error &&
+              typeof error === 'object' &&
+              'code' in error &&
+              String(error.code).startsWith('agent.managed_launch_')
             ) {
-              return candidate
+              throw error
             }
-            if (!deps.hasRuntime(candidate.sessionId)) {
-              await owner.cleanup(candidate.sessionId)
-              rejectManagedLaunch(attempt.nodeId, 'resumeUnavailable')
-            }
-            const receipt = await owner.complete(attempt, {
-              runtimeSessionId: candidate.sessionId,
-              tuple: {
-                resumeSessionId: candidate.resumeSessionId,
-                resumeSessionIdVerified: Boolean(candidate.resumeSessionId),
+            await owner.fail(attempt)
+            const descriptor = toAppErrorDescriptor(error, 'agent.launch_failed')
+            throw createAppError({
+              ...descriptor,
+              details: {
+                ...(descriptor.details && typeof descriptor.details === 'object'
+                  ? descriptor.details
+                  : {}),
+                managedClaudeLaunch: true,
+                phase: scope.getStore()?.spawnStarted ? 'afterSpawn' : 'beforeSpawn',
               },
             })
-            return {
-              ...candidate,
-              resumeSessionId: receipt.binding.tuple.resumeSessionId,
-              managedClaudeBinding: receipt.binding,
-              managedClaudeLifecycle: receipt,
-            }
-          },
-        )
+          }
+          if (executionScope.phase === 'legacy') {
+            return candidate
+          }
+          if (candidate.managedClaudeLifecycle) {
+            return candidate
+          }
+          if (
+            candidate.executionContext.endpoint.kind === 'remote_worker' ||
+            candidate.provider !== 'claude-code'
+          ) {
+            return candidate
+          }
+          if (!deps.hasRuntime(candidate.sessionId)) {
+            await owner.cleanup(candidate.sessionId)
+            rejectManagedLaunch(attempt.nodeId, 'resumeUnavailable')
+          }
+          const receipt = await owner.complete(attempt, {
+            runtimeSessionId: candidate.sessionId,
+            tuple: {
+              resumeSessionId: candidate.resumeSessionId,
+              resumeSessionIdVerified: Boolean(candidate.resumeSessionId),
+            },
+          })
+          return {
+            ...candidate,
+            resumeSessionId: receipt.binding.tuple.resumeSessionId,
+            managedClaudeBinding: receipt.binding,
+            managedClaudeLifecycle: receipt,
+          }
+        })
       } finally {
-        pending.resolve()
-        if (attempt && pendingLaunches.get(attempt.nodeId) === pending) {
-          pendingLaunches.delete(attempt.nodeId)
-        }
+        releasePending()
       }
     },
   }
@@ -313,7 +363,7 @@ export function createManagedClaudeLaunchRuntime(deps: {
 
 export function assertManagedClaudeLaunchCurrent(): void {
   const current = scope.getStore()
-  if (current?.managed) {
+  if (current?.phase === 'managed') {
     current.owner.assertCurrent(current.attempt)
   }
 }
@@ -327,7 +377,7 @@ export async function withManagedClaudeFallback<T extends { sessionId: string }>
   }
 > {
   const current = scope.getStore()
-  if (!current?.managed) {
+  if (current?.phase !== 'managed') {
     return spawn()
   }
   const receipt = await current.owner.fail(current.attempt)
@@ -349,7 +399,7 @@ export function rethrowManagedClaudeLaunchError(error: unknown): void {
     typeof error === 'object' &&
     'code' in error &&
     (String(error.code).startsWith('agent.managed_launch_') ||
-      (scope.getStore()?.managed && error.code === 'persistence.unavailable'))
+      (scope.getStore()?.phase === 'managed' && error.code === 'persistence.unavailable'))
   ) {
     throw error
   }
@@ -357,17 +407,18 @@ export function rethrowManagedClaudeLaunchError(error: unknown): void {
 
 export function assertNoManagedClaudeRemoteLaunch(): void {
   const current = scope.getStore()
-  if (current?.managed && current.attempt.expected?.activationId) {
+  if (current?.phase === 'managed' && current.attempt.expected?.activationId) {
     rejectManagedLaunch(current.attempt.nodeId, 'identityConflict')
   }
   if (current) {
-    current.managed = false
+    current.phase = 'legacy'
+    current.releasePending?.()
   }
 }
 
 export function noteManagedClaudeSpawnStarted(): void {
   const current = scope.getStore()
-  if (current?.managed) {
+  if (current?.phase === 'managed') {
     current.owner.assertCurrent(current.attempt)
     current.spawnStarted = true
   }

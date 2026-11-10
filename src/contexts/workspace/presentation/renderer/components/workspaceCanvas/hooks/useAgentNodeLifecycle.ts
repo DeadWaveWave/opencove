@@ -168,7 +168,8 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
         return undefined
       }
       const intent: ManagedClaudeLaunchIntent | undefined =
-        explicitIntent ?? planManagedClaudeRelaunch(binding, mode, resumeSessionId)
+        explicitIntent ??
+        planManagedClaudeRelaunch(binding, mode, resumeSessionId, launchData.provider)
       const linkedTaskTitle = findLinkedTaskTitleForAgent(
         nodesRef.current,
         nodeId,

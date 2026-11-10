@@ -80,6 +80,17 @@ export const nodeGetOperation = defineOperation({
     'persistence.io_failed',
   ],
 })
+export const nodeManagedClaudeBindingOperation = defineOperation({
+  id: 'node.managedClaudeBinding',
+  kind: 'query',
+  scope: 'read',
+  availability: 'always',
+  summary: 'Read the saved Claude binding before or after its canvas node is saved',
+  input: z.strictObject({
+    nodeId: z.string().trim().min(1).max(256).describe('Agent node whose saved binding is read'),
+  }),
+  errors: ['persistence.unavailable'],
+})
 export const nodeListOperation = defineOperation({
   id: 'node.list',
   kind: 'query',
@@ -119,6 +130,7 @@ export const nodeUpdateOperation = defineOperation({
   ],
 })
 export const nodeOperations = [
+  nodeManagedClaudeBindingOperation,
   nodeCreateOperation,
   nodeDeleteOperation,
   nodeGetOperation,

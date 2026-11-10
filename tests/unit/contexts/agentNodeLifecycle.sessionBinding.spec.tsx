@@ -70,7 +70,9 @@ describe('agent relaunch session binding', () => {
           ? {
               controlSurface: {
                 invoke: vi.fn(async request =>
-                  request.id === 'node.get' ? { managedClaudeBinding: binding } : { mounts: [] },
+                  request.id === 'node.managedClaudeBinding'
+                    ? { managedClaudeBinding: binding, retired: false, executionDirectory: '/repo' }
+                    : { mounts: [] },
                 ),
               },
             }

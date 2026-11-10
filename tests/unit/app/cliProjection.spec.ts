@@ -141,7 +141,7 @@ it('includes dedicated commands by default and summarizes operation domains', as
   const g = fixture()
   expect(await run(['api', 'ops', '--domains', '--prefix', 'node'], g.io)).toBe(0)
   expect(JSON.parse(g.out())).toEqual([
-    { domain: 'node', operations: 5, schema: 5, commandOperations: 3 },
+    { domain: 'node', operations: 6, schema: 6, commandOperations: 3 },
   ])
 })
 it('shows task state in node tables without changing runtime status', async () => {

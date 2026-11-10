@@ -378,3 +378,16 @@ unknown outcome 保留 runtime 与 reconciliation obligation，未到 clean tran
 新 adoption 默认关闭，仅 `OPENCOVE_EXPERIMENTAL_MANAGED_CLAUDE_BINDINGS=1` 用于开发验收；
 `managedClaudeResumeBindingV1` capability 保持 false。已有 row 的保护不受开关影响。
 同步投影、缓存修正与正式启用仍由后续同步接入完成。
+
+
+`node.managedClaudeBinding` 在 node 尚未持久化时也返回 definitive ledger observation，
+明确区分 absence、row-only ownership 和 retirement；`node.get` 的 not-found 不代表 unowned。
+已由 ready store 确认 owned 的启动在 reserve 时登记等待，identity read 尚未完成也不能重连旧 runtime。
+Unowned 启动先保留 candidate attempt，确认 local managed execution 后才启用等待、token fence 和
+managed error 语义；跨目录 unowned switch 沿用 legacy 路径且不 adoption，owned replacement 仍拒绝目录变更。
+Remote execution 保留 legacy guards/retry，已有 owned row 仍拒绝 remote replacement。
+旧 Worker 不支持 ownership query 时，只有 runtime registry 明确缺少该 operation 才沿用 legacy；
+operation 已注册但读取失败时仍拒绝操作，不能把 persistence failure 当作无主。
+Owned fallback shell 的 node runtime 与 null ledger runtime 不同；确认新 managed runtime activation
+后，owner 才对捕获的旧 shell ID 执行 reference-checked cleanup，unknown outcome 不触发此清理。
+即时完成、后台 timer 与下一请求触发的 reconciliation 共用一次 finalization，始终使用原 attempt 的清理上下文。

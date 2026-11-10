@@ -166,7 +166,7 @@ it('notices a cut catalog table once and keeps JSON object truncation metadata',
   const notices: string[] = []
   f.io.stderr.write = text => notices.push(text)
   expect(await run(['api', 'ops', '--prefix', 'node', '-o', 'table', '--limit', '1'], f.io)).toBe(0)
-  expect(notices).toEqual(['Showing 1 of 5 operations; use --limit 0 for all.\n'])
+  expect(notices).toEqual(['Showing 1 of 6 operations; use --limit 0 for all.\n'])
   const g = identityFixture(false)
   const jsonNotices: string[] = []
   g.io.stderr.write = text => jsonNotices.push(text)

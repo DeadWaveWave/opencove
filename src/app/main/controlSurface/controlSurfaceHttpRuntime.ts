@@ -230,7 +230,15 @@ export function createControlSurfaceHttpRuntime(
       availability: terminalRuntimeAvailability,
     })
     await turnArchive.start()
-    await managedClaude.ready()
+    try {
+      await managedClaude.ready()
+    } catch (error) {
+      // Nonstrict startup remains available with terminal admission closed. Launches still
+      // require an authoritative store; warming the ownership coordinator cannot grant it.
+      if (options.strictPersistence) {
+        throw error
+      }
+    }
     runtimeReady = true
   })()
   const terminalRecovery = createControlSurfaceTerminalRecoveryRuntime({

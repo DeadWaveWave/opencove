@@ -1,6 +1,7 @@
 import { readFile, rm } from 'node:fs/promises'
 import type { PersistenceStore } from '../../../src/platform/persistence/sqlite/PersistenceStore'
 import { createAppErrorDescriptor } from '../../../src/shared/errors/appError'
+import { normalizePersistedAppState } from '../../../src/platform/persistence/sqlite/normalize'
 import WebSocket from 'ws'
 
 async function fileExists(filePath: string): Promise<boolean> {
@@ -224,6 +225,25 @@ export function createInMemoryPersistenceStore(): PersistenceStore {
     (nextState as { workspaces: unknown[] }).workspaces.length === 0
 
   return {
+    observeManagedClaudeNode: nodeId => {
+      const node = normalizePersistedAppState(state)
+        ?.workspaces.flatMap(workspace => workspace.nodes)
+        .find(candidate => candidate.id === nodeId)
+      return {
+        nodeId,
+        binding: null,
+        retired: false,
+        nodeRuntimeSessionId: node?.sessionId ?? null,
+        context: node
+          ? {
+              kind: node.kind,
+              provider: node.agent?.provider ?? null,
+              directory: node.executionDirectory ?? null,
+              route: JSON.stringify(node.workerBinding ?? null),
+            }
+          : null,
+      }
+    },
     readWorkspaceStateRaw: async () => null,
     writeWorkspaceStateRaw: async raw => ({ ok: true, level: 'full', bytes: raw.length }),
     readAppState: async () => state,
