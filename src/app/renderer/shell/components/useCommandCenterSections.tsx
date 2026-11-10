@@ -1,3 +1,4 @@
+import { agentAttentionLabelKey } from '@contexts/workspace/presentation/renderer/utils/agentAttentionLabel'
 import { useMemo } from 'react'
 import {
   FocusIcon,
@@ -93,10 +94,20 @@ export function useCommandCenterSections({
       subtitle: `${agent.projectName} · ${agent.spaceName ?? t('sidebar.rootCanvas')}`,
       status: {
         tone: 'waiting',
-        label: describeWaitDuration(
-          t,
-          resolveWaitDuration(observations.get(agent.nodeId)?.waitingSinceMs ?? null, nowMs),
-        ),
+        label: [
+          t(agentAttentionLabelKey(agent)),
+          ...(observations.get(agent.nodeId)?.waitingSinceMs
+            ? [
+                describeWaitDuration(
+                  t,
+                  resolveWaitDuration(
+                    observations.get(agent.nodeId)?.waitingSinceMs ?? null,
+                    nowMs,
+                  ),
+                ),
+              ]
+            : []),
+        ].join(' · '),
       },
       tone: 'waiting',
       icon: (

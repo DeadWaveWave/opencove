@@ -1,4 +1,5 @@
 import React from 'react'
+import { agentAttentionLabelKey } from '@contexts/workspace/presentation/renderer/utils/agentAttentionLabel'
 import { Button } from '@app/renderer/components/ui/Button'
 import { IconButton } from '@app/renderer/components/ui/IconButton'
 import { Tooltip } from '@app/renderer/components/ui/Tooltip'
@@ -24,6 +25,11 @@ import { ProjectIcon } from './ProjectIcon'
 export const AGENT_ISLAND_CARD_MS = 6_000
 /** The retract's three hard frames. */
 export const AGENT_ISLAND_RETRACT_MS = 150
+
+/** Live grouping is distinct from the completion notification retained during rework. */
+export interface AgentIslandLiveAgent extends AgentActivityReference {
+  state: 'waiting' | 'working'
+}
 
 export interface AgentIslandCardLayout {
   y: number
@@ -91,8 +97,8 @@ export function AgentIslandCard({
   onDismiss,
 }: {
   notification: AgentStandbyNotification
-  /** The agent as the pill sees it now: its mark and project icon. */
-  live: AgentActivityReference | null
+  /** The agent as the pill sees it now, including its current activity group. */
+  live: AgentIslandLiveAgent | null
   contextVisibility: AgentStandbyCardContextVisibility
   layout: AgentIslandCardLayout
   paused: boolean
@@ -180,7 +186,11 @@ export function AgentIslandCard({
             </span>
             <span className="agent-island-card__status">
               <span className="agent-island-card__light" aria-hidden="true" />
-              {t('agentIsland.waitingForInput')}
+              {t(
+                live?.state === 'working'
+                  ? 'agentActivity.working'
+                  : agentAttentionLabelKey(live ?? { needsYouSinceMs: notification.createdAt }),
+              )}
             </span>
             <span className="agent-island-card__chips">
               <Chip

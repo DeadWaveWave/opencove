@@ -1,12 +1,18 @@
 import type { AgentProviderId, TerminalSessionStateSource } from '../dto'
 export type AgentRunState = 'working' | 'waiting' | 'idle' | 'exited' | 'unknown'
 export type TurnOutcome = 'completed' | 'failed' | 'aborted' | 'unknown'
+export type AgentBlockedSummary =
+  | { kind: 'question'; questions: readonly { question: string; options: readonly string[] }[] }
+  | { kind: 'plan' }
+
 export interface AgentRunSnapshot {
   sessionId: string
   nodeId: string | null
   provider: AgentProviderId
   state: AgentRunState
   blockedReason: 'permission' | 'question' | 'plan' | null
+  /** Bounded, untrusted dialog data; absent on older Workers. Never persisted. */
+  blockedSummary?: AgentBlockedSummary | null
   turn: { id: string; startedAt: number; start: 'observed' | 'inferred' } | null
   lastTransitionAt: number
   source: TerminalSessionStateSource | 'exit' | null

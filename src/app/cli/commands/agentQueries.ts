@@ -17,6 +17,9 @@ const runFields = [
   'provider',
   'state',
   'blockedReason',
+  'blockedSummary',
+  'blockedSummary.kind',
+  'blockedSummary.questions',
   'turn',
   'turn.id',
   'turn.startedAt',
@@ -86,7 +89,17 @@ export const agentQueryCommands = [
         description: 'Filter the authoritative run state',
       },
     },
-    buildInput: ({ options: o }) => ({ spaceId: o.space, projectId: o.project, state: o.state }),
+    buildInput: ({ options: o }) => {
+      if (
+        o.output === 'table' &&
+        String(o.fields ?? '')
+          .split(',')
+          .some(field => /^(agents\.)?blockedSummary(?:\.|$)/.test(field.trim()))
+      ) {
+        usage('Dialog summaries are available in JSON output only. Use -o json.')
+      }
+      return { spaceId: o.space, projectId: o.project, state: o.state }
+    },
     render: {
       ...declaredOutput(
         runFields,

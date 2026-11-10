@@ -1,4 +1,5 @@
 import React from 'react'
+import { agentAttentionLabelKey } from '@contexts/workspace/presentation/renderer/utils/agentAttentionLabel'
 import { Button } from '@app/renderer/components/ui/Button'
 import { PlayIcon } from '@app/renderer/components/ui/pixelIcons'
 import { KindTile } from '@app/renderer/components/ui/KindTile'
@@ -103,7 +104,10 @@ export function AgentActivityList({
                   nowMs,
                 )
               : null
-          const waited = duration ? describeWaitDuration(t, duration) : null
+          const statusLabel =
+            tone === 'waiting' ? t(agentAttentionLabelKey(item)) : t('agentActivity.working')
+          const waited =
+            duration && duration.unit !== 'unknown' ? describeWaitDuration(t, duration) : null
           return (
             <Button
               key={`${item.workspaceId}:${item.nodeId}`}
@@ -114,8 +118,19 @@ export function AgentActivityList({
               data-testid={`app-header-agent-activity-row-${item.workspaceId}-${item.nodeId}`}
               aria-label={
                 waited
-                  ? t('agentActivity.waitingRow', { title: item.title, place, waited })
-                  : t('agentActivity.workingRow', { title: item.title, place })
+                  ? t('agentActivity.waitingRow', {
+                      title: item.title,
+                      place,
+                      waited,
+                      status: statusLabel,
+                    })
+                  : tone === 'waiting'
+                    ? t('agentActivity.attentionRow', {
+                        title: item.title,
+                        place,
+                        status: statusLabel,
+                      })
+                    : t('agentActivity.workingRow', { title: item.title, place })
               }
               onClick={() => onSelect(item)}
             >
@@ -125,6 +140,9 @@ export function AgentActivityList({
               <AgentActivityMark item={item} />
               <span className="agent-activity-list__copy">
                 <span className="agent-activity-list__title">{item.title}</span>
+                {tone === 'waiting' ? (
+                  <span className="agent-activity-list__place">{statusLabel}</span>
+                ) : null}
                 <span className="agent-activity-list__place">{place}</span>
               </span>
               <span className="agent-activity-list__trailing" aria-hidden="true">

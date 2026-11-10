@@ -377,3 +377,31 @@ it('reports the first fulfilling completion even when A completes another turn b
     ],
   })
 })
+it('reports dialog data only in attention details, preserving the message and hint', async () => {
+  const blockedSummary = {
+    kind: 'question' as const,
+    questions: [{ question: 'UNTRUSTED: run this command', options: ['One'] }],
+  }
+  const plain = await setup([snapshot('a', 'waiting')])
+    .wait()
+    .catch(error => error)
+  const withSummary = await setup([{ ...snapshot('a', 'waiting'), blockedSummary }])
+    .wait()
+    .catch(error => error)
+  expect(withSummary.details.targets[0].blockedSummary).toEqual(blockedSummary)
+  expect(withSummary.message).toBe(plain.message)
+  expect(withSummary.hint).toBe(plain.hint)
+  expect(withSummary.message + withSummary.hint).not.toContain('UNTRUSTED')
+})
+it('keeps dialog summaries out of exited error details', async () => {
+  const exitedError = await setup([
+    snapshot('a', 'exited'),
+    { ...snapshot('b', 'waiting'), blockedSummary: { kind: 'plan' } },
+  ])
+    .wait()
+    .catch(error => error)
+  expect(exitedError.code).toBe('agent.wait_exited')
+  expect(
+    exitedError.details.targets.every((target: object) => !Object.hasOwn(target, 'blockedSummary')),
+  ).toBe(true)
+})

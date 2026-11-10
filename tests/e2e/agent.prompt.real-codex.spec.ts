@@ -1,3 +1,4 @@
+import { captureTurnEvents, readExact, replyMarker } from './agent.turn-reply.helpers'
 import { execFileSync } from 'node:child_process'
 import { mkdir, mkdtemp, realpath, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -20,18 +21,23 @@ test.describe('agent.prompt with the real Codex CLI', () => {
     browserName: _browserName,
   }, testInfo) => {
     test.setTimeout(180_000)
-    const version = execFileSync('codex', ['--version'], { encoding: 'utf8', timeout: 10_000 })
-    await testInfo.attach('real-cli-version', {
-      body: Buffer.from(version),
-      contentType: 'text/plain',
-    })
     const root = await realpath(await mkdtemp(join(tmpdir(), 'opencove-real-codex-')))
     const workspace = join(root, 'workspace')
     const codexHome = join(root, 'codex-home')
     const userDataDir = join(root, 'user-data')
     await mkdir(workspace, { recursive: true })
     await mkdir(codexHome, { recursive: true })
-    const api = await startResponsesApi()
+    const version = execFileSync('codex', ['--version'], {
+      encoding: 'utf8',
+      timeout: 10_000,
+      env: { ...process.env, CODEX_HOME: codexHome },
+    })
+    await testInfo.attach('real-cli-version', {
+      body: Buffer.from(version),
+      contentType: 'text/plain',
+    })
+    expect(version.trim(), 'Exact-turn acceptance targets Codex 0.166.0').toBe('codex-cli 0.166.0')
+    const api = await startResponsesApi({ replyText: replyMarker, slowToolSeconds: 6 })
     await writeCodexConfig(codexHome, workspace, api.url)
     const { electronApp, window: page } = await launchApp({
       userDataDir,
@@ -43,6 +49,7 @@ test.describe('agent.prompt with the real Codex CLI', () => {
         CODEX_HOME: codexHome,
       },
     })
+    let events: Awaited<ReturnType<typeof captureTurnEvents>> | undefined
     try {
       await seedWorkspaceState(page, {
         activeWorkspaceId: 'real-codex',
@@ -106,7 +113,8 @@ test.describe('agent.prompt with the real Codex CLI', () => {
       const turnsBeforePrompt = api.main().length
       const nodeId = (await snapshot()).nodeId!
 
-      const text = 'Line one of the prompt\nLine two of the prompt\nLine three of the prompt'
+      const text =
+        'Line one of the prompt\nLine two of the prompt\nLine three of the prompt REPLY_A'
       const delivered = await prompt(userDataDir, nodeId, text)
       expect(delivered.exitCode, JSON.stringify(delivered)).toBe(0)
       expect(JSON.parse(delivered.stdout)).toMatchObject({ phase: 'submission_observed' })
@@ -115,9 +123,12 @@ test.describe('agent.prompt with the real Codex CLI', () => {
       expect(api.main().at(-1)).toContain(text)
       await expect.poll(async () => (await snapshot()).state, { timeout: 30_000 }).toBe('idle')
 
+      const turnA = JSON.parse(delivered.stdout).turnId as string
+      await readExact(userDataDir, nodeId, turnA, 'REPLY_A: complete 🙂')
+
       // Codex sends its legacy notify for the previous turn about a second after that turn ends.
       // It must not show the next, still-running turn as idle.
-      const slow = await prompt(userDataDir, nodeId, 'SLOW_TOOL wait a moment')
+      const slow = await prompt(userDataDir, nodeId, 'SLOW_TOOL wait a moment REPLY_B')
       expect(slow.exitCode, JSON.stringify(slow)).toBe(0)
       const slowTurn = JSON.parse(slow.stdout).turnId
       const seen: string[] = []
@@ -135,6 +146,10 @@ test.describe('agent.prompt with the real Codex CLI', () => {
       expect(duringSlowTurn.length).toBeGreaterThan(10)
       expect(duringSlowTurn.filter(entry => !entry.startsWith('working:'))).toEqual([])
 
+      await readExact(userDataDir, nodeId, slowTurn, 'REPLY_B: complete 🙂')
+      await readExact(userDataDir, nodeId, turnA, 'REPLY_A: complete 🙂')
+
+      events = await captureTurnEvents(userDataDir, nodeId)
       // A prompt sent while Codex works is typed in as steering. Codex shows it queued and submits
       // it after the running tool call, inside the same turn; the CLI reports it dispatched and the
       // delivery record confirms it once Codex submits it.
@@ -142,8 +157,10 @@ test.describe('agent.prompt with the real Codex CLI', () => {
       expect(busy.exitCode, JSON.stringify(busy)).toBe(0)
       const busyTurn = JSON.parse(busy.stdout).turnId
       await expect.poll(async () => (await snapshot()).turn?.id, { timeout: 15_000 }).toBe(busyTurn)
-      await page.waitForTimeout(800)
-      const steer = await prompt(userDataDir, nodeId, 'Steer: also mention CHERRY')
+      await expect
+        .poll(() => api.main().at(-1)?.join(' '), { timeout: 15_000 })
+        .toContain('SLOW_TOOL wait again')
+      const steer = await prompt(userDataDir, nodeId, 'Steer: also mention CHERRY REPLY_STEER')
       expect(steer.exitCode, JSON.stringify(steer)).toBe(0)
       const steered = JSON.parse(steer.stdout)
       expect(steered).toMatchObject({ mode: 'steer', phase: 'dispatched', turnId: busyTurn })
@@ -157,10 +174,28 @@ test.describe('agent.prompt with the real Codex CLI', () => {
       ])
       expect(confirmed.exitCode, JSON.stringify(confirmed)).toBe(0)
       expect(JSON.parse(confirmed.stdout)).toMatchObject({ status: 'submitted', turnId: busyTurn })
-      expect(api.all().some(userText => userText.includes('Steer: also mention CHERRY'))).toBe(true)
+      expect(
+        api.all().some(userText => userText.includes('Steer: also mention CHERRY REPLY_STEER')),
+      ).toBe(true)
       await expect
         .poll(async () => (await snapshot()).lastEndedTurn?.id, { timeout: 30_000 })
         .toBe(busyTurn)
+
+      const reply = await readExact(userDataDir, nodeId, busyTurn, 'REPLY_STEER: complete 🙂')
+      expect(reply.deliveryIds).toContain(steered.deliveryId)
+      await readExact(userDataDir, nodeId, turnA, 'REPLY_A: complete 🙂')
+      await readExact(userDataDir, nodeId, slowTurn, 'REPLY_B: complete 🙂')
+      await expect
+        .poll(
+          () =>
+            events!.values.filter(
+              e => e.type === 'agent.turn_completed' && e.endedTurn?.id === busyTurn,
+            ).length,
+        )
+        .toBe(1)
+      expect(
+        events.values.filter(e => e.snapshot.turn && e.snapshot.turn.id !== busyTurn),
+      ).toHaveLength(0)
 
       const tool = await prompt(userDataDir, nodeId, 'TRIGGER_TOOL run the probe')
       expect(tool.exitCode, JSON.stringify(tool)).toBe(0)
@@ -191,9 +226,19 @@ test.describe('agent.prompt with the real Codex CLI', () => {
         contentType: 'image/png',
       })
     } finally {
-      await electronApp.close()
-      api.server.close()
-      await rm(root, { recursive: true, force: true })
+      try {
+        await events?.close()
+      } finally {
+        try {
+          await electronApp.close()
+        } finally {
+          api.server.closeAllConnections()
+          await new Promise<void>((resolve, reject) =>
+            api.server.close(error => (error ? reject(error) : resolve())),
+          )
+          await rm(root, { recursive: true, force: true })
+        }
+      }
     }
   })
 })

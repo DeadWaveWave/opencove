@@ -45,7 +45,11 @@ async function emitWindowFocus(electronApp: ElectronApplication): Promise<void> 
   })
 }
 
-async function startWaitingAgent(window: Page, executionDirectory: string): Promise<void> {
+async function startWaitingAgent(
+  window: Page,
+  executionDirectory: string,
+  uiTheme: 'dark' | 'light' = 'dark',
+): Promise<void> {
   await clearAndSeedWorkspace(
     window,
     [
@@ -61,6 +65,7 @@ async function startWaitingAgent(window: Page, executionDirectory: string): Prom
     ],
     {
       settings: {
+        uiTheme,
         standbyBannerEnabled: true,
         standbyBannerShowBranch: false,
         standbyBannerShowPullRequest: false,
@@ -82,6 +87,49 @@ async function startWaitingAgent(window: Page, executionDirectory: string): Prom
 
 test.describe('Agent island', () => {
   test.skip(process.platform === 'win32', 'POSIX terminal shim fixture')
+
+  for (const theme of ['light', 'dark'] as const) {
+    test(`labels an unacknowledged completion as finished in ${theme}`, async ({
+      browserName: _browserName,
+    }, testInfo) => {
+      const commandDirectory = await createAgentCommandPath()
+      const executionDirectory = await mkdtemp(path.join(testWorkspacePath, 'island-finished-'))
+      const { electronApp, window } = await launchApp({
+        env: {
+          PATH: `${commandDirectory}${path.delimiter}${process.env.PATH ?? ''}`,
+          OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
+        },
+      })
+      try {
+        await startWaitingAgent(window, executionDirectory, theme)
+        await expect(window.locator('html')).toHaveAttribute('data-cove-theme-id', theme)
+        const sidebarStatus = window.locator(
+          '.workspace-sidebar .workspace-agent-item__status-label',
+        )
+        await expect(sidebarStatus).toHaveText('Finished')
+        const card = window.locator('.agent-island-card__status')
+        await expect(card).toHaveText('Finished')
+        await testInfo.attach(`finished-attention-${theme}`, {
+          body: await window.screenshot(),
+          contentType: 'image/png',
+        })
+        const pill = window.getByTestId('app-header-agent-activity')
+        await expect(pill).toHaveAccessibleName('1 agent needs you. Show agents')
+        await pill.click()
+        const activity = window.getByTestId('app-header-agent-activity-list')
+        await expect(activity.getByRole('button', { name: /Finished/ })).toBeVisible()
+        await expect(activity).not.toContainText('Needs your answer')
+        await testInfo.attach(`finished-activity-${theme}`, {
+          body: await window.screenshot(),
+          contentType: 'image/png',
+        })
+      } finally {
+        await electronApp.close()
+        await rm(commandDirectory, { recursive: true, force: true })
+        await rm(executionDirectory, { recursive: true, force: true })
+      }
+    })
+  }
 
   for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     test(`a card grows out of the pill${
@@ -150,7 +198,7 @@ test.describe('Agent island', () => {
         await expect(pill).toHaveAttribute('data-tone', 'waiting')
         // Its sidebar row waits for you too, rather than standing by.
         const rowStatus = window.locator('.workspace-sidebar .workspace-agent-item__status-label')
-        await expect(rowStatus).toHaveText('Needs input')
+        await expect(rowStatus).toHaveText('Finished')
 
         // Going to it from the list answers it; it only stood by, so the pill goes.
         await pill.click()

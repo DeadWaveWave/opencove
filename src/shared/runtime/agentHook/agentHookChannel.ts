@@ -1,3 +1,4 @@
+import { resolveHookBlockedDetails } from './hookBlockedDetails'
 import { HookReplyEligibility, type HookReplyReceipt } from './HookReplyEligibility'
 import { readBody } from './readHookBody'
 import { residentContextV1 } from './residentContext'
@@ -138,13 +139,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
         source: options.source,
         hookEventName: envelope.hookEventName,
         emittedAtMs: envelope.emittedAtMs,
-        ...(envelope.hookEventName === 'PermissionRequest'
-          ? { blockedReason: 'permission' as const }
-          : envelope.tool?.name === 'AskUserQuestion'
-            ? { blockedReason: 'question' as const }
-            : envelope.tool?.name === 'ExitPlanMode'
-              ? { blockedReason: 'plan' as const }
-              : {}),
+        ...resolveHookBlockedDetails({ ...envelope, state }),
         hookInstallState: installState,
         ...observation?.stateMetadata,
       }
@@ -158,6 +153,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       } else if (options.source === 'codex_hook') {
         setPromptSubmissionEvidence(event, {
           providerTurnId: envelope.providerTurnId,
+          finalMessage: envelope.hookEventName === 'Stop' ? envelope.finalMessage : undefined,
           providerSessionId: options.resolveSessionIdentity?.(envelope)?.providerSessionId,
         })
       }

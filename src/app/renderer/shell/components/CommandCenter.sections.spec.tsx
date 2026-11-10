@@ -89,7 +89,7 @@ describe('Command Center sections', () => {
     expect(options[0]?.getAttribute('data-tone')).toBe('waiting')
     const pill = options[0]?.querySelector('[data-cove-part="status-pill"]')
     expect(pill?.getAttribute('data-tone')).toBe('waiting')
-    expect(pill?.textContent).toBe('Waiting')
+    expect(pill?.textContent).toBe('Needs your answer')
     expect(
       options[0]?.querySelector('[data-cove-part="kind-tile"]')?.getAttribute('data-kind'),
     ).toBe('ai')

@@ -56,6 +56,7 @@ export function TerminalNode({
   status,
   agentStateSource = null,
   agentHookInstallState = null,
+  blockedReason,
   agentStateDegraded = false,
   directoryMismatch,
   lastError,
@@ -446,6 +447,7 @@ export function TerminalNode({
       status={status}
       agentStateSource={agentStateSource}
       agentHookInstallState={agentHookInstallState}
+      blockedReason={blockedReason}
       agentStateDegraded={agentStateDegraded}
       directoryMismatch={directoryMismatch}
       lastError={lastError}

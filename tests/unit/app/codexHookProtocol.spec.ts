@@ -103,3 +103,77 @@ describe('Codex hook protocol', () => {
     ).toBeNull()
   })
 })
+
+it.each([
+  ['你好🙂', false, { message: '你好🙂', truncated: false }],
+  ['', false, { message: '', truncated: false }],
+  [null, false, undefined],
+  ['\ud800', false, undefined],
+  ['a'.repeat(65535) + '🙂', false, { message: 'a'.repeat(65535), truncated: true }],
+  ['prefix', true, { message: 'prefix', truncated: true }],
+])('bounds native Stop content without losing turn identity', (message, truncated, expected) => {
+  const value = normalizeCodexHookEnvelope({
+    ...input({ hook_event_name: 'Stop', turn_id: 'A' }),
+    last_assistant_message: message,
+    last_assistant_message_truncated: truncated,
+  })
+  expect(value).toMatchObject({ state: 'done', providerTurnId: 'A' })
+  expect(value).toHaveProperty('finalMessage', expected)
+})
+it.each(['UserPromptSubmit', 'PostToolUse', 'SessionStart', 'notify'])(
+  'never admits content from %s',
+  name => {
+    const raw = normalizeCodexHookEnvelope({
+      ...input({ hook_event_name: name }),
+      prompt: 'private prompt',
+      last_assistant_message: 'not a reply',
+    })
+    expect(raw?.finalMessage).toBeUndefined()
+    const converted = validateCodexHookEnvelope({
+      version: 1,
+      state: 'done',
+      hookEventName: name,
+      codexSessionId: 'S',
+      finalMessage: { message: 'injected', truncated: false },
+      last_assistant_message: 'injected',
+    })
+    expect(converted?.finalMessage).toBeUndefined()
+    expect(raw ?? {}).not.toHaveProperty('promptDigest')
+  },
+)
+
+it.each(['UserPromptSubmit', 'PostToolUse', 'Stop', 'SubagentStop'])(
+  'preserves child provenance through native and versioned %s normalization',
+  hookEventName => {
+    const native = normalizeCodexHookEnvelope({
+      ...input({ hook_event_name: hookEventName }),
+      turn_id: 'child-turn',
+      agent_id: 'child-agent',
+      agent_type: 'explorer',
+    })
+    expect(native).toMatchObject({
+      agentId: 'child-agent',
+      agentType: 'explorer',
+      providerTurnId: 'child-turn',
+    })
+    expect(validateCodexHookEnvelope(native)).toMatchObject({
+      agentId: 'child-agent',
+      agentType: 'explorer',
+    })
+  },
+)
+it.each(['', 'bad id', '\ud800', 17, null])(
+  'rejects malformed child identity %j instead of erasing its provenance',
+  agentId => {
+    expect(normalizeCodexHookEnvelope({ ...input({}), agent_id: agentId })).toBeNull()
+    expect(
+      validateCodexHookEnvelope({
+        version: 1,
+        state: 'working',
+        hookEventName: 'UserPromptSubmit',
+        codexSessionId: 'provider',
+        agentId,
+      }),
+    ).toBeNull()
+  },
+)

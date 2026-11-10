@@ -75,7 +75,7 @@ test.describe('Workspace Canvas - Codex hook channel', () => {
       await expect(status).toHaveText('Working')
 
       await writeToPty(window, { sessionId, data: '<test-codex-hook-waiting>\r' })
-      await expect(status).toHaveText('Waiting')
+      await expect(status).toHaveText('Needs approval')
       await expect(agentNode).toHaveAttribute('data-agent-state-source', 'codex_hook')
 
       await writeToPty(window, { sessionId, data: '<test-codex-hook-done>\r' })

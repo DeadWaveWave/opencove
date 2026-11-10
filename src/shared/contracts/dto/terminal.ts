@@ -230,6 +230,7 @@ export interface TerminalSessionStateEvent {
   emittedAtMs?: number
   hookEventName?: string
   blockedReason?: 'permission' | 'question' | 'plan' | null
+  blockedSummary?: import('./agentRunState').AgentBlockedSummary | null
 
   piConversation?: { pid: number; revision: number }
   observationUnavailable?: boolean

@@ -12,7 +12,8 @@ export interface AgentHookEnvelope extends PromptSubmissionEvidence {
   claudeSessionId?: string
   emittedAtMs?: number
   hookEventName?: string
-  tool?: { name: string }
+  notificationType?: string
+  tool?: { name: string; input?: unknown }
   state: 'working' | 'waiting' | 'standby' | 'done' | null
 }
 
