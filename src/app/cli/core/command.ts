@@ -61,7 +61,7 @@ export interface CommandContext extends CommandArgs {
   invoke(
     id: OperationId,
     payload: unknown,
-    options?: { fresh?: boolean; signal?: AbortSignal },
+    options?: { fresh?: boolean; signal?: AbortSignal; timeoutMs?: number },
   ): Promise<unknown>
   whoami(): Promise<CallerIdentity>
   self(kind: NonNullable<OptionSpec['selector']>): Promise<string>

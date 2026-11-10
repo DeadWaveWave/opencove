@@ -1,12 +1,18 @@
+import { mutateNode } from './nodeMutation'
+import { validateTurnWaitOptions } from '../core/agentTurnComposition'
 import { spawnedByOption } from '../core/nodeLineage'
 import { kindWithArticle } from '../core/kindWording'
-import { reportNodeFrame } from './nodeFrame'
 import { nodeAgentMetadata } from '../core/agentMetadata'
 import type { ListNodesResult } from '../../../shared/contracts/dto/nodeControl'
 import { nodeDeleteOutput, canvasFocusOutput } from './outputContracts'
-import { nodeListOutput, nodeGetOutput, nodeKindOutput } from './outputContracts'
+import {
+  nodeListOutput,
+  nodeGetOutput,
+  nodeKindOutput,
+  createdAgentWaitOutput,
+} from './outputContracts'
 import { defineCommand, type CommandArgs, type OptionSpec } from '../core/command'
-import { CliError, usage } from '../core/errors'
+import { usage } from '../core/errors'
 import { AGENT_PROVIDER_IDS } from '../../../shared/contracts/dto'
 const nodeContentHelp =
   'Content by kind: note → data.text; task → data.requirement, data.status, data.priority, data.tags; website → data.url; agent/terminal → status, sessionId. node list returns summaries: use node get for full note text and other content. A requested field absent on a returned kind produces one stderr notice; stdout remains projected JSON.'
@@ -238,6 +244,20 @@ export const nodeCommands = [
                 : kind === 'agent'
                   ? {
                       prompt: { ...stringOption('Agent prompt'), fileVariant: true },
+                      wait: {
+                        type: 'boolean',
+                        description: 'Wait for the initial prompt turn to end',
+                      },
+                      read: {
+                        type: 'boolean',
+                        description: 'Include the exact initial turn reply; requires --wait',
+                      },
+                      timeout: {
+                        type: 'number',
+                        valueName: 'duration',
+                        description:
+                          'First-turn identification and wait budget (default 20s; minimum 250ms)',
+                      },
                       provider: stringOption('Provider'),
                       model: stringOption('Model'),
                     }
@@ -250,7 +270,10 @@ export const nodeCommands = [
         path: ['node', action, kind],
         summary: `${create ? 'Create' : 'Update'} ${kindWithArticle(kind)} node`,
         description: create
-          ? 'Without explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node belongs to another project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.'
+          ? (kind === 'agent'
+              ? 'Use --prompt or --prompt-file with --wait to wait for the initial Claude Code or Codex turn. Add --read for its exact reply; unavailable replies return reply: null with replyUnavailableReason. Check outcome: every ended outcome exits 0. Waiting for the user exits 10, an exited target 11, timeout 124 and interruption 130. Unsupported providers refuse after creation; the node remains.\n\n--timeout covers first-turn identification and waiting (default 20s; minimum 250ms); creation keeps its own 20s budget. Errors keep known nodeId, sessionId and turnId. Never repeat creation after an error: resume agent wait/read with those IDs. With --wait, -q prints only the node ID after completion.\n\n'
+              : '') +
+            'Without explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node belongs to another project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.'
           : kind === 'agent' || kind === 'terminal'
             ? 'Rename this window and keep its name when the agent session changes. The name is saved as provided, with surrounding whitespace removed. Use --frame to also move or resize it.'
             : undefined,
@@ -260,6 +283,11 @@ export const nodeCommands = [
         quietIdPath: create ? 'node.id' : undefined,
         operation: `node.${action}`,
         render: nodeKindOutput(kind, create),
+        selectRender:
+          create && kind === 'agent'
+            ? ({ options }) =>
+                options.wait ? createdAgentWaitOutput() : nodeKindOutput(kind, create)
+            : undefined,
         operationCommand: `opencove node ${action}`,
         options: {
           ...specific,
@@ -292,7 +320,7 @@ export const nodeCommands = [
                 "printf 'Review the release notes\\n' | opencove node create note --space space-123 --text-file -",
               ]
             : [
-                `opencove node ${action} ${kind} ${create ? '--space space-123' : '--node node-123'}${kind === 'task' ? ' --requirement "Review release notes"' : kind === 'website' ? ' --url https://example.com' : kind === 'note' ? ' --text "Updated note"' : kind === 'agent' && create ? ' --prompt "Review the test failures"' : !create && (kind === 'agent' || kind === 'terminal') ? ' --title "Lead"' : ''}`,
+                `opencove node ${action} ${kind} ${create ? '--space space-123' : '--node node-123'}${kind === 'task' ? ' --requirement "Review release notes"' : kind === 'website' ? ' --url https://example.com' : kind === 'note' ? ' --text "Updated note"' : kind === 'agent' && create ? ' --prompt "Review the test failures" --wait --read --timeout 2m' : !create && (kind === 'agent' || kind === 'terminal') ? ' --title "Lead"' : ''}`,
                 `opencove node ${action} ${kind} ${create ? '--root-canvas --project project-123' : '--node node-123'}${kind === 'task' ? ' --requirement "Review release notes"' : kind === 'website' ? ' --url https://example.com' : ''} --title "Release review" --pretty`,
               ],
         buildInput: ({ options: o }: CommandArgs) => {
@@ -301,6 +329,14 @@ export const nodeCommands = [
             (!o.frame || typeof o.frame !== 'object' || Array.isArray(o.frame))
           ) {
             usage('--frame must be a JSON object')
+          }
+          if (create && kind === 'agent') {
+            validateTurnWaitOptions(o)
+            if (o.wait && (typeof o.prompt !== 'string' || !o.prompt.trim())) {
+              usage(
+                '--wait requires an initial prompt: start it with --prompt, or send one later with agent prompt --wait.',
+              )
+            }
           }
           const targetSpace = create ? locator(o) : undefined
           return {
@@ -317,32 +353,7 @@ export const nodeCommands = [
               : {}),
           }
         },
-        async execute(ctx) {
-          const result = await ctx.invoke(create ? 'node.create' : 'node.update', ctx.input)
-          const value = reportNodeFrame(result, ctx, kind, create && kind === 'task')
-          if (!create || !ctx.options.focus) {
-            return value
-          }
-          const created = value as { node: { id: string } }
-          try {
-            return {
-              ...(value as object),
-              focus: await ctx.invoke('canvas.focus', {
-                target: { kind: 'node', nodeId: created.node.id },
-              }),
-              focusError: null,
-            }
-          } catch (error) {
-            if (!(error instanceof CliError) || error.exitCode !== 1) {
-              throw error
-            }
-            return {
-              ...(value as object),
-              focus: null,
-              focusError: { code: error.code, debugMessage: error.message },
-            }
-          }
-        },
+        execute: ctx => mutateNode(ctx, kind, create),
       })
     }),
   ),

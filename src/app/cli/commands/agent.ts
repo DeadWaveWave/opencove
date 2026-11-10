@@ -1,3 +1,4 @@
+import { turnReplyFields, validateTurnWaitOptions } from '../core/agentTurnComposition'
 import { promptAndWait } from './agentPromptWait'
 import { defineCommand } from '../core/command'
 import { CliError, usage } from '../core/errors'
@@ -70,25 +71,7 @@ export const agentPromptCommand = defineCommand({
         'textComparison',
         'comparisonProfile',
         'promptId',
-        'outcome',
-        'endedAt',
-        'reply',
-        ...[
-          'nodeId',
-          'sessionId',
-          'turnId',
-          'deliveryIds',
-          'promptIds',
-          'promptId',
-          'outcome',
-          'message',
-          'truncated',
-          'messageKind',
-          'persisted',
-          'memoryOnlyReason',
-          'source',
-        ].map(field => `reply.${field}`),
-        'replyUnavailableReason',
+        ...turnReplyFields.filter(field => field !== 'turnId'),
       ],
       {},
     ),
@@ -98,9 +81,7 @@ export const agentPromptCommand = defineCommand({
     ],
   },
   buildInput: ({ options, positionals }) => {
-    if (options.read && !options.wait) {
-      usage('--read requires --wait.')
-    }
+    validateTurnWaitOptions(options)
     if (positionals[0] !== undefined && options.text !== undefined) {
       usage('Choose one prompt text source: positional text, --text or --text-file.')
     }
@@ -110,13 +91,6 @@ export const agentPromptCommand = defineCommand({
         'Provide prompt text as an argument, with --text or with --text-file.',
         'Use exactly one. Use --text-file - to read from stdin.',
       )
-    }
-    const waitTimeout = Number(options.timeout ?? 20000)
-    if (
-      options.wait &&
-      (!Number.isSafeInteger(waitTimeout) || waitTimeout < 250 || waitTimeout > 2147483647)
-    ) {
-      usage('Wait timeout must be whole milliseconds from 250ms to 2147483647ms (about 24 days).')
     }
     const timeoutMs = options.wait ? 15000 : (options.timeout ?? 15000)
     if (!Number.isInteger(timeoutMs) || Number(timeoutMs) < 1 || Number(timeoutMs) > 60000) {

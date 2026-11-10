@@ -1,7 +1,6 @@
 import { agentPromptResultSchema } from '../../../shared/contracts/dto/agentPrompt'
 import { sendAgentPrompt } from '../core/agentPromptRequest'
-import { waitForAgents } from '../core/agentWait'
-import { readAgentFinalMessage } from '../core/agentFinalMessage'
+import { retainTurnError, turnContinuation, waitAndReadTurn } from '../core/agentTurnComposition'
 import type { CommandContext } from '../core/command'
 import { CliError } from '../core/errors'
 import { promptComparisonNotice } from '../core/promptTransport'
@@ -38,7 +37,7 @@ export async function promptAndWait(ctx: CommandContext): Promise<unknown> {
     ...(delivery.comparisonProfile ? { comparisonProfile: delivery.comparisonProfile } : {}),
     ...(delivery.promptId ? { promptId: delivery.promptId } : {}),
   }
-  const recovery = `Never resend. Check opencove agent delivery ${shellWord(deliveryId)}; once confirmed, resume with opencove agent wait --node ${shellWord(nodeId)} --turn ${shellWord(turnId)}, or read that turn with opencove agent read.`
+  const recovery = `Never resend. Check opencove agent delivery ${shellWord(deliveryId)}; once confirmed, ${turnContinuation({ nodeId, turnId })}`
   ctx.io.stderr.write(`Delivery ID: ${deliveryId}; turn ID: ${turnId}. ${recovery}\n`)
   // The send operation has its own short budget; this deadline is shared by both observers.
   const deadline = ctx.io.now() + Number(ctx.options.timeout ?? 20000)
@@ -70,80 +69,13 @@ export async function promptAndWait(ctx: CommandContext): Promise<unknown> {
         'Delivery confirmation did not match this prompt. Never resend.',
       )
     }
-    const remaining = deadline - ctx.io.now()
-    if (remaining <= 0) {
-      throw new CliError(
-        'agent.wait_timeout',
-        124,
-        'Timed out waiting for the prompt turn. Never resend.',
-      )
-    }
-    const ended = await waitForAgents({
-      nodeIds: [nodeId],
-      turnId,
-      any: false,
-      timeoutMs: remaining,
-      connection: ctx.connection!,
-      fetch: ctx.io.fetch,
-      signal: ctx.io.signal,
-      query: (id, payload, signal) => ctx.invoke(id, payload, { fresh: true, signal }),
-    })
-    if (ended.sessionId !== sessionId || ended.turnId !== turnId || ended.nodeId !== nodeId) {
-      throw new CliError(
-        'transport.invalid_response',
-        1,
-        'The completed turn did not match this prompt. Never resend.',
-      )
-    }
-    const result = {
+    return {
       ...delivery,
       nodeId,
       phase: 'submission_observed',
-      outcome: ended.outcome,
-      endedAt: ended.endedAt,
-    }
-    if (!ctx.options.read) {
-      return result
-    }
-    try {
-      const reply = await readAgentFinalMessage({
-        ...ctx,
-        input: { sessionId, turnId },
-        options: { ...ctx.options, turn: turnId },
-      })
-      if (!('turnId' in reply) || reply.sessionId !== sessionId || reply.turnId !== turnId) {
-        throw new CliError(
-          'transport.invalid_response',
-          1,
-          'The reply did not match the completed turn.',
-        )
-      }
-      return { ...result, reply }
-    } catch (error) {
-      if (ctx.io.signal?.aborted || (error instanceof CliError && error.exitCode === 130)) {
-        throw error
-      }
-      if (!(error instanceof CliError)) {
-        throw error
-      }
-      const details = error.details as { reason?: string } | undefined
-      return { ...result, reply: null, replyUnavailableReason: details?.reason ?? error.code }
+      ...(await waitAndReadTurn(ctx, { nodeId, sessionId, turnId }, deadline)),
     }
   } catch (error) {
-    if (error instanceof CliError) {
-      throw new CliError(
-        error.code,
-        error.exitCode,
-        error.message,
-        `${error.hint ?? ''} ${recovery}`.trim(),
-        {
-          ...(error.details && typeof error.details === 'object' ? error.details : {}),
-          ...ids,
-          ...comparison,
-        },
-        error.debugMessage,
-      )
-    }
-    throw error
+    throw retainTurnError(error, { ...ids, ...comparison }, recovery)
   }
 }

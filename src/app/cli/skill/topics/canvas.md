@@ -60,8 +60,13 @@ its directory, and worktree creation refuses a Space already bound to another di
 ```sh
 opencove space create --name "Review work"
 opencove worktree create --space space-123 --name review-work
-opencove node create agent --space space-123 --title "Reviewer" --prompt "Review the implementation"
+opencove node create agent --space space-123 --title "Reviewer" --prompt "Review the implementation" --wait --read --timeout 2m
 ```
+
+For one-shot delegation, --wait --read returns the initial exact reply; check outcome and reply.
+The agent remains created on timeout, attention or read failure. Never repeat creation to recover;
+use the known node/session/turn IDs and continuation commands. To keep working meanwhile, omit
+--wait and follow the split get → exact wait → exact read loop in `opencove skill coordinate`.
 
 Replace space-123 with the first command's returned id before continuing. To create a child instead,
 use `opencove space create --name "Review work" --in <parent>` for the first step. For worktree creation,

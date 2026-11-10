@@ -64,7 +64,7 @@ function selectedFields(options: Record<string, unknown>, spec: RenderSpec): str
       unknown.map(key => ownValue(spec.fieldHints, key)).find(Boolean),
     )
   }
-  return keys
+  return keys.map(key => ownValue(spec.aliases, key) ?? key)
 }
 export function validateRenderOptions(options: Record<string, unknown>, spec: RenderSpec = {}) {
   selectedFields(options, spec)

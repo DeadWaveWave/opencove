@@ -5,6 +5,10 @@ exports[`scopes create agent projectable fields and examples > create agent 1`] 
 
 Create an agent node
 
+Use --prompt or --prompt-file with --wait to wait for the initial Claude Code or Codex turn. Add --read for its exact reply; unavailable replies return reply: null with replyUnavailableReason. Check outcome: every ended outcome exits 0. Waiting for the user exits 10, an exited target 11, timeout 124 and interruption 130. Unsupported providers refuse after creation; the node remains.
+
+--timeout covers first-turn identification and waiting (default 20s; minimum 250ms); creation keeps its own 20s budget. Errors keep known nodeId, sessionId and turnId. Never repeat creation after an error: resume agent wait/read with those IDs. With --wait, -q prints only the node ID after completion.
+
 Without explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node belongs to another project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.
 
 Default target inside OpenCove: your current Space, or the root canvas when you are outside any Space. An explicit --project selects project scope for lists; creation also needs --root-canvas or a Space target.
@@ -20,6 +24,9 @@ Target container (choose one):
 Options:
   --prompt <text>         Set the initial agent prompt
   --prompt-file <path|->  Read prompt from a UTF-8 file, or use - for stdin
+  --wait                  Wait for the initial prompt turn to end
+  --read                  Include the exact initial turn reply; requires --wait
+  --timeout <duration>    First-turn identification and wait budget (default 20s; minimum 250ms)
   --provider <id>         Select the agent provider. Accepted IDs: claude-code, codex, opencode, gemini, pi, kimi; omit to use the configured default
   --model <id>            Select the agent model
   --title <text>          Set a fixed window name; omit on creation to keep automatic titles
@@ -28,7 +35,7 @@ Options:
   -q, --quiet             Print only the created object identifier followed by a newline
 
 Table output (-o table): not supported.
-Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, spawnedBy, lineageDepth, lineageStatus, data, data.kind, data.provider, data.prompt, data.model, data.effectiveModel, data.executionDirectory, data.expectedDirectory, data.taskId
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, spawnedBy, lineageDepth, lineageStatus, data, data.kind, turnId, outcome, endedAt, reply, reply.nodeId, reply.sessionId, reply.turnId, reply.deliveryIds, reply.promptIds, reply.promptId, reply.outcome, reply.message, reply.truncated, reply.messageKind, reply.persisted, reply.memoryOnlyReason, reply.source, replyUnavailableReason, data.provider, data.prompt, data.model, data.effectiveModel, data.executionDirectory, data.expectedDirectory, data.taskId
 
 Field descriptions:
   spawnedBy      ID of the node that created this node; null for a root or unavailable lineage
@@ -40,7 +47,7 @@ Projection example:
   {"revision":1,"projectId":"p","spaceId":"space-123","node":{"id":"n","title":"Agent"}}
 
 Examples:
-  opencove node create agent --space space-123 --prompt "Review the test failures"
+  opencove node create agent --space space-123 --prompt "Review the test failures" --wait --read --timeout 2m
   opencove node create agent --root-canvas --project project-123 --title "Release review" --pretty
 
 Global options: see "opencove --help".
