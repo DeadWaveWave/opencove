@@ -1,5 +1,11 @@
 export const enMessages = {
   managedAgentChanged: 'This agent has changed. Refresh the workspace and try again.',
+  managedAgentDirectoryConflict:
+    'This agent belongs to a different folder. Keep its current folder or start a new agent.',
+  managedAgentLaunchUncertain:
+    'The agent launch could not be confirmed. Check the session before trying again.',
+  managedAgentResumeUnavailable:
+    'This conversation cannot be resumed yet. Select a saved session or start a new conversation.',
   agentLaunchFailed: 'Agent launch failed: {{message}}',
   agentResumeFailed: 'Agent resume failed: {{message}}',
   terminalAgentReexecFailed: 'Failed to restart the agent in this terminal: {{message}}',

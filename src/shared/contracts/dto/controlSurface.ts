@@ -1,3 +1,8 @@
+import type {
+  ManagedClaudeLaunchIntent,
+  ManagedClaudeLifecycleReceipt,
+  ManagedClaudeBindingObservation,
+} from '../managedClaudeLaunch'
 import type { AgentProviderId } from './agent'
 import type { TerminalPtyGeometry, TerminalRuntimeKind } from './terminal'
 import type { PresentationSnapshotTerminalResult } from './terminal'
@@ -34,6 +39,7 @@ export interface ControlSurfaceCapabilitiesResult {
   protocolVersion: number
   appVersion: string | null
   features: {
+    managedClaudeResumeBindingV1?: boolean
     operationRegistry?: boolean
     webShell: boolean
     sync: {
@@ -224,6 +230,7 @@ export interface ArchiveWorktreeResult {
 }
 
 export interface LaunchAgentSessionInput {
+  intent?: ManagedClaudeLaunchIntent
   canvasNodeId?: string
   workspaceId?: string
   spaceId?: string | null
@@ -242,6 +249,7 @@ export interface LaunchAgentSessionInput {
 }
 
 export interface LaunchAgentSessionInMountInput {
+  intent?: ManagedClaudeLaunchIntent
   canvasNodeId?: string
   workspaceId?: string
   spaceId?: string
@@ -261,6 +269,8 @@ export interface LaunchAgentSessionInMountInput {
 }
 
 export interface LaunchAgentSessionResult {
+  managedClaudeLifecycle?: ManagedClaudeLifecycleReceipt
+  managedClaudeBinding?: ManagedClaudeBindingObservation
   sessionId: string
   provider: AgentProviderId
   startedAt: string
@@ -381,6 +391,8 @@ export interface PreparedRuntimeAgentResult {
 export type AgentRecoveryIssue = 'codex_writer_locked' | 'remote_worker_unavailable'
 
 export interface PreparedRuntimeNodeResult {
+  managedClaudeBinding?: ManagedClaudeBindingObservation
+  managedClaudeLifecycle?: ManagedClaudeLifecycleReceipt
   nodeId: string
   kind: 'terminal' | 'agent'
   recoveryState: 'live' | 'revived' | 'restarted' | 'fallback_terminal'

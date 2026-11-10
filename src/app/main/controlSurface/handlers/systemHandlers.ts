@@ -83,7 +83,11 @@ export function registerSystemHandlers(
         deploymentId: deps.deploymentId ?? null,
         instanceId: deps.instanceId,
         runtimeReady: deps.isReady?.() ?? false,
-        features: { ...ctx.capabilities, operationRegistry: true },
+        features: {
+          ...ctx.capabilities,
+          operationRegistry: true,
+          managedClaudeResumeBindingV1: false,
+        },
       }) satisfies ControlSurfaceCapabilitiesResult,
     defaultErrorCode: 'common.unexpected',
   })

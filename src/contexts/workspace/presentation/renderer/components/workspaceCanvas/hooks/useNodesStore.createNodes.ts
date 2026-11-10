@@ -92,7 +92,20 @@ export function useWorkspaceCanvasNodeCreation({
         avoidRects: placement?.avoidRects,
       })
       if (resolvedPlacement.canPlace !== true) {
-        await window.opencoveApi.pty.kill({ sessionId })
+        if (
+          kind === 'agent' &&
+          agent?.provider === 'claude-code' &&
+          nodeId &&
+          window.opencoveApi?.controlSurface?.invoke
+        ) {
+          await window.opencoveApi.controlSurface.invoke({
+            kind: 'command',
+            id: 'session.cleanupUnreferenced',
+            payload: { sessionId },
+          })
+        } else {
+          await window.opencoveApi.pty.kill({ sessionId })
+        }
         onShowMessage?.(t('messages.noTerminalSlotNearby'), 'warning')
         return null
       }

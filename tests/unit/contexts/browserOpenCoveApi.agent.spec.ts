@@ -131,3 +131,47 @@ describe('browser agent last message runtime identity', () => {
     },
   )
 })
+
+it('preserves managed intent mirrors and the effective receipt through the browser boundary', async () => {
+  const binding = {
+    nodeId: 'agent',
+    activationId: 'activated',
+    runtimeSessionId: 'runtime',
+    tuple: { resumeSessionId: 'B', resumeSessionIdVerified: true },
+    nodeSeen: true,
+    bindingRevision: 2,
+    observedRevision: 2,
+  }
+  const receipt = { binding, commitRevision: 2 }
+  invoke.mockResolvedValue({
+    sessionId: 'runtime',
+    resumeSessionId: 'B',
+    effectiveModel: null,
+    command: 'claude',
+    args: [],
+    managedClaudeBinding: binding,
+    managedClaudeLifecycle: receipt,
+  })
+  const intent = {
+    kind: 'resumeConversation' as const,
+    resumeSessionId: 'C',
+    expected: { activationId: 'old', tuple: binding.tuple },
+  }
+  const result = await createBrowserAgentApi().launch({
+    canvasNodeId: 'agent',
+    cwd: '/repo',
+    provider: 'claude-code',
+    prompt: '',
+    intent,
+  })
+  expect(invoke).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      payload: expect.objectContaining({ intent, mode: 'resume', resumeSessionId: 'C' }),
+    }),
+  )
+  expect(result).toMatchObject({
+    resumeSessionId: 'B',
+    managedClaudeLifecycle: receipt,
+    managedClaudeBinding: binding,
+  })
+})

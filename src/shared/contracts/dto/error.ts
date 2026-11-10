@@ -76,6 +76,8 @@ export const APP_ERROR_CODES = [
   'agent.list_models_failed',
   'agent.install_failed',
   'agent.launch_failed',
+  'agent.managed_launch_rejected',
+  'agent.managed_launch_commit_failed',
   'agent.read_last_message_failed',
   'agent.final_message_unavailable',
   'agent.resume_session_resolve_failed',

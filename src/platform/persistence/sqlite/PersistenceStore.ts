@@ -1,15 +1,20 @@
+import { createPersistenceScrollbackStore } from './PersistenceScrollbackStore'
+import { createAppStateCommitObservation } from './appStateCommitObservation'
+import {
+  createManagedClaudeResumeRead,
+  type ManagedClaudeResumeRead,
+} from './managedClaudeResumeRead'
+import type { AppStateCommittedObservation } from '../../../shared/contracts/managedClaudeLaunch'
 import { mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import Database from 'better-sqlite3'
-import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import { eq } from 'drizzle-orm'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
 import type { PersistWriteResult } from '../../../shared/contracts/dto'
 import { backupDbFile, moveCorruptDbAside } from './dbFiles'
 import { DB_SCHEMA_VERSION, DEFAULT_MAX_WORKSPACE_STATE_RAW_BYTES } from './constants'
 import { migrate } from './migrate'
-import { normalizePersistedAppState, normalizeScrollback } from './normalize'
+import { normalizePersistedAppState } from './normalize'
 import { readAppStateFromDb, readWorkspaceStateRawFromDb } from './read'
-import { agentNodePlaceholderScrollback, nodeScrollback } from './schema'
 import { safeJsonParse, safeJsonStringify, toErrorMessage, utf8ByteLength } from './utils'
 import { writeNormalizedAppState, writeNormalizedScrollbacks } from './write'
 import {
@@ -29,6 +34,11 @@ import type { InternalPersistWriteResult } from './appStateWriteResult'
 export type PersistenceRecoveryReason = 'corrupt_db' | 'migration_failed'
 
 export interface PersistenceStore {
+  observeManagedClaudeNode?: ManagedClaudeResumeRead['observeManagedClaudeNode']
+  managedClaudePreparationCandidates?: ManagedClaudeResumeRead['managedClaudePreparationCandidates']
+  isManagedClaudeRuntimeReferenced?: ManagedClaudeResumeRead['isManagedClaudeRuntimeReferenced']
+  activateManagedClaudeRuntime?: ManagedClaudeResumeBindingStore['activateManagedClaudeRuntime']
+  onAppStateCommitted?: (listener: (event: AppStateCommittedObservation) => void) => () => void
   readWorkspaceStateRaw: () => Promise<string | null>
   writeWorkspaceStateRaw: (raw: string) => Promise<InternalPersistWriteResult>
 
@@ -88,32 +98,17 @@ function shouldRejectEmptyWorkspaceOverwrite(
   return hasExistingWorkspaces(sqlite)
 }
 
-function readNodeScrollbackFromDb(db: BetterSQLite3Database, nodeId: string): string | null {
-  const row = db
-    .select({ scrollback: nodeScrollback.scrollback })
-    .from(nodeScrollback)
-    .where(eq(nodeScrollback.nodeId, nodeId))
-    .get()
-  return typeof row?.scrollback === 'string' ? row.scrollback : null
-}
-
-function readAgentNodePlaceholderScrollbackFromDb(
-  db: BetterSQLite3Database,
-  nodeId: string,
-): string | null {
-  const row = db
-    .select({ scrollback: agentNodePlaceholderScrollback.scrollback })
-    .from(agentNodePlaceholderScrollback)
-    .where(eq(agentNodePlaceholderScrollback.nodeId, nodeId))
-    .get()
-  return typeof row?.scrollback === 'string' ? row.scrollback : null
-}
-
 export async function createPersistenceStore(storeOptions: {
   dbPath: string
   maxRawBytes?: number
   strictRecovery?: boolean
-}): Promise<PersistenceStore & ManagedClaudeResumeBindingStore> {
+}): Promise<
+  PersistenceStore &
+    ManagedClaudeResumeBindingStore &
+    ManagedClaudeResumeRead & {
+      onAppStateCommitted: (listener: (event: AppStateCommittedObservation) => void) => () => void
+    }
+> {
   const maxRawBytes = storeOptions.maxRawBytes ?? DEFAULT_MAX_WORKSPACE_STATE_RAW_BYTES
 
   await mkdir(dirname(storeOptions.dbPath), { recursive: true })
@@ -169,6 +164,7 @@ export async function createPersistenceStore(storeOptions: {
     throw error
   }
   const db = drizzle(sqlite)
+  const commits = createAppStateCommitObservation(sqlite)
 
   const readAppState = async (): Promise<unknown | null> => {
     try {
@@ -236,11 +232,13 @@ export async function createPersistenceStore(storeOptions: {
     }
 
     try {
-      const result = sqlite.transaction(() => {
+      const { result, event } = sqlite.transaction(() => {
+        const before = commits.capture()
         const written = writeNormalizedAppState(sqlite, normalized)
         writeNormalizedScrollbacks(sqlite, written.effectiveState)
-        return written
+        return { result: written, event: commits.describe(before, written.revision) }
       })()
+      commits.publish(event)
       return { ok: true, level: 'full', bytes: rawBytes, ...result }
     } catch (error) {
       if (
@@ -281,7 +279,12 @@ export async function createPersistenceStore(storeOptions: {
     }
 
     try {
-      const result = writeNormalizedAppState(sqlite, normalized, options?.expectedRevision)
+      const { result, event } = sqlite.transaction(() => {
+        const before = commits.capture()
+        const written = writeNormalizedAppState(sqlite, normalized, options?.expectedRevision)
+        return { result: written, event: commits.describe(before, written.revision) }
+      })()
+      commits.publish(event)
       const bytes = utf8ByteLength(safeJsonStringify(result.effectiveState))
       return { ok: true, level: 'full', bytes, ...result }
     } catch (error) {
@@ -304,173 +307,26 @@ export async function createPersistenceStore(storeOptions: {
     }
   }
 
-  const readNodeScrollback = async (nodeId: string): Promise<string | null> => {
-    const normalized = nodeId.trim()
-    if (normalized.length === 0) {
-      return null
-    }
-
-    try {
-      return readNodeScrollbackFromDb(db, normalized)
-    } catch {
-      return null
-    }
-  }
-
-  const readAgentNodePlaceholderScrollback = async (nodeId: string): Promise<string | null> => {
-    const normalized = nodeId.trim()
-    if (normalized.length === 0) {
-      return null
-    }
-
-    try {
-      return readAgentNodePlaceholderScrollbackFromDb(db, normalized)
-    } catch {
-      return null
-    }
-  }
-
-  const writeNodeScrollback = async (
-    nodeId: string,
-    scrollback: string | null,
-  ): Promise<PersistWriteResult> => {
-    const normalizedNodeId = nodeId.trim()
-    if (normalizedNodeId.length === 0) {
-      return {
-        ok: false,
-        reason: 'unknown',
-        error: createAppErrorDescriptor('persistence.invalid_node_id', {
-          debugMessage: 'Missing node id.',
-        }),
+  const atCleanBoundary =
+    <Args extends unknown[], Result>(operation: (...args: Args) => Result) =>
+    (...args: Args): Result => {
+      if (sqlite.inTransaction) {
+        throw createAppError('persistence.unavailable')
       }
+      return operation(...args)
     }
-
-    try {
-      const recoveryOwned = sqlite
-        .prepare('SELECT 1 FROM terminal_recovery_records WHERE node_id = ? LIMIT 1')
-        .get(normalizedNodeId)
-      if (recoveryOwned) {
-        // Once the Worker has reserved this node, renderer scrollback is only a view cache. A late
-        // renderer flush must never overwrite (or delete) the Worker-owned durability mirror.
-        return { ok: true, level: 'full', bytes: 0 }
-      }
-    } catch (error) {
-      return {
-        ok: false,
-        reason: 'io',
-        error: createAppErrorDescriptor('persistence.io_failed', {
-          debugMessage: toErrorMessage(error),
-        }),
-      }
-    }
-
-    const normalizedScrollback = normalizeScrollback(scrollback)
-    if (!normalizedScrollback) {
-      try {
-        db.delete(nodeScrollback).where(eq(nodeScrollback.nodeId, normalizedNodeId)).run()
-        return { ok: true, level: 'full', bytes: 0 }
-      } catch (error) {
-        return {
-          ok: false,
-          reason: 'io',
-          error: createAppErrorDescriptor('persistence.io_failed', {
-            debugMessage: toErrorMessage(error),
-          }),
-        }
-      }
-    }
-
-    try {
-      const nowIso = new Date().toISOString()
-      db.insert(nodeScrollback)
-        .values({ nodeId: normalizedNodeId, scrollback: normalizedScrollback, updatedAt: nowIso })
-        .onConflictDoUpdate({
-          target: nodeScrollback.nodeId,
-          set: { scrollback: normalizedScrollback, updatedAt: nowIso },
-        })
-        .run()
-      return { ok: true, level: 'full', bytes: utf8ByteLength(normalizedScrollback) }
-    } catch (error) {
-      return {
-        ok: false,
-        reason: 'io',
-        error: createAppErrorDescriptor('persistence.io_failed', {
-          debugMessage: toErrorMessage(error),
-        }),
-      }
-    }
-  }
-
-  const writeAgentNodePlaceholderScrollback = async (
-    nodeId: string,
-    scrollback: string | null,
-  ): Promise<PersistWriteResult> => {
-    const normalizedNodeId = nodeId.trim()
-    if (normalizedNodeId.length === 0) {
-      return {
-        ok: false,
-        reason: 'unknown',
-        error: createAppErrorDescriptor('persistence.invalid_node_id', {
-          debugMessage: 'Missing node id.',
-        }),
-      }
-    }
-
-    const normalizedScrollback = normalizeScrollback(scrollback)
-    if (!normalizedScrollback) {
-      try {
-        db.delete(agentNodePlaceholderScrollback)
-          .where(eq(agentNodePlaceholderScrollback.nodeId, normalizedNodeId))
-          .run()
-        return { ok: true, level: 'full', bytes: 0 }
-      } catch (error) {
-        return {
-          ok: false,
-          reason: 'io',
-          error: createAppErrorDescriptor('persistence.io_failed', {
-            debugMessage: toErrorMessage(error),
-          }),
-        }
-      }
-    }
-
-    try {
-      const nowIso = new Date().toISOString()
-      db.insert(agentNodePlaceholderScrollback)
-        .values({
-          nodeId: normalizedNodeId,
-          scrollback: normalizedScrollback,
-          updatedAt: nowIso,
-        })
-        .onConflictDoUpdate({
-          target: agentNodePlaceholderScrollback.nodeId,
-          set: { scrollback: normalizedScrollback, updatedAt: nowIso },
-        })
-        .run()
-      return { ok: true, level: 'full', bytes: utf8ByteLength(normalizedScrollback) }
-    } catch (error) {
-      return {
-        ok: false,
-        reason: 'io',
-        error: createAppErrorDescriptor('persistence.io_failed', {
-          debugMessage: toErrorMessage(error),
-        }),
-      }
-    }
-  }
 
   return {
     ...createManagedClaudeResumeStore(sqlite, () => readAppStateFromDb(db)),
-    readAppStateSnapshot,
-    readWorkspaceStateRaw,
-    writeWorkspaceStateRaw,
-    readAppState,
-    readAppStateRevision,
-    writeAppState,
-    readNodeScrollback,
-    writeNodeScrollback,
-    readAgentNodePlaceholderScrollback,
-    writeAgentNodePlaceholderScrollback,
+    ...createManagedClaudeResumeRead(sqlite),
+    onAppStateCommitted: commits.subscribe,
+    readAppStateSnapshot: atCleanBoundary(readAppStateSnapshot),
+    readWorkspaceStateRaw: atCleanBoundary(readWorkspaceStateRaw),
+    writeWorkspaceStateRaw: atCleanBoundary(writeWorkspaceStateRaw),
+    readAppState: atCleanBoundary(readAppState),
+    readAppStateRevision: atCleanBoundary(readAppStateRevision),
+    writeAppState: atCleanBoundary(writeAppState),
+    ...createPersistenceScrollbackStore(sqlite, db),
     consumeRecovery: () => {
       const current = recovery
       recovery = null

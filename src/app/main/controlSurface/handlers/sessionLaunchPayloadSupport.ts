@@ -139,6 +139,7 @@ export function toMountedAgentLaunchInput(
     ? base
     : {
         ...base,
+        ...(payload.intent ? { intent: payload.intent } : {}),
         mode: payload.mode === 'resume' ? 'resume' : 'new',
         resumeSessionId: normalizeOptionalString(payload.resumeSessionId),
         env: payload.env ?? null,

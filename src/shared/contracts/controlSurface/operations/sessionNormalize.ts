@@ -1,3 +1,4 @@
+import { normalizeManagedClaudeLaunchIntent } from './managedClaudeLaunchSchema'
 import { AGENT_PROVIDER_IDS, type AgentProviderId, type LaunchAgentSessionInput } from '../../dto'
 import { createAppError } from '../../../errors/appError'
 import { normalizeLaunchAgentEnv } from './sessionLaunchAgentEnv'
@@ -157,5 +158,6 @@ export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessio
     codexReuseRunningAppServer: codexReuseRunningAppServer ?? null,
     cols: normalizeOptionalPositiveInt(payload.cols),
     rows: normalizeOptionalPositiveInt(payload.rows),
+    ...normalizeManagedClaudeLaunchIntent(payload),
   }
 }

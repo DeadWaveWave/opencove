@@ -361,6 +361,20 @@ never be revived from a renderer cache.
 
 Managed Claude 的 Worker-owned tuple 存在 `managed_claude_resume_bindings`，`nodes.agent_json`
 只保存受最终 writer 保护的投影。绑定、节点与 revision 原子提交，真实删除留下 retirement，
-普通快照不能回退 tuple 或改变其 kind/provider/route。内部 lifecycle API 尚无生产调用方；
+普通快照不能回退 tuple 或改变其 kind/provider/route。内部 lifecycle API 已接入开发开关保护的启动路径；
 现有无 ledger row 的节点保持原恢复行为。此存储层不判定 transcript qualification，也不恢复
 runtime authority。详见 [Persistence](PERSISTENCE.md#managed-claude-resume-ledger存储契约尚未启用生产接入)。
+
+### Managed launch admission
+
+`ManagedClaudeLaunchOwner` 在 Worker 内按 Agent node ID 管理进程内 attempt；token 不持久化，
+也不接受客户端 token。普通恢复选择 ledger 的 committed tuple，显式替换必须携带匹配的
+expectation。首次 adoption 与 replacement 都在同步 activation 前复查 kind/provider/route/目录。
+所有 owned fallback 先确认保持 tuple 的 null-runtime settlement；shell 不获得 managed 写权。
+删除只在最外层 app-state commit 后 fence attempt 并检查精确 runtime 的 references。
+unknown outcome 保留 runtime 与 reconciliation obligation，未到 clean transaction boundary 时
+不能确认成功、重启或补偿。Worker 重启不重建旧 token。
+
+新 adoption 默认关闭，仅 `OPENCOVE_EXPERIMENTAL_MANAGED_CLAUDE_BINDINGS=1` 用于开发验收；
+`managedClaudeResumeBindingV1` capability 保持 false。已有 row 的保护不受开关影响。
+同步投影、缓存修正与正式启用仍由后续同步接入完成。

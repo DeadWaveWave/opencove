@@ -1,3 +1,4 @@
+import { readManagedClaudeExecutionContext } from '../../../utils/managedClaudeLifecycle'
 import {
   resolveAgentModel,
   resolveSelectableAgentProvider,
@@ -31,6 +32,8 @@ function reuseLinkedAgentForTask({
   requirement,
   taskDirectory,
   context,
+  managed,
+  managedDirectory,
 }: {
   taskNodeId: string
   linkedAgentNodeId: string
@@ -38,6 +41,8 @@ function reuseLinkedAgentForTask({
   requirement: string
   taskDirectory: string
   context: TaskActionContext
+  managed: boolean
+  managedDirectory?: string | null
 }): boolean {
   const linkedAgentNode = context.nodesRef.current.find(node => node.id === linkedAgentNodeId)
   if (!linkedAgentNode || linkedAgentNode.data.kind !== 'agent' || !linkedAgentNode.data.agent) {
@@ -56,8 +61,9 @@ function reuseLinkedAgentForTask({
   context.setNodes(prevNodes =>
     prevNodes.map(node => {
       if (node.id === linkedAgentNodeId && node.data.kind === 'agent' && node.data.agent) {
-        const agentDirectory =
-          node.data.agent.directoryMode === 'workspace'
+        const agentDirectory = managed
+          ? managedDirectory!
+          : node.data.agent.directoryMode === 'workspace'
             ? taskDirectory
             : node.data.agent.executionDirectory
 
@@ -76,7 +82,7 @@ function reuseLinkedAgentForTask({
               executionDirectory: agentDirectory,
               expectedDirectory: agentDirectory,
               launchMode: 'new',
-              ...clearResumeSessionBinding(),
+              ...(!managed ? clearResumeSessionBinding() : {}),
             },
             lastError: null,
           },
@@ -134,6 +140,12 @@ export async function runTaskAgentAction(
       ? taskSpace.directoryPath.trim()
       : context.workspacePath
 
+  const linkedAgentNodeId = taskNode.data.task.linkedAgentNodeId
+  const linked = context.nodesRef.current.find(node => node.id === linkedAgentNodeId)
+  const owned = linkedAgentNodeId
+    ? await readManagedClaudeExecutionContext(linkedAgentNodeId, linked?.data.agent?.provider)
+    : null
+
   const initialBinding = await resolveWorkspaceAgentLaunchBinding({
     workspaceId: context.workspaceId,
     workspacePath: context.workspacePath,
@@ -141,15 +153,23 @@ export async function runTaskAgentAction(
     executionDirectory: taskDirectory,
     targetSpace: taskSpace,
     spacesRef: context.spacesRef,
-    onSpacesChange: context.onSpacesChange,
-    onRequestPersistFlush: context.onRequestPersistFlush,
+    onSpacesChange: owned ? undefined : context.onSpacesChange,
+    onRequestPersistFlush: owned ? undefined : context.onRequestPersistFlush,
   })
   mountId = initialBinding.mountId
   taskDirectory = initialBinding.executionDirectory
-  const linkedAgentNodeId = taskNode.data.task.linkedAgentNodeId
-
   if (linkedAgentNodeId) {
+    if (owned && taskDirectory !== owned.executionDirectory) {
+      setTaskLastError({
+        taskNodeId,
+        message: context.t('messages.managedAgentDirectoryConflict'),
+        setNodes: context.setNodes,
+      })
+      return
+    }
     const reused = reuseLinkedAgentForTask({
+      managed: Boolean(owned),
+      managedDirectory: owned?.executionDirectory,
       taskNodeId,
       linkedAgentNodeId,
       taskTitle: taskNode.data.title,

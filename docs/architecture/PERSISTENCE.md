@@ -337,3 +337,10 @@ Desktop IPC 返回与 revision conflict 相同的 `{ok:false, reason:'unknown', 
 revisioned sync 采用 Control Surface `{ok:false, error}`；raw sync 保留嵌套写入结果。
 Remote/Web 把该 code 纳入既有 conflict refresh/rebase，并在重试耗尽时保留 typed descriptor。
 retired ID 的 Renderer rebase 策略以及 corrected 的 cache/ack 处理留待启用前补齐。
+
+Managed launch 的读取适配器只在 clean transaction boundary 返回 definitive ledger/node/
+retirement observation；同一连接仍在 transaction 中时必须报告 unavailable，不能把可见行当作
+已提交事实。生命周期保留 unknown obligation，直到 definitive read 确认结果。
+`onAppStateCommitted` 对比真实 node 集合，raw write 只在外层提交后通知；rollback 无通知，
+observer/cleanup 失败不改变成功的持久化结果。Activation receipt 使用该事务的精确 revision，
+row-only activation 的 commit revision 为 null；`alreadyApplied` 的当前 revision 不冒充历史提交。

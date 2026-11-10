@@ -152,8 +152,10 @@ export async function resumeTaskAgentSessionAction(
         model: record.model,
         effectiveModel: launched.effectiveModel,
         launchMode: 'resume',
-        resumeSessionId: record.resumeSessionId,
-        resumeSessionIdVerified: true,
+        ...(launched.managedClaudeLifecycle?.binding.tuple ?? {
+          resumeSessionId: record.resumeSessionId,
+          resumeSessionIdVerified: true,
+        }),
         executionDirectory: launched.executionDirectory,
         expectedDirectory: initialBinding.mountId ? launched.executionDirectory : taskDirectory,
         directoryMode: 'workspace',
@@ -196,9 +198,13 @@ export async function resumeTaskAgentSessionAction(
                   ? {
                       ...session,
                       lastRunAt: now,
-                      lastDirectory: taskDirectory,
-                      resumeSessionId: session.resumeSessionId,
-                      resumeSessionIdVerified: true,
+                      lastDirectory: launched.managedClaudeLifecycle
+                        ? launched.executionDirectory
+                        : taskDirectory,
+                      ...(launched.managedClaudeLifecycle?.binding.tuple ?? {
+                        resumeSessionId: session.resumeSessionId,
+                        resumeSessionIdVerified: true,
+                      }),
                     }
                   : session,
               ),

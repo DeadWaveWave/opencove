@@ -1,3 +1,4 @@
+import type { ManagedClaudeLifecycleReceipt } from '@shared/contracts/managedClaudeLaunch'
 import { useCallback, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { AgentSessionSummary } from '@shared/contracts/dto'
@@ -22,7 +23,9 @@ export function useAgentNodeSessionSwitch({
 }: {
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
-  relaunchAgentNode: (options: RelaunchAgentNodeOptions) => Promise<void>
+  relaunchAgentNode: (
+    options: RelaunchAgentNodeOptions,
+  ) => Promise<void | ManagedClaudeLifecycleReceipt>
   onRequestPersistFlush?: () => void
 }): (nodeId: string, summary: AgentSessionSummary) => Promise<void> {
   return useCallback(
@@ -48,7 +51,7 @@ export function useAgentNodeSessionSwitch({
         ? createTaskAgentSessionRecord(node, switchedAt)
         : null
 
-      await relaunchAgentNode({
+      const receipt = await relaunchAgentNode({
         nodeId,
         mode: 'resume',
         executionDirectory: summary.cwd,
@@ -58,11 +61,12 @@ export function useAgentNodeSessionSwitch({
       })
 
       const switchedNode = findAgentNode(nodeId, nodesRef.current)
-      const switchCommitted =
-        switchedNode !== null &&
-        isResumeSessionBindingVerified(switchedNode.data.agent) &&
-        switchedNode.data.agent.resumeSessionId === summary.sessionId &&
-        switchedNode.data.agent.executionDirectory === summary.cwd
+      const switchCommitted = receipt
+        ? receipt.binding.tuple.resumeSessionId === summary.sessionId
+        : switchedNode !== null &&
+          isResumeSessionBindingVerified(switchedNode.data.agent) &&
+          switchedNode.data.agent.resumeSessionId === summary.sessionId &&
+          switchedNode.data.agent.executionDirectory === summary.cwd
       if (switchCommitted && previousTaskNodeId && previousSessionRecord) {
         setNodes(
           prevNodes =>

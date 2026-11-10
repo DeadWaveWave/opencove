@@ -1,3 +1,7 @@
+import {
+  ABSENT_MANAGED_CLAUDE_BINDING,
+  type ManagedClaudeLifecycleReceipt,
+} from '@shared/contracts/managedClaudeLaunch'
 import type { MutableRefObject } from 'react'
 import { isAllocateProjectPlaceholderPath } from '@app/renderer/shell/utils/projectPlaceholderPath'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
@@ -25,6 +29,7 @@ export interface WorkspaceAgentLaunchBinding {
 }
 
 export interface WorkspaceAgentSessionLaunchResult {
+  managedClaudeLifecycle?: ManagedClaudeLifecycleReceipt
   sessionId: string
   resumeSessionId: string | null
   profileId: string | null
@@ -278,6 +283,16 @@ export async function launchWorkspaceAgentSession({
   launchGeometry: { terminalGeometry: { cols: number; rows: number } }
   retryResolveMountBinding?: (failedMountId: string) => Promise<WorkspaceAgentLaunchBinding | null>
 }): Promise<WorkspaceAgentSessionLaunchResult> {
+  const intent =
+    provider === 'claude-code' && canvasNodeId
+      ? mode === 'new'
+        ? { kind: 'launchNew' as const, expected: ABSENT_MANAGED_CLAUDE_BINDING }
+        : {
+            kind: 'resumeConversation' as const,
+            resumeSessionId: resumeSessionId!,
+            expected: ABSENT_MANAGED_CLAUDE_BINDING,
+          }
+      : undefined
   const invokeLaunchInMount = async (
     nextMountId: string,
     nextExecutionDirectory: string,
@@ -288,6 +303,7 @@ export async function launchWorkspaceAgentSession({
       kind: 'command',
       id: 'session.launchAgentInMount',
       payload: {
+        ...(intent ? { intent } : {}),
         canvasNodeId,
         workspaceId,
         spaceId,
@@ -315,6 +331,7 @@ export async function launchWorkspaceAgentSession({
     try {
       const launched = await invokeLaunchInMount(launchMountId, launchExecutionDirectory)
       return {
+        managedClaudeLifecycle: launched.managedClaudeLifecycle,
         sessionId: launched.sessionId,
         resumeSessionId: launched.resumeSessionId ?? null,
         profileId: launched.profileId ?? null,
@@ -327,7 +344,17 @@ export async function launchWorkspaceAgentSession({
         },
       }
     } catch (error) {
-      if (!retryResolveMountBinding) {
+      const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : ''
+      const details =
+        error && typeof error === 'object' && 'details' in error
+          ? (error.details as { managedClaudeLaunch?: boolean; phase?: string; reason?: string })
+          : undefined
+      if (
+        code.startsWith('agent.managed_launch_') ||
+        (details?.managedClaudeLaunch &&
+          !(details.phase === 'beforeSpawn' && details.reason === 'mountUnavailable')) ||
+        !retryResolveMountBinding
+      ) {
         throw error
       }
 
@@ -345,6 +372,7 @@ export async function launchWorkspaceAgentSession({
 
       const launched = await invokeLaunchInMount(launchMountId, launchExecutionDirectory)
       return {
+        managedClaudeLifecycle: launched.managedClaudeLifecycle,
         sessionId: launched.sessionId,
         resumeSessionId: launched.resumeSessionId ?? null,
         profileId: launched.profileId ?? null,
@@ -368,6 +396,7 @@ export async function launchWorkspaceAgentSession({
       kind: 'command',
       id: 'session.launchAgent',
       payload: {
+        ...(intent ? { intent } : {}),
         canvasNodeId,
         workspaceId,
         spaceId,
@@ -387,6 +416,7 @@ export async function launchWorkspaceAgentSession({
     })
 
     return {
+      managedClaudeLifecycle: launched.managedClaudeLifecycle,
       sessionId: launched.sessionId,
       resumeSessionId: launched.resumeSessionId ?? null,
       profileId: launched.profileId ?? null,
@@ -401,6 +431,7 @@ export async function launchWorkspaceAgentSession({
   }
 
   const launched = await window.opencoveApi.agent.launch({
+    ...(intent ? { intent } : {}),
     canvasNodeId,
     workspaceId,
     spaceId,
@@ -420,6 +451,7 @@ export async function launchWorkspaceAgentSession({
   })
 
   return {
+    managedClaudeLifecycle: launched.managedClaudeLifecycle,
     sessionId: launched.sessionId,
     resumeSessionId: launched.resumeSessionId ?? null,
     profileId: launched.profileId ?? null,

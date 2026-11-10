@@ -7,13 +7,15 @@ import { useWorkspaceCanvasAgentNodeLifecycle } from '../../../src/contexts/work
 
 describe('agent relaunch session binding', () => {
   it.each([
-    { provider: 'claude-code', mode: 'new', expected: 'assigned-a' },
-    { provider: 'claude-code', mode: 'resume', expected: 'verified-a' },
-    { provider: 'codex', mode: 'new', expected: null },
-    { provider: 'gemini', mode: 'new', expected: null },
+    { provider: 'claude-code', mode: 'new', expected: 'assigned-a', owned: false },
+    { provider: 'claude-code', mode: 'resume', expected: 'verified-a', owned: false },
+    { provider: 'codex', mode: 'new', expected: null, owned: false },
+    { provider: 'gemini', mode: 'new', expected: null, owned: false },
+    { provider: 'claude-code', mode: 'resume', expected: 'committed-b', owned: true },
+    { provider: 'claude-code', mode: 'new', expected: 'committed-b', owned: true },
   ] as const)(
     'preserves only the owned $provider $mode binding',
-    async ({ provider, mode, expected }) => {
+    async ({ provider, mode, expected, owned }) => {
       const node: Node<TerminalNodeData> = {
         id: 'agent-a',
         position: { x: 0, y: 0 },
@@ -50,7 +52,29 @@ describe('agent relaunch session binding', () => {
         },
       }
       const nodesRef = { current: [node] }
+      const binding = {
+        nodeId: node.id,
+        activationId: 'owned',
+        runtimeSessionId: 'old-runtime',
+        tuple: { resumeSessionId: 'committed-b', resumeSessionIdVerified: true },
+        nodeSeen: true,
+        bindingRevision: 2,
+        observedRevision: 2,
+      }
+      const receipt = { binding, commitRevision: 2 }
+      if (owned) {
+        node.data.sessionId = 'old-runtime'
+      }
       window.opencoveApi = {
+        ...(owned
+          ? {
+              controlSurface: {
+                invoke: vi.fn(async request =>
+                  request.id === 'node.get' ? { managedClaudeBinding: binding } : { mounts: [] },
+                ),
+              },
+            }
+          : {}),
         agent: {
           launch: vi.fn(async () => ({
             sessionId: 'runtime-a',
@@ -58,6 +82,7 @@ describe('agent relaunch session binding', () => {
             runtimeKind: 'posix',
             effectiveModel: null,
             resumeSessionId: 'assigned-a',
+            ...(owned ? { managedClaudeLifecycle: receipt } : {}),
           })),
         },
         pty: { kill: vi.fn() },
@@ -84,6 +109,16 @@ describe('agent relaunch session binding', () => {
       )
       await act(() => result.current.launchAgentInNode(node.id, mode))
       expect(window.opencoveApi.agent.launch).toHaveBeenCalledOnce()
+      if (owned) {
+        expect(window.opencoveApi.pty.kill).not.toHaveBeenCalled()
+        expect(window.opencoveApi.agent.launch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            intent: expect.objectContaining({
+              kind: mode === 'resume' ? 'resumeCurrent' : 'launchNew',
+            }),
+          }),
+        )
+      }
       expect(nodesRef.current[0].data.agent).toMatchObject({
         resumeSessionId: expected,
         resumeSessionIdVerified: expected !== null,

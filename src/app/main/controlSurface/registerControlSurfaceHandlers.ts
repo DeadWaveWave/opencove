@@ -71,6 +71,7 @@ export function registerControlSurfaceHandlers(
     terminalSpawnAdmission: TerminalSpawnAdmission
     terminalRecoverySpawnAdmission: TerminalRecoverySpawnAdmission
     agentProviderRegistry: AgentProviderRegistry
+    cleanupUnreferencedSession?: (id: string) => Promise<boolean>
     terminalAgentActivity?: TerminalAgentActivityEnvironmentService
   },
 ): void {
@@ -139,6 +140,7 @@ export function registerControlSurfaceHandlers(
     terminalSpawnAdmission: deps.terminalSpawnAdmission,
     terminalRecoverySpawnAdmission: deps.terminalRecoverySpawnAdmission,
     agentProviderRegistry: deps.agentProviderRegistry,
+    cleanupUnreferencedSession: deps.cleanupUnreferencedSession,
   })
   registerSessionStreamingHandlers(controlSurface, {
     approvedWorkspaces: deps.approvedWorkspaces,

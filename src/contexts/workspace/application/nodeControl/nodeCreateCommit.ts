@@ -124,6 +124,13 @@ export async function cleanupFailedNodeCreation(
   } catch {
     /* An unavailable read cannot prove that the write did not commit. */
   }
+  if (persisted === false && node.sessionId && store.isRuntimeReferenced) {
+    try {
+      persisted = store.isRuntimeReferenced(node.sessionId)
+    } catch {
+      persisted = null
+    }
+  }
   if (persisted === false) {
     if (node.sessionId) {
       try {

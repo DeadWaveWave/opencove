@@ -1,5 +1,8 @@
 export const zhCNMessages = {
   managedAgentChanged: '此智能体已发生变更，请刷新工作区后重试。',
+  managedAgentDirectoryConflict: '此 Agent 属于其他目录。请保留当前目录，或启动新的 Agent。',
+  managedAgentLaunchUncertain: '暂时无法确认 Agent 是否已启动。请先检查会话状态，再重试。',
+  managedAgentResumeUnavailable: '此会话暂时无法恢复。请选择已保存的会话，或开始新会话。',
   agentLaunchFailed: 'Agent 启动失败：{{message}}',
   agentResumeFailed: 'Agent 继续失败：{{message}}',
   terminalAgentReexecFailed: '无法在此终端中重新启动 Agent：{{message}}',

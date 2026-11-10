@@ -161,6 +161,7 @@ export const SESSION_GRANT_POLICY = {
   'session.detachAgentStateWatcher': deny('agent observation is managed by OpenCove'),
   'session.finalMessage': allow,
   'session.finalMessageForNode': allow,
+  'session.cleanupUnreferenced': deny('this action requires a human decision in OpenCove'),
   'session.get': allow,
   'session.kill': allow,
   'session.launchAgent': launch,

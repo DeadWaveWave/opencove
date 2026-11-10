@@ -93,6 +93,10 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'agent.prompt_timeout': 'Prompt delivery deadline expired before any write.',
     'agent.list_models_failed': 'Unable to load models for this provider.',
     'agent.install_failed': 'Unable to install this agent provider.',
+    'agent.managed_launch_rejected':
+      'This agent session has changed or cannot be resumed. Refresh the workspace and try again.',
+    'agent.managed_launch_commit_failed':
+      'The agent launch could not be confirmed. Check the session before trying again.',
     'agent.launch_failed': 'Unable to start the agent.',
     'agent.final_message_unavailable': 'No retained hook message is available for this turn.',
     'agent.read_last_message_failed': 'Unable to read the last agent message.',

@@ -1,3 +1,4 @@
+import { killUnownedNodeRuntime } from '../../../utils/managedClaudeLifecycle'
 import { useCallback, useEffect, useRef } from 'react'
 import { applyNodeChanges } from '@xyflow/react'
 import type { Node, NodeChange, NodePositionChange } from '@xyflow/react'
@@ -114,9 +115,7 @@ export function useWorkspaceCanvasApplyNodeChanges({
 
           if (node.data.sessionId.length > 0) {
             cleanupNodeRuntimeArtifacts(node.id, node.data.sessionId)
-            void window.opencoveApi.pty
-              .kill({ sessionId: node.data.sessionId })
-              .catch(() => undefined)
+            void killUnownedNodeRuntime(node).catch(() => undefined)
           }
         })
       }

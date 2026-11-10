@@ -66,6 +66,8 @@ export type NodeControlAppState = {
 }
 
 export interface NodeControlAppStateStore {
+  isRuntimeReferenced?: (id: string) => boolean
+  isManagedNode?: (id: string) => boolean
   readAppState: () => Promise<NodeControlAppState | null>
   readAppStateRevision: () => Promise<number>
   writeAppState: (

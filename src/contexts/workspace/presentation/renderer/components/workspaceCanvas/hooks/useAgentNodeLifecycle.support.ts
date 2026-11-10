@@ -1,3 +1,7 @@
+import type {
+  ManagedClaudeLaunchIntent,
+  ManagedClaudeLifecycleReceipt,
+} from '@shared/contracts/managedClaudeLaunch'
 import type { Node } from '@xyflow/react'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import type { LaunchAgentSessionResult, TerminalRuntimeKind } from '@shared/contracts/dto'
@@ -18,6 +22,7 @@ export type AgentRuntimeNode = Node<TerminalNodeData> & {
 export interface RelaunchAgentNodeOptions {
   nodeId: string
   mode: 'new' | 'resume'
+  intent?: ManagedClaudeLaunchIntent
   executionDirectory?: string
   expectedDirectory?: string | null
   resumeSessionId?: string | null
@@ -25,6 +30,7 @@ export interface RelaunchAgentNodeOptions {
 }
 
 export interface AgentRuntimeLaunchResult {
+  managedClaudeLifecycle?: ManagedClaudeLifecycleReceipt
   sessionId: string
   profileId: string | null | undefined
   runtimeKind: TerminalRuntimeKind | undefined
@@ -72,6 +78,7 @@ export function resolveAgentRuntimeLaunchFrameSize(node: AgentRuntimeNode): {
 
 export async function launchAgentRuntime({
   node,
+  intent,
   mountId,
   mergedEnv,
   mode,
@@ -85,6 +92,7 @@ export async function launchAgentRuntime({
   terminalDisplayMetrics,
 }: {
   node: AgentRuntimeNode
+  intent?: ManagedClaudeLaunchIntent
   mountId: string | null
   mergedEnv: Record<string, string>
   mode: 'new' | 'resume'
@@ -122,6 +130,7 @@ export async function launchAgentRuntime({
       kind: 'command',
       id: 'session.launchAgentInMount',
       payload: {
+        ...(intent ? { intent } : {}),
         canvasNodeId: node.id,
         mountId,
         cwdUri,
@@ -140,11 +149,16 @@ export async function launchAgentRuntime({
     })
 
     return {
+      managedClaudeLifecycle: launched.managedClaudeLifecycle,
       sessionId: launched.sessionId,
       profileId: launched.profileId,
       runtimeKind: launched.runtimeKind ?? undefined,
       effectiveModel: launched.effectiveModel,
-      resumeSessionId: mode === 'resume' ? resumeSessionId : (launched.resumeSessionId ?? null),
+      resumeSessionId: launched.managedClaudeLifecycle
+        ? launched.managedClaudeLifecycle.binding.tuple.resumeSessionId
+        : mode === 'resume'
+          ? resumeSessionId
+          : (launched.resumeSessionId ?? null),
       startedAt: launched.startedAt,
       executionDirectory: launched.executionContext.workingDirectory,
       terminalGeometry: launchGeometry.terminalGeometry,
@@ -157,6 +171,7 @@ export async function launchAgentRuntime({
   }
 
   const launched = await window.opencoveApi.agent.launch({
+    ...(intent ? { intent } : {}),
     canvasNodeId: node.id,
     provider: node.data.agent.provider,
     cwd: executionDirectory,
@@ -174,11 +189,16 @@ export async function launchAgentRuntime({
   })
 
   return {
+    managedClaudeLifecycle: launched.managedClaudeLifecycle,
     sessionId: launched.sessionId,
     profileId: launched.profileId,
     runtimeKind: launched.runtimeKind,
     effectiveModel: launched.effectiveModel,
-    resumeSessionId: mode === 'resume' ? resumeSessionId : (launched.resumeSessionId ?? null),
+    resumeSessionId: launched.managedClaudeLifecycle
+      ? launched.managedClaudeLifecycle.binding.tuple.resumeSessionId
+      : mode === 'resume'
+        ? resumeSessionId
+        : (launched.resumeSessionId ?? null),
     startedAt: new Date().toISOString(),
     executionDirectory,
     terminalGeometry: launchGeometry.terminalGeometry,
