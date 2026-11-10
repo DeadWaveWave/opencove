@@ -74,33 +74,35 @@ test('agent session snapshots retain scrollback and return bounded ANSI-free tex
     const agent = await createOutputTerminal(page, 'agent')
     // The existing stdin-echo provider fixture owns this PTY. Its cooked terminal echoes
     // the submitted lines; no real provider or user profile is used.
-    const accepted = await page.evaluate(
-      async ({ binding, data }) => {
-        return window.opencoveApi.controlSurface.invoke<{ accepted: boolean }>({
-          kind: 'command',
-          id: 'session.writeNode',
-          payload: { ...binding, data },
-        })
-      },
-      {
-        binding: agent,
-        data: Array.from(
-          { length: 140 },
-          (_, i) => `AGENT_HISTORY_${String(i).padStart(3, '0')}\r`,
-        ).join(''),
-      },
-    )
-    expect(accepted.accepted).toBe(true)
-    // Wait for output through the Worker snapshot path before issuing CLI reads.
-    await expect
-      .poll(async () => {
-        const snapshot = await page.evaluate(
+    // A single large write can overflow the terminal input queue and drop echoed lines, so
+    // write in small batches and wait for each batch's echo before sending the next.
+    const snapshotText = async () =>
+      (
+        await page.evaluate(
           async sessionId => window.opencoveApi.pty.snapshot({ sessionId }),
           agent.sessionId,
         )
-        return snapshot.data.includes('AGENT_HISTORY_139')
-      })
-      .toBe(true)
+      ).data
+    /* eslint-disable no-await-in-loop -- each batch must be echoed before the next is written. */
+    for (let first = 0; first < 140; first += 10) {
+      const batch = Array.from(
+        { length: 10 },
+        (_, i) => `AGENT_HISTORY_${String(first + i).padStart(3, '0')}`,
+      )
+      const accepted = await page.evaluate(
+        async ({ binding, data }) => {
+          return window.opencoveApi.controlSurface.invoke<{ accepted: boolean }>({
+            kind: 'command',
+            id: 'session.writeNode',
+            payload: { ...binding, data },
+          })
+        },
+        { binding: agent, data: batch.map(line => `${line}\r`).join('') },
+      )
+      expect(accepted.accepted).toBe(true)
+      await expect.poll(async () => (await snapshotText()).includes(batch.at(-1)!)).toBe(true)
+    }
+    /* eslint-enable no-await-in-loop */
     const command = (flags: string, label: string) =>
       terminalCommand(
         page,
