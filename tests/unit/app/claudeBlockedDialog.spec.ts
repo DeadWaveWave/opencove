@@ -24,13 +24,14 @@ describe('Claude blocking dialogs', () => {
     expect(envelope).toHaveProperty('notificationType', notification_type)
     expect(resolveHookBlockedDetails(envelope).blockedReason ?? null).toBe(reason)
   })
-  it('bounds question text and option labels without copying other tool input', () => {
+  it('bounds question text, option labels and descriptions without copying other tool input', () => {
     const input = {
       questions: Array.from({ length: 5 }, () => ({
         question: 'Q'.repeat(201),
         options: Array.from({ length: 6 }, () => ({
           label: '😀'.repeat(201),
-          description: 'secret',
+          description: '😀'.repeat(201),
+          privateData: 'secret',
         })),
       })),
     }
@@ -50,6 +51,7 @@ describe('Claude blocking dialogs', () => {
     expect([...blockedSummary.questions[0].question]).toHaveLength(200)
     expect(blockedSummary.questions[0].question.endsWith('…')).toBe(true)
     expect([...blockedSummary.questions[0].options[0]]).toHaveLength(200)
+    expect([...blockedSummary.questions[0].optionDescriptions![0]!]).toHaveLength(200)
     expect(JSON.stringify(blockedSummary)).not.toContain('secret')
   })
   it('omits malformed questions and options, and never exposes plan text', () => {
@@ -99,4 +101,69 @@ describe('Claude blocking dialogs', () => {
       }).success,
     ).toBe(false)
   })
+})
+
+it('keeps descriptions aligned with valid labels and omits missing or malformed descriptions', () => {
+  const summary = resolveHookBlockedDetails({
+    state: 'waiting',
+    tool: {
+      name: 'AskUserQuestion',
+      input: {
+        questions: [
+          {
+            question: 'Which?',
+            options: [
+              null,
+              { description: 'Orphan' },
+              { label: 'One', description: 'First choice' },
+              { label: 'Two' },
+              { label: 'Ignored', description: 'Out of bounds' },
+            ],
+          },
+        ],
+      },
+    },
+  }).blockedSummary
+  expect(summary).toEqual({
+    kind: 'question',
+    questions: [
+      { question: 'Which?', options: ['One', 'Two'], optionDescriptions: ['First choice', null] },
+    ],
+  })
+  expect(agentRunSnapshotSchema.shape.blockedSummary.parse(summary)).toEqual(summary)
+  const missing = resolveHookBlockedDetails({
+    state: 'waiting',
+    tool: {
+      name: 'AskUserQuestion',
+      input: {
+        questions: [
+          {
+            question: 'Which?',
+            options: [
+              { label: 'One', description: 42 },
+              { label: 'Two', description: '  ' },
+            ],
+          },
+        ],
+      },
+    },
+  }).blockedSummary
+  expect(missing).toEqual({
+    kind: 'question',
+    questions: [{ question: 'Which?', options: ['One', 'Two'] }],
+  })
+})
+it('rejects overlong, excessive, misaligned and malformed option descriptions on the wire', () => {
+  const schema = agentRunSnapshotSchema.shape.blockedSummary
+  for (const optionDescriptions of [['x'.repeat(201)], ['a', 'b'], [42], 'invalid']) {
+    expect(
+      schema.safeParse({
+        kind: 'question',
+        questions: [{ question: 'Q', options: ['A'], optionDescriptions }],
+      }).success,
+    ).toBe(false)
+  }
+  expect(
+    schema.parse({ kind: 'question', questions: [{ question: 'Q', options: ['A'] }] }),
+  ).toEqual({ kind: 'question', questions: [{ question: 'Q', options: ['A'] }] })
 })

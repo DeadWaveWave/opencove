@@ -27,12 +27,17 @@ moved into a new top-level Space with this command; `--move` requires `--in`.
 
 For a child, `--frame '{"x":100,"y":100,"width":600,"height":400}'` requests a full
 canvas boundary. Without a frame, the Worker encloses the moved nodes with padding,
-or uses a 420×300 boundary centered in the parent when no nodes are moved. It fits
-the boundary inside the parent. An adjusted explicit frame produces one stderr
-notice; stdout always contains the applied rect.
+or uses a 420×300 boundary centered in the parent when no nodes are moved. It first
+fits the boundary inside the parent, then expands it as needed to enclose the
+moved nodes. Moved nodes keep their positions and sizes; the child and its ancestors
+grow when necessary. An adjusted explicit frame produces one stderr notice;
+stdout always contains the applied rect.
 
 `space create` returns `{id, name, projectId, parentSpaceId, rect, directoryPath,
 movedNodeIds}`. Top-level results have `parentSpaceId: null` and `movedNodeIds: []`.
+`rect` is `{x,y,width,height}` in canvas coordinates, matching `space get` and
+`space list`; null means no saved geometry. The separate `boundary` field in
+get/list describes access scope, including mounts and capabilities.
 `project add` returns `{id, name, path, defaultSpace}`; `defaultSpace` is
 `{id, name, directoryPath, rect}`, or null if absent. An existing project at the
 same path is reused with its saved name and default Space. Both commands support
@@ -63,11 +68,14 @@ Space，因此 `--move` 必须与 `--in` 配合使用。
 
 子 Space 的 `--frame` 接受完整的 `{x,y,width,height}` JSON 对象。不指定时，边界
 优先包围所选节点并留出间距；没有所选节点时，在父 Space 中心使用 420×300 的边界。
-Worker 会将边界限制在父 Space 内；若显式 frame 被调整，stderr 会提示实际 rect。
+Worker 先将边界适配到父 Space 内，再确保它完整包住所选节点，必要时逐级扩展祖先。
+所选节点的位置和尺寸保持不变。若显式 frame 被调整，stderr 会提示实际 rect。
 stdout 中的 rect 始终是实际采用的值。
 
 `space create` 返回 `{id,name,projectId,parentSpaceId,rect,directoryPath,movedNodeIds}`；
-顶层 Space 的 `parentSpaceId` 为 null，`movedNodeIds` 为空数组。`project add` 返回
+`rect` 为画布坐标中的 `{x,y,width,height}`，与 `space get`、`space list` 一致；
+null 表示尚未保存几何边界。get/list 中独立的 `boundary` 表示 mount、capabilities 等
+访问范围。顶层 Space 的 `parentSpaceId` 为 null，`movedNodeIds` 为空数组。`project add` 返回
 `{id,name,path,defaultSpace}`，默认 Space 包含 `{id,name,directoryPath,rect}`，没有时为
 null。相同路径的已有项目会复用其保存的名称和默认 Space。两个命令均支持 `--pretty`
 和 `--fields`，不支持表格输出；失败时 stdout 为空，不自动重试。旧版 Worker 若仅返回
@@ -75,6 +83,15 @@ null。相同路径的已有项目会复用其保存的名称和默认 Space。�
 
 **智能体不能添加项目。** 终端 session grant 会收到退出码 4，提示此操作需要用户在
 OpenCove 中决定。请用户在 OpenCove 添加项目，不要重试或借用其他凭证。
+
+## Place nodes in Spaces
+
+When creating a node in a Space without a position, the Worker first finds a full
+slot inside it. If full, it searches right, then down, before left and up. The
+Space and its ancestors grow with padding; existing nodes keep their positions.
+
+在 Space 内创建节点且未指定位置时，Worker 优先寻找内部的完整空位；空间不足时依次
+向右、向下搜索，最后才考虑左侧和上方。目标 Space 及其祖先逐级扩展，已有节点保持原位。
 
 ## Rename and arrange Spaces
 
@@ -100,8 +117,9 @@ can use any positive dimensions. A Space without a saved boundary can be renamed
 open it in OpenCove before changing its frame.
 
 Output is `{id, name, projectId, parentSpaceId, rect, directoryPath, movedNodeIds}`.
-Frame updates also return `appliedFrame` and `frameAdjusted`; the latter compares
-only the components you requested. An adjustment prints one notice to stderr.
+`rect` matches the geometry returned by `space get` and `space list`; `boundary`
+in those queries describes access scope. Frame updates also return `appliedFrame`
+and `frameAdjusted`; the latter compares only the components you requested. An adjustment prints one notice to stderr.
 `movedNodeIds` lists nodes whose coordinates changed, including descendants, or
 is empty for rename/resize alone. Use `--fields` or `--pretty`; table output is
 unavailable. The update saves the name, boundaries and positions together. On a
@@ -122,9 +140,10 @@ parentage and membership remain unchanged; use `worktree` commands for bindings.
 父边界的情况。其他节点位置保持不变，命令不执行磁吸或避让。空 Space 接受任意正数
 尺寸。没有已保存边界的 Space 可以改名；调整其边界前，请先在 OpenCove 中打开它。
 
-返回 `{id,name,projectId,parentSpaceId,rect,directoryPath,movedNodeIds}`；修改 frame
-时另含 `appliedFrame` 和 `frameAdjusted`，后者只比较显式请求的分量。发生调整时，
-stderr 显示一次提示。`movedNodeIds` 包含坐标实际改变的所有节点（包括后代节点）；
+返回 `{id,name,projectId,parentSpaceId,rect,directoryPath,movedNodeIds}`；`rect` 与
+`space get`、`space list` 返回的几何边界一致，查询中的 `boundary` 则表示访问范围。
+修改 frame 时另含 `appliedFrame` 和 `frameAdjusted`，后者只比较显式请求的分量。
+发生调整时，stderr 显示一次提示。`movedNodeIds` 包含坐标实际改变的所有节点（包括后代节点）；
 仅改名或改尺寸时为空。支持 `--fields` 和 `--pretty`，不支持表格输出。
 
 名称、边界和坐标一次保存；如遇并发冲突，请重新查询 Space 后再决定是否更新。

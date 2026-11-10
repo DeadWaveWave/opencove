@@ -354,7 +354,9 @@ Nested node data (for example tags) is not truncated. Server-side filesystem rea
 provide a total beyond the entries returned by the Worker.
 
 `space list` and `space get` use the same space-row fields: id, name, directoryPath,
-targetMountId, parentSpaceId, boundary, sortOrder, nodeIds, projectId and nodeCount.
+targetMountId, parentSpaceId, boundary, rect, sortOrder, nodeIds, projectId and nodeCount.
+`rect` is `{x,y,width,height}` in canvas coordinates, or null without saved geometry; `space create`
+uses the same field. `boundary` describes access scope.
 The legacy projectId/activeSpaceId envelopes remain. `space get` retains nodes;
 `space list` keeps IDs, directoryPath, nodeIds and nodeCount but omits full node
 objects by default. Request them explicitly with `--fields nodes`, or select
@@ -426,3 +428,5 @@ An unfinished `agent read --turn` retains `agent.final_message_unavailable` and
 asks the user to resolve the permission, question or plan in OpenCove; working
 retains the exact-turn wait command. Unavailable or replaced observations report
 unknown; they never replace the original read error or trigger another prompt.
+
+Question summaries and their compatibility rules: [Agent dialog summaries](AGENT_DIALOG_SUMMARIES.md).

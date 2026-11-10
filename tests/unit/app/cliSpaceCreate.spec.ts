@@ -37,6 +37,7 @@ it.each([space.id, null])(
       projectId: 'current-project',
       name: 'Review',
     })
+    expect(JSON.parse(f.out())).not.toHaveProperty('boundary')
     expect(JSON.parse(f.out())).toEqual({
       ...createdSpace,
       projectId: 'current-project',
@@ -180,6 +181,7 @@ it.each(['Main', 'space-', '@self', space.id])(
       name: 'Review',
       initialNodeIds: [node.id],
     })
+    expect(JSON.parse(f.out())).not.toHaveProperty('boundary')
     expect(JSON.parse(f.out())).toEqual({
       ...createdSpace,
       projectId: project.id,

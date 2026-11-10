@@ -336,3 +336,40 @@ describe('node creation pure persistence rebase', () => {
     expect(f.runtime.killSession).not.toHaveBeenCalled()
   })
 })
+
+it('rebases ancestor growth on the latest hierarchy and preserves concurrent parent geometry', async () => {
+  const f = fixture(),
+    write = f.writeAppState.getMockImplementation()!
+  f.advance(state => {
+    const w = state.workspaces[0]
+    w.spaces[0].rect = { x: 62, y: 72, width: 420, height: 336 }
+    w.nodes = [{ ...concurrentNote('brief'), position: { x: 80, y: 90 }, width: 280, height: 300 }]
+    w.spaces[0].nodeIds = ['brief']
+    w.spaces[0].parentSpaceId = 'parent'
+    w.spaces.push({
+      ...w.spaces[0],
+      id: 'parent',
+      nodeIds: [],
+      parentSpaceId: null,
+      rect: { x: 20, y: 20, width: 480, height: 500 },
+    })
+  })
+  f.writeAppState.mockImplementationOnce(async (next, options) => {
+    f.advance(state => {
+      state.workspaces[0].spaces[1].rect!.width = 2000
+    })
+    return write(next, options)
+  })
+  const created = await f.run()
+  const w = f.state().workspaces[0]
+  const child = w.spaces[0].rect!,
+    parent = w.spaces[1].rect!
+  expect(w.spaces[0].nodeIds).toEqual(['brief', created.node.id])
+  expect(parent.width).toBeGreaterThanOrEqual(2000)
+  expect(parent.x + parent.width).toBeGreaterThanOrEqual(child.x + child.width + SPACE_NODE_PADDING)
+  expect(parent.y + parent.height).toBeGreaterThanOrEqual(
+    child.y + child.height + SPACE_NODE_PADDING,
+  )
+  expect(f.writeAppState).toHaveBeenCalledTimes(2)
+  expect(f.runtime.spawnTerminal).toHaveBeenCalledTimes(1)
+})

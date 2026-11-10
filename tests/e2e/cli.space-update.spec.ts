@@ -2,10 +2,10 @@ import { expect, test, type ElectronApplication } from '@playwright/test'
 import { mkdir, mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { CreateNodeResult } from '../../src/shared/contracts/dto/nodeControl'
 import { launchApp, removePathWithRetry, seedWorkspaceState } from './workspace-canvas.helpers'
 import { contains, readChildSpaceSnapshot, type Rect } from './workspace-canvas.child-space.helpers'
 import { jsonOutput, terminalCommand } from './cli.terminal.helpers'
+import { createTerminalInSpace, focusSpace } from './cli.space.helpers'
 
 const projectId = 'cli-space-update-project'
 const parentId = 'cli-space-update-parent'
@@ -91,38 +91,17 @@ test('a granted terminal renames, resizes and moves a Space with its members', a
         },
       ],
     })
-    // Real terminal creation issues the session grant and the CLI environment.
-    const created = await page.evaluate(
-      async payload =>
-        window.opencoveApi.controlSurface.invoke<CreateNodeResult>({
-          kind: 'command',
-          id: 'node.create',
-          payload: {
-            kind: 'terminal',
-            title: 'Space organizer',
-            space: { kind: 'spaceId', spaceId: payload.parentId },
-            frame: { x: 850, y: 100, width: 760, height: 540 },
-            data: { shell: payload.shell },
-          },
-        }),
-      { parentId, shell: process.platform === 'win32' ? 'powershell.exe' : '/bin/sh' },
-    )
-    if (!created.node.sessionId) {
-      throw new Error('Created terminal has no session ID')
-    }
-    const binding = { nodeId: created.node.id, sessionId: created.node.sessionId }
-    await page.evaluate(
-      async nodeId =>
-        window.opencoveApi.controlSurface.invoke({
-          kind: 'command',
-          id: 'canvas.focus',
-          payload: { target: { kind: 'node', nodeId } },
-        }),
-      binding.nodeId,
-    )
-    await expect(
-      page.locator(`[data-id="${binding.nodeId}"] .terminal-node__terminal`),
-    ).toHaveAttribute('aria-busy', 'false', { timeout: 20_000 })
+    // Shared harness creates the real terminal grant and waits for its shell.
+    const binding = await createTerminalInSpace(page, parentId)
+    const readSpace = async (id: string, label: string) =>
+      jsonOutput(
+        await terminalCommand(
+          page,
+          binding,
+          `opencove space get --space ${id} --fields id,rect`,
+          label,
+        ),
+      ).space as { id: string; rect: Rect }
     expect(
       jsonOutput(await terminalCommand(page, binding, 'opencove whoami', 'IDENTITY')),
     ).toMatchObject({ caller: 'session-grant', nodeId: binding.nodeId, projectId })
@@ -162,6 +141,8 @@ test('a granted terminal renames, resizes and moves a Space with its members', a
     expect(resized.frameAdjusted).toBe(true)
     expect(resized.appliedFrame).toEqual(JSON.parse(notices[0][1]))
     expect(resized.movedNodeIds).toEqual([])
+    const resizedGet = await readSpace(targetId, 'GET_RESIZED')
+    expect(resizedGet.rect).toEqual(resized.rect)
     const beforeMove = await readChildSpaceSnapshot(page)
     const rect = resized.rect as Rect
     expect(beforeMove.spaces[targetId]).toEqual(rect)
@@ -183,6 +164,15 @@ test('a granted terminal renames, resizes and moves a Space with its members', a
     await expect
       .poll(async () => (await readChildSpaceSnapshot(page)).spaces[targetId])
       .toEqual(moved.appliedFrame)
+    const movedGet = await readSpace(targetId, 'GET_MOVED')
+    expect(movedGet.rect).toEqual(moved.rect)
+    expect(movedGet.rect).toEqual(moved.appliedFrame)
+    const listed = jsonOutput(
+      await terminalCommand(page, binding, 'opencove space list --fields id,rect', 'LIST_MOVED'),
+    ).spaces as Array<{ id: string; rect: Rect }>
+    expect(listed.find(space => space.id === targetId)).toEqual(movedGet)
+    const parentGet = await readSpace(parentId, 'GET_PARENT')
+    expect(contains(parentGet.rect, movedGet.rect, 12)).toBe(true)
     const afterMove = await readChildSpaceSnapshot(page)
     for (const id of [noteId, nestedId]) {
       expect(afterMove.nodes[id]).toEqual({
@@ -209,18 +199,7 @@ test('a granted terminal renames, resizes and moves a Space with its members', a
       y: beforeMove.spaces[childId].y + dy,
     })
     expect(contains(afterMove.spaces[parentId], afterMove.spaces[targetId], 12)).toBe(true)
-    await page.evaluate(
-      async spaceId =>
-        window.opencoveApi.controlSurface.invoke({
-          kind: 'command',
-          id: 'canvas.focus',
-          payload: { target: { kind: 'space', locator: { kind: 'spaceId', spaceId } } },
-        }),
-      targetId,
-    )
-    await expect(page.getByTestId(`workspace-space-region-${targetId}`)).toBeInViewport({
-      timeout: 15_000,
-    })
+    await focusSpace(page, targetId)
     await expect(label).toHaveText('Review')
     await test.info().attach('updated-space-with-members', {
       body: await page.screenshot(),

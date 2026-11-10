@@ -4,25 +4,14 @@ import type {
 } from '../../../../shared/contracts/dto/spaceUpdate'
 import { createAppError } from '../../../../shared/errors/appError'
 import { collectAncestorSpaces, collectSpaceSubtree } from '../../../space/application/spaceTree'
+import {
+  expandRectToContain,
+  growSpaceAncestors,
+} from '../../../space/application/spaceGeometryGrowth'
 import { SPACE_NODE_PADDING } from '../../domain/workspaceSpaceLayout'
 import type { NodeControlWorkspace } from './nodeControlState'
 
 const CHILD_PADDING = 12
-
-function enclose(
-  rect: SpaceUpdateFrame,
-  content: SpaceUpdateFrame,
-  padding: number,
-): SpaceUpdateFrame {
-  const x = Math.min(rect.x, content.x - padding)
-  const y = Math.min(rect.y, content.y - padding)
-  return {
-    x,
-    y,
-    width: Math.max(rect.x + rect.width, content.x + content.width + padding) - x,
-    height: Math.max(rect.y + rect.height, content.y + content.height + padding) - y,
-  }
-}
 
 function assertFiniteRect(rect: SpaceUpdateFrame): void {
   if (
@@ -91,8 +80,12 @@ export function planSpaceUpdate(workspace: NodeControlWorkspace, input: UpdateSp
     })
 
     const nodeById = new Map(nodes.map(node => [node.id, node]))
-    const fitContents = (spaceId: string) => {
-      const space = spaces.find(candidate => candidate.id === spaceId)!
+    const pathSpaceIds = new Set([target.id, ...ancestors.map(space => space.id)])
+    // Fit independent contents first; only the shared helper propagates the changed path.
+    spaces = spaces.map(space => {
+      if (!pathSpaceIds.has(space.id)) {
+        return space
+      }
       if (!space.rect) {
         throw createAppError('common.invalid_input', {
           debugMessage:
@@ -103,7 +96,7 @@ export function planSpaceUpdate(workspace: NodeControlWorkspace, input: UpdateSp
       for (const id of space.nodeIds) {
         const node = nodeById.get(id)
         if (node) {
-          rect = enclose(
+          rect = expandRectToContain(
             rect,
             { ...node.position, width: node.width, height: node.height },
             SPACE_NODE_PADDING,
@@ -111,18 +104,18 @@ export function planSpaceUpdate(workspace: NodeControlWorkspace, input: UpdateSp
         }
       }
       for (const child of spaces) {
-        if (child.parentSpaceId === space.id && child.rect) {
-          rect = enclose(rect, child.rect, CHILD_PADDING)
+        if (child.parentSpaceId === space.id && child.rect && !pathSpaceIds.has(child.id)) {
+          rect = expandRectToContain(rect, child.rect, CHILD_PADDING)
         }
       }
       assertFiniteRect(rect)
-      spaces = spaces.map(candidate =>
-        candidate.id === space.id ? { ...candidate, rect } : candidate,
-      )
-    }
-    fitContents(target.id)
-    for (const ancestor of ancestors) {
-      fitContents(ancestor.id)
+      return { ...space, rect }
+    })
+    spaces = growSpaceAncestors(spaces, target.id, CHILD_PADDING)
+    for (const space of spaces) {
+      if (pathSpaceIds.has(space.id) && space.rect) {
+        assertFiniteRect(space.rect)
+      }
     }
   }
   return {

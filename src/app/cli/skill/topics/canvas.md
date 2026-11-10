@@ -24,10 +24,14 @@ from the origin if your node is unavailable. Use `--focus` to reveal it.
 `opencove space create --name "Review"` creates a top-level Space in your terminal’s current
 project; outside OpenCove, add `--project <selector>`. Top-level --directory must be an existing
 absolute local directory within the default mount (symlinks cannot escape); children inherit the
-parent directory. --frame and --move require --in; output includes the applied rect and
-movedNodeIds. `opencove space create --name "Review notes" --in @self --move "Brief"` creates a
-child and moves direct members of the parent; repeat --move. Without --frame, the server encloses
-moved nodes or centers a 420×300 boundary in the parent, then fits it inside. `opencove project add
+parent directory. --frame and --move require --in; output includes the applied rect
+({x,y,width,height} in canvas coordinates) and movedNodeIds. `opencove space create --name "Review
+notes" --in @self --move "Brief"` creates a child and moves direct members of the parent; repeat
+--move. Without --frame, the server encloses moved nodes or centers a 420×300 boundary in the
+parent, then fits it inside while keeping room for the moved nodes.
+A node created in a full Space is placed right of, then below, its members; the Space and its
+ancestors grow to contain it. `space get` and `space list` return the current geometry as `rect`;
+`boundary` describes access scope, not geometry. `opencove project add
 --path /workspace/app [--name "App"]` requires a human decision: agents cannot add projects. Ask the
 user to add the project in OpenCove; do not retry the refusal.
 

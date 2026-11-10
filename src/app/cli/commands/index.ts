@@ -99,7 +99,7 @@ export const commands: Command[] = [
     buildInput: ({ options: o }) => (o.project ? { projectId: o.project } : null),
     render: spaceListOutput,
     description:
-      'Lists space IDs, names, directories, nodeIds and nodeCount without full nodes. Use --fields nodes to include node objects.',
+      'Lists space IDs, names, directories, nodeIds and nodeCount without full nodes. rect is {x,y,width,height} in canvas coordinates, or null when no geometry is saved. boundary describes the Space’s access scope. Use --fields nodes to include node objects.',
     async execute({ input, invoke, options }) {
       const result = (await invoke(
         'space.list',
@@ -122,6 +122,8 @@ export const commands: Command[] = [
   defineCommand({
     path: ['space', 'get'],
     summary: 'Get a space',
+    description:
+      'Includes rect: {x,y,width,height} in canvas coordinates, or null when no geometry is saved. boundary describes the Space’s access scope.',
     connect: true,
     operation: 'space.get',
     render: spaceGetOutput,

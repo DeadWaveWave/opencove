@@ -71,6 +71,7 @@ function toSpaceDto(space: NormalizedPersistedSpace, nodeById: Map<string, NodeS
     targetMountId: space.targetMountId,
     parentSpaceId: space.parentSpaceId,
     boundary: space.boundary,
+    rect: space.rect,
     sortOrder: space.sortOrder,
     nodeIds: space.nodeIds,
     nodes: space.nodeIds.map(nodeId => {
