@@ -1,3 +1,4 @@
+import { CliError } from './errors'
 import type { AgentRunSnapshot } from '../../../shared/contracts/dto/agentRunState'
 import type {
   CanvasNodeSummaryDto,
@@ -75,7 +76,10 @@ export async function nodeAgentMetadata(
           for (const agent of result.agents) {
             states.set(agent.nodeId, agent)
           }
-        } catch {
+        } catch (error) {
+          if (error instanceof CliError && error.exitCode === 130) {
+            throw error
+          }
           states.clear()
           failures.push('agent state unavailable')
         }
@@ -86,7 +90,10 @@ export async function nodeAgentMetadata(
         }
         try {
           links = await projectTaskLinks(ctx, scope.projectId ?? nodes[0]?.projectId)
-        } catch {
+        } catch (error) {
+          if (error instanceof CliError && error.exitCode === 130) {
+            throw error
+          }
           failures.push('task links unavailable')
         }
       })(),

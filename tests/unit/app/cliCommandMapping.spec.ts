@@ -205,7 +205,11 @@ it.each(cases)('maps %j without leaking transport envelopes', async (args, id, p
   expect(await run(args, f.io), f.err()).toBe(0)
   expect(JSON.parse(String(f.fetch.mock.calls[0][1]?.body))).toMatchObject({ id, payload })
   expect(f.out()).toBe(
-    id === 'session.finalMessage' ? '{"message":"Done"}\n' : '{"result":"value"}\n',
+    id === 'session.finalMessage'
+      ? '{"message":"Done"}\n'
+      : id.startsWith('filesystem.writeFileText')
+        ? '{"uri":"file:///a","bytes":13}\n'
+        : '{"result":"value"}\n',
   )
   expect(f.out()).not.toContain('__opencoveControlEnvelope')
 })

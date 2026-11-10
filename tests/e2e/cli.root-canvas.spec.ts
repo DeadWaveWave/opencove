@@ -161,6 +161,18 @@ test('canvas terminals create and list nodes on the root canvas', async () => {
     })
 
     const outside = await createTerminal(page, false)
+    const rootContext = jsonOutput(
+      await terminalCommand(page, outside, 'opencove context', 'ROOT_CONTEXT'),
+    )
+    expect(rootContext).toMatchObject({
+      self: {
+        nodeId: outside.nodeId,
+        spaceId: null,
+        node: { id: outside.nodeId, kind: 'terminal' },
+      },
+      space: null,
+      nodes: [],
+    })
     const implicit = jsonOutput(
       await terminalCommand(page, outside, 'opencove node create note', 'DEFAULT_CREATE'),
     ) as unknown as CreateNodeResult

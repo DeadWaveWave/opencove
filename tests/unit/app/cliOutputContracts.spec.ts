@@ -157,7 +157,6 @@ it.each([
 })
 it.each([
   ['plugin', 'run', 'sample', 'status'],
-  ['fs', 'write', '--uri', 'file:///repo/note', '--content', 'hi'],
   ['mount', 'remove', '--mount', 'm'],
   ['session', 'kill', '--session', 's'],
 ])('rejects opaque or void results before execution: %j', async (...args) => {
@@ -166,14 +165,7 @@ it.each([
   expect(f.fetch).not.toHaveBeenCalled()
 })
 it('audits projection support for every command, with only explicit non-item exceptions', () => {
-  const exceptions = [
-    'api call',
-    'pty attach',
-    'plugin run',
-    'fs write',
-    'mount remove',
-    'session kill',
-  ]
+  const exceptions = ['api call', 'pty attach', 'plugin run', 'mount remove', 'session kill']
   expect(
     commands
       .filter(c => !c.render?.fields)
