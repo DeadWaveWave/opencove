@@ -1,6 +1,7 @@
 import { expect, type Page } from '@playwright/test'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import type { CreateNodeResult } from '../../src/shared/contracts/dto/nodeControl'
 
 /** Runs the real CLI inside the fake provider, inheriting that provider's genuine grant. */
@@ -28,7 +29,7 @@ const timer = setInterval(async () => {
   } catch { busy = false }
 }, 50)
 timer.unref()
-await import(${JSON.stringify(resolve('scripts/test-agent-session-stub.mjs'))})
+await import(${JSON.stringify(pathToFileURL(resolve('scripts/test-agent-session-stub.mjs')).href)})
 `,
   )
   return path

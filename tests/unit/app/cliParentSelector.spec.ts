@@ -123,3 +123,67 @@ it('never falls back to a literal @parent name after a Worker refusal', async ()
     'node.resolveCallerSelector',
   ])
 })
+
+it.each(
+  ['node', 'agent'].flatMap(domain => [false, true].map(colliding => ({ domain, colliding }))),
+)(
+  'resolves a named creator in an explicit foreign Space project: $domain, collision=$colliding',
+  async ({ domain, colliding }) => {
+    const { identityFixture, who } = await import('./cliIdentity.helpers')
+    const { run } = await import('../../../src/app/cli/core/run')
+    const f = identityFixture()
+    const projectB = 'project-b'
+    const spaceB = '22222222-2222-4222-8222-222222222222'
+    const creator = (projectId: string) => ({
+      id: `creator-${projectId}`,
+      title: 'Coordinator',
+      kind: 'agent',
+      projectId,
+      spaceId: null,
+    })
+    f.io.fetch = vi.fn(async (_url, init) => {
+      const request = JSON.parse(String(init?.body))
+      f.requests.push(request)
+      let value: unknown
+      if (request.id === 'system.capabilities') {
+        value = { features: { nodeLineageV1: true } }
+      } else if (request.id === 'system.whoami') {
+        value = who
+      } else if (request.id === 'project.list') {
+        value = { projects: [{ id: who.projectId }, { id: projectB }] }
+      } else if (request.id === 'space.get') {
+        value = { projectId: projectB, space: { id: spaceB } }
+      } else if (request.id === 'node.get') {
+        return new Response(JSON.stringify({ ok: false, error: { code: 'node.not_found' } }))
+      } else if (request.id === 'node.list') {
+        value = {
+          nodes:
+            request.payload.spawnedByNodeId || request.payload.kind === 'task'
+              ? []
+              : request.payload.projectId === projectB
+                ? [creator(projectB)]
+                : colliding
+                  ? [creator(who.projectId)]
+                  : [],
+        }
+      } else if (request.id === 'agent.list') {
+        value = { epoch: 'worker', seq: 0, agents: [] }
+      } else {
+        throw Error(request.id)
+      }
+      return new Response(JSON.stringify({ ok: true, value }))
+    })
+    expect(
+      await run([domain, 'list', '--space', spaceB, '--spawned-by', 'Coordinator'], f.io),
+    ).toBe(0)
+    const lookup = f.requests.find(r => r.id === 'node.list' && !r.payload.spawnedByNodeId)
+    expect(lookup?.payload).toEqual({ projectId: projectB })
+    const filtered = f.requests.find(r => r.id === `${domain}.list` && r.payload.spawnedByNodeId)
+    expect(filtered?.payload).toMatchObject({
+      spawnedByNodeId: creator(projectB).id,
+      ...(domain === 'node'
+        ? { space: { kind: 'spaceId', spaceId: spaceB } }
+        : { spaceId: spaceB }),
+    })
+  },
+)

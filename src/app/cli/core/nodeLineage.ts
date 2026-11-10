@@ -31,5 +31,5 @@ export const spawnedByOption = {
   selector: 'node' as const,
   valueName: 'selector',
   description:
-    'List direct children created by this node across its project; use --space to narrow the results',
+    'Filter direct children; --project filters results. Creator names use your project, or the selected Space’s project',
 }

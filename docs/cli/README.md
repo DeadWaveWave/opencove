@@ -471,3 +471,10 @@ the project; an explicit `--space` or `--project` narrows results. Filtering pre
 无记录的节点显示为 root（深度 1），子节点深度为父节点加 1。父节点删除后返回 `parent_deleted`，
 不会改变子节点的血缘记录。`--spawned-by @self` 只列出直接子节点，默认跨当前项目的所有 Space；
 显式 Space／项目筛选仍有效。旧 Worker 不支持这些选择器或筛选时退出码为 5。
+
+With `--spawned-by`, `--project` filters child results; the creator may belong to another project.
+Full IDs, `@self` and `@parent` resolve the creator independently of that filter. Creator names
+and prefixes use your session project, or an explicit Space’s project. Without session identity,
+the selected project supplies the name lookup context. Use a full ID for a creator outside that context.
+中文：`--project` 只筛选子节点，不要求创建者属于该项目。创建者名称／前缀默认在当前会话项目中查找；
+显式 Space 提供其所属项目作为查找范围。没有会话身份时，使用选定项目查找名称。跨查找范围请用完整 ID。

@@ -51,6 +51,23 @@ async function fixture() {
 }
 
 describeWithElectronNativeModules('durable node lineage', () => {
+  it('ignores forged lineage options on ordinary snapshot writes and keeps roots unrecorded', async () => {
+    const f = await fixture()
+    try {
+      expect(await f.store.writeAppState(f.state, { expectedRevision: 0 })).toMatchObject({
+        ok: true,
+      })
+      const options = { expectedRevision: 1, lineage: f.lineage }
+      expect(await f.store.writeAppState(f.state, options)).toMatchObject({ ok: true })
+      expect((await f.store.nodeLineage!.readMany(['parent', 'child'])).size).toBe(0)
+      expect(await f.store.writeWorkspaceStateRaw(JSON.stringify(f.state))).toMatchObject({
+        ok: true,
+      })
+      expect((await f.store.nodeLineage!.readMany(['parent', 'child'])).size).toBe(0)
+    } finally {
+      await f.cleanup()
+    }
+  })
   it('survives stale CAS, structured/raw snapshots, forged fields, deletion and a cold reopen', async () => {
     const f = await fixture()
     try {

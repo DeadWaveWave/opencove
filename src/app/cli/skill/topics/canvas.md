@@ -121,3 +121,8 @@ Lineage survives renames, moves, parent deletion, renderer saves and restart.
 Use `node list --spawned-by @self` or `agent list --spawned-by @self` for direct children across
 the project; an explicit `--space` or `--project` narrows results. Filtering precedes output limits.
 `@parent` and `--spawned-by` require `features.nodeLineageV1`; older Workers fail with exit 5.
+
+With `--spawned-by`, `--project` filters child results; the creator may belong to another project.
+Full IDs, `@self` and `@parent` resolve the creator independently of that filter. Creator names
+and prefixes use your session project, or an explicit Space’s project. Without session identity,
+the selected project supplies the name lookup context. Use a full ID for a creator outside that context.

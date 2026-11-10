@@ -248,9 +248,10 @@ export async function createPersistenceStore(storeOptions: {
     }
   }
 
-  const writeAppState = async (
+  const persistAppState = async (
     state: unknown,
-    options?: WriteAppStateOptions & { lineage?: NodeLineageRecord },
+    options?: WriteAppStateOptions,
+    lineage?: NodeLineageRecord,
   ): Promise<PersistWriteResult> => {
     const normalized = normalizePersistedAppState(state)
     if (!normalized) {
@@ -272,13 +273,11 @@ export async function createPersistenceStore(storeOptions: {
     try {
       const revision = sqlite.transaction(() => {
         const next = writeNormalizedAppState(sqlite, normalized, options?.expectedRevision)
-        if (options?.lineage) {
-          if (
-            !normalized.workspaces.some(w => w.nodes.some(n => n.id === options.lineage?.nodeId))
-          ) {
+        if (lineage) {
+          if (!normalized.workspaces.some(w => w.nodes.some(n => n.id === lineage.nodeId))) {
             throw createAppError('persistence.invalid_state')
           }
-          insertNodeLineage(sqlite, options.lineage)
+          insertNodeLineage(sqlite, lineage)
         }
         return next
       })()
@@ -458,12 +457,13 @@ export async function createPersistenceStore(storeOptions: {
 
   return {
     nodeLineage: createSqliteNodeLineageRepository(sqlite),
-    commitCreatedNodeState: (state, options) => writeAppState(state, options),
+    commitCreatedNodeState: (state, options) =>
+      persistAppState(state, { expectedRevision: options.expectedRevision }, options.lineage),
     readWorkspaceStateRaw,
     writeWorkspaceStateRaw,
     readAppState,
     readAppStateRevision,
-    writeAppState,
+    writeAppState: (state, options) => persistAppState(state, options),
     readNodeScrollback,
     writeNodeScrollback,
     readAgentNodePlaceholderScrollback,

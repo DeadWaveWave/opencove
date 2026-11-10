@@ -87,7 +87,21 @@ test('grant ancestry survives renderer publications and restart, and a child rep
       '15s',
     ])
     expect(reply.code, reply.stderr).toBe(0)
-    expect(reply.stdout).toContain('Strict reply 2')
+    const reported = JSON.parse(reply.stdout)
+    expect(reported).toMatchObject({
+      nodeId: parent.node.id,
+      sessionId: parent.node.sessionId,
+      phase: 'submission_observed',
+      outcome: 'completed',
+      turnId: expect.any(String),
+      reply: { message: 'Strict reply 2', source: 'hook' },
+    })
+    expect(reported.reply).toMatchObject({
+      nodeId: parent.node.id,
+      sessionId: reported.sessionId,
+      turnId: reported.turnId,
+      outcome: 'completed',
+    })
     const filtered = await grantedAgentCli(root, parent.node.id, [
       'agent',
       'list',

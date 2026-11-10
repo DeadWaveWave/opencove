@@ -184,6 +184,7 @@ export async function resolveSelectors(
     selector: string,
     candidates: Candidate[],
     scope: string,
+    lookupProjectId = projectId,
   ) => {
     try {
       return match(kind, selector, candidates, scope)
@@ -196,7 +197,9 @@ export async function resolveSelectors(
       }
       if (error.code === 'cli.ambiguous' && kind === 'node') {
         const details = error.details as { candidates: Candidate[] }
-        const spaces = ((await invoke('space.list', { projectId })) as ListSpacesResult).spaces
+        const spaces = (
+          (await invoke('space.list', { projectId: lookupProjectId })) as ListSpacesResult
+        ).spaces
         await Promise.all(
           details.candidates.map(async candidate => {
             candidate.spaceName = spaces.find(space => space.id === candidate.spaceId)?.name ?? null
@@ -251,6 +254,17 @@ export async function resolveSelectors(
     }
     return projectId
   }
+  const scopeCreatorLookup = async () => {
+    // An explicit Space supplies lookup context; --project alone filters child results.
+    if (!explicitProject || explicitSpace) {
+      return scopeProject()
+    }
+    if (io.env.OPENCOVE_ENV === '1') {
+      return identity.self('project')
+    }
+    const caller = await identity.whoami()
+    return caller.caller === 'session-grant' ? (caller.projectId ?? undefined) : projectId
+  }
   const selectorKeys = [
     'space',
     'node',
@@ -268,6 +282,12 @@ export async function resolveSelectors(
     ) {
       continue
     }
+    // Project/Space membership filters constrain results and action targets, not creators.
+    const checkResolvedProject = (selector: string, targetProjectId: string) => {
+      if (isTarget) {
+        checkProject(kind, selector, targetProjectId)
+      }
+    }
     const resolveOne = async (selector: string): Promise<string> => {
       if (selector === '@parent') {
         if (kind !== 'node') {
@@ -284,10 +304,10 @@ export async function resolveSelectors(
             ? { expectedCallerNodeId: io.env.OPENCOVE_NODE_ID }
             : {}),
         })) as { id: string }
-        if (explicitProject) {
+        if (explicitProject && isTarget) {
           const target = await exactTarget('node', result.id, invoke)
           if (target) {
-            checkProject('node', selector, target.projectId)
+            checkResolvedProject(selector, target.projectId)
           }
         }
         return result.id
@@ -296,11 +316,11 @@ export async function resolveSelectors(
         // Resolution order matters: failure must prevent any later target lookup.
         // eslint-disable-next-line no-await-in-loop
         const ownId = await identity.self(kind)
-        if (explicitProject) {
+        if (explicitProject && isTarget) {
           // eslint-disable-next-line no-await-in-loop
           const target = await exactTarget(kind, ownId, invoke)
           if (target) {
-            checkProject(kind, selector, target.projectId)
+            checkResolvedProject(selector, target.projectId)
           }
         }
         return ownId
@@ -312,13 +332,13 @@ export async function resolveSelectors(
         // eslint-disable-next-line no-await-in-loop
         const target = await exactTarget(kind, selector, invoke)
         if (target) {
-          checkProject(kind, selector, target.projectId)
+          checkResolvedProject(selector, target.projectId)
           return selector
         }
       }
       // One list call per selector, without retries or speculative writes.
       // eslint-disable-next-line no-await-in-loop
-      const project = await scopeProject()
+      const project = await (isTarget ? scopeProject() : scopeCreatorLookup())
       // eslint-disable-next-line no-await-in-loop
       const result = (await invoke(kind === 'space' ? 'space.list' : 'node.list', {
         projectId: project,
@@ -334,7 +354,7 @@ export async function resolveSelectors(
         // eslint-disable-next-line no-await-in-loop
         const target = await exactTarget(kind, selector, invoke)
         if (target) {
-          checkProject(kind, selector, target.projectId)
+          checkResolvedProject(selector, target.projectId)
           return selector
         }
       }
@@ -343,6 +363,7 @@ export async function resolveSelectors(
         selector,
         candidates,
         `${(project ?? result.projectId) ? `project ${JSON.stringify(project ?? result.projectId)}` : 'the active project'}${kind === 'node' && isTarget && o.space !== undefined ? `, space ${JSON.stringify(o.space)}` : ''}`,
+        project,
       )
     }
     const resolved = Array.isArray(o[key])
@@ -385,7 +406,11 @@ export async function resolveSelectors(
         }),
       )
     }
-    if (kind === 'space' && command.options?.node && !explicitProject) {
+    if (
+      kind === 'space' &&
+      !explicitProject &&
+      Object.values(command.options ?? {}).some(option => option.selector === 'node')
+    ) {
       // An explicitly chosen space may belong to a different project than the session.
       // eslint-disable-next-line no-await-in-loop
       const found = await exactTarget('space', String(o.space), invoke)
