@@ -99,7 +99,7 @@ export const spaceUpdateOperation = defineOperation({
   kind: 'command',
   scope: 'interact',
   availability: 'always',
-  summary: 'Rename a space or move and resize its boundary with its contents',
+  summary: 'Rename a space or adjust its boundary around fixed contents',
   input: spaceUpdateInput,
   normalize: normalizeSpaceUpdateInput,
   errors: [

@@ -18,7 +18,8 @@ export interface UpdateSpaceResult {
   parentSpaceId: string | null
   rect: SpaceUpdateFrame | null
   directoryPath: string
-  movedNodeIds: string[]
+  /** Retained for compatibility; boundary updates never move nodes. */
+  movedNodeIds: []
   appliedFrame?: SpaceUpdateFrame
   frameAdjusted?: boolean
 }

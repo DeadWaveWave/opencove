@@ -3,11 +3,12 @@ import type {
   UpdateSpaceInput,
 } from '../../../../shared/contracts/dto/spaceUpdate'
 import { createAppError } from '../../../../shared/errors/appError'
-import { collectAncestorSpaces, collectSpaceSubtree } from '../../../space/application/spaceTree'
+import { collectAncestorSpaces } from '../../../space/application/spaceTree'
 import {
   expandRectToContain,
   growSpaceAncestors,
 } from '../../../space/application/spaceGeometryGrowth'
+import { getCollapsedNodeSize } from '../../domain/collapsedNodeGeometry'
 import { SPACE_NODE_PADDING } from '../../domain/workspaceSpaceLayout'
 import type { NodeControlWorkspace } from './nodeControlState'
 
@@ -27,7 +28,7 @@ function assertFiniteRect(rect: SpaceUpdateFrame): void {
   }
 }
 
-/** Pure layout plan. Ancestor expansion changes boundaries, never sibling positions. */
+/** Adjust only the target and ancestor boundaries; all contents keep their geometry. */
 export function planSpaceUpdate(workspace: NodeControlWorkspace, input: UpdateSpaceInput) {
   const target = workspace.spaces.find(space => space.id === input.spaceId)
   if (!target) {
@@ -36,8 +37,6 @@ export function planSpaceUpdate(workspace: NodeControlWorkspace, input: UpdateSp
   let spaces = workspace.spaces.map(space =>
     space.id === target.id ? { ...space, name: input.name ?? space.name } : space,
   )
-  let nodes = workspace.nodes
-  const movedNodeIds: string[] = []
   if (input.frame) {
     if (!target.rect) {
       throw createAppError('common.invalid_input', {
@@ -53,33 +52,9 @@ export function planSpaceUpdate(workspace: NodeControlWorkspace, input: UpdateSp
     }
     const requested = { ...target.rect, ...input.frame }
     assertFiniteRect(requested)
-    const dx = requested.x - target.rect.x
-    const dy = requested.y - target.rect.y
-    const subtree = collectSpaceSubtree(spaces, target.id)
-    const subtreeIds = new Set(subtree.map(space => space.id))
-    const memberIds = new Set(subtree.flatMap(space => space.nodeIds))
-    nodes = workspace.nodes.map(node => {
-      if (!memberIds.has(node.id) || (dx === 0 && dy === 0)) {
-        return node
-      }
-      const position = { x: node.position.x + dx, y: node.position.y + dy }
-      assertFiniteRect({ ...position, width: node.width, height: node.height })
-      movedNodeIds.push(node.id)
-      return { ...node, position }
-    })
-    spaces = spaces.map(space => {
-      if (space.id === target.id) {
-        return { ...space, rect: requested }
-      }
-      if (!subtreeIds.has(space.id) || !space.rect || (dx === 0 && dy === 0)) {
-        return space
-      }
-      const rect = { ...space.rect, x: space.rect.x + dx, y: space.rect.y + dy }
-      assertFiniteRect(rect)
-      return { ...space, rect }
-    })
-
-    const nodeById = new Map(nodes.map(node => [node.id, node]))
+    spaces = spaces.map(space => (space.id === target.id ? { ...space, rect: requested } : space))
+    const nodeById = new Map(workspace.nodes.map(node => [node.id, node]))
+    const collapsedNodeIds = new Set(workspace.collapsedNodeIds ?? [])
     const pathSpaceIds = new Set([target.id, ...ancestors.map(space => space.id)])
     // Fit independent contents first; only the shared helper propagates the changed path.
     spaces = spaces.map(space => {
@@ -98,13 +73,23 @@ export function planSpaceUpdate(workspace: NodeControlWorkspace, input: UpdateSp
         if (node) {
           rect = expandRectToContain(
             rect,
-            { ...node.position, width: node.width, height: node.height },
+            {
+              ...node.position,
+              ...(collapsedNodeIds.has(node.id)
+                ? getCollapsedNodeSize()
+                : { width: node.width, height: node.height }),
+            },
             SPACE_NODE_PADDING,
           )
         }
       }
       for (const child of spaces) {
-        if (child.parentSpaceId === space.id && child.rect && !pathSpaceIds.has(child.id)) {
+        if (child.parentSpaceId === space.id && !pathSpaceIds.has(child.id)) {
+          if (!child.rect) {
+            throw createAppError('common.invalid_input', {
+              debugMessage: `Cannot update this frame because child space ${JSON.stringify(child.name || child.id)} (${child.id}) has no saved canvas boundary.`,
+            })
+          }
           rect = expandRectToContain(rect, child.rect, CHILD_PADDING)
         }
       }
@@ -119,8 +104,7 @@ export function planSpaceUpdate(workspace: NodeControlWorkspace, input: UpdateSp
     }
   }
   return {
-    workspace: { ...workspace, spaces, nodes },
+    workspace: { ...workspace, spaces },
     space: spaces.find(space => space.id === target.id)!,
-    movedNodeIds,
   }
 }

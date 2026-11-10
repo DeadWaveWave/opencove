@@ -93,7 +93,7 @@ Space and its ancestors grow with padding; existing nodes keep their positions.
 在 Space 内创建节点且未指定位置时，Worker 优先寻找内部的完整空位；空间不足时依次
 向右、向下搜索，最后才考虑左侧和上方。目标 Space 及其祖先逐级扩展，已有节点保持原位。
 
-## Rename and arrange Spaces
+## Rename Spaces and adjust their boundaries
 
 ```sh
 opencove space update --space @self --name "Review"
@@ -105,47 +105,53 @@ Select a Space explicitly with `--space`; the same selectors as `space get` appl
 Supply `--name`, `--frame`, or both. Names follow `space create`: surrounding
 whitespace is removed and blank names are rejected. A frame accepts any nonempty
 subset of x, y, width and height; values must be finite and dimensions positive.
-Changing x/y translates every node and child Space in the subtree once, preserving
-node sizes. Changing dimensions resizes only the boundary. Combined requests first
-move the contents, then fit the boundary around them.
+All four fields change only the Space boundary. Member nodes keep their positions
+and sizes, and child Spaces keep their rects. To move a Space together with its
+contents, drag it in OpenCove.
 
-The boundary expands to keep 24 canvas units around direct nodes and 12 around
-child Spaces. Ancestors grow as needed, including when a child moves beyond its
-previous parent boundary. Other nodes keep their positions; this command does not
-apply canvas snapping or move neighboring Spaces out of the way. An empty Space
-can use any positive dimensions. A Space without a saved boundary can be renamed;
-open it in OpenCove before changing its frame.
+The applied boundary is the smallest rectangle containing both the requested
+frame and the fixed contents with padding: 24 canvas units around direct nodes
+using their displayed sizes (including compact cards), and 12 around child Spaces.
+Requested x/y can therefore be adjusted, and dimensions may grow even for a
+position-only request. For example, requesting x=1000 when a member starts at
+x=24 expands the frame back to x=0 to keep that member inside. Ancestors grow as
+needed; neighboring Spaces and their members stay in place. An empty Space can
+use any finite position and positive dimensions. A Space without a saved boundary
+can be renamed; open it in OpenCove before changing its frame.
 
 Output is `{id, name, projectId, parentSpaceId, rect, directoryPath, movedNodeIds}`.
 `rect` matches the geometry returned by `space get` and `space list`; `boundary`
 in those queries describes access scope. Frame updates also return `appliedFrame`
-and `frameAdjusted`; the latter compares only the components you requested. An adjustment prints one notice to stderr.
-`movedNodeIds` lists nodes whose coordinates changed, including descendants, or
-is empty for rename/resize alone. Use `--fields` or `--pretty`; table output is
-unavailable. The update saves the name, boundaries and positions together. On a
-conflict, inspect the Space again before deciding whether to repeat the update.
-Session grants may rename and arrange Spaces. Directory and worktree bindings,
-parentage and membership remain unchanged; use `worktree` commands for bindings.
+and `frameAdjusted`; the latter compares only explicitly requested components.
+An adjustment prints one notice to stderr. `movedNodeIds` is retained for
+compatibility and is always empty. Use `--fields` or `--pretty`; table output is
+unavailable. The name and affected boundaries are saved together. On a conflict,
+inspect the Space again before deciding whether to repeat the update.
+Session grants may rename Spaces and adjust their boundaries. Directory and
+worktree bindings, parentage and membership remain unchanged; use `worktree`
+commands for bindings.
 
-## 重命名与调整 Space
+## 重命名 Space 与调整边界
 
 使用 `space update --space <选择器>` 编辑已有 Space，至少提供 `--name` 或 `--frame`
 之一，也可同时提供。选择器与 `space get` 相同。名称规则与 `space create` 一致：
 去除首尾空白，不接受空名称。`--frame` 接受 x、y、width、height 的非空子集，数值
-必须有限，宽高必须为正数。
+必须有限，宽高必须为正数。四个字段都只调整 Space 的边界：成员节点的位置和尺寸、
+子 Space 的 rect 均保持不变。需要连同内容一起移动时，请在 OpenCove 中拖动 Space。
 
-改变 x/y 会整体平移所有直属节点、子 Space 及其节点；改变宽高只调整边界，不缩放
-内容。同时指定位置和尺寸时，先移动内容，再扩张边界以容纳内容。直属节点周围保留
-24 个画布单位，子 Space 周围保留 12 个；祖先 Space 按需扩张，包括子 Space 移出
-父边界的情况。其他节点位置保持不变，命令不执行磁吸或避让。空 Space 接受任意正数
-尺寸。没有已保存边界的 Space 可以改名；调整其边界前，请先在 OpenCove 中打开它。
+实际边界取同时包围请求框和固定内容的最小矩形：直属节点周围保留 24 个画布单位，
+按其显示尺寸计算（包括折叠卡片）；子 Space 周围保留 12 个。因此，请求的 x/y 也可能
+被调整；即使只指定位置，宽高也可能增大。例如，成员位于 x=24 时请求 x=1000，
+实际边界会向左扩展到 x=0，确保成员仍在其中。祖先 Space 按需扩张，相邻 Space
+及其成员保持原位。空 Space 接受任意有限坐标和正数尺寸。没有已保存边界的 Space
+可以改名；调整其边界前，请先在 OpenCove 中打开它。
 
 返回 `{id,name,projectId,parentSpaceId,rect,directoryPath,movedNodeIds}`；`rect` 与
 `space get`、`space list` 返回的几何边界一致，查询中的 `boundary` 则表示访问范围。
 修改 frame 时另含 `appliedFrame` 和 `frameAdjusted`，后者只比较显式请求的分量。
-发生调整时，stderr 显示一次提示。`movedNodeIds` 包含坐标实际改变的所有节点（包括后代节点）；
-仅改名或改尺寸时为空。支持 `--fields` 和 `--pretty`，不支持表格输出。
+发生调整时，stderr 显示一次提示。`movedNodeIds` 为兼容保留，始终为空数组。
+支持 `--fields` 和 `--pretty`，不支持表格输出。
 
-名称、边界和坐标一次保存；如遇并发冲突，请重新查询 Space 后再决定是否更新。
-智能体终端可以改名和调整布局；目录、worktree 绑定、父子关系和成员归属保持不变。
+名称和受影响的边界一次保存；如遇并发冲突，请重新查询 Space 后再决定是否更新。
+智能体终端可以改名和调整边界；目录、worktree 绑定、父子关系和成员归属保持不变。
 需要修改 worktree 绑定时，请使用 `worktree` 命令。

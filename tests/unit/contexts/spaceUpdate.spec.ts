@@ -125,24 +125,34 @@ it('encloses direct nodes and child spaces when shrinking without moving content
   expect(f.current().nodes).toEqual(f.state.workspaces[0].nodes)
 })
 
-it('moves the full subtree exactly once and grows ancestors without moving other nodes', async () => {
+it('fits the boundary around fixed members and child Spaces and grows ancestors', async () => {
   const f = fixture()
   expect(await f.invoke({ spaceId: 's', frame: { x: 900, y: 1000 } })).toMatchObject({
     ok: true,
     value: {
-      frameAdjusted: false,
-      appliedFrame: { x: 900, y: 1000, width: 700, height: 500 },
-      movedNodeIds: ['n', 'nested'],
+      frameAdjusted: true,
+      appliedFrame: { x: 56, y: 48, width: 1544, height: 1452 },
+      movedNodeIds: [],
     },
   })
-  expect(f.current().nodes.map(n => [n.id, n.position])).toEqual([
-    ['n', { x: 940, y: 1050 }],
-    ['nested', { x: 1230, y: 1050 }],
-    ['other', { x: -500, y: -500 }],
-  ])
-  expect(f.current().spaces[2].rect).toEqual({ x: 1200, y: 1020, width: 300, height: 300 })
+  expect(f.current().nodes).toEqual(f.state.workspaces[0].nodes)
+  expect(f.current().spaces[2]).toEqual(f.state.workspaces[0].spaces[2])
   expect(f.current().spaces[0].rect).toEqual({ x: 0, y: 0, width: 1612, height: 1512 })
   expect(f.state.workspaces[0].spaces[1].rect?.x).toBe(40)
+})
+
+it('applies a boundary-only position inside the available padding without adjusting it', async () => {
+  const f = fixture()
+  expect(await f.invoke({ spaceId: 's', frame: { x: 50, y: 45 } })).toMatchObject({
+    ok: true,
+    value: {
+      frameAdjusted: false,
+      appliedFrame: { x: 50, y: 45, width: 700, height: 500 },
+      movedNodeIds: [],
+    },
+  })
+  expect(f.current().nodes).toEqual(f.state.workspaces[0].nodes)
+  expect(f.current().spaces[2]).toEqual(f.state.workspaces[0].spaces[2])
 })
 
 it('grows every ancestor without translating descendants during resize', async () => {
@@ -217,7 +227,7 @@ it('allows renaming legacy Spaces without rects but refuses a frame without a ba
   expect(f.write).not.toHaveBeenCalled()
 })
 
-it('combines rename, translation and containment in a single immutable write', async () => {
+it('combines rename and boundary containment in a single immutable write', async () => {
   const f = fixture()
   expect(
     await f.invoke({
@@ -230,8 +240,8 @@ it('combines rename, translation and containment in a single immutable write', a
     value: {
       name: 'Together',
       frameAdjusted: true,
-      appliedFrame: { x: -100, y: -80, width: 612, height: 332 },
-      movedNodeIds: ['n', 'nested'],
+      appliedFrame: { x: -100, y: -80, width: 752, height: 452 },
+      movedNodeIds: [],
     },
   })
   expect(f.current().spaces[0].rect).toEqual({ x: -112, y: -92, width: 1112, height: 892 })
@@ -327,5 +337,125 @@ it('preserves nonempty mount boundaries and worktree directory bindings during l
     ok: true,
     value: { directoryPath: target.directoryPath },
   })
-  expect(f.current().spaces[1]).toEqual({ ...target, name: 'New', rect: { ...target.rect, x: 80 } })
+  expect(f.current().spaces[1]).toEqual({
+    ...target,
+    name: 'New',
+    rect: { ...target.rect, x: 56, width: 724 },
+  })
+  expect(f.current().nodes).toEqual(f.state.workspaces[0].nodes)
+  expect(f.current().spaces[2]).toEqual(f.state.workspaces[0].spaces[2])
 })
+
+it('changes a compact Space boundary without moving or resizing its canonical terminal', async () => {
+  const f = fixture()
+  const workspace = f.state.workspaces[0]
+  workspace.spaces = workspace.spaces.slice(0, 2)
+  workspace.spaces[1].rect = { x: 40, y: 40, width: 224, height: 144 }
+  workspace.nodes = [
+    {
+      ...workspace.nodes[0],
+      kind: 'terminal',
+      position: { x: 64, y: 64 },
+      width: 640,
+      height: 480,
+    },
+  ]
+  workspace.collapsedNodeIds = ['n']
+  expect(await f.invoke({ spaceId: 's', frame: { x: 30 } })).toMatchObject({
+    ok: true,
+    value: {
+      rect: { x: 30, y: 40, width: 224, height: 144 },
+      appliedFrame: { x: 30, y: 40, width: 224, height: 144 },
+      frameAdjusted: false,
+      movedNodeIds: [],
+    },
+  })
+  expect(f.current().nodes[0]).toMatchObject({
+    position: { x: 64, y: 64 },
+    width: 640,
+    height: 480,
+  })
+  expect(f.current().spaces[0].rect).toEqual(workspace.spaces[0].rect)
+})
+
+it('repositions an empty boundary without moving root nodes or another Space', async () => {
+  const f = fixture()
+  f.state.workspaces[0].spaces.push({ ...f.state.workspaces[0].spaces[0], id: 'empty' })
+  expect(await f.invoke({ spaceId: 'empty', frame: { x: -200, y: 300 } })).toMatchObject({
+    ok: true,
+    value: {
+      appliedFrame: { x: -200, y: 300, width: 1000, height: 800 },
+      frameAdjusted: false,
+      movedNodeIds: [],
+    },
+  })
+  expect(f.current().nodes).toEqual(f.state.workspaces[0].nodes)
+  expect(f.current().spaces.slice(0, 3)).toEqual(f.state.workspaces[0].spaces.slice(0, 3))
+})
+
+it.each(['s', 'root'])(
+  'rejects frame changes before CAS when a required child of %s has no boundary',
+  async parentSpaceId => {
+    const f = fixture()
+    const workspace = f.state.workspaces[0]
+    workspace.spaces[1].rect = { x: 0, y: 0, width: 1000, height: 800 }
+    workspace.spaces[1].nodeIds = []
+    workspace.spaces[2] = {
+      ...workspace.spaces[2],
+      parentSpaceId,
+      name: 'Legacy notes',
+      rect: null,
+    }
+    workspace.nodes[1].position = { x: 100, y: 100 }
+    const before = structuredClone(f.state)
+    const result = await f.invoke({
+      spaceId: 's',
+      name: 'Must not be saved',
+      frame: { width: 1, height: 1 },
+    })
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: 'common.invalid_input',
+        debugMessage: expect.stringContaining('Legacy notes'),
+      },
+    })
+    if (!result.ok) {
+      expect(result.error.debugMessage).toContain('(child)')
+      expect(result.error.debugMessage).toContain('no saved canvas boundary')
+    }
+    expect(f.write).not.toHaveBeenCalled()
+    expect(f.state).toEqual(before)
+    expect(f.current()).toEqual(before.workspaces[0])
+  },
+)
+
+it.each(['s', 'root'])(
+  'allows rename-only with a required child of %s missing its boundary',
+  async parentSpaceId => {
+    const f = fixture()
+    const workspace = f.state.workspaces[0]
+    workspace.spaces[2] = {
+      ...workspace.spaces[2],
+      parentSpaceId,
+      name: 'Legacy notes',
+      rect: null,
+    }
+    const before = structuredClone(workspace)
+    expect(await f.invoke({ spaceId: 's', name: 'Renamed parent' })).toMatchObject({
+      ok: true,
+      value: {
+        name: 'Renamed parent',
+        rect: before.spaces[1].rect,
+        movedNodeIds: [],
+      },
+    })
+    expect(f.write).toHaveBeenCalledExactlyOnceWith(expect.any(Object), { expectedRevision: 7 })
+    expect(f.current()).toEqual({
+      ...before,
+      spaces: before.spaces.map(space =>
+        space.id === 's' ? { ...space, name: 'Renamed parent' } : space,
+      ),
+    })
+  },
+)

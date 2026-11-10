@@ -18,7 +18,7 @@ const frameArgument = (value: object) => {
   return `'${process.platform === 'win32' ? json.replaceAll('"', '\\"') : json}'`
 }
 
-test('a granted terminal renames, resizes and moves a Space with its members', async () => {
+test('a granted terminal renames and adjusts a Space boundary while its members stay in place', async () => {
   const root = await mkdtemp(join(tmpdir(), 'opencove-cli-space-update-'))
   const workspace = join(root, 'project')
   let app: ElectronApplication | undefined
@@ -143,65 +143,45 @@ test('a granted terminal renames, resizes and moves a Space with its members', a
     expect(resized.movedNodeIds).toEqual([])
     const resizedGet = await readSpace(targetId, 'GET_RESIZED')
     expect(resizedGet.rect).toEqual(resized.rect)
-    const beforeMove = await readChildSpaceSnapshot(page)
+    const beforeGrowth = await readChildSpaceSnapshot(page)
     const rect = resized.rect as Rect
-    expect(beforeMove.spaces[targetId]).toEqual(rect)
-    expect(contains(rect, beforeMove.nodes[noteId], 24)).toBe(true)
-    expect(contains(rect, beforeMove.spaces[childId], 12)).toBe(true)
+    expect(beforeGrowth.spaces[targetId]).toEqual(rect)
+    expect(contains(rect, beforeGrowth.nodes[noteId], 24)).toBe(true)
+    expect(contains(rect, beforeGrowth.spaces[childId], 12)).toBe(true)
 
-    const dx = 1500,
-      dy = 900
-    const moved = jsonOutput(
+    const grown = jsonOutput(
       await terminalCommand(
         page,
         binding,
-        `opencove space update --space ${targetId} --frame ${frameArgument({ x: rect.x + dx, y: rect.y + dy })}`,
-        'MOVE',
+        `opencove space update --space ${targetId} --frame ${frameArgument({ width: 2200, height: 1400 })}`,
+        'GROW_BOUNDARY',
       ),
     )
-    expect(moved.frameAdjusted).toBe(false)
-    expect(moved.movedNodeIds).toEqual([noteId, nestedId])
+    expect(grown.frameAdjusted).toBe(false)
+    expect(grown.movedNodeIds).toEqual([])
+    expect(grown.appliedFrame).toEqual({ ...rect, width: 2200, height: 1400 })
     await expect
       .poll(async () => (await readChildSpaceSnapshot(page)).spaces[targetId])
-      .toEqual(moved.appliedFrame)
-    const movedGet = await readSpace(targetId, 'GET_MOVED')
-    expect(movedGet.rect).toEqual(moved.rect)
-    expect(movedGet.rect).toEqual(moved.appliedFrame)
+      .toEqual(grown.appliedFrame)
+    const grownGet = await readSpace(targetId, 'GET_GROWN')
+    expect(grownGet.rect).toEqual(grown.rect)
+    expect(grownGet.rect).toEqual(grown.appliedFrame)
     const listed = jsonOutput(
-      await terminalCommand(page, binding, 'opencove space list --fields id,rect', 'LIST_MOVED'),
+      await terminalCommand(page, binding, 'opencove space list --fields id,rect', 'LIST_GROWN'),
     ).spaces as Array<{ id: string; rect: Rect }>
-    expect(listed.find(space => space.id === targetId)).toEqual(movedGet)
+    expect(listed.find(space => space.id === targetId)).toEqual(grownGet)
     const parentGet = await readSpace(parentId, 'GET_PARENT')
-    expect(contains(parentGet.rect, movedGet.rect, 12)).toBe(true)
-    const afterMove = await readChildSpaceSnapshot(page)
-    for (const id of [noteId, nestedId]) {
-      expect(afterMove.nodes[id]).toEqual({
-        ...beforeMove.nodes[id],
-        x: beforeMove.nodes[id].x + dx,
-        y: beforeMove.nodes[id].y + dy,
-      })
-      // Renderer projection must receive positions, not only persisted boundaries.
-      const node = page.locator(`.react-flow__node[data-id="${id}"]`)
-      // eslint-disable-next-line no-await-in-loop
-      await expect
-        .poll(() =>
-          node.evaluate(el => {
-            const m = new DOMMatrixReadOnly(getComputedStyle(el).transform)
-            return { x: m.e, y: m.f }
-          }),
-        )
-        .toEqual({ x: afterMove.nodes[id].x, y: afterMove.nodes[id].y })
-    }
-    expect(afterMove.nodes[binding.nodeId]).toEqual(beforeMove.nodes[binding.nodeId])
-    expect(afterMove.spaces[childId]).toEqual({
-      ...beforeMove.spaces[childId],
-      x: beforeMove.spaces[childId].x + dx,
-      y: beforeMove.spaces[childId].y + dy,
-    })
-    expect(contains(afterMove.spaces[parentId], afterMove.spaces[targetId], 12)).toBe(true)
+    expect(contains(parentGet.rect, grownGet.rect, 12)).toBe(true)
+    expect(parentGet.rect.width).toBeGreaterThan(beforeGrowth.spaces[parentId].width)
+    expect(parentGet.rect.height).toBeGreaterThan(beforeGrowth.spaces[parentId].height)
+    const afterGrowth = await readChildSpaceSnapshot(page)
+    expect(afterGrowth.nodes).toEqual(beforeGrowth.nodes)
+    expect(afterGrowth.spaces[childId]).toEqual(beforeGrowth.spaces[childId])
+    expect(contains(grownGet.rect, afterGrowth.nodes[noteId], 24)).toBe(true)
+    expect(contains(grownGet.rect, afterGrowth.spaces[childId], 12)).toBe(true)
     await focusSpace(page, targetId)
     await expect(label).toHaveText('Review')
-    await test.info().attach('updated-space-with-members', {
+    await test.info().attach('updated-space-boundary', {
       body: await page.screenshot(),
       contentType: 'image/png',
     })

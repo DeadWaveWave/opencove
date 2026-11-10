@@ -7,10 +7,10 @@ const frameFields = ['x', 'y', 'width', 'height'] as const
 
 export const spaceUpdateCommand = defineCommand({
   path: ['space', 'update'],
-  summary: 'Rename, move or resize a space',
+  summary: 'Rename a space or adjust its boundary',
   usage: '--space <selector> [--name <text>] [--frame <json>]',
   description:
-    'Rename a space or change its canvas boundary. Names follow the same rules as space create. Supply a name, a frame, or both. Changing x or y moves all member nodes and child spaces by the same distance; changing width or height resizes only the boundary. The boundary expands as needed to keep members inside, and ancestors grow to contain the updated space. appliedFrame and frameAdjusted report changes to requested frame values. Directory and worktree bindings are preserved.',
+    'Rename a space or change its canvas boundary without moving any member node or child space. Names follow the same rules as space create. Supply a name, a frame, or both. The requested boundary expands as needed to contain the fixed contents with padding; requested x and y may also be adjusted. Ancestors grow when necessary. appliedFrame and frameAdjusted report changes to requested frame values. To move a space together with its contents, drag it in OpenCove. Directory and worktree bindings are preserved.',
   connect: true,
   operation: 'space.update',
   options: {
@@ -29,7 +29,8 @@ export const spaceUpdateCommand = defineCommand({
     frame: {
       type: 'json',
       valueName: 'json',
-      description: 'Set any of x, y, width and height; dimensions must be positive',
+      description:
+        'Set boundary x, y, width or height; dimensions must be positive and contents stay in place',
     },
   },
   render: declaredOutput(

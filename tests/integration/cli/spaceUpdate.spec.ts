@@ -108,9 +108,9 @@ it('joins granted CLI selectors, Worker updates, saved geometry and renderer syn
   expect(JSON.parse(stdout)).toMatchObject({
     id: 'space',
     name: 'Review',
-    movedNodeIds: ['note'],
+    movedNodeIds: [],
     frameAdjusted: true,
-    appliedFrame: { x: 100, y: 0, width: 314, height: 264 },
+    appliedFrame: { x: 26, y: 0, width: 288, height: 264 },
   })
   expect(stderr).toContain('Notice: space frame adjusted; applied frame:')
   expect(await store.readAppStateRevision()).toBe(2)
@@ -124,7 +124,7 @@ it('joins granted CLI selectors, Worker updates, saved geometry and renderer syn
     name: 'Review',
     directoryPath: '/repo',
     nodeIds: ['note'],
-    rect: { x: 100, y: 0, width: 314, height: 264 },
+    rect: { x: 26, y: 0, width: 288, height: 264 },
   })
   const merged = toShellWorkspaceStateForSync(
     restored.workspaces[0] as unknown as PersistedWorkspaceState,
@@ -133,8 +133,8 @@ it('joins granted CLI selectors, Worker updates, saved geometry and renderer syn
   )
   expect(merged.spaces[0]).toMatchObject({
     name: 'Review',
-    rect: { x: 100, y: 0, width: 314, height: 264 },
+    rect: { x: 26, y: 0, width: 288, height: 264 },
   })
-  expect(merged.nodes[0].position).toEqual({ x: 150, y: 60 })
+  expect(merged.nodes[0].position).toEqual({ x: 50, y: 60 })
   expect(merged.nodes[0].data.note).toMatchObject({ text: 'Preserve' })
 })

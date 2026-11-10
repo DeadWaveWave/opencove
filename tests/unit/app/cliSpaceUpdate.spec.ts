@@ -29,7 +29,7 @@ it.each(['Main', 'space-', '@self', space.id])(
     expect(JSON.parse(f.out())).toEqual(value)
   },
 )
-it('projects declared frame and movement fields and reports adjustments', async () => {
+it('projects declared boundary fields and reports adjustments without member movement', async () => {
   const f = fixture()
   const errors: string[] = []
   f.io.stderr.write = text => {
@@ -39,7 +39,7 @@ it('projects declared frame and movement fields and reports adjustments', async 
     ...value,
     appliedFrame: value.rect,
     frameAdjusted: true,
-    movedNodeIds: ['n'],
+    movedNodeIds: [],
   }
   expect(
     await run(
@@ -64,7 +64,7 @@ it('projects declared frame and movement fields and reports adjustments', async 
     id: space.id,
     appliedFrame: { width: 420 },
     frameAdjusted: true,
-    movedNodeIds: ['n'],
+    movedNodeIds: [],
   })
   expect(errors.join('')).toContain('Notice: space frame adjusted; applied frame:')
 })
@@ -106,4 +106,13 @@ it('does not retry a CAS conflict or print success', async () => {
   expect(
     f.fetch.mock.calls.filter(([, init]) => JSON.parse(String(init?.body)).id === 'space.update'),
   ).toHaveLength(1)
+})
+
+it('explains fixed members, frame adjustments and dragging contents in OpenCove', async () => {
+  const f = fixture()
+  expect(await run(['space', 'update', '--help'], f.io)).toBe(0)
+  expect(f.out()).toContain('without moving any member node or child space')
+  expect(f.out()).toContain('requested x and y may also be adjusted')
+  expect(f.out()).toContain('To move a space together with its contents, drag it in OpenCove')
+  expect(f.fetch).not.toHaveBeenCalled()
 })

@@ -31,7 +31,7 @@ export async function updateSpace(options: {
     replaceNodeControlWorkspace(state, planned.workspace),
     expectedRevision,
   )
-  const { space, movedNodeIds } = planned
+  const { space } = planned
   return {
     id: space.id,
     name: space.name,
@@ -39,7 +39,7 @@ export async function updateSpace(options: {
     parentSpaceId: space.parentSpaceId ?? null,
     rect: space.rect,
     directoryPath: space.directoryPath,
-    movedNodeIds,
+    movedNodeIds: [],
     ...(options.input.frame && space.rect
       ? {
           appliedFrame: space.rect,

@@ -60,3 +60,47 @@ it('normalizes names exactly like top-level creation and preserves zero coordina
   })
   expect(input.name).toBe(' Review ')
 })
+
+it.each([
+  { spaceId: 's' },
+  { spaceId: 's', frame: {} },
+  { spaceId: 's', name: 'Review', frame: {} },
+  { spaceId: 's', frame: { x: undefined } },
+])('keeps semantic rejection in the normalizer for %j', wire => {
+  expect(spaceUpdateOperation.input.safeParse(wire).success).toBe(true)
+  expect(() => spaceUpdateOperation.normalize(wire)).toThrow(
+    expect.objectContaining({ code: 'common.invalid_input' }),
+  )
+})
+
+it('exports only representable wire shape without cross-field checks', () => {
+  const schema = z.toJSONSchema(spaceUpdateOperation.input, {
+    io: 'input',
+    unrepresentable: 'throw',
+  })
+  expect(schema).toMatchObject({
+    required: ['spaceId'],
+    properties: { frame: { type: 'object', additionalProperties: false } },
+  })
+  expect(spaceUpdateOperation.input.def.checks ?? []).toEqual([])
+})
+
+it('describes frame coordinates as boundary-only edits', () => {
+  const schema = z.toJSONSchema(spaceUpdateOperation.input, {
+    io: 'input',
+    unrepresentable: 'throw',
+  })
+  expect(schema).toMatchObject({
+    properties: {
+      frame: {
+        properties: {
+          x: { description: expect.stringContaining('contents stay in place') },
+          y: { description: expect.stringContaining('contents stay in place') },
+        },
+      },
+    },
+  })
+  expect(spaceUpdateOperation.summary).toBe(
+    'Rename a space or adjust its boundary around fixed contents',
+  )
+})

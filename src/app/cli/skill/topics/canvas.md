@@ -35,11 +35,13 @@ ancestors grow to contain it. `space get` and `space list` return the current ge
 --path /workspace/app [--name "App"]` requires a human decision: agents cannot add projects. Ask the
 user to add the project in OpenCove; do not retry the refusal.
 
-Rename with `opencove space update --space @self --name "Review"`. Arrange a Space with
+Rename with `opencove space update --space @self --name "Review"`. Adjust its boundary with
 `opencove space update --space space-123 --frame '{"x":100,"width":1200}'`.
-Changing x/y carries all member nodes and child Spaces; width/height resize only the boundary.
-Boundaries keep 24 units around direct nodes and 12 around child Spaces; ancestors grow as needed.
-Frame updates return appliedFrame/frameAdjusted and movedNodeIds; adjustments print a notice.
+All frame fields change only the boundary: member nodes and child Spaces stay where they are.
+The requested frame expands to enclose them with padding (24 around direct nodes using their
+displayed sizes, 12 around child Spaces); ancestors grow as needed. Requested x/y may be adjusted.
+Frame updates return appliedFrame/frameAdjusted and print a notice when adjusted. movedNodeIds is
+always empty. To move a Space together with its contents, drag it in OpenCove.
 Names are trimmed and cannot be blank. Directory and worktree bindings stay unchanged.
 
 ## Give a delegated agent its own worktree
