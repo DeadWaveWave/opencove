@@ -144,6 +144,11 @@ opencove agent list --space @self -o table
 opencove agent get --node "Reviewer" --pretty
 opencove agent read --node "Reviewer" --screen
 opencove agent prompt --node "Reviewer" --wait --read --timeout 2m --text-file ./assignment.txt
+# To keep working meanwhile, split the same steps:
+opencove agent prompt --node "Reviewer" --text-file ./assignment.txt
+opencove agent delivery delivery-123 --wait --timeout 2m
+opencove agent wait --node node-123 --turn turn-123 --timeout 2m
+opencove agent read --node node-123 --turn turn-123 -o json
 ```
 
 Give a window a stable name with `node create agent --title "Reviewer"` (also supported for terminals).
