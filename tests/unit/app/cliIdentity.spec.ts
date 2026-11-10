@@ -308,8 +308,7 @@ it.each(targets)(
       args.push('--space', '@self')
     }
     if (command.path.join(' ') === 'agent prompt') {
-      // Its text source is one of two options, so neither is marked required.
-      args.push('--text', 'sample')
+      // The positional 'sample' above is its text; adding --text too would be rejected.
       f.values['agent.prompt'] = {
         deliveryId: 'delivery',
         nodeId: node.id,
