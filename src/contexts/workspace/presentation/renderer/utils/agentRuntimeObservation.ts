@@ -50,7 +50,13 @@ export function projectAgentRuntimeObservation(
   const degraded = input.degraded === true
   const blockedReason =
     nextStatus === 'waiting' ? (input.agentRunState?.blockedReason ?? null) : null
-  const nextObservation = { status: nextStatus, source, hookInstallState, degraded, blockedReason }
+  const nextObservation = {
+    status: nextStatus,
+    source,
+    hookInstallState,
+    degraded,
+    ...(blockedReason ? { blockedReason } : {}),
+  }
   if (
     (data.kind !== 'terminal' || data.agentOverlay?.status === nextStatus) &&
     data.agentRuntimeObservation?.status === nextStatus &&

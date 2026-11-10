@@ -39,6 +39,6 @@ it('refreshes the UI reason within waiting without persisting dialog text', () =
     source: 'claude_hook',
     agentRunState: { ...snapshot, state: 'idle', blockedReason: null, blockedSummary: null },
   })!
-  expect(resolved.data.agentRuntimeObservation?.blockedReason).toBeNull()
+  expect(resolved.data.agentRuntimeObservation?.blockedReason).toBeUndefined()
   expect(resolved.durableDidChange).toBe(false)
 })
