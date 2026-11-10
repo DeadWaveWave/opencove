@@ -206,8 +206,8 @@ test('managed Claude relaunch, switch, role identity and cold restart use commit
         )
         return {
           roleId: role?.id as string,
-          agentId: role?.role?.linkedAgentNodeId as string | undefined,
-          record: role?.role?.runHistory?.[0] as { agentNodeId: string } | undefined,
+          agentId: role?.task?.linkedAgentNodeId as string | undefined,
+          record: role?.task?.runHistory?.[0] as { agentNodeId: string } | undefined,
         }
       })
     await expect.poll(async () => (await roleAgent()).agentId).toBeTruthy()
