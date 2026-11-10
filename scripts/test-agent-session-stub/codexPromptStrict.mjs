@@ -20,7 +20,8 @@ export async function runCodexPromptStrictScenario(cwd, providerArgs) {
     if (!['UserPromptSubmit', 'Stop', 'PermissionRequest'].every(event => commands.has(event))) {
       throw new Error('Strict prompt fixture requires generated Codex lifecycle hooks')
     }
-    return async event => {
+    // Real Codex gives every turn its own turn_id; a reused ID reads as a replay.
+    return async (event, details = {}) => {
       const child = spawn(commands.get(event), {
         shell: true,
         env: process.env,
@@ -43,7 +44,7 @@ export async function runCodexPromptStrictScenario(cwd, providerArgs) {
           hook_event_name: event,
           model: 'fixture-model',
           permission_mode: 'default',
-          turn_id: 'fixture-turn',
+          turn_id: details.turn === undefined ? 'fixture-turn' : `fixture-turn-${details.turn}`,
           ...(event === 'PermissionRequest'
             ? {
                 tool_name: 'Bash',
