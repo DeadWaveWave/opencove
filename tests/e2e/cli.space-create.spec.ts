@@ -221,7 +221,8 @@ test('a terminal grant creates top-level and child spaces and leaves project dec
     expect(denied).toContain('operation_denied')
     expect(denied).toContain('requires a human decision in OpenCove')
     expect(denied).toContain('Ask the user to add the project in OpenCove')
-    expect(denied).not.toMatch(/retry/i)
+    // retryable:false is the envelope field; the message and hint must not suggest retrying.
+    expect(denied.replace(/"retryable":false/g, '')).not.toMatch(/retry/i)
     const projects = await page.evaluate(async () =>
       window.opencoveApi.controlSurface.invoke<ListProjectsResult>({
         kind: 'query',
