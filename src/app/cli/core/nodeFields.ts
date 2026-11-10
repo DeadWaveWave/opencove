@@ -24,6 +24,9 @@ export function nodeFieldNotice(
     }
     for (const field of fields) {
       const relative = field.replace(/^nodes?\./, '')
+      if (spec?.projectedEnvelopeFields?.includes(relative)) {
+        continue
+      }
       if (spec?.rawPaths && !/^nodes?\./.test(field) && !spec.aliases?.[field]) {
         continue
       }

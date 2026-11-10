@@ -34,6 +34,8 @@ export interface RenderSpec {
   itemAtRoot?: boolean
   unavailable?: string
   itemKey?: string
+  /** Declared envelope fields to project alongside the item while retaining other metadata. */
+  projectedEnvelopeFields?: string[]
   rawPaths?: boolean
   aliases?: Record<string, string>
   declaredRawPaths?: string[]
@@ -61,7 +63,7 @@ export interface CommandContext extends CommandArgs {
   invoke(
     id: OperationId,
     payload: unknown,
-    options?: { fresh?: boolean; signal?: AbortSignal },
+    options?: { fresh?: boolean; signal?: AbortSignal; timeoutMs?: number },
   ): Promise<unknown>
   whoami(): Promise<CallerIdentity>
   self(kind: NonNullable<OptionSpec['selector']>): Promise<string>

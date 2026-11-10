@@ -206,7 +206,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
     const call = async (
       operationId: OperationId,
       payload: unknown,
-      callOptions?: { fresh?: boolean; signal?: AbortSignal },
+      callOptions?: { fresh?: boolean; signal?: AbortSignal; timeoutMs?: number },
     ) => {
       const op = getControlSurfaceOperation(operationId)!
       if (!connection) {
@@ -227,9 +227,10 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
         { kind: op.kind, id: operationId, payload },
         {
           timeoutMs:
-            operationId === 'agent.prompt'
+            callOptions?.timeoutMs ??
+            (operationId === 'agent.prompt'
               ? Number((payload as { timeoutMs?: number }).timeoutMs ?? 15000) + 5000
-              : Number(args.options.timeout ?? command.timeoutMs ?? 20000),
+              : Number(args.options.timeout ?? command.timeoutMs ?? 20000)),
           fetch: io.fetch,
           signal: callOptions?.signal ?? io.signal,
           errorTargets: command.errorTargets,

@@ -15,6 +15,16 @@
 
 ## Send, confirm, wait and read
 
+Progress on stderr preserves IDs before long operations. Before sending, including without
+`--wait`, it prints `Sending prompt (delivery <id>).`. With `--wait`, it then prints:
+
+```text
+Waiting for turn turn-123 of node node-123. If interrupted, continue with: opencove agent wait --node node-123 --turn turn-123 (do not resend).
+```
+
+Use that continuation if interrupted; the final JSON and exit status report the result.
+中文：stderr 的进度行提前保留 ID，便于中断后继续等待；最终结果以 JSON 和退出码为准。
+
 For a simple hand-off:
 
 ```sh
@@ -160,7 +170,7 @@ busy refusal. The CLI checks `system.operation.describe` first; an older Worker
 without `whenBusy` receives no new fields, and busy refusal stays visible. No retry
 is made after an error. Waiting/dialogs and unknown/degraded states refuse.
 
-The CLI prints its generated deliveryId before sending; retain it even if the
+The CLI prints `Sending prompt (delivery <id>).` before sending; retain the ID even if the
 response is lost. Codex steering returns `dispatched`, exit 0, while awaiting
 consumption. Check `opencove agent delivery <id> --wait --timeout 2m` before treating
 it as submitted. Confirmation is in order only while no other PTY input intervenes;
