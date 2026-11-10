@@ -232,7 +232,7 @@ unqualified transcript fallback; exact local --turn reads use the independent Wo
 Hook JSON contains `{nodeId, sessionId, turnId, promptId?, outcome, message,
 truncated, source: 'hook'}`. Transcript JSON preserves the session fields and adds
 `source: 'transcript', truncated: false`. Neither reading nor content proves a
-successful outcome. Exact local turns are retained in the private Worker archive across restarts; unqualified reads remain scoped to the current incarnation. Currently only correlated local Claude hooks supply it.
+successful outcome. Exact local turns are retained in the private Worker archive across restarts; unqualified reads remain scoped to the current incarnation. Correlated local Claude and Codex lifecycle hooks supply it.
 Unavailable `details.reason` values are `no_ended_turn`, `provider_sent_no_message`,
 `turn_not_ended` (active) and `turn_not_found` (unknown/evicted). Exact reads preserve
 these reasons with exit 1; they never silently return an older message.

@@ -116,7 +116,7 @@ The provider's optional `promptId` is returned on any comparison outcome when va
 For Claude Code, matching session and prompt IDs also bind retained Stop/StopFailure
 messages to the observed start. `agent.finalMessage` can select that provider ID;
 the CLI uses the OpenCove `turnId` returned by `agent prompt`. Codex has no comparison
-profile or hook-carried final-message support in this cut.
+profile; lifecycle replies match the private session/turn pair.
 
 Equality is not proof of causation or model processing: another qualifying submission
 of identical text also matches, and another hook may block processing after this
@@ -466,7 +466,7 @@ consumption. `dispatched` is not a confirmed result.
 
 Use prompt → delivery status → `wait --turn` = **the containing turn ended**
 (check outcome) → `read --turn`. Claude reply reads are correlated; Codex reply
-reads stay uncorrelated (use an unqualified read/screen). A containing turn ending
+reads are correlated with lifecycle hooks (see [Codex replies](CODEX_TURN_REPLIES.md)). A containing turn ending
 does not prove a steer was handled. Never resend; check delivery status or the
 screen. Claude transcript-based reconciliation of uncertain deliveries is a known
 limit and remains out of scope; no transcript/rollout fallback confirms deliveries.

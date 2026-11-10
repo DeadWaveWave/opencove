@@ -99,8 +99,7 @@ Exactly one prompt source: --text or --text-file (- reads stdin). Use valid Unic
 UTF-8 before newline normalization; trailing newlines are removed. Prompt timeout accepts milliseconds/durations
 (15s, 15000ms, 1m), default 15s, maximum 60s; HTTP timeout adds a five-second response margin. Save the successful
 prompt's `turnId` (replace `turn-123` above). The normal loop is prompt (save deliveryId/turnId) → delivery status
-→ wait `--turn <turnId>` (the containing turn ended; check outcome) → read `--turn <turnId>` (Claude correlated;
-Codex reply reads stay uncorrelated). A successful prompt reports `textComparison`: `matched` means Claude Code's
+→ wait `--turn <turnId>` (the containing turn ended; check outcome) → read `--turn <turnId>` (Claude and Codex lifecycle replies are correlated). A successful prompt reports `textComparison`: `matched` means Claude Code's
 reported text equals what you sent (newlines and trailing spaces aside); `different` (for example a draft was
 submitted with it) still exits 0 but means stop, inspect with `agent read --screen`, and never resend; Codex
 reports `unavailable`. claude-code-v1, verified for Claude Code 2.1.319, normalizes CRLF/CR to LF and trailing
@@ -171,7 +170,7 @@ persisted and memoryOnlyReason when false; archive_unavailable differs from a mi
 OpenCove history, not provider transcripts or existing backups. No prompt text or delivery records are archived.
 `opencove agent history clear --node <selector>` deletes a node's stored replies (archive and memory) and keeps the
 node, transcripts, run state and deliveries; archive unavailability clears memory but exits 1. Remote waits use mirrored snapshots/events; older history requires the executing
-Worker. Correlated local Claude hooks with correlated prompt IDs supply messages. Claude queued messages/provider
+Worker. Local Claude hooks match session/prompt IDs; Codex lifecycle hooks match session/turn IDs. Codex stores the first matching Stop reply that ends the local turn. Later continuation cannot replace it; same-pair steering keeps that turn and does not clear waiting. Missing IDs or hook coverage provide no exact reply. Archived replies remain readable regardless of current hook coverage. Claude queued messages/provider
 follow-ups stay in one OpenCove turn; exact reads return its final reply after continuations. An unknown
 continuation marks the last provider reply messageKind: intermediate and prints a notice. After wait --until idle,
 unqualified read selects only the latest ended reply. Check outcome; ended does not mean successful.

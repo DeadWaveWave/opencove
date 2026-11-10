@@ -97,7 +97,7 @@ archive (global caps: 20,000 records / 128 MiB); inspect persisted and memoryOnl
 Restart or replacement clears incarnation memory, not archived exact turns. Remote exact waits use mirrored
 snapshots/events only. Older remote turns require the Worker that runs them;
 `details.reason: remote_history_unavailable` identifies that limit, not eviction. Correlated local
-Claude hooks currently provide content. Never resend just because reading fails.
+Claude and Codex lifecycle hooks provide exact-turn content. Codex retains the first matching Stop reply that ends the local turn; later continuation cannot replace it. Never resend just because reading fails.
 
 Without `--turn`, read tries the latest hook end first and uses transcript fallback
 only for `no_ended_turn` or `provider_sent_no_message`; it never searches older
@@ -134,8 +134,7 @@ textComparison never decides submission. The submitted text differed from what y
 sent; an existing draft may have been included. Do not resend; inspect the screen.
 
 The orchestration loop is prompt → delivery status → `wait --turn` = **the containing
-turn ended** (check outcome) → `read --turn` (Claude correlated; Codex reply reads
-stay uncorrelated). Turn end does not prove a steer was handled. `agent delivery`
+turn ended** (check outcome) → `read --turn` (Claude and Codex lifecycle replies are correlated). Turn end does not prove a steer was handled. `agent delivery`
 exits 0 for submitted, 1 for not_sent/ambiguous/unknown/unavailable or an unconfirmed
 snapshot, 124 for a wait timeout. Self-wait returns immediately so consumption can
 proceed. Unresolved records are pinned; capacity refuses before bytes. A closed evidenceWindow is not a result. Worker restart/expiry makes lookup unavailable, never
@@ -165,11 +164,11 @@ Idle agents need a hook-observed completed turn. Working agents receive steering
 
 This attempts to paste into the current editor; any existing draft may be submitted with it. Run "opencove agent read --node <selector> --screen" to check for drafts and dialogs first: unseen dialogs, including one-time settings notices, may consume the input.
 
-Success (submission_observed) means the provider reported a qualifying submission after this Enter. Codex steering returns dispatched (exit 0) until consumption is confirmed; check opencove agent delivery <deliveryId> --wait. The CLI generates and prints the deliveryId before sending so a lost response remains queryable. It does not prove the model read exactly this text, and the turn may still be running: wait for it with "opencove agent wait --node <selector> --turn <turnId>". Save the returned turnId, check its outcome, then read the correlated Claude reply with "opencove agent read --node <selector> --turn <turnId>". The exact checks and their trust limits are in docs/agent/PROMPT_DELIVERY.md.
+Success (submission_observed) means the provider reported a qualifying submission after this Enter. Codex steering returns dispatched (exit 0) until consumption is confirmed; check opencove agent delivery <deliveryId> --wait. The CLI generates and prints the deliveryId before sending so a lost response remains queryable. It does not prove the model read exactly this text, and the turn may still be running: wait for it with "opencove agent wait --node <selector> --turn <turnId>". Save the returned turnId, check its outcome, then read the correlated reply with "opencove agent read --node <selector> --turn <turnId>". The exact checks and their trust limits are in docs/agent/PROMPT_DELIVERY.md.
 
 textComparison is matched, different, or unavailable. claude-code-v1 compares equality modulo newline representation and trailing ASCII whitespace (space, tab, LF), verified for Claude Code 2.1.319; leading and interior whitespace remain significant. Codex comparison is unavailable until a profile is verified. Optional promptId is diagnostic. The submitted text differed from what you sent; an existing draft may have been included. Do not resend; inspect the screen. Different still exits 0: stop automatic orchestration, inspect with opencove agent read --node <id> --screen, and never resend or press Enter again because of the comparison.
 
-The loop is prompt → delivery status → wait --turn (the containing turn ended; check outcome) → read --turn (Claude correlated; Codex reply reads stay uncorrelated). This command never retries automatically. After an interrupted or uncertain delivery, inspect the terminal with "opencove agent read --node <selector> --screen" and read the conversation. Do not resend a prompt that may already have been submitted.
+The loop is prompt → delivery status → wait --turn (the containing turn ended; check outcome) → read --turn (Claude and Codex lifecycle replies are correlated). This command never retries automatically. After an interrupted or uncertain delivery, inspect the terminal with "opencove agent read --node <selector> --screen" and read the conversation. Do not resend a prompt that may already have been submitted.
 
 Exit codes: 0 submission observed or Codex steer dispatched; 1 refused or delivery unconfirmed; 2 invalid input; 124 overall deadline; 130 interrupted. A timeout or interruption does not prove that nothing was sent.
 
@@ -197,7 +196,7 @@ Plain message text goes to stdout even when piped. -o json or --fields returns s
 
 Claude messages queued mid-turn continue the same OpenCove turn, including provider follow-ups. Exact reads return its final reply after all continuations. An unknown continuation outcome marks the last provider reply with messageKind: intermediate and prints a notice. After wait --until idle, read returns only the latest ended turn reply.
 
-After agent prompt, retain its turnId, run "opencove agent wait --node <selector> --turn <turnId>", then "opencove agent read --node <selector> --turn <turnId>". Exact --turn reads survive Worker restarts for archived local turns. The private archive stores final replies up to 64 KiB, outcome and IDs: at most 60 turns per node, 30 days, 20,000 global records and 128 MiB of message text. JSON reports persisted and a memoryOnlyReason when false. Deleting the node removes OpenCove history, not provider transcripts or existing backups. Unqualified reads remain current-incarnation reads. Remote wait --turn uses mirrored snapshots/events; older remote turns can only be checked on the Worker that runs them (remote_history_unavailable). Hook replies currently require local Claude hooks with correlated prompt IDs.
+After agent prompt, retain its turnId, run "opencove agent wait --node <selector> --turn <turnId>", then "opencove agent read --node <selector> --turn <turnId>". Exact --turn reads survive Worker restarts for archived local turns. The private archive stores final replies up to 64 KiB, outcome and IDs: at most 60 turns per node, 30 days, 20,000 global records and 128 MiB of message text. JSON reports persisted and a memoryOnlyReason when false. Deleting the node removes OpenCove history, not provider transcripts or existing backups. Unqualified reads remain current-incarnation reads. Remote wait --turn uses mirrored snapshots/events; older remote turns can only be checked on the Worker that runs them (remote_history_unavailable). Hook replies require matching local Claude session/prompt IDs or Codex lifecycle session/turn IDs; Codex keeps the first matching Stop reply that ends the local turn.
 
 Use --screen before prompting to inspect drafts and dialogs. It resolves the current session, replays its presentation snapshot at its columns/rows, preserving cursor-created spaces, overwrites and wide CJK/emoji cells. It selects the normal or alternate buffer, ignores styling/mode sequences, trims row-end spaces and trailing blank rows, then returns the last --lines rendered rows (default: 40). -o json returns {nodeId, sessionId, lines: [...]}. Screen-mode projectable fields are nodeId, sessionId, lines; the field list below applies to final-message mode. --lines requires --screen; --screen conflicts with --last and --turn. This is a read only snapshot, not permission to answer another agent's dialog.
 
