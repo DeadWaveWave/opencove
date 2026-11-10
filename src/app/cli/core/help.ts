@@ -131,6 +131,12 @@ export function help(commands: Command[], path: string[]) {
         ]),
       )
     }
+    if (exact.render?.defaultLimit) {
+      lines.push(
+        '',
+        `Shows up to ${exact.render.defaultLimit} results in Worker order. Use --full or --limit 0 for all; --limit <n> overrides the default.`,
+      )
+    }
     const entries: [string, string][] = []
     for (const [name, spec] of Object.entries(exact.options ?? {})) {
       if (
@@ -140,7 +146,7 @@ export function help(commands: Command[], path: string[]) {
         continue
       }
       entries.push([
-        option(name, spec),
+        `${spec.short ? '-' + spec.short + ', ' : ''}${option(name, spec)}`,
         `${selectorDescription(spec)}${spec.required ? (spec.defaultSelf ? ' (required outside OpenCove)' : ' (required)') : ''}`,
       ])
       if (spec.fileVariant) {

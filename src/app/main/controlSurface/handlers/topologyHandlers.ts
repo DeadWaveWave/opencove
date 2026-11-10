@@ -1,3 +1,4 @@
+import { isConnectionRefused } from '../../../../shared/errors/connectionRefused'
 import { hostname } from 'node:os'
 import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
@@ -122,7 +123,13 @@ export function registerTopologyHandlers(
 
       const endpoint = await deps.topology.resolveRemoteEndpointConnection(payload.endpointId)
       if (!endpoint) {
+        const { endpoints } = await deps.topology.listEndpoints()
+        const known = endpoints.some(candidate => candidate.endpointId === payload.endpointId)
         throw createAppError('worker.unavailable', {
+          details: {
+            reason: known ? 'endpoint_connection_unavailable' : 'endpoint_not_found',
+            endpointId: payload.endpointId,
+          },
           debugMessage: `Remote endpoint unavailable: ${payload.endpointId}`,
         })
       }
@@ -181,6 +188,10 @@ export function registerTopologyHandlers(
         }
 
         throw createAppError('worker.unavailable', {
+          details: {
+            reason: isConnectionRefused(error) ? 'connection_refused' : 'connection_failed',
+            endpointId: payload.endpointId,
+          },
           debugMessage:
             error instanceof Error
               ? `${error.name}: ${error.message}`

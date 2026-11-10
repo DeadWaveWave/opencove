@@ -1,3 +1,4 @@
+import { createAppError } from '../../../../shared/errors/appError'
 import { assertSessionGrantMessagePrompt } from '../http/sessionGrantPromptPolicy'
 import { randomUUID } from 'node:crypto'
 import type { ControlSurface } from '../controlSurface'
@@ -33,14 +34,28 @@ export function registerAgentPromptHandlers(
     defaultErrorCode: 'common.unexpected',
   })
   registerOperation(surface, agentPromptOperation, {
-    handle: (ctx, input) =>
-      service.deliver(
+    handle: (ctx, input) => {
+      const nodeId =
+        input.nodeId === '@self' && ctx.requestAuth?.kind === 'session-grant'
+          ? ctx.requestAuth.grant.nodeId
+          : input.nodeId
+      if (nodeId === null) {
+        throw createAppError('common.invalid_input', {
+          details: {
+            issues: [
+              {
+                path: ['nodeId'],
+                message: 'This session is not bound to a canvas node.',
+                hint: 'Choose an explicit nodeId; with agent prompt, use --node <selector>.',
+              },
+            ],
+          },
+        })
+      }
+      return service.deliver(
         {
           ...input,
-          nodeId:
-            input.nodeId === '@self' && ctx.requestAuth?.kind === 'session-grant'
-              ? ctx.requestAuth.grant.nodeId
-              : input.nodeId,
+          nodeId,
         },
         {
           ...ctx,
@@ -54,7 +69,8 @@ export function registerAgentPromptHandlers(
                   })
               : undefined,
         },
-      ),
+      )
+    },
     defaultErrorCode: 'common.unexpected',
   })
   return service

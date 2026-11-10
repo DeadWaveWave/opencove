@@ -102,6 +102,10 @@ function match(
   const label = kind[0].toUpperCase() + kind.slice(1)
   const hint = `Run "opencove ${kind} list" to find available targets.`
   if (!matches.length) {
+    const suggestions = closeNames(
+      selector,
+      candidates.map(candidate => candidate.title ?? candidate.name ?? ''),
+    )
     throw new CliError(
       `${kind}.not_found`,
       1,
@@ -110,16 +114,19 @@ function match(
         selector.length < 6 && candidates.some(candidate => candidate.id.startsWith(selector))
           ? 'ID prefixes need at least 6 characters.'
           : '',
-        closeNames(
-          selector,
-          candidates.map(candidate => candidate.title ?? candidate.name ?? ''),
-        )
-          .map(name => `Suggested name: ${JSON.stringify(name)}.`)
-          .join(' '),
+        suggestions.map(name => `Suggested name: ${JSON.stringify(name)}.`).join(' '),
         hint,
       ]
         .filter(Boolean)
         .join(' '),
+      suggestions.length
+        ? {
+            candidates: candidates
+              .filter(candidate => suggestions.includes(candidate.title ?? candidate.name ?? ''))
+              .slice(0, 10)
+              .map(candidate => ({ ...candidate, kind: candidate.kind ?? kind })),
+          }
+        : undefined,
     )
   }
   if (matches.length > 1) {
