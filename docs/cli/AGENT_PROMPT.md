@@ -13,6 +13,39 @@
 9. 汇报实际命令、结果、NOT RUN 和进程/节点清理状态，不把未运行测试写成通过。
 ```
 
+## Send, confirm, wait and read
+
+For a simple hand-off:
+
+```sh
+opencove agent prompt --node node-123 --wait --read --timeout 2m "Review the changes"
+```
+
+The command sends once, confirms delivery (including Codex steering), then waits for its exact
+turn. It returns one JSON result with deliveryId, nodeId, sessionId, turnId, phase,
+outcome and endedAt. With --read it adds the structured exact-turn reply; without it reply is
+omitted. Missing or unavailable replies produce `reply: null` and `replyUnavailableReason`,
+while the completed turn still exits 0. Empty reply text is a valid reply. `--fields` supports
+these fields and nested reply fields, such as `--fields deliveryId,turnId,outcome,reply.message`.
+After confirmation, phase is submission_observed. Check outcome even when exit is 0.
+
+With --wait, --timeout covers confirmation plus turn waiting (default 20s, minimum 250ms,
+maximum 2147483647ms). Sending has its own 15s timeout and five-second HTTP response margin;
+optional reading uses the ordinary request timeout. Without --wait, delivery timeout behavior
+is unchanged. `--read` requires --wait. Unconfirmed/ambiguous/unknown delivery stops with exit 1
+without waiting for the turn. Exit 10 carries the usual waiting-for-user envelope and
+blockedSummary; exit 11 means an unfulfilled target exited; timeout exits 124. All retain known
+deliveryId and turnId in error.details. Ctrl-C exits 130 and prints known IDs on stderr. Before
+the prompt response arrives, only deliveryId may be known; query that delivery to recover turnId.
+Never resend. Already-ended exact turns are read from retained evidence, so a fast reply is not missed.
+
+简单交接请使用 `agent prompt --wait --read`，并检查 `outcome` 和回复。确认和等待共享
+`--timeout` 预算，发送另有 15 秒预算。轮次已结束但没有回复时返回 `reply: null` 及原因；
+超时、中断或等待用户处理后，用已有 `deliveryId` / `turnId` 继续查询，不要重发。
+
+For concurrent work, keep the four-step flow below, saving the returned IDs. Claude Code
+coordinators can run the exact-turn wait in the background as described later.
+
 ## Send to a running agent
 
 ```sh
@@ -21,7 +54,7 @@ opencove agent prompt --node node-123 --text-file ./prompt.txt --timeout 20s
 cat prompt.txt | opencove agent prompt --node node-123 --text-file -
 ```
 
-Exactly one text source is required. `--timeout` accepts milliseconds or durations (`15s`,
+Choose exactly one of positional text, --text or --text-file. Without --wait, `--timeout` accepts milliseconds or durations (`15s`,
 `15000ms`, `1m`); default 15s, maximum 60s. HTTP timeout includes a five-second response margin.
 The target must be an agent window OpenCove launched: local Claude Code or Codex
 with lifecycle hooks for this invocation,

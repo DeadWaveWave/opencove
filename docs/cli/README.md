@@ -143,6 +143,8 @@ See [eligibility and limitations](../agent/README.md#resident-canvas-guidance).
 opencove agent list --space @self -o table
 opencove agent get --node "Reviewer" --pretty
 opencove agent read --node "Reviewer" --screen
+opencove agent prompt --node "Reviewer" --wait --read --timeout 2m --text-file ./assignment.txt
+# To keep working meanwhile, split the same steps:
 opencove agent prompt --node "Reviewer" --text-file ./assignment.txt
 opencove agent delivery delivery-123 --wait --timeout 2m
 opencove agent wait --node node-123 --turn turn-123 --timeout 2m
@@ -164,7 +166,22 @@ The result is `{nodeId, sessionId, stopped: true}` when stopping is requested; p
 An already-exited bound session returns `{nodeId, sessionId, stopped: false, reason: "not_running"}` with exit 0.
 A changed binding fails with exit 2; inspect the node again before deciding what to stop. A node with no session binding fails with exit 1.
 
-Save `deliveryId` and `turnId` returned by prompt and replace the example IDs above;
+For simple hand-offs, `agent prompt --wait --read` confirms delivery, waits for its exact turn
+and returns one JSON result with `outcome`, `endedAt` and the structured `reply`. A missing reply
+returns `reply: null` and `replyUnavailableReason` without failing an ended turn.
+`--read` requires `--wait`; `--fields outcome,reply.message` projects declared result fields.
+With `--wait`, `--timeout` covers confirmation and turn waiting (default 20s, 250ms minimum);
+sending has a separate 15s budget plus a five-second HTTP response margin. Without `--wait`,
+`--timeout` remains the delivery budget (default 15s, maximum 60s). Optional reading uses the
+ordinary request timeout. Exit 10/11/124 errors retain `deliveryId` and `turnId`; Ctrl-C exits
+130 and prints known IDs on stderr. Resume the same turn without resending.
+
+简单交接默认使用 `agent prompt --wait --read`：确认投递后等待同一轮结束，再返回回复。
+`outcome` 表示该轮结果；没有可读回复时返回 `reply: null` 及原因，仍算等待成功。
+`--wait` 的超时预算覆盖确认和等待，发送另有 15 秒预算。超时或中断后保留已有 ID，
+继续等待或读取原来的轮次，不要重发。
+
+To do other work meanwhile, keep the four-step loop and save `deliveryId` and `turnId`;
 use the same node selector throughout. Prompt → confirm delivery → wait `--turn <turnId>`
 → read the same turn. Check `outcome` and the reply. Claude and Codex lifecycle replies
 are correlated; turn end alone does not prove a steer was consumed. Use `--until idle`
