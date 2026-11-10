@@ -70,11 +70,13 @@ it.skipIf(process.platform === 'win32')(
         runtimeExecutable: process.execPath,
         hookTrustResolver: async () => "hooks.state={'fixture'={trusted_hash='sha256:fixture'}}",
         channel: {
+          async start() {},
+          getInstallState: () => 'installed',
           reserveSpawn: async () => ({
             usesHook: true,
             installState: 'installed',
             env: {
-              OPENCOVE_CODEX_HOOK_ENDPOINT: 'http://fixture/hooks/codex',
+              OPENCOVE_CODEX_HOOK_ENDPOINT: 'http://127.0.0.1:1234/hooks/codex',
               OPENCOVE_CODEX_HOOK_TOKEN: 'fixture-token',
             },
             commit() {},

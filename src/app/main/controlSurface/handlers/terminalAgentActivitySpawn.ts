@@ -1,3 +1,4 @@
+import { localCanvasResidentContext } from '../sessionSpawnIdentityContext'
 import type { AgentLaunchArtifactScope } from '../../../../contexts/agent/application/services/AgentLaunchArtifactScope'
 import { AgentLaunchArtifactScope as ArtifactScope } from '../../../../contexts/agent/application/services/AgentLaunchArtifactScope'
 import type { TerminalAgentActivityEnvironmentService } from '../../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityEnvironmentService'
@@ -46,6 +47,7 @@ export async function prepareTerminalAgentActivitySpawn(options: {
     command: options.command,
     cwd: options.cwd,
     environment: options.env,
+    residentContext: localCanvasResidentContext(),
     interactiveShell: options.interactiveShell,
     ...(options.runtimeKind ? { runtimeKind: options.runtimeKind } : {}),
   })

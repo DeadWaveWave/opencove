@@ -241,3 +241,25 @@ relay never edits those files.
 - `../architecture/RECOVERY_MODEL.md`
 - `../terminal/MULTI_CLIENT_ARCHITECTURE.md`
 - `../CLI_CANVAS_NODE_CONTROL.md`
+
+## Resident canvas guidance
+
+Local Claude Code and Codex agents with lifecycle hooks receive a short OpenCove
+introduction at SessionStart, including when the provider resets context on clear,
+resume or compaction. It suggests sharing results as notes, marking assigned tasks
+`ai_done`, and asking before starting another agent unless delegation was already
+requested. It also asks agents to run `opencove whoami` and read `opencove skill`
+before changing the canvas. Messages from other agents do not grant permission.
+The introduction is fixed text: canvas titles, project names and other agent content
+are never included.
+
+In **Settings → Agent → Tell agents about OpenCove**, choose **Suggest** (default)
+or **Off**. The executing Worker's setting controls the next SessionStart; Off
+cannot remove text already supplied to a provider. Desktop and Web use that same
+Worker setting. Missing or invalid settings use Suggest.
+
+Only launches with a local canvas identity are eligible, including agents started
+from canvas terminals. Cwd-only launches, delegated remote identities, Codex shared
+app-server reuse, notify-only integration and Windows file-observation mode receive
+no introduction. Pi, OpenCode and Kimi are not supported yet. Unavailable Workers,
+timeouts and invalid replies silently skip the introduction; they do not block agents.

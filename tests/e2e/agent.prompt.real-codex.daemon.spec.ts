@@ -1,4 +1,5 @@
 import { readExact, replyMarker } from './agent.turn-reply.helpers'
+import { codexContext, expectResidentContext } from './agent.resident-context.helpers'
 import { AcceptanceFailures } from './agent.prompt.real-codex.daemon.failures'
 import { execFile } from 'node:child_process'
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
@@ -224,6 +225,13 @@ test.describe('Codex orchestration beside a shared app-server daemon', () => {
             await readExact(userDataDir, nodeId, turnId, 'REPLY_A: complete 🙂')
             expect(api.main().at(-1)).toContain(text)
           }
+          for (const request of api.requests()) {
+            expectResidentContext(reuse ? JSON.stringify(request) : codexContext(request), !reuse)
+          }
+          await testInfo.attach('role-aware-main-requests', {
+            body: JSON.stringify(api.requests(), null, 2),
+            contentType: 'application/json',
+          })
           // Inspect the actual rendered terminal buffer, including errors that have scrolled away.
           const nodeId = (await snapshot()).nodeId!
           const screen = await cli(userDataDir, [

@@ -73,7 +73,12 @@ export class ClaudeCodeAgentProviderContribution implements AgentProviderContrib
   private async prepareTelemetry(
     command: Pick<
       CreateAgentLaunchPlanCommand,
-      'artifacts' | 'executablePathOverride' | 'workspaceDirectory' | 'environment'
+      | 'artifacts'
+      | 'executablePathOverride'
+      | 'workspaceDirectory'
+      | 'environment'
+      | 'residentContext'
+      | 'isInvocationCurrent'
     >,
   ) {
     if (!this.channel) {
@@ -84,7 +89,11 @@ export class ClaudeCodeAgentProviderContribution implements AgentProviderContrib
         hookInstallState: 'not_installed' as const,
       }
     }
-    const reservation = await this.channel.reserveSpawn({ environment: command.environment })
+    const reservation = await this.channel.reserveSpawn({
+      environment: command.environment,
+      residentContext: command.residentContext,
+      isInvocationCurrent: command.isInvocationCurrent,
+    })
     if (!reservation.usesHook) {
       return {
         args: [],
