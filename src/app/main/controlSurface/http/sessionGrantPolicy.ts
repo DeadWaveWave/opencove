@@ -179,6 +179,7 @@ export const SESSION_GRANT_POLICY = {
   'space.createChild': allow,
   'space.get': allow,
   'space.list': allow,
+  'space.update': allow,
   'sync.readAgentNodePlaceholderScrollback': allow,
   'sync.readNodeScrollback': allow,
   'sync.readWorkspaceStateRaw': deny('it exposes private settings and credentials'),

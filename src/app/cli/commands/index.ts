@@ -1,3 +1,4 @@
+import { spaceUpdateCommand } from './spaceUpdate'
 import { spaceCreateCommand } from './spaces'
 import { projectAddCommand } from './projects'
 import { agentStopCommand } from './agentStop'
@@ -28,6 +29,7 @@ import { CliError } from '../core/errors'
 import { nodeCommands, stringOption } from './nodes'
 export const commands: Command[] = [
   spaceCreateCommand,
+  spaceUpdateCommand,
   projectAddCommand,
   ...identityCommands,
   agentPromptCommand,

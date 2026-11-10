@@ -1,4 +1,5 @@
 import { toCompactNodeData } from '../../../../contexts/workspace/application/nodeControl/nodeDtos'
+import { updateSpace } from '../../../../contexts/workspace/application/nodeControl/spaceUpdate'
 import { randomUUID } from 'node:crypto'
 import { createChildSpace } from '../../../../contexts/space/application/createChildSpace'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
@@ -11,6 +12,7 @@ import {
   spaceCreateChildOperation,
   spaceGetOperation,
   spaceListOperation,
+  spaceUpdateOperation,
 } from '../../../../shared/contracts/controlSurface/operations/domains/space'
 import type {
   CanvasNodeKind,
@@ -132,6 +134,22 @@ export function registerSpaceHandlers(
   controlSurface: ControlSurface,
   getPersistenceStore: () => Promise<PersistenceStore>,
 ): void {
+  registerOperation(controlSurface, spaceUpdateOperation, {
+    handle: async (ctx, input) => {
+      const store = await getPersistenceStore()
+      return updateSpace({
+        store: {
+          readAppState: async () => normalizePersistedAppState(await store.readAppState()),
+          readAppStateRevision: () => store.readAppStateRevision(),
+          writeAppState: (state, options) => store.writeAppState(state, options),
+        },
+        input,
+        assertActive: ctx.assertActive,
+      })
+    },
+    defaultErrorCode: 'common.unexpected',
+  })
+
   registerOperation(controlSurface, spaceListOperation, {
     handle: async (_ctx, payload): Promise<ListSpacesResult> => {
       const store = await getPersistenceStore()
