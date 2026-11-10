@@ -213,8 +213,9 @@ added to public DTOs. Receipts preserve hook event names through runtime ingress
 for every reducer-accepted observation, including unchanged snapshots. Synchronous registration
 and bounded replay close the query/watch gap; unavailable history invalidates rather than inventing
 acceptance. Replaced entries, binding ABA, capability changes, lease expiry and disposal invalidate
-pending delivery. Only a fresh accepted claude_hook UserPromptSubmit above the submit fence can
-establish submission observation; session-file optimism cannot do so.
+pending delivery. Only a qualifying provider lifecycle UserPromptSubmit receipt above the submit fence can
+confirm delivery: `claude_hook` for Claude Code or `codex_hook` for Codex.
+Session-file observations cannot confirm submission.
 
 ## Invocation hook coverage
 

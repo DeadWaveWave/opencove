@@ -95,8 +95,8 @@ consumption. Check `opencove agent delivery <id> --wait --timeout 2m` before tre
 it as submitted. Confirmation is in order only while no other PTY input intervenes;
 other input makes it ambiguous, and interruption/end can leave it unknown.
 Claude same-ID receipts confirm submission independently of run-state acceptance.
-textComparison never decides submission. The submitted text differed from what you
-sent; an existing draft may have been included. Do not resend; inspect the screen.
+textComparison never decides submission. When textComparison is different, the submitted
+text differs from what you sent; an existing draft may have been included. Do not resend; inspect the screen.
 
 The orchestration loop is prompt → delivery status → `wait --turn` = **the containing
 turn ended** (check outcome) → `read --turn` (Claude and Codex lifecycle replies are correlated). Turn end does not prove a steer was handled. `agent delivery`
