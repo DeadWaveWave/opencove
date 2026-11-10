@@ -54,6 +54,10 @@ describe('workspace bootstrap', () => {
     const f = fixture()
     const first = await addProject(f.ports, { path: '/project', name: 'Project' })
     const workspace = f.state().workspaces[0]
+    expect(first).toMatchObject({
+      project: { id: workspace.id, name: workspace.name, path: workspace.path },
+      space: workspace.spaces[0],
+    })
     expect(workspace).toEqual({
       ...createProjectRecord({ id: first.projectId, path: '/project', name: 'Project' }),
       spaces: [
@@ -83,6 +87,7 @@ describe('workspace bootstrap', () => {
     const project = await addProject(f.ports, { path: '/project' })
     const result = await createSpace(f.ports, { projectId: project.projectId, name: 'Second' })
     const spaces = f.state().workspaces[0].spaces
+    expect(result).toMatchObject({ space: spaces[1] })
     expect(result.mountId).toBe(project.mountId)
     expect(spaces[1]).toEqual(
       createTopLevelSpaceRecord({

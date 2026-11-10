@@ -1,3 +1,5 @@
+import { spaceCreateCommand } from './spaces'
+import { projectAddCommand } from './projects'
 import { agentStopCommand } from './agentStop'
 import { operationAccessCatalog, operationAccessInfo } from './operationAccessCatalog'
 import { agentHistoryClearCommand } from './agentHistory'
@@ -25,6 +27,8 @@ import { unknownOperation } from '../core/operationErrors'
 import { CliError } from '../core/errors'
 import { nodeCommands, stringOption } from './nodes'
 export const commands: Command[] = [
+  spaceCreateCommand,
+  projectAddCommand,
   ...identityCommands,
   agentPromptCommand,
   agentStopCommand,
