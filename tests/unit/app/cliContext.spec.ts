@@ -3,7 +3,7 @@ import { expect, it } from 'vitest'
 import { run } from '../../../src/app/cli/core/run'
 import { identityFixture, who, node, project, space } from './cliIdentity.helpers'
 
-it('orients a session, excludes self and chooses task versus runtime state', async () => {
+it('orients a session, separates self from neighbors and chooses task versus runtime state', async () => {
   const f = identityFixture()
   f.values['agent.list'] = { epoch: 'e', seq: 1, agents: [{ nodeId: 'agent', state: 'idle' }] }
   f.values['node.list'] = {
@@ -23,6 +23,14 @@ it('orients a session, excludes self and chooses task versus runtime state', asy
       spaceId: who.spaceId,
       nodeId: who.nodeId,
       sessionId: who.sessionId,
+      node: {
+        id: node.id,
+        kind: 'terminal',
+        title: 'Shell',
+        state: 'running',
+        sessionStatus: 'running',
+        taskNodeId: null,
+      },
     },
     project: { id: project.id, name: project.name, path: project.path },
     space: { id: space.id, name: space.name, directoryPath: space.directoryPath },

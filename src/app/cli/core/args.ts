@@ -65,9 +65,26 @@ export function parse(argv: string[], specs: Record<string, OptionSpec>, path: s
       options[`${key}-file`] = { type: 'string' }
     }
   }
+  // Required option arguments are literal, including leading dashes. Keep strict
+  // validation for actual flags and stop normalization at positional delimiters.
+  const literalArgs: string[] = []
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if (arg === '--') {
+      literalArgs.push(...argv.slice(i))
+      break
+    }
+    const key = arg.startsWith('--') ? arg.slice(2) : arg === '-o' ? 'output' : undefined
+    const option = key === undefined ? undefined : options[key]
+    if (option?.type === 'string' && argv[i + 1] !== undefined) {
+      literalArgs.push(`--${key}=${argv[++i]}`)
+    } else {
+      literalArgs.push(arg)
+    }
+  }
   try {
     const result = parseArgs({
-      args: argv,
+      args: literalArgs,
       options,
       strict: true,
       allowPositionals: true,

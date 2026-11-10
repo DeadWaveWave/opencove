@@ -1,9 +1,6 @@
+import { reportNodeFrame } from './nodeFrame'
 import { nodeAgentMetadata } from '../core/agentMetadata'
-import type {
-  ListNodesResult,
-  CreateNodeResult,
-  CanvasNodeFrameDto,
-} from '../../../shared/contracts/dto/nodeControl'
+import type { ListNodesResult } from '../../../shared/contracts/dto/nodeControl'
 import { nodeDeleteOutput, canvasFocusOutput } from './outputContracts'
 import { nodeListOutput, nodeGetOutput, nodeKindOutput } from './outputContracts'
 import { defineCommand, type CommandArgs, type OptionSpec } from '../core/command'
@@ -262,10 +259,8 @@ export const nodeCommands = [
           frame: {
             type: 'json',
             description:
-              'Set x, y, width and height as a JSON object' +
-              (kind === 'task'
-                ? '; task minimum: width 220, height 260; adjusted sizes are reported'
-                : ''),
+              'Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes' +
+              (kind === 'task' ? '; task minimum: width 220, height 260' : ''),
             valueName: 'json',
           },
           ...(create
@@ -306,50 +301,32 @@ export const nodeCommands = [
               : {}),
           }
         },
-        ...(create
-          ? {
-              async execute(ctx) {
-                let value = await ctx.invoke('node.create', ctx.input)
-                if (kind === 'task') {
-                  const appliedFrame = (value as CreateNodeResult).node.frame
-                  const requested = ctx.options.frame as Partial<CanvasNodeFrameDto> | undefined
-                  const frameAdjusted =
-                    !!requested &&
-                    (['x', 'y', 'width', 'height'] as const).some(
-                      key => requested[key] !== undefined && requested[key] !== appliedFrame[key],
-                    )
-                  value = { ...(value as object), appliedFrame, frameAdjusted }
-                  if (frameAdjusted) {
-                    ctx.io.stderr.write(
-                      `Notice: task frame adjusted; applied frame: ${JSON.stringify(appliedFrame)}.\n`,
-                    )
-                  }
-                }
-                if (!ctx.options.focus) {
-                  return value
-                }
-                const created = value as { node: { id: string } }
-                try {
-                  return {
-                    ...(value as object),
-                    focus: await ctx.invoke('canvas.focus', {
-                      target: { kind: 'node', nodeId: created.node.id },
-                    }),
-                    focusError: null,
-                  }
-                } catch (error) {
-                  if (!(error instanceof CliError) || error.exitCode !== 1) {
-                    throw error
-                  }
-                  return {
-                    ...(value as object),
-                    focus: null,
-                    focusError: { code: error.code, debugMessage: error.message },
-                  }
-                }
-              },
+        async execute(ctx) {
+          const result = await ctx.invoke(create ? 'node.create' : 'node.update', ctx.input)
+          const value = reportNodeFrame(result, ctx, kind, create && kind === 'task')
+          if (!create || !ctx.options.focus) {
+            return value
+          }
+          const created = value as { node: { id: string } }
+          try {
+            return {
+              ...(value as object),
+              focus: await ctx.invoke('canvas.focus', {
+                target: { kind: 'node', nodeId: created.node.id },
+              }),
+              focusError: null,
             }
-          : {}),
+          } catch (error) {
+            if (!(error instanceof CliError) || error.exitCode !== 1) {
+              throw error
+            }
+            return {
+              ...(value as object),
+              focus: null,
+              focusError: { code: error.code, debugMessage: error.message },
+            }
+          }
+        },
       })
     }),
   ),

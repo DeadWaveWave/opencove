@@ -1,3 +1,4 @@
+import { presentReadAttention } from './agentReadAttention'
 import { replayScreen } from '../core/screenReplay'
 import { readAgentFinalMessage, type HookFinalMessage } from '../core/agentFinalMessage'
 import { defineCommand, type CommandContext } from '../core/command'
@@ -79,6 +80,7 @@ export const agentReadCommand = defineCommand({
     },
     turn: {
       type: 'string',
+      normalize: value => value.trim(),
       valueName: 'turnId',
       conflicts: ['screen'],
       description: 'Read exactly this OpenCove turn ID from agent prompt; never falls back',
@@ -136,10 +138,13 @@ export const agentReadCommand = defineCommand({
           error.details,
         )
       }
-      throw presentAgentTurnError(error, {
-        nodeId: String(ctx.options.node),
-        turnId: ctx.options.turn as string | undefined,
-      })
+      throw await presentReadAttention(
+        presentAgentTurnError(error, {
+          nodeId: String(ctx.options.node),
+          turnId: ctx.options.turn as string | undefined,
+        }),
+        ctx,
+      )
     }
   },
 })

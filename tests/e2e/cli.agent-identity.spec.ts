@@ -11,6 +11,8 @@ const projectId = 'cli-identity-project'
 const mainSpaceId = 'cli-identity-main'
 const otherSpaceId = 'cli-identity-other'
 const briefId = 'cli-identity-brief'
+const frameArgument = (value: string) =>
+  `'${process.platform === 'win32' ? value.replaceAll('"', '\\"') : value}'`
 
 test('a canvas terminal discovers its identity, neighbors and scope through the CLI', async () => {
   const root = await mkdtemp(join(tmpdir(), 'opencove-cli-identity-'))
@@ -118,7 +120,13 @@ test('a canvas terminal discovers its identity, neighbors and scope through the 
 
     const context = jsonOutput(await terminalCommand(page, binding, 'opencove context', 'CONTEXT'))
     expect(context).toMatchObject({
-      self: { caller: 'session-grant', projectId, spaceId: mainSpaceId, nodeId },
+      self: {
+        caller: 'session-grant',
+        projectId,
+        spaceId: mainSpaceId,
+        nodeId,
+        node: { id: nodeId, kind: 'terminal', title: 'Agent CLI terminal' },
+      },
       project: { id: projectId, name: 'CLI identity project', path: workspace },
       space: { id: mainSpaceId, name: 'Main', directoryPath: workspace },
     })
@@ -129,6 +137,80 @@ test('a canvas terminal discovers its identity, neighbors and scope through the 
       await terminalCommand(page, binding, 'opencove node get --node "@self" --fields id', 'SELF'),
     )
     expect(self).toEqual({ node: { id: nodeId } })
+
+    const otherContext = jsonOutput(
+      await terminalCommand(
+        page,
+        binding,
+        `opencove context --space ${otherSpaceId}`,
+        'OTHER_CONTEXT',
+      ),
+    )
+    expect(otherContext).toMatchObject({
+      self: {
+        nodeId,
+        node: { id: nodeId, kind: 'terminal', title: 'Agent CLI terminal' },
+      },
+      space: { id: otherSpaceId },
+      nodes: [],
+    })
+
+    // Read actual CLI output from a granted terminal through the real Worker.
+    // Collapse physical ConPTY wrapping before separating the notice from JSON.
+    const frameCommand = async (command: string, label: string, adjusted: boolean) => {
+      const output = (await terminalCommand(page, binding, command, label)).replaceAll('\n', '')
+      const notice = /Notice: note frame adjusted; applied frame: (\{[^}]+\})\./g
+      const notices = [...output.matchAll(notice)]
+      expect(notices).toHaveLength(adjusted ? 1 : 0)
+      const result = jsonOutput(output.replace(notice, ''))
+      expect(result.frameAdjusted).toBe(adjusted)
+      if (adjusted) {
+        expect(JSON.parse(notices[0][1])).toEqual(result.appliedFrame)
+      }
+      return result as unknown as CreateNodeResult & {
+        appliedFrame: CreateNodeResult['node']['frame']
+      }
+    }
+    const sized = await frameCommand(
+      `opencove node create note --text Sized --frame ${frameArgument('{"width":320,"height":240}')}`,
+      'NOTE_FRAME_EXACT',
+      false,
+    )
+    expect(sized.node.frame).toMatchObject({ width: 320, height: 240 })
+    for (const [label, frame] of [
+      ['NOTE_FRAME_SIZE', '{"width":400,"height":300}'],
+      ['NOTE_FRAME_POSITION', '{"x":100,"y":100,"width":400,"height":300}'],
+    ]) {
+      // Commands share one PTY and must run sequentially.
+      // eslint-disable-next-line no-await-in-loop
+      const result = await frameCommand(
+        `opencove node create note --text Bounded --frame ${frameArgument(frame)}`,
+        label,
+        true,
+      )
+      expect(result.appliedFrame).toEqual(result.node.frame)
+      expect(result.node.frame).toMatchObject({ width: 360, height: 260 })
+      if (label === 'NOTE_FRAME_POSITION') {
+        expect(result.node.frame).toMatchObject({ x: 100, y: 100 })
+      }
+      const persisted = jsonOutput(
+        // eslint-disable-next-line no-await-in-loop
+        await terminalCommand(
+          page,
+          binding,
+          `opencove node get --node ${result.node.id} --fields frame`,
+          `${label}_GET`,
+        ),
+      )
+      expect(persisted).toMatchObject({ node: { frame: result.appliedFrame } })
+    }
+    const updated = await frameCommand(
+      `opencove node update note --node ${sized.node.id} --frame ${frameArgument('{"width":400,"height":300}')}`,
+      'NOTE_FRAME_UPDATE',
+      true,
+    )
+    expect(updated.node.frame).toMatchObject({ width: 360, height: 260 })
+    expect(updated.appliedFrame).toEqual(updated.node.frame)
 
     // The server checks admin scope before payload validation. If the scope fence regresses,
     // this empty payload still cannot approve an unrelated filesystem root.
