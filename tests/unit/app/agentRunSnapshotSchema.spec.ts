@@ -76,3 +76,33 @@ it('serializes bounded question and plan data across snapshot and event contract
   })
   expect({ question, plan }).toMatchSnapshot()
 })
+
+it('preserves question descriptions through remote snapshots and strips them compatibly for older clients', async () => {
+  const z = await import('zod')
+  const summary = {
+    kind: 'question' as const,
+    questions: [
+      { question: 'Which?', options: ['One', 'Two'], optionDescriptions: ['First option', null] },
+    ],
+  }
+  const enriched = { ...current, blockedSummary: summary }
+  expect(normalizeBrowserPtyStateMetadata({ agentRunState: enriched }).agentRunState).toEqual(
+    enriched,
+  )
+  expect(
+    agentRuntimeFrameSchema.parse({
+      type: 'agent.baseline',
+      epoch: 'e',
+      seq: 1,
+      agents: [enriched],
+    }),
+  ).toMatchObject({ agents: [{ blockedSummary: summary }] })
+  const oldQuestionSchema = z.object({
+    kind: z.literal('question'),
+    questions: z.array(z.object({ question: z.string(), options: z.array(z.string()) })),
+  })
+  expect(oldQuestionSchema.parse(summary)).toEqual({
+    kind: 'question',
+    questions: [{ question: 'Which?', options: ['One', 'Two'] }],
+  })
+})

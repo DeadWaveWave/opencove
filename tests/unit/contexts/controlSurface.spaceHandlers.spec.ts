@@ -340,3 +340,38 @@ it('shares compact task state with node list/get and excludes note contents', as
   expect(JSON.stringify(result)).not.toContain('private long note')
   expect(JSON.stringify(listed)).not.toContain('private long note')
 })
+
+it.each([null, { x: 62, y: 72, width: 420, height: 336 }])(
+  'exposes saved geometry separately from authority in get and list (%j)',
+  async rect => {
+    const boundary = {
+      allowedMountIds: ['mount'],
+      scopesByMountId: { mount: { rootPath: '/repo', rootUri: 'file:///repo' } },
+      allowedPluginIds: ['plugin'],
+      capabilities: ['read'],
+      trustLevel: 'restricted',
+    }
+    const surface = createControlSurface()
+    const store = createStore({
+      formatVersion: 1,
+      activeWorkspaceId: 'p',
+      settings: {},
+      workspaces: [
+        {
+          id: 'p',
+          name: 'P',
+          path: '/repo',
+          nodes: [],
+          spaces: [{ id: 's', name: 'S', nodeIds: [], rect, boundary }],
+        },
+      ],
+    })
+    registerSpaceHandlers(surface, async () => store)
+    expect(
+      await surface.invoke(ctx, { kind: 'query', id: 'space.get', payload: { spaceId: 's' } }),
+    ).toMatchObject({ ok: true, value: { space: { rect, boundary } } })
+    expect(
+      await surface.invoke(ctx, { kind: 'query', id: 'space.list', payload: { projectId: 'p' } }),
+    ).toMatchObject({ ok: true, value: { spaces: [{ rect, boundary }] } })
+  },
+)

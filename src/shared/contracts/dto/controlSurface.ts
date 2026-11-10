@@ -126,6 +126,8 @@ export interface ListSpacesResult {
     directoryPath: string
     targetMountId: string | null
     parentSpaceId: string | null
+    /** Canvas geometry; absent on older Workers, null if no frame is saved. */
+    rect?: { x: number; y: number; width: number; height: number } | null
     boundary: SpaceBoundary
     sortOrder: number
     nodeIds: string[]
@@ -146,6 +148,8 @@ export interface GetSpaceResult {
     directoryPath: string
     targetMountId: string | null
     parentSpaceId: string | null
+    /** Canvas geometry; absent on older Workers, null if no frame is saved. */
+    rect?: { x: number; y: number; width: number; height: number } | null
     boundary: SpaceBoundary
     sortOrder: number
     nodeIds: string[]

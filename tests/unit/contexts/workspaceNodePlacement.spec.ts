@@ -87,3 +87,22 @@ describe('workspace node placement', () => {
     expect(result.placement.x).toBeGreaterThanOrEqual(rootSpace.x + rootSpace.width)
   })
 })
+
+it('preserves the renderer default nearest-edge ordering for a packed top-left anchor', () => {
+  const target = { x: 62, y: 72, width: 420, height: 336 }
+  const options = {
+    anchor: { x: 86, y: 96 },
+    size: { width: 276, height: 188 },
+    nodes: [{ id: 'full', position: { x: 62, y: 72 }, data: { width: 420, height: 336 } }],
+    targetSpaceRect: target,
+    spaceRects: [target],
+  }
+  expect(resolveWorkspaceNodesPlacement(options)).toEqual({
+    placement: { x: -238, y: 96 },
+    canPlace: true,
+  })
+  expect(resolveWorkspaceNodesPlacement({ ...options, preferredDirection: 'down' })).toEqual({
+    placement: { x: 86, y: 432 },
+    canPlace: true,
+  })
+})
