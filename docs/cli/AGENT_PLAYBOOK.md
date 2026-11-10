@@ -17,7 +17,7 @@ opencove space list --project project-123
 远端连接显式传 `--endpoint <url> --token <token>`。`worker status/stop` 只管理本地 Worker。
 出现歧义时指定 profile 或 endpoint，不猜测连接目标。
 
-成功 stdout 直接是 value JSON，不读取 `.ok` 或 `.value`。失败检查 exit code，并解析 stderr 的 `error`。
+成功 stdout 直接是 value JSON，不读取 `.ok` 或 `.value`。错误通常检查 exit code 并解析 stderr 的 `error`。`agent delivery` 正常返回时会输出证据结果，即使退出码为 1 也要解析 stdout。
 自动化需要强制 JSON 错误时传 `-o json`。`--help` 不连接 Worker。
 
 ## 读取目标

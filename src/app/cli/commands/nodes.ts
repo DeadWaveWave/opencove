@@ -255,7 +255,14 @@ export const nodeCommands = [
         options: {
           ...specific,
           ...(create ? nodeLocatorOptions : { node: stringOption('Node ID', true) }),
-          title: stringOption('Title'),
+          title: {
+            ...stringOption('Title'),
+            ...(kind === 'agent' || kind === 'terminal'
+              ? {
+                  description: 'Set a fixed window name; omit on creation to keep automatic titles',
+                }
+              : {}),
+          },
           frame: {
             type: 'json',
             description:

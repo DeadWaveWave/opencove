@@ -10,6 +10,7 @@ Agent terminals cannot answer permission dialogs, read or change private setting
 
 | Group       | Commands                                                                                                                                                                                          |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Identity | `whoami`, `context` |
 | `project`   | `list`, `add`                                                                                                                                                                                            |
 | `space`     | `list`, `get`, `create`                                                                                                                                                                                     |
 | `node`      | `list [--root-canvas]`, `get`, `create note/task/website/agent/terminal [--root-canvas]`, `update note/task/website/agent/terminal`, `delete`                                                                                                    |
@@ -20,8 +21,8 @@ Agent terminals cannot answer permission dialogs, read or change private setting
 | `mount`     | `list`, `create`, `resolve`, `remove`                                                                                                                                                             |
 | `fs`        | `read`, `write`, `stat`, `ls`; 可选 `--mount <id>`                                                                                                                                                |
 | `worktree`  | `list`, `create`, `archive`                                                                                                                                                                       |
-| `agent`     | `list`, `get`, `prompt`, `wait`, `read`, `stop`                                                                                                                                                           |
-| Agent guide | `skill` (bundled, offline)                                                                                                                                                                        |
+| `agent`     | `list`, `get`, `prompt`, `delivery <id>`, `wait`, `read`, `stop`, `history clear`                                                                                                                                                           |
+| Agent guide | `skill [topic]` (bundled, offline)                                                                                                                                                                        |
 | `session`   | `run-agent`, `get`, `final`, `kill`                                                                                                                                                               |
 | `pty`       | `spawn-in-mount`, `attach`                                                                                                                                                                        |
 | `plugin`    | `guide`, `list`, `details`, `install`, `install-git`, `source`, `check`, `update`, `apply`, `rollback`, `discover`, `reload`, `enable`, `disable`, `uninstall`, `run`, `skill`, `open`, `windows` |
@@ -44,8 +45,8 @@ Space 创建与项目添加 / Space creation and project addition: [命令、输
 
 成功 stdout 是 operation value JSON，不包含 `{ok,value}` 或 transport envelope。
 `fs write` returns `{uri, bytes}` after a successful write; `bytes` is the UTF-8 byte count, including whitespace and newlines. JSON output ends with a newline.
-`--pretty` 格式化 JSON；`--fields a,b` 只用于查询；`-o table` 仅支持声明了 columns 的命令。
-失败 stdout 为空，非 TTY stderr 为 `{"error":{"code":"...","message":"...","hint":"...","details":...}}`。
+`--pretty` 格式化 JSON；`--fields a,b` 投影已声明的输出字段，包括支持此功能的专用 mutation 命令；generic `api call` mutation 和流式命令不支持投影；`-o table` 仅支持声明了 columns 的命令。
+错误通常保持 stdout 为空；`agent delivery` 正常返回证据结果时，即使退出码为 1 也会输出 stdout，请解析该结果。非 TTY stderr 错误格式为 `{"error":{"code":"...","message":"...","hint":"...","details":...}}`。
 TTY stderr 使用可读错误；`-o json` 强制 JSON 错误。
 Plugin distribution 返回 `failed`/`conflict` 时 exit 1，candidate 结果位于 `error.details`。
 
@@ -128,16 +129,22 @@ queries. Joins cover the target project, including tasks outside the agent's spa
 
 `opencove skill` prints the version-matched SKILL.md bundled in the CLI, without a
 Worker connection or source checkout. `-o json` returns `{version, content}`. The
-guide covers identity, selectors, the notes/tasks blackboard, prompt recovery,
-waiting, reading, etiquette and exit codes. Start there when coordinating agents.
+core guide covers identity, authority, sharing results, coordination and exit codes.
+Load details on demand with `opencove skill canvas|coordinate|wait|read|access` (choose one topic).
+The core index lists all topics; an unknown topic exits 2 and lists valid names.
+Topic JSON adds `topic` to the same `{version, content}` shape; `--fields` supports all three fields.
+Start with the core when coordinating agents. Resident canvas guidance can introduce
+supported agents at SessionStart; configure Suggest or Off in Settings → Agent → Tell agents about OpenCove.
+See [eligibility and limitations](../agent/README.md#resident-canvas-guidance).
 
 ```sh
 opencove agent list --space @self -o table
 opencove agent get --node "Reviewer" --pretty
 opencove agent read --node "Reviewer" --screen
 opencove agent prompt --node "Reviewer" --text-file ./assignment.txt
-opencove agent wait --node "Reviewer" --until idle --timeout 2m
-opencove agent read --node "Reviewer" --turn turn-123
+opencove agent delivery delivery-123 --wait --timeout 2m
+opencove agent wait --node node-123 --turn turn-123 --timeout 2m
+opencove agent read --node node-123 --turn turn-123 -o json
 ```
 
 Give a window a stable name with `node create agent --title "Reviewer"` (also supported for terminals).
@@ -155,8 +162,11 @@ The result is `{nodeId, sessionId, stopped: true}` when stopping is requested; p
 An already-exited bound session returns `{nodeId, sessionId, stopped: false, reason: "not_running"}` with exit 0.
 A changed binding fails with exit 2; inspect the node again before deciding what to stop. A node with no session binding fails with exit 1.
 
-Save the `turnId` returned by prompt and replace `turn-123` above. The normal loop
-is prompt → wait `--until idle` → read `--turn <turnId>`.
+Save `deliveryId` and `turnId` returned by prompt and replace the example IDs above;
+use the same node selector throughout. Prompt → confirm delivery → wait `--turn <turnId>`
+→ read the same turn. Check `outcome` and the reply. Claude and Codex lifecycle replies
+are correlated; turn end alone does not prove a steer was consumed. Use `--until idle`
+only for node-level readiness. Host waiting strategies are in `opencove skill coordinate`.
 
 All commands have offline `--help`, examples and declared projectable fields.
 Node/Space selectors reuse exact IDs, exact names, unique prefixes and `@self`.
@@ -169,14 +179,15 @@ is null. Final-message reads use the Worker's `agent.finalMessage` query.
 | Command                                                   | Output contract                                                                                                                                                                                | Projection / table                                                                                                                                                                     |
 | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `agent list`                                              | `{epoch, seq, agents: [snapshot + title]}`                                                                                                                                                     | Snapshot fields + title; table columns: nodeId, title, provider, state, blockedReason, turn.startedAt, quality                                                                         |
-| `agent get --node <selector>`                             | Snapshot + title; non-agent nodes or absent run state fail with agent.not_found (exit 1)                                                                                                       | Snapshot fields + title; JSON only                                                                                                                                                     |
+| `agent get --node <selector>`                             | Snapshot + title; supports agent windows and terminals with registered agent run state; absent run state fails with agent.not_found (exit 1)                                                                                                       | Snapshot fields + title; JSON only                                                                                                                                                     |
 | `agent wait --node <selector> ... --until <condition>`    | `{until, mode, agents: [snapshot]}`; turn-end adds completion, endedTurn and endedTurnOutcome                                                                                                              | Snapshot fields + completion/endedTurn/endedTurnOutcome; JSON only                                                                                                                                |
-| `agent read --node <selector> [--last] [--turn <turnId>]` | Plain message text; JSON includes `source: hook\|transcript` and `truncated`; exact `--turn` never falls back                                                                                  | Hook: nodeId, sessionId, turnId, promptId, outcome, message, truncated, source; transcript: sessionId, provider, startedAt, cwd, resumeSessionId, message, truncated, source; no table |
+| `agent wait --node <selector> --turn <turnId>` | Exact end with nodeId, sessionId, turnId, outcome, endedAt, state and durability | persisted, memoryOnlyReason, deliveryIds and promptIds when retained; JSON only |
+| `agent read --node <selector> [--last] [--turn <turnId>]` | Plain message text; JSON includes `source: hook\|transcript` and `truncated`; exact `--turn` never falls back                                                                                  | Hook: nodeId, sessionId, turnId, promptId, deliveryIds, promptIds, outcome, persisted, memoryOnlyReason, message, messageKind, truncated, source; transcript: sessionId, provider, startedAt, cwd, resumeSessionId, message, truncated, source; no table |
 | `agent read --node <selector> --screen [--lines <n>]`     | Rendered screen text at snapshot cols/rows: cursor spacing and wide cells preserved; trailing spaces/blank rows trimmed, last n rows (default 40); JSON is `{nodeId, sessionId, lines: [...]}` | nodeId, sessionId, lines; no table                                                                                                                                                     |
-| `skill`                                                   | Plain SKILL.md; `-o json` returns `{version, content}`                                                                                                                                         | version, content; no table                                                                                                                                                             |
+| `skill [topic]`                                                   | Plain core/topic guide; JSON returns `{version, content, topic?}`                                                                                                                                         | version, content, topic; no table                                                                                                                                                             |
 
 Snapshot fields are `nodeId`, `sessionId`, `provider`, `state`, `blockedReason`, `blockedSummary`,
-`turn` (id, startedAt, start), `lastTransitionAt`, `source`, `quality`, `turnOutcome`.
+`turn` (id, startedAt, start), `lastTransitionAt`, `source`, `quality`, `turnOutcome`, `lastEndedTurn` (id, outcome, endedAt).
 Times are epoch milliseconds. List/get add `title`; wait's `endedTurn` has the same
 shape as `turn`. Projection is item-relative and preserves list envelopes.
 
@@ -212,8 +223,9 @@ global ordered stream. Each (re)subscription captures a new watermark before att
 decisions; stale replay alone cannot stop the wait. Resync refreshes provisional state
 and retains fulfilled progress only for unchanged bindings. Initial satisfied states still return immediately.
 
-After `agent prompt`, use `agent wait --node <selector> --until idle`: already-idle
-counts, so a fast completion before wait begins is not missed. `turn-end` remains
+After `agent prompt`, confirm delivery and use `agent wait --node <selector> --turn <turnId>`
+with its saved turn ID. This recognizes that exact end even if a newer turn has started.
+A node-level idle wait accepts a state that already holds, but cannot identify the submitted turn. `turn-end` remains
 available for observing a future turn boundary after the baseline; historical
 outcomes never satisfy it. Use it only when observation starts during a running
 turn, rather than as the normal post-prompt wait. Timeout exits
@@ -277,90 +289,9 @@ and UTF-8, multiline-data, comment and newline framing from the
 adapted to OpenCove's explicit epoch/seq query cursors and bearer authentication.
 Fake-stream unit tests exercise these invariants without opening local listeners.
 
-## 1.1 安装拓扑
+## 安装与运行
 
-`runtime inspect` 只读取构建描述，`runtime verify` 在独立进程内验证执行环境；它们不会启动
-Worker 或创建用户 profile。`runtime prepare` 把经过校验的托管部署请求交给独立 runtime
-controller。controller 拥有安装/激活元数据，通过 Worker 的维护协议管理生命周期，并由
-persistence 基础设施生成一致快照；普通业务 CLI 仍只能通过 Control Surface 访问业务状态。
-详细所有权和恢复规则见 [Managed SSH runtime](../runtime/MANAGED_SSH_RUNTIME.md)。
-
-OpenCove 目前支持两条正式的 CLI 安装链路：
-
-- **Desktop 内置安装**：用户在 Desktop 的 **Settings → Worker → CLI** 中点击 **Install CLI**，由已安装的 app 写入 `opencove` launcher（Windows 为 `opencove.cmd`）。
-- **Standalone server 安装**：用户从包含 standalone installer 与 runtime bundle 的 GitHub Release 下载资产，并通过 release 专属 `opencove-install-v<tag>.sh` / `opencove-install-v<tag>.ps1` 写入同语义的 `opencove` launcher。stable release 额外提供 `opencove-install.sh` / `opencove-install.ps1` 作为 latest stable 别名。
-
-当前约束：
-
-- Desktop 安装与 standalone 安装最终都生成 runtime-backed launcher。
-- Desktop launcher 使用已安装的 Electron runtime；standalone launcher 只使用 bundle 内的纯
-  Node runtime，不得加载或回退到 Electron。
-- standalone bundle 内的 `better-sqlite3` 与 `node-pty` 必须按所附 Node runtime 的 module
-  ABI 单独构建，并在归档前由该 Node runtime 真实加载验证。
-- 打包态 launcher 必须指向发布 runtime 内的 CLI entrypoint，不能依赖 repo checkout 路径。
-- launcher 会记录安装 owner；两条安装链可以互相覆盖安装，但卸载时只移除自己拥有的 launcher。
-- standalone release 覆盖 macOS / Linux / Windows；Windows 资产格式为 `opencove-server-windows-<arch>.zip`。
-- standalone launcher 必须从 bundle 内 `package.json` 读取版本并通过 `--app-version` 传给 Worker；缺失或非法版本必须拒绝启动，不能产生身份不明的 Remote Worker。
-- 公开 installer 必须从同一 release 路径读取 `SHA256SUMS.txt` 并在解压前校验 bundle；缺失 checksum、缺少本机 SHA256 工具或 hash 不一致都必须 fail closed。
-- stable release 同时发布 tag-pinned installer/uninstaller 和 `latest` 通用别名；nightly 只发布 tag-pinned 版本。Managed SSH 必须按 Desktop 当前版本使用 tag-pinned installer，不能把 `latest` 当作版本一致性保证。
-
-若 latest stable 已包含 standalone installer assets，则可使用以下通用安装命令
-（macOS / Linux）：
-
-```bash
-curl -fsSL https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-install.sh | sh
-```
-
-Windows PowerShell：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-install.ps1 | Invoke-Expression"
-```
-
-如果 `releases/latest/download/opencove-install.sh` 返回 `404`，说明 latest stable
-尚未发布 standalone installer；此时应改用 Desktop 安装，或等待包含这些资产的
-release。
-
-安装 nightly 或任意指定 tag 的 release 时，应改用该 release 页面中的带版本脚本：
-
-```bash
-curl -fsSL https://github.com/DeadWaveWave/opencove/releases/download/v<version>/opencove-install-v<version>.sh | sh
-```
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/download/v<version>/opencove-install-v<version>.ps1 | Invoke-Expression"
-```
-
-当 latest stable 已包含 uninstall assets 时，可使用以下命令卸载 standalone
-runtime：
-
-```bash
-curl -fsSL https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-uninstall.sh | sh
-```
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-uninstall.ps1 | Invoke-Expression"
-```
-
-指定 nightly 或任意指定 tag 时，应使用对应的版本化 uninstall 脚本：
-
-```bash
-curl -fsSL https://github.com/DeadWaveWave/opencove/releases/download/v<version>/opencove-uninstall-v<version>.sh | sh
-```
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/download/v<version>/opencove-uninstall-v<version>.ps1 | Invoke-Expression"
-```
-
-无 Desktop 的 server 场景可直接启动 worker + Web UI：
-
-```bash
-opencove worker start --hostname 0.0.0.0 --web-ui-password 'change-me'
-```
-
-当 Web UI 暴露到 localhost 之外时，必须设置密码或等价安全门禁。
-
-相关文档：[Agent playbook](AGENT_PLAYBOOK.md)、[Canvas node control](CANVAS_NODE_CONTROL.md)、[Managed SSH runtime](../runtime/MANAGED_SSH_RUNTIME.md)。
+Desktop、standalone 与 server 安装方式见 [CLI 安装指南](INSTALLATION.md)。
 
 ## Canvas 终端身份
 
@@ -422,8 +353,10 @@ lists keep their top-level totals.
 Nested node data (for example tags) is not truncated. Server-side filesystem read bounds remain separate and do not
 provide a total beyond the entries returned by the Worker.
 
-`space list` and `space get` use the same space-row fields: id, name, directoryPath, targetMountId, parentSpaceId, boundary, rect, sortOrder, nodeIds, projectId and nodeCount.
-`rect` is `{x,y,width,height}` in canvas coordinates, or null without saved geometry. `space create` uses the same field. `boundary` describes access scope.
+`space list` and `space get` use the same space-row fields: id, name, directoryPath,
+targetMountId, parentSpaceId, boundary, rect, sortOrder, nodeIds, projectId and nodeCount.
+`rect` is `{x,y,width,height}` in canvas coordinates, or null without saved geometry; `space create`
+uses the same field. `boundary` describes access scope.
 The legacy projectId/activeSpaceId envelopes remain. `space get` retains nodes;
 `space list` keeps IDs, directoryPath, nodeIds and nodeCount but omits full node
 objects by default. Request them explicitly with `--fields nodes`, or select
@@ -496,4 +429,4 @@ asks the user to resolve the permission, question or plan in OpenCove; working
 retains the exact-turn wait command. Unavailable or replaced observations report
 unknown; they never replace the original read error or trigger another prompt.
 
-问题摘要与兼容性见 [Agent dialog summaries](AGENT_DIALOG_SUMMARIES.md)。
+Question summaries and their compatibility rules: [Agent dialog summaries](AGENT_DIALOG_SUMMARIES.md).

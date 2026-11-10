@@ -1,14 +1,14 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`makes skill discoverable on the last line of root help and provides offline help 1`] = `
-"Usage: opencove skill [options]
+"Usage: opencove skill [topic] [options]
 
 Print the agent usage guide bundled with this CLI version
 
-Prints SKILL.md as plain text without connecting to a Worker. -o json returns {version, content}; --fields projects those fields.
+Print the core guide, or select a topic: canvas, coordinate, wait, read, access. All guides are bundled and available offline. -o json returns {version, content}, plus topic when selected; --fields projects those fields.
 
 Table output (-o table): not supported.
-Projectable fields: version, content
+Projectable fields: version, content, topic
 
 Projection example:
   opencove skill --fields version
@@ -16,7 +16,8 @@ Projection example:
 
 Examples:
   opencove skill
-  opencove skill -o json
+  opencove skill coordinate
+  opencove skill read -o json
 
 Global options: see "opencove --help".
 "

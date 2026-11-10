@@ -164,13 +164,13 @@ it.each(['note', 'task', 'website', 'terminal', 'agent'])(
   },
 )
 
-it('shipped skill explains root creation and project-wide lists outside Spaces', async () => {
+it('canvas skill topic explains root creation and project-wide lists outside Spaces', async () => {
   const f = identityFixture(false)
-  expect(await run(['skill'], f.io)).toBe(0)
-  expect(f.out()).toContain(
+  expect(await run(['skill', 'canvas'], f.io)).toBe(0)
+  expect(f.out().replace(/\s+/g, ' ')).toContain(
     'To put a node on the canvas outside any Space: `opencove node create note --root-canvas --text …`',
   )
-  expect(f.out()).toContain('`node list` lists the whole project')
+  expect(f.out().replace(/\s+/g, ' ')).toContain('`node list` lists the whole project')
 })
 
 it('lists root nodes in an explicitly selected project outside OpenCove', async () => {

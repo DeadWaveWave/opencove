@@ -19,7 +19,7 @@ export const agentPromptCommand = defineCommand({
     'Working agents receive steering by default; --if-busy refuse rejects busy agents. --expect-turn requires that exact active turn. Waiting, unknown/degraded and unsupported sessions refuse; idle requires a hook-observed settled turn.',
     'Loop: prompt → delivery <deliveryId> --wait → wait --turn <turnId> → read --turn <turnId> -o json. Save deliveryId (also printed before sending) and turnId. Codex dispatched needs delivery confirmation. Turn end does not prove your request was handled; inspect outcome and reply.',
     'Never resend after uncertainty, interruption, transport loss or textComparison: different. Inspect delivery status and --screen; different still exits 0. This command never retries.',
-    'Exit codes: 0 submission observed or Codex steer dispatched; 1 refusal/unconfirmed; 2 invalid input; 4 grant policy refusal; 124 deadline; 130 interruption. Timeout/interruption may follow submission. Trust limits, supported invocations and recovery: opencove skill.',
+    'Exit codes: 0 submission observed or Codex steer dispatched; 1 refusal/unconfirmed; 2 invalid input; 4 authentication or grant-policy refusal; 124 deadline; 130 interruption. Timeout/interruption may follow submission. Trust limits, supported invocations and recovery: opencove skill coordinate.',
   ].join('\n\n'),
   execute: sendAgentPrompt,
   options: {
