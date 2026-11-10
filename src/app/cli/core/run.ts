@@ -2,7 +2,6 @@ import { unknownOperation } from './operationErrors'
 import { validateUriInputs } from './uriInputs'
 import { nodeFieldNotice } from './nodeFields'
 import { listLimitNotice } from './listOutput'
-import { promptComparisonNotice } from './promptTransport'
 import { promptValidationPresentation } from '../../../shared/errors/agentPromptError'
 import { commands } from '../commands'
 import { getControlSurfaceOperation } from '../../../shared/contracts/controlSurface/operations'
@@ -227,7 +226,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
         {
           timeoutMs:
             operationId === 'agent.prompt'
-              ? Number(args.options.timeout ?? 15000) + 5000
+              ? Number((payload as { timeoutMs?: number }).timeoutMs ?? 15000) + 5000
               : Number(args.options.timeout ?? command.timeoutMs ?? 20000),
           fetch: io.fetch,
           signal: callOptions?.signal ?? io.signal,
@@ -257,12 +256,6 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       : await call(id as OperationId, input)
     if (command.stream) {
       return Number(result)
-    }
-    if (promptCommand) {
-      const comparisonNotice = promptComparisonNotice(result)
-      if (comparisonNotice) {
-        io.stderr.write(comparisonNotice + '\n')
-      }
     }
     const output =
       command.textOutput && !args.options.output && args.options.fields === undefined

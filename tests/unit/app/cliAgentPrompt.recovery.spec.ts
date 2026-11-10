@@ -3,6 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { runWithTargetFixtures as run } from './cliTargetFixtures.helpers'
 import type { CliIo } from '../../../src/app/cli/core/io'
 import { createAppError } from '../../../src/shared/errors/appError'
+import { completedPromptFixture } from './cliAgentPromptWait.helpers'
 import { agentPromptCommand } from '../../../src/app/cli/commands/agent'
 
 function fixture(tty: boolean, error?: unknown) {
@@ -282,6 +283,17 @@ it('every printed command example includes a usable text source and projection o
       .match(/"[^"]*"|'[^']*'|\S+/g)!
       .slice(1)
       .map(word => word.replace(/^['"]|['"]$/g, ''))
+    if (words.includes('--wait')) {
+      const combined = completedPromptFixture()
+      // eslint-disable-next-line no-await-in-loop
+      expect(await run(words, combined.io), command).toBe(0)
+      expect(JSON.parse(combined.out())).toMatchObject({
+        outcome: 'completed',
+        reply: { message: 'Fast reply' },
+      })
+      expect(combined.requests.filter(r => r.id === 'agent.prompt')).toHaveLength(1)
+      continue
+    }
     // eslint-disable-next-line no-await-in-loop
     expect(await run(words, f.io), command).toBe(0)
     expect(f.fetch).toHaveBeenCalledTimes(1)

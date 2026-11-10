@@ -94,7 +94,7 @@ Space locator 不推断 cwd：使用 `--space`、`--space-name` 或 `--worker` �
 CLI help golden 更新使用 `pnpm exec vitest run tests/unit/app/cliInputOutput.spec.ts tests/unit/app/cliOutputBehavior.spec.ts --update`，不要手改生成的 snapshot。
 
 CLI 测试先运行 `pnpm build:cli`，再运行 `pnpm exec vitest run tests/unit/app/cli*.spec.ts`。
-更新帮助 golden snapshots：`pnpm build:cli` 后运行 `pnpm exec vitest run tests/unit/app/cliCore.spec.ts tests/unit/app/cliHelpErrors.spec.ts tests/unit/app/cliSchemaValidation.spec.ts tests/unit/app/cliAgentQueries.spec.ts --update`；由 Vitest 生成，不手改 `.snap`。Context 和 filesystem 帮助随对应测试更新：`pnpm exec vitest run tests/unit/app/cliContext.spec.ts tests/unit/app/cliOutputContracts.spec.ts tests/unit/app/cliCommandMapping.spec.ts --update`。新增命令的完整帮助 golden 由 `cliHelpErrors.spec.ts` 生成；节点 wire schema golden 使用 `pnpm exec vitest run tests/contract/controlSurface/nodeSchemas.spec.ts --update` 更新。
+更新帮助 golden snapshots：`pnpm build:cli` 后运行 `pnpm exec vitest run tests/unit/app/cliCore.spec.ts tests/unit/app/cliHelpErrors.spec.ts tests/unit/app/cliSchemaValidation.spec.ts tests/unit/app/cliAgentQueries.spec.ts --update`；prompt 帮助另用 `pnpm exec vitest run tests/unit/app/cliAgentPrompt.spec.ts --update`。由 Vitest 生成，不手改 `.snap`。Context 和 filesystem 帮助随对应测试更新：`pnpm exec vitest run tests/unit/app/cliContext.spec.ts tests/unit/app/cliOutputContracts.spec.ts tests/unit/app/cliCommandMapping.spec.ts --update`。新增命令的完整帮助 golden 由 `cliHelpErrors.spec.ts` 生成；节点 wire schema golden 使用 `pnpm exec vitest run tests/contract/controlSurface/nodeSchemas.spec.ts --update` 更新。
 
 测试的 global setup 在系统临时目录重新构建并逐字节校验工作树中的 CLI 产物；产物缺失或过期时拒绝继续，不覆盖工作树，临时构建在成功或失败后都会清理。
 
@@ -141,10 +141,7 @@ See [eligibility and limitations](../agent/README.md#resident-canvas-guidance).
 opencove agent list --space @self -o table
 opencove agent get --node "Reviewer" --pretty
 opencove agent read --node "Reviewer" --screen
-opencove agent prompt --node "Reviewer" --text-file ./assignment.txt
-opencove agent delivery delivery-123 --wait --timeout 2m
-opencove agent wait --node node-123 --turn turn-123 --timeout 2m
-opencove agent read --node node-123 --turn turn-123 -o json
+opencove agent prompt --node "Reviewer" --wait --read --timeout 2m --text-file ./assignment.txt
 ```
 
 Give a window a stable name with `node create agent --title "Reviewer"` (also supported for terminals).
@@ -162,7 +159,22 @@ The result is `{nodeId, sessionId, stopped: true}` when stopping is requested; p
 An already-exited bound session returns `{nodeId, sessionId, stopped: false, reason: "not_running"}` with exit 0.
 A changed binding fails with exit 2; inspect the node again before deciding what to stop. A node with no session binding fails with exit 1.
 
-Save `deliveryId` and `turnId` returned by prompt and replace the example IDs above;
+For simple hand-offs, `agent prompt --wait --read` confirms delivery, waits for its exact turn
+and returns one JSON result with `outcome`, `endedAt` and the structured `reply`. A missing reply
+returns `reply: null` and `replyUnavailableReason` without failing an ended turn.
+`--read` requires `--wait`; `--fields outcome,reply.message` projects declared result fields.
+With `--wait`, `--timeout` covers confirmation and turn waiting (default 20s, 250ms minimum);
+sending has a separate 15s budget plus a five-second HTTP response margin. Without `--wait`,
+`--timeout` remains the delivery budget (default 15s, maximum 60s). Optional reading uses the
+ordinary request timeout. Exit 10/11/124 errors retain `deliveryId` and `turnId`; Ctrl-C exits
+130 and prints known IDs on stderr. Resume the same turn without resending.
+
+简单交接默认使用 `agent prompt --wait --read`：确认投递后等待同一轮结束，再返回回复。
+`outcome` 表示该轮结果；没有可读回复时返回 `reply: null` 及原因，仍算等待成功。
+`--wait` 的超时预算覆盖确认和等待，发送另有 15 秒预算。超时或中断后保留已有 ID，
+继续等待或读取原来的轮次，不要重发。
+
+To do other work meanwhile, keep the four-step loop and save `deliveryId` and `turnId`;
 use the same node selector throughout. Prompt → confirm delivery → wait `--turn <turnId>`
 → read the same turn. Check `outcome` and the reply. Claude and Codex lifecycle replies
 are correlated; turn end alone does not prove a steer was consumed. Use `--until idle`

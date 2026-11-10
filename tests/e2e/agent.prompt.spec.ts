@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { expect, test } from '@playwright/test'
+import { jsonOutput, terminalCommand } from './cli.terminal.helpers'
 import { clearAndSeedWorkspace, launchApp, seededWorkspaceId } from './workspace-canvas.helpers'
 import {
   installPtySessionCapture,
@@ -13,12 +14,16 @@ import type { AgentRunSnapshot } from '../../src/shared/contracts/dto/agentRunSt
 
 test.describe('agent.prompt from a canvas terminal', () => {
   for (const provider of ['claude-code', 'codex'] as const) {
-    for (const blocked of [false, true]) {
+    for (const scenario of ['send', 'wait-read', 'blocked'] as const) {
+      const blocked = scenario === 'blocked'
+      const waitRead = scenario === 'wait-read'
       test(
         `${provider}: ` +
           (blocked
             ? 'refuses a permission dialog with zero target bytes'
-            : 'delivers one multiline paste and one submit through the real hook relay'),
+            : waitRead
+              ? 'sends, confirms and reads one exact completed turn'
+              : 'delivers one multiline paste and one submit through the real hook relay'),
         async () => {
           test.skip(
             provider === 'codex' && process.platform === 'win32',
@@ -113,10 +118,12 @@ test.describe('agent.prompt from a canvas terminal', () => {
               process.platform === 'win32'
                 ? `"${value.replaceAll('"', '\\"')}"`
                 : `'${value.replaceAll("'", `'"'"'`)}'`
-            const cliCommand = `node ${quote(resolve('out/cli/opencove.mjs'))} agent prompt --node ${quote(nodeId)} --text-file ${quote(prompt)} --timeout 10s`
+            const cliCommand = `node ${quote(resolve('out/cli/opencove.mjs'))} agent prompt --node ${quote(nodeId)} --text-file ${quote(prompt)} --timeout 10s${waitRead ? ' --wait --read' : ''}`
             const terminal = await window.evaluate(
-              async ({ projectId, command }) =>
-                window.opencoveApi.controlSurface.invoke<{ node: { id: string } }>({
+              async ({ projectId, shell }) =>
+                window.opencoveApi.controlSurface.invoke<{
+                  node: { id: string; sessionId: string }
+                }>({
                   kind: 'command',
                   id: 'node.create',
                   payload: {
@@ -124,16 +131,51 @@ test.describe('agent.prompt from a canvas terminal', () => {
                     kind: 'terminal',
                     title: 'Prompt CLI',
                     frame: { x: 700, y: 100 },
-                    data: { command },
+                    data: { shell },
                   },
                 }),
-              { projectId: seededWorkspaceId, command: cliCommand },
+              {
+                projectId: seededWorkspaceId,
+                shell: process.platform === 'win32' ? 'powershell.exe' : '/bin/sh',
+              },
             )
             const canvasTerminal = window.locator(`[data-id="${terminal.node.id}"] .terminal-node`)
-            // The CLI prints compact JSON that the terminal wraps at its width (a word can be split).
-            await expect
-              .poll(async () => (await canvasTerminal.innerText()).replace(/\s+/g, ''))
-              .toContain(blocked ? 'agent.blocked' : '"phase":"submission_observed"')
+            await expect(canvasTerminal.locator('.terminal-node__terminal')).toBeVisible()
+            const output = await terminalCommand(
+              window,
+              { nodeId: terminal.node.id, sessionId: terminal.node.sessionId },
+              cliCommand,
+              `PROMPT_${provider}_${scenario}`,
+            )
+            if (blocked) {
+              expect(output).toContain('exit=1')
+              expect(output).toContain('agent.blocked')
+            } else {
+              const result = jsonOutput(output)
+              expect(result).toMatchObject({
+                nodeId,
+                sessionId,
+                phase: 'submission_observed',
+                textComparison: provider === 'claude-code' ? 'matched' : 'unavailable',
+              })
+              expect(result.deliveryId).toEqual(expect.any(String))
+              expect(result.turnId).toEqual(expect.any(String))
+              if (waitRead) {
+                expect(result.outcome).toBe('completed')
+                expect(result.endedAt).toEqual(expect.any(Number))
+                if (provider === 'claude-code') {
+                  expect(result.reply).toMatchObject({
+                    message: 'Strict reply 2',
+                    turnId: result.turnId,
+                    sessionId,
+                  })
+                } else {
+                  // This fixture's Stop hook has no last_assistant_message.
+                  expect(result.reply).toBeNull()
+                  expect(result.replyUnavailableReason).toBe('provider_sent_no_message')
+                }
+              }
+            }
             const after = (await readFile(record, 'utf8'))
               .trim()
               .split('\n')
@@ -144,11 +186,6 @@ test.describe('agent.prompt from a canvas terminal', () => {
               expect(after.some(entry => entry.kind === 'dialog_bytes')).toBe(false)
               expect((await snapshot()).blockedReason).toBe('permission')
             } else {
-              await expect
-                .poll(async () => (await canvasTerminal.innerText()).replace(/\s+/g, ''))
-                .toContain(
-                  `"textComparison":"${provider === 'claude-code' ? 'matched' : 'unavailable'}"`,
-                )
               expect(added.filter(entry => entry.kind === 'paste')).toEqual([
                 { kind: 'paste', text: 'first line\rsecond line\rthird line' },
               ])

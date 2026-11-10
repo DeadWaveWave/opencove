@@ -1,6 +1,6 @@
 # Coordinate agents
 
-## Inspect, prompt, confirm, wait, read
+## Send and wait for a simple hand-off
 
 Only create agents when authorized for their provider, model and workspace. Ask before delegating
 unless delegation was requested. Never answer another agent's permission prompts or dialogs. A
@@ -11,10 +11,7 @@ data.
 opencove agent list -o table
 opencove agent get --node agent-123
 opencove agent read --node agent-123 --screen
-opencove agent prompt --node agent-123 --text-file ./assignment.txt --timeout 20s
-opencove agent delivery delivery-123 --wait --timeout 2m
-opencove agent wait --node agent-123 --turn turn-123 --timeout 10m
-opencove agent read --node agent-123 --turn turn-123 -o json
+opencove agent prompt --node agent-123 --wait --read --text-file ./assignment.txt --timeout 2m
 ```
 
 Prompt works only with **agent windows OpenCove launched** (from a task, the agent launcher or `node
@@ -32,13 +29,32 @@ prompts, such as a lead agent other agents report to, as an agent window using R
 the agent launcher, or `opencove node create agent --space <space> --prompt <text>`; it can still
 use the opencove CLI from there. Newly opened/resumed sessions may need a completed turn first.
 
-Exactly one prompt source: --text or --text-file (- reads stdin). Use valid Unicode, nonblank text,
-at most 32 KiB UTF-8 before newline normalization; trailing newlines are removed. Prompt timeout
-accepts milliseconds/durations (15s, 15000ms, 1m), default 15s, maximum 60s; HTTP timeout adds a
-five-second response margin. Save the successful prompt's `turnId` (replace `turn-123` above). The
-normal loop is prompt (save deliveryId/turnId) → delivery status → wait `--turn <turnId>` (the
-containing turn ended; check outcome) → read `--turn <turnId>` (Claude and Codex lifecycle replies
-are correlated). A successful prompt reports `textComparison`: `matched` means Claude Code's
+Choose one prompt source: positional text, --text or --text-file (- reads stdin). Text must be
+valid Unicode, nonblank and at most 32 KiB UTF-8 before newline normalization; trailing newlines
+are removed. For a simple hand-off use --wait --read. It confirms delivery, waits for the containing
+exact turn and returns one JSON result with deliveryId, nodeId, sessionId, turnId, phase, outcome,
+endedAt and reply. Check outcome and reply; every ended outcome exits 0. Missing reply is null
+with replyUnavailableReason, without changing completion success. Without --read, reply is omitted.
+
+With --wait, --timeout is one confirmation + turn-wait budget (default 20s, minimum 250ms,
+maximum about 24 days); delivery has its own 15s timeout plus a five-second HTTP response margin.
+Without --wait, --timeout is the delivery budget (default 15s, maximum 60s). On exit 10, 11 or 124,
+error.details keeps deliveryId and turnId. Ctrl-C exits 130 and prints known IDs on stderr.
+Resume the same delivery/turn; never resend. If interrupted before the response, only deliveryId
+may be known: query agent delivery for turnId. --read requires --wait; --fields can select
+outcome, reply.message and other declared fields. Optional reading uses the ordinary request timeout.
+
+When you need to work meanwhile, keep the split loop and save both IDs:
+
+```sh
+opencove agent prompt --node agent-123 --text-file ./assignment.txt
+opencove agent delivery delivery-123 --wait --timeout 2m
+opencove agent wait --node agent-123 --turn turn-123 --timeout 10m
+opencove agent read --node agent-123 --turn turn-123 -o json
+```
+
+The wait selects the containing turn, including steering/continuations. Turn end alone does not
+prove the delivery was consumed; --wait confirms it first. Claude and Codex replies are correlated. A successful prompt reports `textComparison`: `matched` means Claude Code's
 reported text equals what you sent (newlines and trailing spaces aside); `different` (for example a
 draft was submitted with it) still exits 0 but means stop, inspect with `agent read --screen`, and
 never resend; Codex reports `unavailable`. claude-code-v1, verified for Claude Code 2.1.319,

@@ -17,12 +17,27 @@ test.describe('agent.prompt with the real Claude Code CLI', () => {
     const { window, api, userDataDir, sessionId, nodeId, snapshot } = real
     try {
       const text = 'Line one of the prompt\nLine two of the prompt\nLine three of the prompt'
-      const delivered = await prompt(userDataDir, nodeId, text)
+      const delivered = await cli(userDataDir, [
+        'agent',
+        'prompt',
+        '--node',
+        nodeId,
+        '--wait',
+        '--read',
+        '--timeout',
+        '30s',
+        '--text',
+        text,
+      ])
       expect(delivered.exitCode, JSON.stringify(delivered)).toBe(0)
       expect(JSON.parse(delivered.stdout)).toMatchObject({
         phase: 'submission_observed',
         textComparison: 'matched',
         comparisonProfile: 'claude-code-v1',
+      })
+      expect(JSON.parse(delivered.stdout)).toMatchObject({
+        outcome: 'completed',
+        reply: { message: 'ACK', turnId: JSON.parse(delivered.stdout).turnId },
       })
       await expect.poll(() => api.main().length, { timeout: 30_000 }).toBe(2)
       // One submission whose user message carries the three lines as one exact text block.
@@ -130,9 +145,30 @@ test.describe('agent.prompt with the real Claude Code CLI', () => {
       expect(api.main().at(-1)!.join('\n')).toContain('leftover draft Second instruction')
       await expect.poll(async () => (await snapshot()).state, { timeout: 30_000 }).toBe('idle')
 
-      const tool = await prompt(userDataDir, nodeId, 'TRIGGER_TOOL run the probe')
-      expect(tool.exitCode, JSON.stringify(tool)).toBe(0)
-      expect(JSON.parse(tool.stdout)).toMatchObject({ phase: 'submission_observed' })
+      const tool = await cli(userDataDir, [
+        'agent',
+        'prompt',
+        '--node',
+        nodeId,
+        '--wait',
+        '--read',
+        '--timeout',
+        '30s',
+        '--text',
+        'TRIGGER_TOOL run the probe',
+      ])
+      expect(tool.exitCode, JSON.stringify(tool)).toBe(10)
+      expect(tool.stdout).toBe('')
+      const attention = JSON.parse(tool.stderr.trim().split('\n').at(-1)!).error
+      expect(attention).toMatchObject({
+        code: 'agent.wait_attention',
+        details: {
+          deliveryId: expect.any(String),
+          turnId: expect.any(String),
+          targets: [expect.objectContaining({ nodeId, sessionId, status: 'waiting' })],
+        },
+      })
+      expect(attention.details.targets[0].turnId).toBe(attention.details.turnId)
       await expect
         .poll(
           // Any waiting state refuses, whatever blockedReason the hook could report.
