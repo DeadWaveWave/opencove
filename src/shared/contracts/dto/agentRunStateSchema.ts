@@ -1,12 +1,23 @@
 import * as z from 'zod'
 import { AGENT_PROVIDER_IDS } from './agent'
 export const agentRunStateSchema = z.enum(['working', 'waiting', 'idle', 'exited', 'unknown'])
+const boundedText = z.string().refine(value => [...value].length <= 200)
+export const agentBlockedSummarySchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('plan') }),
+  z.object({
+    kind: z.literal('question'),
+    questions: z
+      .array(z.object({ question: boundedText, options: z.array(boundedText).max(4) }))
+      .max(3),
+  }),
+])
 export const agentRunSnapshotSchema = z.object({
   sessionId: z.string().min(1),
   nodeId: z.string().min(1).nullable(),
   provider: z.enum(AGENT_PROVIDER_IDS),
   state: agentRunStateSchema,
   blockedReason: z.enum(['permission', 'question', 'plan']).nullable(),
+  blockedSummary: agentBlockedSummarySchema.nullable().default(null),
   turn: z
     .object({
       id: z.string().min(1),

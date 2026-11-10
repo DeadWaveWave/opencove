@@ -180,7 +180,12 @@ export class AgentWaitPolicy {
         mode: this.options.any ? 'any' : 'all',
         ...(this.options.until ? { until: this.options.until } : {}),
         ...(this.options.turnId ? { turnId: this.options.turnId } : {}),
-        targets,
+        targets: exited
+          ? targets
+          : targets.map(target => ({
+              ...target,
+              blockedSummary: projection.snapshot(target.nodeId)?.blockedSummary ?? null,
+            })),
       },
     )
   }

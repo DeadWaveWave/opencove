@@ -205,7 +205,7 @@ describe('Sidebar navigation semantics', () => {
 
     const row = () => screen.getByTestId('workspace-agent-item-local-agent-0')
     expect(row().querySelector('.workspace-agent-item__status--waiting')?.textContent).toBe(
-      'Needs input',
+      'Finished',
     )
     expect(screen.getByTestId('workspace-agent-item-local-agent-1').textContent).toContain(
       'Standby',

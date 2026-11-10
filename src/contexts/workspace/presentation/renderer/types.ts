@@ -117,6 +117,7 @@ export interface TerminalAgentOverlay {
 }
 
 export interface AgentRuntimeObservation {
+  blockedReason?: import('@shared/contracts/dto/agentRunState').AgentRunSnapshot['blockedReason']
   status: 'running' | 'waiting' | 'standby' | 'exited'
   source: TerminalSessionStateSource
   hookInstallState: AgentHookInstallState | null

@@ -57,8 +57,8 @@ describe('AppHeaderAgentActivity', () => {
 
   it('says how many agents wait, with their marks, and opens the list on click', () => {
     render(<Harness summary={busy} />)
-    expect(pill()).toHaveAccessibleName('2 agents waiting. Show agents')
-    expect(pill()).toHaveTextContent('2 waiting')
+    expect(pill()).toHaveAccessibleName('2 agents need you. Show agents')
+    expect(pill()).toHaveTextContent('2 need you')
     expect(pill()).toHaveAttribute('data-tone', 'waiting')
     expect(pill()).toHaveAttribute('aria-expanded', 'false')
     expect(pill().querySelectorAll('[data-cove-part="kind-tile"]')).toHaveLength(2)
@@ -67,7 +67,7 @@ describe('AppHeaderAgentActivity', () => {
     expect(pill()).toHaveAttribute('aria-expanded', 'true')
     const sections = within(list()!).getAllByRole('group')
     expect(sections.map(section => section.getAttribute('aria-label'))).toEqual([
-      'Waiting for you',
+      'Needs you',
       'Working',
     ])
     expect(

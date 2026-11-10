@@ -135,15 +135,15 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
       await expect(headerActivity).toBeFocused()
 
       await writeToPty(window, { sessionId, data: '<test-hook-waiting>\r' })
-      await expect(status).toHaveText('Waiting')
-      await expect(sidebarStatus).toHaveText('Needs input')
+      await expect(status).toHaveText('Needs approval')
+      await expect(sidebarStatus).toHaveText('Needs approval')
       // The top bar summarizes it too; its list names the agent, and the line reaches it.
-      await expect(headerActivity).toHaveText('1 waiting')
+      await expect(headerActivity).toHaveText('1 needs you')
       expect(Math.abs((await centreY(pillSelector)) - buttonCentre)).toBeLessThanOrEqual(0.5)
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await pane.click({ position: await findEmptyPanePoint(pane) })
       await headerActivity.click()
-      await expect(agentList.getByRole('group', { name: 'Waiting for you' })).toBeVisible()
+      await expect(agentList.getByRole('group', { name: 'Needs you' })).toBeVisible()
       await agentList.locator('[data-agent-activity-row]').first().click()
       await expect(agentList).toHaveCount(0)
       await expect(agentNode.locator('.xterm-helper-textarea')).toBeFocused()
@@ -153,7 +153,7 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
       // Runtime is idle; the shell keeps a real completion waiting until acknowledged.
       const completion = window.locator('.agent-island-card')
       await expect(completion).toHaveCount(1)
-      await expect(sidebarStatus).toHaveText('Needs input')
+      await expect(sidebarStatus).toHaveText('Finished')
       await completion.locator('.agent-island-card__close').click()
       await expect(sidebarStatus).toHaveText('Standby')
       await expect(headerActivity).toHaveCount(0)
@@ -208,11 +208,11 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
       await expect(agentNode).toHaveAttribute('data-agent-state-source', 'claude_hook')
       await expect(status).toHaveText('Working')
       await writeToPty(window, { sessionId, data: '<test-hook-waiting>\r' })
-      await expect(status).toHaveText('Waiting')
+      await expect(status).toHaveText('Needs approval')
 
       await writeToPty(window, { sessionId, data: '<test-session-standby>\r' })
       await expect(agentNode).toContainText('[opencove-test-hook] session-standby')
-      await expect(status).toHaveText('Waiting')
+      await expect(status).toHaveText('Needs approval')
       await expect(agentNode).toHaveAttribute('data-agent-state-source', 'claude_hook')
 
       const agentNodeId = await agentNode.evaluate(
@@ -223,7 +223,7 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
 
       const restoredAgentNode = window.locator(`[data-id="${agentNodeId}"] .terminal-node`)
       await expect(restoredAgentNode).toBeVisible()
-      await expect(restoredAgentNode.locator('.terminal-node__status')).toHaveText('Waiting')
+      await expect(restoredAgentNode.locator('.terminal-node__status')).toHaveText('Needs approval')
       await expect(restoredAgentNode).toHaveAttribute('data-agent-state-source', 'claude_hook')
       expect(await resolveFirstAgentSessionId(window)).toBe(sessionId)
 

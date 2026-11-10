@@ -46,6 +46,7 @@ export interface TerminalNodeProps extends TerminalLinkHostOptions {
   status: AgentRuntimeStatus | null
   agentStateSource?: TerminalSessionStateSource | null
   agentHookInstallState?: AgentHookInstallState | null
+  blockedReason?: import('@shared/contracts/dto/agentRunState').AgentRunSnapshot['blockedReason']
   agentStateDegraded?: boolean
   directoryMismatch?: { executionDirectory: string; expectedDirectory: string } | null
   lastError: string | null

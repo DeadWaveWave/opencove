@@ -52,7 +52,7 @@ async function runOverlayLifecycle(options: {
   await expect(terminal.locator('.terminal-node__status')).toHaveText('Standby', {
     timeout: 15_000,
   })
-  await expect(sidebarItem.locator('.workspace-agent-item__status-label')).toHaveText('Needs input')
+  await expect(sidebarItem.locator('.workspace-agent-item__status-label')).toHaveText('Finished')
 
   await expect
     .poll(() => readPersistedNode(window, nodeId))
@@ -110,7 +110,7 @@ async function runOverlayLifecycle(options: {
   await expect(terminal.locator('.terminal-node__status')).toHaveText('Standby', {
     timeout: 15_000,
   })
-  await expect(sidebarItem.locator('.workspace-agent-item__status-label')).toHaveText('Needs input')
+  await expect(sidebarItem.locator('.workspace-agent-item__status-label')).toHaveText('Finished')
   await expect
     .poll(async () => (await readPersistedNode(window, nodeId))?.agent?.provider)
     .toBe('codex')

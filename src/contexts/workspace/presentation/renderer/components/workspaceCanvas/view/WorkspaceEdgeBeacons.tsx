@@ -5,6 +5,7 @@ import { Button } from '@app/renderer/components/ui/Button'
 import { KindTile } from '@app/renderer/components/ui/KindTile'
 import { useTranslation } from '@app/renderer/i18n'
 import type { TerminalNodeData } from '../../../types'
+import { agentAttentionLabelKey } from '../../../utils/agentAttentionLabel'
 import { resolveAgentPresentation } from '../../../utils/agentPresentation'
 import { focusNodeInViewport } from '../helpers'
 import { showWindowFocus } from './windowSignals/windowFocus'
@@ -64,10 +65,20 @@ export const WorkspaceEdgeBeacons = memo(function WorkspaceEdgeBeacons({
   if (!view || view.width <= 0 || view.height <= 0) {
     return null
   }
+  const statusById = new Map(
+    waiting.map(node => [
+      node.id,
+      t(
+        agentAttentionLabelKey({
+          blockedReason: resolveAgentPresentation(node.data).observation?.blockedReason,
+        }),
+      ),
+    ]),
+  )
   const { beacons, overflow } = resolveEdgeBeacons(
     waiting.map(node => ({
       id: node.id,
-      title: node.data.title || t('edgeBeacons.waiting'),
+      title: node.data.title || t('sidebar.fallbackAgentLabel'),
       rect: {
         x: node.position.x * view.zoom + view.x,
         y: node.position.y * view.zoom + view.y,
@@ -101,7 +112,10 @@ export const WorkspaceEdgeBeacons = memo(function WorkspaceEdgeBeacons({
           data-testid={`workspace-edge-beacon-${beacon.id}`}
           data-side={beacon.side}
           style={{ left: beacon.x, top: beacon.y }}
-          aria-label={t('edgeBeacons.go', { title: beacon.title })}
+          aria-label={t('edgeBeacons.go', {
+            title: beacon.title,
+            status: statusById.get(beacon.id),
+          })}
           onClick={() => flyTo(beacon.id)}
         >
           <span className="workspace-edge-beacon__dot" aria-hidden="true" />
@@ -109,7 +123,7 @@ export const WorkspaceEdgeBeacons = memo(function WorkspaceEdgeBeacons({
             <RobotIcon />
           </KindTile>
           <span className="workspace-edge-beacon__title">{beacon.title}</span>
-          <span className="workspace-edge-beacon__status">· {t('edgeBeacons.waiting')}</span>
+          <span className="workspace-edge-beacon__status">· {statusById.get(beacon.id)}</span>
           <ArrowRightIcon
             className="workspace-edge-beacon__arrow"
             size={18}

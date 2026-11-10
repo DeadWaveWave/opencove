@@ -219,6 +219,7 @@ export class AgentRunStateRuntime {
         turn: null,
         turnOutcome: null,
         blockedReason: null,
+        blockedSummary: null,
         source: null,
         lastTransitionAt: this.now(),
       })
@@ -375,6 +376,7 @@ export class AgentRunStateRuntime {
           (session.hookInstallState !== undefined &&
             ['partial', 'error', 'not_installed', 'skipped'].includes(session.hookInstallState)),
         blockedReason: event.blockedReason,
+        blockedSummary: event.blockedSummary,
         boundary,
         hookEventName: name,
         baseline: event.baseline,
@@ -400,6 +402,7 @@ export class AgentRunStateRuntime {
           quality: 'authoritative',
           turn: null,
           blockedReason: null,
+          blockedSummary: null,
           lastTransitionAt: this.now(),
         })
       }

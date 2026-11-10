@@ -116,7 +116,7 @@ test('uses Cove by default and shows theme-adaptive, switchable Working rims fro
     await inspectTheme('light')
     await inspectTheme('dark')
     await send('waiting')
-    await expect(status).toHaveText('Waiting')
+    await expect(status).toHaveText('Needs approval')
     await expect(layer).toHaveAttribute('data-cove-pixel-working-node-ids', '')
     await expect(layer).toBeHidden()
     await send('done')
