@@ -73,7 +73,10 @@ it('never marks a wait timeout after delivery as retryable, since repeating woul
   f.io.fetch = (url, init) =>
     String(url).includes('/events?') ? stream.fetch(url) : original(url, init)
   expect(
-    await run(['agent', 'prompt', '--node', node.id, '--wait', '--timeout', '300ms', 'hello'], f.io),
+    await run(
+      ['agent', 'prompt', '--node', node.id, '--wait', '--timeout', '300ms', 'hello'],
+      f.io,
+    ),
   ).toBe(124)
   expect(f.out()).toBe('')
   expect(f.error()).toMatchObject({
