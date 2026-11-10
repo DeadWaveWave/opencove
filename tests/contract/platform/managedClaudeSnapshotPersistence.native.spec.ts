@@ -34,19 +34,39 @@ vi.mock('../../../src/contexts/agent/infrastructure/cli/AgentLaunchSpawnResolver
     runtimeKind: 'posix',
   }),
 }))
+vi.mock('../../../src/platform/terminal/TerminalProfileResolver', () => ({
+  TerminalProfileResolver: class {
+    async resolveTerminalSpawn(input: { cwd: string }) {
+      return {
+        cwd: input.cwd,
+        command: '/bin/sh',
+        args: [],
+        env: {},
+        profileId: null,
+        runtimeKind: 'posix',
+      }
+    }
+  },
+}))
+function fallback(operation: Operation) {
+  return operation.endsWith('Fallback')
+}
 const cases = routes.flatMap(route =>
   [false, true].flatMap(owned =>
     operations
-      .filter(operation => !owned || operation !== 'prepareBlank')
+      .filter(operation => (fallback(operation) ? owned : !owned || operation !== 'prepareBlank'))
       .flatMap(operation =>
-        [false, true].map(stale => ({
-          route: route.name,
-          binding: route.binding,
-          inheritedMount: route.inheritedMount,
-          owned,
-          operation,
-          stale,
-        })),
+        (fallback(operation) ? [false, true] : [false]).flatMap(preSettled =>
+          [false, true].map(stale => ({
+            route: route.name,
+            binding: route.binding,
+            inheritedMount: route.inheritedMount,
+            owned,
+            operation,
+            preSettled,
+            stale,
+          })),
+        ),
       ),
   ),
 )
@@ -87,8 +107,16 @@ describeWithElectronNativeModules('managed Claude lifecycle renderer snapshot ro
     owned: boolean,
     operation: Operation,
     inheritedMount = false,
+    preSettled = false,
   ) {
-    f = await snapshotFixture(join(root, 'state.db'), binding, owned, operation, inheritedMount)
+    f = await snapshotFixture(
+      join(root, 'state.db'),
+      binding,
+      owned,
+      operation,
+      inheritedMount,
+      preSettled,
+    )
     ipc = registerPersistenceIpcHandlers(async () => f.store)
     const write = vi.fn(async (payload: unknown) =>
       invokeHandledIpc(handlers.get(IPC_CHANNELS.persistenceWriteAppState), null, payload),
@@ -103,47 +131,79 @@ describeWithElectronNativeModules('managed Claude lifecycle renderer snapshot ro
     } as unknown as typeof window.opencoveApi
     return write
   }
-  it.each(cases)('$route / owned=$owned / $operation / correction=$stale', async test => {
-    const write = await setup(test.binding, test.owned, test.operation, test.inheritedMount)
-    const originalIdentity = identity(f.state.workspaces[0].nodes[0])
-    const { snapshot, nodes, binding } = await rendererSnapshot(f, test.operation)
-    expect(binding?.nodeSeen).toBe(true)
-    expect(binding?.tuple).toEqual({
-      resumeSessionId: ['launch', 'prepareResume'].includes(test.operation)
-        ? 'initial-conversation'
-        : test.operation === 'switch'
-          ? 'selected-conversation'
-          : 'new-conversation',
-      resumeSessionIdVerified: true,
-    })
-    expect(nodes[0].data.lastError).toBeNull()
-    expect(f.alive.has(binding!.runtimeSessionId!)).toBe(true)
-    const expected = structuredClone(snapshot)
-    if (test.stale) {
-      snapshot.workspaces[0].nodes[0].sessionId = 'stale-runtime'
-      Object.assign(snapshot.workspaces[0].nodes[0].agent!, {
-        resumeSessionId: 'stale',
-        resumeSessionIdVerified: false,
+  it.each(cases)(
+    '$route / owned=$owned / $operation / preSettled=$preSettled / correction=$stale',
+    async test => {
+      const write = await setup(
+        test.binding,
+        test.owned,
+        test.operation,
+        test.inheritedMount,
+        test.preSettled,
+      )
+      const originalIdentity = identity(f.state.workspaces[0].nodes[0])
+      const { snapshot, nodes, binding, receipt, prepared } = await rendererSnapshot(
+        f,
+        test.operation,
+      )
+      expect(binding?.nodeSeen).toBe(true)
+      expect(binding?.tuple).toEqual({
+        resumeSessionId:
+          ['launch', 'prepareResume'].includes(test.operation) || fallback(test.operation)
+            ? 'initial-conversation'
+            : test.operation === 'switch'
+              ? 'selected-conversation'
+              : 'new-conversation',
+        resumeSessionIdVerified: true,
       })
-    }
-    const revision = await f.store.readAppStateRevision()
-    const written = await persistRendererSnapshot(f, snapshot)
-    // This invokes the actual renderer write port, handled IPC and SQLite final writer/gate.
-    expect(written).toMatchObject({ ok: true, corrected: test.stale })
-    expect(write).toHaveBeenCalledTimes(1)
-    expect(await f.store.readAppStateRevision()).toBe(revision + 1)
-    expect(identity(snapshot.workspaces[0].nodes[0])).toEqual(originalIdentity)
-    const durable = normalizePersistedAppState(await f.store.readAppState())!
-    expect(identity(durable.workspaces[0].nodes[0])).toEqual(originalIdentity)
-    const payload = write.mock.calls[0][0] as { state: PersistedAppState }
-    const normalized = normalizePersistedAppState(payload.state)!
-    Object.assign(normalized.workspaces[0].nodes[0], { sessionId: binding!.runtimeSessionId })
-    Object.assign(normalized.workspaces[0].nodes[0].agent!, binding!.tuple)
-    expect(durable).toEqual(normalized)
-    expect(durable.workspaces[0].nodes[0].agent).toMatchObject(
-      expected.workspaces[0].nodes[0].agent!,
-    )
-  })
+      expect(receipt).toBeDefined()
+      expect(receipt!.commitRevision).toBe(f.publications.at(-1)?.revision ?? null)
+      expect(receipt!.binding.activationId).toBe(binding!.activationId)
+      expect(f.alive.has(nodes[0].data.sessionId)).toBe(true)
+      if (fallback(test.operation)) {
+        expect(prepared?.recoveryState).toBe('fallback_terminal')
+        expect(binding!.runtimeSessionId).toBeNull()
+        expect(f.publications).toHaveLength(test.preSettled ? 0 : 1)
+        expect(await f.store.readAppStateRevision()).toBe(
+          f.initialRevision + (test.preSettled ? 0 : 1),
+        )
+        expect(receipt!.commitRevision).toBe(test.preSettled ? null : f.initialRevision + 1)
+      } else {
+        expect(nodes[0].data.lastError).toBeNull()
+        expect(binding!.runtimeSessionId).toBe(nodes[0].data.sessionId)
+        expect(receipt!.commitRevision).toBe(await f.store.readAppStateRevision())
+      }
+      const expected = structuredClone(snapshot)
+      if (test.stale) {
+        if (!fallback(test.operation)) {
+          snapshot.workspaces[0].nodes[0].sessionId = 'stale-runtime'
+        }
+        Object.assign(snapshot.workspaces[0].nodes[0].agent!, {
+          resumeSessionId: 'stale',
+          resumeSessionIdVerified: false,
+        })
+      }
+      const revision = await f.store.readAppStateRevision()
+      const written = await persistRendererSnapshot(f, snapshot)
+      // This invokes the actual renderer write port, handled IPC and SQLite final writer/gate.
+      expect(written).toMatchObject({ ok: true, corrected: test.stale })
+      expect(write).toHaveBeenCalledTimes(1)
+      expect(await f.store.readAppStateRevision()).toBe(revision + 1)
+      expect(identity(snapshot.workspaces[0].nodes[0])).toEqual(originalIdentity)
+      const durable = normalizePersistedAppState(await f.store.readAppState())!
+      expect(identity(durable.workspaces[0].nodes[0])).toEqual(originalIdentity)
+      const payload = write.mock.calls[0][0] as { state: PersistedAppState }
+      const normalized = normalizePersistedAppState(payload.state)!
+      Object.assign(normalized.workspaces[0].nodes[0], {
+        sessionId: binding!.runtimeSessionId ?? snapshot.workspaces[0].nodes[0].sessionId,
+      })
+      Object.assign(normalized.workspaces[0].nodes[0].agent!, binding!.tuple)
+      expect(durable).toEqual(normalized)
+      expect(durable.workspaces[0].nodes[0].agent).toMatchObject(
+        expected.workspaces[0].nodes[0].agent!,
+      )
+    },
+  )
   it.each(
     routes.flatMap(route =>
       ['workerBinding', 'agent.provider', 'kind'].map(field => ({ ...route, field })),

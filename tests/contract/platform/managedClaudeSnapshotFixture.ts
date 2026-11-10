@@ -4,6 +4,8 @@ import { normalizePersistedAppState } from '../../../src/platform/persistence/sq
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import { createCanvasSpawnRunner } from '../../../src/app/main/controlSurface/createCanvasSpawnRunner'
 import { createManagedClaudeLaunchRuntime } from '../../../src/app/main/controlSurface/managedClaudeLaunchRuntime'
+import { registerSessionStreamingHandlers } from '../../../src/app/main/controlSurface/handlers/sessionStreamingHandlers'
+import { registerPtyMountHandlers } from '../../../src/app/main/controlSurface/handlers/ptyMountHandlers'
 import { registerSessionHandlers } from '../../../src/app/main/controlSurface/handlers/sessionHandlers'
 import { registerNodeControlHandlers } from '../../../src/app/main/controlSurface/handlers/nodeControlHandlers'
 import { registerOperation } from '../../../src/app/main/controlSurface/registerOperation'
@@ -27,7 +29,15 @@ export const routes: {
   { name: 'local', binding: { endpointId: 'local', mountId: null } },
   { name: 'mount', binding: { endpointId: 'local', mountId: 'mount' } },
 ]
-export const operations = ['launch', 'relaunch', 'switch', 'prepareResume', 'prepareBlank'] as const
+export const operations = [
+  'launch',
+  'relaunch',
+  'switch',
+  'prepareResume',
+  'prepareBlank',
+  'prepareStoppedFallback',
+  'prepareFailedResumeFallback',
+] as const
 export type Operation = (typeof operations)[number]
 export const tuple = { resumeSessionId: 'initial-conversation', resumeSessionIdVerified: true }
 export const directory = '/repo/project'
@@ -37,6 +47,7 @@ export async function snapshotFixture(
   owned: boolean,
   operation: Operation,
   inheritedMount = false,
+  preSettled = false,
 ) {
   const store = await createPersistenceStore({ dbPath, strictRecovery: true })
   const blank = operation === 'prepareBlank'
@@ -58,7 +69,7 @@ export async function snapshotFixture(
             position: { x: 1, y: 2 },
             width: 600,
             height: 400,
-            status: 'standby',
+            status: operation === 'prepareStoppedFallback' ? 'stopped' : 'standby',
             startedAt: null,
             workerBinding: route,
             executionDirectory: directory,
@@ -100,11 +111,25 @@ export async function snapshotFixture(
       tuple,
     })
   }
+  if (preSettled) {
+    await store.activateManagedClaudeRuntime({
+      nodeId: 'agent',
+      activationId: 'pre-settled',
+      runtimeSessionId: null,
+      tuple,
+    })
+  }
+  const initialRevision = await store.readAppStateRevision()
+  const publications: { nodeId: string; activationId: string; revision: number }[] = []
+  const results: { id: string; value: unknown }[] = []
   const alive = new Set<string>()
   let sequence = 0
   const runtime = createManagedClaudeLaunchRuntime({
     getPersistenceStore: async () => store,
     adoptionEnabled: () => true,
+    publishCommittedActivation: event => {
+      publications.push(event)
+    },
     hasRuntime: id => alive.has(id),
     killExactRuntime: async id => {
       alive.delete(id)
@@ -144,7 +169,7 @@ export async function snapshotFixture(
       resumeSessionId: input.mode === 'resume' ? input.resumeSessionId : 'new-conversation',
     }),
   })
-  registerSessionHandlers(surface, {
+  const deps = {
     ...admission,
     userDataPath: '/tmp/opencove-snapshot-contract',
     getPersistenceStore: async () => store,
@@ -152,7 +177,10 @@ export async function snapshotFixture(
     agentProviderRegistry: registry,
     topology,
     ptyRuntime: {
-      spawnSession: async () => {
+      spawnSession: async (input: { agentProvider?: string }) => {
+        if (operation === 'prepareFailedResumeFallback' && input.agentProvider) {
+          throw new Error('fixture resume failed')
+        }
         const sessionId = `runtime-${++sequence}`
         alive.add(sessionId)
         return { sessionId }
@@ -162,13 +190,17 @@ export async function snapshotFixture(
       isSessionActive: (id: string) => alive.has(id),
       registerSessionMetadata: () => {},
     } as never,
-  })
+  }
+  registerSessionHandlers(surface, deps)
+  registerSessionStreamingHandlers(surface, deps)
+  registerPtyMountHandlers(surface, deps)
   const ctx = { now: () => new Date(), capabilities: {} } as ControlSurfaceContext
   const invoke = async <T>(request: ControlSurfaceInvokeRequest): Promise<T> => {
     const response = await surface.invoke(ctx, request)
     if (!response.ok) {
       throw createAppError(response.error)
     }
+    results.push({ id: request.id, value: response.value })
     return response.value as T
   }
   const launch = vi.fn(async (payload: object) =>
@@ -182,6 +214,9 @@ export async function snapshotFixture(
     launch,
     state,
     alive,
+    initialRevision,
+    publications,
+    results,
     dispose: () => {
       runtime.dispose()
       store.dispose()

@@ -17,6 +17,8 @@ import type {
   PersistedWorkspaceState,
   PersistedAppState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
+import type { ManagedClaudeLifecycleReceipt } from '../../../src/shared/contracts/managedClaudeLaunch'
+import type { PreparedRuntimeNodeResult } from '../../../src/shared/contracts/dto'
 import type { Operation, SnapshotFixture } from './managedClaudeSnapshotFixture'
 
 export async function rendererSnapshot(f: SnapshotFixture, operation: Operation) {
@@ -25,7 +27,6 @@ export async function rendererSnapshot(f: SnapshotFixture, operation: Operation)
   )
   const settings = normalizeAgentSettings(f.state.settings)
   const nodesRef = { current: workspace.nodes }
-  let receipt
   if (operation.startsWith('prepare')) {
     nodesRef.current = await prepareWorkspaceRuntimeNodes({
       workspace: f.state.workspaces[0] as unknown as PersistedWorkspaceState,
@@ -72,14 +73,20 @@ export async function rendererSnapshot(f: SnapshotFixture, operation: Operation)
       hook.unmount()
     }
   }
-  receipt = f.store.observeManagedClaudeNode('agent').binding
+  const binding = f.store.observeManagedClaudeNode('agent').binding
+  const response = f.results.at(-1)!.value as {
+    managedClaudeLifecycle?: ManagedClaudeLifecycleReceipt
+    nodes?: PreparedRuntimeNodeResult[]
+  }
+  const prepared = response.nodes?.[0]
+  const receipt = prepared?.managedClaudeLifecycle ?? response.managedClaudeLifecycle
   // A real local edit prevents the renderer's publication cache from skipping this write.
   const snapshot = toPersistedState(
     [{ ...workspace, name: `${operation} snapshot`, nodes: nodesRef.current }],
     workspace.id,
     settings,
   )
-  return { snapshot, nodes: nodesRef.current, binding: receipt }
+  return { snapshot, nodes: nodesRef.current, binding, receipt, prepared }
 }
 
 export async function persistRendererSnapshot(f: SnapshotFixture, snapshot: PersistedAppState) {

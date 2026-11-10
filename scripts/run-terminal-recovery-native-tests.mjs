@@ -17,6 +17,7 @@ const tests = process.argv.includes('--worker-ownership')
       'tests/contract/platform/persistenceStore.revision.native.spec.ts',
       'tests/contract/platform/managedClaudeResumeBinding.native.spec.ts',
       'tests/contract/platform/managedClaudeLaunchLifecycle.native.spec.ts',
+      'tests/contract/platform/managedClaudeCommitReceipt.native.spec.ts',
       'tests/contract/platform/managedClaudeSnapshotPersistence.native.spec.ts',
       'tests/contract/platform/managedClaudeFallbackReplacement.native.spec.ts',
       'tests/contract/platform/managedClaudeResumeSync.native.spec.ts',

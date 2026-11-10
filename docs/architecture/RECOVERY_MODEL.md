@@ -371,6 +371,8 @@ runtime authority。详见 [Persistence](PERSISTENCE.md#managed-claude-resume-le
 也不接受客户端 token。普通恢复选择 ledger 的 committed tuple，显式替换必须携带匹配的
 expectation。首次 adoption 与 replacement 都在同步 activation 前复查 kind/provider/route/目录。
 所有 owned fallback 先确认保持 tuple 的 null-runtime settlement；shell 不获得 managed 写权。
+Fallback receipt 保留本次 attempt 已确认 settlement 的 exact commit revision，即使后续读到了更新的
+app revision。预存 settlement、row-only 写入和 `alreadyApplied` 只提供 observation，不能声称新的 app commit。
 删除只在最外层 app-state commit 后 fence attempt 并检查精确 runtime 的 references。
 unknown outcome 保留 runtime 与 reconciliation obligation，未到 clean transaction boundary 时
 不能确认成功、重启或补偿。Worker 重启不重建旧 token。

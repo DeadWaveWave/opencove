@@ -31,6 +31,10 @@ export class ManagedClaudeLaunchOwner {
     ActivateManagedClaudeRuntimeInput,
     Promise<ManagedClaudeLifecycleReceipt | null>
   >()
+  private readonly settlementReceipts = new WeakMap<
+    ManagedClaudeLaunchAttempt,
+    ManagedClaudeLifecycleReceipt
+  >()
   private readonly runtimeCleanup: ManagedClaudeRuntimeCleanup
   private disposed = false
 
@@ -247,6 +251,10 @@ export class ManagedClaudeLaunchOwner {
     // Install before callbacks or async cleanup can reenter. Every entry point shares the origin.
     const completion = Promise.resolve().then(async () => {
       const attempt = this.activationAttempts.get(input)!
+      const receipt = binding ? { binding, commitRevision } : null
+      if (receipt && input.runtimeSessionId === null && commitRevision !== null) {
+        this.settlementReceipts.set(attempt, receipt)
+      }
       if (binding && this.isCurrent(attempt) && input.runtimeSessionId) {
         this.admitted.set(input.nodeId, input.runtimeSessionId)
       }
@@ -260,7 +268,7 @@ export class ManagedClaudeLaunchOwner {
       }
       await this.cleanupPrevious(attempt)
       await this.effects.cleanupCreated(attempt, input.runtimeSessionId)
-      return binding ? { binding, commitRevision } : null
+      return receipt
     })
     this.finalizations.set(input, completion)
     this.releaseObligation(input)
@@ -434,7 +442,14 @@ export class ManagedClaudeLaunchOwner {
     }
     if (observation.binding.runtimeSessionId === null) {
       await this.effects.cleanupCreated(attempt)
-      return { binding: observation.binding, commitRevision: null }
+      const settled = this.settlementReceipts.get(attempt)
+      const sameSettlement =
+        settled?.binding.activationId === observation.binding.activationId &&
+        sameManagedResumeBinding(settled.binding.tuple, observation.binding.tuple)
+      return {
+        binding: observation.binding,
+        commitRevision: sameSettlement ? settled.commitRevision : null,
+      }
     }
     attempt.expected = {
       activationId: observation.binding.activationId,
