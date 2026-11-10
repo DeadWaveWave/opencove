@@ -36,7 +36,7 @@ async function relay(input: string, provider: 'claude' | 'codex' = 'claude') {
         env: {
           ...process.env,
           NODE_OPTIONS: `--import=${pathToFileURL(preload).href}`,
-          [`OPENCOVE_${provider.toUpperCase()}_HOOK_ENDPOINT`]: 'http://relay.test',
+          [`OPENCOVE_${provider.toUpperCase()}_HOOK_ENDPOINT`]: `http://127.0.0.1:1234/hooks/${provider}`,
           [`OPENCOVE_${provider.toUpperCase()}_HOOK_TOKEN`]: 'token',
         },
       })

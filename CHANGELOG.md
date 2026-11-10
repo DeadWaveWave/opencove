@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🚀 Added
 
+- Give supported local Claude Code and Codex agents a short OpenCove canvas guide at session start, with a Suggest/Off setting under Agent.
+
 - Plugin themes: a theme can declare four inputs (light or dark, a base tint, an accent colour and contrast) instead of individual colours, and OpenCove generates the whole palette with the same checked contrast as its built-in Cove themes. (#477)
 - CLI: `opencove` is rebuilt for AI agents and scripts: grouped help with examples, compact JSON on stdout with `--fields` selection that keeps the response shape, optional table output, `--limit` for lists, `--<option>-file <path|->` for long values, actionable errors on stderr with typo and close-name suggestions, and stable exit codes. `opencove api ops`, `api schema` and `api call` discover and call every Control Surface operation, most of them with a described input schema. (#521, #524, #525, #529, #532, #538, #551)
 - Agents and terminals started on the canvas know which node, Space and project they belong to and get `opencove` on their PATH with a session-lifetime token for permitted API operations (project isolation is not yet enforced); inside such a terminal `opencove whoami`, `opencove context` and `@self`, name and ID-prefix selectors let an agent orient itself. (#528, #540)
@@ -15,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - CLI: `agent read` and `agent wait --turn` list the deliveries and provider prompt IDs that belong to the turn; `node list` and `context` show whether an agent is working separately from whether its session runs, and which task it belongs to (`taskNodeId`); prompt, wait and read help is shorter, with the details in `opencove skill`; creating a task with a frame below the minimum size reports the size used. (#572)
 - CLI: agents can create nodes on the root canvas, outside every Space, with `opencove node create <kind> --root-canvas`; the node is placed next to the calling terminal or its Space. With no target, `node create` and `node list` use the Space the caller is in now, or the root canvas when its terminal is outside every Space, and `node list --root-canvas` lists only nodes outside Spaces. (#581)
 - CLI: agents keep the names they are given (`node create agent --title …` is no longer replaced by the automatic session title), `opencove node update agent|terminal --title` renames them, and `opencove agent stop --node <selector>` stops a running agent without deleting its node. (#584)
+- Agents that OpenCove launches (Claude Code and Codex) learn at session start that they are running in OpenCove: a short fixed guide suggests posting results as notes, marking finished tasks `ai_done` and asking before starting other agents. Turn it off in Settings → Agent → Tell agents about OpenCove. (#585)
 - Control Surface: create projects and Spaces, so a headless Worker can be set up from the CLI. (#526)
 - Control Surface: address agent and terminal sessions by canvas node, including sessions opened from the UI or restored after a restart. (#527)
 - Control Surface: read an agent's run state (`agent.get`, `agent.list`) and subscribe to state changes and completed turns, decided once by the Worker that runs the agent. (#533)

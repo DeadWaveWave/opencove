@@ -12,7 +12,8 @@ import { resolveFirstAgentSessionId } from './workspace-canvas.agent-status-watc
 // Shared harness for the opt-in real Claude Code acceptance specs: the installed Claude Code CLI,
 // an isolated config and a local Messages API stand-in (no credentials, no model calls).
 
-type MessagesRequest = {
+export type MessagesRequest = {
+  system?: string | Array<{ type: string; text?: string }>
   stream?: boolean
   model?: string
   tools?: Array<{ name?: string }>
@@ -114,9 +115,11 @@ export async function startMessagesApi(): Promise<{
   server: Server
   url: string
   main: () => string[][]
+  requests: () => MessagesRequest[]
 }> {
   // Text blocks of the user message in each agent-loop request that starts a turn.
   const mainTurns: string[][] = []
+  const requests: MessagesRequest[] = []
   const server = createServer(async (req, res) => {
     const chunks: Buffer[] = []
     for await (const chunk of req) {
@@ -137,6 +140,9 @@ export async function startMessagesApi(): Promise<{
     if (req.method === 'POST' && url.startsWith('/v1/messages') && body) {
       // The agent loop sends tools; side requests (titles, summaries) do not.
       const isMain = (body.tools ?? []).some(tool => tool.name === 'Bash')
+      if (isMain) {
+        requests.push(structuredClone(body))
+      }
       const blocks = lastUserBlocks(body)
       if (isMain && !hasToolResult(body)) {
         mainTurns.push(blocks)
@@ -163,7 +169,12 @@ export async function startMessagesApi(): Promise<{
   })
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
   const { port } = server.address() as AddressInfo
-  return { server, url: `http://127.0.0.1:${port}`, main: () => [...mainTurns] }
+  return {
+    server,
+    url: `http://127.0.0.1:${port}`,
+    main: () => [...mainTurns],
+    requests: () => structuredClone(requests),
+  }
 }
 
 export async function cli(userDataDir: string, args: string[]) {
@@ -212,7 +223,10 @@ export async function prompt(userDataDir: string, nodeId: string, text: string) 
   })
 }
 
-export async function launchRealClaude(testInfo: TestInfo) {
+export async function launchRealClaude(
+  testInfo: TestInfo,
+  residentContext: 'suggest' | 'off' = 'suggest',
+) {
   const version = execFileSync('claude', ['--version'], { encoding: 'utf8', timeout: 10_000 })
   await testInfo.attach('real-cli-version', {
     body: Buffer.from(version),
@@ -256,6 +270,7 @@ export async function launchRealClaude(testInfo: TestInfo) {
     activeWorkspaceId: 'real-prompt',
     settings: {
       defaultProvider: 'claude-code',
+      agentResidentContext: residentContext,
       agentFullAccess: false,
       customModelEnabledByProvider: { 'claude-code': false },
     },

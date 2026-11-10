@@ -83,6 +83,8 @@ export function createSettingsPanelUpdaters({
       updateSetting(key, enabled),
     updateCanvasBackgroundStyle: (style: CanvasBackgroundStyle): void =>
       updateSetting('canvasBackgroundStyle', style),
+    updateAgentResidentContext: (mode: AgentSettings['agentResidentContext']): void =>
+      updateSetting('agentResidentContext', mode),
     updateCodexReuseRunningAppServer: (enabled: boolean): void =>
       updateSetting('codexReuseRunningAppServer', enabled),
     updateAgentFullAccess: (enabled: boolean): void => updateSetting('agentFullAccess', enabled),

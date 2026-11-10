@@ -1,3 +1,4 @@
+import { agentHookReplyScript } from './AgentHookReplyScript'
 import type { CreateAgentLaunchPlanCommand } from '../../../application/ports/AgentProviderContribution'
 import { createTemporaryProviderConfig } from './TemporaryProviderConfig'
 
@@ -17,7 +18,7 @@ export async function createAgentHookRelay(options: {
   const relay = await createTemporaryProviderConfig(
     `opencove-${provider}-hook-`,
     'relay.mjs',
-    `const provider = ${JSON.stringify(provider)};\n${relayScript}`,
+    `const provider = ${JSON.stringify(provider)};\n${agentHookReplyScript}\n${relayScript}`,
   )
   artifacts.track(`${provider}-hook-relay`, relay)
 
@@ -109,7 +110,7 @@ try {
   const prefix = provider === 'codex' ? 'OPENCOVE_CODEX_HOOK_' : 'OPENCOVE_CLAUDE_HOOK_';
   const endpoint = process.env[prefix + 'ENDPOINT'];
   const token = process.env[prefix + 'TOKEN'];
-  if (endpoint && token) {
+  if (endpoint && token && validEndpoint(endpoint)) {
     let body = provider === 'codex' && process.argv.length > 2 ? process.argv.at(-1) : '';
     if (!body) {
       const chunks = [];
@@ -146,12 +147,10 @@ try {
     }
     // Enforce the receiver budget on the final wire body, after every provider rewrite.
     if (Buffer.byteLength(body, 'utf8') > postLimit) process.exit(0);
-    await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-opencove-hook-token': token, 'x-opencove-hook-emitted-at': String(emittedAtMs) },
-      body,
-      signal: AbortSignal.timeout(1500),
-    });
+    const input = JSON.parse(body);
+    const sessionStart = input.hook_event_name === 'SessionStart';
+    const output = await postObservation(endpoint, token, body, sessionStart);
+    if (output) await writeContext(output);
   }
 } catch {
   // The receiver owns validation and fallback; a failed observation is not an agent failure.
