@@ -1,4 +1,5 @@
-import { AsyncLocalStorage } from 'node:async_hooks'
+import { AsyncLocalStorage, AsyncResource } from 'node:async_hooks'
+import { vi } from 'vitest'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import { createCanvasSpawnRunner } from '../../../src/app/main/controlSurface/createCanvasSpawnRunner'
 import { createManagedClaudeLaunchRuntime } from '../../../src/app/main/controlSurface/managedClaudeLaunchRuntime'
@@ -10,27 +11,45 @@ import {
   createReadyTerminalAdmissionDeps,
   createTestAgentProviderRegistry,
 } from './controlSurfaceTestTerminalAvailability'
-import { context } from './managedClaudeLaunchCompatibility.helpers'
+import { context, deferred } from './managedClaudeLaunchCompatibility.helpers'
 import { ManagedClaudeFaultModel, type FaultCase, type EffectStep } from './managedClaudeFaultModel'
+import { ManagedClaudeFaultOracle } from './managedClaudeFaultOracle'
 
 export async function faultHarness(config: FaultCase) {
   const model = new ManagedClaudeFaultModel(config.initial)
-  const actor = new AsyncLocalStorage<{ name: string; epoch: number }>()
-  const tasks: { done: boolean; value?: unknown }[] = []
+  const peer = new ManagedClaudeFaultModel('owned', 'peer')
+  const models = [model, peer]
+  const ingress = new AsyncResource('managed-Claude-request')
+  const oracle = new ManagedClaudeFaultOracle(models)
+  const actor = new AsyncLocalStorage<{ name: string; nodeId: string; epoch: number }>()
+  const tasks: { name: string; nodeId: string; done: boolean; value?: unknown }[] = []
   const commits = new Set<(event: AppStateCommittedObservation) => void>()
   const reads = new Map<string, number>()
+  const latest = new Map<string, ActivateManagedClaudeRuntimeInput>()
+  const gates = new Map<string, { entered: boolean; release: ReturnType<typeof deferred<void>> }>()
   let eventReached = false,
     faultReached = false,
     stopped = false,
     quiet = false
   let faultBudget = config.fault.endsWith('Failure') ? 2 : 1
-  let latestInput: ActivateManagedClaudeRuntimeInput | undefined
   let runtime!: ReturnType<typeof createManagedClaudeLaunchRuntime>
   let surface!: ReturnType<typeof createControlSurface>
-  let admissionInvoked = false
-
-  const remember = (promise: Promise<unknown>, name: string) => {
-    const task = { done: false, value: undefined as unknown }
+  const node = (id = actor.getStore()?.nodeId ?? 'agent') =>
+    models.find(value => value.nodeId === id)!
+  const byRuntime = (id: string) =>
+    models.find(value => value.original === id || value.created.has(id))!
+  const name = () => actor.getStore()?.name ?? 'timer'
+  const check = (quiescent = false) => {
+    const ids = runtime?.owner.pendingCleanupRuntimeIds() ?? []
+    for (const value of models) {
+      for (const id of ids) {
+        value.technical.delete(id)
+      }
+      value.check(ids, quiescent)
+    }
+  }
+  const remember = (promise: Promise<unknown>, request: string, nodeId: string) => {
+    const task = { name: request, nodeId, done: false, value: undefined as unknown }
     tasks.push(task)
     void promise
       .then(
@@ -43,91 +62,109 @@ export async function faultHarness(config: FaultCase) {
       )
       .finally(() => {
         task.done = true
-        for (const [id, owner] of model.technical) {
-          if (owner === name) {
-            model.technical.delete(id)
+        oracle.end(request)
+        for (const value of models) {
+          for (const [id, owner] of value.technical) {
+            if (owner === request) {
+              value.technical.delete(id)
+            }
           }
         }
         check()
       })
     return task
   }
-  const check = (quiescent = false) => {
-    const ids = runtime?.owner.pendingCleanupRuntimeIds() ?? []
-    for (const id of ids) {
-      model.technical.delete(id)
-    }
-    model.check(ids, quiescent)
+  const launch = (request: string, nodeId = 'agent') => {
+    oracle.begin(request, nodeId)
+    return ingress.runInAsyncScope(() =>
+      actor.run({ name: request, nodeId, epoch: model.epoch }, () =>
+        remember(
+          surface.invoke(context, {
+            kind: 'command',
+            id: 'session.launchAgent',
+            payload: {
+              canvasNodeId: nodeId,
+              workspaceId: 'workspace',
+              cwd: '/repo',
+              prompt: 'fixture',
+              provider: 'claude-code',
+              intent: { kind: 'resumeCurrent' },
+            },
+          }),
+          request,
+          nodeId,
+        ),
+      ),
+    )
   }
-  const launch = (name: string) =>
-    actor.run({ name, epoch: model.epoch }, () =>
-      remember(
-        surface.invoke(context, {
-          kind: 'command',
-          id: 'session.launchAgent',
-          payload: {
-            canvasNodeId: 'agent',
-            workspaceId: 'workspace',
-            cwd: '/repo',
-            prompt: 'fixture',
-            provider: 'claude-code',
-            intent: { kind: 'resumeCurrent' },
-          },
-        }),
-        name,
+  const prepare = (nodeId = 'agent', request = 'prepare') => {
+    oracle.begin(request, nodeId, 'prepare')
+    return ingress.runInAsyncScope(() =>
+      actor.run({ name: request, nodeId, epoch: model.epoch }, () =>
+        remember(
+          surface.invoke(context, {
+            kind: 'command',
+            id: 'session.prepareOrRevive',
+            payload: { workspaceId: 'workspace', nodeIds: [nodeId] },
+          }),
+          request,
+          nodeId,
+        ),
       ),
     )
-  const prepare = () =>
-    actor.run({ name: 'prepare', epoch: model.epoch }, () =>
-      remember(
-        surface.invoke(context, {
-          kind: 'command',
-          id: 'session.prepareOrRevive',
-          payload: { workspaceId: 'workspace' },
-        }),
-        'prepare',
-      ),
-    )
-
+  }
+  const remove = (nodeId: string) => {
+    const value = node(nodeId)
+    const removed = value.remove()
+    for (const listener of commits) {
+      listener({
+        revision: ++value.revision,
+        removedNodeIds: [nodeId],
+        removedManagedRuntimeSessionIds: removed,
+      })
+    }
+  }
   const boundary = (step: EffectStep, side: 'before' | 'after') => {
-    const activeActor = actor.getStore()
-    if (activeActor && activeActor.epoch !== model.epoch) {
+    const active = actor.getStore()
+    if (active && active.epoch !== model.epoch) {
       throw new Error('Worker stopped')
     }
-    const name = activeActor?.name ?? 'maintenance'
-    model.trace.push(`${name}:${step}:${side}`)
+    node().trace.push(`${name()}:${step}:${side}`)
     check()
-    if (!quiet && name === 'primary' && !eventReached && config.edge === `${step}:${side}`) {
+    if (!quiet && name() === 'primary' && !eventReached && config.edge === `${step}:${side}`) {
       eventReached = true
       if (config.event === 'delete') {
-        const removed = model.remove()
-        for (const listener of commits) {
-          listener({
-            revision: ++model.revision,
-            removedNodeIds: ['agent'],
-            removedManagedRuntimeSessionIds: removed,
-          })
-        }
+        remove('agent')
       } else if (config.event === 'newer') {
         model.changedByOther = true
         launch('newer')
       } else if (config.event === 'prepare') {
         prepare()
+      } else if (config.event === 'peerLaunch') {
+        launch('peer-launch', 'peer')
+      } else if (config.event === 'peerRecovery') {
+        peer.alive.delete(peer.original)
+        peer.changedByOther = true
+        prepare('peer', 'peer-prepare')
+      } else if (config.event === 'peerDelete') {
+        remove('peer')
       } else if (config.event === 'restart') {
         stopped = true
         runtime.dispose()
-        model.stop()
+        models.forEach(value => value.stop())
+        oracle.restart()
       }
       check()
     }
-    if (stopped && name === 'primary') {
+    if (stopped && name() === 'primary') {
       throw new Error('Worker stopped')
     }
   }
-  const injected = (point: string) => {
+  const injected = (point: string, targetNode = node().nodeId) => {
     if (
       quiet ||
-      actor.getStore()?.name !== 'primary' ||
+      targetNode !== 'agent' ||
+      name() !== 'primary' ||
       config.fault !== point ||
       faultBudget === 0
     ) {
@@ -137,35 +174,37 @@ export async function faultHarness(config: FaultCase) {
     faultReached = true
     return true
   }
-  const fail = (point: string) => {
-    if (injected(point)) {
+  const fail = (point: string, targetNode?: string) => {
+    if (injected(point, targetNode)) {
       throw new Error(`injected ${point}`)
     }
   }
-
   const store = {
     readAppState: async () => {
-      const name = actor.getStore()?.name ?? 'maintenance'
-      const count = reads.get(name) ?? 0
-      reads.set(name, count + 1)
+      const count = reads.get(name()) ?? 0
+      reads.set(name(), count + 1)
       if (count === 0) {
         boundary('identity', 'before')
         fail('identity')
       }
       const state = model.appState()
+      state.workspaces[0].nodes.push(...peer.appState().workspaces[0].nodes)
       if (count === 0) {
+        oracle.identity(name())
         boundary('identity', 'after')
       }
       return state
     },
     observeManagedClaudeNode: (id: string) => {
-      const confirm = latestInput && model.binding?.activationId === latestInput.activationId
-      const step = latestInput?.runtimeSessionId === null ? 'handoffConfirmation' : 'confirmation'
+      const value = node(id),
+        input = latest.get(id)
+      const confirm = input && value.binding?.activationId === input.activationId
+      const step = input?.runtimeSessionId === null ? 'handoffConfirmation' : 'confirmation'
       if (confirm) {
         boundary(step, 'before')
-        fail(step)
+        fail(step, value.nodeId)
       }
-      const result = model.observation(id)
+      const result = value.observation(id)
       if (confirm) {
         boundary(step, 'after')
       }
@@ -173,12 +212,15 @@ export async function faultHarness(config: FaultCase) {
     },
     isManagedClaudeRuntimeReferenced: (id: string) => {
       boundary('referenceRead', 'before')
-      fail('referenceRead')
-      const referenced = model.referenced(id)
+      fail('referenceRead', byRuntime(id).nodeId)
+      const referenced = models.some(value => value.referenced(id))
       boundary('referenceRead', 'after')
       return referenced
     },
-    managedClaudePreparationCandidates: () => (model.present ? ['agent'] : []),
+    managedClaudePreparationCandidates: (_workspace: string, nodeIds?: string[]) =>
+      models
+        .filter(value => value.present && (!nodeIds || nodeIds.includes(value.nodeId)))
+        .map(value => value.nodeId),
     onAppStateCommitted: (listener: (event: AppStateCommittedObservation) => void) => {
       commits.add(listener)
       return () => {
@@ -186,54 +228,48 @@ export async function faultHarness(config: FaultCase) {
       }
     },
     activateManagedClaudeRuntime: async (input: ActivateManagedClaudeRuntimeInput) => {
-      const step = input.runtimeSessionId === null ? 'handoff' : 'activation'
-      if (actor.getStore()?.name === 'primary' && admissionInvoked) {
-        model.effectAdmitted = true
-      }
+      oracle.effect(name())
+      const value = node(input.nodeId),
+        step = input.runtimeSessionId === null ? 'handoff' : 'activation'
       boundary(step, 'before')
       if (injected(`${step}Failure`)) {
         return { status: 'retryableFailure' as const, outcome: 'notCommitted' as const }
       }
       if (injected(`${step}Unknown`)) {
-        model.blockedRead = true
+        value.blockedRead = true
         return { status: 'retryableFailure' as const, outcome: 'unknown' as const }
       }
       if (step === 'activation' && injected('activationSuperseded')) {
         return { status: 'superseded' as const }
       }
       if (step === 'activation' && injected('activationNodeGone')) {
-        model.remove()
-        runtime.owner.noteNodesDeleted(['agent'])
+        remove(value.nodeId)
         return { status: 'nodeGone' as const }
       }
-      const result = model.activate(input)
-      latestInput = input
+      const result = value.activate(input)
+      latest.set(value.nodeId, input)
       boundary(step, 'after')
       if (injected(`${step}UnknownCommitted`)) {
-        model.blockedRead = true
+        value.blockedRead = true
         return { status: 'retryableFailure' as const, outcome: 'unknown' as const }
       }
       return result
     },
   } as unknown as PersistenceStore
-
   const boot = async () => {
-    latestInput = undefined
-    admissionInvoked = false
+    latest.clear()
     runtime = createManagedClaudeLaunchRuntime({
       getPersistenceStore: async () => store,
       adoptionEnabled: () => config.initial === 'adoption',
-      hasRuntime: id => model.alive.has(id),
+      hasRuntime: id => models.some(value => value.alive.has(id)),
       killExactRuntime: async id => {
+        const value = byRuntime(id)
         const step =
-          id === 'original' && config.initial === 'owned' ? 'admissionKill' : 'cleanupKill'
-        if (actor.getStore()?.name === 'primary' && admissionInvoked) {
-          model.effectAdmitted = true
-        }
+          id === value.original && value.initial === 'owned' ? 'admissionKill' : 'cleanupKill'
         boundary(step, 'before')
-        model.killAttempts.set(id, (model.killAttempts.get(id) ?? 0) + 1)
-        fail(step)
-        model.kill(id)
+        value.killAttempts.set(id, (value.killAttempts.get(id) ?? 0) + 1)
+        fail(step, value.nodeId)
+        value.kill(id)
         boundary(step, 'after')
       },
       publishCommittedActivation: () => {
@@ -242,24 +278,28 @@ export async function faultHarness(config: FaultCase) {
         boundary('finalization', 'after')
       },
     })
-    const admit = runtime.owner.admit.bind(runtime.owner)
-    runtime.owner.admit = async (...args) => {
-      if (actor.getStore()?.name === 'primary') {
-        admissionInvoked = true
-      }
-      const result = await admit(...args)
-      if (actor.getStore()?.name === 'primary' && result === 'managed') {
-        model.effectAdmitted = true
-      }
-      return result
-    }
     const admission = createReadyTerminalAdmissionDeps()
+    const run = createCanvasSpawnRunner({
+      managedClaude: runtime,
+      terminalRuntimeAvailability: admission.terminalSpawnAdmission,
+      getPersistenceStore: async () => store,
+    })
     surface = createControlSurface({
-      run: createCanvasSpawnRunner({
-        managedClaude: runtime,
-        terminalRuntimeAvailability: admission.terminalSpawnAdmission,
-        getPersistenceStore: async () => store,
-      }),
+      run: (ctx, request, execute, payload) =>
+        run(
+          ctx,
+          request,
+          async admitted => {
+            const result = await execute(admitted)
+            const gate = gates.get(actor.getStore()?.nodeId ?? '')
+            if (gate && request.id === 'session.launchAgent') {
+              gate.entered = true
+              await gate.release.promise
+            }
+            return result
+          },
+          payload,
+        ),
     })
     const registry = createTestAgentProviderRegistry()
     Object.assign(registry.require('claude-code').launcher, {
@@ -269,17 +309,22 @@ export async function faultHarness(config: FaultCase) {
         env: {},
         effectiveModel: null,
         launchMode: 'resume',
-        resumeSessionId: 'original',
+        resumeSessionId: node().tuple.resumeSessionId,
+        onStarted: () => {
+          fail('onStarted')
+        },
       }),
     })
     registerSessionHandlers(surface, {
       ...admission,
       userDataPath: '/tmp/opencove-fault-model',
+      cleanupUnreferencedSession: id => runtime.owner.cleanup(id),
       getPersistenceStore: async () => store,
       approvedWorkspaces: {
         isPathApproved: async () => {
           boundary('validation', 'before')
           const allowed = !injected('validation')
+          oracle.approve(name(), allowed)
           boundary('validation', 'after')
           return allowed
         },
@@ -288,15 +333,16 @@ export async function faultHarness(config: FaultCase) {
       topology: {} as never,
       ptyRuntime: {
         spawnSession: async () => {
+          oracle.effect(name())
           boundary('spawn', 'before')
           fail('spawn')
-          const id = model.spawn(actor.getStore()?.name ?? 'prepare')
+          const id = node().spawn(name())
           boundary('spawn', 'after')
           return { sessionId: id }
         },
       } as never,
       ptyStreamHub: {
-        isSessionActive: (id: string) => model.alive.has(id),
+        isSessionActive: (id: string) => models.some(value => value.alive.has(id)),
         registerSessionMetadata: () => {
           boundary('registration', 'before')
           fail('registration')
@@ -307,62 +353,90 @@ export async function faultHarness(config: FaultCase) {
     await runtime.ready()
   }
   await boot()
-
-  const completePrimary = async () => {
-    for (let turn = 0; turn < 250 && !tasks[0]?.done; turn++) {
+  const turns = async (done: () => boolean) => {
+    for (let turn = 0; turn < 500 && !done(); turn++) {
+      // Deterministic scheduler; it neither creates requests nor invokes lifecycle helpers.
       // oxlint-disable-next-line no-await-in-loop
       await Promise.resolve()
     }
-    if (!tasks[0]?.done) {
-      throw new Error(`primary stalled\n${model.trace.join('\n')}`)
+    if (!done()) {
+      throw new Error(`fault explorer stalled\n${models.flatMap(value => value.trace).join('\n')}`)
     }
   }
+  const completePrimary = () => turns(() => tasks[0]?.done)
   const settle = async () => {
     await completePrimary()
     quiet = true
-    model.blockedRead = false
+    if (!config.outageRetries) {
+      models.forEach(value => {
+        value.blockedRead = false
+      })
+    }
     if (stopped) {
       stopped = false
       await boot()
-      if (model.present) {
-        prepare()
+      for (const value of models.filter(candidate => candidate.present)) {
+        prepare(value.nodeId, `restart-${value.nodeId}`)
       }
     }
-    for (let turn = 0; turn < 250; turn++) {
-      // This is a deterministic microtask scheduler, not a wall-clock sleep.
+    await turns(() => tasks.every(task => task.done))
+    for (let timer = 0; timer < 20 && vi.getTimerCount() > 0; timer++) {
+      if (config.outageRetries && timer >= config.outageRetries) {
+        models.forEach(value => {
+          value.blockedRead = false
+        })
+      }
+      // Only execute timers scheduled by the product, including retry/reconciliation.
       // oxlint-disable-next-line no-await-in-loop
-      await Promise.resolve()
-      if (tasks.every(task => task.done)) {
-        break
-      }
-      if (turn === 249) {
-        throw new Error(`fault explorer stalled\n${model.trace.join('\n')}`)
-      }
+      await vi.advanceTimersToNextTimerAsync()
     }
-    // Reconcile unknown writes using actual owner reads; retries have no new side effects.
-    const next = runtime.owner.reserve('maintenance')
-    await runtime.owner.assertReady(next).catch(() => {})
-    const agent = runtime.owner.reserve('agent')
-    await runtime.owner.assertReady(agent).catch(() => {})
-    for (let turn = 0; turn < 30; turn++) {
-      // oxlint-disable-next-line no-await-in-loop
-      await Promise.resolve()
+    models.forEach(value => {
+      value.blockedRead = false
+    })
+    for (const task of tasks) {
+      oracle.outcome(task.name, task.value, config, faultReached, eventReached)
     }
     check(true)
   }
   return {
+    runtime: () => runtime,
+    cleanup: (sessionId: string) =>
+      ingress.runInAsyncScope(() =>
+        surface.invoke(context, {
+          kind: 'command',
+          id: 'session.cleanupUnreferenced',
+          payload: { sessionId },
+        }),
+      ),
     model,
+    peer,
+    models,
+    oracle,
     config,
     start: () => launch('primary'),
+    launch,
+    prepare,
+    remove,
     settle,
     completePrimary,
     pending: () => runtime.owner.pendingCleanupRuntimeIds(),
     primary: () => tasks[0]?.value,
+    tasks,
+    until: turns,
     coverage: () => ({ faultReached, eventReached }),
+    pause: (nodeId: string) => {
+      gates.set(nodeId, { entered: false, release: deferred<void>() })
+    },
+    paused: (nodeId: string) => gates.get(nodeId)?.entered === true,
+    release: (nodeId: string) => {
+      gates.get(nodeId)?.release.resolve()
+      gates.delete(nodeId)
+    },
     dispose: () => {
       runtime.dispose()
       commits.clear()
       actor.disable()
+      ingress.emitDestroy()
     },
   }
 }

@@ -19,7 +19,15 @@ export const steps = [
 ] as const
 export type EffectStep = (typeof steps)[number]
 export type Edge = `${EffectStep}:${'before' | 'after'}`
-export type ConcurrentEvent = 'none' | 'delete' | 'newer' | 'prepare' | 'restart'
+export type ConcurrentEvent =
+  | 'none'
+  | 'delete'
+  | 'newer'
+  | 'prepare'
+  | 'restart'
+  | 'peerLaunch'
+  | 'peerRecovery'
+  | 'peerDelete'
 export const faults = [
   'none',
   'identity',
@@ -27,6 +35,7 @@ export const faults = [
   'admissionKill',
   'spawn',
   'registration',
+  'onStarted',
   'handoffFailure',
   'handoffUnknown',
   'handoffUnknownCommitted',
@@ -47,6 +56,7 @@ export interface FaultCase {
   event: ConcurrentEvent
   edge: Edge
   initial: 'owned' | 'fallback' | 'adoption'
+  outageRetries?: number
 }
 
 /** Independent oracle: physical processes, durable references and successful kills. */
@@ -57,9 +67,13 @@ export class ManagedClaudeFaultModel {
   readonly technical = new Map<string, string>()
   readonly trace: string[] = []
   readonly violations: string[] = []
-  readonly tuple = { resumeSessionId: 'original', resumeSessionIdVerified: true }
+  readonly tuple: { resumeSessionId: string; resumeSessionIdVerified: boolean }
+  readonly committed = new Map<string, { runtimeSessionId: string | null; tuple: unknown }>()
+  readonly created = new Map<string, string>()
+  readonly original: string
+  readonly initiallyAlive: boolean
   binding: ManagedClaudeBindingObservation | null
-  nodeRuntime: string | null = 'original'
+  nodeRuntime: string | null
   present = true
   retired = false
   revision = 1
@@ -69,15 +83,25 @@ export class ManagedClaudeFaultModel {
   blockedRead = false
   private nextRuntime = 0
 
-  constructor(readonly initial: FaultCase['initial']) {
-    this.alive.set('original', 'agent')
+  constructor(
+    readonly initial: FaultCase['initial'],
+    readonly nodeId = 'agent',
+    cold = false,
+  ) {
+    this.original = nodeId === 'agent' ? 'original' : `${nodeId}-original`
+    this.tuple = { resumeSessionId: this.original, resumeSessionIdVerified: true }
+    this.nodeRuntime = this.original
+    this.initiallyAlive = !cold
+    if (!cold) {
+      this.alive.set(this.original, nodeId)
+    }
     this.binding =
       initial === 'adoption'
         ? null
         : {
-            nodeId: 'agent',
+            nodeId: this.nodeId,
             activationId: 'initial',
-            runtimeSessionId: initial === 'owned' ? 'original' : null,
+            runtimeSessionId: initial === 'owned' ? this.original : null,
             tuple: this.tuple,
             nodeSeen: true,
             bindingRevision: 1,
@@ -89,6 +113,12 @@ export class ManagedClaudeFaultModel {
     return this.binding?.runtimeSessionId === id || (this.present && this.nodeRuntime === id)
   }
 
+  context() {
+    return this.present
+      ? { kind: 'agent', provider: 'claude-code', directory: '/repo', route: 'null' }
+      : null
+  }
+
   observation(nodeId: string) {
     if (this.blockedRead) {
       throw new Error('storage unavailable at clean boundary')
@@ -98,9 +128,7 @@ export class ManagedClaudeFaultModel {
       retired: this.retired,
       binding: this.binding,
       nodeRuntimeSessionId: this.nodeRuntime,
-      context: this.present
-        ? { kind: 'agent', provider: 'claude-code', directory: '/repo', route: 'null' }
-        : null,
+      context: this.context(),
     }
   }
 
@@ -118,7 +146,7 @@ export class ManagedClaudeFaultModel {
           nodes: this.present
             ? [
                 {
-                  id: 'agent',
+                  id: this.nodeId,
                   kind: 'agent',
                   sessionId: this.nodeRuntime ?? '',
                   title: 'Agent',
@@ -171,12 +199,17 @@ export class ManagedClaudeFaultModel {
       observedRevision: this.revision,
     }
     this.nodeRuntime = input.runtimeSessionId
+    this.committed.set(input.activationId, {
+      runtimeSessionId: input.runtimeSessionId,
+      tuple: { ...input.tuple },
+    })
     return { status: 'committed' as const, revision: this.revision }
   }
 
   spawn(actor: string): string {
-    const id = `runtime-${++this.nextRuntime}`
-    this.alive.set(id, 'agent')
+    const id = `${this.nodeId}-runtime-${++this.nextRuntime}`
+    this.alive.set(id, this.nodeId)
+    this.created.set(id, actor)
     this.technical.set(id, actor)
     return id
   }
@@ -215,12 +248,15 @@ export class ManagedClaudeFaultModel {
   check(cleanupIds: readonly string[], quiescent = false): void {
     this.verify(new Set(cleanupIds).size === cleanupIds.length, 'duplicate cleanup owner')
     if (!this.effectAdmitted && !this.changedByOther) {
-      this.verify(this.nodeRuntime === 'original', 'pre-admission node detached')
+      this.verify(this.nodeRuntime === this.original, 'pre-admission node detached')
       this.verify(
-        (this.binding?.runtimeSessionId ?? null) === (this.initial === 'owned' ? 'original' : null),
+        (this.binding?.runtimeSessionId ?? null) ===
+          (this.initial === 'owned' ? this.original : null),
         'pre-admission ledger detached',
       )
-      this.verify(this.alive.has('original'), 'pre-admission healthy runtime killed')
+      if (this.initiallyAlive) {
+        this.verify(this.alive.has(this.original), 'pre-admission healthy runtime killed')
+      }
     }
     for (const [id, nodeId] of this.alive) {
       if (!this.referenced(id)) {
@@ -229,14 +265,14 @@ export class ManagedClaudeFaultModel {
           `${id}: missing cleanup`,
         )
       }
-      this.verify(nodeId === 'agent', `${id}: foreign runtime`)
+      this.verify(nodeId === this.nodeId, `${id}: foreign runtime`)
     }
     if (quiescent) {
       this.verify(cleanupIds.length === 0, 'cleanup did not converge after recovery of its ports')
       this.verify(this.technical.size === 0, 'technical runtime custody was not handed off')
       for (const id of [this.binding?.runtimeSessionId, this.present ? this.nodeRuntime : null]) {
         if (id) {
-          this.verify(this.alive.get(id) === 'agent', `${id}: dead/foreign reference`)
+          this.verify(this.alive.get(id) === this.nodeId, `${id}: dead/foreign reference`)
         }
       }
     }
@@ -246,7 +282,7 @@ export class ManagedClaudeFaultModel {
     expect(this.violations, this.trace.join('\n')).toEqual([])
   }
 
-  private verify(valid: boolean, failure: string): void {
+  verify(valid: boolean, failure: string): void {
     if (!valid) {
       this.violations.push(`${failure} at ${this.trace.at(-1) ?? 'initial'}`)
     }

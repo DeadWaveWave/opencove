@@ -226,6 +226,7 @@ export function createManagedClaudeLaunchRuntime(deps: {
           pendingLaunches.set(attempt.nodeId, pending)
         }
       }
+      let launchStarted = false
       try {
         // Ready-store ownership is definitive before asynchronous identity resolution.
         // Unowned candidates coordinate only after managed local admission.
@@ -311,6 +312,8 @@ export function createManagedClaudeLaunchRuntime(deps: {
             }
           },
         }
+        launchStarted = true
+        owner.beginLaunch(attempt)
         return await scope.run(executionScope, async () => {
           let candidate: LaunchAgentSessionResult
           try {
@@ -376,7 +379,13 @@ export function createManagedClaudeLaunchRuntime(deps: {
           }
         })
       } finally {
-        releasePending()
+        try {
+          if (launchStarted) {
+            await owner.finishLaunch(attempt!)
+          }
+        } finally {
+          releasePending()
+        }
       }
     },
   }

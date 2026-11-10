@@ -130,7 +130,7 @@ describeWithElectronNativeModules('managed Claude fallback runtime replacement',
         binding: { runtimeSessionId: null, tuple: tupleA },
       })
       expect(kill).toHaveBeenCalledTimes(1)
-      await owner.assertReady(owner.reserve('maintenance'))
+      await owner.assertReady(owner.reserve('agent'))
       expect(kill).toHaveBeenCalledTimes(2)
       expect(alive.size).toBe(0)
       expect(owner.pendingCleanupRuntimeIds()).toEqual([])
@@ -359,9 +359,9 @@ describeWithElectronNativeModules('managed Claude fallback runtime replacement',
       await deletionCleanup
       expect(steps).toEqual(['deletion', 'finalization'])
       expect(candidateKills).toBe(1)
-      await owner.assertReady(owner.reserve('next'))
+      await owner.assertReady(owner.reserve('agent'))
       expect(candidateKills).toBe(2)
-      await owner.assertReady(owner.reserve('next'))
+      await owner.assertReady(owner.reserve('agent'))
       expect(candidateKills).toBe(2)
     } finally {
       unsubscribe()

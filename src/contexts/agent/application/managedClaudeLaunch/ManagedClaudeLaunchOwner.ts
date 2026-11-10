@@ -38,6 +38,7 @@ export class ManagedClaudeLaunchOwner {
     this.runtimeCleanup = new ManagedClaudeRuntimeCleanup(
       ports,
       id =>
+        this.effects.candidateHeld(id) ||
         this.effects.retirementHeld(id) ||
         [...this.obligations.values()].some(input => {
           const attempt = this.activationAttempts.get(input)
@@ -79,7 +80,7 @@ export class ManagedClaudeLaunchOwner {
       }
       // Cleanup may yield to another activation for this node; recheck after it finishes.
       // oxlint-disable-next-line no-await-in-loop
-      await this.runtimeCleanup.flush()
+      await this.effects.cleanupNode(attempt.nodeId)
       this.assertCurrent(attempt)
       if (!this.obligations.has(attempt.nodeId)) {
         return
@@ -167,6 +168,14 @@ export class ManagedClaudeLaunchOwner {
 
   hasEffectAdmission(attempt: ManagedClaudeLaunchAttempt): boolean {
     return this.effects.admitted(attempt)
+  }
+
+  beginLaunch(attempt: ManagedClaudeLaunchAttempt): void {
+    this.effects.begin(attempt)
+  }
+
+  finishLaunch(attempt: ManagedClaudeLaunchAttempt): Promise<void> {
+    return this.effects.finish(attempt)
   }
 
   trackCreatedRuntime(attempt: ManagedClaudeLaunchAttempt, id: string): void {
@@ -270,7 +279,6 @@ export class ManagedClaudeLaunchOwner {
     if (
       !this.ports.scheduleReconciliation ||
       this.disposed ||
-      retry >= 3 ||
       this.obligations.get(input.nodeId) !== input
     ) {
       return
@@ -287,7 +295,7 @@ export class ManagedClaudeLaunchOwner {
         return
       }
       void this.reconcile(input).catch(() => this.scheduleReconciliation(input, retry + 1))
-    }, [250, 1000, 3000][retry])
+    }, [250, 1000, 3000][Math.min(retry, 2)])
     this.reconciliationTimers.set(input.nodeId, cancel)
   }
 
@@ -412,6 +420,7 @@ export class ManagedClaudeLaunchOwner {
     if (this.obligations.has(attempt.nodeId)) {
       await this.assertReady(attempt)
     }
+    await this.finishLaunch(attempt)
     const observation = this.ports.observeNode(attempt.nodeId)
     if (!observation.binding) {
       return null
@@ -443,12 +452,13 @@ export class ManagedClaudeLaunchOwner {
     for (const id of nodeIds) {
       this.attempts.delete(id)
       this.admitted.delete(id)
+      void this.effects.cleanupNode(id)
     }
-    void this.runtimeCleanup.flush()
   }
 
   dispose(): void {
     this.disposed = true
+    this.runtimeCleanup.dispose()
     for (const cancel of this.reconciliationTimers.values()) {
       cancel()
     }

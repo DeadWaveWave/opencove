@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { afterAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { writeFileSync } from 'node:fs'
 import { faultHarness } from './managedClaudeFaultHarness'
 import { faults, steps, type FaultCase, type ConcurrentEvent } from './managedClaudeFaultModel'
@@ -12,7 +12,19 @@ vi.mock('../../../src/contexts/agent/infrastructure/cli/AgentLaunchSpawnResolver
   }),
 }))
 
-const events: ConcurrentEvent[] = ['none', 'delete', 'newer', 'prepare', 'restart']
+beforeEach(() => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }))
+afterEach(() => vi.useRealTimers())
+
+const events: ConcurrentEvent[] = [
+  'none',
+  'delete',
+  'newer',
+  'prepare',
+  'restart',
+  'peerLaunch',
+  'peerRecovery',
+  'peerDelete',
+]
 const allCases: FaultCase[] = faults.flatMap(fault =>
   events.flatMap(event =>
     steps.flatMap(step =>
@@ -84,10 +96,10 @@ describe('managed Claude owner and wrapper fault matrix', () => {
         coverage.push({
           ...config,
           ...f.coverage(),
-          steps: f.model.trace.length,
-          violations: f.model.violations,
+          steps: f.models.reduce((count, model) => count + model.trace.length, 0),
+          violations: f.models.flatMap(model => model.violations),
         })
-        f.model.assertValid()
+        f.models.forEach(model => model.assertValid())
       } finally {
         f.dispose()
       }
@@ -115,13 +127,13 @@ describe('managed Claude owner and wrapper fault matrix', () => {
       expect(f.model.killAttempts.size).toBe(0)
       expect(f.pending()).toEqual([])
       await f.settle()
-      f.model.assertValid()
+      f.models.forEach(model => model.assertValid())
     } finally {
       f.dispose()
     }
   })
 
-  it('retains the failed predecessor kill through wrapper settlement until the next request retries', async () => {
+  it('retains the failed predecessor kill through wrapper settlement until its product timer retries', async () => {
     const f = await faultHarness({
       initial: 'owned',
       fault: 'admissionKill',
@@ -143,7 +155,7 @@ describe('managed Claude owner and wrapper fault matrix', () => {
       expect(f.model.killAttempts.get('original')).toBe(2)
       expect(f.model.alive.size).toBe(0)
       expect(f.pending()).toEqual([])
-      f.model.assertValid()
+      f.models.forEach(model => model.assertValid())
     } finally {
       f.dispose()
     }

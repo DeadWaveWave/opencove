@@ -32,9 +32,9 @@ it('retries a failed deletion kill queued between confirmation and deferred fina
     expect(deletionQueued).toBe(true)
     expect(candidateKills).toBe(1)
     expect(f.owner.canAdmitRuntimeWrite('agent', 'candidate')).toBe(false)
-    await f.owner.assertReady(f.owner.reserve('next'))
+    await f.owner.assertReady(f.owner.reserve('agent'))
     expect(candidateKills).toBe(2)
-    await f.owner.assertReady(f.owner.reserve('next'))
+    await f.owner.assertReady(f.owner.reserve('agent'))
     expect(candidateKills).toBe(2)
   } finally {
     f.owner.dispose()
@@ -185,3 +185,78 @@ it('rechecks current readiness when a newer obligation appears during finalizati
     f.owner.dispose()
   }
 })
+
+it('schedules a product retry for a newer claim after the shared exact kill succeeds', async () => {
+  vi.useFakeTimers()
+  const entered = deferred<void>(),
+    finish = deferred<void>()
+  const read = vi.fn(() => false),
+    kill = vi.fn(async () => {
+      entered.resolve()
+      await finish.promise
+    })
+  const cleanup = new ManagedClaudeRuntimeCleanup(
+    {
+      isRuntimeReferenced: read,
+      killExactRuntime: kill,
+      scheduleReconciliation: (callback, delay) => {
+        const timer = setTimeout(callback, delay)
+        return () => clearTimeout(timer)
+      },
+    },
+    () => false,
+  )
+  try {
+    const first = cleanup.cleanup('runtime')
+    await entered.promise
+    const later = cleanup.cleanup('runtime')
+    finish.resolve()
+    await Promise.all([first, later])
+    expect(cleanup.pendingRuntimeIds()).toEqual(['runtime'])
+    expect(vi.getTimerCount()).toBe(1)
+    await vi.runOnlyPendingTimersAsync()
+    expect(read).toHaveBeenCalledTimes(2)
+    expect(kill).toHaveBeenCalledTimes(1)
+    expect(cleanup.pendingRuntimeIds()).toEqual([])
+  } finally {
+    finish.resolve()
+    cleanup.dispose()
+    vi.useRealTimers()
+  }
+})
+
+it.each(['reference', 'kill'] as const)(
+  'cancels a %s-failure cleanup retry and ignores its late callback after disposal',
+  async failure => {
+    let callback!: () => void
+    const cancel = vi.fn()
+    const read = vi.fn(() => {
+      if (failure === 'reference') {
+        throw new Error('read unavailable')
+      }
+      return false
+    })
+    const kill = vi.fn(async () => {
+      throw new Error('kill unavailable')
+    })
+    const cleanup = new ManagedClaudeRuntimeCleanup(
+      {
+        isRuntimeReferenced: read,
+        killExactRuntime: kill,
+        scheduleReconciliation: retry => {
+          callback = retry
+          return cancel
+        },
+      },
+      () => false,
+    )
+    expect(await cleanup.cleanup('runtime')).toBe(false)
+    expect(cleanup.pendingRuntimeIds()).toEqual(['runtime'])
+    cleanup.dispose()
+    expect(cancel).toHaveBeenCalledTimes(1)
+    callback()
+    await Promise.resolve()
+    expect(read).toHaveBeenCalledTimes(1)
+    expect(kill).toHaveBeenCalledTimes(failure === 'kill' ? 1 : 0)
+  },
+)

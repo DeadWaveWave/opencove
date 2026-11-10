@@ -6,9 +6,47 @@ export class ManagedClaudeAttemptEffects {
   private readonly admissions = new WeakMap<ManagedClaudeLaunchAttempt, Promise<void>>()
   private readonly previous = new WeakMap<ManagedClaudeLaunchAttempt, Set<string>>()
   private readonly created = new WeakMap<ManagedClaudeLaunchAttempt, Set<string>>()
+  private readonly launching = new Set<ManagedClaudeLaunchAttempt>()
+  private readonly finished = new WeakMap<ManagedClaudeLaunchAttempt, Promise<void>>()
   private readonly retiring = new Map<string, Set<ManagedClaudeLaunchAttempt>>()
 
   constructor(private readonly cleanup: ManagedClaudeRuntimeCleanup) {}
+
+  begin(attempt: ManagedClaudeLaunchAttempt): void {
+    this.launching.add(attempt)
+    this.finished.delete(attempt)
+  }
+
+  candidateHeld(id: string): boolean {
+    return [...this.launching].some(attempt => this.created.get(attempt)?.has(id))
+  }
+
+  finish(attempt: ManagedClaudeLaunchAttempt): Promise<void> {
+    const existing = this.finished.get(attempt)
+    if (existing) {
+      return existing
+    }
+    this.launching.delete(attempt)
+    const ids = new Set([
+      ...(this.created.get(attempt) ?? []),
+      ...(this.previous.get(attempt) ?? []),
+    ])
+    const completion = Promise.all(
+      [...ids].map(id => this.cleanup.cleanupRetained(id, false)),
+    ).then(() => {})
+    this.finished.set(attempt, completion)
+    return completion
+  }
+
+  private retain(attempt: ManagedClaudeLaunchAttempt, id: string): void {
+    this.cleanup.retain(id, attempt.nodeId)
+  }
+
+  async cleanupNode(nodeId: string): Promise<void> {
+    await Promise.all(
+      this.cleanup.pendingRuntimeIds(nodeId).map(id => this.cleanup.cleanupRetained(id)),
+    )
+  }
 
   admitted(attempt: ManagedClaudeLaunchAttempt): boolean {
     return this.admissions.has(attempt)
@@ -33,14 +71,14 @@ export class ManagedClaudeAttemptEffects {
     const ids = this.previous.get(attempt) ?? new Set<string>()
     ids.add(id)
     this.previous.set(attempt, ids)
-    this.cleanup.retain(id)
+    this.retain(attempt, id)
   }
 
   retainCreated(attempt: ManagedClaudeLaunchAttempt, id: string): void {
     const ids = this.created.get(attempt) ?? new Set<string>()
     ids.add(id)
     this.created.set(attempt, ids)
-    this.cleanup.retain(id)
+    this.retain(attempt, id)
   }
 
   owns(attempt: ManagedClaudeLaunchAttempt, id: string): boolean {
@@ -67,7 +105,7 @@ export class ManagedClaudeAttemptEffects {
 
   renewPrevious(attempt: ManagedClaudeLaunchAttempt): void {
     for (const id of this.previous.get(attempt) ?? []) {
-      this.cleanup.retain(id)
+      this.retain(attempt, id)
     }
   }
 

@@ -410,3 +410,11 @@ candidate 与 predecessor，只有 definitive reconciliation 才能释放保护�
 Cleanup owner 保留成功 exact-ID kill 的终止证据；后续 claim 仍复查 references，读取失败仍保留责任，
 但不重复 kill 已成功终止的同一 ID。该证据仅在当前 Worker owner 生命周期内有效；新 PTY 使用新 UUID，
 不能把 stream hub 缺少 active session 当作成功 kill 的证明。
+
+Managed launch scope 从 handler 执行前到 wrapper finally 收尾持有 created candidate custody，
+不依赖 activation obligation 是否已经建立。其他 node 的 admission、recovery 或 deletion 不得清理
+该 candidate；readiness/deletion 只处理对应 node 的已知 IDs。scope 结束时统一释放 hold，并对
+created/predecessor IDs 做 reference-checked cleanup；首次 adoption 无 ledger row 也必须清理失败 candidate。
+失败 read/kill 与旧 work 留下的新 claim 使用按 exact ID 的 single-flight timer 重试；unknown
+activation 以有上限的延迟持续 reconciliation，不再因尝试次数耗尽而等待外部请求。dispose 取消
+该 owner 的 timer；timer、scope completion 和新 claim 仍保留各自 identity/generation guards。
