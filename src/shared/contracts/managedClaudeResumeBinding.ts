@@ -9,6 +9,10 @@ export interface ActivateManagedClaudeRuntimeInput {
   activationId: string
   runtimeSessionId: string | null
   tuple: ManagedResumeBindingTuple
+  /** Internal first-adoption compare image, checked inside the activation transaction. */
+  adoptionSnapshot?: string
+  /** Cold recovery only; explicit user relaunch may start a stopped node. */
+  requireRecoverable?: boolean
   expected?: { activationId: string | null; tuple: ManagedResumeBindingTuple }
 }
 

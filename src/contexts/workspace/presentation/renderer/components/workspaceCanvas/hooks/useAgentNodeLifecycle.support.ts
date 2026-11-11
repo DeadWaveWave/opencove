@@ -19,12 +19,16 @@ export type AgentRuntimeNode = Node<TerminalNodeData> & {
   }
 }
 
-export interface RelaunchAgentNodeOptions {
+export interface AgentNodeLaunchOverrides {
+  executionDirectory?: string
+  expectedDirectory?: string | null
+  prompt?: string
+}
+
+export interface RelaunchAgentNodeOptions extends AgentNodeLaunchOverrides {
   nodeId: string
   mode: 'new' | 'resume'
   intent?: ManagedClaudeLaunchIntent
-  executionDirectory?: string
-  expectedDirectory?: string | null
   resumeSessionId?: string | null
   startedAtOverride?: string
 }
@@ -83,6 +87,7 @@ export async function launchAgentRuntime({
   mergedEnv,
   mode,
   executionDirectory,
+  prompt = node.data.agent.prompt,
   resumeSessionId,
   agentFullAccess,
   codexReuseRunningAppServer,
@@ -97,6 +102,7 @@ export async function launchAgentRuntime({
   mergedEnv: Record<string, string>
   mode: 'new' | 'resume'
   executionDirectory: string
+  prompt?: string
   resumeSessionId: string | null
   agentFullAccess: boolean
   codexReuseRunningAppServer: boolean
@@ -135,7 +141,7 @@ export async function launchAgentRuntime({
         canvasNodeId: node.id,
         mountId,
         cwdUri,
-        prompt: node.data.agent.prompt,
+        prompt,
         provider: node.data.agent.provider,
         mode,
         model: node.data.agent.model,
@@ -178,7 +184,7 @@ export async function launchAgentRuntime({
     provider: node.data.agent.provider,
     cwd: executionDirectory,
     profileId: node.data.profileId ?? defaultTerminalProfileId,
-    prompt: node.data.agent.prompt,
+    prompt,
     mode,
     model: node.data.agent.model,
     resumeSessionId: mode === 'resume' ? resumeSessionId : null,

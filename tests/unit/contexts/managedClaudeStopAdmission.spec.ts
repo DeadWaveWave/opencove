@@ -53,3 +53,44 @@ it('freezes an existing binding before reservation and keeps the current attempt
   expect(f.runtime.owner.isCurrent(attempt)).toBe(true)
   f.runtime.dispose()
 })
+
+it.each(['resumeCurrent', 'launchNew', 'resumeConversation'] as const)(
+  'returns typed freeze refusal before stale/identity checks or reservations for %s',
+  async kind => {
+    const f = compatibilityFixture({ enabled: true, writesEnabled: false })
+    await f.runtime.ready()
+    await f.store.activateManagedClaudeRuntime({
+      nodeId: 'agent',
+      activationId: 'current',
+      runtimeSessionId: 'live',
+      tuple: { resumeSessionId: 'B', resumeSessionIdVerified: true },
+    })
+    const reserve = vi.spyOn(f.runtime.owner, 'reserve')
+    const resume = vi.spyOn(f.runtime.owner.reservations, 'resume')
+    f.store.readAppState.mockRejectedValue(new Error('Identity resolution must not run'))
+    try {
+      expect(
+        await f.launch({
+          cwd: '/stale-directory',
+          intent:
+            kind === 'resumeCurrent'
+              ? { kind }
+              : {
+                  kind,
+                  expected: absent,
+                  ...(kind === 'resumeConversation' ? { resumeSessionId: 'A' } : {}),
+                },
+        }),
+      ).toMatchObject({
+        ok: false,
+        error: { code: 'agent.managed_launch_rejected', details: { reason: 'writesDisabled' } },
+      })
+      expect(reserve).not.toHaveBeenCalled()
+      expect(resume).not.toHaveBeenCalled()
+      expect(f.store.readAppState).not.toHaveBeenCalled()
+      expect(f.spawn).not.toHaveBeenCalled()
+    } finally {
+      f.runtime.dispose()
+    }
+  },
+)

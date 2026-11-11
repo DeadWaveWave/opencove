@@ -1,6 +1,7 @@
 ## Claude conversations after clearing
 
-With managed Claude bindings enabled, OpenCove saves a new conversation as the restart target
+For eligible Worker-owned local Claude agent windows, managed recovery is enabled by default.
+OpenCove saves a new conversation as the restart target
 only after a successful response checkpoint has been confirmed in that conversation's transcript.
 Clearing without completing a new response restores the previously saved conversation after restart.
 With repeated clears, this means the latest successfully saved conversation.
@@ -13,7 +14,7 @@ that the new conversation was saved. An uncertain transaction is read back befor
 A committed target survives renderer disconnection. A Worker crash before commitment can lose
 in-memory qualification and restore the previous target; crash recovery for this work is not promised.
 
-启用 managed Claude bindings 后，OpenCove 会在新对话的 transcript 中确认一次成功响应，
+符合条件的 Worker 本地 Claude 智能体窗口默认启用 managed recovery。OpenCove 会在新对话的 transcript 中确认一次成功响应，
 再将该对话保存为重启后的恢复目标。清空后没有完成新响应时，重启会恢复上次已保存的对话。
 连续清空时，以最近成功保存的对话为准；后续响应失败不会撤销此前已确认的恢复目标。
 保存恢复目标不代表 Agent 已准备好接收新提示，也不会结束正在进行的任务。
@@ -29,8 +30,11 @@ prompt tickets, the invocation's highest qualified ordinal, and unresolved rebin
 checkpoint and a user-to-assistant UUID parent chain. The ledger remains the only restart authority.
 No new persisted schema, provider-observation write path, or public query authority is introduced.
 
-The experimental binding flag and managed-write kill switch gate the new producer. Existing owned-row
-protection and W8 launch authority remain active when the producer is off. A same-ID clear resets
+To pause adoption, managed restarts, and saving new resume targets, restart the actual Worker with
+`OPENCOVE_MANAGED_CLAUDE_BINDINGS=0`. Remove the override and restart the Worker to resume updates.
+Existing saved targets remain protected; freeze is not a database downgrade procedure.
+An enabled retiring Worker may finish previously admitted saves during graceful shutdown.
+A frozen replacement admits no new clear qualifications. A same-ID clear resets
 occurrence evidence; equality with the durable target alone makes its eventual binding a no-op.
 Unqualified newer occurrences do not cancel admitted earlier reads. Qualified higher ordinals win,
 including after their commit. Retired-ID reuse and ambiguous provenance cannot mint B4b authority.

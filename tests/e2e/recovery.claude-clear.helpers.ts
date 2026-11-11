@@ -170,7 +170,6 @@ async function configureClearHarness(testInfo: TestInfo, root: string) {
     OPENCOVE_TEST_CLAUDE_HOOK_INSTALL_FAILURE: '0',
     OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
     OPENCOVE_WORKER_CLIENT: '1',
-    OPENCOVE_EXPERIMENTAL_MANAGED_CLAUDE_BINDINGS: '1',
     OPENCOVE_TEST_CLAUDE_CLEAR_PROOF_HOLD: join(root, 'proof-hold'),
   }
   try {

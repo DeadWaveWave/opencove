@@ -25,9 +25,7 @@ export function createManagedClaudeDeliveryRuntime(input: {
     getPersistenceStore: commitPublisher.getStore,
     killExactRuntime: input.killExactRuntime,
     hasRuntime: input.hasRuntime,
-    adoptionEnabled: () =>
-      managedClaudeWritesEnabled() &&
-      process.env.OPENCOVE_EXPERIMENTAL_MANAGED_CLAUDE_BINDINGS === '1',
+    adoptionEnabled: managedClaudeWritesEnabled,
     projectCommittedBinding: input.projectCommittedBinding,
     writesEnabled: managedClaudeWritesEnabled,
     publishCommittedActivation: event =>

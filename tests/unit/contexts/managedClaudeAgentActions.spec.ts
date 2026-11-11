@@ -116,9 +116,66 @@ describe('managed Claude task and role actions', () => {
     expect(context.nodesRef.current[1].data.agent).toMatchObject({
       ...tuple,
       executionDirectory: '/repo',
+      prompt: 'Previous task',
     })
     expect(context.onRequestPersistFlush).toHaveBeenCalledTimes(1)
   })
+  it.each(['claude-code', 'codex'] as const)(
+    'prepares unowned %s task reuse without clearing a Claude target before dispatch',
+    async provider => {
+      vi.mocked(readManagedClaudeExecutionContext).mockResolvedValue(null)
+      const context = taskContext()
+      const agent = context.nodesRef.current[1].data.agent!
+      agent.provider = provider
+      const original = {
+        resumeSessionId: agent.resumeSessionId,
+        resumeSessionIdVerified: agent.resumeSessionIdVerified,
+      }
+      vi.mocked(context.launchAgentInNode).mockImplementation(async () => {
+        expect(context.nodesRef.current[1].data.agent).toMatchObject({
+          ...(provider === 'claude-code'
+            ? original
+            : { resumeSessionId: null, resumeSessionIdVerified: false }),
+          prompt: provider === 'claude-code' ? 'Previous task' : 'Next task',
+          launchMode: 'new',
+        })
+      })
+      await runTaskAgentAction('task', context)
+      expect(context.launchAgentInNode).toHaveBeenCalledExactlyOnceWith('agent', 'new', {
+        prompt: 'Next task',
+        executionDirectory: '/repo',
+        expectedDirectory: '/repo',
+      })
+    },
+  )
+  it.each(['workspace', 'custom'] as const)(
+    'keeps the stored Claude prompt and directory when %s task reuse fails',
+    async directoryMode => {
+      vi.mocked(readManagedClaudeExecutionContext).mockResolvedValue(null)
+      vi.mocked(resolveWorkspaceAgentLaunchBinding).mockResolvedValue({
+        mountId: null,
+        executionDirectory: '/moved-task',
+      })
+      const context = taskContext()
+      Object.assign(context.nodesRef.current[1].data.agent!, { directoryMode, prompt: '' })
+      vi.mocked(context.launchAgentInNode).mockImplementation(async (_nodeId, _mode, request) => {
+        const directory = directoryMode === 'workspace' ? '/moved-task' : '/repo'
+        expect(request).toEqual({
+          prompt: 'Next task',
+          executionDirectory: directory,
+          expectedDirectory: directory,
+        })
+        throw new Error('launch failed')
+      })
+      await expect(runTaskAgentAction('task', context)).rejects.toThrow('launch failed')
+      expect(context.nodesRef.current[1].data.agent).toMatchObject({
+        ...tuple,
+        prompt: '',
+        executionDirectory: '/repo',
+        expectedDirectory: '/repo',
+      })
+    },
+  )
   it('refuses task reuse in a different directory before flush or launch', async () => {
     const context = taskContext()
     vi.mocked(resolveWorkspaceAgentLaunchBinding).mockResolvedValue({

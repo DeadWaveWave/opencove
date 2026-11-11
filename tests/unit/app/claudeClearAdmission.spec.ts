@@ -4,15 +4,11 @@ import type { ManagedClaudeLaunchOwner } from '../../../src/contexts/agent/appli
 import type { AgentHookChannel } from '../../../src/shared/runtime/agentHook/agentHookChannel'
 import type { ClaudeBindingEvidence } from '../../../src/shared/runtime/agentHook/claudeBindingEvidence'
 afterEach(() => vi.unstubAllEnvs())
-it.each([
-  [false, false, true, 0],
-  [false, true, true, 0],
-  [true, false, true, 0],
-  [true, true, true, 1],
-  [true, true, false, 0],
-])('production gates owned=%s experimental=%s writes=%s', (owned, enabled, writes, tickets) => {
-  vi.stubEnv('OPENCOVE_EXPERIMENTAL_MANAGED_CLAUDE_BINDINGS', enabled ? '1' : '0')
-  vi.stubEnv('OPENCOVE_MANAGED_CLAUDE_BINDINGS', writes ? '1' : '0')
+it.each(
+  [undefined, '1', '0'].flatMap(value => [false, true].map(owned => [owned, value] as const)),
+)('production producer owned=%s override=%s', (owned, value) => {
+  vi.stubEnv('OPENCOVE_MANAGED_CLAUDE_BINDINGS', value)
+  const tickets = owned && value !== '0' ? 1 : 0
   let observe!: (evidence: ClaudeBindingEvidence) => void
   const admission = { identity: Symbol() }
   const qualification = {
@@ -54,7 +50,7 @@ it.each([
       })
     }
     expect(qualification.beginQualification).toHaveBeenCalledTimes(Number(tickets))
-    if (!enabled || !writes) {
+    if (value === '0') {
       expect(qualification.openInvocation).not.toHaveBeenCalled()
     }
   } finally {

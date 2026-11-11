@@ -5,6 +5,7 @@ import type { TerminalPtyGeometryDisplayMetrics } from '@contexts/workspace/doma
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { CreateNodeInput } from '../types'
 import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
+import type { AgentNodeLaunchOverrides } from './useAgentNodeLifecycle.support'
 
 type TaskRuntimeNode = Node<TerminalNodeData> & {
   data: TerminalNodeData & {
@@ -23,7 +24,11 @@ export interface TaskActionContext {
   ) => void
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   buildAgentNodeTitle: (provider: AgentSettings['defaultProvider'], label: string | null) => string
-  launchAgentInNode: (nodeId: string, mode: 'new' | 'resume') => Promise<void>
+  launchAgentInNode: (
+    nodeId: string,
+    mode: 'new' | 'resume',
+    overrides?: AgentNodeLaunchOverrides,
+  ) => Promise<void>
   agentSettings: AgentSettings
   workspaceId: string
   workspacePath: string

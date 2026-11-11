@@ -1,3 +1,9 @@
+import { translate } from '@app/renderer/i18n'
+import { persistenceScope } from './persistence/publicationState'
+import {
+  updateManagedClaudeCompatibilityNotice,
+  expireManagedClaudeCompatibilityNotice,
+} from './managedClaudeCompatibilityNotice'
 import { toAppErrorDescriptor } from '@shared/errors/appError'
 import {
   assertManagedClaudeWorkerCompatible,
@@ -24,7 +30,24 @@ async function readManagedClaudeWorkerCapabilities(): Promise<unknown> {
 export async function negotiateManagedClaudeWorkerSupport(
   policy: 'legacy-creation' | 'required',
 ): Promise<boolean> {
+  const scope = persistenceScope()
+  expireManagedClaudeCompatibilityNotice(scope)
   const capabilities = await readManagedClaudeWorkerCapabilities()
+  const compatible = supportsManagedClaudeOwnership(capabilities)
+  const features = (
+    capabilities as { features?: { managedClaudeResumeBindingWritesEnabled?: boolean } } | undefined
+  )?.features
+  if (!compatible || features?.managedClaudeResumeBindingWritesEnabled === false) {
+    updateManagedClaudeCompatibilityNotice(scope, {
+      tone: 'warning',
+      kind: 'compatibility',
+      message: translate(
+        compatible ? 'messages.managedAgentWritesDisabled' : 'messages.managedAgentLegacyWorker',
+      ),
+    })
+  } else if (features?.managedClaudeResumeBindingWritesEnabled === true) {
+    updateManagedClaudeCompatibilityNotice(scope, null)
+  }
   if (policy === 'required') {
     assertManagedClaudeWorkerCompatible(capabilities)
   }

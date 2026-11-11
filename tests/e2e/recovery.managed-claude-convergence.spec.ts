@@ -67,7 +67,6 @@ test('managed Claude stale publications retain layout and cold-resume the curren
     OPENCOVE_TEST_WORKSPACE: workspace,
     OPENCOVE_WORKER_CLIENT: '1',
     OPENCOVE_TEST_USE_REAL_AGENTS: '0',
-    OPENCOVE_EXPERIMENTAL_MANAGED_CLAUDE_BINDINGS: '1',
     OPENCOVE_TEST_ENABLE_MANAGED_CLAUDE_REBIND: '1',
     OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
     OPENCOVE_TEST_CLAUDE_HOOK_INSTALL_FAILURE: '0',
@@ -91,6 +90,21 @@ test('managed Claude stale publications retain layout and cold-resume the curren
     const first = await launchApp({ userDataDir, cleanupUserDataDir: false, env })
     app = first.electronApp
     let page = first.window
+    expect(
+      await page.evaluate(async () =>
+        window.opencoveApi.controlSurface.invoke({
+          kind: 'query',
+          id: 'system.capabilities',
+          payload: {},
+        }),
+      ),
+    ).toMatchObject({
+      features: {
+        managedClaudeResumeBindingV1: true,
+        managedClaudeResumeBindingDeliveryV1: true,
+        managedClaudeResumeBindingWritesEnabled: true,
+      },
+    })
     await seedWorkspaceState(page, {
       activeWorkspaceId: projectId,
       settings: { defaultProvider: 'claude-code', agentFullAccess: false },

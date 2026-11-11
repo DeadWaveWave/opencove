@@ -7,6 +7,7 @@ import {
 import { normalizePersistedAppState } from '../../../src/platform/persistence/sqlite/normalize'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import { createCanvasSpawnRunner } from '../../../src/app/main/controlSurface/createCanvasSpawnRunner'
+import { resolveCanvasSpawnIdentity } from '../../../src/app/main/controlSurface/resolveCanvasSpawnIdentity'
 import { createManagedClaudeLaunchRuntime } from '../../../src/app/main/controlSurface/managedClaudeLaunchRuntime'
 import { registerSessionStreamingHandlers } from '../../../src/app/main/controlSurface/handlers/sessionStreamingHandlers'
 import { registerPtyMountHandlers } from '../../../src/app/main/controlSurface/handlers/ptyMountHandlers'
@@ -57,6 +58,7 @@ export async function snapshotFixture(
     terminalAgentActivity?: TerminalAgentActivityEnvironmentService
     adoptionEnabled?: boolean
     wrapStore?: (store: PersistenceStore) => Promise<PersistenceStore>
+    beforeIdentity?: () => Promise<void>
   } = {},
 ) {
   const store = await createPersistenceStore({ dbPath, strictRecovery: true })
@@ -178,6 +180,10 @@ export async function snapshotFixture(
     managedClaude: runtime,
     terminalRuntimeAvailability: admission.terminalSpawnAdmission,
     getPersistenceStore,
+    resolveIdentity: async (...args) => {
+      await options.beforeIdentity?.()
+      return resolveCanvasSpawnIdentity(...args)
+    },
   })
   const surface = createControlSurface({
     run: (...args) => spawnRuntime.observeRequests(() => canvasSpawnRunner(...args)),

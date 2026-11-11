@@ -18,6 +18,7 @@ import {
   type TaskActionContext,
 } from './useTaskActions.agentSession.shared'
 import { resolveDefaultAgentLaunchGeometry } from './agentLaunchGeometry'
+import type { AgentNodeLaunchOverrides } from './useAgentNodeLifecycle.support'
 import {
   buildMergedAgentLaunchEnv,
   launchWorkspaceAgentSession,
@@ -43,10 +44,10 @@ function reuseLinkedAgentForTask({
   context: TaskActionContext
   managed: boolean
   managedDirectory?: string | null
-}): boolean {
+}): AgentNodeLaunchOverrides | null {
   const linkedAgentNode = context.nodesRef.current.find(node => node.id === linkedAgentNodeId)
   if (!linkedAgentNode || linkedAgentNode.data.kind !== 'agent' || !linkedAgentNode.data.agent) {
-    return false
+    return null
   }
 
   assignAgentNodeToTaskSpace({
@@ -57,16 +58,15 @@ function reuseLinkedAgentForTask({
   })
 
   const now = new Date().toISOString()
+  const agentDirectory = managed
+    ? managedDirectory!
+    : linkedAgentNode.data.agent.directoryMode === 'workspace'
+      ? taskDirectory
+      : linkedAgentNode.data.agent.executionDirectory
 
   context.setNodes(prevNodes =>
     prevNodes.map(node => {
       if (node.id === linkedAgentNodeId && node.data.kind === 'agent' && node.data.agent) {
-        const agentDirectory = managed
-          ? managedDirectory!
-          : node.data.agent.directoryMode === 'workspace'
-            ? taskDirectory
-            : node.data.agent.executionDirectory
-
         return {
           ...node,
           data: {
@@ -77,12 +77,20 @@ function reuseLinkedAgentForTask({
                 : context.buildAgentNodeTitle(node.data.agent.provider, taskTitle),
             agent: {
               ...node.data.agent,
-              prompt: requirement,
               taskId: taskNodeId,
-              executionDirectory: agentDirectory,
-              expectedDirectory: agentDirectory,
+              // Preserve the adoption image until the launch succeeds. Requested
+              // prompt/directory belong to the launch, not preparatory publication.
+              ...(node.data.agent.provider === 'claude-code'
+                ? {}
+                : {
+                    prompt: requirement,
+                    executionDirectory: agentDirectory,
+                    expectedDirectory: agentDirectory,
+                  }),
               launchMode: 'new',
-              ...(!managed ? clearResumeSessionBinding() : {}),
+              ...(!managed && node.data.agent.provider !== 'claude-code'
+                ? clearResumeSessionBinding()
+                : {}),
             },
             lastError: null,
           },
@@ -111,7 +119,11 @@ function reuseLinkedAgentForTask({
   )
   context.onRequestPersistFlush?.()
 
-  return true
+  return {
+    prompt: requirement,
+    executionDirectory: agentDirectory,
+    expectedDirectory: agentDirectory,
+  }
 }
 
 export async function runTaskAgentAction(
@@ -185,7 +197,7 @@ export async function runTaskAgentAction(
     })
 
     if (reused) {
-      await context.launchAgentInNode(linkedAgentNodeId, 'new')
+      await context.launchAgentInNode(linkedAgentNodeId, 'new', reused)
       return
     }
 

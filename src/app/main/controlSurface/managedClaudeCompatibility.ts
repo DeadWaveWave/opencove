@@ -21,7 +21,7 @@ export function assertManagedClaudeMutationAllowed(
       debugMessage:
         reason === 'clientUpgradeRequired'
           ? 'Update OpenCove and reload this window before controlling this agent.'
-          : 'Managed Claude restarts are paused. Ask the Worker administrator to enable them.',
+          : 'Managed Claude restarts and saving new resume targets are paused. Existing saved targets remain protected. Ask the Worker administrator to enable updates.',
     })
   }
 }

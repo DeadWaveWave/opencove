@@ -40,6 +40,7 @@ import {
   launchAgentRuntime,
   normalizeOptionalString,
   resolveAgentRuntimeLaunchFrameSize,
+  type AgentNodeLaunchOverrides,
   type RelaunchAgentNodeOptions,
 } from './useAgentNodeLifecycle.support'
 
@@ -157,6 +158,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       mode,
       executionDirectory,
       expectedDirectory,
+      prompt,
       resumeSessionId,
       startedAtOverride,
       intent: explicitIntent,
@@ -165,7 +167,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       if (!node) {
         return undefined
       }
-      const launchData = node.data.agent
+      const launchData = prompt === undefined ? node.data.agent : { ...node.data.agent, prompt }
       let binding
       try {
         await requireManagedClaudeWorkerSupport(launchData.provider)
@@ -259,7 +261,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
                 lastError: null,
                 recoveryIssue: null,
                 agent:
-                  !binding && mode === 'new' && item.data.agent
+                  !binding && !intent && mode === 'new' && item.data.agent
                     ? {
                         ...item.data.agent,
                         launchMode: 'new',
@@ -280,6 +282,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
           mergedEnv,
           mode,
           executionDirectory: requestedExecutionDirectory,
+          prompt: launchData.prompt,
           resumeSessionId: requestedResumeSessionId,
           agentFullAccess,
           codexReuseRunningAppServer,
@@ -440,8 +443,8 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   )
 
   const launchAgentInNode = useCallback(
-    async (nodeId: string, mode: 'new' | 'resume') => {
-      await relaunchAgentNode({ nodeId, mode })
+    async (nodeId: string, mode: 'new' | 'resume', overrides?: AgentNodeLaunchOverrides) => {
+      await relaunchAgentNode({ ...overrides, nodeId, mode })
     },
     [relaunchAgentNode],
   )

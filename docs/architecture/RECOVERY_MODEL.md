@@ -361,9 +361,9 @@ never be revived from a renderer cache.
 
 Managed Claude 的 Worker-owned tuple 存在 `managed_claude_resume_bindings`，`nodes.agent_json`
 只保存受最终 writer 保护的投影。绑定、节点与 revision 原子提交，真实删除留下 retirement，
-普通快照不能回退 tuple 或改变其 kind/provider/route。内部 lifecycle API 已接入开发开关保护的启动路径；
-现有无 ledger row 的节点保持原恢复行为。此存储层不判定 transcript qualification，也不恢复
-runtime authority。详见 [Persistence](PERSISTENCE.md#managed-claude-resume-ledger存储契约尚未启用生产接入)。
+普通快照不能回退 tuple 或改变其 kind/provider/route。内部 lifecycle API 默认接入符合条件的本地 Claude agent 启动路径；
+未拥有节点在下一次实际冷启动成功后接管，live reattach 不接管。此存储层不判定 transcript qualification，也不恢复
+runtime authority。详见 [Persistence](PERSISTENCE.md#managed-claude-resume-ledgerschema-14)。
 
 ### Managed launch admission
 
@@ -377,9 +377,11 @@ app revision。预存 settlement、row-only 写入和 `alreadyApplied` 只提供
 unknown outcome 保留 runtime 与 reconciliation obligation，未到 clean transaction boundary 时
 不能确认成功、重启或补偿。Worker 重启不重建旧 token。
 
-新 adoption 默认关闭，仅 `OPENCOVE_EXPERIMENTAL_MANAGED_CLAUDE_BINDINGS=1` 用于开发验收；
-`managedClaudeResumeBindingV1` capability 保持 false。已有 row 的保护不受开关影响。
-同步投影、缓存修正与正式启用仍由后续同步接入完成。
+新 adoption 默认启用；仅 `OPENCOVE_MANAGED_CLAUDE_BINDINGS=0` 冻结更新。
+首次接管在 activation 事务中比较原 unowned tuple、runtime 及执行上下文；
+并发 legacy publication 改变目标时取消 stale candidate，重新读取后再尝试。UI 状态、结束信息与布局不冲突。
+冷恢复另在同一事务检查并发 `stopped`；显式 relaunch 可恢复 stopped 节点，不套用该冷恢复限制。
+最终 route 使用本地 mount fallback 的未拥有节点保持 legacy；owned 节点仍拒绝 route 变化。
 
 
 `node.managedClaudeBinding` 在 node 尚未持久化时也返回 definitive ledger observation，
@@ -440,7 +442,7 @@ Fallback 的 PTY profile/activity preparation 之后，以进程内 `terminalSpa
 
 ### Managed binding client convergence
 
-PR3a keeps managed Claude adoption default-off. Canonical ownership markers are derived from the ledger;
+Managed Claude adoption is enabled by default. Canonical ownership markers are derived from the ledger;
 renderer metadata cannot promote an owned null or unverified resume tuple. Lifecycle observations use
 `observedRevision`, without a second prepare clock. Tuple acceptance and runtime attachment are separate:
 an older tuple cannot replace canonical content, while the current operation may attach the same definitive
@@ -458,11 +460,11 @@ These are existing ownership and process-boundary contracts: no executable-rule 
 
 ### Managed Claude 混合版本与冻结
 
-PR3b 保持 adoption 默认关闭，`managedClaudeResumeBindingV1` 仍为 false。
-测试采用 `OPENCOVE_EXPERIMENTAL_MANAGED_CLAUDE_BINDINGS=1`；Worker 的独立
-`managedClaudeResumeBindingDeliveryV1` 表示具备 ledger lookup、投影、纠正回执与安全通知协议。
+`managedClaudeResumeBindingV1` 与 `managedClaudeResumeBindingDeliveryV1` 均为 true，
+分别表示支持 managed lifecycle 和 ledger lookup、投影、纠正回执与安全通知协议。
+`managedClaudeResumeBindingWritesEnabled` 独立表示当前 Worker 是否允许更新，不能证明节点 ownership。
 Desktop/Web 的 open、save 和 refresh 不以 ownership lookup 或 delivery capability 为门槛，
-包括 flag-off、CLI 启动的旧 Worker 与 lookup unsupported 的 profile。unsupported 始终是 unknown，
+包括冻结、CLI 启动的旧 Worker 与 lookup unsupported 的 profile。unsupported 始终是 unknown，
 不证明 unowned，也不阻止普通工作区同步。pre-W8 Worker 没有 ledger tables；让它处理带 owned
 rows 的 profile 属于不支持的 database downgrade。PR1+ 的 writer gate 始终保护磁盘 tuple。
 最低协议只约束 adoption、owned relaunch/switch/stop 等 ownership 操作，拒绝时要求升级并
@@ -483,4 +485,11 @@ canonical convergence、live attach、显式 Stop 和 committed deletion；绝�
 `managedClaudeResumeBindingWritesEnabled` 独立表示冻结状态，恢复时移除该 override 并重启。
 所有兼容性/冻结拒绝必须先于 reserve，不能取消正在进行的合法 launch 或清除 admitted runtime。
 
+升级必须升级并重启实际 Worker；新版 Desktop 可能复用旧 Worker。旧 Worker 缺少 writes-enabled
+表示 unknown，不表示 freeze。PR3b 关闭 adoption 不等于 freeze；PR1/PR2 只有存储保护，
+不保证当前 lifecycle/convergence/B4b，不作为 rollback 目标。冻结不使 pre-ledger binary 可安全打开 profile。
+本地 eligible 冷恢复使用已 verified A；失败 activation 不接管，不从 transcript 位置推断目标。
+Home 委派 remote mount、session-only、shell terminal overlay 和非 Claude 不接管；直连 Worker 的本地节点可接管。
+冻结提示非阻塞，保存/连接错误消退后恢复；仅确认 writes-enabled 才清除当前 scope 的提示。
+更多升级与冻结操作见 [Agent guide](../agent/README.md)。no executable-rule impact。
 Qualified Claude clear ownership and limits: [Claude clear recovery](../agent/CLAUDE_CLEAR_RECOVERY.md).
