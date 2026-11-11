@@ -1,6 +1,15 @@
 import * as transcriptAccess from '../../../src/contexts/agent/infrastructure/watchers/ClaudeTranscriptAccess'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mkdtemp, mkdir, writeFile, rm, symlink, truncate, rename } from 'node:fs/promises'
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  writeFile,
+  rm,
+  symlink,
+  truncate,
+  rename,
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ClaudeResumeTranscriptReader } from '../../../src/contexts/agent/infrastructure/watchers/ClaudeResumeTranscriptReader'
@@ -43,8 +52,30 @@ describe('bounded Claude resume proof', () => {
     expect(await read()).toMatchObject({ ...identity, evidenceId: expect.any(String) })
     expect(JSON.stringify(await read())).not.toContain('stop_reason')
   })
+  it('confirms the Claude 2.1.321 clear successor, whose prompt and reply are linked through attachments', async () => {
+    // Redacted from a real Claude 2.1.321 transcript after /clear: ids renamed, content removed.
+    const real = await readFile(
+      join(__dirname, '../../fixtures/claude/clear-successor-2.1.321.jsonl'),
+      'utf8',
+    )
+    await writeFile(path, real)
+    expect(await read()).toMatchObject({ ...identity, evidenceId: expect.any(String) })
+    const withoutPrompt = real
+      .split('\n')
+      .filter(line => !line.includes('"promptId":"p"'))
+      .join('\n')
+    await writeFile(path, withoutPrompt)
+    expect(await read()).toBeNull()
+    const brokenChain = real.replace('"uuid":"r8"', '"uuid":"r8x"')
+    await writeFile(path, brokenChain)
+    expect(await read()).toBeNull()
+  })
   it.each([
     ['partial tail', lines(user, assistant) + '{'],
+    [
+      'foreign chained record',
+      lines(user, { type: 'attachment', sessionId: 'A', uuid: 'x', parentUuid: 'u' }, assistant),
+    ],
     ['wrong session', lines(user, { ...assistant, sessionId: 'A' })],
     ['missing user', lines(assistant)],
     ['wrong prompt', lines({ ...user, promptId: 'wrong' }, assistant)],

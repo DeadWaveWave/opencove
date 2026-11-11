@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process'
-import { chmod, mkdir, mkdtemp, readFile, realpath, writeFile } from 'node:fs/promises'
+import { createWriteStream } from 'node:fs'
+import { chmod, cp, mkdir, mkdtemp, readFile, realpath, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { delimiter, join, resolve } from 'node:path'
 import { expect, type Page, type TestInfo } from '@playwright/test'
@@ -233,4 +234,28 @@ export async function attachScreen(testInfo: TestInfo, window: Page, stage: stri
     body: (await window.locator('.terminal-node').allTextContents()).join('\n'),
     contentType: 'text/plain',
   })
+}
+
+/** Keep Worker output next to the test result; it is the only place qualification degradation is reported. */
+export function captureWorkerOutput(
+  worker: { stdout: NodeJS.ReadableStream; stderr: NodeJS.ReadableStream },
+  testInfo: TestInfo,
+) {
+  const sink = createWriteStream(testInfo.outputPath(`worker-${Date.now()}.log`))
+  worker.stdout.pipe(sink)
+  worker.stderr.pipe(sink)
+}
+
+/** On failure, keep the isolated transcripts and hook log before the harness root is removed. */
+export async function preserveFailureEvidence(
+  h: { root: string; hookLog: string },
+  testInfo: TestInfo,
+) {
+  if (testInfo.status === testInfo.expectedStatus) {
+    return
+  }
+  await cp(join(h.root, 'claude-config', 'projects'), testInfo.outputPath('transcripts'), {
+    recursive: true,
+  }).catch(() => undefined)
+  await cp(h.hookLog, testInfo.outputPath('hooks.jsonl')).catch(() => undefined)
 }

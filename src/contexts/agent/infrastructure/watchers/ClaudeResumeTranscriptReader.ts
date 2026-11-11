@@ -133,12 +133,11 @@ function completed(raw: Buffer, input: ClaudeQualificationIdentity): boolean {
     if (record.isSidechain === true) {
       continue
     }
-    if (record.type !== 'user' && record.type !== 'assistant') {
-      continue
-    }
-    if (record.sessionId !== input.resumeSessionId) {
+    if (typeof record.sessionId === 'string' && record.sessionId !== input.resumeSessionId) {
       return false
     }
+    // Claude links attachments and system records into the conversation chain between a
+    // prompt and its reply, so every chained record must be indexed, not only messages.
     const uuid = typeof record.uuid === 'string' ? record.uuid : undefined
     const parent = typeof record.parentUuid === 'string' ? record.parentUuid : undefined
     if (uuid) {
@@ -146,6 +145,12 @@ function completed(raw: Buffer, input: ClaudeQualificationIdentity): boolean {
         return false
       }
       parents.set(uuid, parent)
+    }
+    if (record.type !== 'user' && record.type !== 'assistant') {
+      continue
+    }
+    if (record.sessionId !== input.resumeSessionId) {
+      return false
     }
     if (record.type === 'user' && record.promptId === input.promptId && uuid) {
       users.add(uuid)

@@ -5,9 +5,11 @@ import { lastUserBlocks } from './agent.prompt.real-claude.helpers'
 import { clearConversation } from './agent.resident-context.helpers'
 import {
   binding,
+  captureWorkerOutput,
   createClearHarness,
   launches,
   launchIdentity,
+  preserveFailureEvidence,
   promptA,
   promptB,
   promptC,
@@ -74,8 +76,7 @@ test.describe('Claude clear restart binding', () => {
       const hold = h.env.OPENCOVE_TEST_CLAUDE_CLEAR_PROOF_HOLD
       try {
         worker = (await startWorker({ userDataDir: h.userDataDir, env: h.env })).child
-        worker.stdout.resume()
-        worker.stderr.resume()
+        captureWorkerOutput(worker, testInfo)
         ;({ electronApp: app, window: page } = await launchApp({
           userDataDir: h.userDataDir,
           cleanupUserDataDir: false,
@@ -236,8 +237,7 @@ test.describe('Claude clear restart binding', () => {
         const launchCount = launches(await readRecords<Invocation>(h.invocationLog)).length
         const hookCount = (await readRecords<Hook>(h.hookLog)).length
         worker = (await startWorker({ userDataDir: h.userDataDir, env: h.env })).child
-        worker.stdout.resume()
-        worker.stderr.resume()
+        captureWorkerOutput(worker, testInfo)
         ;({ electronApp: app, window: page } = await launchApp({
           userDataDir: h.userDataDir,
           cleanupUserDataDir: false,
@@ -312,6 +312,7 @@ test.describe('Claude clear restart binding', () => {
         await new Promise<void>((resolve, reject) =>
           h.api.server.close(error => (error ? reject(error) : resolve())),
         )
+        await preserveFailureEvidence(h, testInfo)
         await removePathWithRetry(h.root)
       }
     })
