@@ -78,6 +78,7 @@ it.each([
       mergedEnv: {},
       mode: 'resume',
       executionDirectory: '/repo',
+      prompt: 'Requested task',
       resumeSessionId: 'A',
       agentFullAccess: false,
       codexReuseRunningAppServer: false,
@@ -92,5 +93,9 @@ it.each([
     expect(call[0]).toMatchObject({
       clientFeatures: { managedClaudeResumeBindingV1: true },
     })
+    if (route.startsWith('relaunch')) {
+      const input = call[0] as { payload?: unknown }
+      expect(input.payload ?? input).toMatchObject({ prompt: 'Requested task' })
+    }
   }
 })

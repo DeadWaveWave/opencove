@@ -37,8 +37,18 @@ afterEach(async () => {
   vi.useRealTimers()
 })
 
+interface RelaunchCase {
+  status: string
+  mode: 'new' | 'resume'
+  action: string
+  competing: boolean
+  directoryMode?: 'workspace' | 'custom'
+  blank?: boolean
+  phase?: 'identity' | 'spawn'
+}
+
 describeWithElectronNativeModules('UI Claude relaunch during normal persistence', () => {
-  it.each([
+  it.each<RelaunchCase>([
     ...['standby', 'stopped'].flatMap(status =>
       (['resume', 'new'] as const).map(mode => ({
         status,
@@ -54,12 +64,52 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
       competing: false,
     })),
     { status: 'standby', mode: 'new' as const, action: 'task-reuse', competing: true },
+    ...(['workspace', 'custom'] as const).flatMap(directoryMode =>
+      [false, true].map(blank => ({
+        status: 'standby',
+        mode: 'new' as const,
+        action: 'task-reuse',
+        competing: false,
+        directoryMode,
+        blank,
+        phase: 'identity' as const,
+      })),
+    ),
   ])(
-    '$action $mode from $status survives its preparatory save and fences competing=$competing',
-    async ({ status, mode, action, competing }) => {
-      f = await snapshotFixture(':memory:', null, false, 'launch')
+    '$action $mode from $status preserves its snapshot ($phase/$directoryMode/blank=$blank/competing=$competing)',
+    async ({ status, mode, action, competing, directoryMode, blank, phase = 'spawn' }) => {
+      const entered = deferred<void>(),
+        release = deferred<void>()
+      f = await snapshotFixture(':memory:', null, false, 'launch', false, false, {
+        beforeIdentity: async () => {
+          if (phase === 'identity') {
+            entered.resolve()
+            await release.promise
+          }
+        },
+      })
       const fixture = f
       fixture.state.workspaces[0].nodes[0].status = status
+      const originalAgent = fixture.state.workspaces[0].nodes[0].agent!
+      if (directoryMode) {
+        originalAgent.directoryMode = directoryMode
+        // The task has moved to a Space outside the agent's stored directory.
+        fixture.state.workspaces[0].spaces = [
+          {
+            id: 'task-space',
+            name: 'Moved task',
+            directoryPath: '/moved-task',
+            nodeIds: ['task'],
+          },
+        ] as (typeof fixture.state.workspaces)[0]['spaces']
+      }
+      if (blank) {
+        Object.assign(originalAgent, {
+          prompt: '',
+          resumeSessionId: null,
+          resumeSessionIdVerified: false,
+        })
+      }
       const initialState = normalizePersistedAppState({
         ...fixture.state,
         workspaces: fixture.state.workspaces.map(workspace => ({
@@ -87,16 +137,17 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
         })),
       })!
       await fixture.store.writeAppState(initialState)
+      const snapshot = fixture.store.observeManagedClaudeNode('agent').adoptionSnapshot
       const workspace = toShellWorkspaceState(
         initialState.workspaces[0] as unknown as PersistedWorkspaceState,
       )
-      const entered = deferred<void>(),
-        release = deferred<void>()
       const spawn = fixture.spawn.getMockImplementation()!
       fixture.spawn.mockImplementation(async input => {
         const result = await spawn(input)
-        entered.resolve()
-        await release.promise
+        if (phase === 'spawn') {
+          entered.resolve()
+          await release.promise
+        }
         return result
       })
       const write = vi.fn(
@@ -122,9 +173,20 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
         const [nodes, setNodes] = useState(workspace.nodes)
         const nodesRef = useRef(nodes)
         nodesRef.current = nodes
-        const workspaces = useMemo(() => [{ ...workspace, nodes }], [nodes])
+        const [spaces, setSpaces] = useState(workspace.spaces)
+        const spacesRef = useRef(spaces)
+        spacesRef.current = spaces
+        const onSpacesChange = (next: typeof spaces) => {
+          spacesRef.current = next
+          setSpaces(next)
+        }
+        const workspaces = useMemo(() => [{ ...workspace, nodes, spaces }], [nodes, spaces])
         const produce = useCallback(
-          () => toPersistedState([{ ...workspace, nodes: nodesRef.current }], workspace.id),
+          () =>
+            toPersistedState(
+              [{ ...workspace, nodes: nodesRef.current, spaces: spacesRef.current }],
+              workspace.id,
+            ),
           [],
         )
         const persistence = usePersistedAppState({
@@ -143,8 +205,8 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
           workspaceId: workspace.id,
           workspacePath: workspace.path,
           nodesRef,
-          spacesRef: { current: workspace.spaces },
-          onSpacesChange: vi.fn(),
+          spacesRef,
+          onSpacesChange,
           setNodes: setCanvasNodes,
           bumpAgentLaunchToken: () => 1,
           isAgentLaunchTokenCurrent: () => true,
@@ -161,8 +223,8 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
           runTask: () =>
             runTaskAgentAction('task', {
               nodesRef,
-              spacesRef: { current: workspace.spaces },
-              onSpacesChange: vi.fn(),
+              spacesRef,
+              onSpacesChange,
               setNodes: setCanvasNodes,
               createNodeForSession: vi.fn(),
               buildAgentNodeTitle: () => 'Claude',
@@ -197,9 +259,12 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
         expect(fixture.store.observeManagedClaudeNode('agent').binding).toBeNull()
         const prepared = normalizePersistedAppState(await fixture.store.readAppState())!
         expect(prepared.workspaces[0].nodes[0].agent).toMatchObject({
-          resumeSessionId: 'initial-conversation',
-          resumeSessionIdVerified: true,
+          resumeSessionId: blank ? null : 'initial-conversation',
+          resumeSessionIdVerified: !blank,
+          prompt: originalAgent.prompt,
+          executionDirectory: '/repo/project',
         })
+        expect(fixture.store.observeManagedClaudeNode('agent').adoptionSnapshot).toBe(snapshot)
         if (competing) {
           Object.assign(prepared.workspaces[0].nodes[0].agent!, {
             resumeSessionId: 'competing-B',
@@ -223,14 +288,33 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
           return
         }
         const target = mode === 'resume' ? 'initial-conversation' : 'new-conversation'
-        expect(binding).toMatchObject({
-          tuple: { resumeSessionId: target, resumeSessionIdVerified: true },
-        })
-        expect(fixture.alive.has(binding!.runtimeSessionId!)).toBe(true)
+        const current = hook.result.current.nodesRef.current[0].data
+        if (directoryMode === 'workspace') {
+          // Changed-directory unowned launches retain the established legacy boundary.
+          expect(binding).toBeNull()
+        } else {
+          expect(binding).toMatchObject({
+            tuple: { resumeSessionId: target, resumeSessionIdVerified: true },
+          })
+          expect(current.sessionId).toBe(binding!.runtimeSessionId)
+        }
+        expect(fixture.alive.has(current.sessionId)).toBe(true)
+        if (action === 'task-reuse') {
+          expect(fixture.launch).toHaveBeenCalledWith(
+            expect.objectContaining({
+              cwd: directoryMode === 'workspace' ? '/moved-task' : '/repo/project',
+              prompt: 'Next requirement',
+            }),
+          )
+        }
         expect(hook.result.current.nodesRef.current[0].data).toMatchObject({
-          sessionId: binding!.runtimeSessionId,
           lastError: null,
-          agent: { resumeSessionId: target, resumeSessionIdVerified: true },
+          agent: {
+            resumeSessionId: target,
+            resumeSessionIdVerified: true,
+            prompt: action === 'task-reuse' ? 'Next requirement' : originalAgent.prompt,
+            executionDirectory: directoryMode === 'workspace' ? '/moved-task' : '/repo/project',
+          },
         })
       } finally {
         await act(async () => {
