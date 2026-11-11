@@ -281,7 +281,8 @@ export function markPersistedStateAsSynced(
   revision: number | null = null,
 ): void {
   persistenceScope()
-  persistLocalViewStateFromAppState(state)
+  // Canonical acknowledgements can contain shared view placeholders. Only local
+  // publication/capture owns view persistence; accepting a base must never overwrite it.
   acceptPublicationBase(stripLocalViewStateFromPersistedState(state), revision)
 }
 export function allowNextEmptyWorkspacePersistedStateWrite(): void {

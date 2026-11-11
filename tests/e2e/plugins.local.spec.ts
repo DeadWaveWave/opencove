@@ -104,6 +104,7 @@ test.describe('Independently installed plugins', () => {
       })
       await expect(node.locator('.cove-canvas-node-window')).toHaveCSS('width', '320px')
       await expect(node.locator('.cove-canvas-node-window')).toHaveCSS('height', '240px')
+      const beforeRestart = await readLocatorClientRect(node)
       await electronApp.close()
       ;({ electronApp, window: page } = await launchApp({ userDataDir, cleanupUserDataDir: false }))
       await page.setViewportSize({ width: 1400, height: 1000 })
@@ -112,6 +113,19 @@ test.describe('Independently installed plugins', () => {
       await expect(frame.locator('#count')).toHaveText('2', { timeout: 15_000 })
       await expect(node.locator('.cove-canvas-node-window')).toHaveCSS('width', '320px')
       await expect(node.locator('.cove-canvas-node-window')).toHaveCSS('height', '240px')
+      await expect
+        .poll(
+          async () => {
+            const restored = await readLocatorClientRect(node)
+            return Math.max(
+              ...(['x', 'y', 'width', 'height'] as const).map(key =>
+                Math.abs(restored[key] - beforeRestart[key]),
+              ),
+            )
+          },
+          { message: 'Cold restart preserves the plugin window screen position and size' },
+        )
+        .toBeLessThan(1)
       expect(await invokeClock(node)).not.toBe(startup)
       await expect(node.locator('.cove-canvas-node-window__title')).toHaveText(
         'My persistent clock',
