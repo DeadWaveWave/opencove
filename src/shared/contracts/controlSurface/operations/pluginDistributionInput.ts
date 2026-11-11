@@ -62,7 +62,10 @@ export function gitInstallInput(value: unknown): PluginGitInstallInput {
   ) {
     throw new Error('Use an HTTPS/SSH Git URL or an absolute repository path on this Worker.')
   }
-  if (repository.startsWith('https://') && new URL(repository).username) {
+  if (
+    (repository.startsWith('https://') && new URL(repository).username) ||
+    (repository.startsWith('ssh://') && new URL(repository).password)
+  ) {
     throw new Error(
       'Use Git credentials or SSH authentication; do not embed credentials in the repository URL.',
     )

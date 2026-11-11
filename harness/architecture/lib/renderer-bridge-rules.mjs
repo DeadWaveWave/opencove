@@ -88,7 +88,11 @@ export function rendererBridgeViolations(file, source, rules) {
     ) {
       report(node, 'Keep transport exposure at a direct, auditable call site.')
     }
-    if (property === 'debugMessage' && renderer) {
+    if (
+      property === 'debugMessage' &&
+      renderer &&
+      !rules.pluginDiagnosticFormatters?.includes(file)
+    ) {
       report(node, 'Renderer code must not read private diagnostic text.')
     }
     if (

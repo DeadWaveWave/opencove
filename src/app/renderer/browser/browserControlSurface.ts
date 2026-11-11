@@ -21,6 +21,7 @@ export function getBrowserQueryToken(): string | null {
 
 export async function invokeBrowserControlSurface<TValue>(
   request: ControlSurfaceInvokeRequest,
+  validateValue?: (value: unknown) => boolean,
 ): Promise<TValue> {
   const headers: Record<string, string> = {
     'content-type': 'application/json',
@@ -60,7 +61,9 @@ export async function invokeBrowserControlSurface<TValue>(
   if (result.ok === false) {
     throw reviveRendererAppError(result.error)
   }
-  if (result.ok !== true || !Object.hasOwn(result, 'value')) {
+  // JSON omits undefined properties: a successful void command has no value key.
+  // Callers that require a payload validate its domain shape separately.
+  if (result.ok !== true || (validateValue && !validateValue(result.value))) {
     throw new RendererTransportError()
   }
 

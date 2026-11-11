@@ -307,7 +307,10 @@
       "id": "architecture.rendererBridgeBoundary",
       "severity": "error",
       "clients": ["src/app/renderer/bootstrap/installDesktopOpenCoveApi.ts"],
-      "doc": "docs/architecture/ARCHITECTURE.md#windowopencoveapi"
+      "doc": "docs/architecture/ARCHITECTURE.md#windowopencoveapi",
+      "pluginDiagnosticFormatters": [
+        "src/contexts/plugins/presentation/renderer/pluginErrorMessage.ts"
+      ]
     }
   }
 }

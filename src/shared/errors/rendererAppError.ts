@@ -3,7 +3,8 @@ import { createAppError } from './appError'
 import { RendererTransportError } from './rendererTransportError'
 import { projectConfigurationSnapshot, ownValue } from './rendererErrorFields'
 
-export type RendererAppErrorDescriptor = Omit<AppErrorDescriptor, 'debugMessage'>
+/** Only plugin.operation_failed may carry bounded author diagnostics. */
+export type RendererAppErrorDescriptor = AppErrorDescriptor
 
 const reasons: Record<string, readonly string[]> = {
   'agent.managed_launch_rejected': [
@@ -89,6 +90,8 @@ export function toRendererAppErrorDescriptor(
     if (typeof code !== 'string' || !APP_ERROR_CODES.includes(code as AppErrorDescriptor['code'])) {
       return undefined
     }
+    const diagnostic =
+      code === 'plugin.operation_failed' ? ownValue(error, 'debugMessage') : undefined
     const details: Record<string, unknown> = {}
     const input = ownValue(error, 'details')
     if (ownValue(input, 'managedClaudeLaunch') === true) {
@@ -146,6 +149,9 @@ export function toRendererAppErrorDescriptor(
     }
     return {
       code: code as AppErrorDescriptor['code'],
+      ...(typeof diagnostic === 'string' && diagnostic.trim()
+        ? { debugMessage: diagnostic.slice(0, 2000) }
+        : {}),
       ...(Object.keys(params).length ? { params } : {}),
       ...(Object.keys(details).length ? { details } : {}),
     }

@@ -40,3 +40,19 @@ it('permits native local errors and the approved wrapped exposure', () => {
   ).toEqual([])
   expect(rendererBridgeViolations(config.clients[0], 'window.__opencoveBridge', config)).toEqual([])
 })
+it('allows only the explicit plugin diagnostic formatter to read author diagnostics', () => {
+  const scoped = {
+    ...config,
+    pluginDiagnosticFormatters: [
+      'src/contexts/plugins/presentation/renderer/pluginErrorMessage.ts',
+    ],
+  }
+  expect(
+    rendererBridgeViolations(
+      scoped.pluginDiagnosticFormatters[0],
+      'descriptor.debugMessage',
+      scoped,
+    ),
+  ).toEqual([])
+  expect(rendererBridgeViolations(file, 'descriptor.debugMessage', scoped)).toHaveLength(1)
+})

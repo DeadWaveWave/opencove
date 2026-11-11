@@ -31,23 +31,22 @@ it.each(['plugin.example', 'node.get'])(
     expect(JSON.stringify(error)).not.toContain('SECRET')
   },
 )
-it.each([
-  {},
-  { __opencoveControlEnvelope: true, ok: false, error: { code: 'future.code' } },
-  { __opencoveControlEnvelope: true, ok: true },
-])('keeps malformed HTTP results uncertain', async result => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async () => response(result)),
-  )
-  const error = await invokeBrowserControlSurface({
-    kind: 'command',
-    id: 'sync.writeState',
-    payload: {},
-  }).catch(caught => caught)
-  expect(error).not.toBeInstanceOf(OpenCoveAppError)
-  expect(persistenceWriteFailure(error).outcome).toBe('unknown')
-})
+it.each([{}, { __opencoveControlEnvelope: true, ok: false, error: { code: 'future.code' } }])(
+  'keeps malformed HTTP results uncertain',
+  async result => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response(result)),
+    )
+    const error = await invokeBrowserControlSurface({
+      kind: 'command',
+      id: 'sync.writeState',
+      payload: {},
+    }).catch(caught => caught)
+    expect(error).not.toBeInstanceOf(OpenCoveAppError)
+    expect(persistenceWriteFailure(error).outcome).toBe('unknown')
+  },
+)
 it('preserves native browser fetch errors', async () => {
   const error = new TypeError('Failed to fetch')
   vi.stubGlobal('fetch', vi.fn().mockRejectedValue(error))

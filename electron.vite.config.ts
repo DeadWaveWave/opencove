@@ -122,6 +122,7 @@ export default defineConfig(({ command }) => {
           input: {
             index: resolve(__dirname, 'src/app/renderer/index.html'),
             web: resolve(__dirname, 'src/app/renderer/web.html'),
+            bridgeCompatibility: resolve(__dirname, 'src/app/renderer/bridge-compatibility.html'),
           },
         },
       },

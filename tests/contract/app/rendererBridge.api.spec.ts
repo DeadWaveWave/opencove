@@ -38,7 +38,7 @@ beforeAll(async () => {
   expect(mock.expose.mock.calls[0][0]).toBe('__opencoveBridge')
   api = createDesktopOpenCoveApi(bridge)
 })
-it('covers every callable in the real public API surface with stable symmetric wrappers', () => {
+it('covers preload callable leaves with stable in-process symmetric wrappers', () => {
   const bridge = mock.expose.mock.calls[0][1] as object
   function compare(source: object, result: object) {
     expect(Object.keys(result)).toEqual(Object.keys(source))
@@ -55,7 +55,7 @@ it('covers every callable in the real public API surface with stable symmetric w
   compare(bridge, api)
   compare(api, createRendererBridge(api))
 })
-it('passes a real File to the synchronous path helper', () => {
+it('preserves File input in-process; native webUtils is covered by Electron E2E', () => {
   expect(api.filesystem.getPathForFile(new File(['x'], 'input.txt'))).toBe('input.txt')
 })
 it.each(['state', 'metadata'] as const)(

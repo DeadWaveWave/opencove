@@ -191,9 +191,12 @@ class identity cannot establish that an operation was rejected before committing
 repair must not retry an uncertain result. Successful domain DTOs, callbacks and unsubscribe
 functions retain their existing semantics.
 
-Public exception projection permits only code-aware semantic fields. Renderer presentation must
-not read `debugMessage`. This promise covers public exceptions and their display, not all data in
-the renderer: successful domain DTOs (including nested failure descriptors) remain unchanged, and
+Public exception projection permits only code-aware semantic fields, plus up to 2000 characters
+of plugin author diagnostics for `plugin.operation_failed`. Only the plugin error formatter may
+read that projected `debugMessage`; other renderer presentation must not read private diagnostics.
+Plugin diagnostics remain available during local development; producers and Main/preload boundaries
+are responsible for keeping OpenCove credentials and internal secret data out of those diagnostics.
+This promise covers public exceptions and their display, not all data in the renderer: successful domain DTOs (including nested failure descriptors) remain unchanged, and
 Web HTTP bodies are visible to the page. The facade is not an authorization or plugin isolation
 boundary; Main and Worker remain responsible for authorization. Web parity covers HTTP application
 failures, while native browser and PTY socket errors keep their own contracts.
