@@ -181,7 +181,9 @@ Web UI / Remote Worker 等浏览器或远端入口，都是同一套 Control Sur
 ### Desktop public errors
 
 Preload exposes only `createRendererBridge(api)` as `__opencoveBridge`. The Desktop bootstrap
-client installs the renderer-owned `opencoveApi` before dynamically importing application modules.
+side-effect installer installs the renderer-owned `opencoveApi` before the statically imported app
+graph evaluates. The entry renders synchronously; test-only observations load afterward without
+gating startup. The facade and its namespaces are frozen, while success values remain untouched.
 Only that client reads the private transport or handles its result envelopes. Every new document
 recreates its facade; installation neither retries operations nor owns recovery state.
 

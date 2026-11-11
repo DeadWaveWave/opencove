@@ -205,7 +205,13 @@ export async function holdPrepare(page: Page, nodeId: string) {
     window.addEventListener(
       'opencove:api-installed',
       () => {
-        api = window.opencoveApi
+        // The product facade is frozen. Only this fixture owns a mutable replacement.
+        api = {
+          ...window.opencoveApi,
+          persistence: { ...window.opencoveApi.persistence },
+          controlSurface: { ...window.opencoveApi.controlSurface },
+        }
+        window.opencoveApi = api
         const installations = window as unknown as { __managedApiInstallations?: number }
         installations.__managedApiInstallations = (installations.__managedApiInstallations ?? 0) + 1
         const read = api.persistence.readAppState.bind(api.persistence)

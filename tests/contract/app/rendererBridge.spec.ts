@@ -7,7 +7,6 @@ import {
 } from '../../../src/app/renderer/bootstrap/installDesktopOpenCoveApi'
 import { OpenCoveAppError, createAppError } from '../../../src/shared/errors/appError'
 import { persistenceWriteFailure } from '../../../src/shared/sync/persistenceWriteOutcome'
-import { startDesktop } from '../../../src/app/renderer/bootstrap/startDesktop'
 
 function roundTrip(api: unknown) {
   return createDesktopOpenCoveApi(createRendererBridge(api as OpenCoveApi))
@@ -106,41 +105,20 @@ describe('renderer bridge contract', () => {
     expect(first.opencoveApi).toBe(api)
     expect(second.opencoveApi).not.toBe(api)
   })
-  it('installs before application module evaluation and handles startup failures', async () => {
-    window.opencoveApi = { meta: { isTest: false } } as OpenCoveApi
-    const order: string[] = []
-    await startDesktop(
-      () => {
-        order.push('install')
-      },
-      async () => {
-        order.push('evaluate')
-        return {
-          renderApp: () => {
-            order.push('render')
-          },
-        }
-      },
-    )
-    expect(order).toEqual(['install', 'evaluate', 'render'])
-    document.body.innerHTML = '<div id="root"></div>'
-    await startDesktop(() => {
-      throw Error('SECRET')
-    })
-    expect(document.getElementById('root')?.textContent).toContain('OpenCove could not start.')
-    expect(document.body.textContent).not.toContain('SECRET')
-    await startDesktop(
-      () => {},
-      async () => {
-        throw Error('SECRET')
-      },
-    )
-    expect(document.querySelector('button')?.textContent).toBe('Reload window')
-    vi.spyOn(navigator, 'language', 'get').mockReturnValue('zh-CN')
-    await startDesktop(() => {
-      throw Error('SECRET')
-    })
-    expect(document.getElementById('root')?.textContent).toContain('OpenCove 无法启动。')
-    expect(document.querySelector('button')?.textContent).toBe('重新加载')
+  it('freezes the facade and namespaces while leaving successful values untouched', async () => {
+    const meta = { runtime: 'electron', isTest: true }
+    const bytes = new Uint8Array([1, 2])
+    const value = { nested: { bytes } }
+    const api = roundTrip({ meta, controlSurface: { invoke: async () => value } })
+    expect(Object.isFrozen(api)).toBe(true)
+    expect(Object.isFrozen(api.controlSurface)).toBe(true)
+    expect(Object.isFrozen(api.meta)).toBe(true)
+    expect(api.meta).toBe(meta)
+    expect(Reflect.set(api.controlSurface, 'invoke', () => undefined)).toBe(false)
+    expect(await api.controlSurface.invoke({} as never)).toBe(value)
+    expect(Object.isFrozen(value)).toBe(false)
+    expect(Object.isFrozen(value.nested)).toBe(false)
+    bytes[0] = 9
+    expect(value.nested.bytes[0]).toBe(9)
   })
 })

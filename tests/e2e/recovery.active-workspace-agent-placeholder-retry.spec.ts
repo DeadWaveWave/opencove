@@ -65,7 +65,11 @@ test.describe('Recovery - Active workspace agent renderer restore', () => {
               window.addEventListener('opencove:api-installed', () => {
               window.__placeholderInstallations = (window.__placeholderInstallations || 0) + 1
               window.__placeholderFailures = 0
-              const api = window.opencoveApi
+              const api = {
+                ...window.opencoveApi,
+                persistence: { ...window.opencoveApi.persistence },
+              }
+              window.opencoveApi = api
 
               const original = api.persistence.readAgentNodePlaceholderScrollback?.bind(api.persistence)
               if (typeof original !== 'function') {

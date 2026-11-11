@@ -18,28 +18,33 @@ function unwrap(value: unknown): unknown {
 }
 export function createDesktopOpenCoveApi(bridge: OpenCoveBridgeApi<OpenCoveApi>): OpenCoveApi {
   function wrap(namespace: object): object {
-    return Object.fromEntries(
-      Object.entries(namespace).map(([key, value]) => {
-        if (typeof value === 'function') {
-          return [
-            key,
-            (...args: unknown[]) => {
-              let result: unknown
-              try {
-                result = Reflect.apply(value, namespace, args)
-              } catch {
-                throw new RendererTransportError()
-              }
-              return result instanceof Promise
-                ? result.then(unwrap, () => {
-                    throw new RendererTransportError()
-                  })
-                : unwrap(result)
-            },
-          ]
-        }
-        return [key, key === 'meta' || !value || typeof value !== 'object' ? value : wrap(value)]
-      }),
+    return Object.freeze(
+      Object.fromEntries(
+        Object.entries(namespace).map(([key, value]) => {
+          if (typeof value === 'function') {
+            return [
+              key,
+              (...args: unknown[]) => {
+                let result: unknown
+                try {
+                  result = Reflect.apply(value, namespace, args)
+                } catch {
+                  throw new RendererTransportError()
+                }
+                return result instanceof Promise
+                  ? result.then(unwrap, () => {
+                      throw new RendererTransportError()
+                    })
+                  : unwrap(result)
+              },
+            ]
+          }
+          if (key === 'meta' && value && typeof value === 'object') {
+            return [key, Object.freeze(value)]
+          }
+          return [key, !value || typeof value !== 'object' ? value : wrap(value)]
+        }),
+      ),
     )
   }
   return wrap(bridge) as OpenCoveApi

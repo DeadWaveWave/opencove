@@ -3,9 +3,19 @@ import { expect, type ElectronApplication, type Page } from '@playwright/test'
 export async function ready(page: Page) {
   await page.waitForFunction(
     () =>
-      !!window.__opencoveBridgeAcceptance &&
+      typeof window.__opencoveBridgeAcceptance?.inspect === 'function' &&
+      typeof window.__opencoveBridgeAcceptance?.launch === 'function' &&
       typeof window.opencoveApi?.controlSurface?.invoke === 'function',
   )
+  expect(
+    await page.evaluate(
+      () =>
+        Object.isFrozen(window.opencoveApi) &&
+        Object.values(window.opencoveApi)
+          .filter(value => value && typeof value === 'object')
+          .every(value => Object.isFrozen(value)),
+    ),
+  ).toBe(true)
 }
 export async function injectLaunchFailure(
   app: ElectronApplication,
