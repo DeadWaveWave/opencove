@@ -4,6 +4,19 @@ import type { AgentRunStateRuntime } from '../../../../contexts/agent/applicatio
 import type { SessionState } from './ptyStreamState'
 import { resetSessionInputGeneration } from './ptyStreamSessionInput'
 export { projectPtyStreamAgentMetadata }
+const committedTargets = new WeakMap<SessionState, string>()
+/** Only an owner-confirmed commit reaches this projection; it never updates active turn identity. */
+export function projectCommittedClaudeBinding(
+  session: SessionState,
+  resumeSessionId: string,
+  broadcast: (metadata: TerminalSessionMetadataEvent) => void,
+): void {
+  committedTargets.set(session, resumeSessionId)
+  if (session.agentMetadata) {
+    session.agentMetadata = { ...session.agentMetadata, resumeSessionId }
+    broadcast(session.agentMetadata)
+  }
+}
 
 export function registerPtyStreamAgentMetadata(
   session: SessionState,
@@ -14,7 +27,11 @@ export function registerPtyStreamAgentMetadata(
   if (session.status === 'exited') {
     return
   }
-  const next = projectPtyStreamAgentMetadata(session.agentMetadata, metadata)
+  const committed = committedTargets.get(session)
+  const next = projectPtyStreamAgentMetadata(
+    session.agentMetadata,
+    committed ? { ...metadata, resumeSessionId: committed } : metadata,
+  )
   if (!next) {
     return
   }

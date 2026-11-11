@@ -16,6 +16,8 @@ export const enMessages = {
   agentSpawnAccountingHint: agentSpawnPresentations.agentSpawnAccounting.hint,
   agentSpawnCapability: agentSpawnPresentations.agentSpawnCapability.message,
   agentSpawnCapabilityHint: agentSpawnPresentations.agentSpawnCapability.hint,
+  managedAgentClearSaveUnconfirmed:
+    'The latest Claude conversation could not be confirmed. Try resuming again before closing this agent.',
   managedAgentWorkerUpgradeRequired:
     'Update and restart the connected Worker before managing Claude agents. Updating this window alone is not enough.',
   managedAgentClientUpgradeRequired:

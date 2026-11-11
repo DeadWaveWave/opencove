@@ -111,7 +111,9 @@ export function reply(
   ])
 }
 
-export async function startMessagesApi(): Promise<{
+export async function startMessagesApi(
+  options: { replyText?: (body: MessagesRequest) => string } = {},
+): Promise<{
   server: Server
   url: string
   main: () => string[][]
@@ -160,7 +162,7 @@ export async function startMessagesApi(): Promise<{
         res,
         body,
         isMain && trigger && !hasToolResult(body),
-        long ? 'L'.repeat(300_000) : 'ACK',
+        long ? 'L'.repeat(300_000) : ((isMain ? options.replyText?.(body) : undefined) ?? 'ACK'),
       )
       return
     }

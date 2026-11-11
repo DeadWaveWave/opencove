@@ -482,3 +482,5 @@ rows 的 profile 属于不支持的 database downgrade。PR1+ 的 writer gate �
 canonical convergence、live attach、显式 Stop 和 committed deletion；绝不删除 ledger。
 `managedClaudeResumeBindingWritesEnabled` 独立表示冻结状态，恢复时移除该 override 并重启。
 所有兼容性/冻结拒绝必须先于 reserve，不能取消正在进行的合法 launch 或清除 admitted runtime。
+
+Qualified Claude clear ownership and limits: [Claude clear recovery](../agent/CLAUDE_CLEAR_RECOVERY.md).

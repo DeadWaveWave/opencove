@@ -1,3 +1,4 @@
+import { ManagedClaudeRebindState } from './ManagedClaudeRebindState'
 import type { ManagedClaudeLaunchPorts } from './ports'
 import type { ManagedClaudeLaunchAttempt, ManagedClaudeRuntimeCandidate } from './types'
 import type { ManagedClaudeLifecycleReceipt } from '../../../../shared/contracts/managedClaudeLaunch'
@@ -40,9 +41,15 @@ export class ManagedClaudeLaunchOwner {
     ManagedClaudeLifecycleReceipt
   >()
   private readonly runtimeCleanup: ManagedClaudeRuntimeCleanup
+  readonly qualification: ManagedClaudeRebindState
   private disposed = false
 
   constructor(private readonly ports: ManagedClaudeLaunchPorts) {
+    this.qualification = new ManagedClaudeRebindState(
+      ports,
+      runtime => [...this.admitted].find(([, id]) => id === runtime)?.[0],
+      (node, runtime) => this.canAdmitRuntimeWrite(node, runtime),
+    )
     this.runtimeCleanup = new ManagedClaudeRuntimeCleanup(
       ports,
       id =>
@@ -63,6 +70,7 @@ export class ManagedClaudeLaunchOwner {
   reserve(nodeId: string): ManagedClaudeLaunchAttempt {
     const attempt = { nodeId, token: Symbol(nodeId) }
     if (!this.disposed) {
+      this.qualification.cancelNode(nodeId)
       this.attempts.set(nodeId, attempt)
       this.admitted.delete(nodeId)
     }
@@ -463,6 +471,7 @@ export class ManagedClaudeLaunchOwner {
 
   noteNodesDeleted(nodeIds: readonly string[]): void {
     for (const id of nodeIds) {
+      this.qualification.cancelNode(id)
       this.attempts.delete(id)
       this.admitted.delete(id)
       this.effects.fallbacks.release(this.effects.fallbacks.ids(id))
@@ -471,6 +480,7 @@ export class ManagedClaudeLaunchOwner {
   }
 
   dispose(): void {
+    this.qualification.dispose()
     this.disposed = true
     this.effects.fallbacks.dispose()
     this.runtimeCleanup.dispose()

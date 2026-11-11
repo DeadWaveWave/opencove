@@ -101,8 +101,10 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
     }
     const observerAccepted = credential.privateObserver?.observe(sessionId, envelope, {
       incarnation: terminalActivity?.invocationId ?? sessionId,
+      credential,
       isCurrent: () =>
         !disposed &&
+        (credential.isInvocationCurrent?.() ?? true) &&
         credentials.get(credential.token) === credential &&
         (terminalActivity?.isCurrent() ?? true),
     })

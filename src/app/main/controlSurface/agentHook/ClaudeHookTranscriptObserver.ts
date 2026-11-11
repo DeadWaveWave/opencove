@@ -1,3 +1,4 @@
+import type { ClaudeBindingEvidence } from '../../../../shared/runtime/agentHook/claudeBindingEvidence'
 import { ClaudeTranscriptGeneration } from './ClaudeTranscriptGeneration'
 import { SessionTurnStateWatcher } from '../../../../contexts/agent/infrastructure/watchers/SessionTurnStateWatcher'
 import {
@@ -16,6 +17,8 @@ import type { ClaudeHookEnvelope } from './claudeHookProtocol'
 let generation = 0
 /** A credential owns launch roots, invocation validity, provider lifecycle and all file IO. */
 export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeHookEnvelope> {
+  private credential?: object
+  private readonly earlySubmits = new Map<string, number>()
   private watcher?: SessionTurnStateWatcher
   private path?: string
   private disposed = false
@@ -30,7 +33,9 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
   private readonly roots: ClaudeTranscriptRoots
   constructor(
     private readonly emit: (record: ClaudeTranscriptObservation) => void,
-    configDirectories: readonly string[],
+    private readonly configDirectories: readonly string[],
+    private readonly bindingEvidence?: (evidence: ClaudeBindingEvidence) => void,
+    private readonly closeBinding?: (credential: object) => void,
   ) {
     this.roots = claudeTranscriptRoots(configDirectories)
   }
@@ -39,7 +44,27 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
     if (this.disposed || !context.isCurrent()) {
       return false
     }
+    this.credential = context.credential ?? this
     const action = this.lifecycle.accept(envelope)
+    this.bindingEvidence?.({
+      sessionId,
+      credential: this.credential,
+      incarnation: context.incarnation,
+      isCurrent: context.isCurrent,
+      configDirectories: this.configDirectories,
+      event: envelope,
+      action,
+    })
+    const delayedStart =
+      envelope.hookEventName === 'SessionStart' &&
+      envelope.emittedAtMs !== undefined &&
+      (this.earlySubmits.get(envelope.claudeSessionId) ?? -Infinity) > envelope.emittedAtMs
+    if (envelope.hookEventName === 'UserPromptSubmit' && envelope.emittedAtMs !== undefined) {
+      if (this.earlySubmits.size >= 16) {
+        this.earlySubmits.delete(this.earlySubmits.keys().next().value!)
+      }
+      this.earlySubmits.set(envelope.claudeSessionId, envelope.emittedAtMs)
+    }
     if (action === 'ignore') {
       return false
     }
@@ -48,18 +73,20 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
       this.detach()
       this.demand = false
       this.currentGeneration = ++generation
-      this.emit({
-        sessionId,
-        providerSessionId: envelope.claudeSessionId,
-        incarnation: context.incarnation,
-        generation: this.currentGeneration,
-        fileIdentity: `generation:${this.currentGeneration}`,
-        position: -1,
-        baseline: false,
-        origin: 'hook',
-        lifecycle: action,
-        setPollingDemand: this.pollingDemand(context, this.version),
-      })
+      if (!delayedStart) {
+        this.emit({
+          sessionId,
+          providerSessionId: envelope.claudeSessionId,
+          incarnation: context.incarnation,
+          generation: this.currentGeneration,
+          fileIdentity: `generation:${this.currentGeneration}`,
+          position: -1,
+          baseline: false,
+          origin: 'hook',
+          lifecycle: action,
+          setPollingDemand: this.pollingDemand(context, this.version),
+        })
+      }
       if (action === 'end') {
         return true
       }
@@ -219,6 +246,9 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
     this.watcher = undefined
   }
   dispose(): void {
+    if (this.credential) {
+      this.closeBinding?.(this.credential)
+    }
     this.disposed = true
     this.detach()
   }
