@@ -7,6 +7,7 @@ import { projectConfigurationSnapshot, ownValue } from './rendererErrorFields'
 export type RendererAppErrorDescriptor = AppErrorDescriptor
 
 const reasons: Record<string, readonly string[]> = {
+  'common.unexpected': ['transportFailure'],
   'agent.managed_launch_rejected': [
     'writesDisabled',
     'workerUpgradeRequired',
@@ -162,5 +163,11 @@ export function toRendererAppErrorDescriptor(
 
 export function reviveRendererAppError(value: unknown): Error {
   const descriptor = toRendererAppErrorDescriptor(value)
+  if (
+    descriptor?.code === 'common.unexpected' &&
+    ownValue(descriptor.details, 'reason') === 'transportFailure'
+  ) {
+    return new RendererTransportError()
+  }
   return descriptor ? createAppError(descriptor) : new RendererTransportError()
 }

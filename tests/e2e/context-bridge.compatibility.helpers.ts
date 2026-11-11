@@ -22,23 +22,16 @@ declare global {
   }
 }
 
-/** Actual production preload and installer, without React's independent flush subscription. */
-export async function launchBridgeFixture() {
-  const { electronApp } = await launchApp()
+/** The real app window and production public API, including the app's own flush subscriber. */
+export async function launchBridgeApp() {
+  const { electronApp, window: page } = await launchApp()
   try {
-    const opened = electronApp.waitForEvent('window')
-    await electronApp.evaluate(({ BrowserWindow, app, ipcMain }) => {
-      const fixture = new BrowserWindow({
-        show: false,
-        webPreferences: {
-          preload: `${app.getAppPath()}/out/preload/index.js`,
-          contextIsolation: true,
-          nodeIntegration: false,
-          sandbox: true,
-        },
-      })
+    const targetId = await page.evaluate(() => window.opencoveApi.meta.mainPid)
+    // Native BrowserWindow is the only window created by launchApp at this point.
+    await electronApp.evaluate(({ BrowserWindow, ipcMain }) => {
+      const target = BrowserWindow.getAllWindows()[0]
       const probe: BridgeMainProbe = {
-        webContentsId: fixture.webContents.id,
+        webContentsId: target.webContents.id,
         acks: [],
         inputBytes: [],
         inputIsTypedArray: false,
@@ -56,7 +49,6 @@ export async function launchBridgeFixture() {
           probe.bounds += 1
         }
       })
-      // Main injection is upstream of the real isolated preload, never a renderer API mock.
       for (const [channel, handler] of [
         [
           'workspace:write-canvas-image',
@@ -79,16 +71,16 @@ export async function launchBridgeFixture() {
         ipcMain.removeHandler(channel)
         ipcMain.handle(channel, handler)
       }
-      void fixture.loadFile(`${app.getAppPath()}/out/renderer/bridge-compatibility.html`)
     })
-    const page = await opened
-    await page.waitForFunction(
-      () => typeof window.opencoveApi?.filesystem?.getPathForFile === 'function',
-    )
+    expect(targetId).toBeTruthy()
     expect(await page.evaluate(() => typeof Reflect.get(globalThis, 'require'))).toBe('undefined')
     await page.evaluate(() => {
       const probe: BridgePageProbe = { barriers: 0, order: [], stops: [], flushCalls: [] }
       window.__bridgeCompatibilityProbe = probe
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.dataset.testid = 'native-file'
+      document.body.append(input)
       probe.stops.push(
         window.opencoveApi.pty.onData(event => {
           if (event.sessionId === 'bridge-barrier') {
@@ -97,6 +89,9 @@ export async function launchBridgeFixture() {
         }),
       )
     })
+    // App hydration installs its lifecycle subscriber before tests dispatch a flush.
+    await expect(page.locator('.app-startup-state')).toHaveCount(0)
+    await expect(page.getByTestId('app-header-settings')).toBeVisible()
     return { electronApp, page }
   } catch (error) {
     await electronApp.close()

@@ -356,8 +356,12 @@ export async function launchWorkspaceAgentSession({
       if (
         !isAppErrorDescriptor(error) ||
         code.startsWith('agent.managed_launch_') ||
-        (details?.managedClaudeLaunch &&
-          !(details.phase === 'beforeSpawn' && details.reason === 'mountUnavailable')) ||
+        // Only explicit pre-spawn rejection evidence permits an automatic mount repair.
+        !(
+          details?.managedClaudeLaunch === true &&
+          details.phase === 'beforeSpawn' &&
+          details.reason === 'mountUnavailable'
+        ) ||
         !retryResolveMountBinding
       ) {
         throw error

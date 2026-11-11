@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { removePathWithRetry } from './workspace-canvas.helpers'
 import {
-  launchBridgeFixture,
+  launchBridgeApp,
   mainProbe,
   sendBridgeEvents,
 } from './context-bridge.compatibility.helpers'
@@ -14,7 +14,7 @@ test('transfers native Files and bytes through the installed API and preserves s
   const root = await mkdtemp(join(tmpdir(), 'opencove-bridge-file-'))
   let electronApp: ElectronApplication | undefined
   try {
-    const fixture = await launchBridgeFixture()
+    const fixture = await launchBridgeApp()
     electronApp = fixture.electronApp
     const page = fixture.page
     const path = join(await realpath(root), 'native.bin')
@@ -22,7 +22,8 @@ test('transfers native Files and bytes through the installed API and preserves s
     await page.getByTestId('native-file').setInputFiles(path)
     const result = await page.evaluate(async () => {
       const api = window.opencoveApi
-      const file = document.querySelector<HTMLInputElement>('input')!.files![0]
+      const file = document.querySelector<HTMLInputElement>('[data-testid="native-file"]')!
+        .files![0]
       const nativePath = api.filesystem.getPathForFile(file)
       const memoryPath = api.filesystem.getPathForFile(new File(['memory'], 'memory.txt'))
       const bounds = api.websiteWindow.setBounds({
@@ -67,7 +68,7 @@ test('transfers native Files and bytes through the installed API and preserves s
 })
 
 test('replays PTY state and metadata synchronously in order and stops delivery on unsubscribe', async () => {
-  const { electronApp, page } = await launchBridgeFixture()
+  const { electronApp, page } = await launchBridgeApp()
   try {
     await sendBridgeEvents(electronApp, [
       {
@@ -178,7 +179,7 @@ test('replays PTY state and metadata synchronously in order and stops delivery o
 
 for (const outcome of ['resolve', 'reject'] as const) {
   test(`acknowledges flush only after the renderer callback Promise ${outcome}s`, async () => {
-    const { electronApp, page } = await launchBridgeFixture()
+    const { electronApp, page } = await launchBridgeApp()
     try {
       await page.evaluate(mode => {
         const probe = window.__bridgeCompatibilityProbe
@@ -230,9 +231,46 @@ for (const outcome of ['resolve', 'reject'] as const) {
       expect(await page.evaluate(() => window.__bridgeCompatibilityProbe.flushCalls)).toEqual([
         'held-flush',
       ])
-      expect((await mainProbe(electronApp)).acks).toEqual(['held-flush'])
+      await expect
+        .poll(async () => (await mainProbe(electronApp)).acks)
+        .toEqual(['held-flush', 'after-unsubscribe'])
     } finally {
       await electronApp.close()
     }
   })
 }
+
+test('installs the same public API in a second real app document', async () => {
+  const { electronApp, page } = await launchBridgeApp()
+  try {
+    const opened = electronApp.waitForEvent('window')
+    await electronApp.evaluate(({ BrowserWindow, app }) => {
+      const original = BrowserWindow.getAllWindows()[0]
+      const second = new BrowserWindow({
+        show: false,
+        webPreferences: {
+          preload: `${app.getAppPath()}/out/preload/index.js`,
+          contextIsolation: true,
+          nodeIntegration: false,
+          sandbox: true,
+        },
+      })
+      void second.loadURL(original.webContents.getURL())
+    })
+    const other = await opened
+    await other.waitForFunction(
+      () => typeof window.opencoveApi?.filesystem?.getPathForFile === 'function',
+    )
+    expect(
+      await other.evaluate(() => ({
+        runtime: window.opencoveApi.meta.runtime,
+        path: window.opencoveApi.filesystem.getPathForFile(new File([], 'memory')),
+      })),
+    ).toEqual({ runtime: 'electron', path: '' })
+    expect(await page.evaluate(() => typeof window.opencoveApi.controlSurface.invoke)).toBe(
+      'function',
+    )
+  } finally {
+    await electronApp.close()
+  }
+})

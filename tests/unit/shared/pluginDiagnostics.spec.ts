@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
 import { reviveRendererAppError } from '@shared/errors/rendererAppError'
 import { pluginErrorMessage } from '@contexts/plugins/presentation/renderer/pluginErrorMessage'
 it.each([
@@ -35,4 +35,31 @@ it('rejects a credential-bearing Git source before a subprocess can echo it in p
   expect(gitInstallInput({ repository: 'ssh://git@example.test/repo.git' }).repository).toBe(
     'ssh://git@example.test/repo.git',
   )
+})
+it.each([
+  'https://:PRIVATE_CREDENTIAL@example.test/repo.git',
+  'https://git:PRIVATE_CREDENTIAL@example.test/repo.git',
+  'ssh://:PRIVATE_CREDENTIAL@example.test/repo.git',
+  'ssh://git:PRIVATE_CREDENTIAL@example.test/repo.git',
+  'https://example.test/repo.git?access_token=PRIVATE_CREDENTIAL',
+  'https://example.test/repo.git#PRIVATE_CREDENTIAL',
+  'ssh://git@example.test/repo.git?token=PRIVATE_CREDENTIAL',
+])('does not disclose credentials from distribution input %s', async repository => {
+  const { gitInstallInput } =
+    await import('@shared/contracts/controlSurface/operations/pluginDistributionInput')
+  const execute = vi.fn()
+  let failure: unknown
+  try {
+    execute(gitInstallInput({ repository }))
+  } catch (error) {
+    failure = error
+  }
+  expect(execute).not.toHaveBeenCalled()
+  expect(failure).toBeInstanceOf(Error)
+  const error = reviveRendererAppError({
+    code: 'plugin.operation_failed',
+    debugMessage: (failure as Error).message,
+  })
+  expect(pluginErrorMessage(error)).not.toContain('PRIVATE_CREDENTIAL')
+  expect(JSON.stringify(error)).not.toContain('PRIVATE_CREDENTIAL')
 })

@@ -188,8 +188,10 @@ recreates its facade; installation neither retries operations nor owns recovery 
 Validated application failures cross the context bridge as projected data and become local
 `OpenCoveAppError` instances. Invalid envelopes and transport failures remain safe native errors:
 class identity cannot establish that an operation was rejected before committing. Mount launch
-repair must not retry an uncertain result. Successful domain DTOs, callbacks and unsubscribe
-functions retain their existing semantics.
+repair must not retry an uncertain result: it requires explicit before-spawn mount rejection evidence.
+Main transport failures retain structured uncertainty through preload and renderer revival. Successful domain DTOs, callbacks and unsubscribe
+functions retain their existing semantics. Each persistence flush request has one ACK after all
+subscribers captured at dispatch settle; unsubscribe removes only future delivery.
 
 Public exception projection permits only code-aware semantic fields, plus up to 2000 characters
 of plugin author diagnostics for `plugin.operation_failed`. Only the plugin error formatter may

@@ -39,7 +39,11 @@ it.each([
     managedClaudeLifecycle: { binding, commitRevision: 1 },
   }))
   if (route.endsWith('retry')) {
-    launch.mockRejectedValueOnce(createAppError('agent.launch_failed'))
+    launch.mockRejectedValueOnce(
+      createAppError('agent.launch_failed', {
+        details: { managedClaudeLaunch: true, phase: 'beforeSpawn', reason: 'mountUnavailable' },
+      }),
+    )
   }
   const invoke = vi.fn(async request =>
     request.id === 'system.capabilities'

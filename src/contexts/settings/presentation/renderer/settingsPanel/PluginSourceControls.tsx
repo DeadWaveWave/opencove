@@ -1,3 +1,4 @@
+import { createPluginOperationError } from '@shared/errors/pluginOperationError'
 import { Button } from '@app/renderer/components/ui/Button'
 import { useEffect, useRef, useState, type JSX } from 'react'
 import { PluginCandidateList, type PluginCandidateInfo } from './PluginCandidateList'
@@ -116,10 +117,7 @@ export function PluginSourceControls({ plugin }: { plugin: PluginManifest }): JS
           setSource(fresh)
         }
         if (result.status !== 'updated') {
-          throw new Error(
-            [result.error, result.candidateDirectory].filter(Boolean).join('\n') ||
-              t('settingsPanel.plugins.source.failed'),
-          )
+          throw createPluginOperationError(result.error, t('settingsPanel.plugins.source.failed'))
         }
       } else {
         await changeInstalledPlugin('plugin.rollback', { pluginId: plugin.id, revision })

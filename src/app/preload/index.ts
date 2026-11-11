@@ -107,6 +107,7 @@ import type {
   WorkerStatusResult,
   CliPathStatusResult,
 } from '../../shared/contracts/dto'
+import { createPersistFlushSubscription } from './persistFlushSubscription'
 import { createRendererBridge } from './rendererBridge'
 import { invokeIpc } from './ipcInvoke'
 import { resolveDroppedFile } from './filesystemDrop'
@@ -130,6 +131,7 @@ ipcRenderer.on(IPC_CHANNELS.ptySessionMetadata, (_event, payload: TerminalSessio
 ipcRenderer.on(IPC_CHANNELS.ptyExit, (_event, payload: TerminalExitEvent) => {
   terminalEventReplayCache.disposeSession(payload.sessionId)
 })
+const onRequestPersistFlush = createPersistFlushSubscription(ipcRenderer)
 const opencoveApi: OpenCoveApi = {
   meta: resolveOpenCoveMeta(),
   debug: {
@@ -210,33 +212,7 @@ const opencoveApi: OpenCoveApi = {
   },
   lifecycle: {
     onApplicationShortcut,
-    onRequestPersistFlush: (
-      listener: (payload: { requestId: string }) => void | Promise<void>,
-    ): UnsubscribeFn => {
-      const handler = (_event: Electron.IpcRendererEvent, payload: unknown) => {
-        const requestIdRaw =
-          payload && typeof payload === 'object'
-            ? (payload as { requestId?: unknown }).requestId
-            : null
-        const requestId =
-          typeof requestIdRaw === 'string' && requestIdRaw.trim().length > 0
-            ? requestIdRaw.trim()
-            : null
-        if (!requestId) {
-          return
-        }
-        void Promise.resolve()
-          .then(() => listener({ requestId }))
-          .catch(() => undefined)
-          .finally(() => {
-            ipcRenderer.send(IPC_CHANNELS.appPersistFlushComplete, { requestId })
-          })
-      }
-      ipcRenderer.on(IPC_CHANNELS.appRequestPersistFlush, handler)
-      return () => {
-        ipcRenderer.removeListener(IPC_CHANNELS.appRequestPersistFlush, handler)
-      }
-    },
+    onRequestPersistFlush,
   },
   sync: {
     onStateUpdated: (listener: (event: SyncEventPayload) => void): UnsubscribeFn => {
