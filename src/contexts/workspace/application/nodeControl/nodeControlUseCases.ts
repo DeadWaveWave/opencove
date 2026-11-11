@@ -193,6 +193,9 @@ export async function createNodeForNodeControl(options: {
       (permit, lineage) => options.runtime.withSpawnPermit!(permit, () => create(lineage)),
     )
   }
+  if (createData.kind !== 'agent' && createData.kind !== 'terminal') {
+    options.admission?.noteNonRuntimeCreation(canvasNodeId)
+  }
   return create(await prepareNodeLineage(options.store, canvasNodeId, options.callerNodeId))
 
   async function create(

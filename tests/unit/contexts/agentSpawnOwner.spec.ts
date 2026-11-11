@@ -83,6 +83,35 @@ function fixture(paths?: typeof win32) {
   }
 }
 describe('agent spawn admission owner', () => {
+  it.each(['local', 'remote', 'unknown'] as const)(
+    'keeps actual %s runtime facts authoritative over non-runtime creation provenance',
+    async fact => {
+      const f = fixture()
+      f.owner.noteNonRuntimeCreation('content')
+      f.rows.set('content', {
+        nodeId: 'content',
+        spawnedBy: 'root',
+        rootNodeId: 'root',
+        lineageDepth: 2,
+      })
+      f.bind({
+        nodeId: 'content',
+        sessionId: 'actual-runtime',
+        runtimeOwner: fact === 'remote' ? 'remote' : 'local',
+        state: fact === 'unknown' ? 'unknown' : 'running',
+      })
+      if (fact === 'local') {
+        for (let i = 0; i < 5; i++) {
+          await f.start('n' + i)
+        }
+      }
+      await expect(f.start('next')).rejects.toMatchObject(
+        fact === 'local'
+          ? { code: 'agent.spawn_concurrency_limit' }
+          : { code: 'common.unavailable', details: { reason: 'spawn_accounting_unavailable' } },
+      )
+    },
+  )
   it('retains uncommitted lineage through failed commit/kill, then releases on exact exit', async () => {
     const f = fixture()
     for (let i = 0; i < 5; i++) {

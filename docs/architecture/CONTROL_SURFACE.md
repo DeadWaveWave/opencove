@@ -440,8 +440,11 @@ Grant runtime targets must remain local, including after mount re-resolution. De
 cannot create roots on the executing Worker. Historical remote bindings cannot prove completion
 through disconnection or saved status. At admission after startup or a persistence revision change, a read-only lineage audit
 finds unaccounted orphan rows whose node/session/endpoint association was lost; affected roots fail closed.
-This conservative restriction also applies to local or non-runtime orphans because existing lineage
-rows do not retain kind or endpoint. No reservation or endpoint history is persisted. The user can
+Creation branches that never launch runtimes record that fact in the admission owner for the Worker
+lifetime. Deleting their notes, tasks or websites does not make the census incomplete. Actual local,
+remote or unknown runtime observations still take precedence over that creation fact. After a restart,
+unclassified local or non-runtime orphans remain conservative fences because existing lineage rows do
+not retain kind or endpoint. No reservation or endpoint history is persisted. The user can
 inspect/stop historical runtimes and start a new canvas root for further delegation. Local surviving
 nodes count only from actual runtime bindings, never their persisted status/session ID alone.
 Observed remote roots retain their fence independently of node membership. Worker-local forwarding
@@ -455,4 +458,5 @@ without the public session lookup gate. Public `session.kill` authorization rema
 
 The additive `boundedAgentSpawningV1` capability requires the installed admission/runtime owner and
 lineage transaction support. CLI negotiation uses its existing per-run authenticated identity cache
-and shared dispatcher, covering `api call`; bearer launches and non-runtime work are exempt.
+and shared dispatcher, covering `api call`; bearer launches and non-runtime work are exempt. Raw grant
+launches receive migration guidance before CLI selector resolution, including terminals outside a Space.

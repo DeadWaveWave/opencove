@@ -3,6 +3,52 @@ import { expect, it } from 'vitest'
 import { run } from '../../../src/app/cli/core/run'
 import { identityFixture } from './cliIdentity.helpers'
 
+it('keeps bearer run-agent Space selectors available despite terminal environment hints', async () => {
+  const f = identityFixture()
+  f.values['system.whoami'] = { kind: 'bearer', scopeTier: 'admin' }
+  f.values['session.launchAgent'] = { sessionId: 'user-runtime' }
+  expect(
+    await run(
+      ['session', 'run-agent', '--space', 'Main', '--project', 'Project', '--prompt', 'Help me'],
+      f.io,
+    ),
+  ).toBe(0)
+  expect(f.requests.at(-1)).toMatchObject({
+    id: 'session.launchAgent',
+    payload: { spaceId: 'space-123456', prompt: 'Help me' },
+  })
+  expect(f.requests.some(r => r.id === 'system.capabilities')).toBe(false)
+})
+
+it.each([true, false])(
+  'refuses raw grant launch before Space resolution (bounded=%s)',
+  async bounded => {
+    const f = identityFixture()
+    f.values['system.whoami'] = {
+      kind: 'session-grant',
+      scopeTier: 'interact',
+      nodeId: 'root',
+      sessionId: 'shell',
+      projectId: 'project',
+      spaceId: null,
+    }
+    f.values['system.capabilities'] = { features: { boundedAgentSpawningV1: bounded } }
+    delete f.io.env.OPENCOVE_SPACE_ID
+    const code = await run(['session', 'run-agent', '--prompt', 'Help me'], f.io)
+    expect(code).toBe(bounded ? 4 : 5)
+    expect(f.requests.map(r => r.id)).toEqual(['system.whoami', 'system.capabilities'])
+    expect(f.error()).toMatchObject(
+      bounded
+        ? {
+            code: 'common.forbidden',
+            hint: expect.stringContaining('node create'),
+            details: { spawnReason: 'node_create_required', operationId: 'session.launchAgent' },
+          }
+        : { code: 'cli.unsupported' },
+    )
+  },
+)
+
 it.each([undefined, false])(
   'refuses absent/false bounded capability before api call mutation (%s)',
   async capability => {

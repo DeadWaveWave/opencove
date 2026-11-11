@@ -57,12 +57,18 @@ export class AgentSpawnAdmissionOwner {
   private readonly permits = new Map<AgentSpawnPermit, Admission & { used: boolean }>()
   private readonly historicalFences = new Set<string>()
   private readonly knownLocalNodeIds = new Set<string>()
+  private readonly nonRuntimeCreations = new Set<string>()
   private readonly seededBindings = new Map<string, NodeRuntimeBinding>()
   private auditedRevision: number | undefined
   public constructor(
     private readonly runtime: AgentSpawnRuntimePort,
     private readonly paths: Pick<PlatformPath, 'normalize'> = path,
   ) {}
+
+  /** Called only by the creation factory branch that cannot launch an agent or terminal. */
+  public noteNonRuntimeCreation(nodeId: string): void {
+    this.nonRuntimeCreations.add(nodeId)
+  }
 
   public authorize(
     permit: AgentSpawnPermit | undefined,
@@ -200,7 +206,11 @@ export class AgentSpawnAdmissionOwner {
             spawnAccountingUnavailable()
           }
           for (const row of history.values()) {
-            if (!persistedNodeIds.has(row.nodeId) && !knownLocalNodes.has(row.nodeId)) {
+            if (
+              !persistedNodeIds.has(row.nodeId) &&
+              !knownLocalNodes.has(row.nodeId) &&
+              !this.nonRuntimeCreations.has(row.nodeId)
+            ) {
               orphanRoots.add(row.rootNodeId)
             }
           }

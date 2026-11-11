@@ -1,7 +1,11 @@
 import type { Invoke, sessionIdentity } from './identity'
 import type { ControlSurfaceCapabilitiesResult } from '../../../shared/contracts/dto'
 import { CliError } from './errors'
-import { agentSpawnPresentations } from '../../../shared/errors/agentSpawnError'
+import {
+  agentSpawnPresentations,
+  spawnForbiddenDetails,
+} from '../../../shared/errors/agentSpawnError'
+import { authorizationError } from './authorizationError'
 const runtimeOperations = new Set([
   'session.launchAgent',
   'session.launchAgentInMount',
@@ -15,11 +19,12 @@ export async function requireBoundedAgentSpawningForRequest(
   payload: unknown,
   identity: ReturnType<typeof sessionIdentity>,
   invoke: Invoke,
+  phase: 'before_selectors' | 'dispatch' = 'dispatch',
 ): Promise<void> {
   const kind = (payload as { kind?: string } | null)?.kind
   if (
     !runtimeOperations.has(id) &&
-    !(id === 'node.create' && (kind === 'agent' || kind === 'terminal'))
+    !(phase === 'dispatch' && id === 'node.create' && (kind === 'agent' || kind === 'terminal'))
   ) {
     return
   }
@@ -36,6 +41,12 @@ export async function requireBoundedAgentSpawningForRequest(
   }
   const result = (await invoke('system.capabilities', {})) as ControlSurfaceCapabilitiesResult
   if (result.features?.boundedAgentSpawningV1 === true) {
+    if (runtimeOperations.has(id)) {
+      throw authorizationError(403, {
+        code: 'common.forbidden',
+        details: spawnForbiddenDetails('node_create_required', id),
+      })!
+    }
     return
   }
   const text = agentSpawnPresentations.agentSpawnCapability

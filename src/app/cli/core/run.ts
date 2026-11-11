@@ -246,6 +246,9 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
     }
     const selfSelected = Object.values(args.options).flat().includes('@self')
     const identity = sessionIdentity(io.env, call)
+    if (id) {
+      await requireBoundedAgentSpawningForRequest(id, input, identity, call, 'before_selectors')
+    }
     await resolveSelectors(command, args, io, call, identity)
     input = command.buildInput?.(args)
     mutationStarted ||= command.mutation === true
