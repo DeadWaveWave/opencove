@@ -74,13 +74,19 @@ describe('agent relaunch session binding', () => {
         node.data.sessionId = 'old-runtime'
       }
       window.opencoveApi = {
-        ...(owned
+        ...(provider === 'claude-code'
           ? {
               controlSurface: {
                 invoke: vi.fn(async request =>
                   request.id === 'node.managedClaudeBinding'
-                    ? { managedClaudeBinding: binding, retired: false, executionDirectory: '/repo' }
-                    : { mounts: [] },
+                    ? {
+                        managedClaudeBinding: owned ? binding : null,
+                        retired: false,
+                        executionDirectory: '/repo',
+                      }
+                    : request.id === 'system.capabilities'
+                      ? { features: { managedClaudeResumeBindingDeliveryV1: true } }
+                      : { mounts: [] },
                 ),
               },
             }

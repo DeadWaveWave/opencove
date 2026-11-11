@@ -95,6 +95,7 @@ export async function prepareAgentNode(options: {
     space,
     cwd: sanitizedAgent.executionDirectory,
   })
+  ctx.assertActive?.()
   assertManagedClaudeLaunchCurrent()
   const agentExecutionDirectory = agentLaunchContext.workingDirectory
   const agentExpectedDirectory = agentLaunchContext.workingDirectory

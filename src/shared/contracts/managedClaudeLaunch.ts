@@ -42,6 +42,7 @@ export interface ManagedClaudeNodeObservation {
   context: ManagedClaudeNodeContext | null
 }
 export interface AppStateCommittedObservation {
+  operationId?: string
   revision: number
   removedNodeIds: readonly string[]
   removedRuntimeSessionIds: readonly string[]

@@ -49,7 +49,10 @@ function fixture(path = '/invoke') {
     ctx: { now: () => new Date(), capabilities: {} },
     isRuntimeClosed: () => false,
     getWebAccessPolicy: () => ({ enabled: false, passwordRequired: false }),
-    getPersistenceStore: vi.fn(async () => ({ readAppStateRevision: async () => 0 })),
+    getPersistenceStore: vi.fn(async () => ({
+      readAppStateRevision: async () => 0,
+      readAppStateSnapshot: async () => ({ revision: 0, state: null }),
+    })),
     syncClients: new Set<ServerResponse>(),
     syncEventBuffer: [],
   } as unknown as ControlSurfaceHttpRequestHandlerDeps
@@ -88,28 +91,27 @@ it('revokes authorization while a body is pending', async () => {
   expect(f.execute).not.toHaveBeenCalled()
 })
 
-it('revokes authorization while persistence preparation is pending', async () => {
-  const f = fixture()
+it('revokes authorization during the durable reconnect read', async () => {
+  const f = fixture('/events')
   let release!: () => void
   const barrier = new Promise<void>(resolve => {
     release = resolve
   })
   const read = vi.fn(async () => {
     await barrier
-    return 0
+    return { revision: 1, state: null }
   })
   f.deps.getPersistenceStore = vi.fn(async () => ({
-    readAppStateRevision: read,
+    readAppStateSnapshot: read,
   })) as typeof f.deps.getPersistenceStore
   const pending = f.run()
-  await vi.waitFor(() => expect(f.req.listenerCount('end')).toBe(1))
-  f.body()
   await vi.waitFor(() => expect(read).toHaveBeenCalled())
   f.grants.revokeSession('session')
   release()
   await pending
-  expect(f.res.statusCode).toBe(401)
   expect(f.execute).not.toHaveBeenCalled()
+  expect(f.deps.syncClients.size).toBe(0)
+  expect(f.res.write).not.toHaveBeenCalledWith(expect.stringContaining('resync_required'))
 })
 
 it('removes and ends an established SSE stream synchronously on revoke', async () => {
@@ -177,10 +179,10 @@ it('does not publish a resync or resurrect SSE after revocation during revision 
   })
   const read = vi.fn(async () => {
     await barrier
-    return 6
+    return { revision: 6, state: null }
   })
   f.deps.getPersistenceStore = vi.fn(async () => ({
-    readAppStateRevision: read,
+    readAppStateSnapshot: read,
   })) as typeof f.deps.getPersistenceStore
   const pending = f.run()
   await vi.waitFor(() => expect(read).toHaveBeenCalled())

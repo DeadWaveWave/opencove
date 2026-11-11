@@ -12,8 +12,14 @@ const node = {
   id: 'agent',
   data: { kind: 'agent', sessionId: 'live', agent: { provider: 'claude-code' } },
 }
-function fixture(legacy = false) {
+function fixture(legacy = false, compatible = true) {
   const f = compatibilityFixture({ persisted: false })
+  f.surface.register('system.capabilities', {
+    kind: 'query',
+    validate: x => x,
+    handle: () => ({ features: { managedClaudeResumeBindingDeliveryV1: compatible } }),
+    defaultErrorCode: 'common.unexpected',
+  })
   registerOperationIntrospectionHandlers(f.surface)
   if (!legacy) {
     registerNodeControlHandlers(f.surface, {
@@ -37,14 +43,20 @@ function fixture(legacy = false) {
   return { ...f, kill }
 }
 describe('managed Claude ownership lookup without persisted nodes', () => {
-  it('preserves legacy cleanup and launch reads against a registry predating managed ownership', async () => {
+  it('requires a Worker upgrade when ownership lookup is unsupported', async () => {
     const f = fixture(true)
     try {
       expect(f.surface.hasOperation('node.managedClaudeBinding')).toBe(false)
-      await expect(killUnownedNodeRuntime(node)).resolves.toBeUndefined()
-      await expect(readManagedClaudeBinding('agent', 'claude-code')).resolves.toBeNull()
-      await expect(readManagedClaudeExecutionContext('agent', 'claude-code')).resolves.toBeNull()
-      expect(f.kill).toHaveBeenCalledExactlyOnceWith({ sessionId: 'live' })
+      await expect(killUnownedNodeRuntime(node)).rejects.toMatchObject({
+        details: { reason: 'workerUpgradeRequired' },
+      })
+      await expect(readManagedClaudeBinding('agent', 'claude-code')).rejects.toMatchObject({
+        details: { reason: 'workerUpgradeRequired' },
+      })
+      await expect(readManagedClaudeExecutionContext('agent', 'claude-code')).rejects.toMatchObject(
+        { details: { reason: 'workerUpgradeRequired' } },
+      )
+      expect(f.kill).not.toHaveBeenCalled()
       expect(f.store.readAppState).not.toHaveBeenCalled()
     } finally {
       f.runtime.dispose()
@@ -124,4 +136,22 @@ it('does not treat an omitted binding field as definitive absence', async () => 
     code: 'persistence.unavailable',
   })
   expect(kill).not.toHaveBeenCalled()
+})
+
+it('requires upgrading a Worker that has lookup but lacks safe delivery for existing ownership', async () => {
+  const f = fixture(false, false)
+  await f.store.activateManagedClaudeRuntime({
+    nodeId: 'agent',
+    activationId: 'owned',
+    runtimeSessionId: 'live',
+    tuple: { resumeSessionId: 'B', resumeSessionIdVerified: true },
+  })
+  try {
+    await expect(killUnownedNodeRuntime(node)).rejects.toMatchObject({
+      details: { reason: 'workerUpgradeRequired' },
+    })
+    expect(f.kill).not.toHaveBeenCalled()
+  } finally {
+    f.runtime.dispose()
+  }
 })

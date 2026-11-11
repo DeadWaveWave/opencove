@@ -20,7 +20,11 @@ export function deferred<T>() {
   })
   return { promise, resolve }
 }
-export const context = { now: () => new Date(), capabilities: {} } as ControlSurfaceContext
+export const context = {
+  clientFeatures: { managedClaudeResumeBindingV1: true },
+  now: () => new Date(),
+  capabilities: {},
+} as ControlSurfaceContext
 export const absent = {
   activationId: null,
   tuple: { resumeSessionId: null, resumeSessionIdVerified: false },
@@ -28,6 +32,9 @@ export const absent = {
 export function compatibilityFixture(
   options: {
     enabled?: boolean
+    writesEnabled?: boolean
+    live?: boolean
+    hasRuntime?: (id: string) => boolean
     retired?: boolean
     provider?: 'claude-code' | 'codex'
     persisted?: boolean
@@ -97,7 +104,8 @@ export function compatibilityFixture(
   const runtime = createManagedClaudeLaunchRuntime({
     getPersistenceStore,
     killExactRuntime: kill,
-    hasRuntime: () => true,
+    hasRuntime: id => options.hasRuntime?.(id) ?? options.live ?? true,
+    writesEnabled: () => options.writesEnabled ?? true,
     adoptionEnabled: () => options.enabled ?? false,
   })
   const surface = createControlSurface({
@@ -117,18 +125,21 @@ export function compatibilityFixture(
     defaultErrorCode: 'agent.launch_failed',
     handle: async () => spawn(),
   })
-  const launch = (payload: object = {}) =>
-    surface.invoke(context, {
-      kind: 'command',
-      id: 'session.launchAgent',
-      payload: {
-        canvasNodeId: 'agent',
-        workspaceId: 'workspace',
-        cwd: '/repo',
-        provider,
-        prompt: 'fixture',
-        ...payload,
+  const launch = (payload: object = {}, clientFeatures = context.clientFeatures) =>
+    surface.invoke(
+      { ...context, clientFeatures },
+      {
+        kind: 'command',
+        id: 'session.launchAgent',
+        payload: {
+          canvasNodeId: 'agent',
+          workspaceId: 'workspace',
+          cwd: '/repo',
+          provider,
+          prompt: 'fixture',
+          ...payload,
+        },
       },
-    })
+    )
   return { state, store, runtime, surface, spawn, launch, getPersistenceStore, admission, kill }
 }

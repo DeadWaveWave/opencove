@@ -24,7 +24,11 @@ function deferred<T>() {
   })
   return { promise, resolve }
 }
-const context = { now: () => new Date(), capabilities: {} } as ControlSurfaceContext
+const context = {
+  clientFeatures: { managedClaudeResumeBindingV1: true },
+  now: () => new Date(),
+  capabilities: {},
+} as ControlSurfaceContext
 function fixture() {
   let pauseSpawn = async () => {}
   let runtimeActive = true
@@ -187,4 +191,23 @@ it('does not activate a runtime that exited after registration', async () => {
     error: { details: { reason: 'resumeUnavailable' } },
   })
   expect(fixtureState.store.activateManagedClaudeRuntime).not.toHaveBeenCalled()
+})
+
+it('does not install a commit subscription after disposal during store acquisition', async () => {
+  const acquiring = deferred<PersistenceStore>()
+  const subscribe = vi.fn(() => vi.fn())
+  const runtime = createManagedClaudeLaunchRuntime({
+    getPersistenceStore: () => acquiring.promise,
+    hasRuntime: () => false,
+    killExactRuntime: vi.fn(async () => {}),
+    adoptionEnabled: () => false,
+  })
+  const ready = runtime.ready()
+  runtime.dispose()
+  acquiring.resolve({ onAppStateCommitted: subscribe } as unknown as PersistenceStore)
+  await expect(ready).rejects.toMatchObject({
+    code: 'agent.managed_launch_rejected',
+    details: { reason: 'superseded' },
+  })
+  expect(subscribe).not.toHaveBeenCalled()
 })

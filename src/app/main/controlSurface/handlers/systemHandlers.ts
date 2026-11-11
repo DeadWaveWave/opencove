@@ -1,3 +1,4 @@
+import { managedClaudeWritesEnabled } from '../managedClaudeCompatibility'
 import { registerOperationIntrospectionHandlers } from './operationIntrospectionHandlers'
 import {
   systemCapabilitiesOperation,
@@ -92,6 +93,8 @@ export function registerSystemHandlers(
           ),
           operationRegistry: true,
           managedClaudeResumeBindingV1: false,
+          managedClaudeResumeBindingDeliveryV1: true,
+          managedClaudeResumeBindingWritesEnabled: managedClaudeWritesEnabled(),
           nodeLineageV1:
             controlSurface.hasOperation('node.resolveCallerSelector') &&
             ((await deps.hasNodeLineage?.()) ?? false),

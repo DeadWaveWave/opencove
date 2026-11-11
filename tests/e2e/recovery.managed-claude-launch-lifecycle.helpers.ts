@@ -39,6 +39,7 @@ export async function launch(
       return window.opencoveApi.controlSurface.invoke<LaunchAgentSessionResult>({
         kind: 'command',
         id: 'session.launchAgent',
+        clientFeatures: { managedClaudeResumeBindingV1: true },
         payload: {
           canvasNodeId: nodeId,
           spaceId: targetSpaceId,

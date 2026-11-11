@@ -142,9 +142,15 @@ export async function runTaskAgentAction(
 
   const linkedAgentNodeId = taskNode.data.task.linkedAgentNodeId
   const linked = context.nodesRef.current.find(node => node.id === linkedAgentNodeId)
-  const owned = linkedAgentNodeId
-    ? await readManagedClaudeExecutionContext(linkedAgentNodeId, linked?.data.agent?.provider)
-    : null
+  let owned
+  try {
+    owned = linkedAgentNodeId
+      ? await readManagedClaudeExecutionContext(linkedAgentNodeId, linked?.data.agent?.provider)
+      : null
+  } catch (error) {
+    setTaskLastError({ taskNodeId, message: toErrorMessage(error), setNodes: context.setNodes })
+    return
+  }
 
   const initialBinding = await resolveWorkspaceAgentLaunchBinding({
     workspaceId: context.workspaceId,

@@ -1,4 +1,9 @@
 import { registerOperation } from '../registerOperation'
+import {
+  guardLegacyManagedClaudeContext,
+  managedClaudeWritesEnabled,
+} from '../managedClaudeCompatibility'
+import { assertManagedClaudeLaunchCurrent } from '../managedClaudeLaunchRuntime'
 import { sessionPrepareOrReviveOperation } from '@shared/contracts/controlSurface/operations/domains/session'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import type {
@@ -163,10 +168,29 @@ export function registerSessionPrepareOrReviveHandler(
                       return null
                     }
 
+                    const attempt =
+                      ctx.managedClaudePreparation?.attempts.get(node.id) ??
+                      (observed?.binding
+                        ? ctx.managedClaudePreparation?.reserve(node.id)
+                        : undefined)
+                    const preparationContext = attempt
+                      ? {
+                          ...recoveryContext,
+                          assertActive: () => {
+                            recoveryContext.assertActive?.()
+                            assertManagedClaudeLaunchCurrent()
+                          },
+                        }
+                      : guardLegacyManagedClaudeContext(
+                          recoveryContext,
+                          store,
+                          node.id,
+                          managedClaudeWritesEnabled,
+                        )
                     const prepare = async () =>
                       await prepareAgentNode({
                         controlSurface,
-                        ctx: recoveryContext,
+                        ctx: preparationContext,
                         store,
                         workspace,
                         node,
@@ -175,11 +199,6 @@ export function registerSessionPrepareOrReviveHandler(
                         settings,
                         ptyRuntime: deps.ptyRuntime,
                       })
-                    const attempt =
-                      ctx.managedClaudePreparation?.attempts.get(node.id) ??
-                      (observed?.binding
-                        ? ctx.managedClaudePreparation?.reserve(node.id)
-                        : undefined)
                     return attempt ? ctx.managedClaudePreparation!.run(attempt, prepare) : prepare()
                   }
 

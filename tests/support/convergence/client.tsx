@@ -1,4 +1,11 @@
-import { editSpaceOrder, assertCanonicalSpaceOrder } from './spaceOrdering'
+import { editRefreshNode } from './refreshEdits'
+import { assertClientCanonicalState } from './clientObservation'
+import { startWorkerHydration } from '../../../src/app/renderer/shell/hooks/workerSync/startupHydration'
+import { clearWorkerConnectionFailure } from '../../../src/app/renderer/shell/hooks/workerSync/workerConnectionState'
+import { createAppError } from '../../../src/shared/errors/appError'
+import { Delivery } from './delivery'
+import type { SyncEventPayload } from '../../../src/shared/contracts/dto'
+import { editSpaceOrder } from './spaceOrdering'
 import { act, renderHook } from '@testing-library/react'
 import { vi } from 'vitest'
 import { useWorkerSyncStateUpdates } from '@app/renderer/shell/hooks/useWorkerSyncStateUpdates'
@@ -36,6 +43,7 @@ export class Client {
   server: Server
   localViews: LocalViewModel
   caches = new Set<RevisionedSnapshotCache<PersistedAppState>>()
+  private stopStartup: (() => void) | undefined
   private queuedFlush: Promise<boolean> | null = null
   private inFlight: Promise<unknown> | null = null
   private legacyHistory = false
@@ -43,7 +51,8 @@ export class Client {
   private autosaveHook: ReturnType<typeof renderHook> | null = null
   private stopped = false
   private hook: ReturnType<typeof renderHook>
-  private event: ((event: { type: 'resync_required'; revision: number }) => void) | undefined
+  private event: ((event: SyncEventPayload) => void) | undefined
+  private delivery: Delivery
   private original = {
     api: window.opencoveApi,
     app: useAppStore.getState(),
@@ -59,6 +68,11 @@ export class Client {
     const initial = withLocalViews(fixture(owned))
     this.localViews = new LocalViewModel(initial)
     this.server = new Server(stripPersistedAppViewState(initial), response)
+    this.delivery = new Delivery(
+      () => this.server.model.revision,
+      event => this.event?.(event),
+    )
+    this.server.notifyCommit = () => this.delivery.commit()
     const caches = this.caches,
       set = RevisionedSnapshotCache.prototype.set
     this.cacheSpy = vi.spyOn(RevisionedSnapshotCache.prototype, 'set').mockImplementation(function (
@@ -162,7 +176,45 @@ export class Client {
       })
     }
     await act(async () => {
-      if (action === 'rename' || action === 'title') {
+      if (action === 'begin-connect-read') {
+        await this.settle()
+        this.server.deferNextRead()
+        requestCanonicalRefresh({ reason: 'connect' })
+        await vi.advanceTimersByTimeAsync(1)
+      } else if (action === 'release-connect-read') {
+        this.server.releaseRead()
+        await this.settle()
+      } else if (action === 'delete-terminal' || action === 'move-node') {
+        editRefreshNode(this, action === 'delete-terminal')
+      } else if (action === 'mount-renderer') {
+        this.hook.unmount()
+        this.hook = renderHook(() => useWorkerSyncStateUpdates({ enabled: true }))
+      } else if (action === 'startup-refusal') {
+        this.hook.unmount()
+        this.server.readFailure = createAppError('agent.managed_launch_rejected', {
+          details: { reason: 'workerUpgradeRequired' },
+        })
+        this.stopStartup = startWorkerHydration(
+          async () => {
+            const read = await readPersistedStateWithMeta()
+            clearWorkerConnectionFailure()
+            if (read.state) {
+              this.apply(read.state)
+            }
+            acceptPersistedStateSnapshot(read)
+          },
+          () => true,
+        )
+      } else if (action === 'worker-upgrade') {
+        this.server.readFailure = null
+        window.dispatchEvent(new Event('online'))
+      } else if (action === 'connect-delivery') {
+        await this.delivery.connect()
+      } else if (action === 'disconnect-delivery') {
+        this.delivery.disconnect()
+      } else if (action === 'restart-worker') {
+        this.delivery.restartWorker()
+      } else if (action === 'rename' || action === 'title') {
         const field = action === 'rename' ? 'name' : 'title',
           next = `user-${this.server.model.intents.length}`
         this.server.model.edit(field, next)
@@ -296,8 +348,10 @@ export class Client {
             this.server.model.verified,
           )
         }
+        this.server.notifyCommit()
       } else if (action === 'third-party') {
         this.server.model.thirdParty()
+        this.server.notifyCommit()
       } else if (action === 'observe') {
         requestCanonicalRefresh({ reason: 'merged', minimumRevision: this.server.model.revision })
       } else if (action === 'event' || action === 'reverse-event') {
@@ -355,6 +409,10 @@ export class Client {
       }
     })
     if (
+      action === 'mount-renderer' ||
+      action === 'startup-refusal' ||
+      action === 'worker-upgrade' ||
+      action === 'connect-delivery' ||
       action === 'refresh' ||
       action === 'event' ||
       action === 'reverse-event' ||
@@ -376,46 +434,7 @@ export class Client {
   }
   check(quiet: boolean) {
     this.localViews.check(this.state())
-    const pending = publication.getPendingPublication()
-    const draft = publication.isPublicationBlocked(pending)
-      ? (JSON.parse(
-          ((pending && 'draftRaw' in pending ? pending!.draftRaw : null) as string) ??
-            pending!.candidateRaw,
-        ) as PersistedAppState)
-      : null
-    const accepted = publication.getSyncedPersistedState()
-    assertCanonicalSpaceOrder([...this.caches].at(-1)?.latest?.state)
-    this.server.model.check(
-      {
-        ui: value(this.state()),
-        draft: draft ? value(draft) : null,
-        accepted: accepted ? value(accepted) : null,
-        revision: publication.getAcceptedRevision(),
-        cache: [...this.caches].at(-1)?.latest?.state
-          ? value([...this.caches].at(-1)!.latest!.state!)
-          : null,
-        viewConsistent:
-          !accepted ||
-          publication.canAcceptCanonicalState(accepted, publication.getAcceptedRevision()) ===
-            publication.canAcceptCanonicalState(
-              {
-                ...accepted,
-                workspaces: accepted.workspaces.map(w => ({
-                  ...w,
-                  viewport: { x: 999, y: 2, zoom: 3 },
-                })),
-              },
-              publication.getAcceptedRevision(),
-            ),
-        surfaced: !!useAppStore.getState().persistNotice,
-        acceptedVerified: accepted?.workspaces[0].nodes[0].agent?.resumeSessionIdVerified === true,
-        verified:
-          useAppStore.getState().workspaces[0].nodes[0].data.agent?.resumeSessionIdVerified ===
-          true,
-      },
-      quiet,
-      this.owned,
-    )
+    assertClientCanonicalState(this, quiet)
   }
   async quiet() {
     if (this.stopped) {
@@ -438,6 +457,9 @@ export class Client {
     }
   }
   async close() {
+    this.server.releaseRead()
+    this.stopStartup?.()
+    this.delivery.disconnect()
     this.server.reply()
     await this.inFlight
     await this.queuedFlush

@@ -115,6 +115,7 @@ export interface ListAgentSessionsResult {
 }
 
 export interface LaunchAgentInput {
+  clientFeatures?: import('../controlSurface/clientFeatures').ControlSurfaceClientFeatures
   intent?: ManagedClaudeLaunchIntent
   canvasNodeId?: string
   workspaceId?: string

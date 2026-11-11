@@ -47,9 +47,15 @@ export function toErrorMessage(error: unknown): string {
     if (error.code === 'agent.managed_launch_rejected') {
       const details = error.details as { reason?: string } | undefined
       return translate(
-        details?.reason === 'resumeUnavailable'
-          ? 'messages.managedAgentResumeUnavailable'
-          : 'messages.managedAgentChanged',
+        details?.reason === 'workerUpgradeRequired'
+          ? 'messages.managedAgentWorkerUpgradeRequired'
+          : details?.reason === 'clientUpgradeRequired'
+            ? 'messages.managedAgentClientUpgradeRequired'
+            : details?.reason === 'writesDisabled'
+              ? 'messages.managedAgentWritesDisabled'
+              : details?.reason === 'resumeUnavailable'
+                ? 'messages.managedAgentResumeUnavailable'
+                : 'messages.managedAgentChanged',
       )
     }
     const spawn = agentSpawnErrorPresentation(error)

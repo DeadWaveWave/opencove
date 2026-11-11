@@ -1,3 +1,5 @@
+import { isWorkerConnectionRefusal } from '../../../../shared/sync/managedClaudeWorkerCompatibility'
+import { toAppErrorDescriptor } from '../../../../shared/errors/appError'
 import { webContents } from 'electron'
 import { Readable } from 'node:stream'
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web'
@@ -31,10 +33,14 @@ export function registerWorkerSyncBridge(endpointResolver: ControlSurfaceRemoteE
 } {
   let disposed = false
   let lastRevision = 0
+  let reconnectTimer: ReturnType<typeof setTimeout> | undefined
   const abortController = new AbortController()
 
   const connectOnce = async (): Promise<void> => {
     const endpoint = await endpointResolver()
+    if (disposed) {
+      return
+    }
     if (!endpoint) {
       throw new WorkerEndpointUnavailableError()
     }
@@ -47,6 +53,10 @@ export function registerWorkerSyncBridge(endpointResolver: ControlSurfaceRemoteE
       },
       signal: abortController.signal,
     })
+    if (disposed) {
+      await response.body?.cancel().catch(() => undefined)
+      return
+    }
 
     if (!response.ok) {
       throw new Error(`sync bridge failed: HTTP ${response.status}`)
@@ -105,6 +115,11 @@ export function registerWorkerSyncBridge(endpointResolver: ControlSurfaceRemoteE
 
     await new Promise<void>((resolve, reject) => {
       const handleChunk = (chunk: unknown): void => {
+        if (disposed) {
+          stream.destroy()
+          resolve()
+          return
+        }
         buffer += String(chunk)
 
         while (true) {
@@ -144,11 +159,6 @@ export function registerWorkerSyncBridge(endpointResolver: ControlSurfaceRemoteE
             continue
           }
         }
-
-        if (disposed) {
-          stream.destroy()
-          resolve()
-        }
       }
 
       const handleEnd = (): void => {
@@ -170,13 +180,16 @@ export function registerWorkerSyncBridge(endpointResolver: ControlSurfaceRemoteE
   }
 
   const connectLoop = (): void => {
+    if (disposed) {
+      return
+    }
     void connectOnce()
       .then(() => {
         if (disposed) {
           return
         }
 
-        setTimeout(() => {
+        reconnectTimer = setTimeout(() => {
           connectLoop()
         }, 0)
       })
@@ -185,11 +198,18 @@ export function registerWorkerSyncBridge(endpointResolver: ControlSurfaceRemoteE
           return
         }
 
+        if (isWorkerConnectionRefusal(error)) {
+          sendToAllWindows(IPC_CHANNELS.syncStateUpdated, {
+            type: 'connection_refused',
+            revision: lastRevision,
+            error: toAppErrorDescriptor(error),
+          } satisfies SyncEventPayload)
+        }
         if (!(error instanceof WorkerEndpointUnavailableError)) {
           const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
           process.stderr.write(`[opencove] worker sync bridge reconnecting: ${detail}\n`)
         }
-        setTimeout(() => {
+        reconnectTimer = setTimeout(() => {
           connectLoop()
         }, 750)
       })
@@ -204,6 +224,7 @@ export function registerWorkerSyncBridge(endpointResolver: ControlSurfaceRemoteE
       }
 
       disposed = true
+      clearTimeout(reconnectTimer)
       try {
         abortController.abort()
       } catch {

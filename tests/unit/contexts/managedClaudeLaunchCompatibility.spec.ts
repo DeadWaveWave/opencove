@@ -142,3 +142,39 @@ describe('managed Claude launch legacy compatibility', () => {
     }
   })
 })
+
+it('does not reserve a preparation after the caller retires during store readiness', async () => {
+  const f = compatibilityFixture({ enabled: true, live: false })
+  const handle = vi.fn(async () => ({ nodes: [] }))
+  f.surface.register('session.prepareOrRevive', {
+    kind: 'command',
+    validate: value => value,
+    handle,
+  })
+  const reserve = vi.spyOn(f.runtime.owner, 'reserve')
+  let active = true
+  const ready = f.runtime.ready
+  f.runtime.ready = async () => {
+    const store = await ready()
+    active = false
+    return store
+  }
+  try {
+    const result = await f.surface.invoke(
+      {
+        ...context,
+        assertActive: () => {
+          if (!active) {
+            throw new Error('Caller retired')
+          }
+        },
+      },
+      { kind: 'command', id: 'session.prepareOrRevive', payload: { workspaceId: 'workspace' } },
+    )
+    expect(result.ok).toBe(false)
+    expect(reserve).not.toHaveBeenCalled()
+    expect(handle).not.toHaveBeenCalled()
+  } finally {
+    f.runtime.dispose()
+  }
+})

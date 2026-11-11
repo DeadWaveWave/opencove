@@ -1,3 +1,4 @@
+import { assertManagedClaudeStopAllowed } from '../managedClaudeCompatibility'
 import type { ControlSurface } from '../controlSurface'
 import type { registerSessionHandlers } from './sessionHandlers'
 import type { createSessionNodeResolver } from './sessionNodeResolver'
@@ -45,10 +46,9 @@ export function registerSessionQueryHandlers(
   registerOperation(controlSurface, sessionKillOperation, {
     handle: async (ctx, payload): Promise<void> => {
       if (payload.nodeId !== undefined) {
+        const store = await deps.getPersistenceStore()
         const { value } = await resolveNode(payload.nodeId)
-        const current = normalizePersistedAppState(
-          await (await deps.getPersistenceStore()).readAppState(),
-        )
+        const current = normalizePersistedAppState(await store.readAppState())
         const stillBound = current?.workspaces.some(workspace =>
           workspace.nodes.some(
             node => node.id === payload.nodeId && node.sessionId === value.sessionId,
@@ -63,6 +63,7 @@ export function registerSessionQueryHandlers(
           throw createAppError('session.not_found')
         }
         ctx.assertActive?.()
+        assertManagedClaudeStopAllowed(ctx, store, value.sessionId, payload.nodeId)
         deps.ptyRuntime.kill(value.sessionId)
         return
       }
@@ -73,6 +74,9 @@ export function registerSessionQueryHandlers(
         })
       }
 
+      const store = await deps.getPersistenceStore()
+      ctx.assertActive?.()
+      assertManagedClaudeStopAllowed(ctx, store, record?.sessionId ?? payload.sessionId)
       deps.ptyRuntime.kill(record?.sessionId ?? payload.sessionId)
     },
     defaultErrorCode: 'terminal.kill_failed',

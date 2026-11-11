@@ -40,6 +40,8 @@ import { invalidStateResult, type InternalPersistWriteResult } from './appStateW
 export type PersistenceRecoveryReason = 'corrupt_db' | 'migration_failed'
 
 export interface PersistenceStore {
+  commitManagedClaudeRebind?: ManagedClaudeResumeBindingStore['commitManagedClaudeRebind']
+  managedClaudeNodeIdForRuntime?: ManagedClaudeResumeRead['managedClaudeNodeIdForRuntime']
   observeManagedClaudeNode?: ManagedClaudeResumeRead['observeManagedClaudeNode']
   managedClaudePreparationCandidates?: ManagedClaudeResumeRead['managedClaudePreparationCandidates']
   isManagedClaudeRuntimeReferenced?: ManagedClaudeResumeRead['isManagedClaudeRuntimeReferenced']
@@ -335,7 +337,19 @@ export async function createPersistenceStore(storeOptions: {
     commitCreatedNodeState: atCleanBoundary((state, options) =>
       persistAppState(state, { expectedRevision: options.expectedRevision }, options.lineage),
     ),
-    ...createManagedClaudeResumeStore(sqlite, () => readAppStateFromDb(db)),
+    ...createManagedClaudeResumeStore(
+      sqlite,
+      () => readAppStateFromDb(db),
+      (revision, operationId) => {
+        commits.publish({
+          revision,
+          operationId,
+          removedNodeIds: [],
+          removedRuntimeSessionIds: [],
+          removedManagedRuntimeSessionIds: [],
+        })
+      },
+    ),
     ...createManagedClaudeResumeRead(sqlite),
     onAppStateCommitted: commits.subscribe,
     readAppStateSnapshot: atCleanBoundary(readAppStateSnapshot),

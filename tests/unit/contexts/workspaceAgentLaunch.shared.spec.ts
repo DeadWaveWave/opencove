@@ -139,6 +139,7 @@ describe('workspaceAgentLaunch.shared', () => {
     expect(invoke).toHaveBeenCalledWith({
       kind: 'command',
       id: 'session.launchAgent',
+      clientFeatures: { managedClaudeResumeBindingV1: true },
       payload: expect.objectContaining({
         cwd: '/external/worktrees/feature-a',
         codexReuseRunningAppServer: true,
@@ -201,6 +202,7 @@ describe('workspaceAgentLaunch.shared', () => {
     expect(invoke.mock.calls[1]?.[0]).toMatchObject({
       kind: 'command',
       id: 'session.launchAgentInMount',
+      clientFeatures: { managedClaudeResumeBindingV1: true },
       payload: {
         mountId: 'mount-fresh',
         codexReuseRunningAppServer: true,

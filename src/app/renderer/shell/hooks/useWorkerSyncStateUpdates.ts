@@ -1,5 +1,12 @@
+import { isWorkerConnectionRefusal } from '@shared/sync/managedClaudeWorkerCompatibility'
+import { rebaseConnectMetadata } from './workerSync/workspaceRefreshProjection'
+import {
+  reportWorkerConnectionFailure,
+  clearWorkerConnectionFailure,
+} from './workerSync/workerConnectionState'
 import {
   getCanonicalRefreshDemand,
+  requestCanonicalRefresh,
   subscribeCanonicalRefresh,
   acknowledgeCanonicalRefresh,
 } from '@contexts/workspace/presentation/renderer/utils/persistence/canonicalRefresh'
@@ -9,12 +16,14 @@ import {
 } from '@contexts/workspace/presentation/renderer/utils/persistence/write'
 import { schedulePersistedStateWrite } from '@contexts/workspace/presentation/renderer/utils/persistence/schedule'
 import {
+  content,
+  getPublicationConnectionError,
+  getSyncedPersistedState,
   persistenceScope,
   canAcceptCanonicalState,
   isPublicationBlocked,
   deferRefreshForSubmission,
 } from '@contexts/workspace/presentation/renderer/utils/persistence/publicationState'
-import { content } from '@contexts/workspace/presentation/renderer/utils/persistence/publicationState'
 import {
   resolveNextActiveWorkspaceId,
   resolveWorkspacesForWorkerSync,
@@ -139,6 +148,10 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
     const unsubscribe =
       typeof syncApi?.onStateUpdated === 'function'
         ? syncApi.onStateUpdated((event: SyncEventPayload) => {
+            if (event.type === 'connection_refused') {
+              reportWorkerConnectionFailure(event.error)
+              return
+            }
             const eventRevision =
               typeof event.revision === 'number' && Number.isFinite(event.revision)
                 ? Math.floor(event.revision)
@@ -165,6 +178,10 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
               return
             }
 
+            if (event.type === 'resync_required') {
+              requestCanonicalRefresh({ reason: 'connect', minimumRevision: event.revision })
+              return
+            }
             if (
               typeof eventRevision === 'number' &&
               eventRevision <= lastAppliedRevisionRef.current
@@ -207,7 +224,7 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
       needsFullRefreshRef.current = true
       scheduleRefresh(0)
     })
-
+    requestCanonicalRefresh({ reason: 'connect' })
     async function runRefresh(): Promise<void> {
       const demand = getCanonicalRefreshDemand()
       const pendingSyncWriteRevision = pendingSyncWriteRevisionRef.current
@@ -247,7 +264,11 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
         // Publish queued local edits before reading a shared snapshot. A read started
         // before a later local edit cannot acknowledge or replace that edit.
         const localWriteSucceeded =
-          demand || getPendingPublication() ? true : await flushScheduledPersistedStateWriteAsync()
+          (demand && demand.reason !== 'connect') ||
+          getPendingPublication() ||
+          getPublicationConnectionError()
+            ? true
+            : await flushScheduledPersistedStateWriteAsync()
         if (!active) {
           return
         }
@@ -282,19 +303,28 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
         ) {
           throw new Error('Canonical snapshot is older than the required revision.')
         }
+        clearWorkerConnectionFailure()
         const currentAtApply = useAppStore.getState()
         const currentPersisted = toPersistedState(
           currentAtApply.workspaces,
           currentAtApply.activeWorkspaceId,
           currentAtApply.agentSettings,
         )
-        if (demand || getPendingPublication()) {
-          persisted = reconcileCanonicalPublication(persisted, currentPersisted)
-        } else if (canonicalContent(currentPersisted) !== signatureAtRead) {
+        // Every refresh kind must retry a read raced by a local edit. In particular,
+        // connect's metadata-only rebase cannot replay node edits or deletions.
+        if (canonicalContent(currentPersisted) !== signatureAtRead) {
           pendingFullRefreshRevisionRef.current = targetRevision
           needsFullRefreshRef.current = true
           refreshPendingRef.current = true
           return
+        }
+        if (
+          (demand && demand.reason !== 'connect' && getSyncedPersistedState()) ||
+          getPendingPublication()
+        ) {
+          persisted = reconcileCanonicalPublication(persisted, currentPersisted)
+        } else if (demand?.reason === 'connect' && getSyncedPersistedState()) {
+          persisted = rebaseConnectMetadata(persisted, currentPersisted)
         }
 
         // Disclosure preferences and the write cache belong to the same accepted
@@ -357,12 +387,14 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
         }
         failedRefreshes = 0
         scheduleRemainingDelta()
-
         lastAppliedRevisionRef.current = Math.max(
           lastAppliedRevisionRef.current,
           snapshot.revision ?? 0,
         )
-      } catch {
+      } catch (error) {
+        if (active && persistenceScope() === scopeGeneration && isWorkerConnectionRefusal(error)) {
+          reportWorkerConnectionFailure(error)
+        }
         needsFullRefreshRef.current = true
         pendingFullRefreshRevisionRef.current = Math.max(
           pendingFullRefreshRevisionRef.current ?? 0,
@@ -391,7 +423,6 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
         window.clearTimeout(refreshTimerRef.current)
         refreshTimerRef.current = null
       }
-
       refreshScheduledAtMsRef.current = null
       refreshInFlightRef.current = false
       refreshPendingRef.current = false

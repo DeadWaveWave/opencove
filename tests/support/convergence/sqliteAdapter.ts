@@ -13,7 +13,9 @@ export function connectSqliteAdapter(
     vi.fn(async (_url, options) => {
       const request = JSON.parse(options!.body as string)
       let value: unknown
-      if (request.id === 'sync.state') {
+      if (request.id === 'system.capabilities') {
+        value = { features: { managedClaudeResumeBindingDeliveryV1: true } }
+      } else if (request.id === 'sync.state') {
         value = await store.readAppStateSnapshot!()
       } else if (request.id === 'sync.writeWorkspaceStateRaw') {
         value = persistWriteWireResult(await store.writeWorkspaceStateRaw(request.payload.raw))

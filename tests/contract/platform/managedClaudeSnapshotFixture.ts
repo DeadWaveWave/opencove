@@ -236,7 +236,11 @@ export async function snapshotFixture(
   registerSessionHandlers(surface, deps)
   registerSessionStreamingHandlers(surface, deps)
   registerPtyMountHandlers(surface, deps)
-  const ctx = { now: () => new Date(), capabilities: {} } as ControlSurfaceContext
+  const ctx = {
+    clientFeatures: { managedClaudeResumeBindingV1: true },
+    now: () => new Date(),
+    capabilities: {},
+  } as ControlSurfaceContext
   const invoke = async <T>(
     request: ControlSurfaceInvokeRequest,
     context: ControlSurfaceContext = ctx,
@@ -248,6 +252,12 @@ export async function snapshotFixture(
     results.push({ id: request.id, value: response.value })
     return response.value as T
   }
+  surface.register('system.capabilities', {
+    kind: 'query',
+    validate: x => x,
+    handle: () => ({ features: { managedClaudeResumeBindingDeliveryV1: true } }),
+    defaultErrorCode: 'common.unexpected',
+  })
   const launch = vi.fn(async (payload: object) =>
     invoke({ kind: 'command', id: 'session.launchAgent', payload }),
   )

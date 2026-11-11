@@ -1,3 +1,4 @@
+import { withWorkerCompatibility } from '../../support/workerCompatibilityFetch'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createRemotePersistenceStore } from '../../../src/app/main/controlSurface/remote/remotePersistenceStore'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
@@ -81,7 +82,7 @@ describe('remote persistence conflict validation', () => {
         value: { revision: 4, state: legacyState },
       }),
     )
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', withWorkerCompatibility(fetchMock as typeof fetch))
     const store = createRemotePersistenceStore(async () => ({
       hostname: '127.0.0.1',
       port: 4310,
@@ -146,7 +147,7 @@ describe('remote persistence conflict validation', () => {
           value: { revision: 9 },
         }),
       )
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', withWorkerCompatibility(fetchMock as typeof fetch))
     const store = createRemotePersistenceStore(async () => ({
       hostname: '127.0.0.1',
       port: 4310,

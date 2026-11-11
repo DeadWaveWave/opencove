@@ -21,7 +21,10 @@ const mutations = [
   {
     id: 'I1',
     file: 'src/app/renderer/shell/hooks/useWorkerSyncStateUpdates.ts',
-    from: 'if (demand || getPendingPublication())',
+    from: `if (
+          (demand && demand.reason !== 'connect' && getSyncedPersistedState()) ||
+          getPendingPublication()
+        )`,
     to: 'if (getPendingPublication())',
     test: model,
     filter: 'owned=false adapter=local trace=99 ',
@@ -37,8 +40,12 @@ const mutations = [
   {
     id: 'I3',
     file: persistence + 'publicationState.ts',
-    from: "return value?.unknownOutcome === true || value?.blockedReason === 'conflict'",
-    to: 'return false',
+    from: `return (
+    connectionError !== null ||
+    value?.unknownOutcome === true ||
+    value?.blockedReason === 'conflict'
+  )`,
+    to: 'return connectionError !== null',
     test: model,
     filter: 'owned=false adapter=local trace=88 ',
   },

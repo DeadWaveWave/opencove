@@ -35,6 +35,7 @@ export interface AppStoreState {
   isProjectCreatorOpen: boolean
   settingsOpenPageId: SettingsPageId | null
   focusRequest: FocusRequest | null
+  workerConnectionError: import('@shared/contracts/dto').AppErrorDescriptor | null
   persistNotice: PersistNotice | null
 
   setWorkspaces: (action: SetStateAction<WorkspaceState[]>) => void
@@ -79,6 +80,7 @@ export const useAppStore = create<AppStoreState>(set => ({
   settingsOpenPageId: null,
   focusRequest: null,
   persistNotice: null,
+  workerConnectionError: null,
 
   setWorkspaces: action =>
     set(state => ({ workspaces: applySetStateAction(state.workspaces, action) })),

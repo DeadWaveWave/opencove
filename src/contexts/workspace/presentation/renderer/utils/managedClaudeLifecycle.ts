@@ -1,10 +1,17 @@
+import { requireManagedClaudeWorkerSupport } from './managedClaudeWorkerSupport'
 import { createAppError, toAppErrorDescriptor } from '@shared/errors/appError'
 import type { GetManagedClaudeBindingResult } from '@shared/contracts/managedClaudeLaunch'
 import type { ManagedClaudeBindingObservation } from '@shared/contracts/managedClaudeLaunch'
 import type { ManagedClaudeLifecycleReceipt } from '@shared/contracts/managedClaudeLaunch'
 import { supportsWorkerOperation } from './controlSurfaceOperationSupport'
 
-async function readOwnership(nodeId: string): Promise<GetManagedClaudeBindingResult> {
+export type ManagedClaudeOwnershipLookup =
+  | { status: 'unsupported' }
+  | { status: 'owned' | 'unowned'; result: GetManagedClaudeBindingResult }
+
+export async function lookupManagedClaudeOwnership(
+  nodeId: string,
+): Promise<ManagedClaudeOwnershipLookup> {
   let result: GetManagedClaudeBindingResult
   try {
     result = await window.opencoveApi.controlSurface.invoke<GetManagedClaudeBindingResult>({
@@ -19,7 +26,7 @@ async function readOwnership(nodeId: string): Promise<GetManagedClaudeBindingRes
     if (await supportsWorkerOperation('node.managedClaudeBinding')) {
       throw error
     }
-    return { managedClaudeBinding: null, retired: false, executionDirectory: null }
+    return { status: 'unsupported' }
   }
   if (!result || typeof result.retired !== 'boolean' || result.managedClaudeBinding === undefined) {
     throw createAppError('persistence.unavailable')
@@ -29,7 +36,22 @@ async function readOwnership(nodeId: string): Promise<GetManagedClaudeBindingRes
       details: { nodeId, reason: 'nodeGone' },
     })
   }
-  return result
+  return { status: result.managedClaudeBinding ? 'owned' : 'unowned', result }
+}
+
+async function readOwnership(nodeId: string): Promise<GetManagedClaudeBindingResult> {
+  const lookup = await lookupManagedClaudeOwnership(nodeId)
+  if (lookup.status === 'unsupported') {
+    throw createAppError('agent.managed_launch_rejected', {
+      details: { nodeId, reason: 'workerUpgradeRequired' },
+      debugMessage:
+        'Update and restart the connected Worker before managing Claude agents. Updating this window alone is not enough.',
+    })
+  }
+  if (lookup.status === 'owned') {
+    await requireManagedClaudeWorkerSupport('claude-code')
+  }
+  return lookup.result
 }
 
 export async function cleanupFailedNodePlacement(input: {
@@ -96,6 +118,7 @@ export async function readManagedClaudeExecutionContext(
   if (provider !== 'claude-code' || !window.opencoveApi?.controlSurface?.invoke) {
     return null
   }
+  await requireManagedClaudeWorkerSupport(provider)
   const result = await readOwnership(nodeId)
   if (!result?.managedClaudeBinding) {
     return null

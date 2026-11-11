@@ -359,6 +359,10 @@ Worker 拒绝、提交前读取/endpoint 失败与提交后响应不明。后续
 view-only preferences 不参与 canonical equality。owned ledger 的两个 tuple 字段在 renderer parsing 中逐字段保留；不能沿用 unowned 的 verification 清理策略改写 canonical ID。未确认 draft 与 canonical presentation 分开记录，
 后续编辑仅以 presentation delta 更新 draft，并显示保存未确认提示。
 
+所有 renderer refresh（包括首次订阅、重连、普通事件与 corrected receipt）统一比较读取前后的本地
+持久化内容；读取期间发生编辑时先丢弃 completion 再重读，不能让 connect metadata merge 绕过该检查。
+删除与已经结束拖动的移动也属于编辑，不依赖短暂的 canvas guard。canonical ownership 仅在该检查后投影。
+
 退出同时 capture 不可变 state、ancestor、revision 和 generation，只 drain 该 delta；repair read
 先检查 revision floor，同字段并发冲突保留 draft 并报告失败。legacy terminal history 只迁移仍存在的
 canonical terminal IDs，已有 primary state 时仍可恢复上次未完成的 history migration，不覆盖已有 history。
@@ -393,3 +397,16 @@ Snapshot export 不含血缘，数据库备份包含血缘。降级仅尽力兼�
 repository 与 creation commit。node-less standalone grant 不记录血缘；standalone Worker
 仍使用完整 SQLite store。Desktop/Web/remote clients 将创建命令交给 owning Worker。
 本节为现有 owner/边界的说明：no executable-rule impact。
+
+### Managed Claude 提交通知与恢复
+
+SQLite 的同步 post-commit observation 是 app-state invalidation 的唯一来源。普通写入、raw
+外层事务、activation、settlement 和 rebind 都在 commit 后、任何 awaited consumer 前发布
+exact revision；rollback、row-only activation 和 alreadyApplied 不发布新通知。
+Worker composition 将通知写入有界 buffer，并分别隔离 Desktop 和 SSE sink 的失败。
+HTTP 不再通过 command 前后读取 revision 来猜测提交；owner 的 attributable callback 按 revision 去重。
+通知只要求重新读取 canonical snapshot，不授予 tuple authority。
+
+pre-W8 Worker 不含 managed ledger tables；用它打开已有 owned rows 的 profile 属于不支持的
+database downgrade。普通 workspace 同步不因 lookup unsupported 失败；PR1+ final writer
+继续强制 ledger gate，客户端能力缺失只限制 ownership-dependent operations。

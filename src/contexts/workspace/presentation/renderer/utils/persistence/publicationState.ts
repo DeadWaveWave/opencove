@@ -25,6 +25,14 @@ export interface PendingPublication {
   blockedReason?: 'conflict'
   submittedRaw?: string
 }
+let connectionError: import('@shared/contracts/dto').AppErrorDescriptor | null = null
+export function setPublicationConnectionError(error: typeof connectionError): void {
+  connectionError = error
+}
+export function getPublicationConnectionError() {
+  persistenceScope()
+  return connectionError
+}
 let scope: unknown
 let scopeGeneration = 0
 let publicationId = 0
@@ -42,6 +50,7 @@ export function persistenceScope(): number {
     submissions = 0
     refreshAfterSubmission = false
     accepted = null
+    connectionError = null
     pending = null
     retired.clear()
     resetCanonicalRefresh()
@@ -211,7 +220,11 @@ export function reconcileCanonicalPublication(
 export function isPublicationBlocked(
   value: PendingPublication | null = getPendingPublication(),
 ): boolean {
-  return value?.unknownOutcome === true || value?.blockedReason === 'conflict'
+  return (
+    connectionError !== null ||
+    value?.unknownOutcome === true ||
+    value?.blockedReason === 'conflict'
+  )
 }
 export function retainBlockedPublicationDraft(state: PersistedAppState): void {
   if (!isPublicationBlocked(pending) || !pending) {

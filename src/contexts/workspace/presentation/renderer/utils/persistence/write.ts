@@ -11,6 +11,7 @@ import { persistLocalViewStateFromAppState } from './viewState'
 import { consumeResult, writeSharedPersistedState } from './sharedPublication'
 import { requestCanonicalRefresh } from './canonicalRefresh'
 import {
+  getPublicationConnectionError,
   content,
   persistenceScope,
   getSyncedPersistedState,
@@ -58,6 +59,10 @@ async function publishRawPersistedState(
   const port = getPersistencePort()
   if (!port) {
     return unavailableResult()
+  }
+  const connectionError = getPublicationConnectionError()
+  if (connectionError) {
+    return { ok: false, reason: 'unavailable', outcome: 'notSubmitted', error: connectionError }
   }
   const generation = persistenceScope()
   const pending = getPendingPublication()

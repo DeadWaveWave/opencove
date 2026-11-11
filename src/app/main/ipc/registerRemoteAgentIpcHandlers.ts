@@ -71,7 +71,7 @@ async function resolveWorkerEndpoint(
 
 async function invokeOk<TValue>(
   endpoint: ControlSurfaceRemoteEndpoint,
-  request: { kind: 'query' | 'command'; id: string; payload: unknown },
+  request: import('../../../shared/contracts/controlSurface').ControlSurfaceInvokeRequest,
 ): Promise<TValue> {
   const { httpStatus, result } = await invokeControlSurface(endpoint, request)
   if (httpStatus !== 200 || !result) {
@@ -337,6 +337,7 @@ export function registerRemoteAgentIpcHandlers(options: {
       }>(endpoint, {
         kind: 'command',
         id: 'session.launchAgent',
+        clientFeatures: payload.clientFeatures,
         payload: {
           ...(payload.intent ? { intent: payload.intent } : {}),
           canvasNodeId: payload.canvasNodeId,

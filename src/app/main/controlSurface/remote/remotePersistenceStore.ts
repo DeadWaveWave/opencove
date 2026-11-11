@@ -182,7 +182,6 @@ async function invokePersistResult(
   if (!endpoint) {
     return resolveIoFailure(new Error('Remote worker endpoint unavailable.'), 'notSubmitted')
   }
-
   const { result } = await invokeControlSurface(endpoint, { kind: 'command', id, payload })
   if (!result) {
     return resolveIoFailure(null)
@@ -297,7 +296,6 @@ export function createRemotePersistenceStore(
               ? { allowEmptyWorkspaceOverwrite: true }
               : {}),
           }
-
           const { result } = await invokeControlSurface(endpoint, {
             kind: 'command',
             id: 'sync.writeState',

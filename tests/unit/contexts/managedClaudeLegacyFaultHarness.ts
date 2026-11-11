@@ -140,6 +140,9 @@ export async function executeLegacyFault(options: {
         prompt: 'fixture',
       },
     })
+    expect(effects).not.toContain('activation')
+    expect(effects).not.toContain('reference')
+    expect(effects).not.toContain('managedKill')
     expect(runtime.owner.pendingCleanupRuntimeIds()).toEqual([])
     expect(state.workspaces[0].nodes[0].sessionId).toBe('original')
     return { result, effects }

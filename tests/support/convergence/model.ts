@@ -7,6 +7,8 @@ export type Field =
   | 'sidebarRoot'
   | 'spaceOrder'
   | 'spacePinned'
+  | 'position'
+  | 'terminalPresent'
 export interface Value {
   name: string
   title: string
@@ -15,6 +17,8 @@ export interface Value {
   sidebarRoot: boolean
   spaceOrder: string
   spacePinned: boolean
+  position: string
+  terminalPresent: boolean
   tuple: string
   runtime: string
 }
@@ -34,6 +38,8 @@ export class ServerModel {
     sidebarRoot: false,
     spaceOrder: 'space,second',
     spacePinned: false,
+    position: '0,0',
+    terminalPresent: true,
     tuple: 'A',
     runtime: 'runtime',
   }
@@ -160,6 +166,16 @@ export type Response =
   | 'lost-committed'
   | 'lost-uncommitted'
 export type Action =
+  | 'begin-connect-read'
+  | 'release-connect-read'
+  | 'delete-terminal'
+  | 'move-node'
+  | 'mount-renderer'
+  | 'startup-refusal'
+  | 'worker-upgrade'
+  | 'connect-delivery'
+  | 'disconnect-delivery'
+  | 'restart-worker'
   | 'rename'
   | 'title'
   | 'collapse'

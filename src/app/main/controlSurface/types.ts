@@ -2,6 +2,7 @@ import type { AppErrorCode } from '../../../shared/contracts/dto'
 import type { ControlSurfaceOperationKind } from '../../../shared/contracts/controlSurface'
 
 export interface ControlSurfaceContext {
+  readonly clientFeatures?: import('../../../shared/contracts/controlSurface/clientFeatures').ControlSurfaceClientFeatures
   readonly managedClaudeIntent?: import('../../../shared/contracts/managedClaudeLaunch').ManagedClaudeLaunchIntent
   readonly managedClaudePreparation?: {
     awaitPending: (nodeId: string) => Promise<void>

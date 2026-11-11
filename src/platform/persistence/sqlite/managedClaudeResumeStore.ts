@@ -21,6 +21,7 @@ export function readAppStateRevisionFromDb(db: Database.Database): number {
 export function createManagedClaudeResumeStore(
   db: Database.Database,
   readState: () => unknown,
+  onCommitted?: (revision: number, operationId: string) => void,
 ): ManagedClaudeResumeBindingStore {
   const readRow = (nodeId: string) =>
     db.prepare('SELECT * FROM managed_claude_resume_bindings WHERE node_id = ?').get(nodeId) as
@@ -79,16 +80,27 @@ export function createManagedClaudeResumeStore(
     ).run(String(revision))
     return { status: 'committed', revision, effectiveState: readState() }
   }
-  const transaction = (body: () => ManagedResumeBindingResult): ManagedResumeBindingResult => {
+  const transaction = (
+    operationId: string,
+    body: () => ManagedResumeBindingResult,
+  ): ManagedResumeBindingResult => {
     let finished = false
     try {
-      return db
+      const result = db
         .transaction(() => {
-          const result = body()
+          const outcome = body()
           finished = true
-          return result
+          return outcome
         })
         .immediate()
+      if (result.status === 'committed' && result.revision !== undefined) {
+        try {
+          onCommitted?.(result.revision, operationId)
+        } catch {
+          /* Already committed. */
+        }
+      }
+      return result
     } catch {
       // A body error is rolled back by better-sqlite3. A commit/rollback failure may be ambiguous.
       return {
@@ -99,7 +111,7 @@ export function createManagedClaudeResumeStore(
   }
   return {
     activateManagedClaudeRuntime: async input =>
-      transaction(() => {
+      transaction('session.managedClaudeActivation', () => {
         if (retired(input.nodeId)) {
           return { status: 'nodeGone' }
         }
@@ -123,7 +135,7 @@ export function createManagedClaudeResumeStore(
         return apply(input.nodeId, input.activationId, input.runtimeSessionId, input.tuple)
       }),
     commitManagedClaudeRebind: async input =>
-      transaction(() => {
+      transaction('managedClaude.resumeBinding.commit', () => {
         if (retired(input.nodeId)) {
           return { status: 'nodeGone' }
         }

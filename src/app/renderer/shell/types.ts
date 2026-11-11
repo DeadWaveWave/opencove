@@ -29,7 +29,7 @@ export type FocusRequest =
 export interface PersistNotice {
   tone: 'warning' | 'error'
   message: string
-  kind?: 'recovery' | 'write'
+  kind?: 'recovery' | 'write' | 'compatibility' | 'connection'
 }
 
 export type ProjectContextMenuTarget =

@@ -10,6 +10,7 @@ import { getPersistencePort, publishLocalSyncWriteRevision } from './port'
 import { publishSharedState } from './reconcilePublication'
 import { requestCanonicalRefresh } from './canonicalRefresh'
 import {
+  getPublicationConnectionError,
   content,
   persistenceScope,
   getSyncedPersistedState,
@@ -111,6 +112,10 @@ async function publishPersistedState(
   const port = getPersistencePort()
   if (!port) {
     return unavailableResult()
+  }
+  const connectionError = getPublicationConnectionError()
+  if (connectionError) {
+    return { ok: false, reason: 'unavailable', outcome: 'notSubmitted', error: connectionError }
   }
   const generation = persistenceScope()
   const normalized = { ...state, formatVersion: PERSISTED_APP_STATE_FORMAT_VERSION }

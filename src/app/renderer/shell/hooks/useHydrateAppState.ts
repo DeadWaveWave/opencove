@@ -1,3 +1,5 @@
+import { startWorkerHydration } from './workerSync/startupHydration'
+import { clearWorkerConnectionFailure } from './workerSync/workerConnectionState'
 import { canAcceptHydrationSnapshot } from './useHydrateAppState.helpers'
 import { persistenceScope } from '@contexts/workspace/presentation/renderer/utils/persistence/publicationState'
 import { persistMissingLocalViewStateFromAppState } from '@contexts/workspace/presentation/renderer/utils/persistence/viewState'
@@ -357,16 +359,15 @@ export function useHydrateAppState({
       const scope = persistenceScope()
       const snapshot = await readPersistedStateWithMeta()
       const { state: persisted, recovery, hasStandardWindowSizeBucket } = snapshot
-      if (scope !== persistenceScope()) {
-        return
-      }
-      if (!canAcceptHydrationSnapshot(snapshot)) {
-        return
-      }
-      if (isCancelledRef.current) {
+      const isSnapshotCurrent = () =>
+        !isCancelledRef.current &&
+        scope === persistenceScope() &&
+        canAcceptHydrationSnapshot(snapshot)
+      if (!isSnapshotCurrent()) {
         return
       }
 
+      clearWorkerConnectionFailure()
       let resolvedSettings = persisted?.settings ?? DEFAULT_AGENT_SETTINGS
       if (!hasStandardWindowSizeBucket) {
         resolvedSettings = {
@@ -383,11 +384,7 @@ export function useHydrateAppState({
         await applyUiLanguage(resolvedSettings.language)
       }
 
-      if (
-        isCancelledRef.current ||
-        scope !== persistenceScope() ||
-        !canAcceptHydrationSnapshot(snapshot)
-      ) {
+      if (!isSnapshotCurrent()) {
         return
       }
       if (persisted) {
@@ -468,9 +465,10 @@ export function useHydrateAppState({
       void ensureWorkspaceHydrated(resolvedActiveWorkspaceId)
     }
 
-    void hydrateAppState()
+    const stopHydration = startWorkerHydration(hydrateAppState, () => !isCancelledRef.current)
 
     return () => {
+      stopHydration()
       isCancelledRef.current = true
     }
   }, [

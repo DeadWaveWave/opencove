@@ -1,3 +1,7 @@
+import {
+  assertManagedClaudeMutationAllowed,
+  managedClaudeWritesEnabled,
+} from './managedClaudeCompatibility'
 import type { ControlSurfaceContext } from './types'
 import type { ControlSurfaceInvokeRequest } from '../../../shared/contracts/controlSurface'
 import type { LaunchAgentSessionInput } from '../../../shared/contracts/dto'
@@ -21,12 +25,21 @@ export function createCanvasSpawnRunner(deps: {
   ): Promise<unknown> => {
     if (request.id === 'session.prepareOrRevive') {
       const input = payload as { workspaceId: string; nodeIds?: string[] }
+      await deps.managedClaude.ready()
+      context.assertActive?.()
       return execute({
         ...context,
         managedClaudePreparation: {
           awaitPending: deps.managedClaude.awaitPending,
-          reserve: id => deps.managedClaude.owner.reserve(id),
-          attempts: deps.managedClaude.reservePreparation(input.workspaceId, input.nodeIds),
+          reserve: id => {
+            assertManagedClaudeMutationAllowed(context, id, managedClaudeWritesEnabled())
+            return deps.managedClaude.owner.reserve(id)
+          },
+          attempts: deps.managedClaude.reservePreparation(
+            context,
+            input.workspaceId,
+            input.nodeIds,
+          ),
           run: deps.managedClaude.withPreparation,
         },
       })
@@ -63,6 +76,7 @@ export function createCanvasSpawnRunner(deps: {
         resolveIdentity,
         async admitted => {
           const identity = await resolveIdentity()
+          admitted.assertActive?.()
           return identity
             ? canvasSpawnIdentity.run(identity, () => execute(admitted))
             : execute(admitted)

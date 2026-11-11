@@ -1,4 +1,5 @@
 import { logAgentLaunchInfo } from '../../diagnostics/agentLaunchRuntimeDiagnostics'
+import { composeTerminalSpawnGuard } from './terminalAgentActivitySpawn'
 import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import { resolveSpaceMountContext } from '../../../../contexts/space/application/resolveSpaceMountContext'
 import type { MountDto, SpawnTerminalResult } from '../../../../shared/contracts/dto'
@@ -214,8 +215,9 @@ export function spawnPreparedFallbackTerminal(
       endpointId: launchContext.endpointId,
     },
     (assertActive, assertExecution) => {
+      const assertCallerActive = composeTerminalSpawnGuard(options.ctx)
       const guard = () => {
-        options.ctx.assertActive?.()
+        assertCallerActive()
         assertActive?.()
       }
       return spawnFallbackTerminal({
@@ -228,7 +230,10 @@ export function spawnPreparedFallbackTerminal(
               terminalSpawnLifecycle: {
                 assertActive: guard,
                 onSpawned: noteManagedClaudeRuntimeCreated,
-                assertExecution,
+                assertExecution: execution => {
+                  options.ctx.terminalSpawnLifecycle?.assertExecution?.(execution)
+                  assertExecution?.(execution)
+                },
               },
             }
           : options.ctx,
@@ -264,6 +269,7 @@ export async function spawnFallbackTerminal(options: {
     throw new RemoteWorkerBindingUnresolvedError(launchContext)
   }
 
+  options.ctx.assertActive?.()
   if (launchContext.mountId) {
     const spawned = await invokeCommand<SpawnTerminalResult>(
       options.controlSurface,
