@@ -13,6 +13,8 @@ export const APP_ERROR_CODES = [
   'space.not_found',
   'space.ambiguous',
   'node.parent_unavailable',
+  'agent.spawn_depth_limit',
+  'agent.spawn_concurrency_limit',
   'node.not_found',
   'node.unsupported_operation',
   'session.not_found',

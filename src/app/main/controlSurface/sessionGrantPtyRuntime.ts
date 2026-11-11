@@ -1,4 +1,4 @@
-import { createAppError } from '../../../shared/errors/appError'
+import { OpenCoveAppError, createAppError } from '../../../shared/errors/appError'
 import {
   createTerminalSpawnApplicationError,
   publicTerminalSpawnApplicationError,
@@ -106,6 +106,12 @@ export function createSessionGrantPtyRuntime(options: {
           attempt.cancel()
         }
         reservation.cancel()
+        if (
+          error instanceof OpenCoveAppError &&
+          ['common.forbidden', 'control_surface.unauthorized'].includes(error.code)
+        ) {
+          throw createAppError(error.code, { details: error.details })
+        }
         const application = publicTerminalSpawnApplicationError(error)
         if (application) {
           throw createAppError(application)

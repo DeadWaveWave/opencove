@@ -276,7 +276,9 @@ export function createInMemoryPersistenceStore(): PersistenceStore {
           : null,
       }
     },
+    isAppStateRevisionCurrent: expected => revision === expected,
     nodeLineage: {
+      readAll: async () => new Map(lineageRows),
       readMany: async ids =>
         new Map(
           ids.flatMap(id => {

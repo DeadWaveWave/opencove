@@ -65,7 +65,7 @@ afterEach(() => {
 })
 
 it.each(['local', 'remote-mount', 'remote-node'] as const)(
-  '%s creates leading-dash prompt artifacts only on the executing host',
+  '%s creates leading-dash prompt artifacts only on the executing host (remote uses user authority)',
   async route => {
     const isRemote = route !== 'local'
     const home = await createPromptWorker({ remote: isRemote, fullAccess: false })
@@ -85,27 +85,30 @@ it.each(['local', 'remote-mount', 'remote-node'] as const)(
     })
     let path: string | undefined
     try {
-      const result = await home.invoke({
-        kind: 'command',
-        id:
-          route === 'remote-node'
-            ? 'node.create'
-            : route === 'local'
-              ? 'session.launchAgent'
-              : 'session.launchAgentInMount',
-        payload:
-          route === 'remote-node'
-            ? {
-                kind: 'agent',
-                space: { kind: 'spaceId', spaceId: 'space' },
-                data: { provider: 'pi', prompt: '--approve the task' },
-              }
-            : {
-                ...(route === 'local' ? { cwd } : { mountId: 'mount', cwdUri: rootUri }),
-                provider: 'pi',
-                prompt: '--approve the task',
-              },
-      })
+      const result = await home.invoke(
+        {
+          kind: 'command',
+          id:
+            route === 'remote-node'
+              ? 'node.create'
+              : route === 'local'
+                ? 'session.launchAgent'
+                : 'session.launchAgentInMount',
+          payload:
+            route === 'remote-node'
+              ? {
+                  kind: 'agent',
+                  space: { kind: 'spaceId', spaceId: 'space' },
+                  data: { provider: 'pi', prompt: '--approve the task' },
+                }
+              : {
+                  ...(route === 'local' ? { cwd } : { mountId: 'mount', cwdUri: rootUri }),
+                  provider: 'pi',
+                  prompt: '--approve the task',
+                },
+        },
+        isRemote,
+      )
       expect(result).toMatchObject({ ok: true })
       expect(seam.files).toHaveLength(1)
       expect(seam.files[0].executor).toBe(isRemote ? 'worker' : 'home')
@@ -152,16 +155,19 @@ it('refuses a remote WSL launch when its host artifact cannot be translated and 
     }
   })
   try {
-    const result = await home.invoke({
-      kind: 'command',
-      id: 'session.launchAgentInMount',
-      payload: {
-        mountId: 'mount',
-        cwdUri: rootUri,
-        provider: 'pi',
-        prompt: '--approve the task',
+    const result = await home.invoke(
+      {
+        kind: 'command',
+        id: 'session.launchAgentInMount',
+        payload: {
+          mountId: 'mount',
+          cwdUri: rootUri,
+          provider: 'pi',
+          prompt: '--approve the task',
+        },
       },
-    })
+      true,
+    )
     expect(result).toMatchObject({
       ok: false,
       error: {

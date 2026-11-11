@@ -340,7 +340,7 @@ exports[`lists real session subcommands offline 1`] = `
 "Usage: opencove session <command> [options]
 
 Commands:
-  run-agent  Launch an agent in a space
+  run-agent  Start a standalone agent as the user; agent sessions must use node create
   get        Inspect an agent session
   final      Read the final agent message
   kill       Stop an agent session

@@ -36,6 +36,8 @@ export const nodeCreateOperation = defineOperation({
     'node.not_found',
     'space.not_found',
     'space.ambiguous',
+    'agent.spawn_depth_limit',
+    'agent.spawn_concurrency_limit',
     'agent.launch_failed',
     'agent.managed_launch_rejected',
     'agent.managed_launch_commit_failed',

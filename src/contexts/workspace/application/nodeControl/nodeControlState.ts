@@ -77,6 +77,7 @@ export interface NodeControlAppStateStore {
     },
   ) => Promise<PersistWriteResult>
   readAppState: () => Promise<NodeControlAppState | null>
+  isAppStateRevisionCurrent?: (revision: number) => boolean
   readAppStateRevision: () => Promise<number>
   writeAppState: (
     state: NodeControlAppState,

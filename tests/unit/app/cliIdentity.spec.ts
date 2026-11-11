@@ -239,7 +239,7 @@ const targets = commands.flatMap(command =>
     ),
 )
 it.each(targets)(
-  'resolves $command.path --$flag using $form through run()',
+  'applies selector and caller policy to $command.path --$flag using $form through run()',
   async ({ command, flag, kind, form }) => {
     const f = identityFixture()
     if (command.path.join(' ') === 'agent stop') {
@@ -323,7 +323,17 @@ it.each(targets)(
       }
     }
     args.push(`--${flag}`, value)
-    expect(await run(args, f.io), JSON.stringify(f.requests)).toBe(0)
+    const code = await run(args, f.io)
+    if (command.operation === 'session.launchAgent') {
+      expect(code).toBe(4)
+      expect(f.error()).toMatchObject({
+        code: 'common.forbidden',
+        details: { spawnReason: 'node_create_required' },
+      })
+      expect(f.requests.map(r => r.id)).toEqual(['system.whoami', 'system.capabilities'])
+      return
+    }
+    expect(code, JSON.stringify(f.requests)).toBe(0)
     expect(
       f.requests.filter(
         request =>

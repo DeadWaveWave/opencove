@@ -41,6 +41,7 @@ export interface ControlSurfaceCapabilitiesResult {
   features: {
     managedClaudeResumeBindingV1?: boolean
     nodeLineageV1?: boolean
+    boundedAgentSpawningV1?: boolean
     operationRegistry?: boolean
     webShell: boolean
     sync: {

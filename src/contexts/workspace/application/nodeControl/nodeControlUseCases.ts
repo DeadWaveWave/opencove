@@ -1,3 +1,8 @@
+import type {
+  AgentSpawnAdmissionOwner,
+  AgentSpawnPermit,
+  GrantCreationAuthority,
+} from '../nodeSpawn/AgentSpawnAdmissionOwner'
 import { prepareNodeLineage, projectNodeLineages } from '../nodeLineage/NodeLineageOwner'
 import { randomUUID } from 'node:crypto'
 import { createAppError } from '../../../../shared/errors/appError'
@@ -40,6 +45,8 @@ import {
 } from './nodeDataFactory'
 
 export interface NodeControlRuntimeDeps {
+  cleanupUncommittedSpawn?: (nodeId: string) => Promise<void>
+  withSpawnPermit?: <T>(permit: AgentSpawnPermit, execute: () => Promise<T>) => Promise<T>
   assertActive?: () => void
   validateTarget?: (target: ResolvedNodeCreationTarget) => Promise<void>
   launchAgent: (
@@ -142,6 +149,8 @@ export async function createNodeForNodeControl(options: {
   now: Date
   /** Internal identity from an authenticated session grant, never a wire field. */
   callerNodeId?: string | null
+  authority?: GrantCreationAuthority
+  admission?: AgentSpawnAdmissionOwner
 }): Promise<CreateNodeResult> {
   const state = requireNodeControlState(await options.store.readAppState())
   const resolved = await resolveNodeCreationTarget(state, options.locatorDeps, options.input)
@@ -165,39 +174,70 @@ export async function createNodeForNodeControl(options: {
   await options.runtime.validateTarget?.(resolved)
   options.runtime.assertActive?.()
   const canvasNodeId = randomUUID()
-  const lineage = await prepareNodeLineage(options.store, canvasNodeId, options.callerNodeId)
-  options.runtime.assertActive?.()
-  const spawnTarget = { ...resolved, canvasNodeId }
-  let agentRuntime: AgentNodeRuntimeData | null = null
-  let terminalRuntime: TerminalNodeRuntimeData | null = null
-  if (createData.kind === 'agent') {
-    agentRuntime = await options.runtime.launchAgent(spawnTarget, createData)
-  } else if (createData.kind === 'terminal') {
-    terminalRuntime = await options.runtime.spawnTerminal(spawnTarget, createData)
+  if (options.authority && (createData.kind === 'agent' || createData.kind === 'terminal')) {
+    if (!options.store.nodeLineage || !options.store.commitCreatedNodeState) {
+      throw createAppError('persistence.unavailable')
+    }
+    if (!options.admission || !options.runtime.withSpawnPermit) {
+      throw createAppError('common.unavailable')
+    }
+    return options.admission.runCreation(
+      options.store,
+      {
+        authority: options.authority,
+        nodeId: canvasNodeId,
+        kind: createData.kind,
+        target: resolved,
+        assertActive: () => options.runtime.assertActive?.(),
+      },
+      (permit, lineage) => options.runtime.withSpawnPermit!(permit, () => create(lineage)),
+    )
   }
+  if (createData.kind !== 'agent' && createData.kind !== 'terminal') {
+    options.admission?.noteNonRuntimeCreation(canvasNodeId)
+  }
+  return create(await prepareNodeLineage(options.store, canvasNodeId, options.callerNodeId))
 
-  const node = makeNode({
-    id: canvasNodeId,
-    titlePinnedByUser:
-      (options.input.kind === 'agent' || options.input.kind === 'terminal') &&
-      Boolean(options.input.title?.trim()),
-    kind: options.input.kind,
-    title: resolveNodeTitle({
-      kind: options.input.kind,
-      title: options.input.title,
-      data: createData,
-      agentRuntime,
-    }),
-    frame,
-    data: createData,
-    now: options.now.toISOString(),
-    agentRuntime,
-    terminalRuntime,
-  })
-
-  try {
-    return await commitCreatedNode({ ...options, node, lineage, initialTarget: resolved })
-  } catch (error) {
-    return cleanupFailedNodeCreation(options.store, options.runtime, node, error)
+  async function create(
+    lineage: import('../../domain/nodeLineage').NodeLineageRecord | null,
+  ): Promise<CreateNodeResult> {
+    options.runtime.assertActive?.()
+    const spawnTarget = { ...resolved, canvasNodeId }
+    let agentRuntime: AgentNodeRuntimeData | null = null
+    let terminalRuntime: TerminalNodeRuntimeData | null = null
+    let node: NodeControlNode
+    try {
+      if (createData.kind === 'agent') {
+        agentRuntime = await options.runtime.launchAgent(spawnTarget, createData)
+      } else if (createData.kind === 'terminal') {
+        terminalRuntime = await options.runtime.spawnTerminal(spawnTarget, createData)
+      }
+      node = makeNode({
+        id: canvasNodeId,
+        titlePinnedByUser:
+          (options.input.kind === 'agent' || options.input.kind === 'terminal') &&
+          Boolean(options.input.title?.trim()),
+        kind: options.input.kind,
+        title: resolveNodeTitle({
+          kind: options.input.kind,
+          title: options.input.title,
+          data: createData,
+          agentRuntime,
+        }),
+        frame,
+        data: createData,
+        now: options.now.toISOString(),
+        agentRuntime,
+        terminalRuntime,
+      })
+    } catch (error) {
+      await options.runtime.cleanupUncommittedSpawn?.(canvasNodeId)
+      throw error
+    }
+    try {
+      return await commitCreatedNode({ ...options, node, lineage, initialTarget: resolved })
+    } catch (error) {
+      return cleanupFailedNodeCreation(options.store, options.runtime, node, error)
+    }
   }
 }

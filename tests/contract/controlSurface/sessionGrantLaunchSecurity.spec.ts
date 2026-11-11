@@ -78,7 +78,16 @@ it.each([false, true])(
           ? { ok: true, value: null }
           : await worker.invoke('bearer', request),
     }))
-    expect(await home.invoke('grant', launchRequest('mount'))).toMatchObject({ ok: true })
+    expect(
+      await home.invoke(
+        'bearer',
+        launchRequest('mount', {
+          agentFullAccess: homeSetting,
+          codexReuseRunningAppServer: homeSetting,
+          env: { S1A_TEST_API_KEY: savedKey },
+        }),
+      ),
+    ).toMatchObject({ ok: true })
     expect(worker.plan.mock.calls[0][0]).toMatchObject({
       agentFullAccess: homeSetting,
       codexReuseRunningAppServer: homeSetting,
@@ -256,7 +265,10 @@ it('keeps a real remote WSL launch private through Home get/list', async () => {
         ? { ok: true, value: null }
         : await worker.invoke('bearer', request),
   }))
-  const result = await home.invoke('grant', launchRequest('mount'))
+  const result = await home.invoke(
+    'bearer',
+    launchRequest('mount', { env: { S1A_TEST_API_KEY: savedKey } }),
+  )
   expect(result).toMatchObject({ ok: true })
   const value = (result as { ok: true; value: LaunchAgentSessionResult }).value
   expect(worker.spawn.mock.calls[0][0].args).toContain(`S1A_TEST_API_KEY=${savedKey}`)
@@ -304,7 +316,10 @@ it('protects Home metadata from an older WSL Worker response', async () => {
             },
     },
   }))
-  const result = await home.invoke('grant', launchRequest('mount'))
+  const result = await home.invoke(
+    'bearer',
+    launchRequest('mount', { env: { S1A_TEST_API_KEY: savedKey } }),
+  )
   expect(result).toMatchObject({ ok: true })
   const value = (result as { ok: true; value: LaunchAgentSessionResult }).value
   const get = await home.invoke('grant', {
@@ -393,7 +408,10 @@ it('does not reflect private error details from an older remote Worker', async (
             },
           },
   }))
-  const result = await home.invoke('grant', launchRequest('mount'))
+  const result = await home.invoke(
+    'bearer',
+    launchRequest('mount', { env: { S1A_TEST_API_KEY: savedKey } }),
+  )
   expect(result).toMatchObject({ ok: false, error: { code: 'agent.launch_failed' } })
   expect(JSON.stringify(result)).not.toContain(serializedKey)
   expect(home.hub.listSessions().sessions).toEqual([])

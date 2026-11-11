@@ -417,3 +417,51 @@ expected ID 仅为身份 mismatch fence，parent 始终由 verified grant 推导
 公开 node query 返回 spawnedBy、lineageDepth、lineageStatus；agent CLI/context 从 node metadata 投影。
 现有 @self fallback 与 Space 语义不变。此功能不声明 spawn cap 或 PR2 admission 支持。
 无新增跨层依赖规则：no executable-rule impact。
+
+
+### Bounded grant runtime creation
+
+Policy `s1a-v5` permits grant runtime creation only through `node.create` with a current,
+locally owned agent/terminal caller bound to the authenticated session. The existing node mutation
+queue owns admission through launch and commit settlement. Depth is at most 3 (user root = 1),
+with at most six distinct live or pending grant-created runtime descendants per immutable root.
+Agent and terminal descendants share the budget across Spaces/projects. Human, task Run and recovery
+launches remain exempt; their recovered descendant bindings contribute to subsequent admission.
+
+`AgentSpawnAdmissionOwner` retains pending identities and immutable lineage until all related runtime
+incarnations exit. Engine-returned session IDs are captured before callbacks. Kill, revocation, node
+deletion and failed requests are not completion evidence. An unknown dispatch fences its tree until
+that exact PTY host confirms completion. Every physical attempt, including a retry after a confirmed
+host exit, classifies its own outcome. Shutdown still records exact-child completion; a shutdown
+request alone cannot release unknown occupancy. An uncertain node commit with a known live session retains
+one occupied slot. Admission permits are private, single-use, Worker-local objects; raw session/PTY
+routes reject grants without a matching internal permit. Permits never enter wire identities,
+remote forwarding, environment or SQLite.
+
+Grant runtime targets must remain local, including after mount re-resolution. Admission and execution
+fences compare directories with the same path identity rules. Windows comparison
+normalizes slashes, UNC hostname case, drive-letter case and trailing separators while preserving
+roots and directory-component case. It does not resolve symlinks or aliases. Delegated grants
+cannot create roots on the executing Worker. Historical remote bindings cannot prove completion
+through disconnection or saved status. At admission after startup or a persistence revision change, a read-only lineage audit
+finds unaccounted orphan rows whose node/session/endpoint association was lost; affected roots fail closed.
+Creation branches that never launch runtimes record that fact in the admission owner for the Worker
+lifetime. Deleting their notes, tasks or websites does not make the census incomplete. Actual local,
+remote or unknown runtime observations still take precedence over that creation fact. After a restart,
+unclassified local or non-runtime orphans remain conservative fences because existing lineage rows do
+not retain kind or endpoint. No reservation or endpoint history is persisted. The user can
+inspect/stop historical runtimes and start a new canvas root for further delegation. Local surviving
+nodes count only from actual runtime bindings, never their persisted status/session ID alone.
+Observed remote roots retain their fence independently of node membership. Worker-local forwarding
+observations also fence ambiguous remote incarnations even when a node was previously local and
+is deleted before the next admission; no observation callback crosses the wire. Local runtime provenance
+survives completion for the Worker lifetime, so a deleted, authoritatively exited local session is
+not mistaken for an unknown remote orphan. Warm-start bindings seeded from an active hub observation
+are retained until exact runtime completion; public registry disappearance cannot release them.
+Internal post-spawn, failed-commit and deletion cleanup uses a trusted exact-session runtime port,
+without the public session lookup gate. Public `session.kill` authorization remains unchanged.
+
+The additive `boundedAgentSpawningV1` capability requires the installed admission/runtime owner and
+lineage transaction support. CLI negotiation uses its existing per-run authenticated identity cache
+and shared dispatcher, covering `api call`; bearer launches and non-runtime work are exempt. Raw grant
+launches receive migration guidance before CLI selector resolution, including terminals outside a Space.

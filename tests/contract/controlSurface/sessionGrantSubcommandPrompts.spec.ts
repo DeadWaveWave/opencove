@@ -29,7 +29,15 @@ vi.mock(
 )
 afterEach(() => vi.clearAllMocks())
 
-const routes = ['direct', 'direct-space', 'mount', 'node', 'remote', 'remote-node'] as const
+const routes = [
+  'direct',
+  'direct-space',
+  'mount',
+  'node',
+  'mounted-node',
+  'remote',
+  'remote-node',
+] as const
 function request(route: (typeof routes)[number], data: object) {
   const node = route.endsWith('node')
   return {
@@ -60,6 +68,7 @@ for (const route of routes) {
       async prompt => {
         const f = await createPromptWorker({
           remote: route.startsWith('remote'),
+          localMount: route === 'mounted-node',
           fullAccess: false,
         })
         const before = await f.store.readAppState()
@@ -69,7 +78,9 @@ for (const route of routes) {
             ok: false,
             error: {
               code: 'common.forbidden',
-              details: { reason: 'field_denied', field: 'prompt', message },
+              ...(route === 'remote-node'
+                ? { details: { spawnReason: 'remote_spawning_unsupported' } }
+                : { details: { reason: 'field_denied', field: 'prompt', message } }),
             },
           })
           expect(f.spawn).not.toHaveBeenCalled()

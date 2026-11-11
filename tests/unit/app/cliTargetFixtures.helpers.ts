@@ -34,7 +34,7 @@ export function runWithTargetFixtures(argv: string[], io: CliIo) {
           }),
         )
       }
-      if (id === 'system.whoami' && (pending.has('node.list') || pending.has('space.list'))) {
+      if (id === 'system.whoami') {
         return new Response(
           JSON.stringify({ ok: true, value: { kind: 'bearer', scopeTier: 'admin' } }),
         )

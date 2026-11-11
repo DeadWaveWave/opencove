@@ -1,4 +1,5 @@
 import { vi } from 'vitest'
+import { createAgentSpawnRuntime } from '../../../src/app/main/controlSurface/agentSpawnRuntime'
 import {
   createPersistenceStore,
   type PersistenceStore,
@@ -135,6 +136,11 @@ export async function snapshotFixture(
   const results: { id: string; value: unknown }[] = []
   const alive = new Set<string>()
   const inactive = new Set<string>()
+  const exits = new Set<(event: { sessionId: string; exitCode: number }) => void>()
+  const kill = (sessionId: string) => {
+    alive.delete(sessionId)
+    exits.forEach(emit => emit({ sessionId, exitCode: 0 }))
+  }
   let sequence = 0
   const spawn = vi.fn(async (input: { agentProvider?: string }) => {
     if (operation === 'prepareFailedResumeFallback' && input.agentProvider) {
@@ -144,6 +150,19 @@ export async function snapshotFixture(
     alive.add(sessionId)
     return { sessionId }
   })
+  const spawnRuntime = createAgentSpawnRuntime({
+    spawnSession: spawn,
+    kill,
+    write: () => {},
+    resize: async () => ({ status: 'session_not_found' }) as never,
+    onData: () => () => {},
+    onExit: emit => {
+      exits.add(emit)
+      return () => {
+        exits.delete(emit)
+      }
+    },
+  })
   const runtime = createManagedClaudeLaunchRuntime({
     getPersistenceStore,
     adoptionEnabled: () => options.adoptionEnabled ?? true,
@@ -151,18 +170,17 @@ export async function snapshotFixture(
       publications.push(event)
     },
     hasRuntime: id => alive.has(id),
-    killExactRuntime: async id => {
-      alive.delete(id)
-    },
+    killExactRuntime: kill,
   })
   await runtime.ready()
   const admission = createReadyTerminalAdmissionDeps()
+  const canvasSpawnRunner = createCanvasSpawnRunner({
+    managedClaude: runtime,
+    terminalRuntimeAvailability: admission.terminalSpawnAdmission,
+    getPersistenceStore,
+  })
   const surface = createControlSurface({
-    run: createCanvasSpawnRunner({
-      managedClaude: runtime,
-      terminalRuntimeAvailability: admission.terminalSpawnAdmission,
-      getPersistenceStore,
-    }),
+    run: (...args) => spawnRuntime.observeRequests(() => canvasSpawnRunner(...args)),
   })
   const mount = {
     mountId: 'mount',
@@ -181,7 +199,15 @@ export async function snapshotFixture(
     handle: async () => ({ mounts: [mount] }),
     defaultErrorCode: 'common.unexpected',
   })
-  registerNodeControlHandlers(surface, { getPersistenceStore, topology })
+  registerNodeControlHandlers(surface, {
+    getPersistenceStore,
+    topology,
+    agentSpawnRuntime: {
+      ...spawnRuntime.port,
+      isSessionActive: id => alive.has(id) && !inactive.has(id),
+    },
+    killExactSession: kill,
+  })
   const registry = createTestAgentProviderRegistry()
   Object.assign(registry.require('claude-code').launcher, {
     createLaunchPlan: async (input: { mode: string; resumeSessionId: string }) => ({
@@ -201,7 +227,7 @@ export async function snapshotFixture(
     approvedWorkspaces: { isPathApproved: async () => true } as never,
     agentProviderRegistry: registry,
     topology,
-    ptyRuntime: { spawnSession: spawn, kill: (id: string) => alive.delete(id) } as never,
+    ptyRuntime: spawnRuntime.runtime,
     ptyStreamHub: {
       isSessionActive: (id: string) => alive.has(id) && !inactive.has(id),
       registerSessionMetadata: () => {},
@@ -236,10 +262,12 @@ export async function snapshotFixture(
     alive,
     inactive,
     spawn,
+    spawnRuntime,
     initialRevision,
     publications,
     results,
     dispose: () => {
+      spawnRuntime.dispose()
       runtime.dispose()
       store.dispose()
     },

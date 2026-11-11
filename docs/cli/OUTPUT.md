@@ -153,7 +153,9 @@ node operations and --space for node list/create. Node @self and implicit
 node-based placement fail with these options in the recovery hint. Space/project
 @self remain available when the session has that scope. Exit, kill and Worker
 shutdown revoke the grant; a rejected token never falls back to a profile's admin
-credential. Use node create agent when a canvas-node binding is needed.
+credential. Only user authority can start a standalone session. Its grant retains non-runtime
+abilities, including notes, but cannot create agent or terminal runtimes. Ask the user to start
+an agent on the canvas for runtime delegation.
 
 独立的 `session run-agent --space <selector>` 保留绑定当前 session 的 interact 授权、
 project/Space 身份、连接变量及 CLI shims，但不创建画布节点，也不注入 OPENCOVE_NODE_ID。
@@ -161,4 +163,14 @@ whoami 的 nodeId 为 null，context 的 self.nodeId 和 self.node 也为 null�
 指定 --node，node list/create 请指定 --space。节点 @self 和依赖节点的默认放置会失败，
 并给出这些选项；session 仍可使用已有作用域的 Space/project @self。session 退出、kill 或
 Worker 关闭后授权即撤销；token 被拒绝时不会回退到 profile 的 admin 凭据。需要画布节点
-绑定时使用 node create agent。
+绑定和运行时委派时，请让用户在画布上启动 Agent；独立 session 的授权不能创建 Agent 或终端运行时。
+
+
+Grant runtime creation uses `node create agent|terminal`, with `boundedAgentSpawningV1`
+negotiated from authenticated `system.whoami` and `system.capabilities`. Missing support exits 5
+before mutation; user bearer launches and non-runtime commands do not require it. The Worker also
+enforces policy `s1a-v5` for older clients. Raw grant spawning exits 4 with node-create guidance.
+Depth greater than 3 returns `agent.spawn_depth_limit`; six occupied descendants return
+`agent.spawn_concurrency_limit`. Both exit 1 with `retryable:false`. Agent and terminal runtimes
+share the tree budget across projects and Spaces. Finishing a turn does not release a slot;
+a session must exit or be stopped. Human launches, task Run and recovery are exempt.

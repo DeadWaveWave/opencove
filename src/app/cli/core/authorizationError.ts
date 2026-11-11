@@ -1,3 +1,4 @@
+import { agentSpawnErrorPresentation } from '../../../shared/errors/agentSpawnError'
 import { CliError } from './errors'
 import { nodeParentErrorPresentation } from '../../../shared/errors/nodeParentError'
 
@@ -15,6 +16,7 @@ export function authorizationError(
     )
   }
   if (status === 403 || error?.code === 'common.forbidden') {
+    const spawn = error && agentSpawnErrorPresentation(error)
     const parent =
       error?.code === 'common.forbidden' ? nodeParentErrorPresentation(error) : undefined
     const details = error?.details
@@ -24,11 +26,12 @@ export function authorizationError(
     return new CliError(
       error?.code ?? 'common.forbidden',
       4,
-      parent?.message ??
+      spawn?.message ??
+        parent?.message ??
         (policyReason && typeof policy?.message === 'string'
           ? policy.message
           : 'This credential does not permit the operation.'),
-      parent?.hint,
+      spawn?.hint ?? parent?.hint,
       details,
     )
   }

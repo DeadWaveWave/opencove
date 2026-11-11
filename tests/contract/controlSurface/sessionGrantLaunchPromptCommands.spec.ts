@@ -29,7 +29,15 @@ vi.mock(
 )
 afterEach(() => vi.clearAllMocks())
 
-const routes = ['direct', 'direct-space', 'mount', 'node', 'remote', 'remote-node'] as const
+const routes = [
+  'direct',
+  'direct-space',
+  'mount',
+  'node',
+  'mounted-node',
+  'remote',
+  'remote-node',
+] as const
 function request(route: (typeof routes)[number], data: object) {
   const node = route.endsWith('node')
   return {
@@ -74,6 +82,7 @@ for (const route of routes) {
       async prompt => {
         const f = await createPromptWorker({
           remote: route.startsWith('remote'),
+          localMount: route === 'mounted-node',
           fullAccess: provider === 'kimi',
         })
         const before = await f.store.readAppState()
@@ -82,11 +91,15 @@ for (const route of routes) {
             ok: false,
             error: {
               code: 'common.forbidden',
-              details: {
-                reason: 'field_denied',
-                field: 'prompt',
-                promptReason: 'provider_command_prefix',
-              },
+              ...(route.startsWith('remote')
+                ? {}
+                : {
+                    details: {
+                      reason: 'field_denied',
+                      field: 'prompt',
+                      promptReason: 'provider_command_prefix',
+                    },
+                  }),
             },
           })
           expect(f.spawn).not.toHaveBeenCalled()
@@ -121,14 +134,14 @@ for (const provider of AGENT_PROVIDER_IDS) {
 it.each([{}, { provider: null }, { provider: ' ' }, { provider: 'gemini' }])(
   'uses configured Claude rather than requested provider %j',
   async input => {
-    const f = await createPromptWorker({ remote: true, fullAccess: false })
+    const f = await createPromptWorker({ remote: false, fullAccess: false })
     try {
       const before = (await f.store.readAppState())!
       await f.store.writeAppState({
         ...before,
         settings: { defaultProvider: 'claude-code', agentFullAccess: false },
       })
-      expect(await f.invoke(request('remote', { ...input, prompt: '# note' }))).toMatchObject({
+      expect(await f.invoke(request('mount', { ...input, prompt: '# note' }))).toMatchObject({
         ok: false,
         error: {
           code: 'common.forbidden',
@@ -174,21 +187,34 @@ for (const route of routes) {
     '\u001f/plan off',
     '\u2003/plan off',
   ])(`${route} refuses Python/Rust whitespace before a Kimi command %j`, async prompt => {
-    const f = await createPromptWorker({ remote: route.startsWith('remote'), fullAccess: true })
+    const f = await createPromptWorker({
+      remote: route.startsWith('remote'),
+      localMount: route === 'mounted-node',
+      fullAccess: true,
+    })
     try {
       expect(await f.invoke(request(route, { provider: 'kimi', prompt }))).toMatchObject({
         ok: false,
         error: {
           code: 'common.forbidden',
-          details: {
-            reason: 'field_denied',
-            promptReason: 'provider_command_prefix',
-            field: 'prompt',
-          },
+          ...(route.startsWith('remote')
+            ? {}
+            : {
+                details: {
+                  reason: 'field_denied',
+                  promptReason: 'provider_command_prefix',
+                  field: 'prompt',
+                },
+              }),
         },
       })
       expect(f.spawn).not.toHaveBeenCalled()
       expect(remote).not.toHaveBeenCalled()
+      if (route === 'mounted-node') {
+        expect(f.invokeCalls.mock.calls.map(([, invocation]) => invocation.id)).toContain(
+          'session.launchAgentInMount',
+        )
+      }
     } finally {
       await f.dispose()
     }

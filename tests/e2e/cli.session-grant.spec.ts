@@ -11,7 +11,7 @@ import type { AgentRunSnapshot } from '../../src/shared/contracts/dto/agentRunSt
 import { encodeClaudeProjectPath } from '../../src/contexts/agent/infrastructure/ClaudeProjectPaths'
 import { launchApp, removePathWithRetry, seedWorkspaceState } from './workspace-canvas.helpers'
 import { createCommandPlugin } from './plugins.commands.helpers'
-import { jsonOutput, terminalCommand } from './cli.terminal.helpers'
+import { canvasRuntimeFootprint, jsonOutput, terminalCommand } from './cli.terminal.helpers'
 
 const projectId = 'grant-project',
   spaceId = 'grant-main',
@@ -334,42 +334,50 @@ test('session grants preserve agent workflows and refuse human decisions', async
       const denied = await command('api', 'call', id, '--input-file', inputPath, '-o', 'json')
       expect(denied).toMatch(/\bexit=4\b/)
       expect(denied.replaceAll('\n', '')).toContain(
-        id === 'session.launchAgent' ? 'field_denied' : 'operation_denied',
+        // Agent sessions start runtimes only through node create (bounded spawning).
+        id === 'session.launchAgent' ? 'node_create_required' : 'operation_denied',
       )
     }
+    const launchFootprint = () => canvasRuntimeFootprint(page, projectId)
+    const beforeLaunches = await launchFootprint()
     for (const prompt of ['logout', 'update', 'resume', 'Refactor']) {
-      const inputPath = join(root, 'single-word-launch.json')
-      await writeFile(inputPath, JSON.stringify({ cwd: workspace, provider: 'codex', prompt }))
       const denied = await command(
-        'api',
-        'call',
-        'session.launchAgent',
-        '--input-file',
-        inputPath,
+        'node',
+        'create',
+        'agent',
+        '--provider',
+        'codex',
+        '--prompt',
+        prompt,
         '-o',
         'json',
       )
       expect(denied).toMatch(/\bexit=4\b/)
-      expect(denied.replaceAll('\n', '')).toContain('field_denied')
-      expect(denied.replaceAll('\n', '')).toContain('describe the task in a sentence')
+      const error = denied.replaceAll('\n', '')
+      expect(error).toContain('common.forbidden')
+      expect(error).toContain('field_denied')
+      expect(error).toContain('describe the task in a sentence')
+      expect(await launchFootprint()).toEqual(beforeLaunches)
     }
     for (const prompt of ['! printenv X', '/permissions change policy', '# note', '& task']) {
-      const inputPath = join(root, 'provider-command-launch.json')
-      await writeFile(
-        inputPath,
-        JSON.stringify({ cwd: workspace, provider: 'claude-code', prompt }),
-      )
       const denied = await command(
-        'api',
-        'call',
-        'session.launchAgent',
-        '--input-file',
-        inputPath,
+        'node',
+        'create',
+        'agent',
+        '--provider',
+        'claude-code',
+        '--prompt',
+        prompt,
         '-o',
         'json',
       )
       expect(denied).toMatch(/\bexit=4\b/)
-      expect(denied.replaceAll('\n', '')).toContain('provider_command_prefix')
+      const error = denied.replaceAll('\n', '')
+      expect(error).toContain('common.forbidden')
+      expect(error).toContain('field_denied')
+      expect(error).toContain('provider_command_prefix')
+      expect(error).toContain('start with words')
+      expect(await launchFootprint()).toEqual(beforeLaunches)
     }
     const nestedRefusal = await command(
       'node',
@@ -382,6 +390,7 @@ test('session grants preserve agent workflows and refuse human decisions', async
     )
     expect(nestedRefusal).toMatch(/\bexit=4\b/)
     expect(nestedRefusal.replaceAll('\n', '')).toContain('describe the task in a sentence')
+    expect(await launchFootprint()).toEqual(beforeLaunches)
     const plugin = await createCommandPlugin('single')
     pluginDirectory = plugin.directory
     await page.evaluate(
@@ -409,13 +418,27 @@ test('session grants preserve agent workflows and refuse human decisions', async
       )
       .toBe('exited')
 
-    const session = await object(
+    const refusedStandalone = await command(
       'session',
       'run-agent',
       '--provider',
       'claude-code',
       '--prompt',
       'Start a review',
+    )
+    expect(refusedStandalone).toMatch(/\bexit=4\b/)
+    expect(refusedStandalone.replaceAll('\n', '')).toContain('node create')
+    const session = await page.evaluate(
+      async targetSpaceId =>
+        window.opencoveApi.controlSurface.invoke<{
+          sessionId: string
+          resumeSessionId: string | null
+        }>({
+          kind: 'command',
+          id: 'session.launchAgent',
+          payload: { spaceId: targetSpaceId, provider: 'claude-code', prompt: 'Start a review' },
+        }),
+      spaceId,
     )
     const sessionId = String(session.sessionId)
     await success('session', 'get', '--session', sessionId)

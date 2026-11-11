@@ -157,8 +157,8 @@ export async function resolveSelectors(
   args: CommandArgs,
   io: CliIo,
   invoke: Invoke,
+  identity = sessionIdentity(io.env, invoke),
 ) {
-  const identity = sessionIdentity(io.env, invoke)
   const o = args.options
   if (o['spawned-by'] !== undefined) {
     await requireNodeLineage(invoke)

@@ -1,3 +1,4 @@
+import { admittedGrantInvocation } from './admittedGrantInvocation.testUtils'
 import { vi } from 'vitest'
 import { pathToFileURL } from 'node:url'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
@@ -21,13 +22,20 @@ import {
 
 export const cwd = process.cwd()
 export const rootUri = pathToFileURL(cwd).href
-export async function createPromptWorker(options: { remote?: boolean; fullAccess: boolean }) {
+export async function createPromptWorker(options: {
+  remote?: boolean
+  localMount?: boolean
+  fullAccess: boolean
+}) {
   const store = createInMemoryPersistenceStore()
   const state = createMinimalState(cwd, 'project', 'space')
   state.workspaces[0].nodes = [
     { id: 'caller', kind: 'terminal', title: 'Caller', sessionId: 'caller-session' },
   ]
   state.workspaces[0].spaces[0].nodeIds = ['caller']
+  if (options.localMount) {
+    Object.assign(state.workspaces[0].spaces[0], { targetMountId: 'mount' })
+  }
   state.settings = {
     defaultProvider: 'codex',
     agentFullAccess: options.fullAccess,
@@ -67,18 +75,19 @@ export async function createPromptWorker(options: { remote?: boolean; fullAccess
       ],
     }),
     listMounts: async () => ({
-      mounts: options.remote
-        ? [
-            {
-              mountId: 'mount',
-              projectId: 'project',
-              targetId: 'target',
-              endpointId: 'remote',
-              rootPath: cwd,
-              rootUri,
-            },
-          ]
-        : [],
+      mounts:
+        options.remote || options.localMount
+          ? [
+              {
+                mountId: 'mount',
+                projectId: 'project',
+                targetId: 'target',
+                endpointId: options.remote ? 'remote' : 'local',
+                rootPath: cwd,
+                rootUri,
+              },
+            ]
+          : [],
     }),
     resolveMountTarget: async () => ({
       mountId: 'mount',
@@ -107,7 +116,11 @@ export async function createPromptWorker(options: { remote?: boolean; fullAccess
     ),
   }
   registerSessionHandlers(surface, deps)
-  registerNodeControlHandlers(surface, deps)
+  registerNodeControlHandlers(surface, {
+    killExactSession: id => runtime.kill(id),
+    ...deps,
+    agentSpawnRuntime: { snapshot: () => ({ revision: 0, bindings: [] }), isCurrent: () => true },
+  })
   const { grant } = new SessionGrantRegistry(() => true).issue({
     projectId: 'project',
     spaceId: 'space',
@@ -119,13 +132,16 @@ export async function createPromptWorker(options: { remote?: boolean; fullAccess
     ptyProtocolVersion: 1,
     replayWindowMaxBytes: 64_000,
   })
+  const invokeCalls = vi.spyOn(surface, 'invoke')
   const invoke = (request: Parameters<ControlSurface['invoke']>[1], trusted = false) =>
-    surface.invoke(
+    admittedGrantInvocation(
+      surface,
       { ...base, requestAuth: trusted ? { kind: 'bearer' } : { kind: 'session-grant', grant } },
       request,
     )
   return {
     invoke,
+    invokeCalls,
     spawn,
     kill,
     store,
