@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { expect, type Page } from '@playwright/test'
+import { waitForControlSurfaceConnection } from './controlSurfaceConnection.helpers'
 
 export async function syntheticRebind(
   userDataDir: string,
@@ -22,17 +23,12 @@ export async function syntheticRebind(
   )
   const transcript = await readFile(path.join(directory, `${priorId}.jsonl`), 'utf8')
   await writeFile(path.join(directory, `${nextId}.jsonl`), transcript.replaceAll(priorId, nextId))
-  const connection = JSON.parse(
-    await readFile(path.join(userDataDir, 'control-surface.json'), 'utf8'),
-  ) as { hostname: string; port: number; token: string }
-  const response = await fetch(
-    `http://${connection.hostname}:${connection.port}/_test/managed-claude-rebind`,
-    {
-      method: 'POST',
-      headers: { authorization: `Bearer ${connection.token}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ nodeId, resumeSessionId: nextId }),
-    },
-  )
+  const connection = await waitForControlSurfaceConnection(userDataDir)
+  const response = await fetch(`${connection.endpoint}/_test/managed-claude-rebind`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${connection.token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ nodeId, resumeSessionId: nextId }),
+  })
   expect(response.status).toBe(200)
   expect(await response.json()).toMatchObject({ status: 'committed', revision: expect.any(Number) })
   return nextId

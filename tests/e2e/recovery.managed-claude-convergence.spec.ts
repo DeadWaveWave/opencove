@@ -18,6 +18,7 @@ import {
   seedWorkspaceState,
 } from './workspace-canvas.helpers'
 import { startWorker, stopWorker } from './worker-client.helpers'
+import { waitForControlSurfaceConnection } from './controlSurfaceConnection.helpers'
 import {
   createCliAgent,
   getBinding,
@@ -74,7 +75,7 @@ test('managed Claude stale publications retain layout and cold-resume the curren
     worker.stderr.resume()
     const first = await launchApp({ userDataDir, cleanupUserDataDir: false, env })
     app = first.electronApp
-    const page = first.window
+    let page = first.window
     await seedWorkspaceState(page, {
       activeWorkspaceId: projectId,
       settings: { defaultProvider: 'claude-code', agentFullAccess: false },
@@ -127,13 +128,13 @@ test('managed Claude stale publications retain layout and cold-resume the curren
       .toEqual({ resumeSessionId: launched.tuple.resumeSessionId, resumeSessionIdVerified: true })
     const initial = await getBinding(page, agent.id)
     await expectConversation(page, agent.id, initial.tuple.resumeSessionId!)
-    const connection = JSON.parse(
-      await readFile(path.join(userDataDir, 'control-surface.json'), 'utf8'),
-    ) as { hostname: string; port: number; token: string }
-    const webUrl = `http://${connection.hostname}:${connection.port}/?token=${connection.token}`
+    const connection = await waitForControlSurfaceConnection(userDataDir)
+    const webUrl = new URL(connection.endpoint)
+    webUrl.searchParams.set('token', connection.token)
+    const workerPort = Number(webUrl.port || 80)
     const web = await browser.newPage()
     await holdPrepare(web, agent.id)
-    await web.goto(webUrl!, { waitUntil: 'domcontentloaded' })
+    await web.goto(webUrl.toString(), { waitUntil: 'domcontentloaded' })
     await web.waitForFunction(() =>
       Boolean((window as unknown as { __heldManagedPrepare?: unknown }).__heldManagedPrepare),
     )
@@ -252,30 +253,15 @@ test('managed Claude stale publications retain layout and cold-resume the curren
         })
       expect((await getBinding(page, agent.id)).tuple).toEqual(expectedTuple)
     }
-    // Drop all invalidations while disconnected, commit C, then restart the Worker.
+    // Prove the stale save cannot roll B back, including a complete Desktop + Worker restart.
     await web.context().setOffline(true)
-    const finalId = await syntheticRebind(userDataDir, home, workspace, agent.id, nextId)
-    await expectConversation(page, agent.id, finalId)
-    await stopWorker(worker)
-    worker = null
-    worker = (
-      await startWorker({ userDataDir, env, port: connection.port, token: connection.token })
-    ).child
-    worker.stdout.resume()
-    worker.stderr.resume()
-    await web.context().setOffline(false)
-    // Existing EventSource reconnects to the same configured Web listener with an empty buffer.
-    await expectConversation(web, agent.id, finalId)
-    await expectConversation(page, agent.id, finalId)
-    await web.close()
     const callsBefore = (await readFile(logPath, 'utf8')).trim().split('\n').length
     await app.close()
     app = undefined
     await stopWorker(worker)
     worker = null
-    worker = (
-      await startWorker({ userDataDir, env, port: connection.port, token: connection.token })
-    ).child
+    worker = (await startWorker({ userDataDir, env, port: workerPort, token: connection.token }))
+      .child
     worker.stdout.resume()
     worker.stderr.resume()
     const restarted = await launchApp({ userDataDir, cleanupUserDataDir: false, env })
@@ -287,14 +273,29 @@ test('managed Claude stale publications retain layout and cold-resume the curren
           .split('\n')
           .slice(callsBefore)
           .map(line => JSON.parse(line) as { mode: string; sessionId: string })
-          .some(call => call.mode === 'resume' && call.sessionId === finalId),
+          .some(call => call.mode === 'resume' && call.sessionId === nextId),
       )
       .toBe(true)
     expect((await getBinding(restarted.window, agent.id)).tuple).toEqual({
-      resumeSessionId: finalId,
+      resumeSessionId: nextId,
       resumeSessionIdVerified: true,
     })
-    await expectConversation(restarted.window, agent.id, finalId)
+    await expectConversation(restarted.window, agent.id, nextId)
+    page = restarted.window
+    // Drop all invalidations while disconnected, commit C, then restart the Worker.
+    const finalId = await syntheticRebind(userDataDir, home, workspace, agent.id, nextId)
+    await expectConversation(page, agent.id, finalId)
+    await stopWorker(worker)
+    worker = null
+    worker = (await startWorker({ userDataDir, env, port: workerPort, token: connection.token }))
+      .child
+    worker.stdout.resume()
+    worker.stderr.resume()
+    await web.context().setOffline(false)
+    // Existing EventSource reconnects to the same configured Web listener with an empty buffer.
+    await expectConversation(web, agent.id, finalId)
+    await expectConversation(page, agent.id, finalId)
+    await web.close()
   } finally {
     try {
       await app?.close()
