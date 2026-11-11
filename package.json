@@ -35,6 +35,7 @@
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "files": [
       "out{,/**/*}",
+      "!out/renderer/assets/desktopAcceptanceHarness-*.js",
       "src/app/cli/opencove.mjs",
       "src/app/cli/publishRuntime.mjs",
       "docs/plugins{,/**/*}",
