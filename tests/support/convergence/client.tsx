@@ -33,11 +33,15 @@ import { STORAGE_KEY } from '@contexts/workspace/presentation/renderer/utils/per
 import { toggleSidebarCollapsedId } from '@contexts/settings/domain/sidebarTreeSettings'
 import { autosave, quit } from './lifecycle'
 import { fixture, value, snapshot } from './fixture'
+import { LocalViewModel, withLocalViews } from './localViews'
+import { persistLocalViewStateFromAppState } from '@contexts/workspace/presentation/renderer/utils/persistence/viewState'
+import { stripPersistedAppViewState } from '@shared/sync/canonicalizePersistedAppState'
 import { Server, type Adapter } from './server'
 import type { Action, Response } from './model'
 import type { PersistedAppState } from '@contexts/workspace/presentation/renderer/types'
 export class Client {
   server: Server
+  localViews: LocalViewModel
   caches = new Set<RevisionedSnapshotCache<PersistedAppState>>()
   private stopStartup: (() => void) | undefined
   private queuedFlush: Promise<boolean> | null = null
@@ -61,7 +65,9 @@ export class Client {
     response: Response,
   ) {
     vi.useFakeTimers()
-    this.server = new Server(fixture(owned), response)
+    const initial = withLocalViews(fixture(owned))
+    this.localViews = new LocalViewModel(initial)
+    this.server = new Server(stripPersistedAppViewState(initial), response)
     this.delivery = new Delivery(
       () => this.server.model.revision,
       event => this.event?.(event),
@@ -79,7 +85,8 @@ export class Client {
     })
     this.installApi()
     useCanvasCollapseStore.setState({ workspaces: {} })
-    this.apply(snapshot(this.server.template, this.server.model.value))
+    persistLocalViewStateFromAppState(initial)
+    this.apply(initial)
     acceptPersistedStateSnapshot({
       state: snapshot(this.server.template, this.server.model.value),
       revision: 1,
@@ -108,7 +115,6 @@ export class Client {
     if (!this.stopped) {
       await this.shutdown()
     }
-    window.localStorage.clear()
     this.caches.clear()
     this.installApi()
     publication.persistenceScope()
@@ -162,6 +168,12 @@ export class Client {
   async step(action: Action) {
     if (this.stopped) {
       await this.restart()
+    }
+    if (!this.autosaveHook && ['view', 'sidebar-collapse', 'sidebar-expand'].includes(action)) {
+      // Commit the initial hydration skip before producing user input, as the app does.
+      await act(async () => {
+        this.autosaveHook = autosave(this)
+      })
     }
     await act(async () => {
       if (action === 'begin-connect-read') {
@@ -235,9 +247,6 @@ export class Client {
           collapsedNodeIds: { ...s.collapsedNodeIds, agent: true },
         }))
       } else if (action === 'sidebar-collapse' || action === 'sidebar-expand') {
-        if (!this.autosaveHook) {
-          this.autosaveHook = autosave(this)
-        }
         const collapsed = action === 'sidebar-collapse'
         this.server.model.edit('sidebar', collapsed)
         this.server.model.edit('sidebarRoot', collapsed)
@@ -262,11 +271,11 @@ export class Client {
         this.server.model.edit('name', 'Imported project')
         await writeRawPersistedState(JSON.stringify(imported))
       } else if (action === 'view') {
-        useAppStore
-          .getState()
-          .setWorkspaces(ws =>
-            ws.map(w => ({ ...w, viewport: { x: 123, y: 456, zoom: 2 }, isMinimapVisible: false })),
-          )
+        const intent = this.localViews.edit()
+        useAppStore.setState(s => ({
+          activeWorkspaceId: intent.activeWorkspaceId,
+          workspaces: s.workspaces.map(w => ({ ...w, ...intent.workspaces[w.id] })),
+        }))
       } else if (action === 'schedule') {
         schedulePersistedStateWrite(this.state, { delayMs: 10000 })
       } else if (action === 'flush') {
@@ -424,22 +433,25 @@ export class Client {
     }
   }
   check(quiet: boolean) {
+    this.localViews.check(this.state())
     assertClientCanonicalState(this, quiet)
   }
   async quiet() {
     if (this.stopped) {
       await this.restart()
       this.check(true)
+      await this.localViews.checkColdRestore()
       return
     }
     await this.step('observe')
     await this.settle()
-    if (!publication.isPublicationBlocked()) {
-      await flushScheduledPersistedStateWriteAsync()
-      await this.step('observe')
-      await this.settle()
-    }
+    // Even an unconfirmed shared publication must drain local-view persistence.
+    // The production publication barrier still forbids another shared submission.
+    await flushScheduledPersistedStateWriteAsync()
+    await this.step('observe')
+    await this.settle()
     this.check(true)
+    await this.localViews.checkColdRestore()
     if (this.legacyHistory && this.server.scrollbacks.get('terminal') !== 'legacy history') {
       throw new Error('I1: terminal history was neither migrated nor retained')
     }

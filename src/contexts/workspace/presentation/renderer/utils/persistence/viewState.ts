@@ -133,13 +133,25 @@ export function persistLocalViewStateFromAppState(state: PersistedAppState): voi
   writePersistedViewState(capturePersistedViewState(state))
 }
 
+/** Accepted hydration may introduce workspaces without replacing established local views. */
+export function persistMissingLocalViewStateFromAppState(state: PersistedAppState): void {
+  const existing = readPersistedViewState()
+  const incoming = capturePersistedViewState(state)
+  if (!existing) {
+    writePersistedViewState(incoming)
+    return
+  }
+  if (Object.keys(incoming.workspaces).some(id => !Object.hasOwn(existing.workspaces, id))) {
+    writePersistedViewState({
+      ...existing,
+      workspaces: { ...incoming.workspaces, ...existing.workspaces },
+    })
+  }
+}
+
 export function applyLocalViewStateToPersistedState(state: PersistedAppState): PersistedAppState {
   const existing = readPersistedViewState()
   const viewState = existing ?? capturePersistedViewState(state)
-
-  if (!existing) {
-    writePersistedViewState(viewState)
-  }
 
   return {
     ...state,

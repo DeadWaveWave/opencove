@@ -2,6 +2,7 @@ import { startWorkerHydration } from './workerSync/startupHydration'
 import { clearWorkerConnectionFailure } from './workerSync/workerConnectionState'
 import { canAcceptHydrationSnapshot } from './useHydrateAppState.helpers'
 import { persistenceScope } from '@contexts/workspace/presentation/renderer/utils/persistence/publicationState'
+import { persistMissingLocalViewStateFromAppState } from '@contexts/workspace/presentation/renderer/utils/persistence/viewState'
 import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
 import {
   DEFAULT_AGENT_SETTINGS,
@@ -358,13 +359,11 @@ export function useHydrateAppState({
       const scope = persistenceScope()
       const snapshot = await readPersistedStateWithMeta()
       const { state: persisted, recovery, hasStandardWindowSizeBucket } = snapshot
-      if (scope !== persistenceScope()) {
-        return
-      }
-      if (!canAcceptHydrationSnapshot(snapshot)) {
-        return
-      }
-      if (isCancelledRef.current) {
+      const isSnapshotCurrent = () =>
+        !isCancelledRef.current &&
+        scope === persistenceScope() &&
+        canAcceptHydrationSnapshot(snapshot)
+      if (!isSnapshotCurrent()) {
         return
       }
 
@@ -385,10 +384,11 @@ export function useHydrateAppState({
         await applyUiLanguage(resolvedSettings.language)
       }
 
-      if (isCancelledRef.current) {
+      if (!isSnapshotCurrent()) {
         return
       }
       if (persisted) {
+        persistMissingLocalViewStateFromAppState(persisted)
         acceptPersistedStateSnapshot(snapshot)
       }
 

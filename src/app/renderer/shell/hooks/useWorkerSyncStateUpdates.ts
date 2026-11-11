@@ -1,14 +1,5 @@
 import { isWorkerConnectionRefusal } from '@shared/sync/managedClaudeWorkerCompatibility'
-import {
-  rebaseConnectMetadata,
-  resolveNextActiveWorkspaceId,
-  shouldApplyWorkerSyncRefresh,
-  resolveWorkspacesForWorkerSync,
-} from './workerSync/workspaceRefreshProjection'
-export {
-  shouldApplyWorkerSyncRefresh,
-  resolveWorkspacesForWorkerSync,
-} from './workerSync/workspaceRefreshProjection'
+import { rebaseConnectMetadata } from './workerSync/workspaceRefreshProjection'
 import {
   reportWorkerConnectionFailure,
   clearWorkerConnectionFailure,
@@ -25,6 +16,7 @@ import {
 } from '@contexts/workspace/presentation/renderer/utils/persistence/write'
 import { schedulePersistedStateWrite } from '@contexts/workspace/presentation/renderer/utils/persistence/schedule'
 import {
+  content,
   getPublicationConnectionError,
   getSyncedPersistedState,
   persistenceScope,
@@ -32,6 +24,15 @@ import {
   isPublicationBlocked,
   deferRefreshForSubmission,
 } from '@contexts/workspace/presentation/renderer/utils/persistence/publicationState'
+import {
+  resolveNextActiveWorkspaceId,
+  resolveWorkspacesForWorkerSync,
+  shouldApplyWorkerSyncRefresh,
+} from './workerSync/refreshState'
+export {
+  resolveWorkspacesForWorkerSync,
+  shouldApplyWorkerSyncRefresh,
+} from './workerSync/refreshState'
 import { useEffect, useRef } from 'react'
 import { normalizeAgentSettings } from '@contexts/settings/domain/agentSettings'
 import {
@@ -39,7 +40,6 @@ import {
   toPersistedState,
   flushScheduledPersistedStateWriteAsync,
 } from '@contexts/workspace/presentation/renderer/utils/persistence'
-import { stripLocalViewStateFromPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence/viewState'
 import { useAppStore } from '../store/useAppStore'
 import { canonicalContent } from '@shared/sync/mergeValue'
 import type { SyncEventPayload } from '@shared/contracts/dto'
@@ -331,11 +331,7 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
         // snapshot. A rejected read must not mutate them before these guards.
         const current = useAppStore.getState()
         const scheduleRemainingDelta = () => {
-          if (
-            !isPublicationBlocked() &&
-            canonicalContent(stripLocalViewStateFromPersistedState(persisted!)) !==
-              canonicalContent(stripLocalViewStateFromPersistedState(canonical!))
-          ) {
+          if (!isPublicationBlocked() && content(persisted!) !== content(canonical!)) {
             schedulePersistedStateWrite(() => {
               const state = useAppStore.getState()
               return toPersistedState(

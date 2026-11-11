@@ -2,7 +2,7 @@ import { canAcceptCanonicalState } from './publicationState'
 import type { PersistedStateReadResult } from './read'
 import { useCanvasCollapseStore } from '../../store/useCanvasCollapseStore'
 import { canvasCollapseFromPersistedLists, EMPTY_CANVAS_COLLAPSE } from '../canvasCollapse'
-import { markPersistedStateAsSynced } from './write'
+import { markPersistedStateAsSynced } from './sharedPublication'
 
 /** Publish a snapshot only after its lifecycle and local-edit guards accept it. */
 export function acceptPersistedStateSnapshot(

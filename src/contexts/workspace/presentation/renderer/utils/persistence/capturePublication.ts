@@ -1,4 +1,5 @@
 import type { PersistedAppState } from '../../types'
+import { persistLocalViewStateFromAppState } from './viewState'
 import {
   content,
   getAcceptedRevision,
@@ -19,6 +20,9 @@ export function capturePublication(state: PersistedAppState): CapturedPublicatio
   const scopeGeneration = persistenceScope(),
     pending = getPendingPublication(),
     base = getSyncedPersistedState()
+  // View-only intent has a local durable owner, even when draining needs no shared write.
+  // Save before the first await so a later local publication can retain newer preferences.
+  persistLocalViewStateFromAppState(state)
   return {
     editGeneration: ++editGeneration,
     scopeGeneration,
