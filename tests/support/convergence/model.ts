@@ -1,11 +1,20 @@
 /** Independent test oracle: no imports from the publication, merge or projection implementation. */
-export type Field = 'name' | 'title' | 'collapsed' | 'sidebar' | 'sidebarRoot'
+export type Field =
+  | 'name'
+  | 'title'
+  | 'collapsed'
+  | 'sidebar'
+  | 'sidebarRoot'
+  | 'spaceOrder'
+  | 'spacePinned'
 export interface Value {
   name: string
   title: string
   collapsed: boolean
   sidebar: boolean
   sidebarRoot: boolean
+  spaceOrder: string
+  spacePinned: boolean
   tuple: string
   runtime: string
 }
@@ -23,6 +32,8 @@ export class ServerModel {
     collapsed: false,
     sidebar: false,
     sidebarRoot: false,
+    spaceOrder: 'space,second',
+    spacePinned: false,
     tuple: 'A',
     runtime: 'runtime',
   }
@@ -183,6 +194,10 @@ export type Action =
   | 'cold-restart'
   | 'quit-timeout'
   | 'quit-failure'
+  | 'begin-import'
+  | 'flush-queued'
+  | 'space-reorder'
+  | 'space-pin'
 export const responses: Response[] = [
   'committed',
   'corrected',
@@ -313,6 +328,29 @@ export function explore(): Array<{ response: Response; actions: Action[] }> {
         },
         { response: 'committed', actions: ['rename', 'quit-timeout'] },
         { response: 'committed', actions: ['rename', 'quit-failure'] },
+        {
+          response: 'committed',
+          actions: [
+            'rename',
+            'schedule',
+            'begin-import',
+            'title',
+            'flush-queued',
+            'reply',
+            'observe',
+            'refresh',
+            'quit',
+            'cold-restart',
+          ],
+        },
+        {
+          response: 'committed',
+          actions: ['space-reorder', 'flush', 'view', 'observe', 'refresh', 'quit', 'cold-restart'],
+        },
+        {
+          response: 'committed',
+          actions: ['space-pin', 'flush', 'view', 'observe', 'refresh', 'quit', 'cold-restart'],
+        },
       ],
     )
 }

@@ -106,6 +106,23 @@ export class Server {
         next.tuple = this.model.value.tuple
       }
       this.model.commit(next)
+      // Preserve persisted wire fields outside the oracle's intent vocabulary, as SQLite does.
+      const stored = sqliteWireState(state)
+      for (const workspace of stored.workspaces) {
+        for (const node of workspace.nodes) {
+          const owner = this.template.workspaces
+            .flatMap(w => w.nodes)
+            .find(n => n.id === node.id)?.managedClaudeResumeBindingOwnership
+          if (owner) {
+            node.managedClaudeResumeBindingOwnership = structuredClone(owner)
+            if (node.agent) {
+              node.agent.resumeSessionId = this.model.value.tuple
+              node.agent.resumeSessionIdVerified = this.model.verified
+            }
+          }
+        }
+      }
+      Object.assign(this.template, stored)
     }
     if (response.startsWith('lost')) {
       throw new Error('Response lost')

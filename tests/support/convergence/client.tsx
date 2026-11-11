@@ -1,3 +1,4 @@
+import { editSpaceOrder, assertCanonicalSpaceOrder } from './spaceOrdering'
 import { act, renderHook } from '@testing-library/react'
 import { vi } from 'vitest'
 import { useWorkerSyncStateUpdates } from '@app/renderer/shell/hooks/useWorkerSyncStateUpdates'
@@ -31,6 +32,7 @@ import type { PersistedAppState } from '@contexts/workspace/presentation/rendere
 export class Client {
   server: Server
   caches = new Set<RevisionedSnapshotCache<PersistedAppState>>()
+  private queuedFlush: Promise<boolean> | null = null
   private inFlight: Promise<unknown> | null = null
   private legacyHistory = false
   private captured: ReturnType<typeof capturePublication> | null = null
@@ -220,9 +222,26 @@ export class Client {
       } else if (action === 'begin-write') {
         this.server.delayResponse = true
         this.inFlight = this.write()
+      } else if (action === 'begin-import') {
+        const imported = this.state()
+        imported.workspaces[0].name = 'Imported project'
+        this.server.model.edit('name', 'Imported project')
+        this.server.delayResponse = true
+        this.inFlight = writeRawPersistedState(JSON.stringify(imported))
+      } else if (action === 'flush-queued') {
+        this.queuedFlush = flushScheduledPersistedStateWriteAsync()
+        await Promise.resolve()
+        await Promise.resolve()
+        if (this.server.writes !== 1) {
+          throw new Error('I10: autosave submitted before replacement receipt')
+        }
+      } else if (action === 'space-reorder' || action === 'space-pin') {
+        editSpaceOrder(this, action === 'space-pin')
       } else if (action === 'reply') {
         this.server.reply()
         await this.inFlight
+        await this.queuedFlush
+        this.queuedFlush = null
         this.inFlight = null
       } else if (action === 'lose-next') {
         this.server.response = 'lost-committed'
@@ -355,6 +374,7 @@ export class Client {
         ) as PersistedAppState)
       : null
     const accepted = publication.getSyncedPersistedState()
+    assertCanonicalSpaceOrder([...this.caches].at(-1)?.latest?.state)
     this.server.model.check(
       {
         ui: value(this.state()),
@@ -408,6 +428,7 @@ export class Client {
   async close() {
     this.server.reply()
     await this.inFlight
+    await this.queuedFlush
     if (!this.stopped) {
       await this.shutdown()
     }

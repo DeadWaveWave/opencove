@@ -60,9 +60,9 @@ const mutations = [
   },
   {
     id: 'I6',
-    file: persistence + 'publicationState.ts',
-    from: 'stripLocalViewStateFromPersistedState(state)',
-    to: 'state',
+    file: 'src/shared/sync/canonicalizePersistedAppState.ts',
+    from: 'return stripPersistedAppViewState(state)',
+    to: 'return state',
     test: model,
     filter: 'owned=false adapter=local trace=3 ',
   },
@@ -82,6 +82,22 @@ const mutations = [
     to: '    settings: { ...settings, sidebarCollapsedSpaceGroupIds: {} },',
     test: model,
     filter: 'owned=false adapter=local trace=113 ',
+  },
+  {
+    id: 'I10',
+    file: persistence + 'publicationQueue.ts',
+    from: 'tail ? tail.then(execute) : execute()',
+    to: 'execute()',
+    test: model,
+    filter: 'owned=false adapter=local trace=116 ',
+  },
+  {
+    id: 'I11',
+    file: 'src/shared/sync/canonicalizePersistedAppState.ts',
+    from: 'a.order - b.order || compareId(a.space, b.space)',
+    to: '0',
+    test: model,
+    filter: 'owned=false adapter=remote trace=117 ',
   },
   {
     id: 'I7',
@@ -118,7 +134,7 @@ try {
     copyFileSync(path.join(root, file), path.join(directory, file))
   }
   symlinkSync(path.join(root, 'node_modules'), path.join(directory, 'node_modules'), 'dir')
-  const smoke = run(model, 'owned=false adapter=local trace=(3|111|113) ', 'unmutated.log')
+  const smoke = run(model, 'owned=false adapter=local trace=(3|111|113|116|117) ', 'unmutated.log')
   if (smoke.status !== 0) {
     throw new Error(`Unmutated explorer failed; inspect ${directory}/unmutated.log`)
   }
@@ -141,7 +157,7 @@ try {
       writeFileSync(target, source)
     }
   }
-  process.stdout.write(`9/9 source mutants killed. Logs: ${directory}\n`)
+  process.stdout.write(`11/11 source mutants killed. Logs: ${directory}\n`)
 } catch (error) {
   process.stderr.write(`${String(error)}\n`)
   process.exitCode = 1

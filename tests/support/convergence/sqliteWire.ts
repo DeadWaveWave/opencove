@@ -13,7 +13,7 @@ import {
 import type { PersistedAppState } from '@contexts/workspace/presentation/renderer/types'
 /** Use SQLite's real reader over row data, not a guessed renderer-shaped response.
  * A native contract independently compares this row bridge with a real SQLite round trip. */
-export function sqliteWireState(input: PersistedAppState): PersistedAppState {
+export function sqliteWireState(input: unknown): PersistedAppState {
   const normalized = normalizePersistedAppState(input)!
   const collapse = Object.fromEntries(
     normalized.workspaces

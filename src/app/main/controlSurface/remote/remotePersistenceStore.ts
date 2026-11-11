@@ -19,7 +19,7 @@ import type {
 } from '../../../../shared/contracts/dto'
 import { createAppError, createAppErrorDescriptor } from '../../../../shared/errors/appError'
 import { mergePersistedAppStates } from '../../../../shared/sync/mergePersistedAppStates'
-import { normalizePersistedAppStateForMerge } from '../../../../shared/sync/normalizePersistedAppStateForMerge'
+import { canonicalizePersistedAppState as normalizePersistedAppStateForMerge } from '../../../../shared/sync/canonicalizePersistedAppState'
 import type { NormalizedPersistedAppStateContract } from '../../../../shared/contracts/normalizedPersistedAppState'
 import {
   isNormalizedAgentSettings,

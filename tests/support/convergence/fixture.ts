@@ -19,6 +19,15 @@ export function fixture(owned: boolean): PersistedAppState {
             directoryPath: '/tmp/convergence',
             nodeIds: ['terminal'],
             rect: null,
+            sortOrder: 0,
+          },
+          {
+            id: 'second',
+            name: 'Second',
+            directoryPath: '/tmp/convergence',
+            nodeIds: [],
+            rect: null,
+            sortOrder: 1,
           },
         ],
         nodes: [
@@ -70,6 +79,11 @@ export function value(state: PersistedAppState): Value {
     collapsed: workspace.collapsedNodeIds?.includes('agent') ?? false,
     sidebar: state.settings.sidebarCollapsedSpaceGroupIds['project:space'] === true,
     sidebarRoot: state.settings.sidebarCollapsedSpaceGroupIds['project:project-root'] === true,
+    spaceOrder: [...workspace.spaces]
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+      .map(s => s.id)
+      .join(','),
+    spacePinned: workspace.spaces.find(s => s.id === 'second')?.pinned === true,
     tuple: node.agent!.resumeSessionId!,
     runtime: node.sessionId ?? '',
   }
@@ -81,6 +95,13 @@ export function snapshot(template: PersistedAppState, model: Value): PersistedAp
   state.settings.sidebarCollapsedSpaceGroupIds = {
     ...(model.sidebar ? { 'project:space': true } : {}),
     ...(model.sidebarRoot ? { 'project:project-root': true } : {}),
+  }
+  const order = model.spaceOrder.split(',')
+  for (const space of workspace.spaces) {
+    space.sortOrder = order.indexOf(space.id)
+    if (space.id === 'second') {
+      space.pinned = model.spacePinned
+    }
   }
   workspace.name = model.name
   workspace.collapsedNodeIds = model.collapsed ? ['agent'] : []

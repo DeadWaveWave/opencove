@@ -1,3 +1,4 @@
+import { stripPersistedAppViewState } from '@shared/sync/canonicalizePersistedAppState'
 import type { PersistedAppState, WorkspaceViewport } from '../../types'
 import { DEFAULT_WORKSPACE_MINIMAP_VISIBLE, DEFAULT_WORKSPACE_VIEWPORT } from '../../types'
 import { getStorage } from './storage'
@@ -124,24 +125,8 @@ function writePersistedViewState(state: PersistedAppViewState): void {
   }
 }
 
-function resolveSanitizedActiveSpaceId(
-  workspace: PersistedAppState['workspaces'][number],
-): string | null {
-  const firstSpaceId = workspace.spaces.find(space => !space.parentSpaceId)?.id ?? null
-  return normalizeOptionalString(firstSpaceId)
-}
-
 export function stripLocalViewStateFromPersistedState(state: PersistedAppState): PersistedAppState {
-  return {
-    ...state,
-    activeWorkspaceId: state.workspaces[0]?.id ?? null,
-    workspaces: state.workspaces.map(workspace => ({
-      ...workspace,
-      viewport: { ...DEFAULT_WORKSPACE_VIEWPORT },
-      isMinimapVisible: DEFAULT_WORKSPACE_MINIMAP_VISIBLE,
-      activeSpaceId: resolveSanitizedActiveSpaceId(workspace),
-    })),
-  }
+  return stripPersistedAppViewState(state)
 }
 
 export function persistLocalViewStateFromAppState(state: PersistedAppState): void {

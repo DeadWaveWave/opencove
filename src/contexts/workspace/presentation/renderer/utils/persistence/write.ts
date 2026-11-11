@@ -1,4 +1,5 @@
 /* eslint-disable no-await-in-loop -- Ordered persistence repair and lifecycle transitions must run sequentially. */
+import { enqueuePublication } from './publicationQueue'
 import { capturePublicationPresentation } from './livePresentation'
 import { parsePersistedStateValue } from './read'
 import type { PersistedAppState } from '../../types'
@@ -110,6 +111,9 @@ function consumeResult(
   return result
 }
 export async function writePersistedState(state: PersistedAppState): Promise<PersistWriteResult> {
+  return enqueuePublication(() => publishPersistedState(state))
+}
+async function publishPersistedState(state: PersistedAppState): Promise<PersistWriteResult> {
   const allowEmpty = allowNextEmptyWorkspaceOverwrite
   allowNextEmptyWorkspaceOverwrite = false
   const port = getPersistencePort()
@@ -183,6 +187,15 @@ export async function writePersistedState(state: PersistedAppState): Promise<Per
   return unavailableResult()
 }
 export async function writeRawPersistedState(raw: string): Promise<PersistWriteResult> {
+  const presentationRaw =
+    capturePublicationPresentation() ??
+    (getSyncedPersistedState() ? content(getSyncedPersistedState()!) : undefined)
+  return enqueuePublication(() => publishRawPersistedState(raw, presentationRaw))
+}
+async function publishRawPersistedState(
+  raw: string,
+  presentationRaw?: string,
+): Promise<PersistWriteResult> {
   const port = getPersistencePort()
   if (!port) {
     return unavailableResult()
@@ -206,9 +219,6 @@ export async function writeRawPersistedState(raw: string): Promise<PersistWriteR
       error: createAppErrorDescriptor('persistence.io_failed'),
     }
   }
-  const presentationRaw =
-    capturePublicationPresentation() ??
-    (getSyncedPersistedState() ? content(getSyncedPersistedState()!) : undefined)
   const ancestorRaw = getSyncedPersistedState() ? content(getSyncedPersistedState()!) : null
   const finish = beginPublicationSubmission()
   let result: PersistWriteResult

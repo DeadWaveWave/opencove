@@ -1,4 +1,4 @@
-import { stripLocalViewStateFromPersistedState } from './viewState'
+import { canonicalizePersistedAppState } from '@shared/sync/canonicalizePersistedAppState'
 import { ensurePersistedWorkspace } from './ensure'
 import { canonicalContent } from '@shared/sync/mergeValue'
 import { normalizePersistedAppStateForMerge } from '@shared/sync/normalizePersistedAppStateForMerge'
@@ -72,12 +72,7 @@ export function deferRefreshForSubmission(): boolean {
   return true
 }
 export function content(state: PersistedAppState): string {
-  return canonicalContent(
-    normalizePersistedAppStateForMerge(
-      stripLocalViewStateFromPersistedState(state),
-      normalizeAgentSettings,
-    ) ?? state,
-  )!
+  return canonicalContent(canonicalizePersistedAppState(state, normalizeAgentSettings) ?? state)!
 }
 export function getSyncedPersistedState(): PersistedAppState | null {
   persistenceScope()
@@ -135,7 +130,14 @@ export function acceptPublicationBase(state: PersistedAppState, revision: number
     requestCanonicalRefresh({ reason: 'uncertain', minimumRevision: revision })
     return false
   }
-  accepted = { raw, revision, state: JSON.parse(raw) as PersistedAppState }
+  // The comparison image ignores unordered rows; consumers still receive the accepted node order.
+  accepted = {
+    raw,
+    revision,
+    state: canonicalizePersistedAppState(state, normalizeAgentSettings, {
+      preserveNodeOrder: true,
+    }) as PersistedAppState,
+  }
   // An unknown transport outcome remains an unconfirmed draft, never automatic replay.
   if (!isPublicationBlocked(pending) && (pending?.minimumRevision ?? 0) <= (revision ?? 0)) {
     pending = null
