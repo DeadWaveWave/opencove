@@ -22,6 +22,7 @@ export function registerSystemHandlers(
     deploymentId?: string | null
     instanceId?: string
     isReady?: () => boolean
+    hasBoundedAgentSpawning?: () => Promise<boolean>
     hasNodeLineage?: () => Promise<boolean>
   },
 ): void {
@@ -86,6 +87,9 @@ export function registerSystemHandlers(
         runtimeReady: deps.isReady?.() ?? false,
         features: {
           ...ctx.capabilities,
+          boundedAgentSpawningV1: Boolean(
+            (await deps.hasBoundedAgentSpawning?.()) && (await deps.hasNodeLineage?.()),
+          ),
           operationRegistry: true,
           managedClaudeResumeBindingV1: false,
           nodeLineageV1:

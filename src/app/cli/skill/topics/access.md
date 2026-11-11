@@ -41,12 +41,23 @@ Authentication and grant-policy refusals exit 4.
 
 ## Constrained agent launches
 
-Launch new conversations using the user's saved permissions, environment and executable. Allowed
-launch fields are target (`spaceId`/`cwd` or `mountId`/`cwdUri`), prompt, provider, model, cols and
-rows. Explicit agentFullAccess, env, executablePathOverride, resumeSessionId,
-codexReuseRunningAppServer, mode and unknown fields are refused, including false/null values. These
-rules also apply to nested `node create agent` input. Only the user changes permissions in Settings
-→ Agent → Providers → Permissions → Full Access Mode.
+From a canvas-bound session, use `opencove node create agent` or `opencove node create terminal`.
+These are the only grant routes that start runtimes. The caller must still be the canvas node’s
+current local session. Raw launch operations, including `session run-agent`, cannot be used by grants.
+A user can still start a standalone session with bearer authority. Its grant keeps reads, notes and
+other non-runtime abilities; runtime delegation requires the user to start an agent on the canvas.
+
+Agent and terminal descendants share a limit of six live or starting runtimes per creation tree.
+The user root is depth 1; children are depth 2 and grandchildren depth 3. A fourth runtime generation
+is refused. Finishing a turn does not free capacity: a session in the tree must exit or be stopped.
+Moving nodes or deleting ancestors does not reset ancestry. User launches, task Run and recovery are
+exempt. Recovered descendants count toward subsequent grant requests. Grant runtime creation must
+stay on the same Worker; ask the user to start an agent on the target Worker for remote work.
+
+Agent launches use the user’s saved permissions, environment and executable. Explicit
+agentFullAccess, env, executablePathOverride, resumeSessionId, codexReuseRunningAppServer, mode and
+unknown fields are refused, including false/null values. Only the user changes permissions in
+Settings → Agent → Providers → Permissions → Full Access Mode.
 
 Describe the task in a sentence: a nonempty one-word launch prompt is refused because providers may
 interpret it as a command. Start prompts with words, not command prefixes:

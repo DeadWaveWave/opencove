@@ -1,4 +1,21 @@
+import { agentSpawnPresentations } from '../../../../shared/errors/agentSpawnError'
 export const enMessages = {
+  agentSpawnDepth: agentSpawnPresentations.agentSpawnDepth.message,
+  agentSpawnDepthHint: agentSpawnPresentations.agentSpawnDepth.hint,
+  agentSpawnConcurrency: agentSpawnPresentations.agentSpawnConcurrency.message,
+  agentSpawnConcurrencyHint: agentSpawnPresentations.agentSpawnConcurrency.hint,
+  agentSpawnRoute: agentSpawnPresentations.agentSpawnRoute.message,
+  agentSpawnRouteHint: agentSpawnPresentations.agentSpawnRoute.hint,
+  agentSpawnCaller: agentSpawnPresentations.agentSpawnCaller.message,
+  agentSpawnCallerHint: agentSpawnPresentations.agentSpawnCaller.hint,
+  agentSpawnBinding: agentSpawnPresentations.agentSpawnBinding.message,
+  agentSpawnBindingHint: agentSpawnPresentations.agentSpawnBinding.hint,
+  agentSpawnRemote: agentSpawnPresentations.agentSpawnRemote.message,
+  agentSpawnRemoteHint: agentSpawnPresentations.agentSpawnRemote.hint,
+  agentSpawnAccounting: agentSpawnPresentations.agentSpawnAccounting.message,
+  agentSpawnAccountingHint: agentSpawnPresentations.agentSpawnAccounting.hint,
+  agentSpawnCapability: agentSpawnPresentations.agentSpawnCapability.message,
+  agentSpawnCapabilityHint: agentSpawnPresentations.agentSpawnCapability.hint,
   managedAgentChanged: 'This agent has changed. Refresh the workspace and try again.',
   managedAgentDirectoryConflict:
     'This agent belongs to a different folder. Keep its current folder or start a new agent.',

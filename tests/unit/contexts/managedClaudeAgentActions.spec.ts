@@ -1,3 +1,8 @@
+import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
+import { installAgentSpawnOwner } from '../../../src/app/main/controlSurface/agentSpawnContext'
+import { AgentSpawnAdmissionOwner } from '../../../src/contexts/workspace/application/nodeSpawn/AgentSpawnAdmissionOwner'
+import type { NodeControlAppStateStore } from '../../../src/contexts/workspace/application/nodeControl/nodeControlState'
+import type { ResolvedNodeCreationTarget } from '../../../src/contexts/workspace/application/nodeControl/nodeCreationTarget'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import {
   runRoleNodeAction,
@@ -127,6 +132,87 @@ describe('managed Claude task and role actions', () => {
       ...tuple,
       executionDirectory: '/repo',
     })
+  })
+  it('task Run relaunches through user authority when its grant tree is full', async () => {
+    const surface = createControlSurface()
+    const rows = new Map(
+      Array.from(
+        { length: 6 },
+        (_, i) =>
+          [
+            'child' + i,
+            { nodeId: 'child' + i, spawnedBy: 'root', rootNodeId: 'root', lineageDepth: 2 },
+          ] as const,
+      ),
+    )
+    const owner = new AgentSpawnAdmissionOwner({
+      snapshot: () => ({
+        revision: 0,
+        bindings: [...rows.keys()].map(nodeId => ({
+          nodeId,
+          sessionId: nodeId,
+          runtimeOwner: 'local' as const,
+          state: 'running' as const,
+        })),
+      }),
+      isCurrent: () => true,
+    })
+    installAgentSpawnOwner(surface, owner)
+    const store = {
+      readAppStateRevision: async () => 0,
+      readAppState: async () => ({
+        workspaces: [
+          {
+            nodes: [
+              { id: 'root', kind: 'agent', sessionId: 'root-session' },
+              ...[...rows.keys()].map(id => ({ id, kind: 'agent', sessionId: id })),
+            ],
+          },
+        ],
+      }),
+      nodeLineage: { readMany: async () => rows, readAll: async () => rows },
+      commitCreatedNodeState: vi.fn(),
+    } as unknown as NodeControlAppStateStore
+    await expect(
+      owner.runCreation(
+        store,
+        {
+          authority: { grantId: 'g', nodeId: 'root', sessionId: 'root-session' },
+          nodeId: 'seventh',
+          kind: 'agent',
+          assertActive: () => {},
+          target: {
+            endpoint: { kind: 'local', endpointId: 'local' },
+            workspace: { id: 'workspace' },
+            workingDirectory: '/repo',
+          } as ResolvedNodeCreationTarget,
+        },
+        async () => {},
+      ),
+    ).rejects.toMatchObject({ code: 'agent.spawn_concurrency_limit' })
+    const spawn = vi.fn(() => ({ sessionId: 'user-relaunch' }))
+    surface.register('session.launchAgent', {
+      kind: 'command',
+      validate: value => value,
+      handle: spawn,
+      defaultErrorCode: 'agent.launch_failed',
+    })
+    const context = taskContext()
+    vi.mocked(context.launchAgentInNode).mockImplementation(async () => {
+      expect(
+        await surface.invoke(
+          { now: () => new Date() },
+          {
+            kind: 'command',
+            id: 'session.launchAgent',
+            payload: { cwd: '/repo', prompt: 'Next task' },
+          },
+        ),
+      ).toMatchObject({ ok: true })
+    })
+    await runTaskAgentAction('task', context)
+    expect(spawn).toHaveBeenCalledOnce()
+    expect(context.launchAgentInNode).toHaveBeenCalledOnce()
   })
   it('role launch uses one fresh agent identity and retains role provenance', async () => {
     vi.mocked(launchWorkspaceAgentSession).mockResolvedValue({

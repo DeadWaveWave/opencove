@@ -55,6 +55,7 @@ export interface PersistenceStore {
 
   readAppStateSnapshot?: () => Promise<{ state: unknown | null; revision: number | null }>
   readAppState: () => Promise<unknown | null>
+  isAppStateRevisionCurrent?: (revision: number) => boolean
   readAppStateRevision: () => Promise<number>
   writeAppState: (
     state: unknown,
@@ -341,6 +342,7 @@ export async function createPersistenceStore(storeOptions: {
     readWorkspaceStateRaw: atCleanBoundary(readWorkspaceStateRaw),
     writeWorkspaceStateRaw: atCleanBoundary(writeWorkspaceStateRaw),
     readAppState: atCleanBoundary(readAppState),
+    isAppStateRevisionCurrent: revision => readAppStateRevisionFromDb(sqlite) === revision,
     readAppStateRevision: atCleanBoundary(readAppStateRevision),
     writeAppState: atCleanBoundary((state, options) => persistAppState(state, options)),
     ...createPersistenceScrollbackStore(sqlite, db),

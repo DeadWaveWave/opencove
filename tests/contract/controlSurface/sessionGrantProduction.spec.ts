@@ -218,8 +218,13 @@ it('production Worker issues canvas credentials, exposes shim and whoami, and re
       { spaceId: 'space', prompt: 'mounted review' },
       token,
     )
-    expect(forwarded.result).toMatchObject({ ok: true })
-    await invoke('session.kill', { sessionId: forwarded.result.value.sessionId }, token)
+    expect(forwarded.result).toMatchObject({
+      ok: false,
+      error: {
+        code: 'common.forbidden',
+        details: { spawnReason: 'node_create_required', operationId: 'session.launchAgent' },
+      },
+    })
     await checkProductionGrantPolicy({
       invoke,
       token,

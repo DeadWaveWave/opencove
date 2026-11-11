@@ -1,3 +1,6 @@
+import { AgentSpawnAdmissionOwner } from '../../../../contexts/workspace/application/nodeSpawn/AgentSpawnAdmissionOwner'
+import type { AgentSpawnRuntimePort } from '../../../../contexts/workspace/application/nodeSpawn/AgentSpawnRuntimePort'
+import { installAgentSpawnOwner } from '../agentSpawnContext'
 import { resolveCallerParent } from '../../../../contexts/workspace/application/nodeLineage/NodeLineageOwner'
 import { canvasFocusOperation } from '../../../../shared/contracts/controlSurface/operations/domains/canvas'
 import { registerOperation } from '../registerOperation'
@@ -77,6 +80,7 @@ function toNodeControlStateStore(store: PersistenceStore): NodeControlAppStateSt
     nodeLineage: store.nodeLineage,
     commitCreatedNodeState: store.commitCreatedNodeState,
     readAppState: async () => normalizePersistedAppState(await store.readAppState()),
+    isAppStateRevisionCurrent: store.isAppStateRevisionCurrent,
     readAppStateRevision: store.readAppStateRevision,
     writeAppState: store.writeAppState,
     isRuntimeReferenced: store.isManagedClaudeRuntimeReferenced,
@@ -98,6 +102,7 @@ function queued<T>(queueRef: { current: Promise<void> }, task: () => Promise<T>)
 export function registerNodeControlHandlers(
   controlSurface: ControlSurface,
   deps: {
+    agentSpawnRuntime?: AgentSpawnRuntimePort
     topology: WorkerTopologyStore
     getPersistenceStore: () => Promise<PersistenceStore>
     publishSyncEvent?: (payload: SyncEventPayload) => number
@@ -105,11 +110,23 @@ export function registerNodeControlHandlers(
     closeWebsiteNode?: (nodeId: string) => Promise<void> | void
   },
 ): void {
+  const admission = deps.agentSpawnRuntime
+    ? new AgentSpawnAdmissionOwner(deps.agentSpawnRuntime)
+    : undefined
+  if (admission) {
+    installAgentSpawnOwner(controlSurface, admission)
+  }
   const mutationQueue = { current: Promise.resolve() }
   const withDeps = async (ctx: ControlSurfaceContext) => ({
     store: toNodeControlStateStore(await deps.getPersistenceStore()),
     locatorDeps: createLocatorDeps(controlSurface, deps.topology, ctx),
-    runtime: createRuntimeDeps(controlSurface, ctx, deps.closeWebsiteNode, deps.closePluginNode),
+    runtime: createRuntimeDeps(
+      controlSurface,
+      ctx,
+      deps.closeWebsiteNode,
+      deps.closePluginNode,
+      admission,
+    ),
   })
 
   registerOperation(controlSurface, nodeManagedClaudeBindingOperation, {
@@ -162,6 +179,7 @@ export function registerNodeControlHandlers(
     defaultErrorCode: 'common.unexpected',
     handle: async (ctx, input) =>
       queued(mutationQueue, async () => {
+        ctx.assertActive?.()
         const { store, locatorDeps, runtime } = await withDeps(ctx)
         return await createNodeForNodeControl({
           store,
@@ -169,6 +187,8 @@ export function registerNodeControlHandlers(
           runtime,
           input,
           now: ctx.now(),
+          admission,
+          authority: ctx.requestAuth?.kind === 'session-grant' ? ctx.requestAuth.grant : undefined,
           callerNodeId:
             ctx.requestAuth?.kind === 'session-grant' ? ctx.requestAuth.grant.nodeId : null,
         })

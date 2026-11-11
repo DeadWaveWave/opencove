@@ -1,3 +1,4 @@
+import { spawnForbiddenDetails } from '../../../../shared/errors/agentSpawnError'
 import { getPublicTerminalSpawnCommand } from '../../../../platform/terminal/publicTerminalSpawnCommand'
 import { ptySpawnInMountOperation } from '../../../../shared/contracts/controlSurface/operations/domains/pty'
 import { registerOperation } from '../registerOperation'
@@ -118,6 +119,11 @@ export function registerPtyMountHandlers(
 
       const startedAt = ctx.now().toISOString()
 
+      if (ctx.requestAuth?.kind === 'session-grant' && target.endpointId !== 'local') {
+        throw createAppError('common.forbidden', {
+          details: spawnForbiddenDetails('remote_spawning_unsupported'),
+        })
+      }
       if (target.endpointId === 'local') {
         const isApproved = await deps.approvedWorkspaces.isPathApproved(cwd)
         if (!isApproved) {

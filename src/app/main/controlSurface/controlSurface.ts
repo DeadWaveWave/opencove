@@ -1,3 +1,4 @@
+import { assertGrantSpawnRoute } from './agentSpawnContext'
 import { sessionGrantRule } from './http/sessionGrantPolicy'
 import {
   sessionGrantAllowsOperation,
@@ -35,7 +36,7 @@ export function createControlSurface(
 ): ControlSurface {
   const handlers = new Map<string, ControlSurfaceHandler<unknown, unknown>>()
 
-  return {
+  const surface: ControlSurface = {
     hasOperation: id => handlers.has(id),
     register: (id, handler) => {
       if (handlers.has(id)) {
@@ -82,6 +83,7 @@ export function createControlSurface(
             })
           }
         }
+        assertGrantSpawnRoute(surface, ctx, request.id)
         const execute = async (context = ctx) => await handler.handle(context, payload)
         const value = options.run
           ? await options.run(ctx, request, execute, payload)
@@ -103,4 +105,5 @@ export function createControlSurface(
       }
     },
   }
+  return surface
 }

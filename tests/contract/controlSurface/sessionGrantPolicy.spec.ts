@@ -1,3 +1,4 @@
+import { admittedGrantInvocation } from './admittedGrantInvocation.testUtils'
 /* eslint-disable no-await-in-loop -- Each request observes the preceding mutation or authorization boundary. */
 // @vitest-environment node
 import { expect, it, vi } from 'vitest'
@@ -175,7 +176,9 @@ for (const op of [sessionLaunchAgentOperation, sessionLaunchAgentInMountOperatio
       cols: 80,
       rows: 24,
     }
-    expect(await surface.invoke(ctx, { id: op.id, kind: 'command', payload })).toMatchObject({
+    expect(
+      await admittedGrantInvocation(surface, ctx, { id: op.id, kind: 'command', payload }),
+    ).toMatchObject({
       ok: true,
       value: { mode: 'new', agentFullAccess: null, env: null },
     })

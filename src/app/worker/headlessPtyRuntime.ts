@@ -1,3 +1,4 @@
+import { physicalSpawnLifecycle } from '../../shared/runtime/physicalSpawnLifecycle'
 import {
   ClaudeTranscriptChannel,
   type ClaudeTranscriptPort,
@@ -120,6 +121,7 @@ export function createHeadlessPtyRuntime(options: {
 
   const disposeExitListener = processEngine.onExit(event => {
     sessionRegistrations.noteCompletion(event.sessionId)
+    exitListeners.forEach(listener => listener(event))
     if (providerBySessionId.get(event.sessionId) === 'codex') {
       emitState({
         sessionId: event.sessionId,
@@ -131,7 +133,6 @@ export function createHeadlessPtyRuntime(options: {
     sessionStateWatcher.disposeSession(event.sessionId, true)
     providerBySessionId.delete(event.sessionId)
     hookInstallStateBySessionId.delete(event.sessionId)
-    exitListeners.forEach(listener => listener(event))
   })
   const disposeForegroundListener = processEngine.onForeground(event => {
     foregroundListeners.forEach(listener => listener(event))
@@ -158,6 +159,7 @@ export function createHeadlessPtyRuntime(options: {
       const registration = sessionRegistrations.begin()
       let spawned: { sessionId: string }
       try {
+        physicalSpawnLifecycle.getStore()?.beforeDispatch(input)
         spawned = await processEngine.spawn({
           ...input,
           sessionKind: input.agentProvider ? 'agent' : 'shell',
@@ -168,6 +170,10 @@ export function createHeadlessPtyRuntime(options: {
       }
 
       const disposition = registration.complete(spawned.sessionId)
+      physicalSpawnLifecycle.getStore()?.started(spawned.sessionId)
+      if (disposition === 'completed') {
+        physicalSpawnLifecycle.getStore()?.completed(spawned.sessionId)
+      }
       if (disposition !== 'active') {
         const registrationError = new SessionRegistrationRejectedError(
           spawned.sessionId,

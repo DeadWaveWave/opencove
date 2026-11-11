@@ -62,6 +62,7 @@ export function registerControlSurfaceHandlers(
     publishSyncEvent?: (payload: SyncEventPayload) => number
     closeWebsiteNode?: (nodeId: string) => Promise<void> | void
     endpointHealth: EndpointHealthService
+    agentSpawnRuntime?: import('../../../contexts/workspace/application/nodeSpawn/AgentSpawnRuntimePort').AgentSpawnRuntimePort
     appVersion: string | null
     deploymentId?: string | null
     instanceId?: string
@@ -91,6 +92,17 @@ export function registerControlSurfaceHandlers(
     deploymentId: deps.deploymentId,
     instanceId: deps.instanceId,
     isReady: deps.isReady,
+    hasBoundedAgentSpawning: () =>
+      deps.getPersistenceStore().then(
+        store =>
+          Boolean(
+            deps.agentSpawnRuntime &&
+            store.nodeLineage?.readAll &&
+            store.isAppStateRevisionCurrent &&
+            store.commitCreatedNodeState,
+          ),
+        () => false,
+      ),
     hasNodeLineage: () =>
       deps.getPersistenceStore().then(
         store => Boolean(store.nodeLineage && store.commitCreatedNodeState),
@@ -171,6 +183,9 @@ export function registerControlSurfaceHandlers(
     terminalAgentActivity: deps.terminalAgentActivity,
   })
   registerNodeControlHandlers(controlSurface, {
+    agentSpawnRuntime: deps.agentSpawnRuntime
+      ? { ...deps.agentSpawnRuntime, isSessionActive: id => deps.ptyStreamHub.isSessionActive(id) }
+      : undefined,
     topology: deps.topology,
     getPersistenceStore: deps.getPersistenceStore,
     publishSyncEvent: deps.publishSyncEvent,

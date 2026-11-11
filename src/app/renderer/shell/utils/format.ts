@@ -1,4 +1,5 @@
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
+import { agentSpawnErrorPresentation } from '@shared/errors/agentSpawnError'
 import { nodeParentErrorPresentation } from '@shared/errors/nodeParentError'
 import { getActiveUiLanguage, translate } from '@app/renderer/i18n'
 import {
@@ -50,6 +51,10 @@ export function toErrorMessage(error: unknown): string {
           ? 'messages.managedAgentResumeUnavailable'
           : 'messages.managedAgentChanged',
       )
+    }
+    const spawn = agentSpawnErrorPresentation(error)
+    if (spawn) {
+      return `${translate(`messages.${spawn.key}`)} ${translate(`messages.${spawn.key}Hint`)}`
     }
     const parent = nodeParentErrorPresentation(error)
     if (parent) {

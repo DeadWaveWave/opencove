@@ -69,7 +69,9 @@ for (const route of routes) {
             ok: false,
             error: {
               code: 'common.forbidden',
-              details: { reason: 'field_denied', field: 'prompt', message },
+              ...(route === 'remote-node'
+                ? { details: { spawnReason: 'remote_spawning_unsupported' } }
+                : { details: { reason: 'field_denied', field: 'prompt', message } }),
             },
           })
           expect(f.spawn).not.toHaveBeenCalled()

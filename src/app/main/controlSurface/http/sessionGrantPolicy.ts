@@ -21,15 +21,29 @@ export type GrantRule =
       rejectedFields: Readonly<Record<string, string>>
       check: (payload: unknown, deps: GrantCheckDeps) => void
     }
-export const SESSION_GRANT_POLICY_VERSION = 's1a-v4'
+export const SESSION_GRANT_POLICY_VERSION = 's1a-v5'
 const allow = { access: 'allow' } as const
 const deny = (reason: string): GrantRule => ({ access: 'deny', reason })
 const launch = {
   access: 'constrained',
   reason:
-    'agent terminals use saved launch settings for new conversations; prompts must describe a task and cannot run provider commands',
+    'runtime creation requires admitted local node.create; agent terminals use saved launch settings for new conversations; prompts must describe a task and cannot run provider commands',
   rejectedFields: SESSION_GRANT_LAUNCH_REJECTED_FIELDS,
   check: checkSessionGrantLaunch,
+} as const
+const runtime = {
+  access: 'constrained',
+  reason:
+    'runtime creation requires admitted local node.create; use opencove node create agent or opencove node create terminal',
+  rejectedFields: {},
+  check: () => {},
+} as const
+const nodeCreate = {
+  access: 'constrained',
+  reason:
+    'agent and terminal creation requires a current local canvas session, depth at most 3 and at most 6 live descendants per tree',
+  rejectedFields: {},
+  check: () => {},
 } as const
 const settingsReason = `only the user can change settings; agent permissions are in ${SESSION_GRANT_FULL_ACCESS_PATH}`
 
@@ -107,7 +121,7 @@ export const SESSION_GRANT_POLICY = {
   'mount.promote': deny('this action requires a human decision in OpenCove'),
   'mount.remove': deny('this action requires a human decision in OpenCove'),
   'mountTarget.resolve': allow,
-  'node.create': allow,
+  'node.create': nodeCreate,
   'node.delete': allow,
   'node.get': allow,
   'node.managedClaudeBinding': allow,
@@ -157,8 +171,8 @@ export const SESSION_GRANT_POLICY = {
   'project.list': allow,
   'pty.debugCrashHost': deny('this action requires a human decision in OpenCove'),
   'pty.listProfiles': allow,
-  'pty.spawn': allow,
-  'pty.spawnInMount': allow,
+  'pty.spawn': runtime,
+  'pty.spawnInMount': runtime,
   'session.attachAgentStateWatcher': deny('agent observation is managed by OpenCove'),
   'session.detachAgentStateWatcher': deny('agent observation is managed by OpenCove'),
   'session.finalMessage': allow,
@@ -172,7 +186,7 @@ export const SESSION_GRANT_POLICY = {
   'session.prepareOrRevive': deny('session recovery is managed by OpenCove'),
   'session.presentationSnapshot': allow,
   'session.snapshot': allow,
-  'session.spawnTerminal': allow,
+  'session.spawnTerminal': runtime,
   'session.stopNode': allow,
   'session.terminalAgentActivity.list': allow,
   'session.writeNode': deny(

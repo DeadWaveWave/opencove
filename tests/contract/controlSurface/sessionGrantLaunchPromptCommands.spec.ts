@@ -82,11 +82,15 @@ for (const route of routes) {
             ok: false,
             error: {
               code: 'common.forbidden',
-              details: {
-                reason: 'field_denied',
-                field: 'prompt',
-                promptReason: 'provider_command_prefix',
-              },
+              ...(route.startsWith('remote')
+                ? {}
+                : {
+                    details: {
+                      reason: 'field_denied',
+                      field: 'prompt',
+                      promptReason: 'provider_command_prefix',
+                    },
+                  }),
             },
           })
           expect(f.spawn).not.toHaveBeenCalled()
@@ -121,14 +125,14 @@ for (const provider of AGENT_PROVIDER_IDS) {
 it.each([{}, { provider: null }, { provider: ' ' }, { provider: 'gemini' }])(
   'uses configured Claude rather than requested provider %j',
   async input => {
-    const f = await createPromptWorker({ remote: true, fullAccess: false })
+    const f = await createPromptWorker({ remote: false, fullAccess: false })
     try {
       const before = (await f.store.readAppState())!
       await f.store.writeAppState({
         ...before,
         settings: { defaultProvider: 'claude-code', agentFullAccess: false },
       })
-      expect(await f.invoke(request('remote', { ...input, prompt: '# note' }))).toMatchObject({
+      expect(await f.invoke(request('mount', { ...input, prompt: '# note' }))).toMatchObject({
         ok: false,
         error: {
           code: 'common.forbidden',
@@ -180,11 +184,15 @@ for (const route of routes) {
         ok: false,
         error: {
           code: 'common.forbidden',
-          details: {
-            reason: 'field_denied',
-            promptReason: 'provider_command_prefix',
-            field: 'prompt',
-          },
+          ...(route.startsWith('remote')
+            ? {}
+            : {
+                details: {
+                  reason: 'field_denied',
+                  promptReason: 'provider_command_prefix',
+                  field: 'prompt',
+                },
+              }),
         },
       })
       expect(f.spawn).not.toHaveBeenCalled()

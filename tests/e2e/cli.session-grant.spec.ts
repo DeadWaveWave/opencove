@@ -409,13 +409,27 @@ test('session grants preserve agent workflows and refuse human decisions', async
       )
       .toBe('exited')
 
-    const session = await object(
+    const refusedStandalone = await command(
       'session',
       'run-agent',
       '--provider',
       'claude-code',
       '--prompt',
       'Start a review',
+    )
+    expect(refusedStandalone).toMatch(/\bexit=4\b/)
+    expect(refusedStandalone.replaceAll('\n', '')).toContain('node create')
+    const session = await page.evaluate(
+      async targetSpaceId =>
+        window.opencoveApi.controlSurface.invoke<{
+          sessionId: string
+          resumeSessionId: string | null
+        }>({
+          kind: 'command',
+          id: 'session.launchAgent',
+          payload: { spaceId: targetSpaceId, provider: 'claude-code', prompt: 'Start a review' },
+        }),
+      spaceId,
     )
     const sessionId = String(session.sessionId)
     await success('session', 'get', '--session', sessionId)

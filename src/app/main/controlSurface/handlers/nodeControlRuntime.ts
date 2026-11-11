@@ -1,3 +1,8 @@
+import { physicalSpawnLifecycle } from '../../../../shared/runtime/physicalSpawnLifecycle'
+import type {
+  AgentSpawnAdmissionOwner,
+  AgentSpawnPermit,
+} from '../../../../contexts/workspace/application/nodeSpawn/AgentSpawnAdmissionOwner'
 import { ABSENT_MANAGED_CLAUDE_BINDING } from '../../../../shared/contracts/managedClaudeLaunch'
 import process from 'node:process'
 import { basename } from 'node:path'
@@ -70,13 +75,55 @@ export function createRuntimeDeps(
   ctx: ControlSurfaceContext,
   closeWebsiteNode: ((nodeId: string) => Promise<void> | void) | undefined,
   closePluginNode?: (nodeId: string) => Promise<void> | void,
+  admission?: AgentSpawnAdmissionOwner,
 ): NodeControlRuntimeDeps {
+  let permit: AgentSpawnPermit | undefined
   return {
+    withSpawnPermit: async (value, execute) => {
+      permit = value
+      return physicalSpawnLifecycle.run(
+        {
+          singleAttempt: true,
+          beginSpawn: () => admission!.consume(value),
+          beforeDispatch: execution => {
+            ctx.assertActive?.()
+            if (execution) {
+              admission!.assertExecution(value, execution)
+            }
+          },
+          started: () => {},
+          completed: () => {},
+          unknown: () => {},
+        },
+        execute,
+      )
+    },
+    cleanupUncommittedSpawn: async nodeId => {
+      await Promise.allSettled(
+        (admission?.sessionsForNode(nodeId) ?? []).map(sessionId =>
+          invokeInternal(
+            controlSurface,
+            { ...ctx, assertActive: undefined },
+            {
+              kind: 'command',
+              id: 'session.kill',
+              payload: { sessionId },
+            },
+          ),
+        ),
+      )
+    },
     assertActive: ctx.assertActive,
-    validateTarget: ctx.validateNodeTarget,
+    validateTarget: async target => {
+      if (permit) {
+        admission!.assertTarget(permit, target)
+      }
+      await ctx.validateNodeTarget?.(target)
+    },
     launchAgent: async (resolved, data) => {
       const spawnContext = {
         ...ctx,
+        agentSpawnPermit: permit,
         managedClaudeIntent: {
           kind: 'launchNew' as const,
           expected: ABSENT_MANAGED_CLAUDE_BINDING,
@@ -129,6 +176,7 @@ export function createRuntimeDeps(
     spawnTerminal: async (resolved, data) => {
       const spawnContext = {
         ...ctx,
+        agentSpawnPermit: permit,
         spawnIdentity: resolved.canvasNodeId
           ? {
               projectId: resolved.workspace.id,

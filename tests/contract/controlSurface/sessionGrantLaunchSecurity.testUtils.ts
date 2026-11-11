@@ -1,3 +1,4 @@
+import { admittedGrantInvocation } from './admittedGrantInvocation.testUtils'
 import { vi } from 'vitest'
 import { pathToFileURL } from 'node:url'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
@@ -130,7 +131,11 @@ export async function createLaunchWorker(options: {
         : caller === 'bearer'
           ? { kind: 'bearer' }
           : { kind: 'cookie', webSessionGeneration: 0 }
-    return surface.invoke({ ...base, requestAuth, assertActive: options.assertActive }, request)
+    return admittedGrantInvocation(
+      surface,
+      { ...base, requestAuth, assertActive: options.assertActive },
+      request,
+    )
   }
   return { invoke, plan, spawn, hub, store }
 }

@@ -15,7 +15,8 @@ import type { CliIo } from './io'
 import type { OperationId } from './command'
 import { version } from '../../../../package.json'
 import { resolveSelectors } from './selectors'
-import { selfUnavailable } from './identity'
+import { requireBoundedAgentSpawningForRequest } from './boundedAgentSpawning'
+import { sessionIdentity, selfUnavailable } from './identity'
 import type { ZodType } from 'zod'
 
 /**
@@ -212,6 +213,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       if (!connection) {
         throw new CliError('context.unreachable', 3, 'No connection')
       }
+      await requireBoundedAgentSpawningForRequest(operationId, payload, identity, call)
       const key = JSON.stringify([operationId, payload])
       if (op.kind === 'command') {
         mutationStarted = true
@@ -243,7 +245,8 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       return pending
     }
     const selfSelected = Object.values(args.options).flat().includes('@self')
-    const identity = await resolveSelectors(command, args, io, call)
+    const identity = sessionIdentity(io.env, call)
+    await resolveSelectors(command, args, io, call, identity)
     input = command.buildInput?.(args)
     mutationStarted ||= command.mutation === true
     const result = command.execute

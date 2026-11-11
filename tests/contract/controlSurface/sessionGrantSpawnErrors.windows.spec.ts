@@ -1,3 +1,4 @@
+import { admittedGrantInvocation } from './admittedGrantInvocation.testUtils'
 // @vitest-environment node
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
@@ -86,7 +87,8 @@ for (const caller of ['grant', 'bearer', 'cookie'] as const) {
             : { kind: 'cookie' as const, webSessionGeneration: 0 }
       let serverResult: unknown
       const fetch: typeof globalThis.fetch = async (_url, init) => {
-        const result = await surface.invoke(
+        const result = await admittedGrantInvocation(
+          surface,
           { ...base, requestAuth },
           JSON.parse(String(init?.body)),
         )

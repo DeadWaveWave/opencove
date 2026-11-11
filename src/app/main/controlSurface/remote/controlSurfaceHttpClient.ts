@@ -36,7 +36,14 @@ export async function invokeControlSurface(
               ...request,
               payload: {
                 ...(request.payload as object),
-                workerSpawnIdentity: canvasSpawnIdentity.getStore(),
+                workerSpawnIdentity: (() => {
+                  const identity = canvasSpawnIdentity.getStore()!
+                  return {
+                    projectId: identity.projectId,
+                    spaceId: identity.spaceId,
+                    nodeId: identity.nodeId,
+                  }
+                })(),
               },
             }
           : request,

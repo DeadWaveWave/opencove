@@ -21,7 +21,16 @@ opencove agent get --node "Reviewer" --pretty
 and `total`, and stderr says how many were omitted. Use `--full` or `--limit <n>` for more.
 Create commands accept `-q` to print only the new id (worktree create prints its path), for `$(…)`.
 A standalone `session run-agent` has a session grant but no canvas node: `@self` node selectors
-fail there, so pass `--node` and `--space` explicitly.
+fail there. Pass `--node` and `--space` explicitly for non-runtime work, such as creating notes.
+Only the user can start standalone sessions. Their grants cannot create agents or terminals; ask
+the user to start an agent on the canvas for runtime delegation.
+
+Grant-created agents and terminals share six live or starting descendant slots per creation tree.
+The user root is depth 1; runtime delegation stops at depth 3. A slot frees when a session exits
+or is stopped, not when a turn finishes or a node disappears. User, task Run and recovery launches
+remain available. Creating a runtime across Workers requires the user to start it there.
+If OpenCove cannot verify a historical tree after restart, ask the user to check its runtimes
+and start a new canvas agent for further delegation.
 
 To put a node on the canvas outside any Space: `opencove node create note --root-canvas --text …`.
 Outside OpenCove, add `--project <id>`. Placement searches next to you when run inside OpenCove, or

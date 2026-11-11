@@ -1,3 +1,4 @@
+import { spawnHostSession } from './spawn'
 import {
   PTY_HOST_PROTOCOL_VERSION,
   isPtyHostMessage,
@@ -7,13 +8,11 @@ import {
   type PtyHostMessage,
   type PtyHostReadyEnvelope,
   type PtyHostRequest,
-  type PtyHostSpawnRequest,
   type PtyHostWriteEncoding,
   type PtyHostForegroundEvent,
   type PtyHostResponseMessage,
 } from './protocol'
 import { retirePtyHostProcess } from './retireProcess'
-import { resolvePtyHostSpawnEnv } from './spawnEnv'
 import {
   nowMs,
   normalizePtyHostError,
@@ -341,59 +340,15 @@ export class PtyHostSupervisor {
   }
 
   public async spawn(options: PtyHostSpawnOptions): Promise<{ sessionId: string }> {
-    const env = resolvePtyHostSpawnEnv(options.env)
-    const launchId = crypto.randomUUID()
-    let attemptedChild: PtyHostProcess | null = null
-    const spawnOnce = async (): Promise<{ sessionId: string }> => {
-      await this.ensureReady()
-      const child = this.process
-      const hostInstanceId = this.hostInstanceId
-      if (!child || !hostInstanceId) {
-        throw new Error('[pty-host] missing ready process identity')
-      }
-      attemptedChild = child
-      const requestId = crypto.randomUUID()
-
-      const request: PtyHostSpawnRequest = {
-        type: 'spawn',
-        hostInstanceId,
-        requestId,
-        launchId,
-        sessionKind: options.sessionKind ?? 'shell',
-        command: options.command,
-        args: options.args,
-        cwd: options.cwd,
-        env,
-        cols: options.cols,
-        rows: options.rows,
-      }
-
-      const responsePromise = this.requestHostResponse(
-        child,
-        request,
-        `[pty-host] spawn timeout after ${this.spawnTimeoutMs}ms`,
-      )
-      const response = await responsePromise
-      if (!response.ok) {
-        throw new Error(
-          `[pty-host] spawn failed: ${response.error.name ?? 'Error'}: ${response.error.message}`,
-        )
-      }
-      if (response.requestType !== 'spawn') {
-        throw new Error('[pty-host] spawn response type mismatch')
-      }
-      const sessionId = response.result.sessionId
-      return { sessionId }
-    }
-    try {
-      return await spawnOnce()
-    } catch (error) {
-      const retryIsIdentitySafe = this.hostExitEvidence.isRetrySafe(attemptedChild)
-      if (retryIsIdentitySafe && !this.isDisposed && !(error instanceof PtyHostHandshakeError)) {
-        return await spawnOnce()
-      }
-      throw error
-    }
+    return spawnHostSession(options, {
+      ensureReady: () => this.ensureReady(),
+      process: () => this.process,
+      hostInstanceId: () => this.hostInstanceId,
+      isDisposed: () => this.isDisposed,
+      timeoutMs: this.spawnTimeoutMs,
+      exitEvidence: this.hostExitEvidence,
+      request: (child, request, message) => this.requestHostResponse(child, request, message),
+    })
   }
 
   public write(sessionId: string, data: string, encoding: PtyHostWriteEncoding = 'utf8'): void {

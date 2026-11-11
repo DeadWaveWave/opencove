@@ -1,3 +1,4 @@
+import { admittedGrantInvocation } from './admittedGrantInvocation.testUtils'
 import { vi } from 'vitest'
 import { pathToFileURL } from 'node:url'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
@@ -107,7 +108,10 @@ export async function createPromptWorker(options: { remote?: boolean; fullAccess
     ),
   }
   registerSessionHandlers(surface, deps)
-  registerNodeControlHandlers(surface, deps)
+  registerNodeControlHandlers(surface, {
+    ...deps,
+    agentSpawnRuntime: { snapshot: () => ({ revision: 0, bindings: [] }), isCurrent: () => true },
+  })
   const { grant } = new SessionGrantRegistry(() => true).issue({
     projectId: 'project',
     spaceId: 'space',
@@ -120,7 +124,8 @@ export async function createPromptWorker(options: { remote?: boolean; fullAccess
     replayWindowMaxBytes: 64_000,
   })
   const invoke = (request: Parameters<ControlSurface['invoke']>[1], trusted = false) =>
-    surface.invoke(
+    admittedGrantInvocation(
+      surface,
       { ...base, requestAuth: trusted ? { kind: 'bearer' } : { kind: 'session-grant', grant } },
       request,
     )

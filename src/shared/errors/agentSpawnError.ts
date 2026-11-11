@@ -1,0 +1,96 @@
+export const agentSpawnPresentations = {
+  agentSpawnDepth: {
+    message: 'This runtime would exceed the maximum agent lineage depth of 3.',
+    hint: 'Ask the user to start a new agent.',
+  },
+  agentSpawnConcurrency: {
+    message:
+      'This agent tree has reached its limit of 6 active or starting agent-created runtimes.',
+    hint: 'Wait for a session in this tree to exit, or stop one of its agents or terminals. Finishing a turn does not free a slot. You can also ask the user to start a new agent.',
+  },
+  agentSpawnRoute: {
+    message: 'Agent sessions cannot start runtimes through this operation.',
+    hint: 'Use "opencove node create agent" or "opencove node create terminal".',
+  },
+  agentSpawnCaller: {
+    message: 'This session has no canvas node and cannot create agent or terminal runtimes.',
+    hint: 'Ask the user to start an agent on the canvas, then use "opencove node create" from that agent.',
+  },
+  agentSpawnBinding: {
+    message: 'This session is no longer the active runtime of its canvas node.',
+    hint: 'Use the node’s current session, or ask the user to start a new agent.',
+  },
+  agentSpawnRemote: {
+    message: 'Agent spawning across Workers is not supported.',
+    hint: 'Ask the user to start the agent on the target Worker.',
+  },
+  agentSpawnAccounting: {
+    message: 'OpenCove could not verify this agent tree’s running runtimes.',
+    hint: 'Ask the user to check the affected runtimes and start a new agent on the canvas for further delegation.',
+  },
+  agentSpawnCapability: {
+    message: 'This Worker does not support bounded agent spawning.',
+    hint: 'Update the Worker before creating runtimes from an agent session.',
+  },
+} as const
+export type SpawnForbiddenReason =
+  | 'node_create_required'
+  | 'caller_node_required'
+  | 'caller_session_mismatch'
+  | 'remote_spawning_unsupported'
+export interface SpawnForbiddenDetails {
+  reason: 'operation_denied'
+  spawnReason: SpawnForbiddenReason
+  retryable: false
+  operationId: string
+  message: string
+  hint: string
+}
+export interface SpawnLimitDetails {
+  reason: 'depth_limit' | 'concurrency_limit'
+  retryable: false
+  rootNodeId: string
+  callerNodeId: string
+  requestedKind: 'agent' | 'terminal'
+  limit: number
+  attemptedDepth?: number
+  occupied?: number
+}
+export function agentSpawnErrorPresentation(error: { code?: string; details?: unknown }) {
+  const details = error.details as { spawnReason?: string; reason?: string } | undefined
+  const key =
+    error.code === 'agent.spawn_depth_limit'
+      ? 'agentSpawnDepth'
+      : error.code === 'agent.spawn_concurrency_limit'
+        ? 'agentSpawnConcurrency'
+        : error.code === 'common.unavailable' && details?.reason === 'spawn_accounting_unavailable'
+          ? 'agentSpawnAccounting'
+          : error.code === 'common.forbidden'
+            ? (
+                {
+                  node_create_required: 'agentSpawnRoute',
+                  caller_node_required: 'agentSpawnCaller',
+                  caller_session_mismatch: 'agentSpawnBinding',
+                  remote_spawning_unsupported: 'agentSpawnRemote',
+                } as const
+              )[details?.spawnReason as SpawnForbiddenReason]
+            : undefined
+  return key ? { key, ...agentSpawnPresentations[key] } : undefined
+}
+export function spawnForbiddenDetails(
+  spawnReason: SpawnForbiddenReason,
+  operationId = 'node.create',
+): SpawnForbiddenDetails {
+  const presentation = agentSpawnErrorPresentation({
+    code: 'common.forbidden',
+    details: { spawnReason },
+  })!
+  return {
+    reason: 'operation_denied',
+    spawnReason,
+    retryable: false,
+    operationId,
+    message: `${presentation.message} ${presentation.hint}`,
+    hint: presentation.hint,
+  }
+}
