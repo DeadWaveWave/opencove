@@ -4,6 +4,17 @@ import { Client } from '../../support/convergence/client'
 import type { Action } from '../../support/convergence/model'
 import type { Adapter } from '../../support/convergence/server'
 const histories: Action[][] = [
+  ['begin-connect-read', 'delete-terminal', 'schedule', 'release-connect-read', 'refresh', 'flush'],
+  [
+    'begin-connect-read',
+    'move-node',
+    'title',
+    'rename',
+    'schedule',
+    'release-connect-read',
+    'refresh',
+    'flush',
+  ],
   ['rebind', 'mount-renderer', 'refresh', 'rename', 'flush'],
   ['startup-refusal', 'rebind', 'worker-upgrade', 'refresh', 'rename', 'flush'],
   ['connect-delivery', 'rebind', 'refresh', 'rename', 'flush', 'refresh'],

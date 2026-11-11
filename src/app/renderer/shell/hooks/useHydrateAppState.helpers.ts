@@ -1,3 +1,4 @@
+import { requireManagedClaudeWorkerSupport } from '@contexts/workspace/presentation/renderer/utils/managedClaudeWorkerSupport'
 import { canAcceptCanonicalState } from '@contexts/workspace/presentation/renderer/utils/persistence/publicationState'
 import { requestCanonicalRefresh } from '@contexts/workspace/presentation/renderer/utils/persistence/canonicalRefresh'
 import type { PersistedStateReadResult } from '@contexts/workspace/presentation/renderer/utils/persistence/read'
@@ -403,6 +404,12 @@ export async function prepareWorkspaceRuntimeNodes({
     let hydratedNode: Node<TerminalNodeData> | null = null
     if (typeof controlSurfaceInvoke === 'function') {
       try {
+        if (node.data.agent?.provider === 'claude-code') {
+          await requireManagedClaudeWorkerSupport(node.data.agent.provider)
+          if (isCancelled()) {
+            return null
+          }
+        }
         const prepared = await controlSurfaceInvoke<PrepareOrReviveSessionResult>({
           kind: 'command',
           id: 'session.prepareOrRevive',

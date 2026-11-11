@@ -310,6 +310,14 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
           currentAtApply.activeWorkspaceId,
           currentAtApply.agentSettings,
         )
+        // Every refresh kind must retry a read raced by a local edit. In particular,
+        // connect's metadata-only rebase cannot replay node edits or deletions.
+        if (canonicalContent(currentPersisted) !== signatureAtRead) {
+          pendingFullRefreshRevisionRef.current = targetRevision
+          needsFullRefreshRef.current = true
+          refreshPendingRef.current = true
+          return
+        }
         if (
           (demand && demand.reason !== 'connect' && getSyncedPersistedState()) ||
           getPendingPublication()
@@ -317,11 +325,6 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
           persisted = reconcileCanonicalPublication(persisted, currentPersisted)
         } else if (demand?.reason === 'connect' && getSyncedPersistedState()) {
           persisted = rebaseConnectMetadata(persisted, currentPersisted)
-        } else if (canonicalContent(currentPersisted) !== signatureAtRead) {
-          pendingFullRefreshRevisionRef.current = targetRevision
-          needsFullRefreshRef.current = true
-          refreshPendingRef.current = true
-          return
         }
 
         // Disclosure preferences and the write cache belong to the same accepted

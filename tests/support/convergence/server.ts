@@ -15,6 +15,26 @@ export class Server {
   delayResponse = false
   delayCommitMs = 0
   delayReadMs = 0
+  private readBarrier: Promise<void> | null = null
+  releaseRead: () => void = () => {}
+  deferNextRead() {
+    this.readBarrier = new Promise(resolve => {
+      this.releaseRead = resolve
+    })
+  }
+  private async readSnapshot() {
+    const barrier = this.readBarrier
+    this.readBarrier = null
+    if (barrier) {
+      const captured = this.read()
+      await barrier
+      return captured
+    }
+    if (this.delayReadMs) {
+      await new Promise(resolve => setTimeout(resolve, this.delayReadMs))
+    }
+    return this.read()
+  }
   private replies: Array<() => void> = []
   reply() {
     this.delayResponse = false
@@ -146,10 +166,7 @@ export class Server {
       return { features: { managedClaudeResumeBindingDeliveryV1: true } }
     }
     if (id === 'sync.state') {
-      if (this.delayReadMs) {
-        await new Promise(resolve => setTimeout(resolve, this.delayReadMs))
-      }
-      return this.read()
+      return this.readSnapshot()
     }
     if (id === 'sync.writeState') {
       return await this.submit(payload.state as PersistedAppState)
@@ -158,7 +175,7 @@ export class Server {
       return await this.raw(payload.raw as string)
     }
     if (id === 'sync.readWorkspaceStateRaw') {
-      return JSON.stringify(this.read().state)
+      return JSON.stringify((await this.readSnapshot()).state)
     }
     if (id === 'sync.readNodeScrollback') {
       return this.scrollbacks.get(payload.nodeId as string) ?? null
@@ -235,12 +252,7 @@ export class Server {
       }
     }
     return {
-      readAppState: async () => {
-        if (this.delayReadMs) {
-          await new Promise(resolve => setTimeout(resolve, this.delayReadMs))
-        }
-        return this.read()
-      },
+      readAppState: async () => this.readSnapshot(),
       writeAppState: async p => {
         try {
           return {

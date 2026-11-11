@@ -1,4 +1,4 @@
-import { assertManagedClaudeWorkerCompatible } from '@shared/sync/managedClaudeWorkerCompatibility'
+import { requireManagedClaudeWorkerSupport } from './managedClaudeWorkerSupport'
 import { createAppError, toAppErrorDescriptor } from '@shared/errors/appError'
 import type { GetManagedClaudeBindingResult } from '@shared/contracts/managedClaudeLaunch'
 import type { ManagedClaudeBindingObservation } from '@shared/contracts/managedClaudeLaunch'
@@ -49,19 +49,7 @@ async function readOwnership(nodeId: string): Promise<GetManagedClaudeBindingRes
     })
   }
   if (lookup.status === 'owned') {
-    let capabilities: unknown
-    try {
-      capabilities = await window.opencoveApi.controlSurface.invoke({
-        kind: 'query',
-        id: 'system.capabilities',
-        payload: {},
-      })
-    } catch (error) {
-      if (toAppErrorDescriptor(error).code !== 'common.invalid_input') {
-        throw error
-      }
-    }
-    assertManagedClaudeWorkerCompatible(capabilities)
+    await requireManagedClaudeWorkerSupport('claude-code')
   }
   return lookup.result
 }
@@ -130,6 +118,7 @@ export async function readManagedClaudeExecutionContext(
   if (provider !== 'claude-code' || !window.opencoveApi?.controlSurface?.invoke) {
     return null
   }
+  await requireManagedClaudeWorkerSupport(provider)
   const result = await readOwnership(nodeId)
   if (!result?.managedClaudeBinding) {
     return null

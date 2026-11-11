@@ -84,6 +84,8 @@ export function value(state: PersistedAppState): Value {
       .map(s => s.id)
       .join(','),
     spacePinned: workspace.spaces.find(s => s.id === 'second')?.pinned === true,
+    position: `${node.position.x},${node.position.y}`,
+    terminalPresent: workspace.nodes.some(n => n.id === 'terminal'),
     tuple: node.agent!.resumeSessionId!,
     runtime: node.sessionId ?? '',
   }
@@ -109,5 +111,13 @@ export function snapshot(template: PersistedAppState, model: Value): PersistedAp
   node.title = model.title
   node.sessionId = model.runtime
   node.agent!.resumeSessionId = model.tuple
+  const [x, y] = model.position.split(',').map(Number)
+  node.position = { x, y }
+  if (!model.terminalPresent) {
+    workspace.nodes = workspace.nodes.filter(n => n.id !== 'terminal')
+    workspace.spaces.forEach(space => {
+      space.nodeIds = space.nodeIds.filter(id => id !== 'terminal')
+    })
+  }
   return state
 }

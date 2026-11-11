@@ -475,6 +475,12 @@ owned runtime 的 public kill/stop 和 managed restart 均在副作用及 reserv
 拒绝使用 typed `agent.managed_launch_rejected`，reason 为 `clientUpgradeRequired`、
 `workerUpgradeRequired` 或 `writesDisabled`，分别指向窗口升级、Worker 升级或管理员解除冻结。
 
+客户端在可能产生 adoption 的操作开始时统一协商 Worker delivery 能力，不能只检查已 owned 的节点。
+新建节点在旧 Worker 上省略 managed intent，继续使用 legacy session；Claude 节点的重启、显式会话切换、
+task reuse 和 cold prepare 在缺少能力时报告 Worker 升级提示，保留原节点与会话数据，在升级后可重试。
+这些检查先于旧 runtime 清理、task 关系修改或 prepare 请求；workspace 的打开、保存和刷新始终不受该检查影响。
+本段沿用现有边界与 allowlist：no executable-rule impact。
+
 每次 SSE 连接先注册 subscription 和关闭清理，再严格读取 atomic snapshot 的 durable tip，
 无条件发送 `resync_required`，包括 cursor 相等、超前、缺失与 Worker 重启后的空 buffer。
 读取失败关闭连接；撤销/断开后的完成结果作废。Desktop bridge 不因缺少 ownership 协议拒绝连接，

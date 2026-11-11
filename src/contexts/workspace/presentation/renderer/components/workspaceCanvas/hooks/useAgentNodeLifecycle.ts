@@ -6,6 +6,7 @@ import {
 import { useAgentNodeSessionControls } from './useAgentNodeSessionControls'
 import { planManagedClaudeRelaunch } from '@contexts/workspace/application/agentLifecycle/managedClaudeRelaunch'
 import { readManagedClaudeBinding } from '../../../utils/managedClaudeLifecycle'
+import { requireManagedClaudeWorkerSupport } from '../../../utils/managedClaudeWorkerSupport'
 import type {
   ManagedClaudeLaunchIntent,
   ManagedClaudeLifecycleReceipt,
@@ -167,6 +168,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       const launchData = node.data.agent
       let binding
       try {
+        await requireManagedClaudeWorkerSupport(launchData.provider)
         binding = await readManagedClaudeBinding(nodeId, launchData.provider)
       } catch (error) {
         setAgentNodeFailure(nodeId, toErrorMessage(error))

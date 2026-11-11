@@ -8,9 +8,7 @@ import {
 import { prepareManagedClaudeCreationIntent } from '../../../src/contexts/workspace/presentation/renderer/utils/managedClaudeCreation'
 import { fixture } from '../../support/convergence/fixture'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
-const generations = ['pre-W8', 'PR1', 'PR2', 'PR3a', 'PR3b'] as const
-const profiles = ['empty', 'unowned', 'owned', 'unknown'] as const
-const clients = ['Desktop', 'Web'] as const
+import { workerOwnershipCompatibilityCases } from '../../support/workerOwnershipCompatibility'
 const originalApi = window.opencoveApi,
   originalState = useAppStore.getState()
 afterEach(() => {
@@ -18,15 +16,7 @@ afterEach(() => {
   window.opencoveApi = originalApi
   useAppStore.setState(originalState, true)
 })
-it.each(
-  generations.flatMap(generation =>
-    profiles.flatMap(profile =>
-      clients.flatMap(client =>
-        [false, true].map(adoption => ({ generation, profile, client, adoption })),
-      ),
-    ),
-  ),
-)(
+it.each(workerOwnershipCompatibilityCases)(
   'opens and saves $generation $profile $client adoption=$adoption independently of ownership support',
   async ({ generation, profile, client, adoption }) => {
     const lookupSupported = !['pre-W8', 'PR1'].includes(generation) && profile !== 'unknown'

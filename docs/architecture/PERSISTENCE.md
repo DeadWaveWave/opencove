@@ -359,6 +359,10 @@ Worker 拒绝、提交前读取/endpoint 失败与提交后响应不明。后续
 view-only preferences 不参与 canonical equality。owned ledger 的两个 tuple 字段在 renderer parsing 中逐字段保留；不能沿用 unowned 的 verification 清理策略改写 canonical ID。未确认 draft 与 canonical presentation 分开记录，
 后续编辑仅以 presentation delta 更新 draft，并显示保存未确认提示。
 
+所有 renderer refresh（包括首次订阅、重连、普通事件与 corrected receipt）统一比较读取前后的本地
+持久化内容；读取期间发生编辑时先丢弃 completion 再重读，不能让 connect metadata merge 绕过该检查。
+删除与已经结束拖动的移动也属于编辑，不依赖短暂的 canvas guard。canonical ownership 仅在该检查后投影。
+
 退出同时 capture 不可变 state、ancestor、revision 和 generation，只 drain 该 delta；repair read
 先检查 revision floor，同字段并发冲突保留 draft 并报告失败。legacy terminal history 只迁移仍存在的
 canonical terminal IDs，已有 primary state 时仍可恢复上次未完成的 history migration，不覆盖已有 history。

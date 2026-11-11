@@ -1,3 +1,4 @@
+import { editRefreshNode } from './refreshEdits'
 import { assertClientCanonicalState } from './clientObservation'
 import { startWorkerHydration } from '../../../src/app/renderer/shell/hooks/workerSync/startupHydration'
 import { clearWorkerConnectionFailure } from '../../../src/app/renderer/shell/hooks/workerSync/workerConnectionState'
@@ -163,7 +164,17 @@ export class Client {
       await this.restart()
     }
     await act(async () => {
-      if (action === 'mount-renderer') {
+      if (action === 'begin-connect-read') {
+        await this.settle()
+        this.server.deferNextRead()
+        requestCanonicalRefresh({ reason: 'connect' })
+        await vi.advanceTimersByTimeAsync(1)
+      } else if (action === 'release-connect-read') {
+        this.server.releaseRead()
+        await this.settle()
+      } else if (action === 'delete-terminal' || action === 'move-node') {
+        editRefreshNode(this, action === 'delete-terminal')
+      } else if (action === 'mount-renderer') {
         this.hook.unmount()
         this.hook = renderHook(() => useWorkerSyncStateUpdates({ enabled: true }))
       } else if (action === 'startup-refusal') {
@@ -434,6 +445,7 @@ export class Client {
     }
   }
   async close() {
+    this.server.releaseRead()
     this.stopStartup?.()
     this.delivery.disconnect()
     this.server.reply()
