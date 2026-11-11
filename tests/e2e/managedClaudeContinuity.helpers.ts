@@ -33,8 +33,26 @@ export async function syntheticRebind(
   return nextId
 }
 
+/** Hide the minimap so it cannot cover node controls near the canvas corner. */
+async function hideMinimap(page: Page) {
+  const minimap = page.locator('.workspace-canvas__minimap')
+  if ((await minimap.count()) === 0) {
+    return
+  }
+  const dock = page.locator('.workspace-canvas__minimap-dock')
+  const toggle = page.locator('[data-testid="workspace-minimap-toggle"]')
+  // The toggle only shows while the dock is hovered; retry hover and click together.
+  await expect(async () => {
+    await dock.hover()
+    await expect(toggle).toBeVisible({ timeout: 2_000 })
+    await toggle.click({ timeout: 2_000 })
+    await expect(minimap).toHaveCount(0, { timeout: 2_000 })
+  }).toPass({ timeout: 20_000 })
+}
+
 /** Assert the client's visible Current marker, independently of PTY liveness and test probes. */
 export async function expectConversation(page: Page, nodeId: string, resumeSessionId: string) {
+  await hideMinimap(page)
   const node = page.locator(`[data-id="${nodeId}"]`)
   await node.getByTestId('terminal-node-session-list').click()
   try {
