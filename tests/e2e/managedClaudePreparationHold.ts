@@ -53,7 +53,9 @@ export async function holdPrepare(page: Page, nodeId: string) {
         const write = api.persistence.writeAppState.bind(api.persistence)
         api.persistence.writeAppState = async payload => {
           const receipt = await write(payload)
-          if (receipt.ok && receipt.corrected) {
+          // A stale save converges either through a gate correction or, after a revision
+          // conflict, through the adapter's merged retry; both carry the canonical binding.
+          if (receipt.ok && (receipt.corrected || receipt.merged)) {
             Object.assign(window, { __correctedManagedWrite: true })
           }
           return receipt

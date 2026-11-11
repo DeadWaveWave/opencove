@@ -162,7 +162,7 @@ test('managed Claude stale publications retain layout and cold-resume the curren
     await releasePrepare(web)
     await expectConversation(web, agent.id, initial.tuple.resumeSessionId!)
     await expectConversation(page, agent.id, nextId)
-    // A real UI layout publication must converge from its corrected response alone.
+    // A real UI layout publication must converge from its corrected or merged response alone.
     await web.locator('.react-flow__controls-fitview').click()
     const header = web.locator(`[data-id="${agent.id}"] .terminal-node__header`)
     const box = await header.boundingBox()
