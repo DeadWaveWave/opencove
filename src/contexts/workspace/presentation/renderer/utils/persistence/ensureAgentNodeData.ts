@@ -7,7 +7,7 @@ import {
   normalizeDirectoryMode,
 } from './normalize'
 
-export function ensurePersistedAgentData(value: unknown): AgentNodeData | null {
+export function ensurePersistedAgentData(value: unknown, owned = false): AgentNodeData | null {
   if (!value || typeof value !== 'object') {
     return null
   }
@@ -21,7 +21,14 @@ export function ensurePersistedAgentData(value: unknown): AgentNodeData | null {
     return null
   }
 
-  const resumeBinding = normalizeResumeSessionBinding(provider, record)
+  const resumeBinding =
+    owned && provider === 'claude-code'
+      ? {
+          resumeSessionId:
+            typeof record.resumeSessionId === 'string' ? record.resumeSessionId : null,
+          resumeSessionIdVerified: record.resumeSessionIdVerified === true,
+        }
+      : normalizeResumeSessionBinding(provider, record)
 
   return {
     provider,

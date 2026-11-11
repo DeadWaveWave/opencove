@@ -83,7 +83,7 @@ it.each([
     canonical.nodes[0].managedClaudeResumeBindingOwnership,
   )
   const serialized = toPersistedState([result], canonical.id).workspaces[0].nodes[0]
-  expect(serialized.sessionId).toBe(branch === 'settled shell' ? 'shell' : 'runtime')
+  expect(serialized.sessionId).toBe('runtime')
   if (branch.includes('preparing')) {
     expect(result.nodes[0].data.sessionId).toBe('')
   }

@@ -1,3 +1,4 @@
+import { persistenceWriteFailure, classifyWriteResult } from '@shared/sync/persistenceWriteOutcome'
 import type { PersistWriteResult, ReadAppStateResult } from '@shared/contracts/dto'
 import {
   createAppError,
@@ -83,13 +84,9 @@ function createIpcPort(): PersistencePort | null {
           baseRevision: options?.baseRevision,
           allowEmptyWorkspaceOverwrite: options?.allowEmptyWorkspaceOverwrite === true,
         })
-        return result
+        return classifyWriteResult(result)
       } catch (error) {
-        return {
-          ok: false,
-          reason: 'io',
-          error: toAppErrorDescriptor(error, 'persistence.io_failed'),
-        }
+        return persistenceWriteFailure(error)
       }
     },
     readNodeScrollback: async nodeId => {
@@ -137,13 +134,9 @@ function createIpcPort(): PersistencePort | null {
     },
     writeWorkspaceStateRaw: async raw => {
       try {
-        return await persistenceApi.writeWorkspaceStateRaw({ raw })
+        return classifyWriteResult(await persistenceApi.writeWorkspaceStateRaw({ raw }))
       } catch (error) {
-        return {
-          ok: false,
-          reason: 'io',
-          error: toAppErrorDescriptor(error, 'persistence.io_failed'),
-        }
+        return persistenceWriteFailure(error)
       }
     },
   }

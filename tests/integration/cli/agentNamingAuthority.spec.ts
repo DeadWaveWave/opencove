@@ -129,7 +129,7 @@ it('keeps a real concurrent CLI rename through pending renderer auto-title publi
       },
       { baseRevision: 1 },
     ),
-  ).toMatchObject({ ok: true, merged: true })
+  ).toMatchObject({ result: { ok: true, merged: true } })
   expect(f.write).toHaveBeenCalledOnce()
   expect(f.latest().workspaces[0].nodes[0]).toMatchObject({
     title: 'Lead',

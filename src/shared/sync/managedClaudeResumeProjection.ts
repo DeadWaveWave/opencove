@@ -49,7 +49,12 @@ export function projectOwnedManagedClaudeNode<T extends ManagedClaudeNodeProject
     ...(marker.runtimeSessionId !== null ? { sessionId: marker.runtimeSessionId } : {}),
     agent: agent
       ? {
+          ...agent,
           ...localAgent,
+          ...(typeof localAgent?.executionDirectory === 'string' &&
+          localAgent.executionDirectory.trim()
+            ? {}
+            : { executionDirectory: agent.executionDirectory }),
           provider: agent.provider,
           resumeSessionId: agent.resumeSessionId,
           resumeSessionIdVerified: agent.resumeSessionIdVerified,

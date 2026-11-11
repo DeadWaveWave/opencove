@@ -5,15 +5,18 @@ import { canvasCollapseFromPersistedLists, EMPTY_CANVAS_COLLAPSE } from '../canv
 import { markPersistedStateAsSynced } from './write'
 
 /** Publish a snapshot only after its lifecycle and local-edit guards accept it. */
-export function acceptPersistedStateSnapshot({
-  state,
-  isPersisted,
-  revision,
-}: Pick<PersistedStateReadResult, 'state' | 'isPersisted' | 'revision'>): void {
+export function acceptPersistedStateSnapshot(
+  {
+    state,
+    isPersisted,
+    revision,
+  }: Pick<PersistedStateReadResult, 'state' | 'isPersisted' | 'revision'>,
+  presentation = state,
+): void {
   if (!state || (isPersisted && !canAcceptCanonicalState(state, revision))) {
     return
   }
-  for (const workspace of state.workspaces) {
+  for (const workspace of (presentation ?? state).workspaces) {
     if (workspace.collapsedNodeIds === undefined && workspace.collapsedSpaceIds === undefined) {
       continue
     }

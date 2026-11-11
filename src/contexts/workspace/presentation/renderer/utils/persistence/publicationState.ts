@@ -1,5 +1,5 @@
+import { stripLocalViewStateFromPersistedState } from './viewState'
 import { ensurePersistedWorkspace } from './ensure'
-import { projectOwnedManagedClaudeNode } from '@shared/sync/managedClaudeResumeProjection'
 import { canonicalContent } from '@shared/sync/mergeValue'
 import { normalizePersistedAppStateForMerge } from '@shared/sync/normalizePersistedAppStateForMerge'
 import { mergePersistedAppStates } from '@shared/sync/mergePersistedAppStates'
@@ -20,10 +20,16 @@ export interface PendingPublication {
   kind: 'committed-refresh' | 'rejected-rebase' | 'uncertain-refresh'
   /** A transport failure cannot establish whether the mutation committed. */
   unknownOutcome?: boolean
+  draftRaw?: string
+  presentationRaw?: string
+  blockedReason?: 'conflict'
+  submittedRaw?: string
 }
 let scope: unknown
 let scopeGeneration = 0
 let publicationId = 0
+let submissions = 0
+let refreshAfterSubmission = false
 let accepted: { raw: string; revision: number | null; state: PersistedAppState } | null = null
 let pending: PendingPublication | null = null
 const retired = new Set<string>()
@@ -33,6 +39,8 @@ export function persistenceScope(): number {
   if (current !== scope) {
     scope = current
     scopeGeneration++
+    submissions = 0
+    refreshAfterSubmission = false
     accepted = null
     pending = null
     retired.clear()
@@ -40,9 +48,35 @@ export function persistenceScope(): number {
   }
   return scopeGeneration
 }
+/** A read must not infer intent while its submission still has no outcome. */
+export function beginPublicationSubmission(): () => void {
+  const generation = persistenceScope()
+  submissions++
+  return () => {
+    if (generation !== persistenceScope()) {
+      return
+    }
+    submissions--
+    if (submissions === 0 && refreshAfterSubmission) {
+      refreshAfterSubmission = false
+      requestCanonicalRefresh({ reason: 'merged' })
+    }
+  }
+}
+export function deferRefreshForSubmission(): boolean {
+  persistenceScope()
+  if (!submissions) {
+    return false
+  }
+  refreshAfterSubmission = true
+  return true
+}
 export function content(state: PersistedAppState): string {
   return canonicalContent(
-    normalizePersistedAppStateForMerge(state, normalizeAgentSettings) ?? state,
+    normalizePersistedAppStateForMerge(
+      stripLocalViewStateFromPersistedState(state),
+      normalizeAgentSettings,
+    ) ?? state,
   )!
 }
 export function getSyncedPersistedState(): PersistedAppState | null {
@@ -103,7 +137,7 @@ export function acceptPublicationBase(state: PersistedAppState, revision: number
   }
   accepted = { raw, revision, state: JSON.parse(raw) as PersistedAppState }
   // An unknown transport outcome remains an unconfirmed draft, never automatic replay.
-  if (!pending?.unknownOutcome && (pending?.minimumRevision ?? 0) <= (revision ?? 0)) {
+  if (!isPublicationBlocked(pending) && (pending?.minimumRevision ?? 0) <= (revision ?? 0)) {
     pending = null
   }
   return true
@@ -166,21 +200,58 @@ export function reconcileCanonicalPublication(
   current: PersistedAppState,
 ): PersistedAppState {
   persistenceScope()
-  const ancestorRaw = pending?.unknownOutcome ? null : (pending?.ancestorRaw ?? accepted?.raw)
-  if (pending?.unknownOutcome) {
-    const owned = new Map(
-      canonical.workspaces.flatMap(workspace => workspace.nodes).map(node => [node.id, node]),
-    )
-    return filterRetiredManagedNodes({
-      ...current,
-      workspaces: current.workspaces.map(workspace => ({
-        ...workspace,
-        nodes: workspace.nodes.map(node =>
-          owned.has(node.id) ? projectOwnedManagedClaudeNode(owned.get(node.id)!, node) : node,
-        ),
-      })),
-    })
+  if (isPublicationBlocked(pending)) {
+    retainBlockedPublicationDraft(current)
+    return filterRetiredManagedNodes(canonical)
   }
+  return rebasePublication(canonical, current, pending?.ancestorRaw ?? accepted?.raw ?? null)
+}
+export function isPublicationBlocked(
+  value: PendingPublication | null = getPendingPublication(),
+): boolean {
+  return value?.unknownOutcome === true || value?.blockedReason === 'conflict'
+}
+export function retainBlockedPublicationDraft(state: PersistedAppState): void {
+  if (!isPublicationBlocked(pending) || !pending) {
+    return
+  }
+  const raw = content(state)
+  if (raw === pending.presentationRaw) {
+    return
+  }
+  pending.draftRaw = pending.presentationRaw
+    ? content(
+        rebasePublication(
+          JSON.parse(pending.draftRaw ?? pending.candidateRaw),
+          state,
+          pending.presentationRaw,
+        ),
+      )
+    : raw
+}
+export function recordPublicationPresentation(state: PersistedAppState): void {
+  if (isPublicationBlocked(pending) && pending) {
+    pending.presentationRaw = content(state)
+  }
+}
+export function retainPublicationDraft(state: PersistedAppState, ancestorRaw: string | null): void {
+  recordPendingPublication(
+    {
+      candidateRaw: content(state),
+      draftRaw: content(state),
+      ancestorRaw,
+      minimumRevision: null,
+      kind: 'rejected-rebase',
+      blockedReason: 'conflict',
+    },
+    persistenceScope(),
+  )
+}
+export function rebasePublication(
+  canonical: PersistedAppState,
+  current: PersistedAppState,
+  ancestorRaw: string | null,
+): PersistedAppState {
   if (!ancestorRaw) {
     return filterRetiredManagedNodes(canonical)
   }

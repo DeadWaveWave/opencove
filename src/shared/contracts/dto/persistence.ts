@@ -21,6 +21,7 @@ export type PersistWriteResult =
     }
   | {
       ok: false
+      outcome?: 'unknown' | 'rejected' | 'notSubmitted'
       reason: PersistWriteFailureReason
       error: AppErrorDescriptor
     }

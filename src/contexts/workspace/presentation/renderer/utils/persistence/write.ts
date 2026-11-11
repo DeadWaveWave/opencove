@@ -1,5 +1,7 @@
 /* eslint-disable no-await-in-loop -- Ordered persistence repair and lifecycle transitions must run sequentially. */
+import { parsePersistedStateValue } from './read'
 import type { PersistedAppState } from '../../types'
+import { classifyWriteResult } from '@shared/sync/persistenceWriteOutcome'
 import { createAppErrorDescriptor } from '@shared/errors/appError'
 import { PERSISTED_APP_STATE_FORMAT_VERSION } from './constants'
 import type { PersistWriteResult } from './types'
@@ -19,6 +21,9 @@ import {
   recordPendingPublication,
   acceptPublicationBase,
   rememberRetiredManagedNode,
+  isPublicationBlocked,
+  retainBlockedPublicationDraft,
+  beginPublicationSubmission,
 } from './publicationState'
 export {
   content,
@@ -40,6 +45,7 @@ function consumeResult(
   state: PersistedAppState,
   generation: number,
   ancestorRaw: string | null,
+  submittedRaw?: string,
 ): PersistWriteResult {
   if (persistenceScope() !== generation) {
     return result
@@ -61,6 +67,18 @@ function consumeResult(
     if (getAcceptedRevision() === null || (result.revision ?? 0) >= getAcceptedRevision()!) {
       if (acceptPublicationBase(state, result.revision ?? null)) {
         publishLocalSyncWriteRevision(result.revision)
+      } else {
+        // A newer refresh floor can forbid acknowledgement while this commit still
+        // establishes the ancestor for edits made after its submission.
+        recordPendingPublication(
+          {
+            candidateRaw: raw,
+            ancestorRaw: raw,
+            minimumRevision: result.revision ?? null,
+            kind: 'committed-refresh',
+          },
+          generation,
+        )
       }
     }
   } else if (result.error.code === 'persistence.owned_node_identity_conflict') {
@@ -72,11 +90,7 @@ function consumeResult(
       { candidateRaw: raw, ancestorRaw, minimumRevision: null, kind: 'rejected-rebase' },
       generation,
     )
-  } else if (
-    !getPendingPublication() &&
-    result.reason === 'io' &&
-    result.error.code === 'persistence.io_failed'
-  ) {
+  } else if (result.outcome === 'unknown') {
     recordPendingPublication(
       {
         candidateRaw: raw,
@@ -84,6 +98,8 @@ function consumeResult(
         minimumRevision: null,
         kind: 'uncertain-refresh',
         unknownOutcome: true,
+        draftRaw: raw,
+        submittedRaw,
       },
       generation,
     )
@@ -105,13 +121,23 @@ export async function writePersistedState(state: PersistedAppState): Promise<Per
   const base = getSyncedPersistedState()
   const ancestorRaw = base ? content(base) : null
   const pending = getPendingPublication()
-  if (pending?.candidateRaw === raw) {
+  if (isPublicationBlocked(pending) || pending?.candidateRaw === raw) {
+    if (isPublicationBlocked(pending)) {
+      retainBlockedPublicationDraft(shared)
+    }
     requestCanonicalRefresh({
       reason: 'merged',
-      ...(pending.minimumRevision !== null ? { minimumRevision: pending.minimumRevision } : {}),
+      ...(typeof pending?.minimumRevision === 'number'
+        ? { minimumRevision: pending.minimumRevision }
+        : {}),
     })
-    return pending.unknownOutcome
-      ? { ok: false, reason: 'io', error: createAppErrorDescriptor('persistence.io_failed') }
+    return isPublicationBlocked(pending)
+      ? {
+          ok: false,
+          reason: 'io',
+          outcome: 'unknown',
+          error: createAppErrorDescriptor('persistence.io_failed'),
+        }
       : { ok: true, level: 'full', bytes: 0, merged: true }
   }
   if (!pending && ancestorRaw === raw) {
@@ -136,8 +162,14 @@ export async function writePersistedState(state: PersistedAppState): Promise<Per
     [{ ...shared, workspaces: [], activeWorkspaceId: shared.activeWorkspaceId }, 'settings_only'],
   ]
   for (const [candidate, level] of variants) {
-    const result = await publishSharedState(port, candidate, pending, options)
-    const consumed = consumeResult(result, candidate, generation, ancestorRaw)
+    const attempt = await publishSharedState(port, candidate, pending, options)
+    const consumed = consumeResult(
+      classifyWriteResult(attempt.result),
+      candidate,
+      generation,
+      attempt.submission?.ancestorRaw ?? ancestorRaw,
+      attempt.submission ? content(attempt.submission.state) : undefined,
+    )
     if (consumed.ok) {
       return { ...consumed, level }
     }
@@ -153,30 +185,75 @@ export async function writeRawPersistedState(raw: string): Promise<PersistWriteR
     return unavailableResult()
   }
   const generation = persistenceScope()
-  const result = await port.writeWorkspaceStateRaw(raw)
-  if (persistenceScope() === generation) {
-    if (result.ok || result.error.code === 'persistence.owned_node_identity_conflict') {
-      if (!result.ok) {
-        const details = result.error.details as { nodeId?: string; reason?: string } | undefined
-        if (details?.reason === 'retired' && details.nodeId) {
-          rememberRetiredManagedNode(details.nodeId)
-        }
+  const pending = getPendingPublication()
+  if (isPublicationBlocked(pending)) {
+    try {
+      const draft = parsePersistedStateValue(JSON.parse(raw)).state
+      if (draft) {
+        retainBlockedPublicationDraft(draft)
       }
+    } catch {
+      /* Keep the existing draft when a blocked import is malformed. */
+    }
+    requestCanonicalRefresh({ reason: 'uncertain' })
+    return {
+      ok: false,
+      reason: 'io',
+      outcome: 'unknown',
+      error: createAppErrorDescriptor('persistence.io_failed'),
+    }
+  }
+  const finish = beginPublicationSubmission()
+  let result: PersistWriteResult
+  try {
+    result = classifyWriteResult(await port.writeWorkspaceStateRaw(raw))
+  } finally {
+    finish()
+  }
+  if (persistenceScope() === generation) {
+    let state: PersistedAppState | null = null
+    try {
+      state = parsePersistedStateValue(JSON.parse(raw)).state
+    } catch {
+      /* Invalid replacements remain rejected. */
+    }
+    if (state?.workspaces && (result.ok || result.outcome === 'unknown')) {
+      consumeResult(
+        result.ok ? { ...result, merged: true } : result,
+        state,
+        generation,
+        getSyncedPersistedState() ? content(getSyncedPersistedState()!) : null,
+        raw,
+      )
+    }
+    if (!state && !result.ok && result.outcome === 'unknown') {
+      recordPendingPublication(
+        {
+          candidateRaw: raw,
+          submittedRaw: raw,
+          ancestorRaw: getSyncedPersistedState() ? content(getSyncedPersistedState()!) : null,
+          minimumRevision: null,
+          kind: 'uncertain-refresh',
+          unknownOutcome: true,
+        },
+        generation,
+      )
+    }
+    if (!result.ok && result.error.code === 'persistence.owned_node_identity_conflict') {
+      const details = result.error.details as { reason?: string; nodeId?: string } | undefined
+      if (details?.reason === 'retired' && details.nodeId) {
+        rememberRetiredManagedNode(details.nodeId)
+      }
+    }
+    if (
+      result.ok ||
+      (!result.ok && result.outcome === 'unknown') ||
+      (!result.ok && result.error.code === 'persistence.owned_node_identity_conflict')
+    ) {
       requestCanonicalRefresh({
-        reason: result.ok ? 'merged' : 'identity-conflict',
+        reason: result.ok ? 'merged' : 'uncertain',
         ...(result.ok && result.revision !== undefined ? { minimumRevision: result.revision } : {}),
       })
-      if (result.ok) {
-        recordPendingPublication(
-          {
-            candidateRaw: raw,
-            ancestorRaw: getSyncedPersistedState() ? content(getSyncedPersistedState()!) : null,
-            minimumRevision: result.revision ?? null,
-            kind: 'committed-refresh',
-          },
-          generation,
-        )
-      }
     }
   }
   return result

@@ -39,6 +39,9 @@ function mergeRuntimeNode(
       ...existingNode,
       data: projectOwnedManagedClaudeNode(persistedNode.data, {
         ...existingNode.data,
+        ...(persistedNode.data.managedClaudeResumeBindingOwnership
+          ? mergeRuntimeSessionBinding(persistedNode.data, existingNode.data)
+          : {}),
         ...mergeNodeNaming(persistedNode.data, existingNode.data),
       }),
     }

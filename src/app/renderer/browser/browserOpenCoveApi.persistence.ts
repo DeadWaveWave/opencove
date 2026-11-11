@@ -11,6 +11,12 @@ import {
   type BrowserPersistedAppState,
 } from './browserOpenCoveApi.helpers'
 
+import {
+  persistenceWriteFailure,
+  submitPersistenceWrite,
+  classifyWriteResult,
+} from '@shared/sync/persistenceWriteOutcome'
+
 type PersistenceApi = Window['opencoveApi']['persistence']
 
 export function createBrowserPersistenceApi(): PersistenceApi {
@@ -23,13 +29,21 @@ export function createBrowserPersistenceApi(): PersistenceApi {
         payload: null,
       }),
     writeWorkspaceStateRaw: async payload => {
-      const result = await invokeBrowserControlSurface<
-        import('@shared/contracts/dto').PersistWriteResult
-      >({ kind: 'command', id: 'sync.writeWorkspaceStateRaw', payload })
-      if (result.ok) {
-        cache.invalidate()
+      try {
+        const result = await submitPersistenceWrite(() =>
+          invokeBrowserControlSurface<import('@shared/contracts/dto').PersistWriteResult>({
+            kind: 'command',
+            id: 'sync.writeWorkspaceStateRaw',
+            payload,
+          }),
+        )
+        if (result.ok) {
+          cache.invalidate()
+        }
+        return classifyWriteResult(result)
+      } catch (error) {
+        return persistenceWriteFailure(error)
       }
-      return result
     },
     readAppState: async () => {
       const value = await invokeBrowserControlSurface<{
@@ -96,11 +110,7 @@ export function createBrowserPersistenceApi(): PersistenceApi {
           uncertain: result.uncertain,
         }
       } catch (error) {
-        return {
-          ok: false,
-          reason: 'unknown',
-          error: toAppErrorDescriptor(error, 'persistence.invalid_state'),
-        }
+        return persistenceWriteFailure(error, 'notSubmitted')
       }
     },
     readNodeScrollback: async payload =>

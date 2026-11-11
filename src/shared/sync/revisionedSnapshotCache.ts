@@ -1,4 +1,5 @@
 /* eslint-disable no-await-in-loop -- CAS retries and timed race rounds require sequential execution. */
+import { submitPersistenceWrite, originalSubmissionError } from './persistenceWriteOutcome'
 import { canonicalContent } from './mergeValue'
 
 export class RevisionedSnapshotCache<T> {
@@ -97,7 +98,9 @@ export async function writeRevisionedSnapshot<T>(options: {
   let merged: true | undefined
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const receipt = parseRevisionedWriteReceipt(await options.write(candidate, revision))
+      const receipt = parseRevisionedWriteReceipt(
+        await submitPersistenceWrite(() => options.write(candidate, revision)),
+      )
       if (!receipt) {
         return { uncertain: true, merged: true, state: candidate }
       }
@@ -113,8 +116,12 @@ export async function writeRevisionedSnapshot<T>(options: {
       }
       return { ...receipt, merged: requiresRefresh ? true : undefined, state: candidate }
     } catch (error) {
-      if (!options.isConflict(error) || attempt === 2) {
+      const original = originalSubmissionError(error)
+      if (!options.isConflict(original)) {
         throw error
+      }
+      if (attempt === 2) {
+        throw original
       }
       const latest = await options.read()
       cache.set(latest.revision, latest.state)

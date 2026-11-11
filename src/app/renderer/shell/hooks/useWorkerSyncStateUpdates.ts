@@ -11,6 +11,8 @@ import { schedulePersistedStateWrite } from '@contexts/workspace/presentation/re
 import {
   persistenceScope,
   canAcceptCanonicalState,
+  isPublicationBlocked,
+  deferRefreshForSubmission,
 } from '@contexts/workspace/presentation/renderer/utils/persistence/publicationState'
 import { getSyncedPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence/write'
 import { useEffect, useRef } from 'react'
@@ -22,7 +24,6 @@ import type {
 } from '@contexts/workspace/presentation/renderer/types'
 import {
   readPersistedStateWithMeta,
-  acceptPersistedStateSnapshot,
   toPersistedState,
   flushScheduledPersistedStateWriteAsync,
 } from '@contexts/workspace/presentation/renderer/utils/persistence'
@@ -32,6 +33,8 @@ import { canonicalContent } from '@shared/sync/mergeValue'
 import type { SyncEventPayload } from '@shared/contracts/dto'
 import { toShellWorkspaceStateForSync } from './workerSync/mergeWorkspaceStateForSync'
 import { hasRuntimeBindingPublication } from './workerSync/runtimeSessionBinding'
+
+import { acceptWorkerSyncSnapshot } from './workerSync/acceptWorkerSyncSnapshot'
 
 const LOCAL_SYNC_WRITE_EVENT_NAME = 'opencove.localSyncWrite'
 
@@ -319,6 +322,14 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
         pendingSyncWriteRevisionRef.current = null
         pendingFullRefreshRevisionRef.current = null
 
+        if (deferRefreshForSubmission()) {
+          needsFullRefreshRef.current = true
+          pendingFullRefreshRevisionRef.current = Math.max(
+            pendingFullRefreshRevisionRef.current ?? 0,
+            targetRevision,
+          )
+          return
+        }
         // Publish queued local edits before reading a shared snapshot. A read started
         // before a later local edit cannot acknowledge or replace that edit.
         const localWriteSucceeded =
@@ -363,7 +374,7 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
           currentAtApply.activeWorkspaceId,
           currentAtApply.agentSettings,
         )
-        if (getPendingPublication()) {
+        if (demand || getPendingPublication()) {
           persisted = reconcileCanonicalPublication(persisted, currentPersisted)
         } else if (canonicalContent(currentPersisted) !== signatureAtRead) {
           pendingFullRefreshRevisionRef.current = targetRevision
@@ -377,7 +388,7 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
         const current = useAppStore.getState()
         const scheduleRemainingDelta = () => {
           if (
-            !getPendingPublication()?.unknownOutcome &&
+            !isPublicationBlocked() &&
             canonicalContent(stripLocalViewStateFromPersistedState(persisted!)) !==
               canonicalContent(stripLocalViewStateFromPersistedState(canonical!))
           ) {
@@ -397,7 +408,7 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
             persistedState: persisted,
           })
         ) {
-          acceptPersistedStateSnapshot(snapshot)
+          acceptWorkerSyncSnapshot(snapshot, persisted)
           scheduleRemainingDelta()
           if (demand) {
             acknowledgeCanonicalRefresh(demand.generation)
@@ -430,7 +441,7 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
           activeWorkspaceId: nextActiveWorkspaceId,
           ...(settingsChanged ? { agentSettings: persisted.settings } : {}),
         })
-        acceptPersistedStateSnapshot(snapshot)
+        acceptWorkerSyncSnapshot(snapshot, persisted)
         if (demand) {
           acknowledgeCanonicalRefresh(demand.generation)
         }

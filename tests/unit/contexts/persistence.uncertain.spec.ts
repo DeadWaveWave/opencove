@@ -40,7 +40,10 @@ it.each(['committed', 'not committed', 'third-party write'] as const)(
           : { ...base, settings: { ...base.settings, releaseNotesSeenVersion: 'external' } }
     expect(
       reconcileCanonicalPublication(canonical, candidate).settings.releaseNotesSeenVersion,
-    ).toBe('draft')
+    ).toBe(canonical.settings.releaseNotesSeenVersion)
+    expect(JSON.parse(getPendingPublication()!.draftRaw!).settings.releaseNotesSeenVersion).toBe(
+      'draft',
+    )
     markPersistedStateAsSynced(canonical, 3)
     expect(getPendingPublication()?.unknownOutcome).toBe(true)
     await writePersistedState(candidate)

@@ -296,7 +296,12 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
 
   const kind = normalizeNodeKind(record.kind)
   const sessionId = normalizeOptionalString(record.sessionId)
-  const agent = ensurePersistedAgentData(record.agent)
+  const agent = ensurePersistedAgentData(
+    record.agent,
+    kind === 'agent' &&
+      normalizeManagedClaudeResumeBindingOwnership(record.managedClaudeResumeBindingOwnership) !==
+        null,
+  )
   const task = ensurePersistedTaskData(record.task)
   const terminalAgentBindingCandidate = isTerminalAgentBinding(record.agent) ? record.agent : null
   const terminalAgentBinding =

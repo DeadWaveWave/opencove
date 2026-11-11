@@ -63,7 +63,7 @@ it.each(['primary', 'legacy'] as const)(
   },
 )
 
-it('restores disclosure after a failed legacy migration without suppressing the next write', async () => {
+it('restores disclosure after a rejected legacy migration without suppressing the next write', async () => {
   const workspace = ensurePersistedWorkspace({
     id: 'migration-retry-project',
     name: 'Migration retry project',
@@ -80,6 +80,7 @@ it('restores disclosure after a failed legacy migration without suppressing the 
     .mockResolvedValueOnce({
       ok: false,
       reason: 'io',
+      outcome: 'rejected',
       error: createAppErrorDescriptor('persistence.io_failed'),
     })
     .mockResolvedValue({ ok: true, level: 'full', bytes: 123 })

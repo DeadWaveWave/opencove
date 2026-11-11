@@ -3,9 +3,15 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { useAppQuitPersistenceFlush } from '@app/renderer/shell/hooks/useAppQuitPersistenceFlush'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 const mocks = vi.hoisted(() => ({ drain: vi.fn() }))
-vi.mock('@contexts/workspace/presentation/renderer/utils/persistence/drain', () => ({
-  drainPersistedStateAtQuit: mocks.drain,
-}))
+vi.mock(
+  '@contexts/workspace/presentation/renderer/utils/persistence/drain',
+  async importOriginal => ({
+    ...(await importOriginal<
+      typeof import('@contexts/workspace/presentation/renderer/utils/persistence/drain')
+    >()),
+    drainPersistedStateAtQuit: mocks.drain,
+  }),
+)
 const originalApi = window.opencoveApi
 const originalState = useAppStore.getState()
 afterEach(() => {

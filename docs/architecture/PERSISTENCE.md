@@ -349,7 +349,19 @@ corrected、merged 与未明确 attested unchanged 的成功不能把 candidate 
 cache latest 与 accepted revision 在同一 persistence scope 内单调；同 revision 不同内容保持旧值并要求刷新。
 Renderer 显式保留 refresh demand，先 read 再 repair，不依赖通知。提交后的 candidate 仅作后续编辑祖先；
 身份拒绝仍以旧 accepted base 作祖先。transport unknown 保留 base 与 unconfirmed draft，刷新不确认
-该 draft，也不自动重放。退出在 deadline 内 drain 捕获的 local edit generation。
+该 draft，也不自动重放。失败结果使用 `outcome: rejected | notSubmitted | unknown` 区分
+Worker 拒绝、提交前读取/endpoint 失败与提交后响应不明。后续提交失联必须保留该次真实 submission
+及其 ancestry，不能继续使用先前 corrected candidate。raw replacement 同样遵循该规则。
+
+所有显式 refresh 都保留相对于 accepted base 的本地 delta；有 active submission 时等待其 outcome，
+不能从中途快照推断用户意图。较新 refresh floor 阻止 acknowledgement 时，已提交 candidate
+仍作为后续编辑的 ancestor。canonical base acknowledgement 与 disclosure presentation application 分离；
+view-only preferences 不参与 canonical equality。owned ledger 的两个 tuple 字段在 renderer parsing 中逐字段保留；不能沿用 unowned 的 verification 清理策略改写 canonical ID。未确认 draft 与 canonical presentation 分开记录，
+后续编辑仅以 presentation delta 更新 draft，并显示保存未确认提示。
+
+退出同时 capture 不可变 state、ancestor、revision 和 generation，只 drain 该 delta；repair read
+先检查 revision floor，同字段并发冲突保留 draft 并报告失败。legacy terminal history 只迁移仍存在的
+canonical terminal IDs，已有 primary state 时仍可恢复上次未完成的 history migration，不覆盖已有 history。
 本节沿用原有进程边界与 owner：no executable-rule impact。
 
 Managed launch 的读取适配器只在 clean transaction boundary 返回 definitive ledger/node/

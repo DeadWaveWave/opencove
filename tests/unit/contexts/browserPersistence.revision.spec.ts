@@ -73,7 +73,8 @@ it.each(rejectedManagedClaudeAgents)(
     await api.readAppState()
     expect(await api.writeAppState({ state: candidate, baseRevision: 2 })).toEqual({
       ok: false,
-      reason: 'unknown',
+      reason: 'io',
+      outcome: 'rejected',
       error: rejection,
     })
     const writes = invoke.mock.calls

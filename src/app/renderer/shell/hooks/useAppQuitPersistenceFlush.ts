@@ -1,4 +1,7 @@
-import { drainPersistedStateAtQuit } from '@contexts/workspace/presentation/renderer/utils/persistence/drain'
+import {
+  drainPersistedStateAtQuit,
+  capturePublication,
+} from '@contexts/workspace/presentation/renderer/utils/persistence/drain'
 import { useEffect } from 'react'
 import { translate } from '@app/renderer/i18n'
 import {
@@ -30,7 +33,7 @@ export function useAppQuitPersistenceFlush({ enabled }: { enabled: boolean }): v
       window.dispatchEvent(new Event(TERMINAL_SCROLLBACK_FLUSH_EVENT))
       schedulePersistedStateWrite(producePersistedState, { delayMs: 0 })
       flushScheduledScrollbackWrites()
-      const captured = producePersistedState()
+      const captured = capturePublication(producePersistedState())
       const deadline = Date.now() + 1500
       let timeout: ReturnType<typeof setTimeout> | undefined
       try {

@@ -54,6 +54,7 @@ export const ABSENT_MANAGED_CLAUDE_BINDING: ManagedClaudeLaunchExpected = {
 
 /** A definitive ledger lookup; a canvas node need not have been persisted yet. */
 export interface GetManagedClaudeBindingResult {
+  nodeRuntimeSessionId?: string | null
   managedClaudeBinding: ManagedClaudeBindingObservation | null
   retired: boolean
   executionDirectory: string | null

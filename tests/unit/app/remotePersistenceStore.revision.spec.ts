@@ -84,6 +84,7 @@ it('returns a non-conflict Worker rejection unchanged', async () => {
     expect(await store.writeAppState(createMergeState(0, 'empty'), { baseRevision: 3 })).toEqual({
       ok: false,
       reason: 'io',
+      outcome: 'rejected',
       error: rejection,
     })
   } finally {
@@ -130,6 +131,7 @@ it.each(rejectedManagedClaudeAgents)(
       expect(await store.writeAppState(candidate, { baseRevision: 2 })).toEqual({
         ok: false,
         reason: 'io',
+        outcome: 'rejected',
         error: rejection,
       })
       const writes = fetchMock.mock.calls
@@ -142,3 +144,14 @@ it.each(rejectedManagedClaudeAgents)(
     }
   },
 )
+it('classifies an unavailable endpoint as not submitted for structured and raw writes', async () => {
+  const store = createRemotePersistenceStore(async () => null)
+  expect(await store.writeAppState(createMergeState(0, 'draft'))).toMatchObject({
+    ok: false,
+    outcome: 'notSubmitted',
+  })
+  expect(await store.writeWorkspaceStateRaw('{}')).toMatchObject({
+    ok: false,
+    outcome: 'notSubmitted',
+  })
+})

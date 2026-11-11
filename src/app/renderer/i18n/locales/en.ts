@@ -259,6 +259,10 @@ export const en = {
     savedSettingsOnly: 'Storage quota reached; saved settings only.',
     unavailable: 'Storage is unavailable; changes will not be saved.',
     limitExceeded: 'Storage limit exceeded; unable to persist workspace state.',
+    saveUnconfirmed:
+      'Some changes could not be confirmed. Your unsaved changes are kept in this window.',
+    saveConflict:
+      'The workspace changed while saving. Your unsaved changes are kept in this window.',
     quitSaveFailed: 'Some changes could not be saved before closing.',
     ownedIdentityRestored: 'Restoring this agent’s saved state. Your other changes will be kept.',
     ioFailed: 'Persistence I/O failed: {{message}}',

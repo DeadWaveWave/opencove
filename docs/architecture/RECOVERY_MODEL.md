@@ -448,4 +448,10 @@ runtime using the newer canonical tuple. Row-only activation requires definitive
 keeps its publication handshake until canonical acknowledgement, another runtime association, or deletion.
 Corrected and identity-rejected publications explicitly request canonical refresh, including during quit.
 Unknown transport outcomes retain an unconfirmed draft in memory and never trigger unconditional replay.
+The canonical presentation and retained draft have separate baselines. Refresh consumes all local deltas,
+including disclosure, while acknowledgement compares shared content only. Active submissions defer refresh
+until their outcome is classified; preparatory read failures never imply an unknown commit.
+Quit captures intent with its original ancestry and rejects stale repair reads before reconciliation.
+A null ledger runtime does not prove an empty node association: another canonical shell supersedes a delayed
+fallback. Definitive row-only lookup validates settlement and node association separately.
 These are existing ownership and process-boundary contracts: no executable-rule impact.

@@ -2,6 +2,11 @@ import {
   RevisionedSnapshotCache,
   writeRevisionedSnapshot,
 } from '../../../../shared/sync/revisionedSnapshotCache'
+import {
+  persistenceWriteFailure,
+  submitPersistenceWrite,
+  classifyWriteResult,
+} from '../../../../shared/sync/persistenceWriteOutcome'
 import { Buffer } from 'node:buffer'
 import type {
   AppErrorDescriptor,
@@ -32,10 +37,14 @@ import {
   type ControlSurfaceRemoteEndpointResolver,
 } from './controlSurfaceHttpClient'
 
-function resolveIoFailure(error: unknown): PersistWriteResult {
+function resolveIoFailure(
+  error: unknown,
+  outcome?: 'unknown' | 'notSubmitted',
+): PersistWriteResult {
   return {
     ok: false,
     reason: 'io',
+    ...(outcome ? { outcome } : {}),
     error: createAppErrorDescriptor('persistence.io_failed', {
       debugMessage:
         error instanceof Error ? `${error.name}: ${error.message}` : 'Remote persistence failed.',
@@ -171,7 +180,7 @@ async function invokePersistResult(
 ): Promise<PersistWriteResult> {
   const endpoint = await endpointResolver()
   if (!endpoint) {
-    return resolveIoFailure(new Error('Remote worker endpoint unavailable.'))
+    return resolveIoFailure(new Error('Remote worker endpoint unavailable.'), 'notSubmitted')
   }
 
   const { result } = await invokeControlSurface(endpoint, { kind: 'command', id, payload })
@@ -221,17 +230,19 @@ export function createRemotePersistenceStore(
     writeWorkspaceStateRaw: async raw => {
       const payload: WriteWorkspaceStateRawInput = { raw }
       try {
-        const result = await invokePersistResult(
-          endpointResolver,
-          'sync.writeWorkspaceStateRaw',
-          payload,
+        const endpoint = await endpointResolver()
+        if (!endpoint) {
+          return resolveIoFailure(new Error('Remote worker endpoint unavailable.'), 'notSubmitted')
+        }
+        const result = await submitPersistenceWrite(() =>
+          invokePersistResult(async () => endpoint, 'sync.writeWorkspaceStateRaw', payload),
         )
         if (result.ok) {
           cache.invalidate()
         }
-        return result
+        return classifyWriteResult(result)
       } catch (error) {
-        return resolveIoFailure(error)
+        return persistenceWriteFailure(error, 'notSubmitted')
       }
     },
     readAppStateSnapshot: async () => {
@@ -265,7 +276,7 @@ export function createRemotePersistenceStore(
       try {
         const endpoint = await endpointResolver()
         if (!endpoint) {
-          return resolveIoFailure(new Error('Remote worker endpoint unavailable.'))
+          return resolveIoFailure(new Error('Remote worker endpoint unavailable.'), 'notSubmitted')
         }
 
         const readLatestSnapshot = async (): Promise<RemoteAppStateSnapshot> =>
@@ -325,9 +336,7 @@ export function createRemotePersistenceStore(
         }
       } catch (error) {
         // Keep the Worker's own rejection (for example the empty-workspace overwrite guard).
-        return isAppErrorDescriptor(error)
-          ? { ok: false, reason: 'io', error }
-          : resolveIoFailure(error)
+        return persistenceWriteFailure(error, 'notSubmitted')
       }
     },
     readNodeScrollback: async nodeId => {

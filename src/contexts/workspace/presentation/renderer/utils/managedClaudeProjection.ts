@@ -113,6 +113,16 @@ export function projectManagedClaudeRuntimeData(
   if (binding.runtimeSessionId !== null && binding.runtimeSessionId !== proposed.sessionId) {
     return null
   }
+  const associated = getSyncedPersistedState()
+    ?.workspaces.flatMap(w => w.nodes)
+    .find(n => n.id === nodeId)?.sessionId
+  if (
+    (getAcceptedRevision() ?? -1) >= incoming.observedRevision &&
+    associated &&
+    associated !== proposed.sessionId
+  ) {
+    return null
+  }
   return projectOwnedManagedClaudeNode(
     {
       kind: 'agent',
@@ -144,7 +154,12 @@ export async function confirmManagedClaudeRuntime(
       result.retired ||
       !result.managedClaudeBinding ||
       result.managedClaudeBinding.activationId !== observation.activationId ||
-      result.managedClaudeBinding.runtimeSessionId !== proposed.sessionId
+      (result.managedClaudeBinding.runtimeSessionId !== null
+        ? result.managedClaudeBinding.runtimeSessionId !== proposed.sessionId
+        : (result.nodeRuntimeSessionId !== null &&
+            result.nodeRuntimeSessionId !== undefined &&
+            result.nodeRuntimeSessionId !== proposed.sessionId) ||
+          (result.managedClaudeBinding.nodeSeen && result.nodeRuntimeSessionId === undefined))
     ) {
       return null
     }

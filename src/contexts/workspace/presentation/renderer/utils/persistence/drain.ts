@@ -1,58 +1,95 @@
-/* eslint-disable no-await-in-loop -- Ordered persistence repair and lifecycle transitions must run sequentially. */
+/* eslint-disable no-await-in-loop -- The captured quit delta is repaired sequentially within its deadline. */
 import type { PersistedAppState } from '../../types'
+import { projectOwnedManagedClaudeNode } from '@shared/sync/managedClaudeResumeProjection'
 import { getPersistencePort } from './port'
 import { ensurePersistedWorkspace } from './ensure'
 import { normalizeAgentSettings } from '@contexts/settings/domain/agentSettings'
 import { writePersistedState, markPersistedStateAsSynced } from './write'
+import { capturePublication, type CapturedPublication } from './capturePublication'
 import {
   getPendingPublication,
   persistenceScope,
-  reconcileCanonicalPublication,
+  canAcceptCanonicalState,
+  content,
+  rebasePublication,
+  isPublicationBlocked,
+  retainPublicationDraft,
 } from './publicationState'
-
-/** Drain the captured quit generation; later edits do not change the target. */
+export { capturePublication } from './capturePublication'
+function projectCanonical(
+  canonical: PersistedAppState,
+  state: PersistedAppState,
+): PersistedAppState {
+  const nodes = new Map(canonical.workspaces.flatMap(w => w.nodes).map(n => [n.id, n]))
+  return {
+    ...state,
+    workspaces: state.workspaces.map(w => ({
+      ...w,
+      nodes: w.nodes.map(n =>
+        nodes.has(n.id) ? projectOwnedManagedClaudeNode(nodes.get(n.id)!, n) : n,
+      ),
+    })),
+  }
+}
+/** Ordinary state callers capture immediately; quit captures explicitly before its first await. */
 export async function drainPersistedStateAtQuit(
-  captured: PersistedAppState,
+  input: CapturedPublication | PersistedAppState,
   timeoutMs = 1500,
 ): Promise<boolean> {
-  const scope = persistenceScope()
+  const captured = 'editGeneration' in input ? input : capturePublication(input)
   const deadline = Date.now() + timeoutMs
-  let expired = false
-  let timer: ReturnType<typeof setTimeout> | undefined
+  let expired = false,
+    timer: ReturnType<typeof setTimeout> | undefined
+  const active = () =>
+    !expired && Date.now() < deadline && persistenceScope() === captured.scopeGeneration
   const work = async () => {
-    let candidate = captured
     for (let attempt = 0; attempt < 8; attempt++) {
-      if (expired || Date.now() >= deadline || persistenceScope() !== scope) {
+      if (!active() || isPublicationBlocked()) {
         return false
       }
       const pending = getPendingPublication()
-      if (pending?.unknownOutcome) {
+      if (
+        pending?.kind === 'committed-refresh' &&
+        pending.candidateRaw === content(captured.state)
+      ) {
+        return true
+      }
+      const snapshot = await getPersistencePort()?.readAppState()
+      if (!active() || !snapshot?.state || snapshot.revision === null) {
         return false
       }
-      if (pending?.kind === 'rejected-rebase' || pending?.kind === 'uncertain-refresh') {
-        const snapshot = await getPersistencePort()?.readAppState()
-        if (!snapshot?.state || snapshot.revision === null) {
-          return false
-        }
-        const record = snapshot.state as PersistedAppState
-        const canonical = {
-          ...record,
-          settings: normalizeAgentSettings(record.settings),
-          workspaces: record.workspaces
-            .map(ensurePersistedWorkspace)
-            .filter((workspace): workspace is NonNullable<typeof workspace> => workspace !== null),
-        }
-        if (expired || persistenceScope() !== scope) {
-          return false
-        }
-        candidate = reconcileCanonicalPublication(canonical, candidate)
-        markPersistedStateAsSynced(canonical, snapshot.revision)
+      const record = snapshot.state as PersistedAppState
+      const canonical = {
+        ...record,
+        settings: normalizeAgentSettings(record.settings),
+        workspaces: record.workspaces
+          .map(ensurePersistedWorkspace)
+          .filter((w): w is NonNullable<typeof w> => !!w),
+      }
+      if (!canAcceptCanonicalState(canonical, snapshot.revision)) {
+        return false
+      }
+      const candidate = rebasePublication(canonical, captured.state, captured.ancestorRaw)
+      // A concurrent edit to the same field is not permission to overwrite a newer value at quit.
+      const opposite = projectCanonical(
+        canonical,
+        rebasePublication(captured.state, canonical, captured.ancestorRaw),
+      )
+      if (content(candidate) !== content(opposite)) {
+        retainPublicationDraft(captured.state, captured.ancestorRaw)
+        return false
+      }
+      markPersistedStateAsSynced(canonical, snapshot.revision)
+      if (content(candidate) === content(canonical)) {
+        return true
+      }
+      if (!active()) {
+        return false
       }
       const result = await writePersistedState(candidate)
-      if (expired || Date.now() >= deadline || persistenceScope() !== scope) {
+      if (!active()) {
         return false
       }
-      // A committed correction already made this submitted generation durable.
       if (result.ok && !result.uncertain) {
         return true
       }
