@@ -29,7 +29,7 @@ export const QUICK_E2E_GROUPS = {
   },
   liveViews: {
     reason:
-      'Canonical refresh and node composition retain live plugin, website, terminal and editor identities.',
+      'Canonical refresh and node composition retain live views and skip window commits on viewport updates.',
     tests: [
       e2e('plugins'),
       e2e('plugins.canvas'),
@@ -51,6 +51,7 @@ export const QUICK_E2E_GROUPS = {
       e2e('workspace-canvas.website-window.device-pixel-ratio'),
       e2e('workspace-canvas.website-window.freeze'),
       e2e('workspace-canvas.website-window.iframe'),
+      e2e('workspace-canvas.far-view'),
       e2e('recovery.managed-claude-convergence'),
     ],
     matches: path =>

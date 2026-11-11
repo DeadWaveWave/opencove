@@ -133,6 +133,8 @@ describe('local quick E2E selection', () => {
 it.each([
   'src/app/renderer/shell/hooks/useWorkerSyncStateUpdates.ts',
   'src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes.context.ts',
+  'src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes.tsx',
+  'src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeTypes.ts',
 ])('includes all plugin and website-window lifetimes when %s changes', path => {
   const chosen = select(path).tests
   const views = readdirSync(resolve(root, 'tests/e2e')).filter(name =>
@@ -143,4 +145,5 @@ it.each([
     expect(chosen).toContain('tests/e2e/' + file)
   }
   expect(chosen).toContain('tests/e2e/recovery.managed-claude-convergence.spec.ts')
+  expect(chosen).toContain('tests/e2e/workspace-canvas.far-view.spec.ts')
 })
