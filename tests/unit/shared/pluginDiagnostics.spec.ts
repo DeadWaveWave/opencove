@@ -44,6 +44,10 @@ it.each([
   'https://example.test/repo.git?access_token=PRIVATE_CREDENTIAL',
   'https://example.test/repo.git#PRIVATE_CREDENTIAL',
   'ssh://git@example.test/repo.git?token=PRIVATE_CREDENTIAL',
+  // WHATWG URL reports no credentials for these, but Git's libcurl still sends the password.
+  'https://user\\name:PRIVATE_CREDENTIAL@example.test/repo.git',
+  'https://example.test\\@PRIVATE_CREDENTIAL/repo.git',
+  'ssh://git\\x:PRIVATE_CREDENTIAL@example.test/repo.git',
 ])('does not disclose credentials from distribution input %s', async repository => {
   const { gitInstallInput } =
     await import('@shared/contracts/controlSurface/operations/pluginDistributionInput')

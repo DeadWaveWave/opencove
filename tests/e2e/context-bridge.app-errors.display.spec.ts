@@ -30,8 +30,8 @@ for (const language of ['en', 'zh-CN']) {
       await page.getByTestId('workspace-context-run-default-agent').click()
       const message =
         language === 'en'
-          ? 'Agent launch failed: Managed Claude restarts are paused. Ask the Worker administrator to enable them.'
-          : 'Agent 启动失败：Claude 智能体重启已暂停，请联系 Worker 管理员重新启用。'
+          ? 'Agent launch failed: Managed Claude restarts and saving new resume targets are paused. Existing saved targets remain protected. Ask the Worker administrator to enable updates.'
+          : 'Agent 启动失败：Claude 智能体重启及新恢复目标的保存已暂停。已保存的目标仍受保护，请联系 Worker 管理员恢复更新。'
       await expect(page.locator('[data-testid="app-message"] .app-message__text')).toHaveText(
         message,
       )
