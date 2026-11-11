@@ -1,3 +1,4 @@
+import { canonicalContent } from '../../../shared/sync/mergeValue'
 import type Database from 'better-sqlite3'
 import type { ManagedResumeBindingTuple } from '../../../shared/contracts/managedClaudeResumeBinding'
 import { createAppError } from '../../../shared/errors/appError'
@@ -52,8 +53,14 @@ export function enforceManagedClaudeResumeBindings(
         }
         const row = readBinding.get(node.id) as ManagedResumeBindingRow | undefined
         if (!row) {
+          if (node.managedClaudeResumeBindingOwnership) {
+            corrected = true
+            const { managedClaudeResumeBindingOwnership: _marker, ...unowned } = node
+            return unowned
+          }
           return node
         }
+        const marker = { activationId: row.activation_id, runtimeSessionId: row.runtime_session_id }
         const stored = readStored.get(node.id) as { worker_binding_json: string | null } | undefined
         const field = managedClaudeIdentityConflict(
           node,
@@ -73,12 +80,18 @@ export function enforceManagedClaudeResumeBindings(
         if (
           agent.resumeSessionId === tuple.resumeSessionId &&
           agent.resumeSessionIdVerified === tuple.resumeSessionIdVerified &&
-          node.sessionId === sessionId
+          node.sessionId === sessionId &&
+          canonicalContent(node.managedClaudeResumeBindingOwnership) === canonicalContent(marker)
         ) {
           return node
         }
         corrected = true
-        return { ...node, sessionId, agent: { ...agent, ...tuple } }
+        return {
+          ...node,
+          managedClaudeResumeBindingOwnership: marker,
+          sessionId,
+          agent: { ...agent, ...tuple },
+        }
       }),
     })),
   }

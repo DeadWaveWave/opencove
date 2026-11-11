@@ -1,3 +1,11 @@
+import {
+  recordPendingPublication,
+  content,
+  persistenceScope,
+  getSyncedPersistedState,
+  isPublicationBlocked,
+} from './publicationState'
+import { requestCanonicalRefresh } from './canonicalRefresh'
 import { normalizeAgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { PersistedAppState, PersistedWorkspaceState } from '../../types'
 import { ensurePersistedWorkspace } from './ensure'
@@ -9,7 +17,7 @@ import {
   stripLocalViewStateFromPersistedState,
 } from './viewState'
 
-function parsePersistedStateValue(value: unknown): {
+export function parsePersistedStateValue(value: unknown): {
   state: PersistedAppState | null
   hasStandardWindowSizeBucket: boolean
 } {
@@ -105,6 +113,21 @@ export async function readPersistedStateWithMeta(): Promise<PersistedStateReadRe
     const parsed = parsePersistedStateValue(primary.state)
     if (parsed.state) {
       const state = applyLocalViewStateToPersistedState(parsed.state)
+      const legacyRaw = port.kind === 'ipc' ? readLegacyLocalStorageRaw() : null
+      const legacy = legacyRaw ? parseRawPersistedState(legacyRaw) : null
+      if (legacy) {
+        try {
+          await migrateTerminalScrollback(legacy, parsed.state, port)
+        } catch {
+          return {
+            revision: primary.revision ?? null,
+            state,
+            recovery,
+            hasStandardWindowSizeBucket: parsed.hasStandardWindowSizeBucket,
+            isPersisted: false,
+          }
+        }
+      }
       return {
         revision: primary.revision ?? null,
         state,
@@ -147,14 +170,38 @@ export async function readPersistedStateWithMeta(): Promise<PersistedStateReadRe
     }
   }
 
+  if (isPublicationBlocked()) {
+    return {
+      revision: null,
+      state: legacyParsed,
+      recovery,
+      hasStandardWindowSizeBucket: false,
+      isPersisted: false,
+    }
+  }
   const migratedState = stripScrollbackFromState(legacyParsed)
   // Migrate the persisted envelope directly, including its disclosure fields.
   // Live presentation state changes only when the caller accepts this snapshot.
   persistLocalViewStateFromAppState(migratedState)
+  const migrationScope = persistenceScope()
+  const migrationBase = getSyncedPersistedState()
   const migratedAppStateResult = await port.writeAppState(
     stripLocalViewStateFromPersistedState(migratedState),
   )
   if (!migratedAppStateResult.ok) {
+    if (migratedAppStateResult.outcome === 'unknown') {
+      recordPendingPublication(
+        {
+          candidateRaw: content(migratedState),
+          draftRaw: content(migratedState),
+          ancestorRaw: migrationBase ? content(migrationBase) : null,
+          kind: 'uncertain-refresh',
+          minimumRevision: null,
+          unknownOutcome: true,
+        },
+        migrationScope,
+      )
+    }
     return {
       revision: null,
       state: migratedState,
@@ -164,18 +211,53 @@ export async function readPersistedStateWithMeta(): Promise<PersistedStateReadRe
     }
   }
 
-  await Promise.allSettled(
-    legacyParsed.workspaces.flatMap(workspace =>
-      workspace.nodes
-        .filter(
-          node =>
-            node.kind === 'terminal' &&
-            typeof node.scrollback === 'string' &&
-            node.scrollback.length > 0,
-        )
-        .map(node => port.writeNodeScrollback(node.id, node.scrollback)),
-    ),
-  )
+  if (
+    migratedAppStateResult.corrected ||
+    migratedAppStateResult.merged ||
+    migratedAppStateResult.uncertain
+  ) {
+    requestCanonicalRefresh({ reason: 'merged', minimumRevision: migratedAppStateResult.revision })
+    try {
+      const snapshot = await port.readAppState()
+      const canonical = parsePersistedStateValue(snapshot?.state)
+      if (
+        !canonical.state ||
+        snapshot?.revision === null ||
+        snapshot?.revision === undefined ||
+        snapshot.revision < (migratedAppStateResult.revision ?? 0)
+      ) {
+        throw new Error('Migration is awaiting the saved workspace.')
+      }
+      await migrateTerminalScrollback(legacyParsed, canonical.state, port)
+      return {
+        revision: snapshot.revision,
+        state: applyLocalViewStateToPersistedState(canonical.state),
+        recovery,
+        hasStandardWindowSizeBucket: canonical.hasStandardWindowSizeBucket,
+        isPersisted: true,
+      }
+    } catch {
+      return {
+        revision: null,
+        state: migratedState,
+        recovery,
+        hasStandardWindowSizeBucket: false,
+        isPersisted: false,
+      }
+    }
+  }
+
+  try {
+    await migrateTerminalScrollback(legacyParsed, migratedState, port)
+  } catch {
+    return {
+      revision: null,
+      state: migratedState,
+      recovery,
+      hasStandardWindowSizeBucket: false,
+      isPersisted: false,
+    }
+  }
 
   return {
     revision: migratedAppStateResult.revision ?? null,
@@ -189,4 +271,37 @@ export async function readPersistedStateWithMeta(): Promise<PersistedStateReadRe
 export async function readPersistedState(): Promise<PersistedAppState | null> {
   const { state } = await readPersistedStateWithMeta()
   return state
+}
+
+async function migrateTerminalScrollback(
+  legacy: PersistedAppState,
+  canonical: PersistedAppState,
+  port: NonNullable<ReturnType<typeof getPersistencePort>>,
+): Promise<void> {
+  const surviving = new Set(
+    canonical.workspaces
+      .flatMap(w => w.nodes)
+      .filter(n => n.kind === 'terminal')
+      .map(n => n.id),
+  )
+  await Promise.all(
+    legacy.workspaces
+      .flatMap(w => w.nodes)
+      .filter(
+        n =>
+          n.kind === 'terminal' &&
+          surviving.has(n.id) &&
+          typeof n.scrollback === 'string' &&
+          n.scrollback.length > 0,
+      )
+      .map(async node => {
+        if ((await port.readNodeScrollback(node.id)) !== null) {
+          return
+        }
+        const result = await port.writeNodeScrollback(node.id, node.scrollback)
+        if (!result.ok) {
+          throw new Error('Terminal history could not be saved.')
+        }
+      }),
+  )
 }

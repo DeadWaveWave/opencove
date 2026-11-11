@@ -97,7 +97,7 @@ it.each(['edit', 'creation', 'deletion', 'renewal', 'settings'] as const)(
             throw 'conflict'
           }
           durable = normalize(state)!
-          return ++revision
+          return { revision: ++revision, corrected: false }
         },
       })
       return { ok: true, level: 'full', bytes: 1, revision: result.revision, merged: result.merged }

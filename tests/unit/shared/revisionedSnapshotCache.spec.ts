@@ -10,7 +10,10 @@ describe('revisioned publication', () => {
     const cache = new RevisionedSnapshotCache<typeof local>()
     cache.set(1, { title: 'old', x: 0 })
     cache.set(2, { title: 'external', x: 0 })
-    const write = vi.fn().mockRejectedValueOnce('conflict').mockResolvedValue(3)
+    const write = vi
+      .fn()
+      .mockRejectedValueOnce('conflict')
+      .mockResolvedValue({ revision: 3, corrected: false })
     return {
       cache,
       baseRevision: 1,

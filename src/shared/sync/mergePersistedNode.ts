@@ -1,3 +1,4 @@
+import { projectOwnedManagedClaudeNode } from './managedClaudeResumeProjection'
 import type { NormalizedPersistedNodeContract } from '../contracts/normalizedPersistedAppState'
 import { mergeValue } from './mergeValue'
 
@@ -39,8 +40,8 @@ export function mergePersistedNode(
   local: NormalizedPersistedNodeContract,
   ancestor: NormalizedPersistedNodeContract | null = null,
 ): NormalizedPersistedNodeContract {
-  return {
+  return projectOwnedManagedClaudeNode(latest, {
     ...(ancestor ? mergeValue(latest, local, ancestor) : local),
     ...mergeNodeNaming(latest, local, ancestor),
-  }
+  })
 }

@@ -68,16 +68,25 @@ export function usePersistedAppState({
             : next
         }
 
+        const identityConflict = result.error.code === 'persistence.owned_node_identity_conflict'
         const message =
-          result.reason === 'unavailable'
-            ? t('persistence.unavailable')
-            : result.reason === 'quota' || result.reason === 'payload_too_large'
-              ? t('persistence.limitExceeded')
-              : result.reason === 'io'
-                ? t('persistence.ioFailed', { message: toErrorMessage(result.error) })
-                : t('persistence.failed', { message: toErrorMessage(result.error) })
+          result.outcome === 'unknown'
+            ? t('persistence.saveUnconfirmed')
+            : identityConflict
+              ? t('persistence.ownedIdentityRestored')
+              : result.reason === 'unavailable'
+                ? t('persistence.unavailable')
+                : result.reason === 'quota' || result.reason === 'payload_too_large'
+                  ? t('persistence.limitExceeded')
+                  : result.reason === 'io'
+                    ? t('persistence.ioFailed', { message: toErrorMessage(result.error) })
+                    : t('persistence.failed', { message: toErrorMessage(result.error) })
 
-        const next: PersistNotice = { tone: 'error', message, kind: 'write' }
+        const next: PersistNotice = {
+          tone: identityConflict ? 'warning' : 'error',
+          message,
+          kind: 'write',
+        }
         return previous?.tone === next.tone &&
           previous.message === next.message &&
           previous.kind === next.kind

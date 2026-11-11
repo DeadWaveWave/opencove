@@ -1,18 +1,22 @@
+import { canAcceptCanonicalState } from './publicationState'
 import type { PersistedStateReadResult } from './read'
 import { useCanvasCollapseStore } from '../../store/useCanvasCollapseStore'
 import { canvasCollapseFromPersistedLists, EMPTY_CANVAS_COLLAPSE } from '../canvasCollapse'
-import { markPersistedStateAsSynced } from './write'
+import { markPersistedStateAsSynced } from './sharedPublication'
 
 /** Publish a snapshot only after its lifecycle and local-edit guards accept it. */
-export function acceptPersistedStateSnapshot({
-  state,
-  isPersisted,
-  revision,
-}: Pick<PersistedStateReadResult, 'state' | 'isPersisted' | 'revision'>): void {
-  if (!state) {
+export function acceptPersistedStateSnapshot(
+  {
+    state,
+    isPersisted,
+    revision,
+  }: Pick<PersistedStateReadResult, 'state' | 'isPersisted' | 'revision'>,
+  presentation = state,
+): void {
+  if (!state || (isPersisted && !canAcceptCanonicalState(state, revision))) {
     return
   }
-  for (const workspace of state.workspaces) {
+  for (const workspace of (presentation ?? state).workspaces) {
     if (workspace.collapsedNodeIds === undefined && workspace.collapsedSpaceIds === undefined) {
       continue
     }

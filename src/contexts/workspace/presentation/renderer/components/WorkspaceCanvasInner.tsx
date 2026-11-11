@@ -195,20 +195,16 @@ export function WorkspaceCanvasInner({
   workspaceCanvasHooks.useWorkspaceCanvasLifecycleBindings({ workspaceId, persistedMinimapVisible, canvasState, cancelSpaceRename: spacesApi.cancelSpaceRename, reactFlow, viewport, agentSettings, focusSpaceId, focusNodeId, focusNodeInput, focusSequence, expandNode: collapse.expandNode, focusSpaceInViewport: spacesApi.focusSpaceInViewport, nodes: canvasState.flowNodes, isFocusNodeTargetZoomPreviewing, nodesRef: nodeStore.nodesRef, requestNodeDeleteRef: actionRefs.requestNodeDeleteRef })
   // prettier-ignore
   const { canConvertSelectedNoteToTask, isConvertSelectedNoteToTaskDisabled, convertSelectedNoteToTask, convertNoteToTask, arrangeAll, arrangeCanvas, arrangeInSpace } = workspaceCanvasHooks.useWorkspaceCanvasMenuActions({ selectedNodeIds: canvasState.selectedNodeIds, selectedNodeIdsRef: canvasState.selectedNodeIdsRef, flowNodes: canvasState.flowNodes, nodesRef: nodeStore.nodesRef, setNodes: nodeStore.setNodes, onRequestPersistFlush, onShowMessage, setContextMenu: canvasState.setContextMenu, reactFlow, spacesRef: canvasState.spacesRef, onSpacesChange, standardWindowSizeBucket: agentSettings.standardWindowSizeBucket, focusNodeTargetZoom: agentSettings.focusNodeTargetZoom })
-  const nodeTypes = workspaceCanvasHooks.useWorkspaceCanvasComposedNodeTypes({
-    setNodes: nodeStore.setNodes,
-    setSelectedNodeIds: canvasState.setSelectedNodeIds,
-    setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
-    selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
-    selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
-    spacesRef: canvasState.spacesRef,
-    workspacePath,
-    onShowMessage,
-    agentSettings,
-    actionRefs,
-    convertNoteToTask,
-    setNodeLabelColorOverride: nodeStore.setNodeLabelColorOverride,
-  })
+  const { nodeTypes, nodeTypesParameters } =
+    workspaceCanvasHooks.useWorkspaceCanvasComposedNodeTypes({
+      nodeStore,
+      canvasState,
+      workspacePath,
+      onShowMessage,
+      agentSettings,
+      actionRefs,
+      convertNoteToTask,
+    })
   const {
     clearNodeSelection,
     handleNodeClick,
@@ -365,6 +361,7 @@ export function WorkspaceCanvasInner({
   const spaceExplorer = useCanvasSpaceExplorer({ workspaceId, canvasState, nodeStore, spaces, onSpacesChange, onRequestPersistFlush, reactFlow, nodeDragSession, finalizeDraggedNodeDrop, agentSettings, expandNode: collapse.expandNode })
   return (
     <WorkspaceCanvasProviders
+      nodeTypesParameters={nodeTypesParameters}
       collapse={collapse}
       openSpaceExplorer={spaceExplorer.openSpaceExplorer}
       openExplorerSpaceId={spaceExplorer.openExplorerSpaceId}

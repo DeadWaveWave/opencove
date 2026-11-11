@@ -14,12 +14,14 @@ export type PersistWriteResult =
       ok: true
       level: PersistWriteLevel
       bytes: number
+      uncertain?: true
       corrected?: boolean
       merged?: true
       revision?: number
     }
   | {
       ok: false
+      outcome?: 'unknown' | 'rejected' | 'notSubmitted'
       reason: PersistWriteFailureReason
       error: AppErrorDescriptor
     }

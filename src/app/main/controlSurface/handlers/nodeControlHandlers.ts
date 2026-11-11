@@ -142,6 +142,7 @@ export function registerNodeControlHandlers(
       const observed = store.observeManagedClaudeNode(input.nodeId)
       return {
         managedClaudeBinding: observed.binding,
+        nodeRuntimeSessionId: observed.nodeRuntimeSessionId ?? null,
         retired: observed.retired,
         executionDirectory: observed.context?.directory ?? null,
       }

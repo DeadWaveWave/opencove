@@ -2,6 +2,11 @@ import {
   RevisionedSnapshotCache,
   writeRevisionedSnapshot,
 } from '../../../../shared/sync/revisionedSnapshotCache'
+import {
+  persistenceWriteFailure,
+  submitPersistenceWrite,
+  classifyWriteResult,
+} from '../../../../shared/sync/persistenceWriteOutcome'
 import { Buffer } from 'node:buffer'
 import type {
   AppErrorDescriptor,
@@ -14,7 +19,7 @@ import type {
 } from '../../../../shared/contracts/dto'
 import { createAppError, createAppErrorDescriptor } from '../../../../shared/errors/appError'
 import { mergePersistedAppStates } from '../../../../shared/sync/mergePersistedAppStates'
-import { normalizePersistedAppStateForMerge } from '../../../../shared/sync/normalizePersistedAppStateForMerge'
+import { canonicalizePersistedAppState as normalizePersistedAppStateForMerge } from '../../../../shared/sync/canonicalizePersistedAppState'
 import type { NormalizedPersistedAppStateContract } from '../../../../shared/contracts/normalizedPersistedAppState'
 import {
   isNormalizedAgentSettings,
@@ -32,10 +37,14 @@ import {
   type ControlSurfaceRemoteEndpointResolver,
 } from './controlSurfaceHttpClient'
 
-function resolveIoFailure(error: unknown): PersistWriteResult {
+function resolveIoFailure(
+  error: unknown,
+  outcome?: 'unknown' | 'notSubmitted',
+): PersistWriteResult {
   return {
     ok: false,
     reason: 'io',
+    ...(outcome ? { outcome } : {}),
     error: createAppErrorDescriptor('persistence.io_failed', {
       debugMessage:
         error instanceof Error ? `${error.name}: ${error.message}` : 'Remote persistence failed.',
@@ -171,7 +180,7 @@ async function invokePersistResult(
 ): Promise<PersistWriteResult> {
   const endpoint = await endpointResolver()
   if (!endpoint) {
-    return resolveIoFailure(new Error('Remote worker endpoint unavailable.'))
+    return resolveIoFailure(new Error('Remote worker endpoint unavailable.'), 'notSubmitted')
   }
 
   const { result } = await invokeControlSurface(endpoint, { kind: 'command', id, payload })
@@ -196,9 +205,6 @@ export function createRemotePersistenceStore(
     }
 
     const record = value as { code?: unknown; debugMessage?: unknown }
-    if (record.code === 'persistence.owned_node_identity_conflict') {
-      return true
-    }
     if (record.code !== 'persistence.invalid_state') {
       return false
     }
@@ -224,9 +230,19 @@ export function createRemotePersistenceStore(
     writeWorkspaceStateRaw: async raw => {
       const payload: WriteWorkspaceStateRawInput = { raw }
       try {
-        return await invokePersistResult(endpointResolver, 'sync.writeWorkspaceStateRaw', payload)
+        const endpoint = await endpointResolver()
+        if (!endpoint) {
+          return resolveIoFailure(new Error('Remote worker endpoint unavailable.'), 'notSubmitted')
+        }
+        const result = await submitPersistenceWrite(() =>
+          invokePersistResult(async () => endpoint, 'sync.writeWorkspaceStateRaw', payload),
+        )
+        if (result.ok) {
+          cache.invalidate()
+        }
+        return classifyWriteResult(result)
       } catch (error) {
-        return resolveIoFailure(error)
+        return persistenceWriteFailure(error, 'notSubmitted')
       }
     },
     readAppStateSnapshot: async () => {
@@ -260,7 +276,7 @@ export function createRemotePersistenceStore(
       try {
         const endpoint = await endpointResolver()
         if (!endpoint) {
-          return resolveIoFailure(new Error('Remote worker endpoint unavailable.'))
+          return resolveIoFailure(new Error('Remote worker endpoint unavailable.'), 'notSubmitted')
         }
 
         const readLatestSnapshot = async (): Promise<RemoteAppStateSnapshot> =>
@@ -271,7 +287,9 @@ export function createRemotePersistenceStore(
         const attemptWrite = async (
           nextState: unknown,
           baseRevision: number | null,
-        ): Promise<number> => {
+        ): Promise<
+          import('../../../../shared/sync/revisionedSnapshotCache').RevisionedWriteReceipt
+        > => {
           const payload: WriteAppStateInput & { baseRevision?: number } = {
             state: nextState,
             ...(typeof baseRevision === 'number' ? { baseRevision } : {}),
@@ -294,12 +312,7 @@ export function createRemotePersistenceStore(
             throw result.error
           }
 
-          const revision = (result.value as { revision?: unknown }).revision
-          if (typeof revision !== 'number' || !Number.isSafeInteger(revision) || revision < 0) {
-            throw new Error('sync.writeState returned an invalid revision.')
-          }
-
-          return revision
+          return result.value as import('../../../../shared/sync/revisionedSnapshotCache').RevisionedWriteReceipt
         }
 
         const result = await writeRevisionedSnapshot({
@@ -318,12 +331,12 @@ export function createRemotePersistenceStore(
           bytes: Buffer.byteLength(JSON.stringify(result.state), 'utf8'),
           revision: result.revision,
           merged: result.merged,
+          corrected: result.corrected,
+          uncertain: result.uncertain,
         }
       } catch (error) {
         // Keep the Worker's own rejection (for example the empty-workspace overwrite guard).
-        return isAppErrorDescriptor(error)
-          ? { ok: false, reason: 'io', error }
-          : resolveIoFailure(error)
+        return persistenceWriteFailure(error, 'notSubmitted')
       }
     },
     readNodeScrollback: async nodeId => {

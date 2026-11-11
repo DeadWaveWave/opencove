@@ -27,6 +27,38 @@ export const QUICK_E2E_GROUPS = {
     tests: [e2e('plugins.canvas'), e2e('plugins.filesystem'), e2e('plugins.targets')],
     matches: path => path === 'tests/e2e/plugins.local.helpers.ts',
   },
+  liveViews: {
+    reason:
+      'Canonical refresh and node composition retain live views and skip window commits on viewport updates.',
+    tests: [
+      e2e('plugins'),
+      e2e('plugins.canvas'),
+      e2e('plugins.commands'),
+      e2e('plugins.contributions'),
+      e2e('plugins.details'),
+      e2e('plugins.filesystem'),
+      e2e('plugins.host-extensions'),
+      e2e('plugins.install'),
+      e2e('plugins.library'),
+      e2e('plugins.local'),
+      e2e('plugins.maintenance'),
+      e2e('plugins.repository-details'),
+      e2e('plugins.sidebar'),
+      e2e('plugins.targets'),
+      e2e('plugins.themes'),
+      e2e('plugins.titles'),
+      e2e('workspace-canvas.website-window'),
+      e2e('workspace-canvas.website-window.device-pixel-ratio'),
+      e2e('workspace-canvas.website-window.freeze'),
+      e2e('workspace-canvas.website-window.iframe'),
+      e2e('workspace-canvas.far-view'),
+      e2e('recovery.managed-claude-convergence'),
+    ],
+    matches: path =>
+      /workersync|workspacecanvasinner|workspacecanvasproviders|workspacecanvas\/nodetypes|usecanvasnodetypes/.test(
+        path,
+      ),
+  },
   windows: {
     reason: 'Shared window movement, resize and collapse preserve live content.',
     tests: [e2e('workspace-canvas.drag-resize'), e2e('workspace-canvas.collapse-motion')],
@@ -56,7 +88,10 @@ export const QUICK_E2E_GROUPS = {
   },
   persistence: {
     reason: 'Control Surface writes survive concurrent renderer publications and merges.',
-    tests: [e2e('persistence.concurrent-control-surface-writes')],
+    tests: [
+      e2e('persistence.concurrent-control-surface-writes'),
+      e2e('recovery.managed-claude-convergence'),
+    ],
     matches: path =>
       /\/persistence\/|\/sync\/|workersync|syncnodeguards|remotepersistencestore|browseropencoveapi\.persistence/.test(
         path,

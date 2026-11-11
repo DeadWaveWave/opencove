@@ -13,7 +13,7 @@ vi.mock('@app/renderer/browser/browserControlSurface', () => ({
   invokeBrowserControlSurface: vi.fn(),
 }))
 
-it.each(['persistence.invalid_state', 'persistence.owned_node_identity_conflict'] as const)(
+it.each(['persistence.invalid_state'] as const)(
   'refreshes and merges browser state after %s',
   async code => {
     const api = createBrowserPersistenceApi()
@@ -73,13 +73,14 @@ it.each(rejectedManagedClaudeAgents)(
     await api.readAppState()
     expect(await api.writeAppState({ state: candidate, baseRevision: 2 })).toEqual({
       ok: false,
-      reason: 'unknown',
+      reason: 'io',
+      outcome: 'rejected',
       error: rejection,
     })
     const writes = invoke.mock.calls
       .map(([request]) => request)
       .filter(request => request.id === 'sync.writeState')
-    expect(writes).toHaveLength(rebasable ? 3 : 1)
+    expect(writes).toHaveLength(1)
     expect(writes[0].payload).toMatchObject({ state: { workspaces: [{ nodes: [{ agent }] }] } })
   },
 )

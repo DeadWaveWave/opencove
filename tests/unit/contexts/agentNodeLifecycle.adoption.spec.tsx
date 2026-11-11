@@ -83,7 +83,11 @@ function fixture(mounted: boolean, persisted = true) {
       return { node: { data: { kind: 'agent', executionDirectory: '/repo' } } }
     }
     if (request.id === 'node.managedClaudeBinding') {
-      return { managedClaudeBinding: null, retired: false, executionDirectory: null }
+      return {
+        managedClaudeBinding: launch.mock.calls.length ? binding : null,
+        retired: false,
+        executionDirectory: null,
+      }
     }
     if (request.id === 'mount.list') {
       return {

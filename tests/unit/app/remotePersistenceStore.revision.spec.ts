@@ -16,7 +16,7 @@ function createMergeState(_position: number, version: string) {
   }
 }
 
-it.each(['persistence.invalid_state', 'persistence.owned_node_identity_conflict'] as const)(
+it.each(['persistence.invalid_state'] as const)(
   'refreshes remote state against the accepted ancestor after %s',
   async code => {
     const initial = createMergeState(0, 'initial')
@@ -84,6 +84,7 @@ it('returns a non-conflict Worker rejection unchanged', async () => {
     expect(await store.writeAppState(createMergeState(0, 'empty'), { baseRevision: 3 })).toEqual({
       ok: false,
       reason: 'io',
+      outcome: 'rejected',
       error: rejection,
     })
   } finally {
@@ -130,15 +131,27 @@ it.each(rejectedManagedClaudeAgents)(
       expect(await store.writeAppState(candidate, { baseRevision: 2 })).toEqual({
         ok: false,
         reason: 'io',
+        outcome: 'rejected',
         error: rejection,
       })
       const writes = fetchMock.mock.calls
         .map(([, init]) => JSON.parse(init.body))
         .filter(request => request.id === 'sync.writeState')
-      expect(writes).toHaveLength(rebasable ? 3 : 1)
+      expect(writes).toHaveLength(1)
       expect(writes[0].payload.state.workspaces[0].nodes[0].agent).toEqual(agent)
     } finally {
       vi.unstubAllGlobals()
     }
   },
 )
+it('classifies an unavailable endpoint as not submitted for structured and raw writes', async () => {
+  const store = createRemotePersistenceStore(async () => null)
+  expect(await store.writeAppState(createMergeState(0, 'draft'))).toMatchObject({
+    ok: false,
+    outcome: 'notSubmitted',
+  })
+  expect(await store.writeWorkspaceStateRaw('{}')).toMatchObject({
+    ok: false,
+    outcome: 'notSubmitted',
+  })
+})

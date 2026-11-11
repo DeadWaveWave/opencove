@@ -76,9 +76,7 @@ export function registerPersistenceIpcHandlers(
         return {
           ok: false,
           reason: 'io',
-          error: createAppErrorDescriptor('persistence.io_failed', {
-            debugMessage: toAppErrorDescriptor(error).debugMessage,
-          }),
+          error: toAppErrorDescriptor(error, 'persistence.io_failed'),
         }
       }
     },
@@ -139,9 +137,7 @@ export function registerPersistenceIpcHandlers(
         return {
           ok: false,
           reason: 'io',
-          error: createAppErrorDescriptor('persistence.io_failed', {
-            debugMessage: toAppErrorDescriptor(error).debugMessage,
-          }),
+          error: toAppErrorDescriptor(error, 'persistence.io_failed'),
         }
       }
     },
@@ -193,9 +189,7 @@ export function registerPersistenceIpcHandlers(
         return {
           ok: false,
           reason: 'io',
-          error: createAppErrorDescriptor('persistence.io_failed', {
-            debugMessage: toAppErrorDescriptor(error).debugMessage,
-          }),
+          error: toAppErrorDescriptor(error, 'persistence.io_failed'),
         }
       }
     },
@@ -250,9 +244,7 @@ export function registerPersistenceIpcHandlers(
         return {
           ok: false,
           reason: 'io',
-          error: createAppErrorDescriptor('persistence.io_failed', {
-            debugMessage: toAppErrorDescriptor(error).debugMessage,
-          }),
+          error: toAppErrorDescriptor(error, 'persistence.io_failed'),
         }
       }
     },

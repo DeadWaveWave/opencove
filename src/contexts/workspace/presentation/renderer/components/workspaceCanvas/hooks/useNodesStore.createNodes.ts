@@ -1,3 +1,4 @@
+import { confirmManagedClaudeRuntime } from '../../../utils/managedClaudeProjection'
 import { useCallback } from 'react'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
@@ -147,6 +148,14 @@ export function useWorkspaceCanvasNodeCreation({
         },
         draggable: true,
         selectable: false,
+      }
+      if (managedClaudeLifecycle) {
+        nextNode.data.managedClaudeBindingObservation = managedClaudeLifecycle.binding
+        const projected = await confirmManagedClaudeRuntime(nextNode.id, nextNode.data)
+        if (!projected) {
+          return null
+        }
+        nextNode.data = projected
       }
       guardNodeFromSyncOverwrite(nextNode.id, 2_500)
       setNodes(prevNodes => [...prevNodes, nextNode])

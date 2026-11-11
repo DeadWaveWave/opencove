@@ -92,10 +92,14 @@ export function applyAgentMetadataToNodes(
       return node
     }
 
-    const update = resolveAgentMetadataResumeBindingUpdate(node.data.agent, {
-      ...event,
-      resumeSessionId: event.resumeSessionId ?? null,
-    })
+    const update = resolveAgentMetadataResumeBindingUpdate(
+      node.data.agent,
+      {
+        ...event,
+        resumeSessionId: event.resumeSessionId ?? null,
+      },
+      node.data.managedClaudeResumeBindingOwnership,
+    )
     if (!update) {
       return node
     }

@@ -116,8 +116,20 @@ it('keeps a real concurrent CLI rename through pending renderer auto-title publi
     input: { kind: 'agent', nodeId: f.id, title: 'Lead' },
   })
   expect(
-    await publishSharedState(f.port, f.local, JSON.stringify(f.ancestor), { baseRevision: 1 }),
-  ).toMatchObject({ ok: true, merged: true })
+    await publishSharedState(
+      f.port,
+      f.local,
+      {
+        candidateRaw: JSON.stringify(f.ancestor),
+        ancestorRaw: JSON.stringify(f.ancestor),
+        kind: 'committed-refresh',
+        minimumRevision: 1,
+        publicationId: 1,
+        scopeGeneration: 1,
+      },
+      { baseRevision: 1 },
+    ),
+  ).toMatchObject({ result: { ok: true, merged: true } })
   expect(f.write).toHaveBeenCalledOnce()
   expect(f.latest().workspaces[0].nodes[0]).toMatchObject({
     title: 'Lead',

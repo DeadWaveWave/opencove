@@ -11,6 +11,12 @@ import {
   type BrowserPersistedAppState,
 } from './browserOpenCoveApi.helpers'
 
+import {
+  persistenceWriteFailure,
+  submitPersistenceWrite,
+  classifyWriteResult,
+} from '@shared/sync/persistenceWriteOutcome'
+
 type PersistenceApi = Window['opencoveApi']['persistence']
 
 export function createBrowserPersistenceApi(): PersistenceApi {
@@ -22,12 +28,23 @@ export function createBrowserPersistenceApi(): PersistenceApi {
         id: 'sync.readWorkspaceStateRaw',
         payload: null,
       }),
-    writeWorkspaceStateRaw: async payload =>
-      await invokeBrowserControlSurface({
-        kind: 'command',
-        id: 'sync.writeWorkspaceStateRaw',
-        payload,
-      }),
+    writeWorkspaceStateRaw: async payload => {
+      try {
+        const result = await submitPersistenceWrite(() =>
+          invokeBrowserControlSurface<import('@shared/contracts/dto').PersistWriteResult>({
+            kind: 'command',
+            id: 'sync.writeWorkspaceStateRaw',
+            payload,
+          }),
+        )
+        if (result.ok) {
+          cache.invalidate()
+        }
+        return classifyWriteResult(result)
+      } catch (error) {
+        return persistenceWriteFailure(error)
+      }
+    },
     readAppState: async () => {
       const value = await invokeBrowserControlSurface<{
         revision: number
@@ -60,7 +77,9 @@ export function createBrowserPersistenceApi(): PersistenceApi {
             return { revision: value.revision, state }
           },
           write: async (state, baseRevision) => {
-            const written = await invokeBrowserControlSurface<{ revision: number }>({
+            const written = await invokeBrowserControlSurface<
+              import('@shared/sync/revisionedSnapshotCache').RevisionedWriteReceipt
+            >({
               kind: 'command',
               id: 'sync.writeState',
               payload: {
@@ -69,16 +88,15 @@ export function createBrowserPersistenceApi(): PersistenceApi {
                 allowEmptyWorkspaceOverwrite: payload.allowEmptyWorkspaceOverwrite === true,
               },
             })
-            return written.revision
+            return written
           },
           normalize: normalizeCanonicalPersistedAppStateForMerge,
           merge: mergePersistedAppStates,
           isConflict: error => {
             const descriptor = toAppErrorDescriptor(error, 'persistence.invalid_state')
             return (
-              descriptor.code === 'persistence.owned_node_identity_conflict' ||
-              (descriptor.code === 'persistence.invalid_state' &&
-                (descriptor.debugMessage ?? '').includes('revision conflict'))
+              descriptor.code === 'persistence.invalid_state' &&
+              (descriptor.debugMessage ?? '').includes('revision conflict')
             )
           },
         })
@@ -88,13 +106,11 @@ export function createBrowserPersistenceApi(): PersistenceApi {
           bytes: JSON.stringify(result.state).length,
           revision: result.revision,
           merged: result.merged,
+          corrected: result.corrected,
+          uncertain: result.uncertain,
         }
       } catch (error) {
-        return {
-          ok: false,
-          reason: 'unknown',
-          error: toAppErrorDescriptor(error, 'persistence.invalid_state'),
-        }
+        return persistenceWriteFailure(error, 'notSubmitted')
       }
     },
     readNodeScrollback: async payload =>

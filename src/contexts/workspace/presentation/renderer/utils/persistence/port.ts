@@ -1,3 +1,4 @@
+import { persistenceWriteFailure, classifyWriteResult } from '@shared/sync/persistenceWriteOutcome'
 import type { PersistWriteResult, ReadAppStateResult } from '@shared/contracts/dto'
 import {
   createAppError,
@@ -37,7 +38,7 @@ const AGENT_PLACEHOLDER_SCROLLBACK_KEY_PREFIX = 'opencove:m0:agent-placeholder-s
 const LEGACY_AGENT_PLACEHOLDER_SCROLLBACK_KEY_PREFIX = 'cove:m0:agent-placeholder-scrollback:' // legacy
 const LOCAL_SYNC_WRITE_EVENT_NAME = 'opencove.localSyncWrite'
 
-function publishLocalSyncWriteRevision(revision: unknown): void {
+export function publishLocalSyncWriteRevision(revision: unknown): void {
   if (typeof window === 'undefined') {
     return
   }
@@ -83,18 +84,9 @@ function createIpcPort(): PersistencePort | null {
           baseRevision: options?.baseRevision,
           allowEmptyWorkspaceOverwrite: options?.allowEmptyWorkspaceOverwrite === true,
         })
-        if (result.ok && !result.merged && !options?.requiresRefresh) {
-          publishLocalSyncWriteRevision(result.revision)
-        }
-        return result
+        return classifyWriteResult(result)
       } catch (error) {
-        return {
-          ok: false,
-          reason: 'io',
-          error: createAppErrorDescriptor('persistence.io_failed', {
-            debugMessage: toAppErrorDescriptor(error).debugMessage,
-          }),
-        }
+        return persistenceWriteFailure(error)
       }
     },
     readNodeScrollback: async nodeId => {
@@ -111,9 +103,7 @@ function createIpcPort(): PersistencePort | null {
         return {
           ok: false,
           reason: 'io',
-          error: createAppErrorDescriptor('persistence.io_failed', {
-            debugMessage: toAppErrorDescriptor(error).debugMessage,
-          }),
+          error: toAppErrorDescriptor(error, 'persistence.io_failed'),
         }
       }
     },
@@ -131,9 +121,7 @@ function createIpcPort(): PersistencePort | null {
         return {
           ok: false,
           reason: 'io',
-          error: createAppErrorDescriptor('persistence.io_failed', {
-            debugMessage: toAppErrorDescriptor(error).debugMessage,
-          }),
+          error: toAppErrorDescriptor(error, 'persistence.io_failed'),
         }
       }
     },
@@ -146,15 +134,9 @@ function createIpcPort(): PersistencePort | null {
     },
     writeWorkspaceStateRaw: async raw => {
       try {
-        return await persistenceApi.writeWorkspaceStateRaw({ raw })
+        return classifyWriteResult(await persistenceApi.writeWorkspaceStateRaw({ raw }))
       } catch (error) {
-        return {
-          ok: false,
-          reason: 'io',
-          error: createAppErrorDescriptor('persistence.io_failed', {
-            debugMessage: toAppErrorDescriptor(error).debugMessage,
-          }),
-        }
+        return persistenceWriteFailure(error)
       }
     },
   }
