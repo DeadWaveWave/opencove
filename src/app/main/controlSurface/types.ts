@@ -8,7 +8,11 @@ export interface ControlSurfaceContext {
     awaitPending: (nodeId: string) => Promise<void>
     reserve: (
       nodeId: string,
-    ) => import('../../../contexts/agent/application/managedClaudeLaunch/types').ManagedClaudeLaunchAttempt
+    ) =>
+      | import('../../../contexts/agent/application/managedClaudeLaunch/types').ManagedClaudeLaunchAttempt
+      | Promise<
+          import('../../../contexts/agent/application/managedClaudeLaunch/types').ManagedClaudeLaunchAttempt
+        >
     attempts: Map<
       string,
       import('../../../contexts/agent/application/managedClaudeLaunch/types').ManagedClaudeLaunchAttempt

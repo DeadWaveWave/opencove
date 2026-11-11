@@ -1,3 +1,6 @@
+import { ManagedClaudeResumeReservations } from './ManagedClaudeResumeReservations'
+import { publishManagedClaudeActivation } from './publishManagedClaudeActivation'
+import { ManagedClaudeRebindState } from './ManagedClaudeRebindState'
 import type { ManagedClaudeLaunchPorts } from './ports'
 import type { ManagedClaudeLaunchAttempt, ManagedClaudeRuntimeCandidate } from './types'
 import type { ManagedClaudeLifecycleReceipt } from '../../../../shared/contracts/managedClaudeLaunch'
@@ -40,9 +43,25 @@ export class ManagedClaudeLaunchOwner {
     ManagedClaudeLifecycleReceipt
   >()
   private readonly runtimeCleanup: ManagedClaudeRuntimeCleanup
+  readonly qualification: ManagedClaudeRebindState
+  readonly reservations = new ManagedClaudeResumeReservations(
+    node => this.reserve(node),
+    node => this.qualification.hasPending(node),
+    input => this.qualification.drain({ ...input, handoff: true, retry: true }),
+    () => !this.disposed,
+    node => this.qualification.suspend(node),
+  )
   private disposed = false
 
   constructor(private readonly ports: ManagedClaudeLaunchPorts) {
+    this.qualification = new ManagedClaudeRebindState(
+      ports,
+      runtime => [...this.admitted].find(([, id]) => id === runtime)?.[0],
+      (node, runtime) => this.canAdmitRuntimeWrite(node, runtime),
+      runtime =>
+        this.effects.candidateHeld(runtime) ||
+        [...this.obligations.values()].some(input => input.runtimeSessionId === runtime),
+    )
     this.runtimeCleanup = new ManagedClaudeRuntimeCleanup(
       ports,
       id =>
@@ -63,6 +82,8 @@ export class ManagedClaudeLaunchOwner {
   reserve(nodeId: string): ManagedClaudeLaunchAttempt {
     const attempt = { nodeId, token: Symbol(nodeId) }
     if (!this.disposed) {
+      this.reservations.invalidate(nodeId)
+      this.qualification.cancelNode(nodeId)
       this.attempts.set(nodeId, attempt)
       this.admitted.delete(nodeId)
     }
@@ -257,7 +278,7 @@ export class ManagedClaudeLaunchOwner {
         this.admitted.set(input.nodeId, input.runtimeSessionId)
       }
       if (binding && commitRevision !== null) {
-        this.publish(input, commitRevision, effectiveState)
+        publishManagedClaudeActivation(this.ports, input, commitRevision, effectiveState)
       }
       if (binding && input.runtimeSessionId) {
         this.runtimeCleanup.confirmReferenced(input.runtimeSessionId, claim)
@@ -303,23 +324,6 @@ export class ManagedClaudeLaunchOwner {
       void this.reconcile(input).catch(() => this.scheduleReconciliation(input, retry + 1))
     }, [250, 1000, 3000][Math.min(retry, 2)])
     this.reconciliationTimers.set(input.nodeId, cancel)
-  }
-
-  private publish(
-    input: ActivateManagedClaudeRuntimeInput,
-    revision: number,
-    effectiveState: unknown,
-  ): void {
-    try {
-      this.ports.publishCommittedActivation({
-        nodeId: input.nodeId,
-        activationId: input.activationId,
-        revision,
-        effectiveState,
-      })
-    } catch {
-      /* Committed writes cannot be compensated for notification failure. */
-    }
   }
 
   cleanup(runtimeSessionId: string): Promise<boolean> {
@@ -463,6 +467,8 @@ export class ManagedClaudeLaunchOwner {
 
   noteNodesDeleted(nodeIds: readonly string[]): void {
     for (const id of nodeIds) {
+      this.reservations.invalidate(id)
+      this.qualification.cancelNode(id)
       this.attempts.delete(id)
       this.admitted.delete(id)
       this.effects.fallbacks.release(this.effects.fallbacks.ids(id))
@@ -471,6 +477,8 @@ export class ManagedClaudeLaunchOwner {
   }
 
   dispose(): void {
+    this.reservations.clear()
+    this.qualification.dispose()
     this.disposed = true
     this.effects.fallbacks.dispose()
     this.runtimeCleanup.dispose()

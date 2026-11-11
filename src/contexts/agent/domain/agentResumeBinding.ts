@@ -135,3 +135,15 @@ export function resolveObservedResumeSessionBindingUpdate(
     resumeSessionIdVerified: true,
   }
 }
+
+/** Policy only: the caller must validate a private owner-issued qualification ticket first. */
+export function resolveQualifiedClaudeClearResumeBindingUpdate(
+  binding: ResumeSessionBindingLike,
+  target: Readonly<{ resumeSessionId: string }>,
+): VerifiedResumeSessionBindingUpdate | null {
+  const id = target.resumeSessionId.trim()
+  if (binding.provider !== 'claude-code' || !id || id === binding.resumeSessionId) {
+    return null
+  }
+  return { resumeSessionId: id, resumeSessionIdVerified: true }
+}

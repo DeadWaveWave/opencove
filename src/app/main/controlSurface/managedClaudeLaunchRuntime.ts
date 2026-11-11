@@ -1,3 +1,5 @@
+import { holdClaudeClearCommit } from './managedClaudeClearHold'
+import { reserveManagedClaudePreparation } from './managedClaudePreparationReservations'
 import {
   assertManagedClaudeMutationAllowed,
   guardLegacyManagedClaudeContext,
@@ -18,8 +20,6 @@ import type {
 import type { ControlSurfaceContext } from './types'
 import type { CanvasSpawnIdentity } from './sessionSpawnIdentityContext'
 import { createAppError, toAppErrorDescriptor } from '../../../shared/errors/appError'
-import { runManagedClaudeFallback } from './managedClaudeFallbackRuntime'
-import type { FallbackExecution, FallbackSpawn } from './managedClaudeFallbackRuntime'
 
 /** Technical adapter called once provider, directory and local execution have been resolved. */
 export async function admitManagedClaudeLaunch(
@@ -57,6 +57,9 @@ export function createManagedClaudeLaunchRuntime(deps: {
   hasRuntime(id: string): boolean
   adoptionEnabled(): boolean
   writesEnabled?(): boolean
+  projectCommittedBinding?: ConstructorParameters<
+    typeof ManagedClaudeLaunchOwner
+  >[0]['projectCommittedBinding']
   publishCommittedActivation?: ConstructorParameters<
     typeof ManagedClaudeLaunchOwner
   >[0]['publishCommittedActivation']
@@ -80,7 +83,12 @@ export function createManagedClaudeLaunchRuntime(deps: {
     isRuntimeReferenced: id => store?.isManagedClaudeRuntimeReferenced?.(id) ?? unavailable(),
     activateManagedClaudeRuntime: input =>
       store?.activateManagedClaudeRuntime?.(input) ?? unavailable(),
+    commitManagedClaudeRebind: async input => {
+      await holdClaudeClearCommit(new AbortController().signal)
+      return await (store?.commitManagedClaudeRebind?.(input) ?? unavailable())
+    },
     killExactRuntime: deps.killExactRuntime,
+    projectCommittedBinding: deps.projectCommittedBinding,
     publishCommittedActivation: deps.publishCommittedActivation ?? (() => {}),
   })
   const ready = async () => {
@@ -102,6 +110,21 @@ export function createManagedClaudeLaunchRuntime(deps: {
   return {
     owner,
     ready,
+    drainLaunches: async (deadlineAt: number) => {
+      let timer: ReturnType<typeof setTimeout> | undefined
+      try {
+        await Promise.race([
+          Promise.all([...pendingLaunches.values()].map(pending => pending.promise)),
+          new Promise(resolve => {
+            timer = setTimeout(resolve, Math.max(0, deadlineAt - performance.now()))
+          }),
+        ])
+      } finally {
+        if (timer) {
+          clearTimeout(timer)
+        }
+      }
+    },
     awaitPending: async (nodeId: string) => {
       for (;;) {
         const pending = pendingLaunches.get(nodeId)
@@ -118,40 +141,16 @@ export function createManagedClaudeLaunchRuntime(deps: {
       workspaceId: string,
       nodeIds?: readonly string[],
     ) => {
-      const attempts = new Map<string, ManagedClaudeLaunchAttempt>()
-      for (const id of store?.managedClaudePreparationCandidates?.(workspaceId, nodeIds) ?? []) {
-        if (pendingLaunches.has(id)) {
-          continue
-        }
-        const observation = store?.observeManagedClaudeNode?.(id)
-        if (
-          !observation?.binding &&
-          !(
-            deps.adoptionEnabled() &&
-            deps.writesEnabled?.() !== false &&
-            observation?.context?.provider === 'claude-code'
-          )
-        ) {
-          continue
-        }
-        if (
-          observation?.nodeRuntimeSessionId &&
-          deps.hasRuntime(observation.nodeRuntimeSessionId)
-        ) {
-          continue
-        }
-        if (observation?.binding) {
-          assertManagedClaudeMutationAllowed(ctx, id, deps.writesEnabled?.() !== false)
-        }
-        if (!ctx.clientFeatures?.managedClaudeResumeBindingV1) {
-          continue
-        }
-        const pending = preparing.get(id)
-        const attempt = pending && owner.isCurrent(pending) ? pending : owner.reserve(id)
-        preparing.set(id, attempt)
-        attempts.set(id, attempt)
-      }
-      return attempts
+      return reserveManagedClaudePreparation({
+        ctx,
+        workspaceId,
+        nodeIds,
+        store,
+        owner,
+        pendingLaunches,
+        preparing,
+        ...deps,
+      })
     },
     withPreparation: async <T>(
       attempt: ManagedClaudeLaunchAttempt,
@@ -243,8 +242,14 @@ export function createManagedClaudeLaunchRuntime(deps: {
           ),
         )
       }
-      const attempt =
-        inherited?.attempt ?? (typeof nodeId === 'string' ? owner.reserve(nodeId) : null)
+      const reservation =
+        inherited?.attempt ??
+        (typeof nodeId === 'string'
+          ? !intent || intent.kind === 'resumeCurrent'
+            ? owner.reservations.resume(nodeId, ctx.assertActive)
+            : owner.reserve(nodeId)
+          : null)
+      const attempt = reservation instanceof Promise ? await reservation : reservation
       let resolvePending!: () => void
       const pending = {
         promise: new Promise<void>(done => {
@@ -437,61 +442,11 @@ export function createManagedClaudeLaunchRuntime(deps: {
   }
 }
 
-export function assertManagedClaudeLaunchCurrent(): void {
-  const current = scope.getStore()
-  if (current && current.phase !== 'legacy') {
-    current.owner.assertCurrent(current.attempt)
-  }
-}
-
-export function withManagedClaudeFallback<T extends { sessionId: string }>(
-  execution: FallbackExecution,
-  spawn: FallbackSpawn<T>,
-) {
-  return runManagedClaudeFallback(scope.getStore(), execution, spawn)
-}
-
-export function rethrowManagedClaudeLaunchError(error: unknown): void {
-  if (
-    error &&
-    typeof error === 'object' &&
-    'code' in error &&
-    (String(error.code).startsWith('agent.managed_launch_') ||
-      (scope.getStore()?.phase === 'managed' && error.code === 'persistence.unavailable') ||
-      ('details' in error &&
-        error.details &&
-        typeof error.details === 'object' &&
-        'managedClaudeLaunch' in error.details &&
-        error.details.managedClaudeLaunch === true &&
-        'effectAdmitted' in error.details &&
-        error.details.effectAdmitted === false))
-  ) {
-    throw error
-  }
-}
-
-export function assertNoManagedClaudeRemoteLaunch(): void {
-  const current = scope.getStore()
-  if (current?.phase === 'managed' && current.attempt.expected?.activationId) {
-    rejectManagedLaunch(current.attempt.nodeId, 'identityConflict')
-  }
-  if (current) {
-    current.phase = 'legacy'
-    current.releasePending?.()
-  }
-}
-
-export function noteManagedClaudeSpawnStarted(): void {
-  const current = scope.getStore()
-  if (current?.phase === 'managed') {
-    current.owner.assertCurrent(current.attempt)
-    current.spawnStarted = true
-  }
-}
-
-export function noteManagedClaudeRuntimeCreated(id: string): void {
-  const current = scope.getStore()
-  if (current?.phase === 'managed') {
-    current.owner.trackCreatedRuntime(current.attempt, id)
-  }
-}
+export {
+  assertManagedClaudeLaunchCurrent,
+  withManagedClaudeFallback,
+  rethrowManagedClaudeLaunchError,
+  assertNoManagedClaudeRemoteLaunch,
+  noteManagedClaudeSpawnStarted,
+  noteManagedClaudeRuntimeCreated,
+} from './managedClaudeLaunchAdapters'

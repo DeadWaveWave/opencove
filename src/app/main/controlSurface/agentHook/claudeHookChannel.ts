@@ -1,3 +1,4 @@
+import type { ClaudeBindingEvidence } from '../../../../shared/runtime/agentHook/claudeBindingEvidence'
 import { claudeTranscriptLaunchRoots } from './ClaudeTranscriptLaunchRoots'
 import { ClaudeHookTranscriptObserver } from './ClaudeHookTranscriptObserver'
 import { ClaudeTranscriptChannel } from '../../../../shared/runtime/agentHook/claudeTranscript'
@@ -17,10 +18,19 @@ export function createClaudeHookChannel(options: {
   prepare?: () => Promise<{ state: 'installed' | 'error'; detail: string | null }>
   createHttpServer?: typeof createServer
 }): ClaudeHookChannel {
+  const bindingListeners = new Set<{
+    observe: (evidence: ClaudeBindingEvidence) => void
+    close: (credential: object) => void
+  }>()
   const transcripts = new ClaudeTranscriptChannel()
   const channel = createAgentHookChannel({
     createPrivateObserver: environment =>
-      new ClaudeHookTranscriptObserver(transcripts.emit, claudeTranscriptLaunchRoots(environment)),
+      new ClaudeHookTranscriptObserver(
+        transcripts.emit,
+        claudeTranscriptLaunchRoots(environment),
+        evidence => bindingListeners.forEach(listener => listener.observe(evidence)),
+        credential => bindingListeners.forEach(listener => listener.close(credential)),
+      ),
     ...options,
     hookPath: '/hooks/claude',
     source: 'claude_hook',
@@ -38,10 +48,18 @@ export function createClaudeHookChannel(options: {
   })
   return {
     ...channel,
+    onClaudeBindingEvidence: (observe, close) => {
+      const listener = { observe, close }
+      bindingListeners.add(listener)
+      return () => {
+        bindingListeners.delete(listener)
+      }
+    },
     onClaudeTranscript: transcripts.subscribe,
     dispose: async () => {
       transcripts.dispose()
       await channel.dispose()
+      bindingListeners.clear()
     },
   }
 }

@@ -1,3 +1,4 @@
+import type { ManagedClaudeLifecycleReceipt } from '../../../shared/contracts/managedClaudeLaunch'
 import type { ServerResponse } from 'node:http'
 import type { PersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
 import type { SyncEventPayload } from './http/syncSse'
@@ -10,6 +11,7 @@ export function createManagedClaudeDeliveryRuntime(input: {
   getStore(): Promise<PersistenceStore>
   killExactRuntime(id: string): Promise<void>
   hasRuntime(id: string): boolean
+  projectCommittedBinding?(receipt: ManagedClaudeLifecycleReceipt): void
   desktopSink?: (payload: SyncEventPayload) => number
 }) {
   const syncClients = new Set<ServerResponse>()
@@ -26,6 +28,7 @@ export function createManagedClaudeDeliveryRuntime(input: {
     adoptionEnabled: () =>
       managedClaudeWritesEnabled() &&
       process.env.OPENCOVE_EXPERIMENTAL_MANAGED_CLAUDE_BINDINGS === '1',
+    projectCommittedBinding: input.projectCommittedBinding,
     writesEnabled: managedClaudeWritesEnabled,
     publishCommittedActivation: event =>
       commitPublisher.publish({ ...event, operationId: 'session.managedClaudeActivation' }),

@@ -22,6 +22,11 @@ it('explains agent identity conflicts in both supported languages', async () => 
 
 it.each([
   [
+    'resumeBindingDrainExpired',
+    'The latest Claude conversation could not be confirmed. Try resuming again before closing this agent.',
+    '尚未确认最新 Claude 对话是否已保存。请先重试恢复，再关闭此智能体。',
+  ],
+  [
     'clientUpgradeRequired',
     'Update OpenCove and reload this window before controlling this agent.',
     '请更新 OpenCove 并重新加载此窗口，然后再操作此智能体。',

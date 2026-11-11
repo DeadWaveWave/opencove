@@ -1,3 +1,4 @@
+import { runTranscriptIO, awaitTranscriptIO } from './ClaudeTranscriptReadBudget'
 import { constants, type Stats } from 'node:fs'
 import fs from 'node:fs/promises'
 import { basename, isAbsolute, join, relative, resolve, sep, win32 } from 'node:path'
@@ -8,8 +9,8 @@ export interface ValidatedTranscriptFile {
   ino: number
 }
 export interface SessionFileAccess {
-  validate(): Promise<ValidatedTranscriptFile>
-  open(): Promise<fs.FileHandle>
+  validate(signal?: AbortSignal): Promise<ValidatedTranscriptFile>
+  open(signal?: AbortSignal): Promise<fs.FileHandle>
 }
 function inside(root: string, path: string): boolean {
   const part = relative(root, path)
@@ -80,7 +81,7 @@ export function claudeTranscriptAccess(
 ): SessionFileAccess {
   const lexical = resolve(canonicalTranscriptPath(path))
   const trusted = typeof roots === 'function' ? roots : claudeTranscriptRoots(roots)
-  const validate = async (): Promise<ValidatedTranscriptFile> => {
+  const validate = async (signal?: AbortSignal): Promise<ValidatedTranscriptFile> => {
     if (
       !isAbsolute(path) ||
       basename(lexical) !== `${sessionId}.jsonl` ||
@@ -91,12 +92,14 @@ export function claudeTranscriptAccess(
     ) {
       unsafe()
     }
-    const candidates = await trusted()
-    const info = await fs.lstat(lexical)
+    const candidates = await runTranscriptIO(trusted, signal)
+    const info = await runTranscriptIO(() => fs.lstat(lexical), signal)
     if (!info.isFile() || info.isSymbolicLink()) {
       unsafe()
     }
-    const canonical = canonicalTranscriptPath(await fs.realpath(lexical))
+    const canonical = canonicalTranscriptPath(
+      await runTranscriptIO(() => fs.realpath(lexical), signal),
+    )
     if (
       !candidates.some(root => inside(root, canonical)) ||
       basename(canonical) !== `${sessionId}.jsonl`
@@ -107,16 +110,23 @@ export function claudeTranscriptAccess(
   }
   return {
     validate,
-    open: async () => {
-      const expected = await validate()
-      const handle = await fs.open(
-        expected.path,
-        constants.O_RDONLY |
-          (process.platform === 'win32' ? 0 : constants.O_NOFOLLOW | constants.O_NONBLOCK),
+    open: async signal => {
+      const expected = await runTranscriptIO(() => validate(signal), signal)
+      const handle = await runTranscriptIO(
+        () =>
+          fs.open(
+            expected.path,
+            constants.O_RDONLY |
+              (process.platform === 'win32' ? 0 : constants.O_NOFOLLOW | constants.O_NONBLOCK),
+          ),
+        signal,
+        lateHandle => {
+          void lateHandle.close().catch(() => {})
+        },
       )
       try {
-        const actual = await handle.stat(),
-          current = await validate()
+        const actual = await runTranscriptIO(() => handle.stat(), signal),
+          current = await runTranscriptIO(() => validate(signal), signal)
         if (
           !actual.isFile() ||
           !same(actual, expected) ||
@@ -127,7 +137,7 @@ export function claudeTranscriptAccess(
         }
         return handle
       } catch (error) {
-        await handle.close()
+        await awaitTranscriptIO(handle.close(), signal).catch(() => {})
         throw error
       }
     },

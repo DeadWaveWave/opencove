@@ -1,3 +1,4 @@
+import { createManagedClaudeClearRuntime } from './managedClaudeClearRuntime'
 import { createAgentSpawnRuntime } from './agentSpawnRuntime'
 import { createCanvasSpawnRunner } from './createCanvasSpawnRunner'
 import { createManagedClaudeDeliveryRuntime } from './managedClaudeDeliveryRuntime'
@@ -47,9 +48,7 @@ import { ControlSurfaceAcceptedRequestOwner } from './controlSurfaceAcceptedRequ
 import { ManagedRuntimeMaintenance } from '../../../contexts/topology/application/ManagedRuntimeMaintenance'
 import { registerManagedRuntimeHandlers } from './handlers/managedRuntimeHandlers'
 import { PluginViewLifecycle } from './pluginViewLifecycle'
-
 const PTY_STREAM_DEFAULT_REPLAY_WINDOW_MAX_BYTES = 400_000
-
 export function createControlSurfaceHttpRuntime(
   options: RegisterControlSurfaceHttpServerOptions,
 ): ControlSurfaceHttpRuntime {
@@ -101,9 +100,9 @@ export function createControlSurfaceHttpRuntime(
   const pluginViews = new PluginViewLifecycle(plugins)
   const token = options.token ?? createControlToken()
   const webSessions = new WebSessionManager(resolve(options.userDataPath))
-  const invocationLifetime = new AbortController()
+  const clientLifetime = new AbortController()
   const ctx = createControlSurfaceHttpServerContext({
-    signal: invocationLifetime.signal,
+    signal: clientLifetime.signal,
     enableWebShell: options.enableWebShell === true,
     ptyProtocolVersion: PTY_STREAM_PROTOCOL_VERSION,
     replayWindowMaxBytes: PTY_STREAM_DEFAULT_REPLAY_WINDOW_MAX_BYTES,
@@ -112,7 +111,6 @@ export function createControlSurfaceHttpRuntime(
     enabled: options.enableWebShell === true,
     passwordRequired: Boolean(options.webUiPasswordHash),
   }
-
   const managedSshRuntime = createManagedSshEndpointRuntime({ appVersion })
   const managedSshOperations = new ManagedSshEndpointOperationOwner({
     preparationPort: managedSshRuntime,
@@ -175,7 +173,6 @@ export function createControlSurfaceHttpRuntime(
     agentProviderRegistry: options.agentProviderRegistry,
     appVersion,
     desktopMetadataSink: options.desktopPtyMetadataSink,
-
     disposeSessionStateWatcher: options.ptyRuntime.disposeSessionStateWatcher,
   })
   const agentProviderRegistry = terminalAgents.agentProviderRegistry
@@ -220,7 +217,16 @@ export function createControlSurfaceHttpRuntime(
       },
       hasRuntime: id => ptyStreamService.hub.isSessionActive(id),
       desktopSink: options.desktopSyncEventSink,
+      projectCommittedBinding: ({ binding }) => {
+        if (binding.runtimeSessionId && binding.tuple.resumeSessionId) {
+          ptyStreamService.hub.projectCommittedClaudeBinding(
+            binding.runtimeSessionId,
+            binding.tuple.resumeSessionId,
+          )
+        }
+      },
     })
+  const claudeClear = createManagedClaudeClearRuntime(agentHookChannels, managedClaude.owner)
   const terminalRuntimeAvailability = new TerminalRuntimeAvailability()
   let runtimeReady = false
   void plugins.start()
@@ -318,21 +324,28 @@ export function createControlSurfaceHttpRuntime(
     },
     terminalAgentActivity: terminalAgents.activity,
   })
-
   let closed = false
   let disposePromise: Promise<void> | null = null
   const listeners = new Set<ControlSurfaceHttpListener>()
   const acceptedRequests = new ControlSurfaceAcceptedRequestOwner()
+  let managedDrain: Promise<unknown> | undefined
   const beginShutdown = (): void => {
     if (closed) {
       return
     }
     closed = true
-    managedClaude.dispose()
-    turnArchive.stop()
-    invocationLifetime.abort()
-    sessionAccess.dispose()
-    spawnRuntime.dispose()
+    clientLifetime.abort()
+    const deadlineAt = performance.now() + 5000
+    managedDrain = managedClaude
+      .drainLaunches(deadlineAt)
+      .then(() => claudeClear.drain(deadlineAt))
+      .finally(() => {
+        claudeClear.dispose()
+        managedClaude.dispose()
+        turnArchive.stop()
+        sessionAccess.dispose()
+        spawnRuntime.dispose()
+      })
     plugins.beginShutdown()
     pluginViews.dispose()
     // Accepted long operations outlive HTTP handlers, but not runtime shutdown authority.
@@ -356,7 +369,6 @@ export function createControlSurfaceHttpRuntime(
       void listener.stopAccepting({ drainTimeoutMs: 0 }).catch(() => undefined)
     })
   }
-
   const handleRequest = createControlSurfaceHttpRequestHandler({
     sessionGrants: sessionAccess.grants,
     plugins,
@@ -374,7 +386,6 @@ export function createControlSurfaceHttpRuntime(
     getWebAccessPolicy: () => webAccessPolicy,
     isRuntimeClosed: () => closed,
   })
-
   const runtime: ControlSurfaceHttpRuntime = {
     token,
     appVersion,
@@ -437,10 +448,10 @@ export function createControlSurfaceHttpRuntime(
       if (disposePromise) {
         return await disposePromise
       }
-
       const retiringListeners = [...listeners]
       beginShutdown()
       disposePromise = (async () => {
+        await managedDrain
         await Promise.all(
           retiringListeners.map(async listener => {
             await listener.stopAccepting()
@@ -449,38 +460,31 @@ export function createControlSurfaceHttpRuntime(
         )
         await acceptedRequests.sealAndDrain()
         await plugins.dispose()
-
         try {
           await terminalAgents.dispose()
         } catch {
           // ignore
         }
-
         await terminalRecovery.drainBeforeShutdown()
-
         try {
           ptyStreamService.dispose()
         } catch {
           // ignore
         }
-
         try {
           await ptyRuntime.dispose()
           await ptyRuntime.drainLaunchArtifacts()
         } catch {
           // ignore
         }
-
         try {
           await managedSshOperations.dispose()
           await managedSshRuntime.dispose()
         } catch {
           // ignore
         }
-
         await terminalRecovery.dispose()
         turnArchive.dispose()
-
         try {
           commitPublisher.dispose()
           await persistence.dispose()
@@ -488,10 +492,8 @@ export function createControlSurfaceHttpRuntime(
           // ignore
         }
       })()
-
       return await disposePromise
     },
   }
-
   return runtime
 }

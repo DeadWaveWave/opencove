@@ -1,3 +1,4 @@
+import type { ClaudeBindingEvidencePort } from './claudeBindingEvidence'
 import type { ClaudeTranscriptPort } from './claudeTranscript'
 import type { PromptSubmissionEvidence } from './claudePromptEvidence'
 import type {
@@ -30,7 +31,7 @@ export interface AgentHookSpawnReservation {
   dispose: () => Promise<void>
 }
 
-export interface AgentHookChannel extends ClaudeTranscriptPort {
+export interface AgentHookChannel extends ClaudeTranscriptPort, ClaudeBindingEvidencePort {
   start: () => Promise<void>
   reserveSpawn: (options?: {
     environment?: Readonly<NodeJS.ProcessEnv>
@@ -71,6 +72,7 @@ export interface AgentHookObservationOwner<TEnvelope extends AgentHookEnvelope> 
 
 export interface PrivateHookContext {
   incarnation: string
+  credential?: object
   isCurrent: () => boolean
 }
 export interface PrivateHookObserver<TEnvelope> {
