@@ -8,6 +8,9 @@ import { snapshotFixture, type SnapshotFixture } from './managedClaudeSnapshotFi
 import { toShellWorkspaceState } from '../../../src/app/renderer/shell/hooks/useHydrateAppState.helpers'
 import { usePersistedAppState } from '../../../src/app/renderer/shell/hooks/usePersistedAppState'
 import { useWorkspaceCanvasAgentNodeLifecycle } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeLifecycle'
+import { runTaskAgentAction } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskActions.agentSession.run'
+import type { TaskActionContext } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskActions.agentSession.shared'
+import { translate } from '../../../src/app/renderer/i18n'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
 import { toPersistedState } from '../../../src/contexts/workspace/presentation/renderer/utils/persistence/toPersistedState'
 import { flushScheduledPersistedStateWriteAsync } from '../../../src/contexts/workspace/presentation/renderer/utils/persistence/schedule'
@@ -35,19 +38,57 @@ afterEach(async () => {
 })
 
 describeWithElectronNativeModules('UI Claude relaunch during normal persistence', () => {
-  it.each(
-    ['standby', 'stopped'].flatMap(status =>
-      (['resume', 'new'] as const).map(mode => ({ status, mode })),
+  it.each([
+    ...['standby', 'stopped'].flatMap(status =>
+      (['resume', 'new'] as const).map(mode => ({
+        status,
+        mode,
+        action: 'direct',
+        competing: false,
+      })),
     ),
-  )(
-    'adopts the requested $mode conversation after the initiating $status-to-restoring save commits during delayed spawn',
-    async ({ status, mode }) => {
+    ...['standby', 'stopped'].map(status => ({
+      status,
+      mode: 'new' as const,
+      action: 'task-reuse',
+      competing: false,
+    })),
+    { status: 'standby', mode: 'new' as const, action: 'task-reuse', competing: true },
+  ])(
+    '$action $mode from $status survives its preparatory save and fences competing=$competing',
+    async ({ status, mode, action, competing }) => {
       f = await snapshotFixture(':memory:', null, false, 'launch')
       const fixture = f
       fixture.state.workspaces[0].nodes[0].status = status
-      await fixture.store.writeAppState(fixture.state)
+      const initialState = normalizePersistedAppState({
+        ...fixture.state,
+        workspaces: fixture.state.workspaces.map(workspace => ({
+          ...workspace,
+          nodes: [
+            ...workspace.nodes,
+            ...(action === 'task-reuse'
+              ? [
+                  {
+                    id: 'task',
+                    kind: 'task',
+                    title: 'Next task',
+                    position: { x: 0, y: 500 },
+                    width: 400,
+                    height: 300,
+                    task: {
+                      requirement: 'Next requirement',
+                      status: 'todo',
+                      linkedAgentNodeId: 'agent',
+                    },
+                  },
+                ]
+              : []),
+          ],
+        })),
+      })!
+      await fixture.store.writeAppState(initialState)
       const workspace = toShellWorkspaceState(
-        fixture.state.workspaces[0] as unknown as PersistedWorkspaceState,
+        initialState.workspaces[0] as unknown as PersistedWorkspaceState,
       )
       const entered = deferred<void>(),
         release = deferred<void>()
@@ -86,24 +127,25 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
           () => toPersistedState([{ ...workspace, nodes: nodesRef.current }], workspace.id),
           [],
         )
-        usePersistedAppState({
+        const persistence = usePersistedAppState({
           workspaces,
           activeWorkspaceId: workspace.id,
           agentSettings: DEFAULT_AGENT_SETTINGS,
           isHydrated: true,
           producePersistedState: produce,
         })
+        const setCanvasNodes: TaskActionContext['setNodes'] = update => {
+          const next = update(nodesRef.current)
+          nodesRef.current = next
+          setNodes(next)
+        }
         const lifecycle = useWorkspaceCanvasAgentNodeLifecycle({
           workspaceId: workspace.id,
           workspacePath: workspace.path,
           nodesRef,
           spacesRef: { current: workspace.spaces },
           onSpacesChange: vi.fn(),
-          setNodes: update => {
-            const next = update(nodesRef.current)
-            nodesRef.current = next
-            setNodes(next)
-          },
+          setNodes: setCanvasNodes,
           bumpAgentLaunchToken: () => 1,
           isAgentLaunchTokenCurrent: () => true,
           agentFullAccess: false,
@@ -113,12 +155,34 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
           terminalDisplayMetrics: { fontSize: 13 },
           agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
         })
-        return { ...lifecycle, nodesRef }
+        return {
+          ...lifecycle,
+          nodesRef,
+          runTask: () =>
+            runTaskAgentAction('task', {
+              nodesRef,
+              spacesRef: { current: workspace.spaces },
+              onSpacesChange: vi.fn(),
+              setNodes: setCanvasNodes,
+              createNodeForSession: vi.fn(),
+              buildAgentNodeTitle: () => 'Claude',
+              launchAgentInNode: lifecycle.launchAgentInNode,
+              agentSettings: DEFAULT_AGENT_SETTINGS,
+              workspaceId: workspace.id,
+              workspacePath: workspace.path,
+              terminalDisplayMetrics: { fontSize: 13 },
+              t: translate,
+              onRequestPersistFlush: persistence.requestPersistFlush,
+            }),
+        }
       })
       let launch!: ReturnType<typeof hook.result.current.launchAgentInNode>
       try {
         await act(async () => {
-          launch = hook.result.current.launchAgentInNode('agent', mode)
+          launch =
+            action === 'task-reuse'
+              ? hook.result.current.runTask()
+              : hook.result.current.launchAgentInNode('agent', mode)
           await entered.promise
         })
         // Exercise the actual scheduler's debounce, not an explicit persist flush.
@@ -131,11 +195,33 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
             .status,
         ).toBe('restoring')
         expect(fixture.store.observeManagedClaudeNode('agent').binding).toBeNull()
+        const prepared = normalizePersistedAppState(await fixture.store.readAppState())!
+        expect(prepared.workspaces[0].nodes[0].agent).toMatchObject({
+          resumeSessionId: 'initial-conversation',
+          resumeSessionIdVerified: true,
+        })
+        if (competing) {
+          Object.assign(prepared.workspaces[0].nodes[0].agent!, {
+            resumeSessionId: 'competing-B',
+            resumeSessionIdVerified: true,
+          })
+          await fixture.store.writeAppState(prepared)
+        }
         await act(async () => {
           release.resolve()
           await launch
         })
         const binding = fixture.store.observeManagedClaudeNode('agent').binding
+        if (competing) {
+          expect(binding).toBeNull()
+          expect(fixture.alive.size).toBe(0)
+          expect(
+            normalizePersistedAppState(await fixture.store.readAppState())!.workspaces[0].nodes[0]
+              .agent!.resumeSessionId,
+          ).toBe('competing-B')
+          expect(hook.result.current.nodesRef.current[0].data.lastError).toContain('changed')
+          return
+        }
         const target = mode === 'resume' ? 'initial-conversation' : 'new-conversation'
         expect(binding).toMatchObject({
           tuple: { resumeSessionId: target, resumeSessionIdVerified: true },
@@ -147,8 +233,10 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
           agent: { resumeSessionId: target, resumeSessionIdVerified: true },
         })
       } finally {
-        release.resolve()
-        await launch
+        await act(async () => {
+          release.resolve()
+          await launch
+        })
         hook.unmount()
       }
     },

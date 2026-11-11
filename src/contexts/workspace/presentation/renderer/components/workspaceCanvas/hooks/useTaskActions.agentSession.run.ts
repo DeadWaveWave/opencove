@@ -82,7 +82,9 @@ function reuseLinkedAgentForTask({
               executionDirectory: agentDirectory,
               expectedDirectory: agentDirectory,
               launchMode: 'new',
-              ...(!managed ? clearResumeSessionBinding() : {}),
+              ...(!managed && node.data.agent.provider !== 'claude-code'
+                ? clearResumeSessionBinding()
+                : {}),
             },
             lastError: null,
           },
