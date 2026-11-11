@@ -334,7 +334,8 @@ test('session grants preserve agent workflows and refuse human decisions', async
       const denied = await command('api', 'call', id, '--input-file', inputPath, '-o', 'json')
       expect(denied).toMatch(/\bexit=4\b/)
       expect(denied.replaceAll('\n', '')).toContain(
-        id === 'session.launchAgent' ? 'field_denied' : 'operation_denied',
+        // Agent sessions start runtimes only through node create (bounded spawning).
+        id === 'session.launchAgent' ? 'node_create_required' : 'operation_denied',
       )
     }
     for (const prompt of ['logout', 'update', 'resume', 'Refactor']) {
