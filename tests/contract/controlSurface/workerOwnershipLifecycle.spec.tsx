@@ -2,6 +2,7 @@
 import { act } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { workerOwnershipCompatibilityCases } from '../../support/workerOwnershipCompatibility'
+import { checkLegacyPreparationInterleaving } from '../../support/managedClaudePreparationInterleaving'
 import { rendererLifecycleFixture } from '../../support/managedClaudeRendererLifecycle'
 import { compatibilityFixture } from '../../unit/contexts/managedClaudeLaunchCompatibility.helpers'
 import { admitManagedClaudeLaunch } from '../../../src/app/main/controlSurface/managedClaudeLaunchRuntime'
@@ -27,6 +28,14 @@ afterEach(() => {
   useAppStore.setState(originalState, true)
 })
 const actions = ['creation', 'relaunch', 'switch', 'task-reuse', 'cold-prepare'] as const
+it.each(
+  workerOwnershipCompatibilityCases
+    .filter(row => row.generation === 'PR3b' && row.profile === 'unowned')
+    .flatMap(row => (['mount', 'fallback'] as const).map(phase => ({ ...row, phase }))),
+)(
+  'fences legacy cold prepare at $phase with concurrent adoption=$adoption client=$client',
+  checkLegacyPreparationInterleaving,
+)
 it.each(
   workerOwnershipCompatibilityCases.flatMap(row => actions.map(action => ({ ...row, action }))),
 )(

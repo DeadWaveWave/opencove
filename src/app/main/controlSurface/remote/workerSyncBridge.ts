@@ -38,6 +38,9 @@ export function registerWorkerSyncBridge(endpointResolver: ControlSurfaceRemoteE
 
   const connectOnce = async (): Promise<void> => {
     const endpoint = await endpointResolver()
+    if (disposed) {
+      return
+    }
     if (!endpoint) {
       throw new WorkerEndpointUnavailableError()
     }
@@ -50,6 +53,10 @@ export function registerWorkerSyncBridge(endpointResolver: ControlSurfaceRemoteE
       },
       signal: abortController.signal,
     })
+    if (disposed) {
+      await response.body?.cancel().catch(() => undefined)
+      return
+    }
 
     if (!response.ok) {
       throw new Error(`sync bridge failed: HTTP ${response.status}`)
@@ -108,6 +115,11 @@ export function registerWorkerSyncBridge(endpointResolver: ControlSurfaceRemoteE
 
     await new Promise<void>((resolve, reject) => {
       const handleChunk = (chunk: unknown): void => {
+        if (disposed) {
+          stream.destroy()
+          resolve()
+          return
+        }
         buffer += String(chunk)
 
         while (true) {
@@ -146,11 +158,6 @@ export function registerWorkerSyncBridge(endpointResolver: ControlSurfaceRemoteE
             currentDataLines.push(line.slice('data:'.length).trimStart())
             continue
           }
-        }
-
-        if (disposed) {
-          stream.destroy()
-          resolve()
         }
       }
 

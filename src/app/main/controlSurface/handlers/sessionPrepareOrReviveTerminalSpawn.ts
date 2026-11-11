@@ -264,6 +264,7 @@ export async function spawnFallbackTerminal(options: {
     throw new RemoteWorkerBindingUnresolvedError(launchContext)
   }
 
+  options.ctx.assertActive?.()
   if (launchContext.mountId) {
     const spawned = await invokeCommand<SpawnTerminalResult>(
       options.controlSurface,

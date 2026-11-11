@@ -171,4 +171,63 @@ describe('worker sync bridge', () => {
       bridge.dispose()
     }
   })
+  it('does not connect after disposal during endpoint resolution', async () => {
+    let release!: (value: { hostname: string; port: number; token: string }) => void
+    const endpoint = new Promise<{ hostname: string; port: number; token: string }>(resolve => {
+      release = resolve
+    })
+    const fetchMock = vi.fn(async () => ({ ok: true, body: new MockReadableStream() }))
+    vi.stubGlobal('fetch', fetchMock)
+    vi.spyOn(Readable, 'fromWeb').mockImplementation(value => value as unknown as Readable)
+    const bridge = registerWorkerSyncBridge(() => endpoint)
+    bridge.dispose()
+    release({ hostname: 'localhost', port: 4310, token: 'test' })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('cancels a response that arrives after disposal without installing its stream', async () => {
+    let release!: (value: { ok: boolean; body: { cancel: () => Promise<void> } }) => void
+    const response = new Promise<{ ok: boolean; body: { cancel: () => Promise<void> } }>(
+      resolve => {
+        release = resolve
+      },
+    )
+    const fetchMock = vi.fn(() => response),
+      cancel = vi.fn(async () => {})
+    vi.stubGlobal('fetch', fetchMock)
+    const fromWeb = vi
+      .spyOn(Readable, 'fromWeb')
+      .mockImplementation(value => value as unknown as Readable)
+    const bridge = registerWorkerSyncBridge(async () => ({
+      hostname: 'localhost',
+      port: 4310,
+      token: 'test',
+    }))
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+    bridge.dispose()
+    release({ ok: true, body: { cancel } })
+    await vi.waitFor(() => expect(cancel).toHaveBeenCalledOnce())
+    expect(fromWeb).not.toHaveBeenCalled()
+    expect(sendMock).not.toHaveBeenCalled()
+  })
+
+  it('drops buffered stream events after disposal', async () => {
+    const body = Object.assign(new MockReadableStream(), { destroy: vi.fn() })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: true, body })),
+    )
+    vi.spyOn(Readable, 'fromWeb').mockImplementation(value => value as unknown as Readable)
+    const bridge = registerWorkerSyncBridge(async () => ({
+      hostname: 'localhost',
+      port: 4310,
+      token: 'test',
+    }))
+    await vi.waitFor(() => expect(body.listenerCount('data')).toBe(1))
+    bridge.dispose()
+    body.emit('data', 'event: opencove.sync\ndata: {"type":"resync_required","revision":4}\n\n')
+    expect(sendMock).not.toHaveBeenCalled()
+  })
 })

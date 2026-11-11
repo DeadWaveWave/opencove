@@ -58,3 +58,31 @@ it('requires private bearer and uses the current store contract', async () => {
   )
   expect(f.end).toHaveBeenLastCalledWith(expect.stringContaining('"revision":8'))
 })
+
+it('rechecks the freeze after deferred store acquisition before committing a rebind', async () => {
+  vi.stubEnv('NODE_ENV', 'test')
+  vi.stubEnv('OPENCOVE_TEST_ENABLE_MANAGED_CLAUDE_REBIND', '1')
+  vi.stubEnv('OPENCOVE_MANAGED_CLAUDE_BINDINGS', '1')
+  const f = fixture()
+  let release!: () => void
+  const barrier = new Promise<void>(resolve => {
+    release = resolve
+  })
+  const originalGet = f.getStore.getMockImplementation()!
+  f.getStore.mockImplementation(async () => {
+    await barrier
+    return originalGet()
+  })
+  const pending = tryManagedClaudeTestHook({ ...f, privateBearer: true })
+  f.req.emit(
+    'data',
+    JSON.stringify({ nodeId: 'node', resumeSessionId: '00000000-0000-4000-8000-000000000001' }),
+  )
+  f.req.emit('end')
+  await vi.waitFor(() => expect(f.getStore).toHaveBeenCalledOnce())
+  vi.stubEnv('OPENCOVE_MANAGED_CLAUDE_BINDINGS', '0')
+  release()
+  expect(await pending).toBe(true)
+  expect(f.commit).not.toHaveBeenCalled()
+  expect(f.end).toHaveBeenCalledWith(expect.stringContaining('writesDisabled'))
+})

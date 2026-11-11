@@ -26,13 +26,39 @@ export function assertManagedClaudeMutationAllowed(
   }
 }
 
+/** A snapshot returned across an await cannot authorize an effect on a node's old runtime. */
+export function assertNodeRuntimeBindingCurrent(
+  store: PersistenceStore,
+  targetNodeId: string,
+  sessionId: string,
+): void {
+  if (store.observeManagedClaudeNode) {
+    const current = store.observeManagedClaudeNode(targetNodeId)
+    if (current.retired || current.nodeRuntimeSessionId !== sessionId) {
+      throw createAppError('common.invalid_input', {
+        debugMessage:
+          'This node now uses a different session. Refresh the node before trying again.',
+      })
+    }
+  }
+}
+
 /** Synchronous ledger lookup immediately before an exact-runtime public kill. */
 export function assertManagedClaudeStopAllowed(
   ctx: ControlSurfaceContext,
   store: PersistenceStore,
   sessionId: string,
+  targetNodeId?: string,
 ): void {
+  if (targetNodeId) {
+    assertNodeRuntimeBindingCurrent(store, targetNodeId, sessionId)
+  }
   const nodeId = store.managedClaudeNodeIdForRuntime?.(sessionId)
+  if (targetNodeId && nodeId && nodeId !== targetNodeId) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Node session changed before stop; read it again.',
+    })
+  }
   if (nodeId) {
     assertManagedClaudeMutationAllowed(ctx, nodeId)
   }

@@ -37,6 +37,7 @@ export async function tryManagedClaudeTestHook(input: {
   }
   try {
     const payload = inputSchema.parse(await readJsonBody(input.req))
+    const store = await input.getStore()
     assertManagedClaudeMutationAllowed(
       { clientFeatures: { managedClaudeResumeBindingV1: true } } as Parameters<
         typeof assertManagedClaudeMutationAllowed
@@ -44,7 +45,6 @@ export async function tryManagedClaudeTestHook(input: {
       payload.nodeId,
       managedClaudeWritesEnabled(),
     )
-    const store = await input.getStore()
     const binding = store.observeManagedClaudeNode?.(payload.nodeId).binding
     if (!binding?.runtimeSessionId || !store.commitManagedClaudeRebind) {
       throw createAppError('session.not_found')

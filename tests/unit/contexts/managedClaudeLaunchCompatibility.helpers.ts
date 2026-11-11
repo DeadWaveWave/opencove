@@ -34,6 +34,7 @@ export function compatibilityFixture(
     enabled?: boolean
     writesEnabled?: boolean
     live?: boolean
+    hasRuntime?: (id: string) => boolean
     retired?: boolean
     provider?: 'claude-code' | 'codex'
     persisted?: boolean
@@ -103,7 +104,7 @@ export function compatibilityFixture(
   const runtime = createManagedClaudeLaunchRuntime({
     getPersistenceStore,
     killExactRuntime: kill,
-    hasRuntime: () => options.live ?? true,
+    hasRuntime: id => options.hasRuntime?.(id) ?? options.live ?? true,
     writesEnabled: () => options.writesEnabled ?? true,
     adoptionEnabled: () => options.enabled ?? false,
   })

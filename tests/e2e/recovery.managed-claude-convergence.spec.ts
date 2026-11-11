@@ -120,11 +120,22 @@ test('managed Claude stale publications retain layout and cold-resume the curren
     ) as { hostname: string; port: number; token: string }
     const webUrl = `http://${connection.hostname}:${connection.port}/?token=${connection.token}`
     const web = await browser.newPage()
-    await holdPrepare(web)
+    await holdPrepare(web, agent.id)
     await web.goto(webUrl!, { waitUntil: 'domcontentloaded' })
     await web.waitForFunction(() =>
-      Boolean((window as unknown as { __heldManagedPrepare?: boolean }).__heldManagedPrepare),
+      Boolean((window as unknown as { __heldManagedPrepare?: unknown }).__heldManagedPrepare),
     )
+    const held = await web.evaluate(
+      () => (window as unknown as { __heldManagedPrepare?: unknown }).__heldManagedPrepare,
+    )
+    expect(held).toMatchObject({
+      nodeId: agent.id,
+      managedClaudeBinding: {
+        activationId: initial.activationId,
+        runtimeSessionId: initial.runtimeSessionId,
+        tuple: initial.tuple,
+      },
+    })
     const stale = await web.evaluate(
       async () => (await window.opencoveApi.persistence.readAppState()).state,
     )

@@ -46,10 +46,9 @@ export function registerSessionQueryHandlers(
   registerOperation(controlSurface, sessionKillOperation, {
     handle: async (ctx, payload): Promise<void> => {
       if (payload.nodeId !== undefined) {
+        const store = await deps.getPersistenceStore()
         const { value } = await resolveNode(payload.nodeId)
-        const current = normalizePersistedAppState(
-          await (await deps.getPersistenceStore()).readAppState(),
-        )
+        const current = normalizePersistedAppState(await store.readAppState())
         const stillBound = current?.workspaces.some(workspace =>
           workspace.nodes.some(
             node => node.id === payload.nodeId && node.sessionId === value.sessionId,
@@ -63,9 +62,8 @@ export function registerSessionQueryHandlers(
         if (!deps.ptyStreamHub.hasSession(value.sessionId)) {
           throw createAppError('session.not_found')
         }
-        const store = await deps.getPersistenceStore()
         ctx.assertActive?.()
-        assertManagedClaudeStopAllowed(ctx, store, value.sessionId)
+        assertManagedClaudeStopAllowed(ctx, store, value.sessionId, payload.nodeId)
         deps.ptyRuntime.kill(value.sessionId)
         return
       }

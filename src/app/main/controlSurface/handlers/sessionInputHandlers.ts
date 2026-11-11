@@ -1,4 +1,7 @@
-import { assertManagedClaudeStopAllowed } from '../managedClaudeCompatibility'
+import {
+  assertManagedClaudeStopAllowed,
+  assertNodeRuntimeBindingCurrent,
+} from '../managedClaudeCompatibility'
 import { registerOperation } from '../registerOperation'
 import {
   sessionStopNodeOperation,
@@ -21,10 +24,8 @@ export function registerSessionInputHandlers(
     ptyRuntime: Pick<MultiEndpointPtyRuntime, 'kill' | 'getSessionRoute'>
   },
 ) {
-  async function binding(nodeId: string) {
-    const state = normalizePersistedAppState(
-      await (await deps.getPersistenceStore()).readAppState(),
-    )
+  async function binding(nodeId: string, store: PersistenceStore) {
+    const state = normalizePersistedAppState(await store.readAppState())
     const node = state ? findNodeForNodeControl(state.workspaces, nodeId)?.node : null
     if (!node || !['agent', 'terminal'].includes(node.kind) || !node.sessionId) {
       throw createAppError('session.not_found')
@@ -33,7 +34,8 @@ export function registerSessionInputHandlers(
   }
   registerOperation(control, sessionStopNodeOperation, {
     async handle(ctx, input) {
-      const bound = await binding(input.nodeId)
+      const store = await deps.getPersistenceStore()
+      const bound = await binding(input.nodeId, store)
       if (bound.sessionId !== input.sessionId) {
         throw createAppError('common.invalid_input', {
           debugMessage: 'Node session changed before stop; read it again.',
@@ -81,9 +83,8 @@ export function registerSessionInputHandlers(
           })
         }
       }
-      const store = await deps.getPersistenceStore()
       ctx.assertActive?.()
-      assertManagedClaudeStopAllowed(ctx, store, input.sessionId)
+      assertManagedClaudeStopAllowed(ctx, store, input.sessionId, input.nodeId)
       deps.ptyRuntime.kill(input.sessionId)
       return { ...input, requested: true, stopped: true }
     },
@@ -92,15 +93,19 @@ export function registerSessionInputHandlers(
   registerOperation(control, sessionWriteNodeOperation, {
     async handle(ctx, input) {
       const sessionId = input.sessionId
-      if ((await binding(input.nodeId)).sessionId !== sessionId) {
+      const store = await deps.getPersistenceStore()
+      if ((await binding(input.nodeId, store)).sessionId !== sessionId) {
         throw new Error('Node session changed before input; read it again.')
       }
       await deps.ptyStreamHub.writeAutomation({
         sessionId,
         data: input.data,
-        assertActive: () => ctx.assertActive?.(),
+        assertActive: () => {
+          ctx.assertActive?.()
+          assertNodeRuntimeBindingCurrent(store, input.nodeId, sessionId)
+        },
         validateBinding: async () => {
-          if ((await binding(input.nodeId)).sessionId !== sessionId) {
+          if ((await binding(input.nodeId, store)).sessionId !== sessionId) {
             throw new Error('Node session changed before input; read it again.')
           }
         },

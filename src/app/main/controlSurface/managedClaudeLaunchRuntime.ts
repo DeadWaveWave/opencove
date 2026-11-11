@@ -62,6 +62,7 @@ export function createManagedClaudeLaunchRuntime(deps: {
   >[0]['publishCommittedActivation']
 }) {
   let store: PersistenceStore | undefined
+  let disposed = false
   const pendingLaunches = new Map<string, { promise: Promise<void>; resolve: () => void }>()
   const preparing = new Map<string, ManagedClaudeLaunchAttempt>()
   let unsubscribe: (() => void) | undefined
@@ -84,6 +85,9 @@ export function createManagedClaudeLaunchRuntime(deps: {
   })
   const ready = async () => {
     store = await deps.getPersistenceStore()
+    if (disposed) {
+      throw createAppError('agent.managed_launch_rejected', { details: { reason: 'superseded' } })
+    }
     if (!unsubscribe && store.onAppStateCommitted) {
       unsubscribe = store.onAppStateCommitted(event => {
         owner.noteNodesDeleted(event.removedNodeIds)
@@ -167,6 +171,7 @@ export function createManagedClaudeLaunchRuntime(deps: {
       if (observation?.binding) {
         await owner.assertReady(attempt)
       }
+      owner.assertCurrent(attempt)
       attempt.context = observation?.context
       try {
         return await scope.run(
@@ -185,6 +190,7 @@ export function createManagedClaudeLaunchRuntime(deps: {
       }
     },
     dispose: () => {
+      disposed = true
       unsubscribe?.()
       owner.dispose()
       for (const pending of pendingLaunches.values()) {
@@ -433,7 +439,7 @@ export function createManagedClaudeLaunchRuntime(deps: {
 
 export function assertManagedClaudeLaunchCurrent(): void {
   const current = scope.getStore()
-  if (current?.phase === 'managed') {
+  if (current && current.phase !== 'legacy') {
     current.owner.assertCurrent(current.attempt)
   }
 }

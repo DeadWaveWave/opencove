@@ -26,6 +26,7 @@ export function createCanvasSpawnRunner(deps: {
     if (request.id === 'session.prepareOrRevive') {
       const input = payload as { workspaceId: string; nodeIds?: string[] }
       await deps.managedClaude.ready()
+      context.assertActive?.()
       return execute({
         ...context,
         managedClaudePreparation: {
