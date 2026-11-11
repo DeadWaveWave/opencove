@@ -40,6 +40,17 @@ function getDateTimeFormatter(language: string): Intl.DateTimeFormat {
 
 export function toErrorMessage(error: unknown): string {
   if (error instanceof OpenCoveAppError || isAppErrorDescriptor(error)) {
+    if (error.code === 'agent.managed_launch_commit_failed') {
+      return translate('messages.managedAgentLaunchUncertain')
+    }
+    if (error.code === 'agent.managed_launch_rejected') {
+      const details = error.details as { reason?: string } | undefined
+      return translate(
+        details?.reason === 'resumeUnavailable'
+          ? 'messages.managedAgentResumeUnavailable'
+          : 'messages.managedAgentChanged',
+      )
+    }
     const parent = nodeParentErrorPresentation(error)
     if (parent) {
       return `${translate(`messages.${parent.key}`)} ${translate(`messages.${parent.key}Hint`)}`

@@ -1,6 +1,11 @@
+import { resolvePreparationAgentBinding } from './sessionPrepareOrReviveAgentBinding'
+import {
+  rethrowManagedClaudeLaunchError,
+  assertManagedClaudeLaunchCurrent,
+} from '../managedClaudeLaunchRuntime'
+import { ABSENT_MANAGED_CLAUDE_BINDING } from '../../../../shared/contracts/managedClaudeLaunch'
 import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import {
-  clearResumeSessionBinding,
   isResumeSessionBindingVerified,
   resolveLaunchedAgentResumeBinding,
 } from '../../../../contexts/agent/domain/agentResumeBinding'
@@ -33,14 +38,13 @@ import {
 } from './sessionPrepareOrReviveShared'
 import {
   resolvePrepareOrReviveLaunchContext,
-  spawnFallbackTerminal,
+  spawnPreparedFallbackTerminal,
 } from './sessionPrepareOrReviveTerminalSpawn'
 import { resolveNodeInitialPtyGeometry } from './sessionPrepareOrReviveGeometry'
 import {
   CodexWriterLockRecoveryExhaustedError,
   launchCodexResumeWithRecovery,
 } from './sessionPrepareOrReviveCodex'
-import { resolvePendingResumeSessionId } from './sessionPrepareOrReviveResumeBinding'
 export { resolveNodeInitialPtyGeometry } from './sessionPrepareOrReviveGeometry'
 export { resolvePrepareOrReviveResumeLocateTimeoutMs } from './sessionPrepareOrReviveResumeBinding'
 export { prepareTerminalNode } from './sessionPrepareOrReviveTerminalPreparation'
@@ -57,6 +61,10 @@ export async function prepareAgentNode(options: {
   ptyRuntime?: Pick<ControlSurfacePtyRuntime, 'onData' | 'onExit' | 'kill'>
 }): Promise<PreparedRuntimeNodeResult> {
   const { controlSurface, ctx, workspace, node, space, settings } = options
+  const binding = options.store.observeManagedClaudeNode?.(node.id).binding
+  if (binding) {
+    options = { ...options, agent: { ...options.agent, ...binding.tuple } }
+  }
   const scrollback: string | null = null
   const terminalProfileId = resolveNodeProfileId(node) ?? settings.defaultTerminalProfileId ?? null
   const initialGeometry = resolveNodeInitialPtyGeometry(node, settings, options.agent.provider)
@@ -66,25 +74,16 @@ export async function prepareAgentNode(options: {
     Object.keys(workspaceEnv).length > 0 ? { ...agentEnv, ...workspaceEnv } : agentEnv
   const hasActiveStatus = isActiveAgentStatus(node.status)
   const hasRecoverableStatus = isRecoverableAgentWindowStatus(node.status)
-  const resolvedPendingResumeSessionId =
-    hasRecoverableStatus && !isResumeSessionBindingVerified(options.agent)
-      ? await resolvePendingResumeSessionId(node, options.agent)
-      : null
-  const sanitizedAgent = resolvedPendingResumeSessionId
-    ? {
-        ...options.agent,
-        resumeSessionId: resolvedPendingResumeSessionId,
-        resumeSessionIdVerified: true,
-      }
-    : isResumeSessionBindingVerified(options.agent)
-      ? options.agent
-      : {
-          ...options.agent,
-          ...clearResumeSessionBinding(),
-        }
+  const sanitizedAgent = await resolvePreparationAgentBinding(
+    node,
+    options.agent,
+    hasRecoverableStatus,
+    Boolean(binding),
+  )
   const shouldAutoResumeAgent =
     hasRecoverableStatus && isResumeSessionBindingVerified(sanitizedAgent)
   const shouldRelaunchBlankAgent =
+    !binding &&
     hasRecoverableStatus &&
     !isResumeSessionBindingVerified(sanitizedAgent) &&
     sanitizedAgent.prompt.trim().length === 0
@@ -96,6 +95,7 @@ export async function prepareAgentNode(options: {
     space,
     cwd: sanitizedAgent.executionDirectory,
   })
+  assertManagedClaudeLaunchCurrent()
   const agentExecutionDirectory = agentLaunchContext.workingDirectory
   const agentExpectedDirectory = agentLaunchContext.workingDirectory
 
@@ -114,7 +114,7 @@ export async function prepareAgentNode(options: {
       recoveryIssue: 'remote_worker_unavailable',
       scrollback,
       terminalGeometry: node.terminalGeometry,
-      workerBinding: agentLaunchContext.workerBinding,
+      workerBinding: binding ? node.workerBinding : agentLaunchContext.workerBinding,
       executionDirectory: agentExecutionDirectory,
       expectedDirectory: agentExpectedDirectory,
       agent: {
@@ -137,6 +137,14 @@ export async function prepareAgentNode(options: {
         {
           id: 'session.launchAgentInMount',
           payload: {
+            ...(sanitizedAgent.provider === 'claude-code' && !isRemoteLaunchContext
+              ? {
+                  intent:
+                    binding || mode === 'resume'
+                      ? { kind: 'resumeCurrent' }
+                      : { kind: 'launchNew', expected: ABSENT_MANAGED_CLAUDE_BINDING },
+                }
+              : {}),
             mountId: agentLaunchContext.mountId,
             cwdUri: toFileUri(agentExecutionDirectory),
             prompt: sanitizedAgent.prompt,
@@ -163,6 +171,14 @@ export async function prepareAgentNode(options: {
       {
         id: 'session.launchAgent',
         payload: {
+          ...(sanitizedAgent.provider === 'claude-code' && !isRemoteLaunchContext
+            ? {
+                intent:
+                  binding || mode === 'resume'
+                    ? { kind: 'resumeCurrent' }
+                    : { kind: 'launchNew', expected: ABSENT_MANAGED_CLAUDE_BINDING },
+              }
+            : {}),
           cwd: agentExecutionDirectory,
           prompt: sanitizedAgent.prompt,
           provider: sanitizedAgent.provider,
@@ -179,6 +195,19 @@ export async function prepareAgentNode(options: {
     )
   }
 
+  const spawnFallback = () =>
+    spawnPreparedFallbackTerminal({
+      controlSurface,
+      ctx,
+      workspace,
+      node,
+      space,
+      cwd: agentExecutionDirectory,
+      profileId: terminalProfileId,
+      geometry: initialGeometry,
+      launchContext: agentLaunchContext,
+    })
+
   if (shouldAutoResumeAgent) {
     try {
       const launched =
@@ -190,7 +219,14 @@ export async function prepareAgentNode(options: {
               ...(options.ptyRuntime ? { ptyRuntime: options.ptyRuntime } : {}),
             })
           : await invokeAgentLaunch('resume')
+      const ownsNode = binding || launched.managedClaudeLifecycle?.binding.nodeSeen
       return toPreparedNodeResult(node, {
+        ...(launched.managedClaudeLifecycle
+          ? {
+              managedClaudeLifecycle: launched.managedClaudeLifecycle,
+              managedClaudeBinding: launched.managedClaudeLifecycle.binding,
+            }
+          : {}),
         recoveryState: 'revived',
         sessionId: launched.sessionId,
         isLiveSessionReattach: false,
@@ -205,7 +241,7 @@ export async function prepareAgentNode(options: {
         recoveryIssue: null,
         scrollback,
         terminalGeometry: initialGeometry,
-        workerBinding: agentLaunchContext.workerBinding,
+        workerBinding: ownsNode ? node.workerBinding : agentLaunchContext.workerBinding,
         executionDirectory: agentExecutionDirectory,
         expectedDirectory: agentExpectedDirectory,
         agent: {
@@ -214,27 +250,26 @@ export async function prepareAgentNode(options: {
           expectedDirectory: agentExpectedDirectory,
           effectiveModel: launched.effectiveModel,
           launchMode: 'resume',
-          resumeSessionId: sanitizedAgent.resumeSessionId,
-          resumeSessionIdVerified: true,
+          ...(launched.managedClaudeLifecycle?.binding.tuple ?? {
+            resumeSessionId: sanitizedAgent.resumeSessionId,
+            resumeSessionIdVerified: true,
+          }),
         },
       })
     } catch (error) {
+      rethrowManagedClaudeLaunchError(error)
       const isWriterLockConflict = error instanceof CodexWriterLockRecoveryExhaustedError
       try {
-        const spawned = await spawnFallbackTerminal({
-          controlSurface,
-          ctx,
-          workspace,
-          node,
-          space,
-          cwd: agentExecutionDirectory,
-          profileId: terminalProfileId,
-          geometry: initialGeometry,
-          launchContext: agentLaunchContext,
-        })
+        const spawned = await spawnFallback()
         return toPreparedNodeResult(node, {
           recoveryState: 'fallback_terminal',
           sessionId: spawned.sessionId,
+          ...('managedClaudeLifecycle' in spawned
+            ? {
+                managedClaudeLifecycle: spawned.managedClaudeLifecycle,
+                managedClaudeBinding: spawned.managedClaudeBinding,
+              }
+            : {}),
           isLiveSessionReattach: false,
           profileId: spawned.profileId ?? terminalProfileId,
           runtimeKind: spawned.runtimeKind ?? resolveNodeRuntimeKind(node),
@@ -248,7 +283,7 @@ export async function prepareAgentNode(options: {
           recoveryIssue: isWriterLockConflict ? 'codex_writer_locked' : null,
           scrollback,
           terminalGeometry: initialGeometry,
-          workerBinding: spawned.workerBinding,
+          workerBinding: binding ? node.workerBinding : spawned.workerBinding,
           executionDirectory: spawned.cwd,
           expectedDirectory: spawned.cwd,
           agent: {
@@ -258,6 +293,7 @@ export async function prepareAgentNode(options: {
           },
         })
       } catch (fallbackError) {
+        rethrowManagedClaudeLaunchError(fallbackError)
         const remoteUnavailable = isRemoteLaunchContext && !isWriterLockConflict
         return toPreparedNodeResult(node, {
           recoveryState: 'fallback_terminal',
@@ -280,7 +316,7 @@ export async function prepareAgentNode(options: {
               : null,
           scrollback,
           terminalGeometry: node.terminalGeometry,
-          workerBinding: agentLaunchContext.workerBinding,
+          workerBinding: binding ? node.workerBinding : agentLaunchContext.workerBinding,
           executionDirectory: agentExecutionDirectory,
           expectedDirectory: agentExpectedDirectory,
           agent: {
@@ -296,7 +332,14 @@ export async function prepareAgentNode(options: {
   if (shouldRelaunchBlankAgent) {
     try {
       const launched = await invokeAgentLaunch('new')
+      const ownsNode = binding || launched.managedClaudeLifecycle?.binding.nodeSeen
       return toPreparedNodeResult(node, {
+        ...(launched.managedClaudeLifecycle
+          ? {
+              managedClaudeLifecycle: launched.managedClaudeLifecycle,
+              managedClaudeBinding: launched.managedClaudeLifecycle.binding,
+            }
+          : {}),
         recoveryState: 'restarted',
         sessionId: launched.sessionId,
         isLiveSessionReattach: false,
@@ -310,7 +353,7 @@ export async function prepareAgentNode(options: {
         lastError: null,
         scrollback,
         terminalGeometry: initialGeometry,
-        workerBinding: agentLaunchContext.workerBinding,
+        workerBinding: ownsNode ? node.workerBinding : agentLaunchContext.workerBinding,
         executionDirectory: agentExecutionDirectory,
         expectedDirectory: agentExpectedDirectory,
         agent: {
@@ -327,21 +370,18 @@ export async function prepareAgentNode(options: {
         },
       })
     } catch (error) {
+      rethrowManagedClaudeLaunchError(error)
       try {
-        const spawned = await spawnFallbackTerminal({
-          controlSurface,
-          ctx,
-          workspace,
-          node,
-          space,
-          cwd: agentExecutionDirectory,
-          profileId: terminalProfileId,
-          geometry: initialGeometry,
-          launchContext: agentLaunchContext,
-        })
+        const spawned = await spawnFallback()
         return toPreparedNodeResult(node, {
           recoveryState: 'fallback_terminal',
           sessionId: spawned.sessionId,
+          ...('managedClaudeLifecycle' in spawned
+            ? {
+                managedClaudeLifecycle: spawned.managedClaudeLifecycle,
+                managedClaudeBinding: spawned.managedClaudeBinding,
+              }
+            : {}),
           isLiveSessionReattach: false,
           profileId: spawned.profileId ?? terminalProfileId,
           runtimeKind: spawned.runtimeKind ?? resolveNodeRuntimeKind(node),
@@ -352,7 +392,7 @@ export async function prepareAgentNode(options: {
           lastError: formatRecoverableError('Agent launch failed', error),
           scrollback,
           terminalGeometry: initialGeometry,
-          workerBinding: spawned.workerBinding,
+          workerBinding: binding ? node.workerBinding : spawned.workerBinding,
           executionDirectory: spawned.cwd,
           expectedDirectory: spawned.cwd,
           agent: {
@@ -362,6 +402,7 @@ export async function prepareAgentNode(options: {
           },
         })
       } catch (fallbackError) {
+        rethrowManagedClaudeLaunchError(fallbackError)
         return toPreparedNodeResult(node, {
           recoveryState: 'fallback_terminal',
           sessionId: '',
@@ -378,7 +419,7 @@ export async function prepareAgentNode(options: {
           recoveryIssue: isRemoteLaunchContext ? 'remote_worker_unavailable' : null,
           scrollback,
           terminalGeometry: node.terminalGeometry,
-          workerBinding: agentLaunchContext.workerBinding,
+          workerBinding: binding ? node.workerBinding : agentLaunchContext.workerBinding,
           executionDirectory: agentExecutionDirectory,
           expectedDirectory: agentExpectedDirectory,
           agent: {
@@ -392,20 +433,16 @@ export async function prepareAgentNode(options: {
   }
 
   try {
-    const spawned = await spawnFallbackTerminal({
-      controlSurface,
-      ctx,
-      workspace,
-      node,
-      space,
-      cwd: agentExecutionDirectory,
-      profileId: terminalProfileId,
-      geometry: initialGeometry,
-      launchContext: agentLaunchContext,
-    })
+    const spawned = await spawnFallback()
     return toPreparedNodeResult(node, {
       recoveryState: 'fallback_terminal',
       sessionId: spawned.sessionId,
+      ...('managedClaudeLifecycle' in spawned
+        ? {
+            managedClaudeLifecycle: spawned.managedClaudeLifecycle,
+            managedClaudeBinding: spawned.managedClaudeBinding,
+          }
+        : {}),
       isLiveSessionReattach: false,
       profileId: spawned.profileId ?? terminalProfileId,
       runtimeKind: spawned.runtimeKind ?? resolveNodeRuntimeKind(node),
@@ -416,7 +453,7 @@ export async function prepareAgentNode(options: {
       lastError: null,
       scrollback,
       terminalGeometry: initialGeometry,
-      workerBinding: spawned.workerBinding,
+      workerBinding: binding ? node.workerBinding : spawned.workerBinding,
       executionDirectory: spawned.cwd,
       expectedDirectory: spawned.cwd,
       agent: {
@@ -426,6 +463,7 @@ export async function prepareAgentNode(options: {
       },
     })
   } catch (error) {
+    rethrowManagedClaudeLaunchError(error)
     return toPreparedNodeResult(node, {
       recoveryState: 'fallback_terminal',
       sessionId: '',
@@ -442,7 +480,7 @@ export async function prepareAgentNode(options: {
       recoveryIssue: isRemoteLaunchContext ? 'remote_worker_unavailable' : null,
       scrollback,
       terminalGeometry: node.terminalGeometry,
-      workerBinding: agentLaunchContext.workerBinding,
+      workerBinding: binding ? node.workerBinding : agentLaunchContext.workerBinding,
       executionDirectory: agentExecutionDirectory,
       expectedDirectory: agentExpectedDirectory,
       agent: {

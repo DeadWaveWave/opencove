@@ -205,6 +205,8 @@ export function registerSessionStreamingHandlers(
           })
 
       const { sessionId } = await spawnTerminalWithActivity(deps.ptyRuntime, {
+        assertActive: ctx.terminalSpawnLifecycle?.assertActive,
+        onSpawned: ctx.terminalSpawnLifecycle?.onSpawned,
         activity: deps.terminalAgentActivity,
         args: resolvedSpawn.args,
         cols,
@@ -253,6 +255,11 @@ export function registerSessionStreamingHandlers(
 
   registerOperation(controlSurface, ptySpawnOperation, {
     handle: async (ctx, payload): Promise<SpawnTerminalResult> => {
+      ctx.terminalSpawnLifecycle?.assertExecution?.({
+        cwd: payload.cwd,
+        mountId: null,
+        endpointId: 'local',
+      })
       deps.terminalSpawnAdmission.assertSpawnAllowed(
         payload.workspaceId ?? null,
         ctx.terminalRecoverySpawnScope,
@@ -282,6 +289,8 @@ export function registerSessionStreamingHandlers(
           })
 
       const { sessionId } = await spawnTerminalWithActivity(deps.ptyRuntime, {
+        assertActive: ctx.terminalSpawnLifecycle?.assertActive,
+        onSpawned: ctx.terminalSpawnLifecycle?.onSpawned,
         activity: deps.terminalAgentActivity,
         args: resolvedSpawn.args,
         cols: payload.cols,

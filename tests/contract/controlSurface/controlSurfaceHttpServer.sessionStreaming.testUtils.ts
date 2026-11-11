@@ -257,6 +257,25 @@ export function createInMemoryPersistenceStore(): PersistenceStore {
   }
 
   return {
+    observeManagedClaudeNode: nodeId => {
+      const node = normalizePersistedAppState(state)
+        ?.workspaces.flatMap(workspace => workspace.nodes)
+        .find(candidate => candidate.id === nodeId)
+      return {
+        nodeId,
+        binding: null,
+        retired: false,
+        nodeRuntimeSessionId: node?.sessionId ?? null,
+        context: node
+          ? {
+              kind: node.kind,
+              provider: node.agent?.provider ?? null,
+              directory: node.executionDirectory ?? null,
+              route: JSON.stringify(node.workerBinding ?? null),
+            }
+          : null,
+      }
+    },
     nodeLineage: {
       readMany: async ids =>
         new Map(

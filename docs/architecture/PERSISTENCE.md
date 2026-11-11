@@ -339,6 +339,13 @@ revisioned sync 采用 Control Surface `{ok:false, error}`；raw sync 保留嵌�
 Remote/Web 把该 code 纳入既有 conflict refresh/rebase，并在重试耗尽时保留 typed descriptor。
 retired ID 的 Renderer rebase 策略以及 corrected 的 cache/ack 处理留待启用前补齐。
 
+Managed launch 的读取适配器只在 clean transaction boundary 返回 definitive ledger/node/
+retirement observation；同一连接仍在 transaction 中时必须报告 unavailable，不能把可见行当作
+已提交事实。生命周期保留 unknown obligation，直到 definitive read 确认结果。
+`onAppStateCommitted` 对比真实 node 集合，每次成功 snapshot commit 都通知（未删除时 IDs 为空），
+让 fallback custody 读取已持久化的 runtime reference。raw write 只在外层提交后通知；rollback 无通知，
+observer/cleanup 失败不改变成功的持久化结果。Activation receipt 使用该事务的精确 revision，
+row-only activation 的 commit revision 为 null；`alreadyApplied` 的当前 revision 不冒充历史提交。
 ## 节点创建血缘（schema 15）
 
 升级按 v14 ledger → v15 lineage 初始化。v13 与 v14 profile 均可升级到 v15；
@@ -349,6 +356,8 @@ Workspace application owner 从已验证的 session grant 推导 parent、root �
 在节点创建提交时通过原 SQLite 连接与 CAS node writer 同事务写入 `node_lineage`。
 创建提交与普通 snapshot 共用最终 writer，保留 managed Claude gate、retirement 和
 `{revision, corrected, effectiveState}` receipt；lineage 插入失败时一并回滚。
+删除观察在这个外层事务成功提交后发布；lineage-aware commit 同样触发 runtime-binding
+observers，投影 effective state，不以提交前的 snapshot 覆盖 ledger correction。
 该表只保存 node_id、spawned_by_node_id、root_node_id、lineage_depth，insert-once；
 相同记录幂等，冲突拒绝。无 FK，snapshot/raw writer 和 node deletion 不清理它。
 迁移和 schema-current repair 只创建表及索引，不回填历史节点；无记录的节点投影为 root、depth 1。

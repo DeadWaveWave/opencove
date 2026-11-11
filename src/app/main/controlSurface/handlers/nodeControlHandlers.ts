@@ -2,6 +2,7 @@ import { resolveCallerParent } from '../../../../contexts/workspace/application/
 import { canvasFocusOperation } from '../../../../shared/contracts/controlSurface/operations/domains/canvas'
 import { registerOperation } from '../registerOperation'
 import {
+  nodeManagedClaudeBindingOperation,
   nodeResolveCallerSelectorOperation,
   nodeCreateOperation,
   nodeListOperation,
@@ -78,6 +79,10 @@ function toNodeControlStateStore(store: PersistenceStore): NodeControlAppStateSt
     readAppState: async () => normalizePersistedAppState(await store.readAppState()),
     readAppStateRevision: store.readAppStateRevision,
     writeAppState: store.writeAppState,
+    isRuntimeReferenced: store.isManagedClaudeRuntimeReferenced,
+    isManagedNode: store.observeManagedClaudeNode
+      ? id => Boolean(store.observeManagedClaudeNode!(id).binding)
+      : undefined,
   }
 }
 
@@ -107,6 +112,21 @@ export function registerNodeControlHandlers(
     runtime: createRuntimeDeps(controlSurface, ctx, deps.closeWebsiteNode, deps.closePluginNode),
   })
 
+  registerOperation(controlSurface, nodeManagedClaudeBindingOperation, {
+    defaultErrorCode: 'persistence.unavailable',
+    handle: async (_ctx, input) => {
+      const store = await deps.getPersistenceStore()
+      if (!store.observeManagedClaudeNode) {
+        throw createAppError('persistence.unavailable')
+      }
+      const observed = store.observeManagedClaudeNode(input.nodeId)
+      return {
+        managedClaudeBinding: observed.binding,
+        retired: observed.retired,
+        executionDirectory: observed.context?.directory ?? null,
+      }
+    },
+  })
   registerOperation(controlSurface, nodeResolveCallerSelectorOperation, {
     defaultErrorCode: 'common.unexpected',
     handle: async (ctx, input) => {
@@ -132,10 +152,10 @@ export function registerNodeControlHandlers(
   registerOperation(controlSurface, nodeGetOperation, {
     defaultErrorCode: 'common.unexpected',
     handle: async (_ctx, input) => {
-      return await getNodeForNodeControl({
-        store: toNodeControlStateStore(await deps.getPersistenceStore()),
-        input,
-      })
+      const store = await deps.getPersistenceStore()
+      const result = await getNodeForNodeControl({ store: toNodeControlStateStore(store), input })
+      const binding = store.observeManagedClaudeNode?.(input.nodeId).binding
+      return { ...result, ...(binding ? { managedClaudeBinding: binding } : {}) }
     },
   })
   registerOperation(controlSurface, nodeCreateOperation, {

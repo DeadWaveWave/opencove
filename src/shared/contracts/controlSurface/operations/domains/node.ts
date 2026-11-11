@@ -37,6 +37,8 @@ export const nodeCreateOperation = defineOperation({
     'space.not_found',
     'space.ambiguous',
     'agent.launch_failed',
+    'agent.managed_launch_rejected',
+    'agent.managed_launch_commit_failed',
     'terminal.spawn_failed',
     'worker.unavailable',
     'terminal.runtime_not_ready',
@@ -79,6 +81,17 @@ export const nodeGetOperation = defineOperation({
     'persistence.invalid_state',
     'persistence.io_failed',
   ],
+})
+export const nodeManagedClaudeBindingOperation = defineOperation({
+  id: 'node.managedClaudeBinding',
+  kind: 'query',
+  scope: 'read',
+  availability: 'always',
+  summary: 'Read the saved Claude binding before or after its canvas node is saved',
+  input: z.strictObject({
+    nodeId: z.string().trim().min(1).max(256).describe('Agent node whose saved binding is read'),
+  }),
+  errors: ['persistence.unavailable'],
 })
 export const nodeListOperation = defineOperation({
   id: 'node.list',
@@ -136,6 +149,7 @@ export const nodeResolveCallerSelectorOperation = defineOperation({
   ],
 })
 export const nodeOperations = [
+  nodeManagedClaudeBindingOperation,
   nodeResolveCallerSelectorOperation,
   nodeCreateOperation,
   nodeDeleteOperation,

@@ -1,3 +1,4 @@
+import type { ManagedClaudeBindingObservation } from '../managedClaudeLaunch'
 import type { NodeLineageProjection } from './nodeLineage'
 import type { AgentProviderId } from './agent'
 import type { AppErrorDescriptor } from './error'
@@ -129,6 +130,7 @@ export interface GetNodeInput {
 }
 
 export interface GetNodeResult {
+  managedClaudeBinding?: ManagedClaudeBindingObservation
   node: CanvasNodeDetailDto
 }
 

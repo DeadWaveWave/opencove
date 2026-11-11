@@ -98,6 +98,33 @@ describe('shared Agent launcher entrypoints', () => {
     })
   })
 
+  it('carries the managed receipt into node placement', async () => {
+    const params = fixture()
+    const binding = {
+      nodeId: 'agent',
+      activationId: 'owned',
+      runtimeSessionId: 'session-a',
+      tuple: { resumeSessionId: 'owned', resumeSessionIdVerified: true },
+      nodeSeen: false,
+      bindingRevision: 0,
+      observedRevision: 0,
+    }
+    const receipt = { binding, commitRevision: null }
+    vi.mocked(launchWorkspaceAgentSession).mockResolvedValue({
+      sessionId: 'session-a',
+      resumeSessionId: 'owned',
+      profileId: null,
+      effectiveModel: null,
+      executionDirectory: '/repo',
+      managedClaudeLifecycle: receipt,
+    })
+    const { result } = renderHook(() => useWorkspaceCanvasAgentLauncher(params))
+    await act(() => result.current.launchAgentAtFlowPosition({ x: 400, y: 300 }))
+    expect(params.createNodeForSession).toHaveBeenCalledWith(
+      expect.objectContaining({ managedClaudeLifecycle: receipt }),
+    )
+  })
+
   it('uses the same default provider, mount, directory and node placement without a context menu', async () => {
     const params = fixture()
     const { result } = renderHook(() => useWorkspaceCanvasAgentLauncher(params))

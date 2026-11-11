@@ -1,9 +1,14 @@
+import { registerSessionQueryHandlers } from './sessionQueryHandlers'
+import {
+  admitManagedClaudeLaunch,
+  noteManagedClaudeSpawnStarted,
+  noteManagedClaudeRuntimeCreated,
+} from '../managedClaudeLaunchRuntime'
 import { createSessionNodeResolver } from './sessionNodeResolver'
 import { registerOperation } from '../registerOperation'
 import {
-  sessionGetOperation,
-  sessionKillOperation,
   sessionLaunchAgentOperation,
+  sessionCleanupUnreferencedOperation,
 } from '../../../../shared/contracts/controlSurface/operations/domains/session'
 import type { ControlSurface } from '../controlSurface'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
@@ -20,11 +25,7 @@ import {
 } from '../../../../contexts/settings/domain/agentSettings'
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 import { resolveSpaceMountContext } from '../../../../contexts/space/application/resolveSpaceMountContext'
-import type {
-  GetNodeSessionResult,
-  GetSessionResult,
-  LaunchAgentSessionResult,
-} from '../../../../shared/contracts/dto'
+import type { LaunchAgentSessionResult } from '../../../../shared/contracts/dto'
 import {
   LOCAL_AGENT_SERVER_HOSTNAME,
   reserveLoopbackPort,
@@ -36,7 +37,6 @@ import {
 import { resolveSpaceWorkingDirectoryFromStore } from './resolveSpaceWorkingDirectoryFromStore'
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 import { invokeInternalCommand } from './controlSurfaceInternalCommand'
-import { registerSessionFinalMessageHandler } from './sessionFinalMessageHandler'
 import { registerSessionLaunchAgentInMountHandler } from './sessionLaunchAgentInMountHandler'
 import { registerSessionPrepareOrReviveHandler } from './sessionPrepareOrReviveHandler'
 import type {
@@ -76,9 +76,17 @@ export function registerSessionHandlers(
     restoreTerminalSession?: (input: { nodeId: string; sessionId: string }) => Promise<boolean>
     terminalSpawnAdmission: TerminalSpawnAdmission
     terminalRecoverySpawnAdmission: TerminalRecoverySpawnAdmission
+    cleanupUnreferencedSession?: (id: string) => Promise<boolean>
     agentProviderRegistry: AgentProviderRegistry
   },
 ): void {
+  registerOperation(controlSurface, sessionCleanupUnreferencedOperation, {
+    defaultErrorCode: 'persistence.unavailable',
+    handle: async (ctx, input) => {
+      ctx.assertActive?.()
+      return { cleaned: (await deps.cleanupUnreferencedSession?.(input.sessionId)) ?? false }
+    },
+  })
   const sessions = new Map<string, SessionRecord>()
   const resolveNode = createSessionNodeResolver(deps)
 
@@ -196,6 +204,8 @@ export function registerSessionHandlers(
       }
 
       const provider = admitLaunchProvider(ctx, payload, agentSettings, mode)
+      await admitManagedClaudeLaunch(provider, workingDirectory)
+      ctx.assertActive?.()
       const env = resolveAgentLaunchCallerEnv(ctx, agentSettings, provider, payload.env)
       const model = payload.model ?? resolveAgentModel(agentSettings, provider)
       const executablePathOverride =
@@ -324,6 +334,7 @@ export function registerSessionHandlers(
       } catch (error) {
         return rollbackAgentLaunchArtifacts(error, managedLaunch.artifacts)
       }
+      noteManagedClaudeSpawnStarted()
       const { sessionId } = await deps.ptyRuntime
         .spawnSession({
           cwd: resolvedSpawn.cwd,
@@ -351,6 +362,7 @@ export function registerSessionHandlers(
           })
           throw publicTerminalSpawnError(error, 'agent.launch_failed')
         })
+      noteManagedClaudeRuntimeCreated(sessionId)
       managedLaunch.plan.onStarted?.(sessionId)
       logAgentLaunchInfo('control-surface-pty-spawn-succeeded', 'Agent PTY session spawned.', {
         provider,
@@ -434,63 +446,5 @@ export function registerSessionHandlers(
     terminalRecoverySpawnAdmission: deps.terminalRecoverySpawnAdmission,
   })
 
-  registerOperation(controlSurface, sessionGetOperation, {
-    handle: async (_ctx, payload): Promise<GetSessionResult | GetNodeSessionResult> => {
-      if (payload.nodeId !== undefined) {
-        return (await resolveNode(payload.nodeId)).value
-      }
-      const record = sessions.get(payload.sessionId)
-      if (!record) {
-        throw createAppError('session.not_found', {
-          debugMessage: `session.get: unknown session id: ${payload.sessionId}`,
-        })
-      }
-
-      const { startedAtMs: _startedAtMs, route: _route, ...publicRecord } = record
-      return publicRecord
-    },
-    defaultErrorCode: 'common.unexpected',
-  })
-
-  registerSessionFinalMessageHandler(controlSurface, {
-    sessions,
-    topology: deps.topology,
-    resolveNode,
-  })
-
-  registerOperation(controlSurface, sessionKillOperation, {
-    handle: async (ctx, payload): Promise<void> => {
-      if (payload.nodeId !== undefined) {
-        const { value } = await resolveNode(payload.nodeId)
-        const current = normalizePersistedAppState(
-          await (await deps.getPersistenceStore()).readAppState(),
-        )
-        const stillBound = current?.workspaces.some(workspace =>
-          workspace.nodes.some(
-            node => node.id === payload.nodeId && node.sessionId === value.sessionId,
-          ),
-        )
-        if (!stillBound) {
-          throw createAppError('common.invalid_input', {
-            debugMessage: 'Node session changed before kill; read it again.',
-          })
-        }
-        if (!deps.ptyStreamHub.hasSession(value.sessionId)) {
-          throw createAppError('session.not_found')
-        }
-        ctx.assertActive?.()
-        deps.ptyRuntime.kill(value.sessionId)
-        return
-      }
-      const record = sessions.get(payload.sessionId) ?? null
-      if (!record && !deps.ptyStreamHub.hasSession(payload.sessionId)) {
-        throw createAppError('session.not_found', {
-          debugMessage: `session.kill: unknown session id: ${payload.sessionId}`,
-        })
-      }
-
-      deps.ptyRuntime.kill(record?.sessionId ?? payload.sessionId)
-    },
-    defaultErrorCode: 'terminal.kill_failed',
-  })
+  registerSessionQueryHandlers(controlSurface, deps, sessions, resolveNode)
 }

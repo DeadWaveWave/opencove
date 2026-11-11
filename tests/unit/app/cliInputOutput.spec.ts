@@ -193,8 +193,8 @@ it('projects domain summaries and lists their fields on errors', async () => {
   ).toBe(0)
   expect(JSON.parse(f.out())).toContainEqual({
     domain: 'node',
-    operations: 6,
-    schema: 6,
+    operations: 7,
+    schema: 7,
     commandOperations: 3,
   })
   const g = fixture()

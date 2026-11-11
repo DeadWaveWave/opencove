@@ -3,11 +3,11 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import Database from 'better-sqlite3'
-import { afterEach, beforeEach, expect, it } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { describeWithElectronNativeModules } from '../electronNativeSuite'
 import { createPersistenceStore } from '../../../src/platform/persistence/sqlite/PersistenceStore'
 import { deriveNodeLineage } from '../../../src/contexts/workspace/domain/nodeLineage'
-import { stateWithAgent, tupleB } from './managedClaudeResumeBindingFixtures'
+import { stateWithAgent, tupleA, tupleB } from './managedClaudeResumeBindingFixtures'
 
 describeWithElectronNativeModules('node creation with managed Claude resume bindings', () => {
   let root: string
@@ -102,8 +102,43 @@ describeWithElectronNativeModules('node creation with managed Claude resume bind
     expect(await store.readAppState()).toMatchObject({ workspaces: [{ nodes: [{ id: 'agent' }] }] })
   })
 
+  it('publishes deletion only after the lineage-aware effective state commits', async () => {
+    const state = await pendingChild()
+    await store.activateManagedClaudeRuntime({
+      nodeId: 'agent',
+      activationId: 'parent-activation',
+      runtimeSessionId: 'parent-runtime',
+      tuple: tupleA,
+    })
+    state.workspaces[0].nodes = state.workspaces[0].nodes.filter(node => node.id === 'child')
+    const committed = vi.fn(() => ({
+      inTransaction: sql.inTransaction,
+      nodes: sql.prepare('SELECT id, session_id FROM nodes').all(),
+      lineage: sql.prepare('SELECT node_id FROM node_lineage').all(),
+      retired: sql.prepare('SELECT node_id FROM retired_managed_nodes').all(),
+    }))
+    store.onAppStateCommitted(committed)
+    expect(
+      await store.commitCreatedNodeState!(state, { expectedRevision: 2, lineage }),
+    ).toMatchObject({ ok: true, revision: 3, corrected: true })
+    expect(committed).toHaveBeenCalledExactlyOnceWith({
+      revision: 3,
+      removedNodeIds: ['agent'],
+      removedRuntimeSessionIds: ['parent-runtime'],
+      removedManagedRuntimeSessionIds: ['parent-runtime'],
+    })
+    expect(committed.mock.results[0].value).toEqual({
+      inTransaction: false,
+      nodes: [{ id: 'child', session_id: 'child-runtime' }],
+      lineage: [{ node_id: 'child' }],
+      retired: [{ node_id: 'agent' }],
+    })
+  })
+
   it('rolls back ledger first-seen, node state and revision when lineage insertion fails', async () => {
     const state = await pendingChild()
+    const committed = vi.fn()
+    store.onAppStateCommitted(committed)
     const binding = sql.prepare('SELECT * FROM managed_claude_resume_bindings').all()
     sql.exec(
       "CREATE TRIGGER reject_lineage BEFORE INSERT ON node_lineage BEGIN SELECT RAISE(ABORT, 'lineage failure'); END",
@@ -118,5 +153,6 @@ describeWithElectronNativeModules('node creation with managed Claude resume bind
       node_seen: 0,
     })
     expect((await store.nodeLineage!.readMany(['child'])).size).toBe(0)
+    expect(committed).not.toHaveBeenCalled()
   })
 })

@@ -87,6 +87,7 @@ export function registerSystemHandlers(
         features: {
           ...ctx.capabilities,
           operationRegistry: true,
+          managedClaudeResumeBindingV1: false,
           nodeLineageV1:
             controlSurface.hasOperation('node.resolveCallerSelector') &&
             ((await deps.hasNodeLineage?.()) ?? false),

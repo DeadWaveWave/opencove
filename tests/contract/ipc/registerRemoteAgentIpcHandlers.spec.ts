@@ -179,3 +179,69 @@ describe('registerRemoteAgentIpcHandlers', () => {
     )
   })
 })
+
+it('forwards managed intent-only launches with consistent mirrors and preserves the effective receipt', async () => {
+  const { handlers, ipcMain } = createIpcHarness()
+  const binding = {
+    nodeId: 'agent',
+    activationId: 'activated',
+    runtimeSessionId: 'runtime',
+    tuple: { resumeSessionId: 'B', resumeSessionIdVerified: true },
+    nodeSeen: true,
+    bindingRevision: 2,
+    observedRevision: 2,
+  }
+  const receipt = { binding, commitRevision: 2 }
+  const invokeControlSurface = vi.fn(async () => ({
+    httpStatus: 200,
+    result: {
+      ok: true,
+      value: {
+        sessionId: 'runtime',
+        provider: 'claude-code',
+        startedAt: '2026-11-11T00:00:00Z',
+        profileId: null,
+        runtimeKind: 'posix',
+        resumeSessionId: 'B',
+        effectiveModel: null,
+        command: 'claude',
+        args: [],
+        managedClaudeLifecycle: receipt,
+        managedClaudeBinding: binding,
+      },
+    },
+  }))
+  vi.doMock('electron', () => ({ ipcMain }))
+  vi.doMock('../../../src/app/main/controlSurface/remote/controlSurfaceHttpClient', () => ({
+    invokeControlSurface,
+  }))
+  const { registerRemoteAgentIpcHandlers } =
+    await import('../../../src/app/main/ipc/registerRemoteAgentIpcHandlers')
+  registerRemoteAgentIpcHandlers({
+    endpointResolver: async () => ({ hostname: '127.0.0.1', port: 7777, token: 'token' }),
+    ptyRuntime: {} as never,
+  })
+  const intent = {
+    kind: 'resumeConversation',
+    resumeSessionId: 'C',
+    expected: { activationId: 'old', tuple: binding.tuple },
+  }
+  const result = await invokeHandledIpc(handlers.get(IPC_CHANNELS.agentLaunch), null, {
+    canvasNodeId: 'agent',
+    provider: 'claude-code',
+    cwd: '/repo',
+    prompt: '',
+    intent,
+  })
+  expect(invokeControlSurface).toHaveBeenLastCalledWith(
+    expect.anything(),
+    expect.objectContaining({
+      payload: expect.objectContaining({ intent, mode: 'resume', resumeSessionId: 'C' }),
+    }),
+  )
+  expect(result).toMatchObject({
+    resumeSessionId: 'B',
+    managedClaudeLifecycle: receipt,
+    managedClaudeBinding: binding,
+  })
+})

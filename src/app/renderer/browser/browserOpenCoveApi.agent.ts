@@ -1,3 +1,8 @@
+import { resolveManagedClaudeLaunchMirrors } from '../../../shared/contracts/managedClaudeLaunchMirrors'
+import type {
+  ManagedClaudeLifecycleReceipt,
+  ManagedClaudeBindingObservation,
+} from '../../../shared/contracts/managedClaudeLaunch'
 import type {
   ListAgentSessionsResult,
   ListInstalledAgentProvidersResult,
@@ -164,7 +169,8 @@ export function createBrowserAgentApi(): AgentApi {
         throw new Error('agent.launch requires a cwd')
       }
 
-      const mode = payload.mode === 'resume' ? 'resume' : 'new'
+      const intentMirrors = resolveManagedClaudeLaunchMirrors(payload)
+      const mode = intentMirrors.mode ?? (payload.mode === 'resume' ? 'resume' : 'new')
       const resumeSessionId =
         typeof payload.resumeSessionId === 'string' && payload.resumeSessionId.trim().length > 0
           ? payload.resumeSessionId.trim()
@@ -175,6 +181,8 @@ export function createBrowserAgentApi(): AgentApi {
         provider: string
         startedAt: string
         executionContext: unknown
+        managedClaudeLifecycle?: ManagedClaudeLifecycleReceipt
+        managedClaudeBinding?: ManagedClaudeBindingObservation
         resumeSessionId: string | null
         effectiveModel: string | null
         command: string
@@ -183,6 +191,7 @@ export function createBrowserAgentApi(): AgentApi {
         kind: 'command',
         id: 'session.launchAgent',
         payload: {
+          ...(payload.intent ? { intent: payload.intent } : {}),
           canvasNodeId: payload.canvasNodeId,
           workspaceId: payload.workspaceId,
           spaceId: payload.spaceId,
@@ -191,7 +200,8 @@ export function createBrowserAgentApi(): AgentApi {
           provider: payload.provider,
           mode,
           model: payload.model ?? null,
-          resumeSessionId,
+          resumeSessionId:
+            'resumeSessionId' in intentMirrors ? intentMirrors.resumeSessionId : resumeSessionId,
           env: payload.env ?? null,
           agentFullAccess: payload.agentFullAccess ?? null,
           codexReuseRunningAppServer: payload.codexReuseRunningAppServer ?? null,
@@ -208,6 +218,12 @@ export function createBrowserAgentApi(): AgentApi {
         launchMode: mode,
         effectiveModel: launched.effectiveModel,
         resumeSessionId: launched.resumeSessionId,
+        ...(launched.managedClaudeLifecycle
+          ? { managedClaudeLifecycle: launched.managedClaudeLifecycle }
+          : {}),
+        ...(launched.managedClaudeBinding
+          ? { managedClaudeBinding: launched.managedClaudeBinding }
+          : {}),
       }
     },
     readLastMessage: async payload => {

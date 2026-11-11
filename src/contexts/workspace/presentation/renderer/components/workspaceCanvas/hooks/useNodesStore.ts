@@ -1,3 +1,4 @@
+import { killUnownedNodeRuntime } from '../../../utils/managedClaudeLifecycle'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
 import type { NodeLabelColorOverride } from '@shared/types/labelColor'
@@ -165,9 +166,7 @@ export function useWorkspaceCanvasNodesStore({
         target.data.sessionId.length > 0
       ) {
         cleanupNodeRuntimeArtifacts(nodeId, target.data.sessionId)
-        void window.opencoveApi.pty
-          .kill({ sessionId: target.data.sessionId })
-          .catch(() => undefined)
+        void killUnownedNodeRuntime(target).catch(() => undefined)
       }
       if (target?.data.kind === 'image' && target.data.image) {
         const deleteCanvasImage = window.opencoveApi?.workspace?.deleteCanvasImage

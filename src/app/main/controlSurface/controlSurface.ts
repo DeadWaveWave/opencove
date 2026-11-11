@@ -28,7 +28,8 @@ export function createControlSurface(
     run?: (
       ctx: ControlSurfaceContext,
       request: ControlSurfaceInvokeRequest,
-      execute: () => Promise<unknown>,
+      execute: (context?: ControlSurfaceContext) => Promise<unknown>,
+      payload: unknown,
     ) => Promise<unknown>
   } = {},
 ): ControlSurface {
@@ -81,8 +82,10 @@ export function createControlSurface(
             })
           }
         }
-        const execute = async () => await handler.handle(ctx, payload)
-        const value = options.run ? await options.run(ctx, request, execute) : await execute()
+        const execute = async (context = ctx) => await handler.handle(context, payload)
+        const value = options.run
+          ? await options.run(ctx, request, execute, payload)
+          : await execute()
 
         return {
           __opencoveControlEnvelope: true,

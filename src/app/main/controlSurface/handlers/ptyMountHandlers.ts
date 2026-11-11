@@ -106,6 +106,11 @@ export function registerPtyMountHandlers(
       })
 
       const cwd = resolvePathFromUriOrThrow(cwdUri, 'pty.spawnInMount cwdUri')
+      ctx.terminalSpawnLifecycle?.assertExecution?.({
+        cwd,
+        mountId: target.mountId,
+        endpointId: target.endpointId,
+      })
       const cols = payload.cols ?? 80
       const rows = payload.rows ?? 24
       const profileId = normalizeOptionalString(payload.profileId)
@@ -141,6 +146,8 @@ export function registerPtyMountHandlers(
 
         ctx.assertActive?.()
         const { sessionId } = await spawnTerminalWithActivity(deps.ptyRuntime, {
+          assertActive: ctx.terminalSpawnLifecycle?.assertActive,
+          onSpawned: ctx.terminalSpawnLifecycle?.onSpawned,
           activity: deps.terminalAgentActivity,
           args: resolvedSpawn.args,
           cols,

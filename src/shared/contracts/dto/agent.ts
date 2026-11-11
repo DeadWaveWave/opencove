@@ -1,3 +1,8 @@
+import type {
+  ManagedClaudeLaunchIntent,
+  ManagedClaudeLifecycleReceipt,
+  ManagedClaudeBindingObservation,
+} from '../managedClaudeLaunch'
 export const AGENT_PROVIDER_IDS = [
   'claude-code',
   'codex',
@@ -110,6 +115,7 @@ export interface ListAgentSessionsResult {
 }
 
 export interface LaunchAgentInput {
+  intent?: ManagedClaudeLaunchIntent
   canvasNodeId?: string
   workspaceId?: string
   spaceId?: string
@@ -129,6 +135,8 @@ export interface LaunchAgentInput {
 }
 
 export interface LaunchAgentResult {
+  managedClaudeLifecycle?: ManagedClaudeLifecycleReceipt
+  managedClaudeBinding?: ManagedClaudeBindingObservation
   sessionId: string
   provider: AgentProviderId
   profileId?: string | null

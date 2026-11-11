@@ -1,5 +1,8 @@
 export const zhCNMessages = {
   managedAgentChanged: '此智能体已发生变更，请刷新工作区后重试。',
+  managedAgentDirectoryConflict: '此 Agent 属于其他目录。请保留当前目录，或启动新的 Agent。',
+  managedAgentLaunchUncertain: '暂时无法确认 Agent 是否已启动。请先检查会话状态，再重试。',
+  managedAgentResumeUnavailable: '此会话暂时无法恢复。请选择已保存的会话，或开始新会话。',
   nodeNoParent: '此节点由用户启动，没有父级 Agent。',
   nodeNoParentHint: '运行“opencove agent list”选择接收方，或直接向用户汇报。',
   nodeParentDeleted: '创建此节点的 Agent 已被删除。',

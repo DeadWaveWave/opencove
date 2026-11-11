@@ -10,6 +10,7 @@ import type {
   WorkspaceSpaceState,
 } from '../../../types'
 import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
+import { cleanupFailedNodePlacement } from '../../../utils/managedClaudeLifecycle'
 import { findNearestFreePositionOnRight, inflateRect, type Rect } from '../../../utils/collision'
 import { SPACE_NODE_PADDING } from '../../../utils/spaceLayout'
 import { guardNodeFromSyncOverwrite } from '../../../utils/syncNodeGuards'
@@ -65,6 +66,7 @@ export function useWorkspaceCanvasNodeCreation({
     async ({
       nodeId,
       sessionId,
+      managedClaudeLifecycle,
       profileId,
       runtimeKind,
       terminalGeometry,
@@ -92,7 +94,7 @@ export function useWorkspaceCanvasNodeCreation({
         avoidRects: placement?.avoidRects,
       })
       if (resolvedPlacement.canPlace !== true) {
-        await window.opencoveApi.pty.kill({ sessionId })
+        await cleanupFailedNodePlacement({ sessionId, managedClaudeLifecycle })
         onShowMessage?.(t('messages.noTerminalSlotNearby'), 'warning')
         return null
       }

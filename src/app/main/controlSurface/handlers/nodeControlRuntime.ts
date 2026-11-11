@@ -1,3 +1,4 @@
+import { ABSENT_MANAGED_CLAUDE_BINDING } from '../../../../shared/contracts/managedClaudeLaunch'
 import process from 'node:process'
 import { basename } from 'node:path'
 import type { ControlSurface } from '../controlSurface'
@@ -76,6 +77,10 @@ export function createRuntimeDeps(
     launchAgent: async (resolved, data) => {
       const spawnContext = {
         ...ctx,
+        managedClaudeIntent: {
+          kind: 'launchNew' as const,
+          expected: ABSENT_MANAGED_CLAUDE_BINDING,
+        },
         spawnIdentity: resolved.canvasNodeId
           ? {
               projectId: resolved.workspace.id,

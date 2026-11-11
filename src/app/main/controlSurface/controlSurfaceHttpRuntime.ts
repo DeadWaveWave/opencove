@@ -1,9 +1,9 @@
+import { createCanvasSpawnRunner } from './createCanvasSpawnRunner'
+import { createManagedClaudeLaunchRuntime } from './managedClaudeLaunchRuntime'
 import { createWorkerAgentTurnArchiveRuntime } from './agentTurnArchiveRuntime'
 import { withAgentRunBindings } from './agentRunStatePersistence'
 import { createWorkerAgentRunState } from './ptyStream/ptyStreamAgentRunState'
 import { createSessionGrantPtyRuntime } from './sessionGrantPtyRuntime'
-import { canvasSpawnIdentity, canvasSpawnOperations } from './sessionSpawnIdentityContext'
-import { resolveCanvasSpawnIdentity } from './resolveCanvasSpawnIdentity'
 import { resolveWorkerCliScriptPath } from '../../../shared/runtime/opencoveRuntimePaths'
 import { PluginDistributionService } from '@contexts/plugins/application/PluginDistributionService'
 import { GitPluginSources } from '@contexts/plugins/infrastructure/GitPluginSources'
@@ -210,6 +210,14 @@ export function createControlSurfaceHttpRuntime(
     createPersistenceStore: options.createPersistenceStore,
   })
   const getPersistenceStore = withAgentRunBindings(turnArchive.getPersistenceStore, agentRuns)
+  const managedClaude = createManagedClaudeLaunchRuntime({
+    getPersistenceStore,
+    killExactRuntime: async id => {
+      ptyRuntime.kill(id)
+    },
+    hasRuntime: id => ptyStreamService.hub.isSessionActive(id),
+    adoptionEnabled: () => process.env.OPENCOVE_EXPERIMENTAL_MANAGED_CLAUDE_BINDINGS === '1',
+  })
   const terminalRuntimeAvailability = new TerminalRuntimeAvailability()
   let runtimeReady = false
   void plugins.start()
@@ -222,6 +230,15 @@ export function createControlSurfaceHttpRuntime(
       availability: terminalRuntimeAvailability,
     })
     await turnArchive.start()
+    try {
+      await managedClaude.ready()
+    } catch (error) {
+      // Nonstrict startup remains available with terminal admission closed. Launches still
+      // require an authoritative store; warming the ownership coordinator cannot grant it.
+      if (options.strictPersistence) {
+        throw error
+      }
+    }
     runtimeReady = true
   })()
   const terminalRecovery = createControlSurfaceTerminalRecoveryRuntime({
@@ -248,25 +265,11 @@ export function createControlSurfaceHttpRuntime(
       )
     : null
   const controlSurface = createControlSurface({
-    run: async (context, request, execute) => {
-      if (!canvasSpawnOperations.has(request.id)) {
-        return await execute()
-      }
-      // Direct PTY spawn admission must precede identity's persistence read, just as
-      // it precedes persistence-dependent work in the handler.
-      if (request.id === 'pty.spawn') {
-        const payload = request.payload as { workspaceId?: unknown }
-        terminalRuntimeAvailability.assertSpawnAllowed(
-          typeof payload.workspaceId === 'string' ? payload.workspaceId.trim() || null : null,
-          context.terminalRecoverySpawnScope,
-        )
-      }
-      const identity =
-        canvasSpawnIdentity.getStore() ??
-        (await resolveCanvasSpawnIdentity(context, request.payload, getPersistenceStore))
-      context.assertActive?.()
-      return identity ? await canvasSpawnIdentity.run(identity, execute) : await execute()
-    },
+    run: createCanvasSpawnRunner({
+      managedClaude,
+      terminalRuntimeAvailability,
+      getPersistenceStore,
+    }),
     enter: id =>
       maintenance &&
       !id.startsWith('worker.maintenance.') &&
@@ -307,6 +310,10 @@ export function createControlSurfaceHttpRuntime(
     terminalSpawnAdmission: terminalRuntimeAvailability,
     terminalRecoverySpawnAdmission: terminalRuntimeAvailability,
     agentProviderRegistry,
+    cleanupUnreferencedSession: async id => {
+      await managedClaude.ready()
+      return managedClaude.owner.cleanup(id)
+    },
     terminalAgentActivity: terminalAgents.activity,
   })
 
@@ -319,6 +326,7 @@ export function createControlSurfaceHttpRuntime(
       return
     }
     closed = true
+    managedClaude.dispose()
     turnArchive.stop()
     invocationLifetime.abort()
     sessionAccess.dispose()

@@ -361,6 +361,79 @@ never be revived from a renderer cache.
 
 Managed Claude 的 Worker-owned tuple 存在 `managed_claude_resume_bindings`，`nodes.agent_json`
 只保存受最终 writer 保护的投影。绑定、节点与 revision 原子提交，真实删除留下 retirement，
-普通快照不能回退 tuple 或改变其 kind/provider/route。内部 lifecycle API 尚无生产调用方；
+普通快照不能回退 tuple 或改变其 kind/provider/route。内部 lifecycle API 已接入开发开关保护的启动路径；
 现有无 ledger row 的节点保持原恢复行为。此存储层不判定 transcript qualification，也不恢复
 runtime authority。详见 [Persistence](PERSISTENCE.md#managed-claude-resume-ledger存储契约尚未启用生产接入)。
+
+### Managed launch admission
+
+`ManagedClaudeLaunchOwner` 在 Worker 内按 Agent node ID 管理进程内 attempt；token 不持久化，
+也不接受客户端 token。普通恢复选择 ledger 的 committed tuple，显式替换必须携带匹配的
+expectation。首次 adoption 与 replacement 都在同步 activation 前复查 kind/provider/route/目录。
+所有 owned fallback 先确认保持 tuple 的 null-runtime settlement；shell 不获得 managed 写权。
+Fallback receipt 保留本次 attempt 已确认 settlement 的 exact commit revision，即使后续读到了更新的
+app revision。预存 settlement、row-only 写入和 `alreadyApplied` 只提供 observation，不能声称新的 app commit。
+删除只在最外层 app-state commit 后 fence attempt 并检查精确 runtime 的 references。
+unknown outcome 保留 runtime 与 reconciliation obligation，未到 clean transaction boundary 时
+不能确认成功、重启或补偿。Worker 重启不重建旧 token。
+
+新 adoption 默认关闭，仅 `OPENCOVE_EXPERIMENTAL_MANAGED_CLAUDE_BINDINGS=1` 用于开发验收；
+`managedClaudeResumeBindingV1` capability 保持 false。已有 row 的保护不受开关影响。
+同步投影、缓存修正与正式启用仍由后续同步接入完成。
+
+
+`node.managedClaudeBinding` 在 node 尚未持久化时也返回 definitive ledger observation，
+明确区分 absence、row-only ownership 和 retirement；`node.get` 的 not-found 不代表 unowned。
+已由 ready store 确认 owned 的启动在 reserve 时登记等待，identity read 尚未完成也不能重连旧 runtime。
+Unowned 启动先保留 candidate attempt，确认 local managed execution 后才启用等待、token fence 和
+managed error 语义；跨目录 unowned switch 沿用 legacy 路径且不 adoption，owned replacement 仍拒绝目录变更。
+Remote execution 保留 legacy guards/retry，已有 owned row 仍拒绝 remote replacement。
+旧 Worker 不支持 ownership query 时，只有 runtime registry 明确缺少该 operation 才沿用 legacy；
+operation 已注册但读取失败时仍拒绝操作，不能把 persistence failure 当作无主。
+Owned fallback shell 的 node runtime 与 null ledger runtime 不同；确认新 managed runtime activation
+后，owner 才对捕获的旧 shell ID 执行 reference-checked cleanup，unknown outcome 不触发此清理。
+即时完成、后台 timer 与下一请求触发的 reconciliation 共用一次 finalization，始终使用原 attempt 的清理上下文。
+无论 activation 被确认、删除或替换，finalization 都结算 candidate 与被替换的 node runtime；
+unknown outcome 同时保护二者。清理 owner 保留读取 references 或 kill 失败的 exact ID，后续请求及删除事件重试；
+只有确认引用或完成 kill 才解除清理责任，已引用 runtime 的责任交回 durable binding/node owner。
+Renderer 的 placement cleanup 按 managed receipt 选择 Worker 路径，并先协商 operation support；
+legacy launch 保留直接 PTY cleanup，不因 provider 或预分配 node ID 改变责任。
+Cleanup obligation 按 runtime ID 带独立代际；reference proof 和已完成的 kill 只能解除其观察到的代际，
+不能删除 await 期间新增的清理责任。Recovery 每次等待完成都重新检查 node 当前的 pending launch，
+然后读取 durable observation；已 retired 的 node 不从较早的 workspace snapshot 重连。
+
+Durable ownership 与 effect admission 分开管理。路径审批、identity read 或 admission 的最终验证失败，
+不能结算原有健康 runtime。验证通过后的 owned replacement 先提交并确认保留 tuple 的
+null-runtime handoff，再对旧 runtime 执行 reference-checked kill；kill 失败仍由 cleanup owner
+持有 exact ID，失败 settlement 不抹除重试责任。后续 readiness 或 deletion event 重试未完成的清理。
+spawn 返回 ID 后立即交给同一 cleanup owner，早于 onStarted、watcher 与 metadata registration；
+这些步骤失败、attempt 被替换或删除，也不会丢失新进程的清理责任。unknown write 同时保留
+candidate 与 predecessor，只有 definitive reconciliation 才能释放保护。
+Cleanup owner 保留成功 exact-ID kill 的终止证据；后续 claim 仍复查 references，读取失败仍保留责任，
+但不重复 kill 已成功终止的同一 ID。该证据仅在当前 Worker owner 生命周期内有效；新 PTY 使用新 UUID，
+不能把 stream hub 缺少 active session 当作成功 kill 的证明。
+
+Managed launch scope 从 handler 执行前到 wrapper finally 收尾持有 created candidate custody，
+不依赖 activation obligation 是否已经建立。其他 node 的 admission、recovery 或 deletion 不得清理
+该 candidate；readiness/deletion 只处理对应 node 的已知 IDs。scope 结束时统一释放 hold，并对
+created/predecessor IDs 做 reference-checked cleanup；首次 adoption 无 ledger row 也必须清理失败 candidate。
+失败 read/kill 与旧 work 留下的新 claim 使用按 exact ID 的 single-flight timer 重试；unknown
+activation 以有上限的延迟持续 reconciliation，不再因尝试次数耗尽而等待外部请求。dispose 取消
+该 owner 的 timer；timer、scope completion 和新 claim 仍保留各自 identity/generation guards。
+
+Managed launch result 的 ownership 判定包含新取得的 receipt；`nodeSeen=true` 的既有节点继续
+保留 SQLite 中的 Worker route，不能用本次解析出的 explicit local/mount route 替换 null inheritance。
+`nodeSeen=false` 的首次保存仍可建立 route。Renderer lifecycle 与成功 prepare 投影都遵循这一规则，
+其下一次 snapshot 通过同一 final writer；kind/provider/route identity 与 execution directory 必须 round-trip。
+
+成功 fallback shell 也属于 Worker 创建的 runtime。在 renderer 保存其 ID 前，node-scoped custody
+保留唯一 cleanup claim；已提交 snapshot 的 reference proof 才交回 durable node owner，删除或确认替换
+则释放捕获的精确 ID 并执行 reference-checked cleanup。读取失败保留 custody 并定时重试。
+新 fallback 的 predecessor claims 同样保持 hold，直到新 shell 持久化；仅 spawn 成功不构成 durable 替换。
+Fallback admission 验证 resolver 的实际 directory/mount/endpoint，已有 effect admission 也须重验，
+不能用 stored context 替代请求执行上下文。PTY target 再解析后通过同一内部 hook 检查，owned 不允许 remote。
+成功交接在 finish await 之后以同步 fence 确认；此后没有可能拒绝交接的 async 工作。若此前失败，
+helper 只放弃本 attempt 新 shell 的 hold，并 reference-check cleanup，保留前驱 hold 与未来清理义务。
+Fallback 的 PTY profile/activity preparation 之后，以进程内 `terminalSpawnLifecycle` hook 在
+实际 spawn 前检查原 attempt，spawn 返回 ID 后立即登记 custody，再提交 activity/metadata。
+该 hook 不接受 wire payload，legacy PTY 不注入；取消后的 finally 仍结算已创建 runtime。

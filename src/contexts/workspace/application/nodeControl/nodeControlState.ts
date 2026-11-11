@@ -66,6 +66,8 @@ export type NodeControlAppState = {
 }
 
 export interface NodeControlAppStateStore {
+  isRuntimeReferenced?: (id: string) => boolean
+  isManagedNode?: (id: string) => boolean
   nodeLineage?: import('../nodeLineage/NodeLineageRepository').NodeLineageRepository
   commitCreatedNodeState?: (
     state: NodeControlAppState,
