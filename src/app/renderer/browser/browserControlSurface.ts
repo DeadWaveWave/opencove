@@ -1,4 +1,3 @@
-import { assertManagedClaudeWorkerCompatible } from '@shared/sync/managedClaudeWorkerCompatibility'
 import { createAppError } from '@shared/errors/appError'
 import type {
   ControlSurfaceInvokeRequest,
@@ -22,11 +21,6 @@ export function getBrowserQueryToken(): string | null {
 export async function invokeBrowserControlSurface<TValue>(
   request: ControlSurfaceInvokeRequest,
 ): Promise<TValue> {
-  if (['sync.state', 'sync.writeState', 'sync.writeWorkspaceStateRaw'].includes(request.id)) {
-    assertManagedClaudeWorkerCompatible(
-      await invokeBrowserControlSurface({ kind: 'query', id: 'system.capabilities', payload: {} }),
-    )
-  }
   const headers: Record<string, string> = {
     'content-type': 'application/json',
   }

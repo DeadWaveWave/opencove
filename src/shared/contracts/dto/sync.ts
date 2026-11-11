@@ -6,6 +6,7 @@ export interface GetSyncStateResult {
 }
 
 export type SyncEventPayload =
+  | { type: 'connection_refused'; revision: number; error: import('./error').AppErrorDescriptor }
   | {
       type: 'app_state.updated'
       revision: number

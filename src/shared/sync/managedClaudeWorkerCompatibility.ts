@@ -1,18 +1,33 @@
-import { createAppError } from '../errors/appError'
+import { createAppError, toAppErrorDescriptor } from '../errors/appError'
 
-/** Independent of the release/adoption capability, which remains off until enabling. */
-export function assertManagedClaudeWorkerCompatible(value: unknown): void {
+/** Protocol support is relevant to ownership operations, never workspace synchronization. */
+export function supportsManagedClaudeOwnership(value: unknown): boolean {
   const features = value && typeof value === 'object' && 'features' in value ? value.features : null
-  if (
-    !features ||
-    typeof features !== 'object' ||
-    !('managedClaudeResumeBindingDeliveryV1' in features) ||
-    features.managedClaudeResumeBindingDeliveryV1 !== true
-  ) {
+  return (
+    !!features &&
+    typeof features === 'object' &&
+    'managedClaudeResumeBindingDeliveryV1' in features &&
+    features.managedClaudeResumeBindingDeliveryV1 === true
+  )
+}
+export function assertManagedClaudeWorkerCompatible(value: unknown): void {
+  if (!supportsManagedClaudeOwnership(value)) {
     throw createAppError('agent.managed_launch_rejected', {
       details: { reason: 'workerUpgradeRequired' },
       debugMessage:
-        'Update and restart the connected Worker before opening this workspace. Updating the Desktop app alone is not enough.',
+        'Update and restart the connected Worker before managing Claude agents. Your workspace remains available.',
     })
   }
+}
+
+export function isWorkerConnectionRefusal(error: unknown): boolean {
+  const descriptor = toAppErrorDescriptor(error)
+  return (
+    descriptor.code === 'common.protocol_incompatible' ||
+    (descriptor.code === 'agent.managed_launch_rejected' &&
+      descriptor.details &&
+      typeof descriptor.details === 'object' &&
+      'reason' in descriptor.details &&
+      descriptor.details.reason === 'workerUpgradeRequired') === true
+  )
 }

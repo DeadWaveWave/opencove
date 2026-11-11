@@ -1,3 +1,5 @@
+import { startWorkerHydration } from './workerSync/startupHydration'
+import { clearWorkerConnectionFailure } from './workerSync/workerConnectionState'
 import { canAcceptHydrationSnapshot } from './useHydrateAppState.helpers'
 import { persistenceScope } from '@contexts/workspace/presentation/renderer/utils/persistence/publicationState'
 import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
@@ -366,6 +368,7 @@ export function useHydrateAppState({
         return
       }
 
+      clearWorkerConnectionFailure()
       let resolvedSettings = persisted?.settings ?? DEFAULT_AGENT_SETTINGS
       if (!hasStandardWindowSizeBucket) {
         resolvedSettings = {
@@ -462,9 +465,10 @@ export function useHydrateAppState({
       void ensureWorkspaceHydrated(resolvedActiveWorkspaceId)
     }
 
-    void hydrateAppState()
+    const stopHydration = startWorkerHydration(hydrateAppState, () => !isCancelledRef.current)
 
     return () => {
+      stopHydration()
       isCancelledRef.current = true
     }
   }, [

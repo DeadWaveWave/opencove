@@ -1,5 +1,5 @@
-import { invokeControlSurface } from './controlSurfaceHttpClient'
-import { assertManagedClaudeWorkerCompatible } from '../../../../shared/sync/managedClaudeWorkerCompatibility'
+import { isWorkerConnectionRefusal } from '../../../../shared/sync/managedClaudeWorkerCompatibility'
+import { toAppErrorDescriptor } from '../../../../shared/errors/appError'
 import { webContents } from 'electron'
 import { Readable } from 'node:stream'
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web'
@@ -42,15 +42,6 @@ export function registerWorkerSyncBridge(endpointResolver: ControlSurfaceRemoteE
       throw new WorkerEndpointUnavailableError()
     }
 
-    const capabilities = await invokeControlSurface(endpoint, {
-      kind: 'query',
-      id: 'system.capabilities',
-      payload: {},
-    })
-    if (disposed) {
-      return
-    }
-    assertManagedClaudeWorkerCompatible(capabilities.result?.ok ? capabilities.result.value : null)
     const url = `http://${endpoint.hostname}:${endpoint.port}/events?afterRevision=${lastRevision}`
     const response = await fetch(url, {
       method: 'GET',
@@ -200,6 +191,13 @@ export function registerWorkerSyncBridge(endpointResolver: ControlSurfaceRemoteE
           return
         }
 
+        if (isWorkerConnectionRefusal(error)) {
+          sendToAllWindows(IPC_CHANNELS.syncStateUpdated, {
+            type: 'connection_refused',
+            revision: lastRevision,
+            error: toAppErrorDescriptor(error),
+          } satisfies SyncEventPayload)
+        }
         if (!(error instanceof WorkerEndpointUnavailableError)) {
           const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
           process.stderr.write(`[opencove] worker sync bridge reconnecting: ${detail}\n`)

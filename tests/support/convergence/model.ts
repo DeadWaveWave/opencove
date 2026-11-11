@@ -160,6 +160,9 @@ export type Response =
   | 'lost-committed'
   | 'lost-uncommitted'
 export type Action =
+  | 'mount-renderer'
+  | 'startup-refusal'
+  | 'worker-upgrade'
   | 'connect-delivery'
   | 'disconnect-delivery'
   | 'restart-worker'

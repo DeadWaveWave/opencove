@@ -477,7 +477,7 @@ owned runtime 的 public kill/stop 和 managed restart 均在副作用及 reserv
 
 每次 SSE 连接先注册 subscription 和关闭清理，再严格读取 atomic snapshot 的 durable tip，
 无条件发送 `resync_required`，包括 cursor 相等、超前、缺失与 Worker 重启后的空 buffer。
-读取失败关闭连接；撤销/断开后的完成结果作废。Desktop bridge 每次连接检查 delivery 协议，
+读取失败关闭连接；撤销/断开后的完成结果作废。Desktop bridge 不因缺少 ownership 协议拒绝连接，
 Web 的 `open` 也向现有 canonical refresh coordinator 发出请求。低 revision 只触发丢弃与重读，
 不能据此推断 store replacement 或自动重建 baseline。
 

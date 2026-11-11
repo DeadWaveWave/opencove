@@ -41,12 +41,16 @@ export class Server {
   scrollbacks = new Map<string, string>()
   nextReadNull = false
   failRead = false
+  readFailure: unknown = null
   stale: { state: PersistedAppState; revision: number } | null = null
   constructor(
     readonly template: PersistedAppState,
     public response: Response,
   ) {}
   read() {
+    if (this.readFailure) {
+      throw this.readFailure
+    }
     if (this.failRead) {
       throw new Error('read unavailable')
     }

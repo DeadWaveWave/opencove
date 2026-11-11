@@ -139,6 +139,7 @@ describe('remote project agent launch', () => {
     expect(invoke).toHaveBeenCalledWith({
       kind: 'command',
       id: 'session.launchAgentInMount',
+      clientFeatures: { managedClaudeResumeBindingV1: true },
       payload: expect.objectContaining({
         mountId: 'remote-mount',
         cwdUri: 'file:///remote/project',

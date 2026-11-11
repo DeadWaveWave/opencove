@@ -50,9 +50,14 @@ export function usePersistedAppState({
   const handlePersistWriteResult = useCallback(
     (result: PersistWriteResult) => {
       setPersistNotice(previous => {
+        if (previous?.kind === 'connection') {
+          return previous
+        }
         if (result.ok) {
           if (result.level === 'full') {
-            return previous?.kind === 'recovery' ? previous : null
+            return previous?.kind === 'recovery' || previous?.kind === 'compatibility'
+              ? previous
+              : null
           }
 
           const message =

@@ -461,11 +461,15 @@ These are existing ownership and process-boundary contracts: no executable-rule 
 PR3b 保持 adoption 默认关闭，`managedClaudeResumeBindingV1` 仍为 false。
 测试采用 `OPENCOVE_EXPERIMENTAL_MANAGED_CLAUDE_BINDINGS=1`；Worker 的独立
 `managedClaudeResumeBindingDeliveryV1` 表示具备 ledger lookup、投影、纠正回执与安全通知协议。
-当前 Desktop/Web 在连接、重连和 canonical persistence 边界检查该协议，缺少时要求升级并
-重启 **Worker**，包括其他版本 CLI 启动的 Worker；仅更新窗口不足以解决问题。
-这是保守兼容策略：新版客户端也不向无法证明安全的旧 Worker 发布 unowned workspace。
-旧 Worker 若支持 ownership lookup，可证明单个节点 unowned 后保留 legacy lifecycle；
-unsupported lookup 不能证明 unowned，新客户端拒绝 Claude lifecycle。
+Desktop/Web 的 open、save 和 refresh 不以 ownership lookup 或 delivery capability 为门槛，
+包括 flag-off、CLI 启动的旧 Worker 与 lookup unsupported 的 profile。unsupported 始终是 unknown，
+不证明 unowned，也不阻止普通工作区同步。pre-W8 Worker 没有 ledger tables；让它处理带 owned
+rows 的 profile 属于不支持的 database downgrade。PR1+ 的 writer gate 始终保护磁盘 tuple。
+最低协议只约束 adoption、owned relaunch/switch/stop 等 ownership 操作，拒绝时要求升级并
+重启 **Worker**。不支持的创建入口保留 legacy 会话，省略 managed intent，并显示非阻塞提示；
+不会因该提示阻止工作区使用。Worker 自己创建的新节点使用 trusted、capable internal caller。
+连接读取的 typed refusal 通过应用内启动状态展示；阻断 publication，但允许重新读取，升级后恢复。
+每个 renderer 都先安装 listener，再请求一次 canonical connect refresh，覆盖 hydration 与订阅的空档。
 
 旧 Desktop renderer 和 stale Web tab 对当前 Worker 可读取、附着、输入和发布合法 layout；
 不会自动 adoption。已有 owned 节点的 launch、cold prepare、`session.kill` 和

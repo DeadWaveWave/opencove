@@ -1,3 +1,18 @@
+import { isWorkerConnectionRefusal } from '@shared/sync/managedClaudeWorkerCompatibility'
+import {
+  rebaseConnectMetadata,
+  resolveNextActiveWorkspaceId,
+  shouldApplyWorkerSyncRefresh,
+  resolveWorkspacesForWorkerSync,
+} from './workerSync/workspaceRefreshProjection'
+export {
+  shouldApplyWorkerSyncRefresh,
+  resolveWorkspacesForWorkerSync,
+} from './workerSync/workspaceRefreshProjection'
+import {
+  reportWorkerConnectionFailure,
+  clearWorkerConnectionFailure,
+} from './workerSync/workerConnectionState'
 import {
   getCanonicalRefreshDemand,
   requestCanonicalRefresh,
@@ -10,19 +25,15 @@ import {
 } from '@contexts/workspace/presentation/renderer/utils/persistence/write'
 import { schedulePersistedStateWrite } from '@contexts/workspace/presentation/renderer/utils/persistence/schedule'
 import {
+  getPublicationConnectionError,
+  getSyncedPersistedState,
   persistenceScope,
   canAcceptCanonicalState,
   isPublicationBlocked,
   deferRefreshForSubmission,
 } from '@contexts/workspace/presentation/renderer/utils/persistence/publicationState'
-import { getSyncedPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence/write'
 import { useEffect, useRef } from 'react'
-import { normalizeAgentSettings, type AgentSettings } from '@contexts/settings/domain/agentSettings'
-import type {
-  PersistedAppState,
-  PersistedWorkspaceState,
-  WorkspaceState,
-} from '@contexts/workspace/presentation/renderer/types'
+import { normalizeAgentSettings } from '@contexts/settings/domain/agentSettings'
 import {
   readPersistedStateWithMeta,
   toPersistedState,
@@ -32,7 +43,6 @@ import { stripLocalViewStateFromPersistedState } from '@contexts/workspace/prese
 import { useAppStore } from '../store/useAppStore'
 import { canonicalContent } from '@shared/sync/mergeValue'
 import type { SyncEventPayload } from '@shared/contracts/dto'
-import { toShellWorkspaceStateForSync } from './workerSync/mergeWorkspaceStateForSync'
 import { hasRuntimeBindingPublication } from './workerSync/runtimeSessionBinding'
 
 import {
@@ -41,98 +51,6 @@ import {
 } from './workerSync/acceptWorkerSyncSnapshot'
 
 const LOCAL_SYNC_WRITE_EVENT_NAME = 'opencove.localSyncWrite'
-
-function resolveNextActiveWorkspaceId(
-  state: PersistedAppState,
-  currentActive: string | null,
-): string | null {
-  const ids = state.workspaces.map(workspace => workspace.id)
-  if (currentActive && ids.includes(currentActive)) {
-    return currentActive
-  }
-
-  if (state.activeWorkspaceId && ids.includes(state.activeWorkspaceId)) {
-    return state.activeWorkspaceId
-  }
-
-  return ids[0] ?? null
-}
-
-function buildPersistedStateSignature(state: PersistedAppState): string {
-  return JSON.stringify(state)
-}
-
-function buildPersistedWorkspaceSignature(state: PersistedWorkspaceState): string {
-  return JSON.stringify(state)
-}
-
-function buildCurrentWorkspacePersistedSignature(workspace: WorkspaceState): string {
-  const persistedWorkspace = toPersistedState([workspace], workspace.id).workspaces[0]
-  return JSON.stringify(persistedWorkspace)
-}
-
-export function shouldApplyWorkerSyncRefresh({
-  currentState,
-  persistedState,
-}: {
-  currentState: {
-    workspaces: WorkspaceState[]
-    activeWorkspaceId: string | null
-    agentSettings: AgentSettings
-  }
-  persistedState: PersistedAppState
-}): boolean {
-  const currentPersistedState = toPersistedState(
-    currentState.workspaces,
-    currentState.activeWorkspaceId,
-    currentState.agentSettings,
-  )
-
-  return (
-    hasRuntimeBindingPublication(currentState.workspaces) ||
-    buildPersistedStateSignature(currentPersistedState) !==
-      buildPersistedStateSignature(persistedState)
-  )
-}
-
-export function resolveWorkspacesForWorkerSync({
-  currentWorkspaces,
-  persistedWorkspaces,
-  baseState = getSyncedPersistedState(),
-}: {
-  currentWorkspaces: WorkspaceState[]
-  persistedWorkspaces: PersistedWorkspaceState[]
-  baseState?: PersistedAppState | null
-}): WorkspaceState[] {
-  const currentById = new Map(
-    currentWorkspaces.map(workspace => [workspace.id, workspace] as const),
-  )
-
-  const nextWorkspaces = persistedWorkspaces.map(workspace => {
-    const existingWorkspace = currentById.get(workspace.id)
-    if (!existingWorkspace) {
-      return toShellWorkspaceStateForSync(workspace, undefined)
-    }
-
-    return !hasRuntimeBindingPublication([existingWorkspace]) &&
-      buildCurrentWorkspacePersistedSignature(existingWorkspace) ===
-        buildPersistedWorkspaceSignature(workspace)
-      ? existingWorkspace
-      : toShellWorkspaceStateForSync(
-          workspace,
-          existingWorkspace,
-          baseState?.workspaces.find(base => base.id === workspace.id),
-        )
-  })
-
-  if (nextWorkspaces.length !== currentWorkspaces.length) {
-    return nextWorkspaces
-  }
-
-  return nextWorkspaces.every((workspace, index) => workspace === currentWorkspaces[index])
-    ? currentWorkspaces
-    : nextWorkspaces
-}
 
 export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
   const refreshTimerRef = useRef<number | null>(null)
@@ -230,6 +148,10 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
     const unsubscribe =
       typeof syncApi?.onStateUpdated === 'function'
         ? syncApi.onStateUpdated((event: SyncEventPayload) => {
+            if (event.type === 'connection_refused') {
+              reportWorkerConnectionFailure(event.error)
+              return
+            }
             const eventRevision =
               typeof event.revision === 'number' && Number.isFinite(event.revision)
                 ? Math.floor(event.revision)
@@ -302,6 +224,7 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
       needsFullRefreshRef.current = true
       scheduleRefresh(0)
     })
+    requestCanonicalRefresh({ reason: 'connect' })
     async function runRefresh(): Promise<void> {
       const demand = getCanonicalRefreshDemand()
       const pendingSyncWriteRevision = pendingSyncWriteRevisionRef.current
@@ -341,7 +264,11 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
         // Publish queued local edits before reading a shared snapshot. A read started
         // before a later local edit cannot acknowledge or replace that edit.
         const localWriteSucceeded =
-          demand || getPendingPublication() ? true : await flushScheduledPersistedStateWriteAsync()
+          (demand && demand.reason !== 'connect') ||
+          getPendingPublication() ||
+          getPublicationConnectionError()
+            ? true
+            : await flushScheduledPersistedStateWriteAsync()
         if (!active) {
           return
         }
@@ -376,14 +303,20 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
         ) {
           throw new Error('Canonical snapshot is older than the required revision.')
         }
+        clearWorkerConnectionFailure()
         const currentAtApply = useAppStore.getState()
         const currentPersisted = toPersistedState(
           currentAtApply.workspaces,
           currentAtApply.activeWorkspaceId,
           currentAtApply.agentSettings,
         )
-        if (demand || getPendingPublication()) {
+        if (
+          (demand && demand.reason !== 'connect' && getSyncedPersistedState()) ||
+          getPendingPublication()
+        ) {
           persisted = reconcileCanonicalPublication(persisted, currentPersisted)
+        } else if (demand?.reason === 'connect' && getSyncedPersistedState()) {
+          persisted = rebaseConnectMetadata(persisted, currentPersisted)
         } else if (canonicalContent(currentPersisted) !== signatureAtRead) {
           pendingFullRefreshRevisionRef.current = targetRevision
           needsFullRefreshRef.current = true
@@ -459,7 +392,10 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
           lastAppliedRevisionRef.current,
           snapshot.revision ?? 0,
         )
-      } catch {
+      } catch (error) {
+        if (active && persistenceScope() === scopeGeneration && isWorkerConnectionRefusal(error)) {
+          reportWorkerConnectionFailure(error)
+        }
         needsFullRefreshRef.current = true
         pendingFullRefreshRevisionRef.current = Math.max(
           pendingFullRefreshRevisionRef.current ?? 0,

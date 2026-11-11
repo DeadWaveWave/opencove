@@ -1,6 +1,10 @@
+import { assertClientCanonicalState } from './clientObservation'
+import { startWorkerHydration } from '../../../src/app/renderer/shell/hooks/workerSync/startupHydration'
+import { clearWorkerConnectionFailure } from '../../../src/app/renderer/shell/hooks/workerSync/workerConnectionState'
+import { createAppError } from '../../../src/shared/errors/appError'
 import { Delivery } from './delivery'
 import type { SyncEventPayload } from '../../../src/shared/contracts/dto'
-import { editSpaceOrder, assertCanonicalSpaceOrder } from './spaceOrdering'
+import { editSpaceOrder } from './spaceOrdering'
 import { act, renderHook } from '@testing-library/react'
 import { vi } from 'vitest'
 import { useWorkerSyncStateUpdates } from '@app/renderer/shell/hooks/useWorkerSyncStateUpdates'
@@ -34,6 +38,7 @@ import type { PersistedAppState } from '@contexts/workspace/presentation/rendere
 export class Client {
   server: Server
   caches = new Set<RevisionedSnapshotCache<PersistedAppState>>()
+  private stopStartup: (() => void) | undefined
   private queuedFlush: Promise<boolean> | null = null
   private inFlight: Promise<unknown> | null = null
   private legacyHistory = false
@@ -158,7 +163,29 @@ export class Client {
       await this.restart()
     }
     await act(async () => {
-      if (action === 'connect-delivery') {
+      if (action === 'mount-renderer') {
+        this.hook.unmount()
+        this.hook = renderHook(() => useWorkerSyncStateUpdates({ enabled: true }))
+      } else if (action === 'startup-refusal') {
+        this.hook.unmount()
+        this.server.readFailure = createAppError('agent.managed_launch_rejected', {
+          details: { reason: 'workerUpgradeRequired' },
+        })
+        this.stopStartup = startWorkerHydration(
+          async () => {
+            const read = await readPersistedStateWithMeta()
+            clearWorkerConnectionFailure()
+            if (read.state) {
+              this.apply(read.state)
+            }
+            acceptPersistedStateSnapshot(read)
+          },
+          () => true,
+        )
+      } else if (action === 'worker-upgrade') {
+        this.server.readFailure = null
+        window.dispatchEvent(new Event('online'))
+      } else if (action === 'connect-delivery') {
         await this.delivery.connect()
       } else if (action === 'disconnect-delivery') {
         this.delivery.disconnect()
@@ -362,6 +389,9 @@ export class Client {
       }
     })
     if (
+      action === 'mount-renderer' ||
+      action === 'startup-refusal' ||
+      action === 'worker-upgrade' ||
       action === 'connect-delivery' ||
       action === 'refresh' ||
       action === 'event' ||
@@ -383,46 +413,7 @@ export class Client {
     }
   }
   check(quiet: boolean) {
-    const pending = publication.getPendingPublication()
-    const draft = publication.isPublicationBlocked(pending)
-      ? (JSON.parse(
-          ((pending && 'draftRaw' in pending ? pending!.draftRaw : null) as string) ??
-            pending!.candidateRaw,
-        ) as PersistedAppState)
-      : null
-    const accepted = publication.getSyncedPersistedState()
-    assertCanonicalSpaceOrder([...this.caches].at(-1)?.latest?.state)
-    this.server.model.check(
-      {
-        ui: value(this.state()),
-        draft: draft ? value(draft) : null,
-        accepted: accepted ? value(accepted) : null,
-        revision: publication.getAcceptedRevision(),
-        cache: [...this.caches].at(-1)?.latest?.state
-          ? value([...this.caches].at(-1)!.latest!.state!)
-          : null,
-        viewConsistent:
-          !accepted ||
-          publication.canAcceptCanonicalState(accepted, publication.getAcceptedRevision()) ===
-            publication.canAcceptCanonicalState(
-              {
-                ...accepted,
-                workspaces: accepted.workspaces.map(w => ({
-                  ...w,
-                  viewport: { x: 999, y: 2, zoom: 3 },
-                })),
-              },
-              publication.getAcceptedRevision(),
-            ),
-        surfaced: !!useAppStore.getState().persistNotice,
-        acceptedVerified: accepted?.workspaces[0].nodes[0].agent?.resumeSessionIdVerified === true,
-        verified:
-          useAppStore.getState().workspaces[0].nodes[0].data.agent?.resumeSessionIdVerified ===
-          true,
-      },
-      quiet,
-      this.owned,
-    )
+    assertClientCanonicalState(this, quiet)
   }
   async quiet() {
     if (this.stopped) {
@@ -443,6 +434,7 @@ export class Client {
     }
   }
   async close() {
+    this.stopStartup?.()
     this.delivery.disconnect()
     this.server.reply()
     await this.inFlight

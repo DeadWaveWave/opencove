@@ -1,3 +1,4 @@
+import { createAppError } from '../../../src/shared/errors/appError'
 import { withWorkerCompatibility } from '../../support/workerCompatibilityFetch'
 import { EventEmitter } from 'node:events'
 import { Readable } from 'node:stream'
@@ -131,5 +132,43 @@ describe('worker sync bridge', () => {
     expect(attempts).toBeGreaterThan(1)
 
     bridge.dispose()
+  })
+  it('forwards a typed refusal and resumes reconciliation after the Worker is upgraded', async () => {
+    vi.useFakeTimers()
+    let upgraded = false
+    const body = new MockReadableStream()
+    const fetchMock = vi.fn(async () => ({ ok: true, body }))
+    vi.stubGlobal('fetch', fetchMock)
+    vi.spyOn(Readable, 'fromWeb').mockImplementation(value => value as unknown as Readable)
+    const bridge = registerWorkerSyncBridge(async () => {
+      if (!upgraded) {
+        throw createAppError('agent.managed_launch_rejected', {
+          details: { reason: 'workerUpgradeRequired' },
+        })
+      }
+      return { hostname: 'localhost', port: 4310, token: 'test' }
+    })
+    try {
+      await vi.waitFor(() =>
+        expect(sendMock).toHaveBeenCalledWith(
+          IPC_CHANNELS.syncStateUpdated,
+          expect.objectContaining({
+            type: 'connection_refused',
+            error: expect.objectContaining({ details: { reason: 'workerUpgradeRequired' } }),
+          }),
+        ),
+      )
+      expect(fetchMock).not.toHaveBeenCalled()
+      upgraded = true
+      await vi.advanceTimersByTimeAsync(750)
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+      body.emit('data', 'event: opencove.sync\ndata: {"type":"resync_required","revision":4}\n\n')
+      expect(sendMock).toHaveBeenLastCalledWith(IPC_CHANNELS.syncStateUpdated, {
+        type: 'resync_required',
+        revision: 4,
+      })
+    } finally {
+      bridge.dispose()
+    }
   })
 })

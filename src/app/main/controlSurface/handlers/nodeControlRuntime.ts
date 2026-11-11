@@ -131,6 +131,7 @@ export function createRuntimeDeps(
     launchAgent: async (resolved, data) => {
       const spawnContext = {
         ...ctx,
+        clientFeatures: { managedClaudeResumeBindingV1: true as const },
         agentSpawnPermit: permit,
         managedClaudeIntent: {
           kind: 'launchNew' as const,

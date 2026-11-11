@@ -402,3 +402,7 @@ exact revision；rollback、row-only activation 和 alreadyApplied 不发布新�
 Worker composition 将通知写入有界 buffer，并分别隔离 Desktop 和 SSE sink 的失败。
 HTTP 不再通过 command 前后读取 revision 来猜测提交；owner 的 attributable callback 按 revision 去重。
 通知只要求重新读取 canonical snapshot，不授予 tuple authority。
+
+pre-W8 Worker 不含 managed ledger tables；用它打开已有 owned rows 的 profile 属于不支持的
+database downgrade。普通 workspace 同步不因 lookup unsupported 失败；PR1+ final writer
+继续强制 ledger gate，客户端能力缺失只限制 ownership-dependent operations。
