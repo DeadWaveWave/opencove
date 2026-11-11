@@ -378,8 +378,9 @@ unknown outcome 保留 runtime 与 reconciliation obligation，未到 clean tran
 不能确认成功、重启或补偿。Worker 重启不重建旧 token。
 
 新 adoption 默认启用；仅 `OPENCOVE_MANAGED_CLAUDE_BINDINGS=0` 冻结更新。
-首次接管在 activation 事务中比较原 unowned tuple、runtime、恢复状态及执行上下文；
-并发 legacy publication 改变目标时取消 stale candidate，重新读取后再尝试。布局修改不冲突。
+首次接管在 activation 事务中比较原 unowned tuple、runtime 及执行上下文；
+并发 legacy publication 改变目标时取消 stale candidate，重新读取后再尝试。UI 状态、结束信息与布局不冲突。
+冷恢复另在同一事务检查并发 `stopped`；显式 relaunch 可恢复 stopped 节点，不套用该冷恢复限制。
 最终 route 使用本地 mount fallback 的未拥有节点保持 legacy；owned 节点仍拒绝 route 变化。
 
 

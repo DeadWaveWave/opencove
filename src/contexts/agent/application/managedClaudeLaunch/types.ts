@@ -10,6 +10,8 @@ export interface ManagedClaudeLaunchAttempt {
   expected?: ManagedClaudeLaunchExpected
   context?: ManagedClaudeNodeContext | null
   adoptionSnapshot?: string
+  /** Cold recovery only; explicit user relaunch may start a stopped node. */
+  requireRecoverable?: boolean
 }
 export interface ManagedClaudeRuntimeCandidate {
   runtimeSessionId: string | null

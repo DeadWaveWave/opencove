@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop -- Ordered restart and publication acceptance. */
 import { expect, test } from '@playwright/test'
 import { defaultsHarness } from './recovery.managed-claude-defaults.helpers'
-import { getBinding, launch } from './recovery.managed-claude-launch-lifecycle.helpers'
+import { getBinding } from './recovery.managed-claude-launch-lifecycle.helpers'
 import { syntheticRebind } from './managedClaudeContinuity.helpers'
 import { staleManagedPublication } from '../support/convergence/staleManagedPublication'
 import { waitForControlSurfaceConnection } from './controlSurfaceConnection.helpers'
@@ -92,24 +92,44 @@ test('freezes owned B across Worker restart while legacy creation and layout rem
         })
         .first(),
     ).toBeVisible()
-    await expect(
-      launch(page, agent.id, f.workspace, {
-        kind: 'launchNew',
-        expected: { activationId: current.activationId, tuple: current.tuple },
-      }),
-    ).rejects.toThrow(/paused/)
-    await expect(
-      page.evaluate(
-        async nodeId =>
-          window.opencoveApi.controlSurface.invoke({
-            kind: 'command',
-            id: 'session.prepareOrRevive',
-            clientFeatures: { managedClaudeResumeBindingV1: true },
-            payload: { workspaceId: 'managed-launch-project', nodeIds: [nodeId] },
-          }),
-        agent.id,
-      ),
-    ).rejects.toThrow(/paused/)
+    for (const id of ['session.launchAgent', 'session.prepareOrRevive']) {
+      const refusal = await page.evaluate(
+        async ({ operation, nodeId, cwd, expected }) => {
+          try {
+            await window.opencoveApi.controlSurface.invoke({
+              kind: 'command',
+              id: operation,
+              clientFeatures: { managedClaudeResumeBindingV1: true },
+              payload:
+                operation === 'session.launchAgent'
+                  ? {
+                      canvasNodeId: nodeId,
+                      cwd,
+                      provider: 'claude-code',
+                      prompt: 'Managed lifecycle fixture',
+                      mode: 'new',
+                      intent: { kind: 'launchNew', expected },
+                    }
+                  : { workspaceId: 'managed-launch-project', nodeIds: [nodeId] },
+            })
+            return { accepted: true }
+          } catch (error) {
+            const typed = error as { code?: string; details?: unknown }
+            return { code: typed.code, details: typed.details }
+          }
+        },
+        {
+          operation: id,
+          nodeId: agent.id,
+          cwd: f.workspace,
+          expected: { activationId: current.activationId, tuple: current.tuple },
+        },
+      )
+      expect(refusal).toMatchObject({
+        code: 'agent.managed_launch_rejected',
+        details: { reason: 'writesDisabled' },
+      })
+    }
     expect((await f.records()).length).toBe(count)
     for (const raw of [false, true]) {
       const latest = await page.evaluate(async () => window.opencoveApi.persistence.readAppState())

@@ -173,6 +173,7 @@ export function createManagedClaudeLaunchRuntime(deps: {
       owner.assertCurrent(attempt)
       attempt.context = observation?.context
       attempt.adoptionSnapshot ??= observation?.binding ? undefined : observation?.adoptionSnapshot
+      attempt.requireRecoverable = !observation?.binding
       try {
         return await scope.run(
           {

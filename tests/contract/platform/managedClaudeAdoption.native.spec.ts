@@ -38,14 +38,11 @@ describeWithElectronNativeModules('first Claude adoption CAS and crash recovery'
     store = await createPersistenceStore({ dbPath, strictRecovery: true })
     return store.observeManagedClaudeNode('agent')
   }
-  it.each(['tuple', 'runtime', 'status', 'directory', 'route', 'prompt'] as const)(
+  it.each(['tuple', 'runtime', 'directory', 'route'] as const)(
     'does not lock in A after another window changes %s',
     async field => {
       const input = candidate()
       const state = stateWithAgent()
-      if (field === 'prompt') {
-        Object.assign(state.workspaces[0].nodes[0].agent, { prompt: 'New intent' })
-      }
       if (field === 'directory') {
         Object.assign(state.workspaces[0].nodes[0].agent, { executionDirectory: '/other' })
       }
@@ -59,9 +56,6 @@ describeWithElectronNativeModules('first Claude adoption CAS and crash recovery'
       }
       if (field === 'runtime') {
         state.workspaces[0].nodes[0].sessionId = 'runtime-B'
-      }
-      if (field === 'status') {
-        Object.assign(state.workspaces[0].nodes[0], { status: 'stopped' })
       }
       await store.writeAppState(state)
       expect(await store.activateManagedClaudeRuntime(input)).toEqual({ status: 'superseded' })
@@ -85,6 +79,48 @@ describeWithElectronNativeModules('first Claude adoption CAS and crash recovery'
       )
     },
   )
+  it.each(['standby', 'stopped'])(
+    'allows explicit relaunch presentation to move %s to restoring',
+    async status => {
+      const state = stateWithAgent()
+      Object.assign(state.workspaces[0].nodes[0], { status, endedAt: '2026-11-01', exitCode: 1 })
+      await store.writeAppState(state)
+      const input = candidate()
+      Object.assign(state.workspaces[0].nodes[0], {
+        status: 'restoring',
+        endedAt: null,
+        exitCode: null,
+      })
+      Object.assign(state.workspaces[0].nodes[0].agent, {
+        launchMode: 'resume',
+        prompt: 'Presentation update',
+        expectedDirectory: '/display',
+      })
+      await store.writeAppState(state)
+      expect(await store.activateManagedClaudeRuntime(input)).toMatchObject({ status: 'committed' })
+    },
+  )
+  it('rejects a cold adoption stopped by a competing writer', async () => {
+    const input = { ...candidate(), requireRecoverable: true }
+    const state = stateWithAgent()
+    Object.assign(state.workspaces[0].nodes[0], { status: 'stopped' })
+    await store.writeAppState(state)
+    expect(await store.activateManagedClaudeRuntime(input)).toEqual({ status: 'superseded' })
+    expect(store.observeManagedClaudeNode('agent').binding).toBeNull()
+  })
+  it('rechecks unverified blank-agent eligibility without fencing verified prompt presentation', async () => {
+    const state = stateWithAgent()
+    Object.assign(state.workspaces[0].nodes[0].agent, {
+      resumeSessionId: null,
+      resumeSessionIdVerified: false,
+      prompt: '',
+    })
+    await store.writeAppState(state)
+    const input = candidate()
+    Object.assign(state.workspaces[0].nodes[0].agent, { prompt: 'A pending task' })
+    await store.writeAppState(state)
+    expect(await store.activateManagedClaudeRuntime(input)).toEqual({ status: 'superseded' })
+  })
   it('allows unrelated layout publication between preparation and activation', async () => {
     const input = candidate(),
       state = stateWithAgent()

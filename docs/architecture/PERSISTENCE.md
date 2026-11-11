@@ -323,7 +323,8 @@ canonical tuple、runtime、activation ID 和单调的 `node_seen`；`nodes.agen
 仅内部 `activateManagedClaudeRuntime` / `commitManagedClaudeRebind` 可提交绑定；Worker 默认在
 符合条件的实际启动中接管，不从 provider、verified 或快照推断 ownership。schema repair 只重建表结构，
 不执行 lifecycle adoption。首次接管在同一 activation 事务中比较原未拥有节点的 tuple、runtime、
-恢复状态与上下文；布局变化不影响比较。freeze 不移除既有 ledger 的保护。
+执行上下文；UI restoring/结束信息/布局不影响比较。冷恢复在同一事务另拒绝并发 stopped；
+显式 relaunch 不受此冷恢复限制。freeze 不移除既有 ledger 的保护。
 
 最终 app-state writer 在同一事务内纠正 owned tuple 与非空 runtime，保留其他编辑；不兼容的
 agent/kind/provider/route 或 retired ID 拒绝整次写入。真实删除将 ID 写入

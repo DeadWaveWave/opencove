@@ -259,7 +259,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
                 lastError: null,
                 recoveryIssue: null,
                 agent:
-                  !binding && mode === 'new' && item.data.agent
+                  !binding && !intent && mode === 'new' && item.data.agent
                     ? {
                         ...item.data.agent,
                         launchMode: 'new',
