@@ -32,7 +32,7 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-for (const route of ['direct', 'mount', 'node', 'remote', 'remote-node'] as const) {
+for (const route of ['direct', 'mount', 'node', 'mounted-node', 'remote', 'remote-node'] as const) {
   for (const provider of AGENT_PROVIDER_IDS) {
     const label = provider === 'gemini' ? 'gemini (legacy fallback to codex)' : provider
     it.each([
@@ -41,83 +41,100 @@ for (const route of ['direct', 'mount', 'node', 'remote', 'remote-node'] as cons
       '--dangerously-skip-permissions please',
       '-p task text',
       'Explain the change',
-    ])(`${route}/${label} keeps grant prompt %j literal through the real adapter`, async prompt => {
-      const isRemote = route.startsWith('remote')
-      const home = await createPromptWorker({ remote: isRemote, fullAccess: provider === 'kimi' })
-      const worker = isRemote ? await createPromptWorker({ fullAccess: provider === 'kimi' }) : home
-      remote.mockImplementation(async (_endpoint, request) => ({
-        result:
-          request.id === 'workspace.approveRoot'
-            ? { ok: true, value: null }
-            : await worker.invoke(request, true),
-      }))
-      let file: string | undefined
-      try {
-        const node = route.endsWith('node')
-        const result = await home.invoke({
-          kind: 'command',
-          id: node
-            ? 'node.create'
-            : route === 'direct'
-              ? 'session.launchAgent'
-              : 'session.launchAgentInMount',
-          payload: node
-            ? {
-                kind: 'agent',
-                space: { kind: 'spaceId', spaceId: 'space' },
-                data: { provider, prompt },
-              }
-            : {
-                ...(route === 'direct' ? { cwd } : { mountId: 'mount', cwdUri: rootUri }),
-                provider,
-                prompt,
-              },
+    ])(
+      `${route}/${label} keeps grant prompt %j literal through the real adapter (remote uses user authority)`,
+      async prompt => {
+        const isRemote = route.startsWith('remote')
+        const home = await createPromptWorker({
+          remote: isRemote,
+          localMount: route === 'mounted-node',
+          fullAccess: provider === 'kimi',
         })
-        expect(result).toMatchObject({ ok: true })
-        expect(worker.spawn).toHaveBeenCalledOnce()
-        if (isRemote) {
-          expect(home.spawn).not.toHaveBeenCalled()
-        }
-        const args = worker.spawn.mock.calls[0][0].args
-        // Gemini is legacy-only: new launches deliberately resolve it to the default provider.
-        const selected = provider === 'gemini' ? 'codex' : provider
-        expect(worker.spawn.mock.calls[0][0].command).toBe(
-          selected === 'claude-code' ? 'claude' : selected,
-        )
-        if (selected === 'pi' && prompt.startsWith('-')) {
-          expect(args.at(-1)).toMatch(/^@/)
-          file = args.at(-1)!.slice(1)
-          expect(await readFile(file, 'utf8')).toBe(prompt)
-          expect(args).not.toContain(prompt)
-        } else if (selected === 'opencode' && prompt.startsWith('-')) {
-          expect(args).toContain(`--prompt=${prompt}`)
-        } else if (selected === 'kimi') {
-          expect(args.slice(-2)).toEqual(['--prompt', prompt])
-        } else {
-          expect(args.at(-1) === prompt || args.at(-2) === prompt).toBe(true)
-          if (prompt.startsWith('-')) {
-            expect(args.at(-2)).toBe('--')
+        const worker = isRemote
+          ? await createPromptWorker({ fullAccess: provider === 'kimi' })
+          : home
+        remote.mockImplementation(async (_endpoint, request) => ({
+          result:
+            request.id === 'workspace.approveRoot'
+              ? { ok: true, value: null }
+              : await worker.invoke(request, true),
+        }))
+        let file: string | undefined
+        try {
+          const node = route.endsWith('node')
+          const result = await home.invoke(
+            {
+              kind: 'command',
+              id: node
+                ? 'node.create'
+                : route === 'direct'
+                  ? 'session.launchAgent'
+                  : 'session.launchAgentInMount',
+              payload: node
+                ? {
+                    kind: 'agent',
+                    space: { kind: 'spaceId', spaceId: 'space' },
+                    data: { provider, prompt },
+                  }
+                : {
+                    ...(route === 'direct' ? { cwd } : { mountId: 'mount', cwdUri: rootUri }),
+                    provider,
+                    prompt,
+                  },
+            },
+            isRemote,
+          )
+          expect(result).toMatchObject({ ok: true })
+          if (route === 'mounted-node') {
+            const operations = home.invokeCalls.mock.calls.map(([, request]) => request.id)
+            expect(operations).toContain('session.launchAgentInMount')
+            expect(operations).not.toContain('session.launchAgent')
+          }
+          expect(worker.spawn).toHaveBeenCalledOnce()
+          if (isRemote) {
+            expect(home.spawn).not.toHaveBeenCalled()
+          }
+          const args = worker.spawn.mock.calls[0][0].args
+          // Gemini is legacy-only: new launches deliberately resolve it to the default provider.
+          const selected = provider === 'gemini' ? 'codex' : provider
+          expect(worker.spawn.mock.calls[0][0].command).toBe(
+            selected === 'claude-code' ? 'claude' : selected,
+          )
+          if (selected === 'pi' && prompt.startsWith('-')) {
+            expect(args.at(-1)).toMatch(/^@/)
+            file = args.at(-1)!.slice(1)
+            expect(await readFile(file, 'utf8')).toBe(prompt)
+            expect(args).not.toContain(prompt)
+          } else if (selected === 'opencode' && prompt.startsWith('-')) {
+            expect(args).toContain(`--prompt=${prompt}`)
+          } else if (selected === 'kimi') {
+            expect(args.slice(-2)).toEqual(['--prompt', prompt])
+          } else {
+            expect(args.at(-1) === prompt || args.at(-2) === prompt).toBe(true)
+            if (prompt.startsWith('-')) {
+              expect(args.at(-2)).toBe('--')
+            }
+          }
+          const optionArgs =
+            selected === 'kimi'
+              ? args.slice(0, -2)
+              : selected === 'claude-code' || selected === 'codex'
+                ? args.slice(0, args.indexOf('--') < 0 ? -1 : args.indexOf('--'))
+                : args
+          expect(optionArgs).not.toContain('--resume')
+          expect(optionArgs).not.toContain('--continue')
+          expect(optionArgs).not.toContain('--approve')
+        } finally {
+          await home.dispose()
+          if (worker !== home) {
+            await worker.dispose()
           }
         }
-        const optionArgs =
-          selected === 'kimi'
-            ? args.slice(0, -2)
-            : selected === 'claude-code' || selected === 'codex'
-              ? args.slice(0, args.indexOf('--') < 0 ? -1 : args.indexOf('--'))
-              : args
-        expect(optionArgs).not.toContain('--resume')
-        expect(optionArgs).not.toContain('--continue')
-        expect(optionArgs).not.toContain('--approve')
-      } finally {
-        await home.dispose()
-        if (worker !== home) {
-          await worker.dispose()
+        if (file) {
+          await expect(access(file)).rejects.toThrow()
         }
-      }
-      if (file) {
-        await expect(access(file)).rejects.toThrow()
-      }
-    })
+      },
+    )
   }
 }
 

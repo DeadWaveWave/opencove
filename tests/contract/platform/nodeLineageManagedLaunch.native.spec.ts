@@ -52,7 +52,7 @@ describeWithElectronNativeModules('grant-created Claude lineage and managed owne
           projectId: 'project',
           spaceId: 'space',
           nodeId: 'agent',
-          sessionId: 'caller-runtime',
+          sessionId: 'old-runtime',
         }).grant
         const created = await f.invoke<CreateNodeResult>(
           {
@@ -80,6 +80,9 @@ describeWithElectronNativeModules('grant-created Claude lineage and managed owne
           },
         })
         expect(f.spawn).toHaveBeenCalledTimes(1)
+        expect(f.spawnRuntime.port.snapshot().bindings).toEqual([
+          { nodeId: childId, sessionId: 'runtime-1', runtimeOwner: 'local', state: 'running' },
+        ])
         expect(activate).toHaveBeenCalledTimes(enabled ? 1 : 0)
         if (enabled) {
           expect(beforeActivation).toEqual([

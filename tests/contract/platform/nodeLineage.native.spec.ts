@@ -103,6 +103,7 @@ describeWithElectronNativeModules('durable node lineage', () => {
       const reopened = await createPersistenceStore({ dbPath: f.dbPath })
       try {
         expect((await reopened.nodeLineage!.readMany(['child'])).get('child')).toEqual(f.lineage)
+        expect((await reopened.nodeLineage!.readAll!()).get('child')).toEqual(f.lineage)
         const descendant = deriveNodeLineage({
           nodeId: 'grandchild',
           callerNodeId: 'child',

@@ -17,6 +17,7 @@ export interface ControlSurfaceContext {
       execute: () => Promise<T>,
     ) => Promise<T>
   }
+  readonly agentSpawnPermit?: import('./agentSpawnContext').AgentSpawnPermit
   readonly spawnIdentity?: import('./sessionSpawnIdentityContext').CanvasSpawnIdentity
   readonly requestAuth?: import('./http/requestAuth').RequestAuth
   /** In-process caller lifecycle fence; never accepted from a transport payload. */

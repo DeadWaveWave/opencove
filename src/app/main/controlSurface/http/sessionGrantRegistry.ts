@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 
 export interface SessionGrantIdentity {
+  readonly delegated?: boolean
   readonly projectId: string
   readonly spaceId: string
   readonly nodeId: string | null
@@ -36,6 +37,7 @@ export class SessionGrantRegistry {
     }
     const token = randomBytes(32).toString('base64url')
     const grant: SessionGrant = Object.freeze({
+      ...(identity.delegated ? { delegated: true } : {}),
       projectId: identity.projectId,
       spaceId: identity.spaceId,
       nodeId: identity.nodeId,

@@ -1,3 +1,4 @@
+import { createAgentSpawnRuntime } from './agentSpawnRuntime'
 import { createCanvasSpawnRunner } from './createCanvasSpawnRunner'
 import { createManagedClaudeLaunchRuntime } from './managedClaudeLaunchRuntime'
 import { createWorkerAgentTurnArchiveRuntime } from './agentTurnArchiveRuntime'
@@ -179,8 +180,9 @@ export function createControlSurfaceHttpRuntime(
   })
   const agentProviderRegistry = terminalAgents.agentProviderRegistry
   let privateControlUrl = ''
+  const spawnRuntime = createAgentSpawnRuntime(options.ptyRuntime)
   const sessionAccess = createSessionGrantPtyRuntime({
-    runtime: options.ptyRuntime,
+    runtime: spawnRuntime.runtime,
     onSpawnIdentity: (sessionId, nodeId) => agentRuns.captureLaunchIdentity(sessionId, nodeId),
     controlUrl: () => privateControlUrl,
     cliPath: resolveWorkerCliScriptPath(__dirname),
@@ -264,12 +266,13 @@ export function createControlSurfaceHttpRuntime(
         options.activationId ?? null,
       )
     : null
+  const canvasSpawnRunner = createCanvasSpawnRunner({
+    managedClaude,
+    terminalRuntimeAvailability,
+    getPersistenceStore,
+  })
   const controlSurface = createControlSurface({
-    run: createCanvasSpawnRunner({
-      managedClaude,
-      terminalRuntimeAvailability,
-      getPersistenceStore,
-    }),
+    run: (...args) => spawnRuntime.observeRequests(() => canvasSpawnRunner(...args)),
     enter: id =>
       maintenance &&
       !id.startsWith('worker.maintenance.') &&
@@ -287,6 +290,7 @@ export function createControlSurfaceHttpRuntime(
   }
   registerPluginDistributionHandlers(controlSurface, pluginDistribution)
   registerControlSurfaceHandlers(controlSurface, {
+    agentSpawnRuntime: spawnRuntime.port,
     context: ctx,
     plugins,
     pluginDistribution,
@@ -330,6 +334,7 @@ export function createControlSurfaceHttpRuntime(
     turnArchive.stop()
     invocationLifetime.abort()
     sessionAccess.dispose()
+    spawnRuntime.dispose()
     plugins.beginShutdown()
     pluginViews.dispose()
     // Accepted long operations outlive HTTP handlers, but not runtime shutdown authority.

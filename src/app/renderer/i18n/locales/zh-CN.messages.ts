@@ -1,4 +1,22 @@
 export const zhCNMessages = {
+  agentSpawnDepth: '此运行时将超出 Agent 创建链的最大深度 3。',
+  agentSpawnDepthHint: '请让用户启动一个新的 Agent。',
+  agentSpawnConcurrency: '此 Agent 创建树中，由 Agent 创建且正在运行或启动的运行时已达到上限 6。',
+  agentSpawnConcurrencyHint:
+    '请等待此树中的一个会话退出，或停止其中一个 Agent 或终端。完成一轮任务不会释放名额。也可以让用户启动一个新的 Agent。',
+  agentSpawnRoute: 'Agent 会话不能通过此操作启动运行时。',
+  agentSpawnRouteHint: '请使用 "opencove node create agent" 或 "opencove node create terminal"。',
+  agentSpawnCaller: '此会话没有画布节点，无法创建 Agent 或终端运行时。',
+  agentSpawnCallerHint:
+    '请让用户在画布上启动一个 Agent，再从该 Agent 使用 "opencove node create"。',
+  agentSpawnBinding: '此会话已不是其画布节点的当前运行时。',
+  agentSpawnBindingHint: '请使用该节点的当前会话，或让用户启动一个新的 Agent。',
+  agentSpawnRemote: '暂不支持 Agent 跨 Worker 创建运行时。',
+  agentSpawnRemoteHint: '请让用户在目标 Worker 上启动 Agent。',
+  agentSpawnAccounting: 'OpenCove 无法确认此 Agent 创建树中的运行时状态。',
+  agentSpawnAccountingHint: '请让用户检查相关运行时，并在画布上启动一个新的 Agent 以继续委派。',
+  agentSpawnCapability: '此 Worker 不支持受限的 Agent 创建功能。',
+  agentSpawnCapabilityHint: '请更新 Worker，再从 Agent 会话创建运行时。',
   managedAgentChanged: '此智能体已发生变更，请刷新工作区后重试。',
   managedAgentDirectoryConflict: '此 Agent 属于其他目录。请保留当前目录，或启动新的 Agent。',
   managedAgentLaunchUncertain: '暂时无法确认 Agent 是否已启动。请先检查会话状态，再重试。',

@@ -1,4 +1,5 @@
 import { agentPromptErrorPresentation } from './agentPromptError'
+import { agentSpawnErrorPresentation } from './agentSpawnError'
 import { nodeParentErrorPresentation } from './nodeParentError'
 import { fileSystemErrorReasonMessage } from './filesystemError'
 import { publicTerminalSpawnApplicationError } from './terminalSpawnErrorReasons'
@@ -22,6 +23,9 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'endpoint.operation_in_progress': 'Another endpoint operation is already in progress.',
     'space.not_found': 'Space not found.',
     'space.ambiguous': 'Space locator matched multiple spaces.',
+    'agent.spawn_depth_limit': 'This runtime would exceed the maximum agent lineage depth of 3.',
+    'agent.spawn_concurrency_limit':
+      'This agent tree has reached its limit of 6 active or starting agent-created runtimes.',
     'node.parent_unavailable': 'The parent node could not be resolved.',
     'node.not_found': 'Node not found.',
     'node.unsupported_operation': 'This node operation is not supported.',
@@ -230,6 +234,10 @@ export function formatAppErrorMessage(error: AppErrorDescriptor | OpenCoveAppErr
   const prompt = agentPromptErrorPresentation(descriptor)
   if (prompt) {
     return prompt.message
+  }
+  const spawn = agentSpawnErrorPresentation(descriptor)
+  if (spawn) {
+    return `${spawn.message} ${spawn.hint}`
   }
   const parent = nodeParentErrorPresentation(descriptor)
   if (parent) {

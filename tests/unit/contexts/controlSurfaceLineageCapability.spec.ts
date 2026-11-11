@@ -18,7 +18,7 @@ it.each([
   const surface = createControlSurface()
   registerControlSurfaceHandlers(surface, {
     getPersistenceStore: async () => store,
-    ptyRuntime: {},
+    ptyRuntime: { kill() {} },
     plugins: { configureHost() {} },
     ptyStreamHub: { agentRuns: { registry: { onDispose() {} } } },
   } as Parameters<typeof registerControlSurfaceHandlers>[1])
@@ -36,3 +36,40 @@ it.each([
     value: { features: { operationRegistry: true, nodeLineageV1: read && commit } },
   })
 })
+
+it.each([
+  [false, false, false],
+  [true, false, true],
+  [true, true, false],
+  [true, true, true],
+])(
+  'advertises bounded spawning only with installed runtime=%s audit=%s revision=%s',
+  async (runtime, audit, revision) => {
+    const store = createInMemoryPersistenceStore()
+    if (!audit) {
+      store.nodeLineage!.readAll = undefined
+    }
+    if (!revision) {
+      store.isAppStateRevisionCurrent = undefined
+    }
+    const surface = createControlSurface()
+    registerControlSurfaceHandlers(surface, {
+      getPersistenceStore: async () => store,
+      agentSpawnRuntime: runtime
+        ? { snapshot: () => ({ revision: 0, bindings: [] }), isCurrent: () => true }
+        : undefined,
+      ptyRuntime: { kill() {} },
+      plugins: { configureHost() {} },
+      ptyStreamHub: { agentRuns: { registry: { onDispose() {} } } },
+    } as Parameters<typeof registerControlSurfaceHandlers>[1])
+    expect(
+      await surface.invoke(
+        { now: () => new Date(), capabilities: {} },
+        { kind: 'query', id: 'system.capabilities', payload: {} },
+      ),
+    ).toMatchObject({
+      ok: true,
+      value: { features: { boundedAgentSpawningV1: runtime && audit && revision } },
+    })
+  },
+)

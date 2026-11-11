@@ -1,3 +1,4 @@
+import { agentSpawnErrorPresentation } from '../../../shared/errors/agentSpawnError'
 import { isConnectionRefused } from '../../../shared/errors/connectionRefused'
 import { isPromptDeliveryResult, normalizePromptDeliveryResult } from './promptTransport'
 import {
@@ -132,6 +133,7 @@ export async function invoke(
           : String(error.code).endsWith('.unsupported_operation')
             ? 'does not support this operation'
             : undefined
+      const spawn = agentSpawnErrorPresentation(error)
       const promptError =
         prompt && isAppErrorDescriptor(error) ? agentPromptErrorPresentation(error) : undefined
       const attemptsKnown =
@@ -150,23 +152,25 @@ export async function invoke(
                 ? 6
                 : 1,
         // agent.prompt renders its own recovery text; other commands keep target-aware messages.
-        prompt
-          ? (promptError?.message ??
+        spawn?.message ??
+          (prompt
+            ? (promptError?.message ??
               (!attemptsKnown
                 ? 'Prompt delivery failed. The outcome is unknown.'
                 : formatAppErrorMessage(error)))
-          : target?.entity && targetAction
-            ? `${target.entity} ${JSON.stringify(Object.values(targetDetails)[0])} ${targetAction}`
-            : error.code === 'common.invalid_input'
-              ? inputErrorMessage(request.id, error.debugMessage)
-              : (error.debugMessage ?? error.code ?? 'Operation failed'),
-        prompt
-          ? (promptError?.hint ?? promptUnknownRecovery)
-          : error.code === 'common.approved_path_required'
-            ? 'Run "opencove mount list --project <id>" to see approved roots.'
-            : target
-              ? `Run "${target.listCommand}" to find available targets.`
-              : undefined,
+            : target?.entity && targetAction
+              ? `${target.entity} ${JSON.stringify(Object.values(targetDetails)[0])} ${targetAction}`
+              : error.code === 'common.invalid_input'
+                ? inputErrorMessage(request.id, error.debugMessage)
+                : (error.debugMessage ?? error.code ?? 'Operation failed')),
+        spawn?.hint ??
+          (prompt
+            ? (promptError?.hint ?? promptUnknownRecovery)
+            : error.code === 'common.approved_path_required'
+              ? 'Run "opencove mount list --project <id>" to see approved roots.'
+              : target
+                ? `Run "${target.listCommand}" to find available targets.`
+                : undefined),
         prompt && !attemptsKnown
           ? { ...error.details, deliveryOutcome: 'unknown' }
           : target

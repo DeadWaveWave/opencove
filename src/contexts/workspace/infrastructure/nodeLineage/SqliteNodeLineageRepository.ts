@@ -17,6 +17,15 @@ export function ensureNodeLineageSchema(db: Database.Database): void {
 }
 export function createSqliteNodeLineageRepository(db: Database.Database): NodeLineageRepository {
   return {
+    readAll: async () => {
+      const rows = db
+        .prepare(
+          `SELECT node_id AS nodeId, spawned_by_node_id AS spawnedBy,
+        root_node_id AS rootNodeId, lineage_depth AS lineageDepth FROM node_lineage`,
+        )
+        .all() as NodeLineageRecord[]
+      return new Map(rows.map(row => [row.nodeId, row]))
+    },
     readMany: async nodeIds => {
       const query = db.prepare(`SELECT node_id AS nodeId, spawned_by_node_id AS spawnedBy,
       root_node_id AS rootNodeId, lineage_depth AS lineageDepth FROM node_lineage WHERE node_id = ?`)

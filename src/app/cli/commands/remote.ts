@@ -87,19 +87,24 @@ export const remoteCommands: Command[] = [
     force: ['force', option('Archive despite uncommitted changes', '', false, 'boolean')],
     'delete-branch': ['deleteBranch', option('Delete the worktree branch', '', false, 'boolean')],
   }),
-  mapped('session run-agent', 'session.launchAgent', 'Launch an agent in a space', {
-    space: ['spaceId', id('space')],
-    prompt: ['prompt', { ...option('Give the agent its task', 'text', true), fileVariant: true }],
-    provider: [
-      'provider',
-      {
-        ...option('Select the agent provider', 'provider'),
-        choices: [...AGENT_PROVIDER_IDS, ''],
-        normalize: value => value.trim(),
-      },
-    ],
-    model: ['model', option('Select the agent model', 'model')],
-  }),
+  mapped(
+    'session run-agent',
+    'session.launchAgent',
+    'Start a standalone agent as the user; agent sessions must use node create',
+    {
+      space: ['spaceId', id('space')],
+      prompt: ['prompt', { ...option('Give the agent its task', 'text', true), fileVariant: true }],
+      provider: [
+        'provider',
+        {
+          ...option('Select the agent provider', 'provider'),
+          choices: [...AGENT_PROVIDER_IDS, ''],
+          normalize: value => value.trim(),
+        },
+      ],
+      model: ['model', option('Select the agent model', 'model')],
+    },
+  ),
   ...(
     [
       ['get', 'session.get', 'Inspect an agent session'],

@@ -1,3 +1,4 @@
+import { spawnForbiddenDetails } from '../../../../shared/errors/agentSpawnError'
 import { launchRemoteAgentInMount } from './sessionRemoteAgentLaunch'
 import {
   admitManagedClaudeLaunch,
@@ -73,6 +74,11 @@ export function registerSessionLaunchAgentInMountHandler(
         admission: deps.terminalSpawnAdmission,
       })
 
+      if (ctx.requestAuth?.kind === 'session-grant' && target.endpointId !== 'local') {
+        throw createAppError('common.forbidden', {
+          details: spawnForbiddenDetails('remote_spawning_unsupported'),
+        })
+      }
       if (target.endpointId !== 'local') {
         return launchRemoteAgentInMount({ ctx, payload, target, cwd, mode, deps })
       }

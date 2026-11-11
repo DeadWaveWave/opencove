@@ -1,3 +1,4 @@
+import { admittedGrantInvocation } from './admittedGrantInvocation.testUtils'
 // @vitest-environment node
 import { afterEach, expect, it, vi } from 'vitest'
 import { pathToFileURL } from 'node:url'
@@ -162,7 +163,8 @@ async function fixture(route: Route, assertActive?: () => void) {
     replayWindowMaxBytes: 10,
   })
   const launch = (caller: 'grant' | 'bearer' | 'cookie', extra: object = {}) =>
-    surface.invoke(
+    admittedGrantInvocation(
+      surface,
       {
         ...base,
         assertActive,
@@ -227,6 +229,18 @@ for (const route of routes) {
     async provider => {
       const f = await fixture(route)
       const result = await f.launch('grant', provider ? { provider } : {})
+      if (route === 'remote') {
+        expect(result).toMatchObject({
+          ok: false,
+          error: {
+            code: 'common.forbidden',
+            details: { spawnReason: 'remote_spawning_unsupported' },
+          },
+        })
+        expect(remote).not.toHaveBeenCalled()
+        expect(f.spawn).not.toHaveBeenCalled()
+        return
+      }
       expect(result).toMatchObject({ ok: true })
       const selected = provider ?? 'codex'
       const expected = {
@@ -236,20 +250,13 @@ for (const route of routes) {
         S1A_TEST_OVERLAP: selected === 'codex' ? 'saved-overlap' : undefined,
         OPENCOVE_S1A_TEST_RESERVED: undefined,
       }
-      if (route === 'remote') {
-        const input = remote.mock.calls.at(-1)![1].payload
-        expect(input.provider).toBe(selected)
-        expect(relevant(input.env)).toEqual(expected)
-        expect(f.spawn).not.toHaveBeenCalled()
-        expect(f.getPersistenceStore).toHaveBeenCalledOnce()
-      } else {
-        expect(f.plans[selected]).toHaveBeenCalledOnce()
-        expect(relevant(f.plans[selected].mock.calls[0][0].environment)).toEqual(expected)
-        expect(relevant(f.spawn.mock.calls[0][0].env)).toEqual({
-          ...expected,
-          S1A_TEST_OVERLAP: 'managed-overlap',
-        })
-      }
+
+      expect(f.plans[selected]).toHaveBeenCalledOnce()
+      expect(relevant(f.plans[selected].mock.calls[0][0].environment)).toEqual(expected)
+      expect(relevant(f.spawn.mock.calls[0][0].env)).toEqual({
+        ...expected,
+        S1A_TEST_OVERLAP: 'managed-overlap',
+      })
       expect(JSON.stringify(result)).not.toContain('saved-last')
       expect(JSON.stringify(result)).not.toContain('saved-claude')
     },

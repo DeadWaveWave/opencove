@@ -27,7 +27,7 @@ export function identityFixture(inside = true) {
   let out = '',
     err = ''
   const values: Record<string, unknown> = {
-    'system.capabilities': { features: { nodeLineageV1: true } },
+    'system.capabilities': { features: { nodeLineageV1: true, boundedAgentSpawningV1: true } },
     'system.whoami': inside ? who : { kind: 'bearer', scopeTier: 'admin' },
     'project.list': { projects: [project] },
     'space.create': {

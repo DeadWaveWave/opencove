@@ -1,5 +1,6 @@
 import type { CreateAgentLaunchPlanCommand } from '../../../src/contexts/agent/application/ports/AgentProviderContribution'
 import { checkProductionGrantPolicy } from './sessionGrantPolicy.productionChecks'
+import { checkProductionGrantDelegation } from './sessionGrantDelegation.productionChecks'
 import type { ControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -195,6 +196,13 @@ it('production Worker issues canvas credentials, exposes shim and whoami, and re
       ok: true,
       value: { kind: 'session-grant', nodeId: 'node', sessionId: launched.result.value.sessionId },
     })
+    const delegate = () =>
+      checkProductionGrantDelegation({
+        env,
+        invoke,
+        spawned: () => spawn.mock.calls.map(c => c[0]),
+      })
+    await delegate()
     await checkProductionGrantPolicy({
       invoke,
       token,
@@ -207,6 +215,7 @@ it('production Worker issues canvas credentials, exposes shim and whoami, and re
     expect(createLaunchPlan).toHaveBeenCalledWith(
       expect.objectContaining({ agentFullAccess: false }),
     )
+    await delegate()
     const mount = await invoke('mount.create', {
       projectId: 'project',
       endpointId: 'local',
@@ -218,8 +227,13 @@ it('production Worker issues canvas credentials, exposes shim and whoami, and re
       { spaceId: 'space', prompt: 'mounted review' },
       token,
     )
-    expect(forwarded.result).toMatchObject({ ok: true })
-    await invoke('session.kill', { sessionId: forwarded.result.value.sessionId }, token)
+    expect(forwarded.result).toMatchObject({
+      ok: false,
+      error: {
+        code: 'common.forbidden',
+        details: { spawnReason: 'node_create_required', operationId: 'session.launchAgent' },
+      },
+    })
     await checkProductionGrantPolicy({
       invoke,
       token,

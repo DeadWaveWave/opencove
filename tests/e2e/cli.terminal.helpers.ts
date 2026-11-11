@@ -3,6 +3,27 @@ import { randomUUID } from 'node:crypto'
 import { stripVTControlCharacters } from 'node:util'
 import { terminalExitStatus } from '../support/cliTerminalCommand'
 
+export function canvasRuntimeFootprint(page: Page, projectId: string) {
+  return page.evaluate(async owningProject => {
+    const nodes = await window.opencoveApi.controlSurface.invoke<{ nodes: { id: string }[] }>({
+      kind: 'query',
+      id: 'node.list',
+      payload: { projectId: owningProject },
+    })
+    const sessions = await window.opencoveApi.controlSurface.invoke<{
+      sessions: { sessionId: string }[]
+    }>({
+      kind: 'query',
+      id: 'session.list',
+      payload: null,
+    })
+    return {
+      nodes: nodes.nodes.map(node => node.id).toSorted(),
+      sessions: sessions.sessions.map(session => session.sessionId).toSorted(),
+    }
+  }, projectId)
+}
+
 // Construct markers in the shell: neither complete marker occurs in the echoed input.
 function printMarker(suffix: string): string {
   return process.platform === 'win32'
