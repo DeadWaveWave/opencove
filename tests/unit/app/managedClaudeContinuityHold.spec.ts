@@ -1,7 +1,8 @@
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { Page } from '@playwright/test'
 import { holdPrepare, releasePrepare } from '../../e2e/managedClaudePreparationHold'
 
+beforeEach(() => vi.stubGlobal('fetch', globalThis.fetch))
 const originalApi = Object.getOwnPropertyDescriptor(window, 'opencoveApi')
 afterEach(() => {
   if (originalApi) {
@@ -13,6 +14,7 @@ afterEach(() => {
   Reflect.deleteProperty(window, '__releaseManagedPrepare')
   Reflect.deleteProperty(window, '__dropManagedSync')
   Reflect.deleteProperty(window, '__correctedManagedWrite')
+  Reflect.deleteProperty(window, '__managedContinuity')
   vi.unstubAllGlobals()
 })
 

@@ -24,6 +24,12 @@ import {
   seedWorkspaceState,
 } from './workspace-canvas.helpers'
 import { startWorker, stopWorker } from './worker-client.helpers'
+import { publishManagedLayout } from './managedClaudeContinuityLayout'
+import {
+  freezeManagedClient,
+  readContinuityDiagnostics,
+  waitForManagedPrepare,
+} from './managedClaudeContinuityDiagnostics'
 import { waitForControlSurfaceConnection } from './controlSurfaceConnection.helpers'
 import {
   createCliAgent,
@@ -75,6 +81,7 @@ test('managed Claude stale publications retain layout and cold-resume the curren
   let worker: ChildProcessWithoutNullStreams | null = null
   let app: ElectronApplication | undefined
   let webContext: BrowserContext | undefined
+  let diagnosticPage: import('@playwright/test').Page | undefined
   const browser = await chromium.launch({ headless: true })
   try {
     worker = (await startWorker({ userDataDir, env })).child
@@ -141,11 +148,11 @@ test('managed Claude stale publications retain layout and cold-resume the curren
     const workerPort = Number(webUrl.port || 80)
     webContext = await browser.newContext()
     const web = await webContext.newPage()
+    diagnosticPage = web
+    web.setDefaultTimeout(10_000)
     await holdPrepare(web, agent.id)
     await web.goto(webUrl.toString(), { waitUntil: 'domcontentloaded' })
-    await web.waitForFunction(() =>
-      Boolean((window as unknown as { __heldManagedPrepare?: unknown }).__heldManagedPrepare),
-    )
+    await waitForManagedPrepare(web)
     const held = await web.evaluate(
       () => (window as unknown as { __heldManagedPrepare?: unknown }).__heldManagedPrepare,
     )
@@ -157,7 +164,14 @@ test('managed Claude stale publications retain layout and cold-resume the curren
         tuple: initial.tuple,
       },
     })
-    await web.evaluate(() => Object.assign(window, { __dropManagedSync: true }))
+    // Finish hydration and prove autosave is live before freezing this client at A.
+    await releasePrepare(web)
+    await expectConversation(web, agent.id, initial.tuple.resumeSessionId!)
+    await web.locator('.react-flow__controls-fitview').click({ timeout: 10_000 })
+    await publishManagedLayout(web, agent.id, false)
+    // Refresh the hold baseline to include the confirmed initial layout and revision.
+    await web.evaluate(async () => window.opencoveApi.persistence.readAppState())
+    await freezeManagedClient(web)
     const nextId = await syntheticRebind(
       userDataDir,
       home,
@@ -168,21 +182,13 @@ test('managed Claude stale publications retain layout and cold-resume the curren
     const current = await getBinding(page, agent.id)
     expect(current.tuple.resumeSessionId).toBe(nextId)
     expect(current.runtimeSessionId).toBe(initial.runtimeSessionId)
-    await releasePrepare(web)
+    await web.evaluate(b => {
+      window.__managedContinuity!.b = b
+    }, nextId)
     await expectConversation(web, agent.id, initial.tuple.resumeSessionId!)
     await expectConversation(page, agent.id, nextId)
-    // A real UI layout publication must converge from its corrected or merged response alone.
-    await web.locator('.react-flow__controls-fitview').click()
-    const header = web.locator(`[data-id="${agent.id}"] .terminal-node__header`)
-    const box = await header.boundingBox()
-    expect(box).toBeTruthy()
-    await web.mouse.move(box!.x + 70, box!.y + 16)
-    await web.mouse.down()
-    await web.mouse.move(box!.x + 130, box!.y + 56, { steps: 15 })
-    await web.mouse.up()
-    await web.waitForFunction(() =>
-      Boolean((window as unknown as { __correctedManagedWrite?: boolean }).__correctedManagedWrite),
-    )
+    // The evidence must show a changed layout carrying A and a corrected/merged receipt.
+    await publishManagedLayout(web, agent.id, true)
     await expectConversation(web, agent.id, nextId)
     await web.evaluate(() => Object.assign(window, { __dropManagedSync: false }))
     const expectedTuple = { resumeSessionId: nextId, resumeSessionIdVerified: true }
@@ -303,22 +309,44 @@ test('managed Claude stale publications retain layout and cold-resume the curren
     // Existing EventSource reconnects to the same configured Web listener with an empty buffer.
     await expectConversation(web, agent.id, finalId)
     await expectConversation(page, agent.id, finalId)
-    await web.close()
   } finally {
     try {
-      await app?.close()
+      if (diagnosticPage && !diagnosticPage.isClosed()) {
+        let timer: ReturnType<typeof setTimeout> | undefined
+        try {
+          const evidence = await Promise.race([
+            readContinuityDiagnostics(diagnosticPage),
+            new Promise(resolve => {
+              timer = setTimeout(
+                () => resolve({ observer: 'Diagnostic capture exceeded 1s.' }),
+                1000,
+              )
+            }),
+          ])
+          await test.info().attach('Managed continuity reads and writes', {
+            body: JSON.stringify(evidence, null, 2),
+            contentType: 'application/json',
+          })
+        } finally {
+          clearTimeout(timer)
+        }
+      }
     } finally {
       try {
-        // Playwright's retain-on-failure tracing already records this context.
-        await webContext?.close()
+        await app?.close()
       } finally {
         try {
-          await browser.close()
+          // Playwright's retain-on-failure tracing already records this context.
+          await webContext?.close()
         } finally {
           try {
-            await stopWorker(worker)
+            await browser.close()
           } finally {
-            await removePathWithRetry(userDataDir)
+            try {
+              await stopWorker(worker)
+            } finally {
+              await removePathWithRetry(userDataDir)
+            }
           }
         }
       }
