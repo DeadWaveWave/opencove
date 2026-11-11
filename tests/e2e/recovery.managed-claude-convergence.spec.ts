@@ -140,7 +140,6 @@ test('managed Claude stale publications retain layout and cold-resume the curren
     webUrl.searchParams.set('token', connection.token)
     const workerPort = Number(webUrl.port || 80)
     webContext = await browser.newContext()
-    await webContext.tracing.start({ screenshots: true, snapshots: true, sources: true })
     const web = await webContext.newPage()
     await holdPrepare(web, agent.id)
     await web.goto(webUrl.toString(), { waitUntil: 'domcontentloaded' })
@@ -310,14 +309,8 @@ test('managed Claude stale publications retain layout and cold-resume the curren
       await app?.close()
     } finally {
       try {
-        if (webContext) {
-          const tracePath = test.info().outputPath('continuity-web-trace.zip')
-          await webContext.tracing.stop({ path: tracePath })
-          await test.info().attach('Web continuity trace', {
-            path: tracePath,
-            contentType: 'application/zip',
-          })
-        }
+        // Playwright's retain-on-failure tracing already records this context.
+        await webContext?.close()
       } finally {
         try {
           await browser.close()
