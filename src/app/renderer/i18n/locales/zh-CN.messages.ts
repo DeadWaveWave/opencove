@@ -17,6 +17,10 @@ export const zhCNMessages = {
   agentSpawnAccountingHint: '请让用户检查相关运行时，并在画布上启动一个新的 Agent 以继续委派。',
   agentSpawnCapability: '此 Worker 不支持受限的 Agent 创建功能。',
   agentSpawnCapabilityHint: '请更新 Worker，再从 Agent 会话创建运行时。',
+  managedAgentWorkerUpgradeRequired:
+    '请升级并重启当前连接的 Worker 后再操作 Claude 智能体。仅更新此窗口无法解决此问题。',
+  managedAgentClientUpgradeRequired: '请更新 OpenCove 并重新加载此窗口，然后再操作此智能体。',
+  managedAgentWritesDisabled: 'Claude 智能体重启已暂停，请联系 Worker 管理员重新启用。',
   managedAgentChanged: '此智能体已发生变更，请刷新工作区后重试。',
   managedAgentDirectoryConflict: '此 Agent 属于其他目录。请保留当前目录，或启动新的 Agent。',
   managedAgentLaunchUncertain: '暂时无法确认 Agent 是否已启动。请先检查会话状态，再重试。',

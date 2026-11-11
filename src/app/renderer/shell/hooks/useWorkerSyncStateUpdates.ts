@@ -1,5 +1,6 @@
 import {
   getCanonicalRefreshDemand,
+  requestCanonicalRefresh,
   subscribeCanonicalRefresh,
   acknowledgeCanonicalRefresh,
 } from '@contexts/workspace/presentation/renderer/utils/persistence/canonicalRefresh'
@@ -255,6 +256,10 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
               return
             }
 
+            if (event.type === 'resync_required') {
+              requestCanonicalRefresh({ reason: 'connect', minimumRevision: event.revision })
+              return
+            }
             if (
               typeof eventRevision === 'number' &&
               eventRevision <= lastAppliedRevisionRef.current
@@ -297,7 +302,6 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
       needsFullRefreshRef.current = true
       scheduleRefresh(0)
     })
-
     async function runRefresh(): Promise<void> {
       const demand = getCanonicalRefreshDemand()
       const pendingSyncWriteRevision = pendingSyncWriteRevisionRef.current
@@ -451,7 +455,6 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
         }
         failedRefreshes = 0
         scheduleRemainingDelta()
-
         lastAppliedRevisionRef.current = Math.max(
           lastAppliedRevisionRef.current,
           snapshot.revision ?? 0,
@@ -485,7 +488,6 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
         window.clearTimeout(refreshTimerRef.current)
         refreshTimerRef.current = null
       }
-
       refreshScheduledAtMsRef.current = null
       refreshInFlightRef.current = false
       refreshPendingRef.current = false

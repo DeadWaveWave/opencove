@@ -1,3 +1,4 @@
+import { withWorkerCompatibility } from '../../support/workerCompatibilityFetch'
 import {
   managedClaudeResumeState,
   rejectedManagedClaudeAgents,
@@ -31,7 +32,7 @@ it.each(['persistence.invalid_state'] as const)(
       status: 200,
       text: async () => JSON.stringify({ __opencoveControlEnvelope: true, ...values.shift() }),
     }))
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', withWorkerCompatibility(fetchMock as typeof fetch))
     try {
       const store = createRemotePersistenceStore(async () => ({
         hostname: '127.0.0.1',
@@ -69,10 +70,12 @@ it('returns a non-conflict Worker rejection unchanged', async () => {
   ]
   vi.stubGlobal(
     'fetch',
-    vi.fn(async () => ({
-      status: 200,
-      text: async () => JSON.stringify({ __opencoveControlEnvelope: true, ...values.shift() }),
-    })),
+    withWorkerCompatibility(
+      vi.fn(async () => ({
+        status: 200,
+        text: async () => JSON.stringify({ __opencoveControlEnvelope: true, ...values.shift() }),
+      })) as unknown as typeof fetch,
+    ),
   )
   try {
     const store = createRemotePersistenceStore(async () => ({
@@ -120,7 +123,7 @@ it.each(rejectedManagedClaudeAgents)(
           }),
       }
     })
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', withWorkerCompatibility(fetchMock as typeof fetch))
     try {
       const store = createRemotePersistenceStore(async () => ({
         hostname: '127.0.0.1',

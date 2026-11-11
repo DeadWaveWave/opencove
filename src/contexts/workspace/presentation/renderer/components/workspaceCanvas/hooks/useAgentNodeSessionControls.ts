@@ -1,3 +1,4 @@
+import { readManagedClaudeBinding } from '../../../utils/managedClaudeLifecycle'
 import { useCallback, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { AgentSessionSummary } from '@shared/contracts/dto'
@@ -51,7 +52,17 @@ export function useAgentNodeSessionControls({
 
       if (node.data.sessionId.length > 0) {
         invalidateCachedTerminalScreenState(nodeId, node.data.sessionId)
-        await window.opencoveApi.pty.kill({ sessionId: node.data.sessionId })
+        const binding = await readManagedClaudeBinding(nodeId, node.data.agent?.provider)
+        if (binding) {
+          await window.opencoveApi.controlSurface.invoke({
+            kind: 'command',
+            id: 'session.kill',
+            clientFeatures: { managedClaudeResumeBindingV1: true },
+            payload: { sessionId: node.data.sessionId },
+          })
+        } else {
+          await window.opencoveApi.pty.kill({ sessionId: node.data.sessionId })
+        }
       }
 
       setNodes(

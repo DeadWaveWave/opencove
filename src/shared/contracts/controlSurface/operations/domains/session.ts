@@ -103,6 +103,7 @@ export const sessionKillOperation = defineOperation({
     'worker.unavailable',
     'persistence.unavailable',
     'terminal.kill_failed',
+    'agent.managed_launch_rejected',
   ],
   kind: 'command',
   scope: 'interact',
@@ -310,6 +311,8 @@ export const sessionStopNodeOperation = defineOperation({
   errors: [
     'session.not_found',
     'terminal.kill_failed',
+    'persistence.unavailable',
+    'agent.managed_launch_rejected',
     'agent.not_running',
     'agent.state_unknown',
     'node.unsupported_operation',

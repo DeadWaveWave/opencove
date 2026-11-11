@@ -160,6 +160,9 @@ export type Response =
   | 'lost-committed'
   | 'lost-uncommitted'
 export type Action =
+  | 'connect-delivery'
+  | 'disconnect-delivery'
+  | 'restart-worker'
   | 'rename'
   | 'title'
   | 'collapse'

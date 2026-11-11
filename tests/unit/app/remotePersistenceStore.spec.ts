@@ -1,3 +1,4 @@
+import { withWorkerCompatibility } from '../../support/workerCompatibilityFetch'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createRemotePersistenceStore } from '../../../src/app/main/controlSurface/remote/remotePersistenceStore'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
@@ -85,7 +86,7 @@ describe('remote persistence store', () => {
         status: 200,
       })
 
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', withWorkerCompatibility(fetchMock as typeof fetch))
 
     const endpoints = [
       { hostname: '127.0.0.1', port: 4310, token: 'token-1' },
@@ -127,7 +128,7 @@ describe('remote persistence store', () => {
         }),
       status: 200,
     })
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', withWorkerCompatibility(fetchMock as typeof fetch))
     const store = createRemotePersistenceStore(async () => ({
       hostname: '127.0.0.1',
       port: 4310,
@@ -139,7 +140,7 @@ describe('remote persistence store', () => {
 
   it('rejects a remote app-state transport failure as unavailable', async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error('simulated transport failure'))
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', withWorkerCompatibility(fetchMock as typeof fetch))
     const store = createRemotePersistenceStore(async () => ({
       hostname: '127.0.0.1',
       port: 4310,
@@ -211,7 +212,7 @@ describe('remote persistence store', () => {
       text: async () => JSON.stringify(responseBody),
       status: 200,
     })
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', withWorkerCompatibility(fetchMock as typeof fetch))
     const store = createRemotePersistenceStore(async () => ({
       hostname: '127.0.0.1',
       port: 4310,
@@ -265,7 +266,7 @@ describe('remote persistence store', () => {
           }),
         status: 200,
       })
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', withWorkerCompatibility(fetchMock as typeof fetch))
     const store = createRemotePersistenceStore(async () => ({
       hostname: '127.0.0.1',
       port: 4310,
@@ -332,7 +333,7 @@ describe('remote persistence store', () => {
           }),
         status: 200,
       })
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', withWorkerCompatibility(fetchMock as typeof fetch))
     const store = createRemotePersistenceStore(async () => ({
       hostname: '127.0.0.1',
       port: 4310,
@@ -363,7 +364,7 @@ describe('remote persistence store', () => {
         }),
       status: 200,
     })
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', withWorkerCompatibility(fetchMock as typeof fetch))
     const store = createRemotePersistenceStore(async () => ({
       hostname: '127.0.0.1',
       port: 4310,
@@ -426,7 +427,7 @@ describe('remote persistence store', () => {
           }),
         status: 200,
       })
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', withWorkerCompatibility(fetchMock as typeof fetch))
     const store = createRemotePersistenceStore(async () => ({
       hostname: '127.0.0.1',
       port: 4310,
@@ -463,7 +464,7 @@ describe('remote persistence store', () => {
         status: 200,
       })
 
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', withWorkerCompatibility(fetchMock as typeof fetch))
 
     const store = createRemotePersistenceStore(async () => ({
       hostname: '127.0.0.1',

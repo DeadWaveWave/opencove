@@ -1,3 +1,5 @@
+import { invokeControlSurface } from './controlSurfaceHttpClient'
+import { assertManagedClaudeWorkerCompatible } from '../../../../shared/sync/managedClaudeWorkerCompatibility'
 import { webContents } from 'electron'
 import { Readable } from 'node:stream'
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web'
@@ -31,6 +33,7 @@ export function registerWorkerSyncBridge(endpointResolver: ControlSurfaceRemoteE
 } {
   let disposed = false
   let lastRevision = 0
+  let reconnectTimer: ReturnType<typeof setTimeout> | undefined
   const abortController = new AbortController()
 
   const connectOnce = async (): Promise<void> => {
@@ -39,6 +42,15 @@ export function registerWorkerSyncBridge(endpointResolver: ControlSurfaceRemoteE
       throw new WorkerEndpointUnavailableError()
     }
 
+    const capabilities = await invokeControlSurface(endpoint, {
+      kind: 'query',
+      id: 'system.capabilities',
+      payload: {},
+    })
+    if (disposed) {
+      return
+    }
+    assertManagedClaudeWorkerCompatible(capabilities.result?.ok ? capabilities.result.value : null)
     const url = `http://${endpoint.hostname}:${endpoint.port}/events?afterRevision=${lastRevision}`
     const response = await fetch(url, {
       method: 'GET',
@@ -170,13 +182,16 @@ export function registerWorkerSyncBridge(endpointResolver: ControlSurfaceRemoteE
   }
 
   const connectLoop = (): void => {
+    if (disposed) {
+      return
+    }
     void connectOnce()
       .then(() => {
         if (disposed) {
           return
         }
 
-        setTimeout(() => {
+        reconnectTimer = setTimeout(() => {
           connectLoop()
         }, 0)
       })
@@ -189,7 +204,7 @@ export function registerWorkerSyncBridge(endpointResolver: ControlSurfaceRemoteE
           const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
           process.stderr.write(`[opencove] worker sync bridge reconnecting: ${detail}\n`)
         }
-        setTimeout(() => {
+        reconnectTimer = setTimeout(() => {
           connectLoop()
         }, 750)
       })
@@ -204,6 +219,7 @@ export function registerWorkerSyncBridge(endpointResolver: ControlSurfaceRemoteE
       }
 
       disposed = true
+      clearTimeout(reconnectTimer)
       try {
         abortController.abort()
       } catch {

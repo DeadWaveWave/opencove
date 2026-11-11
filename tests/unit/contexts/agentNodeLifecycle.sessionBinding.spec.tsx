@@ -80,7 +80,9 @@ describe('agent relaunch session binding', () => {
                 invoke: vi.fn(async request =>
                   request.id === 'node.managedClaudeBinding'
                     ? { managedClaudeBinding: binding, retired: false, executionDirectory: '/repo' }
-                    : { mounts: [] },
+                    : request.id === 'system.capabilities'
+                      ? { features: { managedClaudeResumeBindingDeliveryV1: true } }
+                      : { mounts: [] },
                 ),
               },
             }

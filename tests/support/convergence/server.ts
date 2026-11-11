@@ -11,6 +11,7 @@ export type Adapter = 'local' | 'remote' | 'web' | 'raw' | 'raw-remote' | 'raw-w
 export class Server {
   readonly model = new ServerModel()
   writes = 0
+  notifyCommit: () => void = () => {}
   delayResponse = false
   delayCommitMs = 0
   delayReadMs = 0
@@ -123,6 +124,7 @@ export class Server {
         }
       }
       Object.assign(this.template, stored)
+      this.notifyCommit()
     }
     if (response.startsWith('lost')) {
       throw new Error('Response lost')
@@ -136,6 +138,9 @@ export class Server {
       : { ...receipt, ...(response === 'merged' ? { merged: true } : {}) }
   }
   async invoke(id: string, payload: Record<string, unknown>) {
+    if (id === 'system.capabilities') {
+      return { features: { managedClaudeResumeBindingDeliveryV1: true } }
+    }
     if (id === 'sync.state') {
       if (this.delayReadMs) {
         await new Promise(resolve => setTimeout(resolve, this.delayReadMs))

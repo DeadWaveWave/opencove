@@ -1,6 +1,6 @@
 import { createAgentSpawnRuntime } from './agentSpawnRuntime'
 import { createCanvasSpawnRunner } from './createCanvasSpawnRunner'
-import { createManagedClaudeLaunchRuntime } from './managedClaudeLaunchRuntime'
+import { createManagedClaudeDeliveryRuntime } from './managedClaudeDeliveryRuntime'
 import { createWorkerAgentTurnArchiveRuntime } from './agentTurnArchiveRuntime'
 import { withAgentRunBindings } from './agentRunStatePersistence'
 import { createWorkerAgentRunState } from './ptyStream/ptyStreamAgentRunState'
@@ -211,15 +211,16 @@ export function createControlSurfaceHttpRuntime(
     dbPath: options.dbPath,
     createPersistenceStore: options.createPersistenceStore,
   })
-  const getPersistenceStore = withAgentRunBindings(turnArchive.getPersistenceStore, agentRuns)
-  const managedClaude = createManagedClaudeLaunchRuntime({
-    getPersistenceStore,
-    killExactRuntime: async id => {
-      ptyRuntime.kill(id)
-    },
-    hasRuntime: id => ptyStreamService.hub.isSessionActive(id),
-    adoptionEnabled: () => process.env.OPENCOVE_EXPERIMENTAL_MANAGED_CLAUDE_BINDINGS === '1',
-  })
+  const agentClients = new Set<ServerResponse>()
+  const { syncClients, syncEventBuffer, commitPublisher, managedClaude, getPersistenceStore } =
+    createManagedClaudeDeliveryRuntime({
+      getStore: withAgentRunBindings(turnArchive.getPersistenceStore, agentRuns),
+      killExactRuntime: async id => {
+        ptyRuntime.kill(id)
+      },
+      hasRuntime: id => ptyStreamService.hub.isSessionActive(id),
+      desktopSink: options.desktopSyncEventSink,
+    })
   const terminalRuntimeAvailability = new TerminalRuntimeAvailability()
   let runtimeReady = false
   void plugins.start()
@@ -251,9 +252,6 @@ export function createControlSurfaceHttpRuntime(
     ptyRuntime,
     ptyStreamService,
   })
-  const syncClients = new Set<ServerResponse>()
-  const agentClients = new Set<ServerResponse>()
-  const syncEventBuffer: SyncEventPayload[] = []
   const publishSyncEventToLiveClients = (payload: SyncEventPayload): number =>
     publishLiveSyncEvent({
       syncClients,
@@ -484,6 +482,7 @@ export function createControlSurfaceHttpRuntime(
         turnArchive.dispose()
 
         try {
+          commitPublisher.dispose()
           await persistence.dispose()
         } catch {
           // ignore

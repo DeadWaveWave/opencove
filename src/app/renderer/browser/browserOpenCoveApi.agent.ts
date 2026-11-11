@@ -190,6 +190,7 @@ export function createBrowserAgentApi(): AgentApi {
       }>({
         kind: 'command',
         id: 'session.launchAgent',
+        clientFeatures: payload.clientFeatures,
         payload: {
           ...(payload.intent ? { intent: payload.intent } : {}),
           canvasNodeId: payload.canvasNodeId,

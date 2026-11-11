@@ -16,6 +16,12 @@ export const enMessages = {
   agentSpawnAccountingHint: agentSpawnPresentations.agentSpawnAccounting.hint,
   agentSpawnCapability: agentSpawnPresentations.agentSpawnCapability.message,
   agentSpawnCapabilityHint: agentSpawnPresentations.agentSpawnCapability.hint,
+  managedAgentWorkerUpgradeRequired:
+    'Update and restart the connected Worker before managing Claude agents. Updating this window alone is not enough.',
+  managedAgentClientUpgradeRequired:
+    'Update OpenCove and reload this window before controlling this agent.',
+  managedAgentWritesDisabled:
+    'Managed Claude restarts are paused. Ask the Worker administrator to enable them.',
   managedAgentChanged: 'This agent has changed. Refresh the workspace and try again.',
   managedAgentDirectoryConflict:
     'This agent belongs to a different folder. Keep its current folder or start a new agent.',

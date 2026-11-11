@@ -1,3 +1,4 @@
+import { clientFeaturesForOperation } from '../../../shared/contracts/controlSurface/clientFeatures'
 import { agentSpawnErrorPresentation } from '../../../shared/errors/agentSpawnError'
 import { isConnectionRefused } from '../../../shared/errors/connectionRefused'
 import { isPromptDeliveryResult, normalizePromptDeliveryResult } from './promptTransport'
@@ -46,7 +47,7 @@ export async function invoke(
         'content-type': 'application/json',
         'x-opencove-protocol': String(CONTROL_SURFACE_PROTOCOL_VERSION),
       },
-      body: JSON.stringify(request),
+      body: JSON.stringify({ ...request, clientFeatures: clientFeaturesForOperation(request.id) }),
       signal: controller.signal,
     })
     const authStatus = [401, 403].includes(response.status)

@@ -1,3 +1,4 @@
+import { withWorkerCompatibility } from '../../support/workerCompatibilityFetch'
 import { EventEmitter } from 'node:events'
 import { Readable } from 'node:stream'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -57,7 +58,7 @@ describe('worker sync bridge', () => {
         body: secondBody,
       })
 
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', withWorkerCompatibility(fetchMock as typeof fetch))
     const fromWebSpy = vi
       .spyOn(Readable, 'fromWeb')
       .mockImplementation(body => body as unknown as Readable)
@@ -115,7 +116,7 @@ describe('worker sync bridge', () => {
     vi.useFakeTimers()
 
     const fetchMock = vi.fn()
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', withWorkerCompatibility(fetchMock as typeof fetch))
 
     let attempts = 0
     const bridge = registerWorkerSyncBridge(async () => {

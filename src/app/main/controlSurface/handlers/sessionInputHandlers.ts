@@ -1,3 +1,4 @@
+import { assertManagedClaudeStopAllowed } from '../managedClaudeCompatibility'
 import { registerOperation } from '../registerOperation'
 import {
   sessionStopNodeOperation,
@@ -80,6 +81,9 @@ export function registerSessionInputHandlers(
           })
         }
       }
+      const store = await deps.getPersistenceStore()
+      ctx.assertActive?.()
+      assertManagedClaudeStopAllowed(ctx, store, input.sessionId)
       deps.ptyRuntime.kill(input.sessionId)
       return { ...input, requested: true, stopped: true }
     },

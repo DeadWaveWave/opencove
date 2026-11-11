@@ -171,6 +171,7 @@ export async function launchAgentRuntime({
   }
 
   const launched = await window.opencoveApi.agent.launch({
+    clientFeatures: { managedClaudeResumeBindingV1: true },
     ...(intent ? { intent } : {}),
     canvasNodeId: node.id,
     provider: node.data.agent.provider,

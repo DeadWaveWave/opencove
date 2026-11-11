@@ -1,3 +1,4 @@
+import { assertManagedClaudeStopAllowed } from '../managedClaudeCompatibility'
 import type { ControlSurface } from '../controlSurface'
 import type { registerSessionHandlers } from './sessionHandlers'
 import type { createSessionNodeResolver } from './sessionNodeResolver'
@@ -62,7 +63,9 @@ export function registerSessionQueryHandlers(
         if (!deps.ptyStreamHub.hasSession(value.sessionId)) {
           throw createAppError('session.not_found')
         }
+        const store = await deps.getPersistenceStore()
         ctx.assertActive?.()
+        assertManagedClaudeStopAllowed(ctx, store, value.sessionId)
         deps.ptyRuntime.kill(value.sessionId)
         return
       }
@@ -73,6 +76,9 @@ export function registerSessionQueryHandlers(
         })
       }
 
+      const store = await deps.getPersistenceStore()
+      ctx.assertActive?.()
+      assertManagedClaudeStopAllowed(ctx, store, record?.sessionId ?? payload.sessionId)
       deps.ptyRuntime.kill(record?.sessionId ?? payload.sessionId)
     },
     defaultErrorCode: 'terminal.kill_failed',

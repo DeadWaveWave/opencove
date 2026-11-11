@@ -40,6 +40,8 @@ export interface ControlSurfaceCapabilitiesResult {
   appVersion: string | null
   features: {
     managedClaudeResumeBindingV1?: boolean
+    managedClaudeResumeBindingDeliveryV1?: boolean
+    managedClaudeResumeBindingWritesEnabled?: boolean
     nodeLineageV1?: boolean
     boundedAgentSpawningV1?: boolean
     operationRegistry?: boolean

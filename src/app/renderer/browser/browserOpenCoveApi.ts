@@ -277,8 +277,11 @@ export function installBrowserOpenCoveApi(): void {
           }
         }
 
+        const onOpen = () => listener({ type: 'resync_required', revision: 0 })
+        source.addEventListener('open', onOpen)
         source.addEventListener('opencove.sync', handler as EventListener)
         return () => {
+          source.removeEventListener('open', onOpen)
           source.removeEventListener('opencove.sync', handler as EventListener)
           source.close()
         }

@@ -12,6 +12,7 @@ export interface ManagedClaudeResumeRead {
     workspaceId: string,
     nodeIds?: readonly string[],
   ): readonly string[]
+  managedClaudeNodeIdForRuntime(runtimeSessionId: string): string | null
   isManagedClaudeRuntimeReferenced(runtimeSessionId: string): boolean
 }
 
@@ -85,6 +86,15 @@ export function createManagedClaudeResumeRead(db: Database.Database): ManagedCla
           .prepare("SELECT id FROM nodes WHERE workspace_id = ? AND kind = 'agent'")
           .all(workspaceId) as { id: string }[]
         return rows.map(row => row.id).filter(id => !nodeIds || nodeIds.includes(id))
+      }),
+    managedClaudeNodeIdForRuntime: runtimeSessionId =>
+      definitive(() => {
+        const row = db
+          .prepare(
+            'SELECT node_id FROM managed_claude_resume_bindings WHERE runtime_session_id = ? UNION ALL SELECT b.node_id FROM managed_claude_resume_bindings b JOIN nodes n ON n.id = b.node_id WHERE n.session_id = ? LIMIT 1',
+          )
+          .get(runtimeSessionId, runtimeSessionId) as { node_id: string } | undefined
+        return row?.node_id ?? null
       }),
     isManagedClaudeRuntimeReferenced: runtimeSessionId =>
       definitive(() =>

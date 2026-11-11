@@ -1,8 +1,14 @@
+import {
+  syntheticRebind,
+  expectConversation,
+  holdPrepare,
+  releasePrepare,
+} from './managedClaudeContinuity.helpers'
 /* eslint-disable no-await-in-loop -- Ordered persistence repair and lifecycle transitions must run sequentially. */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
-import { expect, test, type ElectronApplication } from '@playwright/test'
+import { chromium, expect, test, type ElectronApplication } from '@playwright/test'
 import type { CreateNodeResult } from '../../src/shared/contracts/dto'
 import {
   createTestUserDataDir,
@@ -14,7 +20,6 @@ import { startWorker, stopWorker } from './worker-client.helpers'
 import {
   createCliAgent,
   getBinding,
-  launch,
   projectId,
   spaceId,
 } from './recovery.managed-claude-launch-lifecycle.helpers'
@@ -47,6 +52,7 @@ test('managed Claude stale publications retain layout and cold-resume the curren
     OPENCOVE_WORKER_CLIENT: '1',
     OPENCOVE_TEST_USE_REAL_AGENTS: '0',
     OPENCOVE_EXPERIMENTAL_MANAGED_CLAUDE_BINDINGS: '1',
+    OPENCOVE_TEST_ENABLE_MANAGED_CLAUDE_REBIND: '1',
     OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
     OPENCOVE_TEST_CLAUDE_HOOK_INSTALL_FAILURE: '0',
     OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'claude-session-ownership',
@@ -59,6 +65,7 @@ test('managed Claude stale publications retain layout and cold-resume the curren
   }
   let worker: ChildProcessWithoutNullStreams | null = null
   let app: ElectronApplication | undefined
+  const browser = await chromium.launch({ headless: true })
   try {
     worker = (await startWorker({ userDataDir, env })).child
     worker.stdout.resume()
@@ -107,17 +114,50 @@ test('managed Claude stale publications retain layout and cold-resume the curren
     ).toHaveAttribute('aria-busy', 'false', { timeout: 20_000 })
     const agent = await createCliAgent(page, cliBinding)
     const initial = await getBinding(page, agent.id)
-    const stale = await page.evaluate(
+    await expectConversation(page, agent.id, initial.tuple.resumeSessionId!)
+    const connection = JSON.parse(
+      await readFile(path.join(userDataDir, 'control-surface.json'), 'utf8'),
+    ) as { hostname: string; port: number; token: string }
+    const webUrl = `http://${connection.hostname}:${connection.port}/?token=${connection.token}`
+    const web = await browser.newPage()
+    await holdPrepare(web)
+    await web.goto(webUrl!, { waitUntil: 'domcontentloaded' })
+    await web.waitForFunction(() =>
+      Boolean((window as unknown as { __heldManagedPrepare?: boolean }).__heldManagedPrepare),
+    )
+    const stale = await web.evaluate(
       async () => (await window.opencoveApi.persistence.readAppState()).state,
     )
-    const replacement = await launch(page, agent.id, workspace, {
-      kind: 'launchNew',
-      expected: { activationId: initial.activationId, tuple: initial.tuple },
-    })
-    const current = replacement.managedClaudeLifecycle!.binding
-    expect(current.tuple.resumeSessionId).not.toBe(initial.tuple.resumeSessionId)
+    await web.evaluate(() => Object.assign(window, { __dropManagedSync: true }))
+    const nextId = await syntheticRebind(
+      userDataDir,
+      home,
+      workspace,
+      agent.id,
+      initial.tuple.resumeSessionId!,
+    )
+    const current = await getBinding(page, agent.id)
+    expect(current.tuple.resumeSessionId).toBe(nextId)
+    expect(current.runtimeSessionId).toBe(initial.runtimeSessionId)
+    await releasePrepare(web)
+    await expectConversation(web, agent.id, initial.tuple.resumeSessionId!)
+    await expectConversation(page, agent.id, nextId)
+    // A real UI layout publication must converge from its corrected response alone.
+    await web.locator('.react-flow__controls-fitview').click()
+    const header = web.locator(`[data-id="${agent.id}"] .terminal-node__header`)
+    const box = await header.boundingBox()
+    expect(box).toBeTruthy()
+    await web.mouse.move(box!.x + 70, box!.y + 16)
+    await web.mouse.down()
+    await web.mouse.move(box!.x + 130, box!.y + 56, { steps: 15 })
+    await web.mouse.up()
+    await web.waitForFunction(() =>
+      Boolean((window as unknown as { __correctedManagedWrite?: boolean }).__correctedManagedWrite),
+    )
+    await expectConversation(web, agent.id, nextId)
+    await web.evaluate(() => Object.assign(window, { __dropManagedSync: false }))
     for (const raw of [false, true]) {
-      const result = await page.evaluate(
+      const result = await web.evaluate(
         async ({ old, nodeId, rawWrite }) => {
           const candidate = structuredClone(old) as {
             workspaces: Array<{ nodes: Array<{ id: string; position: { x: number; y: number } }> }>
@@ -168,12 +208,30 @@ test('managed Claude stale publications retain layout and cold-resume the curren
         })
       expect((await getBinding(page, agent.id)).tuple).toEqual(current.tuple)
     }
+    // Drop all invalidations while disconnected, commit C, then restart the Worker.
+    await web.context().setOffline(true)
+    const finalId = await syntheticRebind(userDataDir, home, workspace, agent.id, nextId)
+    await expectConversation(page, agent.id, finalId)
+    await stopWorker(worker)
+    worker = null
+    worker = (
+      await startWorker({ userDataDir, env, port: connection.port, token: connection.token })
+    ).child
+    worker.stdout.resume()
+    worker.stderr.resume()
+    await web.context().setOffline(false)
+    // Existing EventSource reconnects to the same configured Web listener with an empty buffer.
+    await expectConversation(web, agent.id, finalId)
+    await expectConversation(page, agent.id, finalId)
+    await web.close()
     const callsBefore = (await readFile(logPath, 'utf8')).trim().split('\n').length
     await app.close()
     app = undefined
     await stopWorker(worker)
     worker = null
-    worker = (await startWorker({ userDataDir, env })).child
+    worker = (
+      await startWorker({ userDataDir, env, port: connection.port, token: connection.token })
+    ).child
     worker.stdout.resume()
     worker.stderr.resume()
     const restarted = await launchApp({ userDataDir, cleanupUserDataDir: false, env })
@@ -185,14 +243,16 @@ test('managed Claude stale publications retain layout and cold-resume the curren
           .split('\n')
           .slice(callsBefore)
           .map(line => JSON.parse(line) as { mode: string; sessionId: string })
-          .some(call => call.mode === 'resume' && call.sessionId === current.tuple.resumeSessionId),
+          .some(call => call.mode === 'resume' && call.sessionId === finalId),
       )
       .toBe(true)
-    expect((await getBinding(restarted.window, agent.id)).tuple).toEqual(current.tuple)
+    expect((await getBinding(restarted.window, agent.id)).tuple.resumeSessionId).toBe(finalId)
+    await expectConversation(restarted.window, agent.id, finalId)
   } finally {
     try {
       await app?.close()
     } finally {
+      await browser.close()
       await stopWorker(worker)
       await removePathWithRetry(userDataDir)
     }

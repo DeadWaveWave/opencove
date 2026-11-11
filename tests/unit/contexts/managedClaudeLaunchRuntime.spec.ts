@@ -24,7 +24,11 @@ function deferred<T>() {
   })
   return { promise, resolve }
 }
-const context = { now: () => new Date(), capabilities: {} } as ControlSurfaceContext
+const context = {
+  clientFeatures: { managedClaudeResumeBindingV1: true },
+  now: () => new Date(),
+  capabilities: {},
+} as ControlSurfaceContext
 function fixture() {
   let pauseSpawn = async () => {}
   let runtimeActive = true

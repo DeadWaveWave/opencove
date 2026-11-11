@@ -393,3 +393,12 @@ Snapshot export 不含血缘，数据库备份包含血缘。降级仅尽力兼�
 repository 与 creation commit。node-less standalone grant 不记录血缘；standalone Worker
 仍使用完整 SQLite store。Desktop/Web/remote clients 将创建命令交给 owning Worker。
 本节为现有 owner/边界的说明：no executable-rule impact。
+
+### Managed Claude 提交通知与恢复
+
+SQLite 的同步 post-commit observation 是 app-state invalidation 的唯一来源。普通写入、raw
+外层事务、activation、settlement 和 rebind 都在 commit 后、任何 awaited consumer 前发布
+exact revision；rollback、row-only activation 和 alreadyApplied 不发布新通知。
+Worker composition 将通知写入有界 buffer，并分别隔离 Desktop 和 SSE sink 的失败。
+HTTP 不再通过 command 前后读取 revision 来猜测提交；owner 的 attributable callback 按 revision 去重。
+通知只要求重新读取 canonical snapshot，不授予 tuple authority。

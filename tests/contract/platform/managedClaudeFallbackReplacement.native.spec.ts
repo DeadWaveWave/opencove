@@ -67,17 +67,24 @@ describeWithElectronNativeModules('managed Claude fallback runtime replacement',
     })
     try {
       expect(
-        await surface.invoke({ now: () => new Date(), capabilities: {} } as ControlSurfaceContext, {
-          kind: 'command',
-          id: 'session.launchAgent',
-          payload: {
-            canvasNodeId: 'agent',
-            cwd: '/repo',
-            provider: 'claude-code',
-            prompt: 'fixture',
-            intent: { kind: 'resumeCurrent' },
+        await surface.invoke(
+          {
+            clientFeatures: { managedClaudeResumeBindingV1: true },
+            now: () => new Date(),
+            capabilities: {},
+          } as ControlSurfaceContext,
+          {
+            kind: 'command',
+            id: 'session.launchAgent',
+            payload: {
+              canvasNodeId: 'agent',
+              cwd: '/repo',
+              provider: 'claude-code',
+              prompt: 'fixture',
+              intent: { kind: 'resumeCurrent' },
+            },
           },
-        }),
+        ),
       ).toMatchObject({ ok: false, error: { code: 'common.approved_path_required' } })
       expect(store.observeManagedClaudeNode('agent')).toEqual(before)
       expect(kill).not.toHaveBeenCalled()
@@ -198,11 +205,17 @@ describeWithElectronNativeModules('managed Claude fallback runtime replacement',
       topology: {} as never,
     })
     const read = () =>
-      surface.invoke({ now: () => new Date() } as ControlSurfaceContext, {
-        kind: 'query',
-        id: 'node.managedClaudeBinding',
-        payload: { nodeId: 'agent' },
-      })
+      surface.invoke(
+        {
+          clientFeatures: { managedClaudeResumeBindingV1: true },
+          now: () => new Date(),
+        } as ControlSurfaceContext,
+        {
+          kind: 'query',
+          id: 'node.managedClaudeBinding',
+          payload: { nodeId: 'agent' },
+        },
+      )
     expect(await read()).toMatchObject({
       ok: true,
       value: { managedClaudeBinding: null, retired: false, executionDirectory: null },

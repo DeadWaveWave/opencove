@@ -406,6 +406,7 @@ export async function prepareWorkspaceRuntimeNodes({
         const prepared = await controlSurfaceInvoke<PrepareOrReviveSessionResult>({
           kind: 'command',
           id: 'session.prepareOrRevive',
+          clientFeatures: { managedClaudeResumeBindingV1: true },
           payload: { workspaceId: workspace.id, nodeIds: [node.id] },
         })
         const result = prepared.nodes?.find(candidate => candidate.nodeId === node.id)

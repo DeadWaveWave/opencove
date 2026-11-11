@@ -1,3 +1,4 @@
+import { normalizeClientFeatures } from '../../../shared/contracts/controlSurface/clientFeatures'
 import { assertGrantSpawnRoute } from './agentSpawnContext'
 import { sessionGrantRule } from './http/sessionGrantPolicy'
 import {
@@ -70,6 +71,10 @@ export function createControlSurface(
 
       let leave: (() => void) | undefined
       try {
+        ctx = {
+          ...ctx,
+          clientFeatures: normalizeClientFeatures(request.clientFeatures ?? ctx.clientFeatures),
+        }
         leave = options.enter?.(request.id)
         ctx.assertActive?.()
         const payload = handler.validate(request.payload)

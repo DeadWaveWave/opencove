@@ -1,3 +1,4 @@
+import { assertManagedClaudeWorkerCompatible } from '../../../../shared/sync/managedClaudeWorkerCompatibility'
 import {
   RevisionedSnapshotCache,
   writeRevisionedSnapshot,
@@ -108,6 +109,11 @@ async function invokeRequiredValueAtEndpoint<TResult>(
   id: string,
   payload: unknown,
 ): Promise<TResult> {
+  if (['sync.state', 'sync.writeState', 'sync.writeWorkspaceStateRaw'].includes(id)) {
+    assertManagedClaudeWorkerCompatible(
+      await invokeRequiredValueAtEndpoint(endpoint, 'query', 'system.capabilities', {}),
+    )
+  }
   const { result } = await invokeControlSurface(endpoint, { kind, id, payload }).catch(error => {
     throw createRemoteReadUnavailableError(error, 'Remote persistence transport failed.')
   })
@@ -183,6 +189,9 @@ async function invokePersistResult(
     return resolveIoFailure(new Error('Remote worker endpoint unavailable.'), 'notSubmitted')
   }
 
+  assertManagedClaudeWorkerCompatible(
+    await invokeRequiredValueAtEndpoint(endpoint, 'query', 'system.capabilities', {}),
+  )
   const { result } = await invokeControlSurface(endpoint, { kind: 'command', id, payload })
   if (!result) {
     return resolveIoFailure(null)
@@ -298,6 +307,9 @@ export function createRemotePersistenceStore(
               : {}),
           }
 
+          assertManagedClaudeWorkerCompatible(
+            await invokeRequiredValueAtEndpoint(endpoint, 'query', 'system.capabilities', {}),
+          )
           const { result } = await invokeControlSurface(endpoint, {
             kind: 'command',
             id: 'sync.writeState',

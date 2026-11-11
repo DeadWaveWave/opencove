@@ -455,3 +455,26 @@ Quit captures intent with its original ancestry and rejects stale repair reads b
 A null ledger runtime does not prove an empty node association: another canonical shell supersedes a delayed
 fallback. Definitive row-only lookup validates settlement and node association separately.
 These are existing ownership and process-boundary contracts: no executable-rule impact.
+
+### Managed Claude 混合版本与冻结
+
+PR3b 保持 adoption 默认关闭，`managedClaudeResumeBindingV1` 仍为 false。
+测试采用 `OPENCOVE_EXPERIMENTAL_MANAGED_CLAUDE_BINDINGS=1`；Worker 的独立
+`managedClaudeResumeBindingDeliveryV1` 表示具备 ledger lookup、投影、纠正回执与安全通知协议。
+当前 Desktop/Web 在连接、重连和 canonical persistence 边界检查该协议，缺少时要求升级并
+重启 **Worker**，包括其他版本 CLI 启动的 Worker；仅更新窗口不足以解决问题。
+这是保守兼容策略：新版客户端也不向无法证明安全的旧 Worker 发布 unowned workspace。
+旧 Worker 若支持 ownership lookup，可证明单个节点 unowned 后保留 legacy lifecycle；
+unsupported lookup 不能证明 unowned，新客户端拒绝 Claude lifecycle。
+
+旧 Desktop renderer 和 stale Web tab 对当前 Worker 可读取、附着、输入和发布合法 layout；
+不会自动 adoption。已有 owned 节点的 launch、cold prepare、`session.kill` 和
+`session.stopNode` 要求 originating client 在 invoke envelope 声明 V1，Main 不代为升级。
+当前客户端的显式 Stop 在冻结期间仍可使用；内部 exact-runtime cleanup 不走 public admission。
+不承诺旧 tab 无缝收敛，也不支持让任意旧 binary 直接打开已有 owned rows 的 profile。
+
+紧急停止方式：以 `OPENCOVE_MANAGED_CLAUDE_BINDINGS=0` 重启 Worker。
+它禁止 adoption 和 managed restart/rebind，但保留 ledger enforcement、retirement、
+canonical convergence、live attach、显式 Stop 和 committed deletion；绝不删除 ledger。
+`managedClaudeResumeBindingWritesEnabled` 独立表示冻结状态，恢复时移除该 override 并重启。
+所有兼容性/冻结拒绝必须先于 reserve，不能取消正在进行的合法 launch 或清除 admitted runtime。

@@ -1,3 +1,4 @@
+import { tryManagedClaudeTestHook } from './http/managedClaudeTestHook'
 import { invokeCallerLifetime } from './http/invokeCallerLifetime'
 import type { AgentRunStateRegistry } from '../../../contexts/agent/application/AgentRunStateRegistry'
 import { isAgentRuntimeStream, serveAgentRuntimeEvents } from './http/agentRuntimeSse'
@@ -20,10 +21,10 @@ import { tryResolveWebUiResponse } from './webUiAssets'
 import type { WebSessionManager } from './http/webSessionManager'
 import { readJsonBody, sendJson } from './http/httpJson'
 import { resolveRequestAuth, type RequestAuth } from './http/requestAuth'
-import { writeSseEvent, type SyncEventPayload } from './http/syncSse'
+import { type SyncEventPayload } from './http/syncSse'
 import { tryHandleWebAuthRoutes } from './http/webAuthRoutes'
 import { gateWebUiEntrypoint } from './http/webUiEntryGate'
-import { publishSyncEvent } from './http/publishSyncEvent'
+import { serveSyncEvents } from './http/serveSyncEvents'
 import { shouldAllowDevWebUiOrigin } from './http/devWebUiOrigin'
 import { buildUnauthorizedResult } from './http/unauthorizedResult'
 import type {
@@ -31,8 +32,6 @@ import type {
   ControlSurfaceHttpListenerRequestContext,
   ControlSurfaceWebAccessPolicy,
 } from './controlSurfaceHttpRuntime.contract'
-
-const MAX_SYNC_EVENT_BUFFER = 256
 
 export interface ControlSurfaceHttpRequestHandlerDeps {
   plugins: PluginInstallationManager
@@ -229,49 +228,27 @@ export function createControlSurfaceHttpRequestHandler(
         res.setHeader('x-accel-buffering', 'no')
         res.write(':\n\n')
 
-        if (
-          afterRevision !== null &&
-          deps.syncEventBuffer.length > 0 &&
-          afterRevision < deps.syncEventBuffer[0].revision - 1
-        ) {
-          try {
+        await serveSyncEvents({
+          req,
+          res,
+          clients: deps.syncClients,
+          listenerClients: listenerSyncClients,
+          buffer: deps.syncEventBuffer,
+          afterRevision,
+          isRevoked: () => streamRevoked || deps.isRuntimeClosed(),
+          readSnapshot: async () => {
             const store = await deps.getPersistenceStore()
-            const revision = await store.readAppStateRevision()
-            if (streamRevoked) {
-              return
+            if (!store.readAppStateSnapshot) {
+              throw new Error('Canonical snapshot unavailable')
             }
-            writeSseEvent(res, { type: 'resync_required', revision })
-          } catch {
-            // ignore
-          }
-        } else if (afterRevision !== null && deps.syncEventBuffer.length > 0) {
-          for (const payload of deps.syncEventBuffer) {
-            if (payload.revision <= afterRevision) {
-              continue
-            }
-            try {
-              writeSseEvent(res, payload)
-            } catch {
-              break
-            }
-          }
-        }
-
-        if (streamRevoked) {
-          return
-        }
-        deps.syncClients.add(res)
-        listenerSyncClients.add(res)
-        req.on('close', () => {
-          unsubscribeGrant?.()
-          deps.syncClients.delete(res)
-          listenerSyncClients.delete(res)
+            return store.readAppStateSnapshot()
+          },
         })
         return
       }
     }
 
-    if (req.method !== 'POST' || req.url !== '/invoke') {
+    if (req.method !== 'POST' || !['/invoke', '/_test/managed-claude-rebind'].includes(req.url)) {
       res.statusCode = 404
       res.end()
       return
@@ -288,6 +265,22 @@ export function createControlSurfaceHttpRequestHandler(
     })
     if (!auth || !listenerAllowsAuth(listener.role, auth)) {
       sendJson(res, 401, buildUnauthorizedResult())
+      return
+    }
+
+    if (
+      await tryManagedClaudeTestHook({
+        req,
+        res,
+        privateBearer: listener.role !== 'web' && auth.kind === 'bearer',
+        getStore: deps.getPersistenceStore,
+      })
+    ) {
+      return
+    }
+    if (req.url !== '/invoke') {
+      res.statusCode = 404
+      res.end()
       return
     }
 
@@ -342,10 +335,6 @@ export function createControlSurfaceHttpRequestHandler(
         return
       }
 
-      const shouldCheckRevision = request.kind === 'command'
-      const revisionBefore = shouldCheckRevision
-        ? await (await deps.getPersistenceStore()).readAppStateRevision()
-        : null
       if (auth.kind === 'session-grant' && !deps.sessionGrants?.isActive(auth.grant.grantId)) {
         sendJson(res, 401, buildUnauthorizedResult())
         return
@@ -364,26 +353,6 @@ export function createControlSurfaceHttpRequestHandler(
         )
       } finally {
         caller.dispose()
-      }
-      if (shouldCheckRevision) {
-        try {
-          const revisionAfter = await (await deps.getPersistenceStore()).readAppStateRevision()
-          if (typeof revisionBefore === 'number' && revisionAfter !== revisionBefore) {
-            publishSyncEvent({
-              syncClients: deps.syncClients,
-              syncEventBuffer: deps.syncEventBuffer,
-              maxBufferSize: MAX_SYNC_EVENT_BUFFER,
-              desktopSink: deps.desktopSyncEventSink,
-              payload: {
-                type: 'app_state.updated',
-                revision: revisionAfter,
-                operationId: request.id,
-              },
-            })
-          }
-        } catch {
-          // ignore
-        }
       }
       sendJson(res, 200, result)
     } catch (error) {

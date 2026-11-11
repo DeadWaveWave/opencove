@@ -1,3 +1,4 @@
+import { withWorkerCompatibility } from '../../support/workerCompatibilityFetch'
 import { afterEach, expect, it, vi } from 'vitest'
 import { createBrowserPersistenceApi } from '@app/renderer/browser/browserOpenCoveApi.persistence'
 import { invokeBrowserControlSurface } from '@app/renderer/browser/browserControlSurface'
@@ -37,7 +38,7 @@ it.each([true, false, undefined] as const)(
       text: async () =>
         JSON.stringify({ __opencoveControlEnvelope: true, ok: true, value: values.shift() }),
     }))
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', withWorkerCompatibility(fetchMock as typeof fetch))
     const remote = createRemotePersistenceStore(async () => ({
       hostname: '127.0.0.1',
       port: 4310,

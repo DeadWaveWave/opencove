@@ -431,6 +431,7 @@ export async function launchWorkspaceAgentSession({
   }
 
   const launched = await window.opencoveApi.agent.launch({
+    clientFeatures: { managedClaudeResumeBindingV1: true },
     ...(intent ? { intent } : {}),
     canvasNodeId,
     workspaceId,

@@ -1,3 +1,5 @@
+import { Delivery } from './delivery'
+import type { SyncEventPayload } from '../../../src/shared/contracts/dto'
 import { editSpaceOrder, assertCanonicalSpaceOrder } from './spaceOrdering'
 import { act, renderHook } from '@testing-library/react'
 import { vi } from 'vitest'
@@ -39,7 +41,8 @@ export class Client {
   private autosaveHook: ReturnType<typeof renderHook> | null = null
   private stopped = false
   private hook: ReturnType<typeof renderHook>
-  private event: ((event: { type: 'resync_required'; revision: number }) => void) | undefined
+  private event: ((event: SyncEventPayload) => void) | undefined
+  private delivery: Delivery
   private original = {
     api: window.opencoveApi,
     app: useAppStore.getState(),
@@ -53,6 +56,11 @@ export class Client {
   ) {
     vi.useFakeTimers()
     this.server = new Server(fixture(owned), response)
+    this.delivery = new Delivery(
+      () => this.server.model.revision,
+      event => this.event?.(event),
+    )
+    this.server.notifyCommit = () => this.delivery.commit()
     const caches = this.caches,
       set = RevisionedSnapshotCache.prototype.set
     this.cacheSpy = vi.spyOn(RevisionedSnapshotCache.prototype, 'set').mockImplementation(function (
@@ -150,7 +158,13 @@ export class Client {
       await this.restart()
     }
     await act(async () => {
-      if (action === 'rename' || action === 'title') {
+      if (action === 'connect-delivery') {
+        await this.delivery.connect()
+      } else if (action === 'disconnect-delivery') {
+        this.delivery.disconnect()
+      } else if (action === 'restart-worker') {
+        this.delivery.restartWorker()
+      } else if (action === 'rename' || action === 'title') {
         const field = action === 'rename' ? 'name' : 'title',
           next = `user-${this.server.model.intents.length}`
         this.server.model.edit(field, next)
@@ -287,8 +301,10 @@ export class Client {
             this.server.model.verified,
           )
         }
+        this.server.notifyCommit()
       } else if (action === 'third-party') {
         this.server.model.thirdParty()
+        this.server.notifyCommit()
       } else if (action === 'observe') {
         requestCanonicalRefresh({ reason: 'merged', minimumRevision: this.server.model.revision })
       } else if (action === 'event' || action === 'reverse-event') {
@@ -346,6 +362,7 @@ export class Client {
       }
     })
     if (
+      action === 'connect-delivery' ||
       action === 'refresh' ||
       action === 'event' ||
       action === 'reverse-event' ||
@@ -426,6 +443,7 @@ export class Client {
     }
   }
   async close() {
+    this.delivery.disconnect()
     this.server.reply()
     await this.inFlight
     await this.queuedFlush
