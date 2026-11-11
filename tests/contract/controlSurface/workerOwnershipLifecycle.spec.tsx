@@ -251,3 +251,126 @@ it.each(
     }
   },
 )
+
+it.each(
+  ['Desktop', 'Web'].flatMap(client =>
+    ['creation', 'cold', 'live'].map(phase => ({ client, phase })),
+  ),
+)('keeps frozen $client workspace usable during $phase negotiation', async ({ client, phase }) => {
+  const f = rendererLifecycleFixture(false, phase !== 'creation')
+  window.opencoveApi = {
+    ...window.opencoveApi,
+    persistence: {} as typeof window.opencoveApi.persistence,
+  }
+  const worker = compatibilityFixture({
+    enabled: true,
+    writesEnabled: false,
+    live: phase === 'live',
+  })
+  await worker.runtime.ready()
+  if (phase !== 'creation') {
+    await worker.store.activateManagedClaudeRuntime({
+      nodeId: 'agent',
+      activationId: 'owned',
+      runtimeSessionId: 'live',
+      tuple: { resumeSessionId: 'cached', resumeSessionIdVerified: true },
+    })
+  }
+  registerSessionPrepareOrReviveHandler(worker.surface, {
+    getPersistenceStore: worker.getPersistenceStore,
+    terminalRecoverySpawnAdmission: worker.admission.terminalRecoverySpawnAdmission,
+    ptyStreamHub: { isSessionActive: () => phase === 'live' } as unknown as PtyStreamHub,
+    ptyRuntime: {} as never,
+  })
+  f.invoke.mockImplementation(async request => {
+    if (request.id === 'system.capabilities') {
+      return {
+        features: {
+          managedClaudeResumeBindingV1: true,
+          managedClaudeResumeBindingDeliveryV1: true,
+          managedClaudeResumeBindingWritesEnabled: false,
+        },
+      }
+    }
+    if (request.id === 'node.managedClaudeBinding') {
+      return {
+        managedClaudeBinding: worker.store.observeManagedClaudeNode('agent').binding,
+        nodeRuntimeSessionId: 'live',
+        retired: false,
+        executionDirectory: '/repo',
+      }
+    }
+    const result = await worker.surface.invoke(
+      { now: () => new Date(), capabilities: {}, clientFeatures: request.clientFeatures } as never,
+      request,
+    )
+    if (!result.ok) {
+      throw createAppError(result.error)
+    }
+    return result.value
+  })
+  if (client === 'Web') {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url, options) => {
+        try {
+          return new Response(
+            JSON.stringify({
+              __opencoveControlEnvelope: true,
+              ok: true,
+              value: await f.invoke(JSON.parse(String(options?.body))),
+            }),
+          )
+        } catch (error) {
+          return new Response(
+            JSON.stringify({
+              __opencoveControlEnvelope: true,
+              ok: false,
+              error: toAppErrorDescriptor(error),
+            }),
+          )
+        }
+      }),
+    )
+    window.opencoveApi = {
+      ...window.opencoveApi,
+      controlSurface: { invoke: invokeBrowserControlSurface },
+    }
+  }
+  try {
+    if (phase === 'creation') {
+      const { prepareManagedClaudeCreationIntent } =
+        await import('../../../src/contexts/workspace/presentation/renderer/utils/managedClaudeCreation')
+      expect(
+        await prepareManagedClaudeCreationIntent({
+          kind: 'launchNew',
+          expected: {
+            activationId: null,
+            tuple: { resumeSessionId: null, resumeSessionIdVerified: false },
+          },
+        }),
+      ).toBeDefined()
+    } else {
+      const nodes = await prepareWorkspaceRuntimeNodes({
+        workspace: ensurePersistedWorkspace(worker.state.workspaces[0])!,
+        agentSettings: DEFAULT_AGENT_SETTINGS,
+      })
+      if (phase === 'cold') {
+        expect(nodes[0].data.lastError).toContain('paused')
+      } else {
+        expect(nodes[0].data.sessionId).toBe('live')
+      }
+    }
+    expect(useAppStore.getState().persistNotice).toMatchObject({
+      kind: 'compatibility',
+      message: expect.stringContaining('saving new resume targets'),
+    })
+    expect(useAppStore.getState().workerConnectionError).toBeNull()
+    const { isPublicationBlocked } =
+      await import('../../../src/contexts/workspace/presentation/renderer/utils/persistence/publicationState')
+    expect(isPublicationBlocked()).toBe(false)
+  } finally {
+    f.unmount()
+    worker.runtime.dispose()
+  }
+})

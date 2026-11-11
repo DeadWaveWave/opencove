@@ -1,3 +1,4 @@
+import { readManagedClaudeAdoptionSnapshot } from './managedClaudeAdoptionSnapshot'
 import type Database from 'better-sqlite3'
 import type {
   ManagedClaudeResumeBindingStore,
@@ -116,6 +117,21 @@ export function createManagedClaudeResumeStore(
           return { status: 'nodeGone' }
         }
         const row = readRow(input.nodeId)
+        // A competing explicit Stop cancels cold adoption, not an authorized UI relaunch.
+        if (
+          !row &&
+          input.requireRecoverable &&
+          db.prepare("SELECT 1 FROM nodes WHERE id = ? AND status = 'stopped'").get(input.nodeId)
+        ) {
+          return { status: 'superseded' }
+        }
+        if (
+          !row &&
+          input.adoptionSnapshot !== undefined &&
+          readManagedClaudeAdoptionSnapshot(db, input.nodeId) !== input.adoptionSnapshot
+        ) {
+          return { status: 'superseded' }
+        }
         if (
           input.expected &&
           (input.expected.activationId !== (row?.activation_id ?? null) ||

@@ -92,7 +92,7 @@ export function registerSystemHandlers(
             (await deps.hasBoundedAgentSpawning?.()) && (await deps.hasNodeLineage?.()),
           ),
           operationRegistry: true,
-          managedClaudeResumeBindingV1: false,
+          managedClaudeResumeBindingV1: true,
           managedClaudeResumeBindingDeliveryV1: true,
           managedClaudeResumeBindingWritesEnabled: managedClaudeWritesEnabled(),
           nodeLineageV1:

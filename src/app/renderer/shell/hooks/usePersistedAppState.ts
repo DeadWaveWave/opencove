@@ -1,3 +1,4 @@
+import { currentManagedClaudeCompatibilityNotice } from '@contexts/workspace/presentation/renderer/utils/managedClaudeCompatibilityNotice'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
@@ -57,7 +58,7 @@ export function usePersistedAppState({
           if (result.level === 'full') {
             return previous?.kind === 'recovery' || previous?.kind === 'compatibility'
               ? previous
-              : null
+              : currentManagedClaudeCompatibilityNotice()
           }
 
           const message =

@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { createInterface } from 'node:readline'
 import { randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
-const [provider, cwd, , , initialId] = process.argv.slice(2)
+const [provider, cwd, mode, , initialId] = process.argv.slice(2)
 assert.equal(provider, 'claude-code')
 assert.equal(process.env.NODE_ENV, 'test')
 const directory = join(process.env.CLAUDE_CONFIG_DIR, 'projects', 'ordering')
@@ -59,7 +59,7 @@ async function transcript(id, promptId) {
   )
 }
 await hook('SessionStart', current, clock++, { source: 'startup' })
-await log({ ready: true, id: current })
+await log({ ready: true, id: current, mode, cwd })
 const input = createInterface({ input: process.stdin })
 for await (const command of input) {
   const scenario = command.trim()

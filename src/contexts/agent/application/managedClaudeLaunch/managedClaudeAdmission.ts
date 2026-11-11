@@ -28,6 +28,14 @@ export function managedClaudeAdmissionDecision(
     ? (JSON.parse(context.route) as { endpointId: string; mountId: string | null } | null)
     : null
   if (route && (route.endpointId !== 'local' || route.mountId !== execution.mountId)) {
+    if (
+      !observation.binding &&
+      route.endpointId === 'local' &&
+      execution.mountId === null &&
+      context?.directory === execution.cwd
+    ) {
+      return 'legacy'
+    }
     return 'identityConflict'
   }
   if (

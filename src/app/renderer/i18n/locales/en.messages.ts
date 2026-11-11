@@ -23,7 +23,7 @@ export const enMessages = {
   managedAgentClientUpgradeRequired:
     'Update OpenCove and reload this window before controlling this agent.',
   managedAgentWritesDisabled:
-    'Managed Claude restarts are paused. Ask the Worker administrator to enable them.',
+    'Managed Claude restarts and saving new resume targets are paused. Existing saved targets remain protected. Ask the Worker administrator to enable updates.',
   workerConnectionRetry: 'Retry connection',
   managedAgentLegacyWorker:
     'This Worker uses legacy Claude sessions. Your workspace remains available. Upgrade and restart the Worker to enable managed recovery.',

@@ -39,6 +39,8 @@ export interface ManagedClaudeNodeObservation {
   binding: ManagedClaudeBindingObservation | null
   nodeRuntimeSessionId?: string | null
   retired: boolean
+  /** Internal CAS image of an existing unowned node; never client authority. */
+  adoptionSnapshot?: string
   context: ManagedClaudeNodeContext | null
 }
 export interface AppStateCommittedObservation {

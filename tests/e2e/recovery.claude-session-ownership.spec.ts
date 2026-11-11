@@ -1,3 +1,4 @@
+import { getBinding } from './recovery.managed-claude-launch-lifecycle.helpers'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, utimes, writeFile } from 'node:fs/promises'
@@ -72,6 +73,11 @@ async function readInvocations(logPath: string): Promise<Invocation[]> {
 async function expectOwnedSessions(window: Page, bindings: Binding[], mode: string): Promise<void> {
   await expect(window.locator('.terminal-node')).toHaveCount(2)
   for (const binding of bindings) {
+    // oxlint-disable-next-line no-await-in-loop -- Each node retains its own durable conversation.
+    expect((await getBinding(window, binding.nodeId!)).tuple).toEqual({
+      resumeSessionId: binding.sessionId,
+      resumeSessionIdVerified: true,
+    })
     const terminal = window.locator(`[data-id="${binding.nodeId}"] .terminal-node`)
     // eslint-disable-next-line no-await-in-loop -- two independent nodes must both finish recovery
     await expect(terminal).toContainText(`[opencove-test-claude-ownership] ${mode}`)

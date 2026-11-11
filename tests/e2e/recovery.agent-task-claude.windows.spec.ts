@@ -1,3 +1,4 @@
+import { getBinding } from './recovery.managed-claude-launch-lifecycle.helpers'
 import { expect, test, type Page } from '@playwright/test'
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -252,6 +253,12 @@ test.describe('Recovery - task Claude agent (Windows)', () => {
         })
         await expect(terminalNode).toContainText('[opencove-test-claude-session] resume')
         await expect(terminalNode).toContainText(initialBinding.resumeSessionId!)
+        expect(
+          (await getBinding(restartedWindow, initialBinding.linkedAgentNodeId!)).tuple,
+        ).toEqual({
+          resumeSessionId: initialBinding.resumeSessionId,
+          resumeSessionIdVerified: true,
+        })
         expect(await fs.readFile(transcriptPath, 'utf8')).toBe(initialTranscript)
         expect(await fs.readdir(path.dirname(transcriptPath))).toEqual([
           `${initialBinding.resumeSessionId}.jsonl`,

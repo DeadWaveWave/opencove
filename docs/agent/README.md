@@ -269,3 +269,24 @@ from canvas terminals. Cwd-only launches, delegated remote identities, Codex sha
 app-server reuse, notify-only integration and Windows file-observation mode receive
 no introduction. Pi, OpenCode and Kimi are not supported yet. Unavailable Workers,
 timeouts and invalid replies silently skip the introduction; they do not block agents.
+
+## Claude recovery defaults
+
+OpenCove protects eligible local Claude agent windows’ saved resume targets by default. Existing
+windows join managed recovery when the Worker next starts their Claude process, including normal
+cold recovery. Live attachment alone does not adopt a window. Upgrade and restart the actual Worker;
+a newer Desktop can reuse an older Worker and does not change its configuration.
+After `/clear` and a confirmed completed reply, restarting resumes the new conversation. Clearing
+without completing a reply keeps the previous saved target. See [Claude clear recovery](CLAUDE_CLEAR_RECOVERY.md).
+
+To pause adoption, managed restarts, and saving new resume targets, restart the Worker with
+`OPENCOVE_MANAGED_CLAUDE_BINDINGS=0`. Existing saved bindings, layout edits, live input and compatible
+explicit Stop remain available. Remove the override and restart the Worker to resume updates.
+Freeze does not make a profile safe for an older binary without ledger enforcement; use freeze and
+fix forward. PR1/PR2 storage protection alone does not promise current recovery behavior.
+
+符合条件的本地 Claude 智能体窗口默认保护已保存的恢复目标。现有窗口会在下次实际启动 Claude
+进程时加入，包括正常冷恢复；仅重新附着存活进程不会接管。升级时请升级并重启实际 Worker，
+仅更新 Desktop 不会改变已运行 Worker 的行为。清空后完成并确认新响应，才保存新恢复目标。
+以 `OPENCOVE_MANAGED_CLAUDE_BINDINGS=0` 重启 Worker 可暂停接管、重启和新目标保存；
+移除该设置并重启后恢复。已保存目标仍受保护，冻结不代表可以安全降级数据库。

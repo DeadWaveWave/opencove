@@ -95,7 +95,6 @@ test('managed Claude relaunch, switch, role identity and cold restart use commit
     OPENCOVE_TEST_WORKSPACE: workspace,
     OPENCOVE_WORKER_CLIENT: '1',
     OPENCOVE_TEST_USE_REAL_AGENTS: '0',
-    OPENCOVE_EXPERIMENTAL_MANAGED_CLAUDE_BINDINGS: '1',
     OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
     OPENCOVE_TEST_CLAUDE_HOOK_INSTALL_FAILURE: '0',
     OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'claude-session-ownership',

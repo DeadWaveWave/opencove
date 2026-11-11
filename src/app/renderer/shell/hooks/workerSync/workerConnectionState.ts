@@ -1,3 +1,4 @@
+import { currentManagedClaudeCompatibilityNotice } from '@contexts/workspace/presentation/renderer/utils/managedClaudeCompatibilityNotice'
 import { toErrorMessage } from '../../utils/format'
 import { useAppStore } from '../../store/useAppStore'
 import { toAppErrorDescriptor } from '@shared/errors/appError'
@@ -21,7 +22,10 @@ export function clearWorkerConnectionFailure(): void {
   if (useAppStore.getState().workerConnectionError) {
     useAppStore.setState(state => ({
       workerConnectionError: null,
-      persistNotice: state.persistNotice?.kind === 'connection' ? null : state.persistNotice,
+      persistNotice:
+        state.persistNotice?.kind === 'connection'
+          ? currentManagedClaudeCompatibilityNotice()
+          : state.persistNotice,
     }))
   }
 }

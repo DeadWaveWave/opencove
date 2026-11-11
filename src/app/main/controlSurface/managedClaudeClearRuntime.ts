@@ -20,10 +20,7 @@ export function createManagedClaudeClearRuntime(
   const unsubscribe = channels.map(channel =>
     channel.onClaudeBindingEvidence?.(
       evidence => {
-        if (
-          process.env.OPENCOVE_EXPERIMENTAL_MANAGED_CLAUDE_BINDINGS !== '1' ||
-          !managedClaudeWritesEnabled()
-        ) {
+        if (!managedClaudeWritesEnabled()) {
           return
         }
         let producer = producers.get(evidence.credential)
@@ -34,9 +31,7 @@ export function createManagedClaudeClearRuntime(
             runtimeSessionId: evidence.sessionId,
             credential: evidence.credential,
             isCurrent: evidence.isCurrent,
-            enabled: () =>
-              managedClaudeWritesEnabled() &&
-              process.env.OPENCOVE_EXPERIMENTAL_MANAGED_CLAUDE_BINDINGS === '1',
+            enabled: managedClaudeWritesEnabled,
             createId: randomUUID,
             now: () => performance.now(),
             read: async (input, signal) => await reader.confirmCompletedTurn(input, signal),
