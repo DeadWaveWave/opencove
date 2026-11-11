@@ -1,42 +1,43 @@
-import type { MutableRefObject } from 'react'
-import type { Node } from '@xyflow/react'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
-import type { NodeLabelColorOverride } from '@shared/types/labelColor'
-import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { WorkspaceCanvasActionRefs } from './useActionRefs'
 import { useWorkspaceCanvasSelectNode } from './useSelectNode'
 import { useWorkspaceCanvasNodeTypes } from '../nodeTypes'
 
 export function useWorkspaceCanvasComposedNodeTypes({
-  setNodes,
-  setSelectedNodeIds,
-  setSelectedSpaceIds,
-  selectedNodeIdsRef,
-  selectedSpaceIdsRef,
-  spacesRef,
+  nodeStore,
+  canvasState,
   workspacePath,
   onShowMessage,
   agentSettings,
   actionRefs,
   convertNoteToTask,
-  setNodeLabelColorOverride,
 }: {
-  setNodes: (
-    updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-    options?: { syncLayout?: boolean },
-  ) => void
-  setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
-  setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
-  selectedNodeIdsRef: MutableRefObject<string[]>
-  selectedSpaceIdsRef: MutableRefObject<string[]>
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
+  nodeStore: Pick<
+    import('./useNodesStore.types').UseWorkspaceCanvasNodesStoreResult,
+    'setNodes' | 'setNodeLabelColorOverride'
+  >
+  canvasState: Pick<
+    ReturnType<typeof import('./useCanvasState').useWorkspaceCanvasState>,
+    | 'setSelectedNodeIds'
+    | 'setSelectedSpaceIds'
+    | 'selectedNodeIdsRef'
+    | 'selectedSpaceIdsRef'
+    | 'spacesRef'
+  >
   workspacePath: string
   onShowMessage?: Parameters<typeof useWorkspaceCanvasNodeTypes>[0]['onShowMessage']
   agentSettings: AgentSettings
   actionRefs: WorkspaceCanvasActionRefs
   convertNoteToTask: (nodeId: string) => boolean
-  setNodeLabelColorOverride: (nodeIds: string[], labelColorOverride: NodeLabelColorOverride) => void
 }) {
+  const { setNodes, setNodeLabelColorOverride } = nodeStore
+  const {
+    setSelectedNodeIds,
+    setSelectedSpaceIds,
+    selectedNodeIdsRef,
+    selectedSpaceIdsRef,
+    spacesRef,
+  } = canvasState
   const selectNode: (nodeId: string, options?: { toggle?: boolean }) => void =
     useWorkspaceCanvasSelectNode({
       setNodes,

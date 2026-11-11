@@ -22,6 +22,7 @@ const tests = process.argv.includes('--worker-ownership')
       'tests/contract/platform/managedClaudeOwnershipProjection.native.spec.ts',
       'tests/contract/platform/managedClaudeLaunchLifecycle.native.spec.ts',
       'tests/contract/platform/managedClaudeCommitReceipt.native.spec.ts',
+      'tests/contract/platform/managedClaudeConvergenceReceipt.native.spec.ts',
       'tests/contract/platform/managedClaudeFallbackCustody.native.spec.ts',
       'tests/contract/platform/managedClaudeFallbackContext.native.spec.ts',
       'tests/contract/platform/managedClaudeFallbackHandoff.native.spec.ts',

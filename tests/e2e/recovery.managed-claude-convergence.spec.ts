@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 import { expect, test, type ElectronApplication } from '@playwright/test'
+import { staleManagedPublication } from '../support/convergence/staleManagedPublication'
 import type { CreateNodeResult } from '../../src/shared/contracts/dto'
 import {
   createTestUserDataDir,
@@ -107,39 +108,63 @@ test('managed Claude stale publications retain layout and cold-resume the curren
     ).toHaveAttribute('aria-busy', 'false', { timeout: 20_000 })
     const agent = await createCliAgent(page, cliBinding)
     const initial = await getBinding(page, agent.id)
-    const stale = await page.evaluate(
-      async () => (await window.opencoveApi.persistence.readAppState()).state,
-    )
     const replacement = await launch(page, agent.id, workspace, {
       kind: 'launchNew',
       expected: { activationId: initial.activationId, tuple: initial.tuple },
     })
     const current = replacement.managedClaudeLifecycle!.binding
+    const expectedTuple = {
+      resumeSessionId: current.tuple.resumeSessionId,
+      resumeSessionIdVerified: true,
+    }
     expect(current.tuple.resumeSessionId).not.toBe(initial.tuple.resumeSessionId)
     for (const raw of [false, true]) {
-      const result = await page.evaluate(
-        async ({ old, nodeId, rawWrite }) => {
-          const candidate = structuredClone(old) as {
-            workspaces: Array<{ nodes: Array<{ id: string; position: { x: number; y: number } }> }>
+      // Hook attestation can advance the binding after launch. Capture the committed node,
+      // then inject a tuple that has never been admitted instead of assuming an old read is stale.
+      let latest!: { state: unknown; revision: number | null }
+      await expect
+        .poll(async () => {
+          latest = await page.evaluate(async () => window.opencoveApi.persistence.readAppState())
+          try {
+            const probe = staleManagedPublication(latest.state, agent.id, raw ? 1300 : 1200)
+            return { activationId: probe.activationId, tuple: probe.canonicalTuple }
+          } catch {
+            return null
           }
-          candidate.workspaces.flatMap(w => w.nodes).find(n => n.id === nodeId)!.position = {
-            x: rawWrite ? 1300 : 1200,
-            y: 500,
-          }
-          if (rawWrite) {
-            return await window.opencoveApi.persistence.writeWorkspaceStateRaw({
-              raw: JSON.stringify(candidate),
-            })
-          }
-          const latest = await window.opencoveApi.persistence.readAppState()
-          return await window.opencoveApi.persistence.writeAppState({
-            state: candidate,
-            baseRevision: latest.revision,
-          })
-        },
-        { old: stale, nodeId: agent.id, rawWrite: raw },
+        })
+        .toEqual({ activationId: current.activationId, tuple: expectedTuple })
+      const proposed = staleManagedPublication(latest.state, agent.id, raw ? 1300 : 1200)
+      expect(proposed.submittedTuple.resumeSessionId).not.toBe(
+        proposed.canonicalTuple.resumeSessionId,
       )
-      expect(result).toMatchObject({ ok: true, corrected: true })
+      const result = await page.evaluate(
+        async ({ candidate, baseRevision, rawWrite }) =>
+          rawWrite
+            ? window.opencoveApi.persistence.writeWorkspaceStateRaw({
+                raw: JSON.stringify(candidate),
+              })
+            : window.opencoveApi.persistence.writeAppState({ state: candidate, baseRevision }),
+        { candidate: proposed.candidate, baseRevision: latest.revision, rawWrite: raw },
+      )
+      const receiptDetails = JSON.stringify({
+        route: raw ? 'raw' : 'structured',
+        baseRevision: latest.revision,
+        activationId: proposed.activationId,
+        canonicalTuple: proposed.canonicalTuple,
+        submittedTuple: proposed.submittedTuple,
+        result,
+      })
+      expect(result, receiptDetails).toMatchObject({ ok: true })
+      if (raw) {
+        // Raw replacements bypass adapter rebasing; the SQLite gate must report correction.
+        expect(result, receiptDetails).toMatchObject({ corrected: true })
+      } else {
+        // CAS retry can project owned fields before the final SQLite gate sees the candidate.
+        expect(
+          result.ok && (result.corrected === true || result.merged === true),
+          receiptDetails,
+        ).toBe(true)
+      }
       await expect
         .poll(async () =>
           page.evaluate(async nodeId => {
@@ -166,7 +191,7 @@ test('managed Claude stale publications retain layout and cold-resume the curren
           x: raw ? 1300 : 1200,
           activationId: current.activationId,
         })
-      expect((await getBinding(page, agent.id)).tuple).toEqual(current.tuple)
+      expect((await getBinding(page, agent.id)).tuple).toEqual(expectedTuple)
     }
     const callsBefore = (await readFile(logPath, 'utf8')).trim().split('\n').length
     await app.close()
@@ -188,7 +213,7 @@ test('managed Claude stale publications retain layout and cold-resume the curren
           .some(call => call.mode === 'resume' && call.sessionId === current.tuple.resumeSessionId),
       )
       .toBe(true)
-    expect((await getBinding(restarted.window, agent.id)).tuple).toEqual(current.tuple)
+    expect((await getBinding(restarted.window, agent.id)).tuple).toEqual(expectedTuple)
   } finally {
     try {
       await app?.close()

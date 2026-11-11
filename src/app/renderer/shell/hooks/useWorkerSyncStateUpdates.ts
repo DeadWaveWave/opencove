@@ -14,24 +14,26 @@ import {
   isPublicationBlocked,
   deferRefreshForSubmission,
 } from '@contexts/workspace/presentation/renderer/utils/persistence/publicationState'
-import { getSyncedPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence/write'
+import { content } from '@contexts/workspace/presentation/renderer/utils/persistence/publicationState'
+import {
+  resolveNextActiveWorkspaceId,
+  resolveWorkspacesForWorkerSync,
+  shouldApplyWorkerSyncRefresh,
+} from './workerSync/refreshState'
+export {
+  resolveWorkspacesForWorkerSync,
+  shouldApplyWorkerSyncRefresh,
+} from './workerSync/refreshState'
 import { useEffect, useRef } from 'react'
-import { normalizeAgentSettings, type AgentSettings } from '@contexts/settings/domain/agentSettings'
-import type {
-  PersistedAppState,
-  PersistedWorkspaceState,
-  WorkspaceState,
-} from '@contexts/workspace/presentation/renderer/types'
+import { normalizeAgentSettings } from '@contexts/settings/domain/agentSettings'
 import {
   readPersistedStateWithMeta,
   toPersistedState,
   flushScheduledPersistedStateWriteAsync,
 } from '@contexts/workspace/presentation/renderer/utils/persistence'
-import { stripLocalViewStateFromPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence/viewState'
 import { useAppStore } from '../store/useAppStore'
 import { canonicalContent } from '@shared/sync/mergeValue'
 import type { SyncEventPayload } from '@shared/contracts/dto'
-import { toShellWorkspaceStateForSync } from './workerSync/mergeWorkspaceStateForSync'
 import { hasRuntimeBindingPublication } from './workerSync/runtimeSessionBinding'
 
 import {
@@ -40,98 +42,6 @@ import {
 } from './workerSync/acceptWorkerSyncSnapshot'
 
 const LOCAL_SYNC_WRITE_EVENT_NAME = 'opencove.localSyncWrite'
-
-function resolveNextActiveWorkspaceId(
-  state: PersistedAppState,
-  currentActive: string | null,
-): string | null {
-  const ids = state.workspaces.map(workspace => workspace.id)
-  if (currentActive && ids.includes(currentActive)) {
-    return currentActive
-  }
-
-  if (state.activeWorkspaceId && ids.includes(state.activeWorkspaceId)) {
-    return state.activeWorkspaceId
-  }
-
-  return ids[0] ?? null
-}
-
-function buildPersistedStateSignature(state: PersistedAppState): string {
-  return JSON.stringify(state)
-}
-
-function buildPersistedWorkspaceSignature(state: PersistedWorkspaceState): string {
-  return JSON.stringify(state)
-}
-
-function buildCurrentWorkspacePersistedSignature(workspace: WorkspaceState): string {
-  const persistedWorkspace = toPersistedState([workspace], workspace.id).workspaces[0]
-  return JSON.stringify(persistedWorkspace)
-}
-
-export function shouldApplyWorkerSyncRefresh({
-  currentState,
-  persistedState,
-}: {
-  currentState: {
-    workspaces: WorkspaceState[]
-    activeWorkspaceId: string | null
-    agentSettings: AgentSettings
-  }
-  persistedState: PersistedAppState
-}): boolean {
-  const currentPersistedState = toPersistedState(
-    currentState.workspaces,
-    currentState.activeWorkspaceId,
-    currentState.agentSettings,
-  )
-
-  return (
-    hasRuntimeBindingPublication(currentState.workspaces) ||
-    buildPersistedStateSignature(currentPersistedState) !==
-      buildPersistedStateSignature(persistedState)
-  )
-}
-
-export function resolveWorkspacesForWorkerSync({
-  currentWorkspaces,
-  persistedWorkspaces,
-  baseState = getSyncedPersistedState(),
-}: {
-  currentWorkspaces: WorkspaceState[]
-  persistedWorkspaces: PersistedWorkspaceState[]
-  baseState?: PersistedAppState | null
-}): WorkspaceState[] {
-  const currentById = new Map(
-    currentWorkspaces.map(workspace => [workspace.id, workspace] as const),
-  )
-
-  const nextWorkspaces = persistedWorkspaces.map(workspace => {
-    const existingWorkspace = currentById.get(workspace.id)
-    if (!existingWorkspace) {
-      return toShellWorkspaceStateForSync(workspace, undefined)
-    }
-
-    return !hasRuntimeBindingPublication([existingWorkspace]) &&
-      buildCurrentWorkspacePersistedSignature(existingWorkspace) ===
-        buildPersistedWorkspaceSignature(workspace)
-      ? existingWorkspace
-      : toShellWorkspaceStateForSync(
-          workspace,
-          existingWorkspace,
-          baseState?.workspaces.find(base => base.id === workspace.id),
-        )
-  })
-
-  if (nextWorkspaces.length !== currentWorkspaces.length) {
-    return nextWorkspaces
-  }
-
-  return nextWorkspaces.every((workspace, index) => workspace === currentWorkspaces[index])
-    ? currentWorkspaces
-    : nextWorkspaces
-}
 
 export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
   const refreshTimerRef = useRef<number | null>(null)
@@ -391,11 +301,7 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
         // snapshot. A rejected read must not mutate them before these guards.
         const current = useAppStore.getState()
         const scheduleRemainingDelta = () => {
-          if (
-            !isPublicationBlocked() &&
-            canonicalContent(stripLocalViewStateFromPersistedState(persisted!)) !==
-              canonicalContent(stripLocalViewStateFromPersistedState(canonical!))
-          ) {
+          if (!isPublicationBlocked() && content(persisted!) !== content(canonical!)) {
             schedulePersistedStateWrite(() => {
               const state = useAppStore.getState()
               return toPersistedState(
