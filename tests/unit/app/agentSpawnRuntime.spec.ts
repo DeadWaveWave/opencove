@@ -108,3 +108,12 @@ it('creates no occupancy for a known pre-start failure', async () => {
   expect(f.port.snapshot().bindings).toEqual([])
   f.dispose()
 })
+
+it('retains local runtime provenance after authoritative exit independently of node membership', async () => {
+  const f = fixture(async () => ({ sessionId: 'local-history' }))
+  await canvasSpawnIdentity.run(identity, () => f.runtime.spawnSession(input))
+  f.exit('local-history')
+  expect(f.port.snapshot().bindings).toEqual([])
+  expect(f.port.snapshot().knownLocalNodeIds).toEqual(['child'])
+  f.dispose()
+})

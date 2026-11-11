@@ -1,3 +1,4 @@
+import path, { type PlatformPath } from 'node:path'
 import { createAppError } from '../../../../shared/errors/appError'
 import { spawnForbiddenDetails } from '../../../../shared/errors/agentSpawnError'
 import type { NodeLineageRecord } from '../../domain/nodeLineage'
@@ -5,7 +6,7 @@ import { assertGrantRuntimeSpawnAllowed } from '../../domain/agentSpawnPolicy'
 import { deriveNodeLineage } from '../../domain/nodeLineage'
 import type { NodeControlAppStateStore } from '../nodeControl/nodeControlState'
 import type { ResolvedNodeCreationTarget } from '../nodeControl/nodeCreationTarget'
-import type { AgentSpawnRuntimePort } from './AgentSpawnRuntimePort'
+import type { AgentSpawnRuntimePort, NodeRuntimeBinding } from './AgentSpawnRuntimePort'
 
 export interface GrantCreationAuthority {
   grantId: string
@@ -36,13 +37,16 @@ export function spawnAccountingUnavailable(): never {
       'OpenCove could not verify this agent tree’s running runtimes. Ask the user to check the affected runtimes and start a new agent on the canvas for further delegation.',
   })
 }
-export function spawnTargetKey(target: ResolvedNodeCreationTarget): string {
+export function spawnTargetKey(
+  target: ResolvedNodeCreationTarget,
+  paths: Pick<PlatformPath, 'normalize'> = path,
+): string {
   return JSON.stringify([
     target.workspace.id,
     target.space?.id,
     target.mount?.mountId,
     target.endpoint.endpointId,
-    target.workingDirectory,
+    paths.normalize(target.workingDirectory),
   ])
 }
 
@@ -52,8 +56,13 @@ export class AgentSpawnAdmissionOwner {
   private readonly captured = new Map<string, NodeLineageRecord>()
   private readonly permits = new Map<AgentSpawnPermit, Admission & { used: boolean }>()
   private readonly historicalFences = new Set<string>()
-  private initialized = false
-  public constructor(private readonly runtime: AgentSpawnRuntimePort) {}
+  private readonly knownLocalNodeIds = new Set<string>()
+  private readonly seededBindings = new Map<string, NodeRuntimeBinding>()
+  private auditedRevision: number | undefined
+  public constructor(
+    private readonly runtime: AgentSpawnRuntimePort,
+    private readonly paths: Pick<PlatformPath, 'normalize'> = path,
+  ) {}
 
   public authorize(
     permit: AgentSpawnPermit | undefined,
@@ -92,7 +101,10 @@ export class AgentSpawnAdmissionOwner {
   }
   public assertExecution(permit: AgentSpawnPermit, execution: { cwd: string }): void {
     const entry = this.permits.get(permit)
-    if (!entry || execution.cwd !== entry.target.workingDirectory) {
+    if (
+      !entry ||
+      this.paths.normalize(execution.cwd) !== this.paths.normalize(entry.target.workingDirectory)
+    ) {
       forbidden('remote_spawning_unsupported')
     }
   }
@@ -101,7 +113,7 @@ export class AgentSpawnAdmissionOwner {
     if (
       !entry ||
       target.endpoint.kind === 'remote_worker' ||
-      spawnTargetKey(entry.target) !== spawnTargetKey(target)
+      spawnTargetKey(entry.target, this.paths) !== spawnTargetKey(target, this.paths)
     ) {
       forbidden('remote_spawning_unsupported')
     }
@@ -128,6 +140,7 @@ export class AgentSpawnAdmissionOwner {
       const revision = await store.readAppStateRevision()
       const state = await store.readAppState()
       const nodes = state?.workspaces.flatMap(w => w.nodes) ?? []
+      const persistedNodeIds = new Set(nodes.map(node => node.id))
       const caller = nodes.find(n => n.id === input.authority.nodeId)
       if (
         !caller ||
@@ -137,10 +150,42 @@ export class AgentSpawnAdmissionOwner {
         forbidden('caller_session_mismatch')
       }
       const census = this.runtime.snapshot()
+      const completed = new Set(census.completedSessionIds ?? [])
+      const seeded = new Map(this.seededBindings)
+      for (const id of completed) {
+        seeded.delete(id)
+      }
+      const capturedSessions = new Set(census.bindings.map(binding => binding.sessionId))
+      for (const node of nodes) {
+        if (
+          node.sessionId &&
+          ['agent', 'terminal'].includes(node.kind) &&
+          !capturedSessions.has(node.sessionId) &&
+          !completed.has(node.sessionId) &&
+          this.runtime.isSessionActive?.(node.sessionId)
+        ) {
+          seeded.set(node.sessionId, {
+            nodeId: node.id,
+            sessionId: node.sessionId,
+            runtimeOwner:
+              node.workerBinding?.endpointId && node.workerBinding.endpointId !== 'local'
+                ? 'remote'
+                : 'local',
+            state: 'running',
+          })
+        }
+      }
+      const bindings = [...census.bindings, ...seeded.values()]
+      const knownLocalNodes = new Set([
+        ...this.knownLocalNodeIds,
+        ...(census.knownLocalNodeIds ?? []),
+        ...bindings.filter(b => b.runtimeOwner === 'local').map(b => b.nodeId),
+      ])
       const ids = [
         ...new Set([
           input.authority.nodeId!,
-          ...census.bindings.map(b => b.nodeId),
+          ...(census.knownRemoteNodeIds ?? []),
+          ...bindings.map(b => b.nodeId),
           ...nodes.map(n => n.id),
         ]),
       ]
@@ -148,14 +193,14 @@ export class AgentSpawnAdmissionOwner {
       let rows: ReadonlyMap<string, NodeLineageRecord>
       try {
         rows = await store.nodeLineage.readMany(ids)
-        if (!this.initialized) {
+        if (this.auditedRevision !== revision) {
           // An orphan's endpoint/session is not durable. Never assume it was local or exited.
           const history = await store.nodeLineage.readAll?.()
           if (!history) {
             spawnAccountingUnavailable()
           }
           for (const row of history.values()) {
-            if (!nodes.some(n => n.id === row.nodeId)) {
+            if (!persistedNodeIds.has(row.nodeId) && !knownLocalNodes.has(row.nodeId)) {
               orphanRoots.add(row.rootNodeId)
             }
           }
@@ -183,7 +228,36 @@ export class AgentSpawnAdmissionOwner {
       for (const root of orphanRoots) {
         this.historicalFences.add(root)
       }
-      this.initialized = true
+      this.seededBindings.clear()
+      for (const [id, binding] of seeded) {
+        this.seededBindings.set(id, binding)
+      }
+      this.auditedRevision = revision
+      for (const id of knownLocalNodes) {
+        this.knownLocalNodeIds.add(id)
+      }
+      // Retain all observed remote roots independently of subsequent membership deletion/rebind.
+      for (const node of nodes) {
+        const record = rows.get(node.id)
+        if (record && node.workerBinding?.endpointId && node.workerBinding.endpointId !== 'local') {
+          this.historicalFences.add(record.rootNodeId)
+        }
+      }
+      for (const binding of bindings) {
+        const record = this.captured.get(binding.nodeId) ?? rows.get(binding.nodeId)
+        if (record) {
+          this.captured.set(binding.nodeId, record)
+        }
+        if (record && binding.runtimeOwner === 'remote') {
+          this.historicalFences.add(record.rootNodeId)
+        }
+      }
+      for (const nodeId of census.knownRemoteNodeIds ?? []) {
+        const record = this.captured.get(nodeId) ?? rows.get(nodeId)
+        if (record) {
+          this.historicalFences.add(record.rootNodeId)
+        }
+      }
       input.assertActive()
       const lineage = deriveNodeLineage({
         nodeId: input.nodeId,
@@ -194,22 +268,6 @@ export class AgentSpawnAdmissionOwner {
         spawnAccountingUnavailable()
       }
       const occupied = new Set<string>()
-      const bindings = [
-        ...census.bindings,
-        ...nodes
-          .filter(
-            n =>
-              n.sessionId &&
-              ['agent', 'terminal'].includes(n.kind) &&
-              this.runtime.isSessionActive?.(n.sessionId),
-          )
-          .map(n => ({
-            nodeId: n.id,
-            sessionId: n.sessionId!,
-            runtimeOwner: 'local' as const,
-            state: 'running' as const,
-          })),
-      ]
       for (const binding of bindings) {
         const record = this.captured.get(binding.nodeId) ?? rows.get(binding.nodeId)
         if (record?.rootNodeId !== lineage.rootNodeId) {
@@ -220,16 +278,6 @@ export class AgentSpawnAdmissionOwner {
         }
         occupied.add(binding.nodeId)
       }
-      // Saved remote bindings have no trustworthy completion census after disconnect/restart.
-      for (const node of nodes) {
-        if (
-          node.workerBinding?.endpointId &&
-          node.workerBinding.endpointId !== 'local' &&
-          rows.get(node.id)?.rootNodeId === lineage.rootNodeId
-        ) {
-          spawnAccountingUnavailable()
-        }
-      }
       for (const id of this.pending) {
         if (this.captured.get(id)?.rootNodeId === lineage.rootNodeId) {
           occupied.add(id)
@@ -239,13 +287,16 @@ export class AgentSpawnAdmissionOwner {
       const permit = Object.freeze({}) as AgentSpawnPermit
       this.pending.add(input.nodeId)
       this.captured.set(input.nodeId, lineage)
+      this.knownLocalNodeIds.add(input.nodeId)
       this.permits.set(permit, { ...input, used: false })
       try {
         return await create(permit, lineage)
       } finally {
         this.permits.delete(permit)
         this.pending.delete(input.nodeId)
-        const bound = new Set(this.runtime.snapshot().bindings.map(b => b.nodeId))
+        const bound = new Set(
+          [...this.runtime.snapshot().bindings, ...this.seededBindings.values()].map(b => b.nodeId),
+        )
         for (const id of this.captured.keys()) {
           if (!this.pending.has(id) && !bound.has(id)) {
             this.captured.delete(id)

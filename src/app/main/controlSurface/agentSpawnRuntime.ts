@@ -1,3 +1,4 @@
+import { remoteSpawnObservation } from './remoteSpawnObservation'
 import { physicalSpawnLifecycle } from '../../../shared/runtime/physicalSpawnLifecycle'
 import { SessionRegistrationOwner } from '../../../shared/runtime/sessionRegistrationOwner'
 import type {
@@ -11,20 +12,46 @@ import { canvasSpawnIdentity } from './sessionSpawnIdentityContext'
 export function createAgentSpawnRuntime(runtime: ControlSurfacePtyRuntime) {
   const bindings = new Map<string, NodeRuntimeBinding>()
   const registrations = new SessionRegistrationOwner()
+  const knownLocalNodeIds = new Set<string>()
+  const completedSessionIds = new Set<string>()
+  const knownRemoteNodeIds = new Set<string>()
   let revision = 0
+  const noteLocalNode = (id: string) => {
+    if (!knownLocalNodeIds.has(id)) {
+      knownLocalNodeIds.add(id)
+      revision++
+    }
+  }
   const complete = (id: string) => {
     registrations.noteCompletion(id)
+    if (!completedSessionIds.has(id)) {
+      completedSessionIds.add(id)
+      revision++
+    }
     if (bindings.delete(id)) {
       revision++
     }
   }
   const unsubscribe = runtime.onExit(event => complete(event.sessionId))
   const port: AgentSpawnRuntimePort = {
-    snapshot: () => ({ revision, bindings: [...bindings.values()] }),
+    snapshot: () => ({
+      revision,
+      bindings: [...bindings.values()],
+      knownLocalNodeIds: [...knownLocalNodeIds],
+      knownRemoteNodeIds: [...knownRemoteNodeIds],
+      completedSessionIds: [...completedSessionIds],
+    }),
     isCurrent: value => revision === value,
   }
   return {
     port,
+    observeRequests: <T>(execute: () => T): T =>
+      remoteSpawnObservation.run(nodeId => {
+        if (!knownRemoteNodeIds.has(nodeId)) {
+          knownRemoteNodeIds.add(nodeId)
+          revision++
+        }
+      }, execute),
     runtime: {
       ...runtime,
       spawnSession: async input => {
@@ -46,6 +73,7 @@ export function createAgentSpawnRuntime(runtime: ControlSurfacePtyRuntime) {
             return
           }
           settled = true
+          noteLocalNode(identity.nodeId!)
           attemptState.outcome = 'started'
           sessionId = id
           if (attempt.complete(id) === 'active') {
@@ -70,6 +98,7 @@ export function createAgentSpawnRuntime(runtime: ControlSurfacePtyRuntime) {
                 parent?.completed(id)
               },
               unknown: completion => {
+                noteLocalNode(identity.nodeId!)
                 attemptState.outcome = 'unknown'
                 const key = `unknown:${identity.nodeId}:${revision}`
                 bindings.set(key, {
@@ -109,6 +138,9 @@ export function createAgentSpawnRuntime(runtime: ControlSurfacePtyRuntime) {
       unsubscribe()
       registrations.dispose()
       bindings.clear()
+      knownLocalNodeIds.clear()
+      completedSessionIds.clear()
+      knownRemoteNodeIds.clear()
     },
   }
 }

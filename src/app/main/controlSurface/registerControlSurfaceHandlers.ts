@@ -97,6 +97,7 @@ export function registerControlSurfaceHandlers(
         store =>
           Boolean(
             deps.agentSpawnRuntime &&
+            typeof deps.ptyRuntime.kill === 'function' &&
             store.nodeLineage?.readAll &&
             store.isAppStateRevisionCurrent &&
             store.commitCreatedNodeState,
@@ -183,6 +184,7 @@ export function registerControlSurfaceHandlers(
     terminalAgentActivity: deps.terminalAgentActivity,
   })
   registerNodeControlHandlers(controlSurface, {
+    killExactSession: id => deps.ptyRuntime.kill(id),
     agentSpawnRuntime: deps.agentSpawnRuntime
       ? { ...deps.agentSpawnRuntime, isSessionActive: id => deps.ptyStreamHub.isSessionActive(id) }
       : undefined,

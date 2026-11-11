@@ -109,6 +109,7 @@ export async function createPromptWorker(options: { remote?: boolean; fullAccess
   }
   registerSessionHandlers(surface, deps)
   registerNodeControlHandlers(surface, {
+    killExactSession: id => runtime.kill(id),
     ...deps,
     agentSpawnRuntime: { snapshot: () => ({ revision: 0, bindings: [] }), isCurrent: () => true },
   })

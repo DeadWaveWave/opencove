@@ -18,7 +18,7 @@ it.each([
   const surface = createControlSurface()
   registerControlSurfaceHandlers(surface, {
     getPersistenceStore: async () => store,
-    ptyRuntime: {},
+    ptyRuntime: { kill() {} },
     plugins: { configureHost() {} },
     ptyStreamHub: { agentRuns: { registry: { onDispose() {} } } },
   } as Parameters<typeof registerControlSurfaceHandlers>[1])
@@ -58,7 +58,7 @@ it.each([
       agentSpawnRuntime: runtime
         ? { snapshot: () => ({ revision: 0, bindings: [] }), isCurrent: () => true }
         : undefined,
-      ptyRuntime: {},
+      ptyRuntime: { kill() {} },
       plugins: { configureHost() {} },
       ptyStreamHub: { agentRuns: { registry: { onDispose() {} } } },
     } as Parameters<typeof registerControlSurfaceHandlers>[1])

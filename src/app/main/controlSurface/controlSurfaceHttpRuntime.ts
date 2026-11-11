@@ -266,12 +266,13 @@ export function createControlSurfaceHttpRuntime(
         options.activationId ?? null,
       )
     : null
+  const canvasSpawnRunner = createCanvasSpawnRunner({
+    managedClaude,
+    terminalRuntimeAvailability,
+    getPersistenceStore,
+  })
   const controlSurface = createControlSurface({
-    run: createCanvasSpawnRunner({
-      managedClaude,
-      terminalRuntimeAvailability,
-      getPersistenceStore,
-    }),
+    run: (...args) => spawnRuntime.observeRequests(() => canvasSpawnRunner(...args)),
     enter: id =>
       maintenance &&
       !id.startsWith('worker.maintenance.') &&

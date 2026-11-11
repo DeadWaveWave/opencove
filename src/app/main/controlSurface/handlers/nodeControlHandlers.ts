@@ -103,6 +103,7 @@ export function registerNodeControlHandlers(
   controlSurface: ControlSurface,
   deps: {
     agentSpawnRuntime?: AgentSpawnRuntimePort
+    killExactSession?: (sessionId: string) => void | Promise<void>
     topology: WorkerTopologyStore
     getPersistenceStore: () => Promise<PersistenceStore>
     publishSyncEvent?: (payload: SyncEventPayload) => number
@@ -110,9 +111,10 @@ export function registerNodeControlHandlers(
     closeWebsiteNode?: (nodeId: string) => Promise<void> | void
   },
 ): void {
-  const admission = deps.agentSpawnRuntime
-    ? new AgentSpawnAdmissionOwner(deps.agentSpawnRuntime)
-    : undefined
+  const admission =
+    deps.agentSpawnRuntime && deps.killExactSession
+      ? new AgentSpawnAdmissionOwner(deps.agentSpawnRuntime)
+      : undefined
   if (admission) {
     installAgentSpawnOwner(controlSurface, admission)
   }
@@ -126,6 +128,7 @@ export function registerNodeControlHandlers(
       deps.closeWebsiteNode,
       deps.closePluginNode,
       admission,
+      deps.killExactSession,
     ),
   })
 
@@ -216,6 +219,8 @@ export function registerNodeControlHandlers(
           ctx,
           deps.closeWebsiteNode,
           deps.closePluginNode,
+          admission,
+          deps.killExactSession,
         )
         return await deleteNodeForNodeControl({
           store: toNodeControlStateStore(await deps.getPersistenceStore()),

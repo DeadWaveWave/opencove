@@ -76,8 +76,24 @@ export function createRuntimeDeps(
   closeWebsiteNode: ((nodeId: string) => Promise<void> | void) | undefined,
   closePluginNode?: (nodeId: string) => Promise<void> | void,
   admission?: AgentSpawnAdmissionOwner,
+  killExactSession?: (sessionId: string) => void | Promise<void>,
 ): NodeControlRuntimeDeps {
   let permit: AgentSpawnPermit | undefined
+  const killSession = async (sessionId: string): Promise<void> => {
+    if (killExactSession) {
+      await killExactSession(sessionId)
+      return
+    }
+    await invokeInternal<void>(
+      controlSurface,
+      { ...ctx, assertActive: undefined },
+      {
+        kind: 'command',
+        id: 'session.kill',
+        payload: { sessionId },
+      },
+    )
+  }
   return {
     withSpawnPermit: async (value, execute) => {
       permit = value
@@ -101,15 +117,7 @@ export function createRuntimeDeps(
     cleanupUncommittedSpawn: async nodeId => {
       await Promise.allSettled(
         (admission?.sessionsForNode(nodeId) ?? []).map(sessionId =>
-          invokeInternal(
-            controlSurface,
-            { ...ctx, assertActive: undefined },
-            {
-              kind: 'command',
-              id: 'session.kill',
-              payload: { sessionId },
-            },
-          ),
+          Promise.resolve().then(() => killSession(sessionId)),
         ),
       )
     },
@@ -229,17 +237,7 @@ export function createRuntimeDeps(
         workerBinding: nodeWorkerBindingForMount(resolved.mount),
       }
     },
-    killSession: async sessionId => {
-      await invokeInternal<void>(
-        controlSurface,
-        { ...ctx, assertActive: undefined },
-        {
-          kind: 'command',
-          id: 'session.kill',
-          payload: { sessionId },
-        },
-      )
-    },
+    killSession,
     closeWebsiteNode,
     closePluginNode,
   }

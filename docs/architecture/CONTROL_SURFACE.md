@@ -438,12 +438,20 @@ remote forwarding, environment or SQLite.
 
 Grant runtime targets must remain local, including after mount re-resolution. Delegated grants
 cannot create roots on the executing Worker. Historical remote bindings cannot prove completion
-through disconnection or saved status. At first admission after startup, a read-only lineage audit
-finds orphan rows whose node/session/endpoint association was lost; affected roots fail closed.
+through disconnection or saved status. At admission after startup or a persistence revision change, a read-only lineage audit
+finds unaccounted orphan rows whose node/session/endpoint association was lost; affected roots fail closed.
 This conservative restriction also applies to local or non-runtime orphans because existing lineage
 rows do not retain kind or endpoint. No reservation or endpoint history is persisted. The user can
 inspect/stop historical runtimes and start a new canvas root for further delegation. Local surviving
 nodes count only from actual runtime bindings, never their persisted status/session ID alone.
+Observed remote roots retain their fence independently of node membership. Worker-local forwarding
+observations also fence ambiguous remote incarnations even when a node was previously local and
+is deleted before the next admission; no observation callback crosses the wire. Local runtime provenance
+survives completion for the Worker lifetime, so a deleted, authoritatively exited local session is
+not mistaken for an unknown remote orphan. Warm-start bindings seeded from an active hub observation
+are retained until exact runtime completion; public registry disappearance cannot release them.
+Internal post-spawn, failed-commit and deletion cleanup uses a trusted exact-session runtime port,
+without the public session lookup gate. Public `session.kill` authorization remains unchanged.
 
 The additive `boundedAgentSpawningV1` capability requires the installed admission/runtime owner and
 lineage transaction support. CLI negotiation uses its existing per-run authenticated identity cache

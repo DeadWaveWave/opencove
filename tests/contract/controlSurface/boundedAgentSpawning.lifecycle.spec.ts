@@ -59,6 +59,7 @@ async function fixture() {
     topology,
     getPersistenceStore: async () => store,
     agentSpawnRuntime: tracked.port,
+    killExactSession: id => tracked.runtime.kill(id),
   })
   const afterLaunch = vi.fn((value: object) => value)
   const launch = async (context: ControlSurfaceContext) => {

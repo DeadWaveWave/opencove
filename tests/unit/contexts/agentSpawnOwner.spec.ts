@@ -1,5 +1,7 @@
 /* eslint-disable no-await-in-loop -- Each creation observes the prior admission and runtime lifecycle. */
 import { describe, expect, it, vi } from 'vitest'
+import { posix, win32 } from 'node:path'
+import { toFileUri, fromFileUri } from '../../../src/contexts/filesystem/domain/fileUri'
 import {
   AgentSpawnAdmissionOwner,
   type AgentSpawnPermit,
@@ -11,7 +13,7 @@ import type {
   NodeControlNode,
 } from '../../../src/contexts/workspace/application/nodeControl/nodeControlState'
 import type { ResolvedNodeCreationTarget } from '../../../src/contexts/workspace/application/nodeControl/nodeCreationTarget'
-function fixture() {
+function fixture(paths?: typeof win32) {
   let revision = 0,
     generation = 0
   let nodes = [{ id: 'root', kind: 'agent', sessionId: 'root-session' }] as NodeControlNode[]
@@ -30,7 +32,7 @@ function fixture() {
     snapshot: () => ({ revision: generation, bindings }),
     isCurrent: (r: number) => r === generation,
   }
-  const owner = new AgentSpawnAdmissionOwner(runtime)
+  const owner = new AgentSpawnAdmissionOwner(runtime, paths)
   const target = {
     endpoint: { kind: 'local', endpointId: 'local' },
     workspace: { id: 'p' },
@@ -296,5 +298,137 @@ it('does not infer live occupancy from saved sessions, but counts human revival'
   }
   await expect(f.start('after-recovery')).rejects.toMatchObject({
     code: 'agent.spawn_concurrency_limit',
+  })
+})
+
+it('retains a remote descendant fence after initialization and deletion without a restart', async () => {
+  const f = fixture()
+  for (let i = 0; i < 5; i++) {
+    await f.start('local' + i)
+  }
+  const localNodes = [
+    { id: 'root', kind: 'agent', sessionId: 'root-session' },
+    ...Array.from({ length: 5 }, (_, i) => ({
+      id: 'local' + i,
+      kind: 'terminal',
+      sessionId: 'local' + i + '-session',
+    })),
+  ] as NodeControlNode[]
+  f.rows.set('remote', { nodeId: 'remote', spawnedBy: 'root', rootNodeId: 'root', lineageDepth: 2 })
+  f.replaceNodes([
+    ...localNodes,
+    {
+      id: 'remote',
+      kind: 'terminal',
+      sessionId: 'remote-session',
+      workerBinding: { endpointId: 'remote-worker', mountId: 'remote-mount' },
+    } as NodeControlNode,
+  ])
+  await expect(f.start('before-delete')).rejects.toMatchObject({ code: 'common.unavailable' })
+  // Persistence deletion succeeds, cleanup fails: no authoritative remote exit was observed.
+  f.replaceNodes(localNodes)
+  const create = vi.fn()
+  await expect(f.owner.runCreation(f.store, f.input('after-delete'), create)).rejects.toMatchObject(
+    { code: 'common.unavailable', details: { reason: 'spawn_accounting_unavailable' } },
+  )
+  expect(create).not.toHaveBeenCalled()
+})
+
+it('re-audits a newly orphaned unknown descendant after initialization without observing its membership', async () => {
+  const f = fixture()
+  await f.start('local')
+  // A human remote launch and deletion both finish between admission requests.
+  f.rows.set('unobserved', {
+    nodeId: 'unobserved',
+    spawnedBy: 'root',
+    rootNodeId: 'root',
+    lineageDepth: 2,
+  })
+  f.replaceNodes([{ id: 'root', kind: 'agent', sessionId: 'root-session' }] as NodeControlNode[])
+  await expect(f.start('after-delete')).rejects.toMatchObject({ code: 'common.unavailable' })
+})
+
+it.each([
+  'C:/repo/with spaces',
+  'C:\\repo\\with spaces',
+  '//server/share/repo',
+  '\\\\server\\share\\repo',
+])('accepts Windows file-URI slash normalization with explicit win32 semantics: %s', async cwd => {
+  const f = fixture(win32)
+  const target = { ...f.target, workingDirectory: cwd }
+  await f.owner.runCreation(f.store, { ...f.input('child'), target }, async permit => {
+    const executed = fromFileUri(toFileUri(cwd))!
+    expect(win32.normalize(executed)).toBe(win32.normalize(cwd))
+    expect(() => f.owner.assertExecution(permit, { cwd: executed })).not.toThrow()
+    expect(() =>
+      f.owner.assertTarget(permit, { ...target, workingDirectory: executed }),
+    ).not.toThrow()
+    expect(() =>
+      f.owner.assertExecution(permit, { cwd: win32.join(executed, 'different') }),
+    ).toThrow()
+  })
+})
+
+it('uses retained local completion provenance when an exited node is deleted before the first admission', async () => {
+  const f = fixture()
+  f.rows.set('exited-local', {
+    nodeId: 'exited-local',
+    spawnedBy: 'root',
+    rootNodeId: 'root',
+    lineageDepth: 2,
+  })
+  const owner = new AgentSpawnAdmissionOwner({
+    snapshot: () => ({ revision: 1, bindings: [], knownLocalNodeIds: ['exited-local'] }),
+    isCurrent: () => true,
+  })
+  await expect(
+    owner.runCreation(f.store, f.input('child'), async () => {}),
+  ).resolves.toBeUndefined()
+})
+
+it('retains warm-start runtime bindings when both node membership and public hub registration disappear', async () => {
+  const f = fixture()
+  const locals = Array.from({ length: 6 }, (_, i) => ({
+    id: 'warm' + i,
+    kind: 'terminal',
+    sessionId: 'warm-session' + i,
+  })) as NodeControlNode[]
+  for (const node of locals) {
+    f.rows.set(node.id, { nodeId: node.id, spawnedBy: 'root', rootNodeId: 'root', lineageDepth: 2 })
+  }
+  const root = { id: 'root', kind: 'agent', sessionId: 'root-session' } as NodeControlNode
+  f.replaceNodes([root, ...locals])
+  const completedSessionIds: string[] = []
+  let publicHubActive = true,
+    generation = 0
+  const owner = new AgentSpawnAdmissionOwner({
+    snapshot: () => ({ revision: generation, bindings: [], completedSessionIds }),
+    isCurrent: revision => revision === generation,
+    isSessionActive: () => publicHubActive,
+  })
+  await expect(owner.runCreation(f.store, f.input('full'), async () => {})).rejects.toMatchObject({
+    code: 'agent.spawn_concurrency_limit',
+  })
+  f.replaceNodes([root, ...locals.slice(1)])
+  publicHubActive = false
+  f.rows.delete('warm0') // A missing row cannot downgrade an already classified runtime to a root.
+  await expect(
+    owner.runCreation(f.store, f.input('deleted'), async () => {}),
+  ).rejects.toMatchObject({ code: 'agent.spawn_concurrency_limit' })
+  completedSessionIds.push('warm-session0')
+  generation++
+  await expect(
+    owner.runCreation(f.store, f.input('after-exit'), async () => {}),
+  ).resolves.toBeUndefined()
+})
+
+it('keeps POSIX literal backslashes distinct with explicit posix semantics', async () => {
+  const f = fixture(posix)
+  const target = { ...f.target, workingDirectory: '/repo/literal\\name' }
+  await f.owner.runCreation(f.store, { ...f.input('child'), target }, async permit => {
+    expect(() => f.owner.assertExecution(permit, { cwd: '/repo/literal/name' })).toThrow()
+    expect(() =>
+      f.owner.assertTarget(permit, { ...target, workingDirectory: '/repo/literal/name' }),
+    ).toThrow()
   })
 })
