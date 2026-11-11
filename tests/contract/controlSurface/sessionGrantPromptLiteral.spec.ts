@@ -32,7 +32,7 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-for (const route of ['direct', 'mount', 'node', 'remote', 'remote-node'] as const) {
+for (const route of ['direct', 'mount', 'node', 'mounted-node', 'remote', 'remote-node'] as const) {
   for (const provider of AGENT_PROVIDER_IDS) {
     const label = provider === 'gemini' ? 'gemini (legacy fallback to codex)' : provider
     it.each([
@@ -45,7 +45,11 @@ for (const route of ['direct', 'mount', 'node', 'remote', 'remote-node'] as cons
       `${route}/${label} keeps grant prompt %j literal through the real adapter (remote uses user authority)`,
       async prompt => {
         const isRemote = route.startsWith('remote')
-        const home = await createPromptWorker({ remote: isRemote, fullAccess: provider === 'kimi' })
+        const home = await createPromptWorker({
+          remote: isRemote,
+          localMount: route === 'mounted-node',
+          fullAccess: provider === 'kimi',
+        })
         const worker = isRemote
           ? await createPromptWorker({ fullAccess: provider === 'kimi' })
           : home
@@ -81,6 +85,11 @@ for (const route of ['direct', 'mount', 'node', 'remote', 'remote-node'] as cons
             isRemote,
           )
           expect(result).toMatchObject({ ok: true })
+          if (route === 'mounted-node') {
+            const operations = home.invokeCalls.mock.calls.map(([, request]) => request.id)
+            expect(operations).toContain('session.launchAgentInMount')
+            expect(operations).not.toContain('session.launchAgent')
+          }
           expect(worker.spawn).toHaveBeenCalledOnce()
           if (isRemote) {
             expect(home.spawn).not.toHaveBeenCalled()

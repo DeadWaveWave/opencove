@@ -22,13 +22,20 @@ import {
 
 export const cwd = process.cwd()
 export const rootUri = pathToFileURL(cwd).href
-export async function createPromptWorker(options: { remote?: boolean; fullAccess: boolean }) {
+export async function createPromptWorker(options: {
+  remote?: boolean
+  localMount?: boolean
+  fullAccess: boolean
+}) {
   const store = createInMemoryPersistenceStore()
   const state = createMinimalState(cwd, 'project', 'space')
   state.workspaces[0].nodes = [
     { id: 'caller', kind: 'terminal', title: 'Caller', sessionId: 'caller-session' },
   ]
   state.workspaces[0].spaces[0].nodeIds = ['caller']
+  if (options.localMount) {
+    Object.assign(state.workspaces[0].spaces[0], { targetMountId: 'mount' })
+  }
   state.settings = {
     defaultProvider: 'codex',
     agentFullAccess: options.fullAccess,
@@ -68,18 +75,19 @@ export async function createPromptWorker(options: { remote?: boolean; fullAccess
       ],
     }),
     listMounts: async () => ({
-      mounts: options.remote
-        ? [
-            {
-              mountId: 'mount',
-              projectId: 'project',
-              targetId: 'target',
-              endpointId: 'remote',
-              rootPath: cwd,
-              rootUri,
-            },
-          ]
-        : [],
+      mounts:
+        options.remote || options.localMount
+          ? [
+              {
+                mountId: 'mount',
+                projectId: 'project',
+                targetId: 'target',
+                endpointId: options.remote ? 'remote' : 'local',
+                rootPath: cwd,
+                rootUri,
+              },
+            ]
+          : [],
     }),
     resolveMountTarget: async () => ({
       mountId: 'mount',
@@ -124,6 +132,7 @@ export async function createPromptWorker(options: { remote?: boolean; fullAccess
     ptyProtocolVersion: 1,
     replayWindowMaxBytes: 64_000,
   })
+  const invokeCalls = vi.spyOn(surface, 'invoke')
   const invoke = (request: Parameters<ControlSurface['invoke']>[1], trusted = false) =>
     admittedGrantInvocation(
       surface,
@@ -132,6 +141,7 @@ export async function createPromptWorker(options: { remote?: boolean; fullAccess
     )
   return {
     invoke,
+    invokeCalls,
     spawn,
     kill,
     store,
