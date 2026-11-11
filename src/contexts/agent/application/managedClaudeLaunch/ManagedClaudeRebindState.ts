@@ -45,7 +45,18 @@ export class ManagedClaudeRebindState {
     >,
     private readonly nodeForRuntime: (runtime: string) => string | undefined,
     private readonly canSettle: (node: string, runtime: string) => boolean,
+    private readonly isActivationPending: (runtime: string) => boolean = () => false,
   ) {}
+  admissionStatus(runtime: string): 'ready' | 'pending' | 'refused' {
+    if (this.closed) {
+      return 'refused'
+    }
+    const node = this.nodeForRuntime(runtime)
+    if (node && this.canSettle(node, runtime)) {
+      return 'ready'
+    }
+    return this.isActivationPending(runtime) ? 'pending' : 'refused'
+  }
   openInvocation(
     runtimeSessionId: string,
     credential: object,
@@ -351,7 +362,10 @@ export class ManagedClaudeRebindState {
     if (!remaining.length) {
       return { status: 'drained' }
     }
-    remaining.forEach(state => this.cancel(state))
+    remaining.forEach(state => {
+      state.failed = true
+      this.cancel(state)
+    })
     return {
       status: 'degraded',
       pendingNodeIds: [...new Set(remaining.map(state => state.nodeId))],

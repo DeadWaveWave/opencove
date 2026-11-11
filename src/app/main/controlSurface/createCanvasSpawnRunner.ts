@@ -27,19 +27,21 @@ export function createCanvasSpawnRunner(deps: {
       const input = payload as { workspaceId: string; nodeIds?: string[] }
       await deps.managedClaude.ready()
       context.assertActive?.()
+      const attempts = await deps.managedClaude.reservePreparation(
+        context,
+        input.workspaceId,
+        input.nodeIds,
+      )
+      context.assertActive?.()
       return execute({
         ...context,
         managedClaudePreparation: {
           awaitPending: deps.managedClaude.awaitPending,
           reserve: id => {
             assertManagedClaudeMutationAllowed(context, id, managedClaudeWritesEnabled())
-            return deps.managedClaude.owner.reserve(id)
+            return deps.managedClaude.owner.reservations.resume(id, context.assertActive)
           },
-          attempts: deps.managedClaude.reservePreparation(
-            context,
-            input.workspaceId,
-            input.nodeIds,
-          ),
+          attempts,
           run: deps.managedClaude.withPreparation,
         },
       })

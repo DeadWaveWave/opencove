@@ -1,3 +1,4 @@
+import { reserveManagedClaudePreparation } from './managedClaudePreparationReservations'
 import {
   assertManagedClaudeMutationAllowed,
   guardLegacyManagedClaudeContext,
@@ -136,40 +137,16 @@ export function createManagedClaudeLaunchRuntime(deps: {
       workspaceId: string,
       nodeIds?: readonly string[],
     ) => {
-      const attempts = new Map<string, ManagedClaudeLaunchAttempt>()
-      for (const id of store?.managedClaudePreparationCandidates?.(workspaceId, nodeIds) ?? []) {
-        if (pendingLaunches.has(id)) {
-          continue
-        }
-        const observation = store?.observeManagedClaudeNode?.(id)
-        if (
-          !observation?.binding &&
-          !(
-            deps.adoptionEnabled() &&
-            deps.writesEnabled?.() !== false &&
-            observation?.context?.provider === 'claude-code'
-          )
-        ) {
-          continue
-        }
-        if (
-          observation?.nodeRuntimeSessionId &&
-          deps.hasRuntime(observation.nodeRuntimeSessionId)
-        ) {
-          continue
-        }
-        if (observation?.binding) {
-          assertManagedClaudeMutationAllowed(ctx, id, deps.writesEnabled?.() !== false)
-        }
-        if (!ctx.clientFeatures?.managedClaudeResumeBindingV1) {
-          continue
-        }
-        const pending = preparing.get(id)
-        const attempt = pending && owner.isCurrent(pending) ? pending : owner.reserve(id)
-        preparing.set(id, attempt)
-        attempts.set(id, attempt)
-      }
-      return attempts
+      return reserveManagedClaudePreparation({
+        ctx,
+        workspaceId,
+        nodeIds,
+        store,
+        owner,
+        pendingLaunches,
+        preparing,
+        ...deps,
+      })
     },
     withPreparation: async <T>(
       attempt: ManagedClaudeLaunchAttempt,
@@ -261,26 +238,14 @@ export function createManagedClaudeLaunchRuntime(deps: {
           ),
         )
       }
-      if (
-        typeof nodeId === 'string' &&
-        initial?.binding &&
-        owner.qualification.hasPending(nodeId) &&
-        (!intent || intent.kind === 'resumeCurrent')
-      ) {
-        const drained = await owner.qualification.drain({
-          nodeId,
-          deadlineAt: performance.now() + 5000,
-        })
-        if (drained.status === 'degraded') {
-          throw createAppError('agent.managed_launch_rejected', {
-            details: { nodeId, reason: 'resumeBindingDrainExpired' },
-            debugMessage:
-              'The latest Claude conversation could not be confirmed. Try resuming again before closing this agent.',
-          })
-        }
-      }
-      const attempt =
-        inherited?.attempt ?? (typeof nodeId === 'string' ? owner.reserve(nodeId) : null)
+      const reservation =
+        inherited?.attempt ??
+        (typeof nodeId === 'string'
+          ? !intent || intent.kind === 'resumeCurrent'
+            ? owner.reservations.resume(nodeId, ctx.assertActive)
+            : owner.reserve(nodeId)
+          : null)
+      const attempt = reservation instanceof Promise ? await reservation : reservation
       let resolvePending!: () => void
       const pending = {
         promise: new Promise<void>(done => {

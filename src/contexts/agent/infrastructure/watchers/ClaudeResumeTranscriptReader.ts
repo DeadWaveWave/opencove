@@ -65,15 +65,24 @@ export class ClaudeResumeTranscriptReader {
           if (
             before.dev !== current.dev ||
             before.ino !== current.ino ||
-            after.size < before.size ||
-            (after.size === before.size && after.mtimeMs !== before.mtimeMs) ||
-            position !== before.size
+            before.dev !== after.dev ||
+            before.ino !== after.ino
           ) {
             return null
           }
+          if (after.size > MAX_SCAN) {
+            return null
+          }
+          // Append, truncation/regrowth and same-size rewrites invalidate this entire scan.
+          // Retry the full file, never certify the old prefix as the current conversation.
+          const stable =
+            position === before.size &&
+            before.size === after.size &&
+            before.mtimeMs === after.mtimeMs &&
+            before.ctimeMs === after.ctimeMs
           const raw = Buffer.concat(chunks)
           // A partial tail never becomes a valid prefix proof, even following an end_turn.
-          if (raw.length && raw.at(-1) === 10 && completed(raw, input)) {
+          if (stable && raw.length && raw.at(-1) === 10 && completed(raw, input)) {
             return {
               ...(input.checkpointId ? { checkpointId: input.checkpointId } : {}),
               occurrenceId: input.occurrenceId,
@@ -111,7 +120,7 @@ export class ClaudeResumeTranscriptReader {
 }
 
 function completed(raw: Buffer, input: ClaudeQualificationIdentity): boolean {
-  const parents = new Map<string, string | undefined>()
+  const parents = new Map<string, { parent?: string; promptId?: string }>()
   const users = new Set<string>()
   let proof = false
   for (const line of raw.toString('utf8').split('\n')) {
@@ -144,7 +153,10 @@ function completed(raw: Buffer, input: ClaudeQualificationIdentity): boolean {
       if (parents.has(uuid)) {
         return false
       }
-      parents.set(uuid, parent)
+      parents.set(uuid, {
+        parent,
+        promptId: typeof record.promptId === 'string' ? record.promptId : undefined,
+      })
     }
     if (record.type !== 'user' && record.type !== 'assistant') {
       continue
@@ -158,14 +170,22 @@ function completed(raw: Buffer, input: ClaudeQualificationIdentity): boolean {
     if (record.type !== 'assistant' || record.message?.stop_reason !== 'end_turn') {
       continue
     }
+    if (typeof record.promptId === 'string' && record.promptId !== input.promptId) {
+      continue
+    }
     let ancestor = parent
     const visited = new Set<string>()
-    while (ancestor && !users.has(ancestor) && parents.has(ancestor) && !visited.has(ancestor)) {
+    while (ancestor && !visited.has(ancestor)) {
+      const node = parents.get(ancestor)
+      if (!node || (node.promptId !== undefined && node.promptId !== input.promptId)) {
+        break
+      }
+      if (users.has(ancestor)) {
+        proof = true
+        break
+      }
       visited.add(ancestor)
-      ancestor = parents.get(ancestor)
-    }
-    if (ancestor && users.has(ancestor)) {
-      proof = true
+      ancestor = node.parent
     }
   }
   return proof

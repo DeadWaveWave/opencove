@@ -38,7 +38,7 @@ export function createManagedClaudeClearRuntime(
               managedClaudeWritesEnabled() &&
               process.env.OPENCOVE_EXPERIMENTAL_MANAGED_CLAUDE_BINDINGS === '1',
             createId: randomUUID,
-            now: Date.now,
+            now: () => performance.now(),
             read: async (input, signal) => {
               await holdClaudeClearProof(signal)
               return signal.aborted ? null : reader.confirmCompletedTurn(input, signal)

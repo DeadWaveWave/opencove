@@ -171,7 +171,7 @@ export function registerSessionPrepareOrReviveHandler(
                     const attempt =
                       ctx.managedClaudePreparation?.attempts.get(node.id) ??
                       (observed?.binding
-                        ? ctx.managedClaudePreparation?.reserve(node.id)
+                        ? await ctx.managedClaudePreparation?.reserve(node.id)
                         : undefined)
                     const preparationContext = attempt
                       ? {

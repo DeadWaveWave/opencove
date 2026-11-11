@@ -60,26 +60,28 @@ export class ClaudeClearResumeBinding {
       return
     }
     const now = this.deps.now()
-    this.orphans = this.orphans.filter(item => now - item.received <= 2000)
+    this.orphans = this.orphans.filter(item => now - item.received < 2000)
     if (event.hookEventName === 'SessionStart' && action !== 'ignore') {
-      if (event.sessionStartSource !== 'clear') {
+      const retired = this.retired.has(event.claudeSessionId)
+      if (this.currentId !== event.claudeSessionId) {
+        if (this.currentId && this.retired.size < 128) {
+          this.retired.add(this.currentId)
+        }
         this.currentId = event.claudeSessionId
         this.candidate = undefined
+      }
+      if (event.sessionStartSource !== 'clear') {
+        // The shared classifier distinguishes an occurrence transition from a same-ID refresh.
+        if (action === 'start') {
+          this.candidate = undefined
+        }
         return
       }
+      this.candidate = undefined
       const at = event.emittedAtMs
-      if (
-        at === undefined ||
-        at <= this.lastStart ||
-        this.retired.has(event.claudeSessionId) ||
-        this.retired.size >= 128
-      ) {
+      if (at === undefined || at <= this.lastStart || retired || this.retired.size >= 128) {
         return
       }
-      if (this.currentId && this.currentId !== event.claudeSessionId) {
-        this.retired.add(this.currentId)
-      }
-      this.currentId = event.claudeSessionId
       this.lastStart = at
       this.candidate = {
         id: this.deps.createId(),
@@ -95,12 +97,13 @@ export class ClaudeClearResumeBinding {
       for (const item of orphaned.sort(
         (a, b) => (a.event.emittedAtMs ?? 0) - (b.event.emittedAtMs ?? 0),
       )) {
-        this.acceptTurn(item.event)
+        this.acceptTurn(item.event, item.received)
       }
       return
     }
     if (event.hookEventName === 'SessionEnd') {
       if (
+        action !== 'ignore' &&
         this.candidate?.sessionId === event.claudeSessionId &&
         event.emittedAtMs !== undefined &&
         event.emittedAtMs >= this.candidate.start
@@ -118,7 +121,11 @@ export class ClaudeClearResumeBinding {
       this.orphans.push({ event: { ...event }, received: now })
     }
   }
-  private acceptTurn(event: ClaudeConversationEvent): void {
+  private acceptTurn(event: ClaudeConversationEvent, received = this.deps.now()): void {
+    if (this.deps.now() >= received + 2000) {
+      this.degrade()
+      return
+    }
     const candidate = this.candidate
     if (
       !candidate ||
@@ -147,6 +154,7 @@ export class ClaudeClearResumeBinding {
       this.degrade()
       return
     }
+    let retryable = false
     if (!this.admission) {
       try {
         this.admission = this.deps.owner.openInvocation(
@@ -155,12 +163,16 @@ export class ClaudeClearResumeBinding {
           this.deps.isCurrent,
         )
       } catch {
+        retryable = true
         // A temporarily unavailable ledger grants no authority and must not break hook fan-out.
       }
     }
     if (!this.admission) {
+      if (!retryable && this.deps.owner.admissionStatus(this.deps.runtimeSessionId) !== 'pending') {
+        return
+      }
       if (this.orphans.length < 16) {
-        this.orphans.push({ event, received: this.deps.now() })
+        this.orphans.push({ event, received })
       }
       if (!this.retry) {
         this.retry = setTimeout(() => {
@@ -168,8 +180,8 @@ export class ClaudeClearResumeBinding {
           if (!this.closed && this.deps.isCurrent()) {
             const records = this.orphans
               .splice(0)
-              .filter(item => this.deps.now() - item.received <= 2000)
-            records.forEach(item => this.acceptTurn(item.event))
+              .filter(item => this.deps.now() - item.received < 2000)
+            records.forEach(item => this.acceptTurn(item.event, item.received))
           }
         }, 50)
       }
@@ -191,7 +203,7 @@ export class ClaudeClearResumeBinding {
       identity,
       path: event.transcriptPath,
       ticket,
-      deadlineAt: performance.now() + 2000,
+      deadlineAt: performance.now() + Math.max(0, received + 2000 - this.deps.now()),
     })
     void this.run()
   }

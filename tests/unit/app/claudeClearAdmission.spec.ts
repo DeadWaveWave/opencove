@@ -16,6 +16,7 @@ it.each([
   let observe!: (evidence: ClaudeBindingEvidence) => void
   const admission = { identity: Symbol() }
   const qualification = {
+    admissionStatus: () => 'refused',
     openInvocation: vi.fn(() => (owned ? admission : null)),
     beginQualification: vi.fn(() => null),
     closeInvocation: vi.fn(),
