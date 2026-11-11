@@ -70,7 +70,11 @@ export async function getTerminalLinkEnvironment(
   endpointId: string,
 ): Promise<{ platform: 'windows' | 'posix'; home: string; hostname?: string } | null> {
   try {
-    const result = await window.opencoveApi.controlSurface.invoke({
+    const result = await window.opencoveApi.controlSurface.invoke<{
+      platform: string
+      homeDirectory: string
+      hostname?: string
+    }>({
       kind: 'query',
       id: 'endpoint.homeDirectory',
       payload: { endpointId },

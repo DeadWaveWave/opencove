@@ -93,7 +93,9 @@ export function ImageNode({
           return
         }
 
-        objectUrl = URL.createObjectURL(new Blob([result.bytes], { type: mimeType }))
+        objectUrl = URL.createObjectURL(
+          new Blob([new Uint8Array(result.bytes)], { type: mimeType }),
+        )
         setImageUrl(objectUrl)
       })
       .catch(() => {

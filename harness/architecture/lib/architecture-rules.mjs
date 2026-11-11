@@ -1,3 +1,4 @@
+import { rendererBridgeViolations } from './renderer-bridge-rules.mjs'
 import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { dirname, extname, join, resolve, relative } from 'node:path'
@@ -297,7 +298,11 @@ export async function runArchitectureAudit(options = {}) {
           toLayer: toRelativePath ? classifyLayer(toRelativePath, config) : null,
         }
       })
-      const fileViolations = []
+      const fileViolations = rendererBridgeViolations(
+        relativePath,
+        source,
+        config.checks?.rendererBridge,
+      )
 
       for (const rule of config.checks?.forbiddenImportSpecifiers ?? []) {
         if (

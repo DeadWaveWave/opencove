@@ -41,8 +41,8 @@ describe('plugin source actions', () => {
       candidateDirectory: '/candidates/merge',
     })
     fireEvent.click(screen.getByRole('button', { name: 'Apply update' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Resolve the source conflict')
-    expect(screen.getByRole('alert')).toHaveTextContent('/candidates/merge')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Plugin operation failed.')
+    expect(screen.getByRole('alert')).not.toHaveTextContent('/candidates/merge')
     expect(registry.changeInstalledPlugin).toHaveBeenCalledWith('plugin.git.update', {
       pluginId: examplePlugin.id,
     })

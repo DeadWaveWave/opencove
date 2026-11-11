@@ -1,4 +1,5 @@
-import { createAppError } from '@shared/errors/appError'
+import { reviveRendererAppError } from '@shared/errors/rendererAppError'
+import { RendererTransportError } from '@shared/errors/rendererTransportError'
 import type {
   ControlSurfaceInvokeRequest,
   ControlSurfaceInvokeResult,
@@ -38,23 +39,29 @@ export async function invokeBrowserControlSurface<TValue>(
   })
 
   const raw = await response.text()
-  const parsed = raw.trim().length > 0 ? (JSON.parse(raw) as unknown satisfies unknown) : null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new RendererTransportError()
+  }
   const result =
     parsed &&
     typeof parsed === 'object' &&
+    Object.hasOwn(parsed, '__opencoveControlEnvelope') &&
     (parsed as Record<string, unknown>).__opencoveControlEnvelope === true
       ? (parsed as ControlSurfaceInvokeResult<TValue>)
       : null
 
   if (!result) {
-    throw new Error(`Invalid control-surface response (HTTP ${response.status})`)
+    throw new RendererTransportError()
   }
 
   if (result.ok === false) {
-    if (request.id.startsWith('plugin.')) {
-      throw createAppError(result.error)
-    }
-    throw result.error
+    throw reviveRendererAppError(result.error)
+  }
+  if (result.ok !== true || !Object.hasOwn(result, 'value')) {
+    throw new RendererTransportError()
   }
 
   return result.value

@@ -1,13 +1,9 @@
-/** Error descriptors cross Web JSON and Electron contextBridge differently. */
+import { formatAppErrorMessage } from '@shared/errors/appError'
+import { toRendererAppErrorDescriptor } from '@shared/errors/rendererAppError'
+
+/** Public plugin failures use catalog prose, never arbitrary diagnostic text. */
 export function pluginErrorMessage(error: unknown): string {
-  if (error && typeof error === 'object') {
-    const descriptor = error as { debugMessage?: unknown; message?: unknown }
-    if (typeof descriptor.debugMessage === 'string' && descriptor.debugMessage.trim()) {
-      return descriptor.debugMessage.slice(0, 2000)
-    }
-    if (typeof descriptor.message === 'string') {
-      return descriptor.message.slice(0, 2000)
-    }
-  }
-  return String(error).slice(0, 2000)
+  return formatAppErrorMessage(
+    toRendererAppErrorDescriptor(error) ?? { code: 'plugin.operation_failed' },
+  )
 }

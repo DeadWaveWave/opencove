@@ -177,3 +177,23 @@ Web UI / Remote Worker 等浏览器或远端入口，都是同一套 Control Sur
 - 让非 owner context 判定别人的 durable truth。
 - 通过跨 context 直接写 store/state 传递业务真相。
 - 在 `main` 进程内直接承载高风险 native/外部运行时（例如 PTY），导致单点崩溃/白屏，缺失故障隔离与可恢复语义。
+
+### Desktop public errors
+
+Preload exposes only `createRendererBridge(api)` as `__opencoveBridge`. The Desktop bootstrap
+client installs the renderer-owned `opencoveApi` before dynamically importing application modules.
+Only that client reads the private transport or handles its result envelopes. Every new document
+recreates its facade; installation neither retries operations nor owns recovery state.
+
+Validated application failures cross the context bridge as projected data and become local
+`OpenCoveAppError` instances. Invalid envelopes and transport failures remain safe native errors:
+class identity cannot establish that an operation was rejected before committing. Mount launch
+repair must not retry an uncertain result. Successful domain DTOs, callbacks and unsubscribe
+functions retain their existing semantics.
+
+Public exception projection permits only code-aware semantic fields. Renderer presentation must
+not read `debugMessage`. This promise covers public exceptions and their display, not all data in
+the renderer: successful domain DTOs (including nested failure descriptors) remain unchanged, and
+Web HTTP bodies are visible to the page. The facade is not an authorization or plugin isolation
+boundary; Main and Worker remain responsible for authorization. Web parity covers HTTP application
+failures, while native browser and PTY socket errors keep their own contracts.

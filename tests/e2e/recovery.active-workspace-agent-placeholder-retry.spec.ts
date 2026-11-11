@@ -62,10 +62,10 @@ test.describe('Recovery - Active workspace agent renderer restore', () => {
               const targetNodeId = 'agent-active'
               let didFail = false
 
+              window.addEventListener('opencove:api-installed', () => {
+              window.__placeholderInstallations = (window.__placeholderInstallations || 0) + 1
+              window.__placeholderFailures = 0
               const api = window.opencoveApi
-              if (!api || !api.persistence) {
-                return
-              }
 
               const original = api.persistence.readAgentNodePlaceholderScrollback?.bind(api.persistence)
               if (typeof original !== 'function') {
@@ -75,17 +75,27 @@ test.describe('Recovery - Active workspace agent renderer restore', () => {
               api.persistence.readAgentNodePlaceholderScrollback = async (payload) => {
                 if (!didFail && payload && payload.nodeId === targetNodeId) {
                   didFail = true
+                  window.__placeholderFailures += 1
                   throw new Error('Simulated placeholder read failure')
                 }
 
                 return await original(payload)
               }
+              }, { once: true })
             })()
           `,
         })
 
         await restartedWindow.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 })
 
+        expect(
+          await restartedWindow.evaluate(() => ({
+            installations: (window as unknown as { __placeholderInstallations: number })
+              .__placeholderInstallations,
+            failures: (window as unknown as { __placeholderFailures: number })
+              .__placeholderFailures,
+          })),
+        ).toEqual({ installations: 1, failures: 0 })
         await expect(restartedWindow.locator('.workspace-item')).toHaveCount(1)
         await expect(restartedWindow.locator('.terminal-node')).toHaveCount(1)
 

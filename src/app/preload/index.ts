@@ -1,3 +1,4 @@
+import type { OpenCoveApi } from './api'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { IPC_CHANNELS } from '../../shared/contracts/ipc'
 import type { ControlSurfaceInvokeRequest } from '../../shared/contracts/controlSurface'
@@ -106,6 +107,7 @@ import type {
   WorkerStatusResult,
   CliPathStatusResult,
 } from '../../shared/contracts/dto'
+import { createRendererBridge } from './rendererBridge'
 import { invokeIpc } from './ipcInvoke'
 import { resolveDroppedFile } from './filesystemDrop'
 import { onApplicationShortcut } from './applicationShortcutApi'
@@ -128,7 +130,7 @@ ipcRenderer.on(IPC_CHANNELS.ptySessionMetadata, (_event, payload: TerminalSessio
 ipcRenderer.on(IPC_CHANNELS.ptyExit, (_event, payload: TerminalExitEvent) => {
   terminalEventReplayCache.disposeSession(payload.sessionId)
 })
-const opencoveApi = {
+const opencoveApi: OpenCoveApi = {
   meta: resolveOpenCoveMeta(),
   debug: {
     logTerminalDiagnostics: (payload: TerminalDiagnosticsLogInput): void => {
@@ -471,9 +473,9 @@ const opencoveApi = {
     uninstall: (): Promise<CliPathStatusResult> => invokeIpc(IPC_CHANNELS.cliUninstall),
   },
 }
+const rendererBridge = createRendererBridge(opencoveApi)
 if (process.contextIsolated) {
-  contextBridge.exposeInMainWorld('opencoveApi', opencoveApi)
+  contextBridge.exposeInMainWorld('__opencoveBridge', rendererBridge)
 } else {
-  // @ts-ignore (define in dts)
-  window.opencoveApi = opencoveApi
+  window.__opencoveBridge = rendererBridge
 }

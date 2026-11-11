@@ -96,7 +96,10 @@ export function createBrowserPersistenceApi(): PersistenceApi {
             const descriptor = toAppErrorDescriptor(error, 'persistence.invalid_state')
             return (
               descriptor.code === 'persistence.invalid_state' &&
-              (descriptor.debugMessage ?? '').includes('revision conflict')
+              descriptor.details !== null &&
+              typeof descriptor.details === 'object' &&
+              'reason' in descriptor.details &&
+              descriptor.details.reason === 'revisionConflict'
             )
           },
         })

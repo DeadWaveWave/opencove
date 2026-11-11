@@ -30,10 +30,22 @@ export function persistenceWriteFailure(
     return error.failure
   }
   const descriptor = toAppErrorDescriptor(error, 'persistence.io_failed')
+  // Only explicit validation/authority rejections prove that a write did not commit.
+  // Error identity, unexpected failures and launch uncertainty do not establish that fact.
   const rejected =
     (isAppErrorDescriptor(error) || error instanceof OpenCoveAppError) &&
-    descriptor.code !== 'persistence.io_failed' &&
-    descriptor.code !== 'persistence.unavailable'
+    [
+      'common.invalid_input',
+      'common.forbidden',
+      'common.approved_path_required',
+      'common.protocol_incompatible',
+      'control_surface.unauthorized',
+      'persistence.invalid_state',
+      'persistence.invalid_node_id',
+      'persistence.owned_node_identity_conflict',
+      'persistence.quota_exceeded',
+      'persistence.payload_too_large',
+    ].includes(descriptor.code)
   return { ok: false, reason: 'io', error: descriptor, outcome: rejected ? 'rejected' : fallback }
 }
 export function classifyWriteResult(result: PersistWriteResult): PersistWriteResult {

@@ -13,6 +13,7 @@ export async function holdPrepare(page: Page, nodeId: string) {
   await page.addInitScript(targetNodeId => {
     let api: typeof window.opencoveApi
     let held = false
+    Object.assign(window, { __managedApiInstallations: 0 })
     const log: ContinuityDiagnostics = {
       nodeId: targetNodeId,
       a: null,
@@ -201,11 +202,12 @@ export async function holdPrepare(page: Page, nodeId: string) {
         options,
       )
     }
-    Object.defineProperty(window, 'opencoveApi', {
-      configurable: true,
-      get: () => api,
-      set: value => {
-        api = value
+    window.addEventListener(
+      'opencove:api-installed',
+      () => {
+        api = window.opencoveApi
+        const installations = window as unknown as { __managedApiInstallations?: number }
+        installations.__managedApiInstallations = (installations.__managedApiInstallations ?? 0) + 1
         const read = api.persistence.readAppState.bind(api.persistence)
         let priorRead: Awaited<ReturnType<typeof read>> | undefined
         api.persistence.readAppState = async () => {
@@ -296,11 +298,17 @@ export async function holdPrepare(page: Page, nodeId: string) {
           return result
         }
       },
-    })
+      { once: true },
+    )
   }, nodeId)
 }
 export async function releasePrepare(page: Page) {
   await page.evaluate(() => {
+    if (
+      (window as unknown as { __managedApiInstallations?: number }).__managedApiInstallations !== 1
+    ) {
+      throw new Error('Expected exactly one API installation')
+    }
     ;(window as unknown as { __releaseManagedPrepare?: () => void }).__releaseManagedPrepare?.()
   })
 }

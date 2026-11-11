@@ -74,3 +74,16 @@ describe('browser OpenCove API downloads', () => {
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:note')
   })
 })
+
+it('signals the explicit public API installation point once', () => {
+  const installed = vi.fn(() =>
+    expect(typeof window.opencoveApi.controlSurface.invoke).toBe('function'),
+  )
+  window.addEventListener('opencove:api-installed', installed)
+  try {
+    installBrowserOpenCoveApi()
+    expect(installed).toHaveBeenCalledTimes(1)
+  } finally {
+    window.removeEventListener('opencove:api-installed', installed)
+  }
+})

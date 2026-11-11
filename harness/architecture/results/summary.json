@@ -1,37 +1,41 @@
 {
-  "filesAnalyzed": 1847,
+  "filesAnalyzed": 2243,
   "summary": {
     "errors": 0,
-    "warnings": 763,
-    "violations": 763
+    "warnings": 896,
+    "violations": 896
   },
   "byRule": {
-    "architecture.layerDependency": 474,
-    "architecture.windowOpenCoveApiBoundary": 289
+    "architecture.layerDependency": 592,
+    "architecture.windowOpenCoveApiBoundary": 304
   },
   "topAreas": [
     {
       "area": "src/contexts/workspace/presentation",
-      "count": 327
+      "count": 389
     },
     {
       "area": "src/contexts/settings/presentation",
-      "count": 214
+      "count": 252
     },
     {
       "area": "src/app/renderer/shell",
-      "count": 88
-    },
-    {
-      "area": "src/contexts/plugins/presentation",
-      "count": 28
-    },
-    {
-      "area": "src/contexts/agent/presentation",
-      "count": 23
+      "count": 90
     },
     {
       "area": "src/contexts/task/presentation",
+      "count": 39
+    },
+    {
+      "area": "src/contexts/plugins/presentation",
+      "count": 30
+    },
+    {
+      "area": "src/contexts/agent/presentation",
+      "count": 25
+    },
+    {
+      "area": "src/contexts/worktree/presentation",
       "count": 20
     },
     {
@@ -39,16 +43,12 @@
       "count": 18
     },
     {
-      "area": "src/contexts/worktree/presentation",
-      "count": 18
+      "area": "src/app/worker",
+      "count": 4
     },
     {
       "area": "src/contexts/filesystem/presentation",
       "count": 4
-    },
-    {
-      "area": "src/app/renderer/performanceDiagnostics",
-      "count": 3
     }
   ]
 }

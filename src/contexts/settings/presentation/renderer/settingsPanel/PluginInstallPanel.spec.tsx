@@ -80,8 +80,8 @@ describe('explicit plugin installation', () => {
       target: { value: 'https://github.com/example/tool' },
     })
     fireEvent.click(screen.getByTestId('settings-plugin-install-submit'))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Manifest missing')
-    expect(screen.getByRole('alert')).toHaveTextContent('/candidates/example')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Plugin operation failed.')
+    expect(screen.getByRole('alert')).not.toHaveTextContent('/candidates/example')
     expect(installed).not.toHaveBeenCalled()
     expect(screen.getByText(/No version was installed/)).toBeVisible()
     expect(screen.getByTestId('settings-plugin-candidate-apply-initial-failure')).toBeEnabled()

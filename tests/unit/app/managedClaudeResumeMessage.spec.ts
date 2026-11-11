@@ -1,3 +1,4 @@
+import { reviveRendererAppError } from '@shared/errors/rendererAppError'
 import { afterEach, expect, it } from 'vitest'
 import { applyUiLanguage } from '@app/renderer/i18n'
 import { toErrorMessage } from '@app/renderer/shell/utils/format'
@@ -41,8 +42,16 @@ it.each([
     'Managed Claude restarts are paused. Ask the Worker administrator to enable them.',
     'Claude 智能体重启已暂停，请联系 Worker 管理员重新启用。',
   ],
+  [
+    'resumeUnavailable',
+    'This conversation cannot be resumed yet. Select a saved session or start a new conversation.',
+    '此会话暂时无法恢复。请选择已保存的会话，或开始新会话。',
+  ],
 ])('explains %s in both supported languages', async (reason, english, chinese) => {
-  const error = createAppError('agent.managed_launch_rejected', { details: { reason } })
+  const error = reviveRendererAppError({
+    code: 'agent.managed_launch_rejected',
+    details: { reason },
+  })
   await applyUiLanguage('en')
   expect(toErrorMessage(error)).toBe(english)
   await applyUiLanguage('zh-CN')

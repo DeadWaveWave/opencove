@@ -1,7 +1,7 @@
 import { ensureRandomUuid } from './bootstrap/ensureRandomUuid'
 import { installGlassGrain } from './bootstrap/installGlassGrain'
-import { renderApp } from './bootstrap/renderApp'
+import { startDesktop } from './bootstrap/startDesktop'
 
 ensureRandomUuid()
 installGlassGrain()
-renderApp()
+void startDesktop()
