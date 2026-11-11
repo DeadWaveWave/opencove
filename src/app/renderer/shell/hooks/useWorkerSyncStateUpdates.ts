@@ -1,3 +1,17 @@
+import {
+  getCanonicalRefreshDemand,
+  subscribeCanonicalRefresh,
+  acknowledgeCanonicalRefresh,
+} from '@contexts/workspace/presentation/renderer/utils/persistence/canonicalRefresh'
+import {
+  reconcileCanonicalPublication,
+  getPendingPublication,
+} from '@contexts/workspace/presentation/renderer/utils/persistence/write'
+import { schedulePersistedStateWrite } from '@contexts/workspace/presentation/renderer/utils/persistence/schedule'
+import {
+  persistenceScope,
+  canAcceptCanonicalState,
+} from '@contexts/workspace/presentation/renderer/utils/persistence/publicationState'
 import { getSyncedPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence/write'
 import { useEffect, useRef } from 'react'
 import { normalizeAgentSettings, type AgentSettings } from '@contexts/settings/domain/agentSettings'
@@ -39,15 +53,6 @@ function resolveNextActiveWorkspaceId(
 
 function buildPersistedStateSignature(state: PersistedAppState): string {
   return JSON.stringify(state)
-}
-
-function buildCurrentSharedStateSignature(): string {
-  const current = useAppStore.getState()
-  return buildPersistedStateSignature(
-    stripLocalViewStateFromPersistedState(
-      toPersistedState(current.workspaces, current.activeWorkspaceId, current.agentSettings),
-    ),
-  )
 }
 
 function buildPersistedWorkspaceSignature(state: PersistedWorkspaceState): string {
@@ -139,6 +144,8 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
       return
     }
     let active = true
+    const scopeGeneration = persistenceScope()
+    let failedRefreshes = 0
 
     const handleLocalSyncWrite = (event: Event): void => {
       const revision = (event as CustomEvent<{ revision?: unknown }>).detail?.revision
@@ -279,7 +286,13 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
           })
         : null
 
+    const unsubscribeRefresh = subscribeCanonicalRefresh(() => {
+      needsFullRefreshRef.current = true
+      scheduleRefresh(0)
+    })
+
     async function runRefresh(): Promise<void> {
+      const demand = getCanonicalRefreshDemand()
       const pendingSyncWriteRevision = pendingSyncWriteRevisionRef.current
       const shouldRefreshForSyncWrite = typeof pendingSyncWriteRevision === 'number'
       const pendingFullRefreshRevision = pendingFullRefreshRevisionRef.current
@@ -291,8 +304,8 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
       )
 
       if (
-        (!needsFullRefreshRef.current && !shouldRefreshForSyncWrite) ||
-        targetRevision <= lastAppliedRevisionRef.current
+        (!demand && !needsFullRefreshRef.current && !shouldRefreshForSyncWrite) ||
+        (!demand && targetRevision <= lastAppliedRevisionRef.current)
       ) {
         pendingSyncWriteRevisionRef.current = null
         pendingFullRefreshRevisionRef.current = null
@@ -308,7 +321,8 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
 
         // Publish queued local edits before reading a shared snapshot. A read started
         // before a later local edit cannot acknowledge or replace that edit.
-        const localWriteSucceeded = await flushScheduledPersistedStateWriteAsync()
+        const localWriteSucceeded =
+          demand || getPendingPublication() ? true : await flushScheduledPersistedStateWriteAsync()
         if (!active) {
           return
         }
@@ -322,18 +336,38 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
           )
           return
         }
-        const sharedSignatureAtRead = buildCurrentSharedStateSignature()
+        const beforeRead = useAppStore.getState()
+        const signatureAtRead = canonicalContent(
+          toPersistedState(
+            beforeRead.workspaces,
+            beforeRead.activeWorkspaceId,
+            beforeRead.agentSettings,
+          ),
+        )
         const snapshot = await readPersistedStateWithMeta()
-        const persisted = snapshot.state
-        if (!active || !persisted) {
+        const canonical = snapshot.state
+        let persisted = canonical
+        if (!active || persistenceScope() !== scopeGeneration || !persisted) {
           return
         }
-        if (buildCurrentSharedStateSignature() !== sharedSignatureAtRead) {
+        if (
+          !canAcceptCanonicalState(persisted, snapshot.revision) ||
+          (typeof snapshot.revision === 'number' &&
+            snapshot.revision < Math.max(targetRevision, demand?.minimumRevision ?? 0))
+        ) {
+          throw new Error('Canonical snapshot is older than the required revision.')
+        }
+        const currentAtApply = useAppStore.getState()
+        const currentPersisted = toPersistedState(
+          currentAtApply.workspaces,
+          currentAtApply.activeWorkspaceId,
+          currentAtApply.agentSettings,
+        )
+        if (getPendingPublication()) {
+          persisted = reconcileCanonicalPublication(persisted, currentPersisted)
+        } else if (canonicalContent(currentPersisted) !== signatureAtRead) {
+          pendingFullRefreshRevisionRef.current = targetRevision
           needsFullRefreshRef.current = true
-          pendingFullRefreshRevisionRef.current = Math.max(
-            pendingFullRefreshRevisionRef.current ?? 0,
-            targetRevision,
-          )
           refreshPendingRef.current = true
           return
         }
@@ -341,6 +375,22 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
         // Disclosure preferences and the write cache belong to the same accepted
         // snapshot. A rejected read must not mutate them before these guards.
         const current = useAppStore.getState()
+        const scheduleRemainingDelta = () => {
+          if (
+            !getPendingPublication()?.unknownOutcome &&
+            canonicalContent(stripLocalViewStateFromPersistedState(persisted!)) !==
+              canonicalContent(stripLocalViewStateFromPersistedState(canonical!))
+          ) {
+            schedulePersistedStateWrite(() => {
+              const state = useAppStore.getState()
+              return toPersistedState(
+                state.workspaces,
+                state.activeWorkspaceId,
+                state.agentSettings,
+              )
+            })
+          }
+        }
         if (
           !shouldApplyWorkerSyncRefresh({
             currentState: current,
@@ -348,7 +398,15 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
           })
         ) {
           acceptPersistedStateSnapshot(snapshot)
-          lastAppliedRevisionRef.current = Math.max(lastAppliedRevisionRef.current, targetRevision)
+          scheduleRemainingDelta()
+          if (demand) {
+            acknowledgeCanonicalRefresh(demand.generation)
+          }
+          failedRefreshes = 0
+          lastAppliedRevisionRef.current = Math.max(
+            lastAppliedRevisionRef.current,
+            snapshot.revision ?? 0,
+          )
           return
         }
 
@@ -373,16 +431,33 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
           ...(settingsChanged ? { agentSettings: persisted.settings } : {}),
         })
         acceptPersistedStateSnapshot(snapshot)
+        if (demand) {
+          acknowledgeCanonicalRefresh(demand.generation)
+        }
+        failedRefreshes = 0
+        scheduleRemainingDelta()
 
-        lastAppliedRevisionRef.current = Math.max(lastAppliedRevisionRef.current, targetRevision)
+        lastAppliedRevisionRef.current = Math.max(
+          lastAppliedRevisionRef.current,
+          snapshot.revision ?? 0,
+        )
       } catch {
-        // ignore refresh failures
+        needsFullRefreshRef.current = true
+        pendingFullRefreshRevisionRef.current = Math.max(
+          pendingFullRefreshRevisionRef.current ?? 0,
+          targetRevision,
+        )
+        failedRefreshes++
+        // Three bounded attempts; demand remains retained for reconnect or another save.
+        if (failedRefreshes < 3) {
+          refreshPendingRef.current = true
+        }
       } finally {
         if (active) {
           refreshInFlightRef.current = false
           if (refreshPendingRef.current) {
             refreshPendingRef.current = false
-            scheduleRefresh()
+            scheduleRefresh(failedRefreshes ? 250 * 2 ** failedRefreshes : 150)
           }
         }
       }
@@ -398,6 +473,7 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
       refreshScheduledAtMsRef.current = null
       refreshInFlightRef.current = false
       refreshPendingRef.current = false
+      unsubscribeRefresh()
       unsubscribe?.()
       window.removeEventListener(LOCAL_SYNC_WRITE_EVENT_NAME, handleLocalSyncWrite as EventListener)
     }

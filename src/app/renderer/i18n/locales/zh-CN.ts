@@ -258,6 +258,8 @@ export const zhCN = {
     savedSettingsOnly: '存储配额已达上限；仅保存了设置。',
     unavailable: '存储不可用；更改将不会被保存。',
     limitExceeded: '超出存储限制；无法持久化工作区状态。',
+    quitSaveFailed: '部分修改未能在关闭前保存。',
+    ownedIdentityRestored: '正在恢复此智能体保存的状态，其他修改会保留。',
     ioFailed: '持久化 I/O 失败：{{message}}',
     failed: '持久化失败：{{message}}',
     recoveryCorruptDb: '持久化数据库已损坏，现已重置。',

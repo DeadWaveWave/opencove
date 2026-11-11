@@ -61,7 +61,15 @@ describe('agent relaunch session binding', () => {
         bindingRevision: 2,
         observedRevision: 2,
       }
-      const receipt = { binding, commitRevision: 2 }
+      const receipt = {
+        binding: {
+          ...binding,
+          activationId: 'new',
+          runtimeSessionId: 'runtime-a',
+          observedRevision: 3,
+        },
+        commitRevision: 3,
+      }
       if (owned) {
         node.data.sessionId = 'old-runtime'
       }

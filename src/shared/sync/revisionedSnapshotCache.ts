@@ -9,15 +9,51 @@ export class RevisionedSnapshotCache<T> {
     if (!Number.isSafeInteger(revision) || revision < 0) {
       throw new Error('Invalid persistence revision.')
     }
+    if (
+      this.snapshots.has(revision) &&
+      canonicalContent(this.snapshots.get(revision)) !== canonicalContent(state)
+    ) {
+      throw new Error('Canonical content differs at the same persistence revision.')
+    }
     this.snapshots.set(revision, state)
-    this.latest = { revision, state }
+    if (!this.latest || revision > this.latest.revision) {
+      this.latest = { revision, state }
+    }
     if (this.snapshots.size > 16) {
       this.snapshots.delete(this.snapshots.keys().next().value!)
     }
   }
 
+  invalidate(): void {
+    this.snapshots.clear()
+    this.latest = null
+  }
+
   get(revision: number): T | null | undefined {
     return this.snapshots.get(revision)
+  }
+}
+
+export interface RevisionedWriteReceipt {
+  revision: number
+  corrected?: boolean
+}
+
+export function parseRevisionedWriteReceipt(value: unknown): RevisionedWriteReceipt | null {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+  const receipt = value as Record<string, unknown>
+  if (
+    !Number.isSafeInteger(receipt.revision) ||
+    (receipt.revision as number) < 0 ||
+    (receipt.corrected !== undefined && typeof receipt.corrected !== 'boolean')
+  ) {
+    return null
+  }
+  return {
+    revision: receipt.revision as number,
+    corrected: receipt.corrected as boolean | undefined,
   }
 }
 
@@ -30,11 +66,17 @@ export async function writeRevisionedSnapshot<T>(options: {
   preflight?: boolean
   state: unknown
   read: () => Promise<{ revision: number; state: T | null }>
-  write: (state: unknown, revision: number | null) => Promise<number>
+  write: (state: unknown, revision: number | null) => Promise<RevisionedWriteReceipt>
   normalize: (state: unknown) => T | null
   merge: (latest: T, local: T, ancestor: T | null) => T
   isConflict: (error: unknown) => boolean
-}): Promise<{ revision: number; merged?: true; state: unknown }> {
+}): Promise<{
+  revision?: number
+  corrected?: boolean
+  uncertain?: true
+  merged?: true
+  state: unknown
+}> {
   const { cache } = options
   let base = cache.latest
   const requested = options.baseRevision
@@ -55,9 +97,21 @@ export async function writeRevisionedSnapshot<T>(options: {
   let merged: true | undefined
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const writtenRevision = await options.write(candidate, revision)
-      cache.set(writtenRevision, options.normalize(candidate))
-      return { revision: writtenRevision, merged, state: candidate }
+      const receipt = parseRevisionedWriteReceipt(await options.write(candidate, revision))
+      if (!receipt) {
+        return { uncertain: true, merged: true, state: candidate }
+      }
+      const normalized = options.normalize(candidate)
+      const requiresRefresh = merged || receipt.corrected !== false || !normalized
+      if (!requiresRefresh) {
+        try {
+          cache.set(receipt.revision, normalized)
+        } catch {
+          // The mutation succeeded, but conflicting cache ancestry needs a canonical read.
+          return { ...receipt, merged: true, state: candidate }
+        }
+      }
+      return { ...receipt, merged: requiresRefresh ? true : undefined, state: candidate }
     } catch (error) {
       if (!options.isConflict(error) || attempt === 2) {
         throw error

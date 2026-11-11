@@ -1,3 +1,5 @@
+import { normalizeManagedClaudeResumeBindingOwnership } from '../../../shared/sync/managedClaudeResumeProjection'
+import type { ManagedClaudeResumeBindingOwnership } from '../../../shared/contracts/managedClaudeLaunch'
 import { MAX_PERSISTED_SCROLLBACK_CHARS } from './constants'
 import type { LabelColor, NodeLabelColorOverride } from '../../../shared/types/labelColor'
 import {
@@ -95,6 +97,7 @@ export function normalizeTerminalGeometry(value: unknown): NormalizedTerminalGeo
 }
 
 export type NormalizedPersistedNode = {
+  managedClaudeResumeBindingOwnership?: ManagedClaudeResumeBindingOwnership | null
   id: string
   sessionId: string | null
   title: string
@@ -346,6 +349,13 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
         runtimeKind: normalizeOptionalString(node.runtimeKind),
         terminalGeometry: normalizeTerminalGeometry(node.terminalGeometry),
         workerBinding: normalizeNodeWorkerBinding(node.workerBinding),
+        ...(normalizeManagedClaudeResumeBindingOwnership(node.managedClaudeResumeBindingOwnership)
+          ? {
+              managedClaudeResumeBindingOwnership: normalizeManagedClaudeResumeBindingOwnership(
+                node.managedClaudeResumeBindingOwnership,
+              ),
+            }
+          : {}),
         terminalProviderHint: normalizeOptionalString(node.terminalProviderHint),
         labelColorOverride: normalizeNodeLabelColorOverride(node.labelColorOverride),
         sidebarSortOrder:

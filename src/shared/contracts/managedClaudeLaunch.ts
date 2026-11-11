@@ -1,3 +1,8 @@
+export type ManagedClaudeResumeBindingOwnership = Readonly<{
+  activationId: string
+  runtimeSessionId: string | null
+}>
+
 import type { ManagedResumeBindingTuple } from './managedClaudeResumeBinding'
 
 export interface ManagedClaudeLaunchExpected {

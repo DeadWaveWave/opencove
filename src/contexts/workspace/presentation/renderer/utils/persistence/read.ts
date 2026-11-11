@@ -1,3 +1,4 @@
+import { requestCanonicalRefresh } from './canonicalRefresh'
 import { normalizeAgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { PersistedAppState, PersistedWorkspaceState } from '../../types'
 import { ensurePersistedWorkspace } from './ensure'
@@ -161,6 +162,41 @@ export async function readPersistedStateWithMeta(): Promise<PersistedStateReadRe
       recovery,
       hasStandardWindowSizeBucket: false,
       isPersisted: false,
+    }
+  }
+
+  if (
+    migratedAppStateResult.corrected ||
+    migratedAppStateResult.merged ||
+    migratedAppStateResult.uncertain
+  ) {
+    requestCanonicalRefresh({ reason: 'merged', minimumRevision: migratedAppStateResult.revision })
+    try {
+      const snapshot = await port.readAppState()
+      const canonical = parsePersistedStateValue(snapshot?.state)
+      if (
+        !canonical.state ||
+        snapshot?.revision === null ||
+        snapshot?.revision === undefined ||
+        snapshot.revision < (migratedAppStateResult.revision ?? 0)
+      ) {
+        throw new Error('Migration is awaiting the saved workspace.')
+      }
+      return {
+        revision: snapshot.revision,
+        state: applyLocalViewStateToPersistedState(canonical.state),
+        recovery,
+        hasStandardWindowSizeBucket: canonical.hasStandardWindowSizeBucket,
+        isPersisted: true,
+      }
+    } catch {
+      return {
+        revision: null,
+        state: migratedState,
+        recovery,
+        hasStandardWindowSizeBucket: false,
+        isPersisted: false,
+      }
     }
   }
 

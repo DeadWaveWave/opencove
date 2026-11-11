@@ -10,6 +10,7 @@ import { normalizeSpaceBoundary } from '../../../shared/types/spaceBoundary'
 import { normalizeNodeWorkerBinding } from '../../../shared/types/nodeWorkerBinding'
 import { normalizeTerminalGeometry } from './normalize'
 import {
+  managedClaudeResumeBindings,
   agentNodePlaceholderScrollback,
   appMeta,
   appSettings,
@@ -93,6 +94,16 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
 
   const workspaceRows = db.select().from(workspaces).orderBy(workspaces.sortOrder).all()
   const nodeRows = db.select().from(nodes).all()
+  const ownership = new Map(
+    db
+      .select()
+      .from(managedClaudeResumeBindings)
+      .all()
+      .map(row => [
+        row.nodeId,
+        { activationId: row.activationId, runtimeSessionId: row.runtimeSessionId },
+      ]),
+  )
   const spaceRows = db.select().from(spaces).all()
   const spaceNodeRows = db.select().from(spaceNodes).all()
   const collapseByWorkspace = (() => {
@@ -129,6 +140,9 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
     workspaces: workspaceRows.map(workspace => {
       const workspaceNodes = (nodesByWorkspaceId.get(workspace.id) ?? []).map(node => ({
         id: node.id,
+        ...(ownership.has(node.id)
+          ? { managedClaudeResumeBindingOwnership: ownership.get(node.id) }
+          : {}),
         sessionId:
           typeof node.sessionId === 'string' && node.sessionId.trim().length > 0
             ? node.sessionId

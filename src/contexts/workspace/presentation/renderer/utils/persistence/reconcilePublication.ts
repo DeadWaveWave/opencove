@@ -1,4 +1,6 @@
-import { createAppErrorDescriptor, toAppErrorDescriptor } from '@shared/errors/appError'
+import type { PendingPublication } from './publicationState'
+import { filterRetiredManagedNodes } from './publicationState'
+import { toAppErrorDescriptor } from '@shared/errors/appError'
 import { normalizeAgentSettings } from '@contexts/settings/domain/agentSettings'
 import { mergePersistedAppStates } from '@shared/sync/mergePersistedAppStates'
 import { normalizePersistedAppStateForMerge } from '@shared/sync/normalizePersistedAppStateForMerge'
@@ -10,18 +12,18 @@ import type { PersistencePort } from './port'
 export async function publishSharedState(
   port: PersistencePort,
   candidate: unknown,
-  pendingCandidate: string | null,
+  pending: PendingPublication | null,
   options: { baseRevision?: number | null; allowEmptyWorkspaceOverwrite?: boolean },
 ): Promise<PersistWriteResult> {
   try {
-    if (pendingCandidate === null) {
+    if (pending === null) {
       return await port.writeAppState(candidate, options)
     }
     const snapshot = await port.readAppState()
     const latest = normalizePersistedAppStateForMerge(snapshot?.state, normalizeAgentSettings)
     const local = normalizePersistedAppStateForMerge(candidate, normalizeAgentSettings)
     const ancestor = normalizePersistedAppStateForMerge(
-      JSON.parse(pendingCandidate),
+      JSON.parse(pending.ancestorRaw ?? pending.candidateRaw),
       normalizeAgentSettings,
     )
     if (!latest || !local || !ancestor || typeof snapshot?.revision !== 'number') {
@@ -29,7 +31,17 @@ export async function publishSharedState(
         'Cannot reconcile pending persistence publication without a revisioned snapshot.',
       )
     }
-    const rebased = mergePersistedAppStates(latest, local, ancestor)
+    if (pending.unknownOutcome) {
+      throw new Error(
+        'The previous save could not be confirmed. Reload the saved workspace before saving again.',
+      )
+    }
+    if (snapshot.revision < (pending.minimumRevision ?? 0)) {
+      throw new Error('The saved workspace is not current yet.')
+    }
+    const rebased = filterRetiredManagedNodes(
+      mergePersistedAppStates(latest, local, ancestor) as import('../../types').PersistedAppState,
+    )
     if (canonicalContent(rebased) === canonicalContent(latest)) {
       return { ok: true, level: 'full', bytes: 0, revision: snapshot.revision, merged: true }
     }
@@ -44,9 +56,7 @@ export async function publishSharedState(
     return {
       ok: false,
       reason: 'io',
-      error: createAppErrorDescriptor('persistence.io_failed', {
-        debugMessage: toAppErrorDescriptor(error).debugMessage,
-      }),
+      error: toAppErrorDescriptor(error, 'persistence.io_failed'),
     }
   }
 }

@@ -17,7 +17,10 @@ export function mergeRuntimeSessionBinding(
   const binding = existing.runtimeSessionBinding
   const isPreparing = binding?.phase === 'preparing'
   const isPublishing = binding?.phase === 'publishing' && binding.sessionId === existing.sessionId
-  if (isPreparing || (isPublishing && persisted.sessionId !== binding.sessionId)) {
+  const ownedRuntime = persisted.managedClaudeResumeBindingOwnership?.runtimeSessionId
+  const superseded =
+    !!ownedRuntime && ownedRuntime !== (isPreparing ? binding.sessionId : existing.sessionId)
+  if (!superseded && (isPreparing || (isPublishing && persisted.sessionId !== binding.sessionId))) {
     return {
       runtimeSessionBinding: binding,
       sessionId: existing.sessionId,

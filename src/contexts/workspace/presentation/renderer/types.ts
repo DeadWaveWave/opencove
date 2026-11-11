@@ -1,3 +1,4 @@
+import type { ManagedClaudeResumeBindingOwnership } from '@shared/contracts/managedClaudeLaunch'
 import type { Node } from '@xyflow/react'
 import type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 import type { AgentSettings, AgentProvider } from '@contexts/settings/domain/agentSettings'
@@ -195,6 +196,8 @@ export interface WebsiteNodeData {
 }
 
 export interface TerminalNodeData {
+  managedClaudeBindingObservation?: import('@shared/contracts/managedClaudeLaunch').ManagedClaudeBindingObservation
+  managedClaudeResumeBindingOwnership?: ManagedClaudeResumeBindingOwnership | null
   [key: string]: unknown
   /** Derived canvas presentation only. Runtime dimensions remain width/height. */
   collapsePresentation?: { collapsed: boolean; spaceHidden: boolean }

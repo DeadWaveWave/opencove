@@ -1,3 +1,8 @@
+import { requestCanonicalRefresh } from '../../../utils/persistence/canonicalRefresh'
+import {
+  confirmManagedClaudeRuntime,
+  projectManagedClaudeRuntimeData,
+} from '../../../utils/managedClaudeProjection'
 import { useAgentNodeSessionControls } from './useAgentNodeSessionControls'
 import { planManagedClaudeRelaunch } from '@contexts/workspace/application/agentLifecycle/managedClaudeRelaunch'
 import { readManagedClaudeBinding } from '../../../utils/managedClaudeLifecycle'
@@ -282,6 +287,24 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
           terminalDisplayMetrics,
         })
 
+        if (binding && !launched.managedClaudeLifecycle) {
+          requestCanonicalRefresh({ reason: 'uncertain' })
+          return undefined
+        }
+        if (launched.managedClaudeLifecycle) {
+          const current = nodesRef.current.find(item => item.id === nodeId)
+          if (!current || !isAgentLaunchTokenCurrent(nodeId, launchToken)) {
+            return undefined
+          }
+          const confirmed = await confirmManagedClaudeRuntime(nodeId, {
+            ...current.data,
+            sessionId: launched.sessionId,
+            managedClaudeBindingObservation: launched.managedClaudeLifecycle.binding,
+          })
+          if (!confirmed) {
+            return undefined
+          }
+        }
         const ownsNode = binding || launched.managedClaudeLifecycle?.binding.nodeSeen
         if (!isAgentLaunchTokenCurrent(nodeId, launchToken)) {
           if (!launched.managedClaudeLifecycle) {
@@ -308,6 +331,16 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
                 return item
               }
 
+              const runtimeData = launched.managedClaudeLifecycle
+                ? projectManagedClaudeRuntimeData(nodeId, {
+                    ...item.data,
+                    sessionId: launched.sessionId,
+                    managedClaudeBindingObservation: launched.managedClaudeLifecycle.binding,
+                  })
+                : item.data
+              if (!runtimeData) {
+                return item
+              }
               const nextAgentData: AgentNodeData = {
                 ...launchData,
                 launchMode: mode,
@@ -330,7 +363,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
               return {
                 ...item,
                 data: {
-                  ...item.data,
+                  ...runtimeData,
                   sessionId: launched.sessionId,
                   profileId: launched.profileId,
                   runtimeKind: launched.runtimeKind,
@@ -358,7 +391,14 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
                   exitCode: null,
                   lastError: null,
                   scrollback: mode === 'new' ? null : item.data.scrollback,
-                  agent: nextAgentData,
+                  agent: runtimeData.managedClaudeResumeBindingOwnership
+                    ? {
+                        ...nextAgentData,
+                        resumeSessionId: runtimeData.agent?.resumeSessionId ?? null,
+                        resumeSessionIdVerified:
+                          runtimeData.agent?.resumeSessionIdVerified === true,
+                      }
+                    : nextAgentData,
                 },
               }
             }),

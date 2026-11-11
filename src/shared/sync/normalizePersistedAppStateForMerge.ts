@@ -1,3 +1,4 @@
+import { normalizeManagedClaudeResumeBindingOwnership } from './managedClaudeResumeProjection'
 import type {
   PersistedAppStateContract,
   PersistedSpaceArchiveNodeSnapshot,
@@ -28,6 +29,9 @@ export function normalizeNodeForMerge(
 ): NormalizedPersistedNodeContract {
   return {
     ...node,
+    managedClaudeResumeBindingOwnership:
+      normalizeManagedClaudeResumeBindingOwnership(node.managedClaudeResumeBindingOwnership) ??
+      undefined,
     // Hydration projects terminal agent into terminalAgentBinding. Restore its
     // durable representation below before excluding the projection from content.
     ...('terminalAgentBinding' in node ? { terminalAgentBinding: undefined } : {}),

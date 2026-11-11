@@ -2,6 +2,7 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { describe, expect, it } from 'vitest'
 import { readAppStateFromDb } from '../../../src/platform/persistence/sqlite/read'
 import {
+  managedClaudeResumeBindings,
   appMeta,
   appSettings,
   nodes,
@@ -70,6 +71,9 @@ function createReadDb(options: {
     select(selection?: unknown) {
       return {
         from(table: unknown) {
+          if (table === managedClaudeResumeBindings) {
+            return { all: () => [] }
+          }
           if (table === appMeta) {
             return {
               all: () => options.metaRows,

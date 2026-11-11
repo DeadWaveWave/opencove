@@ -336,8 +336,21 @@ state；wire 只增加 `corrected`。revision 是自身提交值，不在异步�
 身份冲突使用 `persistence.owned_node_identity_conflict` 与 `{nodeId, field, reason}`：SQLite/raw/
 Desktop IPC 返回与 revision conflict 相同的 `{ok:false, reason:'unknown', error}`；
 revisioned sync 采用 Control Surface `{ok:false, error}`；raw sync 保留嵌套写入结果。
-Remote/Web 把该 code 纳入既有 conflict refresh/rebase，并在重试耗尽时保留 typed descriptor。
-retired ID 的 Renderer rebase 策略以及 corrected 的 cache/ack 处理留待启用前补齐。
+Remote/Web 原样返回身份冲突，不纳入 revision conflict 重试。Renderer 保留 accepted ancestor，
+先读 canonical 再 rebase 合法编辑；retired ID 从 live nodes、Space membership 与 task links 清除，
+且 guarded extra node 不能保留已知 retired ID。
+
+读事务批量查询 ledger，向 owned node 投影 `managedClaudeResumeBindingOwnership`（activation ID 与
+nullable runtime ID）。marker 不是独立存储事实，提交的 marker 不具备写权；最终 writer 纠正缺失或
+不匹配的 marker，并去掉 unowned forgery。Renderer 在普通/guarded merge、hydration 与序列化末端
+保护 owned tuple、身份与非空 runtime association。metadata 不修改 owned tuple 或发出 tuple-only flush。
+
+corrected、merged 与未明确 attested unchanged 的成功不能把 candidate 插入 canonical cache。
+cache latest 与 accepted revision 在同一 persistence scope 内单调；同 revision 不同内容保持旧值并要求刷新。
+Renderer 显式保留 refresh demand，先 read 再 repair，不依赖通知。提交后的 candidate 仅作后续编辑祖先；
+身份拒绝仍以旧 accepted base 作祖先。transport unknown 保留 base 与 unconfirmed draft，刷新不确认
+该 draft，也不自动重放。退出在 deadline 内 drain 捕获的 local edit generation。
+本节沿用原有进程边界与 owner：no executable-rule impact。
 
 Managed launch 的读取适配器只在 clean transaction boundary 返回 definitive ledger/node/
 retirement observation；同一连接仍在 transaction 中时必须报告 unavailable，不能把可见行当作

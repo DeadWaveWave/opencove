@@ -196,9 +196,6 @@ export function createRemotePersistenceStore(
     }
 
     const record = value as { code?: unknown; debugMessage?: unknown }
-    if (record.code === 'persistence.owned_node_identity_conflict') {
-      return true
-    }
     if (record.code !== 'persistence.invalid_state') {
       return false
     }
@@ -224,7 +221,15 @@ export function createRemotePersistenceStore(
     writeWorkspaceStateRaw: async raw => {
       const payload: WriteWorkspaceStateRawInput = { raw }
       try {
-        return await invokePersistResult(endpointResolver, 'sync.writeWorkspaceStateRaw', payload)
+        const result = await invokePersistResult(
+          endpointResolver,
+          'sync.writeWorkspaceStateRaw',
+          payload,
+        )
+        if (result.ok) {
+          cache.invalidate()
+        }
+        return result
       } catch (error) {
         return resolveIoFailure(error)
       }
@@ -271,7 +276,9 @@ export function createRemotePersistenceStore(
         const attemptWrite = async (
           nextState: unknown,
           baseRevision: number | null,
-        ): Promise<number> => {
+        ): Promise<
+          import('../../../../shared/sync/revisionedSnapshotCache').RevisionedWriteReceipt
+        > => {
           const payload: WriteAppStateInput & { baseRevision?: number } = {
             state: nextState,
             ...(typeof baseRevision === 'number' ? { baseRevision } : {}),
@@ -294,12 +301,7 @@ export function createRemotePersistenceStore(
             throw result.error
           }
 
-          const revision = (result.value as { revision?: unknown }).revision
-          if (typeof revision !== 'number' || !Number.isSafeInteger(revision) || revision < 0) {
-            throw new Error('sync.writeState returned an invalid revision.')
-          }
-
-          return revision
+          return result.value as import('../../../../shared/sync/revisionedSnapshotCache').RevisionedWriteReceipt
         }
 
         const result = await writeRevisionedSnapshot({
@@ -318,6 +320,8 @@ export function createRemotePersistenceStore(
           bytes: Buffer.byteLength(JSON.stringify(result.state), 'utf8'),
           revision: result.revision,
           merged: result.merged,
+          corrected: result.corrected,
+          uncertain: result.uncertain,
         }
       } catch (error) {
         // Keep the Worker's own rejection (for example the empty-workspace overwrite guard).

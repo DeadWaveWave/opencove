@@ -1,3 +1,4 @@
+import { canAcceptCanonicalState } from './publicationState'
 import type { PersistedStateReadResult } from './read'
 import { useCanvasCollapseStore } from '../../store/useCanvasCollapseStore'
 import { canvasCollapseFromPersistedLists, EMPTY_CANVAS_COLLAPSE } from '../canvasCollapse'
@@ -9,7 +10,7 @@ export function acceptPersistedStateSnapshot({
   isPersisted,
   revision,
 }: Pick<PersistedStateReadResult, 'state' | 'isPersisted' | 'revision'>): void {
-  if (!state) {
+  if (!state || (isPersisted && !canAcceptCanonicalState(state, revision))) {
     return
   }
   for (const workspace of state.workspaces) {

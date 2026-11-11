@@ -437,3 +437,15 @@ helper 只放弃本 attempt 新 shell 的 hold，并 reference-check cleanup，�
 Fallback 的 PTY profile/activity preparation 之后，以进程内 `terminalSpawnLifecycle` hook 在
 实际 spawn 前检查原 attempt，spawn 返回 ID 后立即登记 custody，再提交 activity/metadata。
 该 hook 不接受 wire payload，legacy PTY 不注入；取消后的 finally 仍结算已创建 runtime。
+
+### Managed binding client convergence
+
+PR3a keeps managed Claude adoption default-off. Canonical ownership markers are derived from the ledger;
+renderer metadata cannot promote an owned null or unverified resume tuple. Lifecycle observations use
+`observedRevision`, without a second prepare clock. Tuple acceptance and runtime attachment are separate:
+an older tuple cannot replace canonical content, while the current operation may attach the same definitive
+runtime using the newer canonical tuple. Row-only activation requires definitive lookup. A fallback shell
+keeps its publication handshake until canonical acknowledgement, another runtime association, or deletion.
+Corrected and identity-rejected publications explicitly request canonical refresh, including during quit.
+Unknown transport outcomes retain an unconfirmed draft in memory and never trigger unconditional replay.
+These are existing ownership and process-boundary contracts: no executable-rule impact.

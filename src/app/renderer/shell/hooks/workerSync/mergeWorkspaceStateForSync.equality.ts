@@ -131,6 +131,8 @@ function isNodeDataEquivalent(persisted: TerminalNodeData, existing: TerminalNod
   }
 
   if (
+    JSON.stringify(persisted.managedClaudeResumeBindingOwnership ?? null) !==
+      JSON.stringify(existing.managedClaudeResumeBindingOwnership ?? null) ||
     persisted.sessionId !== existing.sessionId ||
     persisted.runtimeSessionBinding !== existing.runtimeSessionBinding ||
     persisted.title !== existing.title ||

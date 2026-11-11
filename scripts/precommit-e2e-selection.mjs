@@ -56,7 +56,10 @@ export const QUICK_E2E_GROUPS = {
   },
   persistence: {
     reason: 'Control Surface writes survive concurrent renderer publications and merges.',
-    tests: [e2e('persistence.concurrent-control-surface-writes')],
+    tests: [
+      e2e('persistence.concurrent-control-surface-writes'),
+      e2e('recovery.managed-claude-convergence'),
+    ],
     matches: path =>
       /\/persistence\/|\/sync\/|workersync|syncnodeguards|remotepersistencestore|browseropencoveapi\.persistence/.test(
         path,

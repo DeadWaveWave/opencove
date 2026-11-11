@@ -84,7 +84,11 @@ export function resolveLaunchedAgentResumeBinding(
 export function resolveAgentMetadataResumeBindingUpdate(
   binding: ResumeSessionBindingLike,
   event: Pick<TerminalSessionMetadataEvent, 'resumeSessionId' | 'piSnapshot'>,
+  ownership?: { activationId: string; runtimeSessionId: string | null } | null,
 ): ReturnType<typeof resolveObservedResumeSessionBindingUpdate> {
+  if (ownership) {
+    return null
+  }
   const nativePi = normalizePiAgentSnapshot(event.piSnapshot)
   const authority =
     nativePi &&

@@ -22,12 +22,15 @@ export function createBrowserPersistenceApi(): PersistenceApi {
         id: 'sync.readWorkspaceStateRaw',
         payload: null,
       }),
-    writeWorkspaceStateRaw: async payload =>
-      await invokeBrowserControlSurface({
-        kind: 'command',
-        id: 'sync.writeWorkspaceStateRaw',
-        payload,
-      }),
+    writeWorkspaceStateRaw: async payload => {
+      const result = await invokeBrowserControlSurface<
+        import('@shared/contracts/dto').PersistWriteResult
+      >({ kind: 'command', id: 'sync.writeWorkspaceStateRaw', payload })
+      if (result.ok) {
+        cache.invalidate()
+      }
+      return result
+    },
     readAppState: async () => {
       const value = await invokeBrowserControlSurface<{
         revision: number
@@ -60,7 +63,9 @@ export function createBrowserPersistenceApi(): PersistenceApi {
             return { revision: value.revision, state }
           },
           write: async (state, baseRevision) => {
-            const written = await invokeBrowserControlSurface<{ revision: number }>({
+            const written = await invokeBrowserControlSurface<
+              import('@shared/sync/revisionedSnapshotCache').RevisionedWriteReceipt
+            >({
               kind: 'command',
               id: 'sync.writeState',
               payload: {
@@ -69,16 +74,15 @@ export function createBrowserPersistenceApi(): PersistenceApi {
                 allowEmptyWorkspaceOverwrite: payload.allowEmptyWorkspaceOverwrite === true,
               },
             })
-            return written.revision
+            return written
           },
           normalize: normalizeCanonicalPersistedAppStateForMerge,
           merge: mergePersistedAppStates,
           isConflict: error => {
             const descriptor = toAppErrorDescriptor(error, 'persistence.invalid_state')
             return (
-              descriptor.code === 'persistence.owned_node_identity_conflict' ||
-              (descriptor.code === 'persistence.invalid_state' &&
-                (descriptor.debugMessage ?? '').includes('revision conflict'))
+              descriptor.code === 'persistence.invalid_state' &&
+              (descriptor.debugMessage ?? '').includes('revision conflict')
             )
           },
         })
@@ -88,6 +92,8 @@ export function createBrowserPersistenceApi(): PersistenceApi {
           bytes: JSON.stringify(result.state).length,
           revision: result.revision,
           merged: result.merged,
+          corrected: result.corrected,
+          uncertain: result.uncertain,
         }
       } catch (error) {
         return {

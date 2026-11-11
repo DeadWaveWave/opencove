@@ -1,3 +1,5 @@
+import { canAcceptHydrationSnapshot } from './useHydrateAppState.helpers'
+import { persistenceScope } from '@contexts/workspace/presentation/renderer/utils/persistence/publicationState'
 import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
 import {
   DEFAULT_AGENT_SETTINGS,
@@ -351,8 +353,15 @@ export function useHydrateAppState({
     setIsPersistReady(false)
 
     const hydrateAppState = async (): Promise<void> => {
+      const scope = persistenceScope()
       const snapshot = await readPersistedStateWithMeta()
       const { state: persisted, recovery, hasStandardWindowSizeBucket } = snapshot
+      if (scope !== persistenceScope()) {
+        return
+      }
+      if (!canAcceptHydrationSnapshot(snapshot)) {
+        return
+      }
       if (isCancelledRef.current) {
         return
       }

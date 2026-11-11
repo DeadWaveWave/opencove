@@ -126,7 +126,14 @@ export function registerSessionPrepareOrReviveHandler(
                             store,
                             node,
                           })
-                    const binding = store.observeManagedClaudeNode?.(node.id).binding
+                    const final = store.observeManagedClaudeNode?.(node.id)
+                    if (
+                      final?.retired ||
+                      (final?.binding && final.nodeRuntimeSessionId !== existingSessionId)
+                    ) {
+                      return null
+                    }
+                    const binding = final?.binding
                     return toPreparedNodeResult(node, {
                       ...(binding ? { managedClaudeBinding: binding } : {}),
                       recoveryState: 'live',
