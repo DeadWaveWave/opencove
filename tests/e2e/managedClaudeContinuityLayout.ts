@@ -29,5 +29,5 @@ export async function publishManagedLayout(page: Page, nodeId: string, stale: bo
     },
   })
   await waitForManagedNodeMovement(page, log.node.transform)
-  await waitForManagedLayoutWrite(page, { afterSeq: log.seq ?? 0, before, stale })
+  return await waitForManagedLayoutWrite(page, { afterSeq: log.seq ?? 0, before, stale })
 }

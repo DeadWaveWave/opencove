@@ -28,6 +28,7 @@ import { publishManagedLayout } from './managedClaudeContinuityLayout'
 import {
   freezeManagedClient,
   readContinuityDiagnostics,
+  waitForManagedCanonicalLayout,
   waitForManagedPrepare,
 } from './managedClaudeContinuityDiagnostics'
 import { waitForControlSurfaceConnection } from './controlSurfaceConnection.helpers'
@@ -188,10 +189,12 @@ test('managed Claude stale publications retain layout and cold-resume the curren
     await expectConversation(web, agent.id, initial.tuple.resumeSessionId!)
     await expectConversation(page, agent.id, nextId)
     // The evidence must show a changed layout carrying A and a corrected/merged receipt.
-    await publishManagedLayout(web, agent.id, true)
+    const staleLayoutWrite = await publishManagedLayout(web, agent.id, true)
+    const expectedTuple = { resumeSessionId: nextId, resumeSessionIdVerified: true }
+    // Prove the drag survived in canonical B before Desktop writes replace its position.
+    await waitForManagedCanonicalLayout(web, agent.id, staleLayoutWrite, expectedTuple)
     await expectConversation(web, agent.id, nextId)
     await web.evaluate(() => Object.assign(window, { __dropManagedSync: false }))
-    const expectedTuple = { resumeSessionId: nextId, resumeSessionIdVerified: true }
     for (const raw of [false, true]) {
       // Hook attestation can advance the binding after launch. Capture the committed node,
       // then inject a tuple that has never been admitted instead of assuming an old read is stale.

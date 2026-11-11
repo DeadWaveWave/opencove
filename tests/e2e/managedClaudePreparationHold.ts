@@ -93,6 +93,7 @@ export async function holdPrepare(page: Page, nodeId: string) {
         ok: null,
         corrected: null,
         merged: null,
+        uncertain: null,
         revision: null,
       }
       log.writes.push(entry)
@@ -103,6 +104,7 @@ export async function holdPrepare(page: Page, nodeId: string) {
         ok?: boolean
         corrected?: boolean
         merged?: boolean
+        uncertain?: boolean
         revision?: number
         error?: { code?: string }
       } | null
@@ -110,6 +112,7 @@ export async function holdPrepare(page: Page, nodeId: string) {
         ok: receipt?.ok ?? ok ?? false,
         corrected: receipt?.corrected ?? null,
         merged: receipt?.merged ?? null,
+        uncertain: receipt?.uncertain ?? null,
         revision: receipt?.revision ?? null,
         ...(receipt?.error?.code ? { error: receipt.error.code } : {}),
       })

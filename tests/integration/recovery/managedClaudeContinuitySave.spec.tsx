@@ -11,6 +11,7 @@ import { requestCanonicalRefresh } from '@contexts/workspace/presentation/render
 import { holdPrepare, releasePrepare } from '../../e2e/managedClaudePreparationHold'
 import {
   freezeManagedClient,
+  waitForManagedCanonicalLayout,
   waitForManagedLayoutWrite,
 } from '../../e2e/managedClaudeContinuityDiagnostics'
 import { writeRawPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence/write'
@@ -25,7 +26,8 @@ const original = {
 }
 const page = {
   addInitScript: async (script: (id: string) => void, id: string) => script(id),
-  evaluate: async (script: () => unknown) => script(),
+  evaluate: async (script: (arg: unknown) => unknown, arg: unknown) =>
+    structuredClone(await script(arg)),
 } as unknown as Page
 const produce = () => {
   const s = useAppStore.getState()
@@ -172,12 +174,19 @@ it.each([false, true])(
     ).toMatchObject({ agent: { resumeSessionId: 'A' }, position: { x: 120, y: 80 } })
     await waitFor(() => expect(produce().workspaces[0].nodes[0].agent?.resumeSessionId).toBe('B'))
     expect(t.server.model.value.position).toBe('120,80')
-    await waitForManagedLayoutWrite(page, {
+    const write = await waitForManagedLayoutWrite(page, {
       afterSeq: 0,
       before: { x: 0, y: 0 },
       stale: true,
       timeout: 500,
     })
+    await waitForManagedCanonicalLayout(
+      page,
+      'agent',
+      write,
+      { resumeSessionId: 'B', resumeSessionIdVerified: true },
+      500,
+    )
     expect(window.__managedContinuity!.reads.some(r => r.route === 'wire:sync.state')).toBe(true)
   },
 )
@@ -323,14 +332,56 @@ it('starts the stale phase with a fresh A read and clears any bootstrap receipt 
     move(240, 160)
     await flushScheduledPersistedStateWriteAsync()
   })
-  await waitForManagedLayoutWrite(page, {
+  const write = await waitForManagedLayoutWrite(page, {
     afterSeq,
     before: { x: 120, y: 80 },
     stale: true,
     timeout: 500,
   })
+  await waitForManagedCanonicalLayout(
+    page,
+    'agent',
+    write,
+    { resumeSessionId: 'B', resumeSessionIdVerified: true },
+    500,
+  )
   await waitFor(() => expect(produce().workspaces[0].nodes[0].agent?.resumeSessionId).toBe('B'))
   expect(t.server.model.value.position).toBe('240,160')
+})
+
+it('rejects the real Browser adapter uncertain merged result when the peer omits its commit revision', async () => {
+  const t = await setup()
+  Object.assign(window, { __dropManagedSync: true })
+  commitB(t.server)
+  await act(async () => {
+    await releasePrepare(page)
+  })
+  await waitFor(() => expect(t.client.result.current.isHydrated).toBe(true))
+  const invoke = t.server.invoke.bind(t.server)
+  t.server.invoke = async (id, payload) => {
+    const receipt = await invoke(id, payload)
+    return id === 'sync.writeState' ? {} : receipt
+  }
+  await act(async () => {
+    move()
+  })
+  await waitFor(() => expect(t.submit).toHaveBeenCalled())
+  await act(async () => {
+    await flushScheduledPersistedStateWriteAsync()
+  })
+  expect(await t.submit.mock.results[0].value).toMatchObject({
+    ok: true,
+    uncertain: true,
+    merged: true,
+  })
+  await expect(
+    waitForManagedLayoutWrite(page, {
+      afterSeq: 0,
+      before: { x: 0, y: 0 },
+      stale: true,
+      timeout: 20,
+    }),
+  ).rejects.toThrow(/confirmed commit revision[\s\S]*"uncertain":true,"revision":null/)
 })
 
 it('times out with the submitted A and pending receipt when the HTTP peer delays its response', async () => {

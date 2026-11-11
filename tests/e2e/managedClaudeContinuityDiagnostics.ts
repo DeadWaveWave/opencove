@@ -14,8 +14,14 @@ export interface ContinuityWrite {
   ok: boolean | null
   corrected: boolean | null
   merged: boolean | null
+  uncertain?: boolean | null
   revision: number | null
   error?: string
+}
+export type ConfirmedContinuityWrite = ContinuityWrite & {
+  ok: true
+  revision: number
+  candidate: ContinuityCandidate & { position: { x: number; y: number } }
 }
 export interface ContinuityRead {
   seq: number
@@ -66,10 +72,9 @@ export async function freezeManagedClient(page: Page) {
     Object.assign(window, { __dropManagedSync: true, __correctedManagedWrite: false })
   })
 }
-type Snapshot = Awaited<ReturnType<typeof readContinuityDiagnostics>>
-async function waitForEvidence(
-  page: Page,
-  accepts: (log: Snapshot) => boolean,
+async function waitForEvidence<Snapshot, Result>(
+  read: () => Promise<Snapshot>,
+  select: (log: Snapshot) => Result | undefined,
   timeout: number,
   message: string,
 ) {
@@ -79,23 +84,28 @@ async function waitForEvidence(
   const expired = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new Error(`${message}\n${JSON.stringify(last)}`)), timeout)
   })
-  const observe = async (): Promise<void> => {
+  const observe = async (): Promise<Result | undefined> => {
     if (!active) {
       return
     }
-    const snapshot = await readContinuityDiagnostics(page)
+    const snapshot = await read()
     if (!active) {
       return
     }
     last = snapshot
-    if (accepts(snapshot)) {
-      return
+    const result = select(snapshot)
+    if (result !== undefined) {
+      return result
     }
     await new Promise(resolve => setTimeout(resolve, 50))
     return await observe()
   }
   try {
-    await Promise.race([observe(), expired])
+    const result = await Promise.race([observe(), expired])
+    if (result === undefined) {
+      throw new Error(message)
+    }
+    return result
   } finally {
     active = false
     clearTimeout(timer)
@@ -103,8 +113,8 @@ async function waitForEvidence(
 }
 export async function waitForManagedPrepare(page: Page) {
   await waitForEvidence(
-    page,
-    log => log.held,
+    () => readContinuityDiagnostics(page),
+    log => (log.held ? true : undefined),
     10_000,
     'The target agent preparation did not reach the hold barrier.',
   )
@@ -118,33 +128,90 @@ export async function waitForManagedLayoutWrite(
     timeout?: number
   },
 ) {
-  await waitForEvidence(
-    page,
+  return await waitForEvidence(
+    () => readContinuityDiagnostics(page),
     log =>
-      Boolean(
-        log.writes?.some(
-          write =>
-            write.seq > options.afterSeq &&
-            write.route === 'structured' &&
-            write.carried === 'A' &&
-            write.ok &&
-            write.candidate?.position &&
-            (write.candidate.position.x !== options.before.x ||
-              write.candidate.position.y !== options.before.y) &&
-            (!options.stale || write.corrected || write.merged),
-        ),
+      log.writes?.find(
+        (write): write is ConfirmedContinuityWrite =>
+          write.seq > options.afterSeq &&
+          write.route === 'structured' &&
+          write.carried === 'A' &&
+          write.ok === true &&
+          write.uncertain !== true &&
+          write.revision !== null &&
+          Number.isSafeInteger(write.revision) &&
+          write.revision >= 0 &&
+          !!write.candidate?.position &&
+          (write.candidate.position.x !== options.before.x ||
+            write.candidate.position.y !== options.before.y) &&
+          (!options.stale || write.corrected === true || write.merged === true),
       ),
     options.timeout ?? 15_000,
     options.stale
-      ? 'The layout did not submit A with a corrected or merged receipt. Read/write evidence follows.'
-      : 'The initial layout was not published. Read/write evidence follows.',
+      ? 'The layout did not submit A with a corrected or merged receipt and a confirmed commit revision. Read/write evidence follows.'
+      : 'The initial layout has no confirmed commit revision. Read/write evidence follows.',
+  )
+}
+
+/** Verify durable layout and identity together before another writer can replace the position. */
+export async function waitForManagedCanonicalLayout(
+  page: Page,
+  nodeId: string,
+  write: ConfirmedContinuityWrite,
+  tuple: { resumeSessionId: string; resumeSessionIdVerified: boolean },
+  timeout = 15_000,
+) {
+  return await waitForEvidence(
+    async () => {
+      const canonical = await page.evaluate(async targetNodeId => {
+        const snapshot = await window.opencoveApi.persistence.readAppState()
+        const state = snapshot.state as {
+          workspaces: Array<{
+            nodes: Array<{
+              id: string
+              position: { x: number; y: number }
+              agent?: { resumeSessionId?: string; resumeSessionIdVerified?: boolean }
+            }>
+          }>
+        } | null
+        const node = state?.workspaces.flatMap(w => w.nodes).find(n => n.id === targetNodeId)
+        return {
+          revision: snapshot.revision,
+          tuple: {
+            resumeSessionId: node?.agent?.resumeSessionId ?? null,
+            resumeSessionIdVerified: node?.agent?.resumeSessionIdVerified ?? null,
+          },
+          position: node?.position ?? null,
+        }
+      }, nodeId)
+      return {
+        canonical,
+        write,
+        expectedTuple: tuple,
+        diagnostics: await readContinuityDiagnostics(page),
+      }
+    },
+    evidence => {
+      const { canonical } = evidence
+      return canonical.revision !== null &&
+        Number.isSafeInteger(canonical.revision) &&
+        canonical.revision >= write.revision &&
+        canonical.tuple.resumeSessionId === tuple.resumeSessionId &&
+        canonical.tuple.resumeSessionIdVerified === tuple.resumeSessionIdVerified &&
+        canonical.position?.x === write.candidate.position.x &&
+        canonical.position?.y === write.candidate.position.y
+        ? canonical
+        : undefined
+    },
+    timeout,
+    'The canonical snapshot did not retain the submitted layout and expected conversation. Read/write evidence follows.',
   )
 }
 
 export async function waitForManagedNodeMovement(page: Page, before: string) {
   await waitForEvidence(
-    page,
-    log => Boolean(log.node.transform && log.node.transform !== before),
+    () => readContinuityDiagnostics(page),
+    log => (log.node.transform && log.node.transform !== before ? true : undefined),
     5_000,
     'The header drag did not change the node position. Read/write evidence follows.',
   )
