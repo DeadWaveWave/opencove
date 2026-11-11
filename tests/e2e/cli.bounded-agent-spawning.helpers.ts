@@ -154,6 +154,9 @@ export function invoke<T = unknown>(
     id,
     payload,
     kind,
+    ...(id === 'session.kill'
+      ? { clientFeatures: { managedClaudeResumeBindingV1: true as const } }
+      : {}),
   }) as Promise<T>
 }
 export async function runtimeCounts(page: Page) {

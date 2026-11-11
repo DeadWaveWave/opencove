@@ -9,6 +9,7 @@ export interface ManagedClaudeLaunchAttempt {
   readonly token: symbol
   expected?: ManagedClaudeLaunchExpected
   context?: ManagedClaudeNodeContext | null
+  adoptionSnapshot?: string
 }
 export interface ManagedClaudeRuntimeCandidate {
   runtimeSessionId: string | null

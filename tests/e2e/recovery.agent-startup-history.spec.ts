@@ -1,3 +1,4 @@
+import { getBinding } from './recovery.managed-claude-launch-lifecycle.helpers'
 import { randomUUID } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -141,6 +142,12 @@ for (const provider of ['claude-code', 'codex'] as const) {
       try {
         const terminal = second.window.locator('[data-id="history-agent"] .terminal-node')
         await expect(terminal).toContainText('STARTUP_HISTORY_READY')
+        if (provider === 'claude-code') {
+          expect((await getBinding(second.window, 'history-agent')).tuple).toEqual({
+            resumeSessionId: id,
+            resumeSessionIdVerified: true,
+          })
+        }
         await expect
           .poll(() => state(second.window))
           .toMatchObject({ state: 'idle', turn: null, lastEndedTurn: null })

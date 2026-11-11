@@ -110,7 +110,16 @@ test.describe('parent CLI attention for a real Claude child', () => {
       expect(secondBlocked).toMatchObject({ turn: { id: secondTurn } })
       expect(['question', 'permission']).toContain(secondBlocked.blockedReason)
       // Kill only this test's own Claude PTY through the app lifecycle boundary.
-      await page.evaluate(async id => window.opencoveApi.pty.kill({ sessionId: id }), sessionId)
+      await page.evaluate(
+        async id =>
+          window.opencoveApi.controlSurface.invoke({
+            kind: 'command',
+            id: 'session.kill',
+            clientFeatures: { managedClaudeResumeBindingV1: true },
+            payload: { sessionId: id },
+          }),
+        sessionId,
+      )
       // Until the exit is observed the turn is still blocked, and wait would correctly exit 10.
       await expect
         .poll(async () => (await snapshot()).lastEndedTurn?.id, { timeout: 30_000 })

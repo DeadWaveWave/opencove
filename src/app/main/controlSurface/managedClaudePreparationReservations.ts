@@ -55,6 +55,12 @@ export function reserveManagedClaudePreparation(input: {
     const finish = (attempt: ManagedClaudeLaunchAttempt): [string, ManagedClaudeLaunchAttempt] => {
       ctx.assertActive?.()
       owner.assertCurrent(attempt)
+      if (attempt.adoptionSnapshot === undefined) {
+        const observed = store?.observeManagedClaudeNode?.(id)
+        if (!observed?.binding && observed?.context) {
+          attempt.adoptionSnapshot = observed.adoptionSnapshot
+        }
+      }
       preparing.set(id, attempt)
       return [id, attempt]
     }

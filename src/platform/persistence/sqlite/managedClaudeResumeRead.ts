@@ -1,3 +1,4 @@
+import { readManagedClaudeAdoptionSnapshot } from './managedClaudeAdoptionSnapshot'
 import type Database from 'better-sqlite3'
 import type { ManagedClaudeNodeObservation } from '../../../shared/contracts/managedClaudeLaunch'
 import { createAppError } from '../../../shared/errors/appError'
@@ -50,6 +51,7 @@ export function createManagedClaudeResumeRead(db: Database.Database): ManagedCla
         const agent = safeJsonParse(node?.agent_json ?? '') as Record<string, unknown> | null
         return {
           nodeId,
+          adoptionSnapshot: row ? undefined : readManagedClaudeAdoptionSnapshot(db, nodeId),
           nodeRuntimeSessionId: node?.session_id ?? null,
           retired: Boolean(
             db.prepare('SELECT 1 FROM retired_managed_nodes WHERE node_id = ?').get(nodeId),

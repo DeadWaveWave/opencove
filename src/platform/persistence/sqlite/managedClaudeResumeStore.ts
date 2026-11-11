@@ -1,3 +1,4 @@
+import { readManagedClaudeAdoptionSnapshot } from './managedClaudeAdoptionSnapshot'
 import type Database from 'better-sqlite3'
 import type {
   ManagedClaudeResumeBindingStore,
@@ -116,6 +117,13 @@ export function createManagedClaudeResumeStore(
           return { status: 'nodeGone' }
         }
         const row = readRow(input.nodeId)
+        if (
+          !row &&
+          input.adoptionSnapshot !== undefined &&
+          readManagedClaudeAdoptionSnapshot(db, input.nodeId) !== input.adoptionSnapshot
+        ) {
+          return { status: 'superseded' }
+        }
         if (
           input.expected &&
           (input.expected.activationId !== (row?.activation_id ?? null) ||

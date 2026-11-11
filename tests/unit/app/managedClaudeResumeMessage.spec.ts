@@ -1,3 +1,4 @@
+import { toErrorMessage as toCanvasErrorMessage } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/helpers'
 import { afterEach, expect, it } from 'vitest'
 import { applyUiLanguage } from '@app/renderer/i18n'
 import { toErrorMessage } from '@app/renderer/shell/utils/format'
@@ -38,13 +39,15 @@ it.each([
   ],
   [
     'writesDisabled',
-    'Managed Claude restarts are paused. Ask the Worker administrator to enable them.',
-    'Claude 智能体重启已暂停，请联系 Worker 管理员重新启用。',
+    'Managed Claude restarts and saving new resume targets are paused. Existing saved targets remain protected. Ask the Worker administrator to enable updates.',
+    'Claude 智能体重启及新恢复目标的保存已暂停。已保存的目标仍受保护，请联系 Worker 管理员恢复更新。',
   ],
 ])('explains %s in both supported languages', async (reason, english, chinese) => {
   const error = createAppError('agent.managed_launch_rejected', { details: { reason } })
   await applyUiLanguage('en')
   expect(toErrorMessage(error)).toBe(english)
+  expect(toCanvasErrorMessage(error)).toBe(english)
   await applyUiLanguage('zh-CN')
   expect(toErrorMessage(error)).toBe(chinese)
+  expect(toCanvasErrorMessage(error)).toBe(chinese)
 })

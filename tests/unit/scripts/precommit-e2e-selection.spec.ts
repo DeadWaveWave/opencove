@@ -22,6 +22,7 @@ describe('local quick E2E selection', () => {
       windows:
         'src/contexts/workspace/presentation/renderer/components/shared/CanvasNodeWindow.tsx',
       spaces: 'src/contexts/space/application/spaceLayout.ts',
+      managedClaude: 'src/app/main/controlSurface/managedClaudeDeliveryRuntime.ts',
       connections: 'src/app/main/controlSurface/http/requestAuth.ts',
       persistence: 'src/shared/sync/mergePersistedAppStates.ts',
       sidebar: 'src/app/renderer/styles/workspace-sidebar.css',
@@ -146,4 +147,19 @@ it.each([
   }
   expect(chosen).toContain('tests/e2e/recovery.managed-claude-convergence.spec.ts')
   expect(chosen).toContain('tests/e2e/workspace-canvas.far-view.spec.ts')
+})
+
+it.each([
+  'src/app/main/controlSurface/managedClaudeDeliveryRuntime.ts',
+  'src/app/main/controlSurface/managedClaudeClearRuntime.ts',
+  'src/app/main/controlSurface/handlers/systemHandlers.ts',
+  'src/contexts/agent/application/ClaudeClearResumeBinding.ts',
+  'src/contexts/agent/infrastructure/watchers/ClaudeResumeTranscriptReader.ts',
+  'src/shared/contracts/dto/controlSurface.ts',
+])('selects deterministic managed acceptance for %s', path => {
+  expect(select(path).groups.map(group => group.id)).toContain('managedClaude')
+  expect(QUICK_E2E_GROUPS.managedClaude.tests).toHaveLength(4)
+  expect(QUICK_E2E_GROUPS.managedClaude.tests).not.toContain(
+    'tests/e2e/recovery.claude-clear.spec.ts',
+  )
 })

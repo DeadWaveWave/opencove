@@ -168,6 +168,7 @@ export function createManagedClaudeLaunchRuntime(deps: {
       }
       owner.assertCurrent(attempt)
       attempt.context = observation?.context
+      attempt.adoptionSnapshot ??= observation?.binding ? undefined : observation?.adoptionSnapshot
       try {
         return await scope.run(
           {
@@ -246,6 +247,9 @@ export function createManagedClaudeLaunchRuntime(deps: {
             : owner.reserve(nodeId)
           : null)
       const attempt = reservation instanceof Promise ? await reservation : reservation
+      if (attempt && !inherited && !initial?.binding) {
+        attempt.adoptionSnapshot = initial?.adoptionSnapshot
+      }
       let resolvePending!: () => void
       const pending = {
         promise: new Promise<void>(done => {

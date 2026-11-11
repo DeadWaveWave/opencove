@@ -363,6 +363,7 @@ export class ManagedClaudeLaunchOwner {
       activationId: this.ports.createId(),
       ...candidate,
       expected: attempt.expected,
+      adoptionSnapshot: attempt.adoptionSnapshot,
     }
     this.activationAttempts.set(input, attempt)
     if (candidate.runtimeSessionId) {

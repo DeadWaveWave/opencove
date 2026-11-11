@@ -33,6 +33,8 @@ function fixture() {
   let pauseSpawn = async () => {}
   let runtimeActive = true
   let binding: ManagedClaudeBindingObservation | null = null
+  let adoptionSnapshot = 'A'
+  let conversation = 'A'
   let nodeContext: ManagedClaudeNodeObservation['context'] = {
     kind: 'agent',
     provider: 'claude-code',
@@ -46,9 +48,13 @@ function fixture() {
       binding,
       retired: false,
       context: nodeContext,
+      adoptionSnapshot,
     }),
     isManagedClaudeRuntimeReferenced: () => false,
     activateManagedClaudeRuntime: vi.fn(async input => {
+      if (input.adoptionSnapshot !== undefined && input.adoptionSnapshot !== adoptionSnapshot) {
+        return { status: 'superseded' }
+      }
       binding = {
         nodeId: input.nodeId,
         activationId: input.activationId,
@@ -86,11 +92,12 @@ function fixture() {
     defaultErrorCode: 'agent.launch_failed',
     handle: async () => {
       await admitManagedClaudeLaunch('claude-code', '/repo')
+      const launchedConversation = conversation
       await pauseSpawn()
       return {
         sessionId: `runtime-${++spawns}`,
         provider: 'claude-code',
-        resumeSessionId: 'B',
+        resumeSessionId: launchedConversation,
         executionContext: { endpoint: { kind: 'local' } },
       }
     },
@@ -118,6 +125,10 @@ function fixture() {
     },
     setRuntimeActive: (active: boolean) => {
       runtimeActive = active
+    },
+    publishB: () => {
+      adoptionSnapshot = 'B'
+      conversation = 'B'
     },
     changeContext: () => {
       nodeContext = { ...nodeContext!, directory: '/other' }
@@ -210,4 +221,27 @@ it('does not install a commit subscription after disposal during store acquisiti
     details: { reason: 'superseded' },
   })
   expect(subscribe).not.toHaveBeenCalled()
+})
+
+it('cancels a stale first adoption after a second window publishes B', async () => {
+  const f = fixture()
+  const started = deferred<void>(),
+    release = deferred<void>()
+  f.pauseSpawn(async () => {
+    started.resolve()
+    await release.promise
+  })
+  const pending = f.launch()
+  f.firstIdentity.resolve({ projectId: 'project', spaceId: 'space', nodeId: 'agent' })
+  await started.promise
+  f.publishB()
+  release.resolve()
+  expect(await pending).toMatchObject({ ok: false, error: { details: { reason: 'superseded' } } })
+  expect(f.kill).toHaveBeenCalledWith('runtime-1')
+  expect(await f.launch()).toMatchObject({
+    ok: true,
+    value: { managedClaudeLifecycle: { binding: { tuple: { resumeSessionId: 'B' } } } },
+  })
+  expect(f.store.activateManagedClaudeRuntime.mock.calls[1][0].adoptionSnapshot).toBe('B')
+  f.runtime.dispose()
 })

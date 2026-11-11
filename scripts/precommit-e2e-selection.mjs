@@ -78,6 +78,20 @@ export const QUICK_E2E_GROUPS = {
         path,
       ),
   },
+  managedClaude: {
+    reason:
+      'Default Claude adoption, qualified clear recovery, convergence and restart-based freeze.',
+    tests: [
+      e2e('recovery.managed-claude-launch-lifecycle'),
+      e2e('recovery.managed-claude-convergence'),
+      e2e('recovery.claude-clear-ordering'),
+      e2e('recovery.managed-claude-defaults'),
+    ],
+    matches: path =>
+      /managedclaude|managed-claude|claudeclear|claude-clear|clauderesumetranscript|systemhandlers|clientfeatures|contracts\/(?:dto\/controlsurface|controlsurface|managedclaude)/.test(
+        path,
+      ),
+  },
   connections: {
     reason: 'Desktop and Web remain interactive on the same Worker and canonical terminal grid.',
     tests: [e2e('workspace-canvas.desktop-web-terminal-consistency')],
