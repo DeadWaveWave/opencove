@@ -46,6 +46,8 @@ try {
     async ({ workspace: workingDirectory, uri }) => {
       const api = window.opencoveApi
       const { sessionId } = await api.pty.spawn({ cwd: workingDirectory, cols: 120, rows: 40 })
+      // Data events are delivered only to attached sessions, as in the canvas.
+      await api.pty.attach({ sessionId })
       try {
         // One burst: 200 sequential input writes with an empty line reset at the end.
         let start = performance.now()
@@ -66,8 +68,10 @@ try {
             return
           }
           bytes += event.data.length
-          output = (output + event.data).slice(-200)
-          if (output.includes('OC_STREAM_FINISHED')) {
+          // Search before trimming: a batched event can carry the marker followed by a long prompt.
+          const window = output + event.data
+          output = window.slice(-200)
+          if (window.includes('OC_STREAM_FINISHED')) {
             finish()
           }
         })
@@ -75,12 +79,12 @@ try {
         try {
           start = performance.now()
           // Split the marker in source so the terminal echo cannot complete the measurement.
-          const source =
-            "for(let i=0;i<2048;i++)process.stdout.write('x'.repeat(128)+'\\n');process.stdout.write('OC_STREAM_'+'FINISHED\\n')"
+          // A shell-only generator: the isolated test HOME may not have node on PATH.
+          const line = 'x'.repeat(128)
           const command =
             api.meta.platform === 'win32'
-              ? `node -e "${source}"\r`
-              : `node -e '${source.replaceAll("'", "'\\''")}'\r`
+              ? `1..2048 | % { '${line}' }; 'OC_STREAM_' + 'FINISHED'\r`
+              : `i=0; while [ $i -lt 2048 ]; do echo ${line}; i=$((i+1)); done; echo OC_STREAM_''FINISHED\r`
           await api.pty.write({ sessionId, data: command })
           await Promise.race([
             completed,
