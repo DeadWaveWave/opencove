@@ -15,7 +15,7 @@ import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRunti
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
 import type { TerminalAgentActivityEnvironmentService } from '../../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityEnvironmentService'
-import { spawnTerminalWithActivity } from './terminalAgentActivitySpawn'
+import { composeTerminalSpawnGuard, spawnTerminalWithActivity } from './terminalAgentActivitySpawn'
 const terminalProfileResolver = new TerminalProfileResolver()
 
 function normalizeOptionalString(value: unknown): string | null {
@@ -152,7 +152,7 @@ export function registerPtyMountHandlers(
 
         ctx.assertActive?.()
         const { sessionId } = await spawnTerminalWithActivity(deps.ptyRuntime, {
-          assertActive: ctx.terminalSpawnLifecycle?.assertActive,
+          assertActive: composeTerminalSpawnGuard(ctx),
           onSpawned: ctx.terminalSpawnLifecycle?.onSpawned,
           activity: deps.terminalAgentActivity,
           args: resolvedSpawn.args,
@@ -201,7 +201,7 @@ export function registerPtyMountHandlers(
         ...(payload.env ? { env: payload.env } : {}),
       }
 
-      ctx.assertActive?.()
+      composeTerminalSpawnGuard(ctx)()
       const remoteResult = await invokeRemoteValue<SpawnTerminalResult>({
         endpoint,
         kind: 'command',

@@ -5,6 +5,15 @@ import type { TerminalAgentActivityEnvironmentService } from '../../../../contex
 import type { ControlSurfacePtyRuntime } from './sessionPtyRuntime'
 import type { TerminalRuntimeKind } from '../../../../shared/contracts/dto'
 import { publicTerminalSpawnError } from '../../../../shared/errors/terminalSpawnError'
+import type { ControlSurfaceContext } from '../types'
+
+/** Preserve both authorities across activity setup until the physical spawn boundary. */
+export function composeTerminalSpawnGuard(ctx: ControlSurfaceContext): () => void {
+  return () => {
+    ctx.assertActive?.()
+    ctx.terminalSpawnLifecycle?.assertActive()
+  }
+}
 
 export async function prepareTerminalAgentActivitySpawn(options: {
   activity: TerminalAgentActivityEnvironmentService | undefined

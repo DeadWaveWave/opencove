@@ -31,7 +31,7 @@ import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import { resolveSpaceMountContext } from '../../../../contexts/space/application/resolveSpaceMountContext'
 import type { TerminalAgentActivityEnvironmentService } from '../../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityEnvironmentService'
-import { spawnTerminalWithActivity } from './terminalAgentActivitySpawn'
+import { composeTerminalSpawnGuard, spawnTerminalWithActivity } from './terminalAgentActivitySpawn'
 
 const terminalProfileResolver = new TerminalProfileResolver()
 
@@ -205,7 +205,7 @@ export function registerSessionStreamingHandlers(
           })
 
       const { sessionId } = await spawnTerminalWithActivity(deps.ptyRuntime, {
-        assertActive: ctx.terminalSpawnLifecycle?.assertActive,
+        assertActive: composeTerminalSpawnGuard(ctx),
         onSpawned: ctx.terminalSpawnLifecycle?.onSpawned,
         activity: deps.terminalAgentActivity,
         args: resolvedSpawn.args,
@@ -289,7 +289,7 @@ export function registerSessionStreamingHandlers(
           })
 
       const { sessionId } = await spawnTerminalWithActivity(deps.ptyRuntime, {
-        assertActive: ctx.terminalSpawnLifecycle?.assertActive,
+        assertActive: composeTerminalSpawnGuard(ctx),
         onSpawned: ctx.terminalSpawnLifecycle?.onSpawned,
         activity: deps.terminalAgentActivity,
         args: resolvedSpawn.args,
