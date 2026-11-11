@@ -1,5 +1,4 @@
 export { holdPrepare, releasePrepare } from './managedClaudePreparationHold'
-import type {} from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/testHarness'
 import { randomUUID } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -34,18 +33,19 @@ export async function syntheticRebind(
   return nextId
 }
 
+/** Assert the client's visible Current marker, independently of PTY liveness and test probes. */
 export async function expectConversation(page: Page, nodeId: string, resumeSessionId: string) {
-  await expect
-    .poll(
-      () =>
-        page.evaluate(
-          id =>
-            window.__opencoveWorkspaceCanvasTestApi
-              ?.getAgentSessions()
-              .find(node => node.nodeId === id)?.resumeSessionId,
-          nodeId,
-        ),
-      { timeout: 30_000 },
-    )
-    .toBe(resumeSessionId)
+  const node = page.locator(`[data-id="${nodeId}"]`)
+  await node.getByTestId('terminal-node-session-list').click()
+  try {
+    const menu = page.getByTestId('terminal-node-session-menu')
+    await expect(menu).toBeVisible({ timeout: 30_000 })
+    const current = menu.getByTestId(`terminal-node-session-menu-item-${resumeSessionId}`)
+    await expect(current).toBeDisabled({ timeout: 30_000 })
+    await expect(current.locator('.terminal-node__session-menu-item-badge')).toBeVisible({
+      timeout: 30_000,
+    })
+  } finally {
+    await page.keyboard.press('Escape')
+  }
 }

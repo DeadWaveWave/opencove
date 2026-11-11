@@ -11,6 +11,8 @@ afterEach(() => {
   }
   Reflect.deleteProperty(window, '__heldManagedPrepare')
   Reflect.deleteProperty(window, '__releaseManagedPrepare')
+  Reflect.deleteProperty(window, '__dropManagedSync')
+  Reflect.deleteProperty(window, '__correctedManagedWrite')
   vi.unstubAllGlobals()
 })
 
@@ -81,3 +83,68 @@ it('passes a terminal-first response and holds only the target agent with bindin
     await Promise.all([terminalResponse, agentResponse])
   }
 })
+
+it.each(['corrected', 'merged'] as const)(
+  'freezes a read raced by B, then allows canonical B after a %s stale-save receipt',
+  async kind => {
+    vi.stubGlobal(
+      'EventSource',
+      class {
+        addEventListener() {}
+      },
+    )
+    const page = {
+      addInitScript: async (script: (arg: string) => void, arg: string) => script(arg),
+    } as unknown as Page
+    await holdPrepare(page, 'agent')
+    let canonical = { state: { tuple: 'A' }, revision: 1 }
+    let release!: () => void
+    let started!: () => void
+    const reading = new Promise<void>(resolve => {
+      started = resolve
+    })
+    const barrier = new Promise<void>(resolve => {
+      release = resolve
+    })
+    let pause = false
+    const read = vi.fn(async () => {
+      if (pause) {
+        started()
+        await barrier
+      }
+      return structuredClone(canonical)
+    })
+    const write = vi.fn(async () => ({
+      ok: true,
+      level: 'full',
+      bytes: 1,
+      revision: 2,
+      [kind]: true,
+    }))
+    window.opencoveApi = {
+      meta: { isTest: false, runtime: 'browser' },
+      persistence: { readAppState: read, writeAppState: write },
+      controlSurface: { invoke: vi.fn() },
+    } as unknown as typeof window.opencoveApi
+    expect(await window.opencoveApi.persistence.readAppState()).toEqual(canonical)
+    pause = true
+    const pendingRead = window.opencoveApi.persistence.readAppState()
+    try {
+      await reading
+      canonical = { state: { tuple: 'B' }, revision: 2 }
+      Object.assign(window, { __dropManagedSync: true })
+      release()
+      expect(await pendingRead).toEqual({ state: { tuple: 'A' }, revision: 1 })
+      pause = false
+      expect(
+        await window.opencoveApi.persistence.writeAppState({ state: { tuple: 'A', x: 1200 } }),
+      ).toMatchObject({ ok: true, [kind]: true })
+      expect(await window.opencoveApi.persistence.readAppState()).toEqual(canonical)
+      expect(write).toHaveBeenCalledOnce()
+      expect((window as unknown as { __dropManagedSync: boolean }).__dropManagedSync).toBe(true)
+    } finally {
+      release()
+      await pendingRead
+    }
+  },
+)

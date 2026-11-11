@@ -8,7 +8,13 @@ import {
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
-import { chromium, expect, test, type ElectronApplication } from '@playwright/test'
+import {
+  chromium,
+  expect,
+  test,
+  type ElectronApplication,
+  type BrowserContext,
+} from '@playwright/test'
 import { staleManagedPublication } from '../support/convergence/staleManagedPublication'
 import type { CreateNodeResult } from '../../src/shared/contracts/dto'
 import {
@@ -68,6 +74,7 @@ test('managed Claude stale publications retain layout and cold-resume the curren
   }
   let worker: ChildProcessWithoutNullStreams | null = null
   let app: ElectronApplication | undefined
+  let webContext: BrowserContext | undefined
   const browser = await chromium.launch({ headless: true })
   try {
     worker = (await startWorker({ userDataDir, env })).child
@@ -132,7 +139,9 @@ test('managed Claude stale publications retain layout and cold-resume the curren
     const webUrl = new URL(connection.endpoint)
     webUrl.searchParams.set('token', connection.token)
     const workerPort = Number(webUrl.port || 80)
-    const web = await browser.newPage()
+    webContext = await browser.newContext()
+    await webContext.tracing.start({ screenshots: true, snapshots: true, sources: true })
+    const web = await webContext.newPage()
     await holdPrepare(web, agent.id)
     await web.goto(webUrl.toString(), { waitUntil: 'domcontentloaded' })
     await web.waitForFunction(() =>
@@ -300,9 +309,26 @@ test('managed Claude stale publications retain layout and cold-resume the curren
     try {
       await app?.close()
     } finally {
-      await browser.close()
-      await stopWorker(worker)
-      await removePathWithRetry(userDataDir)
+      try {
+        if (webContext) {
+          const tracePath = test.info().outputPath('continuity-web-trace.zip')
+          await webContext.tracing.stop({ path: tracePath })
+          await test.info().attach('Web continuity trace', {
+            path: tracePath,
+            contentType: 'application/zip',
+          })
+        }
+      } finally {
+        try {
+          await browser.close()
+        } finally {
+          try {
+            await stopWorker(worker)
+          } finally {
+            await removePathWithRetry(userDataDir)
+          }
+        }
+      }
     }
   }
 })
