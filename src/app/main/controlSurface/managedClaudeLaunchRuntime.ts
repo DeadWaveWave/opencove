@@ -1,3 +1,4 @@
+import { holdClaudeClearCommit } from './managedClaudeClearHold'
 import { reserveManagedClaudePreparation } from './managedClaudePreparationReservations'
 import {
   assertManagedClaudeMutationAllowed,
@@ -82,7 +83,10 @@ export function createManagedClaudeLaunchRuntime(deps: {
     isRuntimeReferenced: id => store?.isManagedClaudeRuntimeReferenced?.(id) ?? unavailable(),
     activateManagedClaudeRuntime: input =>
       store?.activateManagedClaudeRuntime?.(input) ?? unavailable(),
-    commitManagedClaudeRebind: input => store?.commitManagedClaudeRebind?.(input) ?? unavailable(),
+    commitManagedClaudeRebind: async input => {
+      await holdClaudeClearCommit(new AbortController().signal)
+      return await (store?.commitManagedClaudeRebind?.(input) ?? unavailable())
+    },
     killExactRuntime: deps.killExactRuntime,
     projectCommittedBinding: deps.projectCommittedBinding,
     publishCommittedActivation: deps.publishCommittedActivation ?? (() => {}),

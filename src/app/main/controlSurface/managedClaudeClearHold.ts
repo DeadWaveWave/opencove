@@ -1,8 +1,12 @@
 import { access, writeFile } from 'node:fs/promises'
 import { setTimeout as delay } from 'node:timers/promises'
 
-/** File barrier for deterministic shutdown acceptance; disabled outside test mode. */
-export async function holdClaudeClearProof(signal: AbortSignal): Promise<void> {
+/**
+ * File barrier for deterministic shutdown acceptance; disabled outside test mode.
+ * It holds the rebind commit, after the transcript proof, so it never consumes the proof's
+ * read budget: the test controls when an already-qualified save reaches the ledger.
+ */
+export async function holdClaudeClearCommit(signal: AbortSignal): Promise<void> {
   const path =
     process.env.NODE_ENV === 'test' ? process.env.OPENCOVE_TEST_CLAUDE_CLEAR_PROOF_HOLD : undefined
   if (!path) {

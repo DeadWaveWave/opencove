@@ -1,4 +1,4 @@
-import { holdClaudeClearProof, markClaudeClearDrain } from './managedClaudeClearHold'
+import { markClaudeClearDrain } from './managedClaudeClearHold'
 import { randomUUID } from 'node:crypto'
 import type { AgentHookChannel } from '../../../shared/runtime/agentHook/agentHookChannel'
 import type { ManagedClaudeLaunchOwner } from '../../../contexts/agent/application/managedClaudeLaunch/ManagedClaudeLaunchOwner'
@@ -34,10 +34,7 @@ export function createManagedClaudeClearRuntime(
             enabled: managedClaudeWritesEnabled,
             createId: randomUUID,
             now: () => performance.now(),
-            read: async (input, signal) => {
-              await holdClaudeClearProof(signal)
-              return signal.aborted ? null : reader.confirmCompletedTurn(input, signal)
-            },
+            read: async (input, signal) => await reader.confirmCompletedTurn(input, signal),
             onDegraded: feedback,
           })
           producers.set(evidence.credential, producer)
