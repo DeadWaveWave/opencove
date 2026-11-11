@@ -5,6 +5,7 @@ import { getBinding } from './recovery.managed-claude-launch-lifecycle.helpers'
 import { syntheticRebind } from './managedClaudeContinuity.helpers'
 import { staleManagedPublication } from '../support/convergence/staleManagedPublication'
 import { waitForControlSurfaceConnection } from './controlSurfaceConnection.helpers'
+import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../src/shared/contracts/controlSurface'
 
 test('upgrades verified unowned A at cold recovery and saves a qualified clear successor', async () => {
   test.setTimeout(180_000)
@@ -92,42 +93,46 @@ test('freezes owned B across Worker restart while legacy creation and layout rem
         })
         .first(),
     ).toBeVisible()
+    // Typed errors lose code and details across Electron's contextBridge, so prove the Worker's
+    // refusal over the same HTTP control surface the CLI uses; the UI text is covered separately.
+    const surface = await waitForControlSurfaceConnection(f.userDataDir)
     for (const id of ['session.launchAgent', 'session.prepareOrRevive']) {
-      const refusal = await page.evaluate(
-        async ({ operation, nodeId, cwd, expected }) => {
-          try {
-            await window.opencoveApi.controlSurface.invoke({
-              kind: 'command',
-              id: operation,
-              clientFeatures: { managedClaudeResumeBindingV1: true },
-              payload:
-                operation === 'session.launchAgent'
-                  ? {
-                      canvasNodeId: nodeId,
-                      cwd,
-                      provider: 'claude-code',
-                      prompt: 'Managed lifecycle fixture',
-                      mode: 'new',
-                      intent: { kind: 'launchNew', expected },
-                    }
-                  : { workspaceId: 'managed-launch-project', nodeIds: [nodeId] },
-            })
-            return { accepted: true }
-          } catch (error) {
-            const typed = error as { code?: string; details?: unknown }
-            return { code: typed.code, details: typed.details }
-          }
+      const response = await fetch(`${surface.endpoint}/invoke`, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${surface.token}`,
+          'content-type': 'application/json',
+          'x-opencove-protocol': String(CONTROL_SURFACE_PROTOCOL_VERSION),
         },
-        {
-          operation: id,
-          nodeId: agent.id,
-          cwd: f.workspace,
-          expected: { activationId: current.activationId, tuple: current.tuple },
-        },
-      )
-      expect(refusal).toMatchObject({
-        code: 'agent.managed_launch_rejected',
-        details: { reason: 'writesDisabled' },
+        body: JSON.stringify({
+          kind: 'command',
+          id,
+          clientFeatures: { managedClaudeResumeBindingV1: true },
+          payload:
+            id === 'session.launchAgent'
+              ? {
+                  canvasNodeId: agent.id,
+                  cwd: f.workspace,
+                  provider: 'claude-code',
+                  prompt: 'Managed lifecycle fixture',
+                  mode: 'new',
+                  intent: {
+                    kind: 'launchNew',
+                    expected: { activationId: current.activationId, tuple: current.tuple },
+                  },
+                }
+              : { workspaceId: 'managed-launch-project', nodeIds: [agent.id] },
+        }),
+      })
+      const envelope = (await response.json()) as {
+        ok: boolean
+        error?: { code?: string; details?: unknown }
+        value?: { items?: { error?: { code?: string; details?: unknown } | null }[] }
+      }
+      const refusal = envelope.ok ? envelope.value?.items?.[0]?.error : envelope.error
+      expect({ id, refusal }).toMatchObject({
+        id,
+        refusal: { code: 'agent.managed_launch_rejected', details: { reason: 'writesDisabled' } },
       })
     }
     expect((await f.records()).length).toBe(count)
