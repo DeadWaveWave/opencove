@@ -153,3 +153,41 @@ describe('Worker ended-turn archive lifecycle', () => {
     expect(vi.getTimerCount()).toBe(0)
   })
 })
+
+it('updates archive membership only after successful lineage-aware commits', async () => {
+  let accept = true
+  const rawStore = store(async () => ({
+    formatVersion: 1,
+    workspaces: [{ id: 'project', nodes: [] }],
+  }))
+  rawStore.commitCreatedNodeState = async () =>
+    accept
+      ? { ok: true, level: 'full', bytes: 0 }
+      : { ok: false, reason: 'unknown', error: { code: 'persistence.invalid_state' } }
+  const runtime = createWorkerAgentTurnArchiveRuntime({
+    enabled: true,
+    userDataPath: '/profile',
+    getPersistenceStore: async () => rawStore,
+    open: () => new InMemoryAgentTurnArchive(),
+  })
+  try {
+    await runtime.start()
+    const wrapped = await runtime.getPersistenceStore()
+    const state = {
+      formatVersion: 1,
+      workspaces: [{ id: 'project', nodes: [{ id: 'child', kind: 'note' }] }],
+    }
+    const options = {
+      expectedRevision: 0,
+      lineage: { nodeId: 'child', spawnedBy: 'parent', rootNodeId: 'parent', lineageDepth: 2 },
+    }
+    expect(runtime.membership('child')).toBe('absent')
+    await wrapped.commitCreatedNodeState!(state, options)
+    expect(runtime.membership('child')).toBe('member')
+    accept = false
+    await wrapped.commitCreatedNodeState!({ formatVersion: 1, workspaces: [] }, options)
+    expect(runtime.membership('child')).toBe('member')
+  } finally {
+    runtime.dispose()
+  }
+})

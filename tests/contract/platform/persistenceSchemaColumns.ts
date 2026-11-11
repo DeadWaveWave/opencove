@@ -1,4 +1,5 @@
 export const CURRENT_SCHEMA_COLUMNS = {
+  node_lineage: ['node_id', 'spawned_by_node_id', 'root_node_id', 'lineage_depth'],
   managed_claude_resume_bindings: [
     'node_id',
     'runtime_session_id',

@@ -6,6 +6,7 @@ import {
   promptUnknownRecovery,
 } from '../../../shared/errors/agentPromptError'
 import { isAppErrorDescriptor, formatAppErrorMessage } from '../../../shared/errors/appError'
+import { nodeParentErrorPresentation } from '../../../shared/errors/nodeParentError'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../shared/contracts/controlSurface/protocol'
 import type { Connection } from './context'
 import { get } from './render'
@@ -60,6 +61,10 @@ export async function invoke(
     }
     if (result?.ok === false) {
       const error = result.error ?? {}
+      const parent = nodeParentErrorPresentation(error)
+      if (parent) {
+        throw new CliError(error.code, 1, parent.message, parent.hint, error.details)
+      }
       if (prompt && !isAppErrorDescriptor(error)) {
         throw new CliError('transport.invalid_response', 1, 'Invalid control surface response')
       }

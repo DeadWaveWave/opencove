@@ -89,8 +89,10 @@ busy refusal. The CLI checks `system.operation.describe` first; an older Worker
 without `whenBusy` receives no new fields, and busy refusal stays visible. No retry
 is made after an error. Waiting/dialogs and unknown/degraded states refuse.
 
-The CLI prints its generated deliveryId before sending; retain it even if the
-response is lost. Codex steering returns `dispatched`, exit 0, while awaiting
+The CLI prints `Sending prompt (delivery <id>).` before sending; retain the ID even if the
+response is lost. With --wait, `Waiting for turn <turnId> of node <nodeId>...` adds an
+interruption-only exact-wait continuation. The final JSON and exit status report the result.
+Codex steering returns `dispatched`, exit 0, while awaiting
 consumption. Check `opencove agent delivery <id> --wait --timeout 2m` before treating
 it as submitted. Confirmation is in order only while no other PTY input intervenes;
 other input makes it ambiguous, and interruption/end can leave it unknown.

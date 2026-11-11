@@ -1,5 +1,8 @@
 import { vi } from 'vitest'
-import { createPersistenceStore } from '../../../src/platform/persistence/sqlite/PersistenceStore'
+import {
+  createPersistenceStore,
+  type PersistenceStore,
+} from '../../../src/platform/persistence/sqlite/PersistenceStore'
 import { normalizePersistedAppState } from '../../../src/platform/persistence/sqlite/normalize'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import { createCanvasSpawnRunner } from '../../../src/app/main/controlSurface/createCanvasSpawnRunner'
@@ -52,6 +55,7 @@ export async function snapshotFixture(
   options: {
     terminalAgentActivity?: TerminalAgentActivityEnvironmentService
     adoptionEnabled?: boolean
+    wrapStore?: (store: PersistenceStore) => Promise<PersistenceStore>
   } = {},
 ) {
   const store = await createPersistenceStore({ dbPath, strictRecovery: true })
@@ -125,6 +129,8 @@ export async function snapshotFixture(
     })
   }
   const initialRevision = await store.readAppStateRevision()
+  const persistence = options.wrapStore ? await options.wrapStore(store) : store
+  const getPersistenceStore = async () => persistence
   const publications: { nodeId: string; activationId: string; revision: number }[] = []
   const results: { id: string; value: unknown }[] = []
   const alive = new Set<string>()
@@ -139,7 +145,7 @@ export async function snapshotFixture(
     return { sessionId }
   })
   const runtime = createManagedClaudeLaunchRuntime({
-    getPersistenceStore: async () => store,
+    getPersistenceStore,
     adoptionEnabled: () => options.adoptionEnabled ?? true,
     publishCommittedActivation: event => {
       publications.push(event)
@@ -155,7 +161,7 @@ export async function snapshotFixture(
     run: createCanvasSpawnRunner({
       managedClaude: runtime,
       terminalRuntimeAvailability: admission.terminalSpawnAdmission,
-      getPersistenceStore: async () => store,
+      getPersistenceStore,
     }),
   })
   const mount = {
@@ -166,12 +172,16 @@ export async function snapshotFixture(
     rootPath: '/repo',
     rootUri: 'file:///repo',
   }
-  const topology = { resolveMountTarget: async () => mount } as never
+  const topology = {
+    resolveMountTarget: async () => mount,
+    listMounts: async () => ({ mounts: [mount] }),
+    listEndpoints: async () => ({ endpoints: [] }),
+  } as never
   registerOperation(surface, mountListOperation, {
     handle: async () => ({ mounts: [mount] }),
     defaultErrorCode: 'common.unexpected',
   })
-  registerNodeControlHandlers(surface, { getPersistenceStore: async () => store, topology })
+  registerNodeControlHandlers(surface, { getPersistenceStore, topology })
   const registry = createTestAgentProviderRegistry()
   Object.assign(registry.require('claude-code').launcher, {
     createLaunchPlan: async (input: { mode: string; resumeSessionId: string }) => ({
@@ -187,11 +197,11 @@ export async function snapshotFixture(
     ...admission,
     terminalAgentActivity: options.terminalAgentActivity,
     userDataPath: '/tmp/opencove-snapshot-contract',
-    getPersistenceStore: async () => store,
+    getPersistenceStore,
     approvedWorkspaces: { isPathApproved: async () => true } as never,
     agentProviderRegistry: registry,
     topology,
-    ptyRuntime: { spawnSession: spawn } as never,
+    ptyRuntime: { spawnSession: spawn, kill: (id: string) => alive.delete(id) } as never,
     ptyStreamHub: {
       isSessionActive: (id: string) => alive.has(id) && !inactive.has(id),
       registerSessionMetadata: () => {},
@@ -201,8 +211,11 @@ export async function snapshotFixture(
   registerSessionStreamingHandlers(surface, deps)
   registerPtyMountHandlers(surface, deps)
   const ctx = { now: () => new Date(), capabilities: {} } as ControlSurfaceContext
-  const invoke = async <T>(request: ControlSurfaceInvokeRequest): Promise<T> => {
-    const response = await surface.invoke(ctx, request)
+  const invoke = async <T>(
+    request: ControlSurfaceInvokeRequest,
+    context: ControlSurfaceContext = ctx,
+  ): Promise<T> => {
+    const response = await surface.invoke(context, request)
     if (!response.ok) {
       throw createAppError(response.error)
     }

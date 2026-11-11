@@ -44,7 +44,7 @@ it('limits bare-array catalogs only when cut, after filters and projection', asy
   expect(Array.isArray(value)).toBe(true)
   expect(value).toHaveLength(1)
   expect(Object.keys(value[0])).toEqual(['id'])
-  expect(notices).toEqual(['Showing 1 of 6 operations; use --limit 0 for all.\n'])
+  expect(notices).toEqual(['Showing 1 of 7 operations; use --limit 0 for all.\n'])
   expect(f.fetch).not.toHaveBeenCalled()
   const g = identityFixture(false)
   expect(await run(['api', 'ops', '--prefix', 'absent', '--limit', '0'], g.io)).toBe(0)
@@ -160,12 +160,12 @@ it('notices missing fields on mixed node lists but ignores empty lists', async (
   }
 })
 
-it.each(['0', '6', '10'])('keeps complete bare arrays silent with --limit %s', async limit => {
+it.each(['0', '7', '10'])('keeps complete bare arrays silent with --limit %s', async limit => {
   const f = identityFixture(false)
   const notices: string[] = []
   f.io.stderr.write = text => notices.push(text)
   expect(await run(['api', 'ops', '--prefix', 'node', '--limit', limit], f.io)).toBe(0)
-  expect(JSON.parse(f.out())).toHaveLength(6)
+  expect(JSON.parse(f.out())).toHaveLength(7)
   expect(notices).toEqual([])
 })
 

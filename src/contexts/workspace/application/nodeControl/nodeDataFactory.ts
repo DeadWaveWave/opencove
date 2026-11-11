@@ -1,5 +1,6 @@
 import { resolveLaunchedAgentResumeBinding } from '../../../agent/domain/agentResumeBinding'
 import { randomUUID } from 'node:crypto'
+import { AGENT_PROVIDER_IDS } from '../../../../shared/contracts/dto'
 import type {
   AgentProviderId,
   CanvasNodeFrameDto,
@@ -121,15 +122,9 @@ function normalizeAgentProvider(value: unknown): AgentProviderId | null {
     return null
   }
   const normalized = typeof value === 'string' ? value.trim() : value
-  if (
-    normalized === 'claude-code' ||
-    normalized === 'codex' ||
-    normalized === 'opencode' ||
-    normalized === 'gemini' ||
-    normalized === 'pi' ||
-    normalized === 'kimi'
-  ) {
-    return normalized
+  const provider = AGENT_PROVIDER_IDS.find(id => id === normalized)
+  if (provider) {
+    return provider
   }
   throw createAppError('common.invalid_input', { debugMessage: 'Invalid agent provider.' })
 }

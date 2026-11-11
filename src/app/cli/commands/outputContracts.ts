@@ -1,3 +1,5 @@
+import { turnReplyFields } from '../core/agentTurnComposition'
+import { lineageFields, lineageFieldDescriptions } from '../core/nodeLineage'
 import { agentMetadataFields } from '../core/agentMetadata'
 import { declaredOutput, noResultOutput } from './declaredOutput'
 import type { RenderSpec } from '../core/command'
@@ -62,16 +64,18 @@ const summaryDataFields = [
   'url',
   'linkedAgentNodeId',
 ]
+const nodeSummaryMetadataFields = [
+  ...agentMetadataFields,
+  'taskNodeId',
+  'data',
+  ...summaryDataFields.map(field => `data.${field}`),
+]
+const spaceNodeFields = [...nodeFields, ...nodeSummaryMetadataFields].map(field => `nodes.${field}`)
 export const nodeListOutput: RenderSpec = {
   defaultLimit: 50,
   listKey: 'nodes',
-  fields: [
-    ...nodeFields,
-    ...agentMetadataFields,
-    'taskNodeId',
-    'data',
-    ...summaryDataFields.map(field => `data.${field}`),
-  ],
+  fields: [...nodeFields, ...lineageFields, ...nodeSummaryMetadataFields],
+  fieldDescriptions: lineageFieldDescriptions,
   fieldHints: Object.fromEntries(
     dataFields
       .filter(field => !summaryDataFields.includes(field))
@@ -89,7 +93,8 @@ export const nodeListOutput: RenderSpec = {
 }
 export const nodeGetOutput: RenderSpec = {
   itemKey: 'node',
-  fields: [...nodeFields, 'data', ...dataFields.map(f => `data.${f}`)],
+  fields: [...nodeFields, ...lineageFields, 'data', ...dataFields.map(f => `data.${f}`)],
+  fieldDescriptions: lineageFieldDescriptions,
   examples: ['--fields id,title', '{"node":{"id":"n","title":"Note"}}'],
 }
 const kindDataFields: Record<string, string[]> = {
@@ -110,10 +115,13 @@ const kindDataFields: Record<string, string[]> = {
 export function nodeKindOutput(kind: string, create: boolean): RenderSpec {
   return {
     itemKey: 'node',
+    ...(create ? { fieldDescriptions: lineageFieldDescriptions } : {}),
     fields: [
       ...nodeFields,
+      ...(create ? lineageFields : []),
       'data',
       'data.kind',
+      ...(create && kind === 'agent' ? turnReplyFields : []),
       ...kindDataFields[kind].map(field => `data.${field}`),
     ],
     examples: [
@@ -141,23 +149,13 @@ export const spaceListOutput: RenderSpec = {
     'opencove space list --fields id,name',
     '{"projectId":"p","activeSpaceId":"s","spaces":[{"id":"s","name":"Main"}]}',
   ],
-  fields: [
-    ...spaceFields,
-    'nodeCount',
-    'projectId',
-    ...nodeListOutput.fields!.map(field => `nodes.${field}`),
-  ],
+  fields: [...spaceFields, 'nodeCount', 'projectId', ...spaceNodeFields],
   columns: ['id', 'name', 'projectId'],
   envelopeFields: { projectId: 'projectId' },
 }
 export const spaceGetOutput: RenderSpec = {
   itemKey: 'space',
-  fields: [
-    ...spaceFields,
-    'projectId',
-    'nodeCount',
-    ...nodeListOutput.fields!.map(field => `nodes.${field}`),
-  ],
+  fields: [...spaceFields, 'projectId', 'nodeCount', ...spaceNodeFields],
   examples: [
     'opencove space get --space s --fields id,nodes',
     '{"projectId":"p","activeSpaceId":"s","space":{"id":"s","nodes":[]}}',
@@ -306,3 +304,8 @@ export const canvasFocusOutput = (kind: 'node' | 'space') =>
     { projectId: 'p', target: { kind }, delivered: true, deliveredClientCount: 1 },
     { itemKey: 'target' },
   )
+
+/** Creation keeps node-relative selectors; composed turn fields select the result envelope. */
+export function createdAgentWaitOutput(): RenderSpec {
+  return { ...nodeKindOutput('agent', true), projectedEnvelopeFields: turnReplyFields }
+}

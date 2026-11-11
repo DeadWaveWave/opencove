@@ -47,7 +47,11 @@ it('reports server unknown keys with a correction, allowed keys and a valid exam
     code: 'common.invalid_input',
     message: expect.stringContaining('Did you mean "space"?'),
     hint: expect.stringContaining('{"space":{"kind":"spaceId","spaceId":"…"}}'),
-    details: { issues: [{ path: ['spaceId'], allowedKeys: ['space', 'projectId', 'kind'] }] },
+    details: {
+      issues: [
+        { path: ['spaceId'], allowedKeys: ['space', 'spawnedByNodeId', 'projectId', 'kind'] },
+      ],
+    },
   })
 })
 it('rejects unknown frame keys locally before executing a dedicated mutation', async () => {

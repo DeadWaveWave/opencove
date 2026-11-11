@@ -1,7 +1,9 @@
+import { resolveCallerParent } from '../../../../contexts/workspace/application/nodeLineage/NodeLineageOwner'
 import { canvasFocusOperation } from '../../../../shared/contracts/controlSurface/operations/domains/canvas'
 import { registerOperation } from '../registerOperation'
 import {
   nodeManagedClaudeBindingOperation,
+  nodeResolveCallerSelectorOperation,
   nodeCreateOperation,
   nodeListOperation,
   nodeGetOperation,
@@ -72,6 +74,8 @@ function createLocatorDeps(
 
 function toNodeControlStateStore(store: PersistenceStore): NodeControlAppStateStore {
   return {
+    nodeLineage: store.nodeLineage,
+    commitCreatedNodeState: store.commitCreatedNodeState,
     readAppState: async () => normalizePersistedAppState(await store.readAppState()),
     readAppStateRevision: store.readAppStateRevision,
     writeAppState: store.writeAppState,
@@ -121,6 +125,21 @@ export function registerNodeControlHandlers(
         retired: observed.retired,
         executionDirectory: observed.context?.directory ?? null,
       }
+    },
+  })
+  registerOperation(controlSurface, nodeResolveCallerSelectorOperation, {
+    defaultErrorCode: 'common.unexpected',
+    handle: async (ctx, input) => {
+      const caller = ctx.requestAuth?.kind === 'session-grant' ? ctx.requestAuth.grant.nodeId : null
+      if (!caller) {
+        throw createAppError('node.parent_unavailable', {
+          details: { reason: 'caller_identity_required' },
+        })
+      }
+      const store = toNodeControlStateStore(await deps.getPersistenceStore())
+      const result = await resolveCallerParent(store, caller, input)
+      ctx.assertActive?.()
+      return result
     },
   })
   registerOperation(controlSurface, nodeListOperation, {

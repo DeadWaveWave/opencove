@@ -17,6 +17,7 @@ const nodeIdInput = z.strictObject({ nodeId: z.string() })
 const nodeListInput = z
   .strictObject({
     space: nodeSpaceLocator.nullish(),
+    spawnedByNodeId: z.string().trim().min(1).nullish(),
     projectId: z.unknown().optional(),
     kind: z.unknown().optional(),
   })
@@ -32,6 +33,7 @@ export const nodeCreateOperation = defineOperation({
   normalize: normalizeNodeCreateInput,
   legacyNormalize: withStrictInput(nodeCreateInput, normalizeNodeCreateInput),
   errors: [
+    'node.not_found',
     'space.not_found',
     'space.ambiguous',
     'agent.launch_failed',
@@ -129,8 +131,26 @@ export const nodeUpdateOperation = defineOperation({
     'persistence.io_failed',
   ],
 })
+export const nodeResolveCallerSelectorOperation = defineOperation({
+  id: 'node.resolveCallerSelector',
+  kind: 'query',
+  scope: 'read',
+  availability: 'always',
+  summary: 'Resolve the caller’s parent node from authenticated creation lineage',
+  input: z.strictObject({
+    selector: z.literal('@parent'),
+    expectedCallerNodeId: z.string().trim().min(1).optional(),
+  }),
+  errors: [
+    'node.parent_unavailable',
+    'node.not_found',
+    'persistence.unavailable',
+    'persistence.invalid_state',
+  ],
+})
 export const nodeOperations = [
   nodeManagedClaudeBindingOperation,
+  nodeResolveCallerSelectorOperation,
   nodeCreateOperation,
   nodeDeleteOperation,
   nodeGetOperation,

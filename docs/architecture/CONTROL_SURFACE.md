@@ -405,3 +405,15 @@ watermark; the callback never invokes enqueuing Hub APIs. Response disconnect an
 propagate cancellation to the service. Internal receipt fields stay out of public snapshots.
 See [Prompt delivery](../agent/PROMPT_DELIVERY.md) for the precise promise and limitations.
 This adds an operation and internal ports within existing dependency boundaries; no executable-rule impact.
+
+## 节点血缘查询
+
+`features.nodeLineageV1` 表示 Worker 安装了 lineage repository 与 `node.resolveCallerSelector`。
+该 strict-schema read query 接受 `{selector:"@parent", expectedCallerNodeId?:string}`；
+expected ID 仅为身份 mismatch fence，parent 始终由 verified grant 推导。无身份、root、已删除父节点
+分别返回 `node.parent_unavailable` 的 caller_identity_required、no_parent、parent_deleted，均不可自动重试。
+节点不存在返回 node.not_found，身份不符返回 common.forbidden。父节点不限 kind，具体操作继续检查权限与运行状态。
+`node.list`、`agent.list` 的 spawnedByNodeId 仅筛选直接子节点，在客户端 limit 之前执行。
+公开 node query 返回 spawnedBy、lineageDepth、lineageStatus；agent CLI/context 从 node metadata 投影。
+现有 @self fallback 与 Space 语义不变。此功能不声明 spawn cap 或 PR2 admission 支持。
+无新增跨层依赖规则：no executable-rule impact。

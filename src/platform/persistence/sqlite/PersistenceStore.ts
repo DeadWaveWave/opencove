@@ -5,6 +5,12 @@ import {
   type ManagedClaudeResumeRead,
 } from './managedClaudeResumeRead'
 import type { AppStateCommittedObservation } from '../../../shared/contracts/managedClaudeLaunch'
+import {
+  createSqliteNodeLineageRepository,
+  insertNodeLineage,
+} from '../../../contexts/workspace/infrastructure/nodeLineage/SqliteNodeLineageRepository'
+import type { NodeLineageRecord } from '../../../contexts/workspace/domain/nodeLineage'
+import type { NodeLineageRepository } from '../../../contexts/workspace/application/nodeLineage/NodeLineageRepository'
 import { mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import Database from 'better-sqlite3'
@@ -29,7 +35,7 @@ import {
   readAppStateRevisionFromDb,
 } from './managedClaudeResumeStore'
 import { sweepManagedClaudeResumeOrphans } from './managedClaudeResumeSchema'
-import type { InternalPersistWriteResult } from './appStateWriteResult'
+import { invalidStateResult, type InternalPersistWriteResult } from './appStateWriteResult'
 
 export type PersistenceRecoveryReason = 'corrupt_db' | 'migration_failed'
 
@@ -39,6 +45,11 @@ export interface PersistenceStore {
   isManagedClaudeRuntimeReferenced?: ManagedClaudeResumeRead['isManagedClaudeRuntimeReferenced']
   activateManagedClaudeRuntime?: ManagedClaudeResumeBindingStore['activateManagedClaudeRuntime']
   onAppStateCommitted?: (listener: (event: AppStateCommittedObservation) => void) => () => void
+  nodeLineage?: NodeLineageRepository
+  commitCreatedNodeState?: (
+    state: unknown,
+    options: { expectedRevision: number; lineage: NodeLineageRecord },
+  ) => Promise<InternalPersistWriteResult>
   readWorkspaceStateRaw: () => Promise<string | null>
   writeWorkspaceStateRaw: (raw: string) => Promise<InternalPersistWriteResult>
 
@@ -67,16 +78,6 @@ export type WriteAppStateOptions = {
   baseRevision?: number | null
   allowEmptyWorkspaceOverwrite?: boolean
   expectedRevision?: number
-}
-
-function invalidStateResult(debugMessage: string): PersistWriteResult {
-  return {
-    ok: false,
-    reason: 'unknown',
-    error: createAppErrorDescriptor('persistence.invalid_state', {
-      debugMessage,
-    }),
-  }
 }
 
 function hasExistingWorkspaces(sqlite: Database.Database): boolean {
@@ -257,9 +258,10 @@ export async function createPersistenceStore(storeOptions: {
     }
   }
 
-  const writeAppState = async (
+  const persistAppState = async (
     state: unknown,
     options?: WriteAppStateOptions,
+    lineage?: NodeLineageRecord,
   ): Promise<InternalPersistWriteResult> => {
     const normalized = normalizePersistedAppState(state)
     if (!normalized) {
@@ -282,6 +284,14 @@ export async function createPersistenceStore(storeOptions: {
       const { result, event } = sqlite.transaction(() => {
         const before = commits.capture()
         const written = writeNormalizedAppState(sqlite, normalized, options?.expectedRevision)
+        if (lineage) {
+          if (
+            !written.effectiveState.workspaces.some(w => w.nodes.some(n => n.id === lineage.nodeId))
+          ) {
+            throw createAppError('persistence.invalid_state')
+          }
+          insertNodeLineage(sqlite, lineage)
+        }
         return { result: written, event: commits.describe(before, written.revision) }
       })()
       commits.publish(event)
@@ -294,7 +304,10 @@ export async function createPersistenceStore(storeOptions: {
       ) {
         return { ok: false, reason: 'unknown', error: error.toDescriptor() }
       }
-      if (error instanceof PersistenceRevisionConflict) {
+      if (
+        error instanceof PersistenceRevisionConflict ||
+        (error instanceof OpenCoveAppError && error.code === 'persistence.invalid_state')
+      ) {
         return invalidStateResult(error.message)
       }
       return {
@@ -317,6 +330,10 @@ export async function createPersistenceStore(storeOptions: {
     }
 
   return {
+    nodeLineage: createSqliteNodeLineageRepository(sqlite),
+    commitCreatedNodeState: atCleanBoundary((state, options) =>
+      persistAppState(state, { expectedRevision: options.expectedRevision }, options.lineage),
+    ),
     ...createManagedClaudeResumeStore(sqlite, () => readAppStateFromDb(db)),
     ...createManagedClaudeResumeRead(sqlite),
     onAppStateCommitted: commits.subscribe,
@@ -325,7 +342,7 @@ export async function createPersistenceStore(storeOptions: {
     writeWorkspaceStateRaw: atCleanBoundary(writeWorkspaceStateRaw),
     readAppState: atCleanBoundary(readAppState),
     readAppStateRevision: atCleanBoundary(readAppStateRevision),
-    writeAppState: atCleanBoundary(writeAppState),
+    writeAppState: atCleanBoundary((state, options) => persistAppState(state, options)),
     ...createPersistenceScrollbackStore(sqlite, db),
     consumeRecovery: () => {
       const current = recovery

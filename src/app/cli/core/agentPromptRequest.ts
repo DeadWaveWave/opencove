@@ -32,9 +32,7 @@ export async function sendAgentPrompt(ctx: CommandContext): Promise<unknown> {
   if (!supported) {
     ctx.io.stderr.write('This Worker cannot steer; busy refusal remains unchanged.\n')
   } else {
-    ctx.io.stderr.write(
-      `Delivery ID: ${deliveryId}. Never resend; check opencove agent delivery ${deliveryId} or the screen.\n`,
-    )
+    ctx.io.stderr.write(`Sending prompt (delivery ${deliveryId}).\n`)
   }
   try {
     const result = (await ctx.invoke('agent.prompt', payload)) as { phase?: string }

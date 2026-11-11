@@ -10,7 +10,7 @@ const documented: Record<string, [string[], string[]]> = {
   'canvas.focus': [['target'], ['target']],
   'node.delete': [['nodeId'], ['nodeId']],
   'node.get': [['nodeId'], ['nodeId']],
-  'node.list': [['space', 'projectId', 'kind'], []],
+  'node.list': [['space', 'projectId', 'kind', 'spawnedByNodeId'], []],
   'node.update': [
     ['kind', 'nodeId', 'title', 'frame', 'data'],
     ['kind', 'nodeId'],

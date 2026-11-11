@@ -100,6 +100,9 @@ export function normalizeListPayload(payload: unknown): ListNodesInput {
       payload.space === null || payload.space === undefined
         ? null
         : normalizeSpaceLocator(payload.space),
+    ...(payload.spawnedByNodeId !== undefined
+      ? { spawnedByNodeId: optionalString(payload.spawnedByNodeId) }
+      : {}),
     projectId: optionalString(payload.projectId),
     kind:
       payload.kind === null || payload.kind === undefined

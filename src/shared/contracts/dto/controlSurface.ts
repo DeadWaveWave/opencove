@@ -40,6 +40,7 @@ export interface ControlSurfaceCapabilitiesResult {
   appVersion: string | null
   features: {
     managedClaudeResumeBindingV1?: boolean
+    nodeLineageV1?: boolean
     operationRegistry?: boolean
     webShell: boolean
     sync: {

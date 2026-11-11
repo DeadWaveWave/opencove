@@ -8,7 +8,7 @@ import { describeWithElectronNativeModules } from '../electronNativeSuite'
 import { createPersistenceStore } from '../../../src/platform/persistence/sqlite/PersistenceStore'
 import { migrate } from '../../../src/platform/persistence/sqlite/migrate'
 import { DB_SCHEMA_VERSION } from '../../../src/platform/persistence/sqlite/constants'
-import { stateWithAgent, tupleA } from './managedClaudeResumeBindingFixtures'
+import { stateWithAgent, tupleA, tupleB } from './managedClaudeResumeBindingFixtures'
 
 describeWithElectronNativeModules('managed Claude resume schema and orphan reclamation', () => {
   let root: string
@@ -25,9 +25,13 @@ describeWithElectronNativeModules('managed Claude resume schema and orphan recla
   })
   const open = () =>
     createPersistenceStore({ dbPath: join(root, 'state.db'), strictRecovery: true })
-  function assertEmptyLedger() {
+  function assertEmptySideTables() {
     expect(sql.pragma('user_version', { simple: true })).toBe(DB_SCHEMA_VERSION)
-    for (const table of ['managed_claude_resume_bindings', 'retired_managed_nodes']) {
+    for (const table of [
+      'managed_claude_resume_bindings',
+      'retired_managed_nodes',
+      'node_lineage',
+    ]) {
       expect(sql.prepare(`SELECT * FROM ${table}`).all()).toEqual([])
       expect(sql.pragma(`foreign_key_list(${table})`)).toEqual([])
     }
@@ -38,7 +42,7 @@ describeWithElectronNativeModules('managed Claude resume schema and orphan recla
       .prepare('INSERT INTO kv VALUES (?, ?)')
       .run('workspace-state-raw', JSON.stringify(stateWithAgent()))
     store = await open()
-    assertEmptyLedger()
+    assertEmptySideTables()
     expect(await store.readAppState()).toMatchObject({
       workspaces: [{ nodes: [{ agent: tupleA }] }],
     })
@@ -50,23 +54,57 @@ describeWithElectronNativeModules('managed Claude resume schema and orphan recla
     await store.writeAppState(stateWithAgent())
     store.dispose()
     sql.exec(
-      'DROP TABLE managed_claude_resume_bindings; DROP TABLE retired_managed_nodes; PRAGMA user_version = 13',
+      'DROP TABLE managed_claude_resume_bindings; DROP TABLE retired_managed_nodes; DROP TABLE node_lineage; PRAGMA user_version = 13',
     )
     store = await open()
-    assertEmptyLedger()
+    assertEmptySideTables()
     expect(await store.readAppStateSnapshot()).toMatchObject({
       revision: 1,
       state: { workspaces: [{ nodes: [{ agent: tupleA }] }] },
     })
   })
-  it('repairs missing current-schema structures without inventing rows', async () => {
-    migrate(sql)
-    sql.exec('DROP TABLE managed_claude_resume_bindings; DROP TABLE retired_managed_nodes')
+  it('upgrades v14 without changing ledger bindings, retired IDs or the snapshot revision', async () => {
     store = await open()
-    assertEmptyLedger()
+    expect(await store.writeAppState(stateWithAgent())).toMatchObject({ ok: true, revision: 1 })
+    expect(
+      await store.activateManagedClaudeRuntime({
+        nodeId: 'agent',
+        activationId: 'v14-activation',
+        runtimeSessionId: 'v14-runtime',
+        tuple: tupleB,
+      }),
+    ).toMatchObject({ status: 'committed', revision: 2 })
+    sql.prepare('INSERT INTO retired_managed_nodes VALUES (?, ?, ?)').run('retired', 2, Date.now())
+    const ledger = sql.prepare('SELECT * FROM managed_claude_resume_bindings').all()
+    const retired = sql.prepare('SELECT * FROM retired_managed_nodes').all()
+    store.dispose()
+    sql.exec('DROP TABLE node_lineage; PRAGMA user_version = 14')
+    store = await open()
+    expect(sql.pragma('user_version', { simple: true })).toBe(DB_SCHEMA_VERSION)
+    expect(sql.prepare('SELECT * FROM managed_claude_resume_bindings').all()).toEqual(ledger)
+    expect(sql.prepare('SELECT * FROM retired_managed_nodes').all()).toEqual(retired)
+    expect(sql.prepare('SELECT * FROM node_lineage').all()).toEqual([])
+    expect(await store.readAppStateSnapshot()).toMatchObject({
+      revision: 2,
+      state: { workspaces: [{ nodes: [{ sessionId: 'v14-runtime', agent: tupleB }] }] },
+    })
+  })
+  it('repairs missing current-schema structures without inventing rows', async () => {
+    store = await open()
+    expect(await store.writeAppState(stateWithAgent())).toMatchObject({ ok: true, revision: 1 })
+    store.dispose()
+    sql.exec(
+      'DROP TABLE managed_claude_resume_bindings; DROP TABLE retired_managed_nodes; DROP TABLE node_lineage',
+    )
+    store = await open()
+    assertEmptySideTables()
+    expect(await store.readAppStateSnapshot()).toMatchObject({
+      revision: 1,
+      state: { workspaces: [{ nodes: [{ agent: tupleA }] }] },
+    })
     store.dispose()
     store = await open()
-    assertEmptyLedger()
+    assertEmptySideTables()
   })
   it('reclaims only old unseen absent rows at open and preserves first-seen rows across restart', async () => {
     store = await open()

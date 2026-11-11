@@ -2,6 +2,7 @@ import { expect, it } from 'vitest'
 import { withAgentRunBindings } from '../../../src/app/main/controlSurface/agentRunStatePersistence'
 import { AgentRunStateRegistry } from '../../../src/contexts/agent/application/AgentRunStateRegistry'
 import { AgentRunStateRuntime } from '../../../src/contexts/agent/application/AgentRunStateRuntime'
+import { normalizePersistedAppState } from '../../../src/platform/persistence/sqlite/normalize'
 import {
   createInMemoryPersistenceStore,
   createMinimalState,
@@ -51,4 +52,87 @@ it('projects only successful durable bindings and never restores a persisted run
   expect((await first.writeAppState({ ...initial, workspaces: [] })).ok).toBe(false)
   expect(registry.get({ nodeId: 'node' })?.sessionId).toBe('new')
   runtime.dispose()
+})
+
+it('projects bindings through the lineage-aware commit and leaves rejected commits unchanged', async () => {
+  const registry = new AgentRunStateRegistry({
+    epoch: 'lineage',
+    now: () => 1,
+    createTurnId: () => 'turn',
+    schedule: () => () => {},
+  })
+  const runtime = new AgentRunStateRuntime(registry, () => 1)
+  const store = createInMemoryPersistenceStore()
+  let accept = true
+  store.commitCreatedNodeState = async (state, options) =>
+    accept
+      ? store.writeAppState(state, options)
+      : { ok: false, reason: 'unknown', error: { code: 'persistence.invalid_state' } }
+  const wrapped = await withAgentRunBindings(async () => store, runtime)()
+  const initial = createMinimalState('/repo', 'p', 'space')
+  const state = {
+    ...initial,
+    workspaces: [
+      {
+        ...initial.workspaces[0],
+        nodes: [{ id: 'child', kind: 'agent', sessionId: 'session', title: 'Child' }],
+      },
+    ],
+  }
+  runtime.metadata({ sessionId: 'session', resumeSessionId: null, agentProvider: 'codex' })
+  await wrapped.commitCreatedNodeState!(state, {
+    expectedRevision: 0,
+    lineage: { nodeId: 'child', spawnedBy: 'parent', rootNodeId: 'parent', lineageDepth: 2 },
+  })
+  expect(registry.get({ nodeId: 'child' })).toMatchObject({ sessionId: 'session' })
+  accept = false
+  await wrapped.commitCreatedNodeState!(initial, {
+    expectedRevision: 1,
+    lineage: { nodeId: 'other', spawnedBy: 'parent', rootNodeId: 'parent', lineageDepth: 2 },
+  })
+  expect(registry.get({ nodeId: 'child' })).toMatchObject({ sessionId: 'session' })
+  runtime.dispose()
+})
+
+it('projects the effective runtime session after a corrected lineage creation commit', async () => {
+  const registry = new AgentRunStateRegistry({
+    epoch: 'corrected',
+    now: () => 1,
+    createTurnId: () => 'turn',
+    schedule: () => () => {},
+  })
+  const runtime = new AgentRunStateRuntime(registry, () => 1)
+  try {
+    const store = createInMemoryPersistenceStore()
+    const initial = createMinimalState('/repo', 'project', 'space')
+    const submitted = {
+      ...initial,
+      workspaces: [
+        {
+          ...initial.workspaces[0],
+          nodes: [{ id: 'child', kind: 'agent', title: 'Claude', sessionId: 'stale' }],
+        },
+      ],
+    }
+    const effectiveState = normalizePersistedAppState(submitted)!
+    effectiveState.workspaces[0].nodes[0].sessionId = 'canonical'
+    store.commitCreatedNodeState = async (_state, options) => {
+      const result = await store.writeAppState(effectiveState, options)
+      return result.ok ? { ...result, revision: 1, corrected: true, effectiveState } : result
+    }
+    const wrapped = await withAgentRunBindings(async () => store, runtime)()
+    for (const sessionId of ['stale', 'canonical']) {
+      runtime.metadata({ sessionId, resumeSessionId: null, agentProvider: 'claude-code' })
+    }
+    expect(
+      await wrapped.commitCreatedNodeState!(submitted, {
+        expectedRevision: 0,
+        lineage: { nodeId: 'child', spawnedBy: 'parent', rootNodeId: 'parent', lineageDepth: 2 },
+      }),
+    ).toMatchObject({ ok: true, revision: 1, corrected: true, effectiveState })
+    expect(registry.get({ nodeId: 'child' })).toMatchObject({ sessionId: 'canonical' })
+    expect(registry.get({ sessionId: 'stale' })?.nodeId).toBeNull()
+  } finally {
+    runtime.dispose()
+  }
 })

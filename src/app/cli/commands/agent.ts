@@ -1,3 +1,4 @@
+import { turnReplyFields, validateTurnWaitOptions } from '../core/agentTurnComposition'
 import { promptAndWait } from './agentPromptWait'
 import { defineCommand } from '../core/command'
 import { CliError, usage } from '../core/errors'
@@ -19,6 +20,7 @@ export const agentPromptCommand = defineCommand({
     'Send text to a local Claude Code or Codex agent window OpenCove launched. Inspect drafts/dialogs with agent read --screen first; existing drafts may be submitted too. Choose one text source: positional text, --text or --text-file (- reads stdin).',
     'Working agents receive steering by default; --if-busy refuse rejects busy agents. --expect-turn requires that exact active turn. Waiting, unknown/degraded and unsupported sessions refuse. Agent terminals cannot send provider commands or answer dialogs.',
     '--wait confirms delivery, then waits for its exact turn to end. Add --read for the correlated reply; missing replies return reply: null with replyUnavailableReason. Check outcome and reply. Without --wait, save deliveryId and turnId for delivery → wait --turn → read --turn.',
+    'Stderr shows "Sending prompt (delivery <id>)." before sending and, with --wait, "Waiting for turn <turnId> of node <nodeId>..." with an interruption-only continuation command. These progress lines preserve IDs; the final JSON and exit status report the result.',
     'With --wait, --timeout covers confirmation and turn waiting (default 20s; minimum 250ms); sending has a separate 15s budget. Without --wait, --timeout controls sending (default 15s; maximum 60s).',
     'Never resend after uncertainty, interruption or textComparison: different. Resume with agent delivery or agent wait --turn using the returned IDs. This command never retries.',
     'Exit codes: 0 submitted/dispatched, or selected turn ended with --wait; 1 refusal/unconfirmed; 2 invalid input; 4 authorization refusal; 10 waiting for user; 11 target exited; 124 timeout; 130 interruption. Details: opencove skill coordinate.',
@@ -70,25 +72,7 @@ export const agentPromptCommand = defineCommand({
         'textComparison',
         'comparisonProfile',
         'promptId',
-        'outcome',
-        'endedAt',
-        'reply',
-        ...[
-          'nodeId',
-          'sessionId',
-          'turnId',
-          'deliveryIds',
-          'promptIds',
-          'promptId',
-          'outcome',
-          'message',
-          'truncated',
-          'messageKind',
-          'persisted',
-          'memoryOnlyReason',
-          'source',
-        ].map(field => `reply.${field}`),
-        'replyUnavailableReason',
+        ...turnReplyFields.filter(field => field !== 'turnId'),
       ],
       {},
     ),
@@ -98,9 +82,7 @@ export const agentPromptCommand = defineCommand({
     ],
   },
   buildInput: ({ options, positionals }) => {
-    if (options.read && !options.wait) {
-      usage('--read requires --wait.')
-    }
+    validateTurnWaitOptions(options)
     if (positionals[0] !== undefined && options.text !== undefined) {
       usage('Choose one prompt text source: positional text, --text or --text-file.')
     }
@@ -110,13 +92,6 @@ export const agentPromptCommand = defineCommand({
         'Provide prompt text as an argument, with --text or with --text-file.',
         'Use exactly one. Use --text-file - to read from stdin.',
       )
-    }
-    const waitTimeout = Number(options.timeout ?? 20000)
-    if (
-      options.wait &&
-      (!Number.isSafeInteger(waitTimeout) || waitTimeout < 250 || waitTimeout > 2147483647)
-    ) {
-      usage('Wait timeout must be whole milliseconds from 250ms to 2147483647ms (about 24 days).')
     }
     const timeoutMs = options.wait ? 15000 : (options.timeout ?? 15000)
     if (!Number.isInteger(timeoutMs) || Number(timeoutMs) < 1 || Number(timeoutMs) > 60000) {

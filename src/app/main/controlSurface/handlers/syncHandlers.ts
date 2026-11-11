@@ -1,3 +1,4 @@
+import { prepareNodeLineage } from '../../../../contexts/workspace/application/nodeLineage/NodeLineageOwner'
 import { randomUUID } from 'node:crypto'
 import {
   persistWriteWireResult,
@@ -247,7 +248,23 @@ export function registerSyncHandlers(
         }),
       }
 
-      await persistNextAppState(store, nextState, { expectedRevision })
+      const lineage = await prepareNodeLineage(
+        {
+          ...store,
+          readAppState: async () => normalizePersistedAppState(await store.readAppState()),
+        },
+        nodeId,
+        ctx.requestAuth?.kind === 'session-grant' ? ctx.requestAuth.grant.nodeId : null,
+      )
+      ctx.assertActive?.()
+      if (lineage) {
+        const result = await store.commitCreatedNodeState!(nextState, { expectedRevision, lineage })
+        if (!result.ok) {
+          throw createAppError(result.error)
+        }
+      } else {
+        await persistNextAppState(store, nextState, { expectedRevision })
+      }
       const revision = await store.readAppStateRevision()
 
       return {

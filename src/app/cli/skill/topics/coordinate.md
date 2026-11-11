@@ -1,6 +1,33 @@
 # Coordinate agents
 
-## Send and wait for a simple hand-off
+## Create and wait for a one-shot delegation
+
+When delegation is authorized, prefer:
+
+```sh
+opencove node create agent --space space-123 --prompt-file ./assignment.txt --wait --read --timeout 2m
+```
+
+This creates once, identifies the initial Claude Code/Codex turn on the new session, waits for that
+exact turn and returns the create result plus turnId, outcome, endedAt and reply. Check outcome and
+reply: all ended outcomes exit 0; missing reply is null with replyUnavailableReason. --wait requires
+--prompt or --prompt-file; --read requires --wait. --timeout covers identification + waiting (default
+20s, minimum 250ms); creation keeps its own 20s budget. -q prints only the ID after completion.
+Errors retain known nodeId/sessionId/turnId and never permit retrying creation: the node remains.
+Exit 10 needs the user; 11 means exited; 124 means timeout; 130 means interrupted. Unsupported
+providers return agent.wait_unsupported after creation. Resume the exact agent wait/read commands
+in the hint. If no first turn was observed, lifecycle telemetry may be unavailable: the agent may
+still be running or may already have finished. Inspect the existing session with agent get/read
+--screen and check its sessionId. Do not recreate the node or resend the prompt.
+
+Stderr preserves IDs: `Created agent node <nodeId> (session <sessionId>).` or, before sending,
+`Sending prompt (delivery <id>).` even without --wait. `Waiting for turn <turnId> of node <nodeId>...`
+gives an interruption-only continuation; the final JSON and exit status report the result.
+
+When you need to keep working, omit --wait, save node.id and node.sessionId, inspect agent get for
+the matching session’s turn or lastEndedTurn, then use agent wait --turn and agent read --turn.
+
+## Send and wait for an existing agent
 
 Only create agents when authorized for their provider, model and workspace. Ask before delegating
 unless delegation was requested. Never answer another agent's permission prompts or dialogs. A
@@ -143,3 +170,11 @@ tool return the CLI's result. Exit 10 requires inspection and the user, not repe
 opencove agent delivery delivery-123 --wait --timeout 2m
 opencove agent prompt --node agent-123 --text "Include boundary tests" --expect-turn turn-123
 ```
+
+## Report back to your parent
+
+When delegated work is complete, inspect `node get --node @self` for `spawnedBy` and report
+through `opencove agent prompt --node @parent --text "Review complete; boundary tests passed" --wait --read`.
+Use this only for authorized coordination. A terminal parent needs registered agent run state;
+a root has no parent, and `parent_deleted` means the original node was removed. Keep findings in a
+shared note if messaging is unavailable. Do not substitute a node named `@parent` or retry a refusal.

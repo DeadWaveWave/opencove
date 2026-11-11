@@ -1,4 +1,5 @@
 import { CliError } from './errors'
+import { nodeParentErrorPresentation } from '../../../shared/errors/nodeParentError'
 
 /** HTTP authentication/authorization status takes precedence over legacy descriptors. */
 export function authorizationError(
@@ -14,6 +15,8 @@ export function authorizationError(
     )
   }
   if (status === 403 || error?.code === 'common.forbidden') {
+    const parent =
+      error?.code === 'common.forbidden' ? nodeParentErrorPresentation(error) : undefined
     const details = error?.details
     const policy =
       details && typeof details === 'object' ? (details as Record<string, unknown>) : undefined
@@ -21,10 +24,11 @@ export function authorizationError(
     return new CliError(
       error?.code ?? 'common.forbidden',
       4,
-      policyReason && typeof policy?.message === 'string'
-        ? policy.message
-        : 'This credential does not permit the operation.',
-      undefined,
+      parent?.message ??
+        (policyReason && typeof policy?.message === 'string'
+          ? policy.message
+          : 'This credential does not permit the operation.'),
+      parent?.hint,
       details,
     )
   }
