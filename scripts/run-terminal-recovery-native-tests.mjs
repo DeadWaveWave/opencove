@@ -30,6 +30,8 @@ const tests = process.argv.includes('--worker-ownership')
       'tests/contract/platform/managedClaudeResumeSync.native.spec.ts',
       'tests/contract/platform/managedClaudeResumeMigration.native.spec.ts',
       'tests/contract/platform/managedRuntime.native.spec.ts',
+      'tests/contract/platform/persistenceCanonicalization.native.spec.ts',
+      'tests/contract/platform/clientPersistenceSerialization.native.spec.ts',
       'tests/contract/controlSurface/controlSurfaceHttpServer.nodeWorkerBindingRecovery.spec.ts',
       'tests/contract/controlSurface/controlSurfaceHttpServer.remoteTerminalRecovery.spec.ts',
       'tests/contract/controlSurface/controlSurfaceHttpServer.terminalRecovery.spec.ts',
