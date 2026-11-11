@@ -34,7 +34,10 @@ import type { SyncEventPayload } from '@shared/contracts/dto'
 import { toShellWorkspaceStateForSync } from './workerSync/mergeWorkspaceStateForSync'
 import { hasRuntimeBindingPublication } from './workerSync/runtimeSessionBinding'
 
-import { acceptWorkerSyncSnapshot } from './workerSync/acceptWorkerSyncSnapshot'
+import {
+  acceptWorkerSyncSnapshot,
+  registerWorkerSyncPresentation,
+} from './workerSync/acceptWorkerSyncSnapshot'
 
 const LOCAL_SYNC_WRITE_EVENT_NAME = 'opencove.localSyncWrite'
 
@@ -148,6 +151,7 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
     }
     let active = true
     const scopeGeneration = persistenceScope()
+    const unregisterPresentation = registerWorkerSyncPresentation()
     let failedRefreshes = 0
 
     const handleLocalSyncWrite = (event: Event): void => {
@@ -476,6 +480,7 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
 
     return () => {
       active = false
+      unregisterPresentation()
       if (refreshTimerRef.current !== null) {
         window.clearTimeout(refreshTimerRef.current)
         refreshTimerRef.current = null

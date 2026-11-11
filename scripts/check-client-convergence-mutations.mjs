@@ -67,6 +67,23 @@ const mutations = [
     filter: 'owned=false adapter=local trace=3 ',
   },
   {
+    id: 'I8',
+    file: persistence + 'drain.ts',
+    from: "const captured = 'editGeneration' in input ? input : capturePublication(input)",
+    to: "return true\n  const captured = 'editGeneration' in input ? input : capturePublication(input)",
+    test: model,
+    filter: 'owned=false adapter=local trace=111 ',
+  },
+  {
+    id: 'I9',
+    marker: 'I1:',
+    file: persistence + 'toPersistedState.ts',
+    from: '    settings,',
+    to: '    settings: { ...settings, sidebarCollapsedSpaceGroupIds: {} },',
+    test: model,
+    filter: 'owned=false adapter=local trace=113 ',
+  },
+  {
     id: 'I7',
     file: persistence + 'toPersistedState.ts',
     from: 'title: node.data.title,',
@@ -101,7 +118,7 @@ try {
     copyFileSync(path.join(root, file), path.join(directory, file))
   }
   symlinkSync(path.join(root, 'node_modules'), path.join(directory, 'node_modules'), 'dir')
-  const smoke = run(model, 'owned=false adapter=local trace=3 ', 'unmutated.log')
+  const smoke = run(model, 'owned=false adapter=local trace=(3|111|113) ', 'unmutated.log')
   if (smoke.status !== 0) {
     throw new Error(`Unmutated explorer failed; inspect ${directory}/unmutated.log`)
   }
@@ -114,7 +131,7 @@ try {
     try {
       writeFileSync(target, source.replace(mutation.from, mutation.to))
       const result = run(mutation.test, mutation.filter, `${mutation.id}.log`)
-      if (result.status === 0 || !result.output.includes(`${mutation.id}:`)) {
+      if (result.status === 0 || !result.output.includes(mutation.marker ?? `${mutation.id}:`)) {
         throw new Error(
           `Mutation ${mutation.id} survived or failed for another reason; inspect ${directory}/${mutation.id}.log`,
         )
@@ -124,7 +141,7 @@ try {
       writeFileSync(target, source)
     }
   }
-  process.stdout.write(`7/7 source mutants killed. Logs: ${directory}\n`)
+  process.stdout.write(`9/9 source mutants killed. Logs: ${directory}\n`)
 } catch (error) {
   process.stderr.write(`${String(error)}\n`)
   process.exitCode = 1

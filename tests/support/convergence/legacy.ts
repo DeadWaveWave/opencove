@@ -10,6 +10,11 @@ export function checkLegacyCompatibility(
   const expected = correction
     ? { ui: correction.ui, server: correction.server }
     : { ui: row.ui, server: row.server }
+  const recorded = (input: unknown) => {
+    const { name, title, collapsed, tuple, runtime } = input as import('./model').Value
+    return { name, title, collapsed, tuple, runtime }
+  }
+  observed = { ui: recorded(observed.ui), server: recorded(observed.server) }
   if (JSON.stringify(expected) !== JSON.stringify(observed)) {
     throw new Error(
       `I7: legacy deviation ${row.adapter}:${row.index}${correction ? ` (${correction.reason})` : ''}`,

@@ -6,13 +6,21 @@ export function fixture(owned: boolean): PersistedAppState {
   return {
     formatVersion: 1,
     activeWorkspaceId: 'project',
-    settings: DEFAULT_AGENT_SETTINGS,
+    settings: structuredClone(DEFAULT_AGENT_SETTINGS),
     workspaces: [
       ensurePersistedWorkspace({
         id: 'project',
         name: 'Project',
         path: '/tmp/convergence',
-        spaces: [],
+        spaces: [
+          {
+            id: 'space',
+            name: 'Tasks',
+            directoryPath: '/tmp/convergence',
+            nodeIds: ['terminal'],
+            rect: null,
+          },
+        ],
         nodes: [
           {
             id: 'agent',
@@ -60,6 +68,8 @@ export function value(state: PersistedAppState): Value {
     name: workspace.name,
     title: node.title,
     collapsed: workspace.collapsedNodeIds?.includes('agent') ?? false,
+    sidebar: state.settings.sidebarCollapsedSpaceGroupIds['project:space'] === true,
+    sidebarRoot: state.settings.sidebarCollapsedSpaceGroupIds['project:project-root'] === true,
     tuple: node.agent!.resumeSessionId!,
     runtime: node.sessionId ?? '',
   }
@@ -68,6 +78,10 @@ export function snapshot(template: PersistedAppState, model: Value): PersistedAp
   const state = structuredClone(template),
     workspace = state.workspaces[0],
     node = workspace.nodes.find(n => n.id === 'agent')!
+  state.settings.sidebarCollapsedSpaceGroupIds = {
+    ...(model.sidebar ? { 'project:space': true } : {}),
+    ...(model.sidebarRoot ? { 'project:project-root': true } : {}),
+  }
   workspace.name = model.name
   workspace.collapsedNodeIds = model.collapsed ? ['agent'] : []
   workspace.collapsedSpaceIds = []

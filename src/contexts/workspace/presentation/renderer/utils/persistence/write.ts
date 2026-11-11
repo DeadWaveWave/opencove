@@ -1,4 +1,5 @@
 /* eslint-disable no-await-in-loop -- Ordered persistence repair and lifecycle transitions must run sequentially. */
+import { capturePublicationPresentation } from './livePresentation'
 import { parsePersistedStateValue } from './read'
 import type { PersistedAppState } from '../../types'
 import { classifyWriteResult } from '@shared/sync/persistenceWriteOutcome'
@@ -46,6 +47,7 @@ function consumeResult(
   generation: number,
   ancestorRaw: string | null,
   submittedRaw?: string,
+  presentationRaw?: string,
 ): PersistWriteResult {
   if (persistenceScope() !== generation) {
     return result
@@ -56,7 +58,7 @@ function consumeResult(
       recordPendingPublication(
         {
           candidateRaw: raw,
-          ancestorRaw: raw,
+          ancestorRaw: presentationRaw ?? raw,
           minimumRevision: result.revision ?? null,
           kind: result.uncertain ? 'uncertain-refresh' : 'committed-refresh',
         },
@@ -73,7 +75,7 @@ function consumeResult(
         recordPendingPublication(
           {
             candidateRaw: raw,
-            ancestorRaw: raw,
+            ancestorRaw: presentationRaw ?? raw,
             minimumRevision: result.revision ?? null,
             kind: 'committed-refresh',
           },
@@ -100,6 +102,7 @@ function consumeResult(
         unknownOutcome: true,
         draftRaw: raw,
         submittedRaw,
+        ...(presentationRaw ? { presentationRaw } : {}),
       },
       generation,
     )
@@ -203,6 +206,10 @@ export async function writeRawPersistedState(raw: string): Promise<PersistWriteR
       error: createAppErrorDescriptor('persistence.io_failed'),
     }
   }
+  const presentationRaw =
+    capturePublicationPresentation() ??
+    (getSyncedPersistedState() ? content(getSyncedPersistedState()!) : undefined)
+  const ancestorRaw = getSyncedPersistedState() ? content(getSyncedPersistedState()!) : null
   const finish = beginPublicationSubmission()
   let result: PersistWriteResult
   try {
@@ -222,8 +229,9 @@ export async function writeRawPersistedState(raw: string): Promise<PersistWriteR
         result.ok ? { ...result, merged: true } : result,
         state,
         generation,
-        getSyncedPersistedState() ? content(getSyncedPersistedState()!) : null,
+        ancestorRaw,
         raw,
+        presentationRaw,
       )
     }
     if (!state && !result.ok && result.outcome === 'unknown') {

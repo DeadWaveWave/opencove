@@ -1,4 +1,7 @@
 import { vi } from 'vitest'
+import { sqliteWireState } from './sqliteWire'
+import { normalizePersistedAppState } from '@platform/persistence/sqlite/normalize'
+import { invalidStateResult } from '@platform/persistence/sqlite/appStateWriteResult'
 import { createBrowserPersistenceApi } from '@app/renderer/browser/browserOpenCoveApi.persistence'
 import { createRemotePersistenceStore } from '@app/main/controlSurface/remote/remotePersistenceStore'
 import type { PersistedAppState } from '@contexts/workspace/presentation/renderer/types'
@@ -9,12 +12,17 @@ export class Server {
   readonly model = new ServerModel()
   writes = 0
   delayResponse = false
+  delayCommitMs = 0
+  delayReadMs = 0
   private replies: Array<() => void> = []
   reply() {
     this.delayResponse = false
     this.replies.splice(0).forEach(reply => reply())
   }
   async submit(state: PersistedAppState, raw = false) {
+    if (this.delayCommitMs) {
+      await new Promise(resolve => setTimeout(resolve, this.delayCommitMs))
+    }
     let result: ReturnType<Server['write']> | undefined, failure: unknown
     try {
       result = this.write(state, raw)
@@ -46,15 +54,23 @@ export class Server {
       return { state: null, revision: 0, recovery: null }
     }
     return {
-      ...(this.stale ?? {
-        state: snapshot(this.template, this.model.value),
-        revision: this.model.revision,
-      }),
+      ...(this.stale
+        ? { ...this.stale, state: sqliteWireState(this.stale.state) }
+        : {
+            state: sqliteWireState(snapshot(this.template, this.model.value)),
+            revision: this.model.revision,
+          }),
       recovery: null,
     }
   }
   write(state: PersistedAppState, raw = false) {
     this.writes++
+    if (!normalizePersistedAppState(state)) {
+      const invalid = invalidStateResult('Workspace state payload must be a JSON object.')
+      if (!invalid.ok) {
+        throw invalid.error
+      }
+    }
     if (this.model.unknown) {
       this.model.replayViolation = true
     }
@@ -65,6 +81,12 @@ export class Server {
     const response = this.response
     this.response = 'committed'
     if (response === 'rejected' || response === 'identity') {
+      if (response === 'rejected') {
+        const invalid = invalidStateResult('Workspace state payload must be a JSON object.')
+        if (!invalid.ok) {
+          throw invalid.error
+        }
+      }
       throw {
         code:
           response === 'identity'
@@ -98,13 +120,16 @@ export class Server {
   }
   async invoke(id: string, payload: Record<string, unknown>) {
     if (id === 'sync.state') {
+      if (this.delayReadMs) {
+        await new Promise(resolve => setTimeout(resolve, this.delayReadMs))
+      }
       return this.read()
     }
     if (id === 'sync.writeState') {
       return await this.submit(payload.state as PersistedAppState)
     }
     if (id === 'sync.writeWorkspaceStateRaw') {
-      return await this.submit(JSON.parse(payload.raw as string), true)
+      return await this.raw(payload.raw as string)
     }
     if (id === 'sync.readWorkspaceStateRaw') {
       return JSON.stringify(this.read().state)
@@ -117,6 +142,22 @@ export class Server {
       return { ok: true, level: 'full', bytes: 1 }
     }
     return null
+  }
+  async raw(raw: string) {
+    let state: PersistedAppState
+    try {
+      state = JSON.parse(raw)
+    } catch {
+      return invalidStateResult('Workspace state payload must be a JSON object.')
+    }
+    try {
+      return await this.submit(state, true)
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error
+      }
+      return { ok: false, reason: 'unknown', error }
+    }
   }
   api(adapter: Adapter): Window['opencoveApi']['persistence'] {
     vi.stubGlobal(
@@ -168,7 +209,12 @@ export class Server {
       }
     }
     return {
-      readAppState: async () => this.read(),
+      readAppState: async () => {
+        if (this.delayReadMs) {
+          await new Promise(resolve => setTimeout(resolve, this.delayReadMs))
+        }
+        return this.read()
+      },
       writeAppState: async p => {
         try {
           return {
@@ -181,17 +227,17 @@ export class Server {
           if (error instanceof Error) {
             throw error
           }
-          return { ok: false, reason: 'io', error }
+          return { ok: false, reason: 'unknown', error }
         }
       },
       writeWorkspaceStateRaw: async p => {
         try {
-          return await this.submit(JSON.parse(p.raw), true)
+          return await this.raw(p.raw)
         } catch (error) {
           if (error instanceof Error) {
             throw error
           }
-          return { ok: false, reason: 'io', error }
+          return { ok: false, reason: 'unknown', error }
         }
       },
       readWorkspaceStateRaw: async () => JSON.stringify(this.read().state),

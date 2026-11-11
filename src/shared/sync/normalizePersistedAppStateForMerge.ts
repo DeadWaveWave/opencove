@@ -38,6 +38,8 @@ export function normalizeNodeForMerge(
     titlePinnedByUser: node.titlePinnedByUser ?? false,
     titleIsLiteral: node.titleIsLiteral ?? false,
     profileId: node.profileId ?? null,
+    runtimeKind: node.runtimeKind ?? null,
+    sessionId: node.sessionId ?? null,
     terminalGeometry: node.terminalGeometry ?? null,
     workerBinding: node.workerBinding ?? null,
     terminalProviderHint: node.terminalProviderHint ?? null,

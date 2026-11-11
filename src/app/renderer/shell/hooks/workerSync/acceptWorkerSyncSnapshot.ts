@@ -1,3 +1,4 @@
+import { registerPublicationPresentation } from '@contexts/workspace/presentation/renderer/utils/persistence/livePresentation'
 import { translate } from '@app/renderer/i18n'
 import { useAppStore } from '../../store/useAppStore'
 import { acceptPersistedStateSnapshot } from '@contexts/workspace/presentation/renderer/utils/persistence/accept'
@@ -30,4 +31,12 @@ export function acceptWorkerSyncSnapshot(
       ),
     })
   }
+}
+
+/** Register at the composition boundary; persistence itself does not own shell state. */
+export function registerWorkerSyncPresentation(): () => void {
+  return registerPublicationPresentation(() => {
+    const state = useAppStore.getState()
+    return toPersistedState(state.workspaces, state.activeWorkspaceId, state.agentSettings)
+  })
 }

@@ -1,9 +1,11 @@
 /** Independent test oracle: no imports from the publication, merge or projection implementation. */
-export type Field = 'name' | 'title' | 'collapsed'
+export type Field = 'name' | 'title' | 'collapsed' | 'sidebar' | 'sidebarRoot'
 export interface Value {
   name: string
   title: string
   collapsed: boolean
+  sidebar: boolean
+  sidebarRoot: boolean
   tuple: string
   runtime: string
 }
@@ -19,6 +21,8 @@ export class ServerModel {
     name: 'Project',
     title: 'Claude',
     collapsed: false,
+    sidebar: false,
+    sidebarRoot: false,
     tuple: 'A',
     runtime: 'runtime',
   }
@@ -59,6 +63,22 @@ export class ServerModel {
     this.history.set(++this.revision, { ...this.value })
     this.verificationHistory.set(this.revision, this.verified)
   }
+  checkQuit(success: boolean) {
+    if (!success) {
+      return
+    }
+    for (const [index, intent] of this.intents.entries()) {
+      if (this.intents.slice(index + 1).some(later => later.field === intent.field)) {
+        continue
+      }
+      if (
+        this.value[intent.field] !== intent.value &&
+        !(this.external?.field === intent.field && this.external.generation >= intent.generation)
+      ) {
+        throw new Error(`I8: quit reported success before ${intent.field} became durable`)
+      }
+    }
+  }
   check(
     observed: {
       ui: Value
@@ -82,7 +102,8 @@ export class ServerModel {
         continue
       }
       if (
-        !intent.durable &&
+        this.value[intent.field] !== intent.value &&
+        !(this.external?.field === intent.field && this.external.generation >= intent.generation) &&
         observed.ui[intent.field] !== intent.value &&
         !(observed.surfaced && observed.draft?.[intent.field] === intent.value)
       ) {
@@ -155,6 +176,13 @@ export type Action =
   | 'new-acceptance'
   | 'stale-read'
   | 'restore-read'
+  | 'raw-import'
+  | 'sidebar-collapse'
+  | 'sidebar-expand'
+  | 'autosave'
+  | 'cold-restart'
+  | 'quit-timeout'
+  | 'quit-failure'
 export const responses: Response[] = [
   'committed',
   'corrected',
@@ -264,6 +292,27 @@ export function explore(): Array<{ response: Response; actions: Action[] }> {
             'fallback',
           ],
         },
+      ],
+      [
+        { response: 'committed', actions: ['rename', 'quit', 'cold-restart'] },
+        { response: 'committed', actions: ['raw-import', 'observe', 'refresh'] },
+        {
+          response: 'committed',
+          actions: [
+            'sidebar-collapse',
+            'autosave',
+            'quit',
+            'cold-restart',
+            'cold-restart',
+            'sidebar-expand',
+            'autosave',
+            'quit',
+            'cold-restart',
+            'cold-restart',
+          ],
+        },
+        { response: 'committed', actions: ['rename', 'quit-timeout'] },
+        { response: 'committed', actions: ['rename', 'quit-failure'] },
       ],
     )
 }

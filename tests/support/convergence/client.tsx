@@ -18,13 +18,12 @@ import {
 import { requestCanonicalRefresh } from '@contexts/workspace/presentation/renderer/utils/persistence/canonicalRefresh'
 import { acceptPersistedStateSnapshot } from '@contexts/workspace/presentation/renderer/utils/persistence/accept'
 import { readPersistedStateWithMeta } from '@contexts/workspace/presentation/renderer/utils/persistence/read'
-import {
-  drainPersistedStateAtQuit,
-  capturePublication,
-} from '@contexts/workspace/presentation/renderer/utils/persistence/drain'
+import { capturePublication } from '@contexts/workspace/presentation/renderer/utils/persistence/drain'
 import { projectManagedClaudeRuntimeData } from '@contexts/workspace/presentation/renderer/utils/managedClaudeProjection'
 import { RevisionedSnapshotCache } from '@shared/sync/revisionedSnapshotCache'
 import { STORAGE_KEY } from '@contexts/workspace/presentation/renderer/utils/persistence/constants'
+import { toggleSidebarCollapsedId } from '@contexts/settings/domain/sidebarTreeSettings'
+import { autosave, quit } from './lifecycle'
 import { fixture, value, snapshot } from './fixture'
 import { Server, type Adapter } from './server'
 import type { Action, Response } from './model'
@@ -35,6 +34,8 @@ export class Client {
   private inFlight: Promise<unknown> | null = null
   private legacyHistory = false
   private captured: ReturnType<typeof capturePublication> | null = null
+  private autosaveHook: ReturnType<typeof renderHook> | null = null
+  private stopped = false
   private hook: ReturnType<typeof renderHook>
   private event: ((event: { type: 'resync_required'; revision: number }) => void) | undefined
   private original = {
@@ -60,10 +61,22 @@ export class Client {
       caches.add(this)
       set.call(this, r, s)
     })
+    this.installApi()
+    useCanvasCollapseStore.setState({ workspaces: {} })
+    this.apply(snapshot(this.server.template, this.server.model.value))
+    acceptPersistedStateSnapshot({
+      state: snapshot(this.server.template, this.server.model.value),
+      revision: 1,
+      isPersisted: true,
+    })
+    this.hook = renderHook(() => useWorkerSyncStateUpdates({ enabled: true }))
+  }
+  private installApi() {
     Object.defineProperty(window, 'opencoveApi', {
       configurable: true,
       value: {
-        persistence: this.server.api(adapter),
+        meta: { isTest: true },
+        persistence: this.server.api(this.adapter),
         sync: {
           onStateUpdated: (listener: typeof this.event) => {
             this.event = listener
@@ -74,14 +87,41 @@ export class Client {
         },
       },
     })
-    useCanvasCollapseStore.setState({ workspaces: {} })
-    this.apply(snapshot(this.server.template, this.server.model.value))
-    acceptPersistedStateSnapshot({
-      state: snapshot(this.server.template, this.server.model.value),
-      revision: 1,
-      isPersisted: true,
-    })
+  }
+  async restart() {
+    if (!this.stopped) {
+      await this.shutdown()
+    }
+    window.localStorage.clear()
+    this.caches.clear()
+    this.installApi()
+    publication.persistenceScope()
+    const read = await readPersistedStateWithMeta()
+    if (!read.state) {
+      throw new Error('Cold restart has no durable state')
+    }
+    this.apply(read.state)
+    acceptPersistedStateSnapshot(read)
     this.hook = renderHook(() => useWorkerSyncStateUpdates({ enabled: true }))
+    this.stopped = false
+    this.check(true)
+  }
+  async shutdown() {
+    this.hook.unmount()
+    this.autosaveHook?.unmount()
+    this.autosaveHook = null
+    // Change the persistence owner before discarding the scheduler; a stale producer cannot run.
+    Object.defineProperty(window, 'opencoveApi', { configurable: true, value: undefined })
+    publication.persistenceScope()
+    await flushScheduledPersistedStateWriteAsync()
+    useAppStore.setState({
+      workspaces: [],
+      activeWorkspaceId: null,
+      agentSettings: fixture(this.owned).settings,
+      persistNotice: null,
+    })
+    useCanvasCollapseStore.setState({ workspaces: {} })
+    this.stopped = true
   }
   state = () => {
     const s = useAppStore.getState()
@@ -104,6 +144,9 @@ export class Client {
     })
   }
   async step(action: Action) {
+    if (this.stopped) {
+      await this.restart()
+    }
     await act(async () => {
       if (action === 'rename' || action === 'title') {
         const field = action === 'rename' ? 'name' : 'title',
@@ -137,6 +180,33 @@ export class Client {
           ...s,
           collapsedNodeIds: { ...s.collapsedNodeIds, agent: true },
         }))
+      } else if (action === 'sidebar-collapse' || action === 'sidebar-expand') {
+        if (!this.autosaveHook) {
+          this.autosaveHook = autosave(this)
+        }
+        const collapsed = action === 'sidebar-collapse'
+        this.server.model.edit('sidebar', collapsed)
+        this.server.model.edit('sidebarRoot', collapsed)
+        const groups = toggleSidebarCollapsedId(
+          toggleSidebarCollapsedId(
+            useAppStore.getState().agentSettings.sidebarCollapsedSpaceGroupIds,
+            'project:space',
+          ),
+          'project:project-root',
+        )
+        useAppStore.getState().setAgentSettings(previous => ({
+          ...previous,
+          sidebarCollapsedSpaceGroupIds: groups,
+        }))
+      } else if (action === 'autosave') {
+        await this.settle()
+      } else if (action === 'cold-restart') {
+        await this.restart()
+      } else if (action === 'raw-import') {
+        const imported = this.state()
+        imported.workspaces[0].name = 'Imported project'
+        this.server.model.edit('name', 'Imported project')
+        await writeRawPersistedState(JSON.stringify(imported))
       } else if (action === 'view') {
         useAppStore
           .getState()
@@ -250,8 +320,10 @@ export class Client {
         if (migrated.isPersisted && this.server.scrollbacks.get('terminal') !== 'legacy history') {
           throw new Error('I1: migration dropped terminal history')
         }
-      } else if (action === 'quit') {
-        await drainPersistedStateAtQuit(this.captured ?? this.state(), 50)
+      } else if (action === 'quit' || action === 'quit-timeout' || action === 'quit-failure') {
+        if (await quit(this, this.captured ?? this.state(), action)) {
+          await this.shutdown()
+        }
       }
     })
     if (
@@ -261,6 +333,9 @@ export class Client {
       action === 'reconnect'
     ) {
       await this.settle()
+    }
+    if (this.stopped) {
+      return
     }
     try {
       this.check(false)
@@ -313,6 +388,11 @@ export class Client {
     )
   }
   async quiet() {
+    if (this.stopped) {
+      await this.restart()
+      this.check(true)
+      return
+    }
     await this.step('observe')
     await this.settle()
     if (!publication.isPublicationBlocked()) {
@@ -328,8 +408,9 @@ export class Client {
   async close() {
     this.server.reply()
     await this.inFlight
-    this.hook.unmount()
-    await flushScheduledPersistedStateWriteAsync()
+    if (!this.stopped) {
+      await this.shutdown()
+    }
     this.cacheSpy.mockRestore()
     useAppStore.setState(this.original.app, true)
     useCanvasCollapseStore.setState({ workspaces: this.original.collapse })
