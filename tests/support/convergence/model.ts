@@ -351,6 +351,21 @@ export function explore(): Array<{ response: Response; actions: Action[] }> {
           response: 'committed',
           actions: ['space-pin', 'flush', 'view', 'observe', 'refresh', 'quit', 'cold-restart'],
         },
+        { response: 'identity', actions: ['view', 'rename', 'flush', 'quit', 'cold-restart'] },
+        {
+          response: 'committed',
+          actions: [
+            'view',
+            'autosave',
+            'third-party',
+            'observe',
+            'refresh',
+            'view',
+            'autosave',
+            'cold-restart',
+            'cold-restart',
+          ],
+        },
       ],
     )
 }

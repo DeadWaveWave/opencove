@@ -69,3 +69,24 @@ it.each([1, 2, 3, 4, 5, 6, 7])('kills the I%i boundary mutation', async invarian
     ).toThrow('I7')
   }
 })
+
+it('kills the local-view placeholder mutation at cold restore', async () => {
+  c = new Client(false, 'web', 'committed')
+  await c.step('view')
+  await c.step('autosave')
+  await c.localViews.checkColdRestore()
+  window.localStorage.setItem(
+    'opencove:m5.6:view-state',
+    JSON.stringify({
+      activeWorkspaceId: 'project',
+      workspaces: {
+        project: {
+          viewport: { x: 0, y: 0, zoom: 1 },
+          activeSpaceId: 'space',
+          isMinimapVisible: true,
+        },
+      },
+    }),
+  )
+  await expect(c.localViews.checkColdRestore()).rejects.toThrow('I12')
+})

@@ -4,7 +4,7 @@ import { projectOwnedManagedClaudeNode } from '@shared/sync/managedClaudeResumeP
 import { getPersistencePort } from './port'
 import { ensurePersistedWorkspace } from './ensure'
 import { normalizeAgentSettings } from '@contexts/settings/domain/agentSettings'
-import { writePersistedState, markPersistedStateAsSynced } from './write'
+import { writeSharedPersistedState, markPersistedStateAsSynced } from './sharedPublication'
 import { capturePublication, type CapturedPublication } from './capturePublication'
 import {
   getPendingPublication,
@@ -86,7 +86,7 @@ export async function drainPersistedStateAtQuit(
       if (!active()) {
         return false
       }
-      const result = await writePersistedState(candidate)
+      const result = await writeSharedPersistedState(candidate)
       if (!active()) {
         return false
       }

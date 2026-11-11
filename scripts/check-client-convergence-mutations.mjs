@@ -28,7 +28,7 @@ const mutations = [
   },
   {
     id: 'I2',
-    file: persistence + 'write.ts',
+    file: persistence + 'sharedPublication.ts',
     from: 'acceptPublicationBase(state, result.revision ?? null)',
     to: 'acceptPublicationBase(state, (result.revision ?? 0) + 1)',
     test: model,
@@ -100,6 +100,23 @@ const mutations = [
     filter: 'owned=false adapter=remote trace=117 ',
   },
   {
+    id: 'I12',
+    file: persistence + 'drain.ts',
+    from: 'await writeSharedPersistedState(candidate)',
+    to: "await import('./write').then(module => module.writePersistedState(candidate))",
+    test: model,
+    filter: 'owned=true adapter=web trace=119 ',
+  },
+  {
+    id: 'I13',
+    marker: '"zoom": 0.75',
+    file: persistence + 'viewState.ts',
+    from: 'if (Object.keys(incoming.workspaces).some(id => !Object.hasOwn(existing.workspaces, id)))',
+    to: 'if (false)',
+    test: 'tests/integration/recovery/workspaceViewPublication.spec.tsx',
+    filter: 'fills imported hydration views',
+  },
+  {
     id: 'I7',
     file: persistence + 'toPersistedState.ts',
     from: 'title: node.data.title,',
@@ -157,7 +174,9 @@ try {
       writeFileSync(target, source)
     }
   }
-  process.stdout.write(`11/11 source mutants killed. Logs: ${directory}\n`)
+  process.stdout.write(
+    `${mutations.length}/${mutations.length} source mutants killed. Logs: ${directory}\n`,
+  )
 } catch (error) {
   process.stderr.write(`${String(error)}\n`)
   process.exitCode = 1

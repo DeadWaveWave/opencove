@@ -1,5 +1,6 @@
 import { canAcceptHydrationSnapshot } from './useHydrateAppState.helpers'
 import { persistenceScope } from '@contexts/workspace/presentation/renderer/utils/persistence/publicationState'
+import { persistMissingLocalViewStateFromAppState } from '@contexts/workspace/presentation/renderer/utils/persistence/viewState'
 import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
 import {
   DEFAULT_AGENT_SETTINGS,
@@ -382,10 +383,15 @@ export function useHydrateAppState({
         await applyUiLanguage(resolvedSettings.language)
       }
 
-      if (isCancelledRef.current) {
+      if (
+        isCancelledRef.current ||
+        scope !== persistenceScope() ||
+        !canAcceptHydrationSnapshot(snapshot)
+      ) {
         return
       }
       if (persisted) {
+        persistMissingLocalViewStateFromAppState(persisted)
         acceptPersistedStateSnapshot(snapshot)
       }
 
