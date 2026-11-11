@@ -36,6 +36,9 @@ class DomLocator {
   locator(selector: string): DomLocator {
     return new DomLocator(() => this.element()?.querySelector(selector) ?? null)
   }
+  async count() {
+    return this.element() ? 1 : 0
+  }
   async click() {
     const target = await waitFor(() => {
       const element = this.element()
