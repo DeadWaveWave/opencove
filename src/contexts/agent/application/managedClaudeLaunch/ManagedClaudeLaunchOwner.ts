@@ -47,8 +47,9 @@ export class ManagedClaudeLaunchOwner {
   readonly reservations = new ManagedClaudeResumeReservations(
     node => this.reserve(node),
     node => this.qualification.hasPending(node),
-    input => this.qualification.drain(input),
+    input => this.qualification.drain({ ...input, handoff: true, retry: true }),
     () => !this.disposed,
+    node => this.qualification.suspend(node),
   )
   private disposed = false
 

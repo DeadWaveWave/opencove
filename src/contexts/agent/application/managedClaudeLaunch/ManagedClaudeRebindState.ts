@@ -1,3 +1,4 @@
+import type { Invocation } from './managedClaudeRebindStateTypes'
 import { resolveQualifiedClaudeClearResumeBindingUpdate } from '../../domain/agentResumeBinding'
 import type { ManagedClaudeLaunchPorts } from './ports'
 import type { ManagedClaudeBindingObservation } from '../../../../shared/contracts/managedClaudeLaunch'
@@ -11,24 +12,6 @@ import type {
   ManagedClaudeQualificationTicket,
   ManagedClaudeDrainResult,
 } from './qualification'
-
-type Target = { identity: ClaudeQualificationIdentity; mutationId: string }
-type Invocation = {
-  nodeId: string
-  runtimeSessionId: string
-  credential: object
-  current: () => boolean
-  open: boolean
-  valid: boolean
-  failed?: boolean
-  highest: number
-  committed: ManagedClaudeBindingObservation
-  tickets: Set<AbortController>
-  target?: Target
-  unresolved?: { input: CommitManagedClaudeRebindInput; nodeSeen: boolean }
-  busy?: Promise<void>
-  cancelRetry?: () => void
-}
 
 /** Bookkeeping owned exclusively by ManagedClaudeLaunchOwner; no subscriptions or durable state. */
 export class ManagedClaudeRebindState {
@@ -67,7 +50,7 @@ export class ManagedClaudeRebindState {
     }
     for (const [admission, state] of this.invocations) {
       if (state.credential === credential) {
-        return state.open && state.valid ? admission : null
+        return state.open && state.valid && !state.suspensions.size ? admission : null
       }
     }
     if (
@@ -94,6 +77,9 @@ export class ManagedClaudeRebindState {
       open: true,
       valid: true,
       highest: 0,
+      epoch: 0,
+      expiration: 0,
+      suspensions: new Set(),
       committed: observation.binding,
       tickets: new Set(),
     })
@@ -107,6 +93,7 @@ export class ManagedClaudeRebindState {
     if (
       !state?.valid ||
       !state.open ||
+      state.suspensions.size > 0 ||
       this.closed ||
       !state.current() ||
       state.tickets.size >= 8 ||
@@ -153,6 +140,11 @@ export class ManagedClaudeRebindState {
         if (bound.ordinal < state.highest) {
           return { status: 'superseded' as const }
         }
+        if (state.expired) {
+          // Fresh qualified evidence may resume settlement; cancelled old tickets cannot.
+          state.expired = false
+          state.needsReadback = true
+        }
         state.highest = bound.ordinal
         state.target = { identity: bound, mutationId: owner.ports.createId() }
         void owner.pump(state)
@@ -167,9 +159,24 @@ export class ManagedClaudeRebindState {
         (state.valid || state.failed) &&
         state.nodeId === nodeId &&
         Boolean(
-          state.failed || state.tickets.size || state.target || state.unresolved || state.busy,
+          state.failed ||
+          state.needsReadback ||
+          state.tickets.size ||
+          state.target ||
+          state.unresolved ||
+          state.busy,
         ),
     )
+  }
+  suspend(nodeId: string): () => void {
+    const token = Symbol(nodeId)
+    const states = [...this.invocations.values()].filter(
+      state => state.valid && state.nodeId === nodeId,
+    )
+    states.forEach(state => state.suspensions.add(token))
+    return () => {
+      states.forEach(state => state.suspensions.delete(token))
+    }
   }
   closeInvocation(admission: ManagedClaudeBindingAdmission): void {
     const state = this.invocations.get(admission)
@@ -186,6 +193,7 @@ export class ManagedClaudeRebindState {
     }
   }
   private cancel(state: Invocation): void {
+    state.epoch++
     state.valid = false
     state.open = false
     state.cancelRetry?.()
@@ -209,7 +217,11 @@ export class ManagedClaudeRebindState {
     if (state.busy) {
       return state.busy.then(() => this.pump(state))
     }
-    if (!state.valid || (!state.target && !state.unresolved)) {
+    if (
+      !state.valid ||
+      state.expired ||
+      (!state.target && !state.unresolved && !state.needsReadback)
+    ) {
       return Promise.resolve()
     }
     const work = this.run(state)
@@ -217,8 +229,11 @@ export class ManagedClaudeRebindState {
         /* Unknown/read unavailable stays an obligation. */
       })
       .finally(() => {
+        if (state.busy !== work) {
+          return
+        }
         state.busy = undefined
-        if (state.valid && (state.target || state.unresolved)) {
+        if (state.valid && !state.expired && (state.target || state.unresolved)) {
           state.cancelRetry?.()
           state.cancelRetry = this.ports.scheduleReconciliation?.(() => {
             state.cancelRetry = undefined
@@ -242,6 +257,7 @@ export class ManagedClaudeRebindState {
     }
   }
   private async run(state: Invocation): Promise<void> {
+    const epoch = state.epoch
     let binding = this.observe(state)
     if (!binding) {
       return
@@ -265,7 +281,16 @@ export class ManagedClaudeRebindState {
         return
       }
       state.unresolved = undefined
+    } else if (
+      state.needsReadback &&
+      (binding.activationId !== state.committed.activationId ||
+        !sameManagedResumeBinding(binding.tuple, state.committed.tuple))
+    ) {
+      state.failed = true
+      this.cancel(state)
+      return
     }
+    state.needsReadback = false
     if (!state.target || !state.valid) {
       return
     }
@@ -296,7 +321,7 @@ export class ManagedClaudeRebindState {
     // The synchronous guard above and local transaction invocation have no async gap.
     state.unresolved = { input, nodeSeen: binding.nodeSeen }
     const result = await this.ports.commitManagedClaudeRebind!(input)
-    if (!state.valid) {
+    if (!state.valid || state.expired || state.epoch !== epoch) {
       return
     }
     if (result.status === 'retryableFailure' && result.outcome === 'unknown') {
@@ -331,6 +356,8 @@ export class ManagedClaudeRebindState {
     deadlineAt: number
     nodeId?: string
     credential?: object
+    handoff?: boolean
+    retry?: boolean
   }): Promise<ManagedClaudeDrainResult> {
     const states = [...this.invocations.values()].filter(
       state =>
@@ -338,38 +365,56 @@ export class ManagedClaudeRebindState {
         (!options.nodeId || state.nodeId === options.nodeId) &&
         (!options.credential || state.credential === options.credential),
     )
+    const expiration = new Map(states.map(state => [state, state.expiration]))
     states.forEach(state => {
-      state.open = false
+      if (!options.handoff) {
+        state.open = false
+      }
+      if (options.retry && state.valid && state.expired) {
+        state.expired = false
+        state.needsReadback = true
+      }
     })
     const pending = () =>
       states.filter(
         state =>
-          state.valid && (state.tickets.size || state.target || state.unresolved || state.busy),
+          state.valid &&
+          state.expiration === expiration.get(state) &&
+          (state.tickets.size ||
+            state.target ||
+            state.unresolved ||
+            state.busy ||
+            state.needsReadback),
       )
     while (pending().length && performance.now() < options.deadlineAt) {
-      states.forEach(state => {
+      pending().forEach(state => {
         if (!state.busy) {
           void this.pump(state)
         }
       })
-      // Bound the wait even when a filesystem/store promise never settles.
       // oxlint-disable-next-line no-await-in-loop
       await new Promise(resolve =>
         setTimeout(resolve, Math.min(10, Math.max(0, options.deadlineAt - performance.now()))),
       )
     }
-    const remaining = [...new Set([...pending(), ...states.filter(state => state.failed)])]
-    if (!remaining.length) {
-      return { status: 'drained' }
-    }
-    remaining.forEach(state => {
-      state.failed = true
-      this.cancel(state)
+    const unfinished = pending()
+    unfinished.forEach(state => {
+      state.expired = true
+      state.expiration++
+      state.epoch++
+      state.cancelRetry?.()
+      state.tickets.forEach(controller => controller.abort())
+      state.tickets.clear()
+      // Retain target/unresolved responsibility, but detach old continuations and stop retries.
+      state.busy = undefined
+      state.needsReadback = true
     })
-    return {
-      status: 'degraded',
-      pendingNodeIds: [...new Set(remaining.map(state => state.nodeId))],
-    }
+    const degraded = states.filter(
+      state => state.failed || state.expired || state.expiration !== expiration.get(state),
+    )
+    return degraded.length
+      ? { status: 'degraded', pendingNodeIds: [...new Set(degraded.map(state => state.nodeId))] }
+      : { status: 'drained' }
   }
   dispose(): void {
     this.closed = true

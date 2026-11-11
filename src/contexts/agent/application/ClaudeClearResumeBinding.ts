@@ -228,7 +228,7 @@ export class ClaudeClearResumeBinding {
             continue
           }
           // oxlint-disable-next-line no-await-in-loop
-          if (proof) {
+          if (proof && performance.now() < pending.deadlineAt) {
             // oxlint-disable-next-line no-await-in-loop
             await pending.ticket.submit(proof)
           } else {

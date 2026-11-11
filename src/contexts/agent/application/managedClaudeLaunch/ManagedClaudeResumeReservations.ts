@@ -14,6 +14,7 @@ export class ManagedClaudeResumeReservations {
       deadlineAt: number
     }) => Promise<ManagedClaudeDrainResult>,
     private readonly available: () => boolean,
+    private readonly suspend: (nodeId: string) => () => void,
   ) {}
   invalidate(nodeId: string): void {
     this.requests.delete(nodeId)
@@ -46,6 +47,7 @@ export class ManagedClaudeResumeReservations {
     if (!this.hasPending(nodeId)) {
       return reserve()
     }
+    const releaseAdmission = this.suspend(nodeId)
     let draining = this.drains.get(nodeId)
     if (!draining) {
       draining = this.drain({ nodeId, deadlineAt: performance.now() + 5000 })
@@ -58,16 +60,18 @@ export class ManagedClaudeResumeReservations {
       }
       void draining.then(release, release)
     }
-    return draining.then(result => {
-      assertCurrent()
-      if (result.status === 'degraded') {
-        throw createAppError('agent.managed_launch_rejected', {
-          details: { nodeId, reason: 'resumeBindingDrainExpired' },
-          debugMessage:
-            'The latest Claude conversation could not be confirmed. Try resuming again before closing this agent.',
-        })
-      }
-      return reserve()
-    })
+    return draining
+      .then(result => {
+        assertCurrent()
+        if (result.status === 'degraded') {
+          throw createAppError('agent.managed_launch_rejected', {
+            details: { nodeId, reason: 'resumeBindingDrainExpired' },
+            debugMessage:
+              'The latest Claude conversation could not be confirmed. Try resuming again before closing this agent.',
+          })
+        }
+        return reserve()
+      })
+      .finally(releaseAdmission)
   }
 }

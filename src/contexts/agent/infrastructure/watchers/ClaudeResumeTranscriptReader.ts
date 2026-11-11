@@ -1,3 +1,4 @@
+import { ClaudeTranscriptReadBudget, awaitTranscriptIO } from './ClaudeTranscriptReadBudget'
 import { randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import {
@@ -30,15 +31,36 @@ export class ClaudeResumeTranscriptReader {
       input.deadlineAt ?? Infinity,
       performance.now() + this.bounds.deadlineMs,
     )
+    const budget = new ClaudeTranscriptReadBudget(deadline, signal)
+    try {
+      const proof = await budget.wait(() => this.scan(input, budget, deadline))
+      return budget.active ? proof : null
+    } catch {
+      return null
+    } finally {
+      budget.dispose()
+    }
+  }
+  private async scan(
+    input: ClaudeQualificationIdentity & { transcriptPath: string },
+    budget: ClaudeTranscriptReadBudget,
+    deadline: number,
+  ): Promise<ClaudeResumeProof | null> {
+    const signal = budget.signal
     const access = claudeTranscriptAccess(input.transcriptPath, input.resumeSessionId, this.roots)
     let total = 0
     while (!signal.aborted && performance.now() < deadline && total < MAX_TOTAL) {
       try {
         // oxlint-disable-next-line no-await-in-loop
-        const handle = await access.open()
+        const handle = await budget.wait(
+          () => access.open(signal),
+          lateHandle => {
+            void lateHandle.close().catch(() => {})
+          },
+        )
         try {
           // oxlint-disable-next-line no-await-in-loop
-          const before = await handle.stat()
+          const before = await budget.wait(() => handle.stat())
           if (before.size > MAX_SCAN || total + before.size > MAX_TOTAL) {
             return null
           }
@@ -47,7 +69,9 @@ export class ClaudeResumeTranscriptReader {
           while (position < before.size && !signal.aborted && performance.now() < deadline) {
             const buffer = Buffer.alloc(Math.min(64 * 1024, before.size - position))
             // oxlint-disable-next-line no-await-in-loop
-            const { bytesRead } = await handle.read(buffer, 0, buffer.length, position)
+            const { bytesRead } = await budget.wait(() =>
+              handle.read(buffer, 0, buffer.length, position),
+            )
             if (!bytesRead) {
               break
             }
@@ -59,9 +83,9 @@ export class ClaudeResumeTranscriptReader {
             return null
           }
           // oxlint-disable-next-line no-await-in-loop
-          const after = await handle.stat()
+          const after = await budget.wait(() => handle.stat())
           // oxlint-disable-next-line no-await-in-loop
-          const current = await access.validate()
+          const current = await budget.wait(() => access.validate(signal))
           if (
             before.dev !== current.dev ||
             before.ino !== current.ino ||
@@ -94,7 +118,7 @@ export class ClaudeResumeTranscriptReader {
           }
         } finally {
           // oxlint-disable-next-line no-await-in-loop
-          await handle.close()
+          await awaitTranscriptIO(handle.close(), signal)
         }
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'UNSAFE_TRANSCRIPT') {
