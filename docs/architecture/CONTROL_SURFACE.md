@@ -431,12 +431,17 @@ launches remain exempt; their recovered descendant bindings contribute to subseq
 `AgentSpawnAdmissionOwner` retains pending identities and immutable lineage until all related runtime
 incarnations exit. Engine-returned session IDs are captured before callbacks. Kill, revocation, node
 deletion and failed requests are not completion evidence. An unknown dispatch fences its tree until
-that exact PTY host confirms completion. An uncertain node commit with a known live session retains
+that exact PTY host confirms completion. Every physical attempt, including a retry after a confirmed
+host exit, classifies its own outcome. Shutdown still records exact-child completion; a shutdown
+request alone cannot release unknown occupancy. An uncertain node commit with a known live session retains
 one occupied slot. Admission permits are private, single-use, Worker-local objects; raw session/PTY
 routes reject grants without a matching internal permit. Permits never enter wire identities,
 remote forwarding, environment or SQLite.
 
-Grant runtime targets must remain local, including after mount re-resolution. Delegated grants
+Grant runtime targets must remain local, including after mount re-resolution. Admission and execution
+fences compare directories with the same path identity rules. Windows comparison
+normalizes slashes, UNC hostname case, drive-letter case and trailing separators while preserving
+roots and directory-component case. It does not resolve symlinks or aliases. Delegated grants
 cannot create roots on the executing Worker. Historical remote bindings cannot prove completion
 through disconnection or saved status. At admission after startup or a persistence revision change, a read-only lineage audit
 finds unaccounted orphan rows whose node/session/endpoint association was lost; affected roots fail closed.

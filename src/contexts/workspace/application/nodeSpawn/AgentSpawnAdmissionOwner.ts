@@ -1,4 +1,5 @@
-import path, { type PlatformPath } from 'node:path'
+import path from 'node:path'
+import { spawnDirectoryIdentity, type SpawnPathSemantics } from './spawnDirectoryIdentity'
 import { createAppError } from '../../../../shared/errors/appError'
 import { spawnForbiddenDetails } from '../../../../shared/errors/agentSpawnError'
 import type { NodeLineageRecord } from '../../domain/nodeLineage'
@@ -39,14 +40,14 @@ export function spawnAccountingUnavailable(): never {
 }
 export function spawnTargetKey(
   target: ResolvedNodeCreationTarget,
-  paths: Pick<PlatformPath, 'normalize'> = path,
+  paths: SpawnPathSemantics = path,
 ): string {
   return JSON.stringify([
     target.workspace.id,
     target.space?.id,
     target.mount?.mountId,
     target.endpoint.endpointId,
-    paths.normalize(target.workingDirectory),
+    spawnDirectoryIdentity(target.workingDirectory, paths),
   ])
 }
 
@@ -62,7 +63,7 @@ export class AgentSpawnAdmissionOwner {
   private auditedRevision: number | undefined
   public constructor(
     private readonly runtime: AgentSpawnRuntimePort,
-    private readonly paths: Pick<PlatformPath, 'normalize'> = path,
+    private readonly paths: SpawnPathSemantics = path,
   ) {}
 
   /** Called only by the creation factory branch that cannot launch an agent or terminal. */
@@ -109,7 +110,8 @@ export class AgentSpawnAdmissionOwner {
     const entry = this.permits.get(permit)
     if (
       !entry ||
-      this.paths.normalize(execution.cwd) !== this.paths.normalize(entry.target.workingDirectory)
+      spawnDirectoryIdentity(execution.cwd, this.paths) !==
+        spawnDirectoryIdentity(entry.target.workingDirectory, this.paths)
     ) {
       forbidden('remote_spawning_unsupported')
     }

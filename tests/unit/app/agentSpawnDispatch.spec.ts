@@ -5,6 +5,50 @@ import { PtyHostExitEvidence } from '../../../src/platform/process/ptyHost/hostE
 import { physicalSpawnLifecycle } from '../../../src/shared/runtime/physicalSpawnLifecycle'
 import type { PtyHostProcess } from '../../../src/platform/process/ptyHost/processTypes'
 const input = { command: 'fixture', args: [], cwd: '/repo', cols: 80, rows: 24 }
+
+it.each(['lost reply', 'refused'])(
+  'classifies the replacement attempt independently after the first host exits (%s)',
+  async firstOutcome => {
+    const f = fixture()
+    f.observer.singleAttempt = false
+    const replacement = {} as PtyHostProcess
+    let child = f.child
+    const request = vi.fn(async () => {
+      if (child === f.child) {
+        f.exitEvidence.confirmExit(f.child, 1)
+        child = replacement
+        if (firstOutcome === 'refused') {
+          return { ok: false, requestType: 'spawn', error: { message: 'not started' } }
+        }
+      }
+      throw new Error('reply lost')
+    })
+    await expect(
+      physicalSpawnLifecycle.run(f.observer, () =>
+        spawnHostSession(input, {
+          ...f.deps,
+          process: () => child,
+          request: request as never,
+        }),
+      ),
+    ).rejects.toThrow('reply lost')
+    expect(request).toHaveBeenCalledTimes(2)
+    expect(f.observer.unknown).toHaveBeenCalledExactlyOnceWith(
+      f.exitEvidence.whenCompleted(replacement),
+    )
+    let completed = false
+    const completion = f.observer.unknown.mock.calls[0][0]
+    void completion.then(() => {
+      completed = true
+    })
+    f.exitEvidence.confirmExit(f.child, 0)
+    await Promise.resolve()
+    expect(completed).toBe(false)
+    f.exitEvidence.confirmExit(replacement, 0)
+    await completion
+    expect(completed).toBe(true)
+  },
+)
 function fixture() {
   const child = {} as PtyHostProcess,
     exitEvidence = new PtyHostExitEvidence()

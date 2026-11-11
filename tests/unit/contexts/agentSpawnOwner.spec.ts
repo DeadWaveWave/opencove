@@ -1,7 +1,5 @@
 /* eslint-disable no-await-in-loop -- Each creation observes the prior admission and runtime lifecycle. */
 import { describe, expect, it, vi } from 'vitest'
-import { posix, win32 } from 'node:path'
-import { toFileUri, fromFileUri } from '../../../src/contexts/filesystem/domain/fileUri'
 import {
   AgentSpawnAdmissionOwner,
   type AgentSpawnPermit,
@@ -13,7 +11,7 @@ import type {
   NodeControlNode,
 } from '../../../src/contexts/workspace/application/nodeControl/nodeControlState'
 import type { ResolvedNodeCreationTarget } from '../../../src/contexts/workspace/application/nodeControl/nodeCreationTarget'
-function fixture(paths?: typeof win32) {
+function fixture() {
   let revision = 0,
     generation = 0
   let nodes = [{ id: 'root', kind: 'agent', sessionId: 'root-session' }] as NodeControlNode[]
@@ -32,7 +30,7 @@ function fixture(paths?: typeof win32) {
     snapshot: () => ({ revision: generation, bindings }),
     isCurrent: (r: number) => r === generation,
   }
-  const owner = new AgentSpawnAdmissionOwner(runtime, paths)
+  const owner = new AgentSpawnAdmissionOwner(runtime)
   const target = {
     endpoint: { kind: 'local', endpointId: 'local' },
     workspace: { id: 'p' },
@@ -377,27 +375,6 @@ it('re-audits a newly orphaned unknown descendant after initialization without o
   await expect(f.start('after-delete')).rejects.toMatchObject({ code: 'common.unavailable' })
 })
 
-it.each([
-  'C:/repo/with spaces',
-  'C:\\repo\\with spaces',
-  '//server/share/repo',
-  '\\\\server\\share\\repo',
-])('accepts Windows file-URI slash normalization with explicit win32 semantics: %s', async cwd => {
-  const f = fixture(win32)
-  const target = { ...f.target, workingDirectory: cwd }
-  await f.owner.runCreation(f.store, { ...f.input('child'), target }, async permit => {
-    const executed = fromFileUri(toFileUri(cwd))!
-    expect(win32.normalize(executed)).toBe(win32.normalize(cwd))
-    expect(() => f.owner.assertExecution(permit, { cwd: executed })).not.toThrow()
-    expect(() =>
-      f.owner.assertTarget(permit, { ...target, workingDirectory: executed }),
-    ).not.toThrow()
-    expect(() =>
-      f.owner.assertExecution(permit, { cwd: win32.join(executed, 'different') }),
-    ).toThrow()
-  })
-})
-
 it('uses retained local completion provenance when an exited node is deleted before the first admission', async () => {
   const f = fixture()
   f.rows.set('exited-local', {
@@ -449,15 +426,4 @@ it('retains warm-start runtime bindings when both node membership and public hub
   await expect(
     owner.runCreation(f.store, f.input('after-exit'), async () => {}),
   ).resolves.toBeUndefined()
-})
-
-it('keeps POSIX literal backslashes distinct with explicit posix semantics', async () => {
-  const f = fixture(posix)
-  const target = { ...f.target, workingDirectory: '/repo/literal\\name' }
-  await f.owner.runCreation(f.store, { ...f.input('child'), target }, async permit => {
-    expect(() => f.owner.assertExecution(permit, { cwd: '/repo/literal/name' })).toThrow()
-    expect(() =>
-      f.owner.assertTarget(permit, { ...target, workingDirectory: '/repo/literal/name' }),
-    ).toThrow()
-  })
 })

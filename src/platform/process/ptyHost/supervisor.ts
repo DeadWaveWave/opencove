@@ -199,12 +199,12 @@ export class PtyHostSupervisor {
     })
 
     child.on('exit', code => {
+      // Exact completion remains authoritative while shutdown retires this child.
+      this.ambiguousExitRecovery.confirm(child)
+      const resolvedExitCode = this.hostExitEvidence.confirmExit(child, code)
       if (this.isDisposed) {
         return
       }
-
-      this.ambiguousExitRecovery.confirm(child)
-      const resolvedExitCode = this.hostExitEvidence.confirmExit(child, code)
       if (this.process !== child) {
         return
       }
