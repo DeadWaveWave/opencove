@@ -6,6 +6,25 @@ delivery, wait for the saved turn and check outcome before reading. All ended ou
 waiting; ended does not mean successful. `--last` makes the latest-turn default explicit and may
 accompany --turn.
 
+## Read several agents
+
+Repeat `--node` up to 10 times (IDs, names, unique prefixes, `@self` or `@parent`):
+
+```sh
+opencove agent read --node "Reviewer" --node "Lead"
+opencove agent read --node "Reviewer" --node "Lead" --screen --lines 20
+opencove agent read --node "Reviewer" --node "Lead" --fields node,ok,message,error
+```
+
+Multiple targets always return a JSON array in input order, including duplicates. Each entry has
+`node` (the input selector), `ok`, and the same fields as a single read, or `ok: false` and `error`.
+Selector and read failures are isolated. Exit 0 means every read succeeded; otherwise the first
+failing target's exit code applies, so always inspect every entry. There is no separate partial-failure
+exit code. `--turn` / `--expect-turn` and other exact-turn options are refused (exit 2); use separate
+reads for saved turn IDs. `--last`, `--screen`, `--scrollback` and `--lines` apply to every target.
+One target keeps the existing plain-text default and JSON shape. Existing per-target Worker reads
+are used, including their transcript fallback and old-Worker error behavior.
+
 ## Correlated replies and archive
 
 Claude and Codex lifecycle hooks supply exact-turn content with the same output contract. Codex

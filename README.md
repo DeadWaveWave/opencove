@@ -120,6 +120,23 @@ opencove worker start --hostname 0.0.0.0 --web-ui-password 'change-me'
 
 This prints the Web UI URL and enables password login for browser access. Keep the password set whenever you expose the Web UI beyond localhost.
 
+### Coordinate agents from the CLI
+
+```sh
+opencove whoami --fields lineageQuota
+opencove context --fields self.lineageQuota
+opencove agent read --node "Reviewer" --node "Lead"
+opencove agent read --node "Reviewer" --node "Lead" --screen --lines 20
+```
+
+Quota uses the Worker's spawn-admission census: depth ≤3 and up to 6 live agent-created
+runtimes per tree, excluding the user root. Older Workers omit quota fields. Spawn refusals name
+occupying nodes and include `opencove agent stop --node <id>` hints. Multiple reads (up to 10
+selectors) return an ordered JSON array with per-target `node`, `ok`, and reply fields or `error`.
+Failures preserve the other results; exit is 0 for all successes, otherwise the first failing target's
+exit code. Exact-turn options such as `--turn` / `--expect-turn` require a single target.
+See [CLI documentation](docs/cli/README.md) or `opencove skill read` for details.
+
 ### Building from Source
 
 #### Prerequisites

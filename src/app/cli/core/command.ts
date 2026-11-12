@@ -92,7 +92,10 @@ export interface Command {
   operation?: OperationId
   validateBeforeConnect?(args: CommandArgs, env: CliIo['env']): void
   buildInput?(args: CommandArgs): unknown
-  textOutput?(result: unknown): string
+  /** Commands with independent target outcomes resolve selectors per target. */
+  resolveSelectorsInExecute?: boolean
+  exitCode?(result: unknown): number
+  textOutput?(result: unknown): string | undefined
   execute?(ctx: CommandContext): Promise<CommandResult>
   errorTargets?: ErrorTarget[]
   rawQueryFields?: boolean

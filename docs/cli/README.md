@@ -143,6 +143,9 @@ See [eligibility and limitations](../agent/README.md#resident-canvas-guidance).
 opencove agent list --space @self -o table
 opencove agent get --node "Reviewer" --pretty
 opencove agent read --node "Reviewer" --screen
+opencove agent read --node "Reviewer" --node "Lead" --fields node,ok,message,error
+opencove whoami --fields lineageQuota
+opencove context --fields self.lineageQuota
 opencove agent prompt --node "Reviewer" --wait --read --timeout 2m --text-file ./assignment.txt
 # To keep working meanwhile, split the same steps:
 opencove agent prompt --node "Reviewer" --text-file ./assignment.txt
@@ -150,6 +153,17 @@ opencove agent delivery delivery-123 --wait --timeout 2m
 opencove agent wait --node node-123 --turn turn-123 --timeout 2m
 opencove agent read --node node-123 --turn turn-123 -o json
 ```
+
+Repeated `--node` on `agent read` accepts up to 10 selectors and always returns a JSON array in
+input order, including duplicates. Each entry contains the input selector as `node`, `ok`, and the
+single-read fields, or `ok: false` with `error`. Selector/read failures never hide other targets. Exit 0 means all succeeded; otherwise use the first failing target's exit code (there is no separate
+partial-failure code). Exact-turn options such as `--turn` / `--expect-turn` are refused for multiple
+targets with exit 2. Screen/scrollback/line limits and `--last` apply to every target.
+`whoami` exposes `lineageQuota`; `context` exposes `self.lineageQuota`, both projectable as
+`{depth, maxDepth, liveInTree, maxLiveInTree}` from the admission census. Roots have depth 1;
+occupancy counts live/starting agent-created runtimes, excluding the user root. Older Workers or
+unavailable accounting omit quota. Refusal `details.nodes` list up to six nodeId/title/kind/depth/state
+occupants with named stop hints. Stopping frees width on runtime exit, never the caller's depth.
 
 Give a window a stable name with `node create agent --title "Reviewer"` (also supported for terminals).
 Rename it with `node update agent --node "Reviewer" --title "Lead"`; use `terminal` for terminal windows.

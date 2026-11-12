@@ -156,3 +156,11 @@ With `--spawned-by`, `--project` filters child results; the creator may belong t
 Full IDs, `@self` and `@parent` resolve the creator independently of that filter. Creator names
 and prefixes use your session project, or an explicit Space’s project. Without session identity,
 the selected project supplies the name lookup context. Use a full ID for a creator outside that context.
+
+`opencove whoami --fields lineageQuota` and `opencove context --fields self.lineageQuota`
+show `{depth, maxDepth, liveInTree, maxLiveInTree}` from the same Worker census as spawn admission.
+A user-started root has depth 1; liveInTree counts live/starting agent-created runtimes, excluding
+that root. Older Workers or unavailable accounting omit the quota. Depth/width refusal details
+include up to six occupying nodes (nodeId, title, kind, depth, state), with concrete
+`opencove agent stop --node <id>` hints. Stopping cannot reduce a caller's depth: depth-three
+callers must ask the user to start a new root.

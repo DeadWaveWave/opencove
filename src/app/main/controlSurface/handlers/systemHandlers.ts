@@ -1,3 +1,4 @@
+import { readCallerLineageQuota } from '../agentSpawnContext'
 import { managedClaudeWritesEnabled } from '../managedClaudeCompatibility'
 import { registerOperationIntrospectionHandlers } from './operationIntrospectionHandlers'
 import {
@@ -30,7 +31,7 @@ export function registerSystemHandlers(
   registerOperationIntrospectionHandlers(controlSurface)
   registerOperation(controlSurface, systemWhoamiOperation, {
     defaultErrorCode: 'common.unexpected',
-    handle: ctx => {
+    handle: async ctx => {
       const auth = ctx.requestAuth
       const identity =
         auth?.kind === 'session-grant'
@@ -46,7 +47,16 @@ export function registerSystemHandlers(
               kind: auth?.kind === 'cookie' ? ('cookie' as const) : ('bearer' as const),
               scopeTier: 'admin' as const,
             }
-      return { ...identity, instanceId: deps.instanceId, appVersion: deps.appVersion }
+      const lineageQuota =
+        auth?.kind === 'session-grant' && auth.grant.nodeId
+          ? await readCallerLineageQuota(controlSurface, auth.grant.nodeId)
+          : undefined
+      return {
+        ...identity,
+        ...(lineageQuota ? { lineageQuota } : {}),
+        instanceId: deps.instanceId,
+        appVersion: deps.appVersion,
+      }
     },
   })
   registerOperation(controlSurface, systemPingOperation, {

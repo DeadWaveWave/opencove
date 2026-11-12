@@ -249,7 +249,9 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
     if (id) {
       await requireBoundedAgentSpawningForRequest(id, input, identity, call, 'before_selectors')
     }
-    await resolveSelectors(command, args, io, call, identity)
+    if (!command.resolveSelectorsInExecute) {
+      await resolveSelectors(command, args, io, call, identity)
+    }
     input = command.buildInput?.(args)
     mutationStarted ||= command.mutation === true
     const result = command.execute
@@ -275,7 +277,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       args.options.quiet && command.quietIdPath
         ? String(get(result, command.quietIdPath)) + '\n'
         : command.textOutput && !args.options.output && args.options.fields === undefined
-          ? command.textOutput(result)
+          ? (command.textOutput(result) ?? render(result, args.options, renderSpec))
           : render(result, args.options, renderSpec)
     const notice = nodeFieldNotice(result, args.options, renderSpec)
     if (notice) {
@@ -302,7 +304,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       const delivery = result as { available?: boolean; status?: string }
       return delivery.available && delivery.status === 'submitted' ? 0 : 1
     }
-    return 0
+    return command.exitCode?.(result) ?? 0
   } catch (error) {
     let cliError =
       error instanceof CliError
