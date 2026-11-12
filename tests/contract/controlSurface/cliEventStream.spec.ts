@@ -23,6 +23,7 @@ function fixture(selection: Partial<EventSelection> = {}, after?: number, retent
   const res = Object.assign(new EventEmitter(), {
     destroyed: false,
     writableEnded: false,
+    writableFinished: false,
     writeHead: vi.fn(),
     write: vi.fn((text: string) => {
       chunks.push(text)
@@ -30,6 +31,13 @@ function fixture(selection: Partial<EventSelection> = {}, after?: number, retent
     }),
     end: vi.fn(() => {
       res.writableEnded = true
+      res.writableFinished = true
+      res.emit('finish')
+    }),
+    destroy: vi.fn(() => {
+      res.destroyed = true
+      res.emit('close')
+      return res
     }),
   })
   const clients = new Set<ServerResponse>(),
@@ -269,7 +277,7 @@ it('disposes immediately on server backpressure and drops later publications', a
   const close = f.open()
   f.res.write.mockReturnValueOnce(false)
   f.register()
-  await vi.waitFor(() => expect(f.res.end).toHaveBeenCalled())
+  await vi.waitFor(() => expect(f.res.destroy).toHaveBeenCalled())
   const writes = f.res.write.mock.calls.length
   f.register('later')
   await new Promise(done => setTimeout(done, 0))

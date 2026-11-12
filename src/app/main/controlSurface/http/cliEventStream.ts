@@ -54,7 +54,14 @@ export function serveCliEventStream(options: {
   let safeCursor = encodeEventCursor(cursor)
   const queue: { publication: ContextualPublication; size: number }[] = []
   let reader: EventLineageReader | undefined
-  const dispose = () => {
+  let flushTimer: ReturnType<typeof setTimeout> | undefined
+  const clearFlush = () => {
+    clearTimeout(flushTimer)
+    flushTimer = undefined
+    res.off('finish', clearFlush)
+    res.off('close', clearFlush)
+  }
+  const detach = () => {
     if (!active) {
       return
     }
@@ -67,7 +74,27 @@ export function serveCliEventStream(options: {
     options.listenerClients.delete(res)
     req.off('close', dispose)
     res.off('close', dispose)
+  }
+  const dispose = () => {
+    detach()
+    clearFlush()
+    // end() cannot release a socket whose consumer has stopped draining.
+    res.destroy()
+  }
+  const finishTerminal = () => {
+    if (!active) {
+      return
+    }
+    detach()
+    // A terminal record gets a bounded chance to flush; revocation still destroys immediately.
+    res.once('finish', clearFlush)
+    res.once('close', clearFlush)
+    flushTimer = setTimeout(dispose, 1000)
+    flushTimer.unref()
     res.end()
+    if (res.writableFinished || res.destroyed) {
+      clearFlush()
+    }
   }
   const live = () => active && options.isActive() && !res.destroyed && !res.writableEnded
   const write = (record: EventRecord): boolean => {
@@ -96,7 +123,7 @@ export function serveCliEventStream(options: {
       current: registry.watermark(),
       oldestSeq,
     })
-    dispose()
+    finishTerminal()
   }
   const spatial = (item: RetainedEvent) =>
     matchesAgentRunFilter(item, { ...selection, types: undefined })

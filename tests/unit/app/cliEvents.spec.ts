@@ -316,3 +316,18 @@ it('documents the stream contract in generated help', async () => {
   expect(f.out()).toMatchSnapshot()
   expect(f.fetch).not.toHaveBeenCalled()
 })
+
+it.each([
+  { inherited: { spawnedBy: 'parent' }, explicit: 'lineage' },
+  { inherited: { lineage: 'parent' }, explicit: 'spawned-by' },
+])(
+  'rejects inherited relationship conflict with --$explicit as usage',
+  async ({ inherited, explicit }) => {
+    const cursor = token(8, canonicalSelection(inherited))
+    const f = fixture([], { OPENCOVE_ENV: '1', OPENCOVE_NODE_ID: 'parent' })
+    expect(await run(['events', '--after', cursor, `--${explicit}`, '@self'], f.io)).toBe(2)
+    expect(JSON.parse(f.err()).error.code).toBe('cli.usage')
+    expect(f.out()).toBe('')
+    expect(f.fetch.mock.calls.every(([url]) => url.endsWith('/invoke'))).toBe(true)
+  },
+)

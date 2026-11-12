@@ -34,6 +34,7 @@ it('manually resumes across real adapter disconnect without missing or duplicati
         const res = Object.assign(new EventEmitter(), {
           destroyed: false,
           writableEnded: false,
+          writableFinished: false,
           writeHead() {},
           write(text: string) {
             if (!closed) {
@@ -41,11 +42,19 @@ it('manually resumes across real adapter disconnect without missing or duplicati
             }
             return !closed
           },
+          destroy() {
+            res.destroyed = true
+            res.end()
+            res.emit('close')
+            return res
+          },
           end() {
             if (!closed) {
               closed = true
               res.writableEnded = true
+              res.writableFinished = true
               controller.close()
+              res.emit('finish')
             }
           },
         })

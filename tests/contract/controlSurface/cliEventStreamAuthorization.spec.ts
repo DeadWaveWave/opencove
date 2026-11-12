@@ -45,11 +45,19 @@ function fixture(tier: 'read' | 'interact' | 'bearer' = 'interact') {
     statusCode: 0,
     destroyed: false,
     writableEnded: false,
+    writableFinished: false,
     setHeader: vi.fn(),
     writeHead: vi.fn(),
     write: vi.fn(() => true),
     end: vi.fn(() => {
       res.writableEnded = true
+      res.writableFinished = true
+      res.emit('finish')
+    }),
+    destroy: vi.fn(() => {
+      res.destroyed = true
+      res.emit('close')
+      return res
     }),
   })
   const readMany = vi.fn(async () => new Map())

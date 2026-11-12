@@ -5,6 +5,8 @@ import { setImmediate as nextTurn } from 'node:timers/promises'
 import { afterEach, expect, it, vi } from 'vitest'
 import { createNodeCliIo, type CliIo } from '../../../src/app/cli/core/io'
 import { run } from '../../../src/app/cli/core/run'
+import { runWithTargetFixtures as runPrompt } from './cliTargetFixtures.helpers'
+import { promptUnknownRecovery } from '../../../src/shared/errors/agentPromptError'
 
 let io: CliIo | undefined
 let stdin: PassThrough | undefined
@@ -79,3 +81,54 @@ it('cleans listeners when stdin fails', async () => {
   await expect(result).rejects.toThrow('read failure')
   expectReadCleaned(input, nodeIo.signal!)
 })
+
+it.each([false, true])(
+  'preserves post-dispatch prompt recovery on Node SIGINT (TTY=%s)',
+  async tty => {
+    const sigintListeners = process.listenerCount('SIGINT')
+    const { io: nodeIo } = adapter()
+    nodeIo.env = { OPENCOVE_CONTROL_URL: 'http://fixture', OPENCOVE_CONTROL_TOKEN: 'test' }
+    let diagnostic = ''
+    nodeIo.stderr = {
+      isTTY: tty,
+      write(text) {
+        diagnostic += text
+      },
+    }
+    let markDispatched!: () => void
+    const dispatched = new Promise<void>(done => {
+      markDispatched = done
+    })
+    nodeIo.fetch = vi.fn(async (_url, init) => {
+      expect(JSON.parse(String(init?.body)).id).toBe('agent.prompt')
+      return await new Promise<Response>((_resolve, reject) => {
+        init!.signal!.addEventListener('abort', () => reject(new Error('Interrupted fetch')), {
+          once: true,
+        })
+        markDispatched()
+      })
+    })
+    const result = runPrompt(['agent', 'prompt', '--node', 'n', '--text', 'hello'], nodeIo)
+    await dispatched
+    process.emit('SIGINT')
+    expect(await result).toBe(130)
+    expect(diagnostic).toContain('The outcome is unknown.')
+    expect(diagnostic).toContain('Do not resend.')
+    expect(diagnostic).not.toContain('Nothing was sent')
+    if (tty) {
+      expect(diagnostic).toContain('delivery outcome: unknown.')
+    } else {
+      expect(JSON.parse(diagnostic.trim().split('\n').at(-1)!).error).toMatchObject({
+        code: 'cli.interrupted',
+        message: 'Prompt delivery was interrupted. The outcome is unknown.',
+        hint: promptUnknownRecovery,
+        details: { deliveryOutcome: 'unknown' },
+      })
+      expect(JSON.parse(diagnostic.trim().split('\n').at(-1)!).error.details).toEqual({
+        deliveryOutcome: 'unknown',
+      })
+    }
+    nodeIo.dispose?.()
+    expect(process.listenerCount('SIGINT')).toBe(sigintListeners)
+  },
+)

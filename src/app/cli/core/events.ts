@@ -30,6 +30,14 @@ async function resolveSelection(ctx: CommandContext): Promise<EventSelection> {
     }
   }
   const explicit = [...(ctx.explicitOptions ?? [])].filter(key => key in selectionKeys)
+  if (
+    (inherited?.spawnedBy && explicit.includes('lineage')) ||
+    (inherited?.lineage && explicit.includes('spawned-by'))
+  ) {
+    usage(
+      'The relationship filter differs from the saved cursor. Omit relationship flags to inherit it, or start a fresh stream without --after.',
+    )
+  }
   const args = {
     options: { ...ctx.options },
     positionals: [],

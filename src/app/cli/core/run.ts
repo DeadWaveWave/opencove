@@ -313,7 +313,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
     return 0
   } catch (error) {
     const failure =
-      io.signal?.aborted && io.signal.reason instanceof CliError ? io.signal.reason : error
+      scope && io.signal?.aborted && io.signal.reason instanceof CliError ? io.signal.reason : error
     let cliError =
       failure instanceof CliError
         ? failure
