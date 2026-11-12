@@ -44,7 +44,8 @@ export const terminalDisplayCalibrationOwner = createTerminalDisplayCalibrationO
     if (!rendererKind) {
       return null
     }
-    const measurement = await measureTerminalDisplayReferenceBaseline(input)
+    // A manual capture must take a new measurement, not reuse the cached baseline.
+    const measurement = await measureTerminalDisplayReferenceBaseline(input, { fresh: true })
     return measurement && resolveMountedTerminalDisplayRendererKind() === rendererKind
       ? { measurement, rendererKind }
       : null
