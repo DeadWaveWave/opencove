@@ -84,6 +84,21 @@ test('a real coordinating Claude resumes child completion observations and reads
       'RUN_EVENTS_WORKFLOW: execute the supplied Bash workflow once.',
     )
     expect(result.exitCode, JSON.stringify(result)).toBe(0)
+    // `agent prompt` confirms delivery, not completion: wait for the workflow's own artifact,
+    // which it writes only after the child turn ended and the resumed stream was observed.
+    await expect
+      .poll(
+        async () => {
+          try {
+            JSON.parse(await readFile(artifact, 'utf8'))
+            return true
+          } catch {
+            return false
+          }
+        },
+        { timeout: 120_000, intervals: [250, 500, 1000] },
+      )
+      .toBe(true)
     expect(executed).toBe(1)
     const evidence = JSON.parse(await readFile(artifact, 'utf8'))
     expect(
