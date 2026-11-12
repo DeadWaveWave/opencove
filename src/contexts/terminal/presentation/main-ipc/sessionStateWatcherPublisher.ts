@@ -1,3 +1,9 @@
+import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
+import type { TerminalSessionMetadataEvent } from '../../../../shared/contracts/dto'
+import {
+  setPromptSubmissionEvidence,
+  type PromptSubmissionEvidence,
+} from '../../../../shared/runtime/agentHook/claudePromptEvidence'
 import type { TerminalSessionStateEvent } from '../../../../shared/contracts/dto'
 import type { OwnedSessionStateWatcherInput } from './sessionStateWatcherInput'
 import { logSessionStateWatcherDiagnostics } from './sessionStateWatcherShared'
@@ -14,6 +20,7 @@ export function createSessionStatePublisher({
     sessionId: string,
     state: 'working' | 'waiting' | 'standby',
     options: {
+      evidence?: Pick<PromptSubmissionEvidence, 'providerSessionId' | 'conversationGeneration'>
       degraded?: boolean
       source?: TerminalSessionStateEvent['source']
       hookEventName?: string
@@ -36,6 +43,83 @@ export function createSessionStatePublisher({
       sessionId,
       state,
     })
+    if (options.evidence) {
+      setPromptSubmissionEvidence(eventPayload, options.evidence)
+    }
     onState?.(eventPayload)
+  }
+}
+
+/** Capture once before discovery/IO; callbacks cannot borrow the current conversation. */
+export function captureSessionStateObservation(
+  input: OwnedSessionStateWatcherInput,
+  watcherVersion: number,
+  onTranscript:
+    | ((
+        record: import('../../../../shared/runtime/agentHook/claudeTranscript').ClaudeTranscriptObservation,
+      ) => void)
+    | undefined,
+  publish: ReturnType<typeof createSessionStatePublisher>,
+) {
+  let providerSessionId = input.resumeSessionId ?? undefined
+  let capturedGeneration: number | undefined
+  if (input.provider === 'claude-code') {
+    onTranscript?.({
+      sessionId: input.sessionId,
+      incarnation: input.sessionId,
+      providerSessionId: providerSessionId ?? '',
+      generation: watcherVersion,
+      fileIdentity: 'capture',
+      position: -1,
+      baseline: true,
+      captureConversation: value => {
+        capturedGeneration = value
+      },
+    })
+  }
+  const conversationGeneration = capturedGeneration
+  const state: typeof publish = (sessionId, value, options = {}) =>
+    publish(sessionId, value, {
+      ...options,
+      ...(input.provider === 'claude-code'
+        ? { evidence: { providerSessionId, conversationGeneration } }
+        : {}),
+    })
+  return {
+    state,
+    unavailable: (sessionId: string) => state(sessionId, 'standby', { degraded: true }),
+    bind: (id: string) => {
+      providerSessionId = id
+    },
+    get generation() {
+      return conversationGeneration
+    },
+  }
+}
+
+export function reportSessionStateWatcherFailure(
+  provider: string,
+  sessionId: string,
+  error: unknown,
+  report: (message: string) => void,
+): void {
+  const detail =
+    error instanceof Error ? `${error.name}: ${error.message}` : 'unknown watcher error'
+  report(`[opencove] state watcher failed for ${provider} session ${sessionId}: ${detail}`)
+}
+
+/** Send the same discovered identity to the UI and the Worker runtime owner. */
+export function createSessionMetadataPublisher({
+  sendToAllWindows,
+  onMetadata,
+}: {
+  sendToAllWindows: <Payload>(channel: string, payload: Payload) => void
+  onMetadata?: (event: TerminalSessionMetadataEvent) => void
+}) {
+  return (sessionId: string, resumeSessionId: string | null): void => {
+    const eventPayload: TerminalSessionMetadataEvent = { sessionId, resumeSessionId }
+    logSessionStateWatcherDiagnostics('broadcast-metadata', { sessionId, resumeSessionId })
+    sendToAllWindows(IPC_CHANNELS.ptySessionMetadata, eventPayload)
+    onMetadata?.(eventPayload)
   }
 }

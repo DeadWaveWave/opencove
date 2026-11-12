@@ -8,13 +8,21 @@ export function observeRunConversation(
   record: ClaudeTranscriptObservation,
   ports: Ports,
 ): void {
+  if (record.captureConversation) {
+    record.captureConversation(entry.conversation.generation)
+    return
+  }
   if (record.conversation) {
     entry.conversation.accept(record, ports.now(), {
       reset: () => {
         entry.continuation.startConversation()
         ports.update()
       },
-      invalidate: () => projectConversation(entry, false, ports),
+      invalidate: pending => {
+        entry.cancelExpiry?.()
+        entry.cancelExpiry = undefined
+        projectConversation(entry, false, ports, pending)
+      },
       canReady: () =>
         !entry.remote &&
         entry.launchKind === 'managed' &&
@@ -22,14 +30,26 @@ export function observeRunConversation(
         (entry.hookInstallState === undefined || entry.hookInstallState === 'installed') &&
         !entry.model.snapshot.turn,
       ready: () => projectConversation(entry, true, ports),
+      settled: ports.update,
+      completedTurnId: () => {
+        const ended = entry.model.snapshot.lastEndedTurn
+        return ended && ended.outcome !== 'unknown' ? ended.id : null
+      },
     })
+    return
+  }
+  if (
+    entry.conversation.deferTranscript(record, accepted =>
+      observeRunConversation(entry, accepted, ports),
+    )
+  ) {
     return
   }
   if (!entry.conversation.accepts(record.conversationGeneration, record.providerSessionId)) {
     return
   }
   if (
-    entry.conversation.ready &&
+    entry.conversation.mayBeClearReady &&
     record.record &&
     ['queue', 'user', 'invalid_user'].includes(record.record.kind) &&
     (record.record.kind !== 'invalid_user' || record.record.input !== false)
@@ -40,10 +60,15 @@ export function observeRunConversation(
   entry.continuation.transcript(record, entry.history, ports.now())
   ports.update()
 }
-function projectConversation(entry: AgentRunEntry, ready: boolean, ports: Ports): void {
+function projectConversation(
+  entry: AgentRunEntry,
+  ready: boolean,
+  ports: Ports,
+  pending = false,
+): void {
   entry.model = {
     ...entry.model,
-    lastTurnEnd: null,
+    lastTurnEnd: pending ? entry.model.lastTurnEnd : null,
     snapshot: {
       ...entry.model.snapshot,
       state: ready ? 'idle' : 'unknown',

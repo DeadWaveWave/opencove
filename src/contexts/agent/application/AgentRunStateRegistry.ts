@@ -17,7 +17,8 @@ import {
   claimRunNodeBinding,
   publishRunTransition,
   readRunFinalMessage,
-  matchesAgentRunFilter,
+  acceptsRunObservation,
+  listAgentRuns,
   type AgentRunEntry as Entry,
   type AgentRunBinding as Binding,
 } from './AgentRunStateEntry'
@@ -29,7 +30,6 @@ import {
   type AgentRunObservation,
   type AgentRunSnapshot,
 } from '../domain/agentRunState'
-
 import type { AgentRunEvent as AgentRuntimeEvent } from '../../../shared/contracts/dto/agentRunState'
 export type { AgentRunEvent as AgentRuntimeEvent } from '../../../shared/contracts/dto/agentRunState'
 export interface AgentRuntimeFilter {
@@ -98,6 +98,7 @@ export class AgentRunStateRegistry {
       return
     }
     existing?.cancelExpiry?.()
+    existing?.conversation.dispose()
     if (existing) {
       this.releaseNodeBinding(existing)
     }
@@ -111,7 +112,7 @@ export class AgentRunStateRegistry {
         nodeId: () => entry.launchNodeId ?? entry.model.snapshot.nodeId,
         remote: () => entry.remote,
       }),
-      conversation: new ClaudeLiveConversation(),
+      conversation: new ClaudeLiveConversation(this.ports.schedule),
       continuation: new ClaudeTurnContinuation(),
       token: `${input.incarnation}:${++this.tokenSequence}`,
       bindingGeneration: 0,
@@ -195,15 +196,25 @@ export class AgentRunStateRegistry {
       return
     }
     if (
-      observation.source === 'claude_hook' &&
-      !entry.conversation.accepts(evidence?.conversationGeneration, evidence?.providerSessionId)
+      entry.model.incarnation !== observation.incarnation ||
+      !this.acceptsObservation(sessionId, observation.source, evidence)
     ) {
       return
+    }
+    if (observation.source === 'exit') {
+      entry.conversation.dispose()
     }
     if (observation.degraded || observation.source === 'exit') {
       entry.conversation.veto()
     }
     this.update(entry, observation, evidence)
+  }
+  acceptsObservation(
+    sessionId: string,
+    source: AgentRunObservation['source'],
+    evidence?: PromptSubmissionEvidence,
+  ): boolean {
+    return acceptsRunObservation(this.entries.get(sessionId), source, evidence)
   }
   observeClaudeTranscript(
     sessionId: string,
@@ -364,6 +375,7 @@ export class AgentRunStateRegistry {
       return false
     }
     entry.cancelExpiry?.()
+    entry.conversation.dispose()
     this.entries.delete(input.sessionId)
     this.fences.emit(input.sessionId, { fence: null })
     this.releaseNodeBinding(entry)
@@ -384,25 +396,13 @@ export class AgentRunStateRegistry {
   }
 
   list(filter: AgentRuntimeFilter = {}) {
-    return {
-      epoch: this.ports.epoch,
-      seq: this.sequence,
-      ...(this.ports.archive ? { turnArchive: true } : {}),
-      agents: [...this.entries.values()]
-        .filter(
-          entry =>
-            entry.model.snapshot.state !== 'exited' &&
-            matchesAgentRunFilter(
-              {
-                event: { snapshot: entry.model.snapshot } as AgentRuntimeEvent,
-                projectId: entry.projectId,
-                spaceId: entry.spaceId,
-              },
-              { ...filter, types: undefined },
-            ),
-        )
-        .map(entry => structuredClone(entry.model.snapshot)),
-    }
+    return listAgentRuns(
+      this.entries.values(),
+      this.ports.epoch,
+      this.sequence,
+      !!this.ports.archive,
+      filter,
+    )
   }
 
   /** Subscribe with the query watermark; replay and registration are synchronous and gap-free. */
@@ -432,6 +432,7 @@ export class AgentRunStateRegistry {
     this.subscribers.clear()
     for (const entry of this.entries.values()) {
       entry.cancelExpiry?.()
+      entry.conversation.dispose()
     }
     this.entries.clear()
     this.nodeBindings.clear()

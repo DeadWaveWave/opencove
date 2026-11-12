@@ -63,8 +63,15 @@ export async function assertClearTurnComposition(archive?: AgentTurnArchive) {
   hooks.channel.onClaudeTranscript?.(record => run.runtime.observeClaudeTranscript(record))
   hooks.reservation.commit('s')
   const at = Date.now()
-  const send = (id: string, name: string, offset: number, promptId?: string, source?: string) =>
-    hooks.post(
+  let current: string | undefined
+  const send = async (
+    id: string,
+    name: string,
+    offset: number,
+    promptId?: string,
+    source?: string,
+  ) => {
+    await hooks.post(
       {
         session_id: id,
         hook_event_name: name,
@@ -76,6 +83,13 @@ export async function assertClearTurnComposition(archive?: AgentTurnArchive) {
       },
       at + offset,
     )
+    if (name === 'SessionStart') {
+      current = id
+    }
+    if (id === current) {
+      run.tick(2000)
+    }
+  }
   try {
     await send('A', 'SessionStart', -2)
     await send('A', 'UserPromptSubmit', -1, 'a')

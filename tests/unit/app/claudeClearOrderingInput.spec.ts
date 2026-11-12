@@ -91,6 +91,15 @@ it('counts one bracketed paste and one Enter across separate stdin chunks and fe
     expect(observed.filter(h => h.hook_event_name === 'UserPromptSubmit')).toEqual([
       expect.objectContaining({ prompt: 'FIRST_B_INPUT' }),
     ])
+    // A refusal must also detect Enter without a preceding paste. Queries are serial barriers.
+    child.stdin.write('\rinput-counts\rinput-counts\r')
+    await vi.waitFor(async () =>
+      expect((await records()).filter(r => r.scenario === 'input-counts')).toHaveLength(2),
+    )
+    expect((await records()).filter(r => r.scenario === 'input-counts')).toEqual([
+      expect.objectContaining({ pastes: 2, enters: 2 }),
+      expect.objectContaining({ pastes: 2, enters: 2 }),
+    ])
   } finally {
     const exited = new Promise<void>(resolveExit => child.once('exit', () => resolveExit()))
     if (child.exitCode === null && child.signalCode === null) {

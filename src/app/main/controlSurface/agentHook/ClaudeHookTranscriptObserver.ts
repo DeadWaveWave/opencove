@@ -40,12 +40,18 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
     this.roots = claudeTranscriptRoots(configDirectories)
   }
 
-  observe(sessionId: string, envelope: ClaudeHookEnvelope, context: PrivateHookContext): boolean {
+  observe(
+    sessionId: string,
+    envelope: ClaudeHookEnvelope,
+    context: PrivateHookContext,
+  ): boolean | 'deferred' {
     if (this.disposed || !context.isCurrent()) {
       return false
     }
     this.credential = context.credential ?? this
-    let decision: { action: 'start' | 'end' | 'event' | 'ignore'; generation: number } | undefined
+    let decision:
+      | { action: 'start' | 'end' | 'event' | 'ignore'; generation: number; deferred?: boolean }
+      | undefined
     this.emit({
       sessionId,
       incarnation: context.incarnation,
@@ -56,22 +62,46 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
       baseline: false,
       conversation: {
         event: envelope,
-        publish: acceptedGeneration => context.publishState?.(acceptedGeneration),
+        publish: (acceptedGeneration, action = 'event') => {
+          if (this.commit(sessionId, envelope, context, action, acceptedGeneration)) {
+            context.publishState?.(acceptedGeneration)
+          }
+        },
         decide: value => {
           decision = value
         },
       },
     })
-    const action = decision?.action ?? this.lifecycle.accept(envelope)
-    if (decision) {
+    if (decision?.deferred) {
+      return 'deferred'
+    }
+    return this.commit(
+      sessionId,
+      envelope,
+      context,
+      decision?.action ?? this.lifecycle.accept(envelope),
+      decision?.generation,
+    )
+  }
+  private commit(
+    sessionId: string,
+    envelope: ClaudeHookEnvelope,
+    context: PrivateHookContext,
+    action: 'start' | 'end' | 'event' | 'ignore',
+    acceptedGeneration?: number,
+  ): boolean {
+    if (this.disposed || !context.isCurrent()) {
+      return false
+    }
+    if (acceptedGeneration !== undefined) {
       setPromptSubmissionEvidence(envelope, {
         ...envelope,
-        conversationGeneration: decision.generation,
+        conversationGeneration: acceptedGeneration,
       })
     }
     this.bindingEvidence?.({
       sessionId,
-      credential: this.credential,
+      credential: context.credential ?? this,
       incarnation: context.incarnation,
       isCurrent: context.isCurrent,
       configDirectories: this.configDirectories,
@@ -82,12 +112,12 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
       return false
     }
     this.hotUntil = Date.now() + 2_000
-    context = { ...context, conversationGeneration: decision?.generation }
+    context = { ...context, conversationGeneration: acceptedGeneration }
     if (action === 'start' || action === 'end') {
       this.detach()
       this.demand = false
       this.currentGeneration = ++generation
-      if (!decision) {
+      if (acceptedGeneration === undefined) {
         this.emit({
           sessionId,
           providerSessionId: envelope.claudeSessionId,

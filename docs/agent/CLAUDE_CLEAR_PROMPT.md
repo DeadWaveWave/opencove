@@ -10,6 +10,14 @@ transcripts neither grant readiness nor revoke it; actual queue/user activity ve
 A clear without an orderable relay timestamp immediately quarantines input, including
 same-ID clears; only identifiable duplicate receipts remain idempotent. Buffered successor
 activity is folded in strict relay order; missing or tied timestamps stay quarantined.
+Steady-state hooks commit immediately: ordinary completion, waiting notifications and
+submission receipts have no reconciliation delay. Only an authenticated clear Start or
+End opens a transition window. Input is revoked immediately. The window closes when
+the successor's first turn commits, or after 200 ms without transition activity, with a
+four-second overall limit. Passive notifications and duplicate receipts do not extend it.
+Reordered transition evidence is reconciled within that window; late evidence cannot
+rewrite an ended turn. Ordinary single-conversation reordering after the window closes
+keeps the existing behavior and is outside this clear-readiness policy.
 Unversioned transcript compatibility ends at the first conversation transition. Metadata,
 redacted records without input evidence and local `/clear` echoes do not veto readiness;
 identified prompts and actual unidentified user content still do.
@@ -26,5 +34,9 @@ Legacy Workers retain their existing result; clients never infer readiness or re
 Web clients consume the executing Worker's projection; mounted remote PTYs remain unsupported.
 
 Claude Code `/clear` 后可在观察到新会话时尝试首条提示，无须手动先完成一轮；
-无法排序的 clear 会立即暂停输入；元数据与本地 `/clear` 回显不会撤销已确认的就绪状态。
+普通会话的完成、等待通知与提交回执即时处理，不增加等待。
+只有确认 clear 时才打开过渡窗口，并立即暂停输入；新会话首轮提交完成，
+或最后一条相关活动后安静 200 毫秒，窗口即结束，整段等待最多四秒。
+窗口结束后恢复普通处理；超窗证据不改写已结束轮次，普通会话的乱序处理保持原有行为。
+被动的空闲与认证通知不影响就绪状态。无法排序的 clear 会立即暂停输入；元数据与本地 `/clear` 回显不会撤销已确认的就绪状态。
 这不保证编辑器为空或没有对话框。状态不明时检查屏幕，切勿自动重发。

@@ -408,6 +408,7 @@ export function commitAgentRunUpdate(
         state: 'idle',
         quality: 'authoritative',
         source: 'claude_hook',
+        lastTransitionAt: entry.model.snapshot.lastTransitionAt,
       },
     }
   }

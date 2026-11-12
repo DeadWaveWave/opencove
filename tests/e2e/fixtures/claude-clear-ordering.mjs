@@ -70,6 +70,14 @@ let pending = '',
 let serial = Promise.resolve()
 async function commandReceived(command) {
   const scenario = command.trim()
+  if (!scenario) {
+    enters++
+    return
+  }
+  if (scenario === 'input-counts') {
+    await log({ scenario, id: current, pastes, enters })
+    return
+  }
   if (
     [
       'clear-input',
@@ -84,12 +92,14 @@ async function commandReceived(command) {
     const old = current
     current = randomUUID()
     clock = Math.max(clock + 10, Date.now())
+    const startAt = clock++,
+      submitAt = clock++
     if (scenario === 'delayed-input') {
-      await hook('UserPromptSubmit', current, clock + 1, { prompt_id: 'early', prompt: 'early' })
+      await hook('UserPromptSubmit', current, submitAt, { prompt_id: 'early', prompt: 'early' })
       await log({ scenario: 'quarantined', id: current })
       await delay(1000)
     }
-    await hook('SessionStart', current, clock++, { source: 'clear' })
+    await hook('SessionStart', current, startAt, { source: 'clear' })
     await hook('Stop', old, clock++, { prompt_id: 'late-A', last_assistant_message: 'OLD' })
     clearOnPaste = scenario === 'clear-after-paste'
     swallowInput = ['unreported-dialog', 'slash-menu', 'pending-output'].includes(scenario)

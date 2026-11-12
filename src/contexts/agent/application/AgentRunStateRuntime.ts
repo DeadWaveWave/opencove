@@ -272,6 +272,15 @@ export class AgentRunStateRuntime {
       this.metadata({ sessionId: event.sessionId, resumeSessionId: null, agentProvider: provider })
     }
     const session = this.sessions.get(event.sessionId)!
+    if (
+      !this.registry.acceptsObservation(
+        event.sessionId,
+        event.source ?? 'session_file',
+        getPromptSubmissionEvidence(event),
+      )
+    ) {
+      return
+    }
     if (event.remote) {
       this.markRemote(event.sessionId)
     }

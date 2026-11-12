@@ -11,7 +11,7 @@ export const clearTranscript = readFileSync(
 )
   .trim()
   .split('\n')
-export async function clearIngressFixture() {
+export async function clearIngressFixture(autoFlush = true) {
   vi.useFakeTimers()
   vi.setSystemTime(100000)
   const run = promptDeliveryRuntimeFixture(undefined, 'claude-code', false)
@@ -19,8 +19,17 @@ export async function clearIngressFixture() {
   hooks.channel.onState(event => run.runtime.observe(event))
   hooks.channel.onClaudeTranscript?.(record => run.runtime.observeClaudeTranscript(record))
   hooks.reservation.commit('s')
-  const send = (id: string, name: string, offset?: number, promptId?: string, source?: string) =>
-    hooks.post(
+  let batching = false
+  let current: string | undefined
+  const send = async (
+    id: string,
+    name: string,
+    offset?: number,
+    promptId?: string,
+    source?: string,
+    extra: Record<string, unknown> = {},
+  ) => {
+    await hooks.post(
       {
         session_id: id,
         hook_event_name: name,
@@ -31,9 +40,17 @@ export async function clearIngressFixture() {
         prompt: 'prompt',
         last_assistant_message: `reply-${id}`,
         ...(name === 'PermissionRequest' ? { tool_name: 'Bash' } : {}),
+        ...extra,
       },
       offset === undefined ? undefined : 100000 + offset,
     )
+    if (name === 'SessionStart') {
+      current = id
+    }
+    if (!batching && id === current) {
+      await vi.advanceTimersByTimeAsync(2000)
+    }
+  }
   const fence = () => run.registry.readFence({ sessionId: 's' })!
   const transcript = (id: string, unversioned = false) => {
     const captured = unversioned ? undefined : fence().conversationGeneration
@@ -55,9 +72,11 @@ export async function clearIngressFixture() {
   await send('A', 'SessionStart', 1)
   await send('A', 'UserPromptSubmit', 2, 'a')
   await send('A', 'Stop', 3, 'a')
+  batching = !autoFlush
   return {
     ...run,
     send,
+    settle: () => vi.advanceTimersByTimeAsync(2000),
     fence,
     transcript,
     async close() {

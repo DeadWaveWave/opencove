@@ -1,3 +1,7 @@
+import {
+  getPromptSubmissionEvidence,
+  setPromptSubmissionEvidence,
+} from '../../shared/runtime/agentHook/claudePromptEvidence'
 import { physicalSpawnLifecycle } from '../../shared/runtime/physicalSpawnLifecycle'
 import {
   ClaudeTranscriptChannel,
@@ -93,13 +97,18 @@ export function createHeadlessPtyRuntime(options: {
     },
     onClaudeTranscript: transcripts.emit,
     onState: event => {
-      emitState({
+      const enriched = {
         ...event,
         source: event.source ?? 'session_file',
         ...(hookInstallStateBySessionId.get(event.sessionId)
           ? { hookInstallState: hookInstallStateBySessionId.get(event.sessionId) }
           : {}),
-      })
+      }
+      const evidence = getPromptSubmissionEvidence(event)
+      if (evidence) {
+        setPromptSubmissionEvidence(enriched, evidence)
+      }
+      emitState(enriched)
     },
     onMetadata: event => {
       metadataListeners.forEach(listener => listener(event))

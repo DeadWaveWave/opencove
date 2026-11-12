@@ -1,3 +1,5 @@
+import type { AgentRunObservation } from '../domain/agentRunState'
+import type { PromptSubmissionEvidence } from '../../../shared/runtime/agentHook/claudePromptEvidence'
 import type { ClaudeLiveConversation } from './ClaudeLiveConversation'
 import type { ClaudeTurnContinuation } from './ClaudeTurnContinuation'
 import { createAppError } from '../../../shared/errors/appError'
@@ -214,4 +216,45 @@ export function setRunRuntimeContext(
 
 export function runBinding(entry: AgentRunEntry): AgentRunBinding {
   return { nodeId: entry.model.snapshot.nodeId, projectId: entry.projectId, spaceId: entry.spaceId }
+}
+
+/** The same source fence protects raw ingress and reducer/degradation side effects. */
+export function acceptsRunObservation(
+  entry: AgentRunEntry | undefined,
+  source: AgentRunObservation['source'],
+  evidence?: PromptSubmissionEvidence,
+): boolean {
+  return (
+    !!entry &&
+    ((source !== 'claude_hook' &&
+      !(source === 'session_file' && entry.model.snapshot.provider === 'claude-code')) ||
+      entry.conversation.accepts(evidence?.conversationGeneration, evidence?.providerSessionId))
+  )
+}
+export function listAgentRuns(
+  entries: Iterable<AgentRunEntry>,
+  epoch: string,
+  seq: number,
+  archive: boolean,
+  filter: AgentRuntimeFilter,
+) {
+  return {
+    epoch,
+    seq,
+    ...(archive ? { turnArchive: true } : {}),
+    agents: [...entries]
+      .filter(
+        entry =>
+          entry.model.snapshot.state !== 'exited' &&
+          matchesAgentRunFilter(
+            {
+              event: { snapshot: entry.model.snapshot } as AgentRuntimeEvent,
+              projectId: entry.projectId,
+              spaceId: entry.spaceId,
+            },
+            { ...filter, types: undefined },
+          ),
+      )
+      .map(entry => structuredClone(entry.model.snapshot)),
+  }
 }

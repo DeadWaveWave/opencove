@@ -78,6 +78,7 @@ export interface PrivateHookContext {
   publishState?: (generation: number) => void
 }
 export interface PrivateHookObserver<TEnvelope> {
-  observe(sessionId: string, envelope: TEnvelope, context: PrivateHookContext): boolean
+  /** Deferred accepts the authenticated request while the owner retains state publication. */
+  observe(sessionId: string, envelope: TEnvelope, context: PrivateHookContext): boolean | 'deferred'
   dispose(): void
 }

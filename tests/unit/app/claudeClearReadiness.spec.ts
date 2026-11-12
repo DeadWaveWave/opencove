@@ -28,8 +28,15 @@ async function fixture() {
     await hooks.channel.dispose()
   })
   const at = Date.now()
-  const send = (id: string, name: string, offset: number, promptId?: string, source?: string) =>
-    hooks.post(
+  let current: string | undefined
+  const send = async (
+    id: string,
+    name: string,
+    offset: number,
+    promptId?: string,
+    source?: string,
+  ) => {
+    await hooks.post(
       {
         session_id: id,
         hook_event_name: name,
@@ -42,6 +49,13 @@ async function fixture() {
       },
       at + offset,
     )
+    if (name === 'SessionStart') {
+      current = id
+    }
+    if (id === current) {
+      run.tick(2000)
+    }
+  }
   const fence = () => run.registry.readFence({ sessionId: 's' })!
   const admission = () => promptAdmission(fence(), () => ({ supported: true, submitDelayMs: 1 }))
   await send('A', 'SessionStart', 1)

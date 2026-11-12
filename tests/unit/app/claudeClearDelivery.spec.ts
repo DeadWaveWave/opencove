@@ -20,8 +20,16 @@ async function fixture() {
     run.dispose()
     await hooks.channel.dispose()
   })
-  const send = (id: string, name: string, at = Date.now(), promptId?: string, source?: string) =>
-    hooks.post(
+  let current: string | undefined
+  const send = async (
+    id: string,
+    name: string,
+    at = Date.now(),
+    promptId?: string,
+    source?: string,
+    flush = true,
+  ) => {
+    await hooks.post(
       {
         session_id: id,
         hook_event_name: name,
@@ -34,6 +42,13 @@ async function fixture() {
       },
       at,
     )
+    if (name === 'SessionStart') {
+      current = id
+    }
+    if (flush && id === current) {
+      await vi.advanceTimersByTimeAsync(2000)
+    }
+  }
   await send('A', 'SessionStart', Date.now() - 2)
   await send('B', 'SessionStart', Date.now() - 1, undefined, 'clear')
   expect(run.registry.readFence({ sessionId: 's' })).toMatchObject({
@@ -141,9 +156,11 @@ it('carries the current source generation through rejected-state submission reco
   // A source receipt predating Enter starts the turn but cannot confirm delivery.
   await f.send('B', 'UserPromptSubmit', Date.now() - 100, 'b')
   expect(f.service.get('d')).toMatchObject({ status: 'pending' })
-  await f.send('B', 'Stop', Date.now(), 'b')
+  await f.send('B', 'Stop', Date.now(), 'b', undefined, false)
+  await vi.advanceTimersByTimeAsync(1)
   const before = f.registry.get({ nodeId: 'n' })
-  await f.send('B', 'UserPromptSubmit', Date.now(), 'b')
+  await f.send('B', 'UserPromptSubmit', Date.now(), 'b', undefined, false)
+  await vi.advanceTimersByTimeAsync(2000)
   expect(await delivery).toMatchObject({ phase: 'submission_observed', turnId: 'turn' })
   expect(f.registry.get({ nodeId: 'n' })).toEqual(before)
 })

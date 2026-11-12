@@ -174,7 +174,7 @@ export class ClaudeTurnContinuation {
       record.record?.kind === 'user' &&
       record.record.promptSource === 'queued'
     ) {
-      if (!history.hasEndedPrompt(record.record.promptId)) {
+      if (!history.hasEndedPrompt(record.record.promptId, record.providerSessionId)) {
         rememberClaudeIdentity(this.baselineIds, record.record.promptId)
         if (this.earlyEnd?.evidence?.promptId === record.record.promptId) {
           this.confirmBaseline(record.record.promptId, history)

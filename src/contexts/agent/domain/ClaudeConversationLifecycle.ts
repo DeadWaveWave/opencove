@@ -1,6 +1,13 @@
 import type { ClaudeConversationEvent } from '../../../shared/runtime/agentHook/claudeConversation'
 export type { ClaudeConversationEvent } from '../../../shared/runtime/agentHook/claudeConversation'
 
+export function isClaudeConversationActivity(event: ClaudeConversationEvent): boolean {
+  return (
+    event.hookEventName !== 'SessionStart' &&
+    (event.hookEventName === 'SessionEnd' || event.state !== null)
+  )
+}
+
 /** Provider IDs may resume. Freshness retires observer generations, never invocation authority. */
 export class ClaudeConversationLifecycle {
   private current?: string
@@ -11,6 +18,9 @@ export class ClaudeConversationLifecycle {
   accept(event: ClaudeConversationEvent): 'start' | 'end' | 'event' | 'ignore' {
     const at = event.emittedAtMs,
       id = event.claudeSessionId
+    if (!isClaudeConversationActivity(event) && event.hookEventName !== 'SessionStart') {
+      return !this.ended && this.current === id ? 'event' : 'ignore'
+    }
     if (event.hookEventName === 'SessionStart') {
       const replacement = !!this.current || this.ended || event.sessionStartSource === 'clear'
       if (this.current || this.ended) {

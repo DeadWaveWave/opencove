@@ -4,7 +4,10 @@ import { createServer } from 'node:http'
 import { createClaudeHookChannel } from '../../../src/app/main/controlSurface/agentHook/claudeHookChannel'
 
 /** Runs the actual authenticated hook handler without opening a socket. */
-export async function hookChannelFixture(options?: { environment?: Readonly<NodeJS.ProcessEnv> }) {
+export async function hookChannelFixture(options?: {
+  environment?: Readonly<NodeJS.ProcessEnv>
+  residentContext?: 'canvas' | 'none'
+}) {
   let receive!: RequestListener
   const server = Object.assign(new EventEmitter(), {
     listening: false,
@@ -25,6 +28,7 @@ export async function hookChannelFixture(options?: { environment?: Readonly<Node
   }) as typeof createServer
   const channel = createClaudeHookChannel({ createHttpServer })
   const reservation = await channel.reserveSpawn(options)
+  const responses: string[] = []
   const post = async (payload: unknown, emittedAtMs?: number) =>
     await new Promise<number>(resolve => {
       const request = Object.assign(new EventEmitter(), {
@@ -46,7 +50,11 @@ export async function hookChannelFixture(options?: { environment?: Readonly<Node
       }) as unknown as IncomingMessage
       const response = {
         statusCode: 0,
-        end() {
+        setHeader() {},
+        end(body?: string) {
+          if (body) {
+            responses.push(body)
+          }
           resolve(this.statusCode)
         },
       } as unknown as ServerResponse
@@ -54,5 +62,5 @@ export async function hookChannelFixture(options?: { environment?: Readonly<Node
       request.emit('data', Buffer.from(JSON.stringify(payload)))
       request.emit('end')
     })
-  return { channel, reservation, post }
+  return { channel, reservation, post, responses }
 }

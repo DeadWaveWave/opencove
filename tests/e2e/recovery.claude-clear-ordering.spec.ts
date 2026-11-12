@@ -11,6 +11,7 @@ import {
   projectId,
   spaceId,
 } from './recovery.managed-claude-launch-lifecycle.helpers'
+import type { AgentRunSnapshot } from '../../src/shared/contracts/dto/agentRunState'
 import type { CreateNodeResult } from '../../src/shared/contracts/dto/nodeControl'
 
 test('authenticated clear ordering commits without writing the store from the provider', async () => {
@@ -147,10 +148,37 @@ test('authenticated clear ordering commits without writing the store from the pr
           }),
         { nodeId: agent.id, sessionId: agent.sessionId, data: data + '\r' },
       )
+    const waitState = (state: AgentRunSnapshot['state']) =>
+      expect
+        .poll(
+          async () =>
+            page.evaluate(async nodeId => {
+              const snapshot = await window.opencoveApi.controlSurface.invoke<AgentRunSnapshot>({
+                kind: 'query',
+                id: 'agent.get',
+                payload: { nodeId },
+              })
+              return { state: snapshot.state, quality: snapshot.quality }
+            }, agent.id),
+          { timeout: 10_000 },
+        )
+        .toEqual({ state, quality: 'authoritative' })
+    const inputCounts = async () => {
+      const before = (await records()).filter(r => r.scenario === 'input-counts').length
+      await write('input-counts')
+      await expect
+        .poll(async () => (await records()).filter(r => r.scenario === 'input-counts').length)
+        .toBe(before + 1)
+      const { pastes, enters } = (await records())
+        .filter(r => r.scenario === 'input-counts')
+        .at(-1)!
+      return { pastes, enters }
+    }
     await write('clear-input')
     await expect
       .poll(async () => (await records()).some(r => r.scenario === 'clear-input'))
       .toBe(true)
+    await waitState('idle')
     const b = (await records()).find(r => r.scenario === 'clear-input')!.id
     const delivered = jsonOutput(
       await terminalCommand(
@@ -197,6 +225,7 @@ test('authenticated clear ordering commits without writing the store from the pr
     await expect
       .poll(async () => (await records()).some(r => r.scenario === 'clear-after-paste'))
       .toBe(true)
+    await waitState('idle')
     const interrupted = await terminalCommand(
       page,
       caller,
@@ -224,6 +253,8 @@ test('authenticated clear ordering commits without writing the store from the pr
       // oxlint-disable-next-line no-await-in-loop
       await expect.poll(async () => (await records()).some(r => r.scenario === mode)).toBe(true)
       // oxlint-disable-next-line no-await-in-loop
+      await waitState('idle')
+      // oxlint-disable-next-line no-await-in-loop -- each delivery requires its own conversation
       const stalled = await terminalCommand(
         page,
         caller,
@@ -249,6 +280,7 @@ test('authenticated clear ordering commits without writing the store from the pr
     await expect
       .poll(async () => (await records()).some(r => r.scenario === 'waiting-input'))
       .toBe(true)
+    await waitState('waiting')
     const blocked = await terminalCommand(
       page,
       caller,
@@ -270,6 +302,8 @@ test('authenticated clear ordering commits without writing the store from the pr
     await expect
       .poll(async () => (await records()).some(r => r.scenario === 'delayed-input'))
       .toBe(true)
+    await waitState('working')
+    const beforeRefusal = await inputCounts()
     const busy = await terminalCommand(
       page,
       caller,
@@ -280,12 +314,17 @@ test('authenticated clear ordering commits without writing the store from the pr
         agent.id,
         '--text',
         'MUST_NOT_WRITE',
+        '--if-busy',
+        'refuse',
         '--timeout',
         '10s',
       ),
       'DELAYED_START_BUSY',
     )
     expect(busy).toContain('agent.busy')
+    expect(busy).toMatch(/"pasteDispatchAttempted"\s*:\s*false/)
+    expect(busy).toMatch(/"submitDispatchAttempted"\s*:\s*false/)
+    expect(await inputCounts()).toEqual(beforeRefusal)
     expect((await records()).filter(r => r.scenario === 'submitted-input')).toHaveLength(1)
   } finally {
     await app?.close()
