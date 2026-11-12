@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### 🚀 Added
+
+- CLI: `opencove events` streams agent state changes and completed turns as NDJSON, filtered by Space, node, the agents you started or a whole lineage, so agents can wait for each other without polling. Each record carries a cursor; `--after` resumes where a stream stopped and reports a gap instead of silently skipping events. (#618)
+
 ## [0.5.0] - 2026-11-12
 
 OpenCove 0.5.0 redraws the app in pixels around one generated theme, shows on the canvas what every Agent is doing, tells you once when an Agent needs you, and lets Agents hand work to each other through a rebuilt `opencove` CLI. The Worker now owns what is saved and which conversation each Claude window resumes.
