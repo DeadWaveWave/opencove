@@ -152,12 +152,18 @@ export function createRuntimeDeps(
             prompt: data.prompt,
             provider: data.provider,
             model: data.model,
+            ...(data.agentFullAccess === undefined
+              ? {}
+              : { agentFullAccess: data.agentFullAccess }),
           }
         : {
             spaceId: resolved.space?.id,
             prompt: data.prompt,
             provider: data.provider,
             model: data.model,
+            ...(data.agentFullAccess === undefined
+              ? {}
+              : { agentFullAccess: data.agentFullAccess }),
           }
       ctx.assertActive?.()
       const launched = await invokeInternal<Record<string, unknown>>(controlSurface, spawnContext, {

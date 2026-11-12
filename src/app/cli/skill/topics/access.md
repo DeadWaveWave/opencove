@@ -30,7 +30,7 @@ operation IDs fail closed.
 ## What requires the user
 
 Ask the user in OpenCove for endpoint/mount administration, project addition/root approval, private
-settings, permission policy, Worker administration, and plugin distribution or execution. Grants
+settings, the default permission policy, Worker administration, and plugin distribution or execution. Grants
 cannot run plugin commands, invoke plugin code, or open plugin views/windows. They can read listed
 plugin metadata; this does not authorize running it.
 
@@ -54,10 +54,13 @@ Moving nodes or deleting ancestors does not reset ancestry. User launches, task 
 exempt. Recovered descendants count toward subsequent grant requests. Grant runtime creation must
 stay on the same Worker; ask the user to start an agent on the target Worker for remote work.
 
-Agent launches use the user’s saved permissions, environment and executable. Explicit
-agentFullAccess, env, executablePathOverride, resumeSessionId, codexReuseRunningAppServer, mode and
-unknown fields are refused, including false/null values. Only the user changes permissions in
-Settings → Agent → Providers → Permissions → Full Access Mode.
+Agent launches use the user’s saved permissions by default. Explicit `--full-access true|false`
+(`agentFullAccess`) applies to that one agent, in either direction, and is remembered on its node
+for relaunch, resume and recovery. It never changes Settings. Nodes without an explicit value
+follow the current Settings → Agent → Providers → Permissions → Full Access Mode value.
+The saved environment and executable still apply: explicit `env`, `executablePathOverride`,
+`resumeSessionId`, `codexReuseRunningAppServer`, `mode` and unknown fields remain refused,
+including false/null values.
 
 Describe the task in a sentence: a nonempty one-word launch prompt is refused because providers may
 interpret it as a command. Start prompts with words, not command prefixes:

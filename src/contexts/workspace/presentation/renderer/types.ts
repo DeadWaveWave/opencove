@@ -89,6 +89,8 @@ export interface AgentNodeData {
   customDirectory: string | null
   shouldCreateDirectory: boolean
   taskId: string | null
+  /** Launch-time override; absent means follow the current Settings value. */
+  agentFullAccess?: boolean
 }
 
 export interface TerminalAgentSessionBinding {

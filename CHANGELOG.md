@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Agents: `opencove node create agent --full-access true|false` (also `node.create` `data.agentFullAccess` and plugin `agents.launch`) sets Full Access for that one agent, even when another agent starts it, without changing Settings; relaunch, resume and recovery keep the choice. (#462, #612)
+
 ### 🚀 Added
 
 - CLI: `opencove events` streams agent state changes and completed turns as NDJSON, filtered by Space, node, the agents you started or a whole lineage, so agents can wait for each other without polling. Each record carries a cursor; `--after` resumes where a stream stopped and reports a gap instead of silently skipping events. (#618)

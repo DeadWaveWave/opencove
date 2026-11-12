@@ -136,7 +136,12 @@ export function toMountedAgentLaunchInput(
     rows: payload.rows,
   }
   return auth?.kind === 'session-grant'
-    ? base
+    ? {
+        ...base,
+        ...(typeof payload.agentFullAccess === 'boolean'
+          ? { agentFullAccess: payload.agentFullAccess }
+          : {}),
+      }
     : {
         ...base,
         ...(payload.intent ? { intent: payload.intent } : {}),
