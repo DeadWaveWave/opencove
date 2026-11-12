@@ -137,6 +137,13 @@ test('task refusal preserves editable text, todo status and a reused live sessio
     },
   ])
   try {
+    const sidebarToggle = f.window.getByTestId('app-header-sidebar-toggle')
+    await expect(sidebarToggle).toBeVisible()
+    if ((await sidebarToggle.getAttribute('aria-expanded')) === 'true') {
+      await sidebarToggle.click()
+    }
+    await expect(sidebarToggle).toHaveAttribute('aria-expanded', 'false')
+    await expect(f.window.locator('.app-shell--sidebar-collapsed')).toHaveCount(1)
     const task = f.window.locator('[data-id="task"] .task-node')
     const requirement = task.getByTestId('task-node-inline-requirement-input')
     const run = task.getByTestId('task-node-run-agent')

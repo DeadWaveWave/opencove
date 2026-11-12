@@ -38,7 +38,9 @@ export function parseStringOptions(provider, args) {
   }
   return { values, operands }
 }
-// Codex 0.166.0 / Clap 4.5.58 parser.rs:102-134 trailing_values bypasses option/command recognition.
+// Codex 0.166.0 utils/cli/src/config_override.rs:29-36: -c/--config, Append, Vec<String>.
+// Clap 4.5.58 parser.rs:103-105,277-301 consumes pending values before command dispatch;
+// 880-922,991-1010 handles attached/required values; 119-134 protects trailing values.
 export function parseCodex(args) {
   const delimiter = args.indexOf('--')
   const control = delimiter < 0 ? args : args.slice(0, delimiter)
@@ -46,7 +48,20 @@ export function parseCodex(args) {
   let command
   for (let i = 0; i < control.length; i++) {
     const arg = control[i]
-    if (['--model', '--sandbox', '--ask-for-approval', '--settings', '-c'].includes(arg)) {
+    let config
+    if (arg === '--config' || arg === '-c') {
+      config = control[++i]
+      if (config === undefined || (config !== '-' && config.startsWith('-'))) {
+        throw new Error('The config option requires a value.')
+      }
+    } else if (arg.startsWith('--config=')) {
+      config = arg.slice('--config='.length)
+    } else if (arg.startsWith('-c') && arg.length > 2) {
+      config = arg.slice(2).replace(/^=/, '')
+    }
+    if (config !== undefined) {
+      ;(values['--config'] ??= []).push(config)
+    } else if (['--model', '--sandbox', '--ask-for-approval'].includes(arg)) {
       values[arg] = control[++i]
     } else if (arg.startsWith('-')) {
       values[arg] = true

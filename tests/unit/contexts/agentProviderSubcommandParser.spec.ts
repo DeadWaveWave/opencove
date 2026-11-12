@@ -121,7 +121,10 @@ it.each(['claude-code', 'codex', 'opencode', 'gemini'] as const)(
       model: 'chosen',
       resumeSessionId: '11111111-1111-4111-8111-111111111111',
       agentFullAccess: false,
-      injectedArgs: ['--settings', 'hook-config'],
+      injectedArgs:
+        provider === 'codex'
+          ? ['--config', 'notify=["/fixture/relay.mjs"]']
+          : ['--settings', 'hook-config'],
       opencodeServer: { hostname: '127.0.0.1', port: 12345 },
     })
     const parsed =
