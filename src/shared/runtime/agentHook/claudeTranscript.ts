@@ -2,7 +2,7 @@
 export type ClaudeTranscriptRecord =
   | { kind: 'queue'; operation: 'enqueue' | 'remove' | 'dequeue' | 'unknown'; key?: string }
   | { kind: 'user'; promptId: string; promptSource: string; uuid?: string }
-  | { kind: 'invalid_user' }
+  | { kind: 'invalid_user'; input?: false }
   | { kind: 'assistant'; parentUuid?: string; promptId?: string; final: boolean }
   | { kind: 'checkpoint'; promptId?: string; queueEmpty: boolean; final: boolean }
 export interface ClaudeTranscriptObservation {

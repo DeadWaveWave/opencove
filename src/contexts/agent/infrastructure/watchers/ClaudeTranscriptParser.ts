@@ -25,6 +25,20 @@ export function parseClaudeTranscript(line: string): ClaudeTranscriptRecord | un
         : {}),
     }
   }
+  const content = record.message?.content
+  if (
+    record.type === 'user' &&
+    (record.isMeta === true ||
+      (record.promptId === undefined &&
+        record.promptSource === undefined &&
+        typeof content === 'string' &&
+        (content.trim() === '/clear' ||
+          /^<command-name>\/clear<\/command-name>(?:\r?\n<command-message>clear<\/command-message>)?(?:\r?\n<command-args><\/command-args>)?$/.test(
+            content.trim(),
+          ))))
+  ) {
+    return undefined
+  }
   const promptId = claudePromptId(record.promptId)
   if (record.type === 'user' && promptId) {
     return {
@@ -35,7 +49,14 @@ export function parseClaudeTranscript(line: string): ClaudeTranscriptRecord | un
     }
   }
   if (record.type === 'user') {
-    return { kind: 'invalid_user' }
+    // A redacted/non-identifying record cannot establish actual editor input. Keep its
+    // checkpoint uncertainty separate from the positive evidence needed to veto a clear.
+    const input =
+      record.promptId !== undefined ||
+      record.promptSource !== undefined ||
+      (typeof content === 'string' && content.length > 0) ||
+      (Array.isArray(content) && content.length > 0)
+    return { kind: 'invalid_user', ...(!input ? { input: false as const } : {}) }
   }
   if (record.type === 'assistant') {
     return {

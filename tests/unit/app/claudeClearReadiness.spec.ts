@@ -89,7 +89,7 @@ it('retires active A once, rejects duplicate receipts and keeps same-ID clear co
   await f.send('B', 'SessionStart', 6, undefined, 'clear')
   expect(f.admission()).not.toBeNull()
 })
-it.each(['missing', 'meta-only', 'user', 'queue', 'old-error'])(
+it.each(['missing', 'user', 'queue', 'old-error'])(
   'treats %s transcript evidence conservatively before B has a turn',
   async kind => {
     const f = await fixture()

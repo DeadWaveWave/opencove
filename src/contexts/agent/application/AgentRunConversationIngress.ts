@@ -31,7 +31,8 @@ export function observeRunConversation(
   if (
     entry.conversation.ready &&
     record.record &&
-    ['queue', 'user', 'invalid_user'].includes(record.record.kind)
+    ['queue', 'user', 'invalid_user'].includes(record.record.kind) &&
+    (record.record.kind !== 'invalid_user' || record.record.input !== false)
   ) {
     entry.conversation.veto()
     projectConversation(entry, false, ports)
