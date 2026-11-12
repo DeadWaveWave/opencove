@@ -173,11 +173,11 @@ test('task refusal preserves editable text, todo status and a reused live sessio
     expect(await f.records()).toHaveLength(1)
     // Reading the old PTY still succeeds: a refused reuse did not kill it.
     const agent = await f.window.evaluate(
-      async space =>
+      async project =>
         window.opencoveApi.controlSurface.invoke<{
           nodes: { id: string; kind: string; sessionId: string }[]
-        }>({ kind: 'query', id: 'node.list', payload: { spaceId: space } }),
-      spaceId,
+        }>({ kind: 'query', id: 'node.list', payload: { projectId: project, kind: 'agent' } }),
+      projectId,
     )
     const target = agent.nodes.find(node => node.kind === 'agent')!
     await expect(
