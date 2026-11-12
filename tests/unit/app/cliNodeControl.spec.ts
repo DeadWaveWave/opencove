@@ -44,6 +44,26 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+it.each(['task-1', undefined])('maps --task only when explicit: %s', async taskNodeId => {
+  const requests = stubInvokeRequests()
+  expect(
+    await invokeNodeArgs([
+      'node',
+      'create',
+      'agent',
+      '--space',
+      'space-1',
+      ...(taskNodeId === undefined ? [] : ['--task', taskNodeId]),
+    ]),
+  ).toBe(true)
+  const data = requests.find(request => request.id === 'node.create')?.payload.data
+  if (taskNodeId === undefined) {
+    expect(data).not.toHaveProperty('taskNodeId')
+  } else {
+    expect(data).toMatchObject({ taskNodeId })
+  }
+})
+
 describe('CLI node control commands', () => {
   it('omits website profile fields unless the update command explicitly provides them', async () => {
     const requests = stubInvokeRequests()

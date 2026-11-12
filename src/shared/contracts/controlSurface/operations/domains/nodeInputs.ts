@@ -96,6 +96,14 @@ export const nodeCreateInput = z.discriminatedUnion('kind', [
           .describe('Agent provider; omitted or empty uses the configured default')
           .nullish(),
         model: optionalText('Provider model ID'),
+        taskNodeId: z
+          .string()
+          .trim()
+          .min(1)
+          .describe(
+            'Existing task in the same Space; links the new agent and moves the task to doing',
+          )
+          .optional(),
         agentFullAccess: z
           .boolean()
           .describe('Full Access for this agent and its restarts; omitted follows Settings')
