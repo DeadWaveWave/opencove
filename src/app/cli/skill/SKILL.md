@@ -114,3 +114,4 @@ timeout); it never makes a prompt safe to resend. Ambiguity candidates are in `e
 - `opencove skill wait` — exact turns, state waits, exits, all/any and continuations.
 - `opencove skill read` — correlated replies, screen, fallback, archive and identifiers.
 - `opencove skill access` — grants, constrained launches, provider commands and settings.
+- `opencove skill events` — NDJSON observations, selection, cursors, gaps and termination.

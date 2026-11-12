@@ -16,7 +16,7 @@ Control Surface 是 OpenCove 对外能力入口。Desktop、CLI、Web UI 和 rem
 
 - Desktop IPC：Renderer 通过 preload 白名单调用 Main。
 - HTTP `/invoke`：Worker Control Surface 的 command / query 调用。
-- HTTP `/events`：server-sent event stream。
+- HTTP `/events`：server-sent event stream；`format=cli-v1&stream=agent` 的可恢复只读表示见 [CLI event stream v1](../cli/EVENT_STREAM_PROTOCOL.md)。
 - WebSocket `/pty`：PTY attach、input、resize、controller-bound Agent re-exec、role/control event。
 - Worker Web access listener：同源 Full Web Canvas、debug shell、cookie auth 与上述 HTTP/WS routes。
 

@@ -112,7 +112,10 @@ export function reply(
 }
 
 export async function startMessagesApi(
-  options: { replyText?: (body: MessagesRequest) => string } = {},
+  options: {
+    replyText?: (body: MessagesRequest) => string
+    onMain?: (res: ServerResponse, body: MessagesRequest) => boolean | Promise<boolean>
+  } = {},
 ): Promise<{
   server: Server
   url: string
@@ -148,6 +151,9 @@ export async function startMessagesApi(
       const blocks = lastUserBlocks(body)
       if (isMain && !hasToolResult(body)) {
         mainTurns.push(blocks)
+      }
+      if (isMain && (await options.onMain?.(res, body))) {
+        return
       }
       const trigger = blocks.some(block => block.includes('TRIGGER_TOOL'))
       // A very long final reply makes the Stop hook body exceed the relay's post limit.
@@ -228,6 +234,7 @@ export async function prompt(userDataDir: string, nodeId: string, text: string) 
 export async function launchRealClaude(
   testInfo: TestInfo,
   residentContext: 'suggest' | 'off' = 'suggest',
+  options: { messages?: Parameters<typeof startMessagesApi>[0]; fullAccess?: boolean } = {},
 ) {
   const version = execFileSync('claude', ['--version'], { encoding: 'utf8', timeout: 10_000 })
   await testInfo.attach('real-cli-version', {
@@ -253,7 +260,7 @@ export async function launchRealClaude(
       projects: { [workspace]: { hasTrustDialogAccepted: true } },
     }),
   )
-  const api = await startMessagesApi()
+  const api = await startMessagesApi(options.messages)
   const { electronApp, window } = await launchApp({
     userDataDir,
     cleanupUserDataDir: false,
@@ -273,7 +280,7 @@ export async function launchRealClaude(
     settings: {
       defaultProvider: 'claude-code',
       agentResidentContext: residentContext,
-      agentFullAccess: false,
+      agentFullAccess: options.fullAccess ?? false,
       customModelEnabledByProvider: { 'claude-code': false },
     },
     workspaces: [

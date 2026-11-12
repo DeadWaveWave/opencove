@@ -6,3 +6,8 @@ try {
 } finally {
   io.dispose?.()
 }
+// Node cannot cancel an in-flight process.stdout uv_write with destroy().
+// Diagnostics must finish before a blocked-output cancellation closes the process.
+if (io.outputCancelled) {
+  process.stderr.write('', () => process.exit(Number(process.exitCode ?? 1)))
+}
