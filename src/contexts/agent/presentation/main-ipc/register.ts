@@ -372,7 +372,7 @@ export function registerAgentIpcHandlers(
 
       const sessionEnv =
         normalized.env || internalSessionEnv
-          ? { ...(normalized.env ?? {}), ...(internalSessionEnv ?? {}) }
+          ? { ...(internalSessionEnv ?? {}), ...(normalized.env ?? {}) }
           : undefined
       const launchEnv = { ...environment, ...managedLaunch.plan.env, ...(sessionEnv ?? {}) }
 

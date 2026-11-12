@@ -7,6 +7,7 @@ import { expect, it } from 'vitest'
 import { TerminalProfileResolver } from '../../../src/platform/terminal/TerminalProfileResolver'
 import { preparePtySpawnArguments } from '../../../src/platform/process/spawnArguments'
 import { compileWindowsFixture } from '../../e2e/fixtures/create-native-hook-provider'
+import { findWslGuest } from '../../support/wslGuest'
 
 const native = process.platform === 'win32' ? it : it.skip
 const vectors = [
@@ -188,15 +189,20 @@ native(
   30_000,
 )
 
-it.runIf(process.platform === 'win32' && Boolean(process.env.OPENCOVE_TEST_WSL_DISTRO))(
-  'WSL --exec delivers exact argv and env to an inert guest receiver',
-  async () => {
+native(
+  'WSL --exec delivers exact argv and env to an inert guest receiver (skips when WSL or its guest is unavailable)',
+  async context => {
+    const availability = findWslGuest()
+    if (availability.distro === undefined) {
+      context.skip(availability.skipReason)
+      return
+    }
     const root = await mkdtemp(join(tmpdir(), 'opencove-wsl-argv-'))
     const output = join(root, 'argv.json')
     let child: import('node-pty').IPty | undefined
     let exited = false
     try {
-      const distro = process.env.OPENCOVE_TEST_WSL_DISTRO!
+      const distro = availability.distro
       const { convertWindowsPathToWslPath } =
         await import('../../../src/platform/terminal/TerminalProfileResolver.windows')
       const guestOutput = convertWindowsPathToWslPath(output, distro)!

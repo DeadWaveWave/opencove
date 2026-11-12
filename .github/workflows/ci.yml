@@ -311,13 +311,31 @@ jobs:
       - name: Pass CLI selectors through Windows PowerShell
         run: pnpm exec vitest run tests/unit/e2e/cliListSelectors.windows.spec.ts --pool=forks --maxWorkers=1
 
+      - name: Prepare WSL guest for native argument tests
+        timeout-minutes: 10
+        shell: pwsh
+        run: ./scripts/prepare-wsl-native-arguments.ps1
+
+      - name: Verify native PowerShell and WSL argument boundaries
+        timeout-minutes: 5
+        if: ${{ !cancelled() }}
+        env:
+          ELECTRON_RUN_AS_NODE: '1'
+        run: ./node_modules/electron/dist/electron.exe ./node_modules/vitest/vitest.mjs run tests/integration/terminal/windowsNativeArguments.windows.spec.ts --pool=forks --maxWorkers=1
+
+      - name: Remove CI-owned WSL guest
+        timeout-minutes: 2
+        if: always()
+        shell: pwsh
+        run: ./scripts/remove-wsl-native-arguments.ps1
+
       - name: Build
         run: pnpm build
 
       - name: Windows-specific E2E tests
         env:
           OPENCOVE_E2E_SKIP_BUILD: '1'
-          OPENCOVE_E2E_TEST_MATCH: '**/*.windows.spec.ts'
+          OPENCOVE_E2E_TEST_MATCH: '**/*.windows.spec.ts,**/agent.initial-prompt-argv.spec.ts'
           OPENCOVE_E2E_WINDOW_MODE: inactive
           OPENCOVE_E2E_RETRIES: '0'
           OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'
