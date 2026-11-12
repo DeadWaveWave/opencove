@@ -41,6 +41,7 @@ test('grant ancestry survives renderer publications and restart, and a child rep
     let page = launched.window
     await seedWorkspaceState(page, {
       activeWorkspaceId: 'lineage-project',
+      settings: { agentFullAccess: false },
       workspaces: [
         {
           id: 'lineage-project',
@@ -65,6 +66,8 @@ test('grant ancestry survives renderer publications and restart, and a child rep
       'claude-code',
       '--title',
       'Delegate',
+      '--full-access',
+      'true',
     ])
     expect(childCli.code, childCli.stderr).toBe(0)
     const child = (JSON.parse(childCli.stdout) as CreateNodeResult).node
@@ -73,6 +76,21 @@ test('grant ancestry survives renderer publications and restart, and a child rep
       lineageDepth: 2,
       lineageStatus: 'recorded',
     })
+    const readPermission = () =>
+      page.evaluate(async nodeId => {
+        const { state } = await window.opencoveApi.persistence.readAppState()
+        const saved = state as {
+          settings: { agentFullAccess: boolean }
+          workspaces: { nodes: { id: string; agent?: { agentFullAccess?: boolean } }[] }[]
+        }
+        return {
+          setting: saved.settings.agentFullAccess,
+          explicit: saved.workspaces
+            .flatMap(savedWorkspace => savedWorkspace.nodes)
+            .find(node => node.id === nodeId)?.agent?.agentFullAccess,
+        }
+      }, child.id)
+    expect(await readPermission()).toEqual({ setting: false, explicit: true })
     await establishLineageAgentReady(page, child)
     const reply = await grantedAgentCli(root, child.id, [
       'agent',
@@ -171,6 +189,7 @@ test('grant ancestry survives renderer publications and restart, and a child rep
       lineageStatus: 'recorded',
       spaceId: 'moved-space',
     })
+    expect(await readPermission()).toEqual({ setting: false, explicit: true })
     // Mount the recovered child and require evidence that its provider actually restarted.
     await page.evaluate(
       async nodeId =>

@@ -2,9 +2,9 @@
 
 CLI 是 Control Surface client；业务状态由 Worker/application owner 管理。CLI 不直接修改业务数据库。
 
-Agent terminals cannot answer permission dialogs, read or change private settings, override launch policy, run provider commands through prompts, or run plugin code through the API: those decisions belong to the human. Project isolation is not yet enforced.
+Agent terminals cannot answer permission dialogs, read or change private settings, run provider commands through prompts, or run plugin code through the API: those decisions belong to the human. Agent launches inherit Settings unless `--full-access true|false` chooses Full Access for that agent and its restarts. Project isolation is not yet enforced.
 
-智能体终端不能通过 API 回答权限弹窗、读取或修改私密设置、覆盖启动权限策略或执行插件代码；这些决定由用户作出。目前尚未实施项目隔离。
+智能体终端不能通过 API 回答权限弹窗、读取或修改私密设置或执行插件代码；这些决定由用户作出。Agent 启动默认继承 Settings，也可用 `--full-access true|false` 为该节点及其后续重启单独选择权限。目前尚未实施项目隔离。
 
 ## Commands
 

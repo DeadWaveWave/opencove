@@ -12,6 +12,7 @@ import { encodeClaudeProjectPath } from '../../src/contexts/agent/infrastructure
 import { launchApp, removePathWithRetry, seedWorkspaceState } from './workspace-canvas.helpers'
 import { createCommandPlugin } from './plugins.commands.helpers'
 import { canvasRuntimeFootprint, jsonOutput, terminalCommand } from './cli.terminal.helpers'
+import { assertGrantLaunchPolicy, assertFullAccessChoice } from './cli.session-grant.helpers'
 
 const projectId = 'grant-project',
   spaceId = 'grant-main',
@@ -147,16 +148,7 @@ test('session grants preserve agent workflows and refuse human decisions', async
       reason: expect.stringContaining('only the user can answer permission prompts and dialogs'),
       policyVersion: expect.any(String),
     })
-    expect(await object('api', 'schema', 'session.launchAgent')).toMatchObject({
-      access: 'constrained',
-      rejectedFields: {
-        env: expect.any(String),
-        executablePathOverride: expect.any(String),
-        agentFullAccess: expect.stringContaining(
-          'Settings → Agent → Providers → Permissions → Full Access Mode',
-        ),
-      },
-    })
+    await assertGrantLaunchPolicy({ page, projectId, spaceId, root, command, object })
     // Compact content for ConPTY wrapping only after preserving/checking the exit status line.
     const catalog = (await success('api', 'ops', '--prefix', 'session', '--limit', '0')).replaceAll(
       '\n',
@@ -226,8 +218,11 @@ test('session grants preserve agent workflows and refuse human decisions', async
       'claude-code',
       '--prompt',
       '',
+      '--full-access',
+      'true',
     )
     const agentNode = agent.node as { id: string; sessionId: string }
+    await assertFullAccessChoice(page, agentNode.id)
     const agentSnapshot = () =>
       page.evaluate(
         async id =>
@@ -312,6 +307,9 @@ test('session grants preserve agent workflows and refuse human decisions', async
     ).toContain('Strict reply 2')
     await success('agent', 'history', 'clear', '--node', agentNode.id)
     await writeFile(dialog, 'permission')
+    // The hook publishes waiting before the stub appends its dialog-entry record.
+    // Include that record in the baseline so only unexpected input changes it.
+    await expect.poll(() => readFile(record, 'utf8')).toContain('{"kind":"dialog","bytes":0}\n')
     await expect.poll(async () => (await agentSnapshot()).state).toBe('waiting')
     const before = await readFile(record, 'utf8')
     expect(
@@ -327,7 +325,7 @@ test('session grants preserve agent workflows and refuse human decisions', async
       ],
       ['sync.writeState', { state: {} }],
       ['sync.state', {}],
-      ['session.launchAgent', { spaceId, prompt: 'Escalate', agentFullAccess: true }],
+      ['session.launchAgent', { spaceId, prompt: 'Start a review' }],
     ] as const) {
       const inputPath = join(root, `${id}.json`)
       await writeFile(inputPath, JSON.stringify(input))

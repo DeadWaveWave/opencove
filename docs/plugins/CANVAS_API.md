@@ -85,10 +85,13 @@ const output = await host.terminals.read({ nodeId: terminal.node.id });
   selects its default shell/profile. `command` is shell command text, not an argv
   array; a remote command requires an explicit target `shell`. For an executable
   plus argv and temporary progress/result, use `host.operations` instead.
-- `agents.launch({ target, title?, frame?, prompt, provider?, model? })` launches a
+- `agents.launch({ target, title?, frame?, prompt, provider?, model?, agentFullAccess? })` launches a
   regular Agent window with the target Worker's supported provider/runtime rules.
   Supported provider IDs are `claude-code`, `codex`, `opencode`, `gemini`, `pi`,
   and `kimi` (availability depends on the target Worker).
+  Optional `agentFullAccess` must be boolean. An explicit true or false overrides Settings for
+  this agent and is saved on its node for relaunch, resume and restart recovery. Omission follows
+  the current Settings value. Settings are never changed; `nodes.update` cannot change this choice.
 - Both create methods return `{ revision, projectId, spaceId, node }`. Save
   `node.id`, not `sessionId`, for subsequent control.
 

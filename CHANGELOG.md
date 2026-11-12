@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Agents: `opencove node create agent --full-access true|false` (also `node.create` `data.agentFullAccess` and plugin `agents.launch`) sets Full Access for that one agent, even when another agent starts it, without changing Settings; relaunch, resume and recovery keep the choice. (#462, #612)
+
 ### 🚀 Added
 
 - CLI: when OpenCove refuses to start another agent because the lineage quota is full, the refusal lists which nodes hold the slots and how to free one; `opencove whoami` and `context` show the quota. `opencove agent read` reads several agents at once and returns one result per agent. (#614)

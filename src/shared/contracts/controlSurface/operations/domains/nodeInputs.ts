@@ -96,6 +96,10 @@ export const nodeCreateInput = z.discriminatedUnion('kind', [
           .describe('Agent provider; omitted or empty uses the configured default')
           .nullish(),
         model: optionalText('Provider model ID'),
+        agentFullAccess: z
+          .boolean()
+          .describe('Full Access for this agent and its restarts; omitted follows Settings')
+          .optional(),
       })
       .nullish(),
   }),

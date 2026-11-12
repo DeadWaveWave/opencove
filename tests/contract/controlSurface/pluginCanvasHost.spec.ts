@@ -242,11 +242,34 @@ describe('plugin canvas routing over two authenticated Workers', () => {
       await expect(
         host('terminals.create', { target, command: 'echo unsafe-default-shell' }),
       ).rejects.toThrow('explicit target shell')
+      const restrictedAgent = await host<CreateNodeResult>('agents.launch', {
+        target,
+        prompt: 'Inspect the project',
+        provider: 'codex',
+        agentFullAccess: false,
+      })
+      expect(
+        (await store.readAppState())?.workspaces
+          .flatMap(workspace => workspace.nodes)
+          .find(node => node.id === restrictedAgent.node.id)?.agent,
+      ).toMatchObject({ agentFullAccess: false })
       const agent = await host<CreateNodeResult>('agents.launch', {
         target,
         prompt: 'Inspect the project',
         provider: 'codex',
+        agentFullAccess: true,
       })
+      const savedAgent = (await store.readAppState())?.workspaces
+        .flatMap(workspace => workspace.nodes)
+        .find(node => node.id === agent.node.id)
+      expect(savedAgent?.agent).toMatchObject({ agentFullAccess: true })
+      await expect(host('agents.launch', { target, agentFullAccess: 'true' })).rejects.toThrow(
+        'agentFullAccess',
+      )
+      await expect(host('agents.launch', { target, agentFullAccess: null })).rejects.toThrow(
+        'agentFullAccess',
+      )
+
       expect(agent.node).toMatchObject({
         kind: 'agent',
         data: { provider: 'codex', executionDirectory: remoteRoot },
