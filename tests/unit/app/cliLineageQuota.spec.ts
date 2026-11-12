@@ -1,7 +1,8 @@
 // @vitest-environment node
 import { expect, it } from 'vitest'
 import { run } from '../../../src/app/cli/core/run'
-import { identityFixture, who } from './cliIdentity.helpers'
+import { agentSpawnErrorPresentation } from '../../../src/shared/errors/agentSpawnError'
+import { identityFixture, who, node } from './cliIdentity.helpers'
 
 const quota = { depth: 1, maxDepth: 3, liveInTree: 4, maxLiveInTree: 6 }
 it.each(['whoami', 'context'])(
@@ -69,7 +70,7 @@ it.each(['agent.spawn_depth_limit', 'agent.spawn_concurrency_limit'])(
     ).toBe(1)
     expect(stderr).toContain(code)
     expect(stderr).toContain('Reviewer')
-    expect(stderr).toContain("opencove agent stop --node 'delegate'")
+    expect(stderr).toContain('opencove agent stop --node delegate')
   },
 )
 it('keeps identity quota projections restricted to the public fields', async () => {
@@ -78,4 +79,26 @@ it('keeps identity quota projections restricted to the public fields', async () 
   expect(await run(['whoami'], f.io)).toBe(0)
   expect(JSON.parse(f.out()).lineageQuota).toEqual(quota)
   expect(f.out()).not.toContain('never-print')
+})
+
+it('can follow the terminal recovery hint without dispatching agent-only stop', async () => {
+  const f = identityFixture()
+  f.values['node.get'] = { node: { ...node, sessionId: 'plain-shell' } }
+  f.values['agent.get'] = null
+  const { hint } = agentSpawnErrorPresentation({
+    code: 'agent.spawn_concurrency_limit',
+    details: {
+      nodes: [{ nodeId: node.id, title: 'Shell', kind: 'terminal', depth: 2, state: 'running' }],
+    },
+  })!
+  const get = /opencove node get --node [\w-]+ --fields sessionId/.exec(hint)![0]
+  expect(await run(get.split(' ').slice(1), f.io)).toBe(0)
+  const sessionId = JSON.parse(f.out()).node.sessionId
+  expect(sessionId).toBe('plain-shell')
+  const kill = /opencove session kill --session <sessionId>/
+    .exec(hint)![0]
+    .replace('<sessionId>', sessionId)
+  expect(await run(kill.split(' ').slice(1), f.io)).toBe(0)
+  expect(f.requests.at(-1)).toMatchObject({ id: 'session.kill', payload: { sessionId } })
+  expect(f.requests.some(r => r.id === 'session.stopNode' || r.id === 'agent.get')).toBe(false)
 })

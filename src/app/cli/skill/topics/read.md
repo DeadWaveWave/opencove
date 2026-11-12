@@ -20,8 +20,8 @@ Multiple targets always return a JSON array in input order, including duplicates
 `node` (the input selector), `ok`, and the same fields as a single read, or `ok: false` and `error`.
 Selector and read failures are isolated. Exit 0 means every read succeeded; otherwise the first
 failing target's exit code applies, so always inspect every entry. There is no separate partial-failure
-exit code. `--turn` / `--expect-turn` and other exact-turn options are refused (exit 2); use separate
-reads for saved turn IDs. `--last`, `--screen`, `--scrollback` and `--lines` apply to every target.
+exit code. `--turn` requires a single target (exit 2 for batches); use separate reads for saved turn
+IDs. `--expect-turn` is unsupported by `agent read` for any target count (exit 2). `--last`, `--screen`, `--scrollback` and `--lines` apply to every target.
 One target keeps the existing plain-text default and JSON shape. Existing per-target Worker reads
 are used, including their transcript fallback and old-Worker error behavior.
 

@@ -162,5 +162,7 @@ show `{depth, maxDepth, liveInTree, maxLiveInTree}` from the same Worker census 
 A user-started root has depth 1; liveInTree counts live/starting agent-created runtimes, excluding
 that root. Older Workers or unavailable accounting omit the quota. Depth/width refusal details
 include up to six occupying nodes (nodeId, title, kind, depth, state), with concrete
-`opencove agent stop --node <id>` hints. Stopping cannot reduce a caller's depth: depth-three
-callers must ask the user to start a new root.
+`opencove agent stop --node <id>` hints for agent occupants. For terminals, read the current
+`node.sessionId` with `opencove node get --node <id> --fields sessionId`, then use
+`opencove session kill --session <sessionId>` to stop the entire terminal, including its shell.
+Stopping cannot reduce a caller's depth: depth-three callers must ask the user to start a new root.

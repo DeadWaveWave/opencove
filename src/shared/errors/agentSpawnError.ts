@@ -1,3 +1,5 @@
+import { shellWord } from '../utils/shellWord'
+
 export const agentSpawnPresentations = {
   agentSpawnDepth: {
     message: 'This runtime would exceed the maximum agent lineage depth of 3.',
@@ -53,6 +55,12 @@ export interface SpawnQuotaNode {
   depth: number
   state: 'starting' | 'running'
 }
+function spawnRecoveryHint(node: SpawnQuotaNode): string {
+  const target = shellWord(node.nodeId)
+  return node.kind === 'terminal'
+    ? `read its current node.sessionId with opencove node get --node ${target} --fields sessionId, then stop the whole terminal with opencove session kill --session <sessionId>`
+    : `stop with opencove agent stop --node ${target}`
+}
 export interface SpawnLimitDetails {
   nodes?: SpawnQuotaNode[]
   reason: 'depth_limit' | 'concurrency_limit'
@@ -99,7 +107,7 @@ export function agentSpawnErrorPresentation(error: { code?: string; details?: un
       nodes
         .map(
           node =>
-            `${JSON.stringify(node.title)} (${node.nodeId}, ${node.kind}, depth ${node.depth}, ${node.state}); stop with opencove agent stop --node '${node.nodeId.replaceAll("'", "'\\''")}'`,
+            `${JSON.stringify(node.title)} (${node.nodeId}, ${node.kind}, depth ${node.depth}, ${node.state}); ${spawnRecoveryHint(node)}`,
         )
         .join('; ') +
       '.'

@@ -137,3 +137,65 @@ it('honors --pretty for the default batch JSON output', async () => {
   ).toBe(0)
   expect(f.out()).toBe(JSON.stringify(JSON.parse(f.out()), null, 2) + '\n')
 })
+
+function discoveredFixture() {
+  const f = fixture()
+  f.io.env = {}
+  f.values['system.whoami'] = { kind: 'bearer', scopeTier: 'admin' }
+  f.io.profileCandidates = () => ['/discovered-profile']
+  f.io.isProcessAlive = () => true
+  f.io.readTextFile = async path => {
+    if (path.endsWith('worker-control-surface.json')) {
+      throw Error('ENOENT')
+    }
+    return JSON.stringify({
+      version: 1,
+      hostname: 'localhost',
+      port: 4312,
+      pid: 42,
+      createdAt: '2026-04-26T02:10:00Z',
+      token: 'profile-token',
+    })
+  }
+  return f
+}
+it('isolates unavailable @self while reading a named target through profile discovery', async () => {
+  const f = discoveredFixture()
+  expect(await run(['agent', 'read', '--node', '@self', '--node', 'Reviewer'], f.io)).toBe(2)
+  expect(JSON.parse(f.out())).toEqual([
+    {
+      node: '@self',
+      ok: false,
+      error: expect.objectContaining({
+        code: 'cli.usage',
+        message: expect.stringContaining('@self'),
+      }),
+    },
+    expect.objectContaining({
+      node: 'Reviewer',
+      ok: true,
+      nodeId: 'other-123456',
+      message: 'Reply',
+    }),
+  ])
+  expect(f.requests.some(r => r.id === 'system.whoami')).toBe(true)
+  expect(
+    f.requests.some(r => r.id === 'agent.finalMessage' && r.payload.nodeId === 'other-123456'),
+  ).toBe(true)
+})
+it('keeps single-target @self rejection ahead of profile discovery', async () => {
+  const f = discoveredFixture()
+  expect(await run(['agent', 'read', '--node', '@self'], f.io)).toBe(2)
+  expect(f.out()).toBe('')
+  expect(f.requests).toHaveLength(0)
+  expect(f.error().message).toContain('@self')
+})
+
+it('rejects unsupported --expect-turn on a single target before connecting', async () => {
+  const f = fixture()
+  expect(await run(['agent', 'read', '--node', 'Reviewer', '--expect-turn', 'turn-1'], f.io)).toBe(
+    2,
+  )
+  expect(f.error().message).toContain('Unknown option --expect-turn')
+  expect(f.requests).toHaveLength(0)
+})

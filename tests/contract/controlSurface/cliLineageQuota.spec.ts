@@ -142,7 +142,7 @@ it('projects admission quota for roots and depth-three callers and names width/d
       state: 'running',
     })
     expect(error.hint).toContain('Delegate 0')
-    expect(error.hint).toContain("opencove agent stop --node 'child-0'")
+    expect(error.hint).toContain('opencove agent stop --node child-0')
   }
   f.exit()
   const who = await f.cli(['whoami', '--fields', 'lineageQuota.liveInTree'])

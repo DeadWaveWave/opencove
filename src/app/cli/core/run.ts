@@ -187,7 +187,14 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       }
     }
     for (const [key, spec] of Object.entries(command.options ?? {})) {
+      // Batch node failures belong to the command's per-target resolver. Single
+      // targets and other selector kinds retain the early identity preflight.
+      const deferredBatchNode =
+        command.resolveSelectorsInExecute &&
+        spec.selector === 'node' &&
+        [args.options[key]].flat().length > 1
       if (
+        !deferredBatchNode &&
         spec.selector &&
         [args.options[key]].flat().includes('@self') &&
         io.env.OPENCOVE_ENV !== '1' &&

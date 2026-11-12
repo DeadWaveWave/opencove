@@ -70,7 +70,7 @@ export const agentReadCommand = defineCommand({
   description: [
     'Read the latest ended reply, or exactly --turn <turnId>. Single-target output defaults to plain text; -o json includes outcome and durability. Exact reads never fall back to another turn or transcript.',
     'Loop: prompt → delivery status → wait --turn <turnId> → read --turn <turnId> -o json. Check outcome; never resend because reading fails. Local archived exact reads survive restart.',
-    'Repeat --node for up to 10 targets: always a JSON array in input order, {node, ok, ...reply} or {node, ok:false, error}. Failures are independent. --turn/--expect-turn require one target; --last and screen options apply to all.',
+    'Repeat --node for up to 10 targets: always a JSON array in input order, {node, ok, ...reply} or {node, ok:false, error}. Failures are independent. --turn requires one target; --expect-turn is unsupported; --last and screen options apply to all.',
     '--screen shows the visible terminal (last 40 lines); --scrollback adds history (last 200; --lines 1–5000). Both strip ANSI and never send input. Screen modes exclude each other and --last/--turn.',
     'deliveryIds are retained correlations, including refused or uncertain attempts, proving neither submission nor consumption: inspect each deliveryId with opencove agent delivery <id>. promptIds are the provider prompt IDs, not delivery IDs.',
     'Exit codes: 0 readable results; otherwise the first failing target’s exit (1 unavailable content; 2 invalid input; 4 authorization refusal). Fallback, correlation, truncation, retention and recovery: opencove skill read.',

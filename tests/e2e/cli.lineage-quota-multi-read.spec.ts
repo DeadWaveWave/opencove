@@ -49,7 +49,7 @@ test('quota projections agree with depth/width refusals and identify stoppable o
         state: 'running',
       })
       expect(error.hint).toContain(grandchild.title)
-      expect(error.hint).toContain(`opencove agent stop --node '${grandchild.id}'`)
+      expect(error.hint).toContain(`opencove agent stop --node ${grandchild.id}`)
     }
     await stopAndWait(f.page(), grandchild)
     await expect
