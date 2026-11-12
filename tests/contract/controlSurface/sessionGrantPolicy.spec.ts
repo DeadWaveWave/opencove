@@ -92,7 +92,6 @@ it.each(REQUIRED_SESSION_GRANT_DENIALS)(
 for (const op of [sessionLaunchAgentOperation, sessionLaunchAgentInMountOperation]) {
   const target = op.id === 'session.launchAgent' ? { spaceId: 's' } : { mountId: 'm' }
   it.each([
-    'agentFullAccess',
     'env',
     'executablePathOverride',
     'resumeSessionId',
@@ -104,7 +103,6 @@ for (const op of [sessionLaunchAgentOperation, sessionLaunchAgentInMountOperatio
       handle = vi.fn(() => ({ sessionId: 'started' }))
     registerLaunch(surface, op, handle)
     const value: Record<string, unknown> = {
-      agentFullAccess: true,
       env: { KEY: 'secret' },
       executablePathOverride: '/bin/sh',
       resumeSessionId: 'old',
@@ -122,6 +120,17 @@ for (const op of [sessionLaunchAgentOperation, sessionLaunchAgentInMountOperatio
       error: { code: 'common.forbidden', details: { reason: 'field_denied', field } },
     })
     expect(handle).not.toHaveBeenCalled()
+  })
+  it.each([true, false])(`${op.id} allows explicit Full Access=%s`, async agentFullAccess => {
+    const surface = createControlSurface()
+    registerLaunch(surface, op, (_ctx, payload) => payload)
+    expect(
+      await admittedGrantInvocation(surface, ctx, {
+        id: op.id,
+        kind: 'command',
+        payload: { ...target, prompt: 'Explain this project', agentFullAccess },
+      }),
+    ).toMatchObject({ ok: true, value: { agentFullAccess } })
   })
   it(`${op.id} refuses target fields belonging to the other launch operation`, async () => {
     const surface = createControlSurface(),
@@ -141,8 +150,6 @@ for (const op of [sessionLaunchAgentOperation, sessionLaunchAgentInMountOperatio
     expect(handle).not.toHaveBeenCalled()
   })
   it.each([
-    ['agentFullAccess', false],
-    ['agentFullAccess', null],
     ['env', null],
     ['executablePathOverride', null],
     ['resumeSessionId', null],
@@ -330,5 +337,37 @@ it.each(['read', 'interact'] as const)(
         expect(access, op.id).toBe('denied')
       }
     }
+  },
+)
+
+it.each([true, false])(
+  'preserves admitted grant Full Access=%s during mount forwarding',
+  agentFullAccess => {
+    expect(
+      toMountedAgentLaunchInput(
+        { prompt: '', agentFullAccess },
+        { mountId: 'mount', cwdUri: null },
+        ctx.requestAuth,
+      ),
+    ).toMatchObject({ agentFullAccess })
+  },
+)
+
+it.each([true, false])(
+  'preserves explicit Full Access=%s when resolving Home launch settings',
+  async agentFullAccess => {
+    const { resolveRemoteAgentLaunchSettings } =
+      await import('../../../src/app/main/controlSurface/handlers/agentLaunchEnvironment')
+    const { createMinimalState } =
+      await import('./controlSurfaceHttpServer.sessionStreaming.testUtils')
+    const state = createMinimalState('/repo', 'p', 's')
+    state.settings = { agentFullAccess: !agentFullAccess }
+    const result = await resolveRemoteAgentLaunchSettings(
+      ctx,
+      { mountId: 'm', prompt: 'Explain this project', agentFullAccess },
+      { getPersistenceStore: async () => ({ readAppState: async () => state }) as never },
+    )
+    expect(result.agentFullAccess).toBe(agentFullAccess)
+    expect(state.settings).toEqual({ agentFullAccess: !agentFullAccess })
   },
 )

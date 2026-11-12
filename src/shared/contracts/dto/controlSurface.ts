@@ -390,6 +390,8 @@ export interface PreparedRuntimeAgentResult {
   customDirectory: string | null
   shouldCreateDirectory: boolean
   taskId: string | null
+  /** Launch-time override; absent means follow the current Settings value. */
+  agentFullAccess?: boolean
 }
 
 export type AgentRecoveryIssue = 'codex_writer_locked' | 'remote_worker_unavailable'

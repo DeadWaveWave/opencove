@@ -44,5 +44,8 @@ export function ensurePersistedAgentData(value: unknown, owned = false): AgentNo
     shouldCreateDirectory:
       typeof record.shouldCreateDirectory === 'boolean' ? record.shouldCreateDirectory : false,
     taskId: normalizeOptionalString(record.taskId),
+    ...(typeof record.agentFullAccess === 'boolean'
+      ? { agentFullAccess: record.agentFullAccess }
+      : {}),
   }
 }

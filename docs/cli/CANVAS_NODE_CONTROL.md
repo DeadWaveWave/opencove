@@ -37,7 +37,7 @@ Command:
 opencove node create note [--root-canvas | space locator] [--title <text>] [--text <text>] [--frame <json>] [--focus] [--pretty]
 opencove node create task [--root-canvas | space locator] --requirement <text> [--title <text>] [--priority <low|medium|high|urgent>] [--tag <tag>] [--frame <json>] [--focus] [--pretty]
 opencove node create website [--root-canvas | space locator] --url <url> [--title <text>] [--pinned] [--session-mode <shared|incognito|profile>] [--profile <id>] [--frame <json>] [--focus] [--pretty]
-opencove node create agent [--root-canvas | space locator] [--title <text>] [--prompt <text>] [--provider <id>] [--model <id>] [--frame <json>] [--focus] [--pretty]
+opencove node create agent [--root-canvas | space locator] [--title <text>] [--prompt <text>] [--provider <id>] [--model <id>] [--full-access true|false] [--frame <json>] [--focus] [--pretty]
 opencove node create terminal [--root-canvas | space locator] [--title <text>] [--shell <path>] [--command <text>] [--profile <id>] [--frame <json>] [--focus] [--pretty]
 opencove node update note --node <id> [--title <text>] [--text <text>] [--frame <json>] [--pretty]
 opencove node update task --node <id> [--title <text>] [--requirement <text>] [--priority <low|medium|high|urgent>] [--status <todo|doing|ai_done|done>] [--tag <tag>] [--frame <json>] [--pretty]
@@ -159,6 +159,9 @@ Website:
 Agent:
 
 - Create 会先通过 session launch path 启动 runtime。
+- 可选 `data.agentFullAccess`（CLI `--full-access true|false`）必须是布尔值；显式值在两个方向覆盖 Settings，仅作用于该 agent，智能体终端也可传入。
+- 显式值保存在 agent 节点，relaunch、resume 和 app-restart recovery 使用 `node.agent.agentFullAccess ?? settings.agentFullAccess`；省略时继续跟随当前 Settings，不修改 Settings，也无需迁移旧数据。
+- `node.update` 不能更改该启动时选择；agent update 只接受名称和 frame。
 - 启动失败时不持久化 agent node。
 - 持久化失败时 best-effort kill 已启动 session。
 

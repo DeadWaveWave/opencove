@@ -35,7 +35,13 @@ export type NodeControlCreateData =
       sessionMode: WebsiteWindowSessionMode
       profileId: string | null
     }
-  | { kind: 'agent'; prompt: string; provider: AgentProviderId | null; model: string | null }
+  | {
+      kind: 'agent'
+      prompt: string
+      provider: AgentProviderId | null
+      model: string | null
+      agentFullAccess?: boolean
+    }
   | { kind: 'terminal'; shell: string | null; command: string | null; profileId: string | null }
 
 export interface AgentNodeRuntimeData {
@@ -184,11 +190,17 @@ export function normalizeCreateNodeData(
   }
 
   if (kind === 'agent') {
+    if (record.agentFullAccess !== undefined && typeof record.agentFullAccess !== 'boolean') {
+      throw createAppError('common.invalid_input', {
+        debugMessage: 'node.create agent data.agentFullAccess must be a boolean.',
+      })
+    }
     return {
       kind,
       prompt: typeof record.prompt === 'string' ? record.prompt : '',
       provider: normalizeAgentProvider(record.provider),
       model: normalizeOptionalString(record.model),
+      ...(record.agentFullAccess === undefined ? {} : { agentFullAccess: record.agentFullAccess }),
     }
   }
 
@@ -336,6 +348,9 @@ export function makeNode(options: {
           customDirectory: null,
           shouldCreateDirectory: false,
           taskId: null,
+          ...(options.data.agentFullAccess === undefined
+            ? {}
+            : { agentFullAccess: options.data.agentFullAccess }),
         }
       : null
 
