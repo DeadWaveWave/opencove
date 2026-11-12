@@ -206,7 +206,16 @@ export function createPluginCanvasHost(
         payload,
         terminal
           ? ['target', 'title', 'frame', 'profileId', 'shell', 'command']
-          : ['target', 'title', 'frame', 'prompt', 'provider', 'model', 'agentFullAccess'],
+          : [
+              'target',
+              'title',
+              'frame',
+              'prompt',
+              'provider',
+              'model',
+              'agentFullAccess',
+              'taskNodeId',
+            ],
       )
       return create(
         authority,
@@ -218,6 +227,7 @@ export function createPluginCanvasHost(
               prompt: input.prompt,
               provider: input.provider,
               model: input.model,
+              ...(input.taskNodeId === undefined ? {} : { taskNodeId: input.taskNodeId }),
               ...(input.agentFullAccess === undefined
                 ? {}
                 : { agentFullAccess: input.agentFullAccess }),
