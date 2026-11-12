@@ -1,4 +1,6 @@
 import { assertSpawnEnvironment } from '../process/spawnEnvironment'
+import { assertSpawnArguments } from '../process/spawnArguments'
+import { serializeWslArguments } from '../process/wslCommandLine'
 import { mergePowerShellLaunchEnv } from './windowsNativeLaunch'
 import { execFile } from 'node:child_process'
 import os from 'node:os'
@@ -214,7 +216,11 @@ export class TerminalProfileResolver {
       null
 
     if (selectedProfile) {
-      return selectedProfile.resolveSpawn(input.cwd, env)
+      const spawn = selectedProfile.resolveSpawn(input.cwd, env)
+      if (spawn.runtimeKind === 'wsl') {
+        serializeWslArguments(spawn.args)
+      }
+      return spawn
     }
 
     return {
@@ -230,6 +236,7 @@ export class TerminalProfileResolver {
   public async resolveCommandSpawn(
     input: ResolveCommandSpawnInput,
   ): Promise<ResolvedTerminalSpawn> {
+    assertSpawnArguments(input.command, input.args, input.cwd)
     const command = input.command.trim()
     const args = [...input.args]
     const env = removeElectronRunAsNode({
@@ -291,15 +298,18 @@ export class TerminalProfileResolver {
       const envPairs = Object.entries(commandEnv).flatMap(([key, value]) =>
         typeof value === 'string' ? [`${key}=${value}`] : [],
       )
+      const wslArgs = [
+        ...shellSpawn.args,
+        '--exec',
+        ...(envPairs.length > 0 ? ['env', ...envPairs] : []),
+        command,
+        ...args,
+      ]
+      // Refuse here to retain public recovery guidance; PTY host validates again at dispatch.
+      serializeWslArguments(wslArgs)
       return {
         command: shellSpawn.command,
-        args: [
-          ...shellSpawn.args,
-          '--exec',
-          ...(envPairs.length > 0 ? ['env', ...envPairs] : []),
-          command,
-          ...args,
-        ],
+        args: wslArgs,
         cwd: shellSpawn.cwd,
         env: shellSpawn.env,
         profileId,

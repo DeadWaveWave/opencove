@@ -1,4 +1,5 @@
 export { normalizeListSessionsPayload } from '@shared/contracts/controlSurface/operations/agentCatalogNormalize'
+import { assertInitialPromptText } from '../../../../shared/utils/initialPromptValidation'
 import type {
   AgentProviderId,
   InstallAgentProviderInput,
@@ -239,6 +240,9 @@ export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput 
   const profileId = typeof record.profileId === 'string' ? record.profileId.trim() : ''
   const prompt = typeof record.prompt === 'string' ? record.prompt.trim() : ''
   const mode = record.mode === 'resume' ? 'resume' : 'new'
+  if (mode === 'new') {
+    assertInitialPromptText(prompt)
+  }
 
   const model = typeof record.model === 'string' ? record.model.trim() : ''
   const resumeSessionId =

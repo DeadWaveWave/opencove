@@ -1,4 +1,5 @@
 import { CLAUDE_ROOT_COMMANDS } from './claudeRootCommands.generated'
+import { assertInitialPromptText } from '../../../shared/utils/initialPromptValidation'
 import type { AgentProviderId } from '../../../shared/contracts/dto'
 import { createAppError } from '../../../shared/errors/appError'
 import { terminalSpawnApplicationDescriptor } from '../../../shared/errors/terminalSpawnErrorReasons'
@@ -9,6 +10,7 @@ const piCommands = new Set(['install', 'remove', 'uninstall', 'update', 'list', 
 
 /** Pure preflight shared by UI and provider planners. Resume callers must omit initial text. */
 export function assertProviderInitialPrompt(provider: AgentProviderId, text: string): void {
+  assertInitialPromptText(text)
   const prompt = text.trim()
   const refused =
     provider === 'claude-code'

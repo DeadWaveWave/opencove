@@ -1,6 +1,20 @@
 import type { AppErrorCode, AppErrorDescriptor } from '../contracts/dto'
 
 const APPLICATION_REASONS = {
+  initial_prompt_contains_nul: {
+    code: 'common.invalid_input',
+    message:
+      'This prompt contains a null character. Remove it and try again. Your text has been kept.',
+  },
+  invalid_spawn_arguments: {
+    code: 'common.invalid_input',
+    message: 'The launch settings contain a null character. Remove null characters and try again.',
+  },
+  wsl_arguments_unsupported: {
+    code: 'common.invalid_input',
+    message:
+      'WSL cannot use these launch settings. Choose a distribution name without spaces or quotes, and paths without quotes.',
+  },
   invalid_spawn_environment: {
     code: 'common.invalid_input',
     message:

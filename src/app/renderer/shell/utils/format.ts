@@ -41,6 +41,18 @@ function getDateTimeFormatter(language: string): Intl.DateTimeFormat {
 
 export function toErrorMessage(error: unknown): string {
   if (error instanceof OpenCoveAppError || isAppErrorDescriptor(error)) {
+    if (error.code === 'common.invalid_input') {
+      const reason = (error.details as { reason?: string } | undefined)?.reason
+      if (reason === 'initial_prompt_contains_nul') {
+        return translate('messages.initialPromptContainsNul')
+      }
+      if (reason === 'invalid_spawn_arguments') {
+        return translate('messages.invalidSpawnArguments')
+      }
+      if (reason === 'wsl_arguments_unsupported') {
+        return translate('messages.wslArgumentsUnsupported')
+      }
+    }
     if (
       (error.details as { reason?: string } | undefined)?.reason === 'initial_prompt_unsupported' &&
       error.code === 'common.invalid_input'

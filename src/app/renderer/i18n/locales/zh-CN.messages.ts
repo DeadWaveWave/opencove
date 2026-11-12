@@ -1,4 +1,8 @@
 export const zhCNMessages = {
+  initialPromptContainsNul: '提示中包含空字符。请删除空字符后重试。已保留你的文本。',
+  invalidSpawnArguments: '启动设置中包含空字符。请删除空字符后重试。',
+  wslArgumentsUnsupported:
+    'WSL 无法使用这些启动设置。请选择名称不含空格或引号的发行版，并使用不含引号的路径。',
   invalidSpawnEnvironment: '启动环境中包含空字符。请删除环境变量名称和值中的空字符后重试。',
   initialPromptUnsupported:
     '这段提示可能会被识别为智能体命令，无法用于启动对话。请换一种方式描述任务，或打开空白会话后手动输入命令。已保留你的文本。',

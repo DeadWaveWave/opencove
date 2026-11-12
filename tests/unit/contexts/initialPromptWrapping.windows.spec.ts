@@ -5,7 +5,11 @@ import { TerminalProfileResolver } from '../../../src/platform/terminal/Terminal
 import { createBuiltinAgentProviderContributions } from '../../../src/contexts/agent/infrastructure/providers/catalog/BuiltinAgentProviderCatalog'
 import { createManagedAgentLaunchPlan } from '../../../src/contexts/agent/application/use-cases/createManagedAgentLaunchPlan'
 import { parseClaude } from '../../fixtures/provider-argv/claudeParser.mjs'
-import { receivePowerShellSpawn, receiveWindowsSpawn } from '../../support/windowsPlatformReceiver'
+import {
+  receivePowerShellSpawn,
+  windowsSpawnCommandLine,
+} from '../../support/windowsPlatformReceiver'
+import { parseWslCommandLine } from '../../support/wslCommandLine'
 import { parseWindowsArguments } from '../../support/windowsCommandLine'
 
 const resolver = new TerminalProfileResolver({
@@ -50,10 +54,12 @@ for (const provider of createBuiltinAgentProviderContributions({ runtimePlatform
           })
           let argv: string[]
           if (profileId.startsWith('wsl:')) {
-            const received = receiveWindowsSpawn(spawn.command, spawn.args)
-            const exec = received.indexOf('--exec')
-            expect(exec).toBeGreaterThan(0)
-            argv = received.slice(exec + 1)
+            const received = parseWslCommandLine(windowsSpawnCommandLine(spawn.command, spawn.args))
+            expect(received.mode).toBe('exec')
+            expect(received.switches).toEqual(['--distribution', '--cd', '--exec'])
+            expect(received.distro).toBe('Ubuntu')
+            expect(received.cwd).toBe('/mnt/c/project')
+            argv = received.argv
           } else {
             argv = receivePowerShellSpawn(spawn.command, spawn.args, spawn.env)
           }
@@ -81,8 +87,9 @@ it('WSL receiver preserves env and never executes command substitution', async (
     args: ['%s', '$(printf update)'],
     commandEnv: { FIXTURE: '"env with spaces"' },
   })
-  const received = receiveWindowsSpawn(spawn.command, spawn.args)
-  const args = received.slice(received.indexOf('--exec') + 1)
+  const received = parseWslCommandLine(windowsSpawnCommandLine(spawn.command, spawn.args))
+  expect(received.mode).toBe('exec')
+  const args = received.argv
   expect(args.slice(0, 2)).toEqual(['env', 'FIXTURE="env with spaces"'])
   expect(execFileSync(args[0], args.slice(1), { encoding: 'utf8' })).toBe('$(printf update)')
 })

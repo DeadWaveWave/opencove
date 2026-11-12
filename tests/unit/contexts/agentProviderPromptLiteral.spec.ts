@@ -98,21 +98,25 @@ for (const provider of createBuiltinAgentProviderContributions({ runtimePlatform
       expect(managed.plan.args).not.toContain('--prompt-interactive')
       expect(managed.plan.args.some(arg => arg.startsWith('@'))).toBe(false)
     })
-    it('keeps trusted resume semantics separate from the ignored initial prompt', async () => {
-      const managed = await createManagedAgentLaunchPlan(provider, {
-        mode: 'resume',
-        prompt: '--approve',
-        model: null,
-        resumeSessionId: '11111111-1111-4111-8111-111111111111',
-        agentFullAccess: false,
-        workspaceDirectory: '/fixture',
-        opencodeServer: { hostname: '127.0.0.1', port: 12345 },
-      })
-      await managed.artifacts.dispose()
-      expect(managed.plan.launchMode).toBe('resume')
-      expect(managed.plan.args).not.toContain('--approve')
-      expect(managed.plan.args.some(arg => arg.startsWith('@'))).toBe(false)
-    })
+    it.each(['--approve', 'plugins\0 explain this project'])(
+      'keeps trusted resume semantics separate from ignored initial prompt %j',
+      async prompt => {
+        const managed = await createManagedAgentLaunchPlan(provider, {
+          mode: 'resume',
+          prompt,
+          model: null,
+          resumeSessionId: '11111111-1111-4111-8111-111111111111',
+          agentFullAccess: false,
+          workspaceDirectory: '/fixture',
+          opencodeServer: { hostname: '127.0.0.1', port: 12345 },
+        })
+        await managed.artifacts.dispose()
+        expect(managed.plan.launchMode).toBe('resume')
+        expect(managed.plan.args).not.toContain('--approve')
+        expect(managed.plan.args).not.toContain(prompt)
+        expect(managed.plan.args.some(arg => arg.startsWith('@'))).toBe(false)
+      },
+    )
   })
 }
 it('covers every registered built-in provider', () => {

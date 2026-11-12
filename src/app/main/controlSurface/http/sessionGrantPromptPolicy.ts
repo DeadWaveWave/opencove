@@ -1,6 +1,7 @@
 import type { AgentProviderId } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
 import type { GrantCheckDeps } from './sessionGrantPolicy'
+import { assertInitialPromptText } from '../../../../shared/utils/initialPromptValidation'
 
 // Native TUI command channels, including Claude's legacy quick-memory entry.
 const commandPrefixes: Readonly<Record<AgentProviderId, readonly string[]>> = {
@@ -20,6 +21,7 @@ export function assertSessionGrantMessagePrompt(
   text: string,
   options: { provider?: AgentProviderId; operationId: string; field: 'text' | 'prompt' },
 ): void {
+  assertInitialPromptText(text)
   const prefixes = options.provider ? commandPrefixes[options.provider] : commonPrefixes
   // Python C0 separators, JS whitespace and Rust NEL are inspected without rewriting input.
   const inspected = text.replace(

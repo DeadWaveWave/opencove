@@ -19,6 +19,8 @@ test('CLI grants refuse composer controls without effects and pass real launch a
     for (const [provider, prompt] of [
       ['claude-code', 'update'],
       ['pi', 'config'],
+      ['claude-code', 'plugins\0 explain this project'],
+      ['codex', 'Explain\0 this project'],
       ['pi', '--approve this task'],
       ['codex', '/approvals'],
       ['codex', '\u0085quit\u0085'],
@@ -37,7 +39,7 @@ test('CLI grants refuse composer controls without effects and pass real launch a
       )
       expect(output.replaceAll('\n', '')).toMatch(/\bexit=(2|4)\b/)
       expect(output.replaceAll('\n', '')).toMatch(
-        /describe the task|Describe the task|Rephrase the task/,
+        /describe the task|Describe the task|Rephrase the task|null character/,
       )
       expect(await canvasRuntimeFootprint(f.window, projectId)).toEqual(before)
       expect(await f.records()).toEqual([])

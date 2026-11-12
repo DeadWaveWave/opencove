@@ -19,9 +19,9 @@ export const agentPromptCommand = defineCommand({
   description: [
     'Send text to a local Claude Code or Codex agent window OpenCove launched. Inspect drafts/dialogs with agent read --screen first; existing drafts may be submitted too. Choose one text source: positional text, --text or --text-file (- reads stdin).',
     'Working agents receive steering by default; --if-busy refuse rejects busy agents. --expect-turn requires that exact active turn. Waiting, unknown/degraded and unsupported sessions refuse. Agent terminals cannot send provider commands or answer dialogs.',
-    'Agent prompts are messages, not provider controls. Describe the task in a sentence. Paste file content you can already read instead of using @file; Codex skill mentions such as $name are unavailable to agent terminals.',
+    'Describe a task; agent terminals cannot use provider controls, @file or Codex $name mentions. Paste readable file content. Remove null characters.',
     '--wait confirms delivery, then waits for its exact turn to end. Add --read for the correlated reply; missing replies return reply: null with replyUnavailableReason. Check outcome and reply. Without --wait, save deliveryId and turnId for delivery → wait --turn → read --turn.',
-    'Stderr shows "Sending prompt (delivery <id>)." before sending and, with --wait, "Waiting for turn <turnId> of node <nodeId>..." with an interruption-only continuation command. These progress lines preserve IDs; the final JSON and exit status report the result.',
+    'Stderr prints delivery and turn IDs before each phase, plus an interruption-only continuation command. Final JSON and exit status report the result.',
     'With --wait, --timeout covers confirmation and turn waiting (default 20s; minimum 250ms); sending has a separate 15s budget. Without --wait, --timeout controls sending (default 15s; maximum 60s).',
     'Never resend after uncertainty, interruption or textComparison: different. Resume with agent delivery or agent wait --turn using the returned IDs. This command never retries.',
     'Exit codes: 0 submitted/dispatched, or selected turn ended with --wait; 1 refusal/unconfirmed; 2 invalid input; 4 authorization refusal; 10 waiting for user; 11 target exited; 124 timeout; 130 interruption. Details: opencove skill coordinate.',

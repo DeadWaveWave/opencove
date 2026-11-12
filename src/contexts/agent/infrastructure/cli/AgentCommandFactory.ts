@@ -82,6 +82,9 @@ function appendCodexAccessArgs(args: string[], agentFullAccess: boolean): void {
 }
 
 export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): AgentLaunchCommand {
+  if (input.mode === 'new') {
+    assertProviderInitialPrompt(input.provider, input.prompt ?? '')
+  }
   const effectiveModel = normalizeOptionalValue(input.model)
   const resumeSessionId = normalizeOptionalValue(input.resumeSessionId)
   const agentFullAccess = input.agentFullAccess ?? true
@@ -115,7 +118,6 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
     args.push('--session-id', resumeSessionId)
     const prompt = normalizePrompt(input.prompt)
     if (prompt.length > 0) {
-      assertProviderInitialPrompt(input.provider, prompt)
       args.push('--')
       args.push(prompt)
     }

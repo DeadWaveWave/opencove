@@ -2,6 +2,8 @@
 
 Describe the task when starting an agent. Accepted prompts keep their text, with surrounding whitespace removed. Line breaks, quotes and Unicode inside the prompt are preserved. Resuming a conversation does not send the initial prompt again.
 
+Prompts containing a null character are refused for every provider before launch. Remove the null character and try again; your text remains editable. This also applies to prompts sent from agent terminals.
+
 Some provider inputs are commands rather than conversation text. OpenCove refuses these before launch:
 
 | Provider | Refused launch input |

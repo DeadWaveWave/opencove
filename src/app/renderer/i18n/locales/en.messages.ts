@@ -1,5 +1,11 @@
 import { agentSpawnPresentations } from '../../../../shared/errors/agentSpawnError'
 export const enMessages = {
+  initialPromptContainsNul:
+    'This prompt contains a null character. Remove it and try again. Your text has been kept.',
+  invalidSpawnArguments:
+    'The launch settings contain a null character. Remove null characters and try again.',
+  wslArgumentsUnsupported:
+    'WSL cannot use these launch settings. Choose a distribution name without spaces or quotes, and paths without quotes.',
   invalidSpawnEnvironment:
     'The launch environment contains a null character. Remove null characters from environment variable names and values, then try again.',
   initialPromptUnsupported:

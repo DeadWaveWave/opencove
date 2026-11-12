@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { expect, it } from 'vitest'
 import { TerminalProfileResolver } from '../../../src/platform/terminal/TerminalProfileResolver'
-import { serializeWindowsArguments } from '../../../src/platform/process/windowsCommandLine'
+import { preparePtySpawnArguments } from '../../../src/platform/process/spawnArguments'
 import { compileWindowsFixture } from '../../e2e/fixtures/create-native-hook-provider'
 
 const native = process.platform === 'win32' ? it : it.skip
@@ -14,6 +14,7 @@ const vectors = [
   'plugins',
   ' --agent-teams ',
   '$(printf update)',
+  '`printf update`',
   '"update"',
   '"plugins"',
   '" --agent-teams "',
@@ -77,7 +78,7 @@ async function launch(
     Buffer.from(script, 'utf16le').toString('base64'),
   ]
   const { spawn: spawnPty } = await import('node-pty')
-  const pty = spawnPty(spawn.command, serializeWindowsArguments(args), {
+  const pty = spawnPty(spawn.command, preparePtySpawnArguments(spawn.command, args, spawn.cwd), {
     cwd: spawn.cwd,
     env: spawn.env as Record<string, string>,
     cols: 200,
@@ -214,12 +215,16 @@ it.runIf(process.platform === 'win32' && Boolean(process.env.OPENCOVE_TEST_WSL_D
         commandEnv: { FIXTURE: '"env with spaces"' },
       })
       const { spawn: spawnPty } = await import('node-pty')
-      child = spawnPty(spawn.command, serializeWindowsArguments(spawn.args), {
-        cwd: spawn.cwd,
-        env: spawn.env as Record<string, string>,
-        cols: 200,
-        rows: 30,
-      })
+      child = spawnPty(
+        spawn.command,
+        preparePtySpawnArguments(spawn.command, spawn.args, spawn.cwd),
+        {
+          cwd: spawn.cwd,
+          env: spawn.env as Record<string, string>,
+          cols: 200,
+          rows: 30,
+        },
+      )
       child.onData(() => {})
       const exit = await new Promise<number>(resolve =>
         child!.onExit(event => {

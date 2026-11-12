@@ -18,3 +18,19 @@ it('keeps fixed recovery guidance across public errors and both UI languages', a
   expect(toErrorMessage(createAppError(descriptor))).toContain('已保留你的文本')
   await applyUiLanguage('en')
 })
+
+it.each([
+  ['initial_prompt_contains_nul', 'Your text has been kept', '已保留你的文本'],
+  ['invalid_spawn_arguments', 'launch settings', '启动设置'],
+  ['wsl_arguments_unsupported', 'distribution name', '发行版'],
+] as const)('keeps fixed bilingual guidance for %s', async (reason, en, zh) => {
+  const descriptor = terminalSpawnApplicationDescriptor(reason)
+  expect(publicTerminalSpawnApplicationError({ ...descriptor, debugMessage: 'untrusted' })).toEqual(
+    descriptor,
+  )
+  await applyUiLanguage('en')
+  expect(toErrorMessage(createAppError(descriptor))).toContain(en)
+  await applyUiLanguage('zh-CN')
+  expect(toErrorMessage(createAppError(descriptor))).toContain(zh)
+  await applyUiLanguage('en')
+})

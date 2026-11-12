@@ -1,5 +1,5 @@
 import { assertSpawnEnvironment } from '../spawnEnvironment'
-import { serializeWindowsArguments } from '../windowsCommandLine'
+import { preparePtySpawnArguments } from '../spawnArguments'
 import process from 'node:process'
 import type { IPty } from 'node-pty'
 import { spawn } from 'node-pty'
@@ -218,7 +218,7 @@ function spawnPtySession(request: PtyHostSpawnRequest): void {
   assertSpawnEnvironment(request.env ?? {})
   const pty = spawn(
     request.command,
-    process.platform === 'win32' ? serializeWindowsArguments(request.args) : request.args,
+    preparePtySpawnArguments(request.command, request.args, request.cwd),
     {
       cwd: request.cwd,
       env: {

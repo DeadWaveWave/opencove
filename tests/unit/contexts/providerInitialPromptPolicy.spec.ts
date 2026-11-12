@@ -1,6 +1,13 @@
 import { expect, it } from 'vitest'
 import registry from '../../fixtures/provider-argv/claudeRegistry.json'
 import { assertProviderInitialPrompt } from '../../../src/contexts/agent/domain/providerInitialPromptPolicy'
+import { AGENT_PROVIDER_IDS } from '../../../src/shared/contracts/dto'
+
+it.each(AGENT_PROVIDER_IDS)('refuses NUL before %s can truncate prompt text', provider => {
+  for (const text of ['plugins\0 explain this project', '\0', 'ordinary\0sentence']) {
+    expect(() => assertProviderInitialPrompt(provider, text)).toThrow()
+  }
+})
 
 it.each(registry)('refuses Claude root dispatch %s', prompt => {
   expect(() => assertProviderInitialPrompt('claude-code', prompt)).toThrow()

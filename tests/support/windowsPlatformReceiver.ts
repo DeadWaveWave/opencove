@@ -1,13 +1,16 @@
 import { createRequire } from 'node:module'
-import { serializeWindowsArguments } from '../../src/platform/process/windowsCommandLine'
+import { preparePtySpawnArguments } from '../../src/platform/process/spawnArguments'
 import { parseWindowsArguments } from './windowsCommandLine'
 const require = createRequire(import.meta.url)
 const { argsToCommandLine } = require('node-pty/lib/windowsPtyAgent.js') as {
   argsToCommandLine(file: string, args: string | string[]): string
 }
+export function windowsSpawnCommandLine(command: string, args: string[]): string {
+  return argsToCommandLine(command, preparePtySpawnArguments(command, args, undefined, 'win32'))
+}
 /** Same final transport as ptyHost/entry, through node-pty's actual serializer. */
 export function receiveWindowsSpawn(command: string, args: string[]): string[] {
-  return parseWindowsArguments(argsToCommandLine(command, serializeWindowsArguments(args)))
+  return parseWindowsArguments(windowsSpawnCommandLine(command, args))
 }
 export function receivePowerShellSpawn(
   command: string,

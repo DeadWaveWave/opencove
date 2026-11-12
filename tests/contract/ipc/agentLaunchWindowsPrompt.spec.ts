@@ -4,6 +4,7 @@ import { registerAgentIpcHandlers } from '../../../src/contexts/agent/presentati
 import type { PtyRuntime } from '../../../src/contexts/terminal/presentation/main-ipc/runtime'
 import { receivePowerShellSpawn } from '../../support/windowsPlatformReceiver'
 import { IPC_CHANNELS } from '../../../src/shared/contracts/ipc'
+import { AGENT_PROVIDER_IDS } from '../../../src/shared/contracts/dto'
 import { createInMemoryPersistenceStore } from '../controlSurface/controlSurfaceHttpServer.sessionStreaming.testUtils'
 import { invokeHandledIpc } from './ipcTestUtils'
 import {
@@ -41,7 +42,7 @@ vi.mock('../../../src/contexts/agent/infrastructure/cli/AgentLaunchSpawnResolver
       homeDir: () => 'C:\\Users\\fixture',
       processCwd: () => 'C:\\project',
       locateWindowsCommands: async () => [],
-      listWslDistros: async () => ['Ubuntu'],
+      listWslDistros: async () => ['Ubuntu', 'Ubuntu two'],
     }).resolveCommandSpawn(input),
 }))
 vi.mock('../../../src/contexts/agent/presentation/main-ipc/validate', async importOriginal => ({
@@ -52,6 +53,60 @@ afterEach(() => {
   vi.clearAllMocks()
   fixture.handlers.clear()
 })
+it('retains the public WSL refusal reason through the complete IPC error boundary', async () => {
+  const spawn = vi.fn()
+  const registration = registerAgentIpcHandlers(
+    { spawnSession: spawn } as unknown as PtyRuntime,
+    { isPathApproved: async () => true } as never,
+    async () => createInMemoryPersistenceStore(),
+  )
+  try {
+    await expect(
+      invokeHandledIpc(fixture.handlers.get(IPC_CHANNELS.agentLaunch), null, {
+        provider: 'pi',
+        cwd: 'C:\\project',
+        prompt: 'Explain this project',
+        profileId: 'wsl:Ubuntu two',
+      }),
+    ).rejects.toMatchObject({
+      code: 'common.invalid_input',
+      details: { reason: 'wsl_arguments_unsupported' },
+    })
+    expect(spawn).not.toHaveBeenCalled()
+  } finally {
+    await registration.dispose()
+  }
+})
+it.each(AGENT_PROVIDER_IDS)(
+  'refuses %s NUL at IPC normalization before reading settings or reserving resources',
+  async provider => {
+    const spawn = vi.fn()
+    const getStore = vi.fn(async () => createInMemoryPersistenceStore())
+    const registration = registerAgentIpcHandlers(
+      { spawnSession: spawn } as unknown as PtyRuntime,
+      { isPathApproved: async () => true } as never,
+      getStore,
+    )
+    try {
+      await expect(
+        invokeHandledIpc(fixture.handlers.get(IPC_CHANNELS.agentLaunch), null, {
+          provider,
+          cwd: 'C:\\project',
+          prompt: 'plugins\0 explain this project',
+          profileId: 'powershell',
+        }),
+      ).rejects.toMatchObject({
+        code: 'common.invalid_input',
+        details: { reason: 'initial_prompt_contains_nul' },
+      })
+      expect(spawn).not.toHaveBeenCalled()
+      expect(getStore).not.toHaveBeenCalled()
+      expect(fixture.dispose).not.toHaveBeenCalled()
+    } finally {
+      await registration.dispose()
+    }
+  },
+)
 it.each(['opencove_native_arguments', 'OpEnCoVe_NaTiVe_ArGuMeNtS', 'OPENCOVE_NATIVE_ARGUMENTS'])(
   'keeps resolver-owned transport through the final IPC spawn merge (%s)',
   async key => {
