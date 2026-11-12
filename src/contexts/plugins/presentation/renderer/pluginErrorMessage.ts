@@ -1,13 +1,23 @@
-/** Error descriptors cross Web JSON and Electron contextBridge differently. */
+import {
+  formatAppErrorMessage,
+  isAppErrorDescriptor,
+  OpenCoveAppError,
+} from '@shared/errors/appError'
+
+/** The producer and transport boundary own privacy; plugin author diagnostics remain visible. */
 export function pluginErrorMessage(error: unknown): string {
-  if (error && typeof error === 'object') {
-    const descriptor = error as { debugMessage?: unknown; message?: unknown }
-    if (typeof descriptor.debugMessage === 'string' && descriptor.debugMessage.trim()) {
-      return descriptor.debugMessage.slice(0, 2000)
-    }
-    if (typeof descriptor.message === 'string') {
-      return descriptor.message.slice(0, 2000)
-    }
+  const descriptor =
+    error instanceof OpenCoveAppError
+      ? error.toDescriptor()
+      : isAppErrorDescriptor(error)
+        ? error
+        : undefined
+  if (
+    descriptor?.code === 'plugin.operation_failed' &&
+    typeof descriptor.debugMessage === 'string' &&
+    descriptor.debugMessage.trim()
+  ) {
+    return descriptor.debugMessage.slice(0, 2000)
   }
-  return String(error).slice(0, 2000)
+  return formatAppErrorMessage(descriptor ?? { code: 'plugin.operation_failed' })
 }

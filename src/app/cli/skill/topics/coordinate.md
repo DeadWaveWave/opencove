@@ -2,7 +2,7 @@
 
 ## Create and wait for a one-shot delegation
 
-When delegation is authorized, prefer:
+When delegation is authorized, prefer the command below. Add `--task <nodeId>` to link an unlinked task in that Space and move it to `doing` after launch; still supply the prompt.
 
 ```sh
 opencove node create agent --space space-123 --prompt-file ./assignment.txt --wait --read --timeout 2m

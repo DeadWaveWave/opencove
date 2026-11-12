@@ -158,7 +158,7 @@ describe('plugin view bridge authority and lifetime', () => {
     expect(post.mock.calls[0][0]).toMatchObject({
       type: 'result',
       id: 'failed',
-      error: expect.stringContaining('View expired'),
+      error: 'Plugin operation failed.',
     })
     expect(title).not.toHaveBeenCalled()
     let finish!: () => void

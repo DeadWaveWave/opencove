@@ -23,6 +23,7 @@ import { resolveNodeCreationTarget, type ResolvedNodeCreationTarget } from './no
 import { normalizeAgentSettings } from '../../../settings/domain/agentSettings'
 import { resolvePlacement } from './nodeCreatePlacement'
 import { commitCreatedNode, cleanupFailedNodeCreation } from './nodeCreateCommit'
+import { assertTaskCanTakeAgent } from './nodeTaskLink'
 import {
   listSpacesForNodeControl,
   resolveSpaceLocatorForNodeControl,
@@ -155,6 +156,14 @@ export async function createNodeForNodeControl(options: {
   const state = requireNodeControlState(await options.store.readAppState())
   const resolved = await resolveNodeCreationTarget(state, options.locatorDeps, options.input)
   const createData = normalizeCreateNodeData(options.input.kind, options.input.data)
+  const taskNodeId = createData.kind === 'agent' ? createData.taskNodeId : undefined
+  if (taskNodeId !== undefined) {
+    assertTaskCanTakeAgent({
+      workspace: resolved.workspace,
+      spaceId: resolved.space?.id ?? null,
+      taskNodeId,
+    })
+  }
   const settings = normalizeAgentSettings(state.settings)
   const placement = resolvePlacement({
     workspace: resolved.workspace,
@@ -235,7 +244,13 @@ export async function createNodeForNodeControl(options: {
       throw error
     }
     try {
-      return await commitCreatedNode({ ...options, node, lineage, initialTarget: resolved })
+      return await commitCreatedNode({
+        ...options,
+        node,
+        lineage,
+        taskNodeId,
+        initialTarget: resolved,
+      })
     } catch (error) {
       return cleanupFailedNodeCreation(options.store, options.runtime, node, error)
     }

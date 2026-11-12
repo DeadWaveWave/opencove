@@ -56,6 +56,6 @@ it('shows a loading failure without a permanent loading status', async () => {
   const invoke = vi.fn().mockRejectedValue(new Error('Preference read failed'))
   vi.stubGlobal('opencoveApi', { controlSurface: { invoke } })
   render(<PluginPreferences plugin={plugin} />)
-  expect(await screen.findByRole('alert')).toHaveTextContent('Preference read failed')
+  expect(await screen.findByRole('alert')).toHaveTextContent('Plugin operation failed.')
   expect(screen.queryByText('Loading...')).toBeNull()
 })

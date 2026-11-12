@@ -4,7 +4,11 @@ import { app, ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
 import type { ControlSurfaceInvokeRequest } from '../../../shared/contracts/controlSurface'
 import type { ControlSurfaceRemoteEndpointResolver } from '../controlSurface/remote/controlSurfaceHttpClient'
-import { createAppError, OpenCoveAppError } from '../../../shared/errors/appError'
+import {
+  isAppErrorDescriptor,
+  createAppError,
+  OpenCoveAppError,
+} from '../../../shared/errors/appError'
 import { invokeControlSurface } from '../controlSurface/remote/controlSurfaceHttpClient'
 import { resolveControlSurfaceConnectionInfoFromUserData } from '../controlSurface/remote/resolveControlSurfaceConnectionInfo'
 import {
@@ -137,10 +141,13 @@ export function registerControlSurfaceIpcHandlers(
           },
         )
 
-        if (httpStatus !== 200 || !result) {
-          throw createAppError('worker.unavailable', {
-            debugMessage: `Control surface invoke failed (HTTP ${httpStatus}).`,
-          })
+        if (
+          httpStatus !== 200 ||
+          !result ||
+          typeof result.ok !== 'boolean' ||
+          (result.ok === false && !isAppErrorDescriptor(result.error))
+        ) {
+          throw createAppError('common.unexpected', { details: { reason: 'transportFailure' } })
         }
 
         if (result.ok === false) {
@@ -201,10 +208,7 @@ export function registerControlSurfaceIpcHandlers(
           throw error
         }
 
-        throw createAppError('worker.unavailable', {
-          debugMessage:
-            error instanceof Error ? `${error.name}: ${error.message}` : 'Unknown invoke error.',
-        })
+        throw createAppError('common.unexpected', { details: { reason: 'transportFailure' } })
       }
     },
     { defaultErrorCode: 'common.unexpected' },

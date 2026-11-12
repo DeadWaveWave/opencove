@@ -42,6 +42,8 @@ Authentication and grant-policy refusals exit 4.
 ## Constrained agent launches
 
 From a canvas-bound session, use `opencove node create agent` or `opencove node create terminal`.
+Agent creation may include `--task <nodeId>` (`node.create` `data.taskNodeId`) to link an existing
+task in the same Space and move it to `doing`; this uses the same session-grant authority.
 These are the only grant routes that start runtimes. The caller must still be the canvas node’s
 current local session. Raw launch operations, including `session run-agent`, cannot be used by grants.
 A user can still start a standalone session with bearer authority. Its grant keeps reads, notes and

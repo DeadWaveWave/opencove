@@ -166,7 +166,7 @@ export function isAppErrorDescriptor(value: unknown): value is AppErrorDescripto
   }
 
   const record = value as Record<string, unknown>
-  return typeof record.code === 'string' && record.code in APP_ERROR_MESSAGES
+  return typeof record.code === 'string' && Object.hasOwn(APP_ERROR_MESSAGES, record.code)
 }
 
 export class OpenCoveAppError extends Error {
@@ -252,12 +252,6 @@ export function formatAppErrorMessage(error: AppErrorDescriptor | OpenCoveAppErr
   if (descriptor.code.startsWith('filesystem.')) {
     const reason = fileSystemErrorReasonMessage(descriptor.params?.reason)
     return reason ? `${message} ${reason}` : message
-  }
-  if (
-    descriptor.code === 'plugin.operation_failed' &&
-    typeof descriptor.params?.reason === 'string'
-  ) {
-    return `${message} ${descriptor.params.reason.slice(0, 2000)}`
   }
   return message
 }

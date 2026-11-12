@@ -78,7 +78,7 @@ async function setup(cas = false) {
   const invoke = server.invoke.bind(server)
   server.invoke = async (id, payload) => {
     if (cas && id === 'sync.writeState' && payload.baseRevision !== server.model.revision) {
-      throw { code: 'persistence.invalid_state', debugMessage: 'revision conflict' }
+      throw { code: 'persistence.invalid_state', details: { reason: 'revisionConflict' } }
     }
     return await invoke(id, payload)
   }
@@ -130,6 +130,7 @@ async function setup(cas = false) {
       },
     },
   } as unknown as typeof window.opencoveApi
+  window.dispatchEvent(new Event('opencove:api-installed'))
   useAppStore.setState({ workspaces: [], activeWorkspaceId: null, persistNotice: null })
   const client = renderHook(useClient)
   await waitFor(() =>
