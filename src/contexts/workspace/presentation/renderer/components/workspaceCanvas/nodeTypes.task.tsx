@@ -103,6 +103,7 @@ export function WorkspaceCanvasTaskNodeType({
       priority={data.task.priority}
       tags={data.task.tags}
       isEnriching={data.task.isEnriching === true}
+      lastError={data.lastError}
       linkedAgentNode={linkedAgentSummary}
       agentSessions={data.task.agentSessions ?? []}
       currentDirectory={currentDirectory}

@@ -165,6 +165,7 @@ test('task refusal preserves editable text, todo status and a reused live sessio
     await requirement.fill('config')
     await requirement.blur()
     await run.click()
+    await expect(task.getByRole('alert')).toBeVisible()
     await expect(task).toContainText('Rephrase the task')
     await expect(requirement).toHaveValue('config')
     await expect(status).toHaveValue('todo')
