@@ -158,7 +158,10 @@ test('task refusal preserves editable text, todo status and a reused live sessio
     await expect.poll(f.records).toHaveLength(1)
     await expect(status).toHaveValue('doing')
     const before = await canvasRuntimeFootprint(f.window, projectId)
-    await task.getByTestId('task-node-status-step-todo').click()
+    // The control can sit outside the canvas viewport; select it with the keyboard as a user can.
+    await task.getByTestId('task-node-status-step-todo').focus()
+    await f.window.keyboard.press('Space')
+    await expect(status).toHaveValue('todo')
     await requirement.fill('config')
     await requirement.blur()
     await run.click()
