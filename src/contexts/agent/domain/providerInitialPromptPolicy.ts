@@ -1,40 +1,10 @@
+import { CLAUDE_ROOT_COMMANDS } from './claudeRootCommands.generated'
 import type { AgentProviderId } from '../../../shared/contracts/dto'
 import { createAppError } from '../../../shared/errors/appError'
 import { terminalSpawnApplicationDescriptor } from '../../../shared/errors/terminalSpawnErrorReasons'
 
-// Claude Code 2.1.322 root registrations (including hidden/conditional commands and aliases).
-// Its Commander dispatches exact command names even after --. No implicit help: root has action.
-const claudeCommands = new Set([
-  'gateway',
-  'mcp',
-  'xaa',
-  'edit-hook',
-  'edit-permission-rules',
-  'edit-memory-settings',
-  'edit-skill-overrides',
-  'edit-sandbox-settings',
-  'design-login',
-  'edit-chrome-settings',
-  'drop-worktree-registrations',
-  'auth',
-  'purge',
-  'project',
-  'plugin',
-  'setup-token',
-  'agents',
-  'ultrareview',
-  'auto-mode',
-  'remote-control',
-  'rc',
-  'doctor',
-  'apply-project-settings',
-  'sandbox',
-  'update',
-  'upgrade',
-  'install',
-  'import',
-  'import-conversations',
-])
+// Generated from the pinned source registry, including hidden registrations and aliases.
+const claudeCommands = new Set(CLAUDE_ROOT_COMMANDS)
 const piCommands = new Set(['install', 'remove', 'uninstall', 'update', 'list', 'config'])
 
 /** Pure preflight shared by UI and provider planners. Resume callers must omit initial text. */

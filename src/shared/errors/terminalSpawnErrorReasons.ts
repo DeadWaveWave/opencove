@@ -1,6 +1,11 @@
 import type { AppErrorCode, AppErrorDescriptor } from '../contracts/dto'
 
 const APPLICATION_REASONS = {
+  invalid_spawn_environment: {
+    code: 'common.invalid_input',
+    message:
+      'The launch environment contains a null character. Remove null characters from environment variable names and values, then try again.',
+  },
   initial_prompt_unsupported: {
     code: 'common.invalid_input',
     message:

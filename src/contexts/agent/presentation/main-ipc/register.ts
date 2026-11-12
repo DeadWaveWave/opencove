@@ -419,10 +419,9 @@ export function registerAgentIpcHandlers(
             ),
           )
 
-      const mergedEnv =
-        normalized.env && Object.keys(normalized.env).length > 0
-          ? { ...(resolvedSpawn.env ?? process.env), ...normalized.env }
-          : resolvedSpawn.env
+      // Caller env already entered launchEnv before platform resolution. The resolver owns
+      // the final environment, including case-insensitive native argument transport keys.
+      const mergedEnv = resolvedSpawn.env
 
       const resumeSessionId = launchCommand.resumeSessionId
       const shouldStartStateWatcher =

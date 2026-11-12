@@ -49,7 +49,10 @@ Agent launch spawn resolver:
 - `src/contexts/agent/infrastructure/cli/AgentLaunchSpawnResolver.ts`
 - 真实 agent launch / resume 复用 `TerminalProfileResolver.resolveCommandSpawn()`。
 - Windows 上即使用户未显式选择 profile，也会走检测到的默认终端 profile（当前稳定默认是 PowerShell），让 PowerShell profile、Git Bash login shell、WSL distro 的启动语义与 OpenCove terminal 保持一致。
-- 只有显式传入的 session env 会被注入 WSL 内部命令；宿主 command env 只用于启动 `wsl.exe`，避免把整个 Windows 环境展开到 `wsl.exe env ...`。
+- Windows 命令启动使用固定 PowerShell launcher 和进程环境传递 argv，读取后清除传输变量，再通过 `ProcessStartInfo` 直接启动 native executable；不经过 PowerShell 的 Legacy/Standard native argument binder。最终 node-pty 边界使用完整 CRT quoting，保留双引号、反斜线和参数边界。
+- 标准 npm Node `.cmd` / `.ps1` shim 只在完整模板核验后转为 `node.exe + package entrypoint + argv`；优先使用 shim 旁的 node.exe，其次使用 profile PATH。自定义脚本、额外 shebang flags / env、未验证的 wrapper 不会交给 cmd 或 PowerShell 执行；请配置 native executable 或使用标准 npm 安装。
+- `wsl.exe --exec` 放在 distro/cwd options 后、`env` / executable 前；不让 `$SHELL -c` 解释提示。只有显式 session env 注入 guest；宿主 command env 只用于启动 wsl.exe。
+- 原始 argv 继续通过内部 IPC 的 string[] 传递；Win32 serialization 只属于 PTY host。环境变量中的 NUL 在 resolver 和最终 native spawn 边界拒绝，避免截断或伪造环境块。内部 argv 传输变量由 resolver 独占，调用方不能在后续合并覆盖它们。
 - 上述 WSL 支持属于显式 Agent launch/profile 解析。终端中手动输入 `claude` / `codex` 的
   PATH-shim 识别当前只支持 native Windows；对 WSL profile 或 `wsl.exe` 必须保持原始 spawn
   完全不变，不能把 Windows host 路径、PowerShell wrapper 或 loopback credential 注入 guest。

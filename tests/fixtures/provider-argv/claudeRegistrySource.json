@@ -1,0 +1,168 @@
+{
+  "version": "2.1.322",
+  "sha256": "a9d237949db816a0b7afd88a9a8e1df36b3a597a30f5a41d1c0539eb180a3450",
+  "registrations": [
+    {
+      "owner": "Fr",
+      "root": "r",
+      "line": 2464845,
+      "expression": "r.command(\"gateway\")"
+    },
+    {
+      "owner": "Fr",
+      "root": "r",
+      "line": 2464846,
+      "expression": "r.command(\"auth\")"
+    },
+    {
+      "owner": "Fr",
+      "root": "r",
+      "line": 2464846,
+      "expression": "r.command(\"setup-token\")"
+    },
+    {
+      "owner": "Fr",
+      "root": "r",
+      "line": 2464846,
+      "expression": "r.command(\"agents\")"
+    },
+    {
+      "owner": "Fr",
+      "root": "r",
+      "line": 2464846,
+      "expression": "r.command(\"ultrareview [target]\")"
+    },
+    {
+      "owner": "Fr",
+      "root": "r",
+      "line": 2464846,
+      "expression": "r.command(\"auto-mode\")"
+    },
+    {
+      "owner": "Fr",
+      "root": "r",
+      "line": 2464846,
+      "expression": "r.command(\"remote-control\",{hidden:!0}).alias(\"rc\")"
+    },
+    {
+      "owner": "Fr",
+      "root": "r",
+      "line": 2464846,
+      "expression": "r.command(\"doctor\")"
+    },
+    {
+      "owner": "Fr",
+      "root": "r",
+      "line": 2464846,
+      "expression": "r.command(\"apply-project-settings\",{hidden:!0})"
+    },
+    {
+      "owner": "Fr",
+      "root": "r",
+      "line": 2464846,
+      "expression": "r.command(\"sandbox\",{hidden:!0})"
+    },
+    {
+      "owner": "Fr",
+      "root": "r",
+      "line": 2464846,
+      "expression": "r.command(\"update\").alias(\"upgrade\")"
+    },
+    {
+      "owner": "Fr",
+      "root": "r",
+      "line": 2464846,
+      "expression": "r.command(\"install [target]\")"
+    },
+    {
+      "owner": "Fr",
+      "root": "r",
+      "line": 2464846,
+      "expression": "r.command(\"import\")"
+    },
+    {
+      "owner": "Fr",
+      "root": "r",
+      "line": 2464848,
+      "expression": "r.command(\"import-conversations <exportPath>\",{hidden:!0})"
+    },
+    {
+      "owner": "Nn",
+      "root": "n",
+      "line": 2464840,
+      "expression": "n.command(\"edit-hook\",{hidden:!0})"
+    },
+    {
+      "owner": "Hn",
+      "root": "n",
+      "line": 2464841,
+      "expression": "n.command(\"project\",{hidden:!0})"
+    },
+    {
+      "owner": "Fn",
+      "root": "n",
+      "line": 2464841,
+      "expression": "n.command(\"purge [path]\",{hidden:h})"
+    },
+    {
+      "owner": "q",
+      "root": "w",
+      "line": 2474339,
+      "expression": "w.command(\"plugin\").alias(\"plugins\")"
+    },
+    {
+      "owner": "le",
+      "root": "C",
+      "line": 2474377,
+      "expression": "C.command(\"mcp\")"
+    },
+    {
+      "owner": "T",
+      "root": "C",
+      "line": 2474369,
+      "expression": "C.command(\"xaa\")"
+    },
+    {
+      "owner": "N2o",
+      "root": "o",
+      "line": 2459929,
+      "expression": "o.command(\"edit-permission-rules\",{hidden:!0})"
+    },
+    {
+      "owner": "N2o",
+      "root": "o",
+      "line": 2459932,
+      "expression": "o.command(\"edit-memory-settings\",{hidden:!0})"
+    },
+    {
+      "owner": "N2o",
+      "root": "o",
+      "line": 2459933,
+      "expression": "o.command(\"edit-skill-overrides\",{hidden:!0})"
+    },
+    {
+      "owner": "N2o",
+      "root": "o",
+      "line": 2459934,
+      "expression": "o.command(\"edit-sandbox-settings\",{hidden:!0})"
+    },
+    {
+      "owner": "N2o",
+      "root": "o",
+      "line": 2459935,
+      "expression": "o.command(\"design-login\",{hidden:!0})"
+    },
+    {
+      "owner": "N2o",
+      "root": "o",
+      "line": 2459937,
+      "expression": "o.command(\"edit-chrome-settings\",{hidden:!0})"
+    },
+    {
+      "owner": "N2o",
+      "root": "o",
+      "line": 2459938,
+      "expression": "o.command(\"drop-worktree-registrations\",{hidden:!0})"
+    }
+  ]
+}

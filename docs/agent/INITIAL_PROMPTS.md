@@ -22,3 +22,5 @@ These restrictions use the authenticated session grant. A trusted UI or CLI call
 ## Compatibility
 
 Parser evidence is pinned to Codex 0.166.0 / Clap 4.5.58, Claude Code 2.1.322, Pi 0.80.7, OpenCode 1.3.13, Gemini 0.32.1 and Kimi 1.16.0. Provider upgrades, wrappers and user extensions can change interpretation and require fresh evidence. A remote destination must contain this implementation; a Home-only check cannot establish destination safety.
+
+Windows launches preserve prompt boundaries through PowerShell and ConPTY. Standard npm Node shims are verified and launched directly through Node; custom wrappers are refused when their argument behavior is unverified. Choose a native executable or a standard npm installation if the wrapper is refused. WSL launches use direct execution rather than interpreting prompts as shell commands.

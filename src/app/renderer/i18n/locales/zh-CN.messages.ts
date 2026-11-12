@@ -1,4 +1,5 @@
 export const zhCNMessages = {
+  invalidSpawnEnvironment: '启动环境中包含空字符。请删除环境变量名称和值中的空字符后重试。',
   initialPromptUnsupported:
     '这段提示可能会被识别为智能体命令，无法用于启动对话。请换一种方式描述任务，或打开空白会话后手动输入命令。已保留你的文本。',
   agentSpawnDepth: '此运行时将超出 Agent 创建链的最大深度 3。',

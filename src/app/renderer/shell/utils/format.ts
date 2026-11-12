@@ -47,6 +47,12 @@ export function toErrorMessage(error: unknown): string {
     ) {
       return translate('messages.initialPromptUnsupported')
     }
+    if (
+      error.code === 'common.invalid_input' &&
+      (error.details as { reason?: string } | undefined)?.reason === 'invalid_spawn_environment'
+    ) {
+      return translate('messages.invalidSpawnEnvironment')
+    }
     if (error.code === 'agent.managed_launch_commit_failed') {
       return translate('messages.managedAgentLaunchUncertain')
     }

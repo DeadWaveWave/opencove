@@ -1,5 +1,7 @@
 import { agentSpawnPresentations } from '../../../../shared/errors/agentSpawnError'
 export const enMessages = {
+  invalidSpawnEnvironment:
+    'The launch environment contains a null character. Remove null characters from environment variable names and values, then try again.',
   initialPromptUnsupported:
     'This prompt could run a provider command instead of starting a conversation. Rephrase the task, or open a blank session and enter provider controls there. Your text has been kept.',
   agentSpawnDepth: agentSpawnPresentations.agentSpawnDepth.message,
