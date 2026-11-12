@@ -18,9 +18,34 @@ export function getBrowserQueryToken(): string | null {
   return resolveQueryToken()
 }
 
-export async function invokeBrowserControlSurface<TValue>(
+// Identical queries that are already in flight share one HTTP request: during a project switch
+// several components ask for the same snapshot or status at once. Each caller parses its own
+// copy of the response. Commands are never shared, and a command makes later queries start a
+// fresh request so they cannot observe a response from before the command.
+const inFlightQueries = new Map<string, Promise<{ raw: string; status: number }>>()
+
+function fetchInvokeResponse(
   request: ControlSurfaceInvokeRequest,
-): Promise<TValue> {
+): Promise<{ raw: string; status: number }> {
+  const body = JSON.stringify(request)
+  if (request.kind !== 'query') {
+    inFlightQueries.clear()
+    return postInvoke(body)
+  }
+  const existing = inFlightQueries.get(body)
+  if (existing) {
+    return existing
+  }
+  const pending = postInvoke(body).finally(() => {
+    if (inFlightQueries.get(body) === pending) {
+      inFlightQueries.delete(body)
+    }
+  })
+  inFlightQueries.set(body, pending)
+  return pending
+}
+
+async function postInvoke(body: string): Promise<{ raw: string; status: number }> {
   const headers: Record<string, string> = {
     'content-type': 'application/json',
   }
@@ -34,10 +59,16 @@ export async function invokeBrowserControlSurface<TValue>(
     method: 'POST',
     credentials: 'same-origin',
     headers,
-    body: JSON.stringify(request),
+    body,
   })
 
-  const raw = await response.text()
+  return { raw: await response.text(), status: response.status }
+}
+
+export async function invokeBrowserControlSurface<TValue>(
+  request: ControlSurfaceInvokeRequest,
+): Promise<TValue> {
+  const { raw, status } = await fetchInvokeResponse(request)
   const parsed = raw.trim().length > 0 ? (JSON.parse(raw) as unknown satisfies unknown) : null
   const result =
     parsed &&
@@ -47,7 +78,7 @@ export async function invokeBrowserControlSurface<TValue>(
       : null
 
   if (!result) {
-    throw new Error(`Invalid control-surface response (HTTP ${response.status})`)
+    throw new Error(`Invalid control-surface response (HTTP ${status})`)
   }
 
   if (result.ok === false) {
