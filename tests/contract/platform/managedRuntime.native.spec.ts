@@ -97,7 +97,7 @@ db.exec('BEGIN EXCLUSIVE'); process.send('locked'); setInterval(()=>{},1000);`,
       db.close()
       const before = await readFile(path)
       await expect(createPersistenceStore({ dbPath: path, strictRecovery: true })).rejects.toThrow(
-        'downgrade',
+        'requires a newer OpenCove version',
       )
       expect(await readFile(path)).toEqual(before)
     } finally {
