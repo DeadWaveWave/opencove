@@ -7,6 +7,7 @@ import { createClaudeHookChannel } from '../../../src/app/main/controlSurface/ag
 export async function hookChannelFixture(options?: {
   environment?: Readonly<NodeJS.ProcessEnv>
   residentContext?: 'canvas' | 'none'
+  factory?: typeof createClaudeHookChannel
 }) {
   let receive!: RequestListener
   const server = Object.assign(new EventEmitter(), {
@@ -26,8 +27,9 @@ export async function hookChannelFixture(options?: {
     receive = listener
     return server as unknown as Server
   }) as typeof createServer
-  const channel = createClaudeHookChannel({ createHttpServer })
-  const reservation = await channel.reserveSpawn(options)
+  const { factory = createClaudeHookChannel, ...spawnOptions } = options ?? {}
+  const channel = factory({ createHttpServer })
+  const reservation = await channel.reserveSpawn(spawnOptions)
   const responses: string[] = []
   const post = async (payload: unknown, emittedAtMs?: number) =>
     await new Promise<number>(resolve => {

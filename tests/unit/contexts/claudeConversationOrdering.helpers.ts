@@ -12,7 +12,8 @@ export const hook = (id: string, name: string, at: number): Evidence => ({
   hookEventName: name,
   emittedAtMs: at,
   sessionStartSource: name === 'SessionStart' ? 'clear' : undefined,
-  state: name === 'UserPromptSubmit' ? 'working' : name === 'Stop' ? 'done' : null,
+  state:
+    name === 'UserPromptSubmit' ? 'working' : ['Stop', 'SessionEnd'].includes(name) ? 'done' : null,
   promptId: `${id}-prompt`,
 })
 export function permutations<T>(items: readonly T[]): T[][] {
@@ -82,8 +83,12 @@ export function orderingFixture() {
       }
       return
     }
-    const publish = (generation: number, action?: 'start' | 'end' | 'event' | 'ignore') => {
-      if (action === 'ignore' || !event.state) {
+    const publish = (
+      generation: number,
+      action?: 'start' | 'end' | 'event' | 'ignore',
+      legacyState = false,
+    ) => {
+      if ((action === 'ignore' && !legacyState) || !event.state) {
         return
       }
       registry.observe(
@@ -101,7 +106,9 @@ export function orderingFixture() {
               ? { kind: 'start', evidence: 'prompt_submit' }
               : event.hookEventName === 'Stop'
                 ? { kind: 'end', outcome: 'completed' }
-                : undefined,
+                : event.hookEventName === 'SessionEnd'
+                  ? { kind: 'reset' }
+                  : undefined,
         },
         {
           conversationGeneration: generation,

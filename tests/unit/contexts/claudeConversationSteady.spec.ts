@@ -123,7 +123,7 @@ it('ends the clear window at the first committed successor turn and immediately 
     f.registry.dispose()
   }
 })
-it('preserves main ordinary End behavior for steady state without reconciling later Stop', () => {
+it('preserves main ordinary End and late Stop projection without a reconciliation window', () => {
   vi.useFakeTimers()
   vi.setSystemTime(100000)
   const f = orderingFixture()
@@ -132,11 +132,11 @@ it('preserves main ordinary End behavior for steady state without reconciling la
     f.send(hook('A', 'SessionEnd', 4))
     f.send(hook('A', 'Stop', 3))
     expect(f.fence().snapshot).toMatchObject({
-      state: 'unknown',
+      state: 'idle',
       turn: null,
-      lastEndedTurn: { id: 't1', outcome: 'unknown' },
+      lastEndedTurn: { id: 't1', outcome: 'completed' },
     })
-    expect(f.view().archive).toMatchObject([{ outcome: 'unknown', message: null }])
+    expect(f.view().archive).toMatchObject([{ outcome: 'completed', message: 'reply-A' }])
     expect(Date.now()).toBe(100000)
     expect(vi.getTimerCount()).toBe(0)
   } finally {

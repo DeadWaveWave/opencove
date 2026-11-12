@@ -183,9 +183,7 @@ export function readRunPromptIdentity(
     entry.token === fence.incarnation &&
     epoch === fence.epoch &&
     entry.conversation.generation === fence.conversationGeneration
-    ? entry.conversation.providerSessionId
-      ? entry.history.identity(entry.conversation.providerSessionId)
-      : entry.history.identity()
+    ? entry.history.identity(entry.conversation.clearIdentity)
     : undefined
 }
 

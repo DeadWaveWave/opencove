@@ -180,7 +180,8 @@ async function configureClearHarness(testInfo: TestInfo, root: string) {
     })
       .toString()
       .trim()
-    expect(version).toMatch(/^2\.1\.321(?:\s|$)/)
+    // Verified Claude Code versions only; extend this list after running the full acceptance.
+    expect(version).toMatch(/^2\.1\.(?:321|322)(?:\s|$)/)
     await testInfo.attach('real-cli-version', {
       body: version,
       contentType: 'text/plain',

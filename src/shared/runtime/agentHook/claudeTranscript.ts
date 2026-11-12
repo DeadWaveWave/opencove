@@ -17,7 +17,12 @@ export interface ClaudeTranscriptObservation {
   /** Accepted observer generation transition, independent of provider identity reuse. */
   conversation?: {
     event: import('./claudeConversation').ClaudeConversationEvent
-    publish(generation: number, action?: 'start' | 'end' | 'event' | 'ignore'): void
+    publish(
+      generation: number,
+      action?: 'start' | 'end' | 'event' | 'ignore',
+      /** Preserve ordinary End state projection without reviving ignored observer IO. */
+      legacyState?: boolean,
+    ): void
     decide(decision: {
       action: 'start' | 'end' | 'event' | 'ignore'
       generation: number

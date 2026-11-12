@@ -62,8 +62,14 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
       baseline: false,
       conversation: {
         event: envelope,
-        publish: (acceptedGeneration, action = 'event') => {
-          if (this.commit(sessionId, envelope, context, action, acceptedGeneration)) {
+        publish: (acceptedGeneration, action = 'event', legacyState = false) => {
+          if (this.disposed || !context.isCurrent()) {
+            return
+          }
+          if (
+            this.commit(sessionId, envelope, context, action, acceptedGeneration, legacyState) ||
+            legacyState
+          ) {
             context.publishState?.(acceptedGeneration)
           }
         },
@@ -89,6 +95,7 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
     context: PrivateHookContext,
     action: 'start' | 'end' | 'event' | 'ignore',
     acceptedGeneration?: number,
+    legacyState = false,
   ): boolean {
     if (this.disposed || !context.isCurrent()) {
       return false
@@ -117,12 +124,13 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
       this.detach()
       this.demand = false
       this.currentGeneration = ++generation
-      if (acceptedGeneration === undefined) {
+      if (acceptedGeneration === undefined || legacyState) {
         this.emit({
           sessionId,
           providerSessionId: envelope.claudeSessionId,
           incarnation: context.incarnation,
           generation: this.currentGeneration,
+          conversationGeneration: acceptedGeneration,
           fileIdentity: `generation:${this.currentGeneration}`,
           position: -1,
           baseline: false,

@@ -40,12 +40,15 @@ export class ClaudeLiveConversation {
   private clearPending = false
   private orphanAt?: number
   private completedBeforeClear: string | null = null
+  private completedAtStart: string | null = null
   private committedAt = -Infinity
   private uncertain = false
   private draining = false
   private disposed = false
   private candidateReady = false
+  private currentClear = false
   private ended = false
+  private endedInClear = false
   generation = 0
   providerSessionId?: string
   ready = false
@@ -88,10 +91,7 @@ export class ClaudeLiveConversation {
       request.publish(this.generation, 'ignore')
       return
     }
-    if (
-      this.retired.has(event.claudeSessionId) &&
-      event.claudeSessionId !== this.providerSessionId
-    ) {
+    if (this.isRetiredEvent(event)) {
       request.publish(this.generation, 'ignore')
       return
     }
@@ -154,6 +154,16 @@ export class ClaudeLiveConversation {
     } else if (this.clearPending && hasCompleteClearTurn(this.pending.map(item => item.event))) {
       this.flush(ports, false)
     }
+  }
+  private isRetiredEvent(event: Request['event']): boolean {
+    return (
+      this.retired.has(event.claudeSessionId) &&
+      event.claudeSessionId !== this.providerSessionId &&
+      !(event.hookEventName === 'SessionStart' && !isClaudeClearEvidence(event))
+    )
+  }
+  get clearIdentity(): string | undefined {
+    return this.currentClear ? this.providerSessionId : undefined
   }
   get mayBeClearReady(): boolean {
     return this.ready || this.candidateReady
@@ -245,11 +255,7 @@ export class ClaudeLiveConversation {
         }
         const group = pending.slice(i, end)
         // Predecessor callbacks have no authority even when their timestamps tie live activity.
-        const live = group.filter(
-          item =>
-            !this.retired.has(item.event.claudeSessionId) ||
-            item.event.claudeSessionId === this.providerSessionId,
-        )
+        const live = group.filter(item => !this.isRetiredEvent(item.event))
         if (live.length > 1) {
           this.failClosed(ports)
           for (const request of pending.slice(i)) {
@@ -297,10 +303,7 @@ export class ClaudeLiveConversation {
       return
     }
     const event = request.event
-    if (
-      this.retired.has(event.claudeSessionId) &&
-      event.claudeSessionId !== this.providerSessionId
-    ) {
+    if (this.isRetiredEvent(event)) {
       request.publish(this.generation, 'ignore')
       return
     }
@@ -309,7 +312,12 @@ export class ClaudeLiveConversation {
       this.committedAt = Math.max(this.committedAt, event.emittedAtMs ?? -Infinity)
     }
     if (action === 'ignore') {
-      request.publish(this.generation, action)
+      const legacyState =
+        this.ended &&
+        !this.endedInClear &&
+        event.claudeSessionId === this.providerSessionId &&
+        event.hookEventName !== 'SessionStart'
+      request.publish(this.generation, action, legacyState)
       // Unknown successor activity without its Start can never restore the predecessor's authority.
       if (
         isClaudeConversationActivity(event) &&
@@ -321,6 +329,12 @@ export class ClaudeLiveConversation {
       return
     }
     const previous = this.providerSessionId
+    const completed = ports.completedTurnId()
+    // Once the successor completes, End has the same semantics inside and after the clear batch.
+    const legacyEnd =
+      action === 'end' &&
+      !isClaudeClearEvidence(event) &&
+      (!this.clearPending || (completed !== null && completed !== this.completedAtStart))
     if (action === 'start' || action === 'end') {
       this.ready = false
       this.reconcileTranscripts()
@@ -338,8 +352,15 @@ export class ClaudeLiveConversation {
       this.generation++
       this.providerSessionId = event.claudeSessionId
       this.ended = action === 'end'
+      this.endedInClear = this.ended && !legacyEnd
+      if (action === 'start') {
+        this.currentClear = event.sessionStartSource === 'clear'
+        this.completedAtStart = ports.completedTurnId()
+      }
       this.candidateReady = action === 'start' && event.sessionStartSource === 'clear' && !reused
-      ports.reset()
+      if (!legacyEnd) {
+        ports.reset()
+      }
     } else {
       this.providerSessionId = event.claudeSessionId
       if (isClaudeConversationActivity(event)) {
@@ -347,16 +368,23 @@ export class ClaudeLiveConversation {
         this.candidateReady = false
       }
     }
-    request.publish(this.generation, action)
+    request.publish(this.generation, action, legacyEnd)
   }
   accepts(generation: number | undefined, providerSessionId: string | undefined): boolean {
-    if (this.disposed || this.ended || this.uncertain || (this.quarantined && !this.draining)) {
+    if (
+      this.disposed ||
+      (this.ended && this.endedInClear) ||
+      this.uncertain ||
+      (this.quarantined && !this.draining)
+    ) {
       return false
     }
     return generation === undefined
       ? this.generation === 0 &&
           (!this.providerSessionId || providerSessionId === this.providerSessionId)
-      : generation === this.generation && providerSessionId === this.providerSessionId
+      : generation === this.generation &&
+          ((generation === 0 && this.providerSessionId === undefined) ||
+            providerSessionId === this.providerSessionId)
   }
   private remember(receipt: string): void {
     this.receipts.add(receipt)

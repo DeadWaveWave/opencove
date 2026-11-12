@@ -5,3 +5,5 @@ pnpm-lock.yaml
 out
 test-results
 playwright-report
+
+tests/fixtures/claude/non-clear/baseline/
