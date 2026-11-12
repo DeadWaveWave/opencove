@@ -24,17 +24,18 @@ Target container (choose one):
   --project <id>                                Select the root-canvas project, or narrow a Space lookup; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Options:
-  --prompt <text>         Set the initial agent prompt
-  --prompt-file <path|->  Read prompt from a UTF-8 file, or use - for stdin
-  --wait                  Wait for the initial prompt turn to end
-  --read                  Include the exact initial turn reply; requires --wait
-  --timeout <duration>    First-turn identification and wait budget (default 20s; minimum 250ms)
-  --provider <id>         Select the agent provider. Accepted IDs: claude-code, codex, opencode, gemini, pi, kimi; omit to use the configured default
-  --model <id>            Select the agent model
-  --title <text>          Set a fixed window name; omit on creation to keep automatic titles
-  --frame <json>          Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
-  --focus                 Focus after creation
-  -q, --quiet             Print only the created object identifier followed by a newline
+  --prompt <text>             Set the initial agent prompt
+  --prompt-file <path|->      Read prompt from a UTF-8 file, or use - for stdin
+  --wait                      Wait for the initial prompt turn to end
+  --read                      Include the exact initial turn reply; requires --wait
+  --timeout <duration>        First-turn identification and wait budget (default 20s; minimum 250ms)
+  --provider <id>             Select the agent provider. Accepted IDs: claude-code, codex, opencode, gemini, pi, kimi; omit to use the configured default
+  --model <id>                Select the agent model
+  --full-access <true|false>  Set Full Access for this agent and its restarts; omit to follow Settings
+  --title <text>              Set a fixed window name; omit on creation to keep automatic titles
+  --frame <json>              Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
+  --focus                     Focus after creation
+  -q, --quiet                 Print only the created object identifier followed by a newline
 
 Table output (-o table): not supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, spawnedBy, lineageDepth, lineageStatus, data, data.kind, turnId, outcome, endedAt, reply, reply.nodeId, reply.sessionId, reply.turnId, reply.deliveryIds, reply.promptIds, reply.promptId, reply.outcome, reply.message, reply.truncated, reply.messageKind, reply.persisted, reply.memoryOnlyReason, reply.source, replyUnavailableReason, data.provider, data.prompt, data.model, data.effectiveModel, data.executionDirectory, data.expectedDirectory, data.taskId

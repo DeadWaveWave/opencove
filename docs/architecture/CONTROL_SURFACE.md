@@ -308,14 +308,22 @@ project addition/root approval and plugin distribution or execution require a hu
 | `plugin.storage.set`, `plugin.preferences.set`, `plugin.view.preferences.set` | Installation-wide plugin state belongs to the user |
 
 Grant launches (`session.launchAgent`, `session.launchAgentInMount`) accept only target fields
-(`spaceId` / `cwd` or `mountId` / `cwdUri`), `prompt`, `provider`, `model`, `cols`, `rows`.
-Explicit `agentFullAccess`, `env`, `executablePathOverride`, `resumeSessionId`,
+(`spaceId` / `cwd` or `mountId` / `cwdUri`), `prompt`, `provider`, `model`, `agentFullAccess`, `cols`, `rows`.
+Explicit `agentFullAccess` overrides saved permissions in either direction for one agent; omission
+inherits Settings. `node.create` stores the optional boolean on the agent node, and relaunch,
+resume and recovery resolve `node.agent.agentFullAccess ?? settings.agentFullAccess` without
+changing Settings. `node.update` cannot change it. Existing nodes require no migration.
+Explicit `env`, `executablePathOverride`, `resumeSessionId`,
 `codexReuseRunningAppServer`, `mode` and unknown fields are refused, including null/false values.
 Grant launches also refuse nonempty prompts whose trimmed text is a single whitespace-free token,
 including ordinary words, because providers may dispatch them as commands. Describe the task in a sentence.
 This check also applies to nested agent creation and runs before remote bearer forwarding.
-The existing launch owner reads the user’s configured permission policy and environment.
-Remote grant spawning is refused before bearer forwarding. Trusted callers retain their existing overrides.
+The launch owner reads the user’s configured environment and resolves explicit Full Access over
+the saved default. Home’s remote launch preparation preserves that resolved value and its saved
+`codexReuseRunningAppServer` so the destination Worker cannot replace them with its own defaults.
+Grant runtime admission remains local-only as described below. Trusted callers retain their
+existing override behavior. This changes runtime policy only: no executable-rule impact on the
+architecture harness dependency and API rules.
 
 Launch responses and session listings describe the public command. Private process arguments
 and environment transport, including WSL environment assignments, stay out of session metadata.
@@ -416,7 +424,7 @@ expected ID 仅为身份 mismatch fence，parent 始终由 verified grant 推导
 
 ### Bounded grant runtime creation
 
-Policy `s1d-v2` permits grant runtime creation only through `node.create` with a current,
+Policy `s1d-v3` permits grant runtime creation only through `node.create` with a current,
 locally owned agent/terminal caller bound to the authenticated session. The existing node mutation
 queue owns admission through launch and commit settlement. Depth is at most 3 (user root = 1),
 with at most six distinct live or pending grant-created runtime descendants per immutable root.

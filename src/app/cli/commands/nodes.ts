@@ -128,7 +128,12 @@ function data(kind: string, o: Record<string, unknown>, create: boolean) {
     }
   }
   if (kind === 'agent') {
-    return { prompt: o.prompt ?? '', provider: o.provider, model: o.model }
+    return {
+      prompt: o.prompt ?? '',
+      provider: o.provider,
+      model: o.model,
+      ...(o['full-access'] === undefined ? {} : { agentFullAccess: o['full-access'] === 'true' }),
+    }
   }
   if (kind === 'terminal') {
     return { shell: o.shell, command: o.command, profileId: o.profile }
@@ -260,6 +265,13 @@ export const nodeCommands = [
                       },
                       provider: stringOption('Provider'),
                       model: stringOption('Model'),
+                      'full-access': {
+                        type: 'string',
+                        valueName: 'true|false',
+                        choices: ['true', 'false'],
+                        description:
+                          'Set Full Access for this agent and its restarts; omit to follow Settings',
+                      },
                     }
                   : {
                       shell: stringOption('Shell'),

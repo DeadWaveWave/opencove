@@ -88,7 +88,8 @@ function isAgentNodeData(value: unknown): value is PersistedAgentNodeData {
     (value.directoryMode === undefined || isExecutionDirectoryMode(value.directoryMode)) &&
     (value.customDirectory === undefined || isNullableString(value.customDirectory)) &&
     isOptionalBoolean(value.shouldCreateDirectory) &&
-    (value.taskId === undefined || isNullableString(value.taskId))
+    (value.taskId === undefined || isNullableString(value.taskId)) &&
+    isOptionalBoolean(value.agentFullAccess)
   )
 }
 

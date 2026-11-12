@@ -21,13 +21,13 @@ export type GrantRule =
       rejectedFields: Readonly<Record<string, string>>
       check: (payload: unknown, deps: GrantCheckDeps) => void
     }
-export const SESSION_GRANT_POLICY_VERSION = 's1d-v2'
+export const SESSION_GRANT_POLICY_VERSION = 's1d-v3'
 const allow = { access: 'allow' } as const
 const deny = (reason: string): GrantRule => ({ access: 'deny', reason })
 const launch = {
   access: 'constrained',
   reason:
-    'runtime creation requires admitted local node.create; agent terminals use saved launch settings for new conversations; prompts must describe a task and cannot run provider commands',
+    'runtime creation requires admitted local node.create; agent terminals inherit saved settings unless agentFullAccess explicitly chooses permissions for that agent; prompts must describe a task and cannot run provider commands',
   rejectedFields: SESSION_GRANT_LAUNCH_REJECTED_FIELDS,
   check: checkSessionGrantLaunch,
 } as const

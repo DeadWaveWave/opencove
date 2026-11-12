@@ -32,7 +32,6 @@ const fullAccessPath = [
   enSettingsPanel.agent.fullAccessLabel,
 ].join(' → ')
 const rejected = [
-  'agentFullAccess',
   'env',
   'executablePathOverride',
   'resumeSessionId',
@@ -143,7 +142,6 @@ it.each([sessionLaunchAgentOperation, sessionLaunchAgentInMountOperation])(
     const fields = (result.value as { rejectedFields: Record<string, string> }).rejectedFields
     const target = op.id === 'session.launchAgent' ? { spaceId: 's' } : { mountId: 'm' }
     const values = {
-      agentFullAccess: true,
       env: { KEY: 'fixture' },
       executablePathOverride: '/fixture/agent',
       resumeSessionId: 'old',
@@ -199,22 +197,10 @@ it.each(['sync.writeState', 'sync.writeWorkspaceStateRaw'])(
   },
 )
 it.each([sessionLaunchAgentOperation, sessionLaunchAgentInMountOperation])(
-  '$id directs full-access changes to the user Settings control',
+  '$id advertises Full Access as a supported per-launch override',
   async op => {
-    const f = fixture(),
-      target = op.id === 'session.launchAgent' ? { spaceId: 's' } : { mountId: 'm' }
-    expect(
-      await f.surface.invoke(grantCtx, {
-        kind: 'command',
-        id: op.id,
-        payload: { ...target, prompt: 'Hi', agentFullAccess: true },
-      }),
-    ).toMatchObject({
-      error: {
-        details: {
-          message: `${op.id}.agentFullAccess is not available to agent terminals: the user sets agent permissions in ${fullAccessPath}.`,
-        },
-      },
-    })
+    const result = await fixture().describe(op.id)
+    expect(result).toMatchObject({ value: { policyVersion: 's1d-v3' } })
+    expect(result).not.toHaveProperty('value.rejectedFields.agentFullAccess')
   },
 )

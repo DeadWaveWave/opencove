@@ -78,8 +78,8 @@ it.each([401, 403])('renders a distinct authorization error for status %s', asyn
 it('renders field_denied even when the HTTP envelope uses status 200', async () => {
   const details = {
     reason: 'field_denied',
-    field: 'agentFullAccess',
-    message: 'The user’s configured permission policy always applies.',
+    field: 'env',
+    message: 'The user’s configured agent environment always applies.',
   }
   await expect(
     invoke(

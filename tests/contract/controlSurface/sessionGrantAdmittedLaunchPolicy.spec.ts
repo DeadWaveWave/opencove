@@ -31,9 +31,6 @@ const { grant } = new SessionGrantRegistry(() => true).issue({
 })
 const context = { ...base, requestAuth: { kind: 'session-grant' as const, grant } }
 const overrides = [
-  ['agentFullAccess', true],
-  ['agentFullAccess', false],
-  ['agentFullAccess', null],
   ['env', { KEY: 'override' }],
   ['env', null],
   ['executablePathOverride', '/custom/agent'],

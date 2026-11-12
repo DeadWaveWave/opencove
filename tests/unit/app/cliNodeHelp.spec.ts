@@ -115,3 +115,14 @@ it('uses the correct article for an image in target errors', async () => {
   expect(await run(['agent', 'get', '--node', who.nodeId], f.io)).toBe(1)
   expect(f.error().message).toBe('"Diagram" is an image, not an agent window.')
 })
+
+it('documents Full Access as a create-only choice with a Settings default', async () => {
+  const f = identityFixture(false)
+  expect(await run(['node', 'create', 'agent', '--help'], f.io)).toBe(0)
+  expect(f.out()).toContain('--full-access <true|false>')
+  expect(f.out()).toContain('omit to follow Settings')
+  expect(f.out()).toMatchSnapshot()
+  const update = identityFixture(false)
+  expect(await run(['node', 'update', 'agent', '--help'], update.io)).toBe(0)
+  expect(update.out()).not.toContain('--full-access')
+})

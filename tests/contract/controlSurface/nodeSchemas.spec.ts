@@ -59,6 +59,9 @@ it.each([
 )
 it.each([
   { kind: 'agent', data: {} },
+  { kind: 'agent', data: { agentFullAccess: true } },
+  { kind: 'agent', data: { agentFullAccess: false } },
+  { kind: 'agent', agentFullAccess: true },
   { kind: 'terminal', data: null },
   { kind: 'task', data: { tags: [1] } },
   { kind: 'website', data: { pinned: 'true' } },
