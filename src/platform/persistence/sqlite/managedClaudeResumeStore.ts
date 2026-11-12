@@ -1,3 +1,4 @@
+import { rebindTaskClaimHolderRuntime } from './taskHolderRuntimeBinding'
 import { readManagedClaudeAdoptionSnapshot } from './managedClaudeAdoptionSnapshot'
 import type Database from 'better-sqlite3'
 import type {
@@ -37,8 +38,10 @@ export function createManagedClaudeResumeStore(
     runtimeSessionId: string | null,
     tuple: ManagedResumeBindingTuple,
   ): ManagedResumeBindingResult => {
-    const node = db.prepare('SELECT kind, agent_json FROM nodes WHERE id = ?').get(nodeId) as
-      | { kind: string; agent_json: string | null }
+    const node = db
+      .prepare('SELECT kind, agent_json, session_id FROM nodes WHERE id = ?')
+      .get(nodeId) as
+      | { kind: string; agent_json: string | null; session_id: string | null }
       | undefined
     const parsed = safeJsonParse(node?.agent_json ?? '')
     const agent =
@@ -70,6 +73,7 @@ export function createManagedClaudeResumeStore(
     if (!node) {
       return { status: 'committed' }
     }
+    rebindTaskClaimHolderRuntime(db, nodeId, node.session_id, runtimeSessionId)
     db.prepare('UPDATE nodes SET agent_json = ?, session_id = ? WHERE id = ?').run(
       safeJsonStringify({ ...agent, ...tuple }),
       runtimeSessionId,

@@ -60,8 +60,8 @@ function assertSideTables(f: ReturnType<typeof fixture>) {
   expect(f.events.indexOf('retired_managed_nodes')).toBeLessThan(f.events.indexOf('node_lineage'))
 }
 
-it('reserves schema 16 for inactive task authority after lineage', () => {
-  expect(DB_SCHEMA_VERSION).toBe(16)
+it('retains schema 15 for additive dormant task authority tables', () => {
+  expect(DB_SCHEMA_VERSION).toBe(15)
 })
 
 it('models v13 without either feature and v14 with only the managed Claude ledger', async () => {
@@ -78,11 +78,11 @@ it('models v13 without either feature and v14 with only the managed Claude ledge
   expect(ledger.has('node_lineage')).toBe(false)
 })
 
-it.each([13, 14, 15, 16])('upgrades or repairs v%s without inferring owner rows', async version => {
+it.each([13, 14, 15])('upgrades or repairs v%s without inferring owner rows', async version => {
   const { migrate } = await import('../../../src/platform/persistence/sqlite/migrate')
   const f = fixture(version)
   migrate(f.db)
-  expect(f.version()).toBe(16)
+  expect(f.version()).toBe(15)
   assertSideTables(f)
   expect(f.statements.join('\n')).not.toMatch(
     /INSERT\s+INTO\s+(node_lineage|managed_claude_resume_bindings|retired_managed_nodes)/i,
@@ -106,7 +106,7 @@ it('creates both side-table sets before the v1 legacy writer', async () => {
   )
   expect(writers.scrollbacks).toHaveBeenCalledOnce()
   expect(f.events.indexOf('node_lineage')).toBeLessThan(f.events.indexOf('legacy-writer'))
-  expect(f.version()).toBe(16)
+  expect(f.version()).toBe(15)
 })
 
 it('refuses a newer schema before any repair or write', async () => {

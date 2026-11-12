@@ -10,8 +10,8 @@ SQLite:
 - Store：`src/platform/persistence/sqlite/PersistenceStore.ts`
 - Schema：`src/platform/persistence/sqlite/schema.ts`
 - Migration：`src/platform/persistence/sqlite/migrate.ts`
-- 当前 `DB_SCHEMA_VERSION = 16`
-- schema 14：managed Claude resume ledger 与 retired IDs；schema 15：node lineage；schema 16：未激活的 task authority
+- 当前 `DB_SCHEMA_VERSION = 15`
+- schema 14：managed Claude resume ledger 与 retired IDs；schema 15：node lineage 与 additive、未激活的 task authority 空表
 - Agent/Terminal node Worker binding：`nodes.worker_binding_json`
 - Terminal durable recovery：`terminal_recovery_records`
 - Legacy terminal presentation/scrollback mirror：`node_scrollback`（兼容读取，不是独立 truth owner）
@@ -417,10 +417,12 @@ database downgrade。普通 workspace 同步不因 lookup unsupported 失败；P
 继续强制 ledger gate，客户端能力缺失只限制 ownership-dependent operations。
 
 
-## Task/text authority 基础层（schema 16，未激活）
+## Task/text authority 基础层（schema 15，未激活）
 
 升级和 schema-current repair 仅创建空的 `task_field_authority`、
 `task_command_receipts` 和 `task_claim_holders`，不从 snapshot 推断 authority。
+空表安装不提高 `user_version`，旧 schema 15 managed Worker 仍可按原 strictRecovery 规则打开。
+真正上线 activation 时须另行设计并原子提交不兼容的版本迁移，本轮不实现该迁移。
 生产启动目前不调用 activation，也不宣告 `taskAuthorityV1`。现有 UI 编辑行为保留。
 完整 UI、draft recovery、创建/归档/恢复和 launch adapters 就绪前不得启用。
 
@@ -442,6 +444,9 @@ Ledger 一旦存在，raw 与 structured snapshot writers 均须保护字段，�
 删除、session 或 Worker binding 更改。这个 gate 不随新命令的停用而解除。
 `agent.taskId` 仅从 active forward claims 重算，closed forward link 与 run history 留在 task。
 读取也投影 ledger，不能把 snapshot JSON 当作第二个 owner。
+W8 可信 runtime rebind 在自身 immediate transaction 内同步更新 task holder 的 session fence，
+保持 claim/lease/version 不变；不嵌套 task command transaction，不允许 raw snapshot 重绑定 holder。
+任一写入失败时，W8 binding、node session 与 holder fence 一并回滚。
 
 当前文本命令只针对 standalone note body。Append 保留 whitespace/Unicode，按当前末尾
 决定是否插入换行；最终 1 MiB 限额允许已有 oversized 文本的 no-op/缩小替换。Replacement

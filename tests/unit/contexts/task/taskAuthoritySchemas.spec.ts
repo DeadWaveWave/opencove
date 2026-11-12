@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest'
+import * as z from 'zod'
 import { taskAuthorityCommandSchema } from '@shared/contracts/taskAuthoritySchemas'
 
 const base = {
@@ -18,24 +19,56 @@ it('requires explicit request and incarnation fences, rejecting unknown fields',
   )
   expect(taskAuthorityCommandSchema.safeParse({ ...input, as: 'other' }).success).toBe(false)
 })
-it('requires field versions on replacement, status, retirement and conflict resolution', () => {
-  for (const operation of [
-    'task.status',
-    'task.note.replace',
-    'task.retire',
-    'task.conflict.resolve',
-  ]) {
-    expect(
-      taskAuthorityCommandSchema.safeParse({
-        ...base,
-        operation,
-        text: 'Replacement',
-        status: 'done',
-        leaseId: null,
-      }).success,
-    ).toBe(false)
-  }
-})
+const versionedCases = [
+  {
+    operation: 'task.status',
+    field: 'expectedVersion',
+    fields: { status: 'done', leaseId: null, expectedVersion: 1 },
+  },
+  {
+    operation: 'task.note.replace',
+    field: 'expectedTextVersion',
+    fields: { text: 'Replacement', expectedTextVersion: 1 },
+  },
+  { operation: 'task.retire', field: 'expectedVersion', fields: { expectedVersion: 1 } },
+  { operation: 'task.conflict.resolve', field: 'expectedVersion', fields: { expectedVersion: 1 } },
+] as const
+
+function assertVersionRequired(
+  schema: { safeParse(value: unknown): { success: boolean } },
+  input: Record<string, unknown>,
+  field: string,
+) {
+  expect(schema.safeParse(input).success).toBe(true)
+  const missingVersion = { ...input }
+  delete missingVersion[field]
+  expect(schema.safeParse(missingVersion).success).toBe(false)
+}
+
+it.each(versionedCases)(
+  'requires $field for otherwise valid $operation input',
+  ({ operation, field, fields }) => {
+    assertVersionRequired(taskAuthorityCommandSchema, { ...base, operation, ...fields }, field)
+  },
+)
+
+it.each(versionedCases)(
+  'detects an optional-version guard regression in $operation',
+  ({ operation, field, fields }) => {
+    const original = taskAuthorityCommandSchema.options.find(
+      option => option.shape.operation.value === operation,
+    )!
+    const shape: Record<string, z.ZodType> = original.shape
+    const mutant = z.strictObject({ ...shape, [field]: shape[field].optional() })
+    const input = { ...base, operation, ...fields }
+    const missingVersion: Record<string, unknown> = { ...input }
+    delete missingVersion[field]
+    expect(mutant.safeParse(input).success).toBe(true)
+    expect(mutant.safeParse(missingVersion).success).toBe(true)
+    // Run the exact same regression assertion against the broken guard: it must fail.
+    expect(() => assertVersionRequired(mutant, input, field)).toThrow()
+  },
+)
 it('limits claim annotations in UTF-8 bytes before same-holder no-op evaluation', () => {
   expect(
     taskAuthorityCommandSchema.safeParse({

@@ -18,6 +18,8 @@ const tests = process.argv.includes('--worker-ownership')
       'tests/contract/platform/nodeLineage.native.spec.ts',
       'tests/contract/platform/taskAuthority.native.spec.ts',
       'tests/contract/platform/taskAuthorityMigration.native.spec.ts',
+      'tests/contract/platform/taskAuthorityCompatibility.native.spec.ts',
+      'tests/contract/platform/taskAuthorityManagedClaude.native.spec.ts',
       'tests/contract/platform/taskAuthorityAuthorization.native.spec.ts',
       'tests/contract/platform/nodeLineageManagedResume.native.spec.ts',
       'tests/contract/platform/nodeLineageManagedLaunch.native.spec.ts',

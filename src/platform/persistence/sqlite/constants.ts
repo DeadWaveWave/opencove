@@ -1,4 +1,5 @@
-export const DB_SCHEMA_VERSION = 16
+// Dormant task tables are additive; an incompatible bump belongs to future activation.
+export const DB_SCHEMA_VERSION = 15
 
 export const LEGACY_WORKSPACE_STATE_KEY = 'workspace-state-raw'
 
