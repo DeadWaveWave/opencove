@@ -166,7 +166,7 @@ test.describe('Workspace Search', () => {
           },
         ],
         {
-          settings: { uiTheme: 'pixel' },
+          settings: { uiTheme: 'dark' },
           spaces: [
             {
               id: 'space-search-filter',
@@ -199,7 +199,7 @@ test.describe('Workspace Search', () => {
       await expect(spaceItem).toBeVisible()
 
       const panel = window.getByTestId('workspace-search')
-      await expect(spaceItem.locator('svg.lucide-scan')).toHaveCount(1)
+      await expect(spaceItem.locator('svg[data-cove-pixel-icon="focus"]')).toHaveCount(1)
       await expect(taskItem).toHaveAttribute('data-cove-label-color', 'blue')
       await expect(noteItem).not.toHaveAttribute('data-cove-label-color')
       await expect(panel.locator('[class*="__pill"]')).toHaveCount(0)
@@ -221,20 +221,19 @@ test.describe('Workspace Search', () => {
       expect(labelLine.width).toBe('2px')
       expect(labelLine.color).not.toBe('rgba(0, 0, 0, 0)')
       expect(labelLine.label).not.toBe('')
-      await testInfo.attach('workspace-search-pixel', {
+      await testInfo.attach('workspace-search-dark', {
         body: await panel.screenshot(),
         contentType: 'image/png',
       })
       await window.getByTestId('workspace-search-close').click()
       await window.getByTestId('app-header-control-center').click()
-      await window.getByTestId('control-center-theme-family-pixel').check()
       await window.getByTestId('control-center-theme-mode-light').check()
       await window.keyboard.press('Escape')
       await window.keyboard.press(`${findModifier}+F`)
-      await expect(window.locator('html')).toHaveAttribute('data-cove-theme-id', 'pixel-light')
+      await expect(window.locator('html')).toHaveAttribute('data-cove-theme-id', 'light')
       await expect(panel).toBeVisible()
       await expect(window.getByTestId('workspace-search-input')).toBeFocused()
-      await testInfo.attach('workspace-search-pixel-light', {
+      await testInfo.attach('workspace-search-light', {
         body: await panel.screenshot(),
         contentType: 'image/png',
       })

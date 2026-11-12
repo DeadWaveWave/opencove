@@ -47,6 +47,7 @@ export const nodes = sqliteTable('nodes', {
   sessionId: text('session_id'),
   title: text('title').notNull(),
   titlePinnedByUser: integer('title_pinned_by_user', { mode: 'number' }).notNull(),
+  titleIsLiteral: integer('title_is_literal', { mode: 'number' }).notNull().default(0),
   positionX: real('position_x').notNull(),
   positionY: real('position_y').notNull(),
   width: integer('width').notNull(),
@@ -68,6 +69,14 @@ export const nodes = sqliteTable('nodes', {
   expectedDirectory: text('expected_directory'),
   agentJson: text('agent_json'),
   taskJson: text('task_json'),
+})
+
+/** Worker-owned creation provenance; deliberately has no foreign keys. */
+export const nodeLineage = sqliteTable('node_lineage', {
+  nodeId: text('node_id').primaryKey().notNull(),
+  spawnedBy: text('spawned_by_node_id').notNull(),
+  rootNodeId: text('root_node_id').notNull(),
+  lineageDepth: integer('lineage_depth').notNull(),
 })
 
 export const spaces = sqliteTable('workspace_spaces', {
@@ -233,3 +242,21 @@ export const browserPermissionDecisions = sqliteTable(
     ).on(table.profileKey, table.origin, table.permission),
   }),
 )
+
+// Independent from nodes: whole-state saves mechanically delete and reinsert every node.
+export const managedClaudeResumeBindings = sqliteTable('managed_claude_resume_bindings', {
+  nodeId: text('node_id').primaryKey(),
+  runtimeSessionId: text('runtime_session_id'),
+  resumeSessionId: text('resume_session_id'),
+  resumeSessionIdVerified: integer('resume_session_id_verified').notNull(),
+  activationId: text('activation_id').notNull(),
+  nodeSeen: integer('node_seen').notNull().default(0),
+  updatedRevision: integer('updated_revision').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+})
+
+export const retiredManagedNodes = sqliteTable('retired_managed_nodes', {
+  nodeId: text('node_id').primaryKey(),
+  retiredRevision: integer('retired_revision').notNull(),
+  retiredAt: integer('retired_at').notNull(),
+})

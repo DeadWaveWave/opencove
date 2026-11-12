@@ -1,3 +1,4 @@
+import { managedHookCoverage } from '../shared/ManagedHookCoverage'
 import { randomUUID } from 'node:crypto'
 import type { AgentHookChannel } from '../../../../../shared/runtime/agentHook/agentHookChannel'
 import type {
@@ -18,6 +19,7 @@ export interface ClaudeCodeAgentProviderContributionOptions {
 }
 
 export class ClaudeCodeAgentProviderContribution implements AgentProviderContribution {
+  readonly prompting = { supported: true, submitDelayMs: 300 } as const
   readonly descriptor = {
     displayName: 'Claude Code',
     documentationUrl: 'https://docs.anthropic.com/claude/docs/claude-code',
@@ -51,6 +53,7 @@ export class ClaudeCodeAgentProviderContribution implements AgentProviderContrib
         ...plan,
         env: telemetry.env,
         hookInstallState: telemetry.hookInstallState,
+        hookCoverage: managedHookCoverage(this.descriptor.id, plan.args, telemetry, command),
         ...(telemetry.onStarted ? { onStarted: telemetry.onStarted } : {}),
       }
     },
@@ -70,17 +73,32 @@ export class ClaudeCodeAgentProviderContribution implements AgentProviderContrib
   private async prepareTelemetry(
     command: Pick<
       CreateAgentLaunchPlanCommand,
-      'artifacts' | 'executablePathOverride' | 'workspaceDirectory'
+      | 'artifacts'
+      | 'executablePathOverride'
+      | 'workspaceDirectory'
+      | 'environment'
+      | 'residentContext'
+      | 'isInvocationCurrent'
     >,
   ) {
     if (!this.channel) {
-      return { args: [], env: {}, hookInstallState: 'not_installed' as const }
+      return {
+        args: [],
+        env: {},
+        hookCoverage: 'none' as const,
+        hookInstallState: 'not_installed' as const,
+      }
     }
-    const reservation = await this.channel.reserveSpawn()
+    const reservation = await this.channel.reserveSpawn({
+      environment: command.environment,
+      residentContext: command.residentContext,
+      isInvocationCurrent: command.isInvocationCurrent,
+    })
     if (!reservation.usesHook) {
       return {
         args: [],
         env: {},
+        hookCoverage: 'none' as const,
         hookInstallState: reservation.installState,
       }
     }
@@ -100,6 +118,7 @@ export class ClaudeCodeAgentProviderContribution implements AgentProviderContrib
     return {
       args: ['--settings', settings.path],
       env: { ...reservation.env },
+      hookCoverage: 'lifecycle' as const,
       hookInstallState: reservation.installState,
       onStarted: reservation.commit,
     }

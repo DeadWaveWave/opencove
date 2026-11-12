@@ -2,133 +2,12 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { DB_SCHEMA_VERSION } from '../../../src/platform/persistence/sqlite/constants'
 import {
   PERSISTENCE_STORE_TEST_TIMEOUT_MS,
   type PersistenceMigrationMockDbState as MockDbState,
 } from './persistenceStoreMigrations.types'
-const CURRENT_SCHEMA_COLUMNS = {
-  app_meta: ['key', 'value'],
-  app_settings: ['id', 'value'],
-  workspaces: [
-    'id',
-    'name',
-    'icon_id',
-    'path',
-    'worktrees_root',
-    'pull_request_base_branch_options_json',
-    'environment_variables_json',
-    'space_archive_records_json',
-    'viewport_x',
-    'viewport_y',
-    'viewport_zoom',
-    'is_minimap_visible',
-    'active_space_id',
-    'sort_order',
-  ],
-  nodes: [
-    'id',
-    'workspace_id',
-    'session_id',
-    'title',
-    'title_pinned_by_user',
-    'position_x',
-    'position_y',
-    'width',
-    'height',
-    'kind',
-    'profile_id',
-    'runtime_kind',
-    'terminal_geometry_json',
-    'worker_binding_json',
-    'terminal_provider_hint',
-    'label_color_override',
-    'sidebar_sort_order',
-    'status',
-    'started_at',
-    'ended_at',
-    'exit_code',
-    'last_error',
-    'execution_directory',
-    'expected_directory',
-    'agent_json',
-    'task_json',
-  ],
-  workspace_spaces: [
-    'id',
-    'workspace_id',
-    'name',
-    'directory_path',
-    'target_mount_id',
-    'parent_space_id',
-    'boundary_json',
-    'sort_order',
-    'pinned',
-    'label_color',
-    'rect_x',
-    'rect_y',
-    'rect_width',
-    'rect_height',
-  ],
-  workspace_space_nodes: ['space_id', 'node_id', 'sort_order'],
-  node_scrollback: ['node_id', 'scrollback', 'updated_at'],
-  terminal_recovery_records: [
-    'node_id',
-    'format_version',
-    'generation',
-    'binding_json',
-    'runtime_epoch',
-    'checkpoint_revision',
-    'applied_seq',
-    'presentation_json',
-    'raw_tail',
-    'raw_truncated',
-    'checksum',
-    'updated_at',
-  ],
-  agent_node_placeholder_scrollback: ['node_id', 'scrollback', 'updated_at'],
-  browser_profile_settings: ['profile_key', 'homepage_url', 'updated_at'],
-  browser_history: [
-    'id',
-    'profile_key',
-    'url',
-    'title',
-    'favicon_url',
-    'visit_count',
-    'last_visited_at',
-  ],
-  browser_bookmarks: [
-    'id',
-    'profile_key',
-    'url',
-    'title',
-    'favicon_url',
-    'folder_id',
-    'sort_order',
-    'created_at',
-    'updated_at',
-  ],
-  browser_downloads: [
-    'id',
-    'profile_key',
-    'url',
-    'filename',
-    'save_path',
-    'state',
-    'received_bytes',
-    'total_bytes',
-    'started_at',
-    'ended_at',
-    'error',
-  ],
-  browser_permission_decisions: [
-    'id',
-    'profile_key',
-    'origin',
-    'permission',
-    'decision',
-    'updated_at',
-  ],
-} as const
+import { CURRENT_SCHEMA_COLUMNS } from './persistenceSchemaColumns'
 
 function createVersion2Tables(): Map<string, string[]> {
   return new Map<string, string[]>([
@@ -432,7 +311,7 @@ describe('PersistenceStore (migrations)', () => {
       store.dispose()
 
       const migratedState = mockDbByPath.get(dbPath)
-      expect(migratedState?.userVersion).toBe(13)
+      expect(migratedState?.userVersion).toBe(DB_SCHEMA_VERSION)
       expect(migratedState?.tables.get('terminal_recovery_records')).toEqual(
         expect.arrayContaining([...CURRENT_SCHEMA_COLUMNS.terminal_recovery_records]),
       )
@@ -461,7 +340,7 @@ describe('PersistenceStore (migrations)', () => {
       tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
       const dbPath = join(tempDir, 'opencove.db')
       const mockDbByPath = new Map<string, MockDbState>([
-        [dbPath, createMockDbState({ userVersion: 13, version2Schema: true })],
+        [dbPath, createMockDbState({ userVersion: DB_SCHEMA_VERSION, version2Schema: true })],
       ])
       vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
 

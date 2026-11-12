@@ -1,3 +1,5 @@
+import type { NodeLineageRecord } from '../../domain/nodeLineage'
+import { projectNodeLineages } from '../nodeLineage/NodeLineageOwner'
 import type { CreateNodeInput, CreateNodeResult } from '../../../../shared/contracts/dto'
 import { createAppError, toAppErrorDescriptor } from '../../../../shared/errors/appError'
 import { normalizeAgentSettings } from '../../../settings/domain/agentSettings'
@@ -33,6 +35,8 @@ export async function commitCreatedNode(options: {
   input: CreateNodeInput
   node: NodeControlNode
   initialTarget: ResolvedNodeCreationTarget
+  lineage?: NodeLineageRecord | null
+  callerNodeId?: string | null
 }): Promise<CreateNodeResult> {
   /* eslint-disable no-await-in-loop -- Each bounded CAS attempt must use a fresh snapshot. */
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -60,6 +64,7 @@ export async function commitCreatedNode(options: {
       kind: options.input.kind,
       bucket: normalizeAgentSettings(state.settings).standardWindowSizeBucket,
       frame: options.input.frame,
+      callerNodeId: options.callerNodeId,
     })
     const frame = resolveCreateFrame({
       kind: options.input.kind,
@@ -76,16 +81,23 @@ export async function commitCreatedNode(options: {
     const spaceId = current.space?.id ?? null
     const workspace = workspaceWithNode(current.workspace, node, spaceId)
     options.runtime.assertActive?.()
-    const result = await options.store.writeAppState(
-      replaceNodeControlWorkspace(state, workspace),
-      { expectedRevision },
-    )
+    const nextState = replaceNodeControlWorkspace(state, workspace)
+    const result = options.lineage
+      ? await options.store.commitCreatedNodeState!(nextState, {
+          expectedRevision,
+          lineage: options.lineage,
+        })
+      : await options.store.writeAppState(nextState, { expectedRevision })
     if (result.ok) {
       return {
         revision: result.revision ?? (await options.store.readAppStateRevision()),
         projectId: workspace.id,
         spaceId,
-        node: toCanvasNodeDetail({ node, workspace, spaceId }),
+        node: (
+          await projectNodeLineages(options.store, [
+            toCanvasNodeDetail({ node, workspace, spaceId }),
+          ])
+        )[0],
       }
     }
     const isConflict =
@@ -121,6 +133,13 @@ export async function cleanupFailedNodeCreation(
     }
   } catch {
     /* An unavailable read cannot prove that the write did not commit. */
+  }
+  if (persisted === false && node.sessionId && store.isRuntimeReferenced) {
+    try {
+      persisted = store.isRuntimeReferenced(node.sessionId)
+    } catch {
+      persisted = null
+    }
   }
   if (persisted === false) {
     if (node.sessionId) {

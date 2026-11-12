@@ -21,7 +21,7 @@ async function seedPageWorkspace(
     activeWorkspaceId: PROJECT_ID,
     settings: {
       language: 'en',
-      uiTheme: 'pixel',
+      uiTheme: 'dark',
       isPrimarySidebarCollapsed: false,
       terminalDisplayAutoReferenceEnabled: false,
       focusNodeOnClick: false,
@@ -222,9 +222,9 @@ test.describe('Settings canvas page', () => {
       expect(await readCanvasRuntime(page)).toEqual(before)
       await page.getByTestId('settings-section-nav-appearance').click()
       await capture(page, testInfo, 'settings-page-pixel')
-      await selectCoveOption(page, 'settings-ui-theme', 'pixel-light')
+      await selectCoveOption(page, 'settings-ui-theme', 'light')
       await expectCanvasWindowsVisible(page, false)
-      await capture(page, testInfo, 'settings-page-pixel-light')
+      await capture(page, testInfo, 'settings-page-light')
       expect(await terminalElement!.evaluate(element => element.isConnected)).toBe(true)
       expect(await readCanvasRuntime(page)).toEqual(before)
 
@@ -312,11 +312,11 @@ test.describe('Settings canvas page', () => {
       await expectCanvasWindowsVisible(page, false)
       await selectCoveOption(page, 'settings-panel-page-selector', 'appearance')
       await capture(page, testInfo, 'settings-page-mobile-pixel')
-      await selectCoveOption(page, 'settings-ui-theme', 'pixel-light')
+      await selectCoveOption(page, 'settings-ui-theme', 'light')
       await page.setViewportSize({ width: 320, height: 720 })
       await expectPageFillsCanvas(page)
       await expectCanvasWindowsVisible(page, false)
-      await capture(page, testInfo, 'settings-page-mobile-pixel-light')
+      await capture(page, testInfo, 'settings-page-mobile-light')
       await page.getByTestId('settings-panel-close').click()
       await expect(page.getByTestId('settings-panel')).toHaveCount(0)
       await expect(navigation).toBeFocused()

@@ -10,6 +10,8 @@ import { normalizeSpaceBoundary } from '../../../shared/types/spaceBoundary'
 import { normalizeNodeWorkerBinding } from '../../../shared/types/nodeWorkerBinding'
 import { normalizeTerminalGeometry } from './normalize'
 import {
+  managedClaudeResumeBindings,
+  agentNodePlaceholderScrollback,
   appMeta,
   appSettings,
   nodeScrollback,
@@ -92,6 +94,16 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
 
   const workspaceRows = db.select().from(workspaces).orderBy(workspaces.sortOrder).all()
   const nodeRows = db.select().from(nodes).all()
+  const ownership = new Map(
+    db
+      .select()
+      .from(managedClaudeResumeBindings)
+      .all()
+      .map(row => [
+        row.nodeId,
+        { activationId: row.activationId, runtimeSessionId: row.runtimeSessionId },
+      ]),
+  )
   const spaceRows = db.select().from(spaces).all()
   const spaceNodeRows = db.select().from(spaceNodes).all()
   const collapseByWorkspace = (() => {
@@ -128,12 +140,16 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
     workspaces: workspaceRows.map(workspace => {
       const workspaceNodes = (nodesByWorkspaceId.get(workspace.id) ?? []).map(node => ({
         id: node.id,
+        ...(ownership.has(node.id)
+          ? { managedClaudeResumeBindingOwnership: ownership.get(node.id) }
+          : {}),
         sessionId:
           typeof node.sessionId === 'string' && node.sessionId.trim().length > 0
             ? node.sessionId
             : null,
         title: node.title,
         titlePinnedByUser: node.titlePinnedByUser === 1,
+        titleIsLiteral: node.titleIsLiteral === 1,
         position: { x: node.positionX, y: node.positionY },
         width: node.width,
         height: node.height,
@@ -296,4 +312,25 @@ export function readWorkspaceStateRawFromDb(
   }
 
   return JSON.stringify(hydrated)
+}
+
+export function readNodeScrollbackFromDb(db: BetterSQLite3Database, nodeId: string): string | null {
+  const row = db
+    .select({ scrollback: nodeScrollback.scrollback })
+    .from(nodeScrollback)
+    .where(eq(nodeScrollback.nodeId, nodeId))
+    .get()
+  return typeof row?.scrollback === 'string' ? row.scrollback : null
+}
+
+export function readAgentNodePlaceholderScrollbackFromDb(
+  db: BetterSQLite3Database,
+  nodeId: string,
+): string | null {
+  const row = db
+    .select({ scrollback: agentNodePlaceholderScrollback.scrollback })
+    .from(agentNodePlaceholderScrollback)
+    .where(eq(agentNodePlaceholderScrollback.nodeId, nodeId))
+    .get()
+  return typeof row?.scrollback === 'string' ? row.scrollback : null
 }

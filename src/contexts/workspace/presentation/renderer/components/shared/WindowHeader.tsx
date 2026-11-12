@@ -20,8 +20,11 @@ export interface WindowHeaderClose {
 }
 
 /**
- * Every window header has the same anatomy: label dot, kind tile, title, status, drag space,
- * kind actions, collapse, close. Kinds fill the slots; the order and the controls stay shared.
+ * Every window header has the same anatomy: label dot, kind tile, title, status, kind actions,
+ * collapse, close. Kinds fill the slots; the order and the controls stay shared. The bar is the
+ * drag surface and keeps no drag space of its own: the title runs to the controls. A title that
+ * renames (InlineNodeTitleEditor) renames on a click and moves the window on a hold or a drag;
+ * plain words select on a click. The tile is the one spot that only grabs.
  */
 export function WindowHeader({
   className,
@@ -44,13 +47,24 @@ export function WindowHeader({
   icon: React.ReactNode
   title: React.ReactNode
   status?: React.ReactNode
+  /** Names the tile, the one spot that only grabs, for tests that drag the window. */
   dragSurfaceTestId?: string
   actions?: React.ReactNode
   trailingClassName?: string
   close: WindowHeaderClose
   onPointerDownCapture?: (event: React.PointerEvent<HTMLElement>) => void
 }): React.JSX.Element {
-  const commitProbeRef = useWindowCommitProbe(kind)
+  const commitProbeRef = useWindowCommitProbe(kind, {
+    className,
+    kind,
+    labelColor,
+    icon,
+    title,
+    status,
+    actions,
+    close,
+    onPointerDownCapture,
+  })
   return (
     <header
       ref={commitProbeRef}
@@ -67,16 +81,11 @@ export function WindowHeader({
           aria-hidden="true"
         />
       ) : null}
-      <KindTile kind={kind} className="cove-window-header__tile">
+      <KindTile kind={kind} className="cove-window-header__tile" testId={dragSurfaceTestId}>
         {icon}
       </KindTile>
       {title}
       {status ? <div className="cove-window-header__status">{status}</div> : null}
-      <div
-        className="cove-window-header__drag"
-        data-testid={dragSurfaceTestId}
-        aria-hidden="true"
-      />
       <div className={classNames('cove-window-header__trailing nodrag', trailingClassName)}>
         {actions}
         <WindowCollapseButton onClose={close.onClose} revealBeforeClose={close.revealBeforeClose} />

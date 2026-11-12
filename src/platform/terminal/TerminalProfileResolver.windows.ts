@@ -1,5 +1,6 @@
 import path from 'node:path'
 import type { TerminalProfile, TerminalRuntimeKind } from '../../shared/contracts/dto'
+import type { TerminalSpawnCommand } from './publicTerminalSpawnCommand'
 
 export interface TerminalProfileResolverDeps {
   platform: NodeJS.Platform
@@ -13,11 +14,14 @@ export interface TerminalProfileResolverDeps {
 
 export interface ResolvedTerminalSpawn {
   command: string
+  /** Private process argv; use the public command projection for responses and session metadata. */
   args: string[]
   cwd: string
   env: NodeJS.ProcessEnv
   profileId: string | null
   runtimeKind: TerminalRuntimeKind
+  /** Logical command for public metadata when platform argv contains private env values. */
+  publicCommand?: TerminalSpawnCommand
 }
 
 export interface InternalTerminalProfile extends TerminalProfile {
@@ -59,7 +63,7 @@ function isWslUncPath(value: string): boolean {
   return normalized.startsWith('\\\\wsl$\\') || normalized.startsWith('\\\\wsl.localhost\\')
 }
 
-function convertWindowsPathToWslPath(cwd: string, distro: string): string | null {
+export function convertWindowsPathToWslPath(cwd: string, distro: string): string | null {
   const normalized = cwd.trim()
   const uncPrefix = normalized.toLowerCase().startsWith('\\\\wsl$\\')
     ? '\\\\wsl$\\'

@@ -43,7 +43,7 @@ export const zhCNSettingsPanelLayout = {
     terminal: '集中设置字体、Shell 与显示校准。',
     general: '设置语言、更新和常用偏好。',
     appearance: '调整主题、界面文字与视觉效果。',
-    notifications: '管理系统通知与待命信息。',
+    notifications: '选择 Agent 需要你时如何提醒你。',
     canvasWindows: '调整画布操作与窗口行为。',
     agent: '选择并配置 Agent。',
     plugins: '管理已安装的插件，获取开发指南。',
@@ -64,7 +64,7 @@ export const zhCNSettingsPanelLayout = {
     },
     notifications: {
       system: '通知方式',
-      standby: '待命横幅',
+      standby: '通知卡片',
     },
     canvasWindows: {
       canvasInput: '画布输入',
@@ -79,7 +79,7 @@ export const zhCNSettingsPanelLayout = {
     tasksShortcuts: {
       taskTitles: '任务标题',
       taskTags: '任务标签',
-      quickActions: '快捷操作',
+      contextMenu: '右键菜单',
       keyboard: '键盘快捷键',
     },
     worker: {

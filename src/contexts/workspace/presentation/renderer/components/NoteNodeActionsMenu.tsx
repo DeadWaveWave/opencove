@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { JSX, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import { Check, ChevronRight, Download, ListTodo, MoreHorizontal, Tag } from 'lucide-react'
+import {
+  CheckIcon,
+  ChevronRightIcon,
+  DownloadIcon,
+  MoreIcon,
+  TagIcon,
+  TaskIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { useCompactViewport } from '@app/renderer/components/useCompactViewport'
 import { menuHoverHandler } from '@app/renderer/components/menuHoverHandler'
@@ -29,7 +36,7 @@ const NOTE_MENU_ESTIMATED_HEIGHT = 150
 
 function renderMenuMark(checked: boolean): JSX.Element {
   return checked ? (
-    <Check className="workspace-context-menu__mark" aria-hidden="true" />
+    <CheckIcon className="workspace-context-menu__mark" />
   ) : (
     <span className="workspace-context-menu__mark" aria-hidden="true" />
   )
@@ -222,7 +229,7 @@ export function NoteNodeActionsMenu({
         aria-label={t('noteNode.moreActions')}
         title={t('noteNode.moreActions')}
       >
-        <MoreHorizontal aria-hidden="true" />
+        <MoreIcon />
       </button>
 
       {menuPoint ? (
@@ -256,7 +263,7 @@ export function NoteNodeActionsMenu({
               activateFromClick(event, saveMarkdown)
             }}
           >
-            <Download className="workspace-context-menu__icon" aria-hidden="true" />
+            <DownloadIcon className="workspace-context-menu__icon" />
             <span className="workspace-context-menu__label">{t('noteNode.saveMarkdown')}</span>
           </button>
 
@@ -271,7 +278,7 @@ export function NoteNodeActionsMenu({
               activateFromClick(event, convertToTask)
             }}
           >
-            <ListTodo className="workspace-context-menu__icon" aria-hidden="true" />
+            <TaskIcon className="workspace-context-menu__icon" />
             <span className="workspace-context-menu__label">
               {t('workspaceContextMenu.convertToTask')}
             </span>
@@ -291,13 +298,12 @@ export function NoteNodeActionsMenu({
               activateFromClick(event, openPinnedLabelColorSubmenu)
             }}
           >
-            <Tag className="workspace-context-menu__icon" aria-hidden="true" />
+            <TagIcon className="workspace-context-menu__icon" />
             <span className="workspace-context-menu__label">{t('labelColors.title')}</span>
-            <ChevronRight
+            <ChevronRightIcon
               className={`workspace-context-menu__icon workspace-context-menu__chevron ${
                 shouldShowLabelColorSubmenu ? 'workspace-context-menu__chevron--open' : ''
               }`}
-              aria-hidden="true"
             />
           </button>
         </ViewportMenuSurface>
@@ -407,12 +413,6 @@ export function NoteNodeActionsMenu({
                   data-cove-label-color={color}
                   aria-hidden="true"
                 />
-                {labelColorOverride === color ? (
-                  <Check
-                    className="workspace-project-context-menu__color-check"
-                    aria-hidden="true"
-                  />
-                ) : null}
               </button>
             ))}
           </div>

@@ -46,6 +46,16 @@ describe('PTY host session event owner', () => {
     expect(owner.beginTermination('session-killed')).toBe(false)
   })
 
+  it('routes one later close for a naturally exited session without emitting a second exit', () => {
+    const { owner, events } = createFixture()
+    owner.resolveSpawn('exited-agent', true)
+    owner.observeExit({ sessionId: 'exited-agent', exitCode: 0 })
+    expect(owner.beginTermination('exited-agent')).toBe(true)
+    expect(owner.beginTermination('exited-agent')).toBe(false)
+    owner.observeExit({ sessionId: 'exited-agent', exitCode: 0 })
+    expect(events).toEqual([{ type: 'exit', value: 0 }])
+  })
+
   it('clears owned sessions during intentional supervisor disposal without publishing exits', () => {
     const { owner, events } = createFixture()
     owner.resolveSpawn('session-1', true)

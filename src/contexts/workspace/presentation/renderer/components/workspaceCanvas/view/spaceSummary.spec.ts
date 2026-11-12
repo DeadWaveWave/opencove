@@ -46,7 +46,7 @@ describe('Compact window runtime status', () => {
     })
     expect(resolveSpaceSummaryStatus(agent.data, t)).toEqual({
       state: 'waiting',
-      label: 'agentRuntime.waiting',
+      label: 'agentAttention.blocked',
     })
     expect(resolveSpaceSummaryStatus(makeNode('terminal').data, t)).toEqual({
       state: 'connected',

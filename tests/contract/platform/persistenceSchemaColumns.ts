@@ -1,4 +1,16 @@
 export const CURRENT_SCHEMA_COLUMNS = {
+  node_lineage: ['node_id', 'spawned_by_node_id', 'root_node_id', 'lineage_depth'],
+  managed_claude_resume_bindings: [
+    'node_id',
+    'runtime_session_id',
+    'resume_session_id',
+    'resume_session_id_verified',
+    'activation_id',
+    'node_seen',
+    'updated_revision',
+    'updated_at',
+  ],
+  retired_managed_nodes: ['node_id', 'retired_revision', 'retired_at'],
   app_meta: ['key', 'value'],
   app_settings: ['id', 'value'],
   workspaces: [
@@ -23,6 +35,7 @@ export const CURRENT_SCHEMA_COLUMNS = {
     'session_id',
     'title',
     'title_pinned_by_user',
+    'title_is_literal',
     'position_x',
     'position_y',
     'width',

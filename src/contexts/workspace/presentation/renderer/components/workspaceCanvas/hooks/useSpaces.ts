@@ -13,6 +13,7 @@ import type {
   SpaceTargetMountPickerState,
 } from '../types'
 import type { LabelColor } from '@shared/types/labelColor'
+import type { CanvasLod } from '../view/canvasLod'
 import { computeSpaceRectFromNodes } from '../../../utils/spaceLayout'
 import { useWorkspaceCanvasCreateSpace } from './useSpaces.createSpace'
 import { useWorkspaceCanvasCreateChildSpace } from './useSpaces.createChildSpace'
@@ -68,7 +69,7 @@ export function useWorkspaceCanvasSpaces({
   spaceRenameDraft: string
   setSpaceRenameDraft: React.Dispatch<React.SetStateAction<string>>
   spaceRenameInputRef: React.RefObject<HTMLInputElement | null>
-  startSpaceRename: (spaceId: string) => void
+  activateSpaceTitle: (spaceId: string, lod: CanvasLod) => void
   cancelSpaceRename: () => void
   commitSpaceRename: (spaceId: string) => void
   setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
@@ -359,12 +360,25 @@ export function useWorkspaceCanvasSpaces({
     [createEmptySpaceAtPointInternal, focusSpaceInViewport],
   )
 
+  // Far away a Space title is a way in, like a far tile: it focuses its Space. Up close, where the
+  // Space can be read, it is the name and renames it.
+  const activateSpaceTitle = useCallback(
+    (spaceId: string, lod: CanvasLod) => {
+      if (lod === 'far') {
+        focusSpaceInViewport(spaceId)
+        return
+      }
+      startSpaceRename(spaceId)
+    },
+    [focusSpaceInViewport, startSpaceRename],
+  )
+
   return {
     editingSpaceId,
     spaceRenameDraft,
     setSpaceRenameDraft,
     spaceRenameInputRef,
-    startSpaceRename,
+    activateSpaceTitle,
     cancelSpaceRename,
     commitSpaceRename,
     setSpaceLabelColor,

@@ -1,0 +1,68 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renders CJK and emoji cells golden 1`] = `
+[
+  "你🙂  X",
+  "    好 Z",
+]
+`;
+
+exports[`renders CUP, home, back golden 1`] = `
+[
+  "!eader",
+  "",
+  "    Dialog",
+]
+`;
+
+exports[`renders OSC hyperlinks golden 1`] = `
+[
+  "link text",
+]
+`;
+
+exports[`renders SGR and private modes golden 1`] = `
+[
+  "red  text",
+]
+`;
+
+exports[`renders cursor-up overwrite golden 1`] = `
+[
+  "FIRST",
+  "RIGHT",
+  "third",
+]
+`;
+
+exports[`renders forward spacing golden 1`] = `
+[
+  "Claude Code  asks   for     permission",
+]
+`;
+
+exports[`replays a real presentation-session serialization of alternate content 1`] = `
+{
+  "lines": [
+    "Claude Code",
+    "  Permission   needed",
+    "  你  ready",
+  ],
+  "serializedScreen": "[!p[?9;1000;1002;1003lNORMAL HISTORY[?1049h[HClaude[1CCode
+[2CPermission[3Cneeded
+[2C你[2Cready[?2004h[?1006l[?1016l[?25h",
+}
+`;
+
+exports[`replays a real presentation-session serialization of normal content 1`] = `
+{
+  "lines": [
+    "Claude Code",
+    "  Permission   needed",
+    "  你  ready",
+  ],
+  "serializedScreen": "[!p[?9;1000;1002;1003lClaude[1CCode
+[2CPermission[3Cneeded
+[2C你[2Cready[?2004h[?1006l[?1016l[?25h",
+}
+`;

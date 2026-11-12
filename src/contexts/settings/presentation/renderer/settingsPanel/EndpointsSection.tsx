@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Button } from '@app/renderer/components/ui/Button'
 import { SettingRow } from '@app/renderer/components/ui/SettingRow'
-import { Plus, RefreshCw, Server } from 'lucide-react'
+import { PlusIcon, RefreshIcon, ServerIcon } from '@app/renderer/components/ui/pixelIcons'
 import { IconButton } from '@app/renderer/components/ui/IconButton'
 import { useTranslation } from '@app/renderer/i18n'
 import type { SshConfigHost, WorkerEndpointOverviewDto } from '@shared/contracts/dto'
@@ -307,7 +307,7 @@ export function EndpointsSection(): React.JSX.Element {
 
         <div className="settings-panel__endpoint-toolbar" id="settings-section-worker-connections">
           <div className="settings-panel__endpoint-toolbar-meta">
-            <Server size={16} aria-hidden="true" />
+            <ServerIcon size={18} />
             <span>
               {isLoading
                 ? t('common.loading')
@@ -325,7 +325,7 @@ export function EndpointsSection(): React.JSX.Element {
                 void reload()
               }}
             >
-              <RefreshCw size={15} aria-hidden="true" />
+              <RefreshIcon size={18} />
             </IconButton>
             <button
               type="button"
@@ -334,7 +334,7 @@ export function EndpointsSection(): React.JSX.Element {
               disabled={registerBusy}
               onClick={openRegisterWindow}
             >
-              <Plus size={15} aria-hidden="true" />
+              <PlusIcon size={18} />
               {t('settingsPanel.endpoints.actions.add')}
             </button>
           </div>

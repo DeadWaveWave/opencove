@@ -1,5 +1,6 @@
+import { negotiateManagedClaudeWorkerSupport } from '../../../src/contexts/workspace/presentation/renderer/utils/managedClaudeWorkerSupport'
 import React from 'react'
-import { render, waitFor } from '@testing-library/react'
+import { act, render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
 
@@ -123,5 +124,53 @@ describe('usePersistedAppState', () => {
     await waitFor(() => {
       expect(useAppStore.getState().persistNotice?.kind).toBe('recovery')
     })
+  })
+  it('restores the scoped freeze reason after a write error and successful save', async () => {
+    window.opencoveApi = {
+      persistence: {},
+      controlSurface: {
+        invoke: vi.fn(async () => ({
+          features: {
+            managedClaudeResumeBindingDeliveryV1: true,
+            managedClaudeResumeBindingWritesEnabled: false,
+          },
+        })),
+      },
+      meta: { isTest: true },
+    } as unknown as typeof window.opencoveApi
+    await negotiateManagedClaudeWorkerSupport('required')
+    const notice = useAppStore.getState().persistNotice
+    let deliver!: (result: unknown) => void
+    schedulePersistedStateWrite.mockImplementation((_producer, options) => {
+      deliver = options.onResult
+    })
+    function Harness() {
+      usePersistedAppState({
+        workspaces: [],
+        activeWorkspaceId: null,
+        agentSettings: DEFAULT_AGENT_SETTINGS,
+        isHydrated: true,
+        producePersistedState: () => ({
+          formatVersion: 0,
+          activeWorkspaceId: null,
+          workspaces: [],
+          settings: DEFAULT_AGENT_SETTINGS,
+        }),
+      })
+      return null
+    }
+    const rendered = render(<Harness />)
+    rendered.rerender(<Harness />)
+    act(() =>
+      deliver({
+        ok: false,
+        reason: 'io',
+        outcome: 'notCommitted',
+        error: { code: 'persistence.unavailable' },
+      }),
+    )
+    expect(useAppStore.getState().persistNotice?.kind).toBe('write')
+    act(() => deliver({ ok: true, level: 'full', bytes: 1 }))
+    expect(useAppStore.getState().persistNotice).toEqual(notice)
   })
 })

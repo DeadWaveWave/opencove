@@ -3,8 +3,7 @@ export const enSettingsPanelAppearanceNext = {
   light: 'Light',
   dark: 'Dark',
   mode: 'Appearance',
-  modeHelp:
-    'Follow System switches with your system’s light and dark appearance. Pixel has light and dark only.',
+  modeHelp: 'Follow System switches with your system’s light and dark appearance.',
   system: 'Follow System',
   interfaceText: 'Interface Text',
   preview: 'Canvas preview',

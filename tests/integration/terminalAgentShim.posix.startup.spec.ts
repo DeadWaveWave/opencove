@@ -4,10 +4,12 @@ import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { TerminalAgentActivityGateway } from '../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityGateway'
-import { TerminalAgentInvocationRegistry } from '../../src/contexts/agent/application/TerminalAgentInvocationRegistry'
 import { TerminalAgentActivityEnvironmentService } from '../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityEnvironmentService'
 import { TerminalAgentTelemetryAssetStore } from '../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentTelemetryAssetStore'
+
+// macOS Terminal's zsh session restore (/etc/zshrc_Apple_Terminal) prints "Restored session"
+// when the inherited TERM_SESSION_ID has a saved session, which differs between runs.
+const noShellSessionRestore = { SHELL_SESSIONS_DISABLE: '1' }
 
 const roots: string[] = []
 
@@ -43,10 +45,16 @@ async function createWrappedShell(options: {
   args: readonly string[]
   env: NodeJS.ProcessEnv
 }) {
-  const gateway = new TerminalAgentActivityGateway({
-    registry: new TerminalAgentInvocationRegistry(),
-    resolveHookInjection: () => null,
-  })
+  // Startup does not contact telemetry; avoid depending on local TCP admission here.
+  const gateway = {
+    reserveTerminal: async () => ({
+      endpoint: 'http://127.0.0.1/unused',
+      token: 'unused',
+      commit: () => {},
+      dispose: async () => {},
+    }),
+    dispose: async () => {},
+  }
   const assets = new TerminalAgentTelemetryAssetStore({
     parentDirectory: options.root,
     runtimeExecutable: process.execPath,
@@ -73,6 +81,91 @@ async function createWrappedShell(options: {
 describe.skipIf(process.platform === 'win32')(
   'terminal Agent supported shell startup parity',
   () => {
+    describe.each([
+      { shell: '/bin/bash', args: [], label: 'bash' },
+      { shell: '/bin/zsh', args: [], label: 'zsh' },
+      { shell: '/bin/zsh', args: ['-l'], label: 'login zsh' },
+    ])('$label shim discovery', ({ shell, args }) => {
+      it.skipIf(!existsSync(shell)).each(['replaced', 'duplicated'])(
+        'restores unique shim paths after user PATH is %s',
+        async pathMode => {
+          const root = await mkdtemp(join(tmpdir(), 'opencove-startup-path-'))
+          roots.push(root)
+          const home = join(root, 'home with spaces')
+          await mkdir(home)
+          const wrapped = await createWrappedShell({
+            root,
+            shell,
+            args: [...args, '-c', 'command -v opencove; command -v claude; printf "%s\\n" "$PATH"'],
+            env: { ...process.env, ...noShellSessionRestore, HOME: home, ZDOTDIR: home },
+          })
+          try {
+            const assets = await wrapped.assets.ensure()
+            // Duplicate both directories, including entries away from the front.
+            const userPath =
+              pathMode === 'replaced'
+                ? '/usr/bin::/bin:'
+                : `${assets.shimDirectory}:/usr/bin:${assets.cliShimDirectory}:${assets.shimDirectory}:${assets.cliShimDirectory}::/bin:`
+            const startup = `export PATH='${userPath}'\n`
+            await Promise.all(
+              ['.bashrc', '.zshenv', '.zprofile', '.zshrc', '.zlogin'].map(file =>
+                writeFile(join(home, file), startup),
+              ),
+            )
+            const env = { ...wrapped.prepared.environment }
+            env.OPENCOVE_CLI_SHIM_DIRECTORY = assets.cliShimDirectory
+            const actual = await run(wrapped.prepared.command, wrapped.prepared.args, {
+              cwd: home,
+              env,
+            })
+            expect(actual.code).toBe(0)
+            const [cli, provider, path] = actual.stdout.trimEnd().split('\n')
+            expect(cli).toBe(join(assets.cliShimDirectory, 'opencove'))
+            expect(provider).toBe(join(assets.shimDirectory, 'claude'))
+            expect(path).toBe(`${assets.cliShimDirectory}:${assets.shimDirectory}:/usr/bin::/bin:`)
+          } finally {
+            await wrapped.prepared.dispose()
+            await wrapped.assets.dispose()
+            await wrapped.gateway.dispose()
+          }
+        },
+      )
+
+      it.skipIf(!existsSync(shell))(
+        'does not inject a CLI directory into an ungranted session',
+        async () => {
+          const root = await mkdtemp(join(tmpdir(), 'opencove-startup-no-cli-'))
+          roots.push(root)
+          const home = join(root, 'home')
+          await mkdir(home)
+          await Promise.all(
+            ['.bashrc', '.zshenv', '.zprofile', '.zshrc', '.zlogin'].map(file =>
+              writeFile(join(home, file), 'export PATH=/usr/bin:/bin\n'),
+            ),
+          )
+          const wrapped = await createWrappedShell({
+            root,
+            shell,
+            args: [...args, '-c', 'printf "%s\\n" "$PATH"'],
+            env: { HOME: home, ZDOTDIR: home, PATH: '/usr/bin:/bin' },
+          })
+          try {
+            const assets = await wrapped.assets.ensure()
+            const actual = await run(wrapped.prepared.command, wrapped.prepared.args, {
+              cwd: home,
+              env: wrapped.prepared.environment!,
+            })
+            expect(actual.code).toBe(0)
+            expect(actual.stdout.trim()).toBe(`${assets.shimDirectory}:/usr/bin:/bin`)
+          } finally {
+            await wrapped.prepared.dispose()
+            await wrapped.assets.dispose()
+            await wrapped.gateway.dispose()
+          }
+        },
+      )
+    })
+
     it.skipIf(!existsSync('/bin/zsh'))(
       'matches baseline zsh login and non-login startup with a custom ZDOTDIR',
       async () => {
@@ -85,7 +178,7 @@ describe.skipIf(process.platform === 'win32')(
         await writeFile(join(zdot, '.zprofile'), 'export STARTUP_ORDER="$STARTUP_ORDER,profile"\n')
         await writeFile(join(zdot, '.zshrc'), 'export STARTUP_ORDER="$STARTUP_ORDER,rc"\n')
         await writeFile(join(zdot, '.zlogin'), 'export STARTUP_ORDER="$STARTUP_ORDER,login"\n')
-        const env = { ...process.env, HOME: home, ZDOTDIR: zdot }
+        const env = { ...process.env, ...noShellSessionRestore, HOME: home, ZDOTDIR: zdot }
 
         await Promise.all(
           [
@@ -131,7 +224,7 @@ describe.skipIf(process.platform === 'win32')(
       if (label === 'unreadable') {
         await chmod(bashRc, 0o000)
       }
-      const env = { ...process.env, HOME: home }
+      const env = { ...process.env, ...noShellSessionRestore, HOME: home }
       const command = 'printf \'RESULT=%s\\n\' "${STARTUP_SENTINEL:-missing}"'
       const baseline = await run(
         '/bin/bash',

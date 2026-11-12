@@ -1,0 +1,209 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`help golden api ops 1`] = `
+"Usage: opencove api ops [options]
+
+List Control Surface operations with their kind, contract and CLI command
+
+The full JSON catalog is large (about 29 KB). Start with --domains, then narrow with --prefix or --search and --fields. Each operation includes scope (read, interact or admin); inside OpenCove, access comes from the Worker policy (allowed, denied or constrained). Offline or with an older Worker, access is unknown. The allowed flag is omitted for unknown or constrained access.
+
+With --domains, output is an array of summaries with these projectable fields:
+  domain: Operation ID prefix before the first dot
+  operations: Total operations in the domain after filtering
+  schema: Operations with a schema input contract
+  commandOperations: Command-kind operations, not dedicated CLI commands
+
+Options:
+  --domains                   Count operations, schema contracts and command-kind operations by domain
+  --search <text>             Match operation IDs or summaries, ignoring case
+  --prefix <domain>           Filter by operation domain, such as node or filesystem
+  --kind <query|command>      Filter by operation kind
+  --contract <schema|legacy>  Filter by input contract availability
+
+List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
+
+Table output (-o table): supported.
+Projectable fields: id, kind, contract, summary, cliCommand, scope, access, allowed, reason, policyVersion, rejectedFields
+
+Projection example:
+  opencove api ops --prefix node --fields id,cliCommand
+  [{"id":"node.create","cliCommand":"opencove node create"}, ...]
+
+Examples:
+  opencove api ops --domains
+  opencove api ops --search create
+  opencove api ops --prefix node --fields id,cliCommand
+  opencove api ops --kind query --contract schema
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`help golden api schema 1`] = `
+"Usage: opencove api schema <operation-id> [options]
+
+Show the input JSON Schema for an operation
+
+Inside OpenCove, access, reason, policyVersion and rejectedFields describe your Worker permissions; a field in the schema may still be refused. Outside OpenCove this command works offline.
+
+Options:
+  --variant <kind>  Select one input kind from a discriminated union
+
+Table output (-o table): not supported.
+Projectable fields: $schema, type, properties, required, oneOf, anyOf, allOf, additionalProperties, items, $defs, $ref, description, enum, const, not, access, allowed, reason, policyVersion, rejectedFields
+
+Projection example:
+  opencove api schema node.create --fields '$schema'
+  {"$schema":"https://json-schema.org/draft/2020-12/schema"}
+
+Examples:
+  opencove api schema node.create
+  opencove api schema node.create --variant note
+  opencove api schema system.operation.describe --pretty
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`help golden node get 1`] = `
+"Usage: opencove node get --node <id> [options]
+
+Get a canvas node
+
+Content by kind: note → data.text; task → data.requirement, data.status, data.priority, data.tags; website → data.url; agent/terminal → status, sessionId. node list returns summaries: use node get for full note text and other content. A requested field absent on a returned kind produces one stderr notice; stdout remains projected JSON.
+
+Options:
+  --node <id>         Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
+  --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, spawnedBy, lineageDepth, lineageStatus, data, data.kind, data.content, data.text, data.requirement, data.status, data.priority, data.tags, data.linkedAgentNodeId, data.url, data.pinned, data.sessionMode, data.profileId, data.provider, data.prompt, data.model, data.effectiveModel, data.executionDirectory, data.expectedDirectory, data.taskId, data.runtimeKind
+
+Field descriptions:
+  spawnedBy      ID of the node that created this node; null for a root or unavailable lineage
+  lineageDepth   A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable
+  lineageStatus  recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read
+
+Projection example:
+  opencove node get --node '<id>' --fields id,title
+  {"node":{"id":"n","title":"Note"}}
+
+Examples:
+  opencove node get --node node-123
+  opencove node get --node node-123 --fields node.id,node.title
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`help golden node list 1`] = `
+"Usage: opencove node list [options]
+
+List canvas nodes
+
+Content by kind: note → data.text; task → data.requirement, data.status, data.priority, data.tags; website → data.url; agent/terminal → status, sessionId. node list returns summaries: use node get for full note text and other content. A requested field absent on a returned kind produces one stderr notice; stdout remains projected JSON.
+
+Lists per-kind summaries: data carries kind plus requirement, status, priority and tags for tasks, or url for websites; data carries only kind for notes, agents and terminals. Read full content, such as note text, with "opencove node get --node <id>".
+
+data.status is task status. Top-level status is session lifecycle (for example running or exited) for agents and terminals, not whether an agent is idle or working. STATE shows task status or session lifecycle; agentState is the separate work-state field. sessionStatus aliases lifecycle status. agentState {state, quality, turnId} reports work for agents and observed agents in terminals; state working means the agent is working. Missing observations are unknown/degraded. context keeps its legacy state field.
+
+Default target inside OpenCove: your current Space. Outside every Space, list all nodes in your project; use --root-canvas to list only root nodes. An explicit --project lists that project.
+
+Target container (choose one):
+  --root-canvas                                 List only nodes on the project's root canvas, outside every Space
+  --space <id>                                  Select a space by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --space-name <name> [--project <id>]          Find a named space, optionally within a project
+  --worker <id-or-name> --branch <branch>       Find a space by worker and Git branch
+  --worker <id-or-name> --path <absolute-path>  Find a space by worker and working directory
+  --project <id>                                Select the project to list, or narrow a Space lookup; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Shows up to 50 results in Worker order. Use --full or --limit 0 for all; --limit <n> overrides the default.
+
+Options:
+  --kind <kind>            Filter by note, task, website, agent, terminal, plugin, document, folder, image or role
+  --spawned-by <selector>  Filter direct children; --project filters results. Creator names use your project, or the selected Space’s project; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
+  --full                   Show all results unless --limit is specified
+
+List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
+
+Table output (-o table): supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, spawnedBy, lineageDepth, lineageStatus, sessionStatus, agentState, agentState.state, agentState.quality, agentState.turnId, taskNodeId, data, data.kind, data.status, data.priority, data.requirement, data.tags, data.url, data.linkedAgentNodeId
+
+Field descriptions:
+  spawnedBy      ID of the node that created this node; null for a root or unavailable lineage
+  lineageDepth   A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable
+  lineageStatus  recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read
+
+Projection example:
+  opencove node list --fields id,data.status
+  {"projectId":"p","spaceId":null,"nodes":[{"id":"n","data":{"status":"doing"}}]}
+
+Examples:
+  opencove node list --space space-123
+  opencove node list --space space-123 --fields nodes.id,nodes.title
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`help golden node update task 1`] = `
+"Usage: opencove node update task --node <id> [options]
+
+Update a task node
+
+Options:
+  --requirement <text>                 Describe the task requirement
+  --priority <low|medium|high|urgent>  Set the task priority
+  --tag <tag>                          Replace all tags; repeat for each tag in the new list
+  --clear-tags                         Remove all task tags
+  --status <todo|doing|ai_done|done>   Set the task status
+  --node <id>                          Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
+  --title <text>                       Set the node title
+  --frame <json>                       Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes; task minimum: width 220, height 260
+  --space <selector>                   Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>                       Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.requirement, data.status, data.priority, data.tags, data.linkedAgentNodeId
+
+Projection example:
+  opencove node update task --node '<id>' --fields id,title
+  {"revision":1,"node":{"id":"n","title":"Task"}}
+
+Examples:
+  opencove node update task --node node-123 --requirement "Review release notes"
+  opencove node update task --node node-123 --requirement "Review release notes" --title "Release review" --pretty
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`help golden space list 1`] = `
+"Usage: opencove space list [options]
+
+List spaces
+
+Lists space IDs, names, directories, nodeIds and nodeCount without full nodes. rect is {x,y,width,height} in canvas coordinates, or null when no geometry is saved. boundary describes the Space’s access scope. Use --fields nodes to include node objects.
+
+When no project is given, inside OpenCove defaults to your own project.
+
+Options:
+  --project <id>  Filter by project ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
+
+Table output (-o table): supported.
+Projectable fields: id, name, directoryPath, targetMountId, parentSpaceId, boundary, rect, rect.x, rect.y, rect.width, rect.height, sortOrder, nodeIds, nodes, nodeCount, projectId, nodes.id, nodes.kind, nodes.title, nodes.projectId, nodes.spaceId, nodes.frame, nodes.frame.x, nodes.frame.y, nodes.frame.width, nodes.frame.height, nodes.status, nodes.sessionId, nodes.sessionStatus, nodes.agentState, nodes.agentState.state, nodes.agentState.quality, nodes.agentState.turnId, nodes.taskNodeId, nodes.data, nodes.data.kind, nodes.data.status, nodes.data.priority, nodes.data.requirement, nodes.data.tags, nodes.data.url, nodes.data.linkedAgentNodeId
+
+Projection example:
+  opencove space list --fields id,name
+  {"projectId":"p","activeSpaceId":"s","spaces":[{"id":"s","name":"Main"}]}
+
+Examples:
+  opencove space list
+  opencove space list --project project-123
+
+Global options: see "opencove --help".
+"
+`;

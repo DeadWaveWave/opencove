@@ -5,7 +5,6 @@ import type {
   AttachTerminalInput,
   AttachTerminalResult,
   CopyWorkspacePathInput,
-  ListSystemFontsResult,
   CreateGitWorktreeInput,
   CreateGitWorktreeResult,
   DetachTerminalInput,
@@ -64,11 +63,6 @@ import type {
   SuggestTaskTitleResult,
   SuggestWorktreeNamesInput,
   SuggestWorktreeNamesResult,
-  SetWindowChromeThemeInput,
-  SaveTextToDownloadsInput,
-  SaveTextToDownloadsResult,
-  ShowSystemNotificationInput,
-  ShowSystemNotificationResult,
   TerminalDataEvent,
   TerminalAgentReexecInput,
   TerminalAgentReexecResult,
@@ -119,6 +113,8 @@ import { createIssueReportPreloadApi } from './issueReportApi'
 import { resolveOpenCoveMeta } from './opencoveMeta'
 import { createPerformanceDiagnosticsPreloadApi } from './performanceDiagnosticsApi'
 import { createWebsiteWindowPreloadApi } from './websiteWindowApi'
+import { createSystemPreloadApi } from './systemApi'
+import { createWindowChromePreloadApi } from './windowChromeApi'
 import { createBrowserProfilePreloadApi } from './browserProfileApi'
 import { TerminalEventReplayCache } from './terminalEventReplayCache'
 type UnsubscribeFn = () => void
@@ -153,10 +149,7 @@ const opencoveApi = {
     invoke: async <TValue>(request: ControlSurfaceInvokeRequest): Promise<TValue> =>
       invokeIpc(IPC_CHANNELS.controlSurfaceInvoke, request),
   },
-  windowChrome: {
-    setTheme: (payload: SetWindowChromeThemeInput): Promise<void> =>
-      invokeIpc(IPC_CHANNELS.windowChromeSetTheme, payload),
-  },
+  windowChrome: createWindowChromePreloadApi(),
   windowMetrics: {
     getDisplayInfo: (): Promise<WindowDisplayInfo> =>
       invokeIpc(IPC_CHANNELS.windowMetricsGetDisplayInfo),
@@ -453,15 +446,7 @@ const opencoveApi = {
     suggestTitle: (payload: SuggestTaskTitleInput): Promise<SuggestTaskTitleResult> =>
       invokeIpc(IPC_CHANNELS.taskSuggestTitle, payload),
   },
-  system: {
-    listFonts: (): Promise<ListSystemFontsResult> => invokeIpc(IPC_CHANNELS.systemListFonts),
-    saveTextToDownloads: (payload: SaveTextToDownloadsInput): Promise<SaveTextToDownloadsResult> =>
-      invokeIpc(IPC_CHANNELS.systemSaveTextToDownloads, payload),
-    showNotification: (
-      payload: ShowSystemNotificationInput,
-    ): Promise<ShowSystemNotificationResult> =>
-      invokeIpc(IPC_CHANNELS.systemShowNotification, payload),
-  },
+  system: createSystemPreloadApi(),
   worker: {
     getStatus: (): Promise<WorkerStatusResult> => invokeIpc(IPC_CHANNELS.workerGetStatus),
     start: (): Promise<WorkerStatusResult> => invokeIpc(IPC_CHANNELS.workerStart),

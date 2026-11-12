@@ -1,3 +1,8 @@
+import { pluginString } from '@contexts/plugins/domain/localPluginValidation'
+import { pluginJsonValue } from '@contexts/plugins/domain/pluginJsonValue'
+import { pluginHostFields as fields } from '@shared/contracts/controlSurface/operations/pluginRequestNormalize'
+import { registerOperation } from '../registerOperation'
+import { pluginHostRequestOperation } from '@shared/contracts/controlSurface/operations/domains/plugin'
 import { publicFileSystemError } from '../../../../shared/errors/filesystemError'
 import { createPluginCanvasHost } from './pluginCanvasHost'
 import { createPluginFilesystemHandlers } from './pluginFilesystemHandlers'
@@ -8,11 +13,6 @@ import type {
   PluginHostAuthority,
   PluginResolvedTarget,
 } from '../../../../contexts/plugins/domain/pluginHostTypes'
-import {
-  pluginRecord,
-  pluginString,
-} from '../../../../contexts/plugins/domain/localPluginValidation'
-import { pluginJsonValue } from '../../../../contexts/plugins/domain/pluginJsonValue'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import type { SpawnTerminalResult } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
@@ -22,14 +22,6 @@ import type { WorkerTopologyStore } from '../topology/topologyStore'
 import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRuntime'
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 import { listPluginTargets, pluginTargetInput, resolvePluginTarget } from './pluginTargetResolution'
-
-function fields(payload: unknown, allowed: string[]) {
-  const record = pluginRecord(payload)
-  if (Object.keys(record).some(key => !allowed.includes(key))) {
-    throw new Error('Unsupported plugin host argument.')
-  }
-  return record
-}
 
 export function registerPluginHostHandlers(
   control: ControlSurface,
@@ -195,16 +187,7 @@ export function registerPluginHostHandlers(
     const reason = (error instanceof Error ? error.message : String(error)).slice(0, 2000)
     throw createAppError('plugin.operation_failed', { params: { reason }, debugMessage: reason })
   }
-  control.register('plugin.host.request', {
-    kind: 'command',
-    validate: value => {
-      const input = fields(value, ['viewId', 'operation', 'payload'])
-      return {
-        viewId: pluginString(input.viewId, 'viewId', 100),
-        operation: pluginString(input.operation, 'host operation', 100),
-        payload: pluginJsonValue(input.payload, 2 * 1024 * 1024, 'host request'),
-      }
-    },
+  registerOperation(control, pluginHostRequestOperation, {
     handle: async (_ctx, input) => {
       try {
         return await deps.plugins.hostRequest(input.viewId, input.operation, input.payload)

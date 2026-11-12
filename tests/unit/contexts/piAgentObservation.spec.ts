@@ -23,6 +23,15 @@ function accept(owner: PiAgentObservationOwner, overrides: Record<string, unknow
 }
 
 describe('Pi snapshot boundary', () => {
+  it('preserves explicit lifecycle signals without inventing one for refreshes', () => {
+    for (const hookEventName of ['agent_start', 'agent_settled']) {
+      expect(normalizePiAgentSnapshot(snapshot({ hookEventName }))).toMatchObject({ hookEventName })
+    }
+    expect(normalizePiAgentSnapshot(snapshot())?.hookEventName).toBeUndefined()
+    expect(
+      normalizePiAgentSnapshot(snapshot({ hookEventName: 'session_start' }))?.hookEventName,
+    ).toBeUndefined()
+  })
   it('accepts complete versioned snapshots, including ephemeral sessions', () => {
     expect(normalizePiAgentSnapshot(snapshot())).toEqual(snapshot())
     expect(

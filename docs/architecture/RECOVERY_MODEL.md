@@ -301,3 +301,195 @@ conversation history.
 The SQLite recovery contracts load `better-sqlite3` with Electron's native ABI. Run
 `pnpm test:terminal-recovery:native`; ordinary Node Vitest intentionally skips those suites, and CI
 runs the native gate separately.
+
+## Local Worker persistence ownership
+
+- I1：一个 userData 最多只有一个 Worker 持有 persistence 写入权。Worker 在任何
+  userData 状态写入前获取 `opencove-worker-owner.lock.db` 的 SQLite EXCLUSIVE 锁；
+  连接保持打开直到 persistence 关闭，进程死亡由内核释放锁。
+- I2：只有 owner 释放自己的锁。永久锁数据库不得删除；`opencove-worker.lock`
+  仅是 discovery/upgrade metadata，包含 PID 和每次启动的 `instanceId`。
+  release 仅在两者仍匹配时删除 metadata，且在删除完成后才关闭内核锁。
+- I3：Desktop 不杀死、遗弃或替换不归自己持有的 Worker。外部 owner 不可达或不兼容时
+  返回 `worker.external_owner_unreachable`，不以健康检查失败推断死亡。
+
+| State | Class | Owner | Write entry | Restart source |
+| --- | --- | --- | --- | --- |
+| Worker exclusive lease | runtime state | holding process / SQLite kernel lock | acquire / connection close | reacquire kernel lock |
+| PID + instanceId | discovery metadata | lease holder | startup / matching release | not authoritative |
+| connection file | discovery metadata | Worker | publish / shutdown; Desktop only cleans confirmed dead PID under lease | re-probe live owner |
+
+Desktop repair（包括没有传入 PID 的恢复分支）持有同一 lease 后重新读取 metadata，
+仅确认 connection PID 死亡才删除 connection，从不删除锁文件。Desktop 在未持有子进程
+handle 时不根据 `startedBy=desktop` 宣称生命周期所有权。
+
+持有 kernel lease 后，新格式（含 instanceId）metadata 可确认已过期，不受 PID 复用影响。
+升级期间，legacy PID 必须经进程身份验证；明确不相关的进程不阻止接管。
+取得真实 argv 时，以 realpath 和目录文件系统 identity 比较 userData；相对路径只使用被检查
+进程的 cwd。只有展平的命令行时，可能的 Worker 返回 unknown，不以路径文本不等排除 owner。
+无法检查进程身份（包括权限不足）时保守拒绝；不能将未知身份视为死亡。旧版进程不理解
+内核 lease，因此旧版并发启动/清理仍有残余竞争；升级时应先停止旧版。metadata 的
+compare-then-delete 不能与旧版写入实现原子互斥。Windows 文件锁行为需要 Windows CI
+验证；网络文件系统不保证本地 SQLite VFS 的锁语义，userData 应放在本地文件系统。
+
+回归：`tests/integration/worker/workerOwnerLock.spec.ts`、
+`tests/unit/app/worker.singleInstanceLock.spec.ts`、
+`tests/unit/app/localWorkerManager.connectionFile.spec.ts`。
+
+## Agent runtime state
+
+The executing Worker owns agent run-state decisions and turns. Durable `node.status` remains a UI
+projection and does not restore runtime authority. See [Agent run state](../agent/RUN_STATE.md) for
+incarnation fences, unknown/degraded semantics, turn completion and event recovery.
+
+### Session grant lifetime
+
+Session grant credentials belong to the Worker hosting the PTY, not to the Home transport.
+The PTY host cleans up sessions on parent disconnect and shutdown; cold recovery creates a new
+runtime epoch. Consequently local grants must not be restored merely from terminal presentation
+checkpoints. A Home restart that reconnects to a surviving remote Worker must preserve that remote
+Worker's grant ownership; a hosting Worker restart starts with no grants.
+
+The grant registry is memory-only, owned by the hosting Worker's local PTY wrapper. It tracks
+successful runtime registrations and revokes on exit, kill and shutdown. A failed/pending spawn
+reservation cannot authenticate, and late completion cannot reactivate a disposed owner. No grant
+persistence schema is introduced. Cold revival creates a new credential for the persisted node ID;
+reattaching a live remote session preserves the hosting Worker's existing credential. A grant must
+never be revived from a renderer cache.
+
+## Managed Claude resume binding storage
+
+Managed Claude 的 Worker-owned tuple 存在 `managed_claude_resume_bindings`，`nodes.agent_json`
+只保存受最终 writer 保护的投影。绑定、节点与 revision 原子提交，真实删除留下 retirement，
+普通快照不能回退 tuple 或改变其 kind/provider/route。内部 lifecycle API 默认接入符合条件的本地 Claude agent 启动路径；
+未拥有节点在下一次实际冷启动成功后接管，live reattach 不接管。此存储层不判定 transcript qualification，也不恢复
+runtime authority。详见 [Persistence](PERSISTENCE.md#managed-claude-resume-ledgerschema-14)。
+
+### Managed launch admission
+
+`ManagedClaudeLaunchOwner` 在 Worker 内按 Agent node ID 管理进程内 attempt；token 不持久化，
+也不接受客户端 token。普通恢复选择 ledger 的 committed tuple，显式替换必须携带匹配的
+expectation。首次 adoption 与 replacement 都在同步 activation 前复查 kind/provider/route/目录。
+所有 owned fallback 先确认保持 tuple 的 null-runtime settlement；shell 不获得 managed 写权。
+Fallback receipt 保留本次 attempt 已确认 settlement 的 exact commit revision，即使后续读到了更新的
+app revision。预存 settlement、row-only 写入和 `alreadyApplied` 只提供 observation，不能声称新的 app commit。
+删除只在最外层 app-state commit 后 fence attempt 并检查精确 runtime 的 references。
+unknown outcome 保留 runtime 与 reconciliation obligation，未到 clean transaction boundary 时
+不能确认成功、重启或补偿。Worker 重启不重建旧 token。
+
+新 adoption 默认启用；仅 `OPENCOVE_MANAGED_CLAUDE_BINDINGS=0` 冻结更新。
+首次接管在 activation 事务中比较原 unowned tuple、runtime 及执行上下文；
+并发 legacy publication 改变目标时取消 stale candidate，重新读取后再尝试。UI 状态、结束信息与布局不冲突。
+冷恢复另在同一事务检查并发 `stopped`；显式 relaunch 可恢复 stopped 节点，不套用该冷恢复限制。
+最终 route 使用本地 mount fallback 的未拥有节点保持 legacy；owned 节点仍拒绝 route 变化。
+
+
+`node.managedClaudeBinding` 在 node 尚未持久化时也返回 definitive ledger observation，
+明确区分 absence、row-only ownership 和 retirement；`node.get` 的 not-found 不代表 unowned。
+已由 ready store 确认 owned 的启动在 reserve 时登记等待，identity read 尚未完成也不能重连旧 runtime。
+Unowned 启动先保留 candidate attempt，确认 local managed execution 后才启用等待、token fence 和
+managed error 语义；跨目录 unowned switch 沿用 legacy 路径且不 adoption，owned replacement 仍拒绝目录变更。
+Remote execution 保留 legacy guards/retry，已有 owned row 仍拒绝 remote replacement。
+旧 Worker 不支持 ownership query 时，只有 runtime registry 明确缺少该 operation 才沿用 legacy；
+operation 已注册但读取失败时仍拒绝操作，不能把 persistence failure 当作无主。
+Owned fallback shell 的 node runtime 与 null ledger runtime 不同；确认新 managed runtime activation
+后，owner 才对捕获的旧 shell ID 执行 reference-checked cleanup，unknown outcome 不触发此清理。
+即时完成、后台 timer 与下一请求触发的 reconciliation 共用一次 finalization，始终使用原 attempt 的清理上下文。
+无论 activation 被确认、删除或替换，finalization 都结算 candidate 与被替换的 node runtime；
+unknown outcome 同时保护二者。清理 owner 保留读取 references 或 kill 失败的 exact ID，后续请求及删除事件重试；
+只有确认引用或完成 kill 才解除清理责任，已引用 runtime 的责任交回 durable binding/node owner。
+Renderer 的 placement cleanup 按 managed receipt 选择 Worker 路径，并先协商 operation support；
+legacy launch 保留直接 PTY cleanup，不因 provider 或预分配 node ID 改变责任。
+Cleanup obligation 按 runtime ID 带独立代际；reference proof 和已完成的 kill 只能解除其观察到的代际，
+不能删除 await 期间新增的清理责任。Recovery 每次等待完成都重新检查 node 当前的 pending launch，
+然后读取 durable observation；已 retired 的 node 不从较早的 workspace snapshot 重连。
+
+Durable ownership 与 effect admission 分开管理。路径审批、identity read 或 admission 的最终验证失败，
+不能结算原有健康 runtime。验证通过后的 owned replacement 先提交并确认保留 tuple 的
+null-runtime handoff，再对旧 runtime 执行 reference-checked kill；kill 失败仍由 cleanup owner
+持有 exact ID，失败 settlement 不抹除重试责任。后续 readiness 或 deletion event 重试未完成的清理。
+spawn 返回 ID 后立即交给同一 cleanup owner，早于 onStarted、watcher 与 metadata registration；
+这些步骤失败、attempt 被替换或删除，也不会丢失新进程的清理责任。unknown write 同时保留
+candidate 与 predecessor，只有 definitive reconciliation 才能释放保护。
+Cleanup owner 保留成功 exact-ID kill 的终止证据；后续 claim 仍复查 references，读取失败仍保留责任，
+但不重复 kill 已成功终止的同一 ID。该证据仅在当前 Worker owner 生命周期内有效；新 PTY 使用新 UUID，
+不能把 stream hub 缺少 active session 当作成功 kill 的证明。
+
+Managed launch scope 从 handler 执行前到 wrapper finally 收尾持有 created candidate custody，
+不依赖 activation obligation 是否已经建立。其他 node 的 admission、recovery 或 deletion 不得清理
+该 candidate；readiness/deletion 只处理对应 node 的已知 IDs。scope 结束时统一释放 hold，并对
+created/predecessor IDs 做 reference-checked cleanup；首次 adoption 无 ledger row 也必须清理失败 candidate。
+失败 read/kill 与旧 work 留下的新 claim 使用按 exact ID 的 single-flight timer 重试；unknown
+activation 以有上限的延迟持续 reconciliation，不再因尝试次数耗尽而等待外部请求。dispose 取消
+该 owner 的 timer；timer、scope completion 和新 claim 仍保留各自 identity/generation guards。
+
+Managed launch result 的 ownership 判定包含新取得的 receipt；`nodeSeen=true` 的既有节点继续
+保留 SQLite 中的 Worker route，不能用本次解析出的 explicit local/mount route 替换 null inheritance。
+`nodeSeen=false` 的首次保存仍可建立 route。Renderer lifecycle 与成功 prepare 投影都遵循这一规则，
+其下一次 snapshot 通过同一 final writer；kind/provider/route identity 与 execution directory 必须 round-trip。
+
+成功 fallback shell 也属于 Worker 创建的 runtime。在 renderer 保存其 ID 前，node-scoped custody
+保留唯一 cleanup claim；已提交 snapshot 的 reference proof 才交回 durable node owner，删除或确认替换
+则释放捕获的精确 ID 并执行 reference-checked cleanup。读取失败保留 custody 并定时重试。
+新 fallback 的 predecessor claims 同样保持 hold，直到新 shell 持久化；仅 spawn 成功不构成 durable 替换。
+Fallback admission 验证 resolver 的实际 directory/mount/endpoint，已有 effect admission 也须重验，
+不能用 stored context 替代请求执行上下文。PTY target 再解析后通过同一内部 hook 检查，owned 不允许 remote。
+成功交接在 finish await 之后以同步 fence 确认；此后没有可能拒绝交接的 async 工作。若此前失败，
+helper 只放弃本 attempt 新 shell 的 hold，并 reference-check cleanup，保留前驱 hold 与未来清理义务。
+Fallback 的 PTY profile/activity preparation 之后，以进程内 `terminalSpawnLifecycle` hook 在
+实际 spawn 前检查原 attempt，spawn 返回 ID 后立即登记 custody，再提交 activity/metadata。
+该 hook 不接受 wire payload，legacy PTY 不注入；取消后的 finally 仍结算已创建 runtime。
+
+### Managed binding client convergence
+
+Managed Claude adoption is enabled by default. Canonical ownership markers are derived from the ledger;
+renderer metadata cannot promote an owned null or unverified resume tuple. Lifecycle observations use
+`observedRevision`, without a second prepare clock. Tuple acceptance and runtime attachment are separate:
+an older tuple cannot replace canonical content, while the current operation may attach the same definitive
+runtime using the newer canonical tuple. Row-only activation requires definitive lookup. A fallback shell
+keeps its publication handshake until canonical acknowledgement, another runtime association, or deletion.
+Corrected and identity-rejected publications explicitly request canonical refresh, including during quit.
+Unknown transport outcomes retain an unconfirmed draft in memory and never trigger unconditional replay.
+The canonical presentation and retained draft have separate baselines. Refresh consumes all local deltas,
+including disclosure, while acknowledgement compares shared content only. Active submissions defer refresh
+until their outcome is classified; preparatory read failures never imply an unknown commit.
+Quit captures intent with its original ancestry and rejects stale repair reads before reconciliation.
+A null ledger runtime does not prove an empty node association: another canonical shell supersedes a delayed
+fallback. Definitive row-only lookup validates settlement and node association separately.
+These are existing ownership and process-boundary contracts: no executable-rule impact.
+
+### Managed Claude 混合版本与冻结
+
+`managedClaudeResumeBindingV1` 与 `managedClaudeResumeBindingDeliveryV1` 均为 true，
+分别表示支持 managed lifecycle 和 ledger lookup、投影、纠正回执与安全通知协议。
+`managedClaudeResumeBindingWritesEnabled` 独立表示当前 Worker 是否允许更新，不能证明节点 ownership。
+Desktop/Web 的 open、save 和 refresh 不以 ownership lookup 或 delivery capability 为门槛，
+包括冻结、CLI 启动的旧 Worker 与 lookup unsupported 的 profile。unsupported 始终是 unknown，
+不证明 unowned，也不阻止普通工作区同步。pre-W8 Worker 没有 ledger tables；让它处理带 owned
+rows 的 profile 属于不支持的 database downgrade。PR1+ 的 writer gate 始终保护磁盘 tuple。
+最低协议只约束 adoption、owned relaunch/switch/stop 等 ownership 操作，拒绝时要求升级并
+重启 **Worker**。不支持的创建入口保留 legacy 会话，省略 managed intent，并显示非阻塞提示；
+不会因该提示阻止工作区使用。Worker 自己创建的新节点使用 trusted、capable internal caller。
+连接读取的 typed refusal 通过应用内启动状态展示；阻断 publication，但允许重新读取，升级后恢复。
+每个 renderer 都先安装 listener，再请求一次 canonical connect refresh，覆盖 hydration 与订阅的空档。
+
+旧 Desktop renderer 和 stale Web tab 对当前 Worker 可读取、附着、输入和发布合法 layout；
+不会自动 adoption。已有 owned 节点的 launch、cold prepare、`session.kill` 和
+`session.stopNode` 要求 originating client 在 invoke envelope 声明 V1，Main 不代为升级。
+当前客户端的显式 Stop 在冻结期间仍可使用；内部 exact-runtime cleanup 不走 public admission。
+不承诺旧 tab 无缝收敛，也不支持让任意旧 binary 直接打开已有 owned rows 的 profile。
+
+紧急停止方式：以 `OPENCOVE_MANAGED_CLAUDE_BINDINGS=0` 重启 Worker。
+它禁止 adoption 和 managed restart/rebind，但保留 ledger enforcement、retirement、
+canonical convergence、live attach、显式 Stop 和 committed deletion；绝不删除 ledger。
+`managedClaudeResumeBindingWritesEnabled` 独立表示冻结状态，恢复时移除该 override 并重启。
+所有兼容性/冻结拒绝必须先于 reserve，不能取消正在进行的合法 launch 或清除 admitted runtime。
+
+升级必须升级并重启实际 Worker；新版 Desktop 可能复用旧 Worker。旧 Worker 缺少 writes-enabled
+表示 unknown，不表示 freeze。PR3b 关闭 adoption 不等于 freeze；PR1/PR2 只有存储保护，
+不保证当前 lifecycle/convergence/B4b，不作为 rollback 目标。冻结不使 pre-ledger binary 可安全打开 profile。
+本地 eligible 冷恢复使用已 verified A；失败 activation 不接管，不从 transcript 位置推断目标。
+Home 委派 remote mount、session-only、shell terminal overlay 和非 Claude 不接管；直连 Worker 的本地节点可接管。
+冻结提示非阻塞，保存/连接错误消退后恢复；仅确认 writes-enabled 才清除当前 scope 的提示。
+更多升级与冻结操作见 [Agent guide](../agent/README.md)。no executable-rule impact。
+Qualified Claude clear ownership and limits: [Claude clear recovery](../agent/CLAUDE_CLEAR_RECOVERY.md).

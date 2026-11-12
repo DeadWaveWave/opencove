@@ -1,3 +1,15 @@
+import {
+  gitWorktreeListBranchesOperation,
+  gitWorktreeListWorktreesOperation,
+  gitWorktreeStatusSummaryOperation,
+  gitWorktreeGraphOperation,
+  gitWorktreeGetDefaultBranchOperation,
+  gitWorktreeCreateOperation,
+  gitWorktreeRemoveOperation,
+  gitWorktreeRenameBranchOperation,
+  gitWorktreeSuggestNamesOperation,
+} from '../../../../shared/contracts/controlSurface/operations/domains/gitWorktree'
+import { registerOperation } from '../registerOperation'
 import type { ControlSurface } from '../controlSurface'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
 import type { GitWorktreePort } from '../../../../contexts/worktree/application/ports'
@@ -24,16 +36,6 @@ import {
 import { getGitDefaultBranch } from '../../../../contexts/worktree/infrastructure/git/GitWorktreeDefaultBranch'
 import { suggestWorktreeNames } from '../../../../contexts/worktree/infrastructure/git/WorktreeNameSuggester'
 import { createAppError } from '../../../../shared/errors/appError'
-import {
-  normalizeCreateGitWorktreePayload,
-  normalizeGetGitDefaultBranchPayload,
-  normalizeGetGitStatusSummaryPayload,
-  normalizeListGitBranchesPayload,
-  normalizeListGitWorktreesPayload,
-  normalizeRemoveGitWorktreePayload,
-  normalizeRenameGitBranchPayload,
-  normalizeSuggestWorktreeNamesPayload,
-} from '../../../../contexts/worktree/presentation/main-ipc/validate'
 
 function createDefaultGitWorktreePort(): GitWorktreePort {
   return {
@@ -58,9 +60,7 @@ export function registerGitWorktreeHandlers(
 ): void {
   const gitWorktreePort = deps.gitWorktreePort ?? createDefaultGitWorktreePort()
 
-  controlSurface.register('gitWorktree.listBranches', {
-    kind: 'query',
-    validate: normalizeListGitBranchesPayload,
+  registerOperation(controlSurface, gitWorktreeListBranchesOperation, {
     handle: async (_ctx, payload) => {
       const isApproved = await deps.approvedWorkspaces.isPathApproved(payload.repoPath)
       if (!isApproved) {
@@ -74,9 +74,7 @@ export function registerGitWorktreeHandlers(
     defaultErrorCode: 'worktree.list_branches_failed',
   })
 
-  controlSurface.register('gitWorktree.listWorktrees', {
-    kind: 'query',
-    validate: normalizeListGitWorktreesPayload,
+  registerOperation(controlSurface, gitWorktreeListWorktreesOperation, {
     handle: async (_ctx, payload) => {
       const isApproved = await deps.approvedWorkspaces.isPathApproved(payload.repoPath)
       if (!isApproved) {
@@ -90,9 +88,7 @@ export function registerGitWorktreeHandlers(
     defaultErrorCode: 'worktree.list_worktrees_failed',
   })
 
-  controlSurface.register('gitWorktree.statusSummary', {
-    kind: 'query',
-    validate: normalizeGetGitStatusSummaryPayload,
+  registerOperation(controlSurface, gitWorktreeStatusSummaryOperation, {
     handle: async (_ctx, payload) => {
       const isApproved = await deps.approvedWorkspaces.isPathApproved(payload.repoPath)
       if (!isApproved) {
@@ -106,25 +102,7 @@ export function registerGitWorktreeHandlers(
     defaultErrorCode: 'worktree.status_summary_failed',
   })
 
-  controlSurface.register('gitWorktree.graph', {
-    kind: 'query',
-    validate: (payload: unknown): { repoPath: string; limit?: number } => {
-      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Invalid payload for gitWorktree.graph.',
-        })
-      }
-      const value = payload as Record<string, unknown>
-      if (typeof value.repoPath !== 'string' || value.repoPath.trim().length === 0) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'gitWorktree.graph requires repoPath.',
-        })
-      }
-      return {
-        repoPath: value.repoPath.trim(),
-        limit: typeof value.limit === 'number' ? value.limit : undefined,
-      }
-    },
+  registerOperation(controlSurface, gitWorktreeGraphOperation, {
     handle: async (_ctx, payload) => {
       const isApproved = await deps.approvedWorkspaces.isPathApproved(payload.repoPath)
       if (!isApproved) {
@@ -137,9 +115,7 @@ export function registerGitWorktreeHandlers(
     defaultErrorCode: 'worktree.status_summary_failed',
   })
 
-  controlSurface.register('gitWorktree.getDefaultBranch', {
-    kind: 'query',
-    validate: normalizeGetGitDefaultBranchPayload,
+  registerOperation(controlSurface, gitWorktreeGetDefaultBranchOperation, {
     handle: async (_ctx, payload) => {
       const isApproved = await deps.approvedWorkspaces.isPathApproved(payload.repoPath)
       if (!isApproved) {
@@ -153,9 +129,7 @@ export function registerGitWorktreeHandlers(
     defaultErrorCode: 'worktree.get_default_branch_failed',
   })
 
-  controlSurface.register('gitWorktree.create', {
-    kind: 'command',
-    validate: normalizeCreateGitWorktreePayload,
+  registerOperation(controlSurface, gitWorktreeCreateOperation, {
     handle: async (_ctx, payload) => {
       const [repoApproved, worktreesRootApproved] = await Promise.all([
         deps.approvedWorkspaces.isPathApproved(payload.repoPath),
@@ -173,9 +147,7 @@ export function registerGitWorktreeHandlers(
     defaultErrorCode: 'worktree.create_failed',
   })
 
-  controlSurface.register('gitWorktree.remove', {
-    kind: 'command',
-    validate: normalizeRemoveGitWorktreePayload,
+  registerOperation(controlSurface, gitWorktreeRemoveOperation, {
     handle: async (_ctx, payload) => {
       const [repoApproved, worktreeApproved] = await Promise.all([
         deps.approvedWorkspaces.isPathApproved(payload.repoPath),
@@ -193,9 +165,7 @@ export function registerGitWorktreeHandlers(
     defaultErrorCode: 'worktree.remove_failed',
   })
 
-  controlSurface.register('gitWorktree.renameBranch', {
-    kind: 'command',
-    validate: normalizeRenameGitBranchPayload,
+  registerOperation(controlSurface, gitWorktreeRenameBranchOperation, {
     handle: async (_ctx, payload) => {
       const [repoApproved, worktreeApproved] = await Promise.all([
         deps.approvedWorkspaces.isPathApproved(payload.repoPath),
@@ -213,9 +183,7 @@ export function registerGitWorktreeHandlers(
     defaultErrorCode: 'worktree.rename_branch_failed',
   })
 
-  controlSurface.register('gitWorktree.suggestNames', {
-    kind: 'query',
-    validate: normalizeSuggestWorktreeNamesPayload,
+  registerOperation(controlSurface, gitWorktreeSuggestNamesOperation, {
     handle: async (_ctx, payload) => {
       const isApproved = await deps.approvedWorkspaces.isPathApproved(payload.cwd)
       if (!isApproved) {

@@ -1,14 +1,21 @@
+import { managedClaudeWritesEnabled } from '../managedClaudeCompatibility'
+import { registerOperationIntrospectionHandlers } from './operationIntrospectionHandlers'
+import {
+  systemCapabilitiesOperation,
+  systemPingOperation,
+  systemWhoamiOperation,
+} from '../../../../shared/contracts/controlSurface/operations/domains/system'
+import { registerOperation } from '../registerOperation'
 import { hostname } from 'node:os'
 import type { ControlSurface } from '../controlSurface'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../../shared/contracts/controlSurface'
 import type {
-  ControlSurfaceHomeDirectoryResult,
   ControlSurfaceCapabilitiesResult,
+  ControlSurfaceHomeDirectoryResult,
   ControlSurfacePingResult,
 } from '../../../../shared/contracts/dto'
 import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
 import { getRuntimeBuildIdentity } from '../../../../shared/runtime/runtimeBuildIdentity'
-
 export function registerSystemHandlers(
   controlSurface: ControlSurface,
   deps: {
@@ -16,11 +23,33 @@ export function registerSystemHandlers(
     deploymentId?: string | null
     instanceId?: string
     isReady?: () => boolean
+    hasBoundedAgentSpawning?: () => Promise<boolean>
+    hasNodeLineage?: () => Promise<boolean>
   },
 ): void {
-  controlSurface.register('system.ping', {
-    kind: 'query',
-    validate: payload => payload ?? null,
+  registerOperationIntrospectionHandlers(controlSurface)
+  registerOperation(controlSurface, systemWhoamiOperation, {
+    defaultErrorCode: 'common.unexpected',
+    handle: ctx => {
+      const auth = ctx.requestAuth
+      const identity =
+        auth?.kind === 'session-grant'
+          ? {
+              kind: auth.kind,
+              scopeTier: auth.grant.tier,
+              projectId: auth.grant.projectId,
+              spaceId: auth.grant.spaceId,
+              nodeId: auth.grant.nodeId,
+              sessionId: auth.grant.sessionId,
+            }
+          : {
+              kind: auth?.kind === 'cookie' ? ('cookie' as const) : ('bearer' as const),
+              scopeTier: 'admin' as const,
+            }
+      return { ...identity, instanceId: deps.instanceId, appVersion: deps.appVersion }
+    },
+  })
+  registerOperation(controlSurface, systemPingOperation, {
     handle: ctx =>
       ({
         ok: true,
@@ -45,10 +74,8 @@ export function registerSystemHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('system.capabilities', {
-    kind: 'query',
-    validate: payload => payload ?? null,
-    handle: ctx =>
+  registerOperation(controlSurface, systemCapabilitiesOperation, {
+    handle: async ctx =>
       ({
         ok: true,
         now: ctx.now().toISOString(),
@@ -59,7 +86,19 @@ export function registerSystemHandlers(
         deploymentId: deps.deploymentId ?? null,
         instanceId: deps.instanceId,
         runtimeReady: deps.isReady?.() ?? false,
-        features: ctx.capabilities,
+        features: {
+          ...ctx.capabilities,
+          boundedAgentSpawningV1: Boolean(
+            (await deps.hasBoundedAgentSpawning?.()) && (await deps.hasNodeLineage?.()),
+          ),
+          operationRegistry: true,
+          managedClaudeResumeBindingV1: true,
+          managedClaudeResumeBindingDeliveryV1: true,
+          managedClaudeResumeBindingWritesEnabled: managedClaudeWritesEnabled(),
+          nodeLineageV1:
+            controlSurface.hasOperation('node.resolveCallerSelector') &&
+            ((await deps.hasNodeLineage?.()) ?? false),
+        },
       }) satisfies ControlSurfaceCapabilitiesResult,
     defaultErrorCode: 'common.unexpected',
   })

@@ -106,6 +106,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Chromium for Desktop/Web continuity E2E
+        # apt mirrors occasionally stall; fail fast instead of burning the 6h job limit.
+        timeout-minutes: 15
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: ''
         run: pnpm exec playwright install --with-deps chromium
@@ -165,6 +167,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Web Canvas browsers
+        # apt mirrors occasionally stall; fail fast instead of burning the 6h job limit.
+        timeout-minutes: 15
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: ''
         run: pnpm exec playwright install --with-deps chromium webkit
@@ -303,6 +307,9 @@ jobs:
 
       - name: Execute provider Hook relays with sanitized environments
         run: pnpm exec vitest run tests/integration/agentHookRelay.spec.ts --pool=forks --maxWorkers=1
+
+      - name: Pass CLI selectors through Windows PowerShell
+        run: pnpm exec vitest run tests/unit/e2e/cliListSelectors.windows.spec.ts --pool=forks --maxWorkers=1
 
       - name: Build
         run: pnpm build

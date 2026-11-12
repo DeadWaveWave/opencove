@@ -1,0 +1,60 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`serializes bounded question and plan data across snapshot and event contracts 1`] = `
+{
+  "plan": {
+    "epoch": "e",
+    "seq": 1,
+    "snapshot": {
+      "blockedReason": "plan",
+      "blockedSummary": {
+        "kind": "plan",
+      },
+      "lastEndedTurn": {
+        "endedAt": 20,
+        "id": "turn-a",
+        "outcome": "failed",
+      },
+      "lastTransitionAt": 1,
+      "nodeId": "a",
+      "provider": "claude-code",
+      "quality": "authoritative",
+      "sessionId": "session-a",
+      "source": "claude_hook",
+      "state": "waiting",
+      "turn": null,
+      "turnOutcome": null,
+    },
+    "type": "agent.state_changed",
+  },
+  "question": {
+    "blockedReason": "question",
+    "blockedSummary": {
+      "kind": "question",
+      "questions": [
+        {
+          "options": [
+            "One",
+            "Two",
+          ],
+          "question": "Which?",
+        },
+      ],
+    },
+    "lastEndedTurn": {
+      "endedAt": 20,
+      "id": "turn-a",
+      "outcome": "failed",
+    },
+    "lastTransitionAt": 1,
+    "nodeId": "a",
+    "provider": "claude-code",
+    "quality": "authoritative",
+    "sessionId": "session-a",
+    "source": "claude_hook",
+    "state": "waiting",
+    "turn": null,
+    "turnOutcome": null,
+  },
+}
+`;

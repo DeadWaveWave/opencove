@@ -36,7 +36,7 @@ describe('asset filesystem failure boundaries', () => {
   it('cleans staging after a failed rename and never unlinks the previous script', async () => {
     const { store, diagnostic } = await fixture()
     const assets = await store.ensure()
-    expect(rename).toHaveBeenCalledTimes(16)
+    expect(rename).toHaveBeenCalledTimes(18)
     const before = await readFile(assets.launcherPath, 'utf8')
     // Corruption makes replacement necessary while leaving a valid old destination to observe.
     const { writeFile } = await import('node:fs/promises')

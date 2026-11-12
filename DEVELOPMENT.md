@@ -203,6 +203,7 @@ E2E 选组规则维护在 `scripts/precommit-e2e-selection.mjs`。快速门禁�
     - Worker 进程运行 `out/main/worker.js`，不会随 `pnpm dev` 的 HMR 自动更新
     - 若遇到“恢复/同步/持久化看起来没生效，但代码明明已改”的情况，先 `pnpm build` 再重启 App
     - 旧数据说明（M6 mounts / locations）：若你的 profile 早于 M6，引入 mounts 后首次启动会尝试自动修复旧项目数据（为缺失 mounts 的本地项目创建一个默认本地位置，并修复 Space 的 target mount 绑定）。若项目是 remote-only 且缺失位置数据，无法凭空推断远程路径，需要在项目菜单中手动添加位置后才能正常运行相关能力。
+-   **运行 CLI**：先 `pnpm build`，再 `pnpm opencove --help`；仅 CLI 迭代可用 `pnpm build:cli`，产物为 `out/cli/opencove.mjs`，不随 dev HMR 更新。
 -   **运行单元测试**：`pnpm test -- --run`
 -   **运行 E2E 测试**：`pnpm test:e2e`
     -   说明：`pnpm test:e2e` 已包含构建步骤，默认使用 `offscreen` 后台窗口模式；检测到 Electron 崩溃特征时，会按窗口模式链路自动降级并重跑失败用例（例如 `hidden -> offscreen`、`offscreen -> inactive`）。

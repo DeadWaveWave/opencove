@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
@@ -18,10 +18,13 @@ describe('local quick E2E selection', () => {
     const examples = {
       plugins: 'src/contexts/settings/presentation/renderer/settingsPanel/PluginSettingsDetail.tsx',
       pluginInteraction: 'tests/e2e/plugins.local.helpers.ts',
+      liveViews: 'src/app/renderer/shell/hooks/useWorkerSyncStateUpdates.ts',
       windows:
         'src/contexts/workspace/presentation/renderer/components/shared/CanvasNodeWindow.tsx',
       spaces: 'src/contexts/space/application/spaceLayout.ts',
+      managedClaude: 'src/app/main/controlSurface/managedClaudeDeliveryRuntime.ts',
       connections: 'src/app/main/controlSurface/http/requestAuth.ts',
+      persistence: 'src/shared/sync/mergePersistedAppStates.ts',
       sidebar: 'src/app/renderer/styles/workspace-sidebar.css',
       settings: 'src/app/renderer/styles/settings-panel.css',
       filesystem: 'src/contexts/filesystem/presentation/renderer/DirectoryBrowser.tsx',
@@ -126,4 +129,37 @@ describe('local quick E2E selection', () => {
     expect(() => parseStagedE2EChanges('R100\0src/old.ts\0')).toThrow('Incomplete')
     expect(() => parseStagedE2EChanges('not-status\0src/file.ts\0')).toThrow('Invalid')
   })
+})
+
+it.each([
+  'src/app/renderer/shell/hooks/useWorkerSyncStateUpdates.ts',
+  'src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes.context.ts',
+  'src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeTypes.tsx',
+  'src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodeTypes.ts',
+])('includes all plugin and website-window lifetimes when %s changes', path => {
+  const chosen = select(path).tests
+  const views = readdirSync(resolve(root, 'tests/e2e')).filter(name =>
+    /^(plugins(?:\..*)?|workspace-canvas\.website-window(?:\..*)?)\.spec\.ts$/.test(name),
+  )
+  expect(views.length).toBeGreaterThan(0)
+  for (const file of views) {
+    expect(chosen).toContain('tests/e2e/' + file)
+  }
+  expect(chosen).toContain('tests/e2e/recovery.managed-claude-convergence.spec.ts')
+  expect(chosen).toContain('tests/e2e/workspace-canvas.far-view.spec.ts')
+})
+
+it.each([
+  'src/app/main/controlSurface/managedClaudeDeliveryRuntime.ts',
+  'src/app/main/controlSurface/managedClaudeClearRuntime.ts',
+  'src/app/main/controlSurface/handlers/systemHandlers.ts',
+  'src/contexts/agent/application/ClaudeClearResumeBinding.ts',
+  'src/contexts/agent/infrastructure/watchers/ClaudeResumeTranscriptReader.ts',
+  'src/shared/contracts/dto/controlSurface.ts',
+])('selects deterministic managed acceptance for %s', path => {
+  expect(select(path).groups.map(group => group.id)).toContain('managedClaude')
+  expect(QUICK_E2E_GROUPS.managedClaude.tests).toHaveLength(4)
+  expect(QUICK_E2E_GROUPS.managedClaude.tests).not.toContain(
+    'tests/e2e/recovery.claude-clear.spec.ts',
+  )
 })

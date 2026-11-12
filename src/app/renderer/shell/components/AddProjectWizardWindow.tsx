@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { FolderPlus } from 'lucide-react'
+import { FolderPlusIcon } from '@app/renderer/components/ui/pixelIcons'
 import {
   AnchoredOperationPopover,
   type AnchoredOperationPopoverAnchor,
@@ -200,7 +200,7 @@ export function AddProjectWizardWindow({
           <section className="workspace-project-create">
             <header className="workspace-project-create__header">
               <span className="workspace-project-create__icon" aria-hidden="true">
-                <FolderPlus size={16} />
+                <FolderPlusIcon size={18} />
               </span>
               <div>
                 <h3>{t('addProjectWizard.title')}</h3>

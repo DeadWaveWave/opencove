@@ -1,118 +1,66 @@
+/*
+ * Control center (shell/components/ControlCenter.tsx), drawn as a pixel game window
+ * (.cove-pixel-window): a caption strip, then sections parted by 2px dotted rules, each led by a
+ * 4px accent square. The settings lines read as a game menu: a pixel cursor points at the line
+ * under the pointer or focus. The window clips to stepped corners, so only its body scrolls.
+ */
 .control-center {
-  width: min(360px, calc(100vw - 24px));
+  width: min(312px, calc(100vw - 24px));
   max-height: calc(100dvh - var(--cove-app-header-height) - 16px);
   display: flex;
-  container-type: inline-size;
   flex-direction: column;
-  gap: 0;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 0;
-  border: 1px solid var(--cove-menu-border);
-  border-radius: 8px;
-  box-shadow:
-    inset 0 1px 0 var(--cove-menu-highlight),
-    0 16px 44px var(--cove-shadow-color-elevated);
   transform-origin: top right;
 }
 
 .control-center__header {
   display: flex;
-  min-height: 44px;
-  align-items: center;
-  gap: 9px;
-  padding: 4px 8px 4px 16px;
-  color: var(--cove-text-muted);
-  border-bottom: 1px solid var(--cove-border-subtle);
-}
-
-.control-center__header,
-.control-center__toggles,
-.control-center__section,
-.control-center__footer {
   flex: 0 0 auto;
-}
-
-.control-center__title,
-.control-center__section-label {
-  margin: 0;
-  color: var(--cove-text);
-  font-weight: 600;
-  line-height: 1.25;
+  min-height: 40px;
+  align-items: center;
+  gap: var(--cove-spacing-2);
+  padding: var(--cove-spacing-1) var(--cove-spacing-1) var(--cove-spacing-1) var(--cove-spacing-3);
+  background: var(--cove-pixel-fill);
+  box-shadow: inset 0 -2px 0 var(--cove-pixel-rule-color);
+  color: var(--cove-text-muted);
 }
 
 .control-center__title {
   flex: 1;
   min-width: 0;
-  font-size: calc(13px * var(--cove-ui-font-scale));
-  letter-spacing: 0;
-}
-
-.control-center__current-theme {
-  min-width: 0;
-  color: var(--cove-text-faint);
-  font-size: calc(10.5px * var(--cove-ui-font-scale));
-  font-weight: 450;
-  line-height: 1.25;
-  text-align: right;
-  overflow-wrap: anywhere;
-}
-
-.control-center__toggles {
-  padding: 6px 8px;
-  border-top: 1px solid var(--cove-border-subtle);
-}
-
-.control-center__row {
-  display: grid;
-  min-height: 40px;
-  grid-template-columns: 18px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px;
-  border-radius: 4px;
+  margin: 0;
   color: var(--cove-text);
-  cursor: pointer;
-  transition: background-color var(--cove-motion-fast) var(--cove-ease-standard);
-}
-
-.control-center__row:hover:not([data-disabled]) {
-  background: var(--cove-control-hover);
-}
-
-.control-center__row[data-disabled] {
-  color: var(--cove-text-muted);
-  cursor: default;
-  opacity: 0.58;
-}
-
-.control-center__row-icon {
-  display: grid;
-  width: 18px;
-  height: 18px;
-  place-items: center;
-  color: var(--cove-text-muted);
-}
-
-.control-center__row-icon > svg {
-  width: 16px;
-  height: 16px;
-  stroke-width: 1.8;
-}
-
-.control-center__row-label {
-  min-width: 0;
-  color: currentcolor;
-  font-size: calc(13px * var(--cove-ui-font-scale));
-  font-weight: 450;
-  line-height: 1.4;
+  font-size: var(--cove-font-size-body);
+  font-weight: 600;
+  line-height: var(--cove-line-height-body);
   overflow-wrap: anywhere;
+}
+
+.control-center__body {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  overflow-y: auto;
+  padding-bottom: var(--cove-spacing-1);
+}
+
+.control-center__section,
+.control-center__links {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  margin-inline: var(--cove-spacing-3);
 }
 
 .control-center__section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px 8px 12px;
+  gap: var(--cove-spacing-3);
+  padding-block: var(--cove-spacing-3);
+}
+
+.control-center__section + .control-center__section,
+.control-center__links {
+  background: var(--cove-pixel-dots) left top / 4px 2px repeat-x;
 }
 
 .control-center__section-heading {
@@ -120,88 +68,142 @@
   min-width: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 0 8px;
-}
-
-/* Every section label starts where its control does. */
-.control-center__section > .control-center__section-label {
-  margin-inline: var(--cove-spacing-2);
+  gap: var(--cove-spacing-3);
 }
 
 .control-center__section-label {
-  color: var(--cove-text-muted);
-  font-size: calc(11px * var(--cove-ui-font-scale));
-}
-
-.control-center__segments {
   display: flex;
-  margin-inline: var(--cove-spacing-2);
+  min-width: 0;
+  align-items: center;
+  gap: var(--cove-spacing-2);
+  margin: 0;
+  color: var(--cove-text-muted);
+  font-size: var(--cove-font-size-caption);
+  font-weight: 600;
+  line-height: var(--cove-line-height-caption);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-.control-center__segments > * {
-  flex: 1 1 0;
+/* The section's marker: one 4px accent pixel. */
+.control-center__section-label::before {
+  content: '';
+  flex: none;
+  width: 4px;
+  height: 4px;
+  background: var(--cove-accent);
+}
+
+.control-center__current-theme {
+  min-width: 0;
+  color: var(--cove-text-faint);
+  font-size: var(--cove-font-size-caption);
+  line-height: var(--cove-line-height-caption);
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .control-center__theme-status {
   margin: 0;
-  padding: 4px 8px;
   color: var(--cove-text-muted);
-  font-size: calc(11px * var(--cove-ui-font-scale));
-  line-height: 1.5;
+  font-size: var(--cove-font-size-caption);
+  line-height: var(--cove-line-height-caption);
 }
 
-.control-center__footer {
-  padding: 6px 8px;
-  border-top: 1px solid var(--cove-border-subtle);
+.control-center__tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  justify-items: center;
+  gap: var(--cove-spacing-2);
 }
 
-.control-center__settings {
-  width: 100%;
-  min-height: 38px;
+.control-center__links {
+  padding-block: var(--cove-spacing-2) 0;
+}
+
+/* A menu line: its words line up with the section labels, its cursor sits in the gutter before. */
+.control-center__link {
+  min-height: var(--cove-control-height-md);
   justify-content: flex-start;
-  padding-inline: 8px;
-  border-radius: 4px;
+  margin-inline: calc(-1 * var(--cove-spacing-1));
+  padding-inline: 0 var(--cove-spacing-1);
+  border-radius: 0;
+  clip-path: var(--cove-pixel-corners);
 }
 
-.control-center__settings .cove-button__content {
+.control-center__link .cove-button__content {
+  display: grid;
   width: 100%;
-  justify-content: flex-start;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--cove-spacing-1);
 }
 
-.control-center__settings svg {
-  width: 16px;
-  height: 16px;
-  stroke-width: 1.8;
+.control-center__link:hover {
+  background: var(--cove-pixel-fill);
 }
 
-.control-center__settings-chevron {
-  margin-left: auto;
+.control-center__link:focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+.control-center__link-cursor {
+  display: inline-flex;
+  margin-left: var(--cove-spacing-1);
+  color: var(--cove-accent-text);
+  visibility: hidden;
+}
+
+.control-center__link:hover .control-center__link-cursor,
+.control-center__link:focus-visible .control-center__link-cursor {
+  visibility: visible;
+  animation: cove-pixel-blink 960ms steps(1, end) infinite;
+}
+
+.control-center__link-label {
+  min-width: 0;
+  color: var(--cove-text);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.control-center__link-trailing {
+  display: inline-flex;
   color: var(--cove-text-faint);
 }
 
-.control-center__settings-shortcut {
-  margin-left: auto;
+/* The shortcut as a pixel keycap: a flat fill shaded 2px along its bottom. */
+.control-center__keycap {
+  padding: 0 var(--cove-spacing-1) 2px;
+  background: var(--cove-pixel-fill);
+  box-shadow: inset 0 -2px 0 var(--cove-pixel-shade);
+  clip-path: var(--cove-pixel-corners);
   color: var(--cove-text-muted);
   font-family: inherit;
-  font-size: var(--cove-font-size-secondary);
+  font-size: var(--cove-font-size-caption);
   font-variant-numeric: tabular-nums;
+  line-height: var(--cove-line-height-caption);
   white-space: nowrap;
 }
 
 .cove-dialog-backdrop.control-center-backdrop {
-  align-items: flex-end;
-  padding: 8px 8px max(8px, env(safe-area-inset-bottom));
+  align-items: end;
+  padding: var(--cove-spacing-2) var(--cove-spacing-2)
+    max(var(--cove-spacing-2), env(safe-area-inset-bottom));
 }
 
+/* A sheet has no material of its own, and the window's ring needs a positioned box. */
 .control-center--sheet {
+  position: relative;
   width: min(480px, 100%);
   max-height: calc(100dvh - 32px);
+  background: var(--cove-popover);
   transform-origin: center bottom;
 }
 
-.control-center--sheet .control-center__row,
-.control-center--sheet .control-center__settings {
+.control-center--sheet .control-center__link {
   min-height: 44px;
 }
 
@@ -211,14 +213,14 @@
 }
 
 @media (pointer: coarse) {
-  .control-center__row,
-  .control-center__settings {
+  .control-center__link {
     min-height: 44px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .control-center__row {
-    transition-duration: 0.01ms;
+  .control-center__link:hover .control-center__link-cursor,
+  .control-center__link:focus-visible .control-center__link-cursor {
+    animation: none;
   }
 }

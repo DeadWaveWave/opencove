@@ -1,7 +1,7 @@
 import React from 'react'
 import { Button } from '@app/renderer/components/ui/Button'
 import { SettingRow } from '@app/renderer/components/ui/SettingRow'
-import { X } from 'lucide-react'
+import { CloseIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   AGENT_PROVIDER_LABEL,
@@ -128,7 +128,7 @@ export function TaskConfigurationSection(props: {
                 disabled={tags.length <= 1}
                 onClick={() => onRemoveTag(tag)}
               >
-                <X size={12} aria-hidden="true" />
+                <CloseIcon size={12} />
               </button>
             </div>
           ))}
@@ -146,7 +146,6 @@ export function TaskConfigurationSection(props: {
             onKeyDown={event => event.key === 'Enter' && onAddTag()}
           />
           <Button
-            variant="primary"
             data-testid="settings-task-tag-add-button"
             disabled={addTaskTagInput.trim().length === 0}
             onClick={() => onAddTag()}

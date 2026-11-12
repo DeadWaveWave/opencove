@@ -71,7 +71,7 @@ test('restores window titles after persisted, interrupted, and push-away expansi
       ],
       settings: {
         language: 'en',
-        uiTheme: 'pixel',
+        uiTheme: 'dark',
         canvasInputMode: 'mouse',
         nodeExpandBehavior: 'push-away',
         focusNodeOnClick: false,

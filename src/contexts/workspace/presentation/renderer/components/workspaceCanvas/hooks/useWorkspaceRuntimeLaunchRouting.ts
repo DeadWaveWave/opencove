@@ -1,10 +1,8 @@
 import { isPathInsideOrEqual } from '@contexts/space/application/spaceBoundaryPolicy'
 
-export type ControlSurfaceInvoke = <TResult>(request: {
-  kind: 'query' | 'command'
-  id: string
-  payload: unknown
-}) => Promise<TResult>
+export type ControlSurfaceInvoke = <TResult>(
+  request: import('@shared/contracts/controlSurface').ControlSurfaceInvokeRequest,
+) => Promise<TResult>
 
 export function resolveControlSurfaceInvoke(): ControlSurfaceInvoke | null {
   const invoke = (window as unknown as { opencoveApi?: { controlSurface?: { invoke?: unknown } } })

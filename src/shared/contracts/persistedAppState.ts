@@ -1,3 +1,4 @@
+import type { ManagedClaudeResumeBindingOwnership } from './managedClaudeLaunch'
 import type {
   AgentLaunchMode,
   AgentProviderId,
@@ -188,10 +189,12 @@ export type PersistedNodePayload =
   | PersistedPluginNodeData
 
 export interface PersistedNodeContract {
+  managedClaudeResumeBindingOwnership?: ManagedClaudeResumeBindingOwnership | null
   id: string
   sessionId?: string | null
   title: string
   titlePinnedByUser?: boolean
+  titleIsLiteral?: boolean
   position: PersistedPoint
   width: number
   height: number

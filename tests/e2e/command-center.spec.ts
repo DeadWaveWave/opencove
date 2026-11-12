@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test'
+import { setFrameMotion } from './workspace-canvas.frame-signals.helpers'
+import { setMotionSignals } from './workspace-canvas.pixel-effects.helpers'
 import {
   launchApp,
   readCanvasViewport,
@@ -105,7 +107,7 @@ test.describe('Command Center', () => {
             activeSpaceId: 'ui',
           },
         ],
-        settings: { uiTheme: 'pixel', isPrimarySidebarCollapsed: false },
+        settings: { uiTheme: 'dark', isPrimarySidebarCollapsed: false },
       })
       const trigger = window.getByTestId('app-header-command-center')
       const center = window.getByTestId('command-center')
@@ -116,7 +118,7 @@ test.describe('Command Center', () => {
       const space = window.getByTestId('command-center-item-space:ui')
       await expect(space).toHaveAttribute('data-cove-label-color', 'blue')
       await expect(space).toHaveAttribute('aria-current', 'location')
-      await expect(space.locator('svg.lucide-scan')).toHaveCount(1)
+      await expect(space.locator('svg[data-cove-pixel-icon="focus"]')).toHaveCount(1)
       const metrics = await center.evaluate(element => ({
         width: element.getBoundingClientRect().width,
         radius: getComputedStyle(element).borderTopLeftRadius,
@@ -126,7 +128,7 @@ test.describe('Command Center', () => {
       expect(metrics.width).toBeLessThanOrEqual(642)
       expect(metrics.radius).toBe('8px')
       expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth)
-      await testInfo.attach('command-center-pixel', {
+      await testInfo.attach('command-center-dark', {
         body: await center.screenshot(),
         contentType: 'image/png',
       })
@@ -137,12 +139,11 @@ test.describe('Command Center', () => {
       await expect(window.getByTestId('workspace-search-input')).toBeFocused()
       await window.getByTestId('workspace-search-close').click()
       await window.getByTestId('app-header-control-center').click()
-      await window.getByTestId('control-center-theme-family-pixel').check()
       await window.getByTestId('control-center-theme-mode-light').check()
       await window.keyboard.press('Escape')
       await trigger.click()
-      await expect(window.locator('html')).toHaveAttribute('data-cove-theme-id', 'pixel-light')
-      await testInfo.attach('command-center-pixel-light', {
+      await expect(window.locator('html')).toHaveAttribute('data-cove-theme-id', 'light')
+      await testInfo.attach('command-center-light', {
         body: await center.screenshot(),
         contentType: 'image/png',
       })
@@ -172,7 +173,7 @@ test.describe('Command Center', () => {
             nodes: [],
           },
         ],
-        settings: { uiTheme: 'pixel-light', uiFontSize: 24 },
+        settings: { uiTheme: 'light', uiFontSize: 24 },
       })
       const trigger = window.getByTestId('app-header-command-center')
       await trigger.click()
@@ -196,7 +197,7 @@ test.describe('Command Center', () => {
       expect(metrics.right).toBeLessThanOrEqual(metrics.viewportWidth - 8)
       expect(metrics.overflow).toBe(false)
       expect(Math.min(...metrics.touchHeights)).toBeGreaterThanOrEqual(44)
-      await testInfo.attach('command-center-mobile-pixel-light', {
+      await testInfo.attach('command-center-mobile-light', {
         body: await window.screenshot(),
         contentType: 'image/png',
       })
@@ -375,6 +376,14 @@ test.describe('Command Center', () => {
 
       const canvas = window.locator('.workspace-canvas .react-flow')
       const noteNode = window.locator('.react-flow__node[data-id="command-window-note"]')
+      await expect(noteNode).toHaveAttribute('data-cove-navigation-focus', 'true')
+      await expect(noteNode.locator('.cove-window-focus-brackets')).toHaveCSS('inset', '-7px')
+      await expect(noteNode.locator('.cove-window-focus-brackets')).toHaveCSS(
+        'border-radius',
+        '0px',
+      )
+      await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
+
       await expect
         .poll(async () => {
           const canvasBox = await canvas.boundingBox()
@@ -388,6 +397,23 @@ test.describe('Command Center', () => {
           )
         })
         .toBeLessThan(40)
+
+      // Navigation feedback is static and remains available with decorative signals disabled.
+      await setFrameMotion(window, true)
+      await setMotionSignals(window, false)
+      await window.keyboard.press(`${commandCenterModifier}+P`)
+      await input.fill('Scratch')
+      await window.keyboard.press('Enter')
+      const scratch = window.locator('.react-flow__node[data-id="command-window-scratch"]')
+      await expect(scratch).toHaveAttribute('data-cove-navigation-focus', 'true')
+      await expect(noteNode).not.toHaveAttribute('data-cove-navigation-focus')
+      await expect(scratch.locator('.cove-window-focus-brackets')).toHaveCSS(
+        'animation-name',
+        'none',
+      )
+      await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
+      await expect(scratch).not.toHaveAttribute('data-cove-navigation-focus', { timeout: 4000 })
+      await expect(scratch.locator('.cove-window-focus-brackets')).toHaveCount(0)
     } finally {
       await electronApp.close()
     }

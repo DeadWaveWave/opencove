@@ -1,3 +1,4 @@
+import type { WindowKindFamily } from '../../../../utils/windowKindFamily'
 import {
   pixelNoise,
   resolvePixelBuffer,
@@ -5,11 +6,18 @@ import {
   type PixelNode,
   type PixelViewport,
 } from './model'
+import { drawPixelSparks, type PixelSpark } from './sparks'
 import { drawWorkingPixels } from './workingRenderer'
 import { drawDotRipples } from './dotRipples'
 import type { Ripple } from '../pixelWall/ripples'
 
+export interface PixelKindTheme {
+  ink: Record<WindowKindFamily, string>
+  solid: Record<WindowKindFamily, string>
+}
+
 export interface PixelTheme {
+  ink?: Record<WindowKindFamily, string>
   blue: string
   cyan: string
   mint: string
@@ -17,10 +25,26 @@ export interface PixelTheme {
   danger: string
 }
 
-export function readPixelTheme(canvas: HTMLCanvasElement): PixelTheme {
+export function readPixelTheme(canvas: HTMLCanvasElement): PixelTheme & PixelKindTheme {
   const style = getComputedStyle(canvas)
   const color = (token: string) => style.getPropertyValue(token).trim() || style.color
+  const kindColors = (role: 'ink' | 'solid') =>
+    Object.fromEntries(
+      Object.entries({
+        ai: '--cove-pixel-blue',
+        shell: '--cove-pixel-cyan',
+        plan: '--cove-pixel-mint',
+        knowledge: '--cove-pixel-blue',
+        media: '--cove-pixel-cyan',
+        neutral: '',
+      }).map(([family, fallback]) => [
+        family,
+        style.getPropertyValue(`--cove-kind-${family}-${role}`).trim() || color(fallback),
+      ]),
+    ) as Record<WindowKindFamily, string>
   return {
+    ink: kindColors('ink'),
+    solid: kindColors('solid'),
     blue: color('--cove-pixel-blue'),
     cyan: color('--cove-pixel-cyan'),
     mint: color('--cove-pixel-mint'),
@@ -77,8 +101,10 @@ export function drawPixelLayer({
   reducedMotion,
   background = true,
   ripples = [],
+  rippleExclusions = [],
   working = false,
   workingNow = now,
+  sparks = [],
 }: {
   canvas: HTMLCanvasElement
   context: CanvasRenderingContext2D
@@ -92,8 +118,11 @@ export function drawPixelLayer({
   background?: boolean
   /** Output ripples through the dot grid (「简约」); under the pixel wall the wall draws them. */
   ripples?: readonly Ripple[]
+  /** Windows the ripples leave dark. */
+  rippleExclusions?: readonly { x: number; y: number; width: number; height: number }[]
   working?: boolean
   workingNow?: number
+  sparks?: readonly PixelSpark[]
 }): boolean {
   const buffer = resolvePixelBuffer(viewport.width, viewport.height, window.devicePixelRatio)
   if (canvas.width !== buffer.width) {
@@ -121,14 +150,24 @@ export function drawPixelLayer({
     active ||= !reducedMotion && activity.intensity(node, now) > 0
     drawNodePixels(context, node, 0, theme, gradient)
   }
-  if (background && !reducedMotion && ripples.length > 0) {
-    drawDotRipples(context, viewport, ripples)
-    active = true
+  // The caller decides when ripples show. They sit under the patrol and the sparks, as the
+  // prototype's dot canvas sits under its effects canvas.
+  if (!reducedMotion && ripples.length > 0) {
+    drawDotRipples(context, viewport, ripples, rippleExclusions)
   }
   if (working) {
-    // Reduced motion keeps a still outline round working frames instead of the patrol.
-    drawWorkingPixels(context, nodes, viewport, theme, reducedMotion ? null : workingNow)
+    // Reduced motion keeps a static frame highlight instead of moving pixels.
+    drawWorkingPixels(
+      context,
+      nodes,
+      viewport,
+      theme,
+      reducedMotion ? null : workingNow,
+      buffer.dpr,
+    )
   }
+  drawPixelSparks(context, sparks, viewport, buffer.dpr)
+  active ||= sparks.length > 0
   context.globalAlpha = 1
   return active
 }

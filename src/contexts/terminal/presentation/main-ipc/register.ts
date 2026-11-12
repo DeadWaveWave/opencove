@@ -173,7 +173,7 @@ export function registerPtyIpcHandlers(
       ipcMain.removeHandler(IPC_CHANNELS.ptyPresentationSnapshot)
       ipcMain.removeHandler(IPC_CHANNELS.ptyDebugCrashHost)
 
-      runtime.dispose()
+      return runtime.dispose()
     },
   }
 }

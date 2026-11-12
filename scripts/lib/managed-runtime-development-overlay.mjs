@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop -- Keep staging I/O and dependency verification bounded. */
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
-import { readFile, mkdir, mkdtemp, cp, rm } from 'node:fs/promises'
+import { readFile, writeFile, mkdir, mkdtemp, cp, rm } from 'node:fs/promises'
 import { resolve, join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { archiveManagedRuntimeOverlay } from './managed-runtime-overlay-archive.mjs'
@@ -78,15 +78,31 @@ export async function createManagedRuntimeDevelopmentOverlay({
         throw new Error(`Native base resolved dependency differs: ${module}`)
       }
     }
-    for (const path of ['out', 'src/app/cli']) {
+    for (const path of ['out', 'src/app/cli', 'docs/plugins']) {
       // Both absolute targets are literal descendants of our newly created staging app.
       const target = resolve(app, path)
       if (!target.startsWith(`${resolve(app)}${process.platform === 'win32' ? '\\' : '/'}`)) {
         throw new Error('Invalid overlay target.')
       }
       await rm(target, { recursive: true, force: true })
-      await cp(join(root, path), target, { recursive: true })
+      if (path === 'src/app/cli') {
+        await mkdir(target, { recursive: true })
+        for (const name of ['opencove.mjs', 'publishRuntime.mjs']) {
+          await cp(join(root, path, name), join(target, name))
+        }
+      } else {
+        await cp(join(root, path), target, { recursive: true })
+      }
     }
+    const manifestPath = join(staging, bundleName, 'opencove-runtime.env')
+    const manifest = await readFile(manifestPath, 'utf8')
+    await writeFile(
+      manifestPath,
+      manifest.replace(
+        /^OPENCOVE_CLI_SCRIPT_RELATIVE_PATH=.*$/m,
+        'OPENCOVE_CLI_SCRIPT_RELATIVE_PATH=app/out/cli/opencove.mjs',
+      ),
+    )
     await cp(join(root, 'package.json'), join(app, 'package.json'))
     await mkdir(join(root, 'dist'), { recursive: true })
     if (platform === 'windows') {

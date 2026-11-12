@@ -35,7 +35,7 @@ test('native files and folders outside the project drop as compact references an
     await seedWorkspaceState(window, {
       activeWorkspaceId: 'native-files',
       settings: {
-        uiTheme: 'pixel',
+        uiTheme: 'dark',
         language: 'en',
         canvasInputMode: 'mouse',
         focusNodeOnClick: false,

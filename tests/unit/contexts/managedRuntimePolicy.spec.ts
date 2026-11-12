@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { decideManagedRuntimeUpdate } from '../../../src/contexts/topology/domain/managedRuntimePolicy'
 import type { RuntimeBuildIdentity } from '../../../src/shared/contracts/runtimeBuild'
+import { DB_SCHEMA_VERSION } from '../../../src/platform/persistence/sqlite/constants'
 
 const desired: RuntimeBuildIdentity = {
   schemaVersion: 1,
@@ -10,7 +11,7 @@ const desired: RuntimeBuildIdentity = {
   protocolVersion: 2,
   ptyProtocolVersion: 1,
   launchContractVersion: 1,
-  dataSchemaVersion: 13,
+  dataSchemaVersion: DB_SCHEMA_VERSION,
 }
 
 describe('managed runtime update policy', () => {
@@ -35,9 +36,9 @@ describe('managed runtime update policy', () => {
     expect(decideManagedRuntimeUpdate(desired, { ...desired, appVersion: '0.4.0' })).toBe(
       'client_update_required',
     )
-    expect(decideManagedRuntimeUpdate(desired, { ...desired, dataSchemaVersion: 14 })).toBe(
-      'client_update_required',
-    )
+    expect(
+      decideManagedRuntimeUpdate(desired, { ...desired, dataSchemaVersion: DB_SCHEMA_VERSION + 1 }),
+    ).toBe('client_update_required')
     expect(decideManagedRuntimeUpdate(desired, { ...desired, channel: 'nightly' })).toBe(
       'channel_conflict',
     )

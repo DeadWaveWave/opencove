@@ -10,8 +10,7 @@ import {
   flushScheduledPersistedStateWriteAsync,
 } from '../../../src/contexts/workspace/presentation/renderer/utils/persistence/schedule'
 import type { PersistedAppState } from '../../../src/contexts/workspace/presentation/renderer/types'
-import type { PersistWriteResult, SyncEventPayload } from '../../../src/shared/contracts/dto'
-import { createAppErrorDescriptor } from '../../../src/shared/errors/appError'
+import type { SyncEventPayload } from '../../../src/shared/contracts/dto'
 
 const originalState = useAppStore.getState()
 afterEach(async () => {
@@ -150,28 +149,30 @@ it.each(['before', 'during', 'during-with-ack', 'after-unmount'] as const)(
   },
 )
 
-it('retains a failed local write and resumes the pending refresh after a successful save', async () => {
+it('applies external settings before acknowledging refresh and publishing geometry', async () => {
   const workspace = createWorkspace()
   useAppStore.setState({ workspaces: [workspace], activeWorkspaceId: workspace.id })
-  const produce = () => toPersistedState(useAppStore.getState().workspaces, workspace.id)
-  let sharedState = produce()
-  const readAppState = vi.fn(async () => ({ state: sharedState, recovery: null }))
-  const writeAppState = vi
-    .fn<({ state }: { state: PersistedAppState }) => Promise<PersistWriteResult>>()
-    .mockResolvedValueOnce({
-      ok: false,
-      reason: 'io',
-      error: createAppErrorDescriptor('persistence.io_failed'),
-    })
-    .mockImplementation(async ({ state }) => {
-      sharedState = state
-      return { ok: true, level: 'full', bytes: 1, revision: 21 }
-    })
+  const produce = () => {
+    const current = useAppStore.getState()
+    return toPersistedState(current.workspaces, current.activeWorkspaceId, current.agentSettings)
+  }
+  const external = {
+    ...produce(),
+    settings: { ...produce().settings, releaseNotesSeenVersion: 'external-review' },
+  }
+  let durable = external
+  const writeAppState = vi.fn(async ({ state }: { state: PersistedAppState }) => {
+    durable = state
+    return { ok: true, level: 'full', bytes: 1, revision: 31 }
+  })
   let emit!: (event: SyncEventPayload) => void
   Object.defineProperty(window, 'opencoveApi', {
     configurable: true,
     value: {
-      persistence: { readAppState, writeAppState },
+      persistence: {
+        readAppState: vi.fn(async () => ({ state: durable, revision: 30, recovery: null })),
+        writeAppState,
+      },
       sync: {
         onStateUpdated: (listener: typeof emit) => {
           emit = listener
@@ -182,22 +183,27 @@ it('retains a failed local write and resumes the pending refresh after a success
   })
   const hook = renderHook(() => useWorkerSyncStateUpdates({ enabled: true }))
   try {
-    act(() => {
-      useAppStore
-        .getState()
-        .setWorkspaces(previous => previous.map(project => ({ ...project, name: 'Unsaved edit' })))
-      schedulePersistedStateWrite(produce, { delayMs: 10_000 })
-      emit({ type: 'app_state.updated', operationId: 'mount.create', revision: 20 })
-    })
-    await waitFor(() => expect(writeAppState).toHaveBeenCalledOnce())
-    expect(readAppState).not.toHaveBeenCalled()
-    expect(useAppStore.getState().workspaces[0]!.name).toBe('Unsaved edit')
+    act(() => emit({ type: 'app_state.updated', operationId: 'sync.writeState', revision: 30 }))
+    await waitFor(() =>
+      expect(useAppStore.getState().agentSettings.releaseNotesSeenVersion).toBe('external-review'),
+    )
     await act(async () => {
+      useAppStore.getState().setWorkspaces(previous =>
+        previous.map(project => ({
+          ...project,
+          nodes: project.nodes.map(node => ({
+            ...node,
+            position: { ...node.position, x: node.position.x + 10 },
+          })),
+        })),
+      )
       schedulePersistedStateWrite(produce)
       expect(await flushScheduledPersistedStateWriteAsync()).toBe(true)
     })
-    await waitFor(() => expect(readAppState).toHaveBeenCalledOnce())
-    expect(useAppStore.getState().workspaces[0]!.name).toBe('Unsaved edit')
+    expect(writeAppState).toHaveBeenCalledOnce()
+    expect(writeAppState.mock.calls[0][0]).toMatchObject({ baseRevision: 30 })
+    expect(durable.settings.releaseNotesSeenVersion).toBe('external-review')
+    expect(durable.workspaces[0].nodes[0].position.x).toBe(10)
   } finally {
     hook.unmount()
   }

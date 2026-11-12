@@ -14,10 +14,14 @@ export type PersistWriteResult =
       ok: true
       level: PersistWriteLevel
       bytes: number
+      uncertain?: true
+      corrected?: boolean
+      merged?: true
       revision?: number
     }
   | {
       ok: false
+      outcome?: 'unknown' | 'rejected' | 'notSubmitted'
       reason: PersistWriteFailureReason
       error: AppErrorDescriptor
     }
@@ -29,11 +33,13 @@ export interface WriteWorkspaceStateRawInput {
 export type PersistenceRecoveryReason = 'corrupt_db' | 'migration_failed'
 
 export interface ReadAppStateResult {
+  revision: number | null
   state: unknown | null
   recovery: PersistenceRecoveryReason | null
 }
 
 export interface WriteAppStateInput {
+  baseRevision?: number | null
   state: unknown
   allowEmptyWorkspaceOverwrite?: boolean | null
 }

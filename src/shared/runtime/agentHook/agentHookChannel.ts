@@ -1,102 +1,43 @@
+import { resolveHookBlockedDetails } from './hookBlockedDetails'
+import { HookReplyEligibility, type HookReplyReceipt } from './HookReplyEligibility'
+import { readBody } from './readHookBody'
+import { residentContextV1 } from './residentContext'
+import { setPromptSubmissionEvidence } from './claudePromptEvidence'
+import { parseHookEmittedAt } from './hookEmittedAt'
 import { randomBytes } from 'node:crypto'
-import { createServer, type IncomingMessage, type Server } from 'node:http'
+import { createServer, type Server } from 'node:http'
 import type {
   AgentHookInstallState,
   AgentHookStateSource,
-  TerminalAgentShimProvider,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../contracts/dto'
 
-import type { AgentSessionIdentityObservation } from '../../contracts/dto/agentSessionIdentityObservation'
-
-const MAX_HOOK_BODY_BYTES = 256 * 1024
-
-export interface AgentHookEnvelope {
-  state: 'working' | 'waiting' | 'standby' | 'done' | null
-}
-
-export interface AgentHookInstallResult {
-  state: AgentHookInstallState
-  detail: string | null
-}
-
-export interface AgentHookSpawnReservation {
-  env: NodeJS.ProcessEnv | null
-  installState: AgentHookInstallState
-  usesHook: boolean
-  commit: (sessionId: string, terminalActivity?: TerminalAgentHookContext) => void
-  dispose: () => Promise<void>
-}
-
-export interface AgentHookChannel {
-  start: () => Promise<void>
-  reserveSpawn: () => Promise<AgentHookSpawnReservation>
-  onState: (listener: (event: TerminalSessionStateEvent) => void) => () => void
-  onMetadata: (listener: (event: TerminalSessionMetadataEvent) => void) => () => void
-  disposeSession: (sessionId: string) => void
-  getInstallState: () => AgentHookInstallState
-  getEndpoint: () => string | null
-  dispose: () => Promise<void>
-}
-
-export interface TerminalAgentHookContext {
-  provider: TerminalAgentShimProvider
-  invocationId: string
-  generation: number
-  isCurrent: () => boolean
-  observe?: (observation: AgentSessionIdentityObservation) => boolean
-}
-
-export interface AgentHookObservationOwner<TEnvelope extends AgentHookEnvelope> {
-  accept: (envelope: TEnvelope) => {
-    state: AgentHookEnvelope['state']
-    identity: AgentSessionIdentityObservation | null
-    metadata: Omit<TerminalSessionMetadataEvent, 'sessionId' | 'terminalAgentActivity'>
-    stateMetadata?: Pick<TerminalSessionStateEvent, 'piConversation'>
-  } | null
-  onCommittedObservation?: (
-    sessionId: string,
-    envelope: TEnvelope,
-    isCurrent: () => boolean,
-  ) => void
-  dispose: () => void
-}
+export type * from './agentHookChannel.contract'
+import type {
+  AgentHookEnvelope,
+  AgentHookChannel,
+  AgentHookObservationOwner,
+  AgentHookInstallResult,
+  TerminalAgentHookContext,
+  PrivateHookObserver,
+} from './agentHookChannel.contract'
 
 interface CredentialRecord<TEnvelope extends AgentHookEnvelope> {
+  token: string
+  residentContext: 'canvas' | 'none'
+  isInvocationCurrent: (() => boolean) | undefined
+  replies: HookReplyEligibility
+  privateObserver: PrivateHookObserver<TEnvelope> | null
   observationOwner: AgentHookObservationOwner<TEnvelope> | null
   sessionId: string | null
   pending: {
     envelope: TEnvelope
+    receipt: HookReplyReceipt
     observation: ReturnType<AgentHookObservationOwner<TEnvelope>['accept']>
   }[]
   providerSessionId: string | null
   terminalActivity: TerminalAgentHookContext | null
-}
-
-function readBody(request: IncomingMessage): Promise<unknown> {
-  return new Promise((resolveBody, reject) => {
-    const chunks: Buffer[] = []
-    let size = 0
-    request.on('data', chunk => {
-      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
-      size += buffer.length
-      if (size > MAX_HOOK_BODY_BYTES) {
-        reject(new Error('Hook payload exceeds the size limit.'))
-        request.destroy()
-        return
-      }
-      chunks.push(buffer)
-    })
-    request.once('error', reject)
-    request.once('end', () => {
-      try {
-        resolveBody(JSON.parse(Buffer.concat(chunks).toString('utf8')))
-      } catch (error) {
-        reject(error)
-      }
-    })
-  })
 }
 
 export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(options: {
@@ -108,6 +49,9 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
     envelope: TEnvelope,
   ) => { hookEventName: string; providerSessionId: string } | null
   publishManagedSessionIdentity?: boolean
+  createPrivateObserver?: (
+    environment: Readonly<NodeJS.ProcessEnv>,
+  ) => PrivateHookObserver<TEnvelope>
   createObservationOwner?: () => AgentHookObservationOwner<TEnvelope>
   prepare?: () => Promise<AgentHookInstallResult>
   port?: number
@@ -123,6 +67,15 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
   let installState: AgentHookInstallState = 'not_installed'
   let startPromise: Promise<void> | null = null
   let disposed = false
+  let residentContextEnabled = async () => false
+  const eligible = (record: CredentialRecord<TEnvelope> | undefined): boolean =>
+    !!record &&
+    !disposed &&
+    record.residentContext === 'canvas' &&
+    (record.isInvocationCurrent?.() ?? true) &&
+    credentials.get(record.token) === record &&
+    (!record.sessionId || tokenBySessionId.get(record.sessionId) === record.token) &&
+    (record.terminalActivity?.isCurrent() ?? true)
 
   const closeOwnedServer = async (): Promise<void> => {
     const ownedServer = server
@@ -141,21 +94,37 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
     envelope: TEnvelope,
     credential: CredentialRecord<TEnvelope>,
     observation: ReturnType<AgentHookObservationOwner<TEnvelope>['accept']>,
-  ): void => {
+  ): boolean => {
     const terminalActivity = credential.terminalActivity
     if (terminalActivity && !terminalActivity.isCurrent()) {
-      return
+      return false
+    }
+    const observerAccepted = credential.privateObserver?.observe(sessionId, envelope, {
+      incarnation: terminalActivity?.invocationId ?? sessionId,
+      credential,
+      isCurrent: () =>
+        !disposed &&
+        (credential.isInvocationCurrent?.() ?? true) &&
+        credentials.get(credential.token) === credential &&
+        (terminalActivity?.isCurrent() ?? true),
+    })
+    if (
+      observerAccepted !== false &&
+      options.source === 'claude_hook' &&
+      envelope.hookEventName === 'SessionEnd'
+    ) {
+      credential.providerSessionId = null
     }
     if (credential.observationOwner) {
       if (!observation) {
-        return
+        return false
       }
       if (
         observation.identity &&
         terminalActivity?.observe &&
         !terminalActivity.observe(observation.identity)
       ) {
-        return
+        return false
       }
       credential.observationOwner.onCommittedObservation?.(
         sessionId,
@@ -170,18 +139,36 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
         sessionId,
         state: state === 'done' ? 'standby' : state,
         source: options.source,
+        hookEventName: envelope.hookEventName,
+        emittedAtMs: envelope.emittedAtMs,
+        ...resolveHookBlockedDetails({ ...envelope, state }),
         hookInstallState: installState,
         ...observation?.stateMetadata,
+      }
+      if (options.source === 'claude_hook') {
+        setPromptSubmissionEvidence(event, {
+          promptId: envelope.promptId,
+          promptDigest: envelope.promptDigest,
+          providerSessionId: envelope.claudeSessionId,
+          finalMessage: envelope.finalMessage,
+        })
+      } else if (options.source === 'codex_hook') {
+        setPromptSubmissionEvidence(event, {
+          providerTurnId: envelope.providerTurnId,
+          finalMessage: envelope.hookEventName === 'Stop' ? envelope.finalMessage : undefined,
+          providerSessionId: options.resolveSessionIdentity?.(envelope)?.providerSessionId,
+        })
       }
       listeners.forEach(listener => listener(event))
     }
     const identity = options.resolveSessionIdentity?.(envelope) ?? null
     if (
       (terminalActivity || options.publishManagedSessionIdentity) &&
-      identity?.hookEventName === 'SessionStart'
+      identity?.hookEventName === 'SessionStart' &&
+      observerAccepted !== false
     ) {
       if (credential.providerSessionId !== null) {
-        return
+        return true
       }
       if (
         terminalActivity?.observe &&
@@ -190,11 +177,11 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
           resumeSessionId: identity.providerSessionId,
         })
       ) {
-        return
+        return false
       }
       credential.providerSessionId = identity.providerSessionId
       if (terminalActivity?.observe) {
-        return
+        return true
       }
       const metadata: TerminalSessionMetadataEvent = {
         sessionId,
@@ -212,27 +199,35 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       }
       metadataListeners.forEach(listener => listener(metadata))
     }
+    return observerAccepted !== false
   }
 
-  const handleEnvelope = (token: string, envelope: TEnvelope): boolean => {
+  const handleEnvelope = (token: string, envelope: TEnvelope): HookReplyReceipt | false | null => {
     const credential = credentials.get(token)
     if (!credential) {
       return false
     }
     const observation = credential.observationOwner?.accept(envelope) ?? null
     if (credential.observationOwner && !observation) {
-      return true
+      return null
     }
+    const receipt = credential.replies.begin(envelope.hookEventName)
     if (!credential.sessionId) {
       // Only complete snapshots can be coalesced; preserve legacy event ordering/identity.
       if (credential.observationOwner) {
+        credential.pending.forEach(pending => pending.receipt.reject())
         credential.pending.length = 0
       }
-      credential.pending.push({ envelope, observation })
-      return true
+      receipt.accept()
+      credential.pending.push({ envelope, observation, receipt })
+      return receipt
     }
-    emit(credential.sessionId, envelope, credential, observation)
-    return true
+    if (!emit(credential.sessionId, envelope, credential, observation)) {
+      receipt.reject()
+      return null
+    }
+    receipt.accept()
+    return receipt
   }
 
   const start = async (): Promise<void> => {
@@ -275,10 +270,39 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
                 response.end()
                 return
               }
-              if (!handleEnvelope(token, envelope)) {
+              if (options.source === 'claude_hook' || options.source === 'codex_hook') {
+                envelope.emittedAtMs = parseHookEmittedAt(
+                  request.headers['x-opencove-hook-emitted-at'],
+                  Date.now(),
+                )
+              }
+              const receipt = handleEnvelope(token, envelope)
+              if (receipt === false) {
                 response.statusCode = 401
                 response.end()
                 return
+              }
+              const credential = credentials.get(token)
+              if (
+                receipt?.isCurrent() &&
+                envelope.hookEventName === 'SessionStart' &&
+                eligible(credential)
+              ) {
+                let enabled = false
+                try {
+                  enabled = await residentContextEnabled()
+                } catch {
+                  /* Fail open. */
+                }
+                if (enabled && receipt.isCurrent() && eligible(credential)) {
+                  const body = JSON.stringify({ v: 1, context: residentContextV1 })
+                  if (receipt.isCurrent() && eligible(credential)) {
+                    response.statusCode = 200
+                    response.setHeader('content-type', 'application/json')
+                    response.end(body)
+                    return
+                  }
+                }
               }
               response.statusCode = 204
               response.end()
@@ -329,7 +353,10 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
 
   return {
     start,
-    reserveSpawn: async () => {
+    setResidentContextEnabled: resolve => {
+      residentContextEnabled = resolve
+    },
+    reserveSpawn: async input => {
       await start()
       if (disposed || installState !== 'installed' || !endpoint) {
         return {
@@ -343,7 +370,13 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
 
       const token = randomBytes(32).toString('base64url')
       const credential: CredentialRecord<TEnvelope> = {
+        token,
+        residentContext: input?.residentContext ?? 'none',
+        isInvocationCurrent: input?.isInvocationCurrent,
+        replies: new HookReplyEligibility(),
         observationOwner: options.createObservationOwner?.() ?? null,
+        privateObserver:
+          options.createPrivateObserver?.({ ...(input?.environment ?? process.env) }) ?? null,
         sessionId: null,
         pending: [],
         providerSessionId: null,
@@ -360,6 +393,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
           tokenBySessionId.delete(credential.sessionId)
         }
         credentials.delete(token)
+        credential.privateObserver?.dispose()
         credential.observationOwner?.dispose()
         credential.pending.length = 0
       }
@@ -375,11 +409,16 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
           credential.sessionId = sessionId
           credential.terminalActivity = terminalActivity ?? null
           tokenBySessionId.set(sessionId, token)
-          credential.pending
-            .splice(0)
-            .forEach(({ envelope, observation }) =>
-              emit(sessionId, envelope, credential, observation),
-            )
+          credential.pending.splice(0).forEach(({ envelope, observation, receipt }) => {
+            let accepted = false
+            try {
+              accepted = emit(sessionId, envelope, credential, observation)
+            } finally {
+              if (!accepted) {
+                receipt.reject()
+              }
+            }
+          })
         },
         dispose,
       }
@@ -398,6 +437,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
         return
       }
       tokenBySessionId.delete(sessionId)
+      credentials.get(token)?.privateObserver?.dispose()
       credentials.get(token)?.observationOwner?.dispose()
       credentials.delete(token)
     },
@@ -408,7 +448,10 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
         return
       }
       disposed = true
-      credentials.forEach(credential => credential.observationOwner?.dispose())
+      credentials.forEach(credential => {
+        credential.privateObserver?.dispose()
+        credential.observationOwner?.dispose()
+      })
       credentials.clear()
       tokenBySessionId.clear()
       listeners.clear()

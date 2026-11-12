@@ -34,23 +34,27 @@ export function guardNodeFromSyncOverwrite(nodeId: string, ttlMs = GUARD_TTL_MS)
   guardedUntilByNodeId.set(normalizedNodeId, untilMs)
 }
 
-export function isNodeGuardedFromSyncOverwrite(nodeId: string): boolean {
+export function getNodeSyncOverwriteGuardRemainingMs(nodeId: string): number {
   const normalizedNodeId = normalizeNodeId(nodeId)
   if (normalizedNodeId.length === 0) {
-    return false
+    return 0
   }
 
   const untilMs = guardedUntilByNodeId.get(normalizedNodeId) ?? null
   if (untilMs === null) {
-    return false
+    return 0
   }
 
   const nowMs = Date.now()
   if (untilMs <= nowMs) {
     guardedUntilByNodeId.delete(normalizedNodeId)
     pruneExpiredGuards(nowMs)
-    return false
+    return 0
   }
 
-  return true
+  return untilMs - nowMs
+}
+
+export function isNodeGuardedFromSyncOverwrite(nodeId: string): boolean {
+  return getNodeSyncOverwriteGuardRemainingMs(nodeId) > 0
 }

@@ -1,0 +1,178 @@
+import type { ClaudeTurnContinuation } from './ClaudeTurnContinuation'
+import { createAppError } from '../../../shared/errors/appError'
+import type { AgentTurnHistory, FinalMessageSelector } from './AgentTurnHistory'
+import type { AgentRuntimeFilter, AgentRuntimeEvent } from './AgentRunStateRegistry'
+import type { AgentRunModel } from '../domain/agentRunState'
+import type { RunStateFence } from './ports/PromptDeliveryPorts'
+export type AgentRunEntry = {
+  continuation: ClaudeTurnContinuation
+  history: AgentTurnHistory
+  model: AgentRunModel
+  token: string
+  bindingGeneration: number
+  cursor: number
+  launchNodeId: string | null
+  remote: boolean
+  launchKind?: RunStateFence['launchKind']
+  hookCoverage?: RunStateFence['hookCoverage']
+  hookInstallState?: RunStateFence['hookInstallState']
+  projectId?: string
+  spaceId?: string
+  cancelExpiry?: () => void
+}
+export type AgentRunBinding = { nodeId: string | null; projectId?: string; spaceId?: string }
+
+export function projectRunStateFence(entry: AgentRunEntry, epoch: string): RunStateFence {
+  const { model } = entry
+  return structuredClone({
+    epoch: epoch,
+    incarnation: entry.token,
+    bindingGeneration: entry.bindingGeneration,
+    cursor: entry.cursor,
+    snapshot: model.snapshot,
+    lastTurnEnd: model.lastTurnEnd,
+    watermarks: Object.fromEntries(
+      Object.entries(model.observations).map(([source, value]) => [source, value.sourceSequence]),
+    ),
+    remote: entry.remote,
+    launchKind: entry.launchKind,
+    hookCoverage: entry.hookCoverage,
+    hookInstallState: entry.hookInstallState,
+  })
+}
+
+export function matchesAgentRunFilter(
+  item: {
+    event: Pick<AgentRuntimeEvent, 'type' | 'snapshot'>
+    projectId?: string
+    spaceId?: string
+  },
+  filter: AgentRuntimeFilter,
+): boolean {
+  return (
+    (!filter.types || filter.types.includes(item.event.type)) &&
+    (!filter.nodeId || filter.nodeId === item.event.snapshot.nodeId) &&
+    (!filter.spaceId || filter.spaceId === item.spaceId) &&
+    (!filter.projectId || filter.projectId === item.projectId) &&
+    (!filter.state || filter.state === item.event.snapshot.state)
+  )
+}
+
+export function scheduleRunExpiry(
+  entry: AgentRunEntry,
+  schedule: (callback: () => void, delay: number) => () => void,
+  now: number,
+  update: () => void,
+): void {
+  entry.cancelExpiry?.()
+  entry.cancelExpiry = undefined
+  const deadline = entry.model.nextTransitionAtMs
+  if (deadline === null) {
+    return
+  }
+  let active = true
+  const cancel = schedule(
+    () => {
+      if (!active) {
+        return
+      }
+      active = false
+      entry.cancelExpiry = undefined
+      update()
+    },
+    Math.max(0, deadline - now),
+  )
+  entry.cancelExpiry = () => {
+    active = false
+    cancel()
+  }
+}
+
+/** Queue immutable transition payloads before fences can re-enter the registry. */
+export function publishRunTransition(
+  entry: AgentRunEntry,
+  changed: boolean,
+  endedTurn: AgentRuntimeEvent['endedTurn'],
+  ports: {
+    publish(
+      entry: AgentRunEntry,
+      type: AgentRuntimeEvent['type'],
+      endedTurn?: AgentRuntimeEvent['endedTurn'],
+      flush?: boolean,
+      previousBinding?: AgentRunBinding,
+    ): void
+    notify(): void
+    flush(): void
+  },
+): void {
+  const captured = {
+    ...entry,
+    model: { ...entry.model, snapshot: structuredClone(entry.model.snapshot) },
+  }
+  if (changed) {
+    ports.publish(captured, 'agent.state_changed', undefined, false)
+  }
+  if (endedTurn) {
+    ports.publish(captured, 'agent.turn_completed', structuredClone(endedTurn), false)
+  }
+  ports.notify()
+  ports.flush()
+}
+
+export function readRunFinalMessage(
+  entry: AgentRunEntry | undefined,
+  selector: FinalMessageSelector,
+) {
+  if (!entry || entry.remote) {
+    throw createAppError('agent.final_message_unavailable', {
+      details: {
+        reason:
+          entry?.remote && selector.turnId !== undefined
+            ? 'remote_history_unavailable'
+            : 'no_ended_turn',
+      },
+    })
+  }
+  return entry.history.read(entry.model.snapshot, selector)
+}
+
+/** Queue the displaced snapshot first; defer its fence callback until the claimant is captured. */
+export function claimRunNodeBinding(
+  bindings: Map<string, AgentRunEntry>,
+  nodeId: string | null,
+  entry: AgentRunEntry,
+  ports: {
+    publish: Parameters<typeof publishRunTransition>[3]['publish']
+    notify(entry: AgentRunEntry): void
+  },
+): () => void {
+  if (nodeId === null) {
+    return () => {}
+  }
+  const displaced = bindings.get(nodeId)
+  bindings.set(nodeId, entry)
+  if (!displaced || displaced === entry) {
+    return () => {}
+  }
+  const previousBinding = { nodeId, projectId: displaced.projectId, spaceId: displaced.spaceId }
+  displaced.bindingGeneration++
+  displaced.model = { ...displaced.model, snapshot: { ...displaced.model.snapshot, nodeId: null } }
+  publishRunTransition(displaced, true, undefined, {
+    publish: (captured, type, endedTurn, flush) =>
+      ports.publish(captured, type, endedTurn, flush, previousBinding),
+    notify: () => {},
+    flush: () => {},
+  })
+  return () => ports.notify(displaced)
+}
+
+/** Private identity read: never part of the content-free fence projection. */
+export function readRunPromptIdentity(
+  entry: AgentRunEntry | undefined,
+  fence: RunStateFence,
+  epoch: string,
+) {
+  return entry && entry.token === fence.incarnation && epoch === fence.epoch
+    ? entry.history.identity()
+    : undefined
+}

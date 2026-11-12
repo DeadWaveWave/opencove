@@ -1,10 +1,9 @@
 import { useEffect, useRef } from 'react'
-import type { TerminalSessionState, TerminalSessionStateEvent } from '@shared/contracts/dto'
-import type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 import { isAgentNodeAwaitingSessionTitle } from '@contexts/workspace/presentation/renderer/utils/agentSessionTitleSync'
 import { resolveAgentPresentation } from '@contexts/workspace/presentation/renderer/utils/agentPresentation'
 import { useAppStore } from '../store/useAppStore'
 import { getPtyEventHub } from '../utils/ptyEventHub'
+import { AgentCompletionTracker } from '../utils/agentCompletionTracker'
 
 function normalizeSessionId(rawValue: unknown): string | null {
   if (typeof rawValue !== 'string') {
@@ -23,7 +22,6 @@ export function resolveAgentNodeForSessionId(sessionId: string): {
   nodeId: string
   title: string
   awaitingSessionTitle: boolean
-  runtimeStatus: AgentRuntimeStatus | null
   executionDirectory: string
   taskId: string | null
 } | null {
@@ -52,7 +50,6 @@ export function resolveAgentNodeForSessionId(sessionId: string): {
         nodeId: node.id,
         title: node.data.title,
         awaitingSessionTitle: isAgentNodeAwaitingSessionTitle(node),
-        runtimeStatus: presentation.status,
         executionDirectory: resolvedExecutionDirectory,
         taskId,
       }
@@ -83,7 +80,8 @@ export function useAgentStandbyNotificationWatcher({
   onAgentEnteredStandby: (payload: AgentStandbyNotificationPayload) => void
   onAgentEnteredWorking: (sessionId: string) => void
 }): void {
-  const lastStateBySessionIdRef = useRef<Map<string, TerminalSessionState>>(new Map())
+  const completionsRef = useRef<AgentCompletionTracker | null>(null)
+  completionsRef.current ??= new AgentCompletionTracker(Date.now())
   const standbyHandlerRef = useRef(onAgentEnteredStandby)
   const workingHandlerRef = useRef(onAgentEnteredWorking)
 
@@ -101,38 +99,30 @@ export function useAgentStandbyNotificationWatcher({
     }
 
     const ptyEventHub = getPtyEventHub()
-    const unsubscribe = ptyEventHub.onState((event: TerminalSessionStateEvent) => {
+    const completions = completionsRef.current!
+    const unsubscribeExit = ptyEventHub.onExit(event => completions.forget(event.sessionId))
+    const unsubscribe = ptyEventHub.onState((event, delivery) => {
       const sessionId = normalizeSessionId(event.sessionId)
       if (!sessionId) {
         return
       }
 
-      const previous = lastStateBySessionIdRef.current.get(sessionId) ?? null
-      lastStateBySessionIdRef.current.set(sessionId, event.state)
-
-      if (event.state === 'working') {
+      const snapshot = event.agentRunState
+      if (!snapshot) {
+        return
+      }
+      const completed = completions.consume(snapshot, delivery?.replay === true)
+      if (snapshot.state === 'working' && delivery?.replay !== true) {
         workingHandlerRef.current(sessionId)
         return
       }
 
-      if (event.state === 'waiting') {
+      if (!completed) {
         return
       }
 
       const resolved = resolveAgentNodeForSessionId(sessionId)
       if (!resolved) {
-        return
-      }
-
-      const inferredPrevious: TerminalSessionState | null =
-        previous ??
-        (resolved.runtimeStatus === 'running' || resolved.runtimeStatus === 'restoring'
-          ? 'working'
-          : resolved.runtimeStatus === 'standby'
-            ? 'standby'
-            : null)
-
-      if (inferredPrevious !== 'working') {
         return
       }
 
@@ -151,6 +141,7 @@ export function useAgentStandbyNotificationWatcher({
 
     return () => {
       unsubscribe()
+      unsubscribeExit()
     }
   }, [enabled])
 }

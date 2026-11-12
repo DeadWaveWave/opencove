@@ -36,7 +36,7 @@ async function createTaskAndOpenEditor(page: Page) {
   await page.getByTestId('task-node-open-editor').click()
 }
 
-for (const theme of ['pixel', 'pixel-light']) {
+for (const theme of ['dark', 'light']) {
   test(`menus and dialogs keep their context on desktop and mobile in ${theme}`, async ({
     page,
   }, testInfo) => {
@@ -60,7 +60,7 @@ for (const theme of ['pixel', 'pixel-light']) {
     await expectFits(canvasMenu)
     expect(await canvasMenu.evaluate(element => getComputedStyle(element).borderRadius)).toBe('8px')
     await expect(
-      page.getByTestId('workspace-context-create-space').locator('.lucide-scan'),
+      page.getByTestId('workspace-context-create-space').locator('[data-cove-pixel-icon="focus"]'),
     ).toBeVisible()
     await testInfo.attach(`menu-${theme}-desktop`, {
       body: await page.screenshot(),

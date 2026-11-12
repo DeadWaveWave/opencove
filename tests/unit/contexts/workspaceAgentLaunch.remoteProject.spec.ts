@@ -127,7 +127,11 @@ describe('remote project agent launch', () => {
       mode: 'new',
       model: null,
       mergedEnv: {},
-      agentSettings: { agentFullAccess: true, defaultTerminalProfileId: null },
+      agentSettings: {
+        agentFullAccess: true,
+        codexReuseRunningAppServer: false,
+        defaultTerminalProfileId: null,
+      },
       launchGeometry: { terminalGeometry: { cols: 80, rows: 24 } },
     })
 
@@ -135,6 +139,7 @@ describe('remote project agent launch', () => {
     expect(invoke).toHaveBeenCalledWith({
       kind: 'command',
       id: 'session.launchAgentInMount',
+      clientFeatures: { managedClaudeResumeBindingV1: true },
       payload: expect.objectContaining({
         mountId: 'remote-mount',
         cwdUri: 'file:///remote/project',

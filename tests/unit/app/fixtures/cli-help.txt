@@ -1,0 +1,85 @@
+OpenCove CLI (dev)
+
+Usage:
+  opencove ping [--pretty] [--endpoint <url>] [--token <token>]
+  opencove plugin guide [--pretty]
+  opencove plugin list [--pretty]
+  opencove plugin install <directory> [--pretty]
+  opencove plugin install-git <repository> [--ref <ref>] [--directory <path>] [--build none|npm|pnpm] [--script <name>] [--output <path>]
+  opencove plugin source <id> | check <id> | update <id> [--ref <ref>]
+  opencove plugin apply <candidate-id> | rollback <id> <revision>
+  opencove plugin discover [--query <text>]
+  opencove plugin details <id> [--pretty]
+  opencove plugin run <id> <command> [--params <json>] [--node <id>] [--view <id>] [--project <id>] [--pretty]
+  opencove plugin open <id> [--node <id>] [--project <id>] [--space <id>] [--pretty]
+  opencove plugin windows <id> [--project <id>] [--pretty]
+  opencove plugin skill <id> <skill> [--pretty]
+  New plugin windows always require --project; use project list to find IDs.
+  opencove plugin reload <id> [--pretty]
+  opencove plugin enable <id> [--pretty]
+  opencove plugin disable <id> [--pretty]
+  opencove plugin uninstall <id> [--pretty]
+  opencove endpoint list [--pretty]
+  opencove endpoint register --hostname <host> --port <port> --remote-token <token> [--display-name <name>] [--pretty]
+  opencove endpoint ping --endpoint-id <id> [--ping-timeout <ms>] [--pretty]
+  opencove endpoint remove --endpoint-id <id> [--pretty]
+
+  opencove project list [--pretty]
+  opencove space list [--project <id>] [--pretty]
+
+  opencove space get --space <id> [--pretty]
+
+  opencove node list [space locator] [--kind <kind>] [--pretty]
+  opencove node get --node <id> [--pretty]
+  opencove node create <note|task|website|agent|terminal> [space locator] [--focus] [--pretty]
+  opencove node update <note|task|website> --node <id> [--frame <json>] [--pretty]
+  opencove node delete --node <id> [--pretty]
+  opencove canvas focus node --node <id> [--pretty]
+  opencove canvas focus space [space locator] [--pretty]
+
+  opencove mount list --project <id> [--pretty]
+  opencove mount create --project <id> --endpoint-id <id> --root-path <path> [--name <text>] [--pretty]
+
+  opencove mount resolve --mount <id> [--pretty]
+  opencove mount remove --mount <id> [--pretty]
+
+  opencove fs read --uri <uri> [--pretty]
+  opencove fs write --uri <uri> --content <text> [--pretty]
+  opencove fs stat --uri <uri> [--pretty]
+  opencove fs ls --uri <uri> [--pretty]
+
+  opencove fs read-in-mount --mount <id> --uri <uri> [--pretty]
+  opencove fs write-in-mount --mount <id> --uri <uri> --content <text> [--pretty]
+  opencove fs stat-in-mount --mount <id> --uri <uri> [--pretty]
+  opencove fs ls-in-mount --mount <id> --uri <uri> [--pretty]
+
+  opencove pty spawn-in-mount --mount <id> [--cwd-uri <uri>] [--shell <path>] [--profile-id <id>] [--cols <n>] [--rows <n>] [--pretty]
+  opencove pty attach --session <id>
+
+  opencove worktree list [--project <id>] [--pretty]
+  opencove worktree create --space <id> [--name <branch>] [--pretty]
+  opencove worktree archive --space <id> [--force] [--delete-branch] [--pretty]
+
+  opencove session run-agent --space <id> --prompt <text> [--provider <id>] [--model <id>] [--pretty]
+  opencove session get --session <id> [--pretty]
+  opencove session final --session <id> [--pretty]
+  opencove session kill --session <id> [--pretty]
+
+  opencove worker start [--hostname <bindHost>] [--advertise-hostname <host>] [--port <port>] [--user-data <dir>] [--token <token>] [--web-ui-password <text> | --web-ui-password-hash <hash>] [--approve-root <path>]
+  opencove worker status [--all] [--user-data <dir>] [--endpoint <url>] [--token <token>] [--pretty]
+  opencove worker stop [--user-data <dir>] [--pid <pid>] [--force] [--pretty]
+
+Global Options:
+  --pretty                 Pretty-print JSON output
+  --endpoint <url>          Override control surface base URL (for tunnels/remote)
+  --token <token>           Override bearer token; use --token=<token> when it starts with '-'
+  --timeout <ms>            Override control surface request timeout (default 20000ms)
+
+Space Locator:
+  --space <id>
+  --space-name <name> [--project <id>]
+  --worker <id-or-name> --branch <branch> [--project <id>]
+  --worker <id-or-name> --path <absolute-path> [--project <id>]
+
+Environment:
+  OPENCOVE_USER_DATA_DIR=/path/to/userData (restrict lookup to this userData dir)

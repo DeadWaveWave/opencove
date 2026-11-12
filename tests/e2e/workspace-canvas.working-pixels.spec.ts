@@ -1,39 +1,12 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, selectCoveOption } from './workspace-canvas.helpers'
 import {
   installPtySessionCapture,
   resolveFirstAgentSessionId,
   writeToPty,
 } from './workspace-canvas.agent-status-watcher.helpers'
+import { installPixelDrawProbe, readPixelDrawProbe } from './workspace-canvas.pixel-draw-probe'
 import { openPixelAppearance, setPixelEffect } from './workspace-canvas.pixel-effects.helpers'
-
-async function readRims(page: Page) {
-  return page.getByTestId('workspace-pixel-layer').evaluate(element => {
-    const canvas = element as HTMLCanvasElement
-    const node = document.querySelector('.terminal-node')!
-    const bounds = node.getBoundingClientRect()
-    const view = canvas.getBoundingClientRect()
-    const context = canvas.getContext('2d')!
-    const scale = canvas.width / view.width
-    const sample = (edge: number) => {
-      const x = Math.max(0, Math.floor((edge - view.x) * scale))
-      const y = Math.max(0, Math.floor((bounds.top - view.y + 40) * scale))
-      const width = Math.min(12 * scale, canvas.width - x)
-      const height = Math.min((bounds.height - 50) * scale, canvas.height - y)
-      if (width <= 0 || height <= 0) {
-        return 0
-      }
-      return context
-        .getImageData(x, y, width, height)
-        .data.reduce((sum, value, index) => sum + (index % 4 === 3 ? value : 0), 0)
-    }
-    return {
-      left: sample(bounds.left - 12),
-      right: sample(bounds.right),
-      image: canvas.toDataURL(),
-    }
-  })
-}
 
 test('uses Cove by default and shows theme-adaptive, switchable Working rims from real Agent hooks', async ({
   browserName,
@@ -89,17 +62,29 @@ test('uses Cove by default and shows theme-adaptive, switchable Working rims fro
     const layer = window.getByTestId('workspace-pixel-layer')
     const send = (state: string) =>
       writeToPty(window, { sessionId, data: `<test-codex-hook-${state}>\r` })
+    await installPixelDrawProbe(window)
     await send('working')
     await expect(status).toHaveText('Working')
     await expect(layer).toHaveAttribute('data-cove-pixel-working-node-ids', /.+/)
-    await expect
-      .poll(async () => {
-        const rims = await readRims(window)
-        return rims.left > 100 && rims.right > 100
-      })
-      .toBe(true)
-    const first = await readRims(window)
-    await expect.poll(async () => (await readRims(window)).image).not.toBe(first.image)
+    const verifyZoom = async (zoom: number) => {
+      await window.evaluate(next => window.__opencoveWorkspaceCanvasTestApi!.setZoom(next), zoom)
+      await expect
+        .poll(async () =>
+          (await readPixelDrawProbe(window)).some(
+            frame =>
+              Math.abs(frame.zoom - zoom) < 0.001 &&
+              frame.pixels.length === 16 &&
+              frame.pixels.every((pixel, index) => pixel.size === (index % 8 === 0 ? 3.5 : 2.5)),
+          ),
+        )
+        .toBe(true)
+    }
+    await verifyZoom(0.5)
+    await verifyZoom(1)
+    await testInfo.attach('patrol-screen-pixels', {
+      body: JSON.stringify(await readPixelDrawProbe(window)),
+      contentType: 'application/json',
+    })
     const size = await agent.boundingBox()
     const inspectTheme = async (theme: string) => {
       await openPixelAppearance(window)
@@ -107,16 +92,31 @@ test('uses Cove by default and shows theme-adaptive, switchable Working rims fro
       await window.locator('.settings-panel__close').click()
       await expect(layer).toHaveAttribute('data-cove-pixel-working-node-ids', /.+/)
       expect(await agent.boundingBox()).toEqual(size)
+      const ink = await layer.evaluate(element => {
+        const style = getComputedStyle(element)
+        const color =
+          style.getPropertyValue('--cove-kind-ai-ink').trim() ||
+          style.getPropertyValue('--cove-pixel-blue').trim()
+        const context = document.createElement('canvas').getContext('2d')!
+        context.fillStyle = color
+        return context.fillStyle
+      })
+      await expect
+        .poll(async () =>
+          (await readPixelDrawProbe(window)).some(
+            frame => frame.pixels.length > 0 && frame.pixels.every(pixel => pixel.color === ink),
+          ),
+        )
+        .toBe(true)
       await testInfo.attach(`working-rims-${theme}`, {
         body: await window.screenshot(),
         contentType: 'image/png',
       })
     }
-    await inspectTheme('pixel')
-    await inspectTheme('pixel-light')
+    await inspectTheme('light')
     await inspectTheme('dark')
     await send('waiting')
-    await expect(status).toHaveText('Waiting')
+    await expect(status).toHaveText('Needs approval')
     await expect(layer).toHaveAttribute('data-cove-pixel-working-node-ids', '')
     await expect(layer).toBeHidden()
     await send('done')

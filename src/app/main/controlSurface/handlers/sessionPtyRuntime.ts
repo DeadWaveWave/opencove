@@ -1,3 +1,4 @@
+import type { ClaudeTranscriptPort } from '../../../../shared/runtime/agentHook/claudeTranscript'
 import type { SessionStateWatcherStartInput } from '../../../../contexts/terminal/presentation/main-ipc/sessionStateWatcher'
 import type {
   AgentProviderId,
@@ -9,6 +10,7 @@ import type {
   TerminalAgentReexecInput,
   TerminalAgentReexecResult,
   AgentHookInstallState,
+  AgentHookCoverage,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
@@ -16,7 +18,7 @@ import type { AgentLaunchArtifactScope } from '../../../../contexts/agent/applic
 
 export type TerminalAgentReexecRuntimeInput = TerminalAgentReexecInput & { operationId: string }
 
-export interface ControlSurfacePtyRuntime {
+export interface ControlSurfacePtyRuntime extends ClaudeTranscriptPort {
   isIdle?: () => boolean
   listProfiles?: () => Promise<ListTerminalProfilesResult>
   spawnSession: (options: {
@@ -28,6 +30,7 @@ export interface ControlSurfacePtyRuntime {
     env?: NodeJS.ProcessEnv
     agentProvider?: AgentProviderId
     initialAgentState?: 'working' | 'standby'
+    hookCoverage?: AgentHookCoverage
     hookInstallState?: AgentHookInstallState
     launchArtifacts?: AgentLaunchArtifactScope
   }) => Promise<{ sessionId: string }>

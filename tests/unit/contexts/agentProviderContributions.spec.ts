@@ -1,7 +1,6 @@
 import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
-import { createServer, type Server } from 'node:net'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AgentLaunchArtifactScope } from '../../../src/contexts/agent/application/services/AgentLaunchArtifactScope'
 import { ClaudeCodeAgentProviderContribution } from '../../../src/contexts/agent/infrastructure/providers/claude-code/ClaudeCodeAgentProviderContribution'
@@ -21,18 +20,6 @@ const detector = {
     source: 'override' as const,
     diagnostics: [],
   })),
-}
-
-async function listen(server: Server, socketPath: string): Promise<void> {
-  await new Promise(resolveListen => {
-    server.listen(socketPath, () => resolveListen())
-  })
-}
-
-async function closeServer(server: Server): Promise<void> {
-  await new Promise(resolveClose => {
-    server.close(() => resolveClose())
-  })
 }
 
 function channel(provider: 'claude' | 'codex') {
@@ -78,6 +65,7 @@ function launchCommand(
     model: null,
     resumeSessionId: null,
     agentFullAccess: true,
+    codexReuseRunningAppServer: false,
     ...(environment ? { environment } : {}),
     workspaceDirectory: '/tmp/workspace',
   }
@@ -97,6 +85,7 @@ describe('ClaudeCodeAgentProviderContribution', () => {
     const plan = await provider.launcher.createLaunchPlan(launchCommand(artifacts))
     artifacts.seal()
 
+    expect(plan.hookCoverage).toBe('lifecycle')
     const settingsIndex = plan.args.indexOf('--settings')
     expect(settingsIndex).toBeGreaterThanOrEqual(0)
     const settingsPath = plan.args[settingsIndex + 1]
@@ -201,6 +190,7 @@ describe('CodexAgentProviderContribution', () => {
         artifacts.seal()
 
         await expect(readFile(marker, 'utf8')).resolves.toBe('0.3.0')
+        expect(plan.hookCoverage).toBe('notify_only')
         expect(plan.args.join('\n')).not.toContain('hooks.SessionEnd=')
         expect(plan.args.join('\n')).toContain(
           'notify=["/usr/bin/env","ELECTRON_RUN_AS_NODE=1","/runtime/node"',
@@ -235,6 +225,8 @@ describe('CodexAgentProviderContribution', () => {
     const plan = await provider.launcher.createLaunchPlan(launchCommand(artifacts))
     artifacts.seal()
 
+    expect(plan.hookCoverage).toBe('lifecycle')
+    expect(provider.prompting).toEqual({ supported: true, submitDelayMs: 300 })
     expect(resolveTrust).toHaveBeenCalledWith(
       expect.objectContaining({
         executable: 'codex',
@@ -270,6 +262,7 @@ describe('CodexAgentProviderContribution', () => {
     const plan = await provider.launcher.createLaunchPlan(launchCommand(artifacts))
     artifacts.seal()
 
+    expect(plan.hookCoverage).toBe('notify_only')
     expect(plan.args.join('\n')).not.toContain('hooks.SessionEnd=')
     expect(plan.args.join('\n')).toContain(
       'notify=["/usr/bin/env","ELECTRON_RUN_AS_NODE=1","/runtime/node"',
@@ -277,91 +270,21 @@ describe('CodexAgentProviderContribution', () => {
     await artifacts.dispose()
   })
 
-  it.skipIf(process.platform === 'win32').each(['HOME', 'CODEX_HOME'] as const)(
-    'injects no --config overrides when the implicit Codex daemon is live via %s',
-    async homeSource => {
-      const hook = channel('codex')
-      const artifacts = new AgentLaunchArtifactScope()
-      const root = await mkdtemp('/tmp/opencove-codex-daemon-')
-      // Keep Unix socket paths short enough on macOS, independently of tmpdir().
-      const codexHome = homeSource === 'HOME' ? join(root, '.codex') : root
-      if (homeSource === 'HOME') {
-        vi.stubEnv('HOME', root)
-      }
-      const socketPath = join(codexHome, 'app-server-control', 'app-server-control.sock')
-      await mkdir(dirname(socketPath), { recursive: true })
-      const daemon = createServer(socket => {
-        socket.destroy()
-      })
-      await listen(daemon, socketPath)
-      const resolveTrust = vi.fn(async () => null)
+  it('reports no coverage without a channel and allows an injected submit delay', async () => {
+    const artifacts = new AgentLaunchArtifactScope()
+    try {
       const provider = new CodexAgentProviderContribution({
-        channel: hook.channel,
-        detector,
-        hookTrustResolver: resolveTrust,
-        runtimeExecutable: '/runtime/node',
+        submitDelayMs: 17,
         runtimePlatform: 'linux',
       })
-
-      try {
-        const plan = await provider.launcher.createLaunchPlan(
-          launchCommand(artifacts, homeSource === 'CODEX_HOME' ? { CODEX_HOME: root } : undefined),
-        )
-        artifacts.seal()
-
-        expect(plan.args).not.toContain('--config')
-        expect(resolveTrust).not.toHaveBeenCalled()
-        expect(plan.env).toMatchObject({
-          OPENCOVE_CODEX_HOOK_TOKEN: 'codex-token',
-        })
-        expect(plan.hookInstallState).toBe('skipped')
-
-        plan.onStarted?.('pty-daemon-1')
-        expect(hook.commit).toHaveBeenCalledWith('pty-daemon-1')
-        expect(hook.dispose).not.toHaveBeenCalled()
-        await artifacts.dispose()
-        expect(hook.dispose).toHaveBeenCalledTimes(1)
-      } finally {
-        await closeServer(daemon)
-        await rm(root, { recursive: true, force: true })
-      }
-    },
-  )
-
-  it.skipIf(process.platform === 'win32')(
-    'keeps legacy --config injection when no daemon socket answers',
-    async () => {
-      const hook = channel('codex')
-      const artifacts = new AgentLaunchArtifactScope()
-      const root = await mkdtemp('/tmp/opencove-codex-daemon-')
-      const socketPath = join(root, 'app-server-control', 'app-server-control.sock')
-      await mkdir(dirname(socketPath), { recursive: true })
-      const resolveTrust = vi.fn(async () => null)
-      const provider = new CodexAgentProviderContribution({
-        channel: hook.channel,
-        detector,
-        hookTrustResolver: resolveTrust,
-        runtimeExecutable: '/runtime/node',
-        runtimePlatform: 'linux',
-      })
-
-      try {
-        const plan = await provider.launcher.createLaunchPlan(
-          launchCommand(artifacts, { CODEX_HOME: root }),
-        )
-        artifacts.seal()
-
-        expect(plan.args.join('\n')).toContain(
-          'notify=["/usr/bin/env","ELECTRON_RUN_AS_NODE=1","/runtime/node"',
-        )
-        expect(plan.hookInstallState).toBe('installed')
-        expect(resolveTrust).toHaveBeenCalledTimes(1)
-        await artifacts.dispose()
-      } finally {
-        await rm(root, { recursive: true, force: true })
-      }
-    },
-  )
+      const plan = await provider.launcher.createLaunchPlan(launchCommand(artifacts))
+      expect(plan).toMatchObject({ hookCoverage: 'none', hookInstallState: 'not_installed' })
+      expect(provider.prompting).toEqual({ supported: true, submitDelayMs: 17 })
+    } finally {
+      artifacts.seal()
+      await artifacts.dispose()
+    }
+  })
 
   it('uses platform-safe TOML strings', () => {
     expect(serializeCodexTomlString('C:\\Open Cove\\relay.mjs', 'win32')).toBe(

@@ -4,17 +4,17 @@ import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurfac
 import { useCompactViewport } from '@app/renderer/components/useCompactViewport'
 import { menuHoverHandler } from '@app/renderer/components/menuHoverHandler'
 import {
-  Check,
-  ChevronRight,
-  Code2,
-  Copy,
-  FolderOpen,
-  GitBranchPlus,
-  LayoutGrid,
-  Package,
-  Terminal,
-  Undo2,
-} from 'lucide-react'
+  CheckIcon,
+  ChevronRightIcon,
+  CodeIcon,
+  CopyIcon,
+  FolderOpenIcon,
+  GitBranchIcon,
+  GridIcon,
+  PackageIcon,
+  TerminalIcon,
+  UndoIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/contracts/dto'
 import { LABEL_COLORS, type LabelColor } from '@shared/types/labelColor'
@@ -52,7 +52,7 @@ const SPACE_ACTION_MENU_WIDTH = 220
 
 function renderMark(checked: boolean): React.JSX.Element {
   return checked ? (
-    <Check className="workspace-context-menu__mark" aria-hidden="true" />
+    <CheckIcon className="workspace-context-menu__mark" />
   ) : (
     <span className="workspace-context-menu__mark" aria-hidden="true" />
   )
@@ -277,9 +277,6 @@ export function WorkspaceSpaceActionMenu({
               className="workspace-label-color-menu__dot workspace-label-color-menu__dot--none"
               aria-hidden="true"
             />
-            {currentLabelColor === null ? (
-              <Check className="workspace-space-action-menu__color-check" aria-hidden="true" />
-            ) : null}
           </button>
 
           {LABEL_COLORS.map(color => {
@@ -304,9 +301,6 @@ export function WorkspaceSpaceActionMenu({
                   data-cove-label-color={color}
                   aria-hidden="true"
                 />
-                {selected ? (
-                  <Check className="workspace-space-action-menu__color-check" aria-hidden="true" />
-                ) : null}
               </button>
             )
           })}
@@ -324,7 +318,7 @@ export function WorkspaceSpaceActionMenu({
               closeMenu()
             }}
           >
-            <GitBranchPlus className="workspace-context-menu__icon" aria-hidden="true" />
+            <GitBranchIcon className="workspace-context-menu__icon" />
             <span className="workspace-context-menu__label">
               {t('spaceActions.createWorktree')}
             </span>
@@ -341,7 +335,7 @@ export function WorkspaceSpaceActionMenu({
               closeMenu()
             }}
           >
-            <Package className="workspace-context-menu__icon" aria-hidden="true" />
+            <PackageIcon className="workspace-context-menu__icon" />
             <span className="workspace-context-menu__label">{t('spaceActions.archive')}</span>
           </button>
         ) : null}
@@ -353,7 +347,7 @@ export function WorkspaceSpaceActionMenu({
             void Promise.resolve(onCopyPath()).finally(closeMenu)
           }}
         >
-          <Copy className="workspace-context-menu__icon" aria-hidden="true" />
+          <CopyIcon className="workspace-context-menu__icon" />
           <span className="workspace-context-menu__label">{t('spaceActions.copyPath')}</span>
         </button>
 
@@ -367,12 +361,9 @@ export function WorkspaceSpaceActionMenu({
             onMouseEnter={menuHoverHandler(() => openSubmenuTransient('open'))}
             onClick={() => openSubmenuPinned('open')}
           >
-            <FolderOpen className="workspace-context-menu__icon" aria-hidden="true" />
+            <FolderOpenIcon className="workspace-context-menu__icon" />
             <span className="workspace-context-menu__label">{t('spaceActions.open')}</span>
-            <ChevronRight
-              className="workspace-context-menu__icon workspace-space-action-menu__chevron"
-              aria-hidden="true"
-            />
+            <ChevronRightIcon className="workspace-context-menu__icon workspace-space-action-menu__chevron" />
           </button>
         ) : null}
 
@@ -403,7 +394,7 @@ export function WorkspaceSpaceActionMenu({
               closeMenu()
             }}
           >
-            <Undo2 className="workspace-context-menu__icon" aria-hidden="true" />
+            <UndoIcon className="workspace-context-menu__icon" />
             <span className="workspace-context-menu__label">{t('spaceCollapse.undoArrange')}</span>
           </button>
         ) : null}
@@ -418,7 +409,7 @@ export function WorkspaceSpaceActionMenu({
               closeMenu()
             }}
           >
-            <LayoutGrid className="workspace-context-menu__icon" aria-hidden="true" />
+            <GridIcon className="workspace-context-menu__icon" />
             <span className="workspace-context-menu__label">
               {t('spaceActions.arrangeInSpace')}
             </span>
@@ -460,11 +451,11 @@ export function WorkspaceSpaceActionMenu({
               }}
             >
               {opener.id === 'finder' ? (
-                <FolderOpen className="workspace-context-menu__icon" aria-hidden="true" />
+                <FolderOpenIcon className="workspace-context-menu__icon" />
               ) : ['terminal', 'iterm', 'warp', 'ghostty'].includes(opener.id) ? (
-                <Terminal className="workspace-context-menu__icon" aria-hidden="true" />
+                <TerminalIcon className="workspace-context-menu__icon" />
               ) : (
-                <Code2 className="workspace-context-menu__icon" aria-hidden="true" />
+                <CodeIcon className="workspace-context-menu__icon" />
               )}
               <span className="workspace-context-menu__label">{opener.label}</span>
             </button>

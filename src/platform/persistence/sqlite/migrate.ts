@@ -1,4 +1,6 @@
+import { ensureNodeLineageSchema } from '../../../contexts/workspace/infrastructure/nodeLineage/SqliteNodeLineageRepository'
 import type Database from 'better-sqlite3'
+import { ensureManagedClaudeResumeSchema } from './managedClaudeResumeSchema'
 import { DB_SCHEMA_VERSION, LEGACY_WORKSPACE_STATE_KEY } from './constants'
 import { normalizePersistedAppState } from './normalize'
 import { safeJsonParse } from './utils'
@@ -13,6 +15,8 @@ function quoteSqliteIdentifier(value: string): string {
 }
 
 function createTables(db: Database.Database): void {
+  ensureManagedClaudeResumeSchema(db)
+  ensureNodeLineageSchema(db)
   db.exec(`
     PRAGMA journal_mode = WAL;
     PRAGMA synchronous = NORMAL;
@@ -52,6 +56,7 @@ function createTables(db: Database.Database): void {
       session_id TEXT,
       title TEXT NOT NULL,
       title_pinned_by_user INTEGER NOT NULL,
+      title_is_literal INTEGER NOT NULL DEFAULT 0,
       position_x REAL NOT NULL,
       position_y REAL NOT NULL,
       width INTEGER NOT NULL,
@@ -300,6 +305,12 @@ function ensureCurrentSchema(db: Database.Database): void {
     tableName: 'workspaces',
     columnName: 'space_archive_records_json',
     definitionSql: `TEXT NOT NULL DEFAULT '[]'`,
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'nodes',
+    columnName: 'title_is_literal',
+    definitionSql: 'INTEGER NOT NULL DEFAULT 0',
   })
 
   const addedWorkspaceSortOrder = ensureTableColumn(db, {

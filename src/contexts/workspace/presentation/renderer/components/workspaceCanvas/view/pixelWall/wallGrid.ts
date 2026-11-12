@@ -3,6 +3,8 @@ export const WALL_WORLD_CELL = 24
 /** Cells stay between these screen sizes (Tide: 13–26px, in steps of two). */
 export const WALL_MIN_SCREEN_CELL = 13
 export const WALL_MAX_SCREEN_CELL = 26
+/** The frame shadow's glass band, shared by the contrast cap and cursor light. */
+export const GLASS_REACH_CELLS = 2
 
 export interface WallViewport {
   /** Screen offset of the world origin, as React Flow's transform. */
@@ -15,6 +17,9 @@ export interface WallViewport {
 
 /** The visible cells of the wall, anchored to the world so panning never slides a cell. */
 export interface WallGrid {
+  /** Actual viewport dimensions in CSS px, including partial edge cells. */
+  width: number
+  height: number
   worldCell: number
   screenCell: number
   firstColumn: number
@@ -53,6 +58,8 @@ export function resolveWallGrid(viewport: WallViewport): WallGrid {
   const originX = firstColumn * screenCell + viewport.x
   const originY = firstRow * screenCell + viewport.y
   return {
+    width,
+    height,
     worldCell,
     screenCell,
     firstColumn,

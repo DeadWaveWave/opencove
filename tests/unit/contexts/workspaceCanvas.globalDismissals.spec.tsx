@@ -51,6 +51,12 @@ vi.mock(
   },
 )
 
+// Window signals subscribe to the PTY event hub, which this view test does not provide.
+vi.mock(
+  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/windowSignals/WorkspaceWindowSignals',
+  () => ({ WorkspaceWindowSignals: () => null }),
+)
+
 vi.mock(
   '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WorkspaceSpaceSwitcher',
   () => {
@@ -194,7 +200,7 @@ function createBaseProps(
     setSpaceRenameDraft: () => undefined,
     commitSpaceRename: () => undefined,
     cancelSpaceRename: () => undefined,
-    startSpaceRename: () => undefined,
+    activateSpaceTitle: () => undefined,
     selectedNodeCount: 0,
     isMinimapVisible: false,
     minimapNodeColor: () => '#000000',

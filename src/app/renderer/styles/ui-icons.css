@@ -1,0 +1,50 @@
+/*
+ * Pixel icons (Tide): every icon in the app is 12×12 pixel art in the current colour. They are
+ * drawn only at the --cove-icon-size-* sizes, where each cell lands on whole device pixels at 2×.
+ */
+:root {
+  --cove-icon-size-sm: 12px;
+  --cove-icon-size-md: 18px;
+  --cove-icon-size-lg: 24px;
+}
+
+.cove-pixel-icon {
+  display: block;
+  flex: none;
+}
+
+/* Busy: the lit block steps round the ring; the three behind it trail off. */
+.cove-pixel-spinner__block {
+  /* Each block's place in the ring, 0–7; PixelSpinner sets it on the block. */
+  --cove-pixel-spinner-step: 0;
+
+  opacity: 0.2;
+  animation: cove-pixel-spinner-step 800ms steps(1, end) infinite;
+  animation-delay: calc((var(--cove-pixel-spinner-step) - 8) * 100ms);
+}
+
+@keyframes cove-pixel-spinner-step {
+  0% {
+    opacity: 1;
+  }
+
+  12.5% {
+    opacity: 0.7;
+  }
+
+  25% {
+    opacity: 0.45;
+  }
+
+  37.5%,
+  100% {
+    opacity: 0.2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cove-pixel-spinner__block {
+    animation-duration: 2400ms;
+    animation-delay: calc((var(--cove-pixel-spinner-step) - 8) * 300ms);
+  }
+}

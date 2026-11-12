@@ -1,3 +1,8 @@
+import { startWorkerHydration } from './workerSync/startupHydration'
+import { clearWorkerConnectionFailure } from './workerSync/workerConnectionState'
+import { canAcceptHydrationSnapshot } from './useHydrateAppState.helpers'
+import { persistenceScope } from '@contexts/workspace/presentation/renderer/utils/persistence/publicationState'
+import { persistMissingLocalViewStateFromAppState } from '@contexts/workspace/presentation/renderer/utils/persistence/viewState'
 import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
 import {
   DEFAULT_AGENT_SETTINGS,
@@ -351,12 +356,18 @@ export function useHydrateAppState({
     setIsPersistReady(false)
 
     const hydrateAppState = async (): Promise<void> => {
+      const scope = persistenceScope()
       const snapshot = await readPersistedStateWithMeta()
       const { state: persisted, recovery, hasStandardWindowSizeBucket } = snapshot
-      if (isCancelledRef.current) {
+      const isSnapshotCurrent = () =>
+        !isCancelledRef.current &&
+        scope === persistenceScope() &&
+        canAcceptHydrationSnapshot(snapshot)
+      if (!isSnapshotCurrent()) {
         return
       }
 
+      clearWorkerConnectionFailure()
       let resolvedSettings = persisted?.settings ?? DEFAULT_AGENT_SETTINGS
       if (!hasStandardWindowSizeBucket) {
         resolvedSettings = {
@@ -373,10 +384,11 @@ export function useHydrateAppState({
         await applyUiLanguage(resolvedSettings.language)
       }
 
-      if (isCancelledRef.current) {
+      if (!isSnapshotCurrent()) {
         return
       }
       if (persisted) {
+        persistMissingLocalViewStateFromAppState(persisted)
         acceptPersistedStateSnapshot(snapshot)
       }
 
@@ -453,9 +465,10 @@ export function useHydrateAppState({
       void ensureWorkspaceHydrated(resolvedActiveWorkspaceId)
     }
 
-    void hydrateAppState()
+    const stopHydration = startWorkerHydration(hydrateAppState, () => !isCancelledRef.current)
 
     return () => {
+      stopHydration()
       isCancelledRef.current = true
     }
   }, [

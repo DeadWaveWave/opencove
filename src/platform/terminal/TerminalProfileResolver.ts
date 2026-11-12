@@ -2,7 +2,10 @@ import { execFile } from 'node:child_process'
 import os from 'node:os'
 import process from 'node:process'
 import type { ListTerminalProfilesResult, SpawnTerminalInput } from '../../shared/contracts/dto'
+import { stripParentAgentSessionEnv } from '../../shared/runtime/stripParentAgentSessionEnv'
 import { removeElectronRunAsNode } from '../os/ElectronControlEnvironment'
+import type { CommandFileArgument } from '../../shared/types/commandFileArgument'
+import { createTerminalSpawnApplicationError } from '../../shared/errors/terminalSpawnError'
 import {
   buildPowerShellExecArgs,
   findProfileById,
@@ -11,6 +14,7 @@ import {
   isPowerShellCommand,
   loadWindowsProfiles,
   resolveWindowsHostCwd,
+  convertWindowsPathToWslPath,
   type ResolvedTerminalSpawn,
   type TerminalProfileResolverDeps,
 } from './TerminalProfileResolver.windows'
@@ -21,6 +25,7 @@ export interface ResolveCommandSpawnInput {
   cwd: string
   command: string
   args: string[]
+  fileArguments?: readonly CommandFileArgument[]
   profileId?: string | null
   env?: NodeJS.ProcessEnv
   commandEnv?: NodeJS.ProcessEnv
@@ -175,6 +180,7 @@ export class TerminalProfileResolver {
       removeElectronRunAsNode({ ...this.deps.env(), ...(input.env ?? {}) }),
       this.deps.platform,
     )
+    stripParentAgentSessionEnv(env)
 
     if (this.deps.platform !== 'win32') {
       const shell = input.shell ?? resolvePosixShell(this.deps.env().SHELL)
@@ -228,6 +234,7 @@ export class TerminalProfileResolver {
       ...this.deps.env(),
       ...(input.env ?? {}),
     })
+    stripParentAgentSessionEnv(env)
     const resolvedEnv = withTerminalCapabilityEnv(env, this.deps.platform)
 
     if (this.deps.platform !== 'win32') {
@@ -263,8 +270,22 @@ export class TerminalProfileResolver {
     const profileId = profile.id
 
     if (profile.runtimeKind === 'wsl') {
-      const envPairs = Object.entries(input.commandEnv ?? input.env ?? {}).flatMap(
-        ([key, value]) => (typeof value === 'string' ? [`${key}=${value}`] : []),
+      for (const file of input.fileArguments ?? []) {
+        const argument = args[file.index]
+        if (typeof argument !== 'string' || !argument.startsWith(file.prefix)) {
+          throw new Error('Invalid command file argument.')
+        }
+        const path = argument.slice(file.prefix.length)
+        const translated = convertWindowsPathToWslPath(path, profile.id.slice(4))
+        if (!translated) {
+          throw createTerminalSpawnApplicationError('wsl_input_file_unavailable')
+        }
+        args[file.index] = `${file.prefix}${translated}`
+      }
+      const commandEnv = { ...(input.commandEnv ?? input.env ?? {}) }
+      stripParentAgentSessionEnv(commandEnv)
+      const envPairs = Object.entries(commandEnv).flatMap(([key, value]) =>
+        typeof value === 'string' ? [`${key}=${value}`] : [],
       )
       return {
         command: shellSpawn.command,
@@ -278,6 +299,7 @@ export class TerminalProfileResolver {
         env: shellSpawn.env,
         profileId,
         runtimeKind: 'wsl',
+        publicCommand: { command, args: [...args] },
       }
     }
 

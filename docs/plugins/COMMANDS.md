@@ -282,3 +282,5 @@ more than one project, with ambiguous node/view choices, and with a failed or
 uncertain command. The authoring startup example creates a development profile;
 it is not a fallback that an operational Skill may use to replace the user's
 existing instance.
+
+CLI success writes value-only JSON to stdout. Failure exits nonzero and writes JSON `error` to stderr. `plugin run` accepts `--params <json>` or `--params-file <path|->`; the two options are mutually exclusive. Use `--help` for command options and examples.

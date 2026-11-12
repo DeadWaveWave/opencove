@@ -1,3 +1,4 @@
+import { persistenceWriteFailure, classifyWriteResult } from '@shared/sync/persistenceWriteOutcome'
 import type { PersistWriteResult, ReadAppStateResult } from '@shared/contracts/dto'
 import {
   createAppError,
@@ -14,7 +15,11 @@ export interface PersistencePort {
   readAppState: () => Promise<ReadAppStateResult | null>
   writeAppState: (
     state: unknown,
-    options?: { allowEmptyWorkspaceOverwrite?: boolean },
+    options?: {
+      requiresRefresh?: boolean
+      baseRevision?: number | null
+      allowEmptyWorkspaceOverwrite?: boolean
+    },
   ) => Promise<PersistWriteResult>
   readNodeScrollback: (nodeId: string) => Promise<string | null>
   writeNodeScrollback: (nodeId: string, scrollback: string | null) => Promise<PersistWriteResult>
@@ -33,7 +38,7 @@ const AGENT_PLACEHOLDER_SCROLLBACK_KEY_PREFIX = 'opencove:m0:agent-placeholder-s
 const LEGACY_AGENT_PLACEHOLDER_SCROLLBACK_KEY_PREFIX = 'cove:m0:agent-placeholder-scrollback:' // legacy
 const LOCAL_SYNC_WRITE_EVENT_NAME = 'opencove.localSyncWrite'
 
-function publishLocalSyncWriteRevision(revision: unknown): void {
+export function publishLocalSyncWriteRevision(revision: unknown): void {
   if (typeof window === 'undefined') {
     return
   }
@@ -76,20 +81,12 @@ function createIpcPort(): PersistencePort | null {
       try {
         const result = await persistenceApi.writeAppState({
           state,
+          baseRevision: options?.baseRevision,
           allowEmptyWorkspaceOverwrite: options?.allowEmptyWorkspaceOverwrite === true,
         })
-        if (result.ok) {
-          publishLocalSyncWriteRevision(result.revision)
-        }
-        return result
+        return classifyWriteResult(result)
       } catch (error) {
-        return {
-          ok: false,
-          reason: 'io',
-          error: createAppErrorDescriptor('persistence.io_failed', {
-            debugMessage: toAppErrorDescriptor(error).debugMessage,
-          }),
-        }
+        return persistenceWriteFailure(error)
       }
     },
     readNodeScrollback: async nodeId => {
@@ -106,9 +103,7 @@ function createIpcPort(): PersistencePort | null {
         return {
           ok: false,
           reason: 'io',
-          error: createAppErrorDescriptor('persistence.io_failed', {
-            debugMessage: toAppErrorDescriptor(error).debugMessage,
-          }),
+          error: toAppErrorDescriptor(error, 'persistence.io_failed'),
         }
       }
     },
@@ -126,9 +121,7 @@ function createIpcPort(): PersistencePort | null {
         return {
           ok: false,
           reason: 'io',
-          error: createAppErrorDescriptor('persistence.io_failed', {
-            debugMessage: toAppErrorDescriptor(error).debugMessage,
-          }),
+          error: toAppErrorDescriptor(error, 'persistence.io_failed'),
         }
       }
     },
@@ -141,15 +134,9 @@ function createIpcPort(): PersistencePort | null {
     },
     writeWorkspaceStateRaw: async raw => {
       try {
-        return await persistenceApi.writeWorkspaceStateRaw({ raw })
+        return classifyWriteResult(await persistenceApi.writeWorkspaceStateRaw({ raw }))
       } catch (error) {
-        return {
-          ok: false,
-          reason: 'io',
-          error: createAppErrorDescriptor('persistence.io_failed', {
-            debugMessage: toAppErrorDescriptor(error).debugMessage,
-          }),
-        }
+        return persistenceWriteFailure(error)
       }
     },
   }
@@ -169,18 +156,18 @@ function createLocalStoragePort(): PersistencePort | null {
     readAppState: async () => {
       const raw = readWithLegacyFallback(STORAGE_KEY, LEGACY_STORAGE_KEY)
       if (!raw) {
-        return { state: null, recovery: null }
+        return { state: null, recovery: null, revision: null }
       }
 
       try {
         const parsed = JSON.parse(raw) as unknown
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-          return { state: null, recovery: null }
+          return { state: null, recovery: null, revision: null }
         }
 
-        return { state: parsed, recovery: null }
+        return { state: parsed, recovery: null, revision: null }
       } catch {
-        return { state: null, recovery: null }
+        return { state: null, recovery: null, revision: null }
       }
     },
     writeAppState: async state => {

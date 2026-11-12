@@ -90,7 +90,7 @@ test('uses host commands, preferences and themes without creating windows, and r
   try {
     await page.setViewportSize({ width: 1400, height: 1000 })
     await clearAndSeedWorkspace(page, [], {
-      settings: { language: 'en', uiTheme: 'pixel', canvasInputMode: 'mouse' },
+      settings: { language: 'en', uiTheme: 'dark', canvasInputMode: 'mouse' },
     })
     await pluginCli(userDataDir, ['install', source])
     await page.getByTestId('app-header-command-center').click()
@@ -192,7 +192,7 @@ test('dispatches a window menu command only to the explicitly chosen live view',
   )
   const { electronApp, window: page } = await launchApp({ userDataDir, cleanupUserDataDir: false })
   try {
-    await clearAndSeedWorkspace(page, [], { settings: { language: 'en', uiTheme: 'pixel' } })
+    await clearAndSeedWorkspace(page, [], { settings: { language: 'en', uiTheme: 'dark' } })
     await pluginCli(userDataDir, ['install', source])
     await page.getByTestId('app-header-command-center').click()
     await expect(

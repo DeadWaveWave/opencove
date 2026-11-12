@@ -3,7 +3,7 @@
  * tokens, every v1 public token so installed plugin themes keep resolving, and the host tokens
  * that replace the standard theme's literal colours.
  */
-import { mixOver, type Rgb } from './oklch'
+import type { Rgb } from './oklch'
 import { hostTokens } from './themeHostTokens'
 import { statusPillTokens } from './themeStatusTokens'
 import {
@@ -55,12 +55,6 @@ export function resolveRoleColors(theme: GeneratedTheme): RoleColors {
   const n = theme.neutral
   const a = theme.accent
   const frame = dark ? n[1]! : n[0]!
-  // Terminals read their plate over the frame over the canvas; this is that composite, opaque.
-  const plate = mixOver(
-    n[0]!,
-    GLASS[theme.input.appearance].plate,
-    mixOver(frame, GLASS[theme.input.appearance].frame, theme.roles.canvas),
-  )
   return {
     canvas: theme.roles.canvas,
     elevated: theme.roles.surface,
@@ -73,7 +67,9 @@ export function resolveRoleColors(theme: GeneratedTheme): RoleColors {
     accentText: a[10]!,
     onAccent: theme.roles.onAccent,
     focusRing: dark ? a[8]! : a[10]!,
-    terminalBackground: plate,
+    // Terminals read on their kind's plate: this is the shell's, and an agent window picks the
+    // AI plate (terminal-node.css).
+    terminalBackground: theme.kindPlates.shell,
     terminalForeground: n[11]!,
     terminalCursor: dark ? a[8]! : a[10]!,
   }
@@ -128,13 +124,21 @@ export function themeTokens(theme: GeneratedTheme): ThemeTokens {
     '--cove-label-gray': hex(theme.neutral[8]!),
     ...labels,
     '--cove-glass-frame': percent(glass.frame),
-    '--cove-glass-plate': percent(glass.plate),
     '--cove-glass-chrome': percent(glass.chrome),
     '--cove-glass-sheet': percent(glass.sheet),
     '--cove-glass-acrylic': percent(glass.acrylic),
     '--cove-glass-far-tint': percent(glass.farTint),
+    '--cove-glass-sheen': `rgb(255 255 255 / ${glass.sheen})`,
+    '--cove-glass-rim-hi': `rgb(255 255 255 / ${glass.rimHi})`,
+    '--cove-glass-rim-lo': `rgb(255 255 255 / ${glass.rimLo})`,
+    // Drawn once at startup (bootstrap/installGlassGrain.ts); glass has no grain until then.
+    '--cove-glass-grain': `var(--cove-glass-grain-${ap}, none)`,
+    '--cove-pixel-spot': hex(theme.pixel.spot),
     '--cove-pixel-cell': hex(theme.pixel.cell),
     '--cove-pixel-gap': hex(theme.pixel.gap),
+    // A pixel control's bevel (ui-pixel.css): lit along its top, shaded along its bottom.
+    '--cove-pixel-light': rgba([255, 255, 255], 0.2),
+    '--cove-pixel-shade': rgba([0, 0, 0], 0.24),
     ...Object.fromEntries(
       theme.pixel.clouds.map((c, i) => [`--cove-pixel-cloud-${i + 1}`, hex(c)]),
     ),
@@ -148,6 +152,7 @@ export function themeTokens(theme: GeneratedTheme): ThemeTokens {
     '--cove-surface': glassOf('var(--cove-glass-chrome)'),
     '--cove-surface-strong': glassOf('var(--cove-glass-sheet)'),
     '--cove-acrylic-surface': glassOf('var(--cove-glass-acrylic)'),
+    '--cove-acrylic-grain': 'var(--cove-glass-grain)',
     '--cove-window-surface': hex(roles.frame),
     '--cove-surface-hover': inkOverlay(dark ? 7 : 5),
     '--cove-field': inkOverlay(dark ? 5 : 4),
@@ -161,14 +166,10 @@ export function themeTokens(theme: GeneratedTheme): ThemeTokens {
     '--cove-accent-foreground': hex(roles.onAccent),
     '--cove-focus-ring': hex(roles.focusRing),
     '--cove-node-surface': glassOf('var(--cove-glass-frame)'),
-    // Window content sits on an inset plate: neutral step 1 at the plate alpha over the frame
-    // (the composite the contrast matrix checks), with a faint top glare and an inner edge.
-    '--cove-reading-plate':
-      'color-mix(in srgb, var(--cove-neutral-1) var(--cove-glass-plate), transparent)',
-    '--cove-reading-plate-glare': dark ? 'rgb(255 255 255 / 0.03)' : 'rgb(255 255 255 / 0)',
-    '--cove-reading-plate-edge': dark
-      ? 'inset 0 0 0 1px rgb(255 255 255 / 0.045), inset 0 1px 3px rgb(0 0 0 / 0.45)'
-      : `inset 0 0 0 1px ${rgba(theme.neutral[6]!, 0.5)}, inset 0 1px 2px ${rgba(ink, 0.06)}`,
+    // Window content sits on a solid plate, so the wall never shows through what is being read.
+    // This is the theme's own; each window picks its kind's (`--cove-kind-*-plate`). It has no
+    // edge of its own: it melts into the glass frame on every side (window-plate.css).
+    '--cove-reading-plate': hex(theme.roles.plate),
     '--cove-node-header-surface': 'transparent',
     '--cove-node-border': inkOverlay(dark ? 14 : 16),
     '--cove-terminal-background': hex(roles.terminalBackground),
@@ -180,7 +181,14 @@ export function themeTokens(theme: GeneratedTheme): ThemeTokens {
     '--cove-pixel-blue': 'var(--cove-kind-knowledge-solid)',
     '--cove-pixel-cyan': `var(--cove-accent-${PIXEL_CYAN_STEP[ap] + 1})`,
     '--cove-pixel-mint': 'var(--cove-kind-shell-solid)',
-    '--cove-node-background-image': 'none',
+    // Lit glass (Tide prototype): a sheen fading down from the top edge over the grain, and a
+    // specular rim lit from the top left. Reduced transparency zeroes all three.
+    '--cove-node-background-image':
+      'linear-gradient(180deg, var(--cove-glass-sheen), transparent 30%), var(--cove-glass-grain)',
+    '--cove-node-rim':
+      'linear-gradient(162deg, var(--cove-glass-rim-hi), var(--cove-glass-rim-lo) 30%, transparent 54%, var(--cove-glass-rim-lo))',
+    '--cove-chrome-background-image':
+      'linear-gradient(180deg, var(--cove-glass-sheen), transparent 60%), var(--cove-glass-grain)',
     '--cove-node-shadow': `0 10px 28px ${shadow}`,
     '--cove-node-shadow-hover': `0 14px 36px ${shadowHover}`,
     '--cove-node-shadow-focus': `0 0 0 1px var(--cove-focus-ring), 0 10px 28px ${shadow}`,
@@ -216,6 +224,10 @@ const TERMINAL_SCOPE_TOKENS = [
   '--cove-border-subtle',
   '--cove-field',
   '--cove-surface-hover',
+  // The plates a terminal window picks its colour from (terminal-node.css).
+  '--cove-kind-shell-plate',
+  '--cove-kind-ai-plate',
+  '--cove-kind-neutral-plate',
 ] as const
 
 /**
@@ -228,11 +240,14 @@ export function terminalScopeTokens(darkTheme: GeneratedTheme): ThemeTokens {
     const reference = /^var\((--cove-[a-z0-9-]+)\)$/.exec(value)
     return reference ? resolve(tokens[reference[1]!]!) : value
   }
+  // The frame follows the shell's glass; the terminal colour is the window kind's plate, picked
+  // on the window from the dark plates below (terminal-node.css), and the shell's where none is.
+  const follows: Partial<Record<(typeof TERMINAL_SCOPE_TOKENS)[number], string>> = {
+    '--cove-terminal-node-surface': 'var(--cove-node-surface)',
+    '--cove-terminal-background': `var(--cove-terminal-kind-plate, ${resolve(tokens['--cove-kind-shell-plate']!)})`,
+  }
   return Object.fromEntries(
-    TERMINAL_SCOPE_TOKENS.map(name => [
-      name,
-      name === '--cove-terminal-node-surface' ? 'var(--cove-node-surface)' : resolve(tokens[name]!),
-    ]),
+    TERMINAL_SCOPE_TOKENS.map(name => [name, follows[name] ?? resolve(tokens[name]!)]),
   )
 }
 
@@ -279,7 +294,7 @@ export function renderFamilyStylesheet(family: ThemeFamilyId): string {
   const blocks = themeBlocks(`:root[data-cove-family='${family}']`, ['dark', 'light'], appearance =>
     generateFamilyTheme(family, appearance),
   )
-  return `${GENERATED_HEADER}\n\n${blocks.join('\n')}`
+  return `${GENERATED_HEADER}\n${blocks.join('\n')}`
 }
 
 /**

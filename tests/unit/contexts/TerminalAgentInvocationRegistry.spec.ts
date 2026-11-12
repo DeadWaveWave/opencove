@@ -23,6 +23,7 @@ describe('TerminalAgentInvocationRegistry', () => {
         sessionId: 'pty-1',
         resumeSessionId: null,
         agentProvider: 'claude-code',
+        agentLaunchKind: 'terminal',
         terminalAgentActivity: {
           provider: 'claude-code',
           invocationId: 'invocation-1',

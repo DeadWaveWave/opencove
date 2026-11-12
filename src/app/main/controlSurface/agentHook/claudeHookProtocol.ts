@@ -1,4 +1,25 @@
+import { isAbsolute } from 'node:path'
+import { claudeFinalMessage } from '../../../../shared/runtime/agentHook/claudeFinalMessage'
+import {
+  claudePromptDigest,
+  claudePromptId,
+} from '../../../../shared/runtime/agentHook/claudePromptEvidence'
+
 export type ClaudeHookTurnState = 'working' | 'waiting' | 'done'
+export type ClaudeSessionStartSource = 'startup' | 'resume' | 'clear' | 'compact' | 'fork'
+
+function sessionStartSource(value: unknown): ClaudeSessionStartSource | undefined {
+  switch (value) {
+    case 'startup':
+    case 'resume':
+    case 'clear':
+    case 'compact':
+    case 'fork':
+      return value
+    default:
+      return undefined
+  }
+}
 
 export interface ClaudeHookInput {
   session_id: string
@@ -8,15 +29,25 @@ export interface ClaudeHookInput {
   tool_name?: string
   tool_use_id?: string
   tool_input?: unknown
+  prompt?: unknown
+  prompt_id?: unknown
+  source?: string
   notification_type?: string
 }
 
 export interface ClaudeHookEnvelope {
   version: 1
+  emittedAtMs?: number
   // Session lifecycle/identity is not evidence of a task transition.
   state: ClaudeHookTurnState | null
   hookEventName: string
   claudeSessionId: string
+  notificationType?: string
+  sessionStartSource?: ClaudeSessionStartSource
+  transcriptPath?: string
+  promptId?: string
+  promptDigest?: string
+  finalMessage?: { message: string; truncated: boolean }
   tool?: {
     name: string
     useId: string | null
@@ -52,12 +83,26 @@ export function validateClaudeHookEnvelope(value: unknown): ClaudeHookEnvelope |
     tool = { name, useId, input: value.tool.input ?? null }
   }
 
+  const sessionStartSourceValue =
+    hookEventName === 'SessionStart'
+      ? sessionStartSource(value.sessionStartSource ?? value.source)
+      : undefined
   return {
     version: 1,
     // Older relays labeled SessionStart as working. Do not replay that inference.
     state: hookEventName === 'SessionStart' ? null : state,
     hookEventName,
     claudeSessionId,
+    ...(typeof value.notificationType === 'string'
+      ? { notificationType: value.notificationType }
+      : {}),
+    ...(sessionStartSourceValue ? { sessionStartSource: sessionStartSourceValue } : {}),
+    ...(typeof value.transcriptPath === 'string' &&
+    isAbsolute(value.transcriptPath) &&
+    value.transcriptPath.length <= 4096 &&
+    !value.transcriptPath.includes('\0')
+      ? { transcriptPath: value.transcriptPath }
+      : {}),
     ...(tool ? { tool } : {}),
   }
 }
@@ -168,11 +213,36 @@ export function normalizeClaudeHookEnvelope(value: unknown): ClaudeHookEnvelope 
     return null
   }
 
+  const sessionStartSourceValue =
+    hookEventName === 'SessionStart' ? sessionStartSource(value.source) : undefined
   return {
     version: 1,
     state,
+    ...(notificationType ? { notificationType } : {}),
     hookEventName,
     claudeSessionId,
+    ...(sessionStartSourceValue ? { sessionStartSource: sessionStartSourceValue } : {}),
+    ...(isAbsolute(transcriptPath) &&
+    transcriptPath.length <= 4096 &&
+    !transcriptPath.includes('\0')
+      ? { transcriptPath }
+      : {}),
+    ...(hookEventName === 'UserPromptSubmit'
+      ? {
+          promptId: claudePromptId(value.prompt_id),
+          promptDigest:
+            value.prompt_truncated === true ? undefined : claudePromptDigest(value.prompt),
+        }
+      : {}),
+    ...(['Stop', 'StopFailure'].includes(hookEventName)
+      ? {
+          promptId: claudePromptId(value.prompt_id),
+          finalMessage: claudeFinalMessage(
+            value.last_assistant_message,
+            value.last_assistant_message_truncated,
+          ),
+        }
+      : {}),
     ...(toolName
       ? {
           tool: {

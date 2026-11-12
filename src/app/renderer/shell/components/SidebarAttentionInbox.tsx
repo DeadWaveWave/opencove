@@ -1,7 +1,8 @@
 import React from 'react'
+import { agentAttentionLabelKey } from '@contexts/workspace/presentation/renderer/utils/agentAttentionLabel'
 import { useTranslation } from '@app/renderer/i18n'
 import { Button } from '@app/renderer/components/ui/Button'
-import type { WaitingAgentReference } from '../utils/agentActivitySummary'
+import type { AgentActivityReference } from '../utils/agentActivitySummary'
 import { describeWaitDuration, resolveWaitDuration } from '../utils/waitDuration'
 import { useAgentWaitingSinceStore, useMinuteClock } from '../hooks/useAgentWaitingSince'
 import { ProjectTile } from './ProjectTile'
@@ -11,7 +12,7 @@ export function SidebarAttentionInbox({
   items,
   onSelectAgentNode,
 }: {
-  items: readonly WaitingAgentReference[]
+  items: readonly AgentActivityReference[]
   onSelectAgentNode: (workspaceId: string, nodeId: string) => void
 }): React.JSX.Element | null {
   const { t } = useTranslation()
@@ -33,10 +34,12 @@ export function SidebarAttentionInbox({
       </h3>
       {items.map(item => {
         const place = `${item.projectName} · ${item.spaceName ?? t('sidebar.rootCanvas')}`
-        const waited = describeWaitDuration(
-          t,
-          resolveWaitDuration(observations.get(item.nodeId)?.waitingSinceMs ?? null, nowMs),
+        const status = t(agentAttentionLabelKey(item))
+        const duration = resolveWaitDuration(
+          observations.get(item.nodeId)?.waitingSinceMs ?? item.needsYouSinceMs ?? null,
+          nowMs,
         )
+        const waited = duration.unit === 'unknown' ? '' : describeWaitDuration(t, duration)
         return (
           <Button
             key={`${item.workspaceId}:${item.nodeId}`}
@@ -44,14 +47,21 @@ export function SidebarAttentionInbox({
             size="sm"
             className="workspace-attention-inbox__item"
             data-testid={`workspace-attention-item-${item.workspaceId}-${item.nodeId}`}
-            aria-label={t('sidebar.inbox.rowLabel', { title: item.title, place, waited })}
+            aria-label={
+              waited
+                ? t('sidebar.inbox.rowLabel', { title: item.title, place, waited, status })
+                : t('agentActivity.attentionRow', { title: item.title, place, status })
+            }
             onClick={() => onSelectAgentNode(item.workspaceId, item.nodeId)}
           >
             <ProjectTile workspaceId={item.workspaceId} iconId={item.projectIconId} size="sm" />
             <span className="workspace-attention-inbox__item-title">{item.title}</span>
             <span className="workspace-attention-inbox__meta">
               <span className="workspace-attention-inbox__place">{place}</span>
-              <span className="workspace-attention-inbox__waited">{waited}</span>
+              <span className="workspace-attention-inbox__waited">
+                {status}
+                {waited ? ` · ${waited}` : ''}
+              </span>
             </span>
           </Button>
         )

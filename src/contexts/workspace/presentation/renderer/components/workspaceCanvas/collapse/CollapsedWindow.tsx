@@ -41,6 +41,7 @@ export function CollapsedWindow({
               : null,
           fallbackTitle: data.title,
           preferFallbackTitle: data.titlePinnedByUser === true,
+          titleIsLiteral: data.titleIsLiteral === true,
         })
       : data.title
   const status = resolveSpaceSummaryStatus(data, t)
@@ -148,6 +149,7 @@ export function CollapsedWindow({
         >
           <NodeKindIcon
             kind={presentation.isAgent ? 'agent' : data.kind}
+            provider={provider}
             pluginId={data.plugin?.pluginId}
           />
           <span className="cove-collapsed-window__pixels" data-cove-part="compact-pixels">

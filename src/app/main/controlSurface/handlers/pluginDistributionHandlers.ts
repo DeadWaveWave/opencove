@@ -1,12 +1,19 @@
+import { pluginRepositoryDetailsOperation } from '@shared/contracts/controlSurface/operations/domains/plugin'
+import { createAppError } from '@shared/errors/appError'
+import type * as z from 'zod'
+import type { SchemaOperation } from '@shared/contracts/controlSurface/operations/defineOperation'
+import {
+  pluginGitInstallOperation,
+  pluginSourceOperation,
+  pluginGitCheckOperation,
+  pluginGitUpdateOperation,
+  pluginGitApplyOperation,
+  pluginRollbackOperation,
+  pluginDiscoverOperation,
+} from '@shared/contracts/controlSurface/operations/domains/plugin'
+import { registerOperation } from '../registerOperation'
 import type { ControlSurface } from '../controlSurface'
 import type { PluginDistributionService } from '@contexts/plugins/application/PluginDistributionService'
-import { createAppError } from '@shared/errors/appError'
-import {
-  distributionFields,
-  gitInstallInput,
-  pluginGitRef,
-} from '@contexts/plugins/domain/pluginDistributionValidation'
-import { pluginString } from '@contexts/plugins/domain/localPluginValidation'
 
 export function registerPluginDistributionHandlers(
   surface: ControlSurface,
@@ -16,21 +23,12 @@ export function registerPluginDistributionHandlers(
     const reason = String(error instanceof Error ? error.message : error).slice(0, 2000)
     throw createAppError('plugin.operation_failed', { params: { reason }, debugMessage: reason })
   }
-  const register = <T>(
-    id: string,
-    kind: 'query' | 'command',
-    validate: (value: unknown) => T,
+
+  const registerSchema = <Wire extends z.ZodType, T>(
+    operation: SchemaOperation<string, 'query' | 'command', Wire, T>,
     handle: (value: T) => Promise<unknown>,
   ) =>
-    surface.register(id, {
-      kind,
-      validate: value => {
-        try {
-          return validate(value)
-        } catch (error) {
-          return fail(error)
-        }
-      },
+    registerOperation(surface, operation, {
       handle: async (_ctx, value) => {
         try {
           return await handle(value)
@@ -40,57 +38,24 @@ export function registerPluginDistributionHandlers(
       },
       defaultErrorCode: 'common.invalid_input',
     })
-  const id = (value: unknown) => {
-    const record = distributionFields(value, ['pluginId'])
-    return pluginString(record.pluginId, 'id', 80)
-  }
-  const update = (value: unknown) => {
-    const record = distributionFields(value, ['pluginId', 'ref'])
-    return {
-      pluginId: pluginString(record.pluginId, 'id', 80),
-      ref: record.ref === undefined ? undefined : pluginGitRef(record.ref),
-    }
-  }
-  register('plugin.git.install', 'command', gitInstallInput, value => service.install(value))
-  register('plugin.source', 'query', id, value => service.inspect(value))
-  register('plugin.git.check', 'command', update, value => service.check(value.pluginId, value.ref))
-  register('plugin.git.update', 'command', update, value =>
-    service.update(value.pluginId, value.ref),
-  )
-  register(
-    'plugin.git.apply',
-    'command',
-    value =>
-      pluginString(distributionFields(value, ['candidateId']).candidateId, 'candidate id', 80),
+  registerSchema(pluginGitInstallOperation, value => service.install(value))
+  registerSchema(pluginSourceOperation, value => service.inspect(value))
+  registerSchema(pluginGitCheckOperation, value => service.check(value.pluginId, value.ref))
+  registerSchema(pluginGitUpdateOperation, value => service.update(value.pluginId, value.ref))
+  registerSchema(
+    pluginGitApplyOperation,
+
     value => service.apply(value),
   )
-  register(
-    'plugin.rollback',
-    'command',
-    value => {
-      const record = distributionFields(value, ['pluginId', 'revision'])
-      return {
-        pluginId: pluginString(record.pluginId, 'id', 80),
-        revision: pluginString(record.revision, 'revision', 64),
-      }
-    },
+  registerSchema(
+    pluginRollbackOperation,
+
     value => service.rollback(value.pluginId, value.revision),
   )
-  register(
-    'plugin.repository.details',
-    'query',
-    value => pluginString(distributionFields(value, ['repository']).repository, 'repository', 2000),
-    value => service.repositoryDetails(value),
-  )
-  register(
-    'plugin.discover',
-    'query',
-    value => {
-      const record = distributionFields(value ?? {}, ['query'])
-      return record.query === undefined || record.query === ''
-        ? ''
-        : pluginString(record.query, 'search', 200)
-    },
+  registerSchema(pluginRepositoryDetailsOperation, value => service.repositoryDetails(value))
+  registerSchema(
+    pluginDiscoverOperation,
+
     value => service.discover(value),
   )
 }

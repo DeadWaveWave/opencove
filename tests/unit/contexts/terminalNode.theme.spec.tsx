@@ -220,12 +220,12 @@ describe('TerminalNode theme behavior', () => {
     const refreshBaseline = terminal.refreshCalls
     const terminalNode = container.querySelector('.terminal-node') as HTMLElement
 
-    document.documentElement.dataset.coveThemeId = 'pixel'
+    document.documentElement.dataset.coveThemeId = 'plugin:fixture:dusk'
     document.documentElement.style.setProperty('--cove-terminal-background', '#19120e')
     terminalNode.style.setProperty('--cove-terminal-background', '#19120e')
     window.dispatchEvent(
       new CustomEvent('opencove-theme-changed', {
-        detail: { theme: 'dark', themeId: 'pixel' },
+        detail: { theme: 'dark', themeId: 'plugin:fixture:dusk' },
       }),
     )
     document.documentElement.dataset.coveThemeId = 'dark'

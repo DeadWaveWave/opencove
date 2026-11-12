@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { FoldVertical } from 'lucide-react'
+import { FoldIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import { useWorkspaceCollapse } from '../collapse/WorkspaceCollapseContext'
 
@@ -20,7 +20,7 @@ export function WorkspaceSpaceCollapseActions({ spaceId }: { spaceId: string }):
           collapse.collapseAndArrange(spaceId)
         }}
       >
-        <FoldVertical size={15} aria-hidden="true" />
+        <FoldIcon size={18} />
       </button>
     </span>
   )

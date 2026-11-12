@@ -1,18 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react'
 import {
-  Bot,
-  FileText,
-  Folder,
-  Image,
-  LayoutGrid,
-  ListChecks,
-  Magnet,
-  Play,
-  Plus,
-  Settings,
-  SquareTerminal,
-  Trash2,
-} from 'lucide-react'
+  FileTextIcon,
+  FolderIcon,
+  GridIcon,
+  ImageIcon,
+  MagnetIcon,
+  PlayIcon,
+  PlusIcon,
+  RobotIcon,
+  SettingsIcon,
+  TaskIcon,
+  TerminalIcon,
+  TrashIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { Button, type ButtonSize, type ButtonVariant } from '../components/ui/Button'
 import { Checkbox } from '../components/ui/Checkbox'
 import { Chip } from '../components/ui/Chip'
@@ -49,12 +49,12 @@ const BUTTON_SIZES: ButtonSize[] = ['sm', 'md']
 const ICON_VARIANTS: IconButtonVariant[] = ['ghost', 'secondary', 'danger']
 const ICON_SIZES: IconButtonSize[] = ['xs', 'sm', 'md']
 const KINDS: Array<[KindTileFamily, React.ComponentType<{ 'aria-hidden'?: boolean }>]> = [
-  ['ai', Bot],
-  ['shell', SquareTerminal],
-  ['plan', ListChecks],
-  ['knowledge', FileText],
-  ['media', Image],
-  ['neutral', Folder],
+  ['ai', RobotIcon],
+  ['shell', TerminalIcon],
+  ['plan', TaskIcon],
+  ['knowledge', FileTextIcon],
+  ['media', ImageIcon],
+  ['neutral', FolderIcon],
 ]
 
 function Section({
@@ -137,11 +137,11 @@ export default function UiGallery(): React.JSX.Element {
           <div className="ui-gallery__row" key={size}>
             {ICON_VARIANTS.map(variant => (
               <IconButton key={variant} variant={variant} size={size} label={`${variant} ${size}`}>
-                {variant === 'danger' ? <Trash2 aria-hidden="true" /> : <Plus aria-hidden="true" />}
+                {variant === 'danger' ? <TrashIcon /> : <PlusIcon />}
               </IconButton>
             ))}
             <IconButton size={size} label={`disabled ${size}`} disabled>
-              <Settings aria-hidden="true" />
+              <SettingsIcon />
             </IconButton>
           </div>
         ))}
@@ -216,7 +216,7 @@ export default function UiGallery(): React.JSX.Element {
           <Chip disabled selected={false}>
             archived
           </Chip>
-          <Chip icon={<Folder aria-hidden="true" />}>src</Chip>
+          <Chip icon={<FolderIcon />}>src</Chip>
         </div>
       </Section>
 
@@ -236,8 +236,8 @@ export default function UiGallery(): React.JSX.Element {
             label="View"
             value={viewMode}
             options={[
-              { value: 'icons', label: 'Icons', icon: <LayoutGrid />, iconOnly: true },
-              { value: 'list', label: 'List', icon: <ListChecks />, iconOnly: true },
+              { value: 'icons', label: 'Icons', icon: <GridIcon />, iconOnly: true },
+              { value: 'list', label: 'List', icon: <TaskIcon />, iconOnly: true },
             ]}
             onValueChange={setViewMode}
           />
@@ -248,8 +248,8 @@ export default function UiGallery(): React.JSX.Element {
             label="Connection method"
             value={connection}
             options={[
-              { value: 'ssh', label: 'Over SSH', icon: <SquareTerminal /> },
-              { value: 'manual', label: 'Manual', icon: <Settings /> },
+              { value: 'ssh', label: 'Over SSH', icon: <TerminalIcon /> },
+              { value: 'manual', label: 'Manual', icon: <SettingsIcon /> },
             ]}
             onValueChange={setConnection}
           />
@@ -315,7 +315,7 @@ export default function UiGallery(): React.JSX.Element {
             <Button data-testid="ui-gallery-tooltip-trigger">Arrange</Button>
           </Tooltip>
           <IconButton label="Open settings" title="Open settings (⌘,)">
-            <Settings aria-hidden="true" />
+            <SettingsIcon />
           </IconButton>
         </div>
       </Section>
@@ -413,30 +413,30 @@ export default function UiGallery(): React.JSX.Element {
         dismissOnPointerDownOutside
         onDismiss={() => setMenuPoint(null)}
       >
-        <MenuItem icon={<SquareTerminal />} shortcut={{ label: '⌘T', ariaKeyShortcuts: 'Meta+T' }}>
+        <MenuItem icon={<TerminalIcon />} shortcut={{ label: '⌘T', ariaKeyShortcuts: 'Meta+T' }}>
           New Terminal
         </MenuItem>
-        <MenuItem icon={<FileText />} shortcut={{ label: '⌘N', ariaKeyShortcuts: 'Meta+N' }}>
+        <MenuItem icon={<FileTextIcon />} shortcut={{ label: '⌘N', ariaKeyShortcuts: 'Meta+N' }}>
           New Note
         </MenuItem>
-        <MenuItem icon={<Bot />} submenu={{ open: false }}>
+        <MenuItem icon={<RobotIcon />} submenu={{ open: false }}>
           Run Role
         </MenuItem>
         <div className="cove-menu-split">
-          <MenuItem icon={<Play />} shortcut={{ label: '⌘A', ariaKeyShortcuts: 'Meta+A' }}>
+          <MenuItem icon={<PlayIcon />} shortcut={{ label: '⌘A', ariaKeyShortcuts: 'Meta+A' }}>
             Run Agent
           </MenuItem>
           <MenuItem aria-label="Choose Agent" submenu={{ open: false }} />
         </div>
         <MenuSeparator />
-        <MenuItem icon={<LayoutGrid />} disabled>
+        <MenuItem icon={<GridIcon />} disabled>
           Arrange
         </MenuItem>
-        <MenuCheckboxItem icon={<Magnet />} checked={snapping} onCheckedChange={setSnapping}>
+        <MenuCheckboxItem icon={<MagnetIcon />} checked={snapping} onCheckedChange={setSnapping}>
           Magnetic snapping
         </MenuCheckboxItem>
         <MenuSeparator />
-        <MenuItem icon={<Trash2 />} tone="danger">
+        <MenuItem icon={<TrashIcon />} tone="danger">
           Close
         </MenuItem>
       </ViewportMenuSurface>

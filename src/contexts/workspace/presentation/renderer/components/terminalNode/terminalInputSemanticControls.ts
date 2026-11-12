@@ -66,3 +66,23 @@ export function isInputSemanticTerminalControlChunk(data: string): boolean {
 
   return sawInputSemanticSequence
 }
+
+/** SM/RM and DECSET/DECRST are state transitions, distinct from display redraws. */
+export function isTerminalModeControlChunk(data: string): boolean {
+  if (data.length === 0) {
+    return false
+  }
+  let cursor = 0
+  while (cursor < data.length) {
+    const sequence = readCsiSequence(data, cursor)
+    if (
+      !sequence ||
+      !['h', 'l'].includes(sequence.finalByte) ||
+      !/^\??\d+(?:;\d+)*$/u.test(sequence.payload)
+    ) {
+      return false
+    }
+    cursor = sequence.endIndex + 1
+  }
+  return true
+}

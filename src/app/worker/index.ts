@@ -1,3 +1,4 @@
+import { createWorkerParentShutdown } from '../../shared/runtime/workerParentShutdown'
 import { createPiHookChannel } from '../main/controlSurface/agentHook/piHookChannel'
 import { resolve } from 'node:path'
 import { homedir } from 'node:os'
@@ -29,8 +30,13 @@ import {
   reportLegacyManagedHookCleanupFailures,
 } from '../../contexts/agent/infrastructure/cleanupLegacyManagedHooksAtStartup'
 import { readRepeatedWorkerFlagValues, readWorkerFlagValue } from './workerCliArguments'
-import { CONTROL_SURFACE_SHUTDOWN_WATCHDOG_MS } from '../../shared/runtime/controlSurfaceShutdown'
+import { createWorkerShutdown } from './workerShutdown'
 import { getRuntimeBuildIdentity } from '../../shared/runtime/runtimeBuildIdentity'
+import { configureWorkerEnvironment } from './environment'
+
+configureWorkerEnvironment()
+
+const parentShutdown = createWorkerParentShutdown()
 
 function resolvePort(argv: string[]): number | null {
   const raw = readWorkerFlagValue(argv, '--port')
@@ -83,12 +89,6 @@ async function main(): Promise<void> {
     process.stdout.write('OpenCove worker: use opencove worker start --help for CLI usage.\n')
     return
   }
-  // The worker is frequently launched from GUI contexts (Desktop app, system services) where PATH
-  // can be incomplete. Hydrate the environment so git/ssh/etc behave consistently across Desktop,
-  // Web UI, and remote/headless installs.
-  await hydrateCliEnvironmentForAppLaunch(true)
-  reportLegacyManagedHookCleanupFailures(await cleanupLegacyManagedHooksAtStartup(homedir()))
-
   const userDataPath = readWorkerFlagValue(argv, '--user-data') ?? resolveWorkerUserDataDir()
   const bindHostname = readWorkerFlagValue(argv, '--hostname') ?? '127.0.0.1'
   const hostname = readWorkerFlagValue(argv, '--advertise-hostname') ?? bindHostname
@@ -136,10 +136,16 @@ async function main(): Promise<void> {
     }
 
     process.stderr.write(
-      '[opencove-worker] Worker lock exists but its connection is not reachable; launcher must repair stale worker state.\n',
+      '[opencove-worker] Worker owner is busy but its connection is not reachable; refusing replacement.\n',
     )
     process.exit(1)
   }
+
+  // The worker is frequently launched from GUI contexts (Desktop app, system services) where PATH
+  // can be incomplete. Hydrate the environment so git/ssh/etc behave consistently across Desktop,
+  // Web UI, and remote/headless installs.
+  await hydrateCliEnvironmentForAppLaunch(true)
+  reportLegacyManagedHookCleanupFailures(await cleanupLegacyManagedHooksAtStartup(homedir()))
 
   const approvedWorkspaces = createApprovedWorkspaceStoreForPath(
     resolve(userDataPath, 'approved-workspaces.json'),
@@ -210,6 +216,7 @@ async function main(): Promise<void> {
     appVersion,
     deploymentId: readWorkerFlagValue(argv, '--deployment-id'),
     strictPersistence: hasFlag(argv, '--managed-runtime'),
+    enableAgentTurnArchive: true,
     activationId: readWorkerFlagValue(argv, '--activation-id'),
     requestManagedShutdown: () => {
       void disposeAndExit(0)
@@ -276,35 +283,14 @@ async function main(): Promise<void> {
     `[opencove-worker] auth required (use Authorization: Bearer <token>${passwordRequired ? ' or /auth/login password' : ' or a Desktop-issued /auth/claim ticket'})\n`,
   )
 
-  let shutdownRequested = false
-  const disposeAndExit = async (code: number): Promise<void> => {
-    if (shutdownRequested) {
-      return
-    }
+  const disposeAndExit = createWorkerShutdown(
+    () => server.dispose(),
+    () => lock.release(),
+  )
 
-    shutdownRequested = true
-
-    const forceExitTimer = setTimeout(() => {
-      process.exit(code)
-    }, CONTROL_SURFACE_SHUTDOWN_WATCHDOG_MS)
-    forceExitTimer.unref()
-
-    try {
-      await server.dispose()
-    } catch {
-      // ignore
-    }
-
-    try {
-      await lock.release()
-    } catch {
-      // ignore
-    } finally {
-      clearTimeout(forceExitTimer)
-    }
-
-    process.exit(code)
-  }
+  parentShutdown.activate(() => {
+    void disposeAndExit(0)
+  })
 
   process.once('SIGINT', () => {
     void disposeAndExit(0)

@@ -95,8 +95,8 @@
 }
 
 .settings-plugin__glyph :is(svg, img) {
-  width: 24px;
-  height: 24px;
+  width: var(--cove-icon-size-lg);
+  height: var(--cove-icon-size-lg);
   object-fit: contain;
 }
 
@@ -192,8 +192,8 @@
 }
 
 .settings-plugin-detail__header .settings-plugin__glyph :is(svg, img) {
-  width: 30px;
-  height: 30px;
+  width: var(--cove-icon-size-lg);
+  height: var(--cove-icon-size-lg);
 }
 
 .settings-plugin-detail__identity {

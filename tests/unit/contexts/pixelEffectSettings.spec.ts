@@ -117,6 +117,8 @@ describe('independent persisted Pixel effect settings', () => {
     'migrates legacy %s settings once and emits the complete canonical shape',
     uiTheme => {
       const migrated = normalizeAgentSettings({ uiTheme })
+      // Pixel is retired: its users land on Cove of the same appearance, effects still on.
+      expect(migrated.uiTheme).toBe(uiTheme === 'pixel' ? 'dark' : 'light')
       expect(effects(migrated)).toEqual(enabled)
       expect(isNormalizedAgentSettings(migrated)).toBe(true)
       expect(effects(normalizeAgentSettings({ ...migrated, uiTheme: 'light' }))).toEqual(
@@ -182,11 +184,11 @@ describe('independent persisted Pixel effect settings', () => {
     expect(reloaded).not.toBeNull()
     settings = reloaded!.settings
     expect(effects(settings)).toEqual(expected)
-    updaters().updateUiTheme('pixel')
+    updaters().updateUiTheme('dark')
     expect(effects(settings)).toEqual(expected)
-    updaters().updateUiTheme('pixel-light')
+    updaters().updateUiTheme('system')
     expect(effects(settings)).toEqual(expected)
-    expect(settings.uiTheme).toBe('pixel-light')
+    expect(settings.uiTheme).toBe('system')
   })
 
   it.each(['pixel', 'pixel-light'])(
@@ -213,20 +215,6 @@ describe('independent persisted Pixel effect settings', () => {
       })
       await writeRawPersistedState(JSON.stringify(toPersistedState([], null, changed)))
       expect(effects((await readPersistedState())!.settings)).toEqual(disabled)
-    },
-  )
-
-  it.each(['pixel', 'pixel-light'] as const)(
-    'does not reapply %s legacy defaults when a normalized dark user changes theme',
-    uiTheme => {
-      let settings = normalizeAgentSettings({ uiTheme: 'dark' })
-      createSettingsPanelUpdaters({
-        settings,
-        onChange: next => {
-          settings = next
-        },
-      }).updateUiTheme(uiTheme)
-      expect(effects(normalizeAgentSettings(settings))).toEqual(disabled)
     },
   )
 })

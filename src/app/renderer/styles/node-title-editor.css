@@ -8,25 +8,45 @@
   line-height: 1.2;
 }
 
-.node-title-editor[class*='terminal-node__title'] .node-title-editor__editable,
-.node-title-editor[class*='task-node__title'] .node-title-editor__editable {
-  flex: 1;
-}
-
 .node-title-editor[class*='terminal-node__title'] .node-title-editor__prefix {
   font-size: calc(12px * var(--cove-ui-font-scale));
 }
 
-.node-title-editor__display {
-  flex: 0 1 auto;
+/*
+ * The title moves its window (WindowHeader): it takes the header's free space, so the whole bar
+ * between the tile and the controls is the title. A click renames and reads it as a field (pixel
+ * fill on hover and while editing); a hold or a drag grabs the window.
+ */
+.node-title-editor__display,
+.node-title-editor__editable {
+  flex: 1 1 auto;
   display: inline-flex;
   align-items: center;
+  align-self: center;
+  height: var(--cove-control-height-xs);
   max-width: 100%;
   min-width: 0;
-  color: var(--cove-text);
-  cursor: text;
-  white-space: nowrap;
+  margin: 0 calc(-1 * var(--cove-spacing-1));
+  padding: 0 var(--cove-spacing-1);
   overflow: hidden;
+  clip-path: var(--cove-pixel-corners);
+  cursor: text;
+}
+
+.node-title-editor__display {
+  color: var(--cove-text);
+  white-space: nowrap;
+}
+
+.node-title-editor__display:hover,
+.node-title-editor__editable {
+  background: var(--cove-pixel-fill);
+}
+
+.node-title-editor__display[data-cove-title-held='true'],
+.react-flow__node.dragging .node-title-editor__display {
+  background: none;
+  cursor: grabbing;
 }
 
 .node-title-editor__display--placeholder {
@@ -43,22 +63,8 @@
   white-space: nowrap;
 }
 
-.node-title-editor__editable {
-  flex: 0 1 auto;
-  display: inline-flex;
-  align-items: center;
-  max-width: 100%;
-  min-width: 0;
-  overflow: hidden;
-  cursor: text;
-}
-
 .node-title-editor--editing {
   flex: 1 1 0%;
-}
-
-.node-title-editor--editing .node-title-editor__editable {
-  flex: 1 1 auto;
 }
 
 .node-title-editor__prefix {

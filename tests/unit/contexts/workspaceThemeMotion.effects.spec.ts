@@ -4,7 +4,12 @@ import { createThemeEffects } from '@contexts/workspace/presentation/renderer/co
 
 const options = { background: true, creation: true, closing: true, working: true }
 const viewport = { x: 0, y: 0, zoom: 1, width: 1000, height: 800 }
-const frame = { id: 'node', sessionId: 'session', rect: { x: 50, y: 40, width: 300, height: 200 } }
+const frame = {
+  id: 'node',
+  family: 'shell' as const,
+  sessionId: 'session',
+  rect: { x: 50, y: 40, width: 300, height: 200 },
+}
 let restoreAnimate: PropertyDescriptor | undefined
 let scope: HTMLDivElement
 let effects: ReturnType<typeof createThemeEffects>

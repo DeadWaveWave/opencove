@@ -1,4 +1,54 @@
+import { agentSpawnPresentations } from '../../../../shared/errors/agentSpawnError'
 export const enMessages = {
+  agentSpawnDepth: agentSpawnPresentations.agentSpawnDepth.message,
+  agentSpawnDepthHint: agentSpawnPresentations.agentSpawnDepth.hint,
+  agentSpawnConcurrency: agentSpawnPresentations.agentSpawnConcurrency.message,
+  agentSpawnConcurrencyHint: agentSpawnPresentations.agentSpawnConcurrency.hint,
+  agentSpawnRoute: agentSpawnPresentations.agentSpawnRoute.message,
+  agentSpawnRouteHint: agentSpawnPresentations.agentSpawnRoute.hint,
+  agentSpawnCaller: agentSpawnPresentations.agentSpawnCaller.message,
+  agentSpawnCallerHint: agentSpawnPresentations.agentSpawnCaller.hint,
+  agentSpawnBinding: agentSpawnPresentations.agentSpawnBinding.message,
+  agentSpawnBindingHint: agentSpawnPresentations.agentSpawnBinding.hint,
+  agentSpawnRemote: agentSpawnPresentations.agentSpawnRemote.message,
+  agentSpawnRemoteHint: agentSpawnPresentations.agentSpawnRemote.hint,
+  agentSpawnAccounting: agentSpawnPresentations.agentSpawnAccounting.message,
+  agentSpawnAccountingHint: agentSpawnPresentations.agentSpawnAccounting.hint,
+  agentSpawnCapability: agentSpawnPresentations.agentSpawnCapability.message,
+  agentSpawnCapabilityHint: agentSpawnPresentations.agentSpawnCapability.hint,
+  managedAgentClearSaveUnconfirmed:
+    'The latest Claude conversation could not be confirmed. Try resuming again before closing this agent.',
+  managedAgentWorkerUpgradeRequired:
+    'Update and restart the connected Worker before managing Claude agents. Updating this window alone is not enough.',
+  managedAgentClientUpgradeRequired:
+    'Update OpenCove and reload this window before controlling this agent.',
+  managedAgentWritesDisabled:
+    'Managed Claude restarts and saving new resume targets are paused. Existing saved targets remain protected. Ask the Worker administrator to enable updates.',
+  workerConnectionRetry: 'Retry connection',
+  managedAgentLegacyWorker:
+    'This Worker uses legacy Claude sessions. Your workspace remains available. Upgrade and restart the Worker to enable managed recovery.',
+  managedAgentChanged: 'This agent has changed. Refresh the workspace and try again.',
+  managedAgentDirectoryConflict:
+    'This agent belongs to a different folder. Keep its current folder or start a new agent.',
+  managedAgentLaunchUncertain:
+    'The agent launch could not be confirmed. Check the session before trying again.',
+  managedAgentResumeUnavailable:
+    'This conversation cannot be resumed yet. Select a saved session or start a new conversation.',
+  nodeNoParent: 'This node was started by the user, so it has no parent agent.',
+  nodeNoParentHint:
+    'Use "opencove agent list" to choose a recipient, or report your findings to the user.',
+  nodeParentDeleted: 'The agent that created this node has been deleted.',
+  nodeParentDeletedHint:
+    'Use "opencove agent list" to choose another recipient, or leave your findings in a shared note.',
+  nodeParentIdentityMismatch: 'The current terminal identity does not match its OpenCove session.',
+  nodeParentIdentityMismatchHint:
+    'Open a new OpenCove terminal and run "opencove whoami" before choosing a recipient.',
+  nodeParentIdentityRequired: '@parent works only inside an OpenCove terminal.',
+  nodeParentIdentityRequiredHint:
+    'Run this command inside OpenCove, or replace @parent with a node ID from "opencove node list".',
+  nodeParentUnavailable: 'The parent node could not be resolved.',
+  nodeParentUnavailableHint:
+    'Run "opencove node get --node @self" to inspect your lineage, then choose a recipient with "opencove node list".',
   agentLaunchFailed: 'Agent launch failed: {{message}}',
   agentResumeFailed: 'Agent resume failed: {{message}}',
   terminalAgentReexecFailed: 'Failed to restart the agent in this terminal: {{message}}',

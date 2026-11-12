@@ -1,8 +1,10 @@
+import { agentAttentionLabelKey } from '../../utils/agentAttentionLabel'
 import { useCallback, useState, type JSX, type PointerEvent } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { AgentSessionSummary } from '@shared/contracts/dto'
-import { Copy, LoaderCircle } from 'lucide-react'
+import { CopyIcon } from '@app/renderer/components/ui/pixelIcons'
+import { PixelSpinner } from '@app/renderer/components/ui/PixelSpinner'
 import type { AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
 import type { LabelColor } from '@shared/types/labelColor'
 import { TerminalNodeAgentSessionActions } from './TerminalNodeAgentSessionActions'
@@ -18,6 +20,7 @@ interface TerminalNodeHeaderProps {
   kind: WorkspaceNodeKind
   agentProvider?: AgentProvider | null
   status: AgentRuntimeStatus | null
+  blockedReason?: import('@shared/contracts/dto/agentRunState').AgentRunSnapshot['blockedReason']
   agentStateDegraded?: boolean
   labelColor?: LabelColor | null
   agentExecutionDirectory?: string | null
@@ -37,7 +40,9 @@ export function TerminalNodeHeader({
   title,
   fixedTitlePrefix = null,
   kind,
+  agentProvider = null,
   status,
+  blockedReason,
   agentStateDegraded = false,
   labelColor,
   agentExecutionDirectory,
@@ -88,7 +93,7 @@ export function TerminalNodeHeader({
       case 'standby':
         return t('agentRuntime.standby')
       case 'waiting':
-        return t('agentRuntime.waiting')
+        return t(agentAttentionLabelKey({ blockedReason }))
       case 'exited':
         return t('agentRuntime.exited')
       case 'failed':
@@ -108,7 +113,7 @@ export function TerminalNodeHeader({
       kind={isAgentNode ? 'ai' : 'shell'}
       labelColor={labelColor}
       onPointerDownCapture={onHeaderPointerDownCapture}
-      icon={<NodeKindIcon kind={isAgentNode ? 'agent' : kind} />}
+      icon={<NodeKindIcon kind={isAgentNode ? 'agent' : kind} provider={agentProvider} />}
       title={
         isTitleEditable ? (
           <InlineNodeTitleEditor
@@ -203,9 +208,9 @@ export function TerminalNodeHeader({
               }}
             >
               {isCopyingLastMessage ? (
-                <LoaderCircle className="terminal-node__action-icon terminal-node__action-icon--spinning" />
+                <PixelSpinner className="terminal-node__action-icon" />
               ) : (
-                <Copy className="terminal-node__action-icon" />
+                <CopyIcon className="terminal-node__action-icon" />
               )}
             </button>
           ) : null}

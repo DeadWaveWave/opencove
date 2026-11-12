@@ -210,11 +210,11 @@ describe('terminal link action boundary', () => {
   })
   it.each([
     ['en', 'android-before-user.png', 'Preview image', 'image'],
-    ['en', 'recording.wav', 'Play audio', 'audio-lines'],
+    ['en', 'recording.wav', 'Play audio', 'audio'],
     ['en', 'recording.MP4', 'Play video', 'video'],
     ['en', 'notes.txt', 'Open file', 'file-text'],
     ['zh-CN', 'android-before-user.png', '预览图片', 'image'],
-    ['zh-CN', 'recording.wav', '播放音频', 'audio-lines'],
+    ['zh-CN', 'recording.wav', '播放音频', 'audio'],
     ['zh-CN', 'recording.MP4', '播放视频', 'video'],
     ['zh-CN', 'notes.txt', '打开文件', 'file-text'],
   ] as const)('describes the %s default action for %s', async (language, name, label, icon) => {
@@ -230,7 +230,7 @@ describe('terminal link action boundary', () => {
     dispatch(intent({ action: 'menu', target: { kind: 'file', path: `/repo/${name}` } }))
     const primary = await screen.findByRole('button', { name: label, exact: true })
     expect(primary).toBeEnabled()
-    expect(primary.querySelector(`svg.lucide-${icon}`)).not.toBeNull()
+    expect(primary.querySelector(`svg[data-cove-pixel-icon="${icon}"]`)).not.toBeNull()
     fireEvent.click(primary)
     await waitFor(() =>
       expect(onOpenFileLink).toHaveBeenCalledExactlyOnceWith(
@@ -244,10 +244,10 @@ describe('terminal link action boundary', () => {
     render(<TerminalLinkHost containerRef={{ current: container }} sessionId="one" options={{}} />)
     dispatch(intent({ action: 'menu', target: { kind: 'file', path: '/repo/screens.png' } }))
     const directory = await screen.findByRole('button', { name: /Open (folder|in Finder)/ })
-    expect(directory.querySelector('svg.lucide-folder-open')).not.toBeNull()
+    expect(directory.querySelector('svg[data-cove-pixel-icon="folder-open"]')).not.toBeNull()
     dispatch(intent({ action: 'menu', target: { kind: 'url', uri: 'https://example.com/a.png' } }))
     const url = screen.getByRole('button', { name: 'Open in browser', exact: true })
-    expect(url.querySelector('svg.lucide-external-link')).not.toBeNull()
+    expect(url.querySelector('svg[data-cove-pixel-icon="external-link"]')).not.toBeNull()
   })
   it('uses the system application for a direct alternate file gesture', async () => {
     const onOpenFileLink = vi.fn()

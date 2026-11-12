@@ -14,7 +14,8 @@
 > - Window：`docs/ui/WINDOW_UI_STANDARD.md`
 > - Task：`docs/ui/TASK_UI_STANDARD.md`
 > - Viewport：`docs/ui/VIEWPORT_NAVIGATION_STANDARD.md`
-- Spatial Pixel：`docs/ui/SPATIAL_PIXEL_THEME.md`
+> - Spatial Pixel：`docs/ui/SPATIAL_PIXEL_THEME.md`
+> - Canvas Signals：`docs/ui/CANVAS_SIGNALS.md`
 
 ---
 
@@ -38,10 +39,10 @@
 - 持久化设置：`settings.uiTheme: UiTheme`，取值见 `src/contexts/settings/domain/uiSettings.ts`（内置主题及 `plugin:<plugin-id>:<theme-id>` 扩展标识）。
 - Renderer 主题入口（**两个互补的 hook**，共同构成命名主题扩展点）：
   - `<html data-cove-theme="light|dark">` —— 解析后的基础配色，所有 `--cove-*` token 默认基于此切换；`system` 会跟随 `prefers-color-scheme` 计算出 light/dark。
-  - `<html data-cove-theme-id="<UiTheme>">` —— 当前选中的命名主题 id。命名主题通过 `:root[data-cove-theme-id='<id>']` 选择器覆盖 `--cove-*` token，与基础配色解耦。内置主题分为两个主题族：Cove（`dark`、`light`、`system`，由生成器产出，默认 `dark`）与 Pixel（`pixel`、`pixel-light`，手写）；插件可以通过声明式 `contributes.themes` 接入颜色、材质、尺寸、字体、动效与受作用域约束的组件样式；详见 [插件主题契约](../plugins/THEMES.md)。
-  - `<html data-cove-family="cove|pixel">` —— 生效的基础主题所属的主题族。插件主题取 `extends` 所属的主题族，未声明时为同明暗的 Cove。生成的主题族 token（2.4）只在 `data-cove-family` 匹配时生效。
-- 添加一个新内置主题的步骤：① 在 `UI_THEMES` 中登记 id；② 在 `UI_THEME_DESCRIPTORS` 声明 `family`、`baseScheme`、`terminalScheme` 与 `i18nKey`；③ 生成的主题族由 `src/shared/design` 产出（2.4）；手写主题提供 `styles/themes/<id>.css`，以 `:root[data-cove-theme-base='<id>']` 选择器覆盖需要的 `--cove-*` token。
-- 退役的内置主题在读取设置时迁移（`RETIRED_UI_THEMES`）：`ember` → `dark`，`ember-light` → `light`；插件 `extends` 的同名旧值按同样规则解析。没有有效主题的设置使用当前默认值：Cove 深色，像素效果全部开启。已保存的 Pixel 选择保持不变。
+  - `<html data-cove-theme-id="<UiTheme>">` —— 当前选中的命名主题 id。命名主题通过 `:root[data-cove-theme-id='<id>']` 选择器覆盖 `--cove-*` token，与基础配色解耦。内置主题只有 Cove 的三个外观：`dark`、`light`、`system`，由生成器产出，默认 `dark`。像素风格是 Cove 本身的主调（像素墙、窗口外框、像素图标），不再是单独的主题；插件可以通过声明式 `contributes.themes` 接入颜色、材质、尺寸、字体、动效与受作用域约束的组件样式；详见 [插件主题契约](../plugins/THEMES.md)。
+  - `<html data-cove-family="cove">` —— 生效的主题族，目前总是 `cove`，插件主题也一样（它们只能 `extends` Cove 的 `dark` 或 `light`）。生成的主题族 token（2.4）只在 `data-cove-family` 匹配时生效。
+- 添加一个新内置主题的步骤：① 在 `UI_THEMES` 中登记 id；② 在 `UI_THEME_DESCRIPTORS` 声明 `baseScheme`、`terminalScheme` 与 `i18nKey`；③ 它的配色由 `src/shared/design` 生成（2.4），不手写主题样式表。
+- 退役的内置主题在读取设置时迁移（`RETIRED_UI_THEMES`）：`ember`、`pixel` → `dark`，`ember-light`、`pixel-light` → `light`；插件 `extends` 的同名旧值按同样规则解析。没有有效主题的设置使用当前默认值：Cove 深色，像素效果全部开启。保存过 Pixel 的设置迁移时保留像素效果全部开启（`pixelEffectSettings.ts` 读迁移前的原值判断）。
 - `baseScheme` 与 `terminalScheme` 是两个独立语义：前者决定应用 shell 的 light/dark token，后者决定 xterm 与内嵌 TUI 的配色协议。内置主题的 `terminalScheme` 目前都与 `baseScheme` 一致；终端设置可以在浅色 shell 下把终端固定为深色。
 - 每个 xterm 实例必须通过一个 revisioned `TerminalAppearanceSnapshot` 应用主题。快速连续切换采用 final-wins：每帧至多应用/刷新一次最新 snapshot；xterm theme、OpenCode OSC/CSI 与 Find decoration 必须消费同一份 **applied** snapshot，不能各自读取时序不同的 desired theme。
 - 同一 xterm 在 placeholder handoff/DOM remount 后必须从 live `containerRef` 定位主题 scope，不能
@@ -88,7 +89,7 @@
   文件过期时 CI 失败。改生成器后重新运行该命令并提交生成文件。
 - 生成的 token 作用在 `:root[data-cove-family='<id>'][data-cove-theme='dark|light']` 上，并完整映射
   插件契约的全部 v1 公共 token（`PLUGIN_THEME_TOKENS`），已安装的插件主题继续可用。主题 owner
-  按生效基础主题所属的主题族设置 `data-cove-family`（见 2.1）；Pixel 是手写主题族，没有生成样式表。
+  设置 `data-cove-family`（见 2.1）。
 - `base.css` 的 `:root` 与浅色块里写着字面颜色的 token，主题族必须全部替换（`themeHostTokens.ts`），
   否则标准主题的旧色会透出来；单测逐个检查。给 `base.css` 新增字面颜色 token 时，同步在生成器里映射。
   只有主题预览色块（`--cove-theme-preview-*`）与遮罩色（`--cove-mask-opaque`）不随主题族变化。
@@ -113,19 +114,46 @@
 - 材质只走 `Surface`（`components/ui/Surface.tsx`）或 `surfaceProps()`：实色（对话框与长时间阅读）、
   玻璃（画布上的窗口，预合成、不模糊）、亚克力（菜单、浮层等短暂出现的表面：着色、真模糊、颗粒）。
   使用方只管边框、圆角和阴影，背景与 `backdrop-filter` 归材质。不要再手写 `backdrop-filter`。
-- 窗口内容放在阅读底板上（`window-plate.css`）：`window` 里的 `window-body` 左右和底部内缩 6px、紧贴标题栏，
-  圆角 6px，带内描边和顶部微光。生成的主题族把底板（`--cove-reading-plate`）叠在玻璃外框上，对比度矩阵
-  检查的正是这个叠加结果；手写主题回退到自己的窗口底色和细边框。内容自身不要再铺一层不透明底色，
-  终端除外（透明终端在第 2.3 步）。
+- 窗口内容放在阅读底板上（`window-plate.css`）：`window` 里的 `window-body` 左右和底部内缩 6px、紧贴标题栏。
+  生成的主题族里底板（`--cove-reading-plate`）是实色，墙面不会透进正在阅读的内容，对比度矩阵检查的就是
+  这些颜色。它不是纯黑也不是纯白，而是带一点色相的淡色（类似 Material 3 的着色表面），并且按窗口类别着色：
+  每个类别一块（`KIND_PLATE`，类别色相、固定的明度和彩度，令牌 `--cove-kind-<类别>-plate`），窗口把类别传给
+  `WindowPlate`；中性窗口和关闭「窗口类别颜色」时用主题自己的底板（`PLATE`，强调色色相，`roles.plate`，
+  即 `--cove-kind-neutral-plate`）。浅色下贴近白色时 sRGB 色域放不下多少彩度，各色相取它能放下的。
+  终端的颜色就是它类别的底板（`terminal-node.css`：终端用 shell，Agent 窗口用 AI），声明在窗口上，xterm 通过
+  复制窗口 class 的取色探针读到同一个颜色，所以 Agent 窗口带 `terminal-node--agent`；切换类别颜色时终端
+  重新取色，不必等主题变化。手写主题回退到自己的窗口底色和细边框。内容自身不要再铺一层不透明底色，终端
+  除外（透明终端在第 2.3 步）。
+- 实色底板、透明外框、四边无缝（生成的主题族）：底板是窗口下面的一整层（`WindowPlate`，放在 `window-body`
+  前面），不是 body 的背景，body 本身透明。它用一张遮罩融进玻璃外框：横向和纵向各一条 smoothstep，从窗口
+  边缘的全透明到向内 `--cove-reading-plate-feather`（16px，越过 6px 边距一直到内容自己的内边距）处的实色，
+  两条相乘，所以拐角也连续；顶部从标题栏上方 1/5 处开始淡入，到 body 顶边为实色。内容自己铺满不透明底色的
+  窗口（不透明终端、降低透明度、网页）只在 6px 边距内过渡。不要把底板拆成几块背景拼起来：拼块在画布的
+  非整数缩放下会出现接缝。类别色调在标题栏底边之前淡出。标题栏下面的一切都在底板上，比如任务窗口的
+  优先级行、Agent 会话和底部状态栏。
+  `workspace-canvas.window-seam.spec.ts` 逐行比较标题栏底边上下的像素；`workspace-canvas.window-plate.spec.ts`
+  把墙面换成两种颜色，确认底板颜色不变，扫描各边确认过渡没有硬边且足够宽，并在 0.3 到 2 倍的缩放下检查
+  过渡区里没有接缝。`workspace-canvas.window-plate-kinds.spec.ts` 确认终端、Agent、任务和便签各自读在
+  自己类别的底板上，关闭类别颜色后都回到主题底板。
 - 亚克力的底色由生成器给出（`--cove-acrylic-surface`），对比度矩阵检查它压在纯黑、纯白和像素墙上的
   最坏情况；手写主题沿用自己的 `--cove-menu-surface`。
+- 玻璃受光（生成的主题族，照原型）：
+  - 光泽：白色从顶边向下渐隐（`--cove-glass-sheen`），窗口外框在 30% 处消失，顶栏和侧栏在 60% 处消失。
+  - 颗粒：180px 的均匀灰度噪点，同一 alpha（`--cove-glass-grain`，暗色 11/255，亮色 7/255）。启动时由
+    `bootstrap/installGlassGrain.ts` 用固定种子画一次，每次启动都一样；亚克力也用这张。每张颗粒按自身尺寸
+    平铺（默认 SVG 160px，玻璃颗粒 180px）。
+  - 高光边：左上亮（`rim-hi`）、其余暗（`rim-lo`）的 1px 环（`--cove-node-rim`，`node-chrome.css`）。
+    外框在内边距盒处裁切，所以环在边框内侧，而不是像原型那样压在边框上；它盖在窗口内容上，在标签小旗和
+    拖拽面之下。只有生成的主题族画它：像素族没有玻璃，空的遮罩层也要为每个窗口付一个合成层。
+  - 对比度矩阵在满强度光泽下检查受光的玻璃，颗粒按平均灰计入；远景格子对未受光的外框色检查。亮色颗粒
+    比原型（8）低一档：插件调色板里对比最低的绿到青底色在 k=0 时次要文字仍有 4.5:1。
 - 窗口材质：设置 → 外观 → 窗口 →「窗口材质」或控制中心选「实色」，或系统开启降低透明度时（实时跟随，不用重启），
   `useApplyWindowAppearance` 在根节点写 `data-cove-transparency="reduced"`；样式只读这个属性，不再各自
-  读媒体查询。此时生成的玻璃参数（`--cove-glass-*`）都变成 100%，窗口外框、底板、标题栏和面板变成
-  不透明的同色，Surface 的玻璃和亚克力改为 `--cove-window-surface`，所有元素去掉 `backdrop-filter`
+  读媒体查询。此时生成的玻璃参数（`--cove-glass-*`）都变成 100%，受光（光泽、高光边、颗粒）去掉，
+  窗口外框、底板、标题栏和面板变成不透明的同色，Surface 的玻璃和亚克力改为 `--cove-window-surface`，所有元素去掉 `backdrop-filter`
   （`themes/reduced-transparency.css`），透明终端露出终端底色。系统开启时「实色」被选中，「玻璃」不可选。
-  验证：`tests/unit/app/uiSurfaceStylesheet.spec.ts`；`ui-gallery.probes.spec.ts` 和
-  `workspace-canvas.window-material.spec.ts` 用 CDP 模拟系统设置。
+  验证：`tests/unit/app/uiSurfaceStylesheet.spec.ts`、`glassMaterialStylesheet.spec.ts`；
+  `ui-gallery.probes.spec.ts` 和 `workspace-canvas.window-material.spec.ts` 用 CDP 模拟系统设置。
 
 ### 3.2 文本系统
 
@@ -145,7 +173,7 @@
 - 共享组件（`src/app/renderer/components/ui/`）的每种状态都放进测试专用的组件图库
   `src/app/renderer/gallery/UiGallery.tsx`。图库只在 `NODE_ENV=test` 且
   `OPENCOVE_TEST_UI_GALLERY=1` 时代替应用外壳渲染，并按需加载，不进入正常启动路径。
-- `tests/e2e/ui-gallery.probes.spec.ts` 在 Cove 与 Pixel 的明暗四个内置主题下扫描图库、
+- `tests/e2e/ui-gallery.probes.spec.ts` 在 Cove 的深色与浅色下扫描图库、
   对话框和浮层：文字对比度不低于 4.5:1（大字 3:1，禁用控件除外），点击区不小于 24×24
   CSS px（WCAG 2.5.8）。探针在 `tests/e2e/ui-accessibility.probe.ts`，测量前等待有限动画结束。
 - 新增或修改共享组件时，先把它的各个状态加进图库；探针不通过不能合并。
@@ -160,6 +188,10 @@
   生成的主题族由生成器给出胶囊颜色（对比度矩阵检查 4.5:1），手写主题从自身的强调色、标记色与危险色推导。
 - 窗口类别的图标放在 `KindTile` 上（AI、终端、计划、知识、媒体、中性）。类别色由生成器成套给出；
   没有类别色的主题显示中性图块。类别色只画图块，不画外框。
+- Agent 提供方标记（`AgentProviderIcon`）在 Dock、菜单、设置和任务会话里不加底片、不用厂商色，
+  用身边图标的墨色（静止为次要文字色，悬停随所在行变亮），厂商位图也描成单色路径；只有窗口标题栏、
+  侧栏和远景方块用 AI 类别色画同一个标记（`NodeKindIcon`）。`workspace-canvas.provider-marks` 在
+  深浅两套主题下检查 Dock 与「运行 Agent」子菜单。
 - 菜单行用 `components/ui/Menu.tsx`：`MenuItem`、`MenuCheckboxItem`、`MenuSeparator`，图标、文字、
   快捷键三列，末尾是子菜单箭头或勾。行高跟随主题的 `menuRowHeight`，触屏与窄屏不低于 44px。
   快捷键用 `describeKeyChord` 从生效的按键设置生成，显示格式与全应用一致（⌘T、Ctrl T），
@@ -180,13 +212,17 @@
   单位也加入描述）。`CoveSelect` 在行里的名称是「行标签 + 当前值」（例如「显示语言 English」）。
   设置页里 `SettingRow` 与旧的 `.settings-panel__row` 版式一致，迁移不改变像素。
 - 窗口标题栏用 `WindowHeader`（`workspace/.../components/shared/`），顺序固定：标记圆点、类别图块、
-  标题（13px / 500）、状态、拖动空白、本类操作、折叠、关闭。各窗口只填这些位置，不自己排版。
+  标题（13px / 500）、状态、本类操作、折叠、关闭。各窗口只填这些位置，不自己排版。
   类别图块随主题的图标尺寸缩放（默认 20px 图块、12px 图标）。
+  整条标题栏就是拖动面，不留单独的拖动空白，标题一直占到右侧控件前。可改名的标题
+  （`InlineNodeTitleEditor`：任务、便签、终端、Agent）单击改名，按住 400ms 或移动超过 4px 就是抓起窗口，
+  松开不改名；只读标题（文档、文件夹、网页、角色、插件窗口）单击选中窗口。类别图块是唯一只拖不改名的位置，
+  测试用的 `dragSurfaceTestId` 也挂在它上面。窗口自己的点击处理要放过标题的点击（`isWindowTitleGesture`）。
   右端的操作、折叠、关闭之间统一用 `--cove-control-gap`（插件主题的 `controlGap`）。
 - 类别色与标记色是两个通道（`window-kind-identity.css`）。类别（这个窗口是什么，由 `resolveWindowKindFamily`
   推导：Agent 与角色 AI、终端、任务计划、笔记与文档知识、网页与图片媒体）只画标题栏的 `KindTile` 和 9% 的
-  标题栏色调；标记（你怎么归类它）只画窗口外框和标题栏左上角的短旗标。类别色从不画外框，标记色从不画图块。
-  未标记的窗口外框是中性色，没有旗标。生成的主题族（Cove）使用两个通道；手写主题（Pixel）保留自己的装饰。
+  标题栏色调（照原型从左向右在 72% 处淡出，并在标题栏下半部向下淡出）；标记（你怎么归类它）只画窗口外框和标题栏左上角的短旗标。类别色从不画外框，标记色从不画图块。
+  未标记的窗口外框是中性色，没有旗标。
   设置 → 外观 →「窗口类别色」关闭后，图块、标题栏色调和侧栏 Space 小地图都变成中性，标记色不受影响。
 - 折叠和关闭由 `WindowHeader` 渲染（`WindowCollapseButton`、`WindowCloseButton`），都是 24px 的
   `IconButton`，名称即提示文字。关闭按钮按实际效果命名（关闭、删除便签、删除任务），关闭前的确认仍由
@@ -194,6 +230,28 @@
 - 菜单项只在声明了 `role="menu"` 的菜单表面（`ViewportMenuSurface`，窄屏的底部面板同样适用）里
   取得 `menuitem` / `menuitemcheckbox` 角色，其他地方仍是普通按钮。所以一个菜单的所有行都换成
   菜单项之后，才给它加 `role="menu"` 与名称。键盘方向键跳过禁用项。
+
+### 3.5 像素图标
+
+- 应用里的图标都是像素画（Tide：像素是主调），不再使用 lucide。界面图标用
+  `components/ui/pixelIcons.ts` 的具名组件（`CloseIcon`、`FolderOpenIcon` 等），按含义命名，不按外形。
+  画稿在 `components/ui/pixelIconArt/`：每个 12×12 格，`#` 画一格，`.` 留空；多数由 pixelarticons
+  （MIT，许可随画稿保留）的 24 格画稿对折而来，其余按同一网格手画。新增图标先补画稿，再导出组件。
+- 尺寸只用 12、18、24（`--cove-icon-size-sm/md/lg`），单独的插图（例如无法打开的文件）用 36，
+  在 2× 屏上每格都落在整设备像素上。组件的 `size` 只接受这几档；CSS 在上下文里改尺寸时用这些 token，
+  不写 14、16、20 这类让格子跨像素的值。
+- 图标用 `currentColor` 填色、`crispEdges` 绘制；默认是装饰（`aria-hidden`），名称由所在的按钮或
+  菜单行提供，传了 `aria-label` 才成为 `img`。
+- 像素图标不做任意角度的旋转（箭头转 90° 或 180° 仍在格子上）。忙碌状态用 `PixelSpinner`：环上八个
+  2×2 块依次点亮；减少动态效果时放慢到三分之一，不静止。
+- 窗口类别仍用 9 格的 `PixelGlyph`（`NodeKindIcon`、`KindTile`）。Dock 的新建按钮用同一套类别字形
+  （18px），和新建出来的窗口一致；Agent 按钮用提供方标记，插件按钮用插件声明的图标。
+- `tests/e2e/app-shell.pixel-icons.spec.ts` 在工作区、画布菜单和设置各页检查：没有 lucide 图标，
+  每个可见的像素图标都是正方形且尺寸在上述几档。`PixelIcon.spec.tsx` 检查画稿、路径和每个导出组件。
+- 像素基础件在 `styles/ui-pixel.css`：2px 台阶圆角（`--cove-pixel-corners`，`clip-path` 用）、
+  填充代替描边（`--cove-pixel-fill` / `-hover`）、上亮下暗的可按质感（`--cove-pixel-raised` /
+  `-pressed`）和按 `steps(1, end)` 跳变的闪烁（`cove-pixel-blink`，减少动态效果时停用）。
+  首个使用者是任务卡（`docs/ui/TASK_UI_STANDARD.md` 2.2）。
 
 ---
 
@@ -242,6 +300,7 @@
 - 桌面主导航按通用、外观、画布、Agent、终端、快捷操作、连接组织，高级固定在底部。范围选择器区分应用与项目；项目范围只展示项目拥有的字段，不暗示全局偏好支持项目覆盖。旧页面 id 保留为规范页面与锚点别名。
 - 页头必须随当前页面显示对应标题和简短说明，标题与说明来自 registry，不使用泛化的固定标题替代页面上下文。
 - Settings 内容层级固定为 `Page H2 → Group H3 →（必要时）Module H4 → Row`；Group 标题与说明必须位于内容面之外，不能用 `<strong>` 冒充结构标题。
+- Group 标题不重复页面标题（快捷操作页的第一组按内容出现的位置叫“右键菜单”）。设置页是一列偏好，不是只有一个决定性动作的表单：添加、保存单个字段、打开、校准都用默认的 secondary `Button`（添加带加号），accent 实心按钮只留给对话框的确认和等待安装的更新（Apple HIG：一个视图至多一个显著按钮）。`settings.page-hierarchy` E2E 逐页检查。
 - 普通 Group 和 Module 使用透明内容面、留白与细分隔线，避免嵌套卡片。设置行左侧是名称与必要说明，右侧控件按内容宽度排列；窄内容区换行，开关仍与标签同排。Agent 提供方使用列表进入详情，返回恢复列表焦点和滚动；安装状态与错误保持可见。
 - Agent 列表使用紧凑内容行和独立拖动手柄，鼠标与键盘排序共用同一提交入口。首个可选 Agent 即默认 Agent，顺序与默认值必须原子更新；旧设置以已有默认值对齐顺序，隐藏提供方保留兼容数据。纵向摘要不得继承横向布局的 `flex-basis`，行高由文字内容决定。
 - 连接设置按本机运行、浏览器访问、远程连接组织。密码与局域网访问属于浏览器访问；远程机器属于远程连接。去除实验性入口门禁不等于启用网络监听，打开设置不得改变 Worker 模式、启动进程或修改 Web 访问权限。
@@ -295,13 +354,13 @@
   推导，只用标签色里的蓝、紫、绿、橙（黄、红留给等待与失败，灰是中性），重排不改变颜色，不另存。
   瓦片右上角是等待你的 Agent 数，底部三个像素点表示有 Agent 在工作；屏幕阅读器从项目名称里
   读到这两个数。当前项目用项目栏边缘的竖条标出，悬停预览显示短竖条。
-- 导航面板顶部是跨所有项目的「需要你」收件箱：每个等你的 Agent 一行，显示项目瓦片、标题、
-  「项目 · Space」与等了多久；一次点击切到那个项目并聚焦该 Agent（移动端只定位）。没有等你的
-  Agent 时整块不显示；隐藏的 Agent 也会出现，因为它仍在等你。收件箱、项目角标与顶栏摘要来自同一份
-  Agent 数据，同一次渲染更新。
+- 导航面板顶部是跨所有项目的「需要你」收件箱：每个等你的 Agent 一行（含结束一轮、卡片还没回应的，
+  见 [Agent Island](./AGENT_ISLAND.md)），显示项目瓦片、标题、「项目 · Space」与等了多久；一次点击切到
+  那个项目并聚焦该 Agent（移动端只定位）。没有等你的 Agent 时整块不显示；隐藏的 Agent 也会出现。
+  项目角标数的就是收件箱里该项目的行，与顶栏摘要来自同一份 Agent 数据，同一次渲染更新。
 - 「等了多久」只来自本窗口亲眼看到的状态变化：Agent 先被看到在做别的、之后进入等待才开始计时；
   启动时恢复出来、或第一次出现就在等待的 Agent 只显示「等待你」，不编造时长。计时是不保存的界面状态，
-  由外壳常驻记录，侧栏收起时也继续。
+  由外壳常驻记录，侧栏收起时也继续。没回应的 Agent 从卡片出现时算起。
 - 悬停项目只产生临时导航预览，不写 active workspace、active Space、viewport 或执行目录。
   预览跟随指针移动：指针不动时收到的进入事件（例如拖动浮层从指针下消失）不切换预览。
   点击项目沿用该项目保存的画布视野；点击 Space / Agent 才发送定位意图。
@@ -314,14 +373,14 @@
 - Remote 标记只来自项目唯一 Mount 的远端 endpoint，不来自浏览器运行模式。多目录或混合
   Mount 不显示整项目 remote；位置详情在标记或项目目录管理中查看，不常驻项目路径。
 - 每个 Space 是一张卡片：左边是实时像素小地图，窗口按类别色画在 Space 自己的框里（Agent 工作时闪烁，
-  等你变黄，失败变红），点方块飞到那个窗口，点空白处飞到 Space；小地图只服务指针，键盘与屏幕阅读器
+  等你变黄、失败变红，卡片未回应的 Agent 也算等你），点方块飞到那个窗口，点空白处飞到 Space；小地图只服务指针，键盘与屏幕阅读器
   走 Space 名称和 Agent 行。右边是名称与「分支 · N 个工作中 · N 个等你 · N 个窗口」；更多操作在悬停或
   键盘焦点时出现，折叠控制常驻右侧。Space 标记是卡片左缘的短色条。
 - 分支只在 Space 的目录属于它自己的 worktree 时出现（游离 HEAD 显示短提交）；在项目自身检出里的 Space
   与项目同一分支，不重复显示。worktree 列表只有一个 owner（`worktreeInfoStore`）：画布的 Space 框、
   Space 菜单与侧栏卡片按「仓库路径 + Mount 集合」共享同一份列表，有人订阅时每 10 秒列一次、窗口隐藏
   时跳过，列表失败保留上一份，最后一个订阅者离开就停止。
-- Agent 自有标记通过短侧线与淡底色展示。Agent 不继承 Space 标记，品牌图标保持原样；
+- Agent 自有标记通过短侧线与淡底色展示。Agent 不继承 Space 标记，图标是提供方品牌标记、用 AI 类别色绘制；
   Space / Agent 导航不显示选中描边或定位箭头；导航意图、运行状态符号及
   标签色是三个独立语义。项目角标仅汇总待用户处理的 Agent 数量。
 - 项目、Space、同组 Agent 的手动排序保留，不因输出活动自动重排。触控行与操作至少 44px。
@@ -338,6 +397,11 @@
 参考原则：VS Code Sidebar 的稳定项目导航与分组动作，GNOME Sidebar 的清晰导航层级。
 此处沿用应用已有单目录执行模型，不引入多 repo 的隐式目录选择。
 
+### 画布信号
+
+涟漪、工作灯、等待与完成/失败信号、跳转高亮、边缘信标、像素墙光照、工作中巡航和创建/关闭粒子的
+契约见 [Canvas Signals](./CANVAS_SIGNALS.md)。
+
 ### 远景（Tide 第 4 期）
 
 - 画布有两层细节：缩小到 25% 以下进入远景，放大到 28% 以上回到近景（`canvasLod.ts` 的带迟滞纯函数）。
@@ -346,12 +410,16 @@
   所以「远」只有一种语义。
 - 远景下，展开的窗口仍然挂载、保持原尺寸，`.cove-node-presentation__runtime` 用
   `content-visibility: hidden` 跳过绘制（终端、编辑器和网页照常运行，rows/cols 与 PTY 尺寸不变）；
-  `WorkspaceFarView` 在视口门户里按 Tide 原型画出全部窗口：居中的大号像素图标（屏幕约 26px，
-  类别字形色）、800 字重标题、右上角一个状态像素（工作中闪烁，等待黄、失败红，减少动态效果时不闪）
+  `WorkspaceFarView` 在视口门户里按 Tide 原型画出全部窗口：居中的像素图标（类别字形色）、800 字重标题
+  （Agent 和窗口标题栏一样，不带「codex ·」之类的前缀，提供方由图标表示）、右上角一个状态像素（工作中闪烁，等待黄、失败红，减少动态效果时不闪）
   和标记色外圈（3px，向外偏 3px）；背景是类别色从左上 `--cove-glass-far-tint` 渐变到 40% 叠在窗口
   玻璃上（对比度矩阵检查的正是这个组合），标题用 `--cove-kind-<族>-far`。方块不接收指针事件，拖拽、框选和右键照旧落在下面的窗口上。已折叠的窗口保持桌面图标。
-- 尺寸都除以门户层上的 `--cove-canvas-zoom`，在屏幕上保持不变；标题字号是
-  `min(15px / zoom, 12cqw, 22cqh)`，小方块里由容器单位收住。窗口类别色关闭时方块只保留中性玻璃。
+- 方块本身是窗口玻璃，用画布坐标：圆角就是 `--cove-node-radius`，和墙在它下面画的磨砂同一个角，
+  任何缩放下都重合。方块里的「面」按屏幕像素排版（宽高乘以门户层上的 `--cove-canvas-zoom`，再缩放
+  回去），尺寸照抄原型 `.n-far`：方块放得下时图标屏幕 26px、标题 15px（乘界面字号缩放）、图标下间距
+  8px、状态像素 7px；放不下时随方块缩小（图标和间距为面内容高度的 26% / 6%，标题取宽度 12% 与高度 22%
+  中较小者，最多两行，状态像素为高度 7%），内边距是面宽度的 7%。任何内容都不会被丢掉，缩得再小也是窗口的
+  一张完整「海报」。窗口类别色关闭时方块只保留中性玻璃。
 - 远景下每个 Space 的名字在屏幕上一样大（只按缩放计算，不再按 Space 宽度封顶）；窄 Space 的名字可以
   超出 Space，屏幕上约 300px 后才截断，边框缺口只在 Space 自己的宽度内。
 - 交互：远景下窗口内容不接收指针事件（交叉淡化期间也一样），点击落在窗口本身。单击方块飞到它并回到近景
@@ -391,10 +459,10 @@
 - 模态界面复用共享 Dialog 的 inert、Tab 约束与焦点恢复。手机打开搜索先聚焦关闭控件，
   避免自动唤起软键盘；定位后关闭搜索，返回导航控件，不聚焦终端输入。
   弹层交接后旧界面不得通过延迟恢复抢走新界面的焦点。
-- 控制中心只放快捷设置：主题族（Cove / Pixel）、明暗（Pixel 没有跟随系统，切到 Pixel 时按系统当前
-  的明暗选）、像素背景、动态信号（新建、关闭、工作中三种像素效果一起开关）和缩略图。开关保留标签与真实
-  checked 状态，不重复显示开/关状态文字。主题详情、预览和插件主题在设置 → 外观；当前是插件主题时，
-  控制中心显示它的名字，不可用或加载失败时给出提示，但不改写用户保存的主题选择。通知横幅在设置 → 通用。
+- 控制中心是一个像素游戏窗口（`.cove-pixel-window`），只放快捷设置：外观三张像素缩略图（与设置 → 外观共用
+  `AppearancePicker`）、四个 `aria-pressed` 快捷开关（`ToggleTile`：小地图、应用内通知、系统通知、提示音），以及「通知设置」
+  「全部设置」两行菜单（指针或焦点所在行前有闪烁的像素光标）。材质、像素背景、闪烁和动态效果只在设置 → 外观。当前是插件主题时，
+  控制中心显示它的名字，三个外观都不选中；不可用或加载失败时给出提示，但不改写用户保存的主题选择。
 
 参考：WAI-ARIA APG Dialog (Modal) 与 Combobox 的焦点约束、返回目标与输入焦点模型。
 

@@ -138,6 +138,7 @@ function resolveWorkerEndpoint(worker: string, endpoints: WorkerEndpointDto[]): 
   }
 
   throw createAppError('worker.unavailable', {
+    details: { reason: 'worker_not_found', worker: normalized },
     debugMessage: `Unknown worker: ${normalized}`,
   })
 }

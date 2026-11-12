@@ -91,6 +91,7 @@ describe('headless PTY runtime', () => {
         },
         agentProvider: 'claude-code',
         initialAgentState: 'working',
+        hookCoverage: 'lifecycle',
         hookInstallState: 'installed',
       })
       await runtime.spawnSession({
@@ -106,6 +107,7 @@ describe('headless PTY runtime', () => {
         },
         agentProvider: 'codex',
         initialAgentState: 'working',
+        hookCoverage: 'lifecycle',
         hookInstallState: 'installed',
       })
 
@@ -216,12 +218,28 @@ describe('headless PTY runtime', () => {
         },
       ])
       expect(observedMetadata).toEqual([
+        {
+          sessionId: 'session-2',
+          resumeSessionId: null,
+          agentProvider: 'claude-code',
+          agentLaunchKind: 'managed',
+          hookCoverage: 'lifecycle',
+          hookInstallState: 'installed',
+        },
+        {
+          sessionId: 'session-1',
+          resumeSessionId: null,
+          agentProvider: 'codex',
+          agentLaunchKind: 'managed',
+          hookCoverage: 'lifecycle',
+          hookInstallState: 'installed',
+        },
         { sessionId: 'session-1', resumeSessionId: 'resume-session-1' },
       ])
       expect(observedExit).toEqual([{ sessionId: 'session-1', exitCode: 0 }])
       expect(watcherNoteInteraction).toHaveBeenCalledWith('session-1', '\r')
-      expect(watcherDisposeSession).toHaveBeenCalledWith('session-1')
-      expect(watcherDisposeSession).toHaveBeenCalledWith('session-2')
+      expect(watcherDisposeSession).toHaveBeenCalledWith('session-1', true)
+      expect(watcherDisposeSession).toHaveBeenCalledWith('session-2', true)
       expect(processEngine.write).toHaveBeenCalledWith('session-1', '\r')
       expect(processEngine.write).toHaveBeenCalledWith('session-1', '\u001b[1;1R')
       expect(processEngine.probeForeground).toHaveBeenCalledWith('session-1')

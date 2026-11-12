@@ -1,10 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { WaitingAgentReference } from '../utils/agentActivitySummary'
+import type { AgentActivityReference } from '../utils/agentActivitySummary'
 import { useAgentWaitingSinceStore } from '../hooks/useAgentWaitingSince'
 import { SidebarAttentionInbox } from './SidebarAttentionInbox'
 
-const items: WaitingAgentReference[] = [
+const items: AgentActivityReference[] = [
   {
     workspaceId: 'ws-core',
     projectName: 'opencove',
@@ -12,6 +12,7 @@ const items: WaitingAgentReference[] = [
     nodeId: 'agent-flaky',
     title: 'Fix the flaky E2E',
     spaceName: null,
+    provider: null,
   },
   {
     workspaceId: 'ws-site',
@@ -20,6 +21,7 @@ const items: WaitingAgentReference[] = [
     nodeId: 'agent-notes',
     title: 'Draft the 0.5 changelog',
     spaceName: 'release-0.5',
+    provider: null,
   },
 ]
 
@@ -51,12 +53,12 @@ describe('SidebarAttentionInbox', () => {
     const first = screen.getByTestId('workspace-attention-item-ws-core-agent-flaky')
     expect(first.textContent).toContain('Fix the flaky E2E')
     expect(first.textContent).toContain('opencove · Project canvas')
-    expect(first.textContent).toContain('Waiting')
+    expect(first.textContent).toContain('Needs your answer')
     const second = screen.getByTestId('workspace-attention-item-ws-site-agent-notes')
     expect(second.textContent).toContain('cove-site · release-0.5')
     expect(second.textContent).toContain('2 min ago')
     expect(second.getAttribute('aria-label')).toBe(
-      'Draft the 0.5 changelog, cove-site · release-0.5, waiting: 2 min ago',
+      'Draft the 0.5 changelog, cove-site · release-0.5, Needs your answer, 2 min ago',
     )
   })
 

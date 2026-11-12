@@ -6,7 +6,10 @@ import { resizeTerminalPreservingScrollState } from './effectiveDevicePixelRatio
 import { logTerminalGeometryDiagnostics } from './terminalGeometryDiagnostics'
 import { refreshTerminalNodeSize } from './terminalGeometryLayout'
 import type { InitialTerminalNodeGeometryCommitResult, PtySize } from './terminalGeometryTypes'
-import { recordTerminalGeometryCommitResult } from './terminalGeometryCoordinator'
+import {
+  applyTerminalGeometryMutation,
+  recordTerminalGeometryCommitResult,
+} from './terminalGeometryCoordinator'
 import { requestTerminalGeometryCommitAck } from './terminalGeometryCommitAck'
 import { resolveStableMeasuredTerminalNodeGeometry } from './terminalGeometryStableMeasurement'
 
@@ -156,6 +159,7 @@ async function commitMeasuredTerminalNodeGeometry({
     containerRef,
     isPointerResizingRef,
     size: canonicalPtySize,
+    revision: canonicalGeometry.revision,
   })
   lastCommittedPtySizeRef.current = canonicalPtySize
   logTerminalGeometryDiagnostics({
@@ -171,6 +175,7 @@ async function commitMeasuredTerminalNodeGeometry({
   return {
     ...canonicalPtySize,
     changed: result.status === 'accepted' && result.changed,
+    geometryRevision: canonicalGeometry.revision,
   }
 }
 
@@ -179,22 +184,29 @@ function applyTerminalNodeGeometryLocally({
   containerRef,
   isPointerResizingRef,
   size,
+  revision,
 }: {
   terminalRef: MutableRefObject<Terminal | null>
   containerRef: MutableRefObject<HTMLElement | null>
   isPointerResizingRef: MutableRefObject<boolean>
   size: PtySize
+  revision?: number | null
 }): void {
   const terminal = terminalRef.current
   if (!terminal) {
     return
   }
 
-  if (terminal.cols !== size.cols || terminal.rows !== size.rows) {
-    resizeTerminalPreservingScrollState(terminal, size.cols, size.rows)
-  }
-
-  refreshTerminalNodeSize({ terminalRef, containerRef, isPointerResizingRef })
+  applyTerminalGeometryMutation(
+    terminal,
+    () => {
+      if (terminal.cols !== size.cols || terminal.rows !== size.rows) {
+        resizeTerminalPreservingScrollState(terminal, size.cols, size.rows)
+      }
+      refreshTerminalNodeSize({ terminalRef, containerRef, isPointerResizingRef })
+    },
+    revision,
+  )
 }
 
 export async function commitSettledTerminalNodeGeometry({

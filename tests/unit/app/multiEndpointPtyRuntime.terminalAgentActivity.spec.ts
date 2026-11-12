@@ -302,6 +302,7 @@ describe('multi-endpoint terminal Agent runtime projection', () => {
     )
 
     expect(stateListener).toHaveBeenCalledWith({
+      remote: true,
       sessionId: homeSessionId,
       state: 'working',
       source: 'claude_hook',

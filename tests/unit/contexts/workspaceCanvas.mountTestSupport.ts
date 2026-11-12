@@ -10,6 +10,9 @@ export function createMountAwareAgentControlSurface(options: {
   const mountId = 'mount-local'
 
   return vi.fn(async (request: { id: string; payload: unknown }) => {
+    if (request.id === 'system.capabilities') {
+      return { features: { managedClaudeResumeBindingDeliveryV1: true } }
+    }
     if (request.id === 'mount.list') {
       return {
         projectId: options.workspaceId,

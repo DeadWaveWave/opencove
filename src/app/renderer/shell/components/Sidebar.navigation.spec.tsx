@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
+import { useAgentAttentionStore } from '../store/useAgentAttentionStore'
 import { Sidebar } from './Sidebar'
 
 vi.mock('../hooks/useWorkspaceMountSummaries', () => ({
@@ -27,6 +28,52 @@ function project(id: string): WorkspaceState {
   }
 }
 
+type AgentNode = WorkspaceState['nodes'][number]
+
+function agentNode(
+  id: string,
+  status: 'waiting' | 'running' | 'standby',
+  labelColorOverride: 'orange' | null = null,
+): AgentNode {
+  return {
+    id,
+    position: { x: 0, y: 0 },
+    data: {
+      sessionId: '',
+      title: id,
+      kind: 'agent',
+      width: 400,
+      height: 300,
+      status,
+      startedAt: null,
+      endedAt: null,
+      exitCode: null,
+      lastError: null,
+      scrollback: null,
+      labelColorOverride,
+      task: null,
+      note: null,
+      image: null,
+      document: null,
+      website: null,
+      agent: {
+        provider: 'codex',
+        prompt: '',
+        model: null,
+        effectiveModel: null,
+        launchMode: 'new',
+        resumeSessionId: null,
+        executionDirectory: '',
+        expectedDirectory: null,
+        directoryMode: 'workspace',
+        customDirectory: null,
+        shouldCreateDirectory: false,
+        taskId: null,
+      },
+    },
+  }
+}
+
 function renderSidebar(overrides: Partial<React.ComponentProps<typeof Sidebar>> = {}) {
   const props = {
     workspaces: [project('local'), project('remote')],
@@ -44,6 +91,10 @@ function renderSidebar(overrides: Partial<React.ComponentProps<typeof Sidebar>> 
 }
 
 describe('Sidebar navigation semantics', () => {
+  afterEach(() => {
+    useAgentAttentionStore.setState(useAgentAttentionStore.getInitialState(), true)
+  })
+
   it('previews a project without navigation and resets preview for an external switch', () => {
     const { props, rerender } = renderSidebar()
     fireEvent.pointerMove(screen.getByTestId('workspace-item-remote'), { pointerType: 'mouse' })
@@ -79,43 +130,9 @@ describe('Sidebar navigation semantics', () => {
 
   it('counts only agents waiting for user input, independently of group and own color', () => {
     const workspace = project('local')
-    workspace.nodes = ['waiting', 'running'].map((status, index) => ({
-      id: `agent-${index}`,
-      position: { x: 0, y: 0 },
-      data: {
-        sessionId: '',
-        title: `Agent ${index}`,
-        kind: 'agent',
-        width: 400,
-        height: 300,
-        status: status as 'waiting' | 'running',
-        startedAt: null,
-        endedAt: null,
-        exitCode: null,
-        lastError: null,
-        scrollback: null,
-        labelColorOverride: index === 0 ? 'orange' : null,
-        task: null,
-        note: null,
-        image: null,
-        document: null,
-        website: null,
-        agent: {
-          provider: 'codex',
-          prompt: '',
-          model: null,
-          effectiveModel: null,
-          launchMode: 'new',
-          resumeSessionId: null,
-          executionDirectory: '',
-          expectedDirectory: null,
-          directoryMode: 'workspace',
-          customDirectory: null,
-          shouldCreateDirectory: false,
-          taskId: null,
-        },
-      },
-    }))
+    workspace.nodes = (['waiting', 'running'] as const).map((status, index) =>
+      agentNode(`agent-${index}`, status, index === 0 ? 'orange' : null),
+    )
     workspace.spaces = [
       {
         id: 'space',
@@ -155,5 +172,49 @@ describe('Sidebar navigation semantics', () => {
         .getByTestId('workspace-space-item-local-space')
         .classList.contains('workspace-space-item--active'),
     ).toBe(false)
+  })
+
+  it('shows an Agent whose card you have not answered as waiting, on its row and its tile', () => {
+    const workspace = project('local')
+    workspace.nodes = [agentNode('agent-0', 'standby'), agentNode('agent-1', 'standby')]
+    useAgentAttentionStore.setState({
+      notifications: [
+        {
+          kind: 'agent-standby',
+          id: 'session-0',
+          sessionId: 'session-0',
+          workspaceId: 'local',
+          workspaceName: 'local',
+          workspacePath: '/tmp/local',
+          nodeId: 'agent-0',
+          title: 'agent-0',
+          taskId: null,
+          taskTitle: null,
+          spaceId: null,
+          spaceName: null,
+          spaceDirectoryPath: null,
+          executionDirectory: '/tmp/local',
+          gitContext: null,
+          pullRequest: null,
+          createdAt: 1,
+        },
+      ],
+    })
+    renderSidebar({ workspaces: [workspace] })
+    expect(screen.getByTestId('workspace-project-attention-local').textContent).toBe('1')
+
+    const row = () => screen.getByTestId('workspace-agent-item-local-agent-0')
+    expect(row().querySelector('.workspace-agent-item__status--waiting')?.textContent).toBe(
+      'Finished',
+    )
+    expect(screen.getByTestId('workspace-agent-item-local-agent-1').textContent).toContain(
+      'Standby',
+    )
+
+    act(() => useAgentAttentionStore.getState().acknowledgeNode('local', 'agent-0'))
+    expect(screen.queryByTestId('workspace-project-attention-local')).toBeNull()
+    expect(row().querySelector('.workspace-agent-item__status--standby')?.textContent).toBe(
+      'Standby',
+    )
   })
 })

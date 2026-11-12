@@ -1,3 +1,4 @@
+import { agentRunSnapshotSchema } from '../../../shared/contracts/dto/agentRunStateSchema'
 import { normalizePiStateObservationMetadata } from '@shared/runtime/piConversation'
 import { isAgentHookStateSource } from '../../../shared/runtime/agentHookStateSource'
 export type BrowserPtyListenerMap<TEvent> = Set<(event: TEvent) => void>
@@ -29,6 +30,7 @@ export function normalizeBrowserPtyStateMetadata(
 ): Partial<
   Pick<
     TerminalSessionStateEvent,
+    | 'agentRunState'
     | 'source'
     | 'hookInstallState'
     | 'degraded'
@@ -58,7 +60,9 @@ export function normalizeBrowserPtyStateMetadata(
     record.observedAtMs >= 0
       ? record.observedAtMs
       : null
+  const decided = agentRunSnapshotSchema.safeParse(record.agentRunState)
   return {
+    ...(decided.success ? { agentRunState: decided.data } : {}),
     ...normalizePiStateObservationMetadata(record),
     ...(source ? { source } : {}),
     ...(hookInstallState ? { hookInstallState } : {}),

@@ -1,7 +1,8 @@
 import React from 'react'
+import { Toggle } from '@app/renderer/components/ui/Toggle'
 import { Button } from '@app/renderer/components/ui/Button'
 import { SettingRow } from '@app/renderer/components/ui/SettingRow'
-import { ArrowLeft, RefreshCw } from 'lucide-react'
+import { ArrowLeftIcon, RefreshIcon } from '@app/renderer/components/ui/pixelIcons'
 import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { useTranslation } from '@app/renderer/i18n'
 import { AGENT_PROVIDER_LABEL } from '@contexts/settings/domain/agentSettings'
@@ -19,6 +20,7 @@ export function AgentProviderDetail({
   onBack,
   isDefaultProvider,
   onMakeDefault,
+  onChangeCodexReuseRunningAppServer,
   ...configuration
 }: React.ComponentProps<typeof AgentProviderConfigurePanel> & {
   availability?: AgentProviderAvailability
@@ -29,6 +31,7 @@ export function AgentProviderDetail({
   onRefresh: () => void
   onBack: () => void
   isDefaultProvider: boolean
+  onChangeCodexReuseRunningAppServer: (enabled: boolean) => void
   onMakeDefault: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
@@ -47,7 +50,7 @@ export function AgentProviderDetail({
         data-testid={`settings-agent-configure-done-${provider}`}
         onClick={onBack}
       >
-        <ArrowLeft size={14} aria-hidden="true" />
+        <ArrowLeftIcon size={18} />
         {t('settingsPanel.agentDetail.back')}
       </Button>
       <header className="settings-agent-detail__header">
@@ -91,7 +94,7 @@ export function AgentProviderDetail({
               onClick={onRefresh}
               data-testid={`settings-agent-refresh-${provider}`}
             >
-              <RefreshCw size={13} aria-hidden="true" />
+              <RefreshIcon size={12} />
               {t('settingsPanel.agentDetail.refresh')}
             </Button>
             <Button
@@ -142,6 +145,21 @@ export function AgentProviderDetail({
           </div>
         </details>
       </section>
+      {provider === 'codex' ? (
+        <SettingRow
+          id="settings-codex-reuse-running-app-server"
+          label={t('settingsPanel.agent.codexReuseRunningAppServerLabel')}
+          description={t('settingsPanel.agent.codexReuseRunningAppServerHelp')}
+          control={
+            <Toggle
+              data-testid="settings-codex-reuse-running-app-server"
+              checked={settings.codexReuseRunningAppServer}
+              label={t('settingsPanel.agent.codexReuseRunningAppServerLabel')}
+              onCheckedChange={onChangeCodexReuseRunningAppServer}
+            />
+          }
+        />
+      ) : null}
       <AgentProviderConfigurePanel {...configuration} />
     </div>
   )

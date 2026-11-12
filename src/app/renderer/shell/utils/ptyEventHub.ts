@@ -14,9 +14,9 @@ import type {
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '@shared/contracts/dto'
-import { createAgentRunStateArbiterOwner } from './agentRunStateArbiterOwner'
 
 type UnsubscribeFn = () => void
+export type PtyStateDelivery = { replay: boolean }
 
 interface PtyEventSource {
   onData: (listener: (event: TerminalDataEvent) => void) => UnsubscribeFn
@@ -42,7 +42,9 @@ export interface PtyEventHub {
     sessionId: string,
     listener: (event: TerminalResyncEvent) => void,
   ) => UnsubscribeFn
-  onState: (listener: (event: TerminalSessionStateEvent) => void) => UnsubscribeFn
+  onState: (
+    listener: (event: TerminalSessionStateEvent, delivery?: PtyStateDelivery) => void,
+  ) => UnsubscribeFn
   onSessionState: (
     sessionId: string,
     listener: (event: TerminalSessionStateEvent) => void,
@@ -53,21 +55,13 @@ export interface PtyEventHub {
     listener: (event: TerminalSessionMetadataEvent) => void,
   ) => UnsubscribeFn
   getLatestSessionMetadata: (sessionId: string) => TerminalSessionMetadataEvent | null
+  getLatestSessionState: (sessionId: string) => TerminalSessionStateEvent | null
   syncAgentRunStateSessions: (sessionIds: ReadonlySet<string>) => void
   disposeAgentRunStateSession: (sessionId: string) => void
-  refreshAgentRunStateAuthority: () => void
-  getAgentRunStateDebug: ReturnType<typeof createAgentRunStateArbiterOwner>['getDebugState']
   dispose: () => void
 }
 
-export function createPtyEventHub(
-  source: PtyEventSource,
-  arbitrationOptions: {
-    now?: () => number
-    setTimer?: Parameters<typeof createAgentRunStateArbiterOwner>[0]['setTimer']
-    clearTimer?: Parameters<typeof createAgentRunStateArbiterOwner>[0]['clearTimer']
-  } = {},
-): PtyEventHub {
+export function createPtyEventHub(source: PtyEventSource): PtyEventHub {
   const dataListeners = createListenerMap<TerminalDataEvent>()
   const exitListeners = createListenerMap<TerminalExitEvent>()
   const geometryListeners = createListenerMap<TerminalGeometryEvent>()
@@ -76,13 +70,24 @@ export function createPtyEventHub(
   const metadataListeners = createListenerMap<TerminalSessionMetadataEvent>()
   const latestStateBySessionId = new Map<string, TerminalSessionStateEvent>()
   const latestMetadataBySessionId = new Map<string, TerminalSessionMetadataEvent>()
-  const agentRunStateArbiter = createAgentRunStateArbiterOwner({
-    ...arbitrationOptions,
-    onDecision: event => {
+  // The executing Worker owns arbitration. Renderer only caches its projection.
+  const stateCache = {
+    observe: (event: TerminalSessionStateEvent) => {
       latestStateBySessionId.set(event.sessionId, event)
       dispatchEvent(stateListeners, event)
     },
-  })
+    disposeSession: (sessionId: string) => {
+      latestStateBySessionId.delete(sessionId)
+    },
+    syncSessions: (sessionIds: ReadonlySet<string>) => {
+      for (const id of latestStateBySessionId.keys()) {
+        if (!sessionIds.has(id)) {
+          latestStateBySessionId.delete(id)
+        }
+      }
+    },
+    dispose: () => latestStateBySessionId.clear(),
+  }
 
   let unsubscribeDataSource: UnsubscribeFn | null = null
   let unsubscribeExitSource: UnsubscribeFn | null = null
@@ -107,7 +112,7 @@ export function createPtyEventHub(
     }
 
     unsubscribeExitSource = source.onExit(event => {
-      agentRunStateArbiter.disposeSession(event.sessionId)
+      stateCache.disposeSession(event.sessionId)
       latestStateBySessionId.delete(event.sessionId)
       latestMetadataBySessionId.delete(event.sessionId)
       dispatchEvent(exitListeners, event)
@@ -140,7 +145,7 @@ export function createPtyEventHub(
     }
 
     unsubscribeStateSource = source.onState(event => {
-      agentRunStateArbiter.observe(event)
+      stateCache.observe(event)
     })
   }
 
@@ -288,11 +293,13 @@ export function createPtyEventHub(
     }
   }
 
-  const onState = (listener: (event: TerminalSessionStateEvent) => void): UnsubscribeFn => {
+  const onState = (
+    listener: (event: TerminalSessionStateEvent, delivery?: PtyStateDelivery) => void,
+  ): UnsubscribeFn => {
     const unsubscribe = subscribeGlobal(stateListeners, listener)
     ensureStateSourceSubscription()
     latestStateBySessionId.forEach(event => {
-      listener(event)
+      listener(event, { replay: true })
     })
     return () => {
       unsubscribe()
@@ -358,13 +365,12 @@ export function createPtyEventHub(
     onMetadata,
     onSessionMetadata,
     getLatestSessionMetadata: sessionId => latestMetadataBySessionId.get(sessionId) ?? null,
-    syncAgentRunStateSessions: sessionIds => agentRunStateArbiter.syncSessions(sessionIds),
+    getLatestSessionState: sessionId => latestStateBySessionId.get(sessionId) ?? null,
+    syncAgentRunStateSessions: sessionIds => stateCache.syncSessions(sessionIds),
     disposeAgentRunStateSession: sessionId => {
-      agentRunStateArbiter.disposeSession(sessionId)
+      stateCache.disposeSession(sessionId)
       latestStateBySessionId.delete(sessionId)
     },
-    refreshAgentRunStateAuthority: () => agentRunStateArbiter.refresh(),
-    getAgentRunStateDebug: sessionId => agentRunStateArbiter.getDebugState(sessionId),
     dispose: () => {
       unsubscribeDataSource?.()
       unsubscribeExitSource?.()
@@ -388,7 +394,7 @@ export function createPtyEventHub(
       metadataListeners.bySessionId.clear()
       latestStateBySessionId.clear()
       latestMetadataBySessionId.clear()
-      agentRunStateArbiter.dispose()
+      stateCache.dispose()
     },
   }
 }
@@ -398,48 +404,11 @@ let singleton: {
   hub: PtyEventHub
 } | null = null
 
-declare global {
-  interface Window {
-    __opencoveAgentRunStateTestApi?: {
-      advanceBy: (durationMs: number) => boolean
-      resetClock: () => void
-      getSession: ReturnType<typeof createAgentRunStateArbiterOwner>['getDebugState']
-    }
-  }
-}
-
 export function getPtyEventHub(): PtyEventHub {
   const source = window.opencoveApi.pty
   if (!singleton || singleton.source !== source) {
     singleton?.hub.dispose()
-    let testTimeOffsetMs = 0
-    const isTest = window.opencoveApi?.meta?.isTest === true
-    const hub = createPtyEventHub(
-      source,
-      isTest ? { now: () => Date.now() + testTimeOffsetMs } : {},
-    )
-    singleton = {
-      source,
-      hub,
-    }
-    if (isTest) {
-      window.__opencoveAgentRunStateTestApi = {
-        advanceBy: durationMs => {
-          if (!Number.isFinite(durationMs) || durationMs < 0) {
-            return false
-          }
-          testTimeOffsetMs += durationMs
-          hub.refreshAgentRunStateAuthority()
-          return true
-        },
-        resetClock: () => {
-          testTimeOffsetMs = 0
-          hub.refreshAgentRunStateAuthority()
-        },
-        getSession: sessionId => hub.getAgentRunStateDebug(sessionId),
-      }
-    }
+    singleton = { source, hub: createPtyEventHub(source) }
   }
-
   return singleton.hub
 }

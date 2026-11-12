@@ -4,7 +4,7 @@ import { useTranslation } from '@app/renderer/i18n'
 import type { RoleCreatorState } from '../types'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { WindowHeading } from '@app/renderer/components/WindowHeading'
-import { UserRound } from 'lucide-react'
+import { UserIcon } from '@app/renderer/components/ui/pixelIcons'
 
 interface RoleCreatorWindowProps {
   roleCreator: RoleCreatorState | null
@@ -42,7 +42,7 @@ export function RoleCreatorWindow({
     >
       <WindowHeading
         title={roleCreator.mode === 'edit' ? t('roleCreator.editTitle') : t('roleCreator.title')}
-        icon={<UserRound size={16} aria-hidden="true" />}
+        icon={<UserIcon size={18} />}
         onClose={closeRoleCreator}
         disabled={isDisabled}
       />

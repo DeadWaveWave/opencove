@@ -1,0 +1,415 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`documents named-window commands offline: "agent" 1`] = `
+"Usage: opencove agent stop --node <id> [options]
+
+Stop the agent session bound to a canvas node
+
+Stop an agent window, or a terminal that still hosts a live observed agent, while keeping the canvas node. A terminal’s entire session stops, including its shell. An exited agent is a no-op even if its shell is still running. Plain terminals are refused; use session kill --session <id> to stop a shell session. Remote targets are refused before dispatch because safe agent-only stopping is not supported there yet.
+
+Returns {nodeId, sessionId, stopped: true} when the stop is requested. An already-exited session returns stopped: false and reason: not_running (exit 0). A changed node/session binding refuses the stop (exit 2); inspect the node again before deciding what to stop. Stopping never sends terminal input.
+
+Options:
+  --node <id>         Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
+  --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Table output (-o table): not supported.
+Projectable fields: nodeId, sessionId, stopped, reason
+
+Projection example:
+  opencove agent stop --node '<id>' --fields nodeId
+  {"nodeId":"node-123","sessionId":"session-123","stopped":true}
+
+Examples:
+  opencove agent stop --node "Lead"
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`documents named-window commands offline: "node" 1`] = `
+"Usage: opencove node update agent --node <id> [options]
+
+Update an agent node
+
+Rename this window and keep its name when the agent session changes. The name is saved as provided, with surrounding whitespace removed. Use --frame to also move or resize it.
+
+Options:
+  --node <id>         Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
+  --title <text>      Set a fixed window name; omit on creation to keep automatic titles
+  --frame <json>      Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
+  --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.provider, data.prompt, data.model, data.effectiveModel, data.executionDirectory, data.expectedDirectory, data.taskId
+
+Projection example:
+  opencove node update agent --node '<id>' --fields id,title
+  {"revision":1,"node":{"id":"n","title":"Agent"}}
+
+Examples:
+  opencove node update agent --node node-123 --title "Lead"
+  opencove node update agent --node node-123 --title "Release review" --pretty
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`documents named-window commands offline: "node" 2`] = `
+"Usage: opencove node update terminal --node <id> [options]
+
+Update a terminal node
+
+Rename this window and keep its name when the agent session changes. The name is saved as provided, with surrounding whitespace removed. Use --frame to also move or resize it.
+
+Options:
+  --node <id>         Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
+  --title <text>      Set a fixed window name; omit on creation to keep automatic titles
+  --frame <json>      Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
+  --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.profileId, data.runtimeKind, data.executionDirectory, data.expectedDirectory
+
+Projection example:
+  opencove node update terminal --node '<id>' --fields id,title
+  {"revision":1,"node":{"id":"n","title":"Terminal"}}
+
+Examples:
+  opencove node update terminal --node node-123 --title "Lead"
+  opencove node update terminal --node node-123 --title "Release review" --pretty
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`documents named-window commands offline: "project" 1`] = `
+"Usage: opencove project add --path <dir> [options]
+
+Add a local directory as a project
+
+The path must be an existing absolute local directory on the Worker. An existing project at the same path is reused with its saved name. Agents cannot add projects: ask the user to add the project in OpenCove.
+
+Options:
+  --path <dir>   Add this local directory (required)
+  --name <name>  Name a new project; defaults to the directory name
+
+Table output (-o table): not supported.
+Projectable fields: id, name, path, defaultSpace, defaultSpace.id, defaultSpace.name, defaultSpace.directoryPath, defaultSpace.rect, defaultSpace.rect.x, defaultSpace.rect.y, defaultSpace.rect.width, defaultSpace.rect.height
+
+Projection example:
+  opencove project add --path '<dir>' --fields id
+  {"id":"project-123"}
+
+Examples:
+  opencove project add --path /workspace/app --name "App"
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`documents named-window commands offline: "space" 1`] = `
+"Usage: opencove space create --name <name> [--project <selector>] [--directory <path>] | --name <name> --in <selector> [--frame <json>] [--move <selector>]...
+
+Create a top-level or child space
+
+Top-level spaces use your terminal node’s current project unless --project is given; outside OpenCove, supply --project. Placement is automatic. --directory must be an existing absolute local directory within the project’s default mount; symlinks cannot escape that mount. Omit it to use the mount root.
+
+With --in, create a child space in the selected parent and inherit its directory. --move selects direct members of that parent. Without --frame, the boundary encloses the moved nodes, or defaults to 420×300 at the parent’s center. The server fits the boundary inside the parent, preserves room for moved nodes, and grows ancestors when needed. The result reports rect as {x,y,width,height} in canvas coordinates.
+
+Options:
+  --name <name>         Name the new space (required)
+  --project <selector>  Select the project, or narrow the parent lookup; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --directory <path>    Set a top-level space’s working directory
+  --in <selector>       Create inside a parent space; accepts @self, an exact ID, exact name or unique ID prefix (6+ characters)
+  --frame <json>        Set the child boundary: {"x":0,"y":0,"width":420,"height":300}; requires --in
+  --move <selector>     Move a node from the parent; repeat for more nodes. Accepts @self, @parent, an exact ID, exact name or unique ID prefix (6+ characters); requires --in
+
+Table output (-o table): not supported.
+Projectable fields: id, name, projectId, parentSpaceId, rect, rect.x, rect.y, rect.width, rect.height, directoryPath, movedNodeIds
+
+Projection example:
+  opencove space create --name '<name>' --fields id
+  {"id":"space-123"}
+
+Examples:
+  opencove space create --name "Review"
+  opencove space create --name "Migration" --project project-123 --directory /workspace/migration
+  opencove space create --name "Review notes" --in @self --move "Brief" --move "Checklist"
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`documents named-window commands offline: "space" 2`] = `
+"Usage: opencove space update --space <selector> [--name <text>] [--frame <json>]
+
+Rename a space or adjust its boundary
+
+Rename a space or change its canvas boundary without moving any member node or child space. Names follow the same rules as space create. Supply a name, a frame, or both. The requested boundary expands as needed to contain the fixed contents with padding; requested x and y may also be adjusted. Ancestors grow when necessary. appliedFrame and frameAdjusted report changes to requested frame values. To move a space together with its contents, drag it in OpenCove. Directory and worktree bindings are preserved.
+
+Options:
+  --space <selector>  Select the space to rename or arrange; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required)
+  --name <text>       Set a nonblank name; surrounding whitespace is removed
+  --frame <json>      Set boundary x, y, width or height; dimensions must be positive and contents stay in place
+  --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Table output (-o table): not supported.
+Projectable fields: id, name, projectId, parentSpaceId, rect, rect.x, rect.y, rect.width, rect.height, directoryPath, movedNodeIds, frameAdjusted, appliedFrame, appliedFrame.x, appliedFrame.y, appliedFrame.width, appliedFrame.height
+
+Projection example:
+  opencove space update --space '<selector>' --fields id
+  {"id":"space-123"}
+
+Examples:
+  opencove space update --space @self --name "Review"
+  opencove space update --space "Review" --frame '{"width":1200,"height":800}'
+  opencove space update --space space-123 --frame '{"x":100,"y":200}'
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`error golden texts (TTY=false) 1`] = `
+{
+  "missing required option": "{"error":{"code":"cli.usage","retryable":false,"message":"Missing required option --space (or another target space option) for \\"opencove node create note\\".","hint":"Choose a Space, or add --root-canvas to create outside every Space."}}
+",
+  "not running": "{"error":{"code":"context.unreachable","retryable":false,"message":"OpenCove is not running for this profile.","hint":"Start the OpenCove app, or run \\"opencove worker start\\". Use --user-data <dir> to target another profile.","details":{"profiles":["/tmp/opencove-test/profile-a","/tmp/opencove-test/profile-b"]}}}
+",
+  "unknown command": "{"error":{"code":"cli.usage","retryable":false,"message":"Unknown command \\"nodes list\\" for opencove.","hint":"Did you mean node list? Run \\"opencove --help\\" to see its commands."}}
+",
+  "unknown option": "{"error":{"code":"cli.usage","retryable":false,"message":"Unknown option --frobnicate for \\"opencove node list\\".","hint":"Run \\"opencove node list --help\\" to see its options."}}
+",
+}
+`;
+
+exports[`error golden texts (TTY=true) 1`] = `
+{
+  "missing required option": "error[cli.usage]: Missing required option --space (or another target space option) for "opencove node create note".
+  hint: Choose a Space, or add --root-canvas to create outside every Space.
+",
+  "not running": "error[context.unreachable]: OpenCove is not running for this profile.
+  searched profiles: /tmp/opencove-test/profile-a, /tmp/opencove-test/profile-b
+  hint: Start the OpenCove app, or run "opencove worker start". Use --user-data <dir> to target another profile.
+",
+  "unknown command": "error[cli.usage]: Unknown command "nodes list" for opencove.
+  hint: Did you mean node list? Run "opencove --help" to see its commands.
+",
+  "unknown option": "error[cli.usage]: Unknown option --frobnicate for "opencove node list".
+  hint: Run "opencove node list --help" to see its options.
+",
+}
+`;
+
+exports[`lists real agent subcommands offline 1`] = `
+"Usage: opencove agent <command> [options]
+
+Commands:
+  stop             Stop the agent session bound to a canvas node
+  delivery         Check retained delivery evidence; never resends input
+  history <clear>  History canvas targets
+  list             List live agent run states and node titles
+  get              Inspect an agent run-state snapshot with its node title
+  prompt           Send a prompt to an agent window OpenCove launched
+  wait             Wait until agents reach a state or finish a turn
+  read             Read an agent reply or inspect its current terminal screen
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real endpoint subcommands offline 1`] = `
+"Usage: opencove endpoint <command> [options]
+
+Commands:
+  list      List registered endpoints
+  register  Register a remote worker
+  ping      Check a remote worker connection
+  remove    Remove a registered endpoint
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real fs subcommands offline 1`] = `
+"Usage: opencove fs <command> [options]
+
+Commands:
+  read   Read a text file
+  write  Write a text file
+  stat   Inspect file metadata
+  ls     List a directory
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real mount subcommands offline 1`] = `
+"Usage: opencove mount <command> [options]
+
+Commands:
+  list     List project mounts
+  create   Mount a worker folder in a project
+  resolve  Resolve a mount location
+  remove   Remove a project mount
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real node subcommands offline 1`] = `
+"Usage: opencove node <command> [options]
+
+Commands:
+  list                                       List canvas nodes
+  get                                        Get a canvas node
+  create <note|task|website|agent|terminal>  Create canvas nodes
+  update <note|task|website|agent|terminal>  Update canvas nodes
+  delete                                     Delete a canvas node
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real plugin subcommands offline 1`] = `
+"Usage: opencove plugin <command> [options]
+
+Commands:
+  guide        Read the plugin development and usage guide
+  list         List installed plugins
+  details      Inspect plugin metadata
+  install      Install a plugin from a local directory
+  reload       Reload a plugin
+  uninstall    Uninstall a plugin
+  enable       Enable a plugin
+  disable      Disable a plugin
+  install-git  Install a plugin from a Git repository
+  source       Inspect the plugin source
+  check        Check for a plugin update
+  update       Prepare a plugin update
+  apply        Apply a prepared plugin update
+  rollback     Restore a previous plugin revision
+  discover     Find available plugins
+  run          Run a plugin command
+  skill        Read a plugin skill
+  open         Open a plugin window
+  windows      List plugin windows
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real project subcommands offline 1`] = `
+"Usage: opencove project <command> [options]
+
+Commands:
+  add   Add a local directory as a project
+  list  List projects
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real pty subcommands offline 1`] = `
+"Usage: opencove pty <command> [options]
+
+Commands:
+  attach          Stream terminal output until exit or Ctrl-C
+  spawn-in-mount  Start a terminal in a mount
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real runtime subcommands offline 1`] = `
+"Usage: opencove runtime <command> [options]
+
+Commands:
+  inspect  Inspect the runtime build
+  verify   Verify the runtime environment
+  prepare  Prepare a managed runtime deployment
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real session subcommands offline 1`] = `
+"Usage: opencove session <command> [options]
+
+Commands:
+  run-agent  Start a standalone agent as the user; agent sessions must use node create
+  get        Inspect an agent session
+  final      Read the final agent message
+  kill       Stop an agent session
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real space subcommands offline 1`] = `
+"Usage: opencove space <command> [options]
+
+Commands:
+  create  Create a top-level or child space
+  update  Rename a space or adjust its boundary
+  list    List spaces
+  get     Get a space
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real worker subcommands offline 1`] = `
+"Usage: opencove worker <command> [options]
+
+Commands:
+  start   Start a local worker in the foreground
+  status  Inspect local worker status
+  stop    Stop a local worker
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`lists real worktree subcommands offline 1`] = `
+"Usage: opencove worktree <command> [options]
+
+Commands:
+  list     List Git worktrees
+  create   Create a worktree for a space
+  archive  Archive a space worktree
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`shows required options and positional arguments in command usage 1`] = `
+"Usage: opencove space get [--space <id>] [options]
+
+Get a space
+
+Includes rect: {x,y,width,height} in canvas coordinates, or null when no geometry is saved. boundary describes the Space’s access scope.
+
+When no target is given, inside OpenCove defaults to your own space; project options default to your own project.
+
+Options:
+  --space <id>    Select a space by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters) (required outside OpenCove)
+  --project <id>  Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Table output (-o table): not supported.
+Projectable fields: id, name, directoryPath, targetMountId, parentSpaceId, boundary, rect, rect.x, rect.y, rect.width, rect.height, sortOrder, nodeIds, nodes, projectId, nodeCount, nodes.id, nodes.kind, nodes.title, nodes.projectId, nodes.spaceId, nodes.frame, nodes.frame.x, nodes.frame.y, nodes.frame.width, nodes.frame.height, nodes.status, nodes.sessionId, nodes.sessionStatus, nodes.agentState, nodes.agentState.state, nodes.agentState.quality, nodes.agentState.turnId, nodes.taskNodeId, nodes.data, nodes.data.kind, nodes.data.status, nodes.data.priority, nodes.data.requirement, nodes.data.tags, nodes.data.url, nodes.data.linkedAgentNodeId
+
+Projection example:
+  opencove space get --space s --fields id,nodes
+  {"projectId":"p","activeSpaceId":"s","space":{"id":"s","nodes":[]}}
+
+Examples:
+  opencove space get --space space-123
+  opencove space get --space space-123 --pretty
+
+Global options: see "opencove --help".
+"
+`;

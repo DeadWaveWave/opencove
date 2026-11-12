@@ -1,6 +1,6 @@
 import { Button } from '@app/renderer/components/ui/Button'
 import { useEffect, useRef, useState, type JSX } from 'react'
-import { Copy } from 'lucide-react'
+import { CopyIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import type { PluginManifest } from '@contexts/plugins/domain/pluginTypes'
 import type { PluginSkillDetails } from '@contexts/plugins/domain/pluginRuntimeTypes'
@@ -88,7 +88,7 @@ export function PluginAgentTools({ plugin }: { plugin: PluginManifest }): JSX.El
                   aria-label={t('settingsPanel.plugins.tools.copyCommand', { name: command.title })}
                   onClick={() => void copy(`command:${command.id}`, async () => invocation)}
                 >
-                  <Copy size={14} aria-hidden="true" />
+                  <CopyIcon size={18} />
                   {t('settingsPanel.plugins.tools.copy')}
                 </Button>
               </div>
@@ -127,7 +127,7 @@ export function PluginAgentTools({ plugin }: { plugin: PluginManifest }): JSX.El
                   })
                 }
               >
-                <Copy size={14} aria-hidden="true" />
+                <CopyIcon size={18} />
                 {t('settingsPanel.plugins.tools.copySkill')}
               </Button>
             </div>

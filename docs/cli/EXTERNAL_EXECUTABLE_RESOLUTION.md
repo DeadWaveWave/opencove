@@ -65,6 +65,7 @@ Invocation adapter:
 
 Hydration:
 
+- Desktop main 与独立 Worker 在进程入口同步清除继承的父 Agent 会话标记与消息凭据；terminal/agent spawn 组合环境（包括 WSL 命令环境）再次过滤同一精确列表，保留其它 `CLAUDE_CODE_*` / `ANTHROPIC_*` 用户配置。
 - `src/platform/os/CliEnvironment.ts`
 - packaged app / worker 启动时，使用同一份 command env owner 去补 PATH / locale，而不是再单独跑另一套 shell 读取逻辑。
 

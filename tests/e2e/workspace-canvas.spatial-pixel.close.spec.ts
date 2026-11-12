@@ -1,4 +1,9 @@
 import {
+  installPixelDrawProbe,
+  readPixelDrawProbe,
+  readKindEffectColors,
+} from './workspace-canvas.pixel-draw-probe'
+import {
   PIXEL_EFFECTS_ENABLED,
   installPixelEffectProbe,
   readPixelEffectProbe,
@@ -17,7 +22,7 @@ function node(page: Page, id: string) {
   return page.locator(`.react-flow__node[data-id="${id}"]`)
 }
 
-async function seedCloseScene(page: Page) {
+async function seedCloseScene(page: Page, uiTheme = 'dark') {
   await clearAndSeedWorkspace(
     page,
     [
@@ -47,7 +52,7 @@ async function seedCloseScene(page: Page) {
         task: { text: 'This note remains editable.' },
       },
     ],
-    { settings: { uiTheme: 'pixel', ...PIXEL_EFFECTS_ENABLED, language: 'en' } },
+    { settings: { uiTheme, ...PIXEL_EFFECTS_ENABLED, language: 'en' } },
   )
   await expect(node(page, TERMINAL_ID).locator('.xterm')).toBeVisible()
   await expect(page.getByTestId('workspace-pixel-assembly')).toHaveAttribute(
@@ -119,6 +124,8 @@ async function closeAndObserveBurst(
   kind: 'note' | 'terminal',
 ) {
   const foreground = page.getByTestId('workspace-pixel-assembly')
+  const expected = await readKindEffectColors(page, kind === 'note' ? 'knowledge' : 'shell')
+  await installPixelDrawProbe(page, 'workspace-pixel-assembly')
   await node(page, id).locator(`.${kind}-node__close`).click()
   // The renderer records removal and painted scatter together. A Playwright round-trip
   // can outlast the 420ms burst on a loaded runner, so poll the retained observation.
@@ -141,6 +148,14 @@ async function closeAndObserveBurst(
     })
     throw error
   }
+  const frames = await readPixelDrawProbe(page)
+  await testInfo.attach(`pixel-${kind}-close-kind-colours`, {
+    body: JSON.stringify({ expected, frames }),
+    contentType: 'application/json',
+  })
+  expect(new Set(frames.flatMap(frame => frame.pixels.map(pixel => pixel.color)))).toEqual(
+    new Set([expected.solid, expected.ink]),
+  )
   await attachFrame(page, testInfo, `pixel-${kind}-removed-burst`)
 }
 
@@ -158,7 +173,15 @@ test.describe('Workspace Canvas - Spatial Pixel Close', () => {
     const video = page.video()
     try {
       await page.emulateMedia({ reducedMotion: 'no-preference' })
-      await seedCloseScene(page)
+      await seedCloseScene(page, 'dark')
+      // CI's macOS appearance still paints the same kind colours without transparency.
+      const media = await page.context().newCDPSession(page)
+      await media.send('Emulation.setEmulatedMedia', {
+        features: [
+          { name: 'prefers-reduced-motion', value: 'no-preference' },
+          { name: 'prefers-reduced-transparency', value: 'reduce' },
+        ],
+      })
       await installPixelEffectProbe(page)
       const foreground = page.getByTestId('workspace-pixel-assembly')
       await expect(foreground).toHaveCSS('pointer-events', 'none')
@@ -226,7 +249,7 @@ test.describe('Workspace Canvas - Spatial Pixel Close', () => {
             },
           },
         ],
-        { settings: { uiTheme: 'pixel', ...PIXEL_EFFECTS_ENABLED } },
+        { settings: { uiTheme: 'dark', ...PIXEL_EFFECTS_ENABLED } },
       )
       await observeBursts(page)
       const taskNode = node(page, 'pixel-cancel-task')

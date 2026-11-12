@@ -11,9 +11,10 @@
 /* With a wall behind them, the top bar and the sidebar are chrome glass. The wall draws the
    frost under them and caps the cells there, so they need no backdrop-filter, and the glass
    tint is the one the theme contrast checks hold for (`--cove-glass-chrome`; solid material
-   and reduced transparency make it opaque). */
+   and reduced transparency make it opaque). Like window glass it is lit: a sheen fading down
+   from the top edge over the grain (--cove-chrome-background-image). */
 .app-shell:has(> .app-shell__wall > .workspace-pixel-wall) :is(.app-header, .workspace-sidebar) {
-  background: var(--cove-surface);
+  background: var(--cove-chrome-background-image), var(--cove-surface);
   backdrop-filter: none;
   box-shadow: none;
 }

@@ -1,0 +1,93 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`documents context offline 1`] = `
+"Usage: opencove context [options]
+
+Show your project, space and neighboring nodes
+
+With no explicit target, inside OpenCove defaults to your own space. Terminals outside any space show their project with space: null and no neighbors. Outside OpenCove, provide --space or --project. An explicit project selects its active space. self contains your caller identity and node summary in self.node (null without a canvas node); project and space describe the target you asked about, which may differ from self. For agent nodes, state is the Worker run state (idle, working, waiting, exited or unknown) from agent.list; missing observations are unknown, never inferred from lifecycle. sessionStatus preserves the agent session lifecycle (for example running). For tasks, state is task status; for terminals, state remains session lifecycle; for other nodes it is null. agentState {state, quality, turnId} exposes work state for agent nodes and observed agents in terminals: working means the agent is working. taskNodeId is the reverse task link, or null when absent or ambiguous.
+
+When no project is given, inside OpenCove defaults to your own project.
+
+Options:
+  --space <id>    Orient yourself in this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>  Orient yourself in this project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
+
+Table output (-o table): not supported.
+Projectable fields: self, self.caller, self.scope, self.projectId, self.spaceId, self.nodeId, self.sessionId, self.node, self.node.id, self.node.kind, self.node.title, self.node.state, self.node.spawnedBy, self.node.lineageDepth, self.node.lineageStatus, self.node.sessionStatus, self.node.agentState, self.node.agentState.state, self.node.agentState.quality, self.node.agentState.turnId, self.node.taskNodeId, project, project.id, project.name, project.path, space, space.id, space.name, space.directoryPath, nodes, nodes.id, nodes.kind, nodes.title, nodes.state, nodes.spawnedBy, nodes.lineageDepth, nodes.lineageStatus, nodes.sessionStatus, nodes.agentState, nodes.agentState.state, nodes.agentState.quality, nodes.agentState.turnId, nodes.taskNodeId, next
+
+Field descriptions:
+  self.node.spawnedBy      ID of the node that created this node; null for a root or unavailable lineage
+  self.node.lineageDepth   A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable
+  self.node.lineageStatus  recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read
+  nodes.spawnedBy          ID of the node that created this node; null for a root or unavailable lineage
+  nodes.lineageDepth       A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable
+  nodes.lineageStatus      recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read
+
+Projection example:
+  opencove context --space "@self" --fields space.name
+  {"space":{"name":"Main"}}
+
+Examples:
+  opencove context --space "@self"
+  opencove context --project project-123 --fields project,space,next
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`documents node get offline 1`] = `
+"Usage: opencove node get --node <id> [options]
+
+Get a canvas node
+
+Content by kind: note → data.text; task → data.requirement, data.status, data.priority, data.tags; website → data.url; agent/terminal → status, sessionId. node list returns summaries: use node get for full note text and other content. A requested field absent on a returned kind produces one stderr notice; stdout remains projected JSON.
+
+Options:
+  --node <id>         Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
+  --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, spawnedBy, lineageDepth, lineageStatus, data, data.kind, data.content, data.text, data.requirement, data.status, data.priority, data.tags, data.linkedAgentNodeId, data.url, data.pinned, data.sessionMode, data.profileId, data.provider, data.prompt, data.model, data.effectiveModel, data.executionDirectory, data.expectedDirectory, data.taskId, data.runtimeKind
+
+Field descriptions:
+  spawnedBy      ID of the node that created this node; null for a root or unavailable lineage
+  lineageDepth   A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable
+  lineageStatus  recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read
+
+Projection example:
+  opencove node get --node '<id>' --fields id,title
+  {"node":{"id":"n","title":"Note"}}
+
+Examples:
+  opencove node get --node node-123
+  opencove node get --node node-123 --fields node.id,node.title
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`documents whoami offline 1`] = `
+"Usage: opencove whoami [options]
+
+Show your caller identity and permission scope
+
+Inside an OpenCove terminal, caller is session-grant and scope is interact. With a desktop token, caller is bearer and scope is admin. projectId, spaceId, nodeId and sessionId are null when the caller has no session identity; spaceId is also null outside any Space. Standalone sessions keep their interact grant and project/Space identity, with nodeId: null. Credentials are never printed.
+
+Table output (-o table): not supported.
+Projectable fields: caller, scope, projectId, spaceId, nodeId, sessionId
+
+Projection example:
+  opencove whoami --fields caller,scope
+  {"caller":"session-grant","scope":"interact"}
+
+Examples:
+  opencove whoami
+  opencove whoami --fields caller,scope,nodeId
+
+Global options: see "opencove --help".
+"
+`;

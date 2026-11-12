@@ -1,3 +1,9 @@
+import {
+  gitWorktreeCreateInMountOperation,
+  gitWorktreeRemoveInMountOperation,
+  gitWorktreeRenameBranchInMountOperation,
+} from '../../../../shared/contracts/controlSurface/operations/domains/gitWorktree'
+import { registerOperation } from '../registerOperation'
 import type { ControlSurface } from '../controlSurface'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
@@ -8,7 +14,6 @@ import {
   renameGitBranchUseCase,
 } from '../../../../contexts/worktree/application/usecases'
 import type {
-  CreateGitWorktreeBranchMode,
   CreateGitWorktreeResult,
   RemoveGitWorktreeResult,
 } from '../../../../shared/contracts/dto'
@@ -16,71 +21,9 @@ import { createAppError } from '../../../../shared/errors/appError'
 import {
   assertFileUriWithinMountRoot,
   invokeRemoteValue,
-  isRecord,
-  normalizeFileSystemUri,
-  normalizeMountId,
   resolveMountTargetOrThrow,
 } from './filesystemMountSupport'
 import { fromFileUri } from '../../../../contexts/filesystem/domain/fileUri'
-
-function normalizeOptionalString(value: unknown): string | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  if (typeof value !== 'string') {
-    return null
-  }
-
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : null
-}
-
-function normalizeRequiredString(value: unknown, debugName: string): string {
-  const normalized = normalizeOptionalString(value)
-  if (!normalized) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Missing payload for ${debugName}.`,
-    })
-  }
-
-  return normalized
-}
-
-function normalizeBranchMode(value: unknown, operationId: string): CreateGitWorktreeBranchMode {
-  if (!isRecord(value)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId} branchMode.`,
-    })
-  }
-
-  const kind = normalizeOptionalString(value.kind)
-  if (kind !== 'new' && kind !== 'existing') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId} branchMode.kind.`,
-    })
-  }
-
-  const name = normalizeOptionalString(value.name)
-  if (!name) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId} branchMode.name.`,
-    })
-  }
-
-  if (kind === 'existing') {
-    return { kind: 'existing', name }
-  }
-
-  const startPoint = normalizeOptionalString(value.startPoint)
-  if (!startPoint) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId} branchMode.startPoint.`,
-    })
-  }
-
-  return { kind: 'new', name, startPoint }
-}
 
 function resolvePathFromUriOrThrow(uri: string, operationId: string): string {
   const resolved = fromFileUri(uri)
@@ -101,26 +44,7 @@ export function registerGitWorktreeMountWriteHandlers(
     gitWorktreePort: GitWorktreePort
   },
 ): void {
-  controlSurface.register('gitWorktree.createInMount', {
-    kind: 'command',
-    validate: (
-      payload: unknown,
-    ): { mountId: string; worktreesRootUri: string; branchMode: CreateGitWorktreeBranchMode } => {
-      if (!isRecord(payload)) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Invalid payload for gitWorktree.createInMount.',
-        })
-      }
-
-      return {
-        mountId: normalizeMountId(payload.mountId, 'gitWorktree.createInMount'),
-        worktreesRootUri: normalizeFileSystemUri(
-          payload.worktreesRootUri,
-          'gitWorktree.createInMount.worktreesRootUri',
-        ),
-        branchMode: normalizeBranchMode(payload.branchMode, 'gitWorktree.createInMount'),
-      }
-    },
+  registerOperation(controlSurface, gitWorktreeCreateInMountOperation, {
     handle: async (_ctx, payload): Promise<CreateGitWorktreeResult> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,
@@ -171,27 +95,7 @@ export function registerGitWorktreeMountWriteHandlers(
     defaultErrorCode: 'worktree.create_failed',
   })
 
-  controlSurface.register('gitWorktree.removeInMount', {
-    kind: 'command',
-    validate: (
-      payload: unknown,
-    ): { mountId: string; worktreeUri: string; force: boolean; deleteBranch: boolean } => {
-      if (!isRecord(payload)) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Invalid payload for gitWorktree.removeInMount.',
-        })
-      }
-
-      return {
-        mountId: normalizeMountId(payload.mountId, 'gitWorktree.removeInMount'),
-        worktreeUri: normalizeFileSystemUri(
-          payload.worktreeUri,
-          'gitWorktree.removeInMount.worktreeUri',
-        ),
-        force: payload.force === true,
-        deleteBranch: payload.deleteBranch === true,
-      }
-    },
+  registerOperation(controlSurface, gitWorktreeRemoveInMountOperation, {
     handle: async (_ctx, payload): Promise<RemoveGitWorktreeResult> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,
@@ -246,38 +150,7 @@ export function registerGitWorktreeMountWriteHandlers(
     defaultErrorCode: 'worktree.remove_failed',
   })
 
-  controlSurface.register('gitWorktree.renameBranchInMount', {
-    kind: 'command',
-    validate: (
-      payload: unknown,
-    ): {
-      mountId: string
-      worktreeUri: string
-      currentName: string
-      nextName: string
-    } => {
-      if (!isRecord(payload)) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Invalid payload for gitWorktree.renameBranchInMount.',
-        })
-      }
-
-      return {
-        mountId: normalizeMountId(payload.mountId, 'gitWorktree.renameBranchInMount'),
-        worktreeUri: normalizeFileSystemUri(
-          payload.worktreeUri,
-          'gitWorktree.renameBranchInMount.worktreeUri',
-        ),
-        currentName: normalizeRequiredString(
-          payload.currentName,
-          'gitWorktree.renameBranchInMount currentName',
-        ),
-        nextName: normalizeRequiredString(
-          payload.nextName,
-          'gitWorktree.renameBranchInMount nextName',
-        ),
-      }
-    },
+  registerOperation(controlSurface, gitWorktreeRenameBranchInMountOperation, {
     handle: async (_ctx, payload): Promise<void> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,

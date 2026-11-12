@@ -1,6 +1,6 @@
 import React from 'react'
 import { useStore } from '@xyflow/react'
-import { FileText, Image as ImageIcon } from 'lucide-react'
+import { FileTextIcon, ImageIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import type { DocumentNodeUnsupportedKind } from '../../DocumentNode.shared'
 import { loadDocumentNodeContent } from '../../DocumentNode.helpers'
@@ -254,11 +254,7 @@ export function WorkspaceSpaceQuickPreview({
             event.stopPropagation()
           }}
         >
-          {preview.kind === 'image' ? (
-            <ImageIcon size={16} aria-hidden="true" />
-          ) : (
-            <FileText size={16} aria-hidden="true" />
-          )}
+          {preview.kind === 'image' ? <ImageIcon size={18} /> : <FileTextIcon size={18} />}
           <span>{preview.title}</span>
         </div>
       </header>

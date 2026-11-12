@@ -1,24 +1,62 @@
+import { mkdtemp, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 import { expect, test } from '@playwright/test'
-import { launchApp, seedWorkspaceState, testWorkspacePath } from './workspace-canvas.helpers'
+import {
+  launchApp,
+  removePathWithRetry,
+  seedWorkspaceState,
+  testWorkspacePath,
+} from './workspace-canvas.helpers'
 import {
   installPtySessionCapture,
   resolveFirstAgentSessionId,
   writeToPty,
 } from './workspace-canvas.agent-status-watcher.helpers'
 
-type SignalWindow = Window & { __coveSignals?: string[] }
+import { installPixelDrawProbe, readPixelDrawProbe } from './workspace-canvas.pixel-draw-probe'
+import {
+  createCompletionSignalsStubScript,
+  START_COMPLETION_REPAINT,
+} from './workspace-canvas.completion-signals.fixture'
 
-test('a working agent sends sonar, and a finished run flashes its window and sends a shockwave', async () => {
+type SignalWindow = Window & {
+  __coveSignals?: string[]
+  __coveCatches?: number[]
+  __coveGlints?: string[]
+  __completionPtyOutput?: Record<string, { data: string; exitCode?: number }>
+  __disposeCompletionPtyCapture?: () => void
+}
+
+test('a working agent sends sonar, and a finished run flashes its window and sends a shockwave', async ({
+  browserName,
+}, testInfo) => {
+  void browserName
+  const fixture = await mkdtemp(path.join(tmpdir(), 'opencove-repaint-'))
+  const stub = path.join(fixture, 'spinner.mjs')
+  await writeFile(
+    stub,
+    createCompletionSignalsStubScript(
+      path.join(testWorkspacePath, 'scripts/test-agent-session-stub.mjs'),
+    ),
+  )
   const { electronApp, window } = await launchApp({
     windowMode: 'inactive',
     env: {
       OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
+      OPENCOVE_TEST_AGENT_STUB_SCRIPT: stub,
       OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'claude-hook-lifecycle',
       OPENCOVE_TEST_CLAUDE_HOOK_INSTALL_FAILURE: '0',
     },
   })
   try {
-    await window.emulateMedia({ reducedMotion: 'no-preference' })
+    const cdp = await window.context().newCDPSession(window)
+    await cdp.send('Emulation.setEmulatedMedia', {
+      features: [
+        { name: 'prefers-reduced-motion', value: 'no-preference' },
+        { name: 'prefers-reduced-transparency', value: 'no-preference' },
+      ],
+    })
     await seedWorkspaceState(window, {
       activeWorkspaceId: 'signals-project',
       workspaces: [
@@ -60,7 +98,29 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
       },
     })
     await installPtySessionCapture(window)
+    // Retain raw output before launch: a rendered screen can lose startup text on redraw.
+    await window.evaluate(() => {
+      const target = window as SignalWindow
+      const output: NonNullable<SignalWindow['__completionPtyOutput']> = {}
+      target.__completionPtyOutput = output
+      const disposeData = window.opencoveApi.pty.onData(event => {
+        const session = (output[event.sessionId] ??= { data: '' })
+        session.data = (session.data + event.data).slice(-64_000)
+      })
+      const disposeExit = window.opencoveApi.pty.onExit(event => {
+        const session = (output[event.sessionId] ??= { data: '' })
+        session.exitCode = event.exitCode
+      })
+      target.__disposeCompletionPtyCapture = () => {
+        disposeData()
+        disposeExit()
+      }
+    })
     await window.locator('.task-node [data-testid="task-node-run-agent"]').click()
+    await expect(window.locator('.terminal-node__terminal').first()).toHaveAttribute(
+      'aria-busy',
+      'false',
+    )
     await expect(window.locator('.terminal-node').first()).toContainText(
       '[opencove-test-hook] ready',
     )
@@ -76,9 +136,18 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
     await window.evaluate(id => {
       const target = window as SignalWindow
       target.__coveSignals = []
+      target.__coveCatches = []
+      target.__coveGlints = []
       new MutationObserver(records => {
         for (const record of records) {
           const element = record.target as HTMLElement
+          if (element.dataset.id === 'signals-task') {
+            target.__coveCatches!.push(Number(element.style.getPropertyValue('--cove-catch')))
+            const glint = element.style.getPropertyValue('--cove-glint')
+            if (glint) {
+              target.__coveGlints!.push(glint)
+            }
+          }
           if (element.dataset.id === id && element.dataset.coveSignal) {
             target.__coveSignals!.push(element.dataset.coveSignal)
           }
@@ -86,9 +155,12 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
       }).observe(document.body, {
         subtree: true,
         attributes: true,
-        attributeFilter: ['data-cove-signal'],
+        attributeFilter: ['data-cove-signal', 'style'],
       })
     }, agentId)
+    // A destructive repaint buffered during hydration can replace the ready screen.
+    // Start after hydration and ready; retain the same repaint stream for all signal checks.
+    await writeToPty(window, { sessionId, data: `${START_COMPLETION_REPAINT}\r` })
     await writeToPty(window, { sessionId, data: '<test-hook-initial-working>\r' })
     await expect(window.locator(`.react-flow__node[data-id="${agentId}"]`)).toContainText('Working')
     // While it works, the agent sends a low sonar wave across the wall every 2.4s.
@@ -100,6 +172,28 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
         },
       )
       .toContain(`sonar:${agentId}`)
+    // Observe a complete 3s repaint stream in the renderer; retained keys cannot miss a wave.
+    const repaintCount = await window.evaluate(async observedSessionId => {
+      let count = 0
+      const dispose = window.opencoveApi.pty.onData(event => {
+        if (event.sessionId === observedSessionId && event.data.includes('working 00:01')) {
+          count++
+        }
+      })
+      try {
+        await new Promise(resolve => setTimeout(resolve, 3040))
+        return count
+      } finally {
+        dispose()
+      }
+    }, sessionId)
+    expect(repaintCount).toBeGreaterThan(20)
+    const keys = await window.evaluate(
+      () => window.__opencovePixelWallTestApi?.getSeenRippleKeys() ?? [],
+    )
+    expect(keys).toContain(`sonar:${agentId}`)
+    expect(keys).not.toContain(agentId)
+    await installPixelDrawProbe(window)
     await writeToPty(window, { sessionId, data: '<test-hook-done>\r' })
 
     await expect
@@ -111,6 +205,46 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
         window.evaluate(() => window.__opencovePixelWallTestApi?.getSeenRippleKeys() ?? []),
       )
       .toContain(`complete:${agentId}`)
+    await expect
+      .poll(async () =>
+        (await readPixelDrawProbe(window)).some(
+          frame =>
+            frame.pixels.length === 26 &&
+            frame.pixels.every(
+              pixel =>
+                pixel.size >= 2 * Math.max(0.55, Math.min(1.2, frame.zoom)) &&
+                pixel.size <= 4.5 * Math.max(0.55, Math.min(1.2, frame.zoom)),
+            ),
+        ),
+      )
+      .toBe(true)
+    expect(
+      await window
+        .locator(`.react-flow__node[data-id="${agentId}"]`)
+        .evaluate(element => getComputedStyle(element, '::after').content),
+    ).toBe('none')
+    await expect
+      .poll(() =>
+        window.evaluate(() => Math.max(0, ...((window as SignalWindow).__coveCatches ?? []))),
+      )
+      .toBeGreaterThan(0.1)
+    await expect(
+      window.locator('.react-flow__node[data-id="signals-task"] .cove-window-glint'),
+    ).toHaveCount(0)
+    const catches = await window.evaluate(() => (window as SignalWindow).__coveCatches ?? [])
+    // Retain multiple intensities; a sample after an await can miss the entire passing wave.
+    expect(new Set(catches.filter(value => value > 0)).size).toBeGreaterThan(2)
+    expect(catches.at(-1)).toBe(0)
+    // The rim glints in the sender's kind ink, as the prototype's colors.ink.
+    const glint = await window.evaluate(() => {
+      const wall = document.querySelector('[data-testid="workspace-pixel-wall"]')!
+      return {
+        seen: [...new Set((window as SignalWindow).__coveGlints)],
+        ink: getComputedStyle(wall).getPropertyValue('--cove-kind-ai-ink').trim(),
+      }
+    })
+    expect(glint.ink).not.toBe('')
+    expect(glint.seen).toEqual([glint.ink])
     // The flash ends on its own.
     await expect(window.locator(`.react-flow__node[data-id="${agentId}"]`)).not.toHaveAttribute(
       'data-cove-signal',
@@ -118,6 +252,35 @@ test('a working agent sends sonar, and a finished run flashes its window and sen
       { timeout: 4_000 },
     )
   } finally {
+    await testInfo.attach('completion-pty-output', {
+      body: JSON.stringify(
+        await window
+          .evaluate(
+            async sessionId => {
+              const target = window as SignalWindow
+              target.__disposeCompletionPtyCapture?.()
+              return {
+                output: target.__completionPtyOutput ?? {},
+                // Include output emitted before the renderer subscribed to live PTY events.
+                snapshot: sessionId
+                  ? await window.opencoveApi.pty
+                      .snapshot({ sessionId })
+                      .catch(error => ({ snapshotError: String(error) }))
+                  : null,
+                renderedText: document.querySelector('.terminal-node')?.textContent ?? null,
+              }
+            },
+            await resolveFirstAgentSessionId(window).catch(() => null),
+          )
+          .catch(error => ({ captureError: String(error) })),
+      ),
+      contentType: 'application/json',
+    })
+    await testInfo.attach('completion-pixel-draws', {
+      body: JSON.stringify(await readPixelDrawProbe(window).catch(() => [])),
+      contentType: 'application/json',
+    })
     await electronApp.close()
+    await removePathWithRetry(fixture)
   }
 })

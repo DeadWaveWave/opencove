@@ -1,8 +1,11 @@
-import { useMemo, useState, type JSX } from 'react'
-import { RotateCcw, Trash2 } from 'lucide-react'
+import { useMemo, useState, type JSX, type MouseEvent } from 'react'
+import { TrashIcon, UndoIcon } from '@app/renderer/components/ui/pixelIcons'
+import { IconButton } from '@app/renderer/components/ui/IconButton'
+import { MenuItem } from '@app/renderer/components/ui/Menu'
 import { AgentProviderIcon } from '@app/renderer/components/AgentProviderIcon'
 import { useTranslation } from '@app/renderer/i18n'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
+import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { isResumeSessionBindingVerified } from '@contexts/agent/domain/agentResumeBinding'
 import type {
@@ -10,8 +13,13 @@ import type {
   TaskAgentSessionRecord,
 } from '@contexts/workspace/presentation/renderer/types'
 import { providerLabel } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/helpers'
-import { formatTaskTimestamp, resolveAgentSessionTone } from './helpers'
-import { Dialog } from '@app/renderer/components/ui/Dialog'
+import {
+  formatTaskTimestamp,
+  getAgentRuntimeLabel,
+  resolveAgentSessionTone,
+  resolveSessionAvatarSlots,
+} from './helpers'
+import { TaskNodeResumeDialog } from './TaskNodeResumeDialog'
 
 interface LinkedAgentSummary {
   nodeId: string
@@ -21,13 +29,55 @@ interface LinkedAgentSummary {
   startedAt: string | null
 }
 
+/** One avatar: the Agent window the task is running in, or a past session's record. */
+type SessionEntry =
+  | {
+      kind: 'linked'
+      key: string
+      provider: AgentProvider
+      status: AgentRuntimeStatus | null
+      timestamp: string | null
+      description: string
+      nodeId: string
+    }
+  | {
+      kind: 'record'
+      key: string
+      provider: AgentProvider
+      status: AgentRuntimeStatus | null
+      timestamp: string | null
+      description: string
+      record: TaskAgentSessionRecord
+    }
+
+type SessionMenu =
+  | { kind: 'record'; recordId: string; x: number; y: number }
+  | { kind: 'folded'; x: number; y: number }
+
+/** Opens a menu under the avatar that was clicked, or at the pointer for a right-click. */
+function menuPointFor(event: MouseEvent<HTMLElement>): { x: number; y: number } {
+  if (event.type === 'contextmenu') {
+    return { x: event.clientX, y: event.clientY }
+  }
+
+  const box = event.currentTarget.getBoundingClientRect()
+  return { x: box.left, y: box.bottom + 4 }
+}
+
+/**
+ * The task card's sessions: a row of avatars, the running one with a live light. The linked Agent
+ * window comes first, then past sessions newest first; what does not fit folds into "+N".
+ * Clicking the linked avatar opens its window; clicking a past session opens its menu.
+ */
 export function TaskNodeAgentSessions({
+  width,
   linkedAgentNode,
   agentSessions,
   currentDirectory,
   onResumeAgentSession,
   onRemoveAgentSessionRecord,
 }: {
+  width: number
   linkedAgentNode: LinkedAgentSummary | null
   agentSessions: TaskAgentSessionRecord[]
   currentDirectory: string
@@ -35,260 +85,227 @@ export function TaskNodeAgentSessions({
   onRemoveAgentSessionRecord: (recordId: string) => void
 }): JSX.Element {
   const { t } = useTranslation()
-  const [agentSessionMenu, setAgentSessionMenu] = useState<{
-    recordId: string
-    x: number
-    y: number
-  } | null>(null)
+  const [menu, setMenu] = useState<SessionMenu | null>(null)
   const [resumeConfirmRecordId, setResumeConfirmRecordId] = useState<string | null>(null)
 
-  const sortedAgentSessions = useMemo(() => {
-    return [...agentSessions].sort((left, right) => {
+  const entries = useMemo<SessionEntry[]>(() => {
+    const records = [...agentSessions].sort((left, right) => {
       const leftTime = Date.parse(left.lastRunAt)
       const rightTime = Date.parse(right.lastRunAt)
       return (
         (Number.isFinite(rightTime) ? rightTime : 0) - (Number.isFinite(leftTime) ? leftTime : 0)
       )
     })
-  }, [agentSessions])
+    const linked: SessionEntry[] = linkedAgentNode
+      ? [
+          {
+            kind: 'linked',
+            key: `linked-${linkedAgentNode.nodeId}`,
+            provider: linkedAgentNode.provider,
+            status: linkedAgentNode.status,
+            timestamp: linkedAgentNode.startedAt,
+            description:
+              linkedAgentNode.title.trim().length > 0
+                ? linkedAgentNode.title
+                : providerLabel(linkedAgentNode.provider),
+            nodeId: linkedAgentNode.nodeId,
+          },
+        ]
+      : []
+    return [
+      ...linked,
+      ...records.map<SessionEntry>(record => ({
+        kind: 'record',
+        key: `record-${record.id}`,
+        provider: record.provider,
+        status: record.status,
+        timestamp: record.lastRunAt,
+        description: `${providerLabel(record.provider)} · ${record.effectiveModel ?? record.model ?? t('taskNode.defaultModel')}`,
+        record,
+      })),
+    ]
+  }, [agentSessions, linkedAgentNode, t])
 
-  const agentSessionMenuRecord = useMemo(() => {
-    if (!agentSessionMenu) {
-      return null
+  const { visible, folded } = resolveSessionAvatarSlots(width, entries.length)
+  const visibleEntries = entries.slice(0, visible)
+  const foldedEntries = entries.slice(visible)
+  const runningCount = entries.filter(
+    entry => resolveAgentSessionTone(entry.status) === 'working',
+  ).length
+
+  const menuRecord =
+    menu?.kind === 'record'
+      ? (agentSessions.find(record => record.id === menu.recordId) ?? null)
+      : null
+  const resumeConfirmRecord = resumeConfirmRecordId
+    ? (agentSessions.find(record => record.id === resumeConfirmRecordId) ?? null)
+    : null
+
+  const openLinkedAgent = (nodeId: string): void => {
+    const store = useAppStore.getState()
+    const workspaceId = store.activeWorkspaceId
+    if (!workspaceId) {
+      return
     }
 
-    return sortedAgentSessions.find(record => record.id === agentSessionMenu.recordId) ?? null
-  }, [agentSessionMenu, sortedAgentSessions])
-
-  const resumeConfirmRecord = useMemo(() => {
-    if (!resumeConfirmRecordId) {
-      return null
-    }
-
-    return sortedAgentSessions.find(record => record.id === resumeConfirmRecordId) ?? null
-  }, [resumeConfirmRecordId, sortedAgentSessions])
-
-  const isResumeDirectoryMismatch = useMemo(() => {
-    if (!resumeConfirmRecord) {
-      return false
-    }
-
-    return resumeConfirmRecord.boundDirectory !== currentDirectory
-  }, [currentDirectory, resumeConfirmRecord])
-
-  const toRuntimeLabel = (status: AgentRuntimeStatus | null): string => {
-    switch (status) {
-      case 'running':
-        return t('sidebar.status.working')
-      case 'restoring':
-        return t('common.loading')
-      case 'failed':
-        return t('agentRuntime.failed')
-      case 'stopped':
-        return t('agentRuntime.stopped')
-      case 'exited':
-        return t('agentRuntime.exited')
-      default:
-        return t('sidebar.status.standby')
-    }
+    store.setFocusRequest(previous => ({
+      kind: 'node',
+      workspaceId,
+      nodeId,
+      sequence: (previous?.sequence ?? 0) + 1,
+    }))
   }
 
-  const renderAgentSessionSummary = ({
-    provider,
-    status,
-    timestamp,
-    description,
-  }: {
-    provider: AgentProvider
-    status: AgentRuntimeStatus | null
-    timestamp: string | null
-    description: string
-  }): JSX.Element => {
-    const formattedTime = formatTaskTimestamp(timestamp)
-    const runtimeLabel = toRuntimeLabel(status)
-    const summaryLabel = `${description} · ${runtimeLabel} · ${formattedTime}`
+  const openEntry = (entry: SessionEntry, point: { x: number; y: number }): void => {
+    if (entry.kind === 'linked') {
+      setMenu(null)
+      openLinkedAgent(entry.nodeId)
+      return
+    }
 
+    setMenu({ kind: 'record', recordId: entry.record.id, ...point })
+  }
+
+  const renderAvatar = (entry: SessionEntry): JSX.Element => {
+    const label = `${entry.description} · ${getAgentRuntimeLabel(t, entry.status)} · ${formatTaskTimestamp(entry.timestamp)}`
     return (
-      <div
-        className="task-node__agent-session-summary"
-        aria-label={summaryLabel}
-        title={summaryLabel}
+      <IconButton
+        key={entry.key}
+        label={label}
+        className={`task-node__session task-node__session--${entry.kind}`}
+        data-testid={
+          entry.kind === 'linked'
+            ? `task-node-agent-session-linked-${entry.nodeId}`
+            : `task-node-agent-session-record-${entry.record.id}`
+        }
+        onClick={event => {
+          event.stopPropagation()
+          openEntry(entry, menuPointFor(event))
+        }}
+        onContextMenu={
+          entry.kind === 'record'
+            ? event => {
+                event.preventDefault()
+                event.stopPropagation()
+                openEntry(entry, menuPointFor(event))
+              }
+            : undefined
+        }
       >
-        <span className="task-node__agent-session-identity" aria-hidden="true">
-          <AgentProviderIcon provider={provider} className="task-node__agent-provider" />
-          <span
-            className={`task-node__agent-session-state task-node__agent-session-state--${resolveAgentSessionTone(status)}`}
-          />
-        </span>
-        <time className="task-node__agent-session-time" dateTime={timestamp ?? undefined}>
-          {formattedTime}
-        </time>
-      </div>
+        <AgentProviderIcon provider={entry.provider} />
+        <span
+          className={`task-node__session-light task-node__session-light--${resolveAgentSessionTone(entry.status)}`}
+          aria-hidden="true"
+        />
+      </IconButton>
     )
   }
 
+  const hint =
+    entries.length === 0
+      ? t('taskNode.noSessionsHint')
+      : [
+          t('taskNode.sessionCount', { count: entries.length }),
+          ...(runningCount > 0 ? [t('taskNode.sessionsRunning', { count: runningCount })] : []),
+        ].join(' · ')
+
   return (
     <>
-      <div className="task-node__agents nodrag" data-testid="task-node-agent-sessions">
-        <div className="task-node__agents-header">
-          <span>{t('taskNode.agents')}</span>
-          <span className="task-node__agents-count">
-            {(linkedAgentNode ? 1 : 0) + sortedAgentSessions.length}
-          </span>
-        </div>
-
-        {linkedAgentNode || sortedAgentSessions.length > 0 ? (
-          <div className="task-node__agents-list">
-            {linkedAgentNode ? (
-              <div
-                className="workspace-agent-item workspace-agent-item--nested task-node__agent-session task-node__agent-session--linked"
-                data-testid={`task-node-agent-session-linked-${linkedAgentNode.nodeId}`}
-              >
-                {renderAgentSessionSummary({
-                  provider: linkedAgentNode.provider,
-                  status: linkedAgentNode.status,
-                  timestamp: linkedAgentNode.startedAt,
-                  description:
-                    linkedAgentNode.title.trim().length > 0
-                      ? linkedAgentNode.title
-                      : providerLabel(linkedAgentNode.provider),
-                })}
-              </div>
-            ) : null}
-
-            {sortedAgentSessions.map(record => (
-              <div
-                key={record.id}
-                className="workspace-agent-item workspace-agent-item--nested task-node__agent-session"
-                data-testid={`task-node-agent-session-record-${record.id}`}
-                onContextMenu={event => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  setAgentSessionMenu({
-                    recordId: record.id,
-                    x: event.clientX,
-                    y: event.clientY,
-                  })
-                }}
-              >
-                {renderAgentSessionSummary({
-                  provider: record.provider,
-                  status: record.status,
-                  timestamp: record.lastRunAt,
-                  description: `${providerLabel(record.provider)} · ${record.effectiveModel ?? record.model ?? t('taskNode.defaultModel')}`,
-                })}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="task-node__agents-empty">{t('taskNode.noAgentSessionsYet')}</div>
-        )}
+      <div className="task-node__sessions nodrag" data-testid="task-node-agent-sessions">
+        {visibleEntries.map(renderAvatar)}
+        {folded > 0 ? (
+          <IconButton
+            label={t('taskNode.moreSessions', { count: folded })}
+            className="task-node__session task-node__session--more"
+            data-testid="task-node-agent-session-more"
+            aria-haspopup="menu"
+            aria-expanded={menu?.kind === 'folded'}
+            onClick={event => {
+              event.stopPropagation()
+              setMenu({ kind: 'folded', ...menuPointFor(event) })
+            }}
+          >
+            +{folded}
+          </IconButton>
+        ) : null}
+        <span className="task-node__sessions-hint">{hint}</span>
       </div>
 
-      {agentSessionMenu ? (
+      {menu ? (
         <ViewportMenuSurface
           open={true}
-          mobileTitle={t('terminalNodeHeader.sessionList')}
+          role="menu"
+          aria-label={t('taskNode.agents')}
+          mobileTitle={t('taskNode.agents')}
           className="workspace-context-menu task-agent-session-menu"
           data-testid="task-node-agent-session-menu"
           placement={{
             type: 'point',
-            point: {
-              x: agentSessionMenu.x,
-              y: agentSessionMenu.y,
-            },
+            point: { x: menu.x, y: menu.y },
             estimatedSize: {
-              width: 188,
-              height: 96,
+              width: menu.kind === 'folded' ? 240 : 188,
+              height: menu.kind === 'folded' ? 8 + foldedEntries.length * 32 : 96,
             },
           }}
           onDismiss={() => {
-            setAgentSessionMenu(null)
+            setMenu(null)
           }}
           dismissOnPointerDownOutside={true}
           dismissOnEscape={true}
         >
-          {agentSessionMenuRecord && isResumeSessionBindingVerified(agentSessionMenuRecord) ? (
-            <button
-              type="button"
-              data-testid={`task-node-agent-session-menu-resume-${agentSessionMenu.recordId}`}
+          {menu.kind === 'folded'
+            ? foldedEntries.map(entry => (
+                <MenuItem
+                  key={entry.key}
+                  icon={<AgentProviderIcon provider={entry.provider} />}
+                  onClick={() => {
+                    openEntry(entry, { x: menu.x, y: menu.y })
+                  }}
+                >
+                  {`${entry.description} · ${formatTaskTimestamp(entry.timestamp)}`}
+                </MenuItem>
+              ))
+            : null}
+          {menu.kind === 'record' && menuRecord && isResumeSessionBindingVerified(menuRecord) ? (
+            <MenuItem
+              data-testid={`task-node-agent-session-menu-resume-${menu.recordId}`}
+              icon={<UndoIcon />}
               onClick={() => {
-                setResumeConfirmRecordId(agentSessionMenu.recordId)
-                setAgentSessionMenu(null)
+                setResumeConfirmRecordId(menu.recordId)
+                setMenu(null)
               }}
             >
-              <RotateCcw className="workspace-context-menu__icon" aria-hidden="true" />
-              <span className="workspace-context-menu__label">{t('taskNode.resume')}</span>
-            </button>
+              {t('taskNode.resume')}
+            </MenuItem>
           ) : null}
-          <button
-            type="button"
-            data-testid={`task-node-agent-session-menu-remove-${agentSessionMenu.recordId}`}
-            className="workspace-context-menu__item--danger"
-            onClick={() => {
-              onRemoveAgentSessionRecord(agentSessionMenu.recordId)
-              setAgentSessionMenu(null)
-            }}
-          >
-            <Trash2 className="workspace-context-menu__icon" aria-hidden="true" />
-            <span className="workspace-context-menu__label">{t('taskNode.removeRecord')}</span>
-          </button>
+          {menu.kind === 'record' ? (
+            <MenuItem
+              data-testid={`task-node-agent-session-menu-remove-${menu.recordId}`}
+              tone="danger"
+              icon={<TrashIcon />}
+              onClick={() => {
+                onRemoveAgentSessionRecord(menu.recordId)
+                setMenu(null)
+              }}
+            >
+              {t('taskNode.removeRecord')}
+            </MenuItem>
+          ) : null}
         </ViewportMenuSurface>
       ) : null}
 
       {resumeConfirmRecord ? (
-        <Dialog
-          open
-          backdropClassName="cove-window-backdrop task-agent-resume-backdrop"
-          backdropTestId="task-node-agent-session-resume-confirm"
-          className="cove-window task-agent-resume"
-          aria-label={t('taskNode.resumeDialog.title')}
-          onDismiss={() => {
+        <TaskNodeResumeDialog
+          record={resumeConfirmRecord}
+          currentDirectory={currentDirectory}
+          onCancel={() => {
             setResumeConfirmRecordId(null)
           }}
-        >
-          <h3>{t('taskNode.resumeDialog.title')}</h3>
-          <p className="cove-window__meta">{t('taskNode.resumeDialog.description')}</p>
-
-          <div className="cove-window__field-row">
-            <label>{t('taskNode.resumeDialog.boundDirectory')}</label>
-            <input value={resumeConfirmRecord.boundDirectory} disabled />
-          </div>
-
-          <div className="cove-window__field-row">
-            <label>{t('taskNode.resumeDialog.currentDirectory')}</label>
-            <input value={currentDirectory} disabled />
-          </div>
-
-          {isResumeDirectoryMismatch ? (
-            <p className="cove-window__error">{t('taskNode.resumeDialog.mismatch')}</p>
-          ) : (
-            <p className="cove-window__meta">{t('taskNode.resumeDialog.aligned')}</p>
-          )}
-
-          <div className="cove-window__actions">
-            <button
-              type="button"
-              className="cove-window__action cove-window__action--ghost"
-              onClick={() => {
-                setResumeConfirmRecordId(null)
-              }}
-            >
-              {t('common.cancel')}
-            </button>
-            <button
-              type="button"
-              className={`cove-window__action ${isResumeDirectoryMismatch ? 'cove-window__action--danger' : 'cove-window__action--primary'}`}
-              data-testid={`task-node-agent-session-resume-confirm-resume-${resumeConfirmRecord.id}`}
-              onClick={() => {
-                onResumeAgentSession(resumeConfirmRecord.id)
-                setResumeConfirmRecordId(null)
-              }}
-            >
-              {t('taskNode.resume')}
-            </button>
-          </div>
-        </Dialog>
+          onResume={() => {
+            onResumeAgentSession(resumeConfirmRecord.id)
+            setResumeConfirmRecordId(null)
+          }}
+        />
       ) : null}
     </>
   )

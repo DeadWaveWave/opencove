@@ -1,5 +1,6 @@
 import React from 'react'
-import { Check, ChevronRight, LoaderCircle } from 'lucide-react'
+import { CheckIcon, ChevronRightIcon } from '@app/renderer/components/ui/pixelIcons'
+import { PixelSpinner } from '@app/renderer/components/ui/PixelSpinner'
 import { classNames } from './classNames'
 
 const MenuRoleContext = React.createContext(false)
@@ -82,9 +83,9 @@ export const MenuItem = React.forwardRef<HTMLButtonElement, MenuItemProps>(funct
   const inMenu = React.useContext(MenuRoleContext)
   let trailing: React.ReactNode = null
   if (submenu?.loading) {
-    trailing = <LoaderCircle className="cove-menu-item__spinner" />
+    trailing = <PixelSpinner />
   } else if (submenu) {
-    trailing = <ChevronRight className="cove-menu-item__chevron" />
+    trailing = <ChevronRightIcon className="cove-menu-item__chevron" />
   }
 
   return (
@@ -146,7 +147,7 @@ export const MenuCheckboxItem = React.forwardRef<HTMLButtonElement, MenuCheckbox
           icon={icon}
           label={children}
           shortcut={shortcut}
-          trailing={<Check className="cove-menu-item__check" />}
+          trailing={<CheckIcon className="cove-menu-item__check" />}
         />
       </button>
     )

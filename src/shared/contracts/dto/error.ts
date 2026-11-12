@@ -1,16 +1,24 @@
 export const APP_ERROR_CODES = [
   'common.invalid_input',
+  'common.forbidden',
+  'common.protocol_incompatible',
   'plugin.operation_failed',
   'common.approved_path_required',
   'common.unavailable',
   'common.unexpected',
   'worker.unavailable',
+  'worker.stop_not_owned',
+  'worker.external_owner_unreachable',
   'endpoint.operation_in_progress',
   'space.not_found',
   'space.ambiguous',
+  'node.parent_unavailable',
+  'agent.spawn_depth_limit',
+  'agent.spawn_concurrency_limit',
   'node.not_found',
   'node.unsupported_operation',
   'session.not_found',
+  'session.transcript_not_ready',
   'control_surface.unauthorized',
   'integration.github.unavailable',
   'integration.github.resolve_failed',
@@ -59,10 +67,22 @@ export const APP_ERROR_CODES = [
   'terminal.attach_failed',
   'terminal.detach_failed',
   'terminal.snapshot_failed',
+  'agent.blocked',
+  'agent.busy',
+  'agent.delivery_unsettled',
+  'agent.state_unknown',
+  'agent.not_running',
+  'agent.prompt_unsupported',
+  'agent.prompt_interrupted',
+  'agent.prompt_stalled',
+  'agent.prompt_timeout',
   'agent.list_models_failed',
   'agent.install_failed',
   'agent.launch_failed',
+  'agent.managed_launch_rejected',
+  'agent.managed_launch_commit_failed',
   'agent.read_last_message_failed',
+  'agent.final_message_unavailable',
   'agent.resume_session_resolve_failed',
   'task.suggest_title_failed',
   'persistence.unavailable',
@@ -70,6 +90,7 @@ export const APP_ERROR_CODES = [
   'persistence.payload_too_large',
   'persistence.io_failed',
   'persistence.invalid_state',
+  'persistence.owned_node_identity_conflict',
   'persistence.invalid_node_id',
   'update.get_state_failed',
   'update.configure_failed',
@@ -90,4 +111,15 @@ export interface AppErrorDescriptor {
   params?: AppErrorParams
   details?: unknown
   debugMessage?: string
+}
+
+export interface AgentPromptErrorDetails {
+  expectedTurnId?: string
+  currentState?: import('./agentRunState').AgentRunSnapshot | null
+  deliveryId?: string
+  reason: string
+  pasteDispatchAttempted: boolean
+  submitDispatchAttempted: boolean
+  retryable: boolean
+  blockedReason?: 'permission' | 'question' | 'plan' | null
 }

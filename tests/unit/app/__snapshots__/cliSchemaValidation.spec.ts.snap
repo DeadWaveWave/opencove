@@ -1,0 +1,333 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`scopes create agent projectable fields and examples > create agent 1`] = `
+"Usage: opencove node create agent [--root-canvas | --space <id> | <other-target-space-options>] [options]
+
+Create an agent node
+
+Use --prompt or --prompt-file with --wait to wait for the initial Claude Code or Codex turn. Add --read for its exact reply; unavailable replies return reply: null with replyUnavailableReason. Check outcome: every ended outcome exits 0. Waiting for the user exits 10, an exited target 11, timeout 124 and interruption 130. Unsupported providers refuse after creation; the node remains.
+
+--timeout covers first-turn identification and waiting (default 20s; minimum 250ms); creation keeps its own 20s budget. If no first turn is observed, lifecycle telemetry may be unavailable even if the agent is running or has finished. Inspect the existing session; do not recreate the node or resend the prompt. Errors keep known nodeId, sessionId and turnId. Never repeat creation after an error: resume agent wait/read with those IDs. With --wait, -q prints only the node ID after completion. Stderr shows "Created agent node <nodeId> (session <sessionId>)." before identification, then "Waiting for turn <turnId> of node <nodeId>..." with an interruption-only continuation command. The final JSON and exit status report the result.
+
+Without explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node belongs to another project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.
+
+Default target inside OpenCove: your current Space, or the root canvas when you are outside any Space. An explicit --project selects project scope for lists; creation also needs --root-canvas or a Space target.
+
+Target container (choose one):
+  --root-canvas                                 Create on the project's root canvas, outside every Space
+  --space <id>                                  Select a space by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --space-name <name> [--project <id>]          Find a named space, optionally within a project
+  --worker <id-or-name> --branch <branch>       Find a space by worker and Git branch
+  --worker <id-or-name> --path <absolute-path>  Find a space by worker and working directory
+  --project <id>                                Select the root-canvas project, or narrow a Space lookup; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Options:
+  --prompt <text>         Set the initial agent prompt
+  --prompt-file <path|->  Read prompt from a UTF-8 file, or use - for stdin
+  --wait                  Wait for the initial prompt turn to end
+  --read                  Include the exact initial turn reply; requires --wait
+  --timeout <duration>    First-turn identification and wait budget (default 20s; minimum 250ms)
+  --provider <id>         Select the agent provider. Accepted IDs: claude-code, codex, opencode, gemini, pi, kimi; omit to use the configured default
+  --model <id>            Select the agent model
+  --title <text>          Set a fixed window name; omit on creation to keep automatic titles
+  --frame <json>          Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
+  --focus                 Focus after creation
+  -q, --quiet             Print only the created object identifier followed by a newline
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, spawnedBy, lineageDepth, lineageStatus, data, data.kind, turnId, outcome, endedAt, reply, reply.nodeId, reply.sessionId, reply.turnId, reply.deliveryIds, reply.promptIds, reply.promptId, reply.outcome, reply.message, reply.truncated, reply.messageKind, reply.persisted, reply.memoryOnlyReason, reply.source, replyUnavailableReason, data.provider, data.prompt, data.model, data.effectiveModel, data.executionDirectory, data.expectedDirectory, data.taskId
+
+Field descriptions:
+  spawnedBy      ID of the node that created this node; null for a root or unavailable lineage
+  lineageDepth   A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable
+  lineageStatus  recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read
+
+Projection example:
+  opencove node create agent --space space-123 --fields id,title
+  {"revision":1,"projectId":"p","spaceId":"space-123","node":{"id":"n","title":"Agent"}}
+
+Examples:
+  opencove node create agent --space space-123 --prompt "Review the test failures" --wait --read --timeout 2m
+  opencove node create agent --root-canvas --project project-123 --title "Release review" --pretty
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`scopes create note projectable fields and examples > create note 1`] = `
+"Usage: opencove node create note [--root-canvas | --space <id> | <other-target-space-options>] [options]
+
+Create a note node
+
+Without explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node belongs to another project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.
+
+Default target inside OpenCove: your current Space, or the root canvas when you are outside any Space. An explicit --project selects project scope for lists; creation also needs --root-canvas or a Space target.
+
+Target container (choose one):
+  --root-canvas                                 Create on the project's root canvas, outside every Space
+  --space <id>                                  Select a space by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --space-name <name> [--project <id>]          Find a named space, optionally within a project
+  --worker <id-or-name> --branch <branch>       Find a space by worker and Git branch
+  --worker <id-or-name> --path <absolute-path>  Find a space by worker and working directory
+  --project <id>                                Select the root-canvas project, or narrow a Space lookup; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Options:
+  --text <text>         Set the note contents
+  --text-file <path|->  Read text from a UTF-8 file, or use - for stdin
+  --title <text>        Set the node title
+  --frame <json>        Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
+  --focus               Focus after creation
+  -q, --quiet           Print only the created object identifier followed by a newline
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, spawnedBy, lineageDepth, lineageStatus, data, data.kind, data.text
+
+Field descriptions:
+  spawnedBy      ID of the node that created this node; null for a root or unavailable lineage
+  lineageDepth   A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable
+  lineageStatus  recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read
+
+Projection example:
+  opencove node create note --space space-123 --fields id,title
+  {"revision":1,"projectId":"p","spaceId":"space-123","node":{"id":"n","title":"Note"}}
+
+Examples:
+  opencove node create note --space space-123 --title "Release checklist" --text "Run the smoke tests"
+  opencove node create note --root-canvas --project project-123 --text "Canvas note" --focus
+  opencove node create note --space-name "Sprint planning" --project project-123 --text-file ./notes.md --focus
+  printf 'Review the release notes\\n' | opencove node create note --space space-123 --text-file -
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`scopes create task projectable fields and examples > create task 1`] = `
+"Usage: opencove node create task [--root-canvas | --space <id> | <other-target-space-options>] --requirement <text> [options]
+
+Create a task node
+
+Without explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node belongs to another project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.
+
+Default target inside OpenCove: your current Space, or the root canvas when you are outside any Space. An explicit --project selects project scope for lists; creation also needs --root-canvas or a Space target.
+
+Target container (choose one):
+  --root-canvas                                 Create on the project's root canvas, outside every Space
+  --space <id>                                  Select a space by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --space-name <name> [--project <id>]          Find a named space, optionally within a project
+  --worker <id-or-name> --branch <branch>       Find a space by worker and Git branch
+  --worker <id-or-name> --path <absolute-path>  Find a space by worker and working directory
+  --project <id>                                Select the root-canvas project, or narrow a Space lookup; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Options:
+  --requirement <text>                 Describe the task requirement (required)
+  --priority <low|medium|high|urgent>  Set the task priority
+  --tag <tag>                          Set task tags; repeat for each tag
+  --title <text>                       Set the node title
+  --frame <json>                       Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes; task minimum: width 220, height 260
+  --focus                              Focus after creation
+  -q, --quiet                          Print only the created object identifier followed by a newline
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, spawnedBy, lineageDepth, lineageStatus, data, data.kind, data.requirement, data.status, data.priority, data.tags, data.linkedAgentNodeId
+
+Field descriptions:
+  spawnedBy      ID of the node that created this node; null for a root or unavailable lineage
+  lineageDepth   A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable
+  lineageStatus  recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read
+
+Projection example:
+  opencove node create task --requirement '<text>' --space space-123 --fields id,title
+  {"revision":1,"projectId":"p","spaceId":"space-123","node":{"id":"n","title":"Task"}}
+
+Examples:
+  opencove node create task --space space-123 --requirement "Review release notes"
+  opencove node create task --root-canvas --project project-123 --requirement "Review release notes" --title "Release review" --pretty
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`scopes create terminal projectable fields and examples > create terminal 1`] = `
+"Usage: opencove node create terminal [--root-canvas | --space <id> | <other-target-space-options>] [options]
+
+Create a terminal node
+
+Without explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node belongs to another project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.
+
+Default target inside OpenCove: your current Space, or the root canvas when you are outside any Space. An explicit --project selects project scope for lists; creation also needs --root-canvas or a Space target.
+
+Target container (choose one):
+  --root-canvas                                 Create on the project's root canvas, outside every Space
+  --space <id>                                  Select a space by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --space-name <name> [--project <id>]          Find a named space, optionally within a project
+  --worker <id-or-name> --branch <branch>       Find a space by worker and Git branch
+  --worker <id-or-name> --path <absolute-path>  Find a space by worker and working directory
+  --project <id>                                Select the root-canvas project, or narrow a Space lookup; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Options:
+  --shell <path>       Choose the terminal shell executable
+  --command <command>  Run this command in the terminal
+  --profile <id>       Select a browser or terminal profile
+  --title <text>       Set a fixed window name; omit on creation to keep automatic titles
+  --frame <json>       Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
+  --focus              Focus after creation
+  -q, --quiet          Print only the created object identifier followed by a newline
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, spawnedBy, lineageDepth, lineageStatus, data, data.kind, data.profileId, data.runtimeKind, data.executionDirectory, data.expectedDirectory
+
+Field descriptions:
+  spawnedBy      ID of the node that created this node; null for a root or unavailable lineage
+  lineageDepth   A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable
+  lineageStatus  recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read
+
+Projection example:
+  opencove node create terminal --space space-123 --fields id,title
+  {"revision":1,"projectId":"p","spaceId":"space-123","node":{"id":"n","title":"Terminal"}}
+
+Examples:
+  opencove node create terminal --space space-123
+  opencove node create terminal --root-canvas --project project-123 --title "Release review" --pretty
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`scopes create website projectable fields and examples > create website 1`] = `
+"Usage: opencove node create website [--root-canvas | --space <id> | <other-target-space-options>] --url <url> [options]
+
+Create a website node
+
+Without explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node belongs to another project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.
+
+Default target inside OpenCove: your current Space, or the root canvas when you are outside any Space. An explicit --project selects project scope for lists; creation also needs --root-canvas or a Space target.
+
+Target container (choose one):
+  --root-canvas                                 Create on the project's root canvas, outside every Space
+  --space <id>                                  Select a space by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --space-name <name> [--project <id>]          Find a named space, optionally within a project
+  --worker <id-or-name> --branch <branch>       Find a space by worker and Git branch
+  --worker <id-or-name> --path <absolute-path>  Find a space by worker and working directory
+  --project <id>                                Select the root-canvas project, or narrow a Space lookup; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Options:
+  --url <url>                                Set the website address (required)
+  --pinned                                   Keep the website pinned
+  --session-mode <shared|incognito|profile>  Choose the browser session mode
+  --profile <id>                             Select a browser or terminal profile
+  --title <text>                             Set the node title
+  --frame <json>                             Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
+  --focus                                    Focus after creation
+  -q, --quiet                                Print only the created object identifier followed by a newline
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, spawnedBy, lineageDepth, lineageStatus, data, data.kind, data.url, data.pinned, data.sessionMode, data.profileId
+
+Field descriptions:
+  spawnedBy      ID of the node that created this node; null for a root or unavailable lineage
+  lineageDepth   A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable
+  lineageStatus  recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read
+
+Projection example:
+  opencove node create website --url '<url>' --space space-123 --fields id,title
+  {"revision":1,"projectId":"p","spaceId":"space-123","node":{"id":"n","title":"Website"}}
+
+Examples:
+  opencove node create website --space space-123 --url https://example.com
+  opencove node create website --root-canvas --project project-123 --url https://example.com --title "Release review" --pretty
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`scopes update note projectable fields and examples > update note 1`] = `
+"Usage: opencove node update note --node <id> [options]
+
+Update a note node
+
+Options:
+  --text <text>         Set the note contents
+  --text-file <path|->  Read text from a UTF-8 file, or use - for stdin
+  --node <id>           Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
+  --title <text>        Set the node title
+  --frame <json>        Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
+  --space <selector>    Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>        Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.text
+
+Projection example:
+  opencove node update note --node '<id>' --fields id,title
+  {"revision":1,"node":{"id":"n","title":"Note"}}
+
+Examples:
+  opencove node update note --node node-123 --text "Updated note"
+  opencove node update note --node node-123 --title "Release review" --pretty
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`scopes update task projectable fields and examples > update task 1`] = `
+"Usage: opencove node update task --node <id> [options]
+
+Update a task node
+
+Options:
+  --requirement <text>                 Describe the task requirement
+  --priority <low|medium|high|urgent>  Set the task priority
+  --tag <tag>                          Replace all tags; repeat for each tag in the new list
+  --clear-tags                         Remove all task tags
+  --status <todo|doing|ai_done|done>   Set the task status
+  --node <id>                          Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
+  --title <text>                       Set the node title
+  --frame <json>                       Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes; task minimum: width 220, height 260
+  --space <selector>                   Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>                       Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.requirement, data.status, data.priority, data.tags, data.linkedAgentNodeId
+
+Projection example:
+  opencove node update task --node '<id>' --fields id,title
+  {"revision":1,"node":{"id":"n","title":"Task"}}
+
+Examples:
+  opencove node update task --node node-123 --requirement "Review release notes"
+  opencove node update task --node node-123 --requirement "Review release notes" --title "Release review" --pretty
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`scopes update website projectable fields and examples > update website 1`] = `
+"Usage: opencove node update website --node <id> [options]
+
+Update a website node
+
+Options:
+  --url <url>                                Set the website address
+  --pinned <true|false>                      Keep the website pinned
+  --session-mode <shared|incognito|profile>  Choose the browser session mode
+  --profile <id>                             Select a browser or terminal profile
+  --node <id>                                Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
+  --title <text>                             Set the node title
+  --frame <json>                             Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
+  --space <selector>                         Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>                             Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.url, data.pinned, data.sessionMode, data.profileId
+
+Projection example:
+  opencove node update website --node '<id>' --fields id,title
+  {"revision":1,"node":{"id":"n","title":"Website"}}
+
+Examples:
+  opencove node update website --node node-123 --url https://example.com
+  opencove node update website --node node-123 --url https://example.com --title "Release review" --pretty
+
+Global options: see "opencove --help".
+"
+`;

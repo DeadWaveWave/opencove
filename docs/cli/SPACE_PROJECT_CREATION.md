@@ -1,0 +1,161 @@
+# Create Spaces and add projects
+
+Use `space create` to organize work without building API JSON. Space selectors accept
+an exact ID, a case-sensitive name, a unique ID prefix of at least six characters,
+or `@self`. Node selectors in `--move` use the same forms.
+
+```sh
+opencove space create --name "Review"
+opencove space create --name "Migration" --project project-123 --directory /workspace/migration
+opencove space create --name "Review notes" --in @self --move "Brief" --move "Checklist"
+opencove project add --path /workspace/app --name "App"
+```
+
+A top-level Space uses your terminal node’s **current project**, including when the
+terminal is on the root canvas. Outside an OpenCove terminal, provide `--project`.
+The Worker chooses an empty position and returns the applied `rect`. There is no
+`--frame` for top-level creation. `--directory` is passed unchanged to the Worker:
+it must be an existing absolute local directory within the project’s default mount.
+Symlinks cannot escape that mount. Omit it to use the mount root; remote default
+mounts are currently unsupported.
+
+With `--in`, creation uses the selected parent Space. `--project` optionally narrows
+the parent lookup. Children inherit their parent’s directory, so `--directory`
+cannot accompany `--in`. Repeat `--move` to move direct members of the parent into
+the child. Duplicate node selections are moved once. Root-canvas nodes cannot be
+moved into a new top-level Space with this command; `--move` requires `--in`.
+
+For a child, `--frame '{"x":100,"y":100,"width":600,"height":400}'` requests a full
+canvas boundary. Without a frame, the Worker encloses the moved nodes with padding,
+or uses a 420×300 boundary centered in the parent when no nodes are moved. It first
+fits the boundary inside the parent, then expands it as needed to enclose the
+moved nodes. Moved nodes keep their positions and sizes; the child and its ancestors
+grow when necessary. An adjusted explicit frame produces one stderr notice;
+stdout always contains the applied rect.
+
+`space create` returns `{id, name, projectId, parentSpaceId, rect, directoryPath,
+movedNodeIds}`. Top-level results have `parentSpaceId: null` and `movedNodeIds: []`.
+`rect` is `{x,y,width,height}` in canvas coordinates, matching `space get` and
+`space list`; null means no saved geometry. The separate `boundary` field in
+get/list describes access scope, including mounts and capabilities.
+`project add` returns `{id, name, path, defaultSpace}`; `defaultSpace` is
+`{id, name, directoryPath, rect}`, or null if absent. An existing project at the
+same path is reused with its saved name and default Space. Both commands support
+`--pretty` and `--fields`; neither supports table output. Failed commands leave
+stdout empty and are never automatically retried. If an older Worker reports
+success without details, the CLI asks you to inspect the existing result rather
+than repeat the creation command.
+
+**Agents cannot add projects.** A terminal session grant receives exit 4 with a
+human-decision error. Ask the user to add the project in OpenCove. This refusal is
+final; do not retry with another credential.
+
+## 创建 Space 与添加项目
+
+使用 `space create` 整理工作，无需手写 API JSON。`--in` 接受完整 ID、区分大小写的
+名称、至少六个字符的唯一 ID 前缀或 `@self`；`--move` 的节点选择器也支持这些形式。
+
+顶层 Space 默认使用终端节点**当前所属的项目**，终端位于 root canvas 时也适用。
+在 OpenCove 终端外调用时，请提供 `--project`。位置由 Worker 自动安排，结果包含实际
+`rect`，顶层创建不接受 `--frame`。`--directory` 原样传给 Worker，必须是项目默认
+mount 内已存在的本地绝对目录，符号链接也不能越界；省略时使用 mount 根目录。
+目前不支持远程默认 mount。
+
+指定 `--in` 可在父 Space 内创建子 Space，`--project` 可缩小父 Space 的查找范围。
+子 Space 继承父目录，不能同时指定 `--directory`。重复使用 `--move` 可移入多个父
+Space 的直属节点，相同节点只移动一次。目前不能将 root-canvas 节点移入新建顶层
+Space，因此 `--move` 必须与 `--in` 配合使用。
+
+子 Space 的 `--frame` 接受完整的 `{x,y,width,height}` JSON 对象。不指定时，边界
+优先包围所选节点并留出间距；没有所选节点时，在父 Space 中心使用 420×300 的边界。
+Worker 先将边界适配到父 Space 内，再确保它完整包住所选节点，必要时逐级扩展祖先。
+所选节点的位置和尺寸保持不变。若显式 frame 被调整，stderr 会提示实际 rect。
+stdout 中的 rect 始终是实际采用的值。
+
+`space create` 返回 `{id,name,projectId,parentSpaceId,rect,directoryPath,movedNodeIds}`；
+`rect` 为画布坐标中的 `{x,y,width,height}`，与 `space get`、`space list` 一致；
+null 表示尚未保存几何边界。get/list 中独立的 `boundary` 表示 mount、capabilities 等
+访问范围。顶层 Space 的 `parentSpaceId` 为 null，`movedNodeIds` 为空数组。`project add` 返回
+`{id,name,path,defaultSpace}`，默认 Space 包含 `{id,name,directoryPath,rect}`，没有时为
+null。相同路径的已有项目会复用其保存的名称和默认 Space。两个命令均支持 `--pretty`
+和 `--fields`，不支持表格输出；失败时 stdout 为空，不自动重试。旧版 Worker 若仅返回
+成功而缺少详情，CLI 会引导查询已有结果，避免重复创建。
+
+**智能体不能添加项目。** 终端 session grant 会收到退出码 4，提示此操作需要用户在
+OpenCove 中决定。请用户在 OpenCove 添加项目，不要重试或借用其他凭证。
+
+## Place nodes in Spaces
+
+When creating a node in a Space without a position, the Worker first finds a full
+slot inside it. If full, it searches right, then down, before left and up. The
+Space and its ancestors grow with padding; existing nodes keep their positions.
+
+在 Space 内创建节点且未指定位置时，Worker 优先寻找内部的完整空位；空间不足时依次
+向右、向下搜索，最后才考虑左侧和上方。目标 Space 及其祖先逐级扩展，已有节点保持原位。
+
+`space create --in <space> --move @parent` can move your recorded parent when it is a direct
+member of the selected Space. The Worker resolves parentage; moving never changes lineage.
+中文：`--move @parent` 可以移动记录中的父节点，但该节点必须直接属于 `--in` 指定的 Space。
+
+## Rename Spaces and adjust their boundaries
+
+```sh
+opencove space update --space @self --name "Review"
+opencove space update --space "Review" --frame '{"width":1200,"height":800}'
+opencove space update --space space-123 --frame '{"x":100,"y":200}'
+```
+
+Select a Space explicitly with `--space`; the same selectors as `space get` apply.
+Supply `--name`, `--frame`, or both. Names follow `space create`: surrounding
+whitespace is removed and blank names are rejected. A frame accepts any nonempty
+subset of x, y, width and height; values must be finite and dimensions positive.
+All four fields change only the Space boundary. Member nodes keep their positions
+and sizes, and child Spaces keep their rects. To move a Space together with its
+contents, drag it in OpenCove.
+
+The applied boundary is the smallest rectangle containing both the requested
+frame and the fixed contents with padding: 24 canvas units around direct nodes
+using their displayed sizes (including compact cards), and 12 around child Spaces.
+Requested x/y can therefore be adjusted, and dimensions may grow even for a
+position-only request. For example, requesting x=1000 when a member starts at
+x=24 expands the frame back to x=0 to keep that member inside. Ancestors grow as
+needed; neighboring Spaces and their members stay in place. An empty Space can
+use any finite position and positive dimensions. A Space without a saved boundary
+can be renamed; open it in OpenCove before changing its frame.
+
+Output is `{id, name, projectId, parentSpaceId, rect, directoryPath, movedNodeIds}`.
+`rect` matches the geometry returned by `space get` and `space list`; `boundary`
+in those queries describes access scope. Frame updates also return `appliedFrame`
+and `frameAdjusted`; the latter compares only explicitly requested components.
+An adjustment prints one notice to stderr. `movedNodeIds` is retained for
+compatibility and is always empty. Use `--fields` or `--pretty`; table output is
+unavailable. The name and affected boundaries are saved together. On a conflict,
+inspect the Space again before deciding whether to repeat the update.
+Session grants may rename Spaces and adjust their boundaries. Directory and
+worktree bindings, parentage and membership remain unchanged; use `worktree`
+commands for bindings.
+
+## 重命名 Space 与调整边界
+
+使用 `space update --space <选择器>` 编辑已有 Space，至少提供 `--name` 或 `--frame`
+之一，也可同时提供。选择器与 `space get` 相同。名称规则与 `space create` 一致：
+去除首尾空白，不接受空名称。`--frame` 接受 x、y、width、height 的非空子集，数值
+必须有限，宽高必须为正数。四个字段都只调整 Space 的边界：成员节点的位置和尺寸、
+子 Space 的 rect 均保持不变。需要连同内容一起移动时，请在 OpenCove 中拖动 Space。
+
+实际边界取同时包围请求框和固定内容的最小矩形：直属节点周围保留 24 个画布单位，
+按其显示尺寸计算（包括折叠卡片）；子 Space 周围保留 12 个。因此，请求的 x/y 也可能
+被调整；即使只指定位置，宽高也可能增大。例如，成员位于 x=24 时请求 x=1000，
+实际边界会向左扩展到 x=0，确保成员仍在其中。祖先 Space 按需扩张，相邻 Space
+及其成员保持原位。空 Space 接受任意有限坐标和正数尺寸。没有已保存边界的 Space
+可以改名；调整其边界前，请先在 OpenCove 中打开它。
+
+返回 `{id,name,projectId,parentSpaceId,rect,directoryPath,movedNodeIds}`；`rect` 与
+`space get`、`space list` 返回的几何边界一致，查询中的 `boundary` 则表示访问范围。
+修改 frame 时另含 `appliedFrame` 和 `frameAdjusted`，后者只比较显式请求的分量。
+发生调整时，stderr 显示一次提示。`movedNodeIds` 为兼容保留，始终为空数组。
+支持 `--fields` 和 `--pretty`，不支持表格输出。
+
+名称和受影响的边界一次保存；如遇并发冲突，请重新查询 Space 后再决定是否更新。
+智能体终端可以改名和调整边界；目录、worktree 绑定、父子关系和成员归属保持不变。
+需要修改 worktree 绑定时，请使用 `worktree` 命令。

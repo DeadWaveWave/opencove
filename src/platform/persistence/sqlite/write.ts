@@ -1,15 +1,25 @@
 import type Database from 'better-sqlite3'
+import {
+  enforceManagedClaudeResumeBindings,
+  retireDeletedManagedNodes,
+} from './managedClaudeResumeGate'
 import type { DbAppMetaKey } from './schema'
 import type { NormalizedPersistedAppState } from './normalize'
 import { normalizeScrollback } from './normalize'
 import { safeJsonStringify } from './utils'
 import { PersistenceRevisionConflict } from './revisionConflict'
 
+export interface EffectiveAppStateWrite {
+  revision: number
+  corrected: boolean
+  effectiveState: NormalizedPersistedAppState
+}
+
 export function writeNormalizedAppState(
   db: Database.Database,
-  state: NormalizedPersistedAppState,
+  submittedState: NormalizedPersistedAppState,
   expectedRevision?: number,
-): number {
+): EffectiveAppStateWrite {
   const readMetaValue = db.prepare(
     `
       SELECT value
@@ -49,13 +59,13 @@ export function writeNormalizedAppState(
   const insertNode = db.prepare(
     `
       INSERT INTO nodes (
-        id, workspace_id, session_id, title, title_pinned_by_user,
+        id, workspace_id, session_id, title, title_pinned_by_user, title_is_literal,
         position_x, position_y, width, height,
         kind, profile_id, runtime_kind, terminal_geometry_json, worker_binding_json, terminal_provider_hint, label_color_override,
         sidebar_sort_order, status, started_at, ended_at, exit_code, last_error,
         execution_directory, expected_directory, agent_json, task_json
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
   )
 
@@ -90,6 +100,12 @@ export function writeNormalizedAppState(
     if (expectedRevision !== undefined && expectedRevision !== nextRevision - 1) {
       throw new PersistenceRevisionConflict(expectedRevision, nextRevision - 1)
     }
+
+    const { effectiveState: state, corrected } = enforceManagedClaudeResumeBindings(
+      db,
+      submittedState,
+      nextRevision,
+    )
 
     db.exec(`
       DELETE FROM workspace_space_nodes;
@@ -150,6 +166,7 @@ export function writeNormalizedAppState(
           node.sessionId ?? null,
           node.title,
           node.titlePinnedByUser === true ? 1 : 0,
+          node.titleIsLiteral === true ? 1 : 0,
           node.position.x,
           node.position.y,
           node.width,
@@ -216,7 +233,8 @@ export function writeNormalizedAppState(
       "DELETE FROM agent_node_placeholder_scrollback WHERE node_id NOT IN (SELECT id FROM nodes WHERE kind = 'agent')",
     )
 
-    return nextRevision
+    retireDeletedManagedNodes(db, nextRevision)
+    return { revision: nextRevision, corrected, effectiveState: state }
   })
 
   return writeTx()

@@ -318,6 +318,7 @@ describe('PtyHostSupervisor protocol fencing', () => {
     expect(
       findLastSentMessage<{ type: 'shutdown'; hostInstanceId: string }>(testProcess, 'shutdown'),
     ).toMatchObject({ hostInstanceId: 'host-instance-cleanup' })
-    expect(testProcess.killCalls).toBe(1)
+    expect(testProcess.killCalls).toBe(0)
+    testProcess.emit('exit', 0)
   })
 })

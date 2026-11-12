@@ -7,7 +7,7 @@ describe('cli runtime discovery', () => {
     const repoRoot = resolve('/development/opencove')
     expect(
       resolveCliRuntime({
-        cliDirectory: resolve(repoRoot, 'src/app/cli'),
+        cliDirectory: resolve(repoRoot, 'out/cli'),
         processObject: {
           resourcesPath: resolve(
             repoRoot,
@@ -31,7 +31,7 @@ describe('cli runtime discovery', () => {
       const appRoot = resolve(resourcesPath, appDirectory)
       expect(
         resolveCliRuntime({
-          cliDirectory: resolve(appRoot, 'src/app/cli'),
+          cliDirectory: resolve(appRoot, 'out/cli'),
           resourcesPath,
         }),
       ).toEqual({
@@ -48,12 +48,12 @@ describe('cli runtime discovery', () => {
 
     expect(
       resolveCliRuntime({
-        cliDirectory: resolve('/bundle/app/src/app/cli'),
+        cliDirectory: resolve('/bundle/app/out/cli'),
         resourcesPath: null,
         existsSyncImpl: (candidate: string) =>
           candidate === resolve('/bundle/opencove-runtime.env'),
         readFileSyncImpl: () =>
-          'OPENCOVE_NODE_RELATIVE_PATH=runtime/node/bin/node\nOPENCOVE_CLI_SCRIPT_RELATIVE_PATH=app/src/app/cli/opencove.mjs\n',
+          'OPENCOVE_NODE_RELATIVE_PATH=runtime/node/bin/node\nOPENCOVE_CLI_SCRIPT_RELATIVE_PATH=app/out/cli/opencove.mjs\n',
       }),
     ).toEqual({
       kind: 'standalone',

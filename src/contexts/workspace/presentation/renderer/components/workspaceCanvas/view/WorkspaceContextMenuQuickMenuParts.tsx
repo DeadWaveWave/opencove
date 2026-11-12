@@ -2,7 +2,12 @@ import React from 'react'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { menuHoverHandler } from '@app/renderer/components/menuHoverHandler'
 import { MenuItem, MenuSeparator } from '@app/renderer/components/ui/Menu'
-import { FileText, Globe, Settings, Terminal } from 'lucide-react'
+import {
+  FileTextIcon,
+  GlobeIcon,
+  SettingsIcon,
+  TerminalIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import type { QuickCommand, QuickPhrase } from '@contexts/settings/domain/agentSettings'
 
@@ -36,7 +41,7 @@ export function WorkspaceContextQuickMenuItems({
       {pinnedQuickCommands.map(command => (
         <MenuItem
           key={command.id}
-          icon={command.kind === 'terminal' ? <Terminal /> : <Globe />}
+          icon={command.kind === 'terminal' ? <TerminalIcon /> : <GlobeIcon />}
           data-testid={`workspace-context-quick-command-pinned-${command.id}`}
           onClick={() => {
             void runQuickCommand(command)
@@ -48,7 +53,7 @@ export function WorkspaceContextQuickMenuItems({
 
       <MenuItem
         ref={quickCommandsButtonRef}
-        icon={<Terminal />}
+        icon={<TerminalIcon />}
         data-testid="workspace-context-quick-commands"
         submenu={{ open: isQuickCommandsSubmenuOpen }}
         onMouseEnter={menuHoverHandler(openQuickCommandsSubmenu)}
@@ -59,7 +64,7 @@ export function WorkspaceContextQuickMenuItems({
 
       <MenuItem
         ref={quickPhrasesButtonRef}
-        icon={<FileText />}
+        icon={<FileTextIcon />}
         data-testid="workspace-context-quick-phrases"
         submenu={{ open: isQuickPhrasesSubmenuOpen }}
         onMouseEnter={menuHoverHandler(openQuickPhrasesSubmenu)}
@@ -69,7 +74,7 @@ export function WorkspaceContextQuickMenuItems({
       </MenuItem>
 
       <MenuItem
-        icon={<Settings />}
+        icon={<SettingsIcon />}
         data-testid="workspace-context-customize-quick-menu"
         onClick={() => {
           openQuickMenuSettings()
@@ -137,9 +142,9 @@ export function WorkspaceContextQuickCommandsSubmenu({
           }}
         >
           {command.kind === 'terminal' ? (
-            <Terminal className="workspace-context-menu__icon" aria-hidden="true" />
+            <TerminalIcon className="workspace-context-menu__icon" />
           ) : (
-            <Globe className="workspace-context-menu__icon" aria-hidden="true" />
+            <GlobeIcon className="workspace-context-menu__icon" />
           )}
           <span className="workspace-context-menu__label">{command.title}</span>
         </button>
@@ -152,7 +157,7 @@ export function WorkspaceContextQuickCommandsSubmenu({
         data-testid="workspace-context-quick-commands-customize"
         onClick={openQuickMenuSettings}
       >
-        <Settings className="workspace-context-menu__icon" aria-hidden="true" />
+        <SettingsIcon className="workspace-context-menu__icon" />
         <span className="workspace-context-menu__label">
           {t('settingsPanel.quickMenu.customize')}
         </span>
@@ -214,7 +219,7 @@ export function WorkspaceContextQuickPhrasesSubmenu({
             insertQuickPhrase(phrase)
           }}
         >
-          <FileText className="workspace-context-menu__icon" aria-hidden="true" />
+          <FileTextIcon className="workspace-context-menu__icon" />
           <span className="workspace-context-menu__label">{phrase.title}</span>
         </button>
       ))}
@@ -226,7 +231,7 @@ export function WorkspaceContextQuickPhrasesSubmenu({
         data-testid="workspace-context-quick-phrases-customize"
         onClick={openQuickMenuSettings}
       >
-        <Settings className="workspace-context-menu__icon" aria-hidden="true" />
+        <SettingsIcon className="workspace-context-menu__icon" />
         <span className="workspace-context-menu__label">
           {t('settingsPanel.quickMenu.customize')}
         </span>

@@ -1,3 +1,7 @@
+import type {
+  ManagedClaudeLaunchIntent,
+  ManagedClaudeLifecycleReceipt,
+} from '@shared/contracts/managedClaudeLaunch'
 import type { Node } from '@xyflow/react'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import type { LaunchAgentSessionResult, TerminalRuntimeKind } from '@shared/contracts/dto'
@@ -15,16 +19,22 @@ export type AgentRuntimeNode = Node<TerminalNodeData> & {
   }
 }
 
-export interface RelaunchAgentNodeOptions {
-  nodeId: string
-  mode: 'new' | 'resume'
+export interface AgentNodeLaunchOverrides {
   executionDirectory?: string
   expectedDirectory?: string | null
+  prompt?: string
+}
+
+export interface RelaunchAgentNodeOptions extends AgentNodeLaunchOverrides {
+  nodeId: string
+  mode: 'new' | 'resume'
+  intent?: ManagedClaudeLaunchIntent
   resumeSessionId?: string | null
   startedAtOverride?: string
 }
 
 export interface AgentRuntimeLaunchResult {
+  managedClaudeLifecycle?: ManagedClaudeLifecycleReceipt
   sessionId: string
   profileId: string | null | undefined
   runtimeKind: TerminalRuntimeKind | undefined
@@ -72,24 +82,30 @@ export function resolveAgentRuntimeLaunchFrameSize(node: AgentRuntimeNode): {
 
 export async function launchAgentRuntime({
   node,
+  intent,
   mountId,
   mergedEnv,
   mode,
   executionDirectory,
+  prompt = node.data.agent.prompt,
   resumeSessionId,
   agentFullAccess,
+  codexReuseRunningAppServer,
   defaultTerminalProfileId,
   executablePathOverride,
   terminalFontSize,
   terminalDisplayMetrics,
 }: {
   node: AgentRuntimeNode
+  intent?: ManagedClaudeLaunchIntent
   mountId: string | null
   mergedEnv: Record<string, string>
   mode: 'new' | 'resume'
   executionDirectory: string
+  prompt?: string
   resumeSessionId: string | null
   agentFullAccess: boolean
+  codexReuseRunningAppServer: boolean
   defaultTerminalProfileId: string | null
   executablePathOverride: string | null
   terminalFontSize: number
@@ -119,10 +135,13 @@ export async function launchAgentRuntime({
     const launched = await window.opencoveApi.controlSurface.invoke<LaunchAgentSessionResult>({
       kind: 'command',
       id: 'session.launchAgentInMount',
+      clientFeatures: { managedClaudeResumeBindingV1: true },
       payload: {
+        ...(intent ? { intent } : {}),
+        canvasNodeId: node.id,
         mountId,
         cwdUri,
-        prompt: node.data.agent.prompt,
+        prompt,
         provider: node.data.agent.provider,
         mode,
         model: node.data.agent.model,
@@ -130,17 +149,23 @@ export async function launchAgentRuntime({
         ...(executablePathOverride ? { executablePathOverride } : {}),
         ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
         agentFullAccess,
+        codexReuseRunningAppServer,
         cols: launchGeometry.terminalGeometry.cols,
         rows: launchGeometry.terminalGeometry.rows,
       },
     })
 
     return {
+      managedClaudeLifecycle: launched.managedClaudeLifecycle,
       sessionId: launched.sessionId,
       profileId: launched.profileId,
       runtimeKind: launched.runtimeKind ?? undefined,
       effectiveModel: launched.effectiveModel,
-      resumeSessionId: mode === 'resume' ? resumeSessionId : (launched.resumeSessionId ?? null),
+      resumeSessionId: launched.managedClaudeLifecycle
+        ? launched.managedClaudeLifecycle.binding.tuple.resumeSessionId
+        : mode === 'resume'
+          ? resumeSessionId
+          : (launched.resumeSessionId ?? null),
       startedAt: launched.startedAt,
       executionDirectory: launched.executionContext.workingDirectory,
       terminalGeometry: launchGeometry.terminalGeometry,
@@ -153,26 +178,35 @@ export async function launchAgentRuntime({
   }
 
   const launched = await window.opencoveApi.agent.launch({
+    clientFeatures: { managedClaudeResumeBindingV1: true },
+    ...(intent ? { intent } : {}),
+    canvasNodeId: node.id,
     provider: node.data.agent.provider,
     cwd: executionDirectory,
     profileId: node.data.profileId ?? defaultTerminalProfileId,
-    prompt: node.data.agent.prompt,
+    prompt,
     mode,
     model: node.data.agent.model,
     resumeSessionId: mode === 'resume' ? resumeSessionId : null,
     ...(executablePathOverride ? { executablePathOverride } : {}),
     ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
     agentFullAccess,
+    codexReuseRunningAppServer,
     cols: launchGeometry.terminalGeometry.cols,
     rows: launchGeometry.terminalGeometry.rows,
   })
 
   return {
+    managedClaudeLifecycle: launched.managedClaudeLifecycle,
     sessionId: launched.sessionId,
     profileId: launched.profileId,
     runtimeKind: launched.runtimeKind,
     effectiveModel: launched.effectiveModel,
-    resumeSessionId: mode === 'resume' ? resumeSessionId : (launched.resumeSessionId ?? null),
+    resumeSessionId: launched.managedClaudeLifecycle
+      ? launched.managedClaudeLifecycle.binding.tuple.resumeSessionId
+      : mode === 'resume'
+        ? resumeSessionId
+        : (launched.resumeSessionId ?? null),
     startedAt: new Date().toISOString(),
     executionDirectory,
     terminalGeometry: launchGeometry.terminalGeometry,

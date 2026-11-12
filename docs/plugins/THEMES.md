@@ -30,7 +30,7 @@ SDK theme context rather than being styled through the host's DOM.
 
 ## Manifest
 
-A minimal package can reproduce the complete Pixel and Pixel Light foundations:
+A minimal package can reproduce both Cove foundations, dark and light:
 
 ```json
 {
@@ -41,8 +41,8 @@ A minimal package can reproduce the complete Pixel and Pixel Light foundations:
   "description": "A pair of workspace themes.",
   "contributes": {
     "themes": [
-      { "id": "night", "title": "Studio Night", "appearance": "dark", "extends": "pixel" },
-      { "id": "day", "title": "Studio Day", "appearance": "light", "extends": "pixel-light" }
+      { "id": "night", "title": "Studio Night", "appearance": "dark", "extends": "dark" },
+      { "id": "day", "title": "Studio Day", "appearance": "light", "extends": "light" }
     ]
   }
 }
@@ -57,12 +57,11 @@ host's existing windows and Appearance previews. A package that intentionally
 provides a separate tool window may also declare a `view`; its window entries and
 preview remain independent of its theme contributions.
 
-`extends` accepts `dark` and `light` (the Cove foundation) or `pixel` and
-`pixel-light` (the Pixel foundation). Manifests that still name the retired
-`ember` or `ember-light` foundations keep working and resolve to `dark` and
-`light`. `appearance` must agree with that foundation. Without `extends`, the
-Cove foundation of the theme's appearance is used. Cross-plugin inheritance is
-not supported.
+`extends` accepts `dark` and `light`, the Cove foundation. Manifests that still
+name a retired foundation keep working: `pixel` and `ember` resolve to `dark`,
+`pixel-light` and `ember-light` to `light`. `appearance` must agree with that
+foundation. Without `extends`, the Cove foundation of the theme's appearance is
+used. Cross-plugin inheritance is not supported.
 The persisted identity remains `plugin:<plugin-id>:<theme-id>`; the applied
 foundation is exposed separately as `data-cove-theme-base`.
 
@@ -98,7 +97,7 @@ colours lose chroma and never shift hue. Window kind colours, labels and status
 colours keep their meaning.
 
 A palette builds on the Cove foundation. `extends` may be omitted, `dark` or
-`light`, but not a Pixel foundation, which is hand-written. The palette sits
+`light`. The palette sits
 below the theme's stylesheet and `tokens`, so a theme can still adjust single
 tokens on top. Plugin windows receive the generated colours through the SDK
 theme context like any other theme.
@@ -110,7 +109,7 @@ Each theme can additionally declare:
   "id": "night",
   "title": "Studio Night",
   "appearance": "dark",
-  "extends": "pixel",
+  "extends": "dark",
   "stylesheet": "styles/night.css",
   "tokens": {
     "--cove-accent": "#71bfff",
@@ -159,7 +158,9 @@ Public material tokens:
 - `--cove-node-background-image`, `--cove-node-shadow`, `--cove-node-shadow-hover`,
   `--cove-node-shadow-focus`, `--cove-node-header-border`, `--cove-pixel-header-filter`
   (built-in themes set it to `none`: window frames are a pre-composited tint and content
-  sits on the reading plate; a theme that sets a blur pays for it on every visible window)
+  sits on the reading plate; a theme that sets a blur pays for it on every visible window).
+  Cove-based themes light window glass through `--cove-node-background-image`: a sheen fading
+  down from the top edge over a fine grain. Setting it replaces that light.
 - `--cove-space-surface`, `--cove-space-border`, `--cove-space-shadow`,
   `--cove-space-caption-surface`
 
@@ -182,7 +183,7 @@ Values are CSS pixels before canvas zoom; no units in JSON.
 | `metrics.compactIconSize` | 16–36; glyph inside the compact node |
 | `metrics.controlGap` | 2–16 |
 | `metrics.menuRowHeight` | 28–48 |
-| `metrics.sidebarRowHeight` | 28–48; agent rows retain room for their additional information |
+| `metrics.sidebarRowHeight` | 28–48; Space and agent rows are one line at this height |
 | `metrics.controlHeight` | 28–48 |
 | `metrics.radius` | 0–24; node shell corner radius |
 
@@ -337,7 +338,7 @@ continue to work; a third callback argument contains the expanded context.
 See [API](./API.md) for the full view lifecycle.
 
 Disabling or uninstalling a theme removes its CSS, tokens, fonts and animation
-profile and displays Pixel. The selected identity remains stored, so reinstalling
+profile and displays Cove dark. The selected identity remains stored, so reinstalling
 or enabling it restores the choice. A resource loading failure shows a recovery
 message in Appearance with a built-in theme action. The CLI can disable an authored
 theme plugin even if its CSS makes the application difficult to navigate.

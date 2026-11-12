@@ -17,7 +17,7 @@ import { useEndpointOverviews } from '../hooks/useEndpointOverviews'
 import { RemoteEndpointStatusPanel } from './RemoteEndpointStatusPanel'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { WindowHeading } from '@app/renderer/components/WindowHeading'
-import { FolderOpen } from 'lucide-react'
+import { FolderOpenIcon } from '@app/renderer/components/ui/pixelIcons'
 
 function sortEntries(a: FileSystemEntry, b: FileSystemEntry): number {
   const aIsDirectory = a.kind === 'directory'
@@ -293,10 +293,7 @@ export function RemoteDirectoryPickerWindow({
       aria-label={t('remoteDirectoryPicker.title')}
       onDismiss={closePicker}
     >
-      <WindowHeading
-        title={t('remoteDirectoryPicker.title')}
-        icon={<FolderOpen size={16} aria-hidden="true" />}
-      />
+      <WindowHeading title={t('remoteDirectoryPicker.title')} icon={<FolderOpenIcon size={18} />} />
       <p className="cove-window__intro">
         {t('remoteDirectoryPicker.description', { endpoint: endpointLabel })}
       </p>

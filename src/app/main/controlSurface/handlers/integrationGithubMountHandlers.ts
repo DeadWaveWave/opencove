@@ -1,25 +1,12 @@
-import type { ControlSurface } from '../controlSurface'
+import { resolveGitHubPullRequests } from '../../../../contexts/integration/infrastructure/github/GitHubPullRequestGhService'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
-import type { WorkerTopologyStore } from '../topology/topologyStore'
+import { integrationGithubResolvePullRequestsInMountOperation } from '../../../../shared/contracts/controlSurface/operations/domains/integration'
 import type { ResolveGitHubPullRequestsResult } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
-import { resolveGitHubPullRequests } from '../../../../contexts/integration/infrastructure/github/GitHubPullRequestGhService'
-import {
-  invokeRemoteValue,
-  isRecord,
-  normalizeMountId,
-  resolveMountTargetOrThrow,
-} from './filesystemMountSupport'
-
-function normalizeBranches(value: unknown, operationId: string): string[] {
-  if (!Array.isArray(value) || value.some(entry => typeof entry !== 'string')) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId} branches.`,
-    })
-  }
-
-  return value.map(entry => entry.trim()).filter(entry => entry.length > 0)
-}
+import type { ControlSurface } from '../controlSurface'
+import { registerOperation } from '../registerOperation'
+import type { WorkerTopologyStore } from '../topology/topologyStore'
+import { invokeRemoteValue, resolveMountTargetOrThrow } from './filesystemMountSupport'
 
 export function registerIntegrationGitHubMountHandlers(
   controlSurface: ControlSurface,
@@ -28,23 +15,7 @@ export function registerIntegrationGitHubMountHandlers(
     topology: WorkerTopologyStore
   },
 ): void {
-  controlSurface.register('integration.github.resolvePullRequestsInMount', {
-    kind: 'query',
-    validate: (payload: unknown): { mountId: string; branches: string[] } => {
-      if (!isRecord(payload)) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Invalid payload for integration.github.resolvePullRequestsInMount.',
-        })
-      }
-
-      return {
-        mountId: normalizeMountId(payload.mountId, 'integration.github.resolvePullRequestsInMount'),
-        branches: normalizeBranches(
-          payload.branches,
-          'integration.github.resolvePullRequestsInMount',
-        ),
-      }
-    },
+  registerOperation(controlSurface, integrationGithubResolvePullRequestsInMountOperation, {
     handle: async (_ctx, payload): Promise<ResolveGitHubPullRequestsResult> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,

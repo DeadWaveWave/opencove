@@ -43,7 +43,7 @@ test('installs, explicitly updates and restores Git plugin code through settings
   const { electronApp, window: page } = await launchApp()
   try {
     await page.setViewportSize({ width: 1400, height: 1000 })
-    await clearAndSeedWorkspace(page, [], { settings: { language: 'en', uiTheme: 'pixel' } })
+    await clearAndSeedWorkspace(page, [], { settings: { language: 'en', uiTheme: 'dark' } })
     await page.getByTestId('app-header-settings').click()
     await page.getByTestId('settings-section-nav-plugins').click()
     await page.getByTestId('settings-plugins-install').click()

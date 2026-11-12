@@ -1,3 +1,6 @@
+import { registerAgentPromptHandlers } from './handlers/agentPromptHandlers'
+import { registerWorkspaceBootstrapHandlers } from './handlers/workspaceBootstrapHandlers'
+import { registerAgentRunStateHandlers } from './handlers/agentRunStateHandlers'
 import { registerPluginHostHandlers } from './handlers/pluginHostHandlers'
 import type { ControlSurfaceContext } from './types'
 import type { PluginDistributionService } from '@contexts/plugins/application/PluginDistributionService'
@@ -59,6 +62,7 @@ export function registerControlSurfaceHandlers(
     publishSyncEvent?: (payload: SyncEventPayload) => number
     closeWebsiteNode?: (nodeId: string) => Promise<void> | void
     endpointHealth: EndpointHealthService
+    agentSpawnRuntime?: import('../../../contexts/workspace/application/nodeSpawn/AgentSpawnRuntimePort').AgentSpawnRuntimePort
     appVersion: string | null
     deploymentId?: string | null
     instanceId?: string
@@ -68,14 +72,43 @@ export function registerControlSurfaceHandlers(
     terminalSpawnAdmission: TerminalSpawnAdmission
     terminalRecoverySpawnAdmission: TerminalRecoverySpawnAdmission
     agentProviderRegistry: AgentProviderRegistry
+    cleanupUnreferencedSession?: (id: string) => Promise<boolean>
     terminalAgentActivity?: TerminalAgentActivityEnvironmentService
   },
 ): void {
+  const deliveries = registerAgentPromptHandlers(
+    controlSurface,
+    deps.ptyStreamHub,
+    deps.agentProviderRegistry,
+  )
+  registerAgentRunStateHandlers(
+    controlSurface,
+    deps.ptyStreamHub,
+    deliveries,
+    deps.getPersistenceStore,
+  )
   registerSystemHandlers(controlSurface, {
     appVersion: deps.appVersion,
     deploymentId: deps.deploymentId,
     instanceId: deps.instanceId,
     isReady: deps.isReady,
+    hasBoundedAgentSpawning: () =>
+      deps.getPersistenceStore().then(
+        store =>
+          Boolean(
+            deps.agentSpawnRuntime &&
+            typeof deps.ptyRuntime.kill === 'function' &&
+            store.nodeLineage?.readAll &&
+            store.isAppStateRevisionCurrent &&
+            store.commitCreatedNodeState,
+          ),
+        () => false,
+      ),
+    hasNodeLineage: () =>
+      deps.getPersistenceStore().then(
+        store => Boolean(store.nodeLineage && store.commitCreatedNodeState),
+        () => false,
+      ),
   })
   registerAuthHandlers(controlSurface, { webSessions: deps.webSessions })
   registerTopologyHandlers(controlSurface, {
@@ -85,6 +118,7 @@ export function registerControlSurfaceHandlers(
     readSshConfigHosts,
   })
   registerProjectHandlers(controlSurface, deps.getPersistenceStore)
+  registerWorkspaceBootstrapHandlers(controlSurface, deps)
   registerSpaceHandlers(controlSurface, deps.getPersistenceStore)
   registerWorkspaceHandlers(controlSurface, {
     approvedWorkspaces: deps.approvedWorkspaces,
@@ -129,6 +163,7 @@ export function registerControlSurfaceHandlers(
     terminalSpawnAdmission: deps.terminalSpawnAdmission,
     terminalRecoverySpawnAdmission: deps.terminalRecoverySpawnAdmission,
     agentProviderRegistry: deps.agentProviderRegistry,
+    cleanupUnreferencedSession: deps.cleanupUnreferencedSession,
   })
   registerSessionStreamingHandlers(controlSurface, {
     approvedWorkspaces: deps.approvedWorkspaces,
@@ -149,6 +184,10 @@ export function registerControlSurfaceHandlers(
     terminalAgentActivity: deps.terminalAgentActivity,
   })
   registerNodeControlHandlers(controlSurface, {
+    killExactSession: id => deps.ptyRuntime.kill(id),
+    agentSpawnRuntime: deps.agentSpawnRuntime
+      ? { ...deps.agentSpawnRuntime, isSessionActive: id => deps.ptyStreamHub.isSessionActive(id) }
+      : undefined,
     topology: deps.topology,
     getPersistenceStore: deps.getPersistenceStore,
     publishSyncEvent: deps.publishSyncEvent,

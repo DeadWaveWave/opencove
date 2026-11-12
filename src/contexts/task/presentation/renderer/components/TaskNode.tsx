@@ -17,13 +17,18 @@ import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { TaskNodeAgentSessions } from './taskNode/TaskNodeAgentSessions'
 import { TaskNodeActionsMenu } from './taskNode/TaskNodeActionsMenu'
 import { TaskNodeFooter } from './taskNode/TaskNodeFooter'
+import { TaskNodeLabels } from './taskNode/TaskNodeLabels'
+import { TaskNodeStatusSteps } from './taskNode/TaskNodeStatusSteps'
 import { MIN_HEIGHT, MIN_WIDTH, shouldStopWheelPropagation } from './taskNode/helpers'
-import { getTaskPriorityLabel } from '@app/renderer/i18n/labels'
 import type { LabelColor } from '@shared/types/labelColor'
 import { InlineNodeTitleEditor } from '@contexts/workspace/presentation/renderer/components/shared/InlineNodeTitleEditor'
 import { NodeKindIcon } from '@contexts/workspace/presentation/renderer/components/shared/NodeKindIcon'
 import { WindowHeader } from '@contexts/workspace/presentation/renderer/components/shared/WindowHeader'
-import { Pencil } from 'lucide-react'
+import { isWindowTitleGesture } from '@contexts/workspace/presentation/renderer/components/shared/windowTitleGesture'
+import { WindowPlate } from '@contexts/workspace/presentation/renderer/components/shared/WindowPlate'
+import { EditIcon } from '@app/renderer/components/ui/pixelIcons'
+import { IconButton } from '@app/renderer/components/ui/IconButton'
+import { PixelSpinner } from '@app/renderer/components/ui/PixelSpinner'
 
 interface TaskNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -210,6 +215,7 @@ export function TaskNode({
     <div
       data-cove-part="window"
       data-cove-kind="task"
+      data-task-status={status}
       className={`task-node nowheel${isEnriching ? ' task-node--enriching' : ''}`}
       style={style}
       onClickCapture={event => {
@@ -222,6 +228,11 @@ export function TaskNode({
           event.target.closest('.task-node__header') &&
           !event.target.closest('.nodrag')
         ) {
+          return
+        }
+
+        // The title owns its clicks: one renames, one ending a grab does nothing.
+        if (isWindowTitleGesture(event.target)) {
           return
         }
 
@@ -252,10 +263,10 @@ export function TaskNode({
       <Handle type="source" position={Position.Right} className="workspace-node-handle" />
 
       {isEnriching ? (
-        <span
+        <PixelSpinner
+          size={12}
           className="task-node__enriching-spinner"
           data-testid="task-node-enrichment"
-          aria-hidden="true"
         />
       ) : null}
 
@@ -296,118 +307,116 @@ export function TaskNode({
         }}
       />
 
-      <div className="task-node__meta" data-testid="task-node-meta">
-        <span className={`task-node__priority task-node__priority--${priority}`}>
-          {getTaskPriorityLabel(t, priority).toUpperCase()}
-        </span>
+      <WindowPlate kind="plan" />
+      {/* The card under the header: the status and labels, the requirement, then the sessions and
+          the run button, all one body on the plate with dotted rules between the rows. */}
+      <div className="task-node__plate" data-cove-part="window-body">
+        <div className="task-node__meta" data-testid="task-node-meta">
+          <TaskNodeStatusSteps status={status} onStatusChange={onStatusChange} />
 
-        <span className="task-node__tags" data-testid="task-node-tags">
-          {tags.length > 0 ? (
-            tags.map(tag => (
-              <span key={tag} className="task-node__tag">
-                #{tag}
-              </span>
-            ))
-          ) : (
-            <span className="task-node__tag task-node__tag--empty">{t('taskNode.noTags')}</span>
-          )}
-        </span>
-        <button
-          type="button"
-          className="task-node__meta-edit nodrag"
-          data-testid="task-node-edit-meta"
-          aria-label={t('taskNode.editMeta')}
-          title={t('taskNode.editMeta')}
-          onClick={event => {
-            event.stopPropagation()
-            onOpenEditor()
-          }}
-        >
-          <Pencil size={11} aria-hidden="true" />
-        </button>
-      </div>
-
-      <div className="task-node__content" data-cove-part="window-body">
-        <label>{t('taskNode.requirement')}</label>
-        <div className="task-node__inline-editor">
-          <textarea
-            ref={requirementInputRef}
-            className="task-node__requirement-input nodrag nowheel"
-            data-testid="task-node-inline-requirement-input"
-            value={requirementDraft}
-            onFocus={() => {
-              setIsRequirementEditing(true)
-            }}
-            onPointerDown={event => {
-              event.stopPropagation()
-            }}
-            onClick={event => {
-              event.stopPropagation()
-            }}
-            onDragOver={event => {
-              if (
-                event.dataTransfer?.files.length ||
-                event.dataTransfer?.types.includes('text/uri-list')
-              ) {
-                event.preventDefault()
+          <TaskNodeLabels priority={priority} tags={tags}>
+            <IconButton
+              label={t('taskNode.editMeta')}
+              size="xs"
+              className="task-node__meta-edit nodrag"
+              data-testid="task-node-edit-meta"
+              onClick={event => {
                 event.stopPropagation()
-                event.dataTransfer.dropEffect = 'copy'
-              }
-            }}
-            onDrop={event => {
-              event.preventDefault()
-              event.stopPropagation()
-              insertFilePaths(
-                event.currentTarget,
-                event.dataTransfer.files,
-                event.dataTransfer.getData('text/uri-list'),
-              )
-            }}
-            onPaste={event => {
-              const files = event.clipboardData.files
-              const uriList = event.clipboardData.getData('text/uri-list')
-              if (files.length === 0 && !uriList) {
-                return
-              }
-
-              if (insertFilePaths(event.currentTarget, files, uriList)) {
-                event.preventDefault()
-                event.stopPropagation()
-              }
-            }}
-            onChange={event => {
-              setRequirementDraft(event.target.value)
-            }}
-            onBlur={() => {
-              commitRequirementDraft()
-              setIsRequirementEditing(false)
-            }}
-            onKeyDown={event => {
-              if (event.key === 'Escape') {
-                event.preventDefault()
-                cancelRequirementEdit()
-                event.currentTarget.blur()
-                return
-              }
-
-              if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-                event.preventDefault()
-                event.currentTarget.blur()
-              }
-            }}
-          />
+                onOpenEditor()
+              }}
+            >
+              <EditIcon size={12} />
+            </IconButton>
+          </TaskNodeLabels>
         </div>
+
+        <div className="task-node__content">
+          <div className="task-node__inline-editor">
+            <textarea
+              ref={requirementInputRef}
+              className="task-node__requirement-input nodrag nowheel"
+              data-testid="task-node-inline-requirement-input"
+              aria-label={t('taskNode.requirement')}
+              placeholder={t('taskNode.requirementPlaceholder')}
+              value={requirementDraft}
+              onFocus={() => {
+                setIsRequirementEditing(true)
+              }}
+              onPointerDown={event => {
+                event.stopPropagation()
+              }}
+              onClick={event => {
+                event.stopPropagation()
+              }}
+              onDragOver={event => {
+                if (
+                  event.dataTransfer?.files.length ||
+                  event.dataTransfer?.types.includes('text/uri-list')
+                ) {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  event.dataTransfer.dropEffect = 'copy'
+                }
+              }}
+              onDrop={event => {
+                event.preventDefault()
+                event.stopPropagation()
+                insertFilePaths(
+                  event.currentTarget,
+                  event.dataTransfer.files,
+                  event.dataTransfer.getData('text/uri-list'),
+                )
+              }}
+              onPaste={event => {
+                const files = event.clipboardData.files
+                const uriList = event.clipboardData.getData('text/uri-list')
+                if (files.length === 0 && !uriList) {
+                  return
+                }
+
+                if (insertFilePaths(event.currentTarget, files, uriList)) {
+                  event.preventDefault()
+                  event.stopPropagation()
+                }
+              }}
+              onChange={event => {
+                setRequirementDraft(event.target.value)
+              }}
+              onBlur={() => {
+                commitRequirementDraft()
+                setIsRequirementEditing(false)
+              }}
+              onKeyDown={event => {
+                if (event.key === 'Escape') {
+                  event.preventDefault()
+                  cancelRequirementEdit()
+                  event.currentTarget.blur()
+                  return
+                }
+
+                if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                  event.preventDefault()
+                  event.currentTarget.blur()
+                }
+              }}
+            />
+          </div>
+        </div>
+
+        <TaskNodeFooter
+          sessions={
+            <TaskNodeAgentSessions
+              width={renderedFrame.size.width}
+              linkedAgentNode={linkedAgentNode}
+              agentSessions={agentSessions}
+              currentDirectory={currentDirectory}
+              onResumeAgentSession={onResumeAgentSession}
+              onRemoveAgentSessionRecord={onRemoveAgentSessionRecord}
+            />
+          }
+          onRunAgent={onRunAgent}
+        />
       </div>
-
-      <TaskNodeAgentSessions
-        linkedAgentNode={linkedAgentNode}
-        agentSessions={agentSessions}
-        currentDirectory={currentDirectory}
-        onResumeAgentSession={onResumeAgentSession}
-        onRemoveAgentSessionRecord={onRemoveAgentSessionRecord}
-      />
-
-      <TaskNodeFooter status={status} onStatusChange={onStatusChange} onRunAgent={onRunAgent} />
 
       <NodeResizeHandles
         classNamePrefix="task-node"

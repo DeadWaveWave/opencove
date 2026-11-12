@@ -1,3 +1,8 @@
+import { resolveManagedClaudeLaunchMirrors } from '../../../shared/contracts/managedClaudeLaunchMirrors'
+import type {
+  ManagedClaudeLifecycleReceipt,
+  ManagedClaudeBindingObservation,
+} from '../../../shared/contracts/managedClaudeLaunch'
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
 import type {
@@ -66,7 +71,7 @@ async function resolveWorkerEndpoint(
 
 async function invokeOk<TValue>(
   endpoint: ControlSurfaceRemoteEndpoint,
-  request: { kind: 'query' | 'command'; id: string; payload: unknown },
+  request: import('../../../shared/contracts/controlSurface').ControlSurfaceInvokeRequest,
 ): Promise<TValue> {
   const { httpStatus, result } = await invokeControlSurface(endpoint, request)
   if (httpStatus !== 200 || !result) {
@@ -270,7 +275,8 @@ export function registerRemoteAgentIpcHandlers(options: {
       const cwd = normalizeRequiredString(payload?.cwd, 'agent.launch cwd')
       const provider = payload?.provider as AgentProviderId
       const model = payload?.model ?? null
-      const mode = payload?.mode === 'resume' ? 'resume' : 'new'
+      const intentMirrors = resolveManagedClaudeLaunchMirrors(payload)
+      const mode = intentMirrors.mode ?? (payload?.mode === 'resume' ? 'resume' : 'new')
       const resumeSessionId =
         typeof payload?.resumeSessionId === 'string' && payload.resumeSessionId.trim().length > 0
           ? payload.resumeSessionId.trim()
@@ -322,6 +328,8 @@ export function registerRemoteAgentIpcHandlers(options: {
         startedAt: string
         profileId: string | null
         runtimeKind: LaunchAgentResult['runtimeKind']
+        managedClaudeLifecycle?: ManagedClaudeLifecycleReceipt
+        managedClaudeBinding?: ManagedClaudeBindingObservation
         resumeSessionId: string | null
         effectiveModel: string | null
         command: string
@@ -329,16 +337,23 @@ export function registerRemoteAgentIpcHandlers(options: {
       }>(endpoint, {
         kind: 'command',
         id: 'session.launchAgent',
+        clientFeatures: payload.clientFeatures,
         payload: {
+          ...(payload.intent ? { intent: payload.intent } : {}),
+          canvasNodeId: payload.canvasNodeId,
+          workspaceId: payload.workspaceId,
+          spaceId: payload.spaceId,
           cwd,
           prompt: typeof payload?.prompt === 'string' ? payload.prompt : '',
           provider,
           mode,
           model,
-          resumeSessionId,
+          resumeSessionId:
+            'resumeSessionId' in intentMirrors ? intentMirrors.resumeSessionId : resumeSessionId,
           env: payload?.env ?? null,
           ...(executablePathOverride ? { executablePathOverride } : {}),
           agentFullAccess: payload?.agentFullAccess ?? null,
+          codexReuseRunningAppServer: payload?.codexReuseRunningAppServer ?? null,
           ...(cols ? { cols } : {}),
           ...(rows ? { rows } : {}),
         },
@@ -376,6 +391,12 @@ export function registerRemoteAgentIpcHandlers(options: {
         launchMode: mode,
         effectiveModel: launched.effectiveModel,
         resumeSessionId: launched.resumeSessionId,
+        ...(launched.managedClaudeLifecycle
+          ? { managedClaudeLifecycle: launched.managedClaudeLifecycle }
+          : {}),
+        ...(launched.managedClaudeBinding
+          ? { managedClaudeBinding: launched.managedClaudeBinding }
+          : {}),
       }
     },
     { defaultErrorCode: 'agent.launch_failed' },

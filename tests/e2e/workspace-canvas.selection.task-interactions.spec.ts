@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test'
-import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import {
+  clearAndSeedWorkspace,
+  clickHeaderDragSurface,
+  launchApp,
+} from './workspace-canvas.helpers'
 import { findEmptyPanePoint } from './workspace-canvas.pane.helpers'
 import { readComputedColorToken } from './workspace-canvas.color-token.helpers'
 
@@ -139,7 +143,8 @@ test.describe('Workspace Canvas - Task Selection Interactions', () => {
 
       const taskHeader = window.locator('.task-node__header').first()
       await expect(taskHeader).toBeVisible()
-      await taskHeader.click()
+      // The tile selects; a click on the title would rename.
+      await clickHeaderDragSurface(taskHeader)
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
 
       const requirementInput = window
@@ -204,7 +209,8 @@ test.describe('Workspace Canvas - Task Selection Interactions', () => {
 
       const taskHeader = window.locator('.task-node__header').first()
       await expect(taskHeader).toBeVisible()
-      await taskHeader.click()
+      // The tile selects; a click on the title would rename.
+      await clickHeaderDragSurface(taskHeader)
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
 
       await expect

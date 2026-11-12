@@ -49,8 +49,17 @@ it('uses runtime-owned discovery and fences old file callbacks after an invocati
     expect(onMetadata).toHaveBeenCalledWith({ sessionId: 'pty', resumeSessionId: 'owned-id' })
     const watcher = vi.mocked(createSessionFileStateWatcher).mock.calls[0][0]
     expect(watcher.filePath).toBe('owned.jsonl')
-    watcher.onState('pty', 'working')
+    watcher.onState('pty', 'working', { hookEventName: 'task_started' })
     expect(onState).toHaveBeenCalledTimes(1)
+    expect(onState).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        sessionId: 'pty',
+        agentProvider: 'codex',
+        source: 'session_file',
+        state: 'working',
+        hookEventName: 'task_started',
+      }),
+    )
 
     current = false
     watcher.onState('pty', 'standby')
@@ -96,4 +105,60 @@ it('discards a discovery result received after controller teardown', async () =>
   await vi.advanceTimersByTimeAsync(0)
   expect(onMetadata).not.toHaveBeenCalled()
   expect(createSessionFileStateWatcher).not.toHaveBeenCalled()
+})
+
+it('routes private Claude records independently of state and fences disposed watcher generations', async () => {
+  vi.useFakeTimers()
+  const onState = vi.fn(),
+    onClaudeTranscript = vi.fn()
+  const controller = createSessionStateWatcherController({
+    sendToAllWindows: vi.fn(),
+    reportIssue: vi.fn(),
+    onState,
+    onClaudeTranscript,
+    sessionDiscovery: {
+      capture: () => ({
+        isCurrent: () => true,
+        resolve: async () => ({ resumeSessionId: 'provider', filePath: 'owned.jsonl' }),
+      }),
+    },
+  })
+  const input = {
+    sessionId: 'pty',
+    provider: 'claude-code' as const,
+    cwd: process.cwd(),
+    startedAtMs: Date.now(),
+    launchMode: 'new' as const,
+    resumeSessionId: null,
+  }
+  controller.start(input)
+  await vi.advanceTimersByTimeAsync(0)
+  const first = vi.mocked(createSessionFileStateWatcher).mock.calls[0][0]
+  const record = {
+    fileIdentity: 'file',
+    position: 1,
+    baseline: false,
+    record: { kind: 'queue' as const, operation: 'enqueue' as const },
+  }
+  first.onClaudeTranscript?.(record)
+  expect(onState).not.toHaveBeenCalled()
+  expect(onClaudeTranscript).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      ...record,
+      sessionId: 'pty',
+      providerSessionId: 'provider',
+      generation: expect.any(Number),
+    }),
+  )
+  const oldGeneration = onClaudeTranscript.mock.calls[0][0].generation
+  controller.start(input)
+  await vi.advanceTimersByTimeAsync(0)
+  first.onClaudeTranscript?.(record)
+  expect(onClaudeTranscript).toHaveBeenCalledTimes(1)
+  const second = vi.mocked(createSessionFileStateWatcher).mock.calls[1][0]
+  second.onClaudeTranscript?.(record)
+  expect(onClaudeTranscript.mock.calls[1][0].generation).toBeGreaterThan(oldGeneration)
+  controller.dispose()
+  second.onClaudeTranscript?.(record)
+  expect(onClaudeTranscript).toHaveBeenCalledTimes(2)
 })

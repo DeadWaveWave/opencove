@@ -1,3 +1,8 @@
+import type {
+  ManagedClaudeLaunchIntent,
+  ManagedClaudeLifecycleReceipt,
+  ManagedClaudeBindingObservation,
+} from '../managedClaudeLaunch'
 export const AGENT_PROVIDER_IDS = [
   'claude-code',
   'codex',
@@ -110,6 +115,11 @@ export interface ListAgentSessionsResult {
 }
 
 export interface LaunchAgentInput {
+  clientFeatures?: import('../controlSurface/clientFeatures').ControlSurfaceClientFeatures
+  intent?: ManagedClaudeLaunchIntent
+  canvasNodeId?: string
+  workspaceId?: string
+  spaceId?: string
   provider: AgentProviderId
   cwd: string
   profileId?: string | null
@@ -120,11 +130,14 @@ export interface LaunchAgentInput {
   env?: Record<string, string> | null
   executablePathOverride?: string | null
   agentFullAccess?: boolean
+  codexReuseRunningAppServer?: boolean | null
   cols?: number
   rows?: number
 }
 
 export interface LaunchAgentResult {
+  managedClaudeLifecycle?: ManagedClaudeLifecycleReceipt
+  managedClaudeBinding?: ManagedClaudeBindingObservation
   sessionId: string
   provider: AgentProviderId
   profileId?: string | null

@@ -7,7 +7,6 @@ import type {
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '@shared/contracts/dto'
-import { AGENT_HOOK_FRESHNESS_MS } from '../../../../contexts/agent/domain/agentRunStateArbiter'
 import { createPtyEventHub } from './ptyEventHub'
 
 describe('createPtyEventHub', () => {
@@ -135,8 +134,6 @@ describe('createPtyEventHub', () => {
     expect(lateStateListener).toHaveBeenCalledWith({
       sessionId: 'session-1',
       state: 'standby',
-      source: 'session_file',
-      degraded: false,
     })
     expect(lateMetadataListener).toHaveBeenCalledWith({
       sessionId: 'session-1',
@@ -145,6 +142,10 @@ describe('createPtyEventHub', () => {
     expect(hub.getLatestSessionMetadata('session-1')).toEqual({
       sessionId: 'session-1',
       resumeSessionId: 'resume-1',
+    })
+    expect(hub.getLatestSessionState('session-1')).toEqual({
+      sessionId: 'session-1',
+      state: 'standby',
     })
 
     exitListener?.({ sessionId: 'session-1', exitCode: 0 })
@@ -155,145 +156,45 @@ describe('createPtyEventHub', () => {
     expect(afterExitState).not.toHaveBeenCalled()
     expect(afterExitMetadata).not.toHaveBeenCalled()
     expect(hub.getLatestSessionMetadata('session-1')).toBeNull()
+    expect(hub.getLatestSessionState('session-1')).toBeNull()
   })
 
-  it('dispatches only the arbitrated winner and exposes deterministic refresh', () => {
-    let rawStateListener: ((event: TerminalSessionStateEvent) => void) | undefined
-    let nowMs = 1_000
-    const hub = createPtyEventHub(
-      {
-        onData: vi.fn((_listener: (event: TerminalDataEvent) => void) => () => undefined),
-        onExit: vi.fn((_listener: (event: TerminalExitEvent) => void) => () => undefined),
-        onState: vi.fn((listener: (event: TerminalSessionStateEvent) => void) => {
-          rawStateListener = listener
-          return () => undefined
-        }),
+  it('forwards Worker decisions unchanged and never schedules local arbitration', () => {
+    let emit: ((event: TerminalSessionStateEvent) => void) | undefined
+    const setTimer = vi.spyOn(globalThis, 'setTimeout')
+    const hub = createPtyEventHub({
+      onData: () => () => {},
+      onExit: () => () => {},
+      onState: listener => {
+        emit = listener
+        return () => {}
       },
-      {
-        now: () => nowMs,
-        setTimer: vi.fn(() => 1),
-        clearTimer: vi.fn(),
-      },
-    )
+    })
     const projected = vi.fn()
     hub.onState(projected)
-
-    rawStateListener?.({
-      sessionId: 'session-1',
-      state: 'working',
-      source: 'claude_hook',
-      hookInstallState: 'installed',
-    })
-    rawStateListener?.({
-      sessionId: 'session-1',
-      state: 'standby',
-      source: 'session_file',
-      hookInstallState: 'installed',
-    })
-    expect(projected).toHaveBeenCalledTimes(1)
-    expect(projected).toHaveBeenLastCalledWith(
-      expect.objectContaining({ source: 'claude_hook', state: 'working', degraded: false }),
-    )
-
-    nowMs += AGENT_HOOK_FRESHNESS_MS
-    hub.refreshAgentRunStateAuthority()
-    expect(projected).toHaveBeenCalledTimes(2)
-    expect(projected).toHaveBeenLastCalledWith(
-      expect.objectContaining({ source: 'session_file', state: 'standby', degraded: true }),
-    )
-  })
-
-  it('reconstructs a quiet hook waiting decision from timestamped per-source replay', () => {
-    const hookWaiting: TerminalSessionStateEvent = {
-      sessionId: 'session-reload',
+    const waiting: TerminalSessionStateEvent = {
+      sessionId: 's',
+      source: 'codex_hook',
       state: 'waiting',
-      source: 'claude_hook',
-      hookInstallState: 'installed',
-      observedAtMs: 1_000,
+      degraded: false,
     }
-    const sessionFileStandby: TerminalSessionStateEvent = {
-      sessionId: 'session-reload',
-      state: 'standby',
-      source: 'session_file',
-      hookInstallState: 'installed',
-      observedAtMs: 2_000,
+    emit?.(waiting)
+    expect(projected).toHaveBeenLastCalledWith(waiting)
+    expect(projected).toHaveBeenCalledTimes(1)
+    expect(setTimer).not.toHaveBeenCalled()
+    setTimer.mockRestore()
+    const unknown: TerminalSessionStateEvent = {
+      sessionId: 's',
+      source: 'launch',
+      state: 'working',
+      degraded: true,
+      observationUnavailable: true,
     }
-    const hub = createPtyEventHub(
-      {
-        onData: vi.fn((_listener: (event: TerminalDataEvent) => void) => () => undefined),
-        onExit: vi.fn((_listener: (event: TerminalExitEvent) => void) => () => undefined),
-        onState: vi.fn((listener: (event: TerminalSessionStateEvent) => void) => {
-          listener(hookWaiting)
-          listener(sessionFileStandby)
-          return () => undefined
-        }),
-      },
-      { now: () => 60_000 },
-    )
-    const projected = vi.fn()
-
-    hub.onState(projected)
-
-    expect(projected).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        sessionId: 'session-reload',
-        state: 'waiting',
-        source: 'claude_hook',
-        degraded: false,
-      }),
-    )
-    expect(hub.getAgentRunStateDebug('session-reload')).toMatchObject({
-      lastHookSignal: { state: 'waiting', observedAtMs: 1_000 },
-      lastSessionFileSignal: { state: 'standby', observedAtMs: 2_000 },
-    })
-  })
-
-  it('does not renew a replayed working hook lease at renderer attach time', () => {
-    // Just past the working lease measured from the replayed hook signal at observedAtMs 1_000,
-    // so the lease must NOT be renewed by the renderer attaching.
-    let nowMs = 1_000 + AGENT_HOOK_FRESHNESS_MS + 1_000
-    const hub = createPtyEventHub(
-      {
-        onData: vi.fn((_listener: (event: TerminalDataEvent) => void) => () => undefined),
-        onExit: vi.fn((_listener: (event: TerminalExitEvent) => void) => () => undefined),
-        onState: vi.fn((listener: (event: TerminalSessionStateEvent) => void) => {
-          listener({
-            sessionId: 'session-stale-reload',
-            state: 'working',
-            source: 'claude_hook',
-            hookInstallState: 'installed',
-            observedAtMs: 1_000,
-          })
-          listener({
-            sessionId: 'session-stale-reload',
-            state: 'standby',
-            source: 'session_file',
-            hookInstallState: 'installed',
-            observedAtMs: 2_000,
-          })
-          return () => undefined
-        }),
-      },
-      {
-        now: () => nowMs,
-        setTimer: vi.fn(() => 1),
-        clearTimer: vi.fn(),
-      },
-    )
-    const projected = vi.fn()
-
-    hub.onState(projected)
-    nowMs += 1
-    hub.refreshAgentRunStateAuthority()
-
-    expect(projected).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        sessionId: 'session-stale-reload',
-        state: 'standby',
-        source: 'session_file',
-        degraded: true,
-      }),
-    )
+    emit?.(unknown)
+    const replay = vi.fn()
+    hub.onSessionState('s', replay)
+    expect(replay).toHaveBeenLastCalledWith(unknown)
+    hub.dispose()
   })
 
   it('routes resync events by session id', () => {

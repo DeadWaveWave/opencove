@@ -1,6 +1,7 @@
 import React from 'react'
-import { Eye, EyeOff } from 'lucide-react'
+import { EyeIcon, EyeOffIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
+import { MenuItem } from '@app/renderer/components/ui/Menu'
 import {
   setSidebarItemHidden,
   sidebarVisibilityKey,
@@ -33,10 +34,10 @@ export function SidebarVisibilityMenuItem({
       return null
     }
   }
-  const Icon = hidden ? Eye : EyeOff
+  const Icon = hidden ? EyeIcon : EyeOffIcon
   return (
-    <button
-      type="button"
+    <MenuItem
+      icon={<Icon />}
       data-testid="workspace-sidebar-visibility-action"
       onClick={() => {
         const store = useAppStore.getState()
@@ -53,10 +54,7 @@ export function SidebarVisibilityMenuItem({
         store.setProjectContextMenu(null)
       }}
     >
-      <Icon className="workspace-context-menu__icon" aria-hidden="true" />
-      <span className="workspace-context-menu__label">
-        {t(hidden ? 'sidebar.restore' : 'sidebar.hide')}
-      </span>
-    </button>
+      {t(hidden ? 'sidebar.restore' : 'sidebar.hide')}
+    </MenuItem>
   )
 }

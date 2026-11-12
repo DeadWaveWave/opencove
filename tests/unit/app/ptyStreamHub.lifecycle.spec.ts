@@ -136,7 +136,7 @@ describe('PtyStreamHub lifecycle truth', () => {
     ])
   })
 
-  it('replays the latest observation from every agent-state source to a late client', async () => {
+  it('replays only the Worker-decided state to a late client', async () => {
     let nowMs = 1_000
     const hub = new PtyStreamHub({
       replayWindowMaxBytes: 64_000,
@@ -180,27 +180,17 @@ describe('PtyStreamHub lifecycle truth', () => {
     hub.attach({ clientId: 'late-client', sessionId: 'session-replay' })
     await hub.drainRecoveryOperations()
 
-    expect(lateClient.messages.filter(message => message.type === 'state')).toEqual([
+    expect(lateClient.messages.filter(message => message.type === 'state')).toMatchObject([
       {
         type: 'state',
         sessionId: 'session-replay',
         state: 'waiting',
-        source: 'claude_hook',
-        hookInstallState: 'installed',
-        observedAtMs: 1_000,
-      },
-      {
-        type: 'state',
-        sessionId: 'session-replay',
-        state: 'standby',
-        source: 'session_file',
-        hookInstallState: 'installed',
-        observedAtMs: 2_000,
+        agentRunState: { state: 'waiting', quality: 'authoritative' },
       },
     ])
   })
 
-  it('broadcasts identical hook signals because their arrival renews the freshness lease', () => {
+  it('renews hook leases without broadcasting duplicate decisions', () => {
     let nowMs = 1_000
     const hub = new PtyStreamHub({
       replayWindowMaxBytes: 64_000,
@@ -237,10 +227,12 @@ describe('PtyStreamHub lifecycle truth', () => {
     nowMs = 2_000
     hub.registerSessionAgentState(signal)
 
-    expect(client.messages.filter(message => message.type === 'state')).toEqual([
-      { type: 'state', ...signal, observedAtMs: 1_000 },
-      { type: 'state', ...signal, observedAtMs: 2_000 },
-    ])
+    const states = client.messages.filter(message => message.type === 'state')
+    expect(states).toHaveLength(2) // initial unknown, then working; heartbeat is not a transition
+    expect(states.at(-1)).toMatchObject({
+      agentRunState: { state: 'working', lastTransitionAt: 1000 },
+    })
+    hub.agentRuns.dispose()
   })
 
   it('does not classify an exited retained session as live', () => {

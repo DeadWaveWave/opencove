@@ -7,14 +7,19 @@
 @import './styles/ui-controls.css' layer(opencove);
 @import './styles/ui-overlays.css' layer(opencove);
 @import './styles/ui-badges.css' layer(opencove);
+@import './styles/ui-icons.css' layer(opencove);
 @import './styles/ui-menu.css' layer(opencove);
 @import './styles/ui-segmented.css' layer(opencove);
 @import './styles/ui-surface.css' layer(opencove);
+@import './styles/ui-pixel.css' layer(opencove);
+@import './styles/ui-toggle-tile.css' layer(opencove);
+@import './styles/appearance-picker.css' layer(opencove);
 @import './styles/app-startup-state.css' layer(opencove);
 @import './styles/cove-fields.css' layer(opencove);
 @import './styles/app-header.css' layer(opencove);
 @import './styles/command-center.css' layer(opencove);
 @import './styles/control-center.css' layer(opencove);
+@import './styles/agent-island.css' layer(opencove);
 @import './styles/performance-monitor.css' layer(opencove);
 @import './styles/workspace-search-panel.css' layer(opencove);
 @import './styles/workspace-sidebar.css' layer(opencove);
@@ -47,6 +52,7 @@
 @import './styles/terminal-node.font-rendering.css' layer(opencove);
 @import './styles/terminal-node.theme-opencode.css' layer(opencove);
 @import './styles/task-node.css' layer(opencove);
+@import './styles/task-node.card.css' layer(opencove);
 @import './styles/task-node.agent-sessions.css' layer(opencove);
 @import './styles/role-node.css' layer(opencove);
 @import './styles/note-node.css' layer(opencove);
@@ -87,18 +93,12 @@
 @import './styles/remote-ui.css' layer(opencove);
 @import './styles/remote-ui.settings.css' layer(opencove);
 @import './styles/app-message.css' layer(opencove);
-@import './styles/app-notifications.css' layer(opencove);
+@import './styles/agent-island-card.css' layer(opencove);
 @import './styles/issue-report.css' layer(opencove);
 @import './styles/whats-new.css' layer(opencove);
 @import './styles/space-archives-window.css' layer(opencove);
 @import './styles/menu-surfaces.css' layer(opencove);
 
-/* Base styles are inherited through data-cove-theme-base. The selected
-   data-cove-theme-id remains the user's builtin or plugin theme identity. */
-@import './styles/themes/pixel.css' layer(opencove);
-@import './styles/themes/pixel-light.css' layer(opencove);
-@import './styles/themes/pixel-light.terminal.css' layer(opencove);
-@import './styles/themes/pixel-material.css' layer(opencove);
 @import './styles/themes/space-color-identity.css' layer(opencove);
 /* Generated Cove tokens (pnpm design:tokens); the theme owner sets data-cove-family='cove' for Cove. */
 @import './styles/themes/generated/cove.css' layer(opencove);

@@ -40,7 +40,7 @@ describe('agent session discovery with Windows home overrides', () => {
     const sessionId = 'codex-session-real-home'
     const { year, month, day } = toDateParts(startedAtMs)
     const sessionsDir = join(actualHome, '.codex', 'sessions', year, month, day)
-    const sessionFilePath = join(sessionsDir, 'rollout-real-home.jsonl')
+    const sessionFilePath = join(sessionsDir, `rollout-${sessionId}.jsonl`)
 
     resolveHomeDirectoryCandidatesMock.mockReturnValue([overriddenHome, actualHome])
     resolveCodexHomeDirectoryCandidatesMock.mockReturnValue([

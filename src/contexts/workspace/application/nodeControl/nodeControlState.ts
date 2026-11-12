@@ -8,6 +8,7 @@ export type NodeControlNode = {
   sessionId: string | null
   title: string
   titlePinnedByUser?: boolean
+  titleIsLiteral?: boolean
   position: { x: number; y: number }
   width: number
   height: number
@@ -65,7 +66,18 @@ export type NodeControlAppState = {
 }
 
 export interface NodeControlAppStateStore {
+  isRuntimeReferenced?: (id: string) => boolean
+  isManagedNode?: (id: string) => boolean
+  nodeLineage?: import('../nodeLineage/NodeLineageRepository').NodeLineageRepository
+  commitCreatedNodeState?: (
+    state: NodeControlAppState,
+    options: {
+      expectedRevision: number
+      lineage: import('../../domain/nodeLineage').NodeLineageRecord
+    },
+  ) => Promise<PersistWriteResult>
   readAppState: () => Promise<NodeControlAppState | null>
+  isAppStateRevisionCurrent?: (revision: number) => boolean
   readAppStateRevision: () => Promise<number>
   writeAppState: (
     state: NodeControlAppState,

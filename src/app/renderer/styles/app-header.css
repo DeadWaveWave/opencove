@@ -13,7 +13,9 @@
   -webkit-app-region: drag;
 }
 
-.app-header--mac {
+/* Room for the traffic lights. In native full screen macOS hides them, so the header keeps only
+   its own padding there. */
+.app-header--mac:not(.app-header--fullscreen) {
   padding-left: calc(10px + 72px);
 }
 
@@ -134,8 +136,12 @@
   color: var(--cove-text);
 }
 
+/* A flex box, not an inline span: an inline wrapper sets the pill on a text baseline (with the
+   line's strut under it), 3px below the header's centre line. */
 .app-header__agent-activity {
+  display: inline-flex;
   flex: none;
+  align-items: center;
   padding-inline: var(--cove-spacing-1);
 }
 
@@ -218,20 +224,6 @@
   font-size: calc(11px * var(--cove-ui-font-scale));
   font-weight: 600;
   white-space: nowrap;
-}
-
-.app-header__update-icon--spinning {
-  animation: app-header-update-spin 1.2s linear infinite;
-}
-
-@keyframes app-header-update-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 @media (max-width: 620px) {

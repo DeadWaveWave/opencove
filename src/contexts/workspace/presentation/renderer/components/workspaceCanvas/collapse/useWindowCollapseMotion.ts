@@ -3,10 +3,26 @@ import type { Size } from '../../../types'
 import { readThemeTransition } from '@contexts/plugins/presentation/renderer/themeMotion'
 import { canAnimateCollapse, canvasScale, createCollapseAnimationGroup } from './collapseMotion'
 
-const HEADER_ICON = '.cove-node-kind-icon, .cove-node-provider-icon'
-const GLYPH = 'svg, img, .agent-provider-icon__monogram'
+const HEADER_ICON = '.cove-node-kind-icon'
+const GLYPH = 'svg, img'
 const HEADER_TEXT =
   '.node-title-editor__display, .document-node__title-text, .role-node__title, .cove-canvas-node-window__title'
+
+/**
+ * Where a title's words paint: the union of its text runs. A renaming title reads as a field, its
+ * words padded and centred in a taller fill; the caption follows the words, not the fill.
+ */
+function textRunsRect(element: Element): DOMRect {
+  const runs = [...element.children].map(run => run.getBoundingClientRect())
+  if (runs.length === 0) {
+    return element.getBoundingClientRect()
+  }
+  const left = Math.min(...runs.map(rect => rect.left))
+  const top = Math.min(...runs.map(rect => rect.top))
+  const right = Math.max(...runs.map(rect => rect.right))
+  const bottom = Math.max(...runs.map(rect => rect.bottom))
+  return new DOMRect(left, top, right - left, bottom - top)
+}
 
 function textAppearance(element: Element): Keyframe {
   const style = getComputedStyle(element)
@@ -112,8 +128,7 @@ export function useWindowCollapseMotion(
     const headerTitle =
       headerText?.textContent?.trim() === title.textContent?.trim() ? headerText : null
     const origin = shell.getBoundingClientRect()
-    const relative = (element: Element) => {
-      const rect = element.getBoundingClientRect()
+    const relative = (element: Element, rect = element.getBoundingClientRect()) => {
       return {
         x: (rect.x - origin.x) / scale,
         y: (rect.y - origin.y) / scale,
@@ -126,7 +141,7 @@ export function useWindowCollapseMotion(
     const titleBox = relative(title)
     const compactBox = relative(compact)
     const sourceGlyph = headerGlyph ? relative(headerGlyph) : glyphBox
-    const sourceTitle = headerTitle ? relative(headerTitle) : titleBox
+    const sourceTitle = headerTitle ? relative(headerTitle, textRunsRect(headerTitle)) : titleBox
     const titleFrame = (element: Element, box: typeof titleBox): Keyframe => ({
       left: `${box.x - compactBox.x}px`,
       top: `${box.y - compactBox.y}px`,

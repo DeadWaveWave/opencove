@@ -91,7 +91,7 @@ test.describe('Workspace Canvas - Spatial Pixel Motion', () => {
       await observeAssembly(window)
       await window.emulateMedia({ reducedMotion: 'no-preference' })
       await clearAndSeedWorkspace(window, [], {
-        settings: { uiTheme: 'pixel', ...PIXEL_EFFECTS_ENABLED, language: 'en' },
+        settings: { uiTheme: 'dark', ...PIXEL_EFFECTS_ENABLED, language: 'en' },
       })
       const layer = window.getByTestId('workspace-pixel-layer')
       const assembly = window.getByTestId('workspace-pixel-assembly')
@@ -217,7 +217,7 @@ test.describe('Workspace Canvas - Spatial Pixel Motion', () => {
       await observeAssembly(window)
       await window.emulateMedia({ reducedMotion: 'reduce' })
       await clearAndSeedWorkspace(window, [], {
-        settings: { uiTheme: 'pixel', ...PIXEL_EFFECTS_ENABLED },
+        settings: { uiTheme: 'dark', ...PIXEL_EFFECTS_ENABLED },
       })
       const layer = window.getByTestId('workspace-pixel-layer')
       const assembly = window.getByTestId('workspace-pixel-assembly')

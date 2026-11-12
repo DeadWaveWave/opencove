@@ -1,11 +1,11 @@
+import { spawnForbiddenDetails } from '../../../../shared/errors/agentSpawnError'
+import { getPublicTerminalSpawnCommand } from '../../../../platform/terminal/publicTerminalSpawnCommand'
+import { ptySpawnInMountOperation } from '../../../../shared/contracts/controlSurface/operations/domains/pty'
+import { registerOperation } from '../registerOperation'
 import { fromFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createAppError, OpenCoveAppError } from '../../../../shared/errors/appError'
-import type {
-  SpawnTerminalInMountInput,
-  SpawnTerminalInput,
-  SpawnTerminalResult,
-} from '../../../../shared/contracts/dto'
+import type { SpawnTerminalInput, SpawnTerminalResult } from '../../../../shared/contracts/dto'
 import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalProfileResolver'
 import type { ControlSurface } from '../controlSurface'
 import type { TerminalSpawnAdmission } from '../../../../contexts/terminal/application/TerminalRuntimeAvailability'
@@ -14,15 +14,9 @@ import { assertFileUriWithinRootUri } from '../topology/fileUriScope'
 import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRuntime'
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
-import { normalizeEnvPayload } from '../../ipc/normalize'
 import type { TerminalAgentActivityEnvironmentService } from '../../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityEnvironmentService'
-import { spawnTerminalWithActivity } from './terminalAgentActivitySpawn'
-
+import { composeTerminalSpawnGuard, spawnTerminalWithActivity } from './terminalAgentActivitySpawn'
 const terminalProfileResolver = new TerminalProfileResolver()
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value)
-}
 
 function normalizeOptionalString(value: unknown): string | null {
   if (value === null || value === undefined) {
@@ -35,95 +29,6 @@ function normalizeOptionalString(value: unknown): string | null {
 
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : null
-}
-
-function normalizeRequiredString(value: unknown, debugName: string): string {
-  const normalized = normalizeOptionalString(value)
-  if (!normalized) {
-    throw createAppError('common.invalid_input', { debugMessage: `Missing ${debugName}.` })
-  }
-
-  return normalized
-}
-
-function normalizeOptionalPositiveInt(value: unknown): number | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return null
-  }
-
-  const normalized = Math.floor(value)
-  return normalized > 0 ? normalized : null
-}
-
-function normalizeOptionalArgs(value: unknown): string[] | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  if (!Array.isArray(value)) {
-    return null
-  }
-
-  return value.filter((item): item is string => typeof item === 'string')
-}
-
-function normalizeFileSystemUri(uri: unknown, operationId: string): string {
-  if (typeof uri !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId} uri.`,
-    })
-  }
-
-  const normalized = uri.trim()
-  if (normalized.length === 0) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Missing payload for ${operationId} uri.`,
-    })
-  }
-
-  let parsed: URL
-  try {
-    parsed = new URL(normalized)
-  } catch {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId} uri.`,
-    })
-  }
-
-  if (parsed.protocol !== 'file:') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Unsupported uri scheme for ${operationId}: ${parsed.protocol}`,
-    })
-  }
-
-  return normalized
-}
-
-function normalizeSpawnInMountPayload(payload: unknown): SpawnTerminalInMountInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for pty.spawnInMount.',
-    })
-  }
-
-  return {
-    mountId: normalizeRequiredString(payload.mountId, 'pty.spawnInMount mountId'),
-    cwdUri:
-      payload.cwdUri === undefined || payload.cwdUri === null
-        ? null
-        : normalizeFileSystemUri(payload.cwdUri, 'pty.spawnInMount cwdUri'),
-    profileId: normalizeOptionalString(payload.profileId),
-    shell: normalizeOptionalString(payload.shell),
-    command: normalizeOptionalString(payload.command),
-    args: normalizeOptionalArgs(payload.args),
-    cols: normalizeOptionalPositiveInt(payload.cols),
-    rows: normalizeOptionalPositiveInt(payload.rows),
-    env: normalizeEnvPayload(payload.env) ?? null,
-  }
 }
 
 function resolvePathFromUriOrThrow(uri: string, operationId: string): string {
@@ -181,9 +86,7 @@ export function registerPtyMountHandlers(
     terminalAgentActivity?: TerminalAgentActivityEnvironmentService
   },
 ): void {
-  controlSurface.register('pty.spawnInMount', {
-    kind: 'command',
-    validate: normalizeSpawnInMountPayload,
+  registerOperation(controlSurface, ptySpawnInMountOperation, {
     handle: async (ctx, payload): Promise<SpawnTerminalResult> => {
       const target = await deps.topology.resolveMountTarget({ mountId: payload.mountId })
       if (!target) {
@@ -204,6 +107,11 @@ export function registerPtyMountHandlers(
       })
 
       const cwd = resolvePathFromUriOrThrow(cwdUri, 'pty.spawnInMount cwdUri')
+      ctx.terminalSpawnLifecycle?.assertExecution?.({
+        cwd,
+        mountId: target.mountId,
+        endpointId: target.endpointId,
+      })
       const cols = payload.cols ?? 80
       const rows = payload.rows ?? 24
       const profileId = normalizeOptionalString(payload.profileId)
@@ -211,6 +119,11 @@ export function registerPtyMountHandlers(
 
       const startedAt = ctx.now().toISOString()
 
+      if (ctx.requestAuth?.kind === 'session-grant' && target.endpointId !== 'local') {
+        throw createAppError('common.forbidden', {
+          details: spawnForbiddenDetails('remote_spawning_unsupported'),
+        })
+      }
       if (target.endpointId === 'local') {
         const isApproved = await deps.approvedWorkspaces.isPathApproved(cwd)
         if (!isApproved) {
@@ -239,6 +152,8 @@ export function registerPtyMountHandlers(
 
         ctx.assertActive?.()
         const { sessionId } = await spawnTerminalWithActivity(deps.ptyRuntime, {
+          assertActive: composeTerminalSpawnGuard(ctx),
+          onSpawned: ctx.terminalSpawnLifecycle?.onSpawned,
           activity: deps.terminalAgentActivity,
           args: resolvedSpawn.args,
           cols,
@@ -255,8 +170,7 @@ export function registerPtyMountHandlers(
           kind: 'terminal',
           startedAt,
           cwd: resolvedSpawn.cwd,
-          command: resolvedSpawn.command,
-          args: resolvedSpawn.args,
+          ...getPublicTerminalSpawnCommand(resolvedSpawn),
           cols,
           rows,
         })
@@ -287,7 +201,7 @@ export function registerPtyMountHandlers(
         ...(payload.env ? { env: payload.env } : {}),
       }
 
-      ctx.assertActive?.()
+      composeTerminalSpawnGuard(ctx)()
       const remoteResult = await invokeRemoteValue<SpawnTerminalResult>({
         endpoint,
         kind: 'command',

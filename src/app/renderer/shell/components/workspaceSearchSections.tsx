@@ -1,5 +1,5 @@
 import React from 'react'
-import { FileText, Scan, StickyNote } from 'lucide-react'
+import { FileTextIcon, FocusIcon, NoteIcon } from '@app/renderer/components/ui/pixelIcons'
 import type { TranslateFn } from '@app/renderer/i18n'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { WorkspaceSearchHit } from '../utils/workspaceSearch'
@@ -67,9 +67,9 @@ export function toWorkspaceSearchSections({
   onSelectSpace: (spaceId: string) => void
 }): WorkspaceSearchSection[] {
   const categories = [
-    { kind: 'space', id: 'spaces', label: t('workspaceSearch.sections.spaces'), Icon: Scan },
-    { kind: 'task', id: 'tasks', label: t('workspaceSearch.sections.tasks'), Icon: FileText },
-    { kind: 'note', id: 'notes', label: t('workspaceSearch.sections.notes'), Icon: StickyNote },
+    { kind: 'space', id: 'spaces', label: t('workspaceSearch.sections.spaces'), Icon: FocusIcon },
+    { kind: 'task', id: 'tasks', label: t('workspaceSearch.sections.tasks'), Icon: FileTextIcon },
+    { kind: 'note', id: 'notes', label: t('workspaceSearch.sections.notes'), Icon: NoteIcon },
   ] as const
 
   return categories.flatMap(({ kind, id, label, Icon }) => {
@@ -79,7 +79,7 @@ export function toWorkspaceSearchSections({
         id: hit.id,
         title: hit.title,
         subtitle: hit.kind === 'space' ? undefined : hit.subtitle,
-        icon: <Icon aria-hidden="true" size={16} />,
+        icon: <Icon size={18} />,
         labelColor: hit.effectiveLabelColor,
         metadata: resolveMetadata(hit, t),
         onSelect: () => {

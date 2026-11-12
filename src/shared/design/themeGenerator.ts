@@ -18,7 +18,7 @@ export interface ThemeInput {
 
 export type FamilyInput = Omit<ThemeInput, 'appearance' | 'contrast'>
 
-/** Built-in families in picker order. Cove is the only generated family; Pixel stays hand-written. */
+/** Built-in families. Cove is the only one; plugin palettes are generated from it. */
 export const THEME_FAMILY_LIST = [
   { id: 'cove', baseHue: 248, baseChroma: 0.018, accentHue: 220, accentChroma: 0.13 },
 ] as const
@@ -70,11 +70,35 @@ const NEUTRAL_CHROMA = [0.7, 0.75, 0.85, 0.9, 1, 1, 1, 1, 0.9, 0.85, 0.6, 0.35]
 /**
  * Glass alphas per appearance. The CSS and the worst-case contrast check read the same numbers.
  * Acrylic covers arbitrary window content rather than the wall, so it is checked against pure
- * black and white too.
+ * black and white too. Window and chrome glass are lit like the prototype: a white `sheen` fading
+ * down from the top edge, a specular rim (white at `rimHi` top left, `rimLo` elsewhere) and grey
+ * `grain` noise at one alpha (bootstrap/installGlassGrain.ts draws it).
  */
 export const GLASS = {
-  dark: { frame: 0.52, plate: 0.55, farTint: 0.2, chrome: 0.6, sheet: 0.72, acrylic: 0.76 },
-  light: { frame: 0.64, plate: 0.7, farTint: 0.22, chrome: 0.66, sheet: 0.8, acrylic: 0.86 },
+  dark: {
+    frame: 0.52,
+    farTint: 0.2,
+    chrome: 0.6,
+    sheet: 0.72,
+    acrylic: 0.76,
+    sheen: 0.065,
+    rimHi: 0.36,
+    rimLo: 0.07,
+    grain: 11 / 255,
+  },
+  light: {
+    frame: 0.64,
+    farTint: 0.22,
+    chrome: 0.66,
+    sheet: 0.8,
+    acrylic: 0.86,
+    sheen: 0.6,
+    rimHi: 1,
+    rimLo: 0.5,
+    // One step under the prototype's 8: the lowest-contrast plugin palettes (green to cyan bases)
+    // keep secondary text at 4.5:1 over the grain's mean grey.
+    grain: 7 / 255,
+  },
 } as const
 
 /** Pixel wall mixing weights. `cap` bounds how far a cell behind glass may move toward any colour (I6). */
@@ -90,7 +114,8 @@ export const PIXEL_WALL = {
     workA: 0.62,
     cap: 0.6,
     shimmerA: 0.18,
-    spotA: 0.24,
+    spotA: 0.45,
+    sparkA: 0.85,
     tileJitter: 5,
     falloff: 0,
   },
@@ -106,11 +131,29 @@ export const PIXEL_WALL = {
     cap: 0.5,
     shimmerA: 0.22,
     spotA: 0.2,
+    sparkA: 0.9,
     tileJitter: 9,
     falloff: 14,
   },
 } as const
 const CLOUD_HUES = [348, 296, 250, 200] as const
+
+/**
+ * The solid reading plate under window content (owner calls, round 4): never pure black or white,
+ * but a faint wash of a hue, like Material 3's tinted surfaces. Each kind of window reads on its
+ * own kind's hue (KIND_PLATE); the theme's plate, at the accent's hue, is for neutral windows and
+ * for every window when kind colours are off. Dark lifts the plates off the darkest neutral;
+ * light settles them under white. The theme plate's chroma follows the accent's down to grey.
+ */
+export const PLATE = {
+  dark: { l: 0.225, c: 0.03 },
+  light: { l: 0.978, c: 0.018 },
+} as const
+const PLATE_CHROMA_PER_ACCENT = 0.25
+export const KIND_PLATE = {
+  dark: { l: 0.225, c: 0.028 },
+  light: { l: 0.978, c: 0.018 },
+} as const
 
 export type Scale = readonly Rgb[]
 
@@ -189,12 +232,14 @@ export interface GeneratedTheme {
   neutral: Scale
   accent: Scale
   kinds: Record<KindFamilyId, Scale>
+  /** Each kind's reading plate (KIND_PLATE). */
+  kindPlates: Record<KindFamilyId, Rgb>
   labels: Record<LabelId, Scale>
   amber: Scale
   red: Scale
   /** Roles every surface uses. */
-  roles: { canvas: Rgb; surface: Rgb; text: Rgb; textSecondary: Rgb; onAccent: Rgb }
-  pixel: { cell: Rgb; gap: Rgb; clouds: readonly Rgb[]; sparks: readonly Rgb[] }
+  roles: { canvas: Rgb; surface: Rgb; plate: Rgb; text: Rgb; textSecondary: Rgb; onAccent: Rgb }
+  pixel: { spot: Rgb; cell: Rgb; gap: Rgb; clouds: readonly Rgb[]; sparks: readonly Rgb[] }
   ansi: Record<AnsiKey, Rgb>
   onSolid(solid: Rgb): Rgb
 }
@@ -207,18 +252,22 @@ export function kindRoles(theme: GeneratedTheme, id: KindFamilyId | 'neutral') {
       tile: s[3]!,
       line: s[6]!,
       glyph: s[10]!,
+      ink: s[dark ? 9 : 8]!,
       solid: dark ? s[7]! : s[8]!,
       on: dark ? s[11]! : s[0]!,
       far: s[dark ? 10 : 11]!,
+      plate: theme.roles.plate,
     }
   }
   return {
     tile: dark ? s[3]! : s[2]!,
     line: s[6]!,
     glyph: s[10]!,
+    ink: s[dark ? 10 : 8]!,
     solid: s[8]!,
     on: theme.onSolid(s[8]!),
     far: s[dark ? 10 : 11]!,
+    plate: theme.kindPlates[id],
   }
 }
 
@@ -234,6 +283,12 @@ export function generateTheme(input: ThemeInput): GeneratedTheme {
       return [id, scale(f.hue, f.chroma[ap], ap, k, { anchor: f.anchor[ap] })]
     }),
   ) as Record<KindFamilyId, Scale>
+  const kindPlates = Object.fromEntries(
+    (Object.keys(KIND_FAMILIES) as KindFamilyId[]).map(id => [
+      id,
+      oklch(KIND_PLATE[ap].l, KIND_PLATE[ap].c, KIND_FAMILIES[id].hue),
+    ]),
+  ) as Record<KindFamilyId, Rgb>
   const labels = Object.fromEntries(
     (Object.keys(LABEL_HUES) as LabelId[]).map(id => [
       id,
@@ -248,6 +303,7 @@ export function generateTheme(input: ThemeInput): GeneratedTheme {
     contrastRatio(inkDark, solid) >= contrastRatio(white, solid) ? inkDark : white
   const P = PIXEL_WALL[ap]
   const pixel = {
+    spot: accent[8]!,
     cell: oklch(P.cell, input.baseChroma * 0.9, input.baseHue),
     gap: oklch(P.gap, input.baseChroma * 0.6, input.baseHue),
     clouds: CLOUD_HUES.map(h => oklch(P.cloudL, P.cloudC, h)),
@@ -271,12 +327,18 @@ export function generateTheme(input: ThemeInput): GeneratedTheme {
     neutral,
     accent,
     kinds,
+    kindPlates,
     labels,
     amber,
     red,
     roles: {
       canvas: dark ? neutral[0]! : neutral[2]!,
       surface: dark ? neutral[1]! : neutral[0]!,
+      plate: oklch(
+        PLATE[ap].l,
+        Math.min(PLATE[ap].c, input.accentChroma * PLATE_CHROMA_PER_ACCENT),
+        input.accentHue,
+      ),
       text: neutral[11]!,
       textSecondary: neutral[10]!,
       onAccent: onSolid(accent[8]!),

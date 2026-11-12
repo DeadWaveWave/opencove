@@ -28,6 +28,9 @@ export function normalizeTerminalAgentActivitySnapshot(
   const revision = value.revision
   if (
     (provider !== 'claude-code' && provider !== 'codex' && provider !== 'pi') ||
+    (value.launchMode !== undefined &&
+      value.launchMode !== 'new' &&
+      value.launchMode !== 'resume') ||
     invocationId.length === 0 ||
     typeof generation !== 'number' ||
     !Number.isSafeInteger(generation) ||
@@ -51,6 +54,7 @@ export function normalizeTerminalAgentActivitySnapshot(
 
   return {
     provider,
+    ...(value.launchMode ? { launchMode: value.launchMode as 'new' | 'resume' } : {}),
     invocationId,
     generation,
     phase,
@@ -119,6 +123,7 @@ export function sameTerminalAgentActivitySnapshot(
   }
   return (
     left.provider === right.provider &&
+    left.launchMode === right.launchMode &&
     left.invocationId === right.invocationId &&
     left.generation === right.generation &&
     left.phase === right.phase &&

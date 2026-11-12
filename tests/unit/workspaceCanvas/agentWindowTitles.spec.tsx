@@ -140,6 +140,21 @@ describe('Agent window title presentation', () => {
   it.each([
     { title: 'Codex · Review API', pinned: false, linked: undefined, expected: 'Review API' },
     { title: 'codex · Old model', pinned: false, linked: 'Current task', expected: 'Current task' },
+    {
+      title: 'codex · Reviewer',
+      pinned: true,
+      literal: true,
+      linked: 'Current task',
+      expected: 'codex · Reviewer',
+    },
+    {
+      title: 'codex · codex · Lead',
+      pinned: true,
+      literal: true,
+      linked: undefined,
+      expected: 'codex · codex · Lead',
+    },
+    { title: 'Reviewer', pinned: true, linked: 'Current task', expected: 'Reviewer' },
     { title: 'codex · My name', pinned: true, linked: 'Current task', expected: 'My name' },
     { title: 'codex · Codex · 示例会话', pinned: true, linked: undefined, expected: '示例会话' },
     {
@@ -148,21 +163,29 @@ describe('Agent window title presentation', () => {
       linked: undefined,
       expected: 'Review Codex · API',
     },
-  ])('uses the same label in both states: $title', ({ title, pinned, linked, expected }) => {
-    const data = nodeData({ title, titlePinnedByUser: pinned })
-    const { container, rename } = renderTitles(data, linked)
-    expect(screen.getByTestId('terminal-node-title-display').textContent).toBe(expected)
-    expect(container.querySelector('.cove-collapsed-window__title')?.textContent).toBe(expected)
-    expect(container.querySelector('.terminal-node__title-prefix')).toBeNull()
-    expect(data.title).toBe(title)
-    expect(container.querySelectorAll('[data-cove-pixel-glyph="ai"]')).toHaveLength(2)
-    fireEvent.click(screen.getByTestId('terminal-node-title-display'))
-    const input = screen.getByTestId('terminal-node-inline-title-input')
-    expect(input).toHaveValue(expected)
-    fireEvent.change(input, { target: { value: 'My edited name' } })
-    fireEvent.keyDown(input, { key: 'Enter' })
-    expect(rename).toHaveBeenCalledWith('agent', 'My edited name')
-  })
+  ])(
+    'uses the same label in both states: $title',
+    ({ title, pinned, linked, expected, literal }) => {
+      const data = nodeData({ title, titlePinnedByUser: pinned, titleIsLiteral: literal })
+      const { container, rename } = renderTitles(data, linked)
+      expect(screen.getByTestId('terminal-node-title-display').textContent).toBe(expected)
+      expect(container.querySelector('.cove-collapsed-window__title')?.textContent).toBe(expected)
+      expect(container.querySelector('.terminal-node__title-prefix')).toBeNull()
+      expect(data.title).toBe(title)
+      const icons = container.querySelectorAll('[data-cove-node-kind-icon="agent"]')
+      expect(icons).toHaveLength(2)
+      for (const icon of icons) {
+        expect(icon).toHaveAttribute('data-agent-provider', 'codex')
+        expect(icon).not.toHaveAttribute('data-cove-pixel-glyph')
+      }
+      fireEvent.click(screen.getByTestId('terminal-node-title-display'))
+      const input = screen.getByTestId('terminal-node-inline-title-input')
+      expect(input).toHaveValue(expected)
+      fireEvent.change(input, { target: { value: 'My edited name' } })
+      fireEvent.keyDown(input, { key: 'Enter' })
+      expect(rename).toHaveBeenCalledWith('agent', 'My edited name')
+    },
+  )
 
   it.each([true, false])(
     'projects terminal Agent labels only while its overlay is active: %s',
@@ -184,4 +207,21 @@ describe('Agent window title presentation', () => {
       expect(data.title).toBe('Claude Code · Review API')
     },
   )
+})
+
+it('keeps literal names intact during UI edits and treats marker-only sync as a change', async () => {
+  const { resolveRenamedWorkspaceNodeTitle } =
+    await import('@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.title')
+  const { isNodeEquivalent } =
+    await import('@app/renderer/shell/hooks/workerSync/mergeWorkspaceStateForSync.equality')
+  const legacy = {
+    id: 'agent',
+    type: 'terminalNode',
+    position: { x: 0, y: 0 },
+    data: nodeData({ title: 'codex · Reviewer', titlePinnedByUser: true }),
+  }
+  const literal = { ...legacy, data: { ...legacy.data, titleIsLiteral: true } }
+  expect(resolveRenamedWorkspaceNodeTitle(legacy, 'Lead')).toBe('codex · Lead')
+  expect(resolveRenamedWorkspaceNodeTitle(literal, 'codex · Lead')).toBe('codex · Lead')
+  expect(isNodeEquivalent(literal, legacy)).toBe(false)
 })

@@ -1,6 +1,6 @@
 import { PluginSidebar } from '@contexts/plugins/presentation/renderer/PluginSidebar'
 import React, { useCallback, useEffect, useState } from 'react'
-import { MoreHorizontal, Settings } from 'lucide-react'
+import { MoreIcon, SettingsIcon } from '@app/renderer/components/ui/pixelIcons'
 import {
   DndContext,
   DragOverlay,
@@ -48,6 +48,7 @@ import { projectSidebarView } from '../utils/sidebarView'
 import { SidebarViewControls } from './SidebarViewControls'
 import { SidebarAttentionInbox } from './SidebarAttentionInbox'
 import { summarizeAgentActivity } from '../utils/agentActivitySummary'
+import { useAgentsNeedingYou } from '../store/useAgentAttentionStore'
 
 /** Docked, or hidden entirely when collapsed (Tide: no rail is left behind). */
 export type SidebarVariant = 'docked' | 'hidden'
@@ -112,8 +113,17 @@ export function Sidebar({
   onPointerLeave,
 }: SidebarProps): React.JSX.Element {
   const { t } = useTranslation()
-  const trees = workspaces.map(buildSidebarProjectTree)
-  const waitingAgents = summarizeAgentActivity(workspaces).waiting
+  const needsYou = useAgentsNeedingYou()
+  const trees = workspaces.map(workspace => buildSidebarProjectTree(workspace, needsYou))
+  const waitingAgents = summarizeAgentActivity(workspaces, needsYou).waiting
+  // Tile badges count the inbox's own rows, so an unanswered Agent shows in both.
+  const waitingCountByWorkspace = new Map<string, number>()
+  for (const agent of waitingAgents) {
+    waitingCountByWorkspace.set(
+      agent.workspaceId,
+      (waitingCountByWorkspace.get(agent.workspaceId) ?? 0) + 1,
+    )
+  }
   const mountDetails = useWorkspaceMountDetails({ workspaces })
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -314,7 +324,7 @@ export function Sidebar({
                   isActive={tree.workspace.id === activeWorkspaceId}
                   isPreviewed={tree.workspace.id === displayedTree?.workspace.id}
                   remote={mountDetails[tree.workspace.id]?.remote ?? null}
-                  waitingAgentCount={tree.waitingAgentCount}
+                  waitingAgentCount={waitingCountByWorkspace.get(tree.workspace.id) ?? 0}
                   workingAgentCount={tree.workingAgentCount}
                   onPreview={workspaceId => {
                     if (!isPreviewLocked && !isMobile) {
@@ -340,7 +350,7 @@ export function Sidebar({
                 label={t('common.settings')}
                 onClick={() => onOpenSettings()}
               >
-                <Settings aria-hidden="true" />
+                <SettingsIcon />
               </IconButton>
             ) : null}
           </div>
@@ -378,7 +388,7 @@ export function Sidebar({
                       })
                     }}
                   >
-                    <MoreHorizontal size={15} aria-hidden="true" />
+                    <MoreIcon size={18} />
                   </button>
                 </header>
                 <SidebarViewControls

@@ -68,7 +68,7 @@ test.describe('Terminal Agent completion banner', () => {
           )
           expect(sessionFiles).toHaveLength(1)
           const expectedSessionId = path.basename(sessionFiles[0], '.jsonl')
-          // SessionStart supplies identity only; the thinking JSONL must drive Working.
+          // SessionStart supplies identity only; the fixture submits before producing work.
           await expect
             .poll(
               async () => (await readPersistedTerminalAgentNode(window, 'banner-terminal'))?.agent,
@@ -84,7 +84,8 @@ test.describe('Terminal Agent completion banner', () => {
         await window.keyboard.type('<test-overlay-advance>')
         await expect(terminal.locator('.terminal-node__status')).toHaveText('Standby')
         await expect(cards).toHaveCount(1)
-        await expect(cards.first()).toContainText('Standby')
+        // The card says what the Agent wants of you, not its runtime status.
+        await expect(cards.first()).toContainText('Finished')
         await window.screenshot({
           path: test.info().outputPath(`${provider}-terminal-complete.png`),
         })

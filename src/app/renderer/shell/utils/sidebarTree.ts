@@ -24,7 +24,6 @@ export interface SidebarProjectTreeModel {
   projectRootGroup: SidebarSpaceGroupModel
   agentCount: number
   workingAgentCount: number
-  waitingAgentCount: number
 }
 
 function resolveRootSpaceId(
@@ -47,7 +46,11 @@ function resolveRootSpaceId(
   return current.id
 }
 
-export function buildSidebarProjectTree(workspace: WorkspaceState): SidebarProjectTreeModel {
+/** `needsYou` as in `buildSidebarAgentItems`: unanswered Agents show as waiting for you. */
+export function buildSidebarProjectTree(
+  workspace: WorkspaceState,
+  needsYou?: ReadonlyMap<string, number>,
+): SidebarProjectTreeModel {
   const spaceById = new Map(workspace.spaces.map(space => [space.id, space] as const))
   const rootSpaces = orderRootSpaces(workspace.spaces)
   const spaceGroups = rootSpaces.map<SidebarSpaceGroupModel>(space => ({
@@ -60,7 +63,7 @@ export function buildSidebarProjectTree(workspace: WorkspaceState): SidebarProje
   }))
   const groupBySpaceId = new Map(spaceGroups.map(group => [group.id, group] as const))
   const projectRootAgents: SidebarAgentItemModel[] = []
-  const agentItems = buildSidebarAgentItems(workspace)
+  const agentItems = buildSidebarAgentItems(workspace, needsYou)
 
   for (const agentItem of agentItems) {
     const owningSpace = agentItem.owningSpace
@@ -94,6 +97,5 @@ export function buildSidebarProjectTree(workspace: WorkspaceState): SidebarProje
     projectRootGroup,
     agentCount: agentItems.length,
     workingAgentCount: agentItems.filter(agent => agent.status === 'working').length,
-    waitingAgentCount: agentItems.filter(agent => agent.status === 'waiting').length,
   }
 }

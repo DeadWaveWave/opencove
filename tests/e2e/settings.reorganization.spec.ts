@@ -90,7 +90,7 @@ test.describe('Settings organization', () => {
     const { electronApp, window: page } = await launchApp()
     try {
       await clearAndSeedWorkspace(page, [], {
-        settings: { uiTheme: 'pixel', language: 'en', terminalDisplayAutoReferenceEnabled: false },
+        settings: { uiTheme: 'dark', language: 'en', terminalDisplayAutoReferenceEnabled: false },
       })
       const before = await readSavedConfiguration(page)
       await page.getByTestId('app-header-settings').click()
@@ -147,7 +147,7 @@ test.describe('Settings organization', () => {
         ],
         {
           settings: {
-            uiTheme: 'pixel',
+            uiTheme: 'dark',
             language: 'en',
             ...PIXEL_EFFECTS_ENABLED,
             terminalDisplayAutoReferenceEnabled: false,
@@ -164,7 +164,7 @@ test.describe('Settings organization', () => {
       const xterm = await page.locator(`[data-id="${TERMINAL_ID}"] .xterm`).elementHandle()
       await page.getByTestId('app-header-settings').click()
       await page.getByTestId('settings-section-nav-appearance').click()
-      await selectCoveOption(page, 'settings-ui-theme', 'pixel-light')
+      await selectCoveOption(page, 'settings-ui-theme', 'light')
       await attachPanel(page, testInfo, 'settings-theme-gallery')
       const preview = page.getByTestId('settings-pixel-effects-preview')
       await expect(preview).toHaveAttribute('data-background', 'pixel')

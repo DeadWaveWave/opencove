@@ -1,4 +1,12 @@
-import { optionalFileMutationBoolean } from '../../../../contexts/filesystem/domain/fileMutationOptions'
+import {
+  filesystemCreateDirectoryInMountOperation,
+  filesystemDeleteEntryInMountOperation,
+  filesystemCopyEntryInMountOperation,
+  filesystemMoveEntryInMountOperation,
+  filesystemRenameEntryInMountOperation,
+} from '../../../../shared/contracts/controlSurface/operations/domains/filesystem'
+import { filesystemWriteFileTextInMountOperation } from '../../../../shared/contracts/controlSurface/operations/domains/filesystem'
+import { registerOperation } from '../registerOperation'
 import { assertRemoteMutationCapabilities } from './filesystemMutationCapabilities'
 import type { FileSystemPort } from '../../../../contexts/filesystem/application/ports'
 import {
@@ -9,19 +17,12 @@ import {
   renameEntryUseCase,
   writeFileTextUseCase,
 } from '../../../../contexts/filesystem/application/usecases'
-import { createAppError } from '../../../../shared/errors/appError'
 import type {
-  CopyEntryInMountInput,
   CopyEntryInput,
-  CreateDirectoryInMountInput,
   CreateDirectoryInput,
-  DeleteEntryInMountInput,
   DeleteEntryInput,
-  MoveEntryInMountInput,
   MoveEntryInput,
-  RenameEntryInMountInput,
   RenameEntryInput,
-  WriteFileTextInMountInput,
   WriteFileTextInput,
 } from '../../../../shared/contracts/dto'
 import type { ControlSurface } from '../controlSurface'
@@ -29,13 +30,8 @@ import type { WorkerTopologyStore } from '../topology/topologyStore'
 import {
   assertFileUriWithinMountRoot,
   invokeRemoteValue,
-  isRecord,
-  normalizeFileSystemUri,
-  normalizeMountId,
-  normalizeSourceTargetPayload,
   resolveMountTargetOrThrow,
 } from './filesystemMountSupport'
-
 export function registerFilesystemMountWriteHandlers(
   controlSurface: ControlSurface,
   deps: {
@@ -51,29 +47,7 @@ export function registerFilesystemMountWriteHandlers(
       await deleteEntryUseCase(deps.port, { uri })
     })
 
-  controlSurface.register('filesystem.writeFileTextInMount', {
-    kind: 'command',
-    validate: (payload: unknown): WriteFileTextInMountInput => {
-      if (!isRecord(payload)) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Invalid payload for filesystem.writeFileTextInMount.',
-        })
-      }
-
-      const content = payload.content
-      if (typeof content !== 'string') {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Invalid payload for filesystem.writeFileTextInMount content.',
-        })
-      }
-
-      return {
-        mountId: normalizeMountId(payload.mountId, 'filesystem.writeFileTextInMount'),
-        uri: normalizeFileSystemUri(payload.uri, 'filesystem.writeFileTextInMount'),
-        content,
-        overwrite: optionalFileMutationBoolean(payload.overwrite),
-      }
-    },
+  registerOperation(controlSurface, filesystemWriteFileTextInMountOperation, {
     handle: async (ctx, payload): Promise<void> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,
@@ -120,20 +94,7 @@ export function registerFilesystemMountWriteHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('filesystem.createDirectoryInMount', {
-    kind: 'command',
-    validate: (payload: unknown): CreateDirectoryInMountInput => {
-      if (!isRecord(payload)) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Invalid payload for filesystem.createDirectoryInMount.',
-        })
-      }
-
-      return {
-        mountId: normalizeMountId(payload.mountId, 'filesystem.createDirectoryInMount'),
-        uri: normalizeFileSystemUri(payload.uri, 'filesystem.createDirectoryInMount'),
-      }
-    },
+  registerOperation(controlSurface, filesystemCreateDirectoryInMountOperation, {
     handle: async (ctx, payload): Promise<void> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,
@@ -173,21 +134,7 @@ export function registerFilesystemMountWriteHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('filesystem.deleteEntryInMount', {
-    kind: 'command',
-    validate: (payload: unknown): DeleteEntryInMountInput => {
-      if (!isRecord(payload)) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Invalid payload for filesystem.deleteEntryInMount.',
-        })
-      }
-
-      return {
-        mountId: normalizeMountId(payload.mountId, 'filesystem.deleteEntryInMount'),
-        uri: normalizeFileSystemUri(payload.uri, 'filesystem.deleteEntryInMount'),
-        recursive: optionalFileMutationBoolean(payload.recursive),
-      }
-    },
+  registerOperation(controlSurface, filesystemDeleteEntryInMountOperation, {
     handle: async (ctx, payload): Promise<void> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,
@@ -234,10 +181,7 @@ export function registerFilesystemMountWriteHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('filesystem.copyEntryInMount', {
-    kind: 'command',
-    validate: payload =>
-      normalizeSourceTargetPayload<CopyEntryInMountInput>(payload, 'filesystem.copyEntryInMount'),
+  registerOperation(controlSurface, filesystemCopyEntryInMountOperation, {
     handle: async (ctx, payload): Promise<void> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,
@@ -289,10 +233,7 @@ export function registerFilesystemMountWriteHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('filesystem.moveEntryInMount', {
-    kind: 'command',
-    validate: payload =>
-      normalizeSourceTargetPayload<MoveEntryInMountInput>(payload, 'filesystem.moveEntryInMount'),
+  registerOperation(controlSurface, filesystemMoveEntryInMountOperation, {
     handle: async (ctx, payload): Promise<void> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,
@@ -344,13 +285,7 @@ export function registerFilesystemMountWriteHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('filesystem.renameEntryInMount', {
-    kind: 'command',
-    validate: payload =>
-      normalizeSourceTargetPayload<RenameEntryInMountInput>(
-        payload,
-        'filesystem.renameEntryInMount',
-      ),
+  registerOperation(controlSurface, filesystemRenameEntryInMountOperation, {
     handle: async (ctx, payload): Promise<void> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,

@@ -1,11 +1,12 @@
 import React from 'react'
-import { Folder, GitBranch, MoreHorizontal } from 'lucide-react'
+import { FolderIcon, GitBranchIcon, MoreIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import type { GitHubPullRequestSummary, GitWorktreeInfo } from '@shared/contracts/dto'
 import type { WorkspaceSpaceRect } from '../../../types'
 import type { SpaceVisual } from '../types'
 import type { SpaceFrameHandleMode } from '../../../utils/spaceLayout'
 import { resolveSpaceAnnotationCap } from './spaceVisualScale'
+import { readCanvasLodAt, type CanvasLod } from './canvasLod'
 import { useSpaceCaptionBorder } from './useSpaceCaptionBorder'
 import { WorkspaceSpaceOperationOverlay } from './WorkspaceSpaceOperationOverlay'
 import { WorkspaceSpaceCollapseActions } from './WorkspaceSpaceCollapseActions'
@@ -30,7 +31,7 @@ export function WorkspaceSpaceRegionItem({
   setSpaceRenameDraft,
   commitSpaceRename,
   cancelSpaceRename,
-  startSpaceRename,
+  activateSpaceTitle,
   handleSpaceDragHandlePointerDown,
   updateHandleCursor,
   resolvedWorktreeInfo,
@@ -55,7 +56,7 @@ export function WorkspaceSpaceRegionItem({
   setSpaceRenameDraft: React.Dispatch<React.SetStateAction<string>>
   commitSpaceRename: (spaceId: string) => void
   cancelSpaceRename: () => void
-  startSpaceRename: (spaceId: string) => void
+  activateSpaceTitle: (spaceId: string, lod: CanvasLod) => void
   handleSpaceDragHandlePointerDown: (
     event: React.PointerEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
     spaceId: string,
@@ -240,7 +241,7 @@ export function WorkspaceSpaceRegionItem({
                   title={space.name}
                   onClick={event => {
                     event.stopPropagation()
-                    startSpaceRename(space.id)
+                    activateSpaceTitle(space.id, readCanvasLodAt(event.currentTarget))
                   }}
                 >
                   {space.labelColor ? (
@@ -270,7 +271,7 @@ export function WorkspaceSpaceRegionItem({
                     onToggleExplorer?.(space.id)
                   }}
                 >
-                  <Folder className="workspace-space-region__files-pill-icon" aria-hidden="true" />
+                  <FolderIcon className="workspace-space-region__files-pill-icon" />
                   <span className="workspace-space-region__files-pill-label">
                     {t('spaceActions.files')}
                   </span>
@@ -297,7 +298,7 @@ export function WorkspaceSpaceRegionItem({
                     })
                   }}
                 >
-                  <MoreHorizontal size={15} aria-hidden="true" />
+                  <MoreIcon size={18} />
                 </button>
               </div>
 
@@ -336,7 +337,7 @@ export function WorkspaceSpaceRegionItem({
                       })
                     }}
                   >
-                    <GitBranch className="workspace-space-region__branch-icon" aria-hidden="true" />
+                    <GitBranchIcon className="workspace-space-region__branch-icon" />
                     <span className="workspace-space-region__branch-badge-kind">
                       {resolvedBranchBadge.kind}
                     </span>
@@ -352,7 +353,7 @@ export function WorkspaceSpaceRegionItem({
                     data-branch-kind={branchName ? 'branch' : 'detached'}
                     title={resolvedBranchBadge.title}
                   >
-                    <GitBranch className="workspace-space-region__branch-icon" aria-hidden="true" />
+                    <GitBranchIcon className="workspace-space-region__branch-icon" />
                     <span className="workspace-space-region__branch-badge-kind">
                       {resolvedBranchBadge.kind}
                     </span>

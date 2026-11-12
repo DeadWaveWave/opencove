@@ -39,6 +39,13 @@ publishes a digest directory. A repair publishes a separate directory if the exi
 It never removes a runtime that a Worker might still reference. Launchers pin the resolved version
 directory so lazy imports and PTY children cannot move to a newer version mid-session.
 
+On Windows, publication renames allow up to 60 seconds per rename for transient
+`EPERM` / `EACCES` / `EBUSY` sharing failures, with 10 ms incremental backoff capped at 100 ms.
+Each retry is logged to stderr; stdout remains the published path. An existing destination
+immediately returns to verification/reuse or separate repair publication. Other errors and other
+platforms fail without retry. Verification must finish and release its handles before publication;
+retries must never substitute for stopping a process or releasing a handle owned by the installer.
+
 Managed launchers live under the deployment state directory, separately from an administrator's
 global `opencove` command. Shared immutable artifacts do not imply shared profiles or credentials.
 Public launchers are replaced atomically after verification. Installation does not require a Windows
@@ -110,3 +117,5 @@ For an explicitly selected SSH test host, set `OPENCOVE_TEST_MANAGED_SSH_HOST` a
 `pnpm exec vitest run tests/integration/topology/managedRuntime.ssh.spec.ts`. The test creates a unique
 deployment, exercises directory access, PTY output, maintenance refusal while busy and instance reuse,
 then gracefully stops only that test deployment.
+
+The CLI entry is `app/out/cli/opencove.mjs` in a standalone bundle. Development overlays refresh `out`, plugin documentation, the compatibility shim and independent publisher, and the manifest CLI path together. Build with `pnpm build` before creating an overlay. The legacy `app/src/app/cli/opencove.mjs` remains a shim for one release.

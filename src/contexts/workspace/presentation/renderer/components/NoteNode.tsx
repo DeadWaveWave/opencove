@@ -13,6 +13,8 @@ import { InlineNodeTitleEditor } from './shared/InlineNodeTitleEditor'
 import { NoteNodeActionsMenu } from './NoteNodeActionsMenu'
 import { NodeKindIcon } from './shared/NodeKindIcon'
 import { WindowHeader } from './shared/WindowHeader'
+import { WindowPlate } from './shared/WindowPlate'
+import { isWindowTitleGesture } from './shared/windowTitleGesture'
 
 interface NoteNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -145,6 +147,11 @@ export function NoteNode({
           return
         }
 
+        // The title owns its clicks: one renames, one ending a grab does nothing.
+        if (isWindowTitleGesture(targetElement)) {
+          return
+        }
+
         if (targetElement.closest('.note-node__textarea')) {
           event.stopPropagation()
           onInteractionStart?.({
@@ -200,6 +207,7 @@ export function NoteNode({
         close={{ label: t('noteNode.deleteNote'), className: 'note-node__close', onClose }}
       />
 
+      <WindowPlate kind="knowledge" />
       <textarea
         data-cove-part="window-body"
         className="note-node__textarea nodrag nowheel"

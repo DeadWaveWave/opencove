@@ -165,7 +165,7 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
       await expect(nodeStatus).toHaveText('Working')
       await expect(sidebarStatus).toHaveText('Working')
       await expect(nodeStatus).toHaveText('Standby', { timeout: 15_000 })
-      await expect(sidebarStatus).toHaveText('Standby')
+      await expect(sidebarStatus).toHaveText('Finished')
 
       const notification = window
         .locator('[data-testid="app-notifications"] .app-notification')
@@ -177,6 +177,7 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
 
       await window.locator('[data-testid^="app-notification-close-"]').first().click()
       await expect(window.locator('[data-testid="app-notifications"]')).toHaveCount(0)
+      await expect(sidebarStatus).toHaveText('Standby')
     } finally {
       await electronApp.close()
     }
@@ -218,7 +219,7 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
       )
       await window.getByTestId('workspace-item-workspace-a').hover()
 
-      await expect(workspaceAStatus).toHaveText('Standby', { timeout: 15_000 })
+      await expect(workspaceAStatus).toHaveText('Finished', { timeout: 15_000 })
       await expect(window.getByTestId('workspace-item-workspace-b')).toHaveAttribute(
         'aria-current',
         'page',
@@ -255,6 +256,8 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
         'workspace-a',
       )
       await expect(window.locator('[data-testid="app-notifications"]')).toHaveCount(0)
+      await expect(workspaceAStatus).toHaveText('Standby')
+      await expect(agentNode.locator('.terminal-node__status')).toHaveText('Standby')
       await expect
         .poll(async () => {
           const landing = await readAgentLandingGeometry(window, agentNode)
@@ -300,7 +303,7 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
     }
   })
 
-  test('shows a notification even if the first observed state is standby after switching projects', async () => {
+  test('keeps an idle observation without a turn quiet after switching projects', async () => {
     const { electronApp, window } = await launchApp({
       windowMode: 'offscreen',
       env: {
@@ -337,16 +340,15 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
         'page',
       )
 
-      const notification = window
-        .locator('[data-testid="app-notifications"] .app-notification')
-        .first()
-      await expect(notification).toBeVisible()
-      await notification.click()
+      await expect(window.locator('.app-notification')).toHaveCount(0)
+      await window.getByTestId('workspace-item-workspace-a').click()
 
       await expect(window.locator('.workspace-item.workspace-item--active')).toContainText(
         'workspace-a',
       )
       await expect(window.locator('[data-testid="app-notifications"]')).toHaveCount(0)
+      await expect(workspaceAStatus).toHaveText('Standby')
+      await expect(window.locator('.terminal-node__status').first()).toHaveText('Standby')
     } finally {
       await electronApp.close()
     }
@@ -371,24 +373,17 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
 
       const agentNode = window.locator('.terminal-node').first()
       const nodeStatus = agentNode.locator('.terminal-node__status')
-      const sidebarStatus = window
-        .locator('.workspace-sidebar .workspace-agent-item .workspace-agent-item__status--agent')
-        .first()
 
       await expect(agentNode).toBeVisible()
       await expect(nodeStatus).toHaveText('Working')
-      await expect(sidebarStatus).toHaveText('Working')
 
       await window.waitForTimeout(2600)
       await expect(nodeStatus).toHaveText('Working')
-      await expect(sidebarStatus).toHaveText('Working')
 
       await window.waitForTimeout(1400)
       await expect(nodeStatus).toHaveText('Working')
-      await expect(sidebarStatus).toHaveText('Working')
 
       await expect(nodeStatus).toHaveText('Standby', { timeout: 15_000 })
-      await expect(sidebarStatus).toHaveText('Standby')
     } finally {
       await electronApp.close()
     }

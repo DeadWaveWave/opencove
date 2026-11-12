@@ -1,0 +1,99 @@
+/*
+ * Appearance picker (settings/AppearancePicker.tsx): light, dark and system, each the app in pixel
+ * miniature. A thumbnail sits in a 2px stepped ring, neutral until chosen and accent once it is,
+ * with a check tab on the ring's corner. The radios are native and invisible; the ring is clipped
+ * to its steps, so focus rings the whole option instead. Columns take their natural width and
+ * shrink together when the row is narrow, the miniatures with them.
+ */
+.cove-appearance-picker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, max-content));
+  justify-content: space-between;
+  gap: var(--cove-spacing-2);
+}
+
+.cove-appearance-picker[data-size='lg'] {
+  justify-content: start;
+  gap: var(--cove-spacing-5);
+}
+
+.cove-appearance-picker__option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--cove-spacing-1);
+  min-width: 0;
+  color: var(--cove-text-muted);
+  cursor: pointer;
+}
+
+/* The radio lies over its whole option, so the pointer presses the radio itself. */
+.cove-appearance-picker__input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  appearance: none;
+}
+
+.cove-appearance-picker__frame {
+  position: relative;
+  display: block;
+  max-width: 100%;
+  padding: 2px;
+  background: var(--cove-border);
+  clip-path: var(--cove-pixel-corners);
+}
+
+.cove-appearance-picker__thumbnail {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.cove-appearance-picker__check {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  background: var(--cove-accent);
+  color: var(--cove-accent-foreground);
+}
+
+.cove-appearance-picker__label {
+  max-width: 100%;
+  font-size: var(--cove-font-size-caption);
+  line-height: var(--cove-line-height-caption);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.cove-appearance-picker__option:hover {
+  color: var(--cove-text);
+}
+
+.cove-appearance-picker__option:hover .cove-appearance-picker__frame {
+  background: var(--cove-border-strong);
+}
+
+.cove-appearance-picker__option[data-state='on'] {
+  color: var(--cove-accent-text);
+  font-weight: 600;
+}
+
+.cove-appearance-picker__option[data-state='on'] .cove-appearance-picker__frame {
+  background: var(--cove-accent);
+}
+
+.cove-appearance-picker__option:has(.cove-appearance-picker__input:focus-visible) {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: 2px;
+}

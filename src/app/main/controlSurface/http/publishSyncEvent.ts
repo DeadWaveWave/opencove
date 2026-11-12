@@ -21,7 +21,12 @@ export function publishLiveSyncEvent(options: {
   payload: SyncEventPayload
   desktopSink?: (payload: SyncEventPayload) => number
 }): number {
-  let deliveredCount = options.desktopSink?.(options.payload) ?? 0
+  let deliveredCount = 0
+  try {
+    deliveredCount = options.desktopSink?.(options.payload) ?? 0
+  } catch {
+    // A closed Desktop window must not interrupt SSE delivery or a committed write.
+  }
 
   for (const client of options.syncClients) {
     try {

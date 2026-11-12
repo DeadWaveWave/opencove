@@ -2,7 +2,11 @@ import { expect, test, type ElectronApplication } from '@playwright/test'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import {
+  clearAndSeedWorkspace,
+  clickHeaderDragSurface,
+  launchApp,
+} from './workspace-canvas.helpers'
 
 export async function sendAppKey(app: ElectronApplication, key: string): Promise<void> {
   await app.evaluate(({ BrowserWindow }, keyCode) => {
@@ -83,7 +87,7 @@ export function applicationShortcutTests(): void {
         { id: 'keep-one', title: 'Keep one', position: { x: 500, y: 80 }, width: 400, height: 280 },
       ])
       const selected = window.locator('.react-flow__node[data-id="close-one"]')
-      await selected.locator('.terminal-node__header').click()
+      await clickHeaderDragSurface(selected.locator('.terminal-node__header'))
       await expect(selected).toHaveClass(/selected/)
       await sendAppKey(electronApp, 'w')
       await expect(selected).toHaveCount(0)

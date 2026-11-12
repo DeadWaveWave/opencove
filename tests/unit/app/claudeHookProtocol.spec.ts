@@ -101,3 +101,66 @@ describe('Claude hook protocol', () => {
     ).toBeNull()
   })
 })
+
+it.each([undefined, null, 42, {}, '', ' ', 'bad\nid', '\ud800', 'x'.repeat(257)])(
+  'drops malformed optional prompt_id %# without discarding lifecycle evidence',
+  prompt_id => {
+    const envelope = normalizeClaudeHookEnvelope({ ...input({}), prompt: '  secret', prompt_id })!
+    expect(envelope.state).toBe('working')
+    expect(envelope.promptId).toBeUndefined()
+    expect(envelope.promptDigest).toMatch(/^[a-f0-9]{64}$/)
+    expect(JSON.stringify(envelope)).not.toContain('secret')
+  },
+)
+it('extracts submission evidence and preserves a bounded ID verbatim', () => {
+  const prompt_id = 'p'.repeat(256)
+  expect(normalizeClaudeHookEnvelope({ ...input({}), prompt_id })).toMatchObject({
+    promptId: prompt_id,
+  })
+  for (const hook_event_name of ['Stop', 'StopFailure']) {
+    const envelope = normalizeClaudeHookEnvelope({
+      ...input({ hook_event_name }),
+      prompt_id,
+      prompt: 'secret',
+    })
+    expect(envelope).toHaveProperty('promptId', prompt_id)
+    expect(envelope).not.toHaveProperty('promptDigest')
+  }
+})
+it.each(['startup', 'resume', 'clear', 'compact', 'fork'])(
+  'retains only the private SessionStart source for both envelope formats: %s',
+  source => {
+    expect(
+      normalizeClaudeHookEnvelope({ ...input({ hook_event_name: 'SessionStart' }), source }),
+    ).toMatchObject({ sessionStartSource: source, state: null })
+    expect(
+      validateClaudeHookEnvelope({
+        version: 1,
+        state: null,
+        hookEventName: 'SessionStart',
+        claudeSessionId: 's',
+        source,
+      }),
+    ).toMatchObject({ sessionStartSource: source })
+    expect(
+      validateClaudeHookEnvelope({
+        version: 1,
+        state: null,
+        hookEventName: 'SessionStart',
+        claudeSessionId: 's',
+        sessionStartSource: source,
+      }),
+    ).toMatchObject({ sessionStartSource: source })
+    expect(normalizeClaudeHookEnvelope({ ...input({}), source })).not.toHaveProperty(
+      'sessionStartSource',
+    )
+  },
+)
+it.each([undefined, null, {}, '', ' compact ', 'private source text'])(
+  'invalid SessionStart source is discarded without losing lifecycle evidence: %#',
+  source => {
+    expect(
+      normalizeClaudeHookEnvelope({ ...input({ hook_event_name: 'SessionStart' }), source }),
+    ).not.toHaveProperty('sessionStartSource')
+  },
+)

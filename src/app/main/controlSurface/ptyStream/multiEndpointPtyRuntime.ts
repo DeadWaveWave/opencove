@@ -1,14 +1,12 @@
+import { ClaudeTranscriptChannel } from '../../../../shared/runtime/agentHook/claudeTranscript'
 import { randomUUID } from 'node:crypto'
 import type {
   ListSessionsResult,
   PresentationSnapshotTerminalResult,
-  TerminalForegroundEvent,
-  TerminalSessionMetadataEvent,
-  TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
 import type { ControlSurfacePtyRuntime } from '../handlers/sessionPtyRuntime'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
-import { RemotePtyEndpointProxy } from './remotePtyEndpointProxy'
+import type { RemotePtyEndpointProxy } from './remotePtyEndpointProxy'
 import type { TerminalRuntimeRoute } from '../../../../contexts/terminal/domain/recovery/terminalRecovery'
 import { createRemoteRecoveryCheckpointFence } from './remoteRecoveryCheckpointFence'
 import { ShellInputReadiness } from './shellInputReadiness'
@@ -18,20 +16,18 @@ import { spawnLocalSessionWithArtifacts } from './localAgentLaunchArtifactLifecy
 import { reexecTerminalAgentInPty } from '../../../../contexts/agent/application/terminalAgentPtyReexec'
 import { restoreRemotePtySession } from './restoreRemotePtySession'
 import { SessionRegistrationOwner } from '../../../../shared/runtime/sessionRegistrationOwner'
+import {
+  createRemotePtyEndpointBridge,
+  readSessionRoute,
+  type PtyRuntimeListenerSets,
+  type RemoteSessionRoutingState,
+  type SessionRoute,
+} from './remotePtyEndpointBridge'
 export { RemotePtyRecoveryBlockedError } from './RemotePtyRecoveryBlockedError'
 
-type RemoteSessionRoute = {
-  kind: 'remote'
-  endpointId: string
-  remoteSessionId: string
-}
-
-type LocalSessionRoute = {
-  kind: 'local'
-}
-type SessionRoute = LocalSessionRoute | RemoteSessionRoute
-
 export type MultiEndpointPtyRuntime = ControlSurfacePtyRuntime & {
+  /** Query identity only; retained remote identity does not imply a live PTY. */
+  getSessionRoute?: (sessionId: string) => SessionRoute | null
   registerRemoteSession: (options: { endpointId: string; remoteSessionId: string }) => string
   restoreRemoteSession: (options: {
     homeSessionId: string
@@ -58,44 +54,53 @@ export type MultiEndpointPtyRuntime = ControlSurfacePtyRuntime & {
   }>
   drainPresentationRecovery: () => Promise<void>
   drainLaunchArtifacts: () => Promise<void>
-  dispose: () => void
+  dispose: () => void | Promise<void>
 }
 
 export function createMultiEndpointPtyRuntime(options: {
-  localRuntime: ControlSurfacePtyRuntime & { dispose?: () => void }
+  localRuntime: ControlSurfacePtyRuntime & { dispose?: () => void | Promise<void> }
   topology: WorkerTopologyStore
   disposeLocalRuntime: boolean
-  agentStateSources?: readonly Pick<ControlSurfacePtyRuntime, 'onState'>[]
+  agentStateSources?: readonly Pick<ControlSurfacePtyRuntime, 'onState' | 'onClaudeTranscript'>[]
   agentMetadataSources?: readonly Pick<ControlSurfacePtyRuntime, 'onMetadata'>[]
 }): MultiEndpointPtyRuntime {
-  const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
-  const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
-  const foregroundListeners = new Set<(event: TerminalForegroundEvent) => void>()
-  const stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
-  const metadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
-  const shellInputReadiness = new ShellInputReadiness()
-  const presentationResetListeners = new Set<
-    (event: {
-      sessionId: string
-      snapshot: PresentationSnapshotTerminalResult
-    }) => void | Promise<void>
-  >()
-  const presentationResetCommittedListeners = new Set<
-    (event: { sessionId: string; committed: boolean }) => void
-  >()
+  const listeners: PtyRuntimeListenerSets = {
+    data: new Set(),
+    exit: new Set(),
+    foreground: new Set(),
+    state: new Set(),
+    metadata: new Set(),
+    presentationReset: new Set(),
+    presentationResetCommitted: new Set(),
+  }
+  const {
+    data: dataListeners,
+    exit: exitListeners,
+    foreground: foregroundListeners,
+    state: stateListeners,
+    metadata: metadataListeners,
+    presentationReset: presentationResetListeners,
+    presentationResetCommitted: presentationResetCommittedListeners,
+  } = listeners
 
-  const routes = new Map<string, SessionRoute>()
-  const homeSessionIdByRemote = new Map<string, string>()
-  const remoteByHomeSessionId = new Map<string, { endpointId: string; remoteSessionId: string }>()
-  const retiredRemoteCursorByHomeSessionId = new Map<
-    string,
-    { endpointId: string; remoteSessionId: string; cursor: number | null }
-  >()
-  const recoveryCheckpointFence = createRemoteRecoveryCheckpointFence()
-  const pendingPresentationTransitionByRemote = new Map<
-    string,
-    { homeSessionId: string; settle: (committed?: boolean) => void }
-  >()
+  const state: RemoteSessionRoutingState = {
+    routes: new Map(),
+    homeSessionIdByRemote: new Map(),
+    remoteByHomeSessionId: new Map(),
+    retiredRemoteCursorByHomeSessionId: new Map(),
+    pendingPresentationTransitionByRemote: new Map(),
+    recoveryCheckpointFence: createRemoteRecoveryCheckpointFence(),
+    shellInputReadiness: new ShellInputReadiness(),
+  }
+  const {
+    routes,
+    homeSessionIdByRemote,
+    remoteByHomeSessionId,
+    retiredRemoteCursorByHomeSessionId,
+    pendingPresentationTransitionByRemote,
+    recoveryCheckpointFence,
+    shellInputReadiness,
+  } = state
   const launchArtifactOwner = new AgentLaunchArtifactOwner(error => {
     const detail = error instanceof Error ? (error.stack ?? error.message) : String(error)
     process.stderr.write(`[opencove] failed to dispose Agent launch artifacts: ${detail}\n`)
@@ -109,109 +114,12 @@ export function createMultiEndpointPtyRuntime(options: {
     if (existing) {
       return existing
     }
-
-    const created = new RemotePtyEndpointProxy({
+    const created = createRemotePtyEndpointBridge({
       endpointId,
       topology: options.topology,
-      emitData: (remoteSessionId, data) => {
-        const homeSessionId = homeSessionIdByRemote.get(`${endpointId}:${remoteSessionId}`)
-        if (!homeSessionId) {
-          return
-        }
-        shellInputReadiness.markReady(homeSessionId)
-        dataListeners.forEach(listener => listener({ sessionId: homeSessionId, data }))
-      },
-      emitExit: (remoteSessionId, exitCode) => {
-        const remoteKey = `${endpointId}:${remoteSessionId}`
-        const homeSessionId = homeSessionIdByRemote.get(remoteKey)
-        if (!homeSessionId) {
-          return
-        }
-
-        retiredRemoteCursorByHomeSessionId.set(homeSessionId, {
-          endpointId,
-          remoteSessionId,
-          cursor: created.getReplayCursor(remoteSessionId),
-        })
-        homeSessionIdByRemote.delete(remoteKey)
-        remoteByHomeSessionId.delete(homeSessionId)
-        routes.delete(homeSessionId)
-        shellInputReadiness.forget(homeSessionId)
-        created.forget(remoteSessionId)
-
-        exitListeners.forEach(listener => listener({ sessionId: homeSessionId, exitCode }))
-      },
-      emitForeground: (remoteSessionId, event) => {
-        const homeSessionId = homeSessionIdByRemote.get(`${endpointId}:${remoteSessionId}`)
-        if (!homeSessionId) {
-          return
-        }
-        foregroundListeners.forEach(listener => listener({ ...event, sessionId: homeSessionId }))
-      },
-      emitState: (remoteSessionId, event) => {
-        const homeSessionId = homeSessionIdByRemote.get(`${endpointId}:${remoteSessionId}`)
-        if (!homeSessionId) {
-          return
-        }
-
-        stateListeners.forEach(listener => listener({ ...event, sessionId: homeSessionId }))
-      },
-      emitMetadata: (remoteSessionId, metadata) => {
-        const homeSessionId = homeSessionIdByRemote.get(`${endpointId}:${remoteSessionId}`)
-        if (!homeSessionId) {
-          return
-        }
-
-        metadataListeners.forEach(listener =>
-          listener({
-            ...metadata,
-            sessionId: homeSessionId,
-          }),
-        )
-      },
-      emitPresentationReset: async (remoteSessionId, snapshot) => {
-        const remoteKey = `${endpointId}:${remoteSessionId}`
-        const homeSessionId = homeSessionIdByRemote.get(remoteKey)
-        if (!homeSessionId) {
-          return
-        }
-        const settle = recoveryCheckpointFence.beginPresentationTransition(homeSessionId)
-        pendingPresentationTransitionByRemote.set(remoteKey, { homeSessionId, settle })
-        try {
-          await Promise.all(
-            [...presentationResetListeners].map(
-              async listener =>
-                await listener({
-                  sessionId: homeSessionId,
-                  snapshot: { ...snapshot, sessionId: homeSessionId },
-                }),
-            ),
-          )
-        } catch (error) {
-          if (pendingPresentationTransitionByRemote.get(remoteKey)?.settle === settle) {
-            pendingPresentationTransitionByRemote.delete(remoteKey)
-          }
-          settle(false)
-          throw error
-        }
-      },
-      emitPresentationResetCommitted: (remoteSessionId, committed) => {
-        const remoteKey = `${endpointId}:${remoteSessionId}`
-        const transition = pendingPresentationTransitionByRemote.get(remoteKey)
-        if (transition) {
-          pendingPresentationTransitionByRemote.delete(remoteKey)
-          transition.settle(committed)
-        }
-        const homeSessionId = homeSessionIdByRemote.get(remoteKey) ?? transition?.homeSessionId
-        if (!homeSessionId) {
-          return
-        }
-        presentationResetCommittedListeners.forEach(listener =>
-          listener({ sessionId: homeSessionId, committed }),
-        )
-      },
+      state,
+      listeners,
     })
-
     proxiesByEndpointId.set(endpointId, created)
     return created
   }
@@ -231,6 +139,13 @@ export function createMultiEndpointPtyRuntime(options: {
 
   const disposeLocalForegroundListener = options.localRuntime.onForeground?.(event => {
     foregroundListeners.forEach(listener => listener(event))
+  })
+
+  const transcripts = new ClaudeTranscriptChannel()
+  const disposeTranscripts = options.localRuntime.onClaudeTranscript?.(transcripts.emit)
+  const disposeHookTranscripts = (options.agentStateSources ?? []).flatMap(source => {
+    const dispose = source.onClaudeTranscript?.(transcripts.emit)
+    return dispose ? [dispose] : []
   })
 
   const disposeLocalStateListener = options.localRuntime.onState?.(event => {
@@ -256,11 +171,25 @@ export function createMultiEndpointPtyRuntime(options: {
         localSessionRegistrations.begin(),
         registeredSessionId => routes.set(registeredSessionId, { kind: 'local' }),
       )
+      if (spawnOptions.agentProvider) {
+        metadataListeners.forEach(listener =>
+          listener({ sessionId, resumeSessionId: null, agentProvider: spawnOptions.agentProvider }),
+        )
+        stateListeners.forEach(listener =>
+          listener({
+            sessionId,
+            agentProvider: spawnOptions.agentProvider,
+            source: 'launch',
+            state: spawnOptions.initialAgentState ?? 'standby',
+          }),
+        )
+      }
       return { sessionId }
     },
     waitForShellReady: async sessionId => {
       await shellInputReadiness.wait(sessionId)
     },
+    getSessionRoute: sessionId => readSessionRoute(state, sessionId),
     registerRemoteSession: ({ endpointId, remoteSessionId }) => {
       const homeSessionId = randomUUID()
       recoveryCheckpointFence.reset(homeSessionId)
@@ -388,6 +317,14 @@ export function createMultiEndpointPtyRuntime(options: {
       }
     },
     kill: sessionId => {
+      // Exited remote windows retain a cursor identity, not a live route. Cleanup
+      // must still reach the Worker that owns their observed descendants.
+      const retired = retiredRemoteCursorByHomeSessionId.get(sessionId)
+      if (!routes.has(sessionId) && retired) {
+        getProxy(retired.endpointId).kill(retired.remoteSessionId)
+        retiredRemoteCursorByHomeSessionId.delete(sessionId)
+        return
+      }
       const route = routes.get(sessionId)
       if (!route || route.kind === 'local') {
         options.localRuntime.kill(sessionId)
@@ -399,6 +336,7 @@ export function createMultiEndpointPtyRuntime(options: {
     onData: listener => subscribePtyRuntimeListener(dataListeners, listener),
     onExit: listener => subscribePtyRuntimeListener(exitListeners, listener),
     onForeground: listener => subscribePtyRuntimeListener(foregroundListeners, listener),
+    onClaudeTranscript: transcripts.subscribe,
     onState: listener => subscribePtyRuntimeListener(stateListeners, listener),
     onMetadata: listener => subscribePtyRuntimeListener(metadataListeners, listener),
     onPresentationReset: listener => {
@@ -442,6 +380,9 @@ export function createMultiEndpointPtyRuntime(options: {
       disposeLocalDataListener()
       disposeLocalExitListener()
       disposeLocalForegroundListener?.()
+      disposeHookTranscripts.forEach(dispose => dispose())
+      disposeTranscripts?.()
+      transcripts.dispose()
       disposeLocalStateListener?.()
       disposeLocalMetadataListener?.()
       agentSourceDisposers.forEach(disposeListener => disposeListener())
@@ -468,7 +409,7 @@ export function createMultiEndpointPtyRuntime(options: {
 
       if (options.disposeLocalRuntime) {
         try {
-          options.localRuntime.dispose?.()
+          return options.localRuntime.dispose?.()
         } catch {
           // ignore
         }

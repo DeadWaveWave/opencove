@@ -1,8 +1,19 @@
+import { localCanvasResidentContext } from '../sessionSpawnIdentityContext'
 import type { AgentLaunchArtifactScope } from '../../../../contexts/agent/application/services/AgentLaunchArtifactScope'
 import { AgentLaunchArtifactScope as ArtifactScope } from '../../../../contexts/agent/application/services/AgentLaunchArtifactScope'
 import type { TerminalAgentActivityEnvironmentService } from '../../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityEnvironmentService'
 import type { ControlSurfacePtyRuntime } from './sessionPtyRuntime'
 import type { TerminalRuntimeKind } from '../../../../shared/contracts/dto'
+import { publicTerminalSpawnError } from '../../../../shared/errors/terminalSpawnError'
+import type { ControlSurfaceContext } from '../types'
+
+/** Preserve both authorities across activity setup until the physical spawn boundary. */
+export function composeTerminalSpawnGuard(ctx: ControlSurfaceContext): () => void {
+  return () => {
+    ctx.assertActive?.()
+    ctx.terminalSpawnLifecycle?.assertActive()
+  }
+}
 
 export async function prepareTerminalAgentActivitySpawn(options: {
   activity: TerminalAgentActivityEnvironmentService | undefined
@@ -14,6 +25,8 @@ export async function prepareTerminalAgentActivitySpawn(options: {
   interactiveShell: boolean
   runtimeKind?: TerminalRuntimeKind
   rows: number
+  assertActive?: () => void
+  onSpawned?: (sessionId: string) => void
 }): Promise<{
   commit: (sessionId: string) => void
   launchArtifacts?: AgentLaunchArtifactScope
@@ -45,6 +58,7 @@ export async function prepareTerminalAgentActivitySpawn(options: {
     command: options.command,
     cwd: options.cwd,
     environment: options.env,
+    residentContext: localCanvasResidentContext(),
     interactiveShell: options.interactiveShell,
     ...(options.runtimeKind ? { runtimeKind: options.runtimeKind } : {}),
   })
@@ -70,10 +84,21 @@ export async function spawnTerminalWithActivity(
   options: Parameters<typeof prepareTerminalAgentActivitySpawn>[0],
 ): Promise<{ sessionId: string }> {
   const prepared = await prepareTerminalAgentActivitySpawn(options)
-  const spawned = await runtime.spawnSession({
-    ...prepared.spawn,
-    ...(prepared.launchArtifacts ? { launchArtifacts: prepared.launchArtifacts } : {}),
-  })
+  try {
+    options.assertActive?.()
+  } catch (error) {
+    await prepared.launchArtifacts?.dispose()
+    throw error
+  }
+  const spawned = await runtime
+    .spawnSession({
+      ...prepared.spawn,
+      ...(prepared.launchArtifacts ? { launchArtifacts: prepared.launchArtifacts } : {}),
+    })
+    .catch(error => {
+      throw publicTerminalSpawnError(error, 'terminal.spawn_failed')
+    })
+  options.onSpawned?.(spawned.sessionId)
   prepared.commit(spawned.sessionId)
   return spawned
 }

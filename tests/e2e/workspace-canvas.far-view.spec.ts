@@ -13,59 +13,18 @@ import {
 } from './workspace-canvas.helpers'
 import { hoverCanvasPane } from './workspace-canvas.zoom.helpers'
 import {
+  continuousWheelGesture,
+  lodOf,
+  setZoom,
+  SYNC_REFRESH_NAME,
+} from './workspace-canvas.far-view.helpers'
+import {
   closeWebsiteTestServer,
   enableWebsiteWindowPolicy,
 } from './workspace-canvas.website-window.shared'
 
 const TERMINAL = 'far-view-terminal'
 const NOTE = 'far-view-note'
-
-async function setZoom(window: Page, zoom: number) {
-  expect(
-    await window.evaluate(next => window.__opencoveWorkspaceCanvasTestApi?.setZoom(next), zoom),
-  ).toBe(true)
-}
-
-async function continuousWheelGesture(window: Page, deltaY: number, reactivate = false) {
-  const point = await hoverCanvasPane(window)
-  return await window.locator('.workspace-canvas .react-flow__pane').evaluate(
-    async (pane, gesture) => {
-      const rect = pane.getBoundingClientRect()
-      const clientX = rect.left + gesture.point.x
-      const clientY = rect.top + gesture.point.y
-      if (document.elementFromPoint(clientX, clientY) !== pane) {
-        throw new Error('Continuous wheel gesture must hit the canvas pane')
-      }
-      // Input and the freeze debounce share the renderer clock. A descheduled test runner
-      // must neither split one gesture into two nor sample "during" after it has thawed.
-      for (let step = 0; step < 15; step += 1) {
-        if (gesture.reactivate && step % 4 === 3) {
-          const website = document.querySelector('.website-node__viewport')
-          if (!website) {
-            throw new Error('Missing active website viewport')
-          }
-          // Re-enter the real activation path with the same selected website. Selection is
-          // unchanged; republishing it must not rebuild every window during the gesture.
-          website.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0 }))
-        }
-        pane.dispatchEvent(
-          new WheelEvent('wheel', {
-            deltaY: gesture.deltaY,
-            clientX,
-            clientY,
-            bubbles: true,
-            cancelable: true,
-          }),
-        )
-        // Let React commit each frame, including a regression on any intermediate wheel.
-        // eslint-disable-next-line no-await-in-loop
-        await new Promise(resolve => setTimeout(resolve, 20))
-      }
-      return window.__opencoveWorkspaceCanvasTestApi!.getWindowCommitCounts()
-    },
-    { deltaY, point, reactivate },
-  )
-}
 
 /** The terminal's runtime identity and both ends of its size: xterm in the renderer, PTY in main. */
 async function readTerminal(window: Page) {
@@ -82,9 +41,6 @@ async function readTerminal(window: Page) {
     }
   }, TERMINAL)
 }
-
-const lodOf = (window: Page) =>
-  window.locator('.workspace-canvas').evaluate(canvas => canvas.getAttribute('data-cove-lod'))
 
 test('far view draws windows as tiles and leaves running terminals untouched', async () => {
   const { electronApp, window } = await launchApp()
@@ -134,12 +90,6 @@ test('far view draws windows as tiles and leaves running terminals untouched', a
       `.react-flow__node[data-id="${TERMINAL}"] .cove-node-presentation__runtime`,
     )
     await expect(runtime).toHaveCSS('content-visibility', 'hidden')
-    // The title stays legible on screen: 15px, capped by the tile (12% of a 460px window).
-    const title = await terminalTile
-      .locator('.workspace-far-tile__title')
-      .evaluate(element => element.getBoundingClientRect().height)
-    expect(title).toBeGreaterThan(9)
-    expect(title).toBeLessThan(40)
     expect(await readTerminal(window)).toEqual(before)
 
     // Hysteresis: far until above 28%.
@@ -249,7 +199,10 @@ async function checkZoomWindowCommits(reducedTransparency: boolean) {
     if (reducedTransparency) {
       const session = await window.context().newCDPSession(window)
       await session.send('Emulation.setEmulatedMedia', {
-        features: [{ name: 'prefers-reduced-transparency', value: 'reduce' }],
+        features: [
+          { name: 'prefers-reduced-transparency', value: 'reduce' },
+          { name: 'prefers-reduced-motion', value: 'no-preference' },
+        ],
       })
     }
     await clearAndSeedWorkspace(
@@ -436,6 +389,12 @@ async function checkZoomWindowCommits(reducedTransparency: boolean) {
     // Model a descheduled test runner without consuming CPU or blocking the renderer.
     execFileSync(process.execPath, ['-e', 'setTimeout(() => {}, 500)'], { timeout: 5_000 })
     const activeDuring = await activeGesture
+    if (reducedTransparency) {
+      // Observe the accepted refresh in the renderer before counting its window commits.
+      await expect(window.getByTestId(`workspace-item-${seededWorkspaceId}`)).toContainText(
+        SYNC_REFRESH_NAME,
+      )
+    }
     await expect.poll(counts).toEqual({ media: 2 })
     const activeAfter = await counts()
     // eslint-disable-next-line no-console -- Keep commit counts in the E2E evidence.
@@ -480,8 +439,22 @@ async function checkZoomWindowCommits(reducedTransparency: boolean) {
       contentType: 'image/png',
     })
   } finally {
-    await electronApp.close()
-    await closeWebsiteTestServer(server)
+    try {
+      await testInfo.attach('window-commit-reasons', {
+        body: JSON.stringify(
+          await window.evaluate(() => ({
+            counts: window.__opencoveWorkspaceCanvasTestApi?.getWindowCommitCounts(),
+            records: window.__opencoveWorkspaceCanvasTestApi?.getWindowCommitRecords(),
+          })),
+          null,
+          2,
+        ),
+        contentType: 'application/json',
+      })
+    } finally {
+      await electronApp.close()
+      await closeWebsiteTestServer(server)
+    }
   }
 }
 

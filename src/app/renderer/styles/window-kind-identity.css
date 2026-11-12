@@ -1,9 +1,8 @@
 /*
  * Kind and label are separate channels (Tide phase 3).
- * - Kind (what the window is): the header's KindTile and a 9% header tint.
+ * - Kind (what the window is): the header's KindTile and a 9% header wash.
  * - Label (how you sort it): the window frame and a short flag at the top.
- * Kind never draws the frame and labels never colour the tile. Generated families (Cove) use
- * both channels; hand-written themes such as Pixel keep their own identity decoration.
+ * Kind never draws the frame and labels never colour the tile.
  */
 .cove-window-header {
   --cove-window-kind-tint: transparent;
@@ -29,9 +28,27 @@
   --cove-window-kind-tint: var(--cove-kind-media-solid, transparent);
 }
 
+/* The prototype's kind wash (`.n-head`): the kind colour at the header's left edge, gone by 72% of
+   its width. It sits over whatever the header paints and under its content, and fades out over
+   the header's lower half, so it never ends in a line where the reading plate rises into the
+   header (window-plate.css). */
 :root[data-cove-family='cove'] .cove-window-header {
-  /* An inset overlay tints whatever surface each kind's header already paints. */
-  box-shadow: inset 0 0 0 100vmax color-mix(in srgb, var(--cove-window-kind-tint) 9%, transparent);
+  position: relative;
+  isolation: isolate;
+}
+
+:root[data-cove-family='cove'] .cove-window-header::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--cove-window-kind-tint) 9%, transparent),
+    transparent 72%
+  );
+  mask: linear-gradient(180deg, var(--cove-mask-opaque) 40%, transparent);
+  pointer-events: none;
 }
 
 /* Unlabeled windows have a neutral frame and no flag; labels draw a firm frame and a flag. */

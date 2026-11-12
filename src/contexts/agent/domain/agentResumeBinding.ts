@@ -84,7 +84,11 @@ export function resolveLaunchedAgentResumeBinding(
 export function resolveAgentMetadataResumeBindingUpdate(
   binding: ResumeSessionBindingLike,
   event: Pick<TerminalSessionMetadataEvent, 'resumeSessionId' | 'piSnapshot'>,
+  ownership?: { activationId: string; runtimeSessionId: string | null } | null,
 ): ReturnType<typeof resolveObservedResumeSessionBindingUpdate> {
+  if (ownership) {
+    return null
+  }
   const nativePi = normalizePiAgentSnapshot(event.piSnapshot)
   const authority =
     nativePi &&
@@ -130,4 +134,16 @@ export function resolveObservedResumeSessionBindingUpdate(
     resumeSessionId: observedResumeSessionId,
     resumeSessionIdVerified: true,
   }
+}
+
+/** Policy only: the caller must validate a private owner-issued qualification ticket first. */
+export function resolveQualifiedClaudeClearResumeBindingUpdate(
+  binding: ResumeSessionBindingLike,
+  target: Readonly<{ resumeSessionId: string }>,
+): VerifiedResumeSessionBindingUpdate | null {
+  const id = target.resumeSessionId.trim()
+  if (binding.provider !== 'claude-code' || !id || id === binding.resumeSessionId) {
+    return null
+  }
+  return { resumeSessionId: id, resumeSessionIdVerified: true }
 }

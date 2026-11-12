@@ -31,7 +31,7 @@ export async function seedIdentityEndpointFixture(
   await seedWorkspaceState(page, {
     activeWorkspaceId: EXPANSION_PROJECT,
     settings: {
-      uiTheme: 'pixel',
+      uiTheme: 'dark',
       uiFontSize: 16 * fontScale,
       // Use short localized placeholder copy to measure actual text centering,
       // rather than a Range extending beyond the compact caption's ellipsis.
@@ -190,8 +190,8 @@ export async function readIdentityFrame(
     )!
     const glyph = root.querySelector(
       mode === 'compact'
-        ? '.cove-collapsed-window__icon > svg[data-cove-pixel-glyph]'
-        : '.cove-node-kind-icon[data-cove-pixel-glyph]',
+        ? '.cove-collapsed-window__icon > svg[data-cove-node-kind-icon]'
+        : 'svg.cove-node-kind-icon[data-cove-node-kind-icon]',
     )
     const title = root.querySelector(
       mode === 'compact'
@@ -229,6 +229,12 @@ export async function readIdentityFrame(
       context.fillRect(0, 0, 1, 1)
       return { css, rgba: Array.from(context.getImageData(0, 0, 1, 1).data) }
     }
+    let lastText = text
+    for (let next = walker.nextNode(); next; next = walker.nextNode()) {
+      if (next.textContent?.trim()) {
+        lastText = next
+      }
+    }
     const range = document.createRange()
     range.setStart(text, 0)
     range.setEnd(text, Math.min(4, text.textContent!.length))
@@ -239,7 +245,13 @@ export async function readIdentityFrame(
     let visibleRight = allText.right
     // Range geometry includes overflowed text. Intersect actual clipping boxes
     // so a last-frame loss of ellipsis/clipping cannot masquerade as continuity.
-    for (let ancestor: Element | null = title; ancestor; ancestor = ancestor.parentElement) {
+    // Start from the run that holds the title's end: a padded title clips its words
+    // inside the padding, not at its own edge.
+    for (
+      let ancestor: Element | null = lastText.parentElement;
+      ancestor;
+      ancestor = ancestor.parentElement
+    ) {
       if (getComputedStyle(ancestor).overflowX !== 'visible') {
         const rect = ancestor.getBoundingClientRect()
         visibleLeft = Math.max(visibleLeft, rect.left)

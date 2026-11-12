@@ -1,3 +1,4 @@
+import type { AgentTurnArchive } from '../../../contexts/agent/application/AgentTurnArchive'
 import type { ControlSurfaceServerDisposable } from './controlSurfaceHttpServer.contract'
 import type { ControlSurface } from './controlSurface'
 
@@ -51,6 +52,7 @@ export interface ControlSurfacePtyClientCloseFilter {
 }
 
 export interface ControlSurfaceHttpRuntime extends ControlSurfaceServerDisposable {
+  readonly agentTurnArchive: AgentTurnArchive
   readonly token: string
   readonly appVersion: string | null
   readonly ready: Promise<void>

@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react'
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import postcss from 'postcss'
 import { act, render } from '@testing-library/react'
 import type { Terminal } from '@xterm/xterm'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -13,15 +14,31 @@ import {
 import { useTerminalThemeApplier } from '@/contexts/workspace/presentation/renderer/components/terminalNode/useTerminalThemeApplier'
 import { TERMINAL_ANSI_THEME_ENTRIES } from '@/contexts/workspace/presentation/renderer/components/terminalNode/terminalAnsiTheme'
 
-// Happy DOM does not inherit custom properties. Apply the production palette to
-// the exact terminal scope as well so this test exercises the real snapshot owner.
-const paletteCss = readFileSync(
-  resolve(
-    dirname(fileURLToPath(import.meta.url)),
-    '../../../src/app/renderer/styles/themes/pixel-light.terminal.css',
-  ),
-  'utf8',
-).replace(/:root[\s\S]*?\{/, ":root[data-cove-theme-id='pixel-light'] .terminal-node {")
+// Happy DOM does not inherit custom properties. Scope Cove light's generated ANSI palette to the
+// exact terminal node as well so this test exercises the real snapshot owner.
+const LIGHT_ANSI = (() => {
+  const colors = new Map<string, string>()
+  postcss
+    .parse(
+      readFileSync(
+        resolve(
+          dirname(fileURLToPath(import.meta.url)),
+          '../../../src/app/renderer/styles/themes/generated/cove.css',
+        ),
+        'utf8',
+      ),
+    )
+    .walkRules(":root[data-cove-family='cove'][data-cove-theme='light']", rule => {
+      rule.walkDecls(/^--cove-terminal-ansi-/, decl => {
+        colors.set(decl.prop, decl.value)
+      })
+    })
+  return colors
+})()
+const paletteCss = `:root[data-cove-theme='light'] .terminal-node { ${[...LIGHT_ANSI]
+  .map(([prop, value]) => `${prop}: ${value};`)
+  .join(' ')} }`
+const LIGHT_RED = LIGHT_ANSI.get('--cove-terminal-ansi-red')!
 
 const lightTheme = {
   background: '#f8fbfd',
@@ -55,7 +72,7 @@ function Harness({ terminal, revision }: { terminal: Terminal; revision: number 
 describe('terminal ANSI appearance ownership', () => {
   it('versions ANSI-only changes and never publishes a pending palette', () => {
     const value = resolveTerminalAppearanceValue({
-      themeId: 'pixel-light',
+      themeId: 'light',
       uiScheme: 'light',
       terminalThemeMode: 'sync-with-ui',
       xtermTheme: { ...lightTheme, red: '#934d5a' },
@@ -75,7 +92,7 @@ describe('terminal ANSI appearance ownership', () => {
 
   it('reads optional theme ANSI values but drops them for explicit dark terminal semantics', () => {
     document.documentElement.dataset.coveTheme = 'light'
-    document.documentElement.dataset.coveThemeId = 'pixel-light'
+    document.documentElement.dataset.coveThemeId = 'light'
     document.documentElement.style.setProperty('--cove-terminal-ansi-red', '#934d5a')
     document.documentElement.style.setProperty('--cove-terminal-ansi-bright-white', '#697480')
     const light = resolveCurrentTerminalAppearanceValue({ terminalThemeMode: 'sync-with-ui' })
@@ -90,7 +107,7 @@ describe('terminal ANSI appearance ownership', () => {
     expect(dark.xtermTheme).not.toHaveProperty('brightWhite')
   })
 
-  it('replaces ANSI overrides through the real theme applier and removes them on returning to Pixel', async () => {
+  it('replaces ANSI overrides through the real theme applier and removes them on returning to dark', async () => {
     const frames: FrameRequestCallback[] = []
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
       frames.push(callback)
@@ -103,16 +120,16 @@ describe('terminal ANSI appearance ownership', () => {
       refresh: vi.fn(),
     } as unknown as Terminal
     document.documentElement.dataset.coveTheme = 'light'
-    document.documentElement.dataset.coveThemeId = 'pixel-light'
+    document.documentElement.dataset.coveThemeId = 'light'
     const view = render(<Harness terminal={terminal} revision={1} />)
     act(() => frames.splice(0).forEach(frame => frame(performance.now())))
-    expect(terminal.options.theme?.red).toBe('#934d5a')
+    expect(terminal.options.theme?.red).toBe(LIGHT_RED)
     for (const [key] of TERMINAL_ANSI_THEME_ENTRIES) {
       expect(terminal.options.theme?.[key]).toMatch(/^#[0-9a-f]{6}$/)
     }
     await Promise.resolve()
     document.documentElement.dataset.coveTheme = 'dark'
-    document.documentElement.dataset.coveThemeId = 'pixel'
+    document.documentElement.dataset.coveThemeId = 'dark'
     view.rerender(<Harness terminal={terminal} revision={2} />)
     act(() => frames.splice(0).forEach(frame => frame(performance.now())))
     for (const [key] of TERMINAL_ANSI_THEME_ENTRIES) {

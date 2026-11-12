@@ -2,7 +2,12 @@ import React, { useCallback, useState } from 'react'
 import { Button } from '@app/renderer/components/ui/Button'
 import { TextAreaField, TextField } from '@app/renderer/components/ui/TextField'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
-import { ChevronDown, ChevronUp, Power } from 'lucide-react'
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  PlusIcon,
+  PowerIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import type { QuickPhrase } from '@contexts/settings/domain/agentSettings'
 import { SettingsModule } from '../SettingsGroup'
@@ -126,7 +131,7 @@ export function QuickPhrasesSubsection({
                 data-active={phrase.enabled ? 'true' : 'false'}
                 title={t('settingsPanel.quickMenu.phrases.enabled')}
               >
-                <Power className="settings-quick-menu__toggle-icon" aria-hidden="true" />
+                <PowerIcon className="settings-quick-menu__toggle-icon" />
                 <Toggle
                   data-testid={`settings-quick-phrase-enabled-${phrase.id}`}
                   checked={phrase.enabled}
@@ -149,7 +154,7 @@ export function QuickPhrasesSubsection({
                 aria-label={t('settingsPanel.agent.moveUp')}
                 onClick={() => onChangeQuickPhrases(moveItem(quickPhrases, index, index - 1))}
               >
-                <ChevronUp className="settings-agent-order__icon" aria-hidden="true" />
+                <ChevronUpIcon className="settings-agent-order__icon" />
               </button>
               <button
                 type="button"
@@ -159,7 +164,7 @@ export function QuickPhrasesSubsection({
                 aria-label={t('settingsPanel.agent.moveDown')}
                 onClick={() => onChangeQuickPhrases(moveItem(quickPhrases, index, index + 1))}
               >
-                <ChevronDown className="settings-agent-order__icon" aria-hidden="true" />
+                <ChevronDownIcon className="settings-agent-order__icon" />
               </button>
 
               <Button
@@ -185,11 +190,8 @@ export function QuickPhrasesSubsection({
       </div>
 
       <div style={{ marginTop: 12 }}>
-        <Button
-          variant="primary"
-          data-testid="settings-quick-phrase-add"
-          onClick={openNewPhraseEditor}
-        >
+        <Button data-testid="settings-quick-phrase-add" onClick={openNewPhraseEditor}>
+          <PlusIcon size={18} />
           {t('settingsPanel.quickMenu.phrases.add')}
         </Button>
       </div>

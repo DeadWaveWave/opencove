@@ -1,3 +1,4 @@
+import { confirmManagedClaudeRuntime } from '../../../utils/managedClaudeProjection'
 import { useCallback } from 'react'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
@@ -10,6 +11,7 @@ import type {
   WorkspaceSpaceState,
 } from '../../../types'
 import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
+import { cleanupFailedNodePlacement } from '../../../utils/managedClaudeLifecycle'
 import { findNearestFreePositionOnRight, inflateRect, type Rect } from '../../../utils/collision'
 import { SPACE_NODE_PADDING } from '../../../utils/spaceLayout'
 import { guardNodeFromSyncOverwrite } from '../../../utils/syncNodeGuards'
@@ -63,7 +65,9 @@ export function useWorkspaceCanvasNodeCreation({
   )
   const createNodeForSession = useCallback(
     async ({
+      nodeId,
       sessionId,
+      managedClaudeLifecycle,
       profileId,
       runtimeKind,
       terminalGeometry,
@@ -91,7 +95,7 @@ export function useWorkspaceCanvasNodeCreation({
         avoidRects: placement?.avoidRects,
       })
       if (resolvedPlacement.canPlace !== true) {
-        await window.opencoveApi.pty.kill({ sessionId })
+        await cleanupFailedNodePlacement({ sessionId, managedClaudeLifecycle })
         onShowMessage?.(t('messages.noTerminalSlotNearby'), 'warning')
         return null
       }
@@ -105,7 +109,7 @@ export function useWorkspaceCanvasNodeCreation({
           ? (agent?.expectedDirectory ?? agent?.executionDirectory ?? null)
           : (expectedDirectory?.trim() ?? executionDirectory?.trim() ?? null)
       const nextNode: Node<TerminalNodeData> = {
-        id: crypto.randomUUID(),
+        id: nodeId ?? crypto.randomUUID(),
         type: 'terminalNode',
         position: resolvedPlacement.placement,
         data: {
@@ -144,6 +148,14 @@ export function useWorkspaceCanvasNodeCreation({
         },
         draggable: true,
         selectable: false,
+      }
+      if (managedClaudeLifecycle) {
+        nextNode.data.managedClaudeBindingObservation = managedClaudeLifecycle.binding
+        const projected = await confirmManagedClaudeRuntime(nextNode.id, nextNode.data)
+        if (!projected) {
+          return null
+        }
+        nextNode.data = projected
       }
       guardNodeFromSyncOverwrite(nextNode.id, 2_500)
       setNodes(prevNodes => [...prevNodes, nextNode])

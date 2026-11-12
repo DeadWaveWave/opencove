@@ -1,3 +1,4 @@
+import { normalizeManagedClaudeResumeBindingOwnership } from '@shared/sync/managedClaudeResumeProjection'
 import { DEFAULT_AGENT_SETTINGS, type AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { PersistedAppState, WorkspaceState } from '../../types'
 import { DEFAULT_WORKSPACE_MINIMAP_VISIBLE } from '../../types'
@@ -75,6 +76,9 @@ export function toPersistedState(
           : [],
         nodes: workspace.nodes.map(node => {
           const sessionId =
+            normalizeOptionalString(
+              node.data.managedClaudeResumeBindingOwnership?.runtimeSessionId,
+            ) ??
             normalizeOptionalString(node.data.sessionId) ??
             (node.data.runtimeSessionBinding?.phase === 'preparing'
               ? normalizeOptionalString(node.data.runtimeSessionBinding.sessionId)
@@ -85,6 +89,7 @@ export function toPersistedState(
             ...(sessionId ? { sessionId } : {}),
             title: node.data.title,
             titlePinnedByUser: node.data.titlePinnedByUser === true,
+            titleIsLiteral: node.data.titleIsLiteral === true,
             position: node.position,
             width: node.data.width,
             height: node.data.height,
@@ -93,6 +98,15 @@ export function toPersistedState(
             runtimeKind: node.data.runtimeKind,
             terminalGeometry: normalizeTerminalGeometry(node.data.terminalGeometry),
             workerBinding: normalizeNodeWorkerBinding(node.data.workerBinding),
+            ...(normalizeManagedClaudeResumeBindingOwnership(
+              node.data.managedClaudeResumeBindingOwnership,
+            )
+              ? {
+                  managedClaudeResumeBindingOwnership: normalizeManagedClaudeResumeBindingOwnership(
+                    node.data.managedClaudeResumeBindingOwnership,
+                  ),
+                }
+              : {}),
             labelColorOverride: normalizeNodeLabelColorOverride(node.data.labelColorOverride),
             sidebarSortOrder:
               node.data.kind === 'agent'

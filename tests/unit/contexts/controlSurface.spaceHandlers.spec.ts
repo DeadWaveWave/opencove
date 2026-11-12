@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
+import { registerNodeControlHandlers } from '../../../src/app/main/controlSurface/handlers/nodeControlHandlers'
+import type { WorkerTopologyStore } from '../../../src/app/main/controlSurface/topology/topologyStore'
 import { registerSpaceHandlers } from '../../../src/app/main/controlSurface/handlers/spaceHandlers'
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
 import type { PersistenceStore } from '../../../src/platform/persistence/sqlite/PersistenceStore'
@@ -209,3 +211,167 @@ describe('control surface space handlers', () => {
     )
   })
 })
+
+it('shares compact task state with node list/get and excludes note contents', async () => {
+  const { toCanvasNodeDetail, toCanvasNodeSummary } =
+    await import('../../../src/contexts/workspace/application/nodeControl/nodeDtos')
+  const { normalizePersistedAppState } =
+    await import('../../../src/platform/persistence/sqlite/normalize')
+  const state = {
+    formatVersion: 1,
+    activeWorkspaceId: 'p',
+    settings: {},
+    workspaces: [
+      {
+        id: 'p',
+        name: 'P',
+        path: '/repo',
+        spaces: [
+          { id: 's', name: 'Main', nodeIds: ['task', 'note', 'website', 'agent', 'terminal'] },
+        ],
+        nodes: [
+          {
+            id: 'task',
+            title: 'Task',
+            kind: 'task',
+            position: { x: 0, y: 0 },
+            width: 320,
+            height: 240,
+            task: { requirement: 'Fix', status: 'doing', priority: 'high', tags: ['a'] },
+          },
+          {
+            id: 'note',
+            title: 'Note',
+            kind: 'note',
+            position: { x: 0, y: 0 },
+            width: 320,
+            height: 240,
+            task: { text: 'private long note' },
+          },
+          ...['website', 'agent', 'terminal'].map(kind => ({
+            id: kind,
+            kind,
+            title: kind,
+            position: { x: 0, y: 0 },
+            width: 320,
+            height: 240,
+            status: kind === 'website' ? null : 'running',
+            task: kind === 'website' ? { url: 'https://example.com', pinned: true } : null,
+          })),
+        ],
+      },
+    ],
+  }
+  const normalized = normalizePersistedAppState(state)!
+  const workspace = normalized.workspaces[0]
+  const node = workspace.nodes.find(n => n.id === 'task')!
+  const list = toCanvasNodeSummary({ node, workspace })
+  const get = toCanvasNodeDetail({ node, workspace })
+  const surface = createControlSurface()
+  const store = createStore(state)
+  registerSpaceHandlers(surface, async () => store)
+  registerNodeControlHandlers(surface, {
+    topology: {
+      listEndpoints: async () => ({ endpoints: [] }),
+      listMounts: async () => ({ mounts: [] }),
+    } as unknown as WorkerTopologyStore,
+    getPersistenceStore: async () => store,
+  })
+  const listed = await surface.invoke(ctx, {
+    kind: 'query',
+    id: 'node.list',
+    payload: { projectId: 'p' },
+  })
+  const detail = await surface.invoke(ctx, {
+    kind: 'query',
+    id: 'node.get',
+    payload: { nodeId: 'task' },
+  })
+  expect(listed.ok, JSON.stringify(listed)).toBe(true)
+  expect(listed).toMatchObject({
+    ok: true,
+    value: {
+      nodes: [
+        {
+          id: 'task',
+          data: {
+            kind: 'task',
+            requirement: 'Fix',
+            status: 'doing',
+            priority: 'high',
+            tags: ['a'],
+          },
+        },
+        { id: 'note', data: { kind: 'note' } },
+        { id: 'website', data: { kind: 'website', url: 'https://example.com' } },
+        { id: 'agent', data: { kind: 'agent' } },
+        { id: 'terminal', data: { kind: 'terminal' } },
+      ],
+    },
+  })
+  expect(detail).toMatchObject({ ok: true, value: { node: { data: list.data } } })
+  const result = await surface.invoke(ctx, {
+    kind: 'query',
+    id: 'space.get',
+    payload: { spaceId: 's' },
+  })
+  expect(result).toMatchObject({
+    ok: true,
+    value: {
+      space: {
+        nodes: [
+          { id: 'task', data: list.data },
+          { id: 'note', data: { kind: 'note' } },
+          { id: 'website', data: { kind: 'website', url: 'https://example.com' } },
+          { id: 'agent', data: { kind: 'agent' } },
+          { id: 'terminal', data: { kind: 'terminal' } },
+        ],
+      },
+    },
+  })
+  expect(list.data).toMatchObject({
+    kind: 'task',
+    requirement: 'Fix',
+    status: 'doing',
+    priority: 'high',
+    tags: ['a'],
+  })
+  expect(get.data).toMatchObject(list.data!)
+  expect(JSON.stringify(result)).not.toContain('private long note')
+  expect(JSON.stringify(listed)).not.toContain('private long note')
+})
+
+it.each([null, { x: 62, y: 72, width: 420, height: 336 }])(
+  'exposes saved geometry separately from authority in get and list (%j)',
+  async rect => {
+    const boundary = {
+      allowedMountIds: ['mount'],
+      scopesByMountId: { mount: { rootPath: '/repo', rootUri: 'file:///repo' } },
+      allowedPluginIds: ['plugin'],
+      capabilities: ['read'],
+      trustLevel: 'restricted',
+    }
+    const surface = createControlSurface()
+    const store = createStore({
+      formatVersion: 1,
+      activeWorkspaceId: 'p',
+      settings: {},
+      workspaces: [
+        {
+          id: 'p',
+          name: 'P',
+          path: '/repo',
+          nodes: [],
+          spaces: [{ id: 's', name: 'S', nodeIds: [], rect, boundary }],
+        },
+      ],
+    })
+    registerSpaceHandlers(surface, async () => store)
+    expect(
+      await surface.invoke(ctx, { kind: 'query', id: 'space.get', payload: { spaceId: 's' } }),
+    ).toMatchObject({ ok: true, value: { space: { rect, boundary } } })
+    expect(
+      await surface.invoke(ctx, { kind: 'query', id: 'space.list', payload: { projectId: 'p' } }),
+    ).toMatchObject({ ok: true, value: { spaces: [{ rect, boundary }] } })
+  },
+)

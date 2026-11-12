@@ -124,6 +124,7 @@ describe('useHydrateAppState terminal profile recovery', () => {
     })
 
     expect(spawn).toHaveBeenCalledWith({
+      canvasNodeId: 'terminal-node-1',
       cwd: 'C:\\repo',
       profileId: 'wsl:ubuntu',
       cols: 80,

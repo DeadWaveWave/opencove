@@ -61,7 +61,7 @@ it('keeps view context and font resources stable across repeated theme events an
   const context = {
     theme: 'dark',
     themeId: 'plugin:studio:night',
-    baseThemeId: 'pixel',
+    baseThemeId: 'dark',
     themeVersion: 1,
     tokens: { '--cove-font-ui': 'Studio Sans' },
     colors: { '--cove-accent': '#334455' },

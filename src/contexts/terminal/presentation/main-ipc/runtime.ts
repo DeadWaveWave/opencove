@@ -1,3 +1,7 @@
+import {
+  ClaudeTranscriptChannel,
+  type ClaudeTranscriptPort,
+} from '../../../../shared/runtime/agentHook/claudeTranscript'
 import { webContents } from 'electron'
 import process from 'node:process'
 import type { AgentSessionDiscovery } from '../../../agent/application/ports/AgentSessionDiscovery'
@@ -49,7 +53,7 @@ export interface StartSessionStateWatcherInput {
   geminiDiscoveryCursor?: GeminiSessionDiscoveryCursor | null
 }
 
-export interface PtyRuntime {
+export interface PtyRuntime extends ClaudeTranscriptPort {
   listProfiles?: () => Promise<ListTerminalProfilesResult>
   spawnTerminalSession?: (input: SpawnTerminalInput) => Promise<SpawnTerminalResult>
   spawnSession: (options: SpawnPtyOptions) => Promise<{ sessionId: string }>
@@ -74,7 +78,7 @@ export interface PtyRuntime {
   startSessionStateWatcher: (input: StartSessionStateWatcherInput) => void
   disposeSessionStateWatcher: (sessionId: string) => void
   debugCrashHost?: () => void | Promise<void>
-  dispose: () => void
+  dispose: () => void | Promise<void>
 }
 
 function reportStateWatcherIssue(message: string): void {
@@ -96,6 +100,7 @@ export function createPtyRuntime(deps: {
     process.env.OPENCOVE_TERMINAL_DIAGNOSTICS === '1' ||
     process.env.OPENCOVE_TERMINAL_INPUT_DIAGNOSTICS === '1'
   const warnedWriteSessions = new Map<string, string>()
+  const transcripts = new ClaudeTranscriptChannel()
   const externalStateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
   const externalMetadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
 
@@ -151,6 +156,7 @@ export function createPtyRuntime(deps: {
     sessionDiscovery: deps.sessionDiscovery,
     sendToAllWindows,
     reportIssue: reportStateWatcherIssue,
+    onClaudeTranscript: transcripts.emit,
     onState: event => {
       externalStateListeners.forEach(listener => listener(event))
     },
@@ -341,6 +347,7 @@ export function createPtyRuntime(deps: {
       const { sessionId } = await sessionRegistrations
         .spawn({
           cwd: options.cwd,
+          sessionKind: options.agentProvider ? 'agent' : options.sessionKind,
           command,
           args,
           env,
@@ -414,17 +421,14 @@ export function createPtyRuntime(deps: {
         externalForegroundListeners.delete(listener)
       }
     },
+    onClaudeTranscript: transcripts.subscribe,
     onState: listener => {
       externalStateListeners.add(listener)
-      return () => {
-        externalStateListeners.delete(listener)
-      }
+      return () => void externalStateListeners.delete(listener)
     },
     onMetadata: listener => {
       externalMetadataListeners.add(listener)
-      return () => {
-        externalMetadataListeners.delete(listener)
-      }
+      return () => void externalMetadataListeners.delete(listener)
     },
     attach: async (contentsId, sessionId, afterSeq) => {
       manager.attach(contentsId, sessionId, afterSeq)
@@ -485,11 +489,12 @@ export function createPtyRuntime(deps: {
       externalDataListeners.clear()
       externalExitListeners.clear()
       externalForegroundListeners.clear()
+      transcripts.dispose()
       externalStateListeners.clear()
       externalMetadataListeners.clear()
       warnedWriteSessions.clear()
       geometryCommitter.dispose()
-      processEngine.dispose()
+      return processEngine.dispose()
     },
   }
 }

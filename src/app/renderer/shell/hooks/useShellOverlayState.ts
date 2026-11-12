@@ -8,6 +8,7 @@ export function useShellOverlayState(): {
   isWorkspaceSearchOpen: boolean
   isSpaceArchivesOpen: boolean
   isAddProjectWizardOpen: boolean
+  isAgentActivityOpen: boolean
   addProjectWizardAnchor: { x: number; y: number }
   hasBlockingOverlay: boolean
   toggleCommandCenter: () => void
@@ -24,6 +25,7 @@ export function useShellOverlayState(): {
   closeSpaceArchives: () => void
   openAddProjectWizard: (anchor?: { x: number; y: number }) => void
   closeAddProjectWizard: () => void
+  setAgentActivityOpen: (open: boolean) => void
   closeTransientOverlays: () => void
 } {
   const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false)
@@ -33,6 +35,8 @@ export function useShellOverlayState(): {
   const [isWorkspaceSearchOpen, setIsWorkspaceSearchOpen] = useState(false)
   const [isSpaceArchivesOpen, setIsSpaceArchivesOpen] = useState(false)
   const [isAddProjectWizardOpen, setIsAddProjectWizardOpen] = useState(false)
+  // The header's agent list: it shares the top right with the control center, so one closes the other.
+  const [isAgentActivityOpen, setIsAgentActivityOpen] = useState(false)
   const [addProjectWizardAnchor, setAddProjectWizardAnchor] = useState({ x: 24, y: 64 })
 
   const closeCommandCenter = useCallback((): void => setIsCommandCenterOpen(false), [])
@@ -51,9 +55,11 @@ export function useShellOverlayState(): {
     setIsSpaceArchivesOpen(false)
     setIsIssueReportOpen(false)
     setIsAddProjectWizardOpen(false)
+    setIsAgentActivityOpen(false)
   }, [])
 
   const toggleCommandCenter = useCallback((): void => {
+    setIsAgentActivityOpen(false)
     setIsWorkspaceSearchOpen(false)
     setIsControlCenterOpen(false)
     setIsPerformanceMonitorOpen(false)
@@ -63,6 +69,7 @@ export function useShellOverlayState(): {
   }, [])
 
   const toggleControlCenter = useCallback((): void => {
+    setIsAgentActivityOpen(false)
     setIsCommandCenterOpen(false)
     setIsWorkspaceSearchOpen(false)
     setIsSpaceArchivesOpen(false)
@@ -72,6 +79,7 @@ export function useShellOverlayState(): {
   }, [])
 
   const togglePerformanceMonitor = useCallback((): void => {
+    setIsAgentActivityOpen(false)
     setIsCommandCenterOpen(false)
     setIsWorkspaceSearchOpen(false)
     setIsControlCenterOpen(false)
@@ -81,6 +89,7 @@ export function useShellOverlayState(): {
   }, [])
 
   const toggleIssueReport = useCallback((): void => {
+    setIsAgentActivityOpen(false)
     setIsCommandCenterOpen(false)
     setIsWorkspaceSearchOpen(false)
     setIsControlCenterOpen(false)
@@ -90,6 +99,7 @@ export function useShellOverlayState(): {
   }, [])
 
   const openWorkspaceSearch = useCallback((): void => {
+    setIsAgentActivityOpen(false)
     setIsCommandCenterOpen(false)
     setIsControlCenterOpen(false)
     setIsPerformanceMonitorOpen(false)
@@ -99,12 +109,25 @@ export function useShellOverlayState(): {
   }, [])
 
   const openSpaceArchives = useCallback((): void => {
+    setIsAgentActivityOpen(false)
     setIsCommandCenterOpen(false)
     setIsWorkspaceSearchOpen(false)
     setIsControlCenterOpen(false)
     setIsPerformanceMonitorOpen(false)
     setIsIssueReportOpen(false)
     setIsSpaceArchivesOpen(true)
+  }, [])
+
+  const setAgentActivityOpen = useCallback((open: boolean): void => {
+    if (open) {
+      setIsCommandCenterOpen(false)
+      setIsWorkspaceSearchOpen(false)
+      setIsControlCenterOpen(false)
+      setIsPerformanceMonitorOpen(false)
+      setIsSpaceArchivesOpen(false)
+      setIsIssueReportOpen(false)
+    }
+    setIsAgentActivityOpen(open)
   }, [])
 
   const openAddProjectWizard = useCallback(
@@ -126,6 +149,7 @@ export function useShellOverlayState(): {
     isWorkspaceSearchOpen,
     isSpaceArchivesOpen,
     isAddProjectWizardOpen,
+    isAgentActivityOpen,
     addProjectWizardAnchor,
     hasBlockingOverlay:
       isCommandCenterOpen ||
@@ -147,6 +171,7 @@ export function useShellOverlayState(): {
     closeSpaceArchives,
     openAddProjectWizard,
     closeAddProjectWizard,
+    setAgentActivityOpen,
     closeTransientOverlays,
   }
 }

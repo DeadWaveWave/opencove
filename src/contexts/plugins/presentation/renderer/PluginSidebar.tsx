@@ -1,7 +1,11 @@
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import { isPluginContributionEnabled } from '@contexts/settings/domain/pluginSettings'
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react'
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  RefreshIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import type { PluginSidebarDeclaration, PluginSidebarItem } from '../../domain/pluginSidebar'
 import type { PluginManifest } from '../../domain/pluginTypes'
@@ -42,7 +46,11 @@ function SidebarItems({
                   })
                 }
               >
-                {expanded.has(item.id) ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                {expanded.has(item.id) ? (
+                  <ChevronDownIcon size={12} />
+                ) : (
+                  <ChevronRightIcon size={12} />
+                )}
               </button>
             ) : (
               <span className="plugin-sidebar__leaf" aria-hidden="true" />
@@ -200,9 +208,9 @@ function SidebarSection({
             }
           }}
         >
-          <PluginIcon pluginId={plugin.id} size={14} />
+          <PluginIcon pluginId={plugin.id} size={18} />
           <span>{section.title}</span>
-          {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          {expanded ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />}
         </button>
         {expanded ? (
           <button
@@ -213,7 +221,7 @@ function SidebarSection({
             title={t('common.refresh')}
             onClick={() => void load()}
           >
-            <RefreshCw size={12} aria-hidden="true" />
+            <RefreshIcon size={12} />
           </button>
         ) : null}
       </header>

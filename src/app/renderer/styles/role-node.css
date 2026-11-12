@@ -1,4 +1,5 @@
 .role-node {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 320px;
@@ -131,8 +132,8 @@
 }
 
 .role-node__run svg {
-  width: 14px;
-  height: 14px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
 }
 
 .role-node__history {

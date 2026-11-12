@@ -1,16 +1,24 @@
 import React from 'react'
-import { Circle, EyeOff, LoaderCircle, MoreHorizontal, Pin, Pause } from 'lucide-react'
+import { agentAttentionLabelKey } from '@contexts/workspace/presentation/renderer/utils/agentAttentionLabel'
+import {
+  CircleIcon,
+  EyeOffIcon,
+  MoreIcon,
+  PauseIcon,
+  PinIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from '@app/renderer/i18n'
 import { AGENT_PROVIDER_LABEL } from '@contexts/settings/domain/agentSettings'
 import { KindTile } from '@app/renderer/components/ui/KindTile'
-import { PixelGlyph } from '@app/renderer/components/ui/PixelGlyph'
 import { toRelativeTime } from '../utils/format'
 import type { SidebarAgentItemModel } from '../utils/sidebarAgents'
 import type { ProjectContextMenuState } from '../types'
 import { createAgentSortableId, sidebarSortableTransition } from './SidebarDnd'
 import { resolveAgentTreatedProvider } from '@contexts/workspace/presentation/renderer/utils/terminalAgentOverlay'
+import { resolveAgentPresentationProvider } from '@contexts/workspace/presentation/renderer/utils/agentPresentation'
+import { NodeKindIcon } from '@contexts/workspace/presentation/renderer/components/shared/NodeKindIcon'
 import { useAppStore } from '../store/useAppStore'
 import {
   setSidebarAgentPinned,
@@ -19,23 +27,24 @@ import {
 
 function SidebarAgentItemContent({ item }: { item: SidebarAgentItemModel }): React.JSX.Element {
   const { t } = useTranslation()
-  const statusText = t(`sidebar.status.${item.status}`)
+  const statusText = t(
+    item.status === 'waiting' ? agentAttentionLabelKey(item) : `sidebar.status.${item.status}`,
+  )
   const StatusIcon =
-    item.status === 'working' ? LoaderCircle : item.status === 'waiting' ? Pause : Circle
+    item.status === 'working' ? null : item.status === 'waiting' ? PauseIcon : CircleIcon
 
   return (
     <>
       <KindTile kind="ai" size="sm" className="workspace-agent-item__kind">
-        <PixelGlyph name="ai" />
+        <NodeKindIcon kind="agent" provider={resolveAgentPresentationProvider(item.node.data)} />
       </KindTile>
       <span className="workspace-agent-item__copy">
         <span className="workspace-agent-item__title">{item.displayTitle}</span>
         <span
-          data-cove-part="sidebar-agent"
           className={`workspace-agent-item__status workspace-agent-item__status--agent workspace-agent-item__status--${item.status}`}
           title={statusText}
         >
-          <StatusIcon size={11} aria-hidden="true" />
+          {StatusIcon ? <StatusIcon size={12} /> : null}
           <span className="workspace-agent-item__status-label">{statusText}</span>
         </span>
       </span>
@@ -103,7 +112,7 @@ function SidebarAgentItem({
         title={[
           provider ? AGENT_PROVIDER_LABEL[provider] : t('sidebar.fallbackAgentLabel'),
           displayTitle,
-          t(`sidebar.status.${status}`),
+          t(status === 'waiting' ? agentAttentionLabelKey(item) : `sidebar.status.${status}`),
           toRelativeTime(node.data.startedAt),
         ].join(' · ')}
         onClick={() => onSelectAgentNode(workspaceId, node.id)}
@@ -132,7 +141,7 @@ function SidebarAgentItem({
             }))
           }}
         >
-          <Pin size={14} fill="currentColor" strokeWidth={1.8} aria-hidden="true" />
+          <PinIcon size={18} />
         </button>
       ) : null}
       {item.sidebarHidden && !item.sidebarHiddenBySpace ? (
@@ -144,7 +153,7 @@ function SidebarAgentItem({
           title={t('sidebar.restore')}
           onClick={() => onRestoreSidebarItem?.('agent', node.id, displayTitle)}
         >
-          <EyeOff size={14} aria-hidden="true" />
+          <EyeOffIcon size={18} />
         </button>
       ) : !item.sidebarHiddenBySpace ? (
         <button
@@ -158,7 +167,7 @@ function SidebarAgentItem({
             openMenu(rect.right, rect.bottom)
           }}
         >
-          <MoreHorizontal size={14} aria-hidden="true" />
+          <MoreIcon size={18} />
         </button>
       ) : null}
     </div>
@@ -222,6 +231,7 @@ export function SidebarAgentItemOverlay({
 }): React.JSX.Element {
   return (
     <div
+      data-cove-part="sidebar-agent"
       className="workspace-agent-item workspace-agent-item--sidebar workspace-agent-item--drag-overlay"
       data-testid="workspace-sidebar-drag-overlay"
       data-cove-label-color={item.effectiveLabelColor ?? undefined}

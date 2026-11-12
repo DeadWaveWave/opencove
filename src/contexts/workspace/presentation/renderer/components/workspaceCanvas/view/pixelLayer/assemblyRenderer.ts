@@ -1,21 +1,13 @@
 import { buildPixelAssemblyScene, type PixelAssemblyFrame } from './assembly'
 import type { PixelViewport } from './geometry'
 import { resolvePixelBuffer } from './model'
+import { readPixelTheme, type PixelKindTheme } from './renderer'
 
-export interface PixelAssemblyTheme {
-  blue: string
-  cyan: string
-  mint: string
-}
+export type PixelAssemblyTheme = PixelKindTheme
 
 export function readPixelAssemblyTheme(canvas: HTMLCanvasElement): PixelAssemblyTheme {
-  const style = getComputedStyle(canvas)
-  const color = (name: string) => style.getPropertyValue(name).trim() || style.color
-  return {
-    blue: color('--cove-pixel-blue'),
-    cyan: color('--cove-pixel-cyan'),
-    mint: color('--cove-pixel-mint'),
-  }
+  const { ink, solid } = readPixelTheme(canvas)
+  return { ink, solid }
 }
 
 export function drawPixelAssemblies({
@@ -43,13 +35,9 @@ export function drawPixelAssemblies({
   if (frames.length === 0 || viewport.width <= 0 || viewport.height <= 0) {
     return
   }
-  const gradient = context.createLinearGradient(0, 0, viewport.width, viewport.height)
-  gradient.addColorStop(0, theme.blue)
-  gradient.addColorStop(0.5, theme.cyan)
-  gradient.addColorStop(1, theme.mint)
   for (const frame of frames) {
     const scene = buildPixelAssemblyScene(frame)
-    context.fillStyle = gradient
+    context.fillStyle = theme.ink[frame.family]
     for (const pixel of [...scene.rim, ...scene.particles]) {
       context.globalAlpha = pixel.alpha
       context.fillRect(pixel.x, pixel.y, pixel.size, pixel.size)

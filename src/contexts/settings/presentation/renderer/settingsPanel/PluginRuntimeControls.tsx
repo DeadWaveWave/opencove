@@ -2,7 +2,7 @@ import { Tooltip } from '@app/renderer/components/ui/Tooltip'
 import { Button } from '@app/renderer/components/ui/Button'
 import { pluginErrorMessage } from '@contexts/plugins/presentation/renderer/pluginErrorMessage'
 import { useState, type JSX } from 'react'
-import { RefreshCw, Trash2 } from 'lucide-react'
+import { RefreshIcon, TrashIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import type { PluginManifest } from '@contexts/plugins/domain/pluginTypes'
 import type { PluginDetails } from '@contexts/plugins/domain/pluginRuntimeTypes'
@@ -63,7 +63,7 @@ export function PluginRuntimeControls({
           }}
           data-testid="settings-plugin-reload"
         >
-          <RefreshCw size={14} aria-hidden="true" />
+          <RefreshIcon size={18} />
           {t('settingsPanel.plugins.reload')}
         </Button>
         <Button
@@ -75,7 +75,7 @@ export function PluginRuntimeControls({
           onClick={() => setConfirmRemove(value => !value)}
           data-testid="settings-plugin-uninstall"
         >
-          <Trash2 size={14} aria-hidden="true" />
+          <TrashIcon size={18} />
           {t('settingsPanel.plugins.uninstall')}
         </Button>
       </div>

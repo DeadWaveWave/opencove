@@ -9,6 +9,7 @@ import { WorkspaceDirectoryBrowserNavigation } from './WorkspaceDirectoryBrowser
 import { WorkspaceSpaceExplorerOverlayToolbar } from './WorkspaceSpaceExplorerOverlayToolbar'
 import { WorkspaceSpaceExplorerOverlayWindows } from './WorkspaceSpaceExplorerOverlayWindows'
 import { WorkspaceSpaceExplorerTree } from './WorkspaceSpaceExplorerOverlay.tree'
+import { WindowPlate } from '../../shared/WindowPlate'
 
 export interface WorkspaceDirectoryBrowserProps {
   spaceId: string
@@ -197,6 +198,7 @@ export function WorkspaceDirectoryBrowser({
 
   return (
     <>
+      <WindowPlate kind="neutral" />
       <div
         className="workspace-space-explorer__body cove-directory-browser nodrag"
         data-cove-part="window-body"

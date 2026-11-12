@@ -156,12 +156,12 @@ test.describe('Workspace Canvas - Agent Standby Banner Context', () => {
           0,
         )
 
-        // The notification banner switch lives in Settings.
+        // The in-app notification switch lives in Settings.
         await window.locator('[data-testid="app-header-settings"]').click()
         await window.locator('[data-testid="settings-section-nav-general"]').click()
         await window
           .locator('.settings-panel')
-          .getByRole('switch', { name: 'Notification banner' })
+          .getByRole('switch', { name: 'In-app notifications' })
           .click()
         await window.locator('.settings-panel__close').click()
 

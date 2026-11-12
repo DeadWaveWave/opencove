@@ -90,7 +90,7 @@
 .workspace-item__agents {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 1px;
 }
 
 .workspace-space-item--drag-overlay {

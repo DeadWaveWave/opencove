@@ -1,3 +1,8 @@
+import {
+  createWindowGlints,
+  resolveWindowGlint,
+} from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/windowSignals/windowGlints'
+import type { Ripple } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelWall/ripples'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   COMPLETION_COOLDOWN_MS,
@@ -5,6 +10,7 @@ import {
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/windowSignals/signalDetector'
 import {
   clearWindowSignals,
+  readCompletionColor,
   showWindowSignal,
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/windowSignals/frameSignals'
 
@@ -69,19 +75,126 @@ describe('window frame signals', () => {
     expect(node.style.getPropertyValue('--cove-signal-color')).toBe('')
   })
 
-  it('lets a stronger signal replace a sweep and clears everything on demand', () => {
+  it('restarts the flash on a new layer and cancels the old cleanup deadline', () => {
+    const scope = document.createElement('div')
+    scope.innerHTML = '<div class="react-flow__node" data-id="a"></div>'
+    const node = scope.firstElementChild as HTMLElement
+    showWindowSignal(scope, 'a', 'complete', [1, 2, 3], 1000)
+    const first = node.querySelector('.cove-window-flash')
+    expect(first).not.toBeNull()
+    vi.advanceTimersByTime(700)
+    showWindowSignal(scope, 'a', 'complete', [1, 2, 3], 1000)
+    expect(node.querySelector('.cove-window-flash')).not.toBe(first)
+    vi.advanceTimersByTime(300)
+    expect(node.dataset.coveSignal).toBe('complete')
+    vi.advanceTimersByTime(700)
+    expect(node.querySelector('.cove-window-flash')).toBeNull()
+    expect(node.dataset.coveSignal).toBeUndefined()
+  })
+
+  it('lets a stronger signal replace completion and clears everything on demand', () => {
     const scope = document.createElement('div')
     scope.innerHTML = '<div class="react-flow__node" data-id="a"></div>'
     const node = scope.querySelector<HTMLElement>('[data-id="a"]')!
-    showWindowSignal(scope, 'a', 'swept', [1, 2, 3], 500)
+    showWindowSignal(scope, 'a', 'complete', [1, 2, 3], 500)
     showWindowSignal(scope, 'a', 'fail', [200, 0, 0], 600)
     expect(node.dataset.coveSignal).toBe('fail')
-    // A later sweep never hides a failure.
-    showWindowSignal(scope, 'a', 'swept', [1, 2, 3], 500)
+    // A later completion never hides a failure.
+    showWindowSignal(scope, 'a', 'complete', [1, 2, 3], 500)
     expect(node.dataset.coveSignal).toBe('fail')
     clearWindowSignals(scope)
     expect(node.dataset.coveSignal).toBeUndefined()
     vi.advanceTimersByTime(1000)
     expect(node.dataset.coveSignal).toBeUndefined()
+  })
+
+  it('flashes in the kind glyph colour, as the prototype burst uses --ki, not the ink', () => {
+    const scope = document.createElement('div')
+    scope.style.setProperty('--cove-kind-ai-glyph', '#5b3e95')
+    scope.style.setProperty('--cove-kind-ai-ink', '#603aa2')
+    document.body.append(scope)
+    expect(readCompletionColor(scope, 'ai', [1, 2, 3])).toBe('#5b3e95')
+    // Themes without kind tokens fall back to the wall light colour.
+    expect(readCompletionColor(scope, 'shell', [1, 2, 3])).toBe('rgb(1 2 3)')
+  })
+})
+
+describe('continuous completion rim', () => {
+  const frame = { id: 'target', rect: { x: 300, y: -50, width: 100, height: 100 } }
+  const wave: Ripple = {
+    sourceId: 'sender',
+    x: 0,
+    y: 0,
+    radius: 350,
+    band: 56,
+    strength: 0.6,
+    color: [20, 40, 60],
+    glint: '#abcdef',
+    sweep: true,
+  }
+
+  it('matches the receiving Gaussian continuously, with the short side added to its width', () => {
+    for (const radius of [0, 100, 200, 300, 350, 400, 500, 650, 700]) {
+      const x = (350 - radius) / (56 + 50)
+      const expected = Math.abs(x) > 2.6 ? 0 : 0.6 * Math.exp(-x * x)
+      expect(resolveWindowGlint(frame, [{ ...wave, radius }]).intensity).toBeCloseTo(
+        expected < 0.02 ? 0 : expected,
+        12,
+      )
+    }
+    expect(resolveWindowGlint(frame, [wave]).color).toBe('#abcdef')
+  })
+
+  it('takes the strongest sweep, excludes the sender and carries its ink through the white crest', () => {
+    const crest: Ripple = {
+      ...wave,
+      crest: true,
+      color: [255, 255, 255],
+      strength: 0.8,
+      glint: '#112233',
+    }
+    expect(resolveWindowGlint(frame, [wave, crest])).toEqual({ intensity: 0.8, color: '#112233' })
+    expect(resolveWindowGlint({ ...frame, id: 'sender' }, [wave, crest]).intensity).toBe(0)
+    expect(resolveWindowGlint(frame, [{ ...wave, sweep: false }]).intensity).toBe(0)
+  })
+
+  it('writes only meaningful amplitude changes and always removes a finished or disabled rim', () => {
+    const scope = document.createElement('div')
+    scope.innerHTML =
+      '<div class="react-flow__node" data-id="target" style="background: var(--cove-surface)"></div>'
+    document.body.append(scope)
+    const node = scope.firstElementChild as HTMLElement
+    const background = node.style.background
+    const glints = createWindowGlints(() => scope)
+    const writes = vi.spyOn(node.style, 'setProperty')
+    glints.update([frame], [wave])
+    expect(node.querySelector('.cove-window-glint')).not.toBeNull()
+    expect(node.style.getPropertyValue('--cove-catch')).toBe('0.600')
+    glints.update([frame], [{ ...wave, strength: 0.61 }])
+    expect(writes.mock.calls.filter(call => call[0] === '--cove-catch')).toHaveLength(1)
+    glints.update([frame], [{ ...wave, strength: 0.64 }])
+    expect(node.style.getPropertyValue('--cove-catch')).toBe('0.640')
+    expect(node.style.background).toBe(background)
+    glints.update([frame], [])
+    expect(node.style.getPropertyValue('--cove-catch')).toBe('0')
+    expect(node.querySelector('.cove-window-glint')).toBeNull()
+    glints.update([frame], [wave])
+    glints.clear()
+    expect(node.style.getPropertyValue('--cove-catch')).toBe('0')
+    expect(node.dataset.coveSwept).toBeUndefined()
+    expect(node.style.getPropertyValue('--cove-glint')).toBe('')
+    scope.remove()
+  })
+
+  it('cleans a removed window without retaining its element', () => {
+    const scope = document.createElement('div')
+    scope.innerHTML = '<div class="react-flow__node" data-id="target"></div>'
+    const node = scope.firstElementChild as HTMLElement
+    const glints = createWindowGlints(() => scope)
+    glints.update([frame], [wave])
+    node.remove()
+    glints.update([], [wave])
+    expect(node.querySelector('.cove-window-glint')).toBeNull()
+    expect(node.style.getPropertyValue('--cove-catch')).toBe('0')
   })
 })

@@ -1,6 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Activity, Copy, RefreshCw, X } from 'lucide-react'
+import {
+  ActivityIcon,
+  CloseIcon,
+  CopyIcon,
+  RefreshIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   formatBytes,
@@ -133,7 +138,7 @@ export function PerformanceMonitorPanel({
       <header className="performance-monitor__header">
         <div className="performance-monitor__title-group">
           <div className="performance-monitor__title-row">
-            <Activity aria-hidden="true" size={16} />
+            <ActivityIcon size={18} />
             <h3 id="performance-monitor-title">{t('performanceMonitor.title')}</h3>
             <span className="performance-monitor__status">{statusLabel}</span>
             <span className="performance-monitor__live">{t('performanceMonitor.live')}</span>
@@ -158,7 +163,7 @@ export function PerformanceMonitorPanel({
             disabled={isLoading || isRefreshing}
             onClick={() => void refreshSnapshot()}
           >
-            <RefreshCw aria-hidden="true" size={15} />
+            <RefreshIcon size={18} />
           </button>
           <button
             type="button"
@@ -168,7 +173,7 @@ export function PerformanceMonitorPanel({
             title={t('performanceMonitor.copy')}
             onClick={() => void copyReport()}
           >
-            <Copy aria-hidden="true" size={15} />
+            <CopyIcon size={18} />
           </button>
           <button
             type="button"
@@ -178,7 +183,7 @@ export function PerformanceMonitorPanel({
             title={t('common.close')}
             onClick={onClose}
           >
-            <X aria-hidden="true" size={15} />
+            <CloseIcon size={18} />
           </button>
         </div>
       </header>

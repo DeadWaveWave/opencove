@@ -91,6 +91,12 @@ describe('direct Agent session title sync', () => {
     ).toBe(false)
   })
 
+  it('does not await a session title for a pinned launch title', () => {
+    expect(
+      isAgentNodeAwaitingSessionTitle(createAgentNode({ title: 'codex', titlePinnedByUser: true })),
+    ).toBe(false)
+  })
+
   it('creates a sync target only for an unpinned directly launched Agent', () => {
     expect(
       resolveAgentSessionTitleSyncTarget([createAgentNode()], {

@@ -1,3 +1,4 @@
+import type { ClaudeTranscriptObservation } from '../../../../shared/runtime/agentHook/claudeTranscript'
 import type {
   AgentLaunchMode,
   AgentProviderId,
@@ -16,7 +17,15 @@ export function createSessionFileStateWatcher(options: {
   sessionId: string
   filePath: string
   launchMode: AgentLaunchMode
-  onState: (sessionId: string, state: TerminalSessionState) => void
+  initialRead?: 'baseline' | 'live'
+  onState: (
+    sessionId: string,
+    state: TerminalSessionState,
+    options?: { hookEventName?: string; baseline?: boolean },
+  ) => void
+  onClaudeTranscript?: (
+    record: Omit<ClaudeTranscriptObservation, 'sessionId' | 'providerSessionId' | 'generation'>,
+  ) => void
   onUnavailable: (sessionId: string) => void
   onError: (error: unknown) => void
 }): { dispose: () => void; start: () => void; noteInteraction?: (data?: string) => void } {
@@ -25,7 +34,9 @@ export function createSessionFileStateWatcher(options: {
       provider: options.provider,
       sessionId: options.sessionId,
       filePath: options.filePath,
+      initialRead: options.initialRead ?? 'baseline',
       onState: options.onState,
+      onClaudeTranscript: options.onClaudeTranscript,
       onError: options.onError,
     })
   }

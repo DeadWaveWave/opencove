@@ -1,3 +1,11 @@
+import { requireManagedClaudeWorkerSupport } from '@contexts/workspace/presentation/renderer/utils/managedClaudeWorkerSupport'
+import { canAcceptCanonicalState } from '@contexts/workspace/presentation/renderer/utils/persistence/publicationState'
+import { requestCanonicalRefresh } from '@contexts/workspace/presentation/renderer/utils/persistence/canonicalRefresh'
+import type { PersistedStateReadResult } from '@contexts/workspace/presentation/renderer/utils/persistence/read'
+import {
+  confirmManagedClaudeRuntime,
+  projectManagedClaudeRuntimeData,
+} from '@contexts/workspace/presentation/renderer/utils/managedClaudeProjection'
 import type { Node } from '@xyflow/react'
 import type { PrepareOrReviveSessionResult, PreparedRuntimeNodeResult } from '@shared/contracts/dto'
 import type {
@@ -146,10 +154,11 @@ export function mergeHydratedNode(
       ? hydratedScrollback
       : (currentNode.data.scrollback ?? null)
 
-  return {
+  const merged = {
     ...currentNode,
     data: {
       ...currentNode.data,
+      managedClaudeBindingObservation: hydratedNode.data.managedClaudeBindingObservation,
       kind: hydratedNode.data.kind,
       title: hydratedNode.data.kind === 'agent' ? hydratedNode.data.title : currentNode.data.title,
       sessionId: hydratedNode.data.sessionId,
@@ -172,6 +181,8 @@ export function mergeHydratedNode(
       note: hydratedNode.data.note ?? currentNode.data.note,
     },
   }
+  const projected = projectManagedClaudeRuntimeData(currentNode.id, merged.data)
+  return projected ? { ...merged, data: projected } : currentNode
 }
 
 export function resolveTerminalHydrationCwd(
@@ -218,6 +229,8 @@ function toHydratedRuntimeNode(
     ...currentNode,
     data: {
       ...currentNode.data,
+      managedClaudeBindingObservation:
+        preparedNode.managedClaudeBinding ?? preparedNode.managedClaudeLifecycle?.binding,
       kind: preparedNode.kind,
       title: preparedNode.title,
       sessionId: preparedNode.sessionId,
@@ -322,6 +335,7 @@ async function hydrateRuntimeNodeLocally({
 
   try {
     const spawned = await window.opencoveApi.pty.spawn({
+      canvasNodeId: node.id,
       cwd: resolveTerminalHydrationCwd(node, workspacePath),
       profileId: node.data.profileId ?? agentSettings.defaultTerminalProfileId ?? undefined,
       cols: 80,
@@ -390,14 +404,23 @@ export async function prepareWorkspaceRuntimeNodes({
     let hydratedNode: Node<TerminalNodeData> | null = null
     if (typeof controlSurfaceInvoke === 'function') {
       try {
+        if (node.data.agent?.provider === 'claude-code') {
+          await requireManagedClaudeWorkerSupport(node.data.agent.provider)
+          if (isCancelled()) {
+            return null
+          }
+        }
         const prepared = await controlSurfaceInvoke<PrepareOrReviveSessionResult>({
           kind: 'command',
           id: 'session.prepareOrRevive',
+          clientFeatures: { managedClaudeResumeBindingV1: true },
           payload: { workspaceId: workspace.id, nodeIds: [node.id] },
         })
         const result = prepared.nodes?.find(candidate => candidate.nodeId === node.id)
         if (result) {
           hydratedNode = toHydratedRuntimeNode(node, result)
+          const data = await confirmManagedClaudeRuntime(node.id, hydratedNode.data)
+          hydratedNode = data ? { ...hydratedNode, data } : null
         }
       } catch (error) {
         if (shouldRequireWorker) {
@@ -441,4 +464,16 @@ export async function hydrateRuntimeNode({
   agentSettings: AgentSettings
 }): Promise<Node<TerminalNodeData>> {
   return await hydrateRuntimeNodeLocally({ node, workspacePath, agentSettings })
+}
+
+export function canAcceptHydrationSnapshot(snapshot: PersistedStateReadResult): boolean {
+  if (
+    !snapshot.state ||
+    !snapshot.isPersisted ||
+    canAcceptCanonicalState(snapshot.state, snapshot.revision)
+  ) {
+    return true
+  }
+  requestCanonicalRefresh({ reason: 'uncertain' })
+  return false
 }

@@ -7,6 +7,7 @@ import {
 import { replayBufferedHydrationOutput } from './replayBufferedHydrationOutput'
 import {
   containsDestructiveTerminalDisplayControlSequence,
+  shouldReplaceAuthoritativeHydrationBaseline,
   containsMeaningfulTerminalDisplayContent,
   endsWithIncompleteTerminalControlSequence,
   shouldDeferHydratedTerminalRedrawChunk,
@@ -14,7 +15,11 @@ import {
   stripEchoedTerminalControlSequences,
 } from './hydrationReplacement'
 import { resolveSuffixPrefixOverlap } from './overlap'
-import { isInputSemanticTerminalControlChunk } from './terminalInputSemanticControls'
+import {
+  isInputSemanticTerminalControlChunk,
+  isTerminalModeControlChunk,
+} from './terminalInputSemanticControls'
+import { stripAutomaticTerminalQueriesFromOutput } from '@shared/terminal/automaticTerminalSequences'
 
 export interface TerminalHydrationRouter {
   handleDataChunk: (data: string, options?: { seq?: number | null }) => void
@@ -26,7 +31,7 @@ export interface TerminalHydrationRouter {
 interface BufferedHydrationChunk {
   data: string
   seq: number | null
-  deliveredDuringHydration: boolean
+  queriesAnsweredDuringHydration: boolean
 }
 
 function normalizeTerminalDataSeq(seq: number | null | undefined): number | null {
@@ -250,7 +255,7 @@ export function createTerminalHydrationRouter({
         hydrationBuffer.dataChunks.push({
           data: displayData,
           seq: normalizeTerminalDataSeq(options?.seq),
-          deliveredDuringHydration: shouldWriteThroughGeometryGate,
+          queriesAnsweredDuringHydration: isAutomaticTerminalQuery(displayData),
         })
         return
       }
@@ -363,7 +368,7 @@ export function createTerminalHydrationRouter({
       isHydrating = false
       const baselineAppliedSeq = normalizeTerminalDataSeq(options?.baselineAppliedSeq)
       const bufferedHydrationChunks = hydrationBuffer.dataChunks.flatMap(chunk => {
-        if (chunk.deliveredDuringHydration) {
+        if (chunk.queriesAnsweredDuringHydration) {
           return []
         }
 
@@ -400,7 +405,7 @@ export function createTerminalHydrationRouter({
         shouldReplaceAuthoritativeBaselineWithBufferedOutput() &&
         rawSnapshot.trim().length > 0 &&
         bufferedData.length > 0 &&
-        containsDestructiveTerminalDisplayControlSequence(bufferedData) &&
+        shouldReplaceAuthoritativeHydrationBaseline(bufferedData) &&
         containsMeaningfulTerminalDisplayContent(bufferedData)
       const shouldReplaceBufferedPlaceholder =
         shouldReplacePlaceholder &&
@@ -410,11 +415,16 @@ export function createTerminalHydrationRouter({
         })
       const shouldDeferBufferedReplay =
         shouldReplacePlaceholder && !shouldReplaceBufferedPlaceholder
+      const bufferedModesOnly =
+        isTerminalModeControlChunk(
+          stripAutomaticTerminalQueriesFromOutput(bufferedData).visibleData,
+        ) && !shouldDeferHydratedTerminalRedrawChunk(bufferedData)
       const shouldDeferBufferedHydratedRedraw =
         !shouldReplacePlaceholder &&
         shouldProtectRestoredBaseline &&
         bufferedData.length > 0 &&
         !isAutomaticTerminalQuery(bufferedData) &&
+        !bufferedModesOnly &&
         isControlOnlyTerminalChunk(bufferedData)
       const bufferedOutputAlreadyMatchesPlaceholder =
         shouldReplaceBufferedPlaceholder &&

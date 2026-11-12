@@ -36,6 +36,7 @@ describe('Windows Codex session file policy', () => {
       ])
       expect(plan.env).toEqual({})
       expect(plan.hookInstallState).toBe('not_required')
+      expect(plan.hookCoverage).toBe('none')
       expect(reserveSpawn).not.toHaveBeenCalled()
       expect(hookTrustResolver).not.toHaveBeenCalled()
     } finally {

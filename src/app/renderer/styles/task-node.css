@@ -21,24 +21,11 @@
 
 .task-node__enriching-spinner {
   position: absolute;
-  top: 10px;
+  top: 11px;
   left: 10px;
-  width: 12px;
-  height: 12px;
-  border-radius: var(--cove-radius-round);
-  border: 2px solid var(--cove-accent);
-  border-right-color: var(--cove-info-border);
-  border-top-color: var(--cove-info-border);
-  animation: task-node-spin 0.8s linear infinite;
-  opacity: 0.9;
+  color: var(--cove-accent);
   pointer-events: none;
   z-index: 3;
-}
-
-@keyframes task-node-spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .task-node__title {
@@ -102,8 +89,8 @@
 }
 
 .task-node__icon-button svg {
-  width: 14px;
-  height: 14px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
 }
 
 .task-node__icon-button:focus-visible {
@@ -119,6 +106,12 @@
   padding: 7px 10px;
   border-bottom: 1px solid var(--cove-border-subtle);
   background: var(--cove-field);
+}
+
+/* In the generated families the plate rises into the header with no edge; a field band at its top
+   would draw that edge back, so the chips sit on the plate itself. */
+:root[data-cove-family='cove'] .task-node__meta {
+  background: transparent;
 }
 
 .task-node__priority {
@@ -172,34 +165,23 @@
   border-style: dashed;
 }
 
-.task-node__meta-edit {
-  display: inline-grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  margin-left: auto;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  color: var(--cove-text-faint);
-  background: transparent;
-  cursor: pointer;
+.task-node__plate {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.task-node__meta-edit:hover {
-  color: var(--cove-text);
-  border-color: var(--cove-border);
-  background: var(--cove-surface-hover);
-}
-
-.task-node__meta-edit:focus-visible {
-  outline: 2px solid var(--cove-focus-ring);
-  outline-offset: 1px;
+.task-node__footer {
+  display: flex;
+  align-items: center;
 }
 
 .task-node__content {
   flex: 1;
   min-height: 0;
-  padding: 10px;
+  --task-node-plate-padding: 10px;
+  padding: var(--task-node-plate-padding);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -296,45 +278,6 @@
   box-shadow: none;
 }
 
-.task-node__agents {
-  border-top: 1px solid var(--cove-border-subtle);
-  background: var(--cove-field);
-  padding: 8px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 180px;
-  overflow: auto;
-}
-
-.task-node__agents-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: calc(11px * var(--cove-ui-font-scale));
-  color: var(--cove-text-muted);
-}
-
-.task-node__agents-count {
-  border: 1px solid var(--cove-border-subtle);
-  background: var(--cove-field);
-  border-radius: 999px;
-  padding: 1px 7px;
-  font-size: calc(10px * var(--cove-ui-font-scale));
-  color: var(--cove-text);
-}
-
-.task-node__agents-empty {
-  font-size: calc(11px * var(--cove-ui-font-scale));
-  color: var(--cove-text-faint);
-}
-
-.task-node__agents-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
 .task-agent-session-menu {
   z-index: 20;
 }
@@ -345,33 +288,6 @@
 
 .task-agent-resume.cove-window {
   width: min(520px, calc(100vw - 48px));
-}
-
-.task-node__footer {
-  border-top: 1px solid var(--cove-border-subtle);
-  padding: 8px 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.task-node__footer-select {
-  width: 136px;
-}
-
-.task-node__run-agent {
-  border: 1px solid var(--cove-info-border);
-  background: var(--cove-info-surface);
-  color: var(--cove-text);
-  border-radius: 8px;
-  padding: 6px 10px;
-  cursor: pointer;
-  font-size: calc(12px * var(--cove-ui-font-scale));
-  margin-left: auto;
-}
-
-.task-node__run-agent:hover {
-  background: color-mix(in srgb, var(--cove-info-surface) 72%, var(--cove-accent) 28%);
 }
 
 .task-node__resizer {

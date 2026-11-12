@@ -41,6 +41,23 @@ export const AGENT_SETTINGS_SEARCH_ENTRY_DEFINITIONS: AgentSettingsSearchEntryDe
     keywords: ['provider', 'order', 'menu', '排序'],
   },
   {
+    id: 'agent.codex.daemon-reuse',
+    pageId: 'agent',
+    titleKey: 'settingsPanel.agent.codexReuseRunningAppServerLabel',
+    descriptionKey: 'settingsPanel.agent.codexReuseRunningAppServerHelp',
+    anchorId: 'settings-codex-reuse-running-app-server',
+    provider: 'codex',
+    keywords: ['codex', 'daemon', 'app-server', 'reuse', '复用', '状态', '提示词'],
+  },
+  {
+    id: 'agent.resident-context',
+    pageId: 'agent',
+    titleKey: 'settingsPanel.agent.residentContextLabel',
+    descriptionKey: 'settingsPanel.agent.residentContextHelp',
+    anchorId: 'settings-agent-resident-context',
+    keywords: ['context', 'hook', 'skill', 'opencove', 'canvas', '上下文', '画布'],
+  },
+  {
     id: 'agent.full-access',
     pageId: 'agent',
     titleKey: 'settingsPanel.agent.fullAccessLabel',

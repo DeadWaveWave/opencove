@@ -7,6 +7,7 @@ import {
   type WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
 import { summarizeAgentActivity } from './agentActivitySummary'
+import { agentAttentionKey } from './sidebarAgents'
 
 function agent(id: string, status: TerminalNodeData['status']): Node<TerminalNodeData> {
   return {
@@ -54,7 +55,7 @@ function workspace(id: string, nodes: Node<TerminalNodeData>[]): WorkspaceState 
 }
 
 describe('summarizeAgentActivity', () => {
-  it('lists waiting agents across projects in project order and counts working ones', () => {
+  it('lists waiting and working agents across projects in project order', () => {
     const summary = summarizeAgentActivity([
       workspace('alpha', [agent('a-1', 'running'), agent('a-2', 'waiting')]),
       workspace('beta', [
@@ -71,6 +72,7 @@ describe('summarizeAgentActivity', () => {
         nodeId: 'a-2',
         title: 'a-2',
         spaceName: null,
+        provider: null,
       },
       {
         workspaceId: 'beta',
@@ -79,9 +81,19 @@ describe('summarizeAgentActivity', () => {
         nodeId: 'b-1',
         title: 'b-1',
         spaceName: null,
+        provider: null,
       },
     ])
-    expect(summary.workingCount).toBe(2)
+    expect(summary.working.map(item => [item.workspaceId, item.nodeId])).toEqual([
+      ['alpha', 'a-1'],
+      ['beta', 'b-3'],
+    ])
+  })
+
+  it("carries the Agent's provider for its mark", () => {
+    const codex = agent('a-1', 'waiting')
+    codex.data.agent = { provider: 'codex' } as TerminalNodeData['agent']
+    expect(summarizeAgentActivity([workspace('alpha', [codex])]).waiting[0]?.provider).toBe('codex')
   })
 
   it('names the Space a waiting agent sits in', () => {
@@ -100,10 +112,41 @@ describe('summarizeAgentActivity', () => {
     expect(summarizeAgentActivity([project]).waiting[0]?.spaceName).toBe('review-431')
   })
 
+  it('counts an Agent you have not answered since its turn ended as waiting for you', () => {
+    const summary = summarizeAgentActivity(
+      [workspace('alpha', [agent('a-1', 'standby'), agent('a-2', 'standby')])],
+      new Map([[agentAttentionKey('alpha', 'a-2'), 1_000]]),
+    )
+    expect(summary.waiting.map(item => [item.nodeId, item.needsYouSinceMs])).toEqual([
+      ['a-2', 1_000],
+    ])
+    expect(summary.working).toEqual([])
+  })
+
+  it('keeps an Agent that works again, exited, or never ended a turn, out of waiting', () => {
+    const needsYou = new Map([
+      [agentAttentionKey('alpha', 'a-1'), 1_000],
+      [agentAttentionKey('beta', 'a-2'), 1_000],
+      [agentAttentionKey('alpha', 'a-3'), 1_000],
+    ])
+    const summary = summarizeAgentActivity(
+      [
+        workspace('alpha', [
+          agent('a-1', 'running'),
+          agent('a-2', 'standby'),
+          agent('a-3', 'exited'),
+        ]),
+      ],
+      needsYou,
+    )
+    expect(summary.waiting).toEqual([])
+    expect(summary.working.map(item => item.nodeId)).toEqual(['a-1'])
+  })
+
   it('is empty when no agent is waiting or working', () => {
     expect(summarizeAgentActivity([workspace('alpha', [agent('a-1', 'standby')])])).toEqual({
       waiting: [],
-      workingCount: 0,
+      working: [],
     })
   })
 })

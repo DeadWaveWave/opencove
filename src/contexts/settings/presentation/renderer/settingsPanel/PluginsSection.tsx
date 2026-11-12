@@ -1,7 +1,13 @@
 import { Button } from '@app/renderer/components/ui/Button'
 import { pluginErrorMessage } from '@contexts/plugins/presentation/renderer/pluginErrorMessage'
 import { useLayoutEffect, useRef, useState, type JSX } from 'react'
-import { BookOpen, ChevronRight, Plus, Puzzle, RefreshCw } from 'lucide-react'
+import {
+  BookIcon,
+  ChevronRightIcon,
+  ExtensionIcon,
+  PlusIcon,
+  RefreshIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   usePluginRegistry,
@@ -112,7 +118,7 @@ export function PluginsSection({
                 onClick={() => setShowInstall(value => !value)}
                 aria-expanded={showInstall}
               >
-                <Plus size={15} aria-hidden="true" />
+                <PlusIcon size={18} />
                 {t('settingsPanel.plugins.install.title')}
               </Button>
               <Button
@@ -131,7 +137,7 @@ export function PluginsSection({
                   setShowLibrary(true)
                 }}
               >
-                <BookOpen size={15} aria-hidden="true" />
+                <BookIcon size={18} />
                 {t('settingsPanel.plugins.library.button')}
               </Button>
             </div>
@@ -172,7 +178,7 @@ export function PluginsSection({
                   }}
                   data-testid="settings-plugins-refresh"
                 >
-                  <RefreshCw size={14} aria-hidden="true" />
+                  <RefreshIcon size={18} />
                   {t('settingsPanel.plugins.refresh')}
                 </Button>
               }
@@ -180,7 +186,7 @@ export function PluginsSection({
               <SettingsGroupBody className="settings-plugin-list">
                 {registry.plugins.length === 0 && !registry.error ? (
                   <div className="settings-plugin-empty" data-testid="settings-plugins-empty">
-                    <Puzzle size={32} strokeWidth={1.4} aria-hidden="true" />
+                    <ExtensionIcon size={36} />
                     <h4>{t('settingsPanel.plugins.emptyTitle')}</h4>
                     <p>{t('settingsPanel.plugins.emptyHelp')}</p>
                   </div>
@@ -238,11 +244,7 @@ export function PluginsSection({
                             {!enabled ? <span>{t('settingsPanel.plugins.disabled')}</span> : null}
                           </span>
                         </span>
-                        <ChevronRight
-                          className="settings-plugin__chevron"
-                          size={15}
-                          aria-hidden="true"
-                        />
+                        <ChevronRightIcon className="settings-plugin__chevron" size={18} />
                       </Button>
                       <PluginSettingsToggle
                         plugin={plugin}

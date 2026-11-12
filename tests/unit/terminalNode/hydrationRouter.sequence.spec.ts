@@ -119,7 +119,7 @@ describe('hydrationRouter sequence replay', () => {
     replacingRouter.finalizeHydration('[stale accepted snapshot]', { baselineAppliedSeq: 5 })
 
     expect(terminal.write).toHaveBeenCalledWith(
-      '\u001bc\u001b[2J\u001b[Hfresh frame',
+      '\u001b[2J\u001b[3J\u001b[H\u001b[2J\u001b[Hfresh frame',
       expect.any(Function),
     )
     expect(scrollbackBuffer.set).toHaveBeenCalledWith('')

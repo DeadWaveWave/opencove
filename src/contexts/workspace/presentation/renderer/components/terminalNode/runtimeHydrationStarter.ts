@@ -14,7 +14,8 @@ import { hydrateTerminalFromSnapshot } from './hydrateFromSnapshot'
 import type { TerminalHydrationBaselineSource } from './useTerminalRuntimeSession.support'
 import type { RuntimeTerminalInputBridge } from './createRuntimeTerminalInputBridge'
 import type { TerminalHydrationRouter } from './hydrationRouter'
-import { markTerminalGeometryAccepted } from './terminalGeometryCoordinator'
+import { createTerminalHydrationLifecycle } from './terminalHydrationLifecycle'
+import { requestPresentationSnapshot } from './presentationSnapshotGeometry'
 
 export function startRuntimeTerminalHydration({
   attachPromise,
@@ -64,60 +65,91 @@ export function startRuntimeTerminalHydration({
   shouldGateInitialUserInput: boolean
   shouldAwaitAgentVisibleOutput: boolean
   isDisposed: () => boolean
-}): void {
-  void hydrateTerminalFromSnapshot({
-    attachPromise,
-    sessionId,
-    terminal,
-    kind: kind === 'agent' ? 'agent' : 'terminal',
-    useLivePtySnapshotDuringHydration: kind !== 'agent' || isLiveSessionReattach,
-    runtimeEpochChanged: !isLiveSessionReattach,
-    skipInitialPlaceholderWrite: shouldSkipInitialPlaceholderWrite,
-    cachedScreenState,
-    persistedSnapshot: kind === 'agent' ? '' : scrollbackBuffer.snapshot(),
-    presentationSnapshotPromise,
-    takePtySnapshot: payload => window.opencoveApi.pty.snapshot(payload),
-    scrollStateToRestore,
-    isDisposed,
-    onHydratedWriteCommitted: rawSnapshot => {
-      committedScrollbackBuffer.set(rawSnapshot)
-      committedScreenStateRecorder.record(rawSnapshot)
-      scheduleTranscriptSync()
-    },
-    onHydrationBaselineResolved: source => {
-      hydrationBaselineSourceRef.current = source
-    },
-    onPresentationSnapshotGeometryApplied,
-    onPresentationSnapshotAccepted: snapshot => {
-      lastCommittedPtySizeRef.current = {
-        cols: snapshot.cols,
-        rows: snapshot.rows,
-      }
-      markTerminalGeometryAccepted(terminal, snapshot.geometryRevision)
-    },
-    finalizeHydration: (rawSnapshot, options) => {
-      runtimeInputBridge.hydratePtyOutputSnapshot(rawSnapshot)
-      runtimeInputBridge.enableTerminalDataForwarding()
-      hydrationRouter.finalizeHydration(rawSnapshot, {
-        baselineAppliedSeq: options?.baselineAppliedSeq ?? null,
-      })
-      if (options?.scrollStateToRestore) {
-        restoreTerminalScrollState(terminal, options.scrollStateToRestore)
-      }
-      onScrollStateRestored?.()
-      onHydrated?.()
-      if (shouldGateInitialUserInput) {
-        if (shouldAwaitAgentVisibleOutput) {
+}): () => void {
+  let cancelled = false
+  let inputReleaseTimer: ReturnType<typeof setTimeout> | null = null
+  const inactive = () => cancelled || isDisposed()
+  const hydrate = (snapshotPromise: Promise<PresentationSnapshotTerminalResult | null>) =>
+    hydrateTerminalFromSnapshot({
+      attachPromise,
+      sessionId,
+      terminal,
+      kind: kind === 'agent' ? 'agent' : 'terminal',
+      useLivePtySnapshotDuringHydration: kind !== 'agent' || isLiveSessionReattach,
+      runtimeEpochChanged: !isLiveSessionReattach,
+      skipInitialPlaceholderWrite: shouldSkipInitialPlaceholderWrite,
+      cachedScreenState,
+      persistedSnapshot: kind === 'agent' ? '' : scrollbackBuffer.snapshot(),
+      presentationSnapshotPromise: snapshotPromise,
+      takePtySnapshot: payload => window.opencoveApi.pty.snapshot(payload),
+      scrollStateToRestore,
+      isDisposed: inactive,
+      onHydratedWriteCommitted: rawSnapshot => {
+        committedScrollbackBuffer.set(rawSnapshot)
+        committedScreenStateRecorder.record(rawSnapshot)
+        scheduleTranscriptSync()
+      },
+      onHydrationBaselineResolved: source => {
+        hydrationBaselineSourceRef.current = source
+      },
+      onPresentationSnapshotGeometryApplied,
+      onPresentationSnapshotAccepted: snapshot => {
+        lastCommittedPtySizeRef.current = {
+          cols: snapshot.cols,
+          rows: snapshot.rows,
+        }
+      },
+      finalizeHydration: (rawSnapshot, options) => {
+        runtimeInputBridge.hydratePtyOutputSnapshot(rawSnapshot)
+        runtimeInputBridge.enableTerminalDataForwarding()
+        hydrationRouter.finalizeHydration(rawSnapshot, {
+          baselineAppliedSeq: options?.baselineAppliedSeq ?? null,
+        })
+        if (options?.scrollStateToRestore) {
+          restoreTerminalScrollState(terminal, options.scrollStateToRestore)
+        }
+        onScrollStateRestored?.()
+        onHydrated?.()
+        if (shouldGateInitialUserInput) {
+          if (shouldAwaitAgentVisibleOutput) {
+            return
+          }
+          inputReleaseTimer = setTimeout(() => {
+            inputReleaseTimer = null
+            if (!inactive()) {
+              runtimeInputBridge.releaseBufferedUserInput()
+            }
+          }, 1_000)
           return
         }
-        window.setTimeout(() => {
-          if (!isDisposed()) {
-            runtimeInputBridge.releaseBufferedUserInput()
-          }
-        }, 1_000)
-        return
+        runtimeInputBridge.releaseBufferedUserInput()
+      },
+    })
+  const lifecycle = createTerminalHydrationLifecycle({
+    terminal,
+    isDisposed: inactive,
+    attempt: async retry => {
+      if (!retry) {
+        return hydrate(presentationSnapshotPromise)
       }
-      runtimeInputBridge.releaseBufferedUserInput()
+      const snapshot = await requestPresentationSnapshot(sessionId)
+      if (inactive()) {
+        return 'disposed'
+      }
+      // An exhausted authoritative attempt must not downgrade to raw/empty
+      // fallback if a later refetch temporarily has no checkpoint.
+      return snapshot && snapshot.serializedScreen.length > 0
+        ? hydrate(Promise.resolve(snapshot))
+        : 'retryable'
     },
   })
+  lifecycle.start()
+  return () => {
+    cancelled = true
+    lifecycle.dispose()
+    if (inputReleaseTimer !== null) {
+      clearTimeout(inputReleaseTimer)
+      inputReleaseTimer = null
+    }
+  }
 }

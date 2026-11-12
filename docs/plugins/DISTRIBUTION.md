@@ -38,7 +38,7 @@ Local directory installation remains available as `plugin install <directory>`.
 ```sh
 opencove plugin install-git https://github.com/example/plugin.git \
   --ref main --directory packages/plugin \
-  --build npm --script build --output dist
+  --build npm --script build --build-output dist
 ```
 
 Build strategy belongs to this installation, not the plugin's runtime manifest.
@@ -197,3 +197,5 @@ README and manifest limits are 256 KiB and 64 KiB. Network/rate-limit errors sta
 visible with a retry action; they never trigger an installation.
 
 Content inspection follows the public [GitHub repository contents API](https://docs.github.com/en/rest/repos/contents).
+
+CLI success writes the result value as JSON. A failed or conflicting candidate exits 1 and preserves the candidate result in stderr JSON at `error.details`.

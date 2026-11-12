@@ -62,7 +62,7 @@ test('renders a declared Sidebar tree, routes only the clicked backend action, a
   const { electronApp, window: page } = await launchApp({ userDataDir, cleanupUserDataDir: false })
   try {
     await page.setViewportSize({ width: 1280, height: 850 })
-    await clearAndSeedWorkspace(page, [], { settings: { language: 'en', uiTheme: 'pixel' } })
+    await clearAndSeedWorkspace(page, [], { settings: { language: 'en', uiTheme: 'dark' } })
     await pluginCli(userDataDir, ['install', source])
     const section = page.getByTestId(`plugin-sidebar-${id}-checks`)
     await expect(section).toBeVisible()
@@ -117,7 +117,7 @@ test('renders a declared Sidebar tree, routes only the clicked backend action, a
     await section.getByRole('button', { name: 'Workspace', exact: true }).click()
     await page.getByTestId('app-header-settings').click()
     await page.getByTestId('settings-section-nav-appearance').click()
-    await chooseSettingsUiTheme(page, 'pixel-light')
+    await chooseSettingsUiTheme(page, 'light')
     await page.locator('.settings-panel__close').click()
     await capturePlugins(page, info, 'plugin-sidebar-light')
     await page.setViewportSize({ width: 390, height: 780 })

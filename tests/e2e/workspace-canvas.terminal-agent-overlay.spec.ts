@@ -49,8 +49,10 @@ async function runOverlayLifecycle(options: {
   await expect(terminal.getByTestId('terminal-node-reload-session')).toBeVisible()
   await expect(terminal.getByTestId('terminal-node-session-list')).toBeVisible()
   await window.keyboard.type(overlayAdvanceSentinel)
-  await expect(sidebarItem).toContainText('Standby', { timeout: 15_000 })
-  await expect(terminal.locator('.terminal-node__status')).toHaveText('Standby')
+  await expect(terminal.locator('.terminal-node__status')).toHaveText('Standby', {
+    timeout: 15_000,
+  })
+  await expect(sidebarItem.locator('.workspace-agent-item__status-label')).toHaveText('Finished')
 
   await expect
     .poll(() => readPersistedNode(window, nodeId))
@@ -105,7 +107,10 @@ async function runOverlayLifecycle(options: {
   await expectOverlayStubReady(terminal, 'codex')
   await expect(sidebarItem).toContainText('Working')
   await window.keyboard.type(overlayAdvanceSentinel)
-  await expect(sidebarItem).toContainText('Standby', { timeout: 15_000 })
+  await expect(terminal.locator('.terminal-node__status')).toHaveText('Standby', {
+    timeout: 15_000,
+  })
+  await expect(sidebarItem.locator('.workspace-agent-item__status-label')).toHaveText('Finished')
   await expect
     .poll(async () => (await readPersistedNode(window, nodeId))?.agent?.provider)
     .toBe('codex')

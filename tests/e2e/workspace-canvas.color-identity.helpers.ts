@@ -41,9 +41,10 @@ export async function seedIdentityFixture(
 ) {
   await seedMaterialFixture(page, fixture)
   await expect(page.locator(`${nodeSelector('agent')} .terminal-node__title-prefix`)).toHaveCount(0)
-  await expect(
-    page.locator(`${nodeSelector('agent')} [data-cove-pixel-glyph="ai"]`).first(),
-  ).toBeVisible()
+  const icon = page.locator(`${nodeSelector('agent')} [data-cove-node-kind-icon="agent"]`).first()
+  await expect(icon).toBeVisible()
+  await expect(icon).toHaveAttribute('data-agent-provider', 'codex')
+  await expect(icon).not.toHaveAttribute('data-cove-pixel-glyph')
 }
 
 export async function clearCanvasSelection(page: Page) {
@@ -182,6 +183,8 @@ export async function readNodeIdentity(page: Page) {
           ),
           labelColor: headerStyle.getPropertyValue('--cove-label-color').trim(),
           headerImage: header ? headerStyle.backgroundImage : null,
+          // Generated families wash the header in its kind colour from a layer under its content.
+          headerWash: header ? getComputedStyle(header, '::after').backgroundImage : null,
           ribbonImage: ribbon.backgroundImage,
           ribbonIsLabelColor:
             rgba(ribbon.backgroundColor).join() ===
@@ -203,10 +206,16 @@ export async function readNodeIdentity(page: Page) {
           },
           contrast: Math.min(contrast(text, surface), contrast(text, tintedSurface)),
           contrastSource: { titleColor, headerBase },
+          aiGlyphColor: rgba(
+            style.getPropertyValue('--cove-kind-ai-glyph').trim() ||
+              style.getPropertyValue('--cove-text-muted').trim(),
+          ),
           icon: icon
             ? {
                 kind: icon.dataset.coveNodeKindIcon,
-                glyph: icon.dataset.covePixelGlyph,
+                glyph: icon.getAttribute('data-cove-pixel-glyph'),
+                provider: icon.getAttribute('data-agent-provider'),
+                color: rgba(getComputedStyle(icon).color),
                 fill: icon.getAttribute('fill'),
                 shapeRendering: icon.getAttribute('shape-rendering'),
                 width: Number.parseFloat(getComputedStyle(icon).width),
@@ -290,6 +299,12 @@ export async function readSpaceIdentity(page: Page) {
         return { rgb: numbers.slice(0, 3), alpha: numbers[3] ?? 1, css: value }
       }
       const edge = getComputedStyle(region, '::before')
+      // The identity colour as the region paints it, for comparing with its corner brackets.
+      const probe = document.createElement('span')
+      probe.style.color = 'var(--cove-space-identity-color)'
+      region.append(probe)
+      const identityPaint = getComputedStyle(probe).color
+      probe.remove()
       const zoom = rect.width / Number.parseFloat((region as HTMLElement).style.width)
       const clipPoints = edge.clipPath.startsWith('polygon(')
         ? edge.clipPath
@@ -379,6 +394,8 @@ export async function readSpaceIdentity(page: Page) {
         identityColor: style.getPropertyValue('--cove-space-identity-color').trim(),
         defaultIdentityColor: style.getPropertyValue('--cove-pixel-cyan').trim(),
         fill: color(style.backgroundColor),
+        bracket: color(getComputedStyle(region, '::after').borderTopColor),
+        identityPaint: color(identityPaint),
         background: style.backgroundImage,
         blur: style.backdropFilter,
         shadow: style.boxShadow,

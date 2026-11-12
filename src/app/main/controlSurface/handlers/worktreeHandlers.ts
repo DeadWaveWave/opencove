@@ -1,14 +1,17 @@
+import { registerOperation } from '../registerOperation'
+import {
+  worktreeListOperation,
+  worktreeCreateOperation,
+  worktreeArchiveOperation,
+} from '../../../../shared/contracts/controlSurface/operations/domains/worktree'
 import type { ControlSurface } from '../controlSurface'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createAppError } from '../../../../shared/errors/appError'
 import type {
-  ArchiveWorktreeInput,
   ArchiveWorktreeResult,
-  CreateWorktreeInput,
   CreateWorktreeResult,
-  ListWorktreesInput,
   ListWorktreesResult,
 } from '../../../../shared/contracts/dto'
 import type { GitWorktreePort } from '../../../../contexts/worktree/application/ports'
@@ -31,107 +34,6 @@ import { suggestWorktreeNames } from '../../../../contexts/worktree/infrastructu
 import { computeSpaceDirectoryUpdate } from '../../../../contexts/space/application/updateSpaceDirectory'
 import { resolveWorktreesRoot } from '../../../../contexts/worktree/application/resolveWorktreesRoot'
 import { randomUUID } from 'node:crypto'
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object'
-}
-
-function normalizeOptionalString(value: unknown): string | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  if (typeof value !== 'string') {
-    return null
-  }
-
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : null
-}
-
-function normalizeListWorktreesPayload(payload: unknown): ListWorktreesInput {
-  if (payload === null || payload === undefined) {
-    return { projectId: null }
-  }
-
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for worktree.list.',
-    })
-  }
-
-  const projectId = normalizeOptionalString(payload.projectId)
-  return { projectId }
-}
-
-function normalizeCreateWorktreePayload(payload: unknown): CreateWorktreeInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for worktree.create.',
-    })
-  }
-
-  const spaceIdRaw = payload.spaceId
-  if (typeof spaceIdRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for worktree.create spaceId.',
-    })
-  }
-
-  const spaceId = spaceIdRaw.trim()
-  if (spaceId.length === 0) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Missing payload for worktree.create spaceId.',
-    })
-  }
-
-  return {
-    spaceId,
-    name: normalizeOptionalString(payload.name),
-  }
-}
-
-function normalizeArchiveWorktreePayload(payload: unknown): ArchiveWorktreeInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for worktree.archive.',
-    })
-  }
-
-  const spaceIdRaw = payload.spaceId
-  if (typeof spaceIdRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for worktree.archive spaceId.',
-    })
-  }
-
-  const spaceId = spaceIdRaw.trim()
-  if (spaceId.length === 0) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Missing payload for worktree.archive spaceId.',
-    })
-  }
-
-  const force = payload.force
-  if (force !== undefined && force !== null && typeof force !== 'boolean') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for worktree.archive force.',
-    })
-  }
-
-  const deleteBranch = payload.deleteBranch
-  if (deleteBranch !== undefined && deleteBranch !== null && typeof deleteBranch !== 'boolean') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for worktree.archive deleteBranch.',
-    })
-  }
-
-  return {
-    spaceId,
-    force: force ?? null,
-    deleteBranch: deleteBranch ?? null,
-  }
-}
 
 function resolveCandidateBranchName(spaceName: string, nameOverride: string | null): string {
   const base = nameOverride?.trim() || spaceName.trim()
@@ -181,9 +83,7 @@ export function registerWorktreeHandlers(
 ): void {
   const gitWorktreePort = deps.gitWorktreePort ?? createDefaultGitWorktreePort()
 
-  controlSurface.register('worktree.list', {
-    kind: 'query',
-    validate: normalizeListWorktreesPayload,
+  registerOperation(controlSurface, worktreeListOperation, {
     handle: async (_ctx, payload): Promise<ListWorktreesResult> => {
       const store = await deps.getPersistenceStore()
       const normalized = normalizePersistedAppState(await store.readAppState())
@@ -226,9 +126,7 @@ export function registerWorktreeHandlers(
     defaultErrorCode: 'worktree.list_worktrees_failed',
   })
 
-  controlSurface.register('worktree.create', {
-    kind: 'command',
-    validate: normalizeCreateWorktreePayload,
+  registerOperation(controlSurface, worktreeCreateOperation, {
     handle: async (_ctx, payload): Promise<CreateWorktreeResult> => {
       const store = await deps.getPersistenceStore()
       const expectedRevision = await store.readAppStateRevision()
@@ -335,9 +233,7 @@ export function registerWorktreeHandlers(
     defaultErrorCode: 'worktree.create_failed',
   })
 
-  controlSurface.register('worktree.archive', {
-    kind: 'command',
-    validate: normalizeArchiveWorktreePayload,
+  registerOperation(controlSurface, worktreeArchiveOperation, {
     handle: async (_ctx, payload): Promise<ArchiveWorktreeResult> => {
       const store = await deps.getPersistenceStore()
       const expectedRevision = await store.readAppStateRevision()

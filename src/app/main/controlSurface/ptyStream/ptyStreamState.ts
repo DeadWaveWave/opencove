@@ -1,3 +1,4 @@
+import type { BracketedPasteIngressTracker } from './BracketedPasteIngressTracker'
 import type { WebSocket } from 'ws'
 import type { ControlSurfaceSessionKind } from '../../../../shared/contracts/dto'
 import type { TerminalPresentationSession } from '../../../../platform/terminal/presentation/TerminalPresentationSession'
@@ -25,6 +26,8 @@ export type SessionMetadata = {
 
 export type SessionState = {
   sessionId: string
+  inputGeneration: object
+  ingress: BracketedPasteIngressTracker
   metadata: SessionMetadata | null
   status: 'running' | 'exited'
   exitCode: number | null

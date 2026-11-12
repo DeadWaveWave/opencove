@@ -1,17 +1,17 @@
 import { useEffect, useRef, type JSX } from 'react'
 import {
-  FolderKanban,
-  Keyboard,
-  LayoutDashboard,
-  Palette,
-  Puzzle,
-  Server,
-  Settings2,
-  Sparkles,
-  SquareTerminal,
-  Wrench,
-  type LucideIcon,
-} from 'lucide-react'
+  KeyboardIcon,
+  LayoutIcon,
+  PaletteIcon,
+  ExtensionIcon,
+  ProjectsIcon,
+  ServerIcon,
+  SettingsIcon,
+  SparklesIcon,
+  TerminalIcon,
+  ToolsIcon,
+} from '@app/renderer/components/ui/pixelIcons'
+import type { PixelIconComponent } from '@app/renderer/components/ui/PixelIcon'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
@@ -30,17 +30,17 @@ import {
   type SettingsPageIconId,
 } from './settingsPageRegistry'
 
-const SETTINGS_PAGE_ICONS: Record<SettingsPageIconId, LucideIcon> = {
-  settings: Settings2,
-  palette: Palette,
-  'layout-dashboard': LayoutDashboard,
-  sparkles: Sparkles,
-  puzzle: Puzzle,
-  terminal: SquareTerminal,
-  keyboard: Keyboard,
-  server: Server,
-  wrench: Wrench,
-  folder: FolderKanban,
+const SETTINGS_PAGE_ICONS: Record<SettingsPageIconId, PixelIconComponent> = {
+  settings: SettingsIcon,
+  palette: PaletteIcon,
+  'layout-dashboard': LayoutIcon,
+  sparkles: SparklesIcon,
+  puzzle: ExtensionIcon,
+  terminal: TerminalIcon,
+  keyboard: KeyboardIcon,
+  server: ServerIcon,
+  wrench: ToolsIcon,
+  folder: ProjectsIcon,
 }
 
 export function SettingsPanelSidebar({
@@ -80,7 +80,7 @@ export function SettingsPanelSidebar({
       <SettingsPanelNavButton
         key={pageId}
         isActive={resolvedActivePage.canonicalPageId === pageId}
-        icon={<Icon size={16} aria-hidden="true" />}
+        icon={<Icon size={18} />}
         label={t(definition.navLabelKey)}
         testId={definition.testId}
         onClick={() => onSelectPage(pageId)}
@@ -128,7 +128,7 @@ export function SettingsPanelSidebar({
         {isProject ? (
           <SettingsPanelNavButton
             isActive
-            icon={<FolderKanban size={16} aria-hidden="true" />}
+            icon={<ProjectsIcon size={18} />}
             label={t('settingsPanel.navigation.projectSettings')}
             onClick={() => onSelectPage(activePageId)}
           />

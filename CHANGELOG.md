@@ -6,68 +6,78 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-12
+
+OpenCove 0.5.0 redraws the app in pixels around one generated theme, shows on the canvas what every Agent is doing, tells you once when an Agent needs you, and lets Agents hand work to each other through a rebuilt `opencove` CLI. The Worker now owns what is saved and which conversation each Claude window resumes.
+
+### ✨ Highlights
+
+- **Cove, drawn in pixels**: one theme generated with checked contrast in light and dark, pixel icons across the app, glass windows on solid reading plates, and a pixel wall drawn on the GPU behind the canvas.
+- **A canvas that shows the work**: windows light the wall in their kind colour, working Agents patrol their frame, finished runs flash and send a shockwave, waiting Agents pulse and point from the canvas edge, and far view turns every window into a readable tile.
+- **Agents that need you, once**: the top-bar Agent pill lists every Agent, a card grows out of it when one waits for you, and one router decides the card, the system notification and a pixel sound.
+- **Agents that work together**: Agents and terminals on the canvas know where they are, and `opencove` lets them start Agents, hand them a prompt, wait for that turn and read its reply, within limits you keep.
+- **Saved means saved**: every window and browser tab converges on what the Worker stored, and each Claude window resumes the conversation it was in, also after `/clear`.
+
 ### 🚀 Added
 
-- Plugin themes: a theme can declare four inputs (light or dark, a base tint, an accent colour and contrast) instead of individual colours, and OpenCove generates the whole palette with the same checked contrast as its built-in Cove themes. (#477)
+- Agents: agents and terminals started on the canvas know which node, Space and project they belong to and get `opencove` on their PATH with a session-lifetime token for permitted API operations; `opencove whoami`, `opencove context` and `@self`, `@parent`, name and ID-prefix selectors let an agent orient itself, and `spawnedBy` / `lineageDepth` show which agent started each node. (#528, #540, #597)
+- Agents: hand work to another agent. `opencove agent prompt` pastes a prompt into a Claude Code or Codex window OpenCove launched, confirms that it arrived and never sends it twice; a prompt to a working agent steers its current turn, and nothing is sent while it waits on a dialog. `agent wait --turn` and `agent read --turn` follow that exact turn, also after a restart (the last 60 turns per agent are kept for 30 days; `opencove agent history clear` deletes them). `agent prompt --wait --read` does all of it in one command, and `node create agent --prompt … --wait --read` starts an agent and returns its first reply. (#544, #549, #550, #553, #554, #556, #563, #566, #570, #572, #589, #594, #598)
+- CLI: `opencove` is rebuilt for AI agents and scripts: grouped help with examples, compact JSON with `--fields`, optional table output, `--limit`, `--<option>-file <path|->` for long values, actionable errors with suggestions, stable exit codes, and `opencove api ops|schema|call` for every Control Surface operation. `opencove skill` prints a usage guide matching the CLI version, with topics for the canvas, coordinating, waiting, reading and access. (#521, #524, #525, #529, #532, #538, #551, #590)
+- CLI: arrange the canvas from a terminal: `node create <kind> --root-canvas` and `node list --root-canvas` work outside Spaces; `space create` (with `--in` and `--move`) and `space update` create, rename and resize Spaces without moving their members; `project add` adds a project; `node update agent|terminal --title` renames windows; and `agent stop` stops an agent without deleting its window. (#581, #584, #588, #595)
+- Control Surface: create projects and Spaces, address agent and terminal sessions by canvas node, and read and subscribe to each agent's run state and completed turns, so a headless Worker can be set up and driven from the CLI. (#526, #527, #533)
+- Agents: Claude Code and Codex agents that OpenCove launches learn at session start that they run in OpenCove, with a short guide to posting notes, marking tasks `ai_done` and asking before starting other agents. Turn it off in Settings → Agent → Tell agents about OpenCove. (#585)
+- Notifications: when an Agent waits for you, OpenCove tells you once. A card grows out of the top-bar Agent pill, a system notification appears only while OpenCove is in the background, and a pixel sound plays; each channel has its own switch, and Agents that start waiting together share one alert. (#568, #571)
+- Top bar and sidebar: the Agent pill lists every Agent across projects, waiting ones first, and a "Needs you" inbox at the top of the sidebar jumps to each. The pill, inbox, project tile badge, Agent row and Space card all count the same Agents. (#458, #460, #571, #573)
+- Canvas: choose the background in Settings → Appearance: Pixel, a pixel wall with soft colour clouds and a sparse twinkle that stays calm behind windows and keeps its colours across zoom; Minimal, a quiet dot grid; or Off. The wall draws on the GPU and falls back to Canvas 2D without hardware graphics. (#485, #486, #489, #491, #492, #498, #507, #535)
+- Canvas: windows show what they are doing on the wall. Each lights the cells around it in its kind colour, terminal output ripples outward, a working agent sends a sonar wave while two trains of pixels patrol its frame, a finished run flashes and sends a shockwave with sparks, a failure glitches red, and windows assemble and shatter in their kind colour. Reduced motion keeps still equivalents. (#490, #493, #496, #497, #534, #539, #541, #543)
+- Canvas: an Agent waiting for you pulses on the wall and wears an amber halo; when it is out of view, a beacon at the canvas edge names it and flies there on click. (#494, #543)
+- Canvas: below 25% zoom every window becomes a tile in its kind colour with its icon, title and status at one size on screen, while terminals and pages keep running; click a tile to fly there, drag it to move the window, or right-click it for the window menu. A zoom HUD and a Far / Near switch sit on the canvas, and Settings → Appearance → Far View turns far view off. (#481, #500, #509, #518, #552)
+- Tasks: the task window is a pixel task card with a four-step progress control, a priority flag and tags, the requirement, a row of session avatars and a Run button. (#561)
+- Command Center: ⌘P finds windows (with their Space) as well as Spaces, projects and commands, lists Agents waiting for you first, and enters Showcase mode, which hides the interface for recordings until you press Esc. (#475, #504)
+- Settings: search finds every row on every page. (#470)
+- Plugin themes: a theme can declare four inputs (light or dark, a base tint, an accent colour and contrast), and OpenCove generates the whole palette with the same checked contrast as Cove. (#477)
 
 ### 💅 Changed
 
-- Canvas: the pixel wall's colour clouds blend smoothly from one colour into the next instead of meeting at hard edges; bright patches drift across the open wall, twinkle gathers around working agents, the wall brightens softly under the pointer, and the zoomed-out wall stays calm, as in the Tide prototype.
-- Appearance: replace the Standard theme with Cove, whose colors are generated with checked contrast, and use Cove Dark for new installs. Ember is retired and existing Ember choices move to Cove; Pixel is unchanged. (#439)
-- Appearance: icon buttons show themed tooltips that follow the theme, appear sooner and also open on keyboard focus. (#442)
-- Agent windows: status pills use larger text and reserve color for what needs attention: working uses the accent, waiting is yellow, failed is red and every other state is neutral. (#443)
-- Canvas: in far view each window is a kind-coloured tile with a large icon, a bold title and a status pixel, as in the Tide prototype, and every Space name is the same size whatever the Space's width.
-- Canvas: the right-click menu shows the keyboard shortcuts for New Terminal, New Note, Run Agent and Create Space with Selected, and screen readers announce it as a menu. (#444)
-- Settings and dialogs: switches, checkboxes and task tags use shared controls that follow the theme and have larger click targets; task tags become chips. (#445)
-- Dialogs and windows: choices such as the issue type, connection method, plugin source, worktree branch mode and explorer view use one segmented control, which screen readers announce as a radio group. (#446)
-- Settings: search finds every row on every page, including update, notification banner, calibration, worker, Web UI, website window, diagnostics and each keyboard shortcut. (#470)
-- Sidebar: the project's name is followed by the branch its checkout is on, as in the Tide prototype.
-- Sidebar: a Space working in its own worktree shows its branch on its card, next to its working, waiting and window counts. The canvas and the sidebar now share one worktree listing per repository instead of each polling git.
-- Sidebar and Command Center: the OpenCove logo leaves the project rail; Focus, Normal and All become one segmented control under the project name; Agent rows read on one line with an AI tile; Command Center windows show their kind tile with the Space on the right, and agents show a status pill. (#484)
-- Dialogs: text fields share one labelled field with help text and inline errors; remote machine port errors now appear under the field. (#448)
-- Appearance: menus, popovers and the control center share one acrylic material with checked contrast, and turn solid when the system reduces transparency. (#449)
-- Settings: every row's label now names its control and its description is read with it; selects also say their current value. Rows, number fields and buttons use the shared components, and the pages keep their layout. (#471)
-- Settings: headings are neutral instead of blue, the selected page is a neutral row, each group's rows sit on one card, and the search field is boxed; the theme is a family card plus a Light / Dark / Follow System row, and the Agent page switches views with a segmented control instead of tabs. (#483)
-- Showcase mode: for recordings and demos, hide the top bar, sidebar and canvas controls from the command center or control center; the canvas fills the window and the pixel wall drifts faster. Press Esc to leave; it is never saved.
-- Control Center: section labels line up with their controls.
-- Settings: over the pixel wall the settings page is a sheet of frosted glass, with the wall's colours softly showing through; with solid windows or reduced transparency it stays opaque.
-- Canvas and shell: the pixel wall fills the whole window, and the top bar, sidebar and project rail float on it as frosted glass without blurring what is behind them. The wall stays lined up with the windows as the sidebar opens and closes; with solid windows or reduced transparency the shell is opaque, and the layout does not change.
-- Canvas: opening a project shows the pixel wall's grid from the first paint, so the wall fades in its colours without a flash. (#498)
-- Canvas: while an agent works, two strings of pixels travel around its window's frame, and a faint sonar wave goes out every 2.4 s. This replaces the streams down both sides; with reduced motion the frame keeps a still dotted outline. (#497)
-- Canvas: when an agent finishes a run, its window's frame flashes, pixel sparks leave its corners, and a shockwave crosses the pixel wall, briefly lighting the edges of the windows it passes. A failure makes the frame glitch red and sends a small red ripple. Reduced motion keeps a single colour flash, or a still red outline for a failure. (#496)
-- Canvas: an agent waiting for you sends a yellow pulse ring across the pixel wall. When its window is out of view, a beacon at the edge of the canvas shows its title and points at it; click it to fly there. Up to five beacons show at once, and the rest fold into +N. (#494)
-- Canvas: output from a window sends a ripple out across the pixel wall, or through the dots of the Minimal background, in the window's kind colour. Each window ripples at most every 0.7 s, at most 24 at once, and never with reduced motion. This replaces the sparkles along window edges. (#493)
-- Canvas: when zooming changes the pixel wall's cell size, the cells dissolve into the new size over 120 ms instead of jumping; with reduced motion they switch at once. (#492)
-- Canvas: behind every window the pixel wall shows through as frosted glass, a soft blur of the cells with faint seams, and pixels only twinkle in the open, never behind a window. (#491)
-- Canvas: on the pixel wall each window lights the cells around it in its kind colour. The light breathes while an agent works, brightens on output, flares when a run finishes, and turns yellow while waiting for you and red on failure. In light themes it falls to the lower right, like daylight through coloured glass. (#490)
-- Canvas: choose the background in Settings → Appearance or the Control Center: Pixel (the pixel wall), Minimal (a quiet dot grid) or Off. Background Twinkle turns the wall's twinkle and drifting clouds off so it holds still. The old canvas background switch carries over: on becomes Pixel, off becomes Off. The old drifting pixel field and scan lines are retired. (#489)
-- Canvas: the pixel background becomes a pixel wall: cells with seams, soft colour clouds and a sparse twinkle in the theme's colours, drawn on the GPU and calmer behind every window so text stays readable. Without hardware graphics it draws with Canvas 2D, and if the GPU resets it shows a still wall until it recovers. (#486)
-- Pixel theme: decorative canvas effects keep an even 30 frames a second while OpenCove is focused (a 120Hz display no longer drops them to 24) and slow to 10 when it is in the background, which saves power. (#485)
-- Windows: every window header ends with the same collapse and close buttons, in the same order and size, with tooltips; the terminal and agent close button now has a name for screen readers. (#450)
-- Windows: terminal, agent, task, note, document, folder, role and plugin windows share one header layout: the kind icon on a small tile, 13px titles, status after the title and evenly spaced controls; the role header is no longer taller than the others. (#451)
-- Website windows: the header shows the page title like other windows, and back, forward, reload and the address bar join the browser toolbar below it, where the address stays readable in narrow windows. (#452)
-- Windows: content sits on an inset reading plate below the header, with a fine edge; the document editor reads directly on it. (#453)
-- Pixel theme: window headers no longer use a live background blur; windows use one tinted frame around the reading plate, which saves GPU work with many windows open. (#454)
-- Terminals: terminal text can sit directly on the window's reading plate. Settings → Terminal → Terminal Background chooses Auto (transparent on macOS, opaque on Windows and Linux), Transparent or Opaque; changing it keeps the running shell and its output. (#456)
-- Appearance: Window Material (Glass or Solid) in Settings → Appearance and the control center; Solid makes windows, menus and panels opaque and removes every blur, and windows turn solid whenever the system reduces transparency, live, without a restart. The control center now lists Appearance first and opens All Settings with its shortcut. (#480)
-- Control Center: quick switches for theme (Cove or Pixel), light, dark or follow system, pixel background, motion signals and the minimap; plugin themes are chosen in Settings, and "Top-right banner" is now "Notification banner" in Settings. (#457)
-- Settings: new installs start with agent Full Access off, so agents stay in their sandbox and ask before running commands or changing files; existing choices are kept, and the setting now says what each state means. (#461)
-- Top bar: the command entry names the project and the Space you are looking at, and a summary of agents across projects shows how many are working; when any are waiting, one click goes to the first. (#458)
-- Command center: ⌘P finds windows (with the Space they live in) as well as Spaces, projects and commands, and lists agents waiting for you across projects first, with how long they have waited; commands show their shortcuts, and while you type, the section with the best match comes first. (#475)
-- Sidebar: every project on the rail is a tile in its own colour with its name below, the number of agents waiting on its corner and three moving pixels while its agents work; the OpenCove mark sits at the top and pin, add project and settings at the bottom. (#459)
-- Sidebar: a "Needs you" inbox at the top lists every agent waiting for you across projects, with where it is and how long ago it started waiting; one click switches to its project and focuses it. (#460)
-- Sidebar: each Space is a card with a live pixel map of its windows in their kind colours, where working agents step and waiting ones turn amber; click a square to fly to that window. The card shows how many agents are working or waiting and how many windows it holds. (#466)
-- Canvas: a small HUD shows the zoom at the top right, and a Far / Near switch at the top left fits every window in far view or returns to 100%. (#500)
-- Canvas: below 25% zoom each window turns into a tile in its kind colour, with its icon, title, agent status and label, and comes back above 28%. Terminals, editors and pages keep running. Click a tile to fly to its window, drag it to move the window, or right-click it for the window menu. Settings → Appearance → Far View turns it off. (#481)
-- Windows: the header's icon tile shows what a window is in its kind colour (agents purple, terminals green, tasks orange, notes and documents blue, websites and images pink), with a light tint on Cove headers, and the canvas minimap uses the same colours; colour labels now draw only the window frame and a short flag, and unlabeled Cove windows keep a neutral frame. Settings → Appearance → Window Kind Colours turns the kind colours off, and plugin windows can choose a kind with `view.kind`. (#478)
+- Appearance: Cove, whose colours are generated with checked contrast, replaces Standard and is the default, with Cove Dark for new installs. Ember, Pixel and Pixel Light retire into Cove: existing choices and plugin themes that extend them move to Cove dark or light. (#439, #564)
+- Appearance: every icon is a pixel icon on one 12-cell grid, and Agent icons show their provider's mark in the AI kind colour. (#510, #519, #558)
+- Windows: every window shares one header: a tile in its kind colour (agents purple, terminals green, tasks orange, notes and documents blue, websites and images pink), the title, status, and the same collapse and close buttons; the whole title bar drags the window. Content sits on a solid reading plate, faintly tinted by kind, that melts into the glass frame. Settings → Appearance → Window Kind Colours turns kind colours off, and plugin windows can choose a kind with `view.kind`. (#450, #451, #453, #478, #520, #546, #552, #561)
+- Windows: choose Window Material (Glass or Solid) in Settings → Appearance. Solid makes windows, menus and panels opaque, and windows turn solid whenever the system reduces transparency. (#449, #480)
+- Terminals: Settings → Terminal → Terminal Background chooses Auto (transparent on macOS, opaque on Windows and Linux), Transparent or Opaque, and changing it keeps the running shell. (#456)
+- Website windows: the page title sits in the header, and back, forward, reload and the address bar move to the toolbar below it. (#452)
+- Agent windows: status pills use larger text and keep colour for what needs attention: working uses the accent, waiting is yellow and failed is red. (#443)
+- Shell: the top bar and sidebar float on the pixel wall as glass, and the settings page is a frosted sheet over it. A top-bar button hides the sidebar completely and moves into the traffic lights' place in macOS full screen. The command entry names the current project and Space. (#458, #501, #503, #511, #555)
+- Sidebar: projects are colour tiles on the rail with a waiting count and working dots; Focus, Normal and All are one segmented control; the project name shows its branch; and each Space is a card with a live pixel map of its windows, its worktree branch and its working and waiting counts. (#459, #466, #484, #502, #512, #546)
+- Control Center: a pixel window with the appearance (light, dark or follow system) and switches for the minimap, in-app notifications, system notifications and sound. (#457, #564)
+- Controls: themed tooltips that also open on keyboard focus, shared switches, checkboxes, chips, segmented controls and labelled text fields, settings rows whose labels name their control, and right-click menus that show shortcuts. (#442, #444, #445, #446, #448, #471, #483)
+- Settings: new installs start with Agent Full Access off, so agents stay in their sandbox and ask before running commands or changing files; existing choices are kept. (#461)
+- Canvas: decorative effects run at an even 30 frames a second while OpenCove is focused and slow to 10 in the background. (#485)
+- Agents: agents in OpenCove terminals can run at most 6 agents or terminals per tree of agents they started, no deeper than a grandchild of an agent you started, and the refusal says how to free a slot. Agents and terminals you start yourself, task runs and restarts are never limited. (#600)
+- Agents: OpenCove says why an agent is waiting (an approval, a question with its options, or a plan to review) in the CLI, sidebar, Agent pill, collapsed windows and edge beacons; `opencove agent wait` stops with exit 10 when an agent waits for the user and 11 when it exits. (#582, #587)
+- Claude agents: the Worker owns which conversation each Claude window resumes, and every launch, relaunch and restart goes through one owner, so a stale window or a late save can no longer roll it back and restarting after `/clear` resumes the new conversation. Existing windows are adopted on their next cold start; `OPENCOVE_MANAGED_CLAUDE_BINDINGS=0` pauses adoption in an emergency without dropping protection. (#596, #599, #603, #604)
+- Sync and persistence: every window and browser tab converges on what the Worker actually saved and catches up after reconnecting or a Worker restart. Changes made by the CLI, agents, plugins, the Web UI or the Worker reach every window and are no longer reverted; quitting waits briefly for your last edits; importing a workspace can no longer be undone by a pending autosave. Older Workers keep working, and features that need a newer one say so. (#530, #601, #602)
+- CLI: errors say whether retrying can help and list ambiguity candidates; long lists show 50 rows with `truncated` / `total`; create commands accept `-q`; and the CLI ships as one built file inside the app, while launchers from earlier versions keep working. (#522, #592)
 
 ### 🐛 Fixed
 
-- Website windows: a frozen website window now always gets its snapshot; a snapshot requested before the page's first frame was presented used to be dropped. (#474)
-- Agent: give each managed Claude launch its own conversation ID and preserve it across recovery, preventing same-directory nodes from binding to the newest unrelated transcript. (#425)
-- Terminal: probe WebGL support once and release the probe, so workspaces with many terminals no longer evict active terminal renderers. (#428)
-- Canvas: keep zooming smooth in large workspaces by no longer restyling every window on each zoom step. (#429)
-- Terminal: when a terminal is restored or redrawn, questions programs asked the terminal earlier (such as its background colour) are no longer answered again into the shell, which could show errors like "command not found: 11". (#455)
+- Agents: agent terminals can no longer use the OpenCove API to make the user's decisions: they cannot type into another session, change settings, launch agents with broader permissions than you configured, start shell or slash commands through prompts, or run plugin code. `opencove api ops` shows what an agent terminal may call. Project isolation is not yet enforced. (#583)
+- Agents: with Full Access off, Claude Code agents start in Claude's ask-first mode, even when your own Claude default is auto mode or skips permissions. (#609)
+- Agents: closing or deleting an agent window, or quitting OpenCove, also stops the commands and servers the agent started. Plain terminals are unchanged, so `nohup` still works there. (#576)
+- Agent windows: after a workspace switch, reload, restart or font change, an agent window keeps the terminal state Claude Code set up (alternate screen, bracketed paste, mouse tracking), so multi-line pastes stay one message and the mouse wheel keeps working. (#579)
+- Agents: Codex windows get OpenCove's lifecycle hooks even while the shared Codex app-server daemon runs, so their working and idle state is reliable; Settings → Agent → Codex → Reuse a running Codex app-server restores the old behaviour. (#574)
+- Agents: each managed Claude launch gets its own conversation ID, so windows in the same directory no longer bind to the newest unrelated transcript. (#425)
+- Agents: restoring sessions no longer replays past completions or repeats completion alerts, and repeated Agent title queries no longer flood the Worker and fail saves with "Unable to save data to storage." (#580)
+- Agents: a message typed while Claude Code works stays in the current turn, and a Codex agent no longer shows as idle while it works on a prompt sent right after its previous turn. (#559, #562)
+- Agents: when OpenCove is started from inside a Claude Code session, its agents no longer inherit that session's markers; Claude Code transcripts are found under `CLAUDE_CONFIG_DIR`; and agents keep `opencove` on PATH even when shell startup files replace it. (#547, #548, #560)
+- Canvas: a node created in a full Space is placed beside its members and the Space grows to contain it, instead of landing outside. (#591)
+- Canvas: dragging a window no longer re-renders every other window (about 60 → 120 fps with 100 windows), zooming stays smooth in large workspaces, and Worker refreshes no longer re-render unchanged tasks. (#429, #508, #536)
+- Terminal: WebGL support is probed once, so workspaces with many terminals no longer evict active renderers, and a restored terminal no longer answers old terminal queries into the shell (such as "command not found: 11"). (#428, #455)
+- Worker: only one Worker can own a profile at a time, so Desktop can no longer start a second Worker that writes the same database. (#523)
+- Installation: installing the standalone server or a managed SSH runtime on Windows no longer fails with `EPERM` when antivirus briefly holds the freshly extracted files; OpenCove retries the move for up to 60 seconds. (#608)
+- CLI: control tokens never start with `-`, so `--token <token>` always parses, and option values may start with `-`; a Worker that lacks a command exits 5 and says to update OpenCove. (#578, #586)
+- Website windows: a frozen website window always gets its snapshot. (#474)
+
+---
 
 ## [0.4.0] - 2026-10-12
 
@@ -183,278 +193,6 @@ OpenCove 0.3.1 improves Agent startup and completion notifications, terminal rec
 
 ---
 
-## [0.3.0] - 2026-09-04
+## Earlier releases
 
-OpenCove 0.3.0 makes long-running AI development work easier to resume, observe, and share across Desktop, browsers, and remote machines, while substantially expanding what can live on the spatial canvas.
-
-### ✨ Highlights
-- **Durable terminal and Agent continuity**: Keep terminal output, interactive sessions, Agent identity, and workspace context through app restarts and runtime recovery.
-- **Remote Workers and browser access**: Set up and repair managed SSH Workers, install the standalone runtime without Desktop, and open the same workspace through the optional Worker Web UI.
-- **A richer spatial workspace**: Organize work with Child Spaces, reusable roles, pinned navigation, improved search, and smoother arrange, drag, resize, and trackpad workflows.
-- **More work on the canvas**: Browse and edit project files, open full website windows, preview media, edit documents in Monaco, and move content between Explorer and the canvas.
-- **Stronger Agent workflows**: Use more Agent providers, adopt supported commands typed in ordinary terminals, switch resumable sessions, and receive clearer activity and completion feedback.
-- **Broader installation support**: Download smaller packages for Apple Silicon and Intel Macs, Windows, Linux AppImage, or Debian, plus standalone CLI/Worker bundles for headless machines.
-
-### 🚀 Added
-- Terminal runtime: add Worker-owned native PTY sessions, snapshot-first renderer attach, ordered output/exit completion, durable recovery, and verified Agent continuity without introducing a second terminal owner. (#376)
-- Terminal: adopt Claude Code and Codex commands typed inside ordinary terminals through private POSIX/Windows PATH shims, preserving terminal identity and user config while reporting authenticated per-invocation state and verified provider session identity. (#373)
-- Agent: offer Pi and Kimi Code as selectable agent providers when creating agents.
-- Diagnostics: always collect bounded in-memory breadcrumbs for key terminal and UI-geometry events, add a UI geometry report section, rotate and type-sample diagnostic logs, and drop a misleading log entry, so issue reports carry enough context to reproduce a bug without a follow-up round trip. (#356)
-- Remote: prefill the remote-machine form from one `~/.ssh/config` host alias while preserving explicit review and confirmation before registration. (#349)
-- Remote: discover concrete `~/.ssh/config` aliases through a bounded, fail-closed backend query while preserving OpenSSH as the effective connection-config owner. (#346)
-- Remote: support editing managed SSH endpoints in place, so changing connection parameters keeps the endpoint identity and its existing mount bindings instead of requiring delete-and-recreate. (#317)
-- Spaces: add sidebar pinning for root Spaces, pinned-first ordering, matching top-rail pills with shared context menus, and click-through gaps between pills. (#306)
-- UI: add browser-style Project/Space/Agent vertical sidebar grouping with pinned rail mode, hover auto-reveal, colored Space branches, and Agent status rings. (#291)
-- Workspace canvas: add an Arrange option to keep current window sizes while tidying Spaces or canvas selections. (#275)
-- Release: add Linux Debian (`.deb`) packages to release artifacts. (#272)
-- Agent: add Settings install status for local agent CLIs with one-click npm install actions and a unified default/order/install list. (#267)
-- Release: add separate macOS Intel x64 release artifacts alongside Apple Silicon packages. (#255)
-- Workspace canvas: add full browser-window capability with client-local history, bookmarks, Safari-style start page, Settings-owned full-browser/web-compatible viewer modes, configurable search engine, downloads, permissions, find, fullscreen, four-terminal default sizing, 90% normal-window constraints, and WebUI web-compatible viewer support. (#246)
-- Document editor: add VS Code-style shortcut handling for word wrap (`Alt/Option+Z`) and editor-local find (`Cmd/Ctrl+F`) inside Monaco document nodes. (#244)
-- Workspace canvas: add canvas-only Child Spaces with contained creation, drag/resize boundaries, selected-node moves, and mount-aware execution context. (#245)
-- Workspace canvas: add project-scoped reusable roles with prompt-backed creation/edit/delete, provider-selectable role runs, role nodes, and role-to-agent relationship edges. (#242)
-- Diagnostics: add Settings performance snapshots, a header real-time monitor, process-metric fallbacks, and automatic jank records for terminal/agent lag investigation. (#231)
-- Support: add an in-app issue report flow that generates a local redacted diagnostic report and opens a prefilled GitHub issue for Run Agent failures. (#230)
-- Remote: productize managed SSH endpoint setup with topology health, runtime repair/bootstrap actions, remote browse, and unified endpoint-driven project/location flows. (#227)
-- CLI: support Desktop-managed runtime launcher repair plus standalone CLI/Worker/Web UI installers for macOS, Linux, and Windows. (#209)
-- Agent: add header-level session reload plus semantic session history switching with task-text previews for resumable agent sessions. (#207)
-- Terminal: add Desktop/Web display consistency calibration with shared reference setup, device-local compensation, diagnostics, and a real parity profiling script. (#206)
-- Space Explorer: preview and open VS Code-built-in audio/video files (`mp3`, `wav`, `wave`, `ogg`, `oga`, `mp4`, `webm`) as playable document windows. (#204)
-- Agent: system notifications now fire when agents finish work and return to standby. (#198)
-- Settings: left-sidebar search helps users locate settings and jump directly to the matching section. (#192)
-- CLI: add canvas node control commands for creating, listing, reading, deleting, updating supported node types, and focusing nodes or Spaces. (#193)
-- Workspace canvas: experimental website window nodes with opt-in settings, shared-session profile modes, snapshot-backed warm/cold lifecycle, and in-canvas navigation handling. (#141)
-- Space Explorer: VS Code-like file and folder operations, including drag-move, context menu actions, cut/copy/paste, rename, delete, and copy path. (#123)
-- Space Explorer: side-by-side quick preview with drag-to-materialize document nodes, line numbers, theme-aware styling, and stabilized formal open/close behavior. (#143)
-- Sidebar: drag-to-reorder workspace projects with dnd-kit, persisted sort order, and migration backfill for existing databases. (#87)
-- Settings: Quick Commands & Phrases customization (terminal commands, URLs, and phrase insertion) plus per-agent environment variable overrides. (#169)
-- Workspace canvas: arrange all / arrange canvas / arrange in space actions. (#42)
-- Workspace canvas: Arrange By menu (scope, ordering, space sizing, magnetic snapping). (#42)
-- Workspace canvas: live magnetic snap guides for node dragging, aligned to the 24px canvas rhythm and enabled by default. (#42)
-- Workspace canvas: unified tiled arrange layout with standard node ratios (terminal/task/agent/note) and balanced dense packing. (#42)
-- Workspace canvas: paste/drag-drop images into the canvas as borderless image nodes with aspect-locked resize. (#74)
-- Workspace: Cmd/Ctrl+F opens a right-side search panel for spaces/tasks/notes; terminal-focused Cmd/Ctrl+F opens in-terminal find. (#78)
-- Settings: UI theme selector (system/light/dark) with system follow. (#40)
-- UI: App header with primary sidebar toggle + top-right settings (macOS uses unified title bar chrome).
-- UI: Command Center in header (search + project/space switcher) with Cmd/Ctrl+K and Cmd/Ctrl+P shortcuts.
-- UI: Control Center + agent standby banner notifications (with configurable context chips). (#81)
-- Spaces: Space Archives — archive Space snapshots + replay window (Command Center). (#80)
-- In-canvas GitHub pull request chip for worktree-bound Spaces (opens on GitHub; requires `gh`).
-- Settings → Integrations tab with a GitHub PR links toggle (default on).
-- In-app update checker with stable/nightly tracking (nightly supports prompt only) plus a first-launch “What’s New” sheet after updates. (#49)
-- Workspace canvas: Label colors for Spaces and windows, plus a single-color filter. (#54)
-- Settings: configurable focus target zoom with slider-only live preview and neutral 100% marker. (#56)
-- Settings: standard window size bucket (compact/regular/large) for node create/arrange sizing (replaces runtime auto-sizing). (#70)
-- Settings: configurable canvas mouse-wheel behavior (zoom vs pan) with a configurable zoom modifier (Cmd/Ctrl+wheel by default). (#127)
-- Task: prompt templates for task requirement prefix injection (Global + Project scopes). (#71)
-- Sync-first: multi-client snapshot + revision + SSE `/events` for the worker control surface (Desktop/Web/CLI). (#122)
-- Worker: PTY session streaming over the control surface (`WS /pty`) + ticket→cookie web auth for the Worker Web Shell. (#133)
-- CLI: Local Worker lifecycle controls with `worker status --all` and ownership-safe `worker stop`. (#195)
-
-### 💅 Changed
-- Remote: redesign remote-machine setup with consistent terminology, progressive SSH port disclosure, and protection against accidental dismissal of edited forms and removal confirmations. (#347)
-- Agent: hide Gemini from selectable provider surfaces (new/select/default/order, installed list, install suggestions) while keeping existing Gemini sessions and settings fully readable, resumable, and unchanged on disk. (#341)
-- Tooling: staged pre-commit gates now warn loudly when they match no files, so an empty staging area can no longer look like a clean pass; `OPENCOVE_REQUIRE_STAGED=1` makes it a hard failure. (#319)
-- UI: replace Project and Space modal dialogs with compact context-anchored popovers, use the selected folder name for local Projects, keep nested selectors interactive, and show Space-local progress during Worktree operations. (#307)
-- UI: refine the console and Control Center with compact proportions, accessible primitives, calibrated theme/toggle styling, and deterministic nested-overlay behavior. (#298)
-- UI: refine standby banner notification chrome with an accent hairline, standby pulse, and monospace branch/PR chips. (#297)
-- Task: simplify the node header into a Note-style actions menu, shorten the run button label, and compact agent session rows to icon, state, and time. (#294)
-- Settings: reorganize the panel into user-oriented groups for display/fonts, canvas/windows, AI assistants, tasks/shortcuts, worker connections, integrations, and advanced tools while preserving search and legacy section routing. (#266)
-- Worker: Desktop now versions local-worker reuse and repairs legacy connection files before reconnecting, preventing installed upgrades from reusing stale runtimes and bypassing persistence repair. (#264)
-- Support: expand in-app issue reports into structured redacted diagnostic bundles with runtime state, process snapshots, and log excerpts. (#262)
-- Workspace canvas: simplify Space creation and scoped lifecycle operations so the same `Create Space` action creates child Spaces inside existing Spaces, child Spaces can become Space Worktrees under the ancestor-chain guard, and archive cleanup is explicit for contained Worktrees. (#257)
-- Workspace canvas: note markdown export now defaults to Downloads, confirms the save location on Desktop, supports WebUI browser downloads, and reports completion through the app message toast instead of inline note status text. (#253)
-- Space Explorer: now opens at half the canonical agent window width by default, uses flatter VS Code-style selection chrome, and creates new files/folders inline in the tree with preserved selection. (#232)
-- Workspace canvas: document nodes now use a Monaco editor with live disk refresh, dirty/conflict protection, and dark-theme fixes. (#233)
-- Workspace canvas: note-style inline title editing now also applies to terminal, agent terminal, and task nodes, with text-only edit hit areas, drag-safe blank headers, placeholder titles, and long-title rendering fixes. (#226)
-- Workspace canvas: double-clicking the minimap now recenters the viewport on the target region without changing the current zoom level. (#222)
-- UI: project sidebar agent lists are now collapsible with task-first single-line rows, provider icons, inline title editing, and synced color accents. (#205)
-- Worker: packaged Desktop is now local-only for Home Worker, auto-repairs legacy standalone/remote configs on launch, recovers cleanly if local-worker startup fails, and boots the packaged local worker without Electron-only runtime imports. (#162)
-- Worker: packaged Desktop now uses Local Worker mode, auto-repairs legacy standalone/remote configs on launch, recovers cleanly if local-worker startup fails, and boots the packaged local worker without Electron-only runtime imports. (#162, #195)
-- Settings: allow auto-focus to center within the visible canvas (accounts for the primary sidebar). (#166)
-- Workspace canvas: context menus now stay near the pointer, only flip on real overflow, and reorder note/space actions for faster access. (#64)
-- What's New: switched update notes from runtime GitHub compare fetching to release-manifest delivery embedded in each build. (#67)
-- Workspace canvas: keep Arrange By menu open while tweaking options (dismiss on outside click). (#42)
-- Workspace canvas: arrange spaces before root nodes during canvas/global arrange. (#42)
-- Workspace canvas: default arrange now keeps standard-size alignment always on and resizes spaces to the fitted tiled result. (#42)
-- Workspace canvas: tiled arrange now keeps an idea lane first, can open that lane into two note columns when space allows, then places task + linked agent groups before standalone agents / terminals. (#42)
-- Workspace canvas: dense packing now favors balanced aspect ratios over ultra-tall stacks for more shelf-like results. (#42)
-- Workspace canvas: drag now previews live snap guides continuously and only commits magnetic snapping on release for steadier pointer movement. (#42)
-- Workspace canvas: show drag-surface overlays only for multi-select (Shift+click/marquee) and treat mixed selection with Spaces as space-dominant drag. (#82)
-- Workspace canvas: Arrange By now simplifies Space sizing to `Tighten Space` / `Keep Space size`, defaults to `Tighten Space`, and moves magnetic snapping to the top-level context menu. (#42)
-- Worker Web UI: now opt-in via Settings (and supports an optional fixed port). (#161)
-- Settings: default UI theme is now dark. (#69)
-- Shortcuts: Yield app shortcuts to the terminal when it’s focused (configurable), and allow customizing keybindings in Settings → Shortcuts. (#59)
-- Shortcuts: unify app and workspace-canvas keybindings under single-bind customization, make canvas shortcuts recordable, and switch Command Center to Cmd/Ctrl+P by default. (#68)
-- Simplified GitHub PR integration to a link-only chip (removed in-canvas PR panel/actions/diff/checks UI for now).
-- UI: Softened minimap node colors in light theme. (#47)
-- UI: Made modal dialogs opaque for clearer readability. (#48)
-- Spaces: dragging Terminal/Agent windows across directory-bound spaces now shows a compact confirmation, then moves with `DIR MISMATCH` labeling. (#51)
-- Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
-
-### 🐞 Fixed
-- Agent sessions: archive the previous task binding only after a session switch succeeds, preventing a concurrent sync refresh from dropping that history.
-- Agent recovery: keep Codex sessions recoverable when an active-writer rejection arrives after the initial process spawn, using verified SessionStart as the success boundary instead of a short timing window.
-- Remote Worker: verify a downloaded standalone bundle against its release SHA256 before installation and report the packaged version so remote status and compatibility checks identify the installed release.
-- Website window: wait for the loaded document before capturing its freeze preview, preventing a blank or permanently pending snapshot under slower startup conditions.
-- Worker Web UI: keep the current xterm instance when a live session's reattach projection settles, preventing an initial browser handoff from remounting the terminal.
-- Worker Web UI: preserve Worker, PTY, Hub, renderer, history, and viewport identity across transactional Web-access reconfiguration, with fenced shutdown, listener handoff, replay cursors, and cross-process configuration ownership. (#377)
-- Terminal recovery: never cold-relaunch a provider from an unauthenticated terminal title or hint; automatic resume now requires a verified provider session binding.
-- Agent: report Pi run state from its session log and show Observing until evidence arrives instead of leaving it permanently Working. (#372)
-- Agent: keep Kimi startup observation neutral and show degraded only when its session wire is explicitly unavailable. (#372)
-- Terminal: render Windows terminals with WebGL and quantize backing cells to integer device pixels at fractional DPI and canvas zoom, preventing accumulated glyph-width drift. (#368)
-- Agent: keep a busy agent labelled as working through long model generation by widening the hook freshness lease to 180s, so a run that goes quiet for up to three minutes is no longer downgraded to a stale fallback status. (#367)
-- Agent: inject Claude Code and Codex hook configuration per launch instead of editing user-level files, clean exact legacy OpenCove residue at startup, and tie temporary artifacts to the PTY lifecycle. (#366)
-- Diagnostics: keep the newest breadcrumbs in the prefilled GitHub issue body instead of the oldest, emit a still-parseable payload that states how many entries were dropped, and tell the reporter the form is only an extract so the saved report gets attached. (#363)
-- Release: package the app from an explicit allowlist instead of electron-builder's default "everything except a hardcoded denylist", which had been shipping build caches and repository files inside the app — cutting download sizes by roughly half (Linux server 234 MB → 98 MB, macOS arm64 306 MB → 158 MB, Windows 290 MB → 134 MB). (#361)
-- Release: run the standalone CLI/server bundle on a bundled Node runtime with Node-ABI native modules instead of the packaged Electron executable, so headless Linux servers no longer require Chromium/GTK/NSS shared libraries, and verify it in a minimal container during release. (#355)
-- Recovery: persist Agent and Terminal Worker bindings across restarts, prefer node-owned remote routes over Space fallback, and fail closed with an explicit bilingual recovery issue when the original remote Worker cannot be resolved. (#352)
-- Agent: make Codex resume recovery writer-safe by waiting for the thread writer lock to release before resuming, retrying a bounded number of times on transient `already has an active writer` conflicts, surfacing a retry action instead of a silent failure, and cleaning up orphaned worker process trees left by a forced quit. (#350)
-- Terminal: return a failed terminal-launched Codex command to a normal terminal after authoritative PTY foreground reconciliation, while keeping optimistic launch feedback and fail-open behavior when process evidence is unavailable. (#348)
-- Terminal: keep an active terminal agent overlay and its provider hint when an asynchronous worker-sync refresh reconciles a stale persisted snapshot, so recognized agents no longer lose their overlay, sidebar item, and watcher ownership under load. (#345)
-- Agent: recover terminal-launched agents without a verified session by relaunching the provider once in a fresh PTY, deterministically bind the nearest safe session candidate, and keep the overlay in standby until real turn signals arrive. (#344)
-- Agent: resume terminal-launched agent sessions after an app restart by capturing a verified resume-session id, aligning the session storage root with the effective CODEX_HOME, and issuing a one-time exact provider resume on a fresh PTY; when no verified id exists the session is kept with an in-app prompt to choose an existing session or start a new one instead of silently downgrading. (#343)
-- Terminal: recognize agent commands typed during terminal hydration so the agent overlay and its watcher ownership are created deterministically regardless of load timing, by routing accepted user input through the command parser while preserving PTY write ordering. (#342)
-- Agent: make managed Codex hooks work end-to-end — install a fail-open POSIX launcher over a private loopback endpoint, inject pane coordinates at PTY creation, and grant durable hook trust through the CLI configuration RPC so authenticated working/waiting/standby state is reported without any manual trust step, with a fallback lane and automatic cleanup on abnormal exits. (#339)
-- Terminal: acknowledge resizes with the geometry the PTY host actually applied instead of echoing the requested size, and keep unconfirmable ConPTY resizes explicitly unverified rather than reporting a fabricated value. (#318)
-- Terminal: gate session spawns until the runtime is ready and bound the ambiguous-exit and startup-retry paths, preventing orphaned PTYs and permanently locked recovery. (#318)
-- Remote: reject invalid managed SSH ports that were previously accepted silently, and confirm endpoint removal with an explicit impact disclosure before deleting. (#317)
-- Settings: persist the collapsed sidebar and Arrange window-size preference across app restarts. (#316)
-- Notifications: clicking an Agent notification from another Project now lands on the corresponding Agent instead of only switching Projects. (#310)
-- Agent: derive directly launched Agent titles from their first bound session and keep short-turn completion notifications aligned with the resolved title. (#309)
-- Sidebar: distinguish expandable Spaces from empty Spaces in the collapsed rail, keeping disclosure arrows only for Spaces with agents and using a subtle leaf marker for empty Spaces. (#308)
-- Worktrees: prevent background Git status polling from acquiring index locks or leaving stale locks when commands time out. (#305)
-- Worktree create: keep branch dropdowns above the Space worktree dialog so branches remain visible and selectable. (#304)
-- Sidebar: keep the collapsed hover-reveal open while Project, Space, or Agent context menus are active, so menu interactions do not leave the sidebar collapsed underneath them. (#303)
-- Terminal: preserve local and remote output and interactivity across restarts, keep sizing stable during resize and continuous TUI redraws, and reliably resync UI and OpenCode themes after remount. (#301)
-- Workspace canvas: keep window dragging stable at Space edges and preview crowded Space expansion before release without committing transient geometry. (#300)
-- Sidebar: stabilize Project, Space, and Agent drag sorting with scoped collision detection, consistent drag overlays, and measured upward-drag motion coverage. (#295)
-- Sidebar: use a continuous shared-list animation for expanded/collapsed mode switches, keep the Space disclosure as one moving button, hide rail text cleanly, preserve list scroll position, add overflow edge fades, and keep label color context menus open for consecutive changes. (#292)
-- Space Explorer: make image quick previews match the opened image node size and keep preview headers from covering image content. (#287)
-- Dev: keep the launching terminal interactive after stopping `pnpm dev` with Ctrl+C by making the dev wrapper own child-process shutdown. (#286)
-- Workspace canvas: reduce CPU usage during rapid multi-window dragging by keeping live drag projection canvas-local, throttling multi-node drag publishing, and removing unnecessary React Flow handle measurement. (#285)
-- Workspace canvas: keep Space Worktrees bound to their worktree directory after creating terminal or agent nodes, and preserve archive/status access through approved worktree roots. (#284)
-- Persistence: reject accidental empty workspace overwrites unless the caller explicitly opts in, preventing sync/restart from clearing durable workspace state. (#265)
-- Persistence: harden installed upgrade repair, block stale local Worker reuse across app-version changes, and document rollback as unsupported unless explicitly tested. (#261)
-- Worker/PTY: shutdown-time IPC disconnects no longer crash the process with unhandled `EPIPE` / closed-channel errors. (#260)
-- Remote: fix Managed SSH localhost-to-WSL startup by preserving OpenSSH argument ordering, allocating dedicated worker ports, and waiting for the remote worker to become ready before marking the endpoint connected. (#259)
-- Remote agents: preserve the worker command `PATH` when launch env overrides `PATH`, so WSL Codex starts instead of failing with `execvp(3) failed`. (#259)
-- Workspace canvas: keep Child Spaces contained during window resize by expanding child/ancestor Spaces together and moving Space subtrees as one push-away group. (#257)
-- Workspace canvas: fix note Markdown download activation and move note save, convert-to-task, and label-color actions into the note header menu. (#253)
-- Agent: launch interactive agent CLIs through terminal profiles instead of host PATH preflight, so agent runtime environments match OpenCove terminals and Windows host diagnostics no longer block valid launches. (#250)
-- Workspace canvas: block nodes at Child Space edges until the drag pointer enters the child, preventing pre-entry overlap and ownership drift. (#245)
-- Workspace canvas: browser download panels now merge live runtime download events with persisted records, so in-progress and incognito downloads stay visible before persistence catches up. (#246)
-- Mounts: route generic Space-based agent/terminal launches through the resolved mount, repair stale Space bindings, and keep node-control space resolution aligned with the same mount-aware context rules. (#241)
-- Remote: harden managed SSH endpoint lifecycle coverage, make repair actions respect manual vs managed authority, and verify remote-only project browse via fake SSH E2E. (#240)
-- Desktop: upgrade Electron to 41.5.1 and queue website-window snapshot requests until the runtime is ready, preventing dropped captures during activation/loading transitions. (#238)
-- Agent: unify external CLI command environment ownership so GUI/Desktop launches resolve shebang-based Node CLIs consistently across availability, model listing, launch/resume, session discovery, task title generation, and worktree naming. (#236)
-- Terminal: reduce multi-terminal output jank by globally pacing xterm writes and throttling committed screen-cache serialization. (#231)
-- Space Explorer: clamp the window to the visible canvas viewport so shorter inactive macOS windows no longer overflow the canvas. (#232)
-- Agent: macOS PTY host now self-heals `spawn-helper` execute permission so `run_agent` launches do not fail. (#233)
-- Agent recovery: task-launched Claude Code sessions now persist and restore correctly from `.opencove/worktrees/...` paths in installed Windows builds. (#228)
-- Workspace canvas: guard transient detached terminal renderer sync during task drag so dragging nodes no longer crashes the renderer. (#224)
-- Windows agents: restore native Codex/Claude/OpenCode launch and restart recovery, stabilize task-launched Claude restore, and keep OpenCode WebGL terminal content aligned without stale side residue. (#221)
-- Terminal: make automatic display-consistency shared reference match manual capture under canvas zoom, and defer zoom-time DPR settle to reduce intermittent terminal content size twitching. (#218)
-- Workspace canvas: preserve trackpad canvas wheel ownership across idle hover gaps until explicit pointer retargeting, so terminals no longer steal the next two-finger canvas pan after a brief pause. (#219)
-- Agent: centralize local executable resolution with per-provider overrides so provider availability, model listing, hydrate/resume, and launch stay consistent across GUI-launched shell environments. (#210)
-- Workspace approval: auto-register persisted workspace roots during startup so restored workspaces keep terminal, agent, and guarded file operations working even if `approved-workspaces.json` is missing or stale. (#210)
-- Space Explorer: image files now support quick preview and image-node opening in mount-targeted Spaces and browser control-surface paths. (#203)
-- Terminal: preserve magnifier-like zoom geometry while restoring settled post-zoom clarity, so DPR refresh no longer doubles the visible terminal scale or clips content. (#187)
-- Terminal: restore post-zoom clarity after viewport settle without requiring a return to bottom, while preserving live scroll/focus semantics. (#186)
-- Terminal recovery: unblock Desktop first paint while worker runtime prepare continues, keep restored agent input interactive across `Cmd+W` reopen and cold restart, and preserve inactive workspace terminal output for later restore. (#191)
-- Windows terminal rendering: keep 125% DPI embedded terminals crisp, preserve OpenCode WebGL in manual PowerShell terminals, and snap the retained WebGL path onto the device-pixel grid. (#148)
-- Recovery: restored agent windows now keep durable restart history visible, reattach to fresh runtime sessions after full app restart, remain interactive for stdin, and preserve OpenCode embedded theme sync in the restored runtime path. (#172)
-- OpenCode: Stabilized embedded terminal rendering and cursor hit-testing to eliminate shutter-like artifacts and cursor flicker in restored canvas sessions. (#144)
-- OpenCode: Embedded agent terminals now follow OpenCove UI theme and re-theme reliably when switching light/dark. (#155)
-- Crash recovery: recover from renderer and child-process failures with a localized error boundary and lifecycle logging to prevent silent white screens. (#137)
-- Website window: keep embedded pages clipped inside canvas nodes during zoom/occlusion, preserve stable 100% page scale, and route in-page/new-window navigation back into OpenCove. (#141)
-- Startup + shortcuts: avoid non-packaged locale hydration stalls and stabilize `Cmd/Ctrl+G` space creation when selected terminal nodes are involved. (#141)
-- Startup: unblock project restore from terminal scrollback hydration, show a dedicated loading screen during workspace restore, and replace the blank startup flash with a polished loading transition. (#215)
-- Terminal: Added Linux terminal-node shortcuts for `Ctrl+Shift+C` copy and `Ctrl+Shift+V` paste while preserving plain `Ctrl+C` as `SIGINT`. (#142)
-- Agent windows now inherit terminal profile runtime/env semantics during launch, recovery, and fallback; Windows raw-TUI wheel handling is covered by regression tests. (#110)
-- UI: unified shared menu overlays to fix prompt template, task session, and related context-menu offset issues. (#121)
-- Persistence: Repair cumulative SQLite schema upgrades and auto-heal mis-versioned local databases so workspace state saves no longer fail after upgrading from older installs. (#76)
-- Spaces: New windows created from a crowded space now preserve existing window layout, expand the space only as needed, and keep the viewport centered on the final position. (#62)
-- Settings: update status now summarizes updater feed parsing errors instead of dumping raw parser/CSP output. (#67)
-- macOS: Disable in-app update checks for unsigned/ad-hoc builds and show actionable guidance instead of failing code signature validation. (#128)
-- Workspace canvas: fix pane context menu rendering regression and harden right-click coordinates. (#42)
-- Workspace canvas: align collision normalization with the 24px snap grid to avoid post-drag drift. (#42)
-- Workspace canvas: clamp live snap-guide overlays to the viewport so vertical guides no longer trigger canvas scrollbars while dragging. (#42)
-- Workspace canvas: note-to-task conversion now resizes to the standard task size and pushes away overlapping nodes. (#63)
-- Workspace canvas: keep push-away projection live during drag while sync refreshes apply. (#133)
-- Prevented canvas zoom/pan when scrolling inside overlay windows.
-- Codex: Fixed agents getting stuck on `working` and missing standby notifications when switching projects or after restart. (#81)
-- Restored packaged terminal rendering by allowing xterm's required inline style channels in production and ignoring invalid cached terminal dimensions during hydration.
-- Terminal: Hydrate UTF-8 locale for GUI-launched terminals on macOS/Linux and enable Wayland IME integration on Linux. (#65)
-- Terminal: Preserve shell history arrow keys after terminal restore by avoiding stale xterm mode replay. (#65)
-- Windows: Fixed double header / mismatched chrome by switching to hidden title bar + titlebar overlay and syncing overlay theme with app theme. (#47)
-- Windows: Fixed native select dropdown styling issues (notably dark mode) by using a custom select component across the UI. (#47)
-- Terminal: Fixed theme glitches when switching light/dark by syncing xterm theme with CSS tokens and reacting to theme change events. (#47)
-- OpenCode: Keep embedded agent terminals pinned to dark theme to avoid partial light/dark desynchronization. (#60)
-- Canvas: Stabilized auto input-mode detection to default to mouse semantics until high-confidence trackpad gestures are observed. (#47)
-- Worktree window: Fixed light theme text colors in the create/archive dialog. (#47)
-- Worktree archive: keep archiving the active Space from triggering an automatic global Fit View jump. (#217)
-- Worktree create: Detect repos without commits and show an actionable error instead of failing to create the worktree. (#120)
-- Worktree create: Branch dropdown no longer jumps to the top while scrolling. (#126)
-- Task: Typing in the Task Name input no longer collapses Advanced Settings. (#48)
-- Improved canvas drag smoothness under heavy terminal output by throttling terminal screen writes during viewport interaction while keeping output live. (#50)
-- Normalized node resize and terminal selection drags while the canvas is zoomed. (#56)
-- Stabilized and optimized space-bounded push-away reflow during node dragging to prevent edge overlaps/stacking. (#57)
-- Workspace canvas: arrange is now aspect-aware, avoids large empty gaps, and auto-fits the viewport after arranging; created-time ordering is deterministic across node types. (#72)
-- Workspace canvas: arrange-in-space now focuses the space bounds and caps zoom at the configured focus target zoom. (#131)
-- Terminal: Prevented `node-pty` native aborts from crashing the whole app by isolating PTY into a utility process. (#75)
-- Terminal: Prevented terminal/agent nodes from clipping the last row/column and showing a black gutter around the embedded terminal. (#150)
-- Spaces: Fixed Space pills truncating and made worktree branch/PR chips refresh without switching projects. (#129)
-- Terminal: Prevent focus loss and font resets when submitting commands or after clicking header then terminal body. (#130)
-- Workspace canvas: Keep node focus rings stable while typing in terminal/task inputs (reduces border “wink”). (#151)
-
----
-
-## [0.2.0] - 2026-03-12
-
-Welcome to OpenCove 0.2.0! This release focuses on unifying the workspace experience, hardening runtime stability for AI Agents, and introducing formal multi-platform release pipelines.
-
-### ✨ Highlights
-- **Unified Workspace Chrome**: Terminals, tasks, and notes now share a tighter, cohesive visual design (Node Chrome), making the infinite canvas feel like a single, seamless OS.
-- **Enhanced Worktree Management**: Managing Git worktrees is now safer and more practical. Added clear archive states, deterministic confirmation flows, and space-aware worktree panels.
-- **Agent & Runtime Stability**: Hardened the PTY lifecycle, background probe fallbacks, and Codex phase detection to ensure your agents never lose sync, even under heavy load.
-
-### 🚀 Added
-- **Unified Node Chrome**: Consistent UI across terminal, note, and task nodes on the canvas.
-- **Space-Level Worktrees**: Expanded worktree management with clear archive status and panel integrations.
-- **Multi-Platform Releases**: Added GitHub Release automation for macOS, Windows, and Linux artifacts.
-
-### 💅 Changed
-- **Refined UX/UI**: Improved space resize feedback, worktree dialogs, and default configurations for tasks/worktrees.
-- **Deterministic Workflows**: Disabled AI-generated task/worktree naming by default to prevent unpredictable creation flows.
-- **Brand Standardization**: Standardized project branding, metadata, and release preparation tooling under the `OpenCove` identity.
-
-### 🐞 Fixed
-- **Persistence & Data Integrity**: Fixed flush retry behavior and byte accounting to eliminate data loss risks during high save pressure.
-- **Agent Sync**: Fixed `Codex` agent phase detection so AI commentary and final states correctly map to runtime statuses.
-- **Terminal Lifecycle**: Resolved regressions involving scrollback invalidation, background probe fallback, and PTY cleanup.
-- **Canvas Interactions**: Fixed edge cases related to active-agent task moves, action ref syncs before paint, and worktree archive entry flows.
-
----
-
-## [0.1.0] - 2026-02-18
-
-### 🎉 Initial Alpha Release: The Infinite Canvas
-
-We are thrilled to unveil the first public alpha of OpenCove! This release lays the foundation for a spatial, agent-native workspace built on top of Electron, React, and TypeScript. 
-
-### ✨ Features
-- **Infinite Canvas Workspace**: A boundless 2D plane to organize your thoughts, planning, and tools. Pan, zoom, and explore your codebase spatially.
-- **Spatial Terminals**: Full-fledged `xterm.js` terminals running directly on the canvas with support for `spawn`, `resize`, and `kill`.
-- **Agent CLI Integration**: First-class, localized support for `Claude Code` and `Codex`. Visualize your AI agents as they work side-by-side.
-- **Task Management**: Create, edit, and spatially link tasks directly to your agents, tracing the path from idea to implementation.
-- **Contextual Workspaces**: Seamlessly switch between different project contexts without losing your spatial arrangement or terminal state.
-
-### 🛠️ Architecture & Under the Hood
-- **Local-First**: Your data and workspace state stay entirely on your machine.
-- **Tech Stack**: Built on `Electron + React + TypeScript` for native desktop performance.
-- **Reliability First**: Shipped with a comprehensive E2E test suite via `Vitest` and `Playwright` to ensure a stable alpha foundation.
-
----
-
-*For historical changes and detailed commit logs, please refer to the [commit history](https://github.com/DeadWaveWave/opencove/commits/main).*
+Releases 0.3.0 and earlier are in [docs/changelog/0.3-and-earlier.md](docs/changelog/0.3-and-earlier.md).

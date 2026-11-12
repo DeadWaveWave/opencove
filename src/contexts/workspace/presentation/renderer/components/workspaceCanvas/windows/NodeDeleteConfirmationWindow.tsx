@@ -3,7 +3,7 @@ import { useTranslation, type TranslateFn } from '@app/renderer/i18n'
 import type { NodeDeleteConfirmationState } from '../types'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { WindowHeading } from '@app/renderer/components/WindowHeading'
-import { Trash2 } from 'lucide-react'
+import { TrashIcon } from '@app/renderer/components/ui/pixelIcons'
 
 interface NodeDeleteConfirmationWindowProps {
   nodeDeleteConfirmation: NodeDeleteConfirmationState | null
@@ -92,7 +92,7 @@ export function NodeDeleteConfirmationWindow({
         setNodeDeleteConfirmation(null)
       }}
     >
-      <WindowHeading title={heading} icon={<Trash2 size={16} aria-hidden="true" />} />
+      <WindowHeading title={heading} icon={<TrashIcon size={18} />} />
       <p id="workspace-node-delete-description">{renderDescription(nodeDeleteConfirmation, t)}</p>
       <div className="cove-window__actions workspace-task-delete__actions workspace-task-creator__actions">
         {actions}

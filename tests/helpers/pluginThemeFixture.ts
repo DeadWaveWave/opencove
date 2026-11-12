@@ -19,24 +19,24 @@ export async function createThemePlugin(options: { includeFont?: boolean } = {})
       contributes: {
         themes: [
           {
-            id: 'pixel-copy',
-            title: 'Pixel copy',
+            id: 'dark-copy',
+            title: 'Dark copy',
             appearance: 'dark',
-            extends: 'pixel',
+            extends: 'dark',
             tokens: {},
           },
           {
             id: 'light-copy',
-            title: 'Pixel light copy',
+            title: 'Light copy',
             appearance: 'light',
-            extends: 'pixel-light',
+            extends: 'light',
             tokens: {},
           },
           {
             id: 'studio',
             title: 'Studio',
             appearance: 'dark',
-            extends: 'pixel',
+            extends: 'dark',
             tokens: { '--cove-accent': '#ffa977' },
             stylesheet: 'skin.css',
             typography: { fontFamily: '"Courier New", monospace', fontSize: 16, titleFontSize: 14 },

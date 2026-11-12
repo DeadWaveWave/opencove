@@ -1,6 +1,8 @@
+import { canonicalContent } from '@shared/sync/mergeValue'
 import type { Node } from '@xyflow/react'
 import type {
   SpaceArchiveRecord,
+  TaskNodeData,
   TerminalNodeData,
   WorkspaceSpaceRect,
 } from '@contexts/workspace/presentation/renderer/types'
@@ -51,6 +53,24 @@ export function shallowEqualRecord(left: UnknownRecord, right: UnknownRecord): b
 }
 
 export { areStringArraysEqual }
+
+function isTaskDataEquivalent(left: TaskNodeData, right: TaskNodeData): boolean {
+  const { tags: leftTags, agentSessions: leftSessions, ...leftFields } = left
+  const { tags: rightTags, agentSessions: rightSessions, ...rightFields } = right
+  // Worker snapshots deserialize fresh arrays. Their identity is not a task edit; retaining
+  // the node also keeps the workspace's collapse context stable for the native website.
+  return (
+    shallowEqualRecord(leftFields, rightFields) &&
+    areStringArraysEqual(leftTags, rightTags) &&
+    leftSessions.length === rightSessions.length &&
+    leftSessions.every((session, index) =>
+      shallowEqualRecord(
+        session as unknown as UnknownRecord,
+        rightSessions[index] as unknown as UnknownRecord,
+      ),
+    )
+  )
+}
 
 export function isWorkspaceSpaceRectEqual(
   left: WorkspaceSpaceRect | null,
@@ -112,10 +132,13 @@ function isNodeDataEquivalent(persisted: TerminalNodeData, existing: TerminalNod
   }
 
   if (
+    JSON.stringify(persisted.managedClaudeResumeBindingOwnership ?? null) !==
+      JSON.stringify(existing.managedClaudeResumeBindingOwnership ?? null) ||
     persisted.sessionId !== existing.sessionId ||
     persisted.runtimeSessionBinding !== existing.runtimeSessionBinding ||
     persisted.title !== existing.title ||
     persisted.titlePinnedByUser !== existing.titlePinnedByUser ||
+    persisted.titleIsLiteral !== existing.titleIsLiteral ||
     persisted.width !== existing.width ||
     persisted.height !== existing.height ||
     persisted.profileId !== existing.profileId ||
@@ -156,12 +179,7 @@ function isNodeDataEquivalent(persisted: TerminalNodeData, existing: TerminalNod
       return false
     }
 
-    if (
-      !shallowEqualRecord(
-        persistedTask as unknown as UnknownRecord,
-        existingTask as unknown as UnknownRecord,
-      )
-    ) {
+    if (!isTaskDataEquivalent(persistedTask, existingTask)) {
       return false
     }
   }
@@ -231,6 +249,20 @@ function isNodeDataEquivalent(persisted: TerminalNodeData, existing: TerminalNod
         existingFolder.expandedDirectoryUris,
       )
     ) {
+      return false
+    }
+  }
+
+  // These payloads also arrive as fresh JSON objects. Compare content while retaining
+  // actual edits, including terminal binding and website session/navigation changes.
+  for (const field of [
+    'plugin',
+    'website',
+    'role',
+    'terminalAgentBinding',
+    'terminalGeometry',
+  ] as const) {
+    if (canonicalContent(persisted[field] ?? null) !== canonicalContent(existing[field] ?? null)) {
       return false
     }
   }

@@ -4,6 +4,7 @@ import { createPixelClosureSnapshots } from '../../../src/contexts/workspace/pre
 const viewport = { x: 40, y: 20, zoom: 2, width: 1000, height: 800 }
 const frame = {
   id: 'node-1',
+  family: 'shell' as const,
   sessionId: 'session-1',
   rect: { x: 240, y: 180, width: 400, height: 200 },
 }

@@ -1,59 +1,24 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { AgentStandbyNotification } from '../components/AppNotifications'
-import type { GitHubPullRequestSummary, GitWorktreeInfo } from '@shared/contracts/dto'
+import type { AgentStandbyNotification } from '../utils/agentStandbyNotification'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { useAppStore } from '../store/useAppStore'
+import {
+  AGENT_ATTENTION_MAX_PENDING,
+  useAgentAttentionStore,
+} from '../store/useAgentAttentionStore'
+import {
+  createAgentAttentionRouter,
+  type AgentAttentionEffect,
+  type AgentAttentionRouter,
+} from '../utils/agentAttentionRouter'
+import { playNotificationSound } from '../utils/notificationSound'
+import { useAgentStandbyNotificationGitContext } from './useAgentStandbyNotificationGitContext'
 import {
   type AgentStandbyNotificationPayload,
   useAgentStandbyNotificationWatcher,
 } from './useAgentStandbyNotificationWatcher'
 import { useAgentStandbyNotificationTitleGate } from './useAgentStandbyNotificationTitleGate'
-
-function normalizeComparablePath(pathValue: string, platform?: string): string {
-  const normalized = pathValue
-    .trim()
-    .replace(/[/\\]+$/, '')
-    .replaceAll('\\', '/')
-  return platform === 'win32' ? normalized.toLowerCase() : normalized
-}
-
-function resolveClosestWorktree(
-  worktrees: GitWorktreeInfo[],
-  directoryPath: string,
-  platform?: string,
-): GitWorktreeInfo | null {
-  const normalizedDirectory = normalizeComparablePath(directoryPath, platform)
-  if (normalizedDirectory.length === 0) {
-    return null
-  }
-
-  let closest: GitWorktreeInfo | null = null
-  let closestLength = -1
-
-  for (const entry of worktrees) {
-    const normalizedWorktreePath = normalizeComparablePath(entry.path, platform)
-    if (normalizedWorktreePath.length === 0) {
-      continue
-    }
-
-    if (
-      normalizedDirectory === normalizedWorktreePath ||
-      normalizedDirectory.startsWith(`${normalizedWorktreePath}/`)
-    ) {
-      if (normalizedWorktreePath.length > closestLength) {
-        closest = entry
-        closestLength = normalizedWorktreePath.length
-      }
-    }
-  }
-
-  return closest
-}
-
-function toShortSha(value: string): string {
-  return value.trim().slice(0, 7)
-}
 
 function resolveTaskTitle(workspace: WorkspaceState | null, taskId: string | null): string | null {
   if (!workspace || !taskId) {
@@ -95,29 +60,6 @@ function resolveOwningSpace(
   }
 }
 
-function updateNotification(
-  previous: AgentStandbyNotification[],
-  id: string,
-  updater: (notification: AgentStandbyNotification) => AgentStandbyNotification,
-): AgentStandbyNotification[] {
-  let didChange = false
-  const next = previous.map(notification => {
-    if (notification.id !== id) {
-      return notification
-    }
-
-    const updated = updater(notification)
-    if (updated === notification) {
-      return notification
-    }
-
-    didChange = true
-    return updated
-  })
-
-  return didChange ? next : previous
-}
-
 export function formatAgentStandbySystemNotification(
   notification: Pick<
     AgentStandbyNotification,
@@ -143,200 +85,167 @@ export function formatAgentStandbySystemNotification(
   }
 }
 
-export function useAgentStandbyNotifications({
-  maxVisible = 5,
-}: {
-  maxVisible?: number
-} = {}): {
+/** One Agent reads as its own notification; Agents that needed you together read as a count. */
+export function formatAgentAttentionSystemNotification(
+  items: AgentStandbyNotification[],
+  labels: { standby: string; task: string; space: string; summary: (count: number) => string },
+): { title: string; body: string } {
+  if (items.length === 1) {
+    return formatAgentStandbySystemNotification(items[0], labels)
+  }
+
+  return {
+    title: labels.summary(items.length),
+    body: items.map(item => item.title).join(' · '),
+  }
+}
+
+// System notifications whose click can still find their Agent.
+const MAX_SYSTEM_NOTIFICATION_TARGETS = 20
+
+export type AgentNotificationTarget = Pick<
+  AgentStandbyNotification,
+  'id' | 'workspaceId' | 'nodeId'
+>
+
+/** Mounted once by the shell: it routes each Agent that ends a turn into the attention store. */
+export function useAgentStandbyNotifications(): {
+  /** The Agents you have not answered, newest first. */
   notifications: AgentStandbyNotification[]
   dismiss: (id: string) => void
+  /** The Agent a clicked system notification points at: the first one it names. */
+  resolveSystemNotificationTarget: (id: string) => AgentNotificationTarget | null
 } {
   const { t } = useTranslation()
   const platform = window.opencoveApi?.meta?.platform
   const workspaces = useAppStore(state => state.workspaces)
-  const areSystemNotificationsEnabled = useAppStore(
-    state => state.agentSettings.systemNotificationsEnabled,
-  )
-  const isStandbyBannerEnabled = useAppStore(state => state.agentSettings.standbyBannerEnabled)
-  const showBranch = useAppStore(state => state.agentSettings.standbyBannerShowBranch)
-  const showPullRequest = useAppStore(state => state.agentSettings.standbyBannerShowPullRequest)
-  const githubPullRequestsEnabled = useAppStore(
-    state => state.agentSettings.githubPullRequestsEnabled,
-  )
-  const shouldResolveBranch =
-    isStandbyBannerEnabled && (showBranch || (showPullRequest && githubPullRequestsEnabled))
-  const shouldResolvePullRequest =
-    isStandbyBannerEnabled && showPullRequest && githubPullRequestsEnabled
+  const settings = useAppStore(state => state.agentSettings)
+  const isStandbyBannerEnabled = settings.standbyBannerEnabled
+  const isAnyChannelEnabled =
+    isStandbyBannerEnabled ||
+    settings.systemNotificationsEnabled ||
+    settings.notificationSoundEnabled
+  const showPullRequests =
+    settings.standbyBannerShowPullRequest && settings.githubPullRequestsEnabled
 
-  const [notifications, setNotifications] = useState<AgentStandbyNotification[]>([])
-  const worktreeCacheRef = useRef<Map<string, { fetchedAt: number; worktrees: GitWorktreeInfo[] }>>(
-    new Map(),
-  )
-  const worktreeInFlightRef = useRef<Map<string, Promise<GitWorktreeInfo[]>>>(new Map())
-  const branchInFlightRef = useRef<Set<string>>(new Set())
-  const prInFlightRef = useRef<Set<string>>(new Set())
-  const prCacheRef = useRef<
-    Map<string, { fetchedAt: number; summary: GitHubPullRequestSummary | null }>
-  >(new Map())
-  const prInFlightByKeyRef = useRef<Map<string, Promise<GitHubPullRequestSummary | null>>>(
-    new Map(),
-  )
+  const notifications = useAgentAttentionStore(state => state.notifications)
+  const setNotifications = useAgentAttentionStore(state => state.setNotifications)
+  const dismiss = useAgentAttentionStore(state => state.dismiss)
   const workspacesById = useMemo(() => {
     return new Map(workspaces.map(workspace => [workspace.id, workspace]))
   }, [workspaces])
 
-  const fetchWorktrees = useCallback(
-    async (repoPath: string): Promise<GitWorktreeInfo[]> => {
-      const normalizedRepoPath = normalizeComparablePath(repoPath, platform)
-      if (normalizedRepoPath.length === 0) {
-        return []
-      }
-
-      const cached = worktreeCacheRef.current.get(normalizedRepoPath)
-      if (cached && Date.now() - cached.fetchedAt < 30_000) {
-        return cached.worktrees
-      }
-
-      const existingInFlight = worktreeInFlightRef.current.get(normalizedRepoPath)
-      if (existingInFlight) {
-        return await existingInFlight
-      }
-
-      const listWorktrees = window.opencoveApi?.worktree?.listWorktrees
-      if (typeof listWorktrees !== 'function') {
-        return []
-      }
-
-      const promise = listWorktrees({ repoPath }).then(result => result.worktrees)
-      worktreeInFlightRef.current.set(normalizedRepoPath, promise)
-
-      try {
-        const resolved = await promise
-        worktreeCacheRef.current.set(normalizedRepoPath, {
-          fetchedAt: Date.now(),
-          worktrees: resolved,
-        })
-        return resolved
-      } catch {
-        return []
-      } finally {
-        worktreeInFlightRef.current.delete(normalizedRepoPath)
-      }
-    },
-    [platform],
-  )
-
-  const fetchPullRequest = useCallback(
-    async (repoPath: string, branchName: string): Promise<GitHubPullRequestSummary | null> => {
-      const normalizedRepoPath = normalizeComparablePath(repoPath, platform)
-      const normalizedBranch = branchName.trim()
-      if (normalizedRepoPath.length === 0 || normalizedBranch.length === 0) {
-        return null
-      }
-
-      const cacheKey = `${normalizedRepoPath}|${normalizedBranch}`
-      const cached = prCacheRef.current.get(cacheKey)
-      if (cached && Date.now() - cached.fetchedAt < 60_000) {
-        return cached.summary
-      }
-
-      const existingInFlight = prInFlightByKeyRef.current.get(cacheKey)
-      if (existingInFlight) {
-        return await existingInFlight
-      }
-
-      const resolvePullRequests = window.opencoveApi?.integration?.github?.resolvePullRequests
-      if (typeof resolvePullRequests !== 'function') {
-        return null
-      }
-
-      const promise = resolvePullRequests({ repoPath, branches: [normalizedBranch] }).then(
-        result => result.pullRequestsByBranch[normalizedBranch] ?? null,
-      )
-      prInFlightByKeyRef.current.set(cacheKey, promise)
-
-      try {
-        const resolved = await promise
-        prCacheRef.current.set(cacheKey, { fetchedAt: Date.now(), summary: resolved })
-        return resolved
-      } catch {
-        return null
-      } finally {
-        prInFlightByKeyRef.current.delete(cacheKey)
-      }
-    },
-    [platform],
-  )
-
-  const publishAgentEnteredStandby = useCallback(
-    (payload: AgentStandbyNotificationPayload) => {
-      if (!isStandbyBannerEnabled && !areSystemNotificationsEnabled) {
-        return
-      }
-
-      const workspace = workspacesById.get(payload.workspaceId) ?? null
-      const taskTitle = resolveTaskTitle(workspace, payload.taskId)
-      const space = resolveOwningSpace(workspace, payload.nodeId, payload.taskId)
-
-      setNotifications(previous => {
-        if (previous.some(notification => notification.id === payload.sessionId)) {
-          return previous
-        }
-
-        const next: AgentStandbyNotification = {
-          kind: 'agent-standby',
-          id: payload.sessionId,
-          sessionId: payload.sessionId,
-          workspaceId: payload.workspaceId,
-          workspaceName: payload.workspaceName,
-          workspacePath: payload.workspacePath,
-          nodeId: payload.nodeId,
-          title: payload.title,
-          taskId: payload.taskId,
-          taskTitle,
-          spaceId: space?.id ?? null,
-          spaceName: space?.name ?? null,
-          spaceDirectoryPath: space?.directoryPath ?? null,
-          executionDirectory: payload.executionDirectory,
-          gitContext: null,
-          pullRequest: null,
-          createdAt: Date.now(),
-        }
-
-        if (areSystemNotificationsEnabled && window.opencoveApi?.meta?.isTest !== true) {
-          const nativeNotification = formatAgentStandbySystemNotification(next, {
+  const systemTargetsRef = useRef(new Map<string, AgentNotificationTarget>())
+  // The router outlives renders; it reads the latest switches and effect handler through refs.
+  const settingsRef = useRef(settings)
+  const emit = useCallback(
+    (effect: AgentAttentionEffect<AgentStandbyNotification>) => {
+      switch (effect.kind) {
+        case 'show-card':
+          setNotifications(previous => {
+            if (previous.some(notification => notification.id === effect.item.id)) {
+              return previous
+            }
+            return [effect.item, ...previous].slice(0, AGENT_ATTENTION_MAX_PENDING)
+          })
+          return
+        case 'clear-card':
+          setNotifications(previous =>
+            previous.filter(notification => notification.sessionId !== effect.sessionId),
+          )
+          return
+        case 'play-sound':
+          playNotificationSound(
+            settingsRef.current.notificationSound,
+            settingsRef.current.notificationSoundVolume,
+          )
+          return
+        case 'system': {
+          const targets = systemTargetsRef.current
+          targets.set(effect.id, effect.items[0])
+          if (targets.size > MAX_SYSTEM_NOTIFICATION_TARGETS) {
+            targets.delete(targets.keys().next().value ?? '')
+          }
+          const text = formatAgentAttentionSystemNotification(effect.items, {
             standby: t('agentRuntime.standby'),
             task: t('settingsPanel.nav.tasks'),
             space: t('commandCenter.sections.spaces'),
+            summary: count => t('agentAttention.systemSummary', { count }),
           })
+          // Always silent: the app plays the one sound itself, in front or behind.
           void window.opencoveApi?.system
-            ?.showNotification(nativeNotification)
+            ?.showNotification({
+              ...text,
+              silent: true,
+              id: effect.id,
+              replacesId: effect.replacesId,
+            })
             .catch(() => undefined)
         }
+      }
+    },
+    [setNotifications, t],
+  )
+  const emitRef = useRef(emit)
+  useEffect(() => {
+    settingsRef.current = settings
+    emitRef.current = emit
+  }, [emit, settings])
 
-        if (!isStandbyBannerEnabled) {
-          return previous
-        }
+  const routerRef = useRef<AgentAttentionRouter<AgentStandbyNotification> | null>(null)
+  useEffect(() => {
+    const router = createAgentAttentionRouter<AgentStandbyNotification>({
+      channels: () => ({
+        inApp: settingsRef.current.standbyBannerEnabled,
+        system: settingsRef.current.systemNotificationsEnabled,
+        sound: settingsRef.current.notificationSoundEnabled,
+      }),
+      emit: effect => emitRef.current(effect),
+    })
+    routerRef.current = router
+    return () => {
+      router.dispose()
+      routerRef.current = null
+    }
+  }, [])
 
-        const updated = [next, ...previous]
-        return updated.length > maxVisible ? updated.slice(0, maxVisible) : updated
+  const publishAgentEnteredStandby = useCallback(
+    (payload: AgentStandbyNotificationPayload) => {
+      const workspace = workspacesById.get(payload.workspaceId) ?? null
+      const space = resolveOwningSpace(workspace, payload.nodeId, payload.taskId)
+      routerRef.current?.needsYou({
+        kind: 'agent-standby',
+        id: payload.sessionId,
+        sessionId: payload.sessionId,
+        workspaceId: payload.workspaceId,
+        workspaceName: payload.workspaceName,
+        workspacePath: payload.workspacePath,
+        nodeId: payload.nodeId,
+        title: payload.title,
+        taskId: payload.taskId,
+        taskTitle: resolveTaskTitle(workspace, payload.taskId),
+        spaceId: space?.id ?? null,
+        spaceName: space?.name ?? null,
+        spaceDirectoryPath: space?.directoryPath ?? null,
+        executionDirectory: payload.executionDirectory,
+        gitContext: null,
+        pullRequest: null,
+        createdAt: Date.now(),
       })
     },
-    [areSystemNotificationsEnabled, isStandbyBannerEnabled, maxVisible, t, workspacesById],
+    [workspacesById],
   )
 
   const { deferUntilTitleReady: handleAgentEnteredStandby, cancelPendingTitle } =
     useAgentStandbyNotificationTitleGate({
-      enabled: isStandbyBannerEnabled || areSystemNotificationsEnabled,
+      enabled: isAnyChannelEnabled,
       onReady: publishAgentEnteredStandby,
     })
 
   const handleAgentEnteredWorking = useCallback(
     (sessionId: string) => {
       cancelPendingTitle(sessionId)
-      setNotifications(previous =>
-        previous.filter(notification => notification.sessionId !== sessionId),
-      )
+      routerRef.current?.working(sessionId)
     },
     [cancelPendingTitle],
   )
@@ -347,147 +256,27 @@ export function useAgentStandbyNotifications({
     }
 
     setNotifications([])
-  }, [isStandbyBannerEnabled])
+  }, [isStandbyBannerEnabled, setNotifications])
 
-  const dismiss = useCallback((id: string) => {
-    setNotifications(previous => previous.filter(notification => notification.id !== id))
-  }, [])
+  const resolveSystemNotificationTarget = useCallback(
+    (id: string) => systemTargetsRef.current.get(id) ?? null,
+    [],
+  )
 
-  useEffect(() => {
-    if (!shouldResolveBranch && !shouldResolvePullRequest) {
-      return
-    }
-
-    notifications.forEach(notification => {
-      if (!shouldResolveBranch && !shouldResolvePullRequest) {
-        return
-      }
-
-      const gitDirectory = notification.spaceDirectoryPath?.trim().length
-        ? notification.spaceDirectoryPath
-        : notification.executionDirectory
-
-      if (
-        shouldResolveBranch &&
-        !notification.gitContext &&
-        !branchInFlightRef.current.has(notification.id)
-      ) {
-        branchInFlightRef.current.add(notification.id)
-
-        void (async () => {
-          try {
-            const worktrees = await fetchWorktrees(notification.workspacePath)
-            const closest = resolveClosestWorktree(worktrees, gitDirectory, platform)
-            if (!closest) {
-              return
-            }
-
-            const branchName = closest.branch?.trim() ?? ''
-            const headSha = closest.head?.trim() ?? ''
-
-            if (branchName.length > 0) {
-              setNotifications(prev =>
-                updateNotification(prev, notification.id, current => {
-                  if (
-                    current.gitContext?.kind === 'branch' &&
-                    current.gitContext.name === branchName
-                  ) {
-                    return current
-                  }
-
-                  return {
-                    ...current,
-                    gitContext: { kind: 'branch', name: branchName },
-                  }
-                }),
-              )
-              return
-            }
-
-            if (headSha.length > 0) {
-              const shortHead = toShortSha(headSha)
-              setNotifications(prev =>
-                updateNotification(prev, notification.id, current => {
-                  if (
-                    current.gitContext?.kind === 'detached' &&
-                    current.gitContext.head === headSha &&
-                    current.gitContext.shortHead === shortHead
-                  ) {
-                    return current
-                  }
-
-                  return {
-                    ...current,
-                    gitContext: { kind: 'detached', head: headSha, shortHead },
-                  }
-                }),
-              )
-            }
-          } finally {
-            branchInFlightRef.current.delete(notification.id)
-          }
-        })()
-      }
-
-      const branchGitContext = notification.gitContext
-      if (
-        shouldResolvePullRequest &&
-        branchGitContext &&
-        branchGitContext.kind === 'branch' &&
-        !notification.pullRequest &&
-        !prInFlightRef.current.has(notification.id)
-      ) {
-        prInFlightRef.current.add(notification.id)
-
-        void (async () => {
-          try {
-            const summary = await fetchPullRequest(
-              notification.workspacePath,
-              branchGitContext.name,
-            )
-            if (!summary) {
-              return
-            }
-
-            setNotifications(prev =>
-              updateNotification(prev, notification.id, current => {
-                if (
-                  current.pullRequest?.number === summary.number &&
-                  current.pullRequest?.url === summary.ref.url
-                ) {
-                  return current
-                }
-
-                return {
-                  ...current,
-                  pullRequest: {
-                    number: summary.number,
-                    title: summary.title,
-                    url: summary.ref.url,
-                  },
-                }
-              }),
-            )
-          } finally {
-            prInFlightRef.current.delete(notification.id)
-          }
-        })()
-      }
-    })
-  }, [
-    fetchPullRequest,
-    fetchWorktrees,
+  useAgentStandbyNotificationGitContext({
     notifications,
+    setNotifications,
     platform,
-    shouldResolveBranch,
-    shouldResolvePullRequest,
-  ])
+    shouldResolveBranch:
+      isStandbyBannerEnabled && (settings.standbyBannerShowBranch || showPullRequests),
+    shouldResolvePullRequest: isStandbyBannerEnabled && showPullRequests,
+  })
 
   useAgentStandbyNotificationWatcher({
-    enabled: isStandbyBannerEnabled || areSystemNotificationsEnabled,
+    enabled: isAnyChannelEnabled,
     onAgentEnteredStandby: handleAgentEnteredStandby,
     onAgentEnteredWorking: handleAgentEnteredWorking,
   })
 
-  return { notifications, dismiss }
+  return { notifications, dismiss, resolveSystemNotificationTarget }
 }

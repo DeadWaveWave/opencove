@@ -1,3 +1,6 @@
+import { getPublicTerminalSpawnCommand } from '../../../../platform/terminal/publicTerminalSpawnCommand'
+import { publicTerminalSpawnError } from '../../../../shared/errors/terminalSpawnError'
+import { getCommandExecutionEnvironment } from '../../../../platform/os/CommandEnvironmentService'
 import * as electron from 'electron'
 import { createServer } from 'node:net'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
@@ -305,14 +308,18 @@ export function registerAgentIpcHandlers(
             }
           : null
 
+      const environment = await getCommandExecutionEnvironment(normalized.env ?? undefined)
       const managedLaunch = await createManagedAgentLaunchPlan(
         providerRegistry.require(normalized.provider),
         {
+          environment,
           mode: normalized.mode ?? 'new',
           prompt: normalized.prompt,
           model: normalized.model ?? null,
           resumeSessionId: normalized.resumeSessionId ?? null,
           agentFullAccess: normalized.agentFullAccess ?? true,
+          codexReuseRunningAppServer:
+            normalized.codexReuseRunningAppServer ?? agentSettings.codexReuseRunningAppServer,
           opencodeServer,
           executablePathOverride,
           workspaceDirectory: normalized.cwd,
@@ -364,16 +371,18 @@ export function registerAgentIpcHandlers(
         normalized.env || internalSessionEnv
           ? { ...(normalized.env ?? {}), ...(internalSessionEnv ?? {}) }
           : undefined
-      const launchEnv =
-        sessionEnv || Object.keys(managedLaunch.plan.env).length > 0
-          ? { ...managedLaunch.plan.env, ...(sessionEnv ?? {}) }
-          : undefined
+      const launchEnv = { ...environment, ...managedLaunch.plan.env, ...(sessionEnv ?? {}) }
 
       const resolvedInvocation = testStub
         ? await resolveAgentCliInvocation({
             command,
             args,
-          }).catch(error => rollbackAgentLaunchArtifacts(error, managedLaunch.artifacts))
+          }).catch(error =>
+            rollbackAgentLaunchArtifacts(
+              publicTerminalSpawnError(error, 'agent.launch_failed'),
+              managedLaunch.artifacts,
+            ),
+          )
         : null
 
       const resolvedSpawn = testStub
@@ -398,8 +407,14 @@ export function registerAgentIpcHandlers(
             command,
             args,
             executablePathOverride,
+            fileArguments: launchCommand.fileArguments,
             env: launchEnv,
-          }).catch(error => rollbackAgentLaunchArtifacts(error, managedLaunch.artifacts))
+          }).catch(error =>
+            rollbackAgentLaunchArtifacts(
+              publicTerminalSpawnError(error, 'agent.launch_failed'),
+              managedLaunch.artifacts,
+            ),
+          )
 
       const mergedEnv =
         normalized.env && Object.keys(normalized.env).length > 0
@@ -410,44 +425,48 @@ export function registerAgentIpcHandlers(
       const shouldStartStateWatcher =
         process.env.NODE_ENV !== 'test' ||
         process.env['OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER'] === '1'
-      const { sessionId } = await launchSessionRegistrations.spawn({
-        spawn: async () =>
-          await ptyRuntime.spawnSession({
-            cwd: resolvedSpawn.cwd,
-            cols: normalized.cols ?? 80,
-            rows: normalized.rows ?? 24,
-            command: resolvedSpawn.command,
-            args: resolvedSpawn.args,
-            ...(mergedEnv ? { env: mergedEnv } : {}),
-          }),
-        artifacts: managedLaunch.artifacts,
-        retireExact: async spawnedSessionId => await ptyRuntime.kill(spawnedSessionId),
-        onRegistered: spawned => {
-          managedLaunch.plan.onStarted?.(spawned.sessionId)
-          if (shouldStartStateWatcher) {
-            ptyRuntime.startSessionStateWatcher({
-              sessionId: spawned.sessionId,
-              provider: normalized.provider,
-              cwd: normalized.cwd,
-              launchMode: launchCommand.launchMode,
-              resumeSessionId,
-              startedAtMs: launchStartedAtMs,
-              ...(geminiDiscoveryCursor !== undefined ? { geminiDiscoveryCursor } : {}),
-              opencodeBaseUrl: opencodeServer
-                ? `http://${opencodeServer.hostname}:${opencodeServer.port}`
-                : null,
-            })
-          }
-        },
-      })
+      const { sessionId } = await launchSessionRegistrations
+        .spawn({
+          spawn: async () =>
+            await ptyRuntime.spawnSession({
+              cwd: resolvedSpawn.cwd,
+              sessionKind: 'agent',
+              cols: normalized.cols ?? 80,
+              rows: normalized.rows ?? 24,
+              command: resolvedSpawn.command,
+              args: resolvedSpawn.args,
+              ...(mergedEnv ? { env: mergedEnv } : {}),
+            }),
+          artifacts: managedLaunch.artifacts,
+          retireExact: async spawnedSessionId => await ptyRuntime.kill(spawnedSessionId),
+          onRegistered: spawned => {
+            managedLaunch.plan.onStarted?.(spawned.sessionId)
+            if (shouldStartStateWatcher) {
+              ptyRuntime.startSessionStateWatcher({
+                sessionId: spawned.sessionId,
+                provider: normalized.provider,
+                cwd: normalized.cwd,
+                launchMode: launchCommand.launchMode,
+                resumeSessionId,
+                startedAtMs: launchStartedAtMs,
+                ...(geminiDiscoveryCursor !== undefined ? { geminiDiscoveryCursor } : {}),
+                opencodeBaseUrl: opencodeServer
+                  ? `http://${opencodeServer.hostname}:${opencodeServer.port}`
+                  : null,
+              })
+            }
+          },
+        })
+        .catch(error => {
+          throw publicTerminalSpawnError(error, 'agent.launch_failed')
+        })
 
       const result: LaunchAgentResult = {
         sessionId,
         provider: normalized.provider,
         profileId: resolvedSpawn.profileId,
         runtimeKind: resolvedSpawn.runtimeKind,
-        command: resolvedSpawn.command,
-        args: resolvedSpawn.args,
+        ...getPublicTerminalSpawnCommand(resolvedSpawn),
         launchMode: launchCommand.launchMode,
         effectiveModel: launchCommand.effectiveModel,
         resumeSessionId,

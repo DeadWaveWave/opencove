@@ -1,4 +1,5 @@
-import { randomBytes, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
+import { createControlToken } from '../http/createControlToken'
 import { createAppError } from '../../../../shared/errors/appError'
 import type {
   RegisterManagedSshWorkerEndpointInput,
@@ -77,7 +78,7 @@ export function createManagedSshEndpointRegistration(
   }
 
   return {
-    token: randomBytes(24).toString('base64url'),
+    token: createControlToken(),
     record: {
       endpointId,
       kind: 'remote_worker',

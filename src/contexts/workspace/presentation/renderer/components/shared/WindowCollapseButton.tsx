@@ -1,5 +1,5 @@
 import { createContext, useContext, useLayoutEffect } from 'react'
-import { Minus } from 'lucide-react'
+import { MinusIcon } from '@app/renderer/components/ui/pixelIcons'
 import { IconButton } from '@app/renderer/components/ui/IconButton'
 import { useTranslation } from '@app/renderer/i18n'
 
@@ -59,7 +59,7 @@ export function WindowCollapseButton({
         controls.toggle()
       }}
     >
-      <Minus aria-hidden="true" />
+      <MinusIcon />
     </IconButton>
   )
 }

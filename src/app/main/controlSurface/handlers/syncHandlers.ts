@@ -1,263 +1,45 @@
+import { prepareNodeLineage } from '../../../../contexts/workspace/application/nodeLineage/NodeLineageOwner'
 import { randomUUID } from 'node:crypto'
-import type { ControlSurface } from '../controlSurface'
-import { createAppError } from '../../../../shared/errors/appError'
-import type {
-  CreateNoteInput,
-  CreateNoteResult,
-  GetSyncStateResult,
-  PersistWriteResult,
-  ReadAgentNodePlaceholderScrollbackInput,
-  ReadNodeScrollbackInput,
-  WriteAgentNodePlaceholderScrollbackInput,
-  WriteNodeScrollbackInput,
-  WriteWorkspaceStateRawInput,
-  WriteSyncStateInput,
-  WriteSyncStateResult,
-} from '../../../../shared/contracts/dto'
+import {
+  persistWriteWireResult,
+  type InternalPersistWriteResult,
+} from '../../../../platform/persistence/sqlite/appStateWriteResult'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import {
   normalizePersistedAppState,
   type NormalizedPersistedAppState,
 } from '../../../../platform/persistence/sqlite/normalize'
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value)
-}
-
-function normalizeOptionalString(value: unknown): string | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  if (typeof value !== 'string') {
-    return null
-  }
-
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : null
-}
-
-function normalizeOptionalFiniteNumber(value: unknown): number | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return null
-  }
-
-  return value
-}
-
-function normalizeSyncStatePayload(payload: unknown): null {
-  if (payload === null || payload === undefined) {
-    return null
-  }
-
-  throw createAppError('common.invalid_input', {
-    debugMessage: 'Invalid payload for sync.state.',
-  })
-}
-
-function normalizeReadWorkspaceStateRawPayload(payload: unknown): null {
-  if (payload === null || payload === undefined) {
-    return null
-  }
-
-  throw createAppError('common.invalid_input', {
-    debugMessage: 'Invalid payload for sync.readWorkspaceStateRaw.',
-  })
-}
-
-function normalizeWriteWorkspaceStateRawPayload(payload: unknown): WriteWorkspaceStateRawInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for sync.writeWorkspaceStateRaw.',
-    })
-  }
-
-  const raw = payload.raw
-  if (typeof raw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for sync.writeWorkspaceStateRaw raw.',
-    })
-  }
-
-  return { raw }
-}
-
-function normalizeReadNodeScrollbackPayload(payload: unknown): ReadNodeScrollbackInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for sync.readNodeScrollback.',
-    })
-  }
-
-  const nodeIdRaw = payload.nodeId
-  if (typeof nodeIdRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for sync.readNodeScrollback nodeId.',
-    })
-  }
-
-  const nodeId = nodeIdRaw.trim()
-  if (nodeId.length === 0) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Missing payload for sync.readNodeScrollback nodeId.',
-    })
-  }
-
-  return { nodeId }
-}
-
-function normalizeWriteNodeScrollbackPayload(payload: unknown): WriteNodeScrollbackInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for sync.writeNodeScrollback.',
-    })
-  }
-
-  const nodeIdRaw = payload.nodeId
-  if (typeof nodeIdRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for sync.writeNodeScrollback nodeId.',
-    })
-  }
-
-  const nodeId = nodeIdRaw.trim()
-  if (nodeId.length === 0) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Missing payload for sync.writeNodeScrollback nodeId.',
-    })
-  }
-
-  const scrollback = payload.scrollback
-  if (scrollback !== null && scrollback !== undefined && typeof scrollback !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for sync.writeNodeScrollback scrollback.',
-    })
-  }
-
-  return { nodeId, scrollback: scrollback ?? null }
-}
-
-function normalizeReadAgentNodePlaceholderScrollbackPayload(
-  payload: unknown,
-): ReadAgentNodePlaceholderScrollbackInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for sync.readAgentNodePlaceholderScrollback.',
-    })
-  }
-
-  const nodeIdRaw = payload.nodeId
-  if (typeof nodeIdRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for sync.readAgentNodePlaceholderScrollback nodeId.',
-    })
-  }
-
-  const nodeId = nodeIdRaw.trim()
-  if (nodeId.length === 0) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Missing payload for sync.readAgentNodePlaceholderScrollback nodeId.',
-    })
-  }
-
-  return { nodeId }
-}
-
-function normalizeWriteAgentNodePlaceholderScrollbackPayload(
-  payload: unknown,
-): WriteAgentNodePlaceholderScrollbackInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for sync.writeAgentNodePlaceholderScrollback.',
-    })
-  }
-
-  const nodeIdRaw = payload.nodeId
-  if (typeof nodeIdRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for sync.writeAgentNodePlaceholderScrollback nodeId.',
-    })
-  }
-
-  const nodeId = nodeIdRaw.trim()
-  if (nodeId.length === 0) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Missing payload for sync.writeAgentNodePlaceholderScrollback nodeId.',
-    })
-  }
-
-  const scrollback = payload.scrollback
-  if (scrollback !== null && scrollback !== undefined && typeof scrollback !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for sync.writeAgentNodePlaceholderScrollback scrollback.',
-    })
-  }
-
-  return { nodeId, scrollback: scrollback ?? null }
-}
-
-function normalizeWriteSyncStatePayload(payload: unknown): WriteSyncStateInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for sync.writeState.',
-    })
-  }
-
-  return {
-    state: payload.state,
-    baseRevision: normalizeOptionalFiniteNumber(payload.baseRevision),
-    allowEmptyWorkspaceOverwrite:
-      typeof payload.allowEmptyWorkspaceOverwrite === 'boolean'
-        ? payload.allowEmptyWorkspaceOverwrite
-        : null,
-  }
-}
-
-function normalizeCreateNotePayload(payload: unknown): CreateNoteInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for note.create.',
-    })
-  }
-
-  const spaceIdRaw = payload.spaceId
-  if (typeof spaceIdRaw !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for note.create spaceId.',
-    })
-  }
-
-  const spaceId = spaceIdRaw.trim()
-  if (spaceId.length === 0) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Missing payload for note.create spaceId.',
-    })
-  }
-
-  return {
-    spaceId,
-    text: normalizeOptionalString(payload.text),
-    title: normalizeOptionalString(payload.title),
-    x: normalizeOptionalFiniteNumber(payload.x),
-    y: normalizeOptionalFiniteNumber(payload.y),
-    width: normalizeOptionalFiniteNumber(payload.width),
-    height: normalizeOptionalFiniteNumber(payload.height),
-  }
-}
+import { noteCreateOperation } from '../../../../shared/contracts/controlSurface/operations/domains/note'
+import {
+  syncReadAgentNodePlaceholderScrollbackOperation,
+  syncReadNodeScrollbackOperation,
+  syncReadWorkspaceStateRawOperation,
+  syncStateOperation,
+  syncWriteAgentNodePlaceholderScrollbackOperation,
+  syncWriteNodeScrollbackOperation,
+  syncWriteStateOperation,
+  syncWriteWorkspaceStateRawOperation,
+} from '../../../../shared/contracts/controlSurface/operations/domains/sync'
+import type {
+  CreateNoteResult,
+  GetSyncStateResult,
+  PersistWriteResult,
+  WriteSyncStateResult,
+} from '../../../../shared/contracts/dto'
+import { createAppError } from '../../../../shared/errors/appError'
+import type { ControlSurface } from '../controlSurface'
+import { registerOperation } from '../registerOperation'
 
 async function persistNextAppState(
   store: PersistenceStore,
   nextState: unknown,
   options?: { allowEmptyWorkspaceOverwrite?: boolean; expectedRevision?: number },
-): Promise<void> {
+): Promise<InternalPersistWriteResult & { ok: true }> {
   const result = await store.writeAppState(nextState, options)
   if (!result.ok) {
     throw createAppError(result.error)
   }
+  return result
 }
 
 export function registerSyncHandlers(
@@ -267,11 +49,15 @@ export function registerSyncHandlers(
     onStatePersisted?: (state: NormalizedPersistedAppState) => Promise<void>
   } = {},
 ): void {
-  controlSurface.register('sync.state', {
-    kind: 'query',
-    validate: normalizeSyncStatePayload,
+  registerOperation(controlSurface, syncStateOperation, {
     handle: async (): Promise<GetSyncStateResult> => {
       const store = await getPersistenceStore()
+      if (store.readAppStateSnapshot) {
+        const snapshot = await store.readAppStateSnapshot()
+        if (snapshot.revision !== null) {
+          return { revision: snapshot.revision, state: snapshot.state }
+        }
+      }
       const [revision, state] = await Promise.all([
         store.readAppStateRevision(),
         store.readAppState(),
@@ -281,9 +67,7 @@ export function registerSyncHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('sync.readWorkspaceStateRaw', {
-    kind: 'query',
-    validate: normalizeReadWorkspaceStateRawPayload,
+  registerOperation(controlSurface, syncReadWorkspaceStateRawOperation, {
     handle: async (): Promise<string | null> => {
       const store = await getPersistenceStore()
       return await store.readWorkspaceStateRaw()
@@ -291,15 +75,14 @@ export function registerSyncHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('sync.writeWorkspaceStateRaw', {
-    kind: 'command',
-    validate: normalizeWriteWorkspaceStateRawPayload,
+  registerOperation(controlSurface, syncWriteWorkspaceStateRawOperation, {
     handle: async (_ctx, payload): Promise<PersistWriteResult> => {
       const store = await getPersistenceStore()
       const result = await store.writeWorkspaceStateRaw(payload.raw)
       if (result.ok && options.onStatePersisted) {
         try {
-          const normalized = normalizePersistedAppState(JSON.parse(payload.raw) as unknown)
+          const normalized =
+            result.effectiveState ?? normalizePersistedAppState(JSON.parse(payload.raw) as unknown)
           if (normalized) {
             await options.onStatePersisted(normalized)
           }
@@ -307,14 +90,12 @@ export function registerSyncHandlers(
           // Persistence validation remains authoritative; recovery binding is best-effort here.
         }
       }
-      return result
+      return persistWriteWireResult(result)
     },
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('sync.readNodeScrollback', {
-    kind: 'query',
-    validate: normalizeReadNodeScrollbackPayload,
+  registerOperation(controlSurface, syncReadNodeScrollbackOperation, {
     handle: async (_ctx, payload): Promise<string | null> => {
       const store = await getPersistenceStore()
       return await store.readNodeScrollback(payload.nodeId)
@@ -322,9 +103,7 @@ export function registerSyncHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('sync.writeNodeScrollback', {
-    kind: 'command',
-    validate: normalizeWriteNodeScrollbackPayload,
+  registerOperation(controlSurface, syncWriteNodeScrollbackOperation, {
     handle: async (_ctx, payload): Promise<PersistWriteResult> => {
       const store = await getPersistenceStore()
       return await store.writeNodeScrollback(payload.nodeId, payload.scrollback)
@@ -332,9 +111,7 @@ export function registerSyncHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('sync.readAgentNodePlaceholderScrollback', {
-    kind: 'query',
-    validate: normalizeReadAgentNodePlaceholderScrollbackPayload,
+  registerOperation(controlSurface, syncReadAgentNodePlaceholderScrollbackOperation, {
     handle: async (_ctx, payload): Promise<string | null> => {
       const store = await getPersistenceStore()
       return await store.readAgentNodePlaceholderScrollback(payload.nodeId)
@@ -342,9 +119,7 @@ export function registerSyncHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('sync.writeAgentNodePlaceholderScrollback', {
-    kind: 'command',
-    validate: normalizeWriteAgentNodePlaceholderScrollbackPayload,
+  registerOperation(controlSurface, syncWriteAgentNodePlaceholderScrollbackOperation, {
     handle: async (_ctx, payload): Promise<PersistWriteResult> => {
       const store = await getPersistenceStore()
       return await store.writeAgentNodePlaceholderScrollback(payload.nodeId, payload.scrollback)
@@ -352,9 +127,7 @@ export function registerSyncHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('sync.writeState', {
-    kind: 'command',
-    validate: normalizeWriteSyncStatePayload,
+  registerOperation(controlSurface, syncWriteStateOperation, {
     handle: async (_ctx, payload): Promise<WriteSyncStateResult> => {
       const store = await getPersistenceStore()
       const currentRevision = await store.readAppStateRevision()
@@ -371,23 +144,21 @@ export function registerSyncHandlers(
         })
       }
 
-      await persistNextAppState(store, payload.state, {
+      const result = await persistNextAppState(store, payload.state, {
         allowEmptyWorkspaceOverwrite: payload.allowEmptyWorkspaceOverwrite === true,
         expectedRevision: payload.baseRevision ?? currentRevision,
       })
-      const normalizedState = normalizePersistedAppState(payload.state)
+      const nextRevision = result.revision ?? (await store.readAppStateRevision())
+      const normalizedState = result.effectiveState ?? normalizePersistedAppState(payload.state)
       if (normalizedState && options.onStatePersisted) {
         await options.onStatePersisted(normalizedState).catch(() => undefined)
       }
-      const nextRevision = await store.readAppStateRevision()
-      return { revision: nextRevision }
+      return { revision: nextRevision, corrected: result.corrected ?? false }
     },
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('note.create', {
-    kind: 'command',
-    validate: normalizeCreateNotePayload,
+  registerOperation(controlSurface, noteCreateOperation, {
     handle: async (ctx, payload): Promise<CreateNoteResult> => {
       const store = await getPersistenceStore()
       const expectedRevision = await store.readAppStateRevision()
@@ -477,7 +248,23 @@ export function registerSyncHandlers(
         }),
       }
 
-      await persistNextAppState(store, nextState, { expectedRevision })
+      const lineage = await prepareNodeLineage(
+        {
+          ...store,
+          readAppState: async () => normalizePersistedAppState(await store.readAppState()),
+        },
+        nodeId,
+        ctx.requestAuth?.kind === 'session-grant' ? ctx.requestAuth.grant.nodeId : null,
+      )
+      ctx.assertActive?.()
+      if (lineage) {
+        const result = await store.commitCreatedNodeState!(nextState, { expectedRevision, lineage })
+        if (!result.ok) {
+          throw createAppError(result.error)
+        }
+      } else {
+        await persistNextAppState(store, nextState, { expectedRevision })
+      }
       const revision = await store.readAppStateRevision()
 
       return {

@@ -1,3 +1,5 @@
+import { remoteSpawnObservation } from '../remoteSpawnObservation'
+import { canvasSpawnIdentity, canvasSpawnOperations } from '../sessionSpawnIdentityContext'
 import type {
   ControlSurfaceInvokeRequest,
   ControlSurfaceInvokeResult,
@@ -23,13 +25,36 @@ export async function invokeControlSurface(
 
   try {
     const url = `http://${endpoint.hostname}:${endpoint.port}/invoke`
+    if (canvasSpawnOperations.has(request.id)) {
+      const nodeId = canvasSpawnIdentity.getStore()?.nodeId
+      if (nodeId) {
+        remoteSpawnObservation.getStore()?.(nodeId)
+      }
+    }
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         authorization: `Bearer ${endpoint.token}`,
         'content-type': 'application/json',
       },
-      body: JSON.stringify(request),
+      body: JSON.stringify(
+        canvasSpawnOperations.has(request.id) && canvasSpawnIdentity.getStore()
+          ? {
+              ...request,
+              payload: {
+                ...(request.payload as object),
+                workerSpawnIdentity: (() => {
+                  const identity = canvasSpawnIdentity.getStore()!
+                  return {
+                    projectId: identity.projectId,
+                    spaceId: identity.spaceId,
+                    nodeId: identity.nodeId,
+                  }
+                })(),
+              },
+            }
+          : request,
+      ),
       signal: controller.signal,
     })
 

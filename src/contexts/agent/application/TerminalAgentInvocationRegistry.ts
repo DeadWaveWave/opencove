@@ -1,4 +1,7 @@
 import type {
+  AgentLaunchMode,
+  AgentHookCoverage,
+  AgentHookInstallState,
   TerminalAgentActivitySnapshot,
   TerminalAgentShimProvider,
   TerminalSessionMetadataEvent,
@@ -23,6 +26,9 @@ export interface TerminalAgentInvocationTerminal {
   beginInvocation(input: {
     readonly invocationId: string
     readonly provider: TerminalAgentShimProvider
+    readonly launchMode?: AgentLaunchMode
+    readonly hookCoverage?: AgentHookCoverage
+    readonly hookInstallState?: AgentHookInstallState
     readonly expectedResumeSessionId?: string | null
   }): TerminalAgentInvocation | null
   bind(sessionId: string): boolean
@@ -31,9 +37,12 @@ export interface TerminalAgentInvocationTerminal {
 }
 
 interface InvocationRecord {
+  readonly launchMode?: AgentLaunchMode
   readonly generation: number
   readonly invocationId: string
   readonly provider: TerminalAgentShimProvider
+  hookCoverage?: AgentHookCoverage
+  hookInstallState?: AgentHookInstallState
   expectedResumeSessionId: string | null
   identityAuthority: TerminalAgentActivitySnapshot['identityAuthority']
   identitySequence: number
@@ -130,6 +139,9 @@ export class TerminalAgentInvocationRegistry {
     input: {
       readonly invocationId: string
       readonly provider: TerminalAgentShimProvider
+      readonly launchMode?: AgentLaunchMode
+      readonly hookCoverage?: AgentHookCoverage
+      readonly hookInstallState?: AgentHookInstallState
       readonly expectedResumeSessionId?: string | null
     },
   ): TerminalAgentInvocation | null {
@@ -157,6 +169,7 @@ export class TerminalAgentInvocationRegistry {
         ? null
         : requireIdentifier(input.expectedResumeSessionId, 'expectedResumeSessionId')
     const record: InvocationRecord = {
+      launchMode: input.launchMode,
       generation: terminal.nextGeneration++,
       expectedResumeSessionId,
       identityAuthority: null,
@@ -165,6 +178,8 @@ export class TerminalAgentInvocationRegistry {
       observedAtMs: this.now(),
       phase: 'active',
       provider: input.provider,
+      hookCoverage: input.hookCoverage,
+      hookInstallState: input.hookInstallState,
       resumeSessionId: null,
       snapshot: null,
     }
@@ -326,6 +341,7 @@ export class TerminalAgentInvocationRegistry {
     }
     const revisions = this.advanceRevision(terminal.sourceId)
     record.snapshot = {
+      ...(record.launchMode ? { launchMode: record.launchMode } : {}),
       generation: record.generation,
       identityAuthority: record.identityAuthority,
       invocationId: record.invocationId,
@@ -335,7 +351,7 @@ export class TerminalAgentInvocationRegistry {
       revision: revisions.revision,
       sourceRevision: revisions.sourceRevision,
     }
-    const event = this.createEvent(sessionId, record.resumeSessionId, record.snapshot)
+    const event = this.createEvent(sessionId, record.resumeSessionId, record.snapshot, record)
     this.listeners.forEach(listener => listener(event))
   }
 
@@ -351,18 +367,27 @@ export class TerminalAgentInvocationRegistry {
     if (terminal.exited || !terminal.sessionId || !snapshot) {
       return null
     }
-    return this.createEvent(terminal.sessionId, terminal.current?.resumeSessionId ?? null, snapshot)
+    return this.createEvent(
+      terminal.sessionId,
+      terminal.current?.resumeSessionId ?? null,
+      snapshot,
+      terminal.current!,
+    )
   }
 
   private createEvent(
     sessionId: string,
     resumeSessionId: string | null,
     snapshot: TerminalAgentActivitySnapshot,
+    record: InvocationRecord,
   ): TerminalSessionMetadataEvent {
     return {
       sessionId,
       resumeSessionId,
       agentProvider: snapshot.provider,
+      agentLaunchKind: 'terminal',
+      ...(record.hookCoverage ? { hookCoverage: record.hookCoverage } : {}),
+      ...(record.hookInstallState ? { hookInstallState: record.hookInstallState } : {}),
       terminalAgentActivity: { ...snapshot },
     }
   }

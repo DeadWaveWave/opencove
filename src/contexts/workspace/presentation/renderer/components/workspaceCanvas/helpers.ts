@@ -398,6 +398,33 @@ export function validateSpaceTransfer(
 }
 
 export function toErrorMessage(error: unknown): string {
+  if (error instanceof OpenCoveAppError || isAppErrorDescriptor(error)) {
+    if (error.code === 'agent.managed_launch_commit_failed') {
+      return translate('messages.managedAgentLaunchUncertain')
+    }
+    if (error.code === 'agent.managed_launch_rejected') {
+      const details = error.details as { reason?: string } | undefined
+      return translate(
+        details?.reason === 'resumeBindingDrainExpired'
+          ? 'messages.managedAgentClearSaveUnconfirmed'
+          : details?.reason === 'workerUpgradeRequired'
+            ? 'messages.managedAgentWorkerUpgradeRequired'
+            : details?.reason === 'clientUpgradeRequired'
+              ? 'messages.managedAgentClientUpgradeRequired'
+              : details?.reason === 'writesDisabled'
+                ? 'messages.managedAgentWritesDisabled'
+                : details?.reason === 'resumeUnavailable'
+                  ? 'messages.managedAgentResumeUnavailable'
+                  : 'messages.managedAgentChanged',
+      )
+    }
+  }
+  if (
+    (error instanceof OpenCoveAppError || isAppErrorDescriptor(error)) &&
+    error.code === 'persistence.owned_node_identity_conflict'
+  ) {
+    return translate('messages.managedAgentChanged')
+  }
   if (error instanceof OpenCoveAppError) {
     if (error.code === 'terminal.runtime_not_ready') {
       return translate('common.terminalRuntimeNotReady')

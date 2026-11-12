@@ -1,4 +1,9 @@
 export const enSettingsPanelAgent = {
+  residentContextLabel: 'Tell agents about OpenCove',
+  residentContextSuggest: 'Suggest',
+  residentContextOff: 'Off',
+  residentContextHelp:
+    'Give supported local agents a short guide to the canvas. Changes apply when a session starts or its context resets. Turning this off does not remove guidance already sent.',
   title: 'Agent',
   defaultAgentLabel: 'Default Agent',
   defaultAgentHelp: 'The default AI provider for new tasks and terminals.',
@@ -20,6 +25,9 @@ export const enSettingsPanelAgent = {
   envSummaryNone: 'No environment variables',
   moveUp: 'Move up',
   moveDown: 'Move down',
+  codexReuseRunningAppServerLabel: 'Reuse a running Codex app-server',
+  codexReuseRunningAppServerHelp:
+    "When a running Codex app-server is reused, OpenCove can't send prompts to the agent and has only limited status. Applies to newly launched agents.",
   fullAccessLabel: 'Full Access Mode',
   fullAccessHelp: 'Let agents leave their sandbox and act without asking for approval.',
   fullAccessOffHelp:

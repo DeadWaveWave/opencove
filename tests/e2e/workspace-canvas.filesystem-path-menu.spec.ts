@@ -21,7 +21,7 @@ test('filesystem path menus copy breadcrumb and compact or expanded node paths',
   })
   const clipboardText = () => electronApp.evaluate(({ clipboard }) => clipboard.readText())
   try {
-    await seedFilesystemWorkspace(window, fixture.root, 'pixel')
+    await seedFilesystemWorkspace(window, fixture.root, 'dark')
     const explorer = window.getByTestId('workspace-space-explorer')
     await directoryEntry(window, FILESYSTEM_SPACE, fixture.docs).click()
     const breadcrumb = explorer.getByRole('navigation', { name: 'Path' })

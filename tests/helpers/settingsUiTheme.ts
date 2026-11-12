@@ -1,22 +1,14 @@
 import type { Page } from '@playwright/test'
 
-/** Built-in themes as Settings → Appearance shows them: a family card plus an appearance. */
-const BUILTIN_THEME_CHOICES: Record<string, readonly [family: string, mode: string]> = {
-  dark: ['cove', 'dark'],
-  light: ['cove', 'light'],
-  system: ['cove', 'system'],
-  pixel: ['pixel', 'dark'],
-  'pixel-light': ['pixel', 'light'],
-}
+/** Cove's own appearances, as Settings → Appearance shows them: one pixel miniature each. */
+const BUILTIN_APPEARANCES = new Set(['light', 'dark', 'system'])
 
 /** Chooses a theme on Settings → Appearance; plugin themes keep their own button. */
 export async function chooseSettingsUiTheme(page: Page, themeId: string): Promise<void> {
-  const builtin = BUILTIN_THEME_CHOICES[themeId]
-  if (!builtin) {
+  if (!BUILTIN_APPEARANCES.has(themeId)) {
     await page.getByTestId(`settings-ui-theme-${themeId}`).click()
     return
   }
-  const [family, mode] = builtin
-  await page.getByTestId(`settings-ui-theme-family-${family}`).click()
-  await page.getByTestId(`settings-ui-theme-mode-${mode}`).check()
+  // The radio lies, invisible, over its miniature: the pointer presses it directly.
+  await page.getByTestId(`settings-ui-theme-mode-${themeId}`).check()
 }

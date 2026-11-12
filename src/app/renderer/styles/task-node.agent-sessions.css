@@ -1,65 +1,94 @@
-.task-node__agent-session {
-  min-height: 32px;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  cursor: default;
-  padding: 5px 8px;
-}
-
-.task-node__agent-session-summary {
-  width: 100%;
+/*
+ * The task card's sessions: a row of avatars, one per session, each with a light for its state.
+ * The running one's light blinks (still under reduced motion). What does not fit folds into "+N".
+ */
+/* One line, 26px tall. The hint wraps off it, out of sight, rather than show a few letters. */
+.task-node__sessions {
+  flex: 1 1 auto;
   min-width: 0;
   display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  height: 26px;
+  overflow: hidden;
+  gap: 0 var(--cove-spacing-1);
 }
 
-.task-node__agent-session-identity {
+.task-node__sessions .task-node__session:is(.cove-icon-button, .task-node__session--readout) {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 0;
+  background: var(--cove-pixel-fill);
+  color: var(--cove-text);
+  clip-path: var(--cove-pixel-corners);
 }
 
-.task-node__agent-provider {
-  width: 22px;
-  height: 22px;
-  flex-basis: 22px;
+.task-node__sessions .cove-icon-button.task-node__session:not(:disabled):hover {
+  background: var(--cove-pixel-fill-hover);
+  color: var(--cove-text);
 }
 
-.task-node__agent-session-state {
+.task-node__sessions .cove-icon-button.task-node__session:focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+.task-node__sessions .cove-icon-button.task-node__session--more {
+  color: var(--cove-text-muted);
+  font-size: var(--cove-font-size-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.task-node__session-light {
   position: absolute;
-  right: -1px;
-  bottom: -1px;
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  border: 1.5px solid var(--cove-field);
+  right: 3px;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
   background: var(--cove-text-faint);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cove-node-surface) 70%, transparent);
 }
 
-.task-node__agent-session-state--working {
+.task-node__session-light--working {
   background: var(--cove-success);
+  animation: cove-pixel-blink 1s steps(1, end) infinite;
 }
 
-.task-node__agent-session-state--standby {
-  background: var(--cove-warning);
-}
-
-.task-node__agent-session-state--failed {
+.task-node__session-light--failed {
   background: var(--cove-danger);
 }
 
-.task-node__agent-session-time {
-  min-width: 0;
+@media (prefers-reduced-motion: reduce) {
+  .task-node__session-light--working {
+    animation: none;
+  }
+}
+
+/* To read only (the archive replay): an avatar is a tile, not a button, and a record's light
+   is still. */
+.task-node__sessions .task-node__session--readout {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.task-node__sessions--readout .task-node__session-light--working {
+  animation: none;
+}
+
+.task-node__sessions-hint {
+  flex: 1 1 0;
+  min-width: 56px;
+  margin-left: var(--cove-spacing-1);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--cove-text-faint);
-  font-size: calc(11px * var(--cove-ui-font-scale));
-  font-variant-numeric: tabular-nums;
+  font-size: var(--cove-font-size-caption);
+  /* The row's height, so the hint sits on the avatars' centre line with or without them. */
+  line-height: 26px;
 }

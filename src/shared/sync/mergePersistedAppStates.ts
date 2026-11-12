@@ -6,18 +6,29 @@ import type {
 } from '@shared/contracts/normalizedPersistedAppState'
 import { isSpaceBoundaryEqual } from './spaceBoundaryEquality'
 import { mergeSnapshotField } from './mergeSnapshotField'
-import { areNodeWorkerBindingsEqual } from '../types/nodeWorkerBinding'
+import { mergeValue } from './mergeValue'
+import { mergePersistedNode } from './mergePersistedNode'
 export { isPersistedAppState } from './persistedAppStateValidation'
 
 type PersistedAppState<TSettings extends object> = NormalizedPersistedAppStateContract<TSettings>
 
-type TaskNodeData = {
-  requirement: string
-  status: string
-  priority: string
-  tags: unknown[]
-  agentSessions: unknown[]
-  linkedAgentNodeId?: unknown
+// Preserve the former comparators' null/absent and trimmed task-link semantics.
+function canonicalNode(node: PersistedTerminalNode): PersistedTerminalNode {
+  return {
+    ...node,
+    workerBinding: node.workerBinding ?? null,
+    sidebarSortOrder: node.sidebarSortOrder ?? undefined,
+    task:
+      node.kind === 'task' && node.task && 'requirement' in node.task
+        ? {
+            ...node.task,
+            linkedAgentNodeId:
+              'linkedAgentNodeId' in node.task && typeof node.task.linkedAgentNodeId === 'string'
+                ? node.task.linkedAgentNodeId.trim() || null
+                : null,
+          }
+        : node.task,
+  }
 }
 
 function mergeNodes(
@@ -30,58 +41,6 @@ function mergeNodes(
   const snapshotById = new Map((baseSnapshotNodes ?? []).map(node => [node.id, node] as const))
   const seen = new Set<string>()
   const merged: PersistedTerminalNode[] = []
-
-  function isTaskNodeData(value: unknown): value is TaskNodeData {
-    return (
-      value !== null &&
-      typeof value === 'object' &&
-      !Array.isArray(value) &&
-      (() => {
-        const record = value as Record<string, unknown>
-        return (
-          typeof record.requirement === 'string' &&
-          typeof record.status === 'string' &&
-          typeof record.priority === 'string' &&
-          Array.isArray(record.tags) &&
-          Array.isArray(record.agentSessions)
-        )
-      })()
-    )
-  }
-
-  function normalizeLinkedAgentNodeId(value: unknown): string | null {
-    if (typeof value !== 'string') {
-      return null
-    }
-
-    const normalized = value.trim()
-    return normalized.length > 0 ? normalized : null
-  }
-
-  function isPointEqual(
-    left: PersistedTerminalNode['position'],
-    right: PersistedTerminalNode['position'],
-  ): boolean {
-    if (left === right) {
-      return true
-    }
-
-    return left.x === right.x && left.y === right.y
-  }
-
-  function withSidebarSortOrder(
-    node: PersistedTerminalNode,
-    sidebarSortOrder: number | null,
-  ): PersistedTerminalNode {
-    const next = { ...node }
-    if (sidebarSortOrder === null) {
-      delete next.sidebarSortOrder
-      return next
-    }
-
-    next.sidebarSortOrder = sidebarSortOrder
-    return next
-  }
 
   for (const baseNode of baseNodes) {
     if (deletedNodeIds.has(baseNode.id)) {
@@ -97,81 +56,13 @@ function mergeNodes(
     }
 
     const snapshotNode = snapshotById.get(baseNode.id)
-    if (!snapshotNode) {
-      merged.push(localNode)
-      seen.add(baseNode.id)
-      continue
-    }
-
-    const task = (() => {
-      if (baseNode.kind !== 'task' || localNode.kind !== 'task' || snapshotNode.kind !== 'task') {
-        return localNode.task
-      }
-
-      if (!isTaskNodeData(baseNode.task) || !isTaskNodeData(localNode.task)) {
-        return localNode.task
-      }
-
-      const snapshotTask = isTaskNodeData(snapshotNode.task) ? snapshotNode.task : null
-      if (!snapshotTask) {
-        return localNode.task
-      }
-
-      const baseLinkedAgentNodeId = normalizeLinkedAgentNodeId(baseNode.task.linkedAgentNodeId)
-      const localLinkedAgentNodeId = normalizeLinkedAgentNodeId(localNode.task.linkedAgentNodeId)
-      const snapshotLinkedAgentNodeId = normalizeLinkedAgentNodeId(snapshotTask.linkedAgentNodeId)
-
-      const mergedLinkedAgentNodeId = mergeSnapshotField(
-        baseLinkedAgentNodeId,
-        localLinkedAgentNodeId,
-        snapshotLinkedAgentNodeId,
-        (left, right) => left === right,
-      )
-
-      if (mergedLinkedAgentNodeId === localLinkedAgentNodeId) {
-        return localNode.task
-      }
-
-      return {
-        ...localNode.task,
-        linkedAgentNodeId: mergedLinkedAgentNodeId,
-      }
-    })()
-    const sidebarSortOrder = mergeSnapshotField(
-      baseNode.sidebarSortOrder ?? null,
-      localNode.sidebarSortOrder ?? null,
-      snapshotNode.sidebarSortOrder ?? null,
-      (left, right) => left === right,
+    merged.push(
+      mergePersistedNode(
+        canonicalNode(baseNode),
+        canonicalNode(localNode),
+        snapshotNode ? canonicalNode(snapshotNode) : null,
+      ),
     )
-
-    merged.push({
-      ...withSidebarSortOrder(localNode, sidebarSortOrder),
-      position: mergeSnapshotField(
-        baseNode.position,
-        localNode.position,
-        snapshotNode.position,
-        isPointEqual,
-      ),
-      width: mergeSnapshotField(
-        baseNode.width,
-        localNode.width,
-        snapshotNode.width,
-        (left, right) => left === right,
-      ),
-      height: mergeSnapshotField(
-        baseNode.height,
-        localNode.height,
-        snapshotNode.height,
-        (left, right) => left === right,
-      ),
-      workerBinding: mergeSnapshotField(
-        baseNode.workerBinding ?? null,
-        localNode.workerBinding ?? null,
-        snapshotNode.workerBinding ?? null,
-        areNodeWorkerBindingsEqual,
-      ),
-      task,
-    })
     seen.add(baseNode.id)
   }
 
@@ -188,6 +79,16 @@ function mergeNodes(
   }
 
   return merged
+}
+
+function canonicalSpace(space: WorkspaceSpaceState): WorkspaceSpaceState {
+  return {
+    ...space,
+    boundary: space.boundary ?? null,
+    parentSpaceId: space.parentSpaceId ?? null,
+    sortOrder: space.sortOrder ?? 0,
+    pinned: space.pinned === true,
+  }
 }
 
 function mergeSpaces(options: {
@@ -253,6 +154,31 @@ function mergeSpaces(options: {
       }
 
       assignmentByNodeId.set(nodeId, space.id)
+    }
+  }
+
+  if (options.baseSnapshotSpaces) {
+    const assignments = (spaces: WorkspaceSpaceState[]) => {
+      const result = new Map<string, string>()
+      for (const space of spaces) {
+        if (deletedSpaceIds.has(space.id)) {
+          continue
+        }
+        for (const id of space.nodeIds) {
+          result.set(id, space.id)
+        }
+      }
+      return result
+    }
+    const latest = assignments(options.baseSpaces)
+    const local = assignments(options.localSpaces)
+    const ancestor = assignments(options.baseSnapshotSpaces)
+    assignmentByNodeId.clear()
+    for (const id of options.validNodeIds) {
+      const spaceId = mergeValue(latest.get(id), local.get(id), ancestor.get(id))
+      if (spaceId !== undefined) {
+        assignmentByNodeId.set(id, spaceId)
+      }
     }
   }
 
@@ -343,7 +269,18 @@ function mergeSpaces(options: {
       nodeIds,
     }
 
-    mergedSpaces.push(mergedSpace)
+    mergedSpaces.push(
+      snapshotSpace
+        ? {
+            ...mergeValue(
+              canonicalSpace(baseSpace),
+              canonicalSpace(localSpace),
+              canonicalSpace(snapshotSpace),
+            ),
+            nodeIds,
+          }
+        : mergedSpace,
+    )
   }
 
   for (const localSpace of options.localSpaces) {
@@ -420,8 +357,9 @@ function mergeWorkspaces(
   const validNodeIds = new Set(nodes.map(node => node.id))
 
   return {
-    ...base,
-    ...local,
+    ...(baseSnapshotWorkspace
+      ? mergeValue(base, local, baseSnapshotWorkspace)
+      : { ...base, ...local }),
     iconId: mergeSnapshotField(
       base.iconId ?? null,
       local.iconId ?? null,
@@ -454,19 +392,28 @@ export function mergePersistedAppStates<TSettings extends object>(
   )
   const baseWorkspaceIds = new Set(base.workspaces.map(workspace => workspace.id))
 
-  const mergedWorkspaces = base.workspaces.map(workspace => {
-    const localWorkspace = localWorkspaceById.get(workspace.id)
-    return localWorkspace
-      ? mergeWorkspaces(
-          workspace,
-          localWorkspace,
-          baseSnapshotWorkspaceById.get(workspace.id) ?? null,
-        )
-      : workspace
-  })
+  const deleted = new Set(
+    (baseSnapshot?.workspaces ?? [])
+      .filter(
+        workspace => !baseWorkspaceIds.has(workspace.id) || !localWorkspaceById.has(workspace.id),
+      )
+      .map(workspace => workspace.id),
+  )
+  const mergedWorkspaces = base.workspaces
+    .filter(workspace => !deleted.has(workspace.id))
+    .map(workspace => {
+      const localWorkspace = localWorkspaceById.get(workspace.id)
+      return localWorkspace
+        ? mergeWorkspaces(
+            workspace,
+            localWorkspace,
+            baseSnapshotWorkspaceById.get(workspace.id) ?? null,
+          )
+        : workspace
+    })
 
   for (const localWorkspace of local.workspaces) {
-    if (baseWorkspaceIds.has(localWorkspace.id)) {
+    if (baseWorkspaceIds.has(localWorkspace.id) || deleted.has(localWorkspace.id)) {
       continue
     }
 
@@ -474,8 +421,8 @@ export function mergePersistedAppStates<TSettings extends object>(
   }
 
   return {
-    ...base,
-    ...local,
+    ...(baseSnapshot ? mergeValue(base, local, baseSnapshot) : { ...base, ...local }),
+    // View state belongs to each client; retain the latest shared placeholder.
     activeWorkspaceId: base.activeWorkspaceId,
     workspaces: mergedWorkspaces,
   }

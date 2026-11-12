@@ -24,15 +24,3 @@ export async function invokeControlSurface(connection, request, options) {
     clearTimeout(timer)
   }
 }
-
-export async function invokeAndPrint(connection, request, { pretty, timeoutMs } = {}) {
-  const { result } = await invokeControlSurface(connection, request, { timeoutMs })
-  const output = pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)
-  process.stdout.write(`${output}\n`)
-
-  if (result && result.ok === false) {
-    process.exit(1)
-  }
-
-  return result
-}

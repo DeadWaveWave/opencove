@@ -23,11 +23,7 @@ export async function createFilesystemNodeFixture() {
   return { root, docs, design, guide, readme, cleanup: () => removePathWithRetry(root) }
 }
 
-export async function seedFilesystemWorkspace(
-  page: Page,
-  root: string,
-  theme: 'pixel' | 'pixel-light',
-) {
+export async function seedFilesystemWorkspace(page: Page, root: string, theme: 'dark' | 'light') {
   await page.setViewportSize({ width: 1520, height: 1040 })
   await seedWorkspaceState(page, {
     activeWorkspaceId: 'filesystem-project',

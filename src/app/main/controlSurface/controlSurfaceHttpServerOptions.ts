@@ -22,11 +22,12 @@ export interface RegisterControlSurfaceHttpServerOptions {
   deploymentId?: string | null
   activationId?: string | null
   strictPersistence?: boolean
+  enableAgentTurnArchive?: boolean
   requestManagedShutdown?: () => void
   connectionFileName?: string
   connectionStartedBy?: 'cli' | 'desktop'
   approvedWorkspaces: ApprovedWorkspaceStore
-  ptyRuntime: ControlSurfacePtyRuntime & { dispose?: () => void }
+  ptyRuntime: ControlSurfacePtyRuntime & { dispose?: () => void | Promise<void> }
   ownsPtyRuntime?: boolean
   deleteEntry?: (uri: string) => Promise<void>
   enableWebShell?: boolean

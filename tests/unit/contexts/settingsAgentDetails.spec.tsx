@@ -1,4 +1,5 @@
 import React from 'react'
+import { applyUiLanguage } from '../../../src/app/renderer/i18n'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -31,6 +32,8 @@ function createProps(): Props {
     onChangeDefaultProvider: vi.fn(),
     onChangeAgentProviderOrder: vi.fn(),
     onChangeAgentFullAccess: vi.fn(),
+    onChangeAgentResidentContext: vi.fn(),
+    onChangeCodexReuseRunningAppServer: vi.fn(),
     onToggleCustomModelEnabled: vi.fn(),
     onSelectProviderModel: vi.fn(),
     onRemoveCustomModelOption: vi.fn(),
@@ -58,12 +61,63 @@ function installApi(listInstalledProviders: ReturnType<typeof vi.fn>, installPro
   })
 }
 
-afterEach(() => {
+afterEach(async () => {
+  await applyUiLanguage('en')
   vi.restoreAllMocks()
   delete (window as typeof window & { opencoveApi?: Window['opencoveApi'] }).opencoveApi
 })
 
 describe('Agent list and provider detail', () => {
+  it.each(['en', 'zh-CN'] as const)(
+    'changes resident guidance in %s without changing other settings',
+    async language => {
+      await applyUiLanguage(language)
+      const props = createProps()
+      render(<AgentSettingsPage {...props} />)
+      const select = screen.getByTestId('settings-agent-resident-context-trigger')
+      fireEvent.click(select)
+      fireEvent.click(screen.getByRole('option', { name: language === 'en' ? 'Off' : '关闭' }))
+      expect(props.onChangeAgentResidentContext).toHaveBeenCalledWith('off')
+      expect(props.onChangeAgentFullAccess).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([false, true])(
+    'toggles Codex daemon reuse with an accessible warning when enabled=%s',
+    enabled => {
+      const props = createProps()
+      props.settings = { ...props.settings, codexReuseRunningAppServer: enabled }
+      const { rerender } = render(
+        <AgentSettingsPage {...props} requestedProvider="codex" requestKey={1} />,
+      )
+      const toggle = screen.getByRole('switch', {
+        name: 'Reuse a running Codex app-server',
+        exact: true,
+      })
+      expect(toggle).toHaveProperty('checked', enabled)
+      expect(toggle).toHaveAccessibleDescription(
+        "When a running Codex app-server is reused, OpenCove can't send prompts to the agent and has only limited status. Applies to newly launched agents.",
+      )
+      fireEvent.click(toggle)
+      expect(props.onChangeCodexReuseRunningAppServer).toHaveBeenCalledExactlyOnceWith(!enabled)
+      rerender(<AgentSettingsPage {...props} requestedProvider="pi" requestKey={2} />)
+      expect(screen.queryByRole('switch', { name: 'Reuse a running Codex app-server' })).toBeNull()
+    },
+  )
+
+  it('shows the Codex reuse label and consequence in Chinese', async () => {
+    await applyUiLanguage('zh-CN')
+    render(<AgentSettingsPage {...createProps()} requestedProvider="codex" requestKey={1} />)
+    const toggle = screen.getByRole('switch', {
+      name: '复用正在运行的 Codex app-server',
+      exact: true,
+    })
+    expect(toggle).not.toBeChecked()
+    expect(toggle).toHaveAccessibleDescription(
+      '复用正在运行的 Codex app-server 时，OpenCove 无法向 Agent 发送提示词，状态跟踪也受限。仅对新启动的 Agent 生效。',
+    )
+  })
+
   it.each([false, true])('associates the full access label and help when enabled=%s', enabled => {
     const props = createProps()
     props.settings = { ...props.settings, agentFullAccess: enabled }

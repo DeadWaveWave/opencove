@@ -1,3 +1,11 @@
+import { getPublicTerminalSpawnCommand } from '../../../../platform/terminal/publicTerminalSpawnCommand'
+import { registerOperation } from '../registerOperation'
+import {
+  sessionSnapshotOperation,
+  sessionPresentationSnapshotOperation,
+  sessionSpawnTerminalOperation,
+} from '@shared/contracts/controlSurface/operations/domains/session'
+import { ptySpawnOperation } from '@shared/contracts/controlSurface/operations/domains/pty'
 import process from 'node:process'
 import { registerSessionInputHandlers } from './sessionInputHandlers'
 import { resolveDefaultShell } from '../../../../platform/process/pty/defaultShell'
@@ -23,13 +31,7 @@ import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import { resolveSpaceMountContext } from '../../../../contexts/space/application/resolveSpaceMountContext'
 import type { TerminalAgentActivityEnvironmentService } from '../../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentActivityEnvironmentService'
-import { spawnTerminalWithActivity } from './terminalAgentActivitySpawn'
-import {
-  normalizePresentationSnapshotPayload,
-  normalizePtySpawnPayload,
-  normalizeSnapshotPayload,
-  normalizeSpawnTerminalPayload,
-} from './sessionStreamingPayloads'
+import { composeTerminalSpawnGuard, spawnTerminalWithActivity } from './terminalAgentActivitySpawn'
 
 const terminalProfileResolver = new TerminalProfileResolver()
 
@@ -71,9 +73,7 @@ export function registerSessionStreamingHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('session.snapshot', {
-    kind: 'query',
-    validate: normalizeSnapshotPayload,
+  registerOperation(controlSurface, sessionSnapshotOperation, {
     handle: (_ctx, payload): GetSessionSnapshotResult => {
       try {
         return deps.ptyStreamHub.snapshotSession(payload.sessionId)
@@ -87,9 +87,7 @@ export function registerSessionStreamingHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('session.presentationSnapshot', {
-    kind: 'query',
-    validate: normalizePresentationSnapshotPayload,
+  registerOperation(controlSurface, sessionPresentationSnapshotOperation, {
     handle: async (_ctx, payload): Promise<GetSessionPresentationSnapshotResult> => {
       try {
         return await deps.ptyStreamHub.presentationSnapshotSession(payload.sessionId)
@@ -103,9 +101,7 @@ export function registerSessionStreamingHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('session.spawnTerminal', {
-    kind: 'command',
-    validate: normalizeSpawnTerminalPayload,
+  registerOperation(controlSurface, sessionSpawnTerminalOperation, {
     handle: async (ctx, payload): Promise<SpawnTerminalSessionResult> => {
       const {
         workingDirectory,
@@ -209,6 +205,8 @@ export function registerSessionStreamingHandlers(
           })
 
       const { sessionId } = await spawnTerminalWithActivity(deps.ptyRuntime, {
+        assertActive: composeTerminalSpawnGuard(ctx),
+        onSpawned: ctx.terminalSpawnLifecycle?.onSpawned,
         activity: deps.terminalAgentActivity,
         args: resolvedSpawn.args,
         cols,
@@ -226,8 +224,7 @@ export function registerSessionStreamingHandlers(
         kind: 'terminal',
         startedAt,
         cwd: resolvedSpawn.cwd,
-        command: resolvedSpawn.command,
-        args: resolvedSpawn.args,
+        ...getPublicTerminalSpawnCommand(resolvedSpawn),
         cols,
         rows,
       })
@@ -236,8 +233,7 @@ export function registerSessionStreamingHandlers(
         sessionId,
         startedAt,
         cwd: resolvedSpawn.cwd,
-        command: resolvedSpawn.command,
-        args: resolvedSpawn.args,
+        ...getPublicTerminalSpawnCommand(resolvedSpawn),
         executionContext: resolveExecutionContextDto(workingDirectory, {
           projectId,
           spaceId: payload.spaceId,
@@ -257,10 +253,13 @@ export function registerSessionStreamingHandlers(
     defaultErrorCode: 'terminal.spawn_failed',
   })
 
-  controlSurface.register('pty.spawn', {
-    kind: 'command',
-    validate: normalizePtySpawnPayload,
+  registerOperation(controlSurface, ptySpawnOperation, {
     handle: async (ctx, payload): Promise<SpawnTerminalResult> => {
+      ctx.terminalSpawnLifecycle?.assertExecution?.({
+        cwd: payload.cwd,
+        mountId: null,
+        endpointId: 'local',
+      })
       deps.terminalSpawnAdmission.assertSpawnAllowed(
         payload.workspaceId ?? null,
         ctx.terminalRecoverySpawnScope,
@@ -290,6 +289,8 @@ export function registerSessionStreamingHandlers(
           })
 
       const { sessionId } = await spawnTerminalWithActivity(deps.ptyRuntime, {
+        assertActive: composeTerminalSpawnGuard(ctx),
+        onSpawned: ctx.terminalSpawnLifecycle?.onSpawned,
         activity: deps.terminalAgentActivity,
         args: resolvedSpawn.args,
         cols: payload.cols,
@@ -306,8 +307,7 @@ export function registerSessionStreamingHandlers(
         kind: 'terminal',
         startedAt: new Date().toISOString(),
         cwd: resolvedSpawn.cwd,
-        command: resolvedSpawn.command,
-        args: resolvedSpawn.args,
+        ...getPublicTerminalSpawnCommand(resolvedSpawn),
         cols: payload.cols,
         rows: payload.rows,
       })

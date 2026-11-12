@@ -1,3 +1,4 @@
+import { normalizeManagedClaudeResumeBindingOwnership } from '@shared/sync/managedClaudeResumeProjection'
 import type { Node } from '@xyflow/react'
 import { normalizeFolderNodeData } from '@shared/utils/folderNodeData'
 import { resolveFileUriName } from '@shared/utils/fileUriScope'
@@ -125,6 +126,13 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
         runtimeKind: node.runtimeKind,
         terminalGeometry: node.terminalGeometry ?? null,
         workerBinding: node.workerBinding ?? null,
+        ...(normalizeManagedClaudeResumeBindingOwnership(node.managedClaudeResumeBindingOwnership)
+          ? {
+              managedClaudeResumeBindingOwnership: normalizeManagedClaudeResumeBindingOwnership(
+                node.managedClaudeResumeBindingOwnership,
+              ),
+            }
+          : {}),
         terminalProviderHint: node.terminalProviderHint ?? null,
         terminalAgentBinding: node.terminalAgentBinding ?? null,
         agentOverlay:
@@ -139,6 +147,7 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
         sidebarSortOrder: node.sidebarSortOrder,
         title: folder ? resolveFileUriName(folder.uri, node.title) : node.title,
         titlePinnedByUser: node.titlePinnedByUser === true,
+        titleIsLiteral: node.titleIsLiteral === true,
         width: node.width,
         height: node.height,
         kind: node.kind,

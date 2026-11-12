@@ -9,6 +9,9 @@ export class BrowserPtyClientStateReplay {
   public register(event: TerminalSessionStateEvent): void {
     const source = event.source ?? 'session_file'
     const stateBySource = this.stateBySessionId.get(event.sessionId) ?? new Map()
+    if (event.agentRunState) {
+      stateBySource.clear()
+    }
     stateBySource.set(source, { ...event, source })
     this.stateBySessionId.set(event.sessionId, stateBySource)
   }

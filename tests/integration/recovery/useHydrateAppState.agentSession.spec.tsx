@@ -172,6 +172,7 @@ describe('useHydrateAppState agent session restore', () => {
     })
 
     expect(launch).toHaveBeenCalledWith({
+      canvasNodeId: 'agent-node-1',
       provider: 'codex',
       cwd: '/tmp/workspace-1/agent',
       profileId: 'wsl:Ubuntu',
@@ -179,6 +180,7 @@ describe('useHydrateAppState agent session restore', () => {
       mode: 'new',
       model: 'gpt-5.2-codex',
       agentFullAccess: DEFAULT_AGENT_SETTINGS.agentFullAccess,
+      codexReuseRunningAppServer: false,
       cols: 80,
       rows: 24,
     })
@@ -232,7 +234,9 @@ describe('useHydrateAppState agent session restore', () => {
     })
     expect(launch).not.toHaveBeenCalled()
     expect(spawn).toHaveBeenCalledWith({
+      canvasNodeId: 'agent-node-1',
       cwd: '/tmp/workspace-1/agent',
+      profileId: undefined,
       cols: 80,
       rows: 24,
     })
@@ -289,6 +293,7 @@ describe('useHydrateAppState agent session restore', () => {
       startedAt: '2026-03-08T09:00:00.000Z',
     })
     expect(launch).toHaveBeenCalledWith({
+      canvasNodeId: 'agent-node-1',
       provider: 'codex',
       cwd: '/tmp/workspace-1/agent',
       profileId: null,
@@ -297,6 +302,7 @@ describe('useHydrateAppState agent session restore', () => {
       model: 'gpt-5.2-codex',
       resumeSessionId: 'resolved-codex-session',
       agentFullAccess: DEFAULT_AGENT_SETTINGS.agentFullAccess,
+      codexReuseRunningAppServer: false,
       cols: 80,
       rows: 24,
     })
@@ -348,6 +354,7 @@ describe('useHydrateAppState agent session restore', () => {
     })
 
     expect(launch).toHaveBeenCalledWith({
+      canvasNodeId: 'agent-node-1',
       provider: 'codex',
       cwd: '/tmp/workspace-1/agent',
       profileId: 'wsl:Ubuntu',
@@ -356,10 +363,12 @@ describe('useHydrateAppState agent session restore', () => {
       model: 'gpt-5.2-codex',
       resumeSessionId: 'resolved-codex-session',
       agentFullAccess: DEFAULT_AGENT_SETTINGS.agentFullAccess,
+      codexReuseRunningAppServer: false,
       cols: 80,
       rows: 24,
     })
     expect(spawn).toHaveBeenCalledWith({
+      canvasNodeId: 'agent-node-1',
       cwd: '/tmp/workspace-1/agent',
       profileId: 'wsl:Ubuntu',
       cols: 80,

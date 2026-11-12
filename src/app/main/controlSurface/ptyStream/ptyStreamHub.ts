@@ -1,3 +1,10 @@
+import { getPublicTerminalSpawnCommand } from '../../../../platform/terminal/publicTerminalSpawnCommand'
+import { PtyStreamInputEvidence } from './ptyStreamInputEvidence'
+import type { ClaudeTranscriptObservation } from '../../../../shared/runtime/agentHook/claudeTranscript'
+import type { ReservedSessionInput } from '../../../../contexts/agent/application/ports/PromptDeliveryPorts'
+import { withSessionInputOperation } from './ptyStreamSessionInput'
+import type { AgentRunStateRuntime } from '../../../../contexts/agent/application/AgentRunStateRuntime'
+import { createWorkerAgentRunState, connectAgentRunStateTransport } from './ptyStreamAgentRunState'
 import type { WebSocket } from 'ws'
 import type {
   GetSessionPresentationSnapshotResult,
@@ -15,14 +22,11 @@ import type { ControlSurfacePtyRuntime } from '../handlers/sessionPtyRuntime'
 import type { PtyStreamClientKind, PtyStreamRole } from './ptyStreamTypes'
 import type { SessionMetadata, SessionState, ClientState } from './ptyStreamState'
 import {
-  broadcastControlChanged,
-  broadcastData,
-  broadcastExit,
   broadcastForeground,
-  broadcastGeometry,
   broadcastSessionMetadata,
   broadcastState,
   buildSessionList,
+  createPtyStreamBroadcaster,
 } from './ptyStreamHub.broadcast'
 import {
   createSessionState,
@@ -40,39 +44,67 @@ import {
   restorePtyStreamPresentationBaseline,
 } from './ptyStreamHub.presentationRecovery'
 import { attachPtyStreamClient, detachPtyStreamClient } from './ptyStreamHub.attach'
-import { registerPtyStreamAgentState } from './ptyStreamAgentStateReplay'
 import { listPtyStreamAgentActivityMetadata } from './ptyStreamAgentActivityBaseline'
 import {
   reexecPtyStreamAgent,
   type PtyStreamHubAgentReexecOptions,
 } from './ptyStreamHub.agentReexec'
 import { PtyStreamRecoveryOperationTracker } from './ptyStreamRecoveryOperationTracker'
-import { projectPtyStreamAgentMetadata } from './ptyStreamAgentMetadataProjection'
-import { unregisterPtyClient } from './ptyStreamHub.clients'
-import { writeAutomationInput, currentAgentState } from './ptyStreamAutomation'
+import {
+  registerPtyStreamAgentMetadata,
+  projectCommittedClaudeBinding,
+} from './ptyStreamAgentMetadataProjection'
+import { registerPtyClient, unregisterPtyClient } from './ptyStreamHub.clients'
+import { writeAutomationInput } from './ptyStreamAutomation'
 import { forgetPtyStreamSession, PtyStreamRetiredSessions } from './ptyStreamHub.retirement'
 
 export class PtyStreamHub {
+  public readonly agentRuns: AgentRunStateRuntime
   private readonly ptyRuntime: ControlSurfacePtyRuntime
   private readonly replayWindowMaxBytes: number
   private readonly onPresentationMutation: ((sessionId: string) => void) | undefined
-  private readonly now: () => number
+
+  private readonly inputEvidence: PtyStreamInputEvidence
+  public watchInput(
+    sessionId: string,
+    listener: (deliveryId?: string, data?: string) => void,
+  ): () => void {
+    return this.inputEvidence.watch(sessionId, listener)
+  }
+
+  public watchInputInvalidation(sessionId: string, listener: () => void): () => void {
+    const session = this.sessions.get(sessionId)
+    if (!session) {
+      listener()
+      return () => {}
+    }
+    return session.ingress.watchInvalidation(listener)
+  }
 
   private readonly sessions = new Map<string, SessionState>()
   private readonly clients = new Map<string, ClientState>()
+  private readonly broadcast = createPtyStreamBroadcaster(this.sessions, this.clients)
   private readonly recoveryOperations = new PtyStreamRecoveryOperationTracker()
   private readonly retiredSessions = new PtyStreamRetiredSessions()
 
   public constructor(options: {
     ptyRuntime: ControlSurfacePtyRuntime
+    agentRuns?: AgentRunStateRuntime
     replayWindowMaxBytes: number
     onPresentationMutation?: (sessionId: string) => void
     now?: () => number
   }) {
-    this.ptyRuntime = options.ptyRuntime
+    this.inputEvidence = new PtyStreamInputEvidence(options.ptyRuntime)
+    this.ptyRuntime = this.inputEvidence.observedRuntime()
     this.replayWindowMaxBytes = Math.max(64_000, Math.floor(options.replayWindowMaxBytes))
     this.onPresentationMutation = options.onPresentationMutation
-    this.now = options.now ?? Date.now
+    this.agentRuns =
+      options.agentRuns ?? createWorkerAgentRunState(undefined, options.now ?? Date.now)
+    connectAgentRunStateTransport(
+      this.agentRuns,
+      id => this.ensureSession(id),
+      event => broadcastState({ sessions: this.sessions, clients: this.clients, event }),
+    )
   }
 
   private ensureSession(sessionId: string): SessionState {
@@ -109,7 +141,7 @@ export class PtyStreamHub {
       ...(expectedControllerClientId !== undefined ? { expectedControllerClientId } : {}),
       ...(candidateIntent ? { candidateIntent } : {}),
       ...(requireAttachedClientId ? { requireAttachedClientId } : {}),
-      broadcastControlChanged: sessionId => this.broadcastControlChanged(sessionId),
+      broadcastControlChanged: sessionId => this.broadcast.controlChanged(sessionId),
     })
   }
 
@@ -118,10 +150,7 @@ export class PtyStreamHub {
     kind: PtyStreamClientKind
     ws: WebSocket
   }): void {
-    this.clients.set(options.clientId, {
-      ...options,
-      rolesBySessionId: new Map(),
-    })
+    registerPtyClient(this.clients, options)
   }
 
   public unregisterClient(clientId: string): void {
@@ -133,20 +162,22 @@ export class PtyStreamHub {
       return
     }
     const session = this.ensureSession(metadata.sessionId)
-    session.metadata = metadata
+    session.metadata = { ...metadata, ...getPublicTerminalSpawnCommand(metadata) }
     session.presentationSession.resize(metadata.cols, metadata.rows)
+  }
+
+  public registerClaudeTranscript(record: ClaudeTranscriptObservation): void {
+    if (!this.retiredSessions.has(record.sessionId)) {
+      this.agentRuns.observeClaudeTranscript(record)
+    }
   }
 
   public registerSessionAgentState(options: TerminalSessionStateEvent): void {
     if (this.retiredSessions.has(options.sessionId)) {
       return
     }
-    registerPtyStreamAgentState({
-      session: this.ensureSession(options.sessionId),
-      event: options,
-      now: this.now,
-      broadcast: event => this.broadcastState(event),
-    })
+    this.ensureSession(options.sessionId)
+    this.agentRuns.observe(options)
   }
 
   public registerSessionForeground(event: TerminalForegroundEvent): void {
@@ -157,16 +188,31 @@ export class PtyStreamHub {
     if (this.retiredSessions.has(metadata.sessionId)) {
       return
     }
-    const session = this.ensureSession(metadata.sessionId)
-    if (session.status === 'exited') {
-      return
+    registerPtyStreamAgentMetadata(
+      this.ensureSession(metadata.sessionId),
+      metadata,
+      this.agentRuns,
+      next =>
+        broadcastSessionMetadata({
+          sessions: this.sessions,
+          clients: this.clients,
+          metadata: next,
+        }),
+    )
+  }
+
+  public projectCommittedClaudeBinding(runtimeSessionId: string, resumeSessionId: string): void {
+    const session = this.sessions.get(runtimeSessionId)
+    if (session) {
+      projectCommittedClaudeBinding(session, resumeSessionId, metadata =>
+        broadcastSessionMetadata({ sessions: this.sessions, clients: this.clients, metadata }),
+      )
     }
-    const next = projectPtyStreamAgentMetadata(session.agentMetadata, metadata)
-    if (!next) {
-      return
-    }
-    session.agentMetadata = next
-    this.broadcastSessionMetadata(next)
+  }
+
+  public getSessionMetadata(sessionId: string): SessionMetadata | null {
+    const metadata = this.sessions.get(sessionId)?.metadata
+    return metadata ? { ...metadata, args: [...metadata.args] } : null
   }
 
   public hasSession(sessionId: string): boolean {
@@ -178,6 +224,7 @@ export class PtyStreamHub {
   }
 
   public forgetSession(sessionId: string): void {
+    this.agentRuns.forget(sessionId)
     forgetPtyStreamSession(sessionId, this.sessions, this.clients)
   }
 
@@ -193,13 +240,14 @@ export class PtyStreamHub {
       replayWindowMaxBytes: this.replayWindowMaxBytes,
       onChunk: (seq, data) => {
         void session.presentationSession.applyOutput(seq, data)
-        this.broadcastData(session.sessionId, seq, data)
+        this.broadcast.data(session.sessionId, seq, data)
       },
     })
   }
 
   private queueSessionData(sessionId: string, data: string): void {
     const session = this.ensureSession(sessionId)
+    session.ingress.feed(data)
     const shouldFlush = queueBufferedSessionData(session, data)
     if (shouldFlush) {
       this.flushSession(session)
@@ -219,6 +267,7 @@ export class PtyStreamHub {
   }
 
   public handlePtyExit(sessionId: string, exitCode: number): void {
+    this.agentRuns.exit(sessionId)
     if (this.retiredSessions.has(sessionId)) {
       return
     }
@@ -232,7 +281,7 @@ export class PtyStreamHub {
     session.exitCode = exitCode
     session.agentStateBySource.clear()
     session.agentMetadata = null
-    this.broadcastExit(sessionId, session.seq, exitCode)
+    this.broadcast.exit(sessionId, session.seq, exitCode)
   }
 
   public hasNativePiObservation(sessionId: string): boolean {
@@ -306,6 +355,8 @@ export class PtyStreamHub {
     if (!session) {
       throw new Error('Unknown session')
     }
+    session.inputGeneration = {}
+    session.ingress.reset()
     await this.recoveryOperations.track(
       replacePtyStreamPresentationCurrent({
         ...options,
@@ -315,68 +366,6 @@ export class PtyStreamHub {
         flushSession: current => this.flushSession(current),
       }),
     )
-  }
-
-  private broadcastData(sessionId: string, seq: number, data: string): void {
-    broadcastData({
-      sessions: this.sessions,
-      clients: this.clients,
-      sessionId,
-      seq,
-      data,
-    })
-  }
-
-  private broadcastExit(sessionId: string, seq: number, exitCode: number): void {
-    broadcastExit({
-      sessions: this.sessions,
-      clients: this.clients,
-      sessionId,
-      seq,
-      exitCode,
-    })
-  }
-
-  private broadcastGeometry(
-    sessionId: string,
-    cols: number,
-    rows: number,
-    reason: 'frame_commit' | 'appearance_commit',
-    revision?: number | null,
-  ): void {
-    broadcastGeometry({
-      sessions: this.sessions,
-      clients: this.clients,
-      sessionId,
-      cols,
-      rows,
-      reason,
-      revision,
-    })
-  }
-
-  private broadcastControlChanged(sessionId: string): void {
-    broadcastControlChanged({
-      sessions: this.sessions,
-      clients: this.clients,
-      sessionId,
-    })
-  }
-
-  private broadcastState(event: TerminalSessionStateEvent): void {
-    broadcastState({
-      sessions: this.sessions,
-      clients: this.clients,
-      event,
-    })
-  }
-
-  private broadcastSessionMetadata(metadata: TerminalSessionMetadataEvent): void {
-    broadcastSessionMetadata({
-      sessions: this.sessions,
-      clients: this.clients,
-      metadata,
-    })
   }
 
   public attach(options: {
@@ -390,7 +379,7 @@ export class PtyStreamHub {
       sessions: this.sessions,
       ...options,
       flushSession: session => this.flushSession(session),
-      broadcastControlChanged: sessionId => this.broadcastControlChanged(sessionId),
+      broadcastControlChanged: sessionId => this.broadcast.controlChanged(sessionId),
     })
   }
 
@@ -400,7 +389,7 @@ export class PtyStreamHub {
       sessions: this.sessions,
       clientId,
       sessionId,
-      broadcastControlChanged: currentSessionId => this.broadcastControlChanged(currentSessionId),
+      broadcastControlChanged: currentSessionId => this.broadcast.controlChanged(currentSessionId),
     })
   }
 
@@ -448,7 +437,7 @@ export class PtyStreamHub {
       sessions: this.sessions,
       ptyRuntime: this.ptyRuntime,
       ...options,
-      broadcastControlChanged: sessionId => this.broadcastControlChanged(sessionId),
+      broadcastControlChanged: sessionId => this.broadcast.controlChanged(sessionId),
     })
   }
 
@@ -465,13 +454,25 @@ export class PtyStreamHub {
     )
   }
 
+  public withSessionInputOperation<T>(
+    sessionId: string,
+    callback: (input: ReservedSessionInput) => Promise<T>,
+  ): Promise<T> {
+    return withSessionInputOperation<T>(
+      this.sessions,
+      (id, data, deliveryId) => this.inputEvidence.write(id, data, deliveryId),
+      sessionId,
+      callback,
+    )
+  }
+
   public writeAutomation(
     input: Omit<Parameters<typeof writeAutomationInput>[0], 'sessions' | 'runtime'>,
   ) {
     return writeAutomationInput({ ...input, sessions: this.sessions, runtime: this.ptyRuntime })
   }
   public observeAgentState(sessionId: string) {
-    return currentAgentState(this.sessions.get(sessionId))
+    return this.agentRuns.registry.get({ sessionId })
   }
 
   public async resize(options: PtyStreamHubResizeOptions): Promise<TerminalGeometryCommitResult> {
@@ -482,7 +483,7 @@ export class PtyStreamHub {
         ptyRuntime: this.ptyRuntime,
         resize: options,
         broadcastGeometry: (sessionId, cols, rows, reason, revision) => {
-          this.broadcastGeometry(sessionId, cols, rows, reason, revision)
+          this.broadcast.geometry(sessionId, cols, rows, reason, revision)
         },
       }).then(result => {
         if (result.changed) {

@@ -1,4 +1,6 @@
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
+import { agentSpawnErrorPresentation } from '@shared/errors/agentSpawnError'
+import { nodeParentErrorPresentation } from '@shared/errors/nodeParentError'
 import { getActiveUiLanguage, translate } from '@app/renderer/i18n'
 import {
   formatAppErrorMessage,
@@ -38,7 +40,45 @@ function getDateTimeFormatter(language: string): Intl.DateTimeFormat {
 }
 
 export function toErrorMessage(error: unknown): string {
+  if (error instanceof OpenCoveAppError || isAppErrorDescriptor(error)) {
+    if (error.code === 'agent.managed_launch_commit_failed') {
+      return translate('messages.managedAgentLaunchUncertain')
+    }
+    if (error.code === 'agent.managed_launch_rejected') {
+      const details = error.details as { reason?: string } | undefined
+      return translate(
+        details?.reason === 'resumeBindingDrainExpired'
+          ? 'messages.managedAgentClearSaveUnconfirmed'
+          : details?.reason === 'workerUpgradeRequired'
+            ? 'messages.managedAgentWorkerUpgradeRequired'
+            : details?.reason === 'clientUpgradeRequired'
+              ? 'messages.managedAgentClientUpgradeRequired'
+              : details?.reason === 'writesDisabled'
+                ? 'messages.managedAgentWritesDisabled'
+                : details?.reason === 'resumeUnavailable'
+                  ? 'messages.managedAgentResumeUnavailable'
+                  : 'messages.managedAgentChanged',
+      )
+    }
+    const spawn = agentSpawnErrorPresentation(error)
+    if (spawn) {
+      return `${translate(`messages.${spawn.key}`)} ${translate(`messages.${spawn.key}Hint`)}`
+    }
+    const parent = nodeParentErrorPresentation(error)
+    if (parent) {
+      return `${translate(`messages.${parent.key}`)} ${translate(`messages.${parent.key}Hint`)}`
+    }
+    if (error.code === 'persistence.owned_node_identity_conflict') {
+      return translate('messages.managedAgentChanged')
+    }
+  }
   if (error instanceof OpenCoveAppError) {
+    if (error.code === 'worker.stop_not_owned') {
+      return translate('common.workerStopNotOwned')
+    }
+    if (error.code === 'worker.external_owner_unreachable') {
+      return translate('common.workerExternalOwnerUnreachable')
+    }
     if (error.code === 'terminal.runtime_not_ready') {
       return translate('common.terminalRuntimeNotReady')
     }
@@ -46,6 +86,12 @@ export function toErrorMessage(error: unknown): string {
   }
 
   if (isAppErrorDescriptor(error)) {
+    if (error.code === 'worker.stop_not_owned') {
+      return translate('common.workerStopNotOwned')
+    }
+    if (error.code === 'worker.external_owner_unreachable') {
+      return translate('common.workerExternalOwnerUnreachable')
+    }
     if (error.code === 'terminal.runtime_not_ready') {
       return translate('common.terminalRuntimeNotReady')
     }

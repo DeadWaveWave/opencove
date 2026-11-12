@@ -1,5 +1,6 @@
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../../types'
+import { resolveWindowKindFamily, type WindowKindFamily } from '../../../../utils/windowKindFamily'
 
 export interface PixelViewport {
   x: number
@@ -24,6 +25,7 @@ export interface PixelRect {
 }
 
 export interface PixelNodeFrame {
+  family: WindowKindFamily
   id: string
   sessionId: string
   rect: PixelRect
@@ -42,6 +44,7 @@ export function projectPixelNodeFrame(
   node: Node<TerminalNodeData>,
   nodeLookup: ReadonlyMap<string, PixelGeometryNode>,
   viewport: PixelViewport,
+  margin = 8,
 ): PixelNodeFrame | null {
   if (
     node.hidden ||
@@ -66,14 +69,19 @@ export function projectPixelNodeFrame(
     !Object.values(rect).every(Number.isFinite) ||
     rect.width <= 0 ||
     rect.height <= 0 ||
-    rect.x + rect.width < -8 ||
-    rect.y + rect.height < -8 ||
-    rect.x > viewport.width + 8 ||
-    rect.y > viewport.height + 8
+    rect.x + rect.width < -margin ||
+    rect.y + rect.height < -margin ||
+    rect.x > viewport.width + margin ||
+    rect.y > viewport.height + margin
   ) {
     return null
   }
-  return { id: node.id, sessionId: node.data.sessionId, rect }
+  return {
+    id: node.id,
+    sessionId: node.data.sessionId,
+    family: resolveWindowKindFamily(node.data),
+    rect,
+  }
 }
 
 export function projectPixelNodeFrames(

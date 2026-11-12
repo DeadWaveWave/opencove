@@ -52,6 +52,21 @@ export interface IssuedWebSessionTicket {
 export class WebSessionManager {
   private readonly tickets = new Map<string, TicketRecord>()
   private readonly sessions = new Map<string, SessionRecord>()
+  private readonly invalidations = new Set<() => void>()
+  public onInvalidate(listener: () => void): () => void {
+    this.invalidations.add(listener)
+    return () => {
+      this.invalidations.delete(listener)
+    }
+  }
+  public cookieExpiresAt(cookieValue: string): number | undefined {
+    return this.sessions.get(cookieValue)?.expiresAtMs
+  }
+  private notifyInvalidation(): void {
+    for (const listener of [...this.invalidations]) {
+      listener()
+    }
+  }
   private generation = 0
   private readonly sessionCookieName: string
 
@@ -135,11 +150,13 @@ export class WebSessionManager {
     this.generation += 1
     this.tickets.clear()
     this.sessions.clear()
+    this.notifyInvalidation()
     return { previousGeneration, generation: this.generation }
   }
 
   public expireCookie(cookieValue: string): void {
     this.sessions.delete(cookieValue)
+    this.notifyInvalidation()
   }
 
   public cleanup(now: Date): void {
@@ -153,7 +170,7 @@ export class WebSessionManager {
 
     for (const [cookieValue, record] of this.sessions) {
       if (record.expiresAtMs <= timestamp) {
-        this.sessions.delete(cookieValue)
+        this.expireCookie(cookieValue)
       }
     }
   }

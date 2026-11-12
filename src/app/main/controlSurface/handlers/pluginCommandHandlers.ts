@@ -1,12 +1,18 @@
+import type * as z from 'zod'
+import type { SchemaOperation } from '@shared/contracts/controlSurface/operations/defineOperation'
+import {
+  pluginWindowOpenOperation,
+  pluginWindowListOperation,
+  pluginSkillGetOperation,
+  pluginCommandRunOperation,
+} from '@shared/contracts/controlSurface/operations/domains/plugin'
+import { registerOperation } from '../registerOperation'
 import { registerPluginSidebarHandlers } from './pluginSidebarHandlers'
-import { normalizePluginHostContext } from '@contexts/plugins/domain/pluginCommandContext'
 import type { ControlSurface } from '../controlSurface'
 import type { ControlSurfaceHandler } from '../types'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 import type { PluginInstallationManager } from '@contexts/plugins/application/PluginInstallationManager'
-import { pluginRecord, pluginString } from '@contexts/plugins/domain/localPluginValidation'
-import { pluginJsonValue } from '@contexts/plugins/domain/pluginJsonValue'
 import {
   listPluginWindows,
   planPluginWindowOpen,
@@ -18,59 +24,6 @@ import { projectPluginWindowTitles } from '@contexts/workspace/application/nodeC
 import type { SyncEventPayload } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
 
-function optionalString(record: Record<string, unknown>, key: string): string | undefined {
-  return record[key] === undefined ? undefined : pluginString(record[key], key, 200)
-}
-function fields(value: unknown, allowed: string[]): Record<string, unknown> {
-  const raw = pluginRecord(value)
-  const unexpected = Object.keys(raw).find(key => !allowed.includes(key))
-  if (unexpected) {
-    throw new Error(`Unsupported plugin argument: ${unexpected}.`)
-  }
-  return raw
-}
-function windowInput(value: unknown, operation: 'open' | 'list' | 'run'): PluginWindowInput {
-  const raw = fields(value, [
-    'pluginId',
-    'projectId',
-    ...(operation === 'open' ? ['nodeId', 'spaceId', 'anchor'] : []),
-    ...(operation === 'run'
-      ? [
-          'nodeId',
-          'viewId',
-          'commandId',
-          'params',
-          'context',
-          'expectedRevision',
-          'expectedRuntimeGeneration',
-        ]
-      : []),
-  ])
-  if (raw.nodeId !== undefined && (raw.spaceId !== undefined || raw.anchor !== undefined)) {
-    throw new Error('Placement arguments cannot be combined with an existing --node.')
-  }
-  let anchor: PluginWindowInput['anchor']
-  if (raw.anchor !== undefined) {
-    const point = pluginRecord(raw.anchor)
-    if (
-      typeof point.x !== 'number' ||
-      !Number.isFinite(point.x) ||
-      typeof point.y !== 'number' ||
-      !Number.isFinite(point.y)
-    ) {
-      throw new Error('Plugin window anchor must contain finite coordinates.')
-    }
-    anchor = { x: point.x, y: point.y }
-  }
-  return {
-    pluginId: pluginString(raw.pluginId, 'id', 80),
-    nodeId: optionalString(raw, 'nodeId'),
-    projectId: optionalString(raw, 'projectId'),
-    spaceId: optionalString(raw, 'spaceId'),
-    anchor,
-  }
-}
-
 export function registerPluginCommandHandlers(
   control: ControlSurface,
   deps: {
@@ -81,25 +34,15 @@ export function registerPluginCommandHandlers(
 ): void {
   registerPluginSidebarHandlers(control, deps)
   let mutations: Promise<unknown> = Promise.resolve()
-  const register = <T, R>(
-    id: string,
-    kind: 'query' | 'command',
-    validate: (value: unknown) => T,
+  const register = <Wire extends z.ZodType, T, R>(
+    operation: SchemaOperation<string, 'query' | 'command', Wire, T>,
     handle: ControlSurfaceHandler<T, R>['handle'],
   ) => {
     const fail = (error: unknown): never => {
       const reason = (error instanceof Error ? error.message : String(error)).slice(0, 2000)
       throw createAppError('plugin.operation_failed', { params: { reason }, debugMessage: reason })
     }
-    control.register(id, {
-      kind,
-      validate: value => {
-        try {
-          return validate(value)
-        } catch (error) {
-          return fail(error)
-        }
-      },
+    registerOperation(control, operation, {
       handle: async (ctx, input) => {
         try {
           return await handle(ctx, input)
@@ -184,18 +127,16 @@ export function registerPluginCommandHandlers(
     return task
   }
   register(
-    'plugin.window.open',
-    'command',
-    value => windowInput(value, 'open'),
+    pluginWindowOpenOperation,
+
     async (_ctx, input) => {
       const result = await open(input)
       return { ...result, deliveredClientCount: focus(result, result.revision) }
     },
   )
   register(
-    'plugin.window.list',
-    'query',
-    value => windowInput(value, 'list'),
+    pluginWindowListOperation,
+
     async (_ctx, input) => {
       const store = await deps.getPersistenceStore()
       const state = normalizePersistedAppState(await store.readAppState())
@@ -210,32 +151,13 @@ export function registerPluginCommandHandlers(
     },
   )
   register(
-    'plugin.skill.get',
-    'query',
-    value => {
-      const record = fields(value, ['pluginId', 'skillId'])
-      return {
-        pluginId: pluginString(record.pluginId, 'id', 80),
-        skillId: pluginString(record.skillId, 'skillId', 80),
-      }
-    },
+    pluginSkillGetOperation,
+
     async (_ctx, input) => deps.plugins.skill(input.pluginId, input.skillId),
   )
   register(
-    'plugin.command.run',
-    'command',
-    value => {
-      const raw = pluginRecord(value)
-      return {
-        ...windowInput(value, 'run'),
-        commandId: pluginString(raw.commandId, 'commandId', 80),
-        params: pluginJsonValue(raw.params, 1024 * 1024, 'command parameters'),
-        viewId: optionalString(raw, 'viewId'),
-        context: normalizePluginHostContext(raw.context),
-        expectedRevision: optionalString(raw, 'expectedRevision'),
-        expectedRuntimeGeneration: raw.expectedRuntimeGeneration,
-      }
-    },
+    pluginCommandRunOperation,
+
     async (_ctx, input) => {
       const manifest = await plugin(input.pluginId)
       if (

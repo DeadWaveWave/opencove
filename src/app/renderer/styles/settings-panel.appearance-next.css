@@ -1,86 +1,17 @@
-.settings-theme-gallery__families {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 12px;
+/* Settings › Appearance: the appearance picker at settings size, its note below, then plugin
+   themes as plain buttons. */
+.settings-theme-gallery {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--cove-spacing-3);
 }
 
-.settings-theme-gallery__family {
-  display: block;
-  min-width: 0;
-  padding: 10px;
-  border: 1px solid var(--cove-border-subtle);
-  border-radius: var(--cove-radius-lg);
-  background: var(--cove-settings-group-surface);
-  color: inherit;
-  font: inherit;
-  text-align: start;
-  cursor: pointer;
-}
-
-.settings-theme-gallery__family:hover {
-  border-color: var(--cove-border);
-}
-
-.settings-theme-gallery__family[aria-pressed='true'] {
-  border-color: var(--cove-accent);
-  box-shadow: inset 0 0 0 1px var(--cove-accent);
-}
-
-.settings-theme-gallery__sample {
-  --cove-gallery-accent: var(--cove-theme-preview-accent);
-  display: block;
-  position: relative;
-  height: 72px;
-  overflow: hidden;
-  border-radius: var(--cove-radius-xs);
-  background: linear-gradient(
-    115deg,
-    var(--cove-theme-preview-light) 49%,
-    var(--cove-theme-preview-dark) 51%
-  );
-}
-
-.settings-theme-gallery__family[data-theme-family='pixel'] .settings-theme-gallery__sample {
-  --cove-gallery-accent: var(--cove-theme-preview-pixel-accent);
-  background: var(--cove-theme-preview-pixel-light);
-}
-
-.settings-theme-gallery__sample-window {
-  position: absolute;
-  width: 44%;
-  height: 44%;
-  left: 13%;
-  top: 18%;
-  border: 1px solid color-mix(in srgb, var(--cove-gallery-accent) 55%, transparent);
-  border-radius: 5px;
-  background: var(--cove-theme-preview-light);
-  box-shadow: var(--cove-shadow-sm);
-}
-
-.settings-theme-gallery__sample-window:last-child {
-  left: 45%;
-  top: 43%;
-  background: var(--cove-theme-preview-dark);
-}
-
-.settings-theme-gallery__sample-window::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 7px;
-  border-radius: 4px 4px 0 0;
-  background: color-mix(in srgb, var(--cove-gallery-accent) 28%, transparent);
-}
-
-.settings-theme-gallery__name {
-  display: block;
-  margin: 10px 0 8px;
-  color: var(--cove-text);
-  font-size: calc(12px * var(--cove-ui-font-scale));
-  font-weight: 500;
+.settings-theme-gallery__help {
+  margin: 0;
+  color: var(--cove-text-muted);
+  font-size: var(--cove-font-size-secondary);
+  line-height: var(--cove-line-height-secondary);
 }
 
 .settings-theme-gallery__system-button {
@@ -220,6 +151,9 @@
 }
 
 .settings-pixel-preview__node {
+  /* Its reading plate (window-plate.css) rises through this preview's shorter header. */
+  --cove-window-plate-top: 30px;
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -357,21 +291,6 @@
 }
 
 @media (max-width: 620px) {
-  .settings-theme-gallery__families {
-    gap: 7px;
-  }
-  .settings-theme-gallery__family {
-    padding: 7px;
-  }
-  .settings-theme-gallery__sample {
-    height: 54px;
-  }
-  .settings-theme-gallery__pair button {
-    padding-inline: 3px;
-  }
-  .settings-theme-gallery__system {
-    align-items: flex-start;
-  }
   .settings-pixel-preview__space {
     inset-inline: 12px;
     padding-inline: 12px;

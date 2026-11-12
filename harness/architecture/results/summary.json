@@ -1,26 +1,30 @@
 {
-  "filesAnalyzed": 1549,
+  "filesAnalyzed": 1847,
   "summary": {
     "errors": 0,
-    "warnings": 564,
-    "violations": 564
+    "warnings": 763,
+    "violations": 763
   },
   "byRule": {
-    "architecture.layerDependency": 317,
-    "architecture.windowOpenCoveApiBoundary": 247
+    "architecture.layerDependency": 474,
+    "architecture.windowOpenCoveApiBoundary": 289
   },
   "topAreas": [
     {
       "area": "src/contexts/workspace/presentation",
-      "count": 270
+      "count": 327
     },
     {
       "area": "src/contexts/settings/presentation",
-      "count": 106
+      "count": 214
     },
     {
       "area": "src/app/renderer/shell",
-      "count": 85
+      "count": 88
+    },
+    {
+      "area": "src/contexts/plugins/presentation",
+      "count": 28
     },
     {
       "area": "src/contexts/agent/presentation",
@@ -36,7 +40,7 @@
     },
     {
       "area": "src/contexts/worktree/presentation",
-      "count": 16
+      "count": 18
     },
     {
       "area": "src/contexts/filesystem/presentation",
@@ -45,10 +49,6 @@
     {
       "area": "src/app/renderer/performanceDiagnostics",
       "count": 3
-    },
-    {
-      "area": "src/app/managedRuntime",
-      "count": 2
     }
   ]
 }

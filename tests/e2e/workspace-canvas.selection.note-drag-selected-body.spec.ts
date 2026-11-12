@@ -3,7 +3,6 @@ import {
   clearAndSeedWorkspace,
   clickHeaderDragSurface,
   dragLocatorTo,
-  dragHeaderDragSurfaceTo,
   launchApp,
   readLocatorClientRect,
   storageKey,
@@ -124,7 +123,7 @@ test.describe('Workspace Canvas - Selection (Note Drag)', () => {
     }
   })
 
-  test('keeps title blank header area draggable instead of text-cursor only', async () => {
+  test('moves the note from a drag on its title, never from its open title input', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -156,34 +155,18 @@ test.describe('Workspace Canvas - Selection (Note Drag)', () => {
       await expect(header).toBeVisible()
       await expect(titleDisplay).toBeVisible()
 
-      const headerBox = await readLocatorClientRect(header)
       const titleBox = await readLocatorClientRect(titleDisplay)
       const inputProbe = {
         x: titleBox.x + Math.min(titleBox.width - 2, 8),
         y: titleBox.y + titleBox.height / 2,
       }
-      const blankProbe = {
-        x: Math.min(headerBox.x + headerBox.width - 80, titleBox.x + titleBox.width + 80),
-        y: headerBox.y + headerBox.height / 2,
-      }
 
-      const cursors = await window.evaluate(
-        ({ input, blank }) => {
-          const readCursorAt = (point: { x: number; y: number }): string | null => {
-            const element = document.elementFromPoint(point.x, point.y)
-            return element ? window.getComputedStyle(element).cursor : null
-          }
-
-          return {
-            input: readCursorAt(input),
-            blank: readCursorAt(blank),
-          }
-        },
-        { input: inputProbe, blank: blankProbe },
-      )
-
-      expect(cursors.input).toBe('text')
-      expect(cursors.blank).not.toBe('text')
+      // The title is the drag surface: it reads as text to rename, and a drag on it moves the note.
+      const cursor = await window.evaluate(point => {
+        const element = document.elementFromPoint(point.x, point.y)
+        return element ? window.getComputedStyle(element).cursor : null
+      }, inputProbe)
+      expect(cursor).toBe('text')
 
       await titleDisplay.click()
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
@@ -215,22 +198,20 @@ test.describe('Workspace Canvas - Selection (Note Drag)', () => {
 
       const beforeDrag = await readPersistedNotePosition(window, 'note-title-blank-drag-node')
       if (!beforeDrag) {
-        throw new Error('note position unavailable before title blank drag')
+        throw new Error('note position unavailable before title drag')
       }
 
       await expect(pane).toBeVisible()
-      await dragHeaderDragSurfaceTo(window, header, pane, {
-        sourcePosition: {
-          x: blankProbe.x - headerBox.x,
-          y: blankProbe.y - headerBox.y,
-        },
+      await dragLocatorTo(window, titleDisplay, pane, {
+        sourcePosition: { x: inputProbe.x - titleBox.x, y: titleBox.height / 2 },
         targetPosition: { x: 760, y: 520 },
       })
 
       const afterDrag = await readPersistedNotePosition(window, 'note-title-blank-drag-node')
       if (!afterDrag) {
-        throw new Error('note position unavailable after title blank drag')
+        throw new Error('note position unavailable after title drag')
       }
+      await expect(titleInput).toHaveCount(0)
 
       expect(afterDrag.x).toBeGreaterThan(beforeDrag.x + 120)
       expect(afterDrag.y).toBeGreaterThan(beforeDrag.y + 120)

@@ -1,7 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { TextAreaField, TextField } from '@app/renderer/components/ui/TextField'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
-import { Check, Copy, ExternalLink, FolderOpen, LoaderCircle } from 'lucide-react'
+import {
+  CheckIcon,
+  CopyIcon,
+  ExternalLinkIcon,
+  FolderOpenIcon,
+} from '@app/renderer/components/ui/pixelIcons'
+import { PixelSpinner } from '@app/renderer/components/ui/PixelSpinner'
 import { Checkbox } from '@app/renderer/components/ui/Checkbox'
 import { SegmentedControl } from '@app/renderer/components/ui/SegmentedControl'
 import { useTranslation } from '@app/renderer/i18n'
@@ -251,7 +257,7 @@ export function IssueReportDialog({
 
         {report ? (
           <div className="issue-report-window__ready" data-testid="issue-report-ready">
-            <Check aria-hidden="true" size={16} />
+            <CheckIcon size={18} />
             <div>
               <strong>{t('issueReport.generated')}</strong>
               <span>
@@ -285,7 +291,7 @@ export function IssueReportDialog({
               className="cove-window__action cove-window__action--secondary"
               onClick={showReportFile}
             >
-              <FolderOpen aria-hidden="true" size={14} />
+              <FolderOpenIcon size={18} />
               <span>{t('issueReport.showFile')}</span>
             </button>
             <button
@@ -293,7 +299,7 @@ export function IssueReportDialog({
               className="cove-window__action cove-window__action--secondary"
               onClick={copyReport}
             >
-              <Copy aria-hidden="true" size={14} />
+              <CopyIcon size={18} />
               <span>
                 {status === 'copied' ? t('issueReport.copied') : t('issueReport.copyReport')}
               </span>
@@ -303,7 +309,7 @@ export function IssueReportDialog({
               className="cove-window__action cove-window__action--primary"
               onClick={openGitHubIssue}
             >
-              <ExternalLink aria-hidden="true" size={14} />
+              <ExternalLinkIcon size={18} />
               <span>{t('issueReport.openGitHub')}</span>
             </button>
           </>
@@ -317,9 +323,7 @@ export function IssueReportDialog({
               void prepareReport()
             }}
           >
-            {status === 'generating' ? (
-              <LoaderCircle aria-hidden="true" size={14} className="issue-report-window__spin" />
-            ) : null}
+            {status === 'generating' ? <PixelSpinner size={18} /> : null}
             <span>
               {status === 'generating' ? t('issueReport.regenerating') : t('issueReport.generate')}
             </span>

@@ -1,3 +1,6 @@
+import { claudeFinalMessage } from '../../../../shared/runtime/agentHook/claudeFinalMessage'
+import { claudePromptId } from '../../../../shared/runtime/agentHook/claudePromptEvidence'
+
 export type CodexHookTurnState = 'working' | 'waiting' | 'done'
 
 export interface CodexHookInput {
@@ -6,6 +9,11 @@ export interface CodexHookInput {
   cwd: string
   hook_event_name: string
   model: string
+  turn_id?: string
+  agent_id?: string
+  agent_type?: string
+  last_assistant_message?: string | null
+  stop_hook_active?: boolean
   tool_name?: string
   tool_use_id?: string
   tool_input?: unknown
@@ -13,9 +21,13 @@ export interface CodexHookInput {
 
 export interface CodexHookEnvelope {
   version: 1
-  state: CodexHookTurnState
+  state: CodexHookTurnState | null
   hookEventName: string
   codexSessionId: string
+  providerTurnId?: string
+  agentId?: string
+  agentType?: string
+  finalMessage?: { message: string; truncated: boolean }
   tool?: {
     name: string
     useId: string | null
@@ -28,7 +40,6 @@ const DONE_EVENTS = new Set(['Stop', 'SessionEnd'])
 const WORKING_EVENTS = new Set([
   'PreToolUse',
   'PostToolUse',
-  'SessionStart',
   'UserPromptSubmit',
   'SubagentStart',
   'SubagentStop',
@@ -64,6 +75,20 @@ export function resolveCodexHookState(eventName: string): CodexHookTurnState | n
   return WORKING_EVENTS.has(eventName) ? 'working' : null
 }
 
+/** Preserve child authority at ingress; a malformed ID must never become a parent event. */
+function subagentProvenance(
+  value: Record<string, unknown>,
+  idKey: 'agent_id' | 'agentId',
+  typeKey: 'agent_type' | 'agentType',
+): Pick<CodexHookEnvelope, 'agentId' | 'agentType'> | null {
+  const agentId = claudePromptId(value[idKey])
+  if (value[idKey] !== undefined && !agentId) {
+    return null
+  }
+  const agentType = optionalString(value, typeKey)
+  return { ...(agentId ? { agentId } : {}), ...(agentType ? { agentType } : {}) }
+}
+
 export function validateCodexHookEnvelope(value: unknown): CodexHookEnvelope | null {
   if (!isRecord(value) || value.version !== 1) {
     return null
@@ -72,7 +97,10 @@ export function validateCodexHookEnvelope(value: unknown): CodexHookEnvelope | n
   const hookEventName = requiredString(value, 'hookEventName')
   const codexSessionId = requiredString(value, 'codexSessionId')
   if (
-    (state !== 'working' && state !== 'waiting' && state !== 'done') ||
+    (state !== 'working' &&
+      state !== 'waiting' &&
+      state !== 'done' &&
+      !(state === null && hookEventName === 'SessionStart')) ||
     !hookEventName ||
     !codexSessionId
   ) {
@@ -92,11 +120,18 @@ export function validateCodexHookEnvelope(value: unknown): CodexHookEnvelope | n
     tool = { name, useId, input: value.tool.input ?? null }
   }
 
+  const provenance = subagentProvenance(value, 'agentId', 'agentType')
+  if (!provenance) {
+    return null
+  }
+  const providerTurnId = claudePromptId(value.providerTurnId)
   return {
     version: 1,
-    state,
+    state: hookEventName === 'SessionStart' ? null : state,
     hookEventName,
     codexSessionId,
+    ...provenance,
+    ...(providerTurnId ? { providerTurnId } : {}),
     ...(tool ? { tool } : {}),
   }
 }
@@ -117,15 +152,30 @@ export function normalizeCodexHookEnvelope(value: unknown): CodexHookEnvelope | 
     return null
   }
   const state = resolveCodexHookState(hookEventName)
-  if (!state) {
+  if (!state && hookEventName !== 'SessionStart') {
     return null
   }
 
+  const provenance = subagentProvenance(value, 'agent_id', 'agent_type')
+  if (!provenance) {
+    return null
+  }
+  const providerTurnId = claudePromptId(value.turn_id)
   return {
     version: 1,
     state,
     hookEventName,
     codexSessionId,
+    ...provenance,
+    ...(hookEventName === 'Stop'
+      ? {
+          finalMessage: claudeFinalMessage(
+            value.last_assistant_message,
+            value.last_assistant_message_truncated,
+          ),
+        }
+      : {}),
+    ...(providerTurnId ? { providerTurnId } : {}),
     ...(toolName
       ? {
           tool: {

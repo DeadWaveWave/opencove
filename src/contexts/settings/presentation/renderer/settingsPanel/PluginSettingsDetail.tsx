@@ -1,14 +1,14 @@
 import { Button } from '@app/renderer/components/ui/Button'
 import type { JSX } from 'react'
 import {
-  ArrowLeft,
-  LayoutDashboard,
-  MousePointer2,
-  Palette,
-  PanelRight,
-  PanelLeft,
-  SlidersHorizontal,
-} from 'lucide-react'
+  ArrowLeftIcon,
+  LayoutIcon,
+  PaletteIcon,
+  PointerIcon,
+  SidebarIcon,
+  SidebarRightIcon,
+  SlidersIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import type { PluginManifest } from '@contexts/plugins/domain/pluginTypes'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
@@ -52,7 +52,7 @@ export function PluginSettingsDetail({
         data-testid="settings-plugin-back"
         onClick={onBack}
       >
-        <ArrowLeft size={14} aria-hidden="true" />
+        <ArrowLeftIcon size={18} />
         {t('settingsPanel.plugins.back')}
       </Button>
       <header
@@ -91,37 +91,37 @@ export function PluginSettingsDetail({
       >
         {plugin.nodeKinds.length ? (
           <span>
-            <LayoutDashboard size={13} aria-hidden="true" />
+            <LayoutIcon size={12} />
             {t('settingsPanel.plugins.capabilities.canvas')}
           </span>
         ) : null}
         {plugin.actionBar ? (
           <span>
-            <PanelRight size={13} aria-hidden="true" />
+            <SidebarRightIcon size={12} />
             {t('settingsPanel.plugins.capabilities.actionBar')}
           </span>
         ) : null}
         {plugin.contextMenu ? (
           <span>
-            <MousePointer2 size={13} aria-hidden="true" />
+            <PointerIcon size={12} />
             {t('settingsPanel.plugins.capabilities.contextMenu')}
           </span>
         ) : null}
         {plugin.sidebar?.length ? (
           <span>
-            <PanelLeft size={13} aria-hidden="true" />
+            <SidebarIcon size={12} />
             {t('settingsPanel.plugins.capabilities.sidebar')}
           </span>
         ) : null}
         {plugin.preferences?.length ? (
           <span>
-            <SlidersHorizontal size={13} aria-hidden="true" />
+            <SlidersIcon size={12} />
             {t('settingsPanel.plugins.capabilities.preferences')}
           </span>
         ) : null}
         {plugin.themes?.length ? (
           <span>
-            <Palette size={13} aria-hidden="true" />
+            <PaletteIcon size={12} />
             {t('settingsPanel.plugins.capabilities.themes')}
           </span>
         ) : null}

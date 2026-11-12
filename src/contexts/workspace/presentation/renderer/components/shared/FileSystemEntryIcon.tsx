@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { FileCode2, FileJson, FileText, Folder } from 'lucide-react'
+import { FileCodeIcon, FileTextIcon, FolderIcon } from '@app/renderer/components/ui/pixelIcons'
 import { fromFileUri } from '@contexts/filesystem/domain/fileUri'
 
 export type FileSystemEntryIconKind = 'folder' | 'file-text' | 'file-json' | 'file-code-2'
@@ -44,10 +44,10 @@ const CODE_EXTENSIONS = new Set([
 ])
 
 const ICONS = {
-  folder: Folder,
-  'file-text': FileText,
-  'file-json': FileJson,
-  'file-code-2': FileCode2,
+  folder: FolderIcon,
+  'file-text': FileTextIcon,
+  'file-json': FileCodeIcon,
+  'file-code-2': FileCodeIcon,
 } as const
 
 /** Identity is a presentation hint from the entry name, never a content or MIME claim. */
@@ -92,10 +92,7 @@ export function FileSystemEntryIcon({
       data-cove-kind={nodeKind ?? (kind === 'directory' ? 'folder' : 'document')}
       data-cove-file-icon={iconKind}
       data-cove-node-kind-icon={nodeKind}
-      size={16}
-      strokeWidth={1.4}
-      aria-hidden="true"
-      focusable="false"
+      size={18}
     />
   )
 }

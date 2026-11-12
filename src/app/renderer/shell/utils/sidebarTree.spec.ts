@@ -6,6 +6,7 @@ import {
   type WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
 import type { Node } from '@xyflow/react'
+import { agentAttentionKey } from './sidebarAgents'
 import { buildSidebarProjectTree, SIDEBAR_UNASSIGNED_SPACE_GROUP_ID } from './sidebarTree'
 
 function createAgentNode(
@@ -134,7 +135,7 @@ describe('buildSidebarProjectTree', () => {
     expect(tree.projectRootGroup?.agents.map(agent => agent.node.id)).toEqual(['agent-root'])
   })
 
-  it('counts agents waiting for input separately from working ones', () => {
+  it('does not count an agent waiting for input as working', () => {
     const workspace = createWorkspace()
     workspace.nodes = workspace.nodes.map(node =>
       node.id === 'agent-api' ? { ...node, data: { ...node.data, status: 'waiting' } } : node,
@@ -143,7 +144,40 @@ describe('buildSidebarProjectTree', () => {
     const tree = buildSidebarProjectTree(workspace)
 
     expect(tree.workingAgentCount).toBe(2)
-    expect(tree.waitingAgentCount).toBe(1)
+  })
+
+  it('shows an Agent in standby that you have not answered as waiting, since its card arrived', () => {
+    const workspace = createWorkspace()
+    workspace.nodes = workspace.nodes.map(node =>
+      node.id === 'agent-api' ? { ...node, data: { ...node.data, status: 'standby' } } : node,
+    )
+    const needsYou = new Map([
+      [agentAttentionKey('project-a', 'agent-api'), 1_000],
+      // Working again outranks a card that has not been cleared yet.
+      [agentAttentionKey('project-a', 'agent-root'), 1_000],
+    ])
+
+    const tree = buildSidebarProjectTree(workspace, needsYou)
+    const agentApi = tree.spaceGroups[1].agents[0]
+    const agentRoot = tree.projectRootGroup.agents[0]
+
+    expect(agentApi).toMatchObject({ status: 'waiting', needsYouSinceMs: 1_000 })
+    expect(agentRoot.status).toBe('working')
+    expect(agentRoot.needsYouSinceMs).toBeUndefined()
+    expect(buildSidebarProjectTree(workspace).spaceGroups[1].agents[0].status).toBe('standby')
+  })
+
+  it('leaves an Agent that exited as it is, though its card is still pending', () => {
+    const workspace = createWorkspace()
+    workspace.nodes = workspace.nodes.map(node =>
+      node.id === 'agent-api' ? { ...node, data: { ...node.data, status: 'exited' } } : node,
+    )
+    const needsYou = new Map([[agentAttentionKey('project-a', 'agent-api'), 1_000]])
+
+    const agentApi = buildSidebarProjectTree(workspace, needsYou).spaceGroups[1].agents[0]
+
+    expect(agentApi.status).toBe('standby')
+    expect(agentApi.needsYouSinceMs).toBeUndefined()
   })
 
   it('uses explicit sidebar agent order before startedAt fallback', () => {

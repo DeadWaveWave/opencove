@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { TerminalSessionStateEvent } from '../../../src/shared/contracts/dto'
 import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
 import { FakeTerminalProcessEngine } from '../../support/FakeTerminalProcessEngine'
 
@@ -64,6 +65,8 @@ describe('Pty runtime provider watchers', () => {
       await import('../../../src/contexts/terminal/presentation/main-ipc/runtime')
 
     const runtime = createPtyRuntime({ processEngine })
+    const observations: TerminalSessionStateEvent[] = []
+    runtime.onState?.(event => observations.push(event))
 
     runtime.startSessionStateWatcher({
       sessionId: 'session-1',
@@ -90,22 +93,23 @@ describe('Pty runtime provider watchers', () => {
           payload.resumeSessionId === 'ses_opencode_1',
       ),
     ).toBe(true)
-    expect(
-      send.mock.calls.some(
-        ([channel, payload]) =>
-          channel === IPC_CHANNELS.ptyState &&
-          payload.sessionId === 'session-1' &&
-          payload.state === 'working',
-      ),
-    ).toBe(true)
-    expect(
-      send.mock.calls.some(
-        ([channel, payload]) =>
-          channel === IPC_CHANNELS.ptyState &&
-          payload.sessionId === 'session-1' &&
-          payload.state === 'standby',
-      ),
-    ).toBe(true)
+    expect(observations).toEqual([
+      {
+        sessionId: 'session-1',
+        agentProvider: 'opencode',
+        state: 'working',
+        source: 'session_file',
+        hookEventName: 'busy',
+      },
+      {
+        sessionId: 'session-1',
+        agentProvider: 'opencode',
+        state: 'standby',
+        source: 'session_file',
+        hookEventName: 'task_complete',
+      },
+    ])
+    expect(send.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.ptyState)).toEqual([])
 
     runtime.dispose()
     vi.unstubAllGlobals()
@@ -198,6 +202,8 @@ describe('Pty runtime provider watchers', () => {
       await import('../../../src/contexts/terminal/presentation/main-ipc/runtime')
 
     const runtime = createPtyRuntime({ processEngine })
+    const observations: TerminalSessionStateEvent[] = []
+    runtime.onState?.(event => observations.push(event))
 
     runtime.startSessionStateWatcher({
       sessionId: 'session-1',
@@ -221,6 +227,7 @@ describe('Pty runtime provider watchers', () => {
     runtime.write('session-1', 'hello')
     await vi.advanceTimersByTimeAsync(50)
 
+    expect(observations).toEqual([])
     expect(send.mock.calls.some(([channel]) => channel === IPC_CHANNELS.ptyState)).toBe(false)
 
     await vi.advanceTimersByTimeAsync(200)
@@ -250,22 +257,23 @@ describe('Pty runtime provider watchers', () => {
           payload.resumeSessionId === 'd7d89910-fa86-4253-a183-07db548da987',
       ),
     ).toBe(true)
-    expect(
-      send.mock.calls.filter(
-        ([channel, payload]) =>
-          channel === IPC_CHANNELS.ptyState &&
-          payload.sessionId === 'session-1' &&
-          payload.state === 'working',
-      ),
-    ).toHaveLength(1)
-    expect(
-      send.mock.calls.some(
-        ([channel, payload]) =>
-          channel === IPC_CHANNELS.ptyState &&
-          payload.sessionId === 'session-1' &&
-          payload.state === 'standby',
-      ),
-    ).toBe(true)
+    expect(observations).toEqual([
+      {
+        sessionId: 'session-1',
+        agentProvider: 'gemini',
+        state: 'working',
+        source: 'session_file',
+        hookEventName: undefined,
+      },
+      {
+        sessionId: 'session-1',
+        agentProvider: 'gemini',
+        state: 'standby',
+        source: 'session_file',
+        hookEventName: undefined,
+      },
+    ])
+    expect(send.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.ptyState)).toEqual([])
 
     runtime.dispose()
     vi.useRealTimers()

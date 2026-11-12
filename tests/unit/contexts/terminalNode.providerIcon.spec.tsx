@@ -28,7 +28,7 @@ describe('terminal frame pixel kind identity', () => {
   afterEach(() => vi.restoreAllMocks())
 
   it.each(['codex', 'claude-code', 'opencode', 'gemini', 'pi', 'kimi'] as const)(
-    'shows the AI pixel glyph for %s agent headers without a brand icon',
+    'draws the %s brand mark in the AI kind colour on agent headers',
     provider => {
       const { container } = render(
         <TerminalNodeHeader
@@ -40,11 +40,16 @@ describe('terminal frame pixel kind identity', () => {
         />,
       )
       const icon = container.querySelector('[data-cove-node-kind-icon="agent"]')!
-      expect(icon).toHaveAttribute('data-cove-pixel-glyph', 'ai')
-      expect(icon).toHaveAttribute('viewBox', '0 0 9 9')
+      expect(icon.tagName.toLowerCase()).toBe('svg')
+      expect(icon).toHaveAttribute('data-agent-provider', provider)
+      expect(icon).toHaveAttribute('fill', 'currentColor')
+      expect(icon).toHaveClass('cove-node-kind-icon')
+      expect(icon).not.toHaveAttribute('data-cove-pixel-glyph')
       expect(icon).toHaveAttribute('aria-hidden', 'true')
       expect(icon).toHaveAttribute('focusable', 'false')
-      expect(container.querySelector('.agent-provider-icon, [data-agent-provider]')).toBeNull()
+      // One colour: the kind's, never the vendor's chip or bitmap.
+      expect(icon.querySelector('[fill]:not([fill="currentColor"]), img, image')).toBeNull()
+      expect(container.querySelector('.agent-provider-icon')).toBeNull()
     },
   )
 
@@ -59,7 +64,7 @@ describe('terminal frame pixel kind identity', () => {
     )
   })
 
-  it('keeps its pixel glyph on the header tile and lets the header own pointer handling', () => {
+  it('keeps its mark on the header tile and lets the header own pointer handling', () => {
     const style = document.createElement('style')
     style.textContent = [
       'src/app/renderer/styles/base.css',
@@ -82,7 +87,7 @@ describe('terminal frame pixel kind identity', () => {
           onHeaderPointerDownCapture={onPointerDown}
         />,
       )
-      const icon = container.querySelector<SVGElement>('[data-cove-pixel-glyph="ai"]')!
+      const icon = container.querySelector<SVGElement>('[data-agent-provider="codex"]')!
       const computed = getComputedStyle(icon)
       expect(icon.parentElement).toHaveAttribute('data-cove-part', 'kind-tile')
       expect(computed.width).toBe('12px')
@@ -124,10 +129,9 @@ describe('terminal frame pixel kind identity', () => {
     const terminal = __getLastTerminal()
     const body = container.querySelector('.terminal-node__terminal')
     expect(container.querySelector('[data-cove-node-kind-icon="agent"]')).toHaveAttribute(
-      'data-cove-pixel-glyph',
-      'ai',
+      'data-agent-provider',
+      'codex',
     )
-    expect(container.querySelector('[data-agent-provider]')).toBeNull()
     rerender(<TerminalNode {...props} isAgentPresentation={false} />)
     expect(container.querySelector('[data-agent-provider]')).toBeNull()
     expect(container.querySelector('[data-cove-pixel-glyph="ai"]')).toBeNull()

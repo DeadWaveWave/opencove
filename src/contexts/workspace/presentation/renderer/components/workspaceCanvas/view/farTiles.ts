@@ -2,7 +2,8 @@ import type { Node } from '@xyflow/react'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { TerminalNodeData, WorkspaceNodeKind } from '../../../types'
-import { resolveAgentPresentation } from '../../../utils/agentPresentation'
+import { resolveAgentPresentationProvider } from '../../../utils/agentPresentation'
+import { findLinkedTaskTitleForAgent, resolveAgentDisplayLabel } from '../../../utils/agentTitle'
 import { resolveWindowKindFamily, type WindowKindFamily } from '../../../utils/windowKindFamily'
 import { resolveWindowSignal, type WindowSignal } from '../../../utils/windowSignal'
 
@@ -25,14 +26,22 @@ export interface FarTile {
   height: number
 }
 
-function resolveProvider(data: TerminalNodeData): AgentProvider | null {
-  if (data.kind === 'agent') {
-    return data.agent?.provider ?? null
-  }
-  if (!resolveAgentPresentation(data).isAgent) {
-    return null
-  }
-  return data.agentOverlay?.provider ?? data.terminalAgentBinding?.provider ?? null
+/** An agent's tile says what its window header says: the logo already names the provider. */
+function agentTileTitle(
+  nodes: readonly Node<TerminalNodeData>[],
+  node: Node<TerminalNodeData>,
+  provider: AgentProvider,
+): string {
+  return resolveAgentDisplayLabel({
+    provider,
+    linkedTaskTitle:
+      node.data.kind === 'agent' && node.data.agent
+        ? findLinkedTaskTitleForAgent(nodes, node.id, node.data.agent.taskId ?? null)
+        : null,
+    fallbackTitle: node.data.title,
+    preferFallbackTitle: node.data.titlePinnedByUser === true,
+    titleIsLiteral: node.data.titleIsLiteral === true,
+  })
 }
 
 /**
@@ -45,18 +54,19 @@ export function buildFarTiles(nodes: readonly Node<TerminalNodeData>[]): FarTile
     if (node.hidden || presentation?.collapsed || presentation?.spaceHidden) {
       return []
     }
+    const provider = resolveAgentPresentationProvider(node.data)
     return [
       {
         id: node.id,
         kind: node.data.kind,
         family: resolveWindowKindFamily(node.data),
-        title: node.data.title,
+        title: provider ? agentTileTitle(nodes, node, provider) : node.data.title,
         signal: resolveWindowSignal(node.data),
         labelColor:
           (node.data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null })
             .effectiveLabelColor ?? null,
         selected: node.selected === true,
-        provider: resolveProvider(node.data),
+        provider,
         pluginId: node.data.plugin?.pluginId ?? null,
         filePath: node.data.document?.uri ?? null,
         x: node.position.x,

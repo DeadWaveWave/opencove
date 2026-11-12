@@ -386,62 +386,101 @@ describe('control surface session launch agent', () => {
   })
 
   it.each([
-    ['pi', ['--session', 'provider-session']],
-    ['kimi', ['--auto', '--session', 'provider-session']],
-  ] as const)('resumes %s through its registered contribution', async (provider, expectedArgs) => {
-    process.env.OPENCOVE_TEST_USE_REAL_AGENTS = '1'
-    const spawnSession = vi.fn(async () => ({ sessionId: `pty-${provider}` }))
-    const controlSurface = createControlSurface()
-    registerSessionHandlers(controlSurface, {
-      ...createReadyTerminalAdmissionDeps(),
-      agentProviderRegistry: createTestAgentProviderRegistry(),
-      userDataPath: '/tmp/opencove-test-user-data',
-      approvedWorkspaces: {
-        registerRoot: async () => undefined,
-        isPathApproved: async () => true,
-      },
-      // Saved full access, so the expected args include each provider's approval bypass.
-      getPersistenceStore: async () => createStubStore({ settings: { agentFullAccess: true } }),
-      ptyRuntime: {
-        spawnSession,
-        write: () => undefined,
-        resize: () => undefined,
-        kill: () => undefined,
-        onData: () => () => undefined,
-        onExit: () => () => undefined,
-        attach: () => undefined,
-        detach: () => undefined,
-        snapshot: () => '',
-        startSessionStateWatcher: () => undefined,
-        dispose: () => undefined,
-      },
-      ptyStreamHub: {
-        registerSessionMetadata: () => undefined,
-        hasSession: () => false,
-      } as unknown as PtyStreamHub,
-      topology: createTopologyStub(),
-    })
+    ['pi', ['--session', 'provider-session'], false, undefined],
+    ['kimi', ['--auto', '--session', 'provider-session'], false, undefined],
+    [
+      'codex',
+      ['--dangerously-bypass-approvals-and-sandbox', 'resume', 'provider-session'],
+      undefined,
+      undefined,
+    ],
+    [
+      'codex',
+      ['--dangerously-bypass-approvals-and-sandbox', 'resume', 'provider-session'],
+      true,
+      undefined,
+    ],
+    [
+      'codex',
+      ['--dangerously-bypass-approvals-and-sandbox', 'resume', 'provider-session'],
+      true,
+      false,
+    ],
+    [
+      'codex',
+      ['--dangerously-bypass-approvals-and-sandbox', 'resume', 'provider-session'],
+      false,
+      true,
+    ],
+  ] as const)(
+    'resumes %s through its registered contribution',
+    async (provider, expectedArgs, savedReuse, overrideReuse) => {
+      process.env.OPENCOVE_TEST_USE_REAL_AGENTS = '1'
+      const spawnSession = vi.fn(async () => ({ sessionId: `pty-${provider}` }))
+      const controlSurface = createControlSurface()
+      const registry = createTestAgentProviderRegistry()
+      const planner = vi.spyOn(registry.require(provider).launcher, 'createLaunchPlan')
+      registerSessionHandlers(controlSurface, {
+        ...createReadyTerminalAdmissionDeps(),
+        agentProviderRegistry: registry,
+        userDataPath: '/tmp/opencove-test-user-data',
+        approvedWorkspaces: {
+          registerRoot: async () => undefined,
+          isPathApproved: async () => true,
+        },
+        // Saved full access, so the expected args include each provider's approval bypass.
+        getPersistenceStore: async () =>
+          createStubStore({
+            settings: { agentFullAccess: true, codexReuseRunningAppServer: savedReuse },
+          }),
+        ptyRuntime: {
+          spawnSession,
+          write: () => undefined,
+          resize: () => undefined,
+          kill: () => undefined,
+          onData: () => () => undefined,
+          onExit: () => () => undefined,
+          attach: () => undefined,
+          detach: () => undefined,
+          snapshot: () => '',
+          startSessionStateWatcher: () => undefined,
+          dispose: () => undefined,
+        },
+        ptyStreamHub: {
+          registerSessionMetadata: () => undefined,
+          hasSession: () => false,
+        } as unknown as PtyStreamHub,
+        topology: createTopologyStub(),
+      })
 
-    const launched = await controlSurface.invoke(ctx, {
-      kind: 'command',
-      id: 'session.launchAgent',
-      payload: {
-        cwd: '/repo',
-        prompt: '',
-        provider,
-        mode: 'resume',
-        resumeSessionId: 'provider-session',
-      },
-    })
+      const launched = await controlSurface.invoke(ctx, {
+        kind: 'command',
+        id: 'session.launchAgent',
+        payload: {
+          cwd: '/repo',
+          prompt: '',
+          provider,
+          mode: 'resume',
+          resumeSessionId: 'provider-session',
+          codexReuseRunningAppServer: overrideReuse,
+        },
+      })
 
-    expect(launched.ok).toBe(true)
-    expect(spawnSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        command: provider,
-        args: expectedArgs,
-        agentProvider: provider,
-        initialAgentState: 'standby',
-      }),
-    )
-  })
+      expect(launched.ok).toBe(true)
+      expect(planner).toHaveBeenCalledWith(
+        expect.objectContaining({
+          codexReuseRunningAppServer: overrideReuse ?? savedReuse ?? false,
+          mode: 'resume',
+        }),
+      )
+      expect(spawnSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: provider,
+          args: expectedArgs,
+          agentProvider: provider,
+          initialAgentState: 'standby',
+        }),
+      )
+    },
+  )
 })

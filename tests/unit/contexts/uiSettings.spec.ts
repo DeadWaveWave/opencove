@@ -30,17 +30,15 @@ afterEach(async () => {
 })
 
 describe('named UI themes', () => {
-  it('offers the Cove family (dark, light, system) and the Pixel family', () => {
-    expect(UI_THEMES.map(id => [id, UI_THEME_DESCRIPTORS[id].family])).toEqual([
-      ['dark', 'cove'],
-      ['light', 'cove'],
-      ['system', 'cove'],
-      ['pixel', 'pixel'],
-      ['pixel-light', 'pixel'],
+  it('offers Cove dark, light and system', () => {
+    expect(UI_THEMES.map(id => [id, UI_THEME_DESCRIPTORS[id].baseScheme])).toEqual([
+      ['dark', 'dark'],
+      ['light', 'light'],
+      ['system', 'system'],
     ])
   })
 
-  it.each(['system', 'light', 'dark', 'pixel', 'pixel-light'])(
+  it.each(['system', 'light', 'dark'])(
     'preserves the persisted %s theme through settings normalization',
     async uiTheme => {
       const settings = normalizeAgentSettings({ uiTheme })
@@ -56,6 +54,8 @@ describe('named UI themes', () => {
   it.each([
     ['ember', 'dark'],
     ['ember-light', 'light'],
+    ['pixel', 'dark'],
+    ['pixel-light', 'light'],
   ] as const)('migrates the retired %s theme to Cove %s', async (retired, cove) => {
     expect(isValidUiTheme(retired)).toBe(false)
     expect(normalizeUiTheme(retired)).toBe(cove)
@@ -76,16 +76,12 @@ describe('named UI themes', () => {
     },
   )
 
-  it('keeps an existing Pixel choice instead of moving it to the new default', () => {
-    expect(normalizeAgentSettings({ uiTheme: 'pixel' }).uiTheme).toBe('pixel')
-    expect(normalizeAgentSettings({ uiTheme: 'pixel-light' }).uiTheme).toBe('pixel-light')
-  })
-
-  it('keeps Pixel shell and terminal dark independently of the system preference', () => {
-    expect(resolveUiThemeBaseScheme('pixel', false)).toBe('dark')
-    expect(resolveUiThemeBaseScheme('pixel', true)).toBe('dark')
-    expect(resolveUiThemeTerminalScheme('pixel', 'light')).toBe('dark')
-    expect(resolveUiThemeTerminalScheme('pixel', 'dark')).toBe('dark')
+  it('resolves the shell and terminal schemes, following the system only for system', () => {
+    expect(resolveUiThemeBaseScheme('dark', false)).toBe('dark')
+    expect(resolveUiThemeBaseScheme('light', true)).toBe('light')
+    expect(resolveUiThemeBaseScheme('system', true)).toBe('dark')
+    expect(resolveUiThemeBaseScheme('system', false)).toBe('light')
+    expect(resolveUiThemeTerminalScheme('dark', 'light')).toBe('dark')
     expect(resolveUiThemeTerminalScheme('system', 'light')).toBe('light')
   })
 
@@ -98,21 +94,5 @@ describe('named UI themes', () => {
     expect(
       ['dark', 'light', 'system'].map(id => getUiThemeLabel(translate, id as UiTheme)),
     ).toEqual(['Cove', '浅色 Cove', 'Cove（跟随系统）'])
-  })
-
-  it('resolves the Pixel label through both supported interface languages', async () => {
-    await applyUiLanguage('en')
-    expect(getUiThemeLabel(translate, 'pixel')).toBe('Pixel')
-    expect(getUiThemeLabel(translate, 'pixel-light')).toBe('Pixel Light')
-    await applyUiLanguage('zh-CN')
-    expect(getUiThemeLabel(translate, 'pixel')).toBe('空间点阵')
-    expect(getUiThemeLabel(translate, 'pixel-light')).toBe('浅色点阵')
-  })
-
-  it('keeps the Pixel Light shell and terminal light independently of system preference', () => {
-    expect(resolveUiThemeBaseScheme('pixel-light', false)).toBe('light')
-    expect(resolveUiThemeBaseScheme('pixel-light', true)).toBe('light')
-    expect(resolveUiThemeTerminalScheme('pixel-light', 'light')).toBe('light')
-    expect(resolveUiThemeTerminalScheme('pixel-light', 'dark')).toBe('light')
   })
 })

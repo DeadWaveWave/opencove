@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { SettingRow } from '@app/renderer/components/ui/SettingRow'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDownIcon } from '@app/renderer/components/ui/pixelIcons'
 import { Checkbox } from '@app/renderer/components/ui/Checkbox'
 import { useTranslation } from '@app/renderer/i18n'
 import { useSystemFonts } from '@app/renderer/shell/hooks/useSystemFonts'
@@ -81,9 +81,8 @@ export function TerminalFontFamilyRow({
             <span className="cove-select__label">
               {isLoading ? t('settingsPanel.general.terminalFontFamilyLoading') : displayValue}
             </span>
-            <ChevronDown
-              aria-hidden="true"
-              size={16}
+            <ChevronDownIcon
+              size={18}
               className={`cove-select__chevron${isOpen ? ' cove-select__chevron--open' : ''}`}
             />
           </button>

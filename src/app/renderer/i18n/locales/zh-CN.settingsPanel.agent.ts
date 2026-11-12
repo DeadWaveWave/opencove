@@ -1,4 +1,9 @@
 export const zhCNSettingsPanelAgent = {
+  residentContextLabel: '向智能体介绍 OpenCove',
+  residentContextSuggest: '建议使用',
+  residentContextOff: '关闭',
+  residentContextHelp:
+    '为支持此功能的本地智能体提供简短的画布使用指南。更改将在会话启动或上下文重置时生效；关闭后，已发送的指南仍会保留。',
   title: 'Agent',
   defaultAgentLabel: '默认 Agent',
   defaultAgentHelp: '新任务和终端默认使用的 AI 提供方。',
@@ -19,6 +24,9 @@ export const zhCNSettingsPanelAgent = {
   envSummaryNone: '无环境变量',
   moveUp: '上移',
   moveDown: '下移',
+  codexReuseRunningAppServerLabel: '复用正在运行的 Codex app-server',
+  codexReuseRunningAppServerHelp:
+    '复用正在运行的 Codex app-server 时，OpenCove 无法向 Agent 发送提示词，状态跟踪也受限。仅对新启动的 Agent 生效。',
   fullAccessLabel: '完全访问模式',
   fullAccessHelp: '让 Agent 不受沙箱限制，不经同意直接行动。',
   fullAccessOffHelp: '已关闭：Agent 在沙箱里工作，运行命令或修改文件前会先征求你的同意。',

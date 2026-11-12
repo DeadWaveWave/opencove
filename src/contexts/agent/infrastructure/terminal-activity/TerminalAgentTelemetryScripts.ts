@@ -4,7 +4,8 @@ export const terminalAgentLauncherScript = String.raw`
 import { accessSync, constants, realpathSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { delimiter, join, resolve } from 'node:path';
+import { delimiter, dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const operation = process.argv[2];
 if (operation === '--prepare-windows') await prepareWindows(process.argv[3], process.argv[4], process.argv.slice(5));
@@ -13,7 +14,7 @@ else await launch(operation, process.argv.slice(3));
 
 async function launch(providerArgument, userArgs) {
   const provider = normalizeProvider(providerArgument);
-  const executable = findExecutable(providerCommand(provider), ownShimDirectory());
+  const executable = findExecutable(providerCommand(provider), ownShimDirectories());
   if (!executable) {
     process.stderr.write('OpenCove could not resolve the real ' + providerCommand(provider) + ' executable.\n');
     process.exitCode = 127;
@@ -65,7 +66,7 @@ async function launch(providerArgument, userArgs) {
 
 async function prepareWindows(providerArgument, planPath, userArgs) {
   const provider = normalizeProvider(providerArgument);
-  const executable = findExecutable(providerCommand(provider), ownShimDirectory());
+  const executable = findExecutable(providerCommand(provider), ownShimDirectories());
   if (!executable || !planPath) process.exit(127);
   const invocationId = randomUUID();
   const plan = await prepare(provider, executable, invocationId, userArgs);
@@ -133,13 +134,14 @@ async function reportComplete(endpoint, token, invocationId, generation) {
   } catch {}
 }
 
-function findExecutable(name, shimDirectory) {
+function findExecutable(name, shimDirectories) {
+  const skipped = new Set(shimDirectories.filter(Boolean).map(canonical));
   const entries = String(process.env.PATH || '').split(delimiter);
   const extensions = process.platform === 'win32'
     ? String(process.env.PATHEXT || '.EXE;.CMD;.BAT;.COM').split(';')
     : [''];
   for (const directory of entries) {
-    if (canonical(directory) === canonical(shimDirectory)) continue;
+    if (skipped.has(canonical(directory))) continue;
     for (const extension of extensions) {
       const candidate = join(directory, process.platform === 'win32' ? name + extension.toLowerCase() : name);
       try {
@@ -157,7 +159,14 @@ function canonical(value) {
 }
 
 function normalizeCase(value) { return process.platform === 'win32' ? value.toLowerCase() : value; }
-function ownShimDirectory() { return process.env.OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY || ''; }
+// The launcher's own provider shims live next to it. Skip them even when the environment does
+// not name them, or a shim on PATH would resolve back to this launcher forever.
+function ownShimDirectories() {
+  return [
+    process.env.OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY || '',
+    join(dirname(fileURLToPath(import.meta.url)), 'bin'),
+  ];
+}
 function normalizeProvider(value) {
   if (value === 'claude' || value === 'claude-code') return 'claude-code';
   if (value === 'codex' || value === 'pi') return value;
@@ -253,14 +262,36 @@ export const terminalAgentPosixShellLauncherScript = [
   '',
 ].join('\n')
 
+// Shared by Bash and every Zsh startup relay; use builtins even when user PATH is empty.
+// Prepend providers first, then the CLI, removing only our own duplicate entries.
+const restoreSessionShimPaths = [
+  'for _opencove_directory in "${OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY:-}" "${OPENCOVE_CLI_SHIM_DIRECTORY:-}"; do',
+  '  [ -n "$_opencove_directory" ] || continue',
+  '  _opencove_remaining_path=$PATH',
+  '  _opencove_filtered_path=',
+  '  _opencove_path_separator=',
+  '  while :; do',
+  '    _opencove_path_entry=${_opencove_remaining_path%%:*}',
+  '    if [ "$_opencove_path_entry" != "$_opencove_directory" ]; then',
+  '      _opencove_filtered_path="$_opencove_filtered_path$_opencove_path_separator$_opencove_path_entry"',
+  '      _opencove_path_separator=:',
+  '    fi',
+  '    case "$_opencove_remaining_path" in',
+  '      *:*) _opencove_remaining_path=${_opencove_remaining_path#*:} ;;',
+  '      *) break ;;',
+  '    esac',
+  '  done',
+  '  export PATH="$_opencove_directory${_opencove_path_separator:+:$_opencove_filtered_path}"',
+  'done',
+  'unset _opencove_directory _opencove_remaining_path _opencove_filtered_path _opencove_path_separator _opencove_path_entry',
+]
+
 export const terminalAgentBashRcScript = [
   '_opencove_user_bash_rc=${HOME:+$HOME/.bashrc}',
   'if [ -n "$_opencove_user_bash_rc" ] && [ -r "$_opencove_user_bash_rc" ] && [ "$_opencove_user_bash_rc" != "$OPENCOVE_TERMINAL_AGENT_BASH_RC" ]; then',
   '  . "$_opencove_user_bash_rc"',
   'fi',
-  'if [ -n "$OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY" ] && [ "${PATH%%:*}" != "$OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY" ]; then',
-  '  export PATH="$OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY${PATH:+:$PATH}"',
-  'fi',
+  ...restoreSessionShimPaths,
   'unset _opencove_user_bash_rc',
   '',
 ].join('\n')
@@ -273,9 +304,7 @@ export const terminalAgentZshEnvScript = [
   '  . "$_opencove_user_zdotdir/.zshenv"',
   '  _opencove_user_zdotdir=${ZDOTDIR:-${HOME:-}}',
   'fi',
-  'if [ -n "$OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY" ] && [ "${PATH%%:*}" != "$OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY" ]; then',
-  '  export PATH="$OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY${PATH:+:$PATH}"',
-  'fi',
+  ...restoreSessionShimPaths,
   'export OPENCOVE_TERMINAL_AGENT_USER_ZDOTDIR="$_opencove_user_zdotdir"',
   'export ZDOTDIR="$_opencove_wrapper_zdotdir"',
   'unset _opencove_user_zdotdir _opencove_wrapper_zdotdir',
@@ -301,13 +330,7 @@ function createZshStartupRelay(
     '  _opencove_user_zdotdir=${ZDOTDIR:-$_opencove_user_zdotdir}',
     'fi',
     'export OPENCOVE_TERMINAL_AGENT_USER_ZDOTDIR="$_opencove_user_zdotdir"',
-    ...(prependShimPath
-      ? [
-          'if [ -n "$OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY" ] && [ "${PATH%%:*}" != "$OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY" ]; then',
-          '  export PATH="$OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY${PATH:+:$PATH}"',
-          'fi',
-        ]
-      : []),
+    ...(prependShimPath ? restoreSessionShimPaths : []),
     ...(restoreOnlyForNonLogin
       ? [
           'if [[ ! -o login ]]; then export ZDOTDIR="$_opencove_user_zdotdir"; else export ZDOTDIR="$_opencove_wrapper_zdotdir"; fi',

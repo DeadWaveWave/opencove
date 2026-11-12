@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { FileText, GitBranch, Play, Terminal } from 'lucide-react'
+import {
+  FileTextIcon,
+  GitBranchIcon,
+  PlayIcon,
+  TerminalIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { Button } from '@app/renderer/components/ui/Button'
 import { useTranslation } from '@app/renderer/i18n'
 import type { PixelEffectSettings } from '@contexts/settings/domain/agentSettings'
+import { WindowPlate } from '@contexts/workspace/presentation/renderer/components/shared/WindowPlate'
 import { createPixelEffectPreview, type PixelEffectPreviewState } from './pixelEffectPreview'
 
 export function PixelEffectsPreview({ effects }: { effects: PixelEffectSettings }) {
@@ -71,7 +77,7 @@ export function PixelEffectsPreview({ effects }: { effects: PixelEffectSettings 
             controllerRef.current?.replay()
           }}
         >
-          <Play size={14} aria-hidden="true" />
+          <PlayIcon size={18} />
           {t('settingsPanel.appearanceNext.replay')}
         </Button>
       </div>
@@ -106,15 +112,16 @@ export function PixelEffectsPreview({ effects }: { effects: PixelEffectSettings 
         >
           <legend>
             <strong>{t('settingsPanel.appearanceNext.previewSpace')}</strong>
-            <GitBranch size={13} />
+            <GitBranchIcon size={12} />
             ui/chrome
           </legend>
           <div className="settings-pixel-preview__nodes">
             <div className="settings-pixel-preview__node" data-cove-part="window">
               <div className="settings-pixel-preview__header" data-cove-part="window-header">
-                <FileText size={14} />
+                <FileTextIcon size={18} />
                 {t('settingsPanel.appearanceNext.previewDocument')}
               </div>
+              <WindowPlate kind="knowledge" />
               <div className="settings-pixel-preview__body" data-cove-part="window-body">
                 {t('settingsPanel.appearanceNext.previewDocumentBody')}
               </div>
@@ -126,9 +133,10 @@ export function PixelEffectsPreview({ effects }: { effects: PixelEffectSettings 
               data-id="settings-preview-terminal"
             >
               <div className="settings-pixel-preview__header" data-cove-part="window-header">
-                <Terminal size={14} />
+                <TerminalIcon size={18} />
                 {t('settingsPanel.appearanceNext.previewTerminal')}
               </div>
+              <WindowPlate kind="shell" />
               <div className="settings-pixel-preview__body" data-cove-part="window-body">
                 <code>
                   ~/projects/cove

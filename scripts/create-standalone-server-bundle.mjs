@@ -114,7 +114,7 @@ async function resolveRuntimeSource(options) {
 function resolveRelativePaths(platform) {
   return {
     nodeRelativePath: platform === 'win32' ? 'runtime/node/node.exe' : 'runtime/node/bin/node',
-    cliScriptRelativePath: 'app/src/app/cli/opencove.mjs',
+    cliScriptRelativePath: 'app/out/cli/opencove.mjs',
   }
 }
 

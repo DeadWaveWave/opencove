@@ -14,6 +14,16 @@ const current = {
 } as const
 
 describe('terminal Agent activity runtime normalization', () => {
+  it('retains validated invocation intent without requiring it from older workers', () => {
+    expect(normalizeTerminalAgentActivitySnapshot({ ...current, launchMode: 'new' })).toEqual({
+      ...current,
+      launchMode: 'new',
+    })
+    expect(normalizeTerminalAgentActivitySnapshot({ ...current, launchMode: 'invalid' })).toBeNull()
+    expect(sameTerminalAgentActivitySnapshot(current, { ...current, launchMode: 'new' })).toBe(
+      false,
+    )
+  })
   it('accepts both legacy and fully revisioned current snapshots', () => {
     expect(normalizeTerminalAgentActivitySnapshot(current)).toEqual(current)
     expect(

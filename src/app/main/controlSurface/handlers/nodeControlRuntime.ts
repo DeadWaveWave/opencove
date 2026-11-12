@@ -1,3 +1,9 @@
+import { physicalSpawnLifecycle } from '../../../../shared/runtime/physicalSpawnLifecycle'
+import type {
+  AgentSpawnAdmissionOwner,
+  AgentSpawnPermit,
+} from '../../../../contexts/workspace/application/nodeSpawn/AgentSpawnAdmissionOwner'
+import { ABSENT_MANAGED_CLAUDE_BINDING } from '../../../../shared/contracts/managedClaudeLaunch'
 import process from 'node:process'
 import { basename } from 'node:path'
 import type { ControlSurface } from '../controlSurface'
@@ -69,11 +75,76 @@ export function createRuntimeDeps(
   ctx: ControlSurfaceContext,
   closeWebsiteNode: ((nodeId: string) => Promise<void> | void) | undefined,
   closePluginNode?: (nodeId: string) => Promise<void> | void,
+  admission?: AgentSpawnAdmissionOwner,
+  killExactSession?: (sessionId: string) => void | Promise<void>,
 ): NodeControlRuntimeDeps {
+  let permit: AgentSpawnPermit | undefined
+  const killSession = async (sessionId: string): Promise<void> => {
+    if (killExactSession) {
+      await killExactSession(sessionId)
+      return
+    }
+    await invokeInternal<void>(
+      controlSurface,
+      { ...ctx, assertActive: undefined },
+      {
+        kind: 'command',
+        id: 'session.kill',
+        payload: { sessionId },
+      },
+    )
+  }
   return {
+    withSpawnPermit: async (value, execute) => {
+      permit = value
+      return physicalSpawnLifecycle.run(
+        {
+          singleAttempt: true,
+          beginSpawn: () => admission!.consume(value),
+          beforeDispatch: execution => {
+            ctx.assertActive?.()
+            if (execution) {
+              admission!.assertExecution(value, execution)
+            }
+          },
+          started: () => {},
+          completed: () => {},
+          unknown: () => {},
+        },
+        execute,
+      )
+    },
+    cleanupUncommittedSpawn: async nodeId => {
+      await Promise.allSettled(
+        (admission?.sessionsForNode(nodeId) ?? []).map(sessionId =>
+          Promise.resolve().then(() => killSession(sessionId)),
+        ),
+      )
+    },
     assertActive: ctx.assertActive,
-    validateTarget: ctx.validateNodeTarget,
+    validateTarget: async target => {
+      if (permit) {
+        admission!.assertTarget(permit, target)
+      }
+      await ctx.validateNodeTarget?.(target)
+    },
     launchAgent: async (resolved, data) => {
+      const spawnContext = {
+        ...ctx,
+        clientFeatures: { managedClaudeResumeBindingV1: true as const },
+        agentSpawnPermit: permit,
+        managedClaudeIntent: {
+          kind: 'launchNew' as const,
+          expected: ABSENT_MANAGED_CLAUDE_BINDING,
+        },
+        spawnIdentity: resolved.canvasNodeId
+          ? {
+              projectId: resolved.workspace.id,
+              spaceId: resolved.space?.id ?? '',
+              nodeId: resolved.canvasNodeId,
+            }
+          : undefined,
+      }
       const payload = resolved.mount
         ? {
             mountId: resolved.mount.mountId,
@@ -89,7 +160,7 @@ export function createRuntimeDeps(
             model: data.model,
           }
       ctx.assertActive?.()
-      const launched = await invokeInternal<Record<string, unknown>>(controlSurface, ctx, {
+      const launched = await invokeInternal<Record<string, unknown>>(controlSurface, spawnContext, {
         kind: 'command',
         id: resolved.mount ? 'session.launchAgentInMount' : 'session.launchAgent',
         payload,
@@ -112,6 +183,17 @@ export function createRuntimeDeps(
       }
     },
     spawnTerminal: async (resolved, data) => {
+      const spawnContext = {
+        ...ctx,
+        agentSpawnPermit: permit,
+        spawnIdentity: resolved.canvasNodeId
+          ? {
+              projectId: resolved.workspace.id,
+              spaceId: resolved.space?.id ?? '',
+              nodeId: resolved.canvasNodeId,
+            }
+          : undefined,
+      }
       if (resolved.endpoint.kind === 'remote_worker' && data.command && !data.shell) {
         throw createAppError('common.invalid_input', {
           debugMessage: 'A remote terminal command requires an explicit target shell.',
@@ -128,7 +210,7 @@ export function createRuntimeDeps(
       }
       ctx.assertActive?.()
       const result = resolved.mount
-        ? await invokeInternal<SpawnTerminalResult>(controlSurface, ctx, {
+        ? await invokeInternal<SpawnTerminalResult>(controlSurface, spawnContext, {
             kind: 'command',
             id: 'pty.spawnInMount',
             payload: {
@@ -137,7 +219,7 @@ export function createRuntimeDeps(
               ...base,
             } satisfies SpawnTerminalInMountInput,
           })
-        : await invokeInternal<SpawnTerminalResult>(controlSurface, ctx, {
+        : await invokeInternal<SpawnTerminalResult>(controlSurface, spawnContext, {
             kind: 'command',
             id: 'pty.spawn',
             payload: {
@@ -156,17 +238,7 @@ export function createRuntimeDeps(
         workerBinding: nodeWorkerBindingForMount(resolved.mount),
       }
     },
-    killSession: async sessionId => {
-      await invokeInternal<void>(
-        controlSurface,
-        { ...ctx, assertActive: undefined },
-        {
-          kind: 'command',
-          id: 'session.kill',
-          payload: { sessionId },
-        },
-      )
-    },
+    killSession,
     closeWebsiteNode,
     closePluginNode,
   }

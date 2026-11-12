@@ -75,6 +75,7 @@ describe('session state watcher Kimi pipeline', () => {
       expect(harness.states).toContainEqual({
         sessionId: 'terminal-kimi',
         state: 'working',
+        agentProvider: 'kimi',
         source: 'session_file',
       }),
     )
@@ -94,13 +95,14 @@ describe('session state watcher Kimi pipeline', () => {
       expect(harness.states.at(-1)).toEqual({
         sessionId: 'terminal-kimi',
         state: 'standby',
+        agentProvider: 'kimi',
         source: 'session_file',
       }),
     )
     harness.controller.dispose()
   })
 
-  it('projects unsupported protocol as degraded launch fallback, not observed standby', async () => {
+  it('reports unsupported protocol as degraded file evidence', async () => {
     const session = await createKimiWire('2.0', [{ type: 'turn.prompt' }])
     const harness = createHarness()
     harness.controller.start({
@@ -116,11 +118,14 @@ describe('session state watcher Kimi pipeline', () => {
       expect(harness.states).toContainEqual({
         sessionId: 'terminal-kimi-unsupported',
         state: 'standby',
-        source: 'launch',
+        agentProvider: 'kimi',
+        source: 'session_file',
         degraded: true,
       }),
     )
-    expect(harness.states.some(event => event.source === 'session_file')).toBe(false)
+    expect(harness.states.some(event => event.source === 'session_file' && !event.degraded)).toBe(
+      false,
+    )
     harness.controller.dispose()
   })
 
@@ -156,11 +161,14 @@ describe('session state watcher Kimi pipeline', () => {
       {
         sessionId: 'terminal-kimi-unavailable',
         state: 'standby',
-        source: 'launch',
+        agentProvider: 'kimi',
+        source: 'session_file',
         degraded: true,
       },
     ])
-    expect(harness.states.some(event => event.source === 'session_file')).toBe(false)
+    expect(harness.states.some(event => event.source === 'session_file' && !event.degraded)).toBe(
+      false,
+    )
     expect(harness.states.some(event => event.state === 'working')).toBe(false)
     harness.controller.dispose()
   })
@@ -202,6 +210,7 @@ describe('session state watcher Kimi pipeline', () => {
       expect(harness.states).toContainEqual({
         sessionId: 'terminal-pi',
         state: 'working',
+        agentProvider: 'pi',
         source: 'session_file',
       }),
     )
@@ -221,6 +230,7 @@ describe('session state watcher Kimi pipeline', () => {
       expect(harness.states.at(-1)).toEqual({
         sessionId: 'terminal-pi',
         state: 'standby',
+        agentProvider: 'pi',
         source: 'session_file',
       }),
     )

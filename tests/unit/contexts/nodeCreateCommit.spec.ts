@@ -10,6 +10,7 @@ import type {
   NodeControlNode,
 } from '../../../src/contexts/workspace/application/nodeControl/nodeControlState'
 import { createMinimalState } from '../../contract/controlSurface/controlSurfaceHttpServer.sessionStreaming.testUtils'
+import { SPACE_NODE_PADDING } from '../../../src/contexts/workspace/domain/workspaceSpaceLayout'
 import { createAppErrorDescriptor } from '../../../src/shared/errors/appError'
 import type { SpaceLocatorResolverDeps } from '../../../src/contexts/workspace/application/nodeControl/spaceLocator'
 
@@ -33,6 +34,8 @@ function fixture() {
     return { ok: true, level: 'full', bytes: 1, revision }
   })
   const store: NodeControlAppStateStore = {
+    nodeLineage: { readMany: async () => new Map() },
+    commitCreatedNodeState: (next, options) => writeAppState(next, options),
     readAppState,
     readAppStateRevision: async () => revision,
     writeAppState,
@@ -67,17 +70,25 @@ function fixture() {
     listWorktreesForMount: async () => [],
     listWorktreesForWorkspace: async () => [],
   }
-  const run = (kind: 'terminal' | 'agent' = 'terminal') =>
+  const run = (kind: 'terminal' | 'agent' = 'terminal', root = false, callerNodeId?: string) =>
     createNodeForNodeControl({
       store,
       locatorDeps,
       runtime,
       now: new Date(),
-      input: { kind, space: { kind: 'spaceId', spaceId: 'space' }, data: { prompt: 'Inspect' } },
+      callerNodeId,
+      input: {
+        kind,
+        ...(root
+          ? { projectId: 'project' }
+          : { space: { kind: 'spaceId' as const, spaceId: 'space' } }),
+        data: { prompt: 'Inspect' },
+      },
     })
   return {
     store,
     runtime,
+    locatorDeps,
     run,
     readAppState,
     writeAppState,
@@ -113,6 +124,72 @@ function concurrentNote(id = 'neighbor'): NodeControlNode {
 }
 
 describe('node creation pure persistence rebase', () => {
+  it.each(['moved', 'deleted', 'space'] as const)(
+    'recomputes root placement after a CAS conflict when the caller is %s',
+    async change => {
+      const f = fixture(),
+        write = f.writeAppState.getMockImplementation()!
+      f.locatorDeps.listMounts = async () => [
+        {
+          mountId: 'default',
+          projectId: 'project',
+          name: 'Default',
+          sortOrder: 0,
+          endpointId: 'local',
+          targetId: 'local',
+          rootPath: '/repo',
+          rootUri: 'file:///repo',
+          createdAt: '',
+          updatedAt: '',
+        },
+      ]
+      f.locatorDeps.listEndpoints = async () => [
+        {
+          endpointId: 'local',
+          kind: 'local',
+          displayName: 'Local',
+          remote: null,
+          createdAt: '',
+          updatedAt: '',
+        },
+      ]
+      f.advance(state => {
+        state.workspaces[0].nodes.push({
+          ...concurrentNote('caller'),
+          position: { x: 2000, y: 2000 },
+        })
+      })
+      f.writeAppState.mockImplementationOnce(async (next, options) => {
+        f.advance(state => {
+          const workspace = state.workspaces[0]
+          if (change === 'deleted') {
+            workspace.nodes = []
+          } else {
+            workspace.nodes[0].position = { x: 4000, y: 3000 }
+            if (change === 'space') {
+              workspace.spaces[0].nodeIds = ['caller']
+              workspace.spaces[0].rect = { x: 3900, y: 2800, width: 1400, height: 1000 }
+            }
+          }
+        })
+        return write(next, options)
+      })
+      const result = await f.run('terminal', true, 'caller')
+      expect(result.node.frame).toMatchObject(
+        change === 'deleted'
+          ? { x: 0, y: 0 }
+          : { x: (change === 'space' ? 5300 : 4600) + SPACE_NODE_PADDING, y: 3000 },
+      )
+      expect(result.spaceId).toBeNull()
+      expect(
+        f.state().workspaces[0].spaces.every(space => !space.nodeIds.includes(result.node.id)),
+      ).toBe(true)
+      expect(f.writeAppState).toHaveBeenCalledTimes(2)
+      expect(f.runtime.spawnTerminal).toHaveBeenCalledTimes(1)
+      expect(f.runtime.killSession).not.toHaveBeenCalled()
+    },
+  )
+
   it.each(['terminal', 'agent'] as const)(
     'rebases %s insertion once without relaunch and preserves concurrent content/settings/geometry',
     async kind => {
@@ -120,7 +197,7 @@ describe('node creation pure persistence rebase', () => {
         write = f.writeAppState.getMockImplementation()!
       f.writeAppState.mockImplementationOnce(async (next, options) => {
         f.advance(state => {
-          state.settings = { language: 'zh-CN', uiTheme: 'pixel-light' }
+          state.settings = { language: 'zh-CN', uiTheme: 'light' }
           const workspace = state.workspaces[0]
           workspace.viewport = { x: 512, y: 90, zoom: 0.7 }
           workspace.nodes.push(concurrentNote())
@@ -134,7 +211,7 @@ describe('node creation pure persistence rebase', () => {
       ).toHaveBeenCalledTimes(1)
       expect(f.writeAppState).toHaveBeenCalledTimes(2)
       expect(f.runtime.killSession).not.toHaveBeenCalled()
-      expect(f.state().settings).toEqual({ language: 'zh-CN', uiTheme: 'pixel-light' })
+      expect(f.state().settings).toEqual({ language: 'zh-CN', uiTheme: 'light' })
       expect(f.state().workspaces[0].viewport).toEqual({ x: 512, y: 90, zoom: 0.7 })
       expect(f.state().workspaces[0].nodes.map(node => node.id)).toEqual([
         'neighbor',
@@ -260,4 +337,55 @@ describe('node creation pure persistence rebase', () => {
     expect(f.writeAppState).toHaveBeenCalledTimes(1)
     expect(f.runtime.killSession).not.toHaveBeenCalled()
   })
+})
+
+it('rebases ancestor growth on the latest hierarchy and preserves concurrent parent geometry', async () => {
+  const f = fixture(),
+    write = f.writeAppState.getMockImplementation()!
+  f.advance(state => {
+    const w = state.workspaces[0]
+    w.spaces[0].rect = { x: 62, y: 72, width: 420, height: 336 }
+    w.nodes = [{ ...concurrentNote('brief'), position: { x: 80, y: 90 }, width: 280, height: 300 }]
+    w.spaces[0].nodeIds = ['brief']
+    w.spaces[0].parentSpaceId = 'parent'
+    w.spaces.push({
+      ...w.spaces[0],
+      id: 'parent',
+      nodeIds: [],
+      parentSpaceId: null,
+      rect: { x: 20, y: 20, width: 480, height: 500 },
+    })
+  })
+  f.writeAppState.mockImplementationOnce(async (next, options) => {
+    f.advance(state => {
+      state.workspaces[0].spaces[1].rect!.width = 2000
+    })
+    return write(next, options)
+  })
+  const created = await f.run()
+  const w = f.state().workspaces[0]
+  const child = w.spaces[0].rect!,
+    parent = w.spaces[1].rect!
+  expect(w.spaces[0].nodeIds).toEqual(['brief', created.node.id])
+  expect(parent.width).toBeGreaterThanOrEqual(2000)
+  expect(parent.x + parent.width).toBeGreaterThanOrEqual(child.x + child.width + SPACE_NODE_PADDING)
+  expect(parent.y + parent.height).toBeGreaterThanOrEqual(
+    child.y + child.height + SPACE_NODE_PADDING,
+  )
+  expect(f.writeAppState).toHaveBeenCalledTimes(2)
+  expect(f.runtime.spawnTerminal).toHaveBeenCalledTimes(1)
+})
+
+it('does not start a runtime after authority is revoked during lineage preparation', async () => {
+  const f = fixture()
+  f.advance(state => {
+    state.workspaces[0].nodes.push(concurrentNote('caller'))
+  })
+  f.store.nodeLineage!.readMany = async () => {
+    f.retire()
+    return new Map()
+  }
+  await expect(f.run('terminal', false, 'caller')).rejects.toThrow('retired')
+  expect(f.runtime.spawnTerminal).not.toHaveBeenCalled()
+  expect(f.writeAppState).not.toHaveBeenCalled()
 })

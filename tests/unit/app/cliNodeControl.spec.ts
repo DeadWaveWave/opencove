@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { tryHandleNodeControlCommands } from '../../../src/app/cli/commands/nodeControl.mjs'
+import { runWithTargetFixtures as run } from './cliTargetFixtures.helpers'
 
 type CapturedRequest = {
   id: string
@@ -26,13 +26,17 @@ function stubInvokeRequests(): CapturedRequest[] {
 }
 
 async function invokeNodeArgs(args: string[]): Promise<boolean> {
-  return await tryHandleNodeControlCommands({
-    command: 'node',
-    args,
-    connection: { hostname: '127.0.0.1', port: 1, token: 'token' },
-    pretty: false,
-    timeoutMs: 1_000,
-  })
+  return (
+    (await run(args, {
+      stdout: { write() {} },
+      stderr: { write() {} },
+      env: { OPENCOVE_CONTROL_URL: 'http://localhost:1', OPENCOVE_CONTROL_TOKEN: 'token' },
+      fetch,
+      now: Date.now,
+      readTextFile: async () => '',
+      readStdinText: async () => '',
+    })) === 0
+  )
 }
 
 afterEach(() => {
@@ -94,4 +98,50 @@ describe('CLI node control commands', () => {
       },
     })
   })
+})
+
+it.each(['agent', 'terminal'])(
+  'renames a %s without sending data or launch options',
+  async kind => {
+    const requests = stubInvokeRequests()
+    expect(
+      await invokeNodeArgs(['node', 'update', kind, '--node', 'node-1', '--title', 'Lead']),
+    ).toBe(true)
+    expect(requests[0]).toMatchObject({
+      id: 'node.update',
+      payload: { kind, nodeId: 'node-1', title: 'Lead' },
+    })
+    expect(requests[0].payload).not.toHaveProperty('data')
+  },
+)
+
+it.each([
+  ['agent', '--prompt', 'unexpected'],
+  ['terminal', '--command', 'pwd'],
+  ['agent', '--title', '   '],
+])(
+  'rejects unsupported or blank rename options before connecting: %j',
+  async (kind, option, value) => {
+    const requests = stubInvokeRequests()
+    expect(await invokeNodeArgs(['node', 'update', kind, '--node', 'node-1', option, value])).toBe(
+      false,
+    )
+    expect(requests).toHaveLength(0)
+  },
+)
+
+it('keeps a literal provider-prefixed name when renaming through the CLI', async () => {
+  const requests = stubInvokeRequests()
+  expect(
+    await invokeNodeArgs([
+      'node',
+      'update',
+      'agent',
+      '--node',
+      'node-1',
+      '--title',
+      'codex · Lead',
+    ]),
+  ).toBe(true)
+  expect(requests[0]).toMatchObject({ id: 'node.update', payload: { title: 'codex · Lead' } })
 })

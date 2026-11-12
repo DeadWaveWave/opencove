@@ -1,3 +1,4 @@
+import type { AgentRunSnapshot } from '../../src/shared/contracts/dto/agentRunState'
 import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
 import { findEmptyPanePoint } from './workspace-canvas.pane.helpers'
@@ -72,8 +73,13 @@ async function waitForInitialHookWorkingSignal(
   // session_file legitimately wins arbitration, so gate hook authority on the real signal.
   await expect
     .poll(async () => {
-      return await window.evaluate(id => {
-        return window.__opencoveAgentRunStateTestApi?.getSession(id)?.lastHookSignal?.state ?? null
+      return await window.evaluate(async id => {
+        const snapshot = await window.opencoveApi.controlSurface.invoke<AgentRunSnapshot | null>({
+          kind: 'query',
+          id: 'agent.get',
+          payload: { sessionId: id },
+        })
+        return snapshot?.source === 'claude_hook' ? snapshot.state : null
       }, sessionId)
     })
     .toBe('working')
@@ -103,19 +109,52 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
 
       const headerActivity = window.getByTestId('app-header-agent-activity')
       await expect(headerActivity).toHaveText('1 working')
+      // The pill sits on the header's centre line, level with the header's icon buttons.
+      const centreY = async (selector: string) => {
+        const box = await window.locator(selector).boundingBox()
+        return box ? box.y + box.height / 2 : Number.NaN
+      }
+      const buttonCentre = await centreY('[data-testid="app-header-control-center"]')
+      const pillSelector = '[data-testid="app-header-agent-activity"]'
+      expect(Math.abs((await centreY(pillSelector)) - buttonCentre)).toBeLessThanOrEqual(0.5)
+      // A hover previews every agent; the control center then takes the corner back.
+      const agentList = window.getByTestId('app-header-agent-activity-list')
+      await headerActivity.hover()
+      await expect(agentList.getByRole('group', { name: 'Working' })).toBeVisible()
+      await window.getByTestId('app-header-control-center').click()
+      await expect(agentList).toHaveCount(0)
+      await expect(window.getByTestId('control-center')).toBeVisible()
+      await window.getByTestId('control-center-close').click()
+      await expect(window.getByTestId('control-center')).toHaveCount(0)
+      // From the keyboard the list opens onto its first line, once the list is placed.
+      await headerActivity.focus()
+      await window.keyboard.press('ArrowDown')
+      await expect(agentList.locator('[data-agent-activity-row]').first()).toBeFocused()
+      await window.keyboard.press('Escape')
+      await expect(agentList).toHaveCount(0)
+      await expect(headerActivity).toBeFocused()
 
       await writeToPty(window, { sessionId, data: '<test-hook-waiting>\r' })
-      await expect(status).toHaveText('Waiting')
-      await expect(sidebarStatus).toHaveText('Needs input')
-      // The top bar summarizes it too, and one click reaches the waiting agent.
-      await expect(headerActivity).toHaveText('1 waiting')
+      await expect(status).toHaveText('Needs approval')
+      await expect(sidebarStatus).toHaveText('Needs approval')
+      // The top bar summarizes it too; its list names the agent, and the line reaches it.
+      await expect(headerActivity).toHaveText('1 needs you')
+      expect(Math.abs((await centreY(pillSelector)) - buttonCentre)).toBeLessThanOrEqual(0.5)
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await pane.click({ position: await findEmptyPanePoint(pane) })
       await headerActivity.click()
+      await expect(agentList.getByRole('group', { name: 'Needs you' })).toBeVisible()
+      await agentList.locator('[data-agent-activity-row]').first().click()
+      await expect(agentList).toHaveCount(0)
       await expect(agentNode.locator('.xterm-helper-textarea')).toBeFocused()
 
       await writeToPty(window, { sessionId, data: '<test-hook-done>\r' })
       await expect(status).toHaveText('Standby')
+      // Runtime is idle; the shell keeps a real completion waiting until acknowledged.
+      const completion = window.locator('.agent-island-card')
+      await expect(completion).toHaveCount(1)
+      await expect(sidebarStatus).toHaveText('Finished')
+      await completion.locator('.agent-island-card__close').click()
       await expect(sidebarStatus).toHaveText('Standby')
       await expect(headerActivity).toHaveCount(0)
       await expect(agentNode).toHaveAttribute('data-agent-hook-install-state', 'installed')
@@ -152,7 +191,7 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
     }
   })
 
-  test('arbitrates conflicting sources and falls back exactly when working goes stale', async () => {
+  test('keeps Worker hook authority across conflicting file evidence and renderer reload', async () => {
     const { electronApp, window } = await launchApp({
       windowMode: 'inactive',
       env: {
@@ -169,18 +208,11 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
       await expect(agentNode).toHaveAttribute('data-agent-state-source', 'claude_hook')
       await expect(status).toHaveText('Working')
       await writeToPty(window, { sessionId, data: '<test-hook-waiting>\r' })
-      await expect(status).toHaveText('Waiting')
+      await expect(status).toHaveText('Needs approval')
 
       await writeToPty(window, { sessionId, data: '<test-session-standby>\r' })
-      await expect
-        .poll(async () => {
-          return await window.evaluate(id => {
-            return window.__opencoveAgentRunStateTestApi?.getSession(id)?.lastSessionFileSignal
-              ?.state
-          }, sessionId)
-        })
-        .toBe('standby')
-      await expect(status).toHaveText('Waiting')
+      await expect(agentNode).toContainText('[opencove-test-hook] session-standby')
+      await expect(status).toHaveText('Needs approval')
       await expect(agentNode).toHaveAttribute('data-agent-state-source', 'claude_hook')
 
       const agentNodeId = await agentNode.evaluate(
@@ -191,39 +223,17 @@ test.describe('Workspace Canvas - Claude hook channel', () => {
 
       const restoredAgentNode = window.locator(`[data-id="${agentNodeId}"] .terminal-node`)
       await expect(restoredAgentNode).toBeVisible()
-      await expect(restoredAgentNode.locator('.terminal-node__status')).toHaveText('Waiting')
+      await expect(restoredAgentNode.locator('.terminal-node__status')).toHaveText('Needs approval')
       await expect(restoredAgentNode).toHaveAttribute('data-agent-state-source', 'claude_hook')
       expect(await resolveFirstAgentSessionId(window)).toBe(sessionId)
-
-      expect(
-        await window.evaluate(() => {
-          return window.__opencoveAgentRunStateTestApi?.advanceBy(1_200_000) ?? false
-        }),
-      ).toBe(true)
-      await expect(status).toHaveText('Waiting')
-      await expect(agentNode).toHaveAttribute('data-agent-state-source', 'claude_hook')
-      await window.evaluate(() => {
-        window.__opencoveAgentRunStateTestApi?.resetClock()
-      })
 
       await writeToPty(window, { sessionId, data: '<test-hook-done>\r' })
       await expect(status).toHaveText('Standby')
       await writeToPty(window, { sessionId, data: '<test-hook-tool>\r' })
       await expect(status).toHaveText('Working')
 
-      expect(
-        await window.evaluate(() => {
-          // Must exceed AGENT_HOOK_FRESHNESS_MS (180s) so the working lease actually expires.
-          return window.__opencoveAgentRunStateTestApi?.advanceBy(600_000) ?? false
-        }),
-      ).toBe(true)
-      await expect(status).toHaveText('Standby')
-      await expect(agentNode).toHaveAttribute('data-agent-state-source', 'session_file')
-      await expect(agentNode.locator('[data-testid="agent-hook-degraded"]')).toHaveText('Fallback')
-      await window.evaluate(() => {
-        window.__opencoveAgentRunStateTestApi?.resetClock()
-      })
-
+      // Working lease expiry is checked with the Worker registry's fake scheduler in unit tests.
+      // Advancing a renderer clock cannot change the Worker-owned decision.
       await writeToPty(window, { sessionId, data: '<test-hook-tool>\r' })
       await expect(status).toHaveText('Working')
       await expect(agentNode).toHaveAttribute('data-agent-state-source', 'claude_hook')

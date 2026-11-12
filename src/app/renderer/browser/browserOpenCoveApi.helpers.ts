@@ -13,7 +13,7 @@ import {
   type AgentSettings,
 } from '@contexts/settings/domain/agentSettings'
 import { mergePersistedAppStates } from '@shared/sync/mergePersistedAppStates'
-import { normalizePersistedAppStateForMerge as normalizeSharedPersistedAppStateForMerge } from '@shared/sync/normalizePersistedAppStateForMerge'
+import { canonicalizePersistedAppState as normalizeSharedPersistedAppStateForMerge } from '@shared/sync/canonicalizePersistedAppState'
 
 export type BrowserPersistedAppState = NormalizedPersistedAppStateContract<AgentSettings>
 export { mergePersistedAppStates }

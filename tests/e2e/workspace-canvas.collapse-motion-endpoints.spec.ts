@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { toFileUri } from '../../src/contexts/filesystem/domain/fileUri'
 import { rejectDocumentWrites } from './workspace-canvas.document-save.helpers'
-import { launchApp, seedWorkspaceState } from './workspace-canvas.helpers'
+import { launchApp, readLocatorClientRect, seedWorkspaceState } from './workspace-canvas.helpers'
 import { EXPANSION_TERMINAL } from './workspace-canvas.collapse-expansion.helpers'
 import { terminalSelector } from './workspace-canvas.collapse-motion.helpers'
 import { createMaterialFixture } from './workspace-canvas.spatial-pixel.materials.fixture'
@@ -42,14 +42,26 @@ for (const { kind, title, fontScale } of cases) {
       const node = window.locator(terminalSelector)
       if (kind === 'agent') {
         await expect(node.getByTestId('terminal-node-title-display')).toHaveText('Review')
-        await expect(
-          node.locator('.terminal-node__header [data-cove-pixel-glyph="ai"]'),
-        ).toBeVisible()
+        const icon = node.locator('.terminal-node__header [data-cove-node-kind-icon="agent"]')
+        await expect(icon).toBeVisible()
+        await expect(icon).toHaveAttribute('data-agent-provider', 'codex')
+        await expect(icon).not.toHaveAttribute('data-cove-pixel-glyph')
       }
       await node.getByTestId('terminal-node-title-display').click()
       await node.getByTestId('terminal-node-inline-title-input').fill(title)
       await node.getByTestId('terminal-node-inline-title-input').press('Enter')
       await expect(node.getByTestId('terminal-node-title-display')).toHaveText(title)
+      // The title is the window's handle: pressing it to rename selects the window, as any press
+      // on a title bar does. Clear that on the empty canvas, so the round trip below starts plain.
+      await expect(node).toHaveClass(/selected/)
+      const pane = await readLocatorClientRect(
+        window.locator('.workspace-canvas .react-flow__pane'),
+      )
+      await window.mouse.click(pane.x + pane.width / 2, pane.y + pane.height - 160)
+      await expect(node).not.toHaveClass(/selected/)
+      // The title's field fill answers the pointer, not the window's identity: park the pointer
+      // on the sidebar's empty lower half, clear of the window and of the title bar's drag region.
+      await window.mouse.move(pane.x - 60, pane.y + pane.height - 120)
 
       // Round-trip selection too: the final collapse starts from a selected
       // expanded node and must not paint its compact caption prematurely.
@@ -95,6 +107,9 @@ for (const { kind, title, fontScale } of cases) {
         })
         expectIdentityEndpointContinuous(lastAnimated, settled)
         if (kind === 'agent' && direction === 'collapse') {
+          const icon = node.locator('.cove-collapsed-window [data-cove-node-kind-icon="agent"]')
+          await expect(icon).toHaveAttribute('data-agent-provider', 'codex')
+          await expect(icon).not.toHaveAttribute('data-cove-pixel-glyph')
           await expect(node.locator('.cove-collapsed-window__title')).toHaveText(title)
           await expect(node.locator('.cove-collapsed-window__message')).toHaveCount(0)
           await expect(node.locator('.cove-collapsed-window')).toHaveCSS('height', '96px')
@@ -120,7 +135,7 @@ test('dirty Document disclosure hands its title back beside the unsaved indicato
     await seedWorkspaceState(window, {
       activeWorkspaceId: 'document-endpoint-project',
       settings: {
-        uiTheme: 'pixel',
+        uiTheme: 'dark',
         language: 'en',
         canvasInputMode: 'mouse',
         focusNodeOnClick: false,

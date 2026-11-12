@@ -58,6 +58,9 @@
   --cove-shadow-color-panel: rgba(0, 0, 0, 0.58);
   --cove-font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
   --cove-mask-opaque: #000;
+  /* A pixel control's bevel: lit along its top, shaded along its bottom (ui-pixel.css). */
+  --cove-pixel-light: rgb(255 255 255 / 0.2);
+  --cove-pixel-shade: rgb(0 0 0 / 0.24);
 
   /* Shared interaction vocabulary. Components consume these semantic tokens
      instead of rebuilding theme colors and geometry locally. */
@@ -99,18 +102,6 @@
   --cove-info: var(--cove-accent-text);
   --cove-info-surface: var(--cove-control-selected);
   --cove-info-border: color-mix(in srgb, var(--cove-accent) 34%, transparent);
-  /* Theme picker swatches stay constant across themes: Cove (generated values) and Pixel. */
-  --cove-theme-preview-light: #f2f9ff;
-  --cove-theme-preview-dark: #0c1217;
-  --cove-theme-preview-accent: #00b0d5;
-  --cove-theme-preview-pixel-accent: #5b9cf0;
-  --cove-theme-preview-pixel-light: linear-gradient(
-    135deg,
-    #e7f0f6 48%,
-    #3c79bb 49%,
-    #26859b 74%,
-    #308b6f
-  );
   /* Shared effect palette; named themes can remap these three color stops. */
   --cove-pixel-blue: #5b9cf0;
   --cove-pixel-cyan: #55bddc;
@@ -204,9 +195,15 @@
   --cove-node-border: rgba(107, 138, 236, 0.65);
   --cove-node-surface: rgba(10, 17, 33, 0.94);
   --cove-node-background-image: none;
+  --cove-chrome-background-image: none;
+  /* Drawn at startup by bootstrap/installGlassGrain.ts, which sets them inline on the root. */
+  --cove-glass-grain-dark: none;
+  --cove-glass-grain-light: none;
   --cove-node-label-header-tint: 17%;
   --cove-node-label-border-tint: 30%;
   --cove-node-radius: var(--cove-radius-lg);
+  /* At a window's padding box, inside its 1px border: where frames clip their content. */
+  --cove-node-inner-radius: calc(var(--cove-node-radius) - 1px);
   --cove-node-header-surface: rgba(23, 36, 66, 0.96);
   --cove-node-header-border: rgba(104, 137, 226, 0.45);
   --cove-node-shadow-color: rgba(0, 0, 0, 0.45);

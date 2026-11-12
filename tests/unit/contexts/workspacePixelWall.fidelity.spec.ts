@@ -8,6 +8,7 @@ const base: [number, number, number] = [17, 24, 30]
 // Four very different cloud colours, so a jump between them is unmistakable.
 const vivid: WallPalette = {
   appearance: 'dark',
+  spot: [0, 176, 213],
   cell: base,
   gap: [5, 9, 12],
   clouds: [
@@ -22,9 +23,8 @@ const vivid: WallPalette = {
     [255, 255, 255],
     [255, 255, 255],
   ],
-  spot: [255, 255, 255],
 }
-// No clouds at all: whatever moves a cell is shimmer, twinkle or the spotlight.
+// No clouds at all: whatever moves a cell is shimmer or twinkle.
 const plain: WallPalette = { ...vivid, clouds: vivid.clouds.map(() => base) }
 
 const grid = resolveWallGrid({ x: 0, y: 0, zoom: 1, width: 1920, height: 1200 })
@@ -123,54 +123,10 @@ describe('pixel wall twinkle near active windows', () => {
   })
 })
 
-describe('pixel wall cursor spotlight', () => {
-  const spot = { x: 960, y: 600 }
-  const column = Math.floor(spot.x / grid.screenCell)
-  const row = Math.floor(spot.y / grid.screenCell)
-
-  it('brightens the open wall around the pointer a little', () => {
-    const without = fillWallCells(grid, plain, null)
-    const lit = fillWallCells(grid, plain, null, { spot })
-    const gain = lift(lit, column, row) - lift(without, column, row)
-    expect(gain).toBeGreaterThan(20)
-    expect(gain).toBeLessThanOrEqual(255 * PIXEL_WALL.dark.spotA + 2)
-    // Far from the pointer nothing changes.
-    expect(cellAt(lit, 2, 2)).toEqual(cellAt(without, 2, 2))
-  })
-
-  it('never lights the glass behind a window', () => {
-    const glass = { x: 800, y: 480, width: 320, height: 240 }
-    const cells = fillWallCells(grid, plain, null, { windows: [glass], spot })
-    expect(lift(cells, column, row)).toBeLessThan(8)
-  })
-})
-
 describe('pixel wall in far view', () => {
   const near = resolveWallGrid({ x: 0, y: 0, zoom: 0.9, width: 1920, height: 1200 })
   const far = resolveWallGrid({ x: 0, y: 0, zoom: 0.18, width: 1920, height: 1200 })
-  const roughness = (view: typeof grid, cells: Uint8ClampedArray) => {
-    let total = 0
-    let pairs = 0
-    for (let row = 0; row < view.rows; row++) {
-      for (let column = 1; column < view.columns; column++) {
-        const a = (row * view.columns + column - 1) * 4
-        const b = a + 4
-        total += Math.abs(cells[a]! - cells[b]!) + Math.abs(cells[a + 1]! - cells[b + 1]!)
-        pairs++
-      }
-    }
-    return total / pairs
-  }
-
-  it('keeps clouds as broad on screen as in near view, so the zoomed-out wall stays calm', () => {
-    expect(far.worldCell).toBeGreaterThan(near.worldCell)
-    const calm = { ...vivid, sparks: vivid.sparks.map(() => base) }
-    expect(roughness(far, fillWallCells(far, calm, null))).toBeLessThan(
-      roughness(near, fillWallCells(near, calm, null)) * 1.25,
-    )
-  })
-
-  it('twinkles more sparsely per cell when each cell covers more of the canvas', () => {
+  it('keeps the same twinkle share at every cell level', () => {
     const flashes = (view: typeof grid) => {
       const lit = new Set<number>()
       for (let step = 0; step < 60; step++) {
@@ -183,6 +139,6 @@ describe('pixel wall in far view', () => {
       }
       return lit.size / (view.columns * view.rows)
     }
-    expect(flashes(far)).toBeLessThan(flashes(near) * 0.75)
+    expect(flashes(far)).toBeCloseTo(flashes(near), 1)
   })
 })

@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, type JSX } from 'react'
-import { Check, History, LoaderCircle, RotateCcw } from 'lucide-react'
+import { CheckIcon, HistoryIcon, UndoIcon } from '@app/renderer/components/ui/pixelIcons'
+import { PixelSpinner } from '@app/renderer/components/ui/PixelSpinner'
 import { useTranslation } from '@app/renderer/i18n'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { toRelativeTime } from '@app/renderer/shell/utils/format'
@@ -101,9 +102,9 @@ export function TerminalNodeAgentSessionActions({
           }}
         >
           {isReloading ? (
-            <LoaderCircle className="terminal-node__action-icon terminal-node__action-icon--spinning" />
+            <PixelSpinner className="terminal-node__action-icon" />
           ) : (
-            <RotateCcw className="terminal-node__action-icon" />
+            <UndoIcon className="terminal-node__action-icon" />
           )}
         </button>
       ) : null}
@@ -152,9 +153,9 @@ export function TerminalNodeAgentSessionActions({
           }}
         >
           {isLoadingSessions ? (
-            <LoaderCircle className="terminal-node__action-icon terminal-node__action-icon--spinning" />
+            <PixelSpinner className="terminal-node__action-icon" />
           ) : (
-            <History className="terminal-node__action-icon" />
+            <HistoryIcon className="terminal-node__action-icon" />
           )}
         </button>
       ) : null}
@@ -190,7 +191,7 @@ export function TerminalNodeAgentSessionActions({
               className="terminal-node__session-menu-state"
               data-testid="terminal-node-session-menu-loading"
             >
-              <LoaderCircle className="workspace-context-menu__icon workspace-context-menu__spinner" />
+              <PixelSpinner className="workspace-context-menu__icon" />
               <span className="workspace-context-menu__label">
                 {t('terminalNodeHeader.loadingSessions')}
               </span>
@@ -246,7 +247,9 @@ export function TerminalNodeAgentSessionActions({
                     }}
                   >
                     <span className="workspace-context-menu__mark" aria-hidden="true">
-                      {isCurrentSession ? <Check className="workspace-context-menu__icon" /> : null}
+                      {isCurrentSession ? (
+                        <CheckIcon className="workspace-context-menu__icon" />
+                      ) : null}
                     </span>
                     <span className="terminal-node__session-menu-item-content">
                       <span

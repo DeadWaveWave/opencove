@@ -1,3 +1,5 @@
+import type { ClaudeTranscriptObservation } from '../../../../shared/runtime/agentHook/claudeTranscript'
+import { createSessionStatePublisher } from './sessionStateWatcherPublisher'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type { AgentSessionDiscovery } from '../../../agent/application/ports/AgentSessionDiscovery'
 import type {
@@ -22,6 +24,7 @@ import {
   resolveSessionStateWatcherRetryDelay,
 } from './sessionStateWatcherShared'
 import { createSessionFileStateWatcher } from './sessionStateWatcherProvider'
+import { SessionFileReadHistory } from './sessionFileReadHistory'
 
 const SESSION_STATE_WATCHER_LOCATE_TIMEOUT_MS = 1_500
 const SESSION_STATE_WATCHER_FILE_TIMEOUT_MS = 1_500
@@ -34,20 +37,23 @@ export function createSessionStateWatcherController({
   sendToAllWindows,
   reportIssue,
   onState,
+  onClaudeTranscript,
   onMetadata,
   sessionDiscovery,
 }: {
   sendToAllWindows: SendToAllWindows
   reportIssue: (message: string) => void
   onState?: (event: TerminalSessionStateEvent) => void
+  onClaudeTranscript?: (record: ClaudeTranscriptObservation) => void
   onMetadata?: (event: TerminalSessionMetadataEvent) => void
   sessionDiscovery?: AgentSessionDiscovery
 }): {
   start: (input: SessionStateWatcherStartInput) => void
   noteInteraction: (sessionId: string, data?: string) => void
-  disposeSession: (sessionId: string) => void
+  disposeSession: (sessionId: string, forgetHistory?: boolean) => void
   dispose: () => void
 } {
+  const readHistory = new SessionFileReadHistory()
   const stateWatcherBySession = new Map<string, DisposableSessionWatcher>()
   const stateWatcherVersionBySession = new Map<string, number>()
   const stateWatcherStartInputBySession = new Map<string, OwnedSessionStateWatcherInput>()
@@ -153,30 +159,13 @@ export function createSessionStateWatcherController({
     broadcastSessionMetadata(sessionId, resumeSessionId)
   }
 
-  const broadcastSessionState = (
-    sessionId: string,
-    state: 'working' | 'waiting' | 'standby',
-    options: { degraded?: boolean; source?: TerminalSessionStateEvent['source'] } = {},
-  ): void => {
-    if (stateWatcherStartInputBySession.get(sessionId)?.discovery?.isCurrent() === false) {
-      return
-    }
-    const eventPayload: TerminalSessionStateEvent = {
-      sessionId,
-      state,
-      source: options.source ?? 'session_file',
-      ...(options.degraded === true ? { degraded: true } : {}),
-    }
-    logSessionStateWatcherDiagnostics('broadcast-state', {
-      sessionId,
-      state,
-    })
-    sendToAllWindows(IPC_CHANNELS.ptyState, eventPayload)
-    onState?.(eventPayload)
-  }
+  const broadcastSessionState = createSessionStatePublisher({
+    getInput: sessionId => stateWatcherStartInputBySession.get(sessionId),
+    onState,
+  })
 
   const broadcastObservationUnavailable = (sessionId: string): void =>
-    broadcastSessionState(sessionId, 'standby', { source: 'launch', degraded: true })
+    broadcastSessionState(sessionId, 'standby', { degraded: true })
 
   const scheduleRetry = (sessionId: string, watcherVersion: number): void => {
     const attempt = stateWatcherRetryCountBySession.get(sessionId) ?? 0
@@ -219,6 +208,7 @@ export function createSessionStateWatcherController({
       reportIssue(
         `[opencove] state watcher failed for ${input.provider} session ${sessionId}: ${detail}`,
       )
+      broadcastObservationUnavailable(sessionId)
       clearSessionStateWatcher(sessionId)
       scheduleSessionStateWatcherAttempt(
         sessionId,
@@ -330,7 +320,20 @@ export function createSessionStateWatcherController({
         sessionId,
         filePath: sessionFilePath,
         launchMode: input.launchMode,
+        initialRead: readHistory.take(input),
         onState: onWatcherState,
+        onClaudeTranscript: record => {
+          if (!isCurrent()) {
+            return
+          }
+          onClaudeTranscript?.({
+            ...record,
+            sessionId,
+            providerSessionId: resolvedSessionId,
+            incarnation: sessionId,
+            generation: watcherVersion,
+          })
+        },
         onUnavailable: unavailableSessionId => {
           if (isCurrent()) {
             broadcastObservationUnavailable(unavailableSessionId)
@@ -363,9 +366,7 @@ export function createSessionStateWatcherController({
 
     const watcherVersion = stateWatcherVersionBySession.get(input.sessionId) ?? 0
     if (input.provider === 'gemini' && input.launchMode === 'new' && !input.resumeSessionId) {
-      // If the caller already captured (or explicitly skipped) the discovery cursor,
-      // avoid capturing it again after the agent has started, which can race with
-      // Gemini writing the session file and lead to missing resume bindings.
+      // Recapturing after launch can miss Gemini's new file; explicit null also skips capture.
       if (input.geminiDiscoveryCursor !== undefined) {
         if (input.geminiDiscoveryCursor) {
           geminiDiscoveryCursorBySession.set(input.sessionId, input.geminiDiscoveryCursor)
@@ -462,11 +463,13 @@ export function createSessionStateWatcherController({
     )
   }
 
-  const disposeSession = (sessionId: string): void => {
+  const disposeSession = (sessionId: string, forgetHistory = false): void => {
     clearSessionStateWatcher(sessionId, { disposeStartInput: true })
+    readHistory.release(sessionId, forgetHistory)
   }
 
   const dispose = (): void => {
+    readHistory.clear()
     stateWatcherBySession.forEach(watcher => {
       watcher.dispose()
     })

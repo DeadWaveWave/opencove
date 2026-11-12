@@ -44,11 +44,11 @@ describe('PluginIcon declarations', () => {
     const icons = container.querySelectorAll('[data-cove-plugin-icon="example-tool"]')
     expect(icons).toHaveLength(2)
     expect(icons[0]).toHaveAttribute('width', '24')
-    expect(icons[1]).toHaveAttribute('width', '16')
+    expect(icons[1]).toHaveAttribute('width', '18')
     expect(icons[1]).toHaveClass('cove-node-kind-icon')
     for (const icon of icons) {
-      expect(icon).toHaveClass('lucide-puzzle')
-      expect(icon).toHaveAttribute('stroke', 'currentColor')
+      expect(icon).toHaveAttribute('data-cove-pixel-icon', 'extension')
+      expect(icon).toHaveAttribute('fill', 'currentColor')
     }
   })
 
@@ -110,8 +110,9 @@ describe('PluginIcon declarations', () => {
     setTheme('dark')
     expect(container.querySelector('img')).toHaveAttribute('src', '/bundled/base.svg')
     fireEvent.error(container.querySelector('img')!)
-    expect(container.querySelector('[data-plugin-icon-kind="fallback"]')).toHaveClass(
-      'lucide-puzzle',
+    expect(container.querySelector('[data-plugin-icon-kind="fallback"]')).toHaveAttribute(
+      'data-cove-pixel-icon',
+      'extension',
     )
     expect(container.querySelector('img')).toBeNull()
   })
@@ -133,9 +134,9 @@ describe('PluginIcon declarations', () => {
   it('uses the host fallback for a missing declaration or missing plugin', () => {
     declareIcon(undefined)
     const { container, rerender } = render(<PluginIcon pluginId="example-tool" />)
-    expect(container.querySelector('svg')).toHaveClass('lucide-puzzle')
+    expect(container.querySelector('svg')).toHaveAttribute('data-cove-pixel-icon', 'extension')
     vi.mocked(registry.usePluginManifest).mockReturnValue(null)
     rerender(<PluginIcon pluginId="missing-plugin" />)
-    expect(container.querySelector('svg')).toHaveClass('lucide-puzzle')
+    expect(container.querySelector('svg')).toHaveAttribute('data-cove-pixel-icon', 'extension')
   })
 })

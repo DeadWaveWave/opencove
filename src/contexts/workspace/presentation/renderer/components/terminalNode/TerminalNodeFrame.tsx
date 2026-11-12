@@ -1,6 +1,7 @@
 import { TerminalLinkHost, type TerminalLinkHostOptions } from './links/TerminalLinkHost'
 import React, { useId, type JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
+import { classNames } from '@app/renderer/components/ui/classNames'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { Handle, Position } from '@xyflow/react'
 import type {
@@ -10,8 +11,10 @@ import type {
   TerminalSessionStateSource,
 } from '@shared/contracts/dto'
 import { TerminalNodeHeader } from './TerminalNodeHeader'
+import { WindowPlate } from '../shared/WindowPlate'
 import { TerminalNodeFindBar } from './TerminalNodeFindBar'
 import { NodeResizeHandles } from '../shared/NodeResizeHandles'
+import { isWindowTitleGesture } from '../shared/windowTitleGesture'
 import { resolveTerminalNodeInteraction } from './interaction'
 import { shouldStopWheelPropagation } from './wheel'
 import type { AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
@@ -35,6 +38,7 @@ interface TerminalNodeFrameProps {
   status: AgentRuntimeStatus | null
   agentStateSource: TerminalSessionStateSource | null
   agentHookInstallState: AgentHookInstallState | null
+  blockedReason?: import('@shared/contracts/dto/agentRunState').AgentRunSnapshot['blockedReason']
   agentStateDegraded: boolean
   directoryMismatch?: { executionDirectory: string; expectedDirectory: string } | null
   lastError: string | null
@@ -89,6 +93,7 @@ export function TerminalNodeFrame({
   status,
   agentStateSource,
   agentHookInstallState,
+  blockedReason,
   agentStateDegraded,
   directoryMismatch,
   lastError,
@@ -136,7 +141,13 @@ export function TerminalNodeFrame({
     <div
       data-cove-part="window"
       data-cove-kind={kind}
-      className={`terminal-node nowheel ${hasSelectedDragSurface ? 'terminal-node--selected-surface' : ''}`.trim()}
+      className={classNames(
+        'terminal-node nowheel',
+        // A class, not only `data-cove-kind`: the terminal colour probe copies classes.
+        isAgentNode && 'terminal-node--agent',
+        hasSelectedDragSurface && 'terminal-node--selected-surface',
+      )}
+      data-cove-terminal-background={transparentBackground ? 'transparent' : 'opaque'}
       data-agent-state-source={agentStateSource ?? undefined}
       data-agent-hook-install-state={agentHookInstallState ?? undefined}
       style={sizeStyle}
@@ -166,6 +177,11 @@ export function TerminalNodeFrame({
           event.target.closest('.terminal-node__header') &&
           !event.target.closest('.nodrag')
         ) {
+          return
+        }
+
+        // The title owns its clicks: one renames, one ending a grab does nothing.
+        if (isWindowTitleGesture(event.target)) {
           return
         }
 
@@ -209,6 +225,7 @@ export function TerminalNodeFrame({
         kind={kind}
         agentProvider={agentProvider}
         status={status}
+        blockedReason={blockedReason}
         agentStateDegraded={agentStateDegraded}
         labelColor={labelColor ?? null}
         agentExecutionDirectory={agentExecutionDirectory}
@@ -273,6 +290,7 @@ export function TerminalNodeFrame({
       ) : null}
 
       {geometryFeedback}
+      <WindowPlate />
       <div
         className="terminal-node__body"
         data-cove-part="window-body"

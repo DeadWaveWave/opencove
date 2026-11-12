@@ -2,6 +2,38 @@ import { expect, type Page } from '@playwright/test'
 import { viewStateStorageKey } from './workspace-canvas.helpers'
 import { chooseSettingsUiTheme } from '../helpers/settingsUiTheme'
 
+export async function seedWorkspaceViewport(
+  window: Page,
+  workspaceId: string,
+  viewport: { x: number; y: number; zoom: number },
+): Promise<void> {
+  const state = {
+    activeWorkspaceId: workspaceId,
+    workspaces: {
+      [workspaceId]: { viewport, isMinimapVisible: true, activeSpaceId: null },
+    },
+  }
+  // The outgoing renderer can still persist its in-memory viewport after a direct
+  // localStorage seed. Write in the new document before hydration reads view state.
+  // CDP lets us remove this init script so later reloads restore real user changes.
+  const session = await window.context().newCDPSession(window)
+  try {
+    await session.send('Page.enable')
+    const { identifier } = await session.send('Page.addScriptToEvaluateOnNewDocument', {
+      source: `if (window === window.top) {
+        window.localStorage.setItem(${JSON.stringify(viewStateStorageKey)}, ${JSON.stringify(JSON.stringify(state))});
+      }`,
+    })
+    try {
+      await window.reload({ waitUntil: 'domcontentloaded' })
+    } finally {
+      await session.send('Page.removeScriptToEvaluateOnNewDocument', { identifier })
+    }
+  } finally {
+    await session.detach()
+  }
+}
+
 export async function readCanvasViewport(
   window: Page,
 ): Promise<{ x: number; y: number; zoom: number }> {

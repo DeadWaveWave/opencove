@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react'
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
 import { applyUiLanguage } from '@app/renderer/i18n'
-import type { CanvasBackgroundStyle, UiTheme } from '@contexts/settings/domain/agentSettings'
+import type { UiTheme } from '@contexts/settings/domain/agentSettings'
 import { examplePlugin } from '@contexts/plugins/presentation/renderer/pluginPresentationTestFixture'
 import * as registry from '@contexts/plugins/presentation/renderer/usePluginRegistry'
 import * as themeApplication from '@contexts/plugins/presentation/renderer/themeApplication'
@@ -12,20 +12,19 @@ import { ControlCenter } from './ControlCenter'
 const actions = {
   onChangeUiTheme: vi.fn(),
   onToggleMinimap: vi.fn(),
-  onChangeBackgroundStyle: vi.fn(),
-  onChangeBackgroundTwinkle: vi.fn(),
-  onChangeMotionSignals: vi.fn(),
-  onChangeWindowMaterial: vi.fn(),
+  onChangeInAppNotifications: vi.fn(),
+  onChangeSystemNotifications: vi.fn(),
+  onChangeSound: vi.fn(),
 }
+
+const openSettingsAt = vi.fn()
 
 function Harness({
   hasActiveWorkspace = true,
-  uiTheme = 'pixel',
-  backgroundStyle = 'pixel',
+  uiTheme = 'dark',
 }: {
   hasActiveWorkspace?: boolean
   uiTheme?: UiTheme
-  backgroundStyle?: CanvasBackgroundStyle
 }) {
   const anchorRef = useRef<HTMLButtonElement | null>(null)
   const settingsRef = useRef<HTMLInputElement | null>(null)
@@ -45,14 +44,16 @@ function Harness({
         anchorRef={anchorRef}
         uiTheme={uiTheme}
         isMinimapVisible
-        backgroundStyle={backgroundStyle}
-        isBackgroundTwinkleEnabled
-        areMotionSignalsEnabled={false}
         hasActiveWorkspace={hasActiveWorkspace}
-        windowMaterial="glass"
+        inAppNotificationsEnabled
+        systemNotificationsEnabled={false}
+        soundEnabled
         settingsShortcut="⌘,"
         onClose={() => setOpen(false)}
-        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenSettings={pageId => {
+          openSettingsAt(pageId)
+          setSettingsOpen(true)
+        }}
       />
       <Dialog
         open={settingsOpen}
@@ -64,10 +65,6 @@ function Harness({
       </Dialog>
     </>
   )
-}
-
-function themeRadio(name: string) {
-  return within(screen.getByRole('radiogroup', { name: 'Theme' })).getByRole('radio', { name })
 }
 
 function openControls() {
@@ -83,6 +80,18 @@ function setViewportWidth(width: number) {
   act(() => window.dispatchEvent(new Event('resize')))
 }
 
+const themedPlugin = {
+  ...examplePlugin,
+  themes: [
+    {
+      id: 'night',
+      title: 'Prism Night',
+      appearance: 'dark' as const,
+      tokens: { '--cove-accent': '#aabbcc' },
+    },
+  ],
+}
+
 describe('Control Center surfaces', () => {
   const originalWidth = window.innerWidth
 
@@ -92,8 +101,8 @@ describe('Control Center surfaces', () => {
     vi.clearAllMocks()
     vi.spyOn(registry, 'usePluginRegistry').mockReturnValue({ plugins: [], error: null })
     vi.spyOn(themeApplication, 'useThemeApplicationStatus').mockReturnValue({
-      requestedId: 'pixel',
-      appliedId: 'pixel',
+      requestedId: 'dark',
+      appliedId: 'dark',
       loading: false,
       error: null,
     })
@@ -108,100 +117,80 @@ describe('Control Center surfaces', () => {
     setViewportWidth(originalWidth)
   })
 
-  it('keeps desktop nonmodal and offers theme family, mode and display switches', () => {
-    render(<Harness hasActiveWorkspace={false} uiTheme="dark" />)
+  it('keeps desktop nonmodal: an appearance, four quick switches and two lines into Settings', () => {
+    render(<Harness hasActiveWorkspace={false} />)
     openControls()
     const surface = screen.getByRole('dialog', { name: 'Control Center' })
-    const minimap = screen.getByRole('switch', { name: 'Minimap' }) as HTMLInputElement
-    const pixelBackground = screen.getByRole('switch', { name: 'Background twinkle' })
     expect(surface.getAttribute('aria-modal')).toBeNull()
-    expect(minimap.disabled).toBe(true)
-    expect(document.activeElement).toBe(pixelBackground)
-    expect(screen.getByRole('radiogroup', { name: 'Theme' })).not.toBeNull()
-    expect((themeRadio('Cove') as HTMLInputElement).checked).toBe(true)
-    expect((screen.getByRole('radio', { name: 'Dark' }) as HTMLInputElement).checked).toBe(true)
-    // The notification banner lives in Settings now.
-    expect(screen.queryByTestId('control-center-toggle-agent-standby-banner')).toBeNull()
+    expect(surface).toHaveClass('cove-pixel-window')
 
-    fireEvent.click(themeRadio('Pixel'))
-    expect(actions.onChangeUiTheme).toHaveBeenLastCalledWith('pixel')
+    // Focus enters on the checked appearance.
+    const dark = screen.getByRole('radio', { name: 'Dark' })
+    expect(dark).toBeChecked()
+    expect(document.activeElement).toBe(dark)
     fireEvent.click(screen.getByRole('radio', { name: 'Follow System' }))
     expect(actions.onChangeUiTheme).toHaveBeenLastCalledWith('system')
-    fireEvent.click(pixelBackground)
-    expect(actions.onChangeBackgroundTwinkle).toHaveBeenCalledWith(false)
-    fireEvent.click(
-      within(screen.getByRole('radiogroup', { name: 'Background' })).getByRole('radio', {
-        name: 'Minimal',
-      }),
-    )
-    expect(actions.onChangeBackgroundStyle).toHaveBeenCalledWith('minimal')
-    fireEvent.click(screen.getByRole('switch', { name: 'Motion signals' }))
-    expect(actions.onChangeMotionSignals).toHaveBeenCalledWith(true)
+
+    // Only Cove's own appearances are offered; the look's finer choices live in Settings.
+    expect(screen.getAllByRole('radio').map(radio => radio.getAttribute('value'))).toEqual([
+      'light',
+      'dark',
+      'system',
+    ])
+    expect(screen.queryByRole('switch')).toBeNull()
+
+    const minimap = screen.getByRole('button', { name: 'Minimap' })
+    expect(minimap).toBeDisabled()
+    expect(minimap).toHaveAccessibleDescription('Open a workspace to show its minimap.')
+    const inApp = screen.getByRole('button', { name: 'In-app alerts' })
+    const system = screen.getByRole('button', { name: 'System alerts' })
+    expect(inApp).toHaveAttribute('aria-pressed', 'true')
+    expect(system).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(inApp)
+    expect(actions.onChangeInAppNotifications).toHaveBeenCalledWith(false)
+    fireEvent.click(system)
+    expect(actions.onChangeSystemNotifications).toHaveBeenCalledWith(true)
+    const sound = screen.getByRole('button', { name: 'Alert sound' })
+    expect(sound).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(sound)
+    expect(actions.onChangeSound).toHaveBeenCalledWith(false)
     expect(actions.onToggleMinimap).not.toHaveBeenCalled()
+
+    expect(screen.getByTestId('control-center-open-settings').textContent).toContain('⌘,')
+
     const outside = screen.getByRole('button', { name: 'Outside action' })
     outside.focus()
     expect(document.activeElement).toBe(outside)
   })
 
-  it('turns twinkle off with the pixel background and focuses the next switch instead', () => {
-    render(<Harness backgroundStyle="off" />)
+  it('toggles the minimap from its tile while a workspace is open', () => {
+    render(<Harness />)
     openControls()
-    const twinkle = screen.getByRole('switch', { name: 'Background twinkle' }) as HTMLInputElement
-    expect(twinkle.disabled).toBe(true)
-    expect(document.activeElement).toBe(screen.getByRole('switch', { name: 'Motion signals' }))
-    const off = within(screen.getByRole('radiogroup', { name: 'Background' })).getByRole('radio', {
-      name: 'Off',
-    }) as HTMLInputElement
-    expect(off.checked).toBe(true)
-  })
-
-  it('offers only the modes the current family has', () => {
-    render(<Harness uiTheme="pixel-light" />)
-    openControls()
-    expect((themeRadio('Pixel') as HTMLInputElement).checked).toBe(true)
-    expect((screen.getByRole('radio', { name: 'Light' }) as HTMLInputElement).checked).toBe(true)
-    expect(screen.queryByRole('radio', { name: 'Follow System' })).toBeNull()
-    fireEvent.click(themeRadio('Cove'))
-    expect(actions.onChangeUiTheme).toHaveBeenLastCalledWith('light')
+    const minimap = screen.getByRole('button', { name: 'Minimap' })
+    expect(minimap).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(minimap)
+    expect(actions.onToggleMinimap).toHaveBeenCalledTimes(1)
   })
 
   it.each(['en', 'zh-CN'] as const)(
-    'names an active plugin theme and leaves its mode to Settings in %s',
+    'names an active plugin theme and checks no appearance in %s',
     async language => {
       await applyUiLanguage(language)
-      const themedPlugin = {
-        ...examplePlugin,
-        themes: [
-          {
-            id: 'night',
-            title: 'Prism Night',
-            appearance: 'dark' as const,
-            tokens: { '--cove-accent': '#aabbcc' },
-          },
-        ],
-      }
       vi.mocked(registry.usePluginRegistry).mockReturnValue({
         plugins: [themedPlugin],
         error: null,
       })
       render(<Harness uiTheme="plugin:example-tool:night" />)
       openControls()
-      expect(screen.getByTestId('control-center-current-theme').textContent).toBe('Prism Night')
-      const families = [
-        ...screen.getByTestId('control-center-theme-family').querySelectorAll('input'),
-      ] as HTMLInputElement[]
-      expect(families.every(radio => !radio.checked)).toBe(true)
-      expect(
-        (
-          screen
-            .getByTestId('control-center-theme-mode')
-            .querySelectorAll('input') as NodeListOf<HTMLInputElement>
-        )[0]?.disabled,
-      ).toBe(true)
-      document.documentElement.dataset.coveTheme = 'dark'
-      fireEvent.click(families[0]!)
+      expect(screen.getByTestId('control-center-current-theme').textContent).toContain(
+        'Prism Night',
+      )
+      const appearances = screen.getAllByRole('radio') as HTMLInputElement[]
+      expect(appearances.every(radio => !radio.checked)).toBe(true)
+      // Focus still enters the group, on its first appearance.
+      expect(document.activeElement).toBe(screen.getByTestId('control-center-theme-mode-light'))
+      fireEvent.click(screen.getByTestId('control-center-theme-mode-dark'))
       expect(actions.onChangeUiTheme).toHaveBeenLastCalledWith('dark')
-      delete document.documentElement.dataset.coveTheme
     },
   )
 
@@ -223,7 +212,7 @@ describe('Control Center surfaces', () => {
     expect(actions.onChangeUiTheme).not.toHaveBeenCalled()
     vi.mocked(registry.usePluginRegistry).mockReturnValue({ plugins: [plugin], error: null })
     rerender(<Harness uiTheme="plugin:example-tool:night" />)
-    expect(screen.getByTestId('control-center-current-theme').textContent).toBe('Prism Night')
+    expect(screen.getByTestId('control-center-current-theme').textContent).toContain('Prism Night')
     expect(screen.queryByRole('status')).toBeNull()
     expect(actions.onChangeUiTheme).not.toHaveBeenCalled()
   })
@@ -251,12 +240,13 @@ describe('Control Center surfaces', () => {
     render(<Harness />)
     const trigger = openControls()
     const surface = screen.getByRole('dialog', { name: 'Control Center' })
-    const pixelBackground = screen.getByRole('switch', { name: 'Background twinkle' })
+    const dark = screen.getByRole('radio', { name: 'Dark' })
     expect(surface.getAttribute('aria-modal')).toBe('true')
+    expect(surface).toHaveClass('control-center--sheet', 'cove-pixel-window')
     expect(screen.getByTestId('app-shell').inert).toBe(true)
-    expect(document.activeElement).toBe(pixelBackground)
+    expect(document.activeElement).toBe(dark)
     screen.getByRole('button', { name: 'Outside action' }).focus()
-    expect(document.activeElement).toBe(pixelBackground)
+    expect(document.activeElement).toBe(dark)
     const close = screen.getByTestId('control-center-close')
     const settings = screen.getByTestId('control-center-open-settings')
     settings.focus()
@@ -271,18 +261,26 @@ describe('Control Center surfaces', () => {
     expect(document.activeElement).toBe(trigger)
   })
 
-  it.each([360, 1200])('hands focus to Settings at %i px without delayed restoration', width => {
-    setViewportWidth(width)
-    render(<Harness />)
-    const trigger = openControls()
-    fireEvent.click(screen.getByTestId('control-center-open-settings'))
-    expect(screen.queryByTestId('control-center')).toBeNull()
-    const search = screen.getByRole('textbox', { name: 'Search settings' })
-    expect(document.activeElement).toBe(search)
-    act(() => vi.runOnlyPendingTimers())
-    expect(document.activeElement).toBe(search)
-    expect(document.activeElement).not.toBe(trigger)
-  })
+  it.each([
+    [360, 'control-center-open-settings', null],
+    [1200, 'control-center-open-settings', null],
+    [1200, 'control-center-open-notification-settings', 'notifications'],
+  ] as const)(
+    'hands focus to Settings at %i px from %s without delayed restoration',
+    (width, testId, pageId) => {
+      setViewportWidth(width)
+      render(<Harness />)
+      const trigger = openControls()
+      fireEvent.click(screen.getByTestId(testId))
+      expect(openSettingsAt).toHaveBeenCalledWith(pageId)
+      expect(screen.queryByTestId('control-center')).toBeNull()
+      const search = screen.getByRole('textbox', { name: 'Search settings' })
+      expect(document.activeElement).toBe(search)
+      act(() => vi.runOnlyPendingTimers())
+      expect(document.activeElement).toBe(search)
+      expect(document.activeElement).not.toBe(trigger)
+    },
+  )
 
   it('releases the mobile input lock and preserves settings when resizing to desktop', () => {
     setViewportWidth(360)
@@ -293,9 +291,8 @@ describe('Control Center surfaces', () => {
     act(() => vi.runOnlyPendingTimers())
     expect(screen.getByTestId('app-shell').inert).toBe(false)
     expect(screen.getByTestId('control-center').getAttribute('aria-modal')).toBeNull()
-    expect(document.activeElement).toBe(screen.getByRole('switch', { name: 'Background twinkle' }))
+    expect(document.activeElement).toBe(screen.getByRole('radio', { name: 'Dark' }))
     expect(actions.onChangeUiTheme).not.toHaveBeenCalled()
     expect(actions.onToggleMinimap).not.toHaveBeenCalled()
-    expect(actions.onChangeBackgroundTwinkle).not.toHaveBeenCalled()
   })
 })

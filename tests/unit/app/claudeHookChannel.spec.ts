@@ -80,6 +80,8 @@ describe('Claude hook channel', () => {
       {
         sessionId: 'session-1',
         state: 'waiting',
+        hookEventName: 'PermissionRequest',
+        blockedReason: 'permission',
         source: 'claude_hook',
         hookInstallState: 'installed',
       },
@@ -105,6 +107,7 @@ describe('Claude hook channel', () => {
       {
         sessionId: 'session-1',
         state: 'working',
+        hookEventName: 'UserPromptSubmit',
         source: 'claude_hook',
         hookInstallState: 'installed',
       },

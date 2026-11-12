@@ -1,3 +1,4 @@
+import { enSettingsPanelNotifications } from './en.settingsPanel.notifications'
 import { enSettingsPanelAgent } from './en.settingsPanel.agent'
 import { enSettingsPanelPlugins } from './en.settingsPanel.plugins'
 import { enSettingsPanelAppearanceNext } from './en.settingsPanel.appearanceNext'
@@ -35,8 +36,6 @@ export const enSettingsPanel = {
       dark: 'Cove',
       light: 'Cove Light',
       system: 'Cove (System)',
-      pixel: 'Pixel',
-      pixelLight: 'Pixel Light',
     },
     interfaceFontSize: 'Interface Font Size',
     terminalFontSize: 'Terminal Font Size',
@@ -140,24 +139,7 @@ export const enSettingsPanel = {
       enabled: 'Enabled',
     },
   },
-  notifications: {
-    title: 'Notifications',
-    systemNotifications: {
-      enabledLabel: 'System notifications',
-      enabledHelp:
-        'Show a native system notification when an agent transitions from working to standby.',
-    },
-    agentStandbyBanner: {
-      enabledLabel: 'Notification banner',
-      enabledHelp: 'Show an in-app banner when an agent transitions from working to standby.',
-      contextTitle: 'Banner context',
-      contextHelp: 'Choose what context chips are shown in the banner.',
-      showTask: 'Show task',
-      showSpace: 'Show space',
-      showBranch: 'Show branch',
-      showPullRequest: 'Show PR',
-    },
-  },
+  notifications: enSettingsPanelNotifications,
   canvas: {
     title: 'Canvas',
     inputModeLabel: 'Input Mode',

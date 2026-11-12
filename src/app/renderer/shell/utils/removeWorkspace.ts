@@ -1,3 +1,4 @@
+import { killUnownedNodeRuntime } from '@contexts/workspace/presentation/renderer/utils/managedClaudeLifecycle'
 import { cleanupNodeRuntimeArtifacts } from '@contexts/workspace/presentation/renderer/utils/nodeRuntimeCleanup'
 import { allowNextEmptyWorkspacePersistedStateWrite } from '@contexts/workspace/presentation/renderer/utils/persistence'
 import { useAppStore } from '../store/useAppStore'
@@ -18,12 +19,7 @@ export async function removeWorkspace(workspaceId: string): Promise<void> {
       cleanupNodeRuntimeArtifacts(node.id, node.data.sessionId)
     })
 
-    await Promise.allSettled(
-      targetWorkspace.nodes
-        .map(node => node.data.sessionId)
-        .filter(sessionId => sessionId.length > 0)
-        .map(sessionId => window.opencoveApi.pty.kill({ sessionId })),
-    )
+    await Promise.allSettled(targetWorkspace.nodes.map(node => killUnownedNodeRuntime(node)))
 
     const nextWorkspaces = store.workspaces.filter(workspace => workspace.id !== workspaceId)
     if (nextWorkspaces.length === 0) {

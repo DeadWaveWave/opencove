@@ -45,11 +45,19 @@ async function readBackground(page: Page) {
       return {
         mode: body.dataset.coveTerminalBackground,
         terminal: getComputedStyle(node.querySelector('.terminal-node__terminal')!).backgroundColor,
-        plate: getComputedStyle(body).backgroundImage,
+        // The reading plate is one layer under the whole window (window-plate.css).
+        plate: getComputedStyle(node.querySelector('[data-cove-part="window-plate"]')!)
+          .backgroundColor,
         token: getComputedStyle(node).getPropertyValue('--cove-terminal-background').trim(),
       }
     })
   return { ...dom, xterm }
+}
+
+/** `#rrggbb` as the computed `rgb()` the plate paints. */
+function rgbOf(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map(at => Number.parseInt(hex.slice(at, at + 2), 16))
+  return `rgb(${r}, ${g}, ${b})`
 }
 
 test('terminal text sits on the reading plate and switching keeps the shell', async () => {
@@ -73,7 +81,8 @@ test('terminal text sits on the reading plate and switching keeps the shell', as
     await expect.poll(async () => (await readBackground(window)).mode).toBe('transparent')
     const transparent = await readBackground(window)
     expect(transparent.terminal).toBe('rgba(0, 0, 0, 0)')
-    expect(transparent.plate).toContain('linear-gradient')
+    // The text sits on the plate, and the plate is the terminal colour.
+    expect(transparent.plate).toBe(rgbOf(transparent.token))
     expect(transparent.xterm?.allowTransparency).toBe(true)
     expect(transparent.xterm?.background).toMatch(/^rgba\(\d+, \d+, \d+, 0\)$/)
 

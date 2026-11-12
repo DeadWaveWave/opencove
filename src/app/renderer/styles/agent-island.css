@@ -1,0 +1,272 @@
+/*
+ * The agent island (shell/components/AppHeaderAgentActivity.tsx): the top bar's agent pill and
+ * the list it opens. The pill is a pixel button: amber with the marks of the agents waiting for
+ * you, or neutral with three working dots. The list is a pixel game window (.cove-pixel-window)
+ * whose lines read as a game menu, as in the control center: a pixel cursor points at the line
+ * under the pointer or focus, and the sections part on 2px dotted rules.
+ * Both are ghost Buttons; the doubled class outranks the ghost hover and focus rules.
+ */
+.cove-button.agent-activity-pill {
+  --agent-activity-pill-surface: var(--cove-pixel-fill);
+  height: 24px;
+  padding: 0 var(--cove-spacing-2) 0 var(--cove-spacing-1);
+  border: 0;
+  border-radius: 0;
+  background: var(--agent-activity-pill-surface);
+  box-shadow: var(--cove-pixel-raised);
+  clip-path: var(--cove-pixel-corners);
+  color: var(--cove-text-muted);
+  font-size: var(--cove-font-size-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.agent-activity-pill > .cove-button__content {
+  gap: var(--cove-spacing-1);
+}
+
+.cove-button.agent-activity-pill[data-tone='working'] {
+  padding-left: var(--cove-spacing-2);
+}
+
+.cove-button.agent-activity-pill[data-tone='waiting'] {
+  --agent-activity-pill-surface: var(--cove-status-waiting-surface);
+  color: var(--cove-status-waiting-text);
+}
+
+.cove-button.agent-activity-pill:not(:disabled):hover {
+  --agent-activity-pill-surface: var(--cove-pixel-fill-hover);
+  background: var(--agent-activity-pill-surface);
+  color: var(--cove-text);
+}
+
+.cove-button.agent-activity-pill[data-tone='waiting']:not(:disabled):hover {
+  --agent-activity-pill-surface: color-mix(
+    in srgb,
+    var(--cove-status-waiting) 22%,
+    var(--cove-status-waiting-surface)
+  );
+  background: var(--agent-activity-pill-surface);
+  color: var(--cove-status-waiting-text);
+}
+
+/* Open, the pill sits pressed: shaded along its top, lit along neither edge. */
+.cove-button.agent-activity-pill[aria-expanded='true'] {
+  box-shadow: var(--cove-pixel-pressed);
+}
+
+.cove-button.agent-activity-pill:focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: -2px;
+}
+
+/* The waiting agents' marks lie stacked like cards, each parted from the next by the pill. */
+.agent-activity-pill__marks {
+  display: inline-flex;
+  align-items: center;
+}
+
+.agent-activity-pill__marks > .cove-kind-tile {
+  border-radius: 0;
+  box-shadow:
+    inset 0 0 0 1px var(--cove-kind-tile-line),
+    0 0 0 2px var(--agent-activity-pill-surface);
+}
+
+.agent-activity-pill__marks > .cove-kind-tile + .cove-kind-tile {
+  margin-left: calc(-2 * var(--cove-spacing-1));
+}
+
+/* The list: a game window under the pill; only its body scrolls. */
+.agent-activity-list {
+  width: min(340px, calc(100vw - 24px));
+  max-height: calc(100dvh - var(--cove-app-header-height) - 16px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  transform-origin: top right;
+}
+
+.agent-activity-list__body {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  overflow-y: auto;
+  padding-bottom: var(--cove-spacing-1);
+}
+
+.agent-activity-list__section {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 2px;
+  margin-inline: var(--cove-spacing-3);
+  padding-block: var(--cove-spacing-3) var(--cove-spacing-1);
+}
+
+.agent-activity-list__section + .agent-activity-list__section {
+  background: var(--cove-pixel-dots) left top / 4px 2px repeat-x;
+}
+
+.agent-activity-list__section-label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--cove-spacing-2);
+  margin: 0 0 var(--cove-spacing-1);
+  color: var(--cove-text-muted);
+  font-size: var(--cove-font-size-caption);
+  font-weight: 600;
+  line-height: var(--cove-line-height-caption);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* The section's marker: one 4px pixel, amber for the agents waiting for you. */
+.agent-activity-list__section-label::before {
+  content: '';
+  flex: none;
+  width: 4px;
+  height: 4px;
+  background: var(--cove-text-faint);
+}
+
+.agent-activity-list__section[data-tone='waiting'] > .agent-activity-list__section-label {
+  color: var(--cove-status-waiting-text);
+}
+
+.agent-activity-list__section[data-tone='waiting'] > .agent-activity-list__section-label::before {
+  background: var(--cove-status-waiting);
+}
+
+.agent-activity-list__count {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.cove-button.agent-activity-list__row {
+  height: auto;
+  min-height: 44px;
+  justify-content: flex-start;
+  margin-inline: calc(-1 * var(--cove-spacing-1));
+  padding: var(--cove-spacing-1) var(--cove-spacing-1) var(--cove-spacing-1) 0;
+  border: 0;
+  border-radius: 0;
+  clip-path: var(--cove-pixel-corners);
+  color: var(--cove-text);
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  text-align: left;
+  white-space: normal;
+}
+
+.agent-activity-list__row > .cove-button__content {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 12px auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--cove-spacing-2);
+}
+
+.cove-button.agent-activity-list__row:not(:disabled):hover {
+  background: var(--cove-pixel-fill);
+  color: var(--cove-text);
+}
+
+.cove-button.agent-activity-list__row:focus-visible {
+  outline: 2px solid var(--cove-focus-ring);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+.agent-activity-list__cursor {
+  display: inline-flex;
+  margin-left: var(--cove-spacing-1);
+  color: var(--cove-accent-text);
+  visibility: hidden;
+}
+
+.agent-activity-list__row:hover .agent-activity-list__cursor,
+.agent-activity-list__row:focus-visible .agent-activity-list__cursor {
+  visibility: visible;
+  animation: cove-pixel-blink 960ms steps(1, end) infinite;
+}
+
+.agent-activity-list__copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.agent-activity-list__title,
+.agent-activity-list__place {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-activity-list__title {
+  font-size: var(--cove-font-size-secondary);
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.agent-activity-list__place {
+  color: var(--cove-text-muted);
+  font-size: var(--cove-font-size-caption);
+  line-height: 1.2;
+}
+
+.agent-activity-list__trailing {
+  display: inline-flex;
+  color: var(--cove-text-faint);
+  font-size: var(--cove-font-size-caption);
+  white-space: nowrap;
+}
+
+.agent-activity-list__section[data-tone='waiting'] .agent-activity-list__trailing {
+  color: var(--cove-status-waiting-text);
+}
+
+/*
+ * The agent's window icon: its mark on the AI tint, square-stepped, with its project's tile at
+ * the lower right corner. Both draw at whole pixels, so the 12-cell icons stay sharp.
+ */
+.agent-activity-mark {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  width: 28px;
+  height: 28px;
+}
+
+.agent-activity-mark > .cove-kind-tile {
+  width: 28px;
+  height: 28px;
+  border-radius: 0;
+  clip-path: var(--cove-pixel-corners);
+}
+
+.agent-activity-mark > .agent-activity-mark__project {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 0;
+  clip-path: var(--cove-pixel-corners);
+}
+
+.agent-activity-mark > .agent-activity-mark__project > .cove-project-tile__icon {
+  width: 12px;
+  height: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-activity-list__row:hover .agent-activity-list__cursor,
+  .agent-activity-list__row:focus-visible .agent-activity-list__cursor {
+    animation: none;
+  }
+}

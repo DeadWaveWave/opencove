@@ -1,3 +1,4 @@
+import { normalizeClientFeatures } from '../../../shared/contracts/controlSurface/clientFeatures'
 import { PluginViewRoutes } from './pluginViewRoutes'
 import { app, ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
@@ -44,6 +45,7 @@ function normalizeInvokeRequestPayload(payload: unknown): ControlSurfaceInvokeRe
   }
 
   return {
+    clientFeatures: normalizeClientFeatures(payload.clientFeatures),
     kind,
     id: idRaw.trim(),
     payload: payload.payload,

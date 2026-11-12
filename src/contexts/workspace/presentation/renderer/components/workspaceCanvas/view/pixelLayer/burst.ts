@@ -12,6 +12,7 @@ export interface PixelBurstFrame extends PixelNodeFrame {
 }
 
 interface BurstEntry {
+  family: PixelNodeFrame['family']
   id: string
   sessionId: string
   worldRect: PixelRect
@@ -24,7 +25,7 @@ function validViewport(viewport: PixelViewport): boolean {
   return Object.values(viewport).every(Number.isFinite) && viewport.zoom > 0
 }
 
-/** Closing owns node removal. This timeline retains only copied geometry for its brief afterimage. */
+/** Closing owns node removal. This timeline retains only copied geometry and kind family for its brief afterimage. */
 export function createPixelBurst(durationMs = PIXEL_BURST_MS) {
   const entries = new Map<string, BurstEntry>()
   const expire = (now: number) => {
@@ -57,6 +58,7 @@ export function createPixelBurst(durationMs = PIXEL_BURST_MS) {
       }
       entries.set(frame.id, {
         id: frame.id,
+        family: frame.family,
         sessionId: frame.sessionId,
         worldRect: {
           x: (x - viewport.x) / viewport.zoom,
@@ -94,6 +96,7 @@ export function createPixelBurst(durationMs = PIXEL_BURST_MS) {
         }
         frames.push({
           id: entry.id,
+          family: entry.family,
           sessionId: entry.sessionId,
           rect,
           sourceSize: { ...entry.sourceSize },

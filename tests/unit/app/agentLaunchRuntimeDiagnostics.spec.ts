@@ -41,4 +41,18 @@ describe('agent launch runtime diagnostics', () => {
     expect(argsShape).toContain('<arg:index=2:len=15>')
     expect(argsShape).not.toContain('- secret prompt')
   })
+
+  it('shows the claude permission mode so support can tell a safe launch from a bypassed one', () => {
+    const details = describeAgentLaunchCommand({
+      provider: 'claude-code',
+      mode: 'resume',
+      cwd: '/workspace',
+      command: 'claude',
+      args: ['--permission-mode', 'default', '--resume', 'session-secret'],
+    })
+
+    const argsShape = String(details.argsShape)
+    expect(argsShape).toContain('"--permission-mode","default"')
+    expect(argsShape).not.toContain('session-secret')
+  })
 })

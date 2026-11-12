@@ -1,20 +1,35 @@
+import { agentPromptErrorPresentation } from './agentPromptError'
+import { agentSpawnErrorPresentation } from './agentSpawnError'
+import { nodeParentErrorPresentation } from './nodeParentError'
 import { fileSystemErrorReasonMessage } from './filesystemError'
+import { publicTerminalSpawnApplicationError } from './terminalSpawnErrorReasons'
 import type { AppErrorCode, AppErrorDescriptor, AppErrorParams } from '../contracts/dto'
 import type { IpcInvokeResult } from '../contracts/ipc'
 
 function createMessageMap(): Record<AppErrorCode, string> {
   return {
+    'common.protocol_incompatible': 'Client and server protocol versions are incompatible.',
+    'common.forbidden': 'This credential does not permit the operation.',
     'common.invalid_input': 'The request was invalid.',
     'plugin.operation_failed': 'Plugin operation failed.',
     'common.approved_path_required': 'The selected path is outside approved workspaces.',
     'common.unavailable': 'This feature is unavailable.',
     'common.unexpected': 'Something went wrong. Please try again.',
+    'worker.external_owner_unreachable':
+      'Another Worker owns this data directory but is unreachable or incompatible. Stop it explicitly before retrying.',
+    'worker.stop_not_owned':
+      'This Worker was started outside OpenCove Desktop. Stop it where it was started, for example with opencove worker stop.',
     'worker.unavailable': 'Worker is unavailable.',
     'endpoint.operation_in_progress': 'Another endpoint operation is already in progress.',
     'space.not_found': 'Space not found.',
     'space.ambiguous': 'Space locator matched multiple spaces.',
+    'agent.spawn_depth_limit': 'This runtime would exceed the maximum agent lineage depth of 3.',
+    'agent.spawn_concurrency_limit':
+      'This agent tree has reached its limit of 6 active or starting agent-created runtimes.',
+    'node.parent_unavailable': 'The parent node could not be resolved.',
     'node.not_found': 'Node not found.',
     'node.unsupported_operation': 'This node operation is not supported.',
+    'session.transcript_not_ready': 'Session transcript is not available yet.',
     'session.not_found': 'Session not found.',
     'control_surface.unauthorized': 'Unauthorized request.',
     'integration.github.unavailable': 'GitHub integration is unavailable.',
@@ -70,9 +85,26 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'terminal.attach_failed': 'Unable to attach the terminal session.',
     'terminal.detach_failed': 'Unable to detach the terminal session.',
     'terminal.snapshot_failed': 'Unable to read terminal output.',
+    'agent.blocked': 'The agent is waiting for input.',
+    'agent.delivery_unsettled':
+      'A previous delivery is unresolved. Check its delivery status; never resend.',
+    'agent.busy': 'The agent is busy.',
+    'agent.state_unknown': 'Agent readiness is not established.',
+    'agent.not_running': 'The agent is not running.',
+    'agent.prompt_unsupported': 'Prompt delivery is unsupported.',
+    'agent.prompt_interrupted':
+      'Text may have reached the terminal; Enter was not sent by this operation; inspect before retrying.',
+    'agent.prompt_stalled':
+      'Submission was not observed; do not resend; check the agent before retrying.',
+    'agent.prompt_timeout': 'Prompt delivery deadline expired before any write.',
     'agent.list_models_failed': 'Unable to load models for this provider.',
     'agent.install_failed': 'Unable to install this agent provider.',
+    'agent.managed_launch_rejected':
+      'This agent session has changed or cannot be resumed. Refresh the workspace and try again.',
+    'agent.managed_launch_commit_failed':
+      'The agent launch could not be confirmed. Check the session before trying again.',
     'agent.launch_failed': 'Unable to start the agent.',
+    'agent.final_message_unavailable': 'No retained hook message is available for this turn.',
     'agent.read_last_message_failed': 'Unable to read the last agent message.',
     'agent.resume_session_resolve_failed': 'Unable to resolve the previous agent session.',
     'task.suggest_title_failed': 'Unable to generate task details.',
@@ -80,6 +112,8 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'persistence.quota_exceeded': 'Storage quota was exceeded.',
     'persistence.payload_too_large': 'Workspace state is too large to save.',
     'persistence.io_failed': 'Unable to save data to storage.',
+    'persistence.owned_node_identity_conflict':
+      'This agent has changed. Refresh the workspace and try again.',
     'persistence.invalid_state': 'The workspace state could not be saved.',
     'persistence.invalid_node_id': 'The terminal history could not be saved.',
     'update.get_state_failed': 'Unable to read the update status.',
@@ -193,6 +227,22 @@ export function toAppErrorDescriptor(
 
 export function formatAppErrorMessage(error: AppErrorDescriptor | OpenCoveAppError): string {
   const descriptor = error instanceof OpenCoveAppError ? error.toDescriptor() : error
+  const spawnApplication = publicTerminalSpawnApplicationError(descriptor)
+  if (spawnApplication) {
+    return spawnApplication.debugMessage
+  }
+  const prompt = agentPromptErrorPresentation(descriptor)
+  if (prompt) {
+    return prompt.message
+  }
+  const spawn = agentSpawnErrorPresentation(descriptor)
+  if (spawn) {
+    return `${spawn.message} ${spawn.hint}`
+  }
+  const parent = nodeParentErrorPresentation(descriptor)
+  if (parent) {
+    return parent.message
+  }
   const message = APP_ERROR_MESSAGES[descriptor.code] ?? APP_ERROR_MESSAGES['common.unexpected']
   if (descriptor.code.startsWith('filesystem.')) {
     const reason = fileSystemErrorReasonMessage(descriptor.params?.reason)

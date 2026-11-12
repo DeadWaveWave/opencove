@@ -18,16 +18,10 @@ export interface PluginWindowList {
   }>
 }
 
-interface CliResult<T> {
-  ok: boolean
-  value?: T
-  error?: { debugMessage?: string; message?: string }
-}
-
 async function cli(userDataDir: string, args: string[]) {
   const execution = await runCommand(
     process.execPath,
-    [resolve(__dirname, '../../src/app/cli/opencove.mjs'), 'plugin', ...args],
+    [resolve(__dirname, '../../out/cli/opencove.mjs'), 'plugin', ...args],
     resolve(__dirname, '../..'),
     {
       timeoutMs: 45_000,
@@ -35,24 +29,21 @@ async function cli(userDataDir: string, args: string[]) {
       env: { ...process.env, OPENCOVE_USER_DATA_DIR: userDataDir },
     },
   )
-  if (!execution.stdout.trim()) {
-    throw new Error(`Plugin CLI produced no result: ${execution.stderr}`)
-  }
-  return { execution, result: JSON.parse(execution.stdout) as CliResult<unknown> }
+  return execution
 }
 
 export async function pluginCli<T>(userDataDir: string, args: string[]): Promise<T> {
-  const { execution, result } = await cli(userDataDir, args)
-  expect(execution.exitCode, result.error?.debugMessage ?? execution.stderr).toBe(0)
-  expect(result.ok).toBe(true)
-  return result.value as T
+  const execution = await cli(userDataDir, args)
+  expect(execution.exitCode, execution.stderr).toBe(0)
+  expect(execution.stdout).not.toContain('__opencoveControlEnvelope')
+  return JSON.parse(execution.stdout) as T
 }
 
 export async function pluginCliFailure(userDataDir: string, args: string[]): Promise<string> {
-  const { execution, result } = await cli(userDataDir, args)
+  const execution = await cli(userDataDir, args)
   expect(execution.exitCode).toBe(1)
-  expect(result.ok).toBe(false)
-  return result.error?.debugMessage ?? result.error?.message ?? JSON.stringify(result.error)
+  expect(execution.stdout).toBe('')
+  return JSON.parse(execution.stderr).error.message
 }
 
 export async function createCommandPlugin(instances: 'single' | 'multiple') {

@@ -1,3 +1,7 @@
+import {
+  WorkspaceCanvasNodeTypesProvider,
+  type WorkspaceCanvasNodeTypesParams,
+} from './nodeTypes.context'
 import type { ReactNode, ComponentProps } from 'react'
 import { useReactFlow, type Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../types'
@@ -11,6 +15,7 @@ import { useWorkspaceDocumentNavigation } from './hooks/useWorkspaceDocumentNavi
 
 export function WorkspaceCanvasProviders({
   collapse,
+  nodeTypesParameters,
   children,
   setContextMenu,
   closeOtherMenus,
@@ -18,6 +23,7 @@ export function WorkspaceCanvasProviders({
   openExplorerSpaceId,
   ...filesystemParams
 }: FilesystemNodesParams & {
+  nodeTypesParameters: WorkspaceCanvasNodeTypesParams
   collapse: ReturnType<typeof useCanvasCollapse>
   children: ReactNode
   openSpaceExplorer: (spaceId: string) => void
@@ -36,25 +42,27 @@ export function WorkspaceCanvasProviders({
     openExplorerSpaceId,
   })
   return (
-    <WindowNodeContextMenuProvider
-      setContextMenu={setContextMenu}
-      closeOtherMenus={closeOtherMenus}
-    >
-      <WorkspaceCollapseContext value={collapse}>
-        <FilesystemNodesContext value={filesystem.actions}>
-          <div
-            style={{ display: 'contents' }}
-            onDragOver={filesystem.handleDragOver}
-            onDrop={filesystem.handleDrop}
-            onDragOverCapture={filesystem.handleNativeDragOver}
-            onDropCapture={filesystem.handleNativeDrop}
-          >
-            <WorkspaceDocumentNavigationContext value={documentNavigation}>
-              {children}
-            </WorkspaceDocumentNavigationContext>
-          </div>
-        </FilesystemNodesContext>
-      </WorkspaceCollapseContext>
-    </WindowNodeContextMenuProvider>
+    <WorkspaceCanvasNodeTypesProvider value={nodeTypesParameters}>
+      <WindowNodeContextMenuProvider
+        setContextMenu={setContextMenu}
+        closeOtherMenus={closeOtherMenus}
+      >
+        <WorkspaceCollapseContext value={collapse}>
+          <FilesystemNodesContext value={filesystem.actions}>
+            <div
+              style={{ display: 'contents' }}
+              onDragOver={filesystem.handleDragOver}
+              onDrop={filesystem.handleDrop}
+              onDragOverCapture={filesystem.handleNativeDragOver}
+              onDropCapture={filesystem.handleNativeDrop}
+            >
+              <WorkspaceDocumentNavigationContext value={documentNavigation}>
+                {children}
+              </WorkspaceDocumentNavigationContext>
+            </div>
+          </FilesystemNodesContext>
+        </WorkspaceCollapseContext>
+      </WindowNodeContextMenuProvider>
+    </WorkspaceCanvasNodeTypesProvider>
   )
 }

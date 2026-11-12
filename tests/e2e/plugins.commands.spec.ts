@@ -26,7 +26,7 @@ import {
 
 const settings = {
   language: 'en' as const,
-  uiTheme: 'pixel' as const,
+  uiTheme: 'dark' as const,
   focusNodeOnClick: false,
   canvasInputMode: 'mouse' as const,
   nodeCreationPixelEffectEnabled: false,
@@ -105,13 +105,13 @@ test.describe('Independent plugin CLI and window ownership', () => {
       await commandList.scrollIntoViewIfNeeded()
       await capturePlugins(page, info, 'plugin-agent-tools-pixel')
       await page.getByTestId('settings-section-nav-appearance').click()
-      await selectCoveOption(page, 'settings-ui-theme', 'pixel-light')
+      await selectCoveOption(page, 'settings-ui-theme', 'light')
       await page.getByTestId('settings-section-nav-plugins').click()
       await page.getByTestId(`settings-plugin-details-${source.id}`).click()
       await commandList.scrollIntoViewIfNeeded()
-      await capturePlugins(page, info, 'plugin-agent-tools-pixel-light')
+      await capturePlugins(page, info, 'plugin-agent-tools-light')
       await page.getByTestId('settings-section-nav-appearance').click()
-      await selectCoveOption(page, 'settings-ui-theme', 'pixel')
+      await selectCoveOption(page, 'settings-ui-theme', 'dark')
       await page.locator('.settings-panel__close').click()
 
       const result = await pluginCli<{ nodeId: string; label: string; executions: number }>(

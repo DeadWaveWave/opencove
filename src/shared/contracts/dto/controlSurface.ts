@@ -1,3 +1,8 @@
+import type {
+  ManagedClaudeLaunchIntent,
+  ManagedClaudeLifecycleReceipt,
+  ManagedClaudeBindingObservation,
+} from '../managedClaudeLaunch'
 import type { AgentProviderId } from './agent'
 import type { TerminalPtyGeometry, TerminalRuntimeKind } from './terminal'
 import type { PresentationSnapshotTerminalResult } from './terminal'
@@ -34,6 +39,12 @@ export interface ControlSurfaceCapabilitiesResult {
   protocolVersion: number
   appVersion: string | null
   features: {
+    managedClaudeResumeBindingV1?: boolean
+    managedClaudeResumeBindingDeliveryV1?: boolean
+    managedClaudeResumeBindingWritesEnabled?: boolean
+    nodeLineageV1?: boolean
+    boundedAgentSpawningV1?: boolean
+    operationRegistry?: boolean
     webShell: boolean
     sync: {
       state: boolean
@@ -67,6 +78,7 @@ export type CanvasNodeKind =
   | 'unknown'
 
 export interface CanvasNodeSummary {
+  data?: import('./nodeControl').CompactNodeDataDto
   id: string
   kind: CanvasNodeKind
   title: string
@@ -124,6 +136,8 @@ export interface ListSpacesResult {
     directoryPath: string
     targetMountId: string | null
     parentSpaceId: string | null
+    /** Canvas geometry; absent on older Workers, null if no frame is saved. */
+    rect?: { x: number; y: number; width: number; height: number } | null
     boundary: SpaceBoundary
     sortOrder: number
     nodeIds: string[]
@@ -144,6 +158,8 @@ export interface GetSpaceResult {
     directoryPath: string
     targetMountId: string | null
     parentSpaceId: string | null
+    /** Canvas geometry; absent on older Workers, null if no frame is saved. */
+    rect?: { x: number; y: number; width: number; height: number } | null
     boundary: SpaceBoundary
     sortOrder: number
     nodeIds: string[]
@@ -218,6 +234,9 @@ export interface ArchiveWorktreeResult {
 }
 
 export interface LaunchAgentSessionInput {
+  intent?: ManagedClaudeLaunchIntent
+  canvasNodeId?: string
+  workspaceId?: string
   spaceId?: string | null
   cwd?: string | null
   prompt: string
@@ -228,11 +247,16 @@ export interface LaunchAgentSessionInput {
   env?: Record<string, string> | null
   executablePathOverride?: string | null
   agentFullAccess?: boolean | null
+  codexReuseRunningAppServer?: boolean | null
   cols?: number | null
   rows?: number | null
 }
 
 export interface LaunchAgentSessionInMountInput {
+  intent?: ManagedClaudeLaunchIntent
+  canvasNodeId?: string
+  workspaceId?: string
+  spaceId?: string
   mountId: string
   cwdUri?: string | null
   prompt: string
@@ -243,11 +267,14 @@ export interface LaunchAgentSessionInMountInput {
   env?: Record<string, string> | null
   executablePathOverride?: string | null
   agentFullAccess?: boolean | null
+  codexReuseRunningAppServer?: boolean | null
   cols?: number | null
   rows?: number | null
 }
 
 export interface LaunchAgentSessionResult {
+  managedClaudeLifecycle?: ManagedClaudeLifecycleReceipt
+  managedClaudeBinding?: ManagedClaudeBindingObservation
   sessionId: string
   provider: AgentProviderId
   startedAt: string
@@ -260,9 +287,7 @@ export interface LaunchAgentSessionResult {
   args: string[]
 }
 
-export interface GetSessionInput {
-  sessionId: string
-}
+export type GetSessionInput = import('../controlSurface/operations/sessionAddress').SessionAddress
 
 export interface AttachAgentStateWatcherInput {
   sessionId: string
@@ -287,14 +312,12 @@ export interface GetSessionResult {
   args: string[]
 }
 
-export interface GetSessionFinalMessageInput {
-  sessionId: string
-}
+export type GetSessionFinalMessageInput = GetSessionInput
 
 export interface GetSessionFinalMessageResult {
   sessionId: string
   provider: AgentProviderId
-  startedAt: string
+  startedAt: string | null
   cwd: string
   resumeSessionId: string | null
   message: string | null
@@ -372,6 +395,8 @@ export interface PreparedRuntimeAgentResult {
 export type AgentRecoveryIssue = 'codex_writer_locked' | 'remote_worker_unavailable'
 
 export interface PreparedRuntimeNodeResult {
+  managedClaudeBinding?: ManagedClaudeBindingObservation
+  managedClaudeLifecycle?: ManagedClaudeLifecycleReceipt
   nodeId: string
   kind: 'terminal' | 'agent'
   recoveryState: 'live' | 'revived' | 'restarted' | 'fallback_terminal'
@@ -402,6 +427,8 @@ export interface PrepareOrReviveSessionResult {
 export type ControlSurfaceTerminalRuntime = 'shell' | 'node'
 
 export interface SpawnTerminalSessionInput {
+  canvasNodeId?: string
+  workspaceId?: string
   spaceId: string
   runtime?: ControlSurfaceTerminalRuntime | null
   command?: string | null
@@ -417,4 +444,17 @@ export interface SpawnTerminalSessionResult {
   command: string
   args: string[]
   executionContext: ExecutionContextDto
+}
+
+/** Node lookup does not invent launch-only metadata absent after restart. */
+export type GetNodeSessionResult = Omit<
+  GetSessionResult,
+  'provider' | 'startedAt' | 'prompt' | 'command' | 'args'
+> & {
+  nodeId: string
+  provider: AgentProviderId | null
+  startedAt: string | null
+  prompt: string | null
+  command: string | null
+  args: string[] | null
 }

@@ -43,7 +43,7 @@ test.describe('Agent preference order', () => {
         settings: {
           defaultProvider: 'pi',
           agentProviderOrder: ['codex', 'gemini', 'claude-code', 'opencode', 'pi', 'kimi'],
-          uiTheme: 'pixel',
+          uiTheme: 'dark',
         },
       })
       await openAgents(window)
@@ -135,7 +135,7 @@ test.describe('Agent preference order', () => {
     }
   })
 
-  for (const theme of ['pixel', 'pixel-light']) {
+  for (const theme of ['dark', 'light']) {
     test(`keeps large-font rows compact with long model names in ${theme}`, async ({
       browserName: _browserName,
     }, testInfo) => {

@@ -11,7 +11,7 @@ async function readCanvasGeometry(page: Page) {
   })
 }
 
-for (const theme of ['pixel', 'pixel-light']) {
+for (const theme of ['dark', 'light']) {
   test(`mobile navigation overlays the canvas in ${theme}`, async ({ page }, testInfo) => {
     const workspacePath = await createWorkspaceDir(`sidebar-${theme}`)
     const state = buildAppState({
@@ -87,7 +87,10 @@ for (const theme of ['pixel', 'pixel-light']) {
     await expect(page.locator('.workspace-item--active')).toContainText('Design system')
     await page.locator('.workspace-item').filter({ hasText: 'OpenCove' }).click()
     await expect(page.locator('.workspace-item--active')).toContainText('OpenCove')
-    await expect(drawer.locator('.workspace-agent-item [data-cove-pixel-glyph="ai"]')).toBeVisible()
+    const icon = drawer.locator('.workspace-agent-item [data-cove-node-kind-icon="agent"]')
+    await expect(icon).toBeVisible()
+    await expect(icon).toHaveAttribute('data-agent-provider', 'codex')
+    await expect(icon).not.toHaveAttribute('data-cove-pixel-glyph')
     const rowHeights = await drawer
       .locator('.workspace-space-item, .workspace-agent-item')
       .evaluateAll(rows => rows.map(row => row.getBoundingClientRect().height))

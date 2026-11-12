@@ -8,7 +8,12 @@ import {
   buildPixelBurstScene,
 } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/pixelLayer/burst'
 
-const frame = { id: 'node', sessionId: 'session', rect: { x: 0, y: 0, width: 300, height: 200 } }
+const frame = {
+  id: 'node',
+  family: 'shell' as const,
+  sessionId: 'session',
+  rect: { x: 0, y: 0, width: 300, height: 200 },
+}
 const viewport = { x: 0, y: 0, zoom: 1, width: 1000, height: 800 }
 
 describe('theme pixel timing', () => {

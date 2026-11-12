@@ -16,6 +16,7 @@ import { enCanvasCollapse } from './en.canvasCollapse'
 import { enEdgeBeacons } from './en.edgeBeacons'
 import { enCanvasHud } from './en.canvasHud'
 import { enControlCenter } from './en.controlCenter'
+import { enAgentAttention } from './en.agentAttention'
 import { enCommandCenter } from './en.commandCenter'
 import { enSpaceCollapse } from './en.spaceCollapse'
 
@@ -38,9 +39,14 @@ export const en = {
   ...enEdgeBeacons,
   ...enCanvasHud,
   ...enControlCenter,
+  ...enAgentAttention,
   ...enCommandCenter,
   ...enSpaceCollapse,
   common: {
+    workerStopNotOwned:
+      'This Worker was started outside OpenCove Desktop. Stop it where it was started, for example with opencove worker stop.',
+    workerExternalOwnerUnreachable:
+      'Another Worker owns this data directory but is unreachable or incompatible. Stop it explicitly before retrying.',
     actions: 'Actions',
     back: 'Back',
     closeShortcutSelectWindow: 'Select the window you want to close.',
@@ -116,7 +122,7 @@ export const en = {
     collapseProjectAgents: 'Collapse project agents',
     status: {
       working: 'Working',
-      waiting: 'Needs input',
+      waiting: 'Needs your answer',
       standby: 'Standby',
     },
     terminals_one: '{{count}} terminal',
@@ -140,12 +146,10 @@ export const en = {
     updateDownloadingTitle: 'Downloading version {{version}} ({{percent}})',
     restartToUpdateShort: 'Restart',
     restartToUpdateTitle: 'Version {{version}} is ready to install',
-    agentsWaiting_one: '{{count}} waiting',
-    agentsWaiting_other: '{{count}} waiting',
+    agentsWaiting_one: '{{count}} needs you',
+    agentsWaiting_other: '{{count}} need you',
     agentsWorking_one: '{{count}} working',
     agentsWorking_other: '{{count}} working',
-    goToWaitingAgent_one: 'An agent is waiting. Go to {{title}}',
-    goToWaitingAgent_other: '{{count}} agents waiting. Go to {{title}}',
   },
   whatsNew: {
     title: "What's New",
@@ -241,7 +245,7 @@ export const en = {
   agentRuntime: {
     working: 'Working',
     observing: 'Observing',
-    waiting: 'Waiting',
+    waiting: 'Needs your answer',
     standby: 'Standby',
     hookDegraded: 'Fallback',
     hookDegradedDetail: 'Agent hook unavailable or stale; session activity is driving status.',
@@ -255,6 +259,12 @@ export const en = {
     savedSettingsOnly: 'Storage quota reached; saved settings only.',
     unavailable: 'Storage is unavailable; changes will not be saved.',
     limitExceeded: 'Storage limit exceeded; unable to persist workspace state.',
+    saveUnconfirmed:
+      'Some changes could not be confirmed. Your unsaved changes are kept in this window.',
+    saveConflict:
+      'The workspace changed while saving. Your unsaved changes are kept in this window.',
+    quitSaveFailed: 'Some changes could not be saved before closing.',
+    ownedIdentityRestored: 'Restoring this agent’s saved state. Your other changes will be kept.',
     ioFailed: 'Persistence I/O failed: {{message}}',
     failed: 'Persistence failed: {{message}}',
     recoveryCorruptDb: 'Persistence database was corrupted and has been reset.',
@@ -288,11 +298,19 @@ export const en = {
     deleteTask: 'Delete task',
     noTags: 'No tags',
     editMeta: 'Edit priority and tags',
+    status: 'Task status',
     requirement: 'Task Requirement',
+    requirementPlaceholder: 'What needs doing? Drop files to add paths.',
     agents: 'Agent Sessions',
-    noAgentSessionsYet: 'No agent sessions yet.',
+    noSessionsHint: 'No sessions yet. Run to start one.',
+    noSessions: 'No sessions',
+    sessionCount_one: '{{count}} session',
+    sessionCount_other: '{{count}} sessions',
+    sessionsRunning_one: '{{count}} running',
+    sessionsRunning_other: '{{count}} running',
+    moreSessions_one: '{{count}} more session',
+    moreSessions_other: '{{count}} more sessions',
     defaultModel: 'default model',
-    lastRun: 'Last run · {{timestamp}}',
     resume: 'Resume',
     removeRecord: 'Remove Record',
     runAgent: 'Run',

@@ -147,8 +147,12 @@ export async function runRoleNodeAction(
     terminalFontSize: context.agentSettings.terminalFontSize,
   })
 
+  const agentNodeId = crypto.randomUUID()
   try {
     const launched = await launchWorkspaceAgentSession({
+      canvasNodeId: agentNodeId,
+      workspaceId: context.workspaceId,
+      spaceId: owningSpace?.id,
       mountId: initialBinding.mountId,
       workspacePath: context.workspacePath,
       executionDirectory: initialBinding.executionDirectory,
@@ -176,7 +180,11 @@ export async function runRoleNodeAction(
     })
 
     const createdAgentNode = await context.createNodeForSession({
+      nodeId: agentNodeId,
       sessionId: launched.sessionId,
+      ...(launched.managedClaudeLifecycle
+        ? { managedClaudeLifecycle: launched.managedClaudeLifecycle }
+        : {}),
       profileId: launched.profileId,
       runtimeKind: launched.runtimeKind,
       terminalGeometry: launchGeometry.terminalGeometry,

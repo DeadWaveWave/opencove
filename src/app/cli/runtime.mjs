@@ -1,17 +1,11 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+import { resolveCliAppRoot } from './appRoot.mjs'
 
 const PACKAGED_APP_ROOT_CANDIDATES = ['app.asar', 'app']
 const APP_VERSION_PATTERN = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/u
-
-function resolveCliDirectory() {
-  return resolve(fileURLToPath(new URL('.', import.meta.url)))
-}
-
-function resolveSourceRepoRoot(cliDirectory) {
-  return resolve(cliDirectory, '../../..')
-}
 
 function resolvePackagedResourcesPath(processObject) {
   const resourcesPath =
@@ -26,7 +20,7 @@ function readManifestValue(content, key) {
 }
 
 export function resolveCliRuntime(options = {}) {
-  const cliDirectory = options.cliDirectory ?? resolveCliDirectory()
+  const cliDirectory = options.cliDirectory ?? dirname(fileURLToPath(import.meta.url))
   const existsSyncImpl = options.existsSyncImpl ?? existsSync
   const readFileSyncImpl = options.readFileSyncImpl ?? readFileSync
   const resourcesPath =
@@ -36,7 +30,7 @@ export function resolveCliRuntime(options = {}) {
 
   // ELECTRON_RUN_AS_NODE still exposes Electron's own Resources directory. Only
   // treat it as our packaged application when this CLI actually lives there.
-  const cliAppRoot = resolveSourceRepoRoot(cliDirectory)
+  const cliAppRoot = resolveCliAppRoot(cliDirectory)
   const packagedAppRoot = resourcesPath
     ? PACKAGED_APP_ROOT_CANDIDATES.map(candidate => resolve(resourcesPath, candidate)).find(
         candidate => candidate === cliAppRoot,
@@ -44,7 +38,7 @@ export function resolveCliRuntime(options = {}) {
     : null
 
   if (!packagedAppRoot) {
-    const repoRoot = resolveSourceRepoRoot(cliDirectory)
+    const repoRoot = resolveCliAppRoot(cliDirectory)
     const manifestPath = resolve(repoRoot, '..', 'opencove-runtime.env')
     if (existsSyncImpl(manifestPath)) {
       const manifest = readFileSyncImpl(manifestPath, 'utf8')

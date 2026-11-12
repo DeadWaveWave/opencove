@@ -5,7 +5,6 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { normalizeThemeStylesheet } from '../../helpers/themeStylesheet'
 import {
   UI_THEMES,
-  UI_THEME_DESCRIPTORS,
   resolveUiThemeBaseScheme,
   type BuiltinUiTheme,
   type UiTheme,
@@ -29,9 +28,6 @@ beforeAll(() => {
     'node-chrome.css',
     'workspace-overlays.spaces.css',
     'themes/generated/cove.css',
-    'themes/pixel.css',
-    'themes/pixel-light.css',
-    'themes/pixel-material.css',
   ]
   const cssRoot = resolve(
     dirname(fileURLToPath(import.meta.url)),
@@ -54,11 +50,11 @@ afterAll(() => stylesheet.remove())
 
 function selectTheme(theme: UiTheme, prefersDark = true) {
   const root = document.documentElement
-  // Like the theme owner: the family follows the applied foundation, not the selected identity.
+  // Like the theme owner: the scheme follows the applied foundation, not the selected identity.
   const base = (root.dataset.coveThemeBase ?? theme) as BuiltinUiTheme
   root.dataset.coveTheme = resolveUiThemeBaseScheme(base, prefersDark)
   root.dataset.coveThemeId = theme
-  root.dataset.coveFamily = UI_THEME_DESCRIPTORS[base].family
+  root.dataset.coveFamily = 'cove'
   const style = getComputedStyle(document.documentElement)
   return {
     blue: style.getPropertyValue('--cove-pixel-blue').trim(),
@@ -77,25 +73,6 @@ function luminance(hex: string) {
 }
 
 describe('theme-adaptive pixel effects', () => {
-  it('gives Pixel Light its own light palette while explicit dark terminals remain dark', () => {
-    const genericLight = selectTheme('light')
-    const pixelLight = selectTheme('pixel-light')
-    expect(pixelLight).not.toEqual(genericLight)
-    const rootStyle = getComputedStyle(document.documentElement)
-    const surface = rootStyle.getPropertyValue('--cove-node-surface').trim()
-    const text = rootStyle.getPropertyValue('--cove-text').trim()
-    expect(luminance(surface)).toBeGreaterThan(0.9)
-    expect((luminance(surface) + 0.05) / (luminance(text) + 0.05)).toBeGreaterThan(7)
-    const terminal = document.createElement('div')
-    terminal.className = 'terminal-node'
-    document.body.append(terminal)
-    expect(rootStyle.getPropertyValue('--cove-terminal-background').trim()).toBe('#f8fbfd')
-    terminal.dataset.coveTerminalNodeTheme = 'dark'
-    expect(getComputedStyle(terminal).getPropertyValue('--cove-terminal-background').trim()).toBe(
-      '#0a0f1d',
-    )
-  })
-
   it.each(themes)('provides visible effect tokens independently of the %s theme toggle', theme => {
     const palette = selectTheme(theme)
     expect(palette.opacity).toBeGreaterThan(0)
@@ -111,14 +88,14 @@ describe('theme-adaptive pixel effects', () => {
     expect(dark).toEqual(selectTheme('dark'))
   })
 
-  it.each(['dark', 'light', 'pixel', 'pixel-light'] as const)(
+  it.each(['dark', 'light'] as const)(
     'inherits the %s palette from the resolved base even when the selected identity differs',
     theme => {
       const palette = selectTheme(theme)
       document.documentElement.dataset.coveThemeBase = theme
       expect(selectTheme(`plugin:custom-theme:${theme}`)).toEqual(palette)
       // A stale selected identity cannot override the authoritative inherited base.
-      expect(selectTheme(theme === 'pixel' ? 'dark' : 'pixel')).toEqual(palette)
+      expect(selectTheme(theme === 'dark' ? 'light' : 'dark')).toEqual(palette)
     },
   )
 
@@ -131,22 +108,6 @@ describe('theme-adaptive pixel effects', () => {
       const [low, high] = [luminance(color), luminance(surface)].sort((left, right) => left - right)
       expect((high! + 0.05) / (low! + 0.05)).toBeGreaterThan(3)
     }
-  })
-
-  it('preserves the Pixel preview identity while other themes adapt their effect colors', () => {
-    selectTheme('pixel')
-    // The Settings theme gallery shows Pixel's own colours whichever theme is active.
-    const family = document.createElement('div')
-    family.className = 'settings-theme-gallery__family'
-    family.dataset.themeFamily = 'pixel'
-    const preview = document.createElement('span')
-    preview.className = 'settings-theme-gallery__sample'
-    family.append(preview)
-    document.body.append(family)
-    const pixelPreview = getComputedStyle(preview).backgroundImage
-    expect(pixelPreview).toContain('linear-gradient')
-    selectTheme('dark')
-    expect(getComputedStyle(preview).backgroundImage).toBe(pixelPreview)
   })
 
   it.each(themes)('shows real selection on Document and Role nodes in %s', theme => {

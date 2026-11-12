@@ -310,8 +310,8 @@
 }
 
 .workspace-canvas__minimap-toggle svg {
-  width: 14px;
-  height: 14px;
+  width: var(--cove-icon-size-md);
+  height: var(--cove-icon-size-md);
 }
 
 .workspace-canvas__minimap-toggle:focus-visible {

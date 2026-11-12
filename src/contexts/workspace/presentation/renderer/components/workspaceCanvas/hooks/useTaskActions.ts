@@ -21,6 +21,7 @@ import type {
   UpdateTaskStatus,
 } from '../types'
 import { resumeTaskAgentSessionAction, runTaskAgentAction } from './useTaskActions.agentSession'
+import type { TaskActionContext } from './useTaskActions.agentSession.shared'
 
 interface UseTaskActionsParams {
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
@@ -35,7 +36,7 @@ interface UseTaskActionsParams {
     provider: AgentSettings['defaultProvider'],
     effectiveModel: string | null,
   ) => string
-  launchAgentInNode: (nodeId: string, mode: 'new' | 'resume') => Promise<void>
+  launchAgentInNode: TaskActionContext['launchAgentInNode']
   agentSettings: AgentSettings
   workspaceId: string
   workspacePath: string

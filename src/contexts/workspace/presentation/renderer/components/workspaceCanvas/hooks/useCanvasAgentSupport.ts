@@ -65,6 +65,7 @@ export function useWorkspaceCanvasAgentSupport({
     bumpAgentLaunchToken,
     isAgentLaunchTokenCurrent,
     agentFullAccess: agentSettings.agentFullAccess,
+    codexReuseRunningAppServer: agentSettings.codexReuseRunningAppServer,
     defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
     terminalFontSize: agentSettings.terminalFontSize,
     terminalDisplayMetrics,

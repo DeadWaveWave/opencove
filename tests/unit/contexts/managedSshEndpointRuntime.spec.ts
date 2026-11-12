@@ -152,7 +152,7 @@ describe('managedSshEndpointRuntime', () => {
     })
 
     expect(script).toContain('runtime inspect')
-    expect(script).toContain('runtime prepare')
+    expect(script).toContain('runtime prepare --stream-progress')
     expect(script).toContain(runtimeBuildFixture.buildId)
     expect(script).toContain('"endpointId":"managed-1"')
     expect(script).toContain('"token":"managed-token"')

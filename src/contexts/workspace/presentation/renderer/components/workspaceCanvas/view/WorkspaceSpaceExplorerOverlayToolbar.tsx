@@ -1,5 +1,12 @@
 import React from 'react'
-import { ChevronsDownUp, FilePlus, FolderPlus, RefreshCw, Search, X } from 'lucide-react'
+import {
+  CloseIcon,
+  FilePlusIcon,
+  FoldIcon,
+  FolderPlusIcon,
+  RefreshIcon,
+  SearchIcon,
+} from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 
 export function WorkspaceSpaceExplorerOverlayToolbar({
@@ -54,10 +61,15 @@ export function WorkspaceSpaceExplorerOverlayToolbar({
   }, [])
 
   const actions = [
-    { label: t('spaceExplorer.newFile'), Icon: FilePlus, onClick: onCreateFile },
-    { label: t('spaceExplorer.newFolder'), Icon: FolderPlus, onClick: onCreateFolder },
-    { label: t('spaceExplorer.collapseAll'), Icon: ChevronsDownUp, onClick: onCollapseAll },
-    { label: t('spaceExplorer.refresh'), Icon: RefreshCw, onClick: onRefresh, alwaysEnabled: true },
+    { label: t('spaceExplorer.newFile'), Icon: FilePlusIcon, onClick: onCreateFile },
+    { label: t('spaceExplorer.newFolder'), Icon: FolderPlusIcon, onClick: onCreateFolder },
+    { label: t('spaceExplorer.collapseAll'), Icon: FoldIcon, onClick: onCollapseAll },
+    {
+      label: t('spaceExplorer.refresh'),
+      Icon: RefreshIcon,
+      onClick: onRefresh,
+      alwaysEnabled: true,
+    },
   ]
 
   return (
@@ -104,7 +116,7 @@ export function WorkspaceSpaceExplorerOverlayToolbar({
           data-testid="workspace-space-explorer-filter-toggle"
           onClick={() => inputRef.current?.focus()}
         >
-          <Search className="workspace-space-explorer__filter-icon" aria-hidden="true" />
+          <SearchIcon className="workspace-space-explorer__filter-icon" />
         </button>
         <input
           ref={inputRef}
@@ -130,7 +142,7 @@ export function WorkspaceSpaceExplorerOverlayToolbar({
               inputRef.current?.focus()
             }}
           >
-            <X aria-hidden="true" />
+            <CloseIcon />
           </button>
         ) : null}
       </div>
@@ -142,7 +154,7 @@ export function WorkspaceSpaceExplorerOverlayToolbar({
         inert={areToolsHidden}
       >
         {actions
-          .filter(action => action.Icon !== ChevronsDownUp || viewMode === 'list')
+          .filter(action => action.Icon !== FoldIcon || viewMode === 'list')
           .map(({ label, Icon, onClick, alwaysEnabled }) => (
             <button
               key={label}

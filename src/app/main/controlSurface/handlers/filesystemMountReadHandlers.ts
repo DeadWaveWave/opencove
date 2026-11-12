@@ -1,4 +1,10 @@
-import { normalizeFileReadLimit } from '../../../../contexts/filesystem/domain/fileReadLimits'
+import { filesystemReadFileBytesInMountOperation } from '../../../../shared/contracts/controlSurface/operations/domains/filesystem'
+import {
+  filesystemReadDirectoryInMountOperation,
+  filesystemReadFileTextInMountOperation,
+  filesystemStatInMountOperation,
+} from '../../../../shared/contracts/controlSurface/operations/domains/filesystem'
+import { registerOperation } from '../registerOperation'
 import type { FileSystemPort } from '../../../../contexts/filesystem/application/ports'
 import {
   readDirectoryUseCase,
@@ -6,18 +12,13 @@ import {
   readFileTextUseCase,
   statUseCase,
 } from '../../../../contexts/filesystem/application/usecases'
-import { createAppError } from '../../../../shared/errors/appError'
 import type {
-  ReadDirectoryInMountInput,
   ReadDirectoryInput,
   ReadDirectoryResult,
-  ReadFileBytesInMountInput,
   ReadFileBytesInput,
   ReadFileBytesResult,
-  ReadFileTextInMountInput,
   ReadFileTextInput,
   ReadFileTextResult,
-  StatInMountInput,
   StatInput,
 } from '../../../../shared/contracts/dto'
 import { normalizeReadFileBytesResult } from '../../../../shared/contracts/dto/filesystemBytes'
@@ -26,12 +27,8 @@ import type { WorkerTopologyStore } from '../topology/topologyStore'
 import {
   assertFileUriWithinMountRoot,
   invokeRemoteValue,
-  isRecord,
-  normalizeFileSystemUri,
-  normalizeMountId,
   resolveMountTargetOrThrow,
 } from './filesystemMountSupport'
-
 export function registerFilesystemMountReadHandlers(
   controlSurface: ControlSurface,
   deps: {
@@ -40,20 +37,7 @@ export function registerFilesystemMountReadHandlers(
     assertApprovedUri: (uri: string, debugMessage: string) => Promise<void>
   },
 ): void {
-  controlSurface.register('filesystem.readFileBytesInMount', {
-    kind: 'query',
-    validate: (payload: unknown): ReadFileBytesInMountInput => {
-      if (!isRecord(payload)) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Invalid payload for filesystem.readFileBytesInMount.',
-        })
-      }
-
-      return {
-        mountId: normalizeMountId(payload.mountId, 'filesystem.readFileBytesInMount'),
-        uri: normalizeFileSystemUri(payload.uri, 'filesystem.readFileBytesInMount'),
-      }
-    },
+  registerOperation(controlSurface, filesystemReadFileBytesInMountOperation, {
     handle: async (_ctx, payload): Promise<ReadFileBytesResult> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,
@@ -90,21 +74,7 @@ export function registerFilesystemMountReadHandlers(
     defaultErrorCode: 'filesystem.read_file_bytes_failed',
   })
 
-  controlSurface.register('filesystem.readFileTextInMount', {
-    kind: 'query',
-    validate: (payload: unknown): ReadFileTextInMountInput => {
-      if (!isRecord(payload)) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Invalid payload for filesystem.readFileTextInMount.',
-        })
-      }
-
-      return {
-        mountId: normalizeMountId(payload.mountId, 'filesystem.readFileTextInMount'),
-        uri: normalizeFileSystemUri(payload.uri, 'filesystem.readFileTextInMount'),
-        maxBytes: normalizeFileReadLimit(payload.maxBytes, 1024 * 1024),
-      }
-    },
+  registerOperation(controlSurface, filesystemReadFileTextInMountOperation, {
     handle: async (_ctx, payload): Promise<ReadFileTextResult> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,
@@ -139,20 +109,7 @@ export function registerFilesystemMountReadHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('filesystem.statInMount', {
-    kind: 'query',
-    validate: (payload: unknown): StatInMountInput => {
-      if (!isRecord(payload)) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Invalid payload for filesystem.statInMount.',
-        })
-      }
-
-      return {
-        mountId: normalizeMountId(payload.mountId, 'filesystem.statInMount'),
-        uri: normalizeFileSystemUri(payload.uri, 'filesystem.statInMount'),
-      }
-    },
+  registerOperation(controlSurface, filesystemStatInMountOperation, {
     handle: async (_ctx, payload) => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,
@@ -187,21 +144,7 @@ export function registerFilesystemMountReadHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('filesystem.readDirectoryInMount', {
-    kind: 'query',
-    validate: (payload: unknown): ReadDirectoryInMountInput => {
-      if (!isRecord(payload)) {
-        throw createAppError('common.invalid_input', {
-          debugMessage: 'Invalid payload for filesystem.readDirectoryInMount.',
-        })
-      }
-
-      return {
-        mountId: normalizeMountId(payload.mountId, 'filesystem.readDirectoryInMount'),
-        uri: normalizeFileSystemUri(payload.uri, 'filesystem.readDirectoryInMount'),
-        maxEntries: normalizeFileReadLimit(payload.maxEntries, 1000),
-      }
-    },
+  registerOperation(controlSurface, filesystemReadDirectoryInMountOperation, {
     handle: async (_ctx, payload): Promise<ReadDirectoryResult> => {
       const target = await resolveMountTargetOrThrow({
         topology: deps.topology,

@@ -14,3 +14,10 @@ export function unregisterPtyClient(
   }
   clients.delete(clientId)
 }
+
+export function registerPtyClient(
+  clients: Map<string, ClientState>,
+  options: Omit<ClientState, 'rolesBySessionId'>,
+): void {
+  clients.set(options.clientId, { ...options, rolesBySessionId: new Map() })
+}

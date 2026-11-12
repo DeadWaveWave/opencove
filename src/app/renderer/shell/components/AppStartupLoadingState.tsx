@@ -1,8 +1,13 @@
+import { Button } from '@app/renderer/components/ui/Button'
+import { useAppStore } from '../store/useAppStore'
+import { toErrorMessage } from '../utils/format'
+import { WORKER_CONNECTION_RETRY_EVENT } from '../hooks/workerSync/workerConnectionState'
 import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 
 export function AppStartupLoadingState(): React.JSX.Element {
   const { t } = useTranslation()
+  const connectionError = useAppStore(state => state.workerConnectionError)
 
   return (
     <div className="app-startup-state">
@@ -50,7 +55,18 @@ export function AppStartupLoadingState(): React.JSX.Element {
             <span>OpenCove</span>
           </div>
           <h1>{t('appStartupState.title')}</h1>
-          <p>{t('appStartupState.description')}</p>
+          {connectionError ? (
+            <>
+              <p role="alert">{toErrorMessage(connectionError)}</p>
+              <Button
+                onClick={() => window.dispatchEvent(new Event(WORKER_CONNECTION_RETRY_EVENT))}
+              >
+                {t('messages.workerConnectionRetry')}
+              </Button>
+            </>
+          ) : (
+            <p>{t('appStartupState.description')}</p>
+          )}
           <div className="app-startup-state__progress" aria-hidden="true">
             <div className="app-startup-state__progress-indicator" />
           </div>

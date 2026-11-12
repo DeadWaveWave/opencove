@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  parsePluginCommand,
-  resolvePluginCommandTimeout,
-} from '../../../src/app/cli/commands/plugins.mjs'
+import { parsePluginCommand, resolvePluginCommandTimeout } from './cliPluginParsing.helpers'
 import {
   gitInstallInput,
   pluginGitRef,
@@ -23,7 +20,7 @@ describe('explicit plugin distribution CLI contract', () => {
       'npm',
       '--script',
       'build',
-      '--output',
+      '--build-output',
       'dist',
     ])
     expect(request).toEqual({

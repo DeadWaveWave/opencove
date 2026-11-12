@@ -1,8 +1,14 @@
+import { physicalSpawnLifecycle } from '../../shared/runtime/physicalSpawnLifecycle'
+import {
+  ClaudeTranscriptChannel,
+  type ClaudeTranscriptPort,
+} from '../../shared/runtime/agentHook/claudeTranscript'
 import { randomUUID } from 'node:crypto'
 import type { AgentSessionDiscovery } from '../../contexts/agent/application/ports/AgentSessionDiscovery'
 import type {
   AgentProviderId,
   AgentHookInstallState,
+  AgentHookCoverage,
   ResizeTerminalInput,
   TerminalForegroundEvent,
   TerminalGeometryCommitResult,
@@ -32,10 +38,11 @@ type SpawnSessionOptions = {
   env?: NodeJS.ProcessEnv
   agentProvider?: AgentProviderId
   initialAgentState?: 'working' | 'standby'
+  hookCoverage?: AgentHookCoverage
   hookInstallState?: AgentHookInstallState
 }
 
-export interface HeadlessPtyRuntime {
+export interface HeadlessPtyRuntime extends ClaudeTranscriptPort {
   isIdle: () => boolean
   listProfiles: () => Promise<ListTerminalProfilesResult>
   spawnSession: (options: SpawnSessionOptions) => Promise<{ sessionId: string }>
@@ -51,7 +58,7 @@ export interface HeadlessPtyRuntime {
   startSessionStateWatcher: (input: SessionStateWatcherStartInput) => void
   disposeSessionStateWatcher: (sessionId: string) => void
   debugCrashHost?: () => void | Promise<void>
-  dispose: () => void
+  dispose: () => void | Promise<void>
 }
 
 export function createHeadlessPtyRuntime(options: {
@@ -63,6 +70,7 @@ export function createHeadlessPtyRuntime(options: {
   const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
   const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
   const foregroundListeners = new Set<(event: TerminalForegroundEvent) => void>()
+  const transcripts = new ClaudeTranscriptChannel()
   const stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
   const metadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
   const profileResolver = new TerminalProfileResolver()
@@ -83,6 +91,7 @@ export function createHeadlessPtyRuntime(options: {
     reportIssue: message => {
       process.stderr.write(`${message}\n`)
     },
+    onClaudeTranscript: transcripts.emit,
     onState: event => {
       emitState({
         ...event,
@@ -112,6 +121,7 @@ export function createHeadlessPtyRuntime(options: {
 
   const disposeExitListener = processEngine.onExit(event => {
     sessionRegistrations.noteCompletion(event.sessionId)
+    exitListeners.forEach(listener => listener(event))
     if (providerBySessionId.get(event.sessionId) === 'codex') {
       emitState({
         sessionId: event.sessionId,
@@ -120,10 +130,9 @@ export function createHeadlessPtyRuntime(options: {
         hookInstallState: hookInstallStateBySessionId.get(event.sessionId),
       })
     }
-    sessionStateWatcher.disposeSession(event.sessionId)
+    sessionStateWatcher.disposeSession(event.sessionId, true)
     providerBySessionId.delete(event.sessionId)
     hookInstallStateBySessionId.delete(event.sessionId)
-    exitListeners.forEach(listener => listener(event))
   })
   const disposeForegroundListener = processEngine.onForeground(event => {
     foregroundListeners.forEach(listener => listener(event))
@@ -150,13 +159,21 @@ export function createHeadlessPtyRuntime(options: {
       const registration = sessionRegistrations.begin()
       let spawned: { sessionId: string }
       try {
-        spawned = await processEngine.spawn(input)
+        physicalSpawnLifecycle.getStore()?.beforeDispatch(input)
+        spawned = await processEngine.spawn({
+          ...input,
+          sessionKind: input.agentProvider ? 'agent' : 'shell',
+        })
       } catch (error) {
         registration.cancel()
         throw error
       }
 
       const disposition = registration.complete(spawned.sessionId)
+      physicalSpawnLifecycle.getStore()?.started(spawned.sessionId)
+      if (disposition === 'completed') {
+        physicalSpawnLifecycle.getStore()?.completed(spawned.sessionId)
+      }
       if (disposition !== 'active') {
         const registrationError = new SessionRegistrationRejectedError(
           spawned.sessionId,
@@ -179,6 +196,18 @@ export function createHeadlessPtyRuntime(options: {
         throw registrationError
       }
 
+      if (input.agentProvider) {
+        metadataListeners.forEach(listener =>
+          listener({
+            sessionId: spawned.sessionId,
+            resumeSessionId: null,
+            agentProvider: input.agentProvider,
+            agentLaunchKind: 'managed',
+            hookCoverage: input.hookCoverage,
+            hookInstallState: input.hookInstallState,
+          }),
+        )
+      }
       if (input.agentProvider && input.hookInstallState) {
         providerBySessionId.set(spawned.sessionId, input.agentProvider)
         hookInstallStateBySessionId.set(spawned.sessionId, input.hookInstallState)
@@ -236,7 +265,7 @@ export function createHeadlessPtyRuntime(options: {
       }
     },
     kill: sessionId => {
-      sessionStateWatcher.disposeSession(sessionId)
+      sessionStateWatcher.disposeSession(sessionId, true)
       providerBySessionId.delete(sessionId)
       hookInstallStateBySessionId.delete(sessionId)
       processEngine.kill(sessionId)
@@ -259,6 +288,7 @@ export function createHeadlessPtyRuntime(options: {
         foregroundListeners.delete(listener)
       }
     },
+    onClaudeTranscript: transcripts.subscribe,
     onState: listener => {
       stateListeners.add(listener)
       return () => {
@@ -296,13 +326,14 @@ export function createHeadlessPtyRuntime(options: {
       dataListeners.clear()
       exitListeners.clear()
       foregroundListeners.clear()
+      transcripts.dispose()
       stateListeners.clear()
       metadataListeners.clear()
       hookInstallStateBySessionId.clear()
       providerBySessionId.clear()
       sessionRegistrations.dispose()
       sessionStateWatcher.dispose()
-      processEngine.dispose()
+      return processEngine.dispose()
     },
   }
 }

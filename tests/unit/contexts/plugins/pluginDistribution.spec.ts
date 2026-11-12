@@ -5,7 +5,7 @@ import { pluginBuildInvocation } from '../../../../src/contexts/plugins/infrastr
 import { createControlSurface } from '../../../../src/app/main/controlSurface/controlSurface'
 import { registerPluginDistributionHandlers } from '../../../../src/app/main/controlSurface/handlers/pluginDistributionHandlers'
 import type { ControlSurfaceContext } from '../../../../src/app/main/controlSurface/types'
-import { parsePluginCommand } from '../../../../src/app/cli/commands/plugins.mjs'
+import { parsePluginCommand } from '../../app/cliPluginParsing.helpers'
 import { randomUUID } from 'node:crypto'
 import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'

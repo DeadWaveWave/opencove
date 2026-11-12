@@ -5,6 +5,8 @@ import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { resolveCliAppRoot } from './appRoot.mjs'
+
 const REQUIRED_GUIDE_DOCUMENTS = [
   'README.md',
   'AUTHORING.md',
@@ -37,14 +39,14 @@ const REQUIRED_GUIDE_DOCUMENTS = [
 /**
  * Resolve the versioned plugin documentation next to the packaged CLI.
  *
- * electron-builder keeps `src/app/cli` and `docs/plugins` at the same app
+ * electron-builder keeps `out/cli` and `docs/plugins` at the same app
  * root, whether that root is app.asar or an unpacked `app` directory. Keeping
  * this calculation relative to the CLI also makes the source checkout and the
  * packaged app locate the same documentation. Archive paths must be exported
  * before returning them to shell tools, which cannot read Electron's virtual FS.
  */
 export function resolvePluginGuideDirectory(scriptPath = fileURLToPath(import.meta.url)) {
-  return join(dirname(scriptPath), '..', '..', '..', 'docs', 'plugins')
+  return join(resolveCliAppRoot(dirname(scriptPath)), 'docs', 'plugins')
 }
 
 async function isArchiveDirectory(directory) {

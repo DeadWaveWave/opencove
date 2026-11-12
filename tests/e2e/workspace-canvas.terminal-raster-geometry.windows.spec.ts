@@ -5,8 +5,8 @@ import {
   launchApp,
   readCanvasViewport,
   seededWorkspaceId,
-  viewStateStorageKey,
 } from './workspace-canvas.helpers'
+import { seedWorkspaceViewport } from './workspace-canvas.viewState'
 
 const nodeId = 'node-windows-raster-geometry'
 const reportedDevicePixelRatio = 1.25
@@ -49,29 +49,11 @@ test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
         },
       )
 
-      await window.evaluate(
-        ({ key, workspaceId, zoom }) => {
-          window.localStorage.setItem(
-            key,
-            JSON.stringify({
-              activeWorkspaceId: workspaceId,
-              workspaces: {
-                [workspaceId]: {
-                  viewport: { x: 0, y: 0, zoom },
-                  isMinimapVisible: true,
-                  activeSpaceId: null,
-                },
-              },
-            }),
-          )
-        },
-        {
-          key: viewStateStorageKey,
-          workspaceId: seededWorkspaceId,
-          zoom: reportedCanvasZoom,
-        },
-      )
-      await window.reload({ waitUntil: 'domcontentloaded' })
+      await seedWorkspaceViewport(window, seededWorkspaceId, {
+        x: 0,
+        y: 0,
+        zoom: reportedCanvasZoom,
+      })
 
       await expect
         .poll(async () => (await readCanvasViewport(window)).zoom)

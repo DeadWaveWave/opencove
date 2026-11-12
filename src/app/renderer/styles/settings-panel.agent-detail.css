@@ -124,9 +124,6 @@
 
 .settings-agent-page .agent-provider-icon.settings-agent-list-row__icon,
 .settings-agent-page .agent-provider-icon.settings-agent-detail__icon {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
   color: var(--cove-text-muted);
   pointer-events: none;
 }
@@ -137,20 +134,10 @@
   flex: 0 0 22px;
 }
 
-.settings-agent-page .settings-agent-list-row__icon :is(svg, img) {
-  width: 20px;
-  height: 20px;
-}
-
 .settings-agent-page .settings-agent-detail__icon {
   width: 30px;
   height: 30px;
   flex: 0 0 30px;
-}
-
-.settings-agent-page .settings-agent-detail__icon :is(svg, img) {
-  width: 28px;
-  height: 28px;
 }
 
 .settings-agent-detail {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, type ReactNode, type RefObject } from 'react'
-import { PanelsTopLeft, Settings2, X } from 'lucide-react'
+import { CloseIcon, LayoutIcon, SettingsIcon } from '@app/renderer/components/ui/pixelIcons'
 import { IconButton } from '@app/renderer/components/ui/IconButton'
 import { cancelPendingFocusRestore } from '@app/renderer/components/ui/Dialog'
 import { useTranslation } from '@app/renderer/i18n'
@@ -83,11 +83,11 @@ export function SettingsPageFrame({
           data-testid="settings-page-canvas"
           onClick={closePage}
         >
-          <PanelsTopLeft size={15} aria-hidden="true" />
+          <LayoutIcon size={18} />
           <span>{t('settingsPanel.canvas.title')}</span>
         </button>
         <div className="settings-page__active-tab" aria-current="page">
-          <Settings2 size={15} aria-hidden="true" />
+          <SettingsIcon size={18} />
           <span>{t('settingsPanel.title')}</span>
           <IconButton
             ref={closeRef}
@@ -96,7 +96,7 @@ export function SettingsPageFrame({
             label={t('common.close')}
             onClick={closePage}
           >
-            <X size={14} aria-hidden="true" />
+            <CloseIcon size={18} />
           </IconButton>
         </div>
       </nav>

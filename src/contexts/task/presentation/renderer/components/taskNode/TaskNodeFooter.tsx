@@ -1,40 +1,25 @@
-import type { JSX } from 'react'
+import type { JSX, ReactNode } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { TaskRuntimeStatus } from '@contexts/workspace/presentation/renderer/types'
-import { getTaskStatusLabel } from '@app/renderer/i18n/labels'
-import { CoveSelect } from '@app/renderer/components/CoveSelect'
+import { PlayIcon } from '@app/renderer/components/ui/pixelIcons'
+import { Button } from '@app/renderer/components/ui/Button'
 
+/** The task card's bottom row: the sessions on the left, the run button on the right. */
 export function TaskNodeFooter({
-  status,
-  onStatusChange,
+  sessions,
   onRunAgent,
 }: {
-  status: TaskRuntimeStatus
-  onStatusChange: (status: TaskRuntimeStatus) => void
+  sessions: ReactNode
   onRunAgent: () => void
 }): JSX.Element {
   const { t } = useTranslation()
-  const taskStatusOptions: TaskRuntimeStatus[] = ['todo', 'doing', 'ai_done', 'done']
 
   return (
     <div className="task-node__footer nodrag">
-      <CoveSelect
-        testId="task-node-status-select"
-        triggerTestId="task-node-status-select-trigger"
-        className="task-node__footer-select"
-        size="compact"
-        value={status}
-        options={taskStatusOptions.map(option => ({
-          value: option,
-          label: getTaskStatusLabel(t, option),
-        }))}
-        onChange={nextValue => {
-          onStatusChange(nextValue as TaskRuntimeStatus)
-        }}
-      />
+      {sessions}
 
-      <button
-        type="button"
+      <Button
+        variant="primary"
+        size="sm"
         className="task-node__run-agent"
         data-testid="task-node-run-agent"
         onClick={event => {
@@ -42,8 +27,9 @@ export function TaskNodeFooter({
           onRunAgent()
         }}
       >
-        {t('taskNode.runAgent')}
-      </button>
+        <PlayIcon size={12} />
+        <span>{t('taskNode.runAgent')}</span>
+      </Button>
     </div>
   )
 }

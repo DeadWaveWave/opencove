@@ -1,5 +1,6 @@
 import { SerializeAddon } from '@xterm/addon-serialize'
 import { Terminal } from '@xterm/xterm'
+import { serializeTerminalState } from './serializeTerminalState'
 import type { PresentationSnapshotTerminalResult } from '../../../shared/contracts/dto'
 import type { TerminalCanonicalPtyGeometry } from '../../../shared/contracts/dto'
 
@@ -235,24 +236,31 @@ export class TerminalPresentationSession {
   }
 
   public async snapshot(): Promise<PresentationSnapshotTerminalResult> {
-    await this.flush()
-
-    return {
-      sessionId: this.sessionId,
-      epoch: this.epoch,
-      appliedSeq: this.appliedSeq,
-      presentationRevision: this.presentationRevision,
-      cols: this.cols,
-      rows: this.rows,
-      geometryRevision: this.geometryRevision,
-      bufferKind: this.terminal.buffer.active.type ?? 'unknown',
-      cursor: {
-        x: this.terminal.buffer.active.cursorX,
-        y: this.terminal.buffer.active.cursorY,
-      },
-      title: this.title,
-      serializedScreen: this.serializeAddon.serialize(),
+    const geometry = this.getGeometry()
+    let snapshot: PresentationSnapshotTerminalResult | undefined
+    await this.enqueue(() => {
+      const serializedScreen = serializeTerminalState(this.terminal, this.serializeAddon)
+      snapshot = {
+        sessionId: this.sessionId,
+        epoch: this.epoch,
+        appliedSeq: this.appliedSeq,
+        presentationRevision: this.presentationRevision,
+        cols: geometry.cols,
+        rows: geometry.rows,
+        geometryRevision: geometry.revision,
+        bufferKind: this.terminal.buffer.active.type ?? 'unknown',
+        cursor: {
+          x: this.terminal.buffer.active.cursorX,
+          y: this.terminal.buffer.active.cursorY,
+        },
+        title: this.title,
+        serializedScreen,
+      }
+    })
+    if (!snapshot) {
+      throw new Error('Terminal presentation was disposed')
     }
+    return snapshot
   }
 
   public dispose(): void {

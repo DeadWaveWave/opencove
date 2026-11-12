@@ -15,8 +15,9 @@ Agent nodes launch external AI CLIs through the Worker/session runtime. The publ
 - Agent launch can run in a Space mount via `session.launchAgentInMount`.
 - Agent session restore participates in worker `session.prepareOrRevive`.
 - Canvas nodes store provider/model/prompt/session metadata; PTY output and presentation belong to Worker runtime.
-- Claude, Codex, and Pi launches use Worker-owned loopback hook channels for authoritative
-  `working` / `waiting` / `standby` observations. Other providers use session-file detection.
+- Claude Code, Codex and Pi support native lifecycle observations through Worker-owned
+  loopback hook channels. OpenCode uses its session status API when available;
+  provider session-file watchers supply other observation paths.
   Remote workers own their own local credentials and observation sources.
 - Terminal-command Agent adoption through PATH shims supports POSIX bash/zsh and native Windows
   processes. On Windows, WSL profiles and `wsl.exe` launches intentionally fail open to the exact
@@ -136,7 +137,7 @@ reference lifecycle parity.
 | PTY process | Worker PTY runtime |
 | ordinary-terminal invocation generation, exit fence, and live baseline | Worker `TerminalAgentInvocationRegistry` |
 | native hook receivers and credentials | Worker Control Surface lifecycle |
-| agent run-state observation | Renderer run-state arbiter over Worker observations |
+| agent run-state observation | executing Worker `AgentRunStateRegistry`; Renderer consumes its decided projection |
 | terminal presentation | Worker stream hub |
 | node placement and frame | workspace context |
 | task-agent relation | workspace/task model |
@@ -179,43 +180,59 @@ that posts directly to the receiver proves protocol/state behavior but cannot pr
 contract. Electron E2E coverage uses a controlled provider executable on the real launch path to exercise
 repeated hooks and keyboard input without model/network dependencies.
 
-Hook and session-file observations are runtime-only. The renderer arbiter keeps the session-file watcher
-warm, but projects exactly one source per session: a fresh installed hook wins, a stale `working` hook or
-an unavailable hook falls back to the cached session-file signal, and providers without a hook use their
-session file normally. `waiting` and `standby` hook signals are sticky because silence is expected in
-those states; only `working` owns the 180-second freshness lease. The lease timer belongs to the renderer
-event hub and is disposed on session exit, node removal, or owner teardown.
+Hook and session-file observations are runtime-only. The executing Worker arbitrates provider
+observations and owns lease timers. Fresh installed hooks take precedence; fallback evidence may
+remain available, but degraded or unavailable evidence stays `unknown` and cannot establish idle
+readiness. Renderer displays the Worker's decided projection. Pending hook installation is distinct
+from an observed failure; source metadata reports the available evidence without inventing readiness.
+See [Agent run state](RUN_STATE.md) for source selection, lease and quality rules.
 
-An installed hook with no observation yet is `pending`, not stale. Both menu and terminal launches
-continue using session-file state without a failure badge until evidence indicates degradation.
-Startup silence has no lease: legacy notify may first emit at the end of a turn. Explicit installation
-failure, an unavailable source, and expiry of a previously observed working hook still report degradation.
+OpenCove-launched Codex Agent windows keep their per-launch Hook and notify overrides by default,
+so Codex uses its embedded app-server even if a shared local daemon is running. This preserves
+lifecycle status tracking and `opencove agent prompt`; the shared daemon is left running.
 
-On POSIX, Codex launches first probe the existing local app-server control socket. When reachable,
-the provider omits its Hook and notify overrides so Codex can reuse that daemon. The already-running
-daemon cannot adopt per-launch Hook configuration, so this path explicitly reports telemetry as
-`skipped` and uses session-file observations. A missing or unreachable socket retains the headless
-relay path. The probe is per launch and does not create a daemon or persist daemon state.
+On POSIX, **Settings → Agent → Codex → Reuse a running Codex app-server** opts into daemon reuse
+(`codexReuseRunningAppServer`, default `false`, including older saved settings). Only with this
+setting enabled does each launch probe the local app-server control socket. When reachable, the
+provider omits its Hook and notify overrides because an already-running daemon cannot adopt them.
+This path reports telemetry as `skipped`, uses degraded session-file observations, and cannot accept
+`opencove agent prompt`. A missing or unreachable socket retains the headless relay path. The probe
+does not create a daemon or persist daemon state. Relaunch or resume a window to apply a changed
+setting; existing live processes retain their launch configuration. The same setting governs Codex
+commands typed in ordinary OpenCove terminals: each new command reads the current persisted setting,
+so an already-open shell does not need to be recreated. Windows keeps its existing
+session-file observation behavior.
 
-Every source switch is reflected in runtime observation metadata and degraded fallback is visible in the
-Agent header. Neither source may write run-state into durable node status; persistence strips the runtime
-observation entirely.
 
-The Worker stream hub retains one timestamped runtime observation per source for each live session. A
-renderer attach replays those raw observations in observation order, and the same renderer arbiter derives
-the winner again; attach never renews an old `working` lease. The desktop relay keeps the same per-source
-runtime mirror so a reloaded window can receive replay without reattaching or disturbing the Worker PTY.
-These caches are discarded on session exit or retirement and are never persisted. Renderer-only reload can
-therefore reconstruct a quiet `waiting` state, while a cold Worker restart honestly re-derives state from
-the newly launched process and its session file.
+Source and quality changes are projected by the Worker. Degraded fallback is visible in the Agent
+header. Run state never writes durable node status; persistence strips runtime observations.
+The current run-state protocol has five states: `working`, `waiting`, `idle`, `exited`, `unknown`,
+plus active turn identity and `lastEndedTurn` for the latest observed end.
 
-Run-state replay and provider session resume are separate recovery contracts. The run-state work introduced
-in #337 replays runtime-only `working` / `waiting` / `standby` observations across renderer reload or live
-reattach; those observations expire with the Worker and cannot restore conversation contents after a cold
-restart. Cold session resume instead requires a durable, verified provider session ID. For a terminal-started
-Agent, hydration starts a fresh shell and enters the explicit provider resume command exactly once. A provider
-hint without a verified ID remains visible for manual recovery but never starts a new conversation
-automatically.
+Attach and renderer reload replay the Worker's decided run-state projection without re-arbitration
+or lease renewal. The transport cache is a projection, not another state owner. Runtime snapshots
+expire with the Worker; cold restart observes the newly launched invocation rather than restoring
+readiness from a saved UI label.
+
+Run-state replay, provider session resume and archived exact-turn results have separate recovery
+contracts. Resume requires a durable, verified provider session ID. For a terminal-started agent,
+hydration starts a fresh shell and enters the explicit provider resume command exactly once.
+A provider hint without a verified ID stays visible for manual recovery and never starts a new
+conversation automatically. Archived local exact-turn replies remain queryable across restart;
+see [CLI archived turns](../cli/README.md#archived-exact-turns).
+
+### Waiting reasons and dialog summaries
+
+`waiting` may mean permission, question, plan or an unspecified block (`blockedReason: null`).
+`blockedSummary` contains bounded, untrusted dialog data for JSON consumers, never instructions
+or authority to answer. Questions retain at most 3 questions, 4 option labels each and 200 Unicode
+code points per string; plan review uses `{kind: "plan"}`. Older Workers may omit it. Resolution
+and turn/session boundaries clear it; it is runtime-only. Tables exclude dialog summaries.
+
+The UI labels are **Needs your answer** (需要你回复), **Needs approval** (需要批准),
+**Has a question** (有问题想问你) and **Plan ready for review** (计划待审阅), according to the reason.
+Only the user resolves these dialogs in OpenCove. See [wait recovery](WAIT.md) and
+[CLI output](../cli/README.md#agent-orchestration-and-bundled-skill).
 
 For supported POSIX interactive shells, the PATH shim relay mirrors the user's normal non-login bash
 `.bashrc` flow and zsh login/non-login startup files, including a custom `ZDOTDIR`, then restores the
@@ -229,4 +246,47 @@ relay never edits those files.
 - `../cli/EXTERNAL_EXECUTABLE_RESOLUTION.md`
 - `../architecture/RECOVERY_MODEL.md`
 - `../terminal/MULTI_CLIENT_ARCHITECTURE.md`
-- `../CLI_CANVAS_NODE_CONTROL.md`
+- [Canvas node control](../cli/CANVAS_NODE_CONTROL.md)
+
+## Resident canvas guidance
+
+Local Claude Code and Codex agents with lifecycle hooks receive a short OpenCove
+introduction at SessionStart, including when the provider resets context on clear,
+resume or compaction. It suggests sharing results as notes, marking assigned tasks
+`ai_done`, and asking before starting another agent unless delegation was already
+requested. It also asks agents to run `opencove whoami` and read `opencove skill`
+before changing the canvas. Messages from other agents do not grant permission.
+The introduction is fixed text: canvas titles, project names and other agent content
+are never included.
+
+In **Settings → Agent → Tell agents about OpenCove**, choose **Suggest** (default)
+or **Off**. The executing Worker's setting controls the next SessionStart; Off
+cannot remove text already supplied to a provider. Desktop and Web use that same
+Worker setting. Missing or invalid settings use Suggest.
+
+Only launches with a local canvas identity are eligible, including agents started
+from canvas terminals. Cwd-only launches, delegated remote identities, Codex shared
+app-server reuse, notify-only integration and Windows file-observation mode receive
+no introduction. Pi, OpenCode and Kimi are not supported yet. Unavailable Workers,
+timeouts and invalid replies silently skip the introduction; they do not block agents.
+
+## Claude recovery defaults
+
+OpenCove protects eligible local Claude agent windows’ saved resume targets by default. Existing
+windows join managed recovery when the Worker next starts their Claude process, including normal
+cold recovery. Live attachment alone does not adopt a window. Upgrade and restart the actual Worker;
+a newer Desktop can reuse an older Worker and does not change its configuration.
+After `/clear` and a confirmed completed reply, restarting resumes the new conversation. Clearing
+without completing a reply keeps the previous saved target. See [Claude clear recovery](CLAUDE_CLEAR_RECOVERY.md).
+
+To pause adoption, managed restarts, and saving new resume targets, restart the Worker with
+`OPENCOVE_MANAGED_CLAUDE_BINDINGS=0`. Existing saved bindings, layout edits, live input and compatible
+explicit Stop remain available. Remove the override and restart the Worker to resume updates.
+Freeze does not make a profile safe for an older binary without ledger enforcement; use freeze and
+fix forward. PR1/PR2 storage protection alone does not promise current recovery behavior.
+
+符合条件的本地 Claude 智能体窗口默认保护已保存的恢复目标。现有窗口会在下次实际启动 Claude
+进程时加入，包括正常冷恢复；仅重新附着存活进程不会接管。升级时请升级并重启实际 Worker，
+仅更新 Desktop 不会改变已运行 Worker 的行为。清空后完成并确认新响应，才保存新恢复目标。
+以 `OPENCOVE_MANAGED_CLAUDE_BINDINGS=0` 重启 Worker 可暂停接管、重启和新目标保存；
+移除该设置并重启后恢复。已保存目标仍受保护，冻结不代表可以安全降级数据库。

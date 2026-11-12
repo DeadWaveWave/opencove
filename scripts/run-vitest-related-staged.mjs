@@ -28,6 +28,16 @@ const TEST_RELATED_EXTENSIONS = new Set([
   '.cts',
 ])
 
+// Tests that read these files from disk instead of importing them, so `vitest related` cannot see
+// the dependency. A staged file under one of the prefixes brings the tests along.
+const FILE_READ_DEPENDENTS = [
+  {
+    // Generated families must replace every literal colour base.css declares.
+    prefixes: ['src/app/renderer/styles/base.css', 'src/app/renderer/styles/themes/'],
+    tests: ['tests/unit/shared/design/themeTokens.spec.ts'],
+  },
+]
+
 function resolveFilesFromStaged() {
   const result = spawnSync('git', ['diff', '--cached', '--name-only', '--diff-filter=ACMR'], {
     encoding: 'utf8',
@@ -72,7 +82,10 @@ function shouldCheck(filePath) {
 
 const hasExplicitTargets = process.argv.length > 2
 const targetFiles = hasExplicitTargets ? process.argv.slice(2) : resolveFilesFromStaged()
-const files = targetFiles.filter(shouldCheck)
+const fileReadDependents = FILE_READ_DEPENDENTS.filter(({ prefixes }) =>
+  targetFiles.some(file => prefixes.some(prefix => file.startsWith(prefix))),
+).flatMap(({ tests }) => tests)
+const files = [...new Set([...targetFiles.filter(shouldCheck), ...fileReadDependents])]
 
 if (files.length === 0) {
   if (!hasExplicitTargets) {

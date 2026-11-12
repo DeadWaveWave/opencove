@@ -1,3 +1,7 @@
+import {
+  RevisionedSnapshotCache,
+  writeRevisionedSnapshot,
+} from '@shared/sync/revisionedSnapshotCache'
 import { toAppErrorDescriptor } from '@shared/errors/appError'
 import { invokeBrowserControlSurface } from './browserControlSurface'
 import {
@@ -7,24 +11,16 @@ import {
   type BrowserPersistedAppState,
 } from './browserOpenCoveApi.helpers'
 
+import {
+  persistenceWriteFailure,
+  submitPersistenceWrite,
+  classifyWriteResult,
+} from '@shared/sync/persistenceWriteOutcome'
+
 type PersistenceApi = Window['opencoveApi']['persistence']
 
-let lastKnownSyncRevision: number | null = null
-let lastKnownSyncState: BrowserPersistedAppState | null = null
-
-function setLastKnownSyncRevision(value: unknown): void {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
-    return
-  }
-
-  lastKnownSyncRevision = Math.floor(value)
-}
-
-function setLastKnownSyncState(value: unknown): void {
-  lastKnownSyncState = normalizePersistedAppStateForMerge(value)
-}
-
 export function createBrowserPersistenceApi(): PersistenceApi {
+  const cache = new RevisionedSnapshotCache<BrowserPersistedAppState>()
   return {
     readWorkspaceStateRaw: async () =>
       await invokeBrowserControlSurface<string | null>({
@@ -32,12 +28,23 @@ export function createBrowserPersistenceApi(): PersistenceApi {
         id: 'sync.readWorkspaceStateRaw',
         payload: null,
       }),
-    writeWorkspaceStateRaw: async payload =>
-      await invokeBrowserControlSurface({
-        kind: 'command',
-        id: 'sync.writeWorkspaceStateRaw',
-        payload,
-      }),
+    writeWorkspaceStateRaw: async payload => {
+      try {
+        const result = await submitPersistenceWrite(() =>
+          invokeBrowserControlSurface<import('@shared/contracts/dto').PersistWriteResult>({
+            kind: 'command',
+            id: 'sync.writeWorkspaceStateRaw',
+            payload,
+          }),
+        )
+        if (result.ok) {
+          cache.invalidate()
+        }
+        return classifyWriteResult(result)
+      } catch (error) {
+        return persistenceWriteFailure(error)
+      }
+    },
     readAppState: async () => {
       const value = await invokeBrowserControlSurface<{
         revision: number
@@ -47,102 +54,63 @@ export function createBrowserPersistenceApi(): PersistenceApi {
         id: 'sync.state',
         payload: null,
       })
-      setLastKnownSyncRevision(value.revision)
-      setLastKnownSyncState(value.state)
-      return { state: value.state, recovery: null }
+      cache.set(value.revision, normalizePersistedAppStateForMerge(value.state))
+      return { state: value.state, recovery: null, revision: value.revision }
     },
     writeAppState: async payload => {
-      const attemptWrite = async (
-        state: unknown,
-        baseRevision: number | null,
-        options?: { allowEmptyWorkspaceOverwrite?: boolean },
-      ): Promise<number> => {
-        const response = await invokeBrowserControlSurface<{ revision: number }>({
-          kind: 'command',
-          id: 'sync.writeState',
-          payload: {
-            state,
-            ...(typeof baseRevision === 'number' ? { baseRevision } : {}),
-            ...(options?.allowEmptyWorkspaceOverwrite === true
-              ? { allowEmptyWorkspaceOverwrite: true }
-              : {}),
+      try {
+        const result = await writeRevisionedSnapshot({
+          cache,
+          preflight: false,
+          baseRevision: payload.baseRevision,
+          state: payload.state,
+          read: async () => {
+            const value = await invokeBrowserControlSurface<{ revision: number; state: unknown }>({
+              kind: 'query',
+              id: 'sync.state',
+              payload: null,
+            })
+            const state = normalizePersistedAppStateForMerge(value.state)
+            if (value.state !== null && !state) {
+              throw new Error('Malformed sync state.')
+            }
+            return { revision: value.revision, state }
+          },
+          write: async (state, baseRevision) => {
+            const written = await invokeBrowserControlSurface<
+              import('@shared/sync/revisionedSnapshotCache').RevisionedWriteReceipt
+            >({
+              kind: 'command',
+              id: 'sync.writeState',
+              payload: {
+                state,
+                ...(baseRevision === null ? {} : { baseRevision }),
+                allowEmptyWorkspaceOverwrite: payload.allowEmptyWorkspaceOverwrite === true,
+              },
+            })
+            return written
+          },
+          normalize: normalizeCanonicalPersistedAppStateForMerge,
+          merge: mergePersistedAppStates,
+          isConflict: error => {
+            const descriptor = toAppErrorDescriptor(error, 'persistence.invalid_state')
+            return (
+              descriptor.code === 'persistence.invalid_state' &&
+              (descriptor.debugMessage ?? '').includes('revision conflict')
+            )
           },
         })
-        setLastKnownSyncRevision(response.revision)
-        setLastKnownSyncState(state)
-        return response.revision
-      }
-
-      const state = payload.state
-
-      const baseSnapshot = lastKnownSyncState
-
-      try {
-        const baseRevision =
-          typeof lastKnownSyncRevision === 'number' ? lastKnownSyncRevision : null
-        const revision = await attemptWrite(state, baseRevision, {
-          allowEmptyWorkspaceOverwrite: payload.allowEmptyWorkspaceOverwrite === true,
-        })
-
         return {
           ok: true,
           level: 'full',
-          bytes: JSON.stringify(state).length,
-          revision,
-        } as const
+          bytes: JSON.stringify(result.state).length,
+          revision: result.revision,
+          merged: result.merged,
+          corrected: result.corrected,
+          uncertain: result.uncertain,
+        }
       } catch (error) {
-        const descriptor = toAppErrorDescriptor(error, 'persistence.invalid_state')
-        const debugMessage = descriptor.debugMessage ?? ''
-        const isRevisionConflict =
-          descriptor.code === 'persistence.invalid_state' &&
-          debugMessage.includes('revision conflict')
-
-        if (!isRevisionConflict) {
-          return { ok: false, reason: 'unknown', error: descriptor } as const
-        }
-
-        try {
-          const latest = await invokeBrowserControlSurface<{
-            revision: number
-            state: unknown | null
-          }>({
-            kind: 'query',
-            id: 'sync.state',
-            payload: null,
-          })
-          setLastKnownSyncRevision(latest.revision)
-          setLastKnownSyncState(latest.state)
-
-          const latestState =
-            latest.state === null ? null : normalizePersistedAppStateForMerge(latest.state)
-          if (latest.state !== null && !latestState) {
-            throw new Error('sync.state returned a malformed persisted state.', { cause: error })
-          }
-          const localState = normalizeCanonicalPersistedAppStateForMerge(state)
-          if (!localState) {
-            throw new Error('Local persistence state was not canonical.', { cause: error })
-          }
-          const merged = latestState
-            ? mergePersistedAppStates(latestState, localState, baseSnapshot)
-            : localState
-
-          const revision = await attemptWrite(merged, latest.revision, {
-            allowEmptyWorkspaceOverwrite: payload.allowEmptyWorkspaceOverwrite === true,
-          })
-
-          return {
-            ok: true,
-            level: 'full',
-            bytes: JSON.stringify(merged).length,
-            revision,
-          } as const
-        } catch (retryError) {
-          return {
-            ok: false,
-            reason: 'unknown',
-            error: toAppErrorDescriptor(retryError, 'persistence.invalid_state'),
-          } as const
-        }
+        return persistenceWriteFailure(error, 'notSubmitted')
       }
     },
     readNodeScrollback: async payload =>

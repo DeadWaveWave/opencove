@@ -1,0 +1,180 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`TypeScript CLI core > help snapshot "--help" 1`] = `
+"OpenCove CLI — Control projects, spaces, canvas nodes and worker runtimes
+
+Usage: opencove <command> [options]
+
+Workspace:
+  project  List projects and find their IDs
+  space    List and inspect project spaces
+  node     Create, read, update and delete canvas nodes
+  canvas   Focus nodes and spaces on the canvas
+  agent    List, inspect, prompt, wait for and read agents
+
+Introspection:
+  skill    Print the bundled agent usage guide
+  whoami   Show your caller identity and permission scope
+  context  Orient yourself in a project and space
+  api      Discover operations, inspect input schemas and invoke the Control Surface
+
+Runtime:
+  ping      Check whether the Control Surface responds
+  status    Show protocol, app version and instance identity
+  worker    Start, inspect and stop local workers
+  runtime   Inspect, verify and prepare managed runtimes
+  endpoint  Register and manage remote worker connections
+  mount     Connect project folders to worker endpoints
+  fs        Read, write and inspect files through the Control Surface
+  worktree  List, create and archive Git worktrees
+  session   Run agents and inspect or stop their sessions
+  pty       Start and attach to terminal sessions
+
+Plugins:
+  plugin  Discover, install and manage plugins
+
+Selectors:
+  Node, space and project options accept @self, an exact ID, an exact name (case-sensitive), or a unique ID prefix of 6+ characters.
+  @self uses your terminal identity. Names are scoped by --project or your own project inside OpenCove; explicit --space constrains every node selector, including full IDs. Ambiguous targets require a full ID.
+
+Global options:
+  --endpoint <url>         Connect to this Control Surface URL
+  --token <token>          Authenticate with this bearer token
+  --user-data <dir>        Use this profile directory
+  --timeout <ms>           Set the request timeout in milliseconds (default: 20000)
+  --pretty                 Indent JSON output for readability
+  --limit <n>              Limit output lists to n items (0 means all); cut object lists add truncated totals, bare arrays write one stderr notice
+  --fields <a,b,...>       Select item-relative fields; preserve envelopes and accept item-key prefixes. api call queries also accept raw output paths
+  -o, --output json|table  Choose JSON (default; agent read/session final default to message text) or a supported table layout
+  -h, --help               Show help for this command or group
+  --version                Print the CLI version
+
+Exit codes: 0 success; 1 operation failure; 2 invalid input; 3 unreachable; 4 unauthorized; 5 incompatible protocol; 6 ambiguous target; 10 waiting observed; 11 agent exited during wait; 124 timeout; 130 interrupted.
+
+Run "opencove <group> --help" for commands in a group.
+Start with "opencove api ops --domains" for a compact domain map.
+Then run "opencove api ops --prefix node --fields id,cliCommand" to explore one domain.
+Run "opencove api ops" only when you need the full catalog.
+AI agents: run \`opencove skill\` for a usage guide.
+"
+`;
+
+exports[`TypeScript CLI core > help snapshot "node" 1`] = `
+"Usage: opencove node <command> [options]
+
+Commands:
+  list                                       List canvas nodes
+  get                                        Get a canvas node
+  create <note|task|website|agent|terminal>  Create canvas nodes
+  update <note|task|website|agent|terminal>  Update canvas nodes
+  delete                                     Delete a canvas node
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`TypeScript CLI core > help snapshot "node" 2`] = `
+"Usage: opencove node create note [--root-canvas | --space <id> | <other-target-space-options>] [options]
+
+Create a note node
+
+Without explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node belongs to another project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.
+
+Default target inside OpenCove: your current Space, or the root canvas when you are outside any Space. An explicit --project selects project scope for lists; creation also needs --root-canvas or a Space target.
+
+Target container (choose one):
+  --root-canvas                                 Create on the project's root canvas, outside every Space
+  --space <id>                                  Select a space by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --space-name <name> [--project <id>]          Find a named space, optionally within a project
+  --worker <id-or-name> --branch <branch>       Find a space by worker and Git branch
+  --worker <id-or-name> --path <absolute-path>  Find a space by worker and working directory
+  --project <id>                                Select the root-canvas project, or narrow a Space lookup; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Options:
+  --text <text>         Set the note contents
+  --text-file <path|->  Read text from a UTF-8 file, or use - for stdin
+  --title <text>        Set the node title
+  --frame <json>        Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
+  --focus               Focus after creation
+  -q, --quiet           Print only the created object identifier followed by a newline
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, spawnedBy, lineageDepth, lineageStatus, data, data.kind, data.text
+
+Field descriptions:
+  spawnedBy      ID of the node that created this node; null for a root or unavailable lineage
+  lineageDepth   A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable
+  lineageStatus  recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read
+
+Projection example:
+  opencove node create note --space space-123 --fields id,title
+  {"revision":1,"projectId":"p","spaceId":"space-123","node":{"id":"n","title":"Note"}}
+
+Examples:
+  opencove node create note --space space-123 --title "Release checklist" --text "Run the smoke tests"
+  opencove node create note --root-canvas --project project-123 --text "Canvas note" --focus
+  opencove node create note --space-name "Sprint planning" --project project-123 --text-file ./notes.md --focus
+  printf 'Review the release notes\\n' | opencove node create note --space space-123 --text-file -
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`TypeScript CLI core > help snapshot undefined 1`] = `
+"OpenCove CLI — Control projects, spaces, canvas nodes and worker runtimes
+
+Usage: opencove <command> [options]
+
+Workspace:
+  project  List projects and find their IDs
+  space    List and inspect project spaces
+  node     Create, read, update and delete canvas nodes
+  canvas   Focus nodes and spaces on the canvas
+  agent    List, inspect, prompt, wait for and read agents
+
+Introspection:
+  skill    Print the bundled agent usage guide
+  whoami   Show your caller identity and permission scope
+  context  Orient yourself in a project and space
+  api      Discover operations, inspect input schemas and invoke the Control Surface
+
+Runtime:
+  ping      Check whether the Control Surface responds
+  status    Show protocol, app version and instance identity
+  worker    Start, inspect and stop local workers
+  runtime   Inspect, verify and prepare managed runtimes
+  endpoint  Register and manage remote worker connections
+  mount     Connect project folders to worker endpoints
+  fs        Read, write and inspect files through the Control Surface
+  worktree  List, create and archive Git worktrees
+  session   Run agents and inspect or stop their sessions
+  pty       Start and attach to terminal sessions
+
+Plugins:
+  plugin  Discover, install and manage plugins
+
+Selectors:
+  Node, space and project options accept @self, an exact ID, an exact name (case-sensitive), or a unique ID prefix of 6+ characters.
+  @self uses your terminal identity. Names are scoped by --project or your own project inside OpenCove; explicit --space constrains every node selector, including full IDs. Ambiguous targets require a full ID.
+
+Global options:
+  --endpoint <url>         Connect to this Control Surface URL
+  --token <token>          Authenticate with this bearer token
+  --user-data <dir>        Use this profile directory
+  --timeout <ms>           Set the request timeout in milliseconds (default: 20000)
+  --pretty                 Indent JSON output for readability
+  --limit <n>              Limit output lists to n items (0 means all); cut object lists add truncated totals, bare arrays write one stderr notice
+  --fields <a,b,...>       Select item-relative fields; preserve envelopes and accept item-key prefixes. api call queries also accept raw output paths
+  -o, --output json|table  Choose JSON (default; agent read/session final default to message text) or a supported table layout
+  -h, --help               Show help for this command or group
+  --version                Print the CLI version
+
+Exit codes: 0 success; 1 operation failure; 2 invalid input; 3 unreachable; 4 unauthorized; 5 incompatible protocol; 6 ambiguous target; 10 waiting observed; 11 agent exited during wait; 124 timeout; 130 interrupted.
+
+Run "opencove <group> --help" for commands in a group.
+Start with "opencove api ops --domains" for a compact domain map.
+Then run "opencove api ops --prefix node --fields id,cliCommand" to explore one domain.
+Run "opencove api ops" only when you need the full catalog.
+AI agents: run \`opencove skill\` for a usage guide.
+"
+`;

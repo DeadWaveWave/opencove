@@ -1,0 +1,431 @@
+// @vitest-environment node
+import { waitForAgents } from '../../../src/app/cli/core/agentWait'
+import { CliError } from '../../../src/app/cli/core/errors'
+import { EventEmitter } from 'node:events'
+import type { WebSocket } from 'ws'
+import { describe, expect, it, vi } from 'vitest'
+import { AgentRunStateRegistry } from '../../../src/contexts/agent/application/AgentRunStateRegistry'
+import { AgentRunStateRuntime } from '../../../src/contexts/agent/application/AgentRunStateRuntime'
+import { RemoteAgentRunMirror } from '../../../src/app/main/controlSurface/ptyStream/remoteAgentRunMirror'
+import { subscribeAgentRuntimeSocket } from '../../../src/app/main/controlSurface/ptyStream/agentRuntimeSocket'
+
+function worker(epoch: string, retention = 32) {
+  let time = 100,
+    turn = 0
+  const schedule = vi.fn(() => () => {})
+  const registry = new AgentRunStateRegistry({
+    epoch,
+    retention,
+    now: () => time,
+    createTurnId: () => `${epoch}-turn-${++turn}`,
+    schedule,
+  })
+  const runtime = new AgentRunStateRuntime(registry, () => time)
+  runtime.metadata({ sessionId: 'remote', agentProvider: 'codex', resumeSessionId: null })
+  const observe = (name: string, state: 'working' | 'standby') =>
+    runtime.observe({
+      sessionId: 'remote',
+      source: 'codex_hook',
+      hookEventName: name,
+      state,
+      observedAtMs: ++time,
+    })
+  return { registry, runtime, observe, schedule }
+}
+function fixture(retention = 32) {
+  const remote = worker('remote-epoch', retention)
+  const home = worker('home-epoch')
+  home.runtime.setBindings([
+    { sessionId: 'home', nodeId: 'node', projectId: 'p', spaceId: 'space', remote: true },
+  ])
+  home.runtime.metadata({
+    sessionId: 'home',
+    agentProvider: 'codex',
+    resumeSessionId: null,
+    remote: true,
+  })
+  const reconnect = vi.fn()
+  const mirror = new RemoteAgentRunMirror({
+    sessions: () => ['remote'],
+    reconnect,
+    emit: (_id, event) => home.runtime.observe({ ...event, sessionId: 'home' }),
+  })
+  const frames: string[] = []
+  let socket: ReturnType<typeof connect> | undefined
+  function connect(registry = remote.registry, supported = true) {
+    const hello = mirror.hello()
+    mirror.handleMessage(
+      JSON.stringify({ type: 'hello_ack', capabilities: supported ? { agentRunEvents: 1 } : {} }),
+    )
+    const ws = Object.assign(new EventEmitter(), {
+      OPEN: 1,
+      readyState: 1,
+      bufferedAmount: 0,
+      send: (raw: string) => {
+        frames.push(raw)
+        mirror.handleMessage(raw)
+      },
+      terminate() {
+        this.readyState = 3
+        this.emit('close')
+      },
+    })
+    if (supported) {
+      subscribeAgentRuntimeSocket(registry, ws as unknown as WebSocket, hello.agentRunCursor)
+    }
+    socket = ws
+    return ws
+  }
+  const disconnect = () => {
+    socket?.terminate()
+    mirror.disconnect()
+  }
+  return {
+    remote,
+    home,
+    mirror,
+    frames,
+    connect,
+    disconnect,
+    reconnect,
+    get: () => home.registry.get({ nodeId: 'node' })!,
+    dispose: () => {
+      disconnect()
+      home.runtime.dispose()
+      remote.runtime.dispose()
+    },
+  }
+}
+
+describe('two Worker decided-state mirroring', () => {
+  it('preserves inferred and degraded quality and leaves turn endings to the executing Worker', () => {
+    const f = fixture()
+    try {
+      f.connect()
+      f.remote.registry.observe('remote', {
+        incarnation: 'remote',
+        sourceSequence: 1,
+        source: 'session_file',
+        state: 'working',
+        observedAt: 101,
+        boundary: { kind: 'start', evidence: 'busy', inferred: true },
+      })
+      expect(f.get()).toMatchObject({
+        quality: 'inferred',
+        turn: { id: 'remote-epoch-turn-1', start: 'inferred' },
+      })
+      f.remote.registry.observe('remote', {
+        incarnation: 'remote',
+        sourceSequence: 2,
+        source: 'session_file',
+        state: 'unknown',
+        observedAt: 102,
+        degraded: true,
+      })
+      expect(f.get()).toMatchObject({ state: 'unknown', quality: 'degraded' })
+      const watermark = f.home.registry.list(),
+        completed = vi.fn()
+      f.home.registry.subscribe(
+        { epoch: watermark.epoch, afterSeq: watermark.seq },
+        { types: ['agent.turn_completed'] },
+        completed,
+      )
+      f.home.runtime.exit('home')
+      expect(completed).not.toHaveBeenCalled()
+      f.remote.runtime.exit('remote')
+      expect(completed).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          snapshot: expect.objectContaining({ state: 'exited', turnOutcome: 'unknown' }),
+          endedTurn: expect.objectContaining({ id: 'remote-epoch-turn-1' }),
+        }),
+      )
+      f.mirror.forget('remote')
+      expect(f.mirror['snapshots'].has('remote')).toBe(false)
+    } finally {
+      f.dispose()
+    }
+  })
+  it('negotiates support, maps bindings and preserves turn identity/quality without local arbitration', () => {
+    const f = fixture()
+    try {
+      f.remote.observe('UserPromptSubmit', 'working')
+      f.connect()
+      expect(f.get()).toMatchObject({
+        sessionId: 'home',
+        nodeId: 'node',
+        state: 'working',
+        quality: 'authoritative',
+        turn: { id: 'remote-epoch-turn-1' },
+      })
+      f.home.runtime.observe({
+        sessionId: 'home',
+        remote: true,
+        state: 'standby',
+        source: 'session_file',
+      })
+      expect(f.get().state).toBe('working')
+      const baseline = f.home.registry.list()
+      const events = vi.fn()
+      f.home.registry.subscribe(
+        { epoch: baseline.epoch, afterSeq: baseline.seq },
+        { types: ['agent.turn_completed'] },
+        events,
+      )
+      f.remote.observe('StopFailure', 'standby')
+      expect(events).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          epoch: 'home-epoch',
+          snapshot: expect.objectContaining({
+            sessionId: 'home',
+            turnOutcome: 'failed',
+            lastEndedTurn: { id: 'remote-epoch-turn-1', outcome: 'failed', endedAt: 102 },
+          }),
+          endedTurn: { id: 'remote-epoch-turn-1', startedAt: 101, start: 'observed' },
+        }),
+      )
+      f.remote.observe('UserPromptSubmit', 'working')
+      expect(f.get().lastEndedTurn).toEqual({
+        id: 'remote-epoch-turn-1',
+        outcome: 'failed',
+        endedAt: 102,
+      })
+      const seq = f.home.registry.list().seq
+      const last = f.frames.filter(frame => JSON.parse(frame).type === 'agent.event').at(-1)!
+      f.mirror.handleMessage(last)
+      expect(f.home.registry.list().seq).toBe(seq)
+      expect(f.home.schedule).not.toHaveBeenCalled()
+    } finally {
+      f.dispose()
+    }
+  })
+  it('keeps unsupported peers unknown and replays completions exactly once across disconnect/reconnect', () => {
+    const f = fixture()
+    try {
+      f.connect(f.remote.registry, false)
+      f.home.runtime.observe({
+        sessionId: 'home',
+        remote: true,
+        state: 'standby',
+        source: 'codex_hook',
+        hookEventName: 'Stop',
+      })
+      expect(f.get()).toMatchObject({ state: 'unknown', quality: 'degraded' })
+      f.disconnect()
+      f.connect()
+      f.remote.observe('UserPromptSubmit', 'working')
+      f.disconnect()
+      expect(f.get()).toMatchObject({ state: 'unknown', quality: 'degraded' })
+      const watermark = f.home.registry.list(),
+        completed = vi.fn()
+      f.home.registry.subscribe(
+        { epoch: watermark.epoch, afterSeq: watermark.seq },
+        { types: ['agent.turn_completed'] },
+        completed,
+      )
+      f.remote.observe('Stop', 'standby')
+      f.connect()
+      expect(f.get()).toMatchObject({
+        state: 'idle',
+        turnOutcome: 'completed',
+        quality: 'authoritative',
+      })
+      expect(completed).toHaveBeenCalledTimes(1)
+      f.disconnect()
+      f.connect()
+      expect(completed).toHaveBeenCalledTimes(1)
+      expect(f.get().state).toBe('idle')
+    } finally {
+      f.dispose()
+    }
+  })
+  it('resynchronizes retention gaps and changed epochs without inventing historical completions', () => {
+    const f = fixture(2),
+      replacement = worker('next-epoch')
+    try {
+      f.connect()
+      f.disconnect()
+      f.remote.observe('UserPromptSubmit', 'working')
+      f.remote.observe('Stop', 'standby')
+      const baseline = f.home.registry.list(),
+        completed = vi.fn()
+      f.home.registry.subscribe(
+        { epoch: baseline.epoch, afterSeq: baseline.seq },
+        { types: ['agent.turn_completed'] },
+        completed,
+      )
+      f.connect()
+      expect(f.frames.some(frame => JSON.parse(frame).type === 'agent.resync_required')).toBe(true)
+      expect(f.get().state).toBe('idle')
+      expect(completed).not.toHaveBeenCalled()
+      f.disconnect()
+      replacement.observe('UserPromptSubmit', 'working')
+      f.connect(replacement.registry)
+      expect(f.get().turn?.id).toBe('next-epoch-turn-1')
+      const stale = f.frames.find(frame => JSON.parse(frame).type === 'agent.baseline')!
+      f.mirror.handleMessage(stale)
+      expect(f.get()).toMatchObject({ state: 'unknown', quality: 'degraded' })
+      expect(f.reconnect).toHaveBeenCalledTimes(1)
+    } finally {
+      replacement.runtime.dispose()
+      f.dispose()
+    }
+  })
+  it('invalidates an out-of-sequence remote stream and releases subscriptions on disconnect', () => {
+    const f = fixture()
+    try {
+      f.connect()
+      f.remote.observe('UserPromptSubmit', 'working')
+      const frame = JSON.parse(
+        f.frames.filter(value => JSON.parse(value).type === 'agent.event').at(-1)!,
+      )
+      frame.event.seq += 2
+      f.mirror.handleMessage(JSON.stringify(frame))
+      expect(f.get().state).toBe('unknown')
+      expect(f.reconnect).toHaveBeenCalledTimes(1)
+      f.disconnect()
+      const count = f.frames.length
+      f.remote.observe('Stop', 'standby')
+      expect(f.frames).toHaveLength(count)
+    } finally {
+      f.dispose()
+    }
+  })
+})
+
+it('waits for remote snapshot/events but identifies older history as unavailable on Home', async () => {
+  const f = fixture()
+  f.connect()
+  const query = vi.fn(async (id: string, payload: unknown): Promise<unknown> => {
+    if (id === 'agent.list') {
+      return f.home.registry.list()
+    }
+    if (id === 'agent.get') {
+      return f.home.registry.get(payload as { nodeId: string })
+    }
+    try {
+      return f.home.registry.finalMessage(payload as { sessionId: string; turnId: string })
+    } catch (error) {
+      const value = error as { code: string; details: unknown }
+      throw new CliError(value.code, 1, 'Unavailable', undefined, value.details)
+    }
+  })
+  const fetch = vi.fn(async (url: string | URL | Request) => {
+    const params = new URL(String(url)).searchParams
+    let dispose = () => {}
+    return new Response(
+      new ReadableStream({
+        start(controller) {
+          dispose = f.home.registry.subscribe(
+            { epoch: params.get('epoch')!, afterSeq: Number(params.get('afterSeq')) },
+            {},
+            event => {
+              controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`))
+            },
+          )
+        },
+        cancel() {
+          dispose()
+        },
+      }),
+      { headers: { 'content-type': 'text/event-stream' } },
+    )
+  })
+  const wait = (turnId: string) =>
+    waitForAgents({
+      nodeIds: ['node'],
+      turnId,
+      any: false,
+      timeoutMs: 500,
+      query,
+      fetch: fetch as typeof globalThis.fetch,
+      connection: { endpoint: 'http://fake', token: 't' },
+    })
+  try {
+    f.remote.observe('UserPromptSubmit', 'working')
+    const pending = wait('remote-epoch-turn-1')
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
+    f.remote.observe('Stop', 'standby')
+    const completed = await pending
+    expect(completed).toMatchObject({
+      turnId: 'remote-epoch-turn-1',
+      outcome: 'completed',
+      persisted: false,
+    })
+    expect(completed).not.toHaveProperty('deliveryIds')
+    expect(completed).not.toHaveProperty('promptIds')
+    expect(
+      query.mock.calls.filter(([id]) => id === 'agent.finalMessage').map(([, payload]) => payload),
+    ).toEqual([{ nodeId: 'node', turnId: 'remote-epoch-turn-1' }])
+    f.remote.observe('UserPromptSubmit', 'working')
+    f.remote.observe('StopFailure', 'standby')
+    expect(await wait('remote-epoch-turn-2')).toMatchObject({ outcome: 'failed' })
+    expect(() =>
+      f.remote.registry.finalMessage({ sessionId: 'remote', turnId: 'remote-epoch-turn-1' }),
+    ).toThrow(
+      expect.objectContaining({
+        details: expect.objectContaining({
+          reason: 'provider_sent_no_message',
+          outcome: 'completed',
+        }),
+      }),
+    )
+    await expect(wait('remote-epoch-turn-1')).rejects.toMatchObject({
+      code: 'agent.wait_turn_unavailable',
+      details: { reason: 'remote_history_unavailable' },
+      hint: expect.stringContaining('Worker that runs them'),
+    })
+    await expect(wait('remote-epoch-turn-1')).rejects.not.toMatchObject({
+      hint: expect.stringContaining('evict'),
+    })
+  } finally {
+    f.dispose()
+  }
+})
+
+it('mirrors remote displacement by session while Home retains its independent current node binding', () => {
+  const f = fixture()
+  try {
+    f.remote.registry.bind('remote', { nodeId: 'remote-node' })
+    f.connect()
+    f.remote.observe('UserPromptSubmit', 'working')
+    f.remote.registry.register({
+      sessionId: 'other',
+      nodeId: 'remote-node',
+      incarnation: 'other',
+      provider: 'codex',
+    })
+    expect(f.remote.registry.get({ sessionId: 'remote' })?.nodeId).toBeNull()
+    expect(
+      f.frames.map(raw => JSON.parse(raw)).filter(frame => frame.type === 'agent.event'),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: expect.objectContaining({
+            snapshot: expect.objectContaining({ sessionId: 'remote', nodeId: null }),
+          }),
+        }),
+      ]),
+    )
+    // Remote node IDs are not Home canvas bindings: the mapped session still owns Home's node.
+    expect(f.get()).toMatchObject({ sessionId: 'home', nodeId: 'node', state: 'working' })
+    f.home.runtime.metadata({
+      sessionId: 'new-home',
+      agentProvider: 'codex',
+      resumeSessionId: null,
+      remote: true,
+    })
+    f.home.registry.bind('new-home', { nodeId: 'node' })
+    expect(f.home.registry.get({ sessionId: 'home' })?.nodeId).toBeNull()
+    f.remote.observe('Stop', 'standby')
+    expect(f.home.registry.get({ sessionId: 'home' })).toMatchObject({
+      nodeId: null,
+      state: 'idle',
+    })
+    expect(f.home.registry.get({ nodeId: 'node' })?.sessionId).toBe('new-home')
+    f.home.registry.bind('home', { nodeId: 'node' })
+    expect(f.get()).toMatchObject({ sessionId: 'home', nodeId: 'node', state: 'idle' })
+    expect(f.home.registry.get({ sessionId: 'new-home' })?.nodeId).toBeNull()
+  } finally {
+    f.dispose()
+  }
+})

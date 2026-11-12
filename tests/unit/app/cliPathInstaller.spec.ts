@@ -2,13 +2,15 @@ import { tmpdir } from 'node:os'
 import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mkdir, mkdtemp, readFile, rm, unlink, writeFile } =
+const { mkdir, mkdtemp, open, readFile, rm, unlink, writeFile } =
   await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
 
 const { execFileMock } = vi.hoisted(() => ({
   execFileMock: vi.fn<typeof import('node:child_process').execFile>(),
 }))
 
+let beforeRename: (() => Promise<void>) | undefined
+let denyRename = false
 let mockRootDir = ''
 let mockHomeDir = ''
 let mockAppPath = ''
@@ -37,7 +39,7 @@ function resolveFixturePath(filePath: string): string {
 
   for (const [index, binDir] of ['/opt/homebrew/bin', '/usr/local/bin'].entries()) {
     const relativeBinPath = relative(resolve(binDir), normalized)
-    if (relativeBinPath === '' || relativeBinPath === 'opencove') {
+    if (relativeBinPath === '' || relativeBinPath.startsWith('opencove')) {
       return join(mockRootDir, 'system-bins', String(index), relativeBinPath)
     }
   }
@@ -49,6 +51,17 @@ vi.mock('node:fs/promises', async importOriginal => {
   const fs = await importOriginal<typeof import('node:fs/promises')>()
   // Deliberately do not spread fs: new installer IO must be isolated explicitly.
   const sandboxedFs = {
+    open: (path: string, flags: string, mode?: number) =>
+      fs.open(resolveFixturePath(path), flags, mode),
+    stat: (path: string) => fs.stat(resolveFixturePath(path)),
+    unlink: (path: string) => fs.unlink(resolveFixturePath(path)),
+    rename: async (from: string, to: string) => {
+      if (denyRename) {
+        return Promise.reject(Object.assign(new Error('denied'), { code: 'EACCES' }))
+      }
+      await beforeRename?.()
+      return fs.rename(resolveFixturePath(from), resolveFixturePath(to))
+    },
     access: (path: string, mode?: number) => fs.access(resolveFixturePath(path), mode),
     mkdir: (path: string, options?: Parameters<typeof fs.mkdir>[1]) =>
       fs.mkdir(resolveFixturePath(path), options),
@@ -93,14 +106,16 @@ vi.mock('electron', () => ({
 }))
 
 async function createPackagedCli(resourcesDir: string): Promise<string> {
-  const cliPath = resolve(resourcesDir, 'app.asar', 'src', 'app', 'cli', 'opencove.mjs')
-  await mkdir(resolve(resourcesDir, 'app.asar', 'src', 'app', 'cli'), { recursive: true })
+  const cliPath = resolve(resourcesDir, 'app.asar', 'out', 'cli', 'opencove.mjs')
+  await mkdir(resolve(resourcesDir, 'app.asar', 'out', 'cli'), { recursive: true })
   await writeFile(cliPath, '#!/usr/bin/env node\n', 'utf8')
   return cliPath
 }
 
 describe('cliPathInstaller', () => {
   beforeEach(async () => {
+    beforeRename = undefined
+    denyRename = false
     execFileMock.mockReset()
     originalPlatform = process.platform
     originalLocalAppData = process.env.LOCALAPPDATA
@@ -167,7 +182,7 @@ describe('cliPathInstaller', () => {
       expect(wrapper).toContain('# OPENCOVE_WRAPPER_KIND=runtime')
       expect(wrapper).toContain('# OPENCOVE_INSTALL_OWNER=desktop')
       expect(wrapper).toContain(
-        resolve(process.resourcesPath, 'app.asar', 'src', 'app', 'cli', 'opencove.mjs'),
+        resolve(process.resourcesPath, 'app.asar', 'out', 'cli', 'opencove.mjs'),
       )
 
       await expect(resolveCliPathStatus()).resolves.toEqual(status)
@@ -230,7 +245,7 @@ describe('cliPathInstaller', () => {
       await import('../../../src/app/main/cli/cliPathInstaller')
 
     const installed = await installCliToPath()
-    await unlink(resolve(process.resourcesPath, 'app.asar', 'src', 'app', 'cli', 'opencove.mjs'))
+    await unlink(resolve(process.resourcesPath, 'app.asar', 'out', 'cli', 'opencove.mjs'))
 
     await expect(resolveCliPathStatus()).resolves.toEqual({
       installed: true,
@@ -277,7 +292,7 @@ describe('cliPathInstaller', () => {
     const localAppData = resolve(mockHomeDir, '..', 'LocalAppData')
     const userBinDir = resolve(localAppData, 'OpenCove', 'bin')
     const launcherPath = resolve(userBinDir, 'opencove.cmd')
-    const cliPath = resolve(process.resourcesPath, 'app.asar', 'src', 'app', 'cli', 'opencove.mjs')
+    const cliPath = resolve(process.resourcesPath, 'app.asar', 'out', 'cli', 'opencove.mjs')
     process.env.LOCALAPPDATA = localAppData
     process.env.PATH = `${userBinDir};C:\\Windows\\System32`
     await mkdir(userBinDir, { recursive: true })
@@ -311,5 +326,130 @@ describe('cliPathInstaller', () => {
     await expect(readFile(launcherPath, 'utf8')).resolves.toContain(
       'OPENCOVE_INSTALL_OWNER=standalone',
     )
+  })
+  it.each([
+    ['linux', 'desktop', false, true],
+    ['win32', 'desktop', false, true],
+    ['linux', 'standalone', false, false],
+    ['linux', 'desktop', true, false],
+    ['linux', 'other-desktop', false, false],
+    ['linux', '', false, true],
+  ] as const)('repairs legacy %s owner=%s denied=%s', async (platform, owner, denied, repaired) => {
+    setPlatform(platform)
+    denyRename = denied
+    process.env.LOCALAPPDATA = mockHomeDir
+    const target =
+      platform === 'win32'
+        ? join(mockHomeDir, 'OpenCove', 'bin', 'opencove.cmd')
+        : join(mockHomeDir, '.local', 'bin', 'opencove')
+    const legacy = resolve(process.resourcesPath, 'app.asar/src/app/cli/opencove.mjs')
+    const prefix = platform === 'win32' ? 'rem' : '#'
+    const wrapper = [
+      `${prefix} __OPENCOVE_CLI_WRAPPER__`,
+      ...(owner
+        ? [`${prefix} OPENCOVE_INSTALL_OWNER=${owner === 'other-desktop' ? 'desktop' : owner}`]
+        : []),
+      `${prefix} OPENCOVE_WRAPPER_KIND=runtime`,
+      `${prefix} OPENCOVE_ELECTRON_BIN=${owner === 'other-desktop' ? '/other/electron' : process.execPath}`,
+      `${prefix} OPENCOVE_CLI_SCRIPT=${legacy}`,
+    ].join('\n')
+    await mkdir(resolve(target, '..'), { recursive: true })
+    await writeFile(target, wrapper)
+    const { repairLegacyCliLaunchers } = await import('../../../src/app/main/cli/cliPathInstaller')
+    await repairLegacyCliLaunchers()
+    const actual = await readFile(target, 'utf8')
+    if (repaired) {
+      expect(actual).toContain(resolve(process.resourcesPath, 'app.asar/out/cli/opencove.mjs'))
+      expect(actual).not.toContain(legacy)
+      if (platform === 'win32') {
+        expect(actual).toContain('%*')
+      }
+    } else {
+      expect(actual).toBe(wrapper)
+    }
+  })
+  it('leaves candidate directories untouched when no Desktop launcher exists', async () => {
+    setPlatform('linux')
+    const bin = join(mockHomeDir, '.local/bin')
+    const { repairLegacyCliLaunchers } = await import('../../../src/app/main/cli/cliPathInstaller')
+    await expect(repairLegacyCliLaunchers()).resolves.toBeUndefined()
+    await expect(readFile(join(bin, 'opencove.lock'), 'utf8')).rejects.toMatchObject({
+      code: 'ENOENT',
+    })
+    await mkdir(bin, { recursive: true })
+    await writeFile(join(bin, 'opencove'), '#!/bin/sh\necho user-owned\n')
+    await repairLegacyCliLaunchers()
+    await expect(readFile(join(bin, 'opencove.lock'), 'utf8')).rejects.toMatchObject({
+      code: 'ENOENT',
+    })
+    expect(await readFile(join(bin, 'opencove'), 'utf8')).toBe('#!/bin/sh\necho user-owned\n')
+  })
+
+  it('excludes a concurrent publisher between the final ownership read and rename', async () => {
+    setPlatform('linux')
+    const target = join(mockHomeDir, '.local/bin/opencove')
+    const legacy = resolve(process.resourcesPath, 'app.asar/src/app/cli/opencove.mjs')
+    const desktop = `# __OPENCOVE_CLI_WRAPPER__
+# OPENCOVE_INSTALL_OWNER=desktop
+# OPENCOVE_ELECTRON_BIN=${process.execPath}
+# OPENCOVE_CLI_SCRIPT=${legacy}`
+    const standalone = '# __OPENCOVE_CLI_WRAPPER__\n# OPENCOVE_INSTALL_OWNER=standalone\n'
+    await mkdir(resolve(target, '..'), { recursive: true })
+    await writeFile(target, desktop)
+    const { repairLegacyCliLaunchers } = await import('../../../src/app/main/cli/cliPathInstaller')
+    let attempts = 0
+    beforeRename = async () => {
+      attempts += 1
+      // Real exclusive open, exactly at the former TOCTOU gap. No sleeps or scheduling guesses.
+      await expect(open(`${target}.lock`, 'wx')).rejects.toMatchObject({ code: 'EEXIST' })
+    }
+    await repairLegacyCliLaunchers()
+    expect(attempts).toBe(1)
+    const lock = await open(`${target}.lock`, 'wx')
+    try {
+      await writeFile(target, standalone)
+      await repairLegacyCliLaunchers()
+      expect(await readFile(target, 'utf8')).toBe(standalone)
+    } finally {
+      await lock.close()
+      await unlink(`${target}.lock`)
+    }
+    await repairLegacyCliLaunchers()
+    expect(await readFile(target, 'utf8')).toBe(standalone)
+    expect(attempts).toBe(1)
+  })
+
+  it.each(['desktop', ''])('repairs Windows percent paths with owner=%s', async owner => {
+    setPlatform('win32')
+    const originalExecPath = Object.getOwnPropertyDescriptor(process, 'execPath')!
+    const executable = join(mockRootDir, 'a%b', 'Electron.exe')
+    const resources = join(mockRootDir, 'a%b', 'resources')
+    await mkdir(resolve(executable, '..'), { recursive: true })
+    await writeFile(executable, '', { mode: 0o755 })
+    Object.defineProperty(process, 'execPath', { configurable: true, value: executable })
+    Object.defineProperty(process, 'resourcesPath', { configurable: true, value: resources })
+    process.env.LOCALAPPDATA = mockHomeDir
+    try {
+      const cli = await createPackagedCli(resources)
+      const target = join(mockHomeDir, 'OpenCove/bin/opencove.cmd')
+      await mkdir(resolve(target, '..'), { recursive: true })
+      const encode = (value: string) => value.replaceAll('%', '%%')
+      await writeFile(
+        target,
+        [
+          'rem __OPENCOVE_CLI_WRAPPER__',
+          ...(owner ? [`rem OPENCOVE_INSTALL_OWNER=${owner}`] : []),
+          `rem OPENCOVE_ELECTRON_BIN=${encode(executable)}`,
+          `rem OPENCOVE_CLI_SCRIPT=${encode(resolve(resources, 'app.asar/src/app/cli/opencove.mjs'))}`,
+        ].join('\n'),
+      )
+      const { repairLegacyCliLaunchers, resolveCliPathStatus } =
+        await import('../../../src/app/main/cli/cliPathInstaller')
+      await repairLegacyCliLaunchers()
+      expect(await readFile(target, 'utf8')).toContain(`set "CLI_SCRIPT=${encode(cli)}"`)
+      expect(await resolveCliPathStatus()).toEqual({ installed: true, path: target, healthy: true })
+    } finally {
+      Object.defineProperty(process, 'execPath', originalExecPath)
+    }
   })
 })

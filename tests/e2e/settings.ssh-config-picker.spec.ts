@@ -7,14 +7,14 @@ import { openSettings, switchSettingsPage } from './m6.endpoints-mounts.integrat
 import { clearAndSeedWorkspace, launchApp, removePathWithRetry } from './workspace-canvas.helpers'
 
 test.describe('Settings SSH config host picker', () => {
-  test('keeps remote registration usable in both Pixel themes and narrow windows', async ({
+  test('keeps remote registration usable in both appearances and narrow windows', async ({
     browserName: _browserName,
   }, testInfo) => {
     const { electronApp, window } = await launchApp()
     try {
       for (const configuration of [
-        { uiTheme: 'pixel', language: 'zh-CN' },
-        { uiTheme: 'pixel-light', language: 'en' },
+        { uiTheme: 'dark', language: 'zh-CN' },
+        { uiTheme: 'light', language: 'en' },
       ] as const) {
         await electronApp.evaluate(({ BrowserWindow }) => {
           BrowserWindow.getAllWindows()[0].setContentSize(1200, 800, false)

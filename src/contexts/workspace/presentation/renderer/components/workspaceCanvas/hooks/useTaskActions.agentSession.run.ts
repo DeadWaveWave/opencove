@@ -1,3 +1,4 @@
+import { readManagedClaudeExecutionContext } from '../../../utils/managedClaudeLifecycle'
 import {
   resolveAgentModel,
   resolveSelectableAgentProvider,
@@ -17,6 +18,7 @@ import {
   type TaskActionContext,
 } from './useTaskActions.agentSession.shared'
 import { resolveDefaultAgentLaunchGeometry } from './agentLaunchGeometry'
+import type { AgentNodeLaunchOverrides } from './useAgentNodeLifecycle.support'
 import {
   buildMergedAgentLaunchEnv,
   launchWorkspaceAgentSession,
@@ -31,6 +33,8 @@ function reuseLinkedAgentForTask({
   requirement,
   taskDirectory,
   context,
+  managed,
+  managedDirectory,
 }: {
   taskNodeId: string
   linkedAgentNodeId: string
@@ -38,10 +42,12 @@ function reuseLinkedAgentForTask({
   requirement: string
   taskDirectory: string
   context: TaskActionContext
-}): boolean {
+  managed: boolean
+  managedDirectory?: string | null
+}): AgentNodeLaunchOverrides | null {
   const linkedAgentNode = context.nodesRef.current.find(node => node.id === linkedAgentNodeId)
   if (!linkedAgentNode || linkedAgentNode.data.kind !== 'agent' || !linkedAgentNode.data.agent) {
-    return false
+    return null
   }
 
   assignAgentNodeToTaskSpace({
@@ -52,15 +58,15 @@ function reuseLinkedAgentForTask({
   })
 
   const now = new Date().toISOString()
+  const agentDirectory = managed
+    ? managedDirectory!
+    : linkedAgentNode.data.agent.directoryMode === 'workspace'
+      ? taskDirectory
+      : linkedAgentNode.data.agent.executionDirectory
 
   context.setNodes(prevNodes =>
     prevNodes.map(node => {
       if (node.id === linkedAgentNodeId && node.data.kind === 'agent' && node.data.agent) {
-        const agentDirectory =
-          node.data.agent.directoryMode === 'workspace'
-            ? taskDirectory
-            : node.data.agent.executionDirectory
-
         return {
           ...node,
           data: {
@@ -71,12 +77,20 @@ function reuseLinkedAgentForTask({
                 : context.buildAgentNodeTitle(node.data.agent.provider, taskTitle),
             agent: {
               ...node.data.agent,
-              prompt: requirement,
               taskId: taskNodeId,
-              executionDirectory: agentDirectory,
-              expectedDirectory: agentDirectory,
+              // Preserve the adoption image until the launch succeeds. Requested
+              // prompt/directory belong to the launch, not preparatory publication.
+              ...(node.data.agent.provider === 'claude-code'
+                ? {}
+                : {
+                    prompt: requirement,
+                    executionDirectory: agentDirectory,
+                    expectedDirectory: agentDirectory,
+                  }),
               launchMode: 'new',
-              ...clearResumeSessionBinding(),
+              ...(!managed && node.data.agent.provider !== 'claude-code'
+                ? clearResumeSessionBinding()
+                : {}),
             },
             lastError: null,
           },
@@ -105,7 +119,11 @@ function reuseLinkedAgentForTask({
   )
   context.onRequestPersistFlush?.()
 
-  return true
+  return {
+    prompt: requirement,
+    executionDirectory: agentDirectory,
+    expectedDirectory: agentDirectory,
+  }
 }
 
 export async function runTaskAgentAction(
@@ -134,6 +152,18 @@ export async function runTaskAgentAction(
       ? taskSpace.directoryPath.trim()
       : context.workspacePath
 
+  const linkedAgentNodeId = taskNode.data.task.linkedAgentNodeId
+  const linked = context.nodesRef.current.find(node => node.id === linkedAgentNodeId)
+  let owned
+  try {
+    owned = linkedAgentNodeId
+      ? await readManagedClaudeExecutionContext(linkedAgentNodeId, linked?.data.agent?.provider)
+      : null
+  } catch (error) {
+    setTaskLastError({ taskNodeId, message: toErrorMessage(error), setNodes: context.setNodes })
+    return
+  }
+
   const initialBinding = await resolveWorkspaceAgentLaunchBinding({
     workspaceId: context.workspaceId,
     workspacePath: context.workspacePath,
@@ -141,15 +171,23 @@ export async function runTaskAgentAction(
     executionDirectory: taskDirectory,
     targetSpace: taskSpace,
     spacesRef: context.spacesRef,
-    onSpacesChange: context.onSpacesChange,
-    onRequestPersistFlush: context.onRequestPersistFlush,
+    onSpacesChange: owned ? undefined : context.onSpacesChange,
+    onRequestPersistFlush: owned ? undefined : context.onRequestPersistFlush,
   })
   mountId = initialBinding.mountId
   taskDirectory = initialBinding.executionDirectory
-  const linkedAgentNodeId = taskNode.data.task.linkedAgentNodeId
-
   if (linkedAgentNodeId) {
+    if (owned && taskDirectory !== owned.executionDirectory) {
+      setTaskLastError({
+        taskNodeId,
+        message: context.t('messages.managedAgentDirectoryConflict'),
+        setNodes: context.setNodes,
+      })
+      return
+    }
     const reused = reuseLinkedAgentForTask({
+      managed: Boolean(owned),
+      managedDirectory: owned?.executionDirectory,
       taskNodeId,
       linkedAgentNodeId,
       taskTitle: taskNode.data.title,
@@ -159,7 +197,7 @@ export async function runTaskAgentAction(
     })
 
     if (reused) {
-      await context.launchAgentInNode(linkedAgentNodeId, 'new')
+      await context.launchAgentInNode(linkedAgentNodeId, 'new', reused)
       return
     }
 
@@ -186,7 +224,11 @@ export async function runTaskAgentAction(
   )
 
   try {
+    const canvasNodeId = crypto.randomUUID()
     const launched = await launchWorkspaceAgentSession({
+      canvasNodeId,
+      workspaceId: context.workspaceId,
+      spaceId: taskSpace?.id,
       mountId,
       workspacePath: context.workspacePath,
       executionDirectory: taskDirectory,
@@ -214,7 +256,11 @@ export async function runTaskAgentAction(
     })
 
     const createdAgentNode = await context.createNodeForSession({
+      nodeId: canvasNodeId,
       sessionId: launched.sessionId,
+      ...(launched.managedClaudeLifecycle
+        ? { managedClaudeLifecycle: launched.managedClaudeLifecycle }
+        : {}),
       profileId: launched.profileId,
       runtimeKind: launched.runtimeKind,
       terminalGeometry: launchGeometry.terminalGeometry,

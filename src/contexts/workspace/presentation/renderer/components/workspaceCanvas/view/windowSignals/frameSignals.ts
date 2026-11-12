@@ -1,15 +1,20 @@
 import type { Rgb } from '@shared/design/oklch'
+import type { WindowKindFamily } from '../../../../utils/windowKindFamily'
 
 /** What a window frame is showing; a stronger signal replaces a weaker one, never the reverse. */
-export type FrameSignal = 'swept' | 'complete' | 'fail'
-const RANK: Record<FrameSignal, number> = { swept: 0, complete: 1, fail: 2 }
+export type FrameSignal = 'complete' | 'fail'
+const RANK: Record<FrameSignal, number> = { complete: 1, fail: 2 }
 
-const active = new Map<HTMLElement, { signal: FrameSignal; timer: ReturnType<typeof setTimeout> }>()
+const active = new Map<
+  HTMLElement,
+  { signal: FrameSignal; timer: ReturnType<typeof setTimeout>; flash: HTMLElement | null }
+>()
 
 function clear(element: HTMLElement): void {
   const entry = active.get(element)
   if (entry) {
     clearTimeout(entry.timer)
+    entry.flash?.remove()
     active.delete(element)
   }
   delete element.dataset.coveSignal
@@ -17,15 +22,15 @@ function clear(element: HTMLElement): void {
 }
 
 /**
- * Lights a window's frame for a moment: a finished run's flash, a failure's glitch, or the 1px
- * edge a passing shockwave brightens. It writes one attribute and one colour variable on the
+ * Lights a window's frame for a moment: a finished run's flash or a failure's glitch.
+ * It writes one attribute and one colour variable on the
  * window, only while the signal lasts, and never touches the fill behind its text (Tide).
  */
 export function showWindowSignal(
   scope: ParentNode,
   nodeId: string,
   signal: FrameSignal,
-  color: Rgb,
+  color: Rgb | string,
   durationMs: number,
 ): void {
   const element = scope.querySelector<HTMLElement>(
@@ -39,9 +44,36 @@ export function showWindowSignal(
     return
   }
   clear(element)
+  // Replacing the flash layer restarts its CSS animation, even inside the previous flash.
+  let flash: HTMLElement | null = null
+  if (signal === 'complete') {
+    flash = document.createElement('div')
+    flash.className = 'cove-window-flash'
+    flash.setAttribute('aria-hidden', 'true')
+    element.append(flash)
+  } else if (current?.signal === signal) {
+    // Tide retrigger: commit the removed glitch before starting the next one.
+    void element.offsetWidth
+  }
   element.dataset.coveSignal = signal
-  element.style.setProperty('--cove-signal-color', `rgb(${color[0]} ${color[1]} ${color[2]})`)
-  active.set(element, { signal, timer: setTimeout(() => clear(element), durationMs) })
+  element.style.setProperty(
+    '--cove-signal-color',
+    typeof color === 'string' ? color : `rgb(${color[0]} ${color[1]} ${color[2]})`,
+  )
+  active.set(element, { signal, flash, timer: setTimeout(() => clear(element), durationMs) })
+}
+
+/**
+ * The completion flash colour. The prototype's `.burst` uses `--ki`, the kind glyph colour; the
+ * patrol, sparks and rim glint use the ink. Themes without kind tokens fall back to `fallback`.
+ */
+export function readCompletionColor(
+  scope: Element,
+  family: WindowKindFamily,
+  fallback: Rgb,
+): string {
+  const glyph = getComputedStyle(scope).getPropertyValue(`--cove-kind-${family}-glyph`).trim()
+  return glyph || `rgb(${fallback[0]} ${fallback[1]} ${fallback[2]})`
 }
 
 export function clearWindowSignals(scope: ParentNode): void {

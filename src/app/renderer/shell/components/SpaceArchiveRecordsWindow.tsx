@@ -1,5 +1,5 @@
 import React from 'react'
-import { Trash2 } from 'lucide-react'
+import { TrashIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import type {
@@ -270,7 +270,7 @@ export function SpaceArchiveRecordsWindow({
               setRecordContextMenu(null)
             }}
           >
-            <Trash2 className="workspace-context-menu__icon" aria-hidden="true" />
+            <TrashIcon className="workspace-context-menu__icon" />
             <span className="workspace-context-menu__label">
               {t('spaceArchivesWindow.contextMenu.delete')}
             </span>

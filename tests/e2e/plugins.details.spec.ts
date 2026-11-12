@@ -55,7 +55,7 @@ test.describe('Installed plugin details', () => {
             height: 240,
           },
         ],
-        { settings: { language: 'en', uiTheme: 'pixel', focusNodeOnClick: false } },
+        { settings: { language: 'en', uiTheme: 'dark', focusNodeOnClick: false } },
       )
       await installPlugin(page, directory)
       const detail = await openLocalDetails(page)
@@ -97,7 +97,7 @@ test.describe('Installed plugin details', () => {
       await expect(page.getByTestId('settings-plugin-details-hello-clock')).toBeFocused()
       await capture(page, testInfo, 'plugin-manager-dark')
       await page.getByTestId('settings-section-nav-appearance').click()
-      await selectCoveOption(page, 'settings-ui-theme', 'pixel-light')
+      await selectCoveOption(page, 'settings-ui-theme', 'light')
       await page.getByTestId('settings-section-nav-plugins').click()
       await capture(page, testInfo, 'plugin-manager-light')
       await page.getByTestId('settings-plugin-details-hello-clock').click()
@@ -113,8 +113,8 @@ test.describe('Installed plugin details', () => {
       await expect
         .poll(() => node.evaluate(element => (element as HTMLElement).offsetWidth))
         .toBeGreaterThanOrEqual(320)
-      for (const theme of ['pixel-light', 'pixel']) {
-        if (theme === 'pixel') {
+      for (const theme of ['light', 'dark']) {
+        if (theme === 'dark') {
           await selectCoveOption(page, 'settings-panel-page-selector', 'appearance')
           await selectCoveOption(page, 'settings-ui-theme', theme)
           await selectCoveOption(page, 'settings-panel-page-selector', 'plugins')

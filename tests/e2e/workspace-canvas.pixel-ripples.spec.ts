@@ -36,6 +36,8 @@ async function printOutput(window: Page) {
       ? buildNodeEvalCommand(`process.stdout.write(${JSON.stringify(`RIPPLE_${suffix}\n`)})`)
       : `printf '%s_%s\\n' 'RIPPLE' '${suffix}'`
   const terminal = window.locator(`.react-flow__node[data-id="${TERMINAL_ID}"]`)
+  // A mounted xterm can precede shell initialization; early keystrokes can be discarded.
+  await expect(terminal.locator('.terminal-node__transcript')).toContainText(/[>%$#]\s*$/)
   await terminal.locator('.xterm').click()
   await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()
   await window.keyboard.type(command)

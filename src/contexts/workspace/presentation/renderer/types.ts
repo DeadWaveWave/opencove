@@ -1,3 +1,4 @@
+import type { ManagedClaudeResumeBindingOwnership } from '@shared/contracts/managedClaudeLaunch'
 import type { Node } from '@xyflow/react'
 import type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 import type { AgentSettings, AgentProvider } from '@contexts/settings/domain/agentSettings'
@@ -103,7 +104,13 @@ export interface TerminalAgentOverlay {
   activity?:
     | (Pick<
         TerminalAgentActivitySnapshot,
-        'invocationId' | 'generation' | 'phase' | 'observedAtMs' | 'sourceRevision' | 'revision'
+        | 'invocationId'
+        | 'generation'
+        | 'phase'
+        | 'observedAtMs'
+        | 'sourceRevision'
+        | 'revision'
+        | 'launchMode'
       > & {
         verifiedProviderSessionId?: string | null
       })
@@ -111,7 +118,8 @@ export interface TerminalAgentOverlay {
 }
 
 export interface AgentRuntimeObservation {
-  status: 'running' | 'waiting' | 'standby'
+  blockedReason?: import('@shared/contracts/dto/agentRunState').AgentRunSnapshot['blockedReason']
+  status: 'running' | 'waiting' | 'standby' | 'exited'
   source: TerminalSessionStateSource
   hookInstallState: AgentHookInstallState | null
   degraded: boolean
@@ -188,6 +196,8 @@ export interface WebsiteNodeData {
 }
 
 export interface TerminalNodeData {
+  managedClaudeBindingObservation?: import('@shared/contracts/managedClaudeLaunch').ManagedClaudeBindingObservation
+  managedClaudeResumeBindingOwnership?: ManagedClaudeResumeBindingOwnership | null
   [key: string]: unknown
   /** Derived canvas presentation only. Runtime dimensions remain width/height. */
   collapsePresentation?: { collapsed: boolean; spaceHidden: boolean }
@@ -210,6 +220,7 @@ export interface TerminalNodeData {
   sidebarSortOrder?: number
   title: string
   titlePinnedByUser?: boolean
+  titleIsLiteral?: boolean
   width: number
   height: number
   kind: WorkspaceNodeKind

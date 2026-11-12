@@ -26,10 +26,14 @@ export function updateWorkspacesWithAgentMetadata({
         return node
       }
 
-      const update = resolveAgentMetadataResumeBindingUpdate(node.data.agent, {
-        resumeSessionId: resumeSessionId ?? null,
-        piSnapshot,
-      })
+      const update = resolveAgentMetadataResumeBindingUpdate(
+        node.data.agent,
+        {
+          resumeSessionId: resumeSessionId ?? null,
+          piSnapshot,
+        },
+        node.data.managedClaudeResumeBindingOwnership,
+      )
       if (!update) {
         return node
       }

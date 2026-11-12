@@ -1,3 +1,4 @@
+import { normalizeClientFeatures } from '../../../shared/contracts/controlSurface/clientFeatures'
 import { createAppError } from '../../../shared/errors/appError'
 import type {
   ControlSurfaceInvokeRequest,
@@ -43,6 +44,7 @@ export function normalizeInvokeRequest(value: unknown): ControlSurfaceInvokeRequ
   }
 
   return {
+    clientFeatures: normalizeClientFeatures(value.clientFeatures),
     kind: normalizeKind(value.kind),
     id: normalizeId(value.id),
     payload: value.payload,

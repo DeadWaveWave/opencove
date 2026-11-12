@@ -10,7 +10,8 @@ SQLite:
 - Store：`src/platform/persistence/sqlite/PersistenceStore.ts`
 - Schema：`src/platform/persistence/sqlite/schema.ts`
 - Migration：`src/platform/persistence/sqlite/migrate.ts`
-- 当前 `DB_SCHEMA_VERSION = 13`
+- 当前 `DB_SCHEMA_VERSION = 15`
+- schema 14：managed Claude resume ledger 与 retired IDs；schema 15：node lineage
 - Agent/Terminal node Worker binding：`nodes.worker_binding_json`
 - Terminal durable recovery：`terminal_recovery_records`
 - Legacy terminal presentation/scrollback mirror：`node_scrollback`（兼容读取，不是独立 truth owner）
@@ -65,15 +66,63 @@ repair。Electron 的 `userData` 目录是安装版和 dev 版数据隔离的 du
 读取失败不能被当作“没有 durable state”。如果 `readAppState()`、IPC、Control Surface
 或 remote persistence transport 捕获异常，只能作为错误/不可用路径处理；不得让
 Renderer 用默认空状态覆盖原 DB。对任何会让读取失败回落到 `null` 的改动，必须补一条
-证明不会静默覆盖已有 durable state 的测试或断言。远端写入使用的 preflight 与 conflict
-snapshot 必须完整校验 revision 和嵌套 app-state 结构；首次 preflight 读到的 state 同时成为
-后续冲突合并的 base snapshot，不能只缓存 revision 后退化为 local-wins。跨进程 app-state
-raw/legacy 结构由 `src/shared/contracts/persistedAppState.ts` 完整描述，merge-ready 结构由
-`normalizedPersistedAppState.ts` 单独描述。Shared validator 允许既有 hydration 能补齐的字段缺省，
-但任何实际出现的 durable node payload、archive snapshot 或可选字段都必须通过类型校验；
-Settings domain 通过显式 normalizer port 提供 canonical settings。Adapter 只为冲突合并生成私有的
-normalized authority，并把原始读取结果留给既有 hydration/migration 流程；最新 snapshot 或
-local candidate 不能正规化时，冲突重试必须 fail closed，不能回退为未合并的 local overwrite。
+证明不会静默覆盖已有 durable state 的测试或断言。共享发布使用乐观并发控制，Worker 的 `sync.writeState` 契约保持不变。
+
+### 冲突合并与发布不变量
+
+- **S1（不静默回退）**：对共享内容路径 p，若 candidate[p] 与 ancestor[p] 相等，
+  合并结果取 latest[p]。普通对象递归按键三方合并，数组作为原子值；真正同字段冲突取 local。
+  workspaces、nodes、spaces 按 id 合并，祖先已有而任一侧删除的实体保持删除；新实体保留，
+  排序为 latest 顺序加 local 独有项。成员关系按 node 的 space id 三方合并。
+  `viewport`、`isMinimapVisible`、`activeSpaceId` 和 `activeWorkspaceId` 是客户端视图状态，
+  合并保留 latest 的共享占位值，不参与共享内容冲突决策。
+- **S2（精确祖先）**：Renderer 的 synced base 由接受的 snapshot 或自身非合并成功发布推进，
+  保存 portKind、canonical content 和 revision。读取但拒绝应用的 snapshot 不推进此基线。
+  IPC 同次返回 state/revision；适配器保存最近 16 个 revision 的 normalized snapshot，
+  发布首先 CAS against baseRevision，冲突重试始终使用同一个祖先，最多三次写尝试。
+  缺失或被淘汰的基线使用既有最近 snapshot 回退；显式 revision 缺失缓存时进程内告警一次。
+  该有界缓存回退不提供精确祖先保证；本地 SQLite 无 Worker 时忽略 baseRevision。
+- **S3（不回声发布）**：Renderer 以共享 normalizer 和稳定键序比较 candidate 与 synced base，
+  相等则不调用 IPC。冲突合并与 latest 内容相等时不再写、不增加 revision。
+  合并返回 `merged: true`，Renderer 不推进基线，也不抑制该 revision 的同步刷新；
+  待接受合并后的 snapshot 才推进基线。
+  此期间 writer 单独保存已合并发布的 candidate；后续 candidate 与它比较，而不是与旧基线
+  比较。若有后续编辑（包括撤销至旧基线），先读取 revisioned latest，再将相对前一 candidate
+  的变化合并到 latest，并以该 revision CAS。读失败保留 pending 状态并报告失败，不丢弃编辑。
+  重放后的内容仍未应用到 Renderer，因此保持刷新且不推进 synced base。
+  Worker refresh 在相同的生命周期和本地编辑检查后，将 settings 与 workspace 内容一起应用，
+  再接受 snapshot revision；不能确认尚未应用的共享字段。
+  节点 sync-overwrite guard 不阻止整个 snapshot 应用。投影读取 writer 已缓存的 accepted base，
+  对基线中已有的 guarded node，在 canonical persisted-node 表示上执行
+  `mergeValue(latestNode, localNode, baseNode)`，再走既有 shell conversion：保留真正的本地字段编辑，
+  同时立即应用该节点的其他外部字段、其他节点更新及新节点。无基线的 guarded 本地创建保留；
+  基线已有而 latest 删除的节点删除。应用后立即确认原始 snapshot 的 revision/content，
+  store 与它的差异仅表示待发布的本地编辑；保护持续续期也不延后刷新。
+  Guarded node 的 Space 归属也以每个 node 的单一 space id（含无归属）做三方合并，
+  不把旧、新 Space 的 nodeIds 取并集。未修改的本地归属接受外部移动或移除；真正的本地
+  归属修改及无基线的本地创建保留。重建成员列表时按 latest 顺序后接 local-only 成员，
+  排除已删除节点与 Space，确保每个节点最多属于一个 Space。
+  Shared settings 是 synced base 的一部分，refresh 必须同时应用 `readPersistedStateWithMeta`
+  通过 `normalizeAgentSettings` 得到的 `AgentSettings`，否则后续 publication 会回退外部设置。
+  Refresh 先 flush 排队的本地修改；失败不应用 snapshot，读取期间发生本地修改则拒绝该次读取。
+  因此已排队但尚未发布的 settings 编辑先持久化，再接受新快照。
+  Settings 内容未变时保留原对象：settings 驱动整个外壳，每次刷新都换新对象会让画布重新挂载，
+  打断用户正在输入的编辑器。
+  Canonical content 使用 UTF-16 code-unit 键序；writer 缓存 synced base 字符串，投影按该字符串
+  缓存解析后的基线，不在每次候选比较时重新规范化或序列化基线。
+
+
+Worker 是共享 durable state owner；Renderer 拥有待发布本地编辑及已接受基线；适配器缓存
+只用于祖先查找，不是共享状态 owner。重启仍以 Worker/SQLite 为准，不恢复内存缓存。
+跨进程 raw/legacy 结构由 `persistedAppState.ts` 描述，merge-ready 结构由
+`normalizedPersistedAppState.ts` 描述；Settings domain 通过 normalizer 提供 canonical settings。
+Adapter 保留原始读取结果给 hydration/migration；不能规范化的冲突 snapshot 或 candidate
+必须失败，不能降级为未合并覆盖。Hydration 将终端 durable `agent` 绑定投影到
+`terminalAgentBinding`；canonical normalizer 必须先将它还原到 `agent`，再移除投影字段。
+接受基线、发布与 guarded rebase 使用同一 durable 表示，不能把恢复绑定当作可丢弃的 UI 数据。
+Guarded rebase 重新解析 workspace 前，未受保护的节点也必须转换为 durable 表示，
+避免旁边节点的 guard 清空终端恢复绑定。
+没有 ancestor 的调用仍使用兼容合并规则；它不具备 S1 的完整三方保证。
 
 ## Installed Upgrade Contract
 
@@ -266,3 +315,101 @@ the Sidebar does not maintain a second local persistence store.
   CI 必须在 Electron runtime 下单独执行该命令。不能用 Node ABI 的绿色结果替代该门禁。
 - 补充 IPC/Control Surface payload validation 测试。
 - 运行最低 meaningful layer；提交前按 `DEVELOPMENT.md` 执行门禁。
+
+## Managed Claude resume ledger（schema 14）
+
+Worker 是 managed Claude resume tuple 的 owner。`managed_claude_resume_bindings` 保存
+canonical tuple、runtime、activation ID 和单调的 `node_seen`；`nodes.agent_json` 是持久化投影。
+仅内部 `activateManagedClaudeRuntime` / `commitManagedClaudeRebind` 可提交绑定；Worker 默认在
+符合条件的实际启动中接管，不从 provider、verified 或快照推断 ownership。schema repair 只重建表结构，
+不执行 lifecycle adoption。首次接管在同一 activation 事务中比较原未拥有节点的 tuple、runtime、
+执行上下文；UI restoring/结束信息/布局不影响比较。冷恢复在同一事务另拒绝并发 stopped；
+显式 relaunch 不受此冷恢复限制。freeze 不移除既有 ledger 的保护。
+
+最终 app-state writer 在同一事务内纠正 owned tuple 与非空 runtime，保留其他编辑；不兼容的
+agent/kind/provider/route 或 retired ID 拒绝整次写入。真实删除将 ID 写入
+`retired_managed_nodes`，两张表都不关联 node cascade。store open 只回收超过 24 小时、
+`node_seen=0` 且不存在 node 的 orphan。
+缺失或无效的 node binding 会继承 Space 路由，与显式 local binding 不等价；owned node
+不能通过遗漏或清空 binding 撤销其显式路由。
+
+内部写回返回 `{revision, corrected, effectiveState}`，回调与 runtime binding 消费 effective
+state；wire 只增加 `corrected`。revision 是自身提交值，不在异步回调后重读。
+本地 `readAppStateSnapshot` 在单一 SQLite read transaction 中返回 revision 与 state。
+身份冲突使用 `persistence.owned_node_identity_conflict` 与 `{nodeId, field, reason}`：SQLite/raw/
+Desktop IPC 返回与 revision conflict 相同的 `{ok:false, reason:'unknown', error}`；
+revisioned sync 采用 Control Surface `{ok:false, error}`；raw sync 保留嵌套写入结果。
+Remote/Web 原样返回身份冲突，不纳入 revision conflict 重试。Renderer 保留 accepted ancestor，
+先读 canonical 再 rebase 合法编辑；retired ID 从 live nodes、Space membership 与 task links 清除，
+且 guarded extra node 不能保留已知 retired ID。
+
+读事务批量查询 ledger，向 owned node 投影 `managedClaudeResumeBindingOwnership`（activation ID 与
+nullable runtime ID）。marker 不是独立存储事实，提交的 marker 不具备写权；最终 writer 纠正缺失或
+不匹配的 marker，并去掉 unowned forgery。Renderer 在普通/guarded merge、hydration 与序列化末端
+保护 owned tuple、身份与非空 runtime association。metadata 不修改 owned tuple 或发出 tuple-only flush。
+
+corrected、merged 与未明确 attested unchanged 的成功不能把 candidate 插入 canonical cache。
+cache latest 与 accepted revision 在同一 persistence scope 内单调；同 revision 不同内容保持旧值并要求刷新。
+Renderer 显式保留 refresh demand，先 read 再 repair，不依赖通知。提交后的 candidate 仅作后续编辑祖先；
+身份拒绝仍以旧 accepted base 作祖先。transport unknown 保留 base 与 unconfirmed draft，刷新不确认
+该 draft，也不自动重放。失败结果使用 `outcome: rejected | notSubmitted | unknown` 区分
+Worker 拒绝、提交前读取/endpoint 失败与提交后响应不明。后续提交失联必须保留该次真实 submission
+及其 ancestry，不能继续使用先前 corrected candidate。raw replacement 同样遵循该规则。
+
+所有显式 refresh 都保留相对于 accepted base 的本地 delta；有 active submission 时等待其 outcome，
+不能从中途快照推断用户意图。较新 refresh floor 阻止 acknowledgement 时，已提交 candidate
+仍作为后续编辑的 ancestor。canonical base acknowledgement 与 disclosure presentation application 分离；
+view-only preferences 不参与 canonical equality。owned ledger 的两个 tuple 字段在 renderer parsing 中逐字段保留；不能沿用 unowned 的 verification 清理策略改写 canonical ID。未确认 draft 与 canonical presentation 分开记录，
+后续编辑仅以 presentation delta 更新 draft，并显示保存未确认提示。
+
+所有 renderer refresh（包括首次订阅、重连、普通事件与 corrected receipt）统一比较读取前后的本地
+持久化内容；读取期间发生编辑时先丢弃 completion 再重读，不能让 connect metadata merge 绕过该检查。
+删除与已经结束拖动的移动也属于编辑，不依赖短暂的 canvas guard。canonical ownership 仅在该检查后投影。
+
+退出同时 capture 不可变 state、ancestor、revision 和 generation，只 drain 该 delta；repair read
+先检查 revision floor，同字段并发冲突保留 draft 并报告失败。legacy terminal history 只迁移仍存在的
+canonical terminal IDs，已有 primary state 时仍可恢复上次未完成的 history migration，不覆盖已有 history。
+本节沿用原有进程边界与 owner：no executable-rule impact。
+
+Managed launch 的读取适配器只在 clean transaction boundary 返回 definitive ledger/node/
+retirement observation；同一连接仍在 transaction 中时必须报告 unavailable，不能把可见行当作
+已提交事实。生命周期保留 unknown obligation，直到 definitive read 确认结果。
+`onAppStateCommitted` 对比真实 node 集合，每次成功 snapshot commit 都通知（未删除时 IDs 为空），
+让 fallback custody 读取已持久化的 runtime reference。raw write 只在外层提交后通知；rollback 无通知，
+observer/cleanup 失败不改变成功的持久化结果。Activation receipt 使用该事务的精确 revision，
+row-only activation 的 commit revision 为 null；`alreadyApplied` 的当前 revision 不冒充历史提交。
+## 节点创建血缘（schema 15）
+
+升级按 v14 ledger → v15 lineage 初始化。v13 与 v14 profile 均可升级到 v15；
+v1 legacy writer 运行前两套 side table 已就绪，schema-current repair 也同时修复两套结构。
+升级和 repair 均不推断或补写 ledger / lineage 记录。
+
+Workspace application owner 从已验证的 session grant 推导 parent、root 和 depth，
+在节点创建提交时通过原 SQLite 连接与 CAS node writer 同事务写入 `node_lineage`。
+创建提交与普通 snapshot 共用最终 writer，保留 managed Claude gate、retirement 和
+`{revision, corrected, effectiveState}` receipt；lineage 插入失败时一并回滚。
+删除观察在这个外层事务成功提交后发布；lineage-aware commit 同样触发 runtime-binding
+observers，投影 effective state，不以提交前的 snapshot 覆盖 ledger correction。
+该表只保存 node_id、spawned_by_node_id、root_node_id、lineage_depth，insert-once；
+相同记录幂等，冲突拒绝。无 FK，snapshot/raw writer 和 node deletion 不清理它。
+迁移和 schema-current repair 只创建表及索引，不回填历史节点；无记录的节点投影为 root、depth 1。
+Renderer snapshot 字段没有 lineage 写权；query 投影不写入数据库。移动、删除父节点和重启保持血缘。
+Snapshot export 不含血缘，数据库备份包含血缘。降级仅尽力兼容，不保证安全。
+带 caller node 的 grant 创建必须能读取 lineage 并原子提交 node 与 lineage；缺少任一端口
+或存储不可读时，在启动进程前拒绝，不把未知来源伪装成 root。`nodeLineageV1` 同时检查
+repository 与 creation commit。node-less standalone grant 不记录血缘；standalone Worker
+仍使用完整 SQLite store。Desktop/Web/remote clients 将创建命令交给 owning Worker。
+本节为现有 owner/边界的说明：no executable-rule impact。
+
+### Managed Claude 提交通知与恢复
+
+SQLite 的同步 post-commit observation 是 app-state invalidation 的唯一来源。普通写入、raw
+外层事务、activation、settlement 和 rebind 都在 commit 后、任何 awaited consumer 前发布
+exact revision；rollback、row-only activation 和 alreadyApplied 不发布新通知。
+Worker composition 将通知写入有界 buffer，并分别隔离 Desktop 和 SSE sink 的失败。
+HTTP 不再通过 command 前后读取 revision 来猜测提交；owner 的 attributable callback 按 revision 去重。
+通知只要求重新读取 canonical snapshot，不授予 tuple authority。
+
+pre-W8 Worker 不含 managed ledger tables；用它打开已有 owned rows 的 profile 属于不支持的
+database downgrade。普通 workspace 同步不因 lookup unsupported 失败；PR1+ final writer
+继续强制 ledger gate，客户端能力缺失只限制 ownership-dependent operations。

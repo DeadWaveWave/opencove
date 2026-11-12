@@ -26,7 +26,7 @@ import {
 
 const settings = {
   language: 'en' as const,
-  uiTheme: 'pixel' as const,
+  uiTheme: 'dark' as const,
   focusNodeOnClick: false,
   canvasInputMode: 'mouse' as const,
   nodeCreationPixelEffectEnabled: false,
@@ -104,6 +104,7 @@ test.describe('Independently installed plugins', () => {
       })
       await expect(node.locator('.cove-canvas-node-window')).toHaveCSS('width', '320px')
       await expect(node.locator('.cove-canvas-node-window')).toHaveCSS('height', '240px')
+      const beforeRestart = await readLocatorClientRect(node)
       await electronApp.close()
       ;({ electronApp, window: page } = await launchApp({ userDataDir, cleanupUserDataDir: false }))
       await page.setViewportSize({ width: 1400, height: 1000 })
@@ -112,6 +113,19 @@ test.describe('Independently installed plugins', () => {
       await expect(frame.locator('#count')).toHaveText('2', { timeout: 15_000 })
       await expect(node.locator('.cove-canvas-node-window')).toHaveCSS('width', '320px')
       await expect(node.locator('.cove-canvas-node-window')).toHaveCSS('height', '240px')
+      await expect
+        .poll(
+          async () => {
+            const restored = await readLocatorClientRect(node)
+            return Math.max(
+              ...(['x', 'y', 'width', 'height'] as const).map(key =>
+                Math.abs(restored[key] - beforeRestart[key]),
+              ),
+            )
+          },
+          { message: 'Cold restart preserves the plugin window screen position and size' },
+        )
+        .toBeLessThan(1)
       expect(await invokeClock(node)).not.toBe(startup)
       await expect(node.locator('.cove-canvas-node-window__title')).toHaveText(
         'My persistent clock',
@@ -259,7 +273,7 @@ test.describe('Independently installed plugins', () => {
         '2030-01-01T12:34:56.000Z',
       )
       await page.getByTestId('settings-section-nav-appearance').click()
-      await selectCoveOption(page, 'settings-ui-theme', 'pixel-light')
+      await selectCoveOption(page, 'settings-ui-theme', 'light')
       await page.getByTestId('settings-section-nav-plugins').click()
       await page.getByTestId(`settings-plugin-details-${pluginId}`).click()
       detail = page.getByTestId(`settings-plugin-detail-${pluginId}`)
@@ -267,7 +281,7 @@ test.describe('Independently installed plugins', () => {
       preview = detail.frameLocator('iframe')
       await expect(preview.locator('html')).toHaveAttribute('data-theme', 'light')
       await expect(preview.locator('#invoke')).toBeEnabled()
-      await capturePlugins(page, info, 'installed-plugin-detail-pixel-light')
+      await capturePlugins(page, info, 'installed-plugin-detail-light')
       await page.locator('.settings-panel__close').click()
       await real.getByTestId('plugin-hello-clock-close').click()
       const recreated = await createPluginNode(page)

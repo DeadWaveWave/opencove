@@ -1,3 +1,13 @@
+import { tryManagedClaudeTestHook } from './http/managedClaudeTestHook'
+import { invokeCallerLifetime } from './http/invokeCallerLifetime'
+import type { AgentRunStateRegistry } from '../../../contexts/agent/application/AgentRunStateRegistry'
+import { isAgentRuntimeStream, serveAgentRuntimeEvents } from './http/agentRuntimeSse'
+import type { SessionGrantRegistry } from './http/sessionGrantRegistry'
+import {
+  sessionGrantAllowsOperation,
+  sessionGrantDeniedError,
+} from './http/sessionGrantAuthorization'
+import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../shared/contracts/controlSurface'
 import type { PluginInstallationManager } from '../../../contexts/plugins/application/PluginInstallationManager'
 import { tryHandlePluginAssetRoute } from './pluginAssetRoutes'
 import type { IncomingMessage, ServerResponse } from 'node:http'
@@ -11,10 +21,10 @@ import { tryResolveWebUiResponse } from './webUiAssets'
 import type { WebSessionManager } from './http/webSessionManager'
 import { readJsonBody, sendJson } from './http/httpJson'
 import { resolveRequestAuth, type RequestAuth } from './http/requestAuth'
-import { writeSseEvent, type SyncEventPayload } from './http/syncSse'
+import { type SyncEventPayload } from './http/syncSse'
 import { tryHandleWebAuthRoutes } from './http/webAuthRoutes'
 import { gateWebUiEntrypoint } from './http/webUiEntryGate'
-import { publishSyncEvent } from './http/publishSyncEvent'
+import { serveSyncEvents } from './http/serveSyncEvents'
 import { shouldAllowDevWebUiOrigin } from './http/devWebUiOrigin'
 import { buildUnauthorizedResult } from './http/unauthorizedResult'
 import type {
@@ -23,15 +33,16 @@ import type {
   ControlSurfaceWebAccessPolicy,
 } from './controlSurfaceHttpRuntime.contract'
 
-const MAX_SYNC_EVENT_BUFFER = 256
-
 export interface ControlSurfaceHttpRequestHandlerDeps {
   plugins: PluginInstallationManager
   ctx: ControlSurfaceContext
   token: string
+  sessionGrants?: SessionGrantRegistry
   webSessions: WebSessionManager
   controlSurface: ControlSurface
   getPersistenceStore: () => Promise<PersistenceStore>
+  agentRuns?: AgentRunStateRegistry
+  agentClients?: Set<ServerResponse>
   syncClients: Set<ServerResponse>
   syncEventBuffer: SyncEventPayload[]
   desktopSyncEventSink?: (payload: SyncEventPayload) => number
@@ -44,7 +55,7 @@ function listenerAllowsAuth(
   auth: RequestAuth,
 ): boolean {
   if (role === 'private') {
-    return auth.kind === 'bearer' || auth.kind === 'query_token'
+    return auth.kind === 'bearer' || auth.kind === 'query_token' || auth.kind === 'session-grant'
   }
 
   return true
@@ -157,6 +168,7 @@ export function createControlSurfaceHttpRequestHandler(
           req,
           url,
           token: deps.token,
+          sessionGrants: deps.sessionGrants,
           webSessions: deps.webSessions,
           allowQueryToken: true,
           now: deps.ctx.now(),
@@ -166,6 +178,39 @@ export function createControlSurfaceHttpRequestHandler(
           return
         }
 
+        let streamRevoked = false
+        const unsubscribeGrant =
+          auth.kind === 'session-grant'
+            ? deps.sessionGrants?.onRevoke(auth.grant.grantId, () => {
+                streamRevoked = true
+                deps.syncClients.delete(res)
+                deps.agentClients?.delete(res)
+                listenerSyncClients.delete(res)
+                res.end()
+              })
+            : undefined
+        res.once('close', () => unsubscribeGrant?.())
+        if (streamRevoked) {
+          return
+        }
+
+        // A revoked session grant ends the agent runtime stream too (subscription above).
+        if (isAgentRuntimeStream(url)) {
+          if (!deps.agentRuns || !deps.agentClients) {
+            res.statusCode = 503
+            res.end()
+            return
+          }
+          serveAgentRuntimeEvents({
+            req,
+            res,
+            url,
+            registry: deps.agentRuns,
+            clients: deps.agentClients,
+            listenerClients: listenerSyncClients,
+          })
+          return
+        }
         const afterRevisionRaw =
           url.searchParams.get('afterRevision') ??
           (req.headers['last-event-id'] as string | undefined)
@@ -183,44 +228,27 @@ export function createControlSurfaceHttpRequestHandler(
         res.setHeader('x-accel-buffering', 'no')
         res.write(':\n\n')
 
-        if (
-          afterRevision !== null &&
-          deps.syncEventBuffer.length > 0 &&
-          afterRevision < deps.syncEventBuffer[0].revision - 1
-        ) {
-          try {
+        await serveSyncEvents({
+          req,
+          res,
+          clients: deps.syncClients,
+          listenerClients: listenerSyncClients,
+          buffer: deps.syncEventBuffer,
+          afterRevision,
+          isRevoked: () => streamRevoked || deps.isRuntimeClosed(),
+          readSnapshot: async () => {
             const store = await deps.getPersistenceStore()
-            writeSseEvent(res, {
-              type: 'resync_required',
-              revision: await store.readAppStateRevision(),
-            })
-          } catch {
-            // ignore
-          }
-        } else if (afterRevision !== null && deps.syncEventBuffer.length > 0) {
-          for (const payload of deps.syncEventBuffer) {
-            if (payload.revision <= afterRevision) {
-              continue
+            if (!store.readAppStateSnapshot) {
+              throw new Error('Canonical snapshot unavailable')
             }
-            try {
-              writeSseEvent(res, payload)
-            } catch {
-              break
-            }
-          }
-        }
-
-        deps.syncClients.add(res)
-        listenerSyncClients.add(res)
-        req.on('close', () => {
-          deps.syncClients.delete(res)
-          listenerSyncClients.delete(res)
+            return store.readAppStateSnapshot()
+          },
         })
         return
       }
     }
 
-    if (req.method !== 'POST' || req.url !== '/invoke') {
+    if (req.method !== 'POST' || !['/invoke', '/_test/managed-claude-rebind'].includes(req.url)) {
       res.statusCode = 404
       res.end()
       return
@@ -230,6 +258,7 @@ export function createControlSurfaceHttpRequestHandler(
       req,
       url,
       token: deps.token,
+      sessionGrants: deps.sessionGrants,
       webSessions: deps.webSessions,
       allowQueryToken: false,
       now: deps.ctx.now(),
@@ -239,8 +268,57 @@ export function createControlSurfaceHttpRequestHandler(
       return
     }
 
+    if (
+      await tryManagedClaudeTestHook({
+        req,
+        res,
+        privateBearer: listener.role !== 'web' && auth.kind === 'bearer',
+        getStore: deps.getPersistenceStore,
+      })
+    ) {
+      return
+    }
+    if (req.url !== '/invoke') {
+      res.statusCode = 404
+      res.end()
+      return
+    }
+
+    const clientProtocol = req.headers['x-opencove-protocol']
+    if (
+      clientProtocol !== undefined &&
+      clientProtocol !== String(CONTROL_SURFACE_PROTOCOL_VERSION)
+    ) {
+      sendJson(res, 200, {
+        __opencoveControlEnvelope: true,
+        ok: false,
+        error: createAppErrorDescriptor('common.protocol_incompatible', {
+          params: {
+            client: Array.isArray(clientProtocol) ? clientProtocol.join(', ') : clientProtocol,
+            server: CONTROL_SURFACE_PROTOCOL_VERSION,
+          },
+        }),
+      })
+      return
+    }
+
     try {
       const request = normalizeInvokeRequest(await readJsonBody(req))
+      if (auth.kind === 'session-grant' && !deps.sessionGrants?.isActive(auth.grant.grantId)) {
+        sendJson(res, 401, buildUnauthorizedResult())
+        return
+      }
+      if (
+        auth.kind === 'session-grant' &&
+        !sessionGrantAllowsOperation(request.id, auth.grant.tier)
+      ) {
+        sendJson(res, 403, {
+          __opencoveControlEnvelope: true,
+          ok: false,
+          error: sessionGrantDeniedError(request.id, auth.grant.tier),
+        })
+        return
+      }
       if (
         requiresPrivateBearer(request.id) &&
         (listener.role === 'web' || auth.kind !== 'bearer')
@@ -257,30 +335,24 @@ export function createControlSurfaceHttpRequestHandler(
         return
       }
 
-      const shouldCheckRevision = request.kind === 'command'
-      const revisionBefore = shouldCheckRevision
-        ? await (await deps.getPersistenceStore()).readAppStateRevision()
-        : null
-      const result = await deps.controlSurface.invoke(deps.ctx, request)
-      if (shouldCheckRevision) {
-        try {
-          const revisionAfter = await (await deps.getPersistenceStore()).readAppStateRevision()
-          if (typeof revisionBefore === 'number' && revisionAfter !== revisionBefore) {
-            publishSyncEvent({
-              syncClients: deps.syncClients,
-              syncEventBuffer: deps.syncEventBuffer,
-              maxBufferSize: MAX_SYNC_EVENT_BUFFER,
-              desktopSink: deps.desktopSyncEventSink,
-              payload: {
-                type: 'app_state.updated',
-                revision: revisionAfter,
-                operationId: request.id,
-              },
-            })
-          }
-        } catch {
-          // ignore
-        }
+      if (auth.kind === 'session-grant' && !deps.sessionGrants?.isActive(auth.grant.grantId)) {
+        sendJson(res, 401, buildUnauthorizedResult())
+        return
+      }
+      const caller = invokeCallerLifetime(deps.ctx, res, auth, deps.sessionGrants, deps.webSessions)
+      let result
+      try {
+        result = await deps.controlSurface.invoke(
+          {
+            ...deps.ctx,
+            requestAuth: auth,
+            signal: caller.signal,
+            assertActive: caller.assertActive,
+          },
+          request,
+        )
+      } finally {
+        caller.dispose()
       }
       sendJson(res, 200, result)
     } catch (error) {

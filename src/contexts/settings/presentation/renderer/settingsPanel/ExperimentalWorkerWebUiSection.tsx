@@ -3,7 +3,7 @@ import { Button } from '@app/renderer/components/ui/Button'
 import { NumberInput } from '@app/renderer/components/ui/NumberInput'
 import { SettingRow } from '@app/renderer/components/ui/SettingRow'
 import { Toggle } from '@app/renderer/components/ui/Toggle'
-import { RefreshCw } from 'lucide-react'
+import { RefreshIcon } from '@app/renderer/components/ui/pixelIcons'
 import { useTranslation } from '@app/renderer/i18n'
 import { IconButton } from '@app/renderer/components/ui/IconButton'
 import type {
@@ -357,7 +357,7 @@ export function ExperimentalWorkerWebUiSection(): React.JSX.Element {
                 disabled={workerWebUiBusy}
                 onClick={() => void loadWorkerWebUiState()}
               >
-                <RefreshCw size={14} aria-hidden="true" />
+                <RefreshIcon size={18} />
               </IconButton>
               <Toggle
                 data-testid="settings-experimental-worker-web-ui-enabled"
@@ -387,7 +387,6 @@ export function ExperimentalWorkerWebUiSection(): React.JSX.Element {
                 data-testid="settings-experimental-worker-web-ui-port"
               />
               <Button
-                variant="primary"
                 disabled={!canConfigureWorkerWebUiSettings || workerWebUiBusy}
                 onClick={() => void saveWorkerWebUiPort()}
                 data-testid="settings-experimental-worker-web-ui-port-save"
@@ -410,7 +409,6 @@ export function ExperimentalWorkerWebUiSection(): React.JSX.Element {
                   {workerWebUiStatusLabel}
                 </span>
                 <Button
-                  variant="primary"
                   data-testid="settings-experimental-worker-web-ui-open"
                   disabled={workerWebUiBusy}
                   onClick={() => void openWorkerWebUi()}
@@ -470,7 +468,6 @@ export function ExperimentalWorkerWebUiSection(): React.JSX.Element {
                     : t('settingsPanel.experimental.workerWebUi.passwordShow')}
                 </Button>
                 <Button
-                  variant="primary"
                   disabled={!canConfigureWorkerWebUiSecurity || workerWebUiBusy}
                   onClick={() => void setWorkerWebUiPassword()}
                   data-testid="settings-experimental-worker-web-ui-password-save"

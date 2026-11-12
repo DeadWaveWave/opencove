@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
+import { setFrameMotion } from './workspace-canvas.frame-signals.helpers'
 import { launchApp, seedWorkspaceState, testWorkspacePath } from './workspace-canvas.helpers'
+import { setMotionSignals } from './workspace-canvas.pixel-effects.helpers'
 import {
   installPtySessionCapture,
   resolveFirstAgentSessionId,
@@ -65,6 +67,7 @@ test('an edge beacon points at an out-of-view agent waiting for you and flies to
     },
   })
   try {
+    await setFrameMotion(window, false)
     await seedWorkspaceState(window, {
       activeWorkspaceId: 'beacon-project',
       workspaces: [
@@ -123,7 +126,22 @@ test('an edge beacon points at an out-of-view agent waiting for you and flies to
     await dragCanvas(window, -1100, -650)
     await expect.poll(() => isInView(window, agent)).toBe(false)
     await expect(beacon).toBeVisible()
-    await expect(beacon).toHaveAccessibleName(/waiting for you/)
+    await expect(beacon).toHaveAccessibleName(/Needs approval/)
+    await expect(beacon.locator('.workspace-edge-beacon__status')).toHaveText('· Needs approval')
+    const dot = beacon.locator('.workspace-edge-beacon__dot')
+    await expect(beacon).toHaveCSS('animation-name', 'none')
+    await expect(dot).toHaveCSS('animation-name', 'workspace-edge-beacon-pulse')
+    await expect(dot).toHaveCSS('animation-duration', '1.3s')
+    await expect(dot).toHaveCSS('width', '8px')
+    const ring = await beacon.evaluate(el => getComputedStyle(el).boxShadow)
+    expect(ring).toContain('0px 0px 0px 4px')
+    await setFrameMotion(window, true)
+    await expect(dot).toHaveCSS('animation-name', 'none')
+    await expect(beacon).toHaveCSS('box-shadow', ring)
+    await setFrameMotion(window, false)
+    await setMotionSignals(window, false)
+    await expect(dot).toHaveCSS('animation-name', 'none')
+    await expect(beacon).toHaveCSS('box-shadow', ring)
     // The beacon sits on the edge facing the agent.
     const expectedSide = await window.evaluate(target => {
       const rect = document.querySelector(target)!.getBoundingClientRect()
@@ -144,6 +162,8 @@ test('an edge beacon points at an out-of-view agent waiting for you and flies to
 
     await beacon.click()
     await expect.poll(() => isInView(window, agent)).toBe(true)
+    await expect(window.locator(agent)).toHaveAttribute('data-cove-navigation-focus', 'true')
+    await expect(window.locator(`${agent} .cove-window-focus-brackets`)).toHaveCount(1)
     await expect(beacon).toHaveCount(0)
   } finally {
     await electronApp.close()

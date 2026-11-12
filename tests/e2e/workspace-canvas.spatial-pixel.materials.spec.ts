@@ -161,7 +161,8 @@ test.describe('Workspace Canvas - Spatial Pixel Materials', () => {
         )
         .evaluateAll(elements =>
           elements.map(element => ({
-            image: getComputedStyle(element).backgroundImage,
+            // The kind wash, painted over the header in its ::after.
+            image: getComputedStyle(element, '::after').backgroundImage,
             label: element.closest<HTMLElement>('.react-flow__node')?.dataset.coveLabelColor,
           })),
         )
@@ -182,14 +183,15 @@ test.describe('Workspace Canvas - Spatial Pixel Materials', () => {
         }),
       )
       const terminal = window.locator(`[data-id="${MATERIAL_TERMINAL}"] .terminal-node`)
-      const bodyColor = await terminal.locator('.terminal-node__terminal').evaluate(
+      // The terminal reads on its kind's plate: solid and dark, one layer under the whole window.
+      const plateColor = await terminal.locator('[data-cove-part="window-plate"]').evaluate(
         element =>
           getComputedStyle(element)
             .backgroundColor.match(/[\d.]+/g)
             ?.map(Number) ?? [],
       )
-      expect(bodyColor[2]).toBeGreaterThan(bodyColor[0]! * 1.5)
-      expect(Math.max(...bodyColor.slice(0, 3))).toBeLessThan(48)
+      expect(plateColor[3] ?? 1).toBe(1)
+      expect(Math.max(...plateColor.slice(0, 3))).toBeLessThan(48)
       const space = window.getByTestId('workspace-space-region-pixel-build-space')
       await expect(space).toHaveCSS('border-top-style', 'solid')
       expect(
@@ -311,7 +313,7 @@ test.describe('Workspace Canvas - Spatial Pixel Materials', () => {
         ],
         {
           settings: {
-            uiTheme: 'pixel',
+            uiTheme: 'dark',
             ...PIXEL_EFFECTS_ENABLED,
             language: 'en',
             isPrimarySidebarCollapsed: true,

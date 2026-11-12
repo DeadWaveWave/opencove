@@ -55,6 +55,7 @@ describe('persistence app-state read IPC', () => {
     await expect(invokeHandledIpc<ReadAppStateResult>(handler)).resolves.toEqual({
       state: null,
       recovery: null,
+      revision: null,
     })
   })
 

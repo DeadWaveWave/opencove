@@ -63,10 +63,13 @@ import type {
   SuggestWorktreeNamesInput,
   SuggestWorktreeNamesResult,
   SetWindowChromeThemeInput,
+  WindowFocusState,
+  WindowFullScreenState,
   SaveTextToDownloadsInput,
   SaveTextToDownloadsResult,
   ShowSystemNotificationInput,
   ShowSystemNotificationResult,
+  SystemNotificationActivatedEvent,
   TerminalDataEvent,
   TerminalAgentReexecInput,
   TerminalAgentReexecResult,
@@ -180,6 +183,11 @@ export interface OpenCoveApi {
   }
   windowChrome: {
     setTheme: (payload: SetWindowChromeThemeInput) => Promise<void>
+    getFullScreen: () => Promise<WindowFullScreenState>
+    onFullScreenChange: (listener: (state: WindowFullScreenState) => void) => UnsubscribeFn
+    /** Whether this window has focus, as main sees it; the renderer's own signals cannot tell. */
+    getFocus: () => Promise<WindowFocusState>
+    onFocusChange: (listener: (state: WindowFocusState) => void) => UnsubscribeFn
   }
   windowMetrics: {
     getDisplayInfo: () => Promise<WindowDisplayInfo>
@@ -347,6 +355,10 @@ export interface OpenCoveApi {
     showNotification: (
       payload: ShowSystemNotificationInput,
     ) => Promise<ShowSystemNotificationResult>
+    /** A system notification was clicked; main has already focused the app. */
+    onNotificationActivated: (
+      listener: (event: SystemNotificationActivatedEvent) => void,
+    ) => UnsubscribeFn
   }
   worker: {
     getStatus: () => Promise<WorkerStatusResult>

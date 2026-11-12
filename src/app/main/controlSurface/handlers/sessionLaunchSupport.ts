@@ -1,5 +1,7 @@
 import { createServer } from 'node:net'
+import type { CommandFileArgument } from '../../../../shared/types/commandFileArgument'
 import { resolveAgentLaunchSpawn } from '../../../../contexts/agent/infrastructure/cli/AgentLaunchSpawnResolver'
+export { getPublicTerminalSpawnCommand } from '../../../../platform/terminal/publicTerminalSpawnCommand'
 import { resolveLocalWorkerEndpointRef } from '../../../../contexts/project/application/resolveLocalWorkerEndpointRef'
 import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import {
@@ -134,19 +136,13 @@ interface ResolveSessionLaunchSpawnInput {
   defaultTerminalProfileId?: string | null
   command: string
   args: string[]
+  fileArguments?: readonly CommandFileArgument[]
   provider?: AgentProvider | null
   executablePathOverride?: string | null
   env?: NodeJS.ProcessEnv
 }
 
-interface ResolvedSessionLaunchSpawn {
-  command: string
-  args: string[]
-  cwd: string
-  env?: NodeJS.ProcessEnv
-  profileId: string | null
-  runtimeKind: 'windows' | 'wsl' | 'posix'
-}
+type ResolvedSessionLaunchSpawn = Awaited<ReturnType<typeof resolveAgentLaunchSpawn>>
 
 export async function resolveSessionLaunchSpawn(
   input: ResolveSessionLaunchSpawnInput,
@@ -158,6 +154,7 @@ export async function resolveSessionLaunchSpawn(
     args: input.args,
     executablePathOverride: input.executablePathOverride,
     env: input.env,
+    ...(input.fileArguments ? { fileArguments: input.fileArguments } : {}),
   })
 
   return resolved

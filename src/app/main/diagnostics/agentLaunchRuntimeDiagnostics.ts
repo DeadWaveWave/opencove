@@ -14,6 +14,7 @@ const VALUE_ARG_FLAGS = new Set([
   '--ask-for-approval',
   '--hostname',
   '--model',
+  '--permission-mode',
   '--port',
   '--sandbox',
 ])
@@ -138,6 +139,14 @@ function summarizeArgs(
       }
 
       summary.push(`<arg:index=${index}:len=${arg.length}>`)
+      continue
+    }
+
+    const equals = arg.indexOf('=')
+    const inlineFlag = arg.slice(0, equals)
+    if (equals > 0 && SENSITIVE_VALUE_ARG_FLAGS.has(inlineFlag)) {
+      summary.push(`<redacted:${inlineFlag}:len=${arg.length - equals - 1}>`)
+      previousFlag = null
       continue
     }
 

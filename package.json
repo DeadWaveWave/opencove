@@ -1,6 +1,6 @@
 {
   "name": "opencove",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "productName": "OpenCove",
   "description": "An infinite canvas for Claude Code, Codex, terminals, tasks, and notes.",
   "main": "./out/main/index.js",
@@ -35,7 +35,8 @@
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "files": [
       "out{,/**/*}",
-      "src/app/cli{,/**/*}",
+      "src/app/cli/opencove.mjs",
+      "src/app/cli/publishRuntime.mjs",
       "docs/plugins{,/**/*}",
       "package.json"
     ],
@@ -61,7 +62,7 @@
     }
   },
   "bin": {
-    "opencove": "src/app/cli/opencove.mjs"
+    "opencove": "out/cli/opencove.mjs"
   },
   "engines": {
     "node": ">=22.12.0",
@@ -69,7 +70,8 @@
   },
   "scripts": {
     "dev": "node scripts/run-electron-vite-dev.mjs",
-    "build": "node scripts/run-electron-vite-build.mjs",
+    "build": "node scripts/run-electron-vite-build.mjs && node scripts/build-cli.mjs",
+    "build:cli": "node scripts/build-cli.mjs",
     "check": "tsc -b tsconfig.node.json tsconfig.web.json --noEmit",
     "preview": "electron-vite preview",
     "postinstall": "electron-builder install-app-deps",
@@ -104,7 +106,7 @@
     "arch:results": "node harness/architecture/check.mjs --mode audit --write-results harness/architecture/results",
     "arch:results:check": "node harness/architecture/check-doc-sync.mjs --verify-results",
     "arch:test": "vitest --run --config harness/architecture/vitest.config.ts",
-    "opencove": "node src/app/cli/opencove.mjs",
+    "opencove": "node out/cli/opencove.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "format-check:staged": "node scripts/check-format-staged.mjs",
@@ -150,7 +152,6 @@
     "drizzle-orm": "^0.45.1",
     "electron-updater": "^6.8.3",
     "font-list": "^2.0.2",
-    "lucide-react": "^0.577.0",
     "monaco-editor": "^0.55.1",
     "node-pty": "^1.1.0",
     "postcss": "^8.5.29",
@@ -166,6 +167,7 @@
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.1",
     "ws": "^8.20.0",
+    "zod": "^4",
     "zustand": "^5.0.11"
   },
   "devDependencies": {

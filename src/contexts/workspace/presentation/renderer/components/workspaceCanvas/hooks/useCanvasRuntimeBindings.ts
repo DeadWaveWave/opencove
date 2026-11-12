@@ -3,6 +3,8 @@ import { useWorkspaceCanvasSyncActionRefs, type WorkspaceCanvasActionRefs } from
 import { useWorkspaceCanvasPtyTaskCompletion } from './usePtyTaskCompletion'
 
 export function useWorkspaceCanvasRuntimeBindings({
+  workspaceId,
+  nodes,
   setNodes,
   onRequestPersistFlush,
   actionRefs,
@@ -28,6 +30,8 @@ export function useWorkspaceCanvasRuntimeBindings({
   reactFlow,
   onShowMessage,
 }: {
+  workspaceId: string
+  nodes: Parameters<typeof useWorkspaceCanvasPtyTaskCompletion>[0]['nodes']
   setNodes: Parameters<typeof useWorkspaceCanvasPtyTaskCompletion>[0]['setNodes']
   onRequestPersistFlush?: Parameters<
     typeof useWorkspaceCanvasPtyTaskCompletion
@@ -65,6 +69,8 @@ export function useWorkspaceCanvasRuntimeBindings({
   onShowMessage?: Parameters<typeof useWorkspaceCanvasAgentLastMessageCopy>[0]['onShowMessage']
 }): void {
   useWorkspaceCanvasPtyTaskCompletion({
+    workspaceId,
+    nodes,
     nodesRef,
     setNodes,
     listAgentSessions,

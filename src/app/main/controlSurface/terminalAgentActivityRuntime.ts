@@ -1,4 +1,7 @@
 import { join } from 'node:path'
+import type { PersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
+import { normalizePersistedAppState } from '../../../platform/persistence/sqlite/normalize'
+import { normalizeAgentSettings } from '../../../contexts/settings/domain/agentSettings'
 import { appendBoundedRuntimeDiagnosticsLine } from '../../../platform/persistence/runtimeDiagnosticsFile'
 import type { TerminalAgentDiagnosticSink } from '../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentDiagnostics'
 import type {
@@ -16,6 +19,7 @@ import { TerminalAgentInvocationRegistry } from '../../../contexts/agent/applica
 
 export function createTerminalAgentActivityRuntime(options: {
   userDataPath: string
+  getPersistenceStore?: () => Promise<Pick<PersistenceStore, 'readAppState'>>
   agentHookChannels: readonly AgentHookChannel[]
   agentProviderRegistry?: AgentProviderRegistry
   appVersion?: string | null
@@ -24,17 +28,32 @@ export function createTerminalAgentActivityRuntime(options: {
   disposeSessionStateWatcher?: (sessionId: string) => void
 }): {
   activity: TerminalAgentActivityEnvironmentService
+  ensureAssets: () => Promise<
+    import('../../../contexts/agent/infrastructure/terminal-activity/TerminalAgentTelemetryAssetStore').TerminalAgentTelemetryAssets
+  >
   agentProviderRegistry: AgentProviderRegistry
   metadataSources: readonly Pick<AgentHookChannel, 'onMetadata'>[]
-  stateSources: readonly Pick<AgentHookChannel, 'onState'>[]
+  stateSources: readonly Pick<AgentHookChannel, 'onState' | 'onClaudeTranscript'>[]
   dispose: () => Promise<void>
 } {
   const agentProviderRegistry =
     options.agentProviderRegistry ??
     new Registry(createBuiltinAgentProviderContributions({ appVersion: options.appVersion }))
+  for (const channel of options.agentHookChannels) {
+    channel.setResidentContextEnabled?.(async () => {
+      const store = await options.getPersistenceStore?.()
+      const persisted = store ? normalizePersistedAppState(await store.readAppState()) : null
+      return normalizeAgentSettings(persisted?.settings).agentResidentContext !== 'off'
+    })
+  }
   const invocationRegistry = new TerminalAgentInvocationRegistry()
   const gateway = new TerminalAgentActivityGateway({
     registry: invocationRegistry,
+    resolveCodexReuseRunningAppServer: async () => {
+      const store = await options.getPersistenceStore?.()
+      const persisted = store ? normalizePersistedAppState(await store.readAppState()) : null
+      return normalizeAgentSettings(persisted?.settings).codexReuseRunningAppServer
+    },
     resolveHookInjection: provider => agentProviderRegistry.require(provider).hookInjection ?? null,
   })
   const diagnostic: TerminalAgentDiagnosticSink = event => {
@@ -81,6 +100,7 @@ export function createTerminalAgentActivityRuntime(options: {
 
   return {
     activity,
+    ensureAssets: () => assets.ensure(),
     agentProviderRegistry,
     metadataSources,
     stateSources: options.agentHookChannels,
