@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### 💅 Changed
+
+- Opening a profile saved by a newer OpenCove now stops with a clear message to upgrade, instead of trying to repair the newer database. (#616)
+
 ## [0.5.0] - 2026-11-12
 
 OpenCove 0.5.0 redraws the app in pixels around one generated theme, shows on the canvas what every Agent is doing, tells you once when an Agent needs you, and lets Agents hand work to each other through a rebuilt `opencove` CLI. The Worker now owns what is saved and which conversation each Claude window resumes.
