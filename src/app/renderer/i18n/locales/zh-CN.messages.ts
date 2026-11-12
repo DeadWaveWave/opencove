@@ -1,4 +1,20 @@
 export const zhCNMessages = {
+  initialPromptCommandToken: '启动提示 {{token}} 只有一个词，可能会被智能体识别为命令。',
+  initialPromptCommandTokenHint:
+    '请用一句话描述任务目标，例如“解释如何在这个项目中使用 {{token}}”。已保留你的文本。',
+  initialPromptCommandPrefix: '这段提示以智能体控制指令 {{token}} 开头。',
+  initialPromptCommandPrefixHint: '请用句子询问该指令，例如“解释 {{token}} 的作用”。',
+  initialPromptExitWord: '提示 {{token}} 是智能体的退出指令。',
+  initialPromptExitWordHint: '请描述你想了解的退出行为，例如“解释什么时候应该使用 {{token}}”。',
+  initialPromptFileReference: '这段提示包含文件引用 {{token}}，但尚未确认是否有权读取该文件。',
+  initialPromptFileReferenceHint:
+    '请先用 opencove fs read --uri file:///workspace/README.md --fields content 读取已批准的文件（将 URI 替换为该文件的绝对 URI），再把 content 中的内容粘贴到提示中，例如“解释以下文件内容：……”。',
+  initialPromptSkillReference: '这段 Codex 提示包含技能引用 {{token}}。',
+  initialPromptSkillReferenceHint: '请直接粘贴希望遵循的步骤，例如“请按以下步骤审查这个项目：……”。',
+  initialPromptLeadingDash: '启动提示以 {{token}} 开头，可能会被这个智能体识别为命令行选项。',
+  initialPromptLeadingDashHint: '请用句子询问该选项，例如“解释 {{token}} 的作用”。已保留你的文本。',
+  initialPromptNul: '这段提示包含空字符 {{token}}。',
+  initialPromptNulHint: '请删除空字符，保留其余请求内容，例如“解释这个项目”。已保留你的文本。',
   initialPromptContainsNul: '提示中包含空字符。请删除空字符后重试。已保留你的文本。',
   invalidSpawnArguments: '启动设置中包含空字符。请删除空字符后重试。',
   wslArgumentsUnsupported:

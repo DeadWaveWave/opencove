@@ -3,6 +3,7 @@ import { agentSpawnErrorPresentation } from './agentSpawnError'
 import { nodeParentErrorPresentation } from './nodeParentError'
 import { fileSystemErrorReasonMessage } from './filesystemError'
 import { publicTerminalSpawnApplicationError } from './terminalSpawnErrorReasons'
+import { initialPromptErrorPresentation } from './initialPromptFeedback'
 import type { AppErrorCode, AppErrorDescriptor, AppErrorParams } from '../contracts/dto'
 import type { IpcInvokeResult } from '../contracts/ipc'
 
@@ -227,6 +228,10 @@ export function toAppErrorDescriptor(
 
 export function formatAppErrorMessage(error: AppErrorDescriptor | OpenCoveAppError): string {
   const descriptor = error instanceof OpenCoveAppError ? error.toDescriptor() : error
+  const initialPrompt = initialPromptErrorPresentation(descriptor)
+  if (initialPrompt) {
+    return `${initialPrompt.message} ${initialPrompt.hint}`
+  }
   const spawnApplication = publicTerminalSpawnApplicationError(descriptor)
   if (spawnApplication) {
     return spawnApplication.debugMessage

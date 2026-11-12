@@ -59,8 +59,8 @@ function request(route: (typeof routes)[number], data: object) {
         },
   }
 }
-const message =
-  'A one-word prompt can be read as a provider command; describe the task in a sentence.'
+const message = (prompt: string) =>
+  `The launch prompt ${JSON.stringify(prompt.trim())} is a single token; a provider may read it as a command.`
 for (const route of routes) {
   for (const provider of AGENT_PROVIDER_IDS) {
     it.each(['logout', 'update', 'resume', 'Refactor'])(
@@ -80,7 +80,9 @@ for (const route of routes) {
               code: 'common.forbidden',
               ...(route === 'remote-node'
                 ? { details: { spawnReason: 'remote_spawning_unsupported' } }
-                : { details: { reason: 'field_denied', field: 'prompt', message } }),
+                : {
+                    details: { reason: 'field_denied', field: 'prompt', message: message(prompt) },
+                  }),
             },
           })
           expect(f.spawn).not.toHaveBeenCalled()
@@ -107,7 +109,9 @@ it.each(['--continue', '--approve', '-p', '@input.txt', '退出', 'Refactor!', '
           details: {
             reason: 'field_denied',
             field: 'prompt',
-            ...(prompt.includes('@') ? { promptReason: 'unverified_file_reference' } : { message }),
+            ...(prompt.includes('@')
+              ? { promptReason: 'unverified_file_reference' }
+              : { message: message(prompt) }),
           },
         },
       })

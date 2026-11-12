@@ -17,7 +17,18 @@ Codex uses an argument delimiter; OpenCode, Gemini and Kimi use their typed prom
 
 ## Prompts from agent terminals
 
-Agent prompts are messages, not provider controls. Both initial prompts and `agent prompt` refuse command prefixes, exit aliases and any `@` reference, including inline, quoted or escaped references. Codex skill mentions such as `$name` and `[$name](path)` are also refused. Paste file content you can already read instead of using references. Launch prompts must be sentences rather than single tokens. Refusals do not spawn an agent or send terminal input.
+<!-- initial-prompt-rules:start -->
+Agent-terminal prompt rules:
+- Launches: describe a task in a sentence; single tokens and provider command names are refused.
+- Provider controls: no leading /; Claude also refuses ! # &; Codex, OpenCode, Pi and Gemini also refuse !.
+- Exit aliases: no exit, quit, :q, :q!, :wq or :wq!.
+- File references: no @ anywhere. Read approved content with opencove fs read --uri file:///workspace/README.md --fields content (replace the absolute URI), then paste the content.
+- Codex skills: no $name or linked skill mentions; paste the instructions.
+- Leading dashes: Claude Code and Pi launches refuse prompts starting with -.
+- Null characters: remove NUL from the prompt.
+<!-- initial-prompt-rules:end -->
+
+Refusals happen before launch or terminal input.
 
 These restrictions use the authenticated session grant. A trusted UI or CLI caller keeps its existing authority. They do not create a filesystem sandbox or prove literal delivery into every live composer state. Existing drafts, Claude bash mode and user-installed Pi input handlers remain outside this launch guarantee; inspect the target with `agent read --screen` before sending a message. Remote spawning from grants remains unavailable.
 

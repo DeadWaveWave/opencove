@@ -1,4 +1,5 @@
 import type { AppErrorCode, AppErrorDescriptor } from '../contracts/dto'
+import { initialPromptErrorPresentation } from './initialPromptFeedback'
 
 const APPLICATION_REASONS = {
   initial_prompt_contains_nul: {
@@ -44,12 +45,12 @@ export function terminalSpawnApplicationDescriptor(
   return { code: entry.code, details: { reason }, debugMessage: entry.message }
 }
 
-/** Rebuild only known code/reason pairs; wire errors never supply public prose or extra fields. */
+/** Rebuild known code/reason pairs; preserve only bounded prompt display metadata, not wire prose. */
 export function publicTerminalSpawnApplicationError(error: unknown) {
   if (!error || typeof error !== 'object') {
     return undefined
   }
-  const { code, details } = error as { code?: unknown; details?: unknown }
+  const { code, details, params } = error as AppErrorDescriptor
   if (!details || typeof details !== 'object') {
     return undefined
   }
@@ -58,5 +59,13 @@ export function publicTerminalSpawnApplicationError(error: unknown) {
     return undefined
   }
   const descriptor = terminalSpawnApplicationDescriptor(reason as TerminalSpawnApplicationReason)
+  const feedback = initialPromptErrorPresentation({ code, details, params })
+  if (feedback && code === descriptor.code) {
+    return {
+      ...descriptor,
+      params: feedback.params,
+      debugMessage: `${feedback.message} ${feedback.hint}`,
+    }
+  }
   return code === descriptor.code ? descriptor : undefined
 }

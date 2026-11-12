@@ -2,6 +2,7 @@ import type { AgentProviderId } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
 import type { GrantCheckDeps } from './sessionGrantPolicy'
 import { assertInitialPromptText } from '../../../../shared/utils/initialPromptValidation'
+import { initialPromptFeedback } from '../../../../shared/errors/initialPromptFeedback'
 
 // Native TUI command channels, including Claude's legacy quick-memory entry.
 const commandPrefixes: Readonly<Record<AgentProviderId, readonly string[]>> = {
@@ -41,14 +42,16 @@ export function assertSessionGrantMessagePrompt(
   if (!promptReason) {
     return
   }
+  const feedback = initialPromptFeedback(promptReason, inspected)
   throw createAppError('common.forbidden', {
+    params: feedback.params,
     details: {
       reason: 'field_denied',
       promptReason,
       operationId: options.operationId,
       field: options.field,
-      message:
-        'Agent prompts are messages, not provider controls. Describe the task in a sentence, for example “Explain how to update this project.” For file context, paste content you can already read instead of using @file. Do not use skill mentions such as $name.',
+      message: feedback.message,
+      hint: feedback.hint,
     },
   })
 }

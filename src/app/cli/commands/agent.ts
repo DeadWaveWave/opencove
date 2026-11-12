@@ -7,6 +7,7 @@ import { declaredOutput } from './declaredOutput'
 import { canonicalizePromptText } from '../../../contexts/agent/domain/promptText'
 import { toAppErrorDescriptor } from '../../../shared/errors/appError'
 import { promptValidationPresentation } from '../../../shared/errors/agentPromptError'
+import { INITIAL_PROMPT_RULES_TEXT } from '../../../shared/errors/initialPromptRules'
 
 export const agentPromptCommand = defineCommand({
   path: ['agent', 'prompt'],
@@ -17,14 +18,12 @@ export const agentPromptCommand = defineCommand({
   positionals: [{ name: 'text' }],
   summary: 'Send a prompt to an agent window OpenCove launched',
   description: [
-    'Send text to a local Claude Code or Codex agent window OpenCove launched. Inspect drafts/dialogs with agent read --screen first; existing drafts may be submitted too. Choose one text source: positional text, --text or --text-file (- reads stdin).',
-    'Working agents receive steering by default; --if-busy refuse rejects busy agents. --expect-turn requires that exact active turn. Waiting, unknown/degraded and unsupported sessions refuse. Agent terminals cannot send provider commands or answer dialogs.',
-    'Describe a task; agent terminals cannot use provider controls, @file or Codex $name mentions. Paste readable file content. Remove null characters.',
-    '--wait confirms delivery, then waits for its exact turn to end. Add --read for the correlated reply; missing replies return reply: null with replyUnavailableReason. Check outcome and reply. Without --wait, save deliveryId and turnId for delivery → wait --turn → read --turn.',
-    'Stderr prints delivery and turn IDs before each phase, plus an interruption-only continuation command. Final JSON and exit status report the result.',
-    'With --wait, --timeout covers confirmation and turn waiting (default 20s; minimum 250ms); sending has a separate 15s budget. Without --wait, --timeout controls sending (default 15s; maximum 60s).',
-    'Never resend after uncertainty, interruption or textComparison: different. Resume with agent delivery or agent wait --turn using the returned IDs. This command never retries.',
-    'Exit codes: 0 submitted/dispatched, or selected turn ended with --wait; 1 refusal/unconfirmed; 2 invalid input; 4 authorization refusal; 10 waiting for user; 11 target exited; 124 timeout; 130 interruption. Details: opencove skill coordinate.',
+    'Send text to a local Claude Code/Codex window OpenCove launched. Inspect with agent read --screen first: existing drafts may be submitted. Working agents receive steering; --if-busy refuse rejects busy agents. --expect-turn requires the exact active turn. Waiting, unknown/degraded and unsupported sessions refuse.',
+    INITIAL_PROMPT_RULES_TEXT,
+    '--wait confirms delivery and waits for its exact turn; --read returns the correlated reply. Check outcome and replyUnavailableReason. Stderr prints IDs and an interruption-only continuation command; final JSON reports results.',
+    '--timeout: with --wait, confirmation/waiting default 20s, minimum 250ms, separate 15s send budget; otherwise sending defaults to 15s, maximum 60s.',
+    'Never resend after uncertainty, interruption or textComparison: different. Resume agent delivery or agent wait --turn with returned IDs.',
+    'Exit codes: 0 submitted/dispatched/turn-ended; 1 refused/unconfirmed; 2 invalid input; 4 authorization; 10 waiting; 11 exited; 124 timeout; 130 interrupted. Details: opencove skill coordinate.',
   ].join('\n\n'),
   execute: promptAndWait,
   options: {

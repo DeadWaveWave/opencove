@@ -104,7 +104,24 @@ for (const provider of Object.keys(prefixes) as AgentProviderId[]) {
                 reason: 'field_denied',
                 field: 'text',
                 operationId: 'agent.prompt',
-                message: expect.stringContaining('Describe the task in a sentence'),
+                message: expect.stringContaining(
+                  text.includes('@')
+                    ? 'file reference'
+                    : text.includes('$')
+                      ? 'skill mention'
+                      : /exit|quit|:q|:wq/i.test(text)
+                        ? 'exit alias'
+                        : 'provider control',
+                ),
+                hint: expect.stringContaining(
+                  text.includes('@')
+                    ? 'opencove fs read --uri'
+                    : text.includes('$')
+                      ? 'Paste the instructions'
+                      : /exit|quit|:q|:wq/i.test(text)
+                        ? 'Describe your question'
+                        : 'Ask about the control',
+                ),
               },
             },
           })

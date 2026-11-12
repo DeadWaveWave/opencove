@@ -5,7 +5,14 @@ exports[`documents Full Access as a create-only choice with a Settings default 1
 
 Create an agent node
 
-Agent terminals must describe the task in a sentence. Provider controls, exit words, @file references and Codex skill mentions such as $name are refused before launch. Paste file content you can already read.
+Agent-terminal prompt rules:
+- Launches: describe a task in a sentence; single tokens and provider command names are refused.
+- Provider controls: no leading /; Claude also refuses ! # &; Codex, OpenCode, Pi and Gemini also refuse !.
+- Exit aliases: no exit, quit, :q, :q!, :wq or :wq!.
+- File references: no @ anywhere. Read approved content with opencove fs read --uri file:///workspace/README.md --fields content (replace the absolute URI), then paste the content.
+- Codex skills: no $name or linked skill mentions; paste the instructions.
+- Leading dashes: Claude Code and Pi launches refuse prompts starting with -.
+- Null characters: remove NUL from the prompt.
 
 Use --prompt or --prompt-file with --wait to wait for the initial Claude Code or Codex turn. Add --read for its exact reply; unavailable replies return reply: null with replyUnavailableReason. Check outcome: every ended outcome exits 0. Waiting for the user exits 10, an exited target 11, timeout 124 and interruption 130. Unsupported providers refuse after creation; the node remains.
 

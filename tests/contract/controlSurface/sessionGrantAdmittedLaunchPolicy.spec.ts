@@ -105,7 +105,8 @@ for (const operation of [sessionLaunchAgentOperation, sessionLaunchAgentInMountO
           details: {
             reason: 'field_denied',
             field: 'prompt',
-            message: expect.stringContaining('describe the task in a sentence'),
+            message: `The launch prompt ${JSON.stringify(prompt)} is a single token; a provider may read it as a command.`,
+            hint: expect.stringContaining('Rephrase the task as a sentence'),
           },
         },
       })
@@ -129,7 +130,8 @@ for (const operation of [sessionLaunchAgentOperation, sessionLaunchAgentInMountO
           details: {
             reason: 'field_denied',
             promptReason: 'provider_command_prefix',
-            message: expect.stringContaining('Describe the task in a sentence'),
+            message: expect.stringContaining('provider control'),
+            hint: expect.stringContaining('Ask about the control in a sentence'),
           },
         },
       })

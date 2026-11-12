@@ -3,6 +3,7 @@ import { assertInitialPromptText } from '../../../shared/utils/initialPromptVali
 import type { AgentProviderId } from '../../../shared/contracts/dto'
 import { createAppError } from '../../../shared/errors/appError'
 import { terminalSpawnApplicationDescriptor } from '../../../shared/errors/terminalSpawnErrorReasons'
+import { initialPromptRefusalDescriptor } from '../../../shared/errors/initialPromptFeedback'
 
 // Generated from the pinned source registry, including hidden registrations and aliases.
 const claudeCommands = new Set(CLAUDE_ROOT_COMMANDS)
@@ -19,6 +20,17 @@ export function assertProviderInitialPrompt(provider: AgentProviderId, text: str
         ? prompt.startsWith('-') || prompt.startsWith('@') || piCommands.has(prompt)
         : false
   if (refused) {
-    throw createAppError(terminalSpawnApplicationDescriptor('initial_prompt_unsupported'))
+    const kind = prompt.startsWith('-')
+      ? 'leading_dash'
+      : prompt.startsWith('@')
+        ? 'unverified_file_reference'
+        : 'command_token'
+    throw createAppError(
+      initialPromptRefusalDescriptor(
+        terminalSpawnApplicationDescriptor('initial_prompt_unsupported'),
+        kind,
+        prompt,
+      ),
+    )
   }
 }

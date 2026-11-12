@@ -1,6 +1,7 @@
 import { assertSessionGrantMessagePrompt } from './sessionGrantPromptPolicy'
 import { createAppError } from '../../../../shared/errors/appError'
 import type { GrantCheckDeps } from './sessionGrantPolicy'
+import { initialPromptFeedback } from '../../../../shared/errors/initialPromptFeedback'
 
 const commonFields = ['prompt', 'provider', 'model', 'agentFullAccess', 'cols', 'rows']
 const localFields = new Set([...commonFields, 'spaceId', 'cwd'])
@@ -47,13 +48,15 @@ export function checkSessionGrantLaunch(payload: unknown, deps: GrantCheckDeps):
       : ''
   assertSessionGrantMessagePrompt(prompt, { operationId: deps.operationId, field: 'prompt' })
   if (prompt.length > 0 && !/\s/u.test(prompt)) {
+    const feedback = initialPromptFeedback('command_token', prompt)
     throw createAppError('common.forbidden', {
+      params: feedback.params,
       details: {
         reason: 'field_denied',
         operationId: deps.operationId,
         field: 'prompt',
-        message:
-          'A one-word prompt can be read as a provider command; describe the task in a sentence.',
+        message: feedback.message,
+        hint: feedback.hint,
       },
     })
   }

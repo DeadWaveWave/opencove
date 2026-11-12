@@ -1,0 +1,73 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Codex skill keeps codes/reasons and shows focused bilingual recovery 1`] = `
+{
+  "en": "This Codex prompt contains the skill mention "$review". Paste the instructions you want followed, for example “Review this project using these steps: …”.",
+  "hint": "Paste the instructions you want followed, for example “Review this project using these steps: …”.",
+  "message": "This Codex prompt contains the skill mention "$review".",
+  "zhCN": "这段 Codex 提示包含技能引用 "$review"。 请直接粘贴希望遵循的步骤，例如“请按以下步骤审查这个项目：……”。",
+}
+`;
+
+exports[`NUL keeps codes/reasons and shows focused bilingual recovery 1`] = `
+{
+  "en": "This prompt contains the null character "\\u0000". Remove the null character and keep the rest of your request, for example “Explain this project.” Your text has been kept.",
+  "hint": "Remove the null character and keep the rest of your request, for example “Explain this project.” Your text has been kept.",
+  "message": "This prompt contains the null character "\\u0000".",
+  "zhCN": "这段提示包含空字符 "\\u0000"。 请删除空字符，保留其余请求内容，例如“解释这个项目”。已保留你的文本。",
+}
+`;
+
+exports[`command collision keeps codes/reasons and shows focused bilingual recovery 1`] = `
+{
+  "en": "The launch prompt "config" is a single token; a provider may read it as a command. Rephrase the task as a sentence describing your goal, for example “Explain how to use "config" in this project.” Your text has been kept.",
+  "hint": "Rephrase the task as a sentence describing your goal, for example “Explain how to use "config" in this project.” Your text has been kept.",
+  "message": "The launch prompt "config" is a single token; a provider may read it as a command.",
+  "zhCN": "启动提示 "config" 只有一个词，可能会被智能体识别为命令。 请用一句话描述任务目标，例如“解释如何在这个项目中使用 "config"”。已保留你的文本。",
+}
+`;
+
+exports[`exit alias keeps codes/reasons and shows focused bilingual recovery 1`] = `
+{
+  "en": "The prompt ":q!" is a provider exit alias. Describe your question about exiting, for example “Explain when to use ":q!".”",
+  "hint": "Describe your question about exiting, for example “Explain when to use ":q!".”",
+  "message": "The prompt ":q!" is a provider exit alias.",
+  "zhCN": "提示 ":q!" 是智能体的退出指令。 请描述你想了解的退出行为，例如“解释什么时候应该使用 ":q!"”。",
+}
+`;
+
+exports[`file reference keeps codes/reasons and shows focused bilingual recovery 1`] = `
+{
+  "en": "This prompt contains the file reference "@README.md", whose access has not been verified. Read an approved file with opencove fs read --uri file:///workspace/README.md --fields content (replace the URI with the file’s absolute URI), then paste its content into the prompt, for example “Explain this file: …”.",
+  "hint": "Read an approved file with opencove fs read --uri file:///workspace/README.md --fields content (replace the URI with the file’s absolute URI), then paste its content into the prompt, for example “Explain this file: …”.",
+  "message": "This prompt contains the file reference "@README.md", whose access has not been verified.",
+  "zhCN": "这段提示包含文件引用 "@README.md"，但尚未确认是否有权读取该文件。 请先用 opencove fs read --uri file:///workspace/README.md --fields content 读取已批准的文件（将 URI 替换为该文件的绝对 URI），再把 content 中的内容粘贴到提示中，例如“解释以下文件内容：……”。",
+}
+`;
+
+exports[`leading dash keeps codes/reasons and shows focused bilingual recovery 1`] = `
+{
+  "en": "The launch prompt starts with "--help", which this provider can read as an option. Ask about the option in a sentence, for example “Explain what "--help" does.” Your text has been kept.",
+  "hint": "Ask about the option in a sentence, for example “Explain what "--help" does.” Your text has been kept.",
+  "message": "The launch prompt starts with "--help", which this provider can read as an option.",
+  "zhCN": "启动提示以 "--help" 开头，可能会被这个智能体识别为命令行选项。 请用句子询问该选项，例如“解释 "--help" 的作用”。已保留你的文本。",
+}
+`;
+
+exports[`provider prefix keeps codes/reasons and shows focused bilingual recovery 1`] = `
+{
+  "en": "This prompt starts with the provider control "/help". Ask about the control in a sentence, for example “Explain what "/help" does.”",
+  "hint": "Ask about the control in a sentence, for example “Explain what "/help" does.”",
+  "message": "This prompt starts with the provider control "/help".",
+  "zhCN": "这段提示以智能体控制指令 "/help" 开头。 请用句子询问该指令，例如“解释 "/help" 的作用”。",
+}
+`;
+
+exports[`single token keeps codes/reasons and shows focused bilingual recovery 1`] = `
+{
+  "en": "The launch prompt "update" is a single token; a provider may read it as a command. Rephrase the task as a sentence describing your goal, for example “Explain how to use "update" in this project.” Your text has been kept.",
+  "hint": "Rephrase the task as a sentence describing your goal, for example “Explain how to use "update" in this project.” Your text has been kept.",
+  "message": "The launch prompt "update" is a single token; a provider may read it as a command.",
+  "zhCN": "启动提示 "update" 只有一个词，可能会被智能体识别为命令。 请用一句话描述任务目标，例如“解释如何在这个项目中使用 "update"”。已保留你的文本。",
+}
+`;

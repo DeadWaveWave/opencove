@@ -16,18 +16,28 @@ test('CLI grants refuse composer controls without effects and pass real launch a
   try {
     const binding = await createCliTerminal(f.window)
     const before = await canvasRuntimeFootprint(f.window, projectId)
-    for (const [provider, prompt] of [
-      ['claude-code', 'update'],
-      ['pi', 'config'],
-      ['claude-code', 'plugins\0 explain this project'],
-      ['codex', 'Explain\0 this project'],
-      ['pi', '--approve this task'],
-      ['codex', '/approvals'],
-      ['codex', '\u0085quit\u0085'],
-      ['codex', 'Please inspect @file'],
-      ['codex', 'Use "$explain" please'],
-      ['codex', 'Use \\$explain please'],
-      ['codex', 'Use [$explain](skill://explain) please'],
+    for (const [provider, prompt, message, hint] of [
+      ['claude-code', 'update', 'single token', 'Rephrase the task'],
+      ['pi', 'config', 'single token', 'Rephrase the task'],
+      [
+        'claude-code',
+        'plugins\0 explain this project',
+        'null character',
+        'Remove the null character',
+      ],
+      ['codex', 'Explain\0 this project', 'null character', 'Remove the null character'],
+      ['pi', '--approve this task', 'read as an option', 'Ask about the option'],
+      ['codex', '/approvals', 'provider control', 'Ask about the control'],
+      ['codex', '\u0085quit\u0085', 'exit alias', 'Describe your question'],
+      ['codex', 'Please inspect @file', 'file reference', 'opencove fs read --uri'],
+      ['codex', 'Use "$explain" please', 'skill mention', 'Paste the instructions'],
+      ['codex', 'Use \\$explain please', 'skill mention', 'Paste the instructions'],
+      [
+        'codex',
+        'Use [$explain](skill://explain) please',
+        'skill mention',
+        'Paste the instructions',
+      ],
     ]) {
       // File input keeps quotes, Unicode, dashes and shell metacharacters out of the shell command.
       await writeFile(join(f.workspace, 'prompt.txt'), prompt)
@@ -38,9 +48,8 @@ test('CLI grants refuse composer controls without effects and pass real launch a
         'PROMPT_REFUSED',
       )
       expect(output.replaceAll('\n', '')).toMatch(/\bexit=(2|4)\b/)
-      expect(output.replaceAll('\n', '')).toMatch(
-        /describe the task|Describe the task|Rephrase the task|null character/,
-      )
+      expect(output.replaceAll('\n', '')).toContain(message)
+      expect(output.replaceAll('\n', '')).toContain(hint)
       expect(await canvasRuntimeFootprint(f.window, projectId)).toEqual(before)
       expect(await f.records()).toEqual([])
     }

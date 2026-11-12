@@ -1,6 +1,7 @@
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { agentSpawnErrorPresentation } from '@shared/errors/agentSpawnError'
 import { nodeParentErrorPresentation } from '@shared/errors/nodeParentError'
+import { initialPromptErrorPresentation } from '@shared/errors/initialPromptFeedback'
 import { getActiveUiLanguage, translate } from '@app/renderer/i18n'
 import {
   formatAppErrorMessage,
@@ -41,6 +42,11 @@ function getDateTimeFormatter(language: string): Intl.DateTimeFormat {
 
 export function toErrorMessage(error: unknown): string {
   if (error instanceof OpenCoveAppError || isAppErrorDescriptor(error)) {
+    const initialPrompt = initialPromptErrorPresentation(error)
+    if (initialPrompt) {
+      const options = { token: initialPrompt.token }
+      return `${translate(`messages.${initialPrompt.key}`, options)} ${translate(`messages.${initialPrompt.key}Hint`, options)}`
+    }
     if (error.code === 'common.invalid_input') {
       const reason = (error.details as { reason?: string } | undefined)?.reason
       if (reason === 'initial_prompt_contains_nul') {

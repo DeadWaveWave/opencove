@@ -62,14 +62,17 @@ The saved environment and executable still apply: explicit `env`, `executablePat
 `resumeSessionId`, `codexReuseRunningAppServer`, `mode` and unknown fields remain refused,
 including false/null values.
 
-Describe the task in a sentence: a nonempty one-word launch prompt is refused because providers may
-interpret it as a command. Start prompts with words, not command prefixes:
+<!-- initial-prompt-rules:start -->
+Agent-terminal prompt rules:
+- Launches: describe a task in a sentence; single tokens and provider command names are refused.
+- Provider controls: no leading /; Claude also refuses ! # &; Codex, OpenCode, Pi and Gemini also refuse !.
+- Exit aliases: no exit, quit, :q, :q!, :wq or :wq!.
+- File references: no @ anywhere. Read approved content with opencove fs read --uri file:///workspace/README.md --fields content (replace the absolute URI), then paste the content.
+- Codex skills: no $name or linked skill mentions; paste the instructions.
+- Leading dashes: Claude Code and Pi launches refuse prompts starting with -.
+- Null characters: remove NUL from the prompt.
+<!-- initial-prompt-rules:end -->
 
-- Claude Code: `!`, `/`, legacy `#` or `&`.
-- Codex, OpenCode, Pi and Gemini: `!` or `/`.
-- Kimi: `/`.
-
-Checks ignore initial whitespace. A prefix later in the text is ordinary message text.
 Provider-command grant refusals use field_denied and exit 4 before input or a delivery record.
 Launch permission does not establish prompt eligibility; see `opencove skill coordinate`.
 
