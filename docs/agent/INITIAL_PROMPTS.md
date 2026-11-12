@@ -1,0 +1,24 @@
+# Initial prompts
+
+Describe the task when starting an agent. Accepted prompts keep their text, with surrounding whitespace removed. Line breaks, quotes and Unicode inside the prompt are preserved. Resuming a conversation does not send the initial prompt again.
+
+Some provider inputs are commands rather than conversation text. OpenCove refuses these before launch:
+
+| Provider | Refused launch input |
+| --- | --- |
+| Claude Code | Exact root commands and aliases, including hidden commands; prompts starting with `-` |
+| Pi | `install`, `remove`, `uninstall`, `update`, `list`, `config`; prompts starting with `-` or `@` |
+
+If a launch is refused, rephrase the task, for example “Explain how to update this project.” To run a provider control deliberately, open a blank session and enter it there. Task requirements and role input remain editable. A refused task reuse or relaunch keeps the previous session alive.
+
+Codex uses an argument delimiter; OpenCode, Gemini and Kimi use their typed prompt options. Kimi’s existing Full Access requirement still applies. UI-authored prompts can invoke provider composer controls, such as `/help` or `exit`, after passing launch admission.
+
+## Prompts from agent terminals
+
+Agent prompts are messages, not provider controls. Both initial prompts and `agent prompt` refuse command prefixes, exit aliases and any `@` reference, including inline, quoted or escaped references. Codex skill mentions such as `$name` and `[$name](path)` are also refused. Paste file content you can already read instead of using references. Launch prompts must be sentences rather than single tokens. Refusals do not spawn an agent or send terminal input.
+
+These restrictions use the authenticated session grant. A trusted UI or CLI caller keeps its existing authority. They do not create a filesystem sandbox or prove literal delivery into every live composer state. Existing drafts, Claude bash mode and user-installed Pi input handlers remain outside this launch guarantee; inspect the target with `agent read --screen` before sending a message. Remote spawning from grants remains unavailable.
+
+## Compatibility
+
+Parser evidence is pinned to Codex 0.166.0 / Clap 4.5.58, Claude Code 2.1.322, Pi 0.80.7, OpenCode 1.3.13, Gemini 0.32.1 and Kimi 1.16.0. Provider upgrades, wrappers and user extensions can change interpretation and require fresh evidence. A remote destination must contain this implementation; a Home-only check cannot establish destination safety.

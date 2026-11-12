@@ -2,7 +2,7 @@
 
 CLI 是 Control Surface client；业务状态由 Worker/application owner 管理。CLI 不直接修改业务数据库。
 
-Agent terminals cannot answer permission dialogs, read or change private settings, override launch policy, run provider commands through prompts, or run plugin code through the API: those decisions belong to the human. Project isolation is not yet enforced.
+Agent terminals cannot answer permission dialogs, read or change private settings, override launch policy, run provider commands through prompts, or run plugin code through the API: those decisions belong to the human. Project isolation is not yet enforced. Agent prompts must describe a task in a sentence; provider controls, exit aliases, @file references and Codex $name skill mentions are refused. Paste file content you can already read. See [initial prompts](../agent/INITIAL_PROMPTS.md).
 
 智能体终端不能通过 API 回答权限弹窗、读取或修改私密设置、覆盖启动权限策略或执行插件代码；这些决定由用户作出。目前尚未实施项目隔离。
 

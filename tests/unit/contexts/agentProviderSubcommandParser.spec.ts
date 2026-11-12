@@ -1,147 +1,143 @@
 // @vitest-environment node
-import { createRequire } from 'node:module'
-import { readFile, access } from 'node:fs/promises'
-import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { runInNewContext } from 'node:vm'
 import { expect, it } from 'vitest'
-import { buildAgentLaunchCommand } from '../../../src/contexts/agent/infrastructure/cli/AgentCommandFactory'
-import { PiAgentProviderContribution } from '../../../src/contexts/agent/infrastructure/providers/pi/PiAgentProviderContribution'
+import { parseClaude } from '../../fixtures/provider-argv/claudeParser.mjs'
+import { parseArgs } from '../../fixtures/provider-argv/pi.mjs'
+import { parsePackageCommand } from '../../fixtures/provider-argv/piPackage.mjs'
+import { parseCodex, parseStringOptions } from '../../fixtures/provider-argv/stringOptions.mjs'
+import { createBuiltinAgentProviderContributions } from '../../../src/contexts/agent/infrastructure/providers/catalog/BuiltinAgentProviderCatalog'
 import { createManagedAgentLaunchPlan } from '../../../src/contexts/agent/application/use-cases/createManagedAgentLaunchPlan'
+import { assertProviderInitialPrompt } from '../../../src/contexts/agent/domain/providerInitialPromptPolicy'
 
-// Use the existing toolchain parser. All callbacks below only record dispatch; no provider runs.
-interface RecordingCommand {
-  name(name: string): this
-  argument(argument: string): this
-  option(flags: string): this
-  command(name: string): RecordingCommand
-  action(callback: (prompt?: string) => void): this
-  exitOverride(): this
-  parse(args: readonly string[], options: { from: 'user' }): this
-}
-const require = createRequire(import.meta.url)
-const { Command } = createRequire(require.resolve('lint-staged'))('commander') as {
-  Command: new () => RecordingCommand
-}
-const words = ['logout', 'update', 'resume', 'Refactor']
-function commanderDispatch(args: readonly string[]) {
-  let outcome: { command: string; prompt?: string } | undefined
-  const parser = new Command()
-    .name('fixture')
-    .argument('[prompt]')
-    .option('--permission-mode <mode>')
-    .option('--session-id <id>')
-    .exitOverride()
-    .action(prompt => {
-      outcome = { command: 'conversation', prompt }
-    })
-  for (const name of ['logout', 'update', 'resume']) {
-    parser.command(name).action(() => {
-      outcome = { command: name }
+const prompts = [
+  'update',
+  'upgrade',
+  'config',
+  'Refactor',
+  '--help',
+  '--agent-teams',
+  '--hard-fail',
+  '-p',
+  '--approve',
+  '--model=other',
+  '--',
+  '-',
+  '@file',
+  'Please inspect @file',
+  'cc://localhost',
+  'Explain\n中文 "quoted"; $x `id`',
+  '--help\r\n第二行',
+]
+for (const provider of createBuiltinAgentProviderContributions({ runtimePlatform: 'linux' })) {
+  const id = provider.descriptor.id
+  for (const model of [null, 'chosen']) {
+    it.each(prompts)(`${id}/${model} parses real generated argv for %j`, async prompt => {
+      const input = {
+        mode: 'new' as const,
+        prompt,
+        model,
+        resumeSessionId: null,
+        agentFullAccess: id === 'kimi',
+        workspaceDirectory: '/fixture',
+        opencodeServer: { hostname: '127.0.0.1', port: 12345 },
+      }
+      try {
+        assertProviderInitialPrompt(id, prompt)
+      } catch {
+        await expect(createManagedAgentLaunchPlan(provider, input)).rejects.toMatchObject({
+          code: 'common.invalid_input',
+          details: { reason: 'initial_prompt_unsupported' },
+        })
+        return
+      }
+      const managed = await createManagedAgentLaunchPlan(provider, input)
+      try {
+        const args = [...managed.plan.args]
+        if (id === 'claude-code') {
+          const parsed = parseClaude(args)
+          expect(parsed).toMatchObject({
+            prompt,
+            command: undefined,
+            connect: undefined,
+            raw: [],
+            unknown: [],
+          })
+          expect(parsed.values['--permission-mode']).toBe('default')
+          expect(parsed.values['--model']).toBe(model ?? undefined)
+          expect(parsed.values['--session-id']).toBe(managed.plan.resumeSessionId)
+        } else if (id === 'pi') {
+          expect(parsePackageCommand(args)).toBeUndefined()
+          expect(args[0]).not.toBe('config')
+          const parsed = parseArgs(args)
+          expect(parsed.messages).toEqual([prompt])
+          expect(parsed.fileArgs).toEqual([])
+          expect(parsed.unknownFlags.size).toBe(0)
+          expect(parsed.model).toBe(model ?? undefined)
+        } else if (id === 'codex') {
+          expect(parseCodex(args)).toMatchObject({
+            prompt,
+            command: undefined,
+            values: { '--sandbox': 'workspace-write', '--ask-for-approval': 'on-request' },
+          })
+        } else {
+          const parsed = parseStringOptions(id, args)
+          expect(parsed.values[id === 'gemini' ? '--prompt-interactive' : '--prompt']).toBe(prompt)
+          expect(parsed.values['--model']).toBe(model ?? undefined)
+          expect(parsed.operands).toEqual(id === 'opencode' ? ['.'] : [])
+        }
+      } finally {
+        await managed.artifacts.dispose()
+      }
     })
   }
-  parser.parse(args, { from: 'user' })
-  return outcome
 }
-it.each(words)(
-  'records Commander dispatch of %j even after -- without running an action',
-  prompt => {
+it('negative controls independently expose delimiter, collision and raw-argv protection', () => {
+  expect(parseClaude(['cc://localhost']).connect).toBe('cc://localhost')
+  expect(parseClaude(['--', 'cc://localhost']).connect).toBeUndefined()
+  expect(parseClaude(['--', 'update']).command).toBe('update')
+  expect(parseClaude(['--', 'upgrade']).command).toBe('upgrade')
+  expect(parseClaude(['--', '--agent-teams']).raw).toContain('--agent-teams')
+  expect(parseClaude(['--', '--hard-fail']).raw).toContain('--hard-fail')
+  expect(parsePackageCommand(['update'])?.command).toBe('update')
+  expect(parseArgs(['--approve']).messages).toEqual([])
+  expect(parseArgs(['@prompt.txt']).fileArgs).toEqual(['prompt.txt'])
+  expect(parseCodex(['--model=other']).values).toHaveProperty('--model=other')
+  expect(parseCodex(['resume']).command).toBe('resume')
+  expect(() => parseStringOptions('gemini', ['--prompt-interactive', '--model=other'])).toThrow()
+  expect(parseStringOptions('kimi', ['--prompt', '--model=other']).values['--prompt']).toBe(
+    '--model=other',
+  )
+})
+
+it.each(['claude-code', 'codex', 'opencode', 'gemini'] as const)(
+  '%s retains prompt boundaries with injected hook arguments and a selected model',
+  async provider => {
+    const { buildAgentLaunchCommand } =
+      await import('../../../src/contexts/agent/infrastructure/cli/AgentCommandFactory')
+    const prompt = 'Explain\n中文 "quoted"; $value'
     const plan = buildAgentLaunchCommand({
-      provider: 'claude-code',
+      provider,
       mode: 'new',
       prompt,
-      model: null,
+      model: 'chosen',
       resumeSessionId: '11111111-1111-4111-8111-111111111111',
       agentFullAccess: false,
+      injectedArgs: ['--settings', 'hook-config'],
+      opencodeServer: { hostname: '127.0.0.1', port: 12345 },
     })
-    const expected =
-      prompt === 'Refactor' ? { command: 'conversation', prompt } : { command: prompt }
-    expect(commanderDispatch(plan.args)).toEqual(expected)
-    expect(commanderDispatch([...plan.args.slice(0, -1), '--', prompt])).toEqual(expected)
-  },
-)
-it.each(['update the project', 'resume\nthe task'])(
-  'keeps multi-word %j in one Commander operand',
-  prompt => {
-    expect(commanderDispatch([prompt])).toEqual({ command: 'conversation', prompt })
-  },
-)
-
-// Opt-in parser-only check against an installed Pi package, never its CLI main/handlers.
-// The ordinary adapter suite always covers the same vectors without a local installation.
-const piRoot = process.env.OPENCOVE_TEST_PI_PARSER_ROOT
-async function piParsers() {
-  const source = await readFile(join(piRoot!, 'dist/package-manager-cli.js'), 'utf8')
-  const start = source.indexOf('function parsePackageCommand(')
-  const end = source.indexOf('\nfunction ', start + 1)
-  expect(start).toBeGreaterThanOrEqual(0)
-  expect(end).toBeGreaterThan(start)
-  // Evaluate only this pure parser, without importing package handlers or their IO dependencies.
-  const parsePackage = runInNewContext(`(${source.slice(start, end)})`, Object.create(null), {
-    timeout: 1000,
-  }) as (args: readonly string[]) => { command: string } | undefined
-  const argsModule = (await import(
-    /* @vite-ignore */ pathToFileURL(join(piRoot!, 'dist/cli/args.js')).href
-  )) as {
-    parseArgs(args: readonly string[]): {
-      fileArgs: string[]
-      messages: string[]
-      diagnostics: unknown[]
-    }
-  }
-  return { parsePackage, argsModule }
-}
-it.runIf(piRoot).each(['--continue', '--approve', '-p', '--dangerously-skip-permissions'])(
-  'Pi actual parsers keep option-like %j in a file without telemetry or model args',
-  async prompt => {
-    const { parsePackage, argsModule } = await piParsers()
-    const managed = await createManagedAgentLaunchPlan(new PiAgentProviderContribution(), {
-      mode: 'new',
-      prompt,
-      model: null,
-      resumeSessionId: null,
-      agentFullAccess: false,
-      workspaceDirectory: process.cwd(),
-    })
-    let file: string | undefined
-    try {
-      expect(managed.plan.args).toHaveLength(1)
-      expect(parsePackage(managed.plan.args)).toBeUndefined()
-      const parsed = argsModule.parseArgs(managed.plan.args)
-      expect(parsed.diagnostics).toEqual([])
-      expect(parsed.messages).toEqual([])
-      expect(parsed.fileArgs).toHaveLength(1)
-      file = parsed.fileArgs[0]
-      expect(await readFile(file, 'utf8')).toBe(prompt)
-    } finally {
-      await managed.artifacts.dispose()
-    }
-    await expect(access(file!)).rejects.toThrow()
-  },
-)
-
-// S1d: retain and expose trusted single-word native dispatch; grants reject these upstream.
-it.runIf(piRoot).each(words)(
-  'records trusted Pi single-word %j behavior without running its action',
-  async prompt => {
-    const { parsePackage, argsModule } = await piParsers()
-    const managed = await createManagedAgentLaunchPlan(new PiAgentProviderContribution(), {
-      mode: 'new',
-      prompt,
-      model: null,
-      resumeSessionId: null,
-      agentFullAccess: false,
-      workspaceDirectory: process.cwd(),
-    })
-    try {
-      expect(managed.plan.args).toEqual([prompt])
-      expect(managed.plan.fileArguments).toBeUndefined()
-      expect(parsePackage(managed.plan.args)?.command).toBe(
-        prompt === 'update' ? 'update' : undefined,
+    const parsed =
+      provider === 'claude-code'
+        ? parseClaude(plan.args)
+        : provider === 'codex'
+          ? parseCodex(plan.args)
+          : parseStringOptions(provider, plan.args)
+    if (provider === 'claude-code' || provider === 'codex') {
+      expect(parsed.prompt).toBe(prompt)
+      expect(parsed.command).toBeUndefined()
+    } else {
+      expect(parsed.values[provider === 'gemini' ? '--prompt-interactive' : '--prompt']).toBe(
+        prompt,
       )
-      expect(argsModule.parseArgs(managed.plan.args).messages).toEqual([prompt])
-    } finally {
-      await managed.artifacts.dispose()
     }
+    expect(parsed.values['--model']).toBe('chosen')
   },
 )

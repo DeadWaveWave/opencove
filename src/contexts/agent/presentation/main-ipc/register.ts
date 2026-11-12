@@ -1,3 +1,4 @@
+import { agentTestStubArgs } from '../../../../shared/utils/agentTestStubArgs'
 import { getPublicTerminalSpawnCommand } from '../../../../platform/terminal/publicTerminalSpawnCommand'
 import { publicTerminalSpawnError } from '../../../../shared/errors/terminalSpawnError'
 import { getCommandExecutionEnvironment } from '../../../../platform/os/CommandEnvironmentService'
@@ -347,7 +348,9 @@ export function registerAgentIpcHandlers(
 
       const launchStartedAtMs = Date.now()
       const command = testStub?.command ?? launchCommand.command
-      const args = testStub?.args ?? launchCommand.args
+      const args = testStub
+        ? agentTestStubArgs(testStub.args, launchCommand.args)
+        : launchCommand.args
 
       const opencodeTuiConfigPath =
         normalized.provider === 'opencode'

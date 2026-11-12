@@ -1,3 +1,4 @@
+import { assertProviderInitialPrompt } from '../../domain/providerInitialPromptPolicy'
 import type { AgentLaunchMode, AgentProviderId } from '@shared/contracts/dto'
 import type { CommandFileArgument } from '../../../../shared/types/commandFileArgument'
 
@@ -51,12 +52,6 @@ function normalizeOptionalValue(value: string | null | undefined): string | null
 
 function normalizePrompt(value: string | undefined): string {
   return typeof value === 'string' ? value.trim() : ''
-}
-
-function maybeTerminateOptionParsing(args: string[], value: string): void {
-  if (value.startsWith('-')) {
-    args.push('--')
-  }
 }
 
 function appendStringOption(args: string[], option: string, value: string): void {
@@ -120,7 +115,8 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
     args.push('--session-id', resumeSessionId)
     const prompt = normalizePrompt(input.prompt)
     if (prompt.length > 0) {
-      maybeTerminateOptionParsing(args, prompt)
+      assertProviderInitialPrompt(input.provider, prompt)
+      args.push('--')
       args.push(prompt)
     }
 

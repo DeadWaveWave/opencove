@@ -1,3 +1,4 @@
+import { assertProviderInitialPrompt } from '../../../domain/providerInitialPromptPolicy'
 import type {
   AgentLaunchPlan,
   AgentProviderDetector,
@@ -74,16 +75,8 @@ export class PiAgentProviderContribution extends TerminalCliAgentProviderContrib
   ): Promise<AgentLaunchPlan> {
     const model = normalizeOptionalValue(command.model)
     const resumeSessionId = normalizeOptionalValue(command.resumeSessionId)
-    let promptArgument = command.mode === 'new' ? (command.prompt?.trim() ?? '') : ''
-    const usesPromptFile = promptArgument.startsWith('-')
-    if (usesPromptFile) {
-      // Older Pi ignores --; option-like prompts use its official text-file input.
-      const file = command.artifacts.track(
-        'pi-initial-prompt',
-        await createTemporaryProviderConfig('opencove-pi-prompt-', 'prompt.txt', promptArgument),
-      )
-      promptArgument = `@${file.path}`
-    }
+    const promptArgument = command.mode === 'new' ? (command.prompt?.trim() ?? '') : ''
+    assertProviderInitialPrompt('pi', promptArgument)
     const telemetry = command.profileId?.trim().toLowerCase().startsWith('wsl:')
       ? { args: [], env: {}, hookInstallState: 'skipped' as const, onStarted: undefined }
       : this.channel
@@ -107,7 +100,6 @@ export class PiAgentProviderContribution extends TerminalCliAgentProviderContrib
 
     return {
       args,
-      ...(usesPromptFile ? { fileArguments: [{ index: args.length - 1, prefix: '@' }] } : {}),
       command: piLaunch.executable,
       effectiveModel: model,
       env: telemetry?.env ?? {},

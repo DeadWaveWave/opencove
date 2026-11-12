@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { runInitialPromptArgvScenario } from './test-agent-session-stub/initialPromptArgv.mjs'
 import { runCodexPromptStrictScenario } from './test-agent-session-stub/codexPromptStrict.mjs'
 import { runClaudePromptStrictScenario } from './test-agent-session-stub/claudePromptStrict.mjs'
 import { runTerminalStateRestoreScenario } from './test-agent-session-stub/terminalStateRestore.mjs'
@@ -87,6 +88,11 @@ async function main() {
   const providerInvocation = resolveProviderInvocation(provider, providerArgs)
   const effectiveMode = providerInvocation?.mode ?? mode
   const resumeSessionId = providerInvocation?.resumeSessionId ?? positionalResumeSessionId
+
+  if (scenario === 'initial-prompt-argv') {
+    await runInitialPromptArgvScenario(cwd, provider, providerArgs)
+    return
+  }
 
   if (scenario === 'raw-late-first-output') {
     // No banner or hooks: the first visible output must arrive after presentation attach.

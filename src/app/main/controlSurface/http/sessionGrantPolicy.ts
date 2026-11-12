@@ -21,7 +21,7 @@ export type GrantRule =
       rejectedFields: Readonly<Record<string, string>>
       check: (payload: unknown, deps: GrantCheckDeps) => void
     }
-export const SESSION_GRANT_POLICY_VERSION = 's1a-v5'
+export const SESSION_GRANT_POLICY_VERSION = 's1d-v2'
 const allow = { access: 'allow' } as const
 const deny = (reason: string): GrantRule => ({ access: 'deny', reason })
 const launch = {

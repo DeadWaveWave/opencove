@@ -132,7 +132,7 @@ for (const operation of [sessionLaunchAgentOperation, sessionLaunchAgentInMountO
           details: {
             reason: 'field_denied',
             promptReason: 'provider_command_prefix',
-            message: expect.stringContaining('start with words'),
+            message: expect.stringContaining('Describe the task in a sentence'),
           },
         },
       })

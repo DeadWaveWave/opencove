@@ -1,6 +1,11 @@
 import type { AppErrorCode, AppErrorDescriptor } from '../contracts/dto'
 
 const APPLICATION_REASONS = {
+  initial_prompt_unsupported: {
+    code: 'common.invalid_input',
+    message:
+      'This prompt could run a provider command instead of starting a conversation. Rephrase the task, or open a blank session and enter provider controls there. Your text has been kept.',
+  },
   native_wsl_worker_required: {
     code: 'common.unavailable',
     message: 'To create this terminal, connect to a Worker running inside WSL.',

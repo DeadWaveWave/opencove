@@ -169,7 +169,7 @@ Worker 关闭后授权即撤销；token 被拒绝时不会回退到 profile 的 
 Grant runtime creation uses `node create agent|terminal`, with `boundedAgentSpawningV1`
 negotiated from authenticated `system.whoami` and `system.capabilities`. Missing support exits 5
 before mutation; user bearer launches and non-runtime commands do not require it. The Worker also
-enforces policy `s1a-v5` for older clients. Raw grant spawning exits 4 with node-create guidance.
+enforces policy `s1d-v2` for older clients. Raw grant spawning exits 4 with node-create guidance.
 Depth greater than 3 returns `agent.spawn_depth_limit`; six occupied descendants return
 `agent.spawn_concurrency_limit`. Both exit 1 with `retryable:false`. Agent and terminal runtimes
 share the tree budget across projects and Spaces. Finishing a turn does not release a slot;

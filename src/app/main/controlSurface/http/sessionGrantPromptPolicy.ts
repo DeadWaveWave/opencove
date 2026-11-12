@@ -21,21 +21,32 @@ export function assertSessionGrantMessagePrompt(
   options: { provider?: AgentProviderId; operationId: string; field: 'text' | 'prompt' },
 ): void {
   const prefixes = options.provider ? commandPrefixes[options.provider] : commonPrefixes
-  // Include Python's C0 separators and Unicode whitespace (such as Rust's NEL).
-  // eslint-disable-next-line no-control-regex -- Inspect provider whitespace without rewriting input.
-  const first = text.replace(/^[\s\p{White_Space}\u001c-\u001f]+/u, '').charAt(0)
-  if (!prefixes.includes(first)) {
+  // Python C0 separators, JS whitespace and Rust NEL are inspected without rewriting input.
+  const inspected = text.replace(
+    // eslint-disable-next-line no-control-regex -- Provider whitespace compatibility.
+    /^[\s\p{White_Space}\u001c-\u001f]+|[\s\p{White_Space}\u001c-\u001f]+$/gu,
+    '',
+  )
+  const promptReason = prefixes.includes(inspected.charAt(0))
+    ? 'provider_command_prefix'
+    : text.includes('@')
+      ? 'unverified_file_reference'
+      : options.provider === 'codex' && /\$[A-Za-z0-9_:-]+/.test(text)
+        ? 'provider_skill_reference'
+        : ['exit', 'quit', ':q', ':q!', ':wq', ':wq!'].includes(inspected.toLowerCase())
+          ? 'provider_exit_word'
+          : null
+  if (!promptReason) {
     return
   }
-  const list =
-    prefixes.length > 1 ? `${prefixes.slice(0, -1).join(', ')} or ${prefixes.at(-1)}` : prefixes[0]
   throw createAppError('common.forbidden', {
     details: {
       reason: 'field_denied',
-      promptReason: 'provider_command_prefix',
+      promptReason,
       operationId: options.operationId,
       field: options.field,
-      message: `Prompts from agent terminals cannot start with ${list}; ${prefixes.length === 1 ? 'this prefix can run commands' : 'these prefixes can run commands'} in the target agent, so start with words.`,
+      message:
+        'Agent prompts are messages, not provider controls. Describe the task in a sentence, for example “Explain how to update this project.” For file context, paste content you can already read instead of using @file. Do not use skill mentions such as $name.',
     },
   })
 }

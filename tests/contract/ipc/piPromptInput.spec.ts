@@ -51,38 +51,31 @@ afterEach(() => {
   vi.clearAllMocks()
   fixture.handlers.clear()
 })
-it.each([
-  ['powershell', 'C:\\Temp\\prompt folder\\prompt.txt'],
-  ['wsl:Ubuntu', '/mnt/c/Temp/prompt folder/prompt.txt'],
-  [' WSL:Ubuntu ', '/mnt/c/Temp/prompt folder/prompt.txt'],
-  ['wsl:RemovedDistro', 'C:\\Temp\\prompt folder\\prompt.txt'],
-])(
-  'uses the actual %s IPC profile while the Pi adapter encodes its file input',
-  async (profileId, path) => {
-    const spawn = vi.fn(async (_options: unknown) => ({ sessionId: 'child' }))
+it.each(['powershell', 'wsl:Ubuntu', ' WSL:Ubuntu ', 'wsl:RemovedDistro'])(
+  'refuses unsafe Pi text before %s IPC spawn or artifact creation',
+  async profileId => {
+    const spawn = vi.fn()
     const registration = registerAgentIpcHandlers(
       { spawnSession: spawn } as unknown as PtyRuntime,
       { isPathApproved: async () => true } as never,
       async () => createInMemoryPersistenceStore(),
     )
     try {
-      const result = await invokeHandledIpc<{ sessionId: string; args: string[] }>(
-        fixture.handlers.get(IPC_CHANNELS.agentLaunch),
-        null,
-        {
+      await expect(
+        invokeHandledIpc(fixture.handlers.get(IPC_CHANNELS.agentLaunch), null, {
           provider: 'pi',
           cwd: 'C:\\project',
           prompt: '--continue',
           profileId,
-        },
-      )
-      expect(result.sessionId).toBe('child')
-      expect(result.args.join(' ')).toContain(`@${path}`)
-      expect(spawn.mock.calls[0][0]).toMatchObject({ args: expect.any(Array) })
-      expect((spawn.mock.calls[0][0] as { args: string[] }).args.join(' ')).toContain(`@${path}`)
+        }),
+      ).rejects.toMatchObject({
+        code: 'common.invalid_input',
+        details: { reason: 'initial_prompt_unsupported' },
+      })
+      expect(spawn).not.toHaveBeenCalled()
+      expect(fixture.dispose).not.toHaveBeenCalled()
     } finally {
       await registration.dispose()
     }
-    expect(fixture.dispose).toHaveBeenCalledOnce()
   },
 )

@@ -41,6 +41,12 @@ function getDateTimeFormatter(language: string): Intl.DateTimeFormat {
 
 export function toErrorMessage(error: unknown): string {
   if (error instanceof OpenCoveAppError || isAppErrorDescriptor(error)) {
+    if (
+      (error.details as { reason?: string } | undefined)?.reason === 'initial_prompt_unsupported' &&
+      error.code === 'common.invalid_input'
+    ) {
+      return translate('messages.initialPromptUnsupported')
+    }
     if (error.code === 'agent.managed_launch_commit_failed') {
       return translate('messages.managedAgentLaunchUncertain')
     }

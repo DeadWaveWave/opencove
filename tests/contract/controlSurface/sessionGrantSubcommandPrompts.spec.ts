@@ -104,7 +104,11 @@ it.each(['--continue', '--approve', '-p', '@input.txt', '退出', 'Refactor!', '
         ok: false,
         error: {
           code: 'common.forbidden',
-          details: { reason: 'field_denied', field: 'prompt', message },
+          details: {
+            reason: 'field_denied',
+            field: 'prompt',
+            ...(prompt.includes('@') ? { promptReason: 'unverified_file_reference' } : { message }),
+          },
         },
       })
       expect(f.spawn).not.toHaveBeenCalled()
@@ -137,7 +141,7 @@ it.each([
   }
 })
 for (const route of ['direct', 'mount', 'node'] as const) {
-  it.each(['logout', 'update', 'resume', 'Refactor'])(
+  it.each(['logout', 'resume', 'Refactor'])(
     `${route} preserves trusted Claude single-word %j admission`,
     async prompt => {
       const f = await createPromptWorker({ fullAccess: false })

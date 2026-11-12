@@ -1,5 +1,4 @@
 // @vitest-environment node
-import { access, readFile } from 'node:fs/promises'
 import { afterEach, expect, it, vi } from 'vitest'
 import { AGENT_PROVIDER_IDS } from '../../../src/shared/contracts/dto'
 import { createPromptWorker, cwd, rootUri } from './sessionGrantPromptLiteral.testUtils'
@@ -59,7 +58,6 @@ for (const route of ['direct', 'mount', 'node', 'mounted-node', 'remote', 'remot
               ? { ok: true, value: null }
               : await worker.invoke(request, true),
         }))
-        let file: string | undefined
         try {
           const node = route.endsWith('node')
           const result = await home.invoke(
@@ -84,6 +82,18 @@ for (const route of ['direct', 'mount', 'node', 'mounted-node', 'remote', 'remot
             },
             isRemote,
           )
+          if (['claude-code', 'pi'].includes(provider) && prompt.startsWith('-')) {
+            expect(result).toMatchObject({
+              ok: false,
+              error: {
+                code: 'common.invalid_input',
+                details: { reason: 'initial_prompt_unsupported' },
+              },
+            })
+            expect(worker.spawn).not.toHaveBeenCalled()
+            expect(home.spawn).not.toHaveBeenCalled()
+            return
+          }
           expect(result).toMatchObject({ ok: true })
           if (route === 'mounted-node') {
             const operations = home.invokeCalls.mock.calls.map(([, request]) => request.id)
@@ -100,12 +110,7 @@ for (const route of ['direct', 'mount', 'node', 'mounted-node', 'remote', 'remot
           expect(worker.spawn.mock.calls[0][0].command).toBe(
             selected === 'claude-code' ? 'claude' : selected,
           )
-          if (selected === 'pi' && prompt.startsWith('-')) {
-            expect(args.at(-1)).toMatch(/^@/)
-            file = args.at(-1)!.slice(1)
-            expect(await readFile(file, 'utf8')).toBe(prompt)
-            expect(args).not.toContain(prompt)
-          } else if (selected === 'opencode' && prompt.startsWith('-')) {
+          if (selected === 'opencode' && prompt.startsWith('-')) {
             expect(args).toContain(`--prompt=${prompt}`)
           } else if (selected === 'kimi') {
             expect(args.slice(-2)).toEqual(['--prompt', prompt])
@@ -130,53 +135,10 @@ for (const route of ['direct', 'mount', 'node', 'mounted-node', 'remote', 'remot
             await worker.dispose()
           }
         }
-        if (file) {
-          await expect(access(file)).rejects.toThrow()
-        }
       },
     )
   }
 }
-
-it.each(['spawn-failure', 'exit-before-registration', 'exit-after-registration'] as const)(
-  'cleans the Pi prompt file on %s using the existing registration owner',
-  async outcome => {
-    const f = await createPromptWorker({ fullAccess: false })
-    let file: string | undefined
-    try {
-      f.spawn.mockImplementationOnce(async input => {
-        file = input.args.at(-1)!.slice(1)
-        expect(await readFile(file, 'utf8')).toBe('--approve the change')
-        if (outcome === 'spawn-failure') {
-          throw new Error('Fixture spawn failed')
-        }
-        if (outcome === 'exit-before-registration') {
-          f.owner.noteExit('child')
-        }
-        return { sessionId: 'child' }
-      })
-      const result = await f.invoke({
-        kind: 'command',
-        id: 'session.launchAgent',
-        payload: { cwd, provider: 'pi', prompt: '--approve the change' },
-      })
-      if (outcome === 'exit-after-registration') {
-        expect(result).toMatchObject({ ok: true })
-        await access(file!)
-        f.owner.noteExit('child')
-        await vi.waitFor(async () => {
-          await expect(access(file!)).rejects.toThrow()
-        })
-      } else {
-        expect(result).toMatchObject({ ok: false, error: { code: 'agent.launch_failed' } })
-        await expect(access(file!)).rejects.toThrow()
-        expect(f.hub.listSessions().sessions).toEqual([])
-      }
-    } finally {
-      await f.dispose()
-    }
-  },
-)
 
 it.each(['session.launchAgent', 'session.launchAgentInMount', 'node.create'] as const)(
   '%s cannot turn a grant model value into an OpenCode continuation option',

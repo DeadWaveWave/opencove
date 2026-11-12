@@ -1,5 +1,7 @@
 import { agentSpawnPresentations } from '../../../../shared/errors/agentSpawnError'
 export const enMessages = {
+  initialPromptUnsupported:
+    'This prompt could run a provider command instead of starting a conversation. Rephrase the task, or open a blank session and enter provider controls there. Your text has been kept.',
   agentSpawnDepth: agentSpawnPresentations.agentSpawnDepth.message,
   agentSpawnDepthHint: agentSpawnPresentations.agentSpawnDepth.hint,
   agentSpawnConcurrency: agentSpawnPresentations.agentSpawnConcurrency.message,

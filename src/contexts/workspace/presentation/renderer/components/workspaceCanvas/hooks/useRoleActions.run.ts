@@ -1,3 +1,4 @@
+import { assertProviderInitialPrompt } from '@contexts/agent/domain/providerInitialPromptPolicy'
 import type { MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { TranslateFn } from '@app/renderer/i18n'
@@ -129,6 +130,12 @@ export async function runRoleNodeAction(
     context.environmentVariables,
   )
   const prompt = composeProjectRolePrompt({ role, input })
+  try {
+    assertProviderInitialPrompt(provider, prompt)
+  } catch (error) {
+    setRoleNodeLastError({ nodeId, message: toErrorMessage(error), setNodes: context.setNodes })
+    return
+  }
   const owningSpace =
     context.spacesRef.current.find(space => space.nodeIds.includes(nodeId)) ?? null
   const initialBinding = await resolveWorkspaceAgentLaunchBinding({

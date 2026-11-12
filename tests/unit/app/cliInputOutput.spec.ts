@@ -430,16 +430,22 @@ it.each(['data.text', 'nodes.data.text', 'data.prompt'])(
   },
 )
 
-it.each(['', 'api', 'api ops', 'api ops --domains', 'api call', 'node list'])(
-  'command help snapshots: %s',
-  async path => {
-    const f = fixture()
-    expect(await run([...path.split(' ').filter(Boolean), '--help'], f.io)).toBe(0)
-    expect(f.out()).toMatchSnapshot()
-    expect(f.fetch).not.toHaveBeenCalled()
-    expect(f.io.readTextFile).not.toHaveBeenCalled()
-  },
-)
+it.each([
+  '',
+  'api',
+  'api ops',
+  'api ops --domains',
+  'api call',
+  'node list',
+  'node create agent',
+  'agent prompt',
+])('command help snapshots: %s', async path => {
+  const f = fixture()
+  expect(await run([...path.split(' ').filter(Boolean), '--help'], f.io)).toBe(0)
+  expect(f.out()).toMatchSnapshot()
+  expect(f.fetch).not.toHaveBeenCalled()
+  expect(f.io.readTextFile).not.toHaveBeenCalled()
+})
 
 it.each([[], ['api']])('leads with filtered discovery: %j', async (...path) => {
   const f = fixture()
