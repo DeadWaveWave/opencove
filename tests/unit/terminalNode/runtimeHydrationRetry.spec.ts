@@ -108,7 +108,7 @@ describe('runtime hydration survives finite geometry churn', () => {
       requestTerminalRendererRecovery: vi.fn(),
     })
     let disposeHydration: unknown
-    let releaseRefetch!: () => void
+    let releaseRefetch: (() => void) | undefined
     try {
       worker.resize(80, 24, 1)
       await worker.applyOutput(1, '\x1b[?1049h\x1b[?2004hBASELINE')
@@ -181,13 +181,21 @@ describe('runtime hydration survives finite geometry churn', () => {
         onGeometry({ sessionId, cols: 88, rows: 24, revision: 10 })
       }
       if (trigger === 'session change during refetch') {
-        await vi.waitFor(() => expect(presentationSnapshot).toHaveBeenCalledTimes(9))
+        // The call is counted before the mock awaits the worker snapshot/output.
+        // Cancel only once it has installed the deferred refetch resolver.
+        const completeRefetch = await vi.waitFor(() => {
+          expect(presentationSnapshot).toHaveBeenCalledTimes(9)
+          if (!releaseRefetch) {
+            throw new Error('Ninth presentation snapshot has not reached the deferred refetch')
+          }
+          return releaseRefetch
+        })
         expect(typeof disposeHydration).toBe('function')
         disposed = true
         if (typeof disposeHydration === 'function') {
           disposeHydration()
         }
-        releaseRefetch()
+        completeRefetch()
         await new Promise(resolve => setTimeout(resolve, 50))
         expect(finalized).not.toHaveBeenCalled()
         expect(ptyWrite).not.toHaveBeenCalled()
