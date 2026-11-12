@@ -14,6 +14,7 @@ const VALUE_ARG_FLAGS = new Set([
   '--ask-for-approval',
   '--hostname',
   '--model',
+  '--permission-mode',
   '--port',
   '--sandbox',
 ])
