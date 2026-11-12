@@ -76,7 +76,7 @@ it.each(['raw', 'versioned'])(
     expect(metadata).not.toHaveBeenCalled()
   },
 )
-it('SessionEnd and SessionStart hand off the watcher and reject retired conversation hooks', async () => {
+it('non-clear lifecycle hands off private IO while preserving authenticated state hooks', async () => {
   const f = await fixture(),
     states: string[] = []
   f.channel.onState(event => states.push(event.hookEventName ?? ''))
@@ -95,7 +95,7 @@ it('SessionEnd and SessionStart hand off the watcher and reject retired conversa
     expect(f.records.some(record => record.providerSessionId === 'next')).toBe(true),
   )
   await send('provider', 'Stop', f.path, at + 3)
-  expect(states).toEqual(['SessionEnd'])
+  expect(states).toEqual(['SessionEnd', 'Stop'])
 })
 it('the Claude provider passes a per-launch environment into the hook reservation', async () => {
   const reserveSpawn = vi.fn(async () => ({

@@ -16,6 +16,7 @@ export interface ClaudeTranscriptObservation {
   baseline: boolean
   /** Accepted observer generation transition, independent of provider identity reuse. */
   conversation?: {
+    readonly initialState?: import('./claudeConversation').ClaudeConversationCheckpoint
     event: import('./claudeConversation').ClaudeConversationEvent
     publish(
       generation: number,
@@ -30,7 +31,7 @@ export interface ClaudeTranscriptObservation {
     }): void
   }
   /** Private synchronous capture before watcher IO; never a public DTO field. */
-  captureConversation?: (generation: number) => void
+  captureConversation?: (generation: number | undefined, incarnation?: string) => void
   conversationGeneration?: number
   lifecycle?: 'start' | 'end'
   /** Private IO capability: the registry owns demand; the observer owns scheduling. */

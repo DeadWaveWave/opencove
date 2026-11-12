@@ -61,7 +61,27 @@ async function fixture() {
   await send('A', 'SessionStart', 1)
   await send('A', 'UserPromptSubmit', 2, 'same')
   await send('A', 'Stop', 3, 'same')
-  return { run, send, fence, admission }
+  return {
+    run,
+    send,
+    fence,
+    admission,
+    beginClear: async () => {
+      expect(
+        await hooks.post(
+          {
+            session_id: 'A',
+            hook_event_name: 'SessionEnd',
+            reason: 'clear',
+            cwd: '/',
+            transcript_path: '/untrusted/A.jsonl',
+          },
+          at + 4,
+        ),
+      ).toBe(204)
+      expect(fence().conversationQuarantined).toBe(true)
+    },
+  }
 }
 it('admits empty new-ID clear without a B Stop, preserves A and correlates reused prompt IDs', async () => {
   const f = await fixture()
@@ -84,6 +104,7 @@ it.each(['UserPromptSubmit', 'PermissionRequest'])(
   'quarantines %s before delayed Start and folds it before publishing readiness',
   async name => {
     const f = await fixture()
+    await f.beginClear()
     await f.send('B', name, 6, 'b')
     expect(f.admission()).not.toBeNull()
     await f.send('B', 'SessionStart', 5, undefined, 'clear')
@@ -130,6 +151,7 @@ it.each(['missing', 'user', 'queue', 'old-error'])(
 )
 it('keeps quarantine after buffer expiry rather than resurrecting A readiness', async () => {
   const f = await fixture()
+  await f.beginClear()
   await f.send('B', 'UserPromptSubmit', 6, 'b')
   f.run.tick(2001)
   await f.send('B', 'SessionStart', 5, undefined, 'clear')
@@ -138,6 +160,7 @@ it('keeps quarantine after buffer expiry rather than resurrecting A readiness', 
 })
 it('fails closed on orphan overflow and never grants readiness from lost conflicts', async () => {
   const f = await fixture()
+  await f.beginClear()
   for (let i = 0; i < 17; i++) {
     // oxlint-disable-next-line no-await-in-loop -- arrival order is the tested invariant
     await f.send('B', 'UserPromptSubmit', 6 + i, `b${i}`)

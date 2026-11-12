@@ -396,7 +396,7 @@ export function commitAgentRunUpdate(
     }
   }
   if (
-    entry.conversation.ready &&
+    entry.conversation?.ready &&
     !observation &&
     !result.model.snapshot.turn &&
     result.model.snapshot.state !== 'exited'

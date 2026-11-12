@@ -3,7 +3,6 @@ import { subscribeAgentRuns, type RetainedEvent } from './AgentRunSubscriptions'
 import type { AgentTurnArchive, ArchiveMembership, ArchiveClearResult } from './AgentTurnArchive'
 import { readExactArchivedTurn } from './AgentTurnArchiveRead'
 import { AgentSubmissionEvidence } from './AgentSubmissionEvidence'
-import { ClaudeLiveConversation } from './ClaudeLiveConversation'
 import { ClaudeTurnContinuation } from './ClaudeTurnContinuation'
 import { commitAgentRunUpdate } from './AgentRunStateUpdate'
 import type { ClaudeTranscriptObservation } from '../../../shared/runtime/agentHook/claudeTranscript'
@@ -98,7 +97,7 @@ export class AgentRunStateRegistry {
       return
     }
     existing?.cancelExpiry?.()
-    existing?.conversation.dispose()
+    existing?.conversation?.dispose()
     if (existing) {
       this.releaseNodeBinding(existing)
     }
@@ -108,11 +107,11 @@ export class AgentRunStateRegistry {
         archive: this.ports.archive,
         membership: this.ports.membership,
         now: this.ports.now,
-        // Resolve once at acceptance: launches take priority; otherwise capture the end-time binding.
+        providerScopedPrompts: () => entry.conversation !== undefined,
         nodeId: () => entry.launchNodeId ?? entry.model.snapshot.nodeId,
         remote: () => entry.remote,
       }),
-      conversation: new ClaudeLiveConversation(this.ports.schedule),
+      conversationSchedule: this.ports.schedule,
       continuation: new ClaudeTurnContinuation(),
       token: `${input.incarnation}:${++this.tokenSequence}`,
       bindingGeneration: 0,
@@ -202,10 +201,10 @@ export class AgentRunStateRegistry {
       return
     }
     if (observation.source === 'exit') {
-      entry.conversation.dispose()
+      entry.conversation?.dispose()
     }
     if (observation.degraded || observation.source === 'exit') {
-      entry.conversation.veto()
+      entry.conversation?.veto()
     }
     this.update(entry, observation, evidence)
   }
@@ -375,7 +374,7 @@ export class AgentRunStateRegistry {
       return false
     }
     entry.cancelExpiry?.()
-    entry.conversation.dispose()
+    entry.conversation?.dispose()
     this.entries.delete(input.sessionId)
     this.fences.emit(input.sessionId, { fence: null })
     this.releaseNodeBinding(entry)
@@ -432,7 +431,7 @@ export class AgentRunStateRegistry {
     this.subscribers.clear()
     for (const entry of this.entries.values()) {
       entry.cancelExpiry?.()
-      entry.conversation.dispose()
+      entry.conversation?.dispose()
     }
     this.entries.clear()
     this.nodeBindings.clear()

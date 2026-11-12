@@ -19,6 +19,7 @@ let generation = 0
 /** A credential owns launch roots, invocation validity, provider lifecycle and all file IO. */
 export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeHookEnvelope> {
   private credential?: object
+  private readonly earlySubmits = new Map<string, number>()
   private watcher?: SessionTurnStateWatcher
   private path?: string
   private disposed = false
@@ -44,7 +45,7 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
     sessionId: string,
     envelope: ClaudeHookEnvelope,
     context: PrivateHookContext,
-  ): boolean | 'deferred' {
+  ): boolean | 'deferred' | 'state_only' {
     if (this.disposed || !context.isCurrent()) {
       return false
     }
@@ -52,6 +53,7 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
     let decision:
       | { action: 'start' | 'end' | 'event' | 'ignore'; generation: number; deferred?: boolean }
       | undefined
+    const lifecycle = this.lifecycle
     this.emit({
       sessionId,
       incarnation: context.incarnation,
@@ -61,10 +63,16 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
       position: -1,
       baseline: false,
       conversation: {
+        get initialState() {
+          return lifecycle.checkpoint()
+        },
         event: envelope,
         publish: (acceptedGeneration, action = 'event', legacyState = false) => {
           if (this.disposed || !context.isCurrent()) {
             return
+          }
+          if (action !== 'ignore') {
+            this.lifecycle.accept(envelope)
           }
           if (
             this.commit(sessionId, envelope, context, action, acceptedGeneration, legacyState) ||
@@ -81,13 +89,14 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
     if (decision?.deferred) {
       return 'deferred'
     }
-    return this.commit(
+    const accepted = this.commit(
       sessionId,
       envelope,
       context,
       decision?.action ?? this.lifecycle.accept(envelope),
       decision?.generation,
     )
+    return decision ? accepted : accepted || 'state_only'
   }
   private commit(
     sessionId: string,
@@ -115,6 +124,21 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
       event: envelope,
       action,
     })
+    const delayedStart =
+      acceptedGeneration === undefined &&
+      envelope.hookEventName === 'SessionStart' &&
+      envelope.emittedAtMs !== undefined &&
+      (this.earlySubmits.get(envelope.claudeSessionId) ?? -Infinity) > envelope.emittedAtMs
+    if (
+      acceptedGeneration === undefined &&
+      envelope.hookEventName === 'UserPromptSubmit' &&
+      envelope.emittedAtMs !== undefined
+    ) {
+      if (this.earlySubmits.size >= 16) {
+        this.earlySubmits.delete(this.earlySubmits.keys().next().value!)
+      }
+      this.earlySubmits.set(envelope.claudeSessionId, envelope.emittedAtMs)
+    }
     if (action === 'ignore') {
       return false
     }
@@ -124,7 +148,7 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
       this.detach()
       this.demand = false
       this.currentGeneration = ++generation
-      if (acceptedGeneration === undefined || legacyState) {
+      if ((acceptedGeneration === undefined && !delayedStart) || legacyState) {
         this.emit({
           sessionId,
           providerSessionId: envelope.claudeSessionId,

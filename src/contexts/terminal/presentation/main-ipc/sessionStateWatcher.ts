@@ -322,7 +322,7 @@ export function createSessionStateWatcherController({
             ...record,
             sessionId,
             providerSessionId: resolvedSessionId,
-            incarnation: sessionId,
+            incarnation: observation.incarnation ?? sessionId,
             generation: watcherVersion,
             conversationGeneration: observation.generation,
           })

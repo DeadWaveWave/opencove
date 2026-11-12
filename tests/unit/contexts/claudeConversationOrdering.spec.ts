@@ -13,6 +13,7 @@ type Scenario = {
   prefix?: Evidence[]
   provider: string
   outcomes: string[]
+  archiveProviders: string[]
 }
 export const scenarios: Scenario[] = [
   {
@@ -26,6 +27,7 @@ export const scenarios: Scenario[] = [
     ],
     provider: 'B',
     outcomes: ['completed'],
+    archiveProviders: ['B'],
   },
   {
     name: 'same-ID clear',
@@ -37,6 +39,7 @@ export const scenarios: Scenario[] = [
     ],
     provider: 'B',
     outcomes: ['completed'],
+    archiveProviders: ['B'],
   },
   {
     name: 'successor replaces pending End',
@@ -49,6 +52,7 @@ export const scenarios: Scenario[] = [
     ],
     provider: 'C',
     outcomes: ['completed'],
+    archiveProviders: ['B'],
   },
   {
     name: 'A completes then first B prompt',
@@ -61,6 +65,7 @@ export const scenarios: Scenario[] = [
     ],
     provider: 'B',
     outcomes: ['completed', 'completed'],
+    archiveProviders: ['A', 'B'],
   },
   {
     name: 'B prompt Stop End passive notification',
@@ -73,12 +78,14 @@ export const scenarios: Scenario[] = [
     ],
     provider: 'B',
     outcomes: ['completed'],
+    archiveProviders: ['B'],
   },
   {
     name: 'clear End',
     events: [B('SessionStart', 10), B('SessionEnd', 30)],
     provider: 'B',
     outcomes: [],
+    archiveProviders: [],
   },
   {
     name: 'repeated clears',
@@ -91,6 +98,7 @@ export const scenarios: Scenario[] = [
     ],
     provider: 'D',
     outcomes: ['completed'],
+    archiveProviders: ['B'],
   },
   {
     name: 'passive notification',
@@ -102,6 +110,7 @@ export const scenarios: Scenario[] = [
     ],
     provider: 'B',
     outcomes: ['completed'],
+    archiveProviders: ['B'],
   },
   {
     name: 'stale A watcher callbacks',
@@ -114,6 +123,7 @@ export const scenarios: Scenario[] = [
     ],
     provider: 'B',
     outcomes: [],
+    archiveProviders: [],
   },
   {
     name: 'B prompt End without Stop',
@@ -125,6 +135,7 @@ export const scenarios: Scenario[] = [
     ],
     provider: 'B',
     outcomes: ['unknown'],
+    archiveProviders: ['B'],
   },
 ]
 afterEach(() => vi.useRealTimers())
@@ -162,6 +173,10 @@ function replay(events: Evidence[], prefix: Evidence[] = []) {
   try {
     for (const event of prefix) {
       f.send(event)
+    }
+    // Full bypass begins reconciliation only after authenticated clear evidence, never a future clear.
+    if (!prefix.some(e => e.sessionStartSource === 'clear' || e.sessionEndReason === 'clear')) {
+      f.send({ ...hook('A', 'SessionEnd', 4), sessionEndReason: 'clear' })
     }
     for (const event of events) {
       seen.push(event)
@@ -244,7 +259,12 @@ for (const scenario of scenarios) {
     for (const order of permutations(scenario.events)) {
       try {
         const actual = replay(order, scenario.prefix)
-        expect(actual.identity).toBe(scenario.provider)
+        if (actual.ready || actual.snapshot.turn) {
+          expect(actual.identity).toBe(scenario.provider)
+        }
+        expect(actual.archive.map(record => record.providerSessionId)).toEqual(
+          scenario.archiveProviders,
+        )
         expect(actual).toEqual(canonical)
       } catch {
         failures++

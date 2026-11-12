@@ -34,6 +34,7 @@ async function fixture() {
         session_id: id,
         hook_event_name: name,
         source,
+        ...(name === 'SessionEnd' && source === 'clear' ? { reason: 'clear' } : {}),
         cwd: '/',
         transcript_path: `/untrusted/${id}.jsonl`,
         prompt_id: promptId,
@@ -101,6 +102,7 @@ it('keeps post-Enter A unknown and independently submits B with exact reply', as
 })
 it('quarantines successor activity before Start and refuses prompt with zero writes', async () => {
   const f = await fixture()
+  await f.send('B', 'SessionEnd', Date.now() - 2, undefined, 'clear', false)
   await f.send('C', 'UserPromptSubmit', Date.now() + 1, 'c')
   await expect(f.deliver()).rejects.toMatchObject({
     details: { pasteDispatchAttempted: false, submitDispatchAttempted: false },
@@ -142,6 +144,7 @@ it('cancels a queued delivery before any paste when successor activity is quaran
   const failed = expect(delivery).rejects.toMatchObject({
     details: { pasteDispatchAttempted: false, submitDispatchAttempted: false },
   })
+  await f.send('B', 'SessionEnd', Date.now() - 2, undefined, 'clear', false)
   await f.send('C', 'UserPromptSubmit', Date.now() + 1, 'c')
   await failed
   release()

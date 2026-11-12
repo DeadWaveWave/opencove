@@ -46,6 +46,7 @@ async function finalView(order: Hook[]) {
     event => completed.push(event),
   )
   try {
+    await f.beginClear()
     for (const hook of order) {
       // oxlint-disable-next-line no-await-in-loop -- permutation arrival order is the property
       await f.send(

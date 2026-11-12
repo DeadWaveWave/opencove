@@ -7,12 +7,19 @@ export type Step =
       prompt?: string
       notification?: string
       stampOffset?: number
+      relayAt?: number
     }
   | { kind: 'capture'; watcher: string; id: string | null }
   | { kind: 'bind'; watcher: string; id: string }
-  | { kind: 'file'; watcher: string; state: 'working' | 'waiting' | 'standby' }
+  | {
+      kind: 'file'
+      watcher: string
+      state: 'working' | 'waiting' | 'standby'
+      generation?: number
+      id?: string
+    }
   | { kind: 'dispose_watcher'; watcher: string }
-export type Case = { id: string; provider?: 'codex'; steps: Step[] }
+export type Case = { id: string; provider?: 'codex'; terminal?: boolean; steps: Step[] }
 const start = (id = 'A', source: 'startup' | 'resume' | 'compact' = 'startup'): Step => ({
   kind: 'hook',
   id,
@@ -45,6 +52,48 @@ const file = (state: 'working' | 'waiting' | 'standby'): Step => ({
   state,
 })
 export const corpus: Case[] = [
+  {
+    id: 'resume-shared-prompt-identity',
+    steps: [
+      start(),
+      submit('A', 'shared'),
+      stop('A', 'shared'),
+      start('B', 'resume'),
+      submit('B', 'first'),
+      submit('B', 'shared'),
+      stop('B', 'shared'),
+    ],
+  },
+  {
+    id: 'permission-before-resume',
+    steps: [
+      start(),
+      submit(),
+      stop(),
+      wait('B'),
+      start('B', 'resume'),
+      submit('B'),
+      stop('B'),
+      submit('B', 'next'),
+      stop('B', 'next'),
+    ],
+  },
+  {
+    id: 'terminal-file-after-resume',
+    terminal: true,
+    steps: [start(), submit(), stop(), start('B', 'resume'), capture('B'), file('working')],
+  },
+  {
+    id: 'resume-retention-capacity',
+    steps: [
+      start(),
+      ...Array.from({ length: 66 }, (_, i) => [
+        start(`R${i}`, 'resume'),
+        submit(`R${i}`),
+        stop(`R${i}`),
+      ]).flat(),
+    ],
+  },
   { id: 'startup', steps: [start()] },
   { id: 'startup-turn', steps: [start(), submit(), stop()] },
   {

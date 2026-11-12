@@ -9,6 +9,7 @@ import {
   hasCompleteClearTurn,
 } from './ClaudeClearTransition'
 import type { ClaudeTranscriptObservation } from '../../../shared/runtime/agentHook/claudeTranscript'
+import type { ClaudeConversationCheckpoint } from '../../../shared/runtime/agentHook/claudeConversation'
 
 export const CLAUDE_CONVERSATION_WINDOW_MS = 2_000
 const MAX_PENDING = 64
@@ -24,7 +25,7 @@ type Ports = {
 }
 /** Invocation-local bounded event-time commit. Only the lifecycle classifier decides transitions. */
 export class ClaudeLiveConversation {
-  private readonly lifecycle = new ClaudeConversationLifecycle()
+  private lifecycle: ClaudeConversationLifecycle
   private readonly retired = new Set<string>()
   private readonly receipts = new Set<string>()
   private pending: Request[] = []
@@ -46,6 +47,7 @@ export class ClaudeLiveConversation {
   private draining = false
   private disposed = false
   private candidateReady = false
+  private retentionLimited = false
   private currentClear = false
   private ended = false
   private endedInClear = false
@@ -54,7 +56,39 @@ export class ClaudeLiveConversation {
   ready = false
   quarantined = false
 
-  constructor(private readonly schedule: (callback: () => void, delay: number) => () => void) {}
+  constructor(
+    private readonly schedule: (callback: () => void, delay: number) => () => void,
+    initial?: ClaudeConversationCheckpoint,
+  ) {
+    this.lifecycle = new ClaudeConversationLifecycle(initial)
+    this.providerSessionId = initial?.current ?? initial?.retired.at(-1)?.sessionId
+    for (const item of initial?.retired ?? []) {
+      this.retired.add(item.sessionId)
+    }
+    this.retentionLimited = this.retired.size >= 64
+    this.committedAt = initial?.watermark ?? -Infinity
+  }
+  get active(): boolean {
+    return this.clearPending
+  }
+  synchronize(initial?: ClaudeConversationCheckpoint): void {
+    if (!initial) {
+      return
+    }
+    this.lifecycle = new ClaudeConversationLifecycle(initial)
+    this.providerSessionId = initial.current ?? initial.retired.at(-1)?.sessionId
+    this.committedAt = initial.watermark ?? -Infinity
+    this.ended = initial.ended
+    for (const item of initial.retired) {
+      this.retired.add(item.sessionId)
+    }
+    if (this.retired.size >= 64) {
+      this.retentionLimited = true
+      while (this.retired.size > 64) {
+        this.retired.delete(this.retired.values().next().value!)
+      }
+    }
+  }
 
   accept(record: ClaudeTranscriptObservation, now: number, ports: Ports): void {
     const request = record.conversation!
@@ -80,10 +114,7 @@ export class ClaudeLiveConversation {
     const active = isClaudeConversationActivity(event) || event.hookEventName === 'SessionStart'
     // Passive notifications neither establish identity nor advance the committed watermark.
     if (!active) {
-      request.publish(
-        this.generation,
-        this.pending.length ? 'ignore' : this.lifecycle.accept(event),
-      )
+      request.publish(this.generation, 'ignore')
       return
     }
     if (clear && !Number.isFinite(event.emittedAtMs)) {
@@ -347,7 +378,7 @@ export class ClaudeLiveConversation {
       }
       if (this.retired.size > 64) {
         this.retired.delete(this.retired.values().next().value!)
-        this.uncertain = true
+        this.retentionLimited = true
       }
       this.generation++
       this.providerSessionId = event.claudeSessionId
@@ -357,7 +388,11 @@ export class ClaudeLiveConversation {
         this.currentClear = event.sessionStartSource === 'clear'
         this.completedAtStart = ports.completedTurnId()
       }
-      this.candidateReady = action === 'start' && event.sessionStartSource === 'clear' && !reused
+      this.candidateReady =
+        action === 'start' &&
+        event.sessionStartSource === 'clear' &&
+        !reused &&
+        !this.retentionLimited
       if (!legacyEnd) {
         ports.reset()
       }
@@ -413,6 +448,10 @@ export class ClaudeLiveConversation {
   }
   veto(): void {
     this.ready = this.candidateReady = false
+  }
+  leave(): void {
+    this.veto()
+    this.currentClear = false
   }
   dispose(): void {
     this.disposed = true

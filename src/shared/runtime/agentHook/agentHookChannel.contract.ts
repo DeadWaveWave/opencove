@@ -79,6 +79,11 @@ export interface PrivateHookContext {
 }
 export interface PrivateHookObserver<TEnvelope> {
   /** Deferred accepts the authenticated request while the owner retains state publication. */
-  observe(sessionId: string, envelope: TEnvelope, context: PrivateHookContext): boolean | 'deferred'
+  // state_only preserves legacy state publication when only private observer IO was rejected.
+  observe(
+    sessionId: string,
+    envelope: TEnvelope,
+    context: PrivateHookContext,
+  ): boolean | 'deferred' | 'state_only'
   dispose(): void
 }

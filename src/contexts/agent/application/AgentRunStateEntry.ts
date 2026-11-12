@@ -8,7 +8,8 @@ import type { AgentRuntimeFilter, AgentRuntimeEvent } from './AgentRunStateRegis
 import type { AgentRunModel } from '../domain/agentRunState'
 import type { RunStateFence } from './ports/PromptDeliveryPorts'
 export type AgentRunEntry = {
-  conversation: ClaudeLiveConversation
+  conversation?: ClaudeLiveConversation
+  conversationSchedule: (callback: () => void, delay: number) => () => void
   continuation: ClaudeTurnContinuation
   history: AgentTurnHistory
   model: AgentRunModel
@@ -35,9 +36,9 @@ export function projectRunStateFence(entry: AgentRunEntry, epoch: string): RunSt
     cursor: entry.cursor,
     snapshot: model.snapshot,
     lastTurnEnd: model.lastTurnEnd,
-    conversationGeneration: entry.conversation.generation,
-    claudeClearReady: entry.conversation.ready,
-    conversationQuarantined: entry.conversation.quarantined,
+    conversationGeneration: entry.conversation?.generation,
+    claudeClearReady: entry.conversation?.ready ?? false,
+    conversationQuarantined: !!(entry.conversation?.active && entry.conversation.quarantined),
     watermarks: Object.fromEntries(
       Object.entries(model.observations).map(([source, value]) => [source, value.sourceSequence]),
     ),
@@ -182,8 +183,12 @@ export function readRunPromptIdentity(
   return entry &&
     entry.token === fence.incarnation &&
     epoch === fence.epoch &&
-    entry.conversation.generation === fence.conversationGeneration
-    ? entry.history.identity(entry.conversation.clearIdentity)
+    entry.conversation?.generation === fence.conversationGeneration
+    ? entry.history.identity(
+        entry.conversation?.active || entry.conversation?.ready
+          ? entry.conversation.clearIdentity
+          : undefined,
+      )
     : undefined
 }
 
@@ -206,7 +211,7 @@ export function setRunRuntimeContext(
     context.hookCoverage !== 'lifecycle' ||
     (context.hookInstallState !== undefined && context.hookInstallState !== 'installed')
   ) {
-    entry.conversation.veto()
+    entry.conversation?.veto()
   }
   Object.assign(entry, context)
   return true
@@ -222,11 +227,20 @@ export function acceptsRunObservation(
   source: AgentRunObservation['source'],
   evidence?: PromptSubmissionEvidence,
 ): boolean {
+  if (
+    !entry ||
+    (evidence?.invocationId !== undefined && evidence.invocationId !== entry.model.incarnation)
+  ) {
+    return false
+  }
+  // No clear owner exists on the ordinary path; dormant owners impose no generation requirements.
+  if (!entry.conversation || (!entry.conversation.active && !entry.conversation.ready)) {
+    return true
+  }
   return (
-    !!entry &&
-    ((source !== 'claude_hook' &&
+    (source !== 'claude_hook' &&
       !(source === 'session_file' && entry.model.snapshot.provider === 'claude-code')) ||
-      entry.conversation.accepts(evidence?.conversationGeneration, evidence?.providerSessionId))
+    entry.conversation.accepts(evidence?.conversationGeneration, evidence?.providerSessionId)
   )
 }
 export function listAgentRuns(

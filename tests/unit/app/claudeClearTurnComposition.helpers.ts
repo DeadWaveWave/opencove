@@ -94,6 +94,18 @@ export async function assertClearTurnComposition(archive?: AgentTurnArchive) {
     await send('A', 'SessionStart', -2)
     await send('A', 'UserPromptSubmit', -1, 'a')
     await send('A', 'Stop', 0, 'a')
+    expect(
+      await hooks.post(
+        {
+          session_id: 'A',
+          hook_event_name: 'SessionEnd',
+          reason: 'clear',
+          cwd: '/',
+          transcript_path: '/untrusted/A.jsonl',
+        },
+        at + 1,
+      ),
+    ).toBe(204)
     await send('B', 'UserPromptSubmit', 3, 'p')
     await send('B', 'SessionStart', 2, undefined, 'clear')
     expect(run.snapshot().turn?.id).toBe('t2')

@@ -135,7 +135,11 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
     if (observerAccepted === 'deferred') {
       return true
     }
-    if (options.source === 'claude_hook' && envelope.hookEventName === 'SessionEnd') {
+    if (
+      observerAccepted !== 'state_only' &&
+      options.source === 'claude_hook' &&
+      envelope.hookEventName === 'SessionEnd'
+    ) {
       credential.providerSessionId = null
     }
     if (credential.observationOwner) {

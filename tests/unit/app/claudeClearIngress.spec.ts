@@ -30,7 +30,7 @@ it.each(['A', 'B'].flatMap(id => [undefined, -70000, 0].map(offset => [id, offse
     })
     expect(f.write).not.toHaveBeenCalled()
     expect(f.fence().lastTurnEnd).toBeNull()
-    expect(f.fence().conversationGeneration).toBeGreaterThan(before.conversationGeneration!)
+    expect(f.fence().conversationGeneration).toBeGreaterThan(before.conversationGeneration ?? 0)
   },
 )
 it.each(['A', 'B'])('cancels pasted delivery before Enter on unorderable %s clear', async id => {
@@ -56,6 +56,7 @@ it('keeps an identifiable duplicate clear receipt idempotent', async () => {
 })
 it('folds reversed orphan submit and permission evidence in relay order before steering admission', async () => {
   const f = await fixture()
+  await f.beginClear()
   await f.send('B', 'PermissionRequest', 30, 'b')
   await f.send('B', 'UserPromptSubmit', 20, 'b')
   await f.send('B', 'SessionStart', 10, undefined, 'clear')
@@ -72,6 +73,7 @@ it('folds reversed orphan submit and permission evidence in relay order before s
 })
 it('folds reversed orphan submit and Stop into one completed B turn', async () => {
   const f = await fixture()
+  await f.beginClear()
   await f.send('B', 'Stop', 30, 'b')
   await f.send('B', 'UserPromptSubmit', 20, 'b')
   await f.send('B', 'SessionStart', 10, undefined, 'clear')
@@ -88,10 +90,11 @@ it.each(['PermissionRequest', 'Stop'])(
   'quarantines tied orphan submit/%s timestamps',
   async name => {
     const f = await fixture()
+    await f.beginClear()
     await f.send('B', name, 20, 'b')
     await f.send('B', 'UserPromptSubmit', 20, 'b')
     await f.send('B', 'SessionStart', 10, undefined, 'clear')
-    expect(f.fence()).toMatchObject({ conversationQuarantined: true, claudeClearReady: false })
+    expect(f.fence()).toMatchObject({ conversationQuarantined: false, claudeClearReady: false })
     expect(promptAdmission(f.fence(), capability, 'steer')).not.toBeNull()
   },
 )

@@ -26,7 +26,9 @@ export class AgentTurnHistory {
   private active: Identity | undefined
   private readonly ended: RetainedAgentTurn[] = []
   constructor(
-    private readonly archiveContext: TurnArchiveContext = {
+    private readonly archiveContext: TurnArchiveContext & {
+      providerScopedPrompts?: () => boolean
+    } = {
       now: Date.now,
       nodeId: () => null,
       remote: () => false,
@@ -94,7 +96,8 @@ export class AgentTurnHistory {
       (evidence?.promptId &&
         this.ended.find(
           turn =>
-            turn.providerSessionId === evidence.providerSessionId &&
+            (!this.archiveContext.providerScopedPrompts?.() ||
+              turn.providerSessionId === evidence.providerSessionId) &&
             (turn.promptId === evidence.promptId || turn.promptIds?.includes(evidence.promptId!)),
         )?.turnId) ||
       currentTurnId
@@ -111,7 +114,9 @@ export class AgentTurnHistory {
       !!id &&
       this.ended.some(
         turn =>
-          (!providerSessionId || turn.providerSessionId === providerSessionId) &&
+          (!this.archiveContext.providerScopedPrompts?.() ||
+            !providerSessionId ||
+            turn.providerSessionId === providerSessionId) &&
           (turn.promptId === id || turn.promptIds?.includes(id)),
       )
     )
@@ -187,7 +192,8 @@ export class AgentTurnHistory {
     // Stop with no active turn can still refresh idle after provider continuation.
     const retained = this.ended.find(
       turn =>
-        turn.providerSessionId === evidence.providerSessionId &&
+        (!this.archiveContext.providerScopedPrompts?.() ||
+          turn.providerSessionId === evidence.providerSessionId) &&
         (turn.promptId === evidence.promptId || turn.promptIds?.includes(evidence.promptId!)),
     )
     if (retained) {

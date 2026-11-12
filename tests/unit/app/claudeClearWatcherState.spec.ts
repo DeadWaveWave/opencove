@@ -74,10 +74,7 @@ it.each(['state', 'unavailable', 'error'] as const)(
       f.watcher.onError(new Error('A read failed'))
     }
     expect(f.fence()).toEqual(before)
-    expect(getPromptSubmissionEvidence(f.events.at(-1)!)).toMatchObject({
-      providerSessionId: 'A',
-      conversationGeneration: 0,
-    })
+    expect(getPromptSubmissionEvidence(f.events.at(-1)!)).toBeUndefined()
   },
 )
 it.each([false, true])(
@@ -132,9 +129,6 @@ it('captures provenance before an async discovery gap, not when a stale callback
   f.resolveDiscovery({ resumeSessionId: 'A', filePath: 'A.jsonl' })
   await vi.advanceTimersByTimeAsync(0)
   f.watcher.onState('s', 'working')
-  expect(getPromptSubmissionEvidence(f.events.at(-1)!)).toMatchObject({
-    providerSessionId: 'A',
-    conversationGeneration: 0,
-  })
+  expect(getPromptSubmissionEvidence(f.events.at(-1)!)).toBeUndefined()
   expect(f.fence()).toEqual(before)
 })

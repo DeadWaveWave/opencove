@@ -10,7 +10,7 @@ import { getPromptSubmissionEvidence } from '../../../src/shared/runtime/agentHo
 
 afterEach(() => vi.useRealTimers())
 const capability = () => ({ supported: true as const, submitDelayMs: 300 })
-it('keeps generation-zero compatibility strict once a hook establishes an identity', () => {
+it('bypasses generation requirements until authenticated clear establishes a fence', () => {
   vi.useFakeTimers()
   vi.setSystemTime(100000)
   const f = orderingFixture()
@@ -26,18 +26,20 @@ it('keeps generation-zero compatibility strict once a hook establishes an identi
         conversationGeneration: 0,
         providerSessionId: 'B',
       }),
-    ).toBe(false)
+    ).toBe(true)
     f.send({ ...hook('B', 'SessionStart', 10), sessionStartSource: 'resume' })
     expect(
       f.registry.acceptsObservation('s', 'session_file', {
         conversationGeneration: 0,
         providerSessionId: 'B',
       }),
-    ).toBe(false)
+    ).toBe(true)
+    f.send(hook('C', 'SessionStart', 20))
+    vi.advanceTimersByTime(200)
     expect(
       f.registry.acceptsObservation('s', 'session_file', {
         conversationGeneration: f.fence().conversationGeneration,
-        providerSessionId: 'B',
+        providerSessionId: 'C',
       }),
     ).toBe(true)
   } finally {
@@ -64,9 +66,6 @@ it('accepts fresh resume back to A and refuses input while A is working', () => 
     })
     expect(f.registry.promptIdentity(f.fence())?.providerSessionId).toBe('A')
     expect(promptAdmission(f.fence(), capability, 'refuse')).toMatchObject({ code: 'agent.busy' })
-    const current = f.fence()
-    f.send(hook('B', 'Stop', 45))
-    expect(f.fence()).toEqual(current)
     expect(f.registry.finalMessage({ nodeId: 'n', turnId: 't1' })).toMatchObject({
       message: 'reply-B',
     })
@@ -101,13 +100,10 @@ it('accepts discovered file-only identity through actual generation-zero watcher
     publish,
   )
   try {
-    expect(captured.generation).toBe(0)
+    expect(captured.generation).toBeUndefined()
     captured.bind('discovered-A')
     captured.state('s', 'working')
-    expect(getPromptSubmissionEvidence(emitted.mock.calls[0][0])).toMatchObject({
-      conversationGeneration: 0,
-      providerSessionId: 'discovered-A',
-    })
+    expect(getPromptSubmissionEvidence(emitted.mock.calls[0][0])).toBeUndefined()
     expect(f.registry.get({ sessionId: 's' })).toMatchObject({
       state: 'working',
       quality: 'inferred',

@@ -9,3 +9,12 @@ export interface ClaudeConversationEvent {
   transcriptPath?: string
   promptId?: string
 }
+
+/** Classifier checkpoint, copied only when an authenticated clear opens a transition. */
+export interface ClaudeConversationCheckpoint {
+  current?: string
+  watermark?: number
+  startAt?: number
+  ended: boolean
+  retired: { sessionId: string; emittedAtMs?: number }[]
+}

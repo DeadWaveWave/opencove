@@ -1,4 +1,7 @@
-import type { ClaudeConversationEvent } from '../../../shared/runtime/agentHook/claudeConversation'
+import type {
+  ClaudeConversationEvent,
+  ClaudeConversationCheckpoint,
+} from '../../../shared/runtime/agentHook/claudeConversation'
 export type { ClaudeConversationEvent } from '../../../shared/runtime/agentHook/claudeConversation'
 
 export function isClaudeConversationActivity(event: ClaudeConversationEvent): boolean {
@@ -15,12 +18,27 @@ export class ClaudeConversationLifecycle {
   private startAt?: number
   private ended = false
   private readonly retired: { sessionId: string; emittedAtMs?: number }[] = []
+  constructor(checkpoint?: ClaudeConversationCheckpoint) {
+    if (checkpoint) {
+      this.current = checkpoint.current
+      this.watermark = checkpoint.watermark
+      this.startAt = checkpoint.startAt
+      this.ended = checkpoint.ended
+      this.retired.push(...checkpoint.retired)
+    }
+  }
+  checkpoint(): ClaudeConversationCheckpoint {
+    return {
+      current: this.current,
+      watermark: this.watermark,
+      startAt: this.startAt,
+      ended: this.ended,
+      retired: this.retired.map(item => ({ ...item })),
+    }
+  }
   accept(event: ClaudeConversationEvent): 'start' | 'end' | 'event' | 'ignore' {
     const at = event.emittedAtMs,
       id = event.claudeSessionId
-    if (!isClaudeConversationActivity(event) && event.hookEventName !== 'SessionStart') {
-      return !this.ended && this.current === id ? 'event' : 'ignore'
-    }
     if (event.hookEventName === 'SessionStart') {
       const replacement = !!this.current || this.ended || event.sessionStartSource === 'clear'
       if (this.current || this.ended) {

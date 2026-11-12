@@ -11,14 +11,33 @@ export const clearTranscript = readFileSync(
 )
   .trim()
   .split('\n')
-export async function clearIngressFixture(autoFlush = true) {
+export async function clearIngressFixture(autoFlush = true, terminal = false) {
   vi.useFakeTimers()
   vi.setSystemTime(100000)
   const run = promptDeliveryRuntimeFixture(undefined, 'claude-code', false)
   const hooks = await hookChannelFixture()
+  const terminalActivity = terminal
+    ? {
+        provider: 'claude-code' as const,
+        invocationId: 'terminal-invocation',
+        generation: 1,
+        phase: 'active' as const,
+        observedAtMs: Date.now(),
+      }
+    : undefined
+  if (terminalActivity) {
+    run.runtime.metadata({
+      sessionId: 's',
+      resumeSessionId: null,
+      terminalAgentActivity: terminalActivity,
+    })
+  }
   hooks.channel.onState(event => run.runtime.observe(event))
   hooks.channel.onClaudeTranscript?.(record => run.runtime.observeClaudeTranscript(record))
-  hooks.reservation.commit('s')
+  hooks.reservation.commit(
+    's',
+    terminalActivity ? { ...terminalActivity, isCurrent: () => true } : undefined,
+  )
   let batching = false
   let current: string | undefined
   const send = async (
@@ -58,7 +77,7 @@ export async function clearIngressFixture(autoFlush = true) {
     return (line: string) =>
       run.runtime.observeClaudeTranscript({
         sessionId: 's',
-        incarnation: 's',
+        incarnation: terminalActivity?.invocationId ?? 's',
         providerSessionId: id,
         conversationGeneration: captured,
         generation: 1,
@@ -79,6 +98,12 @@ export async function clearIngressFixture(autoFlush = true) {
     settle: () => vi.advanceTimersByTimeAsync(2000),
     fence,
     transcript,
+    async beginClear() {
+      const previous = batching
+      batching = true
+      await send('A', 'SessionEnd', 4, undefined, undefined, { reason: 'clear' })
+      batching = previous
+    },
     async close() {
       run.dispose()
       await hooks.channel.dispose()

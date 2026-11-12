@@ -341,6 +341,29 @@ it.each(['p', 'different'])(
     const f = fixture()
     f.hook('UserPromptSubmit', predecessor, undefined, undefined, 'A')
     f.hook('Stop', predecessor, 'reply-A', undefined, 'A')
+    // Provider-scoped prompt history belongs to an authenticated clear, not ordinary resume.
+    f.runtime.observeClaudeTranscript({
+      sessionId: 's',
+      incarnation: 's',
+      providerSessionId: 'B',
+      generation: 0,
+      fileIdentity: '',
+      position: -1,
+      baseline: false,
+      conversation: {
+        event: {
+          claudeSessionId: 'B',
+          hookEventName: 'SessionStart',
+          sessionStartSource: 'clear',
+          emittedAtMs: 200,
+          state: null,
+        },
+        decide() {},
+        publish() {},
+      },
+    })
+    f.tick(200)
+    expect(f.registry.readFence({ sessionId: 's' })?.conversationGeneration).toBeTypeOf('number')
     f.hook('UserPromptSubmit', 'b-first', undefined, undefined, 'B')
     f.hook('UserPromptSubmit', 'b-first', undefined, undefined, 'B')
     f.hook('Stop', 'b-first', 'intermediate-B', undefined, 'B')
@@ -352,11 +375,12 @@ it.each(['p', 'different'])(
     f.record(parseClaudeTranscript(JSON.stringify({ ...user, promptSource: 'queued' })), {
       baseline: true,
       providerSessionId: 'B',
+      origin: 'hook',
     })
     f.hook('Stop', 'p', 'final-B', undefined, 'B')
     f.record(
       { kind: 'checkpoint', promptId: 'p', queueEmpty: true, final: true },
-      { providerSessionId: 'B' },
+      { providerSessionId: 'B', origin: 'hook' },
     )
     expect(f.read({ turnId: 't2' })).toMatchObject({
       message: 'final-B',

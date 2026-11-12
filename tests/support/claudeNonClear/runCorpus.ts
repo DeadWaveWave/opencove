@@ -37,6 +37,15 @@ export async function runCorpus(api: Api, scenario: Case) {
   })
   const runtime = new api.AgentRunStateRuntime(registry, Date.now)
   const provider = scenario.provider ?? 'claude-code'
+  const terminalActivity = scenario.terminal
+    ? {
+        provider,
+        invocationId: 'terminal-invocation',
+        generation: 1,
+        phase: 'active' as const,
+        observedAtMs: Date.now(),
+      }
+    : undefined
   runtime.captureLaunchIdentity('s', 'n')
   runtime.setBindings([{ sessionId: 's', nodeId: 'n', projectId: 'p', remote: false }])
   runtime.metadata({
@@ -46,6 +55,7 @@ export async function runCorpus(api: Api, scenario: Case) {
     agentLaunchKind: 'managed',
     hookCoverage: 'lifecycle',
     hookInstallState: 'installed',
+    ...(terminalActivity ? { terminalAgentActivity: terminalActivity } : {}),
   })
   const hooks = await hookChannelFixture({
     factory: api.createClaudeHookChannel,
@@ -53,7 +63,10 @@ export async function runCorpus(api: Api, scenario: Case) {
   })
   hooks.channel.onState(event => runtime.observe(event))
   hooks.channel.onClaudeTranscript!(record => runtime.observeClaudeTranscript(record))
-  hooks.reservation.commit('s')
+  hooks.reservation.commit(
+    's',
+    terminalActivity ? { ...terminalActivity, isCurrent: () => true } : undefined,
+  )
   const watchers = new Map<
     string,
     {
@@ -170,7 +183,7 @@ export async function runCorpus(api: Api, scenario: Case) {
             ...(step.name === 'PermissionRequest' ? { tool_name: 'Bash' } : {}),
             ...(step.notification ? { notification_type: step.notification } : {}),
           },
-          Date.now() + (step.stampOffset ?? 0),
+          step.relayAt ?? Date.now() + (step.stampOffset ?? 0),
         )
         if (status !== 204) {
           throw new Error(`Hook was not accepted: ${status}`)
@@ -208,7 +221,15 @@ export async function runCorpus(api: Api, scenario: Case) {
     } else {
       const watcher = watchers.get(step.watcher)!
       if (step.kind === 'file') {
-        watcher.state('s', step.state)
+        watcher.state(
+          's',
+          step.state,
+          step.generation === undefined
+            ? undefined
+            : {
+                evidence: { conversationGeneration: step.generation, providerSessionId: step.id },
+              },
+        )
       } else if (step.kind === 'bind') {
         watcher.bind(step.id)
       } else {

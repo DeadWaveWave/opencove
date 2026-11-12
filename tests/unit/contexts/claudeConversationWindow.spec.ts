@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { hook, orderingFixture } from './claudeConversationOrdering.helpers'
 import { CLAUDE_CLEAR_QUIET_MS } from '../../../src/contexts/agent/application/ClaudeClearTransition'
 import { promptAdmission } from '../../../src/contexts/agent/application/promptAdmission'
+import { ClaudeLiveConversation } from '../../../src/contexts/agent/application/ClaudeLiveConversation'
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -9,6 +10,59 @@ beforeEach(() => {
 })
 afterEach(() => vi.useRealTimers())
 const capability = () => ({ supported: true as const, submitDelayMs: 300 })
+it('never advances clear ordering for passive evidence while a complete batch awaits turn commitment', () => {
+  for (const passive of [false, true]) {
+    const owner = new ClaudeLiveConversation((callback, ms) => {
+      const timer = setTimeout(callback, ms)
+      return () => clearTimeout(timer)
+    })
+    const published: { name: string; action?: string }[] = []
+    const ports = {
+      reset() {},
+      invalidate() {},
+      canReady: () => false,
+      ready() {},
+      settled() {},
+      completedTurnId: () => null,
+    }
+    const send = (name: string, at: number) =>
+      owner.accept(
+        {
+          sessionId: 's',
+          providerSessionId: 'B',
+          generation: 0,
+          fileIdentity: '',
+          position: -1,
+          baseline: false,
+          conversation: {
+            event: hook('B', name, at),
+            decide() {},
+            publish: (_generation, action) => {
+              published.push({ name, action })
+            },
+          },
+        },
+        Date.now(),
+        ports,
+      )
+    try {
+      send('SessionStart', 10)
+      send('UserPromptSubmit', 20)
+      send('Stop', 25)
+      expect(owner.active).toBe(true)
+      if (passive) {
+        send('Notification', 40)
+      }
+      send('SessionEnd', 30)
+      vi.advanceTimersByTime(200)
+      expect(published.findLast(event => event.name === 'SessionEnd')?.action).toBe('end')
+      expect(owner.active).toBe(false)
+    } finally {
+      owner.dispose()
+    }
+  }
+  expect(vi.getTimerCount()).toBe(0)
+})
 it('does not create a window after a publication synchronously disposes its entry', () => {
   const f = orderingFixture()
   f.registry.subscribe({ epoch: 'e', afterSeq: f.registry.list().seq }, {}, () =>
@@ -28,7 +82,7 @@ it('ignores a retired predecessor Stop sharing the successor submission timestam
     vi.advanceTimersByTime(2000)
     expect(f.view()).toMatchObject({
       quarantined: false,
-      identity: 'B',
+      identity: undefined,
       exact: [{ turnId: 't1', outcome: 'completed', message: 'reply-B' }],
     })
   } finally {
@@ -85,16 +139,20 @@ it('does not extend the quiet period for passive notifications or duplicate clea
     f.registry.dispose()
   }
 })
-it('retains unknown successor evidence without scheduling a timer before authenticated clear', () => {
+it('keeps ordinary successor hooks on main before authenticated clear', () => {
   const f = orderingFixture()
   try {
     f.send(hook('B', 'UserPromptSubmit', 20))
-    expect(f.fence()).toMatchObject({ claudeClearReady: false, conversationQuarantined: true })
-    expect(vi.getTimerCount()).toBe(0)
-    vi.advanceTimersByTime(2001)
-    f.send(hook('B', 'SessionStart', 10))
-    expect(f.fence().conversationQuarantined).toBe(true)
-    expect(vi.getTimerCount()).toBe(0)
+    expect(f.fence()).toMatchObject({
+      claudeClearReady: false,
+      conversationQuarantined: false,
+      snapshot: { state: 'working' },
+    })
+    expect(f.fence().conversationGeneration).toBeUndefined()
+    f.send({ ...hook('B', 'SessionStart', 30), sessionStartSource: 'resume' })
+    f.send(hook('B', 'UserPromptSubmit', 40))
+    f.send(hook('B', 'Stop', 50))
+    expect(f.fence().snapshot.state).toBe('idle')
   } finally {
     f.registry.dispose()
   }
@@ -188,8 +246,16 @@ it('keeps the queue bounded and never grants readiness after overflow or timesta
         )
       }
       vi.advanceTimersByTime(2000)
-      expect(f.fence()).toMatchObject({ claudeClearReady: false, conversationQuarantined: true })
+      expect(f.fence()).toMatchObject({ claudeClearReady: false, conversationQuarantined: false })
       expect(f.view().archive, `overflow=${overflow}`).toEqual([])
+      // A post-saturation Submit may have main's working lease; clear never owns that timer.
+      f.send({ ...hook('B', 'SessionStart', 199), sessionStartSource: 'resume' })
+      f.send({ ...hook('B', 'UserPromptSubmit', 200), promptId: 'after-limit' })
+      f.send({ ...hook('B', 'Stop', 201), promptId: 'after-limit' })
+      expect(
+        f.fence().snapshot.lastEndedTurn?.outcome,
+        JSON.stringify({ overflow, ...f.view() }),
+      ).toBe('completed')
       expect(vi.getTimerCount()).toBe(0)
     } finally {
       f.registry.dispose()

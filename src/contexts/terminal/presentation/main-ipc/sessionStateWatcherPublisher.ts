@@ -20,7 +20,10 @@ export function createSessionStatePublisher({
     sessionId: string,
     state: 'working' | 'waiting' | 'standby',
     options: {
-      evidence?: Pick<PromptSubmissionEvidence, 'providerSessionId' | 'conversationGeneration'>
+      evidence?: Pick<
+        PromptSubmissionEvidence,
+        'providerSessionId' | 'conversationGeneration' | 'invocationId'
+      >
       degraded?: boolean
       source?: TerminalSessionStateEvent['source']
       hookEventName?: string
@@ -63,17 +66,18 @@ export function captureSessionStateObservation(
 ) {
   let providerSessionId = input.resumeSessionId ?? undefined
   let capturedGeneration: number | undefined
+  let capturedIncarnation: string | undefined
   if (input.provider === 'claude-code') {
     onTranscript?.({
       sessionId: input.sessionId,
-      incarnation: input.sessionId,
       providerSessionId: providerSessionId ?? '',
       generation: watcherVersion,
       fileIdentity: 'capture',
       position: -1,
       baseline: true,
-      captureConversation: value => {
+      captureConversation: (value, incarnation) => {
         capturedGeneration = value
+        capturedIncarnation = incarnation
       },
     })
   }
@@ -81,8 +85,14 @@ export function captureSessionStateObservation(
   const state: typeof publish = (sessionId, value, options = {}) =>
     publish(sessionId, value, {
       ...options,
-      ...(input.provider === 'claude-code'
-        ? { evidence: { providerSessionId, conversationGeneration } }
+      ...(input.provider === 'claude-code' && conversationGeneration !== undefined
+        ? {
+            evidence: {
+              providerSessionId,
+              conversationGeneration,
+              invocationId: capturedIncarnation,
+            },
+          }
         : {}),
     })
   return {
@@ -93,6 +103,9 @@ export function captureSessionStateObservation(
     },
     get generation() {
       return conversationGeneration
+    },
+    get incarnation() {
+      return capturedIncarnation
     },
   }
 }
