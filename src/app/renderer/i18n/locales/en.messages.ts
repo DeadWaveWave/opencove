@@ -1,5 +1,17 @@
 import { agentSpawnPresentations } from '../../../../shared/errors/agentSpawnError'
 export const enMessages = {
+  ownedNodeChanged: 'This node has changed. Refresh the workspace and try again.',
+  taskClosed: 'This task is closed. Reopen it before claiming it.',
+  taskClaimed: 'This task is already claimed by another agent.',
+  taskHolderBusy: 'This agent already holds another open task.',
+  taskStale: 'This task has changed. Refresh it before trying again.',
+  taskTextStale: 'This note has changed. Review the latest text before saving your draft.',
+  taskTextTooLarge: 'This change would exceed the note size limit of 1 MiB.',
+  taskRequestMismatch:
+    'This request ID was already used with different input. Use a new request ID for a new change.',
+  taskLegacyConflict:
+    'Multiple tasks are linked to this agent. Resolve the existing links before claiming a task.',
+
   agentSpawnDepth: agentSpawnPresentations.agentSpawnDepth.message,
   agentSpawnDepthHint: agentSpawnPresentations.agentSpawnDepth.hint,
   agentSpawnConcurrency: agentSpawnPresentations.agentSpawnConcurrency.message,

@@ -1,4 +1,6 @@
+import { ensureTaskAuthoritySchema } from './taskAuthoritySchema'
 import { ensureNodeLineageSchema } from '../../../contexts/workspace/infrastructure/nodeLineage/SqliteNodeLineageRepository'
+import { UnsupportedDatabaseVersionError } from './unsupportedDatabaseVersion'
 import type Database from 'better-sqlite3'
 import { ensureManagedClaudeResumeSchema } from './managedClaudeResumeSchema'
 import { DB_SCHEMA_VERSION, LEGACY_WORKSPACE_STATE_KEY } from './constants'
@@ -15,6 +17,7 @@ function quoteSqliteIdentifier(value: string): string {
 }
 
 function createTables(db: Database.Database): void {
+  ensureTaskAuthoritySchema(db)
   ensureManagedClaudeResumeSchema(db)
   ensureNodeLineageSchema(db)
   db.exec(`
@@ -412,7 +415,11 @@ export function migrate(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as unknown
   const currentVersion = typeof version === 'number' ? version : 0
 
-  if (currentVersion >= DB_SCHEMA_VERSION) {
+  if (currentVersion > DB_SCHEMA_VERSION) {
+    throw new UnsupportedDatabaseVersionError(currentVersion)
+  }
+
+  if (currentVersion === DB_SCHEMA_VERSION) {
     ensureCurrentSchema(db)
     return
   }

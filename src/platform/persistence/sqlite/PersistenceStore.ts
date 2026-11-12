@@ -1,3 +1,6 @@
+import { createTaskAuthorityRepository } from './taskAuthorityStore'
+import type { TaskMutationRepository } from '../../../contexts/task/application/TaskMutationRepository'
+import { UnsupportedDatabaseVersionError } from './unsupportedDatabaseVersion'
 import { createPersistenceScrollbackStore } from './PersistenceScrollbackStore'
 import { createAppStateCommitObservation } from './appStateCommitObservation'
 import {
@@ -40,6 +43,7 @@ import { invalidStateResult, type InternalPersistWriteResult } from './appStateW
 export type PersistenceRecoveryReason = 'corrupt_db' | 'migration_failed'
 
 export interface PersistenceStore {
+  taskMutations?: TaskMutationRepository
   commitManagedClaudeRebind?: ManagedClaudeResumeBindingStore['commitManagedClaudeRebind']
   managedClaudeNodeIdForRuntime?: ManagedClaudeResumeRead['managedClaudeNodeIdForRuntime']
   observeManagedClaudeNode?: ManagedClaudeResumeRead['observeManagedClaudeNode']
@@ -135,8 +139,8 @@ export async function createPersistenceStore(storeOptions: {
   try {
     const version = sqlite.pragma('user_version', { simple: true }) as unknown
     const currentVersion = typeof version === 'number' ? version : 0
-    if (storeOptions.strictRecovery && currentVersion > DB_SCHEMA_VERSION) {
-      throw new Error('Managed runtime cannot downgrade this database schema.')
+    if (currentVersion > DB_SCHEMA_VERSION) {
+      throw new UnsupportedDatabaseVersionError(currentVersion)
     }
     if (currentVersion < DB_SCHEMA_VERSION) {
       await backupDbFile(storeOptions.dbPath, now)
@@ -144,7 +148,7 @@ export async function createPersistenceStore(storeOptions: {
 
     migrate(sqlite)
   } catch (error) {
-    if (storeOptions.strictRecovery) {
+    if (storeOptions.strictRecovery || error instanceof UnsupportedDatabaseVersionError) {
       sqlite.close()
       throw error
     }
@@ -333,6 +337,15 @@ export async function createPersistenceStore(storeOptions: {
     }
 
   return {
+    taskMutations: createTaskAuthorityRepository(sqlite, receipt => {
+      commits.publish({
+        revision: receipt.revision,
+        operationId: receipt.operation,
+        removedNodeIds: receipt.operation === 'task.retire' ? [receipt.nodeId] : [],
+        removedRuntimeSessionIds: [],
+        removedManagedRuntimeSessionIds: [],
+      })
+    }),
     nodeLineage: createSqliteNodeLineageRepository(sqlite),
     commitCreatedNodeState: atCleanBoundary((state, options) =>
       persistAppState(state, { expectedRevision: options.expectedRevision }, options.lineage),

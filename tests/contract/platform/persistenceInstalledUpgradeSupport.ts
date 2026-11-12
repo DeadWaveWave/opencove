@@ -3,7 +3,7 @@ import { DB_SCHEMA_VERSION } from '../../../src/platform/persistence/sqlite/cons
 import { CURRENT_SCHEMA_COLUMNS } from './persistenceSchemaColumns'
 
 export const SUPPORTED_INSTALLED_UPGRADE_SOURCE_VERSIONS = [
-  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 ] as const
 
 export type InstalledUpgradeSourceVersion =
@@ -264,7 +264,12 @@ function createTablesForVersion(version: InstalledUpgradeSourceVersion): Map<str
     tables.delete('managed_claude_resume_bindings')
     tables.delete('retired_managed_nodes')
   }
-  tables.delete('node_lineage')
+  if (version < 15) {
+    tables.delete('node_lineage')
+  }
+  tables.delete('task_field_authority')
+  tables.delete('task_command_receipts')
+  tables.delete('task_claim_holders')
   return tables
 }
 

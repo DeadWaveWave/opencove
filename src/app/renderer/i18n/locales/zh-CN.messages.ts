@@ -1,4 +1,14 @@
 export const zhCNMessages = {
+  ownedNodeChanged: '此节点已发生变更，请刷新工作区后重试。',
+  taskClosed: '此任务已结束，请先重新打开任务再认领。',
+  taskClaimed: '此任务已由其他智能体认领。',
+  taskHolderBusy: '此智能体已认领另一个未结束的任务。',
+  taskStale: '此任务已发生变更，请刷新任务后重试。',
+  taskTextStale: '此便签已更新，请查看最新内容后再保存草稿。',
+  taskTextTooLarge: '此更改会超出便签的 1 MiB 大小限制。',
+  taskRequestMismatch: '此请求 ID 已用于不同内容。发起新的更改时，请使用新的请求 ID。',
+  taskLegacyConflict: '有多个任务关联到此智能体，请先处理现有的任务关联再认领任务。',
+
   agentSpawnDepth: '此运行时将超出 Agent 创建链的最大深度 3。',
   agentSpawnDepthHint: '请让用户启动一个新的 Agent。',
   agentSpawnConcurrency: '此 Agent 创建树中，由 Agent 创建且正在运行或启动的运行时已达到上限 6。',

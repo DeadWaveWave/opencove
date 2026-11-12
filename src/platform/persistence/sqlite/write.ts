@@ -1,3 +1,4 @@
+import { enforceTaskAuthority } from './taskAuthorityGate'
 import type Database from 'better-sqlite3'
 import {
   enforceManagedClaudeResumeBindings,
@@ -101,11 +102,10 @@ export function writeNormalizedAppState(
       throw new PersistenceRevisionConflict(expectedRevision, nextRevision - 1)
     }
 
-    const { effectiveState: state, corrected } = enforceManagedClaudeResumeBindings(
-      db,
-      submittedState,
-      nextRevision,
-    )
+    const managed = enforceManagedClaudeResumeBindings(db, submittedState, nextRevision)
+    const task = enforceTaskAuthority(db, managed.effectiveState)
+    const state = task.effectiveState
+    const corrected = managed.corrected || task.corrected
 
     db.exec(`
       DELETE FROM workspace_space_nodes;

@@ -10,8 +10,8 @@ SQLite:
 - Store：`src/platform/persistence/sqlite/PersistenceStore.ts`
 - Schema：`src/platform/persistence/sqlite/schema.ts`
 - Migration：`src/platform/persistence/sqlite/migrate.ts`
-- 当前 `DB_SCHEMA_VERSION = 15`
-- schema 14：managed Claude resume ledger 与 retired IDs；schema 15：node lineage
+- 当前 `DB_SCHEMA_VERSION = 16`
+- schema 14：managed Claude resume ledger 与 retired IDs；schema 15：node lineage；schema 16：未激活的 task authority
 - Agent/Terminal node Worker binding：`nodes.worker_binding_json`
 - Terminal durable recovery：`terminal_recovery_records`
 - Legacy terminal presentation/scrollback mirror：`node_scrollback`（兼容读取，不是独立 truth owner）
@@ -60,7 +60,8 @@ repair。Electron 的 `userData` 目录是安装版和 dev 版数据隔离的 du
 启动行为：
 
 - `user_version < DB_SCHEMA_VERSION` 时先备份 `opencove.db` 为 `opencove.db.bak-<timestamp>`。
-- 打开或迁移失败时将原 DB 隔离为 `opencove.db.corrupt-<timestamp>`，创建新库继续启动。
+- 对高于当前 schema 的 DB，在任何 repair 前拒绝打开，保留原文件；这不属于 corruption，不进入自动重建。
+- 其他打开或迁移失败时将原 DB 隔离为 `opencove.db.corrupt-<timestamp>`，创建新库继续启动。
 - Renderer 会收到一次性恢复提示，说明原因是 corrupt DB 或 migration failure。
 
 读取失败不能被当作“没有 durable state”。如果 `readAppState()`、IPC、Control Surface
@@ -170,9 +171,10 @@ schema。缺这个测试时不得合并。
 OpenCove 的 SQLite migration 是前向升级链路，不是双向迁移系统。除非某个版本显式写
 入并测试了 rollback support，否则用户从新版本退回旧版本不属于保证可用路径。
 
-当前代码行为：
+当前代码与已发布旧版本的行为：
 
-- 旧 App 打开更高 `user_version` 的 DB 时，不会执行 down migration，也不会把
+- 当前版本打开更高 schema 时拒绝启动，且不会执行 repair、隔离或重建。
+- 已发布旧 App 打开更高 `user_version` 的 DB 时，不会执行 down migration，也不会把
   `user_version` 降回旧版本。
 - 旧 App 只会按自己知道的 schema 运行启动期 repair。它不会理解新版本新增的列、表或
   语义约束。
@@ -413,3 +415,38 @@ HTTP 不再通过 command 前后读取 revision 来猜测提交；owner 的 attr
 pre-W8 Worker 不含 managed ledger tables；用它打开已有 owned rows 的 profile 属于不支持的
 database downgrade。普通 workspace 同步不因 lookup unsupported 失败；PR1+ final writer
 继续强制 ledger gate，客户端能力缺失只限制 ownership-dependent operations。
+
+
+## Task/text authority 基础层（schema 16，未激活）
+
+升级和 schema-current repair 仅创建空的 `task_field_authority`、
+`task_command_receipts` 和 `task_claim_holders`，不从 snapshot 推断 authority。
+生产启动目前不调用 activation，也不宣告 `taskAuthorityV1`。现有 UI 编辑行为保留。
+完整 UI、draft recovery、创建/归档/恢复和 launch adapters 就绪前不得启用。
+
+内部 `activateTaskAuthority` 只从当前 SQLite rows 同事务 adoption：有效的 managed-agent
+open link 获得非过期 lease，closed link 保留历史，缺失 holder 的 open task 归一为
+unclaimed todo。重复 open links 保存显式 conflict 和原 forward links，不挑选胜者或
+伪造 active lease；human-only conflict resolution 可逐项解除关联。Note 原文不截断。
+Archive snapshot 不作为 active authority 或 active lease 的来源。
+
+`TaskMutationOwner` 在 immediate transaction 内再次授权，校验 authority generation、
+字段 version 和 lease；mutation、snapshot projection、revision 与 compact receipt
+同事务提交。Receipt 不保存正文；同 principal/operation/request ID 的异参请求失败。
+Session principal 使用 project/node/current session，独立于 grant ID/token；凭证更新仍需
+对当前 binding 重新授权。Runtime session 改变后的历史身份映射尚未接入，不承诺跨 session
+自动重放。Human/bearer 的稳定 identity ID 必须由认证层提供，不能来自 wire payload。
+
+Ledger 一旦存在，raw 与 structured snapshot writers 均须保护字段，拒绝 protected node
+省略、kind/project 更改、retired ID 复活、未登记的 task/note 创建，以及 active holder
+删除、session 或 Worker binding 更改。这个 gate 不随新命令的停用而解除。
+`agent.taskId` 仅从 active forward claims 重算，closed forward link 与 run history 留在 task。
+读取也投影 ledger，不能把 snapshot JSON 当作第二个 owner。
+
+当前文本命令只针对 standalone note body。Append 保留 whitespace/Unicode，按当前末尾
+决定是否插入换行；最终 1 MiB 限额允许已有 oversized 文本的 no-op/缩小替换。Replacement
+要求当前 text version，拒绝 stale 后不能自动套用新版本重新提交旧文本。
+这不代表 renderer draft recovery 或完整 task CLI 已交付。
+
+回退至不认识本 ledger 的旧 binary 时，使用单独的数据目录和升级前备份；不得让旧 binary
+直接写入已激活的数据库。只关闭 mutation 或 feature flag 不构成安全 downgrade。

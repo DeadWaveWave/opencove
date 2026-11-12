@@ -1,4 +1,22 @@
 export const CURRENT_SCHEMA_COLUMNS = {
+  task_field_authority: [
+    'node_id',
+    'project_id',
+    'kind',
+    'generation',
+    'active_holder_node_id',
+    'retired',
+    'fields_json',
+  ],
+  task_command_receipts: ['principal', 'operation', 'request_id', 'fingerprint', 'result_json'],
+  task_claim_holders: [
+    'task_node_id',
+    'node_id',
+    'project_id',
+    'kind',
+    'session_id',
+    'worker_binding_json',
+  ],
   node_lineage: ['node_id', 'spawned_by_node_id', 'root_node_id', 'lineage_depth'],
   managed_claude_resume_bindings: [
     'node_id',

@@ -1,6 +1,7 @@
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { describe, expect, it } from 'vitest'
 import { readAppStateFromDb } from '../../../src/platform/persistence/sqlite/read'
+import { taskFieldAuthority } from '../../../src/platform/persistence/sqlite/taskAuthorityTable'
 import {
   managedClaudeResumeBindings,
   appMeta,
@@ -71,7 +72,7 @@ function createReadDb(options: {
     select(selection?: unknown) {
       return {
         from(table: unknown) {
-          if (table === managedClaudeResumeBindings) {
+          if (table === managedClaudeResumeBindings || table === taskFieldAuthority) {
             return { all: () => [] }
           }
           if (table === appMeta) {

@@ -1,3 +1,4 @@
+import { taskAuthorityErrorMessageKey } from '@shared/errors/taskAuthorityError'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { agentSpawnErrorPresentation } from '@shared/errors/agentSpawnError'
 import { nodeParentErrorPresentation } from '@shared/errors/nodeParentError'
@@ -41,6 +42,10 @@ function getDateTimeFormatter(language: string): Intl.DateTimeFormat {
 
 export function toErrorMessage(error: unknown): string {
   if (error instanceof OpenCoveAppError || isAppErrorDescriptor(error)) {
+    const taskMessage = taskAuthorityErrorMessageKey(error.code)
+    if (taskMessage) {
+      return translate(`messages.${taskMessage}`)
+    }
     if (error.code === 'agent.managed_launch_commit_failed') {
       return translate('messages.managedAgentLaunchUncertain')
     }
@@ -69,7 +74,12 @@ export function toErrorMessage(error: unknown): string {
       return `${translate(`messages.${parent.key}`)} ${translate(`messages.${parent.key}Hint`)}`
     }
     if (error.code === 'persistence.owned_node_identity_conflict') {
-      return translate('messages.managedAgentChanged')
+      const details = error.details as { authority?: string } | undefined
+      return translate(
+        details?.authority === 'task'
+          ? 'messages.ownedNodeChanged'
+          : 'messages.managedAgentChanged',
+      )
     }
   }
   if (error instanceof OpenCoveAppError) {

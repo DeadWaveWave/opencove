@@ -1,3 +1,10 @@
+import { taskFieldAuthority } from './taskAuthorityTable'
+import type { TaskAuthorityRecord } from '../../../shared/contracts/taskAuthority'
+import {
+  projectTaskAuthorityRecord,
+  stripUnownedTaskFields,
+  taskObject,
+} from '../../../shared/sync/taskAuthorityProjection'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { eq, inArray } from 'drizzle-orm'
 import type { NormalizedPersistedAppState } from './normalize'
@@ -104,6 +111,18 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
         { activationId: row.activationId, runtimeSessionId: row.runtimeSessionId },
       ]),
   )
+  const taskRecords = db
+    .select()
+    .from(taskFieldAuthority)
+    .all()
+    .map(row => JSON.parse(row.fieldsJson) as TaskAuthorityRecord)
+  const taskAuthority = new Map(taskRecords.map(record => [record.nodeId, record]))
+  const ownedProjects = new Set(taskRecords.map(record => record.projectId))
+  const openClaims = new Map(
+    taskRecords
+      .filter(record => !record.retired && record.claim)
+      .map(record => [record.claim!.holderNodeId, record.nodeId]),
+  )
   const spaceRows = db.select().from(spaces).all()
   const spaceNodeRows = db.select().from(spaceNodes).all()
   const collapseByWorkspace = (() => {
@@ -138,61 +157,82 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
     formatVersion: Number.isFinite(formatVersion) ? formatVersion : 1,
     activeWorkspaceId: activeWorkspaceIdRaw.length > 0 ? activeWorkspaceIdRaw : null,
     workspaces: workspaceRows.map(workspace => {
-      const workspaceNodes = (nodesByWorkspaceId.get(workspace.id) ?? []).map(node => ({
-        id: node.id,
-        ...(ownership.has(node.id)
-          ? { managedClaudeResumeBindingOwnership: ownership.get(node.id) }
-          : {}),
-        sessionId:
-          typeof node.sessionId === 'string' && node.sessionId.trim().length > 0
-            ? node.sessionId
-            : null,
-        title: node.title,
-        titlePinnedByUser: node.titlePinnedByUser === 1,
-        titleIsLiteral: node.titleIsLiteral === 1,
-        position: { x: node.positionX, y: node.positionY },
-        width: node.width,
-        height: node.height,
-        kind: node.kind,
-        profileId:
-          typeof node.profileId === 'string' && node.profileId.trim().length > 0
-            ? node.profileId
-            : null,
-        runtimeKind:
-          typeof node.runtimeKind === 'string' && node.runtimeKind.trim().length > 0
-            ? node.runtimeKind
-            : null,
-        terminalGeometry: normalizeTerminalGeometry(
-          typeof node.terminalGeometryJson === 'string'
-            ? safeJsonParse(node.terminalGeometryJson)
-            : null,
-        ),
-        workerBinding: normalizeNodeWorkerBinding(
-          typeof node.workerBindingJson === 'string' ? safeJsonParse(node.workerBindingJson) : null,
-        ),
-        terminalProviderHint:
-          typeof node.terminalProviderHint === 'string' &&
-          node.terminalProviderHint.trim().length > 0
-            ? node.terminalProviderHint
-            : null,
-        labelColorOverride: normalizeNodeLabelColorOverride(node.labelColorOverride),
-        sidebarSortOrder:
-          node.kind === 'agent' &&
-          typeof node.sidebarSortOrder === 'number' &&
-          Number.isFinite(node.sidebarSortOrder)
-            ? Math.max(0, Math.floor(node.sidebarSortOrder))
-            : null,
-        status: node.status,
-        startedAt: node.startedAt,
-        endedAt: node.endedAt,
-        exitCode: node.exitCode,
-        lastError: node.lastError,
-        scrollback: null,
-        executionDirectory: node.executionDirectory,
-        expectedDirectory: node.expectedDirectory,
-        agent: typeof node.agentJson === 'string' ? safeJsonParse(node.agentJson) : null,
-        task: typeof node.taskJson === 'string' ? safeJsonParse(node.taskJson) : null,
-      }))
+      const workspaceNodes = (nodesByWorkspaceId.get(workspace.id) ?? [])
+        .filter(node => !taskAuthority.get(node.id)?.retired)
+        .map(node => ({
+          id: node.id,
+          ...(ownership.has(node.id)
+            ? { managedClaudeResumeBindingOwnership: ownership.get(node.id) }
+            : {}),
+          sessionId:
+            typeof node.sessionId === 'string' && node.sessionId.trim().length > 0
+              ? node.sessionId
+              : null,
+          title: node.title,
+          titlePinnedByUser: node.titlePinnedByUser === 1,
+          titleIsLiteral: node.titleIsLiteral === 1,
+          position: { x: node.positionX, y: node.positionY },
+          width: node.width,
+          height: node.height,
+          kind: node.kind,
+          profileId:
+            typeof node.profileId === 'string' && node.profileId.trim().length > 0
+              ? node.profileId
+              : null,
+          runtimeKind:
+            typeof node.runtimeKind === 'string' && node.runtimeKind.trim().length > 0
+              ? node.runtimeKind
+              : null,
+          terminalGeometry: normalizeTerminalGeometry(
+            typeof node.terminalGeometryJson === 'string'
+              ? safeJsonParse(node.terminalGeometryJson)
+              : null,
+          ),
+          workerBinding: normalizeNodeWorkerBinding(
+            typeof node.workerBindingJson === 'string'
+              ? safeJsonParse(node.workerBindingJson)
+              : null,
+          ),
+          terminalProviderHint:
+            typeof node.terminalProviderHint === 'string' &&
+            node.terminalProviderHint.trim().length > 0
+              ? node.terminalProviderHint
+              : null,
+          labelColorOverride: normalizeNodeLabelColorOverride(node.labelColorOverride),
+          sidebarSortOrder:
+            node.kind === 'agent' &&
+            typeof node.sidebarSortOrder === 'number' &&
+            Number.isFinite(node.sidebarSortOrder)
+              ? Math.max(0, Math.floor(node.sidebarSortOrder))
+              : null,
+          status: node.status,
+          startedAt: node.startedAt,
+          endedAt: node.endedAt,
+          exitCode: node.exitCode,
+          lastError: node.lastError,
+          scrollback: null,
+          executionDirectory: node.executionDirectory,
+          expectedDirectory: node.expectedDirectory,
+          agent:
+            node.kind === 'agent' && ownedProjects.has(workspace.id)
+              ? {
+                  ...taskObject(node.agentJson ? safeJsonParse(node.agentJson) : null),
+                  taskId: openClaims.get(node.id) ?? null,
+                }
+              : typeof node.agentJson === 'string'
+                ? safeJsonParse(node.agentJson)
+                : null,
+          task: taskAuthority.has(node.id)
+            ? projectTaskAuthorityRecord(
+                taskAuthority.get(node.id)!,
+                node.taskJson ? safeJsonParse(node.taskJson) : null,
+              )
+            : typeof node.taskJson === 'string'
+              ? node.kind === 'task' || node.kind === 'note'
+                ? stripUnownedTaskFields(safeJsonParse(node.taskJson))
+                : safeJsonParse(node.taskJson)
+              : null,
+        }))
 
       const workspaceSpaces = [...(spacesByWorkspaceId.get(workspace.id) ?? [])]
         .sort((left, right) => left.sortOrder - right.sortOrder)
