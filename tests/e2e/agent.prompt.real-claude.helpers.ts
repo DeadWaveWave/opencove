@@ -256,10 +256,19 @@ export async function launchRealClaude(
       hasSeenAutoDefaultNotice: true,
       hasSeenAutoModeEntryWarning: true,
       hasSeenAutoModeOutsideReadPrompt: true,
+      // Full-access launches use bypass mode; Claude 2.1.322 otherwise downgrades it pending consent.
+      ...(options.fullAccess ? { bypassPermissionsModeAccepted: true } : {}),
       customApiKeyResponses: { approved: [apiKey.slice(-20)], rejected: [] },
       projects: { [workspace]: { hasTrustDialogAccepted: true } },
     }),
   )
+  if (options.fullAccess) {
+    // The current settings key for the same consent; the global-config key above is legacy.
+    await writeFile(
+      join(config, 'settings.json'),
+      JSON.stringify({ skipDangerousModePermissionPrompt: true }),
+    )
+  }
   const api = await startMessagesApi(options.messages)
   const { electronApp, window } = await launchApp({
     userDataDir,
