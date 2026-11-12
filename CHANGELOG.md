@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### 🚀 Added
+
+- CLI: when OpenCove refuses to start another agent because the lineage quota is full, the refusal lists which nodes hold the slots and how to free one; `opencove whoami` and `context` show the quota. `opencove agent read` reads several agents at once and returns one result per agent. (#614)
+
 ## [0.5.0] - 2026-11-12
 
 OpenCove 0.5.0 redraws the app in pixels around one generated theme, shows on the canvas what every Agent is doing, tells you once when an Agent needs you, and lets Agents hand work to each other through a rebuilt `opencove` CLI. The Worker now owns what is saved and which conversation each Claude window resumes.
