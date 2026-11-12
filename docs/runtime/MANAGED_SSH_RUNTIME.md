@@ -39,6 +39,13 @@ publishes a digest directory. A repair publishes a separate directory if the exi
 It never removes a runtime that a Worker might still reference. Launchers pin the resolved version
 directory so lazy imports and PTY children cannot move to a newer version mid-session.
 
+On Windows, publication renames allow up to 60 seconds per rename for transient
+`EPERM` / `EACCES` / `EBUSY` sharing failures, with 10 ms incremental backoff capped at 100 ms.
+Each retry is logged to stderr; stdout remains the published path. An existing destination
+immediately returns to verification/reuse or separate repair publication. Other errors and other
+platforms fail without retry. Verification must finish and release its handles before publication;
+retries must never substitute for stopping a process or releasing a handle owned by the installer.
+
 Managed launchers live under the deployment state directory, separately from an administrator's
 global `opencove` command. Shared immutable artifacts do not imply shared profiles or credentials.
 Public launchers are replaced atomically after verification. Installation does not require a Windows
