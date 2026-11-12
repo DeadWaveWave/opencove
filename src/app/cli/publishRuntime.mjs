@@ -1,7 +1,16 @@
-/* eslint-disable no-await-in-loop -- Hash files in deterministic order with bounded open streams. */
+/* eslint-disable no-await-in-loop -- Hash sequentially and back off publication renames. */
 import { randomUUID, createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
-import { readFile, writeFile, rename, mkdir, readdir, realpath, readlink } from 'node:fs/promises'
+import {
+  readFile,
+  writeFile,
+  rename,
+  mkdir,
+  readdir,
+  realpath,
+  readlink,
+  lstat,
+} from 'node:fs/promises'
 import { resolve, relative, isAbsolute, join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 
@@ -67,6 +76,44 @@ export async function verifyRuntimeTree(root) {
   return { ...identity, treeDigest: hash.digest('hex') }
 }
 
+export async function renameRuntimeDirectory(source, destination) {
+  // Like graceful-fs, allow Windows scanners to release newly created files. Keep this
+  // local to publication; an existing target belongs to the caller's reuse/repair protocol.
+  const deadline = performance.now() + 60_000
+  let originalError
+  let backoff = 0
+  for (;;) {
+    try {
+      await rename(source, destination)
+      return
+    } catch (error) {
+      if (process.platform !== 'win32' || !['EPERM', 'EACCES', 'EBUSY'].includes(error.code)) {
+        throw error
+      }
+      originalError ??= error
+      const missing = await lstat(destination).then(
+        () => false,
+        statError => statError.code === 'ENOENT',
+      )
+      if (!missing) {
+        throw error
+      }
+      const remaining = deadline - performance.now()
+      if (remaining <= 0) {
+        throw originalError
+      }
+      backoff = Math.min(backoff + 10, 100, remaining)
+      process.stderr.write(
+        `[opencove] Retrying runtime publication rename ${JSON.stringify(source)} -> ${JSON.stringify(destination)} after ${error.code} in ${backoff}ms (60s limit).\n`,
+      )
+      await new Promise(done => setTimeout(done, backoff))
+      if (performance.now() >= deadline) {
+        throw originalError
+      }
+    }
+  }
+}
+
 export async function publishRuntime(staging, destination, digest) {
   if (!/^[a-f0-9]{64}$/.test(digest)) {
     throw new Error('Invalid artifact digest.')
@@ -77,7 +124,7 @@ export async function publishRuntime(staging, destination, digest) {
   })
   await mkdir(resolve(destination, '..'), { recursive: true })
   try {
-    await rename(staging, destination)
+    await renameRuntimeDirectory(staging, destination)
     return destination
   } catch (error) {
     if (!['EEXIST', 'ENOTEMPTY', 'EPERM', 'EACCES'].includes(error.code)) {
@@ -99,7 +146,7 @@ export async function publishRuntime(staging, destination, digest) {
     } catch {
       // Repair never removes a directory that a running Worker could still be using.
       const repair = `${destination}.repair-${randomUUID()}`
-      await rename(staging, repair)
+      await renameRuntimeDirectory(staging, repair)
       return repair
     }
   }
