@@ -21,7 +21,7 @@
 
 ## 📣 重要公告
 
-**OpenCove 0.4.0 带来 Pixel 工作区、桌面图标式折叠窗口，以及可独立安装的插件与主题。在设置中探索扩展，或通过 `opencove plugin guide` 开始创造自己的插件。**
+**OpenCove 0.5.0 用像素重绘整个应用，在画布上呈现每个 Agent 正在做什么，Agent 需要你时只提醒一次，并让 Agent 之间互相交接工作。在画布终端中运行 `opencove skill` 了解用法。**
 
 ## 📖 什么是 OpenCove？
 

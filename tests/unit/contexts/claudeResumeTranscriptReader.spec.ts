@@ -34,11 +34,15 @@ afterEach(async () => {
   vi.restoreAllMocks()
   await rm(root, { recursive: true, force: true })
 })
-const read = () =>
-  new ClaudeResumeTranscriptReader([root], { deadlineMs: 20, retryMs: 1 }).confirmCompletedTurn(
+// Refusals wait out the whole deadline, so they keep it short. A proof returns as soon as one
+// scan completes, so it gets a deadline a loaded CI runner cannot miss.
+const PROOF_DEADLINE_MS = 5000
+const read = (deadlineMs = 20) =>
+  new ClaudeResumeTranscriptReader([root], { deadlineMs, retryMs: 1 }).confirmCompletedTurn(
     { ...identity, transcriptPath: path },
     new AbortController().signal,
   )
+const confirm = () => read(PROOF_DEADLINE_MS)
 describe('bounded Claude resume proof', () => {
   it('confirms a parent chain without returning message content', async () => {
     await writeFile(
@@ -49,8 +53,8 @@ describe('bounded Claude resume proof', () => {
         { ...assistant, parentUuid: 'tool' },
       ),
     )
-    expect(await read()).toMatchObject({ ...identity, evidenceId: expect.any(String) })
-    expect(JSON.stringify(await read())).not.toContain('stop_reason')
+    expect(await confirm()).toMatchObject({ ...identity, evidenceId: expect.any(String) })
+    expect(JSON.stringify(await confirm())).not.toContain('stop_reason')
   })
   it('confirms the Claude 2.1.321 clear successor, whose prompt and reply are linked through attachments', async () => {
     // Redacted from a real Claude 2.1.321 transcript after /clear: ids renamed, content removed.
@@ -59,7 +63,7 @@ describe('bounded Claude resume proof', () => {
       'utf8',
     )
     await writeFile(path, real)
-    expect(await read()).toMatchObject({ ...identity, evidenceId: expect.any(String) })
+    expect(await confirm()).toMatchObject({ ...identity, evidenceId: expect.any(String) })
     const withoutPrompt = real
       .split('\n')
       .filter(line => !line.includes('"promptId":"p"'))

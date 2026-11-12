@@ -28,6 +28,11 @@ export async function cleanupLegacyManagedHooksAtStartup(
   const claudeSettingsPath = join(homeDirectory, '.claude', 'settings.json')
   const codexHooksPath = join(homeDirectory, '.codex', 'hooks.json')
   const codexConfigPath = join(homeDirectory, '.codex', 'config.toml')
+  // The trust entries in config.toml are keyed by the hooks file path, so they
+  // can only be identified as OpenCove residue when that file actually held
+  // OpenCove-managed legacy hooks. A user-owned hooks.json must keep its
+  // trust entries untouched (see #464).
+  let codexHooksHadManagedLegacy = false
 
   await clean(claudeSettingsPath, async () => {
     const raw = await readOptionalFile(claudeSettingsPath)
@@ -47,11 +52,13 @@ export async function cleanupLegacyManagedHooksAtStartup(
     }
     const parsed = JSON.parse(raw) as unknown
     if (isLegacyOpenCoveCodexHooksFile(parsed)) {
+      codexHooksHadManagedLegacy = true
       await rm(codexHooksPath, { force: true })
       return 1
     }
     const result = cleanLegacyCodexHooksFile(parsed)
     if (result.removedCount > 0) {
+      codexHooksHadManagedLegacy = true
       await writeAtomic(codexHooksPath, serializeJson(result.content))
     }
     return result.removedCount
@@ -59,6 +66,9 @@ export async function cleanupLegacyManagedHooksAtStartup(
   await clean(codexConfigPath, async () => {
     const raw = await readOptionalFile(codexConfigPath)
     if (raw === null) {
+      return 0
+    }
+    if (!codexHooksHadManagedLegacy) {
       return 0
     }
     const result = cleanLegacyCodexConfigToml(raw)

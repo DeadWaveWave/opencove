@@ -28,7 +28,14 @@ describe('managed Claude launch identity', () => {
         )
         expect(plan.resumeSessionId).not.toBe(command.resumeSessionId)
         expect(plan.launchMode).toBe('new')
-        expect(plan.args).toEqual(['--session-id', plan.resumeSessionId, '--', command.prompt])
+        expect(plan.args).toEqual([
+          '--permission-mode',
+          'default',
+          '--session-id',
+          plan.resumeSessionId,
+          '--',
+          command.prompt,
+        ])
       }
       expect(plans[0]?.resumeSessionId).not.toBe(plans[1]?.resumeSessionId)
     } finally {
@@ -52,7 +59,7 @@ describe('managed Claude launch identity', () => {
 
       expect(plan.resumeSessionId).toBe(resumeSessionId)
       expect(plan.launchMode).toBe('resume')
-      expect(plan.args).toEqual(['--resume', resumeSessionId])
+      expect(plan.args).toEqual(['--permission-mode', 'default', '--resume', resumeSessionId])
     } finally {
       await artifacts.dispose()
     }
