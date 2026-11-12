@@ -171,7 +171,7 @@ export async function hydrateAgentNode({
     !isResumeSessionBindingVerified(sanitizedAgent) &&
     sanitizedAgent.prompt.trim().length === 0
   const terminalProfileId = node.data.profileId ?? agentSettings.defaultTerminalProfileId ?? null
-  const agentFullAccess = agentSettings.agentFullAccess
+  const agentFullAccess = node.data.agent?.agentFullAccess ?? agentSettings.agentFullAccess
   const codexReuseRunningAppServer = agentSettings.codexReuseRunningAppServer
   const env = resolveAgentLaunchEnv(agentSettings, sanitizedAgent.provider)
   const executablePathOverride = resolveAgentExecutablePathOverride(

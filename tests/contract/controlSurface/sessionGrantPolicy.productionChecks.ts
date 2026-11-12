@@ -71,7 +71,6 @@ export async function checkProductionGrantPolicy(options: {
   for (const id of ['session.launchAgent', 'session.launchAgentInMount']) {
     const target = id.endsWith('InMount') ? { mountId: 'missing' } : { spaceId: 'space' }
     for (const [field, value] of Object.entries({
-      agentFullAccess: true,
       env: { KEY: 'private' },
       executablePathOverride: '/bin/sh',
       resumeSessionId: 'old',

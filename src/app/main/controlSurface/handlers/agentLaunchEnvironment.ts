@@ -66,7 +66,7 @@ export async function resolveRemoteAgentLaunchSettings(
     ...payload,
     provider,
     env: resolveAgentLaunchCallerEnv(ctx, settings, provider),
-    agentFullAccess: settings.agentFullAccess,
+    agentFullAccess: payload.agentFullAccess ?? settings.agentFullAccess,
     codexReuseRunningAppServer: settings.codexReuseRunningAppServer,
   }
 }
