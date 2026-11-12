@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 1,
+  "version": "0.5.0",
+  "channel": "stable",
+  "publishedAt": "2026-11-12T00:00:00.000Z",
+  "provenance": "curated",
+  "defaultLocale": "en",
+  "compareUrl": "https://github.com/DeadWaveWave/opencove/compare/v0.4.0...v0.5.0",
+  "locales": {
+    "en": {
+      "summary": "OpenCove 0.5.0 redraws the app in pixels, shows on the canvas what every Agent is doing, tells you once when an Agent needs you, and lets Agents hand work to each other.",
+      "items": [
+        {
+          "kind": "changed",
+          "summary": "Cove is drawn in pixels: one theme with checked contrast in light and dark, pixel icons across the app, and glass windows on solid reading plates. Pixel, Pixel Light and Ember move to Cove.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/564",
+          "prNumber": 564,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Choose the canvas background in Settings → Appearance: a GPU-drawn pixel wall that stays calm behind windows, a quiet dot grid, or off.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/486",
+          "prNumber": 486,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Windows show their work on the wall: kind-coloured light, terminal ripples, a patrol around working Agents, a flash and shockwave when a run finishes, and a red glitch on failure.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/543",
+          "prNumber": 543,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Zoom out below 25% and every window becomes a readable tile; a beacon at the canvas edge points to an Agent waiting for you outside the view.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/481",
+          "prNumber": 481,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "When an Agent waits for you, OpenCove tells you once: a card grows out of the top-bar Agent pill, with a system notification in the background and a pixel sound, each with its own switch.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/568",
+          "prNumber": 568,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "The sidebar opens with a \"Needs you\" inbox, and each Space is a card with a live pixel map of its windows, its worktree branch and its working and waiting Agents.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/466",
+          "prNumber": 466,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "The task window becomes a pixel task card with a four-step progress control, tags, session avatars and a Run button.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/561",
+          "prNumber": 561,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Press ⌘P to find windows as well as Spaces, projects and commands, with Agents waiting for you listed first.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/475",
+          "prNumber": 475,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Agents can hand work to each other: `opencove agent prompt --wait --read` sends a prompt to another Claude Code or Codex window, waits for that turn and returns its reply, within limits you keep.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/544",
+          "prNumber": 544,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "The `opencove` CLI is rebuilt for agents and scripts, with compact JSON, clear errors, stable exit codes and `opencove skill` as a built-in guide.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/521",
+          "prNumber": 521,
+          "sha": null
+        },
+        {
+          "kind": "changed",
+          "summary": "Every window agrees with what was actually saved, and each Claude window resumes the conversation it was in, also after `/clear`.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/604",
+          "prNumber": 604,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Closing an Agent window or quitting OpenCove also stops the commands and servers the Agent started.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/576",
+          "prNumber": 576,
+          "sha": null
+        }
+      ]
+    },
+    "zh-CN": {
+      "summary": "OpenCove 0.5.0 用像素重绘整个应用，在画布上呈现每个 Agent 正在做什么，Agent 需要你时只提醒一次，并让 Agent 之间互相交接工作。",
+      "items": [
+        {
+          "kind": "changed",
+          "summary": "Cove 以像素绘制：一套在浅色与深色下都经过对比度校验的主题、遍布全应用的像素图标，以及置于实色阅读板上的玻璃窗口。Pixel、Pixel Light 与 Ember 并入 Cove。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/564",
+          "prNumber": 564,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "在设置 → 外观中选择画布背景：由 GPU 绘制、在窗口背后保持安静的像素墙，安静的点阵，或关闭。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/486",
+          "prNumber": 486,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "窗口在像素墙上展示工作状态：类别色的光、终端输出涟漪、环绕工作中 Agent 的巡游像素、运行完成时的闪光与冲击波，以及失败时的红色故障效果。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/543",
+          "prNumber": 543,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "缩放到 25% 以下时，每个窗口都会变成清晰可读的图块；视野外等待你的 Agent 会在画布边缘出现信标指引。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/481",
+          "prNumber": 481,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Agent 等待你时，OpenCove 只提醒一次：卡片从顶栏 Agent 胶囊中展开，应用在后台时发送系统通知并播放像素音效，每个渠道都可单独开关。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/568",
+          "prNumber": 568,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "侧边栏顶部新增“需要你”收件箱；每个 Space 变为卡片，显示窗口的实时像素地图、所在 worktree 分支，以及工作中和等待中的 Agent 数量。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/466",
+          "prNumber": 466,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "任务窗口变为像素任务卡，包含四步进度控件、标签、会话头像和运行按钮。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/561",
+          "prNumber": 561,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "按 ⌘P 即可查找窗口以及 Space、项目和命令，等待你的 Agent 排在最前。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/475",
+          "prNumber": 475,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Agent 之间可以交接工作：`opencove agent prompt --wait --read` 向另一个 Claude Code 或 Codex 窗口发送提示，等待该轮完成并返回回复，且始终在你设定的限制之内。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/544",
+          "prNumber": 544,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "`opencove` CLI 为 Agent 和脚本重新构建，提供紧凑的 JSON 输出、清晰的错误、稳定的退出码，并内置 `opencove skill` 使用指南。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/521",
+          "prNumber": 521,
+          "sha": null
+        },
+        {
+          "kind": "changed",
+          "summary": "每个窗口都与实际保存的内容保持一致；每个 Claude 窗口都会恢复它所在的对话，执行 `/clear` 之后也是如此。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/604",
+          "prNumber": 604,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "关闭 Agent 窗口或退出 OpenCove 时，Agent 启动的命令和服务也会一并停止。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/576",
+          "prNumber": 576,
+          "sha": null
+        }
+      ]
+    }
+  }
+}
