@@ -62,11 +62,34 @@ export function gitInstallInput(value: unknown): PluginGitInstallInput {
   ) {
     throw new Error('Use an HTTPS/SSH Git URL or an absolute repository path on this Worker.')
   }
-  if (repository.startsWith('https://') && new URL(repository).username) {
-    throw new Error(
-      'Use Git credentials or SSH authentication; do not embed credentials in the repository URL.',
-    )
+  if (!absolute && (repository.startsWith('https://') || repository.startsWith('ssh://'))) {
+    // WHATWG URL and Git's libcurl split userinfo differently around backslashes, so a value such
+    // as https://user\name:SECRET@host parses credential-free here but still sends SECRET.
+    // Check the raw authority instead of trusting the parser alone.
+    const authority = repository.slice(repository.indexOf('//') + 2).split('/')[0] ?? ''
+    if (
+      repository.includes('\\') ||
+      (repository.startsWith('https://') && authority.includes('@')) ||
+      authority.slice(0, authority.lastIndexOf('@') + 1).includes(':')
+    ) {
+      throw new Error(
+        'Use Git credentials or SSH authentication; do not embed credentials, query parameters or fragments in the repository URL.',
+      )
+    }
+    let url: URL
+    try {
+      url = new URL(repository)
+    } catch {
+      // URL parser errors may embed the original credential-bearing input.
+      throw new Error('Use a valid HTTPS or SSH Git repository URL.')
+    }
+    if (url.password || (url.protocol === 'https:' && url.username) || url.search || url.hash) {
+      throw new Error(
+        'Use Git credentials or SSH authentication; do not embed credentials, query parameters or fragments in the repository URL.',
+      )
+    }
   }
+
   return {
     repository,
     ref: record.ref === undefined ? undefined : pluginGitRef(record.ref),

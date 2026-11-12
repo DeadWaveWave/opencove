@@ -1,3 +1,4 @@
+import { createDesktopOpenCoveApi } from '@app/renderer/bootstrap/installDesktopOpenCoveApi'
 import { afterEach, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '@contexts/settings/domain/agentSettings'
 import {
@@ -20,9 +21,9 @@ afterEach(() =>
 it.each(['committed', 'not committed', 'third-party write'] as const)(
   'retains an unconfirmed draft and never auto-replays when response is lost: %s',
   async outcome => {
-    const write = vi.fn(async () => {
-      throw new Error('connection lost')
-    })
+    const executed = vi.fn(async () => ({ corrupted: true }))
+    const write = createDesktopOpenCoveApi({ persistence: { writeAppState: executed } } as never)
+      .persistence.writeAppState
     Object.defineProperty(window, 'opencoveApi', {
       configurable: true,
       value: { persistence: { writeAppState: write } },
@@ -47,7 +48,7 @@ it.each(['committed', 'not committed', 'third-party write'] as const)(
     markPersistedStateAsSynced(canonical, 3)
     expect(getPendingPublication()?.unknownOutcome).toBe(true)
     await writePersistedState(candidate)
-    expect(write).toHaveBeenCalledOnce()
+    expect(executed).toHaveBeenCalledOnce()
   },
 )
 it('keeps a known committed correction pending when a reconciliation read fails', async () => {

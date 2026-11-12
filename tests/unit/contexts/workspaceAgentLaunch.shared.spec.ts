@@ -1,3 +1,5 @@
+import { reviveRendererAppError } from '@shared/errors/rendererAppError'
+import { createAppError } from '@shared/errors/appError'
 import type { MutableRefObject } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
@@ -149,18 +151,24 @@ describe('workspaceAgentLaunch.shared', () => {
 
   it('retries mount launches after refreshing the mount binding', async () => {
     const invoke = vi.mocked(window.opencoveApi.controlSurface.invoke)
-    invoke.mockRejectedValueOnce(new Error('stale mount')).mockResolvedValueOnce({
-      sessionId: 'session-2',
-      profileId: 'profile-1',
-      runtimeKind: 'posix',
-      effectiveModel: 'gpt-5.2-codex',
-      executionContext: {
-        workingDirectory: '/remote/project',
-        endpoint: { endpointId: 'endpoint-remote' },
-        mountId: 'mount-fresh',
-        codexReuseRunningAppServer: true,
-      },
-    })
+    invoke
+      .mockRejectedValueOnce(
+        createAppError('agent.launch_failed', {
+          details: { managedClaudeLaunch: true, phase: 'beforeSpawn', reason: 'mountUnavailable' },
+        }),
+      )
+      .mockResolvedValueOnce({
+        sessionId: 'session-2',
+        profileId: 'profile-1',
+        runtimeKind: 'posix',
+        effectiveModel: 'gpt-5.2-codex',
+        executionContext: {
+          workingDirectory: '/remote/project',
+          endpoint: { endpointId: 'endpoint-remote' },
+          mountId: 'mount-fresh',
+          codexReuseRunningAppServer: true,
+        },
+      })
 
     const launched = await launchWorkspaceAgentSession({
       mountId: 'mount-stale',
@@ -226,7 +234,15 @@ describe('workspaceAgentLaunch.shared', () => {
       }
       const invoke = vi.mocked(window.opencoveApi.controlSurface.invoke)
       if (route === 'retry') {
-        invoke.mockRejectedValueOnce(new Error('stale mount'))
+        invoke.mockRejectedValueOnce(
+          createAppError('agent.launch_failed', {
+            details: {
+              managedClaudeLaunch: true,
+              phase: 'beforeSpawn',
+              reason: 'mountUnavailable',
+            },
+          }),
+        )
       }
       invoke.mockResolvedValue(response)
       const launch = vi.mocked(window.opencoveApi.agent.launch)
@@ -280,7 +296,15 @@ describe('workspaceAgentLaunch.shared', () => {
       }
       const invoke = vi.mocked(window.opencoveApi.controlSurface.invoke)
       if (route === 'retry') {
-        invoke.mockRejectedValueOnce(new Error('stale mount'))
+        invoke.mockRejectedValueOnce(
+          createAppError('agent.launch_failed', {
+            details: {
+              managedClaudeLaunch: true,
+              phase: 'beforeSpawn',
+              reason: 'mountUnavailable',
+            },
+          }),
+        )
       }
       invoke.mockResolvedValue(response)
       vi.mocked(window.opencoveApi.agent.launch).mockResolvedValue(response as never)
@@ -306,21 +330,27 @@ describe('workspaceAgentLaunch.shared', () => {
   )
 })
 
-it.each(['unknown', 'superseded', 'nodeGone', 'conflict', 'afterSpawn'])(
+it.each(['unknown', 'superseded', 'nodeGone', 'conflict', 'afterSpawn', 'corrupted'])(
   'never retries a managed %s outcome on another mount',
   async reason => {
-    const error = Object.assign(
-      new Error('managed launch'),
-      reason === 'unknown'
-        ? { code: 'agent.managed_launch_commit_failed', details: { outcome: 'unknown' } }
-        : reason === 'afterSpawn'
-          ? {
-              code: 'agent.launch_failed',
-              details: { managedClaudeLaunch: true, phase: 'afterSpawn' },
-            }
-          : { code: 'agent.managed_launch_rejected', details: { reason } },
+    const error = reviveRendererAppError(
+      reason === 'corrupted'
+        ? null
+        : reason === 'unknown'
+          ? { code: 'agent.managed_launch_commit_failed', details: { outcome: 'unknown' } }
+          : reason === 'afterSpawn'
+            ? {
+                code: 'agent.launch_failed',
+                details: { managedClaudeLaunch: true, phase: 'afterSpawn' },
+              }
+            : { code: 'agent.managed_launch_rejected', details: { reason } },
     )
-    const invoke = vi.fn().mockRejectedValue(error)
+    const invoke = vi.fn().mockImplementation(async request => {
+      if (request.id === 'system.capabilities') {
+        return { features: { managedClaudeResumeBindingDeliveryV1: true } }
+      }
+      throw error
+    })
     window.opencoveApi = { controlSurface: { invoke } } as unknown as typeof window.opencoveApi
     const retry = vi.fn()
     await expect(
@@ -344,7 +374,10 @@ it.each(['unknown', 'superseded', 'nodeGone', 'conflict', 'afterSpawn'])(
         retryResolveMountBinding: retry,
       }),
     ).rejects.toBe(error)
-    expect(invoke).toHaveBeenCalledTimes(1)
+    expect(invoke.mock.calls.map(([request]) => request.id)).toEqual([
+      'system.capabilities',
+      'session.launchAgentInMount',
+    ])
     expect(retry).not.toHaveBeenCalled()
   },
 )

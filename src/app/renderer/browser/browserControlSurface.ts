@@ -1,4 +1,5 @@
-import { createAppError } from '@shared/errors/appError'
+import { reviveRendererAppError } from '@shared/errors/rendererAppError'
+import { RendererTransportError } from '@shared/errors/rendererTransportError'
 import type {
   ControlSurfaceInvokeRequest,
   ControlSurfaceInvokeResult,
@@ -67,25 +68,35 @@ async function postInvoke(body: string): Promise<{ raw: string; status: number }
 
 export async function invokeBrowserControlSurface<TValue>(
   request: ControlSurfaceInvokeRequest,
+  validateValue?: (value: unknown) => boolean,
 ): Promise<TValue> {
-  const { raw, status } = await fetchInvokeResponse(request)
-  const parsed = raw.trim().length > 0 ? (JSON.parse(raw) as unknown satisfies unknown) : null
+  const { raw } = await fetchInvokeResponse(request)
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    // A body that is not a JSON envelope proves nothing about whether a command ran.
+    throw new RendererTransportError()
+  }
   const result =
     parsed &&
     typeof parsed === 'object' &&
+    Object.hasOwn(parsed, '__opencoveControlEnvelope') &&
     (parsed as Record<string, unknown>).__opencoveControlEnvelope === true
       ? (parsed as ControlSurfaceInvokeResult<TValue>)
       : null
 
   if (!result) {
-    throw new Error(`Invalid control-surface response (HTTP ${status})`)
+    throw new RendererTransportError()
   }
 
   if (result.ok === false) {
-    if (request.id.startsWith('plugin.')) {
-      throw createAppError(result.error)
-    }
-    throw result.error
+    throw reviveRendererAppError(result.error)
+  }
+  // JSON omits undefined properties: a successful void command has no value key.
+  // Callers that require a payload validate its domain shape separately.
+  if (result.ok !== true || (validateValue && !validateValue(result.value))) {
+    throw new RendererTransportError()
   }
 
   return result.value

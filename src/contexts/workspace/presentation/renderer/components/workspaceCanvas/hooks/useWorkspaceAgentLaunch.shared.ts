@@ -1,3 +1,4 @@
+import { isAppErrorDescriptor } from '@shared/errors/appError'
 import { prepareManagedClaudeCreationIntent } from '../../../utils/managedClaudeCreation'
 import {
   ABSENT_MANAGED_CLAUDE_BINDING,
@@ -353,9 +354,14 @@ export async function launchWorkspaceAgentSession({
           ? (error.details as { managedClaudeLaunch?: boolean; phase?: string; reason?: string })
           : undefined
       if (
+        !isAppErrorDescriptor(error) ||
         code.startsWith('agent.managed_launch_') ||
-        (details?.managedClaudeLaunch &&
-          !(details.phase === 'beforeSpawn' && details.reason === 'mountUnavailable')) ||
+        // Only explicit pre-spawn rejection evidence permits an automatic mount repair.
+        !(
+          details?.managedClaudeLaunch === true &&
+          details.phase === 'beforeSpawn' &&
+          details.reason === 'mountUnavailable'
+        ) ||
         !retryResolveMountBinding
       ) {
         throw error

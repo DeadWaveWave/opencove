@@ -177,3 +177,30 @@ Web UI / Remote Worker 等浏览器或远端入口，都是同一套 Control Sur
 - 让非 owner context 判定别人的 durable truth。
 - 通过跨 context 直接写 store/state 传递业务真相。
 - 在 `main` 进程内直接承载高风险 native/外部运行时（例如 PTY），导致单点崩溃/白屏，缺失故障隔离与可恢复语义。
+
+### Desktop public errors
+
+Preload exposes only `createRendererBridge(api)` as `__opencoveBridge`. The Desktop bootstrap
+side-effect installer installs the renderer-owned `opencoveApi` before the statically imported app
+graph evaluates. The entry renders synchronously; test-only observations load afterward without
+gating startup. The facade and its namespaces are frozen, while success values remain untouched.
+Only that client reads the private transport or handles its result envelopes. Every new document
+recreates its facade; installation neither retries operations nor owns recovery state.
+
+Validated application failures cross the context bridge as projected data and become local
+`OpenCoveAppError` instances. Invalid envelopes and transport failures remain safe native errors:
+class identity cannot establish that an operation was rejected before committing. Mount launch
+repair must not retry an uncertain result: it requires explicit before-spawn mount rejection evidence.
+Main transport failures retain structured uncertainty through preload and renderer revival. Successful domain DTOs, callbacks and unsubscribe
+functions retain their existing semantics. Each persistence flush request has one ACK after all
+subscribers captured at dispatch settle; unsubscribe removes only future delivery.
+
+Public exception projection permits only code-aware semantic fields, plus up to 2000 characters
+of plugin author diagnostics for `plugin.operation_failed`. Only the plugin error formatter may
+read that projected `debugMessage`; other renderer presentation must not read private diagnostics.
+Plugin diagnostics remain available during local development; producers and Main/preload boundaries
+are responsible for keeping OpenCove credentials and internal secret data out of those diagnostics.
+This promise covers public exceptions and their display, not all data in the renderer: successful domain DTOs (including nested failure descriptors) remain unchanged, and
+Web HTTP bodies are visible to the page. The facade is not an authorization or plugin isolation
+boundary; Main and Worker remain responsible for authorization. Web parity covers HTTP application
+failures, while native browser and PTY socket errors keep their own contracts.

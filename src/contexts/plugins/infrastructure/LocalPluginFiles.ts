@@ -79,7 +79,7 @@ export class LocalPluginFiles implements PluginFilesPort {
       if (missing(error)) {
         return []
       }
-      throw new Error(`Cannot read installed plugin registry: ${String(error)}`, { cause: error })
+      throw new Error('Cannot read installed plugin registry.', { cause: error })
     }
     const registry = pluginRecord(raw)
     if (registry.version !== 1 || !Array.isArray(registry.plugins)) {

@@ -185,9 +185,6 @@ function createLocalStoragePort(): PersistencePort | null {
             isQuotaExceededError(error)
               ? 'persistence.quota_exceeded'
               : 'persistence.invalid_state',
-            {
-              debugMessage: toAppErrorDescriptor(error).debugMessage,
-            },
           ),
         }
       }
@@ -219,9 +216,6 @@ function createLocalStoragePort(): PersistencePort | null {
             isQuotaExceededError(error)
               ? 'persistence.quota_exceeded'
               : 'persistence.invalid_state',
-            {
-              debugMessage: toAppErrorDescriptor(error).debugMessage,
-            },
           ),
         }
       }
@@ -253,9 +247,6 @@ function createLocalStoragePort(): PersistencePort | null {
             isQuotaExceededError(error)
               ? 'persistence.quota_exceeded'
               : 'persistence.invalid_state',
-            {
-              debugMessage: toAppErrorDescriptor(error).debugMessage,
-            },
           ),
         }
       }
@@ -274,9 +265,6 @@ function createLocalStoragePort(): PersistencePort | null {
             isQuotaExceededError(error)
               ? 'persistence.quota_exceeded'
               : 'persistence.invalid_state',
-            {
-              debugMessage: toAppErrorDescriptor(error).debugMessage,
-            },
           ),
         }
       }

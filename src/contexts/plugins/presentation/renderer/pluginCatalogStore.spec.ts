@@ -41,7 +41,7 @@ describe('renderer plugin catalog ownership', () => {
     load.mockRejectedValue(new Error('Worker unavailable'))
     await store.refresh()
     expect(store.getSnapshot().plugins).toEqual([...initial, extra])
-    expect(store.getSnapshot().error).toBe('Worker unavailable')
+    expect(store.getSnapshot().error).toBe('Plugin operation failed.')
     load.mockResolvedValue(initial)
     await store.refresh()
     expect(store.getSnapshot()).toEqual({ plugins: initial, error: null })

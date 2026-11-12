@@ -17,7 +17,11 @@ describe('native file preload boundary', () => {
   it('uses only the native file path supplied by Electron', async () => {
     const file = new File([], 'misleading-name.md')
     native.getPathForFile.mockReturnValue('/explicit/real-name.md')
-    native.invoke.mockResolvedValue({ uri: 'file:///explicit/real-name.md', kind: 'file' })
+    native.invoke.mockResolvedValue({
+      __opencoveIpcEnvelope: true,
+      ok: true,
+      value: { uri: 'file:///explicit/real-name.md', kind: 'file' },
+    })
     await expect(resolveDroppedFile(file)).resolves.toMatchObject({
       uri: 'file:///explicit/real-name.md',
     })
