@@ -1,3 +1,4 @@
+import { serveCliEventStream } from './http/cliEventStream'
 import { tryManagedClaudeTestHook } from './http/managedClaudeTestHook'
 import { invokeCallerLifetime } from './http/invokeCallerLifetime'
 import type { AgentRunStateRegistry } from '../../../contexts/agent/application/AgentRunStateRegistry'
@@ -178,11 +179,13 @@ export function createControlSurfaceHttpRequestHandler(
           return
         }
 
+        let disposeStream: (() => void) | undefined
         let streamRevoked = false
         const unsubscribeGrant =
           auth.kind === 'session-grant'
             ? deps.sessionGrants?.onRevoke(auth.grant.grantId, () => {
                 streamRevoked = true
+                disposeStream?.()
                 deps.syncClients.delete(res)
                 deps.agentClients?.delete(res)
                 listenerSyncClients.delete(res)
@@ -199,6 +202,39 @@ export function createControlSurfaceHttpRequestHandler(
           if (!deps.agentRuns || !deps.agentClients) {
             res.statusCode = 503
             res.end()
+            return
+          }
+          if (url.searchParams.get('format') === 'cli-v1') {
+            if (auth.kind === 'query_token') {
+              sendForbidden(res)
+              return
+            }
+            if (
+              auth.kind === 'session-grant' &&
+              !['agent.list', 'agent.get', 'node.get'].every(id =>
+                sessionGrantAllowsOperation(id, auth.grant.tier),
+              )
+            ) {
+              sendForbidden(res)
+              return
+            }
+            disposeStream = serveCliEventStream({
+              req,
+              res,
+              url,
+              registry: deps.agentRuns,
+              clients: deps.agentClients,
+              listenerClients: listenerSyncClients,
+              isActive: () =>
+                !streamRevoked &&
+                !deps.isRuntimeClosed() &&
+                (auth.kind !== 'session-grant' ||
+                  Boolean(deps.sessionGrants?.isActive(auth.grant.grantId))),
+              readLineage: async () => (await deps.getPersistenceStore()).nodeLineage,
+            })
+            if (streamRevoked) {
+              disposeStream()
+            }
             return
           }
           serveAgentRuntimeEvents({

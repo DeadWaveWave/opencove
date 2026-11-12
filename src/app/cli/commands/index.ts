@@ -1,3 +1,4 @@
+import { eventsCommand } from './events'
 import { spaceUpdateCommand } from './spaceUpdate'
 import { spaceCreateCommand } from './spaces'
 import { projectAddCommand } from './projects'
@@ -28,6 +29,7 @@ import { unknownOperation } from '../core/operationErrors'
 import { CliError } from '../core/errors'
 import { nodeCommands, stringOption } from './nodes'
 export const commands: Command[] = [
+  eventsCommand,
   spaceCreateCommand,
   spaceUpdateCommand,
   projectAddCommand,

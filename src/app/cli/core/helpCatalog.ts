@@ -7,6 +7,7 @@ export const sections: [string, [string, string][]][] = [
       ['node', 'Create, read, update and delete canvas nodes'],
       ['canvas', 'Focus nodes and spaces on the canvas'],
       ['agent', 'List, inspect, prompt, wait for and read agents'],
+      ['events', 'Stream agent observations and resume from a saved cursor'],
     ],
   ],
   [

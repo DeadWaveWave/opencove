@@ -1,4 +1,8 @@
-import { subscribeAgentRuns, type RetainedEvent } from './AgentRunSubscriptions'
+import {
+  subscribeAgentRuns,
+  type RetainedEvent,
+  type ContextualPublication,
+} from './AgentRunSubscriptions'
 import type { AgentTurnArchive, ArchiveMembership, ArchiveClearResult } from './AgentTurnArchive'
 import { readExactArchivedTurn } from './AgentTurnArchiveRead'
 import { AgentSubmissionEvidence } from './AgentSubmissionEvidence'
@@ -13,7 +17,7 @@ import {
   claimRunNodeBinding,
   publishRunTransition,
   readRunFinalMessage,
-  matchesAgentRunFilter,
+  listAgentRunSnapshots,
   type AgentRunEntry as Entry,
   type AgentRunBinding as Binding,
 } from './AgentRunStateEntry'
@@ -28,19 +32,8 @@ import {
 
 import type { AgentRunEvent as AgentRuntimeEvent } from '../../../shared/contracts/dto/agentRunState'
 export type { AgentRunEvent as AgentRuntimeEvent } from '../../../shared/contracts/dto/agentRunState'
-export interface AgentRuntimeFilter {
-  types?: AgentRuntimeEvent['type'][]
-  nodeId?: string
-  spaceId?: string
-  projectId?: string
-  state?: AgentRunSnapshot['state']
-}
-export interface AgentRuntimeResync {
-  type: 'resync_required'
-  epoch: string
-  seq: number
-  query: 'agent.list'
-}
+import type { AgentRuntimeFilter, AgentRuntimeResync } from './AgentRunSubscriptionTypes'
+export type { AgentRuntimeFilter, AgentRuntimeResync } from './AgentRunSubscriptionTypes'
 
 /** Worker lifetime owner. Uses an injected scheduler; no persistence, transport or renderer dependencies. */
 export class AgentRunStateRegistry {
@@ -382,20 +375,7 @@ export class AgentRunStateRegistry {
       epoch: this.ports.epoch,
       seq: this.sequence,
       ...(this.ports.archive ? { turnArchive: true } : {}),
-      agents: [...this.entries.values()]
-        .filter(
-          entry =>
-            entry.model.snapshot.state !== 'exited' &&
-            matchesAgentRunFilter(
-              {
-                event: { snapshot: entry.model.snapshot } as AgentRuntimeEvent,
-                projectId: entry.projectId,
-                spaceId: entry.spaceId,
-              },
-              { ...filter, types: undefined },
-            ),
-        )
-        .map(entry => structuredClone(entry.model.snapshot)),
+      agents: listAgentRunSnapshots(this.entries.values(), filter),
     }
   }
 
@@ -412,6 +392,25 @@ export class AgentRunStateRegistry {
       this.sequence,
       cursor,
       filter,
+      listener,
+    )
+  }
+
+  watermark() {
+    return { epoch: this.ports.epoch, seq: this.sequence }
+  }
+  subscribeContextual(
+    cursor: { epoch: string; afterSeq: number },
+    listener: (event: ContextualPublication) => void,
+  ): () => void {
+    return subscribeAgentRuns(
+      this.events,
+      this.subscribers,
+      this.ports.epoch,
+      this.sequence,
+      cursor,
+      {},
+      () => {},
       listener,
     )
   }
