@@ -29,6 +29,7 @@ export interface Hook {
     hook_event_name: string
     session_id: string
     source?: string
+    prompt_id?: string
     prompt?: string
     last_assistant_message?: string
     transcript_path?: string
@@ -123,7 +124,7 @@ async function configureClearHarness(testInfo: TestInfo, root: string) {
       hooks: Object.fromEntries(
         ['SessionStart', 'SessionEnd', 'UserPromptSubmit', 'Stop', 'StopFailure'].map(event => [
           event,
-          [{ hooks: [{ type: 'command', command, timeout: 3 }] }],
+          [{ hooks: [{ type: 'command', command, timeout: 15 }] }],
         ]),
       ),
     }),

@@ -2,7 +2,7 @@ import { resolveHookBlockedDetails } from './hookBlockedDetails'
 import { HookReplyEligibility, type HookReplyReceipt } from './HookReplyEligibility'
 import { readBody } from './readHookBody'
 import { residentContextV1 } from './residentContext'
-import { setPromptSubmissionEvidence } from './claudePromptEvidence'
+import { getPromptSubmissionEvidence, setPromptSubmissionEvidence } from './claudePromptEvidence'
 import { parseHookEmittedAt } from './hookEmittedAt'
 import { randomBytes } from 'node:crypto'
 import { createServer, type Server } from 'node:http'
@@ -94,25 +94,45 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
     envelope: TEnvelope,
     credential: CredentialRecord<TEnvelope>,
     observation: ReturnType<AgentHookObservationOwner<TEnvelope>['accept']>,
+    replayGeneration?: number,
   ): boolean => {
+    if (
+      disposed ||
+      credentials.get(credential.token) !== credential ||
+      tokenBySessionId.get(sessionId) !== credential.token ||
+      !(credential.isInvocationCurrent?.() ?? true)
+    ) {
+      return false
+    }
     const terminalActivity = credential.terminalActivity
     if (terminalActivity && !terminalActivity.isCurrent()) {
       return false
     }
-    const observerAccepted = credential.privateObserver?.observe(sessionId, envelope, {
-      incarnation: terminalActivity?.invocationId ?? sessionId,
-      credential,
-      isCurrent: () =>
-        !disposed &&
-        (credential.isInvocationCurrent?.() ?? true) &&
-        credentials.get(credential.token) === credential &&
-        (terminalActivity?.isCurrent() ?? true),
-    })
-    if (
-      observerAccepted !== false &&
-      options.source === 'claude_hook' &&
-      envelope.hookEventName === 'SessionEnd'
-    ) {
+    const observerAccepted =
+      replayGeneration !== undefined ||
+      credential.privateObserver?.observe(sessionId, envelope, {
+        incarnation: terminalActivity?.invocationId ?? sessionId,
+        credential,
+        publishState: generation => {
+          if (
+            !disposed &&
+            credentials.get(credential.token) === credential &&
+            (credential.isInvocationCurrent?.() ?? true)
+          ) {
+            emit(sessionId, envelope, credential, observation, generation)
+          }
+        },
+        isCurrent: () =>
+          !disposed &&
+          (credential.isInvocationCurrent?.() ?? true) &&
+          tokenBySessionId.get(sessionId) === credential.token &&
+          credentials.get(credential.token) === credential &&
+          (terminalActivity?.isCurrent() ?? true),
+      })
+    if (observerAccepted === false) {
+      return false
+    }
+    if (options.source === 'claude_hook' && envelope.hookEventName === 'SessionEnd') {
       credential.providerSessionId = null
     }
     if (credential.observationOwner) {
@@ -147,6 +167,8 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       }
       if (options.source === 'claude_hook') {
         setPromptSubmissionEvidence(event, {
+          conversationGeneration:
+            replayGeneration ?? getPromptSubmissionEvidence(envelope)?.conversationGeneration,
           promptId: envelope.promptId,
           promptDigest: envelope.promptDigest,
           providerSessionId: envelope.claudeSessionId,
@@ -164,8 +186,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
     const identity = options.resolveSessionIdentity?.(envelope) ?? null
     if (
       (terminalActivity || options.publishManagedSessionIdentity) &&
-      identity?.hookEventName === 'SessionStart' &&
-      observerAccepted !== false
+      identity?.hookEventName === 'SessionStart'
     ) {
       if (credential.providerSessionId !== null) {
         return true
@@ -199,7 +220,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       }
       metadataListeners.forEach(listener => listener(metadata))
     }
-    return observerAccepted !== false
+    return true
   }
 
   const handleEnvelope = (token: string, envelope: TEnvelope): HookReplyReceipt | false | null => {

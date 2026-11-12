@@ -28,6 +28,9 @@ export function promptAdmission(
   if (fence.hookCoverage === 'unverified_executable') {
     return { code: 'agent.prompt_unsupported', reason: 'executable_override_unverified' }
   }
+  if (fence.conversationQuarantined) {
+    return { code: 'agent.state_unknown', reason: 'readiness_unobserved' }
+  }
   const s = fence.snapshot
   if (s.provider === 'codex') {
     const install = fence.hookInstallState
@@ -74,6 +77,15 @@ export function promptAdmission(
     return null
   }
   if (
+    s.provider === 'claude-code' &&
+    fence.claudeClearReady &&
+    s.state === 'idle' &&
+    !s.turn &&
+    s.source === 'claude_hook'
+  ) {
+    return null
+  }
+  if (
     s.state !== 'idle' ||
     s.source !== promptHookSource(s.provider) ||
     s.turn ||
@@ -93,6 +105,7 @@ export function samePromptEntry(a: RunStateFence, b: RunStateFence | null): b is
     a.epoch === b.epoch &&
     a.incarnation === b.incarnation &&
     a.bindingGeneration === b.bindingGeneration &&
+    a.conversationGeneration === b.conversationGeneration &&
     a.snapshot.nodeId === b.snapshot.nodeId
   )
 }

@@ -2,7 +2,7 @@
 import { expect, it } from 'vitest'
 import { hookChannelFixture } from './claudeHookTranscript.helpers'
 
-it('a conversation end keeps invocation-authenticated state hooks alive', async () => {
+it('a conversation end preserves invocation credentials but rejects ended conversation state', async () => {
   const f = await hookChannelFixture(),
     states: string[] = [],
     metadata: unknown[] = []
@@ -32,7 +32,7 @@ it('a conversation end keeps invocation-authenticated state hooks alive', async 
     await send('SessionStart')
     await send('SessionEnd')
     await send('UserPromptSubmit')
-    expect(states).toEqual(['UserPromptSubmit', 'Stop', 'SessionEnd', 'UserPromptSubmit'])
+    expect(states).toEqual(['UserPromptSubmit', 'Stop', 'SessionEnd'])
     expect(metadata).toHaveLength(1)
   } finally {
     await f.channel.dispose()

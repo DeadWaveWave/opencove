@@ -1,3 +1,4 @@
+import { setPromptSubmissionEvidence } from '../../../../shared/runtime/agentHook/claudePromptEvidence'
 import type { ClaudeBindingEvidence } from '../../../../shared/runtime/agentHook/claudeBindingEvidence'
 import { ClaudeTranscriptGeneration } from './ClaudeTranscriptGeneration'
 import { SessionTurnStateWatcher } from '../../../../contexts/agent/infrastructure/watchers/SessionTurnStateWatcher'
@@ -18,7 +19,6 @@ let generation = 0
 /** A credential owns launch roots, invocation validity, provider lifecycle and all file IO. */
 export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeHookEnvelope> {
   private credential?: object
-  private readonly earlySubmits = new Map<string, number>()
   private watcher?: SessionTurnStateWatcher
   private path?: string
   private disposed = false
@@ -45,7 +45,30 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
       return false
     }
     this.credential = context.credential ?? this
-    const action = this.lifecycle.accept(envelope)
+    let decision: { action: 'start' | 'end' | 'event' | 'ignore'; generation: number } | undefined
+    this.emit({
+      sessionId,
+      incarnation: context.incarnation,
+      providerSessionId: envelope.claudeSessionId,
+      generation: 0,
+      fileIdentity: '',
+      position: -1,
+      baseline: false,
+      conversation: {
+        event: envelope,
+        publish: acceptedGeneration => context.publishState?.(acceptedGeneration),
+        decide: value => {
+          decision = value
+        },
+      },
+    })
+    const action = decision?.action ?? this.lifecycle.accept(envelope)
+    if (decision) {
+      setPromptSubmissionEvidence(envelope, {
+        ...envelope,
+        conversationGeneration: decision.generation,
+      })
+    }
     this.bindingEvidence?.({
       sessionId,
       credential: this.credential,
@@ -55,25 +78,16 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
       event: envelope,
       action,
     })
-    const delayedStart =
-      envelope.hookEventName === 'SessionStart' &&
-      envelope.emittedAtMs !== undefined &&
-      (this.earlySubmits.get(envelope.claudeSessionId) ?? -Infinity) > envelope.emittedAtMs
-    if (envelope.hookEventName === 'UserPromptSubmit' && envelope.emittedAtMs !== undefined) {
-      if (this.earlySubmits.size >= 16) {
-        this.earlySubmits.delete(this.earlySubmits.keys().next().value!)
-      }
-      this.earlySubmits.set(envelope.claudeSessionId, envelope.emittedAtMs)
-    }
     if (action === 'ignore') {
       return false
     }
     this.hotUntil = Date.now() + 2_000
+    context = { ...context, conversationGeneration: decision?.generation }
     if (action === 'start' || action === 'end') {
       this.detach()
       this.demand = false
       this.currentGeneration = ++generation
-      if (!delayedStart) {
+      if (!decision) {
         this.emit({
           sessionId,
           providerSessionId: envelope.claudeSessionId,
@@ -110,7 +124,11 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
     if (this.watcher) {
       this.watcher.refresh()
     } else if (!this.pending && !this.retry) {
-      const bound = { incarnation: context.incarnation, isCurrent: context.isCurrent }
+      const bound = {
+        incarnation: context.incarnation,
+        isCurrent: context.isCurrent,
+        conversationGeneration: context.conversationGeneration,
+      }
       void this.attach(
         sessionId,
         envelope.claudeSessionId,
@@ -169,6 +187,7 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
             sessionId,
             providerSessionId,
             generation: current,
+            conversationGeneration: context.conversationGeneration,
             origin: 'hook',
             incarnation: context.incarnation,
             setPollingDemand: this.pollingDemand(context, version),
@@ -218,6 +237,7 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
       sessionId,
       providerSessionId,
       generation: current,
+      conversationGeneration: context.conversationGeneration,
       origin: 'hook',
       incarnation: context.incarnation,
       fileIdentity: `unavailable:${current}`,

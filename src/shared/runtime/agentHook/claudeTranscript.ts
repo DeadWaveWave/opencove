@@ -15,6 +15,12 @@ export interface ClaudeTranscriptObservation {
   origin?: 'hook' | 'session_file'
   baseline: boolean
   /** Accepted observer generation transition, independent of provider identity reuse. */
+  conversation?: {
+    event: import('./claudeConversation').ClaudeConversationEvent
+    publish(generation: number): void
+    decide(decision: { action: 'start' | 'end' | 'event' | 'ignore'; generation: number }): void
+  }
+  conversationGeneration?: number
   lifecycle?: 'start' | 'end'
   /** Private IO capability: the registry owns demand; the observer owns scheduling. */
   setPollingDemand?: (needed: boolean) => void

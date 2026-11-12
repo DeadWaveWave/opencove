@@ -48,3 +48,12 @@ qualification with one five-second deadline, then disposes capability owners bef
 A deadline invalidates callbacks, but cannot interrupt a synchronous SQLite call already executing.
 Durability after abrupt Worker termination before commitment and durable empty-clear intent remain
 out of scope. These additions clarify existing boundaries: no executable-rule impact.
+
+Live prompt readiness after a new-ID Claude `/clear` belongs to the executing Worker's
+volatile conversation owner, independently of the saved restart target. Clear creates no
+successor turn; the first accepted submission captures its own provider session identity.
+Late predecessor hooks and transcript callbacks cannot update the successor generation.
+See [prompt delivery](CLAUDE_CLEAR_PROMPT.md) for the
+relay-order assumption, quarantine and observed-readiness limits. B4b commitment grants
+no readiness and rewrites no turn identity. This adds no public generation field or
+persistence schema; startup/resume/compact readiness is unchanged.

@@ -375,6 +375,15 @@ export class ClaudeTurnContinuation {
   syncPollingDemand(): void {
     this.setPollingDemand?.(this.pending().length > 0 || this.stopped || this.recovery.pending)
   }
+  startConversation(): void {
+    this.reset()
+    this.acceptHook()
+    this.cursor = undefined
+    this.origin = 'hook'
+    this.generationReset = true
+    this.generationStartRequired = true
+    this.setPollingDemand?.(false)
+  }
   takeGenerationReset(): boolean {
     const reset = this.generationReset
     this.generationReset = false

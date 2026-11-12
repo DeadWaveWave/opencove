@@ -32,6 +32,9 @@ export class PromptDeliveryEvidence {
     const hook = promptHookSource(provider)
     if (
       !this.fence ||
+      (this.fence.conversationGeneration !== undefined &&
+        this.fence.conversationGeneration > 0 &&
+        r.conversationGeneration !== this.fence.conversationGeneration) ||
       r.source !== hook ||
       r.hookEventName !== 'UserPromptSubmit' ||
       (r.sourceSequence ?? 0) <= (this.fence.watermarks[hook] ?? 0) ||

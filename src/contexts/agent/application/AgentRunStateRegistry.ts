@@ -1,7 +1,9 @@
+import { observeRunConversation } from './AgentRunConversationIngress'
 import { subscribeAgentRuns, type RetainedEvent } from './AgentRunSubscriptions'
 import type { AgentTurnArchive, ArchiveMembership, ArchiveClearResult } from './AgentTurnArchive'
 import { readExactArchivedTurn } from './AgentTurnArchiveRead'
 import { AgentSubmissionEvidence } from './AgentSubmissionEvidence'
+import { ClaudeLiveConversation } from './ClaudeLiveConversation'
 import { ClaudeTurnContinuation } from './ClaudeTurnContinuation'
 import { commitAgentRunUpdate } from './AgentRunStateUpdate'
 import type { ClaudeTranscriptObservation } from '../../../shared/runtime/agentHook/claudeTranscript'
@@ -9,6 +11,8 @@ import { AgentTurnHistory, type FinalMessageSelector } from './AgentTurnHistory'
 import type { PromptSubmissionEvidence } from '../../../shared/runtime/agentHook/claudePromptEvidence'
 import {
   projectRunStateFence,
+  setRunRuntimeContext,
+  runBinding,
   readRunPromptIdentity,
   claimRunNodeBinding,
   publishRunTransition,
@@ -107,6 +111,7 @@ export class AgentRunStateRegistry {
         nodeId: () => entry.launchNodeId ?? entry.model.snapshot.nodeId,
         remote: () => entry.remote,
       }),
+      conversation: new ClaudeLiveConversation(),
       continuation: new ClaudeTurnContinuation(),
       token: `${input.incarnation}:${++this.tokenSequence}`,
       bindingGeneration: 0,
@@ -123,18 +128,11 @@ export class AgentRunStateRegistry {
       'agent.state_changed',
       undefined,
       false,
-      existing ? this.binding(existing) : undefined,
+      existing ? runBinding(existing) : undefined,
     )
     notifyDisplaced()
     this.notifyFence(entry)
     this.flushDelivery()
-  }
-  private binding(entry: Entry): Binding {
-    return {
-      nodeId: entry.model.snapshot.nodeId,
-      projectId: entry.projectId,
-      spaceId: entry.spaceId,
-    }
   }
   bind(
     sessionId: string,
@@ -152,7 +150,7 @@ export class AgentRunStateRegistry {
       return
     }
     entry.bindingGeneration++
-    const previousBinding = this.binding(entry)
+    const previousBinding = runBinding(entry)
     this.releaseNodeBinding(entry)
     entry.model.snapshot = { ...entry.model.snapshot, nodeId: binding.nodeId }
     entry.projectId = binding.projectId
@@ -196,6 +194,15 @@ export class AgentRunStateRegistry {
     if (!entry) {
       return
     }
+    if (
+      observation.source === 'claude_hook' &&
+      !entry.conversation.accepts(evidence?.conversationGeneration, evidence?.providerSessionId)
+    ) {
+      return
+    }
+    if (observation.degraded || observation.source === 'exit') {
+      entry.conversation.veto()
+    }
     this.update(entry, observation, evidence)
   }
   observeClaudeTranscript(
@@ -207,9 +214,15 @@ export class AgentRunStateRegistry {
     if (!entry || entry.model.incarnation !== incarnation) {
       return
     }
-    entry.continuation.transcript(record, entry.history, this.ports.now())
-    this.update(entry, null)
+    observeRunConversation(entry, record, {
+      now: this.ports.now,
+      update: () => this.update(entry, null),
+      publish: (...args) => this.publish(...args),
+      notify: () => this.notifyFence(entry),
+      flush: () => this.flushDelivery(),
+    })
   }
+
   private update(
     entry: Entry,
     observation: AgentRunObservation | null,
@@ -327,18 +340,11 @@ export class AgentRunStateRegistry {
     context: Pick<Entry, 'remote' | 'launchKind' | 'hookCoverage' | 'hookInstallState'>,
   ): void {
     const entry = this.entries.get(sessionId)
-    if (
-      !entry ||
-      (entry.remote === context.remote &&
-        entry.launchKind === context.launchKind &&
-        entry.hookInstallState === context.hookInstallState &&
-        entry.hookCoverage === context.hookCoverage)
-    ) {
-      return
+    if (entry && setRunRuntimeContext(entry, context)) {
+      this.notifyFence(entry)
     }
-    Object.assign(entry, context)
-    this.notifyFence(entry)
   }
+
   private notifyFence(entry: Entry, receipt: Omit<RunStateReceipt, 'fence'> = {}): void {
     entry.cursor = this.fences.nextCursor()
     this.fences.emit(entry.model.snapshot.sessionId, {

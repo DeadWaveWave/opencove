@@ -1,11 +1,5 @@
-export interface ClaudeConversationEvent {
-  hookEventName: string
-  claudeSessionId: string
-  emittedAtMs?: number
-  sessionStartSource?: string
-  transcriptPath?: string
-  promptId?: string
-}
+import type { ClaudeConversationEvent } from '../../../shared/runtime/agentHook/claudeConversation'
+export type { ClaudeConversationEvent } from '../../../shared/runtime/agentHook/claudeConversation'
 
 /** Provider IDs may resume. Freshness retires observer generations, never invocation authority. */
 export class ClaudeConversationLifecycle {

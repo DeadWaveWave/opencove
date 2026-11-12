@@ -227,7 +227,11 @@ export function updateAgentRunEntry(
       return finish(entry, resolution.end, true, now)
     }
   }
-  if (observation && current.snapshot.turn && entry.history.hasEndedPrompt(evidence?.promptId)) {
+  if (
+    observation &&
+    current.snapshot.turn &&
+    entry.history.hasEndedPrompt(evidence?.promptId, evidence?.providerSessionId)
+  ) {
     return unchanged()
   }
   if (selected && observation?.boundary?.kind === 'start') {
@@ -388,6 +392,22 @@ export function commitAgentRunUpdate(
         quality: 'degraded',
         blockedReason: null,
         blockedSummary: null,
+      },
+    }
+  }
+  if (
+    entry.conversation.ready &&
+    !observation &&
+    !result.model.snapshot.turn &&
+    result.model.snapshot.state !== 'exited'
+  ) {
+    result.model = {
+      ...result.model,
+      snapshot: {
+        ...result.model.snapshot,
+        state: 'idle',
+        quality: 'authoritative',
+        source: 'claude_hook',
       },
     }
   }

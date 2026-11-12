@@ -291,7 +291,13 @@ export class PromptDeliveryService {
           }
           // Do not resolve an overdue waiter, but continue evidence reconciliation.
         }
+        const conversationChanged =
+          r.fence !== null && r.fence.conversationGeneration !== admitted.conversationGeneration
         if (!samePromptEntry(admitted, r.fence)) {
+          record.retired = conversationChanged
+          if (record.retired) {
+            record.resolvedAt ??= this.ports.now()
+          }
           this.records.stopReconciliation(record)
           if (record.dto.status !== 'submitted') {
             record.dto.status = 'unknown'

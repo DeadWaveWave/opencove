@@ -44,9 +44,9 @@ opencove agent prompt --node agent-123 --wait --read --text-file ./assignment.tx
 
 Prompt works only with **agent windows OpenCove launched** (from a task, the agent launcher or `node
 create agent`) running **Claude Code**, or **Codex** with its lifecycle hooks, at authoritative
-working state or after an observed finished turn. Agent windows started with a custom executable
+working state, after an observed finished turn, or after a new Claude Code `/clear` conversation. Agent windows started with a custom executable
 path are refused. Both providers require local invocation lifecycle hooks, authoritative state,
-default executable and bracketed paste. Claude requires Stop or StopFailure; Codex requires trusted
+default executable and bracketed paste. Claude requires Stop/StopFailure or observed new-ID `/clear` readiness; Codex requires trusted
 hooks for this invocation (Stop). Codex notify-only, daemon reuse, file-only telemetry and Windows
 are unsupported. Terminal shell/shim/launcher agents are unsupported. Executable overrides and
 option-like model/session values have no verified lifecycle coverage. For
@@ -56,7 +56,7 @@ because the shell would receive the input after the agent stops. Start an agent 
 prompts, such as a lead agent other agents report to, as an agent window using Run Agent on a task,
 the agent launcher, or `opencove node create agent --space <space> --prompt <text>`; it can still
 use the opencove CLI from there. Newly opened/resumed sessions may need a completed turn first.
-
+Claude Code `/clear` 后，观察到新会话即可尝试首条提示，无须先手动完成一轮；这不保证编辑器为空或没有对话框。停滞时先检查屏幕，切勿自动重发。
 Choose one prompt source: positional text, --text or --text-file (- reads stdin). Text must be
 valid Unicode, nonblank and at most 32 KiB UTF-8 before newline normalization; trailing newlines
 are removed. For a simple hand-off use --wait --read. It confirms delivery, waits for the containing
@@ -108,7 +108,7 @@ Refusals describe this call only; they do not cancel another delivery:
 - `agent.blocked`: waiting for input (reason may be null); human resolves the dialog.
 - `agent.busy` / `working`: legacy Worker or `--if-busy refuse`; wait for completion.
 - `agent.busy` / `delivery_in_progress`: await that delivery's result before deciding.
-- `agent.state_unknown` / `readiness_unobserved`: finish a turn in the terminal first.
+- `agent.state_unknown` / `readiness_unobserved`: inspect the screen; retry only when readiness is observed after a completed turn or a new Claude Code `/clear` conversation.
 - `agent.state_unknown` / `observation_degraded`: check hooks and await reliable evidence.
 - `agent.not_running`: inspect the node; start/resume only when authorized.
 - `agent.prompt_unsupported`: the reason says what is missing (another provider,

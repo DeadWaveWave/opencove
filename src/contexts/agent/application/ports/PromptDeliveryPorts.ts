@@ -11,6 +11,9 @@ import type {
 export interface RunStateFence {
   epoch: string
   incarnation: string
+  conversationGeneration?: number
+  claudeClearReady?: boolean
+  conversationQuarantined?: boolean
   bindingGeneration: number
   cursor: number
   snapshot: AgentRunSnapshot

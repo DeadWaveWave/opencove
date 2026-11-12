@@ -1,3 +1,4 @@
+import type { ClaudeLiveConversation } from './ClaudeLiveConversation'
 import type { ClaudeTurnContinuation } from './ClaudeTurnContinuation'
 import { createAppError } from '../../../shared/errors/appError'
 import type { AgentTurnHistory, FinalMessageSelector } from './AgentTurnHistory'
@@ -5,6 +6,7 @@ import type { AgentRuntimeFilter, AgentRuntimeEvent } from './AgentRunStateRegis
 import type { AgentRunModel } from '../domain/agentRunState'
 import type { RunStateFence } from './ports/PromptDeliveryPorts'
 export type AgentRunEntry = {
+  conversation: ClaudeLiveConversation
   continuation: ClaudeTurnContinuation
   history: AgentTurnHistory
   model: AgentRunModel
@@ -31,6 +33,9 @@ export function projectRunStateFence(entry: AgentRunEntry, epoch: string): RunSt
     cursor: entry.cursor,
     snapshot: model.snapshot,
     lastTurnEnd: model.lastTurnEnd,
+    conversationGeneration: entry.conversation.generation,
+    claudeClearReady: entry.conversation.ready,
+    conversationQuarantined: entry.conversation.quarantined,
     watermarks: Object.fromEntries(
       Object.entries(model.observations).map(([source, value]) => [source, value.sourceSequence]),
     ),
@@ -172,7 +177,41 @@ export function readRunPromptIdentity(
   fence: RunStateFence,
   epoch: string,
 ) {
-  return entry && entry.token === fence.incarnation && epoch === fence.epoch
-    ? entry.history.identity()
+  return entry &&
+    entry.token === fence.incarnation &&
+    epoch === fence.epoch &&
+    entry.conversation.generation === fence.conversationGeneration
+    ? entry.conversation.providerSessionId
+      ? entry.history.identity(entry.conversation.providerSessionId)
+      : entry.history.identity()
     : undefined
+}
+
+/** Runtime provenance is independent of durable conversation ownership. */
+export function setRunRuntimeContext(
+  entry: AgentRunEntry,
+  context: Pick<AgentRunEntry, 'remote' | 'launchKind' | 'hookCoverage' | 'hookInstallState'>,
+): boolean {
+  if (
+    entry.remote === context.remote &&
+    entry.launchKind === context.launchKind &&
+    entry.hookInstallState === context.hookInstallState &&
+    entry.hookCoverage === context.hookCoverage
+  ) {
+    return false
+  }
+  if (
+    context.remote ||
+    context.launchKind !== 'managed' ||
+    context.hookCoverage !== 'lifecycle' ||
+    (context.hookInstallState !== undefined && context.hookInstallState !== 'installed')
+  ) {
+    entry.conversation.veto()
+  }
+  Object.assign(entry, context)
+  return true
+}
+
+export function runBinding(entry: AgentRunEntry): AgentRunBinding {
+  return { nodeId: entry.model.snapshot.nodeId, projectId: entry.projectId, spaceId: entry.spaceId }
 }

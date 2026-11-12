@@ -72,8 +72,10 @@ export interface AgentHookObservationOwner<TEnvelope extends AgentHookEnvelope> 
 
 export interface PrivateHookContext {
   incarnation: string
+  conversationGeneration?: number
   credential?: object
   isCurrent: () => boolean
+  publishState?: (generation: number) => void
 }
 export interface PrivateHookObserver<TEnvelope> {
   observe(sessionId: string, envelope: TEnvelope, context: PrivateHookContext): boolean
