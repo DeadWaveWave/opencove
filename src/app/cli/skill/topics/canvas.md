@@ -32,6 +32,9 @@ remain available. Creating a runtime across Workers requires the user to start i
 If OpenCove cannot verify a historical tree after restart, ask the user to check its runtimes
 and start a new canvas agent for further delegation.
 
+Agent creation accepts `--full-access true|false` for this agent and its restarts. Omit it to
+follow Settings; this never changes Settings. The value cannot be changed with `node update`.
+
 To put a node on the canvas outside any Space: `opencove node create note --root-canvas --text …`.
 Outside OpenCove, add `--project <id>`. Placement searches next to you when run inside OpenCove, or
 from the origin if your node belongs to another project. Use `--focus` to reveal it.

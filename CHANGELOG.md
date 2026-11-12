@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Agents: `opencove node create agent --full-access true|false` (also `node.create` `data.agentFullAccess` and plugin `agents.launch`) sets Full Access for that one agent, even when another agent starts it, without changing Settings; relaunch, resume and recovery keep the choice. (#462, #612)
+
 ### 🐛 Fixed
 
 - Desktop: messages that explain why an action failed now actually appear (for example, that Claude restarts are paused by the Worker, that the Worker needs an upgrade, or that a `/clear` save could not be confirmed); they used to fall back to a generic “this agent has changed” message. A launch whose response is lost is no longer started a second time, and Git plugin sources that embed credentials are refused before anything runs. (#613)

@@ -41,8 +41,9 @@ only for an authorized provider, model and workspace. Do not close, stop or prom
 nodes you did not create unless explicitly asked.
 
 Only the user answers permission prompts and dialogs in OpenCove. Never answer another
-agent's dialogs. Agent terminals cannot read or change private settings, override launch
-policy, run provider commands through prompts, or execute plugin code through the API.
+agent's dialogs. Agent terminals cannot read or change private settings, run provider commands
+through prompts, or execute plugin code through the API. Agent launches inherit Settings unless
+`--full-access true|false` explicitly chooses Full Access for that agent and its restarts.
 Ask the user for human decisions; do not work around a refusal. Project isolation is
 not yet enforced. See `opencove skill access` for the grant boundaries.
 
