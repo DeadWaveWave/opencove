@@ -66,9 +66,31 @@ export async function copyTerminalLink(text: string): Promise<void> {
   await navigator.clipboard.writeText(text)
 }
 
+type TerminalLinkEnvironment = { platform: 'windows' | 'posix'; home: string; hostname?: string }
+
+// An endpoint's home directory and platform do not change while the app runs, but every
+// terminal mount asks for them. Keep successful lookups; failures are retried next time.
+const terminalLinkEnvironmentCache = new Map<string, Promise<TerminalLinkEnvironment | null>>()
+
 export async function getTerminalLinkEnvironment(
   endpointId: string,
-): Promise<{ platform: 'windows' | 'posix'; home: string; hostname?: string } | null> {
+): Promise<TerminalLinkEnvironment | null> {
+  const cached = terminalLinkEnvironmentCache.get(endpointId)
+  if (cached) {
+    return await cached
+  }
+  const pending = fetchTerminalLinkEnvironment(endpointId)
+  terminalLinkEnvironmentCache.set(endpointId, pending)
+  const result = await pending
+  if (!result && terminalLinkEnvironmentCache.get(endpointId) === pending) {
+    terminalLinkEnvironmentCache.delete(endpointId)
+  }
+  return result
+}
+
+async function fetchTerminalLinkEnvironment(
+  endpointId: string,
+): Promise<TerminalLinkEnvironment | null> {
   try {
     const result = await window.opencoveApi.controlSurface.invoke<{
       platform: string

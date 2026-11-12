@@ -19,10 +19,34 @@ export function getBrowserQueryToken(): string | null {
   return resolveQueryToken()
 }
 
-export async function invokeBrowserControlSurface<TValue>(
+// Identical queries that are already in flight share one HTTP request: during a project switch
+// several components ask for the same snapshot or status at once. Each caller parses its own
+// copy of the response. Commands are never shared, and a command makes later queries start a
+// fresh request so they cannot observe a response from before the command.
+const inFlightQueries = new Map<string, Promise<{ raw: string; status: number }>>()
+
+function fetchInvokeResponse(
   request: ControlSurfaceInvokeRequest,
-  validateValue?: (value: unknown) => boolean,
-): Promise<TValue> {
+): Promise<{ raw: string; status: number }> {
+  const body = JSON.stringify(request)
+  if (request.kind !== 'query') {
+    inFlightQueries.clear()
+    return postInvoke(body)
+  }
+  const existing = inFlightQueries.get(body)
+  if (existing) {
+    return existing
+  }
+  const pending = postInvoke(body).finally(() => {
+    if (inFlightQueries.get(body) === pending) {
+      inFlightQueries.delete(body)
+    }
+  })
+  inFlightQueries.set(body, pending)
+  return pending
+}
+
+async function postInvoke(body: string): Promise<{ raw: string; status: number }> {
   const headers: Record<string, string> = {
     'content-type': 'application/json',
   }
@@ -36,14 +60,22 @@ export async function invokeBrowserControlSurface<TValue>(
     method: 'POST',
     credentials: 'same-origin',
     headers,
-    body: JSON.stringify(request),
+    body,
   })
 
-  const raw = await response.text()
+  return { raw: await response.text(), status: response.status }
+}
+
+export async function invokeBrowserControlSurface<TValue>(
+  request: ControlSurfaceInvokeRequest,
+  validateValue?: (value: unknown) => boolean,
+): Promise<TValue> {
+  const { raw } = await fetchInvokeResponse(request)
   let parsed: unknown
   try {
     parsed = JSON.parse(raw)
   } catch {
+    // A body that is not a JSON envelope proves nothing about whether a command ran.
     throw new RendererTransportError()
   }
   const result =
