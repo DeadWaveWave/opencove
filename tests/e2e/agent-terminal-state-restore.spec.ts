@@ -6,14 +6,17 @@ import type {} from '../../src/contexts/workspace/presentation/renderer/componen
 
 async function readState(page: Page, nodeId: string) {
   return page.evaluate(async id => {
-    const api = window.__opencoveTerminalSelectionTestApi!
-    await api.flushOutput(id)
+    const api = window.__opencoveTerminalSelectionTestApi
+    await api?.flushOutput(id)
     return {
-      modes: api.getEmulationState(id),
-      lines: api.getBufferText(id, 'STATE_HISTORY_01')?.viewportLines ?? [],
-      instanceId: api.getRenderMetrics(id)?.instanceId,
-      writes: api.getOutputWrites(id),
-      sessionId: api.getRuntimeSessionId(id),
+      ariaBusy: document
+        .querySelector(`.react-flow__node[data-id="${id}"] .terminal-node__terminal`)
+        ?.getAttribute('aria-busy'),
+      modes: api?.getEmulationState(id),
+      lines: api?.getBufferText(id, 'STATE_HISTORY_01')?.viewportLines ?? [],
+      instanceId: api?.getRenderMetrics(id)?.instanceId,
+      writes: api?.getOutputWrites(id) ?? [],
+      sessionId: api?.getRuntimeSessionId(id) ?? null,
     }
   }, nodeId)
 }
@@ -30,6 +33,8 @@ test.describe('Agent terminal state restore', () => {
         },
       })
       let sessionId: string | null = null
+      let nodeId: string | null = null
+      let before: Awaited<ReturnType<typeof readState>> | null = null
       try {
         await clearAndSeedWorkspace(page, [], { settings: { defaultProvider: 'codex' } })
         const originalProject = await page
@@ -61,7 +66,7 @@ test.describe('Agent terminal state restore', () => {
             ),
           )
           .not.toBeNull()
-        const nodeId = await page.evaluate(
+        nodeId = await page.evaluate(
           () => window.__opencoveTerminalSelectionTestApi!.getRegisteredNodeIds()[0]!,
         )
         sessionId = await page.evaluate(
@@ -74,7 +79,7 @@ test.describe('Agent terminal state restore', () => {
         await expect(
           page.locator(`.react-flow__node[data-id="${nodeId}"] .terminal-node__terminal`),
         ).toHaveAttribute('aria-busy', 'false')
-        const before = await readState(page, nodeId!)
+        before = await readState(page, nodeId!)
         sessionId = before.sessionId
         expect(before.modes).toMatchObject({
           bufferKind: 'alternate',
@@ -116,25 +121,23 @@ test.describe('Agent terminal state restore', () => {
           await page.getByTestId(originalProject!).click()
         }
         await expect(page.locator('.terminal-node')).toHaveCount(1)
-        await expect
-          .poll(
-            () =>
-              electronApp.evaluate(
-                ({ ipcMain }) =>
-                  (ipcMain as typeof ipcMain & { stateRestoreDeliveredSnapshots: number })
-                    .stateRestoreDeliveredSnapshots,
-              ),
-            { timeout: 30_000 },
-          )
-          .toBeGreaterThanOrEqual(2)
+        // A live reattach can reuse its baseline when the initial geometry
+        // attempt is superseded. Snapshot count is not a hydration readiness signal.
         await expect(
           page.locator(`.react-flow__node[data-id="${nodeId}"] .terminal-node__terminal`),
         ).toHaveAttribute('aria-busy', 'false', { timeout: 30_000 })
+        const deliveredSnapshots = await electronApp.evaluate(
+          ({ ipcMain }) =>
+            (ipcMain as typeof ipcMain & { stateRestoreDeliveredSnapshots: number })
+              .stateRestoreDeliveredSnapshots,
+        )
         const after = await readState(page, nodeId!)
         await testInfo.attach('restored-terminal-state', {
-          body: Buffer.from(JSON.stringify({ before, after })),
+          body: Buffer.from(JSON.stringify({ before, after, deliveredSnapshots })),
           contentType: 'application/json',
         })
+        // Keep proving that restoration crossed the delayed snapshot boundary.
+        expect(deliveredSnapshots).toBeGreaterThanOrEqual(1)
         expect(after.modes).toEqual(before.modes)
         expect(after.sessionId).toBe(before.sessionId)
         if (path === 'workspace switch') {
@@ -167,6 +170,20 @@ test.describe('Agent terminal state restore', () => {
           body: Buffer.from(JSON.stringify({ before, after, final })),
           contentType: 'application/json',
         })
+      } catch (error) {
+        if (nodeId && !page.isClosed()) {
+          const restored = await readState(page, nodeId).catch(readError => String(readError))
+          const delivered = await electronApp.evaluate(
+            ({ ipcMain }) =>
+              (ipcMain as typeof ipcMain & { stateRestoreDeliveredSnapshots: number })
+                .stateRestoreDeliveredSnapshots,
+          )
+          await testInfo.attach('restore-failure-state', {
+            body: Buffer.from(JSON.stringify({ before, restored, delivered })),
+            contentType: 'application/json',
+          })
+        }
+        throw error
       } finally {
         if (sessionId && !page.isClosed()) {
           await page
