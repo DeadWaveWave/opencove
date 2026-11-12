@@ -29,6 +29,7 @@ function commanderDispatch(args: readonly string[]) {
   const parser = new Command()
     .name('fixture')
     .argument('[prompt]')
+    .option('--permission-mode <mode>')
     .option('--session-id <id>')
     .exitOverride()
     .action(prompt => {
