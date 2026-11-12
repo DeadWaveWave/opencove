@@ -117,6 +117,7 @@ it.each(['agent', 'terminal'])(
 
 it.each([
   ['agent', '--prompt', 'unexpected'],
+  ['agent', '--full-access', 'true'],
   ['terminal', '--command', 'pwd'],
   ['agent', '--title', '   '],
 ])(
@@ -144,4 +145,41 @@ it('keeps a literal provider-prefixed name when renaming through the CLI', async
     ]),
   ).toBe(true)
   expect(requests[0]).toMatchObject({ id: 'node.update', payload: { title: 'codex · Lead' } })
+})
+
+it.each([true, false, undefined])('maps agent Full Access=%s only when explicit', async value => {
+  const requests = stubInvokeRequests()
+  expect(
+    await invokeNodeArgs([
+      'node',
+      'create',
+      'agent',
+      '--space',
+      'space-1',
+      ...(value === undefined ? [] : ['--full-access', String(value)]),
+    ]),
+  ).toBe(true)
+  const data = requests.find(request => request.id === 'node.create')?.payload.data
+  if (value === undefined) {
+    expect(data).not.toHaveProperty('agentFullAccess')
+  } else {
+    expect(data).toMatchObject({ agentFullAccess: value })
+  }
+})
+it.each(['yes', '1', 'TRUE', 'null'])('rejects --full-access %s as a usage error', async value => {
+  const requests = stubInvokeRequests()
+  const code = await run(
+    ['node', 'create', 'agent', '--space', 'space-1', '--full-access', value],
+    {
+      stdout: { write() {} },
+      stderr: { write() {} },
+      env: {},
+      fetch,
+      now: Date.now,
+      readTextFile: async () => '',
+      readStdinText: async () => '',
+    },
+  )
+  expect(code).toBe(2)
+  expect(requests).toHaveLength(0)
 })

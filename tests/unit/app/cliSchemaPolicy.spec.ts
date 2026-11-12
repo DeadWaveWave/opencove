@@ -15,7 +15,6 @@ it.each(['allowed', 'denied', 'constrained'])(
         ? {
             rejectedFields: {
               env: 'Saved environment applies',
-              agentFullAccess: 'User permission policy applies',
               executablePathOverride: 'Saved executable applies',
             },
           }

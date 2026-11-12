@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
+import { normalizePersistedAgent } from '../../../src/app/main/controlSurface/handlers/sessionPrepareOrReviveShared'
 import { prepareAgentNode } from '../../../src/app/main/controlSurface/handlers/sessionPrepareOrRevivePreparation'
 import type { ControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
@@ -359,4 +360,80 @@ describe('session prepare/revive agent runtime metadata', () => {
     expect(prepared.agent?.executionDirectory).toBe('C:\\repo\\worktrees\\feature-a')
     expect(prepared.agent?.expectedDirectory).toBe('C:\\repo\\worktrees\\feature-a')
   })
+  it.each([
+    { persisted: false, global: true, expected: false, mounted: false },
+    { persisted: true, global: false, expected: true, mounted: true },
+    { persisted: undefined, global: false, expected: false, mounted: false },
+    { persisted: undefined, global: true, expected: true, mounted: true },
+  ])(
+    'revives claude with persisted=$persisted and global=$global as agentFullAccess=$expected',
+    async ({ persisted, global, expected, mounted }) => {
+      const launchPayloads: unknown[] = []
+      const controlSurface: ControlSurface = {
+        invoke: vi.fn(async (_ctx, request) => {
+          if (request.id === 'mount.list') {
+            return { ok: true, value: mounted ? createMountListValue() : { mounts: [] } }
+          }
+          expect(request.id).toBe(mounted ? 'session.launchAgentInMount' : 'session.launchAgent')
+          launchPayloads.push(request.payload)
+          return {
+            ok: true,
+            value: {
+              sessionId: 'mounted-session-1',
+              provider: 'claude-code' as const,
+              startedAt: '2026-05-01T00:00:00.000Z',
+              executionContext: {
+                projectId: 'workspace-1',
+                spaceId: 'space-1',
+                mountId: 'mount-1',
+                targetId: 'target-1',
+                endpoint: { endpointId: 'local', kind: 'local' as const },
+                target: {
+                  scheme: 'file' as const,
+                  rootPath: 'C:\\repo',
+                  rootUri: 'file:///C:/repo',
+                },
+                scope: { rootPath: 'C:\\repo', rootUri: 'file:///C:/repo' },
+                workingDirectory: 'C:\\repo',
+              },
+              profileId: null,
+              runtimeKind: 'windows' as const,
+              resumeSessionId: 'resume-1',
+              effectiveModel: 'sonnet',
+              command: 'cmd.exe',
+              args: ['/d', '/c', 'claude.cmd', '--resume', 'resume-1'],
+            },
+          }
+        }),
+      } as ControlSurface
+      const space: NormalizedPersistedSpace = {
+        id: 'space-1',
+        name: 'Main',
+        directoryPath: 'C:\\repo',
+        targetMountId: 'mount-1',
+        labelColor: null,
+        nodeIds: ['agent-1'],
+        rect: null,
+      }
+
+      await prepareAgentNode({
+        controlSurface,
+        ctx,
+        store: { readNodeScrollback: vi.fn(async () => null) } as never,
+        workspace: createWorkspace(space),
+        node: createAgentNode({ status: 'exited', exitCode: 0 }),
+        space,
+        agent: normalizePersistedAgent({
+          ...createAgentRecord(),
+          provider: 'claude-code',
+          effectiveModel: 'sonnet',
+          ...(persisted === undefined ? {} : { agentFullAccess: persisted }),
+        })!,
+        settings: { ...DEFAULT_AGENT_SETTINGS, agentFullAccess: global },
+      })
+
+      expect(launchPayloads).toHaveLength(1)
+      expect(launchPayloads[0]).toMatchObject({ agentFullAccess: expected })
+    },
+  )
 })
