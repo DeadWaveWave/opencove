@@ -150,6 +150,7 @@
       "allowedEdges": [
         {
           "fromPatterns": ["src/app/renderer/shell/hooks/useWorkspaceMountRepair.ts"],
+          "reason": "Renderer composition hook that injects the workspace mount-repair application owner; the owner stays the single writer and the hook only wires it.",
           "toLayers": ["application"],
           "toPatterns": [
             "src/contexts/workspace/application/mountRepair/WorkspaceMountRepairOwner.ts"
@@ -157,6 +158,7 @@
         },
         {
           "fromPatterns": ["src/app/worker/workerWebAccessRuntime.ts"],
+          "reason": "Worker composition root: wires the settings worker-web-access owner and its types into the headless runtime. The owner holds the state; the worker only hosts it.",
           "toLayers": ["application", "domain"],
           "toPatterns": [
             "src/contexts/settings/application/workerWebAccess/workerWebAccessOwner.ts",
@@ -166,6 +168,7 @@
         },
         {
           "fromPatterns": ["src/app/worker/workerConfigurationOwner.ts"],
+          "reason": "Worker composition root: binds the home-worker configuration owner to its file-backed infrastructure (config file and web UI password).",
           "toLayers": ["application", "infrastructure"],
           "toPatterns": [
             "src/contexts/settings/application/homeWorkerConfigurationOwner.ts",
@@ -175,16 +178,19 @@
         },
         {
           "fromPatterns": ["src/app/worker/workerConfigurationHandlers.ts"],
+          "reason": "Worker control-surface handlers that apply the home-worker configuration policy owned by the settings application layer.",
           "toLayers": ["application"],
           "toPatterns": ["src/contexts/settings/application/homeWorkerConfigurationPolicy.ts"]
         },
         {
           "fromPatterns": ["src/app/worker/desktopManagedControlSurface.ts"],
+          "reason": "Desktop-managed worker must read the home-worker config file directly to find the running worker; no application port exists for this bootstrap read.",
           "toLayers": ["infrastructure"],
           "toPatterns": ["src/contexts/settings/infrastructure/homeWorker/homeWorkerConfig.ts"]
         },
         {
           "fromPatterns": ["src/app/worker/headlessPtyRuntime.ts"],
+          "reason": "Headless worker hosts the terminal PTY runtime outside Electron main, so it wires the session state watcher, crash host, engine port and profile resolver directly.",
           "toLayers": ["presentation-main", "application", "platform"],
           "toPatterns": [
             "src/contexts/terminal/presentation/main-ipc/sessionStateWatcher.ts",
@@ -195,6 +201,7 @@
         },
         {
           "fromPatterns": ["src/app/worker/index.ts"],
+          "reason": "Worker entry point and composition root: wires settings, workspace approval, agent provider and CLI environment infrastructure at startup.",
           "toLayers": ["application", "infrastructure", "platform"],
           "toPatterns": [
             "src/contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore.ts",
