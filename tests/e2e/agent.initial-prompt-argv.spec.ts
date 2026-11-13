@@ -50,9 +50,10 @@ test('CLI grants refuse composer controls without effects and pass real launch a
         'PROMPT_REFUSED',
       )
       expect(status.replaceAll('\n', '')).toMatch(/\bexit=(2|4)\b/)
-      const output = decodeRedirected(await readFile(join(f.workspace, 'refusal.out')))
-      expect(output).toContain(message)
-      expect(output).toContain(hint)
+      // Windows PowerShell wraps a native command's redirected stderr to the console width.
+      const output = collapse(decodeRedirected(await readFile(join(f.workspace, 'refusal.out'))))
+      expect(output).toContain(collapse(message))
+      expect(output).toContain(collapse(hint))
       expect(await canvasRuntimeFootprint(f.window, projectId)).toEqual(before)
       expect(await f.records()).toEqual([])
     }
@@ -238,4 +239,8 @@ function decodeRedirected(bytes: Buffer): string {
   return bytes[0] === 0xff && bytes[1] === 0xfe
     ? bytes.subarray(2).toString('utf16le')
     : bytes.toString('utf8')
+}
+
+function collapse(text: string): string {
+  return text.replace(/\s+/g, ' ')
 }
