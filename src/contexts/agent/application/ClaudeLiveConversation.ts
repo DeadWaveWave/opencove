@@ -197,7 +197,6 @@ export class ClaudeLiveConversation {
       return
     }
     if (this.pending.length === 64) {
-      this.journal.limit()
       this.reject(ports)
       request.publish(this.generation, 'ignore')
       return
@@ -236,9 +235,6 @@ export class ClaudeLiveConversation {
         ? undefined
         : { generation: this.windowGeneration, providerSessionId: this.windowProvider },
     )
-    if (result === 'overflow') {
-      this.journal.limit()
-    }
     return result !== 'unmatched'
   }
   private drain(): void {

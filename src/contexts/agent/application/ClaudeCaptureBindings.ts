@@ -11,8 +11,16 @@ export class ClaudeCaptureBindings {
   private current = new Map<string, ClaudeCaptureBinding>()
   private all = new Set<ClaudeCaptureBinding>()
   private sequence = 0
-  limited = false
+  private disposed = false
   capture(id?: string, at?: number): ClaudeCaptureBinding {
+    if (this.disposed)
+      return {
+        serial: ++this.sequence,
+        invocation: this.invocation,
+        id,
+        startAt: at,
+        retired: true,
+      }
     const known = this.current.get(id || '')
     if (at !== undefined && known?.startAt !== at) {
       return {
@@ -40,7 +48,6 @@ export class ClaudeCaptureBindings {
           this.current.delete(old[0])
           this.all.delete(old[1])
         } else {
-          this.limited = true
           this.current.delete(key)
           this.all.delete(binding)
         }
@@ -48,8 +55,9 @@ export class ClaudeCaptureBindings {
     }
     return binding
   }
-  start(id: string, at: number): void {
-    for (const binding of this.all) {
+  start(id: string, at: number, observed: ClaudeCaptureBinding[] = []): void {
+    const held = new Set([...this.all, ...observed])
+    for (const binding of held) {
       if (binding.startAt !== undefined && binding.startAt < at) {
         binding.retired = true
       }
@@ -68,18 +76,25 @@ export class ClaudeCaptureBindings {
     }
     const next = binding ?? this.capture(id)
     next.startAt = at
-    next.retired = [...this.all].some(b => b.startAt !== undefined && b.startAt > at)
+    next.retired = [...held].some(b => b.startAt !== undefined && b.startAt > at)
+    for (const pending of observed) {
+      if (pending.id === id && pending.startAt === undefined) {
+        pending.startAt = at
+        pending.retired = next.retired
+      }
+    }
   }
-  end(id: string, at: number): void {
-    const binding = this.current.get(id)
-    if (binding && binding.startAt !== undefined && binding.startAt <= at) {
-      binding.retired = true
+  end(id: string, at: number, observed: ClaudeCaptureBinding[] = []): void {
+    for (const binding of new Set([...this.all, ...observed])) {
+      if (binding.id === id && binding.startAt !== undefined && binding.startAt <= at)
+        binding.retired = true
     }
   }
   owns(binding: ClaudeCaptureBinding): boolean {
-    return binding.invocation === this.invocation
+    return !this.disposed && binding.invocation === this.invocation
   }
   dispose(): void {
+    this.disposed = true
     for (const binding of this.all) {
       binding.retired = true
     }

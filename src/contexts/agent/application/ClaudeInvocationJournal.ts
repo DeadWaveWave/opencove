@@ -1,3 +1,5 @@
+import { ClaudeJournalProof } from './ClaudeJournalProof'
+import { ClaudeJournalLoss } from './ClaudeJournalLoss'
 import type { AgentRunTurnEnd } from '../domain/agentRunState'
 import type {
   ClaudeConversationEvent,
@@ -35,7 +37,8 @@ export class ClaudeInvocationJournal {
   private facts: JournalFact[] = []
   private requests: Request[] = []
   readonly bindings = new ClaudeCaptureBindings()
-  private overflow = false
+  private readonly loss = new ClaudeJournalLoss()
+  private lastFinish?: JournalFact
   private disposed = false
   private sequence = 0
   private enabledAt?: number
@@ -118,20 +121,21 @@ export class ClaudeInvocationJournal {
       return false
     }
     if (kind === 'start') {
-      this.bindings.start(id, at!)
+      this.bindings.start(id, at!, this.captures())
       for (const end of this.facts.filter(f => f.kind === 'end' && f.id === id)) {
-        this.bindings.end(id, end.at)
+        this.bindings.end(id, end.at, this.captures())
       }
     }
     if (kind === 'end') {
-      this.bindings.end(id, at!)
+      this.bindings.end(id, at!, this.captures())
     }
     if (request && !this.enabled) {
+      this.compactRequests()
       if (this.requests.length === 64) {
-        this.requests.shift()
-        this.overflow = true
+        this.loss.lose(this.requestFact(request), new ClaudeJournalProof(this.facts))
+      } else {
+        this.requests.push(request)
       }
-      this.requests.push(request)
     }
     return true
   }
@@ -203,7 +207,7 @@ export class ClaudeInvocationJournal {
     if (!id) {
       return
     }
-    const finish = this.facts.findLast(
+    const finish = [...this.facts, ...(this.lastFinish ? [this.lastFinish] : [])].findLast(
       f =>
         f.kind === 'finish' &&
         f.id === id &&
@@ -211,12 +215,16 @@ export class ClaudeInvocationJournal {
         (emittedAt === undefined || f.at === emittedAt),
     )
     if (finish) {
-      this.push({
+      const complete: JournalFact = {
         ...finish,
         receipt: receipt ?? undefined,
         kind: 'complete',
         key: `complete:${finish.key}`,
-      })
+      }
+      this.loss.resolve(complete, new ClaudeJournalProof([...this.facts, complete]))
+      this.push(complete)
+      this.compactRequests()
+      this.compactCompleted()
     }
   }
   accepts(id: string | undefined, capture?: object): boolean {
@@ -250,64 +258,51 @@ export class ClaudeInvocationJournal {
       binding.startAt === current.at
     )
   }
-  private current(): JournalFact | undefined {
-    return this.facts
-      .filter(f => f.kind === 'start')
-      .sort((a, b) => a.at - b.at)
-      .at(-1)
+  private compactCompleted(): void {
+    const proof = new ClaudeJournalProof(this.facts)
+    this.facts = this.facts.filter(f => {
+      if (['start', 'end'].includes(f.kind)) return true
+      if (proof.retired(f) || proof.resolved(f)) return false
+      return f.kind !== 'complete' || !proof.completion.some(stop => stop !== f && stop.at > f.at)
+    })
   }
-  private epoch(fact: JournalFact): JournalFact | undefined {
-    if (fact.capture?.startAt !== undefined) {
-      return this.facts.find(
-        f => f.kind === 'start' && f.id === fact.id && f.at === fact.capture!.startAt,
-      )
-    }
-    return this.facts
-      .filter(f => f.kind === 'start' && f.id === fact.id && f.at <= fact.at)
-      .sort((a, b) => a.at - b.at)
-      .at(-1)
+  private captures(): ClaudeCaptureBinding[] {
+    return this.facts.flatMap(f => (f.capture ? [f.capture] : []))
+  }
+  private current(): JournalFact | undefined {
+    return new ClaudeJournalProof(this.facts).current
   }
   private ended(start: JournalFact): boolean {
     return this.facts.some(f => f.kind === 'end' && f.id === start.id && f.at >= start.at)
   }
+  private requestFact(request: Request): JournalFact {
+    const e = request.event
+    return {
+      kind:
+        e.hookEventName === 'SessionStart'
+          ? 'start'
+          : e.hookEventName === 'SessionEnd'
+            ? 'end'
+            : ['Stop', 'StopFailure'].includes(e.hookEventName)
+              ? 'finish'
+              : 'activity',
+      id: e.claudeSessionId,
+      at: e.emittedAtMs!,
+      received: 0,
+      key: '',
+      promptId: e.promptId,
+    }
+  }
+  private compactRequests(): void {
+    const proof = new ClaudeJournalProof(this.facts)
+    this.requests = this.requests.filter(r => {
+      const f = this.requestFact(r)
+      return !proof.retired(f) && !proof.resolved(f)
+    })
+  }
   view(now = this.now()) {
-    const start = this.current()
-    const ended = !!start && this.ended(start)
-    const retired = (f: JournalFact) =>
-      !!f.capture?.retired ||
-      (!f.io && !f.input && f.kind !== 'start' && f.at < (start?.at ?? -Infinity)) ||
-      (this.epoch(f) !== undefined && this.epoch(f) !== start) ||
-      (this.epoch(f) === start && ended)
-    const relevant = this.facts.filter(f => !retired(f))
-    const completion = relevant.filter(f => f.kind === 'complete' && this.epoch(f) === start)
-    const unresolved = relevant.filter(
-      f =>
-        (f.kind === 'end' && !this.epoch(f) && f.at > (start?.at ?? -Infinity)) ||
-        (['activity', 'finish'].includes(f.kind) &&
-          !completion.some(
-            stop =>
-              this.epoch(f) === start &&
-              stop.id === f.id &&
-              (f.kind === 'finish'
-                ? stop.at >= f.at
-                : f.io
-                  ? f.input
-                    ? f.promptId
-                      ? stop.promptId === f.promptId
-                      : stop.order! >= f.order!
-                    : stop.at >= f.at
-                  : stop.at >= f.at),
-          )),
-    )
-    const ordered = this.facts.filter(
-      f =>
-        !f.io &&
-        !f.input &&
-        f.kind !== 'complete' &&
-        f.at >= (start?.at ?? Infinity) &&
-        !completion.some(stop => f.kind !== 'start' && stop.id === f.id && stop.at > f.at),
-    )
-    const ambiguous = ordered.some((f, i) => ordered.slice(i + 1).some(other => other.at === f.at))
+    const proof = new ClaudeJournalProof(this.facts)
+    const { current: start, ended, relevant, completion, unresolved, ambiguous } = proof
     const ordinary = !!start && !start.clear
     const reused =
       !!start && this.facts.some(f => f.kind === 'start' && f.id === start.id && f.at < start.at)
@@ -316,13 +311,14 @@ export class ClaudeInvocationJournal {
       ? Math.min(
           Math.max(
             start.received,
-            ...relevant.filter(f => this.epoch(f) === start).map(f => f.received),
+            ...relevant.filter(f => proof.epoch(f) === start).map(f => f.received),
           ) + CLAUDE_CLEAR_QUIET_MS,
           Math.max(first, start.received) + CLAUDE_CLEAR_MAX_MS,
         )
       : Infinity
     const quiet = completion.length > 0 || now >= quietAt
     const blocked =
+      this.loss.blocked ||
       ambiguous ||
       (reused && !completion.length) ||
       unresolved.some(f => {
@@ -334,9 +330,9 @@ export class ClaudeInvocationJournal {
               h.hookName === 'UserPromptSubmit' &&
               h.promptId === f.promptId &&
               h.id === f.id &&
-              this.epoch(h) === start,
+              proof.epoch(h) === start,
           )
-        return !corroborated && (f.input || f.io || f.capture || this.epoch(f) !== start)
+        return !corroborated && (f.input || f.io || f.capture || proof.epoch(f) !== start)
       }) ||
       !start ||
       ended
@@ -345,23 +341,22 @@ export class ClaudeInvocationJournal {
       !this.disposed &&
       !!start &&
       !ended &&
-      !this.overflow &&
+      !this.loss.blocked &&
       !ambiguous &&
-      !this.bindings.limited &&
       !unresolved.length &&
       (!(ordinary || reused) || completion.length > 0) &&
       quiet
     return {
       ready,
       blocked,
-      unresolved: unresolved.length > 0,
+      unresolved: this.loss.blocked || unresolved.length > 0,
       id: start?.id,
       startAt: start?.at,
       clear: !!start?.clear,
       quietAt,
       ended,
       clearEnded:
-        ended && this.facts.some(f => f.kind === 'end' && f.clear && this.epoch(f) === start),
+        ended && this.facts.some(f => f.kind === 'end' && f.clear && proof.epoch(f) === start),
       completed: completion.length > 0,
       receipt: completion.at(-1)?.receipt,
     }
@@ -370,26 +365,26 @@ export class ClaudeInvocationJournal {
     if (this.facts.some(f => f.key === fact.key)) {
       return false
     }
-    if (this.facts.length === 128) {
-      const current = this.current()
-      const retired = this.facts.findIndex(f => f.kind !== 'start' && this.epoch(f) !== current)
-      if (retired >= 0) {
-        this.facts.splice(retired, 1)
-      } else {
-        this.facts.shift()
-        this.overflow = true
-      }
-    }
     fact.order ??= ++this.sequence
+    if (fact.kind === 'finish') this.lastFinish = fact
+    if (this.facts.length === 128) {
+      const proof = new ClaudeJournalProof([...this.facts, fact])
+      const disposable = proof.evictionIndex(this.facts)
+      if (disposable < 0) {
+        if (fact.kind !== 'complete' && !proof.retired(fact) && !proof.resolved(fact))
+          this.loss.lose(fact, proof)
+        return false
+      }
+      this.facts.splice(disposable, 1)
+    }
     this.facts.push(fact)
     return true
-  }
-  limit(): void {
-    this.overflow = true
   }
   dispose(): void {
     this.disposed = true
     this.bindings.dispose()
+    this.loss.dispose()
+    this.lastFinish = undefined
     this.requests = []
     this.facts = []
   }

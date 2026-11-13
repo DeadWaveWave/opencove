@@ -75,3 +75,30 @@ it('retains a valid current callback independently of capture clock skew', () =>
   )
   expect(m.verdict().receipt).toBe(false)
 })
+it.each([
+  ['B', 'C'],
+  ['C', 'B'],
+])('keeps tied namespaces ambiguous in order %s then %s', (first, second) => {
+  const model = new ClearReference()
+  for (const [epoch, id] of [
+    [1, first],
+    [2, second],
+  ] as const)
+    model.consume({ epoch, id, kind: 'hook', name: 'SessionStart', at: 110 })
+  model.advance(201)
+  expect(model.verdict()).toMatchObject({
+    receipt: false,
+    due: false,
+    ambiguous: true,
+    latestAuthenticated: undefined,
+  })
+  expect(model.retired.has(first)).toBe(false)
+  model.consume({ epoch: 3, id: 'D', kind: 'hook', name: 'SessionStart', at: 310 })
+  model.advance(201)
+  expect(model.verdict()).toMatchObject({
+    receipt: true,
+    due: true,
+    latestAuthenticated: 'D',
+    ambiguous: false,
+  })
+})

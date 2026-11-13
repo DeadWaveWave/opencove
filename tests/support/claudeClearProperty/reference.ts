@@ -59,7 +59,7 @@ export class ClearReference {
       return false
     }
     const start = this.starts.find(s => s.id === source.target && s.at === source.start)
-    return !!start && (start !== this.current() || this.ended(start))
+    return !!start && (start.at < this.current().at || this.ended(start))
   }
   consume(event: ClearEvent, capture?: CallbackCapture): void {
     if (event.kind === 'tick') {
@@ -138,7 +138,7 @@ export class ClearReference {
     }
     const latest = this.current()
     for (const s of this.starts) {
-      if (s !== latest && s.id !== latest.id) {
+      if (s.at < latest.at && s.id !== latest.id) {
         this.retired.add(s.id)
       }
     }
@@ -207,28 +207,27 @@ export class ClearReference {
     const hooks = active.filter(f => f.kind === 'hook' && current(f)).sort((a, b) => a.at - b.at)
     const submits = hooks.filter(f => f.name === 'UserPromptSubmit'),
       lastSubmit = submits.at(-1)
+    const lastSubmitCompleted =
+      !!lastSubmit &&
+      hooks.some(h => h.name === 'Stop' && h.epoch === lastSubmit.epoch && h.at > lastSubmit.at)
     const stops = hooks.filter(
       f =>
-        f.name === 'Stop' &&
-        (!lastSubmit ||
-          f.epoch === lastSubmit.epoch ||
-          hooks.some(
-            h => h.name === 'Stop' && h.epoch === lastSubmit.epoch && h.at > lastSubmit.at,
-          )),
+        f.name === 'Stop' && (!lastSubmit || f.epoch === lastSubmit.epoch || lastSubmitCompleted),
     )
+    const lastStopAt = Math.max(-Infinity, ...stops.map(s => s.at))
+    const lastStopOrder = Math.max(-Infinity, ...stops.map(s => s.order))
+    const stopEpochs = new Set(stops.map(s => s.epoch))
     const unresolved = active.filter(f => {
       if (f.kind === 'hook' && ['SessionStart', 'SessionEnd'].includes(f.name!)) {
         return f.name === 'SessionEnd' && !epoch(f) && f.at > start.at
       }
-      return !stops.some(
-        stop =>
-          current(f) &&
-          stop.id === f.id &&
-          (f.kind === 'user'
-            ? stop.epoch === f.epoch
-            : f.afterCommit && f.order > start.order
-              ? stop.order >= f.order
-              : stop.at >= f.at),
+      return !(
+        current(f) &&
+        (f.kind === 'user'
+          ? stopEpochs.has(f.epoch)
+          : f.afterCommit && f.order > start.order
+            ? lastStopOrder >= f.order
+            : lastStopAt >= f.at)
       )
     })
     const completed =
@@ -244,23 +243,27 @@ export class ClearReference {
       completed || stops.length > 0 || this.settled.has(start.at) || this.now - relevant >= 200
     const clear = start.epoch > 0
     const reused = this.starts.some(s => s.id === start.id && s.at < start.at)
+    const ambiguous = this.starts.filter(s => s.at === start.at).length > 1
     const receipt = this.clearSeen
-      ? !ended &&
+      ? !ambiguous &&
+        !ended &&
         !unresolved.length &&
         (clear || stops.length > 0) &&
         (!reused || stops.length > 0) &&
         quiet
       : this.legacyReceipt
     return {
-      id: this.clearSeen ? start.id : this.legacyActor,
+      id: this.clearSeen ? (ambiguous ? undefined : start.id) : this.legacyActor,
       epoch: start.epoch,
       receipt,
-      clearAllowed: clear && !ended && !unresolved.length && (!reused || stops.length > 0),
+      clearAllowed:
+        !ambiguous && clear && !ended && !unresolved.length && (!reused || stops.length > 0),
       completed,
       due: this.clearSeen && receipt && quiet,
       unresolved: unresolved.length > 0,
       retired: [...this.retired],
-      latestAuthenticated: start.id,
+      latestAuthenticated: ambiguous ? undefined : start.id,
+      ambiguous,
     }
   }
 }
