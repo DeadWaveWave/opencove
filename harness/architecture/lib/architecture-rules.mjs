@@ -267,8 +267,21 @@ function findTextViolations(sourceByFile, relativeByAbsolute, config) {
   return violations
 }
 
+function assertAllowedEdgeReasons(config) {
+  const edges = config.checks?.layerDependencies?.allowedEdges ?? []
+  edges.forEach((edge, index) => {
+    if (typeof edge.reason !== 'string' || edge.reason.trim() === '') {
+      throw new Error(
+        `checks.layerDependencies.allowedEdges[${index}] (${(edge.fromPatterns ?? []).join(', ')}) must have a non-empty "reason".`,
+      )
+    }
+  })
+}
+
 export async function loadArchitectureConfig(configPath = defaultArchitectureRulesPath) {
-  return JSON.parse(await readFile(configPath, 'utf8'))
+  const config = JSON.parse(await readFile(configPath, 'utf8'))
+  assertAllowedEdgeReasons(config)
+  return config
 }
 
 export async function runArchitectureAudit(options = {}) {

@@ -84,6 +84,8 @@ domain <- application <- presentation
 - `shared` contract/runtime 不能依赖任何 context，包括 type-only import；共享结构必须由内层 contract 自身定义。
 - 一个 context 不能直接依赖另一个 context 的 `infrastructure` 或 `presentation`。
 
+这些规则的可执行形式在 `harness/architecture/rules.json`，由 `pnpm arch:check` 在 `verify:quick` 和 CI 中强制执行。
+
 ## 6. 进程边界规则
 
 `app/managedRuntime` 是按需启动的托管 runtime controller 组合根，只能依赖 application、
@@ -117,6 +119,8 @@ journal、快照和进程调用属于 infrastructure。CLI 只路由请求，不
 - `main` 只承担 **supervisor**：启动/退出、重启退避、health 状态汇总、统一日志、统一降级策略。
 - renderer **禁止**直连 host process；所有跨进程通信必须经 `main-ipc` 校验与映射。
 - host process 必须有可序列化、可版本化的协议（request/response + event stream），并定义“不可用/断连”的一等语义，确保 UI 可解释降级而不是白屏。
+
+进程边界规则的可执行形式在 `harness/architecture/rules.json`，由 `pnpm arch:check` 在 `verify:quick` 和 CI 中强制执行。
 
 ## 7. 恢复与持久化规则
 

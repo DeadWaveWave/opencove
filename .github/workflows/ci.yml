@@ -46,6 +46,9 @@ jobs:
       - name: Format check
         run: pnpm format:check
 
+      - name: Architecture harness tests
+        run: pnpm arch:test
+
       - name: Typecheck
         run: pnpm check
 
