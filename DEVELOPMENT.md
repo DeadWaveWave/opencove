@@ -73,6 +73,24 @@
 - 如果只是措辞、错别字或说明性例子，必须在 review/提交说明中声明 `no executable-rule impact`。
 - `pnpm arch:check` 是 `verify:quick` 与 CI 的阻塞门禁：error 级发现必须为 0，warn 级发现按 (规则, 文件) 计数不得偏离 `harness/architecture/ratchet.json`。新增违规需要修改 `harness/architecture/rules.json`：`allowedEdges` 条目必须带 `reason`，修改规则的 severity、`exclude` 或 `allowedPatterns` 同样属于例外，必须在 review 中写明理由。
 
+### 画布状态棘轮 (Canvas State Ratchet)
+
+`pnpm canvas:state-check` 守护 issue #647（把画布状态收敛到单一 owner）的重构：今天 `workspaceCanvas/` 里的 hook 通过 ref 镜像和 setter 参数互相传递状态，且有多处直接写 workspace store。该检查把这些存量按文件计数并冻结，使重构可以分片落地、每一片的改进都被锁住。它属于 `pnpm verify:repo`，因此 `verify:checks` 与 CI 的 `Repository checks` 都会运行。
+
+计数规则（忽略注释与字符串内容，容忍换行与空白差异；不统计 `*.spec.*` / `*.test.*` 测试文件）。前四项只统计 `src/contexts/workspace/presentation/renderer/components/workspaceCanvas/**` 与 `WorkspaceCanvasInner.tsx`，最后一项统计整个 `src/`：
+
+| 计数器 | 统计内容 |
+| --- | --- |
+| `ref-type` | `MutableRefObject<` 与 `RefObject<` |
+| `setter-type` | `Dispatch<SetStateAction`（含 `React.` 前缀） |
+| `ref-write` | 对名为 `ref` 或以 `Ref` 结尾的标识符的 `.current` 赋值（`=`、`||=`、`+=` 等；不含 `==`、`===`） |
+| `legacy-channel` | 整词标识符 `nodesRef`、`spacesRef`、`setNodes`、`onSpacesChange`、`onRequestPersistFlush` |
+| `workspace-writer` | 整词标识符 `setWorkspaces` 与 `useAppStore.setState` |
+
+语义与 `pnpm ui:style-check` 的棘轮相同：任一文件的计数相对 `scripts/canvas-state-ratchet.json` 增加或减少都会失败。基线只用 `pnpm canvas:state-ratchet` 重新生成，不要手改 JSON；该命令固定写入这一个文件，不接受其他路径或配置参数，并且在任一计数器的总数会上升时拒绝写入。
+
+降低计数：删除对应的 ref、setter 参数或 store 写入口（按 #647 的 owner 设计迁移，而不是改写成计数器认不出的形式），运行 `pnpm canvas:state-ratchet`，把更新后的 `scripts/canvas-state-ratchet.json` 与代码改动放进同一个提交。增加计数不被允许：请改用 #647 描述的 owner 与命令。计数器定义见 `scripts/lib/canvas-state-ratchet.mjs`。
+
 ### 高风险问题预防策略（只列最容易漏的）
 
 以下内容是前文原则的落地建模方式；正式检查项统一见后文“风险与合规检查”，这里不重复展开检查清单。
@@ -198,7 +216,7 @@ Ubuntu/macOS 三个分片用 `scripts/plan-e2e-shards.mjs` 按文件内用例的
     -   生成代码（如自动生成的类型定义等）禁止手改。
     -   **调研/验收报告默认不入库**：调研分析报告，以及某次 PR 的 review / acceptance 记录，都只是**本地分析与决策产物**，不是仓库资产。它们是某一时刻的快照，会很快过期，却没有人维护。除非明确要求，否则不要提交；评审结论写在 PR 描述/评论里。`docs/` 只收**本项目自身的**长期文档：架构、不变量、开发流程、案例。若调研中得出的结论具有长期价值（如一条不变量），把**结论**写进对应的项目文档，而不是提交整份报告。
 -   **提交前检查（本地快速门禁，合并前 CI 完整回归）**：
-    -   `pnpm verify:repo` 对整个仓库检查行数、命名（`cove:*` 等前缀）、UI 样式、架构棘轮（`pnpm arch:check`）、死代码（`pnpm deadcode:check`）与兼容路径到期（`pnpm compat:check`）；结果不依赖 staged 内容，CI（`ci-ubuntu` 的 `Repository checks` 步骤）以同样方式运行。行数上限只约束手写代码（`.ts/.tsx/.mjs/.css/.sh` 等），生成文件与 `.md/.json/.jsonl/.yml/.html` 不受限；超限文件只能登记在 `scripts/check-max-lines.mjs` 的 `LINE_LIMIT_EXEMPTIONS` 中，且记录的行数只降不增。命名检查不处理 `cove:m0:` 前缀（由 `pnpm compat:check` 负责，写 `legacy` 不能绕过）；UI 设计系统前缀仍保留 `cove`（见上文命名约定）。
+    -   `pnpm verify:repo` 对整个仓库检查行数、命名（`cove:*` 等前缀）、UI 样式、画布状态棘轮（`pnpm canvas:state-check`）、架构棘轮（`pnpm arch:check`）、死代码（`pnpm deadcode:check`）与兼容路径到期（`pnpm compat:check`）；结果不依赖 staged 内容，CI（`ci-ubuntu` 的 `Repository checks` 步骤）以同样方式运行。行数上限只约束手写代码（`.ts/.tsx/.mjs/.css/.sh` 等），生成文件与 `.md/.json/.jsonl/.yml/.html` 不受限；超限文件只能登记在 `scripts/check-max-lines.mjs` 的 `LINE_LIMIT_EXEMPTIONS` 中，且记录的行数只降不增。命名检查不处理 `cove:m0:` 前缀（由 `pnpm compat:check` 负责，写 `legacy` 不能绕过）；UI 设计系统前缀仍保留 `cove`（见上文命名约定）。
     -   其余 staged 检查（格式、密钥、相关测试）只看 staged 文件；CI 会对整个仓库重跑格式、密钥扫描与全部单测。对 0 个文件运行的 staged 检查实际上没有运行，将其报告为“通过”属于错误陈述；需要强制防空时，使用 `OPENCOVE_REQUIRE_STAGED=1 pnpm pre-commit`（运行前先 `git add -A`，并用 `git diff --cached --name-only` 确认文件列表非空）。
     -   若本次改动包含用户可感知变化（新增功能、UX 改动、修复 bug、默认行为变化），应先提交代码并创建 PR；拿到 PR 链接/编号后，再更新 `CHANGELOG.md` 的 `## [Unreleased]` 并单独提交（每个变化一条，尽量附 `#PR` 编号）。`nightly` tag 不要求更新 changelog；发 `stable` 时再把 `Unreleased` 结算进新版本段。
     -   创建/更新 PR 时：若本次改动包含用户可感知变化，必须跑对应 Playwright E2E，并列明本地验证范围；合并前以最终提交的完整 CI 为准。
