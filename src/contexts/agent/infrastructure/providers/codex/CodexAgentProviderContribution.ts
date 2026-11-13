@@ -1,3 +1,4 @@
+import { AGENT_PROVIDER_DESCRIPTORS } from '../../../../../shared/contracts/agentProviderDescriptors'
 import { managedHookCoverage } from '../shared/ManagedHookCoverage'
 import { connect } from 'node:net'
 import { homedir } from 'node:os'
@@ -44,7 +45,7 @@ export interface CodexAgentProviderContributionOptions {
 export class CodexAgentProviderContribution implements AgentProviderContribution {
   readonly prompting: { supported: true; submitDelayMs: number }
   readonly descriptor = {
-    displayName: 'Codex',
+    displayName: AGENT_PROVIDER_DESCRIPTORS['codex'].label,
     documentationUrl: 'https://developers.openai.com/codex/cli/',
     id: 'codex',
     launch: {
