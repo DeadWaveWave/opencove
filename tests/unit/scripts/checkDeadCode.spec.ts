@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -91,7 +91,24 @@ describe('@internal naming rule', () => {
       },
     ])
 
-    expect(violations).toEqual([{ file: 'src/a.ts', name: 'helper' }])
+    expect(violations).toEqual([{ file: 'src/a.ts', name: 'helper', tag: 'internal' }])
+  })
+
+  it.each(['public', 'beta'])('rejects @%s on any export, even one named ForTests', tag => {
+    const violations = findInternalNamingViolations([
+      {
+        file: 'src/a.ts',
+        text: `/** @${tag} */\nexport function keptAlive() {}\n\n/**\n * Docs.\n * @${tag}\n */\nexport const sharedForTests = 1\n`,
+      },
+    ])
+
+    expect(violations).toEqual([
+      { file: 'src/a.ts', name: 'keptAlive', tag },
+      { file: 'src/a.ts', name: 'sharedForTests', tag },
+    ])
+    expect(
+      formatDeadCodeReport({ findings: [], ratchetIssues: [], internalViolations: violations }),
+    ).toContain(`${tag}: src/a.ts keptAlive`)
   })
 
   it('does not attach an @internal tag to an unrelated later export', () => {
@@ -163,6 +180,46 @@ describe('runDeadCodeCheck', () => {
     expect(status).toBe(1)
     expect(err).toContain('src/a.ts')
     expect(readFileSync(baselinePath(root), 'utf8')).toBe(baseline)
+  })
+
+  it('lists the current unused export names when a count changed', () => {
+    const baseline = JSON.stringify({ exports: { 'src/a.ts': 1 }, types: {} })
+    const root = makeRoot({ 'scripts/dead-code-ratchet.json': baseline })
+    const report = knipReport([
+      { file: 'src/a.ts', exports: [{ name: 'oldOne' }, { name: 'newOne' }] },
+    ])
+
+    const { status, err } = run(root, { report })
+
+    expect(status).toBe(1)
+    expect(err).toContain('Currently unused: oldOne, newOne.')
+  })
+
+  it('refuses to recreate a baseline that exists in git HEAD unless bootstrapping', () => {
+    const root = makeRoot({ 'scripts/.keep': '' })
+    const report = knipReport([{ file: 'src/a.ts', exports: [{ name: 'x' }] }])
+
+    const refused = run(root, { report, updateRatchet: true, baselineInGit: () => true })
+    expect(refused.status).toBe(1)
+    expect(refused.err).toContain('--bootstrap')
+    expect(existsSync(baselinePath(root))).toBe(false)
+
+    const bootstrapped = run(root, {
+      report,
+      updateRatchet: true,
+      bootstrap: true,
+      baselineInGit: () => true,
+    })
+    expect(bootstrapped.status).toBe(0)
+    expect(existsSync(baselinePath(root))).toBe(true)
+  })
+
+  it('writes a first baseline when none was ever committed', () => {
+    const root = makeRoot({ 'scripts/.keep': '' })
+    const report = knipReport([{ file: 'src/a.ts', exports: [{ name: 'x' }] }])
+
+    expect(run(root, { report, updateRatchet: true, baselineInGit: () => false }).status).toBe(0)
+    expect(existsSync(baselinePath(root))).toBe(true)
   })
 
   it('lowers the baseline when counts fall', () => {

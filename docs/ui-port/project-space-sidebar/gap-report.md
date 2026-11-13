@@ -48,7 +48,6 @@
 - `src/app/renderer/shell/components/Sidebar.tsx`
 - `src/app/renderer/shell/components/SidebarToolbar.tsx`
 - `src/app/renderer/shell/components/SidebarRail.tsx`
-- `src/app/renderer/shell/components/SidebarDisclosureIcon.tsx`
 - `src/app/renderer/shell/components/AppHeader.tsx`
 - `src/app/renderer/shell/components/ProjectContextMenu.tsx`
 - `src/app/renderer/shell/AppShell.tsx`

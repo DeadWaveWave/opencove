@@ -26,11 +26,11 @@ const FIX_HINTS = {
 
 const RATCHET_HINT = {
   exports:
-    'No production file imports this export and its own file does not use it, so only tests ' +
-    'keep it alive. Delete it. For a test seam, name it `...ForTests` and tag it `/** @internal */`.',
+    'No production file imports it and its own file does not use it. Delete it. For a test ' +
+    'seam, name it `...ForTests` and tag it `/** @internal */`.',
   types:
-    'No production file imports this type and its own file does not use it. Delete it, or for a ' +
-    'test seam name it `...ForTests` and tag it `/** @internal */`.',
+    'No production file imports it and its own file does not use it. Delete it, or for a test ' +
+    'seam name it `...ForTests` and tag it `/** @internal */`.',
 }
 
 function itemName(item) {
@@ -41,6 +41,7 @@ function itemName(item) {
 export function classifyKnipReport(report) {
   const findings = []
   const counts = Object.fromEntries(RATCHET_RULES.map(rule => [rule, {}]))
+  const names = Object.fromEntries(RATCHET_RULES.map(rule => [rule, {}]))
   for (const row of report?.issues ?? []) {
     for (const [category, value] of Object.entries(row)) {
       if (!Array.isArray(value) || value.length === 0) {
@@ -48,6 +49,7 @@ export function classifyKnipReport(report) {
       }
       if (RATCHET_RULES.includes(category)) {
         counts[category][row.file] = value.length
+        names[category][row.file] = value.map(itemName)
         continue
       }
       for (const item of value) {
@@ -60,7 +62,7 @@ export function classifyKnipReport(report) {
       }
     }
   }
-  return { findings, counts }
+  return { findings, counts, names }
 }
 
 export function describeRatchetChange(rule, now, before) {
@@ -69,25 +71,36 @@ export function describeRatchetChange(rule, now, before) {
     : `${now} unused ${rule} (baseline ${before}); the count went down. Run \`pnpm deadcode:ratchet\` to lock it in.`
 }
 
-export function compareDeadCodeRatchet(counts, baseline) {
+/** `names` (per rule and file, from classifyKnipReport) lists the current unused symbols. */
+export function compareDeadCodeRatchet(counts, baseline, names = {}) {
   return compareRatchet({
     counts,
     baseline,
     rules: RATCHET_RULES,
     describe: describeRatchetChange,
+  }).map(issue => {
+    const current = names[issue.rule]?.[issue.file]
+    return current?.length
+      ? { ...issue, message: `${issue.message} Currently unused: ${current.join(', ')}.` }
+      : issue
   })
 }
 
-const INTERNAL_EXPORT_PATTERN =
-  /\/\*\*(?:(?!\*\/)[\s\S])*@internal(?:(?!\*\/)[\s\S])*\*\/\s*export\s+(?:declare\s+)?(?:default\s+)?(?:async\s+)?(?:abstract\s+)?(?:function\*?|const|let|var|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/g
+const TAGGED_EXPORT_PATTERN =
+  /\/\*\*(?:(?!\*\/)[\s\S])*?@(internal|public|beta)\b(?:(?!\*\/)[\s\S])*\*\/\s*export\s+(?:declare\s+)?(?:default\s+)?(?:async\s+)?(?:abstract\s+)?(?:function\*?|const|let|var|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/g
 
-/** `@internal` hides an export from knip, so only `...ForTests` seams may carry it. */
+/**
+ * knip never reports an export tagged `@internal`, `@public` or `@beta`, so each tag would hide a
+ * dead export. `@internal` is reserved for `...ForTests` seams; `@public` and `@beta` are never
+ * allowed under src/.
+ */
 export function findInternalNamingViolations(sources) {
   const violations = []
   for (const { file, text } of sources) {
-    for (const match of text.matchAll(INTERNAL_EXPORT_PATTERN)) {
-      if (!match[1].endsWith('ForTests')) {
-        violations.push({ file, name: match[1] })
+    for (const match of text.matchAll(TAGGED_EXPORT_PATTERN)) {
+      const [, tag, name] = match
+      if (tag !== 'internal' || !name.endsWith('ForTests')) {
+        violations.push({ file, name, tag })
       }
     }
   }
@@ -102,10 +115,14 @@ export function formatDeadCodeReport({ findings, ratchetIssues, internalViolatio
     lines.push(`  ${finding.hint}`)
   }
   for (const violation of internalViolations) {
-    lines.push(`[${DEAD_CODE_LABEL}] internal: ${violation.file} ${violation.name}`)
+    const tag = violation.tag ?? 'internal'
+    lines.push(`[${DEAD_CODE_LABEL}] ${tag}: ${violation.file} ${violation.name}`)
     lines.push(
-      '  `@internal` hides an export from the dead-code check, so it is reserved for test seams. ' +
-        'Rename it `...ForTests`, or remove the tag and delete the export if nothing ships it.',
+      tag === 'internal'
+        ? '  `@internal` hides an export from the dead-code check, so it is reserved for test seams. ' +
+            'Rename it `...ForTests`, or remove the tag and delete the export if nothing ships it.'
+        : `  \`@${tag}\` hides an export from the dead-code check and is not allowed under src/. ` +
+            'Remove the tag; if nothing imports the export, delete it.',
     )
   }
   return (
@@ -126,8 +143,10 @@ export function serializeDeadCodeRatchet(counts) {
 }
 
 /** Update is refused when any per-file count would rise above the committed baseline. */
-export function raisedCounts(counts, baseline) {
-  return compareDeadCodeRatchet(counts, baseline).filter(issue => issue.current > issue.baseline)
+export function raisedCounts(counts, baseline, names = {}) {
+  return compareDeadCodeRatchet(counts, baseline, names).filter(
+    issue => issue.current > issue.baseline,
+  )
 }
 
 export function formatRaisedCounts(raised) {
@@ -136,4 +155,12 @@ export function formatRaisedCounts(raised) {
     title: 'Unused export and type counts (baseline update refused)',
     footer: 'The baseline can only shrink. Delete the new unused code instead of recording it.',
   })
+}
+
+export function formatMissingBaseline() {
+  return (
+    `[${DEAD_CODE_LABEL}] ${RATCHET_FILE} is missing but exists in git HEAD. Refusing to recreate ` +
+    'it, because that would record every current unused export as the new baseline. Restore it ' +
+    `with \`git checkout -- ${RATCHET_FILE}\`. Only an intentional first run may pass --bootstrap.\n`
+  )
 }
