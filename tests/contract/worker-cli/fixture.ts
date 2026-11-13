@@ -5,7 +5,6 @@ import { expect } from '@playwright/test'
 import type { GetSessionSnapshotResult } from '../../../src/shared/contracts/dto/controlSurface'
 import type { CreateNodeResult } from '../../../src/shared/contracts/dto/nodeControl'
 import {
-  reserveLoopbackPort,
   startRemoteWorker,
   stopRemoteWorker,
 } from '../../e2e/m6.endpoints-mounts.integration.helpers'
@@ -25,14 +24,14 @@ export async function startWorkerFixture(
   const root = await mkdtemp(join(base, 'case-'))
   const workspace = join(root, 'project')
   const profile = join(root, 'profile')
-  const port = await reserveLoopbackPort()
   const token = randomUUID()
   let worker: Awaited<ReturnType<typeof startRemoteWorker>> | undefined
   try {
     await mkdir(workspace)
     worker = await startRemoteWorker({
       hostname: '127.0.0.1',
-      port,
+      // The Worker binds an ephemeral port and publishes it; no reserved port can be taken first.
+      port: 0,
       token,
       userDataDir: profile,
       homeDir: join(root, 'home'),
@@ -54,6 +53,7 @@ export async function startWorkerFixture(
     throw error
   }
   const handle = worker
+  const port = handle.port
   const observedPids = new Set<number>([handle.child.pid!])
   async function recordProcesses() {
     for (const pid of await descendants(handle.child.pid!)) {

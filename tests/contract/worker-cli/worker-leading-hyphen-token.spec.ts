@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
 import {
-  reserveLoopbackPort,
   startRemoteWorker,
   stopRemoteWorker,
   type RemoteWorkerHandle,
@@ -14,20 +13,19 @@ test('Worker authenticates an opaque bearer token that starts with hyphens', asy
   const userDataDir = path.join(root, 'user-data')
   const homeDir = path.join(root, 'home')
   const token = '--opaque-leading-token'
-  const port = await reserveLoopbackPort()
   let worker: RemoteWorkerHandle | null = null
 
   try {
     worker = await startRemoteWorker({
       hostname: '127.0.0.1',
-      port,
+      port: 0,
       token,
       userDataDir,
       homeDir,
       approveRoot: root,
     })
 
-    const response = await fetch(`http://127.0.0.1:${String(port)}/invoke`, {
+    const response = await fetch(`http://127.0.0.1:${String(worker.port)}/invoke`, {
       method: 'POST',
       headers: {
         authorization: `Bearer ${token}`,
