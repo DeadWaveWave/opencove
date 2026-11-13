@@ -1,3 +1,4 @@
+import type { ClaudeConversationEvent } from '../../../shared/runtime/agentHook/claudeConversation'
 import type { JournalFact } from './ClaudeInvocationJournal'
 /** One proof vocabulary for admission and compaction. Missing identity is never retirement. */
 export class ClaudeJournalProof {
@@ -34,6 +35,20 @@ export class ClaudeJournalProof {
             (!eligible || eligible(f, this.current!)),
         )
       : []
+  }
+  rejectsLifecycleReply(event: ClaudeConversationEvent): boolean {
+    if (!['SessionStart', 'SessionEnd'].includes(event.hookEventName)) {
+      return false
+    }
+    const current = this.current
+    return (
+      !current ||
+      this.facts.some(f => f.kind === 'start' && f.at === current.at && f.id !== current.id) ||
+      event.claudeSessionId !== current.id ||
+      (event.hookEventName === 'SessionStart'
+        ? event.emittedAtMs !== current.at
+        : (event.emittedAtMs ?? -Infinity) < current.at)
+    )
   }
   private ends(start: JournalFact): JournalFact[] {
     return (this.endings.get(start.id) ?? []).filter(f => f.at >= start.at)

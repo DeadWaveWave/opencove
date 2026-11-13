@@ -100,7 +100,12 @@ export class ClaudeLiveConversation {
     const request = record.conversation!,
       event = request.event
     this.journal.appendHook(event)
-    request.decide({ action: 'ignore', generation: this.generation, deferred: true })
+    request.decide({
+      action: 'ignore',
+      generation: this.generation,
+      deferred: true,
+      ...(this.journal.rejectsLifecycleReply(event) ? { reply: 'reject' as const } : {}),
+    })
     if (this.disposed) {
       return
     }

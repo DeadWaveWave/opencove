@@ -55,8 +55,14 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
     }
     this.credential = context.credential ?? this
     let decision:
-      | { action: 'start' | 'end' | 'event' | 'ignore'; generation: number; deferred?: boolean }
+      | {
+          action: 'start' | 'end' | 'event' | 'ignore'
+          generation: number
+          deferred?: boolean
+          reply?: 'reject'
+        }
       | undefined
+    let publication: boolean | undefined
     const lifecycle = this.lifecycle
     this.emit({
       sessionId,
@@ -77,6 +83,10 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
           legacyState = false,
           publishState = true,
         ) => {
+          publication = action !== 'ignore'
+          if (!publication) {
+            context.rejectReply?.()
+          }
           if (this.disposed || !context.isCurrent() || (action === 'ignore' && !legacyState)) {
             return
           }
@@ -94,11 +104,14 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
         },
         decide: value => {
           decision = value
+          if (value.reply === 'reject') {
+            context.rejectReply?.()
+          }
         },
       },
     })
     if (decision?.deferred) {
-      return 'deferred'
+      return publication === false || decision.reply === 'reject' ? false : 'deferred'
     }
     const accepted = this.commit(
       sessionId,

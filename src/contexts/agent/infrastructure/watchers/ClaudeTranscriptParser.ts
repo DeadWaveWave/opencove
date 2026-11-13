@@ -1,3 +1,4 @@
+import { isClaudeAuxiliaryUser } from '../../../../shared/runtime/agentHook/claudeTranscriptSemantics'
 import { createHash } from 'node:crypto'
 import { claudePromptId } from '../../../../shared/runtime/agentHook/claudePromptEvidence'
 import {
@@ -29,16 +30,7 @@ export function parseClaudeTranscript(line: string): ClaudeTranscriptRecord | un
     }
   }
   const content = record.message?.content
-  const auxiliary =
-    record.type === 'user' &&
-    (record.isMeta === true ||
-      (record.promptId === undefined &&
-        record.promptSource === undefined &&
-        typeof content === 'string' &&
-        (content.trim() === '/clear' ||
-          /^<command-name>\/clear<\/command-name>(?:\r?\n<command-message>clear<\/command-message>)?(?:\r?\n<command-args><\/command-args>)?$/.test(
-            content.trim(),
-          ))))
+  const auxiliary = isClaudeAuxiliaryUser(record)
   const promptId = claudePromptId(record.promptId)
   if (record.type === 'user' && promptId) {
     const result: ClaudeTranscriptRecord = {

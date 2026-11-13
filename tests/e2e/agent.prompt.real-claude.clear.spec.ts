@@ -1,3 +1,4 @@
+import { attachClearReadinessFailure } from './claude-clear-diagnostics.helpers'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 import { rm, readFile, access } from 'node:fs/promises'
 import { expect, test, type ElectronApplication } from '@playwright/test'
@@ -24,7 +25,7 @@ import { readRuntimeSessionId } from './workspace-canvas.terminal-agent-overlay.
 test.describe('first CLI prompt after real Claude clear', () => {
   test.skip(
     process.env.OPENCOVE_TEST_USE_REAL_AGENTS !== '1',
-    'Requires isolated Claude Code 2.1.321',
+    'Requires isolated Claude Code 2.1.321 or 2.1.322',
   )
   test.skip(process.platform === 'win32', 'POSIX CLI instrumentation')
   for (const slowHook of [false, true]) {
@@ -136,7 +137,18 @@ test.describe('first CLI prompt after real Claude clear', () => {
               r.input.session_id === b && ['Stop', 'StopFailure'].includes(r.input.hook_event_name),
           ),
         ).toHaveLength(0)
-        await expect.poll(async () => (await snapshot()).state).toBe('idle')
+        try {
+          await expect.poll(async () => (await snapshot()).state).toBe('idle')
+        } catch (error) {
+          await attachClearReadinessFailure(testInfo, {
+            root: h.root,
+            config: String(h.env.CLAUDE_CONFIG_DIR),
+            hookLog: h.hookLog,
+            successor: b,
+            snapshot,
+          }).catch(() => undefined)
+          throw error
+        }
         expect((await snapshot()).turn).toBeNull()
         await attachScreen(testInfo, page, 'empty-B-before-first-CLI-prompt')
         if (slowHook) {
@@ -145,12 +157,23 @@ test.describe('first CLI prompt after real Claude clear', () => {
         const rawDelivery = await terminalCommand(
           page,
           caller,
-          cliCommand('agent', 'prompt', '--node', nodeId, '--text', promptB, '--timeout', '15s'),
+          cliCommand(
+            'agent',
+            'prompt',
+            '--node',
+            nodeId,
+            '--text',
+            promptB,
+            '--timeout',
+            '15s',
+            '-o',
+            'json',
+          ),
           'PROMPT_B',
         )
         if (slowHook && rawDelivery.includes('agent.prompt_stalled')) {
-          expect(rawDelivery).toMatch(/"pasteDispatchAttempted"\s*:\s*true/)
-          expect(rawDelivery).toMatch(/"submitDispatchAttempted"\s*:\s*true/)
+          expect(rawDelivery.replaceAll('\n', '')).toMatch(/"pasteDispatchAttempted"\s*:\s*true/)
+          expect(rawDelivery.replaceAll('\n', '')).toMatch(/"submitDispatchAttempted"\s*:\s*true/)
           // An uncertain outcome permits no automatic second submission.
           await page.waitForTimeout(9000)
           expect(h.api.main().length - requestsBefore).toBeLessThanOrEqual(1)

@@ -13,7 +13,10 @@ import type {
   ClaudeConversationCheckpoint,
 } from '../../../shared/runtime/agentHook/claudeConversation'
 import type { ClaudeTranscriptObservation } from '../../../shared/runtime/agentHook/claudeTranscript'
-import { getClaudeTranscriptInput } from '../../../shared/runtime/agentHook/claudeTranscript'
+import {
+  getClaudeTranscriptInput,
+  getClaudeTranscriptPrompt,
+} from '../../../shared/runtime/agentHook/claudeTranscript'
 import { ClaudeCaptureBindings, type ClaudeCaptureBinding } from './ClaudeCaptureBindings'
 import {
   isClaudeClearEvidence,
@@ -179,6 +182,9 @@ export class ClaudeInvocationJournal {
   claimReceipt(event: ClaudeConversationEvent, namespace: number | undefined): boolean {
     return !isClaudeReceipt(event) || this.receipts.claim(claudeHookKey(event), namespace)
   }
+  rejectsLifecycleReply(event: ClaudeConversationEvent): boolean {
+    return this.proof().rejectsLifecycleReply(event)
+  }
   takeRequests(): Request[] {
     const requests = this.requests
     this.requests = []
@@ -198,7 +204,11 @@ export class ClaudeInvocationJournal {
     )
   }
   appendIO(record: ClaudeTranscriptObservation): boolean {
-    if (this.disposed || !this.accepts(record.providerSessionId, record.conversationCapture)) {
+    if (
+      this.disposed ||
+      record.auxiliary ||
+      !this.accepts(record.providerSessionId, record.conversationCapture)
+    ) {
       return false
     }
     const input = record.record
@@ -208,7 +218,7 @@ export class ClaudeInvocationJournal {
       (!activity &&
         (!input ||
           getClaudeTranscriptInput(input) !== undefined ||
-          !['user', 'invalid_user', 'queue'].includes(input.kind) ||
+          !['user', 'invalid_user', 'queue', 'assistant'].includes(input.kind) ||
           (input.kind === 'invalid_user' && input.input === false) ||
           (input.kind === 'queue' && ['remove', 'dequeue'].includes(input.operation))))
     ) {
@@ -220,7 +230,10 @@ export class ClaudeInvocationJournal {
       id: record.providerSessionId,
       at: record.activity?.observedAt ?? this.now(),
       received: this.now(),
-      promptId: input?.kind === 'user' ? input.promptId : undefined,
+      promptId:
+        input && (input.kind === 'user' || (input.kind === 'assistant' && input.final))
+          ? (('promptId' in input ? input.promptId : undefined) ?? getClaudeTranscriptPrompt(input))
+          : undefined,
       capture,
       io: true,
       input: !activity,

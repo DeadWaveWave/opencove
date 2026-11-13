@@ -19,6 +19,13 @@ export function getClaudeTranscriptInput(
 ): 'auxiliary' | 'redacted' | undefined {
   return inputByRecord.get(record)
 }
+const promptByRecord = new WeakMap<object, string>()
+export function markClaudeTranscriptPrompt(record: ClaudeTranscriptRecord, promptId: string): void {
+  promptByRecord.set(record, promptId)
+}
+export function getClaudeTranscriptPrompt(record: ClaudeTranscriptRecord): string | undefined {
+  return promptByRecord.get(record)
+}
 export interface ClaudeTranscriptObservation {
   sessionId: string
   incarnation?: string
@@ -44,11 +51,14 @@ export interface ClaudeTranscriptObservation {
       action: 'start' | 'end' | 'event' | 'ignore'
       generation: number
       deferred?: boolean
+      reply?: 'reject'
     }): void
   }
   /** Private synchronous capture before watcher IO; never a public DTO field. */
   captureConversation?: (generation: number | undefined, incarnation?: string) => void
   /** Annotation only: ordinary file projection remains on its original path. */
+  /** Display-only file state; ordinary observations keep their existing semantics. */
+  auxiliary?: true
   activity?: { state: 'working' | 'waiting' | 'idle'; observedAt: number }
   conversationCapture?: object
   captureBinding?: (binding: object) => void

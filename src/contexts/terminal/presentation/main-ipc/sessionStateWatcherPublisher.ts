@@ -22,8 +22,13 @@ export function createSessionStatePublisher({
     options: {
       evidence?: Pick<
         PromptSubmissionEvidence,
-        'providerSessionId' | 'conversationGeneration' | 'conversationCapture' | 'invocationId'
+        | 'providerSessionId'
+        | 'conversationGeneration'
+        | 'conversationCapture'
+        | 'invocationId'
+        | 'claudeAuxiliary'
       >
+      claudeAuxiliary?: true
       degraded?: boolean
       source?: TerminalSessionStateEvent['source']
       hookEventName?: string
@@ -46,8 +51,11 @@ export function createSessionStatePublisher({
       sessionId,
       state,
     })
-    if (options.evidence) {
-      setPromptSubmissionEvidence(eventPayload, options.evidence)
+    if (options.evidence || options.claudeAuxiliary) {
+      setPromptSubmissionEvidence(eventPayload, {
+        ...options.evidence,
+        claudeAuxiliary: options.claudeAuxiliary ?? options.evidence?.claudeAuxiliary,
+      })
     }
     onState?.(eventPayload)
   }
@@ -103,6 +111,7 @@ export function captureSessionStateObservation(
         fileIdentity: 'activity',
         position: -1,
         baseline: true,
+        auxiliary: options.claudeAuxiliary,
         activity: { state: value === 'standby' ? 'idle' : value, observedAt: Date.now() },
       })
     }
@@ -116,6 +125,7 @@ export function captureSessionStateObservation(
                 ? { providerSessionId, conversationGeneration }
                 : {}),
               conversationCapture,
+              claudeAuxiliary: options.claudeAuxiliary,
               invocationId: capturedIncarnation,
             },
           }

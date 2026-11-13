@@ -94,6 +94,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
     envelope: TEnvelope,
     credential: CredentialRecord<TEnvelope>,
     observation: ReturnType<AgentHookObservationOwner<TEnvelope>['accept']>,
+    reply?: HookReplyReceipt,
     replayGeneration?: number,
   ): boolean => {
     if (
@@ -113,13 +114,14 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       credential.privateObserver?.observe(sessionId, envelope, {
         incarnation: terminalActivity?.invocationId ?? sessionId,
         credential,
+        rejectReply: () => reply?.reject(),
         publishState: generation => {
           if (
             !disposed &&
             credentials.get(credential.token) === credential &&
             (credential.isInvocationCurrent?.() ?? true)
           ) {
-            emit(sessionId, envelope, credential, observation, generation)
+            emit(sessionId, envelope, credential, observation, undefined, generation)
           }
         },
         isCurrent: () =>
@@ -255,7 +257,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       credential.pending.push({ envelope, observation, receipt })
       return receipt
     }
-    if (!emit(credential.sessionId, envelope, credential, observation)) {
+    if (!emit(credential.sessionId, envelope, credential, observation, receipt)) {
       receipt.reject()
       return null
     }
@@ -445,7 +447,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
           credential.pending.splice(0).forEach(({ envelope, observation, receipt }) => {
             let accepted = false
             try {
-              accepted = emit(sessionId, envelope, credential, observation)
+              accepted = emit(sessionId, envelope, credential, observation, receipt)
             } finally {
               if (!accepted) {
                 receipt.reject()

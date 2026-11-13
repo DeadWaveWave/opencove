@@ -233,6 +233,7 @@ export class SessionTurnStateWatcher {
     }
 
     this.disposed = true
+    this.checkpoint.dispose()
     if (this.poll) {
       clearInterval(this.poll)
     }
@@ -441,7 +442,7 @@ export class SessionTurnStateWatcher {
     this.partialBaseline = false
     if (this.provider === 'claude-code') {
       const record = parseClaudeTranscript(line)
-      this.checkpoint.observe(record)
+      this.checkpoint.observe(record, line)
       this.onClaudeTranscript?.({
         fileIdentity: `${this.fileIdentity}:${this.fileEpoch}`,
         position: ++this.recordPosition,

@@ -1,7 +1,8 @@
 import type { AgentProviderId, TerminalSessionState } from '../../../../shared/contracts/dto'
-import { detectTurnStateFromSessionLine } from './SessionTurnStateDetector'
+import { detectTurnObservationFromSessionLine } from './SessionTurnStateDetector'
 
 export interface SessionFileStateOptions {
+  claudeAuxiliary?: true
   hookEventName?: string
   /** Folded history, never evidence of a new turn boundary. */
   baseline?: boolean
@@ -10,6 +11,7 @@ export interface SessionFileStateOptions {
 /** Separates historical state reconstruction from live turn observations. */
 export class SessionTurnStateProjection {
   private lastState: TerminalSessionState | null = null
+  private baselineAuxiliary = true
   private baselineState: TerminalSessionState | null = null
 
   constructor(
@@ -23,6 +25,7 @@ export class SessionTurnStateProjection {
   reset(): void {
     this.lastState = null
     this.baselineState = null
+    this.baselineAuxiliary = true
   }
 
   noteInteraction(): void {
@@ -35,14 +38,20 @@ export class SessionTurnStateProjection {
     }
     this.lastState = this.baselineState
     this.baselineState = null
-    this.publish(this.lastState, { baseline: true })
+    this.publish(this.lastState, {
+      baseline: true,
+      ...(this.baselineAuxiliary ? { claudeAuxiliary: true } : {}),
+    })
+    this.baselineAuxiliary = true
   }
 
   observe(line: string, baseline: boolean): void {
-    const state = detectTurnStateFromSessionLine(this.provider, line)
+    const observation = detectTurnObservationFromSessionLine(this.provider, line)
+    const state = observation?.state
     if (baseline) {
       if (state) {
         this.baselineState = state
+        this.baselineAuxiliary &&= observation?.claudeAuxiliary === true
       }
       return
     }
@@ -63,6 +72,13 @@ export class SessionTurnStateProjection {
       return
     }
     this.lastState = state
-    this.publish(state, hookEventName ? { hookEventName } : undefined)
+    this.publish(
+      state,
+      observation?.claudeAuxiliary
+        ? { claudeAuxiliary: true }
+        : hookEventName
+          ? { hookEventName }
+          : undefined,
+    )
   }
 }

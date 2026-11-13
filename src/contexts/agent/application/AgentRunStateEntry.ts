@@ -260,6 +260,13 @@ export function acceptsRunObservation(
   if (!entry.conversation) {
     return true
   }
+  if (
+    source === 'session_file' &&
+    evidence?.claudeAuxiliary &&
+    entry.model.snapshot.provider === 'claude-code'
+  ) {
+    return false
+  }
   return (
     (source !== 'claude_hook' &&
       !(source === 'session_file' && entry.model.snapshot.provider === 'claude-code')) ||

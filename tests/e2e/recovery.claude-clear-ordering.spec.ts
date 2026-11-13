@@ -187,6 +187,8 @@ test('authenticated clear ordering commits without writing the store from the pr
         cliCommand(
           'agent',
           'prompt',
+          '-o',
+          'json',
           '--node',
           agent.id,
           '--text',
@@ -232,6 +234,8 @@ test('authenticated clear ordering commits without writing the store from the pr
       cliCommand(
         'agent',
         'prompt',
+        '-o',
+        'json',
         '--node',
         agent.id,
         '--text',
@@ -261,6 +265,8 @@ test('authenticated clear ordering commits without writing the store from the pr
         cliCommand(
           'agent',
           'prompt',
+          '-o',
+          'json',
           '--node',
           agent.id,
           '--text',
@@ -271,8 +277,8 @@ test('authenticated clear ordering commits without writing the store from the pr
         `OPAQUE_${index}`,
       )
       expect(stalled).toContain('agent.prompt_stalled')
-      expect(stalled).toMatch(/"pasteDispatchAttempted"\s*:\s*true/)
-      expect(stalled).toMatch(/"submitDispatchAttempted"\s*:\s*true/)
+      expect(stalled.replaceAll('\n', '')).toMatch(/"pasteDispatchAttempted"\s*:\s*true/)
+      expect(stalled.replaceAll('\n', '')).toMatch(/"submitDispatchAttempted"\s*:\s*true/)
       // oxlint-disable-next-line no-await-in-loop
       expect((await records()).filter(r => r.scenario === 'consumed-input')).toHaveLength(index + 1)
     }
@@ -287,6 +293,8 @@ test('authenticated clear ordering commits without writing the store from the pr
       cliCommand(
         'agent',
         'prompt',
+        '-o',
+        'json',
         '--node',
         agent.id,
         '--text',
@@ -297,7 +305,7 @@ test('authenticated clear ordering commits without writing the store from the pr
       'OBSERVED_WAITING',
     )
     expect(blocked).toContain('agent.blocked')
-    expect(blocked).toMatch(/"pasteDispatchAttempted"\s*:\s*false/)
+    expect(blocked.replaceAll('\n', '')).toMatch(/"pasteDispatchAttempted"\s*:\s*false/)
     await write('delayed-input')
     await expect
       .poll(async () => (await records()).some(r => r.scenario === 'delayed-input'))
@@ -310,6 +318,8 @@ test('authenticated clear ordering commits without writing the store from the pr
       cliCommand(
         'agent',
         'prompt',
+        '-o',
+        'json',
         '--node',
         agent.id,
         '--text',
@@ -322,8 +332,8 @@ test('authenticated clear ordering commits without writing the store from the pr
       'DELAYED_START_BUSY',
     )
     expect(busy).toContain('agent.busy')
-    expect(busy).toMatch(/"pasteDispatchAttempted"\s*:\s*false/)
-    expect(busy).toMatch(/"submitDispatchAttempted"\s*:\s*false/)
+    expect(busy.replaceAll('\n', '')).toMatch(/"pasteDispatchAttempted"\s*:\s*false/)
+    expect(busy.replaceAll('\n', '')).toMatch(/"submitDispatchAttempted"\s*:\s*false/)
     expect(await inputCounts()).toEqual(beforeRefusal)
     expect((await records()).filter(r => r.scenario === 'submitted-input')).toHaveLength(1)
   } finally {

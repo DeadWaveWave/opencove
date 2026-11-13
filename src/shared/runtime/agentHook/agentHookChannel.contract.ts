@@ -77,6 +77,7 @@ export interface PrivateHookContext {
   credential?: object
   isCurrent: () => boolean
   publishState?: (generation: number) => void
+  rejectReply?: () => void
 }
 export interface PrivateHookObserver<TEnvelope> {
   /** Deferred accepts the authenticated request while the owner retains state publication. */

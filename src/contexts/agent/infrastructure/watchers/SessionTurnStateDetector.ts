@@ -1,3 +1,4 @@
+import { isClaudeAuxiliaryUser } from '../../../../shared/runtime/agentHook/claudeTranscriptSemantics'
 import type { AgentProviderId, TerminalSessionState } from '@shared/contracts/dto'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -194,14 +195,27 @@ export function detectTurnStateFromSessionLine(
   provider: AgentProviderId,
   line: string,
 ): TerminalSessionState | null {
+  return detectTurnObservationFromSessionLine(provider, line)?.state ?? null
+}
+export function detectTurnObservationFromSessionLine(
+  provider: AgentProviderId,
+  line: string,
+): { state: TerminalSessionState; claudeAuxiliary?: true } | null {
   const candidate = normalizeSessionLineCandidate(line)
   if (!candidate || !mayContainTurnState(provider, candidate)) {
     return null
   }
-
   try {
-    const parsed = JSON.parse(candidate)
-    return detectTurnStateFromSessionRecord(provider, parsed)
+    const parsed = JSON.parse(candidate),
+      state = detectTurnStateFromSessionRecord(provider, parsed)
+    return state
+      ? {
+          state,
+          ...(provider === 'claude-code' && isClaudeAuxiliaryUser(parsed)
+            ? { claudeAuxiliary: true as const }
+            : {}),
+        }
+      : null
   } catch {
     return null
   }
