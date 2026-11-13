@@ -49,6 +49,9 @@ jobs:
       - name: E2E case budget
         run: pnpm e2e:budget
 
+      - name: E2E shard plans
+        run: node scripts/plan-e2e-shards.mjs --check
+
       - name: Unit tests (PR)
         if: github.event_name == 'pull_request'
         run: pnpm test -- --run
@@ -126,7 +129,7 @@ jobs:
           OPENCOVE_E2E_RETRIES: '0'
           OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'
           OPENCOVE_E2E_JSON_REPORT: artifacts/e2e-durations/ubuntu-${{ matrix.shard }}.json
-        run: xvfb-run -a -s "-screen 0 1600x1200x24" pnpm test:e2e -- --shard=${{ matrix.shard }}/3 --max-failures=2
+        run: xvfb-run -a -s "-screen 0 1600x1200x24" node scripts/plan-e2e-shards.mjs --os ubuntu --shards 3 --shard ${{ matrix.shard }} --run --max-failures=2
 
       - name: Upload E2E durations
         if: always()
@@ -274,7 +277,7 @@ jobs:
           OPENCOVE_E2E_RETRIES: '0'
           OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'
           OPENCOVE_E2E_JSON_REPORT: artifacts/e2e-durations/macos-${{ matrix.shard }}.json
-        run: pnpm test:e2e -- --shard=${{ matrix.shard }}/3
+        run: node scripts/plan-e2e-shards.mjs --os macos --shards 3 --shard ${{ matrix.shard }} --run
 
       - name: Upload E2E durations
         if: always()

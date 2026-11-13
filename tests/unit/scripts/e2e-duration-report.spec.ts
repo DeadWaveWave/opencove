@@ -82,6 +82,65 @@ describe('informational E2E duration report', () => {
     expect(summary).not.toContain('-100%')
   })
 
+  it('accepts file-list shard metadata and shows planned minutes beside measured minutes', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'opencove-planned-report-'))
+    try {
+      const report = fixture()
+      report.config.shard = null
+      report.config.metadata = {
+        opencoveShardPlan: {
+          os: 'macos',
+          current: 1,
+          total: 3,
+          estimatedMs: 180000,
+          files: ['tests/e2e/timing.spec.ts'],
+        },
+      }
+      writeFileSync(join(dir, 'macos-1.json'), JSON.stringify(report))
+      const { reports, warnings } = readShardReports(dir, 3)
+      expect(reports).toHaveLength(1)
+      expect(warnings).toHaveLength(5)
+      const summary = summarizeDurations(reports, {}, [])
+      expect(summary).toContain('| macos | 1 | 1.50 | 2.00 | 3.00 |')
+      expect(summary).toContain('Estimated min')
+      expect(summary).toContain('partial')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it.each([
+    { os: 'ubuntu' },
+    { current: 2 },
+    { total: 4 },
+    { estimatedMs: -1 },
+    { files: ['tests/e2e/missing.spec.ts'] },
+    { files: ['tests/e2e/timing.spec.ts', 'tests/e2e/timing.spec.ts'] },
+  ])('warns when planned metadata conflicts with the artifact or its files: %j', override => {
+    const dir = mkdtempSync(join(tmpdir(), 'opencove-planned-report-'))
+    try {
+      const report = fixture()
+      report.config.shard = null
+      report.config.metadata = {
+        opencoveShardPlan: {
+          os: 'macos',
+          current: 1,
+          total: 3,
+          estimatedMs: 180000,
+          files: ['tests/e2e/timing.spec.ts'],
+          ...override,
+        },
+      }
+      writeFileSync(join(dir, 'macos-1.json'), JSON.stringify(report))
+      const { reports, warnings } = readShardReports(dir, 3)
+      expect(reports).toHaveLength(0)
+      expect(warnings).toHaveLength(6)
+      expect(warnings[3]).toContain('macos-1.json: missing or broken report')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it('warns on malformed timing data and report-level errors', () => {
     const broken = fixture()
     broken.suites[0].suites[0].specs[0].tests[0].results[0].duration = -1

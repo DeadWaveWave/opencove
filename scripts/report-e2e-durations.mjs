@@ -30,10 +30,25 @@ export function readShardReports(directory, shardCount = 3) {
       const name = `${os}-${shard}.json`
       try {
         const report = JSON.parse(readFileSync(resolve(directory, name), 'utf8'))
-        if (report.config?.shard?.current !== shard || report.config?.shard?.total !== shardCount) {
+        const plan = report.config?.metadata?.opencoveShardPlan
+        const identity = plan ?? report.config?.shard
+        if (identity?.current !== shard || identity?.total !== shardCount) {
           throw new Error('shard metadata does not match artifact name/matrix')
         }
-        collectCases(report, { allowErrors: true, mergeRepeats: true })
+        const cases = collectCases(report, { allowErrors: true, mergeRepeats: true })
+        if (plan) {
+          if (plan.os !== os || report.config?.shard) {
+            throw new Error('planned shard OS mismatch or unexpected second shard filter')
+          }
+          duration(plan.estimatedMs)
+          const files = [...new Set(cases.map(c => c.file))].sort()
+          if (
+            !Array.isArray(plan.files) ||
+            JSON.stringify([...plan.files].sort()) !== JSON.stringify(files)
+          ) {
+            throw new Error('report files do not match planned shard files')
+          }
+        }
         duration(report.stats?.duration)
         reports.push({ os, shard, report })
       } catch (error) {
@@ -92,6 +107,7 @@ export function summarizeDurations(reports, baseline, inputWarnings = []) {
       seenShards.add(key)
       const tests = readTimings(report)
       const wall = duration(report.stats?.duration)
+      const estimate = report.config?.metadata?.opencoveShardPlan?.estimatedMs
       const counts = {}
       for (const test of tests) {
         counts[test.status] = (counts[test.status] ?? 0) + 1
@@ -107,6 +123,7 @@ export function summarizeDurations(reports, baseline, inputWarnings = []) {
         os,
         shard,
         wall,
+        estimatedMs: estimate === undefined ? undefined : duration(estimate),
         total: tests.reduce((sum, t) => sum + t.total, 0),
         counts,
         partial,
@@ -123,15 +140,17 @@ export function summarizeDurations(reports, baseline, inputWarnings = []) {
     '',
     '## Per-shard minutes',
     '',
-    '| OS | Shard | Serial min | Wall min | Outcomes |',
-    '| --- | --- | ---: | ---: | --- |',
+    'Estimated = the whole-file plan recorded before execution; unknown cases use the OS median. Legacy --shard reports have no estimate.',
+    '',
+    '| OS | Shard | Serial min | Wall min | Estimated min | Outcomes |',
+    '| --- | --- | ---: | ---: | ---: | --- |',
   ]
   for (const s of shards) {
     const outcomes = Object.entries(s.counts)
       .map(([status, count]) => `${status}: ${count}`)
       .join(', ')
     lines.push(
-      `| ${s.os} | ${s.shard} | ${minute(s.total)} | ${minute(s.wall)} | ${outcomes}${s.partial ? ' (partial)' : ''} |`,
+      `| ${s.os} | ${s.shard} | ${minute(s.total)} | ${minute(s.wall)} | ${s.estimatedMs === undefined ? 'n/a' : minute(s.estimatedMs)} | ${outcomes}${s.partial ? ' (partial)' : ''} |`,
     )
   }
   if (!shards.length) {

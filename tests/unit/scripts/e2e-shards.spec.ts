@@ -124,8 +124,10 @@ describe('duration-weighted E2E shards', () => {
   it.each(['macos', 'ubuntu'])('balances the real %s baseline fixture within 10%%', os => {
     const { ids, baseline } = shardBaselineFixture(os)
     const plan = planShards(ids, baseline, 3)
-    expect(ids.length).toBeGreaterThan(700)
-    expect(plan.shards.flatMap(s => s.files).length).toBeGreaterThan(350)
+    expect(ids.some(caseId => Object.hasOwn(baseline, caseId))).toBe(true)
+    expect(plan.shards.flatMap(s => s.files)).toHaveLength(
+      new Set(ids.map(caseId => caseId.split(' › ')[0])).size,
+    )
     const costs = plan.shards.map(s => s.estimatedMs)
     expect(Math.max(...costs) / Math.min(...costs)).toBeLessThan(1.1)
     expect(planShards([...ids].reverse(), baseline, 3)).toEqual(plan)

@@ -16,7 +16,7 @@ describe('CI E2E budget wiring', () => {
         .match(/shard: \[([\d, ]+)\]/)?.[1]
         .split(',')
         .map(Number)
-      const denominator = Number(text.match(/--shard=\$\{\{ matrix.shard \}\}\/(\d+)/)?.[1])
+      const denominator = Number(text.match(/--shards (\d+)/)?.[1])
       expect(matrix).toEqual([1, 2, 3])
       expect(denominator).toBe(matrix?.length)
       expect(text).toContain("OPENCOVE_E2E_RETRIES: '0'")
@@ -24,6 +24,14 @@ describe('CI E2E budget wiring', () => {
       expect(text).toContain('OPENCOVE_E2E_WINDOW_MODE: inactive')
       expect(text).toMatch(/Upload E2E durations\n\s+if: always\(\)\n\s+continue-on-error: true/)
       const os = name === 'ci-macos' ? 'macos' : 'ubuntu'
+      expect(text).toContain(
+        `node scripts/plan-e2e-shards.mjs --os ${os} --shards 3 --shard \${{ matrix.shard }} --run`,
+      )
+      expect(text).not.toContain('--shard=')
+      if (os === 'ubuntu') {
+        expect(text).toContain('xvfb-run -a -s "-screen 0 1600x1200x24"')
+        expect(text).toContain('--run --max-failures=2')
+      }
       expect(text).toContain(`OPENCOVE_E2E_JSON_REPORT: artifacts/e2e-durations/${os}-`)
       expect(text).toContain(`name: e2e-durations-${os}-`)
     },
@@ -49,11 +57,14 @@ describe('CI E2E budget wiring', () => {
 
   it('blocks unlisted cases in CI and in staged checks while retaining the list reporter', () => {
     expect(job('ci-ubuntu')).toContain('run: pnpm e2e:budget')
+    expect(job('ci-ubuntu')).toContain('run: node scripts/plan-e2e-shards.mjs --check')
     const scripts = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')).scripts
     expect(scripts['verify:checks']).toContain('node scripts/check-e2e-budget.mjs --staged')
     const config = readFileSync(resolve(root, 'playwright.config.ts'), 'utf8')
     expect(config).toContain("['list']")
     expect(config).toMatch(/\[\s*'json',/)
     expect(config).toContain('OPENCOVE_E2E_JSON_REPORT')
+    expect(config).toContain('OPENCOVE_E2E_SHARD_PLAN')
+    expect(config).toContain('opencoveShardPlan:')
   })
 })
