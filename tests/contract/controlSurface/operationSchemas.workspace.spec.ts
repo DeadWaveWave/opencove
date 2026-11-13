@@ -93,6 +93,7 @@ it('does not let a returning legacy hook bypass wire rejection', () => {
     errors: [],
     normalize: wire => wire.id,
     legacyNormalize: () => 'must not admit invalid wire',
+    compat: 'control-surface-legacy-validation',
   })
   registerOperation(surface, operation, {
     handle: () => undefined,

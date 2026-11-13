@@ -37,6 +37,7 @@ export function registerManagedRuntimeHandlers(
     const normalize = (payload: unknown) => normalizeMaintenancePayload(payload, options.instanceId)
     registerOperation(
       surface,
+      // @compat control-surface-legacy-validation
       { ...operations[action], normalize, legacyNormalize: normalize },
       {
         handle: (_ctx, { lease }) => {

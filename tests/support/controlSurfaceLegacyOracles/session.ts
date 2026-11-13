@@ -1,3 +1,4 @@
+// @compat-file control-surface-legacy-validation
 // Frozen oracle: copied from src/app/main/controlSurface/handlers/sessionLaunchPayloadSupport.ts at 90f8a89ba50d70147773c4e04ba15c31063d393c; do not edit; delete when the parity window closes.
 import {
   AGENT_PROVIDER_IDS,

@@ -31,6 +31,7 @@ export const nodeCreateOperation = defineOperation({
   summary: 'Create a canvas node, launching an agent or terminal when requested',
   input: nodeCreateInput,
   normalize: normalizeNodeCreateInput,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: withStrictInput(nodeCreateInput, normalizeNodeCreateInput),
   errors: [
     'node.not_found',
@@ -60,6 +61,7 @@ export const nodeDeleteOperation = defineOperation({
   summary: 'Delete a canvas node and clean up its runtime',
   input: nodeIdInput,
   normalize: normalizeDeletePayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: withStrictInput(nodeIdInput, normalizeDeletePayload),
   errors: [
     'node.not_found',
@@ -76,6 +78,7 @@ export const nodeGetOperation = defineOperation({
   summary: 'Get a canvas node with its owning project and space',
   input: nodeIdInput,
   normalize: normalizeGetPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: withStrictInput(nodeIdInput, normalizeGetPayload),
   errors: [
     'node.not_found',
@@ -103,6 +106,7 @@ export const nodeListOperation = defineOperation({
   summary: 'List canvas nodes filtered by project, space or kind',
   input: nodeListInput,
   normalize: normalizeListPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: withStrictInput(nodeListInput, normalizeListPayload),
   errors: [
     'space.not_found',
@@ -124,6 +128,7 @@ export const nodeUpdateOperation = defineOperation({
   summary: 'Rename or resize a canvas node, or edit note, task or website content',
   input: nodeUpdateInput,
   normalize: normalizeUpdatePayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: withStrictInput(nodeUpdateInput, normalizeUpdatePayload),
   errors: [
     'node.not_found',
