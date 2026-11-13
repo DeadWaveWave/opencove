@@ -63,23 +63,22 @@ export interface SpawnRecoveryAction {
   command: string
 }
 export function spawnRecoveryAction(node: SpawnQuotaNode): SpawnRecoveryAction | undefined {
-  if (node.kind === 'terminal' && !node.sessionId) {
+  // Terminal recovery requires a fresh node.sessionId lookup, not census identity.
+  // Keep the portable two-step hint instead of publishing a shell-specific pipeline.
+  if (node.kind !== 'agent') {
     return undefined
   }
   return {
-    kind: node.kind === 'terminal' ? 'kill_session' : 'stop_agent',
+    kind: 'stop_agent',
     nodeId: node.nodeId,
-    command:
-      node.kind === 'terminal'
-        ? `opencove session kill --session ${shellWord(node.sessionId!)}`
-        : `opencove agent stop --node ${shellWord(node.nodeId)}`,
+    command: `opencove agent stop --node ${shellWord(node.nodeId)}`,
   }
 }
 function spawnRecoveryHint(node: SpawnQuotaNode): string {
   const target = shellWord(node.nodeId)
   return node.kind === 'terminal'
     ? `read its current node.sessionId with opencove node get --node ${target} --fields sessionId, then stop the whole terminal with opencove session kill --session <sessionId>`
-    : `stop with ${spawnRecoveryAction(node)!.command}`
+    : `stop with opencove agent stop --node ${target}`
 }
 export interface SpawnLimitDetails {
   nodes?: SpawnQuotaNode[]

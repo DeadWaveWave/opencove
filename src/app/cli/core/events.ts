@@ -234,8 +234,8 @@ export async function runEvents(ctx: CommandContext): Promise<number> {
       const visible = eachTurn.includes(record)
       if (visible) {
         await write(record)
+        lastCursor = record.cursor
       }
-      lastCursor = record.cursor
       position = token
       if (eachTurn.observe(record)) {
         return 0

@@ -155,9 +155,10 @@ shared note if messaging is unavailable. Do not substitute a node named `@parent
 
 Check `whoami --fields lineageQuota` before spawning: `remainingLiveInTree` uses
 admission's live/starting census. Idle agents still occupy slots. Older Workers may
-omit new fields. Quota refusals include `details.actions` with shell-safe stop/kill
-commands and occupants' `sessionStartedAt` (null if unknown); choose an authorized
-occupant, recheck its binding, and stop it only when the task permits.
+omit new fields. Quota refusals include `details.actions` with shell-safe agent stop
+commands and occupants' `sessionStartedAt` (null if unknown). Terminal actions are
+omitted: follow the hint's fresh node.sessionId lookup, then kill that session.
+Choose an authorized occupant, recheck its binding, and stop only when permitted.
 
 For known nodes, subscribe with `opencove events --until-each-turn --node A --node B
 --cursor-file ./events.cursor --timeout 2m` and consume `stream.ready` before starting

@@ -192,3 +192,40 @@ it('reports an atomic cursor write failure without temporary file leftovers', as
     await rm(root, { recursive: true, force: true })
   }
 })
+
+it('reports the last written cursor after filtering an unrelated event before disconnect', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'opencove-filtered-cursor-'))
+  const file = join(root, 'cursor')
+  try {
+    const f = fixture([ready, completed(8, nodeA), completed(9, 'unrelated')])
+    f.io.readTextFile = path => readFile(path, 'utf8')
+    const original = f.io.fetch
+    f.io.fetch = async (url, init) => {
+      if (String(url).endsWith('/invoke') && JSON.parse(String(init?.body)).id === 'node.get') {
+        const id = JSON.parse(String(init?.body)).payload.nodeId
+        return new Response(
+          JSON.stringify({ ok: true, value: { node: { id, projectId: 'p', spaceId: null } } }),
+        )
+      }
+      return original(url, init)
+    }
+    expect(
+      await run(
+        ['events', '--until-each-turn', '--node', nodeA, '--node', nodeB, '--cursor-file', file],
+        f.io,
+      ),
+    ).toBe(3)
+    const records = f
+      .out()
+      .trim()
+      .split('\n')
+      .map(line => JSON.parse(line))
+    expect(records.at(-1).cursor).toBe(token(8))
+    const error = JSON.parse(f.err()).error
+    expect(error.details.cursor).toBe(token(8))
+    expect(error.hint).toContain(token(8))
+    expect((await readFile(file, 'utf8')).trim()).toBe(token(8))
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})

@@ -97,7 +97,7 @@ export interface Command {
   validateBeforeConnect?(args: CommandArgs, env: CliIo['env']): void
   buildInput?(args: CommandArgs): unknown
   exitCode?(result: unknown): number
-  textOutput?(result: unknown): string | undefined
+  textOutput?(result: unknown, context: Pick<CommandContext, 'io' | 'options'>): string | undefined
   execute?(ctx: CommandContext): Promise<CommandResult>
   errorTargets?: ErrorTarget[]
   rawQueryFields?: boolean

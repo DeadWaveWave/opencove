@@ -89,8 +89,9 @@ async function fixture() {
       },
     },
   })
-  const cli = async (args: string[], id = 'root', oldWorker = false) => {
+  const cli = async (args: string[], id = 'root', oldWorker = false, tty = false) => {
     const f = identityFixture()
+    f.io.stdout.isTTY = tty
     Object.assign(f.io.env, {
       OPENCOVE_NODE_ID: id,
       OPENCOVE_PROJECT_ID: 'project',
@@ -149,11 +150,9 @@ it('projects admission quota for roots and depth-three callers and names width/d
       nodeId: 'child-0',
       command: 'opencove agent stop --node child-0',
     })
-    expect(error.details.actions[1]).toEqual({
-      kind: 'kill_session',
-      nodeId: 'child-1',
-      command: 'opencove session kill --session s1',
-    })
+    expect(
+      error.details.actions.every((action: { kind: string }) => action.kind === 'stop_agent'),
+    ).toBe(true)
     expect(error.hint).toContain('Delegate 0')
     expect(error.hint).toContain('opencove agent stop --node child-0')
   }
@@ -170,9 +169,9 @@ it('keeps identity usable against an older Worker without the optional quota', a
 
 it('summarizes human identity and context while leaving explicit JSON clean', async () => {
   const f = await fixture()
-  const who = await f.cli(['whoami'])
+  const who = await f.cli(['whoami'], 'root', false, true)
   expect(who.out).toContain('Agents: 6 of 6 running in your tree; depth 1 of 3\n')
-  const context = await f.cli(['context', '--space', 'space'])
+  const context = await f.cli(['context', '--space', 'space'], 'root', false, true)
   expect(context.out).toContain('Agents: 6 of 6 running in your tree; depth 1 of 3\n')
   const json = await f.cli(['whoami', '-o', 'json'])
   expect(JSON.parse(json.out).lineageQuota.remainingLiveInTree).toBe(0)

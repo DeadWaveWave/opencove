@@ -34,16 +34,17 @@ the selected project supplies the name lookup context. Use a full ID for a creat
 
 `whoami.lineageQuota` and `context.self.lineageQuota` use the admission census and
 include `remainingLiveInTree`, clamped at zero. The user root is excluded; starting
-and idle-but-running descendants still occupy slots. Default text output adds
+and idle-but-running descendants still occupy slots. Default interactive (TTY) output adds
 `Agents: 4 of 6 running in your tree; depth 1 of 3`. Use `-o json` or `--fields`
-for machine-readable output. Older Workers may omit the quota or remaining field.
+for machine-readable output; pipes and `--pretty` also keep the standard JSON renderer. Older Workers may omit the quota or remaining field.
 
 Quota refusals retain their existing code, exit status and hint. `details.nodes`
 adds `sessionStartedAt` (ISO timestamp, or null when unknown/starting) and the
 observed `sessionId`. Compare known timestamps to choose the oldest occupant;
 unknown timestamps do not prove age. `details.actions` contains
-`{kind: 'stop_agent' | 'kill_session', nodeId, command}` with shell-quoted targets.
-Agent actions reuse the hint command; terminal actions fill in its session-kill
-command using the census's concrete session ID. Recheck the node's current binding
-before acting, especially for terminals: killing a terminal stops the whole shell.
+`{kind: 'stop_agent', nodeId, command}` with shell-quoted agent targets.
+Terminal actions are omitted: the hint requires looking up the current
+`node.sessionId` with `node get`, then killing that freshly resolved session.
+Never use the refusal's census session ID for recovery after a rebind. Recheck
+bindings before acting; killing a terminal stops the whole shell.
 These suggestions do not expand grant scope or authorize stopping another task.
