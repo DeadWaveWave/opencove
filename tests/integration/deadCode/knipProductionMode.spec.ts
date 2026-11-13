@@ -25,7 +25,7 @@ function runKnipOnFixture(): Row[] {
     ],
     { cwd: fixtureRoot, encoding: 'utf8' },
   )
-  expect(result.stderr).toBe('')
+  expect(result.status).toBe(0)
   return JSON.parse(result.stdout).issues as Row[]
 }
 
@@ -46,5 +46,11 @@ describe('knip production mode on the dead-code fixture', () => {
     )
 
     expect(exportsByFile).toEqual({ 'src/used.ts': ['exportedOnlyForSpec'] })
+  })
+
+  it('does not report a @public export, which is why the wrapper rejects that tag', () => {
+    const reported = issues.flatMap(row => row.exports.map(e => e.name))
+
+    expect(reported).not.toContain('publicButUnused')
   })
 })

@@ -76,6 +76,13 @@ describe('Worker hook startup health', () => {
     // A previously observed working hook can really go stale, and must stop claiming authority.
     f.advanceTo(AGENT_HOOK_FRESHNESS_MS * 3)
     expect(f.snapshot('s')).toMatchObject({ state: 'unknown', quality: 'degraded' })
+    // The renderer shows the projection: the label falls back to the session file's last report,
+    // flagged degraded, exactly as the removed renderer owner decided.
+    expect(f.runtime.project(f.snapshot('s')!)).toMatchObject({
+      state: 'standby',
+      source: 'session_file',
+      degraded: true,
+    })
     f.runtime.dispose()
   })
 })
@@ -170,7 +177,7 @@ describe('Worker Pi conversation fallback', () => {
       observationUnavailable: true,
       ...pi(2),
     })
-    expect(f.snapshot('pty')?.state).not.toBe('idle')
+    expect(f.snapshot('pty')).toMatchObject({ state: 'working', source: 'pi_hook' })
     f.runtime.dispose()
   })
 })

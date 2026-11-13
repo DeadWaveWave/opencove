@@ -33,9 +33,9 @@
 `pnpm deadcode:check`（属于 `pnpm verify:repo`，因此在 `verify:checks` 与 CI 的 `Repository checks` 步骤中运行）以 knip production 模式从生产入口出发做整图可达性检查：测试文件不算使用者，所以“被替换但仍被自己的 spec 引用”的旧模块会直接失败。修复方式是删除旧代码，不是加豁免。
 
 - **只放生产代码**：`src/` 只放会随产品发布的代码；仅测试使用的模块放在 `tests/`（例如 `tests/support/`）。
-- **测试专用导出**：生产代码和同文件都没用到、只有测试使用的导出，必须命名为 `...ForTests` 并标注 `/** @internal */`；`@internal` 只允许用于 `...ForTests`。
+- **测试专用导出**：生产代码和同文件都没用到、只有测试使用的导出，必须命名为 `...ForTests` 并标注 `/** @internal */`；`@internal` 只允许用于 `...ForTests`；`src/` 下禁止使用 `@public` / `@beta`（knip 不报告带这些标签的导出，会掩盖死代码）。
 - **按路径字符串加载的代码**（子进程、worker）必须是构建入口：加入 `scripts/lib/build-entries.mjs`，并注释它在哪里被 spawn。该文件是生产入口的唯一来源，electron-vite、CLI 构建和 `knip.config.ts` 都读取它。
-- **未使用的 export / type** 记录在 `scripts/dead-code-ratchet.json`（按文件计数，只减不增）。清理后运行 `pnpm deadcode:ratchet` 锁定；该命令在任何计数上升时拒绝写入。不要手改该文件，也不要在 `knip.config.ts` 里 `ignore` 文件或目录。
+- **未使用的 export / type** 记录在 `scripts/dead-code-ratchet.json`（按文件计数，只减不增）。清理后运行 `pnpm deadcode:ratchet` 锁定；该命令在任何计数上升时拒绝写入，且在基线文件已存在于 git HEAD 却被删除时拒绝重建（只有首次生成才可显式加 `--bootstrap`，`pnpm deadcode:ratchet` 不带该参数）。不要手改该文件，也不要在 `knip.config.ts` 里 `ignore` 文件或目录。
 - 文件、依赖、unresolved、binaries 等必须为 0。生产不 import 的依赖用 `pnpm remove` 移除，仅工具链使用的移到 `devDependencies`。
 
 ### 命名与前缀 (Naming)

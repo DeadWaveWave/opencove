@@ -11,6 +11,7 @@ import {
   compareDeadCodeRatchet,
   findInternalNamingViolations,
   formatDeadCodeReport,
+  formatMissingBaseline,
   formatRaisedCounts,
   raisedCounts,
   serializeDeadCodeRatchet,
@@ -54,15 +55,24 @@ function readBaseline(path) {
   return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null
 }
 
+function baselineExistsInGitHead(root) {
+  return (
+    spawnSync('git', ['cat-file', '-e', `HEAD:${RATCHET_FILE}`], { cwd: root, stdio: 'ignore' })
+      .status === 0
+  )
+}
+
 export function runDeadCodeCheck({
   root = DEFAULT_REPO_ROOT,
   updateRatchet = false,
+  bootstrap = false,
+  baselineInGit = baselineExistsInGitHead,
   report = runKnip(root),
   stdout = process.stdout,
   stderr = process.stderr,
 } = {}) {
   const ratchetPath = resolve(root, RATCHET_FILE)
-  const { findings, counts } = classifyKnipReport(report)
+  const { findings, counts, names } = classifyKnipReport(report)
   const baseline = readBaseline(ratchetPath)
   const internalViolations = findInternalNamingViolations(
     listSourceFiles(root).map(file => ({
@@ -72,8 +82,12 @@ export function runDeadCodeCheck({
   )
 
   if (updateRatchet) {
-    // A missing baseline is the one-time bootstrap; afterwards counts may only fall.
-    const raised = baseline ? raisedCounts(counts, baseline) : []
+    // A missing baseline is only a first run: once committed, deleting it must not reset it.
+    if (!baseline && !bootstrap && baselineInGit(root)) {
+      stderr.write(formatMissingBaseline())
+      return 1
+    }
+    const raised = baseline ? raisedCounts(counts, baseline, names) : []
     if (raised.length > 0) {
       stderr.write(formatRaisedCounts(raised))
       return 1
@@ -83,7 +97,7 @@ export function runDeadCodeCheck({
     return findings.length + internalViolations.length > 0 ? 1 : 0
   }
 
-  const ratchetIssues = compareDeadCodeRatchet(counts, baseline)
+  const ratchetIssues = compareDeadCodeRatchet(counts, baseline, names)
   if (findings.length + internalViolations.length + ratchetIssues.length === 0) {
     return 0
   }
@@ -93,5 +107,8 @@ export function runDeadCodeCheck({
 
 const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : null
 if (invokedPath === import.meta.url) {
-  process.exitCode = runDeadCodeCheck({ updateRatchet: process.argv.includes('--update-ratchet') })
+  process.exitCode = runDeadCodeCheck({
+    updateRatchet: process.argv.includes('--update-ratchet'),
+    bootstrap: process.argv.includes('--bootstrap'),
+  })
 }
