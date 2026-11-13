@@ -6,7 +6,9 @@
     "src/contexts/agent/application/promptAdmission.ts",
     "src/app/main/controlSurface/agentHook/claudeHookChannel.ts",
     "src/contexts/terminal/presentation/main-ipc/sessionStateWatcherPublisher.ts",
-    "src/shared/runtime/agentHook/claudePromptEvidence.ts"
+    "src/shared/runtime/agentHook/claudePromptEvidence.ts",
+    "src/contexts/agent/infrastructure/watchers/ClaudeTranscriptParser.ts",
+    "src/contexts/agent/infrastructure/watchers/ClaudeTranscriptCheckpoint.ts"
   ],
   "sources": {
     "src/contexts/agent/application/AgentRunStateRegistry.ts": "f88cd56a12ab0a03dc182a2669da07bf89bb9d47dddaa9af60a7b625830ed33b",

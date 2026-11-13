@@ -6,6 +6,10 @@ and bracketed paste remain required. This private, volatile receipt is lost on a
 waiting, exit, coverage loss or conversation replacement; restart does not restore it.
 It proves neither an empty editor nor absence of dialogs. Missing or metadata-only
 transcripts neither grant readiness nor revoke it; actual queue/user activity vetoes it.
+Accepted working or waiting file observations also revoke the receipt; later transcript
+callbacks cannot restore it. Auxiliary transcript filtering applies during the clear window
+or while its first-prompt receipt remains valid;
+ordinary conversations retain their existing parser and continuation behavior.
 
 A clear without an orderable relay timestamp immediately revokes input readiness, including
 same-ID clears; identifiable duplicate receipts remain idempotent. Buffered successor
@@ -49,3 +53,7 @@ Claude Code `/clear` 后可在观察到新会话时尝试首条提示，无须�
 过期、歧义或容量耗尽只撤回 clear 就绪权限，不会阻止后续正常恢复、提交与完成。
 被动的空闲与认证通知不影响就绪状态。无法排序的 clear 会立即暂停输入；元数据与本地 `/clear` 回显不会撤销已确认的就绪状态。
 这不保证编辑器为空或没有对话框。状态不明时检查屏幕，切勿自动重发。
+当前会话的文件观察若确认正在工作或等待，也会撤销 clear 就绪权限；后续 transcript 回调不会恢复权限。
+辅助记录仅在 clear 窗口内或首条提示仍获准投递时被过滤；之后恢复普通解析与对账语义。
+
+See [differential verification](CLAUDE_DIFFERENTIAL_VERIFICATION.md) when changing lifecycle or readiness.

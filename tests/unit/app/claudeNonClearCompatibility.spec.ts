@@ -14,20 +14,17 @@ beforeAll(async () => {
 })
 // No behavioral exceptions. New private fields missing on main normalize to false/null in the harness.
 export const intentionalDifferences: Record<string, string> = {}
-it.each(corpus)('matches origin/main non-clear behavior: $id', async scenario => {
+it.each(corpus)('matches the reviewed non-clear golden: $id', async scenario => {
   const actual = await runCorpus(api, scenario)
   const path = resolve(
     baseline ? `${baseline}/results` : 'tests/fixtures/claude/non-clear/goldens',
-    `${scenario.id}.jsonl`,
+    `${scenario.id}.json`,
   )
   if (baseline) {
     await mkdir(resolve(baseline, 'results'), { recursive: true })
-    await writeFile(path, actual.map(row => JSON.stringify(row)).join('\n') + '\n')
+    await writeFile(path, '[\n' + actual.map(row => JSON.stringify(row)).join(',\n') + '\n]\n')
   } else {
-    const expected = (await readFile(path, 'utf8'))
-      .trim()
-      .split('\n')
-      .map(line => JSON.parse(line))
+    const expected = JSON.parse(await readFile(path, 'utf8'))
     expect(actual).toEqual(expected)
   }
 })

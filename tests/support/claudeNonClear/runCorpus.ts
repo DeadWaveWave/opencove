@@ -2,6 +2,7 @@ import { vi } from 'vitest'
 import { hookChannelFixture } from '../../unit/app/claudeHookTranscript.helpers'
 import type * as CurrentApi from './api'
 import type { Case, Step } from './corpus'
+import { transcriptLine } from './transcript'
 import type { TerminalSessionStateEvent } from '../../../src/shared/contracts/dto'
 import type { OwnedSessionStateWatcherInput } from '../../../src/contexts/terminal/presentation/main-ipc/sessionStateWatcherInput'
 
@@ -62,7 +63,18 @@ export async function runCorpus(api: Api, scenario: Case) {
     environment: { CLAUDE_CONFIG_DIR: '/unavailable/non-clear-corpus' },
   })
   hooks.channel.onState(event => runtime.observe(event))
-  hooks.channel.onClaudeTranscript!(record => runtime.observeClaudeTranscript(record))
+  const generations = new Map<string, number>()
+  const positions = new Map<string, number>()
+  const checkpoints = new Map<string, InstanceType<Api['ClaudeTranscriptCheckpoint']>>()
+  hooks.channel.onClaudeTranscript!(record => {
+    if (!record.conversation) {
+      generations.set(record.providerSessionId, record.generation)
+    }
+    // An available in-memory IO port replaces the missing-file result; lifecycle/auth are unchanged.
+    if (!(scenario.transcriptIO && record.unavailable)) {
+      runtime.observeClaudeTranscript(record)
+    }
+  })
   hooks.reservation.commit(
     's',
     terminalActivity ? { ...terminalActivity, isCurrent: () => true } : undefined,
@@ -146,8 +158,38 @@ export async function runCorpus(api: Api, scenario: Case) {
       }),
     }
   }
+  let elapsed = 0
   async function apply(step: Step) {
-    if (step.kind === 'hook') {
+    if (step.kind === 'timeout') {
+      await vi.advanceTimersByTimeAsync(step.ms)
+      elapsed += step.ms
+    } else if (step.kind === 'transcript' || step.kind === 'checkpoint') {
+      let checkpoint = checkpoints.get(step.id)
+      if (!checkpoint) {
+        checkpoint = new api.ClaudeTranscriptCheckpoint()
+        checkpoints.set(step.id, checkpoint)
+      }
+      const record =
+        step.kind === 'checkpoint'
+          ? checkpoint.read(true)
+          : api.parseClaudeTranscript(transcriptLine(step.variant, step.id, step.prompt))
+      if (step.kind === 'transcript') {
+        checkpoint.observe(record)
+      }
+      const position = (positions.get(step.id) ?? 0) + 1
+      positions.set(step.id, position)
+      runtime.observeClaudeTranscript({
+        sessionId: 's',
+        incarnation: terminalActivity?.invocationId ?? 's',
+        providerSessionId: step.id,
+        generation: generations.get(step.id) ?? 1,
+        fileIdentity: `${step.id}.jsonl`,
+        position,
+        baseline: false,
+        origin: 'hook',
+        record,
+      })
+    } else if (step.kind === 'hook') {
       if (provider === 'codex') {
         const event: TerminalSessionStateEvent = {
           sessionId: 's',
@@ -240,7 +282,7 @@ export async function runCorpus(api: Api, scenario: Case) {
   try {
     const result = [view()]
     for (const [index, step] of scenario.steps.entries()) {
-      vi.setSystemTime(100010 + index * 10)
+      vi.setSystemTime(100010 + index * 10 + elapsed)
       // oxlint-disable-next-line no-await-in-loop -- delivery sequence is the compatibility contract
       await apply(step)
       result.push(view())

@@ -1,0 +1,4 @@
+[
+{"state":"unknown","quality":"degraded","source":null,"outcome":null,"blockedReason":null,"blockedSummary":null,"turn":null,"ended":null,"identity":{"providerSessionId":null,"promptId":null,"providerTurnId":null,"endedTurnIds":[]},"clearReady":false,"quarantined":false,"admission":{"refuse":{"code":"agent.state_unknown","reason":"readiness_unobserved"},"steer":{"code":"agent.state_unknown","reason":"readiness_unobserved"}},"completed":0,"exact":[]},
+{"state":"unknown","quality":"degraded","source":null,"outcome":null,"blockedReason":null,"blockedSummary":null,"turn":null,"ended":null,"identity":{"providerSessionId":null,"promptId":null,"providerTurnId":null,"endedTurnIds":[]},"clearReady":false,"quarantined":false,"admission":{"refuse":{"code":"agent.state_unknown","reason":"readiness_unobserved"},"steer":{"code":"agent.state_unknown","reason":"readiness_unobserved"}},"completed":0,"exact":[]}
+]

@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { cpSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { extractClaudeBaseline } from './lib/claude-baseline.mjs'
 const root = resolve(import.meta.dirname, '..')
@@ -21,6 +21,11 @@ try {
     throw new Error(`Baseline execution failed: ${result.status}`)
   }
   cpSync(resolve(temporary, 'results'), resolve(base, 'goldens'), { recursive: true })
+  for (const path of readdirSync(resolve(base, 'goldens'))) {
+    if (path.endsWith('.jsonl')) {
+      rmSync(resolve(base, 'goldens', path))
+    }
+  }
   writeFileSync(
     resolve(base, 'manifest.json'),
     JSON.stringify({ commit, entries, sources: manifest }, null, 2) + '\n',

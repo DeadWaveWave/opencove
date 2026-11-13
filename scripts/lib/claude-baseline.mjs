@@ -80,6 +80,8 @@ export function extractClaudeBaseline(ref = 'origin/main') {
       'src/app/main/controlSurface/agentHook/claudeHookChannel.ts',
       'src/contexts/terminal/presentation/main-ipc/sessionStateWatcherPublisher.ts',
       'src/shared/runtime/agentHook/claudePromptEvidence.ts',
+      'src/contexts/agent/infrastructure/watchers/ClaudeTranscriptParser.ts',
+      'src/contexts/agent/infrastructure/watchers/ClaudeTranscriptCheckpoint.ts',
     ]
     for (const path of entries) {
       extract(path)

@@ -19,7 +19,21 @@ export type Step =
       id?: string
     }
   | { kind: 'dispose_watcher'; watcher: string }
-export type Case = { id: string; provider?: 'codex'; terminal?: boolean; steps: Step[] }
+  | {
+      kind: 'transcript'
+      id: string
+      variant: import('./transcript').TranscriptVariant
+      prompt?: string
+    }
+  | { kind: 'checkpoint'; id: string }
+  | { kind: 'timeout'; ms: number }
+export type Case = {
+  id: string
+  provider?: 'codex'
+  terminal?: boolean
+  transcriptIO?: boolean
+  steps: Step[]
+}
 const start = (id = 'A', source: 'startup' | 'resume' | 'compact' = 'startup'): Step => ({
   kind: 'hook',
   id,
@@ -52,6 +66,35 @@ const file = (state: 'working' | 'waiting' | 'standby'): Step => ({
   state,
 })
 export const corpus: Case[] = [
+  ...(['metadata', 'identified-metadata', 'local-command', 'command-markup'] as const).map(
+    variant => ({
+      id: `transcript-${variant}-reconciliation`,
+      transcriptIO: true,
+      steps: [
+        start(),
+        submit('A', 'p'),
+        { kind: 'transcript', id: 'A', variant: 'user', prompt: 'p' },
+        { kind: 'transcript', id: 'A', variant: 'enqueue' },
+        { kind: 'transcript', id: 'A', variant, prompt: 'queued' },
+        { kind: 'transcript', id: 'A', variant: 'remove' },
+        { kind: 'transcript', id: 'A', variant: 'assistant', prompt: 'p' },
+        { kind: 'checkpoint', id: 'A' },
+        stop('A', 'p'),
+        { kind: 'timeout', ms: 6001 },
+      ] as Step[],
+    }),
+  ),
+  {
+    id: 'file-working-assistant',
+    transcriptIO: true,
+    steps: [
+      start(),
+      capture(),
+      file('working'),
+      { kind: 'transcript', id: 'A', variant: 'assistant' },
+      { kind: 'checkpoint', id: 'A' },
+    ],
+  },
   {
     id: 'resume-shared-prompt-identity',
     steps: [

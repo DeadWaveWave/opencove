@@ -4,3 +4,5 @@ export { promptAdmission } from '../../../src/contexts/agent/application/promptA
 export { createClaudeHookChannel } from '../../../src/app/main/controlSurface/agentHook/claudeHookChannel'
 export * from '../../../src/contexts/terminal/presentation/main-ipc/sessionStateWatcherPublisher'
 export { setPromptSubmissionEvidence } from '../../../src/shared/runtime/agentHook/claudePromptEvidence'
+export { parseClaudeTranscript } from '../../../src/contexts/agent/infrastructure/watchers/ClaudeTranscriptParser'
+export { ClaudeTranscriptCheckpoint } from '../../../src/contexts/agent/infrastructure/watchers/ClaudeTranscriptCheckpoint'

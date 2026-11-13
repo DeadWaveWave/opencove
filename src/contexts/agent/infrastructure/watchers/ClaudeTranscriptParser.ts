@@ -1,6 +1,9 @@
 import { createHash } from 'node:crypto'
 import { claudePromptId } from '../../../../shared/runtime/agentHook/claudePromptEvidence'
-import type { ClaudeTranscriptRecord } from '../../../../shared/runtime/agentHook/claudeTranscript'
+import {
+  markClaudeTranscriptInput,
+  type ClaudeTranscriptRecord,
+} from '../../../../shared/runtime/agentHook/claudeTranscript'
 
 /** Discard raw content immediately; keys match removals, never identify occurrences. */
 export function parseClaudeTranscript(line: string): ClaudeTranscriptRecord | undefined {
@@ -26,7 +29,7 @@ export function parseClaudeTranscript(line: string): ClaudeTranscriptRecord | un
     }
   }
   const content = record.message?.content
-  if (
+  const auxiliary =
     record.type === 'user' &&
     (record.isMeta === true ||
       (record.promptId === undefined &&
@@ -36,17 +39,18 @@ export function parseClaudeTranscript(line: string): ClaudeTranscriptRecord | un
           /^<command-name>\/clear<\/command-name>(?:\r?\n<command-message>clear<\/command-message>)?(?:\r?\n<command-args><\/command-args>)?$/.test(
             content.trim(),
           ))))
-  ) {
-    return undefined
-  }
   const promptId = claudePromptId(record.promptId)
   if (record.type === 'user' && promptId) {
-    return {
+    const result: ClaudeTranscriptRecord = {
       kind: 'user',
       promptId,
       promptSource: typeof record.promptSource === 'string' ? record.promptSource : 'unknown',
       ...(claudePromptId(record.uuid) ? { uuid: claudePromptId(record.uuid) } : {}),
     }
+    if (auxiliary) {
+      markClaudeTranscriptInput(result, 'auxiliary')
+    }
+    return result
   }
   if (record.type === 'user') {
     // A redacted/non-identifying record cannot establish actual editor input. Keep its
@@ -56,7 +60,11 @@ export function parseClaudeTranscript(line: string): ClaudeTranscriptRecord | un
       record.promptSource !== undefined ||
       (typeof content === 'string' && content.length > 0) ||
       (Array.isArray(content) && content.length > 0)
-    return { kind: 'invalid_user', ...(!input ? { input: false as const } : {}) }
+    const result: ClaudeTranscriptRecord = { kind: 'invalid_user' }
+    if (auxiliary || !input) {
+      markClaudeTranscriptInput(result, auxiliary ? 'auxiliary' : 'redacted')
+    }
+    return result
   }
   if (record.type === 'assistant') {
     return {

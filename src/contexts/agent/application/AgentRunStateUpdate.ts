@@ -374,6 +374,15 @@ export function commitAgentRunUpdate(
       )
     )
   const result = updateAgentRunEntry(entry, observation, evidence, ports.now, ports.createTurnId)
+  // Freshness and source/conversation fencing have all passed before withdrawing the receipt.
+  if (
+    result.accepted &&
+    observation &&
+    (observation.source === 'session_file' || observation.source === 'claude_hook') &&
+    (observation.state === 'working' || observation.state === 'waiting')
+  ) {
+    entry.conversation?.veto()
+  }
   if (
     canRelease &&
     result.accepted &&

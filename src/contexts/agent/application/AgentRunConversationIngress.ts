@@ -3,6 +3,7 @@ import { isClaudeClearEvidence } from './ClaudeClearTransition'
 import { isClaudeConversationActivity } from '../domain/ClaudeConversationLifecycle'
 import { setPromptSubmissionEvidence } from '../../../shared/runtime/agentHook/claudePromptEvidence'
 import type { ClaudeTranscriptObservation } from '../../../shared/runtime/agentHook/claudeTranscript'
+import { getClaudeTranscriptInput } from '../../../shared/runtime/agentHook/claudeTranscript'
 import { publishRunTransition, type AgentRunEntry } from './AgentRunStateEntry'
 
 type Ports = Parameters<typeof publishRunTransition>[3] & { now(): number; update(): void }
@@ -97,11 +98,22 @@ export function observeRunConversation(
   ) {
     return
   }
+  const input =
+    entry.conversation && record.record ? getClaudeTranscriptInput(record.record) : undefined
+  const clearHandling = entry.conversation?.active || entry.conversation?.ready
+  if (
+    clearHandling &&
+    input === 'auxiliary' &&
+    entry.conversation?.clearIdentity === record.providerSessionId
+  ) {
+    return
+  }
   if (
     (entry.conversation?.ready ||
       (entry.conversation?.active && entry.conversation.mayBeClearReady)) &&
     record.record &&
     ['queue', 'user', 'invalid_user'].includes(record.record.kind) &&
+    input !== 'redacted' &&
     (record.record.kind !== 'invalid_user' || record.record.input !== false)
   ) {
     entry.conversation.veto()

@@ -5,6 +5,20 @@ export type ClaudeTranscriptRecord =
   | { kind: 'invalid_user'; input?: false }
   | { kind: 'assistant'; parentUuid?: string; promptId?: string; final: boolean }
   | { kind: 'checkpoint'; promptId?: string; queueEmpty: boolean; final: boolean }
+
+// Private parser evidence; normalized records retain their ordinary wire-independent shape.
+const inputByRecord = new WeakMap<object, 'auxiliary' | 'redacted'>()
+export function markClaudeTranscriptInput(
+  record: ClaudeTranscriptRecord,
+  input: 'auxiliary' | 'redacted',
+): void {
+  inputByRecord.set(record, input)
+}
+export function getClaudeTranscriptInput(
+  record: ClaudeTranscriptRecord,
+): 'auxiliary' | 'redacted' | undefined {
+  return inputByRecord.get(record)
+}
 export interface ClaudeTranscriptObservation {
   sessionId: string
   incarnation?: string

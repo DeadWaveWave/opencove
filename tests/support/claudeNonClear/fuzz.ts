@@ -68,9 +68,30 @@ export function fuzzCases(seed: number): Case[] {
         }
       })
     }
+    const transcriptIO = index % 5 === 1 && index % 32 !== 0
+    if (transcriptIO) {
+      const id = 'T',
+        prompt = `io-${random(4)}`
+      const variant = (
+        ['metadata', 'identified-metadata', 'local-command', 'command-markup'] as const
+      )[random(4)]
+      hooks.push(
+        { kind: 'hook', id, name: 'SessionStart', source: 'resume' },
+        { kind: 'hook', id, name: 'UserPromptSubmit', prompt },
+        { kind: 'transcript', id, variant: 'user', prompt },
+        { kind: 'transcript', id, variant: 'enqueue' },
+        { kind: 'transcript', id, variant, prompt: 'queued' },
+        { kind: 'transcript', id, variant: 'remove' },
+        { kind: 'transcript', id, variant: 'assistant', prompt },
+        { kind: 'checkpoint', id },
+        { kind: 'hook', id, name: 'Stop', prompt },
+        { kind: 'timeout', ms: 6001 },
+      )
+    }
     return {
       id: `${seed}-${index}`,
       terminal: random(2) === 0,
+      transcriptIO,
       steps: [{ kind: 'capture', watcher: 'file', id: null }, ...hooks],
     }
   })
@@ -81,13 +102,20 @@ export async function minimizeCase(
   scenario: Case,
   differs: (value: Case) => Promise<boolean>,
 ): Promise<Case> {
+  let elapsed = 0
   let result = {
     ...scenario,
-    steps: scenario.steps.map((step, index) =>
-      step.kind === 'hook'
-        ? { ...step, relayAt: step.relayAt ?? 100010 + index * 10 + (step.stampOffset ?? 0) }
-        : step,
-    ),
+    steps: scenario.steps.map((step, index) => {
+      if (step.kind === 'timeout') {
+        elapsed += step.ms
+      }
+      return step.kind === 'hook'
+        ? {
+            ...step,
+            relayAt: step.relayAt ?? 100010 + index * 10 + elapsed + (step.stampOffset ?? 0),
+          }
+        : step
+    }),
   }
   let width = Math.max(1, Math.floor(result.steps.length / 2))
   while (width >= 1) {
