@@ -2,6 +2,7 @@
   "extends": "@electron-toolkit/tsconfig/tsconfig.node.json",
   "include": [
     "electron.vite.config.*",
+    "knip.config.ts",
     "src/app/cli/**/*.ts",
     "package.json",
     "scripts/lib/runtime-build-identity.ts",
