@@ -1,3 +1,4 @@
+import { attachFailureFrame } from './diagnostics'
 import { expect, test } from '@playwright/test'
 import { launchApp } from './workspace-canvas.helpers'
 import {
@@ -66,6 +67,9 @@ test('Space caption cutouts follow visible crossings through far-view hysteresis
       body: JSON.stringify({ transitions, focused }, null, 2),
       contentType: 'application/json',
     })
+  } catch (error) {
+    await attachFailureFrame(page, test.info())
+    throw error
   } finally {
     await electronApp.close()
     await fixture.cleanup()

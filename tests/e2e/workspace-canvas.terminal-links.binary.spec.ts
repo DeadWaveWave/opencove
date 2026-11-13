@@ -1,3 +1,4 @@
+import { attachFailureFrame, isE2EDiagnosticsEnabled } from './diagnostics'
 import { expect, test } from '@playwright/test'
 import { randomUUID } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
@@ -79,18 +80,23 @@ for (const [theme, language] of [
       expect(await opened()).toEqual([])
       const open = document.getByTestId('document-node-open-system')
       await expect(open).toBeVisible()
-      const screenshotPath = testInfo.outputPath(`terminal-pdf-preview-${theme}.png`)
-      await document.screenshot({ path: screenshotPath })
-      await testInfo.attach(`terminal-pdf-preview-${theme}`, {
-        path: screenshotPath,
-        contentType: 'image/png',
-      })
+      if (isE2EDiagnosticsEnabled()) {
+        const screenshotPath = testInfo.outputPath(`terminal-pdf-preview-${theme}.png`)
+        await document.screenshot({ path: screenshotPath })
+        await testInfo.attach(`terminal-pdf-preview-${theme}`, {
+          path: screenshotPath,
+          contentType: 'image/png',
+        })
+      }
       await open.click()
       await expect.poll(opened).toEqual([filePath])
       await expect(open).toBeEnabled()
       await expect(placeholder).toBeVisible()
       await expect(document.getByRole('alert')).toHaveCount(0)
       expect(electronApp.process().exitCode).toBeNull()
+    } catch (error) {
+      await attachFailureFrame(window, test.info())
+      throw error
     } finally {
       systemOpen?.dispose()
       await electronApp.close()

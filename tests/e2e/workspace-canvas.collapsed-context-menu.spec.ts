@@ -1,3 +1,4 @@
+import { attachFailureFrame, isE2EDiagnosticsEnabled } from './diagnostics'
 /* eslint-disable no-await-in-loop -- User actions across window kinds intentionally run in sequence. */
 import { expect, test } from '@playwright/test'
 import { rejectDocumentWrites } from './workspace-canvas.document-save.helpers'
@@ -75,13 +76,18 @@ test('compact windows retain the expanded selection menu and close through their
       'red',
     )
     await compactNote.getByTestId('node-expand').click({ button: 'right' })
-    await testInfo.attach('compact-node-context-menu', {
-      body: await window.screenshot(),
-      contentType: 'image/png',
-    })
+    if (isE2EDiagnosticsEnabled()) {
+      await testInfo.attach('compact-node-context-menu', {
+        body: await window.screenshot(),
+        contentType: 'image/png',
+      })
+    }
     await window.getByTestId('workspace-node-close').click()
     await expect(note).toHaveCount(0)
     await expect(window.locator('.react-flow__node')).toHaveCount(MATERIAL_NODE_KINDS.length - 1)
+  } catch (error) {
+    await attachFailureFrame(window, test.info())
+    throw error
   } finally {
     await electronApp.close()
     await fixture.cleanup()
@@ -125,10 +131,12 @@ test('Close from a compact dirty document reveals its close prompt and Cancel pr
     await expect(compact).toBeHidden()
     await expect(editor).toBeVisible()
     await expect(editor).toHaveAttribute('data-close-identity', 'retained')
-    await testInfo.attach('compact-document-exit-save-guard', {
-      body: await window.screenshot(),
-      contentType: 'image/png',
-    })
+    if (isE2EDiagnosticsEnabled()) {
+      await testInfo.attach('compact-document-exit-save-guard', {
+        body: await window.screenshot(),
+        contentType: 'image/png',
+      })
+    }
     await prompt.getByRole('button', { name: 'Cancel', exact: true }).click()
     await expect(prompt).toHaveCount(0)
     await expect(node).toBeVisible()
@@ -137,6 +145,9 @@ test('Close from a compact dirty document reveals its close prompt and Cancel pr
     await expect(node.locator('.document-node__dirty-dot')).toBeVisible()
     await expect(window.locator('.react-flow__node')).toHaveCount(MATERIAL_NODE_KINDS.length)
     expect(await readFile(documentPath, 'utf8')).toBe(savedContent)
+  } catch (error) {
+    await attachFailureFrame(window, test.info())
+    throw error
   } finally {
     await electronApp.close()
     await fixture.cleanup()

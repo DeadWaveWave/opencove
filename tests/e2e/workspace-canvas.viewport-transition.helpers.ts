@@ -1,3 +1,4 @@
+import { isE2EDiagnosticsEnabled } from './diagnostics'
 import { expect, type Page } from '@playwright/test'
 import { writeFile } from 'node:fs/promises'
 import type { TestInfo } from '@playwright/test'
@@ -114,6 +115,9 @@ export async function recordMotionFrames(
   page: Page,
   testInfo: TestInfo,
 ): Promise<() => Promise<void>> {
+  if (!isE2EDiagnosticsEnabled()) {
+    return async () => {}
+  }
   const session = await page.context().newCDPSession(page)
   const frames: { file: string; timestamp: number }[] = []
   const writes: Promise<void>[] = []

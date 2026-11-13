@@ -1,3 +1,4 @@
+import { attachFailureFrame } from './diagnostics'
 import { expectSpaceFrameHeader } from './workspace-canvas.space-caption-border.helpers'
 import { expect, test, type Page } from '@playwright/test'
 import { launchApp } from './workspace-canvas.helpers'
@@ -174,6 +175,9 @@ test.describe('Workspace Canvas - Color Identity', () => {
       expect(imageDragSurface.dragPointer).toBe('auto')
       expect(imageDragSurface.stripePointer).toBe('none')
       expect(imageDragSurface.draggingBorder).toBe(imageDragSurface.selectionBorder)
+    } catch (error) {
+      await attachFailureFrame(page, test.info())
+      throw error
     } finally {
       await electronApp.close()
       await fixture.cleanup()
@@ -294,6 +298,9 @@ test.describe('Workspace Canvas - Color Identity', () => {
       await printIdentityMarker(page)
       expect(await terminalIdentity(page)).toEqual(terminalBefore)
       await attachIdentityFrame(page, testInfo, 'color-identity-labels-cleared')
+    } catch (error) {
+      await attachFailureFrame(page, test.info())
+      throw error
     } finally {
       await electronApp.close()
       await fixture.cleanup()
@@ -423,6 +430,9 @@ test.describe('Workspace Canvas - Color Identity', () => {
       expect(focused.border).not.toBe(idle.border)
       expect(focused.body).toEqual(idle.body)
       await attachIdentityFrame(page, testInfo, 'color-identity-input-focus')
+    } catch (error) {
+      await attachFailureFrame(page, test.info())
+      throw error
     } finally {
       await electronApp.close()
       await fixture.cleanup()
