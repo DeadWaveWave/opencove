@@ -1,7 +1,13 @@
 import { vi } from 'vitest'
-import { PromptDeliveryService } from '../../../src/contexts/agent/application/PromptDeliveryService'
+import {
+  PromptDeliveryService,
+  type PromptDeliveryRequest,
+} from '../../../src/contexts/agent/application/PromptDeliveryService'
 import type { clearIngressFixture } from './claudeClearIngress.helpers'
-export async function capacityWrites(f: Awaited<ReturnType<typeof clearIngressFixture>>) {
+export async function capacityAttempt(
+  f: Awaited<ReturnType<typeof clearIngressFixture>>,
+  overrides: Partial<Pick<PromptDeliveryRequest, 'whenBusy' | 'expectTurnId'>> = {},
+) {
   const service = new PromptDeliveryService({
     runs: f.registry,
     input: f.hub,
@@ -15,10 +21,20 @@ export async function capacityWrites(f: Awaited<ReturnType<typeof clearIngressFi
   })
   const before = f.write.mock.calls.length
   const pending = service
-    .deliver({ nodeId: 'n', text: 'MUST_NOT_WRITE', whenBusy: 'refuse', timeoutMs: 1000 })
+    .deliver({
+      nodeId: 'n',
+      text: 'MUST_NOT_WRITE',
+      whenBusy: 'refuse',
+      timeoutMs: 1000,
+      ...overrides,
+    })
     .catch(error => error)
   await vi.advanceTimersByTimeAsync(301)
   service.dispose()
-  await pending
-  return f.write.mock.calls.length - before
+  const result = await pending
+  return { writes: f.write.mock.calls.length - before, result }
+}
+
+export async function capacityWrites(f: Awaited<ReturnType<typeof clearIngressFixture>>) {
+  return (await capacityAttempt(f)).writes
 }

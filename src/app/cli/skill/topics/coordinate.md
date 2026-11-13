@@ -8,8 +8,7 @@ When delegation is authorized, prefer:
 opencove node create agent --space space-123 --prompt-file ./assignment.txt --wait --read --timeout 2m
 ```
 
-This creates once, identifies the initial Claude Code/Codex turn on the new session, waits for that
-exact turn and returns the create result plus turnId, outcome, endedAt and reply. Check outcome and
+This creates once, identifies the initial Claude Code/Codex turn on the new session, waits for that exact turn and returns the create result plus turnId, outcome, endedAt and reply. Check outcome and
 reply: all ended outcomes exit 0; missing reply is null with replyUnavailableReason. --wait requires
 --prompt or --prompt-file; --read requires --wait. --timeout covers identification + waiting (default
 20s, minimum 250ms); creation keeps its own 20s budget. -q prints only the ID after completion.
@@ -109,6 +108,7 @@ Refusals describe this call only; they do not cancel another delivery:
 - `agent.busy` / `working`: legacy Worker or `--if-busy refuse`; wait for completion.
 - `agent.busy` / `delivery_in_progress`: await that delivery's result before deciding.
 - `agent.state_unknown` / `readiness_unobserved`: inspect the screen; retry only when readiness is observed after a completed turn or a new Claude Code `/clear` conversation.
+- `agent.state_unknown` / `history_saturated`: restart the agent window to send prompts again; the conversation itself is unaffected.
 - `agent.state_unknown` / `observation_degraded`: check hooks and await reliable evidence.
 - `agent.not_running`: inspect the node; start/resume only when authorized.
 - `agent.prompt_unsupported`: the reason says what is missing (another provider,

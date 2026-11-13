@@ -37,11 +37,12 @@ export function capacityCases(seed: number): ClearCase[] {
     flood.push(...receipts, { epoch: 1, id: 'B', kind: 'metadata', at: 115 }, quiet())
     for (const active of [false, true]) {
       const captures = start()
-      for (let i = 0; i < 128 + n; i++) {
+      const captureCount = active && n === 0 ? 1280 : 128 + n
+      for (let i = 0; i < captureCount; i++) {
         captures.push({ epoch: 1000 + i, id: `U${i}`, kind: 'capture', at: 120 + i })
       }
       if (active) {
-        for (let i = 0; i < 128 + n; i++) {
+        for (let i = 0; i < captureCount; i++) {
           captures.push({
             epoch: 1000 + i,
             id: `U${i}`,
@@ -70,7 +71,7 @@ export function capacityCases(seed: number): ClearCase[] {
       tied.push(hook(3, 'D', 'SessionStart', 310), quiet('D', 3))
     }
     const lifecycle: ClearEvent[] = [hook(0, 'A', 'UserPromptSubmit', 20), hook(0, 'A', 'Stop', 30)]
-    for (let i = 0; i < 260 + n; i++) {
+    for (let i = 0; i < 520 + n; i++) {
       const id = `L${i}`
       if (n % 2 === 0) {
         lifecycle.push(
@@ -94,10 +95,10 @@ export function capacityCases(seed: number): ClearCase[] {
       hook(3, 'C', 'SessionStart', 40),
       quiet('C', 3),
     ]
-    for (let i = 0; i < 123 + n; i++) {
+    for (let i = 0; i < 635 + n; i++) {
       dependent.push(hook(3, 'C', 'PermissionRequest', 60 + i))
     }
-    dependent.push(hook(3, 'C', 'Stop', 200), quiet('C', 3))
+    dependent.push(hook(3, 'C', 'Stop', 1000), quiet('C', 3))
     result.push(
       ...[
         ordinary,

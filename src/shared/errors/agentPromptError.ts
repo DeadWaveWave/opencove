@@ -57,6 +57,13 @@ export function agentPromptErrorPresentation(
         "Check the agent's current activity before retrying.",
       )
     case 'agent.state_unknown':
+      if (reason === 'history_saturated') {
+        return {
+          message:
+            'This Claude session was cleared too many times for OpenCove to track it safely.',
+          hint: 'Restart the agent window to send prompts again; the conversation itself is unaffected.',
+        }
+      }
       if (reason === 'readiness_unobserved') {
         return pair(
           'OpenCove cannot confirm that the agent is ready for a prompt.',

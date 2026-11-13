@@ -66,7 +66,7 @@ export class PromptDeliveryService {
         reason,
         pasteDispatchAttempted: paste,
         submitDispatchAttempted: submit,
-        retryable: !paste,
+        retryable: !paste && reason !== 'history_saturated',
         deliveryId,
         ...(reason === 'expected_turn_mismatch'
           ? {
@@ -86,7 +86,7 @@ export class PromptDeliveryService {
     const expected = (f: RunStateFence | null) =>
       !request.expectTurnId ||
       (f?.snapshot.state === 'working' && f.snapshot.turn?.id === request.expectTurnId)
-    if (!expected(initial)) {
+    if (!initial?.claudeHistorySaturated && !expected(initial)) {
       return Promise.reject(error('agent.busy', 'expected_turn_mismatch'))
     }
     const refusal = promptAdmission(initial, this.ports.capability, request.whenBusy)
@@ -383,7 +383,7 @@ export class PromptDeliveryService {
             fail('binding_changed')
             return
           }
-          if (!expected(current)) {
+          if (!current?.claudeHistorySaturated && !expected(current)) {
             fail('expected_turn_mismatch', 'agent.busy')
             return
           }

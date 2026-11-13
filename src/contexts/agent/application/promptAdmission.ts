@@ -28,6 +28,9 @@ export function promptAdmission(
   if (fence.hookCoverage === 'unverified_executable') {
     return { code: 'agent.prompt_unsupported', reason: 'executable_override_unverified' }
   }
+  if (fence.claudeHistorySaturated) {
+    return { code: 'agent.state_unknown', reason: 'history_saturated' }
+  }
   if (fence.conversationQuarantined) {
     return { code: 'agent.state_unknown', reason: 'readiness_unobserved' }
   }

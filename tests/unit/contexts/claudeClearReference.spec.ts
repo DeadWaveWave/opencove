@@ -117,61 +117,25 @@ it('keeps post-End activity unresolved across a delayed successor identity', () 
   model.advance(201)
   expect(model.verdict()).toMatchObject({ receipt: false, due: false, unresolved: true })
 })
-it('requires a current Submit–Stop pair after lifecycle-history truncation while retaining the flag', () => {
+it('never recovers after saturation, even with a fresh current Submit and Stop', () => {
   const model = new ClearReference()
-  for (let i = 0; i < 65; i++) {
-    model.consume({ epoch: i + 1, id: `L${i}`, kind: 'hook', name: 'SessionStart', at: 20 + i })
+  for (let n = 0; n < 520; n++) {
+    model.consume({ epoch: n + 1, id: `L${n}`, kind: 'hook', name: 'SessionStart', at: n + 20 })
   }
   model.advance(201)
   expect(model.verdict()).toMatchObject({ receipt: false, due: false, historyIncomplete: true })
-  model.consume({ epoch: 65, id: 'L64', kind: 'hook', name: 'Stop', at: 100 })
-  expect(model.verdict().receipt).toBe(false)
-  model.consume({ epoch: 65, id: 'L64', kind: 'hook', name: 'UserPromptSubmit', at: 110 })
-  model.consume({ epoch: 65, id: 'L64', kind: 'hook', name: 'Stop', at: 120 })
-  expect(model.verdict()).toMatchObject({
-    receipt: true,
-    due: true,
-    historyIncomplete: true,
-    clearAllowed: false,
-  })
+  model.consume({ epoch: 520, id: 'L519', kind: 'hook', name: 'UserPromptSubmit', at: 2000 })
+  model.consume({ epoch: 520, id: 'L519', kind: 'hook', name: 'Stop', at: 2010 })
+  model.advance(10000)
+  expect(model.verdict()).toMatchObject({ receipt: false, due: false, historyIncomplete: true })
 })
-
-it('does not promote an identical pre-truncation Stop replay into new readiness evidence', () => {
+it('counts authenticated but rejected receipts towards its independent provenance budget', () => {
   const model = new ClearReference()
-  model.consume({ epoch: 1, id: 'A', kind: 'hook', name: 'SessionStart', at: 5000 })
-  const old: ClearEvent = { epoch: 1, id: 'A', kind: 'hook', name: 'Stop', at: 5100 }
-  model.consume(old)
-  for (let i = 0; i < 65; i++) {
-    model.consume({ epoch: i + 2, id: `old-${i}`, kind: 'hook', name: 'SessionStart', at: 20 + i })
+  model.consume({ epoch: 1, id: 'B', kind: 'hook', name: 'SessionStart', at: 20 })
+  model.consume({ epoch: 2, id: 'C', kind: 'hook', name: 'SessionStart', at: 100 })
+  for (let n = 0; n < 1025; n++) {
+    model.consume({ epoch: 1, id: 'B', kind: 'hook', name: 'Stop', at: 200 + n })
   }
-  model.consume({ ...old, duplicate: true })
-  expect(model.verdict()).toMatchObject({ historyIncomplete: true, receipt: false, due: false })
-  model.consume({ ...old, at: 5200 })
-  expect(model.verdict().receipt).toBe(false)
-  model.consume({ ...old, name: 'UserPromptSubmit', at: 5300 })
-  model.consume({ ...old, at: 5400 })
-  expect(model.verdict()).toMatchObject({ historyIncomplete: true, receipt: true, due: true })
-})
-it('keeps Submit replay provenance and spends each post-truncation pair once', () => {
-  const model = new ClearReference()
-  for (let i = 0; i < 65; i++) {
-    model.consume({ epoch: i + 1, id: `L${i}`, kind: 'hook', name: 'SessionStart', at: 20 + i })
-  }
-  const submit: ClearEvent = {
-    epoch: 65,
-    id: 'L64',
-    kind: 'hook',
-    name: 'UserPromptSubmit',
-    at: 100,
-  }
-  model.consume(submit)
-  model.consume({ ...submit, name: 'Stop', at: 110 })
-  expect(model.verdict().receipt).toBe(true)
-  model.consume({ ...submit, duplicate: true })
-  model.consume({ ...submit, name: 'PermissionRequest', at: 120 })
-  model.consume({ ...submit, name: 'Stop', at: 130 })
-  expect(model.verdict().receipt).toBe(false)
-  model.consume({ ...submit, at: 140 })
-  model.consume({ ...submit, name: 'Stop', at: 150 })
-  expect(model.verdict().receipt).toBe(true)
+  model.advance(201)
+  expect(model.verdict()).toMatchObject({ id: 'C', receipt: false, historyIncomplete: true })
 })

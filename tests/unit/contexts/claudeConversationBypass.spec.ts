@@ -30,7 +30,7 @@ it('keeps the namespace fence after the quiet window until a fresh Start accepts
     f.registry.dispose()
   }
 })
-it('requires a post-truncation Stop while preserving ordinary processing and reused IDs', () => {
+it('keeps ordinary resume history below saturation and preserves reused IDs', () => {
   vi.useFakeTimers()
   vi.setSystemTime(100000)
   const f = orderingFixture()
@@ -41,7 +41,7 @@ it('requires a post-truncation Stop while preserving ordinary processing and reu
     expect(f.fence().conversationGeneration).toBeUndefined()
     f.send(hook('B', 'SessionStart', 100))
     vi.advanceTimersByTime(200)
-    expect(f.fence()).toMatchObject({ claudeClearReady: false, conversationQuarantined: true })
+    expect(f.fence()).toMatchObject({ claudeClearReady: true, conversationQuarantined: false })
     f.send(hook('B', 'UserPromptSubmit', 110))
     f.send(hook('B', 'Stop', 120))
     expect(f.fence().snapshot).toMatchObject({

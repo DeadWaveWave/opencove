@@ -33,6 +33,7 @@ export type AgentRunBinding = { nodeId: string | null; projectId?: string; space
 
 export function allowsClaudeClearReceipt(entry: AgentRunEntry): boolean {
   return (
+    !entry.conversation?.journal.saturated &&
     !!entry.conversation?.ready &&
     !entry.remote &&
     entry.launchKind === 'managed' &&
@@ -44,7 +45,9 @@ export function allowsClaudeClearReceipt(entry: AgentRunEntry): boolean {
 
 export function projectRunStateFence(entry: AgentRunEntry, epoch: string): RunStateFence {
   const { model } = entry
+  const saturated = !!entry.conversation?.journal.saturated
   const quarantined = !!(
+    saturated ||
     entry.conversation?.quarantined ||
     (entry.conversation?.journal.view().unresolved && model.snapshot.state === 'idle')
   )
@@ -58,6 +61,7 @@ export function projectRunStateFence(entry: AgentRunEntry, epoch: string): RunSt
     conversationGeneration: entry.conversation?.generation,
     claudeClearReady: allowsClaudeClearReceipt(entry),
     conversationQuarantined: quarantined,
+    ...(saturated ? { claudeHistorySaturated: true } : {}),
     watermarks: Object.fromEntries(
       Object.entries(model.observations).map(([source, value]) => [source, value.sourceSequence]),
     ),

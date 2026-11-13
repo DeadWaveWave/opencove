@@ -93,7 +93,6 @@ Claude Code `!`, `/`, legacy `#` or `&`; Codex, OpenCode, Pi and Gemini `!` or `
 These grant refusals exit 4 with `field_denied` before input or a delivery record. Start with words;
 `!` or `/` later in a message remains ordinary text. Only the user runs provider commands and answers permission dialogs.
 
-
 Inspect drafts and dialogs with `opencove agent read --node <selector> --screen`
 before sending. Save `deliveryId` and `turnId`, confirm with `agent delivery <deliveryId> --wait`, and use `opencove agent wait --node <selector> --turn <turnId>`,
 then `opencove agent read --node <selector> --turn <turnId>` using the saved
@@ -278,3 +277,5 @@ plus the final ID; archived records currently retain only the final promptId.
 Thus older/restarted turns may report empty deliveryIds and only the final
 promptIds entry. Older Workers or mirrored remote end evidence may omit these
 fields entirely. Missing identifiers never justify resending a prompt.
+
+`agent.state_unknown` / `history_saturated`：当前 Claude 会话的跟踪历史已达上限，请重新启动 agent 窗口后再发送提示；对话本身不受影响。

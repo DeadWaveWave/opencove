@@ -1,17 +1,18 @@
 /** Invocation identity tombstones never depend on the replay log. Once history is
- * incomplete, only a fresh current Submit–Stop pair may certify idle; empty clear stays disabled. */
-export const CLAUDE_LIFECYCLE_LIMIT = 64
-export const CLAUDE_IDENTITY_LIMIT = 128
+ * incomplete, prompting stays disabled until the invocation ends. */
+export const CLAUDE_LIFECYCLE_LIMIT = 512
+export const CLAUDE_IDENTITY_LIMIT = 256
+export const CLAUDE_FACT_LIMIT = 640
 export class ClaudeJournalHistory {
   private identities = new Map<string, number>()
-  private truncatedAt?: number
+  private truncated = false
   get incomplete(): boolean {
-    return this.truncatedAt !== undefined
+    return this.truncated
   }
-  remember(id: string, at: number, order: number): boolean {
+  remember(id: string, at: number): boolean {
     const first = this.identities.get(id)
     if (first === undefined && this.identities.size === CLAUDE_IDENTITY_LIMIT) {
-      this.truncate(order)
+      this.truncate()
     } else {
       this.identities.set(id, Math.min(first ?? at, at))
     }
@@ -23,14 +24,11 @@ export class ClaudeJournalHistory {
   knows(id: string): boolean {
     return this.identities.has(id)
   }
-  truncate(order: number): void {
-    this.truncatedAt ??= order
-  }
-  qualifies(order: number | undefined): boolean {
-    return !this.incomplete || (order !== undefined && order > this.truncatedAt!)
+  truncate(): void {
+    this.truncated = true
   }
   dispose(): void {
     this.identities.clear()
-    this.truncatedAt = undefined
+    this.truncated = false
   }
 }

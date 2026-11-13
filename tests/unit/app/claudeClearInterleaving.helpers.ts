@@ -1,3 +1,4 @@
+import { ClaudeInvocationJournal } from '../../../src/contexts/agent/application/ClaudeInvocationJournal'
 import { vi } from 'vitest'
 import { clearIngressFixture, clearTranscript } from './claudeClearIngress.helpers'
 import {
@@ -149,11 +150,17 @@ export async function clearInterleavingFixture(phase: Phase) {
         session: (f.runtime as unknown as { sessions: Map<string, unknown> }).sessions.get('s'),
       },
       (_key, value) =>
-        value instanceof Set || value instanceof Map
-          ? [...value]
-          : typeof value === 'function'
-            ? undefined
-            : value,
+        // Rejected authenticated receipts now intentionally update immutable provenance.
+        // All facts, bindings, authority flags, callbacks and public outputs remain compared.
+        value instanceof ClaudeInvocationJournal
+          ? Object.fromEntries(
+              Object.entries(value).filter(([key]) => !['receipts', 'sequence'].includes(key)),
+            )
+          : value instanceof Set || value instanceof Map
+            ? [...value]
+            : typeof value === 'function'
+              ? undefined
+              : value,
     )
   }
   const exact = (turnId: string) => {

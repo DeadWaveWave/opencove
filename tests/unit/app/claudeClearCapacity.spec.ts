@@ -105,7 +105,7 @@ it.each(['covering', 'replacement'] as const)(
           onState: event => f.runtime.observe(event),
         }),
       )
-      for (let n = 0; n < 256; n++) {
+      for (let n = 0; n < 640; n++) {
         watcher.state('s', 'waiting')
         // oxlint-disable-next-line no-await-in-loop -- distinct real callback timestamps cross capacity
         await vi.advanceTimersByTimeAsync(1)

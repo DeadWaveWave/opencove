@@ -55,7 +55,7 @@ for (const seed of CLEAR_SEEDS) {
 }
 it('crosses twice each journal bound with histories, receipts, unknown captures and tied Starts', () => {
   const all = CLEAR_SEEDS.flatMap(seed => [...capacityCases(seed), ...replayCases(seed)])
-  expect(all).toHaveLength(405)
+  expect(all).toHaveLength(425)
   expect(all.some(c => c.events.filter(e => e.duplicate).length >= 12)).toBe(true)
   expect(
     all.some(
@@ -69,11 +69,11 @@ it('crosses twice each journal bound with histories, receipts, unknown captures 
     true,
   )
   expect(all.some(c => c.events.filter(e => e.kind === 'capture').length >= 128)).toBe(true)
-  expect(all.some(c => c.events.filter(e => e.name === 'SessionStart').length > 256)).toBe(true)
+  expect(all.some(c => c.events.filter(e => e.name === 'SessionStart').length > 512)).toBe(true)
   expect(
     all.some(
       c =>
-        c.events.filter(e => e.name === 'SessionStart').length > 256 &&
+        c.events.filter(e => e.name === 'SessionStart').length > 512 &&
         c.events.some(e => e.id === 'A' && e.name === 'SessionStart' && e.at === 5000),
     ),
   ).toBe(true)

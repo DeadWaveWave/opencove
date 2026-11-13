@@ -27,12 +27,20 @@ export function observeRunConversation(
   if (record.conversation) {
     const request = record.conversation,
       clear = isClaudeClearEvidence(request.event)
+    const saturated = journal.saturated
+    const replayed = journal.observeReceipt(request.event)
+    if (!saturated && journal.saturated && entry.conversation) {
+      ports.notify()
+    }
     if (!entry.conversation && !clear) {
       journal.appendHook(request.event, request)
       return
     }
     if (entry.conversation && !entry.conversation.active && !clear) {
-      if (journal.replayedSubmission(request.event)) {
+      if (
+        (replayed && request.event.hookEventName === 'UserPromptSubmit') ||
+        journal.rejectsReceipt(request.event)
+      ) {
         request.decide({
           action: 'ignore',
           generation: entry.conversation.generation,

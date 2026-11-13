@@ -54,6 +54,7 @@ resend a prompt merely because a reply is unavailable.
 
 The command attempts one bracketed paste and Enter into the current editor; existing
 editor drafts may be submitted too. Resolve visible dialogs and inspect the editor.
+`history_saturated` means restart the agent window to send prompts again; the conversation itself is unaffected.
 `terminal_agent_unsupported` means the target must be an agent window OpenCove launched.
 Do not try raw PTY writes to work around that refusal. `agent.blocked` means resolve the
 pending dialog before trying delivery again.

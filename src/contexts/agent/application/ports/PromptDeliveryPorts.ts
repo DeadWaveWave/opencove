@@ -14,6 +14,7 @@ export interface RunStateFence {
   conversationGeneration?: number
   claudeClearReady?: boolean
   conversationQuarantined?: boolean
+  claudeHistorySaturated?: boolean
   bindingGeneration: number
   cursor: number
   snapshot: AgentRunSnapshot

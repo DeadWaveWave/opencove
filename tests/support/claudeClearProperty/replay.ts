@@ -41,6 +41,31 @@ export function replayCases(seed: number): ClearCase[] {
     )
     result.push({ seed, index: result.length, ids: ['A', 'B'], events, equivalent: false })
   }
+  // Rejected receipts must enter provenance before ordinary routing discards them.
+  for (const count of [10, 70, 260, 520]) {
+    const at = count > 70 ? 2000 : 400
+    const submit = hook(3, 'B', 'UserPromptSubmit', at + 50),
+      stop = hook(3, 'B', 'Stop', at + 100)
+    const events = [
+      hook(1, 'B', 'SessionStart', 20),
+      quiet(),
+      hook(2, 'C', 'SessionStart', 100),
+      quiet(),
+      submit,
+      stop,
+    ]
+    for (let n = 0; n < count; n++) {
+      events.push(hook(10 + n, `L${n}`, 'SessionStart', 150 + n), quiet())
+    }
+    events.push(
+      hook(3, 'B', 'SessionStart', at),
+      quiet(),
+      { ...submit, duplicate: true },
+      { ...stop, duplicate: true },
+      quiet(),
+    )
+    result.push({ seed, index: result.length, ids: ['A', 'B', 'C'], events, equivalent: false })
+  }
   // More than twice the 1,024 exact provenance entries. Missing origins cannot become fresh.
   const saturated: ClearEvent[] = []
   for (let n = 0; n < 1025; n++) {

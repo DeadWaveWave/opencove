@@ -39,7 +39,7 @@ it.each([10, 260])('withholds empty readiness for reused A after %s clears', asy
     await f.send('A', 'SessionStart', 1001, undefined, 'resume')
     await f.send('A', 'UserPromptSubmit', 1002, 'fresh')
     await f.send('A', 'Stop', 1003, 'fresh')
-    expect(await capacityWrites(f)).toBe(2)
+    expect(await capacityWrites(f)).toBe(count < 256 ? 2 : 0)
   } finally {
     await f.close()
   }
