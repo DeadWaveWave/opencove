@@ -86,6 +86,7 @@ function requiresWebglRenderer(
   return terminalProvider === 'opencode' && options.terminalKind === 'agent'
 }
 
+/** @internal Test seam: only specs call this. */
 export function resetPreferredTerminalRendererStateForTests(): void {
   activeWebglRendererCount = 0
   webglSupported = false

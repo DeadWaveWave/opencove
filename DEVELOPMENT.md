@@ -28,6 +28,16 @@
 7.  **结构优先于补丁 (Prefer Structural Clarity over Patch Accumulation)**: 不要等问题复发后才升级。只要任务本身已经暴露出 `多个 mutable state owner`、`边界/权限含混`、`同一入口承载多套竞争语义或解释路径`、或 `局部修补会制造隐藏/矛盾状态`，就应先收敛结构而不是继续叠 patch。
 8.  **Renderer 反馈统一用应用内消息，不用系统弹窗 (Use In-App Feedback, Not System Dialogs)**: Renderer 层禁止新增 `window.alert / confirm / prompt` 这类系统弹窗；统一复用应用内反馈组件，并按语义区分 `info / warning / error` 三个视觉层级，避免阻塞交互与平台观感割裂。
 
+#### 死代码门禁 (Dead Code Gate)
+
+`pnpm deadcode:check`（属于 `pnpm verify:repo`，因此在 `verify:checks` 与 CI 的 `Repository checks` 步骤中运行）以 knip production 模式从生产入口出发做整图可达性检查：测试文件不算使用者，所以“被替换但仍被自己的 spec 引用”的旧模块会直接失败。修复方式是删除旧代码，不是加豁免。
+
+- **只放生产代码**：`src/` 只放会随产品发布的代码；仅测试使用的模块放在 `tests/`（例如 `tests/support/`）。
+- **测试专用导出**：生产代码和同文件都没用到、只有测试使用的导出，必须命名为 `...ForTests` 并标注 `/** @internal */`；`@internal` 只允许用于 `...ForTests`。
+- **按路径字符串加载的代码**（子进程、worker）必须是构建入口：加入 `scripts/lib/build-entries.mjs`，并注释它在哪里被 spawn。该文件是生产入口的唯一来源，electron-vite、CLI 构建和 `knip.config.ts` 都读取它。
+- **未使用的 export / type** 记录在 `scripts/dead-code-ratchet.json`（按文件计数，只减不增）。清理后运行 `pnpm deadcode:ratchet` 锁定；该命令在任何计数上升时拒绝写入。不要手改该文件，也不要在 `knip.config.ts` 里 `ignore` 文件或目录。
+- 文件、依赖、unresolved、binaries 等必须为 0。生产不 import 的依赖用 `pnpm remove` 移除，仅工具链使用的移到 `devDependencies`。
+
 ### 命名与前缀 (Naming)
 
 - 对外/协议/持久化统一使用 `OpenCove` / `opencove`（例如 `window.opencoveApi`、`OPENCOVE_*`、`.opencove/`、`opencove.db`）。
@@ -176,7 +186,7 @@ Ubuntu/macOS 三个分片用 `scripts/plan-e2e-shards.mjs` 按文件内用例的
     -   生成代码（如自动生成的类型定义等）禁止手改。
     -   **调研/验收报告默认不入库**：调研分析报告，以及某次 PR 的 review / acceptance 记录，都只是**本地分析与决策产物**，不是仓库资产。它们是某一时刻的快照，会很快过期，却没有人维护。除非明确要求，否则不要提交；评审结论写在 PR 描述/评论里。`docs/` 只收**本项目自身的**长期文档：架构、不变量、开发流程、案例。若调研中得出的结论具有长期价值（如一条不变量），把**结论**写进对应的项目文档，而不是提交整份报告。
 -   **提交前检查（本地快速门禁，合并前 CI 完整回归）**：
-    -   `pnpm verify:repo` 对整个仓库检查行数、命名（`cove:*` 等前缀）、UI 样式与架构棘轮（`pnpm arch:check`）；结果不依赖 staged 内容，CI（`ci-ubuntu` 的 `Repository checks` 步骤）以同样方式运行。行数上限只约束手写代码（`.ts/.tsx/.mjs/.css/.sh` 等），生成文件与 `.md/.json/.jsonl/.yml/.html` 不受限；超限文件只能登记在 `scripts/check-max-lines.mjs` 的 `LINE_LIMIT_EXEMPTIONS` 中，且记录的行数只降不增。命名检查中，仅显式 legacy 迁移用途可在同一行标注 `LEGACY_` 或注释 `legacy`；UI 设计系统前缀仍保留 `cove`（见上文命名约定）。
+    -   `pnpm verify:repo` 对整个仓库检查行数、命名（`cove:*` 等前缀）、UI 样式、架构棘轮（`pnpm arch:check`）与死代码（`pnpm deadcode:check`）；结果不依赖 staged 内容，CI（`ci-ubuntu` 的 `Repository checks` 步骤）以同样方式运行。行数上限只约束手写代码（`.ts/.tsx/.mjs/.css/.sh` 等），生成文件与 `.md/.json/.jsonl/.yml/.html` 不受限；超限文件只能登记在 `scripts/check-max-lines.mjs` 的 `LINE_LIMIT_EXEMPTIONS` 中，且记录的行数只降不增。命名检查中，仅显式 legacy 迁移用途可在同一行标注 `LEGACY_` 或注释 `legacy`；UI 设计系统前缀仍保留 `cove`（见上文命名约定）。
     -   其余 staged 检查（格式、密钥、相关测试）只看 staged 文件；CI 会对整个仓库重跑格式、密钥扫描与全部单测。对 0 个文件运行的 staged 检查实际上没有运行，将其报告为“通过”属于错误陈述；需要强制防空时，使用 `OPENCOVE_REQUIRE_STAGED=1 pnpm pre-commit`（运行前先 `git add -A`，并用 `git diff --cached --name-only` 确认文件列表非空）。
     -   若本次改动包含用户可感知变化（新增功能、UX 改动、修复 bug、默认行为变化），应先提交代码并创建 PR；拿到 PR 链接/编号后，再更新 `CHANGELOG.md` 的 `## [Unreleased]` 并单独提交（每个变化一条，尽量附 `#PR` 编号）。`nightly` tag 不要求更新 changelog；发 `stable` 时再把 `Unreleased` 结算进新版本段。
     -   创建/更新 PR 时：若本次改动包含用户可感知变化，必须跑对应 Playwright E2E，并列明本地验证范围；合并前以最终提交的完整 CI 为准。

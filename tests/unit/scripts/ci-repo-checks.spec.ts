@@ -26,7 +26,7 @@ describe('repository checks wiring', () => {
 
     expect(pkg.scripts['verify:checks'].startsWith('pnpm verify:repo && ')).toBe(true)
     expect(pkg.scripts['verify:repo']).toBe(
-      'pnpm line-check && pnpm naming-check && pnpm ui:style-check && pnpm arch:check',
+      'pnpm line-check && pnpm naming-check && pnpm ui:style-check && pnpm arch:check && pnpm deadcode:check',
     )
     expect(pkg.scripts['line-check']).toBe('node scripts/check-max-lines.mjs')
     expect(pkg.scripts['naming-check']).toBe('node scripts/check-naming.mjs')
