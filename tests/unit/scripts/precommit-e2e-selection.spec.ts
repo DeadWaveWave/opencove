@@ -17,6 +17,7 @@ const select = (...paths: string[]) =>
 describe('local quick E2E selection', () => {
   it('keeps the invariant core for every quick selection and selects every registered group with real existing files', () => {
     const examples = {
+      workerCli: 'src/app/cli/commands/agent.ts',
       plugins: 'src/contexts/settings/presentation/renderer/settingsPanel/PluginSettingsDetail.tsx',
       pluginInteraction: 'tests/e2e/plugins.local.helpers.ts',
       liveViews: 'src/app/renderer/shell/hooks/useWorkerSyncStateUpdates.ts',

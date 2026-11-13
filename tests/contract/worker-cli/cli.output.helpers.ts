@@ -1,3 +1,4 @@
+import { expect } from '@playwright/test'
 import type { SeedWorkspace } from '../../e2e/workspace-canvas.helpers'
 import { withWorker, type WorkerFixture, type Binding } from './fixture'
 export { spaceComparisonCommand, projectId, spaceId } from '../../e2e/cli.output.helpers'
@@ -7,7 +8,12 @@ export async function createOutputTerminal(
   worker: WorkerFixture,
   kind: 'terminal' | 'agent' = 'terminal',
 ) {
-  return worker.createTerminal(projectId, kind, spaceId)
+  const binding = await worker.createTerminal(projectId, kind, spaceId)
+  // With no renderer attached, the real Worker owns this fixed grid for the entire test.
+  expect(
+    await worker.invoke('session.presentationSnapshot', { sessionId: binding.sessionId }, 'query'),
+  ).toMatchObject({ cols: 80, rows: 24 })
+  return binding
 }
 
 export async function withOutputWorkspace(

@@ -9,6 +9,15 @@ export const QUICK_E2E_GROUPS = {
       e2e('recovery.worker-client-input-after-restart'),
     ],
   },
+  workerCli: {
+    reason:
+      'Desktop still projects real granted terminals; backend matrices run in worker-cli contracts.',
+    tests: [e2e('cli.output-boundary')],
+    matches: path =>
+      /app\/(?:cli|worker)\/|app\/main\/controlsurface\/handlers\/(?:node|session|pty)|tests\/contract\/worker-cli\/|tests\/e2e\/cli\./.test(
+        path,
+      ),
+  },
   plugins: {
     reason: 'Independent install/reload/restart, Web views, contribution preferences and details.',
     tests: [
