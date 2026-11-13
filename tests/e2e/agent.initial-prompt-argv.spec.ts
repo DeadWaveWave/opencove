@@ -1,6 +1,6 @@
 /* eslint-disable no-await-in-loop -- One PTY and receiver log require sequential commands. */
 import { expect, test } from '@playwright/test'
-import { writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
   promptApp,
@@ -41,15 +41,18 @@ test('CLI grants refuse composer controls without effects and pass real launch a
     ]) {
       // File input keeps quotes, Unicode, dashes and shell metacharacters out of the shell command.
       await writeFile(join(f.workspace, 'prompt.txt'), prompt)
-      const output = await terminalCommand(
+      // Read the CLI's own output from a file: terminal rendering (ConPTY line wrapping) can
+      // repeat characters at wrap boundaries, so the screen text is not a faithful copy.
+      const status = await terminalCommand(
         f.window,
         binding,
-        `opencove node create agent --provider ${provider} --prompt-file ./prompt.txt -o json`,
+        `opencove node create agent --provider ${provider} --prompt-file ./prompt.txt -o json > ./refusal.out 2>&1`,
         'PROMPT_REFUSED',
       )
-      expect(output.replaceAll('\n', '')).toMatch(/\bexit=(2|4)\b/)
-      expect(output.replaceAll('\n', '')).toContain(message)
-      expect(output.replaceAll('\n', '')).toContain(hint)
+      expect(status.replaceAll('\n', '')).toMatch(/\bexit=(2|4)\b/)
+      const output = decodeRedirected(await readFile(join(f.workspace, 'refusal.out')))
+      expect(output).toContain(message)
+      expect(output).toContain(hint)
       expect(await canvasRuntimeFootprint(f.window, projectId)).toEqual(before)
       expect(await f.records()).toEqual([])
     }
@@ -229,3 +232,10 @@ test('role prompts use the same refusal and accepted argv policy', async () => {
     await f.close()
   }
 })
+
+/** Windows PowerShell 5.1 redirects as UTF-16LE with a BOM; other shells write UTF-8. */
+function decodeRedirected(bytes: Buffer): string {
+  return bytes[0] === 0xff && bytes[1] === 0xfe
+    ? bytes.subarray(2).toString('utf16le')
+    : bytes.toString('utf8')
+}
