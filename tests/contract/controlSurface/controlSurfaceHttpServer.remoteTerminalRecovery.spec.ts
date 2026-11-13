@@ -6,13 +6,12 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import Database from 'better-sqlite3'
 import { expect, it, vi } from 'vitest'
-import { registerControlSurfaceHttpServer } from '../../../src/app/main/controlSurface/controlSurfaceHttpServer'
+import { createNativeRecoveryDiagnostics } from './nativeRecoveryDiagnostics'
 import type { ControlSurfacePtyRuntime } from '../../../src/app/main/controlSurface/handlers/sessionPtyRuntime'
 import { createApprovedWorkspaceStoreForPath } from '../../../src/contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
 import {
   createInMemoryPersistenceStore,
   createMinimalState,
-  invoke,
   safeRemoveDirectory,
 } from './controlSurfaceHttpServer.sessionStreaming.testUtils'
 import { describeWithElectronNativeModules } from '../electronNativeSuite'
@@ -23,6 +22,8 @@ import {
 
 describeWithElectronNativeModules('Control Surface remote terminal recovery durability', () => {
   it('keeps one remote epoch and exactly-once presentation across two Home restarts', async () => {
+    const { registerServer: registerControlSurfaceHttpServer, invoke } =
+      createNativeRecoveryDiagnostics()
     const homeUserDataPath = await mkdtemp(join(tmpdir(), 'opencove-home-remote-recovery-'))
     const remoteUserDataPath = await mkdtemp(join(tmpdir(), 'opencove-remote-recovery-'))
     const remoteRootPath = await mkdtemp(join(tmpdir(), 'opencove-remote-recovery-root-'))
