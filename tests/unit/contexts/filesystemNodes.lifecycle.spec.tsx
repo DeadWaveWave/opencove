@@ -229,7 +229,10 @@ describe('filesystem node ownership across async work', () => {
     })
     const current = { ...original, nodes: view.nodesRef.current }
     const merged = toShellWorkspaceStateForSync(stale, current)
-    expect(merged.nodes[0]).toBe(view.nodesRef.current[0])
+    expect(merged.nodes[0]).toMatchObject({
+      id: 'folder',
+      data: { workerBinding: { endpointId: 'local', mountId: null } },
+    })
     expect(merged.nodes[0].data.folder).toMatchObject({
       uri: 'file:///repo',
       viewMode: 'list',

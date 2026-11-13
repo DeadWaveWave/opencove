@@ -1,3 +1,4 @@
+import { resolveAgentPresentation } from '../../../src/contexts/workspace/presentation/renderer/utils/agentPresentation'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
@@ -39,9 +40,13 @@ afterEach(async () => {
   vi.restoreAllMocks()
 })
 
-it.each([false, true])(
-  'converges live CLI mutations and retains them through the next renderer save (guard=%s)',
-  async guarded => {
+it.each(
+  [false, true].flatMap(guarded =>
+    ['ready', 'preparing', 'waiting'].map(phase => ({ guarded, phase })),
+  ),
+)(
+  'converges background CLI mutations through the next save (guard=$guarded, phase=$phase)',
+  async ({ guarded, phase }) => {
     const workspace = toShellWorkspaceState(
       ensurePersistedWorkspace({
         id: 'project',
@@ -62,6 +67,8 @@ it.each([false, true])(
           {
             id: 'agent',
             kind: 'agent',
+            sessionId: 'runtime',
+            status: 'running',
             title: 'Agent',
             position: { x: 500, y: 0 },
             width: 500,
@@ -80,7 +87,31 @@ it.each([false, true])(
         ],
       })!,
     )
-    useAppStore.setState({ workspaces: [workspace], activeWorkspaceId: 'project' })
+    const agentData = workspace.nodes.find(n => n.id === 'agent')!.data
+    if (phase === 'preparing') {
+      agentData.runtimeSessionBinding = { phase: 'preparing', sessionId: 'runtime' }
+      agentData.sessionId = ''
+    }
+    const observation = {
+      status: 'waiting' as const,
+      blockedReason: 'permission' as const,
+      source: 'codex_hook' as const,
+      hookInstallState: 'installed' as const,
+      degraded: false,
+    }
+    if (phase === 'waiting') {
+      agentData.agentRuntimeObservation = observation
+    }
+    const foreground = toShellWorkspaceState(
+      ensurePersistedWorkspace({
+        id: 'foreground',
+        name: 'Foreground',
+        path: '/other',
+        spaces: [],
+        nodes: [],
+      })!,
+    )
+    useAppStore.setState({ workspaces: [workspace, foreground], activeWorkspaceId: 'foreground' })
     const produce = () => {
       const s = useAppStore.getState()
       return toPersistedState(s.workspaces, s.activeWorkspaceId, s.agentSettings)
@@ -155,6 +186,21 @@ it.each([false, true])(
       const agent = durable.workspaces[0].nodes.find(n => n.id === 'agent')!.agent
       return agent && 'taskId' in agent ? agent.taskId : undefined
     }
+    const assertRuntime = () => {
+      expect(useAppStore.getState().activeWorkspaceId).toBe('foreground')
+      const data = useAppStore.getState().workspaces[0].nodes.find(n => n.id === 'agent')!.data
+      if (phase === 'preparing') {
+        expect(data.runtimeSessionBinding).toEqual({ phase: 'preparing', sessionId: 'runtime' })
+        expect(data.sessionId).toBe('')
+      }
+      if (phase === 'waiting') {
+        expect(resolveAgentPresentation(data)).toMatchObject({
+          status: 'waiting',
+          observation: { blockedReason: 'permission' },
+        })
+        expect(data.agentRuntimeObservation).toBe(observation)
+      }
+    }
     const rendererSave = async (name: string) => {
       await act(async () => {
         useAppStore.getState().setWorkspaces(ws => ws.map(w => ({ ...w, name })))
@@ -177,6 +223,7 @@ it.each([false, true])(
       await rendererSave('After claim')
       expect(persistedAgentTask()).toBe('task')
       expect(agentTask()).toBe('task')
+      assertRuntime()
       expect(durable.workspaces[0].nodes.find(n => n.id === 'task')!.task).toMatchObject({
         linkedAgentNodeId: 'agent',
         status: 'doing',
@@ -206,6 +253,7 @@ it.each([false, true])(
       await waitFor(() => expect(agentTask()).toBeNull())
       await rendererSave('After release')
       expect(persistedAgentTask()).toBeNull()
+      assertRuntime()
       expect(durable.workspaces[0].nodes.find(n => n.id === 'task')!.task).toMatchObject({
         linkedAgentNodeId: null,
         status: 'ai_done',

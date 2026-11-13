@@ -143,6 +143,7 @@ function isNodeDataEquivalent(persisted: TerminalNodeData, existing: TerminalNod
     persisted.height !== existing.height ||
     persisted.profileId !== existing.profileId ||
     persisted.runtimeKind !== existing.runtimeKind ||
+    persisted.terminalProviderHint !== existing.terminalProviderHint ||
     !areNodeWorkerBindingsEqual(persisted.workerBinding ?? null, existing.workerBinding ?? null) ||
     (persisted.labelColorOverride ?? null) !== (existing.labelColorOverride ?? null) ||
     (persisted.sidebarSortOrder ?? null) !== (existing.sidebarSortOrder ?? null) ||
@@ -261,6 +262,7 @@ function isNodeDataEquivalent(persisted: TerminalNodeData, existing: TerminalNod
     'role',
     'terminalAgentBinding',
     'terminalGeometry',
+    'agentRuntimeObservation',
   ] as const) {
     if (canonicalContent(persisted[field] ?? null) !== canonicalContent(existing[field] ?? null)) {
       return false
