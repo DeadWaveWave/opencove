@@ -21,11 +21,12 @@ const timer = setInterval(async () => {
   try {
     const args = JSON.parse(await readFile(request, 'utf8'))
     await unlink(request)
-    execFile(process.execPath, [${JSON.stringify(resolve('out/cli/opencove.mjs'))}, ...args],
+    const child = execFile(process.execPath, [${JSON.stringify(resolve('out/cli/opencove.mjs'))}, ...args],
       { env: process.env, timeout: 45000 }, async (error, stdout, stderr) => {
         await writeFile(request + '.result', JSON.stringify({ code: error?.code ?? 0, stdout, stderr }))
         busy = false
       })
+    await writeFile(request + '.pid', String(child.pid))
   } catch { busy = false }
 }, 50)
 timer.unref()

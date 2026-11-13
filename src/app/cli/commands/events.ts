@@ -18,7 +18,7 @@ export const eventsCommand = defineCommand({
   resolveInExecute: true,
   executionScope: streamLifetime,
   description:
-    'Write compact NDJSON, starting with stream.ready. Resume manually with --after and the last printed cursor. A gap is terminal (exit 1); a lost connection exits 3. Scoped streams include only events published after binding. Turn completion reports an observation; inspect its outcome. Timeout or signals close observation without stopping agents.',
+    'Write compact NDJSON, starting with stream.ready. Resume with --cursor-file <path>, or --after and the last printed cursor. Ctrl-C closes observation (130); pipes keep NDJSON on stdout. A gap is terminal (exit 1); a lost connection exits 3. Scoped streams include only events published after binding. Turn completion reports an observation; inspect its outcome. Timeout or signals close observation without stopping agents.',
   options: {
     type: {
       type: 'string',
@@ -28,7 +28,22 @@ export const eventsCommand = defineCommand({
     },
     project: selector('Filter event-time project membership'),
     space: selector('Filter event-time Space membership'),
-    node: selector('Filter observations bound to one node'),
+    node: {
+      ...selector('Filter observations by node; repeat with --until-each-turn'),
+      multiple: true,
+    },
+    'cursor-file': {
+      type: 'string',
+      valueName: 'path',
+      description:
+        'Atomically save each complete record cursor; resume from this file unless --after is explicit',
+    },
+    'until-each-turn': {
+      type: 'boolean',
+      conflicts: ['count', 'until'],
+      description:
+        'Wait for one turn completion per explicit --node after ready; final node/session/turn/outcome summaries go to stderr',
+    },
     'spawned-by': {
       ...selector('Filter direct creation children, including children created later'),
       selector: 'node',
@@ -104,6 +119,19 @@ export const eventsCommand = defineCommand({
     ],
   },
   validateBeforeConnect({ options: o }) {
+    if (o['cursor-file'] !== undefined && !String(o['cursor-file']).trim()) {
+      usage('--cursor-file requires a nonempty path.')
+    }
+    const nodes = [o.node ?? []].flat()
+    if (o['until-each-turn'] && !nodes.length) {
+      usage('--until-each-turn requires at least one explicit --node.')
+    }
+    if (nodes.length > 1 && !o['until-each-turn']) {
+      usage('Repeated --node requires --until-each-turn.')
+    }
+    if (o['until-each-turn'] && o.type && !(o.type as string[]).includes('agent.turn_completed')) {
+      usage('--until-each-turn requires agent.turn_completed in --type.')
+    }
     if (o.after !== undefined) {
       try {
         decodeEventCursor(String(o.after))
@@ -134,6 +162,8 @@ export const eventsCommand = defineCommand({
   examples: [
     'opencove events --space "Main" --until agent.turn_completed --timeout 2m',
     'opencove events --spawned-by @self --count 10',
+    'opencove events --cursor-file ./events.cursor | tee events.ndjson',
+    'opencove events --until-each-turn --node A --node B --timeout 2m',
     'opencove events --after saved-cursor',
   ],
   execute: runEvents,

@@ -43,6 +43,7 @@ it('reports a starting reservation before a binding exists and releases it on se
       maxDepth: 3,
       liveInTree: 1,
       maxLiveInTree: 6,
+      remainingLiveInTree: 5,
     })
   } finally {
     release()
