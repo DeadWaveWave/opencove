@@ -24,7 +24,7 @@ test('opens a terminal file link at its line and column and restores its collaps
   const lines = Array.from({ length: 30 }, (_, index) => `line-${index + 1}-content`)
   await mkdir(directory, { recursive: true })
   await writeFile(filePath, lines.join('\n'))
-  const { electronApp, window } = await launchApp({ windowMode: 'offscreen' })
+  const { electronApp, window } = await launchApp()
   const nodeId = 'terminal-document-link'
   try {
     await clearAndSeedWorkspace(
@@ -108,7 +108,7 @@ test('opens an existing local file URI directory with the system file manager wi
   )
   await mkdir(directory, { recursive: true })
   const uri = pathToFileURL(directory).href
-  const { electronApp, window } = await launchApp({ windowMode: 'offscreen' })
+  const { electronApp, window } = await launchApp()
   const nodeId = 'terminal-directory-link'
   let systemOpen: Awaited<ReturnType<typeof captureSystemOpenPaths>> | undefined
   try {
