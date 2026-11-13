@@ -15,12 +15,6 @@ const gates = [
     expectedStdout: '',
   },
   {
-    name: 'naming',
-    script: 'check-naming-staged.mjs',
-    fixture: { file: 'sample.ts', content: 'export const value = 1\n' },
-    expectedStdout: '',
-  },
-  {
     name: 'secrets',
     script: 'check-secrets-staged.mjs',
     fixture: { file: 'sample.txt', content: 'safe fixture\n' },

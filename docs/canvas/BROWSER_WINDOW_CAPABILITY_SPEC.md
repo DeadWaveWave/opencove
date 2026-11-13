@@ -358,7 +358,7 @@ Step 7: Downloads, permissions and cross-platform hardening.
 Step 8: Final verification and handoff.
 
 - Run targeted unit/contract/integration tests as each slice lands.
-- For final PR, stage changes, run `pnpm line-check:staged`, then `pnpm pre-commit`.
+- For final PR, stage changes, run `pnpm line-check`, then `pnpm pre-commit`.
 - Update `docs/canvas/WEBSITE_WINDOW_NODE.md` or rename/supersede it after implementation lands.
 - If this is submitted as a PR, update PR body with required screenshots/recording for browser UI, fullscreen and WebUI fallback.
 

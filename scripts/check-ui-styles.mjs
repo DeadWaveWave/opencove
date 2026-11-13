@@ -279,9 +279,14 @@ function readRatchet(path) {
 export function runUiStyleCheck({
   repoRoot = DEFAULT_REPO_ROOT,
   stderr = process.stderr,
+  stdout = null,
   updateRatchet = false,
 } = {}) {
   const files = readUiStyleFiles(repoRoot)
+  if (files.length === 0 && !updateRatchet) {
+    stderr.write('[ui-style-check] examined 0 stylesheets: this is not a pass.\n')
+    return 1
+  }
   const violations = checkUiStyleFiles(files)
   const scaleCounts = countScaleLiterals(files)
   const markupCounts = countMarkupLiterals(readUiMarkupFiles(repoRoot))
@@ -296,6 +301,7 @@ export function runUiStyleCheck({
     ? []
     : compareMarkupRatchet(markupCounts, readRatchet(markupPath))
   if (violations.length === 0 && scaleIssues.length === 0 && markupIssues.length === 0) {
+    stdout?.write(`[ui-style-check] examined ${files.length} stylesheets, no violations\n`)
     return 0
   }
 
@@ -309,5 +315,8 @@ export function runUiStyleCheck({
 
 const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : null
 if (invokedPath === import.meta.url) {
-  process.exitCode = runUiStyleCheck({ updateRatchet: process.argv.includes('--update-ratchet') })
+  process.exitCode = runUiStyleCheck({
+    stdout: process.stdout,
+    updateRatchet: process.argv.includes('--update-ratchet'),
+  })
 }
