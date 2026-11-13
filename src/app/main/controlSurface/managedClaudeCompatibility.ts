@@ -11,8 +11,8 @@ export function assertManagedClaudeMutationAllowed(
   nodeId: string,
   enabled = true,
 ): void {
-  // @compat managed-claude-worker-support
-  const reason = !ctx.clientFeatures?.managedClaudeResumeBindingV1
+  const reason = /* @compat managed-claude-worker-support */ !ctx.clientFeatures
+    ?.managedClaudeResumeBindingV1
     ? 'clientUpgradeRequired'
     : !enabled
       ? 'writesDisabled'

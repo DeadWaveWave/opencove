@@ -57,7 +57,6 @@ export class PromptDeliveryEvidence {
         return
       }
     } else if (provider === 'codex') {
-      // @compat codex-legacy-notify-bridge
       // Once a complete pair is known, legacy/missing IDs cannot confirm a steer.
       const knownPair = !!identity?.providerSessionId && !!identity.providerTurnId
       if (knownPair && (!r.providerSessionId || !r.providerTurnId)) {

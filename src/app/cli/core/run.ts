@@ -19,18 +19,19 @@ import { requireBoundedAgentSpawningForRequest } from './boundedAgentSpawning'
 import { sessionIdentity, selfUnavailable } from './identity'
 import type { ZodType } from 'zod'
 
-// @compat control-surface-legacy-validation
 /**
  * The part of an operation the CLI validates with. Narrowing to this view keeps the call path
  * independent of the registry's full union, which grows past what TypeScript can represent.
  */
 type CliOperation =
+  // @compat control-surface-legacy-validation
   | { kind: 'query' | 'command'; contract: 'legacy' }
   | {
       kind: 'query' | 'command'
       contract: 'schema'
       input: ZodType
       normalize(wire: never): unknown
+      // @compat control-surface-legacy-validation
       legacyNormalize?(payload: unknown): unknown
     }
 

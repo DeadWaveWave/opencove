@@ -198,11 +198,10 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const codexReuseRunningAppServer =
     normalizeBoolean(value.codexReuseRunningAppServer) ??
     DEFAULT_AGENT_SETTINGS.codexReuseRunningAppServer
-  // @compat settings-legacy-fields
   const agentFullAccess =
     normalizeBoolean(value.agentFullAccess) ??
     (Object.keys(value).length > 0
-      ? LEGACY_AGENT_FULL_ACCESS
+      ? /* @compat settings-legacy-fields */ LEGACY_AGENT_FULL_ACCESS
       : DEFAULT_AGENT_SETTINGS.agentFullAccess)
   const defaultTerminalProfileId = normalizeTextValue(value.defaultTerminalProfileId)
   const agentExecutablePathOverrideByProvider = normalizeAgentExecutablePathOverrideByProvider(

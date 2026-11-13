@@ -59,6 +59,7 @@ export const spaceGetOperation = defineOperation({
   scope: 'read',
   availability: 'always',
   summary: 'Get a space with its nodes and owning project',
+  // @compat control-surface-legacy-validation
   // Legacy isRecord accepts arrays; raw normalization retains named array properties.
   input: z.union([z.looseObject({ spaceId: z.string() }), z.array(z.unknown())]),
   normalize: normalizeGetSpacePayload,
@@ -72,6 +73,7 @@ export const spaceListOperation = defineOperation({
   scope: 'read',
   availability: 'always',
   summary: 'List spaces and their nodes in the selected or active project',
+  // @compat control-surface-legacy-validation
   // Legacy isRecord accepts arrays; raw normalization retains named array properties.
   input: z
     .union([z.looseObject({ projectId: z.string().nullish() }), z.array(z.unknown())])

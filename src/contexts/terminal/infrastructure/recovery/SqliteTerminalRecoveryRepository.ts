@@ -280,11 +280,11 @@ function decodeRecoveryRow(row: RecoveryRow): TerminalRecoveryRecord | null {
       rawTruncated: record.rawTruncated,
     })
     const hasTrustedReplayCursor = typeof record.checkpoint?.downstreamReplayCursor === 'number'
-    // @compat terminal-recovery-legacy-records
     const matchesPreCursorChecksum =
       !hasTrustedReplayCursor &&
       (record.checksum === recoveryChecksumWithoutReplayCursor(record) ||
-        record.checksum === legacyRecoveryChecksum(record))
+        /* @compat terminal-recovery-legacy-records */ record.checksum ===
+          legacyRecoveryChecksum(record))
     if (record.checksum !== currentChecksum && !matchesPreCursorChecksum) {
       return null
     }

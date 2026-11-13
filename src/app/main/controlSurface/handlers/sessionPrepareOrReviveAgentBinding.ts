@@ -5,7 +5,6 @@ import {
 import type { NormalizedPersistedNode, PersistedAgentLike } from './sessionPrepareOrReviveShared'
 import { resolvePendingResumeSessionId } from './sessionPrepareOrReviveResumeBinding'
 
-// @compat managed-claude-worker-support
 /** Owned bindings bypass all transcript heuristics; legacy discovery remains unchanged. */
 export async function resolvePreparationAgentBinding(
   node: NormalizedPersistedNode,

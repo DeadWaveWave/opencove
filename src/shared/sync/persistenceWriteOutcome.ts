@@ -54,14 +54,14 @@ export function classifyWriteResult(result: PersistWriteResult): PersistWriteRes
   }
   return {
     ...result,
-    // @compat remote-persistence-legacy-outcome
     // SQLite's validation rejection predates outcome and uses the legacy reason "unknown".
     // The authoritative error code wins over that transport-agnostic legacy field.
     outcome:
       result.error.code !== 'persistence.io_failed' &&
       result.error.code !== 'persistence.unavailable'
         ? 'rejected'
-        : result.reason === 'io' || result.reason === 'unknown'
+        : result.reason === 'io' ||
+            /* @compat remote-persistence-legacy-outcome */ result.reason === 'unknown'
           ? 'unknown'
           : 'rejected',
   }

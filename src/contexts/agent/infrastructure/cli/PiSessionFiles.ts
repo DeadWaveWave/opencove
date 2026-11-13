@@ -57,7 +57,6 @@ async function resolvePiSessionRoots(cwd: string): Promise<string[]> {
   )
 }
 
-// @compat pi-agent-settled-fallback
 /** Both the catalog and legacy UUID lookup use the same configured Pi storage roots. */
 export async function listPiSessionFiles(cwd: string): Promise<string[]> {
   const roots = [...new Set(await resolvePiSessionRoots(cwd))]

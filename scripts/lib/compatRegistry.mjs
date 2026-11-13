@@ -28,10 +28,13 @@ export function compareVersions(left, right) {
   return 0
 }
 
-export function nextMinorVersion(version) {
+export function nextMinorVersion(version, count = 1) {
   const [major, minor] = parseVersion(version)
-  return `${major}.${minor + 1}.0`
+  return `${major}.${minor + count}.0`
 }
+
+// A far-future `until` would silence an entry, so it may reach at most this many minors ahead.
+export const MAX_UNTIL_MINOR_DISTANCE = 3
 
 function isFilled(value) {
   return typeof value === 'string' && value.trim().length > 0
@@ -50,7 +53,7 @@ function checkVersionField(issues, rule, where, value, id) {
 }
 
 // Shape of the registry (rule d). Returns the entries that are well-formed enough to evaluate.
-export function validateRegistry(registry, issues) {
+export function validateRegistry(registry, issues, baseVersion) {
   const support = registry?.upgradeSupport
   const entries = registry?.entries
   if (!support || typeof support !== 'object' || !entries || typeof entries !== 'object') {
@@ -118,6 +121,17 @@ export function validateRegistry(registry, issues) {
       )
     ) {
       ok = false
+    }
+    if (ok && expires.until !== undefined) {
+      const latest = nextMinorVersion(baseVersion, MAX_UNTIL_MINOR_DISTANCE)
+      if (compareVersions(expires.until, latest) > 0) {
+        issues.push({
+          rule: 'invalid-expiry',
+          id,
+          message: `${where} expires at ${expires.until}, more than ${MAX_UNTIL_MINOR_DISTANCE} minor versions after ${baseVersion} (latest allowed ${latest}).`,
+        })
+        ok = false
+      }
     }
     if (ok) {
       valid[id] = entry

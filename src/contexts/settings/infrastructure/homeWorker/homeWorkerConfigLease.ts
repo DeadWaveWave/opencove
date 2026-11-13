@@ -69,12 +69,13 @@ async function observeLease(lockPath: string): Promise<LeaseObservation | null> 
         ? await readFile(lockPath, 'utf8').catch(() => null)
         : null
     return {
-      // @compat home-worker-config-legacy-lease
       identity: [
         metadata.dev,
         metadata.ino,
         metadata.mtimeMs,
-        metadata.isDirectory() ? 'directory' : 'legacy-file',
+        metadata.isDirectory()
+          ? 'directory'
+          : /* @compat home-worker-config-legacy-lease */ 'legacy-file',
         raw ?? 'malformed',
       ].join(':'),
       mtimeMs: metadata.mtimeMs,

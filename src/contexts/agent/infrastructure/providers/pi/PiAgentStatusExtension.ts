@@ -1,4 +1,3 @@
-// @compat pi-agent-settled-fallback
 /** Standalone launch artifact. Only Node built-ins: no dependency on the host application's
  * module graph or a particular Pi package name. The contract suite executes this exact source.
  */

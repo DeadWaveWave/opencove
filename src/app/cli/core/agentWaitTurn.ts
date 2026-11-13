@@ -50,7 +50,6 @@ export function turnUnavailable(
   )
 }
 
-// @compat cli-legacy-input-handling
 /** A retained identity or a legacy event can certify an end without any history IO. */
 export function selectedTurnEnd(
   snapshot: AgentRunSnapshot,

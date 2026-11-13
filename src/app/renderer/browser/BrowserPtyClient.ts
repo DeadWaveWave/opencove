@@ -333,7 +333,6 @@ export class BrowserPtyClient {
     })
 
     try {
-      // @compat pty-geometry-legacy-revision
       if (
         !this.socketLifecycle.sendIfCurrent(attached.lease, {
           type: 'resize',
@@ -346,6 +345,7 @@ export class BrowserPtyClient {
             ? { baseGeometryRevision: payload.baseGeometryRevision }
             : {}),
           authorityEpoch: attached.result.authority.epoch,
+          // @compat pty-geometry-legacy-revision
           ...(legacyRevision !== null
             ? { revision: legacyRevision }
             : typeof payload.revision === 'number' && Number.isFinite(payload.revision)

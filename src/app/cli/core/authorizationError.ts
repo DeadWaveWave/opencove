@@ -4,7 +4,6 @@ import { nodeParentErrorPresentation } from '../../../shared/errors/nodeParentEr
 import { initialPromptErrorPresentation } from '../../../shared/errors/initialPromptFeedback'
 import type { AppErrorParams } from '../../../shared/contracts/dto'
 
-// @compat cli-legacy-input-handling
 /** HTTP authentication/authorization status takes precedence over legacy descriptors. */
 export function authorizationError(
   status: number | undefined,

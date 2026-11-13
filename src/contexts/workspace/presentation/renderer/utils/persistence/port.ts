@@ -195,8 +195,8 @@ function createLocalStoragePort(): PersistencePort | null {
         }
       }
     },
-    // @compat storage-cove-m0-keys
     readNodeScrollback: async nodeId =>
+      // @compat storage-cove-m0-keys
       readWithLegacyFallback(
         `${NODE_SCROLLBACK_KEY_PREFIX}${nodeId}`,
         `${LEGACY_NODE_SCROLLBACK_KEY_PREFIX}${nodeId}`,
@@ -230,8 +230,8 @@ function createLocalStoragePort(): PersistencePort | null {
         }
       }
     },
-    // @compat storage-cove-m0-keys
     readAgentNodePlaceholderScrollback: async nodeId =>
+      // @compat storage-cove-m0-keys
       readWithLegacyFallback(
         `${AGENT_PLACEHOLDER_SCROLLBACK_KEY_PREFIX}${nodeId}`,
         `${LEGACY_AGENT_PLACEHOLDER_SCROLLBACK_KEY_PREFIX}${nodeId}`,

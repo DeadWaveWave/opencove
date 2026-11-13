@@ -333,6 +333,7 @@ export const sessionStopNodeOperation = defineOperation({
   summary: 'Kill a node process only if its session binding still matches',
 })
 export const sessionTerminalAgentActivityListOperation = defineOperation({
+  // @compat control-surface-legacy-validation
   input: z
     .strictObject({})
     .nullish()

@@ -2,6 +2,7 @@
 
 import { readFileSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
+import { isCompatScannedFile } from './lib/compatScope.mjs'
 import {
   isExcludedRepositoryPath,
   listRepositoryFiles,
@@ -126,7 +127,16 @@ for (const currentFile of files) {
     }
 
     if (includesLegacyStoragePrefix(addedLine)) {
-      // The prefix is compatibility code: `pnpm compat:check` owns it and requires a registry entry.
+      // The prefix is compatibility code: `pnpm compat:check` owns it in the files it scans and
+      // requires a registry entry. Everywhere else it stays forbidden.
+      if (!isCompatScannedFile(currentFile)) {
+        violations.push({
+          file: location,
+          rule: 'cove:m0:*',
+          hint: 'Use `opencove:m0:*`. Only compatibility code in src/ may read the old prefix, with a registry entry (docs/development/COMPATIBILITY_EXPIRY.md).',
+          line: addedLine.trimEnd(),
+        })
+      }
       continue
     }
 

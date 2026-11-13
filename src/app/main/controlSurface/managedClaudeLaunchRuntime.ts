@@ -28,8 +28,7 @@ export async function admitManagedClaudeLaunch(
   mountId: string | null = null,
 ): Promise<void> {
   const current = scope.getStore()
-  // @compat managed-claude-worker-support
-  if (!current || current.phase === 'legacy') {
+  if (!current || /* @compat managed-claude-worker-support */ current.phase === 'legacy') {
     return
   }
   const { attempt } = current
@@ -307,11 +306,11 @@ export function createManagedClaudeLaunchRuntime(deps: {
         if (observation.retired) {
           rejectManagedLaunch(attempt.nodeId, 'nodeGone')
         }
-        // @compat managed-claude-worker-support
         const managed = Boolean(
           observation.binding ||
           (deps.adoptionEnabled() &&
             deps.writesEnabled?.() !== false &&
+            // @compat managed-claude-worker-support
             ctx.clientFeatures?.managedClaudeResumeBindingV1 &&
             intent &&
             (!payload.provider || payload.provider === 'claude-code')),

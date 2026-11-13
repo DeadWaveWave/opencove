@@ -11,19 +11,20 @@ export function isCanvasBackgroundStyle(value: unknown): value is CanvasBackgrou
   )
 }
 
-// @compat settings-legacy-fields
 /**
  * The style replaces the `canvasPixelBackgroundEnabled` switch: on became the pixel wall, off
  * became 「关闭」, which keeps the dot grid that switch showed.
  */
 export function normalizeCanvasBackgroundStyle(
   value: unknown,
+  // @compat settings-legacy-fields
   legacyEnabled: boolean | null,
   fallback: CanvasBackgroundStyle,
 ): CanvasBackgroundStyle {
   if (isCanvasBackgroundStyle(value)) {
     return value
   }
+  // @compat settings-legacy-fields
   if (legacyEnabled !== null) {
     return legacyEnabled ? 'pixel' : 'off'
   }

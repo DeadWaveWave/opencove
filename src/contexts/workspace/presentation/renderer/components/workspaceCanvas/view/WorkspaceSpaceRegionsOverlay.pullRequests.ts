@@ -146,8 +146,10 @@ export function useWorkspaceSpacePullRequests(options: {
       pullRequestTargets.legacyBranches.length > 0 &&
       typeof legacyResolvePullRequests === 'function'
 
-    // @compat github-pull-requests-legacy-resolve
-    if (!canResolveMountRequests && !canResolveLegacyRequests) {
+    if (
+      !canResolveMountRequests &&
+      /* @compat github-pull-requests-legacy-resolve */ !canResolveLegacyRequests
+    ) {
       setPullRequestsByKey(Object.fromEntries(pullRequestTargets.keys.map(key => [key, null])))
       return
     }

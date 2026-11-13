@@ -82,7 +82,7 @@ export function WindowSizeSection(
   )
 }
 
-/** Composition for callers that still render the two existing rows together. */
+/** Compatibility composition for callers that still render the two existing rows together. */
 export function TerminalProfileSection(props: WindowSizeProps & TerminalProfileRowProps) {
   const { t } = useTranslation()
   return (

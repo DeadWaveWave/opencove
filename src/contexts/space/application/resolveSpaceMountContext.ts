@@ -55,7 +55,6 @@ function resolveBestMount(mounts: MountDto[], directoryPath: string): MountDto |
   return matches[0] ?? null
 }
 
-// @compat space-directory-path-mount-repair
 export function resolveSpaceMountContext(options: {
   space: SpaceMountContextLike | null
   workspacePath: string

@@ -85,7 +85,6 @@ export function createRemotePtyRuntimeGeometryCoordinator(): RemotePtyRuntimeGeo
       })
 
       try {
-        // @compat pty-geometry-legacy-revision
         await send({
           type: 'resize',
           sessionId: request.sessionId,
@@ -97,6 +96,7 @@ export function createRemotePtyRuntimeGeometryCoordinator(): RemotePtyRuntimeGeo
             ? { baseGeometryRevision: request.baseGeometryRevision }
             : {}),
           ...(authority ? { authorityEpoch: authority.epoch } : {}),
+          // @compat pty-geometry-legacy-revision
           ...(legacyRevision !== null
             ? { revision: legacyRevision }
             : typeof request.revision === 'number' && Number.isFinite(request.revision)

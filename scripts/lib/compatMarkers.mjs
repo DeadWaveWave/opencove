@@ -5,6 +5,7 @@ import ts from 'typescript'
 export const SIGNAL_RULES = ['keyword', 'storage-prefix', 'client-features']
 
 const MARKER_PATTERN = /^\s*\/\/\s*@compat(-file)?(?![\w-])(.*)$/
+const INLINE_MARKER_PATTERN = /\/\*\s*@compat\s+([a-z0-9][a-z0-9-]*)\s*\*\//g
 const MARKER_ID_PATTERN = /^\s+([a-z0-9][a-z0-9-]*)(?:\s.*)?$/
 const FILE_MARKER_MAX_LINE = 5
 
@@ -25,6 +26,17 @@ function lineOf(sourceFile, position) {
   return sourceFile.getLineAndCharacterOfPosition(position).line + 1
 }
 
+function isLogicalExpression(node) {
+  return (
+    ts.isBinaryExpression(node) &&
+    [
+      ts.SyntaxKind.AmpersandAmpersandToken,
+      ts.SyntaxKind.BarBarToken,
+      ts.SyntaxKind.QuestionQuestionToken,
+    ].includes(node.operatorToken.kind)
+  )
+}
+
 // The outermost node that starts exactly at `position`: the statement or member a marker covers.
 function outermostNodeAt(sourceFile, position) {
   let found = null
@@ -39,6 +51,10 @@ function outermostNodeAt(sourceFile, position) {
     }
   }
   ts.forEachChild(sourceFile, visit)
+  // A marker before a conditional or logical expression covers the first term it precedes.
+  while (found && (ts.isConditionalExpression(found) || isLogicalExpression(found))) {
+    found = ts.isConditionalExpression(found) ? found.condition : found.left
+  }
   return found
 }
 
@@ -60,6 +76,12 @@ function skipTrivia(text, position) {
   }
 }
 
+const ANCHOR_CALLEES = new Set(['defineOperation', 'defineLegacyOperation'])
+
+// Typed anchors: `compat: '<id>'` in the object passed to `defineOperation` or
+// `defineLegacyOperation`. They cover only what is compatibility code there: the `compat`
+// property, the `legacyNormalize` property next to it, and the callee name of a legacy
+// operation. Any other `compat` property is an ordinary property and hides nothing.
 function collectAnchors(sourceFile) {
   const anchors = []
   const visit = node => {
@@ -69,19 +91,29 @@ function collectAnchors(sourceFile) {
       node.name.text === 'compat' &&
       (ts.isStringLiteral(node.initializer) ||
         ts.isNoSubstitutionTemplateLiteral(node.initializer)) &&
-      ts.isObjectLiteralExpression(node.parent)
+      ts.isObjectLiteralExpression(node.parent) &&
+      ts.isCallExpression(node.parent.parent) &&
+      node.parent.parent.arguments[0] === node.parent &&
+      ts.isIdentifier(node.parent.parent.expression) &&
+      ANCHOR_CALLEES.has(node.parent.parent.expression.text)
     ) {
-      const literal = node.parent
-      const covered =
-        ts.isCallExpression(literal.parent) && literal.parent.arguments.includes(literal)
-          ? literal.parent
-          : literal
-      anchors.push({
-        id: node.initializer.text,
-        line: lineOf(sourceFile, node.getStart(sourceFile)),
-        start: covered.getStart(sourceFile),
-        end: covered.getEnd(),
-      })
+      const call = node.parent.parent
+      const id = node.initializer.text
+      const line = lineOf(sourceFile, node.getStart(sourceFile))
+      const covered = [node]
+      for (const sibling of node.parent.properties) {
+        if (ts.isPropertyAssignment(sibling) || ts.isShorthandPropertyAssignment(sibling)) {
+          if (sibling.name.getText(sourceFile) === 'legacyNormalize') {
+            covered.push(sibling)
+          }
+        }
+      }
+      if (call.expression.text === 'defineLegacyOperation') {
+        covered.push(call.expression)
+      }
+      for (const entry of covered) {
+        anchors.push({ id, line, start: entry.getStart(sourceFile), end: entry.getEnd() })
+      }
     }
     ts.forEachChild(node, visit)
   }
@@ -89,9 +121,27 @@ function collectAnchors(sourceFile) {
   return anchors
 }
 
+// A leading `|` or `&` of a union or intersection member is not part of the member's node.
+function skipTypeOperator(text, position) {
+  const char = text[position]
+  return (char === '|' || char === '&') && text[position + 1] !== char
+    ? skipTrivia(text, position + 1)
+    : position
+}
+
+function findTarget(sourceFile, text, from) {
+  const position = skipTypeOperator(text, skipTrivia(text, from))
+  const node = position < text.length ? outermostNodeAt(sourceFile, position) : null
+  const detached = /\n[ \t\r]*\n/.test(text.slice(Math.max(from - 1, 0), position))
+  return node && !detached ? node : null
+}
+
+// Markers come in two forms: a `// @compat <id>` comment line directly above the code it covers,
+// and an inline `/* @compat <id> */` comment directly before the expression, property, argument
+// or type member it covers. `markerRanges` are the comment texts, which are never signals.
 function collectMarkers(sourceFile, text, problems) {
   const markers = []
-  const markerLines = new Set()
+  const markerRanges = []
   const lines = text.split('\n')
   let offset = 0
   for (const [index, line] of lines.entries()) {
@@ -100,9 +150,30 @@ function collectMarkers(sourceFile, text, problems) {
     offset += line.length + 1
     const match = MARKER_PATTERN.exec(line.replace(/\r$/, ''))
     if (!match) {
+      for (const inline of line.matchAll(INLINE_MARKER_PATTERN)) {
+        const commentStart = lineStart + inline.index
+        const commentEnd = commentStart + inline[0].length
+        markerRanges.push([commentStart, commentEnd])
+        const node = findTarget(sourceFile, text, commentEnd)
+        if (node) {
+          markers.push({
+            id: inline[1],
+            line: lineNumber,
+            start: commentEnd,
+            end: node.getEnd(),
+            file: false,
+          })
+        } else {
+          problems.push({
+            line: lineNumber,
+            id: inline[1],
+            message: `\`/* @compat ${inline[1]} */\` must sit directly before the code it covers.`,
+          })
+        }
+      }
       continue
     }
-    markerLines.add(lineNumber)
+    markerRanges.push([lineStart, lineStart + line.length])
     const isFile = Boolean(match[1])
     const idMatch = MARKER_ID_PATTERN.exec(match[2])
     if (!idMatch) {
@@ -126,9 +197,8 @@ function collectMarkers(sourceFile, text, problems) {
       continue
     }
     const afterLine = lineStart + line.length + 1
-    const position = skipTrivia(text, afterLine)
-    const node = position < text.length ? outermostNodeAt(sourceFile, position) : null
-    if (!node || /\n[ \t\r]*\n/.test(text.slice(afterLine - 1, position))) {
+    const node = findTarget(sourceFile, text, afterLine)
+    if (!node) {
       problems.push({
         line: lineNumber,
         id,
@@ -138,7 +208,7 @@ function collectMarkers(sourceFile, text, problems) {
     }
     markers.push({ id, line: lineNumber, start: afterLine, end: node.getEnd(), file: false })
   }
-  return { markers, markerLines }
+  return { markers, markerRanges }
 }
 
 function collectImportRanges(sourceFile) {
@@ -156,7 +226,7 @@ export function scanCompatSource(path, text) {
     scriptKindFor(path),
   )
   const problems = []
-  const { markers, markerLines } = collectMarkers(sourceFile, text, problems)
+  const { markers, markerRanges } = collectMarkers(sourceFile, text, problems)
   const anchors = collectAnchors(sourceFile)
   const covered = [...markers, ...anchors].map(entry => [entry.start, entry.end])
   const ignored = [...covered, ...collectImportRanges(sourceFile)]
@@ -166,7 +236,7 @@ export function scanCompatSource(path, text) {
     for (const match of text.matchAll(pattern)) {
       const position = match.index
       const line = lineOf(sourceFile, position)
-      if (markerLines.has(line)) {
+      if (markerRanges.some(([start, end]) => position >= start && position < end)) {
         continue
       }
       if (ignored.some(([start, end]) => position >= start && position < end)) {

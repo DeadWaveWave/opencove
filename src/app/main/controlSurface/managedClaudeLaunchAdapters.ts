@@ -7,8 +7,7 @@ import {
 } from './managedClaudeFallbackRuntime'
 export function assertManagedClaudeLaunchCurrent(): void {
   const current = scope.getStore()
-  // @compat managed-claude-worker-support
-  if (current && current.phase !== 'legacy') {
+  if (current && /* @compat managed-claude-worker-support */ current.phase !== 'legacy') {
     current.owner.assertCurrent(current.attempt)
   }
 }

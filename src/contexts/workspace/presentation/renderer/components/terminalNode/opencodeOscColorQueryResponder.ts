@@ -200,9 +200,11 @@ export function registerOpenCodeOscColorQueryResponder({
             theme?: Partial<TerminalAppearanceTheme>
           }
         ).theme
-        // @compat opencode-tui-legacy-theme
         const color = resolveSpecialColor(
-          (appliedTheme ?? legacyTheme ?? null) as Record<string, unknown> | null,
+          (appliedTheme ?? /* @compat opencode-tui-legacy-theme */ legacyTheme ?? null) as Record<
+            string,
+            unknown
+          > | null,
           identifier,
         )
         if (!color) {

@@ -36,7 +36,7 @@ describe('naming check over the whole repository', () => {
     expect(result.stdout).toContain('scanned 1 files')
   })
 
-  it('leaves the cove:m0: prefix to the compatibility check, with or without the word legacy', () => {
+  it('leaves the old storage prefix to the compatibility check in the files that check scans', () => {
     const root = createGitRepository()
     writeRepositoryFile(
       root,
@@ -45,6 +45,17 @@ describe('naming check over the whole repository', () => {
     )
     expect(runScript('check-naming.mjs', root).status).toBe(0)
   })
+
+  it.each(['tests/unit/migrate.ts', 'src/migrate.spec.ts', 'src/main.test.tsx', 'e2e/storage.ts'])(
+    'still rejects the old storage prefix in %s, which the compatibility check does not scan',
+    path => {
+      const root = createGitRepository()
+      writeRepositoryFile(root, path, `const KEY = '${c}:m0:state' // legacy\n`)
+      const result = runScript('check-naming.mjs', root)
+      expect(result.status).toBe(1)
+      expect(result.stderr).toContain(`${path}:1`)
+    },
+  )
 
   it('does not scan scripts/ or files with other extensions', () => {
     const root = createGitRepository()

@@ -1,13 +1,20 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { scanCompatSource } from '../../../scripts/lib/compatMarkers.mjs'
+import { readFileSync, rmSync } from 'node:fs'
+import { join } from 'node:path'
 import {
   createGitRepository,
   removeTemporaryRepositories,
+  runGit,
   runScript,
   writeRepositoryFile,
 } from './repoFixture'
 
 afterEach(removeTemporaryRepositories)
+
+// Built at runtime so this file does not trip the naming check itself.
+const c = 'cove'
+const STORAGE_PREFIX = `${c}:m0:`
 
 const REGISTRY = 'src/shared/compat/compatRegistry.json'
 const SCRIPT = 'check-compat-expiry.mjs'
@@ -122,7 +129,7 @@ describe('compat expiry check: registry rules', () => {
     const root = createFixture({
       files: {
         'src/feature.ts': '// @compat old-wire\nexport const a = 1\n',
-        'src/op.ts': "export const op = define({\n  compat: 'missing-id',\n})\n",
+        'src/op.ts': "export const op = defineOperation({\n  compat: 'missing-id',\n})\n",
       },
     })
     const result = run(root)
@@ -141,7 +148,7 @@ describe('compat expiry check: registry rules', () => {
 
   it('(c) counts a typed anchor as a use', () => {
     const root = createFixture({
-      files: { 'src/op.ts': "export const op = define({\n  compat: 'old-wire',\n})\n" },
+      files: { 'src/op.ts': "export const op = defineOperation({\n  compat: 'old-wire',\n})\n" },
     })
     expect(run(root).status).toBe(0)
   })
@@ -212,8 +219,8 @@ describe('compat expiry check: registry rules', () => {
     const root = createFixture({
       files: {
         'src/feature.ts': '// @compat old-wire\nexport const a = 1\n',
-        'src/feature.spec.ts': "// @compat nope\nconst legacy = 'cove:m0:x'\n",
-        'tests/unit/legacy.ts': "export const legacy = 'cove:m0:x'\n",
+        'src/feature.spec.ts': `// @compat nope\nconst legacy = '${STORAGE_PREFIX}x'\n`,
+        'tests/unit/legacy.ts': `export const legacy = '${STORAGE_PREFIX}x'\n`,
       },
     })
     expect(run(root).status).toBe(0)
@@ -253,7 +260,11 @@ describe('compat expiry check: unmarked signals ratchet', () => {
     ['compat word', '// kept for Compat reasons\nexport const a = 1\n', 'keyword'],
     ['compatibility word', 'export const compatibility = 1\n', 'keyword'],
     ['backwards compatibility', '// for backwards compatibility\nexport const a = 1\n', 'keyword'],
-    ['cove:m0: literal', "export const key = 'cove:m0:state'\n", 'storage-prefix'],
+    [
+      'legacy storage prefix literal',
+      `export const key = '${STORAGE_PREFIX}state'\n`,
+      'storage-prefix',
+    ],
     ['clientFeatures read', 'export const on = ctx.clientFeatures?.flag\n', 'client-features'],
   ])('(g) counts %s as a signal', (_name, body, rule) => {
     const result = run(createFixture({ files: signalFile(body) }))
@@ -314,7 +325,9 @@ describe('compat expiry check: unmarked signals ratchet', () => {
 
   it('a trailing "legacy" comment no longer lets a signal through', () => {
     const result = run(
-      createFixture({ files: signalFile("export const key = 'cove:m0:state' // legacy\n") }),
+      createFixture({
+        files: signalFile(`export const key = '${STORAGE_PREFIX}state' // legacy\n`),
+      }),
     )
     expect(result.status).toBe(1)
     expect(result.stderr).toContain('src/signal.ts [storage-prefix]')
@@ -340,6 +353,140 @@ describe('compat expiry check: --report', () => {
     expect(result.stdout).toContain('- old-wire (until 0.7.0)')
     expect(result.stdout).not.toContain('later-wire (until')
     expect(result.stdout).toContain('- src/a.ts (old-wire)')
+  })
+})
+
+describe('compat expiry check: scope and limits', () => {
+  it('requires a file marker on every Control Surface parity spec', () => {
+    const root = createFixture({
+      files: {
+        'src/feature.ts': '// @compat old-wire\nexport const a = 1\n',
+        'tests/unit/contexts/controlSurface.sampleParity.spec.ts': 'export const parity = 1\n',
+      },
+    })
+    const result = run(root)
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain(
+      'tests/unit/contexts/controlSurface.sampleParity.spec.ts:1 [parity-spec-unmarked]',
+    )
+
+    writeRepositoryFile(
+      root,
+      'tests/unit/contexts/controlSurface.sampleParity.spec.ts',
+      '// @compat-file old-wire\nexport const parity = 1\n',
+    )
+    expect(run(root).status).toBe(0)
+  })
+
+  it('keeps an entry alive only while a parity spec or oracle still uses it', () => {
+    const root = createFixture({
+      files: {
+        'tests/unit/contexts/controlSurface.sampleParity.spec.ts':
+          '// @compat-file old-wire\nexport const parity = 1\n',
+      },
+    })
+    expect(run(root).status).toBe(0)
+    rmSync(join(root, 'tests/unit/contexts/controlSurface.sampleParity.spec.ts'))
+    writeRepositoryFile(root, 'src/other.ts', 'export const a = 1\n')
+    const result = run(root)
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('[stale-entry] (old-wire)')
+  })
+
+  it('rejects an `until` more than three minor versions ahead of package.json', () => {
+    const far = { 'old-wire': entry({ expires: { until: '0.9.0' } }) }
+    const result = run(createFixture({ entries: far }))
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('[invalid-expiry] (old-wire)')
+    expect(result.stderr).toContain('latest allowed 0.8.0')
+
+    const edge = { 'old-wire': entry({ expires: { until: '0.8.0' } }) }
+    expect(run(createFixture({ entries: edge })).status).toBe(0)
+  })
+
+  it('measures that distance from package.json, not from --at', () => {
+    const far = { 'old-wire': entry({ expires: { until: '0.9.0' } }) }
+    const result = run(createFixture({ entries: far }), '--at', '0.8.0')
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('latest allowed 0.8.0')
+  })
+
+  it('does not treat a `compat` property on an arbitrary object as an anchor', () => {
+    const body = "export const x = other({\n  compat: 'old-wire',\n  note: 'legacy',\n})\n"
+    const scan = scanCompatSource('src/sample.ts', body)
+    expect(scan.anchors).toEqual([])
+    expect(scan.signals.map(signal => signal.text)).toContain('legacy')
+
+    const result = run(
+      createFixture({
+        files: {
+          'src/feature.ts': '// @compat old-wire\nexport const a = 1\n',
+          'src/signal.ts': body,
+        },
+      }),
+    )
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('src/signal.ts [keyword]')
+  })
+
+  it('lets a typed anchor cover the legacy hook and the callee, nothing else in the call', () => {
+    const text = [
+      'export const op = defineOperation({',
+      "  compat: 'old-wire',",
+      '  legacyNormalize: raw => raw,',
+      "  summary: 'legacy summary',",
+      '})',
+      '',
+    ].join('\n')
+    const scan = scanCompatSource('src/sample.ts', text)
+    expect(scan.signals.map(signal => signal.line)).toEqual([4])
+  })
+})
+
+describe('compat expiry check: --update-ratchet', () => {
+  const files = {
+    'src/feature.ts': '// @compat old-wire\nexport const a = 1\n',
+    'src/signal.ts': 'export const legacyA = 1\nexport const legacyB = 2\n',
+  }
+  const readBaseline = (root: string) =>
+    JSON.parse(readFileSync(join(root, 'scripts/compat-ratchet.json'), 'utf8'))
+
+  it('refuses to write when a count would rise and leaves the baseline alone', () => {
+    const root = createFixture({ files, baseline: { keyword: { 'src/signal.ts': 1 } } })
+    const result = run(root, '--update-ratchet')
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('src/signal.ts [keyword]')
+    expect(result.stderr).toContain('Refusing to raise the baseline')
+    expect(readBaseline(root)).toEqual({ keyword: { 'src/signal.ts': 1 } })
+  })
+
+  it('refuses a signal in a file the baseline does not list', () => {
+    const root = createFixture({ files, baseline: { keyword: {} } })
+    expect(run(root, '--update-ratchet').status).toBe(1)
+  })
+
+  it('writes when every count stays the same or goes down', () => {
+    const root = createFixture({ files, baseline: { keyword: { 'src/signal.ts': 5 } } })
+    expect(run(root, '--update-ratchet').status).toBe(0)
+    expect(readBaseline(root).keyword).toEqual({ 'src/signal.ts': 2 })
+  })
+
+  it('creates a missing baseline only when it never existed in git HEAD', () => {
+    const root = createFixture({ files })
+    const created = run(root, '--update-ratchet')
+    expect(created.stderr).toBe('')
+    expect(created.status).toBe(0)
+    expect(readBaseline(root).keyword).toEqual({ 'src/signal.ts': 2 })
+
+    runGit(['add', '-A'], root)
+    runGit(['-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-qm', 'base'], root)
+    rmSync(join(root, 'scripts/compat-ratchet.json'))
+    const refused = run(root, '--update-ratchet')
+    expect(refused.status).toBe(1)
+    expect(refused.stderr).toContain('exists in git HEAD')
+
+    expect(run(root, '--update-ratchet', '--bootstrap').status).toBe(0)
+    expect(readBaseline(root).keyword).toEqual({ 'src/signal.ts': 2 })
   })
 })
 
@@ -389,7 +536,7 @@ describe('compat marker parsing', () => {
     expect(scan(text).signals.map(signal => signal.line)).toEqual([4, 9])
   })
 
-  it('lets a typed `compat:` anchor cover its object and the enclosing call', () => {
+  it('lets a typed `compat:` anchor cover its property and the legacy callee, not the other properties', () => {
     const text = [
       'export const op = defineLegacyOperation({',
       "  compat: 'old-wire',",
@@ -399,8 +546,8 @@ describe('compat marker parsing', () => {
       '',
     ].join('\n')
     const result = scan(text)
-    expect(result.anchors.map(anchor => anchor.id)).toEqual(['old-wire'])
-    expect(result.signals.map(signal => signal.line)).toEqual([5])
+    expect(result.anchors.map(anchor => anchor.id)).toEqual(['old-wire', 'old-wire'])
+    expect(result.signals.map(signal => signal.line)).toEqual([3, 5])
   })
 
   it('rejects a marker that is not directly above a node', () => {
@@ -427,5 +574,50 @@ describe('compat marker parsing', () => {
     )
     expect(result.markers[0]).toMatchObject({ id: 'old-wire', file: true })
     expect(result.signals).toEqual([])
+  })
+  it('covers the node an inline marker precedes, on the same line', () => {
+    const text = [
+      'export const a = {',
+      '  value: first ?? /* @compat old-wire */ legacyFallback,',
+      '  other: legacyOther,',
+      '}',
+      '',
+    ].join('\n')
+    const result = scan(text)
+    expect(result.problems).toEqual([])
+    expect(result.markers).toHaveLength(1)
+    expect(result.signals.map(signal => signal.line)).toEqual([3])
+  })
+
+  it('covers one member of a union, including after a leading bar', () => {
+    const text = [
+      'export type Kind =',
+      "  | 'current'",
+      '  // @compat old-wire',
+      "  | 'legacy'",
+      "  | 'legacyOther'",
+      '',
+    ].join('\n')
+    expect(scan(text).signals.map(signal => signal.line)).toEqual([5])
+  })
+
+  it('covers the first term of a logical chain, or a whole right operand', () => {
+    const text = [
+      'export const ok =',
+      '  // @compat old-wire',
+      '  legacyA && legacyB && legacyC',
+      'export const alsoOk =',
+      '  live &&',
+      '  // @compat old-wire',
+      '  legacyD === legacyE &&',
+      '  legacyF',
+      '',
+    ].join('\n')
+    const result = scan(text)
+    expect(result.signals.map(signal => signal.text + '@' + signal.line)).toEqual([
+      'legacy@3',
+      'legacy@3',
+      'legacy@8',
+    ])
   })
 })

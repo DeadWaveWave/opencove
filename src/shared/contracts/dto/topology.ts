@@ -4,7 +4,6 @@ export type WorkerEndpointKindDto = 'local' | 'remote_worker'
 export type WorkerEndpointAccessKindDto = 'manual' | 'managed_ssh'
 export type WorkerEndpointManagedSshPlatformDto = 'auto' | 'posix' | 'windows'
 
-// @compat endpoint-runtime-legacy-failure
 export type ManagedSshStageFailureCode =
   | 'installer_unavailable'
   | 'runtime_corrupt'
@@ -13,6 +12,7 @@ export type ManagedSshStageFailureCode =
   | 'credential_mismatch'
   | 'build_mismatch'
   | 'runtime_busy'
+  // @compat endpoint-runtime-legacy-failure
   | 'runtime_legacy'
   | 'recovery_required'
   | 'client_update_required'
