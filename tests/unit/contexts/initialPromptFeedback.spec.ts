@@ -95,6 +95,22 @@ it.each(cases)(
   },
 )
 
+it('refuses a single ASCII word but accepts sentences written without spaces', () => {
+  for (const prompt of ['update', 'plugins', 'hello', 'mcp:serve', '--help']) {
+    expect(refused(() => launch(prompt)).code, prompt).toBe('common.forbidden')
+  }
+  for (const prompt of [
+    '请列出当前工作目录中的文件和子目录，不要修改任何文件。',
+    'テストを実行して結果を報告してください。',
+    '검토해줘',
+    '更新',
+    'ｕｐｄａｔｅ',
+    'List the files.',
+  ]) {
+    expect(() => launch(prompt), prompt).not.toThrow()
+  }
+})
+
 it('quotes only a bounded triggering token and escapes control/bidi characters', () => {
   const error = refused(() => grant('/' + '界'.repeat(1000) + '\u001b\u202e private context'))
   const presentation = initialPromptErrorPresentation(error)!

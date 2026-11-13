@@ -16,6 +16,8 @@ export const SESSION_GRANT_LAUNCH_REJECTED_FIELDS: Readonly<Record<string, strin
   mode: 'agent terminals can only start new conversations; omit mode',
 }
 
+const SINGLE_ASCII_WORD = /^[\x21-\x7e]+$/u
+
 export function checkSessionGrantLaunch(payload: unknown, deps: GrantCheckDeps): void {
   const allowedFields = deps.operationId === 'session.launchAgent' ? localFields : mountedFields
   // Validation normalizes omitted overrides to null and mode to new. Inspect the wire keys
@@ -47,7 +49,9 @@ export function checkSessionGrantLaunch(payload: unknown, deps: GrantCheckDeps):
       ? payload.prompt.trim()
       : ''
   assertSessionGrantMessagePrompt(prompt, { operationId: deps.operationId, field: 'prompt' })
-  if (prompt.length > 0 && !/\s/u.test(prompt)) {
+  // Provider commands, aliases and options are printable ASCII words. A prompt without spaces is
+  // refused only when it could be one; CJK and other scripts are often written without spaces.
+  if (SINGLE_ASCII_WORD.test(prompt)) {
     const feedback = initialPromptFeedback('command_token', prompt)
     throw createAppError('common.forbidden', {
       params: feedback.params,

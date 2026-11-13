@@ -6,7 +6,7 @@ exports[`documents Full Access as a create-only choice with a Settings default 1
 Create an agent node
 
 Agent-terminal prompt rules:
-- Launches: describe a task in a sentence; single tokens and provider command names are refused.
+- Launches: describe a task in a sentence; single ASCII words and provider command names are refused; unspaced Chinese/Japanese/Korean text is fine.
 - Provider controls: no leading /; Claude also refuses ! # &; Codex, OpenCode, Pi and Gemini also refuse !.
 - Exit aliases: no exit, quit, :q, :q!, :wq or :wq!.
 - File references: no @ anywhere. Read approved content with opencove fs read --uri file:///workspace/README.md --fields content (replace the absolute URI), then paste the content.
