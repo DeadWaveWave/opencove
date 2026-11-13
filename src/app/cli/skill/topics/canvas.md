@@ -75,6 +75,12 @@ opencove worktree create --space space-123 --name review-work
 opencove node create agent --space space-123 --title "Reviewer" --prompt "Review the implementation" --wait --read --timeout 2m
 ```
 
+Add `--task <nodeId>` to link the new agent to an existing task in that same Space and move it
+to `doing`. The task must have no existing linked agent; a link to a deleted agent may be replaced.
+Use `--prompt` or `--prompt-file` for the assignment; linking does not copy the task requirement.
+The Worker validates before launch and commits both sides together after launch succeeds.
+Omitting `--task` leaves tasks unchanged. On the root canvas, both nodes must be outside Spaces.
+
 For one-shot delegation, --wait --read returns the initial exact reply; check outcome and reply.
 Stderr first prints `Created agent node <nodeId> (session <sessionId>).`, then a
 `Waiting for turn <turnId> of node <nodeId>...` progress line with an interruption-only continuation.

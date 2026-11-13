@@ -1,0 +1,389 @@
+import type {
+  AttachTerminalInput,
+  AttachTerminalResult,
+  CopyWorkspacePathInput,
+  ListSystemFontsResult,
+  CreateGitWorktreeInput,
+  CreateGitWorktreeResult,
+  DetachTerminalInput,
+  EnsureDirectoryInput,
+  GetGitDefaultBranchInput,
+  GetGitDefaultBranchResult,
+  GetGitStatusSummaryInput,
+  GetGitStatusSummaryResult,
+  InstallAgentProviderInput,
+  InstallAgentProviderResult,
+  KillTerminalInput,
+  LaunchAgentInput,
+  LaunchAgentResult,
+  ListAgentSessionsInput,
+  ListAgentSessionsResult,
+  ListInstalledAgentProvidersInput,
+  ListGitBranchesInput,
+  ListGitBranchesResult,
+  ListGitWorktreesInput,
+  ListGitWorktreesResult,
+  ListAgentModelsInput,
+  ListAgentModelsResult,
+  ListInstalledAgentProvidersResult,
+  ListTerminalProfilesResult,
+  ReadAgentLastMessageInput,
+  ReadAgentLastMessageResult,
+  ResolveAgentResumeSessionInput,
+  ResolveAgentResumeSessionResult,
+  ResolveGitHubPullRequestsInput,
+  ResolveGitHubPullRequestsResult,
+  AppUpdateState,
+  ConfigureAppUpdatesInput,
+  GetCurrentReleaseNotesInput,
+  ReleaseNotesCurrentResult,
+  ListWorkspacePathOpenersResult,
+  OpenWorkspacePathInput,
+  PersistWriteResult,
+  ReadAppStateResult,
+  ReadCanvasImageInput,
+  ReadCanvasImageResult,
+  WindowDisplayInfo,
+  PerformanceDiagnosticsSnapshotResult,
+  ReadAgentNodePlaceholderScrollbackInput,
+  ReadNodeScrollbackInput,
+  ResizeTerminalInput,
+  TerminalGeometryCommitResult,
+  PresentationSnapshotTerminalInput,
+  PresentationSnapshotTerminalResult,
+  RemoveGitWorktreeInput,
+  RemoveGitWorktreeResult,
+  RenameGitBranchInput,
+  SnapshotTerminalInput,
+  SnapshotTerminalResult,
+  SpawnTerminalInput,
+  SpawnTerminalResult,
+  SuggestTaskTitleInput,
+  SuggestTaskTitleResult,
+  SuggestWorktreeNamesInput,
+  SuggestWorktreeNamesResult,
+  SetWindowChromeThemeInput,
+  WindowFocusState,
+  WindowFullScreenState,
+  SaveTextToDownloadsInput,
+  SaveTextToDownloadsResult,
+  ShowSystemNotificationInput,
+  ShowSystemNotificationResult,
+  SystemNotificationActivatedEvent,
+  TerminalDataEvent,
+  TerminalAgentReexecInput,
+  TerminalAgentReexecResult,
+  TerminalExitEvent,
+  TerminalForegroundEvent,
+  TerminalGeometryEvent,
+  TerminalResyncEvent,
+  TerminalSessionMetadataEvent,
+  TerminalSessionStateEvent,
+  WorkspaceDirectory,
+  WriteCanvasImageInput,
+  WriteAppStateInput,
+  WriteAgentNodePlaceholderScrollbackInput,
+  WriteNodeScrollbackInput,
+  WriteWorkspaceStateRawInput,
+  WriteTerminalInput,
+  DeleteCanvasImageInput,
+  CopyEntryInput,
+  RuntimeDiagnosticsLogInput,
+  TerminalDiagnosticsLogInput,
+  UiDiagnosticBreadcrumbInput,
+  CreateDirectoryInput,
+  DeleteEntryInput,
+  MoveEntryInput,
+  ReadDirectoryInput,
+  ReadDirectoryResult,
+  ReadFileBytesInput,
+  ReadFileBytesResult,
+  ReadFileTextInput,
+  ReadFileTextResult,
+  RenameEntryInput,
+  StatInput,
+  FileSystemStat,
+  SyncEventPayload,
+  WriteFileTextInput,
+  ActivateWebsiteWindowInput,
+  CaptureWebsiteWindowSnapshotInput,
+  ConfigureWebsiteWindowPolicyInput,
+  FindWebsiteWindowInput,
+  NavigateWebsiteWindowInput,
+  SetWebsiteWindowOccludedInput,
+  SetWebsiteWindowBoundsInput,
+  SetWebsiteWindowPinnedInput,
+  SetWebsiteWindowSessionInput,
+  WebsiteWindowEventPayload,
+  WebsiteWindowNodeIdInput,
+  BrowserBookmark,
+  BrowserDownloadIdInput,
+  BrowserDownloadRecord,
+  BrowserHistoryEntry,
+  BrowserHomepageResult,
+  ClearBrowserHistoryInput,
+  DeleteBrowserBookmarkInput,
+  DeleteBrowserHistoryInput,
+  FindBrowserBookmarkInput,
+  GetBrowserHomepageInput,
+  ListBrowserBookmarksInput,
+  ListBrowserDownloadsInput,
+  ListBrowserHistoryInput,
+  RespondBrowserPermissionInput,
+  SetBrowserHomepageInput,
+  UpsertBrowserBookmarkInput,
+  HomeWorkerConfigDto,
+  HomeWorkerConfigurationSnapshotDto,
+  SetHomeWorkerConfigInput,
+  SetHomeWorkerWebUiSettingsInput,
+  SetHomeWorkerWebUiSecurityInput,
+  WorkerStatusResult,
+  CliPathStatusResult,
+  OpenIssueReportGithubInput,
+  PrepareIssueReportInput,
+  PrepareIssueReportResult,
+  ShowIssueReportFileInput,
+} from '../../shared/contracts/dto'
+import type { ControlSurfaceInvokeRequest } from '../../shared/contracts/controlSurface'
+
+type UnsubscribeFn = () => void
+
+export interface OpenCoveApi {
+  meta: {
+    isTest: boolean
+    isPackaged: boolean
+    allowWhatsNewInTests: boolean
+    enableTerminalDiagnostics?: boolean
+    enableTerminalInputDiagnostics?: boolean
+    enableTerminalTestApi?: boolean
+    disableTerminalTranscriptMirror?: boolean
+    /** Test-only: render the shared component gallery instead of the app shell. */
+    enableUiGallery?: boolean
+    runtime: 'electron' | 'browser'
+    platform: string
+    mainPid: number | null
+    windowsPty: import('../../shared/contracts/dto').TerminalWindowsPty | null
+  }
+  debug?: {
+    logTerminalDiagnostics: (payload: TerminalDiagnosticsLogInput) => void
+    recordUiDiagnosticBreadcrumb: (payload: UiDiagnosticBreadcrumbInput) => void
+    logRuntimeDiagnostics: (payload: RuntimeDiagnosticsLogInput) => void
+  }
+  performanceDiagnostics: {
+    getSnapshot: () => Promise<PerformanceDiagnosticsSnapshotResult>
+  }
+  issueReport: {
+    prepare: (payload: PrepareIssueReportInput) => Promise<PrepareIssueReportResult>
+    openGitHubIssue: (payload: OpenIssueReportGithubInput) => Promise<void>
+    showReportFile: (payload: ShowIssueReportFileInput) => Promise<void>
+  }
+  controlSurface: {
+    resolvePluginResourceUrl: (resourcePath: string) => Promise<string>
+    invoke: <TValue = unknown>(request: ControlSurfaceInvokeRequest) => Promise<TValue>
+  }
+  windowChrome: {
+    setTheme: (payload: SetWindowChromeThemeInput) => Promise<void>
+    getFullScreen: () => Promise<WindowFullScreenState>
+    onFullScreenChange: (listener: (state: WindowFullScreenState) => void) => UnsubscribeFn
+    /** Whether this window has focus, as main sees it; the renderer's own signals cannot tell. */
+    getFocus: () => Promise<WindowFocusState>
+    onFocusChange: (listener: (state: WindowFocusState) => void) => UnsubscribeFn
+  }
+  windowMetrics: {
+    getDisplayInfo: () => Promise<WindowDisplayInfo>
+  }
+  clipboard: {
+    readTerminalPaste: () => Promise<import('../../shared/contracts/dto').TerminalClipboardSnapshot>
+    readText: () => Promise<string>
+    writeText: (text: string) => Promise<void>
+  }
+  filesystem: {
+    getPathForFile: (file: File) => string
+    resolveDroppedFile?: (file: File) => Promise<FileSystemStat | null>
+    createDirectory: (payload: CreateDirectoryInput) => Promise<void>
+    copyEntry: (payload: CopyEntryInput) => Promise<void>
+    moveEntry: (payload: MoveEntryInput) => Promise<void>
+    renameEntry: (payload: RenameEntryInput) => Promise<void>
+    deleteEntry: (payload: DeleteEntryInput) => Promise<void>
+    readFileBytes: (payload: ReadFileBytesInput) => Promise<ReadFileBytesResult>
+    readFileText: (payload: ReadFileTextInput) => Promise<ReadFileTextResult>
+    writeFileText: (payload: WriteFileTextInput) => Promise<void>
+    readDirectory: (payload: ReadDirectoryInput) => Promise<ReadDirectoryResult>
+    stat: (payload: StatInput) => Promise<FileSystemStat>
+  }
+  persistence: {
+    readWorkspaceStateRaw: () => Promise<string | null>
+    writeWorkspaceStateRaw: (payload: WriteWorkspaceStateRawInput) => Promise<PersistWriteResult>
+    readAppState: () => Promise<ReadAppStateResult>
+    writeAppState: (payload: WriteAppStateInput) => Promise<PersistWriteResult>
+    readNodeScrollback: (payload: ReadNodeScrollbackInput) => Promise<string | null>
+    writeNodeScrollback: (payload: WriteNodeScrollbackInput) => Promise<PersistWriteResult>
+    readAgentNodePlaceholderScrollback: (
+      payload: ReadAgentNodePlaceholderScrollbackInput,
+    ) => Promise<string | null>
+    writeAgentNodePlaceholderScrollback: (
+      payload: WriteAgentNodePlaceholderScrollbackInput,
+    ) => Promise<PersistWriteResult>
+  }
+  lifecycle: {
+    onApplicationShortcut?: (
+      listener: (
+        event: import('../../shared/contracts/applicationShortcut').ApplicationShortcutEvent,
+      ) => void,
+    ) => UnsubscribeFn
+    onRequestPersistFlush: (
+      listener: (payload: { requestId: string }) => void | Promise<void>,
+    ) => UnsubscribeFn
+  }
+  sync: {
+    onStateUpdated: (listener: (event: SyncEventPayload) => void) => UnsubscribeFn
+  }
+  websiteWindow: {
+    configurePolicy: (payload: ConfigureWebsiteWindowPolicyInput) => Promise<void>
+    setOccluded: (payload: SetWebsiteWindowOccludedInput) => Promise<void>
+    activate: (payload: ActivateWebsiteWindowInput) => Promise<void>
+    deactivate: (payload: WebsiteWindowNodeIdInput) => Promise<void>
+    setBounds: (payload: SetWebsiteWindowBoundsInput) => void
+    navigate: (payload: NavigateWebsiteWindowInput) => Promise<void>
+    goBack: (payload: WebsiteWindowNodeIdInput) => Promise<void>
+    goForward: (payload: WebsiteWindowNodeIdInput) => Promise<void>
+    reload: (payload: WebsiteWindowNodeIdInput) => Promise<void>
+    stop: (payload: WebsiteWindowNodeIdInput) => Promise<void>
+    findInPage: (payload: FindWebsiteWindowInput) => Promise<void>
+    stopFindInPage: (payload: WebsiteWindowNodeIdInput) => Promise<void>
+    close: (payload: WebsiteWindowNodeIdInput) => Promise<void>
+    setPinned: (payload: SetWebsiteWindowPinnedInput) => Promise<void>
+    setSession: (payload: SetWebsiteWindowSessionInput) => Promise<void>
+    captureSnapshot: (payload: CaptureWebsiteWindowSnapshotInput) => void
+    onEvent: (listener: (event: WebsiteWindowEventPayload) => void) => UnsubscribeFn
+  }
+  browserProfile?: {
+    getHomepage: (payload: GetBrowserHomepageInput) => Promise<BrowserHomepageResult>
+    setHomepage: (payload: SetBrowserHomepageInput) => Promise<void>
+    listHistory: (payload: ListBrowserHistoryInput) => Promise<BrowserHistoryEntry[]>
+    deleteHistory: (payload: DeleteBrowserHistoryInput) => Promise<void>
+    clearHistory: (payload: ClearBrowserHistoryInput) => Promise<void>
+    listBookmarks: (payload: ListBrowserBookmarksInput) => Promise<BrowserBookmark[]>
+    findBookmark: (payload: FindBrowserBookmarkInput) => Promise<BrowserBookmark | null>
+    upsertBookmark: (payload: UpsertBrowserBookmarkInput) => Promise<BrowserBookmark>
+    deleteBookmark: (payload: DeleteBrowserBookmarkInput) => Promise<void>
+    listDownloads: (payload: ListBrowserDownloadsInput) => Promise<BrowserDownloadRecord[]>
+    clearDownloads: (payload: ListBrowserDownloadsInput) => Promise<void>
+    cancelDownload: (payload: BrowserDownloadIdInput) => Promise<void>
+    showDownload: (payload: BrowserDownloadIdInput) => Promise<void>
+    respondPermission: (payload: RespondBrowserPermissionInput) => Promise<void>
+  }
+  workspace: {
+    selectDirectory: () => Promise<WorkspaceDirectory | null>
+    ensureDirectory: (payload: EnsureDirectoryInput) => Promise<void>
+    copyPath: (payload: CopyWorkspacePathInput) => Promise<void>
+    listPathOpeners: () => Promise<ListWorkspacePathOpenersResult>
+    openPath: (payload: OpenWorkspacePathInput) => Promise<void>
+    writeCanvasImage: (payload: WriteCanvasImageInput) => Promise<void>
+    readCanvasImage: (payload: ReadCanvasImageInput) => Promise<ReadCanvasImageResult | null>
+    deleteCanvasImage: (payload: DeleteCanvasImageInput) => Promise<void>
+  }
+  worktree: {
+    listBranches: (payload: ListGitBranchesInput) => Promise<ListGitBranchesResult>
+    listWorktrees: (payload: ListGitWorktreesInput) => Promise<ListGitWorktreesResult>
+    statusSummary: (payload: GetGitStatusSummaryInput) => Promise<GetGitStatusSummaryResult>
+    getDefaultBranch: (payload: GetGitDefaultBranchInput) => Promise<GetGitDefaultBranchResult>
+    create: (payload: CreateGitWorktreeInput) => Promise<CreateGitWorktreeResult>
+    remove: (payload: RemoveGitWorktreeInput) => Promise<RemoveGitWorktreeResult>
+    renameBranch: (payload: RenameGitBranchInput) => Promise<void>
+    suggestNames: (payload: SuggestWorktreeNamesInput) => Promise<SuggestWorktreeNamesResult>
+  }
+  integration: {
+    github: {
+      resolvePullRequests: (
+        payload: ResolveGitHubPullRequestsInput,
+      ) => Promise<ResolveGitHubPullRequestsResult>
+    }
+  }
+  update: {
+    getState: () => Promise<AppUpdateState>
+    configure: (payload: ConfigureAppUpdatesInput) => Promise<AppUpdateState>
+    checkForUpdates: () => Promise<AppUpdateState>
+    downloadUpdate: () => Promise<AppUpdateState>
+    installUpdate: () => Promise<void>
+    onState: (listener: (state: AppUpdateState) => void) => UnsubscribeFn
+  }
+  releaseNotes: {
+    getCurrent: (payload: GetCurrentReleaseNotesInput) => Promise<ReleaseNotesCurrentResult>
+  }
+  pty: {
+    listProfiles?: () => Promise<ListTerminalProfilesResult>
+    spawn: (payload: SpawnTerminalInput) => Promise<SpawnTerminalResult>
+    write: (payload: WriteTerminalInput) => Promise<void>
+    reexecAgent: (payload: TerminalAgentReexecInput) => Promise<TerminalAgentReexecResult>
+    resize: (payload: ResizeTerminalInput) => Promise<TerminalGeometryCommitResult>
+    kill: (payload: KillTerminalInput) => Promise<void>
+    attach: (payload: AttachTerminalInput) => Promise<AttachTerminalResult>
+    detach: (payload: DetachTerminalInput) => Promise<void>
+    snapshot: (payload: SnapshotTerminalInput) => Promise<SnapshotTerminalResult>
+    presentationSnapshot: (
+      payload: PresentationSnapshotTerminalInput,
+    ) => Promise<PresentationSnapshotTerminalResult>
+    debugCrashHost: () => Promise<void>
+    onData: (listener: (event: TerminalDataEvent) => void) => UnsubscribeFn
+    onExit: (listener: (event: TerminalExitEvent) => void) => UnsubscribeFn
+    onForeground: (listener: (event: TerminalForegroundEvent) => void) => UnsubscribeFn
+    onGeometry: (listener: (event: TerminalGeometryEvent) => void) => UnsubscribeFn
+    onResync: (listener: (event: TerminalResyncEvent) => void) => UnsubscribeFn
+    onState: (listener: (event: TerminalSessionStateEvent) => void) => UnsubscribeFn
+    onMetadata: (listener: (event: TerminalSessionMetadataEvent) => void) => UnsubscribeFn
+  }
+  agent: {
+    listModels: (payload: ListAgentModelsInput) => Promise<ListAgentModelsResult>
+    listInstalledProviders: (
+      payload?: ListInstalledAgentProvidersInput,
+    ) => Promise<ListInstalledAgentProvidersResult>
+    installProvider: (payload: InstallAgentProviderInput) => Promise<InstallAgentProviderResult>
+    listSessions: (payload: ListAgentSessionsInput) => Promise<ListAgentSessionsResult>
+    launch: (payload: LaunchAgentInput) => Promise<LaunchAgentResult>
+    readLastMessage: (payload: ReadAgentLastMessageInput) => Promise<ReadAgentLastMessageResult>
+    resolveResumeSessionId: (
+      payload: ResolveAgentResumeSessionInput,
+    ) => Promise<ResolveAgentResumeSessionResult>
+  }
+  task: {
+    suggestTitle: (payload: SuggestTaskTitleInput) => Promise<SuggestTaskTitleResult>
+  }
+  system: {
+    listFonts: () => Promise<ListSystemFontsResult>
+    saveTextToDownloads: (payload: SaveTextToDownloadsInput) => Promise<SaveTextToDownloadsResult>
+    showNotification: (
+      payload: ShowSystemNotificationInput,
+    ) => Promise<ShowSystemNotificationResult>
+    /** A system notification was clicked; main has already focused the app. */
+    onNotificationActivated: (
+      listener: (event: SystemNotificationActivatedEvent) => void,
+    ) => UnsubscribeFn
+  }
+  worker: {
+    getStatus: () => Promise<WorkerStatusResult>
+    start: () => Promise<WorkerStatusResult>
+    stop: () => Promise<WorkerStatusResult>
+    getWebUiUrl: () => Promise<string | null>
+  }
+  workerClient: {
+    getConfig: () => Promise<HomeWorkerConfigDto>
+    getConfigurationSnapshot: () => Promise<HomeWorkerConfigurationSnapshotDto>
+    setConfig: (payload: SetHomeWorkerConfigInput) => Promise<HomeWorkerConfigDto>
+    setWebUiSettings: (payload: SetHomeWorkerWebUiSettingsInput) => Promise<HomeWorkerConfigDto>
+    setWebUiSecurity: (payload: SetHomeWorkerWebUiSecurityInput) => Promise<HomeWorkerConfigDto>
+    relaunch: () => Promise<void>
+  }
+  cli: {
+    getStatus: () => Promise<CliPathStatusResult>
+    install: () => Promise<CliPathStatusResult>
+    uninstall: () => Promise<CliPathStatusResult>
+  }
+}
+
+declare global {
+  interface Window {
+    __opencoveBridge: import('../../shared/contracts/rendererBridge').OpenCoveBridgeApi<OpenCoveApi>
+    opencoveApi: OpenCoveApi
+  }
+}

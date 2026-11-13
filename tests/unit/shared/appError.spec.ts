@@ -19,20 +19,18 @@ describe('appError', () => {
     )
   })
 
-  it('retains actionable plugin failures through an Error-message-only bridge', () => {
+  it('uses catalog prose instead of arbitrary plugin failure text', () => {
     const descriptor = createAppErrorDescriptor('plugin.operation_failed', {
       params: { reason: 'main.mjs must export activate(context).' },
     })
-    expect(createAppError(descriptor).message).toBe(
-      'Plugin operation failed. main.mjs must export activate(context).',
-    )
+    expect(createAppError(descriptor).message).toBe('Plugin operation failed.')
     expect(
       formatAppErrorMessage(
         createAppErrorDescriptor('plugin.operation_failed', {
           params: { reason: 'x'.repeat(3000) },
         }),
       ),
-    ).toHaveLength('Plugin operation failed. '.length + 2000)
+    ).toBe('Plugin operation failed.')
   })
 
   it('preserves debug detail separately from the user-facing message', () => {

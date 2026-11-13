@@ -114,6 +114,15 @@ describe('packaged app file set', () => {
       },
     )
 
+    it('keeps the test-only renderer acceptance harness out of release packages', () => {
+      // main.tsx loads it only when meta.isTest is set; E2E builds still emit it, releases drop it.
+      const entry = readFileSync(resolve(projectRoot, 'src/app/renderer/main.tsx'), 'utf8')
+      expect(entry).toContain("import('./bootstrap/desktopAcceptanceHarness')")
+      expect(isPackaged('out/renderer/assets/desktopAcceptanceHarness-I60ddkQb.js')).toBe(false)
+      expect(isPackaged('out/renderer/assets/index-I60ddkQb.js')).toBe(true)
+      expect(isPackaged('out/renderer/assets', true)).toBe(true)
+    })
+
     it('packages the standalone server CLI entry point', () => {
       expect(isPackaged('out/cli/opencove.mjs')).toBe(true)
       expect(isPackaged('src/app/cli/publishRuntime.mjs')).toBe(true)

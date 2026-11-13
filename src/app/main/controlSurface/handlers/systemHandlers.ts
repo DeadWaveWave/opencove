@@ -25,6 +25,7 @@ export function registerSystemHandlers(
     instanceId?: string
     isReady?: () => boolean
     hasBoundedAgentSpawning?: () => Promise<boolean>
+    hasEventStream?: boolean
     hasNodeLineage?: () => Promise<boolean>
   },
 ): void {
@@ -102,6 +103,7 @@ export function registerSystemHandlers(
             (await deps.hasBoundedAgentSpawning?.()) && (await deps.hasNodeLineage?.()),
           ),
           operationRegistry: true,
+          eventStreamV1: deps.hasEventStream === true,
           managedClaudeResumeBindingV1: true,
           managedClaudeResumeBindingDeliveryV1: true,
           managedClaudeResumeBindingWritesEnabled: managedClaudeWritesEnabled(),

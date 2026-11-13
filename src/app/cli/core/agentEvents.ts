@@ -1,3 +1,4 @@
+import { sseFrames } from './sseFrames'
 import type { Connection } from './context'
 import { CliError } from './errors'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../shared/contracts/controlSurface/protocol'
@@ -43,62 +44,5 @@ export async function* agentEvents(options: {
       'Check the connection and credentials; inspect with opencove agent get.',
     )
   }
-  const reader = response.body.getReader()
-  const abort = () => {
-    void reader.cancel().catch(() => {})
-  }
-  options.signal.addEventListener('abort', abort, { once: true })
-  if (options.signal.aborted) {
-    abort()
-  }
-  const decoder = new TextDecoder()
-  let buffer = '',
-    data: string[] = [],
-    pendingCr = false
-  try {
-    await options.onOpen?.()
-    while (!options.signal.aborted) {
-      // eslint-disable-next-line no-await-in-loop
-      const chunk = await reader.read()
-      if (chunk.done) {
-        return
-      }
-      let text = decoder.decode(chunk.value, { stream: true })
-      if (pendingCr && text.startsWith('\n')) {
-        text = text.slice(1)
-      }
-      pendingCr = text.endsWith('\r')
-      buffer += text.replace(/\r\n?/g, '\n')
-      if (buffer.length + data.join('').length > 1024 * 1024) {
-        throw new CliError(
-          'agent.stream_invalid',
-          5,
-          'Agent event exceeded the client buffer limit.',
-        )
-      }
-      let end: number
-      while ((end = buffer.indexOf('\n')) >= 0) {
-        const line = buffer.slice(0, end)
-        buffer = buffer.slice(end + 1)
-        if (!line && data.length) {
-          const payload = data.join('\n')
-          data = []
-          try {
-            yield JSON.parse(payload)
-          } catch (error) {
-            if (error instanceof SyntaxError) {
-              throw new CliError('agent.stream_invalid', 5, 'Invalid JSON in agent event stream.')
-            }
-            throw error
-          }
-        } else if (line.startsWith('data:')) {
-          data.push(line.slice(5).replace(/^ /, ''))
-        }
-      }
-    }
-  } finally {
-    options.signal.removeEventListener('abort', abort)
-    await reader.cancel().catch(() => {})
-    reader.releaseLock()
-  }
+  yield* sseFrames(response.body, options.signal, options.onOpen)
 }

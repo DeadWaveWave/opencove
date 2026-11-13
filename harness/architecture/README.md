@@ -32,6 +32,8 @@ pnpm arch:results
 - `window-opencove-api.jsonl`
 - `layer-dependency.jsonl`
 
+超过 500 个 findings 的 rule 按 source owner（前三段路径）拆分文件；单一 owner 超限时再分片，每片最多 500 行。所有分片仍由同一生成命令产生并参与结果校验。
+
 每个 JSONL 每行保存一个 finding，让详细 baseline 保持在仓库行数门禁之内，同时保留精确的文件、行号、规则和期望边界证据。
 
 使用以下命令验证已提交结果是否匹配当前分析器输出：

@@ -32,7 +32,7 @@ it.each(['persistence.invalid_state'] as const)(
     invoke
       .mockResolvedValueOnce({ state, revision: 1 })
       .mockResolvedValueOnce({ state: latest, revision: 2 })
-      .mockRejectedValueOnce(createAppError(code, { debugMessage: 'revision conflict' }))
+      .mockRejectedValueOnce(createAppError(code, { details: { reason: 'revisionConflict' } }))
       .mockResolvedValueOnce({ state: latest, revision: 2 })
     expect(await api.readAppState()).toMatchObject({ revision: 1 })
     await api.readAppState()

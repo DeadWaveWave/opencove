@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 
 - Agents: `opencove node create agent --full-access true|false` (also `node.create` `data.agentFullAccess` and plugin `agents.launch`) sets Full Access for that one agent, even when another agent starts it, without changing Settings; relaunch, resume and recovery keep the choice. (#462, #612)
+- Agents: `opencove node create agent --task <id>` (also `node.create` `data.taskNodeId` and plugin `agents.launch`) links the new agent to a task in the same Space and moves the task to doing, as Run from the task does. (#463)
 
 ## [0.5.0] - 2026-11-12
 

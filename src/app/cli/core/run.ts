@@ -42,6 +42,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
     promptCommand = false,
     invokeStarted = false,
     mutationStarted = false
+  let scope: { dispose(): void } | undefined
   try {
     const specs = { ...globals, ...Object.assign({}, ...commands.map(c => c.options)) }
     const words = commandWords(argv, specs)
@@ -95,6 +96,11 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       return 0
     }
     command.validateBeforeConnect?.(args, io.env)
+    const execution = command.executionScope?.(args, io)
+    if (execution) {
+      scope = execution
+      io = execution.io
+    }
     let input = command.buildInput?.(args)
     const id =
       command.path.join(' ') === 'api call'
@@ -117,7 +123,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
     // rather than discover an invalid projection after their effects have completed.
     if (
       ((command.rawQueryFields && operation?.kind === 'command') ||
-        command.stream ||
+        (command.stream && !command.streamProjection) ||
         ((operation?.kind === 'command' || command.mutation) && !command.render?.fields)) &&
       args.options.fields !== undefined
     ) {
@@ -190,7 +196,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       // Batch node failures belong to the command's per-target resolver. Single
       // targets and other selector kinds retain the early identity preflight.
       const deferredBatchNode =
-        command.resolveSelectorsInExecute &&
+        command.resolveInExecute &&
         spec.selector === 'node' &&
         [args.options[key]].flat().length > 1
       if (
@@ -256,7 +262,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
     if (id) {
       await requireBoundedAgentSpawningForRequest(id, input, identity, call, 'before_selectors')
     }
-    if (!command.resolveSelectorsInExecute) {
+    if (!command.resolveInExecute) {
       await resolveSelectors(command, args, io, call, identity)
     }
     input = command.buildInput?.(args)
@@ -313,10 +319,16 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
     }
     return command.exitCode?.(result) ?? 0
   } catch (error) {
+    const failure =
+      scope && io.signal?.aborted && io.signal.reason instanceof CliError ? io.signal.reason : error
     let cliError =
-      error instanceof CliError
-        ? error
-        : new CliError('cli.failed', 1, error instanceof Error ? error.message : String(error))
+      failure instanceof CliError
+        ? failure
+        : new CliError(
+            'cli.failed',
+            1,
+            failure instanceof Error ? failure.message : String(failure),
+          )
     if (promptCommand && !invokeStarted && cliError.code === 'cli.interrupted') {
       cliError = new CliError(
         'cli.interrupted',
@@ -327,5 +339,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
     }
     printError(io, cliError, json, !mutationStarted)
     return cliError.exitCode
+  } finally {
+    scope?.dispose()
   }
 }

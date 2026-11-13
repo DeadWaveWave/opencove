@@ -15,6 +15,7 @@ import {
 import { resolvePlacement, workspaceWithNode } from './nodeCreatePlacement'
 import { resolveCreateFrame } from './nodeDataFactory'
 import { toCanvasNodeDetail } from './nodeDtos'
+import { assertTaskCanTakeAgent, linkAgentToTask } from './nodeTaskLink'
 
 function targetIdentity(target: ResolvedNodeCreationTarget) {
   return JSON.stringify([
@@ -35,6 +36,8 @@ export async function commitCreatedNode(options: {
   input: CreateNodeInput
   node: NodeControlNode
   initialTarget: ResolvedNodeCreationTarget
+  taskNodeId?: string
+  now: Date
   lineage?: NodeLineageRecord | null
   callerNodeId?: string | null
 }): Promise<CreateNodeResult> {
@@ -79,7 +82,22 @@ export async function commitCreatedNode(options: {
       height: frame.height,
     }
     const spaceId = current.space?.id ?? null
-    const workspace = workspaceWithNode(current.workspace, node, spaceId)
+    if (options.taskNodeId !== undefined) {
+      assertTaskCanTakeAgent({
+        workspace: current.workspace,
+        spaceId,
+        taskNodeId: options.taskNodeId,
+      })
+    }
+    const inserted = workspaceWithNode(current.workspace, node, spaceId)
+    const workspace =
+      options.taskNodeId === undefined
+        ? inserted
+        : linkAgentToTask(inserted, {
+            taskNodeId: options.taskNodeId,
+            agentNodeId: node.id,
+            now: options.now.toISOString(),
+          })
     options.runtime.assertActive?.()
     const nextState = replaceNodeControlWorkspace(state, workspace)
     const result = options.lineage

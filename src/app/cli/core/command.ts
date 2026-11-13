@@ -84,6 +84,10 @@ export interface Command {
   quietIdPath?: string
   mutation?: boolean
   stream?: boolean
+  streamProjection?: boolean
+  /** The command resolves its own selectors (e.g. per target, or after decoding a cursor). */
+  resolveInExecute?: boolean
+  executionScope?(args: CommandArgs, io: CliIo): { io: CliIo; dispose(): void }
   timeoutMs?: number
   connect: boolean
   selectOperation?(args: CommandArgs): OperationId
@@ -92,8 +96,6 @@ export interface Command {
   operation?: OperationId
   validateBeforeConnect?(args: CommandArgs, env: CliIo['env']): void
   buildInput?(args: CommandArgs): unknown
-  /** Commands with independent target outcomes resolve selectors per target. */
-  resolveSelectorsInExecute?: boolean
   exitCode?(result: unknown): number
   textOutput?(result: unknown): string | undefined
   execute?(ctx: CommandContext): Promise<CommandResult>

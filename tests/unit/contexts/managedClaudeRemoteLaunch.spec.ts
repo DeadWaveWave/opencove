@@ -107,7 +107,7 @@ describe('remote Claude launch legacy execution', () => {
       f.runtime.dispose()
     }
   })
-  it('keeps remote launch errors unbranded so the legacy mount retry still runs', async () => {
+  it('does not retry an unbranded remote failure without pre-spawn rejection evidence', async () => {
     const f = fixture()
     const implementation = f.network.getMockImplementation()!
     let launches = 0
@@ -136,27 +136,29 @@ describe('remote Claude launch legacy execution', () => {
       },
     } as typeof window.opencoveApi
     try {
-      const result = await launchWorkspaceAgentSession({
-        canvasNodeId: 'agent',
-        workspaceId: 'workspace',
-        mountId: 'remote-mount',
-        workspacePath: '/repo',
-        executionDirectory: '/repo',
-        prompt: 'fixture',
-        provider: 'claude-code',
-        mode: 'new',
-        model: null,
-        mergedEnv: {},
-        agentSettings: {
-          agentFullAccess: false,
-          codexReuseRunningAppServer: false,
-          defaultTerminalProfileId: null,
-        },
-        launchGeometry: { terminalGeometry: { cols: 80, rows: 24 } },
-        retryResolveMountBinding: retry,
-      })
-      expect(result.sessionId).toBe('home-remote-runtime')
-      expect(retry).toHaveBeenCalledTimes(1)
+      await expect(
+        launchWorkspaceAgentSession({
+          canvasNodeId: 'agent',
+          workspaceId: 'workspace',
+          mountId: 'remote-mount',
+          workspacePath: '/repo',
+          executionDirectory: '/repo',
+          prompt: 'fixture',
+          provider: 'claude-code',
+          mode: 'new',
+          model: null,
+          mergedEnv: {},
+          agentSettings: {
+            agentFullAccess: false,
+            codexReuseRunningAppServer: false,
+            defaultTerminalProfileId: null,
+          },
+          launchGeometry: { terminalGeometry: { cols: 80, rows: 24 } },
+          retryResolveMountBinding: retry,
+        }),
+      ).rejects.toMatchObject({ code: 'worker.unavailable' })
+      expect(launches).toBe(1)
+      expect(retry).not.toHaveBeenCalled()
       expect(f.store.activateManagedClaudeRuntime).not.toHaveBeenCalled()
     } finally {
       f.runtime.dispose()

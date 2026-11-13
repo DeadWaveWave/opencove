@@ -176,3 +176,24 @@ export function readRunPromptIdentity(
     ? entry.history.identity()
     : undefined
 }
+
+/** Query projection shares the same membership predicate as retained subscriptions. */
+export function listAgentRunSnapshots(
+  entries: Iterable<AgentRunEntry>,
+  filter: AgentRuntimeFilter,
+) {
+  return [...entries]
+    .filter(
+      entry =>
+        entry.model.snapshot.state !== 'exited' &&
+        matchesAgentRunFilter(
+          {
+            event: { snapshot: entry.model.snapshot } as AgentRuntimeEvent,
+            projectId: entry.projectId,
+            spaceId: entry.spaceId,
+          },
+          { ...filter, types: undefined },
+        ),
+    )
+    .map(entry => structuredClone(entry.model.snapshot))
+}

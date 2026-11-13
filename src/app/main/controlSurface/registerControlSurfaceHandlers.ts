@@ -92,6 +92,7 @@ export function registerControlSurfaceHandlers(
     deploymentId: deps.deploymentId,
     instanceId: deps.instanceId,
     isReady: deps.isReady,
+    hasEventStream: Boolean(deps.ptyStreamHub.agentRuns.registry),
     hasBoundedAgentSpawning: () =>
       deps.getPersistenceStore().then(
         store =>

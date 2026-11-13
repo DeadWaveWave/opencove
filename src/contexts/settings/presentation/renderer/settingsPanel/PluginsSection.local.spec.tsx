@@ -94,7 +94,7 @@ describe('installed plugin management', () => {
     )
     const { onEnabled } = renderSettings()
     fireEvent.click(screen.getByRole('switch', { name: 'Enable Music' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Backend unavailable')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Plugin operation failed.')
     expect(screen.getByRole('switch', { name: 'Enable Music' })).toBeChecked()
     expect(onEnabled).not.toHaveBeenCalled()
   })

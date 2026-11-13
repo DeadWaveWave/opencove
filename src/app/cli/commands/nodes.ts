@@ -132,6 +132,7 @@ function data(kind: string, o: Record<string, unknown>, create: boolean) {
       prompt: o.prompt ?? '',
       provider: o.provider,
       model: o.model,
+      ...(o.task === undefined ? {} : { taskNodeId: o.task }),
       ...(o['full-access'] === undefined ? {} : { agentFullAccess: o['full-access'] === 'true' }),
     }
   }
@@ -265,6 +266,12 @@ export const nodeCommands = [
                       },
                       provider: stringOption('Provider'),
                       model: stringOption('Model'),
+                      task: {
+                        type: 'string',
+                        valueName: 'nodeId',
+                        description:
+                          'Link to an existing task in the same Space and move it to doing',
+                      },
                       'full-access': {
                         type: 'string',
                         valueName: 'true|false',

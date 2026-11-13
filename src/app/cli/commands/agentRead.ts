@@ -106,7 +106,7 @@ export const agentReadCommand = defineCommand({
         'Return the last n rendered lines (positive integer; requires --screen or --scrollback)',
     },
   },
-  resolveSelectorsInExecute: true,
+  resolveInExecute: true,
   // Validate each read after isolating its selector; a batch is not one Worker request.
   serverValidation: true,
   buildInput: ({ options: o }) => {

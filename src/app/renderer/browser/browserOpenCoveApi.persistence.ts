@@ -19,15 +19,30 @@ import {
 
 type PersistenceApi = Window['opencoveApi']['persistence']
 
+function isStateSnapshot(value: unknown): boolean {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+  const snapshot = value as { revision?: unknown }
+  return (
+    Number.isSafeInteger(snapshot.revision) &&
+    (snapshot.revision as number) >= 0 &&
+    Object.hasOwn(value, 'state')
+  )
+}
+
 export function createBrowserPersistenceApi(): PersistenceApi {
   const cache = new RevisionedSnapshotCache<BrowserPersistedAppState>()
   return {
     readWorkspaceStateRaw: async () =>
-      await invokeBrowserControlSurface<string | null>({
-        kind: 'query',
-        id: 'sync.readWorkspaceStateRaw',
-        payload: null,
-      }),
+      await invokeBrowserControlSurface<string | null>(
+        {
+          kind: 'query',
+          id: 'sync.readWorkspaceStateRaw',
+          payload: null,
+        },
+        value => value === null || typeof value === 'string',
+      ),
     writeWorkspaceStateRaw: async payload => {
       try {
         const result = await submitPersistenceWrite(() =>
@@ -49,11 +64,14 @@ export function createBrowserPersistenceApi(): PersistenceApi {
       const value = await invokeBrowserControlSurface<{
         revision: number
         state: unknown | null
-      }>({
-        kind: 'query',
-        id: 'sync.state',
-        payload: null,
-      })
+      }>(
+        {
+          kind: 'query',
+          id: 'sync.state',
+          payload: null,
+        },
+        isStateSnapshot,
+      )
       cache.set(value.revision, normalizePersistedAppStateForMerge(value.state))
       return { state: value.state, recovery: null, revision: value.revision }
     },
@@ -65,11 +83,14 @@ export function createBrowserPersistenceApi(): PersistenceApi {
           baseRevision: payload.baseRevision,
           state: payload.state,
           read: async () => {
-            const value = await invokeBrowserControlSurface<{ revision: number; state: unknown }>({
-              kind: 'query',
-              id: 'sync.state',
-              payload: null,
-            })
+            const value = await invokeBrowserControlSurface<{ revision: number; state: unknown }>(
+              {
+                kind: 'query',
+                id: 'sync.state',
+                payload: null,
+              },
+              isStateSnapshot,
+            )
             const state = normalizePersistedAppStateForMerge(value.state)
             if (value.state !== null && !state) {
               throw new Error('Malformed sync state.')
@@ -96,7 +117,10 @@ export function createBrowserPersistenceApi(): PersistenceApi {
             const descriptor = toAppErrorDescriptor(error, 'persistence.invalid_state')
             return (
               descriptor.code === 'persistence.invalid_state' &&
-              (descriptor.debugMessage ?? '').includes('revision conflict')
+              descriptor.details !== null &&
+              typeof descriptor.details === 'object' &&
+              'reason' in descriptor.details &&
+              descriptor.details.reason === 'revisionConflict'
             )
           },
         })
