@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
-- Terminals: when the GPU drops a terminal's WebGL renderer, the terminal switches to plain rendering in place and keeps its scrollback, scroll position and selection, instead of reloading its history.
+- Terminals: when the GPU drops a terminal's WebGL renderer, the terminal switches to plain rendering in place and keeps its scrollback, scroll position and selection, instead of reloading its history. (#622)
 
 ## [0.5.0] - 2026-11-12
 
