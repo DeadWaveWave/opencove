@@ -200,7 +200,7 @@ it.each([sessionLaunchAgentOperation, sessionLaunchAgentInMountOperation])(
   '$id advertises Full Access as a supported per-launch override',
   async op => {
     const result = await fixture().describe(op.id)
-    expect(result).toMatchObject({ value: { policyVersion: 's1a-v6' } })
+    expect(result).toMatchObject({ value: { policyVersion: 's1a-v7' } })
     expect(result).not.toHaveProperty('value.rejectedFields.agentFullAccess')
   },
 )

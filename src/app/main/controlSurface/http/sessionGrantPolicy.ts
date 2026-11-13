@@ -1,3 +1,4 @@
+import { checkTaskClaimIdentity } from './sessionGrantTaskPolicy'
 import { checkSessionGrantPrompt } from './sessionGrantPromptPolicy'
 import type { CONTROL_SURFACE_OPERATIONS } from '../../../../shared/contracts/controlSurface/operations'
 import {
@@ -21,7 +22,7 @@ export type GrantRule =
       rejectedFields: Readonly<Record<string, string>>
       check: (payload: unknown, deps: GrantCheckDeps) => void
     }
-export const SESSION_GRANT_POLICY_VERSION = 's1a-v6'
+export const SESSION_GRANT_POLICY_VERSION = 's1a-v7'
 const allow = { access: 'allow' } as const
 const deny = (reason: string): GrantRule => ({ access: 'deny', reason })
 const launch = {
@@ -129,6 +130,24 @@ export const SESSION_GRANT_POLICY = {
   'node.resolveCallerSelector': allow,
   'node.update': allow,
   'note.create': allow,
+  'note.append': {
+    access: 'constrained',
+    reason: 'append text only to notes in your project',
+    rejectedFields: {},
+    check: () => {},
+  },
+  'task.claim': {
+    access: 'constrained',
+    reason: 'claim tasks only for your own agent in the same project and Space',
+    rejectedFields: {},
+    check: checkTaskClaimIdentity,
+  },
+  'task.release': {
+    access: 'constrained',
+    reason: 'release tasks only while your agent is the current holder in your project',
+    rejectedFields: {},
+    check: () => {},
+  },
   'plugin.command.run': deny(
     'plugin code runs with plugin authority and requires a human decision',
   ),

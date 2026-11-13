@@ -1,3 +1,13 @@
+import {
+  claimTask,
+  releaseTask,
+} from '../../../../contexts/workspace/application/nodeControl/nodeTaskMutations'
+import { appendNote } from '../../../../contexts/workspace/application/nodeControl/nodeNoteAppend'
+import {
+  taskClaimOperation,
+  taskReleaseOperation,
+} from '../../../../shared/contracts/controlSurface/operations/domains/task'
+import { noteAppendOperation } from '../../../../shared/contracts/controlSurface/operations/domains/note'
 import { AgentSpawnAdmissionOwner } from '../../../../contexts/workspace/application/nodeSpawn/AgentSpawnAdmissionOwner'
 import type { AgentSpawnRuntimePort } from '../../../../contexts/workspace/application/nodeSpawn/AgentSpawnRuntimePort'
 import { installAgentSpawnOwner } from '../agentSpawnContext'
@@ -132,6 +142,38 @@ export function registerNodeControlHandlers(
     ),
   })
 
+  registerOperation(controlSurface, taskClaimOperation, {
+    defaultErrorCode: 'persistence.io_failed',
+    handle: async (ctx, input) =>
+      claimTask({
+        store: toNodeControlStateStore(await deps.getPersistenceStore()),
+        input,
+        now: ctx.now(),
+        authority: ctx.requestAuth?.kind === 'session-grant' ? ctx.requestAuth.grant : undefined,
+        assertActive: ctx.assertActive,
+      }),
+  })
+  registerOperation(controlSurface, taskReleaseOperation, {
+    defaultErrorCode: 'persistence.io_failed',
+    handle: async (ctx, input) =>
+      releaseTask({
+        store: toNodeControlStateStore(await deps.getPersistenceStore()),
+        input,
+        now: ctx.now(),
+        authority: ctx.requestAuth?.kind === 'session-grant' ? ctx.requestAuth.grant : undefined,
+        assertActive: ctx.assertActive,
+      }),
+  })
+  registerOperation(controlSurface, noteAppendOperation, {
+    defaultErrorCode: 'persistence.io_failed',
+    handle: async (ctx, input) =>
+      appendNote({
+        store: toNodeControlStateStore(await deps.getPersistenceStore()),
+        input,
+        authority: ctx.requestAuth?.kind === 'session-grant' ? ctx.requestAuth.grant : undefined,
+        assertActive: ctx.assertActive,
+      }),
+  })
   registerOperation(controlSurface, nodeManagedClaudeBindingOperation, {
     defaultErrorCode: 'persistence.unavailable',
     handle: async (_ctx, input) => {

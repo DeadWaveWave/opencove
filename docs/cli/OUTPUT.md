@@ -174,3 +174,12 @@ Depth greater than 3 returns `agent.spawn_depth_limit`; six occupied descendants
 `agent.spawn_concurrency_limit`. Both exit 1 with `retryable:false`. Agent and terminal runtimes
 share the tree budget across projects and Spaces. Finishing a turn does not release a slot;
 a session must exit or be stopped. Human launches, task Run and recovery are exempt.
+
+## Task and note mutations
+
+`task claim` and `task release` return `{revision, node, changed}`. `--fields`
+projects task detail fields under `node` and accepts `revision,changed` as envelope
+fields. `note append` returns `{revision, nodeId, appendedBytes, totalBytes}`;
+`appendedBytes` includes the two-newline separator when the note was nonempty.
+All three support `--pretty`, emit newline-terminated JSON and leave stdout empty
+on failure. See [task workflows](TASK_WORKFLOWS.md) for limits and recovery rules.

@@ -1,3 +1,4 @@
+import { isNodeRevisionConflict } from './nodeMutationCommit'
 import type { NodeLineageRecord } from '../../domain/nodeLineage'
 import { projectNodeLineages } from '../nodeLineage/NodeLineageOwner'
 import type { CreateNodeInput, CreateNodeResult } from '../../../../shared/contracts/dto'
@@ -118,9 +119,7 @@ export async function commitCreatedNode(options: {
         )[0],
       }
     }
-    const isConflict =
-      result.error.code === 'persistence.invalid_state' &&
-      /^App state revision conflict(?:\s|\(|$)/.test(result.error.debugMessage ?? '')
+    const isConflict = isNodeRevisionConflict(result.error)
     if (!isConflict || attempt === 2) {
       throw createAppError(result.error)
     }

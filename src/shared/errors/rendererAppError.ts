@@ -110,6 +110,19 @@ export function toRendererAppErrorDescriptor(
       idField(details, input, 'activationId')
       enumField(details, input, 'outcome', ['unknown', 'notCommitted'])
     }
+    if (code === 'task.already_claimed') {
+      idField(details, input, 'taskNodeId')
+      const source = ownValue(input, 'holder')
+      const holder: Record<string, unknown> = {}
+      idField(holder, source, 'nodeId')
+      const title = ownValue(source, 'title')
+      if (typeof title === 'string') {
+        holder.title = title.slice(0, 1000)
+      }
+      if (Object.keys(holder).length) {
+        details.holder = holder
+      }
+    }
     if (code === 'common.forbidden') {
       enumField(details, input, 'spawnReason', [
         'node_create_required',

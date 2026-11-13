@@ -1,3 +1,4 @@
+import { taskClaimErrorPresentation } from '../../../shared/errors/taskClaimError'
 import { clientFeaturesForOperation } from '../../../shared/contracts/controlSurface/clientFeatures'
 import { agentSpawnErrorPresentation } from '../../../shared/errors/agentSpawnError'
 import { isConnectionRefused } from '../../../shared/errors/connectionRefused'
@@ -134,6 +135,7 @@ export async function invoke(
           : String(error.code).endsWith('.unsupported_operation')
             ? 'does not support this operation'
             : undefined
+      const claim = taskClaimErrorPresentation(error)
       const spawn = agentSpawnErrorPresentation(error)
       const promptError =
         prompt && isAppErrorDescriptor(error) ? agentPromptErrorPresentation(error) : undefined
@@ -153,7 +155,8 @@ export async function invoke(
                 ? 6
                 : 1,
         // agent.prompt renders its own recovery text; other commands keep target-aware messages.
-        spawn?.message ??
+        claim?.message ??
+          spawn?.message ??
           (prompt
             ? (promptError?.message ??
               (!attemptsKnown
@@ -164,7 +167,8 @@ export async function invoke(
               : error.code === 'common.invalid_input'
                 ? inputErrorMessage(request.id, error.debugMessage)
                 : (error.debugMessage ?? error.code ?? 'Operation failed')),
-        spawn?.hint ??
+        claim?.hint ??
+          spawn?.hint ??
           (prompt
             ? (promptError?.hint ?? promptUnknownRecovery)
             : error.code === 'common.approved_path_required'

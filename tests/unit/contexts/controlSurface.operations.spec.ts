@@ -19,7 +19,7 @@ it('has unique, complete metadata and strictly exportable wire schemas', () => {
   expect(new Set(CONTROL_SURFACE_OPERATIONS.map(op => op.id)).size).toBe(
     CONTROL_SURFACE_OPERATIONS.length,
   )
-  expect(CONTROL_SURFACE_OPERATIONS.filter(op => op.contract === 'schema')).toHaveLength(154)
+  expect(CONTROL_SURFACE_OPERATIONS.filter(op => op.contract === 'schema')).toHaveLength(157)
   expect(getControlSurfaceOperation('node.resolveCallerSelector')).toMatchObject({
     kind: 'query',
     contract: 'schema',

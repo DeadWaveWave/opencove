@@ -1,5 +1,7 @@
 import { agentSpawnPresentations } from '../../../../shared/errors/agentSpawnError'
 export const enMessages = {
+  taskAlreadyClaimed: 'This task is already claimed by {{holder}}.',
+  taskAlreadyClaimedHint: 'Choose another task, or ask the holder or user to release this task.',
   agentSpawnDepth: agentSpawnPresentations.agentSpawnDepth.message,
   agentSpawnDepthHint: agentSpawnPresentations.agentSpawnDepth.hint,
   agentSpawnConcurrency: agentSpawnPresentations.agentSpawnConcurrency.message,
