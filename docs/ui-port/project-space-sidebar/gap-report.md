@@ -63,4 +63,4 @@
 
 - Unit/RTL：Sidebar 层级、context target、rail 渲染、右键菜单颜色写入和外部点击关闭。
 - E2E：primary sidebar pin/auto reveal、展开/收起 item 与 active project group 高度测量、默认 Space 色与竖线测量、Space label color 设置路径。
-- Full gate：`pnpm line-check:staged`、`pnpm pre-commit`。
+- Full gate：`pnpm line-check`、`pnpm pre-commit`。

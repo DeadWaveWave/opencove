@@ -484,7 +484,7 @@
 ### 6.3 提交前门禁（与 CI 对齐）
 
 - `git add -A`
-- `pnpm line-check:staged`
+- `pnpm line-check`
 - `pnpm pre-commit`
 
 ---
