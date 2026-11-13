@@ -1,3 +1,5 @@
+import { isSelfOrRecordedDescendant } from '../nodeLineage/nodeDescendants'
+import { taskMutationAccessMessage } from '../../../../shared/errors/taskMutationAccessError'
 import type {
   ClaimTaskInput,
   ReleaseTaskInput,
@@ -50,13 +52,22 @@ export async function claimTask(
   const timestamp = options.now.toISOString()
   return commitNodeMutation({
     ...options,
-    plan: state => {
+    plan: async state => {
       const target = taskTarget(state.workspaces, options.input.taskNodeId)
       assertMutationProject(target.workspace.id, options.authority)
       const agentId = options.input.agentNodeId ?? options.authority?.nodeId
-      if (options.authority && (!agentId || agentId !== options.authority.nodeId)) {
+      if (
+        options.authority &&
+        (!agentId ||
+          !options.authority.nodeId ||
+          !(await isSelfOrRecordedDescendant(
+            options.store.nodeLineage,
+            options.authority.nodeId,
+            agentId,
+          )))
+      ) {
         throw createAppError('common.forbidden', {
-          debugMessage: 'You can claim tasks only for your own agent.',
+          debugMessage: taskMutationAccessMessage,
           details: { reason: 'agent_identity_mismatch' },
         })
       }
@@ -150,13 +161,22 @@ export async function releaseTask(
   }
   return commitNodeMutation({
     ...options,
-    plan: state => {
+    plan: async state => {
       const target = taskTarget(state.workspaces, options.input.taskNodeId)
       assertMutationProject(target.workspace.id, options.authority)
       const holder = holderOf(target.workspace, target.node)
-      if (options.authority && (!holder || holder.id !== options.authority.nodeId)) {
+      if (
+        options.authority &&
+        (!holder ||
+          !options.authority.nodeId ||
+          !(await isSelfOrRecordedDescendant(
+            options.store.nodeLineage,
+            options.authority.nodeId,
+            holder.id,
+          )))
+      ) {
         throw createAppError('common.forbidden', {
-          debugMessage: 'Only the current holder or a user can release this task.',
+          debugMessage: taskMutationAccessMessage,
           details: {
             reason: 'not_current_holder',
             taskNodeId: target.node.id,

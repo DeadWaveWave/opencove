@@ -41,12 +41,28 @@ test('a granted agent claims, records work and releases for review across restar
     )
     expect((await getNode(page, agent.id)).node.data).toMatchObject({ taskId })
     expect((await getNode(page, taskId)).node.data).toMatchObject({ linkedAgentNodeId: agent.id })
+    // A real renderer edit must not republish its pre-claim agent object.
+    await focusNode(page, noteId)
+    const editor = page.locator(`[data-id="${noteId}"]`).getByTestId('note-node-textarea')
+    const rendererText = 'Renderer edit after claim'
+    await expect(editor).toHaveValue('')
+    await editor.fill(rendererText)
+    await expect
+      .poll(async () => (await getNode(page, noteId)).node.data)
+      .toMatchObject({ text: rendererText })
+    expect((await getNode(page, agent.id)).node.data).toMatchObject({ taskId })
+    expect((await getNode(page, taskId)).node.data).toMatchObject({
+      linkedAgentNodeId: agent.id,
+      status: 'doing',
+    })
     const held = (await persistedNodes(page)).find(n => n.id === taskId)!.task!
     const result = 'Reviewed boundary behavior; result recorded by the task holder.'
     successfulJson(
       await grantedAgentCli(root, agent.id, ['note', 'append', '--node', noteId, '--text', result]),
     )
-    expect((await getNode(page, noteId)).node.data).toMatchObject({ text: result })
+    const appended = rendererText + '\n\n' + result
+    await expect(editor).toHaveValue(appended)
+    expect((await getNode(page, noteId)).node.data).toMatchObject({ text: appended })
     successfulJson(
       await grantedAgentCli(root, agent.id, [
         'task',
@@ -57,6 +73,14 @@ test('a granted agent claims, records work and releases for review across restar
         'ai_done',
       ]),
     )
+    // Save again after release; the previous held reciprocal must stay cleared.
+    const finalText = appended + '\nRenderer verified release'
+    await editor.fill(finalText)
+    await expect
+      .poll(async () => (await getNode(page, noteId)).node.data)
+      .toMatchObject({ text: finalText })
+    expect((await getNode(page, agent.id)).node.data).toMatchObject({ taskId: null })
+    await focusNode(page, taskId)
     await expect(card.getByTestId('task-node-status-select')).toHaveValue('ai_done')
     await expect(card.getByTestId(`task-node-agent-session-linked-${agent.id}`)).toHaveCount(0)
     const nodes = await persistedNodes(page)
@@ -90,7 +114,7 @@ test('a granted agent claims, records work and releases for review across restar
     await focusNode(page, noteId)
     await expect(
       page.locator(`[data-id="${noteId}"]`).getByTestId('note-node-textarea'),
-    ).toHaveValue(result)
+    ).toHaveValue(finalText)
   } finally {
     try {
       await app?.close()

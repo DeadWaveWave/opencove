@@ -158,11 +158,11 @@ exports[`TypeScript CLI core > help snapshot "task" 1`] = `
 
 Claim a task for an existing agent
 
-Defaults to your authenticated agent. With a user credential, supply --agent. Task and agent must share a project and Space. An existing holder must release the task before another agent can claim it. Claiming does not start an agent.
+Defaults to your authenticated agent. With a user credential, supply --agent. You can select your own agent or any agent you started, including their descendants. Task and selected agent must share a project and Space. An existing holder must release the task before another agent can claim it. Claiming does not start an agent.
 
 Options:
   --task <selector>   Select the task to claim; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
-  --agent <selector>  Select an existing agent; session grants can select only their own agent; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
+  --agent <selector>  Select an existing agent; session grants can select their own agent or agents they started; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
 Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.requirement, data.status, data.priority, data.tags, data.linkedAgentNodeId, revision, changed
@@ -184,7 +184,7 @@ exports[`TypeScript CLI core > help snapshot "task" 2`] = `
 
 Release a task without stopping its agent
 
-The current holder or an authenticated user can release a task. Defaults to todo; use ai_done when the work is ready for review, or done when finished. Release preserves task history and does not stop the agent.
+The current holder, a coordinator that started the holder, or an authenticated user can release a task. Defaults to todo; use ai_done when the work is ready for review, or done when finished. Release preserves task history and does not stop the agent.
 
 Options:
   --task <selector>             Select the task to release; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)

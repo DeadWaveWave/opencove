@@ -1,12 +1,12 @@
+import { taskMutationAccessMessage } from '../../../../shared/errors/taskMutationAccessError'
 import { createAppError } from '../../../../shared/errors/appError'
 import type { GrantCheckDeps } from './sessionGrantPolicy'
 
 /** Snapshot-dependent project/holder checks also run in every application CAS plan. */
-export function checkTaskClaimIdentity(payload: unknown, { grant }: GrantCheckDeps): void {
-  const agentNodeId = (payload as { agentNodeId?: string }).agentNodeId
-  if (!grant.nodeId || (agentNodeId !== undefined && agentNodeId !== grant.nodeId)) {
+export function checkTaskCallerIdentity(_payload: unknown, { grant }: GrantCheckDeps): void {
+  if (!grant.nodeId) {
     throw createAppError('common.forbidden', {
-      debugMessage: 'You can claim tasks only for your own agent.',
+      debugMessage: taskMutationAccessMessage,
       details: { reason: 'agent_identity_mismatch' },
     })
   }

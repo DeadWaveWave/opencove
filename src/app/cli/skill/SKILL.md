@@ -55,11 +55,13 @@ opencove node list --kind note
 opencove node list --kind task
 opencove node get --node task-123
 opencove node create note --title "Progress" --text "Review started"
-opencove node update task --node task-123 --status ai_done
+opencove task claim --task task-123
+opencove note append --node note-123 --text "Review complete"
+opencove task release --task task-123 --status ai_done
 ```
 
 Read existing notes/tasks before changing them. Preserve others' findings and claims.
-Make task ownership visible; claims are a convention, not an atomic lock. Finish with
+Use `task claim` for atomic assignment to yourself or agents you started, including their descendants. Only the holder, its recorded ancestors or a user can release the task. Finish with
 `ai_done`; reserve `done` for human acceptance. Share actual work, remaining questions,
 failures and verification in the task or a note. See `opencove skill canvas`.
 

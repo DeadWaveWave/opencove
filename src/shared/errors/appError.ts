@@ -1,3 +1,4 @@
+import { taskMutationAccessErrorPresentation } from './taskMutationAccessError'
 import { taskClaimErrorPresentation } from './taskClaimError'
 import { agentPromptErrorPresentation } from './agentPromptError'
 import { agentSpawnErrorPresentation } from './agentSpawnError'
@@ -240,6 +241,10 @@ export function formatAppErrorMessage(error: AppErrorDescriptor | OpenCoveAppErr
   const spawn = agentSpawnErrorPresentation(descriptor)
   if (spawn) {
     return `${spawn.message} ${spawn.hint}`
+  }
+  const taskAccess = taskMutationAccessErrorPresentation(descriptor)
+  if (taskAccess) {
+    return taskAccess.message
   }
   const claim = taskClaimErrorPresentation(descriptor)
   if (claim) {

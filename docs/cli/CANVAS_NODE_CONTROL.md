@@ -269,7 +269,7 @@ never start or stop a session. Use `note append --node <selector> --text <text>`
 each revision conflict instead of replacing a body read earlier by the CLI.
 
 The existing Worker persistence path remains the owner of these mutations. A
-stale renderer publication can still overwrite task fields, and ordinary note
+genuinely stale tab can still overwrite task fields, and ordinary note
 replacement can overwrite appended text. There is no additional authority layer,
 lease or deduplication ledger. See [task workflows](TASK_WORKFLOWS.md) for holder
 rules, grant constraints, byte limits, output and uncertain-outcome recovery.

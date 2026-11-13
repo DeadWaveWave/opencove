@@ -159,3 +159,23 @@ it('rejects unknown projected fields before any mutation', async () => {
   ).toBe(2)
   expect(f.requests).toHaveLength(0)
 })
+
+it.each(['agent_identity_mismatch', 'not_current_holder'])(
+  'explains descendant authorization refusals: %s',
+  async reason => {
+    const f = identityFixture(),
+      fetch = f.io.fetch
+    f.io.fetch = async (url, init) =>
+      JSON.parse(String(init?.body)).id === 'task.claim'
+        ? new Response(
+            JSON.stringify({ ok: false, error: { code: 'common.forbidden', details: { reason } } }),
+            { status: 403 },
+          )
+        : fetch(url, init)
+    expect(await run(['task', 'claim', '--task', node.id, '-o', 'json'], f.io)).toBe(4)
+    expect(f.error()).toMatchObject({
+      message: 'You can claim or release tasks only for your own agents or agents you started.',
+    })
+    expect(f.out()).toBe('')
+  },
+)

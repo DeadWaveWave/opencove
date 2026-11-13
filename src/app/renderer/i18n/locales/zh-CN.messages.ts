@@ -1,4 +1,6 @@
 export const zhCNMessages = {
+  taskAgentAccess: '只能为你当前的 Agent 或由你启动的 Agent 领取、释放任务。',
+  taskAgentAccessHint: '请选择你当前的 Agent 或由你启动的 Agent，或请用户分配任务。',
   taskAlreadyClaimed: '此任务已由 {{holder}} 领取。',
   taskAlreadyClaimedHint: '请选择其他任务，或请当前领取者或用户释放此任务。',
   agentSpawnDepth: '此运行时将超出 Agent 创建链的最大深度 3。',

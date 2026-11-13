@@ -88,8 +88,10 @@ function mergeRuntimeNode(
             lastError: existingNode.data.lastError,
           }
         : {}),
+      // With an accepted ancestor, durable agent content has already passed the rebase.
+      // Preserve legacy local launch data only until that node has an accepted base.
       agent:
-        kind === 'agent' && !(hasAcceptedBase && isGuarded)
+        kind === 'agent' && !hasAcceptedBase
           ? (existingNode.data.agent ?? persistedNode.data.agent)
           : persistedNode.data.agent,
       ...mergeRuntimeSessionBinding(persistedNode.data, existingNode.data),

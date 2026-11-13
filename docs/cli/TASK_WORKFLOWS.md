@@ -9,7 +9,7 @@ opencove task release --task "Review" --status ai_done
 ```
 
 Inside an agent session, claim defaults to your authenticated agent. A user must
-supply `--agent <selector>`. Session grants may select only their own agent. Task
+supply `--agent <selector>`. Session grants may select their own agent or any direct or transitive descendant in the Worker’s recorded spawn lineage; siblings and unrelated agents are refused. Task
 and agent must be in the same project and Space, including the root canvas.
 One agent can hold one task; release its current task before claiming another.
 A stale reciprocal `agent.taskId` alone does not block a claim.
@@ -22,12 +22,12 @@ or the reciprocal link update `updatedAt`. Another holder produces
 `details.holder: {nodeId, title}`. Choose another task or ask for a release. There
 is no force claim.
 
-Release is available to the current holder or a user with mutation access. It
+Release is available to the current holder, any caller that started the holder (directly or transitively), or a user with mutation access. It
 clears the task link and the former agent’s reciprocal link only when that link
 still names the task. Release defaults to `todo`; `ai_done` means ready for
 review, and `done` means finished. `doing` is not a release status. Release works
 after a move to another Space in the same project. It preserves history and
-`lastRunAt` and does not stop, delete or archive the agent. A non-holder grant
+`lastRunAt` and does not stop, delete or archive the agent. A grant outside the holder’s recorded ancestry
 receives exit 4 with `reason: not_current_holder` and current holder details.
 
 ## Append to a shared note
@@ -65,8 +65,8 @@ commit together. Concurrent successful appends retain all entries in commit orde
 Each operation retries at most three definite revision conflicts, recomputing
 from current state. Unrelated state changes may exhaust this budget.
 
-These guarantees apply to these Worker mutations. A stale renderer publication
-can overwrite task fields; an ordinary note replacement can overwrite appended
+These guarantees apply to these Worker mutations. A live renderer applies canonical updates before acknowledging them. A genuinely stale tab
+can still overwrite task fields; an ordinary note replacement can overwrite appended
 text. These commands do not provide a lease or global project isolation for
 other APIs. After a timeout, disconnect or uncertain write outcome, inspect the
 task or note before deciding what to do. There is no automatic network replay or

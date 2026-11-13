@@ -18,13 +18,15 @@ export const taskNoteCommands = [
     path: ['task', 'claim'],
     summary: 'Claim a task for an existing agent',
     description:
-      'Defaults to your authenticated agent. With a user credential, supply --agent. Task and agent must share a project and Space. An existing holder must release the task before another agent can claim it. Claiming does not start an agent.',
+      'Defaults to your authenticated agent. With a user credential, supply --agent. You can select your own agent or any agent you started, including their descendants. Task and selected agent must share a project and Space. An existing holder must release the task before another agent can claim it. Claiming does not start an agent.',
     connect: true,
     operation: 'task.claim',
     requireOperationDiscovery: true,
     options: {
       task: { ...selector('Select the task to claim'), required: true },
-      agent: selector('Select an existing agent; session grants can select only their own agent'),
+      agent: selector(
+        'Select an existing agent; session grants can select their own agent or agents they started',
+      ),
     },
     buildInput: ({ options: o }) => ({
       taskNodeId: o.task,
@@ -40,7 +42,7 @@ export const taskNoteCommands = [
     path: ['task', 'release'],
     summary: 'Release a task without stopping its agent',
     description:
-      'The current holder or an authenticated user can release a task. Defaults to todo; use ai_done when the work is ready for review, or done when finished. Release preserves task history and does not stop the agent.',
+      'The current holder, a coordinator that started the holder, or an authenticated user can release a task. Defaults to todo; use ai_done when the work is ready for review, or done when finished. Release preserves task history and does not stop the agent.',
     connect: true,
     operation: 'task.release',
     requireOperationDiscovery: true,
