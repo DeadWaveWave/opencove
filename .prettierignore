@@ -5,3 +5,4 @@ pnpm-lock.yaml
 out
 test-results
 playwright-report
+scripts/impact-cochange-index.json

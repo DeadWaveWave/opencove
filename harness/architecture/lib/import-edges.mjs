@@ -80,11 +80,12 @@ export function readImportEdgesFromSource(filePath, source) {
   )
   const edges = []
 
-  const addEdge = (node, specifier, kind) => {
+  const addEdge = (node, specifier, kind, extra = {}) => {
     edges.push({
       specifier,
       kind,
       line: getLine(sourceFile, node),
+      ...extra,
     })
   }
 
@@ -101,7 +102,9 @@ export function readImportEdgesFromSource(filePath, source) {
     if (ts.isExportDeclaration(node) && node.moduleSpecifier) {
       const specifier = getStaticModuleSpecifierText(node.moduleSpecifier)
       if (specifier) {
-        addEdge(node, specifier, isTypeOnlyExportDeclaration(node) ? 'type' : 'runtime')
+        addEdge(node, specifier, isTypeOnlyExportDeclaration(node) ? 'type' : 'runtime', {
+          reexport: true,
+        })
       }
     }
 

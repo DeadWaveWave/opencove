@@ -3,6 +3,7 @@
 import { existsSync, readdirSync, realpathSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import path from 'node:path'
+import { resolveFileReadDependentTests } from './lib/file-read-dependents.mjs'
 
 const PNPM_COMMAND = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
 const WINDOWS_UNSUPPORTED_TEST_GLOBS = [
@@ -27,16 +28,6 @@ const TEST_RELATED_EXTENSIONS = new Set([
   '.mts',
   '.cts',
 ])
-
-// Tests that read these files from disk instead of importing them, so `vitest related` cannot see
-// the dependency. A staged file under one of the prefixes brings the tests along.
-const FILE_READ_DEPENDENTS = [
-  {
-    // Generated families must replace every literal colour base.css declares.
-    prefixes: ['src/app/renderer/styles/base.css', 'src/app/renderer/styles/themes/'],
-    tests: ['tests/unit/shared/design/themeTokens.spec.ts'],
-  },
-]
 
 function resolveFilesFromStaged() {
   const result = spawnSync('git', ['diff', '--cached', '--name-only', '--diff-filter=ACMR'], {
@@ -82,9 +73,7 @@ function shouldCheck(filePath) {
 
 const hasExplicitTargets = process.argv.length > 2
 const targetFiles = hasExplicitTargets ? process.argv.slice(2) : resolveFilesFromStaged()
-const fileReadDependents = FILE_READ_DEPENDENTS.filter(({ prefixes }) =>
-  targetFiles.some(file => prefixes.some(prefix => file.startsWith(prefix))),
-).flatMap(({ tests }) => tests)
+const fileReadDependents = resolveFileReadDependentTests(targetFiles)
 const files = [...new Set([...targetFiles.filter(shouldCheck), ...fileReadDependents])]
 
 if (files.length === 0) {
