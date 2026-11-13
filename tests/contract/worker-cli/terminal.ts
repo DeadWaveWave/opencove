@@ -15,7 +15,10 @@ export async function terminalCommand(
   const nonce = randomUUID().replaceAll('-', '')
   const begin = `${label}_BEGIN_${nonce}`
   const end = `${label}_END_${nonce}`
-  const marker = (suffix: string) => `printf '\\n%s%s\\n' 'OC_CLI_' '${suffix}'`
+  const marker = (suffix: string) =>
+    process.platform === 'win32'
+      ? `Write-Output ('OC_CLI_' + '${suffix}')`
+      : `printf '\\n%s%s\\n' 'OC_CLI_' '${suffix}'`
   const input = [marker(begin), command, terminalExitStatus(process.platform), marker(end)].join(
     '; ',
   )

@@ -130,7 +130,10 @@ export async function startWorkerFixture(
         title: kind === 'agent' ? 'Reader' : 'Shell',
         ...(spaceId ? { space: { kind: 'spaceId', spaceId } } : {}),
         frame: { x: kind === 'agent' ? 850 : 20, y: 20, width: 760, height: 540 },
-        data: kind === 'agent' ? { provider: 'codex', prompt: '' } : { shell: '/bin/sh' },
+        data:
+          kind === 'agent'
+            ? { provider: 'codex', prompt: '' }
+            : { shell: process.platform === 'win32' ? 'powershell.exe' : '/bin/sh' },
       })
       expect(result.node.sessionId, 'Created node owns a real PTY').toBeTruthy()
       return { nodeId: result.node.id, sessionId: result.node.sessionId! }
@@ -140,9 +143,13 @@ export async function startWorkerFixture(
         .scrollback
     },
     async close() {
-      await recordProcesses()
       try {
-        await stopRemoteWorker(handle.child)
+        try {
+          await recordProcesses()
+        } finally {
+          // A failed process census must not prevent stopping the Worker we started.
+          await stopRemoteWorker(handle.child)
+        }
         await expect
           .poll(() => [...observedPids].filter(alive), {
             timeout: 10_000,

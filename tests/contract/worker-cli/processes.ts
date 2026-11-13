@@ -5,11 +5,23 @@ const exec = promisify(execFile)
 
 /** Only descendants of this fixture's Worker are owned; never inspect/kill by process name. */
 export async function descendants(workerPid: number): Promise<number[]> {
-  const { stdout } = await exec('ps', ['-axo', 'pid=,ppid='])
-  const rows = stdout
-    .trim()
-    .split('\n')
-    .map(line => line.trim().split(/\s+/).map(Number))
+  let rows: number[][]
+  if (process.platform === 'win32') {
+    const { stdout } = await exec('powershell.exe', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      'Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId | ConvertTo-Json -Compress',
+    ])
+    const values = JSON.parse(stdout) as Array<{ ProcessId: number; ParentProcessId: number }>
+    rows = values.map(row => [row.ProcessId, row.ParentProcessId])
+  } else {
+    const { stdout } = await exec('ps', ['-axo', 'pid=,ppid='])
+    rows = stdout
+      .trim()
+      .split('\n')
+      .map(line => line.trim().split(/\s+/).map(Number))
+  }
   const owned = new Set([workerPid])
   let added = true
   while (added) {
