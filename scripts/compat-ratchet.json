@@ -16,6 +16,7 @@
     "src/contexts/plugins/domain/pluginCompatibility.ts": 1,
     "src/contexts/plugins/infrastructure/LocalPluginFiles.ts": 2,
     "src/contexts/settings/presentation/renderer/settingsPanel/TerminalProfileSection.tsx": 1,
+    "src/contexts/workspace/presentation/renderer/components/terminalNode/presentationSnapshotGeometry.ts": 1,
     "src/contexts/workspace/presentation/renderer/utils/persistence/accept.ts": 1,
     "src/shared/contracts/controlSurface/operations/managedClaudeLaunchSchema.ts": 1,
     "src/shared/contracts/runtimeBuild.ts": 1,
