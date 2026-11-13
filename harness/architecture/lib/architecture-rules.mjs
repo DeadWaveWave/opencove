@@ -446,6 +446,10 @@ export async function runArchitectureAudit(options = {}) {
           config,
           variants,
           matches: matchesAnyPattern,
+          resolveTarget: specifier => {
+            const target = resolveInternalSpecifier(root, filePath, specifier, config)
+            return target ? toRelativeProjectPath(root, target) : null
+          },
         }),
       )
 

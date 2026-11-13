@@ -11,6 +11,7 @@ import {
   AGENT_PROVIDER_CAPABILITIES,
   AGENT_PROVIDER_LABEL,
 } from '../../../src/contexts/settings/domain/agentSettings.providerMeta'
+import type { AgentProvider } from '../../../src/contexts/settings/domain/agentSettings'
 import { isValidProvider } from '../../../src/contexts/settings/domain/agentSettings.providers'
 import { providerTitlePrefix } from '../../../src/contexts/workspace/presentation/renderer/utils/agentTitle'
 import { ensurePersistedWorkspace } from '../../../src/contexts/workspace/presentation/renderer/utils/persistence/ensure'
@@ -111,6 +112,10 @@ describe('agent provider behavior (pinned)', () => {
       pi: 'pi',
       kimi: 'kimi',
     })
+  })
+
+  it('keeps the historical codex title prefix for an out-of-set provider', () => {
+    expect(providerTitlePrefix('nope' as AgentProvider)).toBe('codex')
   })
 
   it('accepts terminal Agent activity snapshots only for the shim providers', () => {

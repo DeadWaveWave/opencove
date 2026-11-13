@@ -77,19 +77,25 @@ type-only import 反向依赖任何 context。规则可用 `fromPatterns` / `all
   所以 `data.kind`、`nodeKind`、`getKind(x)` 计入，`x.title === 'task'` 不计入。已知缺口：把 node kind 变量改名成不以 `kind` 结尾可以绕过；provider 没有名字过滤，不受影响。
 - `allowExitGuards`：是否放行 exit guard（仅 node kind 开启）。
 
-规则（都是 `warn`，进入 ratchet；没有行内 suppress 注释，变更 owner 只能改 `rules.json`）：
+规则（severity 来自 `variantRules.literalDecision` / `variantRules.switchExhaustive`，当前都是 `warn`，进入 ratchet；没有行内 suppress 注释，变更 owner 只能改 `rules.json`）。
+每条规则按 variant 拆成独立的规则 id：`architecture.variantLiteralDecision.agentProvider`、`architecture.variantLiteralDecision.nodeKind`、
+`architecture.variantSwitchExhaustive.agentProvider`、`architecture.variantSwitchExhaustive.nodeKind`，因此一个 variant 计数下降不能抵消另一个 variant 的上升（`pnpm arch:ratchet` 按规则 id 比较总数）：
 
-- `architecture.variantLiteralDecision`：每个 variant 字面量比较一条发现：
+- `architecture.variantLiteralDecision.<variant>`：每个 variant 字面量比较一条发现：
   - `===` / `!==`，一侧是集合内的字符串字面量，另一侧不是字面量（两侧都是字面量不算）；
   - `case` 标签使用集合内字面量；
   - `[...].includes(x)`，数组字面量只由字符串字面量组成且全部属于该集合（有任一字面量不在 owner 范围内则整条计入）。
   - 不算比较：对象 key、`Record` 条目、类型层面的字面量、测试文件。
   - 例外：(a) 文件在该字面量的 owner globs 内，或是该 variant 的 source / descriptor 文件；(b) 仅 node kind：exit guard，即构成 `if` 整个条件、
-    或 `||` 链中一个操作数的 `!==`，且该 `if` 没有 `else`、主体只有一条 `return` / `continue` / `break` / `throw`；(c) exhaustive switch 的 `case` 标签。
-- `architecture.variantSwitchExhaustive`：含有至少一个 variant 字面量 `case` 的 `switch` 如果不是 exhaustive，每个 switch 一条发现。
+    或 `||` 链中一个操作数的 `!==`，且该 `if` 没有 `else`、主体只有一条纯退出语句：`return;`、`return <已有值>`、`continue`、`break` 或 `throw …`。
+    “已有值”指字符串/数字/布尔/null 字面量（数字可带前导负号）、`undefined`、标识符、只由标识符和 `this` 组成的属性链（`a.b.c`）、空 `[]` / `{}`；调用、`new`、JSX、条件表达式、非空字面量、带插值的模板、`await` 都不是已有值，此时该比较仍计为决策；(c) exhaustive switch 的 `case` 标签。
+- `architecture.variantSwitchExhaustive.<variant>`：含有至少一个 variant 字面量 `case` 的 `switch` 如果不是 exhaustive，每个 switch 一条发现。
   **Exhaustive** 指最后一个子句是 `default:`，且它的第一条语句是 `assertNever(<discriminant>)`（也可以是 `return` / `throw` 它），
-  或旧写法 `const _exhaustive: never = <discriminant>`。“同一 discriminant”按参数源码文本与 `switch` 表达式文本相同判定。
+  或旧写法 `const _exhaustive: never = <discriminant>`。“同一 discriminant”按参数源码文本与 `switch` 表达式文本相同判定；旧写法的初始化表达式不能带类型转换（`as`、`satisfies`、`<T>x`、`!`），普通括号可以。
+  `assertNever` 必须是该文件中由 import 绑定到 `src/shared/utils/assertNever.ts` 的标识符（`assertNeverFile` 配置；别名与相对路径都可以），同名的本地函数或其他来源的 import 不算。
   分析器不证明 exhaustive，只检查 `switch` 以 `assertNever` 收尾，其余由 `tsc` 证明；`assertNever` 在 `src/shared/utils/assertNever.ts`。
+
+**检测不到的形式**（已知缺口，本规则按名字和字面量判断，不做类型分析）：字面量先放进常量再比较；`new Set([...]).has(p)`；对具名数组的 `.includes` / `.indexOf`；`'codex' in table`；把 `Record` 查表结果当作分支条件；`provider.startsWith('codex')`；通过别名读取主体（`const k = node.data.kind; k === 'task'`）；以及把 node kind 主体改名成不以 `kind` 结尾。后续方案是让规则感知类型（按操作数的类型是否为 variant 联合类型而不是按名字判断），可以一并关闭以上所有缺口和改名缺口。
 
 发现里带有 `variant` 字段（`agentProvider` / `nodeKind`），`pnpm arch:audit --format jsonl` 可以按它拆分计数；ratchet 基线仍按 (规则, 文件) 计数。
 

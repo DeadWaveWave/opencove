@@ -39,6 +39,7 @@
     "literalDecision": { "severity": "warn" },
     "switchExhaustive": { "severity": "warn" },
     "doc": "docs/architecture/ARCHITECTURE.md#variants-and-registries",
+    "assertNeverFile": "src/shared/utils/assertNever.ts",
     "variants": [
       {
         "id": "agentProvider",

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeCanvasNodeKind } from '../../../src/app/main/controlSurface/handlers/spaceHandlers'
+import { resolveWindowKindFamily } from '../../../src/contexts/workspace/presentation/renderer/utils/windowKindFamily'
+import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { PERSISTED_WORKSPACE_NODE_KINDS } from '../../../src/shared/contracts/persistedAppState'
 
 describe('canvas node kind mapping (pinned)', () => {
@@ -26,5 +28,10 @@ describe('canvas node kind mapping (pinned)', () => {
     for (const value of ['', 'Task', 'widget', null, undefined, 1, {}, ['task']]) {
       expect(normalizeCanvasNodeKind(value)).toBe('unknown')
     }
+  })
+
+  it('keeps rendering an out-of-set window kind as neutral', () => {
+    const data = { kind: 'bogus', status: null, agent: null } as unknown as TerminalNodeData
+    expect(resolveWindowKindFamily(data)).toBe('neutral')
   })
 })
