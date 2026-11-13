@@ -2,7 +2,7 @@
 
 CLI 是 Control Surface client；业务状态由 Worker/application owner 管理。CLI 不直接修改业务数据库。
 
-Agent terminals cannot answer permission dialogs, read or change private settings, run provider commands through prompts, or run plugin code through the API: those decisions belong to the human. Agent launches inherit Settings unless `--full-access true|false` chooses Full Access for that agent and its restarts. Project isolation is not yet enforced.
+Agent terminals cannot answer permission dialogs, read or change private settings, run provider commands through prompts, or run plugin code through the API: those decisions belong to the human. Agent launches inherit Settings unless `--full-access true|false` chooses Full Access for that agent and its restarts. Project isolation is not yet enforced. For prompt rules and rewrite examples, see [initial prompts](../agent/INITIAL_PROMPTS.md).
 
 智能体终端不能通过 API 回答权限弹窗、读取或修改私密设置或执行插件代码；这些决定由用户作出。Agent 启动默认继承 Settings，也可用 `--full-access true|false` 为该节点及其后续重启单独选择权限。目前尚未实施项目隔离。
 
@@ -95,7 +95,7 @@ Space locator 不推断 cwd：使用 `--space`、`--space-name` 或 `--worker` �
 
 开发构建：`pnpm build:cli`；入口为 `node out/cli/opencove.mjs`。
 
-CLI help golden 更新使用 `pnpm exec vitest run tests/unit/app/cliInputOutput.spec.ts tests/unit/app/cliOutputBehavior.spec.ts --update`，不要手改生成的 snapshot。
+CLI help golden 更新使用 `pnpm exec vitest run tests/unit/app/cliInputOutput.spec.ts tests/unit/app/cliOutputBehavior.spec.ts --update`，不要手改生成的 snapshot。 Agent 创建帮助快照使用 `pnpm exec vitest run tests/unit/app/cliNodeHelp.spec.ts --update` 更新。
 
 CLI 测试先运行 `pnpm build:cli`，再运行 `pnpm exec vitest run tests/unit/app/cli*.spec.ts`。
 更新帮助 golden snapshots：`pnpm build:cli` 后运行 `pnpm exec vitest run tests/unit/app/cliCore.spec.ts tests/unit/app/cliHelpErrors.spec.ts tests/unit/app/cliSchemaValidation.spec.ts tests/unit/app/cliAgentQueries.spec.ts tests/unit/app/cliSchemaValidation.spec.ts tests/unit/app/cliSkill.spec.ts tests/unit/app/cliEvents.spec.ts tests/unit/app/cliOutputBehavior.spec.ts tests/unit/app/cliHelpErrors.spec.ts tests/unit/app/cliCommandMapping.spec.ts tests/unit/app/cliOutputContracts.spec.ts tests/unit/app/cliNodeHelp.spec.ts --update`；由 Vitest 生成，不手改 `.snap`。错误恢复 golden 使用 `pnpm exec vitest run tests/unit/app/cliAgentPrompt.spec.ts tests/unit/app/cliAgentScreenAndState.spec.ts tests/unit/app/cliAgentHistoryClear.spec.ts --update` 更新。Context 和 filesystem 帮助随对应测试更新：`pnpm exec vitest run tests/unit/app/cliContext.spec.ts tests/unit/app/cliOutputContracts.spec.ts tests/unit/app/cliCommandMapping.spec.ts --update`。新增命令的完整帮助 golden 由 `cliHelpErrors.spec.ts` 生成；节点 wire schema golden 使用 `pnpm exec vitest run tests/contract/controlSurface/nodeSchemas.spec.ts --update` 更新。

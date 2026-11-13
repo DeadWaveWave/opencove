@@ -1,3 +1,4 @@
+import { assertProviderInitialPrompt } from '@contexts/agent/domain/providerInitialPromptPolicy'
 import { readManagedClaudeExecutionContext } from '../../../utils/managedClaudeLifecycle'
 import {
   resolveAgentModel,
@@ -145,6 +146,26 @@ export async function runTaskAgentAction(
     return
   }
 
+  const preflight = () => {
+    const linked = context.nodesRef.current.find(
+      node => node.id === taskNode.data.task.linkedAgentNodeId && node.data.kind === 'agent',
+    )
+    try {
+      assertProviderInitialPrompt(
+        linked?.data.agent?.provider ??
+          resolveSelectableAgentProvider(context.agentSettings.defaultProvider),
+        requirement,
+      )
+      return true
+    } catch (error) {
+      setTaskLastError({ taskNodeId, message: toErrorMessage(error), setNodes: context.setNodes })
+      return false
+    }
+  }
+  if (!preflight()) {
+    return
+  }
+
   const taskSpace = findTaskSpace(taskNodeId, context.spacesRef)
   let mountId = taskSpace?.targetMountId ?? null
   let taskDirectory =
@@ -177,6 +198,10 @@ export async function runTaskAgentAction(
   mountId = initialBinding.mountId
   taskDirectory = initialBinding.executionDirectory
   if (linkedAgentNodeId) {
+    // Binding resolution awaited above: inspect the current provider again before publication.
+    if (!preflight()) {
+      return
+    }
     if (owned && taskDirectory !== owned.executionDirectory) {
       setTaskLastError({
         taskNodeId,

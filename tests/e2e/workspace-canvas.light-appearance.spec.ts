@@ -1,3 +1,4 @@
+import { attachFailureFrame, isE2EDiagnosticsEnabled } from './diagnostics'
 import { expect, test, type Page } from '@playwright/test'
 import { buildNodeEvalCommand, clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
 import { TERMINAL_ANSI_THEME_ENTRIES } from '../../src/contexts/workspace/presentation/renderer/components/terminalNode/terminalAnsiTheme'
@@ -249,10 +250,12 @@ test.describe('Workspace Canvas - Light appearance', () => {
       await expect.poll(() => readPixelEffects(page)).toEqual(PIXEL_EFFECTS_ENABLED)
       await printAnsiPalette(page)
       await attachIdentityFrame(page, testInfo, 'light-all-node-kinds')
-      await testInfo.attach('light-ansi16-terminal', {
-        body: await page.locator(`${nodeSelector('terminal')} .terminal-node`).screenshot(),
-        contentType: 'image/png',
-      })
+      if (isE2EDiagnosticsEnabled()) {
+        await testInfo.attach('light-ansi16-terminal', {
+          body: await page.locator(`${nodeSelector('terminal')} .terminal-node`).screenshot(),
+          contentType: 'image/png',
+        })
+      }
       await testInfo.attach('light-paint-metrics', {
         body: JSON.stringify({ paint, nodes }, null, 2),
         contentType: 'application/json',
@@ -287,6 +290,9 @@ test.describe('Workspace Canvas - Light appearance', () => {
       expect(await monaco!.evaluate(element => element.isConnected)).toBe(true)
       expect(await persistedLabels(page)).toEqual(savedLabels)
       await printIdentityMarker(page)
+    } catch (error) {
+      await attachFailureFrame(page, test.info())
+      throw error
     } finally {
       await electronApp.close()
       await fixture.cleanup()
@@ -400,6 +406,9 @@ test.describe('Workspace Canvas - Light appearance', () => {
       await expect.poll(() => readPixelEffects(page)).toEqual(PIXEL_EFFECTS_ENABLED)
       await expect(page.locator('.workspace-selection-hint')).toHaveCount(0)
       await attachIdentityFrame(page, testInfo, 'light-reduced-motion')
+    } catch (error) {
+      await attachFailureFrame(page, test.info())
+      throw error
     } finally {
       await stopPixelEffectProbe(page).catch(() => undefined)
       await electronApp.close()

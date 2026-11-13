@@ -2,11 +2,13 @@ import { taskMutationAccessErrorPresentation } from '../../../shared/errors/task
 import { agentSpawnErrorPresentation } from '../../../shared/errors/agentSpawnError'
 import { CliError } from './errors'
 import { nodeParentErrorPresentation } from '../../../shared/errors/nodeParentError'
+import { initialPromptErrorPresentation } from '../../../shared/errors/initialPromptFeedback'
+import type { AppErrorParams } from '../../../shared/contracts/dto'
 
 /** HTTP authentication/authorization status takes precedence over legacy descriptors. */
 export function authorizationError(
   status: number | undefined,
-  error?: { code?: string; details?: unknown },
+  error?: { code?: string; details?: unknown; params?: AppErrorParams },
 ): CliError | undefined {
   if (status === 401 || (status !== 403 && error?.code === 'control_surface.unauthorized')) {
     return new CliError(
@@ -18,6 +20,7 @@ export function authorizationError(
   }
   if (status === 403 || error?.code === 'common.forbidden') {
     const task = error && taskMutationAccessErrorPresentation(error)
+    const initialPrompt = error && initialPromptErrorPresentation(error)
     const spawn = error && agentSpawnErrorPresentation(error)
     const parent =
       error?.code === 'common.forbidden' ? nodeParentErrorPresentation(error) : undefined
@@ -29,12 +32,13 @@ export function authorizationError(
       error?.code ?? 'common.forbidden',
       4,
       task?.message ??
+        initialPrompt?.message ??
         spawn?.message ??
         parent?.message ??
         (policyReason && typeof policy?.message === 'string'
           ? policy.message
           : 'This credential does not permit the operation.'),
-      task?.hint ?? spawn?.hint ?? parent?.hint,
+      task?.hint ?? initialPrompt?.hint ?? spawn?.hint ?? parent?.hint,
       details,
     )
   }

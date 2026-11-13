@@ -332,19 +332,16 @@ Process failures retain their error code without returning private launch detail
 Known application refusals retain their typed reason and fixed recovery guidance; arbitrary
 process error payloads remain private for every caller.
 
-Provider launch planners preserve option-like prompts using the provider's literal input channel.
-Codex terminates parsing before every initial prompt; Pi uses text-file input only for
-option-like prompts, including older versions. Trusted Pi single-word prompts stay inline;
-Pi and Claude retain native command dispatch for trusted single-word prompts. Pi prompt files belong to the executing Worker's
-launch artifact owner and follow session cleanup; Home forwards prompt text, never a local file.
-Terminal profiles translate marked host-file arguments only after selecting the actual runtime;
-WSL profiles refuse files that cannot be mapped into that runtime.
-Model option values use the same literal encoding when their parser could interpret them as options.
-Grant-originated launch and delivery prompts also reject the target provider's command prefixes
-at the first non-whitespace character: Claude Code ! / # & (including legacy memory and background-task entry),
-Codex/OpenCode/Pi/Gemini ! /, and Kimi /. Delivery checks the resolved run fence before
-allocating a delivery record or writing input; launch checks the resolved provider before
-preparation or remote bearer forwarding. Trusted callers retain native provider behavior.
+Provider planners own argv safety for every caller: Codex uses `--`; Claude Code uses `--`
+plus exact root-command/alias refusal and refuses dash-prefixed prompts (raw flag readers bypass parsing).
+Pi refuses its package/config command names and leading `-`/`@`; it creates no prompt files.
+OpenCode/Gemini use typed string options (attached for leading dashes); Kimi retains its required string value and full-access gate.
+Accepted text is trimmed only at the edges; resume never replays it. UI preflight precedes task status changes and session replacement; Main enforces the same pure policy.
+Grant launches and deliveries reject provider command prefixes, exit aliases, all `@` references and Codex `$name` skill mentions, including inline, quoted, escaped and linked candidates.
+Claude Code prefixes are ! / # &, Codex/OpenCode/Pi/Gemini ! /, and Kimi /; surrounding provider whitespace is inspected without rewriting the message.
+Refusals occur before spawn/input/delivery records and retain editable text. UI callers keep composer semantics after argv admission.
+These checks are not a live-composer literal guarantee: existing drafts, Claude bash mode and user-installed Pi input handlers are separate delivery-safety work (S1e).
+See [initial prompt behavior](../agent/INITIAL_PROMPTS.md) for compatibility limits and recovery guidance.
 
 
 Forbidden envelopes include `details.reason` (`operation_denied` or `field_denied`),
@@ -427,7 +424,7 @@ expected ID 仅为身份 mismatch fence，parent 始终由 verified grant 推导
 
 ### Bounded grant runtime creation
 
-Policy `s1a-v6` permits grant runtime creation only through `node.create` with a current,
+Policy `s1d-v4` permits grant runtime creation only through `node.create` with a current,
 locally owned agent/terminal caller bound to the authenticated session. The existing node mutation
 queue owns admission through launch and commit settlement. Depth is at most 3 (user root = 1),
 with at most six distinct live or pending grant-created runtime descendants per immutable root.

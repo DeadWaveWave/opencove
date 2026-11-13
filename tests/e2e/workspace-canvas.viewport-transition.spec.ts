@@ -1,3 +1,4 @@
+import { attachFailureFrame, isE2EDiagnosticsEnabled } from './diagnostics'
 import { writeFile } from 'node:fs/promises'
 import { expect, test } from '@playwright/test'
 import { launchApp, readCanvasViewport, selectCoveOption } from './workspace-canvas.helpers'
@@ -39,10 +40,12 @@ test('switches viewport effects live, preserves their endpoints, and handles int
     await window.getByTestId('app-header-settings').click()
     await window.getByTestId('settings-section-nav-canvas').click()
     await selectCoveOption(window, 'settings-viewport-transition', 'slide')
-    await testInfo.attach('settings-transition-dark-en', {
-      body: await window.screenshot({ path: testInfo.outputPath('settings-dark-en.png') }),
-      contentType: 'image/png',
-    })
+    if (isE2EDiagnosticsEnabled()) {
+      await testInfo.attach('settings-transition-dark-en', {
+        body: await window.screenshot({ path: testInfo.outputPath('settings-dark-en.png') }),
+        contentType: 'image/png',
+      })
+    }
     await window.keyboard.press('Escape')
     const slide = await sample('slide', () => window.locator(spaceButton('motion-space-1')).click())
     assertSlide(slide)
@@ -93,6 +96,9 @@ test('switches viewport effects live, preserves their endpoints, and handles int
     expect(unique.size).toBeLessThanOrEqual(2)
     assertSameLanding(reverse, reduced)
     expect(errors).toEqual([])
+  } catch (error) {
+    await attachFailureFrame(window, test.info())
+    throw error
   } finally {
     const measurementPath = testInfo.outputPath('motion-samples.json')
     await writeFile(

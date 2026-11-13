@@ -277,7 +277,8 @@ test('session grants preserve agent workflows and refuse human decisions', async
       )
       expect(denied).toMatch(/\bexit=4\b/)
       expect(denied.replaceAll('\n', '')).toContain('field_denied')
-      expect(denied.replaceAll('\n', '')).toContain('start with words')
+      expect(denied.replaceAll('\n', '')).toContain('provider control')
+      expect(denied.replaceAll('\n', '')).toContain('Ask about the control in a sentence')
     }
     expect(await readFile(record, 'utf8')).toBe(beforeCommands)
     const delivery = await object(
@@ -354,7 +355,8 @@ test('session grants preserve agent workflows and refuse human decisions', async
       const error = denied.replaceAll('\n', '')
       expect(error).toContain('common.forbidden')
       expect(error).toContain('field_denied')
-      expect(error).toContain('describe the task in a sentence')
+      expect(error).toContain('single token')
+      expect(error).toContain('Rephrase the task as a sentence')
       expect(await launchFootprint()).toEqual(beforeLaunches)
     }
     for (const prompt of ['! printenv X', '/permissions change policy', '# note', '& task']) {
@@ -374,7 +376,8 @@ test('session grants preserve agent workflows and refuse human decisions', async
       expect(error).toContain('common.forbidden')
       expect(error).toContain('field_denied')
       expect(error).toContain('provider_command_prefix')
-      expect(error).toContain('start with words')
+      expect(error).toContain('provider control')
+      expect(error).toContain('Ask about the control in a sentence')
       expect(await launchFootprint()).toEqual(beforeLaunches)
     }
     const nestedRefusal = await command(
@@ -387,7 +390,8 @@ test('session grants preserve agent workflows and refuse human decisions', async
       'update',
     )
     expect(nestedRefusal).toMatch(/\bexit=4\b/)
-    expect(nestedRefusal.replaceAll('\n', '')).toContain('describe the task in a sentence')
+    expect(nestedRefusal.replaceAll('\n', '')).toContain('single token')
+    expect(nestedRefusal.replaceAll('\n', '')).toContain('Rephrase the task as a sentence')
     expect(await launchFootprint()).toEqual(beforeLaunches)
     const plugin = await createCommandPlugin('single')
     pluginDirectory = plugin.directory

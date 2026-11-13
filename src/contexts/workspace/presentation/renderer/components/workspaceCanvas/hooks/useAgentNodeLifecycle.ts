@@ -36,6 +36,7 @@ import {
 } from '../../../utils/agentTitle'
 import { useAgentNodeSessionSwitch } from './useAgentNodeSessionSwitch'
 import {
+  preflightAgentRelaunch,
   findAgentNode,
   launchAgentRuntime,
   normalizeOptionalString,
@@ -168,6 +169,9 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
         return undefined
       }
       const launchData = prompt === undefined ? node.data.agent : { ...node.data.agent, prompt }
+      if (!preflightAgentRelaunch(nodeId, mode, launchData, setNodes)) {
+        return undefined
+      }
       let binding
       try {
         await requireManagedClaudeWorkerSupport(launchData.provider)

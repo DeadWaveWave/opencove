@@ -1,4 +1,5 @@
 import { normalizeManagedClaudeLaunchIntent } from './managedClaudeLaunchSchema'
+import { assertInitialPromptText } from '../../../utils/initialPromptValidation'
 import { AGENT_PROVIDER_IDS, type AgentProviderId, type LaunchAgentSessionInput } from '../../dto'
 import { createAppError } from '../../../errors/appError'
 import { normalizeLaunchAgentEnv } from './sessionLaunchAgentEnv'
@@ -79,6 +80,9 @@ export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessio
     throw createAppError('common.invalid_input', {
       debugMessage: 'Invalid payload for session.launchAgent prompt.',
     })
+  }
+  if (payload.mode !== 'resume') {
+    assertInitialPromptText(promptRaw)
   }
 
   const providerRaw = payload.provider

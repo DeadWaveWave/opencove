@@ -1,10 +1,35 @@
 import { agentSpawnPresentations } from '../../../../shared/errors/agentSpawnError'
+import { initialPromptPresentations as prompts } from '../../../../shared/errors/initialPromptFeedback'
 export const enMessages = {
   taskAgentAccess: 'You can claim or release tasks only for your own agents or agents you started.',
   taskAgentAccessHint:
     'Choose your own agent or one you started, or ask the user to assign the task.',
   taskAlreadyClaimed: 'This task is already claimed by {{holder}}.',
   taskAlreadyClaimedHint: 'Choose another task, or ask the holder or user to release this task.',
+  initialPromptCommandToken: prompts.command_token.message,
+  initialPromptCommandTokenHint: prompts.command_token.hint,
+  initialPromptCommandPrefix: prompts.provider_command_prefix.message,
+  initialPromptCommandPrefixHint: prompts.provider_command_prefix.hint,
+  initialPromptExitWord: prompts.provider_exit_word.message,
+  initialPromptExitWordHint: prompts.provider_exit_word.hint,
+  initialPromptFileReference: prompts.unverified_file_reference.message,
+  initialPromptFileReferenceHint: prompts.unverified_file_reference.hint,
+  initialPromptSkillReference: prompts.provider_skill_reference.message,
+  initialPromptSkillReferenceHint: prompts.provider_skill_reference.hint,
+  initialPromptLeadingDash: prompts.leading_dash.message,
+  initialPromptLeadingDashHint: prompts.leading_dash.hint,
+  initialPromptNul: prompts.nul.message,
+  initialPromptNulHint: prompts.nul.hint,
+  initialPromptContainsNul:
+    'This prompt contains a null character. Remove it and try again. Your text has been kept.',
+  invalidSpawnArguments:
+    'The launch settings contain a null character. Remove null characters and try again.',
+  wslArgumentsUnsupported:
+    'WSL cannot use these launch settings. Choose a distribution name without spaces or quotes, and paths without quotes.',
+  invalidSpawnEnvironment:
+    'The launch environment contains a null character. Remove null characters from environment variable names and values, then try again.',
+  initialPromptUnsupported:
+    'This prompt could run a provider command instead of starting a conversation. Rephrase the task, or open a blank session and enter provider controls there. Your text has been kept.',
   agentSpawnDepth: agentSpawnPresentations.agentSpawnDepth.message,
   agentSpawnDepthHint: agentSpawnPresentations.agentSpawnDepth.hint,
   agentSpawnConcurrency: agentSpawnPresentations.agentSpawnConcurrency.message,

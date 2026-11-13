@@ -1,5 +1,4 @@
 // @vitest-environment node
-import { access, readFile } from 'node:fs/promises'
 import { afterEach, expect, it, vi } from 'vitest'
 import { createPromptWorker, cwd, rootUri } from './sessionGrantPromptLiteral.testUtils'
 import {
@@ -65,7 +64,7 @@ afterEach(() => {
 })
 
 it.each(['local', 'remote-mount', 'remote-node'] as const)(
-  '%s creates leading-dash prompt artifacts only on the executing host (remote uses user authority)',
+  '%s refuses leading-dash prompts on the executing host without artifacts (remote uses user authority)',
   async route => {
     const isRemote = route !== 'local'
     const home = await createPromptWorker({ remote: isRemote, fullAccess: false })
@@ -83,7 +82,6 @@ it.each(['local', 'remote-mount', 'remote-node'] as const)(
         seam.executor = 'home'
       }
     })
-    let path: string | undefined
     try {
       const result = await home.invoke(
         {
@@ -109,79 +107,19 @@ it.each(['local', 'remote-mount', 'remote-node'] as const)(
         },
         isRemote,
       )
-      expect(result).toMatchObject({ ok: true })
-      expect(seam.files).toHaveLength(1)
-      expect(seam.files[0].executor).toBe(isRemote ? 'worker' : 'home')
-      path = seam.files[0].path
-      expect(await readFile(path, 'utf8')).toBe('--approve the task')
-      expect(seam.inputs[0]).toEqual([`@${path}`])
-      expect(worker.spawn).toHaveBeenCalledOnce()
-      if (isRemote) {
-        expect(home.spawn).not.toHaveBeenCalled()
-      }
+      expect(result).toMatchObject({
+        ok: false,
+        error: { code: 'common.invalid_input', details: { reason: 'initial_prompt_unsupported' } },
+      })
+      expect(seam.files).toHaveLength(0)
+      expect(seam.inputs).toHaveLength(0)
+      expect(worker.spawn).not.toHaveBeenCalled()
+      expect(home.spawn).not.toHaveBeenCalled()
     } finally {
       await home.dispose()
       if (worker !== home) {
         await worker.dispose()
       }
     }
-    await expect(access(path!)).rejects.toThrow()
   },
 )
-
-it('refuses a remote WSL launch when its host artifact cannot be translated and cleans the file', async () => {
-  const home = await createPromptWorker({ remote: true, fullAccess: false })
-  const worker = await createPromptWorker({ fullAccess: false })
-  const state = (await worker.store.readAppState())!
-  await worker.store.writeAppState({
-    ...state,
-    settings: {
-      defaultProvider: 'pi',
-      agentFullAccess: false,
-      defaultTerminalProfileId: 'wsl:Ubuntu',
-    },
-  })
-  seam.remote.mockImplementation(async (_endpoint, request) => {
-    if (request.id === 'workspace.approveRoot') {
-      return { result: { ok: true, value: null } }
-    }
-    seam.executor = 'worker'
-    seam.windows = true
-    try {
-      return { result: await worker.invoke(request, true) }
-    } finally {
-      seam.executor = 'home'
-      seam.windows = false
-    }
-  })
-  try {
-    const result = await home.invoke(
-      {
-        kind: 'command',
-        id: 'session.launchAgentInMount',
-        payload: {
-          mountId: 'mount',
-          cwdUri: rootUri,
-          provider: 'pi',
-          prompt: '--approve the task',
-        },
-      },
-      true,
-    )
-    expect(result).toMatchObject({
-      ok: false,
-      error: {
-        code: 'common.unavailable',
-        debugMessage: expect.stringContaining('Choose a profile that can access the file'),
-      },
-    })
-    expect(home.spawn).not.toHaveBeenCalled()
-    expect(worker.spawn).not.toHaveBeenCalled()
-    expect(seam.files).toHaveLength(1)
-    expect(seam.files[0].executor).toBe('worker')
-    await expect(access(seam.files[0].path)).rejects.toThrow()
-  } finally {
-    await home.dispose()
-    await worker.dispose()
-  }
-})

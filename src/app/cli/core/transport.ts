@@ -16,6 +16,7 @@ import { get } from './render'
 import type { ErrorTarget, OptionSpec } from './command'
 import { CliError, inputChoiceIssues, inputErrorMessage, validationError } from './errors'
 import { authorizationError } from './authorizationError'
+import { initialPromptErrorPresentation } from '../../../shared/errors/initialPromptFeedback'
 export async function invoke(
   connection: Connection,
   request: { kind: string; id: string; payload: unknown },
@@ -64,6 +65,10 @@ export async function invoke(
     }
     if (result?.ok === false) {
       const error = result.error ?? {}
+      const initialPrompt = initialPromptErrorPresentation(error)
+      if (initialPrompt) {
+        throw new CliError(error.code, 2, initialPrompt.message, initialPrompt.hint, error.details)
+      }
       const parent = nodeParentErrorPresentation(error)
       if (parent) {
         throw new CliError(error.code, 1, parent.message, parent.hint, error.details)

@@ -15,7 +15,7 @@ describe('managed Claude launch identity', () => {
         resumeSessionId: '11111111-1111-4111-8111-111111111111',
         agentFullAccess: false,
         workspaceDirectory: '/tmp/shared-workspace',
-        prompt: '- explain the change',
+        prompt: 'Explain the change',
       }
       const plans = await Promise.all([
         provider.launcher.createLaunchPlan(command),
