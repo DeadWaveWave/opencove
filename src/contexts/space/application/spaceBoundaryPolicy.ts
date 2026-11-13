@@ -1,4 +1,4 @@
-import { toFileUri } from '../../filesystem/domain/fileUri'
+import { toFileUri } from '../../filesystem/domain'
 import {
   createMountOnlySpaceBoundary,
   isSpaceBoundaryEmpty,

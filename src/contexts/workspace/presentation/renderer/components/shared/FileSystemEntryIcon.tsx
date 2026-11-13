@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { FileCodeIcon, FileTextIcon, FolderIcon } from '@app/renderer/components/ui/pixelIcons'
-import { fromFileUri } from '@contexts/filesystem/domain/fileUri'
+import { fromFileUri } from '@contexts/filesystem/domain'
 
 export type FileSystemEntryIconKind = 'folder' | 'file-text' | 'file-json' | 'file-code-2'
 

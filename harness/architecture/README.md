@@ -52,6 +52,15 @@ ratchet 基线 `ratchet.json` 的形状是 `{ ruleId: { file: count } }`，每�
 type-only import 反向依赖任何 context。规则可用 `fromPatterns` / `allowedPatterns` 把禁用边收敛到具体组合 seam。
 `allowedEdges` 只给列出的文件开放额外 edge，`app/worker` 与 `app/renderer` 的其余文件仍走默认窄依赖。
 
+`contexts` 块（`rules.json`）声明 context 根目录、公开入口路径（`entryFiles`）和跨 context 受限 layer 目录（`restrictedLayerDirs`）。
+`checks.contextBoundaries` 配置下面四条规则的 severity，每条 edge 至多产生一条发现，type-only import 同样计入；
+`**/*.spec.ts` 等测试文件由 `exclude` 排除，不受这些规则约束：
+
+- `architecture.contextForbiddenLayer`（`warn`，进入 ratchet）：context 内的文件 import 另一个 context 的 `infrastructure/` 或 `presentation/` 下的任何文件，经入口也算。
+- `architecture.contextPublicEntry`（`warn`，进入 ratchet）：context 外的文件（其他 context、`src/app/*`、`src/platform/*`）import 目标 context 中不是入口文件的文件；同一条 edge 已触发 `contextForbiddenLayer` 时不再重复报告。
+- `architecture.contextEntryShape`（`error`）：入口文件含有具名 `export { ... } from` / `export type { ... } from` 之外的语句，或 re-export 了自身 layer 目录之外的文件。
+- `architecture.contextSelfEntryImport`（`error`）：context 内的文件 import 自己的入口。
+
 ## 架构契约变更清单
 
 修改 `ARCHITECTURE.md`、`CONTROL_SURFACE.md` 或 `RECOVERY_MODEL.md` 时：

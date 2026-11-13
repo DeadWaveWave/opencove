@@ -83,6 +83,7 @@ domain <- application <- presentation
 - `presentation` 不能绕过 `application` 直接改写业务 owner。
 - `shared` contract/runtime 不能依赖任何 context，包括 type-only import；共享结构必须由内层 contract 自身定义。
 - 一个 context 不能直接依赖另一个 context 的 `infrastructure` 或 `presentation`。
+- context 之外的代码（其他 context、`src/app/*`、`src/platform/*`）只能通过目标 context 的公开入口（public entry）import 它，不能 deep import 内部文件。公开入口是每个 layer 目录根下只做具名 re-export 的 `index.ts`，且只有这五个路径有效：`src/contexts/<ctx>/domain/index.ts`、`application/index.ts`、`infrastructure/index.ts`、`presentation/main-ipc/index.ts`、`presentation/renderer/index.ts`；import 时写 layer 目录本身，例如 `@contexts/filesystem/domain`。其他 context 只能 import `domain` 与 `application` 入口；`infrastructure`、`presentation/main-ipc`、`presentation/renderer` 入口只留给组合根（`src/app/*`）使用。入口只允许 `export { ... } from` 与 `export type { ... } from`，且只能 re-export 自己 layer 目录内的文件；入口在有使用方时才创建；context 内部文件不得 import 自己的入口。type-only import 同样计入。
 
 这些规则的可执行形式在 `harness/architecture/rules.json`，由 `pnpm arch:check` 在 `verify:quick` 和 CI 中强制执行。
 
@@ -180,6 +181,7 @@ Web UI / Remote Worker 等浏览器或远端入口，都是同一套 Control Sur
 - 用持久化结构反向定义业务语义。
 - 让非 owner context 判定别人的 durable truth。
 - 通过跨 context 直接写 store/state 传递业务真相。
+- deep import 另一个 context 的内部文件（绕过它的公开入口），或让入口承载 `export *`、本地声明、跨 layer / 跨 context 的 re-export。
 - 在 `main` 进程内直接承载高风险 native/外部运行时（例如 PTY），导致单点崩溃/白屏，缺失故障隔离与可恢复语义。
 
 ### Desktop public errors

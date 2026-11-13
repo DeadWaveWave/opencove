@@ -1,6 +1,6 @@
 import { logAgentLaunchInfo } from '../../diagnostics/agentLaunchRuntimeDiagnostics'
 import { composeTerminalSpawnGuard } from './terminalAgentActivitySpawn'
-import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
+import { toFileUri } from '../../../../contexts/filesystem/domain'
 import { resolveSpaceMountContext } from '../../../../contexts/space/application/resolveSpaceMountContext'
 import type { MountDto, SpawnTerminalResult } from '../../../../shared/contracts/dto'
 import {
