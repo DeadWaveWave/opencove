@@ -1,5 +1,10 @@
 import { rendererBridgeViolations } from './renderer-bridge-rules.mjs'
-import { existsSync } from 'node:fs'
+import {
+  assertContextConfig,
+  classifyEdgeContexts,
+  findContextViolations,
+} from './context-rules.mjs'
+import { statSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { dirname, extname, join, resolve, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -79,13 +84,21 @@ async function collectSourceFiles(root, config) {
   return files.sort()
 }
 
+function isFile(candidate) {
+  try {
+    return statSync(candidate).isFile()
+  } catch {
+    return false
+  }
+}
+
 function resolveWithCandidates(pathBase) {
   const candidates = [
     pathBase,
     ...RUNTIME_EXTENSIONS.map(extension => `${pathBase}${extension}`),
     ...RUNTIME_EXTENSIONS.map(extension => join(pathBase, `index${extension}`)),
   ]
-  return candidates.find(candidate => existsSync(candidate)) ?? null
+  return candidates.find(isFile) ?? null
 }
 
 function resolveInternalSpecifier(root, fromFile, specifier, config) {
@@ -310,6 +323,7 @@ function assertSeverities(config) {
 export async function loadArchitectureConfig(configPath = defaultArchitectureRulesPath) {
   const config = JSON.parse(await readFile(configPath, 'utf8'))
   assertSeverities(config)
+  assertContextConfig(config)
   assertAllowedEdgeReasons(config)
   return config
 }
@@ -339,6 +353,7 @@ export async function runArchitectureAudit(options = {}) {
           toRelativePath,
           fromLayer,
           toLayer: toRelativePath ? classifyLayer(toRelativePath, config) : null,
+          ...classifyEdgeContexts(relativePath, toRelativePath, config.contexts),
         }
       })
       const fileViolations = rendererBridgeViolations(
@@ -405,6 +420,20 @@ export async function runArchitectureAudit(options = {}) {
           }
         }
       }
+
+      fileViolations.push(
+        ...findContextViolations({
+          relativePath,
+          filePath,
+          source,
+          edges,
+          config,
+          resolveTarget: specifier => {
+            const target = resolveInternalSpecifier(root, filePath, specifier, config)
+            return target ? toRelativeProjectPath(root, target) : null
+          },
+        }),
+      )
 
       return {
         filePath,

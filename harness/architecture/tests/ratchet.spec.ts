@@ -48,6 +48,8 @@ async function analyse(files: Record<string, string>) {
 const baselineOf = {
   [LAYER]: { 'src/contexts/workspace/domain/model.ts': 1 },
   [WINDOW_API]: { 'src/contexts/workspace/presentation/renderer/View.ts': 1 },
+  'architecture.contextForbiddenLayer': {},
+  'architecture.contextPublicEntry': {},
 }
 
 describe('architecture ratchet baseline', () => {
@@ -59,7 +61,10 @@ describe('architecture ratchet baseline', () => {
 
   it('counts warn findings per rule and file', async () => {
     const { report, config } = await analyse(baseFiles)
-    expect(countRatchetedFindings({ report, config })).toEqual(baselineOf)
+    expect(countRatchetedFindings({ report, config })).toEqual({
+      [LAYER]: baselineOf[LAYER],
+      [WINDOW_API]: baselineOf[WINDOW_API],
+    })
   })
 
   it('passes when counts match the baseline', async () => {
@@ -154,7 +159,7 @@ describe('architecture ratchet baseline', () => {
     const plan = planRatchetUpdate({ report, config, baseline: baselineOf })
     expect(plan.ok).toBe(true)
     expect(JSON.parse(plan.serialized)).toEqual({
-      [LAYER]: baselineOf[LAYER],
+      ...baselineOf,
       [WINDOW_API]: {},
     })
   })

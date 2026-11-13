@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { collectContextRuleSeverities } from './context-rules.mjs'
 import {
   compareRatchet,
   formatRatchetIssues,
@@ -34,6 +35,9 @@ export function collectRuleSeverities(config) {
   }
   if (checks.rendererBridge) {
     severities.set(checks.rendererBridge.id, checks.rendererBridge.severity)
+  }
+  for (const [rule, severity] of collectContextRuleSeverities(config)) {
+    severities.set(rule, severity)
   }
   return severities
 }

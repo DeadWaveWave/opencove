@@ -19,7 +19,9 @@ it('keeps managed runtime composition separate from renderer and application pol
       await writeFile(join(root, name), contents)
     }
     const report = await runArchitectureAudit({ root })
-    expect(report.violations).toEqual([
+    expect(
+      report.violations.filter(violation => !violation.ruleId.startsWith('architecture.context')),
+    ).toEqual([
       expect.objectContaining({
         ruleId: 'architecture.layerDependency',
         file: 'src/app/managedRuntime/index.ts',
