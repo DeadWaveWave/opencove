@@ -4,7 +4,7 @@ import type { InitialPromptFeedbackKind } from './initialPromptFeedback'
 export const INITIAL_PROMPT_RULES = [
   {
     kind: 'command_token',
-    text: 'Launches: describe a task in a sentence; single tokens and provider command names are refused.',
+    text: 'Launches: describe a task in a sentence; single ASCII words and provider command names are refused; unspaced Chinese/Japanese/Korean text is fine.',
   },
   {
     kind: 'provider_command_prefix',
