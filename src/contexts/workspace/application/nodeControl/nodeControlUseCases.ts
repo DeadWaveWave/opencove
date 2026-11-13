@@ -195,6 +195,7 @@ export async function createNodeForNodeControl(options: {
       {
         authority: options.authority,
         nodeId: canvasNodeId,
+        title: options.input.title ?? undefined,
         kind: createData.kind,
         target: resolved,
         assertActive: () => options.runtime.assertActive?.(),

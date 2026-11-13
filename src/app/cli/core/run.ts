@@ -193,7 +193,14 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       }
     }
     for (const [key, spec] of Object.entries(command.options ?? {})) {
+      // Batch node failures belong to the command's per-target resolver. Single
+      // targets and other selector kinds retain the early identity preflight.
+      const deferredBatchNode =
+        command.resolveInExecute &&
+        spec.selector === 'node' &&
+        [args.options[key]].flat().length > 1
       if (
+        !deferredBatchNode &&
         spec.selector &&
         [args.options[key]].flat().includes('@self') &&
         io.env.OPENCOVE_ENV !== '1' &&
@@ -283,7 +290,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       args.options.quiet && command.quietIdPath
         ? String(get(result, command.quietIdPath)) + '\n'
         : command.textOutput && !args.options.output && args.options.fields === undefined
-          ? command.textOutput(result)
+          ? (command.textOutput(result) ?? render(result, args.options, renderSpec))
           : render(result, args.options, renderSpec)
     const notice = nodeFieldNotice(result, args.options, renderSpec)
     if (notice) {
@@ -310,7 +317,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       const delivery = result as { available?: boolean; status?: string }
       return delivery.available && delivery.status === 'submitted' ? 0 : 1
     }
-    return 0
+    return command.exitCode?.(result) ?? 0
   } catch (error) {
     const failure =
       scope && io.signal?.aborted && io.signal.reason instanceof CliError ? io.signal.reason : error
