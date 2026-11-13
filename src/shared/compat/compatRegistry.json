@@ -138,7 +138,7 @@
       "expires": {
         "until": "0.7.0"
       },
-      "reason": "The CLI still accepts input shapes of earlier builds: legacy agent events and error descriptors from older Workers, and bare legacy ids in selectors.",
+      "reason": "The CLI selector still resolves bare legacy ids (ids that are not UUIDs) by probing for an exact target before it accepts a name or a prefix.",
       "decidedIn": "#642"
     },
     "space-update-legacy-node-move": {
@@ -171,6 +171,14 @@
         "until": "0.7.0"
       },
       "reason": "Agent run state keeps the single legacy `state` label next to the structured run state for existing UI and API consumers; it never feeds decisions.",
+      "decidedIn": "#642"
+    },
+    "pi-agent-settled-fallback": {
+      "kind": "third-party",
+      "expires": {
+        "until": "0.7.0"
+      },
+      "reason": "Pi releases without the agent_settled event (verified against Pi 0.80.7, which emits it) need an idle check after agent_end, which the generated Pi status extension carries as its agent_end handler.",
       "decidedIn": "#642"
     },
     "opencode-tui-legacy-theme": {

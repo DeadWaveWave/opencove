@@ -404,6 +404,24 @@ describe('compat expiry check: scope and limits', () => {
     expect(run(createFixture({ entries: edge })).status).toBe(0)
   })
 
+  it.each(['wire', 'peer-version', 'third-party', 'kill-switch'])(
+    'rejects `dataBefore` on a %s entry, so it cannot dodge the horizon',
+    kind => {
+      const entries = { 'old-wire': entry({ kind, expires: { dataBefore: '0.3.0' } }) }
+      const result = run(createFixture({ entries }))
+      expect(result.status).toBe(1)
+      expect(result.stderr).toContain('[invalid-expiry] (old-wire)')
+      expect(result.stderr).toContain(
+        'which only `user-data` and `machine-residue` entries may use',
+      )
+    },
+  )
+
+  it.each(['user-data', 'machine-residue'])('allows `dataBefore` on a %s entry', kind => {
+    const entries = { 'old-wire': entry({ kind, expires: { dataBefore: '0.3.0' } }) }
+    expect(run(createFixture({ entries })).status).toBe(0)
+  })
+
   it('measures that distance from package.json, not from --at', () => {
     const far = { 'old-wire': entry({ expires: { until: '0.9.0' } }) }
     const result = run(createFixture({ entries: far }), '--at', '0.8.0')
