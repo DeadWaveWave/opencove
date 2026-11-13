@@ -27,7 +27,9 @@ opencove context
 opencove node get --node @self
 ```
 
-`whoami` reports your grant and scope. `context.self.node` describes your own node;
+`whoami` reports your grant and scope; `whoami --tree` lists the agents and terminals in your
+quota tree, how many more you can start, each one's state and how to stop it.
+`context.self.node` describes your own node;
 `context.nodes` lists neighbors in your Space. Outside every Space it has no neighbors:
 use `node list` for the project or `node list --root-canvas` for only root nodes.
 Session lifecycle `running` does not mean an agent is working; inspect `agent get`.
