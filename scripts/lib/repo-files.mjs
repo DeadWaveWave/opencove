@@ -13,18 +13,12 @@ export function isExcludedRepositoryPath(filePath) {
   return EXCLUDED_PREFIXES.some(prefix => normalized.startsWith(prefix))
 }
 
-// Tracked files plus new files that are not ignored: the same set in CI (tracked only) and on a
-// developer machine (with work in progress), whatever is staged.
-export function listRepositoryFiles(cwd = process.cwd()) {
-  const result = spawnSync(
-    'git',
-    ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
-    {
-      cwd,
-      encoding: 'utf8',
-      maxBuffer: 64 * 1024 * 1024,
-    },
-  )
+function runGit(cwd, args) {
+  const result = spawnSync('git', args, {
+    cwd,
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+  })
 
   if (result.error || result.status !== 0) {
     throw new Error(
@@ -33,6 +27,19 @@ export function listRepositoryFiles(cwd = process.cwd()) {
   }
 
   return result.stdout
+}
+
+// The checks run from the repository root whatever directory they are started in, so path rules
+// (`scripts/`, generated paths, exemption keys) always see root-relative paths.
+export function resolveRepositoryRoot(cwd = process.cwd()) {
+  return runGit(cwd, ['rev-parse', '--show-toplevel']).trim()
+}
+
+// Tracked files plus new files that are not ignored: the same set in CI (tracked only) and on a
+// developer machine (with work in progress), whatever is staged. Paths are relative to the root.
+export function listRepositoryFiles(cwd = process.cwd()) {
+  const root = resolveRepositoryRoot(cwd)
+  return runGit(root, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'])
     .split('\0')
     .filter(entry => entry.length > 0)
     .map(normalizeRepositoryPath)

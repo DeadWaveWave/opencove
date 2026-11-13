@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   createGitRepository,
@@ -24,7 +25,7 @@ describe('naming check over the whole repository', () => {
     writeRepositoryFile(root, 'src/feature.ts', `export const ok = 1\n${line}`)
     const result = runScript('check-naming.mjs', root)
     expect(result.status).toBe(1)
-    expect(result.stderr).toContain('src/feature.ts')
+    expect(result.stderr).toContain('src/feature.ts:2')
   })
 
   it('accepts a clean repository and reports how many files it scanned', () => {
@@ -60,6 +61,16 @@ describe('naming check over the whole repository', () => {
     const root = createGitRepository()
     writeRepositoryFile(root, 'src/out/feature.ts', forbidden.apiToken)
     expect(runScript('check-naming.mjs', root).status).toBe(1)
+  })
+
+  it('gives the same verdict when started from a subdirectory', () => {
+    const root = createGitRepository()
+    writeRepositoryFile(root, 'scripts/tool.mjs', forbidden.apiToken)
+    writeRepositoryFile(root, 'src/deep/feature.ts', forbidden.apiToken)
+    const result = runScript('check-naming.mjs', join(root, 'src', 'deep'))
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('src/deep/feature.ts:1')
+    expect(result.stderr).not.toContain('scripts/tool.mjs')
   })
 
   it('fails when it scanned zero files', () => {
