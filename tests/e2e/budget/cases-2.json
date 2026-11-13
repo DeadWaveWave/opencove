@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "count": 173,
+  "count": 174,
   "entries": {
     "tests/e2e/agent-hook-relay.windows.spec.ts › claude-code executes Electron hooks through the real launch path and retains keyboard input": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/agent-hook-relay.windows.spec.ts › codex executes Electron hooks through the real launch path and retains keyboard input": "Desktop: pre-restructure inventory; existing assertions retained",
@@ -157,6 +157,7 @@
     "tests/e2e/workspace-canvas.tasks.edit-delete.spec.ts › Workspace Canvas - Tasks (Edit & Delete) › supports task edit, resize, and delete confirmation": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/workspace-canvas.terminal-agent-overlay.spec.ts › Workspace Canvas - Terminal agent overlay › drops back to a normal terminal when codex exits before it starts": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/workspace-canvas.terminal-binding-recovery.windows.spec.ts › Windows recovered terminals publish their binding and accept fresh input (dark)": "Desktop: pre-restructure inventory; existing assertions retained",
+    "tests/e2e/workspace-canvas.terminal-context-loss.spec.ts › WebGL loss preserves the live terminal buffer, selection and scrolled viewport": "Desktop: merged on main before this ratchet landed (#613 CLI events, #622 WebGL loss, #634 raw replacement); existing assertions retained",
     "tests/e2e/workspace-canvas.terminal-device-pixel-ratio.spec.ts › Workspace Canvas - Terminal effective DPR › preserves a user-scrolled terminal after zoom settles without returning to bottom": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/workspace-canvas.terminal-geometry.windows.spec.ts › Windows terminal window fitting › worker: fits at 150% DPR with calibration off through resize and reattach": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/workspace-canvas.terminal-header-body-focus.spec.ts › Workspace Canvas - Terminal Header Body Focus › keeps terminal focused after header click then body click": "Desktop: pre-restructure inventory; existing assertions retained",

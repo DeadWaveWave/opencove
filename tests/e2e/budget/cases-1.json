@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "count": 167,
+  "count": 170,
   "entries": {
     "tests/e2e/agent-hook-relay.spec.ts › codex executes Electron hooks through the real launch path and retains keyboard input": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/agent.prompt.real-codex.daemon.spec.ts › Codex orchestration beside a shared app-server daemon › default hooks complete prompts while the daemon stays healthy; delete reaps the agent tree": "Desktop: pre-restructure inventory; existing assertions retained",
@@ -20,6 +20,8 @@
     "tests/e2e/cli.bounded-agent-spawning.spec.ts › depth four refuses both runtime kinds without creating a node or session": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/cli.bounded-agent-spawning.spec.ts › real Run Role launches a root whose inherited grant can create a child": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/cli.bounded-agent-spawning.spec.ts › six mixed descendants share a budget, exit frees a slot, and an actual UI launch is exempt": "Desktop: pre-restructure inventory; existing assertions retained",
+    "tests/e2e/cli.events-polish.spec.ts › cursor-file survives Ctrl-C, resumes two child ends and supports exact reply reads": "Desktop: merged on main before this ratchet landed (#613 CLI events, #622 WebGL loss, #634 raw replacement); existing assertions retained",
+    "tests/e2e/cli.events-polish.spec.ts › until-each-turn ignores old ends, honors timeout and waits for both live turns": "Desktop: merged on main before this ratchet landed (#613 CLI events, #622 WebGL loss, #634 raw replacement); existing assertions retained",
     "tests/e2e/cli.list-output.spec.ts › real Worker lists cap display without hiding context neighbors or selector targets": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/cli.session-grant.spec.ts › session grants preserve agent workflows and refuse human decisions": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/cli.space-placement.spec.ts › a note created in a full child Space grows its boundary inside its parent": "Desktop: pre-restructure inventory; existing assertions retained",
@@ -57,6 +59,7 @@
     "tests/e2e/recovery.terminal-progress.windows.spec.ts › keeps a restored terminal interactive while a sibling recovery request is blocked": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/settings.managed-ssh-cold-bootstrap-progress.spec.ts › Managed SSH cold bootstrap progress › keeps accepted progress across Settings reopen (light, zh-CN)": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/settings.page.spec.ts › Settings canvas page › fills a narrow canvas and opens without focusing a text input": "Desktop: pre-restructure inventory; existing assertions retained",
+    "tests/e2e/settings.raw-replacement.spec.ts › keeps an imported theme when the outgoing renderer publishes a queued edit": "Desktop: merged on main before this ratchet landed (#613 CLI events, #622 WebGL loss, #634 raw replacement); existing assertions retained",
     "tests/e2e/settings.search-coverage.spec.ts › every settings row can be found by search (en)": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/settings.ssh-config-picker.spec.ts › Settings SSH config host picker › prefills one alias from the real test HOME without registering it": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/settings.terminal-display-calibration.spec.ts › Settings - Terminal Display Calibration › automatically calibrates this renderer without remounting its terminal": "Desktop: pre-restructure inventory; existing assertions retained",
