@@ -5,8 +5,9 @@
 // is unknown or unused, and when unmarked compatibility signals grow past the baseline.
 // See docs/development/COMPATIBILITY_EXPIRY.md.
 
-import { readFileSync, writeFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { spawnSync } from 'node:child_process'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 import { hasFileMarker, scanCompatSource, SIGNAL_RULES } from './lib/compatMarkers.mjs'
 import {
   compareVersions,
@@ -16,26 +17,14 @@ import {
   validateRegistry,
 } from './lib/compatRegistry.mjs'
 import { compareRatchet, formatRatchetIssues, serializeRatchet } from './lib/ratchet.mjs'
+import { isCompatScannedFile, isOracleFile, isParitySpecFile } from './lib/compatScope.mjs'
 import { listRepositoryFiles, resolveRepositoryRoot } from './lib/repo-files.mjs'
 
 const REGISTRY_FILE = 'src/shared/compat/compatRegistry.json'
 const RATCHET_FILE = 'scripts/compat-ratchet.json'
-const ORACLE_DIRECTORY = 'tests/support/controlSurfaceLegacyOracles/'
 const FEATURE_FLAG_DIRECTORY = 'src/shared/featureFlags/'
 const REGISTRY_INFRASTRUCTURE_DIRECTORY = 'src/shared/compat/'
 const LABEL = 'compat-check'
-
-function isScannedFile(path) {
-  if (path.startsWith(ORACLE_DIRECTORY)) {
-    return /\.tsx?$/.test(path)
-  }
-  return (
-    path.startsWith('src/') &&
-    /\.tsx?$/.test(path) &&
-    !/\.d\.ts$/.test(path) &&
-    !/\.(?:spec|test)\.tsx?$/.test(path)
-  )
-}
 
 function readJson(root, path, fallback) {
   try {
@@ -49,7 +38,7 @@ function readJson(root, path, fallback) {
 }
 
 function parseArguments(argv) {
-  const options = { at: null, report: false, updateRatchet: false }
+  const options = { at: null, report: false, updateRatchet: false, bootstrap: false }
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index]
     if (argument === '--at') {
@@ -58,9 +47,11 @@ function parseArguments(argv) {
       options.report = true
     } else if (argument === '--update-ratchet') {
       options.updateRatchet = true
+    } else if (argument === '--bootstrap') {
+      options.bootstrap = true
     } else {
       throw new Error(
-        `Unknown argument ${argument}. Use --at <version>, --report, --update-ratchet.`,
+        `Unknown argument ${argument}. Use --at <version>, --report, --update-ratchet [--bootstrap].`,
       )
     }
   }
@@ -68,6 +59,34 @@ function parseArguments(argv) {
     throw new Error(`--at needs a version like 0.7.0 (got ${JSON.stringify(options.at)}).`)
   }
   return options
+}
+
+function existsInHead(root) {
+  return spawnSync('git', ['cat-file', '-e', `HEAD:${RATCHET_FILE}`], { cwd: root }).status === 0
+}
+
+// The baseline only goes down. A missing baseline is created only when it never existed in git
+// HEAD (or with the explicit `--bootstrap` flag, which no package script passes).
+function ratchetUpdateRefusal(root, counts, bootstrap) {
+  if (!existsSync(resolve(root, RATCHET_FILE))) {
+    return existsInHead(root) && !bootstrap
+      ? `[${LABEL}] ${RATCHET_FILE} is missing but exists in git HEAD: restore it instead of regenerating it (--bootstrap overrides).\n`
+      : null
+  }
+  const rises = compareRatchet({
+    counts,
+    baseline: readJson(root, RATCHET_FILE, {}),
+    rules: SIGNAL_RULES,
+    describe: (rule, now, before) => `${now} unmarked ${rule} signal(s), baseline ${before}`,
+  }).filter(issue => issue.current > issue.baseline)
+  if (rises.length === 0) {
+    return null
+  }
+  return `${formatRatchetIssues(rises, {
+    title: 'Rising unmarked compatibility signals',
+    label: LABEL,
+    footer: 'Refusing to raise the baseline: mark the new code with `// @compat <id>` instead.',
+  })}`
 }
 
 function describeIssue(issue) {
@@ -101,15 +120,16 @@ function printReport({ current, support, entries, fileMarkers }) {
 function run() {
   const options = parseArguments(process.argv.slice(2))
   const root = resolveRepositoryRoot()
-  const current = options.at ?? readJson(root, 'package.json').version
-  if (parseVersion(current) === null) {
-    throw new Error(`package.json version ${JSON.stringify(current)} is not x.y.z.`)
+  const packageVersion = readJson(root, 'package.json').version
+  const current = options.at ?? packageVersion
+  if (parseVersion(packageVersion) === null) {
+    throw new Error(`package.json version ${JSON.stringify(packageVersion)} is not x.y.z.`)
   }
   const registry = readJson(root, REGISTRY_FILE)
-  const files = listRepositoryFiles(root).filter(isScannedFile)
+  const files = listRepositoryFiles(root).filter(isCompatScannedFile)
 
   const issues = []
-  const { support, entries } = validateRegistry(registry, issues)
+  const { support, entries } = validateRegistry(registry, issues, packageVersion)
   issues.push(...findExpired({ support, entries, current }))
 
   const knownIds = new Set(Object.keys(registry.entries ?? {}))
@@ -152,12 +172,21 @@ function run() {
           'Feature flags are compatibility code: add `// @compat-file <id>` in the first lines.',
       })
     }
-    if (file.startsWith(ORACLE_DIRECTORY) && scan.markers.length + scan.anchors.length === 0) {
+    if (isOracleFile(file) && scan.markers.length + scan.anchors.length === 0) {
       issues.push({
         file,
         line: 1,
         rule: 'oracle-unmarked',
         message: 'Legacy oracle files need `// @compat-file <id>` in the first lines.',
+      })
+    }
+    if (isParitySpecFile(file) && !hasFileMarker(scan)) {
+      issues.push({
+        file,
+        line: 1,
+        rule: 'parity-spec-unmarked',
+        message:
+          'Parity specs compare the legacy oracles with the schemas: add `// @compat-file <id>` in the first lines.',
       })
     }
     if (!file.startsWith(REGISTRY_INFRASTRUCTURE_DIRECTORY)) {
@@ -182,6 +211,12 @@ function run() {
     return 0
   }
   if (options.updateRatchet) {
+    const refusal = ratchetUpdateRefusal(root, counts, options.bootstrap)
+    if (refusal) {
+      process.stderr.write(refusal)
+      return 1
+    }
+    mkdirSync(dirname(resolve(root, RATCHET_FILE)), { recursive: true })
     writeFileSync(resolve(root, RATCHET_FILE), serializeRatchet(counts, SIGNAL_RULES))
   }
   if (files.length === 0) {

@@ -96,6 +96,7 @@ export const filesystemDeleteEntryOperation = defineOperation({
   input: z.union([
     z.object({
       uri: z.string().describe('File URI within approved roots'),
+      // @compat control-surface-legacy-validation
       recursive: z
         .boolean()
         .optional()
@@ -121,6 +122,7 @@ export const filesystemDeleteEntryInMountOperation = defineOperation({
       .string()
       .describe('Mount identifier to resolve before accessing the repository or file'),
     uri: z.string().describe('File URI within approved roots'),
+    // @compat control-surface-legacy-validation
     recursive: z
       .boolean()
       .optional()
@@ -183,6 +185,7 @@ export const filesystemMutationCapabilitiesOperation = defineLegacyOperation({
   summary: 'List supported file mutation options and protocol capabilities',
 })
 export const filesystemReadDirectoryOperation = defineOperation({
+  // @compat control-surface-legacy-validation
   // Legacy isRecord accepts arrays with named uri/limit properties in-process.
   input: z.union([
     z.object({
@@ -250,6 +253,7 @@ export const filesystemReadFileBytesInMountOperation = defineOperation({
   summary: 'Read binary file contents within a local or remote mount root',
 })
 export const filesystemReadFileTextOperation = defineOperation({
+  // @compat control-surface-legacy-validation
   // Legacy isRecord accepts arrays with named uri/limit properties in-process.
   input: z.union([
     z.object({
@@ -321,6 +325,7 @@ export const filesystemRenameEntryInMountOperation = defineOperation({
   summary: 'Rename a file or directory within a local or remote mount root',
 })
 export const filesystemStatOperation = defineOperation({
+  // @compat control-surface-legacy-validation
   // Legacy isRecord accepts arrays with named uri/limit properties in-process.
   input: z.union([
     z.object({

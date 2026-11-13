@@ -33,20 +33,23 @@
 
 - **只用版本，不用日期。** 版本检查只取决于提交里的文件，同一个提交永远得到同一个结果；日期会让 `main` 在某一天无代码改动地变红。发布节奏约每月一个 minor，所以一个 minor 约等于一个月。
 - **没有 `never`。** 每条路径要么绑定一个版本，要么绑定 floor。
+- `until` 最多只能比 `package.json` 当前版本大 3 个 minor（当前 `0.5.x` 时最晚 `0.8.0`），防止用一个遥远的版本让条目永不到期；超出会以 `invalid-expiry` 失败。
 - 运行时与 wire 兼容（混合版本的 Worker / 客户端 / endpoint、旧 Control Surface 输入处理、旧 PTY 几何 revision）默认 `until` 为两个 minor 之后；当前默认是 `0.7.0`。
 - 数据迁移（`user-data`、`machine-residue`）用 `dataBefore`，只有 owner 提高 floor 才会到期，**不会**因为随手写的日期到期。floor 每个发布周期复查一次（`reviewBy`）。
 - 到期之后只有两个选择：删除这条路径，或带着新的 `reason` 和 `decidedIn` 续期。续期的 diff 应出现在发布准备 PR 中。
 
 ## 3. 在代码里标记
 
-- `// @compat <id>` 写在被覆盖的声明或语句的**正上方一行**（之间可以夹 JSDoc / 注释，但不能有空行）；覆盖范围是下一个 AST 节点的完整范围（函数、类成员、对象属性、语句）。
+- `// @compat <id>` 写在被覆盖的声明、语句、对象属性、展开项、类型成员或参数的**正上方一行**（之间可以夹 JSDoc / 注释，但不能有空行）；覆盖范围是下一个 AST 节点的完整范围。联合类型成员前的 `|` 不算节点，标记写在 `|` 所在行之上即可。
+- `/* @compat <id> */` 写在同一行、紧贴被覆盖的表达式之前（例如 `a ?? /* @compat <id> */ legacyValue`），只覆盖它后面的那个节点；用于只有一小段是兼容代码的行。标记写在 `&&`、`||`、`??` 链或条件表达式的开头时，只覆盖第一项（条件表达式覆盖其条件）。
+- **标记只能覆盖兼容部分。** 不要把标记放在仍然活着的函数或语句上；如果一段活代码里只有一个属性、一个参数或一个分支是兼容代码，把标记移到那一项上。
 - `// @compat-file <id>` 写在文件前 5 行内，覆盖整个文件。**只用于整个文件都是兼容代码的情况**（例如 `legacyManagedHookCleanup.ts`、`migrate.ts`、旧校验器 oracle）。检查脚本无法发现在这类文件里新加入的无关兼容代码，需要 reviewer 把关。
-- 类型锚点在编译期（`pnpm check`）生效：`defineLegacyOperation` 必须带 `compat: CompatId`；设置 `legacyNormalize` 时也必须带 `compat`；`compat` 必须是注册表里存在的 id（`CompatId` 来自 `src/shared/compat/compatId.ts`）。`compat: '<id>'` 也算注册表条目的使用，并覆盖所在的对象字面量（以及把它作为实参的调用）。
+- 类型锚点在编译期（`pnpm check`）生效：`defineLegacyOperation` 必须带 `compat: CompatId`；设置 `legacyNormalize` 时也必须带 `compat`；`compat` 必须是注册表里存在的 id（`CompatId` 来自 `src/shared/compat/compatId.ts`）。只有传给 `defineOperation` / `defineLegacyOperation` 的对象里的 `compat: '<id>'` 才算锚点：它算注册表条目的使用，并只覆盖 `compat` 属性、同一对象里的 `legacyNormalize` 属性，以及 `defineLegacyOperation` 这个调用名。任何其他对象里的 `compat` 属性只是普通属性，不覆盖任何信号。`compat` 不会进入运行时的 operation 对象（`defineOperation` 会去掉它）。`defineOperation.compat.spec.ts` 里的 `@ts-expect-error` 用例由 `pnpm check` 检查。
 - 不属于兼容代码但命中了关键词的地方，**改措辞**而不是加标记。
 
 ## 4. 检查什么
 
-`pnpm compat:check` 扫描 `src/**/*.{ts,tsx}`（非测试、非 `.d.ts`）和 `tests/support/controlSurfaceLegacyOracles/`，在以下情况失败，并给出文件、行号和 id：
+`pnpm compat:check` 扫描 `src/**/*.{ts,tsx}`（非测试、非 `.d.ts`）、`tests/support/controlSurfaceLegacyOracles/` 和六个 `tests/unit/contexts/controlSurface.*Parity.spec.ts`（它们必须带 `@compat-file`，否则以 `parity-spec-unmarked` 失败），在以下情况失败，并给出文件、行号和 id：
 
 | 编号 | 规则名 | 含义 |
 | --- | --- | --- |
@@ -58,9 +61,9 @@
 | f | `oracle-unmarked` | oracle 文件没有标记 |
 | g | ratchet | 未被标记覆盖的兼容信号超过 `scripts/compat-ratchet.json` 基线（也包括低于基线但没有更新基线） |
 
-信号是匹配 `legacy`、`deprecated`、`backwards compat…`、`compat` / `compatibility`（作为词）的标识符或注释，`cove:m0:` 字符串，`clientFeatures.` 读取（`defineLegacyOperation` 和 `legacyNormalize` 本身含 `legacy`，因此也被计入）。import 语句不计。基线只会下降：某个文件的计数下降时，用 `node scripts/check-compat-expiry.mjs --update-ratchet` 在同一个改动里更新基线。信号列表是安全网而不是围墙：真正的保证来自类型锚点、目录规则（`featureFlags/`、oracle）和 review。设计上“加一行标记”比“改标识符绕开关键词”更便宜。
+信号是匹配 `legacy`、`deprecated`、`backwards compat…`、`compat` / `compatibility`（作为词）的标识符或注释，`cove:m0:` 字符串，`clientFeatures.` 读取（`defineLegacyOperation` 和 `legacyNormalize` 本身含 `legacy`，因此也被计入）。import 语句不计。基线只会下降：某个文件的计数下降时，用 `node scripts/check-compat-expiry.mjs --update-ratchet` 在同一个改动里更新基线；只要有任何计数会上升，`--update-ratchet` 就拒绝写入。基线文件缺失时，只有它从未存在于 git HEAD 才会被创建，或者显式加 `--bootstrap`（包脚本不会传这个参数）。信号列表是安全网而不是围墙：真正的保证来自类型锚点、目录规则（`featureFlags/`、oracle）和 review。设计上“加一行标记”比“改标识符绕开关键词”更便宜。
 
-命名检查（`scripts/check-naming.mjs`）完全跳过 `cove:m0:`，该前缀由本检查负责；在同一行写 `legacy` 不再能让它通过。
+命名检查（`scripts/check-naming.mjs`）只在 `compat:check` 扫描的文件里跳过 `cove:m0:`，该前缀在这些文件里由本检查负责；在同一行写 `legacy` 不再能让它通过。其他文件（测试、e2e 等）里出现 `cove:m0:` 仍然是命名违规。
 
 选项：
 

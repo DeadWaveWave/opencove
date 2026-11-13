@@ -10,7 +10,7 @@
       "expires": {
         "dataBefore": "0.3.0"
       },
-      "reason": "Reads, migrates and removes localStorage keys written with the cove:m0: prefix (workspace state and node scrollback) by builds before the rename to opencove:m0:.",
+      "reason": "Reads, migrates and removes the localStorage keys (workspace state and node scrollback) that builds before the rename wrote under the old key prefix, now opencove:m0:.",
       "decidedIn": "#642"
     },
     "sqlite-workspace-state-kv": {
@@ -18,7 +18,7 @@
       "expires": {
         "dataBefore": "0.3.0"
       },
-      "reason": "Imports the pre-table workspace-state-raw KV row into the normalized SQLite schema and then drops it; also holds the stepwise schema migrations that upgrades from every older schema version run through.",
+      "reason": "Imports the pre-table workspace-state-raw KV row into the normalized SQLite schema when a version 1 database is opened, then drops the KV table.",
       "decidedIn": "#642"
     },
     "canvas-space-collapse-legacy": {
@@ -59,22 +59,6 @@
         "dataBefore": "0.5.0"
       },
       "reason": "Recognizes the single-file home Worker configuration lease written by earlier builds next to the current lease directory.",
-      "decidedIn": "#642"
-    },
-    "space-directory-path-mount-repair": {
-      "kind": "user-data",
-      "expires": {
-        "dataBefore": "0.3.0"
-      },
-      "reason": "Infers the mount of a Space saved with a missing or stale targetMountId from its directoryPath and reports a repair to that mount; directoryPath stays next to targetMountId until no such data needs to upgrade.",
-      "decidedIn": "#642"
-    },
-    "workspace-node-without-space": {
-      "kind": "user-data",
-      "expires": {
-        "dataBefore": "0.3.0"
-      },
-      "reason": "Resolves the launch directory of persisted nodes that belong to no Space, or to a Space reached only through its directoryPath mount, and tags the launch context with a legacy_* reason.",
       "decidedIn": "#642"
     },
     "legacy-managed-agent-hooks": {
@@ -187,14 +171,6 @@
         "until": "0.7.0"
       },
       "reason": "Agent run state keeps the single legacy `state` label next to the structured run state for existing UI and API consumers; it never feeds decisions.",
-      "decidedIn": "#642"
-    },
-    "pi-agent-settled-fallback": {
-      "kind": "third-party",
-      "expires": {
-        "until": "0.7.0"
-      },
-      "reason": "Pi releases without the agent_settled event (verified against Pi 0.80.7, which emits it) need an idle check after agent_end; the Pi session lookup keeps its legacy UUID path.",
       "decidedIn": "#642"
     },
     "opencode-tui-legacy-theme": {

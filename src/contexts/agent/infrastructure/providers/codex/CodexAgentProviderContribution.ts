@@ -175,7 +175,6 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
     })
     const hook = createCodexHooks(relay, this.runtimePlatform)
     let trust: string | null = null
-    // @compat codex-legacy-notify-bridge
     try {
       trust = await this.hookTrustResolver({
         clientVersion: this.clientVersion,

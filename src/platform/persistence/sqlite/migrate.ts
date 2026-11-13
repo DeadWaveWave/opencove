@@ -1,4 +1,3 @@
-// @compat-file sqlite-workspace-state-kv
 import { ensureNodeLineageSchema } from '../../../contexts/workspace/infrastructure/nodeLineage/SqliteNodeLineageRepository'
 import type Database from 'better-sqlite3'
 import { ensureManagedClaudeResumeSchema } from './managedClaudeResumeSchema'
@@ -207,6 +206,7 @@ function createTables(db: Database.Database): void {
   `)
 }
 
+// @compat sqlite-workspace-state-kv
 function readLegacyRawFromKv(db: Database.Database): string | null {
   try {
     const stmt = db.prepare('SELECT value FROM kv WHERE key = ?')
@@ -217,6 +217,7 @@ function readLegacyRawFromKv(db: Database.Database): string | null {
   }
 }
 
+// @compat sqlite-workspace-state-kv
 function dropLegacyKv(db: Database.Database): void {
   try {
     db.exec('DROP TABLE IF EXISTS kv;')
@@ -418,6 +419,7 @@ export function migrate(db: Database.Database): void {
     return
   }
 
+  // @compat sqlite-workspace-state-kv
   if (currentVersion === 1) {
     const legacyRaw = readLegacyRawFromKv(db)
     createTables(db)

@@ -120,9 +120,9 @@ export class AgentRunStateRuntime {
       snapshot.source !== 'exit'
         ? session?.rawStates?.[snapshot.source]
         : undefined
-    // @compat agent-legacy-run-state-label
     return {
       ...projectAgentRunState(snapshot),
+      // @compat agent-legacy-run-state-label
       ...(legacyState ? { state: legacyState, observationUnavailable: false } : {}),
       hookInstallState: session?.hookInstallState,
     }

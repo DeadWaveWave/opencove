@@ -338,6 +338,7 @@ export const pluginStorageGetOperation = defineOperation({
   input: z.looseObject({
     viewId: z.string().describe('Plugin view identifier declared in the plugin manifest'),
     key: z.string().describe('Storage key'),
+    // @compat control-surface-legacy-validation
     value: z.unknown().optional().describe('Ignored by reads; retained for compatibility'),
   }),
   normalize: normalizePluginStorageGet,

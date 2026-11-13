@@ -11,6 +11,7 @@ export const worktreeArchiveOperation = defineOperation({
   scope: 'interact',
   availability: 'always',
   summary: 'Remove a space worktree and rebind the space to the project root',
+  // @compat control-surface-legacy-validation
   // Legacy isRecord accepts arrays; raw normalization retains named array properties.
   input: z.union([
     z.looseObject({
@@ -44,6 +45,7 @@ export const worktreeCreateOperation = defineOperation({
   scope: 'interact',
   availability: 'always',
   summary: 'Create and approve a Git worktree and bind the space to it',
+  // @compat control-surface-legacy-validation
   // Legacy isRecord accepts arrays; raw normalization retains named array properties.
   input: z.union([
     z.looseObject({
@@ -74,6 +76,7 @@ export const worktreeListOperation = defineOperation({
   scope: 'read',
   availability: 'always',
   summary: 'List Git worktrees for the selected or active project',
+  // @compat control-surface-legacy-validation
   // Legacy isRecord accepts arrays; raw normalization retains named array properties.
   input: z
     .union([

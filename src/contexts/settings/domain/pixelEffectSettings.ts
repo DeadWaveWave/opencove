@@ -18,22 +18,23 @@ export function normalizePixelEffectSettings(
     value.uiTheme === 'pixel-light' ||
     savedUiTheme.startsWith('plugin:')
   return {
-    // @compat settings-legacy-fields
     canvasBackgroundStyle: normalizeCanvasBackgroundStyle(
       value.canvasBackgroundStyle,
+      // @compat settings-legacy-fields
       normalizeBoolean(value.canvasPixelBackgroundEnabled),
+      // @compat settings-legacy-fields
       legacyEnabled ? 'pixel' : 'off',
     ),
     // Ambient twinkle and cloud drift on the pixel wall; reduced motion still stops it.
     canvasBackgroundTwinkleEnabled: normalizeBoolean(value.canvasBackgroundTwinkleEnabled) ?? true,
-    // @compat settings-legacy-fields
     nodeCreationPixelEffectEnabled:
-      normalizeBoolean(value.nodeCreationPixelEffectEnabled) ?? legacyEnabled,
-    // @compat settings-legacy-fields
+      normalizeBoolean(value.nodeCreationPixelEffectEnabled) ??
+      /* @compat settings-legacy-fields */ legacyEnabled,
     nodeClosePixelEffectEnabled:
-      normalizeBoolean(value.nodeClosePixelEffectEnabled) ?? legacyEnabled,
-    // @compat settings-legacy-fields
+      normalizeBoolean(value.nodeClosePixelEffectEnabled) ??
+      /* @compat settings-legacy-fields */ legacyEnabled,
     agentWorkingPixelEffectEnabled:
-      normalizeBoolean(value.agentWorkingPixelEffectEnabled) ?? legacyEnabled,
+      normalizeBoolean(value.agentWorkingPixelEffectEnabled) ??
+      /* @compat settings-legacy-fields */ legacyEnabled,
   }
 }

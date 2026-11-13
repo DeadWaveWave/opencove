@@ -37,11 +37,10 @@ export function registerOperation<
           details: { issues },
         })
       }
-      // @compat control-surface-legacy-validation
       // Object parsers may discard own __proto__ keys; compatibility checks must
       // inspect the original payload, after schema admission has succeeded.
-      return operation.legacyNormalize
-        ? operation.legacyNormalize(payload)
+      return /* @compat control-surface-legacy-validation */ operation.legacyNormalize
+        ? /* @compat control-surface-legacy-validation */ operation.legacyNormalize(payload)
         : operation.normalize(result.data)
     },
   })

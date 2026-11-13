@@ -121,6 +121,7 @@ export const gitWorktreeGetDefaultBranchInMountOperation = defineOperation({
 export const gitWorktreeGraphOperation = defineOperation({
   input: z.object({
     repoPath: z.string().describe('Absolute repository path within approved roots'),
+    // @compat control-surface-legacy-validation
     limit: legacyValue.describe(
       'Commit limit; numeric values are forwarded, other values are ignored',
     ),
@@ -141,6 +142,7 @@ export const gitWorktreeGraphInMountOperation = defineOperation({
       .string()
       .describe('Mount identifier to resolve before accessing the repository or file'),
     uri: z.string().describe('Repository file URI within the mount root'),
+    // @compat control-surface-legacy-validation
     limit: legacyValue.describe(
       'Commit limit; numeric values are forwarded, other values are ignored',
     ),
@@ -239,7 +241,9 @@ export const gitWorktreeRemoveOperation = defineOperation({
       worktreePath: z
         .string()
         .describe('Worktree to change, as a file URI in a mount or an absolute path locally'),
+      // @compat control-surface-legacy-validation
       force: legacyValue.describe('Enabled only by literal true; other values mean false'),
+      // @compat control-surface-legacy-validation
       deleteBranch: legacyValue.describe('Enabled only by literal true; other values mean false'),
     }),
     z.array(z.unknown()),
@@ -267,7 +271,9 @@ export const gitWorktreeRemoveInMountOperation = defineOperation({
     worktreeUri: z
       .string()
       .describe('Worktree to change, as a file URI in a mount or an absolute path locally'),
+    // @compat control-surface-legacy-validation
     force: legacyValue.describe('Enabled only by literal true; other values mean false'),
+    // @compat control-surface-legacy-validation
     deleteBranch: legacyValue.describe('Enabled only by literal true; other values mean false'),
   }),
   normalize: normalizeGitWorktreeRemoveInMount,
@@ -293,7 +299,9 @@ export const gitWorktreeRenameBranchOperation = defineOperation({
       worktreePath: z
         .string()
         .describe('Worktree to change, as a file URI in a mount or an absolute path locally'),
+      // @compat control-surface-legacy-validation
       currentName: legacyValue.describe('Branch name to rename from'),
+      // @compat control-surface-legacy-validation
       nextName: legacyValue.describe('New branch name'),
     }),
     z.array(z.unknown()),
@@ -377,8 +385,11 @@ export const gitWorktreeSuggestNamesOperation = defineOperation({
       provider: z.string().describe('Agent provider supporting worktree name suggestions'),
       cwd: z.string().describe('Absolute working directory within approved roots'),
       spaceName: z.string().describe('Space name to use as suggestion context'),
+      // @compat control-surface-legacy-validation
       spaceNotes: legacyValue.describe('Optional space notes; non-strings are ignored'),
+      // @compat control-surface-legacy-validation
       model: legacyValue.describe('Optional agent model; non-strings are ignored'),
+      // @compat control-surface-legacy-validation
       tasks: legacyValue.describe(
         'Task objects with title and requirement; invalid items are ignored and at most 20 retained',
       ),
