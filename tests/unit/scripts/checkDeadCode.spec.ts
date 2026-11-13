@@ -1,8 +1,9 @@
+import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { runDeadCodeCheck } from '../../../scripts/check-dead-code.mjs'
+import { baselineExistsInGitHead, runDeadCodeCheck } from '../../../scripts/check-dead-code.mjs'
 import {
   classifyKnipReport,
   compareDeadCodeRatchet,
@@ -71,12 +72,14 @@ describe('dead-code classification', () => {
   })
 })
 
-describe('@internal naming rule', () => {
-  it('allows @internal on ForTests exports only', () => {
-    const violations = findInternalNamingViolations([
-      {
-        file: 'src/a.ts',
-        text: [
+describe('visibility tag rule', () => {
+  const violationsFor = (text: string) =>
+    findInternalNamingViolations([{ file: 'src/a.ts', text }]).map(v => `${v.tag}:${v.line}`)
+
+  it('accepts @internal only as a JSDoc block directly above a ForTests declaration', () => {
+    expect(
+      violationsFor(
+        [
           '/** @internal */',
           'export function resetStoreForTests() {}',
           '',
@@ -84,52 +87,51 @@ describe('@internal naming rule', () => {
           ' * Seam for specs.',
           ' * @internal',
           ' */',
-          'export const helper = 1',
-          '',
-          'export const plain = 2',
+          'export const otherForTests = 1',
         ].join('\n'),
-      },
-    ])
-
-    expect(violations).toEqual([{ file: 'src/a.ts', name: 'helper', tag: 'internal' }])
+      ),
+    ).toEqual([])
   })
 
-  it.each(['public', 'beta'])('rejects @%s on any export, even one named ForTests', tag => {
-    const violations = findInternalNamingViolations([
-      {
-        file: 'src/a.ts',
-        text: `/** @${tag} */\nexport function keptAlive() {}\n\n/**\n * Docs.\n * @${tag}\n */\nexport const sharedForTests = 1\n`,
-      },
-    ])
-
-    expect(violations).toEqual([
-      { file: 'src/a.ts', name: 'keptAlive', tag },
-      { file: 'src/a.ts', name: 'sharedForTests', tag },
-    ])
-    expect(
-      formatDeadCodeReport({ findings: [], ratchetIssues: [], internalViolations: violations }),
-    ).toContain(`${tag}: src/a.ts keptAlive`)
+  it('rejects @internal above a non-ForTests export', () => {
+    expect(violationsFor('/** @internal */\nexport const helper = 1\n')).toEqual(['internal:1'])
   })
 
   it('does not attach an @internal tag to an unrelated later export', () => {
-    const violations = findInternalNamingViolations([
-      {
-        file: 'src/a.ts',
-        text: '/** @internal */\nexport const aForTests = 1\n\n/** Docs. */\nexport const b = 2\n',
-      },
-    ])
-
-    expect(violations).toEqual([])
+    expect(
+      violationsFor(
+        '/** @internal */\nexport const aForTests = 1\n\n/** Docs. */\nexport const b = 2\n',
+      ),
+    ).toEqual([])
   })
 
-  it('reports the violation with a fix hint', () => {
+  it.each([
+    ['line comment', '// @internal\nexport function gForTests() {}\n'],
+    ['export list', 'function gForTests() {}\n/** @internal */\nexport { gForTests }\n'],
+    ['block comment', '/* @internal */\nexport function gForTests() {}\n'],
+  ])('rejects @internal written as a %s', (_name, text) => {
+    expect(violationsFor(text)).toEqual([expect.stringMatching(/^internal:/)])
+  })
+
+  it.each(['public', 'beta', 'alias'])('rejects @%s in any comment form, on any export', tag => {
+    expect(violationsFor(`// @${tag}\nexport function a() {}\n`)).toEqual([`${tag}:1`])
+    expect(violationsFor(`/* @${tag} */\nexport function a() {}\n`)).toEqual([`${tag}:1`])
+    expect(violationsFor(`function c() {}\n/** @${tag} */\nexport { c }\n`)).toEqual([`${tag}:2`])
+    expect(violationsFor(`/** @${tag} */\nexport function bForTests() {}\n`)).toEqual([`${tag}:1`])
+  })
+
+  it('reports file and line with a one-line fix', () => {
+    const violations = findInternalNamingViolations([
+      { file: 'src/a.ts', text: 'export const x = 1\n// @public\nexport const y = 2\n' },
+    ])
     const report = formatDeadCodeReport({
       findings: [],
       ratchetIssues: [],
-      internalViolations: [{ file: 'src/a.ts', name: 'helper' }],
+      internalViolations: violations,
     })
 
-    expect(report).toContain('src/a.ts helper')
+    expect(report).toContain('[dead-code-check] public: src/a.ts:2')
+    expect(report).toContain('Remove the tag; delete the export if nothing imports it.')
     expect(report).toContain('...ForTests')
   })
 })
@@ -256,6 +258,41 @@ describe('runDeadCodeCheck', () => {
     const { status, err } = run(root, { report: knipReport([]) })
 
     expect(status).toBe(1)
-    expect(err).toContain('src/b.ts seam')
+    expect(err).toContain('internal: src/b.ts:1')
+  })
+})
+
+describe('baselineExistsInGitHead', () => {
+  const dirs: string[] = []
+  afterEach(() => {
+    for (const dir of dirs.splice(0)) {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+  const tempDir = () => {
+    const dir = mkdtempSync(join(tmpdir(), 'dead-code-git-'))
+    dirs.push(dir)
+    return dir
+  }
+  const git = (cwd: string, ...args: string[]) =>
+    execFileSync('git', args, { cwd, stdio: 'ignore' })
+
+  it('is true only for a baseline committed in HEAD, and false outside a repository', () => {
+    const repo = tempDir()
+    git(repo, 'init', '-q')
+    git(repo, 'config', 'user.name', 'Test')
+    git(repo, 'config', 'user.email', 'test@example.com')
+    mkdirSync(join(repo, 'scripts'))
+    writeFileSync(join(repo, 'scripts/dead-code-ratchet.json'), '{}\n')
+    git(repo, 'add', '-A')
+    git(repo, 'commit', '-q', '-m', 'baseline')
+
+    expect(baselineExistsInGitHead(repo)).toBe(true)
+
+    git(repo, 'rm', '-q', '--cached', 'scripts/dead-code-ratchet.json')
+    git(repo, 'commit', '-q', '-m', 'drop')
+    expect(baselineExistsInGitHead(repo)).toBe(false)
+
+    expect(baselineExistsInGitHead(tempDir())).toBe(false)
   })
 })
