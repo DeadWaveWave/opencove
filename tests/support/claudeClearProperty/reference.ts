@@ -5,7 +5,7 @@ type Fact = ClearEvent & {
   received: number
   order: number
   firstOrder: number
-  observedNamespace?: number
+  observedNamespace?: number | 'pending' | 'rejected'
   capture?: Source
   afterCommit?: boolean
 }
@@ -22,7 +22,10 @@ export class ClearReference {
   private identities = new Set(['A'])
   private truncatedAt?: number
   private sources = new Map<number, Source>()
-  private provenance = new Set<string>()
+  private provenance = new Map<
+    string,
+    { id: string; at: number; namespace: number | 'pending' | 'rejected'; provisional: boolean }
+  >()
   private order = 0
   private settled = new Set<number>()
   private legacyReceipt = false
@@ -98,6 +101,28 @@ export class ClearReference {
       }
       return
     }
+    if (
+      !this.clearSeen &&
+      event.kind === 'hook' &&
+      (event.name === 'SessionEnd' || (event.name === 'SessionStart' && event.epoch > 0))
+    ) {
+      for (const origin of this.provenance.values()) {
+        if (
+          origin.provisional &&
+          typeof origin.namespace === 'number' &&
+          origin.namespace < event.at &&
+          origin.at > event.at
+        ) {
+          origin.namespace = 'pending'
+          for (const previous of this.facts) {
+            if (previous.id === origin.id && previous.at === origin.at) {
+              previous.observedNamespace = 'pending'
+            }
+          }
+        }
+        origin.provisional = false
+      }
+    }
     const current = this.current(),
       source = capture && this.sources.get(capture.epoch)
     if (
@@ -135,15 +160,38 @@ export class ClearReference {
       order: this.order,
       firstOrder: this.order,
       capture: source,
-      observedNamespace:
-        event.kind === 'hook' && this.clearSeen ? this.epoch({ ...event } as Fact)?.at : undefined,
     }
     // Every authenticated receipt counts before routing or stale-event filtering.
     if (event.kind === 'hook' && ['UserPromptSubmit', 'Stop'].includes(event.name!)) {
-      this.provenance.add(`${event.name}:${event.id}:${event.at}:${event.epoch}`)
+      const key = `${event.name}:${event.id}:${event.at}:${event.epoch}`
+      let origin = this.provenance.get(key)
+      if (!origin) {
+        const namespace = this.epoch(fact)
+        origin = {
+          id: event.id,
+          at: event.at,
+          provisional: !this.clearSeen,
+          namespace: namespace
+            ? namespace.at
+            : !namespace &&
+                ((current.id === event.id && this.ended(current)) ||
+                  ((!this.identities.has(event.id) ||
+                    (this.namespaces.get(event.id) ?? []).every(s => s.at > event.at)) &&
+                    !(this.endings.get(event.id) ?? []).some(e => e.at < event.at)))
+              ? 'pending'
+              : 'rejected',
+        }
+        this.provenance.set(key, origin)
+      }
+      fact.observedNamespace = origin.namespace
       if (this.provenance.size > 1024) {
         this.truncatedAt ??= this.order
       }
+    }
+    // A rejected receipt is retained solely as immutable provenance. It is neither
+    // published activity nor a completion for this or any later namespace.
+    if (fact.observedNamespace === 'rejected') {
+      return
     }
     if (event.kind === 'hook' && event.name === 'SessionStart') {
       if (!this.starts.some(s => s.id === event.id && s.at === event.at)) {
@@ -152,6 +200,22 @@ export class ClearReference {
         this.namespaces.set(event.id, named)
         if (fact.at >= this.latest.at) {
           this.latest = fact
+        }
+        {
+          for (const origin of this.provenance.values()) {
+            if (origin.namespace === 'pending' && origin.id === event.id && origin.at > event.at) {
+              origin.namespace = event.at
+            }
+          }
+          for (const previous of this.facts) {
+            if (
+              previous.observedNamespace === 'pending' &&
+              previous.id === event.id &&
+              previous.at > event.at
+            ) {
+              previous.observedNamespace = event.at
+            }
+          }
         }
         for (const c of this.sources.values()) {
           if (c.target === event.id && c.start === undefined) {
@@ -282,7 +346,7 @@ export class ClearReference {
     const stops = hooks.filter(
       f =>
         f.name === 'Stop' &&
-        (f.observedNamespace === undefined || f.observedNamespace === start.at) &&
+        f.observedNamespace === start.at &&
         (!lastSubmit || f.epoch === lastSubmit.epoch || lastSubmitCompleted),
     )
     const lastStopAt = Math.max(-Infinity, ...stops.map(s => s.at))

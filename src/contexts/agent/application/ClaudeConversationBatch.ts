@@ -42,7 +42,7 @@ export function retiredEvent(
 ): boolean {
   return (
     retiredConversationIdentity(event.claudeSessionId, current, retired, pending) &&
-    !(event.hookEventName === 'SessionStart' && event.sessionStartSource !== 'clear')
+    event.hookEventName !== 'SessionStart'
   )
 }
 export function retiredConversationIdentity(

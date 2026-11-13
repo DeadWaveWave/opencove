@@ -1,3 +1,4 @@
+import { boundedInsert } from '../../../shared/utils/boundedInsert'
 import type { ClaudeTranscriptObservation } from '../../../shared/runtime/agentHook/claudeTranscript'
 import type { ClaudeConversationEvent } from '../../../shared/runtime/agentHook/claudeConversation'
 import type { AgentRunEntry } from './AgentRunStateEntry'
@@ -15,10 +16,14 @@ export class ClaudeConversationReplay {
     entry: AgentRunEntry,
     first: ClaudeConversationEvent,
   ) {
-    this.facts = records.map(record => ({
-      record,
-      at: record.conversation!.event.emittedAtMs ?? -Infinity,
-    }))
+    for (const record of records) {
+      boundedInsert(
+        this.facts.length,
+        64,
+        () => this.facts.push({ record, at: record.conversation!.event.emittedAtMs ?? -Infinity }),
+        () => entry.claudeJournal?.saturate(),
+      )
+    }
     if (entry.model.snapshot.turn) {
       this.activePrompt = entry.history.identity()
     }
@@ -29,10 +34,11 @@ export class ClaudeConversationReplay {
         f.record.providerSessionId !== original ||
         (f.record.conversation !== undefined && f.at >= firstAt),
     )
-    this.appliedSubmissions = new Set(
+    this.appliedSubmissions = this.index(
       this.facts
         .filter(f => f.record.conversation?.event.hookEventName === 'UserPromptSubmit')
         .map(f => `${f.record.providerSessionId}:${f.at}`),
+      entry,
     )
     const completed = this.facts.filter(f => {
       const e = f.record.conversation?.event
@@ -40,7 +46,7 @@ export class ClaudeConversationReplay {
         e?.hookEventName === 'Stop' && entry.history.hasEndedPrompt(e.promptId, e.claudeSessionId)
       )
     })
-    this.coveredSubmissions = new Set(
+    this.coveredSubmissions = this.index(
       this.facts
         .filter(
           f =>
@@ -50,6 +56,7 @@ export class ClaudeConversationReplay {
             ),
         )
         .map(f => `${f.record.providerSessionId}:${f.at}`),
+      entry,
     )
     const ended = entry.model.snapshot.lastEndedTurn
     const archived = ended && entry.history.exact(ended.id)
@@ -83,6 +90,24 @@ export class ClaudeConversationReplay {
         this.completedTurn = entry.model.snapshot.lastEndedTurn?.id
       }
     }
+  }
+  private index(keys: string[], entry: AgentRunEntry): Set<string> {
+    const set = new Set<string>()
+    for (const key of keys) {
+      boundedInsert(
+        set.size,
+        64,
+        () => set.add(key),
+        () => entry.claudeJournal?.saturate(),
+      )
+    }
+    return set
+  }
+  dispose(): void {
+    this.facts = []
+    this.coveredSubmissions.clear()
+    this.appliedSubmissions.clear()
+    this.completedTurn = this.completedOwner = this.activePrompt = this.retained = undefined
   }
   takeRecords(): ClaudeTranscriptObservation[] {
     const records = this.facts.map(f => f.record)

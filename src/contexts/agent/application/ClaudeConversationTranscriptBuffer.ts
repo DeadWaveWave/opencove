@@ -1,3 +1,4 @@
+import { boundedInsert } from '../../../shared/utils/boundedInsert'
 import type { ClaudeTranscriptObservation } from '../../../shared/runtime/agentHook/claudeTranscript'
 
 type Pending = {
@@ -23,12 +24,12 @@ export class ClaudeConversationTranscriptBuffer {
     return this.push(record, consume) ? 'deferred' : 'overflow'
   }
   push(record: ClaudeTranscriptObservation, consume: Pending['consume']): boolean {
-    if (this.pending.length === 64) {
-      this.clear()
-      return false
-    }
-    this.pending.push({ record, consume })
-    return true
+    return boundedInsert(
+      this.pending.length,
+      64,
+      () => this.pending.push({ record, consume }),
+      () => {},
+    )
   }
   drain(
     providerSessionId: string | undefined,

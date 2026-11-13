@@ -1,5 +1,14 @@
 import type { ClearCase, ClearEvent } from './cases'
 import { capacityCases } from './capacity'
+const hook = (epoch: number, id: string, name: string, at: number): ClearEvent => ({
+  epoch,
+  id,
+  kind: 'hook',
+  name,
+  at,
+})
+const quiet = (): ClearEvent => ({ epoch: 1, id: 'B', kind: 'tick', at: 0, ms: 201 })
+
 /** Copies preserve the exact source record, capture slot, prompt and relay timestamp. */
 export function replayCases(seed: number): ClearCase[] {
   let state = seed >>> 0
@@ -7,14 +16,6 @@ export function replayCases(seed: number): ClearCase[] {
     state = (Math.imul(state, 1664525) + 1013904223) >>> 0
     return (state >>> 8) % n
   }
-  const hook = (epoch: number, id: string, name: string, at: number): ClearEvent => ({
-    epoch,
-    id,
-    kind: 'hook',
-    name,
-    at,
-  })
-  const quiet = (): ClearEvent => ({ epoch: 1, id: 'B', kind: 'tick', at: 0, ms: 201 })
   const result = capacityCases(seed).map(value => {
     const events = [...value.events]
     const sources = events.filter(e => e.kind !== 'tick' && e.kind !== 'capture')
@@ -66,6 +67,7 @@ export function replayCases(seed: number): ClearCase[] {
     )
     result.push({ seed, index: result.length, ids: ['A', 'B', 'C'], events, equivalent: false })
   }
+  result.push(...receiptOriginCases(seed))
   // More than twice the 1,024 exact provenance entries. Missing origins cannot become fresh.
   const saturated: ClearEvent[] = []
   for (let n = 0; n < 1025; n++) {
@@ -84,4 +86,30 @@ export function replayCases(seed: number): ClearCase[] {
   )
   result.push({ seed, index: result.length, ids: ['A', 'B'], events: saturated, equivalent: false })
   return result.map((value, index) => ({ ...value, index: 10000 + index }))
+}
+
+export function receiptOriginCases(seed: number): ClearCase[] {
+  const result: ClearCase[] = []
+  for (const ended of [false, true]) {
+    for (const settled of [false, true]) {
+      const events = [hook(1, 'B', 'SessionStart', 20)]
+      if (ended) {
+        events.push(hook(1, 'B', 'SessionEnd', 30))
+      }
+      events.push(quiet(), hook(2, 'C', 'SessionStart', 100), quiet())
+      const submit = hook(3, 'B', 'UserPromptSubmit', 450),
+        stop = hook(3, 'B', 'Stop', 500)
+      events.push(submit, stop)
+      for (let n = 0; n < 70; n++) {
+        events.push(hook(10 + n, `L${n}`, 'SessionStart', 150 + n), quiet())
+      }
+      events.push(hook(3, 'B', 'SessionStart', 400))
+      if (settled) {
+        events.push(quiet())
+      }
+      events.push({ ...submit, duplicate: true }, { ...stop, duplicate: true }, quiet())
+      result.push({ seed, index: result.length, ids: ['A', 'B', 'C'], events, equivalent: false })
+    }
+  }
+  return result
 }

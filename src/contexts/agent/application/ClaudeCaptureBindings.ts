@@ -1,3 +1,4 @@
+import { boundedInsert } from '../../../shared/utils/boundedInsert'
 /** A producer holds this capability; no timer or generation comparison can retire it. */
 export interface ClaudeCaptureBinding {
   readonly serial: number
@@ -41,18 +42,28 @@ export class ClaudeCaptureBindings {
         id: id || undefined,
         retired: false,
       }
-      this.current.set(key, binding)
-      this.all.add(binding)
-      if (this.current.size > 64) {
+      if (this.current.size === 64) {
         const old = [...this.current].find(([, b]) => b.retired)
         if (old) {
           this.current.delete(old[0])
           this.all.delete(old[1])
-        } else {
-          this.current.delete(key)
-          this.all.delete(binding)
         }
       }
+      const next = binding
+      boundedInsert(
+        this.current.size,
+        64,
+        () => {
+          this.current.set(key, next)
+          boundedInsert(
+            this.all.size,
+            64,
+            () => this.all.add(next),
+            () => {},
+          )
+        },
+        () => {},
+      )
     }
     return binding
   }

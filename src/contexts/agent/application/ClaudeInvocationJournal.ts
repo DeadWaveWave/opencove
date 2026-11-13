@@ -1,9 +1,10 @@
-import { ClaudeJournalReceipts, claudeHookKey } from './ClaudeJournalReceipts'
+import { ClaudeJournalReceipts, claudeHookKey, isClaudeReceipt } from './ClaudeJournalReceipts'
 import {
   ClaudeJournalHistory,
   CLAUDE_LIFECYCLE_LIMIT,
   CLAUDE_FACT_LIMIT,
 } from './ClaudeJournalHistory'
+import { boundedInsert } from '../../../shared/utils/boundedInsert'
 import { ClaudeJournalProof } from './ClaudeJournalProof'
 import { ClaudeJournalLoss } from './ClaudeJournalLoss'
 import type { AgentRunTurnEnd } from '../domain/agentRunState'
@@ -20,23 +21,10 @@ import {
   CLAUDE_CLEAR_MAX_MS,
 } from './ClaudeClearTransition'
 
+import { claudeRequestFact, type JournalFact } from './ClaudeJournalFact'
+export type { JournalFact } from './ClaudeJournalFact'
+
 type Request = NonNullable<ClaudeTranscriptObservation['conversation']>
-export type JournalFact = {
-  kind: 'start' | 'end' | 'activity' | 'finish' | 'complete'
-  id: string
-  at: number
-  received: number
-  promptId?: string
-  capture?: ClaudeCaptureBinding
-  input?: boolean
-  io?: boolean
-  order?: number
-  clear?: boolean
-  receipt?: AgentRunTurnEnd
-  hookName?: string
-  source?: string
-  key: string
-}
 /** The only clear input-authority owner. Facts, capture bindings and explicit retirement
  * survive quiet settlement. Projection queues may be discarded; unresolved evidence may not. */
 export class ClaudeInvocationJournal {
@@ -60,16 +48,22 @@ export class ClaudeInvocationJournal {
   get events(): readonly JournalFact[] {
     return this.facts
   }
+  saturate(): void {
+    this.history.truncate()
+  }
   capture(id?: string, at?: number): ClaudeCaptureBinding {
     return this.bindings.capture(id, at)
   }
-  appendHook(event: ClaudeConversationEvent, request?: Request): boolean {
+  appendHook(event: ClaudeConversationEvent, request?: Request, establish = false): boolean {
     if (this.disposed || (event.hookEventName === 'Notification' && event.state === null)) {
       return false
     }
     this.observeReceipt(event)
     const name = event.hookEventName
     const firstClear = !this.enabled && isClaudeClearEvidence(event)
+    if (firstClear && Number.isFinite(event.emittedAtMs)) {
+      this.receipts.beginClear(event.emittedAtMs!)
+    }
     if (isClaudeClearEvidence(event)) {
       this.enabledAt ??= this.now()
     }
@@ -92,6 +86,7 @@ export class ClaudeInvocationJournal {
     if (
       name === 'SessionStart' &&
       event.sessionStartSource !== 'clear' &&
+      !establish &&
       current?.id === id &&
       !this.ended(current)
     ) {
@@ -125,6 +120,7 @@ export class ClaudeInvocationJournal {
       return false
     }
     if (kind === 'start') {
+      this.receipts.bind(id, at!)
       this.bindings.start(id, at!, this.captures())
       for (const end of this.facts.filter(f => f.kind === 'end' && f.id === id)) {
         this.bindings.end(id, end.at, this.captures())
@@ -133,23 +129,20 @@ export class ClaudeInvocationJournal {
     if (kind === 'end') {
       this.bindings.end(id, at!, this.captures())
     }
-    this.compactLifecycle()
     if (request && !this.enabled) {
       this.compactRequests()
-      if (this.requests.length === 64) {
-        this.loss.lose(this.requestFact(request), this.proof())
-      } else {
-        this.requests.push(request)
-      }
+      boundedInsert(
+        this.requests.length,
+        64,
+        () => this.requests.push(request),
+        () => this.loss.lose(claudeRequestFact(request), this.proof()),
+      )
     }
     return true
   }
   /** Capture immutable provenance before any classifier or timestamp discard. */
   observeReceipt(event: ClaudeConversationEvent): boolean {
-    if (
-      this.disposed ||
-      !['UserPromptSubmit', 'Stop', 'StopFailure'].includes(event.hookEventName)
-    ) {
+    if (this.disposed || !isClaudeReceipt(event)) {
       return false
     }
     const key = claudeHookKey(event)
@@ -163,16 +156,28 @@ export class ClaudeInvocationJournal {
       received: this.now(),
       key,
     }
-    this.receipts.observe(
-      fact,
-      ++this.sequence,
-      this.history,
-      this.enabled ? new ClaudeJournalProof([...this.facts, fact]).epoch(fact)?.at : undefined,
-    )
+    const proof = new ClaudeJournalProof([...this.facts, fact]),
+      epoch = proof.epoch(fact)
+    const namespace = epoch
+      ? epoch.at
+      : !epoch &&
+          ((proof.current?.id === fact.id && proof.ended) ||
+            ((!this.history.knows(fact.id) ||
+              this.facts.some(f => f.id === fact.id && f.kind === 'start' && f.at > fact.at)) &&
+              !this.facts.some(f => f.id === fact.id && f.kind === 'end' && f.at < fact.at))) &&
+          Number.isFinite(fact.at)
+        ? 'pending'
+        : 'rejected'
+    this.receipts.observe(fact, ++this.sequence, this.history, namespace, !this.enabled)
     return false
   }
   rejectsReceipt(event: ClaudeConversationEvent): boolean {
-    return !this.receipts.belongs(claudeHookKey(event), this.current()?.at)
+    return (
+      isClaudeReceipt(event) && !this.receipts.belongs(claudeHookKey(event), this.current()?.at)
+    )
+  }
+  claimReceipt(event: ClaudeConversationEvent, namespace: number | undefined): boolean {
+    return !isClaudeReceipt(event) || this.receipts.claim(claudeHookKey(event), namespace)
   }
   takeRequests(): Request[] {
     const requests = this.requests
@@ -260,7 +265,6 @@ export class ClaudeInvocationJournal {
       this.push(complete)
       this.compactRequests()
       this.compactCompleted()
-      this.compactLifecycle()
     }
   }
   accepts(id: string | undefined, capture?: object): boolean {
@@ -308,23 +312,6 @@ export class ClaudeInvocationJournal {
       return f.kind !== 'complete' || !proof.completion.some(stop => stop !== f && stop.at > f.at)
     })
   }
-  private compactLifecycle(): void {
-    const life = this.facts.filter(f => ['start', 'end'].includes(f.kind))
-    if (life.length <= CLAUDE_LIFECYCLE_LIMIT) {
-      return
-    }
-    this.history.truncate()
-    const proof = this.proof()
-    if (this.loss.blocked || proof.unresolved.length) {
-      return
-    }
-    // With no pending obligations, completed bodies can be discarded before their witnesses.
-    this.compactCompleted()
-    const retired = life
-      .filter(f => proof.retired(f))
-      .slice(0, life.length - CLAUDE_LIFECYCLE_LIMIT)
-    this.facts = this.facts.filter(f => !retired.includes(f))
-  }
   private captures(): ClaudeCaptureBinding[] {
     return this.facts.flatMap(f => (f.capture ? [f.capture] : []))
   }
@@ -337,28 +324,10 @@ export class ClaudeInvocationJournal {
   private ended(start: JournalFact): boolean {
     return this.facts.some(f => f.kind === 'end' && f.id === start.id && f.at >= start.at)
   }
-  private requestFact(request: Request): JournalFact {
-    const e = request.event
-    return {
-      kind:
-        e.hookEventName === 'SessionStart'
-          ? 'start'
-          : e.hookEventName === 'SessionEnd'
-            ? 'end'
-            : ['Stop', 'StopFailure'].includes(e.hookEventName)
-              ? 'finish'
-              : 'activity',
-      id: e.claudeSessionId,
-      at: e.emittedAtMs!,
-      received: 0,
-      key: '',
-      promptId: e.promptId,
-    }
-  }
   private compactRequests(): void {
     const proof = this.proof()
     this.requests = this.requests.filter(r => {
-      const f = this.requestFact(r)
+      const f = claudeRequestFact(r)
       return !proof.retired(f) && !proof.resolved(f)
     })
   }
@@ -441,11 +410,31 @@ export class ClaudeInvocationJournal {
     if (fact.kind === 'start') {
       this.history.remember(fact.id, fact.at)
     }
-    if (
-      ['start', 'end'].includes(fact.kind) &&
-      this.facts.filter(f => ['start', 'end'].includes(f.kind)).length >= CLAUDE_LIFECYCLE_LIMIT
-    ) {
-      this.history.truncate()
+    if (['start', 'end'].includes(fact.kind)) {
+      let size = this.facts.filter(f => ['start', 'end'].includes(f.kind)).length
+      if (size >= CLAUDE_LIFECYCLE_LIMIT) {
+        this.history.truncate()
+        const proof = this.proof([...this.facts, fact])
+        if (!this.loss.blocked && !proof.unresolved.length) {
+          const retired = this.facts.findIndex(
+            f => ['start', 'end'].includes(f.kind) && proof.retired(f),
+          )
+          if (retired >= 0) {
+            this.facts.splice(retired, 1)
+            size--
+          }
+        }
+      }
+      if (
+        !boundedInsert(
+          size,
+          CLAUDE_LIFECYCLE_LIMIT,
+          () => {},
+          () => this.history.truncate(),
+        )
+      ) {
+        return false
+      }
     }
     if (this.facts.length === CLAUDE_FACT_LIMIT) {
       const proof = this.proof([...this.facts, fact])
@@ -461,8 +450,12 @@ export class ClaudeInvocationJournal {
       }
       this.facts.splice(disposable, 1)
     }
-    this.facts.push(fact)
-    return true
+    return boundedInsert(
+      this.facts.length,
+      CLAUDE_FACT_LIMIT,
+      () => this.facts.push(fact),
+      () => this.loss.lose(fact, this.proof()),
+    )
   }
   dispose(): void {
     this.disposed = true

@@ -190,6 +190,11 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       }
       listeners.forEach(listener => listener(event))
     }
+    // Legacy state can publish after private IO rejection, but that does not accept
+    // lifecycle identity or authorize a resident-context reply.
+    if (observerAccepted === 'state_only') {
+      return false
+    }
     const identity = options.resolveSessionIdentity?.(envelope) ?? null
     if (
       (terminalActivity || options.publishManagedSessionIdentity) &&

@@ -1,3 +1,4 @@
+import { boundedInsert } from '../../../shared/utils/boundedInsert'
 /** Invocation identity tombstones never depend on the replay log. Once history is
  * incomplete, prompting stays disabled until the invocation ends. */
 export const CLAUDE_LIFECYCLE_LIMIT = 512
@@ -11,10 +12,15 @@ export class ClaudeJournalHistory {
   }
   remember(id: string, at: number): boolean {
     const first = this.identities.get(id)
-    if (first === undefined && this.identities.size === CLAUDE_IDENTITY_LIMIT) {
-      this.truncate()
+    if (first !== undefined) {
+      this.identities.set(id, Math.min(first, at))
     } else {
-      this.identities.set(id, Math.min(first ?? at, at))
+      boundedInsert(
+        this.identities.size,
+        CLAUDE_IDENTITY_LIMIT,
+        () => this.identities.set(id, at),
+        () => this.truncate(),
+      )
     }
     return this.possiblyReused(id, at)
   }

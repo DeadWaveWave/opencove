@@ -74,11 +74,23 @@ it('records rejected hooks before any fact is appended and cannot rebind their n
     ).toBe(true)
   }
 })
-it('does not bind pre-clear receipts to a provisional ordinary identity', () => {
+it('denies absent and rejected origins, binding only explicit pending successor receipts', () => {
   const receipts = new ClaudeJournalReceipts(),
     history = new ClaudeJournalHistory(),
     stop = fact('finish', 500)
   receipts.observe(stop, 1, history)
-  expect(receipts.belongs(stop.key, 400)).toBe(true)
+  expect(receipts.belongs('absent', 400)).toBe(false)
+  expect(receipts.belongs(stop.key, 400)).toBe(false)
+  receipts.bind('B', 400)
+  expect(receipts.belongs(stop.key, 400)).toBe(false)
+  const pending = fact('finish', 600)
+  receipts.observe(pending, 2, history, 'pending')
+  expect(receipts.belongs(pending.key, 400)).toBe(false)
+  receipts.bind('B', 400)
+  expect(receipts.belongs(pending.key, 400)).toBe(true)
+  expect(receipts.claim(pending.key, 400)).toBe(true)
+  expect(receipts.claim(pending.key, 400)).toBe(false)
+  receipts.bind('B', 500)
+  expect(receipts.belongs(pending.key, 500)).toBe(false)
   expect(history.incomplete).toBe(false)
 })

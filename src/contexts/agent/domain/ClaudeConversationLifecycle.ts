@@ -1,3 +1,4 @@
+import { boundedInsert } from '../../../shared/utils/boundedInsert'
 import type {
   ClaudeConversationEvent,
   ClaudeConversationCheckpoint,
@@ -24,7 +25,9 @@ export class ClaudeConversationLifecycle {
       this.watermark = checkpoint.watermark
       this.startAt = checkpoint.startAt
       this.ended = checkpoint.ended
-      this.retired.push(...checkpoint.retired)
+      for (const item of checkpoint.retired) {
+        this.remember(item)
+      }
     }
   }
   checkpoint(): ClaudeConversationCheckpoint {
@@ -93,12 +96,25 @@ export class ClaudeConversationLifecycle {
     }
     return 'event'
   }
+  dispose(): void {
+    this.retired.length = 0
+    this.current = this.watermark = this.startAt = undefined
+    this.ended = false
+  }
+  private remember(item: { sessionId: string; emittedAtMs?: number }): void {
+    if (this.retired.length === 64) {
+      this.retired.shift()
+    }
+    boundedInsert(
+      this.retired.length,
+      64,
+      () => this.retired.push(item),
+      () => {},
+    )
+  }
   private retire(): void {
     if (this.current) {
-      this.retired.push({ sessionId: this.current, emittedAtMs: this.watermark })
-      if (this.retired.length > 64) {
-        this.retired.shift()
-      }
+      this.remember({ sessionId: this.current, emittedAtMs: this.watermark })
     }
     this.current = undefined
   }

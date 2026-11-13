@@ -248,8 +248,11 @@ it('keeps the queue bounded and never grants readiness after overflow or timesta
       vi.advanceTimersByTime(2000)
       expect(f.fence()).toMatchObject({
         claudeClearReady: false,
-        conversationQuarantined: !overflow,
+        conversationQuarantined: true,
       })
+      if (overflow) {
+        expect(f.fence().claudeHistorySaturated).toBe(true)
+      }
       expect(f.view().archive, `overflow=${overflow}`).toEqual([])
       // A post-saturation Submit may have main's working lease; clear never owns that timer.
       f.send({ ...hook('B', 'SessionStart', 199), sessionStartSource: 'resume' })
@@ -259,7 +262,13 @@ it('keeps the queue bounded and never grants readiness after overflow or timesta
         f.fence().snapshot.lastEndedTurn?.outcome,
         JSON.stringify({ overflow, ...f.view() }),
       ).toBe('completed')
-      expect(promptAdmission(f.fence(), capability, 'refuse')).toBeNull()
+      if (overflow) {
+        expect(promptAdmission(f.fence(), capability, 'refuse')).toMatchObject({
+          reason: 'history_saturated',
+        })
+      } else {
+        expect(promptAdmission(f.fence(), capability, 'refuse')).toBeNull()
+      }
       expect(vi.getTimerCount()).toBe(0)
     } finally {
       f.registry.dispose()

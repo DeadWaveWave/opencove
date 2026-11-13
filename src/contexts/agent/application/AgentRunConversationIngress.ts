@@ -1,3 +1,4 @@
+import { isClaudeConversationActivity } from '../domain/ClaudeConversationLifecycle'
 import { ClaudeInvocationJournal } from './ClaudeInvocationJournal'
 import { ClaudeConversationReplay, preserveClaudeProjection } from './ClaudeConversationReplay'
 import { ClaudeLiveConversation } from './ClaudeLiveConversation'
@@ -28,7 +29,7 @@ export function observeRunConversation(
     const request = record.conversation,
       clear = isClaudeClearEvidence(request.event)
     const saturated = journal.saturated
-    const replayed = journal.observeReceipt(request.event)
+    journal.observeReceipt(request.event)
     if (!saturated && journal.saturated && entry.conversation) {
       ports.notify()
     }
@@ -37,18 +38,6 @@ export function observeRunConversation(
       return
     }
     if (entry.conversation && !entry.conversation.active && !clear) {
-      if (
-        (replayed && request.event.hookEventName === 'UserPromptSubmit') ||
-        journal.rejectsReceipt(request.event)
-      ) {
-        request.decide({
-          action: 'ignore',
-          generation: entry.conversation.generation,
-          deferred: true,
-        })
-        request.publish(entry.conversation.generation, 'ignore')
-        return
-      }
       const route = routeOrdinaryClaudeConversation(
         entry.conversation,
         request,
@@ -56,7 +45,19 @@ export function observeRunConversation(
       )
       if (route !== 'pending') {
         if (route !== 'ignored') {
-          journal.appendHook(request.event)
+          journal.appendHook(request.event, undefined, route === 'boundary')
+          if (
+            !isClaudeConversationActivity(request.event) &&
+            request.event.hookEventName !== 'SessionStart'
+          ) {
+            return
+          }
+          request.decide({
+            action: 'ignore',
+            generation: entry.conversation.generation,
+            deferred: true,
+          })
+          entry.conversation.commit(request, conversationPorts(entry, ports))
         }
         return
       }
@@ -83,31 +84,19 @@ export function observeRunConversation(
     } else if (!entry.conversation.active) {
       entry.conversation.synchronize(journal.attachment(request.initialState))
     }
-    const ownerPorts = {
-      reset: () => {
-        entry.continuation.startConversation()
-        ports.update()
-      },
-      invalidate: (pending?: boolean) => {
-        entry.cancelExpiry?.()
-        entry.cancelExpiry = undefined
-        projectConversation(entry, false, ports, pending)
-      },
-      canReady: () => allowsClaudeClearReceipt(entry),
-      preserve: (event: Parameters<ClaudeConversationReplay['preserve']>[0]) =>
-        (entry.conversationReplay?.preserve(event) ?? false) ||
-        preserveClaudeProjection(entry, event),
-      ready: () => projectConversation(entry, true, ports),
-      settled: ports.update,
-      adoptedCompletion: () => entry.conversationReplay?.adoptedCompletion(entry) ?? false,
-      completedTurnId: () => {
-        const ended = entry.model.snapshot.lastEndedTurn
-        return ended && ended.outcome !== 'unknown' ? ended.id : null
-      },
-    }
-    entry.conversation.accept(record, ports.now(), ownerPorts, carried.length > 0)
+    entry.conversation.accept(
+      record,
+      ports.now(),
+      conversationPorts(entry, ports),
+      carried.length > 0,
+    )
     for (const [index, previous] of carried.entries()) {
-      entry.conversation.accept(previous, ports.now(), ownerPorts, index < carried.length - 1)
+      entry.conversation.accept(
+        previous,
+        ports.now(),
+        conversationPorts(entry, ports),
+        index < carried.length - 1,
+      )
     }
     return
   }
@@ -141,6 +130,30 @@ export function observeRunConversation(
   }
   entry.continuation.transcript(record, entry.history, ports.now())
   ports.update()
+}
+function conversationPorts(entry: AgentRunEntry, ports: Ports) {
+  return {
+    reset: () => {
+      entry.continuation.startConversation()
+      ports.update()
+    },
+    invalidate: (pending?: boolean) => {
+      entry.cancelExpiry?.()
+      entry.cancelExpiry = undefined
+      projectConversation(entry, false, ports, pending)
+    },
+    canReady: () => allowsClaudeClearReceipt(entry),
+    preserve: (event: Parameters<ClaudeConversationReplay['preserve']>[0]) =>
+      (entry.conversationReplay?.preserve(event) ?? false) ||
+      preserveClaudeProjection(entry, event),
+    ready: () => projectConversation(entry, true, ports),
+    settled: ports.update,
+    adoptedCompletion: () => entry.conversationReplay?.adoptedCompletion(entry) ?? false,
+    completedTurnId: () => {
+      const ended = entry.model.snapshot.lastEndedTurn
+      return ended && ended.outcome !== 'unknown' ? ended.id : null
+    },
+  }
 }
 function projectConversation(
   entry: AgentRunEntry,

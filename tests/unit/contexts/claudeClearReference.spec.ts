@@ -139,3 +139,22 @@ it('counts authenticated but rejected receipts towards its independent provenanc
   model.advance(201)
   expect(model.verdict()).toMatchObject({ id: 'C', receipt: false, historyIncomplete: true })
 })
+
+it('never binds a rejected after-End receipt to a later reused namespace', () => {
+  const m = new ClearReference()
+  const hook = (id: string, name: string, at: number, epoch = 1) =>
+    m.consume({ id, name, at, epoch, kind: 'hook' })
+  hook('B', 'SessionStart', 20)
+  hook('B', 'SessionEnd', 30)
+  hook('C', 'SessionStart', 100, 2)
+  hook('B', 'UserPromptSubmit', 450, 3)
+  hook('B', 'Stop', 500, 3)
+  for (let n = 0; n < 70; n++) {
+    hook(`L${n}`, 'SessionStart', 150 + n, 10 + n)
+  }
+  hook('B', 'SessionStart', 400, 3)
+  hook('B', 'UserPromptSubmit', 450, 3)
+  hook('B', 'Stop', 500, 3)
+  m.advance(201)
+  expect(m.verdict()).toMatchObject({ receipt: false, due: false, historyIncomplete: false })
+})

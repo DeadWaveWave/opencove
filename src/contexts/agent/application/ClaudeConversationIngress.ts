@@ -3,10 +3,6 @@ import {
   isClaudeConversationActivity,
 } from '../domain/ClaudeConversationLifecycle'
 import type { ClaudeTranscriptObservation } from '../../../shared/runtime/agentHook/claudeTranscript'
-import {
-  getPromptSubmissionEvidence,
-  setPromptSubmissionEvidence,
-} from '../../../shared/runtime/agentHook/claudePromptEvidence'
 import type { AgentRunObservation } from '../domain/agentRunState'
 import type { ClaudeLiveConversation } from './ClaudeLiveConversation'
 
@@ -17,7 +13,7 @@ export function routeOrdinaryClaudeConversation(
   owner: ClaudeLiveConversation,
   request: Request,
   observation?: Pick<AgentRunObservation, 'state' | 'emittedAtMs'>,
-): 'ordinary' | 'pending' | 'ignored' {
+): 'ordinary' | 'boundary' | 'pending' | 'ignored' {
   const event = request.event
   const initial = owner.checkpoint
   const lifecycle = new ClaudeConversationLifecycle(initial)
@@ -57,12 +53,5 @@ export function routeOrdinaryClaudeConversation(
     request.publish(owner.generation, 'ignore')
     return 'ignored'
   }
-  if (isClaudeConversationActivity(event) || starts) {
-    owner.followOrdinary(lifecycle.checkpoint(), action === 'start' || action === 'end', starts)
-  }
-  setPromptSubmissionEvidence(event, {
-    ...getPromptSubmissionEvidence(event),
-    conversationGeneration: owner.generation,
-  })
-  return 'ordinary'
+  return action === 'start' ? 'boundary' : 'ordinary'
 }

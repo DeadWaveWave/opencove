@@ -1,3 +1,4 @@
+import { boundedInsert } from '../../../../shared/utils/boundedInsert'
 import {
   getPromptSubmissionEvidence,
   setPromptSubmissionEvidence,
@@ -76,7 +77,7 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
           legacyState = false,
           publishState = true,
         ) => {
-          if (this.disposed || !context.isCurrent()) {
+          if (this.disposed || !context.isCurrent() || (action === 'ignore' && !legacyState)) {
             return
           }
           if (action !== 'ignore') {
@@ -147,7 +148,17 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
       if (this.earlySubmits.size >= 16) {
         this.earlySubmits.delete(this.earlySubmits.keys().next().value!)
       }
-      this.earlySubmits.set(envelope.claudeSessionId, envelope.emittedAtMs)
+      const at = envelope.emittedAtMs
+      if (this.earlySubmits.has(envelope.claudeSessionId)) {
+        this.earlySubmits.set(envelope.claudeSessionId, at)
+      } else {
+        boundedInsert(
+          this.earlySubmits.size,
+          16,
+          () => this.earlySubmits.set(envelope.claudeSessionId, at),
+          () => {},
+        )
+      }
     }
     if (action === 'ignore') {
       return false
@@ -368,6 +379,8 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
       this.closeBinding?.(this.credential)
     }
     this.disposed = true
+    this.earlySubmits.clear()
+    this.lifecycle.dispose()
     this.detach()
   }
 }

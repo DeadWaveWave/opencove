@@ -301,5 +301,6 @@ export function disposeRunConversation(entry: AgentRunEntry | undefined): void {
   }
   entry.conversation?.dispose()
   entry.claudeJournal?.dispose()
+  entry.conversationReplay?.dispose()
   entry.conversationReplay = undefined
 }

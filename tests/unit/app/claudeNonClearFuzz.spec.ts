@@ -53,7 +53,7 @@ if (!requested.enabled) {
               'accepts',
               'deferTranscript',
               'veto',
-              'followOrdinary',
+              'commit',
               'synchronize',
               'dispose',
             ] as const

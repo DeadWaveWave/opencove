@@ -14,6 +14,8 @@ import { ClaudeInvocationJournal } from './ClaudeInvocationJournal'
 import { ClaudeConversationTranscriptBuffer } from './ClaudeConversationTranscriptBuffer'
 import { ClaudeConversationTimer } from './ClaudeConversationTimer'
 import type { ClaudeConversationPorts as Ports } from './ClaudeConversationPorts'
+import { boundedInsert } from '../../../shared/utils/boundedInsert'
+import { CLAUDE_IDENTITY_LIMIT } from './ClaudeJournalHistory'
 import * as batch from './ClaudeConversationBatch'
 
 export const CLAUDE_CONVERSATION_WINDOW_MS = 2_000
@@ -51,7 +53,7 @@ export class ClaudeLiveConversation {
     this.providerSessionId = initial?.current ?? initial?.retired.at(-1)?.sessionId
     this.committedAt = initial?.watermark ?? -Infinity
     for (const old of initial?.retired ?? []) {
-      this.projectedRetired.add(old.sessionId)
+      this.retire(old.sessionId)
     }
   }
   get active(): boolean {
@@ -86,7 +88,7 @@ export class ClaudeLiveConversation {
     this.ended = initial.ended
     this.committedAt = Math.max(this.committedAt, initial.watermark ?? -Infinity)
     for (const old of initial.retired) {
-      this.projectedRetired.add(old.sessionId)
+      this.retire(old.sessionId)
     }
   }
   accept(
@@ -170,10 +172,12 @@ export class ClaudeLiveConversation {
       }
       return
     }
-    this.receipts.add(key)
-    if (this.receipts.size > 256) {
-      this.receipts.delete(this.receipts.values().next().value!)
-    }
+    boundedInsert(
+      this.receipts.size,
+      1024,
+      () => this.receipts.add(key),
+      () => this.journal.saturate(),
+    )
     const opening = !this.active
     if (opening) {
       this.windowGeneration = this.generation
@@ -196,12 +200,18 @@ export class ClaudeLiveConversation {
     if (this.disposed) {
       return
     }
-    if (this.pending.length === 64) {
+    if (
+      !boundedInsert(
+        this.pending.length,
+        64,
+        () => this.pending.push(request),
+        () => this.journal.saturate(),
+      )
+    ) {
       this.reject(ports)
       request.publish(this.generation, 'ignore')
       return
     }
-    this.pending.push(request)
     if (!this.clearPending) {
       this.orphanAt ??= now
       this.timer.at(this.orphanAt + CLAUDE_CONVERSATION_WINDOW_MS, now, () => this.reject(ports))
@@ -235,6 +245,9 @@ export class ClaudeLiveConversation {
         ? undefined
         : { generation: this.windowGeneration, providerSessionId: this.windowProvider },
     )
+    if (result === 'overflow') {
+      this.journal.saturate()
+    }
     return result !== 'unmatched'
   }
   private drain(): void {
@@ -251,7 +264,7 @@ export class ClaudeLiveConversation {
     )
     this.pending = []
     for (const id of batch.supersededConversationIds(pending, this.providerSessionId)) {
-      this.projectedRetired.add(id)
+      this.retire(id)
     }
     this.draining = true
     try {
@@ -323,7 +336,7 @@ export class ClaudeLiveConversation {
     }
   }
 
-  private commit(request: Request, ports: Ports): void {
+  commit(request: Request, ports: Ports): void {
     if (this.disposed) {
       return
     }
@@ -338,7 +351,17 @@ export class ClaudeLiveConversation {
       (!this.projectedRetired.has(event.claudeSessionId) ||
         event.claudeSessionId === this.providerSessionId)
     ) {
-      this.pending.push(request)
+      boundedInsert(
+        this.pending.length,
+        64,
+        () => this.pending.push(request),
+        () => this.journal.saturate(),
+      )
+      return
+    }
+    // The one publication boundary: no classifier, observer or public mutation before this claim.
+    if (!this.journal.claimReceipt(event, this.startedAt)) {
+      request.publish(this.generation, 'ignore')
       return
     }
     if (event.hookEventName === 'SessionStart' && event.sessionStartSource === 'clear') {
@@ -376,11 +399,9 @@ export class ClaudeLiveConversation {
         return
       }
       if (this.providerSessionId) {
-        this.projectedRetired.add(this.providerSessionId)
+        this.retire(this.providerSessionId)
       }
-      if (this.projectedRetired.size > 64) {
-        this.projectedRetired.delete(this.projectedRetired.values().next().value!)
-      }
+
       if (!this.draining) {
         this.generation++
       }
@@ -417,17 +438,6 @@ export class ClaudeLiveConversation {
   veto(): void {
     this.journal.unknown()
   }
-  followOrdinary(
-    checkpoint: ClaudeConversationCheckpoint,
-    boundary: boolean,
-    _refresh: boolean,
-  ): void {
-    this.synchronize(checkpoint)
-    if (boundary) {
-      this.endedInClear = false
-      this.generation++
-    }
-  }
   private reject(ports: Ports): void {
     this.generation++
     const pending = this.closeWindow()
@@ -445,9 +455,22 @@ export class ClaudeLiveConversation {
     this.windowProvider = undefined
     return pending
   }
+  private retire(id: string): void {
+    if (!this.projectedRetired.has(id)) {
+      boundedInsert(
+        this.projectedRetired.size,
+        CLAUDE_IDENTITY_LIMIT,
+        () => this.projectedRetired.add(id),
+        () => this.journal.saturate(),
+      )
+    }
+  }
   dispose(): void {
     this.disposed = true
     this.journal.dispose()
     this.closeWindow()
+    this.receipts.clear()
+    this.projectedRetired.clear()
+    this.lifecycle.dispose()
   }
 }
