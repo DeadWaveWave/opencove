@@ -129,6 +129,7 @@ export interface AgentSettings
   browserDefaultMode: BrowserMode
   browserSearchEngine: BrowserSearchEngineId
   experimentalWebsiteWindowPasteEnabled: boolean
+  // @compat settings-legacy-fields
   /** @deprecated Retained for saved profiles; remote connections are always available. */
   experimentalRemoteWorkersEnabled: boolean
   defaultTerminalWindowScalePercent: number

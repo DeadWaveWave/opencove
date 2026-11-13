@@ -22,6 +22,7 @@ export function clearWorkerConnectionFailure(): void {
   if (useAppStore.getState().workerConnectionError) {
     useAppStore.setState(state => ({
       workerConnectionError: null,
+      // @compat managed-claude-worker-support
       persistNotice:
         state.persistNotice?.kind === 'connection'
           ? currentManagedClaudeCompatibilityNotice()

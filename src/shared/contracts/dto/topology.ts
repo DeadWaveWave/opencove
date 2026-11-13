@@ -4,6 +4,7 @@ export type WorkerEndpointKindDto = 'local' | 'remote_worker'
 export type WorkerEndpointAccessKindDto = 'manual' | 'managed_ssh'
 export type WorkerEndpointManagedSshPlatformDto = 'auto' | 'posix' | 'windows'
 
+// @compat endpoint-runtime-legacy-failure
 export type ManagedSshStageFailureCode =
   | 'installer_unavailable'
   | 'runtime_corrupt'

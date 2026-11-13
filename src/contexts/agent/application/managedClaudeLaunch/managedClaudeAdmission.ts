@@ -8,6 +8,7 @@ export interface ManagedClaudeExecution {
   mountId: string | null
 }
 
+// @compat managed-claude-worker-support
 /** Validate the requested execution independently of cached effect admission. */
 export function managedClaudeAdmissionDecision(
   attempt: ManagedClaudeLaunchAttempt,

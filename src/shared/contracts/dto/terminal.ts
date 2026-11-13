@@ -112,6 +112,7 @@ export interface ResizeTerminalInput {
   operationId?: string
   baseGeometryRevision?: number | null
   authorityEpoch?: number | null
+  // @compat pty-geometry-legacy-revision
   /** @deprecated Compatibility only. Use operationId + baseGeometryRevision. */
   revision?: number | null
 }

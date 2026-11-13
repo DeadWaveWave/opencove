@@ -42,6 +42,7 @@ export function reserveManagedClaudePreparation(input: {
     if (observation?.binding) {
       assertManagedClaudeMutationAllowed(ctx, id, input.writesEnabled?.() !== false)
     }
+    // @compat managed-claude-worker-support
     if (ctx.clientFeatures?.managedClaudeResumeBindingV1) {
       selected.push(id)
     }

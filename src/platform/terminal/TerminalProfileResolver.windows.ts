@@ -96,6 +96,7 @@ export function convertWindowsPathToWslPath(cwd: string, distro: string): string
   return null
 }
 
+// @compat terminal-profile-legacy-runtime-kind
 export function inferLegacyRuntimeKind(
   shell: string,
   platform: NodeJS.Platform,

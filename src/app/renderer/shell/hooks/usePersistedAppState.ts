@@ -56,6 +56,7 @@ export function usePersistedAppState({
         }
         if (result.ok) {
           if (result.level === 'full') {
+            // @compat managed-claude-worker-support
             return previous?.kind === 'recovery' || previous?.kind === 'compatibility'
               ? previous
               : currentManagedClaudeCompatibilityNotice()

@@ -3,6 +3,7 @@ import type { TerminalGeometryCommitResult } from '@shared/contracts/dto'
 type PendingResize = {
   sessionId: string
   operationId: string
+  // @compat pty-geometry-legacy-revision
   legacyRevision: number | null
   resolve: (result: TerminalGeometryCommitResult) => void
   reject: (error: Error) => void
@@ -94,6 +95,7 @@ export class BrowserPtyGeometryAckCoordinator {
   public begin(input: {
     sessionId: string
     operationId?: string | null
+    // @compat pty-geometry-legacy-revision
     legacyRevision: number | null
   }): { operationId: string; result: Promise<TerminalGeometryCommitResult> } {
     const operationId = input.operationId?.trim() || createGeometryOperationId()
@@ -112,6 +114,7 @@ export class BrowserPtyGeometryAckCoordinator {
       pendingByOperationId.set(operationId, {
         sessionId: input.sessionId,
         operationId,
+        // @compat pty-geometry-legacy-revision
         legacyRevision: input.legacyRevision,
         resolve,
         reject,
@@ -135,6 +138,7 @@ export class BrowserPtyGeometryAckCoordinator {
     return result
   }
 
+  // @compat pty-geometry-legacy-revision
   public rejectLegacySession(sessionId: string, message: string): void {
     if (this.ackSupported === true) {
       return
@@ -145,6 +149,7 @@ export class BrowserPtyGeometryAckCoordinator {
     }
   }
 
+  // @compat pty-geometry-legacy-revision
   public resolveLegacyGeometry(input: {
     sessionId: string
     cols: number

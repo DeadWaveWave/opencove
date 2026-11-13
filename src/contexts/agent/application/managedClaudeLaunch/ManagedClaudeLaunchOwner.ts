@@ -128,6 +128,7 @@ export class ManagedClaudeLaunchOwner {
     return { observation, decision }
   }
 
+  // @compat managed-claude-worker-support
   async admit(
     attempt: ManagedClaudeLaunchAttempt,
     execution: ManagedClaudeExecution,

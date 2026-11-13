@@ -352,6 +352,7 @@ export async function resolveSelectors(
       })) as ListSpacesResult | ListNodesResult
       const candidates =
         kind === 'space' ? (result as ListSpacesResult).spaces : (result as ListNodesResult).nodes
+      // @compat cli-legacy-input-handling
       // Legacy IDs need the same global exact-ID precedence as UUIDs. Only probe
       // when the list has no exact ID, before accepting a name or a prefix.
       if (!uuidPattern.test(selector) && !candidates.some(candidate => candidate.id === selector)) {

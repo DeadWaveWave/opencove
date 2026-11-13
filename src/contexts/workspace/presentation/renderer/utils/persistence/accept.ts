@@ -29,6 +29,7 @@ export function acceptPersistedStateSnapshot(
           EMPTY_CANVAS_COLLAPSE,
       )
   }
+  // @compat storage-cove-m0-keys
   // Restoring readable legacy data does not acknowledge a failed migration.
   // Leave the write cache untouched so the next publication retries durable IO.
   if (isPersisted) {

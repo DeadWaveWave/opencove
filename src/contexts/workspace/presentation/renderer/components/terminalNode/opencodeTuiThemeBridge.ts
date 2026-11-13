@@ -56,6 +56,7 @@ export function createOpenCodeTuiThemeBridge({
     const appliedAppearance = getAppliedAppearance?.() ?? null
     const resolvedTheme =
       appliedAppearance?.terminalScheme ?? resolveTerminalUiTheme(terminalThemeMode)
+    // @compat opencode-tui-legacy-theme
     const reportKey = appliedAppearance
       ? `revision:${appliedAppearance.revision}`
       : `legacy:${resolvedTheme}`
