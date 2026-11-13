@@ -77,7 +77,12 @@ export async function terminalCommand(
   return output.slice(start, output.indexOf(`OC_CLI_${end}`, start)).trim()
 }
 
-export function jsonOutput(output: string): Record<string, unknown> {
+export function jsonOutput(rawOutput: string): Record<string, unknown> {
+  // The terminal interleaves stderr; drop CLI notices, which may quote JSON of their own.
+  const output = rawOutput
+    .split('\n')
+    .filter(line => !line.startsWith('Notice: '))
+    .join('\n')
   expect(output, 'CLI command must exit successfully').toMatch(/\bexit=0\b/)
   const start = output.indexOf('{')
   const end = output.lastIndexOf('}')
