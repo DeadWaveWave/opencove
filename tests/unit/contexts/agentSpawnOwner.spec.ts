@@ -438,6 +438,7 @@ it('shares root/child quota accounting with refusal details, including retained 
     maxDepth: 3,
     liveInTree: 6,
     maxLiveInTree: 6,
+    remainingLiveInTree: 0,
   })
   f.replaceNodes([
     { id: 'root', kind: 'agent', sessionId: 'root-session' },
@@ -448,6 +449,7 @@ it('shares root/child quota accounting with refusal details, including retained 
     maxDepth: 3,
     liveInTree: 6,
     maxLiveInTree: 6,
+    remainingLiveInTree: 0,
   })
   await expect(f.start('refused')).rejects.toMatchObject({
     code: 'agent.spawn_concurrency_limit',

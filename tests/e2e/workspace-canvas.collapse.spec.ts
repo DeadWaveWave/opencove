@@ -1,3 +1,4 @@
+import { attachFailureFrame, isE2EDiagnosticsEnabled } from './diagnostics'
 /* eslint-disable no-await-in-loop -- Real pointer actions intentionally run in sequence. */
 import { expect, test, type Page } from '@playwright/test'
 import { buildNodeEvalCommand, launchApp, selectCoveOption } from './workspace-canvas.helpers'
@@ -100,10 +101,12 @@ test('collapses all window kinds without remounting editors or resizing a live P
         return { cols: snapshot.cols, rows: snapshot.rows }
       }, sessionId),
     ).toEqual(original.size)
-    await testInfo.attach('all-window-icons-pixel', {
-      body: await window.screenshot(),
-      contentType: 'image/png',
-    })
+    if (isE2EDiagnosticsEnabled()) {
+      await testInfo.attach('all-window-icons-pixel', {
+        body: await window.screenshot(),
+        contentType: 'image/png',
+      })
+    }
 
     await window.getByTestId('workspace-space-collapse-arrange-pixel-build-space').click()
     await window.getByTestId('workspace-space-collapse-arrange-pixel-review-space').click()
@@ -115,10 +118,12 @@ test('collapses all window kinds without remounting editors or resizing a live P
     await expect(
       window.getByTestId('workspace-space-worktree-branch-pixel-review-space'),
     ).toBeVisible()
-    await testInfo.attach('space-compact-windows', {
-      body: await window.screenshot(),
-      contentType: 'image/png',
-    })
+    if (isE2EDiagnosticsEnabled()) {
+      await testInfo.attach('space-compact-windows', {
+        body: await window.screenshot(),
+        contentType: 'image/png',
+      })
+    }
     await expect(compactTerminal).toBeVisible()
     expect(await identity(window)).toEqual(original)
     await compactTerminal.getByTestId('node-expand').click()
@@ -150,10 +155,12 @@ test('collapses all window kinds without remounting editors or resizing a live P
     await expect(window.getByTestId('workspace-space-undo-arrange-pixel-build-space')).toHaveCount(
       0,
     )
-    await testInfo.attach('collapsed-windows-arranged', {
-      body: await window.screenshot(),
-      contentType: 'image/png',
-    })
+    if (isE2EDiagnosticsEnabled()) {
+      await testInfo.attach('collapsed-windows-arranged', {
+        body: await window.screenshot(),
+        contentType: 'image/png',
+      })
+    }
     await window.getByTestId('workspace-space-menu-pixel-build-space').click()
     await window.getByTestId('workspace-space-undo-arrange-pixel-build-space').click()
     await expect.poll(readNodePositions).toEqual(before)
@@ -164,13 +171,18 @@ test('collapses all window kinds without remounting editors or resizing a live P
     await openPixelAppearance(window)
     await selectCoveOption(window, 'settings-ui-theme', 'light')
     await window.locator('.settings-panel__close').click()
-    await testInfo.attach('collapse-light', {
-      body: await window.screenshot(),
-      contentType: 'image/png',
-    })
+    if (isE2EDiagnosticsEnabled()) {
+      await testInfo.attach('collapse-light', {
+        body: await window.screenshot(),
+        contentType: 'image/png',
+      })
+    }
     await window.reload({ waitUntil: 'domcontentloaded' })
     await expect(window.getByTestId('collapsed-node-pixel-material-agent')).toBeVisible()
     await expect(window.getByTestId('collapsed-node-pixel-material-document')).toBeVisible()
+  } catch (error) {
+    await attachFailureFrame(window, test.info())
+    throw error
   } finally {
     await electronApp.close()
     await fixture.cleanup()

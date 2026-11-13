@@ -292,7 +292,11 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       args.options.quiet && command.quietIdPath
         ? String(get(result, command.quietIdPath)) + '\n'
         : command.textOutput && !args.options.output && args.options.fields === undefined
-          ? (command.textOutput(result) ?? render(result, args.options, renderSpec))
+          ? (command.textOutput(result, {
+              io,
+              options: args.options,
+              render: () => render(result, args.options, renderSpec),
+            }) ?? render(result, args.options, renderSpec))
           : render(result, args.options, renderSpec)
     const notice = nodeFieldNotice(result, args.options, renderSpec)
     if (notice) {

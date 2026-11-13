@@ -53,7 +53,26 @@ export interface SpawnQuotaNode {
   title: string
   kind: string
   depth: number
+  sessionId?: string | null
+  sessionStartedAt?: string | null
   state: 'starting' | 'running'
+}
+export interface SpawnRecoveryAction {
+  kind: 'stop_agent' | 'kill_session'
+  nodeId: string
+  command: string
+}
+export function spawnRecoveryAction(node: SpawnQuotaNode): SpawnRecoveryAction | undefined {
+  // Terminal recovery requires a fresh node.sessionId lookup, not census identity.
+  // Keep the portable two-step hint instead of publishing a shell-specific pipeline.
+  if (node.kind !== 'agent') {
+    return undefined
+  }
+  return {
+    kind: 'stop_agent',
+    nodeId: node.nodeId,
+    command: `opencove agent stop --node ${shellWord(node.nodeId)}`,
+  }
 }
 function spawnRecoveryHint(node: SpawnQuotaNode): string {
   const target = shellWord(node.nodeId)
@@ -63,6 +82,7 @@ function spawnRecoveryHint(node: SpawnQuotaNode): string {
 }
 export interface SpawnLimitDetails {
   nodes?: SpawnQuotaNode[]
+  actions?: SpawnRecoveryAction[]
   reason: 'depth_limit' | 'concurrency_limit'
   retryable: false
   rootNodeId: string

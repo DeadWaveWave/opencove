@@ -1,8 +1,9 @@
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
 import { toFileUri } from '../../src/contexts/filesystem/domain/fileUri'
 import { launchApp } from './workspace-canvas.helpers'
+import { installFilesystemCloseProbe } from './workspace-canvas.filesystem-close-probe'
 import {
   createFilesystemNodeFixture,
   directoryEntry,
@@ -22,6 +23,7 @@ for (const theme of ['dark', 'light'] as const) {
     })
     try {
       await seedFilesystemWorkspace(window, fixture.root, theme)
+      const probe = await installFilesystemCloseProbe(window)
       const explorer = window.getByTestId('workspace-space-explorer')
       await dragEntryToCanvas(window, directoryEntry(window, FILESYSTEM_SPACE, fixture.readme))
       const document = window.locator('.document-node').filter({ hasText: 'README.md' })
@@ -32,8 +34,27 @@ for (const theme of ['dark', 'light'] as const) {
         'document',
       )
       await expect(explorer).toBeVisible()
-      await document.locator('.document-node__close').click()
-      await expect(document).toHaveCount(0)
+      try {
+        await probe.measureClose()
+        // The drop can leave the right-hand controls outside the canvas. React Flow undoes
+        // native scrolling, so Playwright's scrollIntoView can move them back during a click.
+        // Zoom through the canvas owner, keeping both the document and Explorer in view.
+        await window.locator('.react-flow__controls-zoomout').click()
+        await window.locator('.react-flow__controls-zoomout').click()
+        const closeTarget = await probe.measureClose()
+        expect(closeTarget).toMatchObject({ receivesEvents: true, withinCanvas: true })
+        // A normal press spans frames; it must not depend on down/up beating a scroll reset.
+        await document.locator('.document-node__close').click({ delay: 150 })
+        await expect(document).toHaveCount(0)
+      } finally {
+        const evidencePath = testInfo.outputPath('filesystem-close-events.json')
+        await writeFile(evidencePath, JSON.stringify(await probe.read(), null, 2))
+        await testInfo.attach('filesystem-close-events', {
+          path: evidencePath,
+          contentType: 'application/json',
+        })
+        await probe.dispose()
+      }
 
       await dragEntryToCanvas(window, directoryEntry(window, FILESYSTEM_SPACE, fixture.docs))
       const folderHost = window

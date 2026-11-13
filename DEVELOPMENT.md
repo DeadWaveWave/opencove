@@ -209,6 +209,7 @@ E2E 选组规则维护在 `scripts/precommit-e2e-selection.mjs`。快速门禁�
     -   说明：`pnpm test:e2e` 已包含构建步骤，默认使用 `offscreen` 后台窗口模式；检测到 Electron 崩溃特征时，会按窗口模式链路自动降级并重跑失败用例（例如 `hidden -> offscreen`、`offscreen -> inactive`）。
     -   可通过 `OPENCOVE_E2E_WINDOW_MODE` 指定窗口模式（`inactive / offscreen / hidden`，禁止 `normal` 以避免抢占焦点）。
     -   如需关闭自动降级，可设置 `OPENCOVE_E2E_DISABLE_CRASH_FALLBACK=1`。
+    -   成功路径的诊断截图与 viewport screencast 默认关闭；设置 `OPENCOVE_E2E_DIAGNOSTICS=1` 恢复采集。失败保留可用的最终截图与已采集指标，断言读取的图像和 Playwright 的 failure screenshot / trace 策略不变。
     -   `pnpm pre-commit` 与 CI 的 required Electron/Web continuity gates 固定使用 `OPENCOVE_E2E_RETRIES=0` 且关闭 crash fallback；本地诊断命令可以显式覆盖，但 retry/fallback 结果不能作为合并证据。
     -   若需单独执行 Playwright（如 `pnpm exec playwright test tests/e2e/xxx.spec.ts`），必须先执行 `pnpm build`，否则可能仍会使用旧的 `out/` 产物，导致结果与当前源码不一致。
 

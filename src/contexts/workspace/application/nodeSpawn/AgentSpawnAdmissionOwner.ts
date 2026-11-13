@@ -61,7 +61,10 @@ export function spawnTargetKey(
 /** Caller holds the existing node mutation queue through runCreation settlement. */
 export class AgentSpawnAdmissionOwner {
   private readonly pending = new Set<string>()
-  private readonly descriptions = new Map<string, Pick<SpawnQuotaNode, 'title' | 'kind'>>()
+  private readonly descriptions = new Map<
+    string,
+    Pick<SpawnQuotaNode, 'title' | 'kind' | 'sessionId' | 'sessionStartedAt'>
+  >()
   private readonly captured = new Map<string, NodeLineageRecord>()
   private readonly permits = new Map<AgentSpawnPermit, Admission & { used: boolean }>()
   private readonly historicalFences = new Set<string>()
@@ -362,16 +365,28 @@ export class AgentSpawnAdmissionOwner {
       }
       for (const node of nodes) {
         if (liveIds.has(node.id)) {
-          this.descriptions.set(node.id, { title: node.title, kind: node.kind })
+          this.descriptions.set(node.id, {
+            title: node.title,
+            kind: node.kind,
+            sessionId: node.sessionId,
+            sessionStartedAt: node.startedAt,
+          })
         }
       }
       const occupied = new Map<string, SpawnQuotaNode>()
       const occupy = (nodeId: string, liveState: SpawnQuotaNode['state']) => {
         const record = this.captured.get(nodeId) ?? rows.get(nodeId)!
+        const description = this.descriptions.get(nodeId)
+        const sessionId = bindings.find(b => b.nodeId === nodeId)?.sessionId ?? null
         occupied.set(nodeId, {
           nodeId,
           title: this.descriptions.get(nodeId)?.title ?? nodeId,
           kind: this.descriptions.get(nodeId)?.kind ?? 'agent',
+          sessionId,
+          sessionStartedAt:
+            sessionId && description?.sessionId === sessionId
+              ? (description.sessionStartedAt ?? null)
+              : null,
           depth: record.lineageDepth,
           state: liveState,
         })
@@ -397,6 +412,7 @@ export class AgentSpawnAdmissionOwner {
           maxDepth: MAX_GRANT_RUNTIME_LINEAGE_DEPTH,
           liveInTree: occupied.size,
           maxLiveInTree: MAX_LIVE_GRANT_RUNTIME_DESCENDANTS,
+          remainingLiveInTree: Math.max(0, MAX_LIVE_GRANT_RUNTIME_DESCENDANTS - occupied.size),
         },
         parent: parent ?? null,
         nodes: [...occupied.values()].slice(0, MAX_LIVE_GRANT_RUNTIME_DESCENDANTS),

@@ -1,3 +1,4 @@
+import { isE2EDiagnosticsEnabled } from './diagnostics'
 import { expect, type Page, type TestInfo } from '@playwright/test'
 import type { LabelColor } from '../../src/shared/types/labelColor'
 import {
@@ -284,6 +285,9 @@ export async function persistedLabels(page: Page) {
 }
 
 export async function attachIdentityFrame(page: Page, testInfo: TestInfo, name: string) {
+  if (!isE2EDiagnosticsEnabled()) {
+    return
+  }
   const screenshot = testInfo.outputPath(`${name}.png`)
   await page.screenshot({ path: screenshot, animations: 'disabled' })
   await testInfo.attach(name, { path: screenshot, contentType: 'image/png' })

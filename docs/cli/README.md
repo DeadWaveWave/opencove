@@ -486,6 +486,7 @@ and results carry `spawnedBy`, `lineageDepth` and `lineageStatus`. See [Lineage]
 
 Use `opencove events` for resumable, read-only NDJSON observations. Consume
 `stream.ready` before starting work; save each complete record's cursor and resume
-manually with `--after`. `stream.gap` is terminal. See [Events](EVENTS.md) and the
+with `--cursor-file <path>` or manually with `--after`. Use `--until-each-turn`
+with repeated `--node` to observe one completion per node. `stream.gap` is terminal. See [Events](EVENTS.md) and the
 [versioned transport contract](EVENT_STREAM_PROTOCOL.md) for filtering, attribution,
 bounded output, grant revocation and exit codes.
