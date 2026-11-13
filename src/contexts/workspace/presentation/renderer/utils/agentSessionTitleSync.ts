@@ -1,6 +1,7 @@
 import type { Node } from '@xyflow/react'
 import { isResumeSessionBindingVerified } from '@contexts/agent/domain/agentResumeBinding'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
+import { buildControlSurfaceAgentLaunchTitle } from '@contexts/workspace/domain/controlSurfaceAgentLaunchTitle'
 import type { AgentSessionSummary, TerminalSessionMetadataEvent } from '@shared/contracts/dto'
 import type { TerminalNodeData } from '../types'
 import { buildAgentNodeTitle } from './agentTitle'
@@ -68,12 +69,14 @@ export function isAgentNodeAwaitingSessionTitle(node: Node<TerminalNodeData>): b
     return false
   }
 
+  const { provider, effectiveModel, model, prompt } = node.data.agent
+  const launchModel = effectiveModel ?? model
+  // Canvas and control-surface launches have distinct placeholders:
+  // a first prompt arriving after the initial catalog scan still needs title sync.
+  const controlSurfaceLaunchTitle = buildControlSurfaceAgentLaunchTitle(provider, launchModel)
   return (
-    node.data.title ===
-    buildAgentNodeTitle(
-      node.data.agent.provider,
-      node.data.agent.effectiveModel ?? node.data.agent.model,
-    )
+    node.data.title === buildAgentNodeTitle(provider, launchModel) ||
+    (!prompt?.trim() && node.data.title === controlSurfaceLaunchTitle)
   )
 }
 

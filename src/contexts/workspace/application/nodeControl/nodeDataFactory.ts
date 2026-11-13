@@ -12,6 +12,7 @@ import type {
 import { resolveWebsiteNavigationUrl } from '../../../../shared/utils/websiteUrl'
 import { createAppError } from '../../../../shared/errors/appError'
 import { resolveInitialAgentRuntimeStatus } from '../../../agent/domain/agentRuntimeStatus'
+import { buildControlSurfaceAgentLaunchTitle } from '../../domain/controlSurfaceAgentLaunchTitle'
 import {
   resolveCanonicalNodeMaxSize,
   resolveCanonicalNodeMinSize,
@@ -251,7 +252,7 @@ export function resolveNodeTitle(options: {
 
     const provider = options.agentRuntime?.provider ?? 'codex'
     const model = options.agentRuntime?.effectiveModel ?? options.agentRuntime?.model ?? null
-    return model ? `${provider} ${model}` : 'Agent'
+    return buildControlSurfaceAgentLaunchTitle(provider, model)
   }
 
   if (options.kind === 'terminal') {
