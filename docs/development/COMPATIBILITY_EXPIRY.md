@@ -33,7 +33,7 @@
 
 - **只用版本，不用日期。** 版本检查只取决于提交里的文件，同一个提交永远得到同一个结果；日期会让 `main` 在某一天无代码改动地变红。发布节奏约每月一个 minor，所以一个 minor 约等于一个月。
 - **没有 `never`。** 每条路径要么绑定一个版本，要么绑定 floor。
-- `until` 最多只能比 `package.json` 当前版本大 3 个 minor（当前 `0.5.x` 时最晚 `0.8.0`），防止用一个遥远的版本让条目永不到期；超出会以 `invalid-expiry` 失败。
+- `until` 最多只能比 `package.json` 当前版本大 3 个 minor（当前 `0.5.x` 时最晚 `0.8.0`），防止用一个遥远的版本让条目永不到期；超出会以 `invalid-expiry` 失败。不接受“下一个主版本 `.0.0`”之类不受距离限制的值：那会让 `1.0.0` 成为所有条目最省事的写法，等于取消这条限制；结束时间确实更远的条目，到期时续期即可，每次续期都是一次有记录的决定。`dataBefore` 只允许 `user-data` 和 `machine-residue` 两种 kind 使用，其他 kind 一律用 `until`，否则同样以 `invalid-expiry` 失败。
 - 运行时与 wire 兼容（混合版本的 Worker / 客户端 / endpoint、旧 Control Surface 输入处理、旧 PTY 几何 revision）默认 `until` 为两个 minor 之后；当前默认是 `0.7.0`。
 - 数据迁移（`user-data`、`machine-residue`）用 `dataBefore`，只有 owner 提高 floor 才会到期，**不会**因为随手写的日期到期。floor 每个发布周期复查一次（`reviewBy`）。
 - 到期之后只有两个选择：删除这条路径，或带着新的 `reason` 和 `decidedIn` 续期。续期的 diff 应出现在发布准备 PR 中。

@@ -10,6 +10,10 @@ export const COMPAT_KINDS = [
   'kill-switch',
 ]
 
+// `dataBefore` waits for the owner to raise the floor, so only data kinds may use it; every other
+// kind is bound by `until` and its three-minor horizon.
+const DATA_BEFORE_KINDS = ['user-data', 'machine-residue']
+
 const VERSION_PATTERN = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/
 
 export function parseVersion(value) {
@@ -120,6 +124,14 @@ export function validateRegistry(registry, issues, baseVersion) {
         id,
       )
     ) {
+      ok = false
+    }
+    if (ok && expires.dataBefore !== undefined && !DATA_BEFORE_KINDS.includes(entry.kind)) {
+      issues.push({
+        rule: 'invalid-expiry',
+        id,
+        message: `${where} uses \`dataBefore\`, which only \`${DATA_BEFORE_KINDS.join('` and `')}\` entries may use; a ${entry.kind} entry needs \`until\`.`,
+      })
       ok = false
     }
     if (ok && expires.until !== undefined) {

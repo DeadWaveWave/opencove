@@ -12,8 +12,6 @@
     "src/contexts/agent/application/PromptDeliveryEvidence.ts": 1,
     "src/contexts/agent/domain/agentRunStateArbiter.ts": 1,
     "src/contexts/agent/infrastructure/cli/PiSessionFiles.ts": 1,
-    "src/contexts/agent/infrastructure/providers/codex/CodexAgentProviderContribution.ts": 1,
-    "src/contexts/agent/infrastructure/providers/pi/PiAgentStatusExtension.ts": 1,
     "src/contexts/agent/infrastructure/watchers/SessionTurnStateDetector.ts": 3,
     "src/contexts/plugins/domain/pluginCompatibility.ts": 1,
     "src/contexts/plugins/infrastructure/LocalPluginFiles.ts": 2,
