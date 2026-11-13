@@ -55,13 +55,13 @@
 
 ### 架构契约变更 Gate (Architecture Contract Change Gate)
 
-本节只记录必须遵守的入口规则。详细 checklist 和 guard 行为见
+本节只记录必须遵守的入口规则。命令、ratchet 语义与例外写法见
 `harness/architecture/README.md`。
 
 - 契约文档包括：`docs/architecture/ARCHITECTURE.md`、`docs/architecture/CONTROL_SURFACE.md`、`docs/architecture/RECOVERY_MODEL.md`。
-- 如果改动影响依赖方向、层职责、进程边界、allowlist、禁止 import/API 或 severity，必须同步 `harness/architecture/` 的规则、分析器、测试和结果。
+- 如果改动影响依赖方向、层职责、进程边界、allowlist、禁止 import/API 或 severity，必须同步 `harness/architecture/` 的规则、分析器和测试（计数下降时再运行 `pnpm arch:ratchet`）。
 - 如果只是措辞、错别字或说明性例子，必须在 review/提交说明中声明 `no executable-rule impact`。
-- 本地 staged guard：`pnpm arch:doc-sync`。
+- `pnpm arch:check` 是 `verify:quick` 与 CI 的阻塞门禁：error 级发现必须为 0，warn 级发现按 (规则, 文件) 计数不得偏离 `harness/architecture/ratchet.json`。新增违规的唯一途径是在 `harness/architecture/rules.json` 中添加带 `reason` 的例外。
 
 ### 高风险问题预防策略（只列最容易漏的）
 
@@ -222,7 +222,7 @@ E2E 选组规则维护在 `scripts/precommit-e2e-selection.mjs`。快速门禁�
 
 -   **Agent 关键指令与决策门槛**：`AGENTS.md`
 -   **架构标准（DDD + Clean）**：`docs/architecture/ARCHITECTURE.md`
--   **架构 harness（源码偏离检查）**：说明见 `docs/architecture/ARCHITECTURE_HARNESS.md`，工具目录见 `harness/architecture/`
+-   **架构 harness（源码偏离检查）**：说明见 `harness/architecture/README.md`
 -   **Project / Space / Endpoint / Mount 能力链路**：`docs/architecture/WORKSPACE_CAPABILITY_ARCHITECTURE.md`
 -   **统一控制面（command/query/event）**：`docs/architecture/CONTROL_SURFACE.md`
 -   **CLI 规范**：`docs/cli/README.md`
