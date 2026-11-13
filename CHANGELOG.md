@@ -22,6 +22,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Documents: typing fast in a document window, for example right after a terminal file link opens it, no longer drops characters or moves the caret. (#621)
 
+### Fixed
+
+- Terminals: when the GPU drops a terminal's WebGL renderer, the terminal switches to plain rendering in place and keeps its scrollback, scroll position and selection, instead of reloading its history. (#622)
+
 ## [0.5.0] - 2026-11-12
 
 OpenCove 0.5.0 redraws the app in pixels around one generated theme, shows on the canvas what every Agent is doing, tells you once when an Agent needs you, and lets Agents hand work to each other through a rebuilt `opencove` CLI. The Worker now owns what is saved and which conversation each Claude window resumes.
