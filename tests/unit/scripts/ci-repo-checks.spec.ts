@@ -26,12 +26,16 @@ describe('repository checks wiring', () => {
 
     expect(pkg.scripts['verify:checks'].startsWith('pnpm verify:repo && ')).toBe(true)
     expect(pkg.scripts['verify:repo']).toBe(
-      'pnpm line-check && pnpm naming-check && pnpm ui:style-check && pnpm arch:check && pnpm deadcode:check && pnpm compat:check',
+      'pnpm line-check && pnpm naming-check && pnpm ui:style-check && pnpm canvas:state-check && pnpm arch:check && pnpm deadcode:check && pnpm compat:check',
     )
     expect(pkg.scripts['compat:check']).toBe('node scripts/check-compat-expiry.mjs')
     expect(pkg.scripts['line-check']).toBe('node scripts/check-max-lines.mjs')
     expect(pkg.scripts['naming-check']).toBe('node scripts/check-naming.mjs')
     expect(pkg.scripts['ui:style-check']).toBe('node scripts/check-ui-styles.mjs')
+    expect(pkg.scripts['canvas:state-check']).toBe('node scripts/check-canvas-state.mjs')
+    expect(pkg.scripts['canvas:state-ratchet']).toBe(
+      'node scripts/check-canvas-state.mjs --update-ratchet',
+    )
     expect(pkg.scripts.prepare).toBeUndefined()
     expect(pkg['lint-staged']).toBeUndefined()
     expect(pkg.devDependencies.husky).toBeUndefined()
