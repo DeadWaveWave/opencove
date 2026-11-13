@@ -17,14 +17,14 @@ it('keeps the namespace fence after the quiet window until a fresh Start accepts
     f.send(hook('C', 'UserPromptSubmit', 20))
     expect(f.fence()).toMatchObject({
       claudeClearReady: false,
-      conversationQuarantined: false,
+      conversationQuarantined: true,
       snapshot: { state: 'unknown', turn: null },
     })
-    expect(f.registry.promptIdentity(f.fence())?.providerSessionId).toBeUndefined()
+    expect(f.registry.promptIdentity(f.fence())?.providerSessionId).toBe('B')
     f.send({ ...hook('C', 'SessionStart', 15), sessionStartSource: 'resume' })
     f.send(hook('C', 'UserPromptSubmit', 20))
     expect(f.fence().snapshot.state).toBe('working')
-    expect(owner).not.toHaveBeenCalled()
+    expect(owner).toHaveBeenCalledTimes(2)
   } finally {
     f.registry.dispose()
   }

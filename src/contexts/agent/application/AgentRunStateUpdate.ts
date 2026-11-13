@@ -382,6 +382,20 @@ export function commitAgentRunUpdate(
     (observation.state === 'working' || observation.state === 'waiting')
   ) {
     entry.conversation?.veto()
+    if (observation.source === 'session_file') {
+      entry.conversation?.input.block(observation.observedAt)
+    }
+  }
+  if (
+    result.accepted &&
+    observation?.source === 'claude_hook' &&
+    !observation.degraded &&
+    ['UserPromptSubmit', 'Stop', 'StopFailure'].includes(observation.hookEventName ?? '')
+  ) {
+    entry.conversation?.input.confirm(
+      observation.emittedAtMs ?? observation.observedAt,
+      evidence?.promptId,
+    )
   }
   if (
     canRelease &&

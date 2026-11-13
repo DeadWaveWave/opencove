@@ -11,6 +11,10 @@ import {
 import type { ClaudeTranscriptObservation } from '../../../shared/runtime/agentHook/claudeTranscript'
 import type { ClaudeConversationCheckpoint } from '../../../shared/runtime/agentHook/claudeConversation'
 
+import { ClaudeConversationTranscriptBuffer } from './ClaudeConversationTranscriptBuffer'
+import { ClaudeConversationInput } from './ClaudeConversationInput'
+import { ClaudeConversationTimer } from './ClaudeConversationTimer'
+
 export const CLAUDE_CONVERSATION_WINDOW_MS = 2_000
 const MAX_PENDING = 64
 const MAX_RECEIPTS = 256
@@ -25,19 +29,16 @@ type Ports = {
 }
 /** Invocation-local bounded event-time commit. Only the lifecycle classifier decides transitions. */
 export class ClaudeLiveConversation {
+  readonly input = new ClaudeConversationInput()
   private lifecycle: ClaudeConversationLifecycle
   private readonly retired = new Set<string>()
   private readonly receipts = new Set<string>()
   private pending: Request[] = []
-  private pendingTranscripts: {
-    record: ClaudeTranscriptObservation
-    consume(record: ClaudeTranscriptObservation): void
-  }[] = []
+  private readonly transcripts = new ClaudeConversationTranscriptBuffer()
+  private readonly timer: ClaudeConversationTimer
   private windowGeneration?: number
   private windowProvider?: string
-  private cancelWindow?: () => void
   private openedAt?: number
-  private deadline?: number
   private clearPending = false
   private orphanAt?: number
   private completedBeforeClear: string | null = null
@@ -57,9 +58,11 @@ export class ClaudeLiveConversation {
   quarantined = false
 
   constructor(
-    private readonly schedule: (callback: () => void, delay: number) => () => void,
+    schedule: (callback: () => void, delay: number) => () => void,
     initial?: ClaudeConversationCheckpoint,
+    private readonly now: () => number = Date.now,
   ) {
+    this.timer = new ClaudeConversationTimer(schedule)
     this.lifecycle = new ClaudeConversationLifecycle(initial)
     this.providerSessionId = initial?.current ?? initial?.retired.at(-1)?.sessionId
     for (const item of initial?.retired ?? []) {
@@ -69,7 +72,7 @@ export class ClaudeLiveConversation {
     this.committedAt = initial?.watermark ?? -Infinity
   }
   get active(): boolean {
-    return this.clearPending
+    return this.clearPending || this.pending.length > 0
   }
   synchronize(initial?: ClaudeConversationCheckpoint): void {
     if (!initial) {
@@ -77,7 +80,7 @@ export class ClaudeLiveConversation {
     }
     this.lifecycle = new ClaudeConversationLifecycle(initial)
     this.providerSessionId = initial.current ?? initial.retired.at(-1)?.sessionId
-    this.committedAt = initial.watermark ?? -Infinity
+    this.committedAt = Math.max(this.committedAt, initial.watermark ?? -Infinity)
     this.ended = initial.ended
     for (const item of initial.retired) {
       this.retired.add(item.sessionId)
@@ -165,7 +168,7 @@ export class ClaudeLiveConversation {
       }
       this.clearPending = true
       this.completedBeforeClear = ports.completedTurnId()
-      this.openedAt = now
+      this.openedAt = this.orphanAt ?? now
     }
     if (
       event.hookEventName === 'SessionEnd' ||
@@ -181,9 +184,9 @@ export class ClaudeLiveConversation {
     }
     this.enqueue(request, now, ports)
     if (!this.clearPending && event.hookEventName === 'SessionStart') {
-      this.flush(ports)
+      this.flush(ports, true, now)
     } else if (this.clearPending && hasCompleteClearTurn(this.pending.map(item => item.event))) {
-      this.flush(ports, false)
+      this.flush(ports, false, now)
     }
   }
   private isRetiredEvent(event: Request['event']): boolean {
@@ -214,25 +217,13 @@ export class ClaudeLiveConversation {
     ) {
       return false
     }
-    if (this.pendingTranscripts.length === MAX_PENDING) {
-      this.pendingTranscripts = []
+    if (!this.transcripts.push(record, consume)) {
       this.uncertain = true
-    } else {
-      this.pendingTranscripts.push({ record, consume })
     }
     return true
   }
   private reconcileTranscripts(): void {
-    const pending = this.pendingTranscripts
-    this.pendingTranscripts = []
-    for (const item of pending) {
-      if (this.disposed) {
-        break
-      }
-      if (item.record.providerSessionId === this.providerSessionId) {
-        item.consume({ ...item.record, conversationGeneration: this.generation })
-      }
-    }
+    this.transcripts.drain(this.providerSessionId, this.generation, () => this.disposed)
   }
   private enqueue(request: Request, now: number, ports: Ports): void {
     if (this.disposed) {
@@ -246,22 +237,15 @@ export class ClaudeLiveConversation {
     this.pending.push(request)
     if (!this.clearPending) {
       this.orphanAt ??= now
+      this.timer.at(this.orphanAt + CLAUDE_CONVERSATION_WINDOW_MS, now, () =>
+        this.failClosed(ports),
+      )
       return
     }
     const deadline = Math.min(now + CLAUDE_CLEAR_QUIET_MS, this.openedAt! + CLAUDE_CLEAR_MAX_MS)
-    if (deadline !== this.deadline) {
-      this.cancelWindow?.()
-      this.deadline = deadline
-      this.cancelWindow = this.schedule(
-        () => {
-          this.cancelWindow = undefined
-          this.flush(ports)
-        },
-        Math.max(0, deadline - now),
-      )
-    }
+    this.timer.at(deadline, now, () => this.flush(ports, true, this.now()))
   }
-  private flush(ports: Ports, quiet = true): void {
+  private flush(ports: Ports, quiet: boolean, now: number): void {
     if (this.disposed) {
       return
     }
@@ -308,6 +292,22 @@ export class ClaudeLiveConversation {
     if (this.disposed) {
       return
     }
+    if (this.pending.length) {
+      this.orphanAt ??= this.openedAt!
+      const deadline = Math.min(
+        this.orphanAt + CLAUDE_CONVERSATION_WINDOW_MS,
+        (this.openedAt ?? this.orphanAt) + CLAUDE_CLEAR_MAX_MS,
+      )
+      if (deadline <= now) {
+        this.failClosed(ports)
+        return
+      }
+      this.windowGeneration = this.generation
+      this.windowProvider = this.providerSessionId
+      this.timer.at(deadline, now, () => this.failClosed(ports))
+      ports.settled()
+      return
+    }
     const completed = ports.completedTurnId()
     if (!quiet && (!completed || completed === this.completedBeforeClear)) {
       this.windowGeneration = this.generation
@@ -315,9 +315,8 @@ export class ClaudeLiveConversation {
       ports.settled()
       return
     }
-    this.cancelWindow?.()
-    this.cancelWindow = undefined
-    this.openedAt = this.deadline = this.orphanAt = undefined
+    this.timer.clear()
+    this.openedAt = this.orphanAt = undefined
     this.clearPending = false
     this.quarantined = this.uncertain
     // No temporary clear-ready projection for an intermediate conversation in this batch.
@@ -338,6 +337,14 @@ export class ClaudeLiveConversation {
       request.publish(this.generation, 'ignore')
       return
     }
+    if (
+      event.hookEventName !== 'SessionStart' &&
+      event.claudeSessionId !== this.providerSessionId &&
+      !this.retired.has(event.claudeSessionId)
+    ) {
+      this.pending.push(request)
+      return
+    }
     const action = this.lifecycle.accept(event)
     if (isClaudeConversationActivity(event) || event.hookEventName === 'SessionStart') {
       this.committedAt = Math.max(this.committedAt, event.emittedAtMs ?? -Infinity)
@@ -349,14 +356,6 @@ export class ClaudeLiveConversation {
         event.claudeSessionId === this.providerSessionId &&
         event.hookEventName !== 'SessionStart'
       request.publish(this.generation, action, legacyState)
-      // Unknown successor activity without its Start can never restore the predecessor's authority.
-      if (
-        isClaudeConversationActivity(event) &&
-        !this.retired.has(event.claudeSessionId) &&
-        event.claudeSessionId !== this.providerSessionId
-      ) {
-        this.uncertain = true
-      }
       return
     }
     const previous = this.providerSessionId
@@ -368,6 +367,7 @@ export class ClaudeLiveConversation {
       (!this.clearPending || (completed !== null && completed !== this.completedAtStart))
     if (action === 'start' || action === 'end') {
       this.ready = false
+      this.input.clear()
       this.reconcileTranscripts()
       if (this.disposed) {
         return
@@ -435,13 +435,12 @@ export class ClaudeLiveConversation {
     this.quarantined = true
     this.ready = false
     this.generation++
-    this.cancelWindow?.()
-    this.cancelWindow = undefined
-    this.openedAt = this.deadline = this.orphanAt = undefined
+    this.timer.clear()
+    this.openedAt = this.orphanAt = undefined
     this.clearPending = false
     const rejected = this.pending
     this.pending = []
-    this.pendingTranscripts = []
+    this.transcripts.clear()
     this.windowGeneration = undefined
     this.windowProvider = undefined
     ports.invalidate()
@@ -462,6 +461,7 @@ export class ClaudeLiveConversation {
   ): void {
     this.synchronize(checkpoint)
     if (boundary) {
+      this.input.clear()
       this.generation++
       this.veto()
       this.currentClear = this.endedInClear = false
@@ -473,12 +473,11 @@ export class ClaudeLiveConversation {
   dispose(): void {
     this.disposed = true
     this.ready = false
-    this.cancelWindow?.()
-    this.cancelWindow = undefined
-    this.openedAt = this.deadline = this.orphanAt = undefined
+    this.timer.clear()
+    this.openedAt = this.orphanAt = undefined
     this.clearPending = false
     this.pending = []
-    this.pendingTranscripts = []
+    this.transcripts.clear()
     this.windowGeneration = undefined
     this.windowProvider = undefined
   }

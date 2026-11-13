@@ -20,17 +20,22 @@ export function observeRunConversation(
     const request = record.conversation
     const clear = isClaudeClearEvidence(request.event)
     if (!entry.conversation?.active && !clear) {
-      if (entry.conversation) {
-        if (routeOrdinaryClaudeConversation(entry.conversation, request)) {
-          projectConversation(entry, false, ports)
-        }
+      const route =
+        entry.conversation &&
+        routeOrdinaryClaudeConversation(
+          entry.conversation,
+          request,
+          entry.model.observations.claude_hook,
+        )
+      if (route !== 'pending') {
+        return
       }
-      return
     }
     if (!entry.conversation) {
       entry.conversation = new ClaudeLiveConversation(
         entry.conversationSchedule,
         request.initialState,
+        ports.now,
       )
     } else if (!entry.conversation.active) {
       entry.conversation.synchronize(request.initialState)
@@ -93,6 +98,19 @@ export function observeRunConversation(
     (record.record.kind !== 'invalid_user' || record.record.input !== false)
   ) {
     entry.conversation.veto()
+  }
+  if (
+    entry.conversation &&
+    record.record?.kind === 'user' &&
+    input !== 'auxiliary' &&
+    !entry.history.hasCurrentPrompt({
+      providerSessionId: record.providerSessionId,
+      promptId: record.record.promptId,
+    }) &&
+    !entry.history.hasEndedPrompt(record.record.promptId, record.providerSessionId)
+  ) {
+    entry.conversation.veto()
+    entry.conversation.input.block(ports.now(), record.record.promptId)
   }
   entry.continuation.transcript(record, entry.history, ports.now())
   ports.update()

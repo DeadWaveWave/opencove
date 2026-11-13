@@ -38,7 +38,10 @@ export function projectRunStateFence(entry: AgentRunEntry, epoch: string): RunSt
     lastTurnEnd: model.lastTurnEnd,
     conversationGeneration: entry.conversation?.generation,
     claudeClearReady: entry.conversation?.ready ?? false,
-    conversationQuarantined: !!(entry.conversation?.active && entry.conversation.quarantined),
+    conversationQuarantined: !!(
+      entry.conversation?.input.blocked ||
+      (entry.conversation?.active && entry.conversation.quarantined)
+    ),
     watermarks: Object.fromEntries(
       Object.entries(model.observations).map(([source, value]) => [source, value.sourceSequence]),
     ),
