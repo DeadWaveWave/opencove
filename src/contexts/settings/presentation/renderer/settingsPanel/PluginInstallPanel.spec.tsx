@@ -81,7 +81,7 @@ describe('explicit plugin installation', () => {
     })
     fireEvent.click(screen.getByTestId('settings-plugin-install-submit'))
     expect(await screen.findByRole('alert')).toHaveTextContent('Manifest missing')
-    expect(screen.getByRole('alert')).toHaveTextContent('/candidates/example')
+    expect(screen.getByRole('alert')).not.toHaveTextContent('/candidates/example')
     expect(installed).not.toHaveBeenCalled()
     expect(screen.getByText(/No version was installed/)).toBeVisible()
     expect(screen.getByTestId('settings-plugin-candidate-apply-initial-failure')).toBeEnabled()
@@ -108,4 +108,50 @@ describe('explicit plugin installation', () => {
       }),
     )
   })
+})
+
+it('refreshes the alert and candidate diagnostic after each subsequent Apply failure', async () => {
+  vi.mocked(registry.changeInstalledPlugin)
+    .mockResolvedValueOnce({
+      status: 'failed',
+      error: 'Manifest missing',
+      candidateDirectory: '/candidate',
+      candidateId: 'retry',
+    })
+    .mockResolvedValueOnce({
+      status: 'failed',
+      error: 'New build failure',
+      candidateDirectory: '/candidate',
+      candidateId: 'retry',
+    })
+    .mockResolvedValueOnce({
+      status: 'conflict',
+      error: 'New source conflict',
+      candidateDirectory: '/candidate',
+      candidateId: 'retry',
+    })
+  const installed = vi.fn()
+  render(<PluginInstallPanel onCancel={vi.fn()} onInstalled={installed} />)
+  fireEvent.change(screen.getByTestId('settings-plugin-install-source'), {
+    target: { value: 'https://example.test/repo.git' },
+  })
+  fireEvent.click(screen.getByTestId('settings-plugin-install-submit'))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Manifest missing')
+  fireEvent.click(screen.getByTestId('settings-plugin-candidate-apply-retry'))
+  await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('New build failure'))
+  expect(screen.getByTestId('settings-plugin-candidate-retry')).toHaveTextContent(
+    'New build failure',
+  )
+  expect(screen.getByTestId('settings-plugin-candidate-retry')).not.toHaveTextContent(
+    'Manifest missing',
+  )
+  fireEvent.click(screen.getByTestId('settings-plugin-candidate-apply-retry'))
+  await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('New source conflict'))
+  expect(screen.getByTestId('settings-plugin-candidate-retry')).toHaveTextContent(
+    'New source conflict',
+  )
+  expect(screen.getByTestId('settings-plugin-candidate-retry')).not.toHaveTextContent(
+    'New build failure',
+  )
+  expect(installed).not.toHaveBeenCalled()
 })

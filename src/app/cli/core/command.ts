@@ -68,6 +68,10 @@ export interface CommandContext extends CommandArgs {
   whoami(): Promise<CallerIdentity>
   self(kind: NonNullable<OptionSpec['selector']>): Promise<string>
 }
+export type TextOutputContext = Pick<CommandContext, 'io' | 'options'> & {
+  /** Standard renderer with this command's effective options and render spec. */
+  render(): string
+}
 export interface Command {
   /** Explicit usage for cross-option constraints enforced by the command. */
   usage?: string
@@ -84,6 +88,10 @@ export interface Command {
   quietIdPath?: string
   mutation?: boolean
   stream?: boolean
+  streamProjection?: boolean
+  /** The command resolves its own selectors (e.g. per target, or after decoding a cursor). */
+  resolveInExecute?: boolean
+  executionScope?(args: CommandArgs, io: CliIo): { io: CliIo; dispose(): void }
   timeoutMs?: number
   connect: boolean
   selectOperation?(args: CommandArgs): OperationId
@@ -92,7 +100,8 @@ export interface Command {
   operation?: OperationId
   validateBeforeConnect?(args: CommandArgs, env: CliIo['env']): void
   buildInput?(args: CommandArgs): unknown
-  textOutput?(result: unknown): string
+  exitCode?(result: unknown): number
+  textOutput?(result: unknown, context: TextOutputContext): string | undefined
   execute?(ctx: CommandContext): Promise<CommandResult>
   errorTargets?: ErrorTarget[]
   rawQueryFields?: boolean

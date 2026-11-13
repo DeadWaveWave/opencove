@@ -60,6 +60,12 @@ test('real Worker lists cap display without hiding context neighbors or selector
       await terminalCommand(page, shell, 'opencove context --fields nodes.id', 'CONTEXT_FULL'),
     )
     expect(context.nodes).toHaveLength(119)
+    const limitedContext = jsonOutput(
+      await terminalCommand(page, shell, 'opencove context --limit 1', 'CONTEXT_LIMIT'),
+    )
+    expect(limitedContext.nodes).toHaveLength(1)
+    expect(limitedContext.next).toHaveLength(1)
+    expect(limitedContext.truncated).toMatchObject({ nodes: 119, next: 4 })
     const listedSpaces = jsonOutput(
       await terminalCommand(
         page,

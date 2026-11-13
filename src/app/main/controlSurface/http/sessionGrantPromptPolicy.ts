@@ -1,6 +1,8 @@
 import type { AgentProviderId } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
 import type { GrantCheckDeps } from './sessionGrantPolicy'
+import { assertInitialPromptText } from '../../../../shared/utils/initialPromptValidation'
+import { initialPromptFeedback } from '../../../../shared/errors/initialPromptFeedback'
 
 // Native TUI command channels, including Claude's legacy quick-memory entry.
 const commandPrefixes: Readonly<Record<AgentProviderId, readonly string[]>> = {
@@ -20,22 +22,36 @@ export function assertSessionGrantMessagePrompt(
   text: string,
   options: { provider?: AgentProviderId; operationId: string; field: 'text' | 'prompt' },
 ): void {
+  assertInitialPromptText(text)
   const prefixes = options.provider ? commandPrefixes[options.provider] : commonPrefixes
-  // Include Python's C0 separators and Unicode whitespace (such as Rust's NEL).
-  // eslint-disable-next-line no-control-regex -- Inspect provider whitespace without rewriting input.
-  const first = text.replace(/^[\s\p{White_Space}\u001c-\u001f]+/u, '').charAt(0)
-  if (!prefixes.includes(first)) {
+  // Python C0 separators, JS whitespace and Rust NEL are inspected without rewriting input.
+  const inspected = text.replace(
+    // eslint-disable-next-line no-control-regex -- Provider whitespace compatibility.
+    /^[\s\p{White_Space}\u001c-\u001f]+|[\s\p{White_Space}\u001c-\u001f]+$/gu,
+    '',
+  )
+  const promptReason = prefixes.includes(inspected.charAt(0))
+    ? 'provider_command_prefix'
+    : text.includes('@')
+      ? 'unverified_file_reference'
+      : options.provider === 'codex' && /\$[A-Za-z0-9_:-]+/.test(text)
+        ? 'provider_skill_reference'
+        : ['exit', 'quit', ':q', ':q!', ':wq', ':wq!'].includes(inspected.toLowerCase())
+          ? 'provider_exit_word'
+          : null
+  if (!promptReason) {
     return
   }
-  const list =
-    prefixes.length > 1 ? `${prefixes.slice(0, -1).join(', ')} or ${prefixes.at(-1)}` : prefixes[0]
+  const feedback = initialPromptFeedback(promptReason, inspected)
   throw createAppError('common.forbidden', {
+    params: feedback.params,
     details: {
       reason: 'field_denied',
-      promptReason: 'provider_command_prefix',
+      promptReason,
       operationId: options.operationId,
       field: options.field,
-      message: `Prompts from agent terminals cannot start with ${list}; ${prefixes.length === 1 ? 'this prefix can run commands' : 'these prefixes can run commands'} in the target agent, so start with words.`,
+      message: feedback.message,
+      hint: feedback.hint,
     },
   })
 }

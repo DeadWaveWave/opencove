@@ -90,39 +90,42 @@ Global options: see "opencove --help".
 `;
 
 exports[`agent read help is offline and complete 1`] = `
-"Usage: opencove agent read --node <id> [options]
+"Usage: opencove agent read --node <node-id-(repeat-for-up-to-10-targets)> [options]
 
 Read an agent reply or inspect its current terminal screen
 
-Read the latest ended reply, or exactly --turn <turnId> from agent prompt. Plain text is the default even when piped; -o json exposes outcome, durability and retained deliveryIds/promptIds. Exact reads never fall back to another turn or transcript.
+Read the latest ended reply, or exactly --turn <turnId>. Single-target output defaults to plain text; -o json includes outcome and durability. Exact reads never fall back to another turn or transcript.
 
-Loop: prompt → delivery status → wait --turn <turnId> → read --turn <turnId> -o json. Check outcome and reply; never resend because a read fails. Local archived exact reads survive restart. Claude and Codex lifecycle hooks supply exact-turn replies. Codex keeps the first matching Stop reply that ends the local turn; later continuation does not replace it.
+Loop: prompt → delivery status → wait --turn <turnId> → read --turn <turnId> -o json. Check outcome; never resend because reading fails. Local archived exact reads survive restart.
 
---screen shows the visible terminal (last 40 lines); --scrollback adds retained history (last 200; --lines 1–5000; none on the alternate screen). Both work for terminals and agent windows and strip ANSI. Inspect --screen for drafts/dialogs before prompting. Reading never sends input. --screen and --scrollback exclude each other and --last/--turn.
+Repeat --node for up to 10 targets: always a JSON array in input order, {node, ok, ...reply} or {node, ok:false, error}. Failures are independent. --turn requires one target; --expect-turn is unsupported; --last and screen options apply to all.
 
-Exit codes: 0 readable result (including empty content); 1 unavailable reply/transcript; 2 invalid input; 4 authentication or grant-policy refusal. Detailed fallback rules, truncation, retention and recovery: opencove skill read.
+--screen shows the visible terminal (last 40 lines); --scrollback adds history (last 200; --lines 1–5000). Both strip ANSI and never send input. Screen modes exclude each other and --last/--turn.
 
-deliveryIds are retained correlations of OpenCove deliveries with this turn, including refused or uncertain attempts. Membership proves neither submission nor consumption, and an empty list proves nothing either: delivery records live in memory only, are cleared when OpenCove restarts and expire 30 minutes after resolving; inspect each deliveryId with opencove agent delivery <id>. promptIds are the provider prompt IDs for this turn (Claude continuations included); agent delivery does not accept them.
+deliveryIds are retained correlations, including refused or uncertain attempts, proving neither submission nor consumption: inspect each deliveryId with opencove agent delivery <id>. promptIds are the provider prompt IDs, not delivery IDs.
+
+Exit codes: 0 readable results; otherwise the first failing target’s exit (1 unavailable content; 2 invalid input; 4 authorization refusal). Fallback, correlation, truncation, retention and recovery: opencove skill read.
 
 Options:
-  --node <id>         Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
-  --last              Read the latest ended turn (default; --turn selects an exact turn)
-  --turn <turnId>     Read exactly this OpenCove turn ID from agent prompt; never falls back
-  --screen            Inspect the current terminal screen as plain text instead of the final message
-  --scrollback        Read retained terminal history and screen (default: 200 lines; maximum: 5000)
-  --lines <n>         Return the last n rendered lines (positive integer; requires --screen or --scrollback)
-  --space <selector>  Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
-  --project <id>      Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --node <node-id-(repeat-for-up-to-10-targets)>  Node ID (repeat for up to 10 targets); also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
+  --last                                          Read the latest ended turn (default; --turn selects an exact turn)
+  --turn <turnId>                                 Read exactly this OpenCove turn ID from agent prompt; never falls back
+  --screen                                        Inspect the current terminal screen as plain text instead of the final message
+  --scrollback                                    Read retained terminal history and screen (default: 200 lines; maximum: 5000)
+  --lines <n>                                     Return the last n rendered lines (positive integer; requires --screen or --scrollback)
+  --space <selector>                              Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>                                  Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
 Table output (-o table): not supported.
 Projectable fields: nodeId, sessionId, turnId, promptId, deliveryIds, promptIds, outcome, persisted, memoryOnlyReason, message, messageKind, truncated, source, provider, startedAt, cwd, resumeSessionId
 
 Projection example:
-  opencove agent read --node '<id>' --fields nodeId
+  opencove agent read --node '<node-id-(repeat-for-up-to-10-targets)>' --fields nodeId
   {"nodeId":"node-123"}
 
 Examples:
   opencove agent read --node "Reviewer" --screen
+  opencove agent read --node "Reviewer" --node "Lead"
   opencove agent read --node "Shell" --scrollback --lines 200
   opencove agent read --node "Reviewer" --screen --lines 20 -o json
   opencove agent read --node "Reviewer" --last

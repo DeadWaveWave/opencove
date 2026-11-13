@@ -1,17 +1,19 @@
 import { execFile } from 'node:child_process'
-import { copyFile, mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
+import { access, copyFile, mkdir, mkdtemp, readdir, realpath, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
 import { TerminalAgentTelemetryAssetStore } from '../../src/contexts/agent/infrastructure/terminal-activity/TerminalAgentTelemetryAssetStore'
+import { removePathWithRetry } from './workspace-canvas.testUtils'
 
 const execute = promisify(execFile)
 
 for (const shell of ['cmd', 'powershell'] as const) {
   test(`${shell} shim preserves Unicode profile, runtime executable and argument paths`, async () => {
     test.skip(process.platform !== 'win32', 'Native Windows script decoding and path expansion')
-    const root = await mkdtemp(join(tmpdir(), "opencove-shim 用户's 路径 🌊 "))
+    // Win32_Process reports long executable paths even when TEMP uses a RUNNER~1 alias.
+    const root = await realpath(await mkdtemp(join(tmpdir(), "opencove-shim 用户's 路径 🌊 ")))
     const runtimeDirectory = join(root, "应用's runtime")
     const runtime = join(runtimeDirectory, 'node.exe')
     const providerDirectory = join(root, 'provider bin')
@@ -80,9 +82,25 @@ for (const shell of ['cmd', 'powershell'] as const) {
       expect(stderr).toBe('')
       expect(JSON.parse(stdout)).toEqual({ args: userArgs, electronRunAsNode: null })
       expect(await readdir(assets.planDirectory)).toEqual([])
+      // execFile has observed shell close, and the PowerShell shim awaits both Node helpers.
+      // Prove that cleanup retries cannot conceal a surviving fixture process.
+      const processes = await execute(
+        'powershell.exe',
+        [
+          '-NoLogo',
+          '-NoProfile',
+          '-Command',
+          'Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($env:OPENCOVE_SHIM_TEST_ROOT, [System.StringComparison]::OrdinalIgnoreCase) } | Select-Object ProcessId, ParentProcessId, ExecutablePath | ConvertTo-Json -Compress',
+        ],
+        { env: { ...process.env, OPENCOVE_SHIM_TEST_ROOT: root }, windowsHide: true },
+      )
+      expect(processes.stderr).toBe('')
+      expect(processes.stdout.trim(), 'Fixture executables must exit before cleanup').toBe('')
     } finally {
       await store.dispose()
-      await rm(root, { recursive: true, force: true })
+      // Windows may retain an image/file handle briefly after exit (including scanner handles).
+      await removePathWithRetry(root)
+      await expect(access(root)).rejects.toMatchObject({ code: 'ENOENT' })
     }
   })
 }

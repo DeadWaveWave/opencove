@@ -1,3 +1,4 @@
+import { attachFailureFrame, isE2EDiagnosticsEnabled } from './diagnostics'
 /* eslint-disable no-await-in-loop -- Theme changes and real pointer interactions run in sequence. */
 import { expect, test, type Locator } from '@playwright/test'
 import { launchApp, selectCoveOption } from './workspace-canvas.helpers'
@@ -101,10 +102,12 @@ test('compact desktop icons keep hover, selection and keyboard feedback local in
           message: 'Hover lights only the icon pedestal',
         })
         .toBeGreaterThan(0)
-      await testInfo.attach(`desktop-icon-hover-${theme}`, {
-        body: await window.screenshot(),
-        contentType: 'image/png',
-      })
+      if (isE2EDiagnosticsEnabled()) {
+        await testInfo.attach(`desktop-icon-hover-${theme}`, {
+          body: await window.screenshot(),
+          contentType: 'image/png',
+        })
+      }
 
       await launch.click({ modifiers: ['Shift'] })
       await expect(node).toHaveClass(/selected/)
@@ -119,10 +122,12 @@ test('compact desktop icons keep hover, selection and keyboard feedback local in
           message: 'A compact-only selection keeps its geometry without a visible outer rectangle',
         })
         .toMatchObject({ backgroundAlpha: 0, borderAlpha: 0 })
-      await testInfo.attach(`desktop-icon-selected-${theme}`, {
-        body: await window.screenshot(),
-        contentType: 'image/png',
-      })
+      if (isE2EDiagnosticsEnabled()) {
+        await testInfo.attach(`desktop-icon-selected-${theme}`, {
+          body: await window.screenshot(),
+          contentType: 'image/png',
+        })
+      }
       await launch.click({ modifiers: ['Shift'] })
       await expect(node).not.toHaveClass(/selected/)
 
@@ -134,10 +139,12 @@ test('compact desktop icons keep hover, selection and keyboard feedback local in
         .toBe(true)
       await expectTransparentHitArea(launch)
       await expect.poll(async () => (await readPaint(icon)).outlineWidth).toBeGreaterThan(0)
-      await testInfo.attach(`desktop-icon-keyboard-${theme}`, {
-        body: await window.screenshot(),
-        contentType: 'image/png',
-      })
+      if (isE2EDiagnosticsEnabled()) {
+        await testInfo.attach(`desktop-icon-keyboard-${theme}`, {
+          body: await window.screenshot(),
+          contentType: 'image/png',
+        })
+      }
       await window.keyboard.press('Enter')
       await expect(compact).toBeHidden()
       await node.getByTestId('node-collapse').click()
@@ -155,6 +162,9 @@ test('compact desktop icons keep hover, selection and keyboard feedback local in
     await window.getByTestId('workspace-node-close').click()
     await expect(note).toHaveCount(0)
     await expect(compact).toBeVisible()
+  } catch (error) {
+    await attachFailureFrame(window, test.info())
+    throw error
   } finally {
     await electronApp.close()
   }

@@ -46,6 +46,12 @@ jobs:
       - name: Typecheck
         run: pnpm check
 
+      - name: E2E case budget
+        run: pnpm e2e:budget
+
+      - name: E2E shard plans
+        run: node scripts/plan-e2e-shards.mjs --check
+
       - name: Unit tests (PR)
         if: github.event_name == 'pull_request'
         run: pnpm test -- --run
@@ -122,7 +128,18 @@ jobs:
           OPENCOVE_E2E_WINDOW_MODE: inactive
           OPENCOVE_E2E_RETRIES: '0'
           OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'
-        run: xvfb-run -a -s "-screen 0 1600x1200x24" pnpm test:e2e -- --shard=${{ matrix.shard }}/3 --max-failures=2
+          OPENCOVE_E2E_JSON_REPORT: artifacts/e2e-durations/ubuntu-${{ matrix.shard }}.json
+        run: xvfb-run -a -s "-screen 0 1600x1200x24" node scripts/plan-e2e-shards.mjs --os ubuntu --shards 3 --shard ${{ matrix.shard }} --run --max-failures=2
+
+      - name: Upload E2E durations
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-durations-ubuntu-${{ matrix.shard }}
+          path: artifacts/e2e-durations/ubuntu-${{ matrix.shard }}.json
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Upload Playwright artifacts
         if: failure()
@@ -252,14 +269,25 @@ jobs:
         run: pnpm build
 
       - name: E2E tests (shard)
-        # macOS runners take 25-30 minutes per shard; 30 cut off a passing shard mid-run.
-        timeout-minutes: 45
+        # Temporary until the restructure brings normal shards to <=25 minutes; then restore 45.
+        timeout-minutes: 60
         env:
           OPENCOVE_E2E_SKIP_BUILD: '1'
           OPENCOVE_E2E_WINDOW_MODE: inactive
           OPENCOVE_E2E_RETRIES: '0'
           OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'
-        run: pnpm test:e2e -- --shard=${{ matrix.shard }}/3
+          OPENCOVE_E2E_JSON_REPORT: artifacts/e2e-durations/macos-${{ matrix.shard }}.json
+        run: node scripts/plan-e2e-shards.mjs --os macos --shards 3 --shard ${{ matrix.shard }} --run
+
+      - name: Upload E2E durations
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-durations-macos-${{ matrix.shard }}
+          path: artifacts/e2e-durations/macos-${{ matrix.shard }}.json
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Upload Playwright artifacts
         if: failure()
@@ -276,6 +304,32 @@ jobs:
           if [ -n "${RUNNER_TEMP:-}" ]; then rm -rf "${RUNNER_TEMP}/opencove-e2e" || true; fi
           rm -rf "/tmp/opencove-e2e" || true
           rm -rf "/tmp/cove-e2e-user-data-"* || true
+
+  e2e-duration-summary:
+    needs: [e2e-ubuntu, ci-macos]
+    if: always()
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Download E2E durations
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          pattern: e2e-durations-*
+          path: artifacts/e2e-durations
+          merge-multiple: true
+
+      - name: Summarize E2E durations
+        if: always()
+        run: node scripts/report-e2e-durations.mjs artifacts/e2e-durations
 
   platform-e2e-windows:
     # pnpm 9's node-gyp requires VS 2022 for the node-pty source build.
@@ -311,13 +365,31 @@ jobs:
       - name: Pass CLI selectors through Windows PowerShell
         run: pnpm exec vitest run tests/unit/e2e/cliListSelectors.windows.spec.ts --pool=forks --maxWorkers=1
 
+      - name: Prepare WSL guest for native argument tests
+        timeout-minutes: 10
+        shell: pwsh
+        run: ./scripts/prepare-wsl-native-arguments.ps1
+
+      - name: Verify native PowerShell and WSL argument boundaries
+        timeout-minutes: 5
+        if: ${{ !cancelled() }}
+        env:
+          ELECTRON_RUN_AS_NODE: '1'
+        run: ./node_modules/electron/dist/electron.exe ./node_modules/vitest/vitest.mjs run tests/integration/terminal/windowsNativeArguments.windows.spec.ts --pool=forks --maxWorkers=1
+
+      - name: Remove CI-owned WSL guest
+        timeout-minutes: 2
+        if: always()
+        shell: pwsh
+        run: ./scripts/remove-wsl-native-arguments.ps1
+
       - name: Build
         run: pnpm build
 
       - name: Windows-specific E2E tests
         env:
           OPENCOVE_E2E_SKIP_BUILD: '1'
-          OPENCOVE_E2E_TEST_MATCH: '**/*.windows.spec.ts'
+          OPENCOVE_E2E_TEST_MATCH: '**/*.windows.spec.ts,**/agent.initial-prompt-argv.spec.ts'
           OPENCOVE_E2E_WINDOW_MODE: inactive
           OPENCOVE_E2E_RETRIES: '0'
           OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'

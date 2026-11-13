@@ -282,3 +282,20 @@ describe('Task card: sessions as avatars', () => {
     expect(onRemoveAgentSessionRecord).toHaveBeenCalledWith('session-1')
   })
 })
+
+describe('Task card: action errors', () => {
+  it.each(['todo', 'doing', 'ai_done', 'done'] as const)(
+    'shows the existing error guidance in %s without a status gate',
+    status => {
+      renderTaskCard({ status, lastError: 'Rephrase the task. Your text has been kept.' })
+      expect(screen.getByRole('alert')).toBeVisible()
+      expect(screen.getByRole('alert')).toHaveTextContent('Rephrase the task')
+      expect(screen.getByRole('alert')).toHaveClass('cove-window__error', 'task-node__error')
+      expect(screen.getByTestId('task-node-inline-requirement-input')).not.toBeDisabled()
+    },
+  )
+  it('does not show an empty error block', () => {
+    renderTaskCard({ lastError: null })
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+})

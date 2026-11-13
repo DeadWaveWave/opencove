@@ -1,3 +1,4 @@
+import { writeStreamRecord } from './streamOutput'
 import { readFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
@@ -6,6 +7,8 @@ import { CliError } from './errors'
 export interface CliIo {
   stdout: { write(text: string): unknown; isTTY?: boolean }
   stderr: { write(text: string): unknown; isTTY?: boolean }
+  readonly outputCancelled?: boolean
+  writeRecord?(text: string, signal: AbortSignal): Promise<void>
   readStdinText(): Promise<string>
   readTextFile(path: string): Promise<string>
   env: Record<string, string | undefined>
@@ -18,12 +21,33 @@ export interface CliIo {
 }
 export function createNodeCliIo(): CliIo {
   const controller = new AbortController()
-  const interrupt = () => controller.abort()
+  let cancelledOutput = false
+  const interrupt = () => controller.abort(new CliError('cli.interrupted', 130, 'Interrupted'))
+  const terminate = () => controller.abort(new CliError('cli.terminated', 143, 'Terminated'))
   process.on('SIGINT', interrupt)
+  process.on('SIGTERM', terminate)
   return {
     signal: controller.signal,
+    get outputCancelled() {
+      return cancelledOutput
+    },
     dispose: () => {
       process.off('SIGINT', interrupt)
+      process.off('SIGTERM', terminate)
+    },
+    async writeRecord(text, signal) {
+      const cancelled = () => {
+        cancelledOutput = true
+      }
+      signal.addEventListener('abort', cancelled, { once: true })
+      if (signal.aborted) {
+        cancelled()
+      }
+      try {
+        await writeStreamRecord(process.stdout, text, signal)
+      } finally {
+        signal.removeEventListener('abort', cancelled)
+      }
     },
     stdout: process.stdout,
     stderr: process.stderr,

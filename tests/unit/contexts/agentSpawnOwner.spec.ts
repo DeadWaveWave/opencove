@@ -427,3 +427,66 @@ it('retains warm-start runtime bindings when both node membership and public hub
     owner.runCreation(f.store, f.input('after-exit'), async () => {}),
   ).resolves.toBeUndefined()
 })
+
+it('shares root/child quota accounting with refusal details, including retained live nodes', async () => {
+  const f = fixture()
+  for (let i = 0; i < 6; i++) {
+    await f.start('quota' + i)
+  }
+  expect(await f.owner.lineageQuota(f.store, 'root')).toEqual({
+    depth: 1,
+    maxDepth: 3,
+    liveInTree: 6,
+    maxLiveInTree: 6,
+    remainingLiveInTree: 0,
+  })
+  f.replaceNodes([
+    { id: 'root', kind: 'agent', sessionId: 'root-session' },
+    { id: 'quota0', kind: 'agent', title: 'Reviewer', sessionId: 'quota0-session' },
+  ] as NodeControlNode[])
+  expect(await f.owner.lineageQuota(f.store, 'quota0')).toEqual({
+    depth: 2,
+    maxDepth: 3,
+    liveInTree: 6,
+    maxLiveInTree: 6,
+    remainingLiveInTree: 0,
+  })
+  await expect(f.start('refused')).rejects.toMatchObject({
+    code: 'agent.spawn_concurrency_limit',
+    details: {
+      occupied: 6,
+      nodes: expect.arrayContaining([
+        expect.objectContaining({
+          nodeId: 'quota0',
+          title: 'Reviewer',
+          kind: 'agent',
+          depth: 2,
+          state: 'running',
+        }),
+      ]),
+    },
+  })
+  f.exit('quota5-session')
+  expect((await f.owner.lineageQuota(f.store, 'root')).liveInTree).toBe(5)
+  await expect(f.start('replacement')).resolves.toBeUndefined()
+})
+
+it.each(['self', 'invalid_parent'])(
+  'retains lineage validation for %s admission',
+  async scenario => {
+    const f = fixture()
+    if (scenario === 'invalid_parent') {
+      f.rows.set('root', {
+        nodeId: 'root',
+        spawnedBy: 'ancestor',
+        rootNodeId: 'ancestor',
+        lineageDepth: -1,
+      })
+    }
+    const create = vi.fn()
+    await expect(
+      f.owner.runCreation(f.store, f.input(scenario === 'self' ? 'root' : 'child'), create),
+    ).rejects.toMatchObject({ code: 'persistence.invalid_state' })
+    expect(create).not.toHaveBeenCalled()
+  },
+)

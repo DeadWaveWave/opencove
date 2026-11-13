@@ -1,8 +1,10 @@
-import type { OperationId } from './command'
+import type { LineageQuota } from '../../../shared/contracts/dto/nodeLineage'
+import type { TextOutputContext, OperationId } from './command'
 import { usage } from './errors'
 
 export type Invoke = (id: OperationId, payload: unknown) => Promise<unknown>
 export interface CallerIdentity {
+  lineageQuota?: LineageQuota
   caller: string
   scope: string
   projectId: string | null
@@ -15,7 +17,21 @@ export interface CallerIdentity {
 export function callerIdentity(value: unknown): CallerIdentity {
   const wire = value as Record<string, unknown>
   const id = (key: string) => (typeof wire[key] === 'string' && wire[key] ? wire[key] : null)
+  const quota = wire.lineageQuota as LineageQuota | undefined
   return {
+    ...(quota
+      ? {
+          lineageQuota: {
+            depth: quota.depth,
+            maxDepth: quota.maxDepth,
+            liveInTree: quota.liveInTree,
+            maxLiveInTree: quota.maxLiveInTree,
+            ...(quota.remainingLiveInTree !== undefined
+              ? { remainingLiveInTree: quota.remainingLiveInTree }
+              : {}),
+          },
+        }
+      : {}),
     caller: String(wire.kind),
     scope: String(wire.scopeTier),
     projectId: id('projectId'),
@@ -25,7 +41,18 @@ export function callerIdentity(value: unknown): CallerIdentity {
   }
 }
 
-export const identityFields = ['caller', 'scope', 'projectId', 'spaceId', 'nodeId', 'sessionId']
+export const identityFields = [
+  'caller',
+  'scope',
+  'projectId',
+  'spaceId',
+  'nodeId',
+  'sessionId',
+  'lineageQuota',
+  ...['depth', 'maxDepth', 'liveInTree', 'maxLiveInTree', 'remainingLiveInTree'].map(
+    field => `lineageQuota.${field}`,
+  ),
+]
 
 export function selfUnavailable(kind: string): never {
   usage(
@@ -71,4 +98,20 @@ export function sessionIdentity(env: Record<string, string | undefined>, invoke:
       return id
     },
   }
+}
+
+/** Only default interactive identity output may append prose to the JSON value. */
+export function identityText(
+  value: unknown,
+  { io, options, render }: TextOutputContext,
+): string | undefined {
+  if (!io.stdout.isTTY || options.pretty || options.output || options.fields !== undefined) {
+    return undefined
+  }
+  const result = value as { self?: CallerIdentity; lineageQuota?: LineageQuota }
+  const quota = (result.self ?? result).lineageQuota
+  return quota
+    ? render() +
+        `Agents: ${quota.liveInTree} of ${quota.maxLiveInTree} running in your tree; depth ${quota.depth} of ${quota.maxDepth}\n`
+    : undefined
 }

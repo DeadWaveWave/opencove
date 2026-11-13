@@ -192,6 +192,13 @@
   color: var(--cove-text-muted);
 }
 
+.task-node__error {
+  flex-shrink: 0;
+  max-height: 50%;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+
 .task-node__content p {
   font-size: calc(12px * var(--cove-ui-font-scale));
   color: var(--cove-text);

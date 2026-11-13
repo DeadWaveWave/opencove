@@ -1,3 +1,4 @@
+import { createPluginOperationError } from '@shared/errors/pluginOperationError'
 import { IconButton } from '@app/renderer/components/ui/IconButton'
 import { Button } from '@app/renderer/components/ui/Button'
 import { useRef, useEffect, useState, type FormEvent, type JSX } from 'react'
@@ -57,7 +58,22 @@ export function PluginInstallPanel({
         { candidateId: id },
       )
       if (result.status !== 'installed') {
-        throw new Error(result.error ?? t('settingsPanel.plugins.install.failed'))
+        const failure = createPluginOperationError(
+          result.error,
+          t('settingsPanel.plugins.install.failed'),
+        )
+        if (alive.current) {
+          setCandidate(previous =>
+            previous?.id === id
+              ? {
+                  ...previous,
+                  status: result.status === 'conflict' ? 'conflict' : 'failed',
+                  error: pluginErrorMessage(failure),
+                }
+              : previous,
+          )
+        }
+        throw failure
       }
       if (alive.current) {
         onInstalled()
@@ -110,13 +126,10 @@ export function PluginInstallPanel({
               id: result.candidateId,
               directory: result.candidateDirectory,
               status: result.status === 'conflict' ? 'conflict' : 'failed',
-              error: result.error,
+              error: result.error?.slice(0, 2000),
             })
           }
-          throw new Error(
-            [result?.error, result?.candidateDirectory].filter(Boolean).join('\n') ||
-              t('settingsPanel.plugins.install.failed'),
-          )
+          throw createPluginOperationError(result?.error, t('settingsPanel.plugins.install.failed'))
         }
         if (alive.current) {
           onInstalled()

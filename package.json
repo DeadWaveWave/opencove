@@ -35,6 +35,7 @@
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "files": [
       "out{,/**/*}",
+      "!out/renderer/assets/desktopAcceptanceHarness-*.js",
       "src/app/cli/opencove.mjs",
       "src/app/cli/publishRuntime.mjs",
       "docs/plugins{,/**/*}",
@@ -125,9 +126,11 @@
     "release:version": "node scripts/prepare-release.mjs",
     "pre-commit": "pnpm verify:quick",
     "prepare": "husky",
-    "verify:checks": "pnpm line-check:staged && pnpm secret-check:staged && pnpm naming-check:staged && pnpm ui:style-check && pnpm lint:fix && pnpm format-check:staged && pnpm check",
+    "verify:checks": "pnpm line-check:staged && pnpm secret-check:staged && pnpm naming-check:staged && pnpm ui:style-check && node scripts/check-e2e-budget.mjs --staged && pnpm lint:fix && pnpm format-check:staged && pnpm check",
     "verify:quick": "pnpm verify:checks && pnpm test:staged && pnpm test:terminal-recovery:native && pnpm test:e2e:pre-commit",
-    "verify:full": "pnpm verify:checks && pnpm test -- --run && pnpm test:terminal-recovery:native && pnpm test:e2e:pre-commit --full"
+    "verify:full": "pnpm verify:checks && pnpm test -- --run && pnpm test:terminal-recovery:native && pnpm test:e2e:pre-commit --full",
+    "e2e:budget": "node scripts/check-e2e-budget.mjs",
+    "e2e:budget:update": "node scripts/check-e2e-budget.mjs --update"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

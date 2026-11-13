@@ -16,3 +16,13 @@ export interface ResolveCallerSelectorResult {
   id: string
   callerNodeId: string
 }
+
+/** Optional identity projection; counts agent-created runtimes, excluding the user root. */
+export interface LineageQuota {
+  depth: number
+  maxDepth: number
+  liveInTree: number
+  maxLiveInTree: number
+  /** Absent on older Workers. */
+  remainingLiveInTree?: number
+}

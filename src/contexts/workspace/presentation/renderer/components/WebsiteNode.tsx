@@ -243,6 +243,7 @@ export function WebsiteNode({
         <WindowHeader
           className="website-node__header"
           kind="media"
+          commitProbeState={{ ...runtime, isCanvasZoomFrozen, presentationHidden, draftUrl }}
           labelColor={labelColor}
           icon={<NodeKindIcon kind="website" />}
           title={

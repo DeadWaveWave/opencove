@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createResultFiles } from './lib/result-files.mjs'
 import { mkdir, readdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { formatArchitectureReport, runArchitectureAudit } from './lib/architecture-rules.mjs'
@@ -98,9 +99,10 @@ async function writeResultFiles(reportToWrite, outputDir) {
   await Promise.all(
     [...violationsByRule.entries()]
       .sort(([left], [right]) => left.localeCompare(right))
-      .map(async ([ruleId, violations]) => {
+      .flatMap(([ruleId, violations]) => createResultFiles(getResultFilename(ruleId), violations))
+      .map(async ({ filename, violations }) => {
         const lines = violations.map(violation => JSON.stringify(violation))
-        await writeFile(join(outputDir, getResultFilename(ruleId)), `${lines.join('\n')}\n`, 'utf8')
+        await writeFile(join(outputDir, filename), `${lines.join('\n')}\n`, 'utf8')
       }),
   )
 }

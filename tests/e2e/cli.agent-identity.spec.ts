@@ -115,6 +115,14 @@ test('a canvas terminal discovers its identity, neighbors and scope through the 
       spaceId: mainSpaceId,
       nodeId,
       sessionId,
+      // A root terminal with no agents started yet; admission uses the same computation.
+      lineageQuota: {
+        depth: 1,
+        maxDepth: 3,
+        liveInTree: 0,
+        maxLiveInTree: 6,
+        remainingLiveInTree: 6,
+      },
     })
     expect(identity).not.toHaveProperty('token')
 

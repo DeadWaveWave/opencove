@@ -1,7 +1,7 @@
 # Sending a prompt to Claude Code or Codex
 
 `opencove agent prompt` pastes text into a local agent window OpenCove launched
-(Claude Code or Codex with lifecycle hooks) and attempts to press Enter once. It never retries automatically.
+(Claude Code or Codex with lifecycle hooks) and attempts to press Enter once. It never retries automatically. For launch prompts and grant restrictions, see [initial prompts](./INITIAL_PROMPTS.md).
 
 ```sh
 opencove agent prompt --node node-123 --text "Review the changes"

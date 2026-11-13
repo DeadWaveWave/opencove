@@ -73,3 +73,21 @@ it('rejects a successful non-SSE response', async () => {
   const f = fixture([], 200, 'application/json')
   await expect(f.events().next()).rejects.toMatchObject({ code: 'agent.stream_failed' })
 })
+it('applies the UTF-8 byte bound per frame rather than per network chunk', async () => {
+  const encoder = new TextEncoder()
+  const payload = 'x'.repeat(400000)
+  const f = fixture([
+    encoder.encode(
+      [1, 2, 3].map(index => `data: ${JSON.stringify({ index, payload })}\n\n`).join(''),
+    ),
+  ])
+  const values = []
+  for await (const value of f.events()) {
+    values.push(value)
+  }
+  expect(values).toEqual([1, 2, 3].map(index => ({ index, payload })))
+  const oversized = fixture([
+    encoder.encode(`data: ${JSON.stringify({ payload: '你'.repeat(400000) })}\n\n`),
+  ])
+  await expect(oversized.events().next()).rejects.toMatchObject({ exitCode: 5 })
+})

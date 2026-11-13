@@ -37,7 +37,7 @@ Command:
 opencove node create note [--root-canvas | space locator] [--title <text>] [--text <text>] [--frame <json>] [--focus] [--pretty]
 opencove node create task [--root-canvas | space locator] --requirement <text> [--title <text>] [--priority <low|medium|high|urgent>] [--tag <tag>] [--frame <json>] [--focus] [--pretty]
 opencove node create website [--root-canvas | space locator] --url <url> [--title <text>] [--pinned] [--session-mode <shared|incognito|profile>] [--profile <id>] [--frame <json>] [--focus] [--pretty]
-opencove node create agent [--root-canvas | space locator] [--title <text>] [--prompt <text>] [--provider <id>] [--model <id>] [--full-access true|false] [--frame <json>] [--focus] [--pretty]
+opencove node create agent [--root-canvas | space locator] [--title <text>] [--prompt <text>] [--provider <id>] [--model <id>] [--full-access true|false] [--task <nodeId>] [--frame <json>] [--focus] [--pretty]
 opencove node create terminal [--root-canvas | space locator] [--title <text>] [--shell <path>] [--command <text>] [--profile <id>] [--frame <json>] [--focus] [--pretty]
 opencove node update note --node <id> [--title <text>] [--text <text>] [--frame <json>] [--pretty]
 opencove node update task --node <id> [--title <text>] [--requirement <text>] [--priority <low|medium|high|urgent>] [--status <todo|doing|ai_done|done>] [--tag <tag>] [--frame <json>] [--pretty]
@@ -159,6 +159,10 @@ Website:
 Agent:
 
 - Create 会先通过 session launch path 启动 runtime。
+- 可选 `--task <nodeId>`（`data.taskNodeId`）将新 agent 链接到同一 Space 的现有任务；根画布上的 agent 只能链接根画布任务。省略时 `agent.taskId` 为 `null`，任务不变；传入时必须是非空字符串（`null`、空白或其他类型返回 `common.invalid_input`）。智能体终端也可使用，无新增权限。
+- 启动前验证任务存在于目标 project（否则 `node.not_found`）、类型为 task、位于同一 Space、没有仍存在的已链接 agent（否则 `common.invalid_input`）。指向已删除 agent 的旧链接允许替换。
+- Worker 的 `commitCreatedNode` 在启动成功后基于最新状态再次验证，将 agent 节点、`agent.taskId`、任务的 `linkedAgentNodeId`、`status: 'doing'`、`updatedAt` 和 `lastRunAt` 在同一次 CAS 提交中写入（有 lineage 时使用 `commitCreatedNodeState`）。启动或确定未提交的写入失败不改变任务，后者沿用现有 session 清理；写入结果不确定时沿用读回保护，不误杀可能已提交的 session。
+- 与画布 Run 新建 agent 一致，创建链接不新增 `agentSessions` 历史，保留已有记录；关闭或切换 session 时才归档。`--prompt` 仍由调用方提供，链接不会替换 prompt。
 - 可选 `data.agentFullAccess`（CLI `--full-access true|false`）必须是布尔值；显式值在两个方向覆盖 Settings，仅作用于该 agent，智能体终端也可传入。
 - 显式值保存在 agent 节点，relaunch、resume 和 app-restart recovery 使用 `node.agent.agentFullAccess ?? settings.agentFullAccess`；省略时继续跟随当前 Settings，不修改 Settings，也无需迁移旧数据。
 - `node.update` 不能更改该启动时选择；agent update 只接受名称和 frame。

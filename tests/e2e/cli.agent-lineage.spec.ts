@@ -11,6 +11,124 @@ import {
 } from './cli.agent-lineage.helpers'
 import type { CreateNodeResult, GetNodeResult } from '../../src/shared/contracts/dto/nodeControl'
 
+test('CLI creation from a session grant links a task and updates its canvas card', async () => {
+  test.setTimeout(90_000)
+  const root = await mkdtemp(join(tmpdir(), 'opencove-cli-task-link-'))
+  let app: ElectronApplication | undefined
+  try {
+    const workspace = join(root, 'project')
+    await mkdir(workspace)
+    const stub = await writeLineageAgentStub(root)
+    const launched = await launchApp({
+      userDataDir: join(root, 'profile'),
+      cleanupUserDataDir: false,
+      env: {
+        OPENCOVE_TEST_WORKSPACE: workspace,
+        OPENCOVE_WORKER_CLIENT: '0',
+        OPENCOVE_TEST_USE_REAL_AGENTS: '0',
+        OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
+        OPENCOVE_TEST_AGENT_STUB_SCRIPT: stub,
+        OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'claude-prompt-strict',
+        OPENCOVE_TEST_CLAUDE_HOOK_INSTALL_FAILURE: '0',
+        OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1',
+        CLAUDE_CONFIG_DIR: join(root, 'claude'),
+        CODEX_HOME: join(root, 'codex'),
+      },
+    })
+    app = launched.electronApp
+    const page = launched.window
+    await seedWorkspaceState(page, {
+      activeWorkspaceId: 'task-project',
+      settings: { agentFullAccess: false, language: 'en' },
+      workspaces: [
+        {
+          id: 'task-project',
+          name: 'Tasks',
+          path: workspace,
+          activeSpaceId: 'task-space',
+          nodes: [],
+          spaces: [
+            { id: 'task-space', name: 'Tasks', directoryPath: workspace, nodeIds: [], rect: null },
+          ],
+        },
+      ],
+    })
+    const parent = await createLineageAgent(page, 'task-project')
+    await establishLineageAgentReady(page, parent.node)
+    const taskCli = await grantedAgentCli(root, parent.node.id, [
+      'node',
+      'create',
+      'task',
+      '--space',
+      'task-space',
+      '--title',
+      'Review',
+      '--requirement',
+      'Review the implementation',
+    ])
+    expect(taskCli.code, taskCli.stderr).toBe(0)
+    const task = (JSON.parse(taskCli.stdout) as CreateNodeResult).node
+    const agentCli = await grantedAgentCli(root, parent.node.id, [
+      'node',
+      'create',
+      'agent',
+      '--space',
+      'task-space',
+      '--task',
+      task.id,
+      '--provider',
+      'claude-code',
+      '--title',
+      'Task reviewer',
+      '--full-access',
+      'false',
+    ])
+    expect(agentCli.code, agentCli.stderr).toBe(0)
+    const agent = (JSON.parse(agentCli.stdout) as CreateNodeResult).node
+    expect(agent).toMatchObject({
+      spawnedBy: parent.node.id,
+      spaceId: 'task-space',
+      data: { taskId: task.id },
+    })
+    await page.evaluate(
+      async nodeId =>
+        window.opencoveApi.controlSurface.invoke({
+          kind: 'command',
+          id: 'canvas.focus',
+          payload: { target: { kind: 'node', nodeId } },
+        }),
+      task.id,
+    )
+    const card = page.locator(`[data-id="${task.id}"] .task-node`)
+    await expect(card).toBeVisible()
+    await expect(card.getByTestId('task-node-status-select')).toHaveValue('doing')
+    await expect(card.getByTestId(`task-node-agent-session-linked-${agent.id}`)).toHaveAttribute(
+      'aria-label',
+      /Task reviewer/,
+    )
+    await expect
+      .poll(() =>
+        page.evaluate(async nodeId => {
+          const { state } = await window.opencoveApi.persistence.readAppState()
+          const nodes = (
+            state as { workspaces: { nodes: { id: string; agent?: unknown; task?: unknown }[] }[] }
+          ).workspaces.flatMap(w => w.nodes)
+          return nodes.find(n => n.id === nodeId)?.task
+        }, task.id),
+      )
+      .toMatchObject({ status: 'doing', linkedAgentNodeId: agent.id, agentSessions: [] })
+    await test
+      .info()
+      .attach('task-linked-from-cli', { body: await card.screenshot(), contentType: 'image/png' })
+  } finally {
+    try {
+      await app?.close()
+    } finally {
+      await removePathWithRetry(root)
+    }
+  }
+})
+
 test('grant ancestry survives renderer publications and restart, and a child reports to @parent', async () => {
   test.setTimeout(240_000)
   const root = await mkdtemp(join(tmpdir(), 'opencove-cli-lineage-'))

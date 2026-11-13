@@ -1,3 +1,4 @@
+import { attachFailureFrame, isE2EDiagnosticsEnabled } from './diagnostics'
 import { wheelToZoom } from './workspace-canvas.zoom.helpers'
 import { PIXEL_EFFECTS_ENABLED } from './workspace-canvas.pixel-effects.helpers'
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
@@ -20,6 +21,9 @@ import {
 } from './workspace-canvas.spatial-pixel.materials.fixture'
 
 async function attachFrame(window: Page, testInfo: TestInfo, name: string) {
+  if (!isE2EDiagnosticsEnabled()) {
+    return
+  }
   const screenshot = testInfo.outputPath(`${name}.png`)
   await window.screenshot({ path: screenshot, animations: 'allow' })
   await testInfo.attach(name, { path: screenshot, contentType: 'image/png' })
@@ -216,6 +220,9 @@ test.describe('Workspace Canvas - Spatial Pixel Materials', () => {
       expect(await geometry(window)).toEqual(before)
       expect(await terminalIdentity(window)).toEqual(identity)
       await attachFrame(window, testInfo, 'pixel-materials-focus-and-space')
+    } catch (error) {
+      await attachFailureFrame(window, test.info())
+      throw error
     } finally {
       await electronApp.close()
       await fixture.cleanup()
@@ -267,6 +274,9 @@ test.describe('Workspace Canvas - Spatial Pixel Materials', () => {
       expect(await geometry(window)).toEqual(baseline)
       expect(await terminalIdentity(window)).toEqual(identity)
       await attachFrame(window, testInfo, 'pixel-materials-zoom-return')
+    } catch (error) {
+      await attachFailureFrame(window, test.info())
+      throw error
     } finally {
       await electronApp.close()
       if (videoDirectory && video) {
@@ -419,6 +429,9 @@ test.describe('Workspace Canvas - Spatial Pixel Materials', () => {
         contentType: 'application/json',
       })
       await attachFrame(window, testInfo, 'pixel-huge-overlapping-regions-zoom-0.2')
+    } catch (error) {
+      await attachFailureFrame(window, test.info())
+      throw error
     } finally {
       await electronApp.close()
     }

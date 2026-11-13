@@ -1,4 +1,5 @@
 import { createAppError } from '../../../errors/appError'
+import { assertInitialPromptText } from '../../../utils/initialPromptValidation'
 import type { CreateNodeInput, ManagedCanvasNodeKind } from '../../dto'
 import { normalizeSpaceLocator } from './spaceLocator'
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -51,6 +52,13 @@ export function normalizeCreatePayload(payload: unknown): CreateNodeInput {
     throw createAppError('common.invalid_input', {
       debugMessage: 'Invalid payload for node.create.',
     })
+  }
+  if (
+    payload.kind === 'agent' &&
+    isRecord(payload.data) &&
+    typeof payload.data.prompt === 'string'
+  ) {
+    assertInitialPromptText(payload.data.prompt)
   }
   return {
     kind: managedKind(payload.kind),

@@ -43,6 +43,7 @@ interface TaskNodeProps {
   priority: TaskPriority
   tags: string[]
   isEnriching: boolean
+  lastError?: string | null
   labelColor?: LabelColor | null
   linkedAgentNode: {
     nodeId: string
@@ -75,6 +76,7 @@ export function TaskNode({
   priority,
   tags,
   isEnriching,
+  lastError = null,
   labelColor,
   linkedAgentNode,
   agentSessions,
@@ -401,6 +403,11 @@ export function TaskNode({
               }}
             />
           </div>
+          {lastError ? (
+            <div className="cove-window__error task-node__error" role="alert">
+              {lastError}
+            </div>
+          ) : null}
         </div>
 
         <TaskNodeFooter

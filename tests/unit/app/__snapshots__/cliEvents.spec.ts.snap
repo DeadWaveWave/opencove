@@ -1,0 +1,40 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`documents the stream contract in generated help 1`] = `
+"Usage: opencove events [options]
+
+Stream agent observations with resumable cursors
+
+Write compact NDJSON, starting with stream.ready. Resume with --cursor-file <path>, or --after and the last printed cursor. Ctrl-C closes observation (130); pipes keep NDJSON on stdout. A gap is terminal (exit 1); a lost connection exits 3. Scoped streams include only events published after binding. Turn completion reports an observation; inspect its outcome. Timeout or signals close observation without stopping agents.
+
+Options:
+  --type <type>            Include an exact agent event type; repeat to include both
+  --project <selector>     Filter event-time project membership; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --space <selector>       Filter event-time Space membership; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --node <selector>        Filter observations by node; repeat with --until-each-turn; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
+  --cursor-file <path>     Atomically save each complete record cursor; resume from this file unless --after is explicit
+  --until-each-turn        Wait for one turn completion per explicit --node after ready; final node/session/turn/outcome summaries go to stderr
+  --spawned-by <selector>  Filter direct creation children, including children created later; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
+  --lineage <selector>     Filter a node and its transitive creation descendants; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
+  --after <cursor>         Replay after a saved cursor; inherit its selection unless explicitly supplied
+  --count <n>              Stop after writing n data records; requires a positive whole number
+  --until <until>          Stop after writing the first selected event of this type
+  --timeout <duration>     Set an overall deadline, e.g. 30s or 2m (minimum: 250ms; default: unlimited)
+
+Table output (-o table): not supported.
+Projectable fields: version, type, cursor, epoch, seq, projectId, spaceId, snapshot, snapshot.nodeId, snapshot.sessionId, snapshot.provider, snapshot.lastTransitionAt, snapshot.state, snapshot.quality, snapshot.turn, snapshot.turn.id, snapshot.turn.startedAt, snapshot.turn.start, snapshot.turnOutcome, snapshot.lastEndedTurn, snapshot.lastEndedTurn.id, snapshot.lastEndedTurn.outcome, snapshot.lastEndedTurn.endedAt, snapshot.blockedReason, snapshot.blockedSummary, snapshot.blockedSummary.kind, snapshot.blockedSummary.questions, snapshot.source, endedTurn, endedTurn.id, endedTurn.startedAt, endedTurn.start, spawnedBy, lineageDepth, lineageStatus
+
+Projection example:
+  opencove events --count 1 --fields snapshot.state
+  {"version":1,"type":"agent.state_changed","cursor":"...","snapshot":{"state":"idle"}}
+
+Examples:
+  opencove events --space "Main" --until agent.turn_completed --timeout 2m
+  opencove events --spawned-by @self --count 10
+  opencove events --cursor-file ./events.cursor | tee events.ndjson
+  opencove events --until-each-turn --node A --node B --timeout 2m
+  opencove events --after saved-cursor
+
+Global options: see "opencove --help".
+"
+`;

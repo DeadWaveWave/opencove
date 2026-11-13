@@ -322,6 +322,9 @@ async function launchAppInMode(
 
     const window = await electronApp.firstWindow()
     await window.waitForLoadState('domcontentloaded')
+    await window.waitForFunction(
+      () => typeof globalThis.window.opencoveApi?.controlSurface?.invoke === 'function',
+    )
     return { electronApp, window }
   } catch (error) {
     if (electronApp) {

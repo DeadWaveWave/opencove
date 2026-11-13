@@ -75,6 +75,12 @@ opencove worktree create --space space-123 --name review-work
 opencove node create agent --space space-123 --title "Reviewer" --prompt "Review the implementation" --wait --read --timeout 2m
 ```
 
+Add `--task <nodeId>` to link the new agent to an existing task in that same Space and move it
+to `doing`. The task must have no existing linked agent; a link to a deleted agent may be replaced.
+Use `--prompt` or `--prompt-file` for the assignment; linking does not copy the task requirement.
+The Worker validates before launch and commits both sides together after launch succeeds.
+Omitting `--task` leaves tasks unchanged. On the root canvas, both nodes must be outside Spaces.
+
 For one-shot delegation, --wait --read returns the initial exact reply; check outcome and reply.
 Stderr first prints `Created agent node <nodeId> (session <sessionId>).`, then a
 `Waiting for turn <turnId> of node <nodeId>...` progress line with an interruption-only continuation.
@@ -159,3 +165,13 @@ With `--spawned-by`, `--project` filters child results; the creator may belong t
 Full IDs, `@self` and `@parent` resolve the creator independently of that filter. Creator names
 and prefixes use your session project, or an explicit Space’s project. Without session identity,
 the selected project supplies the name lookup context. Use a full ID for a creator outside that context.
+
+`opencove whoami --fields lineageQuota` and `opencove context --fields self.lineageQuota`
+show `{depth, maxDepth, liveInTree, maxLiveInTree}` from the same Worker census as spawn admission.
+A user-started root has depth 1; liveInTree counts live/starting agent-created runtimes, excluding
+that root. Older Workers or unavailable accounting omit the quota. Depth/width refusal details
+include up to six occupying nodes (nodeId, title, kind, depth, state), with concrete
+`opencove agent stop --node <id>` hints for agent occupants. For terminals, read the current
+`node.sessionId` with `opencove node get --node <id> --fields sessionId`, then use
+`opencove session kill --session <sessionId>` to stop the entire terminal, including its shell.
+Stopping cannot reduce a caller's depth: depth-three callers must ask the user to start a new root.

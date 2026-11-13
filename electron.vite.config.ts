@@ -5,6 +5,22 @@ import tailwindcss from '@tailwindcss/vite'
 import type { Plugin } from 'vite'
 import { runtimeBuildIdentityPlugin } from './scripts/lib/runtime-build-plugin'
 
+/** Keep installation ahead of shared Desktop/Web UI evaluation without installing in Web. */
+export function desktopStartupChunk(id: string): string | undefined {
+  const path = id.replaceAll('\\', '/')
+  // Vite prepends this import ahead of source imports; it must not pull in the app graph.
+  if (id === '\0vite/preload-helper.js') {
+    return 'modulePreload'
+  }
+  if (path.endsWith('/src/app/renderer/bootstrap/desktopApiInstallation.ts')) {
+    return 'desktopApiInstallation'
+  }
+  if (path.endsWith('/src/app/renderer/bootstrap/installDesktopOpenCoveApi.ts')) {
+    return 'desktopBridge'
+  }
+  return undefined
+}
+
 export function buildOpenCoveContentSecurityPolicy(isDev: boolean): string {
   const scriptSources = isDev ? ["'self'", "'unsafe-eval'"] : ["'self'"]
   const connectSources = isDev ? ["'self'", 'ws:', 'http:', 'https:'] : ["'self'"]
@@ -122,6 +138,10 @@ export default defineConfig(({ command }) => {
           input: {
             index: resolve(__dirname, 'src/app/renderer/index.html'),
             web: resolve(__dirname, 'src/app/renderer/web.html'),
+          },
+          output: {
+            manualChunks: desktopStartupChunk,
+            onlyExplicitManualChunks: false,
           },
         },
       },

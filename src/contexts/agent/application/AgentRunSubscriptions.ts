@@ -11,6 +11,12 @@ export type RetainedEvent = {
   spaceId?: string
   previousBinding?: AgentRunBinding
 }
+export type ContextualPublication =
+  | RetainedEvent
+  | (AgentRuntimeResync & {
+      reason: 'retention_expired' | 'epoch_changed' | 'cursor_ahead'
+      oldestSeq: number
+    })
 export function subscribeAgentRuns(
   events: RetainedEvent[],
   subscribers: Set<(event: RetainedEvent) => void>,
@@ -19,6 +25,7 @@ export function subscribeAgentRuns(
   cursor: { epoch: string; afterSeq: number },
   filter: AgentRuntimeFilter,
   listener: (event: AgentRuntimeEvent | AgentRuntimeResync) => void,
+  contextual?: (event: ContextualPublication) => void,
 ): () => void {
   const oldest = events[0]?.event.seq ?? sequence + 1
   if (
@@ -27,12 +34,26 @@ export function subscribeAgentRuns(
     cursor.afterSeq < oldest - 1 ||
     cursor.afterSeq > sequence
   ) {
-    listener({
+    const gap = {
       type: 'resync_required',
       epoch: epoch,
       seq: sequence,
       query: 'agent.list',
-    })
+    } as const
+    if (contextual) {
+      contextual({
+        ...gap,
+        oldestSeq: oldest,
+        reason:
+          cursor.epoch !== epoch
+            ? 'epoch_changed'
+            : cursor.afterSeq > sequence
+              ? 'cursor_ahead'
+              : 'retention_expired',
+      })
+    } else {
+      listener(gap)
+    }
     return () => undefined
   }
   // Queue live events during replay so reentrant publishers cannot invert sequence order.
@@ -45,6 +66,10 @@ export function subscribeAgentRuns(
       return
     }
     deliveredSeq = item.event.seq
+    if (contextual) {
+      contextual(structuredClone(item))
+      return
+    }
     const previous = item.previousBinding
     if (
       previous &&

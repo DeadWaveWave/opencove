@@ -1,3 +1,4 @@
+import { attachFailureFrame, isE2EDiagnosticsEnabled } from './diagnostics'
 import { expect, test } from '@playwright/test'
 import { randomUUID } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
@@ -62,12 +63,14 @@ for (const theme of ['dark', 'light'] as const) {
         decodeURIComponent(new URL(uri).pathname),
       )
 
-      const screenshotPath = testInfo.outputPath(`terminal-png-preview-${theme}.png`)
-      await window.screenshot({ path: screenshotPath })
-      await testInfo.attach(`terminal-png-preview-${theme}`, {
-        path: screenshotPath,
-        contentType: 'image/png',
-      })
+      if (isE2EDiagnosticsEnabled()) {
+        const screenshotPath = testInfo.outputPath(`terminal-png-preview-${theme}.png`)
+        await window.screenshot({ path: screenshotPath })
+        await testInfo.attach(`terminal-png-preview-${theme}`, {
+          path: screenshotPath,
+          contentType: 'image/png',
+        })
+      }
 
       await openTerminalImageLink(window, terminalId)
       await expectTerminalImageDocument(window, { width: 96, height: 54 })
@@ -76,6 +79,9 @@ for (const theme of ['dark', 'light'] as const) {
       await writeFile(imagePath, TERMINAL_LINK_SMALL_PNG)
       await expectTerminalImageDocument(window, { width: 2, height: 2 })
       expect(await readImageDocumentNodeId(window)).toBe(documentId)
+    } catch (error) {
+      await attachFailureFrame(window, test.info())
+      throw error
     } finally {
       await electronApp.close()
       await removePathWithRetry(directory)

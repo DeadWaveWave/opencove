@@ -46,6 +46,7 @@ it('passes a terminal-first response and holds only the target agent with bindin
       })),
     },
   } as unknown as typeof window.opencoveApi
+  window.dispatchEvent(new Event('opencove:api-installed'))
   const returned = vi.fn()
   const invoke = (nodeId: string) =>
     window.opencoveApi.controlSurface.invoke({
@@ -128,6 +129,7 @@ it.each(['corrected', 'merged'] as const)(
       persistence: { readAppState: read, writeAppState: write },
       controlSurface: { invoke: vi.fn() },
     } as unknown as typeof window.opencoveApi
+    window.dispatchEvent(new Event('opencove:api-installed'))
     expect(await window.opencoveApi.persistence.readAppState()).toEqual(canonical)
     pause = true
     const pendingRead = window.opencoveApi.persistence.readAppState()

@@ -1,0 +1,46 @@
+{
+  "config": { "shard": { "current": 1, "total": 3 } },
+  "stats": { "duration": 120000 },
+  "errors": [],
+  "suites": [
+    {
+      "file": "timing.spec.ts",
+      "specs": [],
+      "suites": [
+        {
+          "title": "nested",
+          "specs": [
+            {
+              "title": "passed",
+              "tests": [{ "results": [{ "status": "passed", "duration": 20000 }] }]
+            },
+            {
+              "title": "failed",
+              "tests": [{ "results": [{ "status": "failed", "duration": 30000 }] }]
+            },
+            {
+              "title": "skipped",
+              "tests": [{ "results": [{ "status": "skipped", "duration": 0 }] }]
+            },
+            {
+              "title": "interrupted",
+              "tests": [{ "results": [{ "status": "interrupted", "duration": 10000 }] }]
+            },
+            { "title": "not started", "tests": [{ "results": [] }] },
+            {
+              "title": "retried",
+              "tests": [
+                {
+                  "results": [
+                    { "status": "failed", "duration": 10000 },
+                    { "status": "passed", "duration": 20000 }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

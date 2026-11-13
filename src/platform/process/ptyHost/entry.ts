@@ -1,3 +1,5 @@
+import { assertSpawnEnvironment } from '../spawnEnvironment'
+import { preparePtySpawnArguments } from '../spawnArguments'
 import process from 'node:process'
 import type { IPty } from 'node-pty'
 import { spawn } from 'node-pty'
@@ -213,16 +215,21 @@ function spawnPtySession(request: PtyHostSpawnRequest): void {
   }
 
   const sessionId = crypto.randomUUID()
-  const pty = spawn(request.command, request.args, {
-    cwd: request.cwd,
-    env: {
-      ...request.env,
-      ...(request.env?.OPENCOVE_ENV === '1' ? { OPENCOVE_SESSION_ID: sessionId } : {}),
+  assertSpawnEnvironment(request.env ?? {})
+  const pty = spawn(
+    request.command,
+    preparePtySpawnArguments(request.command, request.args, request.cwd),
+    {
+      cwd: request.cwd,
+      env: {
+        ...request.env,
+        ...(request.env?.OPENCOVE_ENV === '1' ? { OPENCOVE_SESSION_ID: sessionId } : {}),
+      },
+      cols: request.cols,
+      rows: request.rows,
+      name: 'xterm-256color',
     },
-    cols: request.cols,
-    rows: request.rows,
-    name: 'xterm-256color',
-  })
+  )
 
   sessions.set(sessionId, {
     pty,

@@ -88,7 +88,7 @@ describe('plugin detail cache lifecycle', () => {
     })
     await entry.load(errored, true)
     expect(entry.getSnapshot().detail?.readme).toBe('# Music')
-    expect(entry.getSnapshot().error).toBe('Could not read metadata')
+    expect(entry.getSnapshot().error).toBe('Plugin operation failed.')
     fetch.mockResolvedValue(detail(errored, ['Reload candidate failed']))
     store.refresh(plugin.id)
     await entry.load(errored)

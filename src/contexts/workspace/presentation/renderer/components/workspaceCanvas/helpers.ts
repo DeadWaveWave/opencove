@@ -5,7 +5,6 @@ import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolv
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import {
   formatAppErrorMessage,
-  getAppErrorDebugMessage,
   isAppErrorDescriptor,
   OpenCoveAppError,
 } from '@shared/errors/appError'
@@ -429,10 +428,6 @@ export function toErrorMessage(error: unknown): string {
     if (error.code === 'terminal.runtime_not_ready') {
       return translate('common.terminalRuntimeNotReady')
     }
-    const debug = getAppErrorDebugMessage(error)
-    if (typeof debug === 'string' && error.code.startsWith('integration.github.')) {
-      return normalizeIntegrationErrorMessage(debug)
-    }
 
     return formatAppErrorMessage(error)
   }
@@ -440,10 +435,6 @@ export function toErrorMessage(error: unknown): string {
   if (isAppErrorDescriptor(error)) {
     if (error.code === 'terminal.runtime_not_ready') {
       return translate('common.terminalRuntimeNotReady')
-    }
-    const debug = getAppErrorDebugMessage(error)
-    if (typeof debug === 'string' && error.code.startsWith('integration.github.')) {
-      return normalizeIntegrationErrorMessage(debug)
     }
 
     return formatAppErrorMessage(error)
@@ -458,10 +449,6 @@ export function toErrorMessage(error: unknown): string {
   }
 
   return translate('common.unknownError')
-}
-
-function normalizeIntegrationErrorMessage(message: string): string {
-  return message.replace(/^[A-Za-z0-9_]+Error:\s*/, '')
 }
 
 export function providerLabel(provider: AgentProvider): string {

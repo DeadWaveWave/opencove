@@ -1,3 +1,4 @@
+import { receivePowerShellSpawn } from '../../support/windowsPlatformReceiver'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const originalPlatform = process.platform
@@ -64,7 +65,11 @@ describe('AgentLaunchSpawnResolver on Windows', () => {
     expect(result.profileId).toBe('powershell')
     expect(result.runtimeKind).toBe('windows')
     expect(result.args[0]).toBe('-NoLogo')
-    expect(result.args[1]).toBe('-Command')
-    expect(result.args[2]).toContain("& 'claude' '--model' 'sonnet'")
+    expect(result.args[1]).toBe('-EncodedCommand')
+    expect(receivePowerShellSpawn(result.command, result.args, result.env)).toEqual([
+      'claude',
+      '--model',
+      'sonnet',
+    ])
   })
 })

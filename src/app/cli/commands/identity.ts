@@ -2,7 +2,7 @@ import { lineageFields, lineageFieldDescriptions } from '../core/nodeLineage'
 import { contextNodeSummary, contextSelf } from './contextNodes'
 import { agentMetadataFields, nodeAgentMetadata } from '../core/agentMetadata'
 import { defineCommand } from '../core/command'
-import { identityFields } from '../core/identity'
+import { identityFields, identityText } from '../core/identity'
 import { usage } from '../core/errors'
 import type { ListProjectsResult, GetSpaceResult } from '../../../shared/contracts/dto'
 import type { ListNodesResult } from '../../../shared/contracts/dto/nodeControl'
@@ -14,8 +14,9 @@ export const identityCommands = [
     path: ['whoami'],
     summary: 'Show your caller identity and permission scope',
     description:
-      'Inside an OpenCove terminal, caller is session-grant and scope is interact. With a desktop token, caller is bearer and scope is admin. projectId, spaceId, nodeId and sessionId are null when the caller has no session identity; spaceId is also null outside any Space. Standalone sessions keep their interact grant and project/Space identity, with nodeId: null. Credentials are never printed.',
+      'Inside an OpenCove terminal, caller is session-grant and scope is interact. With a desktop token, caller is bearer and scope is admin. projectId, spaceId, nodeId and sessionId are null when the caller has no session identity; spaceId is also null outside any Space. Standalone sessions keep their interact grant and project/Space identity, with nodeId: null. Credentials are never printed. lineageQuota shows {depth, maxDepth, liveInTree, maxLiveInTree, remainingLiveInTree} from the Worker admission census; the user root has depth 1 and does not consume a descendant slot. Older Workers omit it.',
     connect: true,
+    textOutput: identityText,
     operation: 'system.whoami',
     buildInput: () => ({}),
     execute: async ({ whoami }) => whoami(),
@@ -32,8 +33,9 @@ export const identityCommands = [
     path: ['context'],
     summary: 'Show your project, space and neighboring nodes',
     description:
-      'With no explicit target, inside OpenCove defaults to your own space. Terminals outside any space show their project with space: null and no neighbors. Outside OpenCove, provide --space or --project. An explicit project selects its active space. self contains your caller identity and node summary in self.node (null without a canvas node); project and space describe the target you asked about, which may differ from self. For agent nodes, state is the Worker run state (idle, working, waiting, exited or unknown) from agent.list; missing observations are unknown, never inferred from lifecycle. sessionStatus preserves the agent session lifecycle (for example running). For tasks, state is task status; for terminals, state remains session lifecycle; for other nodes it is null. agentState {state, quality, turnId} exposes work state for agent nodes and observed agents in terminals: working means the agent is working. taskNodeId is the reverse task link, or null when absent or ambiguous.',
+      'With no explicit target, inside OpenCove defaults to your own space. Terminals outside any space show their project with space: null and no neighbors. Outside OpenCove, provide --space or --project. An explicit project selects its active space. self contains your caller identity and node summary in self.node (null without a canvas node); project and space describe the target you asked about, which may differ from self. For agent nodes, state is the Worker run state (idle, working, waiting, exited or unknown) from agent.list; missing observations are unknown, never inferred from lifecycle. sessionStatus preserves the agent session lifecycle (for example running). For tasks, state is task status; for terminals, state remains session lifecycle; for other nodes it is null. agentState {state, quality, turnId} exposes work state for agent nodes and observed agents in terminals: working means the agent is working. taskNodeId is the reverse task link, or null when absent or ambiguous. self.lineageQuota shows the caller’s depth and live descendant budget from the same Worker census as admission; older Workers omit it.',
     connect: true,
+    textOutput: identityText,
     options: {
       space: {
         type: 'string',
