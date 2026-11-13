@@ -1,5 +1,5 @@
 import type { LineageQuota } from '../../../shared/contracts/dto/nodeLineage'
-import type { CommandContext, OperationId } from './command'
+import type { TextOutputContext, OperationId } from './command'
 import { usage } from './errors'
 
 export type Invoke = (id: OperationId, payload: unknown) => Promise<unknown>
@@ -103,7 +103,7 @@ export function sessionIdentity(env: Record<string, string | undefined>, invoke:
 /** Only default interactive identity output may append prose to the JSON value. */
 export function identityText(
   value: unknown,
-  { io, options }: Pick<CommandContext, 'io' | 'options'>,
+  { io, options, render }: TextOutputContext,
 ): string | undefined {
   if (!io.stdout.isTTY || options.pretty || options.output || options.fields !== undefined) {
     return undefined
@@ -111,7 +111,7 @@ export function identityText(
   const result = value as { self?: CallerIdentity; lineageQuota?: LineageQuota }
   const quota = (result.self ?? result).lineageQuota
   return quota
-    ? JSON.stringify(value) +
-        `\nAgents: ${quota.liveInTree} of ${quota.maxLiveInTree} running in your tree; depth ${quota.depth} of ${quota.maxDepth}\n`
+    ? render() +
+        `Agents: ${quota.liveInTree} of ${quota.maxLiveInTree} running in your tree; depth ${quota.depth} of ${quota.maxDepth}\n`
     : undefined
 }
