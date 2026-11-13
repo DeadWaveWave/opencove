@@ -23,9 +23,10 @@ describe('informational E2E duration report', () => {
     expect(summary).toContain('| macos | 1 | 2.17 | 2.00 |')
     expect(specs[0].tests).toHaveLength(1)
     specs.at(-1).tests[0].results[0].status = 'interrupted'
-    expect(durationBaseline([{ os: 'macos', report }]).macos).not.toHaveProperty(id('passed'))
+    expect(durationBaseline([{ os: 'macos', report }]).macos[id('passed')]).toBe(20000)
+    expect(summarizeDurations([{ os: 'macos', shard: 1, report }], {}, [])).toContain('partial')
   })
-  it('builds per-OS medians from passed observations without treating skipped/failed work as zero', () => {
+  it('builds per-OS passed medians and records exclusively skipped observations as zero', () => {
     const reports = [10000, 90000, 30000].map(ms => {
       const report = fixture()
       report.suites[0].suites[0].specs[0].tests[0].results[0].duration = ms
@@ -35,9 +36,49 @@ describe('informational E2E duration report', () => {
     expect(baseline.macos[id('passed')]).toBe(30000)
     expect(baseline.macos[id('retried')]).toBe(20000)
     expect(baseline.macos).not.toHaveProperty(id('failed'))
-    expect(baseline.macos).not.toHaveProperty(id('skipped'))
+    expect(baseline.macos[id('skipped')]).toBe(0)
     expect(baseline.ubuntu).toEqual({})
   })
+
+  it('prefers passed timings over skips independently for each OS and observation order', () => {
+    const reports = [0, 10000, 0, 30000].map(ms => {
+      const report = fixture()
+      report.suites[0].suites[0].specs[2].tests[0].results = [
+        { status: ms ? 'passed' : 'skipped', duration: ms },
+      ]
+      return { os: 'macos', report }
+    })
+    reports.push({ os: 'ubuntu', report: fixture() })
+    for (const observations of [reports, [...reports].reverse()]) {
+      const baseline = durationBaseline(observations)
+      expect(baseline.macos[id('skipped')]).toBe(20000)
+      expect(baseline.ubuntu[id('skipped')]).toBe(0)
+    }
+  })
+
+  it.each(['failed', 'timedOut', 'interrupted', 'notRun'])(
+    'keeps %s observations unknown even when another sample or attempt was skipped',
+    status => {
+      const report = fixture()
+      const spec = report.suites[0].suites[0].specs[2]
+      spec.tests[0].results = status === 'notRun' ? [] : [{ status, duration: 1000 }]
+      const sample = { os: 'macos', report }
+      const skipped = { os: 'macos', report: fixture() }
+      expect(durationBaseline([sample]).macos).not.toHaveProperty(id('skipped'))
+      for (const observations of [
+        [sample, skipped],
+        [skipped, sample],
+      ]) {
+        expect(durationBaseline(observations).macos).not.toHaveProperty(id('skipped'))
+      }
+      spec.tests.push({ results: [{ status: 'skipped', duration: 0 }] })
+      expect(durationBaseline([sample]).macos).not.toHaveProperty(id('skipped'))
+      if (status !== 'notRun') {
+        spec.tests[0].results.push({ status: 'skipped', duration: 0 })
+        expect(durationBaseline([sample]).macos).not.toHaveProperty(id('skipped'))
+      }
+    },
+  )
   it('retains passed, failed, skipped, interrupted and not-run cases; counts retries as cost', () => {
     const summary = summarizeDurations([{ os: 'macos', shard: 1, report: fixture() }], {}, [])
     expect(summary).toContain('| macos | 1 | 1.50 | 2.00 |')
