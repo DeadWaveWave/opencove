@@ -84,6 +84,9 @@ export interface Command {
   quietIdPath?: string
   mutation?: boolean
   stream?: boolean
+  streamProjection?: boolean
+  resolveInExecute?: boolean
+  executionScope?(args: CommandArgs, io: CliIo): { io: CliIo; dispose(): void }
   timeoutMs?: number
   connect: boolean
   selectOperation?(args: CommandArgs): OperationId

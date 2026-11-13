@@ -282,6 +282,9 @@ it.each(targets)(
             ? target.name
             : target.id.slice(0, 8)
     const args = [...command.path, ...(command.positionals ?? []).map(() => 'sample')]
+    if (command.path.join(' ') === 'events') {
+      args.push('--count', '1')
+    }
     if (command.path.join(' ') === 'agent wait') {
       args.push('--until', 'idle')
     }

@@ -5,7 +5,7 @@ exports[`makes skill discoverable on the last line of root help and provides off
 
 Print the agent usage guide bundled with this CLI version
 
-Print the core guide, or select a topic: canvas, coordinate, wait, read, access. All guides are bundled and available offline. -o json returns {version, content}, plus topic when selected; --fields projects those fields.
+Print the core guide, or select a topic: canvas, coordinate, wait, read, access, events. All guides are bundled and available offline. -o json returns {version, content}, plus topic when selected; --fields projects those fields.
 
 Table output (-o table): not supported.
 Projectable fields: version, content, topic

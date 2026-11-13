@@ -8,7 +8,7 @@ import { run } from '../../../src/app/cli/core/run'
 import { identityFixture } from './cliIdentity.helpers'
 import { version } from '../../../package.json'
 
-const topics = ['canvas', 'coordinate', 'wait', 'read', 'access']
+const topics = ['canvas', 'coordinate', 'wait', 'read', 'access', 'events']
 const source = (topic: string) =>
   readFileSync(`src/app/cli/skill/${topic ? `topics/${topic}.md` : 'SKILL.md'}`, 'utf8')
 
