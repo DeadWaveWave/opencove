@@ -1,3 +1,4 @@
+import { acknowledgeClaudeJournal, projectClaudeJournal } from './ClaudeJournalResolution'
 import { permitsClearBaseline } from './ClaudeClearBaseline'
 import { debugAgentContinuation } from '../../../shared/runtime/agentHook/agentContinuationDiagnostics'
 import { publishRunTransition, scheduleRunExpiry } from './AgentRunStateEntry'
@@ -382,29 +383,7 @@ export function commitAgentRunUpdate(
       )
     )
   const result = updateAgentRunEntry(entry, observation, evidence, ports.now, ports.createTurnId)
-  // Freshness and source/conversation fencing have all passed before withdrawing the receipt.
-  if (
-    result.accepted &&
-    observation &&
-    (observation.source === 'session_file' || observation.source === 'claude_hook') &&
-    (observation.state === 'working' || observation.state === 'waiting')
-  ) {
-    entry.conversation?.veto()
-    if (observation.source === 'session_file') {
-      entry.conversation?.input.block(observation.observedAt)
-    }
-  }
-  if (
-    result.accepted &&
-    observation?.source === 'claude_hook' &&
-    !observation.degraded &&
-    ['UserPromptSubmit', 'Stop', 'StopFailure'].includes(observation.hookEventName ?? '')
-  ) {
-    entry.conversation?.input.confirm(
-      observation.emittedAtMs ?? observation.observedAt,
-      evidence?.promptId,
-    )
-  }
+  acknowledgeClaudeJournal(entry, observation, evidence, result)
   if (
     canRelease &&
     result.accepted &&
@@ -446,6 +425,7 @@ export function commitAgentRunUpdate(
       },
     }
   }
+  result.model = projectClaudeJournal(entry, observation, result.model)
   const changed = JSON.stringify(result.model.snapshot) !== JSON.stringify(entry.model.snapshot)
   entry.model = result.model
   if (entry.model.snapshot.state === 'exited') {

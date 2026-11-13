@@ -212,6 +212,7 @@ export function clearPropertyRuntime() {
         incarnation: 'i',
         providerSessionId: event.id,
         conversationGeneration: generation,
+        conversationCapture: watchers.get(event.epoch)?.capture,
         origin: 'hook',
         generation: event.epoch + 1,
         fileIdentity: `${event.epoch}.jsonl`,

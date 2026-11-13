@@ -325,6 +325,7 @@ export function createSessionStateWatcherController({
             incarnation: observation.incarnation ?? sessionId,
             generation: watcherVersion,
             conversationGeneration: observation.generation,
+            conversationCapture: observation.capture,
           })
         },
         onUnavailable: unavailableSessionId => {

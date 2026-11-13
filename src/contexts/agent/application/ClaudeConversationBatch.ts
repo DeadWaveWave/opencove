@@ -60,22 +60,6 @@ export function retiredConversationIdentity(
   )
 }
 
-export function canReconcile(
-  event: Request['event'],
-  committedAt: number,
-  current: string | undefined,
-  retired: ReadonlySet<string>,
-): boolean {
-  return (
-    event.hookEventName === 'SessionStart' &&
-    event.sessionStartSource === 'clear' &&
-    event.emittedAtMs !== undefined &&
-    Number.isFinite(event.emittedAtMs) &&
-    event.emittedAtMs > committedAt &&
-    (!retired.has(event.claudeSessionId) || event.claudeSessionId === current)
-  )
-}
-
 /** Fold one validated relay-order batch without publishing tied live evidence. */
 export function foldConversationBatch(
   batch: Request[],
@@ -126,22 +110,6 @@ export function rejectConversationBatch(batch: Request[], generation: number): v
   for (const request of batch) {
     request.publish(generation, 'ignore')
   }
-}
-
-/** An authenticated clear Start strictly behind the current clear is predecessor proof.
- * The initial attachment is excluded: it has no clear epoch with which to order a new ID. */
-export function provenPredecessor(
-  event: Request['event'],
-  current: string | undefined,
-  startAt: number | undefined,
-): boolean {
-  return (
-    current !== undefined &&
-    event.hookEventName === 'SessionStart' &&
-    event.sessionStartSource === 'clear' &&
-    Number.isFinite(event.emittedAtMs) &&
-    event.emittedAtMs! < (startAt ?? -Infinity)
-  )
 }
 
 export function legacyConversationEnd(
@@ -208,17 +176,6 @@ export function discardPrestartRequests(
     r.publish(generation, 'ignore')
     return false
   })
-}
-
-export function predecessorIdentity(
-  id: string,
-  current: string | undefined,
-  pending: Request[],
-): boolean {
-  return (
-    id !== current &&
-    !pending.some(r => r.event.hookEventName === 'SessionStart' && r.event.claudeSessionId === id)
-  )
 }
 
 /** Old boundaries remain replayable history without invalidating newer captures. */

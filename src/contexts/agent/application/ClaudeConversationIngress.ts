@@ -17,9 +17,9 @@ export function routeOrdinaryClaudeConversation(
   owner: ClaudeLiveConversation,
   request: Request,
   observation?: Pick<AgentRunObservation, 'state' | 'emittedAtMs'>,
-): 'ordinary' | 'pending' {
+): 'ordinary' | 'pending' | 'ignored' {
   const event = request.event
-  const initial = request.initialState
+  const initial = owner.checkpoint
   const lifecycle = new ClaudeConversationLifecycle(initial)
   const action = lifecycle.accept(event)
   const starts = event.hookEventName === 'SessionStart'
@@ -55,7 +55,7 @@ export function routeOrdinaryClaudeConversation(
     }
     request.decide({ action: 'ignore', generation: owner.generation, deferred: true })
     request.publish(owner.generation, 'ignore')
-    return 'ordinary'
+    return 'ignored'
   }
   if (isClaudeConversationActivity(event) || starts) {
     owner.followOrdinary(lifecycle.checkpoint(), action === 'start' || action === 'end', starts)
@@ -64,8 +64,5 @@ export function routeOrdinaryClaudeConversation(
     ...getPromptSubmissionEvidence(event),
     conversationGeneration: owner.generation,
   })
-  if (isClaudeConversationActivity(event)) {
-    owner.veto()
-  }
   return 'ordinary'
 }

@@ -158,6 +158,24 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
       conversationGeneration:
         acceptedGeneration ?? getPromptSubmissionEvidence(envelope)?.conversationGeneration,
     }
+    if (acceptedGeneration !== undefined) {
+      let binding: object | undefined
+      this.emit({
+        sessionId,
+        incarnation: context.incarnation,
+        providerSessionId: envelope.claudeSessionId,
+        generation: 0,
+        fileIdentity: 'capture',
+        position: -1,
+        baseline: true,
+        captureEpoch: envelope.hookEventName === 'SessionStart' ? envelope.emittedAtMs : undefined,
+        captureBinding: value => {
+          binding = value
+        },
+        captureConversation() {},
+      })
+      context = { ...context, conversationCapture: binding }
+    }
     if (action === 'start' || action === 'end') {
       this.detach()
       this.demand = false
@@ -169,6 +187,7 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
           incarnation: context.incarnation,
           generation: this.currentGeneration,
           conversationGeneration: context.conversationGeneration,
+          conversationCapture: context.conversationCapture,
           fileIdentity: `generation:${this.currentGeneration}`,
           position: -1,
           baseline: false,
@@ -204,6 +223,7 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
         incarnation: context.incarnation,
         isCurrent: context.isCurrent,
         conversationGeneration: context.conversationGeneration,
+        conversationCapture: context.conversationCapture,
       }
       void this.attach(
         sessionId,
@@ -264,6 +284,7 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
             providerSessionId,
             generation: current,
             conversationGeneration: context.conversationGeneration,
+            conversationCapture: context.conversationCapture,
             origin: 'hook',
             incarnation: context.incarnation,
             setPollingDemand: this.pollingDemand(context, version),
@@ -314,6 +335,7 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
       providerSessionId,
       generation: current,
       conversationGeneration: context.conversationGeneration,
+      conversationCapture: context.conversationCapture,
       origin: 'hook',
       incarnation: context.incarnation,
       fileIdentity: `unavailable:${current}`,

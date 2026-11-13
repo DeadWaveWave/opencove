@@ -94,7 +94,7 @@ it.each(['PermissionRequest', 'Stop'])(
     await f.send('B', name, 20, 'b')
     await f.send('B', 'UserPromptSubmit', 20, 'b')
     await f.send('B', 'SessionStart', 10, undefined, 'clear')
-    expect(f.fence()).toMatchObject({ conversationQuarantined: false, claudeClearReady: false })
+    expect(f.fence()).toMatchObject({ conversationQuarantined: true, claudeClearReady: false })
     expect(promptAdmission(f.fence(), capability, 'steer')).not.toBeNull()
   },
 )
@@ -143,15 +143,21 @@ it.each([
   expect(promptAdmission(f.fence(), capability)).not.toBeNull()
 })
 it.each(['A', 'B'])(
-  'rejects unversioned %s callbacks after a conversation handoff before veto',
+  'fences unversioned %s callbacks by identity rather than elapsed quiet',
   async id => {
     const f = await fixture()
     const stale = f.transcript(id, true)
     await f.send('B', 'SessionStart', 10, undefined, 'clear')
     const before = f.fence()
     stale(JSON.stringify({ ...JSON.parse(clearTranscript[6]), sessionId: id }))
-    expect(f.fence()).toEqual(before)
-    expect(promptAdmission(f.fence(), capability)).toBeNull()
+    if (id === 'A') {
+      expect(f.fence()).toEqual(before)
+      expect(promptAdmission(f.fence(), capability)).toBeNull()
+    } else {
+      // B could still be current: no epoch capability is proof of retirement.
+      expect(f.fence().claudeClearReady).toBe(false)
+      expect(promptAdmission(f.fence(), capability)).not.toBeNull()
+    }
     f.transcript('B')(clearTranscript[6])
     expect(promptAdmission(f.fence(), capability)).not.toBeNull()
   },

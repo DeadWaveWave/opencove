@@ -72,6 +72,7 @@ export interface AgentHookObservationOwner<TEnvelope extends AgentHookEnvelope> 
 
 export interface PrivateHookContext {
   incarnation: string
+  conversationCapture?: object
   conversationGeneration?: number
   credential?: object
   isCurrent: () => boolean

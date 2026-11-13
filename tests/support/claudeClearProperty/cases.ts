@@ -124,6 +124,20 @@ export function clearCases(seed: number): ClearCase[] {
           ...events.filter(e => e !== end && e !== start && e !== target),
         ]
       }
+      if (index % 5 === 2) {
+        const kind = ['working', 'waiting', 'user'][random(3)]
+        const target = groups[1].find(e => e.name === kind || e.kind === kind)!
+        const end = groups[0].find(e => e.name === 'SessionEnd')!,
+          start = groups[1][0]
+        events = [
+          { kind: 'capture', epoch: 1, id: ids[1], at: 80 },
+          end,
+          start,
+          { kind: 'tick', epoch: 1, id: ids[1], at: 199, ms: 201 },
+          target,
+          ...events.filter(e => e !== end && e !== start && e !== target),
+        ]
+      }
       const copies = 1 + random(5)
       for (let n = 0; n < copies; n++) {
         const event = events[random(events.length)]

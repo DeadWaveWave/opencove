@@ -10,6 +10,7 @@ import { AgentTurnHistory, type FinalMessageSelector } from './AgentTurnHistory'
 import type { PromptSubmissionEvidence } from '../../../shared/runtime/agentHook/claudePromptEvidence'
 import {
   projectRunStateFence,
+  disposeRunConversation,
   setRunRuntimeContext,
   runBinding,
   readRunPromptIdentity,
@@ -97,7 +98,7 @@ export class AgentRunStateRegistry {
       return
     }
     existing?.cancelExpiry?.()
-    existing?.conversation?.dispose()
+    disposeRunConversation(existing)
     if (existing) {
       this.releaseNodeBinding(existing)
     }
@@ -201,10 +202,7 @@ export class AgentRunStateRegistry {
       return
     }
     if (observation.source === 'exit') {
-      entry.conversation?.dispose()
-    }
-    if (observation.degraded || observation.source === 'exit') {
-      entry.conversation?.veto()
+      disposeRunConversation(entry)
     }
     this.update(entry, observation, evidence)
   }
@@ -374,7 +372,7 @@ export class AgentRunStateRegistry {
       return false
     }
     entry.cancelExpiry?.()
-    entry.conversation?.dispose()
+    disposeRunConversation(entry)
     this.entries.delete(input.sessionId)
     this.fences.emit(input.sessionId, { fence: null })
     this.releaseNodeBinding(entry)
@@ -431,7 +429,7 @@ export class AgentRunStateRegistry {
     this.subscribers.clear()
     for (const entry of this.entries.values()) {
       entry.cancelExpiry?.()
-      entry.conversation?.dispose()
+      disposeRunConversation(entry)
     }
     this.entries.clear()
     this.nodeBindings.clear()

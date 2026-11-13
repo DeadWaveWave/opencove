@@ -103,7 +103,11 @@ it('accepts discovered file-only identity through actual generation-zero watcher
     expect(captured.generation).toBeUndefined()
     captured.bind('discovered-A')
     captured.state('s', 'working')
-    expect(getPromptSubmissionEvidence(emitted.mock.calls[0][0])).toBeUndefined()
+    expect(getPromptSubmissionEvidence(emitted.mock.calls[0][0])).toMatchObject({
+      conversationGeneration: undefined,
+      providerSessionId: undefined,
+      conversationCapture: expect.any(Object),
+    })
     expect(f.registry.get({ sessionId: 's' })).toMatchObject({
       state: 'working',
       quality: 'inferred',

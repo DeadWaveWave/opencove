@@ -19,6 +19,6 @@ export function permitsClearBaseline(
     evidence?.providerSessionId === id &&
     evidence.promptId &&
     (!entry.history.hasEndedPrompt(evidence.promptId, id) ||
-      entry.conversationHandoff?.completedReceipt(id, observation.emittedAtMs)),
+      entry.conversationReplay?.completedReceipt(id, observation.emittedAtMs)),
   )
 }

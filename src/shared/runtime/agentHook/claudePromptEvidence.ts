@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 
 export interface PromptSubmissionEvidence {
   invocationId?: string
+  conversationCapture?: object
   conversationGeneration?: number
   promptId?: string
   promptDigest?: string
@@ -19,6 +20,7 @@ export function setPromptSubmissionEvidence(
   evidenceByEvent.set(event, {
     invocationId: evidence.invocationId,
     conversationGeneration: evidence.conversationGeneration,
+    conversationCapture: evidence.conversationCapture,
     promptId: evidence.promptId,
     promptDigest: evidence.promptDigest,
     providerSessionId: evidence.providerSessionId,

@@ -22,7 +22,7 @@ export function createSessionStatePublisher({
     options: {
       evidence?: Pick<
         PromptSubmissionEvidence,
-        'providerSessionId' | 'conversationGeneration' | 'invocationId'
+        'providerSessionId' | 'conversationGeneration' | 'conversationCapture' | 'invocationId'
       >
       degraded?: boolean
       source?: TerminalSessionStateEvent['source']
@@ -65,6 +65,7 @@ export function captureSessionStateObservation(
   publish: ReturnType<typeof createSessionStatePublisher>,
 ) {
   let providerSessionId = input.resumeSessionId ?? undefined
+  let conversationCapture: object | undefined
   let capturedGeneration: number | undefined
   let capturedIncarnation: string | undefined
   if (input.provider === 'claude-code') {
@@ -75,6 +76,9 @@ export function captureSessionStateObservation(
       fileIdentity: 'capture',
       position: -1,
       baseline: true,
+      captureBinding: binding => {
+        conversationCapture = binding
+      },
       captureConversation: (value, incarnation) => {
         capturedGeneration = value
         capturedIncarnation = incarnation
@@ -95,6 +99,7 @@ export function captureSessionStateObservation(
         providerSessionId,
         generation: watcherVersion,
         conversationGeneration,
+        conversationCapture,
         fileIdentity: 'activity',
         position: -1,
         baseline: true,
@@ -103,11 +108,14 @@ export function captureSessionStateObservation(
     }
     publish(sessionId, value, {
       ...options,
-      ...(input.provider === 'claude-code' && conversationGeneration !== undefined
+      ...(input.provider === 'claude-code' &&
+      (conversationGeneration !== undefined || conversationCapture !== undefined)
         ? {
             evidence: {
-              providerSessionId,
-              conversationGeneration,
+              ...(conversationGeneration !== undefined
+                ? { providerSessionId, conversationGeneration }
+                : {}),
+              conversationCapture,
               invocationId: capturedIncarnation,
             },
           }
@@ -119,6 +127,9 @@ export function captureSessionStateObservation(
     unavailable: (sessionId: string) => state(sessionId, 'standby', { degraded: true }),
     bind: (id: string) => {
       providerSessionId = id
+    },
+    get capture() {
+      return conversationCapture
     },
     get generation() {
       return conversationGeneration

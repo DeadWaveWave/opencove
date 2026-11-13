@@ -1,41 +1,45 @@
-import { ClaudeConversationHandoff } from './ClaudeConversationHandoff'
-import type { ClaudeConversationEvent } from '../../../shared/runtime/agentHook/claudeConversation'
+import { ClaudeInvocationJournal } from './ClaudeInvocationJournal'
+import { ClaudeConversationReplay, preserveClaudeProjection } from './ClaudeConversationReplay'
 import { ClaudeLiveConversation } from './ClaudeLiveConversation'
 import { isClaudeClearEvidence } from './ClaudeClearTransition'
 import { routeOrdinaryClaudeConversation } from './ClaudeConversationIngress'
 import type { ClaudeTranscriptObservation } from '../../../shared/runtime/agentHook/claudeTranscript'
 import { getClaudeTranscriptInput } from '../../../shared/runtime/agentHook/claudeTranscript'
-import { publishRunTransition, type AgentRunEntry } from './AgentRunStateEntry'
+import {
+  allowsClaudeClearReceipt,
+  publishRunTransition,
+  type AgentRunEntry,
+} from './AgentRunStateEntry'
 
 type Ports = Parameters<typeof publishRunTransition>[3] & { now(): number; update(): void }
-/** Registry-owned synchronous lifecycle routing, before observers schedule file IO. */
+/** Synchronous private boundary. Journal owns authority; the adapter owns history publications. */
 export function observeRunConversation(
   entry: AgentRunEntry,
   record: ClaudeTranscriptObservation,
   ports: Ports,
 ): void {
-  if (record.captureConversation) {
-    record.captureConversation(entry.conversation?.generation, entry.model.incarnation)
+  const journal = (entry.claudeJournal ??= new ClaudeInvocationJournal(ports.now))
+  if (record.captureConversation || record.captureBinding) {
+    record.captureConversation?.(entry.conversation?.generation, entry.model.incarnation)
+    record.captureBinding?.(journal.capture(record.providerSessionId, record.captureEpoch))
     return
   }
   if (record.conversation) {
-    const request = record.conversation
-    const clear = isClaudeClearEvidence(request.event)
-    if (!entry.conversation?.active && !clear) {
-      const route =
-        entry.conversation &&
-        routeOrdinaryClaudeConversation(
-          entry.conversation,
-          request,
-          entry.model.observations.claude_hook,
-        )
+    const request = record.conversation,
+      clear = isClaudeClearEvidence(request.event)
+    if (!entry.conversation && !clear) {
+      journal.appendHook(request.event, request)
+      return
+    }
+    if (entry.conversation && !entry.conversation.active && !clear) {
+      const route = routeOrdinaryClaudeConversation(
+        entry.conversation,
+        request,
+        entry.model.observations.claude_hook,
+      )
       if (route !== 'pending') {
-        if (!entry.conversation?.isRetiredEvent(request.event)) {
-          entry.conversationHandoff?.note(request.event)
-        }
-        if (!entry.conversation) {
-          entry.conversationHandoff ??= new ClaudeConversationHandoff()
-          entry.conversationHandoff.observe(record, ports.now())
+        if (route !== 'ignored') {
+          journal.appendHook(request.event)
         }
         return
       }
@@ -44,18 +48,23 @@ export function observeRunConversation(
     if (!entry.conversation) {
       entry.conversation = new ClaudeLiveConversation(
         entry.conversationSchedule,
-        entry.conversationHandoff?.attachment(request.initialState) ?? request.initialState,
+        journal.attachment(request.initialState),
         ports.now,
+        journal,
       )
-      carried = entry.conversationHandoff?.take(entry, request.event) ?? []
+      const records = journal.takeRequests().map(conversation => ({
+        sessionId: record.sessionId,
+        providerSessionId: conversation.event.claudeSessionId,
+        generation: 0,
+        fileIdentity: '',
+        position: -1,
+        baseline: false,
+        conversation,
+      }))
+      entry.conversationReplay = new ClaudeConversationReplay(records, entry, request.event)
+      carried = entry.conversationReplay.takeRecords()
     } else if (!entry.conversation.active) {
-      entry.conversation.synchronize(
-        entry.conversationHandoff?.attachment(request.initialState) ?? request.initialState,
-      )
-    }
-    entry.conversationHandoff ??= new ClaudeConversationHandoff()
-    if (!entry.conversation.isRetiredEvent(request.event)) {
-      entry.conversationHandoff.observe(record, ports.now())
+      entry.conversation.synchronize(journal.attachment(request.initialState))
     }
     const ownerPorts = {
       reset: () => {
@@ -67,30 +76,18 @@ export function observeRunConversation(
         entry.cancelExpiry = undefined
         projectConversation(entry, false, ports, pending)
       },
-      canReady: () => {
-        entry.conversationHandoff?.establish(entry, entry.conversation!.providerSessionId!)
-        return (
-          entry.conversation!.mayBeClearReady &&
-          !entry.conversation!.input.blocked &&
-          !entry.remote &&
-          entry.launchKind === 'managed' &&
-          entry.hookCoverage === 'lifecycle' &&
-          (entry.hookInstallState === undefined || entry.hookInstallState === 'installed') &&
-          !entry.model.snapshot.turn
-        )
-      },
-      preserve: (event: ClaudeConversationEvent) =>
-        entry.conversationHandoff?.preserve(event) ?? false,
-      established: (id: string) => entry.conversationHandoff?.establish(entry, id),
+      canReady: () => allowsClaudeClearReceipt(entry),
+      preserve: (event: Parameters<ClaudeConversationReplay['preserve']>[0]) =>
+        (entry.conversationReplay?.preserve(event) ?? false) ||
+        preserveClaudeProjection(entry, event),
       ready: () => projectConversation(entry, true, ports),
       settled: ports.update,
-      adoptedCompletion: () => entry.conversationHandoff?.adoptedCompletion(entry) ?? false,
+      adoptedCompletion: () => entry.conversationReplay?.adoptedCompletion(entry) ?? false,
       completedTurnId: () => {
         const ended = entry.model.snapshot.lastEndedTurn
         return ended && ended.outcome !== 'unknown' ? ended.id : null
       },
     }
-    // Revoke and open the clear batch before replaying any already-published evidence.
     entry.conversation.accept(record, ports.now(), ownerPorts, carried.length > 0)
     for (const [index, previous] of carried.entries()) {
       entry.conversation.accept(previous, ports.now(), ownerPorts, index < carried.length - 1)
@@ -98,83 +95,32 @@ export function observeRunConversation(
     return
   }
   const owner = entry.conversation
-  const successor =
-    owner &&
-    record.providerSessionId !== owner.providerSessionId &&
-    !owner.retiredIdentities.has(record.providerSessionId) &&
-    owner.acceptsSuccessorCapture(record.conversationGeneration) &&
-    (!record.activity || record.activity.observedAt >= (owner.startedAt ?? -Infinity))
+  const accepted = journal.accepts(record.providerSessionId, record.conversationCapture)
+  if (accepted && journal.appendIO(record) && owner) {
+    ports.update()
+  }
   if (
-    !owner ||
-    successor ||
-    (owner.active &&
-      !owner.rejectsIdentity(record.providerSessionId) &&
-      record.conversationGeneration === owner.generation)
+    owner?.active &&
+    owner.deferTranscript(record, previous => observeRunConversation(entry, previous, ports))
   ) {
-    entry.conversationHandoff ??= new ClaudeConversationHandoff()
-    const input = entry.conversationHandoff.observe(record, ports.now())
-    if (successor && input) {
-      owner.suspend()
-      owner.input.block(ports.now(), `conversation:${record.providerSessionId}`)
-      ports.update()
-    }
+    return
   }
   if (record.activity) {
-    owner?.deferTranscript(record, accepted => observeRunConversation(entry, accepted, ports))
     return
   }
   if (
-    entry.conversation?.active &&
-    entry.conversation.deferTranscript(record, accepted =>
-      observeRunConversation(entry, accepted, ports),
-    )
+    owner &&
+    !accepted &&
+    !owner.accepts(record.conversationGeneration, record.providerSessionId)
   ) {
     return
   }
   if (
-    entry.conversation &&
-    !entry.conversation.accepts(record.conversationGeneration, record.providerSessionId)
-  ) {
-    return
-  }
-  if (
-    entry.conversation &&
-    entry.conversationHandoff?.historicalInput(record, entry.conversation.startedAt)
-  ) {
-    return
-  }
-  const input =
-    entry.conversation && record.record ? getClaudeTranscriptInput(record.record) : undefined
-  const clearHandling = entry.conversation?.active || entry.conversation?.ready
-  if (
-    clearHandling &&
-    input === 'auxiliary' &&
-    entry.conversation?.clearIdentity === record.providerSessionId
-  ) {
-    return
-  }
-  if (
-    (entry.conversation?.ready ||
-      (entry.conversation?.active && entry.conversation.mayBeClearReady)) &&
+    (owner?.active || owner?.ready) &&
     record.record &&
-    ['queue', 'user', 'invalid_user'].includes(record.record.kind) &&
-    input !== 'redacted' &&
-    (record.record.kind !== 'invalid_user' || record.record.input !== false)
+    getClaudeTranscriptInput(record.record) === 'auxiliary'
   ) {
-    entry.conversation.veto()
-  }
-  if (
-    entry.conversation &&
-    record.record?.kind === 'user' &&
-    input !== 'auxiliary' &&
-    !entry.history.hasCurrentPrompt({
-      providerSessionId: record.providerSessionId,
-      promptId: record.record.promptId,
-    }) &&
-    !entry.history.hasEndedPrompt(record.record.promptId, record.providerSessionId)
-  ) {
-    entry.conversation.veto()
-    entry.conversation.input.block(ports.now(), record.record.promptId)
+    return
   }
   entry.continuation.transcript(record, entry.history, ports.now())
   ports.update()

@@ -1,7 +1,8 @@
 import type { AgentRunObservation } from '../domain/agentRunState'
 import type { PromptSubmissionEvidence } from '../../../shared/runtime/agentHook/claudePromptEvidence'
 import type { ClaudeLiveConversation } from './ClaudeLiveConversation'
-import type { ClaudeConversationHandoff } from './ClaudeConversationHandoff'
+import type { ClaudeInvocationJournal } from './ClaudeInvocationJournal'
+import type { ClaudeConversationReplay } from './ClaudeConversationReplay'
 import type { ClaudeTurnContinuation } from './ClaudeTurnContinuation'
 import { createAppError } from '../../../shared/errors/appError'
 import type { AgentTurnHistory, FinalMessageSelector } from './AgentTurnHistory'
@@ -10,7 +11,8 @@ import type { AgentRunModel } from '../domain/agentRunState'
 import type { RunStateFence } from './ports/PromptDeliveryPorts'
 export type AgentRunEntry = {
   conversation?: ClaudeLiveConversation
-  conversationHandoff?: ClaudeConversationHandoff
+  claudeJournal?: ClaudeInvocationJournal
+  conversationReplay?: ClaudeConversationReplay
   conversationSchedule: (callback: () => void, delay: number) => () => void
   continuation: ClaudeTurnContinuation
   history: AgentTurnHistory
@@ -29,21 +31,33 @@ export type AgentRunEntry = {
 }
 export type AgentRunBinding = { nodeId: string | null; projectId?: string; spaceId?: string }
 
+export function allowsClaudeClearReceipt(entry: AgentRunEntry): boolean {
+  return (
+    !!entry.conversation?.ready &&
+    !entry.remote &&
+    entry.launchKind === 'managed' &&
+    entry.hookCoverage === 'lifecycle' &&
+    (entry.hookInstallState === undefined || entry.hookInstallState === 'installed') &&
+    !entry.model.snapshot.turn
+  )
+}
+
 export function projectRunStateFence(entry: AgentRunEntry, epoch: string): RunStateFence {
   const { model } = entry
+  const quarantined = !!(
+    entry.conversation?.quarantined ||
+    (entry.conversation?.journal.view().unresolved && model.snapshot.state === 'idle')
+  )
   return structuredClone({
     epoch: epoch,
     incarnation: entry.token,
     bindingGeneration: entry.bindingGeneration,
     cursor: entry.cursor,
     snapshot: model.snapshot,
-    lastTurnEnd: model.lastTurnEnd,
+    lastTurnEnd: quarantined ? null : model.lastTurnEnd,
     conversationGeneration: entry.conversation?.generation,
-    claudeClearReady: entry.conversation?.ready ?? false,
-    conversationQuarantined: !!(
-      entry.conversation?.input.blocked ||
-      (entry.conversation?.active && entry.conversation.quarantined)
-    ),
+    claudeClearReady: allowsClaudeClearReceipt(entry),
+    conversationQuarantined: quarantined,
     watermarks: Object.fromEntries(
       Object.entries(model.observations).map(([source, value]) => [source, value.sourceSequence]),
     ),
@@ -245,7 +259,14 @@ export function acceptsRunObservation(
   return (
     (source !== 'claude_hook' &&
       !(source === 'session_file' && entry.model.snapshot.provider === 'claude-code')) ||
-    entry.conversation.accepts(evidence?.conversationGeneration, evidence?.providerSessionId)
+    (source === 'session_file'
+      ? evidence?.conversationCapture
+        ? entry.conversation.journal.acceptsCurrent(
+            evidence?.providerSessionId,
+            evidence.conversationCapture,
+          )
+        : entry.conversation.accepts(evidence?.conversationGeneration, evidence?.providerSessionId)
+      : entry.conversation.accepts(evidence?.conversationGeneration, evidence?.providerSessionId))
   )
 }
 export function listAgentRuns(
@@ -274,4 +295,14 @@ export function listAgentRuns(
       )
       .map(entry => structuredClone(entry.model.snapshot)),
   }
+}
+
+/** Close both the pre-clear annotation journal and an engaged conversation projection. */
+export function disposeRunConversation(entry: AgentRunEntry | undefined): void {
+  if (!entry) {
+    return
+  }
+  entry.conversation?.dispose()
+  entry.claudeJournal?.dispose()
+  entry.conversationReplay = undefined
 }

@@ -150,6 +150,7 @@ for (const seed of CLEAR_SEEDS) {
           { epoch, id: 'R', kind: 'hook', name: 'SessionStart', at: 10000 },
           { epoch, id: 'R', kind: 'tick', at: 10099, ms: 201 },
           { epoch: epoch + 1, id: 'U', kind: 'user', at: 10025 },
+          { epoch: epoch + 1, id: 'U', kind: 'hook', name: 'SessionStart', at: 9995 },
         ],
       }
       // oxlint-disable-next-line no-await-in-loop -- each prefix owns its registry and model
