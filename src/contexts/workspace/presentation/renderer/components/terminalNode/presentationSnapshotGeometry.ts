@@ -79,8 +79,12 @@ export async function requestPresentationSnapshotAfterGeometry({
       !hasRevisionFence || (hasSnapshotRevision && snapshotRevision >= expectedRevision)
     // A committed geometry is a revision fence, not a permanent size lock. A
     // concurrent appearance/controller commit may supersede it before delivery.
+    // The Worker's initial null revision can also be superseded by its first
+    // commit. Keep dimension matching for legacy snapshots without a revision.
     const hasNewerCanonicalGeometry =
-      hasRevisionFence && hasSnapshotRevision && snapshotRevision > expectedRevision
+      (hasRevisionFence || expectedRevision === null) &&
+      hasSnapshotRevision &&
+      snapshotRevision > (expectedRevision ?? 0)
     const hasExpectedGeometry =
       snapshot.sessionId === sessionId &&
       hasRequiredRevision &&
