@@ -12,7 +12,7 @@ export const QUICK_E2E_GROUPS = {
   workerCli: {
     reason:
       'Desktop still projects real granted terminals; backend matrices run in worker-cli contracts.',
-    tests: [e2e('cli.output-boundary')],
+    tests: [e2e('cli.output-boundary'), e2e('cli.node-create-agent-wait')],
     matches: path =>
       /app\/(?:cli|worker)\/|app\/main\/controlsurface\/handlers\/(?:node|session|pty)|tests\/contract\/worker-cli\/|tests\/e2e\/cli\./.test(
         path,
