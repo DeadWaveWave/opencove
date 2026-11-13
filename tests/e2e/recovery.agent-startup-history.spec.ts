@@ -142,6 +142,10 @@ for (const provider of ['claude-code', 'codex'] as const) {
       try {
         const terminal = second.window.locator('[data-id="history-agent"] .terminal-node')
         await expect(terminal).toContainText('STARTUP_HISTORY_READY')
+        await expect(terminal.locator('.terminal-node__terminal')).toHaveAttribute(
+          'aria-busy',
+          'false',
+        )
         if (provider === 'claude-code') {
           expect((await getBinding(second.window, 'history-agent')).tuple).toEqual({
             resumeSessionId: id,

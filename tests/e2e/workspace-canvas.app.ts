@@ -261,7 +261,9 @@ async function launchAppInMode(
   attempt = 0,
 ): Promise<{ electronApp: ElectronApplication; window: Page }> {
   const userDataDir = options.userDataDir ?? (await createTestUserDataDir())
-  const cleanupUserDataDir = options.cleanupUserDataDir ?? true
+  // The complete launch owns the profile until an app is ready. Failed attempts
+  // must close their processes without deleting state needed by the next attempt.
+  let cleanupUserDataDir = false
   const testHomeDir = path.join(userDataDir, 'home')
   const testConfigDir = path.join(userDataDir, 'config')
   const testCacheDir = path.join(userDataDir, 'cache')
@@ -325,12 +327,11 @@ async function launchAppInMode(
     await window.waitForFunction(
       () => typeof globalThis.window.opencoveApi?.controlSurface?.invoke === 'function',
     )
+    cleanupUserDataDir = options.cleanupUserDataDir ?? true
     return { electronApp, window }
   } catch (error) {
     if (electronApp) {
       await electronApp.close().catch(() => undefined)
-    } else if (cleanupUserDataDir) {
-      await cleanupUserDataDirWithRetry(userDataDir)
     }
 
     const shouldRetryCurrentMode = isRetryableLaunchError(error) && attempt < 1
@@ -379,5 +380,13 @@ export async function launchApp(options?: {
   recordVideo?: E2EVideoOptions
 }): Promise<{ electronApp: ElectronApplication; window: Page }> {
   const launchModes = resolveLaunchModes(options?.windowMode)
-  return await launchAppWithModes(launchModes, options)
+  const userDataDir = options?.userDataDir ?? (await createTestUserDataDir())
+  try {
+    return await launchAppWithModes(launchModes, { ...options, userDataDir })
+  } catch (error) {
+    if (options?.cleanupUserDataDir ?? true) {
+      await cleanupUserDataDirWithRetry(userDataDir)
+    }
+    throw error
+  }
 }
