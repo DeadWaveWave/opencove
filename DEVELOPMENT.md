@@ -61,7 +61,7 @@
 - 契约文档包括：`docs/architecture/ARCHITECTURE.md`、`docs/architecture/CONTROL_SURFACE.md`、`docs/architecture/RECOVERY_MODEL.md`。
 - 如果改动影响依赖方向、层职责、进程边界、allowlist、禁止 import/API 或 severity，必须同步 `harness/architecture/` 的规则、分析器和测试（计数下降时再运行 `pnpm arch:ratchet`）。
 - 如果只是措辞、错别字或说明性例子，必须在 review/提交说明中声明 `no executable-rule impact`。
-- `pnpm arch:check` 是 `verify:quick` 与 CI 的阻塞门禁：error 级发现必须为 0，warn 级发现按 (规则, 文件) 计数不得偏离 `harness/architecture/ratchet.json`。新增违规的唯一途径是在 `harness/architecture/rules.json` 中添加带 `reason` 的例外。
+- `pnpm arch:check` 是 `verify:quick` 与 CI 的阻塞门禁：error 级发现必须为 0，warn 级发现按 (规则, 文件) 计数不得偏离 `harness/architecture/ratchet.json`。新增违规需要修改 `harness/architecture/rules.json`：`allowedEdges` 条目必须带 `reason`，修改规则的 severity、`exclude` 或 `allowedPatterns` 同样属于例外，必须在 review 中写明理由。
 
 ### 高风险问题预防策略（只列最容易漏的）
 

@@ -225,4 +225,44 @@ describe('architecture exceptions', () => {
     await expect(loadArchitectureConfig(await write('blank.json', '  '))).rejects.toThrow(/reason/)
     await expect(loadArchitectureConfig(await write('ok.json', 'because'))).resolves.toBeTruthy()
   })
+
+  it('rejects a severity other than warn or error anywhere in the config', async () => {
+    const config = await loadArchitectureConfig()
+    const root = await mkdtemp(join(tmpdir(), 'opencove-architecture-severity-'))
+    tempRoots.push(root)
+    const load = async (name: string, checks: Record<string, unknown>) => {
+      const path = join(root, name)
+      await writeFile(path, JSON.stringify({ ...config, checks: { ...config.checks, ...checks } }))
+      return await loadArchitectureConfig(path)
+    }
+    const withSeverity = (key: string, severity: unknown) => ({
+      [key]: config.checks[key].map((rule: object, index: number) =>
+        index === 0 ? { ...rule, severity } : rule,
+      ),
+    })
+
+    await expect(load('text.json', withSeverity('forbiddenText', 'off'))).rejects.toThrow(
+      /severity/,
+    )
+    await expect(load('text2.json', withSeverity('forbiddenText', 'warning'))).rejects.toThrow(
+      /severity/,
+    )
+    await expect(
+      load('import.json', withSeverity('forbiddenImportSpecifiers', undefined)),
+    ).rejects.toThrow(/severity/)
+    await expect(
+      load('layer.json', {
+        layerDependencies: { ...config.checks.layerDependencies, severity: 'off' },
+      }),
+    ).rejects.toThrow(/severity/)
+    await expect(
+      load('bridge.json', {
+        rendererBridge: { ...config.checks.rendererBridge, severity: 'info' },
+      }),
+    ).rejects.toThrow(/severity/)
+    await expect(load('cycle.json', { fileRuntimeCycles: { severity: 'off' } })).rejects.toThrow(
+      /severity/,
+    )
+    await expect(load('ok.json', withSeverity('forbiddenText', 'error'))).resolves.toBeTruthy()
+  })
 })

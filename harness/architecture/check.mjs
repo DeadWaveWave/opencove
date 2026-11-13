@@ -5,6 +5,7 @@ import {
   loadArchitectureConfig,
   runArchitectureAudit,
 } from './lib/architecture-rules.mjs'
+import { parseCheckArgs } from './lib/cli-args.mjs'
 import {
   defaultRatchetBaselinePath,
   evaluateRatchet,
@@ -12,21 +13,17 @@ import {
   planRatchetUpdate,
 } from './lib/ratchet-baseline.mjs'
 
-function readOption(name, fallback = null) {
-  const index = process.argv.indexOf(name)
-  if (index === -1) {
-    return fallback
-  }
-  return process.argv[index + 1] ?? fallback
+let options
+try {
+  options = parseCheckArgs(process.argv.slice(2))
+} catch (error) {
+  process.stderr.write(`[architecture-check] ${error.message}\n`)
+  process.exit(2)
 }
+const { mode, format, updateRatchet } = options
+const ratchetPath = defaultRatchetBaselinePath
 
-const mode = readOption('--mode', 'audit')
-const format = readOption('--format', 'text')
-const configPath = readOption('--config') ?? undefined
-const ratchetPath = readOption('--ratchet', defaultRatchetBaselinePath)
-const updateRatchet = process.argv.includes('--update-ratchet')
-
-const config = await loadArchitectureConfig(configPath)
+const config = await loadArchitectureConfig(options.config)
 const report = await runArchitectureAudit({ config })
 
 if (updateRatchet) {

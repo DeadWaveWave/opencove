@@ -278,8 +278,38 @@ function assertAllowedEdgeReasons(config) {
   })
 }
 
+function assertSeverities(config) {
+  const checks = config.checks ?? {}
+  const configured = [
+    ['checks.layerDependencies', checks.layerDependencies, true],
+    ['checks.fileRuntimeCycles', checks.fileRuntimeCycles, false],
+    ['checks.rendererBridge', checks.rendererBridge, true],
+    ...(checks.forbiddenImportSpecifiers ?? []).map((rule, index) => [
+      `checks.forbiddenImportSpecifiers[${index}] (${rule.id})`,
+      rule,
+      true,
+    ]),
+    ...(checks.forbiddenText ?? []).map((rule, index) => [
+      `checks.forbiddenText[${index}] (${rule.id})`,
+      rule,
+      true,
+    ]),
+  ]
+  for (const [name, rule, required] of configured) {
+    if (!rule || (rule.severity === undefined && !required)) {
+      continue
+    }
+    if (rule.severity !== 'warn' && rule.severity !== 'error') {
+      throw new Error(
+        `${name}.severity must be exactly "warn" or "error", got ${JSON.stringify(rule.severity)}.`,
+      )
+    }
+  }
+}
+
 export async function loadArchitectureConfig(configPath = defaultArchitectureRulesPath) {
   const config = JSON.parse(await readFile(configPath, 'utf8'))
+  assertSeverities(config)
   assertAllowedEdgeReasons(config)
   return config
 }
