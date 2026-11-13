@@ -31,7 +31,12 @@ export function resolveDocumentNavigationDestination(
     return { spaceId: null }
   }
   const matching = spaces.filter(space => space.targetMountId === mountId)
-  return matching.length === 1 ? { spaceId: matching[0].id } : null
+  if (matching.length === 1) {
+    return { spaceId: matching[0].id }
+  }
+  // A mounted source outside every Space opens at workspace root; the document carries the
+  // source mount in its own binding, so no Space has to supply it.
+  return containingSpace ? null : { spaceId: null }
 }
 
 interface DocumentNavigationTextModel {

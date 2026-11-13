@@ -2,10 +2,15 @@ import path from 'node:path'
 import { spawnDirectoryIdentity, type SpawnPathSemantics } from './spawnDirectoryIdentity'
 import { createAppError } from '../../../../shared/errors/appError'
 import { spawnForbiddenDetails } from '../../../../shared/errors/agentSpawnError'
-import type { NodeLineageRecord } from '../../domain/nodeLineage'
-import { assertGrantRuntimeSpawnAllowed } from '../../domain/agentSpawnPolicy'
-import { deriveNodeLineage } from '../../domain/nodeLineage'
-import type { NodeControlAppStateStore } from '../nodeControl/nodeControlState'
+import { deriveNodeLineage, type NodeLineageRecord } from '../../domain/nodeLineage'
+import {
+  assertGrantRuntimeSpawnAllowed,
+  MAX_GRANT_RUNTIME_LINEAGE_DEPTH,
+  MAX_LIVE_GRANT_RUNTIME_DESCENDANTS,
+} from '../../domain/agentSpawnPolicy'
+import type { LineageQuota } from '../../../../shared/contracts/dto/nodeLineage'
+import type { SpawnQuotaNode } from '../../../../shared/errors/agentSpawnError'
+import type { NodeControlAppStateStore, NodeControlNode } from '../nodeControl/nodeControlState'
 import type { ResolvedNodeCreationTarget } from '../nodeControl/nodeCreationTarget'
 import type { AgentSpawnRuntimePort, NodeRuntimeBinding } from './AgentSpawnRuntimePort'
 
@@ -18,10 +23,12 @@ export interface GrantCreationAuthority {
 export interface AgentSpawnPermit {
   readonly opaque: unique symbol
 }
+type SpawnTree = { quota: LineageQuota; parent: NodeLineageRecord | null; nodes: SpawnQuotaNode[] }
 type Admission = {
   authority: GrantCreationAuthority
   nodeId: string
   kind: 'agent' | 'terminal'
+  title?: string
   target: ResolvedNodeCreationTarget
   assertActive(): void
 }
@@ -54,6 +61,7 @@ export function spawnTargetKey(
 /** Caller holds the existing node mutation queue through runCreation settlement. */
 export class AgentSpawnAdmissionOwner {
   private readonly pending = new Set<string>()
+  private readonly descriptions = new Map<string, Pick<SpawnQuotaNode, 'title' | 'kind'>>()
   private readonly captured = new Map<string, NodeLineageRecord>()
   private readonly permits = new Map<AgentSpawnPermit, Admission & { used: boolean }>()
   private readonly historicalFences = new Set<string>()
@@ -141,21 +149,91 @@ export class AgentSpawnAdmissionOwner {
     if (!store.nodeLineage || !store.commitCreatedNodeState) {
       throw createAppError('persistence.unavailable')
     }
+    const admitted = await this.readTree(
+      store,
+      input.authority.nodeId,
+      tree => {
+        // Decide and reserve synchronously inside the census revision barrier.
+        const lineage = deriveNodeLineage({
+          nodeId: input.nodeId,
+          callerNodeId: input.authority.nodeId!,
+          parent: tree.parent,
+        })
+        assertGrantRuntimeSpawnAllowed({
+          lineage,
+          occupied: tree.quota.liveInTree,
+          nodes: tree.nodes,
+          kind: input.kind,
+        })
+        const permit = Object.freeze({}) as AgentSpawnPermit
+        this.descriptions.set(input.nodeId, {
+          title: input.title ?? input.nodeId,
+          kind: input.kind,
+        })
+        this.pending.add(input.nodeId)
+        this.captured.set(input.nodeId, lineage)
+        this.knownLocalNodeIds.add(input.nodeId)
+        this.permits.set(permit, { ...input, used: false })
+        return { permit, lineage }
+      },
+      input.assertActive,
+      caller => {
+        if (
+          !caller ||
+          !['agent', 'terminal'].includes(caller.kind) ||
+          caller.sessionId !== input.authority.sessionId
+        ) {
+          forbidden('caller_session_mismatch')
+        }
+      },
+    )
+    try {
+      return await create(admitted.permit, admitted.lineage)
+    } finally {
+      this.permits.delete(admitted.permit)
+      this.pending.delete(input.nodeId)
+      const bound = new Set(
+        [...this.runtime.snapshot().bindings, ...this.seededBindings.values()].map(b => b.nodeId),
+      )
+      for (const id of this.captured.keys()) {
+        if (!this.pending.has(id) && !bound.has(id)) {
+          this.captured.delete(id)
+          this.descriptions.delete(id)
+        }
+      }
+    }
+  }
+
+  /** Admission and identity share the same revision-checked runtime census. */
+  public async lineageQuota(
+    store: NodeControlAppStateStore,
+    callerNodeId: string,
+  ): Promise<LineageQuota> {
+    return this.readTree(store, callerNodeId, tree => tree.quota)
+  }
+
+  private async readTree<T>(
+    store: NodeControlAppStateStore,
+    callerNodeId: string,
+    project: (tree: SpawnTree) => T,
+    assertActive: () => void = () => {},
+    checkCaller: (caller: NodeControlNode | undefined) => void = () => {},
+  ) {
+    if (!store.nodeLineage) {
+      throw createAppError('persistence.unavailable')
+    }
     // Retry only observation. No launch or persistence mutation occurs in this loop.
     /* eslint-disable no-await-in-loop */
     for (;;) {
-      input.assertActive()
+      assertActive()
       const revision = await store.readAppStateRevision()
       const state = await store.readAppState()
       const nodes = state?.workspaces.flatMap(w => w.nodes) ?? []
       const persistedNodeIds = new Set(nodes.map(node => node.id))
-      const caller = nodes.find(n => n.id === input.authority.nodeId)
-      if (
-        !caller ||
-        !['agent', 'terminal'].includes(caller.kind) ||
-        caller.sessionId !== input.authority.sessionId
-      ) {
-        forbidden('caller_session_mismatch')
+      const caller = nodes.find(n => n.id === callerNodeId)
+      checkCaller(caller)
+      if (!caller) {
+        throw createAppError('node.not_found')
       }
       const census = this.runtime.snapshot()
       const completed = new Set(census.completedSessionIds ?? [])
@@ -191,7 +269,7 @@ export class AgentSpawnAdmissionOwner {
       ])
       const ids = [
         ...new Set([
-          input.authority.nodeId!,
+          callerNodeId,
           ...(census.knownRemoteNodeIds ?? []),
           ...bindings.map(b => b.nodeId),
           ...nodes.map(n => n.id),
@@ -270,51 +348,59 @@ export class AgentSpawnAdmissionOwner {
           this.historicalFences.add(record.rootNodeId)
         }
       }
-      input.assertActive()
-      const lineage = deriveNodeLineage({
-        nodeId: input.nodeId,
-        callerNodeId: caller.id,
-        parent: this.captured.get(caller.id) ?? rows.get(caller.id) ?? null,
-      })
-      if (this.historicalFences.has(lineage.rootNodeId)) {
+      assertActive()
+      const parent = this.captured.get(caller.id) ?? rows.get(caller.id)
+      const rootNodeId = parent?.rootNodeId ?? caller.id
+      if (this.historicalFences.has(rootNodeId)) {
         spawnAccountingUnavailable()
       }
-      const occupied = new Set<string>()
+      const liveIds = new Set([...bindings.map(binding => binding.nodeId), ...this.pending])
+      for (const id of this.descriptions.keys()) {
+        if (!liveIds.has(id)) {
+          this.descriptions.delete(id)
+        }
+      }
+      for (const node of nodes) {
+        if (liveIds.has(node.id)) {
+          this.descriptions.set(node.id, { title: node.title, kind: node.kind })
+        }
+      }
+      const occupied = new Map<string, SpawnQuotaNode>()
+      const occupy = (nodeId: string, liveState: SpawnQuotaNode['state']) => {
+        const record = this.captured.get(nodeId) ?? rows.get(nodeId)!
+        occupied.set(nodeId, {
+          nodeId,
+          title: this.descriptions.get(nodeId)?.title ?? nodeId,
+          kind: this.descriptions.get(nodeId)?.kind ?? 'agent',
+          depth: record.lineageDepth,
+          state: liveState,
+        })
+      }
       for (const binding of bindings) {
         const record = this.captured.get(binding.nodeId) ?? rows.get(binding.nodeId)
-        if (record?.rootNodeId !== lineage.rootNodeId) {
+        if (record?.rootNodeId !== rootNodeId) {
           continue
         }
         if (binding.runtimeOwner !== 'local' || binding.state === 'unknown') {
           spawnAccountingUnavailable()
         }
-        occupied.add(binding.nodeId)
+        occupy(binding.nodeId, 'running')
       }
       for (const id of this.pending) {
-        if (this.captured.get(id)?.rootNodeId === lineage.rootNodeId) {
-          occupied.add(id)
+        if (this.captured.get(id)?.rootNodeId === rootNodeId) {
+          occupy(id, 'starting')
         }
       }
-      assertGrantRuntimeSpawnAllowed({ lineage, occupied: occupied.size, kind: input.kind })
-      const permit = Object.freeze({}) as AgentSpawnPermit
-      this.pending.add(input.nodeId)
-      this.captured.set(input.nodeId, lineage)
-      this.knownLocalNodeIds.add(input.nodeId)
-      this.permits.set(permit, { ...input, used: false })
-      try {
-        return await create(permit, lineage)
-      } finally {
-        this.permits.delete(permit)
-        this.pending.delete(input.nodeId)
-        const bound = new Set(
-          [...this.runtime.snapshot().bindings, ...this.seededBindings.values()].map(b => b.nodeId),
-        )
-        for (const id of this.captured.keys()) {
-          if (!this.pending.has(id) && !bound.has(id)) {
-            this.captured.delete(id)
-          }
-        }
-      }
+      return project({
+        quota: {
+          depth: parent?.lineageDepth ?? 1,
+          maxDepth: MAX_GRANT_RUNTIME_LINEAGE_DEPTH,
+          liveInTree: occupied.size,
+          maxLiveInTree: MAX_LIVE_GRANT_RUNTIME_DESCENDANTS,
+        },
+        parent: parent ?? null,
+        nodes: [...occupied.values()].slice(0, MAX_LIVE_GRANT_RUNTIME_DESCENDANTS),
+      })
     }
     /* eslint-enable no-await-in-loop */
   }
