@@ -5,6 +5,8 @@ import {
   workspaceWithNode,
   resolvePlacement,
 } from '../../../src/contexts/workspace/application/nodeControl/nodeCreatePlacement'
+import { nearGrowthRanker } from '../../../src/contexts/workspace/application/nodeControl/nodeCreateSpaceGrowth'
+import { nodeNearSpaceRects } from '../../../src/contexts/workspace/application/nodeControl/nodeNearSpaceRects'
 import { isRectInsideRect } from '../../../src/contexts/space/application/spaceContainment'
 
 type Rect = { x: number; y: number; width: number; height: number }
@@ -193,4 +195,68 @@ it('prefers an interior slot from the existing bounded search when compact edge 
   expect(f.state().workspaces[0].spaces[0].rect).toEqual(before)
   expect(node.frame.y).toBeLessThan(w.nodes[0].position.y)
   expect(isRectInsideRect(node.frame, before)).toBe(true)
+})
+
+it.each(['target', 'ancestor'] as const)(
+  'treats unchanged effective bounds as no growth with a null %s rectangle',
+  async missing => {
+    const f = fixture(),
+      w = f.state().workspaces[0]
+    w.nodes.push({
+      ...structuredClone(w.nodes[0]),
+      id: 'existing-content',
+      position: { x: 2800, y: 2700 },
+      width: 220,
+      height: 140,
+    })
+    w.spaces[0].nodeIds.push('existing-content')
+    const expectedTarget = { x: 2776, y: 1976, width: 564, height: 888 }
+    w.spaces[0].rect = missing === 'target' ? null : expectedTarget
+    if (missing === 'ancestor') {
+      w.spaces[0].parentSpaceId = 'ancestor'
+      w.spaces.push({
+        ...w.spaces[0],
+        id: 'ancestor',
+        nodeIds: [],
+        parentSpaceId: null,
+        rect: null,
+      })
+    }
+    const effective = nodeNearSpaceRects(w),
+      before = structuredClone(w)
+    expect(effective.get('space')).toEqual(expectedTarget)
+    const { node } = await f.run()
+    expect(node.frame).toMatchObject({ x: 3000, y: 2224 })
+    const next = f.state().workspaces[0]
+    next.spaces.forEach(space => expect(space.rect).toEqual(effective.get(space.id)))
+    expect(next.nodes.slice(0, -1)).toEqual(before.nodes)
+    expect(w).toEqual(before)
+    const rank = nearGrowthRanker(w, 'space', effective)
+    expect(rank(node.frame)).toBe(0)
+    expect(rank({ ...node.frame, x: 3324, y: 2000 })).toBe(1)
+  },
+)
+it('uses derived bounds of a null-rect sibling when distinguishing safe from intersecting growth', () => {
+  const f = fixture(),
+    w = f.state().workspaces[0]
+  w.spaces[0].rect = { x: 1000, y: 1000, width: 5000, height: 1250 }
+  w.nodes.push({
+    ...structuredClone(w.nodes[0]),
+    id: 'sibling-member',
+    position: { x: 1024, y: 2424 },
+    width: 220,
+    height: 140,
+  })
+  w.spaces.push({ ...w.spaces[0], id: 'sibling', nodeIds: ['sibling-member'], rect: null })
+  const effective = nodeNearSpaceRects(w),
+    before = structuredClone(w)
+  expect(effective.get('sibling')).toMatchObject({ x: 1000, y: 2400 })
+  const rank = nearGrowthRanker(w, 'space', effective)
+  expect(rank({ x: 3324, y: 2000, width: 252, height: 172 })).toBe(0)
+  expect(rank({ x: 6000, y: 2000, width: 252, height: 172 })).toBe(1)
+  // The new node misses both the sibling's content and effective rect, but the grown target intersects it.
+  const below = { x: 3000, y: 2224, width: 252, height: 172 }
+  expect(intersects(below, effective.get('sibling')!)).toBe(false)
+  expect(rank(below)).toBe(2)
+  expect(w).toEqual(before)
 })

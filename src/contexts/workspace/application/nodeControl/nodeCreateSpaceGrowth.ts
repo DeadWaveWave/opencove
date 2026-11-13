@@ -59,7 +59,8 @@ export function nearGrowthRanker(
     const grown = growNodeCreationSpaces(workspace, spaceId, rect, effectiveRects)
     let changed = false
     for (const space of grown) {
-      const before = byId.get(space.id)!.rect,
+      // Materializing derived bounds is not geometric expansion.
+      const before = byId.get(space.id)!.rect ?? effectiveRects.get(space.id),
         after = space.rect
       if (
         !after ||
