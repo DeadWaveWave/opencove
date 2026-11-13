@@ -3,10 +3,10 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { expect, type Locator, type Page } from '@playwright/test'
 import { createFakeManagedSshInstallDir } from './fake-managed-ssh'
+import { createDeferredLoopbackForwarder } from './deferred-loopback-forwarder'
 import {
   openSettings,
   pollFor,
-  reserveLoopbackPort,
   startRemoteWorker,
   stopRemoteWorker,
   switchSettingsPage,
@@ -18,6 +18,7 @@ interface ProgressFixture {
   window: Page
   endpointId: string
   remoteHome: string
+  remotePort: number
   card: Locator
   release: (phase: string) => Promise<void>
   waitForPhase: (phase: string) => Promise<void>
@@ -36,7 +37,8 @@ export async function withManagedSshProgress(
   await mkdir(gates)
   await mkdir(path.join(remoteHome, 'project'), { recursive: true })
   const fakeSsh = await createFakeManagedSshInstallDir()
-  const remotePort = await reserveLoopbackPort()
+  const remoteAddress = await createDeferredLoopbackForwarder()
+  const remotePort = remoteAddress.port
   let worker: RemoteWorkerHandle | null = null
   let app: Awaited<ReturnType<typeof launchApp>> | null = null
   try {
@@ -89,6 +91,7 @@ export async function withManagedSshProgress(
       card,
       endpointId,
       remoteHome,
+      remotePort,
       release: async phase => {
         await writeFile(path.join(gates, `${phase}.release`), 'release')
       },
@@ -118,12 +121,13 @@ export async function withManagedSshProgress(
         worker = await startRemoteWorker({
           deploymentId: endpointId,
           hostname: '127.0.0.1',
-          port: remotePort,
+          port: 0,
           token: secrets.tokensByCredentialRef[endpointId]!,
           userDataDir: path.join(root, 'worker'),
           homeDir: remoteHome,
           approveRoot: remoteHome,
         })
+        remoteAddress.forwardTo(worker.port)
       },
     })
   } finally {
@@ -133,6 +137,7 @@ export async function withManagedSshProgress(
     if (worker) {
       await stopRemoteWorker(worker.child)
     }
+    await remoteAddress.dispose()
     await removePathWithRetry(fakeSsh)
     await removePathWithRetry(root)
   }
