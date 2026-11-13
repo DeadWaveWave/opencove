@@ -3,6 +3,7 @@ import { expect, it } from 'vitest'
 import {
   CLEAR_SEEDS,
   capacityCases,
+  replayCases,
   minimizeClearCase,
   type ClearCase,
 } from '../../support/claudeClearProperty/cases'
@@ -14,7 +15,7 @@ for (const seed of CLEAR_SEEDS) {
       lockout = 0,
       steps = 0,
       first: ClearCase | undefined
-    for (const value of capacityCases(seed)) {
+    for (const value of [...capacityCases(seed), ...replayCases(seed)]) {
       // oxlint-disable-next-line no-await-in-loop -- invocation-local fixture and exact delivery order
       const result = await runClearCase(value)
       steps += result.steps
@@ -30,7 +31,14 @@ for (const seed of CLEAR_SEEDS) {
       }
     }
     process.stdout.write(
-      JSON.stringify({ seed, capacitySequences: 39, steps, failed, unsafe, lockout }) + '\n',
+      JSON.stringify({
+        seed,
+        capacitySequences: capacityCases(seed).length + replayCases(seed).length,
+        steps,
+        failed,
+        unsafe,
+        lockout,
+      }) + '\n',
     )
     const minimal = first
       ? await minimizeClearCase(first, async value => (await runClearCase(value)).errors.length > 0)
@@ -46,8 +54,14 @@ for (const seed of CLEAR_SEEDS) {
   }, 120000)
 }
 it('crosses twice each journal bound with histories, receipts, unknown captures and tied Starts', () => {
-  const all = CLEAR_SEEDS.flatMap(capacityCases)
-  expect(all).toHaveLength(195)
+  const all = CLEAR_SEEDS.flatMap(seed => [...capacityCases(seed), ...replayCases(seed)])
+  expect(all).toHaveLength(405)
+  expect(all.some(c => c.events.filter(e => e.duplicate).length >= 12)).toBe(true)
+  expect(
+    all.some(
+      c => c.events.filter(e => ['Stop', 'UserPromptSubmit'].includes(e.name ?? '')).length > 2048,
+    ),
+  ).toBe(true)
   expect(all.some(c => c.events.filter(e => e.id === 'A' && e.name === 'Stop').length >= 256)).toBe(
     true,
   )

@@ -1,5 +1,5 @@
 /** Invocation identity tombstones never depend on the replay log. Once history is
- * incomplete, only a subsequent current Stop may certify idle; empty clear stays disabled. */
+ * incomplete, only a fresh current Submit–Stop pair may certify idle; empty clear stays disabled. */
 export const CLAUDE_LIFECYCLE_LIMIT = 64
 export const CLAUDE_IDENTITY_LIMIT = 128
 export class ClaudeJournalHistory {

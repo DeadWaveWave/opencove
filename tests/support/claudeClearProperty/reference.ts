@@ -5,6 +5,7 @@ type Fact = ClearEvent & {
   received: number
   order: number
   firstOrder: number
+  observedNamespace?: number
   capture?: Source
   afterCommit?: boolean
 }
@@ -19,6 +20,9 @@ export class ClearReference {
   private identities = new Set(['A'])
   private truncatedAt?: number
   private sources = new Map<number, Source>()
+  private provenance = new Set<Fact>()
+  private pairings = new Map<Fact, { start: number; submit: Fact }>()
+  private pairedSubmits = new Set<Fact>()
   private order = 0
   private settled = new Set<number>()
   private legacyReceipt = false
@@ -139,6 +143,8 @@ export class ClearReference {
       order: this.order,
       firstOrder: this.order,
       capture: source,
+      observedNamespace:
+        event.kind === 'hook' && this.clearSeen ? this.epoch({ ...event } as Fact)?.at : undefined,
     }
     if (event.kind === 'hook' && event.name === 'SessionStart') {
       if (!this.starts.some(s => s.id === event.id && s.at === event.at)) {
@@ -214,6 +220,14 @@ export class ClearReference {
       f => f.kind === fact.kind && f.id === fact.id && f.at === fact.at && f.name === fact.name,
     )
     if (!duplicate) {
+      if (event.kind === 'hook' && ['UserPromptSubmit', 'Stop'].includes(event.name!)) {
+        if (this.provenance.size < 1024) {
+          this.provenance.add(fact)
+        } else {
+          this.truncatedAt ??= this.order
+          fact.firstOrder = 0
+        }
+      }
       this.facts.push(fact)
     } else if (event.kind === 'hook' && event.name === 'Stop') {
       duplicate.order = this.order
@@ -225,11 +239,40 @@ export class ClearReference {
     ) {
       this.states.set(latest.at, { name: event.name!, at: event.at })
     }
-    if (this.verdict().completed) {
+    this.refreshPairs()
+    if (this.clearSeen && this.verdict().completed) {
       this.settled.add(latest.at)
     }
     // Keep input activity attached to its capture even if a delayed earlier Start arrives.
     void current
+  }
+  private refreshPairs(): void {
+    if (!this.clearSeen || this.truncatedAt === undefined) {
+      return
+    }
+    const start = this.current()
+    const fresh = (f: Fact) =>
+      f.firstOrder > this.truncatedAt! &&
+      this.epoch(f) === start &&
+      (f.observedNamespace === undefined || f.observedNamespace === start.at)
+    for (const stop of this.provenance) {
+      if (stop.name !== 'Stop' || !fresh(stop) || this.pairings.has(stop)) {
+        continue
+      }
+      const submit = [...this.provenance].find(
+        s =>
+          s.name === 'UserPromptSubmit' &&
+          fresh(s) &&
+          !this.pairedSubmits.has(s) &&
+          s.id === stop.id &&
+          s.epoch === stop.epoch &&
+          s.at < stop.at,
+      )
+      if (submit) {
+        this.pairings.set(stop, { start: start.at, submit })
+        this.pairedSubmits.add(submit)
+      }
+    }
   }
   advance(ms: number): void {
     this.now += ms
@@ -238,8 +281,23 @@ export class ClearReference {
     }
   }
   verdict() {
-    const start = this.current(),
-      ended = this.ended(start)
+    const start = this.current()
+    if (!this.clearSeen) {
+      return {
+        id: this.legacyActor,
+        epoch: start.epoch,
+        receipt: this.legacyReceipt,
+        clearAllowed: false,
+        completed: false,
+        due: false,
+        unresolved: false,
+        retired: [...this.retired],
+        latestAuthenticated: start.id,
+        ambiguous: false,
+        historyIncomplete: this.truncatedAt !== undefined,
+      }
+    }
+    const ended = this.ended(start)
     const epoch = (f: Fact) => this.epoch(f)
     const current = (f: Fact) => epoch(f) === start
     const active = this.facts
@@ -254,7 +312,14 @@ export class ClearReference {
       hooks.some(h => h.name === 'Stop' && h.epoch === lastSubmit.epoch && h.at > lastSubmit.at)
     const stops = hooks.filter(
       f =>
-        f.name === 'Stop' && (!lastSubmit || f.epoch === lastSubmit.epoch || lastSubmitCompleted),
+        f.name === 'Stop' &&
+        (this.truncatedAt === undefined || this.pairings.get(f)?.start === start.at) &&
+        !(
+          f.observedNamespace !== undefined &&
+          f.observedNamespace !== start.at &&
+          this.starts.some(s => s.id !== start.id && s.at > f.observedNamespace! && s.at < start.at)
+        ) &&
+        (!lastSubmit || f.epoch === lastSubmit.epoch || lastSubmitCompleted),
     )
     const lastStopAt = Math.max(-Infinity, ...stops.map(s => s.at))
     const lastStopOrder = Math.max(-Infinity, ...stops.map(s => s.order))
@@ -286,7 +351,7 @@ export class ClearReference {
     const clear = start.epoch > 0
     const incomplete = this.truncatedAt !== undefined
     const reused = incomplete || (this.namespaces.get(start.id) ?? []).some(s => s.at < start.at)
-    const afterTruncation = !incomplete || stops.some(s => s.firstOrder > this.truncatedAt!)
+    const afterTruncation = !incomplete || stops.some(s => this.pairings.get(s)?.start === start.at)
     const ambiguous = this.starts.filter(s => s.at === start.at).length > 1
     const receipt = this.clearSeen
       ? !ambiguous &&

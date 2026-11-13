@@ -117,7 +117,7 @@ it('keeps post-End activity unresolved across a delayed successor identity', () 
   model.advance(201)
   expect(model.verdict()).toMatchObject({ receipt: false, due: false, unresolved: true })
 })
-it('requires a current Stop after lifecycle-history truncation while retaining the flag', () => {
+it('requires a current Submit–Stop pair after lifecycle-history truncation while retaining the flag', () => {
   const model = new ClearReference()
   for (let i = 0; i < 65; i++) {
     model.consume({ epoch: i + 1, id: `L${i}`, kind: 'hook', name: 'SessionStart', at: 20 + i })
@@ -125,6 +125,9 @@ it('requires a current Stop after lifecycle-history truncation while retaining t
   model.advance(201)
   expect(model.verdict()).toMatchObject({ receipt: false, due: false, historyIncomplete: true })
   model.consume({ epoch: 65, id: 'L64', kind: 'hook', name: 'Stop', at: 100 })
+  expect(model.verdict().receipt).toBe(false)
+  model.consume({ epoch: 65, id: 'L64', kind: 'hook', name: 'UserPromptSubmit', at: 110 })
+  model.consume({ epoch: 65, id: 'L64', kind: 'hook', name: 'Stop', at: 120 })
   expect(model.verdict()).toMatchObject({
     receipt: true,
     due: true,
@@ -144,5 +147,31 @@ it('does not promote an identical pre-truncation Stop replay into new readiness 
   model.consume({ ...old, duplicate: true })
   expect(model.verdict()).toMatchObject({ historyIncomplete: true, receipt: false, due: false })
   model.consume({ ...old, at: 5200 })
+  expect(model.verdict().receipt).toBe(false)
+  model.consume({ ...old, name: 'UserPromptSubmit', at: 5300 })
+  model.consume({ ...old, at: 5400 })
   expect(model.verdict()).toMatchObject({ historyIncomplete: true, receipt: true, due: true })
+})
+it('keeps Submit replay provenance and spends each post-truncation pair once', () => {
+  const model = new ClearReference()
+  for (let i = 0; i < 65; i++) {
+    model.consume({ epoch: i + 1, id: `L${i}`, kind: 'hook', name: 'SessionStart', at: 20 + i })
+  }
+  const submit: ClearEvent = {
+    epoch: 65,
+    id: 'L64',
+    kind: 'hook',
+    name: 'UserPromptSubmit',
+    at: 100,
+  }
+  model.consume(submit)
+  model.consume({ ...submit, name: 'Stop', at: 110 })
+  expect(model.verdict().receipt).toBe(true)
+  model.consume({ ...submit, duplicate: true })
+  model.consume({ ...submit, name: 'PermissionRequest', at: 120 })
+  model.consume({ ...submit, name: 'Stop', at: 130 })
+  expect(model.verdict().receipt).toBe(false)
+  model.consume({ ...submit, at: 140 })
+  model.consume({ ...submit, name: 'Stop', at: 150 })
+  expect(model.verdict().receipt).toBe(true)
 })

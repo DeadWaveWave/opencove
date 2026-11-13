@@ -7,7 +7,10 @@ export class ClaudeJournalProof {
   readonly ended: boolean
   private starts = new Map<string, JournalFact[]>()
   private endings = new Map<string, JournalFact[]>()
-  constructor(readonly facts: readonly JournalFact[]) {
+  constructor(
+    readonly facts: readonly JournalFact[],
+    eligible?: (stop: JournalFact, start: JournalFact) => boolean,
+  ) {
     for (const fact of facts) {
       if (fact.kind === 'start' || fact.kind === 'end') {
         const index = fact.kind === 'start' ? this.starts : this.endings
@@ -24,7 +27,12 @@ export class ClaudeJournalProof {
     this.ended = !!this.current && this.ends(this.current).length > 0
     this.relevant = facts.filter(f => !this.retired(f))
     this.completion = this.current
-      ? this.relevant.filter(f => f.kind === 'complete' && this.epoch(f) === this.current)
+      ? this.relevant.filter(
+          f =>
+            f.kind === 'complete' &&
+            this.epoch(f) === this.current &&
+            (!eligible || eligible(f, this.current!)),
+        )
       : []
   }
   private ends(start: JournalFact): JournalFact[] {

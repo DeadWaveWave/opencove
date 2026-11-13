@@ -54,7 +54,7 @@ it('pins all End/Start witnesses while successor evidence is unresolved', () => 
   expect(new ClaudeJournalProof(j.events).epoch(unresolved)).toBeUndefined()
   expect(j.view()).toMatchObject({ ready: false, blocked: true })
 })
-it('never revives empty clear after truncation and requires a later current covering Stop', () => {
+it('never revives empty clear after truncation and requires a later current Submit–Stop pair', () => {
   let now = 100000
   const j = new ClaudeInvocationJournal(() => now)
   const start = (id: string, at: number) =>
@@ -72,6 +72,12 @@ it('never revives empty clear after truncation and requires a later current cove
   start('A', 500)
   now += 1000
   expect(j.view()).toMatchObject({ ready: false, blocked: true, historyIncomplete: true })
+  j.appendHook({
+    claudeSessionId: 'A',
+    hookEventName: 'UserPromptSubmit',
+    emittedAtMs: 100550,
+    state: 'working',
+  })
   j.appendHook({ claudeSessionId: 'A', hookEventName: 'Stop', emittedAtMs: 100600, state: 'done' })
   j.complete('A', undefined, 100600)
   expect(j.view()).toMatchObject({
@@ -110,9 +116,15 @@ it('does not let an earlier Stop acknowledged after truncation certify current i
   j.complete('A', undefined, 5100)
   expect(j.view()).toMatchObject({
     historyIncomplete: true,
-    completed: true,
+    completed: false,
     ready: false,
     blocked: true,
+  })
+  j.appendHook({
+    claudeSessionId: 'A',
+    hookEventName: 'UserPromptSubmit',
+    emittedAtMs: 5150,
+    state: 'working',
   })
   j.appendHook({ claudeSessionId: 'A', hookEventName: 'Stop', emittedAtMs: 5200, state: 'done' })
   j.complete('A', undefined, 5200)
@@ -122,4 +134,36 @@ it('does not let an earlier Stop acknowledged after truncation certify current i
     ready: true,
     blocked: false,
   })
+})
+it('does not spend one post-truncation submission on multiple Stop receipts', () => {
+  const j = new ClaudeInvocationJournal(() => 100000)
+  for (let n = 0; n < 65; n++) {
+    j.appendHook({
+      claudeSessionId: `L${n}`,
+      hookEventName: 'SessionStart',
+      sessionStartSource: 'clear',
+      emittedAtMs: n,
+      state: null,
+    })
+  }
+  const send = (name: string, at: number, state: 'working' | 'waiting' | 'done') =>
+    j.appendHook({
+      claudeSessionId: 'L64',
+      hookEventName: name,
+      promptId: 'p',
+      emittedAtMs: at,
+      state,
+    })
+  send('UserPromptSubmit', 100, 'working')
+  send('Stop', 110, 'done')
+  j.complete('L64', 'p', 110)
+  expect(j.view()).toMatchObject({ ready: true, blocked: false })
+  send('PermissionRequest', 120, 'waiting')
+  send('Stop', 130, 'done')
+  j.complete('L64', 'p', 130)
+  expect(j.view()).toMatchObject({ ready: false, blocked: true })
+  send('UserPromptSubmit', 140, 'working')
+  send('Stop', 150, 'done')
+  j.complete('L64', 'p', 150)
+  expect(j.view()).toMatchObject({ ready: true, blocked: false })
 })

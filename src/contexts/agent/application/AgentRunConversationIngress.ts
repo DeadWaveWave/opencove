@@ -32,6 +32,15 @@ export function observeRunConversation(
       return
     }
     if (entry.conversation && !entry.conversation.active && !clear) {
+      if (journal.replayedSubmission(request.event)) {
+        request.decide({
+          action: 'ignore',
+          generation: entry.conversation.generation,
+          deferred: true,
+        })
+        request.publish(entry.conversation.generation, 'ignore')
+        return
+      }
       const route = routeOrdinaryClaudeConversation(
         entry.conversation,
         request,
