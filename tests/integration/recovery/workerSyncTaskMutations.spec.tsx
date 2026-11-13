@@ -3,7 +3,11 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { useWorkerSyncStateUpdates } from '../../../src/app/renderer/shell/hooks/useWorkerSyncStateUpdates'
-import { toShellWorkspaceState } from '../../../src/app/renderer/shell/hooks/useHydrateAppState.helpers'
+import {
+  mergeHydratedNode,
+  prepareWorkspaceRuntimeNodes,
+  toShellWorkspaceState,
+} from '../../../src/app/renderer/shell/hooks/useHydrateAppState.helpers'
 import { ensurePersistedWorkspace } from '../../../src/contexts/workspace/presentation/renderer/utils/persistence/ensure'
 import { toPersistedState } from '../../../src/contexts/workspace/presentation/renderer/utils/persistence/toPersistedState'
 import { markPersistedStateAsSynced } from '../../../src/contexts/workspace/presentation/renderer/utils/persistence/write'
@@ -21,7 +25,10 @@ import type {
   NodeControlAppStateStore,
 } from '../../../src/contexts/workspace/application/nodeControl/nodeControlState'
 import type { PersistedAppState } from '../../../src/contexts/workspace/presentation/renderer/types'
-import type { SyncEventPayload } from '../../../src/shared/contracts/dto'
+import type {
+  PrepareOrReviveSessionResult,
+  SyncEventPayload,
+} from '../../../src/shared/contracts/dto'
 import { createAppErrorDescriptor } from '../../../src/shared/errors/appError'
 import { mergePersistedAppStates } from '../../../src/shared/sync/mergePersistedAppStates'
 import { normalizePersistedAppStateForMerge } from '../../../src/shared/sync/normalizePersistedAppStateForMerge'
@@ -42,7 +49,7 @@ afterEach(async () => {
 
 it.each(
   [false, true].flatMap(guarded =>
-    ['ready', 'preparing', 'waiting'].map(phase => ({ guarded, phase })),
+    ['ready', 'preparing', 'waiting', 'delayed-preparation'].map(phase => ({ guarded, phase })),
   ),
 )(
   'converges background CLI mutations through the next save (guard=$guarded, phase=$phase)',
@@ -88,7 +95,7 @@ it.each(
       })!,
     )
     const agentData = workspace.nodes.find(n => n.id === 'agent')!.data
-    if (phase === 'preparing') {
+    if (phase === 'preparing' || phase === 'delayed-preparation') {
       agentData.runtimeSessionBinding = { phase: 'preparing', sessionId: 'runtime' }
       agentData.sessionId = ''
     }
@@ -120,6 +127,10 @@ it.each(
       revision = 1
     const snapshots = new Map([[revision, structuredClone(durable)]])
     let emit!: (event: SyncEventPayload) => void
+    let deliverPreparation!: (response: PrepareOrReviveSessionResult) => void
+    const prepare = vi.fn(
+      () => new Promise<PrepareOrReviveSessionResult>(resolve => (deliverPreparation = resolve)),
+    )
     let operationId = 'task.claim'
     const store: NodeControlAppStateStore = {
       readAppState: async () => structuredClone(durable) as unknown as NodeControlAppState,
@@ -156,6 +167,7 @@ it.each(
     Object.defineProperty(window, 'opencoveApi', {
       configurable: true,
       value: {
+        controlSurface: { invoke: prepare },
         persistence: {
           readAppState: vi.fn(async () => ({
             state: structuredClone(durable),
@@ -241,6 +253,30 @@ it.each(
       expect(durable.workspaces[0].nodes.find(n => n.id === 'note')!.task).toMatchObject({
         text: 'Original\n\nCLI result',
       })
+      // Capture the held relationship, then leave this actual prepare response in flight.
+      const heldWorkspace = structuredClone(produce().workspaces[0])
+      const heldAgent = useAppStore.getState().workspaces[0].nodes.find(n => n.id === 'agent')!
+      const preparation =
+        phase === 'delayed-preparation'
+          ? prepareWorkspaceRuntimeNodes({
+              workspace: heldWorkspace,
+              agentSettings: useAppStore.getState().agentSettings,
+              onNodePrepared: hydrated => {
+                useAppStore
+                  .getState()
+                  .setWorkspaces(ws =>
+                    ws.map(w =>
+                      w.id === 'project'
+                        ? { ...w, nodes: w.nodes.map(n => mergeHydratedNode(n, hydrated)) }
+                        : w,
+                    ),
+                  )
+              },
+            })
+          : null
+      if (preparation) {
+        await waitFor(() => expect(prepare).toHaveBeenCalledOnce())
+      }
       operationId = 'task.release'
       await act(async () => {
         await releaseTask({
@@ -251,12 +287,47 @@ it.each(
         })
       })
       await waitFor(() => expect(agentTask()).toBeNull())
+      if (preparation) {
+        await act(async () => {
+          deliverPreparation({
+            workspaceId: 'project',
+            nodes: [
+              {
+                ...heldAgent.data,
+                nodeId: 'agent',
+                kind: 'agent',
+                recoveryState: 'revived',
+                sessionId: 'prepared-runtime',
+                isLiveSessionReattach: false,
+                profileId: null,
+                runtimeKind: 'posix',
+                executionDirectory: '/repo',
+                expectedDirectory: '/repo',
+                terminalGeometry: null,
+                agent: heldAgent.data.agent
+                  ? {
+                      ...heldAgent.data.agent,
+                      resumeSessionIdVerified:
+                        heldAgent.data.agent.resumeSessionIdVerified === true,
+                    }
+                  : null,
+              },
+            ],
+          })
+          await preparation
+        })
+        expect(
+          useAppStore.getState().workspaces[0].nodes.find(n => n.id === 'agent')!.data.sessionId,
+        ).toBe('prepared-runtime')
+      }
       await rendererSave('After release')
       expect(persistedAgentTask()).toBeNull()
+      expect(agentTask()).toBeNull()
       assertRuntime()
       expect(durable.workspaces[0].nodes.find(n => n.id === 'task')!.task).toMatchObject({
         linkedAgentNodeId: null,
         status: 'ai_done',
+        lastRunAt: now.toISOString(),
       })
     } finally {
       guard.mockRestore()
