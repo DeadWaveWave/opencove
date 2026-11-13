@@ -1,3 +1,4 @@
+import type { AgentTurnArchive } from '../../../src/contexts/agent/application/AgentTurnArchive'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { vi } from 'vitest'
@@ -11,10 +12,14 @@ export const clearTranscript = readFileSync(
 )
   .trim()
   .split('\n')
-export async function clearIngressFixture(autoFlush = true, terminal = false) {
+export async function clearIngressFixture(
+  autoFlush = true,
+  terminal = false,
+  archive?: AgentTurnArchive,
+) {
   vi.useFakeTimers()
   vi.setSystemTime(100000)
-  const run = promptDeliveryRuntimeFixture(undefined, 'claude-code', false)
+  const run = promptDeliveryRuntimeFixture(undefined, 'claude-code', false, undefined, archive)
   const hooks = await hookChannelFixture()
   const terminalActivity = terminal
     ? {

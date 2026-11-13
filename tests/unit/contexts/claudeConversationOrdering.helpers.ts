@@ -1,4 +1,5 @@
 import { vi } from 'vitest'
+import { getPromptSubmissionEvidence } from '../../../src/shared/runtime/agentHook/claudePromptEvidence'
 import { AgentRunStateRegistry } from '../../../src/contexts/agent/application/AgentRunStateRegistry'
 import { InMemoryAgentTurnArchive } from '../../support/agentTurnArchive/InMemoryAgentTurnArchive'
 import type { ClaudeConversationEvent } from '../../../src/contexts/agent/domain/ClaudeConversationLifecycle'
@@ -145,12 +146,14 @@ export function orderingFixture() {
     })
     if (!deferred) {
       const accepted = lifecycle.accept(event)
+      const generation = getPromptSubmissionEvidence(event)?.conversationGeneration
       if (accepted === 'start' || accepted === 'end') {
         registry.observeClaudeTranscript('s', 'i', {
           sessionId: 's',
           providerSessionId: event.claudeSessionId,
           incarnation: 'i',
           generation: ++observerGeneration,
+          conversationGeneration: generation,
           fileIdentity: `generation:${observerGeneration}`,
           position: -1,
           baseline: false,
@@ -158,7 +161,7 @@ export function orderingFixture() {
           lifecycle: accepted,
         })
       }
-      publish(undefined)
+      publish(generation)
     }
   }
   const start = { ...hook('A', 'SessionStart', 1), sessionStartSource: 'startup' }

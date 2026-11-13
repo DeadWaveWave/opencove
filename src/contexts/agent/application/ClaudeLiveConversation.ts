@@ -380,7 +380,10 @@ export class ClaudeLiveConversation {
         this.retired.delete(this.retired.values().next().value!)
         this.retentionLimited = true
       }
-      this.generation++
+      // Queued boundaries already reserve their generation before watcher IO begins.
+      if (!this.draining) {
+        this.generation++
+      }
       this.providerSessionId = event.claudeSessionId
       this.ended = action === 'end'
       this.endedInClear = this.ended && !legacyEnd
@@ -449,9 +452,23 @@ export class ClaudeLiveConversation {
   veto(): void {
     this.ready = this.candidateReady = false
   }
-  leave(): void {
-    this.veto()
-    this.currentClear = false
+  get closedByClear(): boolean {
+    return this.endedInClear
+  }
+  followOrdinary(
+    checkpoint: ClaudeConversationCheckpoint,
+    boundary: boolean,
+    refresh: boolean,
+  ): void {
+    this.synchronize(checkpoint)
+    if (boundary) {
+      this.generation++
+      this.veto()
+      this.currentClear = this.endedInClear = false
+    }
+    if (boundary || refresh) {
+      this.uncertain = this.quarantined = false
+    }
   }
   dispose(): void {
     this.disposed = true

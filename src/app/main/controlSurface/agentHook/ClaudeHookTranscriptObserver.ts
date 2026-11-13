@@ -1,4 +1,7 @@
-import { setPromptSubmissionEvidence } from '../../../../shared/runtime/agentHook/claudePromptEvidence'
+import {
+  getPromptSubmissionEvidence,
+  setPromptSubmissionEvidence,
+} from '../../../../shared/runtime/agentHook/claudePromptEvidence'
 import type { ClaudeBindingEvidence } from '../../../../shared/runtime/agentHook/claudeBindingEvidence'
 import { ClaudeTranscriptGeneration } from './ClaudeTranscriptGeneration'
 import { SessionTurnStateWatcher } from '../../../../contexts/agent/infrastructure/watchers/SessionTurnStateWatcher'
@@ -143,7 +146,11 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
       return false
     }
     this.hotUntil = Date.now() + 2_000
-    context = { ...context, conversationGeneration: acceptedGeneration }
+    context = {
+      ...context,
+      conversationGeneration:
+        acceptedGeneration ?? getPromptSubmissionEvidence(envelope)?.conversationGeneration,
+    }
     if (action === 'start' || action === 'end') {
       this.detach()
       this.demand = false
@@ -154,7 +161,7 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
           providerSessionId: envelope.claudeSessionId,
           incarnation: context.incarnation,
           generation: this.currentGeneration,
-          conversationGeneration: acceptedGeneration,
+          conversationGeneration: context.conversationGeneration,
           fileIdentity: `generation:${this.currentGeneration}`,
           position: -1,
           baseline: false,

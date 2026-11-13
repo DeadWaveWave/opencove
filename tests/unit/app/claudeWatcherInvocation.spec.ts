@@ -38,6 +38,7 @@ it('captures the real terminal invocation before clear watcher IO and fences rep
     expect(captured.incarnation).not.toBe(input.sessionId)
     expect(captured.generation).toBeTypeOf('number')
     await f.settle()
+    expect(captured.generation).toBe(f.fence().conversationGeneration)
     captured.state('s', 'working')
     expect(getPromptSubmissionEvidence(events.at(-1)!)).toMatchObject({
       invocationId: 'terminal-invocation',

@@ -48,6 +48,7 @@ it.each(
         providerSessionId: id,
         incarnation: 'i',
         generation: 100,
+        conversationGeneration: f.fence().conversationGeneration,
         fileIdentity: `${id}.jsonl`,
         position,
         baseline: false,

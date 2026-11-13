@@ -6,7 +6,7 @@ afterEach(() => {
   vi.restoreAllMocks()
   vi.useRealTimers()
 })
-it('withdraws an empty clear receipt for new ordinary activity after the quiet window', () => {
+it('keeps the namespace fence after the quiet window until a fresh Start accepts the next identity', () => {
   vi.useFakeTimers()
   vi.setSystemTime(100000)
   const f = orderingFixture()
@@ -18,9 +18,12 @@ it('withdraws an empty clear receipt for new ordinary activity after the quiet w
     expect(f.fence()).toMatchObject({
       claudeClearReady: false,
       conversationQuarantined: false,
-      snapshot: { state: 'working' },
+      snapshot: { state: 'unknown', turn: null },
     })
-    expect(f.registry.promptIdentity(f.fence())?.providerSessionId).toBe('C')
+    expect(f.registry.promptIdentity(f.fence())?.providerSessionId).toBeUndefined()
+    f.send({ ...hook('C', 'SessionStart', 15), sessionStartSource: 'resume' })
+    f.send(hook('C', 'UserPromptSubmit', 20))
+    expect(f.fence().snapshot.state).toBe('working')
     expect(owner).not.toHaveBeenCalled()
   } finally {
     f.registry.dispose()
@@ -49,7 +52,7 @@ it('restricts only clear readiness when retired identity retention saturates', (
     f.registry.dispose()
   }
 })
-it('returns to main identity, capture and observation after a settled clear completes its first turn', () => {
+it('processes ordinary hooks immediately while retaining the namespace fence after a clear turn', () => {
   vi.useFakeTimers()
   vi.setSystemTime(100000)
   const f = orderingFixture()
@@ -74,13 +77,13 @@ it('returns to main identity, capture and observation after a settled clear comp
       fileIdentity: 'capture',
       captureConversation: capture,
     })
-    expect(capture).toHaveBeenCalledWith(undefined, 'i')
+    expect(capture).toHaveBeenCalledWith(f.fence().conversationGeneration, 'i')
     expect(
       f.registry.acceptsObservation('s', 'session_file', {
         providerSessionId: 'A',
         conversationGeneration: 900,
       }),
-    ).toBe(true)
+    ).toBe(false)
     f.send({ ...hook('A', 'SessionStart', 30), sessionStartSource: 'resume' })
     f.send({ ...hook('A', 'UserPromptSubmit', 40), promptId: 'after-clear' })
     f.send({ ...hook('A', 'Stop', 50), promptId: 'after-clear' })

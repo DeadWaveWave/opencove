@@ -233,8 +233,8 @@ export function acceptsRunObservation(
   ) {
     return false
   }
-  // No clear owner exists on the ordinary path; dormant owners impose no generation requirements.
-  if (!entry.conversation || (!entry.conversation.active && !entry.conversation.ready)) {
+  // The first authenticated clear installs an invocation-lifetime namespace fence.
+  if (!entry.conversation) {
     return true
   }
   return (
