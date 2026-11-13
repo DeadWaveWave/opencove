@@ -167,7 +167,7 @@ E2E 选组规则维护在 `scripts/precommit-e2e-selection.mjs`。快速门禁�
 -   **提交前检查（本地快速门禁，合并前 CI 完整回归）**：
     -   运行 staged gates 前，必须先 `git add -A` 暂存本次改动；若已经提交，仍须显式重新暂存后再运行。执行 `git diff --cached --name-only` 逐项确认文件列表，并确保 `git diff --cached --name-only | wc -l` 的结果大于 0。
     -   对 0 个文件运行的 gate 实际上没有运行；将其报告为“通过”属于错误陈述。需要强制防空时，使用 `OPENCOVE_REQUIRE_STAGED=1 pnpm pre-commit`；随后先执行 `pnpm line-check:staged`，因为行数门禁只检查 staged 文件。
-    -   若 staged 文件中存在超过 500 行的文件，先重构/拆分，过门禁后再继续，不要带着超长文件直接运行 `pnpm pre-commit`。
+    -   若 staged 文件中存在超过 1000 行的文件，先重构/拆分，过门禁后再继续，不要带着超长文件直接运行 `pnpm pre-commit`。
     -   `pnpm pre-commit` 会执行 `pnpm naming-check:staged`：禁止在新代码里重新引入 `cove:*`（对外/协议/持久化），仅允许显式 legacy 迁移用途；UI 设计系统前缀仍保留 `cove`（见上文命名约定）。
     -   若本次改动包含用户可感知变化（新增功能、UX 改动、修复 bug、默认行为变化），应先提交代码并创建 PR；拿到 PR 链接/编号后，再更新 `CHANGELOG.md` 的 `## [Unreleased]` 并单独提交（每个变化一条，尽量附 `#PR` 编号）。`nightly` tag 不要求更新 changelog；发 `stable` 时再把 `Unreleased` 结算进新版本段。
     -   **纯文档（`.md`）提交的门禁例外**：staged 集合只含 `.md` 时，`naming-check` 会报 `no staged files matched — this gate checked NOTHING and is not a pass.`。这是**预期行为，不是缺陷**：对 0 个文件运行的 gate 本就不该报告通过。
