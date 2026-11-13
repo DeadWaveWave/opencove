@@ -1,6 +1,7 @@
 import { chmod } from 'node:fs/promises'
 import { isAbsolute, join, resolve } from 'node:path'
 import { build } from 'vite'
+import { CLI_ENTRY } from './lib/build-entries.mjs'
 
 const args = process.argv.slice(2)
 if (args.length && (args.length !== 2 || args[0] !== '--out-dir' || !args[1])) {
@@ -28,7 +29,7 @@ await build({
     outDir,
     emptyOutDir: true,
     minify: false,
-    lib: { entry: resolve('src/app/cli/main.ts'), formats: ['es'], fileName: () => 'opencove.mjs' },
+    lib: { entry: resolve(CLI_ENTRY), formats: ['es'], fileName: () => 'opencove.mjs' },
     rollupOptions: {
       external: id =>
         !id.startsWith('.') && !isAbsolute(id) && !id.startsWith('\0') && !isAlias(id),
