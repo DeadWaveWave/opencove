@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import {
   isExcludedRepositoryPath,
   listRepositoryFiles,
   normalizeRepositoryPath,
+  resolveRepositoryRoot,
 } from './lib/repo-files.mjs'
 
 // A file should fit in one read by the agents that work on this repository. The smallest such
@@ -34,10 +35,13 @@ export const CHECKED_EXTENSIONS = new Set([
 ])
 
 // Generated files grow with their inputs and cannot be split by hand; their generators are checked
-// like any other source.
-const GENERATED_PREFIXES = [
-  // Written by `pnpm design:tokens`.
+// like any other source. Each entry is a path prefix and names the command that writes it. A file
+// is never skipped because of how it is named: add its path here together with its generator.
+export const GENERATED_PATHS = [
+  // `pnpm design:tokens`
   'src/app/renderer/styles/themes/generated/',
+  // `node scripts/generate-claude-command-registry.mjs`
+  'src/contexts/agent/domain/claudeRootCommands.generated.ts',
 ]
 
 // Files that are over the limit today. Each recorded count may only go down, and the list may only
@@ -61,10 +65,7 @@ export function shouldCheck(filePath) {
   }
 
   const fileName = normalized.slice(normalized.lastIndexOf('/') + 1)
-  if (GENERATED_PREFIXES.some(prefix => normalized.startsWith(prefix))) {
-    return false
-  }
-  if (/\.generated\./i.test(fileName)) {
+  if (GENERATED_PATHS.some(prefix => normalized.startsWith(prefix))) {
     return false
   }
 
@@ -94,7 +95,9 @@ function readLineCount(cwd, file) {
   }
 }
 
-// Returns `{ checked, problems }`. With `files` undefined it checks the whole repository.
+// Returns `{ checked, problems }`. `cwd` is the repository root and `files` are root-relative; with
+// `files` undefined it checks the whole repository. Exemption rules apply in both modes; only the
+// "exempt file no longer exists" check needs the whole repository.
 export function runMaxLinesCheck({
   cwd = process.cwd(),
   files,
@@ -127,9 +130,6 @@ export function runMaxLinesCheck({
       }
       continue
     }
-    if (!wholeRepository) {
-      continue
-    }
     if (lineCount <= MAX_LINES) {
       problems.push(
         `${file}: ${lineCount} lines is back under the ${MAX_LINES}-line limit. Remove it from LINE_LIMIT_EXEMPTIONS in scripts/check-max-lines.mjs.`,
@@ -158,26 +158,13 @@ export function runMaxLinesCheck({
   return { checked: counts.size, problems }
 }
 
-function parseArguments(argv) {
-  const files = []
-  let exemptionsPath = null
-  for (const argument of argv) {
-    // Test hook: replace the built-in exemption list with a JSON file of the same shape.
-    if (argument.startsWith('--exemptions=')) {
-      exemptionsPath = argument.slice('--exemptions='.length)
-    } else {
-      files.push(argument)
-    }
-  }
-  return { files: files.length > 0 ? files : undefined, exemptionsPath }
-}
-
 function main() {
-  const { files, exemptionsPath } = parseArguments(process.argv.slice(2))
-  const exemptions = exemptionsPath
-    ? JSON.parse(readFileSync(exemptionsPath, 'utf8'))
-    : LINE_LIMIT_EXEMPTIONS
-  const { checked, problems } = runMaxLinesCheck({ files, exemptions })
+  const root = resolveRepositoryRoot()
+  const files =
+    process.argv.length > 2
+      ? process.argv.slice(2).map(argument => relative(root, resolve(argument)))
+      : undefined
+  const { checked, problems } = runMaxLinesCheck({ cwd: root, files })
 
   if (checked === 0) {
     process.stderr.write('[line-check] checked 0 files: this is not a pass.\n')
