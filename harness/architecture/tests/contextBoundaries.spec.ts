@@ -188,6 +188,36 @@ describe('context public entries', () => {
     expect(report.summary.errors).toBeGreaterThan(0)
   })
 
+  it('reports an entry that re-exports a sibling entry once, as an entry-shape error', async () => {
+    const { contextFindings } = await audit({
+      ...bDomain,
+      'src/contexts/b/application/index.ts': "export { thing } from '../domain'\n",
+    })
+    expect(contextFindings).toEqual([
+      { ruleId: SHAPE, file: 'src/contexts/b/application/index.ts' },
+    ])
+  })
+
+  it('rejects an empty entry file', async () => {
+    const { contextFindings } = await audit({
+      'src/contexts/b/domain/index.ts': '// nothing yet\n',
+    })
+    expect(contextFindings).toEqual([{ ruleId: SHAPE, file: 'src/contexts/b/domain/index.ts' }])
+  })
+
+  it('does not treat index.tsx as an entry and says the entry must be index.ts', async () => {
+    const { contextFindings, report } = await audit({
+      'src/contexts/b/presentation/renderer/index.tsx': "export { View } from './View'\n",
+      'src/contexts/b/presentation/renderer/View.ts': 'export const View = 1\n',
+      'src/app/renderer/x.ts':
+        "import { View } from '@contexts/b/presentation/renderer/index'\nexport const x = View\n",
+    })
+    expect(contextFindings).toEqual([{ ruleId: PUBLIC, file: 'src/app/renderer/x.ts' }])
+    expect(report.violations.find(violation => violation.ruleId === PUBLIC)?.expected).toContain(
+      'must be named index.ts',
+    )
+  })
+
   it('makes the ratchet fail on a new deep import and on an unrecorded drop', async () => {
     const { report, config } = await audit({
       ...bDomain,
