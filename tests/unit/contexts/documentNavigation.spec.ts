@@ -36,6 +36,28 @@ describe('document navigation', () => {
     })
   })
 
+  it('opens a mounted source outside every Space at workspace root', () => {
+    expect(resolveDocumentNavigationDestination([], 'terminal', 'project-mount')).toEqual({
+      spaceId: null,
+    })
+    expect(resolveDocumentNavigationDestination(spaces, 'outside', 'missing-mount')).toEqual({
+      spaceId: null,
+    })
+    expect(
+      resolveDocumentNavigationDestination(
+        [...spaces, { id: 'other-remote', targetMountId: 'remote-mount', nodeIds: [] }],
+        'outside',
+        'remote-mount',
+      ),
+    ).toEqual({ spaceId: null })
+  })
+
+  it('still prefers the only Space on the source mount for a source outside every Space', () => {
+    expect(resolveDocumentNavigationDestination(spaces, 'outside', 'remote-mount')).toEqual({
+      spaceId: 'remote',
+    })
+  })
+
   it('preserves line and column ranges and clamps them to the loaded document', () => {
     const model = {
       getLineCount: () => 3,

@@ -67,8 +67,8 @@ export function useWorkspaceDocumentOpening({
           lifecycleRef.current === lifecycle &&
           activeWorkspaceRef.current === workspaceId &&
           request.isRequestCurrent?.() !== false &&
-          (request.spaceId === null || !!space?.rect) &&
-          (space?.targetMountId ?? null) === request.mountId
+          (request.spaceId === null ||
+            (!!space?.rect && (space.targetMountId ?? null) === request.mountId))
         )
       }
       if (!isCurrent()) {
