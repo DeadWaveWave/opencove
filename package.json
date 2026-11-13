@@ -113,8 +113,8 @@
     "format-check:staged": "node scripts/check-format-staged.mjs",
     "secret-check:staged": "node scripts/check-secrets-staged.mjs",
     "secrets:scan": "secretlint \"**/*\"",
-    "naming-check:staged": "node scripts/check-naming-staged.mjs",
-    "line-check:staged": "node scripts/check-max-lines.mjs",
+    "naming-check": "node scripts/check-naming.mjs",
+    "line-check": "node scripts/check-max-lines.mjs",
     "ui:style-check": "node scripts/check-ui-styles.mjs",
     "ui:style-ratchet": "node scripts/check-ui-styles.mjs --update-ratchet",
     "design:tokens": "vitest --run tests/unit/shared/design/themeTokens.spec.ts --update",
@@ -125,8 +125,8 @@
     "release:major": "node scripts/prepare-release.mjs major",
     "release:version": "node scripts/prepare-release.mjs",
     "pre-commit": "pnpm verify:quick",
-    "prepare": "husky",
-    "verify:checks": "pnpm line-check:staged && pnpm secret-check:staged && pnpm naming-check:staged && pnpm ui:style-check && node scripts/check-e2e-budget.mjs --staged && pnpm lint:fix && pnpm format-check:staged && pnpm check",
+    "verify:repo": "pnpm line-check && pnpm naming-check && pnpm ui:style-check",
+    "verify:checks": "pnpm verify:repo && pnpm secret-check:staged && node scripts/check-e2e-budget.mjs --staged && pnpm lint:fix && pnpm format-check:staged && pnpm check",
     "verify:quick": "pnpm verify:checks && pnpm test:staged && pnpm test:terminal-recovery:native && pnpm test:e2e:pre-commit",
     "verify:full": "pnpm verify:checks && pnpm test -- --run && pnpm test:terminal-recovery:native && pnpm test:e2e:pre-commit --full",
     "e2e:budget": "node scripts/check-e2e-budget.mjs",
@@ -194,28 +194,12 @@
     "electron-builder-squirrel-windows": "^26.8.1",
     "electron-vite": "^5.0.0",
     "happy-dom": "^20.8.4",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.4.0",
     "oxlint": "^1.55.0",
     "prettier": "^3.8.1",
     "secretlint": "^11.3.1",
     "typescript": "^5.7.2",
     "vite": "^6.0.3",
     "vitest": "^4.1.0"
-  },
-  "lint-staged": {
-    "*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}": [
-      "node scripts/check-max-lines.mjs",
-      "oxlint --fix",
-      "prettier --write"
-    ],
-    "*.{css,scss,less,html,json,md,yaml,yml}": [
-      "node scripts/check-max-lines.mjs",
-      "prettier --write"
-    ],
-    "*.{js,jsx,ts,tsx,mjs,cjs,mts,cts,css,scss,less,html,json,md,yaml,yml,env,sh,txt}": [
-      "node scripts/check-secrets-staged.mjs"
-    ]
   },
   "pnpm": {
     "onlyBuiltDependencies": [
