@@ -51,8 +51,10 @@ const baselineOf = {
   [WINDOW_API]: { 'src/contexts/workspace/presentation/renderer/View.ts': 1 },
   'architecture.contextForbiddenLayer': {},
   'architecture.contextPublicEntry': {},
-  'architecture.variantLiteralDecision': {},
-  'architecture.variantSwitchExhaustive': {},
+  'architecture.variantLiteralDecision.agentProvider': {},
+  'architecture.variantLiteralDecision.nodeKind': {},
+  'architecture.variantSwitchExhaustive.agentProvider': {},
+  'architecture.variantSwitchExhaustive.nodeKind': {},
 }
 
 describe('architecture ratchet baseline', () => {

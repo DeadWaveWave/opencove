@@ -6,10 +6,19 @@ import ts from 'typescript'
 // decides what to do by comparing a variant's identity belongs to the variant's own registry entry.
 // These rules count such comparisons per file so the ratchet can only let them go down.
 
-export const VARIANT_RULE_IDS = {
+// One rule id per variant and per rule, so a fall in one variant's count can never pay for a rise in
+// another: `architecture.variantLiteralDecision.agentProvider`, `...switchExhaustive.nodeKind`, ...
+// Severity comes from the shared `variantRules.literalDecision` / `variantRules.switchExhaustive`.
+export const VARIANT_RULE_BASE_IDS = {
   literalDecision: 'architecture.variantLiteralDecision',
   switchExhaustive: 'architecture.variantSwitchExhaustive',
 }
+
+export function variantRuleId(key, variantId) {
+  return `${VARIANT_RULE_BASE_IDS[key]}.${variantId}`
+}
+
+const DEFAULT_ASSERT_NEVER_FILE = 'src/shared/utils/assertNever.ts'
 
 const DEFAULT_DOC = 'docs/architecture/ARCHITECTURE.md#variants-and-registries'
 
@@ -19,8 +28,10 @@ export function collectVariantRuleSeverities(config) {
   if (!block) {
     return severities
   }
-  for (const [key, ruleId] of Object.entries(VARIANT_RULE_IDS)) {
-    severities.set(ruleId, block[key]?.severity)
+  for (const key of Object.keys(VARIANT_RULE_BASE_IDS)) {
+    for (const variant of block.variants ?? []) {
+      severities.set(variantRuleId(key, variant.id), block[key]?.severity)
+    }
   }
   return severities
 }
@@ -30,7 +41,7 @@ export function assertVariantConfig(config) {
   if (!block) {
     return
   }
-  for (const key of Object.keys(VARIANT_RULE_IDS)) {
+  for (const key of Object.keys(VARIANT_RULE_BASE_IDS)) {
     const severity = block[key]?.severity
     if (severity !== 'warn' && severity !== 'error') {
       throw new Error(
@@ -44,8 +55,14 @@ export function assertVariantConfig(config) {
   const ids = new Set()
   for (const [index, variant] of block.variants.entries()) {
     const name = `variantRules.variants[${index}]`
-    if (typeof variant.id !== 'string' || variant.id === '' || ids.has(variant.id)) {
-      throw new Error(`${name}.id must be a unique non-empty string.`)
+    if (
+      typeof variant.id !== 'string' ||
+      !/^[A-Za-z0-9]+$/.test(variant.id) ||
+      ids.has(variant.id)
+    ) {
+      throw new Error(
+        `${name}.id must be a unique alphanumeric string (it is part of the rule id).`,
+      )
     }
     ids.add(variant.id)
     if (typeof variant.source?.file !== 'string' || typeof variant.source?.export !== 'string') {
@@ -73,6 +90,14 @@ function unwrapExpression(node) {
     ts.isNonNullExpression(current) ||
     ts.isTypeAssertionExpression(current)
   ) {
+    current = current.expression
+  }
+  return current
+}
+
+function unwrapParentheses(node) {
+  let current = node
+  while (ts.isParenthesizedExpression(current)) {
     current = current.expression
   }
   return current
@@ -189,12 +214,67 @@ function isOwned(variant, literal, relativePath, matches) {
   )
 }
 
-function singleExit(statement) {
-  const only = ts.isBlock(statement)
-    ? statement.statements.length === 1
-      ? statement.statements[0]
-      : null
-    : statement
+function onlyStatement(statement) {
+  if (ts.isBlock(statement)) {
+    return statement.statements.length === 1 ? statement.statements[0] : null
+  }
+  return statement
+}
+
+// "Existing value": a literal, `undefined`, an identifier, a chain of identifiers and `this`
+// (`a.b.c`), or an empty array / object. Anything that computes (call, new, JSX, conditional,
+// non-empty literal, template with substitutions, await, element access) is a decision.
+function isExistingValue(expression) {
+  const node = unwrapParentheses(expression)
+  if (
+    ts.isStringLiteral(node) ||
+    ts.isNoSubstitutionTemplateLiteral(node) ||
+    ts.isNumericLiteral(node) ||
+    node.kind === ts.SyntaxKind.TrueKeyword ||
+    node.kind === ts.SyntaxKind.FalseKeyword ||
+    node.kind === ts.SyntaxKind.NullKeyword ||
+    ts.isIdentifier(node) ||
+    node.kind === ts.SyntaxKind.ThisKeyword
+  ) {
+    return true
+  }
+  if (ts.isPrefixUnaryExpression(node)) {
+    return node.operator === ts.SyntaxKind.MinusToken && ts.isNumericLiteral(node.operand)
+  }
+  if (ts.isPropertyAccessExpression(node)) {
+    return isPropertyChain(node)
+  }
+  if (ts.isArrayLiteralExpression(node)) {
+    return node.elements.length === 0
+  }
+  if (ts.isObjectLiteralExpression(node)) {
+    return node.properties.length === 0
+  }
+  return false
+}
+
+function isPropertyChain(node) {
+  let current = node
+  while (ts.isPropertyAccessExpression(current)) {
+    current = current.expression
+  }
+  return ts.isIdentifier(current) || current.kind === ts.SyntaxKind.ThisKeyword
+}
+
+// A pure exit: `return;`, `return <existing value>`, `continue`, `break` or `throw ...`.
+function isPureExit(statement) {
+  const only = onlyStatement(statement)
+  if (only === null) {
+    return false
+  }
+  if (ts.isContinueStatement(only) || ts.isBreakStatement(only) || ts.isThrowStatement(only)) {
+    return true
+  }
+  return ts.isReturnStatement(only) && (!only.expression || isExistingValue(only.expression))
+}
+
+function isSingleExitShape(statement) {
+  const only = onlyStatement(statement)
   return (
     only !== null &&
     (ts.isReturnStatement(only) ||
@@ -211,18 +291,20 @@ function orOperands(expression) {
     : [node]
 }
 
-// `!==` comparisons that only exit early: the whole condition, or one `||` operand, of an `if`
-// with no `else` whose body is a single return, continue, break or throw.
-function collectExitGuards(sourceFile) {
-  const guards = new Set()
+// `!==` comparisons of guard shape: the whole condition, or one `||` operand, of an `if` with no
+// `else` whose body is a single return, continue, break or throw. Maps each to whether the exit is
+// pure; only pure exits are allowed, an exit that computes something is a per-variant decision.
+function collectGuardShapes(sourceFile) {
+  const guards = new Map()
   const visit = node => {
-    if (ts.isIfStatement(node) && !node.elseStatement && singleExit(node.thenStatement)) {
+    if (ts.isIfStatement(node) && !node.elseStatement && isSingleExitShape(node.thenStatement)) {
+      const pure = isPureExit(node.thenStatement)
       for (const operand of orOperands(node.expression)) {
         if (
           ts.isBinaryExpression(operand) &&
           operand.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken
         ) {
-          guards.add(operand)
+          guards.set(operand, pure)
         }
       }
     }
@@ -232,13 +314,41 @@ function collectExitGuards(sourceFile) {
   return guards
 }
 
-function isAssertNeverCall(expression, discriminantText, sourceFile) {
+// Local names bound, by an import in this file, to the shared `assertNever` helper. A local function
+// or an import of the same name from elsewhere is not the helper.
+function collectAssertNeverNames(sourceFile, helperFile, resolveTarget) {
+  const names = new Set()
+  for (const statement of sourceFile.statements) {
+    if (
+      !ts.isImportDeclaration(statement) ||
+      !ts.isStringLiteral(statement.moduleSpecifier) ||
+      !statement.importClause ||
+      statement.importClause.isTypeOnly ||
+      !statement.importClause.namedBindings ||
+      !ts.isNamedImports(statement.importClause.namedBindings)
+    ) {
+      continue
+    }
+    const bindings = statement.importClause.namedBindings.elements.filter(
+      element =>
+        !element.isTypeOnly && (element.propertyName ?? element.name).text === 'assertNever',
+    )
+    if (bindings.length > 0 && resolveTarget(statement.moduleSpecifier.text) === helperFile) {
+      for (const element of bindings) {
+        names.add(element.name.text)
+      }
+    }
+  }
+  return names
+}
+
+function isAssertNeverCall(expression, discriminantText, sourceFile, assertNeverNames) {
   const call = expression && unwrapExpression(expression)
   return (
     call !== undefined &&
     ts.isCallExpression(call) &&
     ts.isIdentifier(call.expression) &&
-    call.expression.text === 'assertNever' &&
+    assertNeverNames.has(call.expression.text) &&
     call.arguments.length >= 1 &&
     call.arguments[0].getText(sourceFile) === discriminantText
   )
@@ -246,7 +356,7 @@ function isAssertNeverCall(expression, discriminantText, sourceFile) {
 
 // A switch is exhaustive when its last clause is `default:` and the first statement there proves
 // the remaining type is `never`: `assertNever(x)` (also returned or thrown) or `const _: never = x`.
-function isExhaustiveSwitch(switchStatement, sourceFile) {
+function isExhaustiveSwitch(switchStatement, sourceFile, assertNeverNames) {
   const clauses = switchStatement.caseBlock.clauses
   const last = clauses[clauses.length - 1]
   if (!last || !ts.isDefaultClause(last)) {
@@ -262,17 +372,18 @@ function isExhaustiveSwitch(switchStatement, sourceFile) {
   }
   const discriminantText = switchStatement.expression.getText(sourceFile)
   if (ts.isExpressionStatement(first)) {
-    return isAssertNeverCall(first.expression, discriminantText, sourceFile)
+    return isAssertNeverCall(first.expression, discriminantText, sourceFile, assertNeverNames)
   }
   if (ts.isReturnStatement(first) || ts.isThrowStatement(first)) {
-    return isAssertNeverCall(first.expression, discriminantText, sourceFile)
+    return isAssertNeverCall(first.expression, discriminantText, sourceFile, assertNeverNames)
   }
   if (ts.isVariableStatement(first)) {
     return first.declarationList.declarations.some(
       declaration =>
         declaration.type?.kind === ts.SyntaxKind.NeverKeyword &&
         declaration.initializer !== undefined &&
-        unwrapExpression(declaration.initializer).getText(sourceFile) === discriminantText,
+        // Plain parentheses are fine; a cast (`as`, `satisfies`, `<T>x`, `!`) would defeat the proof.
+        unwrapParentheses(declaration.initializer).getText(sourceFile) === discriminantText,
     )
   }
   return false
@@ -289,6 +400,7 @@ export function findVariantViolations({
   config,
   variants,
   matches,
+  resolveTarget,
 }) {
   const block = config.variantRules
   if (!block || variants.length === 0) {
@@ -300,14 +412,19 @@ export function findVariantViolations({
   }
   const sourceFile = ts.createSourceFile(filePath, source, ts.ScriptTarget.Latest, true)
   const guards = variants.some(variant => variant.allowExitGuards)
-    ? collectExitGuards(sourceFile)
-    : new Set()
+    ? collectGuardShapes(sourceFile)
+    : new Map()
+  const assertNeverNames = collectAssertNeverNames(
+    sourceFile,
+    block.assertNeverFile ?? DEFAULT_ASSERT_NEVER_FILE,
+    resolveTarget,
+  )
   const violations = []
   const lineOf = node =>
     sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1
-  const report = (key, variant, node, found, expected, message) => {
+  const report = (key, variant, node, found, expected, message, extra = {}) => {
     violations.push({
-      ruleId: VARIANT_RULE_IDS[key],
+      ruleId: variantRuleId(key, variant.id),
       severity: block[key].severity,
       file: relativePath,
       line: lineOf(node),
@@ -316,9 +433,10 @@ export function findVariantViolations({
       expected,
       doc: block.doc ?? DEFAULT_DOC,
       variant: variant.id,
+      ...extra,
     })
   }
-  const literalFinding = (variant, literal, subject, node) => {
+  const literalFinding = (variant, literal, subject, node, guardShaped = false) => {
     if (!variant.literals.has(literal) || !subjectMatches(variant, subject)) {
       return
     }
@@ -332,6 +450,7 @@ export function findVariantViolations({
       shortText(node, sourceFile),
       `Do not branch on a ${variant.id} id. Add a field to the ${variant.id} registry entry and read it instead.`,
       `Decision made by comparing a ${variant.id} literal ("${literal}").`,
+      guardShaped ? { guardShaped: true } : {},
     )
   }
 
@@ -349,10 +468,17 @@ export function findVariantViolations({
         const literal = (leftLiteral ? left : right).text
         const subject = leftLiteral ? right : left
         for (const variant of variants) {
-          if (variant.allowExitGuards && guards.has(node)) {
+          const guardPure = guards.get(node)
+          if (variant.allowExitGuards && guardPure === true) {
             continue
           }
-          literalFinding(variant, literal, subject, node)
+          literalFinding(
+            variant,
+            literal,
+            subject,
+            node,
+            variant.allowExitGuards && guardPure === false,
+          )
         }
       }
     } else if (
@@ -379,7 +505,7 @@ export function findVariantViolations({
         }
       }
     } else if (ts.isSwitchStatement(node)) {
-      const exhaustive = isExhaustiveSwitch(node, sourceFile)
+      const exhaustive = isExhaustiveSwitch(node, sourceFile, assertNeverNames)
       for (const variant of variants) {
         if (!subjectMatches(variant, node.expression)) {
           continue

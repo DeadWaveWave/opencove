@@ -183,13 +183,16 @@ Web UI / Remote Worker 等浏览器或远端入口，都是同一套 Control Sur
   可用性等运行时事实继续通过既有 IPC / Control Surface DTO 到达。
 - Plugin node kind（`PluginNodeKind = string`）是开放集合，不在此范围内。
 
-**规则**（`architecture.variantLiteralDecision`、`architecture.variantSwitchExhaustive`，均为 `warn`，进入 ratchet）：
+**规则**（`architecture.variantLiteralDecision.<variant>`、`architecture.variantSwitchExhaustive.<variant>`，均为 `warn`，进入 ratchet）：
 
 - 标记：`provider === 'codex'`、`case 'pi':`、`['codex', 'pi'].includes(p)`、`data.kind === 'note'`（node kind 只在被比较表达式的名字以 `kind` 结尾时计入），
   以及不以 `assertNever` 收尾的、含有 variant `case` 的 `switch`。
 - 允许：该字面量 owner 路径内的比较（provider 为 `providers/<id>/**`）、variant 的来源与描述文件、node kind 的 exit guard
   （`if (data.kind !== 'task') return` 这类没有 `else`、主体只有一条 `return` / `continue` / `break` / `throw` 的 `!==`），以及 exhaustive `switch` 的 `case` 标签。
+- exit guard 必须是纯退出（`return;`、返回已有值、`continue`、`break`、`throw`）；旧写法 `const _: never = x` 不能带类型转换；只有 `src/shared/utils/assertNever.ts` 里的 `assertNever` 算数。
+- 每条规则按 variant 拆成独立的规则 id（如 `architecture.variantLiteralDecision.agentProvider`），一个 variant 的下降不能抵消另一个的上升。
 - 没有行内 suppress；变更 owner 只能改 `harness/architecture/rules.json`。完整语义见 `harness/architecture/README.md`。
+- 已知缺口（检测不到）：字面量放进常量再比较、`new Set([...]).has(p)`、对具名数组的 `.includes` / `.indexOf`、`'codex' in table`、把 `Record` 查表结果当作分支、`provider.startsWith('codex')`、通过别名读取主体、主体改名后不以 `kind` 结尾。后续让规则感知类型（按操作数类型是否为 variant 联合类型判断）可一并关闭。
 
 **如何新增 agent provider**：
 

@@ -6,19 +6,30 @@ import { loadArchitectureConfig, runArchitectureAudit } from '../lib/architectur
 import { evaluateRatchet, planRatchetUpdate } from '../lib/ratchet-baseline.mjs'
 import { VARIANT_SOURCE_FILES } from './variantFixtureSupport'
 
-const DECISION = 'architecture.variantLiteralDecision'
-const SWITCH = 'architecture.variantSwitchExhaustive'
+const PROVIDER = 'agentProvider'
+const NODE = 'nodeKind'
+const DECISION_BASE = 'architecture.variantLiteralDecision'
+const SWITCH_BASE = 'architecture.variantSwitchExhaustive'
+const decisionId = (variant: string) => `${DECISION_BASE}.${variant}`
+const switchId = (variant: string) => `${SWITCH_BASE}.${variant}`
+const NEVER_HELPER = {
+  'src/shared/utils/assertNever.ts':
+    'export function assertNever(value: never): never { throw new Error(String(value)) }\n',
+}
+const NEVER_IMPORT = "import { assertNever } from '@shared/utils/assertNever'\n"
 const tempRoots: string[] = []
 
 async function createRoot(files: Record<string, string>) {
   const root = await mkdtemp(join(tmpdir(), 'opencove-architecture-variants-'))
   tempRoots.push(root)
   await Promise.all(
-    Object.entries({ ...VARIANT_SOURCE_FILES, ...files }).map(async ([relativePath, source]) => {
-      const filePath = join(root, relativePath)
-      await mkdir(dirname(filePath), { recursive: true })
-      await writeFile(filePath, source, 'utf8')
-    }),
+    Object.entries({ ...VARIANT_SOURCE_FILES, ...NEVER_HELPER, ...files }).map(
+      async ([relativePath, source]) => {
+        const filePath = join(root, relativePath)
+        await mkdir(dirname(filePath), { recursive: true })
+        await writeFile(filePath, source, 'utf8')
+      },
+    ),
   )
   return root
 }
@@ -34,8 +45,10 @@ async function audit(files: Record<string, string>) {
   return { report, config, findings }
 }
 
-const decision = (file: string, times = 1) =>
-  Array.from({ length: times }, () => ({ ruleId: DECISION, file }))
+const decision = (file: string, times = 1, variant = PROVIDER) =>
+  Array.from({ length: times }, () => ({ ruleId: decisionId(variant), file }))
+const notExhaustive = (file: string, times = 1, variant = PROVIDER) =>
+  Array.from({ length: times }, () => ({ ruleId: switchId(variant), file }))
 
 describe('variant rules: flagged forms', () => {
   afterEach(async () => {
@@ -50,7 +63,7 @@ describe('variant rules: flagged forms', () => {
         "export const a = (provider: string) => provider === 'codex'\nexport const b = (p: string) => 'pi' !== p\n",
     })
     expect(findings).toEqual(decision('src/app/a.ts', 2))
-    const first = report.violations.find(violation => violation.ruleId === DECISION)
+    const first = report.violations.find(violation => violation.ruleId === decisionId(PROVIDER))
     expect(first).toMatchObject({ severity: 'warn', line: 1 })
     expect(first?.found).toBe("provider === 'codex'")
   })
@@ -77,10 +90,7 @@ describe('variant rules: flagged forms', () => {
       'src/app/a.ts':
         "export function f(provider: string) {\n  switch (provider) {\n    case 'pi':\n      return 1\n    default:\n      return 0\n  }\n}\n",
     })
-    expect(findings).toEqual([
-      { ruleId: DECISION, file: 'src/app/a.ts' },
-      { ruleId: SWITCH, file: 'src/app/a.ts' },
-    ])
+    expect(findings).toEqual([...decision('src/app/a.ts'), ...notExhaustive('src/app/a.ts')])
   })
 
   it('flags a node kind comparison in a brand-new file', async () => {
@@ -88,7 +98,9 @@ describe('variant rules: flagged forms', () => {
       'src/contexts/newThing/presentation/renderer/fresh.ts':
         "export const isNote = (data: { kind: string }) => data.kind === 'note'\n",
     })
-    expect(findings).toEqual(decision('src/contexts/newThing/presentation/renderer/fresh.ts'))
+    expect(findings).toEqual(
+      decision('src/contexts/newThing/presentation/renderer/fresh.ts', 1, NODE),
+    )
   })
 
   it('flags a switch over node.data.kind without assertNever, once per switch', async () => {
@@ -97,8 +109,8 @@ describe('variant rules: flagged forms', () => {
         "export function f(node: { data: { kind: string } }) {\n  switch (node.data.kind) {\n    case 'task':\n    case 'note':\n      return 1\n    default:\n      return 0\n  }\n}\n",
     })
     expect(findings).toEqual([
-      ...decision('src/app/a.ts', 2),
-      { ruleId: SWITCH, file: 'src/app/a.ts' },
+      ...decision('src/app/a.ts', 2, NODE),
+      ...notExhaustive('src/app/a.ts', 1, NODE),
     ])
   })
 
@@ -114,7 +126,7 @@ describe('variant rules: flagged forms', () => {
         '',
       ].join('\n'),
     })
-    expect(findings).toEqual(decision('src/app/a.ts', 4))
+    expect(findings).toEqual(decision('src/app/a.ts', 4, NODE))
   })
 
   it('reports each variant separately and ignores type-level and object-key literals', async () => {
@@ -127,7 +139,10 @@ describe('variant rules: flagged forms', () => {
         '',
       ].join('\n'),
     })
-    expect(findings).toEqual(decision('src/app/a.ts', 2))
+    expect(findings).toEqual([
+      ...decision('src/app/a.ts', 1, PROVIDER),
+      ...decision('src/app/a.ts', 1, NODE),
+    ])
   })
 
   it('leaves spec files out of scope', async () => {
@@ -145,20 +160,88 @@ describe('variant rules: allowed forms', () => {
     )
   })
 
-  it('allows node kind exit guards', async () => {
+  // Each entry is a function whose guard is `if (data.kind !== 'task') <exit>`.
+  const guardFile = (exits: string[], prefix = '') =>
+    [
+      prefix,
+      'type D = { kind: string; ok: boolean; value: number }',
+      'declare function compute(): number',
+      'declare const outer: { a: { b: number } }',
+      ...exits.map(
+        (exit, index) =>
+          `export function f${index}(data: D, items: D[]) {\n  if (data.kind !== 'task') ${exit}\n}`,
+      ),
+      '',
+    ].join('\n')
+
+  it.each([
+    'return',
+    'return;',
+    'return null',
+    'return undefined',
+    'return true',
+    "return 'x'",
+    'return `plain`',
+    'return 3',
+    'return -1',
+    'return data',
+    'return data.value',
+    'return outer.a.b',
+    'return []',
+    'return {}',
+    "throw new Error('x')",
+    "{ throw new Error('x') }",
+  ])('allows the pure exit guard: %s', async exit => {
+    const { findings } = await audit({ 'src/app/a.ts': guardFile([exit]) })
+    expect(findings).toEqual([])
+  })
+
+  it.each(['continue', 'break'])('allows the pure loop exit guard: %s', async exit => {
+    const { findings } = await audit({
+      'src/app/a.ts': `type D = { kind: string }\nexport function f(items: D[]) {\n  for (const data of items) {\n    if (data.kind !== 'task') ${exit}\n  }\n}\n`,
+    })
+    expect(findings).toEqual([])
+  })
+
+  it('allows a guard as one || operand and through parentheses', async () => {
     const { findings } = await audit({
       'src/app/a.ts': [
         'type D = { kind: string; ok: boolean }',
-        "export function a(data: D) {\n  if (data.kind !== 'task') return\n  return 1\n}",
-        "export function b(data: D) {\n  if (data.kind !== 'task') {\n    throw new Error('x')\n  }\n}",
         "export function c(data: D) {\n  if (!data.ok || data.kind !== 'task') return null\n}",
         "export function d(data: D) {\n  if ((data.kind !== 'task' || !data.ok) || data.kind !== 'note') return null\n}",
-        "export function e(items: D[]) {\n  for (const data of items) {\n    if (data.kind !== 'task') continue\n  }\n}",
-        "export function f(items: D[]) {\n  for (const data of items) {\n    if (data.kind !== 'task') break\n  }\n}",
         '',
       ].join('\n'),
     })
     expect(findings).toEqual([])
+  })
+
+  it.each([
+    'return compute()',
+    'return new Date()',
+    'return data.ok ? 1 : 2',
+    'return [1]',
+    'return { a: 1 }',
+    'return `x${data.value}`',
+    'return data.value + 1',
+    'return items[0]',
+    'return data.value.toFixed()',
+    'return (compute())',
+    'return -data.value',
+    'return !data.ok',
+  ])('counts a guard whose exit computes something: %s', async exit => {
+    const { findings, report } = await audit({ 'src/app/a.ts': guardFile([exit]) })
+    expect(findings).toEqual(decision('src/app/a.ts', 1, NODE))
+    expect(report.violations.find(v => v.ruleId === decisionId(NODE))).toMatchObject({
+      guardShaped: true,
+    })
+  })
+
+  it('counts a guard that returns await or JSX', async () => {
+    const { findings } = await audit({
+      'src/app/a.tsx':
+        "type D = { kind: string }\nexport async function f(data: D) {\n  if (data.kind !== 'task') return await Promise.resolve(1)\n}\nexport function g(data: D) {\n  if (data.kind !== 'task') return <div />\n}\n",
+    })
+    expect(findings).toEqual(decision('src/app/a.tsx', 2, NODE))
   })
 
   it('still flags node kind comparisons that are not exit guards', async () => {
@@ -173,7 +256,7 @@ describe('variant rules: allowed forms', () => {
         '',
       ].join('\n'),
     })
-    expect(findings).toEqual(decision('src/app/a.ts', 5))
+    expect(findings).toEqual(decision('src/app/a.ts', 5, NODE))
   })
 
   it('does not extend the exit-guard allowance to providers', async () => {
@@ -204,24 +287,76 @@ describe('variant rules: allowed forms', () => {
     expect(findings).toEqual(decision('src/contexts/agent/infrastructure/providers/codex/x.ts'))
   })
 
-  it('treats a switch as exhaustive when it ends in assertNever for the same discriminant', async () => {
+  const kindSwitch = (tail: string, discriminant = 'kind') =>
+    `export function f(kind: K, node: { data: { kind: K } }) {\n  switch (${discriminant}) {\n    case 'task':\n      return 1\n    case 'note':\n      return 2\n    default:\n${tail}\n  }\n}`
+
+  it('treats a switch as exhaustive when it ends in the shared assertNever for the same discriminant', async () => {
     const { findings } = await audit({
       'src/app/a.ts': [
-        "declare function assertNever(value: never): never\ntype K = 'task' | 'note'",
-        "export function a(node: { data: { kind: K } }) {\n  switch (node.data.kind) {\n    case 'task':\n      return 1\n    case 'note':\n      return 2\n    default:\n      return assertNever(node.data.kind)\n  }\n}",
-        "export function b(kind: K) {\n  switch (kind) {\n    case 'task':\n      return 1\n    case 'note':\n      return 2\n    default:\n      assertNever(kind)\n  }\n}",
-        "export function c(kind: K) {\n  switch (kind) {\n    case 'task':\n      return 1\n    case 'note':\n      return 2\n    default:\n      throw assertNever(kind)\n  }\n}",
-        "export function d(kind: K) {\n  switch (kind) {\n    case 'task':\n      return 1\n    case 'note':\n      return 2\n    default: {\n      const _exhaustive: never = kind\n      return _exhaustive\n    }\n  }\n}",
+        NEVER_IMPORT + "type K = 'task' | 'note'",
+        kindSwitch('      return assertNever(node.data.kind)', 'node.data.kind').replace(
+          'function f',
+          'function a',
+        ),
+        kindSwitch('      assertNever(kind)').replace('function f', 'function b'),
+        kindSwitch('      throw assertNever(kind)').replace('function f', 'function c'),
+        kindSwitch('      return assertNever(kind, "message")').replace('function f', 'function e'),
+        '',
+      ].join('\n'),
+      'src/app/relative.ts': [
+        "import { assertNever as never } from '../shared/utils/assertNever'\ntype K = 'task' | 'note'",
+        kindSwitch('      return never(kind)'),
         '',
       ].join('\n'),
     })
     expect(findings).toEqual([])
   })
 
+  it('accepts the legacy never declaration, with or without plain parentheses', async () => {
+    const { findings } = await audit({
+      'src/app/a.ts': [
+        "type K = 'task' | 'note'",
+        kindSwitch('      { const _exhaustive: never = kind; return _exhaustive }').replace(
+          'function f',
+          'function a',
+        ),
+        kindSwitch('      { const _exhaustive: never = (kind); return _exhaustive }').replace(
+          'function f',
+          'function b',
+        ),
+        kindSwitch(
+          '      { const _exhaustive: never = node.data.kind; return _exhaustive }',
+          'node.data.kind',
+        ).replace('function f', 'function c'),
+        '',
+      ].join('\n'),
+    })
+    expect(findings).toEqual([])
+  })
+
+  it.each([
+    ['as never', 'kind as never'],
+    ['satisfies never', 'kind satisfies never'],
+    ['non-null assertion', 'kind!'],
+    ['angle-bracket cast', '<never>kind'],
+  ])('does not accept a cast in the legacy never declaration: %s', async (_name, initializer) => {
+    const { findings } = await audit({
+      'src/app/a.ts': [
+        "type K = 'task' | 'note' | 'extra'",
+        kindSwitch(`      { const _x: never = ${initializer}; return _x }`),
+        '',
+      ].join('\n'),
+    })
+    expect(findings).toEqual([
+      ...decision('src/app/a.ts', 2, NODE),
+      ...notExhaustive('src/app/a.ts', 1, NODE),
+    ])
+  })
+
   it('does not accept a default that guards a different value or is not last', async () => {
     const { findings } = await audit({
       'src/app/a.ts': [
-        'declare function assertNever(value: never): never',
+        NEVER_IMPORT.trim(),
         "export function a(kind: string, other: never) {\n  switch (kind) {\n    case 'task':\n      return 1\n    default:\n      return assertNever(other)\n  }\n}",
         "export function b(kind: string) {\n  switch (kind) {\n    default:\n      return assertNever(kind as never)\n    case 'task':\n      return 1\n  }\n}",
         "export function c(kind: string) {\n  switch (kind) {\n    case 'task':\n      return 1\n    default:\n      console.log('x')\n      return assertNever(kind as never)\n  }\n}",
@@ -229,8 +364,26 @@ describe('variant rules: allowed forms', () => {
       ].join('\n'),
     })
     expect(findings).toEqual([
-      ...decision('src/app/a.ts', 3),
-      ...Array.from({ length: 3 }, () => ({ ruleId: SWITCH, file: 'src/app/a.ts' })),
+      ...decision('src/app/a.ts', 3, NODE),
+      ...notExhaustive('src/app/a.ts', 3, NODE),
+    ])
+  })
+
+  it('only counts the shared assertNever: a local function or another import does not', async () => {
+    const tail =
+      "type K = 'task'\nexport function f(kind: K) {\n  switch (kind) {\n    case 'task':\n      return 1\n    default:\n      return assertNever(kind)\n  }\n}\n"
+    const { findings } = await audit({
+      'src/app/local.ts': `const assertNever = (x: unknown) => 0\n${tail}`,
+      'src/app/other.ts': `import { assertNever } from './elsewhere'\n${tail}`,
+      'src/app/elsewhere.ts':
+        'export function assertNever(value: never): never { throw new Error(String(value)) }\n',
+      'src/app/ok.ts': `${NEVER_IMPORT}${tail}`,
+    })
+    expect(findings).toEqual([
+      ...decision('src/app/local.ts', 1, NODE),
+      ...notExhaustive('src/app/local.ts', 1, NODE),
+      ...decision('src/app/other.ts', 1, NODE),
+      ...notExhaustive('src/app/other.ts', 1, NODE),
     ])
   })
 })
@@ -315,7 +468,7 @@ describe('variant rules: ratchet', () => {
     const first = await audit(before)
     const plan = planRatchetUpdate({ report: first.report, config: first.config, baseline: null })
     const baseline = JSON.parse(plan.serialized as string)
-    expect(baseline[DECISION]).toEqual({ 'src/app/a.ts': 1 })
+    expect(baseline[decisionId(PROVIDER)]).toEqual({ 'src/app/a.ts': 1 })
 
     const next = await audit({
       ...before,
@@ -326,12 +479,39 @@ describe('variant rules: ratchet', () => {
     expect(result.issues).toEqual([
       expect.objectContaining({
         file: 'src/app/fresh.ts',
-        rule: DECISION,
+        rule: decisionId(NODE),
         baseline: 0,
         current: 1,
       }),
     ])
-    expect(result.output).toContain('src/app/fresh.ts [architecture.variantLiteralDecision]')
+    expect(result.output).toContain(
+      'src/app/fresh.ts [architecture.variantLiteralDecision.nodeKind]',
+    )
+  })
+
+  it('does not let a fall in one variant pay for a rise in another', async () => {
+    const files = {
+      'src/app/provider.ts': "export const a = (provider: string) => provider === 'codex'\n",
+      'src/app/node.ts': "export const b = (d: { kind: string }) => d.kind === 'note'\n",
+    }
+    const first = await audit(files)
+    const baseline = JSON.parse(
+      planRatchetUpdate({ report: first.report, config: first.config, baseline: null })
+        .serialized as string,
+    )
+    expect(baseline[decisionId(PROVIDER)]).toEqual({ 'src/app/provider.ts': 1 })
+    expect(baseline[decisionId(NODE)]).toEqual({ 'src/app/node.ts': 1 })
+
+    // +1 provider comparison, -1 node kind comparison: the combined total is unchanged.
+    const swapped = await audit({
+      'src/app/provider.ts':
+        "export const a = (provider: string) => provider === 'codex'\nexport const c = (provider: string) => provider === 'pi'\n",
+      'src/app/node.ts': 'export const b = 1\n',
+    })
+    const plan = planRatchetUpdate({ report: swapped.report, config: swapped.config, baseline })
+    expect(plan.ok).toBe(false)
+    expect(plan.refusals).toEqual([{ rule: decisionId(PROVIDER), before: 1, after: 2 }])
+    expect(plan.serialized).toBeNull()
   })
 
   it('refuses to record an increase and passes an allowed form', async () => {
@@ -348,7 +528,10 @@ describe('variant rules: ratchet', () => {
     })
     const plan = planRatchetUpdate({ report: grown.report, config: grown.config, baseline })
     expect(plan.ok).toBe(false)
-    expect(plan.refusals.map(refusal => refusal.rule).sort()).toEqual([DECISION, SWITCH])
+    expect(plan.refusals.map(refusal => refusal.rule).sort()).toEqual([
+      decisionId(PROVIDER),
+      switchId(PROVIDER),
+    ])
 
     const allowed = await audit({
       ...before,
