@@ -16,6 +16,7 @@ const registry: { open: TooltipInstance | null; lastClosedAt: number } = {
   lastClosedAt: Number.NEGATIVE_INFINITY,
 }
 
+/** @internal Test seam: only specs call this. */
 export function resetTooltipsForTests(): void {
   registry.open = null
   registry.lastClosedAt = Number.NEGATIVE_INFINITY

@@ -23,6 +23,7 @@ export function readTerminalDisplayCalibrationAttempt(): TerminalDisplayCalibrat
   return latestAttempt
 }
 
+/** @internal Test seam: only specs call this. */
 export function resetTerminalDisplayCalibrationAttemptForTests(): void {
   latestAttempt = null
 }

@@ -123,7 +123,7 @@
     "release:major": "node scripts/prepare-release.mjs major",
     "release:version": "node scripts/prepare-release.mjs",
     "pre-commit": "pnpm verify:quick",
-    "verify:repo": "pnpm line-check && pnpm naming-check && pnpm ui:style-check && pnpm arch:check",
+    "verify:repo": "pnpm line-check && pnpm naming-check && pnpm ui:style-check && pnpm arch:check && pnpm deadcode:check",
     "verify:checks": "pnpm verify:repo && pnpm secret-check:staged && node scripts/check-e2e-budget.mjs --staged && pnpm lint:fix && pnpm format-check:staged && pnpm check",
     "verify:quick": "pnpm verify:checks && pnpm test:staged && pnpm test:terminal-recovery:native && pnpm test:e2e:pre-commit",
     "verify:full": "pnpm verify:checks && pnpm test -- --run && pnpm test:terminal-recovery:native && pnpm test:e2e:pre-commit --full",
