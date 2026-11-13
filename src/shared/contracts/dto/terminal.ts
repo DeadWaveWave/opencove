@@ -1,4 +1,5 @@
 import type { AgentLaunchMode, AgentProviderId } from './agent'
+import type { TerminalAgentShimProvider } from '../agentProviderDescriptors'
 
 export interface PseudoTerminalSession {
   sessionId: string
@@ -242,7 +243,7 @@ export interface TerminalSessionStateEvent {
   observedAtMs?: number
 }
 
-export type TerminalAgentShimProvider = 'claude-code' | 'codex' | 'pi'
+export type { TerminalAgentShimProvider }
 
 export interface TerminalAgentActivitySnapshot {
   provider: TerminalAgentShimProvider

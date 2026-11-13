@@ -1,4 +1,5 @@
 import { normalizePiAgentSnapshot } from '@shared/runtime/piAgentSnapshot'
+import { isAgentProviderId } from '@shared/contracts/dto/agent'
 import type { TerminalSessionMetadataEvent } from '@shared/contracts/dto'
 import { normalizeTerminalAgentActivitySnapshot } from '@shared/runtime/terminalAgentActivity'
 
@@ -10,15 +11,7 @@ export function parseBrowserPtyMetadata(
     typeof record.resumeSessionId === 'string' && record.resumeSessionId.trim().length > 0
       ? record.resumeSessionId.trim()
       : null
-  const agentProvider =
-    record.agentProvider === 'claude-code' ||
-    record.agentProvider === 'codex' ||
-    record.agentProvider === 'opencode' ||
-    record.agentProvider === 'gemini' ||
-    record.agentProvider === 'pi' ||
-    record.agentProvider === 'kimi'
-      ? record.agentProvider
-      : null
+  const agentProvider = isAgentProviderId(record.agentProvider) ? record.agentProvider : null
   const profileId =
     typeof record.profileId === 'string' && record.profileId.trim().length > 0
       ? record.profileId.trim()

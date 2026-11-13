@@ -29,7 +29,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object'
 }
 
-function normalizeCanvasNodeKind(kind: unknown): CanvasNodeKind {
+export function normalizeCanvasNodeKind(kind: unknown): CanvasNodeKind {
   switch (kind) {
     case 'terminal':
     case 'agent':

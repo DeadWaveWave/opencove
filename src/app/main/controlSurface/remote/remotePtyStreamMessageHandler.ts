@@ -1,4 +1,5 @@
 import { agentRunSnapshotSchema } from '../../../../shared/contracts/dto/agentRunStateSchema'
+import { isAgentProviderId } from '../../../../shared/contracts/dto/agent'
 import type { PtyStreamMessage } from './remotePtyStreamMessage'
 import { normalizePiStateObservationMetadata } from '../../../../shared/runtime/piConversation'
 import { normalizePiAgentSnapshot } from '../../../../shared/runtime/piAgentSnapshot'
@@ -413,15 +414,7 @@ export function createRemotePtyStreamMessageHandler(options: {
         typeof message.resumeSessionId === 'string' && message.resumeSessionId.trim().length > 0
           ? message.resumeSessionId.trim()
           : null
-      const agentProvider =
-        message.agentProvider === 'claude-code' ||
-        message.agentProvider === 'codex' ||
-        message.agentProvider === 'opencode' ||
-        message.agentProvider === 'gemini' ||
-        message.agentProvider === 'pi' ||
-        message.agentProvider === 'kimi'
-          ? message.agentProvider
-          : null
+      const agentProvider = isAgentProviderId(message.agentProvider) ? message.agentProvider : null
       const profileId =
         typeof message.profileId === 'string' && message.profileId.trim().length > 0
           ? message.profileId.trim()

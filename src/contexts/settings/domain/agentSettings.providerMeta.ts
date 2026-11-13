@@ -1,56 +1,20 @@
+import {
+  AGENT_PROVIDER_DESCRIPTORS,
+  type AgentProviderCapabilities,
+} from '../../../shared/contracts/agentProviderDescriptors'
 import type { AgentProvider } from './agentSettings'
 
-export const AGENT_PROVIDER_LABEL: Record<AgentProvider, string> = {
-  'claude-code': 'Claude Code',
-  codex: 'Codex',
-  opencode: 'OpenCode',
-  gemini: 'Gemini CLI',
-  pi: 'Pi',
-  kimi: 'Kimi Code',
-}
+export type { AgentProviderCapabilities }
 
-export interface AgentProviderCapabilities {
-  taskTitle: boolean
-  worktreeNameSuggestion: boolean
-  runtimeObservation: 'jsonl' | 'provider-api' | 'none'
-  experimental: boolean
-}
+// Derived from the shared provider descriptors; the descriptor table is the single source of truth.
+export const AGENT_PROVIDER_LABEL: Record<AgentProvider, string> = Object.fromEntries(
+  Object.entries(AGENT_PROVIDER_DESCRIPTORS).map(([provider, { label }]) => [provider, label]),
+) as Record<AgentProvider, string>
 
-export const AGENT_PROVIDER_CAPABILITIES: Record<AgentProvider, AgentProviderCapabilities> = {
-  'claude-code': {
-    taskTitle: true,
-    worktreeNameSuggestion: true,
-    runtimeObservation: 'jsonl',
-    experimental: false,
-  },
-  codex: {
-    taskTitle: true,
-    worktreeNameSuggestion: true,
-    runtimeObservation: 'jsonl',
-    experimental: false,
-  },
-  opencode: {
-    taskTitle: false,
-    worktreeNameSuggestion: false,
-    runtimeObservation: 'provider-api',
-    experimental: false,
-  },
-  gemini: {
-    taskTitle: false,
-    worktreeNameSuggestion: false,
-    runtimeObservation: 'none',
-    experimental: false,
-  },
-  pi: {
-    taskTitle: false,
-    worktreeNameSuggestion: false,
-    runtimeObservation: 'jsonl',
-    experimental: false,
-  },
-  kimi: {
-    taskTitle: false,
-    worktreeNameSuggestion: false,
-    runtimeObservation: 'jsonl',
-    experimental: false,
-  },
-}
+export const AGENT_PROVIDER_CAPABILITIES: Record<AgentProvider, AgentProviderCapabilities> =
+  Object.fromEntries(
+    Object.entries(AGENT_PROVIDER_DESCRIPTORS).map(([provider, { capabilities }]) => [
+      provider,
+      capabilities,
+    ]),
+  ) as Record<AgentProvider, AgentProviderCapabilities>

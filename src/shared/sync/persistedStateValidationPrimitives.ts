@@ -1,4 +1,4 @@
-import { AGENT_PROVIDER_IDS, CANVAS_IMAGE_MIME_TYPES } from '@shared/contracts/dto'
+import { CANVAS_IMAGE_MIME_TYPES, isAgentProviderId } from '@shared/contracts/dto'
 import {
   PERSISTED_WORKSPACE_NODE_KINDS,
   type PersistedAgentRuntimeStatus,
@@ -61,7 +61,7 @@ export function isStringRecord(value: unknown): value is Record<string, string> 
 }
 
 export function isAgentProvider(value: unknown): boolean {
-  return typeof value === 'string' && (AGENT_PROVIDER_IDS as readonly string[]).includes(value)
+  return isAgentProviderId(value)
 }
 
 export function isNullableAgentProvider(value: unknown): boolean {

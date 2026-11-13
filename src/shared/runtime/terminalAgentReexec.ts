@@ -1,3 +1,4 @@
+import { isTerminalAgentShimProvider } from '../contracts/agentProviderDescriptors'
 import {
   AGENT_PROVIDER_IDS,
   type TerminalAgentActivityFence,
@@ -48,7 +49,7 @@ function normalizeActivityFence(value: unknown): TerminalAgentActivityFence | nu
   const hasSourceRevision = value.sourceRevision !== undefined
   const hasRevision = value.revision !== undefined
   if (
-    (provider !== 'claude-code' && provider !== 'codex' && provider !== 'pi') ||
+    !isTerminalAgentShimProvider(provider) ||
     !invocationId ||
     !isPositiveSafeInteger(generation) ||
     (phase !== 'active' && phase !== 'exited') ||
