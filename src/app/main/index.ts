@@ -25,6 +25,7 @@ import {
 } from './worker/localWorkerManager'
 import { createMainRuntimeDiagnosticsLogger } from './runtimeDiagnostics'
 import { createRendererFailureContext, getProcessFailureContext } from './processFailureDiagnostics'
+import { scheduleRendererRecovery } from './rendererCrashRecovery'
 import { registerQuickPhrasesContextMenu } from './contextMenu/registerQuickPhrasesContextMenu'
 import { registerQuitCoordinator } from './quitCoordinator'
 import { registerApplicationShortcuts } from './applicationShortcuts'
@@ -227,9 +228,7 @@ function createWindow(): void {
       reason: details.reason,
       exitCode: details.exitCode,
     })
-    if (!mainWindow.isDestroyed()) {
-      mainWindow.webContents.reload()
-    }
+    scheduleRendererRecovery(mainWindow, () => !isAppQuitInProgress && !hasCoordinatedWindowClose)
   })
 
   mainWindow.on('unresponsive', () => {

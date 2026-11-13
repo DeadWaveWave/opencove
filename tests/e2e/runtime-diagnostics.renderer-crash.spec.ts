@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { expect, test } from '@playwright/test'
-import { launchApp } from './workspace-canvas.app'
+import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import { isSeededWorkspaceNavigationReady } from './workspace-canvas.seed-readiness'
 
 // Verify that close() retained the artifact before removing the app's userData.
 test.afterEach(async () => {
@@ -21,13 +22,45 @@ test.afterEach(async () => {
   expect(output).toContain('processMetricsAtExit')
 })
 
-test('retains main-process diagnostics after a forced renderer crash', async () => {
+test('recovers the workspace in the same main process after a renderer crash', async () => {
   const { electronApp, window } = await launchApp()
   try {
+    await clearAndSeedWorkspace(window, [])
+    const mainPid = await electronApp.evaluate(() => process.pid)
     const browserWindow = await electronApp.browserWindow(window)
-    const crashed = window.waitForEvent('crash')
-    await browserWindow.evaluate(host => host.webContents.forcefullyCrashRenderer())
-    await crashed
+    await browserWindow.evaluate(
+      host =>
+        new Promise<void>(resolve => {
+          host.webContents.once('did-finish-load', () => resolve())
+          host.webContents.forcefullyCrashRenderer()
+        }),
+    )
+    expect(electronApp.process().exitCode).toBeNull()
+    expect(electronApp.process().signalCode).toBeNull()
+    expect(await electronApp.evaluate(() => process.pid)).toBe(mainPid)
+    // Playwright permanently marks its Page as crashed. Observe the recovered document
+    // through the same native WebContents, without asking the test to reload it.
+    await expect
+      .poll(() =>
+        browserWindow.evaluate(
+          (host, readiness) => host.webContents.executeJavaScript(`(${readiness})(1)`),
+          isSeededWorkspaceNavigationReady.toString(),
+        ),
+      )
+      .toBe(true)
+    await expect
+      .poll(() =>
+        browserWindow.evaluate(host =>
+          host.webContents.executeJavaScript(`(() => {
+            const pane = document.querySelector('.workspace-canvas .react-flow__pane')
+            if (!pane) return false
+            const rect = pane.getBoundingClientRect()
+            return rect.width > 0 && rect.height > 0 && getComputedStyle(pane).visibility === 'visible'
+          })()`),
+        ),
+      )
+      .toBe(true)
+    expect(await electronApp.evaluate(() => process.pid)).toBe(mainPid)
   } finally {
     await electronApp.close()
   }

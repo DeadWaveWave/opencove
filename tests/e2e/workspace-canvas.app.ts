@@ -128,13 +128,7 @@ function resolveElectronLaunchArgs(deviceScaleFactor?: number): string[] {
       : []),
   ]
 
-  return [
-    ...chromiumArgs,
-    electronAppPath,
-    // Fault injection must not restore macOS window state shared by other Electron launches.
-    // NSArgumentDomain is per process; this does not change the user's saved preferences.
-    ...(process.platform === 'darwin' ? ['-ApplePersistenceIgnoreState', 'YES'] : []),
-  ]
+  return [...chromiumArgs, electronAppPath]
 }
 
 async function delay(ms: number): Promise<void> {
