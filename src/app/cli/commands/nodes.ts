@@ -6,6 +6,8 @@ import {
   agentBatchText,
   agentBatchOutput,
 } from './nodeCreateAgentBatch'
+import { NODE_MIN_SIZE_BY_KIND } from '../../../shared/types/nodeSizeLimits'
+import { hasNodeFrameCoordinates, NODE_NEAR_FRAME_ERROR } from '../../../shared/utils/nodeNearFrame'
 import { mutateNode } from './nodeMutation'
 import { INITIAL_PROMPT_RULES_TEXT } from '../../../shared/errors/initialPromptRules'
 import { validateTurnWaitOptions } from '../core/agentTurnComposition'
@@ -165,7 +167,7 @@ const nodeLocatorOptions: Record<string, OptionSpec> = {
   space: { ...locatorOptions.space, defaultSelfUnless: ['root-canvas', 'spawned-by'] },
   'root-canvas': rootCanvasOption,
 }
-const kinds = ['note', 'task', 'website', 'agent', 'terminal']
+const kinds = ['note', 'task', 'website', 'agent', 'terminal'] as const
 export const nodeCommands = [
   defineCommand({
     path: ['node', 'list'],
@@ -317,9 +319,9 @@ export const nodeCommands = [
         description: create
           ? (kind === 'agent'
               ? INITIAL_PROMPT_RULES_TEXT +
-                '\n\nUse --prompt or --prompt-file with --wait to collect the initial Claude Code or Codex turn. Add --read for its exact reply. Check outcome: every ended outcome exits 0; unavailable replies return reply: null with replyUnavailableReason. Waiting for the user exits 10, an exited target 11, timeout 124 and interruption 130. Unsupported providers refuse after creation; the node remains.\n\nFor several agents, use --prompts-file <path|-> --wait [--read]: a UTF-8 JSON array of 1–10 objects with a nonblank prompt and optional title, at most 1 MiB. All entries are validated before launch. Conflicts: --prompt, --prompt-file, --title, --task, --frame, -q, --fields, --focus and --limit. Target, provider, model and Full Access choices apply to every entry. Creates run in input order; waits run concurrently. Each result or error is retained in an ordered JSON array: {index, title, ok, exitCode, result|error}. index starts at 0; error is the ordinary error envelope. Exit is the first nonzero entry exit; Ctrl-C overrides with 130. Later entries are still attempted after a failure; no launch is retried.\n\n--timeout covers identification and waiting per agent from its creation response (default 20s; minimum 250ms); creation has its own 20s budget. Stderr prints created node/session IDs, then an exact-turn continuation. Errors retain known IDs. Missing telemetry does not prove the agent has stopped. Never repeat creation or resend: inspect the existing session and resume agent wait/read. Ctrl-C stops dispatch and observation, leaves agents running and prints every entry. With a single prompt, -q prints the ID after completion. See opencove skill coordinate for recovery.\n\n'
+                '\n\nUse --prompt or --prompt-file with --wait to collect the initial Claude Code or Codex turn. Add --read for its exact reply. Check outcome: every ended outcome exits 0; unavailable replies return reply: null with replyUnavailableReason. Waiting for the user exits 10, an exited target 11, timeout 124 and interruption 130. Unsupported providers refuse after creation; the node remains.\n\nFor several agents, use --prompts-file <path|-> --wait [--read]: a UTF-8 JSON array of 1–10 objects with a nonblank prompt and optional title, at most 1 MiB. All entries are validated before launch. Conflicts: --prompt, --prompt-file, --title, --task, --frame, -q, --fields, --focus and --limit. Target, provider, model and Full Access choices apply to every entry. Add --near @self to place each entry near you; each create finds its own free slot. Creates run in input order; waits run concurrently. Each result or error is retained in an ordered JSON array: {index, title, ok, exitCode, result|error}. index starts at 0; error is the ordinary error envelope. Exit is the first nonzero entry exit; Ctrl-C overrides with 130. Later entries are still attempted after a failure; no launch is retried.\n\n--timeout covers identification and waiting per agent from its creation response (default 20s; minimum 250ms); creation has its own 20s budget. Stderr prints created node/session IDs, then an exact-turn continuation. Errors retain known IDs. Missing telemetry does not prove the agent has stopped. Never repeat creation or resend: inspect the existing session and resume agent wait/read. Ctrl-C stops dispatch and observation, leaves agents running and prints every entry. With a single prompt, -q prints the ID after completion. See opencove skill coordinate for recovery.\n\n'
               : '') +
-            'Without explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node belongs to another project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.'
+            'For agents creating helper nodes, recommend --near @self to place them near the caller in its current Space (or root). --near is opt-in; combine with --root-canvas to place outside Spaces. Size-only --frame (width/height) is allowed with --near; x/y are refused.\n\nWithout explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node belongs to another project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.'
           : kind === 'agent' || kind === 'terminal'
             ? 'Rename this window and keep its name when the agent session changes. The name is saved as provided, with surrounding whitespace removed. Use --frame to also move or resize it.'
             : undefined,
@@ -361,13 +363,20 @@ export const nodeCommands = [
           },
           frame: {
             type: 'json',
-            description:
-              'Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes' +
-              (kind === 'task' ? '; task minimum: width 220, height 260' : ''),
+            description: `Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; ${kind} minimum: width ${NODE_MIN_SIZE_BY_KIND[kind].width}, height ${NODE_MIN_SIZE_BY_KIND[kind].height}; inspect appliedFrame and frameAdjusted for the actual applied size`,
             valueName: 'json',
           },
           ...(create
-            ? { focus: { type: 'boolean' as const, description: 'Focus after creation' } }
+            ? {
+                near: {
+                  type: 'string' as const,
+                  selector: 'node' as const,
+                  valueName: 'selector',
+                  description:
+                    'Place near a reference node; recommend --near @self for helper nodes',
+                },
+                focus: { type: 'boolean' as const, description: 'Focus after creation' },
+              }
             : {}),
         },
         examples:
@@ -389,6 +398,9 @@ export const nodeCommands = [
           ) {
             usage('--frame must be a JSON object')
           }
+          if (create && o.near !== undefined && hasNodeFrameCoordinates(o.frame)) {
+            usage(NODE_NEAR_FRAME_ERROR)
+          }
           if (create && kind === 'agent') {
             validateTurnWaitOptions(o)
             if (
@@ -409,6 +421,15 @@ export const nodeCommands = [
                 ? { space: targetSpace }
                 : { projectId: o.project }
               : { nodeId: o.node }),
+            ...(create && o.near !== undefined
+              ? {
+                  near: {
+                    nodeId: o.near,
+                    target: o['root-canvas'] ? 'root-canvas' : 'reference-container',
+                  },
+                  ...(o.project !== undefined ? { projectId: o.project } : {}),
+                }
+              : {}),
             title: o.title,
             frame: o.frame,
             ...(create || (kind !== 'agent' && kind !== 'terminal')

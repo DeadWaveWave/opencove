@@ -68,7 +68,8 @@ function readTimings(report) {
       ['interrupted', 'notRun', 'timedOut', 'failed'].find(s => finalStatuses.includes(s)) ??
       (finalStatuses.includes('passed') ? 'passed' : results.length ? 'skipped' : 'notRun')
     const passed = results.filter(result => result.status === 'passed').map(r => r.duration)
-    return { id, total, status, passedMs: passed.length ? median(passed) : undefined }
+    const skippedOnly = status === 'skipped' && results.every(r => r.status === 'skipped')
+    return { id, total, status, skippedOnly, passedMs: passed.length ? median(passed) : undefined }
   })
 }
 
@@ -76,19 +77,24 @@ export function durationBaseline(reports) {
   const samples = { ubuntu: new Map(), macos: new Map() }
   for (const { os, report } of reports) {
     for (const row of readTimings(report)) {
-      if (row.status !== 'passed' || row.passedMs === undefined) {
-        continue
-      }
       if (!samples[os].has(row.id)) {
-        samples[os].set(row.id, [])
+        samples[os].set(row.id, { passed: [], skippedOnly: true })
       }
-      samples[os].get(row.id).push(row.passedMs)
+      const sample = samples[os].get(row.id)
+      sample.skippedOnly &&= row.skippedOnly
+      if (row.passedMs !== undefined) {
+        sample.passed.push(row.passedMs)
+      }
     }
   }
   return Object.fromEntries(
     OSES.map(os => [
       os,
-      Object.fromEntries([...samples[os]].map(([id, values]) => [id, median(values)])),
+      Object.fromEntries(
+        [...samples[os]]
+          .filter(([, sample]) => sample.passed.length || sample.skippedOnly)
+          .map(([id, sample]) => [id, sample.passed.length ? median(sample.passed) : 0]),
+      ),
     ]),
   )
 }

@@ -6,8 +6,7 @@ description: Coordinate agents and share work inside OpenCove using its bundled 
 # OpenCove agent guide
 
 Use OpenCove to inspect your canvas, share findings, and coordinate authorized work.
-This guide and its topics ship with the CLI and work offline. Replace example IDs,
-names and paths with actual query results. Use command `--help` to check options.
+This guide and its topics ship with the CLI and work offline. Replace example IDs, names and paths with actual query results. Use command `--help` to check options.
 `opencove skill -o json` returns this guide with the matching CLI version.
 
 ## Establish identity
@@ -27,10 +26,8 @@ opencove context
 opencove node get --node @self
 ```
 
-`whoami` reports your grant and scope; `whoami --tree` lists the agents and terminals in your
-quota tree, how many more you can start, each one's state and how to stop it.
-`context.self.node` describes your own node;
-`context.nodes` lists neighbors in your Space. Outside every Space it has no neighbors:
+`whoami` reports your grant and scope; `whoami --tree` lists the agents and terminals in your quota tree, how many more you can start, each one's state and how to stop it.
+`context.self.node` describes your own node; `context.nodes` lists neighbors in your Space. Outside every Space it has no neighbors:
 use `node list` for the project or `node list --root-canvas` for only root nodes.
 Session lifecycle `running` does not mean an agent is working; inspect `agent get`.
 Missing or degraded observations never establish readiness.
@@ -49,6 +46,9 @@ through prompts, or execute plugin code through the API. Agent launches inherit 
 Ask the user for human decisions; do not work around a refusal. Project isolation is
 not yet enforced. See `opencove skill access` for the grant boundaries.
 
+For authorized helper creation, recommend `--near @self` on `node create note`, `terminal` and `agent`.
+It prefers a free slot near you in your current Space, or root when you have no Space; omit it to keep existing placement. See `opencove skill canvas` for explicit references and root overrides.
+
 ## Inspect and share work
 
 ```sh
@@ -56,7 +56,7 @@ opencove node list -o table
 opencove node list --kind note
 opencove node list --kind task
 opencove node get --node task-123
-opencove node create note --title "Progress" --text "Review started"
+opencove node create note --near @self --title "Progress" --text "Review started"
 opencove node update task --node task-123 --status ai_done
 ```
 

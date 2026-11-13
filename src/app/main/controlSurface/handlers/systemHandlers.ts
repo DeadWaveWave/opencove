@@ -103,6 +103,7 @@ export function registerSystemHandlers(
         runtimeReady: deps.isReady?.() ?? false,
         features: {
           ...ctx.capabilities,
+          nodeNearPlacementV1: true,
           boundedAgentSpawningV1: Boolean(
             (await deps.hasBoundedAgentSpawning?.()) && (await deps.hasNodeLineage?.()),
           ),

@@ -15,6 +15,7 @@ const commandPrefixes: Readonly<Record<AgentProviderId, readonly string[]>> = {
 const commonPrefixes = commandPrefixes['claude-code'].filter(prefix =>
   Object.values(commandPrefixes).every(prefixes => prefixes.includes(prefix)),
 )
+const SINGLE_ASCII_WORD = /^[\x21-\x7e]+$/u
 
 /** Undefined provider permits only universally applicable checks before target resolution. */
 export function assertSessionGrantMessagePrompt(
@@ -58,7 +59,9 @@ export function assertSessionGrantMessagePrompt(
 /** Launch-only grant checks, shared by the Worker and batch preflight. */
 export function assertSessionGrantLaunchPrompt(prompt: string, operationId: string): void {
   assertSessionGrantMessagePrompt(prompt, { operationId, field: 'prompt' })
-  if (prompt.length > 0 && !/\s/u.test(prompt)) {
+  // Provider commands, aliases and options are printable ASCII words. A prompt without spaces is
+  // refused only when it could be one; CJK and other scripts are often written without spaces.
+  if (SINGLE_ASCII_WORD.test(prompt)) {
     const feedback = initialPromptFeedback('command_token', prompt)
     throw createAppError('common.forbidden', {
       params: feedback.params,

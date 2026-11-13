@@ -623,6 +623,33 @@ it.each([
   expect(await run([...args, '--provider', provider], f.io)).toBe(2)
   expect(f.requests.filter(r => r.id === 'node.create')).toEqual([])
 })
+it.each([false, true])(
+  'accepts a grant CJK sentence and rejects a later ASCII command before any create (invalid=%s)',
+  async invalid => {
+    const f = fixture([
+      { prompt: '请列出当前目录中的文件，不要修改任何文件。' },
+      { prompt: invalid ? 'update' : '请检查测试结果并报告问题。' },
+    ])
+    f.values['system.whoami'] = {
+      kind: 'session-grant',
+      scopeTier: 'interact',
+      nodeId: 'caller',
+      sessionId: 'caller-session',
+    }
+    expect(await run([...args, '--provider', 'codex'], f.io)).toBe(invalid ? 2 : 0)
+    const creates = f.requests.filter(r => r.id === 'node.create')
+    if (invalid) {
+      expect(creates).toEqual([])
+      expect(f.error().message).toContain('single token')
+    } else {
+      expect(creates.map(r => (r.payload.data as { prompt: string }).prompt)).toEqual([
+        '请列出当前目录中的文件，不要修改任何文件。',
+        '请检查测试结果并报告问题。',
+      ])
+      expect(JSON.parse(f.out()).every((entry: { ok: boolean }) => entry.ok)).toBe(true)
+    }
+  },
+)
 it('preserves trusted Codex literal prompts that Claude would refuse', async () => {
   const f = fixture([{ prompt: 'Review the tests' }, { prompt: '--help please' }])
   expect(await run([...args, '--provider', 'codex'], f.io)).toBe(0)

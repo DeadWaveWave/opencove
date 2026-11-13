@@ -85,6 +85,15 @@ Space locator 不推断 cwd：使用 `--space`、`--space-name` 或 `--worker` �
 
 `node create` 支持 `--root-canvas`，在项目画布上创建、不加入任何 Space；外部调用需同时指定 `--project <selector>`。在 OpenCove 内不指定目标时，`node create` 使用调用者节点的当前 Space，或在调用者不属于任何 Space 时使用 root canvas。`node list` 在后一种情况下默认列整个项目；`node list --root-canvas` 仅列 root 节点。显式 `--project` 单独用于创建仍会报错，需补 Space 目标或 `--root-canvas`。未指定 x/y 时，在 OpenCove 内优先放在你的节点或所在 Space 旁边；调用者节点属于其他项目时从原点寻找空位，不保证可见；若会话绑定的节点已删除，需从有效节点继续；用 `--focus` 显示新节点。详见 [Canvas node control](CANVAS_NODE_CONTROL.md)。
 
+For agents creating helper nodes, recommend `--near @self` on `node create note`,
+`node create terminal` and `node create agent`. This explicit option prefers a free slot near
+the reference in its current direct Space (or root). Omitting it preserves current behavior.
+`--near <node selector>` supplies project/container context; an external full reference ID needs
+no `--project`. Explicit Space/project options must match; `--root-canvas` overrides membership.
+A size-only `--frame` (width/height) is allowed; x/y conflict with near placement. The CLI requires `features.nodeNearPlacementV1 === true`
+for both dedicated commands and `api call`; older Workers refuse with exit 5 before mutation.
+See [near placement](CANVAS_NODE_CONTROL.md#near-placement-v1) for bounds and retry semantics.
+
 ## Help and introspection
 
 `opencove --help` 显示分组及全局选项；`opencove <group> --help` 列子命令；命令级 `--help` 显示参数、示例与全局选项提示，不连接 Worker。

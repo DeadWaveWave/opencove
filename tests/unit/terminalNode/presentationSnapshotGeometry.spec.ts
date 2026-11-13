@@ -16,7 +16,10 @@ const newer: PresentationSnapshotTerminalResult = {
   title: null,
   serializedScreen: 'ready',
 }
-const request = (snapshot: PresentationSnapshotTerminalResult, expected = expectedGeometry) =>
+const request = (
+  snapshot: PresentationSnapshotTerminalResult,
+  expected: { cols: number; rows: number; geometryRevision?: number | null } = expectedGeometry,
+) =>
   requestPresentationSnapshotAfterGeometry({
     sessionId: newer.sessionId,
     expectedGeometry: expected,
@@ -47,7 +50,6 @@ describe('post-geometry snapshot revision fence', () => {
 
   it.each([
     { cols: 69, rows: 48 },
-    { cols: 69, rows: 48, geometryRevision: null },
     { cols: 69, rows: 48, geometryRevision: undefined },
   ])('keeps strict dimension matching when a fence is unknown: %j', async geometry => {
     expect(
@@ -58,6 +60,20 @@ describe('post-geometry snapshot revision fence', () => {
         maxAttempts: 1,
       }),
     ).toBeNull()
+  })
+
+  it('accepts the first canonical commit after the initial null revision', async () => {
+    expect(
+      await request(
+        { ...newer, geometryRevision: 1 },
+        { ...expectedGeometry, geometryRevision: null },
+      ),
+    ).toMatchObject({ geometryRevision: 1 })
+  })
+
+  it('keeps matching legacy snapshots when the initial committer normalizes a missing revision to null', async () => {
+    const legacy = { ...newer, ...expectedGeometry, geometryRevision: undefined }
+    expect(await request(legacy, { ...expectedGeometry, geometryRevision: null })).toBe(legacy)
   })
 
   it('keeps output and visibility fences when geometry advances', async () => {

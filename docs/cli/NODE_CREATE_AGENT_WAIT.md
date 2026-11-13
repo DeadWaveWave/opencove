@@ -83,6 +83,12 @@ checks every possible selectable provider conservatively. Choose `--provider` ex
 provider-specific literal text. `--wait` is required. Do not combine it with `--prompt`,
 `--prompt-file`, `--title`, `--task`, `--frame`, `-q`, `--fields`, `--focus` or `--limit`.
 Target selection, provider, model and Full Access options apply to every entry.
+Combine `--prompts-file` with `--near @self` (or another node selector) to place each helper
+near the reference. Every sequential create finds a free slot using the current canvas,
+including earlier entries in the batch. Add `--root-canvas` to place outside Spaces.
+
+中文：`--prompts-file` 可与 `--near @self` 或其它节点选择器组合；每项创建都根据当前画布
+重新寻找空位，也会避开本批先前创建的节点。可加 `--root-canvas` 放在 Space 外。
 
 Each create is sent once, sequentially in input order. Its observer starts immediately after the
 response, so agents and waits run concurrently. Each entry has its own identification/wait timeout;

@@ -54,7 +54,10 @@ export function applySelfDefaults(
   command: Command,
   env: CliIo['env'],
 ) {
-  if (env.OPENCOVE_ENV !== '1') {
+  if (
+    env.OPENCOVE_ENV !== '1' ||
+    (command.operation === 'node.create' && options.near !== undefined)
+  ) {
     return
   }
   const hasLocator = locatorKeys.some(key => options[key] !== undefined)
@@ -275,7 +278,7 @@ export async function resolveSelectors(
   ]
   for (const key of selectorKeys) {
     const kind = command.options?.[key]?.selector as 'space' | 'node'
-    const isTarget = key === kind
+    const isTarget = key === kind || key === 'near'
     if (
       (currentContainer && kind === 'space') ||
       !command.options?.[key]?.selector ||
@@ -386,7 +389,7 @@ export async function resolveSelectors(
       // Exact-ID probes are reused by the per-run read cache.
       // eslint-disable-next-line no-await-in-loop
       await Promise.all(
-        [o.node].flat().map(async id => {
+        [o[key]].flat().map(async id => {
           const target = await exactTarget('node', String(id), invoke)
           if (!target) {
             throw new CliError(
@@ -410,7 +413,10 @@ export async function resolveSelectors(
     if (
       kind === 'space' &&
       !explicitProject &&
-      Object.values(command.options ?? {}).some(option => option.selector === 'node')
+      Object.entries(command.options ?? {}).some(
+        ([optionKey, option]) =>
+          option.selector === 'node' && (optionKey !== 'near' || o.near !== undefined),
+      )
     ) {
       // An explicitly chosen space may belong to a different project than the session.
       // eslint-disable-next-line no-await-in-loop

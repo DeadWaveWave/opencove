@@ -62,7 +62,7 @@ export function help(commands: Command[], path: string[]) {
         ? [
             exact.options?.space?.defaultSelf
               ? exact.currentContainer
-                ? '[--root-canvas | --space <id> | <other-target-space-options>]'
+                ? '[--near <selector> | --root-canvas | --space <id> | <other-target-space-options>]'
                 : '[--space <id> | <other-target-space-options>]'
               : '(--space <id> | <other-target-space-options>)',
           ]
@@ -90,7 +90,7 @@ export function help(commands: Command[], path: string[]) {
         exact.operation === 'node.list'
           ? 'Default target inside OpenCove: your current Space. Outside every Space, list all nodes in your project; use --root-canvas to list only root nodes. An explicit --project lists that project.'
           : exact.currentContainer
-            ? 'Default target inside OpenCove: your current Space, or the root canvas when you are outside any Space. An explicit --project selects project scope for lists; creation also needs --root-canvas or a Space target.'
+            ? 'Default target inside OpenCove: your current Space, or the root canvas when you are outside any Space. An explicit --project alone does not select a container; creation also needs --near, --root-canvas or a Space target.'
             : exact.options?.space?.defaultSelf
               ? 'When no target is given, inside OpenCove defaults to your own space; project options default to your own project.'
               : 'When no project is given, inside OpenCove defaults to your own project.',
