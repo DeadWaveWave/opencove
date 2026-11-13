@@ -86,25 +86,42 @@ export function compareDeadCodeRatchet(counts, baseline, names = {}) {
   })
 }
 
+// The one accepted form: a JSDoc block directly above an `export <declaration>`.
 const TAGGED_EXPORT_PATTERN =
-  /\/\*\*(?:(?!\*\/)[\s\S])*?@(internal|public|beta)\b(?:(?!\*\/)[\s\S])*\*\/\s*export\s+(?:declare\s+)?(?:default\s+)?(?:async\s+)?(?:abstract\s+)?(?:function\*?|const|let|var|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/g
+  /\/\*\*((?:(?!\*\/)[\s\S])*?)\*\/\s*export\s+(?:declare\s+)?(?:default\s+)?(?:async\s+)?(?:abstract\s+)?(?:function\*?|const|let|var|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/g
+const FORBIDDEN_TAG_PATTERN = /@(public|beta|alias)\b/g
+const INTERNAL_TAG_PATTERN = /@internal\b/g
+
+const lineOf = (text, index) => text.slice(0, index).split('\n').length
 
 /**
- * knip never reports an export tagged `@internal`, `@public` or `@beta`, so each tag would hide a
- * dead export. `@internal` is reserved for `...ForTests` seams; `@public` and `@beta` are never
- * allowed under src/.
+ * knip never reports an export carrying `@internal`, `@public`, `@beta` or `@alias` (the last hides
+ * `duplicates`), wherever the tag is written: JSDoc, line or block comment, on a declaration or an
+ * export list. So `@public`, `@beta` and `@alias` are forbidden anywhere in the files read, and
+ * every `@internal` must sit in the accepted form on a `...ForTests` declaration.
  */
 export function findInternalNamingViolations(sources) {
   const violations = []
   for (const { file, text } of sources) {
+    for (const match of text.matchAll(FORBIDDEN_TAG_PATTERN)) {
+      violations.push({ file, line: lineOf(text, match.index), tag: match[1] })
+    }
+    const accepted = new Set()
     for (const match of text.matchAll(TAGGED_EXPORT_PATTERN)) {
-      const [, tag, name] = match
-      if (tag !== 'internal' || !name.endsWith('ForTests')) {
-        violations.push({ file, name, tag })
+      if (!match[2].endsWith('ForTests')) {
+        continue
+      }
+      for (const tag of match[1].matchAll(INTERNAL_TAG_PATTERN)) {
+        accepted.add(match.index + 3 + tag.index)
+      }
+    }
+    for (const match of text.matchAll(INTERNAL_TAG_PATTERN)) {
+      if (!accepted.has(match.index)) {
+        violations.push({ file, line: lineOf(text, match.index), tag: 'internal' })
       }
     }
   }
-  return violations
+  return violations.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line)
 }
 
 export function formatDeadCodeReport({ findings, ratchetIssues, internalViolations }) {
@@ -115,14 +132,11 @@ export function formatDeadCodeReport({ findings, ratchetIssues, internalViolatio
     lines.push(`  ${finding.hint}`)
   }
   for (const violation of internalViolations) {
-    const tag = violation.tag ?? 'internal'
-    lines.push(`[${DEAD_CODE_LABEL}] ${tag}: ${violation.file} ${violation.name}`)
+    lines.push(`[${DEAD_CODE_LABEL}] ${violation.tag}: ${violation.file}:${violation.line}`)
     lines.push(
-      tag === 'internal'
-        ? '  `@internal` hides an export from the dead-code check, so it is reserved for test seams. ' +
-            'Rename it `...ForTests`, or remove the tag and delete the export if nothing ships it.'
-        : `  \`@${tag}\` hides an export from the dead-code check and is not allowed under src/. ` +
-            'Remove the tag; if nothing imports the export, delete it.',
+      `  \`@${violation.tag}\` hides an export from the dead-code check. Remove the tag; delete the ` +
+        'export if nothing imports it. A test seam is named `...ForTests` and tagged `@internal` ' +
+        'in a JSDoc block directly above its declaration.',
     )
   }
   return (

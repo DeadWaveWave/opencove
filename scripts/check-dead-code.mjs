@@ -18,7 +18,7 @@ import {
 } from './lib/dead-code.mjs'
 
 const DEFAULT_REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const SOURCE_PATTERN = /\.(ts|tsx|mjs|cjs)$/
+const SOURCE_PATTERN = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
 
 function listSourceFiles(root, directory = 'src') {
   const files = []
@@ -55,7 +55,7 @@ function readBaseline(path) {
   return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null
 }
 
-function baselineExistsInGitHead(root) {
+export function baselineExistsInGitHead(root) {
   return (
     spawnSync('git', ['cat-file', '-e', `HEAD:${RATCHET_FILE}`], { cwd: root, stdio: 'ignore' })
       .status === 0
