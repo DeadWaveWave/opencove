@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // Guard for issue #647 (converge canvas state onto a single owner). Counts refs, setters and
-// workspace-store writers against `scripts/canvas-state-ratchet.json`. The counters are defined in
+// workspace-write capability mentions against `scripts/canvas-state-ratchet.json`. The counters are defined in
 // `scripts/lib/canvas-state-ratchet.mjs`; the rules are in DEVELOPMENT.md.
 //
 //   pnpm canvas:state-check     fails when any count differs from the baseline, up or down
@@ -85,16 +85,26 @@ export function runCanvasStateCheck({
 
   if (updateRatchet) {
     const plan = planCanvasStateUpdate({ counts, baseline })
+    // Every per-file rise is listed, also when the totals allow the update: a rise next to a
+    // larger drop elsewhere is a move between files, and the reviewer should see it.
+    const riseLines = plan.rises.map(
+      ({ file, rule, baseline: before, current }) =>
+        `[canvas-state-ratchet] rise: ${file} [${rule}] ${before} -> ${current}\n`,
+    )
     if (!plan.ok) {
+      stderr.write(riseLines.join(''))
       for (const { rule, before, after } of plan.refusals) {
         stderr.write(
           `[canvas-state-ratchet] ${rule}: total would rise from ${before} to ${after}.\n`,
         )
       }
       stderr.write(
-        'Refusing to grow the baseline. Remove the new refs, setters or workspace writes instead.\n',
+        'Refusing to grow the baseline. Remove the new refs, setters or workspace write mentions instead.\n',
       )
       return 1
+    }
+    if (riseLines.length > 0) {
+      stderr.write(riseLines.join(''))
     }
     writeFileSync(baselinePath, plan.serialized)
     stdout?.write(`[canvas-state-ratchet] wrote ${BASELINE_FILE}: ${formatTotals(counts)}\n`)

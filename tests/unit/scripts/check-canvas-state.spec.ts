@@ -68,6 +68,22 @@ describe('check-canvas-state', () => {
     expect(readBaseline(root)['legacy-channel']).toEqual({ [HOOK]: 1 })
   })
 
+  it('prints every per-file rise when the update moves a count between files', () => {
+    const root = makeRepo('setNodes(a); setNodes(b)')
+    run(root, true)
+    write(root, HOOK, 'setNodes(a)')
+    write(root, 'src/app/moved.ts', 'setNodes(b)')
+    const update = run(root, true)
+    expect(update.code).toBe(0)
+    expect(update.stderr).toContain('rise: src/app/moved.ts [legacy-channel] 0 -> 1')
+
+    write(root, 'src/app/more.ts', 'setNodes(c); setNodes(d)')
+    const refused = run(root, true)
+    expect(refused.code).toBe(1)
+    expect(refused.stderr).toContain('rise: src/app/more.ts [legacy-channel] 0 -> 2')
+    expect(refused.stderr).toContain('total would rise from 2 to 4')
+  })
+
   it('fails when a count drops until the baseline is regenerated', () => {
     const root = makeRepo('setNodes(a); setNodes(b)')
     run(root, true)
