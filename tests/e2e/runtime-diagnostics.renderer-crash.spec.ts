@@ -32,7 +32,7 @@ test.afterEach(async () => {
 })
 
 test('recovers the workspace in the same main process after a renderer crash', async () => {
-  const launching = launchApp()
+  const launching = launchApp({ disableLinuxCoreDumps: true })
   const { electronApp, window } = await withRecoveryDeadline(
     'Launch isolated app',
     launching,
@@ -79,6 +79,32 @@ test('recovers the workspace in the same main process after a renderer crash', a
     )
     const initial = await snapshot()
     expect(initial.mainPid).toBe(mainPid)
+    if (process.platform === 'linux') {
+      await step(
+        'Verify kernel dumps are disabled before crashing',
+        async () => {
+          const corePattern = (await readFile('/proc/sys/kernel/core_pattern', 'utf8')).trim()
+          process.stderr.write(
+            `[renderer-recovery-core] ${JSON.stringify({ corePattern, before: initial.coreLimitBeforeLaunch })}\n`,
+          )
+          // Linux 7 also supports socket collectors, which do not use the pipe's
+          // one-byte exception. Refuse to inject a crash under that policy.
+          expect(
+            corePattern,
+            'One-byte suppression requires a file or pipe core_pattern',
+          ).not.toMatch(/^@/u)
+          await Promise.all(
+            [mainPid, initial.rendererPid!].map(async pid => {
+              const limits = await readFile(`/proc/${pid}/limits`, 'utf8')
+              expect(limits, `PID ${pid} must inherit the one-byte core limit`).toMatch(
+                /^Max core file size\s+1\s+1\s+bytes$/mu,
+              )
+            }),
+          )
+        },
+        3_000,
+      )
+    }
     await step(
       'Request one renderer crash',
       () => probe!.evaluate(observer => observer.trigger()),

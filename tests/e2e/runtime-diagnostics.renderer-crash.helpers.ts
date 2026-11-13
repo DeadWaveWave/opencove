@@ -74,6 +74,7 @@ export function createRendererRecoveryProbe(window: BrowserWindow) {
       const destroyed = window.isDestroyed() || contents.isDestroyed()
       return {
         mainPid: process.pid,
+        coreLimitBeforeLaunch: process.env['OPENCOVE_E2E_INITIAL_CORE_LIMIT'],
         initialRendererPid,
         rendererPid: destroyed ? null : contents.getOSProcessId(),
         destroyed,
@@ -91,6 +92,10 @@ export function createRendererRecoveryProbe(window: BrowserWindow) {
 }
 
 export async function readRecoveryProcessState(pids: number[]) {
+  const corePattern =
+    process.platform === 'linux'
+      ? await readFile('/proc/sys/kernel/core_pattern', 'utf8').catch(error => String(error))
+      : undefined
   return await Promise.all(
     [...new Set(pids)].map(async pid => {
       let alive = true
@@ -104,10 +109,16 @@ export async function readRecoveryProcessState(pids: number[]) {
       }
       const read = async (name: string): Promise<string> =>
         await readFile(`/proc/${pid}/${name}`, 'utf8').catch(error => String(error))
-      const [status, waitChannel] = await Promise.all([read('status'), read('wchan')])
+      const [status, waitChannel, limits] = await Promise.all([
+        read('status'),
+        read('wchan'),
+        read('limits'),
+      ])
       return {
         pid,
         alive,
+        corePattern,
+        limits,
         status: status
           .split('\n')
           .filter(line =>

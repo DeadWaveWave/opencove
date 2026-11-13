@@ -9,6 +9,7 @@ import { once } from 'node:events'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import path from 'path'
 import { captureElectronProcessDiagnostics } from './electron-process-diagnostics'
+import { resolveElectronCoreLimitLaunch } from './electron-core-limit'
 import { createTestUserDataDir } from './workspace-canvas.testUtils'
 
 type ProcessDiagnostics = ReturnType<typeof captureElectronProcessDiagnostics>
@@ -276,6 +277,7 @@ async function launchAppInMode(
   launchMode: E2EWindowMode,
   options: {
     env?: Record<string, string | undefined>
+    disableLinuxCoreDumps?: boolean
     userDataDir?: string
     cleanupUserDataDir?: boolean
     deviceScaleFactor?: number
@@ -299,9 +301,11 @@ async function launchAppInMode(
 
   try {
     const envOverrides = copyDefinedEnv(options.env ?? {})
+    const coreLimitLaunch = resolveElectronCoreLimitLaunch(options.disableLinuxCoreDumps ?? false)
 
     electronApp = await electron.launch({
       timeout: E2E_APP_LAUNCH_TIMEOUT_MS,
+      executablePath: coreLimitLaunch?.executablePath,
       args: resolveElectronLaunchArgs(options.deviceScaleFactor),
       recordVideo: options.recordVideo,
       env: {
@@ -320,6 +324,7 @@ async function launchAppInMode(
         OPENCOVE_E2E_WINDOW_MODE: launchMode,
         ...(shouldDisableElectronSandboxForLinuxCi() ? { ELECTRON_DISABLE_SANDBOX: '1' } : {}),
         ...envOverrides,
+        ...coreLimitLaunch?.env,
       },
     })
 
@@ -370,6 +375,7 @@ async function launchAppWithModes(
   launchModes: E2EWindowMode[],
   options: {
     env?: Record<string, string | undefined>
+    disableLinuxCoreDumps?: boolean
     userDataDir?: string
     cleanupUserDataDir?: boolean
     deviceScaleFactor?: number
@@ -395,6 +401,7 @@ async function launchAppWithModes(
 
 export async function launchApp(options?: {
   windowMode?: E2EWindowMode
+  disableLinuxCoreDumps?: boolean
   env?: Record<string, string | undefined>
   userDataDir?: string
   cleanupUserDataDir?: boolean
