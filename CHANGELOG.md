@@ -10,6 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Agents: `opencove node create agent --full-access true|false` (also `node.create` `data.agentFullAccess` and plugin `agents.launch`) sets Full Access for that one agent, even when another agent starts it, without changing Settings; relaunch, resume and recovery keep the choice. (#462, #612)
 - Agents: `opencove node create agent --task <id>` (also `node.create` `data.taskNodeId` and plugin `agents.launch`) links the new agent to a task in the same Space and moves the task to doing, as Run from the task does. (#463)
+- CLI: when OpenCove refuses to start another agent because the lineage quota is full, the refusal lists which nodes hold the slots and how to free one; `opencove whoami` and `context` show the quota. `opencove agent read` reads several agents at once and returns one result per agent. (#614)
+- CLI: `opencove events` streams agent state changes and completed turns as NDJSON, filtered by Space, node, the agents you started or a whole lineage, so agents can wait for each other without polling. Each record carries a cursor; `--after` resumes where a stream stopped and reports a gap instead of silently skipping events. (#618)
+
+### Fixed
+
+- Desktop: messages that explain why an action failed now actually appear (for example, that Claude restarts are paused by the Worker, that the Worker needs an upgrade, or that a `/clear` save could not be confirmed); they used to fall back to a generic “this agent has changed” message. A launch whose response is lost is no longer started a second time, and Git plugin sources that embed credentials are refused before anything runs. (#613)
+- Agents: an agent's initial task can no longer be misread by the provider's command line as a subcommand, option or flag (for example `update`, `plugins`, `--agent-teams`), including through PowerShell and WSL wrapping. Tasks that agents write for other agents must be a sentence; slash commands, exit words, `@file` references, Codex `$skill` mentions and similar controls are refused with a message that says what was detected and how to rephrase it. Refusing a task never marks it as running or stops the agent it was linked to. (#620)
 
 ## [0.5.0] - 2026-11-12
 
