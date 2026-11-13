@@ -7,7 +7,7 @@ import {
   startRemoteWorker,
   stopRemoteWorker,
   type RemoteWorkerHandle,
-} from './m6.endpoints-mounts.integration.helpers'
+} from '../../e2e/m6.endpoints-mounts.integration.helpers'
 
 test('Worker authenticates an opaque bearer token that starts with hyphens', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'opencove-e2e-worker-token-'))
