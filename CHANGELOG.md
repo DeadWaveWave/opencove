@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
-- Documents: typing fast in a document window, for example right after a terminal file link opens it, no longer drops characters or moves the caret.
+- Documents: typing fast in a document window, for example right after a terminal file link opens it, no longer drops characters or moves the caret. (#621)
 
 ## [0.5.0] - 2026-11-12
 
