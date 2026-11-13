@@ -4,8 +4,6 @@ import {
 } from '../../../shared/contracts/agentProviderDescriptors'
 import type { AgentProvider } from './agentSettings'
 
-export type { AgentProviderCapabilities }
-
 // Derived from the shared provider descriptors; the descriptor table is the single source of truth.
 export const AGENT_PROVIDER_LABEL: Readonly<Record<AgentProvider, string>> = Object.fromEntries(
   Object.entries(AGENT_PROVIDER_DESCRIPTORS).map(([provider, { label }]) => [provider, label]),

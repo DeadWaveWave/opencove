@@ -97,7 +97,7 @@
     "src/app/main/controlSurface/agentSpawnContext.ts": 1,
     "src/app/worker/workerWebAccessRuntime.ts": 1,
     "src/contexts/filesystem/application/ports.ts": 1,
-    "src/contexts/settings/domain/agentSettings.ts": 7,
+    "src/contexts/settings/domain/agentSettings.ts": 6,
     "src/contexts/settings/infrastructure/homeWorker/homeWorkerConfig.ts": 1,
     "src/contexts/workspace/domain/workspaceNodePlacement.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/terminalNode/constants.ts": 1,
