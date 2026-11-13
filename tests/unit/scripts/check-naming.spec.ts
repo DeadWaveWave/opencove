@@ -36,17 +36,14 @@ describe('naming check over the whole repository', () => {
     expect(result.stdout).toContain('scanned 1 files')
   })
 
-  it('accepts a legacy storage key that carries the same-line marker', () => {
+  it('leaves the cove:m0: prefix to the compatibility check, with or without the word legacy', () => {
     const root = createGitRepository()
     writeRepositoryFile(
       root,
       'src/migrate.ts',
-      `const LEGACY_KEY = '${c}:m0:state'\nconst other = '${c}:m0:state' // legacy\n`,
+      `const KEY = '${c}:m0:state'\nconst other = '${c}:m0:state' // legacy\n`,
     )
     expect(runScript('check-naming.mjs', root).status).toBe(0)
-
-    writeRepositoryFile(root, 'src/migrate2.ts', `const key = '${c}:m0:state'\n`)
-    expect(runScript('check-naming.mjs', root).status).toBe(1)
   })
 
   it('does not scan scripts/ or files with other extensions', () => {

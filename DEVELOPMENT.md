@@ -42,7 +42,7 @@
 
 - 对外/协议/持久化统一使用 `OpenCove` / `opencove`（例如 `window.opencoveApi`、`OPENCOVE_*`、`.opencove/`、`opencove.db`）。
 - UI 设计系统与样式命名空间保留 `cove` 前缀（例如 `--cove-*`、`data-cove-*`、`.cove-window`），作为稳定的内部约定。
-- 历史版本的 localStorage key 可能仍使用 `cove:m0:*` 前缀；当前实现会兼容读取并迁移。
+- 历史版本的 localStorage key 可能仍使用 `cove:m0:*` 前缀；命名检查不处理它，兼容读取与迁移代码必须登记到期条件，见 `docs/development/COMPATIBILITY_EXPIRY.md`。
 
 ### 架构执行触发器 (Architecture Execution Triggers)
 
@@ -150,7 +150,7 @@
 | 时机 | 入口与范围 |
 | --- | --- |
 | 每轮修改 | 运行能复现本轮不变量的最低层测试；用户可感知变化再跑已有对应 E2E，新增条件见上文；不要对累计暂存的整个功能反复跑全量 |
-| 本地提交 | `pnpm verify:quick` 或 `pnpm pre-commit`：静态检查、staged 相关测试、native recovery contracts、固定核心 E2E 与受影响模块的代表场景 |
+| 本地提交 | `pnpm verify:quick` 或 `pnpm pre-commit`：静态检查（含 `pnpm compat:check`：兼容路径到期门禁，规则见 `docs/development/COMPATIBILITY_EXPIRY.md`）、staged 相关测试、native recovery contracts、固定核心 E2E 与受影响模块的代表场景 |
 | 按需本地完整检查 | 暂存后运行 `pnpm verify:full`：静态检查、完整 Vitest、native contracts、完整 Electron E2E |
 | PR 合并前 | 最终提交必须通过完整 CI，包括分片 Electron、平台专属和 Desktop/Web continuity 检查 |
 
@@ -198,7 +198,7 @@ Ubuntu/macOS 三个分片用 `scripts/plan-e2e-shards.mjs` 按文件内用例的
     -   生成代码（如自动生成的类型定义等）禁止手改。
     -   **调研/验收报告默认不入库**：调研分析报告，以及某次 PR 的 review / acceptance 记录，都只是**本地分析与决策产物**，不是仓库资产。它们是某一时刻的快照，会很快过期，却没有人维护。除非明确要求，否则不要提交；评审结论写在 PR 描述/评论里。`docs/` 只收**本项目自身的**长期文档：架构、不变量、开发流程、案例。若调研中得出的结论具有长期价值（如一条不变量），把**结论**写进对应的项目文档，而不是提交整份报告。
 -   **提交前检查（本地快速门禁，合并前 CI 完整回归）**：
-    -   `pnpm verify:repo` 对整个仓库检查行数、命名（`cove:*` 等前缀）、UI 样式、架构棘轮（`pnpm arch:check`）与死代码（`pnpm deadcode:check`）；结果不依赖 staged 内容，CI（`ci-ubuntu` 的 `Repository checks` 步骤）以同样方式运行。行数上限只约束手写代码（`.ts/.tsx/.mjs/.css/.sh` 等），生成文件与 `.md/.json/.jsonl/.yml/.html` 不受限；超限文件只能登记在 `scripts/check-max-lines.mjs` 的 `LINE_LIMIT_EXEMPTIONS` 中，且记录的行数只降不增。命名检查中，仅显式 legacy 迁移用途可在同一行标注 `LEGACY_` 或注释 `legacy`；UI 设计系统前缀仍保留 `cove`（见上文命名约定）。
+    -   `pnpm verify:repo` 对整个仓库检查行数、命名（`cove:*` 等前缀）、UI 样式、架构棘轮（`pnpm arch:check`）、死代码（`pnpm deadcode:check`）与兼容路径到期（`pnpm compat:check`）；结果不依赖 staged 内容，CI（`ci-ubuntu` 的 `Repository checks` 步骤）以同样方式运行。行数上限只约束手写代码（`.ts/.tsx/.mjs/.css/.sh` 等），生成文件与 `.md/.json/.jsonl/.yml/.html` 不受限；超限文件只能登记在 `scripts/check-max-lines.mjs` 的 `LINE_LIMIT_EXEMPTIONS` 中，且记录的行数只降不增。命名检查不处理 `cove:m0:` 前缀（由 `pnpm compat:check` 负责，写 `legacy` 不能绕过）；UI 设计系统前缀仍保留 `cove`（见上文命名约定）。
     -   其余 staged 检查（格式、密钥、相关测试）只看 staged 文件；CI 会对整个仓库重跑格式、密钥扫描与全部单测。对 0 个文件运行的 staged 检查实际上没有运行，将其报告为“通过”属于错误陈述；需要强制防空时，使用 `OPENCOVE_REQUIRE_STAGED=1 pnpm pre-commit`（运行前先 `git add -A`，并用 `git diff --cached --name-only` 确认文件列表非空）。
     -   若本次改动包含用户可感知变化（新增功能、UX 改动、修复 bug、默认行为变化），应先提交代码并创建 PR；拿到 PR 链接/编号后，再更新 `CHANGELOG.md` 的 `## [Unreleased]` 并单独提交（每个变化一条，尽量附 `#PR` 编号）。`nightly` tag 不要求更新 changelog；发 `stable` 时再把 `Unreleased` 结算进新版本段。
     -   创建/更新 PR 时：若本次改动包含用户可感知变化，必须跑对应 Playwright E2E，并列明本地验证范围；合并前以最终提交的完整 CI 为准。
@@ -272,6 +272,7 @@ Ubuntu/macOS 三个分片用 `scripts/plan-e2e-shards.mjs` 按文件内用例的
     -   Win10 Codex Scroll：`docs/cases/WIN10_CODEX_SCROLL_DIAGNOSTICS.md`
     -   画布抖动与终端持久化：`docs/cases/CASE_STUDY_CANVAS_JITTER_AND_TERMINAL_DURABILITY.md`
 -   **参考优秀项目与方案调研法**：`docs/development/REFERENCE_RESEARCH_METHOD.md`
+-   **兼容路径与到期门禁**：`docs/development/COMPATIBILITY_EXPIRY.md`
 -   **调试指南**：`docs/development/DEBUGGING.md`
 -   **贡献代码指南**：`CONTRIBUTING.md`
 -   **API Client 生成与使用**：暂无，参考 `src/shared/contracts` 定义。

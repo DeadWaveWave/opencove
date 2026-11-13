@@ -302,6 +302,7 @@ the Sidebar does not maintain a second local persistence store.
 ## Required Checks For Persistence Changes
 
 - 更新 `schema.ts`、`migrate.ts` 和 `DB_SCHEMA_VERSION`。
+- 新的 migration 或旧格式读取分支必须在 `src/shared/compat/compatRegistry.json` 登记 `user-data` 条目并加 `@compat` 标记（见 `docs/development/COMPATIBILITY_EXPIRY.md`）；升级支持下限 `upgradeSupport.floor` 与 `SUPPORTED_INSTALLED_UPGRADE_SOURCE_VERSIONS` 对应，owner 提高 floor 时两者一起修改。
 - 补充旧安装 profile 形状、缺字段 repair、迁移 readback 测试。
 - 提升 `DB_SCHEMA_VERSION` 时，必须补 `persistenceStore.installedUpgrade.spec.ts` 的下一版
   fixture/matrix；guard 测试必须覆盖 `1..DB_SCHEMA_VERSION-1`。

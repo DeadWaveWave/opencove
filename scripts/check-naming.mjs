@@ -37,10 +37,6 @@ function shouldCheck(filePath) {
   return CHECKED_EXTENSIONS.has(extension)
 }
 
-function isExplicitLegacyLine(line) {
-  return /\blegacy\b/i.test(line) || /\bLEGACY_/i.test(line)
-}
-
 function includesLegacyStoragePrefix(line) {
   // `opencove:*` contains the substring `cove:*`, so we must guard on a word boundary-like separator.
   return /(^|[^a-zA-Z0-9_])cove:m0:/i.test(line)
@@ -130,15 +126,7 @@ for (const currentFile of files) {
     }
 
     if (includesLegacyStoragePrefix(addedLine)) {
-      if (!isExplicitLegacyLine(addedLine)) {
-        violations.push({
-          file: location,
-          rule: 'cove:m0:*',
-          hint: 'Use `opencove:m0:*` for new keys. If this is an intentional legacy migration path, add `LEGACY_` or comment `legacy` on the same line.',
-          line: addedLine.trimEnd(),
-        })
-      }
-
+      // The prefix is compatibility code: `pnpm compat:check` owns it and requires a registry entry.
       continue
     }
 
