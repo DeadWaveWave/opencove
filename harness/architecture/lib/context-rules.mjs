@@ -99,6 +99,14 @@ function violation(block, key, input) {
   }
 }
 
+// `index.tsx` at an entry location is not an entry; say so instead of leaving the author guessing.
+function misnamedEntryHint(toRelativePath, contexts) {
+  const named = toRelativePath.replace(/\/index\.(tsx|js|jsx|mjs|cjs|mts|cts)$/, '/index.ts')
+  return named !== toRelativePath && classifyContext(named, contexts)?.entry
+    ? ' An entry must be named index.ts; this file is not an entry.'
+    : ''
+}
+
 function edgeViolations({ relativePath, edges, config, block }) {
   const contexts = config.contexts
   const from = classifyContext(relativePath, contexts)
@@ -110,7 +118,8 @@ function edgeViolations({ relativePath, edges, config, block }) {
     }
     const to = classifyContext(edge.toRelativePath, contexts)
     if (from && from.context === to.context) {
-      if (to.entry) {
+      // An entry importing its own context is an entry-shape problem; do not report the edge twice.
+      if (to.entry && !from.entry) {
         violations.push(
           violation(block, 'selfEntryImport', {
             file: relativePath,
@@ -139,7 +148,7 @@ function edgeViolations({ relativePath, edges, config, block }) {
           file: relativePath,
           line: edge.line,
           found: edge.specifier,
-          expected: `Import ${edge.toContext} through one of its entries: ${contexts.entryFiles.join(', ')}.`,
+          expected: `Import ${edge.toContext} through one of its entries: ${contexts.entryFiles.join(', ')}.${misnamedEntryHint(edge.toRelativePath, contexts)}`,
           message: 'Deep import into another context; use its public entry.',
         }),
       )
@@ -174,6 +183,17 @@ function entryShapeViolations({ relativePath, filePath, source, config, block, r
         line: sourceFile.getLineAndCharacterOfPosition(statement.getStart(sourceFile)).line + 1,
         found,
         expected,
+        message: 'Context entry must only re-export named symbols from its own layer directory.',
+      }),
+    )
+  }
+  if (sourceFile.statements.length === 0) {
+    violations.push(
+      violation(block, 'entryShape', {
+        file: relativePath,
+        line: 1,
+        found: '(empty file)',
+        expected: 'An entry exists only when it has a consumer; delete it or add named re-exports.',
         message: 'Context entry must only re-export named symbols from its own layer directory.',
       }),
     )
