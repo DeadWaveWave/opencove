@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 
 import { readFileSync } from 'node:fs'
-import { isExcludedRepositoryPath, listRepositoryFiles } from './lib/repo-files.mjs'
+import { relative, resolve } from 'node:path'
+import {
+  isExcludedRepositoryPath,
+  listRepositoryFiles,
+  normalizeRepositoryPath,
+  resolveRepositoryRoot,
+} from './lib/repo-files.mjs'
 
 const CHECKED_EXTENSIONS = new Set([
   '.ts',
@@ -64,8 +70,14 @@ function includesCoveLogPrefix(line) {
   return /\[cove\]/.test(line)
 }
 
-const targetFiles = process.argv.length > 2 ? process.argv.slice(2) : null
-const files = (targetFiles ?? listRepositoryFiles()).filter(shouldCheck)
+const root = resolveRepositoryRoot()
+const targetFiles =
+  process.argv.length > 2
+    ? process.argv
+        .slice(2)
+        .map(argument => normalizeRepositoryPath(relative(root, resolve(argument))))
+    : null
+const files = (targetFiles ?? listRepositoryFiles(root)).filter(shouldCheck)
 
 const violations = []
 let checkedFileCount = 0
@@ -73,16 +85,17 @@ let checkedFileCount = 0
 for (const currentFile of files) {
   let content
   try {
-    content = readFileSync(currentFile, 'utf8')
+    content = readFileSync(resolve(root, currentFile), 'utf8')
   } catch {
     continue
   }
   checkedFileCount += 1
 
-  for (const addedLine of content.split(/\r\n|\r|\n/)) {
+  for (const [index, addedLine] of content.split(/\r\n|\r|\n/).entries()) {
+    const location = `${currentFile}:${index + 1}`
     if (includesCoveApiToken(addedLine)) {
       violations.push({
-        file: currentFile,
+        file: location,
         rule: 'coveApi',
         hint: 'Use `opencoveApi` (global API) instead of `coveApi`.',
         line: addedLine.trimEnd(),
@@ -91,7 +104,7 @@ for (const currentFile of files) {
 
     if (includesCoveLogPrefix(addedLine)) {
       violations.push({
-        file: currentFile,
+        file: location,
         rule: '[cove] log prefix',
         hint: 'Use `[opencove]` for log prefixes.',
         line: addedLine.trimEnd(),
@@ -100,7 +113,7 @@ for (const currentFile of files) {
 
     if (includesCoveTestPrefix(addedLine)) {
       violations.push({
-        file: currentFile,
+        file: location,
         rule: 'cove-test-*',
         hint: 'Use `opencove-test-*` for test identifiers/prefixes.',
         line: addedLine.trimEnd(),
@@ -109,7 +122,7 @@ for (const currentFile of files) {
 
     if (includesCoveDbFileName(addedLine)) {
       violations.push({
-        file: currentFile,
+        file: location,
         rule: 'cove.db',
         hint: 'Use `opencove.db` as the persisted database filename.',
         line: addedLine.trimEnd(),
@@ -119,7 +132,7 @@ for (const currentFile of files) {
     if (includesLegacyStoragePrefix(addedLine)) {
       if (!isExplicitLegacyLine(addedLine)) {
         violations.push({
-          file: currentFile,
+          file: location,
           rule: 'cove:m0:*',
           hint: 'Use `opencove:m0:*` for new keys. If this is an intentional legacy migration path, add `LEGACY_` or comment `legacy` on the same line.',
           line: addedLine.trimEnd(),
@@ -131,7 +144,7 @@ for (const currentFile of files) {
 
     if (includesCoveProtocolPrefix(addedLine)) {
       violations.push({
-        file: currentFile,
+        file: location,
         rule: 'cove:* prefix',
         hint: 'Use `opencove:*` (event/protocol/key prefix) instead of `cove:*`.',
         line: addedLine.trimEnd(),
