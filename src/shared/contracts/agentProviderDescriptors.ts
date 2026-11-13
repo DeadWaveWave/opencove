@@ -6,20 +6,20 @@ import { isAgentProviderId, type AgentProviderId } from './dto/agent'
 // a provider without an entry is a compile error (see docs/architecture/ARCHITECTURE.md).
 
 export interface AgentProviderCapabilities {
-  taskTitle: boolean
-  worktreeNameSuggestion: boolean
-  runtimeObservation: 'jsonl' | 'provider-api' | 'none'
-  experimental: boolean
+  readonly taskTitle: boolean
+  readonly worktreeNameSuggestion: boolean
+  readonly runtimeObservation: 'jsonl' | 'provider-api' | 'none'
+  readonly experimental: boolean
   /** The terminal reports this provider's activity through the launch shim. */
-  terminalActivityShim: boolean
+  readonly terminalActivityShim: boolean
 }
 
 export interface AgentProviderStaticDescriptor {
   /** Human-readable product name. */
-  label: string
+  readonly label: string
   /** Lower-case prefix used in agent window titles. */
-  titlePrefix: string
-  capabilities: AgentProviderCapabilities
+  readonly titlePrefix: string
+  readonly capabilities: AgentProviderCapabilities
 }
 
 export const AGENT_PROVIDER_DESCRIPTORS = {
@@ -89,7 +89,7 @@ export const AGENT_PROVIDER_DESCRIPTORS = {
       terminalActivityShim: false,
     },
   },
-} as const satisfies Record<AgentProviderId, AgentProviderStaticDescriptor>
+} as const satisfies Readonly<Record<AgentProviderId, AgentProviderStaticDescriptor>>
 
 /** Providers whose terminal activity is reported through the launch shim, derived from the table. */
 export type TerminalAgentShimProvider = {
