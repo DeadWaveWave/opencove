@@ -51,10 +51,15 @@ semantics. In mouse-reporting TUIs, ordinary clicks go to the application; an ex
 navigation gesture is consumed before PTY mouse reporting.
 
 One controller owns a gesture. Ordinary mouseup still reaches xterm's selection cleanup; the
-cleared activation draft prevents duplicate navigation. Its consumed-gesture marker also keeps
-canvas viewport normalization from interpreting the same action. Providers, DOM listeners,
-timers and cwd markers are disposed with the xterm instance. Delayed results must still match
-the source session, context and buffer snapshot before displaying or opening a target.
+cleared activation draft prevents duplicate navigation. An ordinary click on an OSC 8 link can
+span output parsing and native link revalidation. Its intent is kept while the displayed logical
+line is unchanged, and the menu opens only after xterm confirms the same range and destination;
+the single-click delay is not a render deadline. A changed destination, a selection gesture,
+Escape and lifecycle cleanup cancel the kept intent. Modifier navigation still requires a current
+target. The consumed-gesture marker also keeps canvas viewport normalization from interpreting the
+same action. Providers, DOM listeners, timers and cwd markers are disposed with the xterm instance.
+Delayed results must still match the source session, context and buffer snapshot before
+displaying or opening a target.
 
 Known web URLs open synchronously in the browser's user-activation stack. A pending file lookup
 shows a disabled Open action until resolved. Explicit file opening rechecks the target and

@@ -10,6 +10,7 @@ import {
 import { dispatchTerminalLinkIntent, TERMINAL_LINK_INVALIDATION_EVENT } from './linkHostEvent'
 import { installTerminalCwdObservation } from './terminalCwdObservation'
 import { resolveLinkGesture, type LinkGestureAction } from './linkGesture'
+import { createTerminalLinkMenu } from './terminalLinkMenu'
 
 function contains(range: IBufferRange, x: number, y: number): boolean {
   return (
@@ -68,11 +69,6 @@ export function installTerminalLinks(terminal: Terminal): () => void {
     generation: number
   } | null = null
   let gestureClearTimer: ReturnType<typeof setTimeout> | undefined
-  let menuTimer: ReturnType<typeof setTimeout> | undefined
-  const cancelMenu = () => {
-    clearTimeout(menuTimer)
-    menuTimer = undefined
-  }
   const current = (link: TerminalDetectedLink) =>
     !disposed &&
     (!oscLinks.has(link) || oscLinks.get(link) === oscGeneration) &&
@@ -117,6 +113,30 @@ export function installTerminalLinks(terminal: Terminal): () => void {
       },
     })
   }
+  // An unchanged OSC label is a candidate while native attributes are revalidated,
+  // never authority to open a destination. Only the menu may retain this intent.
+  const menuCandidate = (link: TerminalDetectedLink) =>
+    current(link) || (oscLinks.has(link) && isTerminalLinkSnapshotCurrent(terminal, link.snapshot))
+  const menu = createTerminalLinkMenu(
+    link => {
+      if (current(link)) {
+        return link
+      }
+      if (!menuCandidate(link)) {
+        return null
+      }
+      if (cachedOsc && current(cachedOsc)) {
+        return cachedOsc.text === link.text &&
+          cachedOsc.snapshot.fingerprint === link.snapshot.fingerprint &&
+          JSON.stringify(cachedOsc.range) === JSON.stringify(link.range)
+          ? cachedOsc
+          : null
+      }
+      return pendingOscRange ? undefined : null
+    },
+    (link, event) => send('menu', link, event),
+  )
+  const cancelMenu = menu.cancel
   const position = (event: MouseEvent) => {
     const rect = element.querySelector('.xterm-screen')?.getBoundingClientRect()
     if (
@@ -138,13 +158,13 @@ export function installTerminalLinks(terminal: Terminal): () => void {
         1,
     }
   }
-  const hit = (event: MouseEvent) => {
+  const hit = (event: MouseEvent, retainMenu = false) => {
     const cell = position(event)
     if (!cell) {
       return null
     }
     if (cachedOsc && contains(cachedOsc.range, cell.x, cell.y)) {
-      return current(cachedOsc) ? cachedOsc : null
+      return (retainMenu ? menuCandidate(cachedOsc) : current(cachedOsc)) ? cachedOsc : null
     }
     // A displayed URL must never replace an explicit destination while xterm revalidates it.
     if (pendingOscRange && contains(pendingOscRange, cell.x, cell.y)) {
@@ -169,7 +189,7 @@ export function installTerminalLinks(terminal: Terminal): () => void {
       draft.selection ||
       terminal.hasSelection() ||
       draft.generation !== generation ||
-      !current(link)
+      !(action === 'menu' ? menuCandidate(link) : current(link))
     ) {
       return
     }
@@ -182,7 +202,7 @@ export function installTerminalLinks(terminal: Terminal): () => void {
       send(action, link, event)
     } else {
       cancelMenu()
-      menuTimer = setTimeout(() => send('menu', link, event), 250)
+      menu.schedule(link, event)
     }
   }
   const provider = terminal.registerLinkProvider({
@@ -234,6 +254,7 @@ export function installTerminalLinks(terminal: Terminal): () => void {
       cachedOsc = hoveredOsc
       pendingOscRange = null
       send('hover', hoveredOsc, event)
+      menu.flush()
     },
     leave(event) {
       if (hoveredOsc) {
@@ -252,7 +273,7 @@ export function installTerminalLinks(terminal: Terminal): () => void {
     cancelMenu()
     directGesture = false
     const action = resolveLinkGesture(event, isMac, terminal.modes.mouseTrackingMode !== 'none')
-    const link = action ? hit(event) : null
+    const link = action ? hit(event, action === 'menu') : null
     const cell = position(event)
     const blockedOscRange =
       pendingOscRange ?? (cachedOsc && !current(cachedOsc) ? cachedOsc.range : null)
@@ -291,7 +312,7 @@ export function installTerminalLinks(terminal: Terminal): () => void {
       consume(event)
       directGesture = false
     }
-    const link = hit(event)
+    const link = hit(event, draft?.action === 'menu')
     if (
       draft &&
       link &&
@@ -344,15 +365,17 @@ export function installTerminalLinks(terminal: Terminal): () => void {
     hoveredOsc = null
     pendingOscRange = null
     validatingOscRange = null
-    if (draft && !current(draft.link)) {
+    if (draft && !(draft.action === 'menu' ? menuCandidate(draft.link) : current(draft.link))) {
       draft = null
       delete element.dataset.coveLinkGesture
     }
     invalidate()
     refreshOsc(oscRange)
+    menu.flush()
   }
   const releaseOutside = (event: MouseEvent) => {
     if (event.target instanceof Node && !element.contains(event.target)) {
+      cancelMenu()
       if (directGesture) {
         consume(event)
         directGesture = false
@@ -366,9 +389,16 @@ export function installTerminalLinks(terminal: Terminal): () => void {
     clear()
   }
   const doubleClick = () => cancelMenu()
+  const keydown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      draft = null
+      cancelMenu()
+    }
+  }
   element.addEventListener('mousedown', down, true)
   element.addEventListener('mouseup', up, true)
   element.addEventListener('dblclick', doubleClick, true)
+  element.addEventListener('keydown', keydown, true)
   window.addEventListener('mouseup', releaseOutside, true)
   window.addEventListener('mousemove', move, true)
   window.addEventListener('blur', blur)
@@ -395,6 +425,7 @@ export function installTerminalLinks(terminal: Terminal): () => void {
           if (validatingOscRange === range) {
             validatingOscRange = null
           }
+          menu.flush()
         })
       }
     }),
@@ -410,6 +441,7 @@ export function installTerminalLinks(terminal: Terminal): () => void {
     element.removeEventListener('mousedown', down, true)
     element.removeEventListener('mouseup', up, true)
     element.removeEventListener('dblclick', doubleClick, true)
+    element.removeEventListener('keydown', keydown, true)
     window.removeEventListener('mouseup', releaseOutside, true)
     window.removeEventListener('mousemove', move, true)
     window.removeEventListener('blur', blur)
