@@ -156,6 +156,19 @@ test('managed Claude stale publications retain layout and cold-resume the curren
       .poll(async () => (await getBinding(page, agent.id)).tuple)
       .toEqual({ resumeSessionId: launched.tuple.resumeSessionId, resumeSessionIdVerified: true })
     const initial = await getBinding(page, agent.id)
+    // Admission can verify the new ID before the provider has written its transcript.
+    // The menu reads the catalog once on opening, so wait for that data, not only the binding.
+    await expect
+      .poll(async () =>
+        page.evaluate(async directory => {
+          const result = await window.opencoveApi.agent.listSessions({
+            provider: 'claude-code',
+            cwd: directory,
+          })
+          return result.sessions.map(session => session.sessionId)
+        }, workspace),
+      )
+      .toContain(initial.tuple.resumeSessionId)
     await expectConversation(page, agent.id, initial.tuple.resumeSessionId!)
     // Reproduce a peer layout publication placing the control behind this client's sidebar.
     await page.evaluate(async nodeId => {
