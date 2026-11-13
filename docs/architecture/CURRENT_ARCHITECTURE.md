@@ -110,6 +110,6 @@ CLI 默认作为 client 调用 Control Surface；它可以管理 Worker 生命�
 
 - Managed SSH 已经是主路径，但仍依赖本机 `ssh` 可用性以及远端 bootstrap/install 假设；manual endpoint registration 仍然用于显式管理 token/tunnel 的高级场景。
 - 大文件 bytes 读取和媒体预览会经过 renderer/runtime 内存路径，调用方应避免把它当作无限制传输通道。
-- `targetMountId` 与 `directoryPath` 并存，触达相关代码时必须保持 mount owner 清晰，避免 split truth。
+- `targetMountId` 与 `directoryPath` 并存，触达相关代码时必须保持 mount owner 清晰，避免 split truth。`directoryPath` 的兼容推断登记为 `space-directory-path-mount-repair`（`dataBefore: 0.3.0`，见 `src/shared/compat/compatRegistry.json`），其结束条件是 owner 提高升级支持下限 `upgradeSupport.floor`。
 - malformed topology / secret record 的 backup / repair metadata 仍然有限，health UI 目前主要反映已解析出的当前状态。
 - Control Surface 有少量 handler 仍直接编排 persistence/topology；新增能力应优先下沉到 context application/usecase。
