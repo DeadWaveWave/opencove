@@ -4,6 +4,7 @@ import {
   classifyEdgeContexts,
   findContextViolations,
 } from './context-rules.mjs'
+import { assertVariantConfig, findVariantViolations, loadVariantSets } from './variant-rules.mjs'
 import { statSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { dirname, extname, join, resolve, relative } from 'node:path'
@@ -324,6 +325,7 @@ export async function loadArchitectureConfig(configPath = defaultArchitectureRul
   const config = JSON.parse(await readFile(configPath, 'utf8'))
   assertSeverities(config)
   assertContextConfig(config)
+  assertVariantConfig(config)
   assertAllowedEdgeReasons(config)
   return config
 }
@@ -336,6 +338,7 @@ export async function runArchitectureAudit(options = {}) {
   const sourceByFile = new Map()
   const edgesByFile = new Map()
   const allowedLayers = buildAllowedLayerMap(config)
+  const variants = await loadVariantSets({ root, config })
   const violations = []
 
   const fileAnalyses = await Promise.all(
@@ -432,6 +435,17 @@ export async function runArchitectureAudit(options = {}) {
             const target = resolveInternalSpecifier(root, filePath, specifier, config)
             return target ? toRelativeProjectPath(root, target) : null
           },
+        }),
+      )
+
+      fileViolations.push(
+        ...findVariantViolations({
+          relativePath,
+          filePath,
+          source,
+          config,
+          variants,
+          matches: matchesAnyPattern,
         }),
       )
 

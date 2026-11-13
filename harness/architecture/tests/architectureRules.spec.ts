@@ -7,6 +7,7 @@ import {
   loadArchitectureConfig,
   runArchitectureAudit,
 } from '../lib/architecture-rules.mjs'
+import { VARIANT_SOURCE_FILES } from './variantFixtureSupport'
 
 const tempRoots: string[] = []
 
@@ -19,7 +20,7 @@ async function createFixture(files: Record<string, string>): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'opencove-architecture-rules-'))
   tempRoots.push(root)
   await Promise.all(
-    Object.entries(files).map(async ([relativePath, source]) => {
+    Object.entries({ ...VARIANT_SOURCE_FILES, ...files }).map(async ([relativePath, source]) => {
       const filePath = join(root, relativePath)
       await mkdir(dirname(filePath), { recursive: true })
       await writeFile(filePath, source, 'utf8')

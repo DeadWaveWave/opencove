@@ -8,6 +8,7 @@ import {
   evaluateRatchet,
   planRatchetUpdate,
 } from '../lib/ratchet-baseline.mjs'
+import { VARIANT_SOURCE_FILES } from './variantFixtureSupport'
 
 const LAYER = 'architecture.layerDependency'
 const WINDOW_API = 'architecture.windowOpenCoveApiBoundary'
@@ -17,7 +18,7 @@ async function createFixture(files: Record<string, string>): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'opencove-architecture-ratchet-'))
   tempRoots.push(root)
   await Promise.all(
-    Object.entries(files).map(async ([relativePath, source]) => {
+    Object.entries({ ...VARIANT_SOURCE_FILES, ...files }).map(async ([relativePath, source]) => {
       const filePath = join(root, relativePath)
       await mkdir(dirname(filePath), { recursive: true })
       await writeFile(filePath, source, 'utf8')
@@ -50,6 +51,8 @@ const baselineOf = {
   [WINDOW_API]: { 'src/contexts/workspace/presentation/renderer/View.ts': 1 },
   'architecture.contextForbiddenLayer': {},
   'architecture.contextPublicEntry': {},
+  'architecture.variantLiteralDecision': {},
+  'architecture.variantSwitchExhaustive': {},
 }
 
 describe('architecture ratchet baseline', () => {
