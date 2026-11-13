@@ -754,7 +754,7 @@
     "src/app/main/controlSurface/handlers/sessionPrepareOrRevivePreparation.ts": 3,
     "src/app/main/controlSurface/handlers/sessionPrepareOrReviveShared.ts": 1,
     "src/app/main/controlSurface/handlers/sessionStateWatcherStart.ts": 1,
-    "src/app/main/controlSurface/handlers/spaceHandlers.ts": 10,
+    "src/app/main/controlSurface/handlers/spaceHandlers.ts": 2,
     "src/app/main/controlSurface/http/sessionGrantPromptPolicy.ts": 1,
     "src/app/main/controlSurface/managedClaudeLaunchRuntime.ts": 4,
     "src/app/main/controlSurface/managedClaudePreparationReservations.ts": 1,
@@ -900,7 +900,6 @@
     "src/contexts/workspace/presentation/renderer/utils/persistence/toPersistedState.ts": 9,
     "src/contexts/workspace/presentation/renderer/utils/spaceArchiveRecords.ts": 5,
     "src/contexts/workspace/presentation/renderer/utils/terminalAgentOverlay.ts": 4,
-    "src/contexts/workspace/presentation/renderer/utils/windowKindFamily.ts": 8,
     "src/contexts/workspace/presentation/renderer/utils/workspaceArrange.ordering.ts": 6,
     "src/contexts/workspace/presentation/renderer/utils/workspaceArrange.semantic.ts": 5,
     "src/contexts/workspace/presentation/renderer/utils/workspaceArrange.semanticLayout.ts": 2,
@@ -924,9 +923,7 @@
     "src/shared/sync/persistedNodeValidation.ts": 10
   },
   "architecture.variantSwitchExhaustive": {
-    "src/app/main/controlSurface/handlers/spaceHandlers.ts": 1,
     "src/contexts/workspace/presentation/renderer/utils/spaceArchiveRecords.ts": 1,
-    "src/contexts/workspace/presentation/renderer/utils/windowKindFamily.ts": 1,
     "src/contexts/workspace/presentation/renderer/utils/workspaceArrange.ordering.ts": 1,
     "src/contexts/workspace/presentation/renderer/utils/workspaceArrange.semantic.ts": 1,
     "src/contexts/worktree/presentation/renderer/windows/spaceWorktreeWindowState.ts": 1,

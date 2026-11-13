@@ -1,3 +1,4 @@
+import { assertNever } from '@shared/utils/assertNever'
 import type { TerminalNodeData } from '../types'
 import { resolveAgentPresentation } from './agentPresentation'
 
@@ -23,7 +24,10 @@ export function resolveWindowKindFamily(data: TerminalNodeData): WindowKindFamil
     case 'website':
     case 'image':
       return 'media'
-    default:
+    case 'folder':
+    case 'plugin':
       return 'neutral'
+    default:
+      return assertNever(data.kind)
   }
 }
