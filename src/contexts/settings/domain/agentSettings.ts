@@ -134,11 +134,7 @@ export const MAX_WORKSPACE_SEARCH_PANEL_WIDTH = 720
 const MIN_LEGACY_UI_FONT_SCALE_PERCENT = 85
 const MAX_LEGACY_UI_FONT_SCALE_PERCENT = 140
 
-export {
-  AGENT_PROVIDER_CAPABILITIES,
-  AGENT_PROVIDER_LABEL,
-  type AgentProviderCapabilities,
-} from './agentSettings.providerMeta'
+export { AGENT_PROVIDER_CAPABILITIES, AGENT_PROVIDER_LABEL } from './agentSettings.providerMeta'
 export { UI_LANGUAGE_NATIVE_LABEL } from './agentSettings.uiLanguage'
 
 export type { TaskPromptTemplate, TaskPromptTemplatesByWorkspaceId } from './taskPromptTemplates'
