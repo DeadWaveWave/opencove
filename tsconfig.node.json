@@ -5,6 +5,7 @@
     "knip.config.ts",
     "src/app/cli/**/*.ts",
     "package.json",
+    "src/shared/compat/compatRegistry.json",
     "scripts/lib/runtime-build-identity.ts",
     "scripts/lib/runtime-build-plugin.ts",
     "src/app/main/**/*",

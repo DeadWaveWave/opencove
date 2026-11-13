@@ -22,6 +22,7 @@ export function registerOperation<
     validate: payload => {
       const result = operation.input.safeParse(payload)
       if (!result.success) {
+        // @compat control-surface-legacy-validation
         // Replay only for the legacy error descriptor. A returning hook must never
         // admit a payload rejected by the wire schema.
         operation.legacyNormalize?.(payload)
@@ -36,6 +37,7 @@ export function registerOperation<
           details: { issues },
         })
       }
+      // @compat control-surface-legacy-validation
       // Object parsers may discard own __proto__ keys; compatibility checks must
       // inspect the original payload, after schema admission has succeeded.
       return operation.legacyNormalize

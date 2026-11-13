@@ -34,6 +34,7 @@ export const gitWorktreeCreateOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeGitWorktreeCreate,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeCreate,
   errors: [
     'worktree.create_failed',
@@ -62,6 +63,7 @@ export const gitWorktreeCreateInMountOperation = defineOperation({
     ),
   }),
   normalize: normalizeGitWorktreeCreateInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeCreateInMount,
   errors: [
     'worktree.create_failed',
@@ -82,6 +84,7 @@ export const gitWorktreeGetDefaultBranchOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeGitWorktreeGetDefaultBranch,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeGetDefaultBranch,
   errors: [
     'worktree.get_default_branch_failed',
@@ -101,6 +104,7 @@ export const gitWorktreeGetDefaultBranchInMountOperation = defineOperation({
       .describe('Mount identifier to resolve before accessing the repository or file'),
   }),
   normalize: normalizeGitWorktreeGetDefaultBranchInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeGetDefaultBranchInMount,
   errors: [
     'worktree.get_default_branch_failed',
@@ -122,6 +126,7 @@ export const gitWorktreeGraphOperation = defineOperation({
     ),
   }),
   normalize: normalizeGitWorktreeGraph,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeGraph,
   errors: ['worktree.status_summary_failed', 'worktree.git_unavailable', 'worktree.not_a_git_repo'],
   id: 'gitWorktree.graph',
@@ -141,6 +146,7 @@ export const gitWorktreeGraphInMountOperation = defineOperation({
     ),
   }),
   normalize: normalizeGitWorktreeGraphInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeGraphInMount,
   errors: [
     'worktree.status_summary_failed',
@@ -160,6 +166,7 @@ export const gitWorktreeListBranchesOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeGitWorktreeListBranches,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeListBranches,
   errors: ['worktree.list_branches_failed', 'worktree.git_unavailable', 'worktree.not_a_git_repo'],
   id: 'gitWorktree.listBranches',
@@ -175,6 +182,7 @@ export const gitWorktreeListBranchesInMountOperation = defineOperation({
       .describe('Mount identifier to resolve before accessing the repository or file'),
   }),
   normalize: normalizeGitWorktreeListBranchesInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeListBranchesInMount,
   errors: [
     'worktree.list_branches_failed',
@@ -194,6 +202,7 @@ export const gitWorktreeListWorktreesOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeGitWorktreeListWorktrees,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeListWorktrees,
   errors: ['worktree.list_worktrees_failed', 'worktree.git_unavailable', 'worktree.not_a_git_repo'],
   id: 'gitWorktree.listWorktrees',
@@ -209,6 +218,7 @@ export const gitWorktreeListWorktreesInMountOperation = defineOperation({
       .describe('Mount identifier to resolve before accessing the repository or file'),
   }),
   normalize: normalizeGitWorktreeListWorktreesInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeListWorktreesInMount,
   errors: [
     'worktree.list_worktrees_failed',
@@ -235,6 +245,7 @@ export const gitWorktreeRemoveOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeGitWorktreeRemove,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeRemove,
   errors: [
     'worktree.remove_failed',
@@ -260,6 +271,7 @@ export const gitWorktreeRemoveInMountOperation = defineOperation({
     deleteBranch: legacyValue.describe('Enabled only by literal true; other values mean false'),
   }),
   normalize: normalizeGitWorktreeRemoveInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeRemoveInMount,
   errors: [
     'worktree.remove_failed',
@@ -287,6 +299,7 @@ export const gitWorktreeRenameBranchOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeGitWorktreeRenameBranch,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeRenameBranch,
   errors: ['worktree.rename_branch_failed', 'worktree.git_unavailable', 'worktree.not_a_git_repo'],
   id: 'gitWorktree.renameBranch',
@@ -307,6 +320,7 @@ export const gitWorktreeRenameBranchInMountOperation = defineOperation({
     nextName: z.string().describe('New branch name'),
   }),
   normalize: normalizeGitWorktreeRenameBranchInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeRenameBranchInMount,
   errors: [
     'worktree.rename_branch_failed',
@@ -326,6 +340,7 @@ export const gitWorktreeStatusSummaryOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeGitWorktreeStatusSummary,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeStatusSummary,
   errors: ['worktree.status_summary_failed', 'worktree.git_unavailable', 'worktree.not_a_git_repo'],
   id: 'gitWorktree.statusSummary',
@@ -342,6 +357,7 @@ export const gitWorktreeStatusSummaryInMountOperation = defineOperation({
     uri: z.string().describe('Repository file URI within the mount root'),
   }),
   normalize: normalizeGitWorktreeStatusSummaryInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeStatusSummaryInMount,
   errors: [
     'worktree.status_summary_failed',
@@ -370,6 +386,7 @@ export const gitWorktreeSuggestNamesOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeGitWorktreeSuggestNames,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeSuggestNames,
   errors: ['worktree.suggest_names_failed'],
   id: 'gitWorktree.suggestNames',

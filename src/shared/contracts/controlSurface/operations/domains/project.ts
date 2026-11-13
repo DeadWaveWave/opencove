@@ -13,6 +13,7 @@ export const projectListOperation = defineOperation({
     z.unknown(),
   ]),
   normalize: (payload: unknown) => payload ?? null,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: (payload: unknown) => payload ?? null,
   errors: ['persistence.unavailable'],
 })

@@ -19,6 +19,7 @@ import { requireBoundedAgentSpawningForRequest } from './boundedAgentSpawning'
 import { sessionIdentity, selfUnavailable } from './identity'
 import type { ZodType } from 'zod'
 
+// @compat control-surface-legacy-validation
 /**
  * The part of an operation the CLI validates with. Narrowing to this view keeps the call path
  * independent of the registry's full union, which grows past what TypeScript can represent.
@@ -141,6 +142,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       try {
         const validation = operation.input.safeParse(input)
         if (!validation.success) {
+          // @compat control-surface-legacy-validation
           operation.legacyNormalize?.(input)
           throw validationError(id!, validation.error.issues, 2, 'cli.usage', input)
         }

@@ -25,6 +25,7 @@ export const sessionAttachAgentStateWatcherOperation = defineOperation({
     resumeSessionId: z.unknown().optional().describe('Resume id; non-strings become null'),
   }),
   normalize: normalizeAttachPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeAttachPayload,
   errors: ['session.not_found'],
   id: 'session.attachAgentStateWatcher',
@@ -36,6 +37,7 @@ export const sessionAttachAgentStateWatcherOperation = defineOperation({
 export const sessionDetachAgentStateWatcherOperation = defineOperation({
   input: z.looseObject({ sessionId: z.string().describe('Terminal or agent session identifier') }),
   normalize: normalizeDetachPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeDetachPayload,
   errors: [],
   id: 'session.detachAgentStateWatcher',
@@ -190,6 +192,7 @@ export const sessionLaunchAgentInMountOperation = defineOperation({
       .describe('Positive row count, rounded down; invalid values use the operation default'),
   }),
   normalize: normalizeLaunchAgentInMountPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeLaunchAgentInMountPayload,
   errors: [
     'worker.unavailable',
@@ -205,6 +208,7 @@ export const sessionLaunchAgentInMountOperation = defineOperation({
   summary: 'Launch or resume an agent process within a local or remote mount',
 })
 export const sessionListOperation = defineLegacyOperation({
+  compat: 'control-surface-legacy-validation',
   id: 'session.list',
   kind: 'query',
   scope: 'read',
@@ -220,6 +224,7 @@ export const sessionPrepareOrReviveOperation = defineOperation({
       .describe('Node ids to revive; non-string entries are ignored'),
   }),
   normalize: normalizeWorkspaceIdPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeWorkspaceIdPayload,
   errors: [
     'terminal.runtime_not_ready',
@@ -236,6 +241,7 @@ export const sessionPrepareOrReviveOperation = defineOperation({
 export const sessionPresentationSnapshotOperation = defineOperation({
   input: z.looseObject({ sessionId: z.string().describe('Terminal or agent session identifier') }),
   normalize: normalizePresentationSnapshotPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizePresentationSnapshotPayload,
   errors: ['session.not_found'],
   id: 'session.presentationSnapshot',
@@ -247,6 +253,7 @@ export const sessionPresentationSnapshotOperation = defineOperation({
 export const sessionSnapshotOperation = defineOperation({
   input: z.looseObject({ sessionId: z.string().describe('Terminal or agent session identifier') }),
   normalize: normalizeSnapshotPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeSnapshotPayload,
   errors: ['session.not_found'],
   id: 'session.snapshot',
@@ -280,6 +287,7 @@ export const sessionSpawnTerminalOperation = defineOperation({
       .describe('Positive row count, rounded down; invalid values use the operation default'),
   }),
   normalize: normalizeSpawnTerminalPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeSpawnTerminalPayload,
   errors: [
     'space.not_found',
@@ -307,6 +315,7 @@ export const sessionStopNodeOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeStopNode,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeStopNode,
   errors: [
     'session.not_found',
@@ -331,6 +340,7 @@ export const sessionTerminalAgentActivityListOperation = defineOperation({
       'Omit the payload or send null; object payloads are rejected for legacy compatibility',
     ),
   normalize: normalizeTerminalAgentActivityList,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeTerminalAgentActivityList,
   errors: [],
   id: 'session.terminalAgentActivity.list',
@@ -346,6 +356,7 @@ export const sessionWriteNodeOperation = defineOperation({
     data: z.string().describe('Terminal input, at most 32 KiB'),
   }),
   normalize: normalizeWriteNode,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeWriteNode,
   errors: ['session.not_found'],
   id: 'session.writeNode',

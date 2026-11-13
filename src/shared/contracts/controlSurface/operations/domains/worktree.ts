@@ -21,6 +21,7 @@ export const worktreeArchiveOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeArchiveWorktreePayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeArchiveWorktreePayload,
   errors: [
     'space.not_found',
@@ -53,6 +54,7 @@ export const worktreeCreateOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeCreateWorktreePayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeCreateWorktreePayload,
   errors: [
     'space.not_found',
@@ -83,6 +85,7 @@ export const worktreeListOperation = defineOperation({
     ])
     .nullish(),
   normalize: normalizeListWorktreesPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeListWorktreesPayload,
   errors: [
     'worktree.list_worktrees_failed',

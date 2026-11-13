@@ -1,3 +1,4 @@
+// @compat-file control-surface-legacy-validation
 // Frozen from src/shared/contracts/runtimeBuild.ts at 6df96903c64d6fb3c541c79815713996d3c1b186.
 /** Shared source identity; a platform archive has a separate SHA256 digest. */
 export interface RuntimeBuildIdentity {
