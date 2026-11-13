@@ -2,6 +2,7 @@
 // through refs and setters passed from hook to hook, and many files write the workspace store. The
 // counts below are per file, are compared for exact equality, and may only go down: a count that
 // drops fails until the baseline is regenerated, so each improvement is locked in by its own change.
+import ts from 'typescript'
 import { compareRatchet, formatRatchetIssues, serializeRatchet } from './ratchet.mjs'
 
 export const CANVAS_STATE_RULES = [
@@ -12,15 +13,20 @@ export const CANVAS_STATE_RULES = [
   'workspace-writer',
 ]
 
-// Rules counted in the canvas area: `workspaceCanvas/**` and `WorkspaceCanvasInner.tsx`.
-export const CANVAS_AREA_RULES = ['ref-type', 'setter-type', 'ref-write', 'legacy-channel']
-// Rules counted in every non-test source file under `src/`.
-export const REPO_WIDE_RULES = ['workspace-writer']
-
-export const CANVAS_AREA_PREFIX =
-  'src/contexts/workspace/presentation/renderer/components/workspaceCanvas/'
-export const CANVAS_INNER_FILE =
-  'src/contexts/workspace/presentation/renderer/components/WorkspaceCanvasInner.tsx'
+// Where each rule counts. A rule's scope is wider than the files that hold most of its occurrences
+// today, so that moving code out of `workspaceCanvas/` cannot lower a count without removing the
+// ref, setter or write. Later slices also add code outside `workspaceCanvas/`.
+export const WORKSPACE_RENDERER_PREFIX = 'src/contexts/workspace/presentation/renderer/'
+export const CANVAS_AREA_PREFIX = `${WORKSPACE_RENDERER_PREFIX}components/workspaceCanvas/`
+export const RULE_SCOPES = {
+  // The workspace context's renderer.
+  'ref-type': WORKSPACE_RENDERER_PREFIX,
+  'setter-type': WORKSPACE_RENDERER_PREFIX,
+  'ref-write': WORKSPACE_RENDERER_PREFIX,
+  // Every non-test source file under `src/`.
+  'legacy-channel': 'src/',
+  'workspace-writer': 'src/',
+}
 
 const IDENT = String.raw`[A-Za-z_$][\w$]*`
 // Whitespace, including line breaks, may sit around `.` and `<` so that formatting never moves a
@@ -52,96 +58,92 @@ export const COUNTERS = {
   'legacy-channel': [
     /(?<![\w$])(?:nodesRef|spacesRef|setNodes|onSpacesChange|onRequestPersistFlush)(?![\w$])/g,
   ],
-  // The whole-word identifier `setWorkspaces` (store field, destructuring, parameter, call) and
-  // `useAppStore.setState`. Every write path into the workspace list counts once per mention.
+  // Write-capability mentions: the whole-word identifier `setWorkspaces` (store field,
+  // destructuring, parameter, call) and `useAppStore.setState`. Every mention counts once, whether
+  // or not it is a call, because each one carries the ability to write the workspace list.
   'workspace-writer': [
     /(?<![\w$])setWorkspaces(?![\w$])/g,
     new RegExp(String.raw`(?<![\w$])useAppStore${SPACE}\.${SPACE}setState(?![\w$])`, 'g'),
   ],
 }
 
-// Replaces comments and the contents of string and template literals with spaces (keeping line
-// breaks), so that words inside them never count. Template `${...}` expressions stay code. This is
-// a scanner, not a parser: a quote inside a regex literal or JSX text can hide the rest of that
-// line, and an unterminated `'` or `"` string ends at the line break.
-export function stripCommentsAndStrings(source) {
+// Names that stay visible when one is an entire quoted string, as in
+// `Pick<Ctx, 'spacesRef' | 'setNodes'>` or `Params['nodesRef']`. They are type-level references to
+// the same channel, so `legacy-channel` counts them.
+const LEGACY_CHANNEL_NAMES = new Set([
+  'nodesRef',
+  'spacesRef',
+  'setNodes',
+  'onSpacesChange',
+  'onRequestPersistFlush',
+])
+
+// Replaces every comment, string, template text, regular expression and JSX text token with
+// spaces, keeping line breaks, so words inside them never count. The tokens come from the
+// TypeScript parser, so a backtick in a regex literal or in JSX text cannot start a template and a
+// `/` is read as a regex or a division by its position. Template `${...}` expressions stay code.
+// A string whose whole value is one of the legacy channel names stays visible (see above).
+export function blankNonCode(source, filePath = 'source.ts') {
+  const kind = /\.tsx$/.test(filePath) ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+  const sourceFile = ts.createSourceFile(filePath, source, ts.ScriptTarget.Latest, false, kind)
+  const ranges = []
+  const seenComments = new Set()
+
+  const blankToken = node => ranges.push([node.getStart(sourceFile), node.end])
+  const collectComments = position => {
+    // Comments on the same line after a token are trailing, the others are leading.
+    const found = [
+      ...(ts.getLeadingCommentRanges(source, position) ?? []),
+      ...(ts.getTrailingCommentRanges(source, position) ?? []),
+    ]
+    for (const comment of found) {
+      if (!seenComments.has(comment.pos)) {
+        seenComments.add(comment.pos)
+        ranges.push([comment.pos, comment.end])
+      }
+    }
+  }
+
+  const visit = node => {
+    collectComments(node.pos)
+    collectComments(node.end)
+    switch (node.kind) {
+      case ts.SyntaxKind.StringLiteral:
+        if (!LEGACY_CHANNEL_NAMES.has(node.text)) {
+          blankToken(node)
+        }
+        return
+      case ts.SyntaxKind.NoSubstitutionTemplateLiteral:
+      case ts.SyntaxKind.TemplateHead:
+      case ts.SyntaxKind.TemplateMiddle:
+      case ts.SyntaxKind.TemplateTail:
+      case ts.SyntaxKind.RegularExpressionLiteral:
+      case ts.SyntaxKind.JsxText:
+        blankToken(node)
+        return
+      default:
+    }
+    for (const child of node.getChildren(sourceFile)) {
+      if (child.kind >= ts.SyntaxKind.FirstJSDocNode && child.kind <= ts.SyntaxKind.LastJSDocNode) {
+        continue
+      }
+      visit(child)
+    }
+  }
+  visit(sourceFile)
+
+  const text = source
   let out = ''
-  let index = 0
-  const templateDepths = []
-  let braceDepth = 0
-  const blank = text => text.replace(/[^\r\n]/g, ' ')
-
-  const readTemplateText = () => {
-    // Called just after a backtick or a closing `}` of a `${}`; consumes template text.
-    let text = ''
-    while (index < source.length) {
-      const char = source[index]
-      if (char === '\\') {
-        text += source.slice(index, index + 2)
-        index += 2
-      } else if (char === '`') {
-        index += 1
-        out += blank(text) + '`'
-        return
-      } else if (char === '$' && source[index + 1] === '{') {
-        index += 2
-        out += blank(text) + '${'
-        templateDepths.push(braceDepth)
-        braceDepth = 0
-        return
-      } else {
-        text += char
-        index += 1
-      }
+  let cursor = 0
+  for (const [start, end] of ranges.sort((left, right) => left[0] - right[0])) {
+    if (end <= cursor) {
+      continue
     }
-    out += blank(text)
+    const from = Math.max(start, cursor)
+    out += text.slice(cursor, from) + text.slice(from, end).replace(/[^\r\n]/g, ' ')
+    cursor = end
   }
-
-  while (index < source.length) {
-    const char = source[index]
-    const next = source[index + 1]
-    if (char === '/' && next === '/') {
-      const end = source.slice(index).search(/\r|\n/)
-      const stop = end === -1 ? source.length : index + end
-      out += blank(source.slice(index, stop))
-      index = stop
-    } else if (char === '/' && next === '*') {
-      const end = source.indexOf('*/', index + 2)
-      const stop = end === -1 ? source.length : end + 2
-      out += blank(source.slice(index, stop))
-      index = stop
-    } else if (char === "'" || char === '"') {
-      let stop = index + 1
-      while (stop < source.length && source[stop] !== char && !/[\r\n]/.test(source[stop])) {
-        stop += source[stop] === '\\' ? 2 : 1
-      }
-      const closed = source[stop] === char
-      out += char + blank(source.slice(index + 1, stop)) + (closed ? char : '')
-      index = closed ? stop + 1 : stop
-    } else if (char === '`') {
-      index += 1
-      out += '`'
-      readTemplateText()
-    } else if (char === '{' && templateDepths.length > 0) {
-      braceDepth += 1
-      out += char
-      index += 1
-    } else if (char === '}' && templateDepths.length > 0) {
-      index += 1
-      if (braceDepth === 0) {
-        out += '}'
-        braceDepth = templateDepths.pop()
-        readTemplateText()
-      } else {
-        braceDepth -= 1
-        out += '}'
-      }
-    } else {
-      out += char
-      index += 1
-    }
-  }
-  return out
+  return out + text.slice(cursor)
 }
 
 export function normalizeRepoPath(filePath) {
@@ -159,9 +161,8 @@ export function isCountedSourcePath(filePath) {
   )
 }
 
-export function isCanvasAreaPath(filePath) {
-  const path = normalizeRepoPath(filePath)
-  return path.startsWith(CANVAS_AREA_PREFIX) || path === CANVAS_INNER_FILE
+export function isInRuleScope(rule, filePath) {
+  return normalizeRepoPath(filePath).startsWith(RULE_SCOPES[rule])
 }
 
 export function countOccurrences(source, patterns) {
@@ -180,9 +181,11 @@ export function countCanvasState(files) {
     if (!isCountedSourcePath(path)) {
       continue
     }
-    const source = stripCommentsAndStrings(file.content ?? '')
-    const rules = [...REPO_WIDE_RULES, ...(isCanvasAreaPath(path) ? CANVAS_AREA_RULES : [])]
-    for (const rule of rules) {
+    const source = blankNonCode(file.content ?? '', path)
+    for (const rule of CANVAS_STATE_RULES) {
+      if (!isInRuleScope(rule, path)) {
+        continue
+      }
       const count = countOccurrences(source, COUNTERS[rule])
       if (count > 0) {
         counts[rule][path] = count
@@ -207,7 +210,7 @@ export function compareCanvasStateRatchet(counts, baseline) {
     rules: CANVAS_STATE_RULES,
     describe: (rule, now, before) =>
       now > before
-        ? `${now} \`${rule}\` occurrence(s), ${now - before} more than the baseline of ${before}. Use the canvas state owners described in DEVELOPMENT.md instead of adding refs, setters or store writes.`
+        ? `${now} \`${rule}\` occurrence(s), ${now - before} more than the baseline of ${before}. Use the canvas state owners described in DEVELOPMENT.md instead of adding refs, setters or workspace write mentions.`
         : `${now} \`${rule}\` occurrence(s), below the baseline of ${before}. Run \`pnpm canvas:state-ratchet\` and commit \`scripts/canvas-state-ratchet.json\` to lock in the improvement.`,
   })
 }
@@ -224,7 +227,9 @@ export function serializeCanvasStateRatchet(counts) {
   return serializeRatchet(counts, CANVAS_STATE_RULES)
 }
 
-// The baseline may be rewritten freely except that no counter may gain occurrences in total.
+// The baseline may be rewritten freely except that no counter may gain occurrences in total. The
+// total is the gate, so code moved between files is allowed; `rises` lists every per-file rise
+// (including such moves) so that a reviewer sees them without reading the JSON diff.
 // `baseline` is `null` only when the file does not exist yet (first generation).
 export function planCanvasStateUpdate({ counts, baseline }) {
   const refusals = []
@@ -237,8 +242,23 @@ export function planCanvasStateUpdate({ counts, baseline }) {
       }
     }
   }
+  const rises = baseline
+    ? compareRatchet({
+        counts,
+        baseline,
+        rules: CANVAS_STATE_RULES,
+        describe: () => '',
+      })
+        .filter(issue => issue.current > issue.baseline)
+        .map(({ file, rule, baseline: before, current }) => ({
+          file,
+          rule,
+          baseline: before,
+          current,
+        }))
+    : []
   if (refusals.length > 0) {
-    return { ok: false, refusals, serialized: null }
+    return { ok: false, refusals, rises, serialized: null }
   }
-  return { ok: true, refusals, serialized: serializeCanvasStateRatchet(counts) }
+  return { ok: true, refusals, rises, serialized: serializeCanvasStateRatchet(counts) }
 }

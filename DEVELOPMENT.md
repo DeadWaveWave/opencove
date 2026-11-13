@@ -77,19 +77,21 @@
 
 `pnpm canvas:state-check` 守护 issue #647（把画布状态收敛到单一 owner）的重构：今天 `workspaceCanvas/` 里的 hook 通过 ref 镜像和 setter 参数互相传递状态，且有多处直接写 workspace store。该检查把这些存量按文件计数并冻结，使重构可以分片落地、每一片的改进都被锁住。它属于 `pnpm verify:repo`，因此 `verify:checks` 与 CI 的 `Repository checks` 都会运行。
 
-计数规则（忽略注释与字符串内容，容忍换行与空白差异；不统计 `*.spec.*` / `*.test.*` 测试文件）。前四项只统计 `src/contexts/workspace/presentation/renderer/components/workspaceCanvas/**` 与 `WorkspaceCanvasInner.tsx`，最后一项统计整个 `src/`：
+计数规则：用 TypeScript 解析器识别 token，注释、字符串、模板文本、正则字面量与 JSX 文本都不计入，换行与空白差异不会改变计数；`*.spec.*` / `*.test.*` / `__tests__/` / `.d.ts` 不统计。统计范围刻意比今天问题集中的 `workspaceCanvas/` 更宽，这样把代码移出该目录不会让计数下降；后续切片也会在该目录之外新增代码。
 
-| 计数器 | 统计内容 |
-| --- | --- |
-| `ref-type` | `MutableRefObject<` 与 `RefObject<` |
-| `setter-type` | `Dispatch<SetStateAction`（含 `React.` 前缀） |
-| `ref-write` | 对名为 `ref` 或以 `Ref` 结尾的标识符的 `.current` 赋值（`=`、`||=`、`+=` 等；不含 `==`、`===`） |
-| `legacy-channel` | 整词标识符 `nodesRef`、`spacesRef`、`setNodes`、`onSpacesChange`、`onRequestPersistFlush` |
-| `workspace-writer` | 整词标识符 `setWorkspaces` 与 `useAppStore.setState` |
+| 计数器 | 范围 | 统计内容 |
+| --- | --- | --- |
+| `ref-type` | `src/contexts/workspace/presentation/renderer/**` | `MutableRefObject<` 与 `RefObject<` |
+| `setter-type` | 同上 | `Dispatch<SetStateAction`（含 `React.` 前缀） |
+| `ref-write` | 同上 | 对名为 `ref` 或以 `Ref` 结尾的标识符的 `.current` 赋值（`=`、`||=`、`+=` 等；不含 `==`、`===`） |
+| `legacy-channel` | 整个 `src/` | 整词标识符 `nodesRef`、`spacesRef`、`setNodes`、`onSpacesChange`、`onRequestPersistFlush`；也统计整个字符串恰为其中之一的情形（如 `Pick<Ctx, 'spacesRef'>`） |
+| `workspace-writer` | 整个 `src/` | 写能力提及（write-capability mentions）：整词标识符 `setWorkspaces` 与 `useAppStore.setState`，每次出现都计一次，不论是否为调用 |
 
-语义与 `pnpm ui:style-check` 的棘轮相同：任一文件的计数相对 `scripts/canvas-state-ratchet.json` 增加或减少都会失败。基线只用 `pnpm canvas:state-ratchet` 重新生成，不要手改 JSON；该命令固定写入这一个文件，不接受其他路径或配置参数，并且在任一计数器的总数会上升时拒绝写入。
+已知盲区：整个 hook 返回值作为单个参数传递（如 `canvasState: ReturnType<typeof useWorkspaceCanvasState>`）时，其中携带的 ref 与 setter 不会被任何计数器看到；`ref-write` 看不到对 ref 内状态的修改（如 `someRef.current.set(...)`）。因此计数为 0 不代表不存在由 ref 持有的状态。
 
-降低计数：删除对应的 ref、setter 参数或 store 写入口（按 #647 的 owner 设计迁移，而不是改写成计数器认不出的形式），运行 `pnpm canvas:state-ratchet`，把更新后的 `scripts/canvas-state-ratchet.json` 与代码改动放进同一个提交。增加计数不被允许：请改用 #647 描述的 owner 与命令。计数器定义见 `scripts/lib/canvas-state-ratchet.mjs`。
+语义与 `pnpm ui:style-check` 的棘轮相同：任一文件的计数相对 `scripts/canvas-state-ratchet.json` 增加或减少都会失败。基线只用 `pnpm canvas:state-ratchet` 重新生成，不要手改 JSON；该命令固定写入这一个文件，不接受其他路径或配置参数，并且在任一计数器的总数会上升时拒绝写入；总数不变但某些文件的计数上升（代码在文件间移动）时会允许写入，并逐条打印这些文件级上升供评审查看。
+
+降低计数：删除对应的 ref、setter 参数或 workspace 写能力提及（按 #647 的 owner 设计迁移，而不是改写成计数器认不出的形式），运行 `pnpm canvas:state-ratchet`，把更新后的 `scripts/canvas-state-ratchet.json` 与代码改动放进同一个提交。增加计数不被允许：请改用 #647 描述的 owner 与命令。计数器定义见 `scripts/lib/canvas-state-ratchet.mjs`。
 
 ### 高风险问题预防策略（只列最容易漏的）
 

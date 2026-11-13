@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   CANVAS_AREA_PREFIX,
-  CANVAS_INNER_FILE,
+  WORKSPACE_RENDERER_PREFIX,
   compareCanvasStateRatchet,
   countCanvasState,
   planCanvasStateUpdate,
   serializeCanvasStateRatchet,
-  stripCommentsAndStrings,
+  blankNonCode,
 } from '../../../scripts/lib/canvas-state-ratchet.mjs'
 
 const HOOK = `${CANVAS_AREA_PREFIX}hooks/useThing.ts`
@@ -67,17 +67,35 @@ describe('canvas state counters', () => {
     expect(only(counts, 'workspace-writer', OUTSIDE)).toBe(3)
   })
 
-  it('counts canvas-area rules only in the canvas area, and workspace writers everywhere', () => {
-    const source = 'const r: RefObject<number> = x; setNodes(y); setWorkspaces(z)'
-    const outside = countIn(source, OUTSIDE)
-    expect(only(outside, 'ref-type', OUTSIDE)).toBe(0)
-    expect(only(outside, 'legacy-channel', OUTSIDE)).toBe(0)
-    expect(only(outside, 'workspace-writer', OUTSIDE)).toBe(1)
+  it('scopes ref and setter rules to the workspace renderer, and the others to src', () => {
+    const source =
+      'const r: RefObject<number> = x; const s: Dispatch<SetStateAction<number>> = y; a.current = 1; setNodes(y); setWorkspaces(z)'
+    const moved = `${WORKSPACE_RENDERER_PREFIX}hooks/useMoved.ts`
+    const inMoved = countIn(source, moved)
+    expect(only(inMoved, 'ref-type', moved)).toBe(1)
+    expect(only(inMoved, 'setter-type', moved)).toBe(1)
+    expect(only(inMoved, 'legacy-channel', moved)).toBe(1)
+    expect(only(inMoved, 'workspace-writer', moved)).toBe(1)
 
-    const inner = countIn(source, CANVAS_INNER_FILE)
-    expect(only(inner, 'ref-type', CANVAS_INNER_FILE)).toBe(1)
-    expect(only(inner, 'legacy-channel', CANVAS_INNER_FILE)).toBe(1)
-    expect(only(inner, 'workspace-writer', CANVAS_INNER_FILE)).toBe(1)
+    const shell = 'src/app/renderer/shell/hooks/useShell.ts'
+    const inShell = countIn(source, shell)
+    expect(only(inShell, 'ref-type', shell)).toBe(0)
+    expect(only(inShell, 'setter-type', shell)).toBe(0)
+    expect(only(inShell, 'ref-write', shell)).toBe(0)
+    expect(only(inShell, 'legacy-channel', shell)).toBe(1)
+    expect(only(inShell, 'workspace-writer', shell)).toBe(1)
+
+    const outside = 'scripts/helper.ts'
+    expect(countIn(source, outside)['legacy-channel']).toEqual({})
+  })
+
+  it('counts the same occurrences after a file moves within the counted scope', () => {
+    const source = 'nodesRef.current = x; const r: RefObject<number> = y; setNodes(z)'
+    const before = countIn(source, `${CANVAS_AREA_PREFIX}hooks/useNodesStore.ts`)
+    const after = countIn(source, `${WORKSPACE_RENDERER_PREFIX}hooks/useNodesStore.ts`)
+    for (const rule of Object.keys(before)) {
+      expect(Object.values(after[rule])).toEqual(Object.values(before[rule]))
+    }
   })
 
   it('excludes test files, declaration files and files outside src', () => {
@@ -98,7 +116,7 @@ describe('canvas state counters', () => {
       // setNodes(a)
       /* nodesRef.current = x
          setWorkspaces() */
-      const a = 'setNodes'
+      const a = 'call setNodes now'
       const b = "spacesRef.current = 1"
       const c = \`setNodes \${count} onSpacesChange\`
       const d = \`\${setNodes(1)} text \${nested({ k: spacesRef })}\`
@@ -107,6 +125,59 @@ describe('canvas state counters', () => {
     `)
     expect(only(counts, 'legacy-channel')).toBe(3)
     expect(only(counts, 'ref-write')).toBe(0)
+  })
+
+  it('counts a legacy channel name that is a whole quoted string, such as in type picks', () => {
+    const counts = countIn(`
+      type A = Pick<Ctx, 'spacesRef' | 'setNodes'>
+      type B = Parameters<typeof useX>[0]['nodesRef']
+      type C = Omit<Ctx, "onSpacesChange">
+      const label = 'the setNodes handler'
+      const other = 'spacesRefs'
+    `)
+    expect(only(counts, 'legacy-channel')).toBe(4)
+  })
+
+  it('does not let a backtick in a regex literal hide the lines after it', () => {
+    const counts = countIn(
+      [
+        'const pattern = /`[a-z]+/g',
+        'const a = useRef(0)',
+        'spacesRef.current = 1',
+        'const b: RefObject<number> = x',
+        'const c = `template ${setNodes(1)} text setNodes`',
+        'setNodes(2)',
+      ].join('\n'),
+    )
+    expect(only(counts, 'ref-write')).toBe(1)
+    expect(only(counts, 'ref-type')).toBe(1)
+    expect(only(counts, 'legacy-channel')).toBe(3)
+  })
+
+  it('does not let a backtick in JSX text hide the lines after it', () => {
+    const path = `${WORKSPACE_RENDERER_PREFIX}components/Panel.tsx`
+    const counts = countIn(
+      [
+        'export function Panel() {',
+        '  const ref = useRef<HTMLDivElement>(null)',
+        '  ref.current = null',
+        "  return <p>use `setNodes` and don't panic</p>",
+        '}',
+        'const x: RefObject<number> = y',
+        'setNodes(1)',
+      ].join('\n'),
+      path,
+    )
+    expect(only(counts, 'ref-write', path)).toBe(1)
+    expect(only(counts, 'ref-type', path)).toBe(1)
+    expect(only(counts, 'legacy-channel', path)).toBe(1)
+  })
+
+  it('reads a slash as a division or a regex by position, not as a comment', () => {
+    const counts = countIn(
+      String.raw`const a = b / c; const r = /\/\//g; setNodes(1) // setNodes(2)`,
+    )
+    expect(only(counts, 'legacy-channel')).toBe(1)
   })
 
   it('does not move a count when formatting changes', () => {
@@ -132,8 +203,11 @@ describe('canvas state counters', () => {
   })
 
   it('keeps line breaks when stripping so that the text keeps its shape', () => {
-    const source = "a // x\n/* y\nz */ 'b\n'"
-    expect(stripCommentsAndStrings(source).split('\n')).toHaveLength(source.split('\n').length)
+    const source = 'a // x\n/* y\nz */ `b\nc ${d}\ne`'
+    const blanked = blankNonCode(source)
+    expect(blanked).not.toContain('//')
+    expect(blanked).toMatch(/\sd\s/)
+    expect(blanked.split('\n')).toHaveLength(source.split('\n').length)
   })
 })
 
@@ -181,6 +255,7 @@ describe('canvas state ratchet', () => {
     expect(plan).toEqual({
       ok: false,
       refusals: [{ rule: 'ref-type', before: 3, after: 4 }],
+      rises: [{ file: 'src/b.ts', rule: 'ref-type', baseline: 0, current: 2 }],
       serialized: null,
     })
   })
