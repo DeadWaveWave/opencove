@@ -123,7 +123,10 @@
 对 UI 改动，尤其是 **Large Change**、高交互风险改动、或真实体验比纯逻辑更重要的改动，按以下方式选择验证手段：
 
 - **Web/Renderer 优先用 Playwright**：主路径走 `pnpm test:e2e` 或最低 meaningful layer 的 Playwright 用例。
-- **用户可感知变化必须跑 E2E**：新增功能、UX 改动、修复 bug、默认行为变化等，至少跑一条覆盖本次变更的 Playwright 用例；开发中指定测试文件，本地提交运行 `pnpm verify:quick`（`pnpm pre-commit` 同义）。完整回归由 PR CI 在合并前执行。
+- **bug 回归放在能复现不变量破坏的最低层**：新增或加强 unit、component、contract、integration 或 E2E 回归测试；不默认新增 E2E。
+- **用户可感知变化必须运行已有 E2E 旅程**：选择覆盖本次变化的路径。只有不变量依赖真实 Desktop、浏览器或 native 边界，且低层测试与已有旅程都不能覆盖时，才新增 E2E；PR 写明该边界与独有断言。
+- **终端渲染和画布交互保持 E2E-first**：xterm 几何、renderer/WebGL/DOM、raster/calibration、滚动条、透明度、链接、live reattach、缩放下终端几何，以及拖拽、resize、push-away/squash、框选、snapping、arrange、zoom/pan 的回归依赖真实 renderer。不得削弱断言、改变断言时的画布内容或改用共享 app 进程。
+- **下沉必须证明等价**：低层测试通过且断言等价性有记录后，才可替换原 E2E 断言；独有边界用例先迁移，无法等价的部分留在 E2E。移动文件时同步 `scripts/precommit-e2e-selection.mjs`。
 - **主题/样式改动必须遵守 UI 规范**：新增颜色走 token，Light/Dark 都要验收可读性；优先在 E2E 中附带截图。详见 `docs/ui/README.md`。
 - **复杂交互辅以截图 / 录屏**：当行为依赖拖拽、滚动、动画、命中点或视觉反馈时，用截图或录屏帮助确认真实体验。
 - **提交前做一次 smoke 验证**：至少确认核心用户路径、关键视觉状态和交互目标没有回归。
@@ -136,14 +139,22 @@
 
 | 时机 | 入口与范围 |
 | --- | --- |
-| 每轮修改 | 指定本轮文件运行相关 unit/contract，再跑对应 E2E；不要对累计暂存的整个功能反复跑全量 |
+| 每轮修改 | 运行能复现本轮不变量的最低层测试；用户可感知变化再跑已有对应 E2E，新增条件见上文；不要对累计暂存的整个功能反复跑全量 |
 | 本地提交 | `pnpm verify:quick` 或 `pnpm pre-commit`：静态检查、staged 相关测试、native recovery contracts、固定核心 E2E 与受影响模块的代表场景 |
 | 按需本地完整检查 | 暂存后运行 `pnpm verify:full`：静态检查、完整 Vitest、native contracts、完整 Electron E2E |
 | PR 合并前 | 最终提交必须通过完整 CI，包括分片 Electron、平台专属和 Desktop/Web continuity 检查 |
 
 E2E 选组规则维护在 `scripts/precommit-e2e-selection.mjs`。快速门禁输出选中组、原因和测试文件，固定覆盖启动、终端创建、重启后可输入；插件、共享窗口、Space、设置、连接、Sidebar 和文件相关改动追加对应组。删除、重命名、CSS、配置与未知源码也必须参与判断；未知范围扩大代表组并明确提示，不能静默跳过。代表组选取不等于完整依赖分析：开发者仍须为本次修改的不变量补跑直接相关用例。
 
-持久化与迁移、启动/退出恢复、IPC/认证、Worker 生命周期、共享窗口几何或依赖/构建变更，应增加对应最低层 contract/integration 与实际恢复场景，不能仅以普通冒烟通过代替。曾捕获真实产品缺陷的测试优先进入快速组；睡眠、窗口焦点和测试夹具导致的失败按环境问题定位，不用重试或放宽断言掩盖。
+持久化与迁移、启动/退出恢复、IPC/认证、Worker 所有权与生命周期变更，应新增或加强 contract/integration 覆盖，并运行已有真实边界/恢复旅程，不能仅以普通冒烟通过代替。共享窗口几何或依赖/构建变更也须选择对应回归层。曾捕获真实产品缺陷的测试优先进入快速组；睡眠、窗口焦点和测试夹具导致的失败按环境问题定位，不用重试或放宽断言掩盖。
+
+E2E 数量门禁：`pnpm e2e:budget` 用 Playwright `--list` 检查全部 Electron 用例（含 skip 和平台专属声明），不启动 Electron。稳定 ID 为所属 spec 文件 + 完整参数化标题路径，不含行号；平台条件用 `test.skip`，不要按 OS 隐藏声明。基线在 `tests/e2e/budget/cases-*.json`。新增/重命名须执行 `pnpm e2e:budget:update --reason "Desktop: 所需边界和独有断言"`（也可用 `browser:` / `native:`）；理由随每个新 ID 进入 diff。删除后执行 `pnpm e2e:budget:update` 锁定下降。`verify:checks` 在 staged E2E/枚举配置变化时执行，CI 静态检查始终执行。
+
+Ubuntu/macOS 每个 Electron 分片保留 list 日志并上传 `e2e-durations-<OS>-<shard>` JSON artifact（成功或失败均上传）。CI 的 `e2e-duration-summary` job summary 展示总串行/分片耗时、最慢 20 例、新增超过 15 秒的用例和相对 `tests/e2e/budget/duration-*.json` 中位数基线的增长。计时仅供观察；缺失、损坏或中断报告显示警告，不阻断 CI，也不视为节省。基线来源和更新方法见该目录的 `README.md`。
+
+Ubuntu/macOS 三个分片用 `scripts/plan-e2e-shards.mjs` 按文件内用例的 OS 基线耗时之和做 LPT 分配（最长文件先放入最轻分片；文件同分按路径，分片同分按文件数和编号），不拆文件。新文件/未计时用例采用该 OS 正数基线的中位数，无样本时为 10 秒；只有显式零值计为未运行，缺失记录不能当作 skip。刷新耗时基线即重新平衡分片。静态 job 与每个分片执行前均校验完整、互斥、无非必要空分片，文件列表仍通过 `pnpm test:e2e` 运行；JSON summary 并列展示计划与实测分钟数。
+
+本地查看计划：`node scripts/plan-e2e-shards.mjs --os macos --shards 3`（也支持 `ubuntu`，加 `--shard 1 --run` 执行该分片）。原有 `pnpm test:e2e -- --shard=1/3` 和 pre-commit 选组保持不变。
 
 快速 E2E 首个失败即停止，保留 trace 后先定向修复。一次代码版本的一组定向 E2E 只构建一次；只有确认源码与构建产物一致时才可复用，代码改动后重新构建。完整 CI 保留现有分片策略；本地快速通过不代表完整回归通过，汇报必须分别列出通过、跳过与尚未执行的范围。
 
@@ -159,7 +170,7 @@ E2E 选组规则维护在 `scripts/precommit-e2e-selection.mjs`。快速门禁�
         -   **Plan**：制定详细执行计划，等待确认。
     -   **验证**：用户可感知变化必须跑对应 E2E；UI 变更需提供截图/录屏。包括重大功能在内，本地提交跑快速门禁；完整回归由 PR CI 承担，不要求每次本地提交重复全套。
         -   **兼容与迁移（必须可回归）**：改动 IPC 接口、持久化数据结构、拓扑/配置文件时，必须提供迁移或启动期修复（repair）策略，并补回归测试覆盖“已有用户数据”（缺字段/空记录/旧格式）。不要只验证“新建流程”的 happy path。
-        -   **跨平台兼容**：开发默认应考虑 `macOS / Windows / Linux` 三平台；如本次只支持部分平台，必须在方案与交付说明中明确标注差异、限制与后续补齐计划。凡修复平台特有 bug，必须补对应平台的 E2E，并在 CI 的该平台 runner 上执行验证；Windows / macOS / Linux 专属用例优先使用 `*.windows.spec.ts` / `*.mac.spec.ts` / `*.linux.spec.ts` 命名收口。
+        -   **跨平台兼容**：开发默认应考虑 `macOS / Windows / Linux` 三平台；如本次只支持部分平台，必须在方案与交付说明中明确标注差异、限制与后续补齐计划。平台特有 bug 在能复现问题的最低层补回归，并在该平台 CI runner 验证；真实渲染/原生边界遵循上文 E2E 新增规则。Windows / macOS / Linux 专属用例优先使用 `*.windows.spec.ts` / `*.mac.spec.ts` / `*.linux.spec.ts` 命名收口。
 -   **禁止提交**：
     -   lock 文件 (`pnpm-lock.yaml`) 必须由命令生成/更新。
     -   生成代码（如自动生成的类型定义等）禁止手改。
