@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "count": 189,
+  "count": 190,
   "entries": {
     "tests/e2e/agent-hook-relay.spec.ts › claude-code executes Electron hooks through the real launch path and retains keyboard input": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/agent-launch.path-resolution.spec.ts › Agent launch resolves the provider on PATH › codex starts the real executable found by name": "Desktop: pre-restructure inventory; existing assertions retained",
@@ -54,6 +54,7 @@
     "tests/e2e/recovery.worker-client-agent-placeholder.spec.ts › Recovery - Worker client agent renderer restore › does not render persisted agent placeholder scrollback via worker control-surface": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/recovery.worker-client-input-after-restart.spec.ts › Recovery - Worker client input after restart › remains interactive for both terminal and agent sessions after app restart": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/remote-directory-picker.managed-ssh-progress.spec.ts › Picker reopens an accepted cold bootstrap and automatically loads home when ready": "Desktop: pre-restructure inventory; existing assertions retained",
+    "tests/e2e/runtime-diagnostics.renderer-crash.spec.ts › recovers the workspace in the same main process after a renderer crash": "native: renderer crash recovery keeps the main process and restores the workspace",
     "tests/e2e/runtime-publisher-entrypoint.windows.spec.ts › runtime publisher dispatches from Windows short and long temporary paths": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/runtime-publisher-rename.windows.spec.ts › publishes from the staged Node after a Windows sharing lock is released": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/settings.managed-ssh-cold-bootstrap-progress.spec.ts › Managed SSH cold bootstrap progress › keeps accepted progress across Settings reopen (dark, en)": "Desktop: pre-restructure inventory; existing assertions retained",
