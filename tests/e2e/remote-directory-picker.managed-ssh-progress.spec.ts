@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { createServer } from 'node:net'
 import { closeSettings } from './m6.endpoints-mounts.integration.helpers'
 import { selectCoveOption } from './workspace-canvas.helpers'
 import { withManagedSshProgress } from './managed-ssh-progress.fixture'
@@ -37,6 +38,17 @@ test('Picker reopens an accepted cold bootstrap and automatically loads home whe
     await h.assertNoTunnel()
     await h.release('installing_runtime')
     await h.waitForPhase('starting_runtime')
+    // Another listener must not be able to steal the address advertised during cold bootstrap.
+    const competingListener = createServer()
+    try {
+      const error = await new Promise<NodeJS.ErrnoException | null>(resolve => {
+        competingListener.once('error', resolve)
+        competingListener.listen(h.remotePort, '127.0.0.1', () => resolve(null))
+      })
+      expect(error?.code).toBe('EADDRINUSE')
+    } finally {
+      await new Promise<void>(resolve => competingListener.close(() => resolve()))
+    }
     await h.startWorker()
     await h.release('starting_runtime')
     await expect(window.getByTestId('remote-directory-picker-path')).toHaveValue(
