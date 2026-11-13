@@ -75,15 +75,14 @@ test('CLI grants refuse composer controls without effects and pass real launch a
     // Languages written without spaces are sentences, not command tokens.
     const unspaced = '请列出当前工作目录中的文件，不要修改任何文件。'
     await writeFile(join(f.workspace, 'unspaced.txt'), unspaced)
-    const unspacedResult = jsonOutput(
-      await terminalCommand(
-        f.window,
-        binding,
-        'opencove node create agent --provider pi --prompt-file ./unspaced.txt -o json',
-        'UNSPACED_ACCEPTED',
-      ),
+    // Quiet output: ConPTY can garble long wide-character JSON at row wraps.
+    const unspacedOutput = await terminalCommand(
+      f.window,
+      binding,
+      'opencove node create agent --provider pi --prompt-file ./unspaced.txt -q',
+      'UNSPACED_ACCEPTED',
     )
-    expect(unspacedResult).toHaveProperty('node')
+    expect(unspacedOutput).toMatch(/\bexit=0\b/)
     await expect.poll(f.records).toHaveLength(2)
     expect((await f.records())[1]).toMatchObject({ provider: 'pi', prompt: unspaced })
   } finally {
