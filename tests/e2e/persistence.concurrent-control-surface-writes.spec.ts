@@ -1,10 +1,17 @@
-/* eslint-disable no-await-in-loop -- CAS retries and timed race rounds require sequential execution. */
+/* eslint-disable no-await-in-loop -- Publication barriers and race rounds require sequential execution. */
 // Regression for external writes racing renderer publication.
 import { expect, test } from '@playwright/test'
 import { mkdir, mkdtemp, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { launchApp } from './workspace-canvas.app'
 import { seedWorkspaceState } from './workspace-canvas.helpers'
+
+import {
+  holdRendererPublication,
+  installPublicationBarrier,
+  readHeldPublication,
+  releaseRendererPublication,
+} from './persistence.publication-barrier'
 
 const projectId = 'repro-project'
 
@@ -29,12 +36,17 @@ async function invoke(
 }
 
 for (const scenario of ['task', 'note', 'echo'] as const) {
-  test(`control surface ${scenario} writes survive renderer publication`, async () => {
+  test(`control surface ${scenario} writes survive renderer publication`, async ({
+    browserName: _browserName,
+  }, testInfo) => {
     test.setTimeout(240_000)
     await mkdir('.codex-out/tmp', { recursive: true })
     const userDataDir = await mkdtemp(join(process.cwd(), '.codex-out/tmp/sync-'))
     const { electronApp, window } = await launchApp({ userDataDir, cleanupUserDataDir: true })
     try {
+      if (scenario !== 'echo') {
+        await installPublicationBarrier(window)
+      }
       await seedWorkspaceState(window, {
         activeWorkspaceId: projectId,
         workspaces: [
@@ -98,8 +110,8 @@ for (const scenario of ['task', 'note', 'echo'] as const) {
       expect(connection).not.toBeNull()
       const conn = connection as Connection
 
-      await new Promise(resolve => setTimeout(resolve, 3000))
       if (scenario === 'echo') {
+        await new Promise(resolve => setTimeout(resolve, 3000))
         const written = await invoke(conn, 'command', 'node.update', {
           nodeId: 'task-1',
           kind: 'task',
@@ -111,25 +123,66 @@ for (const scenario of ['task', 'note', 'echo'] as const) {
         return
       }
       const tagSets = [['probe-tag'], ['login', 'flaky-test'], ['a', 'b', 'c'], ['solo']]
-      const gapsMs = [80, 150]
       const log: string[] = []
       let lost = 0
       for (let round = 0; round < 8; round += 1) {
         const first = tagSets[round % tagSets.length]
         const second = tagSets[(round + 1) % tagSets.length]
-        const gap = gapsMs[round % gapsMs.length]
         const a = await invoke(conn, 'command', 'node.update', {
           nodeId: scenario === 'task' ? 'task-1' : 'note-1',
           kind: scenario,
           ...(scenario === 'task' ? { data: { tags: first } } : { title: `first-${round}` }),
         })
-        await new Promise(resolve => setTimeout(resolve, gap))
+        const node = window.locator(`[data-id="${scenario === 'task' ? 'task-1' : 'note-1'}"]`)
+        if (scenario === 'task') {
+          await expect(node.locator('.task-node__tag')).toHaveText(first.map(tag => `#${tag}`))
+        } else {
+          await expect(node.getByTestId('note-node-title')).toHaveText(`first-${round}`)
+        }
+        const marker = `Renderer draft ${scenario}-${round}`
+        await holdRendererPublication(window, marker)
+        await window.locator('[data-id="note-1"]').getByTestId('note-node-textarea').fill(marker)
+        const held = await readHeldPublication(window)
+        const candidate = held.state as {
+          workspaces: Array<{
+            nodes: Array<{ id: string; title: string; task?: { tags?: string[] } }>
+          }>
+        }
+        const staleNode = candidate.workspaces
+          .flatMap(workspace => workspace.nodes)
+          .find(candidateNode => candidateNode.id === (scenario === 'task' ? 'task-1' : 'note-1'))!
+        // A may repeat the preceding round's B tags, so DOM equality does not imply
+        // its revision was adopted. The payload contents and base < B prove staleness.
+        expect(held.baseRevision).toEqual(expect.any(Number))
+        if (scenario === 'task') {
+          expect(staleNode.task?.tags).toEqual(first)
+        } else {
+          expect(staleNode.title).toBe(`first-${round}`)
+        }
         const b = await invoke(conn, 'command', 'node.update', {
           nodeId: scenario === 'task' ? 'task-1' : 'note-1',
           kind: scenario,
           ...(scenario === 'task' ? { data: { tags: second } } : { title: `second-${round}` }),
         })
-        await new Promise(resolve => setTimeout(resolve, 1500))
+        // The held payload contains A. B is durable before this real renderer write crosses IPC.
+        // Checking only node.get here could pass before the stale publication and miss the race.
+        expect(Number(b.revision)).toBeGreaterThan(held.baseRevision!)
+        const receipt = await releaseRendererPublication(window)
+        expect(receipt.ok).toBe(true)
+        if (receipt.ok) {
+          expect(receipt.revision).toBeGreaterThanOrEqual(Number(b.revision))
+        }
+        if (scenario === 'task') {
+          await expect(node.locator('.task-node__tag')).toHaveText(second.map(tag => `#${tag}`))
+        } else {
+          await expect(node.getByTestId('note-node-title')).toHaveText(`second-${round}`)
+        }
+        await expect
+          .poll(async () => {
+            const noteRead = await invoke(conn, 'query', 'node.get', { nodeId: 'note-1' })
+            return (noteRead.node as { data?: { text?: string } }).data?.text
+          })
+          .toBe(marker)
         const state = await invoke(conn, 'query', 'sync.state', null)
         const read = await invoke(conn, 'query', 'node.get', {
           nodeId: scenario === 'task' ? 'task-1' : 'note-1',
@@ -143,11 +196,19 @@ for (const scenario of ['task', 'note', 'echo'] as const) {
           lost += 1
         }
         log.push(
-          `round=${round} gap=${gap} revA=${String(a.revision)} revB=${String(b.revision)} now=${String(state.revision)} expected=${second.join(',')} got=${tags} ${ok ? 'OK' : 'LOST'}`,
+          `round=${round} heldBase=${held.baseRevision} published=${receipt.ok ? receipt.revision : null} revA=${String(a.revision)} revB=${String(b.revision)} now=${String(state.revision)} expected=${second.join(',')} got=${tags} ${ok ? 'OK' : 'LOST'}`,
         )
       }
+      await testInfo.attach('publication-order', {
+        body: JSON.stringify(log, null, 2),
+        contentType: 'application/json',
+      })
       expect(lost, log.join('\n')).toBe(0)
     } finally {
+      // A failed precondition must not leave app shutdown waiting on our own barrier.
+      await window
+        .evaluate(() => window.__opencovePublicationBarrier?.release())
+        .catch(() => undefined)
       await electronApp.close()
     }
   })

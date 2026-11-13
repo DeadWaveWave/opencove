@@ -64,6 +64,11 @@ function resolveE2ERetries(rawValue: string | undefined): number {
  * 运行: npm run test:e2e
  */
 export default defineConfig({
+  // File-list CI shards preserve identity/estimates without Playwright filtering them again.
+  metadata: process.env.OPENCOVE_E2E_SHARD_PLAN
+    ? { opencoveShardPlan: JSON.parse(process.env.OPENCOVE_E2E_SHARD_PLAN) }
+    : {},
+
   // 测试目录
   testDir: './tests/e2e',
 
@@ -88,7 +93,16 @@ export default defineConfig({
 
   // 报告器
   reporter: isCi
-    ? [['list']]
+    ? [
+        ['list'],
+        [
+          'json',
+          {
+            outputFile:
+              process.env.OPENCOVE_E2E_JSON_REPORT ?? 'artifacts/e2e-durations/report.json',
+          },
+        ],
+      ]
     : [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
 
   // 输出目录（截图、视频等）

@@ -5,14 +5,13 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import Database from 'better-sqlite3'
 import { expect, it } from 'vitest'
-import { registerControlSurfaceHttpServer } from '../../../src/app/main/controlSurface/controlSurfaceHttpServer'
+import { createNativeRecoveryDiagnostics } from './nativeRecoveryDiagnostics'
 import type { ControlSurfacePtyRuntime } from '../../../src/app/main/controlSurface/handlers/sessionPtyRuntime'
 import { createApprovedWorkspaceStoreForPath } from '../../../src/contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
 import { describeWithElectronNativeModules } from '../electronNativeSuite'
 import {
   createInMemoryPersistenceStore,
   createMinimalState,
-  invoke,
   safeRemoveDirectory,
 } from './controlSurfaceHttpServer.sessionStreaming.testUtils'
 import { createRemoteRecoveryTerminalNode } from './remoteTerminalRecovery.testUtils'
@@ -39,6 +38,8 @@ function makePtyRuntime(
 
 describeWithElectronNativeModules('Control Surface node worker binding recovery', () => {
   it('persists a terminal binding and recovers on its original remote worker after restart', async () => {
+    const { registerServer: registerControlSurfaceHttpServer, invoke } =
+      createNativeRecoveryDiagnostics()
     const homeUserDataPath = await mkdtemp(join(tmpdir(), 'opencove-home-worker-binding-'))
     const remoteUserDataPath = await mkdtemp(join(tmpdir(), 'opencove-remote-worker-binding-'))
     const remoteRootPath = await mkdtemp(join(tmpdir(), 'opencove-remote-worker-root-'))

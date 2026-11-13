@@ -2,6 +2,7 @@ import type { NodeLineageRecord } from './nodeLineage'
 import { createAppError } from '../../../shared/errors/appError'
 import {
   agentSpawnErrorPresentation,
+  spawnRecoveryAction,
   type SpawnLimitDetails,
   type SpawnQuotaNode,
 } from '../../../shared/errors/agentSpawnError'
@@ -29,6 +30,10 @@ export function assertGrantRuntimeSpawnAllowed(input: {
     limit: depth ? MAX_GRANT_RUNTIME_LINEAGE_DEPTH : MAX_LIVE_GRANT_RUNTIME_DESCENDANTS,
     ...(depth ? { attemptedDepth: input.lineage.lineageDepth } : { occupied: input.occupied }),
   }
+  details.actions = (details.nodes ?? []).flatMap(node => {
+    const action = spawnRecoveryAction(node)
+    return action ? [action] : []
+  })
   const text = agentSpawnErrorPresentation({ code, details })!
   throw createAppError(code, { details, debugMessage: `${text.message} ${text.hint}` })
 }

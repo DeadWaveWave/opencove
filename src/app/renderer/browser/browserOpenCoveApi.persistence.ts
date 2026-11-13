@@ -53,7 +53,7 @@ export function createBrowserPersistenceApi(): PersistenceApi {
           }),
         )
         if (result.ok) {
-          cache.invalidate()
+          cache.invalidateLatest()
         }
         return classifyWriteResult(result)
       } catch (error) {

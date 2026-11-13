@@ -42,30 +42,30 @@ afterEach(() => {
 })
 
 describe('max-lines authored extension coverage', () => {
-  it('checks authored ESM scripts while preserving the 500-line boundary', () => {
+  it('checks authored ESM scripts while preserving the 1000-line boundary', () => {
     const accepted = spawnSync(
       process.execPath,
-      [join(repositoryRoot, 'scripts', 'check-max-lines.mjs'), createModule(500)],
+      [join(repositoryRoot, 'scripts', 'check-max-lines.mjs'), createModule(1000)],
       { cwd: repositoryRoot, encoding: 'utf8' },
     )
     const rejected = spawnSync(
       process.execPath,
-      [join(repositoryRoot, 'scripts', 'check-max-lines.mjs'), createModule(501)],
+      [join(repositoryRoot, 'scripts', 'check-max-lines.mjs'), createModule(1001)],
       { cwd: repositoryRoot, encoding: 'utf8' },
     )
 
     expect(accepted.status).toBe(0)
     expect(rejected.status).toBe(1)
-    expect(rejected.stderr).toContain('authored-script.mjs: 501 lines')
+    expect(rejected.stderr).toContain('authored-script.mjs: 1001 lines')
   })
 
   it('skips the theme stylesheets `pnpm design:tokens` writes, but not authored theme CSS', () => {
-    const generated = createStylesheet('src/app/renderer/styles/themes/generated/cove.css', 600)
-    const authored = createStylesheet('src/app/renderer/styles/themes/pixel.css', 600)
+    const generated = createStylesheet('src/app/renderer/styles/themes/generated/cove.css', 1001)
+    const authored = createStylesheet('src/app/renderer/styles/themes/pixel.css', 1001)
 
     expect(checkMaxLines(generated).status).toBe(0)
     const rejected = checkMaxLines(authored)
     expect(rejected.status).toBe(1)
-    expect(rejected.stderr).toContain('pixel.css: 600 lines')
+    expect(rejected.stderr).toContain('pixel.css: 1001 lines')
   })
 })

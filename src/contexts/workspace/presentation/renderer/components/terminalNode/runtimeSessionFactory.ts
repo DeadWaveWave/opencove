@@ -30,6 +30,7 @@ export function createOrReuseRuntimeXtermSession({
     | 'displayTerminalMetricsRef'
     | 'viewportZoomRef'
     | 'preferredRendererMode'
+    | 'setRendererKindAndApply'
     | 'requestTerminalRendererRecovery'
     | 'scheduleWebglCanvasTransformCleanup'
     | 'scheduleTranscriptSync'
@@ -59,6 +60,7 @@ export function createOrReuseRuntimeXtermSession({
     displayTerminalMetricsRef,
     viewportZoomRef,
     preferredRendererMode,
+    setRendererKindAndApply,
     requestTerminalRendererRecovery,
     scheduleWebglCanvasTransformCleanup,
     scheduleTranscriptSync,
@@ -162,6 +164,7 @@ export function createOrReuseRuntimeXtermSession({
     logTerminalDiagnostics,
     initialViewportZoom: viewportZoomRef.current,
     preferredRendererMode,
+    onRendererKindResolved: setRendererKindAndApply,
     onRendererIssue: issue => {
       requestTerminalRendererRecovery({
         ...issue,

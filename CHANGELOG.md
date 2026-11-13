@@ -21,6 +21,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Fixed
 
 - Documents: typing fast in a document window, for example right after a terminal file link opens it, no longer drops characters or moves the caret. (#621)
+- Agents: after a restart, `opencove agent` and `opencove events` find a restored Claude Code agent right away, instead of only after the next change on the canvas. (#625)
+
+### Fixed
+
+- Terminals: when the GPU drops a terminal's WebGL renderer, the terminal switches to plain rendering in place and keeps its scrollback, scroll position and selection, instead of reloading its history. (#622)
 
 ## [0.5.0] - 2026-11-12
 

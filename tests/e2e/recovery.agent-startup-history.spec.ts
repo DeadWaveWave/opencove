@@ -173,6 +173,43 @@ for (const provider of ['claude-code', 'codex'] as const) {
         }
         await expect(second.window.locator('.app-notification')).toHaveCount(0)
         expect(await sounds(second.window)).toEqual([])
+      } catch (error) {
+        await test.info().attach('startup-history-failure', {
+          body: Buffer.from(
+            JSON.stringify(
+              await second.window
+                .evaluate(async () => {
+                  const query = (queryId: string, payload: object) =>
+                    window.opencoveApi.controlSurface.invoke({
+                      kind: 'query',
+                      id: queryId,
+                      payload,
+                    })
+                  const sessionId =
+                    window.__opencoveTerminalSelectionTestApi?.getRuntimeSessionId('history-agent')
+                  const api = window.__opencoveTerminalSelectionTestApi
+                  return {
+                    node: await query('node.get', { nodeId: 'history-agent' }),
+                    agents: await query('agent.list', {}),
+                    sessionId,
+                    snapshot: sessionId
+                      ? await window.opencoveApi.pty.presentationSnapshot({ sessionId })
+                      : null,
+                    terminal: document.querySelector('[data-id="history-agent"]')?.textContent,
+                    ariaBusy: document
+                      .querySelector('[data-id="history-agent"] .terminal-node__terminal')
+                      ?.getAttribute('aria-busy'),
+                    buffer: api?.getBufferText('history-agent', 'STARTUP_HISTORY_READY'),
+                    writes: api?.getOutputWrites('history-agent'),
+                    metrics: api?.getRenderMetrics('history-agent'),
+                  }
+                })
+                .catch(String),
+            ),
+          ),
+          contentType: 'application/json',
+        })
+        throw error
       } finally {
         await second.electronApp.close()
       }

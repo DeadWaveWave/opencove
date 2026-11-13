@@ -313,33 +313,44 @@ describe('activatePreferredTerminalRenderer', () => {
     expect(activeRenderer.kind).toBe('webgl')
   })
 
-  it('falls back by disposing the WebGL addon when context is lost', async () => {
+  it('keeps the terminal alive and refreshable after a context-loss DOM fallback', async () => {
     installCanvasContexts(['webgl2'])
 
     const { activatePreferredTerminalRenderer } =
       await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
     const onRendererKindChange = vi.fn()
     const onRendererIssue = vi.fn()
-    const activeRenderer = activatePreferredTerminalRenderer(
-      {
-        loadAddon: vi.fn(),
-      } as never,
-      'codex',
-      { onRendererKindChange, onRendererIssue },
-    )
+    const terminal = { loadAddon: vi.fn(), rows: 24, refresh: vi.fn() }
+    const activeRenderer = activatePreferredTerminalRenderer(terminal as never, 'codex', {
+      onRendererKindChange,
+      onRendererIssue,
+    })
 
     expect(activeRenderer.kind).toBe('webgl')
     expect(contextLossListener).toBeTypeOf('function')
 
-    contextLossListener?.()
+    const loseContext = contextLossListener!
+    loseContext()
+    loseContext()
 
     expect(webglAddonDispose).toHaveBeenCalledTimes(1)
     expect(onRendererKindChange).toHaveBeenCalledWith('dom')
-    expect(onRendererIssue).toHaveBeenCalledWith({
-      reason: 'context_loss',
-      forceDom: true,
-    })
+    expect(onRendererIssue).not.toHaveBeenCalled()
+    expect(onRendererKindChange).toHaveBeenCalledOnce()
+    expect(webglAddonDispose.mock.invocationCallOrder[0]).toBeLessThan(
+      onRendererKindChange.mock.invocationCallOrder[0]!,
+    )
     expect(activeRenderer.kind).toBe('dom')
+    terminal.refresh.mockClear()
+    activeRenderer.refresh()
+    expect(terminal.refresh).toHaveBeenCalledWith(0, 23)
+    expect(activeRenderer.setRasterScale(1.25)).toBe(false)
+    activeRenderer.dispose()
+    activeRenderer.dispose()
+    terminal.refresh.mockClear()
+    activeRenderer.refresh()
+    expect(terminal.refresh).not.toHaveBeenCalled()
+    expect(webglAddonDispose).toHaveBeenCalledOnce()
   })
 
   it('rebuilds OpenCode agents without forcing DOM when WebGL context is lost', async () => {
@@ -352,6 +363,8 @@ describe('activatePreferredTerminalRenderer', () => {
     const activeRenderer = activatePreferredTerminalRenderer(
       {
         loadAddon: vi.fn(),
+        rows: 24,
+        refresh: vi.fn(),
       } as never,
       'opencode',
       { terminalKind: 'agent', onRendererKindChange, onRendererIssue },

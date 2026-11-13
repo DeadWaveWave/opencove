@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "unit": "milliseconds",
+  "statistic": "median of passed test durations",
+  "macos": {
+    "source": "macos-shard-budget/parsed.json",
+    "runIds": [
+      42670262352, 42696150543, 42722538469, 42735224540, 42845505915, 42879406252, 43030748104,
+      43178389062, 43205239635, 43221362413, 43247804836, 43307477739
+    ],
+    "samplePolicy": "All passed observations, including passing tests from incomplete jobs; skips/failures excluded.",
+    "caseCount": 593,
+    "sampleCount": 6730,
+    "unmatchedSamples": 0,
+    "samplesPerCase": {
+      "min": 1,
+      "max": 12
+    }
+  },
+  "ubuntu": {
+    "source": "https://github.com/DeadWaveWave/opencove/actions/runs/43247804836",
+    "sha": "61f86efe69ccb8afcd3b6a48d431b7ac6652043a",
+    "samplePolicy": "Latest successful main run; one sample per observed test.",
+    "caseCount": 571,
+    "sampleCount": 571,
+    "unmatchedSamples": 0,
+    "samplesPerCase": {
+      "min": 1,
+      "max": 1
+    }
+  }
+}
