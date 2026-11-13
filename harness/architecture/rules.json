@@ -35,6 +35,39 @@
     ],
     "restrictedLayerDirs": ["infrastructure", "presentation"]
   },
+  "variantRules": {
+    "literalDecision": { "severity": "warn" },
+    "switchExhaustive": { "severity": "warn" },
+    "doc": "docs/architecture/ARCHITECTURE.md#variants-and-registries",
+    "variants": [
+      {
+        "id": "agentProvider",
+        "source": { "file": "src/shared/contracts/dto/agent.ts", "export": "AGENT_PROVIDER_IDS" },
+        "descriptorFiles": ["src/shared/contracts/agentProviderDescriptors.ts"],
+        "ownerGlobs": {
+          "claude-code": ["src/contexts/agent/infrastructure/providers/claude-code/**"],
+          "codex": ["src/contexts/agent/infrastructure/providers/codex/**"],
+          "opencode": ["src/contexts/agent/infrastructure/providers/opencode/**"],
+          "gemini": ["src/contexts/agent/infrastructure/providers/gemini/**"],
+          "pi": ["src/contexts/agent/infrastructure/providers/pi/**"],
+          "kimi": ["src/contexts/agent/infrastructure/providers/kimi/**"]
+        },
+        "subjectPattern": null,
+        "allowExitGuards": false
+      },
+      {
+        "id": "nodeKind",
+        "source": {
+          "file": "src/shared/contracts/persistedAppState.ts",
+          "export": "PERSISTED_WORKSPACE_NODE_KINDS"
+        },
+        "descriptorFiles": [],
+        "ownerGlobs": {},
+        "subjectPattern": "kind$",
+        "allowExitGuards": true
+      }
+    ]
+  },
   "layers": [
     {
       "name": "domain",

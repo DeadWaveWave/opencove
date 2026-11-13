@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { loadArchitectureConfig, runArchitectureAudit } from '../lib/architecture-rules.mjs'
 import { classifyContext, classifyEdgeContexts } from '../lib/context-rules.mjs'
 import { evaluateRatchet } from '../lib/ratchet-baseline.mjs'
+import { VARIANT_SOURCE_FILES } from './variantFixtureSupport'
 
 const FORBIDDEN = 'architecture.contextForbiddenLayer'
 const PUBLIC = 'architecture.contextPublicEntry'
@@ -16,7 +17,7 @@ async function audit(files: Record<string, string>) {
   const root = await mkdtemp(join(tmpdir(), 'opencove-architecture-contexts-'))
   tempRoots.push(root)
   await Promise.all(
-    Object.entries(files).map(async ([relativePath, source]) => {
+    Object.entries({ ...VARIANT_SOURCE_FILES, ...files }).map(async ([relativePath, source]) => {
       const filePath = join(root, relativePath)
       await mkdir(dirname(filePath), { recursive: true })
       await writeFile(filePath, source, 'utf8')

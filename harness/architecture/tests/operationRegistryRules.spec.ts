@@ -2,6 +2,7 @@ import { mkdir, writeFile, rm } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { expect, it } from 'vitest'
 import { runArchitectureAudit } from '../lib/architecture-rules.mjs'
+import { VARIANT_SOURCE_FILES } from './variantFixtureSupport'
 
 it('blocks runtime registry and zod imports in renderer/preload but permits types', async () => {
   const root = resolve(import.meta.dirname, '../../../.codex-out/tmp/operation-architecture')
@@ -19,7 +20,7 @@ it('blocks runtime registry and zod imports in renderer/preload but permits type
   }
   try {
     await Promise.all(
-      Object.entries(files).map(async ([name, source]) => {
+      Object.entries({ ...VARIANT_SOURCE_FILES, ...files }).map(async ([name, source]) => {
         const path = resolve(root, name)
         await mkdir(resolve(path, '..'), { recursive: true })
         await writeFile(path, source)

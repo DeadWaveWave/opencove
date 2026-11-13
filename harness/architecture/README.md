@@ -61,6 +61,38 @@ type-only import 反向依赖任何 context。规则可用 `fromPatterns` / `all
 - `architecture.contextEntryShape`（`error`）：入口文件含有具名 `export { ... } from` / `export type { ... } from` 之外的语句，或 re-export 了自身 layer 目录之外的文件。
 - `architecture.contextSelfEntryImport`（`error`）：context 内的文件 import 自己的入口。
 
+## Variant 规则
+
+`variantRules` 块（`rules.json`）声明封闭的 variant 集合（当前：agent provider、node kind），并配置下面两条规则的 severity。
+判断依据是 variant 的**身份比较**（`provider === 'codex'`、`case 'task':`）：这类决策应写进 variant 自己的 registry 条目，
+调用方只读字段。新增 provider 或 node kind 的步骤见 `docs/architecture/ARCHITECTURE.md#variants-and-registries`。
+
+每个 variant 的配置项：
+
+- `source`：`{ file, export }`。分析器从该文件的 AST 读取名为 `export` 的 `as const` 字符串数组作为字面量集合，不会与类型漂移。
+  文件或导出缺失、或不是字符串字面量数组时，分析器直接报错退出，不会静默通过。
+- `ownerGlobs`：按字面量列出的 owner 路径。该字面量在这些文件里可以直接比较（provider 起始为 `providers/<id>/**`，node kind 起始为空）。
+  `source` 文件与 `descriptorFiles` 对所有字面量都视为 owner。
+- `subjectPattern`：被比较表达式的**末尾名字**必须匹配的正则（不区分大小写；`null` 表示不过滤）。node kind 使用 `kind$`，
+  所以 `data.kind`、`nodeKind`、`getKind(x)` 计入，`x.title === 'task'` 不计入。已知缺口：把 node kind 变量改名成不以 `kind` 结尾可以绕过；provider 没有名字过滤，不受影响。
+- `allowExitGuards`：是否放行 exit guard（仅 node kind 开启）。
+
+规则（都是 `warn`，进入 ratchet；没有行内 suppress 注释，变更 owner 只能改 `rules.json`）：
+
+- `architecture.variantLiteralDecision`：每个 variant 字面量比较一条发现：
+  - `===` / `!==`，一侧是集合内的字符串字面量，另一侧不是字面量（两侧都是字面量不算）；
+  - `case` 标签使用集合内字面量；
+  - `[...].includes(x)`，数组字面量只由字符串字面量组成且全部属于该集合（有任一字面量不在 owner 范围内则整条计入）。
+  - 不算比较：对象 key、`Record` 条目、类型层面的字面量、测试文件。
+  - 例外：(a) 文件在该字面量的 owner globs 内，或是该 variant 的 source / descriptor 文件；(b) 仅 node kind：exit guard，即构成 `if` 整个条件、
+    或 `||` 链中一个操作数的 `!==`，且该 `if` 没有 `else`、主体只有一条 `return` / `continue` / `break` / `throw`；(c) exhaustive switch 的 `case` 标签。
+- `architecture.variantSwitchExhaustive`：含有至少一个 variant 字面量 `case` 的 `switch` 如果不是 exhaustive，每个 switch 一条发现。
+  **Exhaustive** 指最后一个子句是 `default:`，且它的第一条语句是 `assertNever(<discriminant>)`（也可以是 `return` / `throw` 它），
+  或旧写法 `const _exhaustive: never = <discriminant>`。“同一 discriminant”按参数源码文本与 `switch` 表达式文本相同判定。
+  分析器不证明 exhaustive，只检查 `switch` 以 `assertNever` 收尾，其余由 `tsc` 证明；`assertNever` 在 `src/shared/utils/assertNever.ts`。
+
+发现里带有 `variant` 字段（`agentProvider` / `nodeKind`），`pnpm arch:audit --format jsonl` 可以按它拆分计数；ratchet 基线仍按 (规则, 文件) 计数。
+
 ## 架构契约变更清单
 
 修改 `ARCHITECTURE.md`、`CONTROL_SURFACE.md` 或 `RECOVERY_MODEL.md` 时：
