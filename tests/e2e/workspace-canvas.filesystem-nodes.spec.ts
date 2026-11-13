@@ -163,6 +163,19 @@ for (const theme of ['dark', 'light'] as const) {
           viewMode: 'list',
           expandedDirectoryUris: [toFileUri(fixture.design)],
         })
+      // Test builds skip the beforeunload flush, and the navigation fields above can be saved
+      // while the collapse is still queued. Reload only once the collapse itself is durable.
+      await expect
+        .poll(() =>
+          window.evaluate(async () => {
+            const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+            const state = JSON.parse(raw ?? '{}') as {
+              workspaces?: Array<{ collapsedNodeIds?: string[] }>
+            }
+            return state.workspaces?.flatMap(workspace => workspace.collapsedNodeIds ?? []) ?? []
+          }),
+        )
+        .toContain(id)
       await window.reload()
       await expect(compact).toBeVisible()
       await compact.getByTestId('node-expand').click()
