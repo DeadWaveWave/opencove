@@ -16,7 +16,7 @@ Options:
 List output: --limit <n> keeps up to n items per list; 0 means all. Cut object lists add top-level truncated totals; bare arrays keep their shape and write one stderr notice. Cut tables also write one stderr notice.
 
 Table output (-o table): not supported.
-Projectable fields: self, self.caller, self.scope, self.projectId, self.spaceId, self.nodeId, self.sessionId, self.lineageQuota, self.lineageQuota.depth, self.lineageQuota.maxDepth, self.lineageQuota.liveInTree, self.lineageQuota.maxLiveInTree, self.node, self.node.id, self.node.kind, self.node.title, self.node.state, self.node.spawnedBy, self.node.lineageDepth, self.node.lineageStatus, self.node.sessionStatus, self.node.agentState, self.node.agentState.state, self.node.agentState.quality, self.node.agentState.turnId, self.node.taskNodeId, project, project.id, project.name, project.path, space, space.id, space.name, space.directoryPath, nodes, nodes.id, nodes.kind, nodes.title, nodes.state, nodes.spawnedBy, nodes.lineageDepth, nodes.lineageStatus, nodes.sessionStatus, nodes.agentState, nodes.agentState.state, nodes.agentState.quality, nodes.agentState.turnId, nodes.taskNodeId, next
+Projectable fields: self, self.caller, self.scope, self.projectId, self.spaceId, self.nodeId, self.sessionId, self.lineageQuota, self.lineageQuota.depth, self.lineageQuota.maxDepth, self.lineageQuota.liveInTree, self.lineageQuota.maxLiveInTree, self.lineageQuota.remainingLiveInTree, self.node, self.node.id, self.node.kind, self.node.title, self.node.state, self.node.spawnedBy, self.node.lineageDepth, self.node.lineageStatus, self.node.sessionStatus, self.node.agentState, self.node.agentState.state, self.node.agentState.quality, self.node.agentState.turnId, self.node.taskNodeId, project, project.id, project.name, project.path, space, space.id, space.name, space.directoryPath, nodes, nodes.id, nodes.kind, nodes.title, nodes.state, nodes.spawnedBy, nodes.lineageDepth, nodes.lineageStatus, nodes.sessionStatus, nodes.agentState, nodes.agentState.state, nodes.agentState.quality, nodes.agentState.turnId, nodes.taskNodeId, next
 
 Field descriptions:
   self.node.spawnedBy      ID of the node that created this node; null for a root or unavailable lineage
@@ -75,10 +75,10 @@ exports[`documents whoami offline 1`] = `
 
 Show your caller identity and permission scope
 
-Inside an OpenCove terminal, caller is session-grant and scope is interact. With a desktop token, caller is bearer and scope is admin. projectId, spaceId, nodeId and sessionId are null when the caller has no session identity; spaceId is also null outside any Space. Standalone sessions keep their interact grant and project/Space identity, with nodeId: null. Credentials are never printed. lineageQuota shows {depth, maxDepth, liveInTree, maxLiveInTree} from the Worker admission census; the user root has depth 1 and does not consume a descendant slot. Older Workers omit it.
+Inside an OpenCove terminal, caller is session-grant and scope is interact. With a desktop token, caller is bearer and scope is admin. projectId, spaceId, nodeId and sessionId are null when the caller has no session identity; spaceId is also null outside any Space. Standalone sessions keep their interact grant and project/Space identity, with nodeId: null. Credentials are never printed. lineageQuota shows {depth, maxDepth, liveInTree, maxLiveInTree, remainingLiveInTree} from the Worker admission census; the user root has depth 1 and does not consume a descendant slot. Older Workers omit it.
 
 Table output (-o table): not supported.
-Projectable fields: caller, scope, projectId, spaceId, nodeId, sessionId, lineageQuota, lineageQuota.depth, lineageQuota.maxDepth, lineageQuota.liveInTree, lineageQuota.maxLiveInTree
+Projectable fields: caller, scope, projectId, spaceId, nodeId, sessionId, lineageQuota, lineageQuota.depth, lineageQuota.maxDepth, lineageQuota.liveInTree, lineageQuota.maxLiveInTree, lineageQuota.remainingLiveInTree
 
 Projection example:
   opencove whoami --fields caller,scope

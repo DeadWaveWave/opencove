@@ -161,6 +161,7 @@ export function useTerminalRuntimeSession({
         displayTerminalMetricsRef,
         viewportZoomRef,
         preferredRendererMode,
+        setRendererKindAndApply,
         requestTerminalRendererRecovery,
         scheduleWebglCanvasTransformCleanup,
         scheduleTranscriptSync,

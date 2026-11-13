@@ -39,3 +39,19 @@ to drive stream completion. The stream contains no final replies or terminal byt
 stream.gap 表示连续性无法保证，应显式决定恢复方式，不要静默跳过。范围筛选只保证绑定后的
 事件；可靠收集初始回复请用 node create agent --wait --read。回合结束不等于任务成功，
 请检查 outcome。退出观察不会停止 Agent。
+
+## Automatic cursor files and several nodes
+
+Use `opencove events --cursor-file ./events.cursor | tee events.ndjson`. After
+Ctrl-C, run again with the same cursor file to resume; explicit `--after` overrides
+it. Only fully flushed records advance the file, via temp-file rename. One writer
+per file; parent directory must exist. Malformed files exit 2, filesystem errors 1.
+Keep separate output files after interruption and discard partial tails; a crash
+between stdout and checkpoint may replay a record, so deduplicate by cursor.
+
+`opencove events --until-each-turn --node A --node B --timeout 2m` exits 0 once each
+distinct node ends a turn after ready. Consume ready before starting work; inspect
+outcomes even on exit 0. Final JSON stderr summaries give nodeId/sessionId/turnId/
+outcome for exact reads, with stdout unchanged NDJSON. Timeout is 124; --count and
+--until conflict. Repeated nodes are deduplicated. On resume, repeat flags for pending
+nodes: replay after the cursor counts, but completion progress is not persisted.

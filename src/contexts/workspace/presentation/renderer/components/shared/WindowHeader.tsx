@@ -38,6 +38,7 @@ export function WindowHeader({
   trailingClassName,
   close,
   onPointerDownCapture,
+  commitProbeState,
 }: {
   className: string
   /** What the window is; colours its tile and tints the header. Never draws the frame. */
@@ -53,8 +54,11 @@ export function WindowHeader({
   trailingClassName?: string
   close: WindowHeaderClose
   onPointerDownCapture?: (event: React.PointerEvent<HTMLElement>) => void
+  /** Local presentation state attributed by the test-only commit probe. */
+  commitProbeState?: Record<string, unknown>
 }): React.JSX.Element {
   const commitProbeRef = useWindowCommitProbe(kind, {
+    ...commitProbeState,
     className,
     kind,
     labelColor,

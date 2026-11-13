@@ -67,7 +67,7 @@ test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
       await terminalSurface.locator('.xterm').click()
       await window.keyboard.type(
         buildNodeEvalCommand(
-          `for(let index=0;index<${contextLossGlyphCount};index+=1){process.stdout.write('\\u001b['+(31+index%6)+'mW')}process.stdout.write('\\u001b[0m\\n${contextLossMarker}\\n')`,
+          `const draw=(glyph,marker)=>{for(let index=0;index<${contextLossGlyphCount};index+=1){process.stdout.write('\\u001b['+(31+index%6)+'m'+glyph)}process.stdout.write('\\u001b[0m\\n'+marker+'\\n')};draw('W','${contextLossMarker}');process.stdin.once('data',()=>{draw('${fallbackGeometryGlyph}','${fallbackGeometryMarker}');process.exit(0)})`,
         ),
       )
       await window.keyboard.press('Enter')
@@ -136,6 +136,7 @@ test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
               terminalElement?.querySelectorAll('.xterm-rows > div') ?? [],
             ).map(row => row.textContent?.length ?? null)
             return {
+              instanceId: renderMetrics?.instanceId ?? null,
               datasetRendererKind:
                 terminalElement?.getAttribute('data-cove-terminal-renderer') ?? null,
               rendererConstructorName: renderMetrics?.rendererConstructorName ?? null,
@@ -202,13 +203,18 @@ test.describe('Workspace Canvas - Windows terminal raster geometry', () => {
       expect(afterContextLossDiagnostics.glyphRowAbsoluteLine).toBe(
         beforeContextLossDiagnostics.glyphRowAbsoluteLine,
       )
+      expect(afterContextLossDiagnostics.instanceId).toBe(beforeContextLossDiagnostics.instanceId)
+      expect(afterContextLossDiagnostics.bufferLength).toBe(
+        beforeContextLossDiagnostics.bufferLength,
+      )
+      expect(afterContextLossDiagnostics.viewportY).toBe(beforeContextLossDiagnostics.viewportY)
+      expect(afterContextLossDiagnostics.viewportBufferLines).toEqual(
+        beforeContextLossDiagnostics.viewportBufferLines,
+      )
 
       await terminalSurface.locator('.xterm').click()
-      await window.keyboard.type(
-        buildNodeEvalCommand(
-          `for(let index=0;index<${contextLossGlyphCount};index+=1){process.stdout.write('\\u001b['+(31+index%6)+'m${fallbackGeometryGlyph}')}process.stdout.write('\\u001b[0m\\n${fallbackGeometryMarker}\\n')`,
-        ),
-      )
+      // The producer stayed idle through the swap; only now allow fresh output.
+      await window.keyboard.type('continue')
       await window.keyboard.press('Enter')
       await expect(terminalSurface).toContainText(fallbackGeometryMarker)
 

@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import type { PersistedAppState } from '../../src/contexts/workspace/presentation/renderer/types'
 import { seededWorkspaceId } from './workspace-canvas.helpers'
 import { hoverCanvasPane } from './workspace-canvas.zoom.helpers'
@@ -59,8 +59,10 @@ export async function readFarTileFace(tile: Locator) {
 
 export async function continuousWheelGesture(window: Page, deltaY: number, reactivate = false) {
   const point = await hoverCanvasPane(window)
-  return await window.locator('.workspace-canvas .react-flow__pane').evaluate(
+  const result = await window.locator('.workspace-canvas .react-flow__pane').evaluate(
     async (pane, gesture) => {
+      const timeline: Array<{ phase: string; at: number }> = []
+      const mark = (phase: string) => timeline.push({ phase, at: performance.now() })
       const rect = pane.getBoundingClientRect()
       const clientX = rect.left + gesture.point.x
       const clientY = rect.top + gesture.point.y
@@ -69,25 +71,40 @@ export async function continuousWheelGesture(window: Page, deltaY: number, react
       }
       // Input and the freeze debounce share the renderer clock. A descheduled test runner
       // must neither split one gesture into two nor sample "during" after it has thawed.
-      for (let step = 0; step < 15; step += 1) {
+      const refreshWorkspace = async () => {
+        mark('refresh:start')
+        // Model a slow Worker reply. It must not pause wheel input for longer than the
+        // website's thaw debounce and manufacture a second freeze/thaw pair.
+        const [raw] = await Promise.all([
+          window.opencoveApi.persistence.readWorkspaceStateRaw(),
+          new Promise(resolve => setTimeout(resolve, 400)),
+        ])
+        mark('refresh:read')
+        const state = JSON.parse(raw ?? '{}') as PersistedAppState
+        const workspace = state.workspaces.find(item => item.id === gesture.workspaceId)
+        if (!workspace) {
+          throw new Error('Missing workspace for sync refresh')
+        }
+        workspace.name = gesture.workspaceName
+        const published = await window.opencoveApi.persistence.writeWorkspaceStateRaw({
+          raw: JSON.stringify(state),
+        })
+        if (!published.ok) {
+          throw new Error('Failed to publish workspace sync refresh')
+        }
+        mark('refresh:end')
+      }
+      let refresh = Promise.resolve()
+      let refreshError: string | null = null
+      // Keep zooming through the delayed reply, retaining the Worker-refresh-during-zoom case.
+      const steps = gesture.reactivate ? 30 : 15
+      for (let step = 0; step < steps; step += 1) {
         if (gesture.reactivate && step === 5) {
-          // Force a real background Worker refresh during the gesture. Only workspace metadata
-          // changes: deserialized task arrays must not rebuild task or website chrome.
-          // eslint-disable-next-line no-await-in-loop -- One refresh is ordered within the gesture.
-          const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
-          const state = JSON.parse(raw ?? '{}') as PersistedAppState
-          const workspace = state.workspaces.find(item => item.id === gesture.workspaceId)
-          if (!workspace) {
-            throw new Error('Missing workspace for sync refresh')
-          }
-          workspace.name = gesture.workspaceName
-          // eslint-disable-next-line no-await-in-loop -- Publish the same refresh before continuing.
-          const result = await window.opencoveApi.persistence.writeWorkspaceStateRaw({
-            raw: JSON.stringify(state),
+          // Worker IO is background work, independent of the renderer's input cadence.
+          // Retain its error and await completion below, without an unhandled rejection.
+          refresh = refreshWorkspace().catch(error => {
+            refreshError = String(error)
           })
-          if (!result.ok) {
-            throw new Error('Failed to publish workspace sync refresh')
-          }
         }
         if (gesture.reactivate && step % 4 === 3) {
           const website = document.querySelector('.website-node__viewport')
@@ -98,6 +115,7 @@ export async function continuousWheelGesture(window: Page, deltaY: number, react
           // unchanged; republishing it must not rebuild every window during the gesture.
           website.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0 }))
         }
+        mark(`wheel:${step}`)
         pane.dispatchEvent(
           new WheelEvent('wheel', {
             deltaY: gesture.deltaY,
@@ -111,8 +129,18 @@ export async function continuousWheelGesture(window: Page, deltaY: number, react
         // eslint-disable-next-line no-await-in-loop
         await new Promise(resolve => setTimeout(resolve, 20))
       }
-      return window.__opencoveWorkspaceCanvasTestApi!.getWindowCommitCounts()
+      // Retain the during-gesture sample before waiting for any outstanding Worker reply.
+      const counts = window.__opencoveWorkspaceCanvasTestApi!.getWindowCommitCounts()
+      mark('wheel:end')
+      await refresh
+      return { counts, timeline, refreshError }
     },
     { deltaY, point, reactivate, workspaceId: seededWorkspaceId, workspaceName: SYNC_REFRESH_NAME },
   )
+  await test.info().attach(reactivate ? 'active-wheel-timeline' : 'wheel-timeline', {
+    body: JSON.stringify(result, null, 2),
+    contentType: 'application/json',
+  })
+  expect(result.refreshError).toBeNull()
+  return result.counts
 }

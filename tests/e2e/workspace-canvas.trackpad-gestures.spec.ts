@@ -7,35 +7,11 @@ import {
   readCanvasViewport,
   readLocatorClientRect,
 } from './workspace-canvas.helpers'
-
-type WorkspaceWindow = Awaited<ReturnType<typeof launchApp>>['window']
-
-async function readResolvedCanvasInputMode(window: WorkspaceWindow): Promise<string | null> {
-  return await window.locator('.workspace-canvas').getAttribute('data-canvas-input-mode')
-}
-
-async function dispatchCanvasWheel(
-  window: WorkspaceWindow,
-  eventInit: Partial<WheelEventInit>,
-): Promise<void> {
-  await window.evaluate(event => {
-    const paneElement = document.querySelector('.workspace-canvas .react-flow__pane')
-    if (!(paneElement instanceof HTMLElement)) {
-      return
-    }
-
-    paneElement.dispatchEvent(
-      new WheelEvent('wheel', {
-        deltaX: 0,
-        deltaY: 0,
-        deltaMode: 0,
-        bubbles: true,
-        cancelable: true,
-        ...event,
-      }),
-    )
-  }, eventInit)
-}
+import {
+  dispatchCanvasWheel,
+  readResolvedCanvasInputMode,
+  recordWheelGestures,
+} from './workspace-canvas.trackpad-gestures.helpers'
 
 test.describe('Workspace Canvas - Trackpad Gestures', () => {
   test('auto mode switches to trackpad interaction after gesture-like wheel input', async () => {
@@ -135,10 +111,15 @@ test.describe('Workspace Canvas - Trackpad Gestures', () => {
     }
   })
 
-  test('locks trackpad pan target to canvas across contiguous wheel gestures', async () => {
+  test('locks trackpad pan target to canvas across contiguous wheel gestures', async ({
+    browserName: _browserName,
+  }, testInfo) => {
     const { electronApp, window } = await launchApp()
 
+    let wheelEvents: Awaited<ReturnType<typeof recordWheelGestures>> | undefined
     try {
+      // Install before seeding reloads the renderer and captures its timer APIs.
+      await window.clock.install()
       await clearAndSeedWorkspace(
         window,
         [
@@ -157,6 +138,8 @@ test.describe('Workspace Canvas - Trackpad Gestures', () => {
         },
       )
 
+      await window.clock.pauseAt(await window.evaluate(() => Date.now() + 1000))
+      wheelEvents = await recordWheelGestures(window)
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       const canvas = window.locator('.workspace-canvas')
       const terminal = window.locator('.terminal-node').first()
@@ -172,6 +155,9 @@ test.describe('Workspace Canvas - Trackpad Gestures', () => {
       await window.mouse.move(paneBox.x + 120, paneBox.y + 120)
       await window.mouse.wheel(120, 0)
       await expect(canvas).toHaveAttribute('data-cove-wheel-gesture-capture-active', 'true')
+      // Keep pointer movement and the next wheel inside the 220 ms active window,
+      // even when Playwright round trips take longer on an inactive, loaded runner.
+      await window.clock.runFor(16)
 
       await window.mouse.move(
         terminalSurfaceBox.x + terminalSurfaceBox.width * 0.5,
@@ -186,8 +172,22 @@ test.describe('Workspace Canvas - Trackpad Gestures', () => {
         })
         .toBeGreaterThan(80)
       await expect(canvas).toHaveAttribute('data-cove-wheel-gesture-capture-active', 'true')
+      const events = await wheelEvents.jsonValue()
+      expect(events).toHaveLength(2)
+      expect(events.map(event => event.deltaX)).toEqual([120, 120])
+      expect(events[1].timeStamp - events[0].timeStamp).toBe(16)
+      expect(events[1].captureActive).toBe('true')
     } finally {
-      await electronApp.close()
+      try {
+        if (wheelEvents) {
+          await testInfo.attach('wheel-gesture-events', {
+            body: JSON.stringify(await wheelEvents.jsonValue()),
+            contentType: 'application/json',
+          })
+        }
+      } finally {
+        await electronApp.close()
+      }
     }
   })
 

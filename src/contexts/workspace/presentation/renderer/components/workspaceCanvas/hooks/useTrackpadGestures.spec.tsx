@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createCanvasInputModalityState } from '../../../utils/inputModality'
 import type { TerminalNodeData } from '../../../types'
 import { useWorkspaceCanvasTrackpadGestures } from './useTrackpadGestures'
-import { VIEWPORT_INTERACTION_SETTLE_MS } from '../constants'
+import { TRACKPAD_GESTURE_LOCK_GAP_MS, VIEWPORT_INTERACTION_SETTLE_MS } from '../constants'
 import { selectViewportInteractionActive } from '../../terminalNode/reactFlowState'
 
 type WheelHandler = (event: WheelEvent) => void
@@ -251,48 +251,43 @@ describe('useWorkspaceCanvasTrackpadGestures', () => {
     expect(wheelHandler).toBeTypeOf('function')
     expect(canvasTarget).not.toBeNull()
 
-    wheelHandler?.({
-      deltaX: 100,
-      deltaY: 0,
-      deltaMode: 0,
-      altKey: false,
-      ctrlKey: false,
-      metaKey: false,
-      shiftKey: false,
-      timeStamp: 100,
-      clientX: 0,
-      clientY: 0,
-      target: canvasTarget,
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    } as unknown as WheelEvent)
+    const dispatchWheel = (target: HTMLElement | null, timeStamp: number): void => {
+      wheelHandler?.({
+        deltaX: 100,
+        deltaY: 0,
+        deltaMode: 0,
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+        timeStamp,
+        clientX: 0,
+        clientY: 0,
+        target,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as WheelEvent)
+    }
+    dispatchWheel(canvasTarget, 100)
 
-    await vi.advanceTimersByTimeAsync(220)
+    await vi.advanceTimersByTimeAsync(16)
+    nodeTarget.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }))
+    expect(trackpadGestureLockRef.current).toMatchObject({ owner: 'canvas', phase: 'active' })
+    dispatchWheel(nodeTarget, 116)
+    expect(viewportRef.current.x).toBe(-100)
+
+    await vi.advanceTimersByTimeAsync(TRACKPAD_GESTURE_LOCK_GAP_MS)
 
     expect(trackpadGestureLockRef.current).toMatchObject({
       action: 'pan',
       owner: 'canvas',
       phase: 'settling',
-      lastTimestamp: 100,
+      lastTimestamp: 116,
     })
 
-    wheelHandler?.({
-      deltaX: 100,
-      deltaY: 0,
-      deltaMode: 0,
-      altKey: false,
-      ctrlKey: false,
-      metaKey: false,
-      shiftKey: false,
-      timeStamp: 400,
-      clientX: 0,
-      clientY: 0,
-      target: nodeTarget,
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    } as unknown as WheelEvent)
+    dispatchWheel(nodeTarget, 400)
 
-    expect(reactFlow.setViewport).toHaveBeenCalledTimes(2)
+    expect(reactFlow.setViewport).toHaveBeenCalledTimes(3)
     expect(trackpadGestureLockRef.current).toMatchObject({
       action: 'pan',
       owner: 'canvas',
@@ -300,7 +295,7 @@ describe('useWorkspaceCanvasTrackpadGestures', () => {
       lastTimestamp: 400,
     })
 
-    await vi.advanceTimersByTimeAsync(220)
+    await vi.advanceTimersByTimeAsync(TRACKPAD_GESTURE_LOCK_GAP_MS)
 
     expect(trackpadGestureLockRef.current).toMatchObject({
       action: 'pan',
@@ -313,6 +308,13 @@ describe('useWorkspaceCanvasTrackpadGestures', () => {
 
     expect(trackpadGestureLockRef.current).toBeNull()
     expect(setIsCanvasWheelGestureCaptureActive).toHaveBeenCalledWith(false)
+
+    // This is the E2E failure sequence: an idle gap followed by pointer movement
+    // intentionally routes the next wheel to the node, without another canvas pan.
+    dispatchWheel(nodeTarget, 700)
+    expect(reactFlow.setViewport).toHaveBeenCalledTimes(3)
+    expect(viewportRef.current.x).toBe(-150)
+    expect(trackpadGestureLockRef.current).toMatchObject({ owner: 'node', phase: 'active' })
   })
 
   it('keeps viewport interaction active across sparse contiguous wheel gestures', async () => {

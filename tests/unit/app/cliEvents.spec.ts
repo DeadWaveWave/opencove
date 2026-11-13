@@ -1,80 +1,8 @@
 // @vitest-environment node
 import { expect, it, vi } from 'vitest'
 import { run } from '../../../src/app/cli/core/run'
-import type { CliIo } from '../../../src/app/cli/core/io'
-import {
-  canonicalSelection,
-  encodeEventCursor,
-} from '../../../src/shared/contracts/dto/eventStream'
-import { AgentRunStateRegistry } from '../../../src/contexts/agent/application/AgentRunStateRegistry'
-const selection = canonicalSelection({})
-const token = (seq: number, selected = selection) =>
-  encodeEventCursor({ version: 1, epoch: 'e', seq, selection: selected })
-const ready = { version: 1, type: 'stream.ready', cursor: token(1), selection, mode: 'live' }
-const registry = new AgentRunStateRegistry({
-  epoch: 'e',
-  now: () => 1,
-  createTurnId: () => 't',
-  schedule: () => () => {},
-})
-registry.register({ sessionId: 's', nodeId: 'n', provider: 'codex', incarnation: 'i' })
-const data = (seq: number) => ({
-  version: 1,
-  type: 'agent.state_changed',
-  epoch: 'e',
-  seq,
-  cursor: token(seq),
-  snapshot: registry.get({ sessionId: 's' }),
-  projectId: null,
-  spaceId: null,
-  spawnedBy: null,
-  lineageDepth: 1,
-  lineageStatus: 'root',
-})
-function fixture(records: unknown[], env: CliIo['env'] = {}) {
-  let stdout = '',
-    stderr = ''
-  const cancel = vi.fn()
-  const fetch = vi.fn(async (url: string, _init?: RequestInit) =>
-    url.endsWith('/invoke')
-      ? new Response(
-          JSON.stringify({
-            ok: true,
-            value: { features: { eventStreamV1: true, nodeLineageV1: true } },
-          }),
-        )
-      : new Response(
-          new ReadableStream({
-            start(c) {
-              for (const record of records) {
-                c.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(record)}\n\n`))
-              }
-              c.close()
-            },
-            cancel,
-          }),
-          { headers: { 'content-type': 'text/event-stream' } },
-        ),
-  )
-  const io: CliIo = {
-    env: { OPENCOVE_CONTROL_URL: 'http://fake', OPENCOVE_CONTROL_TOKEN: 'secret', ...env },
-    stdout: {
-      write(s) {
-        stdout += s
-      },
-    },
-    stderr: {
-      write(s) {
-        stderr += s
-      },
-    },
-    fetch: fetch as typeof globalThis.fetch,
-    now: Date.now,
-    readTextFile: async () => '',
-    readStdinText: async () => '',
-  }
-  return { io, fetch, cancel, out: () => stdout, err: () => stderr }
-}
+import { canonicalSelection } from '../../../src/shared/contracts/dto/eventStream'
+import { fixture, ready, data, token } from './cliEvents.helpers'
 it('streams compact projected NDJSON, retains controls and suppresses duplicates', async () => {
   const f = fixture([ready, data(2), data(2), data(3)])
   expect(await run(['events', '--fields', 'snapshot.nodeId', '--count', '2'], f.io)).toBe(0)

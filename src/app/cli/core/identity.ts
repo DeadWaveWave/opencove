@@ -1,5 +1,5 @@
 import type { LineageQuota } from '../../../shared/contracts/dto/nodeLineage'
-import type { OperationId } from './command'
+import type { TextOutputContext, OperationId } from './command'
 import { usage } from './errors'
 
 export type Invoke = (id: OperationId, payload: unknown) => Promise<unknown>
@@ -26,6 +26,9 @@ export function callerIdentity(value: unknown): CallerIdentity {
             maxDepth: quota.maxDepth,
             liveInTree: quota.liveInTree,
             maxLiveInTree: quota.maxLiveInTree,
+            ...(quota.remainingLiveInTree !== undefined
+              ? { remainingLiveInTree: quota.remainingLiveInTree }
+              : {}),
           },
         }
       : {}),
@@ -46,7 +49,9 @@ export const identityFields = [
   'nodeId',
   'sessionId',
   'lineageQuota',
-  ...['depth', 'maxDepth', 'liveInTree', 'maxLiveInTree'].map(field => `lineageQuota.${field}`),
+  ...['depth', 'maxDepth', 'liveInTree', 'maxLiveInTree', 'remainingLiveInTree'].map(
+    field => `lineageQuota.${field}`,
+  ),
 ]
 
 export function selfUnavailable(kind: string): never {
@@ -93,4 +98,20 @@ export function sessionIdentity(env: Record<string, string | undefined>, invoke:
       return id
     },
   }
+}
+
+/** Only default interactive identity output may append prose to the JSON value. */
+export function identityText(
+  value: unknown,
+  { io, options, render }: TextOutputContext,
+): string | undefined {
+  if (!io.stdout.isTTY || options.pretty || options.output || options.fields !== undefined) {
+    return undefined
+  }
+  const result = value as { self?: CallerIdentity; lineageQuota?: LineageQuota }
+  const quota = (result.self ?? result).lineageQuota
+  return quota
+    ? render() +
+        `Agents: ${quota.liveInTree} of ${quota.maxLiveInTree} running in your tree; depth ${quota.depth} of ${quota.maxDepth}\n`
+    : undefined
 }

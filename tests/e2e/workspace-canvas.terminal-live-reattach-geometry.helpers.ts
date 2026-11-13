@@ -40,19 +40,24 @@ export function isLiveReattachFrameCommitted(
   before: LiveTerminalFrame,
   after: LiveTerminalFrame,
 ): boolean {
+  return Object.values(liveReattachFrameChecks(before, after)).every(Boolean)
+}
+
+export function liveReattachFrameChecks(before: LiveTerminalFrame, after: LiveTerminalFrame) {
   const { size, proposed, canonical } = after
-  return Boolean(
-    before.sessionId &&
-    after.sessionId === before.sessionId &&
-    after.hydrated &&
-    size &&
-    proposed &&
-    canonical &&
-    (canonical.revision ?? 0) > (before.canonical?.revision ?? 0) &&
-    (proposed.cols !== before.proposed?.cols || proposed.rows !== before.proposed?.rows) &&
-    size.cols === proposed.cols &&
-    size.rows === proposed.rows &&
-    size.cols === canonical.cols &&
-    size.rows === canonical.rows,
-  )
+  return {
+    hadSession: Boolean(before.sessionId),
+    sameSession: after.sessionId === before.sessionId,
+    hydrated: after.hydrated,
+    hasSize: Boolean(size),
+    hasProposal: Boolean(proposed),
+    hasCanonical: Boolean(canonical),
+    newerRevision: (canonical?.revision ?? 0) > (before.canonical?.revision ?? 0),
+    changedProposal:
+      proposed?.cols !== before.proposed?.cols || proposed?.rows !== before.proposed?.rows,
+    proposedColsMatch: size?.cols === proposed?.cols,
+    proposedRowsMatch: size?.rows === proposed?.rows,
+    canonicalColsMatch: size?.cols === canonical?.cols,
+    canonicalRowsMatch: size?.rows === canonical?.rows,
+  }
 }

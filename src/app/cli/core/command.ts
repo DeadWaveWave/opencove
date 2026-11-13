@@ -68,6 +68,10 @@ export interface CommandContext extends CommandArgs {
   whoami(): Promise<CallerIdentity>
   self(kind: NonNullable<OptionSpec['selector']>): Promise<string>
 }
+export type TextOutputContext = Pick<CommandContext, 'io' | 'options'> & {
+  /** Standard renderer with this command's effective options and render spec. */
+  render(): string
+}
 export interface Command {
   /** Explicit usage for cross-option constraints enforced by the command. */
   usage?: string
@@ -97,7 +101,7 @@ export interface Command {
   validateBeforeConnect?(args: CommandArgs, env: CliIo['env']): void
   buildInput?(args: CommandArgs): unknown
   exitCode?(result: unknown): number
-  textOutput?(result: unknown): string | undefined
+  textOutput?(result: unknown, context: TextOutputContext): string | undefined
   execute?(ctx: CommandContext): Promise<CommandResult>
   errorTargets?: ErrorTarget[]
   rawQueryFields?: boolean

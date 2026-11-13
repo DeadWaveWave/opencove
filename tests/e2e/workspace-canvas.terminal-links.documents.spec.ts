@@ -1,3 +1,4 @@
+import { attachFailureFrame, isE2EDiagnosticsEnabled } from './diagnostics'
 import { expect, test } from '@playwright/test'
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
@@ -24,7 +25,7 @@ test('opens a terminal file link at its line and column and restores its collaps
   const lines = Array.from({ length: 30 }, (_, index) => `line-${index + 1}-content`)
   await mkdir(directory, { recursive: true })
   await writeFile(filePath, lines.join('\n'))
-  const { electronApp, window } = await launchApp({ windowMode: 'offscreen' })
+  const { electronApp, window } = await launchApp()
   const nodeId = 'terminal-document-link'
   try {
     await clearAndSeedWorkspace(
@@ -86,10 +87,15 @@ test('opens a terminal file link at its line and column and restores its collaps
     await expect
       .poll(async () => (await readFile(filePath, 'utf8')).split('\n')[11])
       .toBe('linRESTORED_LINK_INSERT_e-12-content')
-    await testInfo.attach(`terminal-file-link-document-${browserName}`, {
-      body: await window.screenshot(),
-      contentType: 'image/png',
-    })
+    if (isE2EDiagnosticsEnabled()) {
+      await testInfo.attach(`terminal-file-link-document-${browserName}`, {
+        body: await window.screenshot(),
+        contentType: 'image/png',
+      })
+    }
+  } catch (error) {
+    await attachFailureFrame(window, test.info())
+    throw error
   } finally {
     await electronApp.close()
     await removePathWithRetry(directory)
@@ -108,7 +114,7 @@ test('opens an existing local file URI directory with the system file manager wi
   )
   await mkdir(directory, { recursive: true })
   const uri = pathToFileURL(directory).href
-  const { electronApp, window } = await launchApp({ windowMode: 'offscreen' })
+  const { electronApp, window } = await launchApp()
   const nodeId = 'terminal-directory-link'
   let systemOpen: Awaited<ReturnType<typeof captureSystemOpenPaths>> | undefined
   try {
@@ -144,14 +150,19 @@ test('opens an existing local file URI directory with the system file manager wi
     })
     await expect(openDirectory).toBeEnabled()
     await expect(actions.locator('.terminal-link-card__target')).toHaveText(directory)
-    await testInfo.attach(`terminal-directory-link-${browserName}`, {
-      body: await window.screenshot(),
-      contentType: 'image/png',
-    })
+    if (isE2EDiagnosticsEnabled()) {
+      await testInfo.attach(`terminal-directory-link-${browserName}`, {
+        body: await window.screenshot(),
+        contentType: 'image/png',
+      })
+    }
     await openDirectory.click()
     await expect.poll(openedPaths).toEqual([directory])
     await expect(actions).toBeHidden()
     await expect(window.locator('.document-node')).toHaveCount(0)
+  } catch (error) {
+    await attachFailureFrame(window, test.info())
+    throw error
   } finally {
     systemOpen?.dispose()
     await electronApp.close()

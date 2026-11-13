@@ -2,7 +2,7 @@ import {
   useDocumentNodeNavigation,
   type DocumentNavigationProps,
 } from './useDocumentNodeNavigation'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { decodeUriPathname } from './DocumentNode.helpers'
@@ -379,7 +379,10 @@ export function DocumentNodeMonacoEditor({
     }
   }, [languageId, uri])
 
-  useEffect(() => {
+  // Commit content before the browser can deliver more input. A passive effect can
+  // replay an older echo of onContentChange over newer edits and restore a caret
+  // position that no longer belongs to that text.
+  useLayoutEffect(() => {
     const editor = editorRef.current
     const model = modelRef.current
     if (!editor || !model) {
