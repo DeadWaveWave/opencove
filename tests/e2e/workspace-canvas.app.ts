@@ -1,9 +1,17 @@
-import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
+import {
+  _electron as electron,
+  test,
+  type ElectronApplication,
+  type Page,
+  type TestInfo,
+} from '@playwright/test'
 import { once } from 'node:events'
-import { mkdir, rm } from 'node:fs/promises'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
 import path from 'path'
+import { captureElectronProcessDiagnostics } from './electron-process-diagnostics'
 import { createTestUserDataDir } from './workspace-canvas.testUtils'
 
+type ProcessDiagnostics = ReturnType<typeof captureElectronProcessDiagnostics>
 const electronAppPath = path.resolve(__dirname, '../../')
 const testAgentStubScriptPath = path.resolve(__dirname, '../../scripts/test-agent-session-stub.mjs')
 const testWorkspacePath = path.resolve(__dirname, '../../')
@@ -120,7 +128,13 @@ function resolveElectronLaunchArgs(deviceScaleFactor?: number): string[] {
       : []),
   ]
 
-  return [...chromiumArgs, electronAppPath]
+  return [
+    ...chromiumArgs,
+    electronAppPath,
+    // Fault injection must not restore macOS window state shared by other Electron launches.
+    // NSArgumentDomain is per process; this does not change the user's saved preferences.
+    ...(process.platform === 'darwin' ? ['-ApplePersistenceIgnoreState', 'YES'] : []),
+  ]
 }
 
 async function delay(ms: number): Promise<void> {
@@ -202,6 +216,8 @@ async function closeElectronAppAndCleanup(
   originalClose: () => Promise<void>,
   userDataDir: string,
   cleanupUserDataDir: boolean,
+  diagnostics: ProcessDiagnostics,
+  testInfo: TestInfo,
 ): Promise<void> {
   const appProcess = electronApp.process()
   const appPid = typeof appProcess.pid === 'number' && appProcess.pid > 0 ? appProcess.pid : null
@@ -243,8 +259,21 @@ async function closeElectronAppAndCleanup(
     await Promise.race([closeAttemptPromise, delay(500)]).catch(() => undefined)
     await Promise.race([closeEventPromise, delay(500)]).catch(() => undefined)
 
-    if (cleanupUserDataDir) {
-      await cleanupUserDataDirWithRetry(userDataDir)
+    try {
+      await diagnostics.finish()
+      // Save before deleting userData, even when a failing test is still inside its finally block.
+      // A module-level afterEach only belongs to the first spec importing this cached helper.
+      const outputPath = testInfo.outputPath(`electron-process-diagnostics-${appPid}.log`)
+      await mkdir(path.dirname(outputPath), { recursive: true })
+      await writeFile(outputPath, diagnostics.text())
+      await testInfo.attach('electron-process-diagnostics', {
+        path: outputPath,
+        contentType: 'text/plain',
+      })
+    } finally {
+      if (cleanupUserDataDir) {
+        await cleanupUserDataDirWithRetry(userDataDir)
+      }
     }
   }
 }
@@ -300,15 +329,12 @@ async function launchAppInMode(
       },
     })
 
-    if (shouldPipeElectronLogs()) {
-      const appProcess = electronApp.process()
-      appProcess?.stdout?.on('data', chunk => {
-        process.stdout.write(chunk)
-      })
-      appProcess?.stderr?.on('data', chunk => {
-        process.stderr.write(chunk)
-      })
-    }
+    const diagnostics = captureElectronProcessDiagnostics(
+      electronApp.process(),
+      userDataDir,
+      shouldPipeElectronLogs(),
+    )
+    const testInfo = test.info()
 
     const originalClose = electronApp.close.bind(electronApp)
     let closePromise: Promise<void> | null = null
@@ -318,6 +344,8 @@ async function launchAppInMode(
         originalClose,
         userDataDir,
         cleanupUserDataDir,
+        diagnostics,
+        testInfo,
       )
       return await closePromise
     }
