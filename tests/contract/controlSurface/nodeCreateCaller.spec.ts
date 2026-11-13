@@ -142,3 +142,75 @@ it.each(['none', 'bearer', 'missing', 'other-project', 'root', 'no-reader', 'no-
     }
   },
 )
+
+it.each(['bearer', 'grant', 'missing-reference'] as const)(
+  'near reference preserves authenticated creator and authority (%s)',
+  async mode => {
+    const root = await mkdtemp(join(tmpdir(), 'opencove-node-near-caller-'))
+    try {
+      const store = createInMemoryPersistenceStore()
+      const initial = createMinimalState(root, 'project', 'space')
+      initial.workspaces[0].spaces = []
+      await store.writeAppState(initial)
+      const topology = createWorkerTopologyStore({ userDataPath: root })
+      await topology.createMount({ projectId: 'project', endpointId: 'local', rootPath: root })
+      const surface = createControlSurface()
+      registerNodeControlHandlers(surface, { topology, getPersistenceStore: async () => store })
+      const seed = async (x: number) => {
+        const result = await surface.invoke(
+          { now: () => new Date() },
+          {
+            kind: 'command',
+            id: 'node.create',
+            payload: { kind: 'note', projectId: 'project', frame: { x, y: 3000 } },
+          },
+        )
+        if (!result.ok) {
+          throw Error(JSON.stringify(result.error))
+        }
+        return (result.value as CreateNodeResult).node
+      }
+      const caller = await seed(4000),
+        reference = await seed(8000)
+      const grant = new SessionGrantRegistry(() => true).issue({
+        projectId: 'project',
+        spaceId: null,
+        nodeId: caller.id,
+        sessionId: 'session',
+      }).grant
+      const before = await store.readAppStateRevision()
+      const result = await surface.invoke(
+        {
+          now: () => new Date(),
+          requestAuth: mode === 'bearer' ? { kind: 'bearer' } : { kind: 'session-grant', grant },
+        },
+        {
+          kind: 'command',
+          id: 'node.create',
+          payload: {
+            kind: 'note',
+            near: {
+              nodeId: mode === 'missing-reference' ? 'remote-node-not-here' : reference.id,
+              target: 'reference-container',
+            },
+          },
+        },
+      )
+      if (mode === 'missing-reference') {
+        expect(result).toMatchObject({ ok: false, error: { code: 'node.not_found' } })
+        expect(await store.readAppStateRevision()).toBe(before)
+        return
+      }
+      if (!result.ok) {
+        throw Error(JSON.stringify(result.error))
+      }
+      expect((result.value as CreateNodeResult).node).toMatchObject({
+        spawnedBy: mode === 'grant' ? caller.id : null,
+        lineageDepth: mode === 'grant' ? 2 : 1,
+        frame: { x: reference.frame.x + reference.frame.width + SPACE_NODE_PADDING, y: 3000 },
+      })
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  },
+)

@@ -11,12 +11,14 @@ import {
   expandRectToContain,
   growSpaceAncestors,
 } from '../../../space/application/spaceGeometryGrowth'
+import { nodeNearSpaceRects } from './nodeNearSpaceRects'
 import { resolveWorkspaceNodesPlacement } from '../../domain/workspaceNodePlacement'
 
 export function workspaceWithNode(
   workspace: NodeControlWorkspace,
   node: NodeControlNode,
   spaceId: string | null,
+  near = false,
 ): NodeControlWorkspace {
   const nodeRect = {
     x: node.position.x,
@@ -25,7 +27,18 @@ export function workspaceWithNode(
     height: node.height,
   }
 
-  const nextSpaces = workspace.spaces.map(space => {
+  const effectiveRects = near ? nodeNearSpaceRects(workspace) : null
+  const branch = new Set<string>()
+  let current = near ? spaceId : null
+  while (current && !branch.has(current)) {
+    branch.add(current)
+    current = workspace.spaces.find(space => space.id === current)?.parentSpaceId ?? null
+  }
+  const nextSpaces = workspace.spaces.map(original => {
+    const space =
+      near && branch.has(original.id) && !original.rect
+        ? { ...original, rect: effectiveRects!.get(original.id) ?? null }
+        : original
     const filtered = space.nodeIds.filter(nodeId => nodeId !== node.id)
     if (space.id !== spaceId) {
       return { ...space, nodeIds: filtered }
@@ -71,13 +84,17 @@ function resolveSpaceRect(
 }
 
 /** The boundary supplies only an authenticated caller ID; geometry stays workspace-owned. */
-function rootCreationAnchor(workspace: NodeControlWorkspace, callerNodeId?: string | null) {
+function rootCreationAnchor(
+  workspace: NodeControlWorkspace,
+  callerNodeId?: string | null,
+  effectiveRects?: ReturnType<typeof nodeNearSpaceRects> | null,
+) {
   const caller = callerNodeId ? workspace.nodes.find(node => node.id === callerNodeId) : undefined
   if (!caller) {
     return { x: 0, y: 0 }
   }
   const space = workspace.spaces.find(candidate => candidate.nodeIds.includes(caller.id))
-  const rect = space ? resolveSpaceRect(workspace, space) : null
+  const rect = space ? (effectiveRects?.get(space.id) ?? resolveSpaceRect(workspace, space)) : null
   return {
     x: (rect ? rect.x + rect.width : caller.position.x + caller.width) + SPACE_NODE_PADDING,
     y: caller.position.y,
@@ -91,6 +108,7 @@ export function resolvePlacement(options: {
   bucket: WorkspaceCanonicalSizeBucket
   frame?: CreateNodeInput['frame']
   callerNodeId?: string | null
+  reference?: NodeControlNode
 }): { placement: { x: number; y: number }; size: { width: number; height: number } } {
   const defaultSize = resolveCanonicalNodeSize({ kind: options.kind, bucket: options.bucket })
   const explicitX =
@@ -106,10 +124,17 @@ export function resolvePlacement(options: {
     return { placement: { x: explicitX, y: explicitY }, size: defaultSize }
   }
 
-  const targetSpaceRect = options.space ? resolveSpaceRect(options.workspace, options.space) : null
+  const effectiveRects = options.reference ? nodeNearSpaceRects(options.workspace) : null
+  const targetSpaceRect = options.space
+    ? (effectiveRects?.get(options.space.id) ?? resolveSpaceRect(options.workspace, options.space))
+    : null
   const automaticRoot = !options.space && explicitX === null && explicitY === null
   const rootAnchor = automaticRoot
-    ? rootCreationAnchor(options.workspace, options.callerNodeId)
+    ? rootCreationAnchor(
+        options.workspace,
+        options.reference?.id ?? options.callerNodeId,
+        effectiveRects,
+      )
     : { x: 0, y: 0 }
   const size = automaticRoot
     ? clampFrameSize({
@@ -118,11 +143,17 @@ export function resolvePlacement(options: {
         height: options.frame?.height ?? defaultSize.height,
       })
     : defaultSize
-  const anchor = targetSpaceRect
-    ? { x: targetSpaceRect.x + SPACE_NODE_PADDING, y: targetSpaceRect.y + SPACE_NODE_PADDING }
-    : rootAnchor
+  const anchor =
+    options.reference && options.space
+      ? {
+          x: options.reference.position.x + options.reference.width + SPACE_NODE_PADDING,
+          y: options.reference.position.y,
+        }
+      : targetSpaceRect
+        ? { x: targetSpaceRect.x + SPACE_NODE_PADDING, y: targetSpaceRect.y + SPACE_NODE_PADDING }
+        : rootAnchor
   const spaceRects = options.workspace.spaces
-    .map(space => space.rect)
+    .map(space => effectiveRects?.get(space.id) ?? space.rect)
     .filter((rect): rect is { x: number; y: number; width: number; height: number } =>
       Boolean(rect),
     )

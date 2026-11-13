@@ -172,6 +172,7 @@ export async function createNodeForNodeControl(options: {
     bucket: settings.standardWindowSizeBucket,
     frame: options.input.frame,
     callerNodeId: options.callerNodeId,
+    reference: resolved.reference,
   })
   const frame = resolveCreateFrame({
     kind: options.input.kind,

@@ -44,6 +44,7 @@ export interface ControlSurfaceCapabilitiesResult {
     managedClaudeResumeBindingWritesEnabled?: boolean
     eventStreamV1?: boolean
     nodeLineageV1?: boolean
+    nodeNearPlacementV1?: boolean
     boundedAgentSpawningV1?: boolean
     operationRegistry?: boolean
     webShell: boolean

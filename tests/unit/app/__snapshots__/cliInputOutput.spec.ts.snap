@@ -232,7 +232,7 @@ Global options: see "opencove --help".
 `;
 
 exports[`command help snapshots: node create agent 1`] = `
-"Usage: opencove node create agent [--root-canvas | --space <id> | <other-target-space-options>] [options]
+"Usage: opencove node create agent [--near <selector> | --root-canvas | --space <id> | <other-target-space-options>] [options]
 
 Create an agent node
 
@@ -249,9 +249,11 @@ Use --prompt or --prompt-file with --wait to wait for the initial Claude Code or
 
 --timeout covers first-turn identification and waiting (default 20s; minimum 250ms); creation keeps its own 20s budget. If no first turn is observed, lifecycle telemetry may be unavailable even if the agent is running or has finished. Inspect the existing session; do not recreate the node or resend the prompt. Errors keep known nodeId, sessionId and turnId. Never repeat creation after an error: resume agent wait/read with those IDs. With --wait, -q prints only the node ID after completion. Stderr shows "Created agent node <nodeId> (session <sessionId>)." before identification, then "Waiting for turn <turnId> of node <nodeId>..." with an interruption-only continuation command. The final JSON and exit status report the result.
 
+For agents creating helper nodes, recommend --near @self to place them near the caller in its current Space (or root). --near is opt-in; combine with --root-canvas to place outside Spaces. It cannot be combined with --frame.
+
 Without explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node belongs to another project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.
 
-Default target inside OpenCove: your current Space, or the root canvas when you are outside any Space. An explicit --project selects project scope for lists; creation also needs --root-canvas or a Space target.
+Default target inside OpenCove: your current Space, or the root canvas when you are outside any Space. An explicit --project alone does not select a container; creation also needs --near, --root-canvas or a Space target.
 
 Target container (choose one):
   --root-canvas                                 Create on the project's root canvas, outside every Space
@@ -273,6 +275,7 @@ Options:
   --full-access <true|false>  Set Full Access for this agent and its restarts; omit to follow Settings
   --title <text>              Set a fixed window name; omit on creation to keep automatic titles
   --frame <json>              Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
+  --near <selector>           Place near a reference node; recommend --near @self for helper nodes; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
   --focus                     Focus after creation
   -q, --quiet                 Print only the created object identifier followed by a newline
 

@@ -294,7 +294,7 @@ export const nodeCommands = [
               ? INITIAL_PROMPT_RULES_TEXT +
                 '\n\nUse --prompt or --prompt-file with --wait to wait for the initial Claude Code or Codex turn. Add --read for its exact reply; unavailable replies return reply: null with replyUnavailableReason. Check outcome: every ended outcome exits 0. Waiting for the user exits 10, an exited target 11, timeout 124 and interruption 130. Unsupported providers refuse after creation; the node remains.\n\n--timeout covers first-turn identification and waiting (default 20s; minimum 250ms); creation keeps its own 20s budget. If no first turn is observed, lifecycle telemetry may be unavailable even if the agent is running or has finished. Inspect the existing session; do not recreate the node or resend the prompt. Errors keep known nodeId, sessionId and turnId. Never repeat creation after an error: resume agent wait/read with those IDs. With --wait, -q prints only the node ID after completion. Stderr shows "Created agent node <nodeId> (session <sessionId>)." before identification, then "Waiting for turn <turnId> of node <nodeId>..." with an interruption-only continuation command. The final JSON and exit status report the result.\n\n'
               : '') +
-            'Without explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node belongs to another project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.'
+            'For agents creating helper nodes, recommend --near @self to place them near the caller in its current Space (or root). --near is opt-in; combine with --root-canvas to place outside Spaces. It cannot be combined with --frame.\n\nWithout explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node belongs to another project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.'
           : kind === 'agent' || kind === 'terminal'
             ? 'Rename this window and keep its name when the agent session changes. The name is saved as provided, with surrounding whitespace removed. Use --frame to also move or resize it.'
             : undefined,
@@ -329,7 +329,17 @@ export const nodeCommands = [
             valueName: 'json',
           },
           ...(create
-            ? { focus: { type: 'boolean' as const, description: 'Focus after creation' } }
+            ? {
+                near: {
+                  type: 'string' as const,
+                  selector: 'node' as const,
+                  valueName: 'selector',
+                  description:
+                    'Place near a reference node; recommend --near @self for helper nodes',
+                  conflicts: ['frame'],
+                },
+                focus: { type: 'boolean' as const, description: 'Focus after creation' },
+              }
             : {}),
         },
         examples:
@@ -367,6 +377,15 @@ export const nodeCommands = [
                 ? { space: targetSpace }
                 : { projectId: o.project }
               : { nodeId: o.node }),
+            ...(create && o.near !== undefined
+              ? {
+                  near: {
+                    nodeId: o.near,
+                    target: o['root-canvas'] ? 'root-canvas' : 'reference-container',
+                  },
+                  ...(o.project !== undefined ? { projectId: o.project } : {}),
+                }
+              : {}),
             title: o.title,
             frame: o.frame,
             ...(create || (kind !== 'agent' && kind !== 'terminal')

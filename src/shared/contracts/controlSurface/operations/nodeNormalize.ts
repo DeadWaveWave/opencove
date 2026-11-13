@@ -60,7 +60,26 @@ export function normalizeCreatePayload(payload: unknown): CreateNodeInput {
   ) {
     assertInitialPromptText(payload.data.prompt)
   }
+  let near: CreateNodeInput['near']
+  if (payload.near !== undefined) {
+    const value = payload.near
+    if (
+      !isRecord(value) ||
+      typeof value.nodeId !== 'string' ||
+      !value.nodeId.trim() ||
+      (value.target !== 'reference-container' && value.target !== 'root-canvas') ||
+      Object.keys(value).some(key => key !== 'nodeId' && key !== 'target') ||
+      (payload.frame !== undefined && payload.frame !== null) ||
+      (value.target === 'root-canvas' && payload.space !== undefined && payload.space !== null)
+    ) {
+      throw createAppError('common.invalid_input', {
+        debugMessage: 'Invalid near placement or conflicting frame/Space.',
+      })
+    }
+    near = { nodeId: value.nodeId.trim(), target: value.target }
+  }
   return {
+    ...(near === undefined ? {} : { near }),
     kind: managedKind(payload.kind),
     space:
       payload.space === null || payload.space === undefined

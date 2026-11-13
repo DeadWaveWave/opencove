@@ -29,7 +29,12 @@ export function identityFixture(inside = true) {
     err = ''
   const values: Record<string, unknown> = {
     'system.capabilities': {
-      features: { nodeLineageV1: true, boundedAgentSpawningV1: true, eventStreamV1: true },
+      features: {
+        nodeLineageV1: true,
+        boundedAgentSpawningV1: true,
+        eventStreamV1: true,
+        nodeNearPlacementV1: true,
+      },
     },
     'system.whoami': inside ? who : { kind: 'bearer', scopeTier: 'admin' },
     'project.list': { projects: [project] },

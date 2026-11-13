@@ -66,6 +66,12 @@ export const nodeSpaceLocator = z
   ])
   .describe('Target space; otherwise select the active space of projectId')
 const create = {
+  near: z
+    .strictObject({
+      nodeId: z.string().trim().min(1),
+      target: z.enum(['reference-container', 'root-canvas']),
+    })
+    .optional(),
   space: nodeSpaceLocator.nullish(),
   spaceId: optionalText('Target space ID; use either spaceId or space'),
   projectId: optionalText('Owning project ID'),

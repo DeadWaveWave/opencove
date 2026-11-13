@@ -75,13 +75,15 @@ Global options: see "opencove --help".
 `;
 
 exports[`TypeScript CLI core > help snapshot "node" 2`] = `
-"Usage: opencove node create note [--root-canvas | --space <id> | <other-target-space-options>] [options]
+"Usage: opencove node create note [--near <selector> | --root-canvas | --space <id> | <other-target-space-options>] [options]
 
 Create a note node
 
+For agents creating helper nodes, recommend --near @self to place them near the caller in its current Space (or root). --near is opt-in; combine with --root-canvas to place outside Spaces. It cannot be combined with --frame.
+
 Without explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node belongs to another project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.
 
-Default target inside OpenCove: your current Space, or the root canvas when you are outside any Space. An explicit --project selects project scope for lists; creation also needs --root-canvas or a Space target.
+Default target inside OpenCove: your current Space, or the root canvas when you are outside any Space. An explicit --project alone does not select a container; creation also needs --near, --root-canvas or a Space target.
 
 Target container (choose one):
   --root-canvas                                 Create on the project's root canvas, outside every Space
@@ -96,6 +98,7 @@ Options:
   --text-file <path|->  Read text from a UTF-8 file, or use - for stdin
   --title <text>        Set the node title
   --frame <json>        Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
+  --near <selector>     Place near a reference node; recommend --near @self for helper nodes; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
   --focus               Focus after creation
   -q, --quiet           Print only the created object identifier followed by a newline
 
