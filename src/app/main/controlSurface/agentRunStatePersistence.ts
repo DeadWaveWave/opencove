@@ -36,6 +36,18 @@ export function withAgentRunBindings(
     }
     const wrapper: PersistenceStore = {
       ...store,
+      activateManagedClaudeRuntime: store.activateManagedClaudeRuntime
+        ? async input => {
+            const result = await store.activateManagedClaudeRuntime!(input)
+            if (
+              (result.status === 'committed' || result.status === 'alreadyApplied') &&
+              result.effectiveState !== undefined
+            ) {
+              project(result.effectiveState)
+            }
+            return result
+          }
+        : undefined,
       commitCreatedNodeState: store.commitCreatedNodeState
         ? async (state, options) => {
             const result = await store.commitCreatedNodeState!(state, options)
