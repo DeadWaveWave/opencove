@@ -25,6 +25,9 @@ export class ClaudeConversationInput {
       this.after = undefined
     }
   }
+  releaseConversation(id: string): void {
+    this.prompts.delete(`conversation:${id}`)
+  }
   clear(): void {
     this.after = undefined
     this.prompts.clear()

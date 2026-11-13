@@ -49,7 +49,7 @@ export interface ClaudeTranscriptObservation {
   /** Private synchronous capture before watcher IO; never a public DTO field. */
   captureConversation?: (generation: number | undefined, incarnation?: string) => void
   /** Annotation only: ordinary file projection remains on its original path. */
-  activity?: { state: 'working' | 'waiting'; observedAt: number }
+  activity?: { state: 'working' | 'waiting' | 'idle'; observedAt: number }
   conversationGeneration?: number
   lifecycle?: 'start' | 'end'
   /** Private IO capability: the registry owns demand; the observer owns scheduling. */

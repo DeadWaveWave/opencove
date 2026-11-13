@@ -219,7 +219,8 @@ it('converges every arrival order while clear End is already pending (24)', () =
   expect(canonical.archive).toMatchObject([
     { turnId: 't1', outcome: 'completed', message: 'reply-B', providerSessionId: 'B' },
   ])
-  let failures = 0
+  let failures = 0,
+    first: unknown
   for (const order of permutations(events)) {
     try {
       expect(
@@ -228,11 +229,12 @@ it('converges every arrival order while clear End is already pending (24)', () =
           B('SessionStart', 10),
         ]),
       ).toEqual(canonical)
-    } catch {
+    } catch (error) {
+      first ??= { order, error: String(error) }
       failures++
     }
   }
-  expect(failures).toBe(0)
+  expect(failures, JSON.stringify(first, null, 2)).toBe(0)
 })
 for (const scenario of scenarios) {
   it(`converges every arrival order: ${scenario.name} (${permutations(scenario.events).length})`, () => {
@@ -255,7 +257,8 @@ for (const scenario of scenarios) {
         })
       }
     })
-    let failures = 0
+    let failures = 0,
+      first: unknown
     for (const order of permutations(scenario.events)) {
       try {
         const actual = replay(order, scenario.prefix)
@@ -266,10 +269,14 @@ for (const scenario of scenarios) {
           scenario.archiveProviders,
         )
         expect(actual).toEqual(canonical)
-      } catch {
+      } catch (error) {
+        first ??= { order, error: String(error) }
         failures++
       }
     }
-    expect(failures, `${scenario.name}: divergent permutations`).toBe(0)
+    expect(
+      failures,
+      `${scenario.name}: divergent permutations ${JSON.stringify(first, null, 2)}`,
+    ).toBe(0)
   })
 }

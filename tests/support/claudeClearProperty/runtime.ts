@@ -6,9 +6,9 @@ import { parseClaudeTranscript } from '../../../src/contexts/agent/infrastructur
 import { PromptDeliveryService } from '../../../src/contexts/agent/application/PromptDeliveryService'
 import { InMemoryAgentTurnArchive } from '../agentTurnArchive/InMemoryAgentTurnArchive'
 import type { ClaudeConversationEvent } from '../../../src/shared/runtime/agentHook/claudeConversation'
-import type { AgentRunEntry } from '../../../src/contexts/agent/application/AgentRunStateEntry'
 import type { ArchivedAgentTurn } from '../../../src/contexts/agent/application/AgentTurnArchive'
 import type { ClearEvent } from './cases'
+import { captureSessionStateObservation } from '../../../src/contexts/terminal/presentation/main-ipc/sessionStateWatcherPublisher'
 
 const lines = readFileSync('tests/fixtures/claude/clear-successor-2.1.321.jsonl', 'utf8')
   .trim()
@@ -64,19 +64,43 @@ export function clearPropertyRuntime() {
   })
   const lifecycle = new ClaudeConversationLifecycle()
   const captures = new Map<number, number | undefined>()
+  const watchers = new Map<number, ReturnType<typeof captureSessionStateObservation>>()
+  let sampleAt = 0
   const fence = () => registry.readFence({ sessionId: 's' })!
   const capture = (epoch: number, id: string) => {
     if (!captures.has(epoch)) {
-      registry.observeClaudeTranscript('s', 'i', {
-        sessionId: 's',
-        incarnation: 'i',
-        providerSessionId: id,
-        generation: epoch + 1,
-        fileIdentity: 'capture',
-        position: -1,
-        baseline: true,
-        captureConversation: value => captures.set(epoch, value),
-      })
+      const watcher = captureSessionStateObservation(
+        {
+          sessionId: 's',
+          provider: 'claude-code',
+          resumeSessionId: id,
+          cwd: '/',
+          startedAtMs: now,
+          launchMode: 'resume',
+        },
+        epoch + 1,
+        record =>
+          registry.observeClaudeTranscript('s', 'i', {
+            ...record,
+            ...(record.activity
+              ? { activity: { ...record.activity, observedAt: 100000 + sampleAt } }
+              : {}),
+          }),
+        (_session, state, options) =>
+          registry.observe(
+            's',
+            {
+              incarnation: 'i',
+              source: 'session_file',
+              observedAt: 100000 + sampleAt,
+              sourceSequence: sampleAt,
+              state: state === 'standby' ? 'idle' : state,
+            },
+            options?.evidence,
+          ),
+      )
+      watchers.set(epoch, watcher)
+      captures.set(epoch, watcher.generation)
     }
     return captures.get(epoch)
   }
@@ -149,9 +173,13 @@ export function clearPropertyRuntime() {
   const dispatch = (event: ClearEvent) => {
     if (event.kind === 'tick') {
       advance(event.ms!)
-      return { acceptedIO: false }
+      return
     }
     now = Math.max(now, 100000 + event.at)
+    if (event.kind === 'capture') {
+      capture(event.epoch, event.id)
+      return
+    }
     if (event.kind === 'hook') {
       hook({
         claudeSessionId: event.id,
@@ -170,44 +198,14 @@ export function clearPropertyRuntime() {
                 ? 'done'
                 : null,
       })
-      return { acceptedIO: false }
+      return
     }
     const generation = capture(event.epoch, event.id)
-    const evidence = {
-      providerSessionId: event.id,
-      conversationGeneration: generation,
-      invocationId: 'i',
-    }
-    let acceptedIO = registry.acceptsObservation(
-      's',
-      event.kind === 'file' ? 'session_file' : 'claude_hook',
-      evidence,
-    )
-    const beforeFile = fence().watermarks.session_file ?? -Infinity
     if (event.kind === 'file') {
-      if (generation === undefined && event.name !== 'idle') {
-        registry.observeClaudeTranscript('s', 'i', {
-          sessionId: 's',
-          incarnation: 'i',
-          providerSessionId: event.id,
-          generation: event.epoch + 1,
-          fileIdentity: 'activity',
-          position: -1,
-          baseline: true,
-          activity: { state: event.name as 'working' | 'waiting', observedAt: 100000 + event.at },
-        })
-      }
-      registry.observe(
-        's',
-        {
-          incarnation: 'i',
-          source: 'session_file',
-          observedAt: 100000 + event.at,
-          sourceSequence: event.at,
-          state: event.name as 'working' | 'waiting' | 'idle',
-        },
-        evidence,
-      )
+      sampleAt = event.at
+      watchers
+        .get(event.epoch)!
+        .state('s', event.name === 'idle' ? 'standby' : (event.name as 'working' | 'waiting'))
     } else {
       registry.observeClaudeTranscript('s', 'i', {
         sessionId: 's',
@@ -228,11 +226,6 @@ export function clearPropertyRuntime() {
         ),
       })
     }
-    if (event.kind === 'file') {
-      acceptedIO =
-        acceptedIO && event.at > beforeFile && fence().watermarks.session_file === event.at
-    }
-    return { acceptedIO }
   }
   // Only invocation attachment is established. Every first-clear event is in the stream.
   hook({
@@ -286,10 +279,6 @@ export function clearPropertyRuntime() {
     await pending
     return writes.length - before
   }
-  const entry = () =>
-    (registry as unknown as { entries: Map<string, AgentRunEntry> }).entries.get('s')!
-  const turnIdentity = () => entry().history.identity().providerSessionId
-  const replaying = () => entry().conversation?.active ?? false
   const namespace = () => {
     const checkpoint = lifecycle.checkpoint()
     return checkpoint.current ?? checkpoint.retired.at(-1)?.sessionId
@@ -327,8 +316,6 @@ export function clearPropertyRuntime() {
     probe,
     output,
     namespace,
-    turnIdentity,
-    replaying,
     captures,
     capture,
     writes,

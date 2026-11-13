@@ -82,7 +82,7 @@ it('ignores a retired predecessor Stop sharing the successor submission timestam
     vi.advanceTimersByTime(2000)
     expect(f.view()).toMatchObject({
       quarantined: false,
-      identity: undefined,
+      identity: 'B',
       exact: [{ turnId: 't1', outcome: 'completed', message: 'reply-B' }],
     })
   } finally {

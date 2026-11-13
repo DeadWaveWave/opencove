@@ -17,7 +17,12 @@ for (const seed of CLEAR_SEEDS) {
   it(`preserves clear safety for 1000 sequences, seed ${seed}`, async () => {
     let failures = 0,
       divergent = 0,
+      unsafe = 0,
+      lockout = 0,
+      firstKind: string | undefined,
       steps = 0,
+      conservativeRefusals = 0,
+      conservativeDeliveries = 0,
       sameIdDivergent = 0,
       first: ClearCase | undefined
     const check = async (value: ClearCase) => {
@@ -33,9 +38,21 @@ for (const seed of CLEAR_SEEDS) {
       // oxlint-disable-next-line no-await-in-loop -- deterministic invocation-local state per case
       const actual = await check(scenario)
       steps += actual.steps
+      conservativeRefusals += actual.conservativeRefusals
+      conservativeDeliveries += actual.conservativeDeliveries
       if (actual.errors.length || actual.divergent) {
         failures++
         first ??= scenario
+        firstKind ??=
+          (
+            actual.errors.find(e => e.reason.includes('unsafe admission')) ?? actual.errors[0]
+          )?.reason.split(':')[0] ?? 'final divergence'
+      }
+      if (actual.errors.some(e => !e.reason.includes('lockout'))) {
+        unsafe++
+      }
+      if (actual.errors.some(e => e.reason.includes('lockout'))) {
+        lockout++
       }
       if (actual.divergent) {
         divergent++
@@ -45,12 +62,14 @@ for (const seed of CLEAR_SEEDS) {
       }
     }
     process.stdout.write(
-      `${JSON.stringify({ seed, sequences: 1000, steps, failures, divergent })}\n`,
+      `${JSON.stringify({ seed, sequences: 1000, steps, failures, divergent, unsafe, lockout, conservativeRefusals, conservativeDeliveries })}\n`,
     )
     const minimal = first
       ? await minimizeClearCase(first, async value => {
           const result = await check(value)
-          return result.errors.length > 0 || result.divergent
+          return firstKind === 'final divergence'
+            ? result.divergent
+            : result.errors.some(e => e.reason.startsWith(firstKind!))
         })
       : undefined
     const evidence = minimal ? await check(minimal) : undefined
@@ -112,3 +131,53 @@ it('generates complete conversation event sets, duplicates, same-ID clears and e
     ).toBe(true)
   }
 })
+
+for (const seed of CLEAR_SEEDS) {
+  it(`recovers after quiet for 100 fresh namespace probes, seed ${seed}`, async () => {
+    let failures = 0,
+      unsafe = 0,
+      lockout = 0,
+      first: ClearCase | undefined
+    for (const value of clearCases(seed).slice(0, 100)) {
+      const epoch = value.ids.length
+      const scenario: ClearCase = {
+        ...value,
+        equivalent: false,
+        ids: [...value.ids, 'R'],
+        events: [
+          ...value.events,
+          { epoch: epoch + 1, id: 'U', kind: 'capture', at: 9990 },
+          { epoch, id: 'R', kind: 'hook', name: 'SessionStart', at: 10000 },
+          { epoch, id: 'R', kind: 'tick', at: 10099, ms: 201 },
+          { epoch: epoch + 1, id: 'U', kind: 'user', at: 10025 },
+        ],
+      }
+      // oxlint-disable-next-line no-await-in-loop -- each prefix owns its registry and model
+      const actual = await runClearCase(scenario)
+      if (actual.errors.length) {
+        failures++
+        first ??= scenario
+      }
+      if (actual.errors.some(e => !e.reason.includes('lockout'))) {
+        unsafe++
+      }
+      if (actual.errors.some(e => e.reason.includes('lockout'))) {
+        lockout++
+      }
+    }
+    process.stdout.write(
+      `${JSON.stringify({ seed, recoverySequences: 100, failures, unsafe, lockout })}\n`,
+    )
+    const minimal = first
+      ? await minimizeClearCase(first, async value => (await runClearCase(value)).errors.length > 0)
+      : undefined
+    expect(
+      failures,
+      JSON.stringify(
+        { minimal, evidence: minimal ? await runClearCase(minimal) : undefined },
+        null,
+        2,
+      ),
+    ).toBe(0)
+  }, 120000)
+}

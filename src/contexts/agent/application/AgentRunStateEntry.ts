@@ -190,9 +190,9 @@ export function readRunPromptIdentity(
     epoch === fence.epoch &&
     entry.conversation?.generation === fence.conversationGeneration
     ? entry.history.identity(
-        entry.conversation?.active || entry.conversation?.ready
-          ? entry.conversation.clearIdentity
-          : undefined,
+        entry.model.observations.claude_hook?.hookEventName === 'SessionEnd'
+          ? undefined
+          : entry.conversation?.clearIdentity,
       )
     : undefined
 }

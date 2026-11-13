@@ -1,73 +1,46 @@
 import { clearPropertyRuntime } from './runtime'
-import type { ClearCase, ClearEvent } from './cases'
+import { ClearReference } from './reference'
+import type { ClearCase } from './cases'
 import { promptAdmission } from '../../../src/contexts/agent/application/promptAdmission'
 
 /** Independent evidence model: no lifecycle classifier, registry ready flag, or production
  * admission decision is used to decide whether the received evidence permits input. */
 export async function runClearCase(scenario: ClearCase, check = true) {
   const f = clearPropertyRuntime(),
-    seen = new Map<string, ClearEvent>()
-  const starts = new Map<string, Set<number>>([['A', new Set([10])]]),
-    input = new Map<number, number>()
-  let latest = 0,
-    clearObserved = false,
-    step = -1,
-    latestStart = 0,
-    previousTurn: string | undefined,
-    fileSequence = -Infinity
+    model = new ClearReference()
+  let step = -1,
+    conservativeRefusals = 0,
+    conservativeDeliveries = 0
   const errors: { step: number; reason: string }[] = []
-  const assert = (publication = false) => {
-    if (!clearObserved) {
-      previousTurn = f.fence().snapshot.turn?.id
-      return true
-    }
-    const fence = f.fence(),
-      id = scenario.ids[latest]
-    const activities = [...seen.values()]
-      .filter(
-        e =>
-          e.epoch === latest &&
-          e.kind === 'hook' &&
-          !['SessionStart', 'Notification'].includes(e.name!),
-      )
-      .sort((a, b) => a.at - b.at)
-    const last = activities.at(-1),
-      startAt = latest * 100 + 10
-    const clearProof =
-      starts.has(id) &&
-      starts.get(id)!.size === 1 &&
-      Math.max(...starts.get(id)!) === startAt &&
-      !activities.length &&
-      !input.has(latest)
-    const stopProof =
-      starts.has(id) && last?.name === 'Stop' && (input.get(latest) ?? -Infinity) < last.at
-    const proof = (clearProof || stopProof) && f.namespace() === id
-    if (
-      !proof &&
-      !promptAdmission(fence, () => ({ supported: true, submitDelayMs: 300 }), 'refuse')
-    ) {
+  const assert = (publication = false, liveness = false) => {
+    const verdict = model.verdict()
+    const fence = f.fence()
+    const admitted = !promptAdmission(
+      fence,
+      () => ({ supported: true, submitDelayMs: 300 }),
+      'refuse',
+    )
+    if (admitted && !verdict.receipt) {
       errors.push({
         step,
-        reason: `${publication ? 'publication ' : ''}admission without latest receipt: epoch ${latest}, ${last?.name ?? 'empty'}`,
+        reason: `${publication ? 'publication ' : ''}unsafe admission: ${JSON.stringify(verdict)}`,
       })
     }
     if (
-      fence.claudeClearReady &&
-      (!clearProof || f.registry.promptIdentity(fence)?.providerSessionId !== id)
+      (fence.claudeClearReady && !verdict.clearAllowed) ||
+      (model.clearSeen &&
+        admitted &&
+        f.registry.promptIdentity(fence)?.providerSessionId !== verdict.id)
     ) {
-      errors.push({ step, reason: 'clear readiness before latest activity was folded' })
+      errors.push({ step, reason: 'receipt belongs to another conversation' })
     }
-    if (
-      !f.replaying() &&
-      fence.snapshot.turn &&
-      fence.snapshot.turn.id !== previousTurn &&
-      (f.turnIdentity() ?? f.namespace()) !== id &&
-      startAt <= Math.max(...[...seen.values()].map(e => e.at), 110)
-    ) {
-      errors.push({ step, reason: 'live turn created for retired conversation' })
+    if (!publication && !liveness && !admitted && verdict.receipt) {
+      conservativeRefusals++
     }
-    previousTurn = fence.snapshot.turn?.id
-    return proof
+    if (liveness && verdict.due && !admitted) {
+      errors.push({ step, reason: `quiet lockout: ${JSON.stringify(verdict)}` })
+    }
+    return verdict
   }
   if (check) {
     f.registry.subscribe({ epoch: 'e', afterSeq: f.registry.list().seq }, {}, () => {
@@ -77,79 +50,40 @@ export async function runClearCase(scenario: ClearCase, check = true) {
   try {
     for (const event of scenario.events) {
       step++
-      const knownBefore = starts.has(event.id)
-      if (event.kind === 'hook') {
-        clearObserved ||=
-          event.name === 'SessionEnd' || (event.name === 'SessionStart' && event.epoch > 0)
-        if (event.epoch >= latest && event.name !== 'Notification') {
-          latest = Math.max(latest, event.epoch)
-        }
-        if (event.name === 'SessionStart') {
-          latestStart = Math.max(latestStart, event.epoch)
-          const times = starts.get(event.id) ?? new Set<number>()
-          times.add(event.at)
-          starts.set(event.id, times)
-        }
-        seen.set(`${event.kind}:${event.epoch}:${event.at}`, event)
-      }
-      // Qualify IO independently of the reducer's accept/reject result. The real capture port
-      // supplies its immutable generation; the model checks namespace, generation and ordinal.
-      if (event.kind === 'file' || event.kind === 'metadata' || event.kind === 'user') {
-        const before = f.fence(),
-          captured = f.capture(event.epoch, event.id)
-        const matched =
-          (!clearObserved && captured === undefined) ||
-          (!f.replaying() &&
-            captured === before.conversationGeneration &&
-            event.id === scenario.ids[latest] &&
-            f.namespace() === event.id)
-        const boundary = Math.max(
-          before.snapshot.turn?.startedAt ?? -Infinity,
-          before.snapshot.lastEndedTurn?.endedAt ?? -Infinity,
-          before.lastTurnEnd?.observedAt ?? -Infinity,
-        )
-        if (
-          matched &&
-          (event.kind !== 'file' || (event.at > fileSequence && 100000 + event.at >= boundary))
-        ) {
-          if (event.kind === 'file') {
-            fileSequence = event.at
-          }
-          if (event.kind === 'user' || (event.kind === 'file' && event.name !== 'idle')) {
-            input.set(event.epoch, Math.max(input.get(event.epoch) ?? -Infinity, event.at))
-          }
-        }
-      }
-      const retired =
-        clearObserved &&
-        event.kind !== 'tick' &&
-        !f.replaying() &&
-        event.epoch < latestStart &&
-        event.id !== scenario.ids[latestStart] &&
-        knownBefore
-      const beforeRetired = retired
-        ? JSON.stringify({ fence: f.fence(), output: f.output() })
+      const io = ['file', 'metadata', 'user', 'capture'].includes(event.kind)
+      const capture = io
+        ? { generation: f.capture(event.epoch, event.id), epoch: event.epoch }
         : undefined
-      f.dispatch(event)
-      if (
-        check &&
-        retired &&
-        beforeRetired !== JSON.stringify({ fence: f.fence(), output: f.output() })
-      ) {
-        errors.push({ step, reason: 'retired callback changed live state or receipt' })
+      if (capture && event.kind !== 'capture' && !model.hasCapture(capture.epoch)) {
+        model.consume({ ...event, kind: 'capture' }, capture)
       }
-      if (check && !assert()) {
-        // oxlint-disable-next-line no-await-in-loop -- every unsafe step dispatches a real service
-        if (await f.probe()) {
-          errors.push({ step, reason: 'paste/Enter without latest receipt' })
+      model.consume(event, capture)
+      f.dispatch(event)
+      const verdict = check ? assert(false, event.kind === 'tick') : model.verdict()
+      if (check) {
+        // oxlint-disable-next-line no-await-in-loop -- actual service checked after every input
+        const writes = await f.probe()
+        if (writes && !verdict.receipt) {
+          errors.push({ step, reason: 'paste/Enter without model receipt' })
+        }
+        if (!writes && verdict.receipt && event.kind !== 'tick') {
+          conservativeDeliveries++
+        }
+        if (!writes && event.kind === 'tick' && verdict.due) {
+          errors.push({ step, reason: 'delivery quiet lockout' })
         }
       }
     }
-    // Expiry cannot turn missing Start/Stop or unresolved activity into an input certificate.
+    model.advance(6001)
     f.advance(6001)
-    if (check && !assert()) {
-      if (await f.probe()) {
+    const verdict = check ? assert(false, true) : model.verdict()
+    if (check) {
+      const writes = await f.probe()
+      if (writes && !verdict.receipt) {
         errors.push({ step, reason: 'expiry authorized paste/Enter' })
+      }
+      if (!writes && verdict.due) {
+        errors.push({ step, reason: 'expiry lockout' })
       }
     }
     const output = JSON.parse(
@@ -166,7 +100,14 @@ export async function runClearCase(scenario: ClearCase, check = true) {
           : value,
       ),
     )
-    return { errors, output, steps: scenario.events.length + 1 }
+    return {
+      errors,
+      output,
+      conservativeRefusals,
+      conservativeDeliveries,
+      captures: [...f.captures],
+      steps: scenario.events.length + 1,
+    }
   } finally {
     f.dispose()
   }

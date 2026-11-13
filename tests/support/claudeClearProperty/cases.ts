@@ -3,7 +3,7 @@ export type ClearEvent = {
   epoch: number
   id: string
   at: number
-  kind: 'hook' | 'file' | 'metadata' | 'user' | 'tick'
+  kind: 'hook' | 'file' | 'metadata' | 'user' | 'tick' | 'capture'
   name?: string
   ms?: number
   duplicate?: boolean
@@ -107,6 +107,21 @@ export function clearCases(seed: number): ClearCase[] {
           start,
           { kind: 'tick', id: ids[epoch], epoch, at: epoch * 100 + 99, ms: 201 },
           ...events.filter(e => e !== target && e !== end && e !== start),
+        ]
+      }
+      if (index % 5 === 1) {
+        // Capture before BOTH first-clear hooks, then deliver IO while End is pending.
+        const kind = ['working', 'waiting', 'idle', 'metadata', 'user'][random(5)]
+        const target = groups[1].find(e => e.name === kind || e.kind === kind)!
+        const end = groups[0].find(e => e.name === 'SessionEnd')!,
+          start = groups[1][0]
+        events = [
+          { kind: 'capture', epoch: 1, id: ids[1], at: 80 },
+          end,
+          target,
+          start,
+          { kind: 'tick', epoch: 1, id: ids[1], at: 199, ms: 201 },
+          ...events.filter(e => e !== end && e !== start && e !== target),
         ]
       }
       const copies = 1 + random(5)

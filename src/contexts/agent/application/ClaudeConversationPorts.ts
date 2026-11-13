@@ -7,6 +7,7 @@ export interface ClaudeConversationPorts {
   canReady(): boolean
   ready(): void
   settled(): void
+  adoptedCompletion?(): boolean
   completedTurnId(): string | null
   preserve?(event: ClaudeConversationEvent): boolean
   established?(providerSessionId: string): void

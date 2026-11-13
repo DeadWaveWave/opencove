@@ -1,3 +1,4 @@
+import { permitsClearBaseline } from './ClaudeClearBaseline'
 import { debugAgentContinuation } from '../../../shared/runtime/agentHook/agentContinuationDiagnostics'
 import { publishRunTransition, scheduleRunExpiry } from './AgentRunStateEntry'
 import { acceptedRunStateReceipt } from './AgentRunStateFences'
@@ -131,7 +132,8 @@ export function updateAgentRunEntry(
     entry.history.accept(current, model, ended, null)
     return { model, ended, accepted: false }
   }
-  if (observation?.boundary?.kind === 'end' && entry.continuation.needsGenerationStart) {
+  const baseline = observation?.boundary?.kind === 'end' && entry.continuation.needsGenerationStart
+  if (baseline && !permitsClearBaseline(entry, observation, evidence)) {
     return unchanged()
   }
   // Validate source freshness and authority before changing any private continuation state.
@@ -142,6 +144,12 @@ export function updateAgentRunEntry(
     preview.model.observations[observation.source] === observation
   const selected =
     accepted && preview.model.snapshot.source === observation?.source && !observation?.degraded
+  if (baseline) {
+    if (!selected) {
+      return unchanged()
+    }
+    entry.continuation.acceptGenerationStart()
+  }
   if (
     selected &&
     observation?.boundary?.kind === 'end' &&
@@ -420,7 +428,10 @@ export function commitAgentRunUpdate(
   }
   if (
     entry.conversation?.ready &&
-    !observation &&
+    (!observation ||
+      (observation.source === 'session_file' &&
+        observation.state === 'idle' &&
+        !observation.degraded)) &&
     !result.model.snapshot.turn &&
     result.model.snapshot.state !== 'exited'
   ) {

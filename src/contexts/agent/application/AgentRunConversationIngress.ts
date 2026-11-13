@@ -30,6 +30,9 @@ export function observeRunConversation(
           entry.model.observations.claude_hook,
         )
       if (route !== 'pending') {
+        if (!entry.conversation?.isRetiredEvent(request.event)) {
+          entry.conversationHandoff?.note(request.event)
+        }
         if (!entry.conversation) {
           entry.conversationHandoff ??= new ClaudeConversationHandoff()
           entry.conversationHandoff.observe(record, ports.now())
@@ -41,12 +44,18 @@ export function observeRunConversation(
     if (!entry.conversation) {
       entry.conversation = new ClaudeLiveConversation(
         entry.conversationSchedule,
-        request.initialState,
+        entry.conversationHandoff?.attachment(request.initialState) ?? request.initialState,
         ports.now,
       )
       carried = entry.conversationHandoff?.take(entry, request.event) ?? []
     } else if (!entry.conversation.active) {
-      entry.conversation.synchronize(request.initialState)
+      entry.conversation.synchronize(
+        entry.conversationHandoff?.attachment(request.initialState) ?? request.initialState,
+      )
+    }
+    entry.conversationHandoff ??= new ClaudeConversationHandoff()
+    if (!entry.conversation.isRetiredEvent(request.event)) {
+      entry.conversationHandoff.observe(record, ports.now())
     }
     const ownerPorts = {
       reset: () => {
@@ -58,34 +67,60 @@ export function observeRunConversation(
         entry.cancelExpiry = undefined
         projectConversation(entry, false, ports, pending)
       },
-      canReady: () =>
-        !entry.remote &&
-        entry.launchKind === 'managed' &&
-        entry.hookCoverage === 'lifecycle' &&
-        (entry.hookInstallState === undefined || entry.hookInstallState === 'installed') &&
-        !entry.model.snapshot.turn,
+      canReady: () => {
+        entry.conversationHandoff?.establish(entry, entry.conversation!.providerSessionId!)
+        return (
+          entry.conversation!.mayBeClearReady &&
+          !entry.conversation!.input.blocked &&
+          !entry.remote &&
+          entry.launchKind === 'managed' &&
+          entry.hookCoverage === 'lifecycle' &&
+          (entry.hookInstallState === undefined || entry.hookInstallState === 'installed') &&
+          !entry.model.snapshot.turn
+        )
+      },
       preserve: (event: ClaudeConversationEvent) =>
         entry.conversationHandoff?.preserve(event) ?? false,
       established: (id: string) => entry.conversationHandoff?.establish(entry, id),
       ready: () => projectConversation(entry, true, ports),
       settled: ports.update,
+      adoptedCompletion: () => entry.conversationHandoff?.adoptedCompletion(entry) ?? false,
       completedTurnId: () => {
         const ended = entry.model.snapshot.lastEndedTurn
         return ended && ended.outcome !== 'unknown' ? ended.id : null
       },
     }
     // Revoke and open the clear batch before replaying any already-published evidence.
-    entry.conversation.accept(record, ports.now(), ownerPorts)
-    for (const previous of carried) {
-      entry.conversation.accept(previous, ports.now(), ownerPorts)
+    entry.conversation.accept(record, ports.now(), ownerPorts, carried.length > 0)
+    for (const [index, previous] of carried.entries()) {
+      entry.conversation.accept(previous, ports.now(), ownerPorts, index < carried.length - 1)
     }
     return
   }
-  if (!entry.conversation) {
+  const owner = entry.conversation
+  const successor =
+    owner &&
+    record.providerSessionId !== owner.providerSessionId &&
+    !owner.retiredIdentities.has(record.providerSessionId) &&
+    owner.acceptsSuccessorCapture(record.conversationGeneration) &&
+    (!record.activity || record.activity.observedAt >= (owner.startedAt ?? -Infinity))
+  if (
+    !owner ||
+    successor ||
+    (owner.active &&
+      !owner.rejectsIdentity(record.providerSessionId) &&
+      record.conversationGeneration === owner.generation)
+  ) {
     entry.conversationHandoff ??= new ClaudeConversationHandoff()
-    entry.conversationHandoff.observe(record, ports.now())
+    const input = entry.conversationHandoff.observe(record, ports.now())
+    if (successor && input) {
+      owner.suspend()
+      owner.input.block(ports.now(), `conversation:${record.providerSessionId}`)
+      ports.update()
+    }
   }
   if (record.activity) {
+    owner?.deferTranscript(record, accepted => observeRunConversation(entry, accepted, ports))
     return
   }
   if (
@@ -99,6 +134,12 @@ export function observeRunConversation(
   if (
     entry.conversation &&
     !entry.conversation.accepts(record.conversationGeneration, record.providerSessionId)
+  ) {
+    return
+  }
+  if (
+    entry.conversation &&
+    entry.conversationHandoff?.historicalInput(record, entry.conversation.startedAt)
   ) {
     return
   }

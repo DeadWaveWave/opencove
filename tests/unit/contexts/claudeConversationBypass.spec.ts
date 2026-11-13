@@ -65,7 +65,7 @@ it('processes ordinary hooks immediately while retaining the namespace fence aft
     f.send(hook('B', 'Stop', 25))
     expect(owner).not.toHaveBeenCalled()
     expect(f.fence().snapshot.lastEndedTurn?.outcome).toBe('completed')
-    expect(f.registry.promptIdentity(f.fence())?.providerSessionId).toBeUndefined()
+    expect(f.registry.promptIdentity(f.fence())?.providerSessionId).toBe('B')
     const capture = vi.fn()
     f.registry.observeClaudeTranscript('s', 'i', {
       sessionId: 's',

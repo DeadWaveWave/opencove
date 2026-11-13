@@ -11,21 +11,32 @@ import {
 import type { ClaudeTranscriptObservation } from '../../../shared/runtime/agentHook/claudeTranscript'
 import type { ClaudeConversationCheckpoint } from '../../../shared/runtime/agentHook/claudeConversation'
 
+import {
+  conversationAttachment,
+  acceptsConversationSource,
+  ordinaryConversationFlags,
+} from './ClaudeConversationAttachment'
 import { ClaudeConversationTranscriptBuffer } from './ClaudeConversationTranscriptBuffer'
 import { ClaudeConversationInput } from './ClaudeConversationInput'
+import {
+  ClaudeConversationReceipts,
+  ClaudeConversationWatermark,
+  isPossibleConversationCapture,
+  ClaudeRetiredConversations,
+} from './ClaudeConversationRetention'
+import * as batch from './ClaudeConversationBatch'
 import { ClaudeConversationTimer } from './ClaudeConversationTimer'
 import type { ClaudeConversationPorts as Ports } from './ClaudeConversationPorts'
 
 export const CLAUDE_CONVERSATION_WINDOW_MS = 2_000
 const MAX_PENDING = 64
-const MAX_RECEIPTS = 256
 type Request = NonNullable<ClaudeTranscriptObservation['conversation']>
 /** Invocation-local bounded event-time commit. Only the lifecycle classifier decides transitions. */
 export class ClaudeLiveConversation {
   readonly input = new ClaudeConversationInput()
-  private lifecycle: ClaudeConversationLifecycle
-  private readonly retired = new Set<string>()
-  private readonly receipts = new Set<string>()
+  private lifecycle!: ClaudeConversationLifecycle
+  private readonly retired = new ClaudeRetiredConversations()
+  private readonly receipts = new ClaudeConversationReceipts()
   private pending: Request[] = []
   private readonly transcripts = new ClaudeConversationTranscriptBuffer()
   private readonly timer: ClaudeConversationTimer
@@ -37,11 +48,11 @@ export class ClaudeLiveConversation {
   private completedBeforeClear: string | null = null
   private completedAtStart: string | null = null
   private committedAt = -Infinity
+  private readonly watermark = new ClaudeConversationWatermark()
   private uncertain = false
   private draining = false
   private disposed = false
   private candidateReady = false
-  private retentionLimited = false
   private currentClear = false
   private ended = false
   private endedInClear = false
@@ -56,13 +67,8 @@ export class ClaudeLiveConversation {
     private readonly now: () => number = Date.now,
   ) {
     this.timer = new ClaudeConversationTimer(schedule)
-    this.lifecycle = new ClaudeConversationLifecycle(initial)
-    this.providerSessionId = initial?.current ?? initial?.retired.at(-1)?.sessionId
-    for (const item of initial?.retired ?? []) {
-      this.retired.add(item.sessionId)
-    }
-    this.retentionLimited = this.retired.size >= 64
-    this.committedAt = initial?.watermark ?? -Infinity
+    Object.assign(this, conversationAttachment(initial, this.retired))
+    this.watermark.observeAt(initial?.watermark)
   }
   get active(): boolean {
     return this.clearPending || this.pending.length > 0
@@ -71,37 +77,53 @@ export class ClaudeLiveConversation {
     if (!initial) {
       return
     }
-    this.lifecycle = new ClaudeConversationLifecycle(initial)
-    this.providerSessionId = initial.current ?? initial.retired.at(-1)?.sessionId
-    this.committedAt = Math.max(this.committedAt, initial.watermark ?? -Infinity)
+    Object.assign(this, conversationAttachment(initial, this.retired, this.committedAt))
     this.ended = initial.ended
-    for (const item of initial.retired) {
-      this.retired.add(item.sessionId)
-    }
-    if (this.retired.size >= 64) {
-      this.retentionLimited = true
-      while (this.retired.size > 64) {
-        this.retired.delete(this.retired.values().next().value!)
-      }
-    }
   }
 
-  accept(record: ClaudeTranscriptObservation, now: number, ports: Ports): void {
+  accept(
+    record: ClaudeTranscriptObservation,
+    now: number,
+    ports: Ports,
+    deferCommit = false,
+  ): void {
     const request = record.conversation!
     const event = request.event
     const clear = isClaudeClearEvidence(event)
-    const receipt = JSON.stringify([
-      event.claudeSessionId,
-      event.hookEventName,
-      event.emittedAtMs,
-      event.sessionStartSource,
-      event.sessionEndReason,
-      event.promptId,
-      event.state,
-    ])
+    const receipt = ClaudeConversationReceipts.key(event)
     request.decide({ action: 'ignore', generation: this.generation, deferred: true })
     if (this.disposed) {
       return
+    }
+    if (batch.provenPredecessor(event, this.clearIdentity, this.startedAt)) {
+      if (batch.predecessorIdentity(event.claudeSessionId, this.providerSessionId, this.pending)) {
+        this.retired.add(event.claudeSessionId)
+        this.input.releaseConversation(event.claudeSessionId)
+        if (this.retired.limited) {
+          this.veto()
+        }
+      }
+      request.publish(this.generation, 'ignore')
+      this.restoreClearReceipt(ports)
+      return
+    }
+    if (this.isRetiredEvent(event) && (!clear || Number.isFinite(event.emittedAtMs))) {
+      request.publish(this.generation, 'ignore')
+      return
+    }
+    if (
+      this.uncertain &&
+      batch.canReconcile(event, this.committedAt, this.providerSessionId, this.retired) &&
+      this.watermark.canRecover(event)
+    ) {
+      this.watermark.recoverAt(event.emittedAtMs!)
+      this.uncertain = this.quarantined = false
+    }
+    if (
+      Number.isFinite(event.emittedAtMs) &&
+      (isClaudeConversationActivity(event) || event.hookEventName === 'SessionStart')
+    ) {
+      this.watermark.observe(event)
     }
     if (this.uncertain || this.receipts.has(receipt)) {
       request.publish(this.generation, 'ignore')
@@ -119,46 +141,32 @@ export class ClaudeLiveConversation {
       return
     }
     // A timed End before the accepted Start belongs to the previous epoch, even for a reused ID.
-    if (
-      clear &&
-      event.hookEventName === 'SessionEnd' &&
-      event.emittedAtMs !== undefined &&
-      event.emittedAtMs < (this.lifecycle.checkpoint().startAt ?? -Infinity)
-    ) {
-      request.publish(this.generation, 'ignore')
-      return
-    }
-    if (this.isRetiredEvent(event)) {
+    if (batch.predecessorConversationEnd(event, this.startedAt)) {
       request.publish(this.generation, 'ignore')
       return
     }
     const orphan =
       isClaudeConversationActivity(event) &&
       this.providerSessionId !== undefined &&
-      event.claudeSessionId !== this.providerSessionId
+      (event.claudeSessionId !== this.providerSessionId || this.endedInClear)
     if (!clear && !this.clearPending && !this.pending.length && !orphan) {
-      this.remember(receipt)
+      this.receipts.add(receipt)
       this.commit(request, ports)
       return
     }
-    if (event.emittedAtMs === undefined) {
-      // Keep initial legacy attachment compatibility, never use it across a timed transition.
-      if (this.committedAt !== -Infinity || this.pending.length) {
-        this.failClosed(ports)
-        request.publish(this.generation, 'ignore')
-      } else {
+    const order = batch.conversationOrder(event, this.committedAt, this.pending.length > 0)
+    if (order !== 'ordered') {
+      if (order === 'untimed') {
         this.commit(request, ports)
+      } else {
+        if (order === 'invalid') {
+          this.failClosed(ports)
+        }
+        request.publish(this.generation, 'ignore')
       }
       return
     }
-    if (!Number.isFinite(event.emittedAtMs) || event.emittedAtMs <= this.committedAt) {
-      if (clear || !Number.isFinite(event.emittedAtMs)) {
-        this.failClosed(ports)
-      }
-      request.publish(this.generation, 'ignore')
-      return
-    }
-    this.remember(receipt)
+    this.receipts.add(receipt)
     if (!this.clearPending && !this.pending.length) {
       this.windowGeneration = this.generation
       this.windowProvider = this.providerSessionId
@@ -174,9 +182,10 @@ export class ClaudeLiveConversation {
       this.openedAt = this.orphanAt ?? now
     }
     if (
-      event.hookEventName === 'SessionEnd' ||
-      (event.hookEventName === 'SessionStart' &&
-        (clear || event.claudeSessionId !== this.providerSessionId))
+      !batch.predatesPendingStart(event, this.pending) &&
+      (event.hookEventName === 'SessionEnd' ||
+        (event.hookEventName === 'SessionStart' &&
+          (clear || event.claudeSessionId !== this.providerSessionId)))
     ) {
       this.generation++
     }
@@ -186,18 +195,30 @@ export class ClaudeLiveConversation {
       ports.invalidate(true)
     }
     this.enqueue(request, now, ports)
+    if (deferCommit) {
+      return
+    }
     if (!this.clearPending && event.hookEventName === 'SessionStart') {
       this.flush(ports, true, now)
     } else if (this.clearPending && hasCompleteClearTurn(this.pending.map(item => item.event))) {
       this.flush(ports, false, now)
     }
   }
-  private isRetiredEvent(event: Request['event']): boolean {
-    return (
-      this.retired.has(event.claudeSessionId) &&
-      event.claudeSessionId !== this.providerSessionId &&
-      !(event.hookEventName === 'SessionStart' && !isClaudeClearEvidence(event))
-    )
+  isRetiredEvent(event: Request['event']): boolean {
+    return batch.retiredEvent(event, this.providerSessionId, this.retired, this.pending)
+  }
+  rejectsIdentity(id: string): boolean {
+    return batch.retiredConversationIdentity(id, this.providerSessionId, this.retired, this.pending)
+  }
+  get startedAt(): number | undefined {
+    return this.lifecycle.checkpoint().startAt
+  }
+  acceptsSuccessorCapture(generation: number | undefined): boolean {
+    const unsettled = this.active || this.quarantined || this.endedInClear
+    return isPossibleConversationCapture(generation, this.generation, unsettled)
+  }
+  get retiredIdentities(): ReadonlySet<string> {
+    return this.retired
   }
   get clearIdentity(): string | undefined {
     return this.currentClear ? this.providerSessionId : undefined
@@ -209,22 +230,17 @@ export class ClaudeLiveConversation {
     record: ClaudeTranscriptObservation,
     consume: (record: ClaudeTranscriptObservation) => void,
   ): boolean {
-    if (
-      this.draining ||
-      this.disposed ||
-      this.uncertain ||
-      !this.quarantined ||
-      this.windowGeneration === undefined ||
-      record.conversationGeneration !== this.windowGeneration ||
-      record.providerSessionId !== this.windowProvider
-    ) {
-      return false
-    }
-    if (!this.transcripts.push(record, consume)) {
-      this.uncertain = true
-    }
-    return true
+    const result = this.transcripts.defer(
+      record,
+      consume,
+      this.draining || this.disposed || this.uncertain || !this.quarantined
+        ? undefined
+        : { generation: this.windowGeneration, providerSessionId: this.windowProvider },
+    )
+    this.uncertain ||= result === 'overflow'
+    return result !== 'unmatched'
   }
+
   private reconcileTranscripts(): void {
     this.transcripts.drain(this.providerSessionId, this.generation, () => this.disposed)
   }
@@ -252,39 +268,31 @@ export class ClaudeLiveConversation {
     if (this.disposed) {
       return
     }
-    const pending = this.pending.sort((a, b) => a.event.emittedAtMs! - b.event.emittedAtMs!)
+    const pending = batch.orderConversationBatch(
+      this.pending,
+      this.providerSessionId,
+      this.generation,
+    )
     this.pending = []
+    for (const id of batch.supersededConversationIds(pending, this.providerSessionId)) {
+      this.retired.add(id)
+    }
     if (this.uncertain) {
       this.failClosed(ports)
-      for (const request of pending) {
-        request.publish(this.generation, 'ignore')
-      }
+      batch.rejectConversationBatch(pending, this.generation)
       return
     }
     this.draining = true
     try {
-      for (let i = 0; i < pending.length; ) {
-        let end = i + 1
-        while (
-          end < pending.length &&
-          pending[end].event.emittedAtMs === pending[i].event.emittedAtMs
-        ) {
-          end++
-        }
-        const group = pending.slice(i, end)
-        // Predecessor callbacks have no authority even when their timestamps tie live activity.
-        const live = group.filter(item => !this.isRetiredEvent(item.event))
-        if (live.length > 1) {
-          this.failClosed(ports)
-          for (const request of pending.slice(i)) {
-            request.publish(this.generation, 'ignore')
-          }
-          return
-        }
-        for (const request of group) {
-          this.commit(request, ports)
-        }
-        i = end
+      if (
+        !batch.foldConversationBatch(pending, {
+          retired: event => this.isRetiredEvent(event),
+          commit: request => this.commit(request, ports),
+          ambiguous: () => this.failClosed(ports),
+          reject: request => request.publish(this.generation, 'ignore'),
+        })
+      ) {
+        return
       }
       this.reconcileTranscripts()
     } finally {
@@ -312,17 +320,20 @@ export class ClaudeLiveConversation {
       return
     }
     const completed = ports.completedTurnId()
-    if (!quiet && (!completed || completed === this.completedBeforeClear)) {
+    if (
+      !quiet &&
+      (!completed || (completed === this.completedBeforeClear && !ports.adoptedCompletion?.()))
+    ) {
       this.windowGeneration = this.generation
       this.windowProvider = this.providerSessionId
       ports.settled()
       return
     }
-    this.timer.clear()
-    this.openedAt = this.orphanAt = undefined
-    this.clearPending = false
+    this.closeWindow()
     this.quarantined = this.uncertain
-    // No temporary clear-ready projection for an intermediate conversation in this batch.
+    this.restoreClearReceipt(ports)
+  }
+  private restoreClearReceipt(ports: Ports): void {
     if (this.candidateReady && !this.quarantined && ports.canReady()) {
       this.ready = true
       ports.ready()
@@ -331,6 +342,7 @@ export class ClaudeLiveConversation {
       ports.settled()
     }
   }
+
   private commit(request: Request, ports: Ports): void {
     if (this.disposed) {
       return
@@ -342,8 +354,8 @@ export class ClaudeLiveConversation {
     }
     if (
       event.hookEventName !== 'SessionStart' &&
-      event.claudeSessionId !== this.providerSessionId &&
-      !this.retired.has(event.claudeSessionId)
+      (event.claudeSessionId !== this.providerSessionId || this.endedInClear) &&
+      (!this.retired.has(event.claudeSessionId) || event.claudeSessionId === this.providerSessionId)
     ) {
       this.pending.push(request)
       return
@@ -367,10 +379,13 @@ export class ClaudeLiveConversation {
     const previous = this.providerSessionId
     const completed = ports.completedTurnId()
     // Once the successor completes, End has the same semantics inside and after the clear batch.
-    const legacyEnd =
-      action === 'end' &&
-      !isClaudeClearEvidence(event) &&
-      (!this.clearPending || (completed !== null && completed !== this.completedAtStart))
+    const legacyEnd = batch.legacyConversationEnd(
+      action,
+      event,
+      this.clearPending,
+      completed,
+      this.completedAtStart,
+    )
     if (action === 'start' || action === 'end') {
       this.ready = false
       this.reconcileTranscripts()
@@ -382,10 +397,6 @@ export class ClaudeLiveConversation {
       if (previous) {
         this.retired.add(previous)
       }
-      if (this.retired.size > 64) {
-        this.retired.delete(this.retired.values().next().value!)
-        this.retentionLimited = true
-      }
       // Queued boundaries already reserve their generation before watcher IO begins.
       if (!this.draining) {
         this.generation++
@@ -394,6 +405,13 @@ export class ClaudeLiveConversation {
       this.ended = action === 'end'
       this.endedInClear = this.ended && !legacyEnd
       if (action === 'start') {
+        this.pending = batch.discardPrestartRequests(
+          this.pending,
+          event.claudeSessionId,
+          event.emittedAtMs,
+          this.generation,
+          this.retired,
+        )
         this.currentClear = event.sessionStartSource === 'clear'
         this.completedAtStart = ports.completedTurnId()
       }
@@ -401,7 +419,7 @@ export class ClaudeLiveConversation {
         action === 'start' &&
         event.sessionStartSource === 'clear' &&
         !reused &&
-        !this.retentionLimited
+        !this.retired.limited
       if (!legacyEnd && !ports.preserve?.(event)) {
         ports.reset()
       }
@@ -412,50 +430,37 @@ export class ClaudeLiveConversation {
         this.candidateReady = false
       }
     }
+    if (action === 'start') {
+      this.watermark.establishAt(event.emittedAtMs!, this.input)
+    }
     request.publish(this.generation, action, legacyEnd, !ports.preserve?.(event))
     if (action === 'start') {
       ports.established?.(event.claudeSessionId)
     }
   }
   accepts(generation: number | undefined, providerSessionId: string | undefined): boolean {
-    if (
+    return acceptsConversationSource(
+      this,
+      generation,
+      providerSessionId,
       this.disposed ||
-      (this.ended && this.endedInClear) ||
-      this.uncertain ||
-      (this.quarantined && !this.draining)
-    ) {
-      return false
-    }
-    return generation === undefined
-      ? this.generation === 0 &&
-          (!this.providerSessionId || providerSessionId === this.providerSessionId)
-      : generation === this.generation &&
-          ((generation === 0 && this.providerSessionId === undefined) ||
-            providerSessionId === this.providerSessionId)
+        (this.ended && this.endedInClear) ||
+        this.uncertain ||
+        (this.quarantined && !this.draining),
+    )
   }
-  private remember(receipt: string): void {
-    this.receipts.add(receipt)
-    if (this.receipts.size > MAX_RECEIPTS) {
-      this.receipts.delete(this.receipts.values().next().value!)
-    }
-  }
+
   private failClosed(ports: Ports): void {
     this.uncertain = true
     this.quarantined = true
     this.ready = false
     this.generation++
-    this.timer.clear()
-    this.openedAt = this.orphanAt = undefined
-    this.clearPending = false
-    const rejected = this.pending
-    this.pending = []
-    this.transcripts.clear()
-    this.windowGeneration = undefined
-    this.windowProvider = undefined
+    const rejected = this.closeWindow()
     ports.invalidate()
-    for (const request of rejected) {
-      request.publish(this.generation, 'ignore')
-    }
+    batch.rejectConversationBatch(rejected, this.generation)
+  }
+  suspend(): void {
+    this.ready = false
   }
   veto(): void {
     this.ready = this.candidateReady = false
@@ -471,23 +476,24 @@ export class ClaudeLiveConversation {
     this.synchronize(checkpoint)
     if (boundary) {
       this.input.clear()
-      this.generation++
-      this.veto()
-      this.currentClear = this.endedInClear = false
     }
-    if (boundary || refresh) {
-      this.uncertain = this.quarantined = false
-    }
+    Object.assign(this, ordinaryConversationFlags(this.generation, boundary, refresh))
   }
-  dispose(): void {
-    this.disposed = true
-    this.ready = false
+
+  private closeWindow(): Request[] {
     this.timer.clear()
     this.openedAt = this.orphanAt = undefined
     this.clearPending = false
+    const pending = this.pending
     this.pending = []
     this.transcripts.clear()
     this.windowGeneration = undefined
     this.windowProvider = undefined
+    return pending
+  }
+  dispose(): void {
+    this.disposed = true
+    this.ready = false
+    this.closeWindow()
   }
 }

@@ -10,25 +10,28 @@ export function isClaudeClearEvidence(event: ClaudeConversationEvent): boolean {
 }
 /** A sufficient trigger to try committing; the registry still confirms actual completion. */
 export function hasCompleteClearTurn(events: ClaudeConversationEvent[]): boolean {
-  const starts = events.filter(event => event.hookEventName === 'SessionStart')
-  if (starts.length !== 1 || starts[0].sessionStartSource !== 'clear') {
+  const start = events
+    .filter(event => event.hookEventName === 'SessionStart')
+    .sort((a, b) => a.emittedAtMs! - b.emittedAtMs!)
+    .at(-1)
+  if (!start || start.sessionStartSource !== 'clear') {
     return false
   }
-  const start = starts[0]
   const submissions = events.filter(
     event =>
       event.hookEventName === 'UserPromptSubmit' &&
       event.claudeSessionId === start.claudeSessionId &&
       event.emittedAtMs! > start.emittedAtMs!,
   )
-  if (submissions.length !== 1 || !submissions[0].promptId) {
+  const latest = submissions.sort((a, b) => a.emittedAtMs! - b.emittedAtMs!).at(-1)
+  if (!latest?.promptId) {
     return false
   }
   return events.some(
     event =>
       ['Stop', 'StopFailure'].includes(event.hookEventName) &&
       event.claudeSessionId === start.claudeSessionId &&
-      event.promptId === submissions[0].promptId &&
-      event.emittedAtMs! > submissions[0].emittedAtMs!,
+      event.promptId === latest.promptId &&
+      event.emittedAtMs! > latest.emittedAtMs!,
   )
 }

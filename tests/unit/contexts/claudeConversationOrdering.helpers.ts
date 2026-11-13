@@ -91,11 +91,12 @@ export function orderingFixture() {
       generation: number | undefined,
       action?: 'start' | 'end' | 'event' | 'ignore',
       legacyState = false,
+      publishState = true,
     ) => {
       if (action !== 'ignore') {
         lifecycle.accept(event)
       }
-      if ((action === 'ignore' && !legacyState) || !event.state) {
+      if (!publishState || (action === 'ignore' && !legacyState) || !event.state) {
         return
       }
       registry.observe(

@@ -7,6 +7,21 @@ type Pending = {
 /** IO evidence remains attached to its captured namespace while lifecycle replay is pending. */
 export class ClaudeConversationTranscriptBuffer {
   private pending: Pending[] = []
+  defer(
+    record: ClaudeTranscriptObservation,
+    consume: Pending['consume'],
+    scope: { generation?: number; providerSessionId?: string } | undefined,
+  ): 'unmatched' | 'deferred' | 'overflow' {
+    if (
+      !scope ||
+      scope.generation === undefined ||
+      record.conversationGeneration !== scope.generation ||
+      record.providerSessionId !== scope.providerSessionId
+    ) {
+      return 'unmatched'
+    }
+    return this.push(record, consume) ? 'deferred' : 'overflow'
+  }
   push(record: ClaudeTranscriptObservation, consume: Pending['consume']): boolean {
     if (this.pending.length === 64) {
       this.clear()

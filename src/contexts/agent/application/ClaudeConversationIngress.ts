@@ -35,6 +35,16 @@ export function routeOrdinaryClaudeConversation(
     (starts && action === 'ignore') ||
     (!starts && (event.claudeSessionId !== owner.providerSessionId || stale || owner.closedByClear))
   ) {
+    if (
+      owner.closedByClear &&
+      !starts &&
+      event.claudeSessionId === owner.providerSessionId &&
+      event.emittedAtMs !== undefined &&
+      event.emittedAtMs > (initial?.watermark ?? -Infinity) &&
+      isClaudeConversationActivity(event)
+    ) {
+      return 'pending'
+    }
     const unknownActivity =
       !starts &&
       !stale &&
@@ -47,7 +57,9 @@ export function routeOrdinaryClaudeConversation(
     request.publish(owner.generation, 'ignore')
     return 'ordinary'
   }
-  owner.followOrdinary(lifecycle.checkpoint(), action === 'start' || action === 'end', starts)
+  if (isClaudeConversationActivity(event) || starts) {
+    owner.followOrdinary(lifecycle.checkpoint(), action === 'start' || action === 'end', starts)
+  }
   setPromptSubmissionEvidence(event, {
     ...getPromptSubmissionEvidence(event),
     conversationGeneration: owner.generation,

@@ -85,9 +85,8 @@ export function captureSessionStateObservation(
   const state: typeof publish = (sessionId, value, options = {}) => {
     if (
       input.provider === 'claude-code' &&
-      conversationGeneration === undefined &&
       providerSessionId &&
-      (value === 'working' || value === 'waiting') &&
+      !options.degraded &&
       input.discovery?.isCurrent() !== false
     ) {
       onTranscript?.({
@@ -95,10 +94,11 @@ export function captureSessionStateObservation(
         incarnation: capturedIncarnation,
         providerSessionId,
         generation: watcherVersion,
+        conversationGeneration,
         fileIdentity: 'activity',
         position: -1,
         baseline: true,
-        activity: { state: value, observedAt: Date.now() },
+        activity: { state: value === 'standby' ? 'idle' : value, observedAt: Date.now() },
       })
     }
     publish(sessionId, value, {

@@ -75,3 +75,42 @@ watcher capture, admission, or scheduling. The existing zero-delay tests remain 
 终态比较组保留 A 已完成的普通历史和复用 ID 的 Start 边界，但首次 clear 的 End/Start
 仍与 successor 活动一起打乱；任意顺序的安全组没有这些限制。首次 clear 前只记录有界证据，
 不改变普通状态、watcher capture、输入许可或调度；零延迟回归必须保持通过。
+
+The clear oracle is a separate, input-only reference model. It receives every hook,
+watcher sample (including idle), capture token, transcript record and clock advance in
+delivery order. Its namespace, retired identities, unresolved activity and receipts come
+from that stream. It never asks the production owner whether reconciliation is active,
+whether a callback was accepted, or whether input is quarantined. Generation tokens are
+opaque capture values; the model checks their provenance rather than borrowing a live fence.
+Before the first clear, the existing ordinary Stop receipt contract remains in force.
+
+Watcher commands use the actual capture/publisher. Source timestamps and ordinals are
+frozen before registry delivery so reordering does not create different evidence. Transcript
+positions identify records, not times. Auxiliary metadata cannot establish activity or a
+receipt. A user record needs matching current input evidence or a known retired prompt;
+a late stale Submit cannot confirm current input after the quiet window has committed.
+
+The suite reports unsafe admissions/writes and quiet-window lockouts separately. Interim
+refusals when the model allows input are counted and permitted; a valid receipt must be
+usable after the bounded quiet window. In addition to 5,000 generated sequences, 500
+fresh-namespace probes check recovery after their randomized prefixes, including an old
+unknown watcher callback delivered after the new namespace settles. Failures include
+fixed seeds and deletion-minimized input tapes. Run the fixed pending-watcher regressions
+alongside the property suite when changing this boundary:
+
+```sh
+pnpm test -- --run tests/unit/app/claudeClearPendingWatcher.spec.ts tests/unit/contexts/claudeClearReference.spec.ts tests/unit/contexts/claudeConversationEvidence.spec.ts tests/unit/contexts/claudeClearProperty.spec.ts --maxWorkers=1
+```
+
+clear reference 只从输入流维护认证 namespace、retired identity、未决活动和 receipt，
+不读取生产 owner、reconciliation、acceptance 或 quarantine 状态。实际 publisher 处理
+capture；generation 是不透明来源 token，文件样本保留原始时间与序号，transcript position
+仅用于定位记录。metadata / idle 不能凭空建立活动或许可；旧 Submit 不能在 quiet 提交后
+替当前输入作确认。首条 clear 前保留普通 Stop receipt 语义，由 non-clear golden 与差分
+fuzz 验证完整兼容性。
+
+每步比较 admission 与实际 delivery writes，分别报告不安全放行和 quiet 后锁死。
+中途额外拒绝会计数但不算失败；quiet 后合法 receipt 必须可用。除 5,000 条序列外，
+另有 500 条 fresh namespace 恢复探针，包含新会话稳定后到达的旧未知 watcher 回调，
+防止用永久拒绝掩盖安全问题。失败输出固定 seed
+和经删除缩减的输入流；修改 watcher 边界时一并运行上面的真实认证回归。
