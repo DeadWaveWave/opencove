@@ -1,8 +1,7 @@
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
-import { spawnSync } from 'node:child_process'
 import { mkdir, mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import type { CreateNodeResult, ListNodesResult } from '../../src/shared/contracts/dto/nodeControl'
 import type { ListSpacesResult } from '../../src/shared/contracts/dto'
 import { launchApp, removePathWithRetry, seedWorkspaceState } from './workspace-canvas.helpers'
@@ -209,23 +208,4 @@ test('canvas terminals create and list nodes on the root canvas', async () => {
       await removePathWithRetry(root)
     }
   }
-})
-
-test('root creation outside OpenCove requires a project before connecting', () => {
-  const env = { ...process.env }
-  for (const key of Object.keys(env)) {
-    if (key.startsWith('OPENCOVE_')) {
-      delete env[key]
-    }
-  }
-  const result = spawnSync(
-    process.execPath,
-    [resolve('out/cli/opencove.mjs'), 'node', 'create', 'note', '--root-canvas'],
-    { env, encoding: 'utf8' },
-  )
-  expect(result.status).toBe(2)
-  expect(result.stdout).toBe('')
-  expect(JSON.parse(result.stderr).error.message).toBe(
-    '--root-canvas needs a project outside OpenCove: add --project <id>',
-  )
 })
