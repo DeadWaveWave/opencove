@@ -1,11 +1,6 @@
 /* eslint-disable no-await-in-loop -- Each creation observes the previous admission. */
 import { expect, test } from '@playwright/test'
-import {
-  boundedWorkspace,
-  expectSpawnRefusal,
-  projectId,
-  stopAndWait,
-} from './cli.bounded-agent-spawning.helpers'
+import { boundedWorkspace, expectSpawnRefusal, projectId, stopAndWait } from './lineage.helpers'
 
 test('quota projections agree with depth/width refusals and identify stoppable occupants', async () => {
   test.setTimeout(360_000)
@@ -67,7 +62,7 @@ test('quota projections agree with depth/width refusals and identify stoppable o
       expect(error.hint).toContain(grandchild.title)
       expect(error.hint).toContain(`opencove agent stop --node ${grandchild.id}`)
     }
-    await stopAndWait(f.page(), grandchild)
+    await stopAndWait(f.worker, grandchild)
     await expect
       .poll(async () => {
         const result = await f.command(f.parent, ['whoami', '--fields', 'lineageQuota.liveInTree'])
