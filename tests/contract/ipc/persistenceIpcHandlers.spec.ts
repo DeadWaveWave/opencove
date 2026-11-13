@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
-import type { PersistWriteResult } from '../../../src/shared/types/api'
+import { IPC_CHANNELS } from '../../../src/shared/contracts/ipc'
+import type { PersistWriteResult } from '../../../src/shared/contracts/dto'
 import { invokeHandledIpc } from './ipcTestUtils'
 
 function createIpcHarness() {

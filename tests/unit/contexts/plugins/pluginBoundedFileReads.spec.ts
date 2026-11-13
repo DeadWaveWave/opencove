@@ -7,7 +7,7 @@ import {
   readBoundedDirectory,
   readBoundedText,
 } from '../../../../src/contexts/filesystem/infrastructure/boundedFileReads'
-import { normalizeFileReadLimit } from '../../../../src/contexts/filesystem/domain/fileReadLimits'
+import { normalizeFileReadLimit } from '../../../../src/shared/contracts/fileReadLimits'
 describe('bounded provider reads', () => {
   it('bounds the actual file handle reads and directory iteration', async () => {
     const root = await mkdtemp(join(tmpdir(), 'opencove-plugin-files-'))

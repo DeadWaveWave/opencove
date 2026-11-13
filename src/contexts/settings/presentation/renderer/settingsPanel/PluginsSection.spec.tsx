@@ -6,7 +6,7 @@ import type { PluginManifest } from '@contexts/plugins/domain/pluginTypes'
 import {
   examplePlugin,
   exampleDetails,
-} from '@contexts/plugins/presentation/renderer/pluginPresentationTestFixture'
+} from '../../../../../../tests/support/pluginPresentationTestFixture'
 import * as registry from '@contexts/plugins/presentation/renderer/usePluginRegistry'
 import * as details from '@contexts/plugins/presentation/renderer/usePluginDetails'
 import { PluginsSection } from './PluginsSection'

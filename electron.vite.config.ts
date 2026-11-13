@@ -1,7 +1,6 @@
 import { resolve } from 'path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
 import type { Plugin } from 'vite'
 import { runtimeBuildIdentityPlugin } from './scripts/lib/runtime-build-plugin'
 import {
@@ -138,7 +137,7 @@ export default defineConfig(({ command }) => {
           },
         },
       },
-      plugins: [runtimeIdentityPlugin(), opencoveCspPlugin(), tailwindcss(), react()],
+      plugins: [runtimeIdentityPlugin(), opencoveCspPlugin(), react()],
       resolve: {
         alias: {
           '@app': resolve(__dirname, 'src/app'),
