@@ -8,6 +8,9 @@ import { describeWithElectronNativeModules } from '../electronNativeSuite'
 import { createPersistenceStore } from '../../../src/platform/persistence/sqlite/PersistenceStore'
 import { createManagedClaudeResumeRead } from '../../../src/platform/persistence/sqlite/managedClaudeResumeRead'
 import { tupleA, stateWithAgent } from './managedClaudeResumeBindingFixtures'
+import { withAgentRunBindings } from '../../../src/app/main/controlSurface/agentRunStatePersistence'
+import { AgentRunStateRegistry } from '../../../src/contexts/agent/application/AgentRunStateRegistry'
+import { AgentRunStateRuntime } from '../../../src/contexts/agent/application/AgentRunStateRuntime'
 
 describeWithElectronNativeModules('managed Claude launch lifecycle', () => {
   let root: string
@@ -30,6 +33,49 @@ describeWithElectronNativeModules('managed Claude launch lifecycle', () => {
       runtimeSessionId: 'runtime',
       tuple: tupleA,
     })
+
+  it('projects a cold activation into agent queries without a later renderer save', async () => {
+    await store.writeAppState(stateWithAgent())
+    const registry = new AgentRunStateRegistry({
+      epoch: 'worker',
+      now: () => 1,
+      createTurnId: () => 'turn',
+      schedule: () => () => {},
+    })
+    const runtime = new AgentRunStateRuntime(registry, () => 1)
+    try {
+      const wrapped = await withAgentRunBindings(async () => store, runtime)()
+      for (const sessionId of ['old', 'revived']) {
+        runtime.metadata({ sessionId, agentProvider: 'claude-code', resumeSessionId: 'A' })
+      }
+      const activation = {
+        nodeId: 'agent',
+        activationId: 'cold-restart',
+        runtimeSessionId: 'revived',
+        tuple: tupleA,
+      }
+      expect(await wrapped.activateManagedClaudeRuntime!(activation)).toMatchObject({
+        status: 'committed',
+      })
+      expect(store.observeManagedClaudeNode('agent').binding?.runtimeSessionId).toBe('revived')
+      expect(registry.get({ nodeId: 'agent' })).toMatchObject({ sessionId: 'revived', turn: null })
+      expect(registry.get({ sessionId: 'old' })?.nodeId).toBeNull()
+      expect(await wrapped.activateManagedClaudeRuntime!(activation)).toMatchObject({
+        status: 'alreadyApplied',
+      })
+      expect(
+        await wrapped.activateManagedClaudeRuntime!({
+          ...activation,
+          activationId: 'rejected',
+          runtimeSessionId: 'old',
+          expected: { activationId: 'stale', tuple: tupleA },
+        }),
+      ).toEqual({ status: 'superseded' })
+      expect(registry.get({ nodeId: 'agent' })?.sessionId).toBe('revived')
+    } finally {
+      runtime.dispose()
+    }
+  })
 
   it('observes row-only activation and first persistence without inventing a revision', async () => {
     expect(await activate()).toEqual({ status: 'committed' })
