@@ -23,4 +23,6 @@ export interface LineageQuota {
   maxDepth: number
   liveInTree: number
   maxLiveInTree: number
+  /** Absent on older Workers. */
+  remainingLiveInTree?: number
 }

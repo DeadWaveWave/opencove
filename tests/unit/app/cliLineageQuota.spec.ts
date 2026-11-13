@@ -76,7 +76,7 @@ it.each(['agent.spawn_depth_limit', 'agent.spawn_concurrency_limit'])(
 it('keeps identity quota projections restricted to the public fields', async () => {
   const f = identityFixture()
   f.values['system.whoami'] = { ...who, lineageQuota: { ...quota, token: 'never-print' } }
-  expect(await run(['whoami'], f.io)).toBe(0)
+  expect(await run(['whoami', '-o', 'json'], f.io)).toBe(0)
   expect(JSON.parse(f.out()).lineageQuota).toEqual(quota)
   expect(f.out()).not.toContain('never-print')
 })
@@ -101,4 +101,29 @@ it('can follow the terminal recovery hint without dispatching agent-only stop', 
   expect(await run(kill.split(' ').slice(1), f.io)).toBe(0)
   expect(f.requests.at(-1)).toMatchObject({ id: 'session.kill', payload: { sessionId } })
   expect(f.requests.some(r => r.id === 'session.stopNode' || r.id === 'agent.get')).toBe(false)
+})
+
+it('shell-quotes structured recovery actions with the same agent target as the hint', async () => {
+  const { spawnRecoveryAction } = await import('../../../src/shared/errors/agentSpawnError')
+  const occupant = {
+    nodeId: "agent'; echo unsafe",
+    title: 'Quoted',
+    kind: 'agent',
+    depth: 2,
+    state: 'running' as const,
+  }
+  const action = spawnRecoveryAction(occupant)!
+  expect(action.kind).toBe('stop_agent')
+  expect(action.command).toBe("opencove agent stop --node 'agent'\\''; echo unsafe'")
+  expect(
+    agentSpawnErrorPresentation({
+      code: 'agent.spawn_concurrency_limit',
+      details: { nodes: [occupant] },
+    })!.hint,
+  ).toContain(action.command)
+  expect(
+    spawnRecoveryAction({ ...occupant, kind: 'terminal', sessionId: "session'; echo unsafe" })!
+      .command,
+  ).toBe("opencove session kill --session 'session'\\''; echo unsafe'")
+  expect(spawnRecoveryAction({ ...occupant, kind: 'terminal' })).toBeUndefined()
 })

@@ -29,3 +29,21 @@ and prefixes use your session project, or an explicit Space’s project. Without
 the selected project supplies the name lookup context. Use a full ID for a creator outside that context.
 中文：`--project` 只筛选子节点，不要求创建者属于该项目。创建者名称／前缀默认在当前会话项目中查找；
 显式 Space 提供其所属项目作为查找范围。没有会话身份时，使用选定项目查找名称。跨查找范围请用完整 ID。
+
+## Quota summaries and structured recovery
+
+`whoami.lineageQuota` and `context.self.lineageQuota` use the admission census and
+include `remainingLiveInTree`, clamped at zero. The user root is excluded; starting
+and idle-but-running descendants still occupy slots. Default text output adds
+`Agents: 4 of 6 running in your tree; depth 1 of 3`. Use `-o json` or `--fields`
+for machine-readable output. Older Workers may omit the quota or remaining field.
+
+Quota refusals retain their existing code, exit status and hint. `details.nodes`
+adds `sessionStartedAt` (ISO timestamp, or null when unknown/starting) and the
+observed `sessionId`. Compare known timestamps to choose the oldest occupant;
+unknown timestamps do not prove age. `details.actions` contains
+`{kind: 'stop_agent' | 'kill_session', nodeId, command}` with shell-quoted targets.
+Agent actions reuse the hint command; terminal actions fill in its session-kill
+command using the census's concrete session ID. Recheck the node's current binding
+before acting, especially for terminals: killing a terminal stops the whole shell.
+These suggestions do not expand grant scope or authorize stopping another task.

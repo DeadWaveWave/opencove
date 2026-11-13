@@ -117,3 +117,107 @@ Waiting/exited observations remain data; they do not trigger agent wait's exits 
 输出 `stream.gap` 并退出 1，不会自动跳过事件。范围筛选只保证绑定后发布的事件，初始回复
 需要可靠收集时请使用 `node create agent --wait --read`。完成事件只表示观察到回合结束，
 请检查 outcome。超时、Ctrl-C 和 SIGTERM 只结束观察，不停止 Agent。
+
+## Cursor files, Ctrl-C and pipes
+
+`--cursor-file <path>` saves each fully flushed record's cursor using a temporary
+file in the same directory followed by rename. The parent directory must exist;
+use one writer per cursor file. On start, an existing file supplies `--after` and
+its selection. Explicit `--after` overrides the file and subsequent records update
+it. Missing files start live; malformed files exit 2; read/write failures exit 1.
+A gap remains terminal and does not reset the saved position.
+
+```sh
+opencove events --cursor-file ./events.cursor | tee events.ndjson
+# Ctrl-C: observer exits 130; agents continue running.
+opencove events --cursor-file ./events.cursor | tee -a events.ndjson
+```
+
+Only complete output records advance the file. Ctrl-C, timeout or EPIPE during a
+partial write leaves the previous checkpoint. A crash between stdout flush and
+rename may replay a complete record: deduplicate by cursor. This acknowledges
+stdout writing, not downstream processing or `tee` durability. A pipe consumer
+closing exits 0; it does not mean a wait condition was fulfilled. Signals may
+leave a partial line in the output file: discard that tail before appending, or
+use separate output files per invocation. To intentionally start fresh, remove
+or choose another cursor file (after deciding how to handle any continuity gap).
+
+## Wait for every named node
+
+```sh
+opencove events --until-each-turn --node "Scout A" --node "Scout B" --timeout 2m
+```
+
+Consume `stream.ready`, then start the work. Every distinct resolved node must
+publish one `agent.turn_completed` after that cursor barrier. Existing idle state
+and earlier ends do not satisfy a fresh stream. Duplicate nodes count once;
+additional turns by a fulfilled node do not satisfy others. Ended outcomes,
+including failed/aborted/unknown, all count; exit 0 means every turn ended, so
+inspect each outcome. There is no agent control or state polling. Timeout exits
+124, as with `agent wait`; SIGINT exits 130 without stopping agents.
+
+The final stderr contains one JSON line per node in selector order:
+`{"type":"events.turn_summary","nodeId":"...","sessionId":"...","turnId":"...","outcome":"completed"}`.
+Stdout stays event NDJSON; summaries keep full IDs even with `--fields`.
+`--count` and `--until` conflict with this mode; selected types must include
+`agent.turn_completed`. Ordinary `--node` accepts one target; repeat it in this mode.
+
+Multiple node targets are filtered in the CLI over the unchanged v1 Worker
+selection. Explicit project/Space/relationship filters still constrain the stream;
+no filter grants access. The cursor encodes the Worker selection, not the per-node
+completion map. On resume, repeat `--until-each-turn --node ...` for nodes still
+pending: replayed completions after the saved cursor count, while completions
+already checkpointed do not. Preserve prior summaries/events when resuming an
+interrupted multi-node wait. A single-node cursor cannot be expanded to other nodes.
+
+## End-to-end: subscribe, create two agents, interrupt, resume, read exact replies
+
+Run from an authorized coordinating terminal. This example uses `jq`; no credentials
+are written to files. In terminal 1, start observation and wait for `stream.ready`:
+
+```sh
+opencove events --spawned-by @self --cursor-file ./agents.cursor | tee before.ndjson
+```
+
+In terminal 2 with the same coordinating session identity, create each agent once:
+
+```sh
+A=$(opencove node create agent --space @self --provider claude-code --title 'Scout A' --prompt 'Reply with ACK-A.' -q)
+B=$(opencove node create agent --space @self --provider claude-code --title 'Scout B' --prompt 'Reply with ACK-B.' -q)
+```
+
+Press Ctrl-C in terminal 1. Agents continue; some completions may already be in
+`before.ndjson`. Resume there, inheriting the selection from the file:
+
+```sh
+opencove events --cursor-file ./agents.cursor --timeout 30s | tee after.ndjson
+```
+
+The timeout exits 124 and only stops observation. In terminal 2, collect the first
+complete end per node across both files, then read those exact turns:
+
+```sh
+# Read only newline-terminated records, discarding any interrupted tail in each file.
+python3 - <<'PY' > complete.ndjson
+import json
+for name in ('before.ndjson', 'after.ndjson'):
+    with open(name, 'rb') as records:
+        for line in records:
+            if line.endswith(b'\n'):
+                print(json.dumps(json.loads(line)))
+PY
+jq -sr --arg a "$A" --arg b "$B" '
+  map(select(.type == "agent.turn_completed" and
+    (.snapshot.nodeId == $a or .snapshot.nodeId == $b))) |
+  unique_by(.cursor) | sort_by(.seq) | group_by(.snapshot.nodeId) |
+  map(first) | .[] | [.snapshot.nodeId, .endedTurn.id] | @tsv
+' complete.ndjson | while IFS="$(printf '\t')" read -r node turn; do
+  opencove agent read --node "$node" --turn "$turn" -o json
+done
+```
+
+Require two distinct node results and check node/session/turn/outcome and reply text
+(`ACK-A`, `ACK-B`). Scoped observation guarantees post-binding events only: if an
+initial turn ended before binding and no completion appears, inspect the saved
+node/session; never recreate or resend. For guaranteed initial-turn collection,
+prefer `node create agent --wait --read`.

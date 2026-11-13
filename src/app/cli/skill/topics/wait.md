@@ -71,3 +71,22 @@ agent; older remote history requires the executing Worker (remote_history_unavai
 a remote mirror is ready; inspect on the executing Worker if observations are uncertain. Timeout and
 Ctrl-C close subscriptions; they never stop the agent. There is no polling input or automatic prompt
 retry.
+
+## Wait for each named node's next completion
+
+`opencove events --until-each-turn --node A --node B --timeout 2m` waits for one
+`agent.turn_completed` per distinct node after the stream.ready cursor barrier.
+Start work only after ready. Earlier idle/ended state does not count on a fresh
+stream; repeated completions by A cannot fulfill B. All ended outcomes count:
+inspect the final JSON stderr summaries (nodeId, sessionId, turnId, outcome), then
+read each exact turn. Stdout stays NDJSON, even with projected fields. `--count`
+and `--until` conflict. Timeout exits 124; Ctrl-C exits 130 and stops no agents.
+
+Add `--cursor-file ./events.cursor` for automatic resume and atomic checkpoints
+of fully written records. Explicit `--after` wins. Pipes acknowledge stdout writes,
+not downstream processing; incomplete tails must be discarded and replayed cursors
+deduplicated. Resume with the per-node flags for still-pending nodes: replayed ends
+after the cursor count, while already checkpointed completions are not remembered.
+Use exact `agent wait --turn` for an already known turn, or reliable initial replies
+with `node create agent --wait --read`. Older Workers need eventStreamV1 only;
+this waiting mode adds no protocol or grant capability.

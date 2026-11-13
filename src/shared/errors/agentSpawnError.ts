@@ -53,16 +53,37 @@ export interface SpawnQuotaNode {
   title: string
   kind: string
   depth: number
+  sessionId?: string | null
+  sessionStartedAt?: string | null
   state: 'starting' | 'running'
+}
+export interface SpawnRecoveryAction {
+  kind: 'stop_agent' | 'kill_session'
+  nodeId: string
+  command: string
+}
+export function spawnRecoveryAction(node: SpawnQuotaNode): SpawnRecoveryAction | undefined {
+  if (node.kind === 'terminal' && !node.sessionId) {
+    return undefined
+  }
+  return {
+    kind: node.kind === 'terminal' ? 'kill_session' : 'stop_agent',
+    nodeId: node.nodeId,
+    command:
+      node.kind === 'terminal'
+        ? `opencove session kill --session ${shellWord(node.sessionId!)}`
+        : `opencove agent stop --node ${shellWord(node.nodeId)}`,
+  }
 }
 function spawnRecoveryHint(node: SpawnQuotaNode): string {
   const target = shellWord(node.nodeId)
   return node.kind === 'terminal'
     ? `read its current node.sessionId with opencove node get --node ${target} --fields sessionId, then stop the whole terminal with opencove session kill --session <sessionId>`
-    : `stop with opencove agent stop --node ${target}`
+    : `stop with ${spawnRecoveryAction(node)!.command}`
 }
 export interface SpawnLimitDetails {
   nodes?: SpawnQuotaNode[]
+  actions?: SpawnRecoveryAction[]
   reason: 'depth_limit' | 'concurrency_limit'
   retryable: false
   rootNodeId: string

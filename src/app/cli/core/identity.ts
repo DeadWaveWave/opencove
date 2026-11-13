@@ -26,6 +26,9 @@ export function callerIdentity(value: unknown): CallerIdentity {
             maxDepth: quota.maxDepth,
             liveInTree: quota.liveInTree,
             maxLiveInTree: quota.maxLiveInTree,
+            ...(quota.remainingLiveInTree !== undefined
+              ? { remainingLiveInTree: quota.remainingLiveInTree }
+              : {}),
           },
         }
       : {}),
@@ -46,7 +49,9 @@ export const identityFields = [
   'nodeId',
   'sessionId',
   'lineageQuota',
-  ...['depth', 'maxDepth', 'liveInTree', 'maxLiveInTree'].map(field => `lineageQuota.${field}`),
+  ...['depth', 'maxDepth', 'liveInTree', 'maxLiveInTree', 'remainingLiveInTree'].map(
+    field => `lineageQuota.${field}`,
+  ),
 ]
 
 export function selfUnavailable(kind: string): never {
@@ -93,4 +98,14 @@ export function sessionIdentity(env: Record<string, string | undefined>, invoke:
       return id
     },
   }
+}
+
+/** Used only by default text output; explicit JSON/projections retain their contracts. */
+export function identityText(value: unknown): string | undefined {
+  const result = value as { self?: CallerIdentity; lineageQuota?: LineageQuota }
+  const quota = (result.self ?? result).lineageQuota
+  return quota
+    ? JSON.stringify(value) +
+        `\nAgents: ${quota.liveInTree} of ${quota.maxLiveInTree} running in your tree; depth ${quota.depth} of ${quota.maxDepth}\n`
+    : undefined
 }
