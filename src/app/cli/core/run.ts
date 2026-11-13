@@ -1,3 +1,4 @@
+import { abortable } from './streamLifetime'
 import { unknownOperation } from './operationErrors'
 import { validateUriInputs } from './uriInputs'
 import { nodeFieldNotice } from './nodeFields'
@@ -101,6 +102,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       scope = execution
       io = execution.io
     }
+    const prepared = await command.prepare?.(args, io)
     let input = command.buildInput?.(args)
     const id =
       command.path.join(' ') === 'api call'
@@ -210,102 +212,125 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
         selfUnavailable(spec.selector)
       }
     }
-    const needsConnection =
-      command.connect ||
-      (['api ops', 'api schema'].includes(command.path.join(' ')) && io.env.OPENCOVE_ENV === '1')
-    const connection = needsConnection ? await resolveConnection(args.options, io) : undefined
-    // Selector reads and the final query share a per-run snapshot. A write ends
-    // that snapshot so a later read cannot reuse data from before its effects.
-    const reads = new Map<string, Promise<unknown>>()
-    const call = async (
-      operationId: OperationId,
-      payload: unknown,
-      callOptions?: { fresh?: boolean; signal?: AbortSignal; timeoutMs?: number },
-    ) => {
-      const op = getControlSurfaceOperation(operationId)!
-      if (!connection) {
-        throw new CliError('context.unreachable', 3, 'No connection')
-      }
-      await requireBoundedAgentSpawningForRequest(operationId, payload, identity, call)
-      const key = JSON.stringify([operationId, payload])
-      if (op.kind === 'command') {
-        mutationStarted = true
-        reads.clear()
-      } else if (!callOptions?.fresh && reads.has(key)) {
-        return reads.get(key)!
-      }
-      if (operationId === 'agent.prompt') {
-        invokeStarted = true
-      }
-      const pending = invoke(
-        connection,
-        { kind: op.kind, id: operationId, payload },
-        {
-          timeoutMs:
-            callOptions?.timeoutMs ??
-            (operationId === 'agent.prompt'
-              ? Number((payload as { timeoutMs?: number }).timeoutMs ?? 15000) + 5000
-              : Number(args.options.timeout ?? command.timeoutMs ?? 20000)),
-          fetch: io.fetch,
-          signal: callOptions?.signal ?? io.signal,
-          errorTargets: command.errorTargets,
-          inputOptions: commandForOperation(operationId)?.options,
+    let result: unknown
+    try {
+      const needsConnection =
+        command.connect ||
+        (['api ops', 'api schema'].includes(command.path.join(' ')) && io.env.OPENCOVE_ENV === '1')
+      const connection = needsConnection
+        ? await (io.signal && command.recoverPreflight && prepared !== undefined
+            ? abortable(resolveConnection(args.options, io), io.signal)
+            : resolveConnection(args.options, io))
+        : undefined
+      // Selector reads and the final query share a per-run snapshot. A write ends
+      // that snapshot so a later read cannot reuse data from before its effects.
+      const reads = new Map<string, Promise<unknown>>()
+      const call = async (
+        operationId: OperationId,
+        payload: unknown,
+        callOptions?: {
+          fresh?: boolean
+          signal?: AbortSignal
+          timeoutMs?: number
+          onDispatch?: () => void
         },
-      )
-      if (op.kind === 'query' && !callOptions?.fresh) {
-        reads.set(key, pending)
-      }
-      return pending
-    }
-    const selfSelected = Object.values(args.options).flat().includes('@self')
-    const identity = sessionIdentity(io.env, call)
-    if (id) {
-      await requireBoundedAgentSpawningForRequest(id, input, identity, call, 'before_selectors')
-    }
-    if (!command.resolveInExecute) {
-      await resolveSelectors(command, args, io, call, identity)
-    }
-    input = command.buildInput?.(args)
-    mutationStarted ||= command.mutation === true
-    const result = command.execute
-      ? await command.execute({
-          ...args,
-          io,
-          input,
-          invoke: call,
+      ) => {
+        const op = getControlSurfaceOperation(operationId)!
+        if (!connection) {
+          throw new CliError('context.unreachable', 3, 'No connection')
+        }
+        await requireBoundedAgentSpawningForRequest(operationId, payload, identity, call)
+        const key = JSON.stringify([operationId, payload])
+        if (op.kind === 'command') {
+          mutationStarted = true
+          callOptions?.onDispatch?.()
+          reads.clear()
+        } else if (!callOptions?.fresh && reads.has(key)) {
+          return reads.get(key)!
+        }
+        if (operationId === 'agent.prompt') {
+          invokeStarted = true
+        }
+        const pending = invoke(
           connection,
-          selfSelected,
-          whoami: identity.whoami,
-          self: identity.self,
-        })
-      : await call(id as OperationId, input)
+          { kind: op.kind, id: operationId, payload },
+          {
+            timeoutMs:
+              callOptions?.timeoutMs ??
+              (operationId === 'agent.prompt'
+                ? Number((payload as { timeoutMs?: number }).timeoutMs ?? 15000) + 5000
+                : Number(args.options.timeout ?? command.timeoutMs ?? 20000)),
+            fetch: io.fetch,
+            signal: callOptions?.signal ?? io.signal,
+            errorTargets: command.errorTargets,
+            inputOptions: commandForOperation(operationId)?.options,
+          },
+        )
+        if (op.kind === 'query' && !callOptions?.fresh) {
+          reads.set(key, pending)
+        }
+        return pending
+      }
+      const selfSelected = Object.values(args.options).flat().includes('@self')
+      const identity = sessionIdentity(io.env, call)
+      if (id) {
+        await requireBoundedAgentSpawningForRequest(id, input, identity, call, 'before_selectors')
+      }
+      if (!command.resolveInExecute) {
+        await resolveSelectors(command, args, io, call, identity)
+      }
+      input = command.buildInput?.(args)
+      mutationStarted ||= command.mutation === true
+      result = command.execute
+        ? await command.execute({
+            ...args,
+            io,
+            input,
+            prepared,
+            invoke: call,
+            connection,
+            selfSelected,
+            whoami: identity.whoami,
+            self: identity.self,
+          })
+        : await call(id as OperationId, input)
+    } catch (error) {
+      if (mutationStarted || !command.recoverPreflight) {
+        throw error
+      }
+      result = command.recoverPreflight(error, { ...args, io, prepared })
+      if (result === undefined) {
+        throw error
+      }
+    }
     if (command.stream) {
       return Number(result)
     }
+    const value = command.outputValue ? command.outputValue(result) : result
     // Apply display defaults only after execution: selectors and internal reads stay complete.
     if (args.options.limit === undefined && renderSpec?.defaultLimit && !args.options.full) {
       args.options.limit = renderSpec.defaultLimit
     }
     const output =
       args.options.quiet && command.quietIdPath
-        ? String(get(result, command.quietIdPath)) + '\n'
+        ? String(get(value, command.quietIdPath)) + '\n'
         : command.textOutput && !args.options.output && args.options.fields === undefined
-          ? (command.textOutput(result, {
+          ? (command.textOutput(value, {
               io,
               options: args.options,
-              render: () => render(result, args.options, renderSpec),
-            }) ?? render(result, args.options, renderSpec))
-          : render(result, args.options, renderSpec)
-    const notice = nodeFieldNotice(result, args.options, renderSpec)
+              render: () => render(value, args.options, renderSpec),
+            }) ?? render(value, args.options, renderSpec))
+          : render(value, args.options, renderSpec)
+    const notice = nodeFieldNotice(value, args.options, renderSpec)
     if (notice) {
       io.stderr.write(notice + '\n')
     }
     const tableListKey = args.options.output === 'table' ? renderSpec?.listKey : undefined
     const listNotice =
       renderSpec?.defaultLimit && renderSpec.listKey
-        ? cappedListNotice(result, args.options.limit, renderSpec.listKey)
+        ? cappedListNotice(value, args.options.limit, renderSpec.listKey)
         : listLimitNotice(
-            tableListKey ? get(result, tableListKey) : result,
+            tableListKey ? get(value, tableListKey) : value,
             args.options.limit,
             command.path.join(' ') === 'api ops'
               ? args.options.domains

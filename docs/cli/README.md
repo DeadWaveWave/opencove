@@ -144,7 +144,7 @@ opencove agent list --space @self -o table
 opencove agent get --node "Reviewer" --pretty
 opencove agent read --node "Reviewer" --screen
 opencove agent read --node "Reviewer" --node "Lead" --fields node,ok,message,error
-opencove whoami --fields lineageQuota
+opencove whoami --tree
 opencove context --fields self.lineageQuota
 opencove agent prompt --node "Reviewer" --wait --read --timeout 2m --text-file ./assignment.txt
 # To keep working meanwhile, split the same steps:
@@ -165,6 +165,16 @@ occupancy counts live/starting agent-created runtimes, excluding the user root. 
 unavailable accounting omit quota. Refusal `details.nodes` list up to six nodeId/title/kind/depth/state
 occupants with kind-aware recovery hints (agent stop, or terminal session lookup then session kill).
 Stopping frees width on runtime exit, never the caller's depth.
+
+Start delegation with `whoami --tree` for the whole quota tree, remaining slots, work states and
+stop commands. Missing observations remain unknown; idle agents still occupy slots. Old Workers
+without census rows exit 5 and preserve known counts in error.details.identity. Outside a canvas
+session grant, tree mode keeps ordinary identity output. See [tree and recovery](LINEAGE.md).
+For several assignments use `node create agent --prompts-file ./assignments.json --wait --read`.
+The file accepts 1–10 prompt/title objects; results and failures remain in input order. See
+[batch launch and exact-turn recovery](NODE_CREATE_AGENT_WAIT.md#launch-several-agents-from-a-file).
+中文：委派前先用 `whoami --tree` 检查名额与占用者；批量创建接受 JSON 文件，逐项创建、并发等待，
+完整保留结果和错误，中断不停止已创建的智能体。
 
 Give a window a stable name with `node create agent --title "Reviewer"` (also supported for terminals).
 Rename it with `node update agent --node "Reviewer" --title "Lead"`; use `terminal` for terminal windows.

@@ -60,7 +60,12 @@ export const systemWhoamiOperation = defineOperation({
   scope: 'read',
   availability: 'always',
   summary: 'Describe the authenticated caller and its scope without revealing credentials',
-  input: z.object({}),
+  input: z.object({
+    includeTree: z
+      .boolean()
+      .optional()
+      .describe('Include admission census occupants for the caller’s whole quota tree'),
+  }),
   errors: [],
 })
 export const systemOperations = [

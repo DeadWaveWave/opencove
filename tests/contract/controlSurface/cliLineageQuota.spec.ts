@@ -89,7 +89,12 @@ async function fixture() {
       },
     },
   })
-  const cli = async (args: string[], id = 'root', oldWorker = false, tty = false) => {
+  const cli = async (
+    args: string[],
+    id = 'root',
+    oldWorker: boolean | 'rows' = false,
+    tty = false,
+  ) => {
     const f = identityFixture()
     f.io.stdout.isTTY = tty
     Object.assign(f.io.env, {
@@ -101,7 +106,11 @@ async function fixture() {
       const req = JSON.parse(String(init?.body)) as ControlSurfaceInvokeRequest
       const response = await surface.invoke(granted(id), req)
       if (oldWorker && response.ok && req.id === 'system.whoami') {
-        delete (response.value as { lineageQuota?: unknown }).lineageQuota
+        if (oldWorker === 'rows') {
+          delete (response.value as { lineageQuota: { nodes?: unknown } }).lineageQuota.nodes
+        } else {
+          delete (response.value as { lineageQuota?: unknown }).lineageQuota
+        }
       }
       return new Response(JSON.stringify(response))
     }
@@ -126,12 +135,51 @@ it('projects admission quota for roots and depth-three callers and names width/d
     const who = await f.cli(['whoami', '--fields', 'lineageQuota'], id)
     expect(who.code).toBe(0)
     expect(JSON.parse(who.out)).toEqual({
-      lineageQuota: { depth, maxDepth: 3, liveInTree: 6, maxLiveInTree: 6, remainingLiveInTree: 0 },
+      lineageQuota: {
+        depth,
+        maxDepth: 3,
+        liveInTree: 6,
+        maxLiveInTree: 6,
+        remainingLiveInTree: 0,
+      },
     })
     // eslint-disable-next-line no-await-in-loop
     const refusal = await f.cli(['node', 'create', 'terminal', '--space', 'space'], id)
     expect(refusal.code).toBe(1)
     const error = refusal.error()
+    // Tree is opt-in; legacy refusal rows must stay byte-for-byte unchanged.
+    // eslint-disable-next-line no-await-in-loop
+    const tree = await f.cli(['whoami', '--tree'], id)
+    expect(tree.code).toBe(0)
+    const occupants = JSON.parse(tree.out).tree.occupants
+    expect(occupants.map((row: { nodeId: string }) => row.nodeId)).toEqual(
+      error.details.nodes.map((row: { nodeId: string }) => row.nodeId),
+    )
+    expect(occupants[1].spawnedBy).toBe('child-0')
+    const legacyDetails = {
+      reason: id === 'root' ? 'concurrency_limit' : 'depth_limit',
+      retryable: false,
+      nodes: Array.from({ length: 6 }, (_, i) => ({
+        nodeId: `child-${i}`,
+        title: `Delegate ${i}`,
+        kind: i % 2 ? 'terminal' : 'agent',
+        sessionId: `s${i}`,
+        sessionStartedAt: new Date(i * 1000).toISOString(),
+        depth: i === 1 ? 3 : 2,
+        state: 'running',
+      })),
+      rootNodeId: 'root',
+      callerNodeId: id,
+      requestedKind: 'terminal',
+      limit: id === 'root' ? 6 : 3,
+      ...(id === 'root' ? { occupied: 6 } : { attemptedDepth: 4 }),
+      actions: [0, 2, 4].map(i => ({
+        kind: 'stop_agent',
+        nodeId: `child-${i}`,
+        command: `opencove agent stop --node child-${i}`,
+      })),
+    }
+    expect(JSON.stringify(error.details)).toBe(JSON.stringify(legacyDetails))
     expect(error.code).toBe(
       id === 'root' ? 'agent.spawn_concurrency_limit' : 'agent.spawn_depth_limit',
     )
@@ -178,4 +226,34 @@ it('summarizes human identity and context while leaving explicit JSON clean', as
   f.exit()
   const remaining = await f.cli(['whoami', '--fields', 'lineageQuota.remainingLiveInTree'])
   expect(JSON.parse(remaining.out)).toEqual({ lineageQuota: { remainingLiveInTree: 1 } })
+})
+
+it('refuses tree view against an older Worker without census rows while retaining real counts', async () => {
+  const f = await fixture()
+  const who = await f.cli(['whoami', '--tree', '-o', 'json'], 'root', 'rows')
+  expect(who.code).toBe(5)
+  expect(who.out).toBe('')
+  expect(who.error()).toMatchObject({
+    hint: expect.stringContaining('Update OpenCove'),
+    details: { identity: { lineageQuota: { liveInTree: 6, remainingLiveInTree: 0 } } },
+  })
+})
+
+it('keeps plain identity and context quota JSON at the legacy shape', async () => {
+  const f = await fixture()
+  const quota = { depth: 1, maxDepth: 3, liveInTree: 6, maxLiveInTree: 6, remainingLiveInTree: 0 }
+  const who = await f.cli(['whoami', '-o', 'json'])
+  expect(who.out).toBe(
+    JSON.stringify({
+      lineageQuota: quota,
+      caller: 'session-grant',
+      scope: 'interact',
+      projectId: 'project',
+      spaceId: 'space',
+      nodeId: 'root',
+      sessionId: 'root-session',
+    }) + '\n',
+  )
+  const context = await f.cli(['context', '--space', 'space', '--fields', 'self.lineageQuota'])
+  expect(context.out).toBe(JSON.stringify({ self: { lineageQuota: quota } }) + '\n')
 })

@@ -43,14 +43,17 @@ export function errorCandidates(error: CliError): unknown[] | undefined {
   })
 }
 
-/** Display untrusted fields on one row; JSON consumers retain the original values. */
-function candidateField(value: unknown): string {
-  return String(value).replace(/[\p{Cc}\u2028\u2029]/gu, character => {
-    const escaped = JSON.stringify(character).slice(1, -1)
-    return escaped === character
-      ? `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`
-      : escaped
-  })
+/** Escape terminal and bidi controls in untrusted display text; JSON retains original values. */
+export function safeTerminalText(value: unknown): string {
+  return String(value).replace(
+    /[\p{Cc}\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/gu,
+    character => {
+      const escaped = JSON.stringify(character).slice(1, -1)
+      return escaped === character
+        ? `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`
+        : escaped
+    },
+  )
 }
 
 export function candidateText(candidates: unknown[] | undefined): string {
@@ -65,7 +68,7 @@ export function candidateText(candidates: unknown[] | undefined): string {
           candidate && typeof candidate === 'object' ? (candidate as Record<string, unknown>) : {}
         return `    ${[c.id, c.kind, c.title ?? c.name, c.spaceName ?? c.directoryPath]
           .filter(v => v !== undefined && v !== null)
-          .map(candidateField)
+          .map(safeTerminalText)
           .join('  ')}`
       })
       .join('\n') +

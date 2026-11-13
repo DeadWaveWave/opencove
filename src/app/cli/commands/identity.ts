@@ -1,3 +1,4 @@
+import { whoamiTree, whoamiTreeText } from './whoamiTree'
 import { lineageFields, lineageFieldDescriptions } from '../core/nodeLineage'
 import { contextNodeSummary, contextSelf } from './contextNodes'
 import { agentMetadataFields, nodeAgentMetadata } from '../core/agentMetadata'
@@ -14,20 +15,30 @@ export const identityCommands = [
     path: ['whoami'],
     summary: 'Show your caller identity and permission scope',
     description:
-      'Inside an OpenCove terminal, caller is session-grant and scope is interact. With a desktop token, caller is bearer and scope is admin. projectId, spaceId, nodeId and sessionId are null when the caller has no session identity; spaceId is also null outside any Space. Standalone sessions keep their interact grant and project/Space identity, with nodeId: null. Credentials are never printed. lineageQuota shows {depth, maxDepth, liveInTree, maxLiveInTree, remainingLiveInTree} from the Worker admission census; the user root has depth 1 and does not consume a descendant slot. Older Workers omit it.',
+      'Inside an OpenCove terminal, caller is session-grant and scope is interact. With a desktop token, caller is bearer and scope is admin. projectId, spaceId, nodeId and sessionId are null when the caller has no session identity; spaceId is also null outside any Space. Standalone sessions keep their interact grant and project/Space identity, with nodeId: null. Credentials are never printed. lineageQuota shows {depth, maxDepth, liveInTree, maxLiveInTree, remainingLiveInTree} from the Worker admission census; the user root has depth 1 and does not consume a descendant slot. Older Workers omit it. Use --tree before delegating to see every slot occupant and its work state. Idle agents still occupy slots; check before stopping. Tree view requires an updated Worker. Without a canvas session identity, --tree returns the ordinary identity without a tree.',
     connect: true,
-    textOutput: identityText,
+    textOutput: whoamiTreeText,
     operation: 'system.whoami',
     buildInput: () => ({}),
-    execute: async ({ whoami }) => whoami(),
+    options: {
+      tree: {
+        type: 'boolean',
+        description: 'Show quota occupants, work states and commands to stop them',
+      },
+    },
+    execute: whoamiTree,
     render: {
-      fields: identityFields,
+      fields: [...identityFields, 'tree', 'tree.occupants'],
       examples: [
         'opencove whoami --fields caller,scope',
         '{"caller":"session-grant","scope":"interact"}',
       ],
     },
-    examples: ['opencove whoami', 'opencove whoami --fields caller,scope,nodeId'],
+    examples: [
+      'opencove whoami',
+      'opencove whoami --tree',
+      'opencove whoami --fields caller,scope,nodeId',
+    ],
   }),
   defineCommand({
     path: ['context'],

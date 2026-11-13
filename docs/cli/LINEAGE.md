@@ -48,3 +48,29 @@ Terminal actions are omitted: the hint requires looking up the current
 Never use the refusal's census session ID for recovery after a rebind. Recheck
 bindings before acting; killing a terminal stops the whole shell.
 These suggestions do not expand grant scope or authorize stopping another task.
+
+## Inspect the whole quota tree
+
+Run `opencove whoami --tree` before delegating. JSON/pipes return the normal identity plus
+`tree.occupants`. Occupant membership and counts come from the admission census; ordinary
+`whoami`, `context` and quota refusal details keep their existing output.
+Each occupant keeps nodeId, title, kind, depth, spawnedBy, sessionId, sessionStartedAt and census
+state (`starting` or `running`). `workState` adds state, quality, blockedReason and turnId from one
+`agent.list` query, joined only when both node and session match. Missing/stale observations remain
+`unknown` and never remove an occupant. Quota membership and agent work state describe different facts.
+
+TTY output shows remaining slots and indents by creator, with work state and a stop command.
+`actions` reuses refusal actions; terminals have no stored kill action. Look up their current
+session ID, then kill that session. Idle agents still occupy slots; check before stopping.
+The view is a snapshot, not a slot reservation, and never stops anything automatically.
+
+Older Workers missing census rows exit 5 with an update hint and retain available identity/counts
+in `error.details.identity`; they never report an empty tree. Without a canvas session identity
+(bearer/cookie or standalone session grant), `--tree` returns ordinary identity without a tree.
+Ordinary `whoami` and `context` output stay byte-identical. Census rows and their `spawnedBy`
+field appear only with `whoami --tree`; refusal rows retain their existing shape.
+
+中文：委派前运行 `whoami --tree`，查看整个配额树、剩余名额、工作状态和停止命令。名额与占用行
+来自 admission 同一 census；缺失或过期的工作状态显示 `unknown`，不会丢弃占用者。空闲智能体
+仍占名额，请检查后再停止。终端必须先查询当前 session ID。旧 Worker 缺少占用行时退出码为 5，
+提示更新并在错误中保留已知计数；没有画布会话身份时保持普通身份输出，不添加空树。
