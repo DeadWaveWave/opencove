@@ -1,5 +1,4 @@
 export type { FileSystemPort } from './ports'
-export { trashItemWithTimeout } from './deleteEntryWithTrashFallback'
 export {
   copyEntryUseCase,
   createDirectoryUseCase,
