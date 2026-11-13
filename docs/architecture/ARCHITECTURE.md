@@ -166,6 +166,43 @@ OpenCove 将外部可驱动能力收敛为一套 **Control Surface**（`command 
 详细约束见 `docs/architecture/CONTROL_SURFACE.md`。
 Web UI / Remote Worker 等浏览器或远端入口，都是同一套 Control Surface 在不同 transport（HTTP/WS/IPC）上的适配与复用；Web listener lifecycle 见 `docs/runtime/WORKER_WEB_ACCESS_LIFECYCLE.md`，常见问题与调试见 `docs/runtime/WEB_UI_TROUBLESHOOTING.md`。
 
+## Variants and registries
+
+封闭的 variant 集合（agent provider、node kind）只有一个运行时列表；关于某个 variant 的静态事实写在以它的 id 为 key 的表里，
+漏一项是编译错误，不是运行时默认值。调用方读取字段，不比较身份（`provider === 'codex'`、`case 'task':`）。
+新增行为的最低成本做法是给 variant 的表项加一个字段，然后读取该字段。
+
+| Variant | Id 的唯一来源 | 静态描述（所有进程可用） | 运行时行为（仅 main / worker） |
+| --- | --- | --- | --- |
+| Agent provider | `AGENT_PROVIDER_IDS`（`src/shared/contracts/dto/agent.ts`） | `AGENT_PROVIDER_DESCRIPTORS`（`src/shared/contracts/agentProviderDescriptors.ts`：`label`、`titlePrefix`、`capabilities`） | `AgentProviderContribution`（`src/contexts/agent/infrastructure/providers/<id>/`） |
+| Node kind | `PERSISTED_WORKSPACE_NODE_KINDS`（`src/shared/contracts/persistedAppState.ts`） | 按关注点划分的 `Record<PersistedWorkspaceNodeKind, T>` 表（例如 `workspaceNodeSizing.ts`） | 无 |
+
+- 其他列出该集合或其子集的类型都从来源派生（别名、`Extract` / `Exclude`、基于描述表的 mapped type），不再手写第二份联合类型。
+  例如 `TerminalAgentShimProvider` 由 `capabilities.terminalActivityShim` 派生，`CanvasNodeKind` 由 `PersistedWorkspaceNodeKind` 派生。
+- Renderer 只 import `agentProviderDescriptors.ts`（纯数据，受 `architecture.sharedNoContextDependency` 与 `architecture.rendererNoElectronRuntime` 约束）。
+  可用性等运行时事实继续通过既有 IPC / Control Surface DTO 到达。
+- Plugin node kind（`PluginNodeKind = string`）是开放集合，不在此范围内。
+
+**规则**（`architecture.variantLiteralDecision`、`architecture.variantSwitchExhaustive`，均为 `warn`，进入 ratchet）：
+
+- 标记：`provider === 'codex'`、`case 'pi':`、`['codex', 'pi'].includes(p)`、`data.kind === 'note'`（node kind 只在被比较表达式的名字以 `kind` 结尾时计入），
+  以及不以 `assertNever` 收尾的、含有 variant `case` 的 `switch`。
+- 允许：该字面量 owner 路径内的比较（provider 为 `providers/<id>/**`）、variant 的来源与描述文件、node kind 的 exit guard
+  （`if (data.kind !== 'task') return` 这类没有 `else`、主体只有一条 `return` / `continue` / `break` / `throw` 的 `!==`），以及 exhaustive `switch` 的 `case` 标签。
+- 没有行内 suppress；变更 owner 只能改 `harness/architecture/rules.json`。完整语义见 `harness/architecture/README.md`。
+
+**如何新增 agent provider**：
+
+1. 在 `AGENT_PROVIDER_IDS` 加 id；`pnpm check` 会在 `agentProviderDescriptors.ts` 与各 `Record<AgentProviderId, ...>` 表处报缺项。
+2. 补 `AGENT_PROVIDER_DESCRIPTORS` 条目（`label`、`titlePrefix`、`capabilities`），再补其余 `Record` 表。
+3. 在 `providers/<id>/` 新增 `AgentProviderContribution`，`displayName` 读取 `label`；运行时差异放在 contribution 里，不要在调用方比较 id。
+
+**如何新增 node kind**：
+
+1. 在 `PERSISTED_WORKSPACE_NODE_KINDS` 加 kind；`pnpm check` 会在 `workspaceNodeSizing.ts`、`spaceHandlers.ts`、`windowKindFamily.ts` 等 `Record` 与 `assertNever` 处报缺项。
+2. 补每个表项；需要新行为时给表加字段，不要新增 `data.kind === '...'` 分支。
+3. 对 kind 做 `switch` 时以 `default: return assertNever(x)` 收尾（`src/shared/utils/assertNever.ts`）。
+
 ## 10. 测试映射规则
 
 - `domain`：unit tests 验证 invariant 与状态迁移。
@@ -181,6 +218,7 @@ Web UI / Remote Worker 等浏览器或远端入口，都是同一套 Control Sur
 - 用持久化结构反向定义业务语义。
 - 让非 owner context 判定别人的 durable truth。
 - 通过跨 context 直接写 store/state 传递业务真相。
+- 通过比较 variant 的 id（provider、node kind）来决定行为，而不是读取它的 registry 表项（见 Variants and registries）。
 - deep import 另一个 context 的内部文件（绕过它的公开入口），或让入口承载 `export *`、本地声明、跨 layer / 跨 context 的 re-export。
 - 在 `main` 进程内直接承载高风险 native/外部运行时（例如 PTY），导致单点崩溃/白屏，缺失故障隔离与可恢复语义。
 

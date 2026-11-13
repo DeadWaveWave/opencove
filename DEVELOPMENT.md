@@ -21,7 +21,7 @@
 5.  **重复行为优先下沉到拥有者 (Logic Internalization)**: 若同一行为在多个调用方重复出现，优先下沉到真正拥有该行为的组件/模块，而不是在使用方复制。
 6.  **把 SOLID 当作校准器，不当作教条 (Use SOLID as a Design Check)**:
     - `S`：模块如果同时承担状态决策、IO、UI、恢复策略，通常已经拆分过晚。
-    - `O`：新增 `provider / adapter / watcher` 时，优先新增实现，而不是到处改稳定分发逻辑。
+    - `O`：新增 `provider / adapter / watcher` 时，优先新增实现，而不是到处改稳定分发逻辑；provider / node kind 的静态差异写进 registry 表项，不要比较 id，见 `docs/architecture/ARCHITECTURE.md#variants-and-registries`。
     - `L`：只有存在真实子类型替换时才考虑；不要为了“像 OO”强造继承层级。
     - `I`：`preload / service / bridge` 接口要小而专用，不暴露大而全 API。
     - `D`：高层依赖抽象端口和类型，不直接依赖 `Electron / PTY / CLI` 细节。
