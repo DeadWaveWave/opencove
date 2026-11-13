@@ -5,16 +5,24 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { resolveRepositoryRoot } from './lib/repo-files.mjs'
-import { buildIndex, checkIndex, INDEX_PATH, serializeIndex } from './lib/impact/cochange.mjs'
+import {
+  buildIndex,
+  checkIndex,
+  checkIndexAgainstBase,
+  INDEX_PATH,
+  serializeIndex,
+} from './lib/impact/cochange.mjs'
 
-const USAGE = 'Usage: node scripts/impact-index.mjs [--check] [--through <ref>]\n'
+const USAGE = 'Usage: node scripts/impact-index.mjs [--check [--base <ref>]] [--through <ref>]\n'
 
 function parseArguments(argv) {
-  const options = { check: false, through: 'HEAD' }
+  const options = { check: false, through: 'HEAD', base: null }
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index]
     if (argument === '--check') {
       options.check = true
+    } else if (argument === '--base' && argv[index + 1]) {
+      options.base = argv[(index += 1)]
     } else if (argument === '--through' && argv[index + 1]) {
       options.through = argv[(index += 1)]
     } else {
@@ -25,7 +33,7 @@ function parseArguments(argv) {
 }
 
 const options = parseArguments(process.argv.slice(2))
-if (!options) {
+if (!options || (options.base && !options.check)) {
   process.stderr.write(USAGE)
   process.exit(2)
 }
@@ -40,6 +48,13 @@ try {
           'The index is generated, never edited by hand. Regenerate it with `pnpm impact:index`.\n',
       )
       process.exit(1)
+    }
+    if (options.base) {
+      const problems = checkIndexAgainstBase(root, options.base)
+      if (problems.length > 0) {
+        process.stderr.write(`${problems.map(problem => `${INDEX_PATH}: ${problem}`).join('\n')}\n`)
+        process.exit(1)
+      }
     }
     process.stdout.write(`${INDEX_PATH} reproduces from history up to ${result.throughCommit}.\n`)
   } else {

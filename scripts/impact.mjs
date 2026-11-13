@@ -6,6 +6,7 @@ import { buildIndex, isShallowRepository, loadIndex, SHALLOW_HINT } from './lib/
 import {
   resolveBaseChanges,
   resolveExplicitChanges,
+  isWorkingTreeDirty,
   resolveStagedChanges,
 } from './lib/impact/changes.mjs'
 import { formatPrSection } from './lib/impact/partner-section.mjs'
@@ -76,11 +77,22 @@ try {
     changes = resolveStagedChanges(root)
   } else if (options.base) {
     mode = 'base'
-    changes = resolveBaseChanges(root, options.base)
+    // The pull request check sees only committed changes (`base...HEAD`), so the section to paste
+    // is computed from those too; anything uncommitted is reported but not counted.
+    changes = resolveBaseChanges(root, options.base, options.prSection ? 'HEAD' : null)
+    if (options.prSection && isWorkingTreeDirty(root)) {
+      process.stderr.write(
+        'impact: warning: uncommitted changes are not part of --pr-section, which matches the committed base...HEAD diff the pull request check sees.\n',
+      )
+    }
   } else {
     changes = resolveExplicitChanges(root, options.files)
   }
 
+  if (changes.length === 0 && options.prSection) {
+    process.stdout.write(formatPrSection([]))
+    process.exit(0)
+  }
   if (changes.length === 0) {
     process.stdout.write(`Impact: no ${mode === 'staged' ? 'staged' : 'changed'} files.\n`)
     process.exit(0)

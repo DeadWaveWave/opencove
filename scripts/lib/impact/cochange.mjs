@@ -249,6 +249,51 @@ export function checkIndex(root) {
   return { ok: rebuilt === recorded, throughCommit, rebuilt, recorded }
 }
 
+/**
+ * Rules for an index a pull request changes, against the base branch: it must be built from
+ * history that the base contains, and it must not be older than the base's own index.
+ */
+export function compareIndexToBase({ index, baseIndex, throughIsAncestor }) {
+  const problems = []
+  if (!throughIsAncestor) {
+    problems.push(
+      `throughCommit ${index.throughCommit} is not an ancestor of the base commit; regenerate the index on top of the base branch.`,
+    )
+  }
+  if (baseIndex && index.throughDate < baseIndex.throughDate) {
+    problems.push(
+      `throughDate ${index.throughDate} is older than the base index (${baseIndex.throughDate}); regenerate the index from a newer commit.`,
+    )
+  }
+  return problems
+}
+
+/** `--check --base <ref>`: reproducibility plus `compareIndexToBase` against `<ref>`. */
+export function checkIndexAgainstBase(root, baseRef) {
+  const index = parseIndex(readIndexText(root))
+  const baseCommit = git(root, ['rev-parse', '--verify', `${baseRef}^{commit}`]).trim()
+  const ancestor = spawnSync(
+    'git',
+    ['merge-base', '--is-ancestor', index.throughCommit, baseCommit],
+    {
+      cwd: root,
+    },
+  )
+  if (ancestor.error || ancestor.status > 1) {
+    throw new Error(`Cannot compare ${index.throughCommit} with ${baseCommit}.`)
+  }
+  const baseText = spawnSync('git', ['show', `${baseCommit}:${INDEX_PATH}`], {
+    cwd: root,
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+  })
+  return compareIndexToBase({
+    index,
+    baseIndex: baseText.status === 0 ? JSON.parse(baseText.stdout) : null,
+    throughIsAncestor: ancestor.status === 0,
+  })
+}
+
 function roundConfidence(value) {
   return Math.round(value * 1000) / 1000
 }

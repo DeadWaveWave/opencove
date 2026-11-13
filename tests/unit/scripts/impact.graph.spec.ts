@@ -26,6 +26,11 @@ const FILES: Record<string, string> = {
     "import { core } from '../../shared/lib/outer'\nexport const c = core\n",
   'tests/unit/core.spec.ts': "import { core } from '../../src/shared/lib/core'\n",
   'tests/unit/viaBarrel.spec.ts': "import { core } from '@shared/lib'\n",
+  'src/shared/foo.ts': 'export const foo = 1\n',
+  'src/shared/foo/inner.ts': 'export const inner = 1\n',
+  'src/app/main/useFoo.ts': "import { foo } from '@shared/foo'\nexport const d = foo\n",
+  'src/shared/lib/sibling.ts': "import { core } from '.'\nexport const e = core\n",
+  'src/shared/lib/deep/child.ts': "import { core } from '..'\nexport const f = core\n",
   'tests/e2e/ignored.spec.ts': "import { core } from '../../src/shared/lib/core'\n",
 }
 
@@ -65,6 +70,24 @@ describe('impact graph', () => {
       via: 'src/shared/lib/index.ts',
     })
     expect(importers['src/shared/lib/index.ts']).toEqual({ kind: 'runtime' })
+  })
+
+  it('resolves x to x.ts before x/index.ts and never to a folder', () => {
+    expect(importersOf('src/shared/foo.ts')).toEqual({
+      'src/app/main/useFoo.ts': { kind: 'runtime' },
+    })
+    expect(importersOf('src/shared/foo/inner.ts')).toEqual({})
+  })
+
+  it("follows importers written as from '.' and from '..'", () => {
+    const importers = importersOf('src/shared/lib/index.ts')
+    expect(Object.keys(importers)).toEqual(
+      expect.arrayContaining(['src/shared/lib/sibling.ts', 'src/shared/lib/deep/child.ts']),
+    )
+    expect(importersOf('src/shared/lib/core.ts')['src/shared/lib/sibling.ts']).toEqual({
+      kind: 'runtime',
+      via: 'src/shared/lib/index.ts',
+    })
   })
 
   it('returns no importers for an unused file and for a file that does not exist yet', () => {
