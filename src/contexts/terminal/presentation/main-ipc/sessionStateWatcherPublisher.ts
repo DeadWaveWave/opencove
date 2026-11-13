@@ -82,7 +82,25 @@ export function captureSessionStateObservation(
     })
   }
   const conversationGeneration = capturedGeneration
-  const state: typeof publish = (sessionId, value, options = {}) =>
+  const state: typeof publish = (sessionId, value, options = {}) => {
+    if (
+      input.provider === 'claude-code' &&
+      conversationGeneration === undefined &&
+      providerSessionId &&
+      (value === 'working' || value === 'waiting') &&
+      input.discovery?.isCurrent() !== false
+    ) {
+      onTranscript?.({
+        sessionId,
+        incarnation: capturedIncarnation,
+        providerSessionId,
+        generation: watcherVersion,
+        fileIdentity: 'activity',
+        position: -1,
+        baseline: true,
+        activity: { state: value, observedAt: Date.now() },
+      })
+    }
     publish(sessionId, value, {
       ...options,
       ...(input.provider === 'claude-code' && conversationGeneration !== undefined
@@ -95,6 +113,7 @@ export function captureSessionStateObservation(
           }
         : {}),
     })
+  }
   return {
     state,
     unavailable: (sessionId: string) => state(sessionId, 'standby', { degraded: true }),

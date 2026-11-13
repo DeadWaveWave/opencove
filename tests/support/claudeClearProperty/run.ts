@@ -7,18 +7,20 @@ import { promptAdmission } from '../../../src/contexts/agent/application/promptA
 export async function runClearCase(scenario: ClearCase, check = true) {
   const f = clearPropertyRuntime(),
     seen = new Map<string, ClearEvent>()
-  const starts = new Map<string, Set<number>>([
-      ['A', new Set([10])],
-      ['B', new Set([110])],
-    ]),
+  const starts = new Map<string, Set<number>>([['A', new Set([10])]]),
     input = new Map<number, number>()
-  let latest = 1,
+  let latest = 0,
+    clearObserved = false,
     step = -1,
-    latestStart = 1,
+    latestStart = 0,
     previousTurn: string | undefined,
     fileSequence = -Infinity
   const errors: { step: number; reason: string }[] = []
   const assert = (publication = false) => {
+    if (!clearObserved) {
+      previousTurn = f.fence().snapshot.turn?.id
+      return true
+    }
     const fence = f.fence(),
       id = scenario.ids[latest]
     const activities = [...seen.values()]
@@ -77,6 +79,8 @@ export async function runClearCase(scenario: ClearCase, check = true) {
       step++
       const knownBefore = starts.has(event.id)
       if (event.kind === 'hook') {
+        clearObserved ||=
+          event.name === 'SessionEnd' || (event.name === 'SessionStart' && event.epoch > 0)
         if (event.epoch >= latest && event.name !== 'Notification') {
           latest = Math.max(latest, event.epoch)
         }
@@ -94,10 +98,11 @@ export async function runClearCase(scenario: ClearCase, check = true) {
         const before = f.fence(),
           captured = f.capture(event.epoch, event.id)
         const matched =
-          !f.replaying() &&
-          captured === before.conversationGeneration &&
-          event.id === scenario.ids[latest] &&
-          f.namespace() === event.id
+          (!clearObserved && captured === undefined) ||
+          (!f.replaying() &&
+            captured === before.conversationGeneration &&
+            event.id === scenario.ids[latest] &&
+            f.namespace() === event.id)
         const boundary = Math.max(
           before.snapshot.turn?.startedAt ?? -Infinity,
           before.snapshot.lastEndedTurn?.endedAt ?? -Infinity,
@@ -111,11 +116,12 @@ export async function runClearCase(scenario: ClearCase, check = true) {
             fileSequence = event.at
           }
           if (event.kind === 'user' || (event.kind === 'file' && event.name !== 'idle')) {
-            input.set(latest, Math.max(input.get(latest) ?? -Infinity, event.at))
+            input.set(event.epoch, Math.max(input.get(event.epoch) ?? -Infinity, event.at))
           }
         }
       }
       const retired =
+        clearObserved &&
         event.kind !== 'tick' &&
         !f.replaying() &&
         event.epoch < latestStart &&

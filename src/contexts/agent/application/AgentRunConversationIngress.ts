@@ -1,3 +1,5 @@
+import { ClaudeConversationHandoff } from './ClaudeConversationHandoff'
+import type { ClaudeConversationEvent } from '../../../shared/runtime/agentHook/claudeConversation'
 import { ClaudeLiveConversation } from './ClaudeLiveConversation'
 import { isClaudeClearEvidence } from './ClaudeClearTransition'
 import { routeOrdinaryClaudeConversation } from './ClaudeConversationIngress'
@@ -28,24 +30,30 @@ export function observeRunConversation(
           entry.model.observations.claude_hook,
         )
       if (route !== 'pending') {
+        if (!entry.conversation) {
+          entry.conversationHandoff ??= new ClaudeConversationHandoff()
+          entry.conversationHandoff.observe(record, ports.now())
+        }
         return
       }
     }
+    let carried: ClaudeTranscriptObservation[] = []
     if (!entry.conversation) {
       entry.conversation = new ClaudeLiveConversation(
         entry.conversationSchedule,
         request.initialState,
         ports.now,
       )
+      carried = entry.conversationHandoff?.take(entry, request.event) ?? []
     } else if (!entry.conversation.active) {
       entry.conversation.synchronize(request.initialState)
     }
-    entry.conversation.accept(record, ports.now(), {
+    const ownerPorts = {
       reset: () => {
         entry.continuation.startConversation()
         ports.update()
       },
-      invalidate: pending => {
+      invalidate: (pending?: boolean) => {
         entry.cancelExpiry?.()
         entry.cancelExpiry = undefined
         projectConversation(entry, false, ports, pending)
@@ -56,13 +64,28 @@ export function observeRunConversation(
         entry.hookCoverage === 'lifecycle' &&
         (entry.hookInstallState === undefined || entry.hookInstallState === 'installed') &&
         !entry.model.snapshot.turn,
+      preserve: (event: ClaudeConversationEvent) =>
+        entry.conversationHandoff?.preserve(event) ?? false,
+      established: (id: string) => entry.conversationHandoff?.establish(entry, id),
       ready: () => projectConversation(entry, true, ports),
       settled: ports.update,
       completedTurnId: () => {
         const ended = entry.model.snapshot.lastEndedTurn
         return ended && ended.outcome !== 'unknown' ? ended.id : null
       },
-    })
+    }
+    // Revoke and open the clear batch before replaying any already-published evidence.
+    entry.conversation.accept(record, ports.now(), ownerPorts)
+    for (const previous of carried) {
+      entry.conversation.accept(previous, ports.now(), ownerPorts)
+    }
+    return
+  }
+  if (!entry.conversation) {
+    entry.conversationHandoff ??= new ClaudeConversationHandoff()
+    entry.conversationHandoff.observe(record, ports.now())
+  }
+  if (record.activity) {
     return
   }
   if (

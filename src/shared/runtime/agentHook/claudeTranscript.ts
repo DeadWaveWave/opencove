@@ -37,6 +37,8 @@ export interface ClaudeTranscriptObservation {
       action?: 'start' | 'end' | 'event' | 'ignore',
       /** Preserve ordinary End state projection without reviving ignored observer IO. */
       legacyState?: boolean,
+      /** Reconcile observer identity while retaining already-published successor state. */
+      publishState?: boolean,
     ): void
     decide(decision: {
       action: 'start' | 'end' | 'event' | 'ignore'
@@ -46,6 +48,8 @@ export interface ClaudeTranscriptObservation {
   }
   /** Private synchronous capture before watcher IO; never a public DTO field. */
   captureConversation?: (generation: number | undefined, incarnation?: string) => void
+  /** Annotation only: ordinary file projection remains on its original path. */
+  activity?: { state: 'working' | 'waiting'; observedAt: number }
   conversationGeneration?: number
   lifecycle?: 'start' | 'end'
   /** Private IO capability: the registry owns demand; the observer owns scheduling. */

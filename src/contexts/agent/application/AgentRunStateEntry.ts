@@ -1,6 +1,7 @@
 import type { AgentRunObservation } from '../domain/agentRunState'
 import type { PromptSubmissionEvidence } from '../../../shared/runtime/agentHook/claudePromptEvidence'
 import type { ClaudeLiveConversation } from './ClaudeLiveConversation'
+import type { ClaudeConversationHandoff } from './ClaudeConversationHandoff'
 import type { ClaudeTurnContinuation } from './ClaudeTurnContinuation'
 import { createAppError } from '../../../shared/errors/appError'
 import type { AgentTurnHistory, FinalMessageSelector } from './AgentTurnHistory'
@@ -9,6 +10,7 @@ import type { AgentRunModel } from '../domain/agentRunState'
 import type { RunStateFence } from './ports/PromptDeliveryPorts'
 export type AgentRunEntry = {
   conversation?: ClaudeLiveConversation
+  conversationHandoff?: ClaudeConversationHandoff
   conversationSchedule: (callback: () => void, delay: number) => () => void
   continuation: ClaudeTurnContinuation
   history: AgentTurnHistory

@@ -49,7 +49,7 @@ The clear-safety property suite runs in ordinary CI and needs no baseline ref. R
 whenever changing clear transitions, readiness receipts, or conversation fencing:
 
 ```sh
-pnpm test -- --run tests/unit/contexts/claudeClearProperty.spec.ts tests/unit/contexts/claudeConversationPending.spec.ts tests/unit/app/claudeClearSuccessor.spec.ts tests/unit/app/claudeClearInputEvidence.spec.ts --maxWorkers=1
+pnpm test -- --run tests/unit/contexts/claudeClearProperty.spec.ts tests/unit/contexts/claudeClearFirstOrdering.spec.ts tests/unit/app/claudeClearFirstIngress.spec.ts tests/unit/contexts/claudeConversationPending.spec.ts tests/unit/app/claudeClearSuccessor.spec.ts tests/unit/app/claudeClearInputEvidence.spec.ts --maxWorkers=1
 ```
 
 It uses five fixed seeds and 5,000 sequences, including reused IDs, early successor
@@ -63,3 +63,15 @@ safety checks; lost or ambiguous history is not treated as an equivalent replay.
 clear safety property suite 在普通 CI 中运行；修改 clear 迁移、许可回执或会话围栏时，
 应执行上面的定向命令。固定 seeds 保证可重放，失败会输出最小反例。窗口内且满足
 会话因果边界的重排还比较完整终态；任意乱序和超时场景始终检查输入安全。
+
+The first clear has the same unrestricted delivery order as subsequent clears. Only
+invocation attachment precedes the generated stream. Equality cases keep A's completed
+ordinary history and the Start boundary for reused IDs; they still shuffle the first
+clear's End/Start with successor activity. Unrestricted cases impose neither boundary.
+Before any clear, annotations retain bounded evidence without changing ordinary state,
+watcher capture, admission, or scheduling. The existing zero-delay tests remain required.
+
+首次 clear 与后续 clear 使用相同的任意到达顺序；runtime 只预先建立 invocation。
+终态比较组保留 A 已完成的普通历史和复用 ID 的 Start 边界，但首次 clear 的 End/Start
+仍与 successor 活动一起打乱；任意顺序的安全组没有这些限制。首次 clear 前只记录有界证据，
+不改变普通状态、watcher capture、输入许可或调度；零延迟回归必须保持通过。

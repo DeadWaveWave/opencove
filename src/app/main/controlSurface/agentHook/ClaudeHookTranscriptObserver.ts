@@ -70,7 +70,12 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
           return lifecycle.checkpoint()
         },
         event: envelope,
-        publish: (acceptedGeneration, action = 'event', legacyState = false) => {
+        publish: (
+          acceptedGeneration,
+          action = 'event',
+          legacyState = false,
+          publishState = true,
+        ) => {
           if (this.disposed || !context.isCurrent()) {
             return
           }
@@ -81,7 +86,9 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
             this.commit(sessionId, envelope, context, action, acceptedGeneration, legacyState) ||
             legacyState
           ) {
-            context.publishState?.(acceptedGeneration)
+            if (publishState) {
+              context.publishState?.(acceptedGeneration)
+            }
           }
         },
         decide: value => {

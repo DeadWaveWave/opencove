@@ -44,6 +44,9 @@ for (const seed of CLEAR_SEEDS) {
         }
       }
     }
+    process.stdout.write(
+      `${JSON.stringify({ seed, sequences: 1000, steps, failures, divergent })}\n`,
+    )
     const minimal = first
       ? await minimizeClearCase(first, async value => {
           const result = await check(value)
@@ -85,6 +88,27 @@ it('generates complete conversation event sets, duplicates, same-ID clears and e
     }
   }
   expect(cases.some(c => new Set(c.ids).size !== c.ids.length)).toBe(true)
+  expect(cases.some(c => c.ids[0] === c.ids[1])).toBe(true)
   expect(cases.some(c => c.events.some(e => e.duplicate))).toBe(true)
   expect(cases.some(c => c.events.some(e => e.kind === 'tick' && e.ms! > 2000))).toBe(true)
+  for (const activity of [
+    'UserPromptSubmit',
+    'PermissionRequest',
+    'working',
+    'waiting',
+    'metadata',
+    'user',
+  ]) {
+    expect(
+      cases.some(c => {
+        const at = c.events.findIndex(
+          e => e.epoch === 1 && (e.name === activity || e.kind === activity),
+        )
+        const start = c.events.findIndex(e => e.epoch === 1 && e.name === 'SessionStart')
+        const end = c.events.findIndex(e => e.epoch === 0 && e.name === 'SessionEnd')
+        return at >= 0 && at < start && at < end
+      }),
+      `first-clear pre-lifecycle ${activity}`,
+    ).toBe(true)
+  }
 })

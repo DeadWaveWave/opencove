@@ -34,7 +34,7 @@ export function clearPropertyRuntime() {
         break
       }
       tasks.delete(first)
-      now = first.at
+      now = Math.max(now, first.at)
       first.run()
     }
     now = until
@@ -81,11 +81,16 @@ export function clearPropertyRuntime() {
     return captures.get(epoch)
   }
   const hook = (event: ClaudeConversationEvent) => {
-    const publish = (generation: number | undefined, action?: string, legacy = false) => {
+    const publish = (
+      generation: number | undefined,
+      action?: string,
+      legacy = false,
+      publishState = true,
+    ) => {
       if (action !== 'ignore') {
         lifecycle.accept(event)
       }
-      if ((action === 'ignore' && !legacy) || !event.state) {
+      if (!publishState || (action === 'ignore' && !legacy) || !event.state) {
         return
       }
       registry.observe(
@@ -146,11 +151,12 @@ export function clearPropertyRuntime() {
       advance(event.ms!)
       return { acceptedIO: false }
     }
+    now = Math.max(now, 100000 + event.at)
     if (event.kind === 'hook') {
       hook({
         claudeSessionId: event.id,
         hookEventName: event.name!,
-        emittedAtMs: event.at,
+        emittedAtMs: 100000 + event.at,
         promptId: `p${event.epoch}`,
         sessionStartSource:
           event.name === 'SessionStart' ? (event.epoch === 0 ? 'startup' : 'clear') : undefined,
@@ -179,6 +185,18 @@ export function clearPropertyRuntime() {
     )
     const beforeFile = fence().watermarks.session_file ?? -Infinity
     if (event.kind === 'file') {
+      if (generation === undefined && event.name !== 'idle') {
+        registry.observeClaudeTranscript('s', 'i', {
+          sessionId: 's',
+          incarnation: 'i',
+          providerSessionId: event.id,
+          generation: event.epoch + 1,
+          fileIdentity: 'activity',
+          position: -1,
+          baseline: true,
+          activity: { state: event.name as 'working' | 'waiting', observedAt: 100000 + event.at },
+        })
+      }
       registry.observe(
         's',
         {
@@ -216,48 +234,15 @@ export function clearPropertyRuntime() {
     }
     return { acceptedIO }
   }
-  // Prefix has real lifecycle authority before shuffled evidence. No clear-side assumptions
-  // are imposed on the pre-clear main path, which has its own committed corpus and fuzz.
+  // Only invocation attachment is established. Every first-clear event is in the stream.
   hook({
     claudeSessionId: 'A',
     hookEventName: 'SessionStart',
     sessionStartSource: 'startup',
-    emittedAtMs: 10,
+    emittedAtMs: 100010,
     promptId: 'p0',
     state: null,
   })
-  hook({
-    claudeSessionId: 'A',
-    hookEventName: 'UserPromptSubmit',
-    emittedAtMs: 20,
-    promptId: 'p0',
-    state: 'working',
-  })
-  hook({
-    claudeSessionId: 'A',
-    hookEventName: 'Stop',
-    emittedAtMs: 70,
-    promptId: 'p0',
-    state: 'done',
-  })
-  capture(0, 'A')
-  hook({
-    claudeSessionId: 'A',
-    hookEventName: 'SessionEnd',
-    sessionEndReason: 'clear',
-    emittedAtMs: 90,
-    promptId: 'p0',
-    state: 'done',
-  })
-  hook({
-    claudeSessionId: 'B',
-    hookEventName: 'SessionStart',
-    sessionStartSource: 'clear',
-    emittedAtMs: 110,
-    promptId: 'p1',
-    state: null,
-  })
-  advance(201)
   const probe = async () => {
     const deliveryTasks: { delay: number; run(): void }[] = []
     const service = new PromptDeliveryService({

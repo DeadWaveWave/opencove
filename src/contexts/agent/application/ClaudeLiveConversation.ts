@@ -14,19 +14,12 @@ import type { ClaudeConversationCheckpoint } from '../../../shared/runtime/agent
 import { ClaudeConversationTranscriptBuffer } from './ClaudeConversationTranscriptBuffer'
 import { ClaudeConversationInput } from './ClaudeConversationInput'
 import { ClaudeConversationTimer } from './ClaudeConversationTimer'
+import type { ClaudeConversationPorts as Ports } from './ClaudeConversationPorts'
 
 export const CLAUDE_CONVERSATION_WINDOW_MS = 2_000
 const MAX_PENDING = 64
 const MAX_RECEIPTS = 256
 type Request = NonNullable<ClaudeTranscriptObservation['conversation']>
-type Ports = {
-  reset(): void
-  invalidate(pending?: boolean): void
-  canReady(): boolean
-  ready(): void
-  settled(): void
-  completedTurnId(): string | null
-}
 /** Invocation-local bounded event-time commit. Only the lifecycle classifier decides transitions. */
 export class ClaudeLiveConversation {
   readonly input = new ClaudeConversationInput()
@@ -122,6 +115,16 @@ export class ClaudeLiveConversation {
     }
     if (clear && !Number.isFinite(event.emittedAtMs)) {
       this.failClosed(ports)
+      request.publish(this.generation, 'ignore')
+      return
+    }
+    // A timed End before the accepted Start belongs to the previous epoch, even for a reused ID.
+    if (
+      clear &&
+      event.hookEventName === 'SessionEnd' &&
+      event.emittedAtMs !== undefined &&
+      event.emittedAtMs < (this.lifecycle.checkpoint().startAt ?? -Infinity)
+    ) {
       request.publish(this.generation, 'ignore')
       return
     }
@@ -350,6 +353,9 @@ export class ClaudeLiveConversation {
       this.committedAt = Math.max(this.committedAt, event.emittedAtMs ?? -Infinity)
     }
     if (action === 'ignore') {
+      if (this.endedInClear && (event.state === 'working' || event.state === 'waiting')) {
+        this.input.block(event.emittedAtMs ?? this.now(), event.promptId)
+      }
       const legacyState =
         this.ended &&
         !this.endedInClear &&
@@ -367,11 +373,11 @@ export class ClaudeLiveConversation {
       (!this.clearPending || (completed !== null && completed !== this.completedAtStart))
     if (action === 'start' || action === 'end') {
       this.ready = false
-      this.input.clear()
       this.reconcileTranscripts()
       if (this.disposed) {
         return
       }
+      this.input.clear()
       const reused = previous === event.claudeSessionId || this.retired.has(event.claudeSessionId)
       if (previous) {
         this.retired.add(previous)
@@ -396,7 +402,7 @@ export class ClaudeLiveConversation {
         event.sessionStartSource === 'clear' &&
         !reused &&
         !this.retentionLimited
-      if (!legacyEnd) {
+      if (!legacyEnd && !ports.preserve?.(event)) {
         ports.reset()
       }
     } else {
@@ -406,7 +412,10 @@ export class ClaudeLiveConversation {
         this.candidateReady = false
       }
     }
-    request.publish(this.generation, action, legacyEnd)
+    request.publish(this.generation, action, legacyEnd, !ports.preserve?.(event))
+    if (action === 'start') {
+      ports.established?.(event.claudeSessionId)
+    }
   }
   accepts(generation: number | undefined, providerSessionId: string | undefined): boolean {
     if (

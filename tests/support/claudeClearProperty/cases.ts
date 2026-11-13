@@ -30,7 +30,7 @@ export function clearCases(seed: number): ClearCase[] {
   }
   return Array.from({ length: 1000 }, (_, index) => {
     const count = 1 + random(3),
-      ids = ['A', 'B']
+      ids = ['A', random(4) === 0 ? 'A' : 'B']
     for (let epoch = 2; epoch <= count; epoch++) {
       ids.push(random(4) === 0 ? ids[epoch - 1] : String.fromCharCode(65 + epoch))
     }
@@ -60,19 +60,22 @@ export function clearCases(seed: number): ClearCase[] {
       )
       return events
     })
-    // Established A and the first clear B are causal prefixes. Their delayed duplicates remain
-    // in the shuffled stream; the owner must never reanimate A or consume B's Start twice.
+    // Equality cases retain A's completed history; safety cases shuffle every conversation.
     let events: ClearEvent[]
     const equivalent = index % 4 === 0
     if (equivalent) {
-      events = [...groups[0], ...groups[1]]
-      for (let epoch = 2; epoch < groups.length; epoch++) {
+      events = groups[0].filter(e => e.name !== 'SessionEnd')
+      for (let epoch = 1; epoch < groups.length; epoch++) {
         // Reused wire IDs do not distinguish epochs before their Start. Equivalence cases keep
         // that causal boundary; the unrestricted cases still reorder same-ID activity freely.
+        const transition = [
+          groups[epoch - 1].find(e => e.name === 'SessionEnd')!,
+          ...groups[epoch].filter(e => epoch === groups.length - 1 || e.name !== 'SessionEnd'),
+        ]
         const group =
           ids[epoch] === ids[epoch - 1]
-            ? [groups[epoch][0], ...shuffle(groups[epoch].slice(1))]
-            : shuffle([...groups[epoch]])
+            ? [groups[epoch][0], ...shuffle(transition.filter(e => e !== groups[epoch][0]))]
+            : shuffle(transition)
         events.push(...group, {
           kind: 'tick',
           epoch,
@@ -85,16 +88,24 @@ export function clearCases(seed: number): ClearCase[] {
       events = shuffle(groups.flat())
       // Explicit early-successor challenge, before BOTH lifecycle hooks, in addition to the
       // unconstrained shuffle. Settling here exposes discarded activity before later Stop/End.
-      if (count >= 2 && index % 3 === 0) {
-        const targetName = random(2) ? 'UserPromptSubmit' : 'PermissionRequest'
-        const target = groups[2].find(e => e.name === targetName)!
-        const end = groups[1].find(e => e.name === 'SessionEnd')!,
-          start = groups[2][0]
+      if (index % 3 === 0) {
+        const epoch = index % 2 === 0 ? 1 : 1 + random(count)
+        const choices = groups[epoch].filter(
+          e =>
+            ['UserPromptSubmit', 'PermissionRequest', 'working', 'waiting'].includes(
+              e.name ?? '',
+            ) ||
+            e.kind === 'user' ||
+            e.kind === 'metadata',
+        )
+        const target = choices[random(choices.length)]
+        const end = groups[epoch - 1].find(e => e.name === 'SessionEnd')!,
+          start = groups[epoch][0]
         events = [
           target,
           end,
           start,
-          { kind: 'tick', id: ids[2], epoch: 2, at: 299, ms: 201 },
+          { kind: 'tick', id: ids[epoch], epoch, at: epoch * 100 + 99, ms: 201 },
           ...events.filter(e => e !== target && e !== end && e !== start),
         ]
       }
