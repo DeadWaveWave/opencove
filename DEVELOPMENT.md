@@ -165,17 +165,9 @@ E2E 选组规则维护在 `scripts/precommit-e2e-selection.mjs`。快速门禁�
     -   生成代码（如自动生成的类型定义等）禁止手改。
     -   **调研/验收报告默认不入库**：调研分析报告，以及某次 PR 的 review / acceptance 记录，都只是**本地分析与决策产物**，不是仓库资产。它们是某一时刻的快照，会很快过期，却没有人维护。除非明确要求，否则不要提交；评审结论写在 PR 描述/评论里。`docs/` 只收**本项目自身的**长期文档：架构、不变量、开发流程、案例。若调研中得出的结论具有长期价值（如一条不变量），把**结论**写进对应的项目文档，而不是提交整份报告。
 -   **提交前检查（本地快速门禁，合并前 CI 完整回归）**：
-    -   运行 staged gates 前，必须先 `git add -A` 暂存本次改动；若已经提交，仍须显式重新暂存后再运行。执行 `git diff --cached --name-only` 逐项确认文件列表，并确保 `git diff --cached --name-only | wc -l` 的结果大于 0。
-    -   对 0 个文件运行的 gate 实际上没有运行；将其报告为“通过”属于错误陈述。需要强制防空时，使用 `OPENCOVE_REQUIRE_STAGED=1 pnpm pre-commit`；随后先执行 `pnpm line-check:staged`，因为行数门禁只检查 staged 文件。
-    -   若 staged 文件中存在超过 1000 行的文件，先重构/拆分，过门禁后再继续，不要带着超长文件直接运行 `pnpm pre-commit`。
-    -   `pnpm pre-commit` 会执行 `pnpm naming-check:staged`：禁止在新代码里重新引入 `cove:*`（对外/协议/持久化），仅允许显式 legacy 迁移用途；UI 设计系统前缀仍保留 `cove`（见上文命名约定）。
+    -   `pnpm verify:repo` 对整个仓库检查行数、命名（`cove:*` 等前缀）与 UI 样式；结果不依赖 staged 内容，CI（`ci-ubuntu` 的 `Repository checks` 步骤）以同样方式运行。行数上限只约束手写代码（`.ts/.tsx/.mjs/.css/.sh` 等），生成文件与 `.md/.json/.jsonl/.yml/.html` 不受限；超限文件只能登记在 `scripts/check-max-lines.mjs` 的 `LINE_LIMIT_EXEMPTIONS` 中，且记录的行数只降不增。命名检查中，仅显式 legacy 迁移用途可在同一行标注 `LEGACY_` 或注释 `legacy`；UI 设计系统前缀仍保留 `cove`（见上文命名约定）。
+    -   其余 staged 检查（格式、密钥、相关测试）只看 staged 文件；CI 会对整个仓库重跑格式、密钥扫描与全部单测。对 0 个文件运行的 staged 检查实际上没有运行，将其报告为“通过”属于错误陈述；需要强制防空时，使用 `OPENCOVE_REQUIRE_STAGED=1 pnpm pre-commit`（运行前先 `git add -A`，并用 `git diff --cached --name-only` 确认文件列表非空）。
     -   若本次改动包含用户可感知变化（新增功能、UX 改动、修复 bug、默认行为变化），应先提交代码并创建 PR；拿到 PR 链接/编号后，再更新 `CHANGELOG.md` 的 `## [Unreleased]` 并单独提交（每个变化一条，尽量附 `#PR` 编号）。`nightly` tag 不要求更新 changelog；发 `stable` 时再把 `Unreleased` 结算进新版本段。
-    -   **纯文档（`.md`）提交的门禁例外**：staged 集合只含 `.md` 时，`naming-check` 会报 `no staged files matched — this gate checked NOTHING and is not a pass.`。这是**预期行为，不是缺陷**：对 0 个文件运行的 gate 本就不该报告通过。
-        -   **原因**：其扩展名白名单只含代码类后缀（`.ts/.tsx/.js/.mjs/.cjs/.mts/.cts/.json/.yml/.yaml`），不含 `.md`。
-        -   **退出码**：`scripts/check-naming-staged.mjs:189` 为 `process.exit(process.env.OPENCOVE_REQUIRE_STAGED === '1' ? 1 : 0)` —— 裸跑退 0（仅告警），`OPENCOVE_REQUIRE_STAGED=1 pnpm pre-commit` 退 1 并中断整条链。
-        -   **不要放宽**：别为变绿而把 `.md` 加进白名单 —— 实测这会让本文件第 35 行（准确描述历史 `cove:m0:*` 前缀、但不含 `legacy` 豁免词）被判违规。
-        -   **正解**：如实记录该 gate 未检查任何文件，并以紧邻的上一次完整产品门禁作为运行时证据。
-        -   **别顺带声称后续门禁通过**：链序为 `line-check`(1) → `secret-check`(2) → `naming-check`(3) → … → `format-check`(6)，第 3 步中断后其余**根本不会执行**；需要其结论时单独跑（如 `npx prettier --check <file>`）。
     -   创建/更新 PR 时：若本次改动包含用户可感知变化，必须跑对应 Playwright E2E，并列明本地验证范围；合并前以最终提交的完整 CI 为准。
     -   创建/更新 PR 时：必须按 `.github/pull_request_template.md` 的结构完整填写；若使用 `gh pr create` / `gh pr edit`，也要显式按模板组织 title/body，不得跳过必填段落。
     -   **提交 PR 正文前，必须先把正文写入文件并运行 `node scripts/check-pr-template.mjs <file>`，确认输出为通过。** 章节标题必须逐字取自 `.github/pull_request_template.md`（先读模板，不要凭记忆写），因为 `pr-template` CI 按精确标题匹配：少一个字或改写措辞都会判失败。本地校验一次，比推上去等 CI 红再改快得多。
