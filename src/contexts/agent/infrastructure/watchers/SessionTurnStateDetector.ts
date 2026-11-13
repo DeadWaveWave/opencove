@@ -109,6 +109,7 @@ function detectClaudeTurnState(parsed: unknown): TerminalSessionState | null {
   return null
 }
 
+// @compat codex-legacy-notify-bridge
 // Codex's authoritative working indicator lives in the TUI's in-memory
 // turn lifecycle (`task_running`), not in any single rollout message. This
 // detector therefore uses a file-level fallback: keep `commentary` in

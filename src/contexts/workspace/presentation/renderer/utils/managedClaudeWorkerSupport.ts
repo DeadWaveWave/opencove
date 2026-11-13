@@ -1,3 +1,4 @@
+// @compat-file managed-claude-worker-support
 import { translate } from '@app/renderer/i18n'
 import { persistenceScope } from './persistence/publicationState'
 import {

@@ -10,10 +10,12 @@ export type BrowserAttachedSessionState = {
   lastSeq: number
   role: 'viewer' | 'controller'
   authorityEpoch: number | null
+  // @compat pty-geometry-legacy-revision
   nextLegacyRevision: number
 }
 
 function createState(): BrowserAttachedSessionState {
+  // @compat pty-geometry-legacy-revision
   return { lastSeq: 0, role: 'viewer', authorityEpoch: null, nextLegacyRevision: 0 }
 }
 

@@ -7,6 +7,7 @@ import {
 } from './managedClaudeFallbackRuntime'
 export function assertManagedClaudeLaunchCurrent(): void {
   const current = scope.getStore()
+  // @compat managed-claude-worker-support
   if (current && current.phase !== 'legacy') {
     current.owner.assertCurrent(current.attempt)
   }
@@ -44,6 +45,7 @@ export function assertNoManagedClaudeRemoteLaunch(): void {
     rejectManagedLaunch(current.attempt.nodeId, 'identityConflict')
   }
   if (current) {
+    // @compat managed-claude-worker-support
     current.phase = 'legacy'
     current.releasePending?.()
   }

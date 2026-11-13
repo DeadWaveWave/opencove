@@ -166,6 +166,7 @@ export async function resolvePrepareOrReviveLaunchContext(options: {
       mountId: null,
       endpointId: 'local',
       workingDirectory: options.cwd,
+      // @compat workspace-node-without-space
       reason: 'legacy_node_without_space',
     })
   }
@@ -191,6 +192,7 @@ export async function resolvePrepareOrReviveLaunchContext(options: {
     mountId: resolved.mount?.mountId ?? null,
     endpointId: resolved.mount?.endpointId ?? 'local',
     workingDirectory: resolved.workingDirectory,
+    // @compat workspace-node-without-space
     reason: resolved.mount ? 'legacy_space_mount' : 'legacy_space_without_mount',
   })
 }

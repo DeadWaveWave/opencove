@@ -173,6 +173,7 @@ export function registerSessionPrepareOrReviveHandler(
                       (observed?.binding
                         ? await ctx.managedClaudePreparation?.reserve(node.id)
                         : undefined)
+                    // @compat managed-claude-worker-support
                     const preparationContext = attempt
                       ? {
                           ...recoveryContext,

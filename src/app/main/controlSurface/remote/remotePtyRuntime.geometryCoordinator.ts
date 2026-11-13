@@ -28,6 +28,7 @@ export type RemotePtyRuntimeGeometryCoordinator = {
 
 export function createRemotePtyRuntimeGeometryCoordinator(): RemotePtyRuntimeGeometryCoordinator {
   const acknowledgements = createRemoteGeometryAckCoordinator()
+  // @compat pty-geometry-legacy-revision
   const legacyRevisionBySession = new Map<string, number>()
   let ackSupported: boolean | null = null
 
@@ -38,6 +39,7 @@ export function createRemotePtyRuntimeGeometryCoordinator(): RemotePtyRuntimeGeo
     if (typeof revision !== 'number' || !Number.isFinite(revision)) {
       return
     }
+    // @compat pty-geometry-legacy-revision
     legacyRevisionBySession.set(
       sessionId,
       Math.max(legacyRevisionBySession.get(sessionId) ?? 0, Math.floor(revision)),
@@ -55,6 +57,7 @@ export function createRemotePtyRuntimeGeometryCoordinator(): RemotePtyRuntimeGeo
     handleGeometry: (event, authority) => {
       notePresentationRevision(event.sessionId, event.revision)
       if (ackSupported === false) {
+        // @compat pty-geometry-legacy-revision
         acknowledgements.resolveLegacyGeometry(event, authority)
       }
     },
@@ -65,20 +68,24 @@ export function createRemotePtyRuntimeGeometryCoordinator(): RemotePtyRuntimeGeo
     },
     resize: async ({ request, authority, timeoutMs, send }) => {
       const operationId = request.operationId?.trim() || randomUUID()
+      // @compat pty-geometry-legacy-revision
       const legacyRevision =
         ackSupported === false ? (legacyRevisionBySession.get(request.sessionId) ?? 0) + 1 : null
+      // @compat pty-geometry-legacy-revision
       if (legacyRevision !== null) {
         legacyRevisionBySession.set(request.sessionId, legacyRevision)
       }
       const resultPromise = acknowledgements.waitForResult({
         sessionId: request.sessionId,
         operationId,
+        // @compat pty-geometry-legacy-revision
         legacyRevision,
         timeoutMs,
         timeoutMessage: `Timed out waiting for terminal geometry ACK: ${request.sessionId}`,
       })
 
       try {
+        // @compat pty-geometry-legacy-revision
         await send({
           type: 'resize',
           sessionId: request.sessionId,
@@ -110,6 +117,7 @@ export function createRemotePtyRuntimeGeometryCoordinator(): RemotePtyRuntimeGeo
     },
     clear: () => {
       acknowledgements.rejectAll(new Error('PTY geometry coordinator cleared'))
+      // @compat pty-geometry-legacy-revision
       legacyRevisionBySession.clear()
     },
   }

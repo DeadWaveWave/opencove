@@ -2,6 +2,7 @@ import type { ControlSurfaceContext } from './types'
 import type { PersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
 import { createAppError } from '../../../shared/errors/appError'
 
+// @compat managed-claude-bindings-kill-switch
 export function managedClaudeWritesEnabled(): boolean {
   return process.env.OPENCOVE_MANAGED_CLAUDE_BINDINGS !== '0'
 }
@@ -10,6 +11,7 @@ export function assertManagedClaudeMutationAllowed(
   nodeId: string,
   enabled = true,
 ): void {
+  // @compat managed-claude-worker-support
   const reason = !ctx.clientFeatures?.managedClaudeResumeBindingV1
     ? 'clientUpgradeRequired'
     : !enabled
@@ -64,6 +66,7 @@ export function assertManagedClaudeStopAllowed(
   }
 }
 
+// @compat managed-claude-worker-support
 /** Legacy admission remains fenced across directory and identity awaits without reserving. */
 export function guardLegacyManagedClaudeContext(
   ctx: ControlSurfaceContext,

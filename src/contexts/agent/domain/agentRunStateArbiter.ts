@@ -73,6 +73,7 @@ export function resolveAgentRunStateAuthority(
 
   const hookSignal = input.lastHookSignal
   if (!hookSignal) {
+    // @compat codex-legacy-notify-bridge
     // Installation is not an observation. Before the first signal there is no working lease
     // to expire (legacy notify can stay silent for an entire turn).
     return selectSessionFile(input.lastSessionFileSignal, input.lastLaunchSignal ?? null, {

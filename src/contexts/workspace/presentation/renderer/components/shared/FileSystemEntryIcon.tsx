@@ -62,7 +62,7 @@ export function resolveFileSystemEntryIconKind(
   try {
     decoded = fromFileUri(path) ?? path
   } catch {
-    // Malformed/legacy URI text must still have a stable decorative fallback.
+    // Malformed URI text must still have a stable decorative fallback.
   }
   const name = decoded.split(/[\\/]/).at(-1)?.toLowerCase() ?? ''
   const extension = name.includes('.') ? (name.split('.').at(-1) ?? '') : ''

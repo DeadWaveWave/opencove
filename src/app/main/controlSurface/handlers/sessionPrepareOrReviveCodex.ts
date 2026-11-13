@@ -9,6 +9,7 @@ import {
 
 const CODEX_RESUME_MAX_ATTEMPTS = 3
 const CODEX_RESUME_RETRY_BACKOFF_MS = [150, 350] as const
+// @compat codex-legacy-notify-bridge
 // Modern Codex settles this wait through verified SessionStart metadata. The bounded fallback keeps
 // legacy versions usable while still covering delayed startup rejection and ordered PTY exit.
 const CODEX_RESUME_STARTUP_OBSERVATION_MS = 2_000

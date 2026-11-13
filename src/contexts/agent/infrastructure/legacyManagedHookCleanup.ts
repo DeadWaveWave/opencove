@@ -1,3 +1,4 @@
+// @compat-file legacy-managed-agent-hooks
 // Frozen wire-format values written by shipped OpenCove builds.
 export const LEGACY_MANAGED_CLAUDE_HOOK_STATUS_MESSAGE = 'OpenCove agent status'
 export const LEGACY_MANAGED_CODEX_HOOK_DESCRIPTION = 'OpenCove managed agent status hooks'

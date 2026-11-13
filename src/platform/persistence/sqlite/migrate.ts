@@ -1,3 +1,4 @@
+// @compat-file sqlite-workspace-state-kv
 import { ensureNodeLineageSchema } from '../../../contexts/workspace/infrastructure/nodeLineage/SqliteNodeLineageRepository'
 import type Database from 'better-sqlite3'
 import { ensureManagedClaudeResumeSchema } from './managedClaudeResumeSchema'

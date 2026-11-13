@@ -194,11 +194,13 @@ export function registerOpenCodeOscColorQueryResponder({
         }
 
         const appliedTheme = getAppliedAppearance?.()?.xtermTheme ?? null
+        // @compat opencode-tui-legacy-theme
         const legacyTheme = (
           terminal.options as unknown as {
             theme?: Partial<TerminalAppearanceTheme>
           }
         ).theme
+        // @compat opencode-tui-legacy-theme
         const color = resolveSpecialColor(
           (appliedTheme ?? legacyTheme ?? null) as Record<string, unknown> | null,
           identifier,

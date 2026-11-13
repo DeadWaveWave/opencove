@@ -70,6 +70,7 @@ export function useCanvasCollapse({
   const storedState = useCanvasCollapseStore(
     store => store.workspaces[workspaceId] ?? EMPTY_CANVAS_COLLAPSE,
   )
+  // @compat canvas-space-collapse-legacy
   const state = useMemo(
     () => migrateLegacySpaceCollapse(storedState, spaces),
     [storedState, spaces],
@@ -81,6 +82,7 @@ export function useCanvasCollapse({
   )
   useEffect(() => {
     if (state !== storedState) {
+      // @compat canvas-space-collapse-legacy
       update(workspaceId, current => migrateLegacySpaceCollapse(current, spaces))
     }
   }, [state, storedState, spaces, workspaceId, update])

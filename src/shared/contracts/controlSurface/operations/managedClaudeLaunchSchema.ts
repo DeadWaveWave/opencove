@@ -15,6 +15,7 @@ export const managedClaudeLaunchIntentSchema = z.discriminatedUnion('kind', [
   }),
   z.strictObject({ kind: z.literal('launchNew'), expected: managedClaudeLaunchExpectedSchema }),
 ])
+// @compat managed-claude-worker-support
 /** Check only mirrors actually supplied on the wire, before legacy defaults are applied. */
 export function normalizeManagedClaudeLaunchIntent(payload: Record<string, unknown>) {
   if (payload.intent === undefined) {

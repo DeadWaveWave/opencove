@@ -295,6 +295,7 @@ export function createMultiEndpointPtyRuntime(options: {
         return await options.localRuntime.resize(input)
       }
 
+      // @compat pty-geometry-legacy-revision
       // Geometry revisions and authority epochs are scoped to one Hub. The Home Hub has already
       // validated its own CAS/lease; forwarding those counters to the Remote Hub would compare
       // unrelated revision domains and can permanently supersede otherwise valid resizes.
@@ -306,6 +307,7 @@ export function createMultiEndpointPtyRuntime(options: {
       } = input
       void _upstreamAuthorityEpoch
       void _upstreamBaseGeometryRevision
+      // @compat pty-geometry-legacy-revision
       void _upstreamLegacyRevision
       const remoteResult = await getProxy(route.endpointId).resize({
         ...downstreamInput,

@@ -230,6 +230,7 @@ function archiveCurrentEpoch(record: TerminalRecoveryRecord): {
 
   const checkpoint = record.checkpoint
   const nextEpoch: TerminalArchivedEpoch = {
+    // @compat terminal-recovery-legacy-records
     runtimeEpoch: record.binding?.runtimeEpoch ?? `legacy:${record.generation}`,
     cols: checkpoint?.cols ?? 80,
     rows: checkpoint?.rows ?? 24,

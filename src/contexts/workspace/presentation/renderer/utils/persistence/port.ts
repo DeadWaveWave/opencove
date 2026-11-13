@@ -33,9 +33,12 @@ export interface PersistencePort {
 }
 
 const NODE_SCROLLBACK_KEY_PREFIX = 'opencove:m0:node-scrollback:'
+// @compat storage-cove-m0-keys
 const LEGACY_NODE_SCROLLBACK_KEY_PREFIX = 'cove:m0:node-scrollback:'
 const AGENT_PLACEHOLDER_SCROLLBACK_KEY_PREFIX = 'opencove:m0:agent-placeholder-scrollback:'
-const LEGACY_AGENT_PLACEHOLDER_SCROLLBACK_KEY_PREFIX = 'cove:m0:agent-placeholder-scrollback:' // legacy
+// @compat storage-cove-m0-keys
+const LEGACY_AGENT_PLACEHOLDER_SCROLLBACK_KEY_PREFIX = 'cove:m0:agent-placeholder-scrollback:'
+// @compat storage-cove-m0-keys
 const LOCAL_SYNC_WRITE_EVENT_NAME = 'opencove.localSyncWrite'
 
 export function publishLocalSyncWriteRevision(revision: unknown): void {
@@ -148,12 +151,14 @@ function createLocalStoragePort(): PersistencePort | null {
     return null
   }
 
+  // @compat storage-cove-m0-keys
   const readWithLegacyFallback = (key: string, legacyKey: string): string | null =>
     storage.getItem(key) ?? storage.getItem(legacyKey)
 
   return {
     kind: 'localStorage',
     readAppState: async () => {
+      // @compat storage-cove-m0-keys
       const raw = readWithLegacyFallback(STORAGE_KEY, LEGACY_STORAGE_KEY)
       if (!raw) {
         return { state: null, recovery: null, revision: null }
@@ -175,6 +180,7 @@ function createLocalStoragePort(): PersistencePort | null {
 
       try {
         storage.setItem(STORAGE_KEY, raw)
+        // @compat storage-cove-m0-keys
         storage.removeItem(LEGACY_STORAGE_KEY)
         return { ok: true, level: 'full', bytes: raw.length }
       } catch (error) {
@@ -189,6 +195,7 @@ function createLocalStoragePort(): PersistencePort | null {
         }
       }
     },
+    // @compat storage-cove-m0-keys
     readNodeScrollback: async nodeId =>
       readWithLegacyFallback(
         `${NODE_SCROLLBACK_KEY_PREFIX}${nodeId}`,
@@ -196,16 +203,19 @@ function createLocalStoragePort(): PersistencePort | null {
       ),
     writeNodeScrollback: async (nodeId, scrollback) => {
       const key = `${NODE_SCROLLBACK_KEY_PREFIX}${nodeId}`
+      // @compat storage-cove-m0-keys
       const legacyKey = `${LEGACY_NODE_SCROLLBACK_KEY_PREFIX}${nodeId}`
 
       try {
         if (!scrollback || scrollback.length === 0) {
           storage.removeItem(key)
+          // @compat storage-cove-m0-keys
           storage.removeItem(legacyKey)
           return { ok: true, level: 'full', bytes: 0 }
         }
 
         storage.setItem(key, scrollback)
+        // @compat storage-cove-m0-keys
         storage.removeItem(legacyKey)
         return { ok: true, level: 'full', bytes: scrollback.length }
       } catch (error) {
@@ -220,6 +230,7 @@ function createLocalStoragePort(): PersistencePort | null {
         }
       }
     },
+    // @compat storage-cove-m0-keys
     readAgentNodePlaceholderScrollback: async nodeId =>
       readWithLegacyFallback(
         `${AGENT_PLACEHOLDER_SCROLLBACK_KEY_PREFIX}${nodeId}`,
@@ -227,16 +238,19 @@ function createLocalStoragePort(): PersistencePort | null {
       ),
     writeAgentNodePlaceholderScrollback: async (nodeId, scrollback) => {
       const key = `${AGENT_PLACEHOLDER_SCROLLBACK_KEY_PREFIX}${nodeId}`
+      // @compat storage-cove-m0-keys
       const legacyKey = `${LEGACY_AGENT_PLACEHOLDER_SCROLLBACK_KEY_PREFIX}${nodeId}`
 
       try {
         if (!scrollback || scrollback.length === 0) {
           storage.removeItem(key)
+          // @compat storage-cove-m0-keys
           storage.removeItem(legacyKey)
           return { ok: true, level: 'full', bytes: 0 }
         }
 
         storage.setItem(key, scrollback)
+        // @compat storage-cove-m0-keys
         storage.removeItem(legacyKey)
         return { ok: true, level: 'full', bytes: scrollback.length }
       } catch (error) {
@@ -251,10 +265,12 @@ function createLocalStoragePort(): PersistencePort | null {
         }
       }
     },
+    // @compat storage-cove-m0-keys
     readWorkspaceStateRaw: async () => readWithLegacyFallback(STORAGE_KEY, LEGACY_STORAGE_KEY),
     writeWorkspaceStateRaw: async raw => {
       try {
         storage.setItem(STORAGE_KEY, raw)
+        // @compat storage-cove-m0-keys
         storage.removeItem(LEGACY_STORAGE_KEY)
         return { ok: true, level: 'full', bytes: raw.length }
       } catch (error) {
@@ -276,6 +292,7 @@ export function getPersistencePort(): PersistencePort | null {
   return createIpcPort() ?? createLocalStoragePort()
 }
 
+// @compat storage-cove-m0-keys
 export function readLegacyLocalStorageRaw(): string | null {
   const storage = getStorage()
   if (!storage) {

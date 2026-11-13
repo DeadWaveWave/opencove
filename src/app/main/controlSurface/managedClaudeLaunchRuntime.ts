@@ -28,6 +28,7 @@ export async function admitManagedClaudeLaunch(
   mountId: string | null = null,
 ): Promise<void> {
   const current = scope.getStore()
+  // @compat managed-claude-worker-support
   if (!current || current.phase === 'legacy') {
     return
   }
@@ -36,6 +37,7 @@ export async function admitManagedClaudeLaunch(
     if (attempt.expected?.activationId) {
       rejectManagedLaunch(attempt.nodeId, 'identityConflict')
     }
+    // @compat managed-claude-worker-support
     current.phase = 'legacy'
     current.releasePending?.()
     return
@@ -45,6 +47,7 @@ export async function admitManagedClaudeLaunch(
   }
   current.phase = 'managed'
   current.trackPending?.()
+  // @compat managed-claude-worker-support
   if ((await current.owner.admit(attempt, { provider, cwd, mountId })) === 'legacy') {
     current.phase = 'legacy'
     current.releasePending?.()
@@ -230,6 +233,7 @@ export function createManagedClaudeLaunchRuntime(deps: {
       if (initial?.binding) {
         assertManagedClaudeMutationAllowed(ctx, nodeId as string, deps.writesEnabled?.() !== false)
       }
+      // @compat managed-claude-worker-support
       if (
         !initial?.binding &&
         !ctx.clientFeatures?.managedClaudeResumeBindingV1 &&
@@ -303,6 +307,7 @@ export function createManagedClaudeLaunchRuntime(deps: {
         if (observation.retired) {
           rejectManagedLaunch(attempt.nodeId, 'nodeGone')
         }
+        // @compat managed-claude-worker-support
         const managed = Boolean(
           observation.binding ||
           (deps.adoptionEnabled() &&
@@ -312,6 +317,7 @@ export function createManagedClaudeLaunchRuntime(deps: {
             (!payload.provider || payload.provider === 'claude-code')),
         )
         if (!managed) {
+          // @compat managed-claude-worker-support
           return execute(
             guardLegacyManagedClaudeContext(
               ctx,
@@ -404,6 +410,7 @@ export function createManagedClaudeLaunchRuntime(deps: {
               },
             })
           }
+          // @compat managed-claude-worker-support
           if (executionScope.phase === 'legacy') {
             return candidate
           }
