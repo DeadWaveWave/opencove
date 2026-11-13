@@ -160,7 +160,7 @@ Options:
   --status <todo|doing|ai_done|done>   Set the task status
   --node <id>                          Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
   --title <text>                       Set the node title
-  --frame <json>                       Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes; task minimum: width 220, height 260
+  --frame <json>                       Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; task minimum: width 220, height 260; inspect appliedFrame and frameAdjusted for the actual applied size
   --space <selector>                   Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>                       Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 

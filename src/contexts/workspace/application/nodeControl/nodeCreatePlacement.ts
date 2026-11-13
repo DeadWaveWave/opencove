@@ -7,16 +7,15 @@ import {
   type WorkspaceCanonicalSizeBucket,
 } from '../../domain/workspaceNodeSizing'
 import { computeSpaceRectFromNodes, SPACE_NODE_PADDING } from '../../domain/workspaceSpaceLayout'
-import {
-  expandRectToContain,
-  growSpaceAncestors,
-} from '../../../space/application/spaceGeometryGrowth'
+import { growNodeCreationSpaces, nearGrowthRanker } from './nodeCreateSpaceGrowth'
+import { nodeNearSpaceRects } from './nodeNearSpaceRects'
 import { resolveWorkspaceNodesPlacement } from '../../domain/workspaceNodePlacement'
 
 export function workspaceWithNode(
   workspace: NodeControlWorkspace,
   node: NodeControlNode,
   spaceId: string | null,
+  near = false,
 ): NodeControlWorkspace {
   const nodeRect = {
     x: node.position.x,
@@ -25,22 +24,26 @@ export function workspaceWithNode(
     height: node.height,
   }
 
-  const nextSpaces = workspace.spaces.map(space => {
-    const filtered = space.nodeIds.filter(nodeId => nodeId !== node.id)
-    if (space.id !== spaceId) {
-      return { ...space, nodeIds: filtered }
-    }
-
-    const rect = space.rect
-      ? expandRectToContain(space.rect, nodeRect, SPACE_NODE_PADDING)
-      : computeSpaceRectFromNodes([nodeRect])
-    return { ...space, nodeIds: [...filtered, node.id], rect }
-  })
+  const grown = spaceId
+    ? growNodeCreationSpaces(
+        workspace,
+        spaceId,
+        nodeRect,
+        near ? nodeNearSpaceRects(workspace) : null,
+      )
+    : workspace.spaces
+  const nextSpaces = grown.map(space => ({
+    ...space,
+    nodeIds:
+      space.id === spaceId
+        ? [...space.nodeIds.filter(id => id !== node.id), node.id]
+        : space.nodeIds.filter(id => id !== node.id),
+  }))
 
   return {
     ...workspace,
     nodes: [...workspace.nodes, node],
-    spaces: spaceId ? growSpaceAncestors(nextSpaces, spaceId, SPACE_NODE_PADDING) : nextSpaces,
+    spaces: nextSpaces,
   }
 }
 
@@ -71,17 +74,76 @@ function resolveSpaceRect(
 }
 
 /** The boundary supplies only an authenticated caller ID; geometry stays workspace-owned. */
-function rootCreationAnchor(workspace: NodeControlWorkspace, callerNodeId?: string | null) {
+function rootCreationAnchor(
+  workspace: NodeControlWorkspace,
+  callerNodeId?: string | null,
+  effectiveRects?: ReturnType<typeof nodeNearSpaceRects> | null,
+) {
   const caller = callerNodeId ? workspace.nodes.find(node => node.id === callerNodeId) : undefined
   if (!caller) {
     return { x: 0, y: 0 }
   }
   const space = workspace.spaces.find(candidate => candidate.nodeIds.includes(caller.id))
-  const rect = space ? resolveSpaceRect(workspace, space) : null
+  const rect = space ? (effectiveRects?.get(space.id) ?? resolveSpaceRect(workspace, space)) : null
   return {
     x: (rect ? rect.x + rect.width : caller.position.x + caller.width) + SPACE_NODE_PADDING,
     y: caller.position.y,
   }
+}
+
+/** Candidate anchors only; the shared solver owns collision checks and fallback. */
+function nearCreationAnchors(
+  reference: NodeControlNode,
+  size: { width: number; height: number },
+  nodes: NodeControlNode[],
+  tier: (rect: { x: number; y: number; width: number; height: number }) => number,
+) {
+  const { x, y } = reference.position
+  const right = x + reference.width,
+    bottom = y + reference.height
+  const ys = [
+    ...new Set([y, ...nodes.map(node => node.position.y + node.height + SPACE_NODE_PADDING)]),
+  ].filter(value => value >= y)
+  const xs = [
+    ...new Set([
+      x,
+      right - size.width,
+      ...nodes.flatMap(node => [
+        node.position.x + node.width + SPACE_NODE_PADDING,
+        node.position.x - size.width - SPACE_NODE_PADDING,
+      ]),
+    ]),
+  ]
+  const candidates = [
+    ...ys.map(top => ({ x: right + SPACE_NODE_PADDING, y: top, side: 0, offset: top - y })),
+    ...xs.map(left => ({
+      x: left,
+      y: bottom + SPACE_NODE_PADDING,
+      side: 1,
+      offset: Math.abs(left - x),
+    })),
+    ...ys.map(top => ({
+      x: x - size.width - SPACE_NODE_PADDING,
+      y: top,
+      side: 2,
+      offset: top - y,
+    })),
+    // Reuse the same edge coordinates for farther-out, top-aligned slots as well.
+    ...xs.map(left => ({ x: left, y, side: 3, offset: Math.abs(left - x) })),
+  ].map(point => ({
+    ...point,
+    tier: tier({ ...point, ...size }),
+    distance: Math.hypot(
+      Math.max(x - point.x - size.width, point.x - right, 0),
+      Math.max(y - point.y - size.height, point.y - bottom, 0),
+    ),
+  }))
+  return candidates
+    .sort(
+      (a, b) =>
+        a.tier - b.tier || a.distance - b.distance || a.side - b.side || a.offset - b.offset,
+    )
+    .map(point => ({ x: point.x, y: point.y }))
 }
 
 export function resolvePlacement(options: {
@@ -91,6 +153,7 @@ export function resolvePlacement(options: {
   bucket: WorkspaceCanonicalSizeBucket
   frame?: CreateNodeInput['frame']
   callerNodeId?: string | null
+  reference?: NodeControlNode
 }): { placement: { x: number; y: number }; size: { width: number; height: number } } {
   const defaultSize = resolveCanonicalNodeSize({ kind: options.kind, bucket: options.bucket })
   const explicitX =
@@ -106,27 +169,41 @@ export function resolvePlacement(options: {
     return { placement: { x: explicitX, y: explicitY }, size: defaultSize }
   }
 
-  const targetSpaceRect = options.space ? resolveSpaceRect(options.workspace, options.space) : null
+  const effectiveRects = options.reference ? nodeNearSpaceRects(options.workspace) : null
+  const targetSpaceRect = options.space
+    ? (effectiveRects?.get(options.space.id) ?? resolveSpaceRect(options.workspace, options.space))
+    : null
   const automaticRoot = !options.space && explicitX === null && explicitY === null
   const rootAnchor = automaticRoot
-    ? rootCreationAnchor(options.workspace, options.callerNodeId)
+    ? rootCreationAnchor(
+        options.workspace,
+        options.reference?.id ?? options.callerNodeId,
+        effectiveRects,
+      )
     : { x: 0, y: 0 }
-  const size = automaticRoot
-    ? clampFrameSize({
-        kind: options.kind,
-        width: options.frame?.width ?? defaultSize.width,
-        height: options.frame?.height ?? defaultSize.height,
-      })
-    : defaultSize
-  const anchor = targetSpaceRect
-    ? { x: targetSpaceRect.x + SPACE_NODE_PADDING, y: targetSpaceRect.y + SPACE_NODE_PADDING }
-    : rootAnchor
+  const size =
+    automaticRoot || options.reference
+      ? clampFrameSize({
+          kind: options.kind,
+          width: options.frame?.width ?? defaultSize.width,
+          height: options.frame?.height ?? defaultSize.height,
+        })
+      : defaultSize
+  const anchor =
+    options.reference && options.space
+      ? {
+          x: options.reference.position.x + options.reference.width + SPACE_NODE_PADDING,
+          y: options.reference.position.y,
+        }
+      : targetSpaceRect
+        ? { x: targetSpaceRect.x + SPACE_NODE_PADDING, y: targetSpaceRect.y + SPACE_NODE_PADDING }
+        : rootAnchor
   const spaceRects = options.workspace.spaces
-    .map(space => space.rect)
+    .map(space => effectiveRects?.get(space.id) ?? space.rect)
     .filter((rect): rect is { x: number; y: number; width: number; height: number } =>
       Boolean(rect),
     )
-  const resolved = resolveWorkspaceNodesPlacement({
+  const placementInput: Parameters<typeof resolveWorkspaceNodesPlacement>[0] = {
     anchor,
     size,
     nodes: options.workspace.nodes.map(node => ({
@@ -137,7 +214,29 @@ export function resolvePlacement(options: {
     spaceRects,
     targetSpaceRect,
     overflowDirections: targetSpaceRect ? ['right', 'down', 'left', 'up'] : undefined,
+  }
+  const growthTier =
+    options.reference && options.space
+      ? nearGrowthRanker(options.workspace, options.space.id, effectiveRects!)
+      : () => 0
+  let resolved = resolveWorkspaceNodesPlacement({
+    ...placementInput,
+    preferredAnchors:
+      options.reference &&
+      (options.space ||
+        !options.workspace.spaces.some(space => space.nodeIds.includes(options.reference!.id)))
+        ? nearCreationAnchors(options.reference, size, options.workspace.nodes, growthTier)
+        : undefined,
   })
+  const compactTier = growthTier({ ...resolved.placement, ...size })
+  if (options.reference && options.space && resolved.canPlace && compactTier > 0) {
+    // Include the existing bounded/overflow search in the tier comparison, without
+    // changing compact ordering when both results have the same growth cost.
+    const fallback = resolveWorkspaceNodesPlacement(placementInput)
+    if (fallback.canPlace && growthTier({ ...fallback.placement, ...size }) < compactTier) {
+      resolved = fallback
+    }
+  }
 
   if (!resolved.canPlace) {
     throw createAppError('common.invalid_input', {

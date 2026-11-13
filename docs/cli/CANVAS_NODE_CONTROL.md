@@ -58,6 +58,49 @@ opencove canvas focus space [space locator] [--pretty]
 
 Focus 失败不会回滚已创建的 node。显示 root canvas 上的新节点时，用创建命令的 `--focus`，或 `opencove canvas focus node --node <id>`。
 
+## Near placement (V1)
+
+Recommend `--near @self` for agents creating helper notes, terminals or agents:
+
+```sh
+opencove node create note --near @self --text "Progress"
+opencove node create terminal --near @self --title "Checks"
+opencove node create agent --near @self --prompt "Review the tests"
+```
+
+All supported create kinds accept `--near <node selector>` (ID, exact name, unique prefix,
+`@self`, `@parent`). It is explicit opt-in: omitting it preserves existing behavior.
+The reference supplies its current project and direct Space, or root if it has no Space.
+An external caller can supply a reference ID without `--project`. An explicit project or
+Space locator is a consistency constraint; the reference must belong directly to that Space.
+`--root-canvas --near <selector>` overrides membership and searches beside the reference's
+Space in the reference's project. A size-only `--frame '{"width":520,"height":420}'` requests
+that size near the reference. Width-only, height-only and empty frames are also allowed; x/y
+(including null coordinate keys) are refused before mutation. Sizes below the kind minimum
+are raised; inspect `appliedFrame` and `frameAdjusted`. Create/update help lists each kind's
+minimum dimensions from the same shared constants used by runtime enforcement.
+
+Near candidates first prefer no container/ancestor growth, then growth whose resulting container
+and every grown ancestor avoid unrelated Space rectangles, then all other growth. Within each
+tier, candidates keep the compact nearest-edge ordering: right column (top-aligned, then stacking
+down), row below, left column, then further out. Parent/descendant containment is intentional
+and is not treated as a Space collision. Other Space rectangles remain solver obstacles.
+The same pure growth plan is used for ranking and the creation CAS; ranking and size clamping
+are recomputed on every attempt. The CAS inserts membership and grows ancestors together.
+If all candidates require intersecting Space envelopes, placement still uses its last tier;
+this is a preference, not a global non-overlap guarantee. Existing nodes stay fixed. Missing Space
+rectangles use bounds derived from members and child Spaces; only missing target/ancestor
+rectangles are seeded during insertion. Empty unrelated Spaces with no rectangle are ignored.
+Near is an anchor preference, not a distance guarantee; growing Space envelopes can overlap.
+
+The CLI requires `features.nodeNearPlacementV1 === true`, including through `api call`.
+Unsupported Workers fail with `cli.unsupported` (exit 5) and an upgrade hint, without creation.
+The Worker revalidates the reference and target on each CAS attempt; missing references return
+`node.not_found`. Target identity changes fail with existing cleanup and no relaunch.
+References resolve only on the connected Worker; no origin fallback or automatic remote routing.
+Reference selection does not change authenticated creator identity, grants or runtime restrictions.
+Only the final frame and membership persist, with no continuing near relationship.
+
 ## Space Locator
 
 CLI 将 locator flags 转成 DTO，真正解析在 workspace application logic 内完成。

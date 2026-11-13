@@ -22,6 +22,7 @@ export type { NodePlacementDirection, Point, Rect, Size, WorkspacePlacementNode 
 
 export function resolveWorkspaceNodesPlacement({
   anchor,
+  preferredAnchors,
   size,
   nodes,
   spaceRects,
@@ -31,6 +32,8 @@ export function resolveWorkspaceNodesPlacement({
   overflowDirections,
 }: {
   anchor: Point
+  /** Explicit creation anchors, ordered by reference-edge distance; growth may beat distant interior slots. */
+  preferredAnchors?: Point[]
   size: Size
   nodes: WorkspacePlacementNode[]
   spaceRects?: Array<{ x: number; y: number; width: number; height: number }>
@@ -62,6 +65,13 @@ export function resolveWorkspaceNodesPlacement({
   const combinedObstaclesExceptTarget = avoidObstacles.length
     ? [...obstaclesExceptTarget, ...avoidObstacles]
     : obstaclesExceptTarget
+
+  const preferred = preferredAnchors?.find(candidate =>
+    isPositionAvailable(candidate, size, nodes, undefined, combinedObstaclesExceptTarget),
+  )
+  if (preferred) {
+    return { placement: preferred, canPlace: true }
+  }
 
   if (!targetSpaceRect) {
     if (isPositionAvailable(anchor, size, nodes, undefined, combinedSpaceObstacles)) {

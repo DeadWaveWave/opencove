@@ -25,6 +25,7 @@ function targetIdentity(target: ResolvedNodeCreationTarget) {
     target.endpoint.endpointId,
     target.mount?.rootUri ?? null,
     target.workingDirectory,
+    target.referenceSpaceId,
   ])
 }
 
@@ -68,6 +69,7 @@ export async function commitCreatedNode(options: {
       bucket: normalizeAgentSettings(state.settings).standardWindowSizeBucket,
       frame: options.input.frame,
       callerNodeId: options.callerNodeId,
+      reference: current.reference,
     })
     const frame = resolveCreateFrame({
       kind: options.input.kind,
@@ -89,7 +91,12 @@ export async function commitCreatedNode(options: {
         taskNodeId: options.taskNodeId,
       })
     }
-    const inserted = workspaceWithNode(current.workspace, node, spaceId)
+    const inserted = workspaceWithNode(
+      current.workspace,
+      node,
+      spaceId,
+      Boolean(options.input.near),
+    )
     const workspace =
       options.taskNodeId === undefined
         ? inserted

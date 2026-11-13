@@ -1,3 +1,4 @@
+import { NODE_MIN_SIZE_BY_KIND } from '../../../shared/types/nodeSizeLimits'
 import type { AgentProvider, StandardWindowSizeBucket } from '../../settings/domain/agentSettings'
 
 export type WorkspaceCanonicalSizeBucket = StandardWindowSizeBucket
@@ -40,18 +41,7 @@ const KIND_UNITS: Record<WorkspaceNodeKind, { col: number; row: number }> = {
   plugin: { col: 6, row: 6 },
 }
 
-const MIN_SIZE_BY_KIND: Record<WorkspaceNodeKind, Size> = {
-  terminal: { width: 400, height: 260 },
-  task: { width: 220, height: 260 },
-  agent: { width: 400, height: 520 },
-  note: { width: 220, height: 140 },
-  role: { width: 320, height: 300 },
-  image: { width: 180, height: 120 },
-  document: { width: 400, height: 260 },
-  folder: { width: 360, height: 260 },
-  website: { width: 400, height: 260 },
-  plugin: { width: 400, height: 260 },
-}
+const MIN_SIZE_BY_KIND: Record<WorkspaceNodeKind, Size> = NODE_MIN_SIZE_BY_KIND
 
 const MAX_SIZE_BY_KIND: Record<WorkspaceNodeKind, Size> = {
   terminal: { width: 720, height: 520 },

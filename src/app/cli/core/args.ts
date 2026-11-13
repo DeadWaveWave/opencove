@@ -288,6 +288,7 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
     !values.help &&
     command.operation === 'node.create' &&
     values['root-canvas'] &&
+    values.near === undefined &&
     values.project === undefined &&
     io.env.OPENCOVE_ENV !== '1'
   ) {
@@ -297,6 +298,7 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
     !values.help &&
     !values['root-canvas'] &&
     command.targetSpace === 'required' &&
+    !(command.operation === 'node.create' && values.near !== undefined) &&
     !['space', 'space-name', 'worker', 'branch', 'path'].some(key => values[key] !== undefined)
   ) {
     usage(
