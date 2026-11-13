@@ -89,6 +89,7 @@
     "build:linux": "pnpm build && pnpm build:release-manifest && electron-builder --linux AppImage deb --publish never",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:contract:worker-cli": "playwright test -c tests/contract/worker-cli/playwright.config.ts",
     "test:terminal-recovery:native": "node scripts/run-terminal-recovery-native-tests.mjs",
     "test:e2e": "node scripts/test-e2e-with-window-fallback.mjs",
     "test:perf": "playwright test -c tests/perf/playwright.config.ts",

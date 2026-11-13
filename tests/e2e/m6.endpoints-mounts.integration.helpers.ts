@@ -175,7 +175,8 @@ export async function startRemoteWorker(options: {
         ...(shouldDisableSandbox ? { ELECTRON_DISABLE_SANDBOX: '1' } : {}),
         HOME: options.homeDir,
         USERPROFILE: options.homeDir,
-        OPENCOVE_TEST_AGENT_STUB_SCRIPT: stubScriptPath,
+        OPENCOVE_TEST_AGENT_STUB_SCRIPT:
+          options.env?.OPENCOVE_TEST_AGENT_STUB_SCRIPT ?? stubScriptPath,
         OPENCOVE_TEST_AGENT_SESSION_SCENARIO: options.agentSessionScenario ?? 'codex-standby-only',
       },
       stdio: 'pipe',

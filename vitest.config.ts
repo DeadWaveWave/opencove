@@ -51,7 +51,7 @@ export default defineConfig({
     ],
 
     // 排除目录
-    exclude: ['node_modules', 'dist', 'tests/e2e'],
+    exclude: ['node_modules', 'dist', 'tests/e2e', 'tests/contract/worker-cli/**'],
 
     // 覆盖率配置
     coverage: {
