@@ -168,6 +168,18 @@ Ubuntu/macOS 三个分片用 `scripts/plan-e2e-shards.mjs` 按文件内用例的
 
 快速 E2E 首个失败即停止，保留 trace 后先定向修复。一次代码版本的一组定向 E2E 只构建一次；只有确认源码与构建产物一致时才可复用，代码改动后重新构建。完整 CI 保留现有分片策略；本地快速通过不代表完整回归通过，汇报必须分别列出通过、跳过与尚未执行的范围。
 
+### 变更影响面（`pnpm impact`）
+
+改动之间的联系不能只靠 Agent 的记忆：每次会话都从零开始，而一个典型提交约涉及 20 个文件、3 个区域。`pnpm impact` 在动手前和提交前列出一组文件的影响面，不改动工作区和 Git 状态，退出码恒为 0（仅用法或 I/O 错误非 0）。
+
+- **输入**：`pnpm impact <文件...>`（计划中尚不存在的文件也可以）、`pnpm impact --staged`、`pnpm impact --base origin/main`（与合并基点的差异，含未提交与新建文件）。输出格式：默认完整、`--brief` 摘要、`--json`（`schemaVersion: 1`）、`--pr-section`（可直接粘贴的 PR 小节）。
+- **输出内容**：涉及的区域与分层（`src/contexts/<x>`、`src/app/<x>`、`src/shared`、`src/platform`，其余取顶层目录；分层来自 `harness/architecture/rules.json`）；直接引用者（按区域分组，标注运行时或仅类型；`export … from` 会穿透，barrel 不会遮住真正的引用者）；相关测试（引用者中的 `tests/**/*.spec.*`，加上 `scripts/lib/file-read-dependents.mjs` 登记的读文件型测试）；快速 E2E 组（直接调用 `selectPrecommitE2E`）；以及历史上常与它们一起改动、但本次缺席的**共变伙伴**。
+- **共变伙伴**来自提交的索引 `scripts/impact-cochange-index.json`，由 `pnpm impact:index` 从 Git 历史生成（跟随重命名；排除合并提交、超过 40 个文件的提交、spec/CSS/多语言/快照等；取最近 500 个符合条件的提交）。展示条件：共同出现至少 5 次，且共同占该文件改动的至少 50%。支持度 ≥10 且置信度 ≥90% 的一对会标为"always together"，应优先考虑生成或抽取，而不是反复解释。
+- **为什么提交索引**：它让 50 个提交的浅克隆、1 个提交的 CI 检出和完整本地克隆得到同样的答案，PR 检查与 Agent 本地看到的一致。索引是生成物，不要手改（`AGENTS.md` 规则 3）：`pnpm impact:index` 需要完整历史（浅克隆会拒绝并提示 `git fetch --unshallow`），`pnpm impact:index --check` 从记录的 `throughCommit` 重建并逐字节比较，PR 修改索引时 CI 会运行它。维护者约每月运行一次 `pnpm impact:index` 并作为单独提交；超过 45 天输出会给出过期警告。
+- **PR 检查**：PR 描述必须有 `## 🔗 Co-change partners left untouched` 小节，对本 PR 差异里每个缺席的伙伴写一行理由（"should be extracted, follow-up #N" 也是有效理由）；伙伴或理由缺失、理由为空或仍是 `<reason>` 都会失败，失败日志会打印应粘贴的完整小节。PR 检查与 `pnpm impact --base` 使用同一个函数 `findMissingPartners` 和同一份索引。
+- **本地门禁**：`verify:quick` 末尾运行 `pnpm impact --staged --brief`，只做提示，不阻塞提交。
+- **不能告诉你什么**：经由字符串、IPC 通道名、依赖注入注册、CSS 类名、i18n key 或动态 import 产生的耦合；没有历史的新文件；以及伙伴是否真的需要修改（它只说"通常一起改"，不说"必须"）。相关测试只覆盖静态 import（含 re-export）与 `FILE_READ_DEPENDENTS`。
+
 ## 全局硬规则（摘要）
 
 -   **架构基线**：本项目以 `DDD` 划分领域，以 `Clean` 约束依赖；`context` 是一级组织单位，每个 context 强制拆为 `domain / application / infrastructure / presentation`，`app/main`、`app/preload`、`app/renderer` 只做组合与边界。细则见 `docs/architecture/ARCHITECTURE.md`。

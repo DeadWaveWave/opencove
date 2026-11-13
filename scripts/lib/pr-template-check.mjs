@@ -1,7 +1,10 @@
+import { CO_CHANGE_HEADING, validatePartnerSection } from './impact/partner-section.mjs'
+
 const REQUIRED_TOP_LEVEL_HEADINGS = [
   '## 💡 Change Scope',
   '## 📝 What Does This PR Do?',
   '## 🏗️ Large Change Spec (Required if "Large Change" is checked)',
+  CO_CHANGE_HEADING,
   '## ✅ Delivery & Compliance Checklist',
 ]
 
@@ -142,7 +145,9 @@ export function validateTemplateStructure(templateMarkdown) {
   return errors
 }
 
-export function validatePullRequestBody(prBody) {
+// `missingPartners` are the co-change partners the diff leaves untouched, from
+// `findMissingPartners`. Without them (no diff known) the section only has to have content.
+export function validatePullRequestBody(prBody, { missingPartners = null } = {}) {
   const normalizedBody = normalizeMarkdown(prBody ?? '')
   const sections = splitTopLevelSections(normalizedBody)
   const errors = []
@@ -182,6 +187,15 @@ export function validatePullRequestBody(prBody) {
       if (!hasMeaningfulContent(subsectionContent)) {
         errors.push(`Large Change Spec requires content for ${label}.`)
       }
+    }
+  }
+
+  if (sections.has(CO_CHANGE_HEADING)) {
+    const coChangeSection = sections.get(CO_CHANGE_HEADING)
+    if (missingPartners) {
+      errors.push(...validatePartnerSection(coChangeSection, missingPartners))
+    } else if (!hasMeaningfulContent(coChangeSection)) {
+      errors.push(`${CO_CHANGE_HEADING} must contain content.`)
     }
   }
 

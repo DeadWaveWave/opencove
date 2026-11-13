@@ -63,6 +63,7 @@ For runtime-risk or Large work, explicitly check:
 ## 6. Development Workflow
 
 1.  **Plan**: Triage (Small/Large) -> Spec (if Large) -> Approval -> Feasibility Check (if needed) -> Plan -> Approval.
+    -   **Impact**: run `pnpm impact <expected files>` while planning and `pnpm impact --staged` before commit; explain each untouched co-change partner in the pull request (`## 🔗 Co-change partners left untouched`).
 2.  **Code (TDD)**: `Red -> Green -> Refactor`.
 3.  **Verify**:
     -   **Small**: Targeted unit/integration tests OK.
