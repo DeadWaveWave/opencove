@@ -316,12 +316,19 @@ test('managed Claude stale publications retain layout and cold-resume the curren
     // Drop all invalidations while disconnected, commit C, then restart the Worker.
     const finalId = await syntheticRebind(userDataDir, home, workspace, agent.id, nextId)
     await expectConversation(page, agent.id, finalId)
+    // Desktop owns automatic local Worker recovery. Stop it before this fixture takes
+    // ownership of restarting the Worker on the Web client's existing port.
+    await app.close()
+    app = undefined
     await stopWorker(worker)
     worker = null
     worker = (await startWorker({ userDataDir, env, port: workerPort, token: connection.token }))
       .child
     worker.stdout.resume()
     worker.stderr.resume()
+    const reconnected = await launchApp({ userDataDir, cleanupUserDataDir: false, env })
+    app = reconnected.electronApp
+    page = reconnected.window
     await web.context().setOffline(false)
     // Existing EventSource reconnects to the same configured Web listener with an empty buffer.
     await expectConversation(web, agent.id, finalId)

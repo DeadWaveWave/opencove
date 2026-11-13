@@ -69,12 +69,40 @@ export async function startWorker(options: {
   })
 
   const info = await new Promise<WorkerConnectionInfo>((resolvePromise, rejectPromise) => {
+    let stderr = ''
+    const captureStderr = (chunk: string) => {
+      stderr = (stderr + chunk).slice(-16_384)
+    }
+    child.stderr.setEncoding('utf8')
+    child.stderr.on('data', captureStderr)
     const rl = createInterface({ input: child.stdout })
-
-    const timeout = setTimeout(() => {
+    const fail = (reason: string) => {
+      cleanup()
+      rejectPromise(
+        new Error(
+          `${reason}\nWorker pid=${child.pid ?? 'unavailable'}, port=${options.port ?? 0}, userData=${options.userDataDir}\nstderr:\n${stderr || '(empty)'}`,
+        ),
+      )
+    }
+    const onError = (error: Error) => fail(`Worker failed to spawn: ${error.message}`)
+    // close follows exit AND pipe drainage, so the last stderr chunk is included.
+    const onClose = (code: number | null, signal: NodeJS.Signals | null) =>
+      fail(`Worker exited before ready (code=${code ?? 'null'}, signal=${signal ?? 'none'})`)
+    const cleanup = () => {
+      clearTimeout(timeout)
+      child.off('error', onError)
+      child.off('close', onClose)
+      child.stderr.off('data', captureStderr)
       rl.close()
-      rejectPromise(new Error('Timed out waiting for worker ready payload'))
+      // readline.close() pauses stdout. Keep both pipes drained for the Worker's lifetime.
+      child.stdout.resume()
+      child.stderr.resume()
+    }
+    const timeout = setTimeout(() => {
+      fail('Timed out waiting for worker ready payload')
     }, WORKER_READY_TIMEOUT_MS)
+    child.once('error', onError)
+    child.once('close', onClose)
 
     rl.on('line', line => {
       try {
@@ -84,19 +112,18 @@ export async function startWorker(options: {
           return
         }
 
-        clearTimeout(timeout)
-        rl.close()
+        cleanup()
         resolvePromise(normalized)
       } catch {
         // ignore non-JSON output
       }
     })
-
-    child.once('exit', code => {
-      clearTimeout(timeout)
-      rl.close()
-      rejectPromise(new Error(`Worker exited before ready (code=${code ?? 1})`))
-    })
+  }).catch(async error => {
+    // A failed handshake must not orphan a child that the caller never received.
+    if (child.pid) {
+      await stopWorker(child)
+    }
+    throw error
   })
 
   // Sanity: keep the worker alive for the duration of the test.
