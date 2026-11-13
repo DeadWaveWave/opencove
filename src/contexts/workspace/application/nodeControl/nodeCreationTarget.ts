@@ -1,3 +1,7 @@
+import {
+  hasNodeFrameCoordinates,
+  NODE_NEAR_FRAME_ERROR,
+} from '../../../../shared/utils/nodeNearFrame'
 import type { CreateNodeInput } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
 import { resolveSpaceMountContext } from '../../../space/application/resolveSpaceMountContext'
@@ -22,12 +26,12 @@ export async function resolveNodeCreationTarget(
   input: CreateNodeInput,
 ): Promise<ResolvedNodeCreationTarget> {
   if (input.near) {
-    if (
-      (input.frame !== undefined && input.frame !== null) ||
-      (input.near.target === 'root-canvas' && input.space)
-    ) {
+    if (hasNodeFrameCoordinates(input.frame)) {
+      throw createAppError('common.invalid_input', { debugMessage: NODE_NEAR_FRAME_ERROR })
+    }
+    if (input.near.target === 'root-canvas' && input.space) {
       throw createAppError('common.invalid_input', {
-        debugMessage: 'near conflicts with frame or root Space locator.',
+        debugMessage: 'near root intent conflicts with a Space locator.',
       })
     }
     const reference = findNodeForNodeControl(state.workspaces, input.near.nodeId)

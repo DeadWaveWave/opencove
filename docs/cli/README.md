@@ -90,7 +90,7 @@ For agents creating helper nodes, recommend `--near @self` on `node create note`
 the reference in its current direct Space (or root). Omitting it preserves current behavior.
 `--near <node selector>` supplies project/container context; an external full reference ID needs
 no `--project`. Explicit Space/project options must match; `--root-canvas` overrides membership.
-All `--frame` combinations conflict. The CLI requires `features.nodeNearPlacementV1 === true`
+A size-only `--frame` (width/height) is allowed; x/y conflict with near placement. The CLI requires `features.nodeNearPlacementV1 === true`
 for both dedicated commands and `api call`; older Workers refuse with exit 5 before mutation.
 See [near placement](CANVAS_NODE_CONTROL.md#near-placement-v1) for bounds and retry semantics.
 

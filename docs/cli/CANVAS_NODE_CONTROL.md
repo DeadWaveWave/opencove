@@ -74,13 +74,21 @@ The reference supplies its current project and direct Space, or root if it has n
 An external caller can supply a reference ID without `--project`. An explicit project or
 Space locator is a consistency constraint; the reference must belong directly to that Space.
 `--root-canvas --near <selector>` overrides membership and searches beside the reference's
-Space in the reference's project. All `--frame` combinations, including size-only, are refused.
+Space in the reference's project. A size-only `--frame '{"width":520,"height":420}'` requests
+that size near the reference. Width-only, height-only and empty frames are also allowed; x/y
+(including null coordinate keys) are refused before mutation. Sizes below the kind minimum
+are raised; inspect `appliedFrame` and `frameAdjusted`. Create/update help lists each kind's
+minimum dimensions from the same shared constants used by runtime enforcement.
 
-Near candidates are ordered by distance between their rectangle and the reference's nearest edge.
-Equal distances prefer the right column (top-aligned, then stacking down), the row below, then
-the left column, before further-out slots. The existing solver validates these anchors before
-its general search; a nearby slot can grow the Space instead of using a distant interior slot.
-The same creation CAS inserts membership and grows ancestors. Existing nodes stay fixed. Missing Space
+Near candidates first prefer no container/ancestor growth, then growth whose resulting container
+and every grown ancestor avoid unrelated Space rectangles, then all other growth. Within each
+tier, candidates keep the compact nearest-edge ordering: right column (top-aligned, then stacking
+down), row below, left column, then further out. Parent/descendant containment is intentional
+and is not treated as a Space collision. Other Space rectangles remain solver obstacles.
+The same pure growth plan is used for ranking and the creation CAS; ranking and size clamping
+are recomputed on every attempt. The CAS inserts membership and grows ancestors together.
+If all candidates require intersecting Space envelopes, placement still uses its last tier;
+this is a preference, not a global non-overlap guarantee. Existing nodes stay fixed. Missing Space
 rectangles use bounds derived from members and child Spaces; only missing target/ancestor
 rectangles are seeded during insertion. Empty unrelated Spaces with no rectangle are ignored.
 Near is an anchor preference, not a distance guarantee; growing Space envelopes can overlap.

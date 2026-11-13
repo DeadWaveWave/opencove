@@ -130,6 +130,9 @@ it('documents Full Access as a create-only choice with a Settings default', asyn
 it.each(['create', 'update'])(
   'explains raised minimum dimensions for every node %s kind',
   async action => {
+    const { NODE_MIN_SIZE_BY_KIND } = await import('../../../src/shared/types/nodeSizeLimits')
+    const { resolveCanonicalNodeMinSize } =
+      await import('../../../src/contexts/workspace/domain/workspaceNodeSizing')
     for (const kind of ['note', 'terminal', 'agent', 'task', 'website'] as const) {
       const f = identityFixture(false)
       // eslint-disable-next-line no-await-in-loop
@@ -138,6 +141,9 @@ it.each(['create', 'update'])(
       expect(f.out()).toContain(
         'inspect appliedFrame and frameAdjusted for the actual applied size',
       )
+      const min = resolveCanonicalNodeMinSize(kind)
+      expect(min).toBe(NODE_MIN_SIZE_BY_KIND[kind])
+      expect(f.out()).toContain(`${kind} minimum: width ${min.width}, height ${min.height}`)
       expect(f.fetch).not.toHaveBeenCalled()
     }
   },

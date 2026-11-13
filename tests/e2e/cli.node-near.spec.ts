@@ -10,6 +10,9 @@ import { createTerminalInSpace, focusSpace } from './cli.space.helpers'
 import { writeLineageAgentStub } from './cli.agent-lineage.helpers'
 import type { CanvasNodeDetailDto } from '../../src/shared/contracts/dto/nodeControl'
 
+const frameArgument = (value: string) =>
+  `'${process.platform === 'win32' ? value.replaceAll('"', '\\"') : value}'`
+
 function nonOverlapping(a: Rect, b: Rect) {
   expect(
     a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y,
@@ -25,7 +28,8 @@ test('terminal-grant near creation persists and renders three helpers with neste
     parentId = 'near-parent'
   const briefFrame = { x: 1200, y: 1200, width: 280, height: 180 }
   const childFrame = { x: 1000, y: 1000, width: 4200, height: 2000 }
-  const parentFrame = { x: 900, y: 900, width: 4400, height: 2200 }
+  const parentFrame = { x: 900, y: 900, width: 4400, height: 2700 }
+  const docsFrame = { x: 1000, y: 3050, width: 800, height: 500 }
   let app: ElectronApplication | undefined
   try {
     await mkdir(workspace)
@@ -84,6 +88,14 @@ test('terminal-grant near creation persists and renders three helpers with neste
               nodeIds: ['brief'],
               rect: childFrame,
             },
+            {
+              id: 'near-docs',
+              name: 'Docs',
+              parentSpaceId: parentId,
+              directoryPath: workspace,
+              nodeIds: [],
+              rect: docsFrame,
+            },
           ],
         },
       ],
@@ -116,7 +128,7 @@ test('terminal-grant near creation persists and renders three helpers with neste
     for (const kind of ['note', 'terminal', 'agent']) {
       const args =
         kind === 'note'
-          ? '--text "Near progress"'
+          ? `--text "Near progress" --frame ${frameArgument(JSON.stringify({ width: 100, height: 100 }))}`
           : kind === 'agent'
             ? '--provider claude-code --prompt "Inspect the tests"'
             : ''
@@ -132,6 +144,10 @@ test('terminal-grant near creation persists and renders three helpers with neste
         lineageDepth: 2,
       })
       if (kind === 'note') {
+        expect(result).toMatchObject({
+          frameAdjusted: true,
+          appliedFrame: { width: 220, height: 140 },
+        })
         expect(node.frame).toMatchObject({
           x: caller.frame.x + caller.frame.width + 24,
           y: caller.frame.y,
@@ -160,6 +176,7 @@ test('terminal-grant near creation persists and renders three helpers with neste
       expect(gap).toBe(24)
       nonOverlapping(caller.frame, node.frame)
       nonOverlapping(briefFrame, node.frame)
+      nonOverlapping(docsFrame, node.frame)
       nodes.forEach(previous => nonOverlapping(previous.frame, node.frame))
       expect((await getNode(node.id, `READ_${kind}`)).frame).toEqual(node.frame)
       nodes.push(node)
@@ -171,6 +188,9 @@ test('terminal-grant near creation persists and renders three helpers with neste
     )
     expect(child.nodeIds).toHaveLength(5)
     expect(parent.nodeIds).toEqual([])
+    nonOverlapping(child.rect, docsFrame)
+    expect((await getSpace('near-docs', 'DOCS_AFTER')).rect).toEqual(docsFrame)
+    expect(contains(parent.rect, docsFrame, 24)).toBe(true)
     expect(contains(child.rect, childBefore.rect)).toBe(true)
     expect(contains(parent.rect, parentBefore.rect)).toBe(true)
     expect(contains(parent.rect, child.rect, 24)).toBe(true)

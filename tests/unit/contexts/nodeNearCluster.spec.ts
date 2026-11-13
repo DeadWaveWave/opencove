@@ -48,7 +48,12 @@ it.each([false, true])(
         })
       }
       if (kind === 'agent') {
-        expect(node.frame.y).toBe(reference.y + reference.height + padding)
+        if (root) {
+          expect(node.frame.y).toBe(reference.y + reference.height + padding)
+        } else {
+          // The left column fits without growing the Space; the row below would grow it.
+          expect(node.frame.x).toBe(reference.x - node.frame.width - padding)
+        }
       }
       if (!root) {
         expect(isRectInsideRect(node.frame, f.state().workspaces[0].spaces[0].rect!)).toBe(true)

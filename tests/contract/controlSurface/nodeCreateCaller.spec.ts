@@ -189,6 +189,7 @@ it.each(['bearer', 'grant', 'missing-reference'] as const)(
           id: 'node.create',
           payload: {
             kind: 'note',
+            frame: { width: 100, height: 100 },
             near: {
               nodeId: mode === 'missing-reference' ? 'remote-node-not-here' : reference.id,
               target: 'reference-container',
@@ -207,7 +208,12 @@ it.each(['bearer', 'grant', 'missing-reference'] as const)(
       expect((result.value as CreateNodeResult).node).toMatchObject({
         spawnedBy: mode === 'grant' ? caller.id : null,
         lineageDepth: mode === 'grant' ? 2 : 1,
-        frame: { x: reference.frame.x + reference.frame.width + SPACE_NODE_PADDING, y: 3000 },
+        frame: {
+          x: reference.frame.x + reference.frame.width + SPACE_NODE_PADDING,
+          y: 3000,
+          width: 220,
+          height: 140,
+        },
       })
     } finally {
       await rm(root, { recursive: true, force: true })

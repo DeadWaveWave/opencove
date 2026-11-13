@@ -69,12 +69,13 @@ it('keeps explicit project and Space as constraints', async () => {
     space: { kind: 'spaceId', spaceId: who.spaceId },
   })
 })
-it.each(['{}', '{"width":300}', '{"x":1}', '{"x":1,"y":2}'])(
-  'rejects every --frame combination (%s) before requests',
+it.each(['{"x":1}', '{"y":2}', '{"x":null}', '{"x":1,"y":2}'])(
+  'rejects near frame coordinates (%s) before requests',
   async frame => {
     const f = fixture()
     expect(await run(['node', 'create', 'note', '--near', '@self', '--frame', frame], f.io)).toBe(2)
     expect(f.requests).toEqual([])
+    expect(f.error().message).toContain('size-only frames')
   },
 )
 it.each([undefined, false, 'true'])(
@@ -118,15 +119,18 @@ it.each([
 ])('rejects malformed near API shape %j', near => {
   expect(() => nodeCreateOperation.legacyNormalize!({ kind: 'note', near })).toThrow()
 })
-it.each([{}, { width: 300 }, { x: 1, y: 2 }])('rejects API near/frame conflicts %j', frame => {
-  expect(() =>
-    nodeCreateOperation.legacyNormalize!({
-      kind: 'note',
-      near: { nodeId: 'n', target: 'reference-container' },
-      frame,
-    }),
-  ).toThrow()
-})
+it.each([{ x: 1 }, { y: 2 }, { x: null }, { x: 1, y: 2 }])(
+  'rejects API near/frame conflicts %j',
+  frame => {
+    expect(() =>
+      nodeCreateOperation.legacyNormalize!({
+        kind: 'note',
+        near: { nodeId: 'n', target: 'reference-container' },
+        frame,
+      }),
+    ).toThrow()
+  },
+)
 it('normalizes reference intent', () => {
   expect(
     nodeCreateOperation.legacyNormalize!({
@@ -160,4 +164,59 @@ it.each(['note', 'terminal', 'agent'])('recommends --near @self in %s help', asy
   const f = fixture(false)
   expect(await run(['node', 'create', kind, '--help'], f.io)).toBe(0)
   expect(f.out()).toContain('recommend --near @self')
+})
+
+it.each([{}, { width: 520 }, { height: 420 }, { width: 520, height: 420 }])(
+  'allows near size-only frame %j in CLI and API',
+  async frame => {
+    const f = fixture()
+    expect(
+      await run(
+        ['node', 'create', 'terminal', '--near', '@self', '--frame', JSON.stringify(frame)],
+        f.io,
+      ),
+    ).toBe(0)
+    expect(f.requests.find(r => r.id === 'node.create')!.payload.frame).toEqual(frame)
+    expect(
+      nodeCreateOperation.legacyNormalize!({
+        kind: 'terminal',
+        near: { nodeId: who.nodeId, target: 'reference-container' },
+        frame,
+      }),
+    ).toMatchObject({ frame })
+  },
+)
+
+it('reports a near size-only frame raised to the agent minimum', async () => {
+  const f = fixture()
+  const applied = { x: 3300, y: 2000, width: 520, height: 520 }
+  f.values['node.create'] = { node: { id: 'created', kind: 'agent', frame: applied } }
+  expect(
+    await run(
+      ['node', 'create', 'agent', '--near', '@self', '--frame', '{"width":520,"height":420}'],
+      f.io,
+    ),
+  ).toBe(0)
+  expect(JSON.parse(f.out())).toMatchObject({ appliedFrame: applied, frameAdjusted: true })
+})
+it('rejects coordinates through api call before mutation with size-only guidance', async () => {
+  const f = fixture()
+  expect(
+    await run(
+      [
+        'api',
+        'call',
+        'node.create',
+        '--input',
+        JSON.stringify({
+          kind: 'note',
+          near: { nodeId: who.nodeId, target: 'reference-container' },
+          frame: { x: 0, width: 300 },
+        }),
+      ],
+      f.io,
+    ),
+  ).toBe(2)
+  expect(f.error().message).toContain('size-only frames')
+  expect(f.requests.some(r => r.id === 'node.create')).toBe(false)
 })

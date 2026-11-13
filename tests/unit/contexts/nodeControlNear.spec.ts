@@ -105,7 +105,7 @@ it.each(['absent', 'project', 'space', 'root-space', 'frame'])(
                   space: { kind: 'spaceId' as const, spaceId: 'space' },
                   near: { nodeId: 'reference', target: 'root-canvas' as const },
                 }
-              : { frame: { width: 300 } }
+              : { frame: { x: 300 } }
     await expect(f.run({ kind: 'terminal', ...input })).rejects.toMatchObject({
       code: mode === 'absent' ? 'node.not_found' : expect.any(String),
     })
