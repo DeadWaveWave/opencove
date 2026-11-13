@@ -34,8 +34,11 @@ it.each(
         origin: 'hook',
         record: parseClaudeTranscript(transcriptLine(variant, 'B', 'queued')),
       })
-      expect(f.fence()).toEqual(before)
-      expect(f.fence().claudeClearReady).toBe(true)
+      const metadata = variant === 'metadata' || variant === 'identified-metadata'
+      if (metadata) {
+        expect(f.fence()).toEqual(before)
+      }
+      expect(f.fence().claudeClearReady).toBe(metadata)
       return
     }
     if (phase === 'resume') {

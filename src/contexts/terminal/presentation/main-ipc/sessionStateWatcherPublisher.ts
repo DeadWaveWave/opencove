@@ -7,6 +7,7 @@ import {
 import type { TerminalSessionStateEvent } from '../../../../shared/contracts/dto'
 import type { OwnedSessionStateWatcherInput } from './sessionStateWatcherInput'
 import { logSessionStateWatcherDiagnostics } from './sessionStateWatcherShared'
+import { getClaudeStateRecord } from '../../../../shared/runtime/agentHook/claudeTranscript'
 
 /** Publishes current watcher evidence through the Worker observation port. */
 export function createSessionStatePublisher({
@@ -27,6 +28,7 @@ export function createSessionStatePublisher({
         | 'conversationCapture'
         | 'invocationId'
         | 'claudeAuxiliary'
+        | 'claudeTranscriptRecord'
       >
       claudeAuxiliary?: true
       degraded?: boolean
@@ -112,6 +114,7 @@ export function captureSessionStateObservation(
         position: -1,
         baseline: true,
         auxiliary: options.claudeAuxiliary,
+        record: getClaudeStateRecord(options),
         activity: { state: value === 'standby' ? 'idle' : value, observedAt: Date.now() },
       })
     }
@@ -126,6 +129,7 @@ export function captureSessionStateObservation(
                 : {}),
               conversationCapture,
               claudeAuxiliary: options.claudeAuxiliary,
+              claudeTranscriptRecord: getClaudeStateRecord(options),
               invocationId: capturedIncarnation,
             },
           }

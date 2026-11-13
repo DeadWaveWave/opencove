@@ -11,9 +11,12 @@ import capture from '../../fixtures/claude/clear-transcripts-2.1.322.json'
 import { parseClaudeTranscript } from '../../../src/contexts/agent/infrastructure/watchers/ClaudeTranscriptParser'
 import { getClaudeTranscriptInput } from '../../../src/shared/runtime/agentHook/claudeTranscript'
 import { promptAdmission } from '../../../src/contexts/agent/application/promptAdmission'
+import { ClaudeTranscriptCheckpoint } from '../../../src/contexts/agent/infrastructure/watchers/ClaudeTranscriptCheckpoint'
 
 it('recognizes every captured 2.1.322 B prefix line without trusting timestamp order', () => {
   const records = capture.transcripts.B.map(parseClaudeTranscript)
+  const checkpoint = new ClaudeTranscriptCheckpoint()
+  records.forEach((record, index) => checkpoint.observe(record, capture.transcripts.B[index]))
   expect(records.filter(r => r?.kind === 'invalid_user')).toHaveLength(2)
   for (const record of records.filter(r => r?.kind === 'invalid_user')) {
     expect(getClaudeTranscriptInput(record!)).toBe('auxiliary')
@@ -71,18 +74,23 @@ it.each([
 )
 
 it.each([true, false, undefined])(
-  'recognizes captured command display independently of isMeta=%s and timestamps',
+  'corroborates the captured echo independently of echo isMeta=%s and timestamps',
   isMeta => {
+    const checkpoint = new ClaudeTranscriptCheckpoint()
+    let echo: ReturnType<typeof parseClaudeTranscript>
     for (const line of capture.transcripts.B) {
       const raw = JSON.parse(line)
-      if (raw.type !== 'user') {
-        continue
+      if (raw.type === 'user' && raw.isMeta !== true) {
+        raw.isMeta = isMeta
       }
-      const parsed = parseClaudeTranscript(
-        JSON.stringify({ ...raw, isMeta, timestamp: '1900-01-01T00:00:00Z' }),
-      )!
-      expect(getClaudeTranscriptInput(parsed)).toBe('auxiliary')
+      const changed = JSON.stringify({ ...raw, timestamp: '1900-01-01T00:00:00Z' })
+      const parsed = parseClaudeTranscript(changed)
+      checkpoint.observe(parsed, changed)
+      if (raw.uuid === '93b06239-eaff-4c5b-b98c-cdac2a25183c') {
+        echo = parsed
+      }
     }
+    expect(getClaudeTranscriptInput(echo!)).toBe('auxiliary')
   },
 )
 it('correlates a delayed assistant record with its already completed authenticated prompt', async () => {

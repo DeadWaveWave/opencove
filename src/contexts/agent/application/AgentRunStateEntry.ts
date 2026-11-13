@@ -9,6 +9,7 @@ import type { AgentTurnHistory, FinalMessageSelector } from './AgentTurnHistory'
 import type { AgentRuntimeFilter, AgentRuntimeEvent } from './AgentRunStateRegistry'
 import type { AgentRunModel } from '../domain/agentRunState'
 import type { RunStateFence } from './ports/PromptDeliveryPorts'
+import { getClaudeTranscriptInput } from '../../../shared/runtime/agentHook/claudeTranscript'
 export type AgentRunEntry = {
   conversation?: ClaudeLiveConversation
   claudeJournal?: ClaudeInvocationJournal
@@ -262,7 +263,9 @@ export function acceptsRunObservation(
   }
   if (
     source === 'session_file' &&
-    evidence?.claudeAuxiliary &&
+    (evidence?.claudeAuxiliary ||
+      (evidence?.claudeTranscriptRecord &&
+        getClaudeTranscriptInput(evidence.claudeTranscriptRecord) === 'auxiliary')) &&
     entry.model.snapshot.provider === 'claude-code'
   ) {
     return false

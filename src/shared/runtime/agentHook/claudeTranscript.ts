@@ -26,6 +26,24 @@ export function markClaudeTranscriptPrompt(record: ClaudeTranscriptRecord, promp
 export function getClaudeTranscriptPrompt(record: ClaudeTranscriptRecord): string | undefined {
   return promptByRecord.get(record)
 }
+const completedByRecord = new WeakMap<object, string>()
+/** Only a per-file final boundary may certify the records preceding it. */
+export function markClaudeTranscriptCompleted(
+  record: ClaudeTranscriptRecord,
+  promptId: string,
+): void {
+  completedByRecord.set(record, promptId)
+}
+export function getClaudeTranscriptCompleted(record: ClaudeTranscriptRecord): string | undefined {
+  return completedByRecord.get(record)
+}
+const stateRecord = new WeakMap<object, ClaudeTranscriptRecord>()
+export function markClaudeStateRecord(options: object, record: ClaudeTranscriptRecord): void {
+  stateRecord.set(options, record)
+}
+export function getClaudeStateRecord(options: object): ClaudeTranscriptRecord | undefined {
+  return stateRecord.get(options)
+}
 export interface ClaudeTranscriptObservation {
   sessionId: string
   incarnation?: string

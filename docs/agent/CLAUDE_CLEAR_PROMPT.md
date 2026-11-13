@@ -5,7 +5,7 @@ first prompt without a completed successor turn. Hook coverage, managed launch p
 and bracketed paste remain required. This private, volatile receipt is lost on activity,
 waiting, exit, coverage loss or conversation replacement; restart does not restore it.
 It proves neither an empty editor nor absence of dialogs. Missing or metadata-only
-transcripts neither grant readiness nor revoke it; actual queue/user or assistant activity vetoes it. Local-command caveats, indented `/clear` echoes and local-command output are display records regardless of `isMeta` or timestamp order. Unknown input remains a veto.
+transcripts neither grant readiness nor revoke it; actual queue/user or assistant activity vetoes it. Claude-marked metadata and confirmed local-command displays are ignored. Command-shaped user text without provider evidence remains input. A completed turn’s transcript prefix, including thinking before its final reply, is reconciled with its authenticated completion; activity after that final reply still blocks input. Unknown input remains a veto.
 Accepted working or waiting file observations also revoke the receipt; later transcript
 callbacks cannot restore it. Auxiliary transcript filtering applies during the clear window
 or while its first-prompt receipt remains valid;
@@ -52,7 +52,7 @@ Claude Code `/clear` 后可在观察到新会话时尝试首条提示，无须�
 这 200 毫秒是 clear 过渡的有意等待；安静时间只用于触发对账，不能证明回调已过期。
 窗口结束后恢复普通处理；超窗证据不改写已结束轮次，普通会话的乱序处理保持原有行为。
 过期、歧义或容量耗尽只撤回 clear 就绪权限，不会阻止后续正常恢复、提交与完成。
-被动的空闲与认证通知不影响就绪状态。无法排序的 clear 会立即暂停输入；元数据、本地命令提示、带缩进的 `/clear` 回显和本地命令输出都不表示工作活动，不受 `isMeta` 或记录时间顺序影响。真正的用户输入、助手活动或无法确认的输入仍会暂停投递。
+被动的空闲与认证通知不影响就绪状态。无法排序的 clear 会立即暂停输入；只有 Claude 标记的元数据和经本地命令记录确认的回显不表示工作活动。用户输入即使看起来像命令，也仍会暂停投递。已完成轮次的转录前缀（包括最终回复前的思考记录）会与已确认的完成事件对账；最终回复后的新活动或无法确认的输入仍会暂停投递。
 这不保证编辑器为空或没有对话框。状态不明时检查屏幕，切勿自动重发。
 当前会话的文件观察若确认正在工作或等待，也会撤销 clear 就绪权限；后续 transcript 回调不会恢复权限。
 辅助记录仅在 clear 窗口内或首条提示仍获准投递时被过滤；之后恢复普通解析与对账语义。

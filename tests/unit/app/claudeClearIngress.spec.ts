@@ -99,7 +99,7 @@ it.each(['PermissionRequest', 'Stop'])(
   },
 )
 it.each(['redacted prefix', 'metadata and command echo', 'plain command echo'])(
-  'keeps clear readiness for the parsed %s, but vetoes real user input',
+  'requires provider proof for an uncorroborated %s, and vetoes real user input',
   async variant => {
     const f = await fixture()
     await f.send('B', 'SessionStart', 10, undefined, 'clear')
@@ -121,9 +121,13 @@ it.each(['redacted prefix', 'metadata and command echo', 'plain command echo'])(
       }
       return JSON.stringify(record)
     })
-    for (const line of prefix) {
+    for (const [index, line] of prefix.entries()) {
       replay(line)
-      expect(promptAdmission(f.fence(), capability)).toBeNull()
+      if (variant === 'redacted prefix' || index < 3) {
+        expect(promptAdmission(f.fence(), capability)).toBeNull()
+      } else {
+        expect(promptAdmission(f.fence(), capability)).not.toBeNull()
+      }
     }
     replay(clearTranscript[6])
     expect(promptAdmission(f.fence(), capability)).not.toBeNull()

@@ -1,5 +1,9 @@
 import type { ClaudeConversationEvent } from '../../../shared/runtime/agentHook/claudeConversation'
 import type { JournalFact } from './ClaudeInvocationJournal'
+import {
+  getClaudeTranscriptCompleted,
+  getClaudeTranscriptInput,
+} from '../../../shared/runtime/agentHook/claudeTranscript'
 /** One proof vocabulary for admission and compaction. Missing identity is never retirement. */
 export class ClaudeJournalProof {
   readonly current: JournalFact | undefined
@@ -88,21 +92,30 @@ export class ClaudeJournalProof {
       this.epoch(f) === this.current &&
       this.epoch(stop) === this.current &&
       stop.id === f.id &&
-      (f.kind === 'finish'
-        ? stop.at >= f.at
-        : f.io
-          ? f.input
-            ? f.promptId
-              ? stop.promptId === f.promptId
-              : stop.order! >= f.order!
-            : stop.at >= f.at
-          : stop.at >= f.at)
+      (f.kind !== 'finish' && f.io ? this.coversIO(stop, f) : stop.at >= f.at)
     )
+  }
+  private coversIO(stop: JournalFact, fact: JournalFact): boolean {
+    const completed = fact.transcript && getClaudeTranscriptCompleted(fact.transcript)
+    if (fact.transcript?.kind === 'assistant' && !fact.transcript.final) {
+      return stop.order! >= fact.order! || (!!completed && completed === stop.promptId)
+    }
+    if (completed) {
+      return completed === stop.promptId
+    }
+    if (fact.input) {
+      return fact.promptId ? stop.promptId === fact.promptId : stop.order! >= fact.order!
+    }
+    return stop.at >= fact.at
   }
   resolved(f: JournalFact): boolean {
     return (
-      ['activity', 'finish'].includes(f.kind) && this.completion.some(stop => this.covers(stop, f))
+      ['activity', 'finish'].includes(f.kind) &&
+      (this.auxiliary(f) || this.completion.some(stop => this.covers(stop, f)))
     )
+  }
+  auxiliary(f: JournalFact): boolean {
+    return !!f.transcript && getClaudeTranscriptInput(f.transcript) === 'auxiliary'
   }
   get unresolved(): JournalFact[] {
     return this.relevant.filter(

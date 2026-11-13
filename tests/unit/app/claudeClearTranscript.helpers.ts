@@ -59,6 +59,7 @@ export async function capturedClearFixture(fileProjection = false, clearGap?: nu
     }
   })
   let fileWatcher: SessionTurnStateWatcher | undefined
+  const fileRecords: { record?: ClaudeTranscriptObservation['record'] }[] = []
   if (fileProjection) {
     const input = {
       sessionId: 's',
@@ -82,6 +83,19 @@ export async function capturedClearFixture(fileProjection = false, clearGap?: nu
       provider: 'claude-code',
       sessionId: 's',
       filePath: path(capture.b),
+      onClaudeTranscript: record => {
+        fileRecords.push(record)
+        run.runtime.observeClaudeTranscript({
+          ...record,
+          sessionId: 's',
+          providerSessionId: capture.b,
+          incarnation: captured.incarnation,
+          generation: 2,
+          conversationGeneration: captured.generation,
+          conversationCapture: captured.capture,
+          origin: 'session_file',
+        })
+      },
       onState: (...args) => {
         states.push(args)
         captured.state(...args)
@@ -105,9 +119,11 @@ export async function capturedClearFixture(fileProjection = false, clearGap?: nu
       const count = () =>
         records.filter(r => r.providerSessionId === capture.b && r.record?.kind === kind).length
       const before = count()
+      const fileCount = () => fileRecords.filter(r => r.record?.kind === kind).length
+      const beforeFile = fileCount()
       await fs.appendFile(path(capture.b), line + '\n')
       await vi.waitFor(() => {
-        if (count() <= before) {
+        if (count() <= before || (fileProjection && fileCount() <= beforeFile)) {
           throw new Error('B append not read')
         }
       })

@@ -1,30 +1,21 @@
-/** Display-only Claude records carry no evidence that a prompt is being processed. */
-export function isClaudeAuxiliaryUser(record: {
+export interface ClaudeUserOrigin {
   type?: unknown
   isMeta?: unknown
-  promptId?: unknown
   promptSource?: unknown
-  message?: { content?: unknown }
-}): boolean {
-  if (record.type !== 'user') {
-    return false
-  }
-  if (record.isMeta === true) {
-    return true
-  }
-  if (record.promptId !== undefined || record.promptSource !== undefined) {
-    return false
-  }
-  const content = record.message?.content
-  if (typeof content !== 'string') {
-    return false
-  }
-  const text = content.trim()
+  origin?: unknown
+  turnOrigin?: unknown
+}
+export function hasClaudeHumanOrigin(record: ClaudeUserOrigin): boolean {
   return (
-    text === '/clear' ||
-    /^<command-name>\/clear<\/command-name>\s*(?:<command-message>clear<\/command-message>\s*)?(?:<command-args><\/command-args>)?$/u.test(
-      text,
-    ) ||
-    /^<local-command-(caveat|stdout)>[\s\S]*<\/local-command-\1>$/u.test(text)
+    record.promptSource === 'typed' ||
+    record.turnOrigin === 'human' ||
+    (!!record.origin &&
+      typeof record.origin === 'object' &&
+      'kind' in record.origin &&
+      record.origin.kind === 'human')
   )
+}
+/** Text never establishes provenance. Linked local-command evidence is folded per file. */
+export function isClaudeAuxiliaryUser(record: ClaudeUserOrigin): boolean {
+  return record.type === 'user' && record.isMeta === true && !hasClaudeHumanOrigin(record)
 }

@@ -28,6 +28,7 @@ export function acknowledgeClaudeJournal(
       fileIdentity: 'state-projection',
       position: observation.sourceSequence,
       baseline: false,
+      record: evidence?.claudeTranscriptRecord,
       activity: {
         state: observation.state === 'waiting' ? 'waiting' : 'working',
         observedAt: observation.observedAt,

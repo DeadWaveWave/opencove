@@ -1,10 +1,11 @@
+import { clearAgentRunHistory, revokeAgentRunHistory } from './AgentRunHistoryMaintenance'
 import { observeRunConversation } from './AgentRunConversationIngress'
 import {
   subscribeAgentRuns,
   type RetainedEvent,
   type ContextualPublication,
 } from './AgentRunSubscriptions'
-import type { AgentTurnArchive, ArchiveMembership, ArchiveClearResult } from './AgentTurnArchive'
+import type { AgentTurnArchive, ArchiveMembership } from './AgentTurnArchive'
 import { readExactArchivedTurn } from './AgentTurnArchiveRead'
 import { AgentSubmissionEvidence } from './AgentSubmissionEvidence'
 import { ClaudeTurnContinuation } from './ClaudeTurnContinuation'
@@ -264,37 +265,10 @@ export class AgentRunStateRegistry {
     }
   }
   clearHistory(nodeId: string) {
-    const ids = new Set([nodeId])
-    let memoryRemoved = 0
-    for (const entry of this.entries.values()) {
-      memoryRemoved += entry.history.clearNodes(ids)
-    }
-    let archive: ArchiveClearResult = { status: 'unavailable' }
-    try {
-      archive = this.ports.archive?.clearNode(nodeId) ?? archive
-    } catch {
-      /* Clear private memory even when optional storage fails. */
-    }
-    // A remote agent keeps its replies on the Worker that runs it; this Worker cannot clear them.
-    const remote =
-      [...this.entries.values()].some(
-        entry => entry.remote && entry.model.snapshot.nodeId === nodeId,
-      ) || this.ports.isRemote?.({ nodeId }) === true
-    return { nodeId, memoryRemoved, archive, ...(remote ? { remote } : {}) }
+    return clearAgentRunHistory(() => this.entries.values(), nodeId, this.ports)
   }
-
   revokeNodes(nodeIds: readonly string[], revokeArchive = true): void {
-    const ids = new Set(nodeIds)
-    for (const entry of this.entries.values()) {
-      entry.history.revokeNodes(ids)
-    }
-    try {
-      if (revokeArchive) {
-        this.ports.archive?.revokeNodes(nodeIds)
-      }
-    } catch {
-      /* Runtime history remains usable. */
-    }
+    revokeAgentRunHistory(this.entries.values(), nodeIds, this.ports.archive, revokeArchive)
   }
 
   get(locator: { sessionId: string } | { nodeId: string }): AgentRunSnapshot | null {

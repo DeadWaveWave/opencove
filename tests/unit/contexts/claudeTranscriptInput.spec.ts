@@ -4,11 +4,11 @@ import { getClaudeTranscriptInput } from '../../../src/shared/runtime/agentHook/
 import { transcriptLine } from '../../support/claudeNonClear/transcript'
 
 it.each(['metadata', 'local-command', 'command-markup'] as const)(
-  'preserves ordinary invalid-user parsing for %s and keeps auxiliary evidence private',
+  'preserves ordinary invalid-user parsing and requires metadata for %s',
   variant => {
     const parsed = parseClaudeTranscript(transcriptLine(variant, 'B'))!
     expect(parsed).toStrictEqual({ kind: 'invalid_user' })
-    expect(getClaudeTranscriptInput(parsed)).toBe('auxiliary')
+    expect(getClaudeTranscriptInput(parsed)).toBe(variant === 'metadata' ? 'auxiliary' : undefined)
     expect(JSON.stringify(parsed)).not.toContain('auxiliary')
   },
 )

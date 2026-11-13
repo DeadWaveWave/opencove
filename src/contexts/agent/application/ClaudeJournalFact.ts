@@ -1,6 +1,7 @@
 import type { AgentRunTurnEnd } from '../domain/agentRunState'
 import type { ClaudeCaptureBinding } from './ClaudeCaptureBindings'
 import type { ClaudeTranscriptObservation } from '../../../shared/runtime/agentHook/claudeTranscript'
+import type { ClaudeTranscriptRecord } from '../../../shared/runtime/agentHook/claudeTranscript'
 
 export type JournalFact = {
   kind: 'start' | 'end' | 'activity' | 'finish' | 'complete'
@@ -11,6 +12,7 @@ export type JournalFact = {
   capture?: ClaudeCaptureBinding
   input?: boolean
   io?: boolean
+  transcript?: ClaudeTranscriptRecord
   order?: number
   clear?: boolean
   receipt?: AgentRunTurnEnd

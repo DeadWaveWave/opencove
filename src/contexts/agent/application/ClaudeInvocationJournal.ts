@@ -231,11 +231,12 @@ export class ClaudeInvocationJournal {
       at: record.activity?.observedAt ?? this.now(),
       received: this.now(),
       promptId:
-        input && (input.kind === 'user' || (input.kind === 'assistant' && input.final))
+        input && (input.kind === 'user' || input.kind === 'assistant')
           ? (('promptId' in input ? input.promptId : undefined) ?? getClaudeTranscriptPrompt(input))
           : undefined,
       capture,
       io: true,
+      transcript: input,
       input: !activity,
       key: `io:${capture?.serial}:${input?.kind === 'user' ? input.promptId : ''}:${record.providerSessionId}:${record.generation}:${record.fileIdentity}:${record.position}:${record.activity?.observedAt}:${activity ?? input?.kind}`,
     })
@@ -354,7 +355,9 @@ export class ClaudeInvocationJournal {
       ? Math.min(
           Math.max(
             start.received,
-            ...relevant.filter(f => proof.epoch(f) === start).map(f => f.received),
+            ...relevant
+              .filter(f => proof.epoch(f) === start && !proof.auxiliary(f))
+              .map(f => f.received),
           ) + CLAUDE_CLEAR_QUIET_MS,
           Math.max(first, start.received) + CLAUDE_CLEAR_MAX_MS,
         )

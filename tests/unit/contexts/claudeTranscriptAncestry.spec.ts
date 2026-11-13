@@ -1,7 +1,10 @@
 import { expect, it } from 'vitest'
 import { ClaudeTranscriptAncestry } from '../../../src/contexts/agent/infrastructure/watchers/ClaudeTranscriptAncestry'
 import { parseClaudeTranscript } from '../../../src/contexts/agent/infrastructure/watchers/ClaudeTranscriptParser'
-import { getClaudeTranscriptPrompt } from '../../../src/shared/runtime/agentHook/claudeTranscript'
+import {
+  getClaudeTranscriptPrompt,
+  getClaudeTranscriptCompleted,
+} from '../../../src/shared/runtime/agentHook/claudeTranscript'
 const user = { type: 'user', promptId: 'p', uuid: 'u', message: { content: 'work' } }
 function fixture() {
   const ancestry = new ClaudeTranscriptAncestry()
@@ -52,4 +55,30 @@ it('bounds optional ancestry, fails closed on overflow and clears it for a new i
   )
   f.ancestry.clear()
   expect((f.ancestry as unknown as { descendants: Set<string> }).descendants.size).toBe(0)
+})
+it('certifies only the linked activity preceding the first final boundary', () => {
+  const f = fixture()
+  const thinking = f.append({ type: 'assistant', uuid: 't', parentUuid: 'u' })
+  expect(getClaudeTranscriptPrompt(thinking)).toBe('p')
+  expect(getClaudeTranscriptCompleted(thinking)).toBeUndefined()
+  f.append({ type: 'assistant', uuid: 'f', parentUuid: 't', message: { stop_reason: 'end_turn' } })
+  expect(getClaudeTranscriptCompleted(thinking)).toBe('p')
+  const late = f.append({ type: 'assistant', uuid: 'late', parentUuid: 'f' })
+  f.append({ type: 'assistant', parentUuid: 'late', message: { stop_reason: 'end_turn' } })
+  expect(getClaudeTranscriptCompleted(late)).toBeUndefined()
+})
+it('cannot certify activity through a mismatched prompt or an overflowed ancestry index', () => {
+  const f = fixture()
+  const thinking = f.append({ type: 'assistant', uuid: 't', parentUuid: 'u' })
+  f.append({ type: 'assistant', uuid: 'wrong', parentUuid: 't', promptId: 'other' })
+  f.append({ type: 'assistant', parentUuid: 'wrong', message: { stop_reason: 'end_turn' } })
+  expect(getClaudeTranscriptCompleted(thinking)).toBeUndefined()
+  for (let n = 0; n < 1024; n++) {
+    f.append({ type: 'assistant', uuid: `t${n}`, parentUuid: 'u' })
+  }
+  expect((f.ancestry as unknown as { pending: Set<unknown> }).pending.size).toBeLessThanOrEqual(512)
+  f.append({ type: 'assistant', parentUuid: 't', message: { stop_reason: 'end_turn' } })
+  expect(getClaudeTranscriptCompleted(thinking)).toBeUndefined()
+  f.ancestry.clear()
+  expect((f.ancestry as unknown as { pending: Set<unknown> }).pending.size).toBe(0)
 })

@@ -3,6 +3,7 @@ import { claudePromptId } from '../../../../shared/runtime/agentHook/claudePromp
 import {
   getClaudeTranscriptInput,
   markClaudeTranscriptPrompt,
+  markClaudeTranscriptCompleted,
   type ClaudeTranscriptRecord,
 } from '../../../../shared/runtime/agentHook/claudeTranscript'
 
@@ -12,6 +13,8 @@ export class ClaudeTranscriptAncestry {
   private descendants = new Set<string>()
   private prompt?: string
   private incomplete = false
+  private pending = new Set<ClaudeTranscriptRecord>()
+  private ended = false
   observe(line: string, record?: ClaudeTranscriptRecord): void {
     let raw
     try {
@@ -26,6 +29,7 @@ export class ClaudeTranscriptAncestry {
     if (record?.kind === 'user' && getClaudeTranscriptInput(record) !== 'auxiliary') {
       this.clear()
       this.prompt = record.promptId
+      this.rememberPending(record)
       if (record.uuid) {
         this.remember(record.uuid)
       }
@@ -37,14 +41,39 @@ export class ClaudeTranscriptAncestry {
     }
     if (
       record?.kind === 'assistant' &&
+      raw.promptId !== undefined &&
+      raw.promptId !== this.prompt
+    ) {
+      return
+    }
+    if (
+      record?.kind === 'assistant' &&
       (raw.promptId === undefined || raw.promptId === this.prompt)
     ) {
       markClaudeTranscriptPrompt(record, this.prompt)
+      if (!this.ended && !this.pending.has(record)) {
+        this.rememberPending(record)
+      }
+      if (record.final && !this.ended && !this.incomplete) {
+        this.pending.forEach(item => markClaudeTranscriptCompleted(item, this.prompt!))
+        this.pending.clear()
+        this.ended = true
+      }
     }
     const uuid = claudePromptId(raw.uuid)
     if (uuid) {
       this.remember(uuid)
     }
+  }
+  private rememberPending(record: ClaudeTranscriptRecord): void {
+    boundedInsert(
+      this.pending.size,
+      512,
+      () => this.pending.add(record),
+      () => {
+        this.incomplete = true
+      },
+    )
   }
   private remember(uuid: string): void {
     if (!this.descendants.has(uuid)) {
@@ -60,6 +89,8 @@ export class ClaudeTranscriptAncestry {
   }
   clear(): void {
     this.descendants.clear()
+    this.pending.clear()
+    this.ended = false
     this.prompt = undefined
     this.incomplete = false
   }
