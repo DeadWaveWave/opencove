@@ -3,7 +3,9 @@
 import { readFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 
-const MAX_LINES = 500
+// A file should fit in one read by the agents that work on this repository. The smallest such
+// window is about 10,000 tokens of command output, roughly 1000 lines of this code base.
+const MAX_LINES = 1000
 const CHECKED_EXTENSIONS = new Set([
   '.ts',
   '.tsx',
