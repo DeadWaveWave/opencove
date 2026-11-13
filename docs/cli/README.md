@@ -145,6 +145,9 @@ See [eligibility and limitations](../agent/README.md#resident-canvas-guidance).
 opencove agent list --space @self -o table
 opencove agent get --node "Reviewer" --pretty
 opencove agent read --node "Reviewer" --screen
+opencove agent read --node "Reviewer" --node "Lead" --fields node,ok,message,error
+opencove whoami --fields lineageQuota
+opencove context --fields self.lineageQuota
 opencove agent prompt --node "Reviewer" --wait --read --timeout 2m --text-file ./assignment.txt
 # To keep working meanwhile, split the same steps:
 opencove agent prompt --node "Reviewer" --text-file ./assignment.txt
@@ -152,6 +155,18 @@ opencove agent delivery delivery-123 --wait --timeout 2m
 opencove agent wait --node node-123 --turn turn-123 --timeout 2m
 opencove agent read --node node-123 --turn turn-123 -o json
 ```
+
+Repeated `--node` on `agent read` accepts up to 10 selectors and always returns a JSON array in
+input order, including duplicates. Each entry contains the input selector as `node`, `ok`, and the
+single-read fields, or `ok: false` with `error`. Selector/read failures never hide other targets. Exit 0 means all succeeded; otherwise use the first failing target's exit code (there is no separate
+partial-failure code). `--turn` requires a single target (exit 2 for batches); `--expect-turn` is
+unsupported by `agent read` for any target count (exit 2). Screen options and `--last` apply to all.
+`whoami` exposes `lineageQuota`; `context` exposes `self.lineageQuota`, both projectable as
+`{depth, maxDepth, liveInTree, maxLiveInTree}` from the admission census. Roots have depth 1;
+occupancy counts live/starting agent-created runtimes, excluding the user root. Older Workers or
+unavailable accounting omit quota. Refusal `details.nodes` list up to six nodeId/title/kind/depth/state
+occupants with kind-aware recovery hints (agent stop, or terminal session lookup then session kill).
+Stopping frees width on runtime exit, never the caller's depth.
 
 Give a window a stable name with `node create agent --title "Reviewer"` (also supported for terminals).
 Rename it with `node update agent --node "Reviewer" --title "Lead"`; use `terminal` for terminal windows.
@@ -456,35 +471,9 @@ Question summaries and their compatibility rules: [Agent dialog summaries](AGENT
 
 ## Creation lineage and parent selectors
 
-`@parent` selects the node that created your node through an OpenCove session grant.
-The Worker resolves it from your authenticated identity. It can be a terminal or another node
-kind; each command still checks whether the target supports that action. A root has no parent,
-and a deleted parent cannot be addressed. A node literally named `@parent` must be selected by ID.
-`@self` keeps its injected identity and `whoami` fallback; Space selection keeps its existing behavior.
-
-Node get/list/create, agent get/list and context node summaries expose creation lineage:
-
-- `spawnedBy`: the creator node ID, or `null` for a root or unavailable lineage.
-- `lineageDepth`: A node started by the user has `lineageDepth` 1; each agent-created generation adds one (1 → 2 → 3). Unavailable lineage has `null` depth.
-- `lineageStatus`: `recorded` for recorded creations, `root` without a recorded parent, or `unavailable` when lineage cannot be read. Missing fields mean an older Worker.
-
-Lineage survives renames, moves, parent deletion, renderer saves and restart.
-
-Use `node list --spawned-by @self` or `agent list --spawned-by @self` for direct children across
-the project; an explicit `--space` or `--project` narrows results. Filtering precedes output limits.
-`@parent` and `--spawned-by` require `features.nodeLineageV1`; older Workers fail with exit 5.
-
-中文：`@parent` 由 Worker 根据已验证的会话身份解析，指向创建当前节点的父节点；父节点可以是终端。
-用户启动的节点为 root，`lineageDepth` 为 1；Agent 每创建下一代，深度加 1（1 → 2 → 3）。父节点删除后返回 `parent_deleted`，
-不会改变子节点的血缘记录。`--spawned-by @self` 只列出直接子节点，默认跨当前项目的所有 Space；
-显式 Space／项目筛选仍有效。旧 Worker 不支持这些选择器或筛选时退出码为 5。
-
-With `--spawned-by`, `--project` filters child results; the creator may belong to another project.
-Full IDs, `@self` and `@parent` resolve the creator independently of that filter. Creator names
-and prefixes use your session project, or an explicit Space’s project. Without session identity,
-the selected project supplies the name lookup context. Use a full ID for a creator outside that context.
-中文：`--project` 只筛选子节点，不要求创建者属于该项目。创建者名称／前缀默认在当前会话项目中查找；
-显式 Space 提供其所属项目作为查找范围。没有会话身份时，使用选定项目查找名称。跨查找范围请用完整 ID。
+`@parent` selects the node that created yours; node and agent lists can filter with `--spawned-by`,
+and results carry `spawnedBy`, `lineageDepth` and `lineageStatus`. See [Lineage](LINEAGE.md).
+中文：`@parent`、`--spawned-by` 与血缘字段的完整说明见 [Lineage](LINEAGE.md)。
 
 ## Agent event observation
 

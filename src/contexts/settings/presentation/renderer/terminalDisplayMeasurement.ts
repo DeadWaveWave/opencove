@@ -228,21 +228,22 @@ export function measureFirstMountedTerminalDisplay({
 // measurement opens a hidden xterm with its own WebGL context, so reuse results per environment.
 const baselineMeasurementCache = new Map<string, Promise<TerminalDisplayMeasurement | null>>()
 let fontLoadGeneration = 0
-let fontLoadListenerInstalled = false
+
+// Registered at module load so it runs before the font-load listeners of the hooks that import
+// this module: their refresh must not read an entry measured with the previous fonts.
+if (typeof document !== 'undefined' && document.fonts) {
+  const invalidate = (): void => {
+    fontLoadGeneration += 1
+    baselineMeasurementCache.clear()
+  }
+  document.fonts.addEventListener('loadingdone', invalidate)
+  document.fonts.addEventListener('loadingerror', invalidate)
+}
 
 function baselineMeasurementCacheKey(input: {
   terminalFontSize: number
   terminalFontFamily: string | null
 }): string | null {
-  if (!fontLoadListenerInstalled && typeof document !== 'undefined' && document.fonts) {
-    fontLoadListenerInstalled = true
-    const bump = (): void => {
-      fontLoadGeneration += 1
-      baselineMeasurementCache.clear()
-    }
-    document.fonts.addEventListener('loadingdone', bump)
-    document.fonts.addEventListener('loadingerror', bump)
-  }
   const rendererKind = resolveMountedTerminalDisplayRendererKind()
   if (!rendererKind) {
     return null

@@ -1,3 +1,5 @@
+import { shellWord } from '../utils/shellWord'
+
 export const agentSpawnPresentations = {
   agentSpawnDepth: {
     message: 'This runtime would exceed the maximum agent lineage depth of 3.',
@@ -46,7 +48,21 @@ export interface SpawnForbiddenDetails {
   message: string
   hint: string
 }
+export interface SpawnQuotaNode {
+  nodeId: string
+  title: string
+  kind: string
+  depth: number
+  state: 'starting' | 'running'
+}
+function spawnRecoveryHint(node: SpawnQuotaNode): string {
+  const target = shellWord(node.nodeId)
+  return node.kind === 'terminal'
+    ? `read its current node.sessionId with opencove node get --node ${target} --fields sessionId, then stop the whole terminal with opencove session kill --session <sessionId>`
+    : `stop with opencove agent stop --node ${target}`
+}
 export interface SpawnLimitDetails {
+  nodes?: SpawnQuotaNode[]
   reason: 'depth_limit' | 'concurrency_limit'
   retryable: false
   rootNodeId: string
@@ -57,7 +73,9 @@ export interface SpawnLimitDetails {
   occupied?: number
 }
 export function agentSpawnErrorPresentation(error: { code?: string; details?: unknown }) {
-  const details = error.details as { spawnReason?: string; reason?: string } | undefined
+  const details = error.details as
+    | { spawnReason?: string; reason?: string; nodes?: SpawnQuotaNode[] }
+    | undefined
   const key =
     error.code === 'agent.spawn_depth_limit'
       ? 'agentSpawnDepth'
@@ -75,7 +93,26 @@ export function agentSpawnErrorPresentation(error: { code?: string; details?: un
                 } as const
               )[details?.spawnReason as SpawnForbiddenReason]
             : undefined
-  return key ? { key, ...agentSpawnPresentations[key] } : undefined
+  if (!key) {
+    return undefined
+  }
+  const text = agentSpawnPresentations[key]
+  const nodes =
+    ['agentSpawnDepth', 'agentSpawnConcurrency'].includes(key) && Array.isArray(details?.nodes)
+      ? details.nodes.slice(0, 6)
+      : []
+  const hint = nodes.length
+    ? text.hint +
+      ' Occupying nodes: ' +
+      nodes
+        .map(
+          node =>
+            `${JSON.stringify(node.title)} (${node.nodeId}, ${node.kind}, depth ${node.depth}, ${node.state}); ${spawnRecoveryHint(node)}`,
+        )
+        .join('; ') +
+      '.'
+    : text.hint
+  return { key, ...text, hint }
 }
 export function spawnForbiddenDetails(
   spawnReason: SpawnForbiddenReason,

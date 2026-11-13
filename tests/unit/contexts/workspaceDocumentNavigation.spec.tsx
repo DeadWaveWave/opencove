@@ -115,6 +115,50 @@ describe('workspace document navigation', () => {
     expect(result.current.navigationByNode.get('created-document')?.line).toBe(15)
   })
 
+  it('opens a document at workspace root for a mounted source outside every Space', async () => {
+    const { options, uri, createDocumentNode, terminal } = fixture()
+    terminal.data.workerBinding = { endpointId: 'local', mountId: 'project-mount' }
+    options.nodesRef.current = [terminal]
+    options.spacesRef.current = []
+    createDocumentNode.mockImplementation((anchor, document, _placement, binding) => {
+      const created = node('created-document', document.uri)
+      created.data.workerBinding = binding
+      created.position = anchor
+      options.nodesRef.current = [...options.nodesRef.current, created]
+      return created
+    })
+    const invoke = vi.fn(async () => ({
+      endpointId: 'local',
+      mountId: 'project-mount',
+      rootUri: 'file:///repo',
+    }))
+    vi.stubGlobal('opencoveApi', { controlSurface: { invoke } })
+    try {
+      const { result } = renderHook(() => useWorkspaceDocumentNavigation(options))
+      await act(async () => {
+        expect(
+          await result.current.openFileLink('terminal', { uri, mountId: 'project-mount', line: 4 }),
+        ).toBe(true)
+      })
+      await act(async () => {
+        expect(
+          await result.current.openFileLink('terminal', { uri, mountId: 'project-mount', line: 7 }),
+        ).toBe(true)
+      })
+      expect(createDocumentNode).toHaveBeenCalledOnce()
+      expect(createDocumentNode.mock.calls[0][3]).toEqual({
+        endpointId: 'local',
+        mountId: 'project-mount',
+      })
+      expect(result.current.navigationByNode.get('created-document')).toMatchObject({
+        mountId: 'project-mount',
+        line: 7,
+      })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('reuses the document in the source mount and preserves line ranges outside node data', async () => {
     const { options, uri, createDocumentNode } = fixture()
     const { result } = renderHook(() => useWorkspaceDocumentNavigation(options))

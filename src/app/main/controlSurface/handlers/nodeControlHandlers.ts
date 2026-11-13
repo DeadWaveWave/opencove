@@ -126,7 +126,9 @@ export function registerNodeControlHandlers(
       ? new AgentSpawnAdmissionOwner(deps.agentSpawnRuntime)
       : undefined
   if (admission) {
-    installAgentSpawnOwner(controlSurface, admission)
+    installAgentSpawnOwner(controlSurface, admission, async () =>
+      toNodeControlStateStore(await deps.getPersistenceStore()),
+    )
   }
   const mutationQueue = { current: Promise.resolve() }
   const withDeps = async (ctx: ControlSurfaceContext) => ({
