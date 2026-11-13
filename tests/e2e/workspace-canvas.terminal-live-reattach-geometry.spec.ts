@@ -9,6 +9,7 @@ import {
 } from './workspace-canvas.helpers'
 import {
   isLiveReattachFrameCommitted,
+  liveReattachFrameChecks,
   readLiveTerminalFrame,
 } from './workspace-canvas.terminal-live-reattach-geometry.helpers'
 
@@ -49,7 +50,7 @@ test('a live Desktop terminal reattach commits its measured frame without replac
     })}\n`,
     'utf8',
   )
-  const { electronApp, window } = await launchApp({ windowMode: 'offscreen', userDataDir })
+  const { electronApp, window } = await launchApp({ userDataDir })
 
   try {
     await clearAndSeedWorkspace(window, [
@@ -95,12 +96,19 @@ test('a live Desktop terminal reattach commits its measured frame without replac
     await writeTerminalCommand(window, `process.stdout.write('${historyMarker}\\n')`)
     await expect(window.locator('.terminal-node')).toContainText(historyMarker)
 
+    // Detach the old renderer before changing its saved frame. A queued title/scrollback
+    // save from that renderer can otherwise overwrite the raw fixture with its old size.
+    // The preload bridge remains available here, and the Worker keeps the PTY alive.
+    const appUrl = window.url()
+    await electronApp.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0].loadURL('about:blank'),
+    )
     const writeResult = await window.evaluate(async id => {
-      const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
-      if (!raw) {
+      const read = await window.__opencoveBridge.persistence.readWorkspaceStateRaw()
+      if (!read.ok || !read.value) {
         throw new Error('Missing persisted state')
       }
-      const state = JSON.parse(raw) as {
+      const state = JSON.parse(read.value) as {
         workspaces: Array<{ nodes: Array<{ id: string; width: number; height: number }> }>
       }
       const node = state.workspaces
@@ -111,13 +119,16 @@ test('a live Desktop terminal reattach commits its measured frame without replac
       }
       node.width = 820
       node.height = 520
-      return await window.opencoveApi.persistence.writeWorkspaceStateRaw({
+      return await window.__opencoveBridge.persistence.writeWorkspaceStateRaw({
         raw: JSON.stringify(state),
       })
     }, nodeId)
-    expect(writeResult.ok).toBe(true)
+    expect(writeResult).toMatchObject({ ok: true, value: { ok: true } })
 
-    await window.reload({ waitUntil: 'domcontentloaded' })
+    await electronApp.evaluate(
+      ({ BrowserWindow }, url) => BrowserWindow.getAllWindows()[0].loadURL(url),
+      appUrl,
+    )
     await expect(window.locator('.terminal-node')).toHaveCount(1)
     await expect
       .poll(
@@ -134,12 +145,33 @@ test('a live Desktop terminal reattach commits its measured frame without replac
     // A newer Worker revision proves the PTY ACK/commit; hydration must also finish. Keep the
     // successful observation instead of sampling a different browser task after the poll.
     let after = await readLiveTerminalFrame(window, nodeId)
-    await expect
-      .poll(async () => {
-        after = await readLiveTerminalFrame(window, nodeId)
-        return isLiveReattachFrameCommitted(before, after)
+    try {
+      await expect
+        .poll(async () => {
+          after = await readLiveTerminalFrame(window, nodeId)
+          return isLiveReattachFrameCommitted(before, after)
+        })
+        .toBe(true)
+    } catch (error) {
+      const node = await window
+        .evaluate(
+          id =>
+            window.opencoveApi.controlSurface.invoke({
+              kind: 'query',
+              id: 'node.get',
+              payload: { nodeId: id },
+            }),
+          nodeId,
+        )
+        .catch(String)
+      await test.info().attach('live-reattach-frame-failure', {
+        body: Buffer.from(
+          JSON.stringify({ before, after, checks: liveReattachFrameChecks(before, after), node }),
+        ),
+        contentType: 'application/json',
       })
-      .toBe(true)
+      throw error
+    }
     expect(after.sessionId).toBe(before.sessionId)
     expect(after.proposed).not.toEqual(before.proposed)
     expect(after.size).toEqual(after.proposed)
