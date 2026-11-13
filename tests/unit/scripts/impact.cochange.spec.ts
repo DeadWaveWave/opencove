@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildIndexBody,
+  compareIndexToBase,
   findMissingPartners,
   indexAgeDays,
   isEligiblePath,
@@ -262,5 +263,34 @@ describe('pull request section', () => {
     expect(formatPrSection([])).toContain('None')
     expect(validatePartnerSection(formatPrSection([]), [])).toEqual([])
     expect(validatePartnerSection('<!-- only a comment -->', [])).toHaveLength(1)
+  })
+})
+
+describe('index change against the base', () => {
+  const base = indexOf([], {})
+  const next = (throughDate: string) => ({ ...base, throughDate })
+
+  it('accepts an index built from base history that is not older than the base index', () => {
+    expect(
+      compareIndexToBase({
+        index: next('2026-02-01'),
+        baseIndex: next('2026-02-01'),
+        throughIsAncestor: true,
+      }),
+    ).toEqual([])
+    expect(
+      compareIndexToBase({ index: next('2026-02-01'), baseIndex: null, throughIsAncestor: true }),
+    ).toEqual([])
+  })
+
+  it('rejects a throughCommit that the base does not contain and an older throughDate', () => {
+    const problems = compareIndexToBase({
+      index: next('2026-01-01'),
+      baseIndex: next('2026-02-01'),
+      throughIsAncestor: false,
+    })
+    expect(problems).toHaveLength(2)
+    expect(problems[0]).toContain('not an ancestor')
+    expect(problems[1]).toContain('older than the base index')
   })
 })

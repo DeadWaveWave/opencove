@@ -62,3 +62,7 @@ export function resolveBaseChanges(root, base, head = null) {
   }
   return dedupe(changes)
 }
+
+export function isWorkingTreeDirty(root) {
+  return git(root, ['status', '--porcelain']).trim().length > 0
+}

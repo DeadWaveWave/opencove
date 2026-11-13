@@ -28,7 +28,21 @@ const KIND_RANK = { runtime: 2, type: 1 }
 // `index` file (imported as the folder), so a text without that word cannot import it.
 function needlesOf(file) {
   const stem = basename(file, extname(file))
-  return stem === 'index' ? ['index', basename(dirname(file))] : [stem]
+  // An index file is also imported as its folder, or as a bare `.` or `..` from its neighbours.
+  return stem === 'index'
+    ? [
+        'index',
+        basename(dirname(file)),
+        "'.'",
+        '".."',
+        "'..'",
+        '"."',
+        "'./'",
+        '"./"',
+        "'../'",
+        '"../"',
+      ]
+    : [stem]
 }
 
 export async function createImportGraph(root) {
@@ -49,14 +63,16 @@ export async function createImportGraph(root) {
   )
   const edgeCache = new Map()
 
-  // The harness resolver returns a folder as it is when a specifier names one, so look for the
-  // `index` module inside it.
+  // The harness resolver returns a folder as it is when a specifier names one, even when a sibling
+  // `x.ts` exists. TypeScript tries `x.ts` before `x/index.ts`, so do the same and never keep a
+  // directory path.
   const toModule = relativePath => {
     if (texts.has(relativePath)) {
       return relativePath
     }
-    const index = [...extensions].map(ext => `${relativePath}/index${ext}`).find(c => texts.has(c))
-    return index ?? relativePath
+    const candidates = [...extensions].flatMap(ext => [`${relativePath}${ext}`])
+    candidates.push(...[...extensions].map(ext => `${relativePath}/index${ext}`))
+    return candidates.find(candidate => texts.has(candidate)) ?? relativePath
   }
 
   const edgesOf = file => {

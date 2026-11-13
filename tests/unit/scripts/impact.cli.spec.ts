@@ -160,6 +160,18 @@ describe('pnpm impact', () => {
     expect(after.stdout).toBe(before.stdout)
   })
 
+  it('computes --pr-section from committed changes only and warns about a dirty tree', () => {
+    writeFileSync(join(repository, CORE), 'export const core = 123\n')
+    const result = impact(['--base', 'HEAD~2', '--pr-section'])
+    expect(result.status, result.stderr).toBe(0)
+    // The committed HEAD~2..HEAD diff holds only the index; the dirty CORE edit is not counted.
+    expect(result.stdout).toContain('None')
+    expect(result.stderr).toContain('uncommitted changes are not part of --pr-section')
+    expect(impact(['--base', 'HEAD~2', '--json']).stdout).toContain(CORE)
+    runGit(['reset', '-q', '--hard'], repository)
+    expect(impact(['--base', 'HEAD~2', '--pr-section']).stderr).toBe('')
+  })
+
   it('keeps the brief output short', () => {
     const result = impact([CORE, '--brief'])
     expect(result.status).toBe(0)
@@ -200,6 +212,15 @@ describe('pnpm impact:index', () => {
 
     const check = runScript('impact-index.mjs', repository, ['--check'])
     expect(check.status, check.stderr).toBe(0)
+  })
+
+  it('requires a changed index to come from base history and not be older than the base index', () => {
+    expect(runScript('impact-index.mjs', repository, ['--check', '--base', 'HEAD']).status).toBe(0)
+    // HEAD~3 does not contain the commit the index was built through.
+    const stale = runScript('impact-index.mjs', repository, ['--check', '--base', 'HEAD~3'])
+    expect(stale.status).toBe(1)
+    expect(stale.stderr).toContain('not an ancestor of the base commit')
+    expect(runScript('impact-index.mjs', repository, ['--base', 'HEAD']).status).toBe(2)
   })
 
   it('fails --check when the index is edited by hand', () => {
