@@ -1,3 +1,4 @@
+import { agentTestStubArgs } from '../../../../shared/utils/agentTestStubArgs'
 import { getPublicTerminalSpawnCommand } from '../../../../platform/terminal/publicTerminalSpawnCommand'
 import { publicTerminalSpawnError } from '../../../../shared/errors/terminalSpawnError'
 import { getCommandExecutionEnvironment } from '../../../../platform/os/CommandEnvironmentService'
@@ -347,7 +348,9 @@ export function registerAgentIpcHandlers(
 
       const launchStartedAtMs = Date.now()
       const command = testStub?.command ?? launchCommand.command
-      const args = testStub?.args ?? launchCommand.args
+      const args = testStub
+        ? agentTestStubArgs(testStub.args, launchCommand.args)
+        : launchCommand.args
 
       const opencodeTuiConfigPath =
         normalized.provider === 'opencode'
@@ -369,7 +372,7 @@ export function registerAgentIpcHandlers(
 
       const sessionEnv =
         normalized.env || internalSessionEnv
-          ? { ...(normalized.env ?? {}), ...(internalSessionEnv ?? {}) }
+          ? { ...(internalSessionEnv ?? {}), ...(normalized.env ?? {}) }
           : undefined
       const launchEnv = { ...environment, ...managedLaunch.plan.env, ...(sessionEnv ?? {}) }
 
@@ -416,10 +419,9 @@ export function registerAgentIpcHandlers(
             ),
           )
 
-      const mergedEnv =
-        normalized.env && Object.keys(normalized.env).length > 0
-          ? { ...(resolvedSpawn.env ?? process.env), ...normalized.env }
-          : resolvedSpawn.env
+      // Caller env already entered launchEnv before platform resolution. The resolver owns
+      // the final environment, including case-insensitive native argument transport keys.
+      const mergedEnv = resolvedSpawn.env
 
       const resumeSessionId = launchCommand.resumeSessionId
       const shouldStartStateWatcher =

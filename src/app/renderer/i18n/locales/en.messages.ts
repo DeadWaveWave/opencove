@@ -1,5 +1,30 @@
 import { agentSpawnPresentations } from '../../../../shared/errors/agentSpawnError'
+import { initialPromptPresentations as prompts } from '../../../../shared/errors/initialPromptFeedback'
 export const enMessages = {
+  initialPromptCommandToken: prompts.command_token.message,
+  initialPromptCommandTokenHint: prompts.command_token.hint,
+  initialPromptCommandPrefix: prompts.provider_command_prefix.message,
+  initialPromptCommandPrefixHint: prompts.provider_command_prefix.hint,
+  initialPromptExitWord: prompts.provider_exit_word.message,
+  initialPromptExitWordHint: prompts.provider_exit_word.hint,
+  initialPromptFileReference: prompts.unverified_file_reference.message,
+  initialPromptFileReferenceHint: prompts.unverified_file_reference.hint,
+  initialPromptSkillReference: prompts.provider_skill_reference.message,
+  initialPromptSkillReferenceHint: prompts.provider_skill_reference.hint,
+  initialPromptLeadingDash: prompts.leading_dash.message,
+  initialPromptLeadingDashHint: prompts.leading_dash.hint,
+  initialPromptNul: prompts.nul.message,
+  initialPromptNulHint: prompts.nul.hint,
+  initialPromptContainsNul:
+    'This prompt contains a null character. Remove it and try again. Your text has been kept.',
+  invalidSpawnArguments:
+    'The launch settings contain a null character. Remove null characters and try again.',
+  wslArgumentsUnsupported:
+    'WSL cannot use these launch settings. Choose a distribution name without spaces or quotes, and paths without quotes.',
+  invalidSpawnEnvironment:
+    'The launch environment contains a null character. Remove null characters from environment variable names and values, then try again.',
+  initialPromptUnsupported:
+    'This prompt could run a provider command instead of starting a conversation. Rephrase the task, or open a blank session and enter provider controls there. Your text has been kept.',
   agentSpawnDepth: agentSpawnPresentations.agentSpawnDepth.message,
   agentSpawnDepthHint: agentSpawnPresentations.agentSpawnDepth.hint,
   agentSpawnConcurrency: agentSpawnPresentations.agentSpawnConcurrency.message,

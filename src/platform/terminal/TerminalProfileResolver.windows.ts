@@ -317,14 +317,4 @@ export function isPowerShellCommand(command: string): boolean {
   )
 }
 
-function quotePowerShellLiteral(value: string): string {
-  return `'${value.replace(/'/g, "''")}'`
-}
-
-export function buildPowerShellExecArgs(command: string, args: string[], cwd: string): string[] {
-  const invocation = [quotePowerShellLiteral(command), ...args.map(quotePowerShellLiteral)].join(
-    ' ',
-  )
-  const script = `Set-Location -LiteralPath ${quotePowerShellLiteral(cwd)}; & ${invocation}; exit $LASTEXITCODE`
-  return ['-NoLogo', '-Command', script]
-}
+export { buildPowerShellExecLaunch } from './windowsNativeLaunch'

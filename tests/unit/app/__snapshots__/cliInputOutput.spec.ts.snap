@@ -60,6 +60,59 @@ AI agents: run \`opencove skill\` for a usage guide.
 "
 `;
 
+exports[`command help snapshots: agent prompt 1`] = `
+"Usage: opencove agent prompt --node <target> [--wait [--read]] (<text> | --text <text> | --text-file <path|->) [options]
+
+Send a prompt to an agent window OpenCove launched
+
+Send text to a local Claude Code/Codex window OpenCove launched. Inspect with agent read --screen first: existing drafts may be submitted. Working agents receive steering; --if-busy refuse rejects busy agents. --expect-turn requires the exact active turn. Waiting, unknown/degraded and unsupported sessions refuse.
+
+Agent-terminal prompt rules:
+- Launches: describe a task in a sentence; single tokens and provider command names are refused.
+- Provider controls: no leading /; Claude also refuses ! # &; Codex, OpenCode, Pi and Gemini also refuse !.
+- Exit aliases: no exit, quit, :q, :q!, :wq or :wq!.
+- File references: no @ anywhere. Read approved content with opencove fs read --uri file:///workspace/README.md --fields content (replace the absolute URI), then paste the content.
+- Codex skills: no $name or linked skill mentions; paste the instructions.
+- Leading dashes: Claude Code and Pi launches refuse prompts starting with -.
+- Null characters: remove NUL from the prompt.
+
+--wait confirms delivery and waits for its exact turn; --read returns the correlated reply. Check outcome and replyUnavailableReason. Stderr prints IDs and an interruption-only continuation command; final JSON reports results.
+
+--timeout: with --wait, confirmation/waiting default 20s, minimum 250ms, separate 15s send budget; otherwise sending defaults to 15s, maximum 60s.
+
+Never resend after uncertainty, interruption or textComparison: different. Resume agent delivery or agent wait --turn with returned IDs.
+
+Exit codes: 0 submitted/dispatched/turn-ended; 1 refused/unconfirmed; 2 invalid input; 4 authorization; 10 waiting; 11 exited; 124 timeout; 130 interrupted. Details: opencove skill coordinate.
+
+Options:
+  --wait                  Confirm delivery and wait for its exact turn to end
+  --read                  Include the exact turn reply; requires --wait
+  --expect-turn <turnId>  Steer only into this exact active turn; idle or another turn refuses before paste
+  --if-busy <if-busy>     Steer the current working turn (default), or refuse
+  --node <id>             Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
+  --text <text>           Prompt text; use this or --text-file
+  --text-file <path|->    Read text from a UTF-8 file, or use - for stdin
+  --timeout <duration>    Delivery budget, or confirmation + turn wait budget with --wait (e.g. 30s or 2m)
+  --space <selector>      Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>          Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Table output (-o table): not supported.
+Projectable fields: deliveryId, nodeId, sessionId, phase, mode, turnId, textComparison, comparisonProfile, promptId, outcome, endedAt, reply, reply.nodeId, reply.sessionId, reply.turnId, reply.deliveryIds, reply.promptIds, reply.promptId, reply.outcome, reply.message, reply.truncated, reply.messageKind, reply.persisted, reply.memoryOnlyReason, reply.source, replyUnavailableReason
+
+Projection example:
+  opencove agent prompt --node node-123 --text "Review the changes" --fields deliveryId
+  {"deliveryId":"d"}
+
+Examples:
+  opencove agent prompt --node node-123 --wait --read --timeout 2m --text "Review the changes"
+  opencove agent prompt --node node-123 --text-file ./prompt.txt --timeout 20s
+  opencove agent prompt --node node-123 --expect-turn turn-123 --text "Include refunds"
+  cat prompt.txt | opencove agent prompt --node node-123 --text-file -
+
+Global options: see "opencove --help".
+"
+`;
+
 exports[`command help snapshots: api 1`] = `
 "Usage: opencove api <command> [options]
 
@@ -173,6 +226,71 @@ Examples:
   opencove api ops --search create
   opencove api ops --prefix node --fields id,cliCommand
   opencove api ops --kind query --contract schema
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`command help snapshots: node create agent 1`] = `
+"Usage: opencove node create agent [--root-canvas | --space <id> | <other-target-space-options>] [options]
+
+Create an agent node
+
+Agent-terminal prompt rules:
+- Launches: describe a task in a sentence; single tokens and provider command names are refused.
+- Provider controls: no leading /; Claude also refuses ! # &; Codex, OpenCode, Pi and Gemini also refuse !.
+- Exit aliases: no exit, quit, :q, :q!, :wq or :wq!.
+- File references: no @ anywhere. Read approved content with opencove fs read --uri file:///workspace/README.md --fields content (replace the absolute URI), then paste the content.
+- Codex skills: no $name or linked skill mentions; paste the instructions.
+- Leading dashes: Claude Code and Pi launches refuse prompts starting with -.
+- Null characters: remove NUL from the prompt.
+
+Use --prompt or --prompt-file with --wait to wait for the initial Claude Code or Codex turn. Add --read for its exact reply; unavailable replies return reply: null with replyUnavailableReason. Check outcome: every ended outcome exits 0. Waiting for the user exits 10, an exited target 11, timeout 124 and interruption 130. Unsupported providers refuse after creation; the node remains.
+
+--timeout covers first-turn identification and waiting (default 20s; minimum 250ms); creation keeps its own 20s budget. If no first turn is observed, lifecycle telemetry may be unavailable even if the agent is running or has finished. Inspect the existing session; do not recreate the node or resend the prompt. Errors keep known nodeId, sessionId and turnId. Never repeat creation after an error: resume agent wait/read with those IDs. With --wait, -q prints only the node ID after completion. Stderr shows "Created agent node <nodeId> (session <sessionId>)." before identification, then "Waiting for turn <turnId> of node <nodeId>..." with an interruption-only continuation command. The final JSON and exit status report the result.
+
+Without explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node belongs to another project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.
+
+Default target inside OpenCove: your current Space, or the root canvas when you are outside any Space. An explicit --project selects project scope for lists; creation also needs --root-canvas or a Space target.
+
+Target container (choose one):
+  --root-canvas                                 Create on the project's root canvas, outside every Space
+  --space <id>                                  Select a space by its ID; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --space-name <name> [--project <id>]          Find a named space, optionally within a project
+  --worker <id-or-name> --branch <branch>       Find a space by worker and Git branch
+  --worker <id-or-name> --path <absolute-path>  Find a space by worker and working directory
+  --project <id>                                Select the root-canvas project, or narrow a Space lookup; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Options:
+  --prompt <text>             Set the initial agent prompt
+  --prompt-file <path|->      Read prompt from a UTF-8 file, or use - for stdin
+  --wait                      Wait for the initial prompt turn to end
+  --read                      Include the exact initial turn reply; requires --wait
+  --timeout <duration>        First-turn identification and wait budget (default 20s; minimum 250ms)
+  --provider <id>             Select the agent provider. Accepted IDs: claude-code, codex, opencode, gemini, pi, kimi; omit to use the configured default
+  --model <id>                Select the agent model
+  --task <nodeId>             Link to an existing task in the same Space and move it to doing
+  --full-access <true|false>  Set Full Access for this agent and its restarts; omit to follow Settings
+  --title <text>              Set a fixed window name; omit on creation to keep automatic titles
+  --frame <json>              Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
+  --focus                     Focus after creation
+  -q, --quiet                 Print only the created object identifier followed by a newline
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, spawnedBy, lineageDepth, lineageStatus, data, data.kind, turnId, outcome, endedAt, reply, reply.nodeId, reply.sessionId, reply.turnId, reply.deliveryIds, reply.promptIds, reply.promptId, reply.outcome, reply.message, reply.truncated, reply.messageKind, reply.persisted, reply.memoryOnlyReason, reply.source, replyUnavailableReason, data.provider, data.prompt, data.model, data.effectiveModel, data.executionDirectory, data.expectedDirectory, data.taskId
+
+Field descriptions:
+  spawnedBy      ID of the node that created this node; null for a root or unavailable lineage
+  lineageDepth   A node started by the user has lineageDepth 1; each agent-created generation adds one. Null when lineage is unavailable
+  lineageStatus  recorded when creation is recorded, root when no parent is recorded, unavailable when lineage cannot be read
+
+Projection example:
+  opencove node create agent --space space-123 --fields id,title
+  {"revision":1,"projectId":"p","spaceId":"space-123","node":{"id":"n","title":"Agent"}}
+
+Examples:
+  opencove node create agent --space space-123 --prompt "Review the test failures" --wait --read --timeout 2m
+  opencove node create agent --root-canvas --project project-123 --title "Release review" --pretty
 
 Global options: see "opencove --help".
 "

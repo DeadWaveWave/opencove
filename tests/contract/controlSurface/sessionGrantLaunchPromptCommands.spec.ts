@@ -77,7 +77,15 @@ const inputs = {
 }
 for (const route of routes) {
   for (const provider of AGENT_PROVIDER_IDS) {
-    it.each(inputs[provider])(
+    it.each([
+      ...inputs[provider],
+      'Please inspect @file',
+      'Please inspect \\@file',
+      'Please inspect "@file"',
+      ...(provider === 'codex'
+        ? ['Use $explain please', 'Use [$explain](skill://explain) please']
+        : []),
+    ])(
       `${route}/${provider} refuses TUI prompt %j before preparation, spawn or remote forwarding`,
       async prompt => {
         const f = await createPromptWorker({
@@ -97,7 +105,7 @@ for (const route of routes) {
                     details: {
                       reason: 'field_denied',
                       field: 'prompt',
-                      promptReason: 'provider_command_prefix',
+                      promptReason: expect.any(String),
                     },
                   }),
             },

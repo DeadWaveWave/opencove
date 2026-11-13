@@ -107,6 +107,7 @@ describe('buildAgentLaunchCommand', () => {
       '--dangerously-skip-permissions',
       '--session-id',
       claudeSessionId,
+      '--',
       'review failing tests',
     ])
     expect(command.effectiveModel).toBeNull()
@@ -129,6 +130,7 @@ describe('buildAgentLaunchCommand', () => {
       'default',
       '--session-id',
       claudeSessionId,
+      '--',
       'review failing tests',
     ])
     expect(command.effectiveModel).toBeNull()
@@ -170,6 +172,7 @@ describe('buildAgentLaunchCommand', () => {
       '--dangerously-skip-permissions',
       '--session-id',
       claudeSessionId,
+      '--',
       'review failing tests',
     ])
     expect(command.args).not.toContain('--permission-mode')

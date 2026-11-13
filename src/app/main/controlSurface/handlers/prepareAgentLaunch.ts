@@ -1,3 +1,4 @@
+import { agentTestStubArgs } from '../../../../shared/utils/agentTestStubArgs'
 import { localCanvasResidentContext } from '../sessionSpawnIdentityContext'
 import { getCommandExecutionEnvironment } from '../../../../platform/os/CommandEnvironmentService'
 import type { AgentProviderRegistry } from '../../../../contexts/agent/application/services/AgentProviderRegistry'
@@ -49,10 +50,7 @@ export async function prepareAgentLaunch(options: {
   const launchCommand: AgentLaunchCommand = testStub
     ? {
         command: testStub.command,
-        args:
-          process.env.OPENCOVE_TEST_AGENT_SESSION_SCENARIO === 'claude-prompt-strict'
-            ? [...testStub.args, ...managedLaunch.plan.args]
-            : testStub.args,
+        args: agentTestStubArgs(testStub.args, managedLaunch.plan.args),
         effectiveModel: managedLaunch.plan.effectiveModel,
         launchMode: managedLaunch.plan.launchMode,
         resumeSessionId: managedLaunch.plan.resumeSessionId,
