@@ -1,3 +1,7 @@
+import {
+  createDirtyDocumentFixture,
+  seedDirtyDocumentFixture,
+} from './workspace-canvas.collapsed-document.fixture'
 import { attachFailureFrame, isE2EDiagnosticsEnabled } from './diagnostics'
 /* eslint-disable no-await-in-loop -- User actions across window kinds intentionally run in sequence. */
 import { expect, test } from '@playwright/test'
@@ -97,10 +101,10 @@ test('compact windows retain the expanded selection menu and close through their
 test('Close from a compact dirty document reveals its close prompt and Cancel preserves the editor draft', async ({
   browserName: _browserName,
 }, testInfo) => {
-  const fixture = await createMaterialFixture()
+  const fixture = await createDirtyDocumentFixture()
   const { electronApp, window } = await launchApp()
   try {
-    await seedMaterialFixture(window, fixture)
+    await seedDirtyDocumentFixture(window, fixture)
     await window.locator('.react-flow__controls-fitview').click()
     const documentPath = path.join(fixture.repo, 'README.md')
     const savedContent = await readFile(documentPath, 'utf8')
@@ -143,7 +147,7 @@ test('Close from a compact dirty document reveals its close prompt and Cancel pr
     await expect(editor).toHaveAttribute('data-close-identity', 'retained')
     await expect(editor).toContainText('Keep this unsaved draft after cancelling Close.')
     await expect(node.locator('.document-node__dirty-dot')).toBeVisible()
-    await expect(window.locator('.react-flow__node')).toHaveCount(MATERIAL_NODE_KINDS.length)
+    await expect(window.locator('.react-flow__node')).toHaveCount(1)
     expect(await readFile(documentPath, 'utf8')).toBe(savedContent)
   } catch (error) {
     await attachFailureFrame(window, test.info())
