@@ -24,6 +24,17 @@
       "path": "src/shared/"
     }
   ],
+  "contexts": {
+    "root": "src/contexts",
+    "entryFiles": [
+      "domain/index.ts",
+      "application/index.ts",
+      "infrastructure/index.ts",
+      "presentation/main-ipc/index.ts",
+      "presentation/renderer/index.ts"
+    ],
+    "restrictedLayerDirs": ["infrastructure", "presentation"]
+  },
   "layers": [
     {
       "name": "domain",
@@ -215,6 +226,13 @@
           ]
         }
       ],
+      "doc": "docs/architecture/ARCHITECTURE.md#5-依赖规则"
+    },
+    "contextBoundaries": {
+      "forbiddenLayer": { "severity": "warn" },
+      "publicEntry": { "severity": "warn" },
+      "entryShape": { "severity": "error" },
+      "selfEntryImport": { "severity": "error" },
       "doc": "docs/architecture/ARCHITECTURE.md#5-依赖规则"
     },
     "forbiddenImportSpecifiers": [
