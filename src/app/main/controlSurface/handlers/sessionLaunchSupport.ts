@@ -3,7 +3,7 @@ import type { CommandFileArgument } from '../../../../shared/types/commandFileAr
 import { resolveAgentLaunchSpawn } from '../../../../contexts/agent/infrastructure/cli/AgentLaunchSpawnResolver'
 export { getPublicTerminalSpawnCommand } from '../../../../platform/terminal/publicTerminalSpawnCommand'
 import { resolveLocalWorkerEndpointRef } from '../../../../contexts/project/application/resolveLocalWorkerEndpointRef'
-import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
+import { toFileUri } from '../../../../contexts/filesystem/domain'
 import {
   isSelectableAgentProvider,
   isValidProvider,

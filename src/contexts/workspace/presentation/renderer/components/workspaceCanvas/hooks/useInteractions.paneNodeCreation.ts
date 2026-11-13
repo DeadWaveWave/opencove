@@ -10,7 +10,7 @@ import {
   resolveTerminalPtyGeometryForNodeFrame,
   type TerminalPtyGeometryDisplayMetrics,
 } from '@contexts/workspace/domain/terminalPtyGeometry'
-import { toFileUri } from '@contexts/filesystem/domain/fileUri'
+import { toFileUri } from '@contexts/filesystem/domain'
 import type { Point, TerminalNodeData, WebsiteNodeData, WorkspaceSpaceState } from '../../../types'
 import type { BrowserMode, SpawnTerminalResult } from '@shared/contracts/dto'
 import type { ContextMenuState, CreateNodeInput, NodePlacementOptions } from '../types'

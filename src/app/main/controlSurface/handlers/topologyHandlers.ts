@@ -1,6 +1,6 @@
 import { isConnectionRefused } from '../../../../shared/errors/connectionRefused'
 import { hostname } from 'node:os'
-import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
+import { toFileUri } from '../../../../contexts/filesystem/domain'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
 import {

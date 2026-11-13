@@ -11,7 +11,7 @@ import { registerSessionInputHandlers } from './sessionInputHandlers'
 import { resolveDefaultShell } from '../../../../platform/process/pty/defaultShell'
 import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalProfileResolver'
 import { createAppError } from '../../../../shared/errors/appError'
-import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
+import { toFileUri } from '../../../../contexts/filesystem/domain'
 import type {
   GetSessionPresentationSnapshotResult,
   GetSessionSnapshotResult,

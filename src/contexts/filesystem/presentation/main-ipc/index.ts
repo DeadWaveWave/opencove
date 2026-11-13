@@ -1,0 +1,1 @@
+export { registerFilesystemIpcHandlers } from './register'
