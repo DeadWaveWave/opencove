@@ -28,6 +28,7 @@ const timer = setInterval(async () => {
         busy = false
       })
     child.stdin?.end(Array.isArray(input) ? '' : input.stdin ?? '')
+    await writeFile(request + '.pid', String(child.pid))
   } catch { busy = false }
 }, 50)
 timer.unref()

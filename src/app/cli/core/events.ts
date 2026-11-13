@@ -1,92 +1,20 @@
+import { loadEventCheckpoint, saveEventCheckpoint } from './eventCheckpoint'
+import { resolveEventSelection } from './eventSelection'
+import { eachTurnCompletion } from './eventTurnCompletion'
 import { abortable } from './streamLifetime'
-import type { CommandContext, Command } from './command'
-import { CliError, usage } from './errors'
-import { resolveSelectors } from './selectors'
+import type { CommandContext } from './command'
+import { CliError } from './errors'
 import {
-  canonicalSelection,
   decodeEventCursor,
   eventRecordSchema,
-  type EventSelection,
   type EventRecord,
 } from '../../../shared/contracts/dto/eventStream'
 import { sseFrames } from './sseFrames'
 import { project } from './projection'
 
-const selectionKeys = {
-  type: 'types',
-  project: 'projectId',
-  space: 'spaceId',
-  node: 'nodeId',
-  'spawned-by': 'spawnedBy',
-  lineage: 'lineage',
-} as const
-async function resolveSelection(ctx: CommandContext): Promise<EventSelection> {
-  let inherited: EventSelection | undefined
-  if (ctx.options.after !== undefined) {
-    try {
-      inherited = decodeEventCursor(String(ctx.options.after)).selection
-    } catch {
-      usage('Invalid event cursor. Use a complete cursor printed by opencove events.')
-    }
-  }
-  const explicit = [...(ctx.explicitOptions ?? [])].filter(key => key in selectionKeys)
-  if (
-    (inherited?.spawnedBy && explicit.includes('lineage')) ||
-    (inherited?.lineage && explicit.includes('spawned-by'))
-  ) {
-    usage(
-      'The relationship filter differs from the saved cursor. Omit relationship flags to inherit it, or start a fresh stream without --after.',
-    )
-  }
-  const args = {
-    options: { ...ctx.options },
-    positionals: [],
-    explicitOptions: ctx.explicitOptions,
-  }
-  const command: Command = {
-    path: ['events'],
-    connect: true,
-    summary: '',
-    currentContainer: !inherited && !ctx.options.lineage,
-    options: {
-      project: { type: 'string', selector: 'project', description: '' },
-      space: { type: 'string', selector: 'space', description: '' },
-      node: { type: 'string', selector: 'node', description: '' },
-      'spawned-by': { type: 'string', selector: 'node', description: '' },
-      lineage: { type: 'string', selector: 'node', description: '' },
-    },
-  }
-  if (!inherited || explicit.length) {
-    await resolveSelectors(command, args, ctx.io, ctx.invoke)
-  }
-  const selection: Partial<EventSelection> = inherited ? { ...inherited } : {}
-  for (const [key, field] of Object.entries(selectionKeys)) {
-    if ((!inherited || explicit.includes(key)) && args.options[key] !== undefined) {
-      Object.assign(selection, { [field]: args.options[key] })
-    }
-  }
-  // Relationship selection suppresses implicit container/project defaults.
-  if (
-    !inherited &&
-    (ctx.options.lineage || ctx.options['spawned-by']) &&
-    !ctx.explicitOptions?.has('project')
-  ) {
-    delete selection.projectId
-  }
-  const resolved = canonicalSelection(selection)
-  if (inherited && JSON.stringify(inherited) !== JSON.stringify(resolved)) {
-    usage(
-      'The selected filters differ from the saved cursor. Omit selection flags to inherit them, or start a fresh stream without --after.',
-    )
-  }
-  const types = resolved.types
-  if (ctx.options.until && !types.includes(ctx.options.until as (typeof types)[number])) {
-    usage('--until must belong to the cursor’s selected event types.')
-  }
-  return resolved
-}
 export async function runEvents(ctx: CommandContext): Promise<number> {
   const { io, options } = ctx
+  await loadEventCheckpoint(ctx)
   const capabilities = (await ctx.invoke('system.capabilities', {})) as {
     features?: { eventStreamV1?: boolean; nodeLineageV1?: boolean }
   }
@@ -98,7 +26,7 @@ export async function runEvents(ctx: CommandContext): Promise<number> {
       'Update and restart the Worker, then try again.',
     )
   }
-  const selection = await resolveSelection(ctx)
+  const selection = await resolveEventSelection(ctx)
   if ((selection.lineage || selection.spawnedBy) && !capabilities.features.nodeLineageV1) {
     throw new CliError(
       'events.unsupported',
@@ -107,6 +35,7 @@ export async function runEvents(ctx: CommandContext): Promise<number> {
       'Update and restart the Worker, then try again.',
     )
   }
+  const eachTurn = eachTurnCompletion(ctx)
   const controller = new AbortController()
   const abort = () => controller.abort(io.signal?.reason)
   io.signal?.addEventListener('abort', abort, { once: true })
@@ -173,6 +102,8 @@ export async function runEvents(ctx: CommandContext): Promise<number> {
         { cursor: lastCursor },
       )
     }
+    await saveEventCheckpoint(options['cursor-file'], record.cursor)
+    signal.throwIfAborted()
   }
   try {
     const url = new URL(`${ctx.connection!.endpoint}/events`)
@@ -300,9 +231,18 @@ export async function runEvents(ctx: CommandContext): Promise<number> {
       if (record.seq <= position!.seq) {
         continue
       }
-      await write(record)
-      lastCursor = record.cursor
+      const visible = eachTurn.includes(record)
+      if (visible) {
+        await write(record)
+        lastCursor = record.cursor
+      }
       position = token
+      if (eachTurn.observe(record)) {
+        return 0
+      }
+      if (!visible) {
+        continue
+      }
       count++
       if (
         (options.count !== undefined && count >= Number(options.count)) ||

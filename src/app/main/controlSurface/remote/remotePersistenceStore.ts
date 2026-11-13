@@ -237,7 +237,7 @@ export function createRemotePersistenceStore(
           invokePersistResult(async () => endpoint, 'sync.writeWorkspaceStateRaw', payload),
         )
         if (result.ok) {
-          cache.invalidate()
+          cache.invalidateLatest()
         }
         return classifyWriteResult(result)
       } catch (error) {

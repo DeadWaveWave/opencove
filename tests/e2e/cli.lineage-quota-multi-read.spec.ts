@@ -18,7 +18,13 @@ test('quota projections agree with depth/width refusals and identify stoppable o
     const who = await f.command(f.parent, ['whoami', '--fields', 'lineageQuota'])
     expect(who.code, who.stderr).toBe(0)
     expect(JSON.parse(who.stdout)).toEqual({
-      lineageQuota: { depth: 1, maxDepth: 3, liveInTree: 6, maxLiveInTree: 6 },
+      lineageQuota: {
+        depth: 1,
+        maxDepth: 3,
+        liveInTree: 6,
+        maxLiveInTree: 6,
+        remainingLiveInTree: 0,
+      },
     })
     const context = await f.command(grandchild, [
       'context',
@@ -29,7 +35,15 @@ test('quota projections agree with depth/width refusals and identify stoppable o
     ])
     expect(context.code, context.stderr).toBe(0)
     expect(JSON.parse(context.stdout)).toEqual({
-      self: { lineageQuota: { depth: 3, maxDepth: 3, liveInTree: 6, maxLiveInTree: 6 } },
+      self: {
+        lineageQuota: {
+          depth: 3,
+          maxDepth: 3,
+          liveInTree: 6,
+          maxLiveInTree: 6,
+          remainingLiveInTree: 0,
+        },
+      },
     })
     for (const [caller, code] of [
       [grandchild, 'agent.spawn_depth_limit'],
@@ -47,6 +61,8 @@ test('quota projections agree with depth/width refusals and identify stoppable o
         kind: 'agent',
         depth: 3,
         state: 'running',
+        sessionId: grandchild.sessionId,
+        sessionStartedAt: expect.any(String),
       })
       expect(error.hint).toContain(grandchild.title)
       expect(error.hint).toContain(`opencove agent stop --node ${grandchild.id}`)
