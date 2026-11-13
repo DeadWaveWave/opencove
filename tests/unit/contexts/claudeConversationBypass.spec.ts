@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { ClaudeLiveConversation } from '../../../src/contexts/agent/application/ClaudeLiveConversation'
+import { promptAdmission } from '../../../src/contexts/agent/application/promptAdmission'
 import { hook, orderingFixture } from './claudeConversationOrdering.helpers'
 
 afterEach(() => {
@@ -29,7 +30,7 @@ it('keeps the namespace fence after the quiet window until a fresh Start accepts
     f.registry.dispose()
   }
 })
-it('restricts only clear readiness when retired identity retention saturates', () => {
+it('requires a post-truncation Stop while preserving ordinary processing and reused IDs', () => {
   vi.useFakeTimers()
   vi.setSystemTime(100000)
   const f = orderingFixture()
@@ -40,13 +41,27 @@ it('restricts only clear readiness when retired identity retention saturates', (
     expect(f.fence().conversationGeneration).toBeUndefined()
     f.send(hook('B', 'SessionStart', 100))
     vi.advanceTimersByTime(200)
-    expect(f.fence()).toMatchObject({ claudeClearReady: false, conversationQuarantined: false })
+    expect(f.fence()).toMatchObject({ claudeClearReady: false, conversationQuarantined: true })
     f.send(hook('B', 'UserPromptSubmit', 110))
     f.send(hook('B', 'Stop', 120))
     expect(f.fence().snapshot).toMatchObject({
       state: 'idle',
       lastEndedTurn: { outcome: 'completed' },
     })
+    expect(
+      promptAdmission(f.fence(), () => ({ supported: true, submitDelayMs: 300 }), 'refuse'),
+    ).toBeNull()
+    f.send(hook('R0', 'SessionStart', 200))
+    vi.advanceTimersByTime(201)
+    expect(f.fence().claudeClearReady).toBe(false)
+    expect(
+      promptAdmission(f.fence(), () => ({ supported: true, submitDelayMs: 300 }), 'refuse'),
+    ).not.toBeNull()
+    f.send({ ...hook('R0', 'UserPromptSubmit', 210), promptId: 'reused' })
+    f.send({ ...hook('R0', 'Stop', 220), promptId: 'reused' })
+    expect(
+      promptAdmission(f.fence(), () => ({ supported: true, submitDelayMs: 300 }), 'refuse'),
+    ).toBeNull()
     expect(vi.getTimerCount()).toBe(0)
   } finally {
     f.registry.dispose()

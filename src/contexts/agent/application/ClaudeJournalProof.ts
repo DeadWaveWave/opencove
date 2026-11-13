@@ -5,11 +5,22 @@ export class ClaudeJournalProof {
   readonly completion: JournalFact[]
   readonly relevant: JournalFact[]
   readonly ended: boolean
+  private starts = new Map<string, JournalFact[]>()
+  private endings = new Map<string, JournalFact[]>()
   constructor(readonly facts: readonly JournalFact[]) {
-    this.current = facts
-      .filter(f => f.kind === 'start')
-      .sort((a, b) => a.at - b.at)
-      .at(-1)
+    for (const fact of facts) {
+      if (fact.kind === 'start' || fact.kind === 'end') {
+        const index = fact.kind === 'start' ? this.starts : this.endings
+        index.set(fact.id, [...(index.get(fact.id) ?? []), fact])
+      }
+    }
+    for (const named of this.starts.values()) {
+      named.sort((a, b) => a.at - b.at)
+    }
+    this.current = facts.reduce<JournalFact | undefined>(
+      (latest, f) => (f.kind === 'start' && (!latest || f.at >= latest.at) ? f : latest),
+      undefined,
+    )
     this.ended = !!this.current && this.ends(this.current).length > 0
     this.relevant = facts.filter(f => !this.retired(f))
     this.completion = this.current
@@ -17,24 +28,22 @@ export class ClaudeJournalProof {
       : []
   }
   private ends(start: JournalFact): JournalFact[] {
-    return this.facts.filter(f => f.kind === 'end' && f.id === start.id && f.at >= start.at)
+    return (this.endings.get(start.id) ?? []).filter(f => f.at >= start.at)
   }
   epoch(f: JournalFact): JournalFact | undefined {
-    if (f.capture?.startAt !== undefined)
-      return this.facts.find(
-        s => s.kind === 'start' && s.id === f.id && s.at === f.capture!.startAt,
-      )
-    const start = this.facts
-      .filter(s => s.kind === 'start' && s.id === f.id && s.at <= f.at)
-      .sort((a, b) => a.at - b.at)
-      .at(-1)
+    const named = this.starts.get(f.id) ?? []
+    if (f.capture?.startAt !== undefined) {
+      return named.find(s => s.at === f.capture!.startAt)
+    }
+    const start = named.findLast(s => s.at <= f.at)
     // Untagged activity after End can belong to a delayed, same-ID successor Start.
     if (
       start &&
       ['activity', 'finish', 'complete'].includes(f.kind) &&
       this.ends(start).some(end => end.at < f.at)
-    )
+    ) {
       return undefined
+    }
     return start
   }
   retired(f: JournalFact): boolean {
@@ -91,24 +100,25 @@ export class ClaudeJournalProof {
     return ordered.some((f, i) => ordered.slice(i + 1).some(other => other.at === f.at))
   }
   /** Remove obligations before their proof; keep current Start/End and latest completion. */
-  evictionIndex(existing: readonly JournalFact[]): number {
+  evictionIndex(existing: readonly JournalFact[], lifecyclePinned: boolean): number {
     let index = existing.findIndex(
       f => !['start', 'end', 'complete'].includes(f.kind) && (this.retired(f) || this.resolved(f)),
     )
-    if (index >= 0) return index
+    if (index >= 0) {
+      return index
+    }
     index = existing.findIndex(
       f =>
         f.kind === 'complete' &&
         (this.retired(f) || this.completion.some(stop => stop !== f && stop.at > f.at)),
     )
-    if (index >= 0) return index
-    index = existing.findIndex(f => f.kind === 'end' && this.retired(f))
-    if (index >= 0) return index
-    return existing.findIndex(
-      f =>
-        f.kind === 'start' &&
-        this.retired(f) &&
-        !this.facts.some(other => other !== f && this.epoch(other) === f),
-    )
+    if (index >= 0) {
+      return index
+    }
+    // S1/S2: pin all lifecycle witnesses while any retained or vetoed debt exists.
+    if (lifecyclePinned || this.unresolved.length) {
+      return -1
+    }
+    return existing.findIndex(f => ['start', 'end'].includes(f.kind) && this.retired(f))
   }
 }

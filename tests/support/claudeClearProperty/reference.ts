@@ -4,6 +4,7 @@ type Source = { target: string; start?: number; generation: number | undefined }
 type Fact = ClearEvent & {
   received: number
   order: number
+  firstOrder: number
   capture?: Source
   afterCommit?: boolean
 }
@@ -12,6 +13,11 @@ type Fact = ClearEvent & {
 export class ClearReference {
   private facts: Fact[] = []
   private starts: Fact[] = []
+  private namespaces = new Map<string, Fact[]>()
+  private latest!: Fact
+  private lifecycle = new Set(['SessionStart:A:10'])
+  private identities = new Set(['A'])
+  private truncatedAt?: number
   private sources = new Map<number, Source>()
   private order = 0
   private settled = new Set<number>()
@@ -32,22 +38,40 @@ export class ClearReference {
       at: 10,
       received: this.now,
       order: 0,
+      firstOrder: 0,
     })
+    this.latest = this.starts[0]
+    this.namespaces.set('A', [this.latest])
   }
   hasCapture(epoch: number): boolean {
     return this.sources.has(epoch)
   }
   private current(): Fact {
-    return [...this.starts].sort((a, b) => a.at - b.at).at(-1)!
+    return this.latest
   }
   private epoch(f: Fact): Fact | undefined {
-    const at = f.capture?.start
-    return at !== undefined
-      ? this.starts.find(s => s.id === f.id && s.at === at)
-      : this.starts
-          .filter(s => s.id === f.id && s.at <= f.at)
-          .sort((a, b) => a.at - b.at)
-          .at(-1)
+    const candidates = this.namespaces.get(f.id) ?? []
+    if (f.capture?.start !== undefined) {
+      return candidates.find(s => s.at === f.capture!.start)
+    }
+    const start = candidates.filter(s => s.at <= f.at).at(-1)
+    // End is negative namespace evidence: a later untagged hook may be a successor.
+    if (
+      start &&
+      f.kind === 'hook' &&
+      !['SessionStart', 'SessionEnd'].includes(f.name!) &&
+      this.facts.some(
+        e =>
+          e.kind === 'hook' &&
+          e.name === 'SessionEnd' &&
+          e.id === f.id &&
+          e.at >= start.at &&
+          e.at < f.at,
+      )
+    ) {
+      return undefined
+    }
+    return start
   }
   private ended(s: Fact): boolean {
     return this.facts.some(
@@ -58,7 +82,7 @@ export class ClearReference {
     if (source.start === undefined) {
       return false
     }
-    const start = this.starts.find(s => s.id === source.target && s.at === source.start)
+    const start = (this.namespaces.get(source.target) ?? []).find(s => s.at === source.start)
     return !!start && (start.at < this.current().at || this.ended(start))
   }
   consume(event: ClearEvent, capture?: CallbackCapture): void {
@@ -72,10 +96,7 @@ export class ClearReference {
       if (capture && !this.sources.has(capture.epoch)) {
         this.sources.set(capture.epoch, {
           target: event.id,
-          start: this.starts
-            .filter(s => s.id === event.id)
-            .sort((a, b) => a.at - b.at)
-            .at(-1)?.at,
+          start: this.namespaces.get(event.id)?.at(-1)?.at,
           generation: capture.generation,
         })
       }
@@ -112,10 +133,21 @@ export class ClearReference {
         this.legacyPrompt = undefined
       }
     }
-    const fact: Fact = { ...event, received: this.now, order: this.order, capture: source }
+    const fact: Fact = {
+      ...event,
+      received: this.now,
+      order: this.order,
+      firstOrder: this.order,
+      capture: source,
+    }
     if (event.kind === 'hook' && event.name === 'SessionStart') {
       if (!this.starts.some(s => s.id === event.id && s.at === event.at)) {
         this.starts.push(fact)
+        const named = [...(this.namespaces.get(event.id) ?? []), fact].sort((a, b) => a.at - b.at)
+        this.namespaces.set(event.id, named)
+        if (fact.at >= this.latest.at) {
+          this.latest = fact
+        }
         for (const c of this.sources.values()) {
           if (c.target === event.id && c.start === undefined) {
             c.start = event.at
@@ -128,6 +160,16 @@ export class ClearReference {
       (event.name === 'SessionEnd' || (event.name === 'SessionStart' && event.epoch > 0))
     ) {
       this.clearSeen = true
+    }
+    if (event.kind === 'hook' && ['SessionStart', 'SessionEnd'].includes(event.name!)) {
+      this.lifecycle.add(`${event.name}:${event.id}:${event.at}`)
+      if (event.name === 'SessionStart') {
+        this.identities.add(event.id)
+      }
+      // Published budgets, evaluated from events only; no production retention state.
+      if (this.lifecycle.size > 64 || this.identities.size > 128) {
+        this.truncatedAt ??= this.order
+      }
     }
     if (
       event.kind === 'metadata' ||
@@ -242,11 +284,14 @@ export class ClearReference {
     const quiet =
       completed || stops.length > 0 || this.settled.has(start.at) || this.now - relevant >= 200
     const clear = start.epoch > 0
-    const reused = this.starts.some(s => s.id === start.id && s.at < start.at)
+    const incomplete = this.truncatedAt !== undefined
+    const reused = incomplete || (this.namespaces.get(start.id) ?? []).some(s => s.at < start.at)
+    const afterTruncation = !incomplete || stops.some(s => s.firstOrder > this.truncatedAt!)
     const ambiguous = this.starts.filter(s => s.at === start.at).length > 1
     const receipt = this.clearSeen
       ? !ambiguous &&
         !ended &&
+        afterTruncation &&
         !unresolved.length &&
         (clear || stops.length > 0) &&
         (!reused || stops.length > 0) &&
@@ -257,13 +302,19 @@ export class ClearReference {
       epoch: start.epoch,
       receipt,
       clearAllowed:
-        !ambiguous && clear && !ended && !unresolved.length && (!reused || stops.length > 0),
+        !incomplete &&
+        !ambiguous &&
+        clear &&
+        !ended &&
+        !unresolved.length &&
+        (!reused || stops.length > 0),
       completed,
       due: this.clearSeen && receipt && quiet,
       unresolved: unresolved.length > 0,
       retired: [...this.retired],
       latestAuthenticated: ambiguous ? undefined : start.id,
       ambiguous,
+      historyIncomplete: incomplete,
     }
   }
 }

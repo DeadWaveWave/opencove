@@ -23,7 +23,9 @@ export class ClaudeJournalLoss {
     }
     const old = this.scope
     // A raw completion attempt cannot add input debt to the obligation it may resolve.
-    if (f.kind === 'finish' && old?.id === f.id && old.start === epoch.at) return
+    if (f.kind === 'finish' && old?.id === f.id && old.start === epoch.at) {
+      return
+    }
     const next = {
       id: f.id,
       start: epoch.at,
@@ -57,10 +59,12 @@ export class ClaudeJournalLoss {
       current.id !== loss.id ||
       current.at !== loss.start ||
       proof.epoch(stop) !== current
-    )
+    ) {
       return
-    if (loss.input && loss.promptId ? stop.promptId === loss.promptId : stop.at >= loss.at)
+    }
+    if (loss.input && loss.promptId ? stop.promptId === loss.promptId : stop.at >= loss.at) {
       this.scope = undefined
+    }
   }
   dispose(): void {
     this.scope = undefined

@@ -13,7 +13,7 @@ export class ClaudeCaptureBindings {
   private sequence = 0
   private disposed = false
   capture(id?: string, at?: number): ClaudeCaptureBinding {
-    if (this.disposed)
+    if (this.disposed) {
       return {
         serial: ++this.sequence,
         invocation: this.invocation,
@@ -21,6 +21,7 @@ export class ClaudeCaptureBindings {
         startAt: at,
         retired: true,
       }
+    }
     const known = this.current.get(id || '')
     if (at !== undefined && known?.startAt !== at) {
       return {
@@ -86,8 +87,9 @@ export class ClaudeCaptureBindings {
   }
   end(id: string, at: number, observed: ClaudeCaptureBinding[] = []): void {
     for (const binding of new Set([...this.all, ...observed])) {
-      if (binding.id === id && binding.startAt !== undefined && binding.startAt <= at)
+      if (binding.id === id && binding.startAt !== undefined && binding.startAt <= at) {
         binding.retired = true
+      }
     }
   }
   owns(binding: ClaudeCaptureBinding): boolean {

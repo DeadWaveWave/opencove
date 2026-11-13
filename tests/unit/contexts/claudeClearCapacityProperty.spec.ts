@@ -22,11 +22,15 @@ for (const seed of CLEAR_SEEDS) {
         failed++
         first ??= value
       }
-      if (result.errors.some(e => !e.reason.includes('lockout'))) unsafe++
-      if (result.errors.some(e => e.reason.includes('lockout'))) lockout++
+      if (result.errors.some(e => !e.reason.includes('lockout'))) {
+        unsafe++
+      }
+      if (result.errors.some(e => e.reason.includes('lockout'))) {
+        lockout++
+      }
     }
     process.stdout.write(
-      JSON.stringify({ seed, capacitySequences: 30, steps, failed, unsafe, lockout }) + '\n',
+      JSON.stringify({ seed, capacitySequences: 39, steps, failed, unsafe, lockout }) + '\n',
     )
     const minimal = first
       ? await minimizeClearCase(first, async value => (await runClearCase(value)).errors.length > 0)
@@ -43,7 +47,7 @@ for (const seed of CLEAR_SEEDS) {
 }
 it('crosses twice each journal bound with histories, receipts, unknown captures and tied Starts', () => {
   const all = CLEAR_SEEDS.flatMap(capacityCases)
-  expect(all).toHaveLength(150)
+  expect(all).toHaveLength(195)
   expect(all.some(c => c.events.filter(e => e.id === 'A' && e.name === 'Stop').length >= 256)).toBe(
     true,
   )
@@ -51,6 +55,14 @@ it('crosses twice each journal bound with histories, receipts, unknown captures 
     true,
   )
   expect(all.some(c => c.events.filter(e => e.kind === 'capture').length >= 128)).toBe(true)
+  expect(all.some(c => c.events.filter(e => e.name === 'SessionStart').length > 256)).toBe(true)
+  expect(
+    all.some(
+      c =>
+        c.events.filter(e => e.name === 'SessionStart').length > 256 &&
+        c.events.some(e => e.id === 'A' && e.name === 'SessionStart' && e.at === 5000),
+    ),
+  ).toBe(true)
   expect(
     all.some(c => c.events.filter(e => e.name === 'SessionStart' && e.at === 110).length === 2),
   ).toBe(true)

@@ -42,7 +42,9 @@ it('retains unbound U activity across more than twice the fact bound in completi
 })
 it('keeps a lost unknown-source veto even after a current completion and replacement', () => {
   const f = fixture()
-  for (let n = 0; n < 256; n++) f.activity(`U${n}`, 20 + n)
+  for (let n = 0; n < 256; n++) {
+    f.activity(`U${n}`, 20 + n)
+  }
   f.hook('B', 'Stop', 500)
   f.journal.complete('B', undefined, 100500)
   f.hook('C', 'SessionStart', 600)
@@ -56,7 +58,9 @@ it.each([undefined, 'p'])(
   'lets a later current completion cover lost activity, prompt=%s',
   prompt => {
     const f = fixture()
-    for (let n = 0; n < 256; n++) f.activity('B', 20 + n, prompt)
+    for (let n = 0; n < 256; n++) {
+      f.activity('B', 20 + n, prompt)
+    }
     expect(f.journal.view()).toMatchObject({ ready: false, blocked: true })
     f.hook('B', 'Stop', 500, prompt)
     f.journal.complete('B', prompt, 100500)
@@ -66,7 +70,9 @@ it.each([undefined, 'p'])(
 it('does not infer completion or overflow from a flood of captures without activity', () => {
   const f = fixture(),
     first = f.journal.capture('U0')
-  for (let n = 1; n < 256; n++) f.journal.capture(`U${n}`)
+  for (let n = 1; n < 256; n++) {
+    f.journal.capture(`U${n}`)
+  }
   expect(f.journal.view().ready).toBe(true)
   expect(f.journal.accepts('U0', first)).toBe(true)
   f.activity('U0', 20)

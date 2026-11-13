@@ -19,11 +19,12 @@ export function capacityCases(seed: number): ClearCase[] {
   const result: ClearCase[] = []
   for (let n = 0; n < 5; n++) {
     const ordinary: ClearEvent[] = []
-    for (let turn = 0; turn < 256 + n; turn++)
+    for (let turn = 0; turn < 256 + n; turn++) {
       ordinary.push(
         hook(1000 + turn, 'A', 'UserPromptSubmit', 20 + turn * 2),
         hook(1000 + turn, 'A', 'Stop', 21 + turn * 2),
       )
+    }
     ordinary.push(hook(0, 'A', 'SessionEnd', 590), hook(1, 'B', 'SessionStart', 600), quiet())
     const flood = start(),
       kind = ['working', 'waiting', 'user'][random(3)]
@@ -36,10 +37,11 @@ export function capacityCases(seed: number): ClearCase[] {
     flood.push(...receipts, { epoch: 1, id: 'B', kind: 'metadata', at: 115 }, quiet())
     for (const active of [false, true]) {
       const captures = start()
-      for (let i = 0; i < 128 + n; i++)
+      for (let i = 0; i < 128 + n; i++) {
         captures.push({ epoch: 1000 + i, id: `U${i}`, kind: 'capture', at: 120 + i })
+      }
       if (active) {
-        for (let i = 0; i < 128 + n; i++)
+        for (let i = 0; i < 128 + n; i++) {
           captures.push({
             epoch: 1000 + i,
             id: `U${i}`,
@@ -47,6 +49,7 @@ export function capacityCases(seed: number): ClearCase[] {
             name: random(2) ? 'working' : 'waiting',
             at: 500 + i,
           })
+        }
         captures.push(...Array.from({ length: 256 }, (_, i) => hook(1, 'B', 'Stop', 1000 + i)))
       }
       captures.push(quiet())
@@ -59,11 +62,51 @@ export function capacityCases(seed: number): ClearCase[] {
       })
     }
     const ties = [hook(1, 'B', 'SessionStart', 110), hook(2, 'C', 'SessionStart', 110)]
-    if (random(2)) ties.reverse()
+    if (random(2)) {
+      ties.reverse()
+    }
     const tied: ClearEvent[] = [...ties, hook(1, 'B', 'Notification', 110), quiet()]
-    if (n % 2 === 0) tied.push(hook(3, 'D', 'SessionStart', 310), quiet('D', 3))
+    if (n % 2 === 0) {
+      tied.push(hook(3, 'D', 'SessionStart', 310), quiet('D', 3))
+    }
+    const lifecycle: ClearEvent[] = [hook(0, 'A', 'UserPromptSubmit', 20), hook(0, 'A', 'Stop', 30)]
+    for (let i = 0; i < 260 + n; i++) {
+      const id = `L${i}`
+      if (n % 2 === 0) {
+        lifecycle.push(
+          hook(i === 0 ? 0 : 100 + i - 1, i === 0 ? 'A' : `L${i - 1}`, 'SessionEnd', 99 + i * 4),
+        )
+      }
+      lifecycle.push(hook(100 + i, id, 'SessionStart', 100 + i * 4), quiet(id, 100 + i))
+    }
+    const reuse = [...lifecycle, hook(5000, 'A', 'SessionStart', 5000), quiet('A', 5000)]
+    if (n % 2 === 0) {
+      reuse.push(
+        hook(5000, 'A', 'UserPromptSubmit', 5010),
+        hook(5000, 'A', 'Stop', 5020),
+        quiet('A', 5000),
+      )
+    }
+    const dependent = [
+      hook(1, 'B', 'SessionStart', 20),
+      hook(1, 'B', 'SessionEnd', 30),
+      hook(2, 'B', 'UserPromptSubmit', 50),
+      hook(3, 'C', 'SessionStart', 40),
+      quiet('C', 3),
+    ]
+    for (let i = 0; i < 123 + n; i++) {
+      dependent.push(hook(3, 'C', 'PermissionRequest', 60 + i))
+    }
+    dependent.push(hook(3, 'C', 'Stop', 200), quiet('C', 3))
     result.push(
-      ...[ordinary, flood, [...start(), ...receipts, quiet()], tied].map(events => ({
+      ...[
+        ordinary,
+        flood,
+        [...start(), ...receipts, quiet()],
+        tied,
+        ...(n < 2 ? [lifecycle, reuse] : []),
+        dependent,
+      ].map(events => ({
         seed,
         index: result.length,
         ids: ['A', 'B'],

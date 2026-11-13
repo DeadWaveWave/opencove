@@ -102,7 +102,7 @@ it('keeps every unmatched user prompt fenced when Stop receipts arrive in a diff
     await f.close()
   }
 })
-it('keeps saturated input evidence conservative while allowing a fresh conversation to recover', async () => {
+it('compacts completed input obligations while preserving every unmatched prompt', async () => {
   const f = await clearIngressFixture(false)
   try {
     await f.send('B', 'SessionStart', 10, undefined, 'clear')
@@ -113,11 +113,16 @@ it('keeps saturated input evidence conservative while allowing a fresh conversat
     for (let n = 0; n < 65; n++) {
       record(JSON.stringify({ ...JSON.parse(clearTranscript[6]), promptId: `p${n}` }))
     }
-    for (let n = 0; n < 65; n++) {
-      // oxlint-disable-next-line no-await-in-loop -- each actual Stop must preserve the overflow fence
+    expect((await probeClearDelivery(f)).writes).toBe(0)
+    for (let n = 0; n < 64; n++) {
+      // oxlint-disable-next-line no-await-in-loop -- each Stop resolves only its matching obligation
       await f.send('B', 'Stop', 100 + n, `p${n}`)
     }
     expect((await probeClearDelivery(f)).writes).toBe(0)
+    await f.send('B', 'Stop', 164, 'p64')
+    expect(
+      promptAdmission(f.fence(), () => ({ supported: true, submitDelayMs: 300 }), 'refuse'),
+    ).toBeNull()
     await f.send('C', 'SessionStart', 200, undefined, 'resume')
     await f.send('C', 'UserPromptSubmit', 210, 'fresh')
     await f.send('C', 'Stop', 220, 'fresh')

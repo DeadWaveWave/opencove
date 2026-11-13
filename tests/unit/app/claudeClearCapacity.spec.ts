@@ -5,30 +5,9 @@ import {
   captureSessionStateObservation,
   createSessionStatePublisher,
 } from '../../../src/contexts/terminal/presentation/main-ipc/sessionStateWatcherPublisher'
-import { PromptDeliveryService } from '../../../src/contexts/agent/application/PromptDeliveryService'
+import { capacityWrites } from './claudeClearCapacity.helpers'
 import { ClearReference } from '../../support/claudeClearProperty/reference'
 
-async function writes(f: Awaited<ReturnType<typeof clearIngressFixture>>) {
-  const service = new PromptDeliveryService({
-    runs: f.registry,
-    input: f.hub,
-    now: Date.now,
-    createDeliveryId: () => 'capacity',
-    capability: () => ({ supported: true, submitDelayMs: 300 }),
-    schedule: (callback, ms) => {
-      const timer = setTimeout(callback, ms)
-      return () => clearTimeout(timer)
-    },
-  })
-  const before = f.write.mock.calls.length
-  const pending = service
-    .deliver({ nodeId: 'n', text: 'MUST_NOT_WRITE', whenBusy: 'refuse', timeoutMs: 1000 })
-    .catch(error => error)
-  await vi.advanceTimersByTimeAsync(301)
-  service.dispose()
-  await pending
-  return f.write.mock.calls.length - before
-}
 it('keeps unknown waiting evidence across 63 ordinary Stop receipts', async () => {
   const f = await clearIngressFixture(false)
   try {
@@ -58,7 +37,7 @@ it('keeps unknown waiting evidence across 63 ordinary Stop receipts', async () =
       // oxlint-disable-next-line no-await-in-loop -- receipts cross the actual retention boundary
       await f.send('B', 'Stop', 30 + n, `receipt-${n}`)
     }
-    expect(await writes(f)).toBe(0)
+    expect(await capacityWrites(f)).toBe(0)
     expect(f.fence().conversationQuarantined).toBe(true)
   } finally {
     await f.close()
@@ -75,7 +54,7 @@ it('admits the first empty clear after 32 completed ordinary turns', async () =>
     }
     await f.send('B', 'SessionStart', 1000, undefined, 'clear')
     await vi.advanceTimersByTimeAsync(10001)
-    expect(await writes(f)).toBe(2)
+    expect(await capacityWrites(f)).toBe(2)
     expect(f.fence().claudeClearReady).toBe(true)
   } finally {
     await f.close()
@@ -95,7 +74,7 @@ it('denies delivery and reference authority for tied authenticated Starts', asyn
     }
     await vi.advanceTimersByTimeAsync(201)
     model.advance(201)
-    expect(await writes(f)).toBe(0)
+    expect(await capacityWrites(f)).toBe(0)
     expect(model.verdict()).toMatchObject({ receipt: false, due: false })
     expect(model.retired.has('B')).toBe(false)
   } finally {
@@ -139,7 +118,7 @@ it.each(['covering', 'replacement'] as const)(
         await f.send('C', 'UserPromptSubmit', 2010, 'fresh')
         await f.send('C', 'Stop', 2020, 'fresh')
       }
-      expect(await writes(f)).toBe(completion === 'covering' ? 2 : 0)
+      expect(await capacityWrites(f)).toBe(completion === 'covering' ? 2 : 0)
     } finally {
       await f.close()
     }

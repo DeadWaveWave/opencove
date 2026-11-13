@@ -83,8 +83,9 @@ it.each([
   for (const [epoch, id] of [
     [1, first],
     [2, second],
-  ] as const)
+  ] as const) {
     model.consume({ epoch, id, kind: 'hook', name: 'SessionStart', at: 110 })
+  }
   model.advance(201)
   expect(model.verdict()).toMatchObject({
     receipt: false,
@@ -101,4 +102,47 @@ it.each([
     latestAuthenticated: 'D',
     ambiguous: false,
   })
+})
+it('keeps post-End activity unresolved across a delayed successor identity', () => {
+  const model = new ClearReference()
+  for (const event of [
+    { epoch: 1, id: 'B', kind: 'hook', name: 'SessionStart', at: 20 },
+    { epoch: 1, id: 'B', kind: 'hook', name: 'SessionEnd', at: 30 },
+    { epoch: 2, id: 'B', kind: 'hook', name: 'UserPromptSubmit', at: 50 },
+    { epoch: 3, id: 'C', kind: 'hook', name: 'SessionStart', at: 40 },
+    { epoch: 3, id: 'C', kind: 'hook', name: 'Stop', at: 200 },
+  ] as ClearEvent[]) {
+    model.consume(event)
+  }
+  model.advance(201)
+  expect(model.verdict()).toMatchObject({ receipt: false, due: false, unresolved: true })
+})
+it('requires a current Stop after lifecycle-history truncation while retaining the flag', () => {
+  const model = new ClearReference()
+  for (let i = 0; i < 65; i++) {
+    model.consume({ epoch: i + 1, id: `L${i}`, kind: 'hook', name: 'SessionStart', at: 20 + i })
+  }
+  model.advance(201)
+  expect(model.verdict()).toMatchObject({ receipt: false, due: false, historyIncomplete: true })
+  model.consume({ epoch: 65, id: 'L64', kind: 'hook', name: 'Stop', at: 100 })
+  expect(model.verdict()).toMatchObject({
+    receipt: true,
+    due: true,
+    historyIncomplete: true,
+    clearAllowed: false,
+  })
+})
+
+it('does not promote an identical pre-truncation Stop replay into new readiness evidence', () => {
+  const model = new ClearReference()
+  model.consume({ epoch: 1, id: 'A', kind: 'hook', name: 'SessionStart', at: 5000 })
+  const old: ClearEvent = { epoch: 1, id: 'A', kind: 'hook', name: 'Stop', at: 5100 }
+  model.consume(old)
+  for (let i = 0; i < 65; i++) {
+    model.consume({ epoch: i + 2, id: `old-${i}`, kind: 'hook', name: 'SessionStart', at: 20 + i })
+  }
+  model.consume({ ...old, duplicate: true })
+  expect(model.verdict()).toMatchObject({ historyIncomplete: true, receipt: false, due: false })
+  model.consume({ ...old, at: 5200 })
+  expect(model.verdict()).toMatchObject({ historyIncomplete: true, receipt: true, due: true })
 })

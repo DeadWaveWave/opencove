@@ -1,3 +1,4 @@
+import { ClaudeJournalHistory, CLAUDE_LIFECYCLE_LIMIT } from './ClaudeJournalHistory'
 import { ClaudeJournalProof } from './ClaudeJournalProof'
 import { ClaudeJournalLoss } from './ClaudeJournalLoss'
 import type { AgentRunTurnEnd } from '../domain/agentRunState'
@@ -38,6 +39,7 @@ export class ClaudeInvocationJournal {
   private requests: Request[] = []
   readonly bindings = new ClaudeCaptureBindings()
   private readonly loss = new ClaudeJournalLoss()
+  private readonly history = new ClaudeJournalHistory()
   private lastFinish?: JournalFact
   private disposed = false
   private sequence = 0
@@ -129,6 +131,7 @@ export class ClaudeInvocationJournal {
     if (kind === 'end') {
       this.bindings.end(id, at!, this.captures())
     }
+    this.compactLifecycle()
     if (request && !this.enabled) {
       this.compactRequests()
       if (this.requests.length === 64) {
@@ -225,6 +228,7 @@ export class ClaudeInvocationJournal {
       this.push(complete)
       this.compactRequests()
       this.compactCompleted()
+      this.compactLifecycle()
     }
   }
   accepts(id: string | undefined, capture?: object): boolean {
@@ -246,7 +250,9 @@ export class ClaudeInvocationJournal {
       .filter(f => f.kind === 'start' && f.id === id)
       .sort((a, b) => a.at - b.at)
       .at(-1)
-    return !known || (known === latest && !this.ended(latest))
+    return known
+      ? known === latest && !this.ended(latest)
+      : !this.history.knows(id) || (id === latest.id && !this.ended(latest))
   }
   acceptsCurrent(id: string | undefined, capture: object): boolean {
     const binding = capture as ClaudeCaptureBinding,
@@ -261,10 +267,31 @@ export class ClaudeInvocationJournal {
   private compactCompleted(): void {
     const proof = new ClaudeJournalProof(this.facts)
     this.facts = this.facts.filter(f => {
-      if (['start', 'end'].includes(f.kind)) return true
-      if (proof.retired(f) || proof.resolved(f)) return false
+      if (['start', 'end'].includes(f.kind)) {
+        return true
+      }
+      if (proof.retired(f) || proof.resolved(f)) {
+        return false
+      }
       return f.kind !== 'complete' || !proof.completion.some(stop => stop !== f && stop.at > f.at)
     })
+  }
+  private compactLifecycle(): void {
+    const life = this.facts.filter(f => ['start', 'end'].includes(f.kind))
+    if (life.length <= CLAUDE_LIFECYCLE_LIMIT) {
+      return
+    }
+    this.history.truncate(this.sequence)
+    const proof = new ClaudeJournalProof(this.facts)
+    if (this.loss.blocked || proof.unresolved.length) {
+      return
+    }
+    // With no pending obligations, completed bodies can be discarded before their witnesses.
+    this.compactCompleted()
+    const retired = life
+      .filter(f => proof.retired(f))
+      .slice(0, life.length - CLAUDE_LIFECYCLE_LIMIT)
+    this.facts = this.facts.filter(f => !retired.includes(f))
   }
   private captures(): ClaudeCaptureBinding[] {
     return this.facts.flatMap(f => (f.capture ? [f.capture] : []))
@@ -304,8 +331,9 @@ export class ClaudeInvocationJournal {
     const proof = new ClaudeJournalProof(this.facts)
     const { current: start, ended, relevant, completion, unresolved, ambiguous } = proof
     const ordinary = !!start && !start.clear
-    const reused =
-      !!start && this.facts.some(f => f.kind === 'start' && f.id === start.id && f.at < start.at)
+    const reused = !!start && this.history.possiblyReused(start.id, start.at)
+    const afterTruncation =
+      !this.history.incomplete || completion.some(stop => this.history.qualifies(stop.order))
     const first = this.enabledAt ?? now
     const quietAt = start
       ? Math.min(
@@ -319,6 +347,7 @@ export class ClaudeInvocationJournal {
     const quiet = completion.length > 0 || now >= quietAt
     const blocked =
       this.loss.blocked ||
+      !afterTruncation ||
       ambiguous ||
       (reused && !completion.length) ||
       unresolved.some(f => {
@@ -342,6 +371,7 @@ export class ClaudeInvocationJournal {
       !!start &&
       !ended &&
       !this.loss.blocked &&
+      afterTruncation &&
       !ambiguous &&
       !unresolved.length &&
       (!(ordinary || reused) || completion.length > 0) &&
@@ -349,6 +379,7 @@ export class ClaudeInvocationJournal {
     return {
       ready,
       blocked,
+      historyIncomplete: this.history.incomplete,
       unresolved: this.loss.blocked || unresolved.length > 0,
       id: start?.id,
       startAt: start?.at,
@@ -366,14 +397,29 @@ export class ClaudeInvocationJournal {
       return false
     }
     fact.order ??= ++this.sequence
-    if (fact.kind === 'finish') this.lastFinish = fact
+    if (fact.kind === 'finish') {
+      this.lastFinish = fact
+    }
+    if (fact.kind === 'start') {
+      this.history.remember(fact.id, fact.at, fact.order)
+    }
+    if (
+      ['start', 'end'].includes(fact.kind) &&
+      this.facts.filter(f => ['start', 'end'].includes(f.kind)).length >= CLAUDE_LIFECYCLE_LIMIT
+    ) {
+      this.history.truncate(fact.order)
+    }
     if (this.facts.length === 128) {
       const proof = new ClaudeJournalProof([...this.facts, fact])
-      const disposable = proof.evictionIndex(this.facts)
+      const disposable = proof.evictionIndex(this.facts, this.loss.blocked)
       if (disposable < 0) {
-        if (fact.kind !== 'complete' && !proof.retired(fact) && !proof.resolved(fact))
+        if (fact.kind !== 'complete' && !proof.retired(fact) && !proof.resolved(fact)) {
           this.loss.lose(fact, proof)
+        }
         return false
+      }
+      if (['start', 'end'].includes(this.facts[disposable].kind)) {
+        this.history.truncate(this.sequence)
       }
       this.facts.splice(disposable, 1)
     }
@@ -384,6 +430,7 @@ export class ClaudeInvocationJournal {
     this.disposed = true
     this.bindings.dispose()
     this.loss.dispose()
+    this.history.dispose()
     this.lastFinish = undefined
     this.requests = []
     this.facts = []

@@ -104,18 +104,21 @@ it('unknown captures veto current readiness and ordinary idle cannot resolve the
   })
   expect(f.journal.view().ready).toBe(false)
 })
-it('eviction never converts unresolved evidence into readiness', () => {
+it('keeps lost evidence until a covering authenticated completion', () => {
   const f = fixture()
   f.hook('B', 'SessionStart', 20)
   for (let n = 0; n < 200; n++) {
     f.journal.unknown('B')
     f.advance(1)
   }
+  f.hook('B', 'Stop', 50)
+  f.journal.complete('B', undefined, 100050)
+  expect(f.journal.view()).toMatchObject({ ready: false, blocked: true })
   f.hook('B', 'Stop', 500)
   f.journal.complete('B', undefined, 100500)
   f.advance(10000)
   expect(f.journal.events.length).toBeLessThanOrEqual(128)
-  expect(f.journal.view().ready).toBe(false)
+  expect(f.journal.view()).toMatchObject({ ready: true, blocked: false })
 })
 
 it('withholds authority for tied distinct namespaces and recovers with explicit replacement', () => {

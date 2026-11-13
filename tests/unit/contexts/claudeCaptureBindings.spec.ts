@@ -5,14 +5,18 @@ it('evicts only a retired indexed binding without reviving a held token', () => 
   b.start('A', 10)
   const a = b.capture('A')
   b.start('B', 20)
-  for (let n = 0; n < 128; n++) b.capture(`U${n}`)
+  for (let n = 0; n < 128; n++) {
+    b.capture(`U${n}`)
+  }
   expect(a.retired).toBe(true)
   expect(b.capture('B').startAt).toBe(20)
   expect((b as unknown as { current: Map<string, object> }).current.size).toBeLessThanOrEqual(64)
 })
 it('preserves observed capabilities when their pending index cannot fit', () => {
   const b = new ClaudeCaptureBindings()
-  for (let n = 0; n < 64; n++) b.capture(`U${n}`)
+  for (let n = 0; n < 64; n++) {
+    b.capture(`U${n}`)
+  }
   const held = b.capture('B')
   expect(held.startAt).toBeUndefined()
   b.start('B', 20, [held])
@@ -22,7 +26,9 @@ it('preserves observed capabilities when their pending index cannot fit', () => 
 })
 it('retires an unindexed observed source on replacement and preserves a later same-ID epoch', () => {
   const b = new ClaudeCaptureBindings()
-  for (let n = 0; n < 64; n++) b.capture(`U${n}`)
+  for (let n = 0; n < 64; n++) {
+    b.capture(`U${n}`)
+  }
   const old = b.capture('B')
   b.start('B', 20, [old])
   b.start('B', 40, [old])
@@ -42,7 +48,9 @@ it('does not retire an unbound pending source on an earlier End', () => {
 })
 it('disposes every capability including ones outside the bounded index', () => {
   const b = new ClaudeCaptureBindings()
-  for (let n = 0; n < 64; n++) b.capture(`U${n}`)
+  for (let n = 0; n < 64; n++) {
+    b.capture(`U${n}`)
+  }
   const held = b.capture('B')
   b.dispose()
   expect(b.owns(held)).toBe(false)
