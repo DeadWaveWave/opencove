@@ -3,10 +3,10 @@
  * The pixel wall is drawn by us, so every colour that can sit behind glass is enumerable;
  * text on glass is checked against all of them, not against a single nominal background.
  */
-import { contrastRatio, deltaE, mixOver, shift, simulateCvd, type Rgb } from './oklch'
-import { ACCENT_HOVER_STEP, dangerDialog, type Ink } from './themeHostTokens'
-import { statusPillColors } from './themeStatusTokens'
-import { PIXEL_CYAN_STEP } from './themeTokens'
+import { contrastRatio, deltaE, mixOver, shift, simulateCvd, type Rgb } from '@shared/design/oklch'
+import { ACCENT_HOVER_STEP, dangerDialog, type Ink } from '@shared/design/themeHostTokens'
+import { statusPillColors } from '@shared/design/themeStatusTokens'
+import { PIXEL_CYAN_STEP } from '@shared/design/themeTokens'
 import {
   ANSI_BACKGROUND_SLOTS,
   ANSI_KEYS,
@@ -17,7 +17,7 @@ import {
   type AnsiKey,
   type GeneratedTheme,
   type KindFamilyId,
-} from './themeGenerator'
+} from '@shared/design/themeGenerator'
 
 export interface ContrastCheck {
   id: string

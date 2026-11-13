@@ -413,6 +413,36 @@ describe('headless PTY runtime', () => {
     }
   })
 
+  it('hands the injected session discovery to the session state watcher', async () => {
+    vi.resetModules()
+
+    const createSessionStateWatcherController = vi.fn(() => ({
+      start: vi.fn(),
+      noteInteraction: vi.fn(),
+      disposeSession: vi.fn(),
+      dispose: vi.fn(),
+    }))
+    vi.doMock('../../../src/contexts/terminal/presentation/main-ipc/sessionStateWatcher', () => ({
+      createSessionStateWatcherController,
+    }))
+
+    const { createHeadlessPtyRuntime } = await import('../../../src/app/worker/headlessPtyRuntime')
+    const sessionDiscovery = { kind: 'injected-session-discovery' }
+
+    const runtime = createHeadlessPtyRuntime({
+      processEngine: new FakeTerminalProcessEngine(),
+      sessionDiscovery: sessionDiscovery as never,
+    })
+
+    try {
+      expect(createSessionStateWatcherController).toHaveBeenCalledWith(
+        expect.objectContaining({ sessionDiscovery }),
+      )
+    } finally {
+      runtime.dispose()
+    }
+  })
+
   it('forwards child IPC send failures through the headless pty adapter callback', async () => {
     vi.resetModules()
 

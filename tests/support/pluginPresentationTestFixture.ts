@@ -1,4 +1,4 @@
-import type { PluginManifest } from '../../domain/pluginTypes'
+import type { PluginManifest } from '@contexts/plugins/domain/pluginTypes'
 
 export const examplePlugin: PluginManifest = {
   id: 'example-tool',

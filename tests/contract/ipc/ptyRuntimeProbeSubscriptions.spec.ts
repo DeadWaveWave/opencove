@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
+import { IPC_CHANNELS } from '../../../src/shared/contracts/ipc'
 import { FakeTerminalProcessEngine } from '../../support/FakeTerminalProcessEngine'
 
 describe('Pty runtime probe subscriptions', () => {

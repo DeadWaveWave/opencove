@@ -1,7 +1,7 @@
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { SpaceWorktreeGuardWindow } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/windows/SpaceWorktreeGuardWindow'
+import { SpaceWorktreeGuardWindow } from '../../../src/contexts/worktree/presentation/renderer/windows/SpaceWorktreeGuardWindow'
 
 describe('SpaceWorktreeGuardWindow', () => {
   it('supports mismatch continue and close-all actions', () => {

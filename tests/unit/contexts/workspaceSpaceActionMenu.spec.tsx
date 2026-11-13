@@ -6,7 +6,7 @@ import {
   WorkspaceCollapseContext,
   useWorkspaceCollapse,
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/collapse/WorkspaceCollapseContext'
-import type { WorkspacePathOpener } from '../../../src/shared/types/api'
+import type { WorkspacePathOpener } from '../../../src/shared/contracts/dto'
 
 function CollapseProvider({
   children,

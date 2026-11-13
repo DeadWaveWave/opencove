@@ -1,6 +1,9 @@
 import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { examplePlugin, exampleDetails } from './pluginPresentationTestFixture'
+import {
+  examplePlugin,
+  exampleDetails,
+} from '../../../../../tests/support/pluginPresentationTestFixture'
 import type { PluginIconDeclaration, PluginManifest } from '../../domain/pluginTypes'
 import * as details from './usePluginDetails'
 import * as registry from './usePluginRegistry'

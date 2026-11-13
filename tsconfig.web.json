@@ -7,7 +7,8 @@
     "src/shared/**/*",
     "src/contexts/**/domain/**/*",
     "src/contexts/**/application/**/*",
-    "src/contexts/**/presentation/renderer/**/*"
+    "src/contexts/**/presentation/renderer/**/*",
+    "tests/support/pluginPresentationTestFixture.ts"
   ],
   "compilerOptions": {
     "composite": true,

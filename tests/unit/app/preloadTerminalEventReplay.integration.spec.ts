@@ -1,7 +1,7 @@
 import { createDesktopOpenCoveApi } from '@app/renderer/bootstrap/installDesktopOpenCoveApi'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { IPC_CHANNELS } from '../../../src/shared/contracts/ipc'
-import type { OpenCoveApi } from '../../../src/app/preload/index.d'
+import type { OpenCoveApi } from '../../../src/app/preload/api'
 
 type IpcListener = (event: unknown, payload: never) => void
 

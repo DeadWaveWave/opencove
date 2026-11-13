@@ -111,12 +111,6 @@ describe('main process sandbox flags', () => {
         }),
       }))
 
-      vi.doMock('../../../src/app/main/controlSurface/registerControlSurfaceServer', () => ({
-        registerControlSurfaceServer: () => ({
-          dispose: vi.fn(),
-        }),
-      }))
-
       vi.doMock('../../../src/app/main/worker/localWorkerManager', () => ({
         hasOwnedLocalWorkerProcess: () => false,
         startLocalWorker: vi.fn(async () => ({ status: 'stopped', connection: null })),

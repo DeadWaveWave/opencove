@@ -1,7 +1,7 @@
 // @vitest-environment node
 import postcss from 'postcss'
 import { describe, expect, it } from 'vitest'
-import { contrastChecks } from '@shared/design/themeContrast'
+import { contrastChecks } from '../../../support/themeContrast'
 import {
   DEFAULT_CONTRAST,
   THEME_FAMILIES,
