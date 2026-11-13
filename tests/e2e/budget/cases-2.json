@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "count": 174,
+  "count": 175,
   "entries": {
     "tests/e2e/agent-hook-relay.windows.spec.ts › claude-code executes Electron hooks through the real launch path and retains keyboard input": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/agent-hook-relay.windows.spec.ts › codex executes Electron hooks through the real launch path and retains keyboard input": "Desktop: pre-restructure inventory; existing assertions retained",
@@ -20,6 +20,7 @@
     "tests/e2e/cli.node-create-agent-wait.real-claude.spec.ts › create agent returns the real Claude initial reply from the mock API": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/cli.node-create-agent-wait.spec.ts › create agent waits for claude-code initial permission through the CLI": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/cli.node-create-agent-wait.spec.ts › create agent waits for claude-code initial reply through the CLI": "Desktop: pre-restructure inventory; existing assertions retained",
+    "tests/e2e/cli.task-delegation.spec.ts › a coordinator assigns and releases descendant agents while siblings and unrelated agents are refused": "Desktop: real lineage grants let a coordinator assign descendants while sibling and unrelated grants are refused; card status renders",
     "tests/e2e/context-bridge.app-errors.display.spec.ts › Run default agent displays the writes-disabled notice in en": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/context-bridge.app-errors.display.spec.ts › Run default agent displays the writes-disabled notice in zh-CN": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/context-bridge.app-errors.spec.ts › does not repair or launch a second session after corrupted executed response": "Desktop: pre-restructure inventory; existing assertions retained",
