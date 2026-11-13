@@ -16,7 +16,7 @@
 ```bash
 pnpm arch:audit    # 打印全部发现（error 与 warn），不影响退出码
 pnpm arch:check    # 阻塞门禁：verify:quick 与 CI 运行
-pnpm arch:ratchet  # 把当前计数写入 ratchet.json（只允许降低）
+pnpm arch:ratchet  # 把当前计数写入 ratchet.json；已在基线中的规则总数不能上升，基线里还没有的规则会记录首次计数
 pnpm arch:test     # harness 自身的测试
 ```
 
@@ -37,10 +37,13 @@ ratchet 基线 `ratchet.json` 的形状是 `{ ruleId: { file: count } }`，每�
 
 ## 添加有理由的例外
 
-新增违规的唯一途径是在 `rules.json` 中显式声明例外：
+新增违规需要修改 `rules.json`，`ratchet.json` 本身不能放行新违规：
 
 - `checks.layerDependencies.allowedEdges`：给指定的组合文件开放额外 inward edge。每一项都必须有非空的 `reason`，否则 `rules.json` 加载失败。
-- `forbiddenText[].allowedPatterns`：例如 `window.opencoveApi` 只能经由匹配 `*Api.ts` 的边界 adapter 访问。
+- 修改某条规则的 `severity`、`exclude` 或 `allowedPatterns`（例如 `window.opencoveApi` 只能经由匹配 `*Api.ts` 的边界 adapter 访问）同样等于例外，必须在 review 中写明理由。
+- 每条规则的 `severity` 必须恰好是 `warn` 或 `error`，其他值会让 `rules.json` 加载失败。
+
+`check.mjs` 不能覆盖基线路径；`--config` 只用于 `--mode audit`，在 `--mode check` 和 `--update-ratchet` 下会报错。
 
 ## 规则语义
 
