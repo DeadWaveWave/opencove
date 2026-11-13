@@ -93,6 +93,8 @@ type-only import 反向依赖任何 context。规则可用 `fromPatterns` / `all
   **Exhaustive** 指最后一个子句是 `default:`，且它的第一条语句是 `assertNever(<discriminant>)`（也可以是 `return` / `throw` 它），
   或旧写法 `const _exhaustive: never = <discriminant>`。“同一 discriminant”按参数源码文本与 `switch` 表达式文本相同判定；旧写法的初始化表达式不能带类型转换（`as`、`satisfies`、`<T>x`、`!`），普通括号可以。
   `assertNever` 必须是该文件中由 import 绑定到 `src/shared/utils/assertNever.ts` 的标识符（`assertNeverFile` 配置；别名与相对路径都可以），同名的本地函数或其他来源的 import 不算。
+  如果该 import 绑定的本地名字在同一文件里还被其他声明占用（参数、变量或解构绑定、函数或类声明、catch 变量、另一个 import），整个文件里对该名字的调用都不算 exhaustive（不做作用域分析，文件级唯一即可）。
+  `default` 子句的文本（含其前导注释与内部注释）含有 `@ts-expect-error` 或 `@ts-ignore` 时该 `switch` 不算 exhaustive；文件含有 `@ts-nocheck` 时没有任何 `switch` 算 exhaustive，因为被压制的编译错误会让漏掉的 case 照样通过编译。
   分析器不证明 exhaustive，只检查 `switch` 以 `assertNever` 收尾，其余由 `tsc` 证明；`assertNever` 在 `src/shared/utils/assertNever.ts`。
 
 **检测不到的形式**（已知缺口，本规则按名字和字面量判断，不做类型分析）：字面量先放进常量再比较；`new Set([...]).has(p)`；对具名数组的 `.includes` / `.indexOf`；`'codex' in table`；把 `Record` 查表结果当作分支条件；`provider.startsWith('codex')`；通过别名读取主体（`const k = node.data.kind; k === 'task'`）；以及把 node kind 主体改名成不以 `kind` 结尾。后续方案是让规则感知类型（按操作数的类型是否为 variant 联合类型而不是按名字判断），可以一并关闭以上所有缺口和改名缺口。

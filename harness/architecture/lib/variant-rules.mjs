@@ -339,7 +339,44 @@ function collectAssertNeverNames(sourceFile, helperFile, resolveTarget) {
       }
     }
   }
+  const declarations = countDeclarations(sourceFile, names)
+  for (const [name, count] of declarations) {
+    if (count > 1) {
+      names.delete(name)
+    }
+  }
   return names
+}
+
+// How many times a name is declared in the file: parameters, variables, binding elements, functions,
+// classes and imports. No scope analysis; a name declared more than once is treated as shadowed.
+function countDeclarations(sourceFile, names) {
+  const counts = new Map([...names].map(name => [name, 0]))
+  const bump = name => {
+    if (name && ts.isIdentifier(name) && counts.has(name.text)) {
+      counts.set(name.text, counts.get(name.text) + 1)
+    }
+  }
+  const visit = node => {
+    if (
+      ts.isParameter(node) ||
+      ts.isVariableDeclaration(node) ||
+      ts.isBindingElement(node) ||
+      ts.isFunctionDeclaration(node) ||
+      ts.isFunctionExpression(node) ||
+      ts.isClassDeclaration(node) ||
+      ts.isClassExpression(node) ||
+      ts.isImportSpecifier(node) ||
+      ts.isImportClause(node) ||
+      ts.isNamespaceImport(node) ||
+      ts.isImportEqualsDeclaration(node)
+    ) {
+      bump(node.name)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+  return counts
 }
 
 function isAssertNeverCall(expression, discriminantText, sourceFile, assertNeverNames) {
@@ -360,6 +397,14 @@ function isExhaustiveSwitch(switchStatement, sourceFile, assertNeverNames) {
   const clauses = switchStatement.caseBlock.clauses
   const last = clauses[clauses.length - 1]
   if (!last || !ts.isDefaultClause(last)) {
+    return false
+  }
+  // A suppressed compile error would let a missing case compile: the comments in or before the
+  // default clause, and a file-level @ts-nocheck, void the proof.
+  if (/@ts-(expect-error|ignore)/.test(last.getFullText(sourceFile))) {
+    return false
+  }
+  if (sourceFile.text.includes('@ts-nocheck')) {
     return false
   }
   let statements = last.statements

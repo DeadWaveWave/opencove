@@ -369,6 +369,42 @@ describe('variant rules: allowed forms', () => {
     ])
   })
 
+  it('does not count a shadowed assertNever', async () => {
+    const switchBody = (call: string) =>
+      `  switch (node.data.kind) {\n    case 'task':\n      return 1\n    default:\n      return ${call}\n  }\n`
+    const { findings } = await audit({
+      'src/app/param.ts': `${NEVER_IMPORT}type K = 'task'\nexport function g(node: { data: { kind: K } }, assertNever: (x: never) => number) {\n${switchBody('assertNever(node.data.kind)')}}\n`,
+      'src/app/local.ts': `${NEVER_IMPORT}type K = 'task'\nconst assertNever = (x: unknown) => 0\nexport function g(node: { data: { kind: K } }) {\n${switchBody('assertNever(node.data.kind as never)')}}\n`,
+      'src/app/inner.ts': `${NEVER_IMPORT}type K = 'task'\nexport function g(node: { data: { kind: K } }) {\n  function assertNever(x: unknown) { return 0 }\n${switchBody('assertNever(node.data.kind)')}}\n`,
+      'src/app/destructured.ts': `${NEVER_IMPORT}type K = 'task'\nexport function g(node: { data: { kind: K } }, { assertNever }: { assertNever: (x: never) => number }) {\n${switchBody('assertNever(node.data.kind)')}}\n`,
+      'src/app/ok.ts': `${NEVER_IMPORT}type K = 'task'\nexport function g(node: { data: { kind: K } }) {\n${switchBody('assertNever(node.data.kind)')}}\n`,
+    })
+    expect(findings).toEqual(
+      ['destructured', 'inner', 'local', 'param'].flatMap(name => [
+        ...decision(`src/app/${name}.ts`, 1, NODE),
+        ...notExhaustive(`src/app/${name}.ts`, 1, NODE),
+      ]),
+    )
+  })
+
+  it('does not count a switch whose default suppresses the compile error', async () => {
+    const body = (before: string, inside: string) =>
+      `${NEVER_IMPORT}type K = 'task' | 'note'\nexport function g(kind: K) {\n  switch (kind) {\n    case 'task':\n      return 1\n${before}    default:${inside}\n      return assertNever(kind)\n  }\n}\n`
+    const { findings } = await audit({
+      'src/app/expect.ts': body('', ' // @ts-expect-error'),
+      'src/app/ignore.ts': body('', '\n      // @ts-ignore'),
+      'src/app/leading.ts': body('    // @ts-expect-error\n', ''),
+      'src/app/nocheck.ts': `// @ts-nocheck\n${body('', '')}`,
+      'src/app/plain.ts': body('', ' // all kinds are handled above'),
+    })
+    expect(findings).toEqual(
+      ['expect', 'ignore', 'leading', 'nocheck'].flatMap(name => [
+        ...decision(`src/app/${name}.ts`, 1, NODE),
+        ...notExhaustive(`src/app/${name}.ts`, 1, NODE),
+      ]),
+    )
+  })
+
   it('only counts the shared assertNever: a local function or another import does not', async () => {
     const tail =
       "type K = 'task'\nexport function f(kind: K) {\n  switch (kind) {\n    case 'task':\n      return 1\n    default:\n      return assertNever(kind)\n  }\n}\n"
