@@ -10,6 +10,18 @@ test('WebGL loss preserves the live terminal buffer, selection and scrolled view
       { id: nodeId, title: nodeId, position: { x: 40, y: 40 }, width: 720, height: 480 },
     ])
     const surface = window.locator(`[data-id="${nodeId}"] .terminal-node__terminal`)
+    // Hydration finishes after renderer selection; a startup DOM placeholder is not a fallback.
+    await expect(surface).toHaveAttribute('aria-busy', 'false')
+    await expect(surface).toHaveAttribute('data-cove-terminal-renderer', /^(webgl|dom)$/)
+    // Skip only where the runner has no WebGL2 at all (software-GL xvfb). Where WebGL2 exists, a
+    // DOM terminal is a renderer regression and must fail rather than skip.
+    const webgl2Available = await window.evaluate(() => {
+      const probe = document.createElement('canvas').getContext('webgl2')
+      probe?.getExtension('WEBGL_lose_context')?.loseContext()
+      return probe !== null
+    })
+    test.info().annotations.push({ type: 'webgl2-available', description: String(webgl2Available) })
+    test.skip(!webgl2Available, 'WebGL context loss needs a runner with WebGL2')
     await expect(surface).toHaveAttribute('data-cove-terminal-renderer', 'webgl')
     await surface.locator('.xterm-helper-textarea').focus()
     // Keep the producer alive and quiet after READY, so the snapshot has no prompt/output race.
