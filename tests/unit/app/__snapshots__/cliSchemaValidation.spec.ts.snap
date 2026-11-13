@@ -43,7 +43,7 @@ Options:
   --task <nodeId>             Link to an existing task in the same Space and move it to doing
   --full-access <true|false>  Set Full Access for this agent and its restarts; omit to follow Settings
   --title <text>              Set a fixed window name; omit on creation to keep automatic titles
-  --frame <json>              Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
+  --frame <json>              Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; inspect appliedFrame and frameAdjusted for the actual applied size
   --near <selector>           Place near a reference node; recommend --near @self for helper nodes; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
   --focus                     Focus after creation
   -q, --quiet                 Print only the created object identifier followed by a newline
@@ -91,7 +91,7 @@ Options:
   --text <text>         Set the note contents
   --text-file <path|->  Read text from a UTF-8 file, or use - for stdin
   --title <text>        Set the node title
-  --frame <json>        Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
+  --frame <json>        Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; inspect appliedFrame and frameAdjusted for the actual applied size
   --near <selector>     Place near a reference node; recommend --near @self for helper nodes; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
   --focus               Focus after creation
   -q, --quiet           Print only the created object identifier followed by a newline
@@ -142,7 +142,7 @@ Options:
   --priority <low|medium|high|urgent>  Set the task priority
   --tag <tag>                          Set task tags; repeat for each tag
   --title <text>                       Set the node title
-  --frame <json>                       Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes; task minimum: width 220, height 260
+  --frame <json>                       Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; inspect appliedFrame and frameAdjusted for the actual applied size; task minimum: width 220, height 260
   --near <selector>                    Place near a reference node; recommend --near @self for helper nodes; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
   --focus                              Focus after creation
   -q, --quiet                          Print only the created object identifier followed by a newline
@@ -191,7 +191,7 @@ Options:
   --command <command>  Run this command in the terminal
   --profile <id>       Select a browser or terminal profile
   --title <text>       Set a fixed window name; omit on creation to keep automatic titles
-  --frame <json>       Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
+  --frame <json>       Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; inspect appliedFrame and frameAdjusted for the actual applied size
   --near <selector>    Place near a reference node; recommend --near @self for helper nodes; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
   --focus              Focus after creation
   -q, --quiet          Print only the created object identifier followed by a newline
@@ -241,7 +241,7 @@ Options:
   --session-mode <shared|incognito|profile>  Choose the browser session mode
   --profile <id>                             Select a browser or terminal profile
   --title <text>                             Set the node title
-  --frame <json>                             Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
+  --frame <json>                             Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; inspect appliedFrame and frameAdjusted for the actual applied size
   --near <selector>                          Place near a reference node; recommend --near @self for helper nodes; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
   --focus                                    Focus after creation
   -q, --quiet                                Print only the created object identifier followed by a newline
@@ -276,7 +276,7 @@ Options:
   --text-file <path|->  Read text from a UTF-8 file, or use - for stdin
   --node <id>           Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
   --title <text>        Set the node title
-  --frame <json>        Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
+  --frame <json>        Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; inspect appliedFrame and frameAdjusted for the actual applied size
   --space <selector>    Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>        Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
@@ -308,7 +308,7 @@ Options:
   --status <todo|doing|ai_done|done>   Set the task status
   --node <id>                          Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
   --title <text>                       Set the node title
-  --frame <json>                       Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes; task minimum: width 220, height 260
+  --frame <json>                       Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; inspect appliedFrame and frameAdjusted for the actual applied size; task minimum: width 220, height 260
   --space <selector>                   Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>                       Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
@@ -339,7 +339,7 @@ Options:
   --profile <id>                             Select a browser or terminal profile
   --node <id>                                Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
   --title <text>                             Set the node title
-  --frame <json>                             Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
+  --frame <json>                             Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; inspect appliedFrame and frameAdjusted for the actual applied size
   --space <selector>                         Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>                             Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 

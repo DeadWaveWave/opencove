@@ -50,7 +50,7 @@ test('terminal-grant near creation persists and renders three helpers with neste
     const page = launched.window
     await seedWorkspaceState(page, {
       activeWorkspaceId: projectId,
-      settings: { defaultProvider: 'claude-code' },
+      settings: { defaultProvider: 'claude-code', standardWindowSizeBucket: 'regular' },
       workspaces: [
         {
           id: projectId,
@@ -137,6 +137,27 @@ test('terminal-grant near creation persists and renders three helpers with neste
           y: caller.frame.y,
         })
       }
+      if (kind === 'agent') {
+        expect(node.frame.height).toBeGreaterThan(caller.frame.height)
+      }
+      const gap = Math.hypot(
+        Math.max(
+          caller.frame.x - node.frame.x - node.frame.width,
+          node.frame.x - caller.frame.x - caller.frame.width,
+          0,
+        ),
+        Math.max(
+          caller.frame.y - node.frame.y - node.frame.height,
+          node.frame.y - caller.frame.y - caller.frame.height,
+          0,
+        ),
+      )
+      expect(
+        gap,
+        `${kind} must remain within one node-width plus padding of the caller`,
+      ).toBeLessThanOrEqual(node.frame.width + 24)
+      // This roomy fixture has an edge-adjacent slot, including for the tall third helper.
+      expect(gap).toBe(24)
       nonOverlapping(caller.frame, node.frame)
       nonOverlapping(briefFrame, node.frame)
       nodes.forEach(previous => nonOverlapping(previous.frame, node.frame))

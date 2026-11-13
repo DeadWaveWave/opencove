@@ -76,9 +76,11 @@ Space locator is a consistency constraint; the reference must belong directly to
 `--root-canvas --near <selector>` overrides membership and searches beside the reference's
 Space in the reference's project. All `--frame` combinations, including size-only, are refused.
 
-Placement prefers the reference's right edge plus 24, aligned at its y coordinate. The existing
-solver searches inside the Space first, then overflows right, down, left, up; the same creation
-CAS commit inserts membership and grows ancestors. Existing nodes stay fixed. Missing Space
+Near candidates are ordered by distance between their rectangle and the reference's nearest edge.
+Equal distances prefer the right column (top-aligned, then stacking down), the row below, then
+the left column, before further-out slots. The existing solver validates these anchors before
+its general search; a nearby slot can grow the Space instead of using a distant interior slot.
+The same creation CAS inserts membership and grows ancestors. Existing nodes stay fixed. Missing Space
 rectangles use bounds derived from members and child Spaces; only missing target/ancestor
 rectangles are seeded during insertion. Empty unrelated Spaces with no rectangle are ignored.
 Near is an anchor preference, not a distance guarantee; growing Space envelopes can overlap.

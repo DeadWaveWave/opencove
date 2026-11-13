@@ -101,6 +101,54 @@ function rootCreationAnchor(
   }
 }
 
+/** Candidate anchors only; the shared solver owns collision checks and fallback. */
+function nearCreationAnchors(
+  reference: NodeControlNode,
+  size: { width: number; height: number },
+  nodes: NodeControlNode[],
+) {
+  const { x, y } = reference.position
+  const right = x + reference.width,
+    bottom = y + reference.height
+  const ys = [
+    ...new Set([y, ...nodes.map(node => node.position.y + node.height + SPACE_NODE_PADDING)]),
+  ].filter(value => value >= y)
+  const xs = [
+    ...new Set([
+      x,
+      right - size.width,
+      ...nodes.flatMap(node => [
+        node.position.x + node.width + SPACE_NODE_PADDING,
+        node.position.x - size.width - SPACE_NODE_PADDING,
+      ]),
+    ]),
+  ]
+  const candidates = [
+    ...ys.map(top => ({ x: right + SPACE_NODE_PADDING, y: top, side: 0, offset: top - y })),
+    ...xs.map(left => ({
+      x: left,
+      y: bottom + SPACE_NODE_PADDING,
+      side: 1,
+      offset: Math.abs(left - x),
+    })),
+    ...ys.map(top => ({
+      x: x - size.width - SPACE_NODE_PADDING,
+      y: top,
+      side: 2,
+      offset: top - y,
+    })),
+  ].map(point => ({
+    ...point,
+    distance: Math.hypot(
+      Math.max(x - point.x - size.width, point.x - right, 0),
+      Math.max(y - point.y - size.height, point.y - bottom, 0),
+    ),
+  }))
+  return candidates
+    .sort((a, b) => a.distance - b.distance || a.side - b.side || a.offset - b.offset)
+    .map(point => ({ x: point.x, y: point.y }))
+}
+
 export function resolvePlacement(options: {
   workspace: NodeControlWorkspace
   space: NodeControlSpace | null
@@ -159,6 +207,12 @@ export function resolvePlacement(options: {
     )
   const resolved = resolveWorkspaceNodesPlacement({
     anchor,
+    preferredAnchors:
+      options.reference &&
+      (options.space ||
+        !options.workspace.spaces.some(space => space.nodeIds.includes(options.reference!.id)))
+        ? nearCreationAnchors(options.reference, size, options.workspace.nodes)
+        : undefined,
     size,
     nodes: options.workspace.nodes.map(node => ({
       id: node.id,

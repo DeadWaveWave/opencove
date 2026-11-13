@@ -126,3 +126,26 @@ it('documents Full Access as a create-only choice with a Settings default', asyn
   expect(await run(['node', 'update', 'agent', '--help'], update.io)).toBe(0)
   expect(update.out()).not.toContain('--full-access')
 })
+
+it.each(['create', 'update'])(
+  'explains raised minimum dimensions for every node %s kind',
+  async action => {
+    for (const kind of ['note', 'terminal', 'agent', 'task', 'website'] as const) {
+      const f = identityFixture(false)
+      // eslint-disable-next-line no-await-in-loop
+      expect(await run(['node', action, kind, '--help'], f.io)).toBe(0)
+      expect(f.out()).toContain("Sizes below a kind's minimum are raised")
+      expect(f.out()).toContain(
+        'inspect appliedFrame and frameAdjusted for the actual applied size',
+      )
+      expect(f.fetch).not.toHaveBeenCalled()
+    }
+  },
+)
+it('warns that node update moves need a containment check in the canvas guide', async () => {
+  const f = identityFixture(false)
+  expect(await run(['skill', 'canvas'], f.io)).toBe(0)
+  expect(f.out()).toContain(
+    '`node update` moves do not grow the Space; check containment after moving.',
+  )
+})

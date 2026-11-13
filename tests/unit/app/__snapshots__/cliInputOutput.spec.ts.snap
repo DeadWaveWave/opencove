@@ -274,7 +274,7 @@ Options:
   --task <nodeId>             Link to an existing task in the same Space and move it to doing
   --full-access <true|false>  Set Full Access for this agent and its restarts; omit to follow Settings
   --title <text>              Set a fixed window name; omit on creation to keep automatic titles
-  --frame <json>              Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes
+  --frame <json>              Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; inspect appliedFrame and frameAdjusted for the actual applied size
   --near <selector>           Place near a reference node; recommend --near @self for helper nodes; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
   --focus                     Focus after creation
   -q, --quiet                 Print only the created object identifier followed by a newline

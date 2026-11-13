@@ -324,7 +324,7 @@ export const nodeCommands = [
           frame: {
             type: 'json',
             description:
-              'Set x, y, width and height as a JSON object; appliedFrame and frameAdjusted report any changes' +
+              "Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; inspect appliedFrame and frameAdjusted for the actual applied size" +
               (kind === 'task' ? '; task minimum: width 220, height 260' : ''),
             valueName: 'json',
           },
