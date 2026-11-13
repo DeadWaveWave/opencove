@@ -157,6 +157,39 @@ test('managed Claude stale publications retain layout and cold-resume the curren
       .toEqual({ resumeSessionId: launched.tuple.resumeSessionId, resumeSessionIdVerified: true })
     const initial = await getBinding(page, agent.id)
     await expectConversation(page, agent.id, initial.tuple.resumeSessionId!)
+    // Reproduce a peer layout publication placing the control behind this client's sidebar.
+    await page.evaluate(async nodeId => {
+      const control = document
+        .querySelector(`[data-id="${nodeId}"] [data-testid="terminal-node-session-list"]`)!
+        .getBoundingClientRect()
+      const sidebar = document
+        .querySelector('[data-testid="workspace-sidebar"]')!
+        .getBoundingClientRect()
+      const transform = getComputedStyle(document.querySelector('.react-flow__viewport')!).transform
+      const zoom = new DOMMatrixReadOnly(transform).a
+      const snapshot = await window.opencoveApi.persistence.readAppState()
+      const state = snapshot.state as {
+        workspaces: Array<{ nodes: Array<{ id: string; position: { x: number; y: number } }> }>
+      }
+      const node = state.workspaces.flatMap(w => w.nodes).find(n => n.id === nodeId)!
+      node.position.x += (sidebar.x + sidebar.width / 2 - control.x - control.width / 2) / zoom
+      await window.opencoveApi.persistence.writeAppState({ state, baseRevision: snapshot.revision })
+    }, agent.id)
+    await expect
+      .poll(() =>
+        page
+          .locator(`[data-id="${agent.id}"] [data-testid="terminal-node-session-list"]`)
+          .evaluate(button => {
+            const r = button.getBoundingClientRect()
+            return Boolean(
+              document
+                .elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+                ?.closest('[data-testid="workspace-sidebar"]'),
+            )
+          }),
+      )
+      .toBe(true)
+    await expectConversation(page, agent.id, initial.tuple.resumeSessionId!)
     const connection = await waitForControlSurfaceConnection(userDataDir)
     const webUrl = new URL(connection.endpoint)
     webUrl.searchParams.set('token', connection.token)
