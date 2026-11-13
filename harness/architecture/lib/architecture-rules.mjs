@@ -22,7 +22,7 @@ function normalizePath(pathname) {
   return pathname.replaceAll('\\', '/')
 }
 
-function toRelativeProjectPath(root, pathname) {
+export function toRelativeProjectPath(root, pathname) {
   return normalizePath(relative(root, pathname))
 }
 
@@ -56,7 +56,7 @@ function matchesAnyPattern(pathname, patterns = []) {
   return patterns.some(pattern => matchesPattern(pathname, pattern))
 }
 
-async function collectSourceFiles(root, config) {
+export async function collectSourceFiles(root, config) {
   const sourceRoot = resolve(root, config.sourceRoot ?? 'src')
   const includeExtensions = new Set(config.includeExtensions ?? RUNTIME_EXTENSIONS)
   const exclude = config.exclude ?? []
@@ -101,7 +101,7 @@ function resolveWithCandidates(pathBase) {
   return candidates.find(isFile) ?? null
 }
 
-function resolveInternalSpecifier(root, fromFile, specifier, config) {
+export function resolveInternalSpecifier(root, fromFile, specifier, config) {
   if (specifier.startsWith('.')) {
     return resolveWithCandidates(resolve(dirname(fromFile), specifier))
   }
@@ -116,7 +116,7 @@ function resolveInternalSpecifier(root, fromFile, specifier, config) {
   return null
 }
 
-function classifyLayer(relativePath, config) {
+export function classifyLayer(relativePath, config) {
   for (const layer of config.layers ?? []) {
     if (matchesAnyPattern(relativePath, layer.patterns)) {
       return layer.name
