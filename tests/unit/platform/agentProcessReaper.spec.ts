@@ -216,3 +216,77 @@ it('keeps the full current retirement tree across HUP even when lifetime history
   await task
   expect(h.signal.mock.calls.filter(([, signal]) => signal === 'SIGKILL')).toHaveLength(600)
 })
+
+it('settles a captured, already-empty tree at the fresh HUP observation', async () => {
+  const h = harness()
+  await h.reaper.track('a', 10)
+  h.reaper.noteExit('a')
+  h.setRows([])
+  h.readTable.mockClear()
+  const hangup = vi.fn()
+  const settled = vi.fn()
+  const task = h.reaper.terminate('a', hangup).then(settled)
+  await vi.advanceTimersByTimeAsync(0)
+  expect(settled).toHaveBeenCalledOnce()
+  await task
+  expect(h.readTable).toHaveBeenCalledOnce()
+  expect(hangup).not.toHaveBeenCalled()
+  expect(h.signal).not.toHaveBeenCalled()
+  expect(vi.getTimerCount()).toBe(0)
+})
+
+it('settles after HUP proves successful without waiting the unused TERM grace', async () => {
+  const h = harness()
+  await h.reaper.track('a', 10)
+  h.readTable.mockClear()
+  const settled = vi.fn()
+  const task = h.reaper.terminate('a', () => h.setRows([])).then(settled)
+  await vi.advanceTimersByTimeAsync(149)
+  expect(settled).not.toHaveBeenCalled()
+  await vi.advanceTimersByTimeAsync(1)
+  expect(settled).toHaveBeenCalledOnce()
+  await task
+  expect(h.readTable).toHaveBeenCalledTimes(2)
+  expect(h.signal).not.toHaveBeenCalled()
+  expect(vi.getTimerCount()).toBe(0)
+})
+
+it('finishes empty jobs independently while preserving the full live-job signal schedule', async () => {
+  const h = harness()
+  h.setRows([row(10, 1), row(100, 1)])
+  await h.reaper.track('empty', 10)
+  await h.reaper.track('live', 100)
+  h.setRows([row(100, 1)])
+  const empty = vi.fn()
+  const live = vi.fn()
+  const tasks = [h.reaper.terminate('empty').then(empty), h.reaper.terminate('live').then(live)]
+  await vi.advanceTimersByTimeAsync(0)
+  expect(empty).toHaveBeenCalledOnce()
+  expect(live).not.toHaveBeenCalled()
+  await vi.advanceTimersByTimeAsync(149)
+  expect(h.signal).not.toHaveBeenCalled()
+  await vi.advanceTimersByTimeAsync(1)
+  expect(h.signal.mock.calls).toEqual([[100, 'SIGTERM']])
+  await vi.advanceTimersByTimeAsync(499)
+  expect(live).not.toHaveBeenCalled()
+  expect(h.signal.mock.calls).toEqual([[100, 'SIGTERM']])
+  await vi.advanceTimersByTimeAsync(1)
+  await Promise.all(tasks)
+  expect(h.signal.mock.calls).toEqual([
+    [100, 'SIGTERM'],
+    [100, 'SIGKILL'],
+  ])
+  expect(vi.getTimerCount()).toBe(0)
+})
+
+it('keeps Windows retirement disabled without reading or signalling processes', async () => {
+  const readTable = vi.fn()
+  const signal = vi.fn()
+  const reaper = new AgentProcessReaper({ platform: 'win32', readTable, signal })
+  await reaper.track('a', 10)
+  await reaper.terminate('a')
+  await reaper.drain()
+  expect(readTable).not.toHaveBeenCalled()
+  expect(signal).not.toHaveBeenCalled()
+  expect(vi.getTimerCount()).toBe(0)
+})

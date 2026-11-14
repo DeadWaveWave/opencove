@@ -220,3 +220,65 @@ it('shares one fresh read among observations requested during a pending periodic
   await vi.advanceTimersByTimeAsync(2_000)
   await drain
 })
+
+it.each(['incomplete', 'failed', 'unknown-root'] as const)(
+  'keeps the conservative stages when absence is %s',
+  async uncertainty => {
+    const h = harness()
+    if (uncertainty === 'unknown-root') {
+      h.readTable.mockRejectedValueOnce(new Error('denied'))
+    }
+    await h.reaper.track('a', 10)
+    h.setRows([])
+    if (uncertainty === 'incomplete') {
+      h.readTable.mockImplementation(async () => ({ rows: [], complete: false }))
+    } else if (uncertainty === 'failed') {
+      h.readTable.mockRejectedValue(new Error('unavailable'))
+    }
+    h.readTable.mockClear()
+    const settled = vi.fn()
+    const task = h.reaper.terminate('a').then(settled)
+    await vi.advanceTimersByTimeAsync(649)
+    expect(settled).not.toHaveBeenCalled()
+    expect(h.readTable).toHaveBeenCalledTimes(2)
+    await vi.advanceTimersByTimeAsync(1)
+    await task
+    expect(h.readTable).toHaveBeenCalledTimes(3)
+    expect(h.signal).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+  },
+)
+
+it('never completes a new job using an empty read that began before its close request', async () => {
+  const h = harness()
+  await h.reaper.track('a', 10)
+  await h.reaper.track('b', 100)
+  let first!: () => void
+  let second!: () => void
+  h.readTable
+    .mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          first = () => resolve({ rows: [], complete: true })
+        }),
+    )
+    .mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          second = () => resolve({ rows: [], complete: true })
+        }),
+    )
+  const finishedA = vi.fn()
+  const finishedB = vi.fn()
+  const a = h.reaper.terminate('a').then(finishedA)
+  await vi.advanceTimersByTimeAsync(0)
+  const b = h.reaper.terminate('b').then(finishedB)
+  first()
+  await vi.advanceTimersByTimeAsync(0)
+  expect(finishedA).toHaveBeenCalledOnce()
+  expect(finishedB).not.toHaveBeenCalled()
+  second()
+  await Promise.all([a, b])
+  expect(finishedB).toHaveBeenCalledOnce()
+  expect(vi.getTimerCount()).toBe(0)
+})
