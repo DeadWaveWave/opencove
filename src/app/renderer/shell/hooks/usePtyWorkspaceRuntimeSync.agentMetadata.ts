@@ -8,7 +8,7 @@ export function updateWorkspacesWithAgentMetadata({
   resumeSessionId,
   piSnapshot,
 }: {
-  workspaces: WorkspaceState[]
+  workspaces: readonly WorkspaceState[]
   sessionId: string
   resumeSessionId: string | null | undefined
   piSnapshot?: PiAgentSnapshot
@@ -57,7 +57,7 @@ export function updateWorkspacesWithAgentMetadata({
   })
 
   return {
-    nextWorkspaces: didChange ? nextWorkspaces : workspaces,
+    nextWorkspaces: nextWorkspaces,
     didChange,
     durableDidChange: didChange,
   }

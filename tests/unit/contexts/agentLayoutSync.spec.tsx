@@ -136,7 +136,7 @@ describe('agent terminal layout sync', () => {
     ])
   })
 
-  it('does not trigger layout sync for agent runtime state events', async () => {
+  it('leaves agent runtime state events to the shell writer, so the canvas never syncs layout for them', async () => {
     let onStateListener:
       | ((event: { sessionId: string; state: 'running' | 'standby' }) => void)
       | null = null
@@ -170,13 +170,13 @@ describe('agent terminal layout sync', () => {
 
     render(<Harness />)
 
-    onStateListener?.({ sessionId: 'agent-session-1', state: 'running' })
-
-    await waitFor(() => {
-      expect(setNodes).toHaveBeenCalledTimes(1)
+    act(() => {
+      onStateListener?.({ sessionId: 'agent-session-1', state: 'running' })
     })
 
-    expect(setNodes.mock.calls[0]?.[1]).toEqual({ syncLayout: false })
+    // Moved from "setNodes called once with { syncLayout: false }": the shell writer now owns this
+    // write (ptyRuntimeObservation.singleWriter.spec.tsx asserts no layout sync event for it).
+    expect(setNodes).not.toHaveBeenCalled()
   })
 
   it('updates a directly launched Agent title after session metadata resolves', async () => {

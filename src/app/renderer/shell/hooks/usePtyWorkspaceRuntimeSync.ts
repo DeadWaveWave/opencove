@@ -9,6 +9,7 @@ import type { AgentHookInstallState, TerminalSessionStateSource } from '@shared/
 import { truncateScrollback } from '@contexts/workspace/presentation/renderer/components/terminalNode/scrollback'
 import { useScrollbackStore } from '@contexts/workspace/presentation/renderer/store/useScrollbackStore'
 import { scheduleNodeScrollbackWrite } from '@contexts/workspace/presentation/renderer/utils/persistence/scrollbackSchedule'
+import { applyRuntimeObservation } from '@contexts/workspace/presentation/renderer'
 import { getPtyEventHub } from '../utils/ptyEventHub'
 import { useAppStore } from '../store/useAppStore'
 import { isAgentTreatedNode } from '@contexts/workspace/presentation/renderer/utils/terminalAgentOverlay'
@@ -25,7 +26,7 @@ import { createTerminalAgentActivityBaselineOwner } from '@contexts/terminal/pre
 export { updateWorkspacesWithAgentMetadata } from './usePtyWorkspaceRuntimeSync.agentMetadata'
 
 function updateWorkspacesWithAgentTreatedNodes(
-  workspaces: WorkspaceState[],
+  workspaces: readonly WorkspaceState[],
   {
     sessionId,
     updateNode,
@@ -74,7 +75,7 @@ export function updateWorkspacesWithAgentRunState({
   agentRunState,
   observationUnavailable,
 }: {
-  workspaces: WorkspaceState[]
+  workspaces: readonly WorkspaceState[]
   sessionId: string
   state: 'working' | 'waiting' | 'standby'
   source?: TerminalSessionStateSource
@@ -112,7 +113,7 @@ export function updateWorkspacesWithTerminalGeometry({
   cols,
   rows,
 }: {
-  workspaces: WorkspaceState[]
+  workspaces: readonly WorkspaceState[]
   sessionId: string
   cols: number
   rows: number
@@ -159,7 +160,7 @@ export function updateWorkspacesWithAgentExit({
   exitCode,
   now,
 }: {
-  workspaces: WorkspaceState[]
+  workspaces: readonly WorkspaceState[]
   sessionId: string
   exitCode: number
   now: string
@@ -259,13 +260,7 @@ export function appendInactiveTerminalScrollback({
   scheduleNodeScrollbackWrite(nodeId, nextScrollback)
 }
 
-export function usePtyWorkspaceRuntimeSync({
-  requestPersistFlush,
-}: {
-  requestPersistFlush: () => void
-}): void {
-  const setWorkspaces = useAppStore(state => state.setWorkspaces)
-
+export function usePtyWorkspaceRuntimeSync(): void {
   useEffect(() => {
     const invoke = window.opencoveApi.controlSurface?.invoke
     if (!invoke) {
@@ -304,8 +299,6 @@ export function usePtyWorkspaceRuntimeSync({
     let reconcilingActivitySnapshots = false
     const overlayReconciliationOwner = createTerminalAgentOverlayReconciliationOwner({
       source: window.opencoveApi.pty,
-      setWorkspaces,
-      requestPersistFlush,
     })
 
     const appendInactiveTerminalChunk = (sessionId: string, chunk: string): void => {
@@ -331,12 +324,9 @@ export function usePtyWorkspaceRuntimeSync({
     })
 
     const unsubscribeState = ptyEventHub.onState(event => {
-      let didChange = false
-      let durableDidChange = false
-
-      setWorkspaces(previous => {
-        const result = updateWorkspacesWithAgentRunState({
-          workspaces: previous,
+      applyRuntimeObservation(workspaces =>
+        updateWorkspacesWithAgentRunState({
+          workspaces,
           sessionId: event.sessionId,
           state: event.state,
           source: event.source,
@@ -344,22 +334,11 @@ export function usePtyWorkspaceRuntimeSync({
           degraded: event.degraded,
           agentRunState: event.agentRunState,
           observationUnavailable: event.observationUnavailable,
-        })
-
-        didChange = result.didChange
-        durableDidChange = result.durableDidChange
-        return didChange ? result.nextWorkspaces : previous
-      })
-
-      if (didChange && durableDidChange) {
-        requestPersistFlush()
-      }
+        }),
+      )
     })
 
-    const applyMetadata = createApplyTerminalSessionMetadata({
-      setWorkspaces,
-      requestPersistFlush,
-    })
+    const applyMetadata = createApplyTerminalSessionMetadata()
     const activityBaselineOwner = createTerminalAgentActivityBaselineOwner({
       source: ptyEventHub,
       api: createTerminalAgentActivityApi(),
@@ -370,42 +349,31 @@ export function usePtyWorkspaceRuntimeSync({
       if (reconcilingActivitySnapshots) {
         return
       }
-      const current = useAppStore.getState().workspaces
-      const result = reconcileTerminalAgentActivitySnapshots({
-        workspaces: current,
-        readLatestMetadata: activityBaselineOwner.getLatestMetadata,
-      })
-      if (!result.didChange) {
-        return
-      }
       reconcilingActivitySnapshots = true
-      setWorkspaces(result.nextWorkspaces)
-      reconcilingActivitySnapshots = false
-      if (result.durableDidChange) {
-        requestPersistFlush()
+      try {
+        applyRuntimeObservation(workspaces =>
+          reconcileTerminalAgentActivitySnapshots({
+            workspaces,
+            readLatestMetadata: activityBaselineOwner.getLatestMetadata,
+          }),
+        )
+      } finally {
+        reconcilingActivitySnapshots = false
       }
     }
     reconcileActivitySnapshots()
     const unsubscribeActivityReconciliation = useAppStore.subscribe(reconcileActivitySnapshots)
 
     const unsubscribeGeometry = ptyEventHub.onGeometry(event => {
-      let didChange = false
-
-      setWorkspaces(previous => {
+      applyRuntimeObservation(workspaces => {
         const result = updateWorkspacesWithTerminalGeometry({
-          workspaces: previous,
+          workspaces,
           sessionId: event.sessionId,
           cols: event.cols,
           rows: event.rows,
         })
-
-        didChange = result.didChange
-        return didChange ? result.nextWorkspaces : previous
+        return { ...result, durableDidChange: result.didChange }
       })
-
-      if (didChange) {
-        requestPersistFlush()
-      }
     })
 
     const unsubscribeExit = ptyEventHub.onExit(event => {
@@ -414,24 +382,16 @@ export function usePtyWorkspaceRuntimeSync({
         `\r\n[process exited with code ${event.exitCode}]\r\n`,
       )
 
-      let didChange = false
       const now = new Date().toISOString()
-
-      setWorkspaces(previous => {
+      applyRuntimeObservation(workspaces => {
         const result = updateWorkspacesWithAgentExit({
-          workspaces: previous,
+          workspaces,
           sessionId: event.sessionId,
           exitCode: event.exitCode,
           now,
         })
-
-        didChange = result.didChange
-        return didChange ? result.nextWorkspaces : previous
+        return { ...result, durableDidChange: result.didChange }
       })
-
-      if (didChange) {
-        requestPersistFlush()
-      }
     })
 
     return () => {
@@ -443,5 +403,5 @@ export function usePtyWorkspaceRuntimeSync({
       unsubscribeExit()
       overlayReconciliationOwner.dispose()
     }
-  }, [requestPersistFlush, setWorkspaces])
+  }, [])
 }

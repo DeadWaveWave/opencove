@@ -15,7 +15,7 @@ export function updateWorkspacesWithTerminalAgentActivityMetadata({
   workspaces,
   event,
 }: {
-  workspaces: WorkspaceState[]
+  workspaces: readonly WorkspaceState[]
   event: ActivityMetadataEvent
 }): {
   nextWorkspaces: WorkspaceState[]
@@ -137,7 +137,7 @@ export function updateWorkspacesWithTerminalAgentActivityMetadata({
   })
 
   return {
-    nextWorkspaces: didChange ? nextWorkspaces : workspaces,
+    nextWorkspaces: nextWorkspaces,
     didChange,
     durableDidChange,
   }
@@ -175,14 +175,14 @@ export function reconcileTerminalAgentActivitySnapshots({
   workspaces,
   readLatestMetadata,
 }: {
-  workspaces: WorkspaceState[]
+  workspaces: readonly WorkspaceState[]
   readLatestMetadata: (sessionId: string) => TerminalSessionMetadataEvent | null
 }): {
   nextWorkspaces: WorkspaceState[]
   didChange: boolean
   durableDidChange: boolean
 } {
-  let nextWorkspaces = workspaces
+  let nextWorkspaces: WorkspaceState[] = [...workspaces]
   let didChange = false
   let durableDidChange = false
   const sessionIds = new Set(
