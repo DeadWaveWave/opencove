@@ -16,7 +16,7 @@ export function useAppShellRuntimeLifecycles(options: {
   agentSettings: AgentSettings
   setAgentSettings: (action: AgentSettings | ((previous: AgentSettings) => AgentSettings)) => void
 }): TerminalClientDisplayCalibration | null {
-  usePtyWorkspaceRuntimeSync({ requestPersistFlush: options.requestPersistFlush })
+  usePtyWorkspaceRuntimeSync()
   useAppQuitPersistenceFlush({ enabled: options.isPersistReady })
   useWorkerSyncStateUpdates({ enabled: options.isPersistReady })
   useWorkspaceMountRepair({

@@ -1,6 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { TerminalForegroundEvent } from '../../../src/shared/contracts/dto'
 import { createTerminalAgentOverlayReconciliationOwner } from '../../../src/app/renderer/shell/utils/terminalAgentOverlayReconciliationOwner'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
+import { registerWorkspaceDocumentPersistFlush } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 
 function createWorkspace(provider: 'claude-code' | 'codex' = 'codex', startedAtMs = 100) {
   return {
@@ -47,10 +49,19 @@ function createWorkspace(provider: 'claude-code' | 'codex' = 'codex', startedAtM
   } as never
 }
 
+let unregisterFlush: (() => void) | null = null
+
+afterEach(() => {
+  unregisterFlush?.()
+  unregisterFlush = null
+  useAppStore.setState(useAppStore.getInitialState(), true)
+})
+
 function createHarness() {
   let listener: ((event: TerminalForegroundEvent) => void) | null = null
-  let workspaces = [createWorkspace()]
+  useAppStore.setState({ workspaces: [createWorkspace()], activeWorkspaceId: 'workspace-1' })
   const requestPersistFlush = vi.fn()
+  unregisterFlush = registerWorkspaceDocumentPersistFlush(requestPersistFlush)
   const unsubscribe = vi.fn()
   const owner = createTerminalAgentOverlayReconciliationOwner({
     source: {
@@ -59,17 +70,13 @@ function createHarness() {
         return unsubscribe
       },
     },
-    setWorkspaces: updater => {
-      workspaces = updater(workspaces)
-    },
-    requestPersistFlush,
   })
 
   return {
     emit: (event: TerminalForegroundEvent) => listener?.(event),
-    getWorkspaces: () => workspaces,
-    setWorkspaces: (next: typeof workspaces) => {
-      workspaces = next
+    getWorkspaces: () => useAppStore.getState().workspaces,
+    setWorkspaces: (next: ReturnType<typeof useAppStore.getState>['workspaces']) => {
+      useAppStore.setState({ workspaces: next })
     },
     requestPersistFlush,
     unsubscribe,

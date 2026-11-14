@@ -1,17 +1,13 @@
 import type { TerminalForegroundEvent } from '@shared/contracts/dto'
 import { resolveForegroundAgentReconciliation } from '@shared/runtime/agentForegroundRecognition'
 import { isResumeSessionBindingVerified } from '@contexts/agent/domain/agentResumeBinding'
-import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
+import { applyRuntimeObservation } from '@contexts/workspace/presentation/renderer'
 import { clearTerminalAgentOverlay } from '@contexts/workspace/presentation/renderer/utils/terminalAgentOverlay'
-
-type SetWorkspaces = (updater: (previous: WorkspaceState[]) => WorkspaceState[]) => void
 
 export function createTerminalAgentOverlayReconciliationOwner(options: {
   source: {
     onForeground: (listener: (event: TerminalForegroundEvent) => void) => () => void
   }
-  setWorkspaces: SetWorkspaces
-  requestPersistFlush: () => void
 }): { dispose: () => void } {
   let disposed = false
 
@@ -20,9 +16,9 @@ export function createTerminalAgentOverlayReconciliationOwner(options: {
       return
     }
 
-    let didChange = false
-    options.setWorkspaces(previous => {
-      const nextWorkspaces = previous.map(workspace => {
+    applyRuntimeObservation(workspaces => {
+      let didChange = false
+      const nextWorkspaces = workspaces.map(workspace => {
         let workspaceDidChange = false
         const nextNodes = workspace.nodes.map(node => {
           const overlay = node.data.kind === 'terminal' ? node.data.agentOverlay : null
@@ -55,12 +51,8 @@ export function createTerminalAgentOverlayReconciliationOwner(options: {
         return { ...workspace, nodes: nextNodes }
       })
 
-      return didChange ? nextWorkspaces : previous
+      return { nextWorkspaces, didChange, durableDidChange: didChange }
     })
-
-    if (didChange) {
-      options.requestPersistFlush()
-    }
   })
 
   return {

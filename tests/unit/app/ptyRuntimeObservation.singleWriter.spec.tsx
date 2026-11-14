@@ -98,7 +98,7 @@ function renderObservers() {
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
       })
-      usePtyWorkspaceRuntimeSync({ requestPersistFlush: () => undefined })
+      usePtyWorkspaceRuntimeSync()
       useWorkspaceCanvasPtyTaskCompletion({
         workspaceId: 'workspace-1',
         nodes,
