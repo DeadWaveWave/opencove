@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { runUiStyleCheck } from '../../../scripts/check-ui-styles.mjs'
@@ -259,5 +259,17 @@ describe('UI ratchet update guard', () => {
     expect(err).toContain('spacing: total would rise from 2 to 3.')
     expect(err).not.toContain('native-button')
     expect(() => read(repo, SCALE_FILE)).toThrow()
+  })
+
+  it('refuses to update, and writes nothing, when it scanned 0 stylesheets', () => {
+    const { repo } = createRepository()
+    const before = [read(repo, SCALE_FILE), read(repo, MARKUP_FILE)]
+    rmSync(join(repo, CSS))
+
+    const { code, err } = update(repo)
+
+    expect(code).toBe(1)
+    expect(err).toContain('examined 0 stylesheets')
+    expect([read(repo, SCALE_FILE), read(repo, MARKUP_FILE)]).toEqual(before)
   })
 })

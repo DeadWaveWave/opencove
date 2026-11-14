@@ -153,6 +153,12 @@ export async function updateRatchetBaseline({
   stdout = process.stdout,
   stderr = process.stderr,
 }) {
+  if (report.filesAnalyzed === 0) {
+    stderr.write(
+      '[architecture-ratchet] the audit analysed 0 files: refusing to write the baseline.\n',
+    )
+    return 1
+  }
   const { serialized } = planRatchetUpdate({ report, config })
   const guard = guardRatchetUpdate({
     root,

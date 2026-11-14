@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { runDeadCodeCheck } from '../../../scripts/check-dead-code.mjs'
@@ -280,6 +280,18 @@ describe('runDeadCodeCheck', () => {
       types: {},
     })
     expect(run(root, { report }).status).toBe(0)
+  })
+
+  it('refuses to update, and writes nothing, when it found 0 source files', () => {
+    const baseline = baselineOf({ exports: { 'src/a.ts': 1 } })
+    const root = makeRoot({ 'scripts/dead-code-ratchet.json': baseline })
+    rmSync(join(root, 'src/a.ts'))
+
+    const { status, err } = run(root, { report: knipReport([]), updateRatchet: true })
+
+    expect(status).toBe(1)
+    expect(err).toContain('found 0 source files')
+    expect(readFileSync(baselinePath(root), 'utf8')).toBe(baseline)
   })
 
   it('fails a check on an unused file, naming it', () => {

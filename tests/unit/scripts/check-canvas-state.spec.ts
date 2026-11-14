@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { readFileSync, rmSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { runCanvasStateCheck } from '../../../scripts/check-canvas-state.mjs'
@@ -173,5 +173,17 @@ describe('check-canvas-state', () => {
     })
     expect(result.status).toBe(2)
     expect(result.stderr).toContain('--accept-rise only applies together with --update-ratchet')
+  })
+
+  it('refuses to update, and writes nothing, when it examined 0 source files', () => {
+    const root = makeBaselineRepo('setNodes(a)', ['legacy-channel'])
+    const before = readFileSync(resolve(root, BASELINE), 'utf8')
+    rmSync(resolve(root, HOOK))
+
+    const update = run(root, true)
+
+    expect(update.code).toBe(1)
+    expect(update.stderr).toContain('examined 0 source files')
+    expect(readFileSync(resolve(root, BASELINE), 'utf8')).toBe(before)
   })
 })

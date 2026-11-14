@@ -281,6 +281,24 @@ describe('architecture ratchet update guard', () => {
     expect(await readBaselineFile(repo)).toEqual(baselineOf)
   })
 
+  it('refuses to update, and writes nothing, when the audit analysed 0 files', async () => {
+    const { repo } = makeRepo()
+    const { report, config } = await analyse(baseFiles)
+    let stderr = ''
+
+    const code = await updateRatchetBaseline({
+      root: repo,
+      report: { ...report, filesAnalyzed: 0, violations: [] },
+      config,
+      stdout: { write: () => true },
+      stderr: { write: (text: string) => (stderr += text) },
+    })
+
+    expect(code).toBe(1)
+    expect(stderr).toContain('analysed 0 files')
+    expect(await readBaselineFile(repo)).toEqual(baselineOf)
+  })
+
   it('refuses regenerating after the file was deleted in a commit, with one more finding', async () => {
     const { repo } = makeRepo()
     git(repo, 'rm', '-q', BASELINE_PATH)

@@ -285,7 +285,7 @@ export function runUiStyleCheck({
   acceptRises = [],
 } = {}) {
   const files = readUiStyleFiles(repoRoot)
-  if (files.length === 0 && !updateRatchet) {
+  if (files.length === 0) {
     stderr.write('[ui-style-check] examined 0 stylesheets: this is not a pass.\n')
     return 1
   }

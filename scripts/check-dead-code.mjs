@@ -63,14 +63,20 @@ export function runDeadCodeCheck({
 } = {}) {
   const ratchetPath = resolve(root, RATCHET_FILE)
   const { findings, counts, names } = classifyKnipReport(report)
+  const sourceFiles = listSourceFiles(root)
   const internalViolations = findInternalNamingViolations(
-    listSourceFiles(root).map(file => ({
+    sourceFiles.map(file => ({
       file,
       text: readFileSync(resolve(root, file), 'utf8'),
     })),
   )
 
   if (updateRatchet) {
+    // An empty scan has no unused exports to record; it is a broken scan, not a clean tree.
+    if (sourceFiles.length === 0) {
+      stderr.write(`[${DEAD_CODE_LABEL}] found 0 source files: refusing to write the baseline.\n`)
+      return 1
+    }
     const serialized = serializeDeadCodeRatchet(counts)
     const guard = guardRatchetUpdate({
       root,
