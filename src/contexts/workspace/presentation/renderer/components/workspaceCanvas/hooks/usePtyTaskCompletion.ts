@@ -2,11 +2,7 @@ import { useEffect, useEffectEvent, type MutableRefObject } from 'react'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import type { Node } from '@xyflow/react'
 import { resolveAgentMetadataResumeBindingUpdate } from '@contexts/agent/domain/agentResumeBinding'
-import type {
-  AgentSessionSummary,
-  TerminalSessionMetadataEvent,
-  TerminalSessionStateEvent,
-} from '@shared/contracts/dto'
+import type { AgentSessionSummary, TerminalSessionMetadataEvent } from '@shared/contracts/dto'
 import type { TerminalNodeData } from '../../../types'
 import {
   applyAgentSessionTitleToNodes,
@@ -16,66 +12,6 @@ import {
   resolveAgentSessionTitleSyncTarget,
 } from '../../../utils/agentSessionTitleSync'
 import { projectAgentRuntimeObservation } from '../../../utils/agentRuntimeObservation'
-
-export function applyAgentStateToNodes(
-  prevNodes: Node<TerminalNodeData>[],
-  event: TerminalSessionStateEvent,
-): { nextNodes: Node<TerminalNodeData>[]; didChange: boolean } {
-  let didChange = false
-
-  const nextNodes = prevNodes.map(node => {
-    if (node.data.kind !== 'agent' || node.data.sessionId !== event.sessionId) {
-      return node
-    }
-
-    const projected = projectAgentRuntimeObservation(node.data, event)
-    if (!projected) {
-      return node
-    }
-
-    didChange = true
-    return { ...node, data: projected.data }
-  })
-
-  return {
-    nextNodes: didChange ? nextNodes : prevNodes,
-    didChange,
-  }
-}
-
-export function applyAgentExitToNodes(
-  prevNodes: Node<TerminalNodeData>[],
-  event: { sessionId: string; exitCode: number },
-): { nextNodes: Node<TerminalNodeData>[]; didChange: boolean } {
-  let didChange = false
-
-  const nextNodes = prevNodes.map(node => {
-    if (node.data.sessionId !== event.sessionId || node.data.kind !== 'agent') {
-      return node
-    }
-
-    if (node.data.status === 'stopped') {
-      return node
-    }
-
-    didChange = true
-
-    return {
-      ...node,
-      data: {
-        ...node.data,
-        status: event.exitCode === 0 ? ('exited' as const) : ('failed' as const),
-        endedAt: new Date().toISOString(),
-        exitCode: event.exitCode,
-      },
-    }
-  })
-
-  return {
-    nextNodes: didChange ? nextNodes : prevNodes,
-    didChange,
-  }
-}
 
 export function applyAgentMetadataToNodes(
   prevNodes: Node<TerminalNodeData>[],
@@ -215,10 +151,6 @@ export function useWorkspaceCanvasPtyTaskCompletion({
     }
 
     const unsubscribeState = ptyEventHub.onState(event => {
-      updateNodes(prevNodes => applyAgentStateToNodes(prevNodes, event).nextNodes, {
-        syncLayout: false,
-      })
-
       if (event.state === 'standby') {
         const metadata = metadataByRuntimeSessionId.get(event.sessionId)
         if (metadata) {
@@ -247,23 +179,6 @@ export function useWorkspaceCanvasPtyTaskCompletion({
       startTitleSync(event, false)
     })
 
-    const unsubscribeExit = ptyEventHub.onExit(event => {
-      let didChange = false
-
-      updateNodes(
-        prevNodes => {
-          const result = applyAgentExitToNodes(prevNodes, event)
-          didChange = result.didChange
-          return result.nextNodes
-        },
-        { syncLayout: false },
-      )
-
-      if (didChange) {
-        requestPersistFlush()
-      }
-    })
-
     return () => {
       disposed = true
       titleSyncByNodeId.forEach(sync => sync.abortController.abort())
@@ -271,7 +186,6 @@ export function useWorkspaceCanvasPtyTaskCompletion({
       metadataByRuntimeSessionId.clear()
       unsubscribeState()
       unsubscribeMetadata()
-      unsubscribeExit()
     }
   }, [hasSessionCatalog, nodesRef, workspaceId])
 
