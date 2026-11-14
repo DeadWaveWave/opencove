@@ -1,17 +1,17 @@
-import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import { replaceFromSync } from '@contexts/workspace/presentation/renderer'
-import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
-import { useAppStore } from '../../store/useAppStore'
+import { useAppStore, type AppStoreState } from '../../store/useAppStore'
+
+type SyncedState = Pick<AppStoreState, 'workspaces' | 'activeWorkspaceId' | 'agentSettings'>
 
 /**
  * Two writes in one synchronous block: the document module owns workspaces, the store owns
  * settings. No store listener reads both fields, and React renders once after the block.
  */
-export function applyWorkerSyncState(next: {
-  workspaces: WorkspaceState[]
-  activeWorkspaceId: string | null
-  settings: AgentSettings | null
-}): void {
+export function applyWorkerSyncState(
+  next: Pick<SyncedState, 'workspaces' | 'activeWorkspaceId'> & {
+    settings: SyncedState['agentSettings'] | null
+  },
+): void {
   replaceFromSync({ workspaces: next.workspaces, activeWorkspaceId: next.activeWorkspaceId })
   if (next.settings) {
     useAppStore.getState().setAgentSettings(next.settings)
