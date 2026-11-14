@@ -129,8 +129,7 @@ export class ClaudeJournalProof {
       const explicit = fact.transcript.promptId
       if (
         (explicit !== undefined && explicit !== stop.promptId) ||
-        (stop.promptId !== undefined &&
-          getClaudeTranscriptAfterFinal(fact.transcript) === stop.promptId)
+        getClaudeTranscriptAfterFinal(fact.transcript) !== undefined
       ) {
         return false
       }

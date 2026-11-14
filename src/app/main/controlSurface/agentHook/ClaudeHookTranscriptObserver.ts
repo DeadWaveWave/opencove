@@ -176,6 +176,17 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
     if (action === 'ignore') {
       return false
     }
+    this.emit({
+      sessionId,
+      incarnation: context.incarnation,
+      providerSessionId: envelope.claudeSessionId,
+      generation: this.currentGeneration,
+      fileIdentity: 'authenticated-conversation',
+      position: -1,
+      baseline: false,
+      origin: 'hook',
+      inputConversation: this.lifecycle.currentConversationId ?? null,
+    })
     this.hotUntil = Date.now() + 2_000
     context = {
       ...context,

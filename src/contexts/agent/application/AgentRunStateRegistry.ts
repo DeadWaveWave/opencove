@@ -19,6 +19,7 @@ import {
   setRunRuntimeContext,
   runBinding,
   readRunPromptIdentity,
+  readRunInputTarget,
   claimRunNodeBinding,
   publishRunTransition,
   readRunFinalMessage,
@@ -302,6 +303,9 @@ export class AgentRunStateRegistry {
       fence,
       this.ports.epoch,
     )
+  }
+  inputTarget(fence: RunStateFence) {
+    return readRunInputTarget(this.entries.get(fence.snapshot.sessionId), fence, this.ports.epoch)
   }
   watchSubmissionEvidence(
     fence: RunStateFence,

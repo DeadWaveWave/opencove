@@ -41,6 +41,8 @@ export type PromptDeliveryIdentity = Pick<
   'promptId' | 'providerSessionId' | 'providerTurnId'
 > & { endedTurnIds?: string[] }
 export interface RunStateFencePort {
+  /** Private input attribution, separate from prompt correlation and admission. */
+  inputTarget?(fence: RunStateFence): SessionInputProvenance | undefined
   promptIdentity?(fence: RunStateFence): PromptDeliveryIdentity | undefined
   watchSubmissionEvidence?(
     fence: RunStateFence,

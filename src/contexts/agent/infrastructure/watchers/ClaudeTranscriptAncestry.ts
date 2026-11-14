@@ -15,13 +15,13 @@ export class ClaudeTranscriptAncestry {
   private prompt?: string
   private incomplete = false
   private pending = new Set<ClaudeTranscriptRecord>()
-  private ended = false
+  private finalPrompt?: string
   observe(line: string, record?: ClaudeTranscriptRecord): void {
     let raw
     try {
       raw = JSON.parse(line)
     } catch {
-      this.clear()
+      this.invalidate()
       return
     }
     if (!raw || raw.isSidechain === true) {
@@ -36,8 +36,14 @@ export class ClaudeTranscriptAncestry {
       }
       return
     }
-    if (record?.kind === 'assistant' && this.ended && this.prompt) {
-      markClaudeTranscriptAfterFinal(record, this.prompt)
+    const beforeFinal = this.finalPrompt === undefined
+    if (record?.kind === 'assistant') {
+      if (this.finalPrompt) {
+        markClaudeTranscriptAfterFinal(record, this.finalPrompt)
+      }
+      if (record.final) {
+        this.finalPrompt ??= claudePromptId(record.promptId)
+      }
     }
     const parent = claudePromptId(raw.parentUuid)
     if (!this.prompt || this.incomplete || !parent || !this.descendants.has(parent)) {
@@ -55,13 +61,13 @@ export class ClaudeTranscriptAncestry {
       (raw.promptId === undefined || raw.promptId === this.prompt)
     ) {
       markClaudeTranscriptPrompt(record, this.prompt)
-      if (!this.ended && !this.pending.has(record)) {
+      if (beforeFinal && !this.pending.has(record)) {
         this.rememberPending(record)
       }
-      if (record.final && !this.ended && !this.incomplete) {
+      if (record.final && beforeFinal && !this.incomplete) {
         this.pending.forEach(item => markClaudeTranscriptCompleted(item, this.prompt!))
         this.pending.clear()
-        this.ended = true
+        this.finalPrompt ??= this.prompt
       }
     }
     const uuid = claudePromptId(raw.uuid)
@@ -91,11 +97,15 @@ export class ClaudeTranscriptAncestry {
       )
     }
   }
-  clear(): void {
+  private invalidate(): void {
     this.descendants.clear()
     this.pending.clear()
-    this.ended = false
     this.prompt = undefined
+    this.incomplete = true
+  }
+  clear(): void {
+    this.invalidate()
+    this.finalPrompt = undefined
     this.incomplete = false
   }
 }

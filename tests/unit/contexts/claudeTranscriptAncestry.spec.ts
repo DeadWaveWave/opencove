@@ -3,6 +3,7 @@ import { ClaudeTranscriptAncestry } from '../../../src/contexts/agent/infrastruc
 import { parseClaudeTranscript } from '../../../src/contexts/agent/infrastructure/watchers/ClaudeTranscriptParser'
 import {
   getClaudeTranscriptPrompt,
+  getClaudeTranscriptAfterFinal,
   getClaudeTranscriptCompleted,
 } from '../../../src/shared/runtime/agentHook/claudeTranscript'
 const user = { type: 'user', promptId: 'p', uuid: 'u', message: { content: 'work' } }
@@ -82,3 +83,32 @@ it('cannot certify activity through a mismatched prompt or an overflowed ancestr
   f.ancestry.clear()
   expect((f.ancestry as unknown as { pending: Set<unknown> }).pending.size).toBe(0)
 })
+
+it.each(['missing', 'unknown', 'no-user', 'overflow', 'malformed-after-final'])(
+  'retains explicit final ordering without claiming incomplete ancestry: %s',
+  variant => {
+    const f = fixture()
+    const preceding = f.append({ type: 'assistant', parentUuid: 'u', uuid: 'thinking' })
+    if (variant === 'no-user') {
+      f.ancestry.clear()
+    }
+    if (variant === 'overflow') {
+      for (let n = 0; n < 1024; n++) {
+        f.append({ type: 'attachment', uuid: `a${n}`, parentUuid: 'u' })
+      }
+    }
+    f.append({
+      type: 'assistant',
+      uuid: 'f',
+      promptId: 'p',
+      parentUuid: variant === 'missing' ? undefined : 'unknown',
+      message: { stop_reason: 'end_turn' },
+    })
+    if (variant === 'malformed-after-final') {
+      f.ancestry.observe('{')
+    }
+    const later = f.append({ type: 'assistant', promptId: 'p', parentUuid: 'f' })
+    expect(getClaudeTranscriptAfterFinal(later)).toBe('p')
+    expect(getClaudeTranscriptCompleted(preceding)).toBeUndefined()
+  },
+)

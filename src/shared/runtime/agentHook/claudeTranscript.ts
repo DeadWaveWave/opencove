@@ -56,6 +56,8 @@ export function getClaudeStateRecord(options: object): ClaudeTranscriptRecord | 
   return stateRecord.get(options)
 }
 export interface ClaudeTranscriptObservation {
+  /** Private projection of the original authenticated classifier; null means no current conversation. */
+  inputConversation?: string | null
   sessionId: string
   incarnation?: string
   providerSessionId: string

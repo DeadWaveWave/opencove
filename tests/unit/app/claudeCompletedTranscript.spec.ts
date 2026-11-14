@@ -169,3 +169,35 @@ it.each(['q', undefined])(
     }
   },
 )
+
+it.each(
+  [false, true].flatMap(stopFirst =>
+    [undefined, 'unknown', 'u'].map(parentUuid => ({ stopFirst, parentUuid })),
+  ),
+)(
+  'keeps an explicit-ID final boundary with parent=$parentUuid, Stop first=$stopFirst',
+  async ({ stopFirst, parentUuid }) => {
+    const f = await capturedClearFixture(true)
+    try {
+      await f.hook('UserPromptSubmit', 'p')
+      if (stopFirst) {
+        await f.hook('Stop', 'p')
+      }
+      await f.append(JSON.stringify(user))
+      await f.append(JSON.stringify({ ...final('u'), parentUuid, promptId: 'p' }))
+      if (stopFirst) {
+        expect(f.fence().conversationQuarantined).toBe(false)
+      }
+      await f.append(JSON.stringify({ ...thinking('f', 'late'), promptId: 'p' }))
+      if (!stopFirst) {
+        await f.hook('Stop', 'p')
+      }
+      const quarantined = f.fence().conversationQuarantined
+      const delivery = await f.probe()
+      expect({ quarantined, writes: delivery.writes }).toEqual({ quarantined: true, writes: 0 })
+      expect(delivery.result).toMatchObject({ code: 'agent.state_unknown' })
+    } finally {
+      await f.close()
+    }
+  },
+)

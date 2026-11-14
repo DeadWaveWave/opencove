@@ -253,14 +253,14 @@ export function createMultiEndpointPtyRuntime(options: {
       }
     },
     drainLaunchArtifacts: async () => await launchArtifactOwner.drain(),
-    write: (sessionId, data) => {
+    write: (sessionId, ...input) => {
       const route = routes.get(sessionId)
       if (!route || route.kind === 'local') {
-        options.localRuntime.write(sessionId, data)
+        options.localRuntime.write(sessionId, ...input)
         return
       }
 
-      getProxy(route.endpointId).write(route.remoteSessionId, data)
+      getProxy(route.endpointId).write(route.remoteSessionId, input[0])
     },
     probeForeground: sessionId => {
       const route = routes.get(sessionId)

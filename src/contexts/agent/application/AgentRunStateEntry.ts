@@ -1,3 +1,4 @@
+import type { SessionInputProvenance } from '../../../shared/runtime/sessionInputProvenance'
 import type { AgentRunObservation } from '../domain/agentRunState'
 import type { PromptSubmissionEvidence } from '../../../shared/runtime/agentHook/claudePromptEvidence'
 import type { ClaudeLiveConversation } from './ClaudeLiveConversation'
@@ -11,6 +12,8 @@ import type { AgentRunModel } from '../domain/agentRunState'
 import type { RunStateFence } from './ports/PromptDeliveryPorts'
 import { getClaudeTranscriptInput } from '../../../shared/runtime/agentHook/claudeTranscript'
 export type AgentRunEntry = {
+  /** Projection of accepted hook lifecycle, independent of completed prompt history. */
+  claudeInputSessionId?: string
   conversation?: ClaudeLiveConversation
   claudeJournal?: ClaudeInvocationJournal
   conversationReplay?: ClaudeConversationReplay
@@ -217,6 +220,39 @@ export function readRunPromptIdentity(
     : undefined
 }
 
+/** Input ownership is current authenticated lifecycle, never an ended prompt's archive identity. */
+export function readRunInputTarget(
+  entry: AgentRunEntry | undefined,
+  fence: RunStateFence,
+  epoch: string,
+): SessionInputProvenance | undefined {
+  if (
+    !entry ||
+    entry.remote ||
+    entry.model.snapshot.provider !== 'claude-code' ||
+    entry.model.snapshot.state === 'exited' ||
+    entry.token !== fence.incarnation ||
+    epoch !== fence.epoch ||
+    entry.bindingGeneration !== fence.bindingGeneration ||
+    entry.conversation?.generation !== fence.conversationGeneration
+  ) {
+    return undefined
+  }
+  const owner = entry.conversation
+  const providerSessionId = owner
+    ? owner.checkpoint.ended
+      ? undefined
+      : owner.providerSessionId
+    : entry.claudeInputSessionId
+  return providerSessionId
+    ? {
+        providerSessionId,
+        invocationId: entry.model.incarnation,
+        conversationGeneration: owner?.generation,
+      }
+    : undefined
+}
+
 /** Runtime provenance is independent of durable conversation ownership. */
 export function setRunRuntimeContext(
   entry: AgentRunEntry,
@@ -310,6 +346,7 @@ export function disposeRunConversation(entry: AgentRunEntry | undefined): void {
   if (!entry) {
     return
   }
+  entry.claudeInputSessionId = undefined
   entry.conversation?.dispose()
   entry.claudeJournal?.dispose()
   entry.conversationReplay?.dispose()

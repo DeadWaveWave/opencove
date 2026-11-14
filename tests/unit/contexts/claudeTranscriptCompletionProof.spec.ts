@@ -84,3 +84,18 @@ it.each(['p', 'q', undefined])(
     ).toBe(true)
   },
 )
+
+it('does not use an older explicit identity to discharge activity beyond another final boundary', () => {
+  const append = fixture()
+  append({ type: 'user', uuid: 'u', promptId: 'p', message: { content: 'work' } })
+  append({ type: 'assistant', promptId: 'q', message: { stop_reason: 'end_turn' } })
+  const later = append(assistant('unknown', 'p'))
+  const activity = {
+    ...fact('activity', 30),
+    transcript: later,
+    io: true,
+    input: true,
+    promptId: 'p',
+  }
+  expect(new ClaudeJournalProof([start, activity, stop]).resolved(activity)).toBe(false)
+})

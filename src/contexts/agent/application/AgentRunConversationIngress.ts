@@ -19,6 +19,10 @@ export function observeRunConversation(
   record: ClaudeTranscriptObservation,
   ports: Ports,
 ): void {
+  if (record.origin === 'hook' && record.inputConversation !== undefined) {
+    entry.claudeInputSessionId = record.inputConversation ?? undefined
+    return
+  }
   const journal = (entry.claudeJournal ??= new ClaudeInvocationJournal(ports.now))
   if (record.captureConversation || record.captureBinding) {
     record.captureConversation?.(entry.conversation?.generation, entry.model.incarnation)

@@ -30,6 +30,9 @@ export class ClaudeConversationLifecycle {
       }
     }
   }
+  get currentConversationId(): string | undefined {
+    return this.current
+  }
   checkpoint(): ClaudeConversationCheckpoint {
     return {
       current: this.current,
