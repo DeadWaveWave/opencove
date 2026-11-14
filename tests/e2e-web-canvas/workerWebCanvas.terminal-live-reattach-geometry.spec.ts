@@ -115,10 +115,14 @@ test('a live Web terminal reattach reconciles with its current node frame', asyn
   )
   expect(after.proposed).not.toEqual(before.size)
   expect(after.size).toEqual(after.proposed)
-  const snapshot = await page.evaluate(
-    async sessionId =>
-      sessionId ? await window.opencoveApi.pty.presentationSnapshot({ sessionId }) : null,
-    after.sessionId,
-  )
-  expect(snapshot).toMatchObject({ cols: after.size?.cols, rows: after.size?.rows })
+  // Local fit can precede stable measurement and the asynchronous Worker geometry commit.
+  await expect
+    .poll(async () =>
+      page.evaluate(
+        async sessionId =>
+          sessionId ? await window.opencoveApi.pty.presentationSnapshot({ sessionId }) : null,
+        after.sessionId,
+      ),
+    )
+    .toMatchObject({ cols: after.size?.cols, rows: after.size?.rows })
 })
