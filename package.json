@@ -128,7 +128,7 @@
     "release:version": "node scripts/prepare-release.mjs",
     "pre-commit": "pnpm verify:quick",
     "verify:repo": "pnpm line-check && pnpm naming-check && pnpm ui:style-check && pnpm canvas:state-check && pnpm arch:check && pnpm deadcode:check && pnpm compat:check",
-    "verify:checks": "pnpm verify:repo && pnpm secret-check:staged && node scripts/check-e2e-budget.mjs --staged && pnpm lint:fix && pnpm format-check:staged && pnpm check",
+    "verify:checks": "pnpm verify:repo && pnpm secret-check:staged && node scripts/check-e2e-budget.mjs --staged && pnpm lint:fix && pnpm lint && pnpm format-check:staged && pnpm check",
     "impact": "node scripts/impact.mjs",
     "impact:index": "node scripts/impact-index.mjs",
     "verify:quick": "pnpm verify:checks && pnpm test:staged && pnpm test:terminal-recovery:native && pnpm test:e2e:pre-commit && pnpm impact --staged --brief",
