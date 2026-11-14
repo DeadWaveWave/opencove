@@ -105,7 +105,7 @@ function platformStepProblems(workflow: string): string[] {
       problems.push(`${WINDOWS_STEP}: the comment must name the step "${NATIVE_STEP}"`)
     }
     const commentLines = windowsStep.comment.split('\n')
-    for (const path of excluded.filter(path => path !== NATIVE_ARGUMENTS)) {
+    for (const path of excluded.filter(item => item !== NATIVE_ARGUMENTS)) {
       const named = commentLines.some(line => line.includes(path) && /#\d+/.test(line))
       if (!named) {
         problems.push(
