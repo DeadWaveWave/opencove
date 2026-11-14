@@ -1,9 +1,14 @@
 // @vitest-environment node
-import { mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, rm, stat, unlink, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir, hostname } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, expect, it } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { withCliLauncherLock } from '../../../src/app/main/cli/cliLauncherLock'
+
+vi.mock('node:fs/promises', async importOriginal => {
+  const fs = await importOriginal<typeof import('node:fs/promises')>()
+  return { ...fs, stat: vi.fn(fs.stat), unlink: vi.fn(fs.unlink) }
+})
 
 let root: string
 let target: string
@@ -12,6 +17,8 @@ beforeEach(async () => {
   target = join(root, 'opencove')
 })
 afterEach(async () => {
+  vi.mocked(unlink).mockReset()
+  vi.mocked(stat).mockReset()
   await rm(root, { recursive: true, force: true })
 })
 
@@ -68,6 +75,48 @@ it('elects exactly one concurrent stale-lock contender while the winner publishe
   expect(winners).toBe(1)
 })
 
+it('elects one winner when a stale contender pauses between its final check and unlink', async () => {
+  await writeFile(`${target}.lock`, '{}')
+  await expire()
+  const paused = Promise.withResolvers<void>()
+  const resume = Promise.withResolvers<void>()
+  const held = Promise.withResolvers<void>()
+  const firstDecided = Promise.withResolvers<void>()
+  const secondDecided = Promise.withResolvers<void>()
+  const fs = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
+  vi.mocked(unlink).mockImplementationOnce(async path => {
+    expect(path).toBe(`${target}.lock`)
+    paused.resolve()
+    await resume.promise
+    await fs.unlink(path)
+  })
+  let winners = 0
+  const attempt = (decided: typeof firstDecided) =>
+    withCliLauncherLock(target, async () => {
+      winners += 1
+      decided.resolve()
+      await held.promise
+    }).catch(error => {
+      decided.resolve()
+      expect(error.code).toBe('EEXIST')
+    })
+  const first = attempt(firstDecided)
+  let second: Promise<void> | undefined
+  try {
+    await paused.promise
+    second = attempt(secondDecided)
+    // The second contender either publishes or loses; no wall-clock sleeps.
+    await secondDecided.promise
+    resume.resolve()
+    await firstDecided.promise
+    expect(winners).toBe(1)
+  } finally {
+    resume.resolve()
+    held.resolve()
+    await Promise.all([first, second])
+  }
+})
+
 it('an expired publisher does not release the replacement owner lock', async () => {
   let successor: string = ''
   await withCliLauncherLock(target, async () => {
@@ -82,4 +131,52 @@ it('an expired publisher does not release the replacement owner lock', async () 
     await writeFile(`${target}.lock`, successor, { flag: 'wx' })
   })
   expect(await readFile(`${target}.lock`, 'utf8')).toBe(successor)
+})
+
+it('rechecks the lock after a delayed contender acquires the reclamation claim', async () => {
+  await writeFile(`${target}.lock`, '{}')
+  await expire()
+  const observed = await stat(`${target}.lock`)
+  const paused = Promise.withResolvers<void>()
+  const resume = Promise.withResolvers<void>()
+  vi.mocked(stat).mockImplementationOnce(async () => {
+    paused.resolve()
+    await resume.promise
+    return observed
+  })
+  const publish = vi.fn(async () => {})
+  const delayed = expect(withCliLauncherLock(target, publish)).rejects.toMatchObject({
+    code: 'EEXIST',
+  })
+  try {
+    await paused.promise
+    await withCliLauncherLock(target, async () => {
+      const owner = await readFile(`${target}.lock`, 'utf8')
+      resume.resolve()
+      await delayed
+      expect(await readFile(`${target}.lock`, 'utf8')).toBe(owner)
+    })
+    expect(publish).not.toHaveBeenCalled()
+  } finally {
+    resume.resolve()
+    await delayed
+  }
+  expect(await readdir(root)).toEqual([])
+})
+
+it('recovers a crashed reclamation claim and cleans up after publication fails', async () => {
+  await writeFile(`${target}.lock`, '')
+  await expire()
+  const claimPath = `${target}.lock.reclaim`
+  await writeFile(claimPath, '')
+  const old = new Date(Date.now() - 121_000)
+  await utimes(claimPath, old, old)
+  const failure = new Error('publication failed')
+  await expect(
+    withCliLauncherLock(target, async () => {
+      throw failure
+    }),
+  ).rejects.toBe(failure)
+  expect(await readdir(root)).toEqual([])
+  await withCliLauncherLock(target, async () => {})
 })

@@ -107,8 +107,20 @@ it('the actual platform installer publication honors the Desktop lock and releas
     )
     const expired = new Date(Date.now() - 121_000)
     await utimes(`${target}.lock`, expired, expired)
+    // A Desktop reclaimer may be paused before replacing this expired lock.
+    const claimPath = `${target}.lock.reclaim`
+    const claimOwner = JSON.stringify({ pid: process.pid, token: 'desktop-reclaimer' })
+    await writeFile(claimPath, claimOwner, { flag: 'wx' })
+    const competingReclaimer = run()
+    expect(competingReclaimer.status).not.toBe(0)
+    expect(competingReclaimer.stderr?.toString()).toContain(`owner pid=${process.pid}`)
+    expect(await readFile(claimPath, 'utf8')).toBe(claimOwner)
+    expect(JSON.parse(await readFile(`${target}.lock`, 'utf8')).pid).toBe(99999)
+    // A crashed reclaimer must not permanently block the installer either.
+    await utimes(claimPath, expired, expired)
     const recovered = run()
     expect(recovered.status, recovered.stderr?.toString()).toBe(0)
+    await expect(readFile(claimPath, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
     await withCliLauncherLock(target, async () => {})
   } finally {
     await rm(resolve(root), { recursive: true, force: true })

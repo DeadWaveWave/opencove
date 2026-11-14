@@ -22,6 +22,11 @@ OpenCove 目前支持两条正式的 CLI 安装链路：
   ABI 单独构建，并在归档前由该 Node runtime 真实加载验证。
 - 打包态 launcher 必须指向发布 runtime 内的 CLI entrypoint，不能依赖 repo checkout 路径。
 - launcher 会记录安装 owner；两条安装链可以互相覆盖安装，但卸载时只移除自己拥有的 launcher。
+- Desktop 与 standalone 共用 `<launcher>.lock` 发布租约，mtime 超过 120 秒才可接管。
+  接管者先独占创建 `<launcher>.lock.reclaim`，持有 claim 时重新核对原锁的身份与 mtime，
+  再删除旧锁并独占创建新锁；不能把 claim 之前的检查当作删除授权。claim 也遵循相同
+  的租约和接管协议，因此崩溃留下的 claim 可恢复。发布必须在租约内完成，释放时仅删除
+  owner 记录仍匹配的锁。旧版安装器不遵循 claim 协议，不能保证与其并发接管时的互斥。
 - standalone release 覆盖 macOS / Linux / Windows；Windows 资产格式为 `opencove-server-windows-<arch>.zip`。
 - standalone launcher 必须从 bundle 内 `package.json` 读取版本并通过 `--app-version` 传给 Worker；缺失或非法版本必须拒绝启动，不能产生身份不明的 Remote Worker。
 - 公开 installer 必须从同一 release 路径读取 `SHA256SUMS.txt` 并在解压前校验 bundle；缺失 checksum、缺少本机 SHA256 工具或 hash 不一致都必须 fail closed。
