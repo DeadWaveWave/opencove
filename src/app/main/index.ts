@@ -60,6 +60,25 @@ const OPENCOVE_APP_USER_MODEL_ID = 'dev.deadwave.opencove'
 const OPENCOVE_DEV_APP_USER_MODEL_ID = 'dev.deadwave.opencove.dev'
 const WINDOW_CLOSE_PERSIST_FLUSH_TIMEOUT_MS = 1_500
 let isAppQuitInProgress = false
+const closingWindows = new Set<BrowserWindow>()
+let pendingWindowActivation = false
+
+function activateMainWindow(): void {
+  if (isAppQuitInProgress) {
+    pendingWindowActivation = false
+    return
+  }
+
+  const windows = BrowserWindow.getAllWindows()
+  // A closing window still belongs to Electron until `closed`. Preserve the Dock
+  // request across both the persistence flush and native teardown, without loading
+  // a replacement renderer against state that the old renderer is still flushing.
+  pendingWindowActivation =
+    windows.length > 0 && windows.every(window => closingWindows.has(window))
+  if (windows.length === 0) {
+    createWindow()
+  }
+}
 
 app.commandLine.appendSwitch('force-color-profile', 'srgb')
 
@@ -111,7 +130,6 @@ function createWindow(): void {
   }
   const initialWidth = isTestEnv ? 1440 : 1200
   const initialHeight = isTestEnv ? 900 : 800
-  let hasCoordinatedWindowClose = false
 
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -158,7 +176,7 @@ function createWindow(): void {
     workerEndpointResolver: workerEndpointResolverForContextMenu,
   })
   mainWindow.on('close', event => {
-    if (hasCoordinatedWindowClose || isAppQuitInProgress || mainWindow.isDestroyed()) {
+    if (closingWindows.has(mainWindow) || isAppQuitInProgress || mainWindow.isDestroyed()) {
       return
     }
 
@@ -167,7 +185,7 @@ function createWindow(): void {
     }
 
     event.preventDefault()
-    hasCoordinatedWindowClose = true
+    closingWindows.add(mainWindow)
 
     void requestRendererPersistFlush(mainWindow.webContents, WINDOW_CLOSE_PERSIST_FLUSH_TIMEOUT_MS)
       .catch(() => undefined)
@@ -180,8 +198,12 @@ function createWindow(): void {
       })
   })
   mainWindow.on('closed', () => {
+    closingWindows.delete(mainWindow)
     disposeApplicationShortcuts()
     quickPhrasesContextMenuDisposable.dispose()
+    if (pendingWindowActivation) {
+      activateMainWindow()
+    }
   })
 
   const showWindow = (): void => {
@@ -228,7 +250,10 @@ function createWindow(): void {
       reason: details.reason,
       exitCode: details.exitCode,
     })
-    scheduleRendererRecovery(mainWindow, () => !isAppQuitInProgress && !hasCoordinatedWindowClose)
+    scheduleRendererRecovery(
+      mainWindow,
+      () => !isAppQuitInProgress && !closingWindows.has(mainWindow),
+    )
   })
 
   mainWindow.on('unresponsive', () => {
@@ -408,12 +433,7 @@ app.whenReady().then(async () => {
 
   createWindow()
 
-  app.on('activate', function () {
-    // macOS: re-create a window when the dock icon is clicked and no windows are open.
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
-    }
-  })
+  app.on('activate', activateMainWindow)
 })
 
 // Quit when all windows are closed (tests must exit on macOS, otherwise Playwright can leave Electron running).
