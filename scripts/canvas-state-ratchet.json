@@ -393,11 +393,8 @@
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/WorkspaceCanvasView.types.ts": 7
   },
   "workspace-writer": {
-    "src/app/renderer/shell/components/addProjectWizard/useAddProjectWizardCreateProject.ts": 1,
-    "src/app/renderer/shell/components/ProjectContextMenu.state.ts": 1,
     "src/app/renderer/shell/hooks/workerSync/workerConnectionState.ts": 2,
     "src/app/renderer/shell/store/useAppStore.ts": 2,
-    "src/app/renderer/shell/utils/removeWorkspace.ts": 1,
     "src/contexts/workspace/presentation/renderer/utils/managedClaudeCompatibilityNotice.ts": 1
   }
 }

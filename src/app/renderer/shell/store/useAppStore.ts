@@ -66,6 +66,10 @@ export interface AppStoreState {
     activeNodeId: string,
     overNodeId: string,
   ) => boolean
+  addWorkspace: (workspace: WorkspaceState) => void
+  // Returns the list that remains, so callers can pick the next active workspace from it.
+  removeWorkspaceFromList: (workspaceId: string) => WorkspaceState[]
+  setWorkspaceName: (workspaceId: string, name: string) => boolean
   setProjectIconId: (workspaceId: string, iconId: ProjectIconId | null) => boolean
   setWorkspaceWorktreesRoot: (workspaceId: string, worktreesRoot: string) => boolean
   setWorkspaceEnvironmentVariables: (
@@ -155,6 +159,31 @@ export const useAppStore = create<AppStoreState>(set => ({
         overNodeId,
       )
       changed = workspaces !== state.workspaces
+      return changed ? { workspaces } : state
+    })
+    return changed
+  },
+  addWorkspace: workspace => set(state => ({ workspaces: [...state.workspaces, workspace] })),
+  removeWorkspaceFromList: workspaceId => {
+    let remaining: WorkspaceState[] = []
+    set(state => {
+      remaining = state.workspaces.filter(workspace => workspace.id !== workspaceId)
+      return { workspaces: remaining }
+    })
+    return remaining
+  },
+  setWorkspaceName: (workspaceId, name) => {
+    let changed = false
+    set(state => {
+      const workspaces = state.workspaces.map(workspace => {
+        if (workspace.id !== workspaceId || workspace.name === name) {
+          return workspace
+        }
+
+        changed = true
+        return { ...workspace, name }
+      })
+
       return changed ? { workspaces } : state
     })
     return changed

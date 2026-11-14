@@ -74,15 +74,7 @@ export function renameTarget(target: ProjectContextMenuTarget, nextName: string)
   }
 
   if (target.kind === 'project') {
-    useAppStore
-      .getState()
-      .setWorkspaces(previous =>
-        previous.map(workspace =>
-          workspace.id !== target.workspaceId || workspace.name === normalizedName
-            ? workspace
-            : { ...workspace, name: normalizedName },
-        ),
-      )
+    useAppStore.getState().setWorkspaceName(target.workspaceId, normalizedName)
     return
   }
 
