@@ -95,6 +95,8 @@
 
 workspace 画布文档（节点、Space、活动 Space、Space 归档记录、视口、小地图开关）的写入遵守三条规则（issue #671，#647 的 S2 切片）：提交到 store 的画布文档写入必须经过 `src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands.ts`，不要用 `useAppStore.setState` 直接写 `workspaces`（`setWorkspaces` 已从 store 类型中删除，项目列表写入使用 `addWorkspace`、`removeWorkspaceFromList`、`setWorkspaceName` 等具名 action）；每个命令都显式给出 `workspaceId`，不依赖“当前活动的 workspace”；`setNodes` 在调用时从 store 计算，而不是从 `nodesRef` 快照计算。
 
+画布 UI 投影状态（菜单、对话框等不持久化、重启后为空的状态；issue #685，#647 的 S3 切片）遵守三条规则：它们存放在每个画布一个的 canvas store 中，代码在 `src/contexts/workspace/presentation/renderer/store/canvasStore*.ts`，不要在 `workspaceCanvas/` 的 hook 里用 `useState` 再声明一份，也不要把 setter 当作参数在 hook 之间传递；hook 通过 `useReadCanvasUi()` 在调用时读取、通过 `useCanvasUiCommands()` 的具名命令写入，只有叶子组件（如 `WorkspaceCanvasMenus`）用 `useCanvasUi` 订阅，节点组件只用命令，这样打开菜单不会重渲染 `WorkspaceCanvasInner`；store 不暴露 `setState`（类型与运行时都没有），状态只能经命令改变，互斥关系（如两个菜单不会同时打开）由命令在同一次更新里保证。
+
 ### 棘轮基线守卫 (Ratchet Baseline Guard)
 
 任何以 `ratchet.json` 结尾的已跟踪文件都是棘轮基线（目前六个：架构、死代码、画布状态、兼容、UI 样式、UI 标记），形状为 `{ 规则: { 文件: 正整数 } }`。守卫保证基线本身不能在无人确认的情况下增长，计数器、检查模式和文件格式都不变。
