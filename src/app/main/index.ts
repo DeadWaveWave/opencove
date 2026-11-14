@@ -23,7 +23,7 @@ import {
   hasOwnedLocalWorkerProcess,
   stopOwnedLocalWorker,
 } from './worker/localWorkerManager'
-import { createMainRuntimeDiagnosticsLogger } from './runtimeDiagnostics'
+import { createMainRuntimeDiagnosticsLogger, startTestCrashReporter } from './runtimeDiagnostics'
 import { createRendererFailureContext, getProcessFailureContext } from './processFailureDiagnostics'
 import { scheduleRendererRecovery } from './rendererCrashRecovery'
 import { registerQuickPhrasesContextMenu } from './contextMenu/registerQuickPhrasesContextMenu'
@@ -98,6 +98,7 @@ app.on('before-quit', () => {
 
 configureAppCommandLine()
 configureAppUserDataPath()
+startTestCrashReporter()
 
 const E2E_OFFSCREEN_COORDINATE = -50_000
 const mainWindowRuntimeLogger = createMainRuntimeDiagnosticsLogger('main-window')
