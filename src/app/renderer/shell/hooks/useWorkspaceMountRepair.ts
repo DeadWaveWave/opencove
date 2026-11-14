@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { repairWorkspaceSpaces } from '@contexts/workspace/presentation/renderer'
 import type {
   WorkspaceSpaceState,
   WorkspaceState,
@@ -7,7 +8,6 @@ import type { CreateMountResult, ListMountsResult } from '@shared/contracts/dto'
 import { isAbsolutePath, normalizeSlashes } from '../utils/pathHelpers'
 import { isAllocateProjectPlaceholderPath } from '../utils/projectPlaceholderPath'
 import { notifyTopologyChanged } from '../utils/topologyEvents'
-import { useAppStore } from '../store/useAppStore'
 
 async function delay(ms: number): Promise<void> {
   await new Promise<void>(resolve => {
@@ -332,12 +332,7 @@ export function useWorkspaceMountRepair({
       }
 
       if (!cancelled && repairedSpacesByWorkspaceId.size > 0) {
-        useAppStore.getState().setWorkspaces(previous =>
-          previous.map(workspace => {
-            const nextSpaces = repairedSpacesByWorkspaceId.get(workspace.id)
-            return nextSpaces ? { ...workspace, spaces: nextSpaces } : workspace
-          }),
-        )
+        repairWorkspaceSpaces(repairedSpacesByWorkspaceId)
         requestPersistFlush?.()
       }
 

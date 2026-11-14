@@ -8,6 +8,7 @@ export {
   registerWorkspaceDocumentPersistFlush,
   replaceFromSync,
   removeWorkspaceSpaceArchiveRecord,
+  repairWorkspaceSpaces,
   setWorkspaceActiveSpace,
   setWorkspaceMinimapVisible,
   setWorkspaceViewport,

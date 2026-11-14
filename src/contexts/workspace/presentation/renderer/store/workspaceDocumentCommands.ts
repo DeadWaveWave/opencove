@@ -253,6 +253,32 @@ export function mergeHydratedNodes(
   return { status: 'applied', document: toWorkspaceDocument(next) }
 }
 
+/**
+ * Mount repair resolves the Space mounts of several workspaces asynchronously and applies them
+ * together in one write, onto the workspaces as the store holds them now. The caller requests the
+ * persistence flush afterwards.
+ */
+export function repairWorkspaceSpaces(
+  repairedSpacesByWorkspaceId: ReadonlyMap<string, WorkspaceSpaceState[]>,
+): void {
+  if (isRecipeRunning) {
+    throw new Error('workspace document command ran inside a recipe')
+  }
+  const store = requireStore()
+  let didRepair = false
+  const workspaces = store.getState().workspaces.map(workspace => {
+    const spaces = repairedSpacesByWorkspaceId.get(workspace.id)
+    if (!spaces) {
+      return workspace
+    }
+    didRepair = true
+    return { ...workspace, spaces }
+  })
+  if (didRepair) {
+    store.setState({ workspaces })
+  }
+}
+
 export function replaceWorkspaceNodes(
   workspaceId: string,
   nodes: Node<TerminalNodeData>[],
