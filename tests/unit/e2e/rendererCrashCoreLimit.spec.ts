@@ -2,10 +2,33 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { afterEach, expect, it } from 'vitest'
-import { resolveElectronCoreLimitLaunch } from '../../e2e/electron-core-limit'
+import { hasOneByteCoreLimit, resolveElectronCoreLimitLaunch } from '../../e2e/electron-core-limit'
 
 const directories: string[] = []
 afterEach(() => directories.splice(0).forEach(dir => rmSync(dir, { recursive: true, force: true })))
+
+it('accepts the padded proc limits row reported by the Ubuntu runner', () => {
+  expect(
+    hasOneByteCoreLimit(
+      'Limit                     Soft Limit           Hard Limit           Units     \n' +
+        'Max core file size        1                    1                    bytes     \n' +
+        'Max resident set          unlimited            unlimited            bytes     \n',
+    ),
+  ).toBe(true)
+})
+
+it('requires both limits to be exactly one byte on the same core-limit row', () => {
+  for (const fields of [
+    '0 1 bytes',
+    '1 unlimited bytes',
+    '1024 1024 bytes',
+    '1 1 kB',
+    '1\n1 bytes',
+  ]) {
+    expect(hasOneByteCoreLimit(`Max core file size ${fields}\n`), fields).toBe(false)
+  }
+  expect(hasOneByteCoreLimit('Max file size 1 1 bytes\n')).toBe(false)
+})
 
 it("only changes explicitly opted-in Linux launches and retains Playwright's normal loader", () => {
   expect(resolveElectronCoreLimitLaunch(false, 'linux')).toBeUndefined()

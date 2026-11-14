@@ -1,6 +1,10 @@
 import { createRequire } from 'node:module'
 import path from 'node:path'
 
+export function hasOneByteCoreLimit(limits: string): boolean {
+  return /^Max core file size[ \t]+1[ \t]+1[ \t]+bytes[ \t]*$/mu.test(limits)
+}
+
 export function resolveElectronCoreLimitLaunch(
   enabled: boolean,
   platform: NodeJS.Platform = process.platform,

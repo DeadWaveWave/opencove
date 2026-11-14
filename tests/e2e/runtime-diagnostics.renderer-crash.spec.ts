@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { expect, test, type JSHandle } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
 import { isSeededWorkspaceNavigationReady } from './workspace-canvas.seed-readiness'
+import { hasOneByteCoreLimit } from './electron-core-limit'
 import {
   createRendererRecoveryProbe,
   readRecoveryProcessState,
@@ -96,9 +97,10 @@ test('recovers the workspace in the same main process after a renderer crash', a
           await Promise.all(
             [mainPid, initial.rendererPid!].map(async pid => {
               const limits = await readFile(`/proc/${pid}/limits`, 'utf8')
-              expect(limits, `PID ${pid} must inherit the one-byte core limit`).toMatch(
-                /^Max core file size\s+1\s+1\s+bytes$/mu,
-              )
+              expect(
+                hasOneByteCoreLimit(limits),
+                `PID ${pid} must inherit the one-byte core limit:\n${limits}`,
+              ).toBe(true)
             }),
           )
         },
