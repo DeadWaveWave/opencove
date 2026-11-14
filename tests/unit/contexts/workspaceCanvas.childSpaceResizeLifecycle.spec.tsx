@@ -62,7 +62,6 @@ function renderNestedResize() {
         magneticSnappingEnabledRef: { current: false },
         setSnapGuides,
         onRequestPersistFlush: persist,
-        cancelSpaceRename: () => {},
       })
       return { ...drag, spaces: spacesRef.current, nodes: nodesRef.current }
     },

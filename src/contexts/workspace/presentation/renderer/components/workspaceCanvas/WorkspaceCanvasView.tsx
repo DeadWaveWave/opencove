@@ -90,12 +90,7 @@ export function WorkspaceCanvasView({
   materializeQuickPreview,
   beginQuickPreviewDrag,
   handleSpaceDragHandlePointerDown,
-  editingSpaceId,
-  spaceRenameInputRef,
-  spaceRenameDraft,
-  setSpaceRenameDraft,
   commitSpaceRename,
-  cancelSpaceRename,
   activateSpaceTitle,
   setSpaceLabelColor,
   selectedNodeCount,
@@ -278,12 +273,7 @@ export function WorkspaceCanvasView({
           openExplorerSpaceId={openExplorerSpaceId}
           toggleExplorer={toggleSpaceExplorer}
           handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
-          editingSpaceId={editingSpaceId}
-          spaceRenameInputRef={spaceRenameInputRef}
-          spaceRenameDraft={spaceRenameDraft}
-          setSpaceRenameDraft={setSpaceRenameDraft}
           commitSpaceRename={commitSpaceRename}
-          cancelSpaceRename={cancelSpaceRename}
           activateSpaceTitle={activateSpaceTitle}
           onOpenSpaceMenu={openSpaceActionMenu}
         />
@@ -343,7 +333,6 @@ export function WorkspaceCanvasView({
         spaces={spaces}
         activateSpace={activateSpace}
         activateAllSpaces={activateAllSpaces}
-        cancelSpaceRename={cancelSpaceRename}
         onOpenSpaceContextMenu={(spaceId, anchor) => {
           ui.closeMenus()
           onOpenSpaceContextMenu?.(spaceId, anchor)

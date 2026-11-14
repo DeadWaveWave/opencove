@@ -117,7 +117,6 @@ export function useWorkspaceCanvasShortcutActions({
   workspacePath,
   environmentVariables,
   canvasRef,
-  cancelSpaceRename,
   reactFlow,
   spacesRef,
   spaceNavigationAnchorIdRef,
@@ -154,7 +153,6 @@ export function useWorkspaceCanvasShortcutActions({
   workspacePath: string
   environmentVariables?: Record<string, string>
   canvasRef: React.RefObject<HTMLDivElement | null>
-  cancelSpaceRename: () => void
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   spaceNavigationAnchorIdRef: React.MutableRefObject<string | null>
@@ -206,7 +204,7 @@ export function useWorkspaceCanvasShortcutActions({
     const anchor = reactFlow.screenToFlowPosition(clientPoint)
 
     ui.closeContextMenu()
-    cancelSpaceRename()
+    ui.cancelSpaceRename()
 
     createNoteNodeAtFlowPosition({
       workspaceId,
@@ -221,7 +219,6 @@ export function useWorkspaceCanvasShortcutActions({
   }, [
     workspaceId,
     agentSettings.standardWindowSizeBucket,
-    cancelSpaceRename,
     canvasRef,
     createNoteNode,
     nodesRef,
@@ -242,7 +239,7 @@ export function useWorkspaceCanvasShortcutActions({
     const anchor = reactFlow.screenToFlowPosition(clientPoint)
 
     ui.closeContextMenu()
-    cancelSpaceRename()
+    ui.cancelSpaceRename()
 
     await createTerminalNodeAtFlowPosition({
       anchor,
@@ -265,7 +262,6 @@ export function useWorkspaceCanvasShortcutActions({
     agentSettings.standardWindowSizeBucket,
     agentSettings.terminalFontSize,
     terminalDisplayMetrics,
-    cancelSpaceRename,
     canvasRef,
     createNodeForSession,
     environmentVariables,
@@ -289,14 +285,14 @@ export function useWorkspaceCanvasShortcutActions({
       resolveCanvasVisualCenter(canvas.getBoundingClientRect()),
     )
     ui.closeContextMenu()
-    cancelSpaceRename()
+    ui.cancelSpaceRename()
     await launchAgentAtFlowPosition(anchor)
-  }, [canvasRef, reactFlow, ui, cancelSpaceRename, launchAgentAtFlowPosition])
+  }, [canvasRef, reactFlow, ui, launchAgentAtFlowPosition])
 
   const navigateNode = useCallback(
     (direction: SpatialNavigationDirection): void => {
       ui.closeContextMenu()
-      cancelSpaceRename()
+      ui.cancelSpaceRename()
 
       const canvas = canvasRef.current
       const viewportRect = resolveViewportRectInFlowCoordinates({ reactFlow, canvas })
@@ -336,7 +332,6 @@ export function useWorkspaceCanvasShortcutActions({
     [
       activeSpaceId,
       agentSettings.focusNodeTargetZoom,
-      cancelSpaceRename,
       canvasRef,
       nodesRef,
       reactFlow,
@@ -351,7 +346,7 @@ export function useWorkspaceCanvasShortcutActions({
   const navigateSpace = useCallback(
     (direction: SpatialNavigationDirection): void => {
       ui.closeContextMenu()
-      cancelSpaceRename()
+      ui.cancelSpaceRename()
 
       const canvas = canvasRef.current
       const viewportRect = resolveViewportRectInFlowCoordinates({ reactFlow, canvas })
@@ -379,7 +374,6 @@ export function useWorkspaceCanvasShortcutActions({
     },
     [
       activateSpace,
-      cancelSpaceRename,
       canvasRef,
       clearNodeSelection,
       reactFlow,

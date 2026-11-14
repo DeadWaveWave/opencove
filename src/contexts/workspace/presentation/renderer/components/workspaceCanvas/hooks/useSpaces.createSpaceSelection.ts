@@ -24,7 +24,6 @@ export function createSpaceFromSelectedNodesWithMounts({
   workspacePath,
   createSpace,
   ui,
-  cancelSpaceRename,
   onShowMessage,
   t,
 }: {
@@ -34,7 +33,6 @@ export function createSpaceFromSelectedNodesWithMounts({
   workspacePath: string
   createSpace: (payload: CreateSpacePayload) => void
   ui: CanvasUiCommands
-  cancelSpaceRename: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   t: TranslateFn
 }): void {
@@ -92,7 +90,7 @@ export function createSpaceFromSelectedNodesWithMounts({
         if (mountResult.mounts.length === 0) {
           onShowMessage?.(t('messages.projectHasNoMounts'), 'warning')
           ui.closeContextMenu()
-          cancelSpaceRename()
+          ui.cancelSpaceRename()
           return
         }
 
@@ -130,12 +128,12 @@ export function createSpaceFromSelectedNodesWithMounts({
           })(),
         })
         ui.closeContextMenu()
-        cancelSpaceRename()
+        ui.cancelSpaceRename()
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         onShowMessage?.(t('messages.mountListFailed', { message }), 'error')
         ui.closeContextMenu()
-        cancelSpaceRename()
+        ui.cancelSpaceRename()
       }
     })()
 

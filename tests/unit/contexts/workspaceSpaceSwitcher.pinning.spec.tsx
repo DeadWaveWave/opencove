@@ -2,6 +2,7 @@ import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { WorkspaceSpaceState } from '@contexts/workspace/presentation/renderer/types'
+import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 import { WorkspaceCanvasTopOverlays } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WorkspaceCanvasTopOverlays'
 
 function createSpace(
@@ -27,17 +28,18 @@ function renderOverlays(
   onOpenSpaceContextMenu = vi.fn(),
 ): ReturnType<typeof vi.fn> {
   render(
-    <WorkspaceCanvasTopOverlays
-      spaces={spaces}
-      activateSpace={vi.fn()}
-      activateAllSpaces={vi.fn()}
-      cancelSpaceRename={vi.fn()}
-      onOpenSpaceContextMenu={onOpenSpaceContextMenu}
-      usedLabelColors={[]}
-      activeLabelColorFilter={null}
-      onToggleLabelColorFilter={vi.fn()}
-      selectedNodeCount={0}
-    />,
+    <CanvasStoreTestProvider>
+      <WorkspaceCanvasTopOverlays
+        spaces={spaces}
+        activateSpace={vi.fn()}
+        activateAllSpaces={vi.fn()}
+        onOpenSpaceContextMenu={onOpenSpaceContextMenu}
+        usedLabelColors={[]}
+        activeLabelColorFilter={null}
+        onToggleLabelColorFilter={vi.fn()}
+        selectedNodeCount={0}
+      />
+    </CanvasStoreTestProvider>,
   )
   return onOpenSpaceContextMenu
 }

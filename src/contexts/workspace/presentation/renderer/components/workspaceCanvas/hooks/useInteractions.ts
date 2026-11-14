@@ -37,7 +37,6 @@ export function useWorkspaceCanvasInteractions({
   setNodes,
   setSelectedNodeIds,
   setSelectedSpaceIds,
-  cancelSpaceRename,
   selectedNodeIdsRef,
   selectedSpaceIdsRef,
   workspaceId,
@@ -184,9 +183,9 @@ export function useWorkspaceCanvasInteractions({
         flowY: flowPosition.y,
         creationAnchor: resolveCreationAnchor(clientPoint),
       })
-      cancelSpaceRename()
+      ui.cancelSpaceRename()
     },
-    [cancelSpaceRename, queueIgnoreNextPaneClick, reactFlow, resolveCreationAnchor, ui],
+    [queueIgnoreNextPaneClick, reactFlow, resolveCreationAnchor, ui],
   )
 
   const {
@@ -300,7 +299,7 @@ export function useWorkspaceCanvasInteractions({
 
       clearNodeSelection()
       ui.closeContextMenu()
-      cancelSpaceRename()
+      ui.cancelSpaceRename()
 
       createNoteNodeAtFlowPosition({
         workspaceId,
@@ -315,7 +314,6 @@ export function useWorkspaceCanvasInteractions({
     },
     [
       workspaceId,
-      cancelSpaceRename,
       clearNodeSelection,
       createNoteNode,
       nodesRef,
@@ -339,9 +337,9 @@ export function useWorkspaceCanvasInteractions({
       }
 
       clearNodeSelection()
-      cancelSpaceRename()
+      ui.cancelSpaceRename()
     },
-    [cancelSpaceRename, clearNodeSelection, ignoreNextPaneClickRef],
+    [clearNodeSelection, ignoreNextPaneClickRef, ui],
   )
   const { createTerminalNode, createTerminalNodeAtFlowPoint } = useWorkspaceCanvasTerminalCreation({
     workspaceId,
@@ -361,7 +359,6 @@ export function useWorkspaceCanvasInteractions({
   const { createNoteNodeAtFlowPoint, createWebsiteNodeAtFlowPoint, createNoteNodeFromContextMenu } =
     useWorkspaceCanvasFlowNodeCreation({
       workspaceId,
-      cancelSpaceRename,
       standardWindowSizeBucket,
       createNoteNode,
       createWebsiteNode,

@@ -10,7 +10,6 @@ import { useWorkspaceCanvasCreationActivation } from './useCreationActivation'
 export function useWorkspaceCanvasLifecycleBindings({
   workspaceId,
   canvasState,
-  cancelSpaceRename,
   reactFlow,
   viewport,
   agentSettings,
@@ -27,7 +26,6 @@ export function useWorkspaceCanvasLifecycleBindings({
 }: {
   workspaceId: string
   canvasState: ReturnType<typeof useWorkspaceCanvasState>
-  cancelSpaceRename: () => void
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   viewport: Viewport
   agentSettings: Pick<AgentSettings, 'canvasInputMode' | 'focusNodeTargetZoom'>
@@ -64,7 +62,6 @@ export function useWorkspaceCanvasLifecycleBindings({
     workspaceId,
     setSelectedNodeIds: canvasState.setSelectedNodeIds,
     setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
-    cancelSpaceRename,
     selectionDraftRef: canvasState.selectionDraftRef,
     trackpadGestureLockRef: canvasState.trackpadGestureLockRef,
     setIsCanvasWheelGestureCaptureActive: canvasState.setIsCanvasWheelGestureCaptureActive,

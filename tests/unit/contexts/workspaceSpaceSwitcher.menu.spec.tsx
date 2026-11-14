@@ -1,6 +1,10 @@
 import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  CanvasStoreTestProvider,
+  renderWithCanvasStore,
+} from '../../support/canvasStoreTestHarness'
 import { WorkspaceSpaceRegionsOverlay } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WorkspaceSpaceRegionsOverlay'
 
 vi.mock('@xyflow/react', () => {
@@ -14,6 +18,10 @@ vi.mock('@xyflow/react', () => {
   }
 })
 
+function renderOverlay(ui: React.ReactElement): ReturnType<typeof render> {
+  return render(ui, { wrapper: CanvasStoreTestProvider })
+}
+
 describe('WorkspaceSpaceRegionsOverlay space actions', () => {
   afterEach(() => {
     delete (window as unknown as { opencoveApi?: unknown }).opencoveApi
@@ -22,7 +30,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
   it('opens the space action menu via the ... pill', () => {
     const onOpenSpaceMenu = vi.fn()
 
-    render(
+    renderOverlay(
       <WorkspaceSpaceRegionsOverlay
         workspacePath="/tmp"
         spaceVisuals={[
@@ -37,12 +45,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
         selectedSpaceIds={[]}
         spaceFramePreview={null}
         handleSpaceDragHandlePointerDown={() => undefined}
-        editingSpaceId={null}
-        spaceRenameInputRef={{ current: null }}
-        spaceRenameDraft=""
-        setSpaceRenameDraft={() => undefined}
         commitSpaceRename={() => undefined}
-        cancelSpaceRename={() => undefined}
         activateSpaceTitle={() => undefined}
         onOpenSpaceMenu={onOpenSpaceMenu}
       />,
@@ -82,16 +85,11 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
         selectedSpaceIds={[]}
         spaceFramePreview={null}
         handleSpaceDragHandlePointerDown={() => undefined}
-        editingSpaceId={null}
-        spaceRenameInputRef={{ current: null }}
-        spaceRenameDraft=""
-        setSpaceRenameDraft={() => undefined}
         commitSpaceRename={() => undefined}
-        cancelSpaceRename={() => undefined}
         activateSpaceTitle={() => undefined}
       />
     )
-    const { rerender } = render(view)
+    const { rerender } = renderOverlay(view)
 
     expect(screen.getByTestId('workspace-space-operation-space-1')).toHaveTextContent(
       'Creating worktree…',
@@ -138,7 +136,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
     const handleSpaceDragHandlePointerDown = vi.fn()
     const wrapperMouseDown = vi.fn()
 
-    render(
+    const { commands } = renderWithCanvasStore(
       <div onMouseDown={wrapperMouseDown}>
         <WorkspaceSpaceRegionsOverlay
           workspacePath="/tmp"
@@ -154,16 +152,12 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
           selectedSpaceIds={[]}
           spaceFramePreview={null}
           handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
-          editingSpaceId="space-1"
-          spaceRenameInputRef={{ current: null }}
-          spaceRenameDraft="Infra"
-          setSpaceRenameDraft={() => undefined}
           commitSpaceRename={() => undefined}
-          cancelSpaceRename={() => undefined}
           activateSpaceTitle={() => undefined}
         />
       </div>,
     )
+    act(() => commands.startSpaceRename('space-1', 'Infra'))
 
     const input = screen.getByTestId('workspace-space-label-input-space-1')
     expect(input).toHaveClass('nodrag')
@@ -199,7 +193,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
       },
     })
 
-    render(
+    renderOverlay(
       <WorkspaceSpaceRegionsOverlay
         workspacePath="/tmp/repo"
         spaceVisuals={[
@@ -214,12 +208,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
         selectedSpaceIds={[]}
         spaceFramePreview={null}
         handleSpaceDragHandlePointerDown={() => undefined}
-        editingSpaceId={null}
-        spaceRenameInputRef={{ current: null }}
-        spaceRenameDraft=""
-        setSpaceRenameDraft={() => undefined}
         commitSpaceRename={() => undefined}
-        cancelSpaceRename={() => undefined}
         activateSpaceTitle={() => undefined}
       />,
     )
@@ -265,7 +254,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
       },
     })
 
-    render(
+    renderOverlay(
       <WorkspaceSpaceRegionsOverlay
         workspacePath="/tmp/repo"
         spaceVisuals={[
@@ -280,12 +269,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
         selectedSpaceIds={[]}
         spaceFramePreview={null}
         handleSpaceDragHandlePointerDown={() => undefined}
-        editingSpaceId={null}
-        spaceRenameInputRef={{ current: null }}
-        spaceRenameDraft=""
-        setSpaceRenameDraft={() => undefined}
         commitSpaceRename={() => undefined}
-        cancelSpaceRename={() => undefined}
         activateSpaceTitle={() => undefined}
       />,
     )
@@ -352,7 +336,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
       },
     })
 
-    render(
+    renderOverlay(
       <WorkspaceSpaceRegionsOverlay
         workspacePath="/tmp/repo"
         spaceVisuals={[
@@ -367,12 +351,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
         selectedSpaceIds={[]}
         spaceFramePreview={null}
         handleSpaceDragHandlePointerDown={() => undefined}
-        editingSpaceId={null}
-        spaceRenameInputRef={{ current: null }}
-        spaceRenameDraft=""
-        setSpaceRenameDraft={() => undefined}
         commitSpaceRename={() => undefined}
-        cancelSpaceRename={() => undefined}
         activateSpaceTitle={() => undefined}
       />,
     )
@@ -415,7 +394,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
         },
       })
 
-      render(
+      renderOverlay(
         <WorkspaceSpaceRegionsOverlay
           workspacePath="/tmp/repo"
           spaceVisuals={[
@@ -430,12 +409,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
           selectedSpaceIds={[]}
           spaceFramePreview={null}
           handleSpaceDragHandlePointerDown={() => undefined}
-          editingSpaceId={null}
-          spaceRenameInputRef={{ current: null }}
-          spaceRenameDraft=""
-          setSpaceRenameDraft={() => undefined}
           commitSpaceRename={() => undefined}
-          cancelSpaceRename={() => undefined}
           activateSpaceTitle={() => undefined}
         />,
       )

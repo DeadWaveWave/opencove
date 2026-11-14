@@ -6,7 +6,6 @@ import type { SpaceWorktreeOperationPhase, SpaceWorktreeOperationState } from '.
 import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
 
 export function useWorkspaceCanvasSpaceUi({
-  cancelSpaceRename,
   workspacePath,
   spacesRef,
   handlePaneClick,
@@ -14,7 +13,6 @@ export function useWorkspaceCanvasSpaceUi({
   handleNodeContextMenu,
   handleSelectionContextMenu,
 }: {
-  cancelSpaceRename: () => void
   workspacePath: string
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   handlePaneClick: (event: React.MouseEvent | MouseEvent) => void
@@ -60,8 +58,8 @@ export function useWorkspaceCanvasSpaceUi({
 
   const onCanvasClick = useCallback(() => {
     ui.closeSpaceActionMenu()
-    cancelSpaceRename()
-  }, [cancelSpaceRename, ui])
+    ui.cancelSpaceRename()
+  }, [ui])
 
   const onPaneClick = useCallback(
     (event: React.MouseEvent | MouseEvent) => {

@@ -1,11 +1,11 @@
 import React from 'react'
 import type { WorkspaceSpaceState } from '../../../types'
+import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
 
 interface WorkspaceSpaceSwitcherProps {
   spaces: WorkspaceSpaceState[]
   activateSpace: (spaceId: string) => void
   activateAllSpaces: () => void
-  cancelSpaceRename: () => void
   onOpenSpaceContextMenu?: (spaceId: string, anchor: { x: number; y: number }) => void
 }
 
@@ -13,9 +13,10 @@ export function WorkspaceSpaceSwitcher({
   spaces,
   activateSpace,
   activateAllSpaces,
-  cancelSpaceRename,
   onOpenSpaceContextMenu,
 }: WorkspaceSpaceSwitcherProps): React.JSX.Element | null {
+  const ui = useCanvasUiCommands()
+
   if (spaces.length === 0) {
     return null
   }
@@ -33,7 +34,7 @@ export function WorkspaceSpaceSwitcher({
         data-testid="workspace-space-switch-all"
         onClick={() => {
           activateAllSpaces()
-          cancelSpaceRename()
+          ui.cancelSpaceRename()
         }}
       >
         All
@@ -52,7 +53,7 @@ export function WorkspaceSpaceSwitcher({
           }}
           onClick={() => {
             activateSpace(space.id)
-            cancelSpaceRename()
+            ui.cancelSpaceRename()
           }}
         >
           {space.labelColor ? (

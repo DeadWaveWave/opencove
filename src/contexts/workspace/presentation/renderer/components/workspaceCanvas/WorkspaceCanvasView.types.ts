@@ -116,12 +116,7 @@ export interface WorkspaceCanvasViewProps {
     spaceId: string,
     options?: { mode?: 'auto' | 'region' },
   ) => void
-  editingSpaceId: string | null
-  spaceRenameInputRef: React.RefObject<HTMLInputElement | null>
-  spaceRenameDraft: string
-  setSpaceRenameDraft: React.Dispatch<React.SetStateAction<string>>
   commitSpaceRename: (spaceId: string) => void
-  cancelSpaceRename: () => void
   activateSpaceTitle: (spaceId: string, lod: CanvasLod) => void
   setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
   selectedNodeCount: number

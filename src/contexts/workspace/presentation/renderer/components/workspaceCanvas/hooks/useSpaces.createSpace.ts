@@ -30,7 +30,6 @@ export function useWorkspaceCanvasCreateSpace({
   selectedNodeIdsRef,
   onSpacesChange,
   onRequestPersistFlush,
-  cancelSpaceRename,
   onShowMessage,
   createChildSpaceInParent,
 }: {
@@ -44,7 +43,6 @@ export function useWorkspaceCanvasCreateSpace({
   selectedNodeIdsRef: React.MutableRefObject<string[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
-  cancelSpaceRename: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   createChildSpaceInParent: (
     parentSpaceId: string,
@@ -326,10 +324,9 @@ export function useWorkspaceCanvasCreateSpace({
       onRequestPersistFlush?.()
       ui.closeContextMenu()
       ui.closeDialog('spaceTargetMountPicker')
-      cancelSpaceRename()
+      ui.cancelSpaceRename()
     },
     [
-      cancelSpaceRename,
       nodesRef,
       onRequestPersistFlush,
       onShowMessage,
@@ -370,12 +367,10 @@ export function useWorkspaceCanvasCreateSpace({
       workspacePath,
       createSpace,
       ui,
-      cancelSpaceRename,
       onShowMessage,
       t,
     })
   }, [
-    cancelSpaceRename,
     createChildSpaceInParent,
     createSpace,
     nodesRef,
@@ -397,7 +392,6 @@ export function useWorkspaceCanvasCreateSpace({
     spacesRef,
     onSpacesChange,
     onRequestPersistFlush,
-    cancelSpaceRename,
     onShowMessage,
     resolveDefaultSpaceName,
   })

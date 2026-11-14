@@ -20,7 +20,6 @@ type Options = Pick<
   | 'spacesRef'
   | 'onSpacesChange'
   | 'onRequestPersistFlush'
-  | 'cancelSpaceRename'
   | 'onShowMessage'
 > & { resolveDefaultSpaceName: () => string }
 
@@ -32,7 +31,6 @@ export function useCreateEmptySpace({
   spacesRef,
   onSpacesChange,
   onRequestPersistFlush,
-  cancelSpaceRename,
   onShowMessage,
   resolveDefaultSpaceName,
 }: Options) {
@@ -101,7 +99,7 @@ export function useCreateEmptySpace({
       if (resolved.canPlace !== true) {
         onShowMessage?.(t('messages.noWindowSlotNearby'), 'warning')
         ui.closeContextMenu()
-        cancelSpaceRename()
+        ui.cancelSpaceRename()
         return null
       }
 
@@ -126,11 +124,10 @@ export function useCreateEmptySpace({
       onRequestPersistFlush?.()
       ui.closeContextMenu()
       ui.closeDialog('spaceTargetMountPicker')
-      cancelSpaceRename()
+      ui.cancelSpaceRename()
       return nextSpaceId
     },
     [
-      cancelSpaceRename,
       nodesRef,
       lifetime,
       onRequestPersistFlush,
