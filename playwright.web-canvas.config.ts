@@ -1,12 +1,8 @@
 import './scripts/lib/isolateHostEnvironment.mjs'
 import { defineConfig } from '@playwright/test'
+import { resolveE2ERetries } from './scripts/lib/e2e-retries.mjs'
 
 const baseURL = process.env['OPENCOVE_WEB_CANVAS_BASE_URL']
-
-function resolveRetries(rawValue: string | undefined): number {
-  const parsed = Number(rawValue)
-  return rawValue?.trim() && Number.isInteger(parsed) && parsed >= 0 ? parsed : 0
-}
 
 export default defineConfig({
   testDir: './tests/e2e-web-canvas',
@@ -15,7 +11,7 @@ export default defineConfig({
   expect: {
     timeout: 15_000,
   },
-  retries: resolveRetries(process.env.OPENCOVE_E2E_RETRIES),
+  retries: resolveE2ERetries(process.env.OPENCOVE_E2E_RETRIES),
   workers: 1,
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' } },

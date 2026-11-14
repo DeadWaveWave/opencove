@@ -1,5 +1,6 @@
 import './scripts/lib/isolateHostEnvironment.mjs'
 import { defineConfig } from '@playwright/test'
+import { resolveE2ERetries } from './scripts/lib/e2e-retries.mjs'
 
 // E2E 默认使用后台窗口模式，避免抢占焦点/干扰本地开发。
 // 可通过 OPENCOVE_E2E_WINDOW_MODE 覆盖：inactive / offscreen / hidden。
@@ -44,19 +45,6 @@ function resolveConfiguredTestMatch(): string | string[] | undefined {
 
 const configuredTestMatch = resolveConfiguredTestMatch()
 const isCi = process.env.CI === '1' || process.env.CI === 'true'
-
-function resolveE2ERetries(rawValue: string | undefined): number {
-  const normalized = rawValue?.trim()
-  if (normalized) {
-    const parsed = Number(normalized)
-    if (Number.isInteger(parsed) && parsed >= 0) {
-      return parsed
-    }
-  }
-
-  // Required continuity gates never hide deterministic failures behind retries.
-  return 0
-}
 
 /**
  * Playwright 配置 - Electron E2E 测试
