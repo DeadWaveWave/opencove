@@ -15,6 +15,8 @@ export default defineConfig({
   timeout: 120_000,
   expect: { timeout: 15_000 },
   workers: 1,
+  // A stray test.only would silently shrink a CI run to one test.
+  forbidOnly: !!process.env.CI,
   retries: 0,
   reporter: 'list',
   outputDir: '../../../test-results/worker-cli',

@@ -467,13 +467,31 @@ describe('check-test-gates: this repository', () => {
 })
 
 describe('Playwright configs forbid a focused test at run time', () => {
-  it.each([
-    'playwright.config.ts',
-    'playwright.web-canvas.config.ts',
-    'playwright.web-shell.config.ts',
-  ])('%s sets forbidOnly from CI', file => {
-    const config = readFileSync(resolve(import.meta.dirname, '../../..', file), 'utf8')
-    expect(config).toContain('forbidOnly: !!process.env.CI')
+  const FORBID_ONLY = /^\s*forbidOnly: !!process\.env\.CI,\s*$/m
+  const root = resolve(import.meta.dirname, '../../..')
+  const configs = spawnSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' })
+    .stdout.split('\0')
+    .filter(file => /(?:^|\/)playwright[^/]*\.config\.(?:ts|mts|js|mjs|cjs)$/.test(file))
+
+  it('finds the configs from the tracked files, not from a list', () => {
+    expect(configs).toEqual(
+      expect.arrayContaining([
+        'playwright.config.ts',
+        'playwright.web-canvas.config.ts',
+        'playwright.web-shell.config.ts',
+        'tests/contract/worker-cli/playwright.config.ts',
+      ]),
+    )
+  })
+
+  it.each(configs)('%s sets forbidOnly from CI on a line of its own', file => {
+    expect(readFileSync(resolve(root, file), 'utf8')).toMatch(FORBID_ONLY)
+  })
+
+  it('does not accept a commented-out or overridden line', () => {
+    expect('  // forbidOnly: !!process.env.CI,\n').not.toMatch(FORBID_ONLY)
+    expect('  forbidOnly: !!process.env.CI, // ok\n').not.toMatch(FORBID_ONLY)
+    expect('  forbidOnly: !!process.env.CI,\n').toMatch(FORBID_ONLY)
   })
 })
 
