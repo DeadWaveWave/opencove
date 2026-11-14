@@ -261,7 +261,8 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
       await expect(taskTitleDisplay).toBeVisible()
 
       // Every renaming title is its window's drag surface and runs up to the controls; only the
-      // kind tile beside it grabs without renaming.
+      // kind tile beside it grabs without renaming. The whole bar shows the grab cursor, the
+      // title included, so that it reads as the place to move the window from.
       const headers = [terminalHeader, agentHeader, taskHeader]
       const probes = await Promise.all(
         [terminalTitleDisplay, agentTitleDisplay, taskTitleDisplay].map(title =>
@@ -313,7 +314,7 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
         expect(
           probe.hits.map(hit => hit.cursor),
           diagnostic,
-        ).toEqual(['text', 'text', expect.not.stringMatching(/^text$/)])
+        ).toEqual(['grab', 'grab', 'grab'])
       }
       for (const header of headers) {
         await header.locator('[data-cove-part="kind-tile"]').click()
