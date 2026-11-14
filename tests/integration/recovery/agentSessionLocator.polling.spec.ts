@@ -130,3 +130,33 @@ describe('locateAgentResumeSessionId polling', () => {
     }
   })
 })
+
+it('settles a missing-transcript lookup when its caller ends, with no later discovery', async () => {
+  const codexDirectory = await fs.mkdtemp(join(tmpdir(), 'opencove-cancelled-discovery-'))
+  const previousCodexDirectory = process.env.CODEX_HOME
+  process.env.CODEX_HOME = codexDirectory
+  const controller = new AbortController()
+  const reason = new Error('caller ended')
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    const pending = locateAgentResumeSessionId({
+      provider: 'codex',
+      cwd: codexDirectory,
+      startedAtMs: Date.now(),
+      timeoutMs: 3_000,
+      signal: controller.signal,
+    })
+    const assertion = expect(pending).rejects.toBe(reason)
+    timer = setTimeout(() => controller.abort(reason), 25)
+    await assertion
+  } finally {
+    clearTimeout(timer)
+    controller.abort(reason)
+    if (previousCodexDirectory === undefined) {
+      delete process.env.CODEX_HOME
+    } else {
+      process.env.CODEX_HOME = previousCodexDirectory
+    }
+    await fs.rm(codexDirectory, { recursive: true, force: true })
+  }
+})

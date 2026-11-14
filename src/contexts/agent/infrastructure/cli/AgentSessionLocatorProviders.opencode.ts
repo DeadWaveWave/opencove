@@ -61,8 +61,11 @@ function parseOpenCodeSessionList(rawOutput: string): OpenCodeSessionMeta[] {
 async function findOpenCodeResumeSessionIdFromDb(
   cwd: string,
   startedAtMs: number,
+  signal?: AbortSignal,
 ): Promise<string | null> {
+  signal?.throwIfAborted()
   const dbPath = await resolveOpenCodeDbPath()
+  signal?.throwIfAborted()
   if (!dbPath) {
     return null
   }
@@ -71,6 +74,7 @@ async function findOpenCodeResumeSessionIdFromDb(
 
   try {
     db = await openReadOnlySqliteDb(dbPath, 250)
+    signal?.throwIfAborted()
     const sessionTable = resolveExistingTableName(db, ['session', 'sessions'])
     if (!sessionTable) {
       return null
@@ -126,6 +130,7 @@ async function findOpenCodeResumeSessionIdFromDb(
       maxDistanceMs: OPENCODE_CANDIDATE_WINDOW_MS,
     })
   } catch {
+    signal?.throwIfAborted()
     return null
   } finally {
     try {
@@ -139,10 +144,12 @@ async function findOpenCodeResumeSessionIdFromDb(
 export async function findOpenCodeResumeSessionId(
   cwd: string,
   startedAtMs: number,
+  signal?: AbortSignal,
 ): Promise<string | null> {
   const resolvedCwd = resolve(cwd)
 
-  const resolvedFromDb = await findOpenCodeResumeSessionIdFromDb(resolvedCwd, startedAtMs)
+  const resolvedFromDb = await findOpenCodeResumeSessionIdFromDb(resolvedCwd, startedAtMs, signal)
+  signal?.throwIfAborted()
   if (resolvedFromDb) {
     return resolvedFromDb
   }
@@ -154,6 +161,7 @@ export async function findOpenCodeResumeSessionId(
     { provider: 'opencode' },
   )
 
+  signal?.throwIfAborted()
   if (!rawOutput) {
     return null
   }

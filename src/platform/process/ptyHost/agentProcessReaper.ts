@@ -1,9 +1,12 @@
 import process from 'node:process'
 import { AGENT_RETIREMENT_BUDGET_MS } from './terminationTiming'
-import { sameProcess, AgentProcessOwnership } from './agentProcessOwnership'
+import {
+  sameProcess,
+  AgentProcessOwnership,
+  observeRetirementProcesses,
+} from './agentProcessOwnership'
 import { AgentProcessSampler } from './agentProcessSampler'
 import {
-  ProcessTreeSnapshot,
   PROCESS_TABLE_READ_TIMEOUT_MS,
   type ProcessIdentity,
   type ProcessTableSample,
@@ -164,7 +167,8 @@ export class AgentProcessReaper {
           ),
         )
         const sample = await this.sampler.fresh(readTimeout)
-        const table = new ProcessTreeSnapshot(sample?.rows ?? [])
+        const observation = observeRetirementProcesses(sample)
+        const { table } = observation
         const { byPid } = table
         const signalled = new Set<number>()
         for (const { id, job, stage } of batch) {
@@ -178,6 +182,11 @@ export class AgentProcessReaper {
             if (sample?.complete && !sameProcess(target, byPid.get(target.pid))) {
               job.targets.delete(identity)
             }
+          }
+          const retirement = this.ownership.retirementState(id, observation, job.targets.values())
+          if (retirement.kind === 'proven-empty') {
+            this.complete(id, job)
+            continue
           }
           if (stage === 'hup') {
             if (this.ownership.verifiedRoot(id, byPid)) {
@@ -215,9 +224,7 @@ export class AgentProcessReaper {
               job.stage = 'kill'
               job.dueAt = Math.min(this.now() + TERM_GRACE_MS, cutoff)
             } else {
-              this.ownership.remove(id)
-              this.jobs.delete(id)
-              job.done()
+              this.complete(id, job)
             }
           }
         }
@@ -226,5 +233,10 @@ export class AgentProcessReaper {
       this.running = null
       this.sampler.pause(false)
     }
+  }
+  private complete(id: string, job: Retirement): void {
+    this.ownership.remove(id)
+    this.jobs.delete(id)
+    job.done()
   }
 }

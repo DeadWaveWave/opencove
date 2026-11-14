@@ -17,13 +17,16 @@ export type ControlSurfaceRemoteEndpointResolver =
 export async function invokeControlSurface(
   endpoint: ControlSurfaceRemoteEndpoint,
   request: ControlSurfaceInvokeRequest,
-  options: { timeoutMs?: number } = {},
+  options: { timeoutMs?: number; signal?: AbortSignal } = {},
 ): Promise<{ httpStatus: number; result: ControlSurfaceInvokeResult<unknown> | null }> {
+  // Caller cancellation applies only to reads; accepted mutations retain their deadline.
+  const callerSignal = request.kind === 'query' ? options.signal : undefined
   const controller = new AbortController()
   const timeoutMs = options.timeoutMs ?? 15_000
   const timer = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
+    callerSignal?.throwIfAborted()
     const url = `http://${endpoint.hostname}:${endpoint.port}/invoke`
     if (canvasSpawnOperations.has(request.id)) {
       const nodeId = canvasSpawnIdentity.getStore()?.nodeId
@@ -55,10 +58,11 @@ export async function invokeControlSurface(
             }
           : request,
       ),
-      signal: controller.signal,
+      signal: callerSignal ? AbortSignal.any([controller.signal, callerSignal]) : controller.signal,
     })
 
     const raw = await response.text()
+    callerSignal?.throwIfAborted()
     const parsed = raw.trim().length > 0 ? (JSON.parse(raw) as unknown) : null
 
     const result =

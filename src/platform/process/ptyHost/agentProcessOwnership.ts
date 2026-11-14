@@ -1,4 +1,21 @@
-import { ProcessTreeSnapshot, type ProcessIdentity } from './posixProcessTable'
+import {
+  ProcessTreeSnapshot,
+  type ProcessIdentity,
+  type ProcessTableSample,
+} from './posixProcessTable'
+
+type RetirementProcessObservation =
+  | { kind: 'complete'; table: ProcessTreeSnapshot }
+  | { kind: 'unknown'; table: ProcessTreeSnapshot }
+type RetirementState = { kind: 'proven-empty' } | { kind: 'active' } | { kind: 'unknown' }
+
+/** Build one index per fresh scheduler read; failed/partial reads cannot carry completeness. */
+export function observeRetirementProcesses(
+  sample: ProcessTableSample | null,
+): RetirementProcessObservation {
+  const table = new ProcessTreeSnapshot(sample?.rows ?? [])
+  return sample?.complete === true ? { kind: 'complete', table } : { kind: 'unknown', table }
+}
 
 export function sameProcess(
   expected: ProcessIdentity,
@@ -106,6 +123,22 @@ export class AgentProcessOwnership {
     return session?.root && !session.exited && sameProcess(session.root, byPid.get(session.rootPid))
       ? session.root
       : null
+  }
+  public retirementState(
+    id: string,
+    observation: RetirementProcessObservation,
+    retirementMembers: Iterable<ProcessIdentity>,
+  ): RetirementState {
+    const session = this.sessions.get(id)
+    if (observation.kind === 'unknown' || !session?.root || session.capturePending) {
+      return { kind: 'unknown' }
+    }
+    // An exit callback is not absence evidence. Include the captured root even after noteExit,
+    // and retirement-only descendants beyond the bounded lifetime history.
+    const owned = [session.root, ...session.members.values(), ...retirementMembers]
+    return owned.some(member => sameProcess(member, observation.table.byPid.get(member.pid)))
+      ? { kind: 'active' }
+      : { kind: 'proven-empty' }
   }
   private discover(
     id: string,

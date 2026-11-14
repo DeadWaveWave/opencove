@@ -1,3 +1,4 @@
+import { waitForSessionReadRetry } from '../AgentSessionReadLifetime'
 import type { AgentProviderId } from '@shared/contracts/dto'
 import { listCodexSessionFiles, resolveCodexSessionTimestampMs } from './CodexSessionFiles'
 import {
@@ -15,20 +16,19 @@ interface LocateAgentResumeSessionInput {
   cwd: string
   startedAtMs: number
   timeoutMs?: number
+  signal?: AbortSignal
 }
 
 const POLL_INTERVAL_MS = 200
 const DEFAULT_TIMEOUT_MS = 2600
 const CODEX_CANDIDATE_WINDOW_MS = 20_000
 
-function wait(durationMs: number): Promise<void> {
-  return new Promise(resolveWait => {
-    setTimeout(resolveWait, durationMs)
-  })
-}
-
-async function findCodexResumeSessionId(cwd: string, startedAtMs: number): Promise<string | null> {
-  const files = await listCodexSessionFiles({ cwd, startedAtMs })
+async function findCodexResumeSessionId(
+  cwd: string,
+  startedAtMs: number,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const files = await listCodexSessionFiles({ cwd, startedAtMs, signal })
   return selectNearestAgentSessionId({
     candidates: files.map(meta => ({
       sessionId: meta.sessionId,
@@ -43,13 +43,15 @@ async function tryFindResumeSessionId(
   provider: AgentProviderId,
   cwd: string,
   startedAtMs: number,
+  signal?: AbortSignal,
 ): Promise<string | null> {
+  signal?.throwIfAborted()
   if (provider === 'codex') {
-    return await findCodexResumeSessionId(cwd, startedAtMs)
+    return await findCodexResumeSessionId(cwd, startedAtMs, signal)
   }
 
   if (provider === 'opencode') {
-    return await findOpenCodeResumeSessionId(cwd, startedAtMs)
+    return await findOpenCodeResumeSessionId(cwd, startedAtMs, signal)
   }
 
   if (provider === 'pi') {
@@ -68,8 +70,11 @@ async function pollResumeSessionId(
   cwd: string,
   startedAtMs: number,
   deadline: number,
+  signal?: AbortSignal,
 ): Promise<string | null> {
-  const detected = await tryFindResumeSessionId(provider, cwd, startedAtMs)
+  signal?.throwIfAborted()
+  const detected = await tryFindResumeSessionId(provider, cwd, startedAtMs, signal)
+  signal?.throwIfAborted()
   if (detected) {
     return detected
   }
@@ -78,8 +83,8 @@ async function pollResumeSessionId(
     return null
   }
 
-  await wait(POLL_INTERVAL_MS)
-  return await pollResumeSessionId(provider, cwd, startedAtMs, deadline)
+  await waitForSessionReadRetry(POLL_INTERVAL_MS, signal)
+  return await pollResumeSessionId(provider, cwd, startedAtMs, deadline, signal)
 }
 
 export async function locateAgentResumeSessionId({
@@ -87,7 +92,9 @@ export async function locateAgentResumeSessionId({
   cwd,
   startedAtMs,
   timeoutMs = DEFAULT_TIMEOUT_MS,
+  signal,
 }: LocateAgentResumeSessionInput): Promise<string | null> {
+  signal?.throwIfAborted()
   // A directory and timestamp cannot identify which Claude invocation owns a transcript.
   // Managed launches supply --session-id; SessionStart hooks identify terminal launches.
   if (provider === 'claude-code') {
@@ -95,9 +102,11 @@ export async function locateAgentResumeSessionId({
   }
 
   if (timeoutMs <= 0) {
-    return await tryFindResumeSessionId(provider, cwd, startedAtMs)
+    const detected = await tryFindResumeSessionId(provider, cwd, startedAtMs, signal)
+    signal?.throwIfAborted()
+    return detected
   }
 
   const deadline = Date.now() + timeoutMs
-  return await pollResumeSessionId(provider, cwd, startedAtMs, deadline)
+  return await pollResumeSessionId(provider, cwd, startedAtMs, deadline, signal)
 }

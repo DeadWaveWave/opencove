@@ -9,12 +9,6 @@ import { resolveAgentExecutableInvocation } from './AgentExecutableResolver'
 const CLI_TIMEOUT_MS = 1_500
 const CLI_MAX_BUFFER_BYTES = 8 * 1024 * 1024
 
-export function wait(durationMs: number): Promise<void> {
-  return new Promise(resolveWait => {
-    setTimeout(resolveWait, durationMs)
-  })
-}
-
 export async function listFiles(directory: string): Promise<string[]> {
   try {
     const entries = await fs.readdir(directory, { withFileTypes: true })
