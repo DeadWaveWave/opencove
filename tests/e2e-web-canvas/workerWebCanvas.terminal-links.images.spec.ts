@@ -26,8 +26,7 @@ test('Web PNG terminal links preview and restore URI documents without importing
   const imagePath = path.join(workspacePath, 'preview image.png')
   const uri = fileUri(imagePath)
   await writeFile(imagePath, TERMINAL_LINK_WIDE_PNG)
-  await writeAppState(
-    page.request,
+  await writeAppState(page.request, () =>
     buildAppState({
       workspacePath,
       spaces: [],

@@ -111,8 +111,7 @@ for (const nested of [false, true]) {
         rect: { x: 1120, y: 0, width: 540, height: 760 },
       },
     ]
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath,
         spaces,

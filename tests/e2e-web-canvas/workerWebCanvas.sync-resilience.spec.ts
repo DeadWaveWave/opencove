@@ -21,8 +21,7 @@ async function clickHeaderDragSurfaceByTestId(
 test.describe('Worker web canvas sync resilience', () => {
   test('does not rollback note edits when a sync update lands mid-typing', async ({ page }) => {
     const workspacePath = await createWorkspaceDir('note-no-rollback-mid-typing')
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath,
         spaces: [
@@ -81,8 +80,7 @@ test.describe('Worker web canvas sync resilience', () => {
 
   test('keeps node selection stable after a sync refresh', async ({ page }) => {
     const workspacePath = await createWorkspaceDir('selection-stable-after-refresh')
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath,
         spaces: [
@@ -140,8 +138,7 @@ test.describe('Worker web canvas sync resilience', () => {
 
   test('keeps hover cursor stable while applying frequent sync refreshes', async ({ page }) => {
     const workspacePath = await createWorkspaceDir('cursor-stable')
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath,
         spaces: [
@@ -246,8 +243,7 @@ test.describe('Worker web canvas sync resilience', () => {
 
   test('keeps hover targets stable during noop sync writes', async ({ page }) => {
     const workspacePath = await createWorkspaceDir('hover-stable-during-noop-sync-write')
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath,
         spaces: [
@@ -348,8 +344,7 @@ test.describe('Worker web canvas sync resilience', () => {
 
   test('keeps closed terminal nodes closed after a sync refresh', async ({ page }) => {
     const workspacePath = await createWorkspaceDir('terminal-close-sync')
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath,
         spaces: [
@@ -412,8 +407,7 @@ test.describe('Worker web canvas sync resilience', () => {
     const documentPath = `${workspacePath}/readme.md`
     await writeTextFile(documentPath, '# doc\n')
 
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath,
         spaces: [

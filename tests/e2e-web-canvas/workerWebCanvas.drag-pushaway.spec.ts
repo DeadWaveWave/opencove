@@ -10,8 +10,7 @@ import {
 test.describe('Worker web canvas drag projection', () => {
   test('keeps push-away projection during drag while sync refreshes apply', async ({ page }) => {
     const workspacePath = await createWorkspaceDir('drag-pushaway')
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath,
         spaces: [

@@ -56,7 +56,7 @@ test.describe('Worker web canvas view state', () => {
         },
       ],
     })
-    await writeAppState(page.request, state)
+    await writeAppState(page.request, () => state)
 
     await openAuthedCanvas(page)
     const secondContext = await browser.newContext({ baseURL: webCanvasBaseUrl })
