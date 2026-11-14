@@ -10,6 +10,10 @@ import { resolveSessionFilePath } from '../../../src/contexts/agent/infrastructu
 
 const describeOnWindows = process.platform === 'win32' ? describe : describe.skip
 
+// Since #425 a directory and a start time no longer identify which Claude invocation owns a
+// transcript, so the locator answers null for Claude on every platform (see
+// agentSessionLocator.claudeOwnership.spec.ts). The session file and the catalog still resolve
+// through the project directory encoding, and that is what these cases check on Windows.
 describeOnWindows('Claude project paths on Windows', () => {
   it('matches Claude Code drive-letter project directory encoding', async () => {
     const tempHome = await fs.mkdtemp(join(tmpdir(), 'opencove-claude-home-'))
@@ -43,7 +47,7 @@ describeOnWindows('Claude project paths on Windows', () => {
           startedAtMs,
           timeoutMs: 0,
         }),
-      ).resolves.toBe(sessionId)
+      ).resolves.toBeNull()
       await expect(
         resolveSessionFilePath({
           provider: 'claude-code',
@@ -96,7 +100,7 @@ describeOnWindows('Claude project paths on Windows', () => {
           startedAtMs,
           timeoutMs: 0,
         }),
-      ).resolves.toBe(sessionId)
+      ).resolves.toBeNull()
       await expect(
         resolveSessionFilePath({
           provider: 'claude-code',
@@ -146,7 +150,7 @@ describeOnWindows('Claude project paths on Windows', () => {
           startedAtMs,
           timeoutMs: 0,
         }),
-      ).resolves.toBe(sessionId)
+      ).resolves.toBeNull()
       await expect(
         resolveSessionFilePath({
           provider: 'claude-code',
