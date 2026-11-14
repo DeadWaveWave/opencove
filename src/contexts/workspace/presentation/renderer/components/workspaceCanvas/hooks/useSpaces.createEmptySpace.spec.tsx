@@ -34,7 +34,6 @@ function setup(invoke = vi.fn().mockResolvedValue({ mounts: [remoteMount] })) {
     spacesRef,
     onSpacesChange: vi.fn(),
     onRequestPersistFlush: vi.fn(),
-    setSpaceTargetMountPicker: vi.fn(),
     cancelSpaceRename: vi.fn(),
     onShowMessage: vi.fn(),
     resolveDefaultSpaceName: () => 'Space 1',

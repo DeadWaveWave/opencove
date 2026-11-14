@@ -1,4 +1,5 @@
 import React from 'react'
+import { useCanvasUi, useCanvasUiCommands } from '../../../store/canvasStoreContext'
 import type { WorkspaceCanvasViewProps } from '../WorkspaceCanvasView.types'
 import { NodeDeleteConfirmationWindow } from '../windows/NodeDeleteConfirmationWindow'
 import { SpaceWorktreeMismatchDropWarningWindow } from '../windows/SpaceWorktreeMismatchDropWarningWindow'
@@ -11,21 +12,13 @@ export function WorkspaceCanvasWindows({
   taskTitleProviderLabel,
   taskTitleModelLabel,
   taskTagOptions,
-  roleCreator,
-  setRoleCreator,
   closeRoleCreator,
   createRole,
-  taskEditor,
-  setTaskEditor,
   closeTaskEditor,
   generateTaskEditorTitle,
   saveTaskEdits,
-  spaceTargetMountPicker,
-  setSpaceTargetMountPicker,
   confirmSpaceTargetMountPicker,
   cancelSpaceTargetMountPicker,
-  nodeDeleteConfirmation,
-  setNodeDeleteConfirmation,
   confirmNodeDelete,
   spaceWorktreeMismatchDropWarning,
   cancelSpaceWorktreeMismatchDropWarning,
@@ -48,21 +41,13 @@ export function WorkspaceCanvasWindows({
   | 'taskTitleProviderLabel'
   | 'taskTitleModelLabel'
   | 'taskTagOptions'
-  | 'roleCreator'
-  | 'setRoleCreator'
   | 'closeRoleCreator'
   | 'createRole'
-  | 'taskEditor'
-  | 'setTaskEditor'
   | 'closeTaskEditor'
   | 'generateTaskEditorTitle'
   | 'saveTaskEdits'
-  | 'spaceTargetMountPicker'
-  | 'setSpaceTargetMountPicker'
   | 'confirmSpaceTargetMountPicker'
   | 'cancelSpaceTargetMountPicker'
-  | 'nodeDeleteConfirmation'
-  | 'setNodeDeleteConfirmation'
   | 'confirmNodeDelete'
   | 'spaceWorktreeMismatchDropWarning'
   | 'cancelSpaceWorktreeMismatchDropWarning'
@@ -81,11 +66,17 @@ export function WorkspaceCanvasWindows({
   | 'getSpaceBlockingNodes'
   | 'closeNodesById'
 >): React.JSX.Element {
+  const ui = useCanvasUiCommands()
+  const roleCreator = useCanvasUi(state => state.roleCreator)
+  const taskEditor = useCanvasUi(state => state.taskEditor)
+  const spaceTargetMountPicker = useCanvasUi(state => state.spaceTargetMountPicker)
+  const nodeDeleteConfirmation = useCanvasUi(state => state.nodeDeleteConfirmation)
+
   return (
     <>
       <RoleCreatorWindow
         roleCreator={roleCreator}
-        setRoleCreator={setRoleCreator}
+        update={recipe => ui.updateDialog('roleCreator', recipe)}
         closeRoleCreator={closeRoleCreator}
         createRole={createRole}
       />
@@ -95,7 +86,7 @@ export function WorkspaceCanvasWindows({
         taskTitleProviderLabel={taskTitleProviderLabel}
         taskTitleModelLabel={taskTitleModelLabel}
         taskTagOptions={taskTagOptions}
-        setTaskEditor={setTaskEditor}
+        update={recipe => ui.updateDialog('taskEditor', recipe)}
         closeTaskEditor={closeTaskEditor}
         generateTaskEditorTitle={generateTaskEditorTitle}
         saveTaskEdits={saveTaskEdits}
@@ -103,14 +94,14 @@ export function WorkspaceCanvasWindows({
 
       <SpaceTargetMountPickerWindow
         picker={spaceTargetMountPicker}
-        setPicker={setSpaceTargetMountPicker}
+        updatePicker={recipe => ui.updateDialog('spaceTargetMountPicker', recipe)}
         onCancel={cancelSpaceTargetMountPicker}
         onConfirm={confirmSpaceTargetMountPicker}
       />
 
       <NodeDeleteConfirmationWindow
         nodeDeleteConfirmation={nodeDeleteConfirmation}
-        setNodeDeleteConfirmation={setNodeDeleteConfirmation}
+        close={() => ui.closeDialog('nodeDeleteConfirmation')}
         confirmNodeDelete={confirmNodeDelete}
       />
 

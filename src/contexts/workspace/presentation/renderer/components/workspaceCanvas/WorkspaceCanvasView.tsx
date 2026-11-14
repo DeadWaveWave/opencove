@@ -129,8 +129,6 @@ export function WorkspaceCanvasView({
   createSpaceFromSelectedNodes,
   createChildSpaceInParent,
   createEmptySpaceAtPoint,
-  spaceTargetMountPicker,
-  setSpaceTargetMountPicker,
   confirmSpaceTargetMountPicker,
   cancelSpaceTargetMountPicker,
   clearNodeSelection,
@@ -141,17 +139,11 @@ export function WorkspaceCanvasView({
   taskTitleProviderLabel,
   taskTitleModelLabel,
   taskTagOptions,
-  roleCreator,
-  setRoleCreator,
   closeRoleCreator,
   createRole,
-  taskEditor,
-  setTaskEditor,
   closeTaskEditor,
   generateTaskEditorTitle,
   saveTaskEdits,
-  nodeDeleteConfirmation,
-  setNodeDeleteConfirmation,
   confirmNodeDelete,
   spaceWorktreeMismatchDropWarning,
   cancelSpaceWorktreeMismatchDropWarning,
@@ -409,21 +401,13 @@ export function WorkspaceCanvasView({
         taskTitleProviderLabel={taskTitleProviderLabel}
         taskTitleModelLabel={taskTitleModelLabel}
         taskTagOptions={taskTagOptions}
-        roleCreator={roleCreator}
-        setRoleCreator={setRoleCreator}
         closeRoleCreator={closeRoleCreator}
         createRole={createRole}
-        taskEditor={taskEditor}
-        setTaskEditor={setTaskEditor}
         closeTaskEditor={closeTaskEditor}
         generateTaskEditorTitle={generateTaskEditorTitle}
         saveTaskEdits={saveTaskEdits}
-        spaceTargetMountPicker={spaceTargetMountPicker}
-        setSpaceTargetMountPicker={setSpaceTargetMountPicker}
         confirmSpaceTargetMountPicker={confirmSpaceTargetMountPicker}
         cancelSpaceTargetMountPicker={cancelSpaceTargetMountPicker}
-        nodeDeleteConfirmation={nodeDeleteConfirmation}
-        setNodeDeleteConfirmation={setNodeDeleteConfirmation}
         confirmNodeDelete={confirmNodeDelete}
         spaceWorktreeMismatchDropWarning={spaceWorktreeMismatchDropWarning}
         cancelSpaceWorktreeMismatchDropWarning={cancelSpaceWorktreeMismatchDropWarning}

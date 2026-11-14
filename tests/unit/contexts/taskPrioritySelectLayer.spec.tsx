@@ -26,7 +26,7 @@ function TaskEditorHarness(): React.JSX.Element {
       taskTitleProviderLabel="Codex"
       taskTitleModelLabel="gpt-5.2"
       taskTagOptions={[]}
-      setTaskEditor={setTaskEditor}
+      update={recipe => setTaskEditor(prev => (prev ? recipe(prev) : prev))}
       closeTaskEditor={() => {}}
       generateTaskEditorTitle={async () => {}}
       saveTaskEdits={async () => {}}

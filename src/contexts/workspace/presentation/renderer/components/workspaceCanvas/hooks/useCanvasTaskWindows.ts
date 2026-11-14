@@ -60,34 +60,28 @@ export function useWorkspaceCanvasTaskWindows({
     createTaskNode,
   })
 
-  const { taskEditor, setTaskEditor, closeTaskEditor, generateTaskEditorTitle, saveTaskEdits } =
-    useWorkspaceCanvasTaskEditor({
-      nodesRef,
-      setNodes,
-      onRequestPersistFlush,
-      suggestTaskTitle,
-      taskTagOptions,
-      openTaskEditorRef: actionRefs.openTaskEditorRef,
-    })
+  const { closeTaskEditor, generateTaskEditorTitle, saveTaskEdits } = useWorkspaceCanvasTaskEditor({
+    nodesRef,
+    setNodes,
+    onRequestPersistFlush,
+    suggestTaskTitle,
+    taskTagOptions,
+    openTaskEditorRef: actionRefs.openTaskEditorRef,
+  })
 
-  const { nodeDeleteConfirmation, setNodeDeleteConfirmation, confirmNodeDelete, requestNodeClose } =
-    useWorkspaceCanvasNodeDeleteConfirmation({
-      nodesRef,
-      spacesRef,
-      closeNode,
-      requestNodeDeleteRef: actionRefs.requestNodeDeleteRef,
-    })
+  const { confirmNodeDelete, requestNodeClose } = useWorkspaceCanvasNodeDeleteConfirmation({
+    nodesRef,
+    spacesRef,
+    closeNode,
+    requestNodeDeleteRef: actionRefs.requestNodeDeleteRef,
+  })
 
   return {
     createTaskAtPoint,
     createTaskFromContextMenu,
-    taskEditor,
-    setTaskEditor,
     closeTaskEditor,
     generateTaskEditorTitle,
     saveTaskEdits,
-    nodeDeleteConfirmation,
-    setNodeDeleteConfirmation,
     confirmNodeDelete,
     requestNodeClose,
   }

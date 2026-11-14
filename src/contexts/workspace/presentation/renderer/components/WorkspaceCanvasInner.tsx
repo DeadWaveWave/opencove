@@ -432,8 +432,6 @@ export function WorkspaceCanvasInner({
         createSpaceFromSelectedNodes={spacesApi.createSpaceFromSelectedNodes}
         createChildSpaceInParent={spacesApi.createChildSpaceInParent}
         createEmptySpaceAtPoint={spacesApi.createEmptySpaceAtPoint}
-        spaceTargetMountPicker={spacesApi.spaceTargetMountPicker}
-        setSpaceTargetMountPicker={spacesApi.setSpaceTargetMountPicker}
         confirmSpaceTargetMountPicker={spacesApi.confirmSpaceTargetMountPicker}
         cancelSpaceTargetMountPicker={spacesApi.cancelSpaceTargetMountPicker}
         clearNodeSelection={clearNodeSelection}
@@ -446,13 +444,9 @@ export function WorkspaceCanvasInner({
         taskTitleProviderLabel={taskTitleProviderLabel}
         taskTitleModelLabel={taskTitleModelLabel}
         taskTagOptions={taskUi.taskTagOptions}
-        taskEditor={taskUi.taskEditor}
-        setTaskEditor={taskUi.setTaskEditor}
         closeTaskEditor={taskUi.closeTaskEditor}
         generateTaskEditorTitle={taskUi.generateTaskEditorTitle}
         saveTaskEdits={taskUi.saveTaskEdits}
-        nodeDeleteConfirmation={taskUi.nodeDeleteConfirmation}
-        setNodeDeleteConfirmation={taskUi.setNodeDeleteConfirmation}
         confirmNodeDelete={taskUi.confirmNodeDelete}
         spaceWorktreeMismatchDropWarning={spaceWorktreeMismatchDropWarning}
         cancelSpaceWorktreeMismatchDropWarning={cancelSpaceWorktreeMismatchDropWarning}

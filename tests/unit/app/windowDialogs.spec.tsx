@@ -27,7 +27,7 @@ function TaskEditorHarness() {
       taskTitleProviderLabel="Codex"
       taskTitleModelLabel="default"
       taskTagOptions={[]}
-      setTaskEditor={setTaskEditor}
+      update={recipe => setTaskEditor(prev => (prev ? recipe(prev) : prev))}
       closeTaskEditor={() => setTaskEditor(null)}
       generateTaskEditorTitle={async () => undefined}
       saveTaskEdits={async () => undefined}

@@ -14,8 +14,6 @@ type RoleViewProps = Pick<
   | 'runProjectRoleFromContextMenu'
   | 'openRoleEditor'
   | 'deleteProjectRole'
-  | 'roleCreator'
-  | 'setRoleCreator'
   | 'closeRoleCreator'
   | 'createRole'
 >
@@ -81,8 +79,6 @@ export function useWorkspaceCanvasRoleUi({
     runProjectRoleFromContextMenu: roleActions.runProjectRoleFromContextMenu,
     openRoleEditor: roleActions.openRoleEditor,
     deleteProjectRole: roleActions.deleteProjectRole,
-    roleCreator: roleActions.roleCreator,
-    setRoleCreator: roleActions.setRoleCreator,
     closeRoleCreator: roleActions.closeRoleCreator,
     createRole: roleActions.createRole,
   }

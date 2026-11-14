@@ -5,14 +5,14 @@ import type {
   StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
-import type { ShowWorkspaceCanvasMessage, SpaceVisual, SpaceTargetMountPickerState } from '../types'
+import type { ShowWorkspaceCanvasMessage, SpaceVisual } from '../types'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { CanvasLod } from '../view/canvasLod'
 import { computeSpaceRectFromNodes } from '../../../utils/spaceLayout'
 import { useWorkspaceCanvasCreateSpace } from './useSpaces.createSpace'
 import { useWorkspaceCanvasCreateChildSpace } from './useSpaces.createChildSpace'
 import { useWorkspaceCanvasSpaceFocus } from './useSpaces.focus'
-import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
+import { useCanvasUiCommands, useReadCanvasUi } from '../../../store/canvasStoreContext'
 
 interface UseWorkspaceCanvasSpacesParams {
   workspaceId: string
@@ -70,10 +70,6 @@ export function useWorkspaceCanvasSpaces({
     options?: { anchor?: { x: number; y: number } | null; nodeIds?: string[] },
   ) => string | null
   createEmptySpaceAtPoint: (point: { x: number; y: number }) => Promise<void>
-  spaceTargetMountPicker: SpaceTargetMountPickerState | null
-  setSpaceTargetMountPicker: React.Dispatch<
-    React.SetStateAction<SpaceTargetMountPickerState | null>
-  >
   confirmSpaceTargetMountPicker: () => void
   cancelSpaceTargetMountPicker: () => void
   spaceVisuals: SpaceVisual[]
@@ -84,12 +80,11 @@ export function useWorkspaceCanvasSpaces({
   focusAllInViewport: () => void
 } {
   const ui = useCanvasUiCommands()
+  const readUi = useReadCanvasUi()
 
   const [editingSpaceId, setEditingSpaceId] = useState<string | null>(null)
   const [spaceRenameDraft, setSpaceRenameDraft] = useState('')
   const spaceRenameInputRef = useRef<HTMLInputElement>(null)
-  const [spaceTargetMountPicker, setSpaceTargetMountPicker] =
-    useState<SpaceTargetMountPickerState | null>(null)
 
   useLayoutEffect(() => {
     spacesRef.current = spaces
@@ -102,7 +97,6 @@ export function useWorkspaceCanvasSpaces({
   useEffect(() => {
     setEditingSpaceId(null)
     setSpaceRenameDraft('')
-    setSpaceTargetMountPicker(null)
   }, [workspaceId])
 
   useEffect(() => {
@@ -204,7 +198,6 @@ export function useWorkspaceCanvasSpaces({
     selectedNodeIdsRef,
     onSpacesChange,
     onRequestPersistFlush,
-    setSpaceTargetMountPicker,
     cancelSpaceRename,
     onShowMessage,
     createChildSpaceInParent,
@@ -267,11 +260,11 @@ export function useWorkspaceCanvasSpaces({
   )
 
   const cancelSpaceTargetMountPicker = useCallback(() => {
-    setSpaceTargetMountPicker(null)
-  }, [])
+    ui.closeDialog('spaceTargetMountPicker')
+  }, [ui])
 
   const confirmSpaceTargetMountPicker = useCallback(() => {
-    const picker = spaceTargetMountPicker
+    const picker = readUi().spaceTargetMountPicker
     if (!picker) {
       return
     }
@@ -285,8 +278,8 @@ export function useWorkspaceCanvasSpaces({
       targetMountId: picker.selectedMountId,
       directoryPath: selectedMount?.rootPath ?? '',
     })
-    setSpaceTargetMountPicker(null)
-  }, [createSpaceWithTargetMount, spaceTargetMountPicker])
+    ui.closeDialog('spaceTargetMountPicker')
+  }, [createSpaceWithTargetMount, readUi, ui])
 
   const spaceVisuals = useMemo<SpaceVisual[]>(() => {
     return spaces
@@ -373,8 +366,6 @@ export function useWorkspaceCanvasSpaces({
     createSpaceFromSelectedNodes,
     createChildSpaceInParent,
     createEmptySpaceAtPoint,
-    spaceTargetMountPicker,
-    setSpaceTargetMountPicker,
     confirmSpaceTargetMountPicker,
     cancelSpaceTargetMountPicker,
     spaceVisuals,

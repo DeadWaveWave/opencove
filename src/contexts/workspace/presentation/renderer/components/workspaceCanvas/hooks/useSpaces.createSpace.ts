@@ -4,7 +4,7 @@ import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSe
 import type { Node, ReactFlowInstance } from '@xyflow/react'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
-import type { ShowWorkspaceCanvasMessage, SpaceTargetMountPickerState } from '../types'
+import type { ShowWorkspaceCanvasMessage } from '../types'
 import { sanitizeSpaces, validateSpaceTransfer } from '../helpers'
 import { useCreateEmptySpace } from './useSpaces.createEmptySpace'
 import { createSpaceFromSelectedNodesWithMounts } from './useSpaces.createSpaceSelection'
@@ -30,7 +30,6 @@ export function useWorkspaceCanvasCreateSpace({
   selectedNodeIdsRef,
   onSpacesChange,
   onRequestPersistFlush,
-  setSpaceTargetMountPicker,
   cancelSpaceRename,
   onShowMessage,
   createChildSpaceInParent,
@@ -45,9 +44,6 @@ export function useWorkspaceCanvasCreateSpace({
   selectedNodeIdsRef: React.MutableRefObject<string[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
-  setSpaceTargetMountPicker: React.Dispatch<
-    React.SetStateAction<SpaceTargetMountPickerState | null>
-  >
   cancelSpaceRename: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   createChildSpaceInParent: (
@@ -329,7 +325,7 @@ export function useWorkspaceCanvasCreateSpace({
       onSpacesChange(nextSpaces)
       onRequestPersistFlush?.()
       ui.closeContextMenu()
-      setSpaceTargetMountPicker(null)
+      ui.closeDialog('spaceTargetMountPicker')
       cancelSpaceRename()
     },
     [
@@ -341,7 +337,6 @@ export function useWorkspaceCanvasCreateSpace({
       resolveDefaultSpaceName,
       ui,
       setNodes,
-      setSpaceTargetMountPicker,
       spacesRef,
       workspacePath,
       t,
@@ -375,7 +370,6 @@ export function useWorkspaceCanvasCreateSpace({
       workspacePath,
       createSpace,
       ui,
-      setSpaceTargetMountPicker,
       cancelSpaceRename,
       onShowMessage,
       t,
@@ -389,7 +383,6 @@ export function useWorkspaceCanvasCreateSpace({
     reactFlow,
     selectedNodeIdsRef,
     ui,
-    setSpaceTargetMountPicker,
     spacesRef,
     t,
     workspaceId,
@@ -404,7 +397,6 @@ export function useWorkspaceCanvasCreateSpace({
     spacesRef,
     onSpacesChange,
     onRequestPersistFlush,
-    setSpaceTargetMountPicker,
     cancelSpaceRename,
     onShowMessage,
     resolveDefaultSpaceName,

@@ -1,4 +1,4 @@
-import React, { type Dispatch, type SetStateAction } from 'react'
+import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
 import type { TaskPriority } from '../../../types'
@@ -22,7 +22,7 @@ interface TaskEditorWindowProps {
   taskTitleProviderLabel: string
   taskTitleModelLabel: string
   taskTagOptions: string[]
-  setTaskEditor: Dispatch<SetStateAction<TaskEditorState | null>>
+  update: (recipe: (current: TaskEditorState) => TaskEditorState) => void
   closeTaskEditor: () => void
   generateTaskEditorTitle: () => Promise<void>
   saveTaskEdits: () => Promise<void>
@@ -33,7 +33,7 @@ export function TaskEditorWindow({
   taskTitleProviderLabel,
   taskTitleModelLabel,
   taskTagOptions,
-  setTaskEditor,
+  update,
   closeTaskEditor,
   generateTaskEditorTitle,
   saveTaskEdits,
@@ -100,16 +100,12 @@ export function TaskEditorWindow({
         }
         onChange={event => {
           const nextValue = event.target.value
-          setTaskEditor(prev =>
-            prev
-              ? {
-                  ...prev,
-                  title: nextValue,
-                  titleGeneratedInEditor: false,
-                  error: null,
-                }
-              : prev,
-          )
+          update(current => ({
+            ...current,
+            title: nextValue,
+            titleGeneratedInEditor: false,
+            error: null,
+          }))
         }}
       />
 
@@ -146,15 +142,11 @@ export function TaskEditorWindow({
         placeholder={t('taskWindow.requirementPlaceholder')}
         onChange={event => {
           const nextValue = event.target.value
-          setTaskEditor(prev =>
-            prev
-              ? {
-                  ...prev,
-                  requirement: nextValue,
-                  error: null,
-                }
-              : prev,
-          )
+          update(current => ({
+            ...current,
+            requirement: nextValue,
+            error: null,
+          }))
         }}
       />
 
@@ -169,15 +161,11 @@ export function TaskEditorWindow({
         currentRequirement={taskEditor.requirement}
         isWithinDialog
         onChangeRequirement={nextRequirement => {
-          setTaskEditor(prev =>
-            prev
-              ? {
-                  ...prev,
-                  requirement: nextRequirement,
-                  error: null,
-                }
-              : prev,
-          )
+          update(current => ({
+            ...current,
+            requirement: nextRequirement,
+            error: null,
+          }))
         }}
         testIdPrefix="task-editor"
       />
@@ -196,14 +184,10 @@ export function TaskEditorWindow({
             }))}
             onChange={nextValue => {
               const nextPriority = nextValue as TaskPriority
-              setTaskEditor(prev =>
-                prev
-                  ? {
-                      ...prev,
-                      priority: nextPriority,
-                    }
-                  : prev,
-              )
+              update(current => ({
+                ...current,
+                priority: nextPriority,
+              }))
             }}
           />
         </div>
@@ -224,17 +208,13 @@ export function TaskEditorWindow({
                   selected={taskEditor.selectedTags.includes(tag)}
                   disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
                   onSelectedChange={selected => {
-                    setTaskEditor(prev => {
-                      if (!prev) {
-                        return prev
-                      }
-
+                    update(current => {
                       const nextSelected = selected
-                        ? [...prev.selectedTags, tag]
-                        : prev.selectedTags.filter(item => item !== tag)
+                        ? [...current.selectedTags, tag]
+                        : current.selectedTags.filter(item => item !== tag)
 
                       return {
-                        ...prev,
+                        ...current,
                         selectedTags: normalizeTaskTagSelection(nextSelected, taskTagOptions),
                       }
                     })
@@ -258,7 +238,7 @@ export function TaskEditorWindow({
           checked={taskEditor.autoGenerateTitle}
           disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
           onCheckedChange={autoGenerateTitle => {
-            setTaskEditor(prev => (prev ? { ...prev, autoGenerateTitle } : prev))
+            update(current => ({ ...current, autoGenerateTitle }))
           }}
         >
           {t('taskWindow.autoGenerateWhenEmpty')}

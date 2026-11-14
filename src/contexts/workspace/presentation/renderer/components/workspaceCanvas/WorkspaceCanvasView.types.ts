@@ -17,15 +17,11 @@ import type { WorkspaceArrangeStyle } from '../../utils/workspaceArrange'
 import type { WorkspaceSnapGuide } from '../../utils/workspaceSnap'
 import type { SpaceExplorerOpenDocumentBlock } from './hooks/useSpaceExplorer.guards'
 import type {
-  NodeDeleteConfirmationState,
   SelectionDraftState,
   SpaceVisual,
   SpaceWorktreeMismatchDropWarningState,
-  SpaceTargetMountPickerState,
   SpaceWorktreeOperationPhase,
   SpaceWorktreeOperationState,
-  TaskEditorState,
-  RoleCreatorState,
   WorkspaceCanvasQuickPreviewState,
   WorkspaceCanvasProps,
 } from './types'
@@ -161,10 +157,6 @@ export interface WorkspaceCanvasViewProps {
     options?: { anchor?: { x: number; y: number } | null; nodeIds?: string[] },
   ) => string | null
   createEmptySpaceAtPoint: (point: { x: number; y: number }) => void
-  spaceTargetMountPicker: SpaceTargetMountPickerState | null
-  setSpaceTargetMountPicker: React.Dispatch<
-    React.SetStateAction<SpaceTargetMountPickerState | null>
-  >
   confirmSpaceTargetMountPicker: () => void
   cancelSpaceTargetMountPicker: () => void
   clearNodeSelection: () => void
@@ -175,19 +167,11 @@ export interface WorkspaceCanvasViewProps {
   taskTitleProviderLabel: string
   taskTitleModelLabel: string
   taskTagOptions: string[]
-  roleCreator: RoleCreatorState | null
-  setRoleCreator: React.Dispatch<React.SetStateAction<RoleCreatorState | null>>
   closeRoleCreator: () => void
   createRole: () => void
-  taskEditor: TaskEditorState | null
-  setTaskEditor: React.Dispatch<React.SetStateAction<TaskEditorState | null>>
   closeTaskEditor: () => void
   generateTaskEditorTitle: () => Promise<void>
   saveTaskEdits: () => Promise<void>
-  nodeDeleteConfirmation: NodeDeleteConfirmationState | null
-  setNodeDeleteConfirmation: React.Dispatch<
-    React.SetStateAction<NodeDeleteConfirmationState | null>
-  >
   confirmNodeDelete: () => Promise<void>
   spaceWorktreeMismatchDropWarning: SpaceWorktreeMismatchDropWarningState | null
   cancelSpaceWorktreeMismatchDropWarning: () => void
