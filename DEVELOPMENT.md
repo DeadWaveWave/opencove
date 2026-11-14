@@ -145,7 +145,7 @@
 #### 触发式合规门槛（Triggered Compliance Gates）
 
 - **Architecture**：禁止 Main / Preload / Renderer 逻辑越界；边界暴露统一走 `preload` 或契约层。
-- **Type Safety**：避免 `any`，IPC payload、跨层 DTO、边界返回值都要保持可校验、可推断。
+- **Type Safety**：避免 `any`，IPC payload、跨层 DTO、边界返回值都要保持可校验、可推断。生产代码不得使用 `@ts-expect-error`、`@ts-ignore`、`@ts-nocheck`（`pnpm lint` 会报错）：遇到类型错误就修类型。类型测试写在 spec 里，`@ts-expect-error` 后必须写明预期的错误。
 - **Security**：保持 Context Isolation；Renderer 禁止 Node Integration；能启用 Sandbox 的路径不要随意放弃。
 
 ### UI 自动化与验证（UI Automation & Verification）
