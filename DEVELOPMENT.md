@@ -93,6 +93,8 @@
 
 降低计数：删除对应的 ref、setter 参数或 workspace 写能力提及（按 #647 的 owner 设计迁移，而不是改写成计数器认不出的形式），运行 `pnpm canvas:state-ratchet`，把更新后的 `scripts/canvas-state-ratchet.json` 与代码改动放进同一个提交。增加计数不被允许：请改用 #647 描述的 owner 与命令。计数器定义见 `scripts/lib/canvas-state-ratchet.mjs`。
 
+workspace 画布文档（节点、Space、活动 Space、Space 归档记录、视口、小地图开关）的写入遵守三条规则（issue #671，#647 的 S2 切片）：提交到 store 的画布文档写入必须经过 `src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands.ts`，不要直接调用 `setWorkspaces` 或 `useAppStore.setState`；每个命令都显式给出 `workspaceId`，不依赖“当前活动的 workspace”；`setNodes` 在调用时从 store 计算，而不是从 `nodesRef` 快照计算。
+
 ### 棘轮基线守卫 (Ratchet Baseline Guard)
 
 任何以 `ratchet.json` 结尾的已跟踪文件都是棘轮基线（目前六个：架构、死代码、画布状态、兼容、UI 样式、UI 标记），形状为 `{ 规则: { 文件: 正整数 } }`。守卫保证基线本身不能在无人确认的情况下增长，计数器、检查模式和文件格式都不变。
@@ -100,7 +102,7 @@
 - **比较点**：合并基线 M（`git merge-base HEAD origin/main`；没有 `origin/main` 或浅克隆缺少它时退回 `HEAD`；没有提交时每个总数为 0）与分支头 H。比较的是每条规则的**总数**，缺失的文件或规则按 0 计；文件间移动、文件重命名不需要任何标志。
 - **更新命令**（`pnpm arch:ratchet`、`pnpm deadcode:ratchet`、`pnpm canvas:state-ratchet`、`pnpm ui:style-ratchet`、`node scripts/check-compat-expiry.mjs --update-ratchet`）都先调用 `guardRatchetUpdate`：总数相对 M 上升、或 M 上总数大于 0 的规则消失时拒绝写入（退出 1），并打印 M 的来源、先修代码的建议和需要粘贴到 PR 描述里的段落。确实要记录时，对每条受影响规则加 `--accept-rise <规则>`（可重复；点名一条没有上升也没有消失的规则同样被拒绝）。没有环境变量或配置项可以替代这个标志，`package.json` 脚本也不得带它。
 - **PR 描述**：`scripts/check-pr-template.mjs`（`pr-template-check.yml`，`pull_request` 触发）用同一函数比较 M 和 H；有上升或规则消失时，描述必须有 `## 📈 Ratchet rises` 段，每条一行：``- `基线路径` `规则` M总数 -> H总数: 类别: 理由``（消失写 `-> removed`）。类别是 `merge-skew:`（并行 PR 的合并偏差，须引用 `#N`）、`detection:`（规则检测变宽）、`new-rule:`（新规则或新棘轮）、`rename:`（规则 id 被改名、拆分或移除）、`debt:`（须引用将清除这笔债务的 issue `#N`）。检查失败时会打印可直接粘贴的段落；`pnpm ratchet:rises` 对工作区打印同样的段落。
-- **本地检查**：`node scripts/check-pr-template.mjs body.md --base origin/main --head HEAD`；既不带 `--base` 也没有 PR 事件时跳过棘轮部分。PR 描述里的 HTML 注释会先被去掉，注释里的段落不算数（GitHub 不渲染它们，合并的人看不到）。
+- **本地检查**：`node scripts/check-pr-template.mjs body.md --base origin/main --head HEAD`；既不带 `--base` 也没有 PR 事件时跳过棘轮部分。PR 描述里的 HTML 注释和围栏代码块会先被去掉，写在里面的段落不算数（GitHub 不把它们渲染成段落标题，合并的人看不到声明）。
 - **不在范围内**：`LINE_LIMIT_EXEMPTIONS`、兼容注册表的 `until`、`rules.json` 的例外和 E2E 用例预算。
 - 实现只有一处：`scripts/lib/ratchet.mjs`（总数、形状、比较、段落）与 `scripts/lib/ratchet-git.mjs`（修订、发现、`guardRatchetUpdate`）。
 

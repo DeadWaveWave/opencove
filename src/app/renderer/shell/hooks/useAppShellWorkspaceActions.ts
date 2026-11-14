@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import type { TranslateFn } from '@app/renderer/i18n'
+import { setWorkspaceActiveSpace } from '@contexts/workspace/presentation/renderer'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import type { ListMountsResult } from '@shared/contracts/dto'
 import { useAgentAttentionStore } from '../store/useAgentAttentionStore'
@@ -73,13 +74,7 @@ export function useAppShellWorkspaceActions({
     const store = useAppStore.getState()
     store.setIsSettingsOpen(false)
     store.setActiveWorkspaceId(workspaceId)
-    store.setWorkspaces(previous =>
-      previous.map(workspace =>
-        workspace.id === workspaceId && workspace.activeSpaceId !== null
-          ? { ...workspace, activeSpaceId: null }
-          : workspace,
-      ),
-    )
+    setWorkspaceActiveSpace(workspaceId, null)
     store.setFocusRequest(null)
   }, [])
 
@@ -115,18 +110,7 @@ export function useAppShellWorkspaceActions({
       return
     }
 
-    store.setWorkspaces(previous =>
-      previous.map(workspace => {
-        if (workspace.id !== workspaceId || workspace.activeSpaceId === spaceId) {
-          return workspace
-        }
-
-        return {
-          ...workspace,
-          activeSpaceId: spaceId,
-        }
-      }),
-    )
+    setWorkspaceActiveSpace(workspaceId, spaceId)
     store.setFocusRequest(prev => ({
       kind: 'space',
       workspaceId,

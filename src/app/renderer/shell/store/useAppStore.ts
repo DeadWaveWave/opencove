@@ -3,6 +3,7 @@ import { DEFAULT_AGENT_SETTINGS, type AgentSettings } from '@contexts/settings/d
 import type { ProjectIconId } from '@shared/types/projectIcon'
 import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
 import { setRootSpacePinned } from '@contexts/workspace/domain/workspaceSpacePinning'
+import { bindWorkspaceDocumentStore } from '@contexts/workspace/presentation/renderer'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import type {
   FocusRequest,
@@ -66,6 +67,11 @@ export interface AppStoreState {
     overNodeId: string,
   ) => boolean
   setProjectIconId: (workspaceId: string, iconId: ProjectIconId | null) => boolean
+  setWorkspaceWorktreesRoot: (workspaceId: string, worktreesRoot: string) => boolean
+  setWorkspaceEnvironmentVariables: (
+    workspaceId: string,
+    environmentVariables: Record<string, string>,
+  ) => boolean
   setWorkspaceSpacePinned: (workspaceId: string, spaceId: string, pinned: boolean) => boolean
 }
 
@@ -172,6 +178,38 @@ export const useAppStore = create<AppStoreState>(set => ({
     })
     return changed
   },
+  setWorkspaceWorktreesRoot: (workspaceId, worktreesRoot) => {
+    let changed = false
+    set(state => {
+      const workspaces = state.workspaces.map(workspace => {
+        if (workspace.id !== workspaceId || workspace.worktreesRoot === worktreesRoot) {
+          return workspace
+        }
+
+        changed = true
+        return { ...workspace, worktreesRoot }
+      })
+
+      return changed ? { workspaces } : state
+    })
+    return changed
+  },
+  setWorkspaceEnvironmentVariables: (workspaceId, environmentVariables) => {
+    let changed = false
+    set(state => {
+      const workspaces = state.workspaces.map(workspace => {
+        if (workspace.id !== workspaceId) {
+          return workspace
+        }
+
+        changed = true
+        return { ...workspace, environmentVariables }
+      })
+
+      return changed ? { workspaces } : state
+    })
+    return changed
+  },
   setWorkspaceSpacePinned: (workspaceId, spaceId, pinned) => {
     let changed = false
     set(state => {
@@ -194,3 +232,5 @@ export const useAppStore = create<AppStoreState>(set => ({
     return changed
   },
 }))
+
+bindWorkspaceDocumentStore(useAppStore)

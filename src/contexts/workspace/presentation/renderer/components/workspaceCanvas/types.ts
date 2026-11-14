@@ -35,11 +35,9 @@ export interface WorkspaceCanvasProps {
   environmentVariables?: Record<string, string>
   worktreesRoot: string
   nodes: Node<TerminalNodeData>[]
-  onNodesChange: (nodes: Node<TerminalNodeData>[]) => void
   onRequestPersistFlush?: () => void
   spaces: WorkspaceSpaceState[]
   activeSpaceId: string | null
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onActiveSpaceChange: (spaceId: string | null) => void
   onOpenSpaceContextMenu?: (spaceId: string, anchor: { x: number; y: number }) => void
   shortcutsEnabled?: boolean

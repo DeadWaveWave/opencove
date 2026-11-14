@@ -1,5 +1,6 @@
 import type { WorkspaceCanvasViewProps } from '../WorkspaceCanvasView.types'
 import type { WorkspaceCanvasProps } from '../types'
+import type { WorkspaceSpaceState } from '../../../types'
 import type { useWorkspaceCanvasAgentSupport } from './useCanvasAgentSupport'
 import type { useWorkspaceCanvasState } from './useCanvasState'
 import type { WorkspaceCanvasActionRefs } from './useActionRefs'
@@ -51,7 +52,7 @@ export function useWorkspaceCanvasRoleUi({
     | 'appendRoleRunRecord'
   >
   agentSupport: Pick<ReturnType<typeof useWorkspaceCanvasAgentSupport>, 'buildAgentNodeTitle'>
-  onSpacesChange: WorkspaceCanvasProps['onSpacesChange']
+  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: WorkspaceCanvasProps['onRequestPersistFlush']
   onShowMessage?: WorkspaceCanvasProps['onShowMessage']
   actionRefs: WorkspaceCanvasActionRefs

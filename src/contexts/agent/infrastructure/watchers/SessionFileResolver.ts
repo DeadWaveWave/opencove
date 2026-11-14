@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises'
+import { waitForSessionReadRetry } from '../AgentSessionReadLifetime'
 import { basename, join, resolve } from 'node:path'
 import type { AgentProviderId } from '@shared/contracts/dto'
 import { resolveHomeDirectoryCandidates } from '../../../../platform/os/HomeDirectory'
@@ -16,15 +17,11 @@ interface ResolveSessionFilePathInput {
   sessionId: string
   startedAtMs: number
   timeoutMs?: number
+  signal?: AbortSignal
 }
 
 const POLL_INTERVAL_MS = 200
 const DEFAULT_TIMEOUT_MS = 2600
-function wait(durationMs: number): Promise<void> {
-  return new Promise(resolveWait => {
-    setTimeout(resolveWait, durationMs)
-  })
-}
 
 async function listFiles(directory: string): Promise<string[]> {
   try {
@@ -81,8 +78,9 @@ async function findCodexSessionFilePath(
   cwd: string,
   sessionId: string,
   startedAtMs: number,
+  signal?: AbortSignal,
 ): Promise<string | null> {
-  const files = await listCodexSessionFiles({ cwd, sessionId, startedAtMs })
+  const files = await listCodexSessionFiles({ cwd, sessionId, startedAtMs, signal })
   const normalize = (directory: string): string => {
     const resolved = resolve(directory)
     return process.platform === 'win32' ? resolved.toLowerCase() : resolved
@@ -142,6 +140,7 @@ async function tryResolveSessionFilePath(
   cwd: string,
   sessionId: string,
   startedAtMs: number,
+  signal?: AbortSignal,
 ): Promise<string | null> {
   if (provider === 'claude-code') {
     return await findExistingClaudeSessionFilePathInGroups(
@@ -150,7 +149,7 @@ async function tryResolveSessionFilePath(
   }
 
   if (provider === 'codex') {
-    return await findCodexSessionFilePath(cwd, sessionId, startedAtMs)
+    return await findCodexSessionFilePath(cwd, sessionId, startedAtMs, signal)
   }
 
   if (provider === 'gemini') {
@@ -174,8 +173,17 @@ async function pollSessionFilePath(
   sessionId: string,
   startedAtMs: number,
   deadline: number,
+  signal?: AbortSignal,
 ): Promise<string | null> {
-  const resolvedPath = await tryResolveSessionFilePath(provider, cwd, sessionId, startedAtMs)
+  signal?.throwIfAborted()
+  const resolvedPath = await tryResolveSessionFilePath(
+    provider,
+    cwd,
+    sessionId,
+    startedAtMs,
+    signal,
+  )
+  signal?.throwIfAborted()
   if (resolvedPath) {
     return resolvedPath
   }
@@ -184,8 +192,8 @@ async function pollSessionFilePath(
     return null
   }
 
-  await wait(POLL_INTERVAL_MS)
-  return await pollSessionFilePath(provider, cwd, sessionId, startedAtMs, deadline)
+  await waitForSessionReadRetry(POLL_INTERVAL_MS, signal)
+  return await pollSessionFilePath(provider, cwd, sessionId, startedAtMs, deadline, signal)
 }
 
 export async function resolveSessionFilePath({
@@ -194,12 +202,21 @@ export async function resolveSessionFilePath({
   sessionId,
   startedAtMs,
   timeoutMs = DEFAULT_TIMEOUT_MS,
+  signal,
 }: ResolveSessionFilePathInput): Promise<string | null> {
+  signal?.throwIfAborted()
   const normalizedSessionId = sessionId.trim()
   if (normalizedSessionId.length === 0) {
     return null
   }
 
   const deadline = Date.now() + timeoutMs
-  return await pollSessionFilePath(provider, cwd, normalizedSessionId, startedAtMs, deadline)
+  return await pollSessionFilePath(
+    provider,
+    cwd,
+    normalizedSessionId,
+    startedAtMs,
+    deadline,
+    signal,
+  )
 }

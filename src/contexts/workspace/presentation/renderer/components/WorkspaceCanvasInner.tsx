@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
 import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
 import { TerminalDisplayAlignedWorkspaceCanvasView } from './workspaceCanvas/TerminalDisplayAlignedWorkspaceCanvasView'
@@ -7,6 +8,7 @@ import { useCanvasCollapse } from './workspaceCanvas/collapse/useCanvasCollapse'
 import { WorkspaceCanvasProviders } from './workspaceCanvas/WorkspaceCanvasProviders'
 import { useCanvasSpaceExplorer } from './workspaceCanvas/hooks/useCanvasSpaceExplorer'
 import { useWorkspaceCanvasActionBar } from './workspaceCanvas/hooks/useCanvasActionBarActions'
+import { replaceWorkspaceSpaces } from '../store/workspaceDocumentCommands'
 export function WorkspaceCanvasInner({
   workspaceId,
   onShowMessage,
@@ -14,11 +16,9 @@ export function WorkspaceCanvasInner({
   environmentVariables,
   worktreesRoot,
   nodes,
-  onNodesChange,
   onRequestPersistFlush,
   spaces,
   activeSpaceId,
-  onSpacesChange,
   onActiveSpaceChange,
   onOpenSpaceContextMenu,
   shortcutsEnabled = true,
@@ -47,8 +47,14 @@ export function WorkspaceCanvasInner({
   })
   const nodePublishers = workspaceCanvasHooks.useWorkspaceCanvasNodePublishers({
     ...canvasState,
-    onNodesChange,
+    workspaceId,
   })
+  const onSpacesChange = useCallback(
+    (nextSpaces: typeof spaces) => {
+      replaceWorkspaceSpaces(workspaceId, nextSpaces)
+    },
+    [workspaceId],
+  )
   // prettier-ignore
   const exclusiveNodeDragAnchorIdRef = workspaceCanvasHooks.useWorkspaceCanvasWorkspaceReset(workspaceId, canvasState.selectedNodeIds.length)
   const actionRefs = workspaceCanvasHooks.useWorkspaceCanvasActionRefs()
@@ -57,8 +63,8 @@ export function WorkspaceCanvasInner({
     workspacePath,
     nodes: canvasState.flowNodes,
     spacesRef: canvasState.spacesRef,
-    onNodesChange: nodePublishers.commitNodesChange,
-    onSpacesChange,
+    onNodesCommitted: nodePublishers.publishCommittedNodes,
+    isLiveGestureActive: nodePublishers.isLiveGestureActive,
     onRequestPersistFlush,
     onShowMessage,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,

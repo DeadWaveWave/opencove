@@ -270,7 +270,7 @@
     "src/app/renderer/shell/hooks/useWorkerSyncStateUpdates.ts": 6,
     "src/app/renderer/shell/hooks/useWorkspaceMountRepair.ts": 1,
     "src/app/renderer/shell/hooks/useWorkspaceMountSummaries.ts": 1,
-    "src/app/renderer/shell/hooks/useWorkspaceStateHandlers.ts": 4,
+    "src/app/renderer/shell/hooks/useWorkspaceStateHandlers.ts": 2,
     "src/app/renderer/shell/hooks/workerSync/acceptWorkerSyncSnapshot.ts": 6,
     "src/app/renderer/shell/hooks/workerSync/mergeWorkspaceStateForSync.equality.ts": 1,
     "src/app/renderer/shell/hooks/workerSync/mergeWorkspaceStateForSync.ts": 4,

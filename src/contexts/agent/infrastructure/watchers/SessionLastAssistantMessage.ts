@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises'
+import { waitForSessionReadRetry } from '../AgentSessionReadLifetime'
 import { resolve } from 'node:path'
 import type { AgentProviderId } from '@shared/contracts/dto'
 import { resolveOpenCodeDbPath } from '../opencode/OpenCodeDbLocator'
@@ -24,15 +25,10 @@ const OPENCODE_DB_READ_TIMEOUT_MS = 1_500
 const OPENCODE_DB_BUSY_TIMEOUT_MS = 250
 const OPENCODE_DB_RETRY_INTERVAL_MS = 100
 
-function wait(durationMs: number): Promise<void> {
-  return new Promise(resolveWait => {
-    setTimeout(resolveWait, durationMs)
-  })
-}
-
 async function readLastAssistantMessageFromStructuredSessionFile(
   provider: AgentProviderId,
   filePath: string,
+  signal?: AbortSignal,
 ): Promise<string | null> {
   const deadline = Date.now() + STRUCTURED_SESSION_READ_TIMEOUT_MS
   return await pollStructuredSessionFileRead({
@@ -40,6 +36,7 @@ async function readLastAssistantMessageFromStructuredSessionFile(
     filePath,
     deadline,
     lastError: null,
+    signal,
   })
 }
 
@@ -48,12 +45,15 @@ async function pollStructuredSessionFileRead({
   filePath,
   deadline,
   lastError,
+  signal,
 }: {
   provider: AgentProviderId
   filePath: string
   deadline: number
   lastError: unknown
+  signal?: AbortSignal
 }): Promise<string | null> {
+  signal?.throwIfAborted()
   if (Date.now() > deadline) {
     if (lastError) {
       throw lastError
@@ -63,9 +63,11 @@ async function pollStructuredSessionFileRead({
   }
 
   try {
-    const content = await fs.readFile(filePath, 'utf8')
+    const content = await fs.readFile(filePath, signal ? { encoding: 'utf8', signal } : 'utf8')
+    signal?.throwIfAborted()
     return extractLastAssistantMessageFromSessionData(provider, JSON.parse(content))
   } catch (error) {
+    signal?.throwIfAborted()
     const shouldRetryBecauseIncompleteJson = error instanceof SyntaxError
     const shouldRetryBecauseNotReady =
       error && typeof error === 'object' && (error as { code?: unknown }).code === 'ENOENT'
@@ -74,12 +76,13 @@ async function pollStructuredSessionFileRead({
       throw error
     }
 
-    await wait(STRUCTURED_SESSION_READ_RETRY_INTERVAL_MS)
+    await waitForSessionReadRetry(STRUCTURED_SESSION_READ_RETRY_INTERVAL_MS, signal)
     return await pollStructuredSessionFileRead({
       provider,
       filePath,
       deadline,
       lastError: error,
+      signal,
     })
   }
 }
@@ -87,7 +90,9 @@ async function pollStructuredSessionFileRead({
 export async function readLastAssistantMessageFromOpenCodeSession(
   sessionId: string,
   cwd: string,
+  signal?: AbortSignal,
 ): Promise<string | null> {
+  signal?.throwIfAborted()
   const normalizedSessionId = sessionId.trim()
   if (normalizedSessionId.length === 0) {
     return null
@@ -96,6 +101,7 @@ export async function readLastAssistantMessageFromOpenCodeSession(
   const resolvedCwd = resolve(cwd)
 
   const dbPath = await resolveOpenCodeDbPath()
+  signal?.throwIfAborted()
 
   if (!dbPath) {
     throw new Error('OpenCode session database not found')
@@ -108,6 +114,7 @@ export async function readLastAssistantMessageFromOpenCodeSession(
     dbPath,
     deadline,
     lastError: null,
+    signal,
   })
 }
 
@@ -117,13 +124,16 @@ async function pollOpenCodeSessionDbRead({
   dbPath,
   deadline,
   lastError,
+  signal,
 }: {
   normalizedSessionId: string
   resolvedCwd: string
   dbPath: string
   deadline: number
   lastError: unknown
+  signal?: AbortSignal
 }): Promise<string | null> {
+  signal?.throwIfAborted()
   if (Date.now() > deadline) {
     if (lastError) {
       throw lastError
@@ -136,6 +146,7 @@ async function pollOpenCodeSessionDbRead({
 
   try {
     db = await openReadOnlySqliteDb(dbPath, OPENCODE_DB_BUSY_TIMEOUT_MS)
+    signal?.throwIfAborted()
 
     const sessionTable = resolveExistingTableName(db, ['session', 'sessions'])
     const messageTable = resolveExistingTableName(db, ['message', 'messages'])
@@ -218,13 +229,14 @@ async function pollOpenCodeSessionDbRead({
 
     const assistantMessageId = typeof messageRow?.id === 'string' ? messageRow.id.trim() : ''
     if (assistantMessageId.length === 0) {
-      await wait(OPENCODE_DB_RETRY_INTERVAL_MS)
+      await waitForSessionReadRetry(OPENCODE_DB_RETRY_INTERVAL_MS, signal)
       return await pollOpenCodeSessionDbRead({
         normalizedSessionId,
         resolvedCwd,
         dbPath,
         deadline,
         lastError,
+        signal,
       })
     }
 
@@ -272,26 +284,29 @@ async function pollOpenCodeSessionDbRead({
       .filter((item): item is string => typeof item === 'string' && item.length > 0)
 
     if (blocks.length === 0) {
-      await wait(OPENCODE_DB_RETRY_INTERVAL_MS)
+      await waitForSessionReadRetry(OPENCODE_DB_RETRY_INTERVAL_MS, signal)
       return await pollOpenCodeSessionDbRead({
         normalizedSessionId,
         resolvedCwd,
         dbPath,
         deadline,
         lastError,
+        signal,
       })
     }
 
     return blocks.join('\n\n')
   } catch (error) {
+    signal?.throwIfAborted()
     if (isSqliteBusyError(error)) {
-      await wait(OPENCODE_DB_RETRY_INTERVAL_MS)
+      await waitForSessionReadRetry(OPENCODE_DB_RETRY_INTERVAL_MS, signal)
       return await pollOpenCodeSessionDbRead({
         normalizedSessionId,
         resolvedCwd,
         dbPath,
         deadline,
         lastError: error,
+        signal,
       })
     }
 
@@ -308,12 +323,15 @@ async function pollOpenCodeSessionDbRead({
 export async function readLastAssistantMessageFromSessionFile(
   provider: AgentProviderId,
   filePath: string,
+  signal?: AbortSignal,
 ): Promise<string | null> {
+  signal?.throwIfAborted()
   if (provider === 'gemini') {
-    return await readLastAssistantMessageFromStructuredSessionFile(provider, filePath)
+    return await readLastAssistantMessageFromStructuredSessionFile(provider, filePath, signal)
   }
 
-  const content = await fs.readFile(filePath, 'utf8')
+  const content = await fs.readFile(filePath, signal ? { encoding: 'utf8', signal } : 'utf8')
+  signal?.throwIfAborted()
   if (provider === 'pi') {
     return extractPiLastAssistantMessage(content)
   }

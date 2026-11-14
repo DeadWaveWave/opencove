@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
@@ -10,6 +10,10 @@ import type {
   WorkspaceViewport,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { WorkspaceCanvas } from '../../../src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
+import {
+  seedWorkspaceCanvasStore,
+  useWorkspaceCanvasStoreNodes,
+} from '../../support/workspaceCanvasStoreHarness'
 
 const SWITCH_SUMMARY: AgentSessionSummary = {
   sessionId: 'resume-target',
@@ -240,8 +244,10 @@ describe('WorkspaceCanvas agent session switch', () => {
     const spaces: WorkspaceSpaceState[] = []
     let latestNodes = createInitialNodes()
 
+    seedWorkspaceCanvasStore({ nodes: createInitialNodes() })
+
     function Harness() {
-      const [nodes, setNodes] = useState(createInitialNodes())
+      const nodes = useWorkspaceCanvasStoreNodes()
       latestNodes = nodes
 
       return (
@@ -250,11 +256,9 @@ describe('WorkspaceCanvas agent session switch', () => {
           workspacePath="/tmp/repo"
           worktreesRoot=""
           nodes={nodes}
-          onNodesChange={setNodes}
           onRequestPersistFlush={requestPersistFlush}
           spaces={spaces}
           activeSpaceId={null}
-          onSpacesChange={() => undefined}
           onActiveSpaceChange={() => undefined}
           viewport={viewport}
           isMinimapVisible={false}
@@ -338,8 +342,10 @@ describe('WorkspaceCanvas agent session switch', () => {
     const spaces: WorkspaceSpaceState[] = []
     let latestNodes = createInitialNodes()
 
+    seedWorkspaceCanvasStore({ nodes: createInitialNodes() })
+
     function Harness() {
-      const [nodes, setNodes] = useState(createInitialNodes())
+      const nodes = useWorkspaceCanvasStoreNodes()
       latestNodes = nodes
 
       return (
@@ -348,10 +354,8 @@ describe('WorkspaceCanvas agent session switch', () => {
           workspacePath="/tmp/repo"
           worktreesRoot=""
           nodes={nodes}
-          onNodesChange={setNodes}
           spaces={spaces}
           activeSpaceId={null}
-          onSpacesChange={() => undefined}
           onActiveSpaceChange={() => undefined}
           viewport={viewport}
           isMinimapVisible={false}

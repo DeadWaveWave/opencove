@@ -24,11 +24,9 @@ function WorkspaceMainComponent({
   onShowMessage,
   onRequestPersistFlush,
   onAppendSpaceArchiveRecord,
-  onNodesChange,
   onViewportChange,
   onMinimapVisibilityChange,
   onChangePreserveWindowSizesOnArrange,
-  onSpacesChange,
   onActiveSpaceChange,
   onOpenProjectContextMenu,
 }: {
@@ -43,11 +41,9 @@ function WorkspaceMainComponent({
   onShowMessage: (message: string, tone?: WorkspaceCanvasMessageTone) => void
   onRequestPersistFlush: () => void
   onAppendSpaceArchiveRecord: (record: SpaceArchiveRecord) => void
-  onNodesChange: (nodes: WorkspaceState['nodes']) => void
   onViewportChange: (viewport: WorkspaceViewport) => void
   onMinimapVisibilityChange: (isVisible: boolean) => void
   onChangePreserveWindowSizesOnArrange: (enabled: boolean) => void
-  onSpacesChange: (spaces: WorkspaceState['spaces']) => void
   onActiveSpaceChange: (spaceId: string | null) => void
   onOpenProjectContextMenu: (state: ProjectContextMenuState) => void
 }): React.JSX.Element {
@@ -88,7 +84,6 @@ function WorkspaceMainComponent({
         environmentVariables={activeWorkspace.environmentVariables}
         worktreesRoot={activeWorkspace.worktreesRoot}
         nodes={activeWorkspace.nodes}
-        onNodesChange={onNodesChange}
         onRequestPersistFlush={onRequestPersistFlush}
         onAppendSpaceArchiveRecord={onAppendSpaceArchiveRecord}
         viewport={activeWorkspace.viewport}
@@ -98,7 +93,6 @@ function WorkspaceMainComponent({
         onChangePreserveWindowSizesOnArrange={onChangePreserveWindowSizesOnArrange}
         spaces={activeWorkspace.spaces}
         activeSpaceId={activeWorkspace.activeSpaceId}
-        onSpacesChange={onSpacesChange}
         onActiveSpaceChange={onActiveSpaceChange}
         onOpenSpaceContextMenu={(spaceId, anchor) => {
           onOpenProjectContextMenu({

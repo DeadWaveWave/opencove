@@ -1,14 +1,10 @@
 import type { GeminiSessionDiscoveryCursor } from '../../application/ports/AgentSessionDiscovery'
 import fs from 'node:fs/promises'
+import { waitForSessionReadRetry } from '../AgentSessionReadLifetime'
 import { basename, join, resolve } from 'node:path'
 import { resolveHomeDirectoryCandidates } from '../../../../platform/os/HomeDirectory'
 import { normalizeAgentProjectRootPath } from '../AgentProjectRootPath'
-import {
-  listDirectories,
-  listFiles,
-  parseTimestampMs,
-  wait,
-} from './AgentSessionLocatorProviders.utils'
+import { listDirectories, listFiles, parseTimestampMs } from './AgentSessionLocatorProviders.utils'
 import { selectNearestAgentSessionId } from './AgentSessionCandidateSelector'
 
 interface GeminiSessionMeta {
@@ -268,10 +264,13 @@ async function pollGeminiResumeSessionId(
   startedAtMs: number,
   deadline: number,
   discoveryCursor: GeminiSessionDiscoveryCursor | null | undefined,
+  signal?: AbortSignal,
 ): Promise<string | null> {
+  signal?.throwIfAborted()
   const detected = await findGeminiResumeSessionId(cwd, startedAtMs, {
     discoveryCursor,
   })
+  signal?.throwIfAborted()
   if (detected) {
     return detected
   }
@@ -280,8 +279,8 @@ async function pollGeminiResumeSessionId(
     return null
   }
 
-  await wait(GEMINI_POLL_INTERVAL_MS)
-  return await pollGeminiResumeSessionId(cwd, startedAtMs, deadline, discoveryCursor)
+  await waitForSessionReadRetry(GEMINI_POLL_INTERVAL_MS, signal)
+  return await pollGeminiResumeSessionId(cwd, startedAtMs, deadline, discoveryCursor, signal)
 }
 
 export async function locateGeminiResumeSessionId({
@@ -289,12 +288,14 @@ export async function locateGeminiResumeSessionId({
   startedAtMs,
   timeoutMs,
   discoveryCursor,
+  signal,
 }: {
   cwd: string
   startedAtMs: number
   timeoutMs: number
   discoveryCursor?: GeminiSessionDiscoveryCursor | null
+  signal?: AbortSignal
 }): Promise<string | null> {
   const deadline = Date.now() + timeoutMs
-  return await pollGeminiResumeSessionId(cwd, startedAtMs, deadline, discoveryCursor)
+  return await pollGeminiResumeSessionId(cwd, startedAtMs, deadline, discoveryCursor, signal)
 }
