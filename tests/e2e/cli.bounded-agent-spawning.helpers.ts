@@ -13,7 +13,8 @@ import type {
   CanvasNodeDetailDto,
   CreateNodeResult,
 } from '../../src/shared/contracts/dto/nodeControl'
-export const projectId = 'bounded-project'
+import { projectId } from '../support/boundedSpawning'
+export { projectId }
 export async function boundedWorkspace(
   run: (fixture: Awaited<ReturnType<typeof start>>) => Promise<void>,
 ) {
@@ -158,44 +159,4 @@ export function invoke<T = unknown>(
       ? { clientFeatures: { managedClaudeResumeBindingV1: true as const } }
       : {}),
   }) as Promise<T>
-}
-export async function runtimeCounts(page: Page) {
-  return {
-    nodes: (await invoke<{ nodes: unknown[] }>(page, 'node.list', { projectId }, 'query')).nodes
-      .length,
-    sessions: (await invoke<{ sessions: unknown[] }>(page, 'session.list', null, 'query')).sessions
-      .length,
-  }
-}
-export function expectSpawnRefusal(
-  result: { code: number; stderr: string },
-  code: string,
-  exit: number,
-) {
-  expect(result.code, result.stderr).toBe(exit)
-  const error = JSON.parse(result.stderr.trim().split('\n').at(-1)!).error
-  expect(error).toMatchObject({
-    code,
-    retryable: false,
-    message: expect.any(String),
-    hint: expect.any(String),
-  })
-  return error
-}
-export async function stopAndWait(page: Page, node: { sessionId?: string | null }) {
-  await invoke(page, 'session.kill', { sessionId: node.sessionId })
-  await expect
-    .poll(
-      async () =>
-        (
-          await invoke<{ sessions: { sessionId: string; status: string }[] }>(
-            page,
-            'session.list',
-            null,
-            'query',
-          )
-        ).sessions.find(s => s.sessionId === node.sessionId)?.status,
-      { timeout: 20_000 },
-    )
-    .toBe('exited')
 }
