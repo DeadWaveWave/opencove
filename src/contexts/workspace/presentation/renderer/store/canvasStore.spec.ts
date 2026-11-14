@@ -88,17 +88,23 @@ describe('canvas store', () => {
     expect(api.getState().ui).toEqual({ contextMenu: null, spaceActionMenu: null })
   })
 
-  it('keeps command and api identity stable', () => {
+  it('keeps command and api identity stable across state changes', () => {
     const store = createCanvasStore()
     const { api, commands } = store
+    const openContextMenu = commands.ui.openContextMenu
+    const closeMenus = commands.ui.closeMenus
+    const stateBefore = api.getState()
 
     commands.ui.openContextMenu(paneMenu)
+    commands.ui.openSpaceActionMenu(spaceMenu)
+    commands.ui.closeMenus()
 
+    expect(api.getState()).not.toBe(stateBefore)
     expect(store.api).toBe(api)
     expect(store.commands).toBe(commands)
-    expect(store.commands.ui).toBe(commands.ui)
-    expect(store.commands.ui.openContextMenu).toBe(commands.ui.openContextMenu)
-    expect(store.commands.ui.closeMenus).toBe(commands.ui.closeMenus)
+    expect(store.commands.ui.openContextMenu).toBe(openContextMenu)
+    expect(store.commands.ui.closeMenus).toBe(closeMenus)
+    expect(api.getInitialState()).toBe(stateBefore)
   })
 
   it('gives each store its own state', () => {
