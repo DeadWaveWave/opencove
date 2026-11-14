@@ -245,7 +245,27 @@ function Assert-OpenCoveArchiveChecksum([string]$Path, [string]$AssetName) {
   $script:VerifiedArtifactDigest = $actual
 }
 
-# Shared lease protocol: mtime older than 120 seconds expires; exclusive-create retry once.
+# Shared lease protocol: mtime older than 120s expires; elect via .reclaim, recheck, create once.
+function Get-LauncherBusyMessage([string]$LockPath) {
+  $ownerPid = 'unknown'; $age = 'unknown'
+  try {
+    $age = "$([Math]::Floor([Math]::Max(0, ([DateTime]::UtcNow - (Get-Item -LiteralPath $LockPath).LastWriteTimeUtc).TotalSeconds)))s"
+    $ownerPid = (Get-Content -LiteralPath $LockPath -Raw | ConvertFrom-Json).pid
+  } catch {}
+  return "Launcher publication busy or inaccessible: $LockPath; owner pid=$ownerPid, age=$age"
+}
+
+function New-LauncherLockOrBusy([string]$LockPath) {
+  try {
+    return [IO.File]::Open($LockPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
+  } catch {
+    $cause = $_.Exception
+    if ($cause.InnerException) { $cause = $cause.InnerException }
+    if (($cause.HResult -band 0xffff) -notin @(80, 183)) { throw }
+    throw (Get-LauncherBusyMessage $LockPath)
+  }
+}
+
 function Open-LauncherLock([string]$LockPath) {
   try {
     return [IO.File]::Open($LockPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
@@ -258,27 +278,34 @@ function Open-LauncherLock([string]$LockPath) {
       $mtime = $observed.LastWriteTimeUtc
       $age = [Math]::Max(0, ([DateTime]::UtcNow - $mtime).TotalSeconds)
       if ($age -le 120) {
-        $ownerPid = 'unknown'
-        try { $ownerPid = (Get-Content -LiteralPath $LockPath -Raw | ConvertFrom-Json).pid } catch {}
-        throw "Launcher publication busy or inaccessible: $LockPath; owner pid=$ownerPid, age=$([Math]::Floor($age))s"
+        throw (Get-LauncherBusyMessage $LockPath)
       }
-      $current = Get-Item -LiteralPath $LockPath -ErrorAction Stop
-      if ($current.LastWriteTimeUtc -eq $mtime -and $current.CreationTimeUtc -eq $observed.CreationTimeUtc) {
-        [IO.File]::Delete($LockPath)
+      $claimPath = "$LockPath.reclaim"
+      $claimOwner = @{ pid = $PID; hostname = [Net.Dns]::GetHostName(); createdAt = [DateTime]::UtcNow.ToString('o'); token = [Guid]::NewGuid().ToString() } | ConvertTo-Json -Compress
+      $claim = Open-LauncherLock $claimPath
+      try {
+        $claimBytes = [Text.Encoding]::UTF8.GetBytes($claimOwner)
+        $claim.Write($claimBytes, 0, $claimBytes.Length)
+        $claim.Flush()
+        try {
+          $current = Get-Item -LiteralPath $LockPath -ErrorAction Stop
+          if ($current.LastWriteTimeUtc -eq $mtime -and $current.CreationTimeUtc -eq $observed.CreationTimeUtc) {
+            [IO.File]::Delete($LockPath)
+          }
+        } catch [System.Management.Automation.ItemNotFoundException] {
+          # The old publisher released while this contender acquired the claim.
+        }
+        return New-LauncherLockOrBusy $LockPath
+      } finally {
+        $claim.Dispose()
+        if ([IO.File]::Exists($claimPath) -and [IO.File]::ReadAllText($claimPath) -eq $claimOwner) {
+          [IO.File]::Delete($claimPath)
+        }
       }
     } catch [System.Management.Automation.ItemNotFoundException] {
       # Another contender removed the expired lock; still only one create retry.
     }
-    try {
-      return [IO.File]::Open($LockPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
-    } catch {
-      $ownerPid = 'unknown'; $age = 'unknown'
-      try {
-        $age = "$([Math]::Floor([Math]::Max(0, ([DateTime]::UtcNow - (Get-Item -LiteralPath $LockPath).LastWriteTimeUtc).TotalSeconds)))s"
-        $ownerPid = (Get-Content -LiteralPath $LockPath -Raw | ConvertFrom-Json).pid
-      } catch {}
-      throw "Launcher publication busy or inaccessible: $LockPath; owner pid=$ownerPid, age=$age"
-    }
+    return New-LauncherLockOrBusy $LockPath
   }
 }
 
