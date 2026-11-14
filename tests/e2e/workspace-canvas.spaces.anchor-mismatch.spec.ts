@@ -10,7 +10,7 @@ import {
 import { openPaneContextMenuInSpace } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
-  test.skip('creates new tasks in the space under the cursor (right-click anchor)', async () => {
+  test('creates new tasks in the space under the cursor (right-click anchor)', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -60,51 +60,59 @@ test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
       await expect(window.locator('[data-testid="workspace-context-new-task"]')).toBeVisible()
       await window.locator('[data-testid="workspace-context-new-task"]').click()
 
-      await expect(window.locator('[data-testid="workspace-task-creator"]')).toBeVisible()
-      await window.locator('[data-testid="workspace-task-advanced-toggle"]').click()
-      await window.locator('[data-testid="workspace-task-title"]').fill('Anchored Task')
-      await window
-        .locator('[data-testid="workspace-task-requirement"]')
-        .fill('Created inside space anchor')
-      await window.locator('[data-testid="workspace-task-create-submit"]').click()
+      const requirementText = 'Created inside space anchor'
+      const createdTaskNode = window.locator(
+        '.react-flow__node:not([data-id="space-anchor-placeholder"]) .task-node',
+      )
+      await expect(createdTaskNode).toHaveCount(1)
+      const requirementInput = createdTaskNode.locator(
+        '[data-testid="task-node-inline-requirement-input"]',
+      )
+      await requirementInput.fill(requirementText)
+      await requirementInput.blur()
 
       await expect(window.locator('.task-node')).toHaveCount(2)
 
-      const belongs = await window.evaluate(
-        async ({ key, spaceId }) => {
-          void key
+      await expect
+        .poll(async () => {
+          return await window.evaluate(
+            async ({ key, spaceId, requirement }) => {
+              void key
 
-          const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
-          if (!raw) {
-            return null
-          }
+              const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+              if (!raw) {
+                return null
+              }
 
-          const parsed = JSON.parse(raw) as {
-            workspaces?: Array<{
-              nodes?: Array<{ id?: string; kind?: string; task?: { requirement?: string } | null }>
-              spaces?: Array<{ id?: string; nodeIds?: string[] }>
-            }>
-          }
+              const parsed = JSON.parse(raw) as {
+                workspaces?: Array<{
+                  nodes?: Array<{
+                    id?: string
+                    kind?: string
+                    task?: { requirement?: string } | null
+                  }>
+                  spaces?: Array<{ id?: string; nodeIds?: string[] }>
+                }>
+              }
 
-          const workspace = parsed.workspaces?.[0]
-          if (!workspace) {
-            return null
-          }
+              const workspace = parsed.workspaces?.[0]
+              if (!workspace) {
+                return null
+              }
 
-          const createdTask = (workspace.nodes ?? []).find(
-            node =>
-              node.kind === 'task' && node.task?.requirement === 'Created inside space anchor',
+              const createdTask = (workspace.nodes ?? []).find(
+                node => node.kind === 'task' && node.task?.requirement === requirement,
+              )
+              const space = (workspace.spaces ?? []).find(item => item.id === spaceId)
+
+              return createdTask?.id && Array.isArray(space?.nodeIds)
+                ? space.nodeIds.includes(createdTask.id)
+                : null
+            },
+            { key: storageKey, spaceId: 'space-anchor', requirement: requirementText },
           )
-          const space = (workspace.spaces ?? []).find(item => item.id === spaceId)
-
-          return createdTask?.id && Array.isArray(space?.nodeIds)
-            ? space?.nodeIds.includes(createdTask.id)
-            : null
-        },
-        { key: storageKey, spaceId: 'space-anchor' },
-      )
-
-      expect(belongs).toBe(true)
+        })
+        .toBe(true)
     } finally {
       await electronApp.close()
     }
