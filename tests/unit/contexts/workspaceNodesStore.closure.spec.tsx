@@ -6,6 +6,10 @@ import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/pr
 import { useWorkspaceCanvasNodeDeleteConfirmation } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDeleteConfirmation'
 import { subscribeWorkspaceNodesClosed } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeClosureEvents'
 import { pixelNode } from './workspacePixelLayer.fixtures'
+import {
+  seedWorkspaceCanvasStore,
+  useWorkspaceCanvasStoreNodes,
+} from '../../support/workspaceCanvasStoreHarness'
 
 const mocks = vi.hoisted(() => ({ cleanup: vi.fn() }))
 vi.mock('../../../src/contexts/workspace/presentation/renderer/utils/nodeRuntimeCleanup', () => ({
@@ -14,17 +18,20 @@ vi.mock('../../../src/contexts/workspace/presentation/renderer/utils/nodeRuntime
 
 function renderStore(
   nodes = [pixelNode()],
-  onNodesChange = vi.fn(),
+  onNodesCommitted = vi.fn(),
   onRequestPersistFlush = vi.fn(),
 ) {
   const requestNodeDeleteRef = { current: (_nodeIds: string[]) => undefined }
+  seedWorkspaceCanvasStore({ nodes })
   return renderHook(
-    ({ currentNodes }) => {
+    () => {
       const store = useWorkspaceCanvasNodesStore({
-        nodes: currentNodes,
+        workspaceId: 'workspace-1',
+        workspacePath: '',
+        nodes: useWorkspaceCanvasStoreNodes(),
         spacesRef: { current: [] },
-        onNodesChange,
-        onSpacesChange: vi.fn(),
+        onNodesCommitted,
+        isLiveGestureActive: () => false,
         onRequestPersistFlush,
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
@@ -38,7 +45,6 @@ function renderStore(
       return { ...store, confirmation, requestNodeDeleteRef }
     },
     {
-      initialProps: { currentNodes: nodes },
       wrapper: ({ children }): React.JSX.Element => (
         <ReactFlowProvider>{children}</ReactFlowProvider>
       ),
@@ -159,7 +165,7 @@ describe('node store successful closure', () => {
     const closed = vi.fn()
     unsubscribe = subscribeWorkspaceNodesClosed(closed)
     const closing = view.result.current.closeNode('terminal-1')
-    view.rerender({ currentNodes: [] })
+    act(() => seedWorkspaceCanvasStore({ nodes: [] }))
     expect(closed).not.toHaveBeenCalled()
     await act(async () => {
       release()
@@ -178,7 +184,7 @@ describe('node store successful closure', () => {
     expect(view.result.current.confirmation.nodeDeleteConfirmation).not.toBeNull()
     act(() => view.result.current.confirmation.setNodeDeleteConfirmation(null))
     await act(() => view.result.current.confirmation.confirmNodeDelete())
-    view.rerender({ currentNodes: [] })
+    act(() => seedWorkspaceCanvasStore({ nodes: [] }))
     expect(closed).not.toHaveBeenCalled()
   })
 })

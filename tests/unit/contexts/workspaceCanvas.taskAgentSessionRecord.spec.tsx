@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
@@ -9,6 +9,10 @@ import type {
   WorkspaceViewport,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { WorkspaceCanvas } from '../../../src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
+import {
+  seedWorkspaceCanvasStore,
+  useWorkspaceCanvasStoreNodes,
+} from '../../support/workspaceCanvasStoreHarness'
 
 vi.mock('@xyflow/react', () => {
   let currentNodes: Array<{ id: string; type: string; data: unknown }> = []
@@ -206,8 +210,10 @@ describe('WorkspaceCanvas task agent session record', () => {
     const spaces: WorkspaceSpaceState[] = []
     let latestNodes = initialNodes
 
+    seedWorkspaceCanvasStore({ nodes: initialNodes })
+
     function Harness() {
-      const [nodes, setNodes] = useState(initialNodes)
+      const nodes = useWorkspaceCanvasStoreNodes()
       latestNodes = nodes
 
       return (
@@ -216,10 +222,8 @@ describe('WorkspaceCanvas task agent session record', () => {
           workspacePath="/tmp/repo"
           worktreesRoot=""
           nodes={nodes}
-          onNodesChange={setNodes}
           spaces={spaces}
           activeSpaceId={null}
-          onSpacesChange={() => undefined}
           onActiveSpaceChange={() => undefined}
           viewport={viewport}
           isMinimapVisible={false}

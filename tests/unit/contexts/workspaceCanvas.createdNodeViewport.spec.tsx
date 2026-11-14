@@ -1,12 +1,12 @@
 import { act, renderHook } from '@testing-library/react'
-import { useRef, useState } from 'react'
-import type { Node } from '@xyflow/react'
+import { useRef } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
-import type {
-  TerminalNodeData,
-  WorkspaceSpaceState,
-} from '../../../src/contexts/workspace/presentation/renderer/types'
+import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
+import {
+  seedWorkspaceCanvasStore,
+  useWorkspaceCanvasStoreNodes,
+} from '../../support/workspaceCanvasStoreHarness'
 import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
 
 const { currentFlow } = vi.hoisted(() => ({
@@ -20,13 +20,15 @@ vi.mock('@xyflow/react', async importOriginal => ({
 afterEach(() => vi.useRealTimers())
 
 function renderNodesStore() {
+  seedWorkspaceCanvasStore()
   return renderHook(() => {
-    const [nodes, setNodes] = useState<Node<TerminalNodeData>[]>([])
     return useWorkspaceCanvasNodesStore({
-      nodes,
+      workspaceId: 'workspace-1',
+      workspacePath: '',
+      nodes: useWorkspaceCanvasStoreNodes(),
       spacesRef: useRef<WorkspaceSpaceState[]>([]),
-      onNodesChange: setNodes,
-      onSpacesChange: vi.fn(),
+      onNodesCommitted: vi.fn(),
+      isLiveGestureActive: () => false,
       standardWindowSizeBucket: DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,
       browserDefaultMode: DEFAULT_AGENT_SETTINGS.browserDefaultMode,
     })

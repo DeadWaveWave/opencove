@@ -47,10 +47,8 @@ describe('WorkspaceMain memoization', () => {
     const onShowMessage = vi.fn()
     const onRequestPersistFlush = vi.fn()
     const onAppendSpaceArchiveRecord = vi.fn()
-    const onNodesChange = vi.fn()
     const onViewportChange = vi.fn()
     const onMinimapVisibilityChange = vi.fn()
-    const onSpacesChange = vi.fn()
     const onActiveSpaceChange = vi.fn()
 
     const props = {
@@ -63,10 +61,8 @@ describe('WorkspaceMain memoization', () => {
       onShowMessage,
       onRequestPersistFlush,
       onAppendSpaceArchiveRecord,
-      onNodesChange,
       onViewportChange,
       onMinimapVisibilityChange,
-      onSpacesChange,
       onActiveSpaceChange,
     }
 

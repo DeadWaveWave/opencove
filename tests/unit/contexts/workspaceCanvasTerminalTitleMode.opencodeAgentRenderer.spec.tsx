@@ -9,6 +9,7 @@ import type {
   WorkspaceViewport,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { WorkspaceCanvas } from '../../../src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
+import { seedWorkspaceCanvasStore } from '../../support/workspaceCanvasStoreHarness'
 
 vi.mock('@xyflow/react', () => {
   let currentNodes: Array<{ id: string; type: string; data: unknown }> = []
@@ -188,16 +189,20 @@ describe('WorkspaceCanvas terminal title mode (OpenCode agent renderer)', () => 
     const viewport: WorkspaceViewport = { x: 0, y: 0, zoom: 1 }
     const spaces: WorkspaceSpaceState[] = []
 
+    seedWorkspaceCanvasStore({
+      workspaceId: 'workspace-opencode-theme',
+      nodes: initialNodes,
+      spaces,
+    })
+
     render(
       <WorkspaceCanvas
         workspaceId="workspace-opencode-theme"
         workspacePath="/tmp"
         worktreesRoot=""
         nodes={initialNodes}
-        onNodesChange={() => undefined}
         spaces={spaces}
         activeSpaceId={null}
-        onSpacesChange={() => undefined}
         onActiveSpaceChange={() => undefined}
         viewport={viewport}
         isMinimapVisible={false}

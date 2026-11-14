@@ -251,10 +251,8 @@ export default function App(): React.JSX.Element {
   }
 
   const {
-    handleWorkspaceNodesChange,
     handleWorkspaceViewportChange,
     handleWorkspaceMinimapVisibilityChange,
-    handleWorkspaceSpacesChange,
     handleWorkspaceActiveSpaceChange,
     handleWorkspaceSpaceArchiveRecordAppend,
     handleWorkspaceSpaceArchiveRecordRemove,
@@ -360,11 +358,9 @@ export default function App(): React.JSX.Element {
             onShowMessage={handleShowMessage}
             onRequestPersistFlush={requestPersistFlush}
             onAppendSpaceArchiveRecord={handleWorkspaceSpaceArchiveRecordAppend}
-            onNodesChange={handleWorkspaceNodesChange}
             onViewportChange={handleWorkspaceViewportChange}
             onMinimapVisibilityChange={handleWorkspaceMinimapVisibilityChange}
             onChangePreserveWindowSizesOnArrange={handleChangePreserveWindowSizesOnArrange}
-            onSpacesChange={handleWorkspaceSpacesChange}
             onActiveSpaceChange={handleWorkspaceActiveSpaceChange}
             onOpenProjectContextMenu={setProjectContextMenu}
           />
