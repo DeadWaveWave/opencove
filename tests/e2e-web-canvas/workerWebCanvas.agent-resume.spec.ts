@@ -4,6 +4,7 @@ import {
   createWorkspaceDir,
   openAuthedCanvas,
   readSharedState,
+  terminalTranscript,
   writeAppState,
 } from './helpers'
 
@@ -40,30 +41,24 @@ test.describe('Worker web canvas agent resume', () => {
       }),
     )
 
-    await openAuthedCanvas(page)
+    await openAuthedCanvas(page, '/?opencoveTerminalTestApi=1')
 
     const pane = page.locator('.workspace-canvas .react-flow__pane')
     await expect(pane).toBeVisible()
     await pane.click({ button: 'right', position: { x: 320, y: 220 } })
     await page.locator('[data-testid="workspace-context-new-task"]').click()
 
-    const taskCreator = page.locator('[data-testid="workspace-task-creator"]')
-    await expect(taskCreator).toBeVisible()
-
-    await page
-      .locator('[data-testid="workspace-task-requirement"]')
-      .fill('Verify remote agent resume flow')
-
-    await page.locator('[data-testid="workspace-task-create-submit"]').click()
-
     const taskNode = page.locator('.task-node').first()
     await expect(taskNode).toBeVisible()
+    const requirementInput = taskNode.locator('[data-testid="task-node-inline-requirement-input"]')
+    await requirementInput.fill('Verify remote agent resume flow')
+    await requirementInput.blur()
     await taskNode.locator('[data-testid="task-node-run-agent"]').click()
 
     const agentTerminal = page.locator('.terminal-node').first()
     await expect(agentTerminal).toBeVisible()
     await expect(agentTerminal.locator('.xterm')).toBeVisible()
-    await expect(agentTerminal).toContainText('[opencove-test-agent] codex new')
+    await expect(terminalTranscript(agentTerminal)).toContainText('[opencove-test-agent] codex new')
 
     await expect
       .poll(
@@ -148,6 +143,8 @@ test.describe('Worker web canvas agent resume', () => {
     const resumedTerminal = page.locator('.terminal-node').first()
     await expect(resumedTerminal).toBeVisible()
     await expect(resumedTerminal.locator('.xterm')).toBeVisible()
-    await expect(resumedTerminal).toContainText('[opencove-test-agent] codex resume')
+    await expect(terminalTranscript(resumedTerminal)).toContainText(
+      '[opencove-test-agent] codex resume',
+    )
   })
 })

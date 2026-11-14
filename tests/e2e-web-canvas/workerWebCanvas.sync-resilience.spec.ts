@@ -181,6 +181,18 @@ test.describe('Worker web canvas sync resilience', () => {
     const hoverY = headerBox!.y + headerBox!.height / 2
     await page.mouse.move(hoverX, hoverY)
 
+    // The cursor under the pointer is whatever the product deliberately shows there
+    // (e.g. the text cursor on the title). The test is about it not changing during syncs.
+    const baselineCursor = await page.evaluate(
+      ({ x, y }) => {
+        const el = document.elementFromPoint(x, y) as HTMLElement | null
+        return el ? window.getComputedStyle(el).cursor : 'none'
+      },
+      { x: hoverX, y: hoverY },
+    )
+    expect(baselineCursor).not.toBe('none')
+    expect(baselineCursor).not.toBe('')
+
     const refreshStorm = (async () => {
       const createNotes = async (index: number): Promise<void> => {
         if (index >= 18) {
@@ -238,7 +250,7 @@ test.describe('Worker web canvas sync resilience', () => {
     expect(maxTop - minTop).toBeLessThanOrEqual(0.5)
 
     const uniqueCursors = [...new Set(cursorSamples.map(sample => sample.cursor))]
-    expect(uniqueCursors).toEqual(['grab'])
+    expect(uniqueCursors).toEqual([baselineCursor])
   })
 
   test('keeps hover targets stable during noop sync writes', async ({ page }) => {

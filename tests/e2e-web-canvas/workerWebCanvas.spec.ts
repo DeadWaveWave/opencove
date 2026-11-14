@@ -4,6 +4,7 @@ import {
   createWorkspaceDir,
   openAuthedCanvas,
   readSharedState,
+  terminalTranscript,
   webCanvasBaseUrl,
   writeAppState,
   invokeValue,
@@ -411,7 +412,7 @@ test.describe('Worker web canvas', () => {
       }),
     )
 
-    await openAuthedCanvas(page)
+    await openAuthedCanvas(page, '/?opencoveTerminalTestApi=1')
 
     const pane = page.locator('.workspace-canvas .react-flow__pane')
     await expect(pane).toBeVisible()
@@ -424,7 +425,7 @@ test.describe('Worker web canvas', () => {
     const terminal = page.locator('.terminal-node').first()
     await expect(terminal).toBeVisible()
     await expect(terminal.locator('.xterm')).toBeVisible()
-    await expect(terminal).toContainText('[opencove-test-agent] codex new')
+    await expect(terminalTranscript(terminal)).toContainText('[opencove-test-agent] codex new')
     await expect(terminal).toContainText('gpt-5.2-codex')
   })
 })
