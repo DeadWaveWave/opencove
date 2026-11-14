@@ -17,7 +17,6 @@ export class PtyStreamRecoveryOperationTracker {
       const observedSessions = [...sessions.values()]
       const observedChains = observedSessions.map(session => session.operationChain)
       const observedOperations = [...this.inFlight]
-      // eslint-disable-next-line no-await-in-loop
       await Promise.allSettled([...observedChains, ...observedOperations])
       const stable =
         this.inFlight.size === 0 &&

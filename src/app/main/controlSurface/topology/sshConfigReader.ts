@@ -78,10 +78,8 @@ async function expandFile(
     }
 
     for (const includePattern of includePatterns) {
-      // eslint-disable-next-line no-await-in-loop -- bounded sequential expansion preserves OpenSSH Include order
       const matches = await resolveIncludePaths(includePattern, context)
       for (const matchedPath of matches) {
-        // eslint-disable-next-line no-await-in-loop -- sequential reads avoid a user-controlled 256-way IO burst
         appendLines(expanded, await expandFile(matchedPath, context, nextStack))
       }
     }

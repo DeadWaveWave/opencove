@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable no-await-in-loop -- profiling compares real Desktop/Web UI clients sequentially */
 
 import { _electron as electron, chromium } from '@playwright/test'
 import { spawn } from 'node:child_process'

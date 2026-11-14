@@ -14,7 +14,7 @@ import type {
   SpawnTerminalResult,
 } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
-import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
+import { toFileUri } from '../../../../contexts/filesystem/domain'
 import { resolveDefaultShell } from '../../../../platform/process/pty/defaultShell'
 import type { NodeControlRuntimeDeps } from '../../../../contexts/workspace/application/nodeControl/nodeControlUseCases'
 import {

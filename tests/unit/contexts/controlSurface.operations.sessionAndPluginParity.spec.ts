@@ -1,3 +1,4 @@
+// @compat-file control-surface-legacy-validation
 import { normalizeTerminalAgentActivityList } from '../../support/controlSurfaceLegacyOracles/terminalAgentActivityHandlers'
 import { registerPluginDistributionHandlers } from '../../../src/app/main/controlSurface/handlers/pluginDistributionHandlers'
 import { normalizeListSessionsPayload } from '../../support/controlSurfaceLegacyOracles/agentIpcValidation'

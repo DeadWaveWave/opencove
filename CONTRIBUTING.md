@@ -75,7 +75,7 @@ Before submitting a Pull Request, you must ensure your code meets our quality ba
 To get your PR merged quickly, your contribution must reflect the values detailed in `DEVELOPMENT.md`:
 
 1. **Zero Failing CI**: Your PR **MUST pass all CI checks** on its final revision. The local quick gate does not replace full CI. We do not merge code with failing tests, type errors, or lint warnings.
-2. **Lock Behavior with Tests**: Every meaningful code change (especially bug fixes and new features) **MUST** include corresponding tests to lock down the behavior. Do not just fix the bug; write the test that proves the bug can never return.
+2. **Lock Behavior Down**: Every meaningful code change **MUST** lock down its behavior. New features need tests. A bug fix leaves the strongest asset that fits, in this order: a type or structure that makes the mistake impossible to write, a mechanical check, a runtime assertion, a scenario test (see `DEVELOPMENT.md`). Do not just fix the bug; make it unable to return.
 3. **Respect State Ownership**: If your PR touches persistence, IPC boundary, or recovery state, explicitly document who the "owner" of that state is. Multiple writers to the same source of truth will be rejected.
 4. **Clean Architecture**: Never mix IO/IPC concerns with UI rendering. Keep the `Main`, `Preload`, and `Renderer` boundaries mathematically clean.
 

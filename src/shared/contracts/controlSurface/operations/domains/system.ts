@@ -2,6 +2,7 @@ import * as z from 'zod'
 import { normalizeSystemCapabilities, normalizeSystemPing } from '../systemHandlersNormalize'
 import { defineLegacyOperation, defineOperation } from '../defineOperation'
 export const systemCapabilitiesOperation = defineOperation({
+  // @compat control-surface-legacy-validation
   input: z
     .unknown()
     .describe(
@@ -16,6 +17,7 @@ export const systemCapabilitiesOperation = defineOperation({
   summary: 'Get protocol features, build identity and runtime readiness',
 })
 export const systemHomeDirectoryOperation = defineLegacyOperation({
+  compat: 'control-surface-legacy-validation',
   id: 'system.homeDirectory',
   kind: 'query',
   scope: 'read',
@@ -23,6 +25,7 @@ export const systemHomeDirectoryOperation = defineLegacyOperation({
   summary: 'Get the Worker home directory, hostname and platform',
 })
 export const systemPingOperation = defineOperation({
+  // @compat control-surface-legacy-validation
   input: z
     .unknown()
     .describe(

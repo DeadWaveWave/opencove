@@ -52,7 +52,6 @@ export async function githubJson(
   try {
     while (true) {
       // Stream reads are sequential so the byte budget is enforced before reading more.
-      // eslint-disable-next-line no-await-in-loop
       const chunk = await reader.read()
       if (chunk.done) {
         break

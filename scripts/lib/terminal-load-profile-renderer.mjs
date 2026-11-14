@@ -1,5 +1,3 @@
-/* eslint-disable no-await-in-loop -- interaction probe intentionally moves the pointer over time */
-
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }

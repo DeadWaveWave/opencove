@@ -1,19 +1,10 @@
+import type { PersistedWorkspaceNodeKind } from '../../../shared/contracts/persistedAppState'
 import { NODE_MAX_SIZE_BY_KIND, NODE_MIN_SIZE_BY_KIND } from '../../../shared/types/nodeSizeLimits'
 import type { AgentProvider, StandardWindowSizeBucket } from '../../settings/domain/agentSettings'
 
 export type WorkspaceCanonicalSizeBucket = StandardWindowSizeBucket
 
-export type WorkspaceNodeKind =
-  | 'terminal'
-  | 'agent'
-  | 'task'
-  | 'note'
-  | 'role'
-  | 'image'
-  | 'document'
-  | 'folder'
-  | 'website'
-  | 'plugin'
+export type WorkspaceNodeKind = PersistedWorkspaceNodeKind
 
 export interface Size {
   width: number

@@ -1,4 +1,4 @@
-import { fromFileUri } from '@contexts/filesystem/domain/fileUri'
+import { fromFileUri } from '@contexts/filesystem/domain'
 import type { FileSystemStat, ResolveMountTargetResult } from '@shared/contracts/dto'
 
 export interface SystemFileReference {

@@ -17,6 +17,7 @@ export interface SidebarViewSettings {
   hiddenAgentIds: Record<string, boolean>
   /** Agents explicitly pinned for Focus mode, scoped by workspace id. */
   pinnedAgentIds?: Record<string, boolean>
+  // @compat settings-legacy-fields
   /** Optional for backwards compatibility with settings written before the toggle existed. */
   mode?: SidebarViewMode
   filters: SidebarViewFilters

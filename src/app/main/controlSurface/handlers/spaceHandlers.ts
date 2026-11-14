@@ -22,6 +22,8 @@ import type {
   ListSpacesResult,
 } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
+import { isWorkspaceNodeKind } from '../../../../shared/sync/persistedStateValidationPrimitives'
+import { assertNever } from '../../../../shared/utils/assertNever'
 import type { ControlSurface } from '../controlSurface'
 import { registerOperation } from '../registerOperation'
 
@@ -29,7 +31,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object'
 }
 
-function normalizeCanvasNodeKind(kind: unknown): CanvasNodeKind {
+export function normalizeCanvasNodeKind(kind: unknown): CanvasNodeKind {
+  if (!isWorkspaceNodeKind(kind)) {
+    return 'unknown'
+  }
   switch (kind) {
     case 'terminal':
     case 'agent':
@@ -40,8 +45,11 @@ function normalizeCanvasNodeKind(kind: unknown): CanvasNodeKind {
     case 'folder':
     case 'website':
       return kind
-    default:
+    case 'role':
+    case 'plugin':
       return 'unknown'
+    default:
+      return assertNever(kind)
   }
 }
 

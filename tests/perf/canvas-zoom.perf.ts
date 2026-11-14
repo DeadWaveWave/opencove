@@ -60,7 +60,6 @@ async function startOutput(window: Page) {
         `perf-terminal-${index}`,
       )
       if (sessionId) {
-        // eslint-disable-next-line no-await-in-loop -- one PTY write per terminal, in order.
         await window.opencoveApi.pty.write({
           sessionId,
           data: 'while :; do echo "tick $RANDOM $RANDOM $RANDOM"; sleep 0.066; done\r',
@@ -98,7 +97,6 @@ async function sweep(window: Page) {
         for (let step = 1; step <= steps; step += 1) {
           // Geometric steps feel even, like a wheel or pinch gesture.
           const zoom = from * Math.pow(to / from, step / steps)
-          // eslint-disable-next-line no-await-in-loop -- one zoom step per frame.
           await new Promise<void>(resolve =>
             requestAnimationFrame(() => {
               void api.setZoom(zoom)

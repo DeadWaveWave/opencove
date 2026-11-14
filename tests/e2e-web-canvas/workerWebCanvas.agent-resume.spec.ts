@@ -10,8 +10,7 @@ import {
 test.describe('Worker web canvas agent resume', () => {
   test('resumes task-linked agent sessions via remote resume mode', async ({ page }) => {
     const workspacePath = await createWorkspaceDir('task-agent-resume')
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath,
         spaces: [

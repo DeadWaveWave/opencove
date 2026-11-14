@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 
-import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
+import { IPC_CHANNELS } from '../../../src/shared/contracts/ipc'
 import type { ResolveAgentResumeSessionResult } from '../../../src/shared/contracts/dto'
 import type { PtyRuntime } from '../../../src/contexts/terminal/presentation/main-ipc/runtime'
 import { invokeHandledIpc } from '../../contract/ipc/ipcTestUtils'

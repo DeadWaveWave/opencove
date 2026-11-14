@@ -6,7 +6,7 @@ import {
 } from '@shared/contracts/managedClaudeLaunch'
 import type { MutableRefObject } from 'react'
 import { isAllocateProjectPlaceholderPath } from '@app/renderer/shell/utils/projectPlaceholderPath'
-import { toFileUri } from '@contexts/filesystem/domain/fileUri'
+import { toFileUri } from '@contexts/filesystem/domain'
 import {
   resolveAgentExecutablePathOverride,
   resolveAgentLaunchEnv,

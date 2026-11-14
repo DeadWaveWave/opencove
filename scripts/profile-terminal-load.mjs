@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable no-await-in-loop -- profiling intentionally samples sequentially */
 
 import { _electron as electron } from '@playwright/test'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'

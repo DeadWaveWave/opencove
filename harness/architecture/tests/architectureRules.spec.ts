@@ -7,14 +7,20 @@ import {
   loadArchitectureConfig,
   runArchitectureAudit,
 } from '../lib/architecture-rules.mjs'
+import { VARIANT_SOURCE_FILES } from './variantFixtureSupport'
 
 const tempRoots: string[] = []
+
+// These tests pin other rules; the context entry rules have their own spec.
+function withoutContextRules<T extends { ruleId: string }>(violations: T[]): T[] {
+  return violations.filter(violation => !violation.ruleId.startsWith('architecture.context'))
+}
 
 async function createFixture(files: Record<string, string>): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'opencove-architecture-rules-'))
   tempRoots.push(root)
   await Promise.all(
-    Object.entries(files).map(async ([relativePath, source]) => {
+    Object.entries({ ...VARIANT_SOURCE_FILES, ...files }).map(async ([relativePath, source]) => {
       const filePath = join(root, relativePath)
       await mkdir(dirname(filePath), { recursive: true })
       await writeFile(filePath, source, 'utf8')
@@ -61,7 +67,7 @@ describe('architecture rules audit', () => {
     })
 
     const report = await runArchitectureAudit({ root })
-    expect(report.violations).toEqual([])
+    expect(withoutContextRules(report.violations)).toEqual([])
   })
 
   it('does not grant application dependencies to every renderer file', async () => {
@@ -72,7 +78,7 @@ describe('architecture rules audit', () => {
     })
 
     const report = await runArchitectureAudit({ root })
-    expect(report.violations).toEqual([
+    expect(withoutContextRules(report.violations)).toEqual([
       expect.objectContaining({
         ruleId: 'architecture.layerDependency',
         file: 'src/app/renderer/feature.ts',
@@ -91,7 +97,7 @@ describe('architecture rules audit', () => {
     })
 
     const report = await runArchitectureAudit({ root })
-    expect(report.violations).toEqual([
+    expect(withoutContextRules(report.violations)).toEqual([
       expect.objectContaining({
         ruleId: 'architecture.layerDependency',
         file: 'src/app/renderer/shell/hooks/useWorkspaceMountRepair.ts',
@@ -114,7 +120,7 @@ describe('architecture rules audit', () => {
     })
 
     const report = await runArchitectureAudit({ root })
-    expect(report.violations).toEqual([])
+    expect(withoutContextRules(report.violations)).toEqual([])
   })
 
   it('reports runtime file cycles as errors', async () => {
@@ -289,7 +295,7 @@ describe('architecture rules audit', () => {
     })
 
     const report = await runArchitectureAudit({ root })
-    expect(report.violations).toEqual([
+    expect(withoutContextRules(report.violations)).toEqual([
       expect.objectContaining({
         ruleId: 'architecture.terminalRendererNoSettingsPresentation',
         file: 'src/contexts/workspace/presentation/renderer/components/terminalNode/session.ts',

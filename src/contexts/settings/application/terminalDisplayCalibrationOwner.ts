@@ -442,11 +442,9 @@ export function createTerminalDisplayCalibrationOwner(
       return () => listeners.delete(listener)
     },
     whenIdle: async () => {
-      /* eslint-disable no-await-in-loop -- each pass also joins operations added by prior completion effects */
       while (inFlight.size > 0) {
         await Promise.allSettled([...inFlight])
       }
-      /* eslint-enable no-await-in-loop */
     },
     dispose: () => {
       if (disposed) {

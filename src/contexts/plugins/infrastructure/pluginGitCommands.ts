@@ -75,7 +75,6 @@ export async function copyPersonalSource(source: string, candidate: string): Pro
     throw new Error('Source checkout exceeds 5000 nonignored files.')
   }
   // Bound source IO and enforce the shared byte budget in deterministic path order.
-  /* eslint-disable no-await-in-loop */
   for (const path of paths) {
     const resolved = resolve(source, path)
     if (relative(source, resolved).startsWith('..') || path.split('/').includes('.git')) {
@@ -104,7 +103,6 @@ export async function copyPersonalSource(source: string, candidate: string): Pro
     await writeFile(target, content, { mode: info.mode })
     await chmod(target, info.mode)
   }
-  /* eslint-enable no-await-in-loop */
   await git(candidate, ['add', '--all'])
   if (await git(candidate, ['diff', '--cached', '--name-only'])) {
     await git(candidate, [
@@ -134,7 +132,6 @@ export async function sourceFingerprint(directory: string): Promise<string> {
   if (paths.length > 5000) {
     throw new Error('Source exceeds the file budget.')
   }
-  /* eslint-disable no-await-in-loop */
   for (const path of paths) {
     const file = join(directory, path)
     const info = await lstat(file).catch(error => {
@@ -157,6 +154,5 @@ export async function sourceFingerprint(directory: string): Promise<string> {
     }
     digest.update(String(info.mode)).update(await readFile(file))
   }
-  /* eslint-enable no-await-in-loop */
   return digest.digest('hex')
 }

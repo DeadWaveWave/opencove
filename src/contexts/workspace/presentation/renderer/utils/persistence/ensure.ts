@@ -17,7 +17,7 @@ import type {
   TerminalRuntimeKind,
   WebsiteWindowSessionMode,
 } from '@shared/contracts/dto'
-import { CANVAS_IMAGE_MIME_TYPES } from '@shared/contracts/dto'
+import { CANVAS_IMAGE_MIME_TYPES, isAgentProviderId } from '@shared/contracts/dto'
 import { normalizeLabelColor, normalizeNodeLabelColorOverride } from '@shared/types/labelColor'
 import { normalizeProjectIconId } from '@shared/types/projectIcon'
 import { normalizeSpaceBoundary } from '@shared/types/spaceBoundary'
@@ -344,17 +344,11 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
           ),
         }
       : {}),
-    terminalProviderHint:
-      record.terminalProviderHint === 'claude-code' ||
-      record.terminalProviderHint === 'codex' ||
-      record.terminalProviderHint === 'opencode' ||
-      record.terminalProviderHint === 'gemini' ||
-      record.terminalProviderHint === 'pi' ||
-      record.terminalProviderHint === 'kimi'
-        ? record.terminalProviderHint
-        : kind === 'terminal'
-          ? (terminalAgentBindingCandidate?.provider ?? null)
-          : null,
+    terminalProviderHint: isAgentProviderId(record.terminalProviderHint)
+      ? record.terminalProviderHint
+      : kind === 'terminal'
+        ? (terminalAgentBindingCandidate?.provider ?? null)
+        : null,
     labelColorOverride: normalizeNodeLabelColorOverride(record.labelColorOverride),
     sidebarSortOrder:
       kind === 'agent' ? normalizeOptionalSortOrder(record.sidebarSortOrder) : undefined,

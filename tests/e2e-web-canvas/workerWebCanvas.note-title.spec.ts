@@ -12,8 +12,7 @@ test.describe('Worker web canvas note titles', () => {
     page,
   }, testInfo) => {
     const workspacePath = await createWorkspaceDir('note-title-edit')
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath,
         spaces: [

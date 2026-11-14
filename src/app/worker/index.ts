@@ -145,6 +145,7 @@ async function main(): Promise<void> {
   // can be incomplete. Hydrate the environment so git/ssh/etc behave consistently across Desktop,
   // Web UI, and remote/headless installs.
   await hydrateCliEnvironmentForAppLaunch(true)
+  // @compat legacy-managed-agent-hooks
   reportLegacyManagedHookCleanupFailures(await cleanupLegacyManagedHooksAtStartup(homedir()))
 
   const approvedWorkspaces = createApprovedWorkspaceStoreForPath(

@@ -16,6 +16,18 @@
 4. 只重跑目标失败项，确认是否稳定复现。
 5. 若是 E2E，优先看 `screenshot`、`trace`、`console` 与持久化状态。
 
+### Electron renderer / GPU 进程崩溃
+
+`Page crashed` / `Target crashed` 是进程退出信号，不能按普通导航失败重试。
+先看 CI 的 `[opencove-runtime-diagnostics]` 输出和失败附件
+`electron-process-diagnostics`：它们保留 `render-process-gone` / `child-process-gone`
+的 reason、exitCode、窗口加载阶段、GPU feature status 和退出时内存快照。
+快照中的进程可能已不包含死掉的 renderer，不能把它当作崩溃前峰值内存。
+主进程日志先于自动 reload 记录；测试必须在删除 userData 前保留日志及 stdout/stderr。
+Playwright trace 中最先失败的步骤才是崩溃位置，后续 evaluate 的错误可能只是结果。
+本地验证链路：构建后运行 `runtime-diagnostics.renderer-crash.spec.ts`，该测试明确调用
+`webContents.forcefullyCrashRenderer()`，并验证应用清理后附件仍存在。
+
 ### Worker 在日志输出后失去响应
 
 如果终端停止接受输入，并伴随 Worker 端口或 PID 被替换，检查启动器是否持续消费子进程

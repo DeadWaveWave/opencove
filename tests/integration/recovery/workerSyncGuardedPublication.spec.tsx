@@ -216,7 +216,6 @@ it.each(['edit', 'creation', 'deletion', 'renewal', 'settings'] as const)(
           }
           revision++
           act(() => emit({ type: 'app_state.updated', operationId: 'node.update', revision }))
-          // eslint-disable-next-line no-await-in-loop -- Each renewal must apply before the guard expires.
           await act(async () => {
             await vi.advanceTimersByTimeAsync(100)
           })

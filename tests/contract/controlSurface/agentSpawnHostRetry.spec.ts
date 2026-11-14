@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Each admission observes the prior exact-host lifecycle fact. */
 // @vitest-environment node
 import { expect, it, vi } from 'vitest'
 import { tmpdir } from 'node:os'

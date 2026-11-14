@@ -28,9 +28,12 @@ type Options = {
 }
 
 function holderOf(workspace: NodeControlWorkspace, task: NodeControlNode) {
-  return workspace.nodes.find(
-    n => n.id === nodePayload(task.task).linkedAgentNodeId && n.kind === 'agent',
-  )
+  return workspace.nodes.find(n => {
+    if (n.kind !== 'agent') {
+      return false
+    }
+    return n.id === nodePayload(task.task).linkedAgentNodeId
+  })
 }
 function holderDetails(holder: NodeControlNode | undefined) {
   return holder ? { nodeId: holder.id, title: holder.title } : null
@@ -100,12 +103,12 @@ export async function claimTask(
       if (
         newLink &&
         state.workspaces.some(w =>
-          w.nodes.some(
-            n =>
-              n.kind === 'task' &&
-              n.id !== target.node.id &&
-              nodePayload(n.task).linkedAgentNodeId === agentId,
-          ),
+          w.nodes.some(n => {
+            if (n.kind !== 'task') {
+              return false
+            }
+            return n.id !== target.node.id && nodePayload(n.task).linkedAgentNodeId === agentId
+          }),
         )
       ) {
         throw createAppError('common.invalid_input', {

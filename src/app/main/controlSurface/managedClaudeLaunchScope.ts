@@ -5,6 +5,7 @@ import type { PersistenceStore } from '../../../platform/persistence/sqlite/Pers
 
 export interface LaunchScope {
   attempt: ManagedClaudeLaunchAttempt
+  // @compat managed-claude-worker-support
   phase: 'candidate' | 'managed' | 'legacy'
   owner: ManagedClaudeLaunchOwner
   launching?: boolean

@@ -19,16 +19,6 @@ test.describe('Application Startup', () => {
 
       await expect(window.locator('body')).toBeVisible()
 
-      await window.screenshot({ path: 'test-results/smoke-test-window.png' })
-    } finally {
-      await electronApp.close()
-    }
-  })
-
-  test('should have correct window properties', async () => {
-    const { electronApp } = await launchApp()
-
-    try {
       const appPath = await electronApp.evaluate(async ({ app }) => {
         return app.getAppPath()
       })
@@ -38,6 +28,10 @@ test.describe('Application Startup', () => {
         return app.getName()
       })
       expect(appName).toBe('OpenCove')
+      const userDataPath = await electronApp.evaluate(({ app }) => app.getPath('userData'))
+      expect(userDataPath).toBeTruthy()
+
+      await window.screenshot({ path: 'test-results/smoke-test-window.png' })
     } finally {
       await electronApp.close()
     }

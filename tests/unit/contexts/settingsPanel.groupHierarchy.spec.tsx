@@ -1,10 +1,11 @@
 import { EndpointOverviewProvider } from '../../../src/app/renderer/shell/components/EndpointOverviewProvider'
 import React from 'react'
-import { render as renderUi, screen, within } from '@testing-library/react'
+import { fireEvent, render as renderUi, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { applyUiLanguage } from '../../../src/app/renderer/i18n'
 import { GeneralSection } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/GeneralSection'
 import { WorkerSection } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/WorkerSection'
+import { renderFullSettingsPanel } from './settingsPanel.fullTestUtils'
 import { installSettingsPanelWorkerApi } from './settingsPanelWorkerApiTestUtils'
 
 const noop = (): void => undefined
@@ -39,6 +40,38 @@ describe('Settings group hierarchy', () => {
   afterEach(() => {
     delete (window as { opencoveApi?: unknown }).opencoveApi
     vi.restoreAllMocks()
+  })
+
+  it('keeps all eight full-panel pages distinct from groups and routine actions quiet', async () => {
+    const { container } = renderFullSettingsPanel()
+    const panel = screen.getByTestId('settings-panel')
+    expect(panel).toBeVisible()
+    const pages = [
+      'general',
+      'appearance',
+      'canvas',
+      'agent',
+      'terminal',
+      'shortcuts',
+      'worker',
+      'experimental',
+    ]
+    // Each page observes the preceding panel navigation before checking its registered content.
+    for (const page of pages) {
+      const navTestId = `settings-section-nav-${page}`
+      const nav = screen.getByTestId(navTestId)
+      fireEvent.click(nav)
+      await waitFor(() => expect(nav).toHaveAttribute('aria-current', 'page'))
+      const title = screen.getByTestId('settings-panel-title').textContent?.trim()
+      expect(title, navTestId).toBeTruthy()
+      const groupTitles = Array.from(
+        container.querySelectorAll('.settings-panel__group-title'),
+        heading => heading.textContent?.trim(),
+      )
+      expect(groupTitles, `${navTestId} groups`).not.toContain(title)
+      // Includes every rendered primary control, without depending on jsdom geometry.
+      expect(panel.querySelectorAll('.cove-button--primary'), navTestId).toHaveLength(0)
+    }
   })
 
   it('uses named groups with separate headers and bodies for General settings', () => {

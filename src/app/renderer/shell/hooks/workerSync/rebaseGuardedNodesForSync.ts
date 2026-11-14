@@ -10,13 +10,20 @@ import { mergeNodeNaming, mergePersistedNode } from '@shared/sync/mergePersisted
 import type { NormalizedPersistedNodeContract } from '@shared/contracts/normalizedPersistedAppState'
 import { normalizeFolderNodeData } from '@shared/utils/folderNodeData'
 
+function folderView(node: NormalizedPersistedNodeContract) {
+  if (node.kind !== 'folder') {
+    return null
+  }
+  return normalizeFolderNodeData(node.task)
+}
+
 /** Without an ancestor, preserve explicit view edits without copying unrelated durable content. */
 function mergeUnacknowledgedView(
   latest: NormalizedPersistedNodeContract,
   local: NormalizedPersistedNodeContract,
 ): NormalizedPersistedNodeContract {
-  const folder = latest.kind === 'folder' ? normalizeFolderNodeData(latest.task) : null
-  const localFolder = local.kind === 'folder' ? normalizeFolderNodeData(local.task) : null
+  const folder = folderView(latest)
+  const localFolder = folderView(local)
   return {
     ...latest,
     ...mergeNodeNaming(latest, local),

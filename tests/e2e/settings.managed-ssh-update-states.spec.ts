@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Advance the observable bootstrap stages in order. */
 import { expect, test } from '@playwright/test'
 import { withManagedSshProgress } from './managed-ssh-progress.fixture'
 

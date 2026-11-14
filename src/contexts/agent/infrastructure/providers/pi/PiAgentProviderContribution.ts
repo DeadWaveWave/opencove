@@ -1,3 +1,4 @@
+import { AGENT_PROVIDER_DESCRIPTORS } from '../../../../../shared/contracts/agentProviderDescriptors'
 import { assertProviderInitialPrompt } from '../../../domain/providerInitialPromptPolicy'
 import type {
   AgentLaunchPlan,
@@ -22,7 +23,7 @@ const piLaunch = {
 
 export class PiAgentProviderContribution extends TerminalCliAgentProviderContribution {
   readonly descriptor = {
-    displayName: 'Pi',
+    displayName: AGENT_PROVIDER_DESCRIPTORS['pi'].label,
     documentationUrl: 'https://pi.dev',
     id: 'pi',
     launch: piLaunch,

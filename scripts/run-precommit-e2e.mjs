@@ -2,7 +2,11 @@
 
 import { spawnSync } from 'node:child_process'
 import { createRequiredE2EEnvironment } from './precommit-e2e-env.mjs'
-import { parseStagedE2EChanges, selectPrecommitE2E } from './precommit-e2e-selection.mjs'
+import {
+  parseStagedE2EChanges,
+  selectPrecommitE2E,
+  shouldRunWorkerCliContracts,
+} from './precommit-e2e-selection.mjs'
 
 const PNPM_COMMAND = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
 const args = process.argv.slice(2)
@@ -19,6 +23,7 @@ if (!full) {
   delete env.OPENCOVE_E2E_TEST_MATCH
 }
 let selection
+let workerCli = full
 try {
   const staged = full
     ? null
@@ -28,7 +33,9 @@ try {
   if (staged && (staged.error || staged.status !== 0)) {
     throw staged.error ?? new Error(staged.stderr || 'Failed to list staged changes.')
   }
-  selection = selectPrecommitE2E({ changes: parseStagedE2EChanges(staged?.stdout ?? ''), full })
+  const changes = parseStagedE2EChanges(staged?.stdout ?? '')
+  selection = selectPrecommitE2E({ changes, full })
+  workerCli = shouldRunWorkerCliContracts(changes, full)
 } catch (error) {
   process.stderr.write(`[e2e] ${error instanceof Error ? error.message : String(error)}\n`)
   process.exit(1)
@@ -63,4 +70,16 @@ const result = spawnSync(
   },
 )
 
-process.exit(result.status ?? 1)
+if (result.status !== 0) {
+  process.exit(result.status ?? 1)
+}
+if (workerCli) {
+  process.stdout.write('[contract:worker-cli] Running real Worker, PTY and built-CLI contracts.\n')
+  const contracts = spawnSync(PNPM_COMMAND, ['test:contract:worker-cli'], {
+    env,
+    shell: process.platform === 'win32',
+    stdio: 'inherit',
+  })
+  process.exit(contracts.status ?? 1)
+}
+process.exit(0)

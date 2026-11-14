@@ -13,8 +13,7 @@ test.describe('Worker web canvas - Add project', () => {
     const workspacePath = await createWorkspaceDir('web-add-project')
     const secondWorkspacePath = await createWorkspaceDir('web-add-project-second')
 
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath,
         workspaceName: 'web-add-project',

@@ -103,12 +103,6 @@ describe('main process lifecycle', () => {
       }),
     }))
 
-    vi.doMock('../../../src/app/main/controlSurface/registerControlSurfaceServer', () => ({
-      registerControlSurfaceServer: () => ({
-        dispose: vi.fn(),
-      }),
-    }))
-
     vi.doMock('../../../src/app/main/worker/localWorkerManager', () => ({
       beginLocalWorkerShutdown: vi.fn(),
       hasOwnedLocalWorkerProcess: () => false,

@@ -5,7 +5,7 @@ import type {
   ManagedClaudeLifecycleReceipt,
 } from '@shared/contracts/managedClaudeLaunch'
 import type { Node } from '@xyflow/react'
-import { toFileUri } from '@contexts/filesystem/domain/fileUri'
+import { toFileUri } from '@contexts/filesystem/domain'
 import type { LaunchAgentSessionResult, TerminalRuntimeKind } from '@shared/contracts/dto'
 import { resolveAgentNodeMinSize } from '@contexts/workspace/domain/workspaceNodeSizing'
 import type { TerminalPtyGeometryDisplayMetrics } from '@contexts/workspace/domain/terminalPtyGeometry'

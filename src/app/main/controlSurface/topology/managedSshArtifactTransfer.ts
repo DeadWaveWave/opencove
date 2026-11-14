@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Complete each upload before opening another SSH process. */
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { readFile, readdir } from 'node:fs/promises'

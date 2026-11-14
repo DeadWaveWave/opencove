@@ -33,6 +33,7 @@ export const filesystemCopyEntryOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeFilesystemCopyEntry,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeFilesystemCopyEntry,
   errors: ['filesystem.copy_entry_failed'],
   id: 'filesystem.copyEntry',
@@ -50,6 +51,7 @@ export const filesystemCopyEntryInMountOperation = defineOperation({
     targetUri: z.string().describe('Destination file URI within approved roots'),
   }),
   normalize: normalizeFilesystemCopyEntryInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeFilesystemCopyEntryInMount,
   errors: ['filesystem.copy_entry_failed', 'worker.unavailable'],
   id: 'filesystem.copyEntryInMount',
@@ -64,6 +66,7 @@ export const filesystemCreateDirectoryOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeFilesystemCreateDirectory,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeFilesystemCreateDirectory,
   errors: ['filesystem.create_directory_failed'],
   id: 'filesystem.createDirectory',
@@ -80,6 +83,7 @@ export const filesystemCreateDirectoryInMountOperation = defineOperation({
     uri: z.string().describe('File URI within approved roots'),
   }),
   normalize: normalizeFilesystemCreateDirectoryInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeFilesystemCreateDirectoryInMount,
   errors: ['filesystem.create_directory_failed', 'worker.unavailable'],
   id: 'filesystem.createDirectoryInMount',
@@ -92,6 +96,7 @@ export const filesystemDeleteEntryOperation = defineOperation({
   input: z.union([
     z.object({
       uri: z.string().describe('File URI within approved roots'),
+      // @compat control-surface-legacy-validation
       recursive: z
         .boolean()
         .optional()
@@ -102,6 +107,7 @@ export const filesystemDeleteEntryOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeFilesystemDeleteEntry,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeFilesystemDeleteEntry,
   errors: ['filesystem.delete_entry_failed'],
   id: 'filesystem.deleteEntry',
@@ -116,6 +122,7 @@ export const filesystemDeleteEntryInMountOperation = defineOperation({
       .string()
       .describe('Mount identifier to resolve before accessing the repository or file'),
     uri: z.string().describe('File URI within approved roots'),
+    // @compat control-surface-legacy-validation
     recursive: z
       .boolean()
       .optional()
@@ -124,6 +131,7 @@ export const filesystemDeleteEntryInMountOperation = defineOperation({
       ),
   }),
   normalize: normalizeFilesystemDeleteEntryInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeFilesystemDeleteEntryInMount,
   errors: ['filesystem.delete_entry_failed', 'worker.unavailable'],
   id: 'filesystem.deleteEntryInMount',
@@ -141,6 +149,7 @@ export const filesystemMoveEntryOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeFilesystemMoveEntry,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeFilesystemMoveEntry,
   errors: ['filesystem.move_entry_failed'],
   id: 'filesystem.moveEntry',
@@ -158,6 +167,7 @@ export const filesystemMoveEntryInMountOperation = defineOperation({
     targetUri: z.string().describe('Destination file URI within approved roots'),
   }),
   normalize: normalizeFilesystemMoveEntryInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeFilesystemMoveEntryInMount,
   errors: ['filesystem.move_entry_failed', 'worker.unavailable'],
   id: 'filesystem.moveEntryInMount',
@@ -167,6 +177,7 @@ export const filesystemMoveEntryInMountOperation = defineOperation({
   summary: 'Move a file or directory between URIs within one mount root',
 })
 export const filesystemMutationCapabilitiesOperation = defineLegacyOperation({
+  compat: 'control-surface-legacy-validation',
   id: 'filesystem.mutationCapabilities',
   kind: 'query',
   scope: 'read',
@@ -174,6 +185,7 @@ export const filesystemMutationCapabilitiesOperation = defineLegacyOperation({
   summary: 'List supported file mutation options and protocol capabilities',
 })
 export const filesystemReadDirectoryOperation = defineOperation({
+  // @compat control-surface-legacy-validation
   // Legacy isRecord accepts arrays with named uri/limit properties in-process.
   input: z.union([
     z.object({
@@ -183,6 +195,7 @@ export const filesystemReadDirectoryOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeFilesystemReadDirectory,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeFilesystemReadDirectory,
   errors: ['filesystem.read_directory_failed'],
   id: 'filesystem.readDirectory',
@@ -198,6 +211,7 @@ export const filesystemReadDirectoryInMountOperation = defineOperation({
     maxEntries: z.number().optional(),
   }),
   normalize: normalizeFilesystemReadDirectoryInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeFilesystemReadDirectoryInMount,
   errors: ['worker.unavailable', 'filesystem.read_directory_failed'],
   id: 'filesystem.readDirectoryInMount',
@@ -212,6 +226,7 @@ export const filesystemReadFileBytesOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeFilesystemReadFileBytes,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeFilesystemReadFileBytes,
   errors: ['filesystem.read_file_bytes_failed'],
   id: 'filesystem.readFileBytes',
@@ -228,6 +243,7 @@ export const filesystemReadFileBytesInMountOperation = defineOperation({
     uri: z.string().describe('File URI within approved roots'),
   }),
   normalize: normalizeFilesystemReadFileBytesInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeFilesystemReadFileBytesInMount,
   errors: ['filesystem.read_file_bytes_failed', 'worker.unavailable'],
   id: 'filesystem.readFileBytesInMount',
@@ -237,6 +253,7 @@ export const filesystemReadFileBytesInMountOperation = defineOperation({
   summary: 'Read binary file contents within a local or remote mount root',
 })
 export const filesystemReadFileTextOperation = defineOperation({
+  // @compat control-surface-legacy-validation
   // Legacy isRecord accepts arrays with named uri/limit properties in-process.
   input: z.union([
     z.object({
@@ -246,6 +263,7 @@ export const filesystemReadFileTextOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeFilesystemReadFileText,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeFilesystemReadFileText,
   errors: ['filesystem.read_file_text_failed'],
   id: 'filesystem.readFileText',
@@ -261,6 +279,7 @@ export const filesystemReadFileTextInMountOperation = defineOperation({
     maxBytes: z.number().optional(),
   }),
   normalize: normalizeFilesystemReadFileTextInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeFilesystemReadFileTextInMount,
   errors: ['worker.unavailable', 'filesystem.read_file_text_failed'],
   id: 'filesystem.readFileTextInMount',
@@ -278,6 +297,7 @@ export const filesystemRenameEntryOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeFilesystemRenameEntry,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeFilesystemRenameEntry,
   errors: ['filesystem.rename_entry_failed'],
   id: 'filesystem.renameEntry',
@@ -295,6 +315,7 @@ export const filesystemRenameEntryInMountOperation = defineOperation({
     targetUri: z.string().describe('Destination file URI within approved roots'),
   }),
   normalize: normalizeFilesystemRenameEntryInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeFilesystemRenameEntryInMount,
   errors: ['filesystem.rename_entry_failed', 'worker.unavailable'],
   id: 'filesystem.renameEntryInMount',
@@ -304,6 +325,7 @@ export const filesystemRenameEntryInMountOperation = defineOperation({
   summary: 'Rename a file or directory within a local or remote mount root',
 })
 export const filesystemStatOperation = defineOperation({
+  // @compat control-surface-legacy-validation
   // Legacy isRecord accepts arrays with named uri/limit properties in-process.
   input: z.union([
     z.object({
@@ -312,6 +334,7 @@ export const filesystemStatOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeFilesystemStat,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeFilesystemStat,
   errors: ['filesystem.stat_failed'],
   id: 'filesystem.stat',
@@ -326,6 +349,7 @@ export const filesystemStatInMountOperation = defineOperation({
     mountId: z.string(),
   }),
   normalize: normalizeFilesystemStatInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeFilesystemStatInMount,
   errors: ['worker.unavailable', 'filesystem.stat_failed'],
   id: 'filesystem.statInMount',
@@ -340,6 +364,7 @@ export const filesystemWriteFileTextOperation = defineOperation({
   scope: 'interact',
   availability: 'always',
   summary: 'Write text to a file URI',
+  // @compat control-surface-legacy-validation
   input: z
     .unknown()
     .describe(
@@ -356,6 +381,7 @@ export const filesystemWriteFileTextInMountOperation = defineOperation({
     overwrite: z.boolean().optional(),
   }),
   normalize: normalizeFilesystemWriteFileTextInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeFilesystemWriteFileTextInMount,
   errors: ['worker.unavailable', 'filesystem.write_file_text_failed'],
   id: 'filesystem.writeFileTextInMount',

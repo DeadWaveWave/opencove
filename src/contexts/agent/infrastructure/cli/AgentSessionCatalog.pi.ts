@@ -86,7 +86,6 @@ export async function listPiSessions(
   const sessions: AgentSessionSummary[] = []
   // Bound concurrent scans, even when a user has a large archived session directory.
   for (let offset = 0; offset < files.length; offset += 8) {
-    // eslint-disable-next-line no-await-in-loop
     const batch = await Promise.all(
       files.slice(offset, offset + 8).map(async filePath => {
         const meta = await readPiSessionMetadata(filePath)

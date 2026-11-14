@@ -128,6 +128,39 @@ describe('TerminalAgentActivityGateway', () => {
     await gateway.dispose()
   })
 
+  it('accepts prepare requests only for the shim providers', async () => {
+    const gateway = new TerminalAgentActivityGateway({
+      registry: new TerminalAgentInvocationRegistry(),
+      resolveHookInjection: () => null,
+    })
+    const terminal = await gateway.reserveTerminal()
+    try {
+      const statuses: Record<string, number> = {}
+      for (const provider of ['claude-code', 'codex', 'opencode', 'gemini', 'pi', 'kimi']) {
+        const response = await post(terminal.endpoint, terminal.token, {
+          operation: 'prepare',
+          provider,
+          invocationId: `invocation-${provider}`,
+          cwd: '/tmp/workspace',
+          executablePath: `/real/${provider}`,
+          environment: { PATH: '/real/bin' },
+        })
+        statuses[provider] = response.status === 400 ? 400 : 200
+      }
+      expect(statuses).toEqual({
+        'claude-code': 200,
+        codex: 200,
+        opencode: 400,
+        gemini: 400,
+        pi: 200,
+        kimi: 400,
+      })
+    } finally {
+      await terminal.dispose()
+      await gateway.dispose()
+    }
+  })
+
   it('makes concurrent reservation disposal wait for the same artifact cleanup', async () => {
     let releaseCleanup!: () => void
     const cleanupReleased = new Promise<void>(resolve => {
@@ -424,7 +457,6 @@ describe('TerminalAgentActivityGateway', () => {
 
     for (let generation = 1; generation <= 9; generation += 1) {
       // Generation assignment is intentionally verified in request order.
-      // eslint-disable-next-line no-await-in-loop
       await expect(
         post(terminal.endpoint, terminal.token, {
           operation: 'prepare',
@@ -451,7 +483,6 @@ describe('TerminalAgentActivityGateway', () => {
 
     for (let generation = 1; generation <= 9; generation += 1) {
       // Completion order proves every retained live record remains addressable.
-      // eslint-disable-next-line no-await-in-loop
       await expect(
         post(terminal.endpoint, terminal.token, {
           operation: 'complete',

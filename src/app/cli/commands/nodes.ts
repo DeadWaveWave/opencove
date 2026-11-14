@@ -7,6 +7,8 @@ import {
   agentBatchOutput,
 } from './nodeCreateAgentBatch'
 import { NODE_MAX_SIZE_BY_KIND, NODE_MIN_SIZE_BY_KIND } from '../../../shared/types/nodeSizeLimits'
+import { assertNever } from '../../../shared/utils/assertNever'
+import type { ManagedCanvasNodeKind } from '../../../shared/contracts/dto/nodeControl'
 import { hasNodeFrameCoordinates, NODE_NEAR_FRAME_ERROR } from '../../../shared/utils/nodeNearFrame'
 import { mutateNode } from './nodeMutation'
 import { INITIAL_PROMPT_RULES_TEXT } from '../../../shared/errors/initialPromptRules'
@@ -126,35 +128,36 @@ function locator(o: Record<string, unknown>, required = false) {
     projectId: o.project,
   }
 }
-function data(kind: string, o: Record<string, unknown>, create: boolean) {
-  if (kind === 'note') {
-    return { text: o.text ?? (create ? '' : undefined) }
-  }
-  if (kind === 'task') {
-    return {
-      requirement: o.requirement,
-      priority: o.priority ?? (create ? 'medium' : undefined),
-      tags: o['clear-tags'] ? [] : (o.tag ?? (create ? [] : undefined)),
-      status: o.status,
-    }
-  }
-  if (kind === 'agent') {
-    return {
-      prompt: o.prompt ?? '',
-      provider: o.provider,
-      model: o.model,
-      ...(o.task === undefined ? {} : { taskNodeId: o.task }),
-      ...(o['full-access'] === undefined ? {} : { agentFullAccess: o['full-access'] === 'true' }),
-    }
-  }
-  if (kind === 'terminal') {
-    return { shell: o.shell, command: o.command, profileId: o.profile }
-  }
-  return {
-    url: o.url,
-    pinned: create ? !!o.pinned : o.pinned === undefined ? undefined : o.pinned === 'true',
-    sessionMode: o['session-mode'] ?? (create ? 'shared' : undefined),
-    profileId: o.profile,
+function data(kind: ManagedCanvasNodeKind, o: Record<string, unknown>, create: boolean) {
+  switch (kind) {
+    case 'note':
+      return { text: o.text ?? (create ? '' : undefined) }
+    case 'task':
+      return {
+        requirement: o.requirement,
+        priority: o.priority ?? (create ? 'medium' : undefined),
+        tags: o['clear-tags'] ? [] : (o.tag ?? (create ? [] : undefined)),
+        status: o.status,
+      }
+    case 'agent':
+      return {
+        prompt: o.prompt ?? '',
+        provider: o.provider,
+        model: o.model,
+        ...(o.task === undefined ? {} : { taskNodeId: o.task }),
+        ...(o['full-access'] === undefined ? {} : { agentFullAccess: o['full-access'] === 'true' }),
+      }
+    case 'terminal':
+      return { shell: o.shell, command: o.command, profileId: o.profile }
+    case 'website':
+      return {
+        url: o.url,
+        pinned: create ? !!o.pinned : o.pinned === undefined ? undefined : o.pinned === 'true',
+        sessionMode: o['session-mode'] ?? (create ? 'shared' : undefined),
+        profileId: o.profile,
+      }
+    default:
+      return assertNever(kind)
   }
 }
 const rootCanvasOption: OptionSpec = {

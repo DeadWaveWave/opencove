@@ -140,6 +140,7 @@ export async function repairStaleLocalWorkerFiles(
       fileName: WORKER_CONTROL_SURFACE_CONNECTION_FILE,
       requireLivePid: false,
     })
+    // @compat legacy-worker-process-identity
     if (await legacyWorkerBlocksAcquisition(metadata, userDataPath)) {
       return { status: 'external_owner' }
     }

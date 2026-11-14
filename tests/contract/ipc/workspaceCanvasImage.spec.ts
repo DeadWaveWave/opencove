@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { resolve } from 'node:path'
-import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
+import { IPC_CHANNELS } from '../../../src/shared/contracts/ipc'
 import { invokeHandledIpc } from './ipcTestUtils'
 
 const userDataDir = '/tmp/opencove-user-data'

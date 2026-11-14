@@ -1,0 +1,8 @@
+{
+  "name": "dead-code-fixture",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "vitest": "*"
+  }
+}

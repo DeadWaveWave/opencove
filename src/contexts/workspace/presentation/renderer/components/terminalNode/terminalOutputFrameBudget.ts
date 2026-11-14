@@ -53,6 +53,7 @@ export function cancelTerminalOutputDrain(id: number): void {
   canceledDrainIds.add(id)
 }
 
+/** @internal Test seam: only specs call this. */
 export function resetTerminalOutputFrameBudgetForTests(): void {
   if (scheduledFrame !== null) {
     window.cancelAnimationFrame(scheduledFrame)

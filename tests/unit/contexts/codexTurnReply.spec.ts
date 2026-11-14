@@ -7,7 +7,6 @@ const cleanups: Array<() => void | Promise<void>> = []
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) {
     // Restore the clock only after disposing the runtime and channel.
-    // eslint-disable-next-line no-await-in-loop
     await cleanup()
   }
 })

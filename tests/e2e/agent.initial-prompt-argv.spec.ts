@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- One PTY and receiver log require sequential commands. */
 import { expect, test } from '@playwright/test'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'

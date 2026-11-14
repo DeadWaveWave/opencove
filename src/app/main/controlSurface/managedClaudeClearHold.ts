@@ -21,12 +21,10 @@ export async function holdClaudeClearCommit(signal: AbortSignal): Promise<void> 
   const deadline = performance.now() + 4500
   while (!signal.aborted && performance.now() < deadline) {
     try {
-      // oxlint-disable-next-line no-await-in-loop
       await access(path)
     } catch {
       return
     }
-    // oxlint-disable-next-line no-await-in-loop
     await delay(10, undefined, { signal })
   }
 }

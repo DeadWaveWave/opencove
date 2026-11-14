@@ -25,6 +25,7 @@ export const noteCreateOperation = defineOperation({
       .describe('Note height as a finite number; other values default to null'),
   }),
   normalize: normalizeCreateNotePayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeCreateNotePayload,
   errors: [
     'node.not_found',

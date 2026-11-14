@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Exercise both ambiguous outcomes through each actual adapter. */
 import { afterEach, expect, it, vi } from 'vitest'
 import { Client } from '../../support/convergence/client'
 import {

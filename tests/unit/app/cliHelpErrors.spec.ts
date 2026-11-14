@@ -72,7 +72,6 @@ it.each([false, true])('error golden texts (TTY=%s)', async tty => {
   ] as const) {
     const f = fixture(tty)
     // Each fixture must finish before checking the next captured error.
-    // eslint-disable-next-line no-await-in-loop
     const code = await run([...args], f.io)
     expect(code).toBe(name === 'not running' ? 3 : 2)
     expect(f.out()).toBe('')

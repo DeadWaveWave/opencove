@@ -181,7 +181,7 @@ export function registerSessionPrepareOrReviveHandler(
                             assertManagedClaudeLaunchCurrent()
                           },
                         }
-                      : guardLegacyManagedClaudeContext(
+                      : /* @compat managed-claude-worker-support */ guardLegacyManagedClaudeContext(
                           recoveryContext,
                           store,
                           node.id,

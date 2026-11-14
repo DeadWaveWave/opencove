@@ -1,3 +1,4 @@
+// @compat-file control-surface-legacy-validation
 // Frozen verbatim from src/app/main/controlSurface/handlers/pluginHandlers.ts at 8834a1127ca0c157548477262b8fd44451cf5bb4.
 // Import paths adjusted for the test location.
 import { registerPluginPreferenceHandlers } from '../../../src/app/main/controlSurface/handlers/pluginPreferenceHandlers'

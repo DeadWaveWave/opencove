@@ -14,7 +14,7 @@ export {
   isWorktreeNameSuggestionProvider,
   type WorktreeNameSuggestionAgentProvider,
 } from '../../../shared/contracts/worktreeNameSuggestionProviders'
-import { AGENT_PROVIDER_IDS } from '../../../shared/contracts/dto'
+import { AGENT_PROVIDER_IDS, isAgentProviderId } from '../../../shared/contracts/dto'
 
 export const AGENT_PROVIDERS = AGENT_PROVIDER_IDS
 export const TASK_TITLE_PROVIDERS = ['claude-code', 'codex'] as const
@@ -24,7 +24,7 @@ export type AgentProvider = (typeof AGENT_PROVIDERS)[number]
 export type TaskTitleAgentProvider = (typeof TASK_TITLE_PROVIDERS)[number]
 
 export function isValidProvider(value: unknown): value is AgentProvider {
-  return typeof value === 'string' && AGENT_PROVIDERS.includes(value as AgentProvider)
+  return isAgentProviderId(value)
 }
 
 export function isTaskTitleAgentProvider(value: unknown): value is TaskTitleAgentProvider {

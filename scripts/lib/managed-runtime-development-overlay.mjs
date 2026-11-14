@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Keep staging I/O and dependency verification bounded. */
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { readFile, writeFile, mkdir, mkdtemp, cp, rm } from 'node:fs/promises'

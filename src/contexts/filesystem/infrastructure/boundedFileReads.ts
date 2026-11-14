@@ -17,7 +17,6 @@ export async function readBoundedText(path: string, maxBytes: number): Promise<R
     let offset = 0
     // Read from a single handle so replacement cannot swap in a different file mid-read.
     while (offset < buffer.length) {
-      // eslint-disable-next-line no-await-in-loop -- Each bounded read advances the same file handle.
       const { bytesRead } = await file.read(buffer, offset, buffer.length - offset, offset)
       if (bytesRead === 0) {
         break

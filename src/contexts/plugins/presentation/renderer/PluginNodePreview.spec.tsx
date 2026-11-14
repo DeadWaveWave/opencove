@@ -2,7 +2,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as registry from './usePluginRegistry'
 import { PluginNodePreview } from './PluginNodePreview'
-import { examplePlugin } from './pluginPresentationTestFixture'
+import { examplePlugin } from '../../../../../tests/support/pluginPresentationTestFixture'
 
 vi.mock('./PluginRuntimePreview', () => ({
   PluginRuntimePreview: () => <div data-testid="declared-preview" />,

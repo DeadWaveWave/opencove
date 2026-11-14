@@ -17,7 +17,6 @@ it.each(['create', 'update'])(
       ['terminal', 'a'],
     ]) {
       const f = identityFixture(false)
-      // eslint-disable-next-line no-await-in-loop
       expect(await run(['node', action, kind, '--help'], f.io)).toBe(0)
       expect(f.out()).toContain(
         `${action === 'create' ? 'Create' : 'Update'} ${article} ${kind} node`,

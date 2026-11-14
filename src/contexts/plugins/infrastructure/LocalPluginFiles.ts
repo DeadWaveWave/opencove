@@ -160,7 +160,6 @@ export class LocalPluginFiles implements PluginFilesPort {
     let count = 0
     const digest = createHash('sha256').update(randomUUID())
     // Serial reads enforce the total byte budget without unbounded buffers or hash ordering races.
-    /* eslint-disable no-await-in-loop */
     const copy = async (relative: string): Promise<void> => {
       const entries = await readdir(join(sourceDirectory, relative), { withFileTypes: true })
       for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
@@ -196,7 +195,6 @@ export class LocalPluginFiles implements PluginFilesPort {
         await writeFile(join(temporary, path), content, { mode: 0o600 })
       }
     }
-    /* eslint-enable no-await-in-loop */
     try {
       await copy('')
       const pkg = normalizeLocalPluginPackage(
@@ -303,7 +301,6 @@ export class LocalPluginFiles implements PluginFilesPort {
     }
     let total = 0
     // Stop loading images as soon as the shared response budget is exhausted.
-    /* eslint-disable no-await-in-loop */
     for (const [candidate, assetPath] of [...candidates].slice(0, 32)) {
       try {
         const normalized = pluginRelativePath(assetPath)
@@ -323,7 +320,6 @@ export class LocalPluginFiles implements PluginFilesPort {
         /* Broken optional images remain normal Markdown fallbacks. */
       }
     }
-    /* eslint-enable no-await-in-loop */
     const themes = await compilePluginThemeResources(
       snapshot.directory,
       snapshot.package.id,

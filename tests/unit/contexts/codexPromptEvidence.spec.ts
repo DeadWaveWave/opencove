@@ -50,9 +50,7 @@ it('requires a known steering pair and confirms exactly one FIFO delivery per re
     for (const id of ['one', 'two']) {
       const p = f.send(id)
       // Dispatch in order to exercise the real FIFO rather than concurrent admission.
-      // eslint-disable-next-line no-await-in-loop
       await vi.advanceTimersByTimeAsync(300)
-      // eslint-disable-next-line no-await-in-loop
       await expect(p).resolves.toMatchObject({
         mode: 'steer',
         phase: 'dispatched',

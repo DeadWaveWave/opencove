@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { applyUiLanguage } from '@app/renderer/i18n'
 import * as registry from '@contexts/plugins/presentation/renderer/usePluginRegistry'
-import { examplePlugin } from '@contexts/plugins/presentation/renderer/pluginPresentationTestFixture'
+import { examplePlugin } from '../../../../../../tests/support/pluginPresentationTestFixture'
 import { PluginSourceControls } from './PluginSourceControls'
 
 let invoke = vi.fn()

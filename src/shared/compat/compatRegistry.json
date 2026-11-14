@@ -1,0 +1,215 @@
+{
+  "upgradeSupport": {
+    "floor": "0.1.0",
+    "reviewBy": "0.7.0",
+    "decidedIn": "#642"
+  },
+  "entries": {
+    "cli-tree-census-peer": {
+      "kind": "peer-version",
+      "expires": { "until": "0.7.0" },
+      "reason": "Keeps whoami --tree quota counts and reports an upgrade requirement when a Worker predates the optional includeTree census rows; it must not present missing rows as an empty tree.",
+      "decidedIn": "#661"
+    },
+    "storage-cove-m0-keys": {
+      "kind": "user-data",
+      "expires": {
+        "dataBefore": "0.3.0"
+      },
+      "reason": "Reads, migrates and removes the localStorage keys (workspace state and node scrollback) that builds before the rename wrote under the old key prefix, now opencove:m0:.",
+      "decidedIn": "#642"
+    },
+    "sqlite-workspace-state-kv": {
+      "kind": "user-data",
+      "expires": {
+        "dataBefore": "0.3.0"
+      },
+      "reason": "Imports the pre-table workspace-state-raw KV row into the normalized SQLite schema when a version 1 database is opened, then drops the KV table.",
+      "decidedIn": "#642"
+    },
+    "canvas-space-collapse-legacy": {
+      "kind": "user-data",
+      "expires": {
+        "dataBefore": "0.4.0"
+      },
+      "reason": "Converts Space disclosure ids saved before windows could collapse into collapsedNodeIds when a workspace opens.",
+      "decidedIn": "#642"
+    },
+    "settings-legacy-fields": {
+      "kind": "user-data",
+      "expires": {
+        "dataBefore": "0.4.0"
+      },
+      "reason": "Normalizes settings written by older builds: per-provider model lists, the UI font scale percent, the pre-toggle pixel effect and canvas background flags, the optional sidebar view fields, and the full-access default of existing installs.",
+      "decidedIn": "#642"
+    },
+    "terminal-display-calibration-legacy-storage": {
+      "kind": "user-data",
+      "expires": {
+        "dataBefore": "0.3.1"
+      },
+      "reason": "Reads the sidecar calibration metadata that builds before the atomic calibration record wrote, and reports it as legacy proof.",
+      "decidedIn": "#642"
+    },
+    "terminal-recovery-legacy-records": {
+      "kind": "user-data",
+      "expires": {
+        "dataBefore": "0.3.1"
+      },
+      "reason": "Reads recovery records and checksums written before durable runtime bindings, and mirrors scrollback into node_scrollback rows for readers that predate recovery records.",
+      "decidedIn": "#642"
+    },
+    "home-worker-config-legacy-lease": {
+      "kind": "user-data",
+      "expires": {
+        "dataBefore": "0.5.0"
+      },
+      "reason": "Recognizes the single-file home Worker configuration lease written by earlier builds next to the current lease directory.",
+      "decidedIn": "#642"
+    },
+    "legacy-managed-agent-hooks": {
+      "kind": "machine-residue",
+      "expires": {
+        "dataBefore": "0.3.1"
+      },
+      "reason": "Removes OpenCove-managed hook entries that earlier builds wrote into the user's Claude settings, Codex hooks.json and Codex config.toml, leaving user-owned entries alone.",
+      "decidedIn": "#642"
+    },
+    "legacy-cli-launchers": {
+      "kind": "machine-residue",
+      "expires": {
+        "dataBefore": "0.5.0"
+      },
+      "reason": "Repairs launcher scripts written by builds before the CLI shipped as one built file, so they point at the packaged CLI instead of src/app/cli/opencove.mjs.",
+      "decidedIn": "#642"
+    },
+    "managed-claude-worker-support": {
+      "kind": "peer-version",
+      "expires": {
+        "until": "0.7.0"
+      },
+      "reason": "Keeps Claude sessions on the legacy creation and resume path when the Worker or the client does not declare managedClaudeResumeBindingV1, and shows the upgrade notice.",
+      "decidedIn": "#642"
+    },
+    "managed-claude-bindings-kill-switch": {
+      "kind": "kill-switch",
+      "expires": {
+        "until": "0.7.0"
+      },
+      "reason": "OPENCOVE_MANAGED_CLAUDE_BINDINGS=0 lets a Worker administrator pause managed Claude restarts and new resume targets.",
+      "decidedIn": "#642"
+    },
+    "legacy-worker-process-identity": {
+      "kind": "peer-version",
+      "expires": {
+        "until": "0.7.0"
+      },
+      "reason": "Identity checks for Worker processes whose metadata predates the kernel lease, so a new Worker does not take over a live older one.",
+      "decidedIn": "#642"
+    },
+    "pty-geometry-legacy-revision": {
+      "kind": "peer-version",
+      "expires": {
+        "until": "0.7.0"
+      },
+      "reason": "Falls back to numeric geometry revisions when the peer cannot acknowledge operation ids: Desktop and browser clients against older Workers, and Workers against older upstream endpoints.",
+      "decidedIn": "#642"
+    },
+    "endpoint-runtime-legacy-failure": {
+      "kind": "peer-version",
+      "expires": {
+        "until": "0.7.0"
+      },
+      "reason": "Recognizes the runtime_legacy bootstrap failure that older managed runtimes report and projects it as an endpoint health state.",
+      "decidedIn": "#642"
+    },
+    "remote-persistence-legacy-outcome": {
+      "kind": "peer-version",
+      "expires": {
+        "until": "0.7.0"
+      },
+      "reason": "Treats write results of remote persistence adapters that predate outcome reporting as legacy, and accepts the legacy \"unknown\" rejection reason.",
+      "decidedIn": "#642"
+    },
+    "control-surface-legacy-validation": {
+      "kind": "wire",
+      "expires": {
+        "until": "0.7.0"
+      },
+      "reason": "legacyNormalize and defineLegacyOperation reproduce the pre-schema validation errors and raw-key handling for CLI and API callers; the frozen oracles and parity specs prove the schemas agree.",
+      "decidedIn": "#642"
+    },
+    "cli-legacy-input-handling": {
+      "kind": "wire",
+      "expires": {
+        "until": "0.7.0"
+      },
+      "reason": "The CLI still accepts input of older peers: bare legacy ids in the selector (ids that are not UUIDs), probed for an exact target before a name or prefix is accepted, and turn-end events from a Worker that predates lastEndedTurn (#556), which the agent wait command accepts when the snapshot has no lastEndedTurn.",
+      "decidedIn": "#642"
+    },
+    "space-update-legacy-node-move": {
+      "kind": "wire",
+      "expires": {
+        "until": "0.7.0"
+      },
+      "reason": "Keeps the always-empty movedNodeIds field in Space update results for clients written when boundary updates still moved nodes.",
+      "decidedIn": "#642"
+    },
+    "ai-naming-temporary-flag": {
+      "kind": "kill-switch",
+      "expires": {
+        "until": "0.6.0"
+      },
+      "reason": "Temporary switches that keep task title generation and worktree name suggestion off while the AI naming flows are refactored.",
+      "decidedIn": "#642"
+    },
+    "codex-legacy-notify-bridge": {
+      "kind": "third-party",
+      "expires": {
+        "until": "0.7.0"
+      },
+      "reason": "Codex builds without lifecycle hooks (verified against Codex 0.166.0, which has them) only report turns through the notify bridge, so run-state arbitration keeps a legacy notify path next to hook evidence.",
+      "decidedIn": "#642"
+    },
+    "agent-legacy-run-state-label": {
+      "kind": "wire",
+      "expires": {
+        "until": "0.7.0"
+      },
+      "reason": "Agent run state keeps the single legacy `state` label next to the structured run state for existing UI and API consumers; it never feeds decisions.",
+      "decidedIn": "#642"
+    },
+    "pi-agent-settled-fallback": {
+      "kind": "third-party",
+      "expires": {
+        "until": "0.7.0"
+      },
+      "reason": "Pi releases without the agent_settled event (verified against Pi 0.80.7, which emits it) need an idle check after agent_end, which the generated Pi status extension carries as its agent_end handler.",
+      "decidedIn": "#642"
+    },
+    "opencode-tui-legacy-theme": {
+      "kind": "third-party",
+      "expires": {
+        "until": "0.7.0"
+      },
+      "reason": "Answers OpenCode color queries and theme-mode reports from terminal.options.theme and a legacy report key while no applied appearance exists; the bridge is verified against OpenCode 1.3.13.",
+      "decidedIn": "#642"
+    },
+    "github-pull-requests-legacy-resolve": {
+      "kind": "wire",
+      "expires": {
+        "until": "0.7.0"
+      },
+      "reason": "Resolves pull requests through the pre-mount integration.github.resolvePullRequests API for branches of Spaces that carry no mount id.",
+      "decidedIn": "#642"
+    },
+    "terminal-profile-legacy-runtime-kind": {
+      "kind": "third-party",
+      "expires": {
+        "until": "0.7.0"
+      },
+      "reason": "Infers the runtime kind (WSL, Windows or POSIX) from the shell path for profiles saved without one; wsl.exe is the Windows WSL launcher that decides the WSL case.",
+      "decidedIn": "#642"
+    }
+  }
+}

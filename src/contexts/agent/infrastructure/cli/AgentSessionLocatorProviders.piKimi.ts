@@ -38,7 +38,6 @@ async function parseKimiSessionIndex(): Promise<KimiSessionIndexEntry[]> {
       if (!sessionId || !isAbsolute(sessionDir) || !isAbsolute(workDir)) {
         continue
       }
-      // eslint-disable-next-line no-await-in-loop
       const canonicalSessionDir = await fs.realpath(sessionDir).catch(() => null)
       if (!canonicalSessionDir) {
         continue
@@ -82,7 +81,6 @@ export async function findKimiResumeSessionId(
       continue
     }
     const wirePath = join(entry.sessionDir, 'agents', 'main', 'wire.jsonl')
-    // eslint-disable-next-line no-await-in-loop
     const stats = await fs.stat(wirePath).catch(() => null)
     if (stats?.isFile()) {
       candidates.push({

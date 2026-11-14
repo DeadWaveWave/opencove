@@ -242,7 +242,6 @@ export function createMultiEndpointPtyRuntime(options: {
     drainPresentationRecovery: async () => {
       for (;;) {
         const observed = [...proxiesByEndpointId.values()]
-        // eslint-disable-next-line no-await-in-loop
         await Promise.all(observed.map(async proxy => await proxy.drainPresentationRecovery()))
         if (
           observed.length === proxiesByEndpointId.size &&
@@ -301,11 +300,13 @@ export function createMultiEndpointPtyRuntime(options: {
       const {
         authorityEpoch: _upstreamAuthorityEpoch,
         baseGeometryRevision: _upstreamBaseGeometryRevision,
+        // @compat pty-geometry-legacy-revision
         revision: _upstreamLegacyRevision,
         ...downstreamInput
       } = input
       void _upstreamAuthorityEpoch
       void _upstreamBaseGeometryRevision
+      // @compat pty-geometry-legacy-revision
       void _upstreamLegacyRevision
       const remoteResult = await getProxy(route.endpointId).resize({
         ...downstreamInput,

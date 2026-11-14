@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Pointer gestures and persisted state transitions run in sequence. */
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test'
 import {
   clearAndSeedWorkspace,

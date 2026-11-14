@@ -108,7 +108,6 @@ export async function compilePluginThemeResources(
   let inputBytes = 0
   let resultBytes = 0
   // Bounded, serial IO keeps the aggregate budget authoritative across all contributed themes.
-  /* eslint-disable no-await-in-loop */
   for (const theme of themes) {
     if (!theme.stylesheet) {
       continue
@@ -179,7 +178,6 @@ export async function compilePluginThemeResources(
       themeFonts[theme.id] = fonts
     }
   }
-  /* eslint-enable no-await-in-loop */
   const result = {
     ...(Object.keys(themeStyles).length ? { themeStyles } : {}),
     ...(Object.keys(themeFonts).length ? { themeFonts } : {}),

@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Real drag moves advance with renderer frames. */
 import { expect, test, type Page } from '@playwright/test'
 import {
   buildAppState,
@@ -111,8 +110,7 @@ for (const nested of [false, true]) {
         rect: { x: 1120, y: 0, width: 540, height: 760 },
       },
     ]
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath,
         spaces,

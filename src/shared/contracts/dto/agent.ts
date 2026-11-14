@@ -13,6 +13,10 @@ export const AGENT_PROVIDER_IDS = [
 ] as const
 export type AgentProviderId = (typeof AGENT_PROVIDER_IDS)[number]
 
+export function isAgentProviderId(value: unknown): value is AgentProviderId {
+  return typeof value === 'string' && (AGENT_PROVIDER_IDS as readonly string[]).includes(value)
+}
+
 export type AgentModelCatalogSource =
   | 'claude-static'
   | 'codex-cli'

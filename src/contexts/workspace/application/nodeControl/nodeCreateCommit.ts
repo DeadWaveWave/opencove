@@ -43,7 +43,6 @@ export async function commitCreatedNode(options: {
   lineage?: NodeLineageRecord | null
   callerNodeId?: string | null
 }): Promise<CreateNodeResult> {
-  /* eslint-disable no-await-in-loop -- Each bounded CAS attempt must use a fresh snapshot. */
   for (let attempt = 0; attempt < 3; attempt++) {
     options.runtime.assertActive?.()
     const expectedRevision = await options.store.readAppStateRevision()
@@ -130,7 +129,6 @@ export async function commitCreatedNode(options: {
       throw createAppError(result.error)
     }
   }
-  /* eslint-enable no-await-in-loop */
   throw new Error('Node creation persistence attempts exhausted.')
 }
 

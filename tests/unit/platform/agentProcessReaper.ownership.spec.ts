@@ -132,9 +132,7 @@ it('gives every sequential foreground observation a read started after it, never
   await h.reaper.track('a', 10)
   h.readTable.mockClear()
   for (let index = 0; index < 5; index++) {
-    // eslint-disable-next-line no-await-in-loop -- Replay sequential probes, not simultaneous calls.
     await h.reaper.readTable()
-    // eslint-disable-next-line no-await-in-loop -- Probe spacing stays within the same 5s sample interval.
     await vi.advanceTimersByTimeAsync(100)
   }
   expect(h.readTable).toHaveBeenCalledTimes(5)

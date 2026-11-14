@@ -15,6 +15,7 @@ export async function whoamiTree(ctx: CommandContext) {
     return identity
   }
   const quota = identity.lineageQuota
+  // @compat cli-tree-census-peer
   if (!quota?.nodes) {
     if (quota && ctx.io.stderr.isTTY && ctx.options.output !== 'json') {
       ctx.io.stderr.write(lineageQuotaSummary(quota))
@@ -74,6 +75,15 @@ type TreeIdentity = CallerIdentity & {
     }[]
   }
 }
+
+function treeRecoveryCommand(row: NonNullable<TreeIdentity['tree']>['occupants'][number]) {
+  const command = row.actions.map(action => action.command).join('; ')
+  if (row.kind !== 'terminal') {
+    return command
+  }
+  return `opencove node get --node ${shellWord(row.nodeId)} --fields sessionId; then opencove session kill --session <sessionId>`
+}
+
 export function whoamiTreeText(value: unknown, context: TextOutputContext) {
   const result = value as TreeIdentity
   if (!result.tree || !context.io.stdout.isTTY || context.options.pretty) {
@@ -99,10 +109,7 @@ export function whoamiTreeText(value: unknown, context: TextOutputContext) {
       row.workState.state === 'waiting' && row.workState.blockedReason
         ? `waiting (${row.workState.blockedReason})`
         : row.workState.state
-    const command =
-      row.kind === 'terminal'
-        ? `opencove node get --node ${shellWord(row.nodeId)} --fields sessionId; then opencove session kill --session <sessionId>`
-        : row.actions.map(action => action.command).join('; ')
+    const command = treeRecoveryCommand(row)
     lines.push(
       `${'  '.repeat(indent)}${safeTerminalText(row.title)} [${safeTerminalText(row.nodeId.slice(0, 12))}] ${safeTerminalText(state)} — ${safeTerminalText(command)}`,
     )

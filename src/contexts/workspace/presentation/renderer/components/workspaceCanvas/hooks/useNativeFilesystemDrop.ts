@@ -105,7 +105,6 @@ export function useNativeFilesystemDrop({
           }
           try {
             // Stop authorizing remaining entries as soon as this canvas is no longer current.
-            // eslint-disable-next-line no-await-in-loop
             const entry = toNativeFilesystemEntry(await resolveDroppedFile(file))
             if (!isCurrent()) {
               return
@@ -113,7 +112,6 @@ export function useNativeFilesystemDrop({
             if (entry) {
               const size = getCollapsedNodeSize()
               // Each placement must see the preceding node's published collision geometry.
-              // eslint-disable-next-line no-await-in-loop
               await materialize(
                 entry,
                 {

@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Each disclosure cycle must settle naturally before the next. */
 import { expect, test, type Locator } from '@playwright/test'
 import {
   buildAppState,
@@ -43,8 +42,7 @@ test('restores window titles after persisted, interrupted, and push-away expansi
   const workspacePath = await createWorkspaceDir('collapse-title-visibility')
   const documentPath = `${workspacePath}/README.md`
   await writeTextFile(documentPath, '# Visible document title\n')
-  await writeAppState(
-    page.request,
+  await writeAppState(page.request, () =>
     buildAppState({
       workspacePath,
       workspaceId: 'title-visibility-workspace',

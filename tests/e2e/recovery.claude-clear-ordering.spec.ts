@@ -103,7 +103,6 @@ test('authenticated clear ordering commits without writing the store from the pr
       // The stub uses the reservation token, real HTTP normalization and valid exact-file transcripts.
       // Write through the Worker like other control-surface tests; renderer pty.write would race the
       // renderer's own first attachment of a session the CLI has just created.
-      // oxlint-disable-next-line no-await-in-loop
       const written = await page.evaluate(
         async ({ nodeId, sessionId, scenario: command }) =>
           await window.opencoveApi.controlSurface.invoke<{ accepted: boolean }>({
@@ -114,13 +113,10 @@ test('authenticated clear ordering commits without writing the store from the pr
         { nodeId: agent.id, sessionId: agent.sessionId, scenario },
       )
       expect(written.accepted).toBe(true)
-      // oxlint-disable-next-line no-await-in-loop
       await expect
         .poll(async () => (await records()).some(record => record.scenario === scenario))
         .toBe(true)
-      // oxlint-disable-next-line no-await-in-loop
       const expected = (await records()).find(record => record.scenario === scenario)!.id
-      // oxlint-disable-next-line no-await-in-loop
       await expect
         .poll(() => getBinding(page, agent.id))
         .toMatchObject({ tuple: { resumeSessionId: expected, resumeSessionIdVerified: true } })

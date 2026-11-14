@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Discovery and enforcement are compared in caller order. */
 // @vitest-environment node
 import { expect, it } from 'vitest'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'

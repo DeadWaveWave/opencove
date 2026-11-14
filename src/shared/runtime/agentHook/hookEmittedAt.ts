@@ -1,4 +1,4 @@
-/** Missing/invalid provenance preserves observation compatibility but never proves submission. */
+/** Missing/invalid provenance keeps the observation but never proves submission. */
 export function parseHookEmittedAt(
   header: string | string[] | undefined,
   now: number,

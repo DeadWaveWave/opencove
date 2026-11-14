@@ -26,7 +26,6 @@ async function readFirstLine(filePath: string): Promise<string | null> {
 
     while (bytesReadTotal < FIRST_LINE_MAX_BYTES) {
       const bytesToRead = Math.min(buffer.length, FIRST_LINE_MAX_BYTES - bytesReadTotal)
-      // eslint-disable-next-line no-await-in-loop
       const { bytesRead } = await handle.read(buffer, 0, bytesToRead, null)
       if (bytesRead <= 0) {
         break
@@ -146,7 +145,6 @@ export async function listCodexSessionFiles(input: {
     if (input.sessionId) {
       // Resume IDs can refer to years-old rollouts. Read only matching filenames, then
       // verify session_meta; neither recent mtime nor today's date is a resume authority.
-      // eslint-disable-next-line no-await-in-loop
       const entries = await fs
         .readdir(join(home, 'sessions'), { recursive: true, withFileTypes: true })
         .catch(() => [])
@@ -176,7 +174,6 @@ export async function listCodexSessionFiles(input: {
       )
     }
     for (const directory of directories) {
-      // eslint-disable-next-line no-await-in-loop
       const entries = await fs.readdir(directory, { withFileTypes: true }).catch(() => [])
       for (const entry of entries) {
         if (entry.isFile() && entry.name.startsWith('rollout-') && entry.name.endsWith('.jsonl')) {
@@ -188,7 +185,6 @@ export async function listCodexSessionFiles(input: {
   const candidates: CodexSessionFile[] = []
   for (const filePath of files) {
     // Keep reads bounded and sequential: a large history must not exhaust file handles.
-    // eslint-disable-next-line no-await-in-loop
     const line = await readFirstLine(filePath)
     const meta = line ? parseCodexSessionMeta(line) : null
     if (

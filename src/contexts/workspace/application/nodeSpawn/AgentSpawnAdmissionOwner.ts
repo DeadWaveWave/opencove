@@ -235,7 +235,6 @@ export class AgentSpawnAdmissionOwner {
       throw createAppError('persistence.unavailable')
     }
     // Retry only observation. No launch or persistence mutation occurs in this loop.
-    /* eslint-disable no-await-in-loop */
     for (;;) {
       assertActive()
       const revision = await store.readAppStateRevision()
@@ -432,6 +431,5 @@ export class AgentSpawnAdmissionOwner {
         })),
       })
     }
-    /* eslint-enable no-await-in-loop */
   }
 }

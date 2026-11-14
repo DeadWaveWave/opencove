@@ -1,3 +1,4 @@
+// @compat-file control-surface-legacy-validation
 // Frozen verbatim from src/app/main/controlSurface/handlers/pluginCommandHandlers.ts at 8834a1127ca0c157548477262b8fd44451cf5bb4.
 // Import paths adjusted for the test location.
 import { registerPluginSidebarHandlers } from '../../../src/app/main/controlSurface/handlers/pluginSidebarHandlers'
@@ -149,7 +150,6 @@ export function registerPluginCommandHandlers(
       const manifest = await plugin(input.pluginId)
       const store = await deps.getPersistenceStore()
       // Retry only a pure state plan after a CAS conflict, never a plugin command.
-      /* eslint-disable no-await-in-loop -- Each CAS attempt needs the previous write result. */
       for (let attempt = 0; attempt < 3; attempt++) {
         const revision = await store.readAppStateRevision()
         const state = windowState(await store.readAppState())
@@ -179,7 +179,6 @@ export function registerPluginCommandHandlers(
         })
         return { ...plan.window, created: true, revision: nextRevision }
       }
-      /* eslint-enable no-await-in-loop */
       throw new Error('The canvas changed while opening the plugin. Please try again.')
     })
     mutations = task.catch(() => undefined)
@@ -332,11 +331,9 @@ export function registerPluginCommandHandlers(
           throw new Error('A Desktop or Web UI must be connected to open this plugin window.')
         }
         const deadline = Date.now() + 10_000
-        /* eslint-disable no-await-in-loop -- Poll one view readiness until its bounded deadline. */
         while (!(await ready()).length && Date.now() < deadline) {
           await new Promise(resolve => setTimeout(resolve, 100))
         }
-        /* eslint-enable no-await-in-loop */
       }
       const finalState = await readState()
       const current = await plugin(input.pluginId)

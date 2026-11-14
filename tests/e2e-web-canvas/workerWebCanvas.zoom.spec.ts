@@ -104,8 +104,7 @@ async function sampleMinimapPoint(
 test.describe('Worker web canvas zoom anchor', () => {
   test('keeps the flow anchor stable while zooming', async ({ page }) => {
     const workspacePath = await createWorkspaceDir('zoom-anchor')
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath,
         spaces: [
@@ -147,8 +146,7 @@ test.describe('Worker web canvas zoom anchor', () => {
 
   test('centers the minimap double-click target without changing zoom', async ({ page }) => {
     const workspacePath = await createWorkspaceDir('minimap-double-click')
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath,
         spaces: [

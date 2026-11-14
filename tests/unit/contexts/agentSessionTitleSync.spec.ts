@@ -91,9 +91,20 @@ describe('direct Agent session title sync', () => {
     ).toBe(false)
   })
 
-  it('does not await a session title for a pinned launch title', () => {
+  it.each(['codex', 'Agent', 'codex gpt-5.2-codex'])(
+    'does not await a session title for pinned %s',
+    title => {
+      expect(
+        isAgentNodeAwaitingSessionTitle(createAgentNode({ title, titlePinnedByUser: true })),
+      ).toBe(false)
+    },
+  )
+
+  it('keeps a CLI title derived from a supplied prompt', () => {
     expect(
-      isAgentNodeAwaitingSessionTitle(createAgentNode({ title: 'codex', titlePinnedByUser: true })),
+      isAgentNodeAwaitingSessionTitle(
+        createAgentNode({ title: 'Agent', agent: { prompt: 'Agent' } }),
+      ),
     ).toBe(false)
   })
 

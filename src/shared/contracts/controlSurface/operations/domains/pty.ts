@@ -3,6 +3,7 @@ import * as z from 'zod'
 import { normalizePtySpawnInMount } from '../ptyMountHandlersNormalize'
 import { defineLegacyOperation, defineOperation } from '../defineOperation'
 export const ptyDebugCrashHostOperation = defineLegacyOperation({
+  compat: 'control-surface-legacy-validation',
   id: 'pty.debugCrashHost',
   kind: 'command',
   scope: 'admin',
@@ -10,6 +11,7 @@ export const ptyDebugCrashHostOperation = defineLegacyOperation({
   summary: 'Crash the PTY host and terminate its sessions (debug only)',
 })
 export const ptyListProfilesOperation = defineLegacyOperation({
+  compat: 'control-surface-legacy-validation',
   id: 'pty.listProfiles',
   kind: 'query',
   scope: 'read',
@@ -52,6 +54,7 @@ export const ptySpawnOperation = defineOperation({
       .describe('Positive row count, rounded down; invalid values use the operation default'),
   }),
   normalize: normalizePtySpawnPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizePtySpawnPayload,
   errors: ['terminal.spawn_failed', 'terminal.runtime_not_ready'],
   id: 'pty.spawn',
@@ -73,6 +76,7 @@ export const ptySpawnInMountOperation = defineOperation({
     env: z.unknown().optional(),
   }),
   normalize: normalizePtySpawnInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizePtySpawnInMount,
   errors: ['worker.unavailable', 'terminal.spawn_failed', 'terminal.runtime_not_ready'],
   id: 'pty.spawnInMount',

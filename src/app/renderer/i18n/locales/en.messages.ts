@@ -55,6 +55,7 @@ export const enMessages = {
   managedAgentWritesDisabled:
     'Managed Claude restarts and saving new resume targets are paused. Existing saved targets remain protected. Ask the Worker administrator to enable updates.',
   workerConnectionRetry: 'Retry connection',
+  // @compat managed-claude-worker-support
   managedAgentLegacyWorker:
     'This Worker uses legacy Claude sessions. Your workspace remains available. Upgrade and restart the Worker to enable managed recovery.',
   managedAgentChanged: 'This agent has changed. Refresh the workspace and try again.',

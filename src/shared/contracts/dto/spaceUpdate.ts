@@ -18,6 +18,7 @@ export interface UpdateSpaceResult {
   parentSpaceId: string | null
   rect: SpaceUpdateFrame | null
   directoryPath: string
+  // @compat space-update-legacy-node-move
   /** Retained for compatibility; boundary updates never move nodes. */
   movedNodeIds: []
   appliedFrame?: SpaceUpdateFrame

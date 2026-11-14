@@ -1,0 +1,26 @@
+{
+  "client-features": {},
+  "keyword": {
+    "src/app/cli/commands/agentQueries.ts": 1,
+    "src/app/cli/commands/nodes.ts": 1,
+    "src/app/cli/core/agentWaitTurn.ts": 1,
+    "src/app/cli/core/authorizationError.ts": 1,
+    "src/app/main/controlSurface/handlers/sessionPrepareOrReviveAgentBinding.ts": 1,
+    "src/app/main/controlSurface/handlers/sessionPrepareOrReviveTerminalSpawn.ts": 3,
+    "src/app/main/controlSurface/registerOperation.ts": 1,
+    "src/app/renderer/i18n/locales/en.settingsPanel.plugins.ts": 1,
+    "src/contexts/agent/application/PromptDeliveryEvidence.ts": 1,
+    "src/contexts/agent/domain/agentRunStateArbiter.ts": 1,
+    "src/contexts/agent/infrastructure/cli/PiSessionFiles.ts": 1,
+    "src/contexts/agent/infrastructure/watchers/SessionTurnStateDetector.ts": 3,
+    "src/contexts/plugins/domain/pluginCompatibility.ts": 1,
+    "src/contexts/plugins/infrastructure/LocalPluginFiles.ts": 2,
+    "src/contexts/settings/presentation/renderer/settingsPanel/TerminalProfileSection.tsx": 1,
+    "src/contexts/workspace/presentation/renderer/components/terminalNode/presentationSnapshotGeometry.ts": 1,
+    "src/contexts/workspace/presentation/renderer/utils/persistence/accept.ts": 1,
+    "src/shared/contracts/controlSurface/operations/managedClaudeLaunchSchema.ts": 1,
+    "src/shared/contracts/runtimeBuild.ts": 1,
+    "src/shared/sync/persistenceWriteOutcome.ts": 2
+  },
+  "storage-prefix": {}
+}

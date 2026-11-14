@@ -1,9 +1,28 @@
-import type { CreateNodeResult } from '../../../shared/contracts/dto/nodeControl'
+import type {
+  CreateNodeResult,
+  ManagedCanvasNodeKind,
+} from '../../../shared/contracts/dto/nodeControl'
+import { assertNever } from '../../../shared/utils/assertNever'
 import type { CommandContext } from '../core/command'
 import { CliError } from '../core/errors'
 import { retainTurnError, turnContinuation } from '../core/agentTurnComposition'
 import { reportNodeFrame } from './nodeFrame'
 import { createdAgentWaitDeadline, waitForCreatedAgent } from './nodeCreateAgentWait'
+
+function nodeMutationPolicy(kind: ManagedCanvasNodeKind) {
+  switch (kind) {
+    case 'agent':
+      return { initialTurn: true, defaultCreateFrame: false }
+    case 'task':
+      return { initialTurn: false, defaultCreateFrame: true }
+    case 'note':
+    case 'terminal':
+    case 'website':
+      return { initialTurn: false, defaultCreateFrame: false }
+    default:
+      return assertNever(kind)
+  }
+}
 
 async function focusCreatedNode(ctx: CommandContext, value: unknown, wait: boolean) {
   const created = value as CreateNodeResult
@@ -42,25 +61,30 @@ async function focusCreatedNode(ctx: CommandContext, value: unknown, wait: boole
 /** Preserve creation/placement/focus behavior before starting the optional read-only observer. */
 export async function applyNodeMutation(
   ctx: CommandContext,
-  kind: string,
+  kind: ManagedCanvasNodeKind,
   create: boolean,
   onDispatch?: () => void,
 ) {
-  const wait = Boolean(create && kind === 'agent' && ctx.options.wait)
+  const policy = nodeMutationPolicy(kind)
+  const wait = Boolean(create && policy.initialTurn && ctx.options.wait)
   const result = await ctx.invoke(create ? 'node.create' : 'node.update', ctx.input, {
     ...(wait ? { timeoutMs: 20000 } : {}),
     onDispatch,
   })
-  let value = reportNodeFrame(result, ctx, kind, create && kind === 'task')
+  let value = reportNodeFrame(result, ctx, kind, create && policy.defaultCreateFrame)
   if (create && ctx.options.focus) {
     value = await focusCreatedNode(ctx, value, wait)
   }
   return value
 }
 
-export async function mutateNode(ctx: CommandContext, kind: string, create: boolean) {
+export async function mutateNode(
+  ctx: CommandContext,
+  kind: ManagedCanvasNodeKind,
+  create: boolean,
+) {
   const value = await applyNodeMutation(ctx, kind, create)
-  return create && kind === 'agent' && ctx.options.wait
+  return create && nodeMutationPolicy(kind).initialTurn && ctx.options.wait
     ? waitForCreatedAgent(ctx, value as CreateNodeResult, createdAgentWaitDeadline(ctx))
     : value
 }

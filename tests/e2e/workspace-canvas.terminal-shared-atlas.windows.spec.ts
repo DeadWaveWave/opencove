@@ -105,7 +105,6 @@ test('preserves existing glyph pixels when another WebGL terminal is created and
       .info()
       .attach('glyphs-before-new-terminal', { body: before, contentType: 'image/png' })
 
-    /* eslint-disable no-await-in-loop -- create, repaint, compare and close must settle in that order */
     for (let round = 0; round < 3; round += 1) {
       await window
         .locator('.react-flow__pane')
@@ -145,7 +144,6 @@ test('preserves existing glyph pixels when another WebGL terminal is created and
       await sibling.locator('.terminal-node__close').click()
       await expect(window.locator('.terminal-node')).toHaveCount(1)
     }
-    /* eslint-enable no-await-in-loop */
     await terminal.locator('.xterm-helper-textarea').focus()
     await window.evaluate(
       () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))),

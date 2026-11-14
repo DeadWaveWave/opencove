@@ -13,6 +13,7 @@ export const agentListSessionsOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeListSessionsPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeListSessionsPayload,
   errors: [],
   id: 'agent.listSessions',

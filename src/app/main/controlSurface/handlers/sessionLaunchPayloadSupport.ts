@@ -3,7 +3,7 @@ import type {
   LaunchAgentSessionInMountInput,
   LaunchAgentSessionInput,
 } from '../../../../shared/contracts/dto'
-import { fromFileUri } from '../../../../contexts/filesystem/domain/fileUri'
+import { fromFileUri } from '../../../../contexts/filesystem/domain'
 import { AGENT_PROVIDER_IDS, type AgentProviderId } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
 import type { RequestAuth } from '../http/requestAuth'

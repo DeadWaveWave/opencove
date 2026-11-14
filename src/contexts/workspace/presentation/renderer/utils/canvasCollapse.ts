@@ -6,6 +6,7 @@ export { getCollapsedNodeSize }
 export type CollapsedIds = Record<string, true>
 export interface CanvasCollapseState {
   collapsedNodeIds: CollapsedIds
+  // @compat canvas-space-collapse-legacy
   /** Legacy storage only; migrated to actual compact windows when a workspace opens. */
   collapsedSpaceIds: CollapsedIds
 }
@@ -114,6 +115,7 @@ export function collectSpaceNodeIds(spaceId: string, spaces: WorkspaceSpaceState
   return new Set(spaces.filter(space => ids.has(space.id)).flatMap(space => space.nodeIds))
 }
 
+// @compat canvas-space-collapse-legacy
 export function migrateLegacySpaceCollapse(
   state: CanvasCollapseState,
   spaces: WorkspaceSpaceState[],

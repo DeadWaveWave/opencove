@@ -1,6 +1,7 @@
 import type { ManagedClaudeLaunchIntent } from './managedClaudeLaunch'
 import { createAppError } from '../errors/appError'
 
+// @compat managed-claude-worker-support
 /** Keep older Workers safe without treating omitted compatibility fields as user intent. */
 export function resolveManagedClaudeLaunchMirrors(input: {
   intent?: ManagedClaudeLaunchIntent

@@ -86,6 +86,7 @@ function setup() {
 describe('PTY title subscription lifetime', () => {
   afterEach(() => {
     cleanup()
+    vi.useRealTimers()
     shared.hub?.dispose()
     shared.hub = null
   })
@@ -144,6 +145,46 @@ describe('PTY title subscription lifetime', () => {
     expect(state.update).not.toHaveBeenCalled()
     expect(state.flush).not.toHaveBeenCalled()
   })
+
+  it.each([
+    { title: 'Agent', model: null },
+    { title: 'codex gpt-5.2-codex', model: 'gpt-5.2-codex' },
+  ])(
+    'loads the CLI launch title $title after the initial empty scan finishes',
+    async ({ title, model }) => {
+      vi.useFakeTimers()
+      const state = setup()
+      const node = state.nodesRef.current[0]
+      node.data.title = title
+      node.data.agent!.model = model
+      node.data.agent!.prompt = ''
+      const query = vi.fn(async () => [{ ...state.summary, title: null }] as AgentSessionSummary[])
+      renderHook(() =>
+        useWorkspaceCanvasPtyTaskCompletion({
+          nodesRef: state.nodesRef,
+          listAgentSessions: query,
+          setNodes: state.update,
+          onRequestPersistFlush: state.flush,
+        }),
+      )
+      await act(async () => vi.runAllTimersAsync())
+      expect(query).toHaveBeenCalledTimes(5)
+      expect(state.nodesRef.current[0].data.title).toBe(title)
+
+      // The user can submit their first prompt after startup's bounded catalog scan.
+      query.mockResolvedValue([state.summary])
+      await act(async () =>
+        state.emitState({ sessionId: 'runtime-1', state: 'standby', source: 'session_file' }),
+      )
+      expect(state.nodesRef.current[0].data.title).toBe('codex · Review persistence')
+      expect(state.flush).toHaveBeenCalledTimes(1)
+      const requests = query.mock.calls.length
+      await act(async () =>
+        state.emitState({ sessionId: 'runtime-1', state: 'standby', source: 'session_file' }),
+      )
+      expect(query).toHaveBeenCalledTimes(requests)
+    },
+  )
 
   it('starts a fresh subscription when returning to a workspace', async () => {
     const state = setup()

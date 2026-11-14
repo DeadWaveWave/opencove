@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable no-await-in-loop -- debug smoke intentionally waits for real app/agent readiness */
 
 import { chromium } from '@playwright/test'
 import { execFile, spawn } from 'node:child_process'

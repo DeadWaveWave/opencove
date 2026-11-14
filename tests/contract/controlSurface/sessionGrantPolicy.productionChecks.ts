@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Each request observes the preceding mutation or authorization boundary. */
 import { expect, vi } from 'vitest'
 import { SESSION_GRANT_POLICY } from '../../../src/app/main/controlSurface/http/sessionGrantPolicy'
 import { REQUIRED_SESSION_GRANT_DENIALS } from './sessionGrantPolicy.expectations'

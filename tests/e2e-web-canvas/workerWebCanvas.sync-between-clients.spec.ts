@@ -13,8 +13,7 @@ import {
 test.describe('Worker web canvas sync between clients', () => {
   test('syncs note text edits across web clients', async ({ browser, page }) => {
     const workspacePath = await createWorkspaceDir('note-edit-sync')
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath,
         spaces: [
@@ -67,8 +66,7 @@ test.describe('Worker web canvas sync between clients', () => {
 
   test('syncs node closes across web clients', async ({ browser, page }) => {
     const workspacePath = await createWorkspaceDir('node-close-sync')
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath,
         spaces: [
@@ -142,8 +140,7 @@ test.describe('Worker web canvas sync between clients', () => {
     const documentPath = `${workspacePath}/readme.md`
     await writeTextFile(documentPath, '# doc\n')
 
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath,
         spaces: [

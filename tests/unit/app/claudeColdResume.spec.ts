@@ -11,7 +11,6 @@ import { hookChannelFixture } from './claudeHookTranscript.helpers'
 const cleanup: (() => Promise<void>)[] = []
 afterEach(async () => {
   for (const dispose of cleanup.splice(0).reverse()) {
-    // eslint-disable-next-line no-await-in-loop -- close observers before removing transcript roots
     await dispose()
   }
 })

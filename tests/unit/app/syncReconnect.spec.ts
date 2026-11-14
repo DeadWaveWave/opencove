@@ -45,7 +45,6 @@ it('discards the durable read after disconnect and closes on read failure', asyn
       end = vi.fn()
     const res = Object.assign(new EventEmitter(), { write, end }) as unknown as ServerResponse
     const clients = new Set<ServerResponse>()
-    // oxlint-disable-next-line no-await-in-loop -- Exercise independent disconnect outcomes sequentially.
     await serveSyncEvents({
       req,
       res,

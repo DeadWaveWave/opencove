@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable no-await-in-loop -- visual smoke test waits for real Electron and agent output */
 
 import { chromium } from '@playwright/test'
 import { execFile, spawn } from 'node:child_process'

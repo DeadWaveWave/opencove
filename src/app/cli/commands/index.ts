@@ -175,7 +175,9 @@ export const commands: Command[] = [
       },
       contract: {
         type: 'string',
+        // @compat control-surface-legacy-validation
         valueName: 'schema|legacy',
+        // @compat control-surface-legacy-validation
         choices: ['schema', 'legacy'],
         description: 'Filter by input contract availability',
       },

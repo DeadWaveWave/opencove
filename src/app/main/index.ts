@@ -24,6 +24,8 @@ import {
   stopOwnedLocalWorker,
 } from './worker/localWorkerManager'
 import { createMainRuntimeDiagnosticsLogger } from './runtimeDiagnostics'
+import { createRendererFailureContext, getProcessFailureContext } from './processFailureDiagnostics'
+import { scheduleRendererRecovery } from './rendererCrashRecovery'
 import { registerQuickPhrasesContextMenu } from './contextMenu/registerQuickPhrasesContextMenu'
 import { registerQuitCoordinator } from './quitCoordinator'
 import { registerApplicationShortcuts } from './applicationShortcuts'
@@ -82,6 +84,14 @@ const E2E_OFFSCREEN_COORDINATE = -50_000
 const mainWindowRuntimeLogger = createMainRuntimeDiagnosticsLogger('main-window')
 const mainAppRuntimeLogger = createMainRuntimeDiagnosticsLogger('main-app')
 
+// Register before ready so early GPU/utility failures are retained too.
+app.on('child-process-gone', (_event, details) => {
+  mainAppRuntimeLogger.error('child-process-gone', 'Child process gone.', {
+    ...getProcessFailureContext(),
+    ...details,
+  })
+})
+
 function createWindow(): void {
   const devOrigin = is.dev ? resolveDevRendererOrigin() : null
   const rendererRootDir = join(__dirname, '../renderer')
@@ -138,6 +148,7 @@ function createWindow(): void {
     },
   })
 
+  const rendererFailureContext = createRendererFailureContext(mainWindow)
   const disposeApplicationShortcuts = registerApplicationShortcuts(mainWindow)
   broadcastWindowFullScreen(mainWindow)
   broadcastWindowFocus(mainWindow)
@@ -213,12 +224,11 @@ function createWindow(): void {
   // ── Crash recovery: reload the renderer on crash or GPU failure ──
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
     mainWindowRuntimeLogger.error('render-process-gone', 'Renderer process gone.', {
+      ...rendererFailureContext(),
       reason: details.reason,
       exitCode: details.exitCode,
     })
-    if (!mainWindow.isDestroyed()) {
-      mainWindow.webContents.reload()
-    }
+    scheduleRendererRecovery(mainWindow, () => !isAppQuitInProgress && !hasCoordinatedWindowClose)
   })
 
   mainWindow.on('unresponsive', () => {
@@ -271,9 +281,11 @@ function resolveAppUserModelId(): string {
 
 // Electron ready: create browser windows & IPC.
 app.whenReady().then(async () => {
+  // @compat legacy-cli-launchers
   // Best effort and non-blocking: launcher migration must never delay or break startup.
   void repairLegacyCliLaunchers().catch(() => undefined)
   await hydrateCliEnvironmentForAppLaunch(app.isPackaged === true)
+  // @compat legacy-managed-agent-hooks
   reportLegacyManagedHookCleanupFailures(await cleanupLegacyManagedHooksAtStartup(homedir()))
 
   // Set app user model id for windows
@@ -322,15 +334,6 @@ app.whenReady().then(async () => {
   // and ignore CommandOrControl + R in production.
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window, { zoom: true, escToCloseWindow: false })
-  })
-
-  // Log GPU and child process crashes (these can cause white screens)
-  app.on('child-process-gone', (_event, details) => {
-    mainAppRuntimeLogger.error('child-process-gone', 'Child process gone.', {
-      type: details.type,
-      reason: details.reason,
-      exitCode: details.exitCode,
-    })
   })
 
   const runtimeIconPath = resolveRuntimeIconPath()

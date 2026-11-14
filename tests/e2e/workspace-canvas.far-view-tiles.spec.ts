@@ -67,10 +67,8 @@ test('far tiles share the frost corner and shrink their face with a tile too sma
     expect(board.lines).toBe(1)
 
     for (const zoom of [0.24, 0.2, 0.12, 0.1]) {
-      // eslint-disable-next-line no-await-in-loop -- each zoom must land before it is measured.
       await setZoom(window, zoom)
       for (const tile of [terminalTile, noteTile]) {
-        // eslint-disable-next-line no-await-in-loop -- read after the zoom above has landed.
         const face = await readFarTileFace(tile)
         const expected = expectedFace(face.box, titleCap)
         expect(expected.title).toBeLessThan(titleCap)

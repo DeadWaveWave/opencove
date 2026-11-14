@@ -70,7 +70,6 @@ export class AgentProcessSampler {
     slot.promise = (async () => {
       await Promise.resolve()
       while (this.inFlight || this.resumed) {
-        // eslint-disable-next-line no-await-in-loop -- Wait for earlier reads and retirement.
         await (this.resumed ?? this.inFlight!.promise)
       }
       if (this.pendingObservation === slot.promise) {

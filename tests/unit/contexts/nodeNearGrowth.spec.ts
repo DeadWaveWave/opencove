@@ -107,7 +107,6 @@ it('places with the clamped requested size, including size-only frames at root',
     if (root) {
       f.state().workspaces[0].spaces = []
     }
-    // eslint-disable-next-line no-await-in-loop
     const { node } = await f.run({ kind: 'agent', frame: { width: 520, height: 420 } })
     expect(node.frame).toMatchObject({ width: 520, height: 520 })
     const ref = f.state().workspaces[0].nodes[0]

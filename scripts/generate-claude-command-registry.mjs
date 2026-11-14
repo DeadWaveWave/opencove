@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable no-await-in-loop -- Compare/write generated outputs sequentially with exact provenance. */
 import { format, resolveConfig } from 'prettier'
 import { readFile, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
@@ -44,12 +43,8 @@ const header =
 const table =
   header +
   `export const CLAUDE_ROOT_COMMANDS: readonly string[] = ${JSON.stringify(commands, null, 2)}\n`
-const forwarding =
-  header +
-  "export { CLAUDE_ROOT_COMMANDS } from '../../../shared/utils/claudeRootCommands.generated'\n"
 const audit = JSON.stringify(auditData, null, 2) + '\n'
 for (const [target, value] of [
-  ['src/contexts/agent/domain/claudeRootCommands.generated.ts', forwarding],
   ['src/shared/utils/claudeRootCommands.generated.ts', table],
   ['tests/fixtures/provider-argv/claudeRegistrySource.json', audit],
   ['tests/fixtures/provider-argv/claudeRegistry.json', JSON.stringify(commands, null, 2) + '\n'],

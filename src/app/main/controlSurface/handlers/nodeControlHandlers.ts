@@ -1,17 +1,9 @@
 import {
-  claimTask,
-  releaseTask,
-} from '../../../../contexts/workspace/application/nodeControl/nodeTaskMutations'
-import { appendNote } from '../../../../contexts/workspace/application/nodeControl/nodeNoteAppend'
-import {
   taskClaimOperation,
   taskReleaseOperation,
 } from '../../../../shared/contracts/controlSurface/operations/domains/task'
 import { noteAppendOperation } from '../../../../shared/contracts/controlSurface/operations/domains/note'
-import { AgentSpawnAdmissionOwner } from '../../../../contexts/workspace/application/nodeSpawn/AgentSpawnAdmissionOwner'
-import type { AgentSpawnRuntimePort } from '../../../../contexts/workspace/application/nodeSpawn/AgentSpawnRuntimePort'
 import { installAgentSpawnOwner } from '../agentSpawnContext'
-import { resolveCallerParent } from '../../../../contexts/workspace/application/nodeLineage/NodeLineageOwner'
 import { canvasFocusOperation } from '../../../../shared/contracts/controlSurface/operations/domains/canvas'
 import { registerOperation } from '../registerOperation'
 import {
@@ -34,15 +26,21 @@ import type {
 import { createAppError } from '../../../../shared/errors/appError'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import {
+  claimTask,
+  releaseTask,
+  appendNote,
+  AgentSpawnAdmissionOwner,
+  type AgentSpawnRuntimePort,
+  resolveCallerParent,
   createNodeForNodeControl,
   getNodeForNodeControl,
   listNodesForNodeControl,
-} from '../../../../contexts/workspace/application/nodeControl/nodeControlUseCases'
-import { updateNodeForNodeControl } from '../../../../contexts/workspace/application/nodeControl/nodeControlUpdate'
-import { deleteNodeForNodeControl } from '../../../../contexts/workspace/application/nodeControl/nodeControlDelete'
-import { resolveCanvasFocusTargetForNodeControl } from '../../../../contexts/workspace/application/nodeControl/nodeControlFocus'
-import type { SpaceLocatorResolverDeps } from '../../../../contexts/workspace/application/nodeControl/spaceLocator'
-import type { NodeControlAppStateStore } from '../../../../contexts/workspace/application/nodeControl/nodeControlState'
+  updateNodeForNodeControl,
+  deleteNodeForNodeControl,
+  resolveCanvasFocusTargetForNodeControl,
+  type SpaceLocatorResolverDeps,
+  type NodeControlAppStateStore,
+} from '../../../../contexts/workspace/application'
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 import { createRuntimeDeps } from './nodeControlRuntime'
 

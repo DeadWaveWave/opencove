@@ -33,7 +33,6 @@ async function fixture() {
   state.workspaces[0].spaces[0].nodeIds = nodes.map(n => n.id)
   await store.writeAppState(state)
   for (const [i, node] of nodes.slice(1).entries()) {
-    // eslint-disable-next-line no-await-in-loop
     await store.commitCreatedNodeState!(state, {
       lineage: {
         nodeId: node.id,
@@ -133,7 +132,6 @@ it.each([false, true])(
       ['root', 1],
       ['child-1', 3],
     ] as const) {
-      // eslint-disable-next-line no-await-in-loop
       const who = await f.cli(['whoami', '--fields', 'lineageQuota'], id)
       expect(who.code).toBe(0)
       expect(JSON.parse(who.out)).toEqual({
@@ -145,7 +143,6 @@ it.each([false, true])(
           remainingLiveInTree: 0,
         },
       })
-      // eslint-disable-next-line no-await-in-loop
       const refusal = await f.cli(
         ['node', 'create', 'terminal', ...(near ? ['--near', 'Lead'] : ['--space', 'space'])],
         id,

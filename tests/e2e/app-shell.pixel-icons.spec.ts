@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Settings pages open one at a time in one window. */
 import { expect, test, type Page } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
 

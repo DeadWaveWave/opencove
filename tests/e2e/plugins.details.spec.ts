@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Theme changes and preview gestures run in sequence. */
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test'
 import { rm } from 'node:fs/promises'
 import {

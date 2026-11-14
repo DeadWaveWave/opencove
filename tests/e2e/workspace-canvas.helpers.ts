@@ -316,10 +316,12 @@ export async function seedWorkspaceState(
     try {
       await window.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 })
       await window.waitForLoadState('load', { timeout: 15_000 }).catch(() => undefined)
-    } catch {
+    } catch (error) {
+      if (!isRetryableNavigationError(error)) {
+        throw error
+      }
       return await trySeed(attempt + 1)
     }
-
     const expectedWorkspaces = payload.workspaces.map(workspace => ({
       id: workspace.id,
       nodeIds: workspace.nodes.map(node => node.id),
@@ -380,7 +382,6 @@ export async function seedWorkspaceState(
 
       throw error
     }
-
     const expectedWorkspaceCount = payload.workspaces.length
     let navigationReady = false
     try {
@@ -389,13 +390,11 @@ export async function seedWorkspaceState(
         let ready = false
 
         while (Date.now() < deadline) {
-          // eslint-disable-next-line no-await-in-loop -- bounded UI polling
           ready = await window.evaluate(isSeededWorkspaceNavigationReady, expectedWorkspaceCount)
           if (ready) {
             break
           }
 
-          // eslint-disable-next-line no-await-in-loop -- bounded UI polling
           await window.waitForTimeout(50)
         }
 

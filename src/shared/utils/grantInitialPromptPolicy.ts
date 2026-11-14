@@ -2,18 +2,17 @@ import type { AgentProviderId } from '../contracts/dto'
 import { createAppError } from '../errors/appError'
 import { assertInitialPromptText } from './initialPromptValidation'
 import { initialPromptFeedback } from '../errors/initialPromptFeedback'
+import {
+  AGENT_PROVIDER_DESCRIPTORS,
+  type AgentProviderInitialPromptPolicy,
+} from '../contracts/agentProviderDescriptors'
 
-// Native TUI command channels, including Claude's legacy quick-memory entry.
-const commandPrefixes: Readonly<Record<AgentProviderId, readonly string[]>> = {
-  'claude-code': ['!', '/', '#', '&'],
-  codex: ['!', '/'],
-  opencode: ['!', '/'],
-  pi: ['!', '/'],
-  kimi: ['/'],
-  gemini: ['!', '/'],
-}
-const commonPrefixes = commandPrefixes['claude-code'].filter(prefix =>
-  Object.values(commandPrefixes).every(prefixes => prefixes.includes(prefix)),
+// Native TUI command channels, including Claude's quick-memory entry.
+const promptPolicies: readonly AgentProviderInitialPromptPolicy[] = Object.values(
+  AGENT_PROVIDER_DESCRIPTORS,
+).map(descriptor => descriptor.initialPrompt)
+const commonPrefixes = promptPolicies[0].grantCommandPrefixes.filter(prefix =>
+  promptPolicies.every(policy => policy.grantCommandPrefixes.includes(prefix)),
 )
 const SINGLE_ASCII_WORD = /^[\x21-\x7e]+$/u
 
@@ -23,10 +22,13 @@ export function assertSessionGrantMessagePrompt(
   options: { provider?: AgentProviderId; operationId: string; field: 'text' | 'prompt' },
 ): void {
   assertInitialPromptText(text)
-  const prefixes = options.provider ? commandPrefixes[options.provider] : commonPrefixes
+  const policy = options.provider
+    ? AGENT_PROVIDER_DESCRIPTORS[options.provider].initialPrompt
+    : null
+  const prefixes: readonly string[] = policy?.grantCommandPrefixes ?? commonPrefixes
   // Python C0 separators, JS whitespace and Rust NEL are inspected without rewriting input.
   const inspected = text.replace(
-    // eslint-disable-next-line no-control-regex -- Provider whitespace compatibility.
+    // eslint-disable-next-line no-control-regex -- Provider whitespace handling.
     /^[\s\p{White_Space}\u001c-\u001f]+|[\s\p{White_Space}\u001c-\u001f]+$/gu,
     '',
   )
@@ -34,7 +36,7 @@ export function assertSessionGrantMessagePrompt(
     ? 'provider_command_prefix'
     : text.includes('@')
       ? 'unverified_file_reference'
-      : options.provider === 'codex' && /\$[A-Za-z0-9_:-]+/.test(text)
+      : policy?.denyGrantSkillReferences && /\$[A-Za-z0-9_:-]+/.test(text)
         ? 'provider_skill_reference'
         : ['exit', 'quit', ':q', ':q!', ':wq', ':wq!'].includes(inspected.toLowerCase())
           ? 'provider_exit_word'

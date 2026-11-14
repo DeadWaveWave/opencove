@@ -122,7 +122,6 @@ export class PiSessionStateWatcher {
     try {
       do {
         this.hasPendingRead = false
-        // eslint-disable-next-line no-await-in-loop
         await this.readDelta()
       } while (this.hasPendingRead && !this.disposed)
     } catch (error) {
@@ -166,7 +165,6 @@ export class PiSessionStateWatcher {
       while (position < stats.size && !this.disposed) {
         const bytesToRead = Math.min(READ_CHUNK_BYTES, stats.size - position)
         const buffer = Buffer.allocUnsafe(bytesToRead)
-        // eslint-disable-next-line no-await-in-loop
         const { bytesRead } = await handle.read(buffer, 0, bytesToRead, position)
         if (bytesRead <= 0) {
           break

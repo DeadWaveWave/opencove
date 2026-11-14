@@ -1,3 +1,4 @@
+// @compat-file legacy-managed-agent-hooks
 import { randomBytes } from 'node:crypto'
 import { chmod, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'

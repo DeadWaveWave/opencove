@@ -62,6 +62,7 @@ export async function probeManagedRuntime(
     typeof value.instanceId !== 'string' ||
     value.deploymentId !== connection.deploymentId
   ) {
+    // @compat endpoint-runtime-legacy-failure
     throw new Error(
       '[opencove-bootstrap:runtime_legacy] Existing service cannot prove its managed deployment identity; arrange a safe stop before upgrading.',
     )

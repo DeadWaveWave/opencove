@@ -1,3 +1,4 @@
+// @compat-file control-surface-legacy-validation
 // Frozen from src/app/main/ipc/normalize.ts at fff23113f96951bba8004b432539633f7e3c29e0.
 const MAX_ENV_ENTRIES = 100
 const MAX_ENV_KEY_LENGTH = 256

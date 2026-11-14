@@ -17,12 +17,14 @@ export function isCanvasBackgroundStyle(value: unknown): value is CanvasBackgrou
  */
 export function normalizeCanvasBackgroundStyle(
   value: unknown,
+  // @compat settings-legacy-fields
   legacyEnabled: boolean | null,
   fallback: CanvasBackgroundStyle,
 ): CanvasBackgroundStyle {
   if (isCanvasBackgroundStyle(value)) {
     return value
   }
+  // @compat settings-legacy-fields
   if (legacyEnabled !== null) {
     return legacyEnabled ? 'pixel' : 'off'
   }

@@ -75,7 +75,7 @@ export async function prepareAgentBatch({ options }: CommandArgs, io: CliIo) {
   return { entries: parsed.data } satisfies PreparedBatch
 }
 
-/** Omitted/legacy providers resolve from private Settings: do not guess that value. */
+/** Omitted or retired provider choices resolve from private Settings: do not guess that value. */
 function launchProviders(requested: unknown) {
   return isSelectableAgentProvider(requested) ? [requested] : SELECTABLE_AGENT_PROVIDERS
 }
