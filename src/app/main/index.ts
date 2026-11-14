@@ -271,9 +271,11 @@ function resolveAppUserModelId(): string {
 
 // Electron ready: create browser windows & IPC.
 app.whenReady().then(async () => {
+  // @compat legacy-cli-launchers
   // Best effort and non-blocking: launcher migration must never delay or break startup.
   void repairLegacyCliLaunchers().catch(() => undefined)
   await hydrateCliEnvironmentForAppLaunch(app.isPackaged === true)
+  // @compat legacy-managed-agent-hooks
   reportLegacyManagedHookCleanupFailures(await cleanupLegacyManagedHooksAtStartup(homedir()))
 
   // Set app user model id for windows

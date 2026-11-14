@@ -35,6 +35,7 @@ export type PtyStreamHubResizeOptions = {
 
 function resolveOperationId(value: string | null | undefined): string {
   const normalized = value?.trim()
+  // @compat pty-geometry-legacy-revision
   return normalized ? normalized : `legacy-${randomUUID()}`
 }
 

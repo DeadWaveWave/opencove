@@ -6,6 +6,7 @@ import type {
 
 type PendingGeometryAck = {
   sessionId: string
+  // @compat pty-geometry-legacy-revision
   legacyRevision: number | null
   resolve: (result: TerminalGeometryCommitResult) => void
   reject: (error: Error) => void
@@ -16,11 +17,13 @@ export type RemoteGeometryAckCoordinator = {
   waitForResult: (input: {
     sessionId: string
     operationId: string
+    // @compat pty-geometry-legacy-revision
     legacyRevision?: number | null
     timeoutMs: number
     timeoutMessage: string
   }) => Promise<TerminalGeometryCommitResult>
   resolveResult: (result: TerminalGeometryCommitResult) => boolean
+  // @compat pty-geometry-legacy-revision
   resolveLegacyGeometry: (
     event: TerminalGeometryEvent,
     authority: TerminalGeometryAuthority | null,
@@ -76,6 +79,7 @@ export function createRemoteGeometryAckCoordinator(): RemoteGeometryAckCoordinat
         }, input.timeoutMs)
         pendingByOperationId.set(input.operationId, {
           sessionId: input.sessionId,
+          // @compat pty-geometry-legacy-revision
           legacyRevision: input.legacyRevision ?? null,
           resolve,
           reject,
@@ -91,6 +95,7 @@ export function createRemoteGeometryAckCoordinator(): RemoteGeometryAckCoordinat
       pending.resolve(result)
       return true
     },
+    // @compat pty-geometry-legacy-revision
     resolveLegacyGeometry: (event, authority) => {
       if (typeof event.revision !== 'number') {
         return false

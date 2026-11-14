@@ -60,7 +60,8 @@ export function classifyWriteResult(result: PersistWriteResult): PersistWriteRes
       result.error.code !== 'persistence.io_failed' &&
       result.error.code !== 'persistence.unavailable'
         ? 'rejected'
-        : result.reason === 'io' || result.reason === 'unknown'
+        : result.reason === 'io' ||
+            /* @compat remote-persistence-legacy-outcome */ result.reason === 'unknown'
           ? 'unknown'
           : 'rejected',
   }

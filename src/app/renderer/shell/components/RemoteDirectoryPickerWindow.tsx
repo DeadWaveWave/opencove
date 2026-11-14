@@ -6,7 +6,7 @@ import type {
   ReadEndpointDirectoryResult,
   RepairWorkerEndpointInput,
 } from '@shared/contracts/dto'
-import { fromFileUri } from '@contexts/filesystem/domain/fileUri'
+import { fromFileUri } from '@contexts/filesystem/domain'
 import { toErrorMessage } from '../utils/format'
 import {
   getEndpointActionExecution,

@@ -73,7 +73,9 @@ async function observeLease(lockPath: string): Promise<LeaseObservation | null> 
         metadata.dev,
         metadata.ino,
         metadata.mtimeMs,
-        metadata.isDirectory() ? 'directory' : 'legacy-file',
+        metadata.isDirectory()
+          ? 'directory'
+          : /* @compat home-worker-config-legacy-lease */ 'legacy-file',
         raw ?? 'malformed',
       ].join(':'),
       mtimeMs: metadata.mtimeMs,

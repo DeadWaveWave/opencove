@@ -8,7 +8,7 @@ import {
 import { filesystemWriteFileTextInMountOperation } from '../../../../shared/contracts/controlSurface/operations/domains/filesystem'
 import { registerOperation } from '../registerOperation'
 import { assertRemoteMutationCapabilities } from './filesystemMutationCapabilities'
-import type { FileSystemPort } from '../../../../contexts/filesystem/application/ports'
+import type { FileSystemPort } from '../../../../contexts/filesystem/application'
 import {
   copyEntryUseCase,
   createDirectoryUseCase,
@@ -16,7 +16,7 @@ import {
   moveEntryUseCase,
   renameEntryUseCase,
   writeFileTextUseCase,
-} from '../../../../contexts/filesystem/application/usecases'
+} from '../../../../contexts/filesystem/application'
 import type {
   CopyEntryInput,
   CreateDirectoryInput,

@@ -1,3 +1,4 @@
+import { AGENT_PROVIDER_DESCRIPTORS } from '../../../../../shared/contracts/agentProviderDescriptors'
 import { managedHookCoverage } from '../shared/ManagedHookCoverage'
 import { connect } from 'node:net'
 import { homedir } from 'node:os'
@@ -44,7 +45,7 @@ export interface CodexAgentProviderContributionOptions {
 export class CodexAgentProviderContribution implements AgentProviderContribution {
   readonly prompting: { supported: true; submitDelayMs: number }
   readonly descriptor = {
-    displayName: 'Codex',
+    displayName: AGENT_PROVIDER_DESCRIPTORS['codex'].label,
     documentationUrl: 'https://developers.openai.com/codex/cli/',
     id: 'codex',
     launch: {
@@ -183,9 +184,10 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
         hookConfigurations: hook.configurations,
         workspaceDirectory: command.workspaceDirectory,
       })
-    } catch {
+    } catch /* @compat codex-legacy-notify-bridge */ {
       // Older Codex versions retain the legacy notify integration below.
     }
+    // @compat codex-legacy-notify-bridge
     const notify = `notify=${serializeCodexTomlStringArray(
       [relay.command, ...relay.args],
       this.runtimePlatform,
@@ -209,8 +211,8 @@ export class CodexAgentProviderContribution implements AgentProviderContribution
       args: [
         ...(trust ? hook.configurations.flatMap(configuration => ['--config', configuration]) : []),
         ...(trust ? ['--config', trust] : []),
-        '--config',
-        notify,
+        /* @compat codex-legacy-notify-bridge */ '--config',
+        /* @compat codex-legacy-notify-bridge */ notify,
       ],
       env: { ...reservation.env },
       hookCoverage: trust ? ('lifecycle' as const) : ('notify_only' as const),

@@ -1,4 +1,4 @@
-import { toFileUri } from '@contexts/filesystem/domain/fileUri'
+import { toFileUri } from '@contexts/filesystem/domain'
 import type {
   CreateGitWorktreeInput,
   CreateGitWorktreeResult,

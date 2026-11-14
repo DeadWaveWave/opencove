@@ -131,9 +131,10 @@ export class ManagedClaudeLaunchOwner {
   async admit(
     attempt: ManagedClaudeLaunchAttempt,
     execution: ManagedClaudeExecution,
-  ): Promise<'managed' | 'legacy'> {
+  ): Promise<'managed' | /* @compat managed-claude-worker-support */ 'legacy'> {
     await this.assertReady(attempt)
     const { observation, decision } = this.validateExecution(attempt, execution)
+    // @compat managed-claude-worker-support
     if (decision === 'legacy') {
       return 'legacy'
     }

@@ -72,6 +72,7 @@ export function selectedTurnEnd(
   if (snapshot.lastEndedTurn?.id === turnId) {
     return result(snapshot.lastEndedTurn.outcome, snapshot.lastEndedTurn.endedAt)
   }
+  // @compat cli-legacy-input-handling
   if (
     event?.type === 'agent.turn_completed' &&
     event.endedTurn?.id === turnId &&

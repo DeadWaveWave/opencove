@@ -21,18 +21,28 @@
 5.  **重复行为优先下沉到拥有者 (Logic Internalization)**: 若同一行为在多个调用方重复出现，优先下沉到真正拥有该行为的组件/模块，而不是在使用方复制。
 6.  **把 SOLID 当作校准器，不当作教条 (Use SOLID as a Design Check)**:
     - `S`：模块如果同时承担状态决策、IO、UI、恢复策略，通常已经拆分过晚。
-    - `O`：新增 `provider / adapter / watcher` 时，优先新增实现，而不是到处改稳定分发逻辑。
+    - `O`：新增 `provider / adapter / watcher` 时，优先新增实现，而不是到处改稳定分发逻辑；provider / node kind 的静态差异写进 registry 表项，不要比较 id，见 `docs/architecture/ARCHITECTURE.md#variants-and-registries`。
     - `L`：只有存在真实子类型替换时才考虑；不要为了“像 OO”强造继承层级。
     - `I`：`preload / service / bridge` 接口要小而专用，不暴露大而全 API。
     - `D`：高层依赖抽象端口和类型，不直接依赖 `Electron / PTY / CLI` 细节。
 7.  **结构优先于补丁 (Prefer Structural Clarity over Patch Accumulation)**: 不要等问题复发后才升级。只要任务本身已经暴露出 `多个 mutable state owner`、`边界/权限含混`、`同一入口承载多套竞争语义或解释路径`、或 `局部修补会制造隐藏/矛盾状态`，就应先收敛结构而不是继续叠 patch。
 8.  **Renderer 反馈统一用应用内消息，不用系统弹窗 (Use In-App Feedback, Not System Dialogs)**: Renderer 层禁止新增 `window.alert / confirm / prompt` 这类系统弹窗；统一复用应用内反馈组件，并按语义区分 `info / warning / error` 三个视觉层级，避免阻塞交互与平台观感割裂。
 
+#### 死代码门禁 (Dead Code Gate)
+
+`pnpm deadcode:check`（属于 `pnpm verify:repo`，因此在 `verify:checks` 与 CI 的 `Repository checks` 步骤中运行）以 knip production 模式从生产入口出发做整图可达性检查：测试文件不算使用者，所以“被替换但仍被自己的 spec 引用”的旧模块会直接失败。修复方式是删除旧代码，不是加豁免。
+
+- **只放生产代码**：`src/` 只放会随产品发布的代码；仅测试使用的模块放在 `tests/`（例如 `tests/support/`）。
+- **测试专用导出**：生产代码和同文件都没用到、只有测试使用的导出，必须命名为 `...ForTests` 并标注 `/** @internal */`；`@internal` 只允许用于 `...ForTests`，且必须写成紧贴声明上方的 JSDoc 块；`src/` 下禁止以任何注释形式（行注释、块注释、export 列表）使用 `@public` / `@beta` / `@alias`（knip 不报告带这些标签的导出，会掩盖死代码）。
+- **按路径字符串加载的代码**（子进程、worker）必须是构建入口：加入 `scripts/lib/build-entries.mjs`，并注释它在哪里被 spawn。该文件是生产入口的唯一来源，electron-vite、CLI 构建和 `knip.config.ts` 都读取它。
+- **未使用的 export / type** 记录在 `scripts/dead-code-ratchet.json`（按文件计数，只减不增）。清理后运行 `pnpm deadcode:ratchet` 锁定；该命令在任何计数上升时拒绝写入，且在基线文件已存在于 git HEAD 却被删除时拒绝重建（只有首次生成才可显式加 `--bootstrap`，`pnpm deadcode:ratchet` 不带该参数）。不要手改该文件，也不要在 `knip.config.ts` 里 `ignore` 文件或目录。
+- 文件、依赖、unresolved、binaries 等必须为 0。生产不 import 的依赖用 `pnpm remove` 移除，仅工具链使用的移到 `devDependencies`。
+
 ### 命名与前缀 (Naming)
 
 - 对外/协议/持久化统一使用 `OpenCove` / `opencove`（例如 `window.opencoveApi`、`OPENCOVE_*`、`.opencove/`、`opencove.db`）。
 - UI 设计系统与样式命名空间保留 `cove` 前缀（例如 `--cove-*`、`data-cove-*`、`.cove-window`），作为稳定的内部约定。
-- 历史版本的 localStorage key 可能仍使用 `cove:m0:*` 前缀；当前实现会兼容读取并迁移。
+- 历史版本的 localStorage key 可能仍使用 `cove:m0:*` 前缀；命名检查不处理它，兼容读取与迁移代码必须登记到期条件，见 `docs/development/COMPATIBILITY_EXPIRY.md`。
 
 ### 架构执行触发器 (Architecture Execution Triggers)
 
@@ -55,13 +65,33 @@
 
 ### 架构契约变更 Gate (Architecture Contract Change Gate)
 
-本节只记录必须遵守的入口规则。详细 checklist 和 guard 行为见
+本节只记录必须遵守的入口规则。命令、ratchet 语义与例外写法见
 `harness/architecture/README.md`。
 
 - 契约文档包括：`docs/architecture/ARCHITECTURE.md`、`docs/architecture/CONTROL_SURFACE.md`、`docs/architecture/RECOVERY_MODEL.md`。
-- 如果改动影响依赖方向、层职责、进程边界、allowlist、禁止 import/API 或 severity，必须同步 `harness/architecture/` 的规则、分析器、测试和结果。
+- 如果改动影响依赖方向、层职责、进程边界、allowlist、禁止 import/API 或 severity，必须同步 `harness/architecture/` 的规则、分析器和测试（计数下降时再运行 `pnpm arch:ratchet`）。
 - 如果只是措辞、错别字或说明性例子，必须在 review/提交说明中声明 `no executable-rule impact`。
-- 本地 staged guard：`pnpm arch:doc-sync`。
+- `pnpm arch:check` 是 `verify:quick` 与 CI 的阻塞门禁：error 级发现必须为 0，warn 级发现按 (规则, 文件) 计数不得偏离 `harness/architecture/ratchet.json`。新增违规需要修改 `harness/architecture/rules.json`：`allowedEdges` 条目必须带 `reason`，修改规则的 severity、`exclude` 或 `allowedPatterns` 同样属于例外，必须在 review 中写明理由。
+
+### 画布状态棘轮 (Canvas State Ratchet)
+
+`pnpm canvas:state-check` 守护 issue #647（把画布状态收敛到单一 owner）的重构：今天 `workspaceCanvas/` 里的 hook 通过 ref 镜像和 setter 参数互相传递状态，且有多处直接写 workspace store。该检查把这些存量按文件计数并冻结，使重构可以分片落地、每一片的改进都被锁住。它属于 `pnpm verify:repo`，因此 `verify:checks` 与 CI 的 `Repository checks` 都会运行。
+
+计数规则：用 TypeScript 解析器识别 token，注释、字符串、模板文本、正则字面量与 JSX 文本都不计入，换行与空白差异不会改变计数；`*.spec.*` / `*.test.*` / `__tests__/` / `.d.ts` 不统计。统计范围刻意比今天问题集中的 `workspaceCanvas/` 更宽，这样把代码移出该目录不会让计数下降；后续切片也会在该目录之外新增代码。
+
+| 计数器 | 范围 | 统计内容 |
+| --- | --- | --- |
+| `ref-type` | `src/contexts/workspace/presentation/renderer/**` | `MutableRefObject<` 与 `RefObject<` |
+| `setter-type` | 同上 | `Dispatch<SetStateAction`（含 `React.` 前缀） |
+| `ref-write` | 同上 | 对名为 `ref` 或以 `Ref` 结尾的标识符的 `.current` 赋值（`=`、`||=`、`+=` 等；不含 `==`、`===`） |
+| `legacy-channel` | 整个 `src/` | 整词标识符 `nodesRef`、`spacesRef`、`setNodes`、`onSpacesChange`、`onRequestPersistFlush`；也统计整个字符串恰为其中之一的情形（如 `Pick<Ctx, 'spacesRef'>`） |
+| `workspace-writer` | 整个 `src/` | 写能力提及（write-capability mentions）：整词标识符 `setWorkspaces` 与 `useAppStore.setState`，每次出现都计一次，不论是否为调用 |
+
+已知盲区：整个 hook 返回值作为单个参数传递（如 `canvasState: ReturnType<typeof useWorkspaceCanvasState>`）时，其中携带的 ref 与 setter 不会被任何计数器看到；`ref-write` 看不到对 ref 内状态的修改（如 `someRef.current.set(...)`）。因此计数为 0 不代表不存在由 ref 持有的状态。
+
+语义与 `pnpm ui:style-check` 的棘轮相同：任一文件的计数相对 `scripts/canvas-state-ratchet.json` 增加或减少都会失败。基线只用 `pnpm canvas:state-ratchet` 重新生成，不要手改 JSON；该命令固定写入这一个文件，不接受其他路径或配置参数，并且在任一计数器的总数会上升时拒绝写入；总数不变但某些文件的计数上升（代码在文件间移动）时会允许写入，并逐条打印这些文件级上升供评审查看。
+
+降低计数：删除对应的 ref、setter 参数或 workspace 写能力提及（按 #647 的 owner 设计迁移，而不是改写成计数器认不出的形式），运行 `pnpm canvas:state-ratchet`，把更新后的 `scripts/canvas-state-ratchet.json` 与代码改动放进同一个提交。增加计数不被允许：请改用 #647 描述的 owner 与命令。计数器定义见 `scripts/lib/canvas-state-ratchet.mjs`。
 
 ### 高风险问题预防策略（只列最容易漏的）
 
@@ -140,7 +170,7 @@
 | 时机 | 入口与范围 |
 | --- | --- |
 | 每轮修改 | 运行能复现本轮不变量的最低层测试；用户可感知变化再跑已有对应 E2E，新增条件见上文；不要对累计暂存的整个功能反复跑全量 |
-| 本地提交 | `pnpm verify:quick` 或 `pnpm pre-commit`：静态检查、staged 相关测试、native recovery contracts、固定核心 E2E 与受影响模块的代表场景 |
+| 本地提交 | `pnpm verify:quick` 或 `pnpm pre-commit`：静态检查（含 `pnpm compat:check`：兼容路径到期门禁，规则见 `docs/development/COMPATIBILITY_EXPIRY.md`）、staged 相关测试、native recovery contracts、固定核心 E2E 与受影响模块的代表场景 |
 | 按需本地完整检查 | 暂存后运行 `pnpm verify:full`：静态检查、完整 Vitest、native contracts、完整 Electron E2E |
 | PR 合并前 | 最终提交必须通过完整 CI，包括分片 Electron、平台专属和 Desktop/Web continuity 检查 |
 
@@ -157,6 +187,18 @@ Ubuntu/macOS 三个分片用 `scripts/plan-e2e-shards.mjs` 按文件内用例的
 本地查看计划：`node scripts/plan-e2e-shards.mjs --os macos --shards 3`（也支持 `ubuntu`，加 `--shard 1 --run` 执行该分片）。原有 `pnpm test:e2e -- --shard=1/3` 和 pre-commit 选组保持不变。
 
 快速 E2E 首个失败即停止，保留 trace 后先定向修复。一次代码版本的一组定向 E2E 只构建一次；只有确认源码与构建产物一致时才可复用，代码改动后重新构建。完整 CI 保留现有分片策略；本地快速通过不代表完整回归通过，汇报必须分别列出通过、跳过与尚未执行的范围。
+
+### 变更影响面（`pnpm impact`）
+
+改动之间的联系不能只靠 Agent 的记忆：每次会话都从零开始，而一个典型提交约涉及 20 个文件、3 个区域。`pnpm impact` 在动手前和提交前列出一组文件的影响面，不改动工作区和 Git 状态，退出码恒为 0（仅用法或 I/O 错误非 0）。
+
+- **输入**：`pnpm impact <文件...>`（计划中尚不存在的文件也可以）、`pnpm impact --staged`、`pnpm impact --base origin/main`（与合并基点的差异，含未提交与新建文件）。输出格式：默认完整、`--brief` 摘要、`--json`（`schemaVersion: 1`）、`--pr-section`（可直接粘贴的 PR 小节）。
+- **输出内容**：涉及的区域与分层（`src/contexts/<x>`、`src/app/<x>`、`src/shared`、`src/platform`，其余取顶层目录；分层来自 `harness/architecture/rules.json`）；直接引用者（按区域分组，标注运行时或仅类型；`export … from` 会穿透，barrel 不会遮住真正的引用者）；相关测试（引用者中的 `tests/**/*.spec.*`，加上 `scripts/lib/file-read-dependents.mjs` 登记的读文件型测试）；快速 E2E 组（直接调用 `selectPrecommitE2E`）；以及历史上常与它们一起改动、但本次缺席的**共变伙伴**。
+- **共变伙伴**来自提交的索引 `scripts/impact-cochange-index.json`，由 `pnpm impact:index` 从 Git 历史生成（跟随重命名；排除合并提交、超过 40 个文件的提交、spec/CSS/多语言/快照等；取最近 500 个符合条件的提交）。展示条件：共同出现至少 5 次，且共同占该文件改动的至少 50%。支持度 ≥10 且置信度 ≥90% 的一对会标为"always together"，应优先考虑生成或抽取，而不是反复解释。
+- **为什么提交索引**：它让 50 个提交的浅克隆、1 个提交的 CI 检出和完整本地克隆得到同样的答案，PR 检查与 Agent 本地看到的一致。索引是生成物，不要手改（`AGENTS.md` 规则 3）：`pnpm impact:index` 需要完整历史（浅克隆会拒绝并提示 `git fetch --unshallow`），`pnpm impact:index --check` 从记录的 `throughCommit` 重建并逐字节比较，PR 修改索引时 CI 会运行它。维护者约每月运行一次 `pnpm impact:index` 并作为单独提交；超过 45 天输出会给出过期警告。
+- **PR 检查**：PR 描述必须有 `## 🔗 Co-change partners left untouched` 小节，对本 PR 差异里每个缺席的伙伴写一行理由（"should be extracted, follow-up #N" 也是有效理由）；伙伴或理由缺失、理由为空或仍是 `<reason>` 都会失败，失败日志会打印应粘贴的完整小节。PR 检查与 `pnpm impact --base` 使用同一个函数 `findMissingPartners` 和同一份索引。
+- **本地门禁**：`verify:quick` 末尾运行 `pnpm impact --staged --brief`，只做提示，不阻塞提交。
+- **不能告诉你什么**：经由字符串、IPC 通道名、依赖注入注册、CSS 类名、i18n key 或动态 import 产生的耦合；没有历史的新文件；以及伙伴是否真的需要修改（它只说"通常一起改"，不说"必须"）。相关测试只覆盖静态 import（含 re-export）与 `FILE_READ_DEPENDENTS`。
 
 ## 全局硬规则（摘要）
 
@@ -176,17 +218,9 @@ Ubuntu/macOS 三个分片用 `scripts/plan-e2e-shards.mjs` 按文件内用例的
     -   生成代码（如自动生成的类型定义等）禁止手改。
     -   **调研/验收报告默认不入库**：调研分析报告，以及某次 PR 的 review / acceptance 记录，都只是**本地分析与决策产物**，不是仓库资产。它们是某一时刻的快照，会很快过期，却没有人维护。除非明确要求，否则不要提交；评审结论写在 PR 描述/评论里。`docs/` 只收**本项目自身的**长期文档：架构、不变量、开发流程、案例。若调研中得出的结论具有长期价值（如一条不变量），把**结论**写进对应的项目文档，而不是提交整份报告。
 -   **提交前检查（本地快速门禁，合并前 CI 完整回归）**：
-    -   运行 staged gates 前，必须先 `git add -A` 暂存本次改动；若已经提交，仍须显式重新暂存后再运行。执行 `git diff --cached --name-only` 逐项确认文件列表，并确保 `git diff --cached --name-only | wc -l` 的结果大于 0。
-    -   对 0 个文件运行的 gate 实际上没有运行；将其报告为“通过”属于错误陈述。需要强制防空时，使用 `OPENCOVE_REQUIRE_STAGED=1 pnpm pre-commit`；随后先执行 `pnpm line-check:staged`，因为行数门禁只检查 staged 文件。
-    -   若 staged 文件中存在超过 1000 行的文件，先重构/拆分，过门禁后再继续，不要带着超长文件直接运行 `pnpm pre-commit`。
-    -   `pnpm pre-commit` 会执行 `pnpm naming-check:staged`：禁止在新代码里重新引入 `cove:*`（对外/协议/持久化），仅允许显式 legacy 迁移用途；UI 设计系统前缀仍保留 `cove`（见上文命名约定）。
+    -   `pnpm verify:repo` 对整个仓库检查行数、命名（`cove:*` 等前缀）、UI 样式、画布状态棘轮（`pnpm canvas:state-check`）、架构棘轮（`pnpm arch:check`）、死代码（`pnpm deadcode:check`）与兼容路径到期（`pnpm compat:check`）；结果不依赖 staged 内容，CI（`ci-ubuntu` 的 `Repository checks` 步骤）以同样方式运行。行数上限只约束手写代码（`.ts/.tsx/.mjs/.css/.sh` 等），生成文件与 `.md/.json/.jsonl/.yml/.html` 不受限；超限文件只能登记在 `scripts/check-max-lines.mjs` 的 `LINE_LIMIT_EXEMPTIONS` 中，且记录的行数只降不增。命名检查不处理 `cove:m0:` 前缀（由 `pnpm compat:check` 负责，写 `legacy` 不能绕过）；UI 设计系统前缀仍保留 `cove`（见上文命名约定）。
+    -   其余 staged 检查（格式、密钥、相关测试）只看 staged 文件；CI 会对整个仓库重跑格式、密钥扫描与全部单测。对 0 个文件运行的 staged 检查实际上没有运行，将其报告为“通过”属于错误陈述；需要强制防空时，使用 `OPENCOVE_REQUIRE_STAGED=1 pnpm pre-commit`（运行前先 `git add -A`，并用 `git diff --cached --name-only` 确认文件列表非空）。
     -   若本次改动包含用户可感知变化（新增功能、UX 改动、修复 bug、默认行为变化），应先提交代码并创建 PR；拿到 PR 链接/编号后，再更新 `CHANGELOG.md` 的 `## [Unreleased]` 并单独提交（每个变化一条，尽量附 `#PR` 编号）。`nightly` tag 不要求更新 changelog；发 `stable` 时再把 `Unreleased` 结算进新版本段。
-    -   **纯文档（`.md`）提交的门禁例外**：staged 集合只含 `.md` 时，`naming-check` 会报 `no staged files matched — this gate checked NOTHING and is not a pass.`。这是**预期行为，不是缺陷**：对 0 个文件运行的 gate 本就不该报告通过。
-        -   **原因**：其扩展名白名单只含代码类后缀（`.ts/.tsx/.js/.mjs/.cjs/.mts/.cts/.json/.yml/.yaml`），不含 `.md`。
-        -   **退出码**：`scripts/check-naming-staged.mjs:189` 为 `process.exit(process.env.OPENCOVE_REQUIRE_STAGED === '1' ? 1 : 0)` —— 裸跑退 0（仅告警），`OPENCOVE_REQUIRE_STAGED=1 pnpm pre-commit` 退 1 并中断整条链。
-        -   **不要放宽**：别为变绿而把 `.md` 加进白名单 —— 实测这会让本文件第 35 行（准确描述历史 `cove:m0:*` 前缀、但不含 `legacy` 豁免词）被判违规。
-        -   **正解**：如实记录该 gate 未检查任何文件，并以紧邻的上一次完整产品门禁作为运行时证据。
-        -   **别顺带声称后续门禁通过**：链序为 `line-check`(1) → `secret-check`(2) → `naming-check`(3) → … → `format-check`(6)，第 3 步中断后其余**根本不会执行**；需要其结论时单独跑（如 `npx prettier --check <file>`）。
     -   创建/更新 PR 时：若本次改动包含用户可感知变化，必须跑对应 Playwright E2E，并列明本地验证范围；合并前以最终提交的完整 CI 为准。
     -   创建/更新 PR 时：必须按 `.github/pull_request_template.md` 的结构完整填写；若使用 `gh pr create` / `gh pr edit`，也要显式按模板组织 title/body，不得跳过必填段落。
     -   **提交 PR 正文前，必须先把正文写入文件并运行 `node scripts/check-pr-template.mjs <file>`，确认输出为通过。** 章节标题必须逐字取自 `.github/pull_request_template.md`（先读模板，不要凭记忆写），因为 `pr-template` CI 按精确标题匹配：少一个字或改写措辞都会判失败。本地校验一次，比推上去等 CI 红再改快得多。
@@ -238,7 +272,7 @@ Ubuntu/macOS 三个分片用 `scripts/plan-e2e-shards.mjs` 按文件内用例的
 
 -   **Agent 关键指令与决策门槛**：`AGENTS.md`
 -   **架构标准（DDD + Clean）**：`docs/architecture/ARCHITECTURE.md`
--   **架构 harness（源码偏离检查）**：说明见 `docs/architecture/ARCHITECTURE_HARNESS.md`，工具目录见 `harness/architecture/`
+-   **架构 harness（源码偏离检查）**：说明见 `harness/architecture/README.md`
 -   **Project / Space / Endpoint / Mount 能力链路**：`docs/architecture/WORKSPACE_CAPABILITY_ARCHITECTURE.md`
 -   **统一控制面（command/query/event）**：`docs/architecture/CONTROL_SURFACE.md`
 -   **CLI 规范**：`docs/cli/README.md`
@@ -262,6 +296,7 @@ Ubuntu/macOS 三个分片用 `scripts/plan-e2e-shards.mjs` 按文件内用例的
     -   Win10 Codex Scroll：`docs/cases/WIN10_CODEX_SCROLL_DIAGNOSTICS.md`
     -   画布抖动与终端持久化：`docs/cases/CASE_STUDY_CANVAS_JITTER_AND_TERMINAL_DURABILITY.md`
 -   **参考优秀项目与方案调研法**：`docs/development/REFERENCE_RESEARCH_METHOD.md`
+-   **兼容路径与到期门禁**：`docs/development/COMPATIBILITY_EXPIRY.md`
 -   **调试指南**：`docs/development/DEBUGGING.md`
 -   **贡献代码指南**：`CONTRIBUTING.md`
 -   **API Client 生成与使用**：暂无，参考 `src/shared/contracts` 定义。

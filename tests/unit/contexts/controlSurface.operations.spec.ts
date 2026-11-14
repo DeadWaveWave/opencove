@@ -139,7 +139,11 @@ it('defaults normalization to identity and freezes constructors', async () => {
   const op = defineOperation({ ...meta, input: z.string(), errors: [] })
   expect(op.normalize('value')).toBe('value')
   expect(Object.isFrozen(op)).toBe(true)
-  expect(Object.isFrozen(defineLegacyOperation(meta))).toBe(true)
+  expect(
+    Object.isFrozen(
+      defineLegacyOperation({ ...meta, compat: 'control-surface-legacy-validation' }),
+    ),
+  ).toBe(true)
 })
 
 // Query kind describes dispatch, not whether the handler is side-effect-free.
@@ -171,6 +175,7 @@ it('never lets a returning legacy normalizer override schema rejection', async (
       errors: [],
       normalize: wire => wire,
       legacyNormalize: () => ({ id: 'fallback' }),
+      compat: 'control-surface-legacy-validation',
     }),
     {
       handle: () => {
@@ -204,6 +209,7 @@ it('passes original own keys to legacy normalization after successful schema adm
     input: z.looseObject({ id: z.string() }),
     errors: [],
     normalize: wire => Object.keys(wire),
+    compat: 'control-surface-legacy-validation',
     legacyNormalize: raw => {
       expect(raw).toBe(payload)
       return Object.keys(raw as object)

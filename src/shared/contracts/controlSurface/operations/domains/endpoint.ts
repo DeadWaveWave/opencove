@@ -22,6 +22,7 @@ export const endpointHomeDirectoryOperation = defineOperation({
     endpointId: z.string().describe('Endpoint identifier; use local for this Worker'),
   }),
   normalize: normalizeEndpointHomeDirectoryPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeEndpointHomeDirectoryPayload,
   errors: ['worker.unavailable'],
   id: 'endpoint.homeDirectory',
@@ -31,6 +32,7 @@ export const endpointHomeDirectoryOperation = defineOperation({
   summary: 'Get the home directory and platform of a Worker endpoint',
 })
 export const endpointListOperation = defineOperation({
+  // @compat control-surface-legacy-validation
   input: z
     .unknown()
     .describe(
@@ -45,6 +47,7 @@ export const endpointListOperation = defineOperation({
   summary: 'List registered Worker endpoints including the local Worker',
 })
 export const endpointOverviewListOperation = defineLegacyOperation({
+  compat: 'control-surface-legacy-validation',
   id: 'endpoint.overview.list',
   kind: 'query',
   scope: 'read',
@@ -57,6 +60,7 @@ export const endpointPingOperation = defineOperation({
     timeoutMs: z.unknown().optional(),
   }),
   normalize: normalizeEndpointPing,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeEndpointPing,
   errors: ['worker.unavailable'],
   id: 'endpoint.ping',
@@ -80,6 +84,7 @@ export const endpointPrepareOperation = defineOperation({
       .describe('Use connect, browse or reconnect; other values are ignored'),
   }),
   normalize: normalizePrepareEndpointPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizePrepareEndpointPayload,
   errors: ['endpoint.operation_in_progress', 'worker.unavailable'],
   id: 'endpoint.prepare',
@@ -94,6 +99,7 @@ export const endpointReadDirectoryOperation = defineOperation({
     path: z.string().describe('Absolute directory path on the remote Worker'),
   }),
   normalize: normalizeEndpointReadDirectoryPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeEndpointReadDirectoryPayload,
   errors: ['worker.unavailable', 'filesystem.read_directory_failed'],
   id: 'endpoint.readDirectory',
@@ -111,6 +117,7 @@ export const endpointRegisterOperation = defineOperation({
     displayName: z.unknown().optional(),
   }),
   normalize: normalizeEndpointRegister,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeEndpointRegister,
   errors: [],
   id: 'endpoint.register',
@@ -132,6 +139,7 @@ export const endpointRegisterManagedSshOperation = defineOperation({
       .describe('Use posix or windows; any other value selects auto'),
   }),
   normalize: normalizeRegisterManagedSshEndpointPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeRegisterManagedSshEndpointPayload,
   errors: [],
   id: 'endpoint.registerManagedSsh',
@@ -146,6 +154,7 @@ export const endpointRemoveOperation = defineOperation({
     expectedMountCount: z.number().nullish(),
   }),
   normalize: normalizeEndpointRemove,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeEndpointRemove,
   errors: [],
   id: 'endpoint.remove',
@@ -168,6 +177,7 @@ export const endpointRepairOperation = defineOperation({
       .describe('Repair action to perform'),
   }),
   normalize: normalizeRepairEndpointPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeRepairEndpointPayload,
   errors: ['endpoint.operation_in_progress', 'worker.unavailable'],
   id: 'endpoint.repair',
@@ -179,6 +189,7 @@ export const endpointRepairOperation = defineOperation({
 export const endpointSshConfigHostsOperation = defineOperation({
   input: z.null().optional().describe('Send null to list SSH host aliases'),
   normalize: normalizeSshConfigHostsPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeSshConfigHostsPayload,
   errors: [],
   id: 'endpoint.sshConfigHosts',
@@ -201,6 +212,7 @@ export const endpointUpdateManagedSshOperation = defineOperation({
       .describe('Use posix or windows; any other value selects auto'),
   }),
   normalize: normalizeUpdateManagedSshEndpointPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeUpdateManagedSshEndpointPayload,
   errors: ['endpoint.operation_in_progress'],
   id: 'endpoint.updateManagedSsh',

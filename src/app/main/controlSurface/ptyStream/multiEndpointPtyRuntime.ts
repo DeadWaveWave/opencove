@@ -301,11 +301,13 @@ export function createMultiEndpointPtyRuntime(options: {
       const {
         authorityEpoch: _upstreamAuthorityEpoch,
         baseGeometryRevision: _upstreamBaseGeometryRevision,
+        // @compat pty-geometry-legacy-revision
         revision: _upstreamLegacyRevision,
         ...downstreamInput
       } = input
       void _upstreamAuthorityEpoch
       void _upstreamBaseGeometryRevision
+      // @compat pty-geometry-legacy-revision
       void _upstreamLegacyRevision
       const remoteResult = await getProxy(route.endpointId).resize({
         ...downstreamInput,

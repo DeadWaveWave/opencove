@@ -4,7 +4,7 @@ import {
   assertManagedClaudeLaunchCurrent,
 } from '../managedClaudeLaunchRuntime'
 import { ABSENT_MANAGED_CLAUDE_BINDING } from '../../../../shared/contracts/managedClaudeLaunch'
-import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
+import { toFileUri } from '../../../../contexts/filesystem/domain'
 import {
   isResumeSessionBindingVerified,
   resolveLaunchedAgentResumeBinding,

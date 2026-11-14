@@ -83,6 +83,28 @@ describe('RemotePtyEndpointProxy', () => {
     })
   })
 
+  it('keeps the agent provider of metadata only for the six known providers', () => {
+    const { internals, emitMetadata } = createProxy()
+    for (const provider of ['claude-code', 'codex', 'opencode', 'gemini', 'pi', 'kimi']) {
+      internals.handleMessage(
+        JSON.stringify({ type: 'metadata', sessionId: 's', agentProvider: provider }),
+      )
+      expect(emitMetadata).toHaveBeenLastCalledWith(
+        's',
+        expect.objectContaining({ agentProvider: provider }),
+      )
+    }
+    for (const provider of ['Codex', 'bash', '', null, 3]) {
+      internals.handleMessage(
+        JSON.stringify({ type: 'metadata', sessionId: 's', agentProvider: provider }),
+      )
+      expect(emitMetadata).toHaveBeenLastCalledWith(
+        's',
+        expect.not.objectContaining({ agentProvider: expect.anything() }),
+      )
+    }
+  })
+
   it('ignores messages and close callbacks from a retired socket instance', () => {
     const { internals, emitMetadata } = createProxy()
     const retiredSocket = { readyState: 3, send: vi.fn(), terminate: vi.fn() }

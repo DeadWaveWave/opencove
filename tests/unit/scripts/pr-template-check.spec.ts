@@ -14,7 +14,12 @@ const templatePath = resolve(
   '.github/pull_request_template.md',
 )
 
-function buildSmallPrBody(summary = 'Fixes the CI gap for PR template validation.') {
+const NO_PARTNERS = 'None: this change leaves no co-change partner untouched.'
+
+function buildSmallPrBody(
+  summary = 'Fixes the CI gap for PR template validation.',
+  coChange = NO_PARTNERS,
+) {
   return `## 💡 Change Scope
 
 - [x] **Small Change**: Fast feedback, localized UI/logic, low-risk.
@@ -36,13 +41,19 @@ ${summary}
 
 ---
 
+## 🔗 Co-change partners left untouched
+
+${coChange}
+
+---
+
 ## ✅ Delivery & Compliance Checklist
 
 - [x] My code passes the ultimate gatekeeper: **\`pnpm pre-commit\` is completely green**.
 `
 }
 
-function buildLargePrBody() {
+function buildLargePrBody(coChange = NO_PARTNERS) {
   return `## 💡 Change Scope
 
 - [ ] **Small Change**: Fast feedback, localized UI/logic, low-risk.
@@ -70,6 +81,12 @@ Main owns the persisted recovery state.
 **3. Verification Plan & Regression Layer**
 
 Unit coverage for normalization plus integration coverage for restart hydration.
+
+---
+
+## 🔗 Co-change partners left untouched
+
+${coChange}
 
 ---
 
@@ -117,5 +134,51 @@ describe('PR template validator', () => {
     expect(validatePullRequestBody(body)).toContain(
       'Large Change Spec requires content for **1. Context & Business Logic**.',
     )
+  })
+
+  it('requires the co-change section and some content in it', () => {
+    const without = buildSmallPrBody().replace(
+      /## 🔗 Co-change partners left untouched[\s\S]*?---\n\n/,
+      '',
+    )
+    expect(validatePullRequestBody(without)).toContain(
+      'Pull request description is missing required section: ## 🔗 Co-change partners left untouched',
+    )
+    expect(validatePullRequestBody(buildSmallPrBody('Summary.', '<!-- nothing -->'))).toContain(
+      '## 🔗 Co-change partners left untouched must contain content.',
+    )
+  })
+
+  describe('co-change partners', () => {
+    const missingPartners = [
+      { file: 'src/a.ts', partner: 'src/b.ts', together: 8, fileChanges: 9, confidence: 0.889 },
+      { file: 'src/a.ts', partner: 'docs/c.md', together: 5, fileChanges: 9, confidence: 0.556 },
+    ]
+    const section = (reasonB: string, reasonC: string) =>
+      `- \`src/b.ts\` (with \`src/a.ts\`, 8/9): ${reasonB}\n- \`docs/c.md\` (with \`src/a.ts\`, 5/9): ${reasonC}`
+
+    it('passes when every partner is named with a reason', () => {
+      const body = buildSmallPrBody('Summary.', section('generated from a.ts', 'not affected'))
+      expect(validatePullRequestBody(body, { missingPartners })).toEqual([])
+    })
+
+    it('fails when a partner is not named', () => {
+      const body = buildSmallPrBody('Summary.', section('generated from a.ts', 'x').split('\n')[0])
+      expect(validatePullRequestBody(body, { missingPartners })).toEqual([
+        'Co-change partner `docs/c.md` (with `src/a.ts`) is not named.',
+      ])
+    })
+
+    it('fails on an empty reason and on the <reason> placeholder', () => {
+      const body = buildSmallPrBody('Summary.', section('<reason>', ''))
+      expect(validatePullRequestBody(body, { missingPartners })).toEqual([
+        'Co-change partner `docs/c.md` has no reason.',
+        'Co-change partner `src/b.ts` has no reason.',
+      ])
+    })
+
+    it('passes with no partners as long as the section says so', () => {
+      expect(validatePullRequestBody(buildLargePrBody(), { missingPartners: [] })).toEqual([])
+    })
   })
 })

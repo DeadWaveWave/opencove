@@ -11,6 +11,7 @@ export const authIssueWebSessionTicketOperation = defineOperation({
     })
     .nullish(),
   normalize: normalizeIssueTicketPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeIssueTicketPayload,
   errors: [],
   id: 'auth.issueWebSessionTicket',

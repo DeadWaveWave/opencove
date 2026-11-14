@@ -1,3 +1,4 @@
+// @compat-file control-surface-legacy-validation
 // Frozen from src/contexts/filesystem/domain/fileMutationOptions.ts at fff23113f96951bba8004b432539633f7e3c29e0.
 import { createAppError } from '../../../src/shared/errors/appError'
 

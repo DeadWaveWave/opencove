@@ -1,4 +1,4 @@
-import { fromFileUri } from '@contexts/filesystem/domain/fileUri'
+import { fromFileUri } from '@contexts/filesystem/domain'
 import type { FileSystemEntry } from '@shared/contracts/dto'
 
 export interface SpaceExplorerClipboardItem {

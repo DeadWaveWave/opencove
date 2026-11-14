@@ -110,6 +110,7 @@ export async function inspectWorkerProcess(
   }
 }
 
+// @compat legacy-worker-process-identity
 /** Call only while holding the kernel lease. New-format metadata is then stale by proof. */
 export async function legacyWorkerBlocksAcquisition(
   metadata: { pid: number; instanceId?: string } | null,

@@ -1,3 +1,4 @@
+// @compat-file control-surface-legacy-validation
 // Frozen legacy validators from src/app/main/controlSurface/handlers/topologyHandlerPayloads.ts (validators) and handlers/topologyHandlers.ts (registration) at fff23113f96951bba8004b432539633f7e3c29e0.
 // Bodies copied verbatim; imports relocated and exports added for parity.
 import type { RegisterWorkerEndpointInput } from '../../../src/shared/contracts/dto'

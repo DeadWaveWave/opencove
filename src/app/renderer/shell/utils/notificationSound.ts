@@ -107,6 +107,7 @@ export function playNotificationSound(sound: NotificationSound, volume: number):
   scheduleNotificationSound(sharedContext, sound, volume)
 }
 
+/** @internal Test seam: only specs call this. */
 export function resetNotificationSoundForTests(): void {
   sharedContext = null
 }

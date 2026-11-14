@@ -1,3 +1,4 @@
+// @compat-file control-surface-legacy-validation
 // @vitest-environment node
 import { expect, it } from 'vitest'
 import { getControlSurfaceOperation } from '../../../src/shared/contracts/controlSurface/operations'

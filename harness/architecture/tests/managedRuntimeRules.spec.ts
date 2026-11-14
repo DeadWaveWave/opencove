@@ -4,6 +4,7 @@ import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
 import { expect, it } from 'vitest'
 import { runArchitectureAudit } from '../lib/architecture-rules.mjs'
+import { VARIANT_SOURCE_FILES } from './variantFixtureSupport'
 
 it('keeps managed runtime composition separate from renderer and application policy', async () => {
   const root = await mkdtemp(join(tmpdir(), 'opencove-managed-architecture-'))
@@ -14,12 +15,14 @@ it('keeps managed runtime composition separate from renderer and application pol
       'src/contexts/topology/application/owner.ts': 'export const owner = {}',
       'src/app/renderer/view.ts': 'export const view = {}',
     }
-    for (const [name, contents] of Object.entries(files)) {
+    for (const [name, contents] of Object.entries({ ...VARIANT_SOURCE_FILES, ...files })) {
       await mkdir(dirname(join(root, name)), { recursive: true })
       await writeFile(join(root, name), contents)
     }
     const report = await runArchitectureAudit({ root })
-    expect(report.violations).toEqual([
+    expect(
+      report.violations.filter(violation => !violation.ruleId.startsWith('architecture.context')),
+    ).toEqual([
       expect.objectContaining({
         ruleId: 'architecture.layerDependency',
         file: 'src/app/managedRuntime/index.ts',

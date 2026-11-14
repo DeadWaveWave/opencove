@@ -1,3 +1,4 @@
+import { AGENT_PROVIDER_DESCRIPTORS } from '../../../../../shared/contracts/agentProviderDescriptors'
 import { AGENT_PROVIDER_IDS, type AgentProviderId } from '../../../../../shared/contracts/dto'
 import type { AgentHookChannel } from '../../../../../shared/runtime/agentHook/agentHookChannel'
 import type {
@@ -21,8 +22,8 @@ export interface BuiltinAgentProviderCatalogOptions {
 }
 
 const genericDescriptors = [
-  descriptor('opencode', 'OpenCode', 'opencode', 'https://opencode.ai/docs/'),
-  descriptor('gemini', 'Gemini CLI', 'gemini', 'https://github.com/google-gemini/gemini-cli', {
+  descriptor('opencode', 'opencode', 'https://opencode.ai/docs/'),
+  descriptor('gemini', 'gemini', 'https://github.com/google-gemini/gemini-cli', {
     arguments: ['--yolo'],
   }),
 ] as const satisfies readonly AgentProviderDescriptor[]
@@ -73,13 +74,12 @@ export function resolveAgentProviderCatalog(
 
 function descriptor<TId extends BuiltinAgentCommandProviderId>(
   id: TId,
-  displayName: string,
   executable: string,
   documentationUrl: string,
   permission?: AgentProviderDescriptor['launch']['permission'],
 ): AgentProviderDescriptor & { readonly id: TId } {
   return {
-    displayName,
+    displayName: AGENT_PROVIDER_DESCRIPTORS[id].label,
     documentationUrl,
     id,
     launch: {

@@ -13,7 +13,11 @@ export function managedClaudeAdmissionDecision(
   attempt: ManagedClaudeLaunchAttempt,
   observation: ManagedClaudeNodeObservation,
   execution: ManagedClaudeExecution,
-): 'managed' | 'legacy' | 'identityConflict' | 'conflict' {
+):
+  | 'managed'
+  | /* @compat managed-claude-worker-support */ 'legacy'
+  | 'identityConflict'
+  | 'conflict' {
   const context = attempt.context
   if (
     JSON.stringify(observation.context) !== JSON.stringify(context) ||
@@ -28,6 +32,7 @@ export function managedClaudeAdmissionDecision(
     ? (JSON.parse(context.route) as { endpointId: string; mountId: string | null } | null)
     : null
   if (route && (route.endpointId !== 'local' || route.mountId !== execution.mountId)) {
+    // @compat managed-claude-worker-support
     if (
       !observation.binding &&
       route.endpointId === 'local' &&
@@ -48,6 +53,7 @@ export function managedClaudeAdmissionDecision(
   ) {
     return 'conflict'
   }
+  // @compat managed-claude-worker-support
   // PR2 cannot atomically adopt a changed directory. Preserve unowned legacy switches.
   if (!observation.binding && context?.directory && context.directory !== execution.cwd) {
     return 'legacy'

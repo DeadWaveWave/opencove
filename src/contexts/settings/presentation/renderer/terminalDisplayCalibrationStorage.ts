@@ -74,10 +74,13 @@ export function readStoredTerminalDisplayCalibration(): StoredTerminalDisplayCal
     if (atomicMetadata) {
       return { calibration, metadata: atomicMetadata, proof: 'atomic' }
     }
+    // @compat terminal-display-calibration-legacy-storage
     const legacyMetadata = readLegacyStorageMetadata()
     return {
       calibration,
+      // @compat terminal-display-calibration-legacy-storage
       metadata: legacyMetadata,
+      // @compat terminal-display-calibration-legacy-storage
       proof: legacyMetadata ? 'legacy' : null,
     }
   } catch {
@@ -93,6 +96,7 @@ function hasRawCalibration(): boolean {
   }
 }
 
+// @compat terminal-display-calibration-legacy-storage
 function readLegacyStorageMetadata(): TerminalDisplayCalibrationStorageMetadata | null {
   try {
     const raw = window.localStorage.getItem(ENVIRONMENT_STORAGE_KEY)
@@ -103,6 +107,7 @@ function readLegacyStorageMetadata(): TerminalDisplayCalibrationStorageMetadata 
 }
 
 export function readTerminalDisplayCalibrationStorageMetadata(): TerminalDisplayCalibrationStorageMetadata | null {
+  // @compat terminal-display-calibration-legacy-storage
   return readStoredTerminalDisplayCalibration()?.metadata ?? readLegacyStorageMetadata()
 }
 
@@ -207,6 +212,7 @@ export function writeTerminalClientDisplayCalibration(
     return false
   }
 
+  // @compat terminal-display-calibration-legacy-storage
   try {
     if (metadata) {
       window.localStorage.setItem(ENVIRONMENT_STORAGE_KEY, JSON.stringify(metadata))

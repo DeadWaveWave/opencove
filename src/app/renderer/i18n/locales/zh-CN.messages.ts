@@ -48,6 +48,7 @@ export const zhCNMessages = {
   managedAgentWritesDisabled:
     'Claude 智能体重启及新恢复目标的保存已暂停。已保存的目标仍受保护，请联系 Worker 管理员恢复更新。',
   workerConnectionRetry: '重试连接',
+  // @compat managed-claude-worker-support
   managedAgentLegacyWorker:
     '当前 Worker 使用旧版 Claude 会话，工作区仍可正常使用。请升级并重启 Worker，以启用托管会话恢复。',
   managedAgentChanged: '此智能体已发生变更，请刷新工作区后重试。',

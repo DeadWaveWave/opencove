@@ -1,7 +1,10 @@
 import { randomBytes } from 'node:crypto'
 import { resolveTerminalAgentInvocationArguments } from './TerminalAgentInvocationArguments'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
-import type { TerminalAgentShimProvider } from '../../../../shared/contracts/dto'
+import {
+  isTerminalAgentShimProvider,
+  type TerminalAgentShimProvider,
+} from '../../../../shared/contracts/agentProviderDescriptors'
 import type {
   AgentHookInjectionPlan,
   AgentHookInjectionPlanner,
@@ -438,7 +441,7 @@ async function readJsonBody(request: IncomingMessage): Promise<Record<string, un
 }
 
 function normalizeProvider(value: unknown): TerminalAgentShimProvider | null {
-  return value === 'claude-code' || value === 'codex' || value === 'pi' ? value : null
+  return isTerminalAgentShimProvider(value) ? value : null
 }
 
 function normalizeNonEmptyString(value: unknown): string | null {

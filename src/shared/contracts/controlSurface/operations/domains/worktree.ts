@@ -11,6 +11,7 @@ export const worktreeArchiveOperation = defineOperation({
   scope: 'interact',
   availability: 'always',
   summary: 'Remove a space worktree and rebind the space to the project root',
+  // @compat control-surface-legacy-validation
   // Legacy isRecord accepts arrays; raw normalization retains named array properties.
   input: z.union([
     z.looseObject({
@@ -21,6 +22,7 @@ export const worktreeArchiveOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeArchiveWorktreePayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeArchiveWorktreePayload,
   errors: [
     'space.not_found',
@@ -43,6 +45,7 @@ export const worktreeCreateOperation = defineOperation({
   scope: 'interact',
   availability: 'always',
   summary: 'Create and approve a Git worktree and bind the space to it',
+  // @compat control-surface-legacy-validation
   // Legacy isRecord accepts arrays; raw normalization retains named array properties.
   input: z.union([
     z.looseObject({
@@ -53,6 +56,7 @@ export const worktreeCreateOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeCreateWorktreePayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeCreateWorktreePayload,
   errors: [
     'space.not_found',
@@ -72,6 +76,7 @@ export const worktreeListOperation = defineOperation({
   scope: 'read',
   availability: 'always',
   summary: 'List Git worktrees for the selected or active project',
+  // @compat control-surface-legacy-validation
   // Legacy isRecord accepts arrays; raw normalization retains named array properties.
   input: z
     .union([
@@ -83,6 +88,7 @@ export const worktreeListOperation = defineOperation({
     ])
     .nullish(),
   normalize: normalizeListWorktreesPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeListWorktreesPayload,
   errors: [
     'worktree.list_worktrees_failed',

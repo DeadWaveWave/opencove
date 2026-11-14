@@ -23,7 +23,14 @@ export function resolveWindowKindFamily(data: TerminalNodeData): WindowKindFamil
     case 'website':
     case 'image':
       return 'media'
-    default:
+    case 'folder':
+    case 'plugin':
       return 'neutral'
+    default: {
+      // Kinds are validated where nodes are loaded; an unexpected value still renders as neutral.
+      const _exhaustive: never = data.kind
+      void _exhaustive
+      return 'neutral'
+    }
   }
 }

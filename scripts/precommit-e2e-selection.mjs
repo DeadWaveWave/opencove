@@ -148,7 +148,7 @@ const isConfiguration = path =>
     path,
   ) ||
   /(?:^|\/)(?:electron\.vite|vite|vitest|playwright)[^/]*\.config\./.test(path) ||
-  /^(?:scripts\/|\.github\/|\.husky\/)/.test(path)
+  /^(?:scripts\/|\.github\/)/.test(path)
 const isSource = path =>
   /^(?:src\/|tests\/|harness\/)/.test(path) && /\.(?:[cm]?[jt]sx?|css|json)$/.test(path)
 

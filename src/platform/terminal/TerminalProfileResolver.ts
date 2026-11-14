@@ -205,6 +205,7 @@ export class TerminalProfileResolver {
         cwd: resolveWindowsHostCwd(input.cwd, this.deps.homeDir().trim(), this.deps.processCwd()),
         env,
         profileId: null,
+        // @compat terminal-profile-legacy-runtime-kind
         runtimeKind: inferLegacyRuntimeKind(input.shell, this.deps.platform),
       }
     }

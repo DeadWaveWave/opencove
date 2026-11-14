@@ -1,7 +1,7 @@
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import { resolveSpaceMountContext } from '../../../../contexts/space/application/resolveSpaceMountContext'
-import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
+import { toFileUri } from '../../../../contexts/filesystem/domain'
 import type {
   PluginResolvedTarget,
   PluginTargetInput,

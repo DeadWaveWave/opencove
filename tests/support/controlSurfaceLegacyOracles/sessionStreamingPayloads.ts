@@ -1,3 +1,4 @@
+// @compat-file control-surface-legacy-validation
 // Frozen from src/app/main/controlSurface/handlers/sessionStreamingPayloads.ts at 6df96903c64d6fb3c541c79815713996d3c1b186; validator bodies verbatim, imports adjusted.
 import type {
   GetSessionPresentationSnapshotInput,

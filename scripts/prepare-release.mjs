@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { spawnSync } from 'node:child_process'
 import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
@@ -135,41 +136,61 @@ if (!rawTarget) {
       throw new Error(`Target version ${nextVersion} matches the current version.`)
     }
 
-    const releaseDate = new Date().toISOString().slice(0, 10)
-    const includeHighlights = isMinorOrMajorRelease(currentVersion, nextVersionParts)
-    const nextPackageJson = {
-      ...packageJson,
-      version: nextVersion,
-    }
-    const currentChangelog = await readFile(changelogPath, 'utf8')
-    const nextChangelog = updateChangelog(
-      currentChangelog,
-      nextVersion,
-      releaseDate,
-      includeHighlights,
+    // A release is stopped here, not in the release PR's CI run: entries that expire at the target
+    // version must be deleted or renewed in the registry first.
+    const compatPreflight = spawnSync(
+      process.execPath,
+      [resolve(rootDir, 'scripts/check-compat-expiry.mjs'), '--at', nextVersion],
+      { cwd: rootDir, encoding: 'utf8' },
     )
+    if (compatPreflight.status !== 0) {
+      process.stderr.write(
+        [
+          `Release ${nextVersion} is blocked by the compatibility registry (src/shared/compat/compatRegistry.json).`,
+          'Delete each expired compatibility path or renew its entry (see docs/development/COMPATIBILITY_EXPIRY.md), then run this again.',
+          '',
+          compatPreflight.stdout,
+          compatPreflight.stderr,
+        ].join('\n'),
+      )
+      process.exitCode = 1
+    } else {
+      const releaseDate = new Date().toISOString().slice(0, 10)
+      const includeHighlights = isMinorOrMajorRelease(currentVersion, nextVersionParts)
+      const nextPackageJson = {
+        ...packageJson,
+        version: nextVersion,
+      }
+      const currentChangelog = await readFile(changelogPath, 'utf8')
+      const nextChangelog = updateChangelog(
+        currentChangelog,
+        nextVersion,
+        releaseDate,
+        includeHighlights,
+      )
 
-    if (!dryRun) {
-      await writeFile(packageJsonPath, `${JSON.stringify(nextPackageJson, null, 2)}\n`)
-      await writeFile(changelogPath, nextChangelog)
+      if (!dryRun) {
+        await writeFile(packageJsonPath, `${JSON.stringify(nextPackageJson, null, 2)}\n`)
+        await writeFile(changelogPath, nextChangelog)
+      }
+
+      const actionLabel = dryRun ? 'Dry run' : 'Prepared'
+      process.stdout.write(
+        [
+          `${actionLabel} release ${currentVersionString} -> ${nextVersion}`,
+          `- package.json version: ${nextVersion}`,
+          `- changelog section: ## [${nextVersion}] - ${releaseDate}`,
+          `- highlights template: ${includeHighlights ? 'included' : 'not required'}`,
+          '',
+          'Next steps:',
+          "1. Fill in the changelog and curated user-facing What's New manifest.",
+          '2. Run `pnpm pre-commit`, commit, and merge the release prep.',
+          '3. Run the Release workflow dry-run against the exact accepted main SHA.',
+          `4. Create an annotated tag with \`git tag -a v${nextVersion} -m "OpenCove v${nextVersion}"\`.`,
+          `5. Push \`v${nextVersion}\`, then verify the published assets and standalone Worker smoke.`,
+          '',
+        ].join('\n'),
+      )
     }
-
-    const actionLabel = dryRun ? 'Dry run' : 'Prepared'
-    process.stdout.write(
-      [
-        `${actionLabel} release ${currentVersionString} -> ${nextVersion}`,
-        `- package.json version: ${nextVersion}`,
-        `- changelog section: ## [${nextVersion}] - ${releaseDate}`,
-        `- highlights template: ${includeHighlights ? 'included' : 'not required'}`,
-        '',
-        'Next steps:',
-        "1. Fill in the changelog and curated user-facing What's New manifest.",
-        '2. Run `pnpm pre-commit`, commit, and merge the release prep.',
-        '3. Run the Release workflow dry-run against the exact accepted main SHA.',
-        `4. Create an annotated tag with \`git tag -a v${nextVersion} -m "OpenCove v${nextVersion}"\`.`,
-        `5. Push \`v${nextVersion}\`, then verify the published assets and standalone Worker smoke.`,
-        '',
-      ].join('\n'),
-    )
   }
 }

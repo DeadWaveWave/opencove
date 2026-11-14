@@ -12,6 +12,7 @@ export type ManagedSshStageFailureCode =
   | 'credential_mismatch'
   | 'build_mismatch'
   | 'runtime_busy'
+  // @compat endpoint-runtime-legacy-failure
   | 'runtime_legacy'
   | 'recovery_required'
   | 'client_update_required'

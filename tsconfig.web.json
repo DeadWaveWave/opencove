@@ -5,9 +5,11 @@
     "src/app/renderer/*.d.ts",
     "src/app/preload/**/*",
     "src/shared/**/*",
+    "src/shared/compat/compatRegistry.json",
     "src/contexts/**/domain/**/*",
     "src/contexts/**/application/**/*",
-    "src/contexts/**/presentation/renderer/**/*"
+    "src/contexts/**/presentation/renderer/**/*",
+    "tests/support/pluginPresentationTestFixture.ts"
   ],
   "compilerOptions": {
     "composite": true,

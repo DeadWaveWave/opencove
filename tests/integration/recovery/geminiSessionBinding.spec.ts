@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { TerminalSessionStateEvent } from '../../../src/shared/contracts/dto'
-import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
+import { IPC_CHANNELS } from '../../../src/shared/contracts/ipc'
 import { FakeTerminalProcessEngine } from '../../support/FakeTerminalProcessEngine'
 
 function createGeminiSessionPayload({

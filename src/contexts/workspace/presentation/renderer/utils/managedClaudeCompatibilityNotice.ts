@@ -1,3 +1,4 @@
+// @compat-file managed-claude-worker-support
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import type { PersistNotice } from '@app/renderer/shell/types'
 import { persistenceScope } from './persistence/publicationState'

@@ -34,6 +34,17 @@ Please fill out the template completely to avoid delays in review.
 
 ---
 
+## 🔗 Co-change partners left untouched
+
+<!--
+Files that historically change together with files in this PR but are not in it. Get the section with
+`pnpm impact --base origin/main --pr-section`, then replace each `<reason>` with one line saying why
+the partner needs no change here (or "should be extracted, follow-up #N"). If the check fails, its log
+prints the exact section to paste.
+-->
+
+---
+
 ## ✅ Delivery & Compliance Checklist
 
 - [ ] The local quick gate passes: **`pnpm verify:quick` / `pnpm pre-commit` is green**; any additional focused tests are reported above.

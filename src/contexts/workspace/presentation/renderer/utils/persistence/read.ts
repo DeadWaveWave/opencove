@@ -90,6 +90,7 @@ export interface PersistedStateReadResult {
   state: PersistedAppState | null
   recovery: PersistenceRecoveryReason | null
   hasStandardWindowSizeBucket: boolean
+  // @compat storage-cove-m0-keys
   /** False when legacy data can be restored but its durable migration failed. */
   isPersisted: boolean
 }
@@ -113,8 +114,11 @@ export async function readPersistedStateWithMeta(): Promise<PersistedStateReadRe
     const parsed = parsePersistedStateValue(primary.state)
     if (parsed.state) {
       const state = applyLocalViewStateToPersistedState(parsed.state)
+      // @compat storage-cove-m0-keys
       const legacyRaw = port.kind === 'ipc' ? readLegacyLocalStorageRaw() : null
+      // @compat storage-cove-m0-keys
       const legacy = legacyRaw ? parseRawPersistedState(legacyRaw) : null
+      // @compat storage-cove-m0-keys
       if (legacy) {
         try {
           await migrateTerminalScrollback(legacy, parsed.state, port)
@@ -148,7 +152,9 @@ export async function readPersistedStateWithMeta(): Promise<PersistedStateReadRe
     }
   }
 
+  // @compat storage-cove-m0-keys
   const legacyRaw = readLegacyLocalStorageRaw()
+  // @compat storage-cove-m0-keys
   if (!legacyRaw) {
     return {
       revision: null,
@@ -159,7 +165,9 @@ export async function readPersistedStateWithMeta(): Promise<PersistedStateReadRe
     }
   }
 
+  // @compat storage-cove-m0-keys
   const legacyParsed = parseRawPersistedState(legacyRaw)
+  // @compat storage-cove-m0-keys
   if (!legacyParsed) {
     return {
       revision: null,
@@ -173,12 +181,14 @@ export async function readPersistedStateWithMeta(): Promise<PersistedStateReadRe
   if (isPublicationBlocked()) {
     return {
       revision: null,
+      // @compat storage-cove-m0-keys
       state: legacyParsed,
       recovery,
       hasStandardWindowSizeBucket: false,
       isPersisted: false,
     }
   }
+  // @compat storage-cove-m0-keys
   const migratedState = stripScrollbackFromState(legacyParsed)
   // Migrate the persisted envelope directly, including its disclosure fields.
   // Live presentation state changes only when the caller accepts this snapshot.
@@ -228,6 +238,7 @@ export async function readPersistedStateWithMeta(): Promise<PersistedStateReadRe
       ) {
         throw new Error('Migration is awaiting the saved workspace.')
       }
+      // @compat storage-cove-m0-keys
       await migrateTerminalScrollback(legacyParsed, canonical.state, port)
       return {
         revision: snapshot.revision,
@@ -248,6 +259,7 @@ export async function readPersistedStateWithMeta(): Promise<PersistedStateReadRe
   }
 
   try {
+    // @compat storage-cove-m0-keys
     await migrateTerminalScrollback(legacyParsed, migratedState, port)
   } catch {
     return {
@@ -273,6 +285,7 @@ export async function readPersistedState(): Promise<PersistedAppState | null> {
   return state
 }
 
+// @compat storage-cove-m0-keys
 async function migrateTerminalScrollback(
   legacy: PersistedAppState,
   canonical: PersistedAppState,

@@ -1,3 +1,4 @@
+// @compat-file managed-claude-worker-support
 import type { ManagedClaudeLaunchIntent } from '@shared/contracts/managedClaudeLaunch'
 import { negotiateManagedClaudeWorkerSupport } from './managedClaudeWorkerSupport'
 

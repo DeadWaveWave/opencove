@@ -42,6 +42,7 @@ export class ManagedSshBootstrapError extends Error {
 }
 
 export function classifyManagedSshBootstrapFailure(detail: string): ManagedSshBootstrapFailureKind {
+  // @compat endpoint-runtime-legacy-failure
   const managedCode =
     /\[opencove-bootstrap:(credential_mismatch|build_mismatch|runtime_busy|runtime_legacy|recovery_required|client_update_required|channel_conflict|conflicting_build|protocol_mismatch|checksum_failed|platform_unsupported)\]/.exec(
       detail,

@@ -5,13 +5,13 @@ import {
   filesystemStatInMountOperation,
 } from '../../../../shared/contracts/controlSurface/operations/domains/filesystem'
 import { registerOperation } from '../registerOperation'
-import type { FileSystemPort } from '../../../../contexts/filesystem/application/ports'
+import type { FileSystemPort } from '../../../../contexts/filesystem/application'
 import {
   readDirectoryUseCase,
   readFileBytesUseCase,
   readFileTextUseCase,
   statUseCase,
-} from '../../../../contexts/filesystem/application/usecases'
+} from '../../../../contexts/filesystem/application'
 import type {
   ReadDirectoryInput,
   ReadDirectoryResult,

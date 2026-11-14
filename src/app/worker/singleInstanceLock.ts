@@ -21,8 +21,10 @@ export async function acquireWorkerSingleInstanceLock(
     }
   }
   try {
+    // @compat legacy-worker-process-identity
     // A held kernel lease proves new-format metadata stale; legacy owners need identity checks.
     const previous = await readWorkerLockMetadata(userDataPath)
+    // @compat legacy-worker-process-identity
     if (previous && (await legacyWorkerBlocksAcquisition(previous, userDataPath))) {
       owner.release()
       return { status: 'existing', existingPid: previous.pid }

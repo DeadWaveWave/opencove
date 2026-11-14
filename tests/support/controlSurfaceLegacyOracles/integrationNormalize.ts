@@ -1,3 +1,4 @@
+// @compat-file control-surface-legacy-validation
 // Frozen from src/contexts/integration/presentation/main-ipc/validate.ts at 6df96903c64d6fb3c541c79815713996d3c1b186. Function bodies unchanged.
 import { isAbsolute } from 'node:path'
 import type { ResolveGitHubPullRequestsInput } from '../../../src/shared/contracts/dto'

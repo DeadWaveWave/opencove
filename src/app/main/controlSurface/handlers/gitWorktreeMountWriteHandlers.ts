@@ -23,7 +23,7 @@ import {
   invokeRemoteValue,
   resolveMountTargetOrThrow,
 } from './filesystemMountSupport'
-import { fromFileUri } from '../../../../contexts/filesystem/domain/fileUri'
+import { fromFileUri } from '../../../../contexts/filesystem/domain'
 
 function resolvePathFromUriOrThrow(uri: string, operationId: string): string {
   const resolved = fromFileUri(uri)

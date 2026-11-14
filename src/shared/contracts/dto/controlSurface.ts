@@ -4,6 +4,7 @@ import type {
   ManagedClaudeBindingObservation,
 } from '../managedClaudeLaunch'
 import type { AgentProviderId } from './agent'
+import type { PersistedWorkspaceNodeKind } from '../persistedAppState'
 import type { TerminalPtyGeometry, TerminalRuntimeKind } from './terminal'
 import type { PresentationSnapshotTerminalResult } from './terminal'
 import type { WorkerEndpointKindDto } from './topology'
@@ -68,16 +69,8 @@ export interface ControlSurfaceCapabilitiesResult {
   }
 }
 
-export type CanvasNodeKind =
-  | 'terminal'
-  | 'agent'
-  | 'task'
-  | 'note'
-  | 'image'
-  | 'document'
-  | 'folder'
-  | 'website'
-  | 'unknown'
+// Role and plugin windows are not exposed to the Control Surface; they are reported as unknown.
+export type CanvasNodeKind = Exclude<PersistedWorkspaceNodeKind, 'role' | 'plugin'> | 'unknown'
 
 export interface CanvasNodeSummary {
   data?: import('./nodeControl').CompactNodeDataDto

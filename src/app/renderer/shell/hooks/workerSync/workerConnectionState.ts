@@ -24,7 +24,7 @@ export function clearWorkerConnectionFailure(): void {
       workerConnectionError: null,
       persistNotice:
         state.persistNotice?.kind === 'connection'
-          ? currentManagedClaudeCompatibilityNotice()
+          ? /* @compat managed-claude-worker-support */ currentManagedClaudeCompatibilityNotice()
           : state.persistNotice,
     }))
   }

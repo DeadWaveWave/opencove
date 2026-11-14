@@ -6,6 +6,7 @@ export const mountTargetResolveOperation = defineOperation({
     mountId: z.string(),
   }),
   normalize: normalizeMountTargetResolve,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeMountTargetResolve,
   errors: [],
   id: 'mountTarget.resolve',
