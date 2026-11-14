@@ -2,7 +2,7 @@ import { resolveHookBlockedDetails } from './hookBlockedDetails'
 import { HookReplyEligibility, type HookReplyReceipt } from './HookReplyEligibility'
 import { readBody } from './readHookBody'
 import { residentContextV1 } from './residentContext'
-import { setPromptSubmissionEvidence } from './claudePromptEvidence'
+import { getPromptSubmissionEvidence, setPromptSubmissionEvidence } from './claudePromptEvidence'
 import { parseHookEmittedAt } from './hookEmittedAt'
 import { randomBytes } from 'node:crypto'
 import { createServer, type Server } from 'node:http'
@@ -94,22 +94,51 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
     envelope: TEnvelope,
     credential: CredentialRecord<TEnvelope>,
     observation: ReturnType<AgentHookObservationOwner<TEnvelope>['accept']>,
+    reply?: HookReplyReceipt,
+    replayGeneration?: number,
   ): boolean => {
+    if (
+      disposed ||
+      credentials.get(credential.token) !== credential ||
+      tokenBySessionId.get(sessionId) !== credential.token ||
+      !(credential.isInvocationCurrent?.() ?? true)
+    ) {
+      return false
+    }
     const terminalActivity = credential.terminalActivity
     if (terminalActivity && !terminalActivity.isCurrent()) {
       return false
     }
-    const observerAccepted = credential.privateObserver?.observe(sessionId, envelope, {
-      incarnation: terminalActivity?.invocationId ?? sessionId,
-      credential,
-      isCurrent: () =>
-        !disposed &&
-        (credential.isInvocationCurrent?.() ?? true) &&
-        credentials.get(credential.token) === credential &&
-        (terminalActivity?.isCurrent() ?? true),
-    })
+    const observerAccepted =
+      replayGeneration !== undefined ||
+      credential.privateObserver?.observe(sessionId, envelope, {
+        incarnation: terminalActivity?.invocationId ?? sessionId,
+        credential,
+        rejectReply: () => reply?.reject(),
+        publishState: generation => {
+          if (
+            !disposed &&
+            credentials.get(credential.token) === credential &&
+            (credential.isInvocationCurrent?.() ?? true)
+          ) {
+            emit(sessionId, envelope, credential, observation, undefined, generation)
+          }
+        },
+        isCurrent: () =>
+          !disposed &&
+          (credential.isInvocationCurrent?.() ?? true) &&
+          tokenBySessionId.get(sessionId) === credential.token &&
+          credentials.get(credential.token) === credential &&
+          (terminalActivity?.isCurrent() ?? true),
+      })
+    if (observerAccepted === false) {
+      return false
+    }
+    if (observerAccepted === 'deferred') {
+      return true
+    }
     if (
-      observerAccepted !== false &&
+      observerAccepted !== 'state_only' &&
       options.source === 'claude_hook' &&
       envelope.hookEventName === 'SessionEnd'
     ) {
@@ -147,6 +176,8 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       }
       if (options.source === 'claude_hook') {
         setPromptSubmissionEvidence(event, {
+          conversationGeneration:
+            replayGeneration ?? getPromptSubmissionEvidence(envelope)?.conversationGeneration,
           promptId: envelope.promptId,
           promptDigest: envelope.promptDigest,
           providerSessionId: envelope.claudeSessionId,
@@ -161,11 +192,15 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       }
       listeners.forEach(listener => listener(event))
     }
+    // State observation can publish after private IO rejection, but that does not accept
+    // lifecycle identity or authorize a resident-context reply.
+    if (observerAccepted === 'state_only') {
+      return false
+    }
     const identity = options.resolveSessionIdentity?.(envelope) ?? null
     if (
       (terminalActivity || options.publishManagedSessionIdentity) &&
-      identity?.hookEventName === 'SessionStart' &&
-      observerAccepted !== false
+      identity?.hookEventName === 'SessionStart'
     ) {
       if (credential.providerSessionId !== null) {
         return true
@@ -199,7 +234,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       }
       metadataListeners.forEach(listener => listener(metadata))
     }
-    return observerAccepted !== false
+    return true
   }
 
   const handleEnvelope = (token: string, envelope: TEnvelope): HookReplyReceipt | false | null => {
@@ -222,7 +257,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       credential.pending.push({ envelope, observation, receipt })
       return receipt
     }
-    if (!emit(credential.sessionId, envelope, credential, observation)) {
+    if (!emit(credential.sessionId, envelope, credential, observation, receipt)) {
       receipt.reject()
       return null
     }
@@ -412,7 +447,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
           credential.pending.splice(0).forEach(({ envelope, observation, receipt }) => {
             let accepted = false
             try {
-              accepted = emit(sessionId, envelope, credential, observation)
+              accepted = emit(sessionId, envelope, credential, observation, receipt)
             } finally {
               if (!accepted) {
                 receipt.reject()

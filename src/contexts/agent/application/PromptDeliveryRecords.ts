@@ -12,16 +12,19 @@ export interface DeliveryRecord {
   cleanups: (() => void)[]
   resolvedAt?: number
   reconcilable: boolean
+  retired?: boolean
 }
+const evictable = (r: DeliveryRecord) =>
+  resolved(r) || (r.dto.status === 'unknown' && !r.reconcilable && r.retired === true)
 const resolved = (r: DeliveryRecord) => ['submitted', 'not_sent'].includes(r.dto.status)
-/** Sole volatile record owner. Unresolved attempts never evict to admit new writes. */
+/** Sole volatile record owner. Current unresolved attempts stay pinned; retired unknown is diagnostic. */
 export class PromptDeliveryRecords {
   readonly records = new Map<string, DeliveryRecord>()
   private readonly codexSequences = new Map<string, number>()
   constructor(private readonly now: () => number) {}
   prune(): void {
     for (const r of this.records.values()) {
-      if (resolved(r) && this.now() - (r.resolvedAt ?? Infinity) >= 30 * 60_000) {
+      if (evictable(r) && this.now() - (r.resolvedAt ?? Infinity) >= 30 * 60_000) {
         this.remove(r)
       }
     }
@@ -49,19 +52,29 @@ export class PromptDeliveryRecords {
       .map(r => r.dto.deliveryId)
   }
   allocate(id: string, fence: RunStateFence, mode: 'turn' | 'steer'): DeliveryRecord | undefined {
+    for (const r of this.records.values()) {
+      if (
+        r.dto.sessionId === fence.snapshot.sessionId &&
+        r.initial.conversationGeneration !== fence.conversationGeneration &&
+        !r.reconcilable
+      ) {
+        r.retired = true
+        r.resolvedAt ??= this.now()
+      }
+    }
     this.prune()
     const session = [...this.records.values()].filter(
       r => r.dto.sessionId === fence.snapshot.sessionId,
     )
     if (session.length >= 32) {
-      const oldest = session.find(resolved)
+      const oldest = session.find(evictable)
       if (!oldest) {
         return
       }
       this.remove(oldest)
     }
     if (this.records.size >= 1024) {
-      const oldest = [...this.records.values()].find(resolved)
+      const oldest = [...this.records.values()].find(evictable)
       if (!oldest) {
         return
       }
@@ -96,6 +109,7 @@ export class PromptDeliveryRecords {
         r !== excluding &&
         r.dto.epoch === fence.epoch &&
         r.dto.incarnation === fence.incarnation &&
+        r.initial.conversationGeneration === fence.conversationGeneration &&
         !resolved(r) &&
         !(r.codexSteer && r.dto.status === 'dispatched'),
     )

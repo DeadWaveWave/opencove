@@ -162,3 +162,12 @@ stderr diagnostics: decisions, pending counts, generations, positions and elapse
 milliseconds, with eight-character sanitized ID prefixes. No message text, token,
 envelope, filesystem path or tool input is logged. The switch is off by default.
 
+
+Live prompt readiness after a new-ID Claude `/clear` belongs to the executing Worker's
+volatile conversation owner, independently of the saved restart target. Clear creates no
+successor turn; the first accepted submission captures its own provider session identity.
+Late predecessor hooks and transcript callbacks cannot update the successor generation.
+See [prompt delivery](CLAUDE_CLEAR_PROMPT.md) for the
+relay-order assumption, quarantine and observed-readiness limits. B4b commitment grants
+no readiness and rewrites no turn identity. This adds no public generation field or
+persistence schema; startup/resume/compact readiness is unchanged.

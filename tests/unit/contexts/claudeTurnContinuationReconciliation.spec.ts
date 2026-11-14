@@ -1,4 +1,6 @@
 import { expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { parseClaudeTranscript } from '../../../src/contexts/agent/infrastructure/watchers/ClaudeTranscriptParser'
 import {
   continuationFixture as fixture,
   enqueue,
@@ -332,3 +334,60 @@ it('coarse file refreshes cannot restore readiness after uncertain continuation 
   expect(f.snapshot()).toMatchObject({ state: 'idle', quality: 'authoritative' })
   f.runtime.dispose()
 })
+
+it.each(['p', 'different'])(
+  'correlates B baseline continuation when A ended prompt is %s',
+  predecessor => {
+    const f = fixture()
+    f.hook('UserPromptSubmit', predecessor, undefined, undefined, 'A')
+    f.hook('Stop', predecessor, 'reply-A', undefined, 'A')
+    // Provider-scoped prompt history belongs to an authenticated clear, not ordinary resume.
+    f.runtime.observeClaudeTranscript({
+      sessionId: 's',
+      incarnation: 's',
+      providerSessionId: 'B',
+      generation: 0,
+      fileIdentity: '',
+      position: -1,
+      baseline: false,
+      conversation: {
+        event: {
+          claudeSessionId: 'B',
+          hookEventName: 'SessionStart',
+          sessionStartSource: 'clear',
+          emittedAtMs: 200,
+          state: null,
+        },
+        decide() {},
+        publish() {},
+      },
+    })
+    f.tick(200)
+    expect(f.registry.readFence({ sessionId: 's' })?.conversationGeneration).toBeTypeOf('number')
+    f.hook('UserPromptSubmit', 'b-first', undefined, undefined, 'B')
+    f.hook('UserPromptSubmit', 'b-first', undefined, undefined, 'B')
+    f.hook('Stop', 'b-first', 'intermediate-B', undefined, 'B')
+    const user = JSON.parse(
+      readFileSync('tests/fixtures/claude/clear-successor-2.1.321.jsonl', 'utf8')
+        .trim()
+        .split('\n')[6],
+    )
+    f.record(parseClaudeTranscript(JSON.stringify({ ...user, promptSource: 'queued' })), {
+      baseline: true,
+      providerSessionId: 'B',
+      origin: 'hook',
+    })
+    f.hook('Stop', 'p', 'final-B', undefined, 'B')
+    f.record(
+      { kind: 'checkpoint', promptId: 'p', queueEmpty: true, final: true },
+      { providerSessionId: 'B', origin: 'hook' },
+    )
+    expect(f.read({ turnId: 't2' })).toMatchObject({
+      message: 'final-B',
+      outcome: 'completed',
+      turnId: 't2',
+    })
+    expect(f.read({ turnId: 't1' })).toMatchObject({ message: 'reply-A', outcome: 'completed' })
+    f.runtime.dispose()
+  },
+)

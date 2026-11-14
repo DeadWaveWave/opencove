@@ -40,11 +40,11 @@ opencove agent read --node agent-123 --screen
 opencove agent prompt --node agent-123 --wait --read --text-file ./assignment.txt --timeout 2m
 ```
 
-Prompt works only with **agent windows OpenCove launched** (from a task, the agent launcher or `node create agent`) running **Claude Code**, or **Codex** with its lifecycle hooks, at authoritative working state or after an observed finished turn. Agent windows started with a custom executable
-path are refused. Both providers require local invocation lifecycle hooks, authoritative state, default executable and bracketed paste. Claude requires Stop or StopFailure; Codex requires trusted hooks for this invocation (Stop). Codex notify-only, daemon reuse, file-only telemetry and Windows
+Prompt works only with **agent windows OpenCove launched** (from a task, the agent launcher or `node create agent`) running **Claude Code**, or **Codex** with its lifecycle hooks, at authoritative working state, after an observed finished turn, or after a new Claude Code `/clear` conversation. Agent windows started with a custom executable
+path are refused. Both providers require local invocation lifecycle hooks, authoritative state, default executable and bracketed paste. Claude requires Stop/StopFailure or observed new-ID `/clear` readiness; Codex requires trusted hooks for this invocation (Stop). Codex notify-only, daemon reuse, file-only telemetry and Windows
 are unsupported. Terminal shell/shim/launcher agents are unsupported. Executable overrides and option-like model/session values have no verified lifecycle coverage. For executable_override_unverified, remove the override in Settings → agent executable and launch a new
 window; the running invocation is unchanged. Agents typed into a terminal cannot receive prompts because the shell would receive the input after the agent stops. Start an agent meant to receive prompts, such as a lead agent other agents report to, as an agent window using Run Agent on a task,
-the agent launcher, or `opencove node create agent --space <space> --prompt <text>`; it can still use the opencove CLI from there. Newly opened/resumed sessions may need a completed turn first.
+the agent launcher, or `opencove node create agent --space <space> --prompt <text>`; it can still use the opencove CLI from there. Newly opened/resumed sessions may need a completed turn first. After a Claude Code `/clear`, the first prompt may be sent once the new conversation is observed, without completing a turn first; the editor may still hold a draft or a dialog. Clear transitions wait for 200 ms of quiet; ordinary state updates remain immediate. If it stalls, inspect the screen and never resend automatically.
 
 Choose one prompt source: positional text, --text or --text-file (- reads stdin). Text must be valid Unicode, nonblank and at most 32 KiB UTF-8 before newline normalization; trailing newlines are removed. For a simple hand-off use --wait --read. It confirms delivery, waits for the containing
 exact turn and returns one JSON result with deliveryId, nodeId, sessionId, turnId, phase, outcome, endedAt and reply. Check outcome and reply; every ended outcome exits 0. Missing reply is null with replyUnavailableReason, without changing completion success. Without --read, reply is omitted.
@@ -90,7 +90,8 @@ Refusals describe this call only; they do not cancel another delivery:
 - `agent.blocked`: waiting for input (reason may be null); human resolves the dialog.
 - `agent.busy` / `working`: legacy Worker or `--if-busy refuse`; wait for completion.
 - `agent.busy` / `delivery_in_progress`: await that delivery's result before deciding.
-- `agent.state_unknown` / `readiness_unobserved`: finish a turn in the terminal first.
+- `agent.state_unknown` / `readiness_unobserved`: inspect the screen; retry only when readiness is observed after a completed turn or a new Claude Code `/clear` conversation.
+- `agent.state_unknown` / `history_saturated`: restart the agent window to send prompts again; the conversation itself is unaffected.
 - `agent.state_unknown` / `observation_degraded`: check hooks and await reliable evidence.
 - `agent.not_running`: inspect the node; start/resume only when authorized.
 - `agent.prompt_unsupported`: the reason says what is missing (another provider,

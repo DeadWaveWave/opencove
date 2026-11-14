@@ -242,6 +242,10 @@ export class AgentRunStateRuntime {
     if (!session || session.remote) {
       return
     }
+    if (record.captureConversation) {
+      // Capture belongs to the invocation known by this Worker, never a guessed PTY session ID.
+      record = { ...record, incarnation: session.incarnation }
+    }
     if (!record.incarnation) {
       return
     }
@@ -275,6 +279,19 @@ export class AgentRunStateRuntime {
       this.metadata({ sessionId: event.sessionId, resumeSessionId: null, agentProvider: provider })
     }
     const session = this.sessions.get(event.sessionId)!
+    const capturedInvocation = getPromptSubmissionEvidence(event)?.invocationId
+    if (capturedInvocation !== undefined && capturedInvocation !== session.incarnation) {
+      return
+    }
+    if (
+      !this.registry.acceptsObservation(
+        event.sessionId,
+        event.source ?? 'session_file',
+        getPromptSubmissionEvidence(event),
+      )
+    ) {
+      return
+    }
     if (event.remote) {
       this.markRemote(event.sessionId)
     }

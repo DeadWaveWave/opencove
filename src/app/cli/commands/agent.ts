@@ -18,10 +18,10 @@ export const agentPromptCommand = defineCommand({
   positionals: [{ name: 'text' }],
   summary: 'Send a prompt to an agent window OpenCove launched',
   description: [
-    'Send text to a local Claude Code/Codex window OpenCove launched. Inspect with agent read --screen first: existing drafts may be submitted. Working agents receive steering; --if-busy refuse rejects busy agents. --expect-turn requires the exact active turn. Waiting, unknown/degraded and unsupported sessions refuse.',
+    'Prompt Claude Code/Codex windows OpenCove launched. Inspect agent read --screen: drafts may be submitted. Working agents accept steering; --if-busy refuse rejects them. --expect-turn requires that turn. Claude clear needs 200 ms of quiet; normal updates remain immediate. Waiting, unknown/degraded and unsupported sessions refuse. history_saturated: restart the agent window.',
     INITIAL_PROMPT_RULES_TEXT,
-    '--wait confirms delivery and waits for its exact turn; --read returns the correlated reply. Check outcome and replyUnavailableReason. Stderr prints IDs and an interruption-only continuation command; final JSON reports results.',
-    '--timeout: with --wait, confirmation/waiting default 20s, minimum 250ms, separate 15s send budget; otherwise sending defaults to 15s, maximum 60s.',
+    '--wait confirms delivery and awaits its exact turn; --read returns its reply. Check outcome and replyUnavailableReason. Stderr prints IDs and an interruption-only continuation command; JSON reports results.',
+    '--timeout: with --wait, confirmation/waiting default 20s, minimum 250ms, 15s send budget; otherwise sending defaults to 15s, maximum 60s.',
     'Never resend after uncertainty, interruption or textComparison: different. Resume agent delivery or agent wait --turn with returned IDs.',
     'Exit codes: 0 submitted/dispatched/turn-ended; 1 refused/unconfirmed; 2 invalid input; 4 authorization; 10 waiting; 11 exited; 124 timeout; 130 interrupted. Details: opencove skill coordinate.',
   ].join('\n\n'),

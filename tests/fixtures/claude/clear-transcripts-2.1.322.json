@@ -1,0 +1,104 @@
+{
+  "version": "2.1.322",
+  "a": "516df3a5-bb70-4e03-a5d6-32d45675057b",
+  "b": "0659395a-1cb6-48e1-9df0-ad7c2c41ab4c",
+  "hooks": [
+    {
+      "kind": "hook",
+      "at": "2026-11-13T21:36:39.648Z",
+      "cwd": "/workspace",
+      "input": {
+        "session_id": "516df3a5-bb70-4e03-a5d6-32d45675057b",
+        "transcript_path": "/isolated-claude/claude-config/projects/workspace/516df3a5-bb70-4e03-a5d6-32d45675057b.jsonl",
+        "cwd": "/workspace",
+        "hook_event_name": "SessionStart",
+        "source": "startup",
+        "model": "claude-opus-5-5"
+      }
+    },
+    {
+      "kind": "hook",
+      "at": "2026-11-13T21:36:39.800Z",
+      "cwd": "/workspace",
+      "input": {
+        "session_id": "516df3a5-bb70-4e03-a5d6-32d45675057b",
+        "transcript_path": "/isolated-claude/claude-config/projects/workspace/516df3a5-bb70-4e03-a5d6-32d45675057b.jsonl",
+        "cwd": "/workspace",
+        "prompt_id": "6ca855e6-b7ba-41cc-904b-a6d346c95293",
+        "permission_mode": "default",
+        "hook_event_name": "UserPromptSubmit",
+        "prompt": "PROBE_PROMPT_A: reply with the configured mock response."
+      }
+    },
+    {
+      "kind": "hook",
+      "at": "2026-11-13T21:36:39.964Z",
+      "cwd": "/workspace",
+      "input": {
+        "session_id": "516df3a5-bb70-4e03-a5d6-32d45675057b",
+        "transcript_path": "/isolated-claude/claude-config/projects/workspace/516df3a5-bb70-4e03-a5d6-32d45675057b.jsonl",
+        "cwd": "/workspace",
+        "prompt_id": "6ca855e6-b7ba-41cc-904b-a6d346c95293",
+        "permission_mode": "default",
+        "effort": {
+          "level": "medium"
+        },
+        "hook_event_name": "Stop",
+        "stop_hook_active": false,
+        "last_assistant_message": "REPLY_A",
+        "background_tasks": [],
+        "session_crons": []
+      }
+    },
+    {
+      "kind": "hook",
+      "at": "2026-11-13T21:36:40.684Z",
+      "cwd": "/workspace",
+      "input": {
+        "session_id": "516df3a5-bb70-4e03-a5d6-32d45675057b",
+        "transcript_path": "/isolated-claude/claude-config/projects/workspace/516df3a5-bb70-4e03-a5d6-32d45675057b.jsonl",
+        "cwd": "/workspace",
+        "prompt_id": "ae8f5e02-52b2-486e-9a0b-3b3c1fd01eda",
+        "hook_event_name": "SessionEnd",
+        "reason": "clear"
+      }
+    },
+    {
+      "kind": "hook",
+      "at": "2026-11-13T21:36:40.815Z",
+      "cwd": "/workspace",
+      "input": {
+        "session_id": "0659395a-1cb6-48e1-9df0-ad7c2c41ab4c",
+        "transcript_path": "/isolated-claude/claude-config/projects/workspace/0659395a-1cb6-48e1-9df0-ad7c2c41ab4c.jsonl",
+        "cwd": "/workspace",
+        "hook_event_name": "SessionStart",
+        "source": "clear"
+      }
+    }
+  ],
+  "transcripts": {
+    "B": [
+      "{\"type\":\"mode\",\"mode\":\"normal\",\"sessionId\":\"0659395a-1cb6-48e1-9df0-ad7c2c41ab4c\"}",
+      "{\"type\":\"file-history-snapshot\",\"messageId\":\"93b06239-eaff-4c5b-b98c-cdac2a25183c\",\"snapshot\":{\"messageId\":\"93b06239-eaff-4c5b-b98c-cdac2a25183c\",\"trackedFileBackups\":{},\"timestamp\":\"2026-11-13T21:36:40.779Z\"},\"isSnapshotUpdate\":false}",
+      "{\"parentUuid\":null,\"isSidechain\":false,\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"<local-command-caveat>The command below was run directly in Claude Code, not sent to you as a request, and its output goes straight to the user. It's recorded here as context for later messages.</local-command-caveat>\"},\"isMeta\":true,\"uuid\":\"dd8aa96d-a0f5-4e8e-a9dd-9eb8f8e803e4\",\"timestamp\":\"2026-11-13T21:36:40.778Z\",\"userType\":\"external\",\"entrypoint\":\"cli\",\"cwd\":\"/workspace\",\"sessionId\":\"0659395a-1cb6-48e1-9df0-ad7c2c41ab4c\",\"version\":\"2.1.322\",\"gitBranch\":\"HEAD\"}",
+      "{\"parentUuid\":\"dd8aa96d-a0f5-4e8e-a9dd-9eb8f8e803e4\",\"isSidechain\":false,\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"<command-name>/clear</command-name>\\n            <command-message>clear</command-message>\\n            <command-args></command-args>\"},\"uuid\":\"93b06239-eaff-4c5b-b98c-cdac2a25183c\",\"timestamp\":\"2026-11-13T21:36:40.645Z\",\"userType\":\"external\",\"entrypoint\":\"cli\",\"cwd\":\"/workspace\",\"sessionId\":\"0659395a-1cb6-48e1-9df0-ad7c2c41ab4c\",\"version\":\"2.1.322\",\"gitBranch\":\"HEAD\"}",
+      "{\"parentUuid\":\"93b06239-eaff-4c5b-b98c-cdac2a25183c\",\"isSidechain\":false,\"type\":\"system\",\"subtype\":\"local_command\",\"content\":\"<local-command-stdout></local-command-stdout>\",\"level\":\"info\",\"timestamp\":\"2026-11-13T21:36:40.777Z\",\"uuid\":\"e6ccb943-b5eb-4fd8-8eb7-400f044d6dba\",\"isMeta\":false,\"commandRun\":{\"command\":\"clear\",\"args\":\"\"},\"userType\":\"external\",\"entrypoint\":\"cli\",\"cwd\":\"/workspace\",\"sessionId\":\"0659395a-1cb6-48e1-9df0-ad7c2c41ab4c\",\"version\":\"2.1.322\",\"gitBranch\":\"HEAD\"}"
+    ],
+    "A": [
+      "{\"type\":\"mode\",\"mode\":\"normal\",\"sessionId\":\"516df3a5-bb70-4e03-a5d6-32d45675057b\"}",
+      "{\"type\":\"permission-mode\",\"permissionMode\":\"default\",\"sessionId\":\"516df3a5-bb70-4e03-a5d6-32d45675057b\"}",
+      "{\"type\":\"atis-latch\",\"atis\":\"\",\"sessionId\":\"516df3a5-bb70-4e03-a5d6-32d45675057b\"}",
+      "{\"type\":\"file-history-snapshot\",\"messageId\":\"c3490f43-e4af-41de-a179-38e681c273cb\",\"snapshot\":{\"messageId\":\"c3490f43-e4af-41de-a179-38e681c273cb\",\"trackedFileBackups\":{},\"timestamp\":\"2026-11-13T21:36:39.668Z\"},\"isSnapshotUpdate\":false}",
+      "{\"type\":\"file-history-snapshot\",\"messageId\":\"ee684ed5-74ba-437d-8392-b39481881548\",\"snapshot\":{\"messageId\":\"ee684ed5-74ba-437d-8392-b39481881548\",\"trackedFileBackups\":{},\"timestamp\":\"2026-11-13T21:36:39.889Z\"},\"isSnapshotUpdate\":false}",
+      "{\"parentUuid\":null,\"isSidechain\":false,\"promptId\":\"6ca855e6-b7ba-41cc-904b-a6d346c95293\",\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"PROBE_PROMPT_A: reply with the configured mock response.\"},\"uuid\":\"ee684ed5-74ba-437d-8392-b39481881548\",\"timestamp\":\"2026-11-13T21:36:39.756Z\",\"permissionMode\":\"default\",\"origin\":{\"kind\":\"human\"},\"promptSource\":\"typed\",\"turnOrigin\":\"human\",\"turnPosition\":{\"promptIndex\":1,\"turnIndex\":1},\"userType\":\"external\",\"entrypoint\":\"cli\",\"cwd\":\"/workspace\",\"sessionId\":\"516df3a5-bb70-4e03-a5d6-32d45675057b\",\"version\":\"2.1.322\",\"gitBranch\":\"HEAD\"}",
+      "{\"parentUuid\":\"75af8d26-fdd7-4a22-8234-2035d600bebd\",\"isSidechain\":false,\"attachment\":{\"type\":\"session_context\",\"context\":{}},\"type\":\"attachment\",\"uuid\":\"4d696216-fb15-4b9c-af88-331c27b6ddb5\",\"timestamp\":\"2026-11-13T21:36:39.897Z\",\"session_id\":\"516df3a5-bb70-4e03-a5d6-32d45675057b\",\"userType\":\"external\",\"entrypoint\":\"cli\",\"cwd\":\"/workspace\",\"sessionId\":\"516df3a5-bb70-4e03-a5d6-32d45675057b\",\"version\":\"2.1.322\",\"gitBranch\":\"HEAD\"}",
+      "{\"parentUuid\":\"4d696216-fb15-4b9c-af88-331c27b6ddb5\",\"isSidechain\":false,\"attachment\":{\"type\":\"date\",\"date\":\"2026-11-14\"},\"type\":\"attachment\",\"uuid\":\"079fcd69-7764-456a-abe3-8cc8330691a1\",\"timestamp\":\"2026-11-13T21:36:39.897Z\",\"rendered\":[{\"content\":\"<system-reminder>\\nToday's date is 2026-11-14.\\n</system-reminder>\"}],\"renderedRole\":\"system\",\"session_id\":\"516df3a5-bb70-4e03-a5d6-32d45675057b\",\"userType\":\"external\",\"entrypoint\":\"cli\",\"cwd\":\"/workspace\",\"sessionId\":\"516df3a5-bb70-4e03-a5d6-32d45675057b\",\"version\":\"2.1.322\",\"gitBranch\":\"HEAD\"}",
+      "{\"type\":\"last-prompt\",\"lastPrompt\":\"PROBE_PROMPT_A: reply with the configured mock response.\",\"leafUuid\":\"36e4c4d6-0f2e-4cff-93af-ff7e6b6392c9\",\"sessionId\":\"516df3a5-bb70-4e03-a5d6-32d45675057b\"}",
+      "{\"type\":\"mode\",\"mode\":\"normal\",\"sessionId\":\"516df3a5-bb70-4e03-a5d6-32d45675057b\"}",
+      "{\"type\":\"permission-mode\",\"permissionMode\":\"default\",\"sessionId\":\"516df3a5-bb70-4e03-a5d6-32d45675057b\"}",
+      "{\"type\":\"atis-latch\",\"atis\":\"\",\"sessionId\":\"516df3a5-bb70-4e03-a5d6-32d45675057b\"}",
+      "{\"parentUuid\":\"e53cf579-8494-4166-b1f3-6cb4f6772077\",\"isSidechain\":false,\"type\":\"system\",\"subtype\":\"turn_duration\",\"durationMs\":355,\"messageCount\":13,\"timestamp\":\"2026-11-13T21:36:40.050Z\",\"uuid\":\"d3e5da02-845a-482b-a300-d6d904a1e084\",\"isMeta\":false,\"userType\":\"external\",\"entrypoint\":\"cli\",\"cwd\":\"/workspace\",\"sessionId\":\"516df3a5-bb70-4e03-a5d6-32d45675057b\",\"version\":\"2.1.322\",\"gitBranch\":\"HEAD\"}",
+      "{\"type\":\"cost-state\",\"sessionId\":\"516df3a5-bb70-4e03-a5d6-32d45675057b\",\"totalCostUSD\":0.000128,\"totalAPIDuration\":17,\"totalAPIDurationWithoutRetries\":9,\"totalToolDuration\":0,\"totalLinesAdded\":0,\"totalLinesRemoved\":0,\"totalDuration\":1322,\"startTime\":1794605799453,\"modelUsage\":{\"claude-opus-5-5\":{\"inputTokens\":12,\"outputTokens\":4,\"thinkingTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"cacheCreationEphemeral5mInputTokens\":0,\"cacheCreationEphemeral1hInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.000128}},\"hasUnknownModelCost\":false}"
+    ]
+  }
+}

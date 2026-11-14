@@ -72,10 +72,20 @@ export interface AgentHookObservationOwner<TEnvelope extends AgentHookEnvelope> 
 
 export interface PrivateHookContext {
   incarnation: string
+  conversationCapture?: object
+  conversationGeneration?: number
   credential?: object
   isCurrent: () => boolean
+  publishState?: (generation: number) => void
+  rejectReply?: () => void
 }
 export interface PrivateHookObserver<TEnvelope> {
-  observe(sessionId: string, envelope: TEnvelope, context: PrivateHookContext): boolean
+  /** Deferred accepts the authenticated request while the owner retains state publication. */
+  // state_only preserves state publication when only private observer IO was rejected.
+  observe(
+    sessionId: string,
+    envelope: TEnvelope,
+    context: PrivateHookContext,
+  ): boolean | 'deferred' | 'state_only'
   dispose(): void
 }

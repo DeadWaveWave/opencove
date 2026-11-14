@@ -359,3 +359,12 @@ Deleting the node removes queryable OpenCove history, including caches; it does 
 erase provider transcripts, existing backups or forensic remnants.
 `opencove agent history clear --node <selector>` (`agent.history.clear`, interact scope) deletes the node’s archived and in-memory replies across retained incarnations, leaving the node, provider transcripts, backups, run state, active turns and delivery records unchanged; later ends store normally, and archive unavailability clears memory but exits 1. Unqualified reads, prompt-ID selectors and labelled transcript fallback
 retain current-incarnation semantics. Remote history is not routed across Workers.
+
+Live prompt readiness after a new-ID Claude `/clear` belongs to the executing Worker's
+volatile conversation owner, independently of the saved restart target. Clear creates no
+successor turn; the first accepted submission captures its own provider session identity.
+Late predecessor hooks and transcript callbacks cannot update the successor generation.
+See [prompt delivery](CLAUDE_CLEAR_PROMPT.md) for the
+relay-order assumption, quarantine and observed-readiness limits. B4b commitment grants
+no readiness and rewrites no turn identity. This adds no public generation field or
+persistence schema; startup/resume/compact readiness is unchanged.

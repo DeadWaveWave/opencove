@@ -1,6 +1,10 @@
+import { isClaudeAuxiliaryUser } from '../../../../shared/runtime/agentHook/claudeTranscriptSemantics'
 import { createHash } from 'node:crypto'
 import { claudePromptId } from '../../../../shared/runtime/agentHook/claudePromptEvidence'
-import type { ClaudeTranscriptRecord } from '../../../../shared/runtime/agentHook/claudeTranscript'
+import {
+  markClaudeTranscriptInput,
+  type ClaudeTranscriptRecord,
+} from '../../../../shared/runtime/agentHook/claudeTranscript'
 
 /** Discard raw content immediately; keys match removals, never identify occurrences. */
 export function parseClaudeTranscript(line: string): ClaudeTranscriptRecord | undefined {
@@ -25,17 +29,34 @@ export function parseClaudeTranscript(line: string): ClaudeTranscriptRecord | un
         : {}),
     }
   }
+  const content = record.message?.content
+  const auxiliary = isClaudeAuxiliaryUser(record)
   const promptId = claudePromptId(record.promptId)
   if (record.type === 'user' && promptId) {
-    return {
+    const result: ClaudeTranscriptRecord = {
       kind: 'user',
       promptId,
       promptSource: typeof record.promptSource === 'string' ? record.promptSource : 'unknown',
       ...(claudePromptId(record.uuid) ? { uuid: claudePromptId(record.uuid) } : {}),
     }
+    if (auxiliary) {
+      markClaudeTranscriptInput(result, 'auxiliary')
+    }
+    return result
   }
   if (record.type === 'user') {
-    return { kind: 'invalid_user' }
+    // A redacted/non-identifying record cannot establish actual editor input. Keep its
+    // checkpoint uncertainty separate from the positive evidence needed to veto a clear.
+    const input =
+      record.promptId !== undefined ||
+      record.promptSource !== undefined ||
+      (typeof content === 'string' && content.length > 0) ||
+      (Array.isArray(content) && content.length > 0)
+    const result: ClaudeTranscriptRecord = { kind: 'invalid_user' }
+    if (auxiliary || !input) {
+      markClaudeTranscriptInput(result, auxiliary ? 'auxiliary' : 'redacted')
+    }
+    return result
   }
   if (record.type === 'assistant') {
     return {

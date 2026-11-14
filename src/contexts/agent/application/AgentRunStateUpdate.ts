@@ -1,3 +1,5 @@
+import { acknowledgeClaudeJournal, projectClaudeJournal } from './ClaudeJournalResolution'
+import { permitsClearBaseline } from './ClaudeClearBaseline'
 import { debugAgentContinuation } from '../../../shared/runtime/agentHook/agentContinuationDiagnostics'
 import { publishRunTransition, scheduleRunExpiry } from './AgentRunStateEntry'
 import { acceptedRunStateReceipt } from './AgentRunStateFences'
@@ -131,7 +133,8 @@ export function updateAgentRunEntry(
     entry.history.accept(current, model, ended, null)
     return { model, ended, accepted: false }
   }
-  if (observation?.boundary?.kind === 'end' && entry.continuation.needsGenerationStart) {
+  const baseline = observation?.boundary?.kind === 'end' && entry.continuation.needsGenerationStart
+  if (baseline && !permitsClearBaseline(entry, observation, evidence)) {
     return unchanged()
   }
   // Validate source freshness and authority before changing any private continuation state.
@@ -142,6 +145,12 @@ export function updateAgentRunEntry(
     preview.model.observations[observation.source] === observation
   const selected =
     accepted && preview.model.snapshot.source === observation?.source && !observation?.degraded
+  if (baseline) {
+    if (!selected) {
+      return unchanged()
+    }
+    entry.continuation.acceptGenerationStart()
+  }
   if (
     selected &&
     observation?.boundary?.kind === 'end' &&
@@ -227,7 +236,11 @@ export function updateAgentRunEntry(
       return finish(entry, resolution.end, true, now)
     }
   }
-  if (observation && current.snapshot.turn && entry.history.hasEndedPrompt(evidence?.promptId)) {
+  if (
+    observation &&
+    current.snapshot.turn &&
+    entry.history.hasEndedPrompt(evidence?.promptId, evidence?.providerSessionId)
+  ) {
     return unchanged()
   }
   if (selected && observation?.boundary?.kind === 'start') {
@@ -370,6 +383,7 @@ export function commitAgentRunUpdate(
       )
     )
   const result = updateAgentRunEntry(entry, observation, evidence, ports.now, ports.createTurnId)
+  acknowledgeClaudeJournal(entry, observation, evidence, result)
   if (
     canRelease &&
     result.accepted &&
@@ -391,6 +405,27 @@ export function commitAgentRunUpdate(
       },
     }
   }
+  if (
+    entry.conversation?.ready &&
+    (!observation ||
+      (observation.source === 'session_file' &&
+        observation.state === 'idle' &&
+        !observation.degraded)) &&
+    !result.model.snapshot.turn &&
+    result.model.snapshot.state !== 'exited'
+  ) {
+    result.model = {
+      ...result.model,
+      snapshot: {
+        ...result.model.snapshot,
+        state: 'idle',
+        quality: 'authoritative',
+        source: 'claude_hook',
+        lastTransitionAt: entry.model.snapshot.lastTransitionAt,
+      },
+    }
+  }
+  result.model = projectClaudeJournal(entry, observation, result.model)
   const changed = JSON.stringify(result.model.snapshot) !== JSON.stringify(entry.model.snapshot)
   entry.model = result.model
   if (entry.model.snapshot.state === 'exited') {

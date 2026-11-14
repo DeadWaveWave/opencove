@@ -72,6 +72,7 @@ export function continuationFixture(archive?: AgentTurnArchive) {
     }
     setPromptSubmissionEvidence(event, {
       promptId,
+      conversationGeneration: registry.readFence({ sessionId: 's' })?.conversationGeneration,
       providerSessionId,
       ...(message === undefined ? {} : { finalMessage: { message, truncated: false } }),
     })
@@ -86,6 +87,7 @@ export function continuationFixture(archive?: AgentTurnArchive) {
       incarnation: 's',
       providerSessionId: 'provider',
       generation: 1,
+      conversationGeneration: registry.readFence({ sessionId: 's' })?.conversationGeneration,
       fileIdentity: 'file',
       position: ++position,
       baseline: false,

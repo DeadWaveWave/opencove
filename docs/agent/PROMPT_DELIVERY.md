@@ -9,8 +9,7 @@ opencove agent prompt --node node-123 --text-file ./prompt.txt --timeout 20s
 cat prompt.txt | opencove agent prompt --node node-123 --text-file -
 ```
 
-Use exactly one of `--text` or `--text-file`. Idle agents must have finished a turn
-that OpenCove observed; authoritative working agents accept steering in the current turn. A newly opened or resumed session may need a turn completed
+Use exactly one of `--text` or `--text-file`. Idle agents need an observed completed turn or [new Claude `/clear` readiness](CLAUDE_CLEAR_PROMPT.md); authoritative working agents accept steering in the current turn. A newly opened or resumed session may need a turn completed
 in its terminal before this command can be used.
 
 The command attempts one bracketed paste into the current editor. If the paste reaches the editor and Enter submits it, any existing draft is
@@ -51,10 +50,10 @@ configuration is modified to force hooks on.
 
 | Provider            | Required for this invocation                                                              | Readiness and receipt                                                                       |
 | ------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Claude Code         | Installed lifecycle hooks, `hookCoverage: lifecycle`                                      | Selected reliable `claude_hook` Stop or StopFailure; `claude_hook` UserPromptSubmit receipt |
+| Claude Code         | Installed lifecycle hooks, `hookCoverage: lifecycle`                                      | Reliable Stop/StopFailure or new-ID clear; `claude_hook` UserPromptSubmit receipt |
 | Codex (macOS/Linux) | Trusted lifecycle hook configuration actually passed at launch, `hookCoverage: lifecycle` | Selected reliable `codex_hook` Stop; `codex_hook` UserPromptSubmit receipt                  |
 
-Both require bracketed paste and authoritative lifecycle observations. Idle admission requires a completed turn; working admission requires whenBusy: steer and an active turn. `installed` alone
+Both require bracketed paste and authoritative lifecycle observations. Idle admission requires a completed turn or new-ID Claude clear; working admission requires whenBusy: steer and an active turn. `installed` alone
 is insufficient. Trust resolution failure leaves Codex with `notify_only` coverage;
 notify cannot observe submissions or permission requests. Daemon reuse (`skipped`),
 Windows (`not_required`, session files), no hooks (`none`), and file-only readiness
@@ -139,7 +138,7 @@ running turn automatically because of the comparison.** The CLI notice is:
 | The agent is waiting for input, even when the reason is unknown | `agent.blocked`                                               | Resolve the dialog in the terminal.                                                                    |
 | The agent is working and whenBusy is absent/refuse              | `agent.busy` / `working`                                      | Wait for the turn to finish.                                                                           |
 | Another delivery is in progress                                 | `agent.busy` / `delivery_in_progress`                         | Wait for that delivery's result before deciding whether another is needed.                             |
-| OpenCove has not observed a completed turn                      | `agent.state_unknown` / `readiness_unobserved`                | Complete a turn in the terminal first.                                                                 |
+| OpenCove cannot confirm prompt readiness                      | `agent.state_unknown` / `readiness_unobserved`                | Inspect the screen; wait for observed readiness.                                                                 |
 | Hook observations are unavailable or unreliable                 | `agent.state_unknown` / `observation_degraded`                | Check the hook setup and wait for a reliably observed turn end.                                        |
 | No running agent exists at the target                           | `agent.not_running`                                           | Check the node and start or resume its session.                                                        |
 | The agent window uses a custom executable path                  | `agent.prompt_unsupported` / `executable_override_unverified` | Remove the override in Settings → agent executable and launch a new agent window with lifecycle hooks. |
@@ -361,8 +360,8 @@ a hook; otherwise idle sessions perform no periodic filesystem IO. Hooks always
 refresh immediately. Same-session compaction/resume refreshes preserve the active
 turn and its queued follow-ups, permission wait and recovery chain. Conversation
 changes retire observer generations: different session IDs, clear, or an ordered
-startup/resume after an end. Invocation-authenticated state hooks continue;
-new-generation turn/completion evidence restores readiness. Historical queued
+startup/resume after an end. Only accepted current-conversation hooks publish state;
+turn/completion evidence or [new-ID clear readiness](CLAUDE_CLEAR_PROMPT.md) permits prompting. Historical queued
 identities and paired Stops roll out of bounded caches; the current EOF candidate
 and Stops awaiting user correlation stay protected.
 See [run state](RUN_STATE.md#claude-queued-continuations) for generation fences,
@@ -448,7 +447,8 @@ digest is exposed. `not_sent` means this attempt wrote no CR; a pasted draft may
 remain. `submitted` means qualifying evidence; `dispatched` awaits consumption.
 evidenceWindow describes collecting delivery evidence, not the agent’s work; closed never proves completion or retry safety.
 
-Unresolved deliveries are pinned; limits are 32/session and 1024 globally. Completed
+Current unresolved deliveries are pinned; retired conversations with permanently closed
+unknown attempts are eligible for eviction. Limits are 32/session and 1024 globally. Completed
 (`submitted`/`not_sent`) records evict first and expire 30 minutes after resolvedAt. Capacity refusal happens before bytes, with
 `agent.delivery_unsettled` (legacy: `agent.busy`) and delivery lookup guidance.
 Retirement or identity/binding loss disposes subscriptions while retaining the DTO.

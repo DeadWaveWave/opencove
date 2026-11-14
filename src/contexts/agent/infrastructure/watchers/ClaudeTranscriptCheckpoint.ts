@@ -1,7 +1,11 @@
+import { ClaudeTranscriptAncestry } from './ClaudeTranscriptAncestry'
+import { ClaudeLocalCommandEvidence } from './ClaudeLocalCommandEvidence'
 import type { ClaudeTranscriptRecord } from '../../../../shared/runtime/agentHook/claudeTranscript'
 
 /** Content-free fold of the actual file prefix; EOF is evidence, silence is not. */
 export class ClaudeTranscriptCheckpoint {
+  private ancestry = new ClaudeTranscriptAncestry()
+  private commands = new ClaudeLocalCommandEvidence()
   private count = 0
   private known = true
   private promptId?: string
@@ -11,7 +15,11 @@ export class ClaudeTranscriptCheckpoint {
     this.known = false
     this.final = false
   }
-  observe(record?: ClaudeTranscriptRecord): void {
+  observe(record?: ClaudeTranscriptRecord, line?: string): void {
+    if (line !== undefined) {
+      this.commands.observe(line, record)
+      this.ancestry.observe(line, record)
+    }
     if (record?.kind === 'queue') {
       if (record.operation === 'unknown') {
         this.known = false
@@ -39,6 +47,10 @@ export class ClaudeTranscriptCheckpoint {
         !!this.promptId &&
         (record.promptId === this.promptId || (!!this.uuid && record.parentUuid === this.uuid))
     }
+  }
+  dispose(): void {
+    this.ancestry.clear()
+    this.commands.clear()
   }
   read(complete: boolean): ClaudeTranscriptRecord {
     return {

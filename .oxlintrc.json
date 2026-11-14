@@ -42,6 +42,7 @@
     "out/**",
     "test-results/**",
     "playwright-report/**",
-    "*.config.*"
+    "*.config.*",
+    "tests/fixtures/claude/non-clear/baseline/**"
   ]
 }

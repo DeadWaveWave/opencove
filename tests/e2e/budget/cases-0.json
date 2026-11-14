@@ -1,11 +1,13 @@
 {
   "version": 1,
-  "count": 179,
+  "count": 181,
   "entries": {
     "tests/e2e/add-project-wizard.inline-endpoint.spec.ts › Add project wizard inline endpoint registration › preserves the parent wizard across Escape, cancel, and successful registration": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/agent-process-reaping.real-codex.spec.ts › managed Agent tool process reaping with real Codex › delete reaps a running tool across process groups": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/agent.initial-prompt-argv.spec.ts › role prompts use the same refusal and accepted argv policy": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/agent.initial-prompt-argv.spec.ts › task refusal preserves editable text, todo status and a reused live session": "Desktop: pre-restructure inventory; existing assertions retained",
+    "tests/e2e/agent.prompt.real-claude.clear.spec.ts › first CLI prompt after real Claude clear › submits first B through the CLI with a slow background hook": "native: a real Claude Code process clears its conversation and the first CLI prompt reaches the new session through real hooks and transcripts",
+    "tests/e2e/agent.prompt.real-claude.clear.spec.ts › first CLI prompt after real Claude clear › submits first B through the CLI with normal hooks": "native: a real Claude Code process clears its conversation and the first CLI prompt reaches the new session through real hooks and transcripts",
     "tests/e2e/agent.prompt.real-claude.spec.ts › agent.prompt with the real Claude Code CLI › submits one multi-line message and refuses an open question dialog": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/agent.prompt.real-codex.daemon.spec.ts › Codex orchestration beside a shared app-server daemon › default hooks complete prompts while the daemon stays healthy; close reaps the agent tree": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/agent.prompt.spec.ts › agent.prompt from a canvas terminal › claude-code: refuses a permission dialog with zero target bytes": "Desktop: pre-restructure inventory; existing assertions retained",

@@ -26,7 +26,9 @@ export class AgentTurnHistory {
   private active: Identity | undefined
   private readonly ended: RetainedAgentTurn[] = []
   constructor(
-    private readonly archiveContext: TurnArchiveContext = {
+    private readonly archiveContext: TurnArchiveContext & {
+      providerScopedPrompts?: () => boolean
+    } = {
       now: Date.now,
       nodeId: () => null,
       remote: () => false,
@@ -59,20 +61,27 @@ export class AgentTurnHistory {
     return removed
   }
 
-  identity(): Identity & { endedTurnIds: string[] } {
+  identity(providerSessionId?: string): Identity & { endedTurnIds: string[] } {
     return {
       endedTurnIds: [
         ...new Set([...this.ended.map(turn => turn.turnId), ...this.codexIdentity.endedTurnIds()]),
       ],
-      ...(this.active
+      ...(providerSessionId && this.active?.providerSessionId !== providerSessionId
         ? {
-            promptId: this.active.promptId,
-            providerSessionId: this.active.providerSessionId,
-            providerTurnId: this.active.providerTurnId,
+            providerSessionId,
+            promptId:
+              this.ended.findLast(turn => turn.providerSessionId === providerSessionId)?.promptId ??
+              undefined,
           }
-        : this.ended.at(-1)?.promptId
-          ? { promptId: this.ended.at(-1)!.promptId ?? undefined }
-          : (this.codexIdentity.identity() ?? {})),
+        : this.active
+          ? {
+              promptId: this.active.promptId,
+              providerSessionId: this.active.providerSessionId,
+              providerTurnId: this.active.providerTurnId,
+            }
+          : this.ended.at(-1)?.promptId
+            ? { promptId: this.ended.at(-1)!.promptId ?? undefined }
+            : (this.codexIdentity.identity() ?? {})),
     }
   }
 
@@ -87,7 +96,9 @@ export class AgentTurnHistory {
       (evidence?.promptId &&
         this.ended.find(
           turn =>
-            turn.promptId === evidence.promptId || turn.promptIds?.includes(evidence.promptId!),
+            (!this.archiveContext.providerScopedPrompts?.() ||
+              turn.providerSessionId === evidence.providerSessionId) &&
+            (turn.promptId === evidence.promptId || turn.promptIds?.includes(evidence.promptId!)),
         )?.turnId) ||
       currentTurnId
     )
@@ -98,8 +109,17 @@ export class AgentTurnHistory {
   hasPrompt(id?: string): boolean {
     return !!id && (this.active?.promptId === id || !!this.active?.promptIds?.includes(id))
   }
-  hasEndedPrompt(id?: string): boolean {
-    return !!id && this.ended.some(turn => turn.promptId === id || turn.promptIds?.includes(id))
+  hasEndedPrompt(id?: string, providerSessionId?: string): boolean {
+    return (
+      !!id &&
+      this.ended.some(
+        turn =>
+          (!this.archiveContext.providerScopedPrompts?.() ||
+            !providerSessionId ||
+            turn.providerSessionId === providerSessionId) &&
+          (turn.promptId === id || turn.promptIds?.includes(id)),
+      )
+    )
   }
   hasCurrentPrompt(evidence?: PromptSubmissionEvidence): boolean {
     return (
@@ -171,7 +191,10 @@ export class AgentTurnHistory {
     // Superseded ends are late. Replays cannot reopen or close another active turn. A repeated
     // Stop with no active turn can still refresh idle after provider continuation.
     const retained = this.ended.find(
-      turn => turn.promptId === evidence.promptId || turn.promptIds?.includes(evidence.promptId!),
+      turn =>
+        (!this.archiveContext.providerScopedPrompts?.() ||
+          turn.providerSessionId === evidence.providerSessionId) &&
+        (turn.promptId === evidence.promptId || turn.promptIds?.includes(evidence.promptId!)),
     )
     if (retained) {
       return (
