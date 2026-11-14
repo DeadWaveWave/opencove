@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
-import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/contracts/dto'
+import type { WorkspacePathOpenerId } from '@shared/contracts/dto'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { SpaceWorktreeOperationPhase, SpaceWorktreeOperationState } from '../types'
 import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
@@ -26,7 +26,6 @@ export function useWorkspaceCanvasSpaceUi({
   ) => void
 }): {
   spaceWorktreeOperations: SpaceWorktreeOperationState[]
-  availablePathOpeners: WorkspacePathOpener[]
   onCanvasClick: () => void
   onPaneClick: (event: React.MouseEvent | MouseEvent) => void
   onPaneContextMenu: (event: React.MouseEvent | MouseEvent) => void
@@ -45,7 +44,6 @@ export function useWorkspaceCanvasSpaceUi({
     SpaceWorktreeOperationState[]
   >([])
   const nextSpaceWorktreeOperationIdRef = useRef(0)
-  const [availablePathOpeners, setAvailablePathOpeners] = useState<WorkspacePathOpener[]>([])
 
   const resolveSpacePath = useCallback(
     (spaceId: string): string => {
@@ -99,19 +97,6 @@ export function useWorkspaceCanvasSpaceUi({
 
   const openSpaceActionMenu = useCallback(
     (spaceId: string, anchor: { x: number; y: number }) => {
-      const listPathOpeners = window.opencoveApi?.workspace?.listPathOpeners
-      if (typeof listPathOpeners === 'function') {
-        void listPathOpeners()
-          .then(result => {
-            setAvailablePathOpeners(result.openers)
-          })
-          .catch(() => {
-            setAvailablePathOpeners([])
-          })
-      } else {
-        setAvailablePathOpeners([])
-      }
-
       ui.openSpaceActionMenu({ spaceId, x: anchor.x, y: anchor.y })
     },
     [ui],
@@ -208,7 +193,6 @@ export function useWorkspaceCanvasSpaceUi({
 
   return {
     spaceWorktreeOperations,
-    availablePathOpeners,
     onCanvasClick,
     onPaneClick,
     onPaneContextMenu,

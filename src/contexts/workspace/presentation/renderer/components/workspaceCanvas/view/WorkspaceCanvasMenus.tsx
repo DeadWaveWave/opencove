@@ -1,7 +1,8 @@
 import React from 'react'
 import type { WorkspaceCanvasViewProps } from '../WorkspaceCanvasView.types'
 import { useCanvasUi, useCanvasUiCommands } from '../../../store/canvasStoreContext'
-import { useWorkspaceCanvasMenuDismissals } from '../hooks/useGlobalDismissals'
+import { useWorkspaceCanvasMenuDismissals } from './useCanvasMenuDismissals'
+import { useSpacePathOpeners } from './useSpacePathOpeners'
 import {
   CLOSED_CANVAS_ARRANGE_FLAGS,
   resolveCanvasArrangeFlags,
@@ -42,7 +43,6 @@ export function WorkspaceCanvasMenus({
   isConvertSelectedNoteToTaskDisabled,
   convertSelectedNoteToTask,
   setSelectedNodeLabelColorOverride,
-  availablePathOpeners,
   setSpaceLabelColor,
   openSpaceCreateWorktree,
   openSpaceArchive,
@@ -83,7 +83,6 @@ export function WorkspaceCanvasMenus({
   | 'isConvertSelectedNoteToTaskDisabled'
   | 'convertSelectedNoteToTask'
   | 'setSelectedNodeLabelColorOverride'
-  | 'availablePathOpeners'
   | 'setSpaceLabelColor'
   | 'openSpaceCreateWorktree'
   | 'openSpaceArchive'
@@ -96,6 +95,7 @@ export function WorkspaceCanvasMenus({
   const contextMenu = useCanvasUi(state => state.contextMenu)
   const spaceActionMenu = useCanvasUi(state => state.spaceActionMenu)
   const ui = useCanvasUiCommands()
+  const availablePathOpeners = useSpacePathOpeners(spaceActionMenu)
   useWorkspaceCanvasMenuDismissals()
 
   const { activeMenuSpace, canCreateWorktreeForActiveMenuSpace } = useWorkspaceCanvasSpaceMenuState(

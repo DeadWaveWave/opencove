@@ -1,6 +1,6 @@
 import type * as React from 'react'
 import type { Edge, Node, NodeTypes, OnNodesChange, Viewport } from '@xyflow/react'
-import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/contracts/dto'
+import type { WorkspacePathOpenerId } from '@shared/contracts/dto'
 import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
 import type {
   ProjectRoleDefinition,
@@ -201,7 +201,6 @@ export interface WorkspaceCanvasViewProps {
   agentSettings: WorkspaceCanvasProps['agentSettings']
   onChangePreserveWindowSizesOnArrange: WorkspaceCanvasProps['onChangePreserveWindowSizesOnArrange']
   workspacePath: string
-  availablePathOpeners: WorkspacePathOpener[]
   openSpaceActionMenu: (spaceId: string, anchor: { x: number; y: number }) => void
   copySpacePath: (spaceId: string) => Promise<void> | void
   openSpacePath: (spaceId: string, openerId: WorkspacePathOpenerId) => Promise<void> | void

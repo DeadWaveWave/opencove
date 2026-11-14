@@ -164,7 +164,6 @@ export function WorkspaceCanvasView({
   agentSettings,
   onChangePreserveWindowSizesOnArrange,
   workspacePath,
-  availablePathOpeners,
   openSpaceActionMenu,
   copySpacePath,
   openSpacePath,
@@ -403,7 +402,6 @@ export function WorkspaceCanvasView({
         isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}
         convertSelectedNoteToTask={convertSelectedNoteToTask}
         setSelectedNodeLabelColorOverride={setSelectedNodeLabelColorOverride}
-        availablePathOpeners={availablePathOpeners}
         setSpaceLabelColor={setSpaceLabelColor}
         openSpaceCreateWorktree={openSpaceCreateWorktree}
         openSpaceArchive={openSpaceArchive}

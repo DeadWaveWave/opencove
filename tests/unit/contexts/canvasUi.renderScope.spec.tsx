@@ -2,6 +2,7 @@ import React from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
+import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { WorkspaceCanvas } from '../../../src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
 import {
   seedWorkspaceCanvasStore,
@@ -51,8 +52,10 @@ vi.mock('@xyflow/react', () => {
       nodes,
       nodeTypes,
       onPaneContextMenu,
+      children,
     }: {
       nodes: Array<{ id: string; type: string; data: unknown }>
+      children?: React.ReactNode
       nodeTypes?: Record<string, React.ComponentType<{ id: string; data: unknown }>>
       onPaneContextMenu?: (event: React.MouseEvent<HTMLDivElement>) => void
     }) => {
@@ -73,6 +76,7 @@ vi.mock('@xyflow/react', () => {
             }
             return <Renderer key={node.id} id={node.id} data={node.data} />
           })}
+          {children}
         </div>
       )
     },
@@ -105,53 +109,79 @@ vi.mock('../../../src/contexts/workspace/presentation/renderer/components/Termin
   }
 })
 
+vi.mock(
+  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/windowSignals/WorkspaceWindowSignals',
+  () => ({ WorkspaceWindowSignals: () => null }),
+)
+
 vi.mock('../../../src/contexts/workspace/presentation/renderer/components/TaskNode', () => {
   return {
     TaskNode: () => null,
   }
 })
 
+function stubOpencoveApi(extraWorkspace: Record<string, unknown> = {}): void {
+  Object.defineProperty(window, 'opencoveApi', {
+    configurable: true,
+    writable: true,
+    value: {
+      pty: {
+        spawn: vi.fn(),
+        kill: vi.fn(async () => undefined),
+        onData: vi.fn(() => () => undefined),
+        onExit: vi.fn(() => () => undefined),
+        onState: vi.fn(() => () => undefined),
+        onMetadata: vi.fn(() => () => undefined),
+      },
+      workspace: { ensureDirectory: vi.fn(async () => undefined), ...extraWorkspace },
+      agent: { launch: vi.fn() },
+      task: { suggestTitle: vi.fn() },
+    },
+  })
+}
+
+const SPACE: WorkspaceSpaceState = {
+  id: 'space-1',
+  name: 'Space 1',
+  directoryPath: '/tmp/repo',
+  targetMountId: null,
+  labelColor: null,
+  nodeIds: [],
+  rect: { x: 0, y: 0, width: 600, height: 400 },
+}
+
+function CanvasHarness({
+  spaces = [],
+  workspaceId = 'workspace-1',
+}: {
+  spaces?: WorkspaceSpaceState[]
+  workspaceId?: string
+}) {
+  const nodes = useWorkspaceCanvasStoreNodes()
+  return (
+    <WorkspaceCanvas
+      workspaceId={workspaceId}
+      workspacePath="/tmp/repo"
+      worktreesRoot=""
+      nodes={nodes}
+      spaces={spaces}
+      activeSpaceId={null}
+      onActiveSpaceChange={() => undefined}
+      viewport={{ x: 0, y: 0, zoom: 1 }}
+      isMinimapVisible={false}
+      onViewportChange={() => undefined}
+      onMinimapVisibilityChange={() => undefined}
+      agentSettings={DEFAULT_AGENT_SETTINGS}
+    />
+  )
+}
+
 describe('WorkspaceCanvas menu render scope', () => {
   it('shows the pane menu without re-rendering WorkspaceCanvasInner', async () => {
-    Object.defineProperty(window, 'opencoveApi', {
-      configurable: true,
-      writable: true,
-      value: {
-        pty: {
-          spawn: vi.fn(),
-          kill: vi.fn(async () => undefined),
-          onExit: vi.fn(() => () => undefined),
-          onState: vi.fn(() => () => undefined),
-          onMetadata: vi.fn(() => () => undefined),
-        },
-        workspace: { ensureDirectory: vi.fn(async () => undefined) },
-        agent: { launch: vi.fn() },
-        task: { suggestTitle: vi.fn() },
-      },
-    })
+    stubOpencoveApi()
     seedWorkspaceCanvasStore()
 
-    function Harness() {
-      const nodes = useWorkspaceCanvasStoreNodes()
-      return (
-        <WorkspaceCanvas
-          workspaceId="workspace-1"
-          workspacePath="/tmp/repo"
-          worktreesRoot=""
-          nodes={nodes}
-          spaces={[]}
-          activeSpaceId={null}
-          onActiveSpaceChange={() => undefined}
-          viewport={{ x: 0, y: 0, zoom: 1 }}
-          isMinimapVisible={false}
-          onViewportChange={() => undefined}
-          onMinimapVisibilityChange={() => undefined}
-          agentSettings={DEFAULT_AGENT_SETTINGS}
-        />
-      )
-    }
-
-    render(<Harness />)
+    render(<CanvasHarness />)
     await act(async () => {})
     expect(document.querySelector('.workspace-canvas-context-menu')).toBeNull()
 
@@ -163,5 +193,49 @@ describe('WorkspaceCanvas menu render scope', () => {
 
     expect(document.querySelector('.workspace-canvas-context-menu')).not.toBeNull()
     expect(canvasStateCalls.count).toBe(rendersBeforeOpen)
+  })
+
+  it.each(['with path openers', 'without path openers'])(
+    'shows the Space action menu %s without re-rendering WorkspaceCanvasInner',
+    async variant => {
+      const listPathOpeners = vi.fn(async () => ({
+        openers: [{ id: 'finder', label: 'Finder' }],
+      }))
+      stubOpencoveApi(variant === 'with path openers' ? { listPathOpeners } : {})
+      seedWorkspaceCanvasStore({ spaces: [SPACE] })
+
+      render(<CanvasHarness spaces={[SPACE]} />)
+      await act(async () => {})
+      expect(screen.queryByTestId('workspace-space-action-menu')).toBeNull()
+
+      const rendersBeforeOpen = canvasStateCalls.count
+      fireEvent.click(screen.getByTestId('workspace-space-menu-space-1'))
+      await act(async () => {})
+
+      expect(screen.queryByTestId('workspace-space-action-menu')).not.toBeNull()
+      expect(canvasStateCalls.count).toBe(rendersBeforeOpen)
+    },
+  )
+
+  it('closes the pane menu in the first render under a new workspace id', async () => {
+    stubOpencoveApi()
+    seedWorkspaceCanvasStore()
+    const renders: boolean[] = []
+    const { rerender } = render(<CanvasHarness />)
+    await act(async () => {})
+    fireEvent.contextMenu(screen.getByTestId('react-flow-pane'), { clientX: 10, clientY: 10 })
+    await act(async () => {})
+    expect(document.querySelector('.workspace-canvas-context-menu')).not.toBeNull()
+
+    const observer = new MutationObserver(() => {
+      renders.push(document.querySelector('.workspace-canvas-context-menu') !== null)
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
+    rerender(<CanvasHarness workspaceId="workspace-2" />)
+    observer.disconnect()
+
+    // Synchronous commit of the rerender: the menu is already gone, never shown under the new id.
+    expect(document.querySelector('.workspace-canvas-context-menu')).toBeNull()
+    expect(renders.every(visible => !visible)).toBe(true)
   })
 })

@@ -242,7 +242,6 @@ function createBaseProps(
     confirmNodeDelete: async () => undefined,
     agentSettings: DEFAULT_AGENT_SETTINGS,
     workspacePath: '/tmp',
-    availablePathOpeners: [],
     openSpaceActionMenu: () => undefined,
     copySpacePath: () => undefined,
     openSpacePath: () => undefined,
