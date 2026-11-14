@@ -279,13 +279,15 @@ export function scanTestSource(filePath, source) {
 
 /**
  * Applies the hard rules to `files` (`[{ path, content }]`). `findings` are `{ file, line, rule,
- * message }` and fail the check; `counts` are the per-file ratchet counts; `totals` and `ignored`
+ * message }` and fail the check; `counts` are the per-file ratchet counts and `skipLines` the lines
+ * of each file's skip declarations; `totals` and `ignored`
  * are for the report.
  */
 export function evaluateTestGates(files) {
   const findings = []
   const ignored = []
   const skipCounts = {}
+  const skipLines = {}
   const totals = {
     files: 0,
     singlePlatformGates: 0,
@@ -332,11 +334,12 @@ export function evaluateTestGates(files) {
     }
     if (scan.skips.length > 0) {
       skipCounts[path] = scan.skips.length
+      skipLines[path] = scan.skips.map(skip => skip.line)
       totals.skips += scan.skips.length
     }
     ignored.push(...scan.ignored.map(item => ({ file: path, ...item })))
   }
-  return { findings, ignored, totals, counts: { 'unconditional-skip': skipCounts } }
+  return { findings, ignored, totals, counts: { 'unconditional-skip': skipCounts }, skipLines }
 }
 
 export function formatTestGateFindings(findings) {
@@ -351,15 +354,21 @@ export function formatTestGateFindings(findings) {
   return `${lines.join('\n')}\n`
 }
 
-export function compareTestGatesRatchet(counts, baseline) {
+// `skipLines` (`{ file: [line] }`) lets a rise name the declarations of the file that rose.
+export function compareTestGatesRatchet(counts, baseline, skipLines = {}) {
   return compareRatchet({
     counts,
     baseline,
     rules: TEST_GATES_RULES,
-    describe: (rule, now, before) =>
-      now > before
-        ? `${now} \`${rule}\` declaration(s), ${now - before} more than the baseline of ${before}. Run the test, fix it or delete it instead of skipping it.`
-        : `${now} \`${rule}\` declaration(s), below the baseline of ${before}. Run \`pnpm test-gates:ratchet\` and commit \`scripts/test-gates-ratchet.json\` to lock in the improvement.`,
+    describe: (rule, now, before, file) => {
+      if (now <= before) {
+        return `${now} \`${rule}\` declaration(s), below the baseline of ${before}. Run \`pnpm test-gates:ratchet\` and commit \`scripts/test-gates-ratchet.json\` to lock in the improvement.`
+      }
+      const lines = skipLines[file] ?? []
+      const where =
+        lines.length > 0 ? ` (line${lines.length > 1 ? 's' : ''} ${lines.join(', ')})` : ''
+      return `${now} \`${rule}\` declaration(s)${where}, ${now - before} more than the baseline of ${before}. Run the test, fix it or delete it instead of skipping it.`
+    },
   })
 }
 

@@ -93,7 +93,7 @@ export function runTestGatesCheck({
     stderr.write(`${LABEL} examined 0 test files: this is not a pass.\n`)
     return 1
   }
-  const { findings, ignored, totals, counts } = evaluateTestGates(files)
+  const { findings, ignored, totals, counts, skipLines } = evaluateTestGates(files)
   if (verbose) {
     for (const item of ignored) {
       stdout?.write(`${LABEL} ignored (cannot evaluate): ${item.file}:${item.line} ${item.text}\n`)
@@ -127,7 +127,7 @@ export function runTestGatesCheck({
     return 0
   }
   const baseline = readBaseline(baselinePath)
-  const issues = baseline === null ? [] : compareTestGatesRatchet(counts, baseline)
+  const issues = baseline === null ? [] : compareTestGatesRatchet(counts, baseline, skipLines)
   let report = formatTestGateFindings(findings) + formatTestGatesRatchetIssues(issues)
   if (baseline === null) {
     report += `${LABEL} ${BASELINE_FILE} is missing. Run \`pnpm test-gates:ratchet\`.\n`

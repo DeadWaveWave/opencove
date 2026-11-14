@@ -329,6 +329,8 @@ describe('check-test-gates: unconditional-skip ratchet', () => {
     expect(check.code).toBe(1)
     expect(check.stderr).toContain('tests/e2e/a.spec.ts')
     expect(check.stderr).toContain('unconditional-skip')
+    // The skip declarations of the file that rose, by line (the added one is line 2).
+    expect(check.stderr).toContain('lines 1, 2')
 
     const update = run(root, { updateRatchet: true })
     expect(update.code).toBe(1)
@@ -338,8 +340,11 @@ describe('check-test-gates: unconditional-skip ratchet', () => {
 
   it('fails on a skip added in a new file', () => {
     const root = makeBaselineRepo({ 'tests/e2e/a.spec.ts': SKIP_A })
-    writeRepositoryFile(root, 'tests/e2e/b.spec.ts', SKIP_A)
-    expect(run(root).code).toBe(1)
+    writeRepositoryFile(root, 'tests/e2e/b.spec.ts', `\n${SKIP_A}`)
+    const result = run(root)
+    expect(result.code).toBe(1)
+    expect(result.stderr).toContain('tests/e2e/b.spec.ts [unconditional-skip]')
+    expect(result.stderr).toContain('line 2')
   })
 
   it('fails when a skip is removed until the baseline is lowered, and lowering needs no flag', () => {
