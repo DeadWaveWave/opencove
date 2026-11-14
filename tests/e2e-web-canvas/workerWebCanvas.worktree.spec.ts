@@ -182,8 +182,7 @@ test.describe('Worker web canvas - Worktree', () => {
     await initRepo(repoPath)
     await invokeValue<void>(page.request, 'command', 'workspace.approveRoot', { path: repoPath })
 
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath: repoPath,
         workspaceName: 'web-worktree',
@@ -254,8 +253,7 @@ test.describe('Worker web canvas - Worktree', () => {
     await initRepo(repoPath)
     await invokeValue<void>(page.request, 'command', 'workspace.approveRoot', { path: repoPath })
 
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath: repoPath,
         workspaceName: 'web-worktree-runtime',

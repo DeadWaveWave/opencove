@@ -15,8 +15,7 @@ import {
 } from './helpers'
 
 async function openTerminal(page: Page, workspacePath: string): Promise<string> {
-  await writeAppState(
-    page.request,
+  await writeAppState(page.request, () =>
     buildAppState({
       workspacePath,
       spaces: [],

@@ -70,8 +70,7 @@ test('remote theme assets, typography and iframe context survive switches, recov
   const selectedTheme = themeIdentity('studio')
   let installed = false
   try {
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspaceId: projectId,
         workspaceName: 'Theme studio',

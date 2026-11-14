@@ -64,7 +64,7 @@ for (const theme of ['dark', 'light']) {
       spaces: [],
       activeSpaceId: null,
     })
-    await writeAppState(page.request, state)
+    await writeAppState(page.request, () => state)
     await page.setViewportSize({ width: 390, height: 844 })
     await openAuthedCanvas(page)
     const open = page.getByTestId('primary-sidebar-open')

@@ -9,8 +9,7 @@ import {
 
 test('a live Web terminal reattach reconciles with its current node frame', async ({ page }) => {
   const workspacePath = await createWorkspaceDir('web-live-geometry')
-  await writeAppState(
-    page.request,
+  await writeAppState(page.request, () =>
     buildAppState({ workspacePath, workspaceName: 'web-live-geometry', spaces: [] }),
   )
   await openAuthedCanvas(page)
@@ -68,19 +67,17 @@ test('a live Web terminal reattach reconciles with its current node frame', asyn
   await page.keyboard.press('Enter')
   await expect(terminal).toContainText(historyMarker)
 
-  const completeState = sharedBefore.state as unknown as {
-    activeWorkspaceId: string | null
-    workspaces: Array<{ nodes: Array<Record<string, unknown>> }>
-  }
-  const persistedNode = completeState.workspaces
-    .flatMap(workspace => workspace.nodes)
-    .find(node => node.id === nodeId)
-  if (!persistedNode) {
-    throw new Error('Missing complete terminal node')
-  }
-  persistedNode.width = Number(persistedNode.width ?? 0) + 340
-  persistedNode.height = Number(persistedNode.height ?? 0) + 240
-  await writeAppState(page.request, completeState)
+  await writeAppState(page.request, current => {
+    const persistedNode = current?.workspaces
+      .flatMap(workspace => workspace.nodes)
+      .find(node => node.id === nodeId)
+    if (!persistedNode) {
+      throw new Error('Missing complete terminal node')
+    }
+    persistedNode.width = Number(persistedNode.width ?? 0) + 340
+    persistedNode.height = Number(persistedNode.height ?? 0) + 240
+    return current
+  })
 
   await page.reload({ waitUntil: 'domcontentloaded' })
   await expect(page.locator('.terminal-node')).toHaveCount(1)
@@ -118,10 +115,14 @@ test('a live Web terminal reattach reconciles with its current node frame', asyn
   )
   expect(after.proposed).not.toEqual(before.size)
   expect(after.size).toEqual(after.proposed)
-  const snapshot = await page.evaluate(
-    async sessionId =>
-      sessionId ? await window.opencoveApi.pty.presentationSnapshot({ sessionId }) : null,
-    after.sessionId,
-  )
-  expect(snapshot).toMatchObject({ cols: after.size?.cols, rows: after.size?.rows })
+  // Local fit can precede stable measurement and the asynchronous Worker geometry commit.
+  await expect
+    .poll(async () =>
+      page.evaluate(
+        async sessionId =>
+          sessionId ? await window.opencoveApi.pty.presentationSnapshot({ sessionId }) : null,
+        after.sessionId,
+      ),
+    )
+    .toMatchObject({ cols: after.size?.cols, rows: after.size?.rows })
 })

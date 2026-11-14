@@ -18,8 +18,7 @@ test.describe('Worker web canvas document node', () => {
     const documentPath = `${workspacePath}/readme.md`
     await writeTextFile(documentPath, '# original\n')
 
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath,
         spaces: [
@@ -66,8 +65,7 @@ test.describe('Worker web canvas document node', () => {
     const documentPath = `${workspacePath}/readme.md`
     await writeTextFile(documentPath, '# original\n')
 
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath,
         spaces: [
@@ -123,8 +121,7 @@ test.describe('Worker web canvas document node', () => {
     const longLine = Array.from({ length: 80 }, (_, index) => `token-${index}`).join(' ')
     await writeTextFile(documentPath, longLine)
 
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspacePath,
         spaces: [

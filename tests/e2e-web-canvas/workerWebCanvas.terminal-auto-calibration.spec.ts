@@ -12,8 +12,7 @@ test('Web automatically calibrates a compatible shared terminal reference withou
   page,
 }) => {
   const workspacePath = await createWorkspaceDir('web-auto-calibration')
-  await writeAppState(
-    page.request,
+  await writeAppState(page.request, () =>
     buildAppState({
       workspacePath,
       workspaceName: 'web-auto-calibration',
@@ -175,8 +174,7 @@ test('a fresh Web client applies a compatible reference without opening Settings
   page,
 }) => {
   const workspacePath = await createWorkspaceDir('web-no-click-auto-calibration')
-  await writeAppState(
-    page.request,
+  await writeAppState(page.request, () =>
     buildAppState({
       workspacePath,
       workspaceName: 'web-no-click-auto-calibration',
