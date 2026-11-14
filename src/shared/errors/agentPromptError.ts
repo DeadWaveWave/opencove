@@ -57,16 +57,23 @@ export function agentPromptErrorPresentation(
         "Check the agent's current activity before retrying.",
       )
     case 'agent.state_unknown':
+      if (reason === 'history_saturated') {
+        return {
+          message:
+            'This Claude session was cleared too many times for OpenCove to track it safely.',
+          hint: 'Restart the agent window to send prompts again; the conversation itself is unaffected.',
+        }
+      }
       if (reason === 'readiness_unobserved') {
         return pair(
-          'OpenCove has not observed this agent finish a turn.',
-          'Complete a turn in the agent terminal, then retry after OpenCove reports idle.',
+          'OpenCove cannot confirm that the agent is ready for a prompt.',
+          'Inspect the terminal and resolve any pending dialog. Retry after a completed turn or an observed Claude Code /clear reports the agent ready.',
         )
       }
       if (reason === 'observation_degraded') {
         return pair(
           'OpenCove cannot reliably observe this agent.',
-          'Check the hook setup. Retry only after OpenCove observes a completed turn.',
+          'Check the hook setup. Retry only after reliable observation returns and the agent is ready.',
         )
       }
       return pair(

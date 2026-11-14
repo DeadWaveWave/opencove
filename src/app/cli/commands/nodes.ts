@@ -1,4 +1,14 @@
-import { NODE_MIN_SIZE_BY_KIND } from '../../../shared/types/nodeSizeLimits'
+import {
+  prepareAgentBatch,
+  recoverAgentBatchPreflight,
+  createAgentBatch,
+  agentBatchExitCode,
+  agentBatchText,
+  agentBatchOutput,
+} from './nodeCreateAgentBatch'
+import { NODE_MAX_SIZE_BY_KIND, NODE_MIN_SIZE_BY_KIND } from '../../../shared/types/nodeSizeLimits'
+import { assertNever } from '../../../shared/utils/assertNever'
+import type { ManagedCanvasNodeKind } from '../../../shared/contracts/dto/nodeControl'
 import { hasNodeFrameCoordinates, NODE_NEAR_FRAME_ERROR } from '../../../shared/utils/nodeNearFrame'
 import { mutateNode } from './nodeMutation'
 import { INITIAL_PROMPT_RULES_TEXT } from '../../../shared/errors/initialPromptRules'
@@ -118,35 +128,36 @@ function locator(o: Record<string, unknown>, required = false) {
     projectId: o.project,
   }
 }
-function data(kind: string, o: Record<string, unknown>, create: boolean) {
-  if (kind === 'note') {
-    return { text: o.text ?? (create ? '' : undefined) }
-  }
-  if (kind === 'task') {
-    return {
-      requirement: o.requirement,
-      priority: o.priority ?? (create ? 'medium' : undefined),
-      tags: o['clear-tags'] ? [] : (o.tag ?? (create ? [] : undefined)),
-      status: o.status,
-    }
-  }
-  if (kind === 'agent') {
-    return {
-      prompt: o.prompt ?? '',
-      provider: o.provider,
-      model: o.model,
-      ...(o.task === undefined ? {} : { taskNodeId: o.task }),
-      ...(o['full-access'] === undefined ? {} : { agentFullAccess: o['full-access'] === 'true' }),
-    }
-  }
-  if (kind === 'terminal') {
-    return { shell: o.shell, command: o.command, profileId: o.profile }
-  }
-  return {
-    url: o.url,
-    pinned: create ? !!o.pinned : o.pinned === undefined ? undefined : o.pinned === 'true',
-    sessionMode: o['session-mode'] ?? (create ? 'shared' : undefined),
-    profileId: o.profile,
+function data(kind: ManagedCanvasNodeKind, o: Record<string, unknown>, create: boolean) {
+  switch (kind) {
+    case 'note':
+      return { text: o.text ?? (create ? '' : undefined) }
+    case 'task':
+      return {
+        requirement: o.requirement,
+        priority: o.priority ?? (create ? 'medium' : undefined),
+        tags: o['clear-tags'] ? [] : (o.tag ?? (create ? [] : undefined)),
+        status: o.status,
+      }
+    case 'agent':
+      return {
+        prompt: o.prompt ?? '',
+        provider: o.provider,
+        model: o.model,
+        ...(o.task === undefined ? {} : { taskNodeId: o.task }),
+        ...(o['full-access'] === undefined ? {} : { agentFullAccess: o['full-access'] === 'true' }),
+      }
+    case 'terminal':
+      return { shell: o.shell, command: o.command, profileId: o.profile }
+    case 'website':
+      return {
+        url: o.url,
+        pinned: create ? !!o.pinned : o.pinned === undefined ? undefined : o.pinned === 'true',
+        sessionMode: o['session-mode'] ?? (create ? 'shared' : undefined),
+        profileId: o.profile,
+      }
+    default:
+      return assertNever(kind)
   }
 }
 const rootCanvasOption: OptionSpec = {
@@ -253,6 +264,23 @@ export const nodeCommands = [
                 : kind === 'agent'
                   ? {
                       prompt: { ...stringOption('Agent prompt'), fileVariant: true },
+                      'prompts-file': {
+                        type: 'string',
+                        valueName: 'path',
+                        description:
+                          'Launch 1–10 prompts from a JSON file or stdin; requires --wait',
+                        conflicts: [
+                          'prompt',
+                          'prompt-file',
+                          'title',
+                          'task',
+                          'frame',
+                          'quiet',
+                          'fields',
+                          'focus',
+                          'limit',
+                        ],
+                      },
                       wait: {
                         type: 'boolean',
                         description: 'Wait for the initial prompt turn to end',
@@ -294,7 +322,7 @@ export const nodeCommands = [
         description: create
           ? (kind === 'agent'
               ? INITIAL_PROMPT_RULES_TEXT +
-                '\n\nUse --prompt or --prompt-file with --wait to wait for the initial Claude Code or Codex turn. Add --read for its exact reply; unavailable replies return reply: null with replyUnavailableReason. Check outcome: every ended outcome exits 0. Waiting for the user exits 10, an exited target 11, timeout 124 and interruption 130. Unsupported providers refuse after creation; the node remains.\n\n--timeout covers first-turn identification and waiting (default 20s; minimum 250ms); creation keeps its own 20s budget. If no first turn is observed, lifecycle telemetry may be unavailable even if the agent is running or has finished. Inspect the existing session; do not recreate the node or resend the prompt. Errors keep known nodeId, sessionId and turnId. Never repeat creation after an error: resume agent wait/read with those IDs. With --wait, -q prints only the node ID after completion. Stderr shows "Created agent node <nodeId> (session <sessionId>)." before identification, then "Waiting for turn <turnId> of node <nodeId>..." with an interruption-only continuation command. The final JSON and exit status report the result.\n\n'
+                '\n\nUse --prompt or --prompt-file with --wait to collect the initial Claude Code or Codex turn. Add --read for its exact reply. Check outcome: every ended outcome exits 0; unavailable replies return reply: null with replyUnavailableReason. Waiting for the user exits 10, an exited target 11, timeout 124 and interruption 130. Unsupported providers refuse after creation; the node remains.\n\nFor several agents, use --prompts-file <path|-> --wait [--read]: a UTF-8 JSON array of 1–10 objects with a nonblank prompt and optional title, at most 1 MiB. All entries are validated before launch. Conflicts: --prompt, --prompt-file, --title, --task, --frame, -q, --fields, --focus and --limit. Target, provider, model and Full Access choices apply to every entry. Add --near @self to place each entry near you; each create finds its own free slot. Creates run in input order; waits run concurrently. Each result or error is retained in an ordered JSON array: {index, title, ok, exitCode, result|error}. index starts at 0; error is the ordinary error envelope. Exit is the first nonzero entry exit; Ctrl-C overrides with 130. Later entries are still attempted after a failure; no launch is retried.\n\n--timeout covers identification and waiting per agent from its creation response (default 20s; minimum 250ms); creation has its own 20s budget. Stderr prints created node/session IDs, then an exact-turn continuation. Errors retain known IDs. Missing telemetry does not prove the agent has stopped. Never repeat creation or resend: inspect the existing session and resume agent wait/read. Ctrl-C stops dispatch and observation, leaves agents running and prints every entry. With a single prompt, -q prints the ID after completion. See opencove skill coordinate for recovery.\n\n'
               : '') +
             'For agents creating helper nodes, recommend --near @self to place them near the caller in its current Space (or root). --near is opt-in; combine with --root-canvas to place outside Spaces. Size-only --frame (width/height) is allowed with --near; x/y are refused.\n\nWithout explicit x/y, root-canvas placement searches next to you when run inside OpenCove and avoids Spaces. If your node belongs to another project, the search starts at the canvas origin. Use --focus to reveal the node. A --frame with both x and y places the node exactly there, even if it overlaps a Space.'
           : kind === 'agent' || kind === 'terminal'
@@ -309,9 +337,22 @@ export const nodeCommands = [
         selectRender:
           create && kind === 'agent'
             ? ({ options }) =>
-                options.wait ? createdAgentWaitOutput() : nodeKindOutput(kind, create)
+                options['prompts-file'] !== undefined
+                  ? { list: true }
+                  : options.wait
+                    ? createdAgentWaitOutput()
+                    : nodeKindOutput(kind, create)
             : undefined,
         operationCommand: `opencove node ${action}`,
+        ...(create && kind === 'agent'
+          ? {
+              prepare: prepareAgentBatch,
+              recoverPreflight: recoverAgentBatchPreflight,
+              exitCode: agentBatchExitCode,
+              outputValue: agentBatchOutput,
+              textOutput: agentBatchText,
+            }
+          : {}),
         options: {
           ...specific,
           ...(create ? nodeLocatorOptions : { node: stringOption('Node ID', true) }),
@@ -325,7 +366,7 @@ export const nodeCommands = [
           },
           frame: {
             type: 'json',
-            description: `Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; ${kind} minimum: width ${NODE_MIN_SIZE_BY_KIND[kind].width}, height ${NODE_MIN_SIZE_BY_KIND[kind].height}; inspect appliedFrame and frameAdjusted for the actual applied size`,
+            description: `Set x, y, width and height as a JSON object. Sizes outside a kind's range are adjusted to fit; ${kind}: width ${NODE_MIN_SIZE_BY_KIND[kind].width}–${NODE_MAX_SIZE_BY_KIND[kind].width}, height ${NODE_MIN_SIZE_BY_KIND[kind].height}–${NODE_MAX_SIZE_BY_KIND[kind].height}; inspect appliedFrame and frameAdjusted for the actual applied size`,
             valueName: 'json',
           },
           ...(create
@@ -365,7 +406,11 @@ export const nodeCommands = [
           }
           if (create && kind === 'agent') {
             validateTurnWaitOptions(o)
-            if (o.wait && (typeof o.prompt !== 'string' || !o.prompt.trim())) {
+            if (
+              o.wait &&
+              o['prompts-file'] === undefined &&
+              (typeof o.prompt !== 'string' || !o.prompt.trim())
+            ) {
               usage(
                 '--wait requires an initial prompt: start it with --prompt, or send one later with agent prompt --wait.',
               )
@@ -395,7 +440,10 @@ export const nodeCommands = [
               : {}),
           }
         },
-        execute: ctx => mutateNode(ctx, kind, create),
+        execute: ctx =>
+          create && kind === 'agent' && ctx.options['prompts-file'] !== undefined
+            ? createAgentBatch(ctx)
+            : mutateNode(ctx, kind, create),
       })
     }),
   ),

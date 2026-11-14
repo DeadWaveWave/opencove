@@ -12,20 +12,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Agents: `opencove node create agent --task <id>` (also `node.create` `data.taskNodeId` and plugin `agents.launch`) links the new agent to a task in the same Space and moves the task to doing, as Run from the task does. (#463)
 - CLI: when OpenCove refuses to start another agent because the lineage quota is full, the refusal lists which nodes hold the slots and how to free one; `opencove whoami` and `context` show the quota. `opencove agent read` reads several agents at once and returns one result per agent. (#614)
 - CLI: `opencove events` streams agent state changes and completed turns as NDJSON, filtered by Space, node, the agents you started or a whole lineage, so agents can wait for each other without polling. Each record carries a cursor; `--after` resumes where a stream stopped and reports a gap instead of silently skipping events. (#618)
+- CLI: `whoami` and `context` show how many more agents you can start; a quota refusal includes ready-to-run recovery commands and when each occupant started; `opencove events --cursor-file <path>` resumes after an interruption without missing or repeating events, and `--until-each-turn` waits until every listed agent finishes a turn. (#633)
+- CLI: `opencove node create … --near @self` (or any node selector) places the new note, terminal or agent next to that node, clustered around it inside its Space, without overlapping anything and preferring spots that do not push the Space into its neighbours. A size-only `--frame` can be combined with it. (#636)
+- CLI: `opencove task claim` makes an agent the holder of a task atomically (when two agents claim at once, one wins and the other is told who holds it), `opencove task release` hands it back with a status such as AI done, and `opencove note append` adds to a note without overwriting it. An agent can claim or release for the agents it started. (#661)
+- Agents: after you run `/clear` in a Claude Code agent window, other agents can send it a prompt with `opencove agent prompt` right away, instead of being refused until the new conversation has finished a turn. A window cleared more than 256 times in one run refuses prompts with `history_saturated` until it is restarted; the conversation itself is unaffected. (#676)
+- CLI: `opencove whoami --tree` shows the agents and terminals in your agent tree, how many more you can start, what each one is doing and the command that stops it. `opencove node create agent --prompts-file <file|-> --wait --read` starts up to ten agents with one command, creating each exactly once, and returns every agent's exact reply or error in input order. (#661)
 
 ### Fixed
 
 - Desktop: messages that explain why an action failed now actually appear (for example, that Claude restarts are paused by the Worker, that the Worker needs an upgrade, or that a `/clear` save could not be confirmed); they used to fall back to a generic “this agent has changed” message. A launch whose response is lost is no longer started a second time, and Git plugin sources that embed credentials are refused before anything runs. (#613)
 - Agents: an agent's initial task can no longer be misread by the provider's command line as a subcommand, option or flag (for example `update`, `plugins`, `--agent-teams`), including through PowerShell and WSL wrapping. Tasks that agents write for other agents must be a sentence; slash commands, exit words, `@file` references, Codex `$skill` mentions and similar controls are refused with a message that says what was detected and how to rephrase it. Refusing a task never marks it as running or stops the agent it was linked to. (#620)
-
-### Fixed
-
 - Documents: typing fast in a document window, for example right after a terminal file link opens it, no longer drops characters or moves the caret. (#621)
 - Agents: after a restart, `opencove agent` and `opencove events` find a restored Claude Code agent right away, instead of only after the next change on the canvas. (#625)
-
-### Fixed
-
 - Terminals: when the GPU drops a terminal's WebGL renderer, the terminal switches to plain rendering in place and keeps its scrollback, scroll position and selection, instead of reloading its history. (#622)
+- Sync: changes the Worker makes to an existing agent window, such as the task it is linked to, are no longer undone by the next save from an open window. (#661)
+- Agents: an agent can again start another agent with a task written in Chinese, Japanese or Korean without spaces; only a single ASCII word is refused as a possible provider command. (#637)
+- CLI: `opencove node update --frame` now grows the node's Space (and the Spaces around it) when a move or resize would leave the node sticking out, instead of leaving the Space for you to fix. Help lists each window kind's minimum and maximum size, and terminal output escapes bidirectional text controls in titles and replies. (#661)
+- Persistence: a whole-state write, from the control surface or Desktop's agent-state updates, is no longer undone by an older edit the window was still saving; settings such as the theme stay as written, and the window's own edits still land. (#634)
+- Terminal: clicking a link that a program marked with an explicit destination (OSC 8) opens its link card even while other output is arriving, instead of sometimes doing nothing. (#635)
+- Explorer: Clear filter works when clicked right after reopening a search with a query set. (#652)
+- App: when a window's renderer crashes (for example after a GPU reset or an out-of-memory kill), OpenCove reloads the window and restores the workspace instead of closing; crash details are logged. (#653)
+- Agents: a resumed agent that is idle after an app restart shows its earlier terminal output instead of an empty window. (#654)
+- Agents: an unnamed agent created through the CLI now takes its session title even when its first prompt arrives late. (#657)
+- macOS: clicking the Dock icon while the last window is still closing opens a new window once the old one is gone, instead of leaving OpenCove with no window. (#666)
+- Windows: a terminal restored after a restart no longer shows "Terminal size could not be confirmed" when the terminal process or the console observer is slow to start, for example on a busy machine or while Defender scans it. (#667)
 
 ## [0.5.0] - 2026-11-12
 

@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events'
 import { describe, expect, it } from 'vitest'
 import { vi } from 'vitest'
+import { terminalEnvironment } from '../../../src/shared/runtime/terminalEnvironment.mjs'
 import {
   buildElectronViteDevEnv,
   buildElectronViteDevSpawnConfig,
@@ -14,6 +15,18 @@ class TestChildProcess extends EventEmitter {
 }
 
 describe('run-electron-vite-dev', () => {
+  it('isolates the host terminal while preserving deliberate dev profile controls', () => {
+    const names = Object.values(terminalEnvironment)
+    const env = buildElectronViteDevEnv({
+      ...Object.fromEntries(names.map(name => [name, 'host-fixture'])),
+      OPENCOVE_DEV_USER_DATA_DIR: '/dev-profile',
+      OPENCOVE_DEV_USE_SHARED_USER_DATA: '1',
+    })
+    expect(Object.keys(env).filter(name => names.includes(name))).toEqual([])
+    expect(env.OPENCOVE_DEV_USER_DATA_DIR).toBe('/dev-profile')
+    expect(env.OPENCOVE_DEV_USE_SHARED_USER_DATA).toBe('1')
+  })
+
   it('removes Electron-as-Node control env before launching the desktop app', () => {
     const env = buildElectronViteDevEnv({
       ELECTRON_RUN_AS_NODE: '1',

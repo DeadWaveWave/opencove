@@ -150,15 +150,23 @@ it('routes private Claude records independently of state and fences disposed wat
       generation: expect.any(Number),
     }),
   )
-  const oldGeneration = onClaudeTranscript.mock.calls[0][0].generation
+  const records = () =>
+    onClaudeTranscript.mock.calls
+      .map(([value]) => value)
+      .filter(value => !value.captureConversation && !value.captureBinding)
+  const oldGeneration = records()[0].generation
   controller.start(input)
   await vi.advanceTimersByTimeAsync(0)
   first.onClaudeTranscript?.(record)
-  expect(onClaudeTranscript).toHaveBeenCalledTimes(1)
+  expect(records()).toHaveLength(1)
   const second = vi.mocked(createSessionFileStateWatcher).mock.calls[1][0]
   second.onClaudeTranscript?.(record)
-  expect(onClaudeTranscript.mock.calls[1][0].generation).toBeGreaterThan(oldGeneration)
+  expect(records()[1].generation).toBeGreaterThan(oldGeneration)
   controller.dispose()
   second.onClaudeTranscript?.(record)
-  expect(onClaudeTranscript).toHaveBeenCalledTimes(2)
+  expect(records()).toHaveLength(2)
+  // This mock never answers the capture; each discovery retries once before watcher IO.
+  expect(onClaudeTranscript.mock.calls.filter(([value]) => value.captureConversation)).toHaveLength(
+    4,
+  )
 })

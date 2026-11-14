@@ -1,3 +1,4 @@
+import { tracksClaudeConversations } from '../../../../shared/contracts/agentProviderDescriptors'
 import type { SessionFileAccess } from './ClaudeTranscriptAccess'
 import { ClaudeTranscriptCheckpoint } from './ClaudeTranscriptCheckpoint'
 import type { ClaudeTranscriptObservation } from '../../../../shared/runtime/agentHook/claudeTranscript'
@@ -233,6 +234,8 @@ export class SessionTurnStateWatcher {
     }
 
     this.disposed = true
+    this.checkpoint.dispose()
+    this.stateProjection.reset()
     if (this.poll) {
       clearInterval(this.poll)
     }
@@ -319,6 +322,7 @@ export class SessionTurnStateWatcher {
         this.remainder = ''
         this.recordPosition = 0
         this.fileEpoch++
+        this.checkpoint.dispose()
         this.checkpoint = new ClaudeTranscriptCheckpoint()
         this.onClaudeTranscript?.({
           fileIdentity: `${identity}:${this.fileEpoch}`,
@@ -437,9 +441,11 @@ export class SessionTurnStateWatcher {
     }
     const baseline = this.readingBaseline || this.partialBaseline
     this.partialBaseline = false
-    if (this.provider === 'claude-code') {
-      const record = parseClaudeTranscript(line)
-      this.checkpoint.observe(record)
+    const record = tracksClaudeConversations(this.provider)
+      ? parseClaudeTranscript(line)
+      : undefined
+    if (tracksClaudeConversations(this.provider)) {
+      this.checkpoint.observe(record, line)
       this.onClaudeTranscript?.({
         fileIdentity: `${this.fileIdentity}:${this.fileEpoch}`,
         position: ++this.recordPosition,
@@ -449,7 +455,7 @@ export class SessionTurnStateWatcher {
       })
     }
     if (!this.disposed) {
-      this.stateProjection.observe(line, baseline)
+      this.stateProjection.observe(line, baseline, record)
     }
   }
 }

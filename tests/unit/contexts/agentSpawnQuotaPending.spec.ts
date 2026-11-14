@@ -38,12 +38,24 @@ it('reports a starting reservation before a binding exists and releases it on se
   )
   try {
     await vi.waitFor(() => expect(create).toHaveBeenCalledOnce())
-    expect(await owner.lineageQuota(store, 'root')).toEqual({
+    expect(await owner.lineageQuota(store, 'root', true)).toEqual({
       depth: 1,
       maxDepth: 3,
       liveInTree: 1,
       maxLiveInTree: 6,
       remainingLiveInTree: 5,
+      nodes: [
+        {
+          nodeId: 'child',
+          title: 'Starting helper',
+          kind: 'terminal',
+          depth: 2,
+          spawnedBy: 'root',
+          sessionId: null,
+          sessionStartedAt: null,
+          state: 'starting',
+        },
+      ],
     })
   } finally {
     release()

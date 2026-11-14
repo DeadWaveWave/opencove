@@ -115,6 +115,7 @@ export function acceptedRunStateReceipt(
   evidence?: PromptSubmissionEvidence,
 ): Omit<RunStateReceipt, 'fence'> {
   return {
+    conversationGeneration: evidence?.conversationGeneration,
     source: observation.source,
     hookEventName: observation.hookEventName,
     emittedAtMs: observation.emittedAtMs,

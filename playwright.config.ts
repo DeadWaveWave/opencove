@@ -1,3 +1,4 @@
+import './scripts/lib/isolateHostEnvironment.mjs'
 import { defineConfig } from '@playwright/test'
 
 // E2E 默认使用后台窗口模式，避免抢占焦点/干扰本地开发。

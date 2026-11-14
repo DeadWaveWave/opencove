@@ -110,9 +110,21 @@ function run() {
   const usedIds = new Set()
   const fileMarkers = []
   const counts = Object.fromEntries(SIGNAL_RULES.map(rule => [rule, {}]))
+  let scannedFiles = 0
 
   for (const file of files) {
-    const scan = scanCompatSource(file, readFileSync(resolve(root, file), 'utf8'))
+    let source
+    try {
+      source = readFileSync(resolve(root, file), 'utf8')
+    } catch (error) {
+      // git ls-files retains unstaged deletions; inspect the current worktree without staging it.
+      if (error?.code === 'ENOENT') {
+        continue
+      }
+      throw error
+    }
+    scannedFiles += 1
+    const scan = scanCompatSource(file, source)
     for (const problem of scan.problems) {
       issues.push({
         file,
@@ -184,7 +196,7 @@ function run() {
     printReport({ current, support, entries, fileMarkers })
     return 0
   }
-  if (files.length === 0) {
+  if (scannedFiles === 0) {
     process.stderr.write(`[${LABEL}] scanned 0 files: this is not a pass.\n`)
     return 1
   }
@@ -220,7 +232,7 @@ function run() {
       })
   if (issues.length === 0 && ratchetIssues.length === 0) {
     process.stdout.write(
-      `[${LABEL}] scanned ${files.length} files at version ${current}, ${Object.keys(entries).length} entries, no violations\n`,
+      `[${LABEL}] scanned ${scannedFiles} files at version ${current}, ${Object.keys(entries).length} entries, no violations\n`,
     )
     return 0
   }

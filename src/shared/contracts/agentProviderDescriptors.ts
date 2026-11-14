@@ -1,4 +1,5 @@
 import { isAgentProviderId, type AgentProviderId } from './dto/agent'
+import { CLAUDE_ROOT_COMMANDS } from '../utils/claudeRootCommands.generated'
 
 // Static, process-independent facts about each agent provider. This is pure data so it is safe to
 // import from every process, renderer included. Behaviour that needs Node.js lives in the provider's
@@ -19,13 +20,30 @@ export interface AgentProviderStaticDescriptor {
   readonly label: string
   /** Lower-case prefix used in agent window titles. */
   readonly titlePrefix: string
+  /** Authenticated hook protocol used to track conversation-scoped observations and input. */
+  readonly conversationTracking: 'claude-hooks' | 'none'
   readonly capabilities: AgentProviderCapabilities
+  readonly initialPrompt: AgentProviderInitialPromptPolicy
+}
+
+export interface AgentProviderInitialPromptPolicy {
+  readonly refusedPrefixes: readonly string[]
+  readonly refusedCommands: readonly string[]
+  readonly grantCommandPrefixes: readonly string[]
+  readonly denyGrantSkillReferences: boolean
 }
 
 export const AGENT_PROVIDER_DESCRIPTORS = {
   'claude-code': {
     label: 'Claude Code',
     titlePrefix: 'claude',
+    conversationTracking: 'claude-hooks',
+    initialPrompt: {
+      refusedPrefixes: ['-'],
+      refusedCommands: CLAUDE_ROOT_COMMANDS,
+      grantCommandPrefixes: ['!', '/', '#', '&'],
+      denyGrantSkillReferences: false,
+    },
     capabilities: {
       taskTitle: true,
       worktreeNameSuggestion: true,
@@ -37,6 +55,13 @@ export const AGENT_PROVIDER_DESCRIPTORS = {
   codex: {
     label: 'Codex',
     titlePrefix: 'codex',
+    conversationTracking: 'none',
+    initialPrompt: {
+      refusedPrefixes: [],
+      refusedCommands: [],
+      grantCommandPrefixes: ['!', '/'],
+      denyGrantSkillReferences: true,
+    },
     capabilities: {
       taskTitle: true,
       worktreeNameSuggestion: true,
@@ -48,6 +73,13 @@ export const AGENT_PROVIDER_DESCRIPTORS = {
   opencode: {
     label: 'OpenCode',
     titlePrefix: 'opencode',
+    conversationTracking: 'none',
+    initialPrompt: {
+      refusedPrefixes: [],
+      refusedCommands: [],
+      grantCommandPrefixes: ['!', '/'],
+      denyGrantSkillReferences: false,
+    },
     capabilities: {
       taskTitle: false,
       worktreeNameSuggestion: false,
@@ -59,6 +91,13 @@ export const AGENT_PROVIDER_DESCRIPTORS = {
   gemini: {
     label: 'Gemini CLI',
     titlePrefix: 'gemini',
+    conversationTracking: 'none',
+    initialPrompt: {
+      refusedPrefixes: [],
+      refusedCommands: [],
+      grantCommandPrefixes: ['!', '/'],
+      denyGrantSkillReferences: false,
+    },
     capabilities: {
       taskTitle: false,
       worktreeNameSuggestion: false,
@@ -70,6 +109,13 @@ export const AGENT_PROVIDER_DESCRIPTORS = {
   pi: {
     label: 'Pi',
     titlePrefix: 'pi',
+    conversationTracking: 'none',
+    initialPrompt: {
+      refusedPrefixes: ['-', '@'],
+      refusedCommands: ['install', 'remove', 'uninstall', 'update', 'list', 'config'],
+      grantCommandPrefixes: ['!', '/'],
+      denyGrantSkillReferences: false,
+    },
     capabilities: {
       taskTitle: false,
       worktreeNameSuggestion: false,
@@ -81,6 +127,13 @@ export const AGENT_PROVIDER_DESCRIPTORS = {
   kimi: {
     label: 'Kimi Code',
     titlePrefix: 'kimi',
+    conversationTracking: 'none',
+    initialPrompt: {
+      refusedPrefixes: [],
+      refusedCommands: [],
+      grantCommandPrefixes: ['/'],
+      denyGrantSkillReferences: false,
+    },
     capabilities: {
       taskTitle: false,
       worktreeNameSuggestion: false,
@@ -90,6 +143,14 @@ export const AGENT_PROVIDER_DESCRIPTORS = {
     },
   },
 } as const satisfies Readonly<Record<AgentProviderId, AgentProviderStaticDescriptor>>
+
+/** This protocol owns transcript correlation, observation captures and delivery input provenance. */
+export function tracksClaudeConversations(provider: AgentProviderId | null | undefined): boolean {
+  return (
+    isAgentProviderId(provider) &&
+    AGENT_PROVIDER_DESCRIPTORS[provider].conversationTracking === 'claude-hooks'
+  )
+}
 
 /** Providers whose terminal activity is reported through the launch shim, derived from the table. */
 export type TerminalAgentShimProvider = {

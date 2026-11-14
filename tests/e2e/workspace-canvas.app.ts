@@ -1,3 +1,4 @@
+import { createIsolatedProcessEnv } from '../../scripts/lib/isolatedProcessEnvironment.mjs'
 import {
   _electron as electron,
   test,
@@ -8,7 +9,10 @@ import {
 import { once } from 'node:events'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import path from 'path'
-import { captureElectronProcessDiagnostics } from './electron-process-diagnostics'
+import {
+  captureElectronCrashDumps,
+  captureElectronProcessDiagnostics,
+} from './electron-process-diagnostics'
 import { resolveElectronCoreLimitLaunch } from './electron-core-limit'
 import { createTestUserDataDir } from './workspace-canvas.testUtils'
 
@@ -40,7 +44,7 @@ function copyDefinedEnv(
 }
 
 const INITIAL_E2E_PROCESS_ENV = (() => {
-  const env = copyDefinedEnv(process.env)
+  const env = copyDefinedEnv(createIsolatedProcessEnv())
   // When running Playwright from inside Electron/GUI environments, macOS can inherit a
   // `__CFBundleIdentifier` override that breaks launching the Electron binary (SIGABRT in
   // `_RegisterApplication`). Ensure the child Electron uses its own bundle id.
@@ -214,6 +218,7 @@ async function closeElectronAppAndCleanup(
   cleanupUserDataDir: boolean,
   diagnostics: ProcessDiagnostics,
   testInfo: TestInfo,
+  attachCrashDumps: Awaited<ReturnType<typeof captureElectronCrashDumps>>,
 ): Promise<void> {
   const appPid = typeof appProcess.pid === 'number' && appProcess.pid > 0 ? appProcess.pid : null
   const childHasExited = (): boolean =>
@@ -271,8 +276,14 @@ async function closeElectronAppAndCleanup(
         contentType: 'text/plain',
       })
     } finally {
-      if (cleanupUserDataDir) {
-        await cleanupUserDataDirWithRetry(userDataDir)
+      try {
+        // close() often runs in finally before Playwright marks the test failed.
+        // Retain every new dump, including intentional recovery-test crashes.
+        await attachCrashDumps(testInfo, appPid)
+      } finally {
+        if (cleanupUserDataDir) {
+          await cleanupUserDataDirWithRetry(userDataDir)
+        }
       }
     }
   }
@@ -303,6 +314,7 @@ async function launchAppInMode(
   await mkdir(testCacheDir, { recursive: true })
   await mkdir(testRuntimeDir, { recursive: true, mode: 0o700 })
   let electronApp: ElectronApplication | null = null
+  const attachCrashDumps = await captureElectronCrashDumps(userDataDir)
 
   try {
     const envOverrides = copyDefinedEnv(options.env ?? {})
@@ -354,6 +366,7 @@ async function launchAppInMode(
         cleanupUserDataDir,
         diagnostics,
         testInfo,
+        attachCrashDumps,
       ).catch(error => {
         // Tests usually close in finally, before Playwright records their primary error.
         // Keep that error intact even if retaining the attachment or deleting the profile fails.
@@ -374,6 +387,10 @@ async function launchAppInMode(
   } catch (error) {
     if (electronApp) {
       await electronApp.close().catch(() => undefined)
+    } else {
+      await attachCrashDumps(test.info(), null).catch(attachmentError => {
+        process.stderr.write(`[e2e] Crash dump attachment failed: ${String(attachmentError)}\n`)
+      })
     }
 
     const shouldRetryCurrentMode = isRetryableLaunchError(error) && attempt < 1

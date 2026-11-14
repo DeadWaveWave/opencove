@@ -13,7 +13,7 @@ import {
 } from './appRuntimeConfig'
 import { setRuntimeIconTestState } from './iconTestHarness'
 import { installSystemNotificationTestHarness } from '../../contexts/system/presentation/main-ipc/systemNotifications'
-import { resolveRuntimeIconPath } from './runtimeIcon'
+import { boundDockIconImage, resolveRuntimeIconPath } from './runtimeIcon'
 import { resolveTitleBarOverlay } from './ipc/registerWindowChromeIpcHandlers'
 import { createApprovedWorkspaceStore } from '../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { resolveHomeWorkerEndpoint } from './worker/resolveHomeWorkerEndpoint'
@@ -23,7 +23,7 @@ import {
   hasOwnedLocalWorkerProcess,
   stopOwnedLocalWorker,
 } from './worker/localWorkerManager'
-import { createMainRuntimeDiagnosticsLogger } from './runtimeDiagnostics'
+import { createMainRuntimeDiagnosticsLogger, startTestCrashReporter } from './runtimeDiagnostics'
 import { createRendererFailureContext, getProcessFailureContext } from './processFailureDiagnostics'
 import { scheduleRendererRecovery } from './rendererCrashRecovery'
 import { registerQuickPhrasesContextMenu } from './contextMenu/registerQuickPhrasesContextMenu'
@@ -98,6 +98,7 @@ app.on('before-quit', () => {
 
 configureAppCommandLine()
 configureAppUserDataPath()
+startTestCrashReporter()
 
 const E2E_OFFSCREEN_COORDINATE = -50_000
 const mainWindowRuntimeLogger = createMainRuntimeDiagnosticsLogger('main-window')
@@ -363,7 +364,7 @@ app.whenReady().then(async () => {
 
   const runtimeIconPath = resolveRuntimeIconPath()
   if (process.platform === 'darwin' && runtimeIconPath) {
-    app.dock?.setIcon(nativeImage.createFromPath(runtimeIconPath))
+    app.dock?.setIcon(boundDockIconImage(nativeImage.createFromPath(runtimeIconPath)))
   }
 
   if (isTruthyEnv(process.env['OPENCOVE_PTY_HOST_POC'])) {

@@ -36,8 +36,8 @@ async function fixture() {
   )
   f.reservation.commit('s')
   let at = Date.now()
-  const send = (name: string, promptId?: string, source?: string, reply?: string) =>
-    f.post(
+  const send = async (name: string, promptId?: string, source?: string, reply?: string) => {
+    await f.post(
       {
         session_id: 'provider',
         transcript_path: path,
@@ -50,6 +50,8 @@ async function fixture() {
       },
       at++,
     )
+    run.tick(2000)
+  }
   const append = async (...values: unknown[]) => {
     await fs.appendFile(path, values.map(value => JSON.stringify(value)).join('\n') + '\n')
   }

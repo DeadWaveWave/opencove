@@ -32,7 +32,7 @@ export function registerSystemHandlers(
   registerOperationIntrospectionHandlers(controlSurface)
   registerOperation(controlSurface, systemWhoamiOperation, {
     defaultErrorCode: 'common.unexpected',
-    handle: async ctx => {
+    handle: async (ctx, input) => {
       const auth = ctx.requestAuth
       const identity =
         auth?.kind === 'session-grant'
@@ -50,7 +50,11 @@ export function registerSystemHandlers(
             }
       const lineageQuota =
         auth?.kind === 'session-grant' && auth.grant.nodeId
-          ? await readCallerLineageQuota(controlSurface, auth.grant.nodeId)
+          ? await readCallerLineageQuota(
+              controlSurface,
+              auth.grant.nodeId,
+              input.includeTree === true,
+            )
           : undefined
       return {
         ...identity,

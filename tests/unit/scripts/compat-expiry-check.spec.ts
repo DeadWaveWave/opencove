@@ -6,6 +6,7 @@ import { commitAll, git, publishToOrigin, removeFixtureDirectories } from './rat
 import {
   createGitRepository,
   removeTemporaryRepositories,
+  runGit,
   runScript,
   writeRepositoryFile,
 } from './repoFixture'
@@ -80,6 +81,25 @@ describe('compat expiry check: registry rules', () => {
     const result = run(createFixture())
     expect(result.status).toBe(0)
     expect(result.stdout).toContain('scanned 1 files at version 0.5.0, 1 entries')
+  })
+
+  it('checks active sources when a tracked source was deleted before staging', () => {
+    const root = createFixture()
+    writeRepositoryFile(root, 'src/removed.ts', 'export const removed = 1\n')
+    runGit(['add', 'src/removed.ts'], root)
+    rmSync(join(root, 'src/removed.ts'))
+    const result = run(root)
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain('scanned 1 files at version 0.5.0, 1 entries')
+  })
+
+  it('does not count deleted sources toward the nonempty scan guard', () => {
+    const root = createFixture({ entries: {}, files: { 'src/removed.ts': 'export const x = 1\n' } })
+    runGit(['add', 'src/removed.ts'], root)
+    rmSync(join(root, 'src/removed.ts'))
+    const result = run(root)
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('scanned 0 files: this is not a pass')
   })
 
   it('(a) fails once package.json reaches `until`, naming the entry', () => {

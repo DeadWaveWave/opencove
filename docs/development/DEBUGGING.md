@@ -28,6 +28,124 @@ Playwright trace 中最先失败的步骤才是崩溃位置，后续 evaluate �
 本地验证链路：构建后运行 `runtime-diagnostics.renderer-crash.spec.ts`，该测试明确调用
 `webContents.forcefullyCrashRenderer()`，并验证应用清理后附件仍存在。
 
+恢复测试的主进程身份必须通过 `electronApp.evaluate(() => process.pid)` 从 Electron
+内部读取。Playwright 1.58 在 Windows 使用 `shell: true` 启动，`electronApp.process()`
+返回的是 shell launcher，PID 与 Electron 主进程不同。保留 launcher 的退出状态作为
+进程清理证据，但比较恢复前后是否为同一个主进程时必须使用 Electron 自己的 PID。
+
+#### E2E 原生 minidump 与符号化
+
+只有 **Windows** 上 `NODE_ENV=test` **且**设置了 `OPENCOVE_TEST_USER_DATA_DIR` 的
+Desktop 启动才会启动 Electron Crashpad。主进程在创建 renderer 前把 `crashDumps` 指向该测试 profile
+内的 `crashDumps/`，使用 `uploadToServer: false`、`ignoreSystemCrashHandler: true`。
+生产启动不改变 crash reporter 或系统 crash handler。dump 含进程内存，不属于脱敏诊断包，
+不要提交到 Git、发送到在线符号化服务，或改成真实用户 profile。
+
+Windows 是当前存在未解释原生 renderer 崩溃的平台。macOS 的真实 fixture 交错 A/B
+测量发现启用 reporter 后，启动到空 workspace 就绪加关闭的配对中位增量超过 20 ms，
+所以不让 macOS/Linux 每次 E2E 启动承担 handler 成本。恢复测试按平台断言：Windows
+必须有一个有效 dump，其他平台必须没有 dump；不能用“有没有捕获到 dump”决定是否检查。
+
+E2E fixture 在启动前记录已有 dump，退出后、删除 profile 前把本次新增的 `.dmp`
+复制到 test output，并作为 `electron-minidump-*.dmp` 附件保留。扫描不依赖 Crashpad 的
+平台目录名（Windows 常见 `reports/`，macOS/Linux 常见 `pending/`、`completed/`），
+也不跟随 symlink。fixture 通常在 test 的 `finally` 内关闭应用，此时 Playwright 尚未把
+test 标成失败，所以所有新增 dump 都保留，包括明确注入的恢复测试。
+
+Windows CI 的 `Upload Playwright report` 在 `failure()` 时上传整个 `test-results/`，
+artifact 名为 `playwright-report-windows-platform-e2e`，保留 7 天；上述附件和原始副本均
+在这个目录内，不需要单独上传测试 profile。已有 dump 不会在复用 profile 的下一次启动
+重复附加。文字附件失败时仍尝试保存 dump；诊断错误不替换原始 test 错误。
+
+在 Apple Silicon Mac 上分析 **Windows x64 / Electron 41.5.1** dump：
+
+```bash
+mkdir -p artifacts/crash-analysis/tools artifacts/crash-analysis/windows
+curl -fL -o artifacts/crash-analysis/stackwalk.tar.xz \
+  https://github.com/rust-minidump/rust-minidump/releases/download/v0.27.0/minidump-stackwalk-aarch64-apple-darwin.tar.xz
+tar -xf artifacts/crash-analysis/stackwalk.tar.xz -C artifacts/crash-analysis/tools
+curl -fL -o artifacts/crash-analysis/windows-symbols.zip \
+  https://github.com/electron/electron/releases/download/v41.5.1/electron-v41.5.1-win32-x64-symbols.zip
+unzip -q artifacts/crash-analysis/windows-symbols.zip -d artifacts/crash-analysis/windows
+
+# 从失败 run 下载；RUN_ID 替换为具体 run 编号。
+gh run download RUN_ID --repo DeadWaveWave/opencove \
+  -n playwright-report-windows-platform-e2e -D artifacts/crash-analysis/ci
+# 将 dump_file 改为下载的 electron-minidump-*.dmp 路径。
+dump_file=artifacts/crash-analysis/ci/path/to/electron-minidump.dmp
+artifacts/crash-analysis/tools/minidump-stackwalk-aarch64-apple-darwin/minidump-stackwalk \
+  --human "$dump_file" artifacts/crash-analysis/windows/breakpad_symbols \
+  > artifacts/crash-analysis/renderer-stack.txt
+```
+
+Intel Mac 下载 `minidump-stackwalk-x86_64-apple-darwin.tar.xz`。stackwalker 的架构匹配
+分析机；**symbols 的版本、平台和架构匹配崩溃进程**。保持 zip 内的 Breakpad 目录结构，
+不要把 `.sym` 文件平铺。41.5.1 Windows x64 的主模块为
+`electron.exe.pdb/87F7B822BA38AB224C4C44205044422E1/electron.exe.sym`。
+工具按模块 debug ID 匹配；仅有 `electron.exe + offset` 而没有函数名时，先查版本、
+架构、debug ID 和传入的 `breakpad_symbols` 根目录。系统 DLL 没有符号时仍可分析
+Electron 帧；不要把未知系统帧误报为 Electron 的根因。
+
+本机端到端验证：先 `pnpm build`，再运行
+`OPENCOVE_E2E_DISABLE_CRASH_FALLBACK=1 pnpm exec playwright test tests/e2e/runtime-diagnostics.renderer-crash.spec.ts`。
+该测试在 Windows 检查 profile 删除后的 dump 与 `MDMP` 签名，其他平台仍检查恢复与文字附件。
+CI 的 `platform-e2e-windows` 也运行它，所以 Windows 上的捕获链路每次 PR 都会被验证。
+若需在 Mac 重新验证原生符号化链路，仅在本地临时移除 `startTestCrashReporter` 的平台判断，
+保留 test/profile 条件并重新构建，用下面的临时测试产生 dump；完成后恢复平台判断并重新构建，
+不要提交该临时改动。`forcefullyCrashRenderer()` 在 macOS
+可能先请求诊断快照再杀进程，此时 stackwalker 显示 `No crash`，不代表 dump 不可用。
+若要验证真正异常的 faulting frame，可在使用 `launchApp` 的临时 Playwright 测试中，
+通过 CDP 调用 preload 隔离上下文的 `process.crash()`（不要向产品组件或 bridge 增加入口）：
+
+```ts
+const cdp = await electronApp.context().newCDPSession(window)
+const contexts: Array<{ id: number; name: string }> = []
+cdp.on('Runtime.executionContextCreated', ({ context }) => contexts.push(context))
+await cdp.send('Runtime.enable')
+const isolated = contexts.find(context => context.name === 'Electron Isolated Context')!
+const crashed = window.waitForEvent('crash')
+await cdp.send('Runtime.evaluate', {
+  expression: 'process.crash()', contextId: isolated.id,
+}).catch(error => {
+  if (!/crash|closed/i.test(String(error))) throw error
+})
+await crashed
+// finally 中必须 await electronApp.close()，以保留附件并清理本测试进程。
+```
+
+macOS arm64 dump 使用 `electron-v41.5.1-darwin-arm64-symbols.zip`，其余符号化步骤相同。
+已用 Electron 41.5.1 在 macOS arm64 生成真实 renderer 异常、让临时测试失败，并在 profile
+清理后符号化保留的 dump：`EXC_BAD_ACCESS / KERN_INVALID_ADDRESS`，地址 `0x0`，
+`CrRendererMain` 顶帧 `electron::ElectronBindings::Crash()`，源码 `electron_bindings.cc:118`。
+这证明捕获、失败附件和符号化链路；它不等于复现 Windows 的自发访问违规。
+
+参考：[Electron crashReporter](https://www.electronjs.org/docs/latest/api/crash-reporter)、
+[Electron Crash Reporting](https://www.electronjs.org/docs/latest/tutorial/crash-reporting)、
+[rust-minidump](https://github.com/rust-minidump/rust-minidump)。
+
+#### Crashpad handler 生命周期与 profile 清理
+
+Electron 41.5.1 使用 Chromium 146.0.7680.216 中的 Crashpad。handler 的退出条件是
+**所有 client 消失**，并非主进程退出瞬间：macOS 等待 exception port 失去全部 senders；
+Linux 的 `--initial-client-fd` 等待全部 client socket 关闭；Windows 的
+`--initial-client-data` 注册主进程，随后注册 renderer 等子进程，监视各 client 的进程句柄，
+最后一个退出后结束服务。当前配置禁用上传；Electron 也没有启用 handler 的自我监控。
+因此遗留的 Chromium client 可让 handler 活得比主进程更久，fixture 的 `close()` 不等同于
+显式 join handler。源码与协议见
+[Electron reporter 启动](https://github.com/electron/electron/blob/v41.5.1/shell/browser/api/electron_api_crash_reporter.cc)、
+[Crashpad handler 文档](https://github.com/chromium/chromium/blob/146.0.7680.216/third_party/crashpad/crashpad/handler/crashpad_handler.md)。
+
+Windows 的 metadata、settings 和 dump 文件操作没有 `FILE_SHARE_DELETE`，所以仍在
+处理文件的 handler **可能阻止 profile 删除**；但数据库对象没有终身持有目录或 metadata
+句柄，闲置 handler 存活本身不证明目录被锁。参考
+[Windows database](https://github.com/chromium/chromium/blob/146.0.7680.216/third_party/crashpad/crashpad/client/crash_report_database_win.cc)、
+[Windows file I/O](https://github.com/chromium/chromium/blob/146.0.7680.216/third_party/crashpad/crashpad/util/file/file_io_win.cc)。
+`cleanupUserDataDirWithRetry` 已对 `EBUSY`/`EPERM`/`ENOTEMPTY` 做 6 次尝试（共等待 1.5 秒）；
+耗尽后记录 `Skipping locked userData cleanup` 并留下目录，不让测试失败。没有新增或延长重试。
+检查 Windows CI 时同时检查这条警告与对应 `--type=crashpad-handler` 的 database 路径；
+不能因为 `close()` 已返回就声称 profile 一定删除。macOS unlink 语义也不能证明 Windows
+没有句柄竞争，跨平台清理结果仍需各平台运行验证。
+
 ### Worker 在日志输出后失去响应
 
 如果终端停止接受输入，并伴随 Worker 端口或 PID 被替换，检查启动器是否持续消费子进程

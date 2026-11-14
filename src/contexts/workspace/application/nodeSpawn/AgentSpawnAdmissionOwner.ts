@@ -8,7 +8,7 @@ import {
   MAX_GRANT_RUNTIME_LINEAGE_DEPTH,
   MAX_LIVE_GRANT_RUNTIME_DESCENDANTS,
 } from '../../domain/agentSpawnPolicy'
-import type { LineageQuota } from '../../../../shared/contracts/dto/nodeLineage'
+import type { LineageQuota, LineageQuotaNode } from '../../../../shared/contracts/dto/nodeLineage'
 import type { SpawnQuotaNode } from '../../../../shared/errors/agentSpawnError'
 import type { NodeControlAppStateStore, NodeControlNode } from '../nodeControl/nodeControlState'
 import type { ResolvedNodeCreationTarget } from '../nodeControl/nodeCreationTarget'
@@ -23,7 +23,12 @@ export interface GrantCreationAuthority {
 export interface AgentSpawnPermit {
   readonly opaque: unique symbol
 }
-type SpawnTree = { quota: LineageQuota; parent: NodeLineageRecord | null; nodes: SpawnQuotaNode[] }
+type SpawnTree = {
+  quota: LineageQuota
+  parent: NodeLineageRecord | null
+  nodes: SpawnQuotaNode[]
+  occupants: LineageQuotaNode[]
+}
 type Admission = {
   authority: GrantCreationAuthority
   nodeId: string
@@ -211,8 +216,12 @@ export class AgentSpawnAdmissionOwner {
   public async lineageQuota(
     store: NodeControlAppStateStore,
     callerNodeId: string,
+    includeTree = false,
   ): Promise<LineageQuota> {
-    return this.readTree(store, callerNodeId, tree => tree.quota)
+    return this.readTree(store, callerNodeId, tree => ({
+      ...tree.quota,
+      ...(includeTree ? { nodes: tree.occupants } : {}),
+    }))
   }
 
   private async readTree<T>(
@@ -405,6 +414,7 @@ export class AgentSpawnAdmissionOwner {
           occupy(id, 'starting')
         }
       }
+      const censusNodes = [...occupied.values()].slice(0, MAX_LIVE_GRANT_RUNTIME_DESCENDANTS)
       return project({
         quota: {
           depth: parent?.lineageDepth ?? 1,
@@ -414,7 +424,11 @@ export class AgentSpawnAdmissionOwner {
           remainingLiveInTree: Math.max(0, MAX_LIVE_GRANT_RUNTIME_DESCENDANTS - occupied.size),
         },
         parent: parent ?? null,
-        nodes: [...occupied.values()].slice(0, MAX_LIVE_GRANT_RUNTIME_DESCENDANTS),
+        nodes: censusNodes,
+        occupants: censusNodes.map(node => ({
+          ...node,
+          spawnedBy: (this.captured.get(node.nodeId) ?? rows.get(node.nodeId))?.spawnedBy ?? null,
+        })),
       })
     }
   }

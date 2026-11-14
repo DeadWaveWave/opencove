@@ -1,3 +1,5 @@
+import { tracksClaudeConversations } from '../../../shared/contracts/agentProviderDescriptors'
+import type { SessionInputProvenance } from '../../../shared/runtime/sessionInputProvenance'
 import { claudePromptId } from '../../../shared/runtime/agentHook/claudePromptEvidence'
 import type { DeliveryRecord } from './PromptDeliveryRecords'
 import type {
@@ -27,11 +29,29 @@ export class PromptDeliveryEvidence {
       this.ended.add(fence.snapshot.lastEndedTurn.id)
     }
   }
+  get inputTarget(): SessionInputProvenance | undefined {
+    if (
+      !tracksClaudeConversations(this.fence?.snapshot.provider) ||
+      !this.fence ||
+      !this.fence.invocationId ||
+      !this.identity?.providerSessionId
+    ) {
+      return undefined
+    }
+    return {
+      providerSessionId: this.identity.providerSessionId,
+      invocationId: this.fence.invocationId,
+      conversationGeneration: this.fence.conversationGeneration,
+    }
+  }
   qualify(r: RunStateReceipt, record: DeliveryRecord, now: number): RunStateReceipt | undefined {
     const provider = record.initial.snapshot.provider
     const hook = promptHookSource(provider)
     if (
       !this.fence ||
+      (this.fence.conversationGeneration !== undefined &&
+        this.fence.conversationGeneration > 0 &&
+        r.conversationGeneration !== this.fence.conversationGeneration) ||
       r.source !== hook ||
       r.hookEventName !== 'UserPromptSubmit' ||
       (r.sourceSequence ?? 0) <= (this.fence.watermarks[hook] ?? 0) ||
@@ -40,7 +60,7 @@ export class PromptDeliveryEvidence {
       return
     }
     const identity = this.identity
-    if (provider === 'claude-code') {
+    if (tracksClaudeConversations(provider)) {
       if (this.negotiated && !claudePromptId(r.promptId)) {
         return
       }

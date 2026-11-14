@@ -6,7 +6,39 @@ import type {
 import { toPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence/toPersistedState'
 import { isNodeGuardedFromSyncOverwrite } from '@contexts/workspace/presentation/renderer/utils/syncNodeGuards'
 import { normalizeNodeForMerge } from '@shared/sync/normalizePersistedAppStateForMerge'
-import { mergePersistedNode } from '@shared/sync/mergePersistedNode'
+import { mergeNodeNaming, mergePersistedNode } from '@shared/sync/mergePersistedNode'
+import type { NormalizedPersistedNodeContract } from '@shared/contracts/normalizedPersistedAppState'
+import { normalizeFolderNodeData } from '@shared/utils/folderNodeData'
+
+function folderView(node: NormalizedPersistedNodeContract) {
+  if (node.kind !== 'folder') {
+    return null
+  }
+  return normalizeFolderNodeData(node.task)
+}
+
+/** Without an ancestor, preserve explicit view edits without copying unrelated durable content. */
+function mergeUnacknowledgedView(
+  latest: NormalizedPersistedNodeContract,
+  local: NormalizedPersistedNodeContract,
+): NormalizedPersistedNodeContract {
+  const folder = folderView(latest)
+  const localFolder = folderView(local)
+  return {
+    ...latest,
+    ...mergeNodeNaming(latest, local),
+    position: local.position,
+    task:
+      folder && localFolder && folder.rootUri === localFolder.rootUri
+        ? {
+            ...folder,
+            uri: localFolder.uri,
+            viewMode: localFolder.viewMode,
+            expandedDirectoryUris: localFolder.expandedDirectoryUris,
+          }
+        : latest.task,
+  }
+}
 
 /** Guards preserve local deltas, not stale copies of unrelated shared fields. */
 export function rebaseGuardedNodesForSync(
@@ -14,13 +46,13 @@ export function rebaseGuardedNodesForSync(
   local: WorkspaceState | undefined,
   base: PersistedWorkspaceState | undefined,
 ): PersistedWorkspaceState {
-  if (!local || !base || !local.nodes.some(node => isNodeGuardedFromSyncOverwrite(node.id))) {
+  if (!local || !local.nodes.some(node => isNodeGuardedFromSyncOverwrite(node.id))) {
     return latest
   }
   const localNodes = new Map(
     toPersistedState([local], local.id).workspaces[0].nodes.map(node => [node.id, node]),
   )
-  const baseNodes = new Map(base.nodes.map(node => [node.id, node]))
+  const baseNodes = new Map(base?.nodes.map(node => [node.id, node]) ?? [])
   // The parser consumes durable nodes, including unguarded terminals whose
   // hydrated binding no longer lives in agent.
   const rebased = ensurePersistedWorkspace({
@@ -28,13 +60,17 @@ export function rebaseGuardedNodesForSync(
     nodes: latest.nodes.map(node => {
       const localNode = localNodes.get(node.id)
       const baseNode = baseNodes.get(node.id)
-      return localNode && baseNode && isNodeGuardedFromSyncOverwrite(node.id)
+      const latestNode = normalizeNodeForMerge(node)
+      if (!localNode || !isNodeGuardedFromSyncOverwrite(node.id)) {
+        return latestNode
+      }
+      return baseNode
         ? mergePersistedNode(
-            normalizeNodeForMerge(node),
+            latestNode,
             normalizeNodeForMerge(localNode),
             normalizeNodeForMerge(baseNode),
           )
-        : normalizeNodeForMerge(node)
+        : mergeUnacknowledgedView(latestNode, normalizeNodeForMerge(localNode))
     }),
   })
   if (!rebased) {

@@ -1,7 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
-import { detectTurnStateFromSessionLine } from '../../../src/contexts/agent/infrastructure/watchers/SessionTurnStateDetector'
+import { detectTurnObservationFromSessionLine } from '../../../src/contexts/agent/infrastructure/watchers/SessionTurnStateDetector'
 
-describe('detectTurnStateFromSessionLine', () => {
+function stateFromLine(
+  provider: Parameters<typeof detectTurnObservationFromSessionLine>[0],
+  line: string,
+) {
+  return detectTurnObservationFromSessionLine(provider, line)?.state ?? null
+}
+
+describe('session-file turn observation', () => {
   it('detects claude assistant thinking chunks as working', () => {
     const line = JSON.stringify({
       type: 'assistant',
@@ -16,7 +23,7 @@ describe('detectTurnStateFromSessionLine', () => {
       },
     })
 
-    expect(detectTurnStateFromSessionLine('claude-code', line)).toBe('working')
+    expect(stateFromLine('claude-code', line)).toBe('working')
   })
 
   it('detects claude assistant text chunks as standby', () => {
@@ -33,7 +40,7 @@ describe('detectTurnStateFromSessionLine', () => {
       },
     })
 
-    expect(detectTurnStateFromSessionLine('claude-code', line)).toBe('standby')
+    expect(stateFromLine('claude-code', line)).toBe('standby')
   })
 
   it('detects claude assistant output_text chunks as standby', () => {
@@ -50,7 +57,7 @@ describe('detectTurnStateFromSessionLine', () => {
       },
     })
 
-    expect(detectTurnStateFromSessionLine('claude-code', line)).toBe('standby')
+    expect(stateFromLine('claude-code', line)).toBe('standby')
   })
 
   it('detects claude assistant tool use chunks as working', () => {
@@ -68,7 +75,7 @@ describe('detectTurnStateFromSessionLine', () => {
       },
     })
 
-    expect(detectTurnStateFromSessionLine('claude-code', line)).toBe('working')
+    expect(stateFromLine('claude-code', line)).toBe('working')
   })
 
   it('keeps claude assistant tool-use stop records working even with empty content', () => {
@@ -80,7 +87,7 @@ describe('detectTurnStateFromSessionLine', () => {
       },
     })
 
-    expect(detectTurnStateFromSessionLine('claude-code', line)).toBe('working')
+    expect(stateFromLine('claude-code', line)).toBe('working')
   })
 
   it('keeps claude assistant pause-turn records working until continuation completes', () => {
@@ -92,7 +99,7 @@ describe('detectTurnStateFromSessionLine', () => {
       },
     })
 
-    expect(detectTurnStateFromSessionLine('claude-code', line)).toBe('working')
+    expect(stateFromLine('claude-code', line)).toBe('working')
   })
 
   it('treats codex assistant commentary messages as working', () => {
@@ -111,7 +118,7 @@ describe('detectTurnStateFromSessionLine', () => {
       },
     })
 
-    expect(detectTurnStateFromSessionLine('codex', line)).toBe('working')
+    expect(stateFromLine('codex', line)).toBe('working')
   })
 
   it('treats codex assistant final answers as standby', () => {
@@ -130,7 +137,7 @@ describe('detectTurnStateFromSessionLine', () => {
       },
     })
 
-    expect(detectTurnStateFromSessionLine('codex', line)).toBe('standby')
+    expect(stateFromLine('codex', line)).toBe('standby')
   })
 
   it('treats codex task_started events as working', () => {
@@ -142,7 +149,7 @@ describe('detectTurnStateFromSessionLine', () => {
       },
     })
 
-    expect(detectTurnStateFromSessionLine('codex', line)).toBe('working')
+    expect(stateFromLine('codex', line)).toBe('working')
   })
 
   it('treats codex task_complete events as standby', () => {
@@ -155,7 +162,7 @@ describe('detectTurnStateFromSessionLine', () => {
       },
     })
 
-    expect(detectTurnStateFromSessionLine('codex', line)).toBe('standby')
+    expect(stateFromLine('codex', line)).toBe('standby')
   })
 
   it('treats codex event-stream commentary agent messages as working', () => {
@@ -168,7 +175,7 @@ describe('detectTurnStateFromSessionLine', () => {
       },
     })
 
-    expect(detectTurnStateFromSessionLine('codex', line)).toBe('working')
+    expect(stateFromLine('codex', line)).toBe('working')
   })
 
   it('treats codex event-stream final-answer agent messages as standby', () => {
@@ -181,7 +188,7 @@ describe('detectTurnStateFromSessionLine', () => {
       },
     })
 
-    expect(detectTurnStateFromSessionLine('codex', line)).toBe('standby')
+    expect(stateFromLine('codex', line)).toBe('standby')
   })
 
   it('treats codex assistant messages without phase as standby for compatibility', () => {
@@ -199,7 +206,7 @@ describe('detectTurnStateFromSessionLine', () => {
       },
     })
 
-    expect(detectTurnStateFromSessionLine('codex', line)).toBe('standby')
+    expect(stateFromLine('codex', line)).toBe('standby')
   })
 
   it('detects codex reasoning as working', () => {
@@ -211,7 +218,7 @@ describe('detectTurnStateFromSessionLine', () => {
       },
     })
 
-    expect(detectTurnStateFromSessionLine('codex', line)).toBe('working')
+    expect(stateFromLine('codex', line)).toBe('working')
   })
 
   it('ignores codex user messages so they do not start working prematurely', () => {
@@ -223,7 +230,7 @@ describe('detectTurnStateFromSessionLine', () => {
       },
     })
 
-    expect(detectTurnStateFromSessionLine('codex', line)).toBeNull()
+    expect(stateFromLine('codex', line)).toBeNull()
   })
 
   it('ignores codex legacy agent messages as non-authoritative boundaries', () => {
@@ -235,7 +242,7 @@ describe('detectTurnStateFromSessionLine', () => {
       },
     })
 
-    expect(detectTurnStateFromSessionLine('codex', line)).toBeNull()
+    expect(stateFromLine('codex', line)).toBeNull()
   })
 
   it('accepts leading and trailing whitespace around valid JSON', () => {
@@ -246,20 +253,20 @@ describe('detectTurnStateFromSessionLine', () => {
       },
     })}\t  `
 
-    expect(detectTurnStateFromSessionLine('codex', line)).toBe('working')
+    expect(stateFromLine('codex', line)).toBe('working')
   })
 
   it('returns null for invalid JSON', () => {
-    expect(detectTurnStateFromSessionLine('codex', '{invalid')).toBeNull()
+    expect(stateFromLine('codex', '{invalid')).toBeNull()
   })
 
   it('skips parsing irrelevant codex lines', () => {
     const parseSpy = vi.spyOn(JSON, 'parse')
 
     try {
-      expect(detectTurnStateFromSessionLine('codex', 'PROFILE_LINE')).toBeNull()
+      expect(stateFromLine('codex', 'PROFILE_LINE')).toBeNull()
       expect(
-        detectTurnStateFromSessionLine(
+        stateFromLine(
           'codex',
           JSON.stringify({
             type: 'heartbeat',
@@ -284,7 +291,7 @@ describe('detectTurnStateFromSessionLine', () => {
         operation: 'dequeue',
       })
 
-      expect(detectTurnStateFromSessionLine('claude-code', line)).toBeNull()
+      expect(stateFromLine('claude-code', line)).toBeNull()
       expect(parseSpy).not.toHaveBeenCalled()
     } finally {
       parseSpy.mockRestore()

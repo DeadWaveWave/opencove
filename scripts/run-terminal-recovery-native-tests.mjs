@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import './lib/isolateHostEnvironment.mjs'
 
 import { spawnSync } from 'node:child_process'
 import path from 'node:path'
@@ -13,6 +14,7 @@ const tests = process.argv.includes('--worker-ownership')
   : [
       ...workerOwnershipTests,
       'tests/contract/agentTurnArchive/agentTurnArchive.native.spec.ts',
+      'tests/contract/agentTurnArchive/claudeClearTurnArchive.native.spec.ts',
       'tests/contract/agentTurnArchive/agentTurnArchiveReview.native.spec.ts',
       'tests/contract/platform/persistenceStore.revision.native.spec.ts',
       'tests/contract/platform/nodeLineage.native.spec.ts',

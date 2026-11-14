@@ -6,3 +6,7 @@ out
 test-results
 playwright-report
 scripts/impact-cochange-index.json
+
+tests/fixtures/claude/non-clear/baseline/
+# Generated JSON traces retain one checkpoint per line; regenerate with the baseline tool.
+tests/fixtures/claude/non-clear/goldens/

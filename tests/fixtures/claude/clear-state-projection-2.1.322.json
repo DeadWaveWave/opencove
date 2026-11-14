@@ -1,0 +1,31 @@
+{
+  "version": "2.1.322",
+  "a": "30fb629d-f259-4889-bb89-99c0d44fc572",
+  "b": "047553f1-9f2f-4339-92d6-8997c9d4dc96",
+  "promptId": "ab38735c-ef6f-4102-b652-4b31ca695482",
+  "startAt": 1794610535911,
+  "stopAt": 1794610536295,
+  "projectionAt": 1794610537726,
+  "endAt": 1794610537827,
+  "successorAt": 1794610537971,
+  "tail": [
+    "{\"type\":\"last-prompt\",\"lastPrompt\":\"PROBE_PROMPT_A: reply with the configured mock response.\",\"leafUuid\":\"36e4c4d6-0f2e-4cff-93af-ff7e6b6392c9\",\"sessionId\":\"516df3a5-bb70-4e03-a5d6-32d45675057b\"}",
+    "{\"type\":\"mode\",\"mode\":\"normal\",\"sessionId\":\"516df3a5-bb70-4e03-a5d6-32d45675057b\"}",
+    "{\"type\":\"permission-mode\",\"permissionMode\":\"default\",\"sessionId\":\"516df3a5-bb70-4e03-a5d6-32d45675057b\"}",
+    "{\"type\":\"atis-latch\",\"atis\":\"\",\"sessionId\":\"516df3a5-bb70-4e03-a5d6-32d45675057b\"}",
+    "{\"parentUuid\":\"e53cf579-8494-4166-b1f3-6cb4f6772077\",\"isSidechain\":false,\"type\":\"system\",\"subtype\":\"turn_duration\",\"durationMs\":355,\"messageCount\":13,\"timestamp\":\"2026-11-13T21:36:40.050Z\",\"uuid\":\"d3e5da02-845a-482b-a300-d6d904a1e084\",\"isMeta\":false,\"userType\":\"external\",\"entrypoint\":\"cli\",\"cwd\":\"/workspace\",\"sessionId\":\"516df3a5-bb70-4e03-a5d6-32d45675057b\",\"version\":\"2.1.322\",\"gitBranch\":\"HEAD\"}",
+    "{\"type\":\"cost-state\",\"sessionId\":\"516df3a5-bb70-4e03-a5d6-32d45675057b\",\"totalCostUSD\":0.000128,\"totalAPIDuration\":17,\"totalAPIDurationWithoutRetries\":9,\"totalToolDuration\":0,\"totalLinesAdded\":0,\"totalLinesRemoved\":0,\"totalDuration\":1322,\"startTime\":1794605799453,\"modelUsage\":{\"claude-opus-5-5\":{\"inputTokens\":12,\"outputTokens\":4,\"thinkingTokens\":0,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"cacheCreationEphemeral5mInputTokens\":0,\"cacheCreationEphemeral1hInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.000128}},\"hasUnknownModelCost\":false}"
+  ],
+  "truncatedRecords": [
+    {
+      "type": "system",
+      "subtype": null,
+      "capturedLength": 700
+    },
+    {
+      "type": "system",
+      "subtype": "stop_hook_summary",
+      "capturedLength": 700
+    }
+  ]
+}

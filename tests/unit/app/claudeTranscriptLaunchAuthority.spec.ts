@@ -76,7 +76,7 @@ it.each(['raw', 'versioned'])(
     expect(metadata).not.toHaveBeenCalled()
   },
 )
-it('SessionEnd and SessionStart hand off the watcher while invocation-authenticated hooks still publish', async () => {
+it('non-clear lifecycle hands off private IO while preserving authenticated state hooks', async () => {
   const f = await fixture(),
     states: string[] = []
   f.channel.onState(event => states.push(event.hookEventName ?? ''))

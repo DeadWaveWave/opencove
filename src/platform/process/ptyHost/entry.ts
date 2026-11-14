@@ -1,3 +1,4 @@
+import { terminalEnvironment } from '../../../shared/runtime/terminalEnvironment.mjs'
 import { assertSpawnEnvironment } from '../spawnEnvironment'
 import { preparePtySpawnArguments } from '../spawnArguments'
 import process from 'node:process'
@@ -223,7 +224,9 @@ function spawnPtySession(request: PtyHostSpawnRequest): void {
       cwd: request.cwd,
       env: {
         ...request.env,
-        ...(request.env?.OPENCOVE_ENV === '1' ? { OPENCOVE_SESSION_ID: sessionId } : {}),
+        ...(request.env?.OPENCOVE_ENV === '1'
+          ? { [terminalEnvironment.sessionId]: sessionId }
+          : {}),
       },
       cols: request.cols,
       rows: request.rows,

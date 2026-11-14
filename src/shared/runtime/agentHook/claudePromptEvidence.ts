@@ -1,6 +1,11 @@
 import { createHash } from 'node:crypto'
 
 export interface PromptSubmissionEvidence {
+  claudeTranscriptRecord?: import('./claudeTranscript').ClaudeTranscriptRecord
+  claudeAuxiliary?: true
+  invocationId?: string
+  conversationCapture?: object
+  conversationGeneration?: number
   promptId?: string
   promptDigest?: string
   providerSessionId?: string
@@ -15,6 +20,11 @@ export function setPromptSubmissionEvidence(
   evidence: PromptSubmissionEvidence,
 ): void {
   evidenceByEvent.set(event, {
+    claudeTranscriptRecord: evidence.claudeTranscriptRecord,
+    claudeAuxiliary: evidence.claudeAuxiliary,
+    invocationId: evidence.invocationId,
+    conversationGeneration: evidence.conversationGeneration,
+    conversationCapture: evidence.conversationCapture,
     promptId: evidence.promptId,
     promptDigest: evidence.promptDigest,
     providerSessionId: evidence.providerSessionId,

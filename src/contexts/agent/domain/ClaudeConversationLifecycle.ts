@@ -1,10 +1,15 @@
-export interface ClaudeConversationEvent {
-  hookEventName: string
-  claudeSessionId: string
-  emittedAtMs?: number
-  sessionStartSource?: string
-  transcriptPath?: string
-  promptId?: string
+import { boundedInsert } from '../../../shared/utils/boundedInsert'
+import type {
+  ClaudeConversationEvent,
+  ClaudeConversationCheckpoint,
+} from '../../../shared/runtime/agentHook/claudeConversation'
+export type { ClaudeConversationEvent } from '../../../shared/runtime/agentHook/claudeConversation'
+
+export function isClaudeConversationActivity(event: ClaudeConversationEvent): boolean {
+  return (
+    event.hookEventName !== 'SessionStart' &&
+    (event.hookEventName === 'SessionEnd' || event.state !== null)
+  )
 }
 
 /** Provider IDs may resume. Freshness retires observer generations, never invocation authority. */
@@ -14,6 +19,29 @@ export class ClaudeConversationLifecycle {
   private startAt?: number
   private ended = false
   private readonly retired: { sessionId: string; emittedAtMs?: number }[] = []
+  constructor(checkpoint?: ClaudeConversationCheckpoint) {
+    if (checkpoint) {
+      this.current = checkpoint.current
+      this.watermark = checkpoint.watermark
+      this.startAt = checkpoint.startAt
+      this.ended = checkpoint.ended
+      for (const item of checkpoint.retired) {
+        this.remember(item)
+      }
+    }
+  }
+  get currentConversationId(): string | undefined {
+    return this.current
+  }
+  checkpoint(): ClaudeConversationCheckpoint {
+    return {
+      current: this.current,
+      watermark: this.watermark,
+      startAt: this.startAt,
+      ended: this.ended,
+      retired: this.retired.map(item => ({ ...item })),
+    }
+  }
   accept(event: ClaudeConversationEvent): 'start' | 'end' | 'event' | 'ignore' {
     const at = event.emittedAtMs,
       id = event.claudeSessionId
@@ -71,12 +99,25 @@ export class ClaudeConversationLifecycle {
     }
     return 'event'
   }
+  dispose(): void {
+    this.retired.length = 0
+    this.current = this.watermark = this.startAt = undefined
+    this.ended = false
+  }
+  private remember(item: { sessionId: string; emittedAtMs?: number }): void {
+    if (this.retired.length === 64) {
+      this.retired.shift()
+    }
+    boundedInsert(
+      this.retired.length,
+      64,
+      () => this.retired.push(item),
+      () => {},
+    )
+  }
   private retire(): void {
     if (this.current) {
-      this.retired.push({ sessionId: this.current, emittedAtMs: this.watermark })
-      if (this.retired.length > 64) {
-        this.retired.shift()
-      }
+      this.remember({ sessionId: this.current, emittedAtMs: this.watermark })
     }
     this.current = undefined
   }

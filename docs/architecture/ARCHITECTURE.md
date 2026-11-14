@@ -174,7 +174,7 @@ Web UI / Remote Worker 等浏览器或远端入口，都是同一套 Control Sur
 
 | Variant | Id 的唯一来源 | 静态描述（所有进程可用） | 运行时行为（仅 main / worker） |
 | --- | --- | --- | --- |
-| Agent provider | `AGENT_PROVIDER_IDS`（`src/shared/contracts/dto/agent.ts`） | `AGENT_PROVIDER_DESCRIPTORS`（`src/shared/contracts/agentProviderDescriptors.ts`：`label`、`titlePrefix`、`capabilities`） | `AgentProviderContribution`（`src/contexts/agent/infrastructure/providers/<id>/`） |
+| Agent provider | `AGENT_PROVIDER_IDS`（`src/shared/contracts/dto/agent.ts`） | `AGENT_PROVIDER_DESCRIPTORS`（`src/shared/contracts/agentProviderDescriptors.ts`：`label`、`titlePrefix`、`capabilities`、`initialPrompt`） | `AgentProviderContribution`（`src/contexts/agent/infrastructure/providers/<id>/`） |
 | Node kind | `PERSISTED_WORKSPACE_NODE_KINDS`（`src/shared/contracts/persistedAppState.ts`） | 按关注点划分的 `Record<PersistedWorkspaceNodeKind, T>` 表（例如 `workspaceNodeSizing.ts`） | 无 |
 
 - 其他列出该集合或其子集的类型都从来源派生（别名、`Extract` / `Exclude`、基于描述表的 mapped type），不再手写第二份联合类型。

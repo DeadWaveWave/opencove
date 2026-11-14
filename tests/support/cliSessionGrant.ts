@@ -18,7 +18,7 @@ export async function assertGrantLaunchPolicy(options: {
     const schema = await object('api', 'schema', id)
     expect(schema).toMatchObject({
       access: 'constrained',
-      policyVersion: 's1d-v3',
+      policyVersion: 's1d-v4',
       rejectedFields: {
         env: expect.any(String),
         executablePathOverride: expect.any(String),

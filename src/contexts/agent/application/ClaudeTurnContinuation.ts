@@ -174,7 +174,7 @@ export class ClaudeTurnContinuation {
       record.record?.kind === 'user' &&
       record.record.promptSource === 'queued'
     ) {
-      if (!history.hasEndedPrompt(record.record.promptId)) {
+      if (!history.hasEndedPrompt(record.record.promptId, record.providerSessionId)) {
         rememberClaudeIdentity(this.baselineIds, record.record.promptId)
         if (this.earlyEnd?.evidence?.promptId === record.record.promptId) {
           this.confirmBaseline(record.record.promptId, history)
@@ -374,6 +374,15 @@ export class ClaudeTurnContinuation {
   }
   syncPollingDemand(): void {
     this.setPollingDemand?.(this.pending().length > 0 || this.stopped || this.recovery.pending)
+  }
+  startConversation(): void {
+    this.reset()
+    this.acceptHook()
+    this.cursor = undefined
+    this.origin = 'hook'
+    this.generationReset = true
+    this.generationStartRequired = true
+    this.setPollingDemand?.(false)
   }
   takeGenerationReset(): boolean {
     const reset = this.generationReset

@@ -1,3 +1,5 @@
+import { tracksClaudeConversations } from '../../../../shared/contracts/agentProviderDescriptors'
+import { isClaudeAuxiliaryUser } from '../../../../shared/runtime/agentHook/claudeTranscriptSemantics'
 import type { AgentProviderId, TerminalSessionState } from '@shared/contracts/dto'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -32,7 +34,7 @@ function mayContainTurnState(provider: AgentProviderId, line: string): boolean {
     return false
   }
 
-  if (provider === 'claude-code') {
+  if (tracksClaudeConversations(provider)) {
     return line.includes('"assistant"') || line.includes('"user"')
   }
 
@@ -183,25 +185,32 @@ export function detectTurnStateFromSessionRecord(
   provider: AgentProviderId,
   parsed: unknown,
 ): TerminalSessionState | null {
-  if (provider === 'claude-code') {
+  if (tracksClaudeConversations(provider)) {
     return detectClaudeTurnState(parsed)
   }
 
   return detectCodexTurnState(parsed)
 }
 
-export function detectTurnStateFromSessionLine(
+export function detectTurnObservationFromSessionLine(
   provider: AgentProviderId,
   line: string,
-): TerminalSessionState | null {
+): { state: TerminalSessionState; claudeAuxiliary?: true } | null {
   const candidate = normalizeSessionLineCandidate(line)
   if (!candidate || !mayContainTurnState(provider, candidate)) {
     return null
   }
-
   try {
-    const parsed = JSON.parse(candidate)
-    return detectTurnStateFromSessionRecord(provider, parsed)
+    const parsed = JSON.parse(candidate),
+      state = detectTurnStateFromSessionRecord(provider, parsed)
+    return state
+      ? {
+          state,
+          ...(tracksClaudeConversations(provider) && isClaudeAuxiliaryUser(parsed)
+            ? { claudeAuxiliary: true as const }
+            : {}),
+        }
+      : null
   } catch {
     return null
   }

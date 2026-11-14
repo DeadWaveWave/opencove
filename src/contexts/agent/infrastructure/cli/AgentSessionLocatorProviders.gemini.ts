@@ -1,3 +1,4 @@
+import type { GeminiSessionDiscoveryCursor } from '../../application/ports/AgentSessionDiscovery'
 import fs from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import { resolveHomeDirectoryCandidates } from '../../../../platform/os/HomeDirectory'
@@ -21,15 +22,6 @@ interface GeminiSessionMeta {
 
 interface GeminiSessionCandidate extends GeminiSessionMeta {
   discoverySignature: string
-}
-
-interface GeminiSessionDiscoveryCursorEntry {
-  signature: string
-  hadRelevantTurn: boolean
-}
-
-export interface GeminiSessionDiscoveryCursor {
-  entriesByFilePath: Record<string, GeminiSessionDiscoveryCursorEntry>
 }
 
 interface FindGeminiResumeSessionIdOptions {
@@ -216,7 +208,7 @@ async function listGeminiSessionCandidates(cwd: string): Promise<GeminiSessionCa
 export async function captureGeminiSessionDiscoveryCursor(
   cwd: string,
 ): Promise<GeminiSessionDiscoveryCursor> {
-  const entriesByFilePath: Record<string, GeminiSessionDiscoveryCursorEntry> = {}
+  const entriesByFilePath: GeminiSessionDiscoveryCursor['entriesByFilePath'] = {}
 
   for (const candidate of await listGeminiSessionCandidates(cwd)) {
     entriesByFilePath[candidate.filePath] = {

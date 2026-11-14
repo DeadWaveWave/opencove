@@ -179,7 +179,11 @@ it.each([false, true])(
       ['agent.blocked', 'waiting', 'waiting for input'],
       ['agent.busy', 'working', 'still working'],
       ['agent.busy', 'delivery_in_progress', 'Another prompt delivery'],
-      ['agent.state_unknown', 'readiness_unobserved', 'not observed this agent finish a turn'],
+      [
+        'agent.state_unknown',
+        'readiness_unobserved',
+        'cannot confirm that the agent is ready for a prompt',
+      ],
       ['agent.state_unknown', 'observation_degraded', 'cannot reliably observe'],
       ['agent.not_running', 'not_running', 'No running agent'],
       ['agent.not_running', 'caller_revoked', 'lost authorization'],

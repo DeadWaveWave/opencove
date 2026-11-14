@@ -9,6 +9,8 @@ Workspace:
   project  List projects and find their IDs
   space    List and inspect project spaces
   node     Create, read, update and delete canvas nodes
+  task     Claim and release tasks for existing agents
+  note     Append text to shared notes
   canvas   Focus nodes and spaces on the canvas
   agent    List, inspect, prompt, wait for and read agents
   events   Stream agent observations and resume from a saved cursor
@@ -97,7 +99,7 @@ Options:
   --text <text>         Set the note contents
   --text-file <path|->  Read text from a UTF-8 file, or use - for stdin
   --title <text>        Set the node title
-  --frame <json>        Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; note minimum: width 220, height 140; inspect appliedFrame and frameAdjusted for the actual applied size
+  --frame <json>        Set x, y, width and height as a JSON object. Sizes outside a kind's range are adjusted to fit; note: width 220–360, height 140–260; inspect appliedFrame and frameAdjusted for the actual applied size
   --near <selector>     Place near a reference node; recommend --near @self for helper nodes; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
   --focus               Focus after creation
   -q, --quiet           Print only the created object identifier followed by a newline
@@ -124,6 +126,87 @@ Global options: see "opencove --help".
 "
 `;
 
+exports[`TypeScript CLI core > help snapshot "note" 1`] = `
+"Usage: opencove note append --node <selector> --text <text> [options]
+
+Append text to a shared note
+
+Provide exactly one of --text or --text-file; use --text-file - for stdin. Preserves whitespace and separates entries with a blank line. Each append is limited to 64 KiB of UTF-8 text; the resulting note must fit within 1 MiB. Concurrent appends preserve commit order. Repeating a request may duplicate text; inspect the note after an uncertain outcome.
+
+Options:
+  --node <selector>     Select a note to append to; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
+  --text <text>         Append literal text without trimming whitespace (required)
+  --text-file <path|->  Read text from a UTF-8 file, or use - for stdin
+  --space <selector>    Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+  --project <id>        Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
+
+Table output (-o table): not supported.
+Projectable fields: revision, nodeId, appendedBytes, totalBytes
+
+Projection example:
+  opencove note append --node '<selector>' --text '<text>' --fields revision
+  {"revision":2}
+
+Examples:
+  opencove note append --node "Progress" --text "Review complete"
+  opencove note append --node "Progress" --text-file ./result.txt
+  opencove note append --node "Progress" --text-file -
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`TypeScript CLI core > help snapshot "task" 1`] = `
+"Usage: opencove task claim --task <selector> [options]
+
+Claim a task for an existing agent
+
+Defaults to your authenticated agent. With a user credential, supply --agent. You can select your own agent or any agent you started, including their descendants. Task and selected agent must share a project and Space. An existing holder must release the task before another agent can claim it. Claiming does not start an agent.
+
+Options:
+  --task <selector>   Select the task to claim; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
+  --agent <selector>  Select an existing agent; session grants can select their own agent or agents they started; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.requirement, data.status, data.priority, data.tags, data.linkedAgentNodeId, revision, changed
+
+Projection example:
+  opencove task claim --task '<selector>' --fields id,title
+  {"revision":1,"node":{"id":"n","title":"Task"}}
+
+Examples:
+  opencove task claim --task "Review"
+  opencove task claim --task task-123 --agent "Reviewer" --pretty
+
+Global options: see "opencove --help".
+"
+`;
+
+exports[`TypeScript CLI core > help snapshot "task" 2`] = `
+"Usage: opencove task release --task <selector> [options]
+
+Release a task without stopping its agent
+
+The current holder, a coordinator that started the holder, or an authenticated user can release a task. Defaults to todo; use ai_done when the work is ready for review, or done when finished. Release preserves task history and does not stop the agent.
+
+Options:
+  --task <selector>             Select the task to release; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
+  --status <todo|ai_done|done>  Set the task status after release; defaults to todo
+
+Table output (-o table): not supported.
+Projectable fields: id, kind, title, projectId, spaceId, frame, frame.x, frame.y, frame.width, frame.height, status, sessionId, data, data.kind, data.requirement, data.status, data.priority, data.tags, data.linkedAgentNodeId, revision, changed
+
+Projection example:
+  opencove task release --task '<selector>' --fields id,title
+  {"revision":1,"node":{"id":"n","title":"Task"}}
+
+Examples:
+  opencove task release --task "Review" --status ai_done
+
+Global options: see "opencove --help".
+"
+`;
+
 exports[`TypeScript CLI core > help snapshot undefined 1`] = `
 "OpenCove CLI — Control projects, spaces, canvas nodes and worker runtimes
 
@@ -133,6 +216,8 @@ Workspace:
   project  List projects and find their IDs
   space    List and inspect project spaces
   node     Create, read, update and delete canvas nodes
+  task     Claim and release tasks for existing agents
+  note     Append text to shared notes
   canvas   Focus nodes and spaces on the canvas
   agent    List, inspect, prompt, wait for and read agents
   events   Stream agent observations and resume from a saved cursor

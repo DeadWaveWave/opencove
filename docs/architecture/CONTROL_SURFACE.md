@@ -430,7 +430,7 @@ expected ID 仅为身份 mismatch fence，parent 始终由 verified grant 推导
 
 ### Bounded grant runtime creation
 
-Policy `s1d-v3` permits grant runtime creation only through `node.create` with a current,
+Policy `s1d-v4` permits grant runtime creation only through `node.create` with a current,
 locally owned agent/terminal caller bound to the authenticated session. The existing node mutation
 queue owns admission through launch and commit settlement. Depth is at most 3 (user root = 1),
 with at most six distinct live or pending grant-created runtime descendants per immutable root.

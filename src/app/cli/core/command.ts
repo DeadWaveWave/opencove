@@ -60,10 +60,17 @@ export interface CommandContext extends CommandArgs {
   connection?: Connection
   io: CliIo
   input: unknown
+  /** Invocation-local data returned by prepare; never sent to the Worker. */
+  prepared?: unknown
   invoke(
     id: OperationId,
     payload: unknown,
-    options?: { fresh?: boolean; signal?: AbortSignal; timeoutMs?: number },
+    options?: {
+      fresh?: boolean
+      signal?: AbortSignal
+      timeoutMs?: number
+      onDispatch?: () => void
+    },
   ): Promise<unknown>
   whoami(): Promise<CallerIdentity>
   self(kind: NonNullable<OptionSpec['selector']>): Promise<string>
@@ -86,6 +93,8 @@ export interface Command {
   targetSpace?: 'required' | 'optional'
   /** Stable identifier to print for --quiet, relative to the operation result. */
   quietIdPath?: string
+  /** Check the Worker operation catalog before sending this operation, including api call. */
+  requireOperationDiscovery?: boolean
   mutation?: boolean
   stream?: boolean
   streamProjection?: boolean
@@ -99,7 +108,16 @@ export interface Command {
   operationCommand?: string
   operation?: OperationId
   validateBeforeConnect?(args: CommandArgs, env: CliIo['env']): void
+  /** Read and validate local input before connecting or resolving targets. */
+  prepare?(args: CommandArgs, io: CliIo): Promise<unknown>
+  /** Recover a prepared command when framework preflight fails before any mutation. */
+  recoverPreflight?(
+    error: unknown,
+    context: CommandArgs & { prepared: unknown; io: CliIo },
+  ): CommandResult | undefined
   buildInput?(args: CommandArgs): unknown
+  /** Map an internal execution result to its public output, retaining it for exitCode. */
+  outputValue?(result: unknown): unknown
   exitCode?(result: unknown): number
   textOutput?(result: unknown, context: TextOutputContext): string | undefined
   execute?(ctx: CommandContext): Promise<CommandResult>

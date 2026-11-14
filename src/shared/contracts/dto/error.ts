@@ -15,6 +15,7 @@ export const APP_ERROR_CODES = [
   'node.parent_unavailable',
   'agent.spawn_depth_limit',
   'agent.spawn_concurrency_limit',
+  'task.already_claimed',
   'node.not_found',
   'node.unsupported_operation',
   'session.not_found',

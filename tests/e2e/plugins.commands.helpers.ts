@@ -1,3 +1,4 @@
+import { createIsolatedProcessEnv } from '../../scripts/lib/isolatedProcessEnvironment.mjs'
 import { expect, type Locator, type Page } from '@playwright/test'
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -26,7 +27,7 @@ async function cli(userDataDir: string, args: string[]) {
     {
       timeoutMs: 45_000,
       captureMaxBytes: 4 * 1024 * 1024,
-      env: { ...process.env, OPENCOVE_USER_DATA_DIR: userDataDir },
+      env: createIsolatedProcessEnv({ OPENCOVE_USER_DATA_DIR: userDataDir }),
     },
   )
   return execution

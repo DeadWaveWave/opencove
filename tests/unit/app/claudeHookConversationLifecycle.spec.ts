@@ -2,7 +2,7 @@
 import { expect, it } from 'vitest'
 import { hookChannelFixture } from './claudeHookTranscript.helpers'
 
-it('a conversation end keeps invocation-authenticated state hooks alive', async () => {
+it('a non-clear conversation end keeps invocation-authenticated state hooks alive', async () => {
   const f = await hookChannelFixture(),
     states: string[] = [],
     metadata: unknown[] = []
@@ -46,8 +46,8 @@ it('an authenticated generation handoff clears the old degraded chain without gr
   f.channel.onClaudeTranscript?.(record => run.runtime.observeClaudeTranscript(record))
   f.reservation.commit('s')
   let at = Date.now()
-  const send = (session: string, name: string, prompt?: string) =>
-    f.post(
+  const send = async (session: string, name: string, prompt?: string) => {
+    await f.post(
       {
         session_id: session,
         hook_event_name: name,
@@ -58,6 +58,8 @@ it('an authenticated generation handoff clears the old degraded chain without gr
       },
       at++,
     )
+    run.tick(2000)
+  }
   try {
     await send('provider', 'SessionStart')
     await send('provider', 'UserPromptSubmit', 'A')

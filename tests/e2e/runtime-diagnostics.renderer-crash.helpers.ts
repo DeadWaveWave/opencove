@@ -1,5 +1,13 @@
 import type { BrowserWindow } from 'electron'
 import { readFile } from 'node:fs/promises'
+import type { ElectronApplication } from '@playwright/test'
+
+export async function readElectronMainProcessPid(
+  app: Pick<ElectronApplication, 'evaluate'>,
+): Promise<number> {
+  // Playwright's Windows ChildProcess owns the shell launcher, not the browser.
+  return await app.evaluate(() => process.pid)
+}
 
 export async function withRecoveryDeadline<T>(
   stage: string,

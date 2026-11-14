@@ -125,3 +125,6 @@ tmp/
 # so a local release-style build creates this too.
 .cache/
 docs/Microsoft/
+
+# Extracted immutable sources used only while generating non-clear compatibility goldens.
+tests/fixtures/claude/non-clear/baseline/

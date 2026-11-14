@@ -64,12 +64,7 @@ async function readTaskLinkedAgentBinding(window: Page): Promise<{
   }
 }
 
-async function readFirstAgentGeometry(window: Page): Promise<{
-  terminalSize: { cols: number; rows: number } | null
-  snapshotSize: { cols: number; rows: number } | null
-  horizontalOverflowPx: number | null
-  verticalOverflowPx: number | null
-}> {
+async function readFirstAgentGeometry(window: Page) {
   return await window.evaluate(async () => {
     const agentNode = document.querySelector('.terminal-node')
     const container = agentNode?.querySelector('.terminal-node__terminal')
@@ -79,6 +74,7 @@ async function readFirstAgentGeometry(window: Page): Promise<{
         snapshotSize: null,
         horizontalOverflowPx: null,
         verticalOverflowPx: null,
+        diagnostics: { agentNodePresent: !!agentNode, containerPresent: !!container },
       }
     }
 
@@ -90,11 +86,15 @@ async function readFirstAgentGeometry(window: Page): Promise<{
     const runtimeSessionId =
       window.__opencoveTerminalSelectionTestApi?.getRuntimeSessionId(nodeId) ?? null
     const metrics = window.__opencoveTerminalSelectionTestApi?.getRenderMetrics?.(nodeId) ?? null
+    let snapshotError: string | null = null
     const snapshot =
       typeof runtimeSessionId === 'string' && runtimeSessionId.length > 0
         ? await window.opencoveApi.pty
             .presentationSnapshot({ sessionId: runtimeSessionId })
-            .catch(() => null)
+            .catch((error: unknown) => {
+              snapshotError = error instanceof Error ? error.message : String(error)
+              return null
+            })
         : null
     const screen =
       container.querySelector('.xterm-screen canvas') ?? container.querySelector('.xterm-screen')
@@ -115,6 +115,20 @@ async function readFirstAgentGeometry(window: Page): Promise<{
         contentWidth === null ? null : Math.max(0, contentWidth - container.clientWidth),
       verticalOverflowPx:
         contentHeight === null ? null : Math.max(0, contentHeight - container.clientHeight),
+      diagnostics: {
+        nodeId,
+        runtimeSessionId,
+        snapshotError,
+        snapshotGeometryRevision: snapshot?.geometryRevision ?? null,
+        containerWidth: container.clientWidth,
+        containerHeight: container.clientHeight,
+        metrics,
+        geometryFeedback:
+          agentNode.querySelector('[data-testid="terminal-geometry-feedback"]')?.textContent ??
+          null,
+        visibilityState: document.visibilityState,
+        hasFocus: document.hasFocus(),
+      },
     }
   })
 }
@@ -275,19 +289,28 @@ test.describe('Recovery - task Claude agent (Windows)', () => {
           })
           .toBe(true)
 
-        await expect
-          .poll(async () => {
-            const geometry = await readFirstAgentGeometry(restartedWindow)
-            return (
-              geometry.terminalSize !== null &&
-              geometry.snapshotSize !== null &&
-              geometry.terminalSize.cols === geometry.snapshotSize.cols &&
-              geometry.terminalSize.rows === geometry.snapshotSize.rows &&
-              (geometry.horizontalOverflowPx ?? Number.POSITIVE_INFINITY) <= 2 &&
-              (geometry.verticalOverflowPx ?? Number.POSITIVE_INFINITY) <= 2
-            )
+        let lastGeometry: Awaited<ReturnType<typeof readFirstAgentGeometry>> | null = null
+        try {
+          await expect
+            .poll(async () => {
+              const geometry = await readFirstAgentGeometry(restartedWindow)
+              lastGeometry = geometry
+              return (
+                geometry.terminalSize !== null &&
+                geometry.snapshotSize !== null &&
+                geometry.terminalSize.cols === geometry.snapshotSize.cols &&
+                geometry.terminalSize.rows === geometry.snapshotSize.rows &&
+                (geometry.horizontalOverflowPx ?? Number.POSITIVE_INFINITY) <= 2 &&
+                (geometry.verticalOverflowPx ?? Number.POSITIVE_INFINITY) <= 2
+              )
+            })
+            .toBe(true)
+        } catch (cause) {
+          // Preserve the failed poll's sample; a later read could hide the race.
+          throw new Error(`Restored Claude terminal geometry: ${JSON.stringify(lastGeometry)}`, {
+            cause,
           })
-          .toBe(true)
+        }
       } finally {
         await restartedApp.close()
       }

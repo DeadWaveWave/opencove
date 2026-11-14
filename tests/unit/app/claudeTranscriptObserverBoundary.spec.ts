@@ -4,6 +4,8 @@ import fs from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { execFileSync } from 'node:child_process'
+import { hookChannelFixture } from './claudeHookTranscript.helpers'
+import { getPromptSubmissionEvidence } from '../../../src/shared/runtime/agentHook/claudePromptEvidence'
 import { ClaudeHookTranscriptObserver } from '../../../src/app/main/controlSurface/agentHook/ClaudeHookTranscriptObserver'
 
 const watchers = vi.hoisted(
@@ -49,7 +51,19 @@ async function fixture() {
     claudeSessionId: 'provider',
     transcriptPath,
   })
-  return { root, project, path, observer, context, emit, hook }
+  const stale = (event: ReturnType<typeof hook> & { emittedAtMs?: number }) => {
+    const offset = emit.mock.calls.length
+    const result = observer.observe('s', event, context)
+    for (const [record] of emit.mock.calls.slice(offset)) {
+      expect(record.conversation).toBeDefined()
+      expect(record.record).toBeUndefined()
+      expect(record.lifecycle).toBeUndefined()
+      expect(record.unavailable).toBeUndefined()
+      expect(record.reading).toBeUndefined()
+    }
+    return result
+  }
+  return { root, project, path, observer, context, emit, hook, stale }
 }
 it('a retired terminal invocation cannot emit watcher records or watcher errors', async () => {
   const f = await fixture()
@@ -120,13 +134,9 @@ it('SessionEnd detaches and an ordered new SessionStart establishes a new genera
   expect(watchers[0].dispose).toHaveBeenCalledOnce()
   const nextPath = join(f.project, 'next.jsonl')
   await fs.writeFile(nextPath, '{}')
-  expect(
-    f.observer.observe(
-      's',
-      { ...f.hook(nextPath), claudeSessionId: 'next', emittedAtMs: 99 },
-      f.context,
-    ),
-  ).toBe(false)
+  expect(f.stale({ ...f.hook(nextPath), claudeSessionId: 'next', emittedAtMs: 99 })).toBe(
+    'state_only',
+  )
   expect(
     f.observer.observe(
       's',
@@ -135,9 +145,7 @@ it('SessionEnd detaches and an ordered new SessionStart establishes a new genera
     ),
   ).toBe(true)
   await vi.waitFor(() => expect(watchers).toHaveLength(2))
-  expect(
-    f.observer.observe('s', { ...f.hook(), hookEventName: 'Stop', emittedAtMs: 102 }, f.context),
-  ).toBe(false)
+  expect(f.stale({ ...f.hook(), hookEventName: 'Stop', emittedAtMs: 102 })).toBe('state_only')
   const callback = watchers[1].options.onClaudeTranscript as (record: unknown) => void
   callback({ fileIdentity: 'f2', position: 1, baseline: false })
   expect(f.emit).toHaveBeenLastCalledWith(
@@ -166,8 +174,8 @@ it('fresh starts resume a prior provider identity and retire its earlier watcher
   f.emit.mockClear()
   old({ fileIdentity: 'old', position: 10, baseline: false })
   expect(f.emit).not.toHaveBeenCalled()
-  expect(f.observer.observe('s', { ...f.hook(), emittedAtMs: 100 }, f.context)).toBe(false)
-  expect(f.observer.observe('s', { ...f.hook(), hookEventName: 'Stop' }, f.context)).toBe(false)
+  expect(f.stale({ ...f.hook(), emittedAtMs: 100 })).toBe('state_only')
+  expect(f.stale({ ...f.hook(), hookEventName: 'Stop' })).toBe('state_only')
   expect(watchers).toHaveLength(2)
 })
 it('retired observer generations evict oldest entries without disabling long-lived observation', async () => {
@@ -216,7 +224,50 @@ it('provider A can resume after provider B while both retired generations stay f
     })
   }
   expect(f.emit).not.toHaveBeenCalled()
-  expect(
-    f.observer.observe('s', { ...f.hook(), hookEventName: 'Stop', emittedAtMs: 102 }, f.context),
-  ).toBe(false)
+  expect(f.stale({ ...f.hook(), hookEventName: 'Stop', emittedAtMs: 102 })).toBe('state_only')
+})
+
+it('preserves main channel state while rejecting stale private observer IO without any clear', async () => {
+  const f = await fixture()
+  const channel = await hookChannelFixture({
+    environment: { CLAUDE_CONFIG_DIR: join(f.root, 'config') },
+  })
+  const state = vi.fn(),
+    records = vi.fn()
+  channel.channel.onState(state)
+  channel.channel.onClaudeTranscript?.(records)
+  channel.reservation.commit('s')
+  const send = (id: string, name: string, at: number) =>
+    channel.post(
+      {
+        session_id: id,
+        hook_event_name: name,
+        source: 'startup',
+        cwd: '/',
+        transcript_path: join(f.project, `${id}.jsonl`),
+      },
+      at,
+    )
+  try {
+    await send('provider', 'SessionStart', 100)
+    await send('provider', 'SessionEnd', 101)
+    await send('next', 'SessionStart', 102)
+    records.mockClear()
+    await send('provider', 'Stop', 103)
+    expect(state.mock.calls.map(([e]) => [e.hookEventName, e.state])).toEqual([
+      ['SessionEnd', 'standby'],
+      ['Stop', 'standby'],
+    ])
+    expect(getPromptSubmissionEvidence(state.mock.calls.at(-1)![0])?.providerSessionId).toBe(
+      'provider',
+    )
+    for (const [record] of records.mock.calls) {
+      expect(record.conversation).toBeDefined()
+      expect(record.lifecycle).toBeUndefined()
+      expect(record.record).toBeUndefined()
+      expect(record.unavailable).toBeUndefined()
+    }
+  } finally {
+    await channel.channel.dispose()
+  }
 })

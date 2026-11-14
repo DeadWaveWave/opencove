@@ -1,10 +1,24 @@
+import { tracksClaudeConversations } from '../../../shared/contracts/agentProviderDescriptors'
+import type { SessionInputProvenance } from '../../../shared/runtime/sessionInputProvenance'
+import type { AgentRunObservation } from '../domain/agentRunState'
+import type { PromptSubmissionEvidence } from '../../../shared/runtime/agentHook/claudePromptEvidence'
+import type { ClaudeLiveConversation } from './ClaudeLiveConversation'
+import type { ClaudeInvocationJournal } from './ClaudeInvocationJournal'
+import type { ClaudeConversationReplay } from './ClaudeConversationReplay'
 import type { ClaudeTurnContinuation } from './ClaudeTurnContinuation'
 import { createAppError } from '../../../shared/errors/appError'
 import type { AgentTurnHistory, FinalMessageSelector } from './AgentTurnHistory'
 import type { AgentRuntimeFilter, AgentRuntimeEvent } from './AgentRunStateRegistry'
 import type { AgentRunModel } from '../domain/agentRunState'
 import type { RunStateFence } from './ports/PromptDeliveryPorts'
+import { getClaudeTranscriptInput } from '../../../shared/runtime/agentHook/claudeTranscript'
 export type AgentRunEntry = {
+  /** Projection of accepted hook lifecycle, independent of completed prompt history. */
+  claudeInputSessionId?: string
+  conversation?: ClaudeLiveConversation
+  claudeJournal?: ClaudeInvocationJournal
+  conversationReplay?: ClaudeConversationReplay
+  conversationSchedule: (callback: () => void, delay: number) => () => void
   continuation: ClaudeTurnContinuation
   history: AgentTurnHistory
   model: AgentRunModel
@@ -22,15 +36,38 @@ export type AgentRunEntry = {
 }
 export type AgentRunBinding = { nodeId: string | null; projectId?: string; spaceId?: string }
 
+export function allowsClaudeClearReceipt(entry: AgentRunEntry): boolean {
+  return (
+    !entry.conversation?.journal.saturated &&
+    !!entry.conversation?.ready &&
+    !entry.remote &&
+    entry.launchKind === 'managed' &&
+    entry.hookCoverage === 'lifecycle' &&
+    (entry.hookInstallState === undefined || entry.hookInstallState === 'installed') &&
+    !entry.model.snapshot.turn
+  )
+}
+
 export function projectRunStateFence(entry: AgentRunEntry, epoch: string): RunStateFence {
   const { model } = entry
+  const saturated = !!entry.conversation?.journal.saturated
+  const quarantined = !!(
+    saturated ||
+    entry.conversation?.quarantined ||
+    (entry.conversation?.journal.view().unresolved && model.snapshot.state === 'idle')
+  )
   return structuredClone({
     epoch: epoch,
     incarnation: entry.token,
+    invocationId: model.incarnation,
     bindingGeneration: entry.bindingGeneration,
     cursor: entry.cursor,
     snapshot: model.snapshot,
-    lastTurnEnd: model.lastTurnEnd,
+    lastTurnEnd: quarantined ? null : model.lastTurnEnd,
+    conversationGeneration: entry.conversation?.generation,
+    claudeClearReady: allowsClaudeClearReceipt(entry),
+    conversationQuarantined: quarantined,
+    ...(saturated ? { claudeHistorySaturated: true } : {}),
     watermarks: Object.fromEntries(
       Object.entries(model.observations).map(([source, value]) => [source, value.sourceSequence]),
     ),
@@ -172,11 +209,118 @@ export function readRunPromptIdentity(
   fence: RunStateFence,
   epoch: string,
 ) {
-  return entry && entry.token === fence.incarnation && epoch === fence.epoch
-    ? entry.history.identity()
+  return entry &&
+    entry.token === fence.incarnation &&
+    epoch === fence.epoch &&
+    entry.conversation?.generation === fence.conversationGeneration
+    ? entry.history.identity(
+        entry.model.observations.claude_hook?.hookEventName === 'SessionEnd'
+          ? undefined
+          : entry.conversation?.clearIdentity,
+      )
     : undefined
 }
 
+/** Input ownership is current authenticated lifecycle, never an ended prompt's archive identity. */
+export function readRunInputTarget(
+  entry: AgentRunEntry | undefined,
+  fence: RunStateFence,
+  epoch: string,
+): SessionInputProvenance | undefined {
+  if (
+    !entry ||
+    entry.remote ||
+    !tracksClaudeConversations(entry.model.snapshot.provider) ||
+    entry.model.snapshot.state === 'exited' ||
+    entry.token !== fence.incarnation ||
+    epoch !== fence.epoch ||
+    entry.bindingGeneration !== fence.bindingGeneration ||
+    entry.conversation?.generation !== fence.conversationGeneration
+  ) {
+    return undefined
+  }
+  const owner = entry.conversation
+  const providerSessionId = owner
+    ? owner.checkpoint.ended
+      ? undefined
+      : owner.providerSessionId
+    : entry.claudeInputSessionId
+  return providerSessionId
+    ? {
+        providerSessionId,
+        invocationId: entry.model.incarnation,
+        conversationGeneration: owner?.generation,
+      }
+    : undefined
+}
+
+/** Runtime provenance is independent of durable conversation ownership. */
+export function setRunRuntimeContext(
+  entry: AgentRunEntry,
+  context: Pick<AgentRunEntry, 'remote' | 'launchKind' | 'hookCoverage' | 'hookInstallState'>,
+): boolean {
+  if (
+    entry.remote === context.remote &&
+    entry.launchKind === context.launchKind &&
+    entry.hookInstallState === context.hookInstallState &&
+    entry.hookCoverage === context.hookCoverage
+  ) {
+    return false
+  }
+  if (
+    context.remote ||
+    context.launchKind !== 'managed' ||
+    context.hookCoverage !== 'lifecycle' ||
+    (context.hookInstallState !== undefined && context.hookInstallState !== 'installed')
+  ) {
+    entry.conversation?.veto()
+  }
+  Object.assign(entry, context)
+  return true
+}
+
+export function runBinding(entry: AgentRunEntry): AgentRunBinding {
+  return { nodeId: entry.model.snapshot.nodeId, projectId: entry.projectId, spaceId: entry.spaceId }
+}
+
+/** The same source fence protects raw ingress and reducer/degradation side effects. */
+export function acceptsRunObservation(
+  entry: AgentRunEntry | undefined,
+  source: AgentRunObservation['source'],
+  evidence?: PromptSubmissionEvidence,
+): boolean {
+  if (
+    !entry ||
+    (evidence?.invocationId !== undefined && evidence.invocationId !== entry.model.incarnation)
+  ) {
+    return false
+  }
+  // The first authenticated clear installs an invocation-lifetime namespace fence.
+  if (!entry.conversation) {
+    return true
+  }
+  if (
+    source === 'session_file' &&
+    (evidence?.claudeAuxiliary ||
+      (evidence?.claudeTranscriptRecord &&
+        getClaudeTranscriptInput(evidence.claudeTranscriptRecord) === 'auxiliary')) &&
+    tracksClaudeConversations(entry.model.snapshot.provider)
+  ) {
+    return false
+  }
+  return (
+    (source !== 'claude_hook' &&
+      !(source === 'session_file' && tracksClaudeConversations(entry.model.snapshot.provider))) ||
+    (source === 'session_file'
+      ? evidence?.conversationCapture
+        ? entry.conversation.journal.acceptsCurrent(
+            evidence?.providerSessionId,
+            evidence.conversationCapture,
+          )
+        : entry.conversation.accepts(evidence?.conversationGeneration, evidence?.providerSessionId)
+      : entry.conversation.accepts(evidence?.conversationGeneration, evidence?.providerSessionId))
+  )
+}
 /** Query projection shares the same membership predicate as retained subscriptions. */
 export function listAgentRunSnapshots(
   entries: Iterable<AgentRunEntry>,
@@ -196,4 +340,16 @@ export function listAgentRunSnapshots(
         ),
     )
     .map(entry => structuredClone(entry.model.snapshot))
+}
+
+/** Close both the pre-clear annotation journal and an engaged conversation projection. */
+export function disposeRunConversation(entry: AgentRunEntry | undefined): void {
+  if (!entry) {
+    return
+  }
+  entry.claudeInputSessionId = undefined
+  entry.conversation?.dispose()
+  entry.claudeJournal?.dispose()
+  entry.conversationReplay?.dispose()
+  entry.conversationReplay = undefined
 }

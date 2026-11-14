@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import { mkdir, writeFile, appendFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { createInterface } from 'node:readline'
 import { randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 const [provider, cwd, mode, , initialId] = process.argv.slice(2)
@@ -60,13 +59,81 @@ async function transcript(id, promptId) {
 }
 await hook('SessionStart', current, clock++, { source: 'startup' })
 await log({ ready: true, id: current, mode, cwd })
-const input = createInterface({ input: process.stdin })
-for await (const command of input) {
+process.stdout.write('\x1b[?2004h')
+process.stdin.setRawMode?.(true)
+let pending = '',
+  clearOnPaste = false,
+  pastes = 0,
+  enters = 0,
+  pasteCounted = false,
+  swallowInput = false
+let serial = Promise.resolve()
+async function commandReceived(command) {
   const scenario = command.trim()
+  if (!scenario) {
+    enters++
+    return
+  }
+  if (scenario === 'input-counts') {
+    await log({ scenario, id: current, pastes, enters })
+    return
+  }
+  if (
+    [
+      'clear-input',
+      'clear-after-paste',
+      'delayed-input',
+      'unreported-dialog',
+      'slash-menu',
+      'pending-output',
+      'waiting-input',
+    ].includes(scenario)
+  ) {
+    const old = current
+    current = randomUUID()
+    clock = Math.max(clock + 10, Date.now())
+    const startAt = clock++,
+      submitAt = clock++
+    if (scenario === 'delayed-input') {
+      await hook('UserPromptSubmit', current, submitAt, { prompt_id: 'early', prompt: 'early' })
+      await log({ scenario: 'quarantined', id: current })
+      await delay(1000)
+    }
+    await hook('SessionStart', current, startAt, { source: 'clear' })
+    await hook('Stop', old, clock++, { prompt_id: 'late-A', last_assistant_message: 'OLD' })
+    clearOnPaste = scenario === 'clear-after-paste'
+    swallowInput = ['unreported-dialog', 'slash-menu', 'pending-output'].includes(scenario)
+    if (scenario === 'pending-output') {
+      process.stdout.write('Background output after clear\r\n')
+    }
+    if (scenario === 'waiting-input') {
+      await hook('PermissionRequest', current, clock++, { tool_name: 'Bash' })
+    }
+    await log({ scenario, id: current })
+    return
+  }
+  if (scenario.startsWith('\x1b[200~')) {
+    enters++
+    if (swallowInput) {
+      await log({ scenario: 'consumed-input', id: current, pastes, enters })
+      return
+    }
+    const text = scenario.slice(6).replace('\x1b[201~', '')
+    const promptId = randomUUID()
+    clock = Math.max(clock + 10, Date.now())
+    await hook('UserPromptSubmit', current, clock++, { prompt_id: promptId, prompt: text })
+    await transcript(current, promptId)
+    await hook('Stop', current, clock++, {
+      prompt_id: promptId,
+      last_assistant_message: 'ORDERED_REPLY',
+    })
+    await log({ scenario: 'submitted-input', id: current, text, pastes, enters })
+    return
+  }
   if (
     !['reverse', 'stop-before-start', 'same-id', 'late-old', 'held-transcript'].includes(scenario)
   ) {
-    continue
+    return
   }
   const old = current,
     next = randomUUID(),
@@ -108,3 +175,37 @@ for await (const command of input) {
   current = next
   await log({ scenario, id: next })
 }
+
+process.stdin.on('data', chunk => {
+  const text = chunk.toString()
+  serial = serial
+    .then(async () => {
+      pending += text
+      if (!pasteCounted && pending.includes('\x1b[200~') && pending.includes('\x1b[201~')) {
+        pastes++
+        pasteCounted = true
+        if (clearOnPaste) {
+          clearOnPaste = false
+          current = randomUUID()
+          clock = Math.max(clock + 10, Date.now())
+          await hook('SessionStart', current, clock++, { source: 'clear' })
+          await log({ scenario: 'cleared-after-paste', id: current, pastes, enters })
+          pending = ''
+          pasteCounted = false
+        }
+      }
+      let end
+      while ((end = pending.search(/[\r\n]/)) >= 0) {
+        const command = pending.slice(0, end)
+        pending = pending.slice(end + 1)
+        pasteCounted = false
+        // oxlint-disable-next-line no-await-in-loop -- serial PTY commands share one editor
+        await commandReceived(command)
+      }
+    })
+    .catch(error => {
+      process.stderr.write(String(error))
+      process.exitCode = 1
+      process.stdin.destroy()
+    })
+})

@@ -1,0 +1,8 @@
+export { AgentRunStateRegistry } from '../../../src/contexts/agent/application/AgentRunStateRegistry'
+export { AgentRunStateRuntime } from '../../../src/contexts/agent/application/AgentRunStateRuntime'
+export { promptAdmission } from '../../../src/contexts/agent/application/promptAdmission'
+export { createClaudeHookChannel } from '../../../src/app/main/controlSurface/agentHook/claudeHookChannel'
+export * from '../../../src/contexts/terminal/presentation/main-ipc/sessionStateWatcherPublisher'
+export { setPromptSubmissionEvidence } from '../../../src/shared/runtime/agentHook/claudePromptEvidence'
+export { parseClaudeTranscript } from '../../../src/contexts/agent/infrastructure/watchers/ClaudeTranscriptParser'
+export { ClaudeTranscriptCheckpoint } from '../../../src/contexts/agent/infrastructure/watchers/ClaudeTranscriptCheckpoint'

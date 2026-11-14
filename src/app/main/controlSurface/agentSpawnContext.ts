@@ -9,10 +9,17 @@ import { createAppError } from '../../../shared/errors/appError'
 import { spawnForbiddenDetails } from '../../../shared/errors/agentSpawnError'
 import type { LineageQuota } from '../../../shared/contracts/dto/nodeLineage'
 import type { NodeControlAppStateStore } from '../../../contexts/workspace/application/nodeControl/nodeControlState'
-const quotaReaders = new WeakMap<ControlSurface, (nodeId: string) => Promise<LineageQuota>>()
-export async function readCallerLineageQuota(surface: ControlSurface, nodeId: string) {
+const quotaReaders = new WeakMap<
+  ControlSurface,
+  (nodeId: string, includeTree: boolean) => Promise<LineageQuota>
+>()
+export async function readCallerLineageQuota(
+  surface: ControlSurface,
+  nodeId: string,
+  includeTree = false,
+) {
   try {
-    return await quotaReaders.get(surface)?.(nodeId)
+    return await quotaReaders.get(surface)?.(nodeId, includeTree)
   } catch {
     // Identity remains usable when the admission census cannot prove a quota. Never invent usage.
     return undefined
@@ -26,7 +33,9 @@ export function installAgentSpawnOwner(
 ) {
   owners.set(surface, owner)
   if (store) {
-    quotaReaders.set(surface, async nodeId => owner.lineageQuota(await store(), nodeId))
+    quotaReaders.set(surface, async (nodeId, includeTree) =>
+      owner.lineageQuota(await store(), nodeId, includeTree),
+    )
   }
 }
 export function assertGrantSpawnRoute(

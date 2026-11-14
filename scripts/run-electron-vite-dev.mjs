@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { createIsolatedProcessEnv } from './lib/isolatedProcessEnvironment.mjs'
 import { spawn } from 'node:child_process'
 import { constants as osConstants } from 'node:os'
 import { posix as posixPath, win32 as win32Path } from 'node:path'
@@ -9,7 +10,7 @@ const DEFAULT_SHUTDOWN_TIMEOUT_MS = 10_000
 const SHUTDOWN_SIGNALS = ['SIGINT', 'SIGTERM', 'SIGHUP']
 
 export function buildElectronViteDevEnv(baseEnv = process.env) {
-  const env = { ...baseEnv }
+  const env = createIsolatedProcessEnv({}, baseEnv)
   delete env.ELECTRON_RUN_AS_NODE
   return env
 }
