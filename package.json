@@ -114,6 +114,7 @@
     "compat:check": "node scripts/check-compat-expiry.mjs",
     "line-check": "node scripts/check-max-lines.mjs",
     "canvas:state-check": "node scripts/check-canvas-state.mjs",
+    "ratchet:rises": "node scripts/ratchet-rises.mjs",
     "canvas:state-ratchet": "node scripts/check-canvas-state.mjs --update-ratchet",
     "ui:style-check": "node scripts/check-ui-styles.mjs",
     "ui:style-ratchet": "node scripts/check-ui-styles.mjs --update-ratchet",
