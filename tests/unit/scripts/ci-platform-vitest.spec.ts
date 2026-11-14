@@ -89,7 +89,7 @@ describe('Windows job selects its Vitest files by pattern', () => {
     const step = stepNamed(job, 'Windows-only Vitest files')
     const excluded = [...step.body.matchAll(/--exclude\s+(\S+)/g)].map(match => match[1])
     expect(excluded).toContain(NATIVE_ARGUMENTS)
-    for (const file of excluded.filter(file => file !== NATIVE_ARGUMENTS)) {
+    for (const file of excluded.filter(path => path !== NATIVE_ARGUMENTS)) {
       expect(step.comment, `exclusion ${file} needs a #issue in the comment`).toMatch(/#\d+/)
     }
   })
