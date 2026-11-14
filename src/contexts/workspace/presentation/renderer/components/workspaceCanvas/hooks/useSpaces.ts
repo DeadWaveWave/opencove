@@ -7,7 +7,6 @@ import type {
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type {
   ContextMenuState,
-  EmptySelectionPromptState,
   ShowWorkspaceCanvasMessage,
   SpaceVisual,
   SpaceTargetMountPickerState,
@@ -40,7 +39,6 @@ interface UseWorkspaceCanvasSpacesParams {
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
-  setEmptySelectionPrompt: React.Dispatch<React.SetStateAction<EmptySelectionPromptState | null>>
   onShowMessage?: ShowWorkspaceCanvasMessage
 }
 
@@ -62,7 +60,6 @@ export function useWorkspaceCanvasSpaces({
   onSpacesChange,
   onRequestPersistFlush,
   setContextMenu,
-  setEmptySelectionPrompt,
   onShowMessage,
 }: UseWorkspaceCanvasSpacesParams): {
   editingSpaceId: string | null
@@ -193,7 +190,6 @@ export function useWorkspaceCanvasSpaces({
     onSpacesChange,
     onRequestPersistFlush,
     setContextMenu,
-    setEmptySelectionPrompt,
     cancelSpaceRename,
     onShowMessage,
   })
@@ -214,7 +210,6 @@ export function useWorkspaceCanvasSpaces({
     onSpacesChange,
     onRequestPersistFlush,
     setContextMenu,
-    setEmptySelectionPrompt,
     setSpaceTargetMountPicker,
     cancelSpaceRename,
     onShowMessage,
@@ -233,9 +228,8 @@ export function useWorkspaceCanvasSpaces({
       setEditingSpaceId(space.id)
       setSpaceRenameDraft(space.name)
       setContextMenu(null)
-      setEmptySelectionPrompt(null)
     },
-    [setContextMenu, setEmptySelectionPrompt, spaces],
+    [setContextMenu, spaces],
   )
 
   const commitSpaceRename = useCallback(

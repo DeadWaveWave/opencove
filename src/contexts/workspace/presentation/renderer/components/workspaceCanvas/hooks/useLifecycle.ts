@@ -7,12 +7,7 @@ import {
   type DetectedCanvasInputMode,
 } from '../../../utils/inputModality'
 import { isEditableDomTarget } from '../domTargets'
-import type {
-  ContextMenuState,
-  EmptySelectionPromptState,
-  SelectionDraftState,
-  TrackpadGestureLockState,
-} from '../types'
+import type { ContextMenuState, SelectionDraftState, TrackpadGestureLockState } from '../types'
 
 interface UseWorkspaceCanvasLifecycleParams {
   workspaceId: string
@@ -21,7 +16,6 @@ interface UseWorkspaceCanvasLifecycleParams {
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
   setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
-  setEmptySelectionPrompt: React.Dispatch<React.SetStateAction<EmptySelectionPromptState | null>>
   cancelSpaceRename: () => void
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
   trackpadGestureLockRef: React.MutableRefObject<TrackpadGestureLockState | null>
@@ -47,7 +41,6 @@ export function useWorkspaceCanvasLifecycle({
   setSelectedNodeIds,
   setSelectedSpaceIds,
   setContextMenu,
-  setEmptySelectionPrompt,
   cancelSpaceRename,
   selectionDraftRef,
   trackpadGestureLockRef,
@@ -76,7 +69,6 @@ export function useWorkspaceCanvasLifecycle({
     setSelectedNodeIds([])
     setSelectedSpaceIds([])
     setContextMenu(null)
-    setEmptySelectionPrompt(null)
     cancelSpaceRename()
     selectionDraftRef.current = null
     trackpadGestureLockRef.current = null
@@ -86,7 +78,6 @@ export function useWorkspaceCanvasLifecycle({
     selectionDraftRef,
     setIsCanvasWheelGestureCaptureActive,
     setContextMenu,
-    setEmptySelectionPrompt,
     setSelectedNodeIds,
     setSelectedSpaceIds,
     trackpadGestureLockRef,

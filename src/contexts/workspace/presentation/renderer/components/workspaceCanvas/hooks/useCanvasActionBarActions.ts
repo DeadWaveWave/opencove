@@ -106,19 +106,16 @@ export function useWorkspaceCanvasActionBar({
   createSpaceAtPoint,
   createPluginAtPoint,
   setContextMenu,
-  setEmptySelectionPrompt,
   cancelSpaceRename,
   spacesRef,
 }: Omit<Parameters<typeof useWorkspaceCanvasActionBarActions>[0], 'clearTransientUi'> & {
   setContextMenu: (next: null) => void
-  setEmptySelectionPrompt: (next: null) => void
   cancelSpaceRename: () => void
 }) {
   const clearTransientUi = useCallback(() => {
     setContextMenu(null)
-    setEmptySelectionPrompt(null)
     cancelSpaceRename()
-  }, [cancelSpaceRename, setContextMenu, setEmptySelectionPrompt])
+  }, [cancelSpaceRename, setContextMenu])
 
   return {
     ...useWorkspaceCanvasActionBarActions({

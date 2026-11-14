@@ -1,6 +1,6 @@
 import React from 'react'
 import { act, render } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { CanvasUiCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStore.ui'
 import {
   CanvasStoreProvider,
@@ -78,12 +78,11 @@ describe('CanvasStoreProvider', () => {
 
   it('throws outside the provider', () => {
     const Probe = createProbe({ menus: [], commands: null, readUi: null })
-    const consoleError = console.error
-    console.error = () => undefined
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     try {
       expect(() => render(<Probe />)).toThrow('canvas store hooks need CanvasStoreProvider')
     } finally {
-      console.error = consoleError
+      consoleError.mockRestore()
     }
   })
 })

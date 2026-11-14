@@ -93,7 +93,6 @@ describe('workspace canvas space location zoom', () => {
 
     function Harness(): React.JSX.Element {
       const [, setContextMenu] = React.useState<unknown>(null)
-      const [, setEmptySelectionPrompt] = React.useState<unknown>(null)
 
       const { focusSpaceInViewport } = useWorkspaceCanvasSpaces({
         workspaceId: 'workspace-1',
@@ -111,7 +110,6 @@ describe('workspace canvas space location zoom', () => {
         selectedNodeIdsRef: { current: [] },
         onSpacesChange: () => undefined,
         setContextMenu: setContextMenu as never,
-        setEmptySelectionPrompt: setEmptySelectionPrompt as never,
       })
 
       return (

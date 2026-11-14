@@ -117,7 +117,6 @@ export function useWorkspaceCanvasShortcutActions({
   environmentVariables,
   canvasRef,
   setContextMenu,
-  setEmptySelectionPrompt,
   cancelSpaceRename,
   reactFlow,
   spacesRef,
@@ -156,9 +155,6 @@ export function useWorkspaceCanvasShortcutActions({
   environmentVariables?: Record<string, string>
   canvasRef: React.RefObject<HTMLDivElement | null>
   setContextMenu: React.Dispatch<React.SetStateAction<import('../types').ContextMenuState | null>>
-  setEmptySelectionPrompt: React.Dispatch<
-    React.SetStateAction<import('../types').EmptySelectionPromptState | null>
-  >
   cancelSpaceRename: () => void
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
@@ -209,7 +205,6 @@ export function useWorkspaceCanvasShortcutActions({
     const anchor = reactFlow.screenToFlowPosition(clientPoint)
 
     setContextMenu(null)
-    setEmptySelectionPrompt(null)
     cancelSpaceRename()
 
     createNoteNodeAtFlowPosition({
@@ -232,7 +227,6 @@ export function useWorkspaceCanvasShortcutActions({
     onSpacesChange,
     reactFlow,
     setContextMenu,
-    setEmptySelectionPrompt,
     setNodes,
     spacesRef,
   ])
@@ -247,7 +241,6 @@ export function useWorkspaceCanvasShortcutActions({
     const anchor = reactFlow.screenToFlowPosition(clientPoint)
 
     setContextMenu(null)
-    setEmptySelectionPrompt(null)
     cancelSpaceRename()
 
     await createTerminalNodeAtFlowPosition({
@@ -279,7 +272,6 @@ export function useWorkspaceCanvasShortcutActions({
     onSpacesChange,
     reactFlow,
     setContextMenu,
-    setEmptySelectionPrompt,
     setNodes,
     spacesRef,
     workspacePath,
@@ -296,22 +288,13 @@ export function useWorkspaceCanvasShortcutActions({
       resolveCanvasVisualCenter(canvas.getBoundingClientRect()),
     )
     setContextMenu(null)
-    setEmptySelectionPrompt(null)
     cancelSpaceRename()
     await launchAgentAtFlowPosition(anchor)
-  }, [
-    canvasRef,
-    reactFlow,
-    setContextMenu,
-    setEmptySelectionPrompt,
-    cancelSpaceRename,
-    launchAgentAtFlowPosition,
-  ])
+  }, [canvasRef, reactFlow, setContextMenu, cancelSpaceRename, launchAgentAtFlowPosition])
 
   const navigateNode = useCallback(
     (direction: SpatialNavigationDirection): void => {
       setContextMenu(null)
-      setEmptySelectionPrompt(null)
       cancelSpaceRename()
 
       const canvas = canvasRef.current
@@ -359,7 +342,6 @@ export function useWorkspaceCanvasShortcutActions({
       selectNode,
       selectedNodeIdsRef,
       setContextMenu,
-      setEmptySelectionPrompt,
       setActiveSpaceIdFromNodeNavigation,
       spacesRef,
     ],
@@ -368,7 +350,6 @@ export function useWorkspaceCanvasShortcutActions({
   const navigateSpace = useCallback(
     (direction: SpatialNavigationDirection): void => {
       setContextMenu(null)
-      setEmptySelectionPrompt(null)
       cancelSpaceRename()
 
       const canvas = canvasRef.current
@@ -403,7 +384,6 @@ export function useWorkspaceCanvasShortcutActions({
       reactFlow,
       selectedNodeIdsRef,
       setContextMenu,
-      setEmptySelectionPrompt,
       spaceNavigationAnchorIdRef,
       spacesRef,
     ],

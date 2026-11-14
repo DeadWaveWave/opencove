@@ -20,7 +20,6 @@ type Options = Pick<
   | 'onSpacesChange'
   | 'onRequestPersistFlush'
   | 'setContextMenu'
-  | 'setEmptySelectionPrompt'
   | 'setSpaceTargetMountPicker'
   | 'cancelSpaceRename'
   | 'onShowMessage'
@@ -35,7 +34,6 @@ export function useCreateEmptySpace({
   onSpacesChange,
   onRequestPersistFlush,
   setContextMenu,
-  setEmptySelectionPrompt,
   setSpaceTargetMountPicker,
   cancelSpaceRename,
   onShowMessage,
@@ -104,7 +102,6 @@ export function useCreateEmptySpace({
       if (resolved.canPlace !== true) {
         onShowMessage?.(t('messages.noWindowSlotNearby'), 'warning')
         setContextMenu(null)
-        setEmptySelectionPrompt(null)
         cancelSpaceRename()
         return null
       }
@@ -129,7 +126,6 @@ export function useCreateEmptySpace({
       onSpacesChange(nextSpaces)
       onRequestPersistFlush?.()
       setContextMenu(null)
-      setEmptySelectionPrompt(null)
       setSpaceTargetMountPicker(null)
       cancelSpaceRename()
       return nextSpaceId
@@ -143,7 +139,6 @@ export function useCreateEmptySpace({
       onSpacesChange,
       resolveDefaultSpaceName,
       setContextMenu,
-      setEmptySelectionPrompt,
       setSpaceTargetMountPicker,
       spacesRef,
       standardWindowSizeBucket,

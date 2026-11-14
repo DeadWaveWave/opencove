@@ -12,7 +12,6 @@ import type {
 import type {
   ContextMenuState,
   CreateNodeInput,
-  EmptySelectionPromptState,
   NodeCreationPlacementOptions,
   SelectionDraftState,
   ShowWorkspaceCanvasMessage,
@@ -43,7 +42,6 @@ export interface UseWorkspaceCanvasInteractionsParams {
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
   setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
-  setEmptySelectionPrompt: React.Dispatch<React.SetStateAction<EmptySelectionPromptState | null>>
   cancelSpaceRename: () => void
   selectedNodeIdsRef: React.MutableRefObject<string[]>
   selectedSpaceIdsRef: React.MutableRefObject<string[]>

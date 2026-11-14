@@ -12,7 +12,6 @@ type FlowNodeCreationParams = Pick<
   | 'workspaceId'
   | 'contextMenu'
   | 'setContextMenu'
-  | 'setEmptySelectionPrompt'
   | 'cancelSpaceRename'
   | 'standardWindowSizeBucket'
   | 'createNoteNode'
@@ -29,7 +28,6 @@ export function useWorkspaceCanvasFlowNodeCreation({
   workspaceId,
   contextMenu,
   setContextMenu,
-  setEmptySelectionPrompt,
   cancelSpaceRename,
   standardWindowSizeBucket,
   createNoteNode,
@@ -44,7 +42,6 @@ export function useWorkspaceCanvasFlowNodeCreation({
   const createNoteNodeAtFlowPoint = useCallback(
     (anchor: Point): void => {
       setContextMenu(null)
-      setEmptySelectionPrompt(null)
       cancelSpaceRename()
       createNoteNodeAtFlowPosition({
         workspaceId,
@@ -63,7 +60,6 @@ export function useWorkspaceCanvasFlowNodeCreation({
       nodesRef,
       onSpacesChange,
       setContextMenu,
-      setEmptySelectionPrompt,
       setNodes,
       spacesRef,
       standardWindowSizeBucket,
@@ -77,7 +73,6 @@ export function useWorkspaceCanvasFlowNodeCreation({
       }
 
       setContextMenu(null)
-      setEmptySelectionPrompt(null)
       cancelSpaceRename()
       createWebsiteNodeAtFlowPosition({
         workspaceId,
@@ -99,7 +94,6 @@ export function useWorkspaceCanvasFlowNodeCreation({
       nodesRef,
       onSpacesChange,
       setContextMenu,
-      setEmptySelectionPrompt,
       setNodes,
       spacesRef,
       standardWindowSizeBucket,

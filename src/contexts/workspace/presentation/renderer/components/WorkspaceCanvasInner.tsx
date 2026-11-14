@@ -100,7 +100,6 @@ export function WorkspaceCanvasInner({
     onSpacesChange,
     onRequestPersistFlush,
     setContextMenu: canvasState.setContextMenu,
-    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     onShowMessage,
   })
   const { spaceFramePreview, handleSpaceDragHandlePointerDown } =
@@ -120,7 +119,6 @@ export function WorkspaceCanvasInner({
       onRequestPersistFlush,
       setContextMenu: canvasState.setContextMenu,
       cancelSpaceRename: spacesApi.cancelSpaceRename,
-      setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     })
   const {
     finalizeDraggedNodeDrop,
@@ -248,7 +246,6 @@ export function WorkspaceCanvasInner({
     setSelectedNodeIds: canvasState.setSelectedNodeIds,
     setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
     setContextMenu: canvasState.setContextMenu,
-    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     cancelSpaceRename: spacesApi.cancelSpaceRename,
     selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
     selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
@@ -283,7 +280,6 @@ export function WorkspaceCanvasInner({
       nodeStore.createPluginNode(anchor, pluginId)
     },
     setContextMenu: canvasState.setContextMenu,
-    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     cancelSpaceRename: spacesApi.cancelSpaceRename,
     spacesRef: canvasState.spacesRef,
   })
@@ -303,7 +299,6 @@ export function WorkspaceCanvasInner({
     environmentVariables,
     canvasRef: canvasState.canvasRef,
     setContextMenu: canvasState.setContextMenu,
-    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     cancelSpaceRename: spacesApi.cancelSpaceRename,
     reactFlow,
     spacesRef: canvasState.spacesRef,
@@ -354,7 +349,6 @@ export function WorkspaceCanvasInner({
     flowNodes: canvasState.flowNodes,
     contextMenu: canvasState.contextMenu,
     setContextMenu: canvasState.setContextMenu,
-    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     cancelSpaceRename: spacesApi.cancelSpaceRename,
     workspacePath,
     spacesRef: canvasState.spacesRef,

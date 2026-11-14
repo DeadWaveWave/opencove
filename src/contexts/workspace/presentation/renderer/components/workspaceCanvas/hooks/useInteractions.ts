@@ -37,7 +37,6 @@ export function useWorkspaceCanvasInteractions({
   setSelectedNodeIds,
   setSelectedSpaceIds,
   setContextMenu,
-  setEmptySelectionPrompt,
   cancelSpaceRename,
   selectedNodeIdsRef,
   selectedSpaceIdsRef,
@@ -105,9 +104,8 @@ export function useWorkspaceCanvasInteractions({
         y,
         nodeId,
       })
-      setEmptySelectionPrompt(null)
     },
-    [setContextMenu, setEmptySelectionPrompt],
+    [setContextMenu],
   )
 
   const handleSelectionContextMenu = useCallback(
@@ -185,17 +183,9 @@ export function useWorkspaceCanvasInteractions({
         flowY: flowPosition.y,
         creationAnchor: resolveCreationAnchor(clientPoint),
       })
-      setEmptySelectionPrompt(null)
       cancelSpaceRename()
     },
-    [
-      cancelSpaceRename,
-      queueIgnoreNextPaneClick,
-      reactFlow,
-      resolveCreationAnchor,
-      setContextMenu,
-      setEmptySelectionPrompt,
-    ],
+    [cancelSpaceRename, queueIgnoreNextPaneClick, reactFlow, resolveCreationAnchor, setContextMenu],
   )
 
   const {
@@ -216,7 +206,6 @@ export function useWorkspaceCanvasInteractions({
     setSelectedNodeIds,
     setSelectedSpaceIds,
     setContextMenu,
-    setEmptySelectionPrompt,
   })
 
   const paneDragRef = useRef<{ startX: number; startY: number; didMove: boolean } | null>(null)
@@ -311,7 +300,6 @@ export function useWorkspaceCanvasInteractions({
 
       clearNodeSelection()
       setContextMenu(null)
-      setEmptySelectionPrompt(null)
       cancelSpaceRename()
 
       createNoteNodeAtFlowPosition({
@@ -334,7 +322,6 @@ export function useWorkspaceCanvasInteractions({
       onSpacesChange,
       resolveCreationAnchor,
       setContextMenu,
-      setEmptySelectionPrompt,
       setNodes,
       spacesRef,
       standardWindowSizeBucket,
@@ -352,10 +339,9 @@ export function useWorkspaceCanvasInteractions({
       }
 
       clearNodeSelection()
-      setEmptySelectionPrompt(null)
       cancelSpaceRename()
     },
-    [cancelSpaceRename, clearNodeSelection, ignoreNextPaneClickRef, setEmptySelectionPrompt],
+    [cancelSpaceRename, clearNodeSelection, ignoreNextPaneClickRef],
   )
   const { createTerminalNode, createTerminalNodeAtFlowPoint } = useWorkspaceCanvasTerminalCreation({
     contextMenu,
@@ -379,7 +365,6 @@ export function useWorkspaceCanvasInteractions({
       workspaceId,
       contextMenu,
       setContextMenu,
-      setEmptySelectionPrompt,
       cancelSpaceRename,
       standardWindowSizeBucket,
       createNoteNode,

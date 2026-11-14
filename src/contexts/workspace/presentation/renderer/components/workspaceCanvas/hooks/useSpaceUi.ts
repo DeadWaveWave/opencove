@@ -4,7 +4,6 @@ import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/contrac
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type {
   ContextMenuState,
-  EmptySelectionPromptState,
   SpaceWorktreeOperationPhase,
   SpaceWorktreeOperationState,
 } from '../types'
@@ -12,7 +11,6 @@ import type {
 export function useWorkspaceCanvasSpaceUi({
   contextMenu,
   setContextMenu,
-  setEmptySelectionPrompt,
   cancelSpaceRename,
   workspacePath,
   spacesRef,
@@ -23,7 +21,6 @@ export function useWorkspaceCanvasSpaceUi({
 }: {
   contextMenu: ContextMenuState | null
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
-  setEmptySelectionPrompt: React.Dispatch<React.SetStateAction<EmptySelectionPromptState | null>>
   cancelSpaceRename: () => void
   workspacePath: string
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
@@ -85,9 +82,8 @@ export function useWorkspaceCanvasSpaceUi({
 
   const onCanvasClick = useCallback(() => {
     setSpaceActionMenu(null)
-    setEmptySelectionPrompt(null)
     cancelSpaceRename()
-  }, [cancelSpaceRename, setEmptySelectionPrompt])
+  }, [cancelSpaceRename])
 
   const closeContextMenu = useCallback(() => {
     setContextMenu(null)

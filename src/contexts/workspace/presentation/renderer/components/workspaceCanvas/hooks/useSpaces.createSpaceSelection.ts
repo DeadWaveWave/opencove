@@ -5,7 +5,6 @@ import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import type { TerminalNodeData, WorkspaceSpaceRect } from '../../../types'
 import type {
   ContextMenuState,
-  EmptySelectionPromptState,
   ShowWorkspaceCanvasMessage,
   SpaceTargetMountPickerState,
 } from '../types'
@@ -28,7 +27,6 @@ export function createSpaceFromSelectedNodesWithMounts({
   workspacePath,
   createSpace,
   setContextMenu,
-  setEmptySelectionPrompt,
   setSpaceTargetMountPicker,
   cancelSpaceRename,
   onShowMessage,
@@ -40,7 +38,6 @@ export function createSpaceFromSelectedNodesWithMounts({
   workspacePath: string
   createSpace: (payload: CreateSpacePayload) => void
   setContextMenu: Dispatch<SetStateAction<ContextMenuState | null>>
-  setEmptySelectionPrompt: Dispatch<SetStateAction<EmptySelectionPromptState | null>>
   setSpaceTargetMountPicker: Dispatch<SetStateAction<SpaceTargetMountPickerState | null>>
   cancelSpaceRename: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
@@ -100,7 +97,6 @@ export function createSpaceFromSelectedNodesWithMounts({
         if (mountResult.mounts.length === 0) {
           onShowMessage?.(t('messages.projectHasNoMounts'), 'warning')
           setContextMenu(null)
-          setEmptySelectionPrompt(null)
           cancelSpaceRename()
           return
         }
@@ -139,13 +135,11 @@ export function createSpaceFromSelectedNodesWithMounts({
           })(),
         })
         setContextMenu(null)
-        setEmptySelectionPrompt(null)
         cancelSpaceRename()
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         onShowMessage?.(t('messages.mountListFailed', { message }), 'error')
         setContextMenu(null)
-        setEmptySelectionPrompt(null)
         cancelSpaceRename()
       }
     })()

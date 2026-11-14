@@ -10,7 +10,6 @@ import type { WorkspaceSnapGuide } from '../../../utils/workspaceSnap'
 import type {
   CanvasWheelGestureSessionState,
   ContextMenuState,
-  EmptySelectionPromptState,
   SelectionDraftState,
 } from '../types'
 import { selectDragSurfaceSelectionMode } from '../../terminalNode/reactFlowState'
@@ -79,7 +78,6 @@ export function useWorkspaceCanvasState({
   syncSelectedNodeIds: (nodeIds: string[]) => void
   selectedSpaceIds: string[]
   setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
-  setEmptySelectionPrompt: React.Dispatch<React.SetStateAction<EmptySelectionPromptState | null>>
   detectedCanvasInputMode: DetectedCanvasInputMode
   setDetectedCanvasInputMode: React.Dispatch<React.SetStateAction<DetectedCanvasInputMode>>
   isShiftPressed: boolean
@@ -115,7 +113,6 @@ export function useWorkspaceCanvasState({
   const [isMinimapVisible, setIsMinimapVisible] = useState(persistedMinimapVisible)
   const [selectedNodeIds, setSelectedNodeIdsState] = useState<string[]>([])
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([])
-  const [, setEmptySelectionPrompt] = useState<EmptySelectionPromptState | null>(null)
   const [selectionDraftUi, setSelectionDraftUi] = useState<SelectionDraftUiState | null>(null)
   const [detectedCanvasInputMode, setDetectedCanvasInputMode] =
     useState<DetectedCanvasInputMode>('mouse')
@@ -158,9 +155,6 @@ export function useWorkspaceCanvasState({
       }
 
       setSelectedNodeIds(nodeIds)
-      if (nodeIds.length > 0) {
-        setEmptySelectionPrompt(null)
-      }
     },
     [setSelectedNodeIds],
   )
@@ -238,7 +232,6 @@ export function useWorkspaceCanvasState({
     syncSelectedNodeIds,
     selectedSpaceIds,
     setSelectedSpaceIds,
-    setEmptySelectionPrompt,
     detectedCanvasInputMode,
     setDetectedCanvasInputMode,
     isShiftPressed,

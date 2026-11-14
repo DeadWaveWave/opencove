@@ -4,11 +4,7 @@ import type { Node } from '@xyflow/react'
 import { createChildSpace } from '@contexts/space/application/createChildSpace'
 import { resolveInnermostSpaceAtPoint } from '@contexts/space/application/spaceContainment'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
-import type {
-  ContextMenuState,
-  EmptySelectionPromptState,
-  ShowWorkspaceCanvasMessage,
-} from '../types'
+import type { ContextMenuState, ShowWorkspaceCanvasMessage } from '../types'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -50,7 +46,6 @@ export function useWorkspaceCanvasCreateChildSpace({
   onSpacesChange,
   onRequestPersistFlush,
   setContextMenu,
-  setEmptySelectionPrompt,
   cancelSpaceRename,
   onShowMessage,
 }: {
@@ -61,7 +56,6 @@ export function useWorkspaceCanvasCreateChildSpace({
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
-  setEmptySelectionPrompt: React.Dispatch<React.SetStateAction<EmptySelectionPromptState | null>>
   cancelSpaceRename: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
 }): {
@@ -170,7 +164,6 @@ export function useWorkspaceCanvasCreateChildSpace({
 
       onRequestPersistFlush?.()
       setContextMenu(null)
-      setEmptySelectionPrompt(null)
       cancelSpaceRename()
       return result.childSpace.id
     },
@@ -181,7 +174,6 @@ export function useWorkspaceCanvasCreateChildSpace({
       onShowMessage,
       onSpacesChange,
       setContextMenu,
-      setEmptySelectionPrompt,
       setNodes,
       spacesRef,
       t,

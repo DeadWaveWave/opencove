@@ -34,7 +34,6 @@ function setup(invoke = vi.fn().mockResolvedValue({ mounts: [remoteMount] })) {
     onSpacesChange: vi.fn(),
     onRequestPersistFlush: vi.fn(),
     setContextMenu: vi.fn(),
-    setEmptySelectionPrompt: vi.fn(),
     setSpaceTargetMountPicker: vi.fn(),
     cancelSpaceRename: vi.fn(),
     onShowMessage: vi.fn(),

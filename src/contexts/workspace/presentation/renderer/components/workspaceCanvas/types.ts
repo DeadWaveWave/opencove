@@ -110,12 +110,6 @@ export interface SelectionDraftState {
   phase: 'active' | 'settling'
 }
 
-export interface EmptySelectionPromptState {
-  x: number
-  y: number
-  rect: WorkspaceSpaceRect
-}
-
 export interface SpaceTargetMountPickerState {
   nodeIds: string[]
   rect: WorkspaceSpaceRect | null

@@ -6,7 +6,6 @@ import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presen
 
 function HookHost(): React.JSX.Element {
   const [contextMenu, setContextMenu] = React.useState(null)
-  const [, setEmptySelectionPrompt] = React.useState(null)
 
   const spacesRef = React.useRef<WorkspaceSpaceState[]>([
     {
@@ -23,7 +22,6 @@ function HookHost(): React.JSX.Element {
   const ui = useWorkspaceCanvasSpaceUi({
     contextMenu,
     setContextMenu,
-    setEmptySelectionPrompt,
     cancelSpaceRename: () => undefined,
     workspacePath: '/tmp/opencove-workspace',
     spacesRef,

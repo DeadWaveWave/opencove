@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useStoreApi, type Node, type ReactFlowInstance } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import type { WorkspaceSnapGuide } from '../../../utils/workspaceSnap'
-import type { ContextMenuState, EmptySelectionPromptState, SpaceDragState } from '../types'
+import type { ContextMenuState, SpaceDragState } from '../types'
 import {
   resolveInteractiveSpaceFrameHandle,
   type SpaceFrameHandle,
@@ -37,7 +37,6 @@ interface UseSpaceDragParams {
   onRequestPersistFlush?: () => void
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
   cancelSpaceRename: () => void
-  setEmptySelectionPrompt: React.Dispatch<React.SetStateAction<EmptySelectionPromptState | null>>
 }
 
 export function useWorkspaceCanvasSpaceDrag({
@@ -56,7 +55,6 @@ export function useWorkspaceCanvasSpaceDrag({
   onRequestPersistFlush,
   setContextMenu,
   cancelSpaceRename,
-  setEmptySelectionPrompt,
 }: UseSpaceDragParams): {
   spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
   handleSpaceDragHandlePointerDown: (
@@ -466,7 +464,6 @@ export function useWorkspaceCanvasSpaceDrag({
       setSpaceFramePreview(new Map([[spaceId, targetSpace.rect]]))
       setContextMenu(null)
       cancelSpaceRename()
-      setEmptySelectionPrompt(null)
       setSnapGuides(null)
     },
     [
@@ -477,7 +474,6 @@ export function useWorkspaceCanvasSpaceDrag({
       selectedNodeIdsRef,
       selectedSpaceIdsRef,
       setContextMenu,
-      setEmptySelectionPrompt,
       setSnapGuides,
       spacesRef,
       workspaceId,

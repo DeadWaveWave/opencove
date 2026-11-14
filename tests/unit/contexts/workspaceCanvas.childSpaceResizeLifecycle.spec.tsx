@@ -63,7 +63,6 @@ function renderNestedResize() {
         onRequestPersistFlush: persist,
         setContextMenu: () => {},
         cancelSpaceRename: () => {},
-        setEmptySelectionPrompt: () => {},
       })
       return { ...drag, spaces: spacesRef.current, nodes: nodesRef.current }
     },

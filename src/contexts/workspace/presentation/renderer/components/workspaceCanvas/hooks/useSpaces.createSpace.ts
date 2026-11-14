@@ -6,7 +6,6 @@ import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolv
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import type {
   ContextMenuState,
-  EmptySelectionPromptState,
   ShowWorkspaceCanvasMessage,
   SpaceTargetMountPickerState,
 } from '../types'
@@ -35,7 +34,6 @@ export function useWorkspaceCanvasCreateSpace({
   onSpacesChange,
   onRequestPersistFlush,
   setContextMenu,
-  setEmptySelectionPrompt,
   setSpaceTargetMountPicker,
   cancelSpaceRename,
   onShowMessage,
@@ -52,7 +50,6 @@ export function useWorkspaceCanvasCreateSpace({
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
-  setEmptySelectionPrompt: React.Dispatch<React.SetStateAction<EmptySelectionPromptState | null>>
   setSpaceTargetMountPicker: React.Dispatch<
     React.SetStateAction<SpaceTargetMountPickerState | null>
   >
@@ -98,7 +95,6 @@ export function useWorkspaceCanvasCreateSpace({
       if (normalizedNodeIds.length === 0) {
         onShowMessage?.(t('messages.spaceRequiresNode'), 'warning')
         setContextMenu(null)
-        setEmptySelectionPrompt(null)
         return
       }
 
@@ -336,7 +332,6 @@ export function useWorkspaceCanvasCreateSpace({
       onSpacesChange(nextSpaces)
       onRequestPersistFlush?.()
       setContextMenu(null)
-      setEmptySelectionPrompt(null)
       setSpaceTargetMountPicker(null)
       cancelSpaceRename()
     },
@@ -348,7 +343,6 @@ export function useWorkspaceCanvasCreateSpace({
       onSpacesChange,
       resolveDefaultSpaceName,
       setContextMenu,
-      setEmptySelectionPrompt,
       setNodes,
       setSpaceTargetMountPicker,
       spacesRef,
@@ -384,7 +378,6 @@ export function useWorkspaceCanvasCreateSpace({
       workspacePath,
       createSpace,
       setContextMenu,
-      setEmptySelectionPrompt,
       setSpaceTargetMountPicker,
       cancelSpaceRename,
       onShowMessage,
@@ -399,7 +392,6 @@ export function useWorkspaceCanvasCreateSpace({
     reactFlow,
     selectedNodeIdsRef,
     setContextMenu,
-    setEmptySelectionPrompt,
     setSpaceTargetMountPicker,
     spacesRef,
     t,
@@ -416,7 +408,6 @@ export function useWorkspaceCanvasCreateSpace({
     onSpacesChange,
     onRequestPersistFlush,
     setContextMenu,
-    setEmptySelectionPrompt,
     setSpaceTargetMountPicker,
     cancelSpaceRename,
     onShowMessage,

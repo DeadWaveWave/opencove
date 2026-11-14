@@ -12,7 +12,7 @@ import { useWorkspaceCanvasTaskAgentEdges } from './useTaskAgentEdges'
 import { useWorkspaceCanvasViewportMoveEnd } from './useViewportMoveEnd'
 import { useWorkspaceCanvasSpaceUi } from './useSpaceUi'
 import { resolveWorkspaceMinimapNodeColor } from '../minimap'
-import type { ContextMenuState, EmptySelectionPromptState } from '../types'
+import type { ContextMenuState } from '../types'
 
 export function useWorkspaceCanvasViewModel({
   agentSettings,
@@ -21,7 +21,6 @@ export function useWorkspaceCanvasViewModel({
   flowNodes,
   contextMenu,
   setContextMenu,
-  setEmptySelectionPrompt,
   cancelSpaceRename,
   workspacePath,
   spacesRef,
@@ -36,7 +35,6 @@ export function useWorkspaceCanvasViewModel({
   flowNodes: Node<TerminalNodeData>[]
   contextMenu: ContextMenuState | null
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
-  setEmptySelectionPrompt: React.Dispatch<React.SetStateAction<EmptySelectionPromptState | null>>
   cancelSpaceRename: () => void
   workspacePath: string
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
@@ -69,7 +67,6 @@ export function useWorkspaceCanvasViewModel({
   const spaceUi = useWorkspaceCanvasSpaceUi({
     contextMenu,
     setContextMenu,
-    setEmptySelectionPrompt,
     cancelSpaceRename,
     workspacePath,
     spacesRef,

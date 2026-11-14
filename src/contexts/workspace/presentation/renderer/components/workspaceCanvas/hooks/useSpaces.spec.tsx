@@ -3,7 +3,7 @@ import { render, waitFor } from '@testing-library/react'
 import { ReactFlowProvider, type Node, type ReactFlowInstance } from '@xyflow/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
-import type { ContextMenuState, EmptySelectionPromptState } from '../types'
+import type { ContextMenuState } from '../types'
 import { useWorkspaceCanvasSpaces } from './useSpaces'
 
 const NODE: Node<TerminalNodeData> = {
@@ -59,7 +59,6 @@ function TestHarness({
   const spacesRef = useRef(spaces)
   const selectedNodeIdsRef = useRef<string[]>([])
   const [, setContextMenu] = useState<ContextMenuState | null>(null)
-  const [, setEmptySelectionPrompt] = useState<EmptySelectionPromptState | null>(null)
 
   useWorkspaceCanvasSpaces({
     workspaceId: 'workspace-1',
@@ -78,7 +77,6 @@ function TestHarness({
     selectedNodeIdsRef,
     onSpacesChange: vi.fn(),
     setContextMenu,
-    setEmptySelectionPrompt,
   })
 
   return <div />

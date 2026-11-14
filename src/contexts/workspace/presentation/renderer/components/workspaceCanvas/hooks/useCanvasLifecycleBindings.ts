@@ -69,7 +69,6 @@ export function useWorkspaceCanvasLifecycleBindings({
     setSelectedNodeIds: canvasState.setSelectedNodeIds,
     setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
     setContextMenu: canvasState.setContextMenu,
-    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     cancelSpaceRename,
     selectionDraftRef: canvasState.selectionDraftRef,
     trackpadGestureLockRef: canvasState.trackpadGestureLockRef,
