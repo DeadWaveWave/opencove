@@ -1,3 +1,4 @@
+import { taskNoteCommands } from './taskNotes'
 import { eventsCommand } from './events'
 import { spaceUpdateCommand } from './spaceUpdate'
 import { spaceCreateCommand } from './spaces'
@@ -41,6 +42,7 @@ export const commands: Command[] = [
   ...agentQueryCommands,
   skillCommand,
   ...nodeCommands,
+  ...taskNoteCommands,
   ...lifecycleCommands,
   ptyAttach,
   ...pluginCommands,

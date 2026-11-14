@@ -76,9 +76,9 @@ Space locator is a consistency constraint; the reference must belong directly to
 `--root-canvas --near <selector>` overrides membership and searches beside the reference's
 Space in the reference's project. A size-only `--frame '{"width":520,"height":420}'` requests
 that size near the reference. Width-only, height-only and empty frames are also allowed; x/y
-(including null coordinate keys) are refused before mutation. Sizes below the kind minimum
-are raised; inspect `appliedFrame` and `frameAdjusted`. Create/update help lists each kind's
-minimum dimensions from the same shared constants used by runtime enforcement.
+(including null coordinate keys) are refused before mutation. Sizes outside the kind's range
+are adjusted to fit; inspect `appliedFrame` and `frameAdjusted`. Create/update help lists each
+kind's minimum and maximum dimensions from the same shared constants used by runtime enforcement.
 
 Near candidates first prefer no container/ancestor growth, then growth whose resulting container
 and every grown ancestor avoid unrelated Space rectangles, then all other growth. Within each
@@ -165,6 +165,10 @@ Usecases：
 - `src/contexts/workspace/application/nodeControl/*`
 
 ## Frame results
+
+`node update --frame` grows the node's Space and ancestors with padding in the same update, without shrinking boundaries, moving other nodes or changing membership; explicit coordinates are preserved even when Space boundaries overlap.
+
+中文：`node update --frame` 在同一次更新中扩展所属 Space 和各级祖先并保留留白，不缩小边界、不移动其它节点、不改变归属；即使 Space 边界重叠，也保留指定坐标。
 
 With `--frame`, every supported kind reports `appliedFrame` and `frameAdjusted`
 after create or update. Only explicitly requested components count as adjusted;
@@ -301,3 +305,18 @@ and prefixes use your session project, or an explicit Space’s project. Without
 the selected project supplies the name lookup context. Use a full ID for a creator outside that context.
 中文：`--project` 只筛选子节点，不要求创建者属于该项目。创建者名称／前缀默认在当前会话项目中查找；
 显式 Space 提供其所属项目作为查找范围。没有会话身份时，使用选定项目查找名称。跨查找范围请用完整 ID。
+
+## Existing-agent task claims and shared notes
+
+Use `task claim --task <selector> [--agent <selector>]` to link an existing agent,
+then `task release --task <selector> --status ai_done` to return the task for
+review. These operations commit task and reciprocal agent changes together and
+never start or stop a session. Use `note append --node <selector> --text <text>`
+(or `--text-file <path|->`) for shared results. Append rechecks current text after
+each revision conflict instead of replacing a body read earlier by the CLI.
+
+The existing Worker persistence path remains the owner of these mutations. A
+genuinely stale tab can still overwrite task fields, and ordinary note
+replacement can overwrite appended text. There is no additional authority layer,
+lease or deduplication ledger. See [task workflows](TASK_WORKFLOWS.md) for holder
+rules, grant constraints, byte limits, output and uncertain-outcome recovery.

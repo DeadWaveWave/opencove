@@ -6,7 +6,7 @@ import type {
 import { createAppError } from '../../../../shared/errors/appError'
 import { resolveWebsiteNavigationUrl } from '../../../../shared/utils/websiteUrl'
 import {
-  persistNodeControlState,
+  isNodeControlRevisionConflict,
   replaceNodeControlWorkspace,
   requireNodeControlState,
   type NodeControlAppStateStore,
@@ -14,48 +14,77 @@ import {
 } from './nodeControlState'
 import { findNodeForNodeControl, toCanvasNodeDetail } from './nodeDtos'
 import { clampFrameSize, normalizeUpdateNodeData } from './nodeDataFactory'
+import { growNodeCreationSpaces } from './nodeCreateSpaceGrowth'
+import { nodeNearSpaceRects } from './nodeNearSpaceRects'
 
 export async function updateNodeForNodeControl(options: {
   store: NodeControlAppStateStore
   input: UpdateNodeInput
   assertActive?: () => void
 }): Promise<UpdateNodeResult> {
-  const expectedRevision = await options.store.readAppStateRevision()
-  const state = requireNodeControlState(await options.store.readAppState())
-  const matched = findNodeForNodeControl(state.workspaces, options.input.nodeId)
-  if (!matched) {
-    throw createAppError('node.not_found')
-  }
-  if (matched.node.kind !== options.input.kind) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'node.update kind does not match target node.',
-    })
-  }
+  /* eslint-disable no-await-in-loop -- Rebase the complete pure update on each bounded CAS attempt. */
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const expectedRevision = await options.store.readAppStateRevision()
+    const state = requireNodeControlState(await options.store.readAppState())
+    const matched = findNodeForNodeControl(state.workspaces, options.input.nodeId)
+    if (!matched) {
+      throw createAppError('node.not_found')
+    }
+    if (matched.node.kind !== options.input.kind) {
+      throw createAppError('common.invalid_input', {
+        debugMessage: 'node.update kind does not match target node.',
+      })
+    }
 
-  const data = normalizeUpdateNodeData(options.input.kind, options.input.data) as Record<
-    string,
-    unknown
-  >
-  const nextNode = updateNode(matched.node, options.input, data)
-  const nextWorkspace = {
-    ...matched.workspace,
-    nodes: matched.workspace.nodes.map(node => (node.id === nextNode.id ? nextNode : node)),
-  }
-  options.assertActive?.()
-  const revision = await persistNodeControlState(
-    options.store,
-    replaceNodeControlWorkspace(state, nextWorkspace),
-    expectedRevision,
-  )
+    const data = normalizeUpdateNodeData(options.input.kind, options.input.data) as Record<
+      string,
+      unknown
+    >
+    const nextNode = updateNode(matched.node, options.input, data)
+    const frameChanged =
+      nextNode.position.x !== matched.node.position.x ||
+      nextNode.position.y !== matched.node.position.y ||
+      nextNode.width !== matched.node.width ||
+      nextNode.height !== matched.node.height
+    const growthSpaceId = frameChanged ? matched.spaceId : null
+    const nextWorkspace = {
+      ...matched.workspace,
+      nodes: matched.workspace.nodes.map(node => (node.id === nextNode.id ? nextNode : node)),
+      ...(growthSpaceId
+        ? {
+            spaces: growNodeCreationSpaces(
+              matched.workspace,
+              growthSpaceId,
+              { ...nextNode.position, width: nextNode.width, height: nextNode.height },
+              // Derive before moving so missing bounds retain the entire previous envelope.
+              nodeNearSpaceRects(matched.workspace),
+            ),
+          }
+        : {}),
+    }
+    options.assertActive?.()
+    const result = await options.store.writeAppState(
+      replaceNodeControlWorkspace(state, nextWorkspace),
+      { expectedRevision },
+    )
+    if (result.ok) {
+      return {
+        revision: result.revision ?? (await options.store.readAppStateRevision()),
+        node: toCanvasNodeDetail({
+          node: nextNode,
+          workspace: nextWorkspace,
+          spaceId: matched.spaceId,
+        }),
+      }
+    }
 
-  return {
-    revision,
-    node: toCanvasNodeDetail({
-      node: nextNode,
-      workspace: nextWorkspace,
-      spaceId: matched.spaceId,
-    }),
+    // Preserve single-attempt behavior for updates without growth, including root nodes.
+    if (!growthSpaceId || !isNodeControlRevisionConflict(result.error) || attempt === 2) {
+      throw createAppError(result.error)
+    }
   }
+  /* eslint-enable no-await-in-loop */
+  throw new Error('Node update persistence attempts exhausted.')
 }
 
 function updateNode(

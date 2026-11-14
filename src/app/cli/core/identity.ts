@@ -14,7 +14,7 @@ export interface CallerIdentity {
 }
 
 /** Only these public fields may leave the CLI; credentials never enter the projection. */
-export function callerIdentity(value: unknown): CallerIdentity {
+export function callerIdentity(value: unknown, includeTree = false): CallerIdentity {
   const wire = value as Record<string, unknown>
   const id = (key: string) => (typeof wire[key] === 'string' && wire[key] ? wire[key] : null)
   const quota = wire.lineageQuota as LineageQuota | undefined
@@ -22,6 +22,20 @@ export function callerIdentity(value: unknown): CallerIdentity {
     ...(quota
       ? {
           lineageQuota: {
+            ...(includeTree && Array.isArray(quota.nodes)
+              ? {
+                  nodes: quota.nodes.map(node => ({
+                    nodeId: node.nodeId,
+                    title: node.title,
+                    kind: node.kind,
+                    depth: node.depth,
+                    spawnedBy: node.spawnedBy ?? null,
+                    sessionId: node.sessionId ?? null,
+                    sessionStartedAt: node.sessionStartedAt ?? null,
+                    state: node.state,
+                  })),
+                }
+              : {}),
             depth: quota.depth,
             maxDepth: quota.maxDepth,
             liveInTree: quota.liveInTree,
@@ -100,6 +114,10 @@ export function sessionIdentity(env: Record<string, string | undefined>, invoke:
   }
 }
 
+export function lineageQuotaSummary(quota: LineageQuota): string {
+  return `Agents: ${quota.liveInTree} of ${quota.maxLiveInTree} running in your tree; depth ${quota.depth} of ${quota.maxDepth}\n`
+}
+
 /** Only default interactive identity output may append prose to the JSON value. */
 export function identityText(
   value: unknown,
@@ -110,8 +128,5 @@ export function identityText(
   }
   const result = value as { self?: CallerIdentity; lineageQuota?: LineageQuota }
   const quota = (result.self ?? result).lineageQuota
-  return quota
-    ? render() +
-        `Agents: ${quota.liveInTree} of ${quota.maxLiveInTree} running in your tree; depth ${quota.depth} of ${quota.maxDepth}\n`
-    : undefined
+  return quota ? render() + lineageQuotaSummary(quota) : undefined
 }

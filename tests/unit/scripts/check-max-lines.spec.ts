@@ -111,7 +111,7 @@ describe('max-lines extension coverage', () => {
     )
     writeRepositoryFile(
       root,
-      'src/contexts/agent/domain/claudeRootCommands.generated.ts',
+      'src/shared/utils/claudeRootCommands.generated.ts',
       repeatLines('a', 1500),
     )
     await expect(passes(root)).resolves.toBe(true)

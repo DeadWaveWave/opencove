@@ -9,10 +9,35 @@ export function hasRuntimeBindingPublication(workspaces: WorkspaceState[]): bool
   )
 }
 
+/** Keep actual binding fields over rebased task ownership, prompts and launch preferences. */
+function mergeAgentRuntimeBinding(
+  rebased: TerminalNodeData['agent'],
+  existing: TerminalNodeData['agent'],
+): TerminalNodeData['agent'] {
+  if (!rebased || !existing) {
+    return rebased
+  }
+  return {
+    ...rebased,
+    effectiveModel: existing.effectiveModel,
+    launchMode: existing.launchMode,
+    resumeSessionId: existing.resumeSessionId,
+    resumeSessionIdVerified: existing.resumeSessionIdVerified,
+    executionDirectory: existing.executionDirectory,
+    expectedDirectory: existing.expectedDirectory,
+  }
+}
+
+/** Visible IDs are deliberately empty during background preparation. */
+export function resolvedRuntimeSessionId(data: TerminalNodeData): string {
+  return data.sessionId.trim() || (data.runtimeSessionBinding?.sessionId?.trim() ?? '')
+}
+
 /** A prepare result owns its projection until shared state acknowledges that exact binding. */
 export function mergeRuntimeSessionBinding(
   persisted: TerminalNodeData,
   existing: TerminalNodeData,
+  options: { preserveUnacknowledgedAgentBinding?: boolean } = {},
 ): Partial<TerminalNodeData> {
   const binding = existing.runtimeSessionBinding
   const isPreparing = binding?.phase === 'preparing'
@@ -39,10 +64,14 @@ export function mergeRuntimeSessionBinding(
       exitCode: existing.exitCode,
       lastError: existing.lastError,
       recoveryIssue: existing.recoveryIssue,
-      agent: existing.agent,
+      agent: mergeAgentRuntimeBinding(persisted.agent, existing.agent),
     }
   }
   return {
+    agent:
+      !superseded && options.preserveUnacknowledgedAgentBinding
+        ? mergeAgentRuntimeBinding(persisted.agent, existing.agent)
+        : persisted.agent,
     runtimeSessionBinding: undefined,
     sessionId:
       isPublishing && !superseded

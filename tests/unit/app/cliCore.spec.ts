@@ -43,16 +43,21 @@ const file = JSON.stringify({
   startedBy: 'cli',
 })
 describe('TypeScript CLI core', () => {
-  it.each([[], ['--help'], ['node', '--help'], ['node', 'create', 'note', '--help']])(
-    'help snapshot %j',
-    async (...items) => {
-      const args = items as string[]
-      const f = fixture()
-      expect(await run(args, f.io)).toBe(args.length ? 0 : 2)
-      expect(f.out()).toMatchSnapshot()
-      expect(f.fetch).not.toHaveBeenCalled()
-    },
-  )
+  it.each([
+    [],
+    ['--help'],
+    ['node', '--help'],
+    ['node', 'create', 'note', '--help'],
+    ['task', 'claim', '--help'],
+    ['task', 'release', '--help'],
+    ['note', 'append', '--help'],
+  ])('help snapshot %j', async (...items) => {
+    const args = items as string[]
+    const f = fixture()
+    expect(await run(args, f.io)).toBe(args.length ? 0 : 2)
+    expect(f.out()).toMatchSnapshot()
+    expect(f.fetch).not.toHaveBeenCalled()
+  })
   it.each([
     ['nodes', 'list'],
     ['ping', '--unknown'],

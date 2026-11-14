@@ -10,6 +10,11 @@ import {
   waitAndReadTurn,
 } from '../core/agentTurnComposition'
 
+/** Options have already been parsed and validated by the command framework. */
+export function createdAgentWaitDeadline(ctx: Pick<CommandContext, 'io' | 'options'>): number {
+  return ctx.io.now() + Number(ctx.options.timeout ?? 20000)
+}
+
 /** Creation has already succeeded. Everything here is read-only and must retain its IDs. */
 export async function waitForCreatedAgent(
   ctx: CommandContext,

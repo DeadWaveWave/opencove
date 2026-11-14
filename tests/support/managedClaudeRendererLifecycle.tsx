@@ -40,6 +40,8 @@ export function rendererLifecycleFixture(mounted: boolean, persisted = true) {
       task: null,
       note: null,
       image: null,
+      document: null,
+      website: null,
     },
   }
   const nodesRef = { current: [node] }

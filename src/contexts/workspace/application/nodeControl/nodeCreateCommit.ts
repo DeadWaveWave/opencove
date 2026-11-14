@@ -7,6 +7,7 @@ import { resolveNodeCreationTarget, type ResolvedNodeCreationTarget } from './no
 import type { SpaceLocatorResolverDeps } from './spaceLocator'
 import type { NodeControlRuntimeDeps } from './nodeControlUseCases'
 import {
+  isNodeControlRevisionConflict,
   replaceNodeControlWorkspace,
   requireNodeControlState,
   type NodeControlAppStateStore,
@@ -124,10 +125,7 @@ export async function commitCreatedNode(options: {
         )[0],
       }
     }
-    const isConflict =
-      result.error.code === 'persistence.invalid_state' &&
-      /^App state revision conflict(?:\s|\(|$)/.test(result.error.debugMessage ?? '')
-    if (!isConflict || attempt === 2) {
+    if (!isNodeControlRevisionConflict(result.error) || attempt === 2) {
       throw createAppError(result.error)
     }
   }

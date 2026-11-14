@@ -1,4 +1,5 @@
 import { isAgentProviderId, type AgentProviderId } from './dto/agent'
+import { CLAUDE_ROOT_COMMANDS } from '../utils/claudeRootCommands.generated'
 
 // Static, process-independent facts about each agent provider. This is pure data so it is safe to
 // import from every process, renderer included. Behaviour that needs Node.js lives in the provider's
@@ -20,12 +21,26 @@ export interface AgentProviderStaticDescriptor {
   /** Lower-case prefix used in agent window titles. */
   readonly titlePrefix: string
   readonly capabilities: AgentProviderCapabilities
+  readonly initialPrompt: AgentProviderInitialPromptPolicy
+}
+
+export interface AgentProviderInitialPromptPolicy {
+  readonly refusedPrefixes: readonly string[]
+  readonly refusedCommands: readonly string[]
+  readonly grantCommandPrefixes: readonly string[]
+  readonly denyGrantSkillReferences: boolean
 }
 
 export const AGENT_PROVIDER_DESCRIPTORS = {
   'claude-code': {
     label: 'Claude Code',
     titlePrefix: 'claude',
+    initialPrompt: {
+      refusedPrefixes: ['-'],
+      refusedCommands: CLAUDE_ROOT_COMMANDS,
+      grantCommandPrefixes: ['!', '/', '#', '&'],
+      denyGrantSkillReferences: false,
+    },
     capabilities: {
       taskTitle: true,
       worktreeNameSuggestion: true,
@@ -37,6 +52,12 @@ export const AGENT_PROVIDER_DESCRIPTORS = {
   codex: {
     label: 'Codex',
     titlePrefix: 'codex',
+    initialPrompt: {
+      refusedPrefixes: [],
+      refusedCommands: [],
+      grantCommandPrefixes: ['!', '/'],
+      denyGrantSkillReferences: true,
+    },
     capabilities: {
       taskTitle: true,
       worktreeNameSuggestion: true,
@@ -48,6 +69,12 @@ export const AGENT_PROVIDER_DESCRIPTORS = {
   opencode: {
     label: 'OpenCode',
     titlePrefix: 'opencode',
+    initialPrompt: {
+      refusedPrefixes: [],
+      refusedCommands: [],
+      grantCommandPrefixes: ['!', '/'],
+      denyGrantSkillReferences: false,
+    },
     capabilities: {
       taskTitle: false,
       worktreeNameSuggestion: false,
@@ -59,6 +86,12 @@ export const AGENT_PROVIDER_DESCRIPTORS = {
   gemini: {
     label: 'Gemini CLI',
     titlePrefix: 'gemini',
+    initialPrompt: {
+      refusedPrefixes: [],
+      refusedCommands: [],
+      grantCommandPrefixes: ['!', '/'],
+      denyGrantSkillReferences: false,
+    },
     capabilities: {
       taskTitle: false,
       worktreeNameSuggestion: false,
@@ -70,6 +103,12 @@ export const AGENT_PROVIDER_DESCRIPTORS = {
   pi: {
     label: 'Pi',
     titlePrefix: 'pi',
+    initialPrompt: {
+      refusedPrefixes: ['-', '@'],
+      refusedCommands: ['install', 'remove', 'uninstall', 'update', 'list', 'config'],
+      grantCommandPrefixes: ['!', '/'],
+      denyGrantSkillReferences: false,
+    },
     capabilities: {
       taskTitle: false,
       worktreeNameSuggestion: false,
@@ -81,6 +120,12 @@ export const AGENT_PROVIDER_DESCRIPTORS = {
   kimi: {
     label: 'Kimi Code',
     titlePrefix: 'kimi',
+    initialPrompt: {
+      refusedPrefixes: [],
+      refusedCommands: [],
+      grantCommandPrefixes: ['/'],
+      denyGrantSkillReferences: false,
+    },
     capabilities: {
       taskTitle: false,
       worktreeNameSuggestion: false,
