@@ -106,6 +106,69 @@ export function commitCanvasDocument(
   return { status: 'applied', document: toWorkspaceDocument(next) }
 }
 
+interface RuntimeObservationResult {
+  nextWorkspaces: WorkspaceState[]
+  didChange: boolean
+  durableDidChange: boolean
+}
+
+function assertOnlyNodesChanged(
+  previous: readonly WorkspaceState[],
+  next: readonly WorkspaceState[],
+): void {
+  next.forEach((workspace, index) => {
+    const before = previous[index]
+    if (workspace === before) {
+      return
+    }
+    const keys = new Set([...Object.keys(before), ...Object.keys(workspace)])
+    for (const key of keys) {
+      if (
+        key !== 'nodes' &&
+        !Object.is(before[key as keyof WorkspaceState], workspace[key as never])
+      ) {
+        throw new Error(
+          `runtime observation changed workspace field "${key}"; only nodes may change`,
+        )
+      }
+    }
+  })
+}
+
+/**
+ * Applies a runtime observation (agent state, exit, metadata, terminal geometry) to every
+ * workspace it matches, in one store write, computed from the store as it is now. Observations
+ * name a session, not a workspace, so the helper may touch several workspaces. Returns whether
+ * anything was written. The flush is requested only for a durable change.
+ */
+export function applyRuntimeObservation(
+  observe: (workspaces: readonly WorkspaceState[]) => RuntimeObservationResult,
+): boolean {
+  if (isRecipeRunning) {
+    throw new Error('workspace document command ran inside a recipe')
+  }
+  const store = requireStore()
+  const { workspaces } = store.getState()
+  let result: RuntimeObservationResult
+  isRecipeRunning = true
+  try {
+    result = observe(workspaces)
+  } finally {
+    isRecipeRunning = false
+  }
+  if (!result.didChange) {
+    return false
+  }
+  if (import.meta.env.DEV) {
+    assertOnlyNodesChanged(workspaces, result.nextWorkspaces)
+  }
+  store.setState({ workspaces: result.nextWorkspaces })
+  if (result.durableDidChange) {
+    persistFlush?.()
+  }
+  return true
+}
+
 export function replaceWorkspaceNodes(
   workspaceId: string,
   nodes: Node<TerminalNodeData>[],

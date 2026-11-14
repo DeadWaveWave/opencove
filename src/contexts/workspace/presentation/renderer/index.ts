@@ -1,5 +1,6 @@
 export {
   appendWorkspaceSpaceArchiveRecord,
+  applyRuntimeObservation,
   bindWorkspaceDocumentStore,
   commitCanvasDocument,
   registerWorkspaceDocumentPersistFlush,
