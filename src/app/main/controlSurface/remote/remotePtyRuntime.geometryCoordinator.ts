@@ -6,6 +6,7 @@ import type {
   TerminalGeometryEvent,
 } from '../../../../shared/contracts/dto'
 import { createRemoteGeometryAckCoordinator } from './remoteGeometryAckCoordinator'
+import { TERMINAL_GEOMETRY_ACK_TIMEOUT_MS } from '../../../../shared/runtime/terminalGeometryTimeouts'
 
 export type RemotePtyRuntimeGeometryCoordinator = {
   noteAckCapability: (supported: boolean) => void
@@ -80,7 +81,7 @@ export function createRemotePtyRuntimeGeometryCoordinator(): RemotePtyRuntimeGeo
         operationId,
         // @compat pty-geometry-legacy-revision
         legacyRevision,
-        timeoutMs,
+        timeoutMs: Math.max(timeoutMs, TERMINAL_GEOMETRY_ACK_TIMEOUT_MS),
         timeoutMessage: `Timed out waiting for terminal geometry ACK: ${request.sessionId}`,
       })
 
