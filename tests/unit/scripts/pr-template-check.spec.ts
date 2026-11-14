@@ -181,4 +181,50 @@ describe('PR template validator', () => {
       expect(validatePullRequestBody(buildLargePrBody(), { missingPartners: [] })).toEqual([])
     })
   })
+
+  describe('ratchet rises', () => {
+    const rise = { path: 'scripts/x-ratchet.json', rule: 'ref-write', from: 485, to: 487 }
+    const line = `- \`${rise.path}\` \`ref-write\` 485 -> 487: merge-skew: #701 and #702 collided`
+    const withSection = (body: string) =>
+      `${body}\n## 📈 Ratchet rises\n\n${body === '' ? '' : line}\n`
+
+    it('passes when no total rose and no rule retired, with or without the section', () => {
+      expect(validatePullRequestBody(buildSmallPrBody(), { ratchetRises: [] })).toEqual([])
+    })
+
+    it('fails on a rise without the section, and names the section to add', () => {
+      const errors = validatePullRequestBody(buildSmallPrBody(), { ratchetRises: [rise] })
+      expect(errors).toHaveLength(1)
+      expect(errors[0]).toContain('## 📈 Ratchet rises')
+      expect(errors[0]).toContain('1 rise or retirement')
+    })
+
+    it('passes with the exact line', () => {
+      expect(
+        validatePullRequestBody(withSection(buildSmallPrBody()), { ratchetRises: [rise] }),
+      ).toEqual([])
+    })
+
+    it('fails on a stale line when nothing rose', () => {
+      const errors = validatePullRequestBody(withSection(buildSmallPrBody()), { ratchetRises: [] })
+      expect(errors).toHaveLength(1)
+      expect(errors[0]).toContain('no rise or retirement')
+    })
+
+    it('fails on wrong numbers and on a placeholder reason', () => {
+      const wrong = withSection(buildSmallPrBody()).replace('485 -> 487', '485 -> 486')
+      expect(validatePullRequestBody(wrong, { ratchetRises: [rise] })[0]).toContain('485 -> 487')
+
+      const placeholder = withSection(buildSmallPrBody()).replace(
+        'merge-skew: #701 and #702 collided',
+        '<category>: <reason>',
+      )
+      expect(validatePullRequestBody(placeholder, { ratchetRises: [rise] })).toHaveLength(1)
+    })
+
+    it('skips the ratchet part when no diff is known', () => {
+      expect(validatePullRequestBody(buildSmallPrBody())).toEqual([])
+      expect(validatePullRequestBody(buildSmallPrBody(), { ratchetRises: null })).toEqual([])
+    })
+  })
 })

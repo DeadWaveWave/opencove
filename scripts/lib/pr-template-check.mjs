@@ -1,4 +1,5 @@
 import { CO_CHANGE_HEADING, validatePartnerSection } from './impact/partner-section.mjs'
+import { RATCHET_RISES_HEADING, validateRiseSection } from './ratchet.mjs'
 
 const REQUIRED_TOP_LEVEL_HEADINGS = [
   '## 💡 Change Scope',
@@ -147,7 +148,12 @@ export function validateTemplateStructure(templateMarkdown) {
 
 // `missingPartners` are the co-change partners the diff leaves untouched, from
 // `findMissingPartners`. Without them (no diff known) the section only has to have content.
-export function validatePullRequestBody(prBody, { missingPartners = null } = {}) {
+// `ratchetRises` are the rises and retirements of ratchet baselines from the merge base to the
+// head, from `collectRatchetRises`. Without them (no diff known) the rises section is not checked.
+export function validatePullRequestBody(
+  prBody,
+  { missingPartners = null, ratchetRises = null } = {},
+) {
   const normalizedBody = normalizeMarkdown(prBody ?? '')
   const sections = splitTopLevelSections(normalizedBody)
   const errors = []
@@ -196,6 +202,16 @@ export function validatePullRequestBody(prBody, { missingPartners = null } = {})
       errors.push(...validatePartnerSection(coChangeSection, missingPartners))
     } else if (!hasMeaningfulContent(coChangeSection)) {
       errors.push(`${CO_CHANGE_HEADING} must contain content.`)
+    }
+  }
+
+  if (ratchetRises) {
+    if (sections.has(RATCHET_RISES_HEADING)) {
+      errors.push(...validateRiseSection(sections.get(RATCHET_RISES_HEADING), ratchetRises))
+    } else if (ratchetRises.length > 0) {
+      errors.push(
+        `${RATCHET_RISES_HEADING} is required: ${ratchetRises.length} rise or retirement of a ratchet baseline total against the merge base needs one line each.`,
+      )
     }
   }
 
