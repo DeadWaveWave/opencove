@@ -180,6 +180,52 @@ function isUnconditionalSkip(call) {
   )
 }
 
+// Modifiers that keep a call a test declaration: `it.each(rows)('x', fn)`, `test.only('x', fn)`,
+// `it.skipIf(cond)('x', fn)`. Anything else (`describe`, `test.step`, hooks) has another kind of body.
+const TEST_MODIFIERS = new Set([
+  'each',
+  'for',
+  'only',
+  'concurrent',
+  'fails',
+  'sequential',
+  'skipIf',
+  'runIf',
+])
+
+// The test callback of `it(...)`, `test(...)` and their modifier forms, or `null`.
+function testCallback(call) {
+  let callee = call.expression
+  while (true) {
+    if (ts.isCallExpression(callee)) {
+      callee = callee.expression
+    } else if (ts.isPropertyAccessExpression(callee)) {
+      if (!TEST_MODIFIERS.has(callee.name.text)) {
+        return null
+      }
+      callee = callee.expression
+    } else {
+      break
+    }
+  }
+  if (!ts.isIdentifier(callee) || (callee.text !== 'it' && callee.text !== 'test')) {
+    return null
+  }
+  const last = call.arguments[call.arguments.length - 1]
+  const isFunction = last && (ts.isArrowFunction(last) || ts.isFunctionExpression(last))
+  return isFunction && ts.isBlock(last.body) ? last.body : null
+}
+
+// `if (cond) return` and `if (cond) { return }`, with no else and no value.
+function isBareReturnIf(statement) {
+  if (!ts.isIfStatement(statement) || statement.elseStatement) {
+    return false
+  }
+  const branch = statement.thenStatement
+  const only = ts.isBlock(branch) && branch.statements.length === 1 ? branch.statements[0] : branch
+  return ts.isReturnStatement(only) && !only.expression
+}
+
 function lineOf(sourceFile, node) {
   return sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1
 }
@@ -265,9 +311,20 @@ export function scanTestSource(filePath, source) {
     }
   }
 
+  // An early `if (cond) return` at the top level of a test body stops the test on the platforms
+  // where `cond` holds: it passes there without asserting anything, which is a gate too.
+  const visitEarlyReturns = node => {
+    for (const statement of testCallback(node)?.statements ?? []) {
+      if (isBareReturnIf(statement)) {
+        gate(statement, statement.expression, false)
+      }
+    }
+  }
+
   const visit = node => {
     if (ts.isCallExpression(node)) {
       visitCall(node)
+      visitEarlyReturns(node)
     } else if (ts.isConditionalExpression(node)) {
       visitConditional(node)
     }

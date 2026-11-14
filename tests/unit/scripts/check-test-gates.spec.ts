@@ -146,6 +146,87 @@ describe('scanTestSource: platform gates', () => {
   })
 })
 
+describe('scanTestSource: early return as a gate', () => {
+  const early = (condition: string, body = '', callee = "it('x'") =>
+    `${callee}, () => {\n  if (${condition}) {\n    return\n  }\n${body}})\n`
+
+  it('treats a leading bare return on a platform condition as a gate', () => {
+    const [gate] = scan(early("process.platform !== 'darwin'")).gates
+    expect(gate).toMatchObject({ line: 2, single: 'darwin', platforms: ['darwin'] })
+  })
+
+  it('reads the unbraced form, a later top-level statement and the each forms', () => {
+    expect(runsOn("it('x', () => {\n  if (process.platform !== 'win32') return\n})")).toEqual([
+      'win32',
+    ])
+    expect(
+      runsOn(
+        "test('x', async () => {\n  const a = 1\n  await a\n  if (process.platform !== 'darwin') {\n    return\n  }\n})",
+      ),
+    ).toEqual(['darwin'])
+    expect(runsOn(early("process.platform !== 'darwin'", '', "it.each([1, 2])('x'"))).toEqual([
+      'darwin',
+    ])
+    expect(runsOn(early("process.platform !== 'darwin'", '', "test.each([1])('x'"))).toEqual([
+      'darwin',
+    ])
+  })
+
+  it('follows a const and keeps a two-platform return as a gate that is not single', () => {
+    const source = `const macOnly = process.platform !== 'darwin'\nit('x', () => {\n  if (macOnly) return\n})`
+    expect(runsOn(source)).toEqual(['darwin'])
+    const [gate] = scan(early("process.platform === 'win32'")).gates
+    expect(gate).toMatchObject({ single: null, platforms: ['linux', 'darwin'] })
+  })
+
+  it('does not count a return deeper in the callback, in a helper, or in a describe', () => {
+    expect(
+      runsOn(
+        "it('x', () => {\n  for (const a of [1]) {\n    if (process.platform !== 'darwin') return\n  }\n})",
+      ),
+    ).toBeNull()
+    expect(
+      runsOn("it('x', () => {\n  if (a) {\n    if (process.platform !== 'darwin') return\n  }\n})"),
+    ).toBeNull()
+    expect(runsOn("function helper() {\n  if (process.platform !== 'darwin') return\n}")).toBeNull()
+    expect(
+      runsOn(
+        "it('x', () => {\n  const run = () => {\n    if (process.platform !== 'darwin') return\n  }\n  run()\n})",
+      ),
+    ).toBeNull()
+    expect(
+      runsOn("describe('x', () => {\n  if (process.platform !== 'darwin') return\n})"),
+    ).toBeNull()
+    expect(
+      runsOn("test.describe('x', () => {\n  if (process.platform !== 'darwin') return\n})"),
+    ).toBeNull()
+  })
+
+  it('does not count an if with an else, a value, other statements or an unknown condition', () => {
+    expect(
+      runsOn("it('x', () => {\n  if (process.platform !== 'darwin') return\n  else run()\n})"),
+    ).toBeNull()
+    expect(runsOn("it('x', () => {\n  if (process.platform !== 'darwin') return 1\n})")).toBeNull()
+    expect(
+      runsOn(
+        "it('x', () => {\n  if (process.platform !== 'darwin') {\n    log()\n    return\n  }\n})",
+      ),
+    ).toBeNull()
+    expect(runsOn("it('x', () => {\n  if (!hasTool) return\n})")).toBeNull()
+  })
+
+  it('fails the check in an unsuffixed file and passes in a .mac. file', () => {
+    const source = early("process.platform !== 'darwin'")
+    const bad = run(makeCleanRepo({ 'tests/unit/foo.spec.ts': source }))
+    expect(bad.code).toBe(1)
+    expect(bad.stderr).toContain('tests/unit/foo.spec.ts:2')
+    expect(bad.stderr).toContain('platform-gate-suffix')
+    expect(run(makeCleanRepo({ 'tests/unit/foo.mac.spec.ts': source })).code).toBe(0)
+    const twoPlatforms = early("process.platform === 'win32'")
+    expect(run(makeCleanRepo({ 'tests/unit/foo.spec.ts': twoPlatforms })).code).toBe(0)
+  })
+})
+
 describe('scanTestSource: focused tests', () => {
   it.each(['test.only', 'it.only', 'describe.only', 'test.describe.only'])(
     'finds %s with its line',
