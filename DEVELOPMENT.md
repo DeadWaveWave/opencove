@@ -97,15 +97,17 @@ workspace 画布文档（节点、Space、活动 Space、Space 归档记录、�
 
 ### 测试闸门 (Test Gates)
 
-`pnpm test-gates:check`（属于 `pnpm verify:repo`，因此在 `verify:checks` 与 CI 的 `Repository checks` 步骤中运行）扫描已跟踪的 `tests/**/*.ts(x)` 与 `src/**/*.spec.ts(x)`，用 TypeScript 解析器识别调用，字符串和注释里的 `test.only` 不算（issue #683）。三条规则：
+`pnpm test-gates:check`（属于 `pnpm verify:repo`，因此在 `verify:checks` 与 CI 的 `Repository checks` 步骤中运行）扫描已跟踪的 `tests/**/*.ts(x)` 与 `src/**/*.{spec,test}.ts(x)`，用 TypeScript 解析器识别调用，字符串和注释里的 `test.only` 不算（issue #683）。三条规则：
 
 | 规则 | 类型 | 内容 |
 | --- | --- | --- |
-| `platform-gate-suffix` | 硬零 | 只在一个非 Linux 平台运行的用例（`it.skipIf` / `it.runIf` / `test.skip(cond, …)` / `test.describe.skip(cond)` / `cond ? it : it.skip`，条件沿用同文件内的 `const` 间接引用）必须写在文件名带 `.windows.` 或 `.mac.` 的 spec 文件里；helper 文件（非 `*.spec.*`）不在范围内；无法求值的条件被忽略，`--verbose` 会列出 |
+| `platform-gate-suffix` | 硬零 | 只在一个非 Linux 平台运行的用例（`it.skipIf` / `it.runIf` / `test.skip(cond, …)` / `test.describe.skip(cond)` / `cond ? it : it.skip`，以及 `it` / `test`（含 `.each`）回调顶层的 `if (cond) return`——它在其他平台上不断言就通过；条件沿用同文件内的 `const` 间接引用）必须写在文件名带 `.windows.` 或 `.mac.` 的 spec 文件里；helper 文件（非 `*.spec.*`）不在范围内；无法求值的条件被忽略，`--verbose` 会列出所有这类闸门 |
 | `focused-test` | 硬零 | 不允许 `test.only`、`it.only`、`describe.only`、`test.describe.only`；三个 Playwright 配置同时设置 `forbidOnly: !!process.env.CI` |
-| `unconditional-skip` | 棘轮 | 无条件跳过的声明（`test.skip('标题', fn)`、`test.describe.skip`、`it.skip`、`*.fixme`、`test.skip()`、`test.skip(true, …)`）按文件计数，冻结在 `scripts/test-gates-ratchet.json`，只减不增 |
+| `unconditional-skip` | 棘轮 | 无条件跳过的声明（`test.skip('标题', fn)`、`test.describe.skip`、`it.skip`、`*.fixme`、`test.skip()`、`test.skip(true, …)`，含 `.skip.each` / `.fixme.each`；`.only.each` 同样算 `focused-test`）按文件计数，冻结在 `scripts/test-gates-ratchet.json`，只减不增 |
 
-平台专属用例写在 `*.windows.spec.ts` / `*.mac.spec.ts` 里，是因为 CI 的 Windows 与 macOS job 按 glob（`**/*.windows.spec.{ts,tsx}`、`**/*.mac.spec.{ts,tsx}`）选择这些文件，新增文件无需有人去改 CI 列表。Windows job 的排除项必须在注释里写明理由：`windowsNativeArguments.windows.spec.ts` 有自己的 Electron + WSL 步骤，其他排除必须引用 issue 编号，由 `tests/unit/scripts/ci-platform-vitest.spec.ts` 检查。
+平台专属用例写在 `*.windows.spec.ts` / `*.mac.spec.ts` 里，是因为 CI 的 Windows 与 macOS job 用 Vitest 的文件名过滤选择这些文件：Windows 步骤是 `pnpm exec vitest run --pool=forks --maxWorkers=1 ".windows.spec." --exclude <一个文件>`，macOS 步骤是同样命令加 `".mac.spec."`（位置参数是子串过滤，不是 glob，作用于根配置的 `include`/`exclude`，所以 `tests/e2e` 不会被选中）。新增文件无需有人去改 CI 列表。Windows 步骤唯一的排除项是 `windowsNativeArguments.windows.spec.ts`，它有自己的 Electron + WSL 步骤；其他排除必须在步骤上方的注释里写出文件名和 issue 编号，由 `tests/unit/scripts/ci-platform-vitest.spec.ts` 检查，该测试还要求两个步骤没有 `if:` 与 `continue-on-error`、命令不被 `-t` 之类的参数收窄。移动一个用例时：保留原来的闸门，共享夹具移到 `*.helpers.ts`，E2E 用例还要执行 `pnpm e2e:budget:update --reason "…"`。
+
+检查看不到的写法（有意如此）：别名（`const t = test.skip`）、从其他文件导入的闸门或平台值（`it.skipIf(!isWindows)`）、`os.platform()`、标题不是字面量的跳过（`it.skip(reason, fn)`）；`pnpm test-gates:check --verbose` 会列出所有无法求值的闸门，包括导入的标识符。
 
 基线只用 `pnpm test-gates:ratchet` 重新生成，不要手改 JSON；该命令固定写入这一个文件，调用 `guardRatchetUpdate`（见下文“棘轮基线守卫”），总数相对合并基线上升时需要 `--accept-rise unconditional-skip`。降低计数：运行、修复或删除被跳过的用例，再运行 `pnpm test-gates:ratchet`，把基线与代码放进同一个提交。违反硬零规则时更新命令拒绝写入。
 
