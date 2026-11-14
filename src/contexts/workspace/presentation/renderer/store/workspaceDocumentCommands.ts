@@ -22,7 +22,9 @@ export interface WorkspaceDocumentStoreState {
 
 export interface WorkspaceDocumentStore {
   getState(): WorkspaceDocumentStoreState
-  setState(partial: Partial<WorkspaceDocumentStoreState>): void
+  setState(
+    partial: Pick<WorkspaceDocumentStoreState, 'workspaces'> | WorkspaceDocumentStoreState,
+  ): void
 }
 
 export type WorkspaceDocumentRecipe = (document: Readonly<WorkspaceDocument>) => WorkspaceDocument
