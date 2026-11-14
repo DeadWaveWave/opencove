@@ -227,4 +227,54 @@ describe('PR template validator', () => {
       expect(validatePullRequestBody(buildSmallPrBody(), { ratchetRises: null })).toEqual([])
     })
   })
+
+  describe('HTML comments', () => {
+    const rise = {
+      path: 'scripts/x-ratchet.json',
+      rule: 'ref-write',
+      from: 485,
+      to: 487,
+    }
+    const section = `## 📈 Ratchet rises\n\n- \`${rise.path}\` \`ref-write\` 485 -> 487: detection: wider rule\n`
+
+    it('fails a commented-out ratchet section like a missing one', () => {
+      const missing = validatePullRequestBody(buildSmallPrBody(), { ratchetRises: [rise] })
+      for (const hidden of [
+        `<!--\n${section}-->\n`,
+        `<!-- ${section}`,
+        `<!-- one line -->\n<!--\n${section}\n--> `,
+      ]) {
+        const body = `${buildSmallPrBody()}\n${hidden}`
+        expect(validatePullRequestBody(body, { ratchetRises: [rise] })).toEqual(missing)
+      }
+    })
+
+    it('fails a commented-out co-change section like a missing one', () => {
+      const partners = [
+        { partner: 'a.ts', file: 'b.ts', together: 5, fileChanges: 6, confidence: 0.8 },
+      ]
+      const body = buildSmallPrBody().replace(
+        /## 🔗 Co-change partners left untouched[\s\S]*?---\n/,
+        '<!--\n## 🔗 Co-change partners left untouched\n\n- `a.ts` (with `b.ts`, 5/6): because\n-->\n---\n',
+      )
+      const errors = validatePullRequestBody(body, { missingPartners: partners })
+      expect(errors).toEqual([
+        'Pull request description is missing required section: ## 🔗 Co-change partners left untouched',
+      ])
+    })
+
+    it('passes a body that keeps explanatory comments next to real sections', () => {
+      const body = `<!--\nexplain the template\n-->\n${buildSmallPrBody().replace(
+        '## 📝 What Does This PR Do?\n',
+        '## 📝 What Does This PR Do?\n\n<!-- one sentence -->\n',
+      )}\n<!-- end -->\n${section}`
+      expect(validatePullRequestBody(body, { ratchetRises: [rise] })).toEqual([])
+    })
+
+    it('still lets the repository template itself contain comments', () => {
+      const template = readFileSync(templatePath, 'utf8')
+      expect(template).toContain('<!--')
+      expect(validateTemplateStructure(template)).toEqual([])
+    })
+  })
 })

@@ -28,8 +28,9 @@ function normalizeMarkdown(markdown) {
   return markdown.replace(/\r\n?/g, '\n')
 }
 
+// An unterminated comment hides everything after it, as it does when GitHub renders the body.
 function stripHtmlComments(markdown) {
-  return markdown.replace(/<!--[\s\S]*?-->/g, '')
+  return markdown.replace(/<!--[\s\S]*?(?:-->|$)/g, '')
 }
 
 function splitTopLevelSections(markdown) {
@@ -154,7 +155,8 @@ export function validatePullRequestBody(
   prBody,
   { missingPartners = null, ratchetRises = null } = {},
 ) {
-  const normalizedBody = normalizeMarkdown(prBody ?? '')
+  // Only what GitHub renders counts: a section inside a comment is invisible to the reviewer.
+  const normalizedBody = stripHtmlComments(normalizeMarkdown(prBody ?? ''))
   const sections = splitTopLevelSections(normalizedBody)
   const errors = []
 
