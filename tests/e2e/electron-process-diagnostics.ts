@@ -1,9 +1,55 @@
 import type { ChildProcess } from 'node:child_process'
-import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { copyFile, mkdir, readdir, readFile } from 'node:fs/promises'
+import { basename, dirname, join } from 'node:path'
+import type { TestInfo } from '@playwright/test'
 
 const OUTPUT_LIMIT_BYTES = 256 * 1024
 const processFailurePattern = /"event":"(?:render-process-gone|child-process-gone)"/u
+
+async function findCrashDumps(directory: string): Promise<string[]> {
+  const entries = await readdir(directory, { withFileTypes: true }).catch(error => {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return []
+    }
+    throw error
+  })
+  const paths = await Promise.all(
+    entries.map(async entry => {
+      const filePath = join(directory, entry.name)
+      // Crashpad uses reports/ on Windows and pending/ or completed/ elsewhere.
+      // Do not follow symlinks outside the test profile.
+      if (entry.isDirectory()) {
+        return await findCrashDumps(filePath)
+      }
+      return entry.isFile() && entry.name.endsWith('.dmp') ? [filePath] : []
+    }),
+  )
+  return paths.flat()
+}
+
+export async function captureElectronCrashDumps(userDataDir: string) {
+  const directory = join(userDataDir, 'crashDumps')
+  // Snapshot before launch, not after Playwright connects: startup can crash too.
+  // UUID basenames stay stable when Crashpad moves pending reports to completed.
+  const retained = new Set((await findCrashDumps(directory)).map(filePath => basename(filePath)))
+  return async (testInfo: TestInfo, appPid: number | null): Promise<void> => {
+    for (const filePath of await findCrashDumps(directory)) {
+      const name = basename(filePath)
+      if (retained.has(name)) {
+        continue
+      }
+      const attachmentName = `electron-minidump-${appPid}-${name}`
+      const outputPath = testInfo.outputPath(attachmentName)
+      await mkdir(dirname(outputPath), { recursive: true })
+      await copyFile(filePath, outputPath)
+      await testInfo.attach(attachmentName, {
+        path: outputPath,
+        contentType: 'application/octet-stream',
+      })
+      retained.add(name)
+    }
+  }
+}
 
 export function captureElectronProcessDiagnostics(
   child: ChildProcess,

@@ -186,4 +186,32 @@ describe('E2E app profile lifetime', () => {
     expect(output).toHaveBeenCalledWith(expect.stringContaining('attachment unavailable'))
     expect(output).toHaveBeenCalledWith(expect.stringContaining('[runtime diagnostics'))
   })
+
+  it.each([false, true])(
+    'retains only new dumps before cleanup, including startup crashes (text attachment fails=%s)',
+    async failTextAttachment => {
+      const dumps = path.join(userDataDir, 'crashDumps')
+      await mkdir(path.join(dumps, 'pending'), { recursive: true })
+      await writeFile(path.join(dumps, 'pending', 'previous.dmp'), 'old process memory')
+      launch.mockImplementation(async () => {
+        await mkdir(path.join(dumps, 'reports'), { recursive: true })
+        await writeFile(path.join(dumps, 'reports', 'startup.dmp'), 'MDMP startup memory')
+        await writeFile(path.join(dumps, 'reports', 'metadata'), 'not a dump')
+        return createApp(new Error('fatal startup error'))
+      })
+      if (failTextAttachment) {
+        testInfo.attach.mockRejectedValueOnce(new Error('text attachment unavailable'))
+      }
+      vi.spyOn(process.stderr, 'write').mockReturnValue(true)
+      await expect(launchApp({ userDataDir })).rejects.toThrow('fatal startup error')
+      expect(existsSync(userDataDir)).toBe(false)
+      const dumpAttachments = testInfo.attach.mock.calls.filter(([name]) =>
+        String(name).startsWith('electron-minidump-'),
+      )
+      expect(dumpAttachments).toHaveLength(1)
+      const attachment = dumpAttachments[0][1] as { path: string; contentType: string }
+      expect(attachment.contentType).toBe('application/octet-stream')
+      expect(await readFile(attachment.path, 'utf8')).toBe('MDMP startup memory')
+    },
+  )
 })

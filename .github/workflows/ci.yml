@@ -428,7 +428,7 @@ jobs:
       - name: Windows-specific E2E tests
         env:
           OPENCOVE_E2E_SKIP_BUILD: '1'
-          OPENCOVE_E2E_TEST_MATCH: '**/*.windows.spec.ts,**/agent.initial-prompt-argv.spec.ts'
+          OPENCOVE_E2E_TEST_MATCH: '**/*.windows.spec.ts,**/agent.initial-prompt-argv.spec.ts,**/runtime-diagnostics.renderer-crash.spec.ts'
           OPENCOVE_E2E_WINDOW_MODE: inactive
           OPENCOVE_E2E_RETRIES: '0'
           OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'

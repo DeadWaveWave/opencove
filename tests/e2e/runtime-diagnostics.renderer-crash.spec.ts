@@ -5,6 +5,7 @@ import { isSeededWorkspaceNavigationReady } from './workspace-canvas.seed-readin
 import { hasOneByteCoreLimit } from './electron-core-limit'
 import {
   createRendererRecoveryProbe,
+  readElectronMainProcessPid,
   readRecoveryProcessState,
   withRecoveryDeadline,
 } from './runtime-diagnostics.renderer-crash.helpers'
@@ -30,6 +31,14 @@ test.afterEach(async () => {
   expect(Number.isInteger(details.exitCode)).toBe(true)
   expect(output).toContain('lastLifecycleEvent')
   expect(output).toContain('processMetricsAtExit')
+  const dumps = testInfo.attachments.filter(item => item.name.startsWith('electron-minidump-'))
+  // Decide from platform, never from whether capture happened to succeed.
+  expect(dumps).toHaveLength(process.platform === 'win32' ? 1 : 0)
+  if (process.platform === 'win32') {
+    const dump = await readFile(dumps[0].path!)
+    expect(dump.subarray(0, 4).toString()).toBe('MDMP')
+    expect(dump.length).toBeGreaterThan(32)
+  }
 })
 
 test('recovers the workspace in the same main process after a renderer crash', async () => {
@@ -43,7 +52,7 @@ test('recovers the workspace in the same main process after a renderer crash', a
     void launching.then(result => result.electronApp.close()).catch(() => undefined)
     throw error
   })
-  const mainPid = electronApp.process().pid!
+  let mainPid: number | undefined
   let probe: JSHandle<ReturnType<typeof createRendererRecoveryProbe>> | undefined
   let lastSnapshot:
     | ReturnType<ReturnType<typeof createRendererRecoveryProbe>['snapshot']>
@@ -67,6 +76,11 @@ test('recovers the workspace in the same main process after a renderer crash', a
   }
 
   try {
+    mainPid = await step(
+      'Read main process identity',
+      () => readElectronMainProcessPid(electronApp),
+      5_000,
+    )
     await step('Seed workspace', () => clearAndSeedWorkspace(window, []), 30_000)
     const browserWindow = await step(
       'Find native window',

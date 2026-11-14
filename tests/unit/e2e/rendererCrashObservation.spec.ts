@@ -1,12 +1,28 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { EventEmitter } from 'node:events'
 import type { BrowserWindow } from 'electron'
+import type { ElectronApplication } from '@playwright/test'
+import { runInNewContext } from 'node:vm'
 import {
   createRendererRecoveryProbe,
+  readElectronMainProcessPid,
   withRecoveryDeadline,
 } from '../../e2e/runtime-diagnostics.renderer-crash.helpers'
 
 afterEach(() => vi.useRealTimers())
+
+it('uses the Electron main PID when Playwright owns a different Windows launcher PID', async () => {
+  // Playwright 1.58 launches Electron with shell:true on Windows. The callback
+  // runs in Electron's context, with neither the launcher nor the test runner PID.
+  const app = {
+    process: vi.fn(() => ({ pid: 7172 })),
+    evaluate: vi.fn(async (callback: () => number) =>
+      runInNewContext(`(${callback.toString()})()`, { process: { pid: 6956 } }),
+    ),
+  }
+  expect(await readElectronMainProcessPid(app as unknown as ElectronApplication)).toBe(6956)
+  expect(app.process).not.toHaveBeenCalled()
+})
 
 it('reports the recovery stage when a native evaluation never settles', async () => {
   vi.useFakeTimers()

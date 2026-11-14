@@ -1,10 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PassThrough } from 'node:stream'
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ChildProcess } from 'node:child_process'
-import { captureElectronProcessDiagnostics } from '../../e2e/electron-process-diagnostics'
+import type { TestInfo } from '@playwright/test'
+import {
+  captureElectronCrashDumps,
+  captureElectronProcessDiagnostics,
+} from '../../e2e/electron-process-diagnostics'
 
 const directories: string[] = []
 afterEach(async () => {
@@ -13,6 +17,38 @@ afterEach(async () => {
 })
 
 describe('Electron process evidence', () => {
+  it('recognizes moved old dumps and retains new dumps without following symlinks', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'opencove-dumps-test-'))
+    directories.push(dir)
+    const dumps = join(dir, 'crashDumps')
+    const pending = join(dumps, 'pending')
+    const completed = join(dumps, 'completed')
+    await mkdir(pending, { recursive: true })
+    await mkdir(completed)
+    await writeFile(join(pending, 'old.dmp'), 'old')
+    const attachDumps = await captureElectronCrashDumps(dir)
+    await rename(join(pending, 'old.dmp'), join(completed, 'old.dmp'))
+    await writeFile(join(pending, 'new.dmp'), 'MDMP new')
+    const outside = join(dir, 'outside')
+    await mkdir(outside)
+    await writeFile(join(outside, 'unrelated.dmp'), 'unrelated process memory')
+    await symlink(outside, join(dumps, 'link'), 'junction')
+    const attach = vi.fn(async () => undefined)
+    const info = {
+      outputPath: (name: string) => join(dir, 'artifacts', name),
+      attach,
+    } as unknown as TestInfo
+    await attachDumps(info, 42)
+    await attachDumps(info, 42)
+    expect(attach).toHaveBeenCalledExactlyOnceWith('electron-minidump-42-new.dmp', {
+      path: join(dir, 'artifacts', 'electron-minidump-42-new.dmp'),
+      contentType: 'application/octet-stream',
+    })
+    expect(await readFile(join(dir, 'artifacts', 'electron-minidump-42-new.dmp'), 'utf8')).toBe(
+      'MDMP new',
+    )
+  })
+
   it('retains startup crash records before cleanup and emits them without opt-in piping', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'opencove-diagnostics-test-'))
     directories.push(dir)

@@ -1,4 +1,5 @@
-import { app } from 'electron'
+import { app, crashReporter } from 'electron'
+import { mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type {
   RuntimeDiagnosticsDetailValue,
@@ -6,6 +7,22 @@ import type {
   RuntimeDiagnosticsSource,
 } from '../../shared/contracts/dto'
 import { appendBoundedRuntimeDiagnosticsLine } from '../../platform/persistence/runtimeDiagnosticsFile'
+
+export function startTestCrashReporter(): void {
+  // Memory dumps must never land in a real user's profile or be uploaded.
+  // Limit the per-launch handler cost to the platform with unexplained native crashes.
+  if (
+    process.platform !== 'win32' ||
+    process.env.NODE_ENV !== 'test' ||
+    !process.env.OPENCOVE_TEST_USER_DATA_DIR
+  ) {
+    return
+  }
+  const directory = resolve(app.getPath('userData'), 'crashDumps')
+  mkdirSync(directory, { recursive: true })
+  app.setPath('crashDumps', directory)
+  crashReporter.start({ uploadToServer: false, ignoreSystemCrashHandler: true })
+}
 
 function appendRuntimeDiagnosticsFile(line: string): void {
   try {
