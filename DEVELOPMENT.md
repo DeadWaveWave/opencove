@@ -93,6 +93,8 @@
 
 降低计数：删除对应的 ref、setter 参数或 workspace 写能力提及（按 #647 的 owner 设计迁移，而不是改写成计数器认不出的形式），运行 `pnpm canvas:state-ratchet`，把更新后的 `scripts/canvas-state-ratchet.json` 与代码改动放进同一个提交。增加计数不被允许：请改用 #647 描述的 owner 与命令。计数器定义见 `scripts/lib/canvas-state-ratchet.mjs`。
 
+workspace 画布文档（节点、Space、活动 Space、Space 归档记录、视口、小地图开关）的写入遵守三条规则（issue #671，#647 的 S2 切片）：提交到 store 的画布文档写入必须经过 `src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands.ts`，不要直接调用 `setWorkspaces` 或 `useAppStore.setState`；每个命令都显式给出 `workspaceId`，不依赖“当前活动的 workspace”；`setNodes` 在调用时从 store 计算，而不是从 `nodesRef` 快照计算。
+
 ### 高风险问题预防策略（只列最容易漏的）
 
 以下内容是前文原则的落地建模方式；正式检查项统一见后文“风险与合规检查”，这里不重复展开检查清单。
