@@ -208,19 +208,24 @@ async function waitForChildProcessExit(
 
 async function closeElectronAppAndCleanup(
   electronApp: ElectronApplication,
+  appProcess: ReturnType<ElectronApplication['process']>,
   originalClose: () => Promise<void>,
   userDataDir: string,
   cleanupUserDataDir: boolean,
   diagnostics: ProcessDiagnostics,
   testInfo: TestInfo,
 ): Promise<void> {
-  const appProcess = electronApp.process()
   const appPid = typeof appProcess.pid === 'number' && appProcess.pid > 0 ? appProcess.pid : null
-  const closeEventPromise = electronApp
-    .waitForEvent('close', { timeout: E2E_APP_CLOSE_TIMEOUT_MS })
-    .then(() => undefined)
-    .catch(() => undefined)
-  const closeAttemptPromise = originalClose()
+  const childHasExited = (): boolean =>
+    appProcess.exitCode !== null || appProcess.signalCode !== null
+  const closeEventPromise = childHasExited()
+    ? Promise.resolve()
+    : Promise.resolve()
+        .then(() => electronApp.waitForEvent('close', { timeout: E2E_APP_CLOSE_TIMEOUT_MS }))
+        .then(() => undefined)
+        .catch(() => undefined)
+  const closeAttemptPromise = Promise.resolve()
+    .then(originalClose)
     .then(() => undefined)
     .catch(() => undefined)
 
@@ -230,7 +235,7 @@ async function closeElectronAppAndCleanup(
       delay(E2E_APP_CLOSE_TIMEOUT_MS),
     ])
   } finally {
-    if (appPid !== null && isProcessAlive(appPid)) {
+    if (appPid !== null && !childHasExited() && isProcessAlive(appPid)) {
       try {
         appProcess.kill('SIGKILL')
       } catch {
@@ -239,7 +244,7 @@ async function closeElectronAppAndCleanup(
 
       await waitForChildProcessExit(appProcess, E2E_APP_FORCE_KILL_TIMEOUT_MS)
 
-      if (isProcessAlive(appPid)) {
+      if (!childHasExited() && isProcessAlive(appPid)) {
         try {
           process.kill(appPid, 'SIGKILL')
         } catch {
@@ -328,8 +333,11 @@ async function launchAppInMode(
       },
     })
 
+    // process() resolves through Playwright's connection and can throw once disconnected.
+    // Retain the owned child while the connection is live, just like the diagnostic collector.
+    const appProcess = electronApp.process()
     const diagnostics = captureElectronProcessDiagnostics(
-      electronApp.process(),
+      appProcess,
       userDataDir,
       shouldPipeElectronLogs(),
     )
@@ -340,12 +348,19 @@ async function launchAppInMode(
     ;(electronApp as unknown as { close: () => Promise<void> }).close = async () => {
       closePromise ??= closeElectronAppAndCleanup(
         electronApp,
+        appProcess,
         originalClose,
         userDataDir,
         cleanupUserDataDir,
         diagnostics,
         testInfo,
-      )
+      ).catch(error => {
+        // Tests usually close in finally, before Playwright records their primary error.
+        // Keep that error intact even if retaining the attachment or deleting the profile fails.
+        process.stderr.write(
+          `[e2e] Electron cleanup failed: ${String(error)}\n${diagnostics.text()}\n`,
+        )
+      })
       return await closePromise
     }
 
