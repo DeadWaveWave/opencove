@@ -137,7 +137,21 @@ describe('scanTestSource: platform gates', () => {
     )
     expect(result.gates).toEqual([])
     expect(result.ignored).toEqual([expect.objectContaining({ line: 2 })])
-    expect(scan("it.skipIf(!process.env.CI)('x', () => {})").ignored).toEqual([])
+    // Every gate it cannot evaluate is listed, not only the ones that mention a platform.
+    expect(scan("it.skipIf(!process.env.CI)('x', () => {})").ignored).toEqual([
+      expect.objectContaining({ line: 1 }),
+    ])
+    expect(
+      scan("test.skip(({ browserName }) => browserName === 'webkit', 'r')").ignored,
+    ).toHaveLength(1)
+  })
+
+  it('lists a gate whose condition is an imported identifier', () => {
+    const result = scan(
+      "import { isWindows } from './helpers'\nit.skipIf(!isWindows)('x', () => {})",
+    )
+    expect(result.gates).toEqual([])
+    expect(result.ignored).toEqual([expect.objectContaining({ line: 2 })])
   })
 
   it('does not treat a string that mentions a gate as a gate', () => {
@@ -274,6 +288,30 @@ describe('scanTestSource: unconditional skips', () => {
       [2, 'first'],
       [4, 'second'],
     ])
+  })
+})
+
+describe('scanTestSource: each forms and known blind spots', () => {
+  it.each(['skip', 'fixme'])('counts %s.each as a skip', modifier => {
+    expect(scan(`describe.${modifier}.each([1, 2])('x %s', () => {})`).skips).toHaveLength(1)
+    expect(scan(`it.${modifier}.each([1])('x', () => {})`).skips).toHaveLength(1)
+    expect(scan(`test.describe.${modifier}.each([1])('x', () => {})`).skips).toHaveLength(1)
+  })
+
+  it('counts only.each like only', () => {
+    expect(scan("describe.only.each([1])('x', () => {})").focused).toHaveLength(1)
+    expect(scan("it.only.each([1])('x', () => {})").focused).toEqual([
+      expect.objectContaining({ line: 1 }),
+    ])
+  })
+
+  it('does not count a plain each, or a skip.each with no body', () => {
+    expect(scan("it.each([1])('x', () => {})").skips).toHaveLength(0)
+    expect(scan("it.skip.each([1])('x')").skips).toHaveLength(0)
+  })
+
+  it('does not see an alias of skip (documented blind spot)', () => {
+    expect(scan("const t = test.skip\nt('x', () => {})").skips).toHaveLength(0)
   })
 })
 

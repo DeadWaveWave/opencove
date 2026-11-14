@@ -2,6 +2,11 @@
 // only, a focused test (`.only`) and a test skipped without a condition each hide coverage: CI
 // either never runs the test or runs less than it appears to. The scanner reads source with the
 // TypeScript parser, so a string or a comment that mentions `test.only` never counts.
+//
+// What it cannot see: an alias (`const t = test.skip`), a gate or a platform value imported from
+// another file (`it.skipIf(!isWindows)`), `os.platform()` and other ways to read the platform, and a
+// skip whose title is not a literal (`it.skip(reason, fn)`). `--verbose` lists every gate whose
+// condition it could not evaluate, an imported identifier included.
 import ts from 'typescript'
 import { compareRatchet, formatRatchetIssues, serializeRatchet } from './ratchet.mjs'
 
@@ -11,8 +16,8 @@ export const TEST_GATES_RULES = ['unconditional-skip']
 
 export const PLATFORMS = ['linux', 'darwin', 'win32']
 // File-name suffix that marks a spec file as the home of tests for one platform. CI selects these
-// files by glob (`**/*.windows.spec.*`, `**/*.mac.spec.*`), so a gate in an unsuffixed file would
-// point at a platform where nothing runs it.
+// files by name (Vitest's file filter `.windows.spec.` or `.mac.spec.`), so a gate in an unsuffixed
+// file would point at a platform where nothing runs it.
 export const PLATFORM_SUFFIXES = { win32: '.windows.', darwin: '.mac.', linux: '.linux.' }
 export const PLATFORM_SUFFIX_NAMES = { win32: 'windows', darwin: 'mac', linux: 'linux' }
 
@@ -253,12 +258,14 @@ export function scanTestSource(filePath, source) {
   const sourceFile = ts.createSourceFile(filePath, source, ts.ScriptTarget.Latest, true, kind)
   const { platformsWhere } = createEvaluator(sourceFile)
 
-  const gate = (node, condition, runsWhen) => {
+  // `listUnknown`: a condition that cannot be evaluated is listed for `--verbose`. An early
+  // `if (cond) return` is listed only when it mentions a platform, since most are not gates at all.
+  const gate = (node, condition, runsWhen, listUnknown = true) => {
     const platforms = platformsWhere(condition, runsWhen)
     const line = lineOf(sourceFile, node)
     const text = oneLine(node.getText(sourceFile))
     if (platforms === null) {
-      if (/platform/i.test(condition.getText(sourceFile))) {
+      if (listUnknown || /platform/i.test(condition.getText(sourceFile))) {
         result.ignored.push({ line, text })
       }
       return
@@ -268,6 +275,33 @@ export function scanTestSource(filePath, source) {
     }
     const single = platforms.length === 1 && platforms[0] !== 'linux' ? platforms[0] : null
     result.gates.push({ line, platforms, single, text })
+  }
+
+  const isModifierBase = base => {
+    const dot = base.lastIndexOf('.')
+    return (
+      dot > 0 &&
+      TEST_BASES.has(base.slice(0, dot)) &&
+      /^(?:skip|fixme|only)$/.test(base.slice(dot + 1))
+    )
+  }
+
+  const visitEachModifier = (node, modifier) => {
+    const declaration =
+      ts.isCallExpression(node.parent) && node.parent.expression === node ? node.parent : null
+    if (modifier === 'only') {
+      result.focused.push({
+        line: lineOf(sourceFile, node),
+        text: oneLine(node.getText(sourceFile)),
+      })
+    } else if (declaration && isUnconditionalSkip(declaration)) {
+      const [first] = declaration.arguments
+      result.skips.push({
+        line: lineOf(sourceFile, node),
+        title: first && isTitle(first) ? titleOf(first) : '',
+        text: oneLine(node.getText(sourceFile)),
+      })
+    }
   }
 
   const visitCall = node => {
@@ -290,6 +324,9 @@ export function scanTestSource(filePath, source) {
       } else if (first && !isTitle(first)) {
         gate(node, first, false)
       }
+    } else if ((name === 'each' || name === 'for') && isModifierBase(base)) {
+      // `describe.skip.each(rows)('title', fn)`: the declaration is the call around this one.
+      visitEachModifier(node, base.slice(base.lastIndexOf('.') + 1))
     } else if (name === 'only' && TEST_BASES.has(base)) {
       result.focused.push({
         line: lineOf(sourceFile, node),
@@ -316,7 +353,7 @@ export function scanTestSource(filePath, source) {
   const visitEarlyReturns = node => {
     for (const statement of testCallback(node)?.statements ?? []) {
       if (isBareReturnIf(statement)) {
-        gate(statement, statement.expression, false)
+        gate(statement, statement.expression, false, false)
       }
     }
   }
@@ -376,7 +413,7 @@ export function evaluateTestGates(files) {
           file: path,
           line: gate.line,
           rule: 'platform-gate-suffix',
-          message: `\`${gate.text}\` runs this test on ${gate.single} only. Move it to a file named *.${name}.spec.ts so the ${name} CI job runs it by glob.`,
+          message: `\`${gate.text}\` runs this test on ${gate.single} only. Move it to a file named *.${name}.spec.ts so the ${name} CI job, which selects the .${name}.spec. files by name, runs it.`,
         })
       }
     }

@@ -5,7 +5,9 @@
 //
 //   platform-gate-suffix  a test gated to one non-Linux platform lives in a file named for it
 //                         (`*.windows.spec.ts`, `*.mac.spec.ts`), which that platform's CI job
-//                         selects by glob
+//                         selects by name (Vitest file filter `.windows.spec.` / `.mac.spec.`).
+//                         Gates are `skipIf`, `runIf`, `test.skip(cond)`, `cond ? it : it.skip`
+//                         and an early `if (cond) return` at the top of a test body
 //   focused-test          no `test.only`, `it.only`, `describe.only` or `test.describe.only`
 //   unconditional-skip    ratchet: skipped tests (`test.skip('title', fn)`, `test.describe.skip`,
 //                         `test.skip()`) are counted per file against
@@ -17,7 +19,13 @@
 //   pnpm test-gates:ratchet  rewrites the baseline, refusing when the total would rise against the
 //                            merge base with origin/main, unless the rule is named with
 //                            --accept-rise <rule> (see DEVELOPMENT.md)
-//   --verbose   also list the conditions that mention a platform but could not be evaluated
+//   --verbose   also list every gate whose condition could not be evaluated
+//
+// Blind spots, by design (see `scripts/lib/test-gates.mjs`): an alias such as
+// `const t = test.skip`, a gate or platform value imported from another file, `os.platform()`, and a
+// skip whose title is not a literal. `--verbose` lists the gates it could not evaluate, an imported
+// identifier included.
+//
 // The baseline path and the scanned roots are fixed here. Neither can be changed from the command
 // line, so a rise cannot be waved through by pointing the check at another file.
 import { readFileSync, writeFileSync } from 'node:fs'
