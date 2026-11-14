@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { expect, it, vi } from 'vitest'
+import { singleTokenLaunchPrompts, providerLaunchCommands } from '../../support/sessionGrantCases'
 import { admittedGrantInvocation } from './admittedGrantInvocation.testUtils'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import { registerOperation } from '../../../src/app/main/controlSurface/registerOperation'
@@ -94,7 +95,7 @@ for (const operation of [sessionLaunchAgentOperation, sessionLaunchAgentInMountO
       expect(f.spawn).not.toHaveBeenCalled()
     },
   )
-  it.each(['logout', 'update', 'resume', 'Refactor'])(
+  it.each(singleTokenLaunchPrompts)(
     `${operation.id} preserves single-word %j denial with a genuine internal permit`,
     async prompt => {
       const f = fixture()
@@ -113,13 +114,7 @@ for (const operation of [sessionLaunchAgentOperation, sessionLaunchAgentInMountO
       expect(f.spawn).not.toHaveBeenCalled()
     },
   )
-  it.each([
-    '! printenv X',
-    '/permissions change policy',
-    '# note',
-    '& task',
-    '\u0085/permissions change policy',
-  ])(
+  it.each([...providerLaunchCommands, '\u0085/permissions change policy'])(
     `${operation.id} preserves resolved-provider command refusal for %j with a genuine internal permit`,
     async prompt => {
       const f = fixture()

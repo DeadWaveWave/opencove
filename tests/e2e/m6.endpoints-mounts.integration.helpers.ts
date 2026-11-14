@@ -286,7 +286,7 @@ export async function pollForEndpointPing(window: Page, endpointId: string): Pro
     async () =>
       await window.evaluate(async evaluatedEndpointId => {
         try {
-          const ping = await window.opencoveApi.controlSurface.invoke<{ ok: boolean }>({
+          const ping = await globalThis.window.opencoveApi.controlSurface.invoke<{ ok: boolean }>({
             kind: 'query',
             id: 'endpoint.ping',
             payload: { endpointId: evaluatedEndpointId, timeoutMs: 10_000 },

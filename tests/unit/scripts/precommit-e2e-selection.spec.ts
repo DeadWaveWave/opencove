@@ -181,3 +181,12 @@ it('keeps moved contracts selected for CLI, Worker, native process and control-s
   expect(shouldRunWorkerCliContracts([], true)).toBe(true)
   expect(shouldRunWorkerCliContracts([changed('README.md')])).toBe(false)
 })
+
+it.each(['cliSessionGrant', 'sessionGrantCases'])(
+  'keeps the shared %s oracle covered by Worker and Desktop grant boundaries',
+  name => {
+    const path = `tests/support/${name}.ts`
+    expect(shouldRunWorkerCliContracts([changed(path)])).toBe(true)
+    expect(select(path).tests).toContain('tests/e2e/cli.session-grant.spec.ts')
+  },
+)

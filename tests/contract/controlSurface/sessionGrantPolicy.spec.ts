@@ -1,3 +1,5 @@
+import { deniedLaunchFields, singleTokenLaunchPrompts } from '../../support/sessionGrantCases'
+import { nodeCreateOperation } from '../../../src/shared/contracts/controlSurface/operations/domains/node'
 import { admittedGrantInvocation } from './admittedGrantInvocation.testUtils'
 /* eslint-disable no-await-in-loop -- Each request observes the preceding mutation or authorization boundary. */
 // @vitest-environment node
@@ -207,7 +209,7 @@ for (const op of [sessionLaunchAgentOperation, sessionLaunchAgentInMountOperatio
     { kind: 'bearer' as const },
     { kind: 'cookie' as const, webSessionGeneration: 0 },
   ]) {
-    it.each(['logout', 'update', 'resume', 'Refactor'])(
+    it.each(singleTokenLaunchPrompts)(
       `${op.id}/${auth.kind} preserves trusted single-token %j admission`,
       async prompt => {
         const surface = createControlSurface()
@@ -369,5 +371,41 @@ it.each([true, false])(
     )
     expect(result.agentFullAccess).toBe(agentFullAccess)
     expect(state.settings).toEqual({ agentFullAccess: !agentFullAccess })
+  },
+)
+
+// The same explicit values rejected by the CLI must fail at the node input boundary,
+// before any runtime handler can create a node or start a PTY.
+it.each(Object.entries(deniedLaunchFields))(
+  'node.create preserves CLI input-policy refusal for %s=%j',
+  async (field, value) => {
+    const surface = createControlSurface()
+    const handle = vi.fn()
+    registerOperation(surface, nodeCreateOperation, {
+      handle,
+      defaultErrorCode: 'common.unexpected',
+    })
+    expect(
+      await surface.invoke(ctx, {
+        kind: 'command',
+        id: 'node.create',
+        payload: {
+          kind: 'agent',
+          space: { kind: 'spaceId', spaceId: 's' },
+          data: { provider: 'claude-code', prompt: 'Review this project', [field]: value },
+        },
+      }),
+    ).toMatchObject({
+      ok: false,
+      error: {
+        code: 'common.invalid_input',
+        details: {
+          issues: expect.arrayContaining([
+            expect.objectContaining({ code: 'unrecognized_keys', path: ['data', field] }),
+          ]),
+        },
+      },
+    })
+    expect(handle).not.toHaveBeenCalled()
   },
 )
