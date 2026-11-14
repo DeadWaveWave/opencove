@@ -35,7 +35,7 @@
 - **只放生产代码**：`src/` 只放会随产品发布的代码；仅测试使用的模块放在 `tests/`（例如 `tests/support/`）。
 - **测试专用导出**：生产代码和同文件都没用到、只有测试使用的导出，必须命名为 `...ForTests` 并标注 `/** @internal */`；`@internal` 只允许用于 `...ForTests`，且必须写成紧贴声明上方的 JSDoc 块；`src/` 下禁止以任何注释形式（行注释、块注释、export 列表）使用 `@public` / `@beta` / `@alias`（knip 不报告带这些标签的导出，会掩盖死代码）。
 - **按路径字符串加载的代码**（子进程、worker）必须是构建入口：加入 `scripts/lib/build-entries.mjs`，并注释它在哪里被 spawn。该文件是生产入口的唯一来源，electron-vite、CLI 构建和 `knip.config.ts` 都读取它。
-- **未使用的 export / type** 记录在 `scripts/dead-code-ratchet.json`（按文件计数，只减不增）。清理后运行 `pnpm deadcode:ratchet` 锁定；该命令在任何计数上升时拒绝写入，且在基线文件已存在于 git HEAD 却被删除时拒绝重建（只有首次生成才可显式加 `--bootstrap`，`pnpm deadcode:ratchet` 不带该参数）。不要手改该文件，也不要在 `knip.config.ts` 里 `ignore` 文件或目录。
+- **未使用的 export / type** 记录在 `scripts/dead-code-ratchet.json`（按文件计数，只减不增）。清理后运行 `pnpm deadcode:ratchet` 锁定；该命令按规则总数与合并基线（merge base）上的基线比较，总数上升、规则消失、基线文件在合并基线上不存在而本次要写入都会被拒绝（见下文“棘轮基线守卫”），文件间移动或重命名但总数不变则允许。不要手改该文件，也不要在 `knip.config.ts` 里 `ignore` 文件或目录。
 - 文件、依赖、unresolved、binaries 等必须为 0。生产不 import 的依赖用 `pnpm remove` 移除，仅工具链使用的移到 `devDependencies`。
 
 ### 命名与前缀 (Naming)
@@ -89,9 +89,20 @@
 
 已知盲区：整个 hook 返回值作为单个参数传递（如 `canvasState: ReturnType<typeof useWorkspaceCanvasState>`）时，其中携带的 ref 与 setter 不会被任何计数器看到；`ref-write` 看不到对 ref 内状态的修改（如 `someRef.current.set(...)`）。因此计数为 0 不代表不存在由 ref 持有的状态。
 
-语义与 `pnpm ui:style-check` 的棘轮相同：任一文件的计数相对 `scripts/canvas-state-ratchet.json` 增加或减少都会失败。基线只用 `pnpm canvas:state-ratchet` 重新生成，不要手改 JSON；该命令固定写入这一个文件，不接受其他路径或配置参数，并且在任一计数器的总数会上升时拒绝写入；总数不变但某些文件的计数上升（代码在文件间移动）时会允许写入，并逐条打印这些文件级上升供评审查看。
+语义与 `pnpm ui:style-check` 的棘轮相同：任一文件的计数相对 `scripts/canvas-state-ratchet.json` 增加或减少都会失败。基线只用 `pnpm canvas:state-ratchet` 重新生成，不要手改 JSON；该命令固定写入这一个文件，不接受其他路径或配置参数，并且在任一计数器的总数相对合并基线会上升（或计数器消失）时拒绝写入，除非用 `--accept-rise <规则>` 点名（见下文“棘轮基线守卫”）；总数不变但某些文件的计数上升（代码在文件间移动）时会允许写入，并逐条打印这些文件级上升供评审查看。
 
 降低计数：删除对应的 ref、setter 参数或 workspace 写能力提及（按 #647 的 owner 设计迁移，而不是改写成计数器认不出的形式），运行 `pnpm canvas:state-ratchet`，把更新后的 `scripts/canvas-state-ratchet.json` 与代码改动放进同一个提交。增加计数不被允许：请改用 #647 描述的 owner 与命令。计数器定义见 `scripts/lib/canvas-state-ratchet.mjs`。
+
+### 棘轮基线守卫 (Ratchet Baseline Guard)
+
+任何以 `ratchet.json` 结尾的已跟踪文件都是棘轮基线（目前六个：架构、死代码、画布状态、兼容、UI 样式、UI 标记），形状为 `{ 规则: { 文件: 正整数 } }`。守卫保证基线本身不能在无人确认的情况下增长，计数器、检查模式和文件格式都不变。
+
+- **比较点**：合并基线 M（`git merge-base HEAD origin/main`；没有 `origin/main` 或浅克隆缺少它时退回 `HEAD`；没有提交时每个总数为 0）与分支头 H。比较的是每条规则的**总数**，缺失的文件或规则按 0 计；文件间移动、文件重命名不需要任何标志。
+- **更新命令**（`pnpm arch:ratchet`、`pnpm deadcode:ratchet`、`pnpm canvas:state-ratchet`、`pnpm ui:style-ratchet`、`node scripts/check-compat-expiry.mjs --update-ratchet`）都先调用 `guardRatchetUpdate`：总数相对 M 上升、或 M 上总数大于 0 的规则消失时拒绝写入（退出 1），并打印 M 的来源、先修代码的建议和需要粘贴到 PR 描述里的段落。确实要记录时，对每条受影响规则加 `--accept-rise <规则>`（可重复；点名一条没有上升也没有消失的规则同样被拒绝）。没有环境变量或配置项可以替代这个标志，`package.json` 脚本也不得带它。
+- **PR 描述**：`scripts/check-pr-template.mjs`（`pr-template-check.yml`，`pull_request` 触发）用同一函数比较 M 和 H；有上升或规则消失时，描述必须有 `## 📈 Ratchet rises` 段，每条一行：``- `基线路径` `规则` M总数 -> H总数: 类别: 理由``（消失写 `-> removed`）。类别是 `merge-skew:`（并行 PR 的合并偏差，须引用 `#N`）、`detection:`（规则检测变宽）、`new-rule:`（新规则或新棘轮）、`rename:`（规则 id 被改名、拆分或移除）、`debt:`（须引用将清除这笔债务的 issue `#N`）。检查失败时会打印可直接粘贴的段落；`pnpm ratchet:rises` 对工作区打印同样的段落。
+- **本地检查**：`node scripts/check-pr-template.mjs body.md --base origin/main --head HEAD`；不带 `--base` 时跳过棘轮部分。
+- **不在范围内**：`LINE_LIMIT_EXEMPTIONS`、兼容注册表的 `until`、`rules.json` 的例外和 E2E 用例预算。
+- 实现只有一处：`scripts/lib/ratchet.mjs`（总数、形状、比较、段落）与 `scripts/lib/ratchet-git.mjs`（修订、发现、`guardRatchetUpdate`）。
 
 ### 高风险问题预防策略（只列最容易漏的）
 
