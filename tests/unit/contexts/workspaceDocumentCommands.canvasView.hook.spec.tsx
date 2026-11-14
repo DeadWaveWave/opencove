@@ -94,4 +94,32 @@ describe('workspace document commands: the canvas view of the store', () => {
     expect(after[0]).toBe(decorated[0])
     expect(after[1].data.title).toBe('changed')
   })
+
+  it.each([
+    { isLiveGestureActive: true, expectedX: 999 },
+    { isLiveGestureActive: false, expectedX: 0 },
+  ])(
+    'seeds updaters with live positions only during a live gesture (live: $isLiveGestureActive)',
+    ({ isLiveGestureActive, expectedX }) => {
+      const stored = [sized('t1', 0), sized('n2', 400)]
+      seed(stored)
+      const canvasNodes = [{ ...stored[0], position: { x: 999, y: 0 } }, stored[1]]
+      const view = renderCanvasNodesStore(canvasNodes, { isLiveGestureActive })
+      let seenX: number | null = null
+
+      act(() => {
+        view.result.current.setNodes(prev => {
+          seenX = prev.find(node => node.id === 't1')?.position.x ?? null
+          return prev.map(node =>
+            node.id === 'n2' ? { ...node, data: { ...node.data, title: 'changed' } } : node,
+          )
+        })
+      })
+
+      expect(seenX).toBe(expectedX)
+      const committed = useAppStore.getState().workspaces[0].nodes
+      expect(committed.find(node => node.id === 't1')?.position.x).toBe(expectedX)
+      expect(committed.find(node => node.id === 'n2')?.data.title).toBe('changed')
+    },
+  )
 })
