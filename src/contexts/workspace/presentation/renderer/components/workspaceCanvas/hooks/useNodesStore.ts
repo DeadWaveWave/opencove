@@ -129,9 +129,13 @@ export function useWorkspaceCanvasNodesStore({
       let previousDocumentNodes: Node<TerminalNodeData>[] | null = null
       const result = commitCanvasDocument(workspaceId, document => {
         previousDocumentNodes = document.nodes
-        const base = resolveCanvasDocumentBase(document.nodes, nodesRef.current, {
-          includeLivePositions: isLiveGestureActive(),
-        })
+        // nodesRef shows the active workspace; a late write for another one must not inherit it.
+        const isShown = isActiveWorkspace(workspaceId)
+        const base = resolveCanvasDocumentBase(
+          document.nodes,
+          isShown ? nodesRef.current : document.nodes,
+          { includeLivePositions: isShown && isLiveGestureActive() },
+        )
         const output = recipe({ nodes: base, spaces: document.spaces })
         const nextNodes = ensureNodesHaveInitialDimensions(output.nodes)
         if (nextNodes === base && output.spaces === document.spaces) {
