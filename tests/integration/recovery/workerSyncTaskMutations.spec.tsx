@@ -215,7 +215,9 @@ it.each(
     }
     const rendererSave = async (name: string) => {
       await act(async () => {
-        useAppStore.getState().setWorkspaces(ws => ws.map(w => ({ ...w, name })))
+        useAppStore.setState(state => ({
+          workspaces: state.workspaces.map(w => ({ ...w, name })),
+        }))
         schedulePersistedStateWrite(produce)
         expect(await flushScheduledPersistedStateWriteAsync()).toBe(true)
       })
@@ -262,15 +264,13 @@ it.each(
               workspace: heldWorkspace,
               agentSettings: useAppStore.getState().agentSettings,
               onNodePrepared: hydrated => {
-                useAppStore
-                  .getState()
-                  .setWorkspaces(ws =>
-                    ws.map(w =>
-                      w.id === 'project'
-                        ? { ...w, nodes: w.nodes.map(n => mergeHydratedNode(n, hydrated)) }
-                        : w,
-                    ),
-                  )
+                useAppStore.setState(state => ({
+                  workspaces: state.workspaces.map(w =>
+                    w.id === 'project'
+                      ? { ...w, nodes: w.nodes.map(n => mergeHydratedNode(n, hydrated)) }
+                      : w,
+                  ),
+                }))
               },
             })
           : null
