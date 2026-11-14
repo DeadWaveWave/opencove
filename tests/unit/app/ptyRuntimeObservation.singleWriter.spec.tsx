@@ -144,10 +144,16 @@ describe('one PTY event is one store write', () => {
     const listener = vi.fn()
     const unsubscribe = useAppStore.subscribe(listener)
 
+    const layoutSync = vi.fn()
+    window.addEventListener('opencove:terminal-layout-sync', layoutSync)
+
     act(() => {
       source.emitState({ sessionId: 'session-1', state: 'standby' })
     })
     unsubscribe()
+    window.removeEventListener('opencove:terminal-layout-sync', layoutSync)
+
+    expect(layoutSync).not.toHaveBeenCalled()
 
     expect(
       useAppStore.getState().workspaces[0].nodes[0].data.agentRuntimeObservation,
