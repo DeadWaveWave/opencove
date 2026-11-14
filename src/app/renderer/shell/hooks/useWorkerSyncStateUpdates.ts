@@ -1,5 +1,6 @@
 import { isWorkerConnectionRefusal } from '@shared/sync/managedClaudeWorkerCompatibility'
 import { rebaseConnectMetadata } from './workerSync/workspaceRefreshProjection'
+import { applyWorkerSyncState } from './workerSync/applyWorkerSyncState'
 import {
   reportWorkerConnectionFailure,
   clearWorkerConnectionFailure,
@@ -376,10 +377,10 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
         const settingsChanged =
           canonicalContent(normalizeAgentSettings(persisted.settings)) !==
           canonicalContent(normalizeAgentSettings(current.agentSettings))
-        useAppStore.setState({
+        applyWorkerSyncState({
           workspaces: nextWorkspaces,
           activeWorkspaceId: nextActiveWorkspaceId,
-          ...(settingsChanged ? { agentSettings: persisted.settings } : {}),
+          settings: settingsChanged ? persisted.settings : null,
         })
         acceptWorkerSyncSnapshot(snapshot, persisted)
         if (demand) {

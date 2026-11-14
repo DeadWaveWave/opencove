@@ -4,6 +4,7 @@ export {
   bindWorkspaceDocumentStore,
   commitCanvasDocument,
   registerWorkspaceDocumentPersistFlush,
+  replaceFromSync,
   removeWorkspaceSpaceArchiveRecord,
   setWorkspaceActiveSpace,
   setWorkspaceMinimapVisible,

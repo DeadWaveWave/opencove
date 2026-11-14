@@ -22,7 +22,7 @@ export interface WorkspaceDocumentStoreState {
 
 export interface WorkspaceDocumentStore {
   getState(): WorkspaceDocumentStoreState
-  setState(partial: Pick<WorkspaceDocumentStoreState, 'workspaces'>): void
+  setState(partial: Partial<WorkspaceDocumentStoreState>): void
 }
 
 export type WorkspaceDocumentRecipe = (document: Readonly<WorkspaceDocument>) => WorkspaceDocument
@@ -167,6 +167,20 @@ export function applyRuntimeObservation(
     persistFlush?.()
   }
   return true
+}
+
+/**
+ * Worker sync replaces the whole list and the active workspace in one write. `next` is computed
+ * by the caller from the store in the same synchronous block, so nothing can interleave.
+ */
+export function replaceFromSync(next: WorkspaceDocumentStoreState): void {
+  if (isRecipeRunning) {
+    throw new Error('workspace document command ran inside a recipe')
+  }
+  requireStore().setState({
+    workspaces: next.workspaces,
+    activeWorkspaceId: next.activeWorkspaceId,
+  })
 }
 
 export function replaceWorkspaceNodes(
