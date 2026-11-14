@@ -67,6 +67,11 @@ export interface AppStoreState {
     overNodeId: string,
   ) => boolean
   setProjectIconId: (workspaceId: string, iconId: ProjectIconId | null) => boolean
+  setWorkspaceWorktreesRoot: (workspaceId: string, worktreesRoot: string) => boolean
+  setWorkspaceEnvironmentVariables: (
+    workspaceId: string,
+    environmentVariables: Record<string, string>,
+  ) => boolean
   setWorkspaceSpacePinned: (workspaceId: string, spaceId: string, pinned: boolean) => boolean
 }
 
@@ -167,6 +172,38 @@ export const useAppStore = create<AppStoreState>(set => ({
           ...workspace,
           iconId,
         }
+      })
+
+      return changed ? { workspaces } : state
+    })
+    return changed
+  },
+  setWorkspaceWorktreesRoot: (workspaceId, worktreesRoot) => {
+    let changed = false
+    set(state => {
+      const workspaces = state.workspaces.map(workspace => {
+        if (workspace.id !== workspaceId || workspace.worktreesRoot === worktreesRoot) {
+          return workspace
+        }
+
+        changed = true
+        return { ...workspace, worktreesRoot }
+      })
+
+      return changed ? { workspaces } : state
+    })
+    return changed
+  },
+  setWorkspaceEnvironmentVariables: (workspaceId, environmentVariables) => {
+    let changed = false
+    set(state => {
+      const workspaces = state.workspaces.map(workspace => {
+        if (workspace.id !== workspaceId) {
+          return workspace
+        }
+
+        changed = true
+        return { ...workspace, environmentVariables }
       })
 
       return changed ? { workspaces } : state

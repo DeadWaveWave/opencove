@@ -8,6 +8,7 @@ import {
   buildAgentNodeTitle,
   stripAgentProviderPrefix,
 } from '@contexts/workspace/presentation/renderer/utils/agentTitle'
+import { commitCanvasDocument } from '@contexts/workspace/presentation/renderer'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import type { ProjectContextMenuTarget } from '../types'
 import { useAppStore } from '../store/useAppStore'
@@ -72,58 +73,59 @@ export function renameTarget(target: ProjectContextMenuTarget, nextName: string)
     return
   }
 
-  useAppStore.getState().setWorkspaces(previous =>
-    previous.map(workspace => {
-      if (workspace.id !== target.workspaceId) {
-        return workspace
-      }
+  if (target.kind === 'project') {
+    useAppStore
+      .getState()
+      .setWorkspaces(previous =>
+        previous.map(workspace =>
+          workspace.id !== target.workspaceId || workspace.name === normalizedName
+            ? workspace
+            : { ...workspace, name: normalizedName },
+        ),
+      )
+    return
+  }
 
-      if (target.kind === 'project') {
-        return workspace.name === normalizedName
-          ? workspace
-          : { ...workspace, name: normalizedName }
-      }
-
-      if (target.kind === 'space') {
-        let changed = false
-        const spaces = workspace.spaces.map(space => {
-          if (space.id !== target.spaceId || space.name === normalizedName) {
-            return space
-          }
-          changed = true
-          return { ...space, name: normalizedName }
-        })
-        return changed ? { ...workspace, spaces } : workspace
-      }
-
+  commitCanvasDocument(target.workspaceId, document => {
+    if (target.kind === 'space') {
       let changed = false
-      const nodes = workspace.nodes.map(node => {
-        if (node.id !== target.nodeId || node.data.kind !== 'agent' || !node.data.agent) {
-          return node
+      const spaces = document.spaces.map(space => {
+        if (space.id !== target.spaceId || space.name === normalizedName) {
+          return space
         }
-
-        const title =
-          node.data.titleIsLiteral === true
-            ? normalizedName
-            : buildAgentNodeTitle(node.data.agent.provider, normalizedName)
-        if (node.data.title === title && node.data.titlePinnedByUser === true) {
-          return node
-        }
-
         changed = true
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            title,
-            titlePinnedByUser: true,
-          },
-        }
+        return { ...space, name: normalizedName }
       })
+      return changed ? { ...document, spaces } : document
+    }
 
-      return changed ? { ...workspace, nodes } : workspace
-    }),
-  )
+    let changed = false
+    const nodes = document.nodes.map(node => {
+      if (node.id !== target.nodeId || node.data.kind !== 'agent' || !node.data.agent) {
+        return node
+      }
+
+      const title =
+        node.data.titleIsLiteral === true
+          ? normalizedName
+          : buildAgentNodeTitle(node.data.agent.provider, normalizedName)
+      if (node.data.title === title && node.data.titlePinnedByUser === true) {
+        return node
+      }
+
+      changed = true
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          title,
+          titlePinnedByUser: true,
+        },
+      }
+    })
+
+    return changed ? { ...document, nodes } : document
+  })
 }
 
 export function resolveTargetLabelColor(
@@ -227,49 +229,43 @@ export function setTargetLabelColor(
     return
   }
 
-  useAppStore.getState().setWorkspaces(previous =>
-    previous.map(workspace => {
-      if (workspace.id !== target.workspaceId) {
-        return workspace
-      }
-
-      if (target.kind === 'space') {
-        const nextSpaceLabelColor = labelColor === 'none' ? null : labelColor
-        let changed = false
-        const spaces = workspace.spaces.map(space => {
-          if (space.id !== target.spaceId || space.labelColor === nextSpaceLabelColor) {
-            return space
-          }
-
-          changed = true
-          return { ...space, labelColor: nextSpaceLabelColor }
-        })
-
-        return changed ? { ...workspace, spaces } : workspace
-      }
-
+  commitCanvasDocument(target.workspaceId, document => {
+    if (target.kind === 'space') {
+      const nextSpaceLabelColor = labelColor === 'none' ? null : labelColor
       let changed = false
-      const nodes = workspace.nodes.map(node => {
-        if (node.id !== target.nodeId || node.data.kind !== 'agent') {
-          return node
-        }
-
-        const previousColor = node.data.labelColorOverride ?? null
-        if (previousColor === labelColor) {
-          return node
+      const spaces = document.spaces.map(space => {
+        if (space.id !== target.spaceId || space.labelColor === nextSpaceLabelColor) {
+          return space
         }
 
         changed = true
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            labelColorOverride: labelColor,
-          },
-        }
+        return { ...space, labelColor: nextSpaceLabelColor }
       })
 
-      return changed ? { ...workspace, nodes } : workspace
-    }),
-  )
+      return changed ? { ...document, spaces } : document
+    }
+
+    let changed = false
+    const nodes = document.nodes.map(node => {
+      if (node.id !== target.nodeId || node.data.kind !== 'agent') {
+        return node
+      }
+
+      const previousColor = node.data.labelColorOverride ?? null
+      if (previousColor === labelColor) {
+        return node
+      }
+
+      changed = true
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          labelColorOverride: labelColor,
+        },
+      }
+    })
+
+    return changed ? { ...document, nodes } : document
+  })
 }
