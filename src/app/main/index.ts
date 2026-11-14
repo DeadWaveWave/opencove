@@ -13,7 +13,7 @@ import {
 } from './appRuntimeConfig'
 import { setRuntimeIconTestState } from './iconTestHarness'
 import { installSystemNotificationTestHarness } from '../../contexts/system/presentation/main-ipc/systemNotifications'
-import { resolveRuntimeIconPath } from './runtimeIcon'
+import { boundDockIconImage, resolveRuntimeIconPath } from './runtimeIcon'
 import { resolveTitleBarOverlay } from './ipc/registerWindowChromeIpcHandlers'
 import { createApprovedWorkspaceStore } from '../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { resolveHomeWorkerEndpoint } from './worker/resolveHomeWorkerEndpoint'
@@ -363,7 +363,7 @@ app.whenReady().then(async () => {
 
   const runtimeIconPath = resolveRuntimeIconPath()
   if (process.platform === 'darwin' && runtimeIconPath) {
-    app.dock?.setIcon(nativeImage.createFromPath(runtimeIconPath))
+    app.dock?.setIcon(boundDockIconImage(nativeImage.createFromPath(runtimeIconPath)))
   }
 
   if (isTruthyEnv(process.env['OPENCOVE_PTY_HOST_POC'])) {
