@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Both themes and each menu share one Electron window and must settle in turn. */
 import { expect, test, type Locator } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
 

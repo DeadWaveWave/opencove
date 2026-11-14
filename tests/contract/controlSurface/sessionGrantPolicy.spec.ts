@@ -1,7 +1,6 @@
 import { deniedLaunchFields, singleTokenLaunchPrompts } from '../../support/sessionGrantCases'
 import { nodeCreateOperation } from '../../../src/shared/contracts/controlSurface/operations/domains/node'
 import { admittedGrantInvocation } from './admittedGrantInvocation.testUtils'
-/* eslint-disable no-await-in-loop -- Each request observes the preceding mutation or authorization boundary. */
 // @vitest-environment node
 import { expect, it, vi } from 'vitest'
 import { CONTROL_SURFACE_OPERATIONS } from '../../../src/shared/contracts/controlSurface/operations'

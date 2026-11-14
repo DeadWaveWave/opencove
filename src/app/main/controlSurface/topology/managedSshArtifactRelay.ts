@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Stream reads and writes provide bounded download backpressure. */
 import { mkdtemp, open, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

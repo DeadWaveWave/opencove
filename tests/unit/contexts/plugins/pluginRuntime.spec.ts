@@ -267,7 +267,6 @@ describe('independent plugin installation ownership', () => {
   it('rejects invalid API/platform/path/id collisions and leaves installation registry untouched', async () => {
     const { manager, files } = create()
     // Each case deliberately overwrites the same source before installing it.
-    /* eslint-disable no-await-in-loop */
     for (const patch of [
       { apiVersion: 2 },
       { id: 'sample-plugin' },
@@ -280,7 +279,6 @@ describe('independent plugin installation ownership', () => {
       )
       await expect(manager.install(source)).rejects.toThrow()
     }
-    /* eslint-enable no-await-in-loop */
     expect(await files.readRegistry()).toEqual([])
   })
 })

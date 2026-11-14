@@ -76,7 +76,6 @@ export async function waitForDelivery(ctx: CommandContext) {
     const identity = ctx.options.wait ? await ctx.whoami() : undefined
     while (true) {
       // Sequential fresh polls observe progression; parallel reads cannot replace them.
-      // eslint-disable-next-line no-await-in-loop
       const wire = await ctx.invoke('agent.delivery.get', ctx.input, {
         fresh: true,
         signal: controller.signal,
@@ -107,7 +106,6 @@ export async function waitForDelivery(ctx: CommandContext) {
           { lastKnown: result },
         )
       }
-      // eslint-disable-next-line no-await-in-loop -- polling waits between observations
       await delay(Math.min(250, Math.max(1, deadline - ctx.io.now())), undefined, {
         signal: controller.signal,
       })

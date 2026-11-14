@@ -277,7 +277,6 @@ export class SessionTurnStateWatcher {
       do {
         this.hasPendingRead = false
         try {
-          // eslint-disable-next-line no-await-in-loop -- the owner must serialize filesystem reads
           await this.readFileDelta()
         } catch (error) {
           if (!this.disposed && !isFileMissingError(error)) {
@@ -352,7 +351,6 @@ export class SessionTurnStateWatcher {
       while (position < end && !this.disposed) {
         const bytesToRead = Math.min(READ_CHUNK_BYTES, end - position)
         const buffer = Buffer.allocUnsafe(bytesToRead)
-        // eslint-disable-next-line no-await-in-loop
         const { bytesRead } = await handle.read(buffer, 0, bytesToRead, position)
         if (bytesRead <= 0) {
           break

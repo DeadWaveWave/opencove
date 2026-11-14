@@ -128,7 +128,6 @@ async function correctRuntimeAfterGeometryLeaseLoss(options: {
       try {
         // Corrections are intentionally serialized: each retry targets the canonical state observed
         // after the preceding runtime ACK.
-        // eslint-disable-next-line no-await-in-loop
         correctionResult = await options.ptyRuntime.resize({
           sessionId: options.sessionId,
           cols: canonicalGeometry.cols,

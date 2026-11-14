@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Each creation must settle before the next menu targets the grown Space. */
 import { expect, test, type Page } from '@playwright/test'
 import {
   clearAndSeedWorkspace,

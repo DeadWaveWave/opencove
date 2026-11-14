@@ -22,7 +22,6 @@ describe.each(['claude', 'codex'] as const)('%s resident context', provider => {
       reservation.commit('pty')
       expect(await f.post(reservation)).toEqual(before)
       for (const event of ['UserPromptSubmit', 'PostToolUse', 'Stop']) {
-        // eslint-disable-next-line no-await-in-loop -- Preserve lifecycle event order.
         expect((await f.post(reservation, event)).status).toBe(204)
       }
       enabled = false
@@ -111,7 +110,6 @@ describe.each(['claude', 'codex'] as const)('%s resident context', provider => {
       const base = Date.now() - 10000
       for (const [index, source] of ['startup', 'clear', 'resume', 'compact'].entries()) {
         results.push(
-          // eslint-disable-next-line no-await-in-loop -- Each source advances the same conversation owner.
           await f.postReply(token, 'SessionStart', String(base + index * 1000), {
             hook_event_name: 'SessionStart',
             source,

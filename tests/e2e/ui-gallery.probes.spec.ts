@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Themes share one Electron window and must apply in order. */
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { launchApp } from './workspace-canvas.helpers'
 import { auditUiAccessibility } from './ui-accessibility.probe'

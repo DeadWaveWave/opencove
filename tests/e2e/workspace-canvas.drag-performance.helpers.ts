@@ -139,7 +139,6 @@ export async function sampleContinuousDrag(page: Page, frameCount = 240) {
         let previous = performance.now()
         try {
           for (let index = 0; index < frames; index++) {
-            // eslint-disable-next-line no-await-in-loop -- one input per display frame.
             await new Promise<void>(resolve =>
               requestAnimationFrame(() => {
                 const now = performance.now()

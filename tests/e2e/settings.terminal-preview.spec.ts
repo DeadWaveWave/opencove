@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Themes and viewports share one Electron window and must settle sequentially. */
 import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
 import { chooseSettingsUiTheme } from '../helpers/settingsUiTheme'

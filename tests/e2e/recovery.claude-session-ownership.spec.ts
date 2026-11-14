@@ -73,23 +73,16 @@ async function readInvocations(logPath: string): Promise<Invocation[]> {
 async function expectOwnedSessions(window: Page, bindings: Binding[], mode: string): Promise<void> {
   await expect(window.locator('.terminal-node')).toHaveCount(2)
   for (const binding of bindings) {
-    // oxlint-disable-next-line no-await-in-loop -- Each node retains its own durable conversation.
     expect((await getBinding(window, binding.nodeId!)).tuple).toEqual({
       resumeSessionId: binding.sessionId,
       resumeSessionIdVerified: true,
     })
     const terminal = window.locator(`[data-id="${binding.nodeId}"] .terminal-node`)
-    // eslint-disable-next-line no-await-in-loop -- two independent nodes must both finish recovery
     await expect(terminal).toContainText(`[opencove-test-claude-ownership] ${mode}`)
-    // eslint-disable-next-line no-await-in-loop -- keep the complete provider ID assertion exact
     await expect(terminal).toContainText(binding.sessionId!)
-    // eslint-disable-next-line no-await-in-loop -- exercise the normally enabled hook channel
     await expect(terminal).toHaveAttribute('data-agent-hook-install-state', 'installed')
-    // eslint-disable-next-line no-await-in-loop -- fixture Stop events use the real hook channel
     await expect(terminal).toHaveAttribute('data-agent-state-source', 'claude_hook')
-    // eslint-disable-next-line no-await-in-loop -- assert each recovered node has a live PTY
     await expect.poll(() => readRuntimeSessionId(window, binding.nodeId!)).not.toBeNull()
-    // eslint-disable-next-line no-await-in-loop -- each node must settle on its own hook/session data
     await expect(terminal.locator('.terminal-node__status')).toHaveText('Standby')
   }
 }
@@ -186,7 +179,6 @@ test.describe('Recovery - Claude managed session ownership', () => {
           ],
         })
         for (const label of ['a', 'b']) {
-          // eslint-disable-next-line no-await-in-loop -- deterministic UI creation of the two agents
           await window
             .locator(`[data-id="ownership-task-${label}"]`)
             .getByTestId('task-node-run-agent')

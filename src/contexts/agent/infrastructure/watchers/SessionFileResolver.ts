@@ -102,7 +102,6 @@ async function findGeminiSessionFilePath(cwd: string, sessionId: string): Promis
   ).flat()
 
   for (const projectDirectory of projectDirectories) {
-    // eslint-disable-next-line no-await-in-loop
     const projectRoot = await fs
       .readFile(join(projectDirectory, '.project_root'), 'utf8')
       .then(normalizeAgentProjectRootPath)
@@ -112,13 +111,11 @@ async function findGeminiSessionFilePath(cwd: string, sessionId: string): Promis
       continue
     }
 
-    // eslint-disable-next-line no-await-in-loop
     const chatFiles = (await listFiles(join(projectDirectory, 'chats'))).filter(file => {
       return file.endsWith('.json') && basename(file).startsWith('session-')
     })
 
     for (const chatFile of chatFiles) {
-      // eslint-disable-next-line no-await-in-loop
       const contents = await fs.readFile(chatFile, 'utf8').catch(() => null)
       if (!contents) {
         continue

@@ -74,7 +74,6 @@ async function waitForCondition(
   while (true) {
     signal?.throwIfAborted()
     // A readiness probe must finish before another probe can run.
-    // eslint-disable-next-line no-await-in-loop
     if (await fn()) {
       return true
     }
@@ -83,7 +82,6 @@ async function waitForCondition(
     if (remaining <= 0) {
       return false
     }
-    // eslint-disable-next-line no-await-in-loop -- abortable backoff belongs to this sequential probe.
     await delay(Math.min(intervalMs, remaining), undefined, { signal })
   }
 }

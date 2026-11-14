@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Zoom steps wait for their rendered viewport before the next click. */
 import { expect, test, type Page } from '@playwright/test'
 import { dragMouse, launchApp, readLocatorClientRect } from './workspace-canvas.helpers'
 import { readChildSpaceSnapshot } from './workspace-canvas.child-space.helpers'

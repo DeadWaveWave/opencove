@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Real drag moves advance with renderer frames. */
 import { expect, test, type Page } from '@playwright/test'
 import {
   buildAppState,

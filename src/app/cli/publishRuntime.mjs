@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Hash sequentially and back off publication renames. */
 import { randomUUID, createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import {

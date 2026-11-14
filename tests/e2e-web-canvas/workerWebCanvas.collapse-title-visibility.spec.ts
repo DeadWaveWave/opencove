@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Each disclosure cycle must settle naturally before the next. */
 import { expect, test, type Locator } from '@playwright/test'
 import {
   buildAppState,

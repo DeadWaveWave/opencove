@@ -109,7 +109,6 @@ export async function findPiResumeSessionId(
   const resolvedCwd = resolve(cwd)
   const candidates: Array<{ sessionId: string; timestampMs: number }> = []
   for (const filePath of await listPiSessionFiles(resolvedCwd)) {
-    // eslint-disable-next-line no-await-in-loop
     const meta = await readPiSessionMetadata(filePath)
     if (meta?.cwd === resolvedCwd) {
       candidates.push({ sessionId: meta.sessionId, timestampMs: meta.timestampMs })
@@ -131,7 +130,6 @@ export async function findPiSessionFilePath(
   }
   const resolvedCwd = resolve(cwd)
   for (const filePath of await listPiSessionFiles(resolvedCwd)) {
-    // eslint-disable-next-line no-await-in-loop
     const meta = await readPiSessionMetadata(filePath)
     if (meta?.cwd === resolvedCwd && meta.sessionId === sessionId) {
       return filePath

@@ -244,7 +244,6 @@ export class TerminalRecoveryOwner {
     for (;;) {
       this.clearTimer(state)
       // An explicit flush joins any scheduled one-shot batch, then keeps draining to its cutoff.
-      // eslint-disable-next-line no-await-in-loop
       const batch = await this.startFlushBatch(state, Number.POSITIVE_INFINITY)
       committed += batch.committed
       if (batch.failure || !state.dirty || !this.isCurrent(state)) {
@@ -278,7 +277,6 @@ export class TerminalRecoveryOwner {
       let snapshot
       try {
         // The presentation port reports the exact boundary it fences after any transition wait.
-        // eslint-disable-next-line no-await-in-loop
         snapshot = await this.presentation.snapshotSession(state.binding.sessionId, () => {
           if (boundary.cutoff) {
             throw new Error('Terminal recovery snapshot captured its boundary more than once')
@@ -311,7 +309,6 @@ export class TerminalRecoveryOwner {
       const checkpointRevision = state.checkpointRevision + 1
       try {
         // Later iterations use the checkpoint revision accepted by the preceding commit.
-        // eslint-disable-next-line no-await-in-loop
         const result = await this.persistence.commit({
           nodeId: state.nodeId,
           generation: state.generation,

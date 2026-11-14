@@ -46,7 +46,6 @@ export function createTerminalAgentWatcherOwner(options: {
       while (watcherKey(ownership.active) !== watcherKey(ownership.desired)) {
         if (ownership.active) {
           try {
-            // eslint-disable-next-line no-await-in-loop -- replacement must wait for disposal
             await options.invoke({
               kind: 'command',
               id: 'session.detachAgentStateWatcher',
@@ -65,7 +64,6 @@ export function createTerminalAgentWatcherOwner(options: {
         }
 
         try {
-          // eslint-disable-next-line no-await-in-loop -- ownership transitions are serialized
           await options.invoke({
             kind: 'command',
             id: 'session.attachAgentStateWatcher',

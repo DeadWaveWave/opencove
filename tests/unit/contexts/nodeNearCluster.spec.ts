@@ -26,7 +26,6 @@ it.each([false, true])(
     const reference = { ...before.position, width: before.width, height: before.height }
     const frames: Rect[] = [reference]
     for (const kind of ['note', 'terminal', 'agent'] as const) {
-      // eslint-disable-next-line no-await-in-loop
       const { node } = await f.run({ kind })
       if (kind === 'agent') {
         expect(node.frame.height).toBeGreaterThan(reference.height)

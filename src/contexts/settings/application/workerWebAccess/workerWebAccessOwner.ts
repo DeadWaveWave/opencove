@@ -222,7 +222,7 @@ export function createWorkerWebAccessOwner(options: {
 
     const operation = (async () => {
       let delayMs = 250
-      /* eslint-disable no-await-in-loop, no-unmodified-loop-condition -- restoration is one cancellable sequential backoff */
+      /* eslint-disable no-unmodified-loop-condition -- disposed, abort and lifecycleEpoch are changed by other code while the loop awaits */
       while (!disposed && !abort.signal.aborted && epoch === lifecycleEpoch) {
         if (!(await waitForWebAccessRestore(abort.signal, delayMs))) {
           return
@@ -253,7 +253,7 @@ export function createWorkerWebAccessOwner(options: {
           delayMs = Math.min(delayMs * 2, MAX_WEB_LISTENER_RESTORE_DELAY_MS)
         }
       }
-      /* eslint-enable no-await-in-loop, no-unmodified-loop-condition */
+      /* eslint-enable no-unmodified-loop-condition */
     })()
     const tracked = operation.finally(() => {
       if (recoveryAbort === abort) {

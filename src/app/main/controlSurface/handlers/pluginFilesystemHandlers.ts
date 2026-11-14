@@ -102,7 +102,6 @@ export function createPluginFilesystemHandlers(deps: Dependencies) {
       // Four provider requests at a time, also across remote endpoints.
       for (let i = 0; i < listing.entries.length; i += 4) {
         // Bound concurrent provider requests to four, including over remote HTTP.
-        // eslint-disable-next-line no-await-in-loop
         await Promise.all(
           listing.entries.slice(i, i + 4).map(async entry => {
             assertActive()

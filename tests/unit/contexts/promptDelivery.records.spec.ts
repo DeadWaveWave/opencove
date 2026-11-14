@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- dispatch order and queue capacity are the invariants under test */
 import { afterEach, expect, it, vi } from 'vitest'
 import { promptDeliveryRuntimeFixture } from '../../support/promptDeliveryRuntimeFixture'
 afterEach(() => vi.useRealTimers())

@@ -38,7 +38,6 @@ it.each(['', ...topics])('bundles the offline %s guide within its budget', async
   expect(f.io.readTextFile).not.toHaveBeenCalled()
   for (const fields of ['version', 'content', ...(topic ? ['topic', 'topic,content'] : [])]) {
     const projected = identityFixture(false)
-    // eslint-disable-next-line no-await-in-loop
     expect(await run([...args, '--fields', fields], projected.io)).toBe(0)
     const expected = { version, content, topic }
     expect(JSON.parse(projected.out())).toEqual(
@@ -63,7 +62,6 @@ it.each(['', ...topics])(
         .slice(1)
         .map(word => word.replace(/^"|"$/g, ''))
       const f = identityFixture(false)
-      // eslint-disable-next-line no-await-in-loop
       expect(await run([...argv, '--help'], f.io), line).toBe(0)
       expect(f.fetch, line).not.toHaveBeenCalled()
       expect(f.io.readTextFile, line).not.toHaveBeenCalled()

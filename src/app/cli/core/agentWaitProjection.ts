@@ -38,7 +38,6 @@ export class AgentWaitProjection {
   async initialize(get: (nodeId: string) => Promise<unknown>): Promise<void> {
     for (const nodeId of this.nodeIds) {
       // List omits exited owners and older Workers retain displaced node IDs.
-      // eslint-disable-next-line no-await-in-loop
       await this.resolve(nodeId, get)
     }
   }

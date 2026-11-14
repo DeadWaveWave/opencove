@@ -54,7 +54,6 @@ export class EventLineageReader {
       }
       seen.add(id)
       // Each immutable parent determines the next read.
-      // eslint-disable-next-line no-await-in-loop
       id = (await this.read(id))?.spawnedBy ?? null
     }
     return false

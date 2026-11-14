@@ -51,7 +51,6 @@ export class ClaudeResumeTranscriptReader {
     let total = 0
     while (!signal.aborted && performance.now() < deadline && total < MAX_TOTAL) {
       try {
-        // oxlint-disable-next-line no-await-in-loop
         const handle = await budget.wait(
           () => access.open(signal),
           lateHandle => {
@@ -59,7 +58,6 @@ export class ClaudeResumeTranscriptReader {
           },
         )
         try {
-          // oxlint-disable-next-line no-await-in-loop
           const before = await budget.wait(() => handle.stat())
           if (before.size > MAX_SCAN || total + before.size > MAX_TOTAL) {
             return null
@@ -68,7 +66,6 @@ export class ClaudeResumeTranscriptReader {
           let position = 0
           while (position < before.size && !signal.aborted && performance.now() < deadline) {
             const buffer = Buffer.alloc(Math.min(64 * 1024, before.size - position))
-            // oxlint-disable-next-line no-await-in-loop
             const { bytesRead } = await budget.wait(() =>
               handle.read(buffer, 0, buffer.length, position),
             )
@@ -82,9 +79,7 @@ export class ClaudeResumeTranscriptReader {
           if (signal.aborted || performance.now() >= deadline) {
             return null
           }
-          // oxlint-disable-next-line no-await-in-loop
           const after = await budget.wait(() => handle.stat())
-          // oxlint-disable-next-line no-await-in-loop
           const current = await budget.wait(() => access.validate(signal))
           if (
             before.dev !== current.dev ||
@@ -117,7 +112,6 @@ export class ClaudeResumeTranscriptReader {
             }
           }
         } finally {
-          // oxlint-disable-next-line no-await-in-loop
           await awaitTranscriptIO(handle.close(), signal)
         }
       } catch (error) {
@@ -129,7 +123,6 @@ export class ClaudeResumeTranscriptReader {
         break
       }
       try {
-        // oxlint-disable-next-line no-await-in-loop
         await delay(
           Math.min(this.bounds.retryMs, Math.max(0, deadline - performance.now())),
           undefined,

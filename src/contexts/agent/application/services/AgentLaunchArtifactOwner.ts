@@ -60,7 +60,6 @@ export class AgentLaunchArtifactOwner {
     for (;;) {
       const pending = [...this.pendingDisposals]
       // New session exits may join the owner while a shutdown drain is in progress.
-      // eslint-disable-next-line no-await-in-loop
       await Promise.all(pending)
       if (this.pendingDisposals.size === 0) {
         return

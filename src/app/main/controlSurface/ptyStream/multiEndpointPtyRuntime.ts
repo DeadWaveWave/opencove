@@ -242,7 +242,6 @@ export function createMultiEndpointPtyRuntime(options: {
     drainPresentationRecovery: async () => {
       for (;;) {
         const observed = [...proxiesByEndpointId.values()]
-        // eslint-disable-next-line no-await-in-loop
         await Promise.all(observed.map(async proxy => await proxy.drainPresentationRecovery()))
         if (
           observed.length === proxiesByEndpointId.size &&

@@ -181,7 +181,6 @@ export async function loadAgentSessionTitle({
     }
 
     if (delayMs > 0) {
-      // eslint-disable-next-line no-await-in-loop -- title availability retries must stay ordered
       await sleep(delayMs, signal)
     }
 
@@ -190,7 +189,6 @@ export async function loadAgentSessionTitle({
     }
 
     try {
-      // eslint-disable-next-line no-await-in-loop -- stop as soon as the exact session title exists
       const sessions = await listSessions()
       if (signal?.aborted || !isCurrent()) {
         return null

@@ -94,14 +94,12 @@ test('CLI names survive session titles, rename by name and stop without removing
     )
     const automatic = autoResult.node as { id: string; sessionId: string }
     for (const node of [named, automatic]) {
-      // eslint-disable-next-line no-await-in-loop
       await expect(page.locator(`[data-id="${node.id}"] .terminal-node__terminal`)).toHaveAttribute(
         'aria-busy',
         'false',
         { timeout: 20_000 },
       )
       // Drive the existing first-input fixture, not agent prompt (this fixture has no prompt hooks).
-      // eslint-disable-next-line no-await-in-loop
       const accepted = await page.evaluate(
         async target =>
           await window.opencoveApi.controlSurface.invoke<{ accepted: boolean }>({

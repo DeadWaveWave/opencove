@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Pointer moves are paced to render frames for visual regression sampling. */
 import { expect, type Page } from '@playwright/test'
 import {
   buildNodeEvalCommand,

@@ -153,9 +153,7 @@ async function hookRuntimeFixture() {
   const completeTurns = async (count: number) => {
     // Eviction depends on ordered, completed lifecycle pairs, not concurrent delivery.
     for (let i = 1; i <= count; i++) {
-      // eslint-disable-next-line no-await-in-loop
       await send(`p${i}`)
-      // eslint-disable-next-line no-await-in-loop
       await send(`p${i}`, true)
     }
   }

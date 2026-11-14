@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Mutations replay an ordered protocol trace. */
 import { afterEach, expect, it, vi } from 'vitest'
 import { Client } from '../../support/convergence/client'
 import { markPersistedStateAsSynced } from '@contexts/workspace/presentation/renderer/utils/persistence/write'

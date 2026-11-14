@@ -153,9 +153,7 @@ test('far view draws windows as tiles and leaves running terminals untouched', a
       .toBe(true)
     expect(await readTerminal(window)).toEqual(before)
 
-    // eslint-disable-next-line no-await-in-loop -- each zoom step must land before the next.
     for (const zoom of [0.1, 2, 0.1, 2, 0.1, 2, 1]) {
-      // eslint-disable-next-line no-await-in-loop
       await setZoom(window, zoom)
     }
     expect(await readTerminal(window)).toEqual(before)
@@ -325,7 +323,6 @@ async function checkZoomWindowCommits(reducedTransparency: boolean) {
     for (const zoom of [
       0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7,
     ]) {
-      // eslint-disable-next-line no-await-in-loop -- each step must commit before measuring the next.
       await setZoom(window, zoom)
     }
     await settle()

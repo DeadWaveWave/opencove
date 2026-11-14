@@ -96,7 +96,6 @@ it.each([undefined, false, 'true'])(
             }),
           ]
         : ['node', 'create', 'note', '--near', '@self']
-      // eslint-disable-next-line no-await-in-loop
       expect(await run(argv, f.io)).toBe(5)
       expect(f.error().code).toBe('cli.unsupported')
       expect(f.requests.some(r => r.id === 'node.create')).toBe(false)

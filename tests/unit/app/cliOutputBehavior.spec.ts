@@ -181,7 +181,6 @@ it('matches summaries and returns an empty projected operation search', async ()
 it('declares table support consistently in every command help', async () => {
   for (const command of commands) {
     const f = fixture()
-    // eslint-disable-next-line no-await-in-loop
     expect(await run([...command.path, '--help'], f.io)).toBe(0)
     expect(f.out()).toContain(
       `Table output (-o table): ${command.render?.columns?.length ? 'supported' : 'not supported'}.`,

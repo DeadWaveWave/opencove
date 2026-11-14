@@ -39,7 +39,6 @@ async function readFirstLine(filePath: string): Promise<string | null> {
 
     while (bytesReadTotal < FIRST_LINE_MAX_BYTES) {
       const bytesToRead = Math.min(buffer.length, FIRST_LINE_MAX_BYTES - bytesReadTotal)
-      // eslint-disable-next-line no-await-in-loop
       const { bytesRead } = await handle.read(buffer, 0, bytesToRead, null)
       if (bytesRead <= 0) {
         break

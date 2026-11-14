@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Each CLI command observes the preceding committed mutation. */
 import { expect, vi } from 'vitest'
 import { run } from '../../../src/app/cli/core/run'
 import type { CliIo } from '../../../src/app/cli/core/io'

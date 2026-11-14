@@ -65,7 +65,6 @@ test('agent session snapshots retain scrollback and return bounded ANSI-free tex
     // A single large write can overflow the terminal input queue and drop echoed lines, so
     // write in small batches and wait for each batch's echo before sending the next.
     const snapshotText = () => worker.snapshot(agent.sessionId)
-    /* eslint-disable no-await-in-loop -- each batch must be echoed before the next is written. */
     for (let first = 0; first < 140; first += 10) {
       const batch = Array.from(
         { length: 10 },
@@ -78,7 +77,6 @@ test('agent session snapshots retain scrollback and return bounded ANSI-free tex
       expect(accepted.accepted).toBe(true)
       await expect.poll(async () => (await snapshotText()).includes(batch.at(-1)!)).toBe(true)
     }
-    /* eslint-enable no-await-in-loop */
     const command = (flags: string, label: string) =>
       terminalCommand(
         worker,

@@ -71,7 +71,6 @@ export function createRemoteRecoveryCheckpointFence(): RemoteRecoveryCheckpointF
       const state = ensureState(options.sessionId)
       while (state.activePresentationTransitions > 0) {
         // A reset already in progress must publish its Home presentation and cursor before capture.
-        // eslint-disable-next-line no-await-in-loop
         await waitUntilIdle(state)
       }
       if (state.invalidated) {

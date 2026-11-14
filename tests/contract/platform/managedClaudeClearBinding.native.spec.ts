@@ -67,7 +67,6 @@ describeWithElectronNativeModules('owner-qualified Claude clear commits', () => 
           resumeSessionId: id,
           promptId: `p-${id}`,
         }
-        // oxlint-disable-next-line no-await-in-loop
         await owner.qualification
           .beginQualification(admission, identity)!
           .submit({ ...identity, evidenceId: 'proof' })

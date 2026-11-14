@@ -143,7 +143,6 @@ export function createWorkerAgentTurnArchiveRuntime(options: {
           result = archive.sweep(Date.now(), members ?? undefined, throughSeq)
           if (result.status === 'more') {
             // Each batch depends on the previous cursor; yield instead of parallelizing deletions.
-            // oxlint-disable-next-line no-await-in-loop
             await new Promise<void>(resolve => setImmediate(resolve))
           }
         } while (result.status === 'more')

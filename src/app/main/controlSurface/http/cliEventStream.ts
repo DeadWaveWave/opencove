@@ -218,7 +218,6 @@ export function serveCliEventStream(options: {
         const next = queue.shift()!
         // Serialize enrichment to preserve publication order.
         if ('event' in next.publication) {
-          // eslint-disable-next-line no-await-in-loop
           await processItem(next.publication)
         } else {
           gap(next.publication.reason, next.publication.oldestSeq)

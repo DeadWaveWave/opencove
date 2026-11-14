@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Each creation observes the prior admission and runtime lifecycle. */
 import { expect, test } from '@playwright/test'
 import {
   boundedWorkspace,

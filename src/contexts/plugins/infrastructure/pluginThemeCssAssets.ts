@@ -132,7 +132,6 @@ export async function bundleThemeDeclarationAssets(
   })
   // Serial resource reads bound peak memory as well as response size.
   for (const resolveAsset of pending) {
-    // eslint-disable-next-line no-await-in-loop
     await resolveAsset()
   }
   declaration.value = parsed.toString()

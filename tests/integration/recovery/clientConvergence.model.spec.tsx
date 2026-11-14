@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Each explorer trace is an ordered protocol execution. */
 import { it } from 'vitest'
 import { Client } from '../../support/convergence/client'
 import { explore } from '../../support/convergence/model'

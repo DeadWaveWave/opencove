@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Disclosure endpoints are sampled sequentially. */
 import { expect, test } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'

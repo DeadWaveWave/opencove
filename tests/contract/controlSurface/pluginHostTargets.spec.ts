@@ -175,7 +175,6 @@ describe('plugin target routing over two authenticated Workers', () => {
           ],
         ] as const
         for (const [operation, input, code, reason] of failures) {
-          // eslint-disable-next-line no-await-in-loop -- Sequential error responses identify the selected route.
           const response = await invoke(`http://127.0.0.1:${homeAddress.port}`, 'home-token', {
             kind: 'command',
             id: 'plugin.host.request',

@@ -182,7 +182,6 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
       }
       try {
         // File variants are consumed in order; stdin is a single stream.
-        // eslint-disable-next-line no-await-in-loop
         values[key] = file === '-' ? await io.readStdinText() : await io.readTextFile(String(file))
       } catch (error) {
         if (error instanceof CliError && error.exitCode === 130) {

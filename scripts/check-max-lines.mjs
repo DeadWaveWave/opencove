@@ -53,7 +53,7 @@ export const LINE_LIMIT_EXEMPTIONS = {
     reason: 'recovery tool; split tracked in follow-up',
   },
   'scripts/debug-repro-restored-agent-input.mjs': {
-    lines: 1051,
+    lines: 1050,
     reason: 'debug repro script; split tracked in follow-up',
   },
 }

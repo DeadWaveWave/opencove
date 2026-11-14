@@ -244,7 +244,6 @@ it('retains project membership checks for ordinary node targets', async () => {
     'Coordinator A',
     callerId.slice(0, 8),
   ]) {
-    // eslint-disable-next-line no-await-in-loop
     const result = await f.cli(['node', 'get', '--project', projectB, '--node', selector])
     expect(result.code).toBe(1)
     expect(result.error().code).toBe('node.not_found')

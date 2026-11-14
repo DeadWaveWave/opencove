@@ -68,7 +68,6 @@ it('idle transcript observation performs zero filesystem calls while active reco
     demand(true)
     for (let n = 0; n < 4; n++) {
       tick()
-      // eslint-disable-next-line no-await-in-loop -- measure each completed serial poll
       await vi.waitFor(() => expect(records).toBe(n + 2))
     }
     expect(open).toHaveBeenCalledTimes(4)

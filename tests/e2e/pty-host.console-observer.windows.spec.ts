@@ -63,7 +63,6 @@ test.describe('native Windows Console observer', () => {
         [93, 24],
       ]) {
         // Each stage resizes the same consoles after the preceding stage was confirmed.
-        // eslint-disable-next-line no-await-in-loop
         await Promise.all(
           sessions.map(async (session, index) => {
             const size = { cols: cols + index, rows: rows + index }

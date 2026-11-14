@@ -69,13 +69,11 @@ export function registerAgentHookRelayTests() {
         await window.keyboard.press('Escape')
         await expect(node).toContainText('ESC_RECEIVED')
         // Each turn must complete before the next input to detect a stuck Hook.
-        /* eslint-disable no-await-in-loop */
         for (const text of ['first', 'second', 'third']) {
           await window.keyboard.type(text)
           await window.keyboard.press('Enter')
           await expect(node).toContainText(`INPUT_OK=${text}`)
         }
-        /* eslint-enable no-await-in-loop */
         await expect(node).toHaveAttribute(
           'data-agent-state-source',
           fileMode ? 'session_file' : provider === 'codex' ? 'codex_hook' : 'claude_hook',

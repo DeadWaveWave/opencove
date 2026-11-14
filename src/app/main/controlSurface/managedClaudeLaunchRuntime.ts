@@ -134,7 +134,6 @@ export function createManagedClaudeLaunchRuntime(deps: {
           return
         }
         // Supersession can replace this entry while it is pending.
-        // oxlint-disable-next-line no-await-in-loop
         await pending.promise
       }
     },

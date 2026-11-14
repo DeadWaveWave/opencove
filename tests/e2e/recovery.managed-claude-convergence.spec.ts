@@ -4,7 +4,6 @@ import {
   holdPrepare,
   releasePrepare,
 } from './managedClaudeContinuity.helpers'
-/* eslint-disable no-await-in-loop -- Ordered persistence repair and lifecycle transitions must run sequentially. */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
