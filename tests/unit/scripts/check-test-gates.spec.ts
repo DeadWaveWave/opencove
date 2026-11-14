@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process'
+import { readFileSync, rmSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { runTestGatesCheck } from '../../../scripts/check-test-gates.mjs'
@@ -7,10 +8,16 @@ import {
   platformSuffixOf,
   scanTestSource,
 } from '../../../scripts/lib/test-gates.mjs'
-import { createClonedRepository, removeFixtureDirectories } from './ratchetRepoFixture'
-import { removeTemporaryRepositories } from './repoFixture'
+import {
+  commitAll,
+  createClonedRepository,
+  git,
+  removeFixtureDirectories,
+} from './ratchetRepoFixture'
+import { removeTemporaryRepositories, writeRepositoryFile } from './repoFixture'
 
 const SCRIPT = resolve(import.meta.dirname, '../../../scripts/check-test-gates.mjs')
+const BASELINE = 'scripts/test-gates-ratchet.json'
 const GATE = "it.skipIf(process.platform !== 'darwin')('mac only', () => {})\n"
 
 function scan(source: string, path = 'tests/unit/foo.spec.ts') {
@@ -27,7 +34,15 @@ function makeRepo(files: Record<string, string>) {
   return createClonedRepository({ 'scripts/.gitkeep': '', ...files }).repo
 }
 
-function run(root: string, options: { verbose?: boolean } = {}) {
+// A repository whose baseline holds no skips, so only the hard rules decide the result.
+function makeCleanRepo(files: Record<string, string>) {
+  return makeRepo({ [BASELINE]: '{\n  "unconditional-skip": {}\n}\n', ...files })
+}
+
+function run(
+  root: string,
+  options: { updateRatchet?: boolean; acceptRises?: string[]; verbose?: boolean } = {},
+) {
   let stderr = ''
   let stdout = ''
   const code = runTestGatesCheck({
@@ -38,6 +53,8 @@ function run(root: string, options: { verbose?: boolean } = {}) {
   })
   return { code, stderr, stdout }
 }
+
+const readBaseline = (root: string) => JSON.parse(readFileSync(resolve(root, BASELINE), 'utf8'))
 
 afterEach(() => {
   removeTemporaryRepositories()
@@ -146,6 +163,39 @@ describe('scanTestSource: focused tests', () => {
   })
 })
 
+describe('scanTestSource: unconditional skips', () => {
+  it.each([
+    "test.skip('title', async () => {})",
+    "test.describe.skip('title', () => {})",
+    "it.skip('title', () => {})",
+    "describe.skip('title', function () {})",
+    "test.fixme('title', async ({ page }) => {})",
+    'test.skip(`title`, () => {})',
+    'test.skip()',
+    "test.skip(true, 'reason')",
+  ])('counts %s', source => {
+    expect(scan(source).skips).toHaveLength(1)
+  })
+
+  it.each([
+    "test.skip(process.platform === 'win32', 'reason')",
+    "test.skip(isWindows, 'reason')",
+    "it.skipIf(process.platform === 'win32')('title', () => {})",
+    "it('title', () => {})",
+    "test.skip('title')",
+  ])('does not count %s', source => {
+    expect(scan(source).skips).toHaveLength(0)
+  })
+
+  it('reports line and title of each skip', () => {
+    const { skips } = scan(`\ntest.skip('first', () => {})\n\n  test.skip('second', () => {})\n`)
+    expect(skips.map(skip => [skip.line, skip.title])).toEqual([
+      [2, 'first'],
+      [4, 'second'],
+    ])
+  })
+})
+
 describe('path helpers', () => {
   it('scans tests/**/*.ts(x) and src/**/*.spec.ts(x) only', () => {
     expect(isTestGateSourcePath('tests/e2e/a.spec.ts')).toBe(true)
@@ -168,7 +218,7 @@ describe('path helpers', () => {
 
 describe('check-test-gates: platform-gate-suffix', () => {
   it('fails on a darwin gate in a spec file without the suffix, naming file, line and rule', () => {
-    const root = makeRepo({ 'tests/unit/foo.spec.ts': `\n${GATE}` })
+    const root = makeCleanRepo({ 'tests/unit/foo.spec.ts': `\n${GATE}` })
     const result = run(root)
     expect(result.code).toBe(1)
     expect(result.stderr).toContain('tests/unit/foo.spec.ts:2')
@@ -176,7 +226,7 @@ describe('check-test-gates: platform-gate-suffix', () => {
   })
 
   it('fails the same way when the gate goes through a const', () => {
-    const root = makeRepo({
+    const root = makeCleanRepo({
       'tests/unit/foo.spec.ts': `const macOnly = process.platform !== 'darwin'\nit.skipIf(macOnly)('x', () => {})\n`,
     })
     const result = run(root)
@@ -186,21 +236,21 @@ describe('check-test-gates: platform-gate-suffix', () => {
   })
 
   it('passes when the darwin gate sits in foo.mac.spec.ts', () => {
-    const root = makeRepo({ 'tests/unit/foo.mac.spec.ts': GATE })
+    const root = makeCleanRepo({ 'tests/unit/foo.mac.spec.ts': GATE })
     expect(run(root).code).toBe(0)
   })
 
   it('fails when a windows gate sits in a .mac. file, and for a gate in a src spec', () => {
-    const wrongSuffix = makeRepo({
+    const wrongSuffix = makeCleanRepo({
       'tests/unit/foo.mac.spec.ts': "it.runIf(process.platform === 'win32')('x', () => {})",
     })
     expect(run(wrongSuffix).code).toBe(1)
-    const underSrc = makeRepo({ 'src/app/foo.spec.ts': GATE })
+    const underSrc = makeCleanRepo({ 'src/app/foo.spec.ts': GATE })
     expect(run(underSrc).stderr).toContain('src/app/foo.spec.ts:1')
   })
 
   it('does not judge helpers, posix gates, non-test files or platform-neutral specs', () => {
-    const root = makeRepo({
+    const root = makeCleanRepo({
       'tests/e2e/foo.helpers.ts': "test.skip(process.platform !== 'darwin', 'mac')\n",
       'tests/unit/posix.spec.ts': "it.skipIf(process.platform === 'win32')('x', () => {})\n",
       'scripts/not-a-test.spec.ts': GATE,
@@ -215,10 +265,10 @@ describe('check-test-gates: platform-gate-suffix', () => {
     const files = {
       'tests/unit/foo.spec.ts': `it.skipIf(process.platform !== 'darwin' || !globalThis.hasTool)('x', () => {})\n`,
     }
-    const quiet = run(makeRepo(files))
+    const quiet = run(makeCleanRepo(files))
     expect(quiet.code).toBe(0)
     expect(quiet.stdout).not.toContain('tests/unit/foo.spec.ts:1')
-    const verbose = run(makeRepo(files), { verbose: true })
+    const verbose = run(makeCleanRepo(files), { verbose: true })
     expect(verbose.code).toBe(0)
     expect(verbose.stdout).toContain('tests/unit/foo.spec.ts:1')
     expect(verbose.stdout).toContain('ignored')
@@ -227,7 +277,7 @@ describe('check-test-gates: platform-gate-suffix', () => {
 
 describe('check-test-gates: focused-test', () => {
   it('fails on a test.only, naming file, line and rule', () => {
-    const root = makeRepo({
+    const root = makeCleanRepo({
       'tests/e2e/foo.spec.ts': "test('a', () => {})\ntest.only('b', () => {})\n",
     })
     const result = run(root)
@@ -237,8 +287,96 @@ describe('check-test-gates: focused-test', () => {
   })
 
   it('also fails for a focused test in a helper file', () => {
-    const root = makeRepo({ 'tests/support/helper.ts': "describe.only('b', () => {})\n" })
+    const root = makeCleanRepo({ 'tests/support/helper.ts': "describe.only('b', () => {})\n" })
     expect(run(root).code).toBe(1)
+  })
+})
+
+describe('check-test-gates: unconditional-skip ratchet', () => {
+  const SKIP_A = "test.skip('a', () => {})\n"
+
+  it('fails without a baseline, refuses an update that names no rule, then passes after --accept-rise', () => {
+    const root = makeRepo({ 'tests/e2e/a.spec.ts': SKIP_A })
+    const missing = run(root)
+    expect(missing.code).toBe(1)
+    expect(missing.stderr).toContain('pnpm test-gates:ratchet')
+
+    const refused = run(root, { updateRatchet: true })
+    expect(refused.code).toBe(1)
+    expect(refused.stderr).toContain('unconditional-skip: total would rise from 0 to 1')
+    expect(() => readBaseline(root)).toThrow()
+
+    const accepted = run(root, { updateRatchet: true, acceptRises: ['unconditional-skip'] })
+    expect(accepted.code).toBe(0)
+    expect(accepted.stdout).toContain('## 📈 Ratchet rises')
+    expect(readBaseline(root)).toEqual({ 'unconditional-skip': { 'tests/e2e/a.spec.ts': 1 } })
+    expect(run(root).code).toBe(0)
+  })
+
+  function makeBaselineRepo(files: Record<string, string>) {
+    const root = makeRepo(files)
+    expect(run(root, { updateRatchet: true, acceptRises: ['unconditional-skip'] }).code).toBe(0)
+    commitAll(root, 'baseline')
+    git(root, 'push', '-q', 'origin', 'main')
+    return root
+  }
+
+  it('fails on an added test.skip, and the update refuses to write the rise', () => {
+    const root = makeBaselineRepo({ 'tests/e2e/a.spec.ts': SKIP_A })
+    writeRepositoryFile(root, 'tests/e2e/a.spec.ts', `${SKIP_A}test.skip('x', () => {})\n`)
+
+    const check = run(root)
+    expect(check.code).toBe(1)
+    expect(check.stderr).toContain('tests/e2e/a.spec.ts')
+    expect(check.stderr).toContain('unconditional-skip')
+
+    const update = run(root, { updateRatchet: true })
+    expect(update.code).toBe(1)
+    expect(update.stderr).toContain('unconditional-skip: total would rise from 1 to 2')
+    expect(readBaseline(root)['unconditional-skip']).toEqual({ 'tests/e2e/a.spec.ts': 1 })
+  })
+
+  it('fails on a skip added in a new file', () => {
+    const root = makeBaselineRepo({ 'tests/e2e/a.spec.ts': SKIP_A })
+    writeRepositoryFile(root, 'tests/e2e/b.spec.ts', SKIP_A)
+    expect(run(root).code).toBe(1)
+  })
+
+  it('fails when a skip is removed until the baseline is lowered, and lowering needs no flag', () => {
+    const root = makeBaselineRepo({ 'tests/e2e/a.spec.ts': SKIP_A + SKIP_A })
+    writeRepositoryFile(root, 'tests/e2e/a.spec.ts', SKIP_A)
+    const check = run(root)
+    expect(check.code).toBe(1)
+    expect(check.stderr).toContain('below the baseline')
+
+    expect(run(root, { updateRatchet: true }).code).toBe(0)
+    expect(readBaseline(root)['unconditional-skip']).toEqual({ 'tests/e2e/a.spec.ts': 1 })
+    expect(run(root).code).toBe(0)
+  })
+
+  it('does not write the baseline when a hard rule is violated', () => {
+    const root = makeRepo({ 'tests/e2e/a.spec.ts': `${SKIP_A}test.only('b', () => {})\n` })
+    const result = run(root, { updateRatchet: true, acceptRises: ['unconditional-skip'] })
+    expect(result.code).toBe(1)
+    expect(() => readBaseline(root)).toThrow()
+  })
+
+  it('skips a file that is tracked but no longer on disk', () => {
+    const root = makeBaselineRepo({ 'tests/e2e/a.spec.ts': SKIP_A, 'tests/e2e/b.spec.ts': SKIP_A })
+    rmSync(resolve(root, 'tests/e2e/b.spec.ts'))
+    const result = run(root)
+    expect(result.code).toBe(1)
+    expect(result.stderr).toContain('tests/e2e/b.spec.ts')
+    expect(result.stderr).toContain('below the baseline')
+  })
+})
+
+describe('check-test-gates: this repository', () => {
+  it('has no hard-rule finding and matches its baseline', () => {
+    const result = spawnSync(process.execPath, [SCRIPT], { encoding: 'utf8' })
+    expect(result.stderr).toBe('')
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain('focused tests 0')
   })
 })
 
@@ -251,5 +389,11 @@ describe('check-test-gates: command line', () => {
     const result = cli(['--baseline', '/tmp/x.json'])
     expect(result.status).toBe(2)
     expect(result.stderr).toContain('unsupported argument')
+  })
+
+  it('accepts --accept-rise only together with --update-ratchet', () => {
+    const result = cli(['--accept-rise', 'unconditional-skip'])
+    expect(result.status).toBe(2)
+    expect(result.stderr).toContain('--accept-rise only applies together with --update-ratchet')
   })
 })

@@ -3,6 +3,11 @@
 // either never runs the test or runs less than it appears to. The scanner reads source with the
 // TypeScript parser, so a string or a comment that mentions `test.only` never counts.
 import ts from 'typescript'
+import { compareRatchet, formatRatchetIssues, serializeRatchet } from './ratchet.mjs'
+
+// Ratchet rule: skipped tests, frozen per file in `scripts/test-gates-ratchet.json`. The two hard
+// rules (`platform-gate-suffix`, `focused-test`) have no baseline, they are 0.
+export const TEST_GATES_RULES = ['unconditional-skip']
 
 export const PLATFORMS = ['linux', 'darwin', 'win32']
 // File-name suffix that marks a spec file as the home of tests for one platform. CI selects these
@@ -149,6 +154,32 @@ function createEvaluator(sourceFile) {
   return { platformsWhere }
 }
 
+function isTitle(node) {
+  return isLiteralText(node) || ts.isTemplateExpression(node)
+}
+
+function titleOf(node) {
+  return isLiteralText(node) ? node.text : node.getText().slice(1, -1)
+}
+
+// `test.skip()`, `test.skip(true, ...)`, and `test.skip('title', body)`. A condition (`test.skip(cond,
+// 'reason')`) is a gate, not a skip. A title with no body is not a declaration.
+function isUnconditionalSkip(call) {
+  const [first, ...rest] = call.arguments
+  if (!first || first.kind === ts.SyntaxKind.TrueKeyword) {
+    return true
+  }
+  return (
+    isTitle(first) &&
+    rest.some(
+      argument =>
+        ts.isArrowFunction(argument) ||
+        ts.isFunctionExpression(argument) ||
+        ts.isIdentifier(argument),
+    )
+  )
+}
+
 function lineOf(sourceFile, node) {
   return sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1
 }
@@ -158,15 +189,17 @@ function oneLine(text) {
 }
 
 /**
- * Scans one file. Returns `{ gates, focused, ignored }`:
+ * Scans one file. Returns `{ gates, focused, skips, ignored }`:
  * - `gates`: tests that do not run on all three platforms, as `{ line, platforms, single, text }`.
  *   `platforms` is where the test runs; `single` is the one non-Linux platform it is restricted to,
  *   or `null`.
  * - `focused`: `.only` calls, as `{ line, text }`.
+ * - `skips`: declarations skipped without a condition (`test.skip('title', fn)`, `test.skip()`,
+ *   `test.skip(true, ...)`; also `describe`, `it`, `fixme`), as `{ line, title, text }`.
  * - `ignored`: conditions that mention a platform but could not be evaluated, as `{ line, text }`.
  */
 export function scanTestSource(filePath, source) {
-  const result = { gates: [], focused: [], ignored: [] }
+  const result = { gates: [], focused: [], skips: [], ignored: [] }
   if (!INTERESTING.test(source)) {
     return result
   }
@@ -202,7 +235,13 @@ export function scanTestSource(filePath, source) {
     if ((name === 'skipIf' || name === 'runIf') && first) {
       gate(node, first, name === 'runIf')
     } else if ((name === 'skip' || name === 'fixme') && TEST_BASES.has(base)) {
-      if (first && !isLiteralText(first) && !ts.isTemplateExpression(first)) {
+      if (isUnconditionalSkip(node)) {
+        result.skips.push({
+          line: lineOf(sourceFile, node),
+          title: first && isTitle(first) ? titleOf(first) : '',
+          text: oneLine(node.getText(sourceFile)),
+        })
+      } else if (first && !isTitle(first)) {
         gate(node, first, false)
       }
     } else if (name === 'only' && TEST_BASES.has(base)) {
@@ -240,17 +279,20 @@ export function scanTestSource(filePath, source) {
 
 /**
  * Applies the hard rules to `files` (`[{ path, content }]`). `findings` are `{ file, line, rule,
- * message }` and fail the check; `totals` and `ignored` are for the report.
+ * message }` and fail the check; `counts` are the per-file ratchet counts; `totals` and `ignored`
+ * are for the report.
  */
 export function evaluateTestGates(files) {
   const findings = []
   const ignored = []
+  const skipCounts = {}
   const totals = {
     files: 0,
     singlePlatformGates: 0,
     gatesInSuffixedFiles: 0,
     gatesInHelpers: 0,
     focused: 0,
+    skips: 0,
   }
   for (const file of files) {
     const path = normalizeRepoPath(file.path)
@@ -288,9 +330,13 @@ export function evaluateTestGates(files) {
         message: `\`${focus.text}\` focuses a test: every other test in the run is silently skipped. Remove \`.only\`.`,
       })
     }
+    if (scan.skips.length > 0) {
+      skipCounts[path] = scan.skips.length
+      totals.skips += scan.skips.length
+    }
     ignored.push(...scan.ignored.map(item => ({ file: path, ...item })))
   }
-  return { findings, ignored, totals }
+  return { findings, ignored, totals, counts: { 'unconditional-skip': skipCounts } }
 }
 
 export function formatTestGateFindings(findings) {
@@ -303,4 +349,28 @@ export function formatTestGateFindings(findings) {
   }
   lines.push('', 'See "Test gates" in DEVELOPMENT.md.')
   return `${lines.join('\n')}\n`
+}
+
+export function compareTestGatesRatchet(counts, baseline) {
+  return compareRatchet({
+    counts,
+    baseline,
+    rules: TEST_GATES_RULES,
+    describe: (rule, now, before) =>
+      now > before
+        ? `${now} \`${rule}\` declaration(s), ${now - before} more than the baseline of ${before}. Run the test, fix it or delete it instead of skipping it.`
+        : `${now} \`${rule}\` declaration(s), below the baseline of ${before}. Run \`pnpm test-gates:ratchet\` and commit \`scripts/test-gates-ratchet.json\` to lock in the improvement.`,
+  })
+}
+
+export function formatTestGatesRatchetIssues(issues) {
+  return formatRatchetIssues(issues, {
+    label: 'test-gates',
+    title: 'Unconditional skip ratchet',
+    footer: 'See "Test gates" in DEVELOPMENT.md.',
+  })
+}
+
+export function serializeTestGatesRatchet(counts) {
+  return serializeRatchet(counts, TEST_GATES_RULES)
 }

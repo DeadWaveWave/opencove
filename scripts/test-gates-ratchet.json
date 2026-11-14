@@ -1,0 +1,29 @@
+{
+  "unconditional-skip": {
+    "tests/e2e/command-center.spec.ts": 1,
+    "tests/e2e/m6.endpoints-mounts.integration.spec.ts": 1,
+    "tests/e2e/recovery.agent-placeholder-click-preserves-history.spec.ts": 1,
+    "tests/e2e/recovery.agent-reopen.spec.ts": 1,
+    "tests/e2e/space-archives.spec.ts": 1,
+    "tests/e2e/workspace-canvas.agent-last-message-copy.disabled-working.spec.ts": 1,
+    "tests/e2e/workspace-canvas.agent-sidebar.spec.ts": 1,
+    "tests/e2e/workspace-canvas.agent-standby-banner-context.spec.ts": 1,
+    "tests/e2e/workspace-canvas.agent-status-submit.windows.spec.ts": 1,
+    "tests/e2e/workspace-canvas.nodes.spaces.policy.spec.ts": 1,
+    "tests/e2e/workspace-canvas.note-to-task.spec.ts": 1,
+    "tests/e2e/workspace-canvas.selection.spaces.drag-mixed.spec.ts": 1,
+    "tests/e2e/workspace-canvas.selection.spaces.drag-selected.spec.ts": 1,
+    "tests/e2e/workspace-canvas.selection.spaces.marquee-inside.spec.ts": 1,
+    "tests/e2e/workspace-canvas.selection.spaces.marquee-outside.spec.ts": 2,
+    "tests/e2e/workspace-canvas.selection.task-interactions.spec.ts": 1,
+    "tests/e2e/workspace-canvas.shortcuts.spec.ts": 1,
+    "tests/e2e/workspace-canvas.space-explorer.spec.ts": 1,
+    "tests/e2e/workspace-canvas.space-pr-chip.spec.ts": 1,
+    "tests/e2e/workspace-canvas.spaces.anchor-mismatch.spec.ts": 3,
+    "tests/e2e/workspace-canvas.spaces.context-menu.spec.ts": 1,
+    "tests/e2e/workspace-canvas.spaces.drop-ownership.spec.ts": 1,
+    "tests/e2e/workspace-canvas.spaces.empty-allowed.spec.ts": 1,
+    "tests/e2e/workspace-canvas.terminal-wheel-raw-tui.windows.spec.ts": 1,
+    "tests/e2e/workspace-search.spec.ts": 1
+  }
+}
