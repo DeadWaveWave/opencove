@@ -54,11 +54,15 @@ interface RunnerRow {
   runner: string
   selects: (file: string) => boolean
   runsIn: (workflow: string, webJob: string) => boolean
+  /** Matches the run command of the steps that run this row (for the step-switch check). */
+  stepRun: RegExp
+  /** Set when no step of the row can be free of `if:`; the reason is the value. */
+  gatingExemption?: string
 }
 
 const startsWith = (prefix: string) => (file: string) => file.startsWith(prefix)
 
-export const RUNNER_ROWS: RunnerRow[] = [
+const RUNNER_ROWS: RunnerRow[] = [
   {
     runner: 'Vitest, root config',
     selects: file =>
@@ -67,21 +71,28 @@ export const RUNNER_ROWS: RunnerRow[] = [
       startsWith('tests/integration/')(file) ||
       (startsWith('tests/contract/')(file) && !startsWith('tests/contract/worker-cli/')(file)),
     runsIn: workflow => /^\s+run: pnpm test -- --run\s*$/m.test(workflow),
+    stepRun: /^pnpm test -- --run$/,
+    // The only step that runs this command is "Unit tests (PR)", which has
+    // `if: github.event_name == 'pull_request'` because pushes run test:coverage instead.
+    gatingExemption: 'pull_request-only step; push runs the same files under pnpm test:coverage',
   },
   {
     runner: 'Vitest, architecture harness',
     selects: startsWith('harness/'),
     runsIn: workflow => /^\s+run: pnpm arch:test\s*$/m.test(workflow),
+    stepRun: /^pnpm arch:test$/,
   },
   {
     runner: 'Playwright, Worker CLI contracts',
     selects: startsWith('tests/contract/worker-cli/'),
     runsIn: workflow => /^\s+run: pnpm test:contract:worker-cli\s*$/m.test(workflow),
+    stepRun: /^pnpm test:contract:worker-cli$/,
   },
   {
     runner: 'Playwright, Desktop E2E',
     selects: startsWith('tests/e2e/'),
     runsIn: workflow => /plan-e2e-shards\.mjs --os ubuntu .* --run/.test(workflow),
+    stepRun: /plan-e2e-shards\.mjs --os ubuntu .* --run/,
   },
   {
     runner: 'Playwright, web canvas',
@@ -90,30 +101,54 @@ export const RUNNER_ROWS: RunnerRow[] = [
       readRunCommand(readStep(webJob, 'Web canvas tests (chromium)')).startsWith(
         'pnpm test:e2e:web-canvas --',
       ),
+    stepRun: /^pnpm test:e2e:web-canvas -- --project=chromium /,
   },
   {
     runner: 'Playwright, web shell',
     selects: startsWith('tests/e2e-web-shell/'),
     runsIn: (_workflow, webJob) =>
       readSteps(webJob).some(step => /^\s+run: pnpm test:e2e:web-shell\b/m.test(step.text)),
+    stepRun: /^pnpm test:e2e:web-shell /,
+    // Its step carries the exact `if:` pinned by 'lets the WebKit and web shell suites report'.
+    gatingExemption: 'pinned by its own test, with the exact if: of the web suites',
   },
 ]
+
+const STEP_IF = /^ {8}if:/m
+const STEP_CONTINUE_ON_ERROR = /^ {8}continue-on-error:/m
+
+function readStepIf(step: Step): string | null {
+  return step.text.match(/^ {8}if:\s*(.*)$/m)?.[1]?.trim() ?? null
+}
+
+/** A step the row's runner runs on every pull request and that can fail the job. */
+function hasUngatedStep(workflow: string, row: RunnerRow): boolean {
+  return readSteps(workflow).some(step => {
+    let command: string
+    try {
+      command = readRunCommand(step)
+    } catch {
+      return false
+    }
+    return (
+      row.stepRun.test(command) &&
+      !STEP_IF.test(step.text) &&
+      !STEP_CONTINUE_ON_ERROR.test(step.text)
+    )
+  })
+}
 
 const FIXTURE_PREFIX = 'tests/fixtures/'
 
 /** Assertion 1: every spec file belongs to exactly one runner row. */
-export function findSpecsWithoutExactlyOneRunner(files: string[], rows = RUNNER_ROWS): string[] {
+function findSpecsWithoutExactlyOneRunner(files: string[], rows = RUNNER_ROWS): string[] {
   return files
     .filter(file => /\.spec\.tsx?$/.test(file) && !file.startsWith(FIXTURE_PREFIX))
     .filter(file => rows.filter(row => row.selects(file)).length !== 1)
 }
 
 /** Assertion 2: every runner row has a CI step that runs its command. */
-export function findRunnersWithoutCiStep(
-  workflow: string,
-  webJob: string,
-  rows = RUNNER_ROWS,
-): string[] {
+function findRunnersWithoutCiStep(workflow: string, webJob: string, rows = RUNNER_ROWS): string[] {
   return rows
     .filter(row => {
       try {
@@ -148,17 +183,44 @@ describe('CI web suites', () => {
     expect(readRunCommand(step)).toBe('pnpm test:e2e:web-canvas -- --project=chromium --retries=0')
     expect(readRunCommand(step)).not.toContain('tests/')
     expect(step.text).toContain("OPENCOVE_E2E_RETRIES: '0'")
-    expect(step.text).toContain('timeout-minutes: 30')
+    expect(step.text).toMatch(/^ {8}timeout-minutes: 30$/m)
+    // The chromium step is the base suite: it is never conditional and never allowed to fail quietly.
+    expect(step.text).not.toMatch(STEP_IF)
+    expect(step.text).not.toMatch(STEP_CONTINUE_ON_ERROR)
+  })
+
+  it.each([
+    ['playwright.web-canvas.config.ts', './tests/e2e-web-canvas'],
+    ['playwright.web-shell.config.ts', './tests/e2e-web-shell'],
+  ])('keeps %s selecting its whole directory', async (name, testDir) => {
+    const source = await readFile(resolve(rootDir, name), 'utf8')
+
+    expect(source).toContain(`testDir: '${testDir}'`)
+    expect(source).toContain("testMatch: '**/*.spec.ts'")
+    expect(source).not.toMatch(/\btestIgnore\b|\bgrep(Invert)?\s*:/)
+  })
+
+  it('lets the WebKit and web shell suites report whenever the build succeeded', async () => {
+    const { webJob } = await readWorkflow()
+    const expectedIf = "${{ !cancelled() && steps.build.conclusion == 'success' }}"
+
+    expect(readStepIf(readStep(webJob, 'WebKit calibration and theme tests'))).toBe(expectedIf)
+    expect(readStepIf(readStep(webJob, 'Web shell tests (chromium)'))).toBe(expectedIf)
+    expect(readStep(webJob, 'Build').text).toMatch(/^ {8}id: build$/m)
+    for (const name of ['WebKit calibration and theme tests', 'Web shell tests (chromium)']) {
+      expect(readStep(webJob, name).text, name).not.toMatch(STEP_CONTINUE_ON_ERROR)
+    }
   })
 
   it('lists only existing files in the WebKit subset and says why it is a subset', async () => {
     const { webJob } = await readWorkflow()
     const step = readStep(webJob, 'WebKit calibration and theme tests')
     const command = readRunCommand(step)
-    const files = command.match(/tests\/e2e-web-canvas\/\S+\.spec\.ts/g) ?? []
+    const files = command.split(' ').filter(argument => argument.startsWith('tests/'))
 
     expect(files.length).toBeGreaterThan(0)
     for (const file of files) {
+      expect(file, file).toMatch(/^tests\/e2e-web-canvas\/[^/]+\.spec\.ts$/)
       expect(existsSync(resolve(rootDir, file)), file).toBe(true)
     }
     expect(command).toContain('--project=webkit')
@@ -177,7 +239,7 @@ describe('CI web suites', () => {
     expect(readRunCommand(step)).toBe('pnpm test:e2e:web-shell -- --retries=0')
     expect(step.text).toContain("OPENCOVE_E2E_RETRIES: '0'")
     expect(step.text).toContain("OPENCOVE_E2E_SKIP_BUILD: '1'")
-    expect(step.text).toContain('timeout-minutes: 10')
+    expect(step.text).toMatch(/^ {8}timeout-minutes: 10$/m)
 
     const upload = readStep(webJob, 'Upload Web Canvas artifacts').text
     for (const path of [
@@ -213,6 +275,44 @@ describe('CI web suites', () => {
     it('has a CI step for every runner row', async () => {
       const { workflow, webJob } = await readWorkflow()
       expect(findRunnersWithoutCiStep(workflow, webJob)).toEqual([])
+    })
+
+    it('has, for every runner row, a step that is neither conditional nor allowed to fail', async () => {
+      const { workflow } = await readWorkflow()
+
+      for (const row of RUNNER_ROWS) {
+        if (row.gatingExemption) {
+          expect(row.gatingExemption.length).toBeGreaterThan(0)
+          continue
+        }
+        expect(hasUngatedStep(workflow, row), row.runner).toBe(true)
+      }
+    })
+
+    it('fails when a runner step is switched off with if or continue-on-error', async () => {
+      const { workflow } = await readWorkflow()
+      const row = RUNNER_ROWS.find(
+        candidate => candidate.runner === 'Vitest, architecture harness',
+      )!
+
+      expect(
+        hasUngatedStep(
+          workflow.replace(
+            '      - name: Architecture harness tests\n',
+            '      - name: Architecture harness tests\n        if: false\n',
+          ),
+          row,
+        ),
+      ).toBe(false)
+      expect(
+        hasUngatedStep(
+          workflow.replace(
+            '      - name: Architecture harness tests\n',
+            '      - name: Architecture harness tests\n        continue-on-error: true\n',
+          ),
+          row,
+        ),
+      ).toBe(false)
     })
 
     it('fails when the web shell step is removed from the workflow text', async () => {
