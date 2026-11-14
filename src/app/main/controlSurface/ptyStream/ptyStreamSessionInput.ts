@@ -1,3 +1,4 @@
+import type { SessionInputProvenance } from '../../../../shared/runtime/sessionInputProvenance'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import type { ReservedSessionInput } from '../../../../contexts/agent/application/ports/PromptDeliveryPorts'
 import { enqueueSessionOperation } from './ptyStreamHub.operationQueue'
@@ -5,7 +6,12 @@ import type { SessionState } from './ptyStreamState'
 const reservation = new AsyncLocalStorage<Set<SessionState>>()
 export const withSessionInputOperation = <T>(
   sessions: Map<string, SessionState>,
-  write: (id: string, data: string, deliveryId?: string) => void,
+  write: (
+    id: string,
+    data: string,
+    deliveryId?: string,
+    provenance?: SessionInputProvenance,
+  ) => void,
   sessionId: string,
   callback: (input: ReservedSessionInput) => Promise<T>,
 ): Promise<T> => {
@@ -35,11 +41,11 @@ export const withSessionInputOperation = <T>(
             bracketedPaste: session.ingress.bracketedPaste,
             watermark: session.ingress.watermark,
           }),
-          write: (data, deliveryId) => {
+          write: (data, deliveryId, provenance) => {
             if (!isLive()) {
               throw new Error('Session input reservation expired')
             }
-            write(sessionId, data, deliveryId)
+            write(sessionId, data, deliveryId, provenance)
           },
         })
       } finally {

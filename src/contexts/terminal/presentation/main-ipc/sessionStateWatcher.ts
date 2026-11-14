@@ -1,3 +1,5 @@
+import { captureInputProvenance } from './sessionStateWatcherEvidence'
+import type { SessionInteraction } from '../../../../shared/runtime/sessionInputProvenance'
 import type { ClaudeTranscriptObservation } from '../../../../shared/runtime/agentHook/claudeTranscript'
 import {
   createSessionStatePublisher,
@@ -50,7 +52,7 @@ export function createSessionStateWatcherController({
   sessionDiscovery?: AgentSessionDiscovery
 }): {
   start: (input: SessionStateWatcherStartInput) => void
-  noteInteraction: (sessionId: string, data?: string) => void
+  noteInteraction: SessionInteraction
   disposeSession: (sessionId: string, forgetHistory?: boolean) => void
   dispose: () => void
 } {
@@ -404,7 +406,7 @@ export function createSessionStateWatcherController({
     scheduleSessionStateWatcherAttempt(input.sessionId, watcherVersion, 0)
   }
 
-  const noteInteraction = (sessionId: string, data?: string): void => {
+  const noteInteraction: SessionInteraction = (sessionId, data, provenance) => {
     const input = stateWatcherStartInputBySession.get(sessionId)
     if (!input) {
       return
@@ -414,7 +416,8 @@ export function createSessionStateWatcherController({
     stateWatcherLastInteractionAtMsBySession.set(sessionId, interactionAtMs)
 
     if (shouldBroadcastOptimisticWorkingFromInteraction({ provider: input.provider, data })) {
-      broadcastSessionState(sessionId, 'working')
+      const evidence = captureInputProvenance(sessionId, provenance, onClaudeTranscript)
+      broadcastSessionState(sessionId, 'working', { evidence })
     }
 
     const shouldForceImmediateRetry =

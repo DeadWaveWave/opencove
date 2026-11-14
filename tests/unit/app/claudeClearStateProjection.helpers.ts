@@ -53,7 +53,18 @@ export async function clearStateProjectionFixture() {
       }),
     },
   })
-  run.write.mockImplementation((_id: string, data: string) => controller.noteInteraction('s', data))
+  run.write.mockImplementation(
+    (
+      _id: string,
+      data: string,
+      _encoding?: string,
+      provenance?: {
+        providerSessionId: string
+        invocationId: string
+        conversationGeneration?: number
+      },
+    ) => controller.noteInteraction('s', data, provenance),
+  )
   controller.start({
     sessionId: 's',
     provider: 'claude-code',
@@ -118,9 +129,34 @@ export async function clearStateProjectionFixture() {
       throw new Error('A prefix is pending')
     }
   })
+  const startClear = async (id: string, at = Date.now() + 1, lateStopId?: string) => {
+    await fs.writeFile(
+      path(id),
+      capture.transcripts.B.map(line => line.replaceAll(capture.b, id)).join('\n') + '\n',
+    )
+    await send(id, 'SessionStart', at, { source: 'clear' })
+    if (lateStopId) {
+      await send(lateStopId, 'Stop', at + 1, {
+        prompt_id: 'late-predecessor',
+        last_assistant_message: 'OLD',
+      })
+    }
+    await vi.waitFor(() => {
+      if (
+        !hookRecords.some(
+          record => record.providerSessionId === id && record.record?.kind === 'checkpoint',
+        )
+      ) {
+        throw new Error('Successor transcript prefix is pending')
+      }
+    })
+    await vi.advanceTimersByTimeAsync(501)
+  }
   return {
     ...run,
     controller,
+    startClear,
+    hook: send,
     events,
     records,
     trace,
@@ -154,21 +190,7 @@ export async function clearStateProjectionFixture() {
       })
     },
     async startB() {
-      await fs.writeFile(
-        path(trace.b),
-        capture.transcripts.B.map(line => line.replaceAll(capture.b, trace.b)).join('\n') + '\n',
-      )
-      await send(trace.b, 'SessionStart', trace.successorAt, { source: 'clear' })
-      await vi.waitFor(() => {
-        if (
-          !hookRecords.some(
-            record => record.providerSessionId === trace.b && record.record?.kind === 'checkpoint',
-          )
-        ) {
-          throw new Error('B transcript prefix is pending')
-        }
-      })
-      await vi.advanceTimersByTimeAsync(501)
+      await startClear(trace.b, trace.successorAt)
     },
     async probe() {
       const pending = run.service

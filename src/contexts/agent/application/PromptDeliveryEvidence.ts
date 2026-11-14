@@ -1,3 +1,4 @@
+import type { SessionInputProvenance } from '../../../shared/runtime/sessionInputProvenance'
 import { claudePromptId } from '../../../shared/runtime/agentHook/claudePromptEvidence'
 import type { DeliveryRecord } from './PromptDeliveryRecords'
 import type {
@@ -25,6 +26,20 @@ export class PromptDeliveryEvidence {
     this.ended = new Set(identity?.endedTurnIds)
     if (fence.snapshot.lastEndedTurn) {
       this.ended.add(fence.snapshot.lastEndedTurn.id)
+    }
+  }
+  get inputTarget(): SessionInputProvenance | undefined {
+    if (
+      this.fence?.snapshot.provider !== 'claude-code' ||
+      !this.fence.invocationId ||
+      !this.identity?.providerSessionId
+    ) {
+      return undefined
+    }
+    return {
+      providerSessionId: this.identity.providerSessionId,
+      invocationId: this.fence.invocationId,
+      conversationGeneration: this.fence.conversationGeneration,
     }
   }
   qualify(r: RunStateReceipt, record: DeliveryRecord, now: number): RunStateReceipt | undefined {

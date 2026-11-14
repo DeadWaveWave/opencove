@@ -1,3 +1,4 @@
+import type { SessionRuntimeWrite } from '../../shared/runtime/sessionInputProvenance'
 import {
   getPromptSubmissionEvidence,
   setPromptSubmissionEvidence,
@@ -50,7 +51,7 @@ export interface HeadlessPtyRuntime extends ClaudeTranscriptPort {
   isIdle: () => boolean
   listProfiles: () => Promise<ListTerminalProfilesResult>
   spawnSession: (options: SpawnSessionOptions) => Promise<{ sessionId: string }>
-  write: (sessionId: string, data: string) => void
+  write: SessionRuntimeWrite
   probeForeground: (sessionId: string) => void
   resize: (input: ResizeTerminalInput) => Promise<TerminalGeometryCommitResult>
   kill: (sessionId: string) => void
@@ -229,9 +230,17 @@ export function createHeadlessPtyRuntime(options: {
       }
       return spawned
     },
-    write: (sessionId, data) => {
-      processEngine.write(sessionId, data)
-      sessionStateWatcher.noteInteraction(sessionId, data)
+    write: (sessionId, data, encoding, provenance) => {
+      if (encoding === undefined) {
+        processEngine.write(sessionId, data)
+      } else {
+        processEngine.write(sessionId, data, encoding)
+      }
+      if (provenance) {
+        sessionStateWatcher.noteInteraction(sessionId, data, provenance)
+      } else {
+        sessionStateWatcher.noteInteraction(sessionId, data)
+      }
     },
     probeForeground: sessionId => {
       processEngine.probeForeground(sessionId)

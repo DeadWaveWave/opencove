@@ -78,6 +78,6 @@ it.each(['fresh', 'replayed', 'before-Start', 'input', 'captured', 'other-identi
       anonymous,
       stop,
     ])
-    expect(proof.resolved(anonymous)).toBe(variant === 'fresh')
+    expect(proof.resolved(anonymous)).toBe(['fresh', 'before-Start'].includes(variant))
   },
 )

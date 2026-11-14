@@ -3,6 +3,7 @@ import type { JournalFact } from './ClaudeInvocationJournal'
 import {
   getClaudeTranscriptCompleted,
   getClaudeTranscriptInput,
+  getClaudeTranscriptAfterFinal,
 } from '../../../shared/runtime/agentHook/claudeTranscript'
 /** One proof vocabulary for admission and compaction. Missing identity alone is never retirement. */
 export class ClaudeJournalProof {
@@ -109,11 +110,7 @@ export class ClaudeJournalProof {
     return f.kind === 'activity' && !!f.io && !f.input && !f.id && !f.capture && !f.transcript
   }
   covers(stop: JournalFact, f: JournalFact): boolean {
-    const anonymous =
-      this.anonymousState(f) &&
-      !!this.current &&
-      this.current.at <= f.at &&
-      this.current.received <= f.received
+    const anonymous = this.anonymousState(f) && !!this.current
     return (
       !!this.current &&
       (this.epoch(f) === this.current || anonymous) &&
@@ -128,8 +125,17 @@ export class ClaudeJournalProof {
   }
   private coversIO(stop: JournalFact, fact: JournalFact): boolean {
     const completed = fact.transcript && getClaudeTranscriptCompleted(fact.transcript)
-    if (fact.transcript?.kind === 'assistant' && !fact.transcript.final) {
-      return stop.order! >= fact.order! || (!!completed && completed === stop.promptId)
+    if (fact.transcript?.kind === 'assistant') {
+      const explicit = fact.transcript.promptId
+      if (
+        (explicit !== undefined && explicit !== stop.promptId) ||
+        (stop.promptId !== undefined &&
+          getClaudeTranscriptAfterFinal(fact.transcript) === stop.promptId)
+      ) {
+        return false
+      }
+      // Receiver order cannot establish which turn owns assistant activity.
+      return !!stop.promptId && (completed === stop.promptId || explicit === stop.promptId)
     }
     if (completed) {
       return completed === stop.promptId

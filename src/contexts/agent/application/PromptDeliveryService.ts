@@ -443,7 +443,7 @@ export class PromptDeliveryService {
           }
           receiptDeadline = Math.min(deadline, record.submitAt + 5000)
           try {
-            input.write('\r', id)
+            input.write('\r', id, evidence.inputTarget)
           } catch (cause) {
             fail(cause instanceof Error ? cause.message : 'write_failed', undefined, true)
             return

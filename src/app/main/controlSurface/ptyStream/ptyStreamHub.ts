@@ -460,7 +460,7 @@ export class PtyStreamHub {
   ): Promise<T> {
     return withSessionInputOperation<T>(
       this.sessions,
-      (id, data, deliveryId) => this.inputEvidence.write(id, data, deliveryId),
+      this.inputEvidence.write.bind(this.inputEvidence),
       sessionId,
       callback,
     )

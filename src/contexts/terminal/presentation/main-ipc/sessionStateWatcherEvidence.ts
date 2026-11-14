@@ -36,3 +36,38 @@ export function publishAnonymousSessionActivity(
     })
   }
 }
+
+/** Bind a known delivery to its observed namespace before the synchronous write projection. */
+export function captureInputProvenance(
+  sessionId: string,
+  provenance:
+    | import('../../../../shared/runtime/sessionInputProvenance').SessionInputProvenance
+    | undefined,
+  emit?: (record: ClaudeTranscriptObservation) => void,
+):
+  | import('../../../../shared/runtime/agentHook/claudePromptEvidence').PromptSubmissionEvidence
+  | undefined {
+  if (!provenance || !emit) {
+    return provenance
+  }
+  let generation: number | undefined, incarnation: string | undefined, capture: object | undefined
+  emit({
+    sessionId,
+    incarnation: provenance.invocationId,
+    providerSessionId: provenance.providerSessionId,
+    generation: 0,
+    fileIdentity: 'delivery-input',
+    position: -1,
+    baseline: false,
+    captureConversation: (value, identity) => {
+      generation = value
+      incarnation = identity
+    },
+    captureBinding: binding => {
+      capture = binding
+    },
+  })
+  return incarnation === provenance.invocationId && generation === provenance.conversationGeneration
+    ? { ...provenance, conversationCapture: capture }
+    : provenance
+}

@@ -1,3 +1,4 @@
+import type { SessionInputProvenance } from '../../../../shared/runtime/sessionInputProvenance'
 import type { PromptSubmissionEvidence } from '../../../../shared/runtime/agentHook/claudePromptEvidence'
 import type { AgentRunTurnEnd } from '../../domain/agentRunState'
 import type { AgentRunSnapshot } from '../../../../shared/contracts/dto/agentRunState'
@@ -11,6 +12,8 @@ import type {
 export interface RunStateFence {
   epoch: string
   incarnation: string
+  /** Real invocation identity; incarnation above is the opaque entry fence token. */
+  invocationId?: string
   conversationGeneration?: number
   claudeClearReady?: boolean
   conversationQuarantined?: boolean
@@ -53,7 +56,7 @@ export interface ReservedSessionInput {
   watchInvalidation(listener: () => void): () => void
   mode(): { bracketedPaste: boolean; watermark: number }
   /** Raw write; never calls another enqueuing Hub method. Invalid outside reservation. */
-  write(data: string, deliveryId?: string): void
+  write(data: string, deliveryId?: string, provenance?: SessionInputProvenance): void
 }
 export interface SessionInputPort {
   /** Observe capability loss before queue acquisition; dispose after CR or cancellation. */

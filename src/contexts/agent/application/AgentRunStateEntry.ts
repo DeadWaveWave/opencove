@@ -55,6 +55,7 @@ export function projectRunStateFence(entry: AgentRunEntry, epoch: string): RunSt
   return structuredClone({
     epoch: epoch,
     incarnation: entry.token,
+    invocationId: model.incarnation,
     bindingGeneration: entry.bindingGeneration,
     cursor: entry.cursor,
     snapshot: model.snapshot,

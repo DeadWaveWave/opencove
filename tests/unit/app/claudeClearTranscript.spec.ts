@@ -148,7 +148,8 @@ it('correlates a delayed assistant record with its already completed authenticat
     expect(f.fence().conversationQuarantined).toBe(true)
     expect((await f.probe()).writes).toBe(0)
     await f.hook('Stop', 'new-prompt')
-    expect(f.fence().conversationQuarantined).toBe(false)
+    // Another receipt for the old prompt cannot cover activity after its final boundary.
+    expect(f.fence().conversationQuarantined).toBe(true)
   } finally {
     await f.close()
   }

@@ -37,6 +37,17 @@ export function markClaudeTranscriptCompleted(
 export function getClaudeTranscriptCompleted(record: ClaudeTranscriptRecord): string | undefined {
   return completedByRecord.get(record)
 }
+const afterFinalByRecord = new WeakMap<object, string>()
+/** File order proves that this activity follows the first final for this prompt. */
+export function markClaudeTranscriptAfterFinal(
+  record: ClaudeTranscriptRecord,
+  promptId: string,
+): void {
+  afterFinalByRecord.set(record, promptId)
+}
+export function getClaudeTranscriptAfterFinal(record: ClaudeTranscriptRecord): string | undefined {
+  return afterFinalByRecord.get(record)
+}
 const stateRecord = new WeakMap<object, ClaudeTranscriptRecord>()
 export function markClaudeStateRecord(options: object, record: ClaudeTranscriptRecord): void {
   stateRecord.set(options, record)

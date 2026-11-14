@@ -4,6 +4,7 @@ import {
   getClaudeTranscriptInput,
   markClaudeTranscriptPrompt,
   markClaudeTranscriptCompleted,
+  markClaudeTranscriptAfterFinal,
   type ClaudeTranscriptRecord,
 } from '../../../../shared/runtime/agentHook/claudeTranscript'
 
@@ -34,6 +35,9 @@ export class ClaudeTranscriptAncestry {
         this.remember(record.uuid)
       }
       return
+    }
+    if (record?.kind === 'assistant' && this.ended && this.prompt) {
+      markClaudeTranscriptAfterFinal(record, this.prompt)
     }
     const parent = claudePromptId(raw.parentUuid)
     if (!this.prompt || this.incomplete || !parent || !this.descendants.has(parent)) {

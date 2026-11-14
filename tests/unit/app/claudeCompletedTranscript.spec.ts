@@ -56,14 +56,21 @@ it('does not discharge unrelated input between thinking and the matching final b
     await f.close()
   }
 })
-it.each([false, true])(
-  'accepts a delayed completed prefix after Stop, thinking=%s',
-  async withThinking => {
+it.each(
+  [false, true].flatMap(stopFirst =>
+    [false, true].map(withThinking => ({ stopFirst, withThinking })),
+  ),
+)(
+  'accepts its completed prefix, Stop first=$stopFirst, thinking=$withThinking',
+  async ({ stopFirst, withThinking }) => {
     const f = await capturedClearFixture(true)
     try {
       await f.hook('UserPromptSubmit', 'p')
-      await f.hook('Stop', 'p')
-      const ended = f.fence().snapshot.lastEndedTurn
+      const turnId = f.fence().snapshot.turn!.id
+      if (stopFirst) {
+        await f.hook('Stop', 'p')
+      }
+      const before = f.fence().snapshot.lastEndedTurn
       for (const record of [
         user,
         ...(withThinking ? [thinking('u')] : []),
@@ -72,11 +79,17 @@ it.each([false, true])(
         // oxlint-disable-next-line no-await-in-loop -- file order is the evidence under test
         await f.append(JSON.stringify(record))
       }
+      if (!stopFirst) {
+        await f.hook('Stop', 'p')
+      }
+      const ended = f.fence().snapshot.lastEndedTurn
       expect(f.fence().snapshot).toMatchObject({
         state: 'idle',
-        lastEndedTurn: { outcome: 'completed' },
+        lastEndedTurn: { id: turnId, outcome: 'completed' },
       })
-      expect(f.fence().snapshot.lastEndedTurn).toEqual(ended)
+      if (stopFirst) {
+        expect(ended).toEqual(before)
+      }
       expect(f.registry.finalMessage({ nodeId: 'n', turnId: ended!.id })).toMatchObject({
         turnId: ended!.id,
         outcome: 'completed',
@@ -93,23 +106,64 @@ it.each([false, true])(
     }
   },
 )
-it.each([false, true])(
-  'refuses thinking after the final boundary, explicit old prompt=%s',
-  async explicitPrompt => {
-    const f = await capturedClearFixture()
+it.each(
+  [false, true].flatMap(stopFirst =>
+    ['q', 'p', undefined].map(promptId => ({ stopFirst, promptId })),
+  ),
+)(
+  'refuses post-final thinking, Stop first=$stopFirst, explicit prompt=$promptId',
+  async ({ stopFirst, promptId }) => {
+    const f = await capturedClearFixture(true)
     try {
       await f.hook('UserPromptSubmit', 'p')
-      await f.hook('Stop', 'p')
+      if (stopFirst) {
+        await f.hook('Stop', 'p')
+      }
       for (const record of [user, thinking('u'), final('t')]) {
         // oxlint-disable-next-line no-await-in-loop -- file order is the evidence under test
         await f.append(JSON.stringify(record))
       }
-      expect(f.fence().conversationQuarantined).toBe(false)
+      if (stopFirst) {
+        expect(f.fence().conversationQuarantined).toBe(false)
+      }
       await f.append(
-        JSON.stringify({ ...thinking('f', 'late'), ...(explicitPrompt ? { promptId: 'p' } : {}) }),
+        JSON.stringify({ ...thinking('f', 'late'), ...(promptId ? { promptId } : {}) }),
       )
-      expect(f.fence().conversationQuarantined).toBe(true)
-      expect((await f.probe()).writes).toBe(0)
+      if (!stopFirst) {
+        await f.hook('Stop', 'p')
+      }
+      const fence = f.fence()
+      const delivery = await f.probe()
+      expect({ quarantined: fence.conversationQuarantined, writes: delivery.writes }).toEqual({
+        quarantined: true,
+        writes: 0,
+      })
+      expect(delivery.result).toMatchObject({ code: 'agent.state_unknown' })
+      expect(fence.snapshot).toMatchObject({
+        state: 'idle',
+        lastEndedTurn: { outcome: 'completed' },
+      })
+    } finally {
+      await f.close()
+    }
+  },
+)
+
+it.each(['q', undefined])(
+  'does not use delayed Stop arrival to discharge uncompleted thinking, explicit prompt=%s',
+  async promptId => {
+    const f = await capturedClearFixture(true)
+    try {
+      await f.hook('UserPromptSubmit', 'p')
+      await f.append(
+        JSON.stringify({ ...thinking('unattributed'), ...(promptId ? { promptId } : {}) }),
+      )
+      await f.hook('Stop', 'p')
+      const quarantined = f.fence().conversationQuarantined
+      expect({ quarantined, writes: (await f.probe()).writes }).toEqual({
+        quarantined: true,
+        writes: 0,
+      })
     } finally {
       await f.close()
     }

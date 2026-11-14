@@ -1,34 +1,19 @@
-import {
-  ClaudeTranscriptChannel,
-  type ClaudeTranscriptPort,
-} from '../../../../shared/runtime/agentHook/claudeTranscript'
+import type { PtyRuntime, StartSessionStateWatcherInput } from './ptyRuntimeTypes'
+export type { PtyRuntime, StartSessionStateWatcherInput } from './ptyRuntimeTypes'
+import { ClaudeTranscriptChannel } from '../../../../shared/runtime/agentHook/claudeTranscript'
 import { webContents } from 'electron'
 import process from 'node:process'
 import type { AgentSessionDiscovery } from '../../../agent/application/ports/AgentSessionDiscovery'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
-  AgentLaunchMode,
-  AgentProviderId,
-  AttachTerminalResult,
-  ListTerminalProfilesResult,
-  PresentationSnapshotTerminalResult,
-  ResizeTerminalInput,
-  SpawnTerminalInput,
-  SpawnTerminalResult,
   TerminalDataEvent,
-  TerminalAgentReexecInput,
-  TerminalAgentReexecResult,
   TerminalForegroundEvent,
-  TerminalGeometryCommitResult,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
-  TerminalWriteEncoding,
 } from '../../../../shared/contracts/dto'
 import { resolveDefaultShell } from '../../../../platform/process/pty/defaultShell'
-import type { SpawnPtyOptions } from '../../../../platform/process/pty/types'
 import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalProfileResolver'
 import { stripAutomaticTerminalQueriesFromOutput } from '../../../../shared/terminal/automaticTerminalSequences'
-import type { GeminiSessionDiscoveryCursor } from '../../../agent/infrastructure/cli/AgentSessionLocatorProviders'
 import type { TerminalProcessEnginePort } from '../../application/ports/TerminalProcessEnginePort'
 import { createSessionStateWatcherController } from './sessionStateWatcher'
 import { TerminalSessionManager } from './sessionManager'
@@ -41,45 +26,6 @@ import {
   logAgentLaunchError,
   logAgentLaunchInfo,
 } from '../../../../app/main/diagnostics/agentLaunchRuntimeDiagnostics'
-
-export interface StartSessionStateWatcherInput {
-  sessionId: string
-  provider: AgentProviderId
-  cwd: string
-  launchMode: AgentLaunchMode
-  resumeSessionId: string | null
-  startedAtMs: number
-  opencodeBaseUrl?: string | null
-  geminiDiscoveryCursor?: GeminiSessionDiscoveryCursor | null
-}
-
-export interface PtyRuntime extends ClaudeTranscriptPort {
-  listProfiles?: () => Promise<ListTerminalProfilesResult>
-  spawnTerminalSession?: (input: SpawnTerminalInput) => Promise<SpawnTerminalResult>
-  spawnSession: (options: SpawnPtyOptions) => Promise<{ sessionId: string }>
-  write: (sessionId: string, data: string, encoding?: TerminalWriteEncoding) => Promise<void>
-  probeForeground?: (sessionId: string) => void
-  reexecAgent?: (input: TerminalAgentReexecInput) => Promise<TerminalAgentReexecResult>
-  resize: (input: ResizeTerminalInput) => Promise<TerminalGeometryCommitResult>
-  kill: (sessionId: string) => Promise<void>
-  onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
-  onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => () => void
-  onForeground?: (listener: (event: TerminalForegroundEvent) => void) => () => void
-  onState?: (listener: (event: TerminalSessionStateEvent) => void) => () => void
-  onMetadata?: (listener: (event: TerminalSessionMetadataEvent) => void) => () => void
-  attach: (
-    contentsId: number,
-    sessionId: string,
-    afterSeq?: number | null,
-  ) => Promise<AttachTerminalResult>
-  detach: (contentsId: number, sessionId: string) => Promise<void>
-  snapshot: (sessionId: string) => Promise<string>
-  presentationSnapshot: (sessionId: string) => Promise<PresentationSnapshotTerminalResult>
-  startSessionStateWatcher: (input: StartSessionStateWatcherInput) => void
-  disposeSessionStateWatcher: (sessionId: string) => void
-  debugCrashHost?: () => void | Promise<void>
-  dispose: () => void | Promise<void>
-}
 
 function reportStateWatcherIssue(message: string): void {
   if (process.env.NODE_ENV === 'test') {
@@ -374,7 +320,7 @@ export function createPtyRuntime(deps: {
       })
       return { sessionId }
     },
-    write: async (sessionId, data, encoding = 'utf8') => {
+    write: async (sessionId, data, encoding = 'utf8', provenance) => {
       const lifecycle = manager.resolveSessionLifecycleState(sessionId)
       if (lifecycle !== 'active') {
         const signature = `${lifecycle}:${encoding}`
@@ -392,7 +338,11 @@ export function createPtyRuntime(deps: {
         }
       }
       processEngine.write(sessionId, data, encoding)
-      sessionStateWatcher.noteInteraction(sessionId, data)
+      if (provenance) {
+        sessionStateWatcher.noteInteraction(sessionId, data, provenance)
+      } else {
+        sessionStateWatcher.noteInteraction(sessionId, data)
+      }
     },
     probeForeground: sessionId => {
       processEngine.probeForeground(sessionId)
