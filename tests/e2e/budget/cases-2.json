@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "count": 174,
+  "count": 175,
   "entries": {
     "tests/e2e/agent-hook-relay.windows.spec.ts › claude-code executes Electron hooks through the real launch path and retains keyboard input": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/agent-hook-relay.windows.spec.ts › codex executes Electron hooks through the real launch path and retains keyboard input": "Desktop: pre-restructure inventory; existing assertions retained",
@@ -65,6 +65,7 @@
     "tests/e2e/terminal-agent-shim-encoding.windows.spec.ts › powershell shim preserves Unicode profile, runtime executable and argument paths": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/terminal-agent-shim.windows.spec.ts › terminal Agent shim (Windows) › Ctrl-C reaches the provider, cleans plans, and leaves the PowerShell host reusable": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/terminal-agent-shim.windows.spec.ts › terminal Agent shim (Windows) › claude-code via powershell preserves production identity, exact args, exit, profile, and cleanup": "Desktop: pre-restructure inventory; existing assertions retained",
+    "tests/e2e/worker-client.startup.spec.ts › Worker startup reports the exit reason and stderr for an occupied port": "native: a real Worker process that exits on an occupied port surfaces its exit code and stderr to the E2E Worker helper",
     "tests/e2e/worker-leading-hyphen-token.spec.ts › Worker authenticates an opaque bearer token that starts with hyphens": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/worker-web-listener-handover.windows.spec.ts › releases and restores a same-port Web listener without relying on port reuse": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/workspace-canvas.agent-header-session-actions.spec.ts › Workspace Canvas - Agent Header Session Actions › shows header actions and loads current-project sessions": "Desktop: pre-restructure inventory; existing assertions retained",

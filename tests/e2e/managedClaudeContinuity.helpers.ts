@@ -54,7 +54,41 @@ async function hideMinimap(page: Page) {
 export async function expectConversation(page: Page, nodeId: string, resumeSessionId: string) {
   await hideMinimap(page)
   const node = page.locator(`[data-id="${nodeId}"]`)
-  await node.getByTestId('terminal-node-session-list').click()
+  const control = node.getByTestId('terminal-node-session-list')
+  const readHit = () =>
+    control.evaluate(button => {
+      const rect = button.getBoundingClientRect()
+      const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)
+      return {
+        receivesPointer: hit !== null && button.contains(hit),
+        control: rect.toJSON(),
+        viewport: { width: innerWidth, height: innerHeight },
+        blocker: hit?.closest('[data-testid]')?.getAttribute('data-testid') ?? hit?.tagName,
+        nodeTransform: button.closest('.react-flow__node')?.getAttribute('style'),
+        viewportTransform: document.querySelector('.react-flow__viewport')?.getAttribute('style'),
+        busy: button
+          .closest('.react-flow__node')
+          ?.querySelector('.terminal-node__terminal')
+          ?.getAttribute('aria-busy'),
+      }
+    })
+  // Layout is shared, but Desktop and Web have independent viewports. A Web drag
+  // can leave Desktop's control beneath its docked sidebar (or outside its window).
+  if (!(await readHit()).receivesPointer) {
+    await page.locator('.react-flow__controls-fitview').click()
+    // Fit View's default padding can still put a header beneath the floating action bar.
+    await page.locator('.react-flow__controls-zoomout').click()
+  }
+  await expect
+    .poll(
+      async () => {
+        const hit = await readHit()
+        return hit.receivesPointer ? null : hit
+      },
+      { message: 'Session control must receive a real pointer' },
+    )
+    .toBeNull()
+  await control.click()
   try {
     const menu = page.getByTestId('terminal-node-session-menu')
     await expect(menu).toBeVisible({ timeout: 30_000 })
