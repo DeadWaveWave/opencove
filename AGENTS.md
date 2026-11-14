@@ -43,7 +43,7 @@ Before implementation, do the following when the change is non-trivial:
 - Write 1-3 invariants before relying on scenario lists.
 - If ownership, authority, or semantics are ambiguous, stop and align before patching.
 - If the problem likely has existing industry practice, study external references before specing.
-- If fixing a real bug, leave behind a reusable asset such as a test, rule, assertion, or doc update.
+- If fixing a real bug, leave the strongest asset that fits (type/structure > mechanical check > runtime assertion > scenario test) and say in the PR why a stronger one does not fit; a prose rule alone does not count.
 
 ## 4. Risk & Compliance Checklist
 
