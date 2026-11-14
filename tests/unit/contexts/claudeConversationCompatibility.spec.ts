@@ -105,7 +105,7 @@ it('accepts discovered file-only identity through actual generation-zero watcher
     captured.state('s', 'working')
     expect(getPromptSubmissionEvidence(emitted.mock.calls[0][0])).toMatchObject({
       conversationGeneration: undefined,
-      providerSessionId: undefined,
+      providerSessionId: 'discovered-A',
       conversationCapture: expect.any(Object),
     })
     expect(f.registry.get({ sessionId: 's' })).toMatchObject({

@@ -79,11 +79,20 @@ export class ClaudeInvocationJournal {
     }
     const id = event.claudeSessionId
     const current = this.current()
+    const historicalClearEnd =
+      name === 'SessionEnd' &&
+      isClaudeClearEvidence(event) &&
+      this.facts.some(f => f.kind === 'start' && f.id === id && f.at <= at!)
     if (firstClear && name === 'SessionStart' && at! <= (current?.at ?? -Infinity)) {
       this.unknown(id)
       return false
     }
-    if (this.enabled && name !== 'SessionStart' && at! < (current?.at ?? -Infinity)) {
+    if (
+      this.enabled &&
+      name !== 'SessionStart' &&
+      at! < (current?.at ?? -Infinity) &&
+      !historicalClearEnd
+    ) {
       return false
     }
     if (

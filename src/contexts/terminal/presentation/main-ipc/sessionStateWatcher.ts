@@ -152,6 +152,7 @@ export function createSessionStateWatcherController({
   const broadcastSessionState = createSessionStatePublisher({
     getInput: sessionId => stateWatcherStartInputBySession.get(sessionId),
     onState,
+    onClaudeTranscript,
   })
 
   const scheduleRetry = (sessionId: string, watcherVersion: number): void => {

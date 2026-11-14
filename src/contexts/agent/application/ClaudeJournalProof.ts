@@ -4,7 +4,7 @@ import {
   getClaudeTranscriptCompleted,
   getClaudeTranscriptInput,
 } from '../../../shared/runtime/agentHook/claudeTranscript'
-/** One proof vocabulary for admission and compaction. Missing identity is never retirement. */
+/** One proof vocabulary for admission and compaction. Missing identity alone is never retirement. */
 export class ClaudeJournalProof {
   readonly current: JournalFact | undefined
   readonly completion: JournalFact[]
@@ -78,6 +78,7 @@ export class ClaudeJournalProof {
       current = this.current
     return (
       !!f.capture?.retired ||
+      this.retiredAnonymousState(f) ||
       (!!current &&
         ((!f.io && !f.input && f.kind !== 'start' && f.at < current.at) ||
           (!!epoch && epoch.at < current.at) ||
@@ -86,13 +87,43 @@ export class ClaudeJournalProof {
             this.ends(epoch).some(end => f.at <= end.at))))
     )
   }
+  private retiredAnonymousState(f: JournalFact): boolean {
+    if (!this.current || !this.anonymousState(f)) {
+      return false
+    }
+    return this.facts.some(end => {
+      if (end.kind !== 'end' || !end.clear) {
+        return false
+      }
+      const previous = this.epoch(end)
+      return (
+        !!previous &&
+        previous.at <= f.at &&
+        f.at < end.at &&
+        end.at < this.current!.at &&
+        f.received < end.received
+      )
+    })
+  }
+  private anonymousState(f: JournalFact): boolean {
+    return f.kind === 'activity' && !!f.io && !f.input && !f.id && !f.capture && !f.transcript
+  }
   covers(stop: JournalFact, f: JournalFact): boolean {
+    const anonymous =
+      this.anonymousState(f) &&
+      !!this.current &&
+      this.current.at <= f.at &&
+      this.current.received <= f.received
     return (
       !!this.current &&
-      this.epoch(f) === this.current &&
+      (this.epoch(f) === this.current || anonymous) &&
       this.epoch(stop) === this.current &&
-      stop.id === f.id &&
-      (f.kind !== 'finish' && f.io ? this.coversIO(stop, f) : stop.at >= f.at)
+      (stop.id === f.id || anonymous) &&
+      (anonymous
+        ? stop.at >= f.at && stop.order! > f.order!
+        : f.kind !== 'finish' && f.io
+          ? this.coversIO(stop, f)
+          : stop.at >= f.at)
     )
   }
   private coversIO(stop: JournalFact, fact: JournalFact): boolean {

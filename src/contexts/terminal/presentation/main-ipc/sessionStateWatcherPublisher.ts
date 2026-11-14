@@ -8,14 +8,17 @@ import type { TerminalSessionStateEvent } from '../../../../shared/contracts/dto
 import type { OwnedSessionStateWatcherInput } from './sessionStateWatcherInput'
 import { logSessionStateWatcherDiagnostics } from './sessionStateWatcherShared'
 import { getClaudeStateRecord } from '../../../../shared/runtime/agentHook/claudeTranscript'
+import { publishAnonymousSessionActivity } from './sessionStateWatcherEvidence'
 
 /** Publishes current watcher evidence through the Worker observation port. */
 export function createSessionStatePublisher({
   getInput,
   onState,
+  onClaudeTranscript,
 }: {
   getInput: (sessionId: string) => OwnedSessionStateWatcherInput | undefined
   onState?: (event: TerminalSessionStateEvent) => void
+  onClaudeTranscript?: Parameters<typeof publishAnonymousSessionActivity>[2]
 }) {
   return (
     sessionId: string,
@@ -59,6 +62,19 @@ export function createSessionStatePublisher({
         claudeAuxiliary: options.claudeAuxiliary ?? options.evidence?.claudeAuxiliary,
       })
     }
+    if (
+      eventPayload.agentProvider === 'claude-code' &&
+      eventPayload.source === 'session_file' &&
+      !options.evidence?.providerSessionId &&
+      !options.evidence?.conversationCapture &&
+      (state !== 'standby' || options.degraded)
+    ) {
+      publishAnonymousSessionActivity(
+        sessionId,
+        state === 'waiting' ? 'waiting' : 'working',
+        onClaudeTranscript,
+      )
+    }
     onState?.(eventPayload)
   }
 }
@@ -78,6 +94,12 @@ export function captureSessionStateObservation(
   let conversationCapture: object | undefined
   let capturedGeneration: number | undefined
   let capturedIncarnation: string | undefined
+  const captureConversation = (value: number | undefined, identity?: string) => {
+    if (capturedIncarnation === undefined) {
+      capturedGeneration = value
+      capturedIncarnation = identity
+    }
+  }
   if (input.provider === 'claude-code') {
     onTranscript?.({
       sessionId: input.sessionId,
@@ -89,13 +111,9 @@ export function captureSessionStateObservation(
       captureBinding: binding => {
         conversationCapture = binding
       },
-      captureConversation: (value, incarnation) => {
-        capturedGeneration = value
-        capturedIncarnation = incarnation
-      },
+      captureConversation,
     })
   }
-  const conversationGeneration = capturedGeneration
   const state: typeof publish = (sessionId, value, options = {}) => {
     if (
       input.provider === 'claude-code' &&
@@ -108,7 +126,7 @@ export function captureSessionStateObservation(
         incarnation: capturedIncarnation,
         providerSessionId,
         generation: watcherVersion,
-        conversationGeneration,
+        conversationGeneration: capturedGeneration,
         conversationCapture,
         fileIdentity: 'activity',
         position: -1,
@@ -120,13 +138,11 @@ export function captureSessionStateObservation(
     }
     publish(sessionId, value, {
       ...options,
-      ...(input.provider === 'claude-code' &&
-      (conversationGeneration !== undefined || conversationCapture !== undefined)
+      ...(input.provider === 'claude-code'
         ? {
             evidence: {
-              ...(conversationGeneration !== undefined
-                ? { providerSessionId, conversationGeneration }
-                : {}),
+              providerSessionId,
+              conversationGeneration: capturedGeneration,
               conversationCapture,
               claudeAuxiliary: options.claudeAuxiliary,
               claudeTranscriptRecord: getClaudeStateRecord(options),
@@ -140,13 +156,34 @@ export function captureSessionStateObservation(
     state,
     unavailable: (sessionId: string) => state(sessionId, 'standby', { degraded: true }),
     bind: (id: string) => {
+      if (
+        providerSessionId === id &&
+        (input.provider !== 'claude-code' || capturedIncarnation !== undefined)
+      ) {
+        return
+      }
       providerSessionId = id
+      if (input.provider === 'claude-code') {
+        onTranscript?.({
+          sessionId: input.sessionId,
+          providerSessionId: id,
+          incarnation: capturedIncarnation,
+          generation: watcherVersion,
+          fileIdentity: 'capture',
+          position: -1,
+          baseline: true,
+          ...(capturedIncarnation === undefined ? { captureConversation } : {}),
+          captureBinding: binding => {
+            conversationCapture = binding
+          },
+        })
+      }
     },
     get capture() {
       return conversationCapture
     },
     get generation() {
-      return conversationGeneration
+      return capturedGeneration
     },
     get incarnation() {
       return capturedIncarnation

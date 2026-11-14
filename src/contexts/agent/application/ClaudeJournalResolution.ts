@@ -14,14 +14,13 @@ export function acknowledgeClaudeJournal(
   if (
     result.accepted &&
     observation?.source === 'session_file' &&
-    ['working', 'waiting', 'unknown'].includes(observation.state)
+    (observation.degraded || ['working', 'waiting', 'unknown'].includes(observation.state))
   ) {
     entry.claudeJournal?.appendIO({
       sessionId: entry.model.snapshot.sessionId,
       providerSessionId:
         evidence?.providerSessionId ??
         (evidence?.conversationCapture as { id?: string } | undefined)?.id ??
-        entry.conversation?.providerSessionId ??
         '',
       conversationCapture: evidence?.conversationCapture,
       generation: 0,
@@ -35,7 +34,7 @@ export function acknowledgeClaudeJournal(
       },
     })
   }
-  if (result.accepted && observation?.degraded) {
+  if (result.accepted && observation?.degraded && observation.source !== 'session_file') {
     entry.claudeJournal?.unknown()
   }
   if (

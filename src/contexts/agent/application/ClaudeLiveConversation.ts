@@ -99,7 +99,7 @@ export class ClaudeLiveConversation {
   ): void {
     const request = record.conversation!,
       event = request.event
-    this.journal.appendHook(event)
+    const appended = this.journal.appendHook(event)
     request.decide({
       action: 'ignore',
       generation: this.generation,
@@ -112,6 +112,9 @@ export class ClaudeLiveConversation {
     const key = JSON.stringify(event)
     if (this.receipts.has(key) || this.isRetiredEvent(event)) {
       request.publish(this.generation, 'ignore')
+      if (appended && event.hookEventName === 'SessionEnd' && isClaudeClearEvidence(event)) {
+        ports.settled()
+      }
       return
     }
     if (!isClaudeConversationActivity(event) && event.hookEventName !== 'SessionStart') {

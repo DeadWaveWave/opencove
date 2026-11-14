@@ -153,7 +153,7 @@ it('routes private Claude records independently of state and fences disposed wat
   const records = () =>
     onClaudeTranscript.mock.calls
       .map(([value]) => value)
-      .filter(value => !value.captureConversation)
+      .filter(value => !value.captureConversation && !value.captureBinding)
   const oldGeneration = records()[0].generation
   controller.start(input)
   await vi.advanceTimersByTimeAsync(0)
@@ -165,7 +165,8 @@ it('routes private Claude records independently of state and fences disposed wat
   controller.dispose()
   second.onClaudeTranscript?.(record)
   expect(records()).toHaveLength(2)
+  // This mock never answers the capture; each discovery retries once before watcher IO.
   expect(onClaudeTranscript.mock.calls.filter(([value]) => value.captureConversation)).toHaveLength(
-    2,
+    4,
   )
 })
