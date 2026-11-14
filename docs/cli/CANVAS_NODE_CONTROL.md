@@ -76,9 +76,9 @@ Space locator is a consistency constraint; the reference must belong directly to
 `--root-canvas --near <selector>` overrides membership and searches beside the reference's
 Space in the reference's project. A size-only `--frame '{"width":520,"height":420}'` requests
 that size near the reference. Width-only, height-only and empty frames are also allowed; x/y
-(including null coordinate keys) are refused before mutation. Sizes below the kind minimum
-are raised; inspect `appliedFrame` and `frameAdjusted`. Create/update help lists each kind's
-minimum dimensions from the same shared constants used by runtime enforcement.
+(including null coordinate keys) are refused before mutation. Sizes outside the kind's range
+are adjusted to fit; inspect `appliedFrame` and `frameAdjusted`. Create/update help lists each
+kind's minimum and maximum dimensions from the same shared constants used by runtime enforcement.
 
 Near candidates first prefer no container/ancestor growth, then growth whose resulting container
 and every grown ancestor avoid unrelated Space rectangles, then all other growth. Within each

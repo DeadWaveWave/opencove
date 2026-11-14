@@ -1,4 +1,4 @@
-import { NODE_MIN_SIZE_BY_KIND } from '../../../shared/types/nodeSizeLimits'
+import { NODE_MAX_SIZE_BY_KIND, NODE_MIN_SIZE_BY_KIND } from '../../../shared/types/nodeSizeLimits'
 import type { AgentProvider, StandardWindowSizeBucket } from '../../settings/domain/agentSettings'
 
 export type WorkspaceCanonicalSizeBucket = StandardWindowSizeBucket
@@ -43,18 +43,7 @@ const KIND_UNITS: Record<WorkspaceNodeKind, { col: number; row: number }> = {
 
 const MIN_SIZE_BY_KIND: Record<WorkspaceNodeKind, Size> = NODE_MIN_SIZE_BY_KIND
 
-const MAX_SIZE_BY_KIND: Record<WorkspaceNodeKind, Size> = {
-  terminal: { width: 720, height: 520 },
-  task: { width: 360, height: 520 },
-  agent: { width: 720, height: 1040 },
-  note: { width: 360, height: 260 },
-  role: { width: 520, height: 640 },
-  image: { width: 960, height: 720 },
-  document: { width: 960, height: 900 },
-  folder: { width: 960, height: 900 },
-  website: { width: 1280, height: 1040 },
-  plugin: { width: 1040, height: 820 },
-}
+const MAX_SIZE_BY_KIND: Record<WorkspaceNodeKind, Size> = NODE_MAX_SIZE_BY_KIND
 
 function clampSize(size: Size, min: Size, max: Size): Size {
   return {

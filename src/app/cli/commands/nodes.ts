@@ -6,7 +6,7 @@ import {
   agentBatchText,
   agentBatchOutput,
 } from './nodeCreateAgentBatch'
-import { NODE_MIN_SIZE_BY_KIND } from '../../../shared/types/nodeSizeLimits'
+import { NODE_MAX_SIZE_BY_KIND, NODE_MIN_SIZE_BY_KIND } from '../../../shared/types/nodeSizeLimits'
 import { hasNodeFrameCoordinates, NODE_NEAR_FRAME_ERROR } from '../../../shared/utils/nodeNearFrame'
 import { mutateNode } from './nodeMutation'
 import { INITIAL_PROMPT_RULES_TEXT } from '../../../shared/errors/initialPromptRules'
@@ -363,7 +363,7 @@ export const nodeCommands = [
           },
           frame: {
             type: 'json',
-            description: `Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; ${kind} minimum: width ${NODE_MIN_SIZE_BY_KIND[kind].width}, height ${NODE_MIN_SIZE_BY_KIND[kind].height}; inspect appliedFrame and frameAdjusted for the actual applied size`,
+            description: `Set x, y, width and height as a JSON object. Sizes outside a kind's range are adjusted to fit; ${kind}: width ${NODE_MIN_SIZE_BY_KIND[kind].width}–${NODE_MAX_SIZE_BY_KIND[kind].width}, height ${NODE_MIN_SIZE_BY_KIND[kind].height}–${NODE_MAX_SIZE_BY_KIND[kind].height}; inspect appliedFrame and frameAdjusted for the actual applied size`,
             valueName: 'json',
           },
           ...(create
