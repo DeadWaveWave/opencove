@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { abortable } from './abortableOperation'
 import { isWindowsConsoleResponse, type WindowsConsoleGeometry } from './windowsConsoleProtocol'
 import type { WindowsConsoleObserver } from './windowsPtyResizeOwner'
+import { WINDOWS_PTY_RESIZE_STARTUP_TIMEOUT_MS } from '../../../shared/runtime/terminalGeometryTimeouts'
 
 type PendingRead = {
   resolve: (geometry: WindowsConsoleGeometry) => void
@@ -104,7 +105,7 @@ export class WindowsConsoleGeometryObserver implements WindowsConsoleObserver {
       pending: new Map(),
       startupTimer: setTimeout(() => {
         this.retire(current, new Error('[pty-host] Console observer startup timed out'))
-      }, 1_500),
+      }, WINDOWS_PTY_RESIZE_STARTUP_TIMEOUT_MS),
     }
     this.current = current
     child.on('message', message => {

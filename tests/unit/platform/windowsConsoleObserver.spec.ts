@@ -20,6 +20,21 @@ describe('Windows Console observer transport', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
 
+  it('allows cold child startup to finish after 1.6 seconds', async () => {
+    const process = child()
+    const observer = new WindowsConsoleGeometryObserver(() => process as unknown as ChildProcess)
+    const ready = observer.ensureReady(new AbortController().signal).catch(error => error)
+    try {
+      await vi.advanceTimersByTimeAsync(1_600)
+      process.emit('message', { type: 'ready' })
+      await expect(ready).resolves.toBeUndefined()
+      expect(process.kill).not.toHaveBeenCalled()
+    } finally {
+      observer.dispose()
+    }
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
   it('shares startup and routes interleaved replies to the correct session query', async () => {
     const process = child()
     const start = vi.fn(() => process as unknown as ChildProcess)
@@ -123,7 +138,7 @@ describe('Windows Console observer transport', () => {
     const observer = new WindowsConsoleGeometryObserver(() => process as unknown as ChildProcess)
     const signal = new AbortController().signal
     const ready = expect(observer.ensureReady(signal)).rejects.toThrow(/startup timed out/)
-    await vi.advanceTimersByTimeAsync(1_500)
+    await vi.advanceTimersByTimeAsync(5_000)
     await ready
     observer.dispose()
     await expect(observer.ensureReady(signal)).rejects.toThrow(/disposed/)

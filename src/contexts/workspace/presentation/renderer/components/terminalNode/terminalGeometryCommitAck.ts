@@ -5,8 +5,7 @@ import type {
   TerminalGeometryCommitResult,
 } from '@shared/contracts/dto'
 import { getTerminalGeometryCommitRequest } from './terminalGeometryCoordinator'
-
-const TERMINAL_GEOMETRY_ACK_TIMEOUT_MS = 3_000
+import { TERMINAL_GEOMETRY_ACK_TIMEOUT_MS } from '@shared/runtime/terminalGeometryTimeouts'
 
 function normalizeGeometryRevision(value: number | null | undefined): number | null {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
