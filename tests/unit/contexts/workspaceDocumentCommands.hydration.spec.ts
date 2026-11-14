@@ -49,19 +49,19 @@ describe('workspace document hydration entries', () => {
 
   it('installs the list, then the active workspace, as two writes in that order', () => {
     const initial = [workspace('x'), workspace('y')]
-    const seen: Array<{ ids: string[]; active: string | null }> = []
+    const seen: Array<{ list: WorkspaceState[]; active: string | null }> = []
     const unsubscribe = useAppStore.subscribe(state => {
-      seen.push({ ids: state.workspaces.map(item => item.id), active: state.activeWorkspaceId })
+      seen.push({ list: state.workspaces, active: state.activeWorkspaceId })
     })
 
     hydrateWorkspaceList({ workspaces: initial, activeWorkspaceId: 'y' })
     unsubscribe()
 
-    expect(seen).toEqual([
-      { ids: ['x', 'y'], active: 'a' },
-      { ids: ['x', 'y'], active: 'y' },
-    ])
-    expect(useAppStore.getState().workspaces).toBe(initial)
+    expect(seen).toHaveLength(2)
+    expect(seen[0].list).toBe(initial)
+    expect(seen[0].active).toBe('a')
+    expect(seen[1].list).toBe(initial)
+    expect(seen[1].active).toBe('y')
   })
 
   it('merges nodes of the named workspace only and keeps its Spaces and the other workspace', () => {

@@ -23,10 +23,7 @@ export interface WorkspaceDocumentStoreState {
 export interface WorkspaceDocumentStore {
   getState(): WorkspaceDocumentStoreState
   setState(
-    partial:
-      | Pick<WorkspaceDocumentStoreState, 'workspaces'>
-      | Pick<WorkspaceDocumentStoreState, 'activeWorkspaceId'>
-      | WorkspaceDocumentStoreState,
+    partial: Pick<WorkspaceDocumentStoreState, 'workspaces'> | WorkspaceDocumentStoreState,
   ): void
 }
 
@@ -198,7 +195,8 @@ export function hydrateWorkspaceList(initial: WorkspaceDocumentStoreState): void
   }
   const store = requireStore()
   store.setState({ workspaces: initial.workspaces })
-  store.setState({ activeWorkspaceId: initial.activeWorkspaceId })
+  // Same array: this second write changes only the active workspace.
+  store.setState({ workspaces: initial.workspaces, activeWorkspaceId: initial.activeWorkspaceId })
 }
 
 /**
