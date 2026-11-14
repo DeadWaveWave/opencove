@@ -228,6 +228,19 @@ export function guardRatchetUpdate({
       )
     }
   }
+  // --accept-rise names a rule id, not a path: refuse to guess which baseline it means.
+  const owners = new Map()
+  for (const update of updates) {
+    const after = typeof update.next === 'string' ? JSON.parse(update.next) : update.next
+    for (const rule of Object.keys(after ?? {})) {
+      if (owners.has(rule)) {
+        throw new Error(
+          `[${label}] rule "${rule}" is in both ${owners.get(rule)} and ${update.path}: --accept-rise cannot tell them apart.`,
+        )
+      }
+      owners.set(rule, update.path)
+    }
+  }
   const prefix = `[${label}]`
   const mergeBase = resolveMergeBase(root)
   const entries = []

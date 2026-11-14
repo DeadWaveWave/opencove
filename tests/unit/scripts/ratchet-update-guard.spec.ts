@@ -210,4 +210,20 @@ describe('guardRatchetUpdate', () => {
     expect(result.text).toContain(`- \`${other}\` \`spacing\` 3 -> 4: <category>: <reason>`)
     expect(result.text).not.toContain(`\`${PATH}\` \``)
   })
+
+  it('throws when two baselines in one call share a rule id, naming the rule and both paths', () => {
+    const { repo } = createClonedRepository()
+
+    expect(() =>
+      guardRatchetUpdate({
+        root: repo,
+        label: 'ui-style-ratchet',
+        updates: [
+          { path: 'scripts/x-ratchet.json', next: { spacing: { 'a.css': 1 } } },
+          { path: 'scripts/y-ratchet.json', next: { spacing: { 'b.css': 1 } } },
+        ],
+        acceptRises: ['spacing'],
+      }),
+    ).toThrow(/spacing.*scripts\/x-ratchet\.json.*scripts\/y-ratchet\.json/)
+  })
 })
