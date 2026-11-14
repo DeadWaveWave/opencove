@@ -57,18 +57,9 @@ function views(state: PersistedAppState) {
   }
 }
 function useClient() {
-  const {
-    workspaces,
-    activeWorkspaceId,
-    agentSettings,
-    setWorkspaces,
-    setActiveWorkspaceId,
-    setAgentSettings,
-  } = useAppStore()
+  const { workspaces, activeWorkspaceId, agentSettings, setAgentSettings } = useAppStore()
   const hydration = useHydrateAppState({
     activeWorkspaceId,
-    setWorkspaces,
-    setActiveWorkspaceId,
     setAgentSettings,
   })
   const persistence = usePersistedAppState({

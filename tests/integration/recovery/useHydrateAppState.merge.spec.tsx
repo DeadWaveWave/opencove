@@ -1,9 +1,18 @@
 import React, { useCallback, useState } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
 import type { WorkspaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { installMockStorage } from '../../support/persistenceTestStorage'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
+
+function updateWorkspaces(update: (previous: WorkspaceState[]) => WorkspaceState[]): void {
+  useAppStore.setState(state => ({ workspaces: update(state.workspaces) }))
+}
+
+beforeEach(() => {
+  useAppStore.setState(useAppStore.getInitialState(), true)
+})
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void
@@ -78,18 +87,16 @@ describe('useHydrateAppState merge behavior', () => {
 
     function Harness() {
       const [_agentSettings, setAgentSettings] = useState(DEFAULT_AGENT_SETTINGS)
-      const [workspaces, setWorkspaces] = useState<WorkspaceState[]>([])
-      const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null)
+      const workspaces = useAppStore(state => state.workspaces)
+      const activeWorkspaceId = useAppStore(state => state.activeWorkspaceId)
 
       const { isHydrated } = useHydrateAppState({
         activeWorkspaceId,
         setAgentSettings,
-        setWorkspaces,
-        setActiveWorkspaceId,
       })
 
       const addUserNode = useCallback(() => {
-        setWorkspaces(previous =>
+        updateWorkspaces(previous =>
           previous.map(workspace => {
             if (workspace.id !== 'workspace-1') {
               return workspace
@@ -262,18 +269,16 @@ describe('useHydrateAppState merge behavior', () => {
 
     function Harness() {
       const [_agentSettings, setAgentSettings] = useState(DEFAULT_AGENT_SETTINGS)
-      const [workspaces, setWorkspaces] = useState<WorkspaceState[]>([])
-      const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null)
+      const workspaces = useAppStore(state => state.workspaces)
+      const activeWorkspaceId = useAppStore(state => state.activeWorkspaceId)
 
       const { isHydrated } = useHydrateAppState({
         activeWorkspaceId,
         setAgentSettings,
-        setWorkspaces,
-        setActiveWorkspaceId,
       })
 
       const addWorkspace2Node = useCallback(() => {
-        setWorkspaces(previous =>
+        updateWorkspaces(previous =>
           previous.map(workspace => {
             if (workspace.id !== 'workspace-2') {
               return workspace
@@ -313,7 +318,7 @@ describe('useHydrateAppState merge behavior', () => {
       }, [])
 
       const selectWorkspace2 = useCallback(() => {
-        setActiveWorkspaceId('workspace-2')
+        useAppStore.setState({ activeWorkspaceId: 'workspace-2' })
       }, [])
 
       const nodeCount1 =

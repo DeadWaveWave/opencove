@@ -10,10 +10,8 @@ import {
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
 import { applyUiLanguage, translate } from '@app/renderer/i18n'
-import type {
-  PersistedWorkspaceState,
-  WorkspaceState,
-} from '@contexts/workspace/presentation/renderer/types'
+import { hydrateWorkspaceList, mergeHydratedNodes } from '@contexts/workspace/presentation/renderer'
+import type { PersistedWorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { useScrollbackStore } from '@contexts/workspace/presentation/renderer/store/useScrollbackStore'
 import {
   acceptPersistedStateSnapshot,
@@ -52,13 +50,9 @@ async function delay(ms: number): Promise<void> {
 export function useHydrateAppState({
   activeWorkspaceId,
   setAgentSettings,
-  setWorkspaces,
-  setActiveWorkspaceId,
 }: {
   activeWorkspaceId: string | null
   setAgentSettings: React.Dispatch<React.SetStateAction<AgentSettings>>
-  setWorkspaces: React.Dispatch<React.SetStateAction<WorkspaceState[]>>
-  setActiveWorkspaceId: React.Dispatch<React.SetStateAction<string | null>>
 }): { isHydrated: boolean; isPersistReady: boolean } {
   const [isHydrated, setIsHydrated] = useState(false)
   const [isPersistReady, setIsPersistReady] = useState(false)
@@ -134,68 +128,51 @@ export function useHydrateAppState({
       }
 
       startTransition(() => {
-        setWorkspaces(previous => {
+        mergeHydratedNodes(workspaceId, nodes => {
           const scrollbackByNodeId = useScrollbackStore.getState().scrollbackByNodeId
           let didChange = false
 
-          const nextWorkspaces = previous.map(workspace => {
-            if (workspace.id !== workspaceId) {
-              return workspace
+          const nextNodes = nodes.map(node => {
+            if (node.data.kind !== 'terminal') {
+              return node
             }
 
-            let workspaceDidChange = false
-            const nextNodes = workspace.nodes.map(node => {
-              if (node.data.kind !== 'terminal') {
-                return node
-              }
+            const nextScrollback = scrollbacks[node.id]
+            if (!nextScrollback) {
+              return node
+            }
 
-              const nextScrollback = scrollbacks[node.id]
-              if (!nextScrollback) {
-                return node
-              }
+            const sessionId =
+              typeof node.data.sessionId === 'string' ? node.data.sessionId.trim() : ''
+            if (sessionId.length > 0) {
+              return node
+            }
 
-              const sessionId =
-                typeof node.data.sessionId === 'string' ? node.data.sessionId.trim() : ''
-              if (sessionId.length > 0) {
-                return node
-              }
+            if (typeof scrollbackByNodeId[node.id] === 'string') {
+              return node
+            }
 
-              if (typeof scrollbackByNodeId[node.id] === 'string') {
-                return node
-              }
-
-              const existingScrollback =
-                typeof node.data.scrollback === 'string' ? node.data.scrollback : ''
-              if (existingScrollback.length > 0) {
-                return node
-              }
-
-              workspaceDidChange = true
-              return {
-                ...node,
-                data: {
-                  ...node.data,
-                  scrollback: nextScrollback,
-                },
-              }
-            })
-
-            if (!workspaceDidChange) {
-              return workspace
+            const existingScrollback =
+              typeof node.data.scrollback === 'string' ? node.data.scrollback : ''
+            if (existingScrollback.length > 0) {
+              return node
             }
 
             didChange = true
             return {
-              ...workspace,
-              nodes: nextNodes,
+              ...node,
+              data: {
+                ...node.data,
+                scrollback: nextScrollback,
+              },
             }
           })
 
-          return didChange ? nextWorkspaces : previous
+          return didChange ? nextNodes : nodes
         })
       })
     },
-    [setWorkspaces],
+    [],
   )
 
   const ensureWorkspaceScrollbacksLoaded = useCallback(
@@ -254,31 +231,23 @@ export function useHydrateAppState({
           if (isCancelledRef.current || hydrationEpochRef.current !== epoch) {
             return
           }
-          setWorkspaces(previous =>
-            previous.map(workspace => {
-              if (workspace.id !== workspaceId) {
-                return workspace
+          const baseline = persistedWorkspace.nodes.find(node => node.id === hydratedNode.id)
+          mergeHydratedNodes(workspaceId, nodes =>
+            nodes.map(node => {
+              if (node.id !== hydratedNode.id) {
+                return node
               }
-              const baseline = persistedWorkspace.nodes.find(node => node.id === hydratedNode.id)
-              return {
-                ...workspace,
-                nodes: workspace.nodes.map(node => {
-                  if (node.id !== hydratedNode.id) {
-                    return node
-                  }
-                  const currentSessionId = node.data.sessionId.trim()
-                  if (currentSessionId && currentSessionId !== baseline?.sessionId) {
-                    return node
-                  }
-                  return mergeHydratedNode(node, hydratedNode)
-                }),
+              const currentSessionId = node.data.sessionId.trim()
+              if (currentSessionId && currentSessionId !== baseline?.sessionId) {
+                return node
               }
+              return mergeHydratedNode(node, hydratedNode)
             }),
           )
         },
       })
     },
-    [setWorkspaces],
+    [],
   )
 
   const ensureWorkspaceHydrated = useCallback(
@@ -431,8 +400,10 @@ export function useHydrateAppState({
         toShellWorkspaceState(workspace, { dropRuntimeSessionIds: true }),
       )
 
-      setWorkspaces(initialWorkspaces)
-      setActiveWorkspaceId(resolvedActiveWorkspaceId)
+      hydrateWorkspaceList({
+        workspaces: initialWorkspaces,
+        activeWorkspaceId: resolvedActiveWorkspaceId,
+      })
       setIsPersistReady(true)
 
       if (resolvedActiveWorkspaceId) {
@@ -474,8 +445,6 @@ export function useHydrateAppState({
     ensureWorkspaceHydrated,
     markInitialHydrationComplete,
     setAgentSettings,
-    setWorkspaces,
-    setActiveWorkspaceId,
   ])
 
   useEffect(() => {

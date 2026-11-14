@@ -3,6 +3,8 @@ export {
   applyRuntimeObservation,
   bindWorkspaceDocumentStore,
   commitCanvasDocument,
+  hydrateWorkspaceList,
+  mergeHydratedNodes,
   registerWorkspaceDocumentPersistFlush,
   replaceFromSync,
   removeWorkspaceSpaceArchiveRecord,

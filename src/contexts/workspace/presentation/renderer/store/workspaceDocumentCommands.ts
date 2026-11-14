@@ -23,7 +23,10 @@ export interface WorkspaceDocumentStoreState {
 export interface WorkspaceDocumentStore {
   getState(): WorkspaceDocumentStoreState
   setState(
-    partial: Pick<WorkspaceDocumentStoreState, 'workspaces'> | WorkspaceDocumentStoreState,
+    partial:
+      | Pick<WorkspaceDocumentStoreState, 'workspaces'>
+      | Pick<WorkspaceDocumentStoreState, 'activeWorkspaceId'>
+      | WorkspaceDocumentStoreState,
   ): void
 }
 
@@ -183,6 +186,57 @@ export function replaceFromSync(next: WorkspaceDocumentStoreState): void {
     workspaces: next.workspaces,
     activeWorkspaceId: next.activeWorkspaceId,
   })
+}
+
+/**
+ * Startup hydration installs the persisted list, then the active workspace, as two writes in
+ * that order: listeners that read both fields see the same intermediate state as before.
+ */
+export function hydrateWorkspaceList(initial: WorkspaceDocumentStoreState): void {
+  if (isRecipeRunning) {
+    throw new Error('workspace document command ran inside a recipe')
+  }
+  const store = requireStore()
+  store.setState({ workspaces: initial.workspaces })
+  store.setState({ activeWorkspaceId: initial.activeWorkspaceId })
+}
+
+/**
+ * Merges hydrated runtime data into the nodes of one workspace, computed from the store as it is
+ * now. Hydration never adds or removes nodes, so Spaces are not reconciled: a Space keeps its
+ * identity. A recipe that returns the same array writes nothing.
+ */
+export function mergeHydratedNodes(
+  workspaceId: string,
+  recipe: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
+): WorkspaceDocumentCommandResult {
+  if (isRecipeRunning) {
+    throw new Error('workspace document command ran inside a recipe')
+  }
+  const store = requireStore()
+  const state = store.getState()
+  const index = state.workspaces.findIndex(candidate => candidate.id === workspaceId)
+  if (index < 0) {
+    return { status: 'missing' }
+  }
+
+  const workspace = state.workspaces[index]
+  let nodes: Node<TerminalNodeData>[]
+  isRecipeRunning = true
+  try {
+    nodes = recipe(workspace.nodes)
+  } finally {
+    isRecipeRunning = false
+  }
+  if (nodes === workspace.nodes) {
+    return { status: 'unchanged', document: toWorkspaceDocument(workspace) }
+  }
+
+  const next = { ...workspace, nodes }
+  const workspaces = [...state.workspaces]
+  workspaces[index] = next
+  store.setState({ workspaces })
+  return { status: 'applied', document: toWorkspaceDocument(next) }
 }
 
 export function replaceWorkspaceNodes(

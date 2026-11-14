@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
-import type { WorkspaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { installMockStorage } from '../../support/persistenceTestStorage'
 
 describe('useHydrateAppState terminal profile recovery', () => {
@@ -90,14 +89,12 @@ describe('useHydrateAppState terminal profile recovery', () => {
 
     function Harness() {
       const [_agentSettings, setAgentSettings] = useState(DEFAULT_AGENT_SETTINGS)
-      const [workspaces, setWorkspaces] = useState<WorkspaceState[]>([])
-      const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null)
+      const workspaces = useAppStore(state => state.workspaces)
+      const activeWorkspaceId = useAppStore(state => state.activeWorkspaceId)
 
       const { isHydrated } = useHydrateAppState({
         activeWorkspaceId,
         setAgentSettings,
-        setWorkspaces,
-        setActiveWorkspaceId,
       })
 
       const workspace = workspaces.find(item => item.id === 'workspace-1') ?? null
