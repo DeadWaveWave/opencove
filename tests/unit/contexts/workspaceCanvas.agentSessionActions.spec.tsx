@@ -9,6 +9,10 @@ import type {
   WorkspaceViewport,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { WorkspaceCanvas } from '../../../src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
+import {
+  seedWorkspaceCanvasStore,
+  useWorkspaceCanvasStoreNodes,
+} from '../../support/workspaceCanvasStoreHarness'
 
 vi.mock('@xyflow/react', () => {
   let currentNodes: Array<{ id: string; type: string; data: unknown }> = []
@@ -225,8 +229,10 @@ describe('WorkspaceCanvas agent session actions', () => {
     const viewport: WorkspaceViewport = { x: 0, y: 0, zoom: 1 }
     const spaces: WorkspaceSpaceState[] = []
 
+    seedWorkspaceCanvasStore({ nodes: createInitialNodes() })
+
     function Harness() {
-      const [nodes, setNodes] = useState(createInitialNodes())
+      const nodes = useWorkspaceCanvasStoreNodes()
       const [environmentVariables, setEnvironmentVariables] = useState<Record<string, string>>({
         OPENAI_API_KEY: 'initial-value',
       })
@@ -250,10 +256,8 @@ describe('WorkspaceCanvas agent session actions', () => {
             environmentVariables={environmentVariables}
             worktreesRoot=""
             nodes={nodes}
-            onNodesChange={setNodes}
             spaces={spaces}
             activeSpaceId={null}
-            onSpacesChange={() => undefined}
             onActiveSpaceChange={() => undefined}
             viewport={viewport}
             isMinimapVisible={false}
@@ -321,8 +325,10 @@ describe('WorkspaceCanvas agent session actions', () => {
     const spaces: WorkspaceSpaceState[] = []
     let latestNodes = createInitialNodes()
 
+    seedWorkspaceCanvasStore({ nodes: createInitialNodes() })
+
     function Harness() {
-      const [nodes, setNodes] = useState(createInitialNodes())
+      const nodes = useWorkspaceCanvasStoreNodes()
       latestNodes = nodes
 
       return (
@@ -331,10 +337,8 @@ describe('WorkspaceCanvas agent session actions', () => {
           workspacePath="/tmp/repo"
           worktreesRoot=""
           nodes={nodes}
-          onNodesChange={setNodes}
           spaces={spaces}
           activeSpaceId={null}
-          onSpacesChange={() => undefined}
           onActiveSpaceChange={() => undefined}
           viewport={viewport}
           isMinimapVisible={false}

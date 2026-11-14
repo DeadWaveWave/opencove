@@ -282,6 +282,18 @@ export function useWorkspaceCanvasPtyTaskCompletion({
     // Recovery can bind a runtime after its hook event arrived. Reconcile from the existing
     // event owner without re-subscribing to metadata or restarting catalog scans.
     const hub = getPtyEventHub()
+    // This effect runs on every `nodes` change, drag frames included. Decide from the argument
+    // whether anything would project, so a frame that changes nothing never reaches the store.
+    const hasProjectableNode = nodes.some(node => {
+      if (node.data.kind !== 'agent') {
+        return false
+      }
+      const cached = hub.getLatestSessionState(node.data.sessionId)
+      return cached ? projectAgentRuntimeObservation(node.data, cached) !== null : false
+    })
+    if (!hasProjectableNode) {
+      return
+    }
     updateNodes(
       previous => {
         let didChange = false

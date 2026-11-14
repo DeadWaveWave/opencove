@@ -34,12 +34,12 @@ export interface CreateNoteNodeOptions {
 }
 
 export interface UseWorkspaceCanvasNodesStoreParams {
-  workspaceId?: string
+  workspaceId: string
   workspacePath: string
   nodes: Node<TerminalNodeData>[]
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  onNodesChange: (nodes: Node<TerminalNodeData>[]) => void
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  onNodesCommitted: (nodes: Node<TerminalNodeData>[]) => void
+  isLiveGestureActive: () => boolean
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   onNodeCreated?: (nodeId: string) => void

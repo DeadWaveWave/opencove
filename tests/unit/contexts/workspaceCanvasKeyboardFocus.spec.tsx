@@ -9,6 +9,7 @@ import type {
   WorkspaceSpaceState,
   WorkspaceViewport,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
+import { seedWorkspaceCanvasStore } from '../../support/workspaceCanvasStoreHarness'
 
 let latestReactFlowProps: Record<string, unknown> = {}
 
@@ -86,16 +87,16 @@ describe('WorkspaceCanvas keyboard focus behavior', () => {
     const spaces: WorkspaceSpaceState[] = []
     const nodes: Node<TerminalNodeData>[] = []
 
+    seedWorkspaceCanvasStore({ nodes, spaces })
+
     render(
       <WorkspaceCanvas
         workspaceId="workspace-1"
         workspacePath="/tmp"
         worktreesRoot=""
         nodes={nodes}
-        onNodesChange={() => undefined}
         spaces={spaces}
         activeSpaceId={null}
-        onSpacesChange={() => undefined}
         onActiveSpaceChange={() => undefined}
         viewport={viewport}
         isMinimapVisible={false}
