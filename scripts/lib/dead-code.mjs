@@ -155,26 +155,3 @@ export function formatDeadCodeReport({ findings, ratchetIssues, internalViolatio
 export function serializeDeadCodeRatchet(counts) {
   return serializeRatchet(counts, RATCHET_RULES)
 }
-
-/** Update is refused when any per-file count would rise above the committed baseline. */
-export function raisedCounts(counts, baseline, names = {}) {
-  return compareDeadCodeRatchet(counts, baseline, names).filter(
-    issue => issue.current > issue.baseline,
-  )
-}
-
-export function formatRaisedCounts(raised) {
-  return formatRatchetIssues(raised, {
-    label: DEAD_CODE_LABEL,
-    title: 'Unused export and type counts (baseline update refused)',
-    footer: 'The baseline can only shrink. Delete the new unused code instead of recording it.',
-  })
-}
-
-export function formatMissingBaseline() {
-  return (
-    `[${DEAD_CODE_LABEL}] ${RATCHET_FILE} is missing but exists in git HEAD. Refusing to recreate ` +
-    'it, because that would record every current unused export as the new baseline. Restore it ' +
-    `with \`git checkout -- ${RATCHET_FILE}\`. Only an intentional first run may pass --bootstrap.\n`
-  )
-}
