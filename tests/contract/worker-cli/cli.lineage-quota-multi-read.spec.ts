@@ -1,14 +1,36 @@
 import { expect, test } from '@playwright/test'
-import { boundedWorkspace, expectSpawnRefusal, projectId, stopAndWait } from './lineage.helpers'
+import {
+  boundedWorkspace,
+  expectSpawnRefusal,
+  projectId,
+  stopAndWait,
+  runtimeCounts,
+  runtimePid,
+  expectRuntimeExited,
+} from './lineage.helpers'
+
+import { fillMixedTree, runtimeKinds } from '../../support/boundedSpawning'
+import type { GetNodeResult } from '../../../src/shared/contracts/dto/nodeControl'
 
 test('quota projections agree with depth/width refusals and identify stoppable occupants', async () => {
   test.setTimeout(360_000)
   await boundedWorkspace(async f => {
     const child = await f.child(f.parent),
       grandchild = await f.child(child)
-    for (let i = 0; i < 4; i++) {
-      await f.child(f.parent, 'terminal')
+    expect(grandchild.lineageDepth).toBe(3)
+    const beforeDepth = await runtimeCounts(f.worker)
+    for (const kind of runtimeKinds) {
+      const error = expectSpawnRefusal(
+        await f.command(grandchild, ['node', 'create', kind, '--root-canvas']),
+        'agent.spawn_depth_limit',
+        1,
+      )
+      expect(error.message).toContain('depth of 3')
+      expect(error.hint).toContain('user')
     }
+    expect(await runtimeCounts(f.worker)).toEqual(beforeDepth)
+    const nodes = await fillMixedTree(f, [child, grandchild])
+    const beforeWidth = await runtimeCounts(f.worker)
     const who = await f.command(f.parent, ['whoami', '--fields', 'lineageQuota'])
     expect(who.code, who.stderr).toBe(0)
     expect(JSON.parse(who.stdout)).toEqual({
@@ -61,6 +83,21 @@ test('quota projections agree with depth/width refusals and identify stoppable o
       expect(error.hint).toContain(grandchild.title)
       expect(error.hint).toContain(`opencove agent stop --node ${grandchild.id}`)
     }
+    const refusal = expectSpawnRefusal(
+      await f.command(f.parent, ['node', 'create', 'agent', '--root-canvas']),
+      'agent.spawn_concurrency_limit',
+      1,
+    )
+    expect(refusal.hint).toContain('exit')
+    expect(await runtimeCounts(f.worker)).toEqual(beforeWidth)
+    const terminal = nodes[3]
+    const pid = await runtimePid(f.worker, terminal)
+    await stopAndWait(f.worker, terminal)
+    await expectRuntimeExited(pid)
+    await f.child(f.parent)
+    expect(
+      (await f.worker.invoke<GetNodeResult>('node.get', { nodeId: terminal.id }, 'query')).node.id,
+    ).toBe(terminal.id)
     await stopAndWait(f.worker, grandchild)
     await expect
       .poll(async () => {

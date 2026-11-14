@@ -25,10 +25,9 @@ export async function startWorkerFixture(
   const workspace = join(root, 'project')
   const profile = join(root, 'profile')
   const token = randomUUID()
-  let worker: Awaited<ReturnType<typeof startRemoteWorker>> | undefined
-  try {
-    await mkdir(workspace)
-    worker = await startRemoteWorker({
+  let preparedEnv: Record<string, string> | undefined
+  const start = () =>
+    startRemoteWorker({
       hostname: '127.0.0.1',
       // The Worker binds an ephemeral port and publishes it; no reserved port can be taken first.
       port: 0,
@@ -45,15 +44,18 @@ export async function startWorkerFixture(
         OPENCOVE_TEST_CODEX_HOOK_INSTALL_FAILURE: '0',
         CLAUDE_CONFIG_DIR: join(root, 'claude'),
         CODEX_HOME: join(root, 'codex'),
-        ...(await options.prepare?.(root)),
+        ...preparedEnv,
       },
     })
+  let handle: Awaited<ReturnType<typeof startRemoteWorker>>
+  try {
+    await mkdir(workspace)
+    preparedEnv = await options.prepare?.(root)
+    handle = await start()
   } catch (error) {
     await rm(root, { recursive: true, force: true })
     throw error
   }
-  const handle = worker
-  const port = handle.port
   const observedPids = new Set<number>([handle.child.pid!])
   async function recordProcesses() {
     for (const pid of await descendants(handle.child.pid!)) {
@@ -65,7 +67,7 @@ export async function startWorkerFixture(
     payload: unknown = null,
     kind: 'command' | 'query' = 'command',
   ): Promise<T> {
-    const response = await fetch(`http://127.0.0.1:${port}/invoke`, {
+    const response = await fetch(`http://127.0.0.1:${handle.port}/invoke`, {
       method: 'POST',
       headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -83,6 +85,21 @@ export async function startWorkerFixture(
     await recordProcesses()
     return envelope.value as T
   }
+  async function stop() {
+    try {
+      await recordProcesses()
+    } finally {
+      // A failed process census must not prevent stopping the Worker we started.
+      await stopRemoteWorker(handle.child)
+    }
+    await expect
+      .poll(() => [...observedPids].filter(alive), {
+        timeout: 10_000,
+        message: `Worker and every observed PTY descendant must exit: ${handle.logs()}`,
+      })
+      .toEqual([])
+  }
+
   return {
     root,
     workspace,
@@ -142,20 +159,19 @@ export async function startWorkerFixture(
       return (await invoke<GetSessionSnapshotResult>('session.snapshot', { sessionId }, 'query'))
         .scrollback
     },
+    async restart() {
+      await stop()
+      observedPids.clear()
+      handle = await start()
+      observedPids.add(handle.child.pid!)
+    },
+    async liveProcesses() {
+      await recordProcesses()
+      return [...observedPids].filter(alive)
+    },
     async close() {
       try {
-        try {
-          await recordProcesses()
-        } finally {
-          // A failed process census must not prevent stopping the Worker we started.
-          await stopRemoteWorker(handle.child)
-        }
-        await expect
-          .poll(() => [...observedPids].filter(alive), {
-            timeout: 10_000,
-            message: `Worker and every observed PTY descendant must exit: ${handle.logs()}`,
-          })
-          .toEqual([])
+        await stop()
       } finally {
         // Failed cleanup must still leave no fixture-owned processes on the shared machine.
         for (const pid of observedPids) {

@@ -190,3 +190,12 @@ it.each(['cliSessionGrant', 'sessionGrantCases'])(
     expect(select(path).tests).toContain('tests/e2e/cli.session-grant.spec.ts')
   },
 )
+
+it.each(['boundedSpawning', 'cliLineageAgent'])(
+  'keeps shared %s assertions selected in Worker contracts and Desktop boundaries',
+  name => {
+    const path = `tests/support/${name}.ts`
+    expect(shouldRunWorkerCliContracts([changed(path)])).toBe(true)
+    expect(select(path).tests).toContain('tests/e2e/cli.bounded-agent-spawning.spec.ts')
+  },
+)

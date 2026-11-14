@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "count": 191,
+  "count": 190,
   "entries": {
     "tests/e2e/agent-hook-relay.spec.ts › claude-code executes Electron hooks through the real launch path and retains keyboard input": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/agent-launch.path-resolution.spec.ts › Agent launch resolves the provider on PATH › codex starts the real executable found by name": "Desktop: pre-restructure inventory; existing assertions retained",
@@ -17,8 +17,7 @@
     "tests/e2e/application-shortcuts.windows.spec.ts › Windows application shortcuts › close shortcut keeps an empty canvas alive and closes only the selected node": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/cli.agent-lineage.spec.ts › grant ancestry survives renderer publications and restart, and a child reports to @parent": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/cli.agent-lineage.spec.ts › task Run creates a root without adopting the task as its parent": "Desktop: pre-restructure inventory; existing assertions retained",
-    "tests/e2e/cli.bounded-agent-spawning.spec.ts › a user standalone session keeps non-runtime grants but needs a canvas agent to delegate runtimes": "Desktop: pre-restructure inventory; existing assertions retained",
-    "tests/e2e/cli.bounded-agent-spawning.spec.ts › restart counts recovered live descendants rather than saved session IDs": "Desktop: pre-restructure inventory; existing assertions retained",
+    "tests/e2e/cli.bounded-agent-spawning.spec.ts › Desktop restart projects surviving lineage and live recovered runtimes": "Desktop: preserve actual UI root and Run Role grants plus renderer recovery projection after a real Desktop restart",
     "tests/e2e/cli.events.spec.ts › a granted canvas terminal opens NDJSON observation and times out without controlling agents": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/cli.note-append.spec.ts › inline, file, stdin and concurrent granted appends reach the canvas and survive restart": "Desktop: granted CLI note appends (inline, file, stdin, concurrent) render in the canvas note and survive renderer saves and restart",
     "tests/e2e/cli.output-boundary.spec.ts › projects the CLI coordinator, output terminal and agent as ready canvas terminals": "Desktop: CLI-created coordinator, output terminal and agent project onto the canvas as ready, focusable terminals",

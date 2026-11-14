@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "count": 170,
+  "count": 168,
   "entries": {
     "tests/e2e/agent-hook-relay.spec.ts › codex executes Electron hooks through the real launch path and retains keyboard input": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/agent.prompt.real-codex.daemon.spec.ts › Codex orchestration beside a shared app-server daemon › default hooks complete prompts while the daemon stays healthy; delete reaps the agent tree": "Desktop: pre-restructure inventory; existing assertions retained",
@@ -17,9 +17,7 @@
     "tests/e2e/app-header.viewport-space.spec.ts › the command entry names the Space the canvas is showing": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/application-shortcuts.windows.spec.ts › Windows application shortcuts › close shortcut closes a note while typing without canvas selection": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/cli.agent-identity.spec.ts › a canvas terminal discovers its identity, neighbors and scope through the CLI": "Desktop: pre-restructure inventory; existing assertions retained",
-    "tests/e2e/cli.bounded-agent-spawning.spec.ts › depth four refuses both runtime kinds without creating a node or session": "Desktop: pre-restructure inventory; existing assertions retained",
-    "tests/e2e/cli.bounded-agent-spawning.spec.ts › real Run Role launches a root whose inherited grant can create a child": "Desktop: pre-restructure inventory; existing assertions retained",
-    "tests/e2e/cli.bounded-agent-spawning.spec.ts › six mixed descendants share a budget, exit frees a slot, and an actual UI launch is exempt": "Desktop: pre-restructure inventory; existing assertions retained",
+    "tests/e2e/cli.bounded-agent-spawning.spec.ts › actual UI launch and Run Role create independent roots with usable grants": "Desktop: preserve actual UI root and Run Role grants plus renderer recovery projection after a real Desktop restart",
     "tests/e2e/cli.events-polish.spec.ts › cursor-file survives Ctrl-C, resumes two child ends and supports exact reply reads": "Desktop: merged on main before this ratchet landed (#613 CLI events, #622 WebGL loss, #634 raw replacement); existing assertions retained",
     "tests/e2e/cli.events-polish.spec.ts › until-each-turn ignores old ends, honors timeout and waits for both live turns": "Desktop: merged on main before this ratchet landed (#613 CLI events, #622 WebGL loss, #634 raw replacement); existing assertions retained",
     "tests/e2e/cli.node-create-agent-wait.spec.ts › Desktop projects the granted coordinator terminal before agent commands": "Desktop: CLI-created coordinator, output terminal and agent project onto the canvas as ready, focusable terminals",

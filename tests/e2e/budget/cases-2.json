@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "count": 171,
+  "count": 170,
   "entries": {
     "tests/e2e/agent-hook-relay.windows.spec.ts › claude-code executes Electron hooks through the real launch path and retains keyboard input": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/agent-hook-relay.windows.spec.ts › codex executes Electron hooks through the real launch path and retains keyboard input": "Desktop: pre-restructure inventory; existing assertions retained",
@@ -15,7 +15,6 @@
     "tests/e2e/app-runtime-icon.windows.spec.ts › Application Runtime Icon (Windows) › uses the .ico runtime icon when launching the app": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/application-shortcuts.mac.spec.ts › macOS application shortcuts › close shortcut closes a note while typing without canvas selection": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/application-shortcuts.windows.spec.ts › Windows application shortcuts › quit requires a second independent press": "Desktop: pre-restructure inventory; existing assertions retained",
-    "tests/e2e/cli.bounded-agent-spawning.spec.ts › deletion releases only after runtime exit and restart preserves lineage and recovered occupancy": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/cli.node-create-agent-wait.real-claude.spec.ts › create agent returns the real Claude initial reply from the mock API": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/cli.task-delegation.spec.ts › a coordinator assigns and releases descendant agents while siblings and unrelated agents are refused": "Desktop: real lineage grants let a coordinator assign descendants while sibling and unrelated grants are refused; card status renders",
     "tests/e2e/context-bridge.app-errors.display.spec.ts › Run default agent displays the writes-disabled notice in en": "Desktop: pre-restructure inventory; existing assertions retained",
