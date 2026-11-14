@@ -69,6 +69,7 @@ describe('main process sandbox flags', () => {
 
         public on(): void {}
         public show(): void {}
+        public setContentSize(): void {}
         public loadURL(): void {}
         public loadFile(): void {}
       }

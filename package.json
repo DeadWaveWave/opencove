@@ -184,7 +184,7 @@
     "@vitest/coverage-v8": "^4.1.0",
     "dmg-builder": "^26.8.1",
     "drizzle-kit": "^0.31.9",
-    "electron": "^41.5.1",
+    "electron": "^41.10.7",
     "electron-builder": "^26.8.1",
     "electron-builder-squirrel-windows": "^26.8.1",
     "electron-vite": "^5.0.0",

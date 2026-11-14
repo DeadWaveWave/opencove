@@ -83,10 +83,21 @@ function createBrowserWindowMock() {
     public show = vi.fn()
     public showInactive = vi.fn()
     public setPosition = vi.fn()
+    public contentSize: [number, number] = [0, 0]
+    public contentSizeAtLoad: [number, number] | undefined
+    public setContentSize = vi.fn((width: number, height: number) => {
+      this.contentSize = [width, height]
+    })
 
     public constructor(options: Record<string, unknown> = {}) {
       BrowserWindow.windows.push(this)
       BrowserWindow.constructorOptions.push(options)
+      // Electron 41.7.2 centers Windows/Linux windows within the display work area.
+      // Constructor dimensions alone no longer guarantee the requested test surface.
+      this.contentSize = [
+        Math.min(Number(options['width']), 1024),
+        Math.min(Number(options['height']), 728),
+      ]
     }
 
     public on(event: string, listener: Listener): void {
@@ -100,8 +111,12 @@ function createBrowserWindowMock() {
       handlers.forEach(handler => handler(...args))
     }
 
-    public loadURL(): void {}
-    public loadFile(): void {}
+    public loadURL(): void {
+      this.contentSizeAtLoad = [...this.contentSize]
+    }
+    public loadFile(): void {
+      this.contentSizeAtLoad = [...this.contentSize]
+    }
   }
 
   return BrowserWindow
@@ -216,6 +231,8 @@ describe('main process lifecycle window modes', () => {
         expect(mainWindow.show).not.toHaveBeenCalled()
 
         const firstWindowOptions = BrowserWindow.constructorOptions[0]
+        expect(mainWindow.contentSizeAtLoad).toEqual([1440, 900])
+        expect(mainWindow.contentSize).toEqual([1440, 900])
         expect(firstWindowOptions['enableLargerThanScreen']).toBe(true)
         const webPreferences = firstWindowOptions['webPreferences'] as {
           backgroundThrottling?: boolean
@@ -256,6 +273,8 @@ describe('main process lifecycle window modes', () => {
         expect(mainWindow.show).not.toHaveBeenCalled()
 
         const firstWindowOptions = BrowserWindow.constructorOptions[0]
+        expect(mainWindow.contentSizeAtLoad).toEqual([1440, 900])
+        expect(mainWindow.contentSize).toEqual([1440, 900])
         expect(firstWindowOptions['enableLargerThanScreen']).toBe(true)
 
         app.emit('before-quit')
@@ -292,6 +311,8 @@ describe('main process lifecycle window modes', () => {
         expect(mainWindow.showInactive).not.toHaveBeenCalled()
 
         const firstWindowOptions = BrowserWindow.constructorOptions[0]
+        expect(mainWindow.contentSizeAtLoad).toEqual([1440, 900])
+        expect(mainWindow.contentSize).toEqual([1440, 900])
         expect(firstWindowOptions['enableLargerThanScreen']).toBe(true)
         expect(firstWindowOptions['paintWhenInitiallyHidden']).toBe(true)
 
@@ -335,6 +356,8 @@ describe('main process lifecycle window modes', () => {
         expect(mainWindow.setPosition).toHaveBeenCalledWith(-50000, -50000, false)
 
         const firstWindowOptions = BrowserWindow.constructorOptions[0]
+        expect(mainWindow.contentSizeAtLoad).toEqual([1440, 900])
+        expect(mainWindow.contentSize).toEqual([1440, 900])
         expect(firstWindowOptions['enableLargerThanScreen']).toBe(true)
         expect(firstWindowOptions['x']).toBe(-50000)
         expect(firstWindowOptions['y']).toBe(-50000)
@@ -350,6 +373,29 @@ describe('main process lifecycle window modes', () => {
 
         app.emit('will-quit')
         expect(dispose).toHaveBeenCalledTimes(1)
+      },
+    )
+  })
+
+  it('preserves native display sizing outside E2E', async () => {
+    await withProcessEnv(
+      {
+        OPENCOVE_E2E_NO_FOCUS: undefined,
+        OPENCOVE_E2E_WINDOW_MODE: undefined,
+        NODE_ENV: 'production',
+      },
+      async () => {
+        vi.resetModules()
+        const app = createMockApp()
+        const BrowserWindow = createBrowserWindowMock()
+        mockMainIndexDependencies({ app, dispose: vi.fn(), BrowserWindow })
+        await importMainIndex(app)
+
+        const mainWindow = BrowserWindow.windows[0]
+        mainWindow.emit('ready-to-show')
+        expect(mainWindow.contentSizeAtLoad).toEqual([1024, 728])
+        expect(mainWindow.setContentSize).not.toHaveBeenCalled()
+        expect(mainWindow.show).toHaveBeenCalledTimes(1)
       },
     )
   })

@@ -84,6 +84,7 @@ async function createLifecycleHarness() {
     }
 
     public show(): void {}
+    public setContentSize(): void {}
     public loadURL(): void {}
     public loadFile(): void {}
   }
