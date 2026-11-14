@@ -158,7 +158,8 @@ export async function createMaterialFixture() {
     repo,
     worktree,
     nodes,
-    image: Array.from(image),
+    // Playwright serialises a plain array as one object per number: 4 MB took ~7 s per seed.
+    imageBase64: image.toString('base64'),
     assetId,
     cleanup: async () => {
       await closeWebsiteTestServer(server)
@@ -193,10 +194,15 @@ export async function seedMaterialFixture(
     },
   })
   await window.evaluate(
-    async ({ id, repo, worktree, nodes, assetId, image, viewStateKey }) => {
+    async ({ id, repo, worktree, nodes, assetId, imageBase64, viewStateKey }) => {
+      const binary = atob(imageBase64)
+      const bytes = new Uint8Array(binary.length)
+      for (let index = 0; index < binary.length; index += 1) {
+        bytes[index] = binary.charCodeAt(index)
+      }
       await window.opencoveApi.workspace.writeCanvasImage({
         assetId,
-        bytes: new Uint8Array(image),
+        bytes,
         mimeType: 'image/png',
         fileName: 'opencove-mark.png',
       })
@@ -267,7 +273,7 @@ export async function seedMaterialFixture(
       worktree: fixture.worktree,
       nodes: fixture.nodes,
       assetId: fixture.assetId,
-      image: fixture.image,
+      imageBase64: fixture.imageBase64,
       viewStateKey: viewStateStorageKey,
     },
   )
