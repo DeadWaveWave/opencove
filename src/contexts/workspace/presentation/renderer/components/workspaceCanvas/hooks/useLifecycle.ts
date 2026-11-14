@@ -8,7 +8,6 @@ import {
 } from '../../../utils/inputModality'
 import { isEditableDomTarget } from '../domTargets'
 import type { SelectionDraftState, TrackpadGestureLockState } from '../types'
-import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
 
 interface UseWorkspaceCanvasLifecycleParams {
   workspaceId: string
@@ -53,15 +52,12 @@ export function useWorkspaceCanvasLifecycle({
   focusNodeTargetZoom,
   isFocusNodeTargetZoomPreviewing,
 }: UseWorkspaceCanvasLifecycleParams): void {
-  const ui = useCanvasUiCommands()
-
   const previewSequenceRef = useRef(0)
   const viewportBeforePreviewRef = useRef<Viewport | null>(null)
 
   useEffect(() => {
     setSelectedNodeIds([])
     setSelectedSpaceIds([])
-    ui.closeContextMenu()
     cancelSpaceRename()
     selectionDraftRef.current = null
     trackpadGestureLockRef.current = null
@@ -70,7 +66,6 @@ export function useWorkspaceCanvasLifecycle({
     cancelSpaceRename,
     selectionDraftRef,
     setIsCanvasWheelGestureCaptureActive,
-    ui,
     setSelectedNodeIds,
     setSelectedSpaceIds,
     trackpadGestureLockRef,
