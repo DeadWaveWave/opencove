@@ -1,3 +1,4 @@
+import './scripts/lib/isolateHostEnvironment.mjs'
 import { defineConfig } from '@playwright/test'
 
 const baseURL = process.env['OPENCOVE_WEB_CANVAS_BASE_URL']

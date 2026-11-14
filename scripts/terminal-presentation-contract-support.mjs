@@ -1,3 +1,4 @@
+import './lib/isolateHostEnvironment.mjs'
 import { spawn } from 'node:child_process'
 import { createInterface } from 'node:readline'
 

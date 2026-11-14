@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import './lib/isolateHostEnvironment.mjs'
 
 import { spawnSync } from 'node:child_process'
 import { createRequiredE2EEnvironment } from './precommit-e2e-env.mjs'

@@ -1,3 +1,4 @@
+import { terminalEnvironment } from '../../../../shared/runtime/terminalEnvironment.mjs'
 import { assertSessionGrantMessagePrompt } from '../http/sessionGrantPromptPolicy'
 import type {
   AgentProviderId,
@@ -86,8 +87,8 @@ export async function prepareAgentSessionEnvironment(options: {
   }
   const tuiConfigPath = await ensureOpenCodeEmbeddedTuiConfigPath()
   return {
-    OPENCOVE_OPENCODE_SERVER_HOSTNAME: options.opencodeServer.hostname,
-    OPENCOVE_OPENCODE_SERVER_PORT: String(options.opencodeServer.port),
+    [terminalEnvironment.opencodeServerHostname]: options.opencodeServer.hostname,
+    [terminalEnvironment.opencodeServerPort]: String(options.opencodeServer.port),
     XDG_STATE_HOME: options.userDataPath.trim() || process.cwd(),
     ...(tuiConfigPath ? { OPENCODE_TUI_CONFIG: tuiConfigPath } : {}),
   }

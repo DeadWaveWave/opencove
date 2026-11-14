@@ -1,3 +1,4 @@
+import './lib/isolateHostEnvironment.mjs'
 import { _electron as electron } from '@playwright/test'
 import { execFile } from 'node:child_process'
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'

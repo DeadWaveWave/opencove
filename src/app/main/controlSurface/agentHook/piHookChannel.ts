@@ -1,3 +1,4 @@
+import { terminalEnvironment } from '../../../../shared/runtime/terminalEnvironment.mjs'
 import {
   createAgentHookChannel,
   type AgentHookChannel,
@@ -15,9 +16,9 @@ export function createPiHookChannel(): AgentHookChannel {
     source: 'pi_hook',
     validateEnvelope: normalizePiAgentSnapshot,
     buildReservationEnv: (endpoint, token) => ({
-      OPENCOVE_PI_HOOK_ENDPOINT: endpoint,
-      OPENCOVE_PI_HOOK_TOKEN: token,
-      OPENCOVE_PI_STATUS_OWNER_PID: '',
+      [terminalEnvironment.piHookEndpoint]: endpoint,
+      [terminalEnvironment.piHookToken]: token,
+      [terminalEnvironment.piStatusOwnerPid]: '',
     }),
     createObservationOwner: () => {
       const owner = new PiAgentObservationOwner()

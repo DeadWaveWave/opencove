@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import './lib/isolateHostEnvironment.mjs'
 
 import { spawnSync } from 'node:child_process'
 import path from 'node:path'

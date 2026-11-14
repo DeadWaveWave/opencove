@@ -1,4 +1,5 @@
 /// <reference types="vitest/config" />
+import './scripts/lib/isolateHostEnvironment.mjs'
 import { realpathSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { availableParallelism } from 'node:os'

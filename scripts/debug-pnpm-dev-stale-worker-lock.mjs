@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import './lib/isolateHostEnvironment.mjs'
 
 import { chromium } from '@playwright/test'
 import { execFile, spawn } from 'node:child_process'

@@ -1,3 +1,4 @@
+import { createIsolatedProcessEnv } from '../../scripts/lib/isolatedProcessEnvironment.mjs'
 import { execFile } from 'node:child_process'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -48,7 +49,7 @@ test('exact turn read and wait survive a complete Worker restart, then disappear
           'json',
         ],
         {
-          env: { ...process.env, OPENCOVE_USER_DATA_DIR: userDataDir },
+          env: createIsolatedProcessEnv({ OPENCOVE_USER_DATA_DIR: userDataDir }),
           timeout: 20_000,
         },
         (error, stdout, stderr) =>

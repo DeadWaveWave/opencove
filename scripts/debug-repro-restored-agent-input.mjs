@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-
+import './lib/isolateHostEnvironment.mjs'
 import { _electron as electron } from '@playwright/test'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'

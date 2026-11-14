@@ -1,3 +1,4 @@
+import { terminalEnvironment } from '../../../../shared/runtime/terminalEnvironment.mjs'
 import {
   emitTerminalAgentDiagnostic,
   terminalAgentFailureReason,
@@ -92,22 +93,22 @@ export class TerminalAgentActivityEnvironmentService {
     const environment = normalizeEnvironment(command.environment, this.options.platform)
     const currentPath = readPath(command.environment, this.options.platform) ?? this.inheritedPath
     environment.PATH = prependUniquePath(currentPath, assets.shimDirectory, this.path)
-    environment.OPENCOVE_TERMINAL_AGENT_ENDPOINT = reservation.endpoint
-    environment.OPENCOVE_TERMINAL_AGENT_TOKEN = reservation.token
+    environment[terminalEnvironment.terminalAgentEndpoint] = reservation.endpoint
+    environment[terminalEnvironment.terminalAgentToken] = reservation.token
     // This is a new terminal scope, not a tool subprocess of the Agent that launched OpenCove.
-    environment.OPENCOVE_PI_STATUS_OWNER_PID = ''
-    environment.OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY = assets.shimDirectory
+    environment[terminalEnvironment.piStatusOwnerPid] = ''
+    environment[terminalEnvironment.terminalAgentShimDirectory] = assets.shimDirectory
 
     const isSupportedShell =
       this.options.platform !== 'win32' &&
       command.interactiveShell &&
       isSupportedPosixInteractiveShell(command.command, this.path)
     if (isSupportedShell) {
-      environment.OPENCOVE_TERMINAL_AGENT_BASH_RC = assets.bashRcPath
-      environment.OPENCOVE_TERMINAL_AGENT_ORIGINAL_ZDOTDIR = environment.ZDOTDIR ?? ''
-      environment.OPENCOVE_TERMINAL_AGENT_REAL_SHELL =
+      environment[terminalEnvironment.terminalAgentBashRc] = assets.bashRcPath
+      environment[terminalEnvironment.terminalAgentOriginalZdotdir] = environment.ZDOTDIR ?? ''
+      environment[terminalEnvironment.terminalAgentRealShell] =
         command.command || this.options.inheritedShell
-      environment.OPENCOVE_TERMINAL_AGENT_ZSH_DOT_DIRECTORY = assets.zshDotDirectory
+      environment[terminalEnvironment.terminalAgentZshDotDirectory] = assets.zshDotDirectory
     }
 
     return {

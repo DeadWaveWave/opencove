@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import './lib/isolateHostEnvironment.mjs'
 
 import { _electron as electron, chromium } from '@playwright/test'
 import { spawn } from 'node:child_process'

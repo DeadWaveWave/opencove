@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import './lib/isolateHostEnvironment.mjs'
 
 import { _electron as electron } from '@playwright/test'
 import Database from 'better-sqlite3'

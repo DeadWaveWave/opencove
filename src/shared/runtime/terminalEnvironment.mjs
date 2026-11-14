@@ -1,0 +1,32 @@
+// Product-owned connection, identity and hook variables carried by OpenCove terminals.
+// Injection sites use these names; isolated tooling derives its removal set from this object.
+// Runner/dev configuration (OPENCOVE_E2E_*, OPENCOVE_TEST_*, OPENCOVE_DEV_*) is not terminal context.
+export const terminalEnvironment = Object.freeze({
+  env: 'OPENCOVE_ENV',
+  nodeId: 'OPENCOVE_NODE_ID',
+  spaceId: 'OPENCOVE_SPACE_ID',
+  projectId: 'OPENCOVE_PROJECT_ID',
+  sessionId: 'OPENCOVE_SESSION_ID',
+  controlUrl: 'OPENCOVE_CONTROL_URL',
+  controlToken: 'OPENCOVE_CONTROL_TOKEN',
+  cli: 'OPENCOVE_CLI',
+  cliShimDirectory: 'OPENCOVE_CLI_SHIM_DIRECTORY',
+  userDataDir: 'OPENCOVE_USER_DATA_DIR',
+  claudeHookEndpoint: 'OPENCOVE_CLAUDE_HOOK_ENDPOINT',
+  claudeHookToken: 'OPENCOVE_CLAUDE_HOOK_TOKEN',
+  codexHookEndpoint: 'OPENCOVE_CODEX_HOOK_ENDPOINT',
+  codexHookToken: 'OPENCOVE_CODEX_HOOK_TOKEN',
+  piHookEndpoint: 'OPENCOVE_PI_HOOK_ENDPOINT',
+  piHookToken: 'OPENCOVE_PI_HOOK_TOKEN',
+  piStatusOwnerPid: 'OPENCOVE_PI_STATUS_OWNER_PID',
+  terminalAgentEndpoint: 'OPENCOVE_TERMINAL_AGENT_ENDPOINT',
+  terminalAgentToken: 'OPENCOVE_TERMINAL_AGENT_TOKEN',
+  terminalAgentShimDirectory: 'OPENCOVE_TERMINAL_AGENT_SHIM_DIRECTORY',
+  terminalAgentBashRc: 'OPENCOVE_TERMINAL_AGENT_BASH_RC',
+  terminalAgentOriginalZdotdir: 'OPENCOVE_TERMINAL_AGENT_ORIGINAL_ZDOTDIR',
+  terminalAgentRealShell: 'OPENCOVE_TERMINAL_AGENT_REAL_SHELL',
+  terminalAgentZshDotDirectory: 'OPENCOVE_TERMINAL_AGENT_ZSH_DOT_DIRECTORY',
+  terminalAgentUserZdotdir: 'OPENCOVE_TERMINAL_AGENT_USER_ZDOTDIR',
+  opencodeServerHostname: 'OPENCOVE_OPENCODE_SERVER_HOSTNAME',
+  opencodeServerPort: 'OPENCOVE_OPENCODE_SERVER_PORT',
+})

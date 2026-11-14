@@ -1,3 +1,4 @@
+import { terminalEnvironment } from '../../../shared/runtime/terminalEnvironment.mjs'
 import { OpenCoveAppError, createAppError } from '../../../shared/errors/appError'
 import {
   createTerminalSpawnApplicationError,
@@ -72,14 +73,14 @@ export function createSessionGrantPtyRuntime(options: {
       let settled = false
       try {
         Object.assign(env, {
-          OPENCOVE_ENV: '1',
-          ...(identity.nodeId ? { OPENCOVE_NODE_ID: identity.nodeId } : {}),
-          OPENCOVE_SPACE_ID: identity.spaceId,
-          OPENCOVE_PROJECT_ID: identity.projectId,
-          OPENCOVE_CONTROL_URL: url,
-          OPENCOVE_CONTROL_TOKEN: reservation.token,
-          OPENCOVE_CLI: options.cliPath,
-          OPENCOVE_CLI_SHIM_DIRECTORY: assets.cliShimDirectory,
+          [terminalEnvironment.env]: '1',
+          ...(identity.nodeId ? { [terminalEnvironment.nodeId]: identity.nodeId } : {}),
+          [terminalEnvironment.spaceId]: identity.spaceId,
+          [terminalEnvironment.projectId]: identity.projectId,
+          [terminalEnvironment.controlUrl]: url,
+          [terminalEnvironment.controlToken]: reservation.token,
+          [terminalEnvironment.cli]: options.cliPath,
+          [terminalEnvironment.cliShimDirectory]: assets.cliShimDirectory,
         })
         const pathKey = Object.keys(env).find(key => key.toLowerCase() === 'path') ?? 'PATH'
         // Only the CLI shim directory: provider shims on PATH would wrap a managed agent launch

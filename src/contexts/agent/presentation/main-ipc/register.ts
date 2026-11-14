@@ -1,3 +1,4 @@
+import { terminalEnvironment } from '../../../../shared/runtime/terminalEnvironment.mjs'
 import { agentTestStubArgs } from '../../../../shared/utils/agentTestStubArgs'
 import { getPublicTerminalSpawnCommand } from '../../../../platform/terminal/publicTerminalSpawnCommand'
 import { publicTerminalSpawnError } from '../../../../shared/errors/terminalSpawnError'
@@ -363,8 +364,8 @@ export function registerAgentIpcHandlers(
       const internalSessionEnv =
         opencodeServer && normalized.provider === 'opencode'
           ? {
-              OPENCOVE_OPENCODE_SERVER_HOSTNAME: opencodeServer.hostname,
-              OPENCOVE_OPENCODE_SERVER_PORT: String(opencodeServer.port),
+              [terminalEnvironment.opencodeServerHostname]: opencodeServer.hostname,
+              [terminalEnvironment.opencodeServerPort]: String(opencodeServer.port),
               XDG_STATE_HOME: resolveOpenCodeEmbeddedXdgStateHome(),
               ...(opencodeTuiConfigPath ? { OPENCODE_TUI_CONFIG: opencodeTuiConfigPath } : {}),
             }

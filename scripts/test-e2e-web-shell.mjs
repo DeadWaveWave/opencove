@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import './lib/isolateHostEnvironment.mjs'
 
 import { spawn } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
