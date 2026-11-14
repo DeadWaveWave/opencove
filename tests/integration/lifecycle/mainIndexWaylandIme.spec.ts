@@ -67,6 +67,7 @@ describe('main process Wayland IME flags', () => {
 
         public on(): void {}
         public show(): void {}
+        public setContentSize(): void {}
         public showInactive(): void {}
         public loadURL(): void {}
         public loadFile(): void {}

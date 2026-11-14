@@ -140,9 +140,7 @@ function createWindow(): void {
     ...(isTestEnv
       ? {
           useContentSize: true,
-          // Electron 41 can clamp background E2E windows to the runner display bounds more eagerly
-          // than earlier versions, which shrinks the effective canvas area and destabilizes layout-
-          // sensitive tests. Keep the requested test surface size even on smaller virtual displays.
+          // macOS requires this to allow the fixed E2E surface beyond the display bounds.
           enableLargerThanScreen: true,
         }
       : {}),
@@ -166,6 +164,12 @@ function createWindow(): void {
       ...(keepRendererActiveInBackground ? { backgroundThrottling: false } : {}),
     },
   })
+
+  if (isTestEnv) {
+    // Electron 41.7.2+ centers Windows/Linux windows by clamping to the display work area
+    // (electron/electron#51919). Restore the E2E content size after construction, before load.
+    mainWindow.setContentSize(initialWidth, initialHeight)
+  }
 
   const rendererFailureContext = createRendererFailureContext(mainWindow)
   const disposeApplicationShortcuts = registerApplicationShortcuts(mainWindow)
