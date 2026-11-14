@@ -13,6 +13,8 @@ export default defineConfig({
   testMatch: '**/*.perf.ts',
   timeout: 15 * 60_000,
   expect: { timeout: 30_000 },
+  // A stray test.only would silently shrink a CI run to one test.
+  forbidOnly: !!process.env.CI,
   retries: 0,
   workers: 1,
   reporter: [['list']],

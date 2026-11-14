@@ -272,6 +272,10 @@ jobs:
         run: pnpm build
       - name: Real Worker and built CLI contracts
         run: pnpm test:contract:worker-cli
+      # Every Vitest file whose name carries the .mac.spec. suffix runs here, selected by the name
+      # pattern, so a new file needs no edit to this workflow.
+      - name: macOS-only Vitest files
+        run: pnpm exec vitest run --pool=forks --maxWorkers=1 ".mac.spec."
       - name: Upload failure artifacts
         if: failure()
         uses: actions/upload-artifact@v7
@@ -401,17 +405,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Windows release launcher invocation tests
-        run: pnpm exec vitest run tests/unit/scripts/published-standalone-smoke.spec.ts --pool=forks --maxWorkers=1
+      # Every Vitest file whose name carries the .windows.spec. suffix runs here, selected by the
+      # name pattern, so a new file needs no edit to this list. The one exclusion is the file that
+      # has its own Electron and WSL step below:
+      # Verify native PowerShell and WSL argument boundaries
+      # Any other exclusion must cite an issue number in this comment.
+      - name: Windows-only Vitest files
+        run: pnpm exec vitest run --pool=forks --maxWorkers=1 ".windows.spec." --exclude tests/integration/terminal/windowsNativeArguments.windows.spec.ts
 
-      - name: Execute generated managed SSH PowerShell bootstrap
-        run: pnpm exec vitest run tests/unit/contexts/managedSshBootstrap.windows.spec.ts --pool=forks --maxWorkers=1
-
+      # This file is cross-platform, not Windows-only, so the pattern above does not select it.
+      # Ubuntu already runs it in the full suite; this step is extra coverage on Windows, not its
+      # only run.
       - name: Execute provider Hook relays with sanitized environments
         run: pnpm exec vitest run tests/integration/agentHookRelay.spec.ts --pool=forks --maxWorkers=1
-
-      - name: Pass CLI selectors through Windows PowerShell
-        run: pnpm exec vitest run tests/unit/e2e/cliListSelectors.windows.spec.ts --pool=forks --maxWorkers=1
 
       - name: Prepare WSL guest for native argument tests
         timeout-minutes: 10

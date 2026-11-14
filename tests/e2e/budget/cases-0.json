@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "count": 181,
+  "count": 180,
   "entries": {
     "tests/e2e/add-project-wizard.inline-endpoint.spec.ts › Add project wizard inline endpoint registration › preserves the parent wizard across Escape, cancel, and successful registration": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/agent-process-reaping.real-codex.spec.ts › managed Agent tool process reaping with real Codex › delete reaps a running tool across process groups": "Desktop: pre-restructure inventory; existing assertions retained",
@@ -32,7 +32,6 @@
     "tests/e2e/command-center.spec.ts › Command Center › finds a window by name and flies to it using only the keyboard": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/command-center.spec.ts › Command Center › focuses a space when selecting it from search": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/command-center.spec.ts › Command Center › switches projects via search": "Desktop: pre-restructure inventory; existing assertions retained",
-    "tests/e2e/context-bridge.app-errors.spec.ts › reinstalls after macOS closes and recreates its last window": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/control-center.spec.ts › Control Center › opens as a pixel window with appearances, quick switches and lines into Settings": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/control-center.spec.ts › Control Center › uses a mobile sheet with large UI text and hands focus to Settings": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/m6.endpoints-mounts.dev-profile.happy-path.spec.ts › M6 - Dev profile happy path (manual) › registers endpoint, creates remote project, creates space worktree, runs terminal, and opens files": "Desktop: pre-restructure inventory; existing assertions retained",

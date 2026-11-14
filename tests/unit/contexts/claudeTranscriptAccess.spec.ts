@@ -1,28 +1,15 @@
 // @vitest-environment node
 import fs from 'node:fs/promises'
 import { afterEach, expect, it, vi } from 'vitest'
-import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { claudeTranscriptAccess } from '../../../src/contexts/agent/infrastructure/watchers/ClaudeTranscriptAccess'
+import { disposeFixtures, fixture } from './claudeTranscriptAccess.helpers'
 
-const cleanup: (() => Promise<void>)[] = []
 afterEach(async () => {
   vi.restoreAllMocks()
-  await Promise.all(cleanup.splice(0).map(dispose => dispose()))
+  await disposeFixtures()
 })
-async function fixture() {
-  const root = await fs.mkdtemp(join(tmpdir(), 'claude-access-'))
-  const config = join(root, 'config'),
-    project = join(config, 'projects', 'workspace'),
-    path = join(project, 'provider.jsonl')
-  await fs.mkdir(project, { recursive: true })
-  await fs.writeFile(path, '{}\n')
-  cleanup.push(async () => {
-    await fs.rm(root, { recursive: true, force: true })
-  })
-  return { root, config, project, path, access: claudeTranscriptAccess(path, 'provider', [config]) }
-}
 it('a legitimate launch-scoped transcript opens as a regular file and closes cleanly', async () => {
   const f = await fixture(),
     handle = await f.access.open()
@@ -134,13 +121,3 @@ it('canonical target spellings of a symlinked trusted config are authorized and 
   await two.close()
   expect(metadata.mock.calls.map(([path]) => String(path))).toEqual([canonical, canonical])
 })
-it.skipIf(process.platform !== 'darwin')(
-  'the canonical /private spelling of an authorized /var root is equivalent',
-  async () => {
-    const f = await fixture(),
-      canonical = await fs.realpath(f.path)
-    const alias = f.config.replace(/^\/private\/var\//, '/var/')
-    const handle = await claudeTranscriptAccess(canonical, 'provider', [alias]).open()
-    await handle.close()
-  },
-)

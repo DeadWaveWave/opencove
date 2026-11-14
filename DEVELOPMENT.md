@@ -97,12 +97,28 @@ workspace 画布文档（节点、Space、活动 Space、Space 归档记录、�
 
 画布 UI 投影状态（issue #685，#647 的 S3 切片）遵守以下规则：两个画布菜单（右键菜单 `contextMenu` 与 Space 操作菜单 `spaceActionMenu`）存放在每个画布一个的 canvas store 中，代码在 `src/contexts/workspace/presentation/renderer/store/canvasStore*.ts`，不要再用 `useState` 声明一份，也不要把它们的 setter 当作参数在 hook 之间传递；`WorkspaceCanvasInner` 调用的 hook 通过 `useReadCanvasUi()` 在调用时读取、通过 `useCanvasUiCommands()` 的具名命令写入，只有叶子组件（如 `WorkspaceCanvasMenus`）用 `useCanvasUi` 订阅（`tests/unit/contexts/canvasUi.leafSubscribers.spec.ts` 机械检查 `hooks/` 下没有 `useCanvasUi(` 调用），节点组件只用命令，这样打开菜单不会重渲染 `WorkspaceCanvasInner`；store 不暴露 `setState`（类型与运行时都没有），状态只能经命令改变，互斥关系（两个菜单不会同时打开）由命令在同一次更新里保证；只有单一消费者的状态（例如 Space 菜单的路径打开器列表）留在该消费者本地。
 
+### 测试闸门 (Test Gates)
+
+`pnpm test-gates:check`（属于 `pnpm verify:repo`，因此在 `verify:checks` 与 CI 的 `Repository checks` 步骤中运行）扫描已跟踪的 `tests/**/*.ts(x)` 与 `src/**/*.{spec,test}.ts(x)`，用 TypeScript 解析器识别调用，字符串和注释里的 `test.only` 不算（issue #683）。三条规则：
+
+| 规则 | 类型 | 内容 |
+| --- | --- | --- |
+| `platform-gate-suffix` | 硬零 | 只在一个非 Linux 平台运行的用例（`it.skipIf` / `it.runIf` / `test.skip(cond, …)` / `test.describe.skip(cond)` / `cond ? it : it.skip`，以及 `it` / `test`（含 `.each`）回调顶层的 `if (cond) return`——它在其他平台上不断言就通过；条件沿用同文件内的 `const` 间接引用）必须写在文件名带 `.windows.` 或 `.mac.` 的 spec 文件里；helper 文件（非 `*.spec.*`）不在范围内；无法求值的条件被忽略，`--verbose` 会列出所有这类闸门 |
+| `focused-test` | 硬零 | 不允许 `test.only`、`it.only`、`describe.only`、`test.describe.only`；三个 Playwright 配置同时设置 `forbidOnly: !!process.env.CI` |
+| `unconditional-skip` | 棘轮 | 无条件跳过的声明（`test.skip('标题', fn)`、`test.describe.skip`、`it.skip`、`*.fixme`、`test.skip()`、`test.skip(true, …)`，含 `.skip.each` / `.fixme.each`；`.only.each` 同样算 `focused-test`）按文件计数，冻结在 `scripts/test-gates-ratchet.json`，只减不增 |
+
+平台专属用例写在 `*.windows.spec.ts` / `*.mac.spec.ts` 里，是因为 CI 的 Windows 与 macOS job 用 Vitest 的文件名过滤选择这些文件：Windows 步骤是 `pnpm exec vitest run --pool=forks --maxWorkers=1 ".windows.spec." --exclude <一个文件>`，macOS 步骤是同样命令加 `".mac.spec."`（位置参数是子串过滤，不是 glob，作用于根配置的 `include`/`exclude`，所以 `tests/e2e` 不会被选中）。新增文件无需有人去改 CI 列表。Windows 步骤唯一的排除项是 `windowsNativeArguments.windows.spec.ts`，它有自己的 Electron + WSL 步骤；其他排除必须在步骤上方的注释里写出文件名和 issue 编号，由 `tests/unit/scripts/ci-platform-vitest.spec.ts` 检查，该测试还要求两个步骤没有 `if:` 与 `continue-on-error`、命令不被 `-t` 之类的参数收窄。移动一个用例时：保留原来的闸门，共享夹具移到 `*.helpers.ts`，E2E 用例还要执行 `pnpm e2e:budget:update --reason "…"`。
+
+检查看不到的写法（有意如此）：别名（`const t = test.skip`）、从其他文件导入的闸门或平台值（`it.skipIf(!isWindows)`）、`os.platform()`、标题不是字面量的跳过（`it.skip(reason, fn)`）；`pnpm test-gates:check --verbose` 会列出所有无法求值的闸门，包括导入的标识符。
+
+基线只用 `pnpm test-gates:ratchet` 重新生成，不要手改 JSON；该命令固定写入这一个文件，调用 `guardRatchetUpdate`（见下文“棘轮基线守卫”），总数相对合并基线上升时需要 `--accept-rise unconditional-skip`。降低计数：运行、修复或删除被跳过的用例，再运行 `pnpm test-gates:ratchet`，把基线与代码放进同一个提交。违反硬零规则时更新命令拒绝写入。
+
 ### 棘轮基线守卫 (Ratchet Baseline Guard)
 
-任何以 `ratchet.json` 结尾的已跟踪文件都是棘轮基线（目前六个：架构、死代码、画布状态、兼容、UI 样式、UI 标记），形状为 `{ 规则: { 文件: 正整数 } }`。守卫保证基线本身不能在无人确认的情况下增长，计数器、检查模式和文件格式都不变。
+任何以 `ratchet.json` 结尾的已跟踪文件都是棘轮基线（目前七个：架构、死代码、画布状态、兼容、UI 样式、UI 标记、测试闸门），形状为 `{ 规则: { 文件: 正整数 } }`。守卫保证基线本身不能在无人确认的情况下增长，计数器、检查模式和文件格式都不变。
 
 - **比较点**：合并基线 M（`git merge-base HEAD origin/main`；没有 `origin/main` 或浅克隆缺少它时退回 `HEAD`；没有提交时每个总数为 0）与分支头 H。比较的是每条规则的**总数**，缺失的文件或规则按 0 计；文件间移动、文件重命名不需要任何标志。
-- **更新命令**（`pnpm arch:ratchet`、`pnpm deadcode:ratchet`、`pnpm canvas:state-ratchet`、`pnpm ui:style-ratchet`、`node scripts/check-compat-expiry.mjs --update-ratchet`）都先调用 `guardRatchetUpdate`：总数相对 M 上升、或 M 上总数大于 0 的规则消失时拒绝写入（退出 1），并打印 M 的来源、先修代码的建议和需要粘贴到 PR 描述里的段落。确实要记录时，对每条受影响规则加 `--accept-rise <规则>`（可重复；点名一条没有上升也没有消失的规则同样被拒绝）。没有环境变量或配置项可以替代这个标志，`package.json` 脚本也不得带它。
+- **更新命令**（`pnpm arch:ratchet`、`pnpm deadcode:ratchet`、`pnpm canvas:state-ratchet`、`pnpm ui:style-ratchet`、`pnpm test-gates:ratchet`、`node scripts/check-compat-expiry.mjs --update-ratchet`）都先调用 `guardRatchetUpdate`：总数相对 M 上升、或 M 上总数大于 0 的规则消失时拒绝写入（退出 1），并打印 M 的来源、先修代码的建议和需要粘贴到 PR 描述里的段落。确实要记录时，对每条受影响规则加 `--accept-rise <规则>`（可重复；点名一条没有上升也没有消失的规则同样被拒绝）。没有环境变量或配置项可以替代这个标志，`package.json` 脚本也不得带它。
 - **PR 描述**：`scripts/check-pr-template.mjs`（`pr-template-check.yml`，`pull_request` 触发）用同一函数比较 M 和 H；有上升或规则消失时，描述必须有 `## 📈 Ratchet rises` 段，每条一行：``- `基线路径` `规则` M总数 -> H总数: 类别: 理由``（消失写 `-> removed`）。类别是 `merge-skew:`（并行 PR 的合并偏差，须引用 `#N`）、`detection:`（规则检测变宽）、`new-rule:`（新规则或新棘轮）、`rename:`（规则 id 被改名、拆分或移除）、`debt:`（须引用将清除这笔债务的 issue `#N`）。检查失败时会打印可直接粘贴的段落；`pnpm ratchet:rises` 对工作区打印同样的段落。
 - **本地检查**：`node scripts/check-pr-template.mjs body.md --base origin/main --head HEAD`；既不带 `--base` 也没有 PR 事件时跳过棘轮部分。PR 描述里的 HTML 注释和围栏代码块会先被去掉，写在里面的段落不算数（GitHub 不把它们渲染成段落标题，合并的人看不到声明）。
 - **不在范围内**：`LINE_LIMIT_EXEMPTIONS`、兼容注册表的 `until`、`rules.json` 的例外和 E2E 用例预算。
@@ -234,7 +250,7 @@ Ubuntu/macOS 三个分片用 `scripts/plan-e2e-shards.mjs` 按文件内用例的
     -   生成代码（如自动生成的类型定义等）禁止手改。
     -   **调研/验收报告默认不入库**：调研分析报告，以及某次 PR 的 review / acceptance 记录，都只是**本地分析与决策产物**，不是仓库资产。它们是某一时刻的快照，会很快过期，却没有人维护。除非明确要求，否则不要提交；评审结论写在 PR 描述/评论里。`docs/` 只收**本项目自身的**长期文档：架构、不变量、开发流程、案例。若调研中得出的结论具有长期价值（如一条不变量），把**结论**写进对应的项目文档，而不是提交整份报告。
 -   **提交前检查（本地快速门禁，合并前 CI 完整回归）**：
-    -   `pnpm verify:repo` 对整个仓库检查行数、命名（`cove:*` 等前缀）、UI 样式、画布状态棘轮（`pnpm canvas:state-check`）、架构棘轮（`pnpm arch:check`）、死代码（`pnpm deadcode:check`）与兼容路径到期（`pnpm compat:check`）；结果不依赖 staged 内容，CI（`ci-ubuntu` 的 `Repository checks` 步骤）以同样方式运行。行数上限只约束手写代码（`.ts/.tsx/.mjs/.css/.sh` 等），生成文件与 `.md/.json/.jsonl/.yml/.html` 不受限；超限文件只能登记在 `scripts/check-max-lines.mjs` 的 `LINE_LIMIT_EXEMPTIONS` 中，且记录的行数只降不增。命名检查不处理 `cove:m0:` 前缀（由 `pnpm compat:check` 负责，写 `legacy` 不能绕过）；UI 设计系统前缀仍保留 `cove`（见上文命名约定）。
+    -   `pnpm verify:repo` 对整个仓库检查行数、命名（`cove:*` 等前缀）、UI 样式、画布状态棘轮（`pnpm canvas:state-check`）、测试闸门（`pnpm test-gates:check`）、架构棘轮（`pnpm arch:check`）、死代码（`pnpm deadcode:check`）与兼容路径到期（`pnpm compat:check`）；结果不依赖 staged 内容，CI（`ci-ubuntu` 的 `Repository checks` 步骤）以同样方式运行。行数上限只约束手写代码（`.ts/.tsx/.mjs/.css/.sh` 等），生成文件与 `.md/.json/.jsonl/.yml/.html` 不受限；超限文件只能登记在 `scripts/check-max-lines.mjs` 的 `LINE_LIMIT_EXEMPTIONS` 中，且记录的行数只降不增。命名检查不处理 `cove:m0:` 前缀（由 `pnpm compat:check` 负责，写 `legacy` 不能绕过）；UI 设计系统前缀仍保留 `cove`（见上文命名约定）。
     -   其余 staged 检查（格式、密钥、相关测试）只看 staged 文件；CI 会对整个仓库重跑格式、密钥扫描与全部单测。对 0 个文件运行的 staged 检查实际上没有运行，将其报告为“通过”属于错误陈述；需要强制防空时，使用 `OPENCOVE_REQUIRE_STAGED=1 pnpm pre-commit`（运行前先 `git add -A`，并用 `git diff --cached --name-only` 确认文件列表非空）。
     -   若本次改动包含用户可感知变化（新增功能、UX 改动、修复 bug、默认行为变化），应先提交代码并创建 PR；拿到 PR 链接/编号后，再更新 `CHANGELOG.md` 的 `## [Unreleased]` 并单独提交（每个变化一条，尽量附 `#PR` 编号）。`nightly` tag 不要求更新 changelog；发 `stable` 时再把 `Unreleased` 结算进新版本段。
     -   创建/更新 PR 时：若本次改动包含用户可感知变化，必须跑对应 Playwright E2E，并列明本地验证范围；合并前以最终提交的完整 CI 为准。

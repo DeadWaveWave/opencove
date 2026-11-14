@@ -19,7 +19,7 @@ export function compareRatchet({ counts, baseline, rules, describe }) {
           rule,
           baseline: before,
           current: now,
-          message: describe(rule, now, before),
+          message: describe(rule, now, before, file),
         })
       }
     }

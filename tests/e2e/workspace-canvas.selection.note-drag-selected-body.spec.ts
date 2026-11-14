@@ -161,12 +161,13 @@ test.describe('Workspace Canvas - Selection (Note Drag)', () => {
         y: titleBox.y + titleBox.height / 2,
       }
 
-      // The title is the drag surface: it reads as text to rename, and a drag on it moves the note.
+      // The title is part of the drag surface: it shows the bar's grab cursor, a click renames
+      // it, and a drag on it moves the note.
       const cursor = await window.evaluate(point => {
         const element = document.elementFromPoint(point.x, point.y)
         return element ? window.getComputedStyle(element).cursor : null
       }, inputProbe)
-      expect(cursor).toBe('text')
+      expect(cursor).toBe('grab')
 
       await titleDisplay.click()
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)

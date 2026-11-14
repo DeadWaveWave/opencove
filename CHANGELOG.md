@@ -18,6 +18,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Agents: after you run `/clear` in a Claude Code agent window, other agents can send it a prompt with `opencove agent prompt` right away, instead of being refused until the new conversation has finished a turn. A window cleared more than 256 times in one run refuses prompts with `history_saturated` until it is restarted; the conversation itself is unaffected. (#676)
 - CLI: `opencove whoami --tree` shows the agents and terminals in your agent tree, how many more you can start, what each one is doing and the command that stops it. `opencove node create agent --prompts-file <file|-> --wait --read` starts up to ten agents with one command, creating each exactly once, and returns every agent's exact reply or error in input order. (#661)
 
+### Changed
+
+- Windows: the whole title bar now shows the grab cursor, including over the title, so it reads as the place to move a window from. A click on the title still renames it, and the text cursor appears only while you type the new name. (#687)
+
 ### Fixed
 
 - Desktop: messages that explain why an action failed now actually appear (for example, that Claude restarts are paused by the Worker, that the Worker needs an upgrade, or that a `/clear` save could not be confirmed); they used to fall back to a generic “this agent has changed” message. A launch whose response is lost is no longer started a second time, and Git plugin sources that embed credentials are refused before anything runs. (#613)
