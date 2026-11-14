@@ -1,7 +1,7 @@
 import type { Node } from '@xyflow/react'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { Point, TaskPriority, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
-import type { ContextMenuState, NodePlacementOptions } from '../types'
+import type { NodePlacementOptions } from '../types'
 import type { WorkspaceCanvasActionRefs } from './useActionRefs'
 import { useWorkspaceCanvasNodeDeleteConfirmation } from './useNodeDeleteConfirmation'
 import { useWorkspaceCanvasTaskCreator } from './useTaskCreator'
@@ -15,8 +15,6 @@ type SetNodes = (
 export function useWorkspaceCanvasTaskWindows({
   workspaceId,
   taskTagOptions,
-  contextMenu,
-  setContextMenu,
   nodesRef,
   setNodes,
   spacesRef,
@@ -30,8 +28,6 @@ export function useWorkspaceCanvasTaskWindows({
 }: {
   workspaceId?: string
   taskTagOptions: string[]
-  contextMenu: ContextMenuState | null
-  setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
@@ -63,8 +59,6 @@ export function useWorkspaceCanvasTaskWindows({
     createTask,
   } = useWorkspaceCanvasTaskCreator({
     workspaceId,
-    contextMenu,
-    setContextMenu,
     taskTagOptions,
     nodesRef,
     setNodes,
@@ -81,7 +75,6 @@ export function useWorkspaceCanvasTaskWindows({
       nodesRef,
       setNodes,
       onRequestPersistFlush,
-      setContextMenu,
       suggestTaskTitle,
       taskTagOptions,
       openTaskEditorRef: actionRefs.openTaskEditorRef,

@@ -15,7 +15,7 @@ import { MAX_CANVAS_ZOOM, MIN_CANVAS_ZOOM } from './constants'
 import type { WorkspaceCanvasViewProps } from './WorkspaceCanvasView.types'
 import { useActiveExplorerSpace } from './hooks/useActiveExplorerSpace'
 import { useWorkspaceCanvasGlobalDismissals } from './hooks/useGlobalDismissals'
-import { useWorkspaceCanvasSpaceMenuState } from './hooks/useCanvasSpaceMenuState'
+import { useCanvasUiCommands } from '../../store/canvasStoreContext'
 import { useWorkspaceCanvasLabelColorFilter } from './hooks/useLabelColorFilter'
 import { useViewportDprSnapping } from './hooks/useViewportDprSnapping'
 import { useSpaceWorktreeBusyLabels } from './hooks/useSpaceWorktreeBusyLabels'
@@ -106,8 +106,6 @@ export function WorkspaceCanvasView({
   activateSpace,
   activateAllSpaces,
   onOpenSpaceContextMenu,
-  contextMenu,
-  closeContextMenu,
   magneticSnappingEnabled,
   onToggleMagneticSnapping,
   createTerminalNode,
@@ -166,10 +164,8 @@ export function WorkspaceCanvasView({
   agentSettings,
   onChangePreserveWindowSizesOnArrange,
   workspacePath,
-  spaceActionMenu,
   availablePathOpeners,
   openSpaceActionMenu,
-  closeSpaceActionMenu,
   copySpacePath,
   openSpacePath,
   spaceWorktreeOperations,
@@ -190,10 +186,9 @@ export function WorkspaceCanvasView({
     useWorkspaceCanvasLabelColorFilter({ nodes, edges, spaces })
   const busyOperationBySpaceId = useSpaceWorktreeBusyLabels(spaceWorktreeOperations)
 
+  const ui = useCanvasUiCommands()
+
   useWorkspaceCanvasGlobalDismissals({
-    contextMenu,
-    spaceActionMenu,
-    closeContextMenu,
     canvasRef,
     selectedNodeCount,
     clearNodeSelection,
@@ -201,26 +196,10 @@ export function WorkspaceCanvasView({
 
   const { snapViewport } = useViewportDprSnapping(canvasRef)
 
-  const {
-    activeMenuSpace,
-    canCreateWorktreeForActiveMenuSpace,
-    canArrangeCanvas,
-    canArrangeAll,
-    canArrangeActiveSpace,
-  } = useWorkspaceCanvasSpaceMenuState({
-    spaceActionMenu,
-    spaces,
-    workspacePath,
-    nodes,
-  })
-
   const activeExplorerSpace = useActiveExplorerSpace(openExplorerSpaceId, spaces, spaceFramePreview)
 
   const pointerEvents = useCanvasViewPointerEvents({
     canvasRef,
-    contextMenu,
-    spaceActionMenu,
-    closeContextMenu,
     useManualCanvasWheelGestures,
     handleCanvasWheelCapture,
     handleCanvasPointerDownCapture,
@@ -380,22 +359,21 @@ export function WorkspaceCanvasView({
         activateAllSpaces={activateAllSpaces}
         cancelSpaceRename={cancelSpaceRename}
         onOpenSpaceContextMenu={(spaceId, anchor) => {
-          closeContextMenu()
+          ui.closeMenus()
           onOpenSpaceContextMenu?.(spaceId, anchor)
         }}
         usedLabelColors={usedLabelColors}
         activeLabelColorFilter={labelColorFilter}
         onToggleLabelColorFilter={color => {
-          closeContextMenu()
-          closeSpaceActionMenu()
+          ui.closeMenus()
           clearNodeSelection()
           setLabelColorFilter(previous => (previous === color ? null : color))
         }}
         selectedNodeCount={selectedNodeCount}
       />
       <WorkspaceCanvasMenus
-        contextMenu={contextMenu}
-        closeContextMenu={closeContextMenu}
+        nodes={nodes}
+        workspacePath={workspacePath}
         createTerminalNode={createTerminalNode}
         createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
         createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}
@@ -414,9 +392,6 @@ export function WorkspaceCanvasView({
         spaces={spaces}
         magneticSnappingEnabled={magneticSnappingEnabled}
         onToggleMagneticSnapping={onToggleMagneticSnapping}
-        canArrangeAll={canArrangeAll}
-        canArrangeCanvas={canArrangeCanvas}
-        canArrangeActiveSpace={canArrangeActiveSpace}
         arrangeAll={arrangeAll}
         arrangeCanvas={arrangeCanvas}
         arrangeInSpace={arrangeInSpace}
@@ -428,11 +403,7 @@ export function WorkspaceCanvasView({
         isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}
         convertSelectedNoteToTask={convertSelectedNoteToTask}
         setSelectedNodeLabelColorOverride={setSelectedNodeLabelColorOverride}
-        spaceActionMenu={spaceActionMenu}
         availablePathOpeners={availablePathOpeners}
-        activeMenuSpace={activeMenuSpace}
-        canCreateWorktreeForActiveMenuSpace={canCreateWorktreeForActiveMenuSpace}
-        closeSpaceActionMenu={closeSpaceActionMenu}
         setSpaceLabelColor={setSpaceLabelColor}
         openSpaceCreateWorktree={openSpaceCreateWorktree}
         openSpaceArchive={openSpaceArchive}

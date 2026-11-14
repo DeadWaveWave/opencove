@@ -21,6 +21,7 @@ import { useIgnoredPaneClick } from './useIgnoredPaneClick'
 import type { UseWorkspaceCanvasInteractionsParams } from './useInteractions.types'
 import { useWebsiteNodeContextMenuCreation } from './useInteractions.websiteContextMenu'
 import { useWebsiteWindowOpenUrlNodeCreation } from './useWebsiteWindowOpenUrlNodeCreation'
+import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
 
 export function useWorkspaceCanvasInteractions({
   canvasRef,
@@ -36,11 +37,9 @@ export function useWorkspaceCanvasInteractions({
   setNodes,
   setSelectedNodeIds,
   setSelectedSpaceIds,
-  setContextMenu,
   cancelSpaceRename,
   selectedNodeIdsRef,
   selectedSpaceIdsRef,
-  contextMenu,
   workspaceId,
   workspacePath,
   environmentVariables,
@@ -58,6 +57,8 @@ export function useWorkspaceCanvasInteractions({
   createImageNode,
   createWebsiteNode,
 }: UseWorkspaceCanvasInteractionsParams) {
+  const ui = useCanvasUiCommands()
+
   const reactFlowStore = useStoreApi()
   const selectNode = useWorkspaceCanvasSelectNode({
     setNodes,
@@ -98,14 +99,14 @@ export function useWorkspaceCanvasInteractions({
 
   const openSelectionContextMenu = useCallback(
     (x: number, y: number, nodeId?: string) => {
-      setContextMenu({
+      ui.openContextMenu({
         kind: 'selection',
         x,
         y,
         nodeId,
       })
     },
-    [setContextMenu],
+    [ui],
   )
 
   const handleSelectionContextMenu = useCallback(
@@ -175,7 +176,7 @@ export function useWorkspaceCanvasInteractions({
         y: clientPoint.y,
       })
 
-      setContextMenu({
+      ui.openContextMenu({
         kind: 'pane',
         x: clientPoint.x,
         y: clientPoint.y,
@@ -185,7 +186,7 @@ export function useWorkspaceCanvasInteractions({
       })
       cancelSpaceRename()
     },
-    [cancelSpaceRename, queueIgnoreNextPaneClick, reactFlow, resolveCreationAnchor, setContextMenu],
+    [cancelSpaceRename, queueIgnoreNextPaneClick, reactFlow, resolveCreationAnchor, ui],
   )
 
   const {
@@ -205,7 +206,6 @@ export function useWorkspaceCanvasInteractions({
     setNodes,
     setSelectedNodeIds,
     setSelectedSpaceIds,
-    setContextMenu,
   })
 
   const paneDragRef = useRef<{ startX: number; startY: number; didMove: boolean } | null>(null)
@@ -299,7 +299,7 @@ export function useWorkspaceCanvasInteractions({
       }
 
       clearNodeSelection()
-      setContextMenu(null)
+      ui.closeContextMenu()
       cancelSpaceRename()
 
       createNoteNodeAtFlowPosition({
@@ -321,7 +321,7 @@ export function useWorkspaceCanvasInteractions({
       nodesRef,
       onSpacesChange,
       resolveCreationAnchor,
-      setContextMenu,
+      ui,
       setNodes,
       spacesRef,
       standardWindowSizeBucket,
@@ -344,8 +344,6 @@ export function useWorkspaceCanvasInteractions({
     [cancelSpaceRename, clearNodeSelection, ignoreNextPaneClickRef],
   )
   const { createTerminalNode, createTerminalNodeAtFlowPoint } = useWorkspaceCanvasTerminalCreation({
-    contextMenu,
-    setContextMenu,
     workspaceId,
     spacesRef,
     workspacePath,
@@ -363,8 +361,6 @@ export function useWorkspaceCanvasInteractions({
   const { createNoteNodeAtFlowPoint, createWebsiteNodeAtFlowPoint, createNoteNodeFromContextMenu } =
     useWorkspaceCanvasFlowNodeCreation({
       workspaceId,
-      contextMenu,
-      setContextMenu,
       cancelSpaceRename,
       standardWindowSizeBucket,
       createNoteNode,
@@ -379,19 +375,15 @@ export function useWorkspaceCanvasInteractions({
   const createWebsiteNodeFromContextMenu = useWebsiteNodeContextMenuCreation({
     workspaceId,
     browserDefaultMode,
-    contextMenu,
     createWebsiteNode,
     nodesRef,
     onSpacesChange,
-    setContextMenu,
     setNodes,
     spacesRef,
     standardWindowSizeBucket,
     websiteWindowsEnabled,
   })
   const { runQuickCommand, insertQuickPhrase } = useWorkspaceCanvasQuickMenuActions({
-    contextMenu,
-    setContextMenu,
     workspaceId,
     websiteWindowsEnabled,
     standardWindowSizeBucket,

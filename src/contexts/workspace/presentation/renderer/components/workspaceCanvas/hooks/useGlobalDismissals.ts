@@ -1,23 +1,15 @@
 import { useEffect, type RefObject } from 'react'
-import type { ContextMenuState, SpaceActionMenuState } from '../types'
+import { useCanvasUi, useCanvasUiCommands } from '../../../store/canvasStoreContext'
 
-export function useWorkspaceCanvasGlobalDismissals({
-  contextMenu,
-  spaceActionMenu,
-  closeContextMenu,
-  canvasRef,
-  selectedNodeCount,
-  clearNodeSelection,
-}: {
-  contextMenu: ContextMenuState | null
-  spaceActionMenu: SpaceActionMenuState | null
-  closeContextMenu: () => void
-  canvasRef: RefObject<HTMLDivElement | null>
-  selectedNodeCount: number
-  clearNodeSelection: () => void
-}): void {
+/** Closes the canvas menus on a left pointer-down outside them. Mounted by the menus' own leaf. */
+export function useWorkspaceCanvasMenuDismissals(): void {
+  const ui = useCanvasUiCommands()
+  const isAnyMenuOpen = useCanvasUi(
+    state => state.contextMenu !== null || state.spaceActionMenu !== null,
+  )
+
   useEffect(() => {
-    if (contextMenu === null && spaceActionMenu === null) {
+    if (!isAnyMenuOpen) {
       return
     }
 
@@ -30,7 +22,7 @@ export function useWorkspaceCanvasGlobalDismissals({
         return
       }
 
-      closeContextMenu()
+      ui.closeMenus()
     }
 
     window.addEventListener('pointerdown', handleWindowPointerDown, true)
@@ -38,8 +30,18 @@ export function useWorkspaceCanvasGlobalDismissals({
     return () => {
       window.removeEventListener('pointerdown', handleWindowPointerDown, true)
     }
-  }, [closeContextMenu, contextMenu, spaceActionMenu])
+  }, [isAnyMenuOpen, ui])
+}
 
+export function useWorkspaceCanvasGlobalDismissals({
+  canvasRef,
+  selectedNodeCount,
+  clearNodeSelection,
+}: {
+  canvasRef: RefObject<HTMLDivElement | null>
+  selectedNodeCount: number
+  clearNodeSelection: () => void
+}): void {
   useEffect(() => {
     if (selectedNodeCount === 0) {
       return

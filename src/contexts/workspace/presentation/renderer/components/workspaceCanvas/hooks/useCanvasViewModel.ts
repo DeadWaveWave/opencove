@@ -12,15 +12,12 @@ import { useWorkspaceCanvasTaskAgentEdges } from './useTaskAgentEdges'
 import { useWorkspaceCanvasViewportMoveEnd } from './useViewportMoveEnd'
 import { useWorkspaceCanvasSpaceUi } from './useSpaceUi'
 import { resolveWorkspaceMinimapNodeColor } from '../minimap'
-import type { ContextMenuState } from '../types'
 
 export function useWorkspaceCanvasViewModel({
   agentSettings,
   viewportRef,
   onViewportChange,
   flowNodes,
-  contextMenu,
-  setContextMenu,
   cancelSpaceRename,
   workspacePath,
   spacesRef,
@@ -33,8 +30,6 @@ export function useWorkspaceCanvasViewModel({
   viewportRef: MutableRefObject<Viewport>
   onViewportChange: (viewport: Viewport) => void
   flowNodes: Node<TerminalNodeData>[]
-  contextMenu: ContextMenuState | null
-  setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
   cancelSpaceRename: () => void
   workspacePath: string
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
@@ -65,8 +60,6 @@ export function useWorkspaceCanvasViewModel({
   const taskAgentEdges = useWorkspaceCanvasTaskAgentEdges(flowNodes)
 
   const spaceUi = useWorkspaceCanvasSpaceUi({
-    contextMenu,
-    setContextMenu,
     cancelSpaceRename,
     workspacePath,
     spacesRef,

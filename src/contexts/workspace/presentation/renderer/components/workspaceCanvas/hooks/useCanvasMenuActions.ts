@@ -9,7 +9,6 @@ export function useWorkspaceCanvasMenuActions({
   setNodes,
   onRequestPersistFlush,
   onShowMessage,
-  setContextMenu,
   reactFlow,
   spacesRef,
   onSpacesChange,
@@ -27,7 +26,6 @@ export function useWorkspaceCanvasMenuActions({
     typeof useWorkspaceCanvasNoteToTaskConversion
   >[0]['onRequestPersistFlush']
   onShowMessage?: Parameters<typeof useWorkspaceCanvasNoteToTaskConversion>[0]['onShowMessage']
-  setContextMenu: Parameters<typeof useWorkspaceCanvasNoteToTaskConversion>[0]['setContextMenu']
   reactFlow: Parameters<typeof useWorkspaceCanvasArrange>[0]['reactFlow']
   spacesRef: Parameters<typeof useWorkspaceCanvasArrange>[0]['spacesRef']
   onSpacesChange: Parameters<typeof useWorkspaceCanvasArrange>[0]['onSpacesChange']
@@ -47,7 +45,6 @@ export function useWorkspaceCanvasMenuActions({
     onSpacesChange,
     onRequestPersistFlush,
     onShowMessage,
-    setContextMenu,
     standardWindowSizeBucket,
   })
 

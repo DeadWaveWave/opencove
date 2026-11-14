@@ -10,7 +10,6 @@ import type {
   WorkspaceSpaceState,
 } from '../../../types'
 import type {
-  ContextMenuState,
   CreateNodeInput,
   NodeCreationPlacementOptions,
   SelectionDraftState,
@@ -41,11 +40,9 @@ export interface UseWorkspaceCanvasInteractionsParams {
   setNodes: SetNodes
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
   setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
-  setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
   cancelSpaceRename: () => void
   selectedNodeIdsRef: React.MutableRefObject<string[]>
   selectedSpaceIdsRef: React.MutableRefObject<string[]>
-  contextMenu: ContextMenuState | null
   workspaceId: string
   workspacePath: string
   environmentVariables?: Record<string, string>

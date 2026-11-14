@@ -1,10 +1,10 @@
-import React, { useRef, useState } from 'react'
+import React, { useRef } from 'react'
 import { render, waitFor } from '@testing-library/react'
 import { ReactFlowProvider, type Node, type ReactFlowInstance } from '@xyflow/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
-import type { ContextMenuState } from '../types'
 import { useWorkspaceCanvasSpaces } from './useSpaces'
+import { CanvasStoreTestProvider } from '../../../../../../../../tests/support/canvasStoreTestHarness'
 
 const NODE: Node<TerminalNodeData> = {
   id: 'node-1',
@@ -46,7 +46,7 @@ const ACTIVE_SPACE: WorkspaceSpaceState = {
   },
 }
 
-function TestHarness({
+function TestHarnessBody({
   activeSpaceId,
   spaces,
   reactFlow,
@@ -58,7 +58,6 @@ function TestHarness({
   const nodesRef = useRef([NODE])
   const spacesRef = useRef(spaces)
   const selectedNodeIdsRef = useRef<string[]>([])
-  const [, setContextMenu] = useState<ContextMenuState | null>(null)
 
   useWorkspaceCanvasSpaces({
     workspaceId: 'workspace-1',
@@ -76,10 +75,17 @@ function TestHarness({
     selectedNodeIds: [],
     selectedNodeIdsRef,
     onSpacesChange: vi.fn(),
-    setContextMenu,
   })
 
   return <div />
+}
+
+function TestHarness(props: React.ComponentProps<typeof TestHarnessBody>): React.JSX.Element {
+  return (
+    <CanvasStoreTestProvider>
+      <TestHarnessBody {...props} />
+    </CanvasStoreTestProvider>
+  )
 }
 
 describe('useWorkspaceCanvasSpaces', () => {

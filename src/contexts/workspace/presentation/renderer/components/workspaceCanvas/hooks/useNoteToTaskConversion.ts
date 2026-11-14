@@ -4,8 +4,9 @@ import { useTranslation } from '@app/renderer/i18n'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { resolveDefaultTaskWindowSize } from '../constants'
-import type { ContextMenuState, ShowWorkspaceCanvasMessage } from '../types'
+import type { ShowWorkspaceCanvasMessage } from '../types'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
+import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -35,7 +36,6 @@ export function useWorkspaceCanvasNoteToTaskConversion({
   onSpacesChange,
   onRequestPersistFlush,
   onShowMessage,
-  setContextMenu,
   standardWindowSizeBucket,
 }: {
   selectedNodeIds: string[]
@@ -47,7 +47,6 @@ export function useWorkspaceCanvasNoteToTaskConversion({
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
-  setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
   standardWindowSizeBucket: StandardWindowSizeBucket
 }): {
   canConvertSelectedNoteToTask: boolean
@@ -55,6 +54,8 @@ export function useWorkspaceCanvasNoteToTaskConversion({
   convertSelectedNoteToTask: () => void
   convertNoteToTask: (nodeId: string) => boolean
 } {
+  const ui = useCanvasUiCommands()
+
   const { t } = useTranslation()
   const selectedNoteMeta = useMemo(() => {
     if (selectedNodeIds.length !== 1) {
@@ -182,13 +183,13 @@ export function useWorkspaceCanvasNoteToTaskConversion({
   const convertSelectedNoteToTask = useCallback(() => {
     const selectedIds = selectedNodeIdsRef.current
     if (selectedIds.length !== 1) {
-      setContextMenu(null)
+      ui.closeContextMenu()
       return
     }
 
     convertNoteToTask(selectedIds[0])
-    setContextMenu(null)
-  }, [convertNoteToTask, selectedNodeIdsRef, setContextMenu])
+    ui.closeContextMenu()
+  }, [convertNoteToTask, selectedNodeIdsRef, ui])
 
   return {
     canConvertSelectedNoteToTask: selectedNoteMeta.canConvert,

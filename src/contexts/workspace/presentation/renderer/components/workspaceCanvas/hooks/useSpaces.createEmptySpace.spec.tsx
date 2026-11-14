@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { MountDto } from '@shared/contracts/dto'
 import type { WorkspaceSpaceState } from '../../../types'
 import { useCreateEmptySpace } from './useSpaces.createEmptySpace'
+import { CanvasStoreTestProvider } from '../../../../../../../../tests/support/canvasStoreTestHarness'
 
 vi.mock('@app/renderer/i18n', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -33,7 +34,6 @@ function setup(invoke = vi.fn().mockResolvedValue({ mounts: [remoteMount] })) {
     spacesRef,
     onSpacesChange: vi.fn(),
     onRequestPersistFlush: vi.fn(),
-    setContextMenu: vi.fn(),
     setSpaceTargetMountPicker: vi.fn(),
     cancelSpaceRename: vi.fn(),
     onShowMessage: vi.fn(),
@@ -51,7 +51,9 @@ describe('new empty Space location', () => {
           mounts: [{ ...remoteMount, endpointId }],
         }),
       )
-      const { result } = renderHook(() => useCreateEmptySpace(options))
+      const { result } = renderHook(() => useCreateEmptySpace(options), {
+        wrapper: CanvasStoreTestProvider,
+      })
       let id: string | null = null
       await act(async () => {
         id = await result.current({ x: 300, y: 300 })
@@ -81,7 +83,9 @@ describe('new empty Space location', () => {
           ? vi.fn().mockRejectedValue(new Error('disconnected'))
           : vi.fn().mockResolvedValue({ mounts })
       const { options, spacesRef } = setup(invoke)
-      const { result } = renderHook(() => useCreateEmptySpace(options))
+      const { result } = renderHook(() => useCreateEmptySpace(options), {
+        wrapper: CanvasStoreTestProvider,
+      })
       await act(async () => {
         expect(await result.current({ x: 0, y: 0 })).toBeNull()
       })
@@ -99,6 +103,7 @@ describe('new empty Space location', () => {
     const { options, spacesRef } = setup(vi.fn().mockReturnValue(pending))
     const { result, rerender, unmount } = renderHook(props => useCreateEmptySpace(props), {
       initialProps: options,
+      wrapper: CanvasStoreTestProvider,
     })
     const creation = result.current({ x: 0, y: 0 })
     if (transition === 'unmount') {

@@ -4,7 +4,8 @@ import { useTranslation } from '@app/renderer/i18n'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
 import type { TaskPriority, TerminalNodeData } from '../../../types'
 import { normalizeTaskTagSelection, toErrorMessage } from '../helpers'
-import type { ContextMenuState, TaskEditorState } from '../types'
+import type { TaskEditorState } from '../types'
+import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
 
 interface UseTaskEditorParams {
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
@@ -13,7 +14,6 @@ interface UseTaskEditorParams {
     options?: { syncLayout?: boolean },
   ) => void
   onRequestPersistFlush?: () => void
-  setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
   suggestTaskTitle: (
     requirement: string,
   ) => Promise<{ title: string; priority: TaskPriority; tags: string[] }>
@@ -25,7 +25,6 @@ export function useWorkspaceCanvasTaskEditor({
   nodesRef,
   setNodes,
   onRequestPersistFlush,
-  setContextMenu,
   suggestTaskTitle,
   taskTagOptions,
   openTaskEditorRef,
@@ -36,6 +35,8 @@ export function useWorkspaceCanvasTaskEditor({
   generateTaskEditorTitle: () => Promise<void>
   saveTaskEdits: () => Promise<void>
 } {
+  const ui = useCanvasUiCommands()
+
   const { t } = useTranslation()
   const [taskEditor, setTaskEditor] = useState<TaskEditorState | null>(null)
   const isTaskAiNamingEnabled = AI_NAMING_FEATURES.taskTitleGeneration
@@ -72,9 +73,9 @@ export function useWorkspaceCanvasTaskEditor({
         error: null,
       })
 
-      setContextMenu(null)
+      ui.closeContextMenu()
     },
-    [isTaskAiNamingEnabled, nodesRef, setContextMenu],
+    [isTaskAiNamingEnabled, nodesRef, ui],
   )
 
   const generateTaskEditorTitle = useCallback(async () => {

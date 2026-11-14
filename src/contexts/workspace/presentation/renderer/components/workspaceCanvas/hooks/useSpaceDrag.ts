@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useStoreApi, type Node, type ReactFlowInstance } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import type { WorkspaceSnapGuide } from '../../../utils/workspaceSnap'
-import type { ContextMenuState, SpaceDragState } from '../types'
+import type { SpaceDragState } from '../types'
 import {
   resolveInteractiveSpaceFrameHandle,
   type SpaceFrameHandle,
@@ -17,6 +17,7 @@ import {
 import { createSpaceDragState } from './useSpaceDrag.startState'
 import { setSortedSelectedSpaceIds } from './useSelectionDraft.helpers'
 import { useCanvasCollapseStore } from '../../../store/useCanvasCollapseStore'
+import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
 
 interface UseSpaceDragParams {
   workspaceId: string
@@ -35,7 +36,6 @@ interface UseSpaceDragParams {
   magneticSnappingEnabledRef: React.MutableRefObject<boolean>
   setSnapGuides: React.Dispatch<React.SetStateAction<WorkspaceSnapGuide[] | null>>
   onRequestPersistFlush?: () => void
-  setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
   cancelSpaceRename: () => void
 }
 
@@ -53,7 +53,6 @@ export function useWorkspaceCanvasSpaceDrag({
   magneticSnappingEnabledRef,
   setSnapGuides,
   onRequestPersistFlush,
-  setContextMenu,
   cancelSpaceRename,
 }: UseSpaceDragParams): {
   spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
@@ -63,6 +62,8 @@ export function useWorkspaceCanvasSpaceDrag({
     options?: { mode?: 'auto' | 'region' },
   ) => void
 } {
+  const ui = useCanvasUiCommands()
+
   const reactFlowStore = useStoreApi()
   const [spaceFramePreview, setSpaceFramePreview] = useState<ReadonlyMap<
     string,
@@ -462,7 +463,7 @@ export function useWorkspaceCanvasSpaceDrag({
         useCanvasCollapseStore.getState().workspaces[workspaceId]
       spaceDragSawPointerMoveRef.current = false
       setSpaceFramePreview(new Map([[spaceId, targetSpace.rect]]))
-      setContextMenu(null)
+      ui.closeContextMenu()
       cancelSpaceRename()
       setSnapGuides(null)
     },
@@ -473,7 +474,7 @@ export function useWorkspaceCanvasSpaceDrag({
       reactFlow,
       selectedNodeIdsRef,
       selectedSpaceIdsRef,
-      setContextMenu,
+      ui,
       setSnapGuides,
       spacesRef,
       workspaceId,

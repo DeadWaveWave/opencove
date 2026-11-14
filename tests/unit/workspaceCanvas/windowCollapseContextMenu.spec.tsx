@@ -1,25 +1,29 @@
-import React, { useState } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import React from 'react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { TerminalNodeData } from '@contexts/workspace/presentation/renderer/types'
-import type { ContextMenuState } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
 import { WindowCollapsePresentation } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/collapse/WindowCollapsePresentation'
 import { WindowCollapseButton } from '@contexts/workspace/presentation/renderer/components/shared/WindowCollapseButton'
 import { WindowNodeContextMenuProvider } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WindowNodeContextMenuContext'
 import { WorkspaceContextSelectionMenuContent } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WorkspaceContextMenuSelectionParts'
 import { WorkspaceCollapseContext } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/collapse/WorkspaceCollapseContext'
+import {
+  useCanvasUi,
+  useCanvasUiCommands,
+} from '@contexts/workspace/presentation/renderer/store/canvasStoreContext'
+import { renderWithCanvasStore } from '../../support/canvasStoreTestHarness'
 
 describe('collapsed node context menu', () => {
   function setup(dirty = false) {
     const onClose = vi.fn()
     const onSelect = vi.fn()
     const toggleNode = vi.fn()
-    const closeOtherMenus = vi.fn()
     const createSpace = vi.fn()
     function Canvas() {
-      const [menu, setMenu] = useState<ContextMenuState | null>(null)
+      const menu = useCanvasUi(ui => ui.contextMenu)
+      const ui = useCanvasUiCommands()
       return (
-        <WindowNodeContextMenuProvider setContextMenu={setMenu} closeOtherMenus={closeOtherMenus}>
+        <WindowNodeContextMenuProvider>
           <WorkspaceCollapseContext
             value={{
               workspaceId: 'workspace',
@@ -61,7 +65,7 @@ describe('collapsed node context menu', () => {
                   isConvertSelectedNoteToTaskDisabled={false}
                   convertSelectedNoteToTask={vi.fn()}
                   clearNodeSelection={vi.fn()}
-                  closeContextMenu={() => setMenu(null)}
+                  closeContextMenu={ui.closeContextMenu}
                   closeWindow={menu.closeWindow}
                 />
               </div>
@@ -70,16 +74,17 @@ describe('collapsed node context menu', () => {
         </WindowNodeContextMenuProvider>
       )
     }
-    const view = render(<Canvas />)
-    return { ...view, onClose, onSelect, toggleNode, closeOtherMenus, createSpace }
+    const view = renderWithCanvasStore(<Canvas />)
+    return { ...view, onClose, onSelect, toggleNode, createSpace }
   }
 
   it('opens the shared node menu without expanding or remounting its runtime, then exits through its owner', () => {
-    const { container, onClose, onSelect, toggleNode, closeOtherMenus } = setup()
+    const { container, onClose, onSelect, toggleNode, commands, readUi } = setup()
+    act(() => commands.openSpaceActionMenu({ spaceId: 'space', x: 1, y: 2 }))
     const editor = container.querySelector('textarea')
     fireEvent.contextMenu(screen.getByTestId('node-expand'), { clientX: 40, clientY: 60 })
     expect(onSelect).toHaveBeenCalledOnce()
-    expect(closeOtherMenus).toHaveBeenCalledOnce()
+    expect(readUi().spaceActionMenu).toBeNull()
     expect(screen.getByTestId('workspace-selection-create-space')).toBeVisible()
     expect(screen.getByTestId('workspace-selection-convert-note-to-task')).toBeVisible()
     expect(screen.getByTestId('workspace-selection-label-color')).toBeVisible()

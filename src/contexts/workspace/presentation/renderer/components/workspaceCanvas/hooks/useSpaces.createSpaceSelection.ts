@@ -3,11 +3,8 @@ import type { ListMountsResult } from '@shared/contracts/dto'
 import type { Node, ReactFlowInstance } from '@xyflow/react'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import type { TerminalNodeData, WorkspaceSpaceRect } from '../../../types'
-import type {
-  ContextMenuState,
-  ShowWorkspaceCanvasMessage,
-  SpaceTargetMountPickerState,
-} from '../types'
+import type { ShowWorkspaceCanvasMessage, SpaceTargetMountPickerState } from '../types'
+import type { CanvasUiCommands } from '../../../store/canvasStore.ui'
 
 type CreateSpacePayload = {
   nodeIds: string[]
@@ -26,7 +23,7 @@ export function createSpaceFromSelectedNodesWithMounts({
   workspaceId,
   workspacePath,
   createSpace,
-  setContextMenu,
+  ui,
   setSpaceTargetMountPicker,
   cancelSpaceRename,
   onShowMessage,
@@ -37,7 +34,7 @@ export function createSpaceFromSelectedNodesWithMounts({
   workspaceId: string
   workspacePath: string
   createSpace: (payload: CreateSpacePayload) => void
-  setContextMenu: Dispatch<SetStateAction<ContextMenuState | null>>
+  ui: CanvasUiCommands
   setSpaceTargetMountPicker: Dispatch<SetStateAction<SpaceTargetMountPickerState | null>>
   cancelSpaceRename: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
@@ -96,7 +93,7 @@ export function createSpaceFromSelectedNodesWithMounts({
 
         if (mountResult.mounts.length === 0) {
           onShowMessage?.(t('messages.projectHasNoMounts'), 'warning')
-          setContextMenu(null)
+          ui.closeContextMenu()
           cancelSpaceRename()
           return
         }
@@ -134,12 +131,12 @@ export function createSpaceFromSelectedNodesWithMounts({
             })
           })(),
         })
-        setContextMenu(null)
+        ui.closeContextMenu()
         cancelSpaceRename()
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         onShowMessage?.(t('messages.mountListFailed', { message }), 'error')
-        setContextMenu(null)
+        ui.closeContextMenu()
         cancelSpaceRename()
       }
     })()
@@ -160,7 +157,7 @@ export function createSpaceFromSelectedNodesWithMounts({
 
     attemptsRemaining -= 1
     if (attemptsRemaining <= 0) {
-      setContextMenu(null)
+      ui.closeContextMenu()
       return
     }
 

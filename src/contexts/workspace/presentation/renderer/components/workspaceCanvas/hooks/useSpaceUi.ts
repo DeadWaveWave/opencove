@@ -1,16 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react'
+import { useCallback, useRef, useState, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/contracts/dto'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
-import type {
-  ContextMenuState,
-  SpaceWorktreeOperationPhase,
-  SpaceWorktreeOperationState,
-} from '../types'
+import type { SpaceWorktreeOperationPhase, SpaceWorktreeOperationState } from '../types'
+import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
 
 export function useWorkspaceCanvasSpaceUi({
-  contextMenu,
-  setContextMenu,
   cancelSpaceRename,
   workspacePath,
   spacesRef,
@@ -19,8 +14,6 @@ export function useWorkspaceCanvasSpaceUi({
   handleNodeContextMenu,
   handleSelectionContextMenu,
 }: {
-  contextMenu: ContextMenuState | null
-  setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
   cancelSpaceRename: () => void
   workspacePath: string
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
@@ -32,17 +25,14 @@ export function useWorkspaceCanvasSpaceUi({
     selectedNodes: Node<TerminalNodeData>[],
   ) => void
 }): {
-  spaceActionMenu: { spaceId: string; x: number; y: number } | null
   spaceWorktreeOperations: SpaceWorktreeOperationState[]
   availablePathOpeners: WorkspacePathOpener[]
   onCanvasClick: () => void
-  closeContextMenu: () => void
   onPaneClick: (event: React.MouseEvent | MouseEvent) => void
   onPaneContextMenu: (event: React.MouseEvent | MouseEvent) => void
   onNodeContextMenu: (event: React.MouseEvent, node: Node<TerminalNodeData>) => void
   onSelectionContextMenu: (event: React.MouseEvent, selectedNodes: Node<TerminalNodeData>[]) => void
   openSpaceActionMenu: (spaceId: string, anchor: { x: number; y: number }) => void
-  closeSpaceActionMenu: () => void
   copySpacePath: (spaceId: string) => Promise<void>
   openSpacePath: (spaceId: string, openerId: WorkspacePathOpenerId) => Promise<void>
   openSpaceCreateWorktree: (spaceId: string, anchor: { x: number; y: number }) => void
@@ -50,22 +40,12 @@ export function useWorkspaceCanvasSpaceUi({
   closeSpaceWorktree: (operationId: string) => void
   setSpaceWorktreeOperationPhase: (operationId: string, phase: SpaceWorktreeOperationPhase) => void
 } {
-  const [spaceActionMenu, setSpaceActionMenu] = useState<{
-    spaceId: string
-    x: number
-    y: number
-  } | null>(null)
+  const ui = useCanvasUiCommands()
   const [spaceWorktreeOperations, setSpaceWorktreeOperations] = useState<
     SpaceWorktreeOperationState[]
   >([])
   const nextSpaceWorktreeOperationIdRef = useRef(0)
   const [availablePathOpeners, setAvailablePathOpeners] = useState<WorkspacePathOpener[]>([])
-
-  useEffect(() => {
-    if (contextMenu) {
-      setSpaceActionMenu(null)
-    }
-  }, [contextMenu])
 
   const resolveSpacePath = useCallback(
     (spaceId: string): string => {
@@ -81,45 +61,40 @@ export function useWorkspaceCanvasSpaceUi({
   )
 
   const onCanvasClick = useCallback(() => {
-    setSpaceActionMenu(null)
+    ui.closeSpaceActionMenu()
     cancelSpaceRename()
-  }, [cancelSpaceRename])
-
-  const closeContextMenu = useCallback(() => {
-    setContextMenu(null)
-    setSpaceActionMenu(null)
-  }, [setContextMenu])
+  }, [cancelSpaceRename, ui])
 
   const onPaneClick = useCallback(
     (event: React.MouseEvent | MouseEvent) => {
-      setSpaceActionMenu(null)
+      ui.closeSpaceActionMenu()
       handlePaneClick(event)
     },
-    [handlePaneClick],
+    [handlePaneClick, ui],
   )
 
   const onPaneContextMenu = useCallback(
     (event: React.MouseEvent | MouseEvent) => {
-      setSpaceActionMenu(null)
+      ui.closeSpaceActionMenu()
       handlePaneContextMenu(event)
     },
-    [handlePaneContextMenu],
+    [handlePaneContextMenu, ui],
   )
 
   const onNodeContextMenu = useCallback(
     (event: React.MouseEvent, node: Node<TerminalNodeData>) => {
-      setSpaceActionMenu(null)
+      ui.closeSpaceActionMenu()
       handleNodeContextMenu(event, node)
     },
-    [handleNodeContextMenu],
+    [handleNodeContextMenu, ui],
   )
 
   const onSelectionContextMenu = useCallback(
     (event: React.MouseEvent, selectedNodes: Node<TerminalNodeData>[]) => {
-      setSpaceActionMenu(null)
+      ui.closeSpaceActionMenu()
       handleSelectionContextMenu(event, selectedNodes)
     },
-    [handleSelectionContextMenu],
+    [handleSelectionContextMenu, ui],
   )
 
   const openSpaceActionMenu = useCallback(
@@ -137,15 +112,10 @@ export function useWorkspaceCanvasSpaceUi({
         setAvailablePathOpeners([])
       }
 
-      setContextMenu(null)
-      setSpaceActionMenu({ spaceId, x: anchor.x, y: anchor.y })
+      ui.openSpaceActionMenu({ spaceId, x: anchor.x, y: anchor.y })
     },
-    [setContextMenu],
+    [ui],
   )
-
-  const closeSpaceActionMenu = useCallback(() => {
-    setSpaceActionMenu(null)
-  }, [])
 
   const copySpacePath = useCallback(
     async (spaceId: string) => {
@@ -188,7 +158,7 @@ export function useWorkspaceCanvasSpaceUi({
       initialViewMode: SpaceWorktreeOperationState['initialViewMode'],
       anchor: { x: number; y: number },
     ) => {
-      setSpaceActionMenu(null)
+      ui.closeSpaceActionMenu()
       const operationId = `space-worktree-${nextSpaceWorktreeOperationIdRef.current}`
       nextSpaceWorktreeOperationIdRef.current += 1
       setSpaceWorktreeOperations(previous => [
@@ -202,7 +172,7 @@ export function useWorkspaceCanvasSpaceUi({
         },
       ])
     },
-    [],
+    [ui],
   )
 
   const openSpaceCreateWorktree = useCallback(
@@ -237,17 +207,14 @@ export function useWorkspaceCanvasSpaceUi({
   )
 
   return {
-    spaceActionMenu,
     spaceWorktreeOperations,
     availablePathOpeners,
     onCanvasClick,
-    closeContextMenu,
     onPaneClick,
     onPaneContextMenu,
     onNodeContextMenu,
     onSelectionContextMenu,
     openSpaceActionMenu,
-    closeSpaceActionMenu,
     copySpacePath,
     openSpacePath,
     openSpaceCreateWorktree,

@@ -17,8 +17,6 @@ export function useWorkspaceCanvasTaskUi({
   onRequestPersistFlush,
   actionRefs,
   terminalDisplayMetrics,
-  contextMenu,
-  setContextMenu,
   standardWindowSizeBucket,
   createTaskNode,
   closeNode,
@@ -43,8 +41,6 @@ export function useWorkspaceCanvasTaskUi({
   >[0]['terminalDisplayMetrics']
   actionRefs: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['actionRefs'] &
     Parameters<typeof useWorkspaceCanvasTaskWindows>[0]['actionRefs']
-  contextMenu: Parameters<typeof useWorkspaceCanvasTaskWindows>[0]['contextMenu']
-  setContextMenu: Parameters<typeof useWorkspaceCanvasTaskWindows>[0]['setContextMenu']
   standardWindowSizeBucket: Parameters<
     typeof useWorkspaceCanvasTaskWindows
   >[0]['standardWindowSizeBucket']
@@ -73,8 +69,6 @@ export function useWorkspaceCanvasTaskUi({
   const taskWindows = useWorkspaceCanvasTaskWindows({
     workspaceId,
     taskTagOptions,
-    contextMenu,
-    setContextMenu,
     nodesRef,
     setNodes,
     spacesRef,

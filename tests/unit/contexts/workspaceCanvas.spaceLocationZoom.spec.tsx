@@ -6,6 +6,7 @@ import type {
   TerminalNodeData,
   WorkspaceSpaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
+import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 import { useWorkspaceCanvasArrange } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useArrange'
 import { useWorkspaceCanvasSpaces } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaces'
 
@@ -92,8 +93,6 @@ describe('workspace canvas space location zoom', () => {
     )
 
     function Harness(): React.JSX.Element {
-      const [, setContextMenu] = React.useState<unknown>(null)
-
       const { focusSpaceInViewport } = useWorkspaceCanvasSpaces({
         workspaceId: 'workspace-1',
         activeSpaceId: null,
@@ -109,7 +108,6 @@ describe('workspace canvas space location zoom', () => {
         selectedNodeIds: [],
         selectedNodeIdsRef: { current: [] },
         onSpacesChange: () => undefined,
-        setContextMenu: setContextMenu as never,
       })
 
       return (
@@ -123,7 +121,11 @@ describe('workspace canvas space location zoom', () => {
       )
     }
 
-    render(<Harness />)
+    render(
+      <CanvasStoreTestProvider>
+        <Harness />
+      </CanvasStoreTestProvider>,
+    )
 
     fireEvent.click(screen.getByTestId('focus-space'))
 

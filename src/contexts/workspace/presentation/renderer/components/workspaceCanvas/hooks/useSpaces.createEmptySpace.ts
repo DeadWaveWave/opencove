@@ -9,6 +9,7 @@ import {
 } from '@contexts/workspace/domain/workspaceBootstrap'
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
 import { resolveSpaceMountLaunchContext } from './spaceMountLaunchContext'
+import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
 
 type Options = Pick<
   Parameters<typeof useWorkspaceCanvasCreateSpace>[0],
@@ -19,7 +20,6 @@ type Options = Pick<
   | 'spacesRef'
   | 'onSpacesChange'
   | 'onRequestPersistFlush'
-  | 'setContextMenu'
   | 'setSpaceTargetMountPicker'
   | 'cancelSpaceRename'
   | 'onShowMessage'
@@ -33,12 +33,13 @@ export function useCreateEmptySpace({
   spacesRef,
   onSpacesChange,
   onRequestPersistFlush,
-  setContextMenu,
   setSpaceTargetMountPicker,
   cancelSpaceRename,
   onShowMessage,
   resolveDefaultSpaceName,
 }: Options) {
+  const ui = useCanvasUiCommands()
+
   const { t } = useTranslation()
   const lifetime = useMemo(
     () => ({ workspaceId, workspacePath, active: true }),
@@ -101,7 +102,7 @@ export function useCreateEmptySpace({
 
       if (resolved.canPlace !== true) {
         onShowMessage?.(t('messages.noWindowSlotNearby'), 'warning')
-        setContextMenu(null)
+        ui.closeContextMenu()
         cancelSpaceRename()
         return null
       }
@@ -125,7 +126,7 @@ export function useCreateEmptySpace({
       spacesRef.current = nextSpaces
       onSpacesChange(nextSpaces)
       onRequestPersistFlush?.()
-      setContextMenu(null)
+      ui.closeContextMenu()
       setSpaceTargetMountPicker(null)
       cancelSpaceRename()
       return nextSpaceId
@@ -138,7 +139,7 @@ export function useCreateEmptySpace({
       onShowMessage,
       onSpacesChange,
       resolveDefaultSpaceName,
-      setContextMenu,
+      ui,
       setSpaceTargetMountPicker,
       spacesRef,
       standardWindowSizeBucket,

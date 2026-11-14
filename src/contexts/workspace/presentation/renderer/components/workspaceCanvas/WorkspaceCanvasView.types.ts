@@ -17,10 +17,8 @@ import type { WorkspaceArrangeStyle } from '../../utils/workspaceArrange'
 import type { WorkspaceSnapGuide } from '../../utils/workspaceSnap'
 import type { SpaceExplorerOpenDocumentBlock } from './hooks/useSpaceExplorer.guards'
 import type {
-  ContextMenuState,
   NodeDeleteConfirmationState,
   SelectionDraftState,
-  SpaceActionMenuState,
   SpaceVisual,
   SpaceWorktreeMismatchDropWarningState,
   SpaceTargetMountPickerState,
@@ -139,8 +137,6 @@ export interface WorkspaceCanvasViewProps {
   activateSpace: (spaceId: string) => void
   activateAllSpaces: () => void
   onOpenSpaceContextMenu?: (spaceId: string, anchor: { x: number; y: number }) => void
-  contextMenu: ContextMenuState | null
-  closeContextMenu: () => void
   magneticSnappingEnabled: boolean
   onToggleMagneticSnapping: () => void
   createTerminalNode: () => Promise<void>
@@ -205,10 +201,8 @@ export interface WorkspaceCanvasViewProps {
   agentSettings: WorkspaceCanvasProps['agentSettings']
   onChangePreserveWindowSizesOnArrange: WorkspaceCanvasProps['onChangePreserveWindowSizesOnArrange']
   workspacePath: string
-  spaceActionMenu: SpaceActionMenuState | null
   availablePathOpeners: WorkspacePathOpener[]
   openSpaceActionMenu: (spaceId: string, anchor: { x: number; y: number }) => void
-  closeSpaceActionMenu: () => void
   copySpacePath: (spaceId: string) => Promise<void> | void
   openSpacePath: (spaceId: string, openerId: WorkspacePathOpenerId) => Promise<void> | void
   spaceWorktreeOperations: SpaceWorktreeOperationState[]

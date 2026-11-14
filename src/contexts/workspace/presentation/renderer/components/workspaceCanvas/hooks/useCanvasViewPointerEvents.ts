@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import type { WorkspaceCanvasViewProps } from '../WorkspaceCanvasView.types'
+import { useCanvasUiCommands, useReadCanvasUi } from '../../../store/canvasStoreContext'
 import { shouldFocusCanvasForPointerTarget } from '../domTargets'
 
 const WHEEL_BLOCK_SELECTOR =
@@ -8,9 +9,6 @@ const WHEEL_BLOCK_SELECTOR =
 type CanvasViewPointerEventParams = Pick<
   WorkspaceCanvasViewProps,
   | 'canvasRef'
-  | 'contextMenu'
-  | 'spaceActionMenu'
-  | 'closeContextMenu'
   | 'useManualCanvasWheelGestures'
   | 'handleCanvasWheelCapture'
   | 'handleCanvasPointerDownCapture'
@@ -24,15 +22,15 @@ function isActionBarTarget(target: EventTarget | null): boolean {
 
 export function useCanvasViewPointerEvents({
   canvasRef,
-  contextMenu,
-  spaceActionMenu,
-  closeContextMenu,
   useManualCanvasWheelGestures,
   handleCanvasWheelCapture,
   handleCanvasPointerDownCapture,
   handleCanvasPointerMoveCapture,
   handleCanvasPointerUpCapture,
 }: CanvasViewPointerEventParams) {
+  const ui = useCanvasUiCommands()
+  const readUi = useReadCanvasUi()
+
   useEffect(() => {
     if (!useManualCanvasWheelGestures) {
       return
@@ -65,17 +63,18 @@ export function useCanvasViewPointerEvents({
       if (event.button === 0 && shouldFocusCanvasForPointerTarget(event.target)) {
         canvasRef.current?.focus?.({ preventScroll: true })
       }
+      const { contextMenu, spaceActionMenu } = readUi()
       if (
         event.button === 0 &&
         (contextMenu !== null || spaceActionMenu !== null) &&
         event.target instanceof Element &&
         !event.target.closest('.workspace-context-menu')
       ) {
-        closeContextMenu()
+        ui.closeMenus()
       }
       handleCanvasPointerDownCapture(event)
     },
-    [canvasRef, closeContextMenu, contextMenu, handleCanvasPointerDownCapture, spaceActionMenu],
+    [canvasRef, handleCanvasPointerDownCapture, readUi, ui],
   )
 
   const onPointerMoveCapture = useCallback<React.PointerEventHandler<HTMLDivElement>>(

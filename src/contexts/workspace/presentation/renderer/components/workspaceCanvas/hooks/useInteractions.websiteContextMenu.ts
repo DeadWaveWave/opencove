@@ -1,16 +1,15 @@
 import { useCallback } from 'react'
 import { createWebsiteNodeFromPaneContextMenu } from './useInteractions.paneNodeCreation'
 import type { UseWorkspaceCanvasInteractionsParams } from './useInteractions.types'
+import { useCanvasUiCommands, useReadCanvasUi } from '../../../store/canvasStoreContext'
 
 type WebsiteContextMenuParams = Pick<
   UseWorkspaceCanvasInteractionsParams,
   | 'workspaceId'
   | 'browserDefaultMode'
-  | 'contextMenu'
   | 'createWebsiteNode'
   | 'nodesRef'
   | 'onSpacesChange'
-  | 'setContextMenu'
   | 'setNodes'
   | 'spacesRef'
   | 'standardWindowSizeBucket'
@@ -20,16 +19,17 @@ type WebsiteContextMenuParams = Pick<
 export function useWebsiteNodeContextMenuCreation({
   workspaceId,
   browserDefaultMode,
-  contextMenu,
   createWebsiteNode,
   nodesRef,
   onSpacesChange,
-  setContextMenu,
   setNodes,
   spacesRef,
   standardWindowSizeBucket,
   websiteWindowsEnabled,
 }: WebsiteContextMenuParams): () => void {
+  const ui = useCanvasUiCommands()
+  const readUi = useReadCanvasUi()
+
   return useCallback(() => {
     if (!websiteWindowsEnabled) {
       return
@@ -38,11 +38,11 @@ export function useWebsiteNodeContextMenuCreation({
     createWebsiteNodeFromPaneContextMenu({
       workspaceId,
       browserDefaultMode,
-      contextMenu,
+      contextMenu: readUi().contextMenu,
+      ui,
       createWebsiteNode,
       nodesRef,
       onSpacesChange,
-      setContextMenu,
       setNodes,
       spacesRef,
       standardWindowSizeBucket,
@@ -51,11 +51,11 @@ export function useWebsiteNodeContextMenuCreation({
   }, [
     workspaceId,
     browserDefaultMode,
-    contextMenu,
     createWebsiteNode,
     nodesRef,
     onSpacesChange,
-    setContextMenu,
+    readUi,
+    ui,
     setNodes,
     spacesRef,
     standardWindowSizeBucket,

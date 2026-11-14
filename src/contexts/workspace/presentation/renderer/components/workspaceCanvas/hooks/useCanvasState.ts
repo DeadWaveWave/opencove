@@ -7,11 +7,7 @@ import {
 } from '../../../utils/inputModality'
 import { NODE_DRAG_HANDLE_SELECTOR } from '../../../utils/nodeFrameResize'
 import type { WorkspaceSnapGuide } from '../../../utils/workspaceSnap'
-import type {
-  CanvasWheelGestureSessionState,
-  ContextMenuState,
-  SelectionDraftState,
-} from '../types'
+import type { CanvasWheelGestureSessionState, SelectionDraftState } from '../types'
 import { selectDragSurfaceSelectionMode } from '../../terminalNode/reactFlowState'
 
 type SelectionDraftUiState = Pick<
@@ -67,8 +63,6 @@ export function useWorkspaceCanvasState({
   spaces: WorkspaceSpaceState[]
   viewport: Viewport
 }): {
-  contextMenu: ContextMenuState | null
-  setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
   selectedNodeIds: string[]
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
   syncSelectedNodeIds: (nodeIds: string[]) => void
@@ -105,7 +99,6 @@ export function useWorkspaceCanvasState({
 } {
   const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
   const [canvasNodes, setCanvasNodes] = useState(nodes)
-  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [selectedNodeIds, setSelectedNodeIdsState] = useState<string[]>([])
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([])
   const [selectionDraftUi, setSelectionDraftUi] = useState<SelectionDraftUiState | null>(null)
@@ -218,8 +211,6 @@ export function useWorkspaceCanvasState({
   }, [magneticSnappingEnabled])
 
   return {
-    contextMenu,
-    setContextMenu,
     selectedNodeIds,
     setSelectedNodeIds,
     syncSelectedNodeIds,

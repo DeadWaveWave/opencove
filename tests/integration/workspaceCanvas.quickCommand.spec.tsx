@@ -1,9 +1,10 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import type { Node } from '@xyflow/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import WebSocket from 'ws'
 import type { QuickCommand } from '../../src/contexts/settings/domain/agentSettings'
 import type { TerminalNodeData } from '../../src/contexts/workspace/presentation/renderer/types'
+import { renderHookWithCanvasStore } from '../support/canvasStoreTestHarness'
 import { useWorkspaceCanvasQuickMenuActions } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.quickMenuActions'
 import { useWorkspaceCanvasNodeCreation } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.createNodes'
 import { createRemotePtySessionCoordinator } from '../../src/app/main/controlSurface/remote/remotePtyRuntime.sessionCoordinator'
@@ -88,7 +89,7 @@ function setup() {
   })
   const nodesRef = { current: [] as Node<TerminalNodeData>[] }
   const onShowMessage = vi.fn()
-  const hook = renderHook(
+  const hook = renderHookWithCanvasStore(
     ({ workspaceId }) => {
       const creationOptions = {
         nodesRef,
@@ -104,8 +105,6 @@ function setup() {
       return useWorkspaceCanvasQuickMenuActions({
         ...creationOptions,
         ...creation,
-        contextMenu: { kind: 'pane', x: 100, y: 100, flowX: 100, flowY: 100 },
-        setContextMenu: vi.fn(),
         workspaceId,
         // A detached worktree uses Control Surface spawn, outside the workspace root.
         workspacePath: '/workspace',
@@ -129,7 +128,10 @@ function setup() {
         onSpacesChange: vi.fn(),
       })
     },
-    { initialProps: { workspaceId: 'workspace' } },
+    {
+      initialProps: { workspaceId: 'workspace' },
+      contextMenu: { kind: 'pane', x: 100, y: 100, flowX: 100, flowY: 100 },
+    },
   )
   return { ...hook, coordinator, messages, attach, write, spawn, invoke, nodesRef, onShowMessage }
 }

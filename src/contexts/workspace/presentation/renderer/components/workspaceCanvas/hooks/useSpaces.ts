@@ -5,18 +5,14 @@ import type {
   StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
-import type {
-  ContextMenuState,
-  ShowWorkspaceCanvasMessage,
-  SpaceVisual,
-  SpaceTargetMountPickerState,
-} from '../types'
+import type { ShowWorkspaceCanvasMessage, SpaceVisual, SpaceTargetMountPickerState } from '../types'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { CanvasLod } from '../view/canvasLod'
 import { computeSpaceRectFromNodes } from '../../../utils/spaceLayout'
 import { useWorkspaceCanvasCreateSpace } from './useSpaces.createSpace'
 import { useWorkspaceCanvasCreateChildSpace } from './useSpaces.createChildSpace'
 import { useWorkspaceCanvasSpaceFocus } from './useSpaces.focus'
+import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
 
 interface UseWorkspaceCanvasSpacesParams {
   workspaceId: string
@@ -38,7 +34,6 @@ interface UseWorkspaceCanvasSpacesParams {
   selectedNodeIdsRef: React.MutableRefObject<string[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
-  setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
   onShowMessage?: ShowWorkspaceCanvasMessage
 }
 
@@ -59,7 +54,6 @@ export function useWorkspaceCanvasSpaces({
   selectedNodeIdsRef,
   onSpacesChange,
   onRequestPersistFlush,
-  setContextMenu,
   onShowMessage,
 }: UseWorkspaceCanvasSpacesParams): {
   editingSpaceId: string | null
@@ -89,6 +83,8 @@ export function useWorkspaceCanvasSpaces({
   focusSpaceInViewport: (spaceId: string) => boolean
   focusAllInViewport: () => void
 } {
+  const ui = useCanvasUiCommands()
+
   const [editingSpaceId, setEditingSpaceId] = useState<string | null>(null)
   const [spaceRenameDraft, setSpaceRenameDraft] = useState('')
   const spaceRenameInputRef = useRef<HTMLInputElement>(null)
@@ -189,7 +185,6 @@ export function useWorkspaceCanvasSpaces({
     spacesRef,
     onSpacesChange,
     onRequestPersistFlush,
-    setContextMenu,
     cancelSpaceRename,
     onShowMessage,
   })
@@ -209,7 +204,6 @@ export function useWorkspaceCanvasSpaces({
     selectedNodeIdsRef,
     onSpacesChange,
     onRequestPersistFlush,
-    setContextMenu,
     setSpaceTargetMountPicker,
     cancelSpaceRename,
     onShowMessage,
@@ -227,9 +221,9 @@ export function useWorkspaceCanvasSpaces({
 
       setEditingSpaceId(space.id)
       setSpaceRenameDraft(space.name)
-      setContextMenu(null)
+      ui.closeContextMenu()
     },
-    [setContextMenu, spaces],
+    [ui, spaces],
   )
 
   const commitSpaceRename = useCallback(

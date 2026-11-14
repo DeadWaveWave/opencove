@@ -3,6 +3,7 @@ import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import type { Point, TerminalNodeData } from '../../../types'
 import type { WorkspaceCanvasActionKind } from '../view/WorkspaceCanvasActionBar'
 import { findContainingSpaceByAnchor } from './useInteractions.spaceAssignment'
+import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
 
 export function useWorkspaceCanvasActionBarActions({
   canvasRef,
@@ -105,17 +106,17 @@ export function useWorkspaceCanvasActionBar({
   createWebsiteAtPoint,
   createSpaceAtPoint,
   createPluginAtPoint,
-  setContextMenu,
   cancelSpaceRename,
   spacesRef,
 }: Omit<Parameters<typeof useWorkspaceCanvasActionBarActions>[0], 'clearTransientUi'> & {
-  setContextMenu: (next: null) => void
   cancelSpaceRename: () => void
 }) {
+  const ui = useCanvasUiCommands()
+
   const clearTransientUi = useCallback(() => {
-    setContextMenu(null)
+    ui.closeContextMenu()
     cancelSpaceRename()
-  }, [cancelSpaceRename, setContextMenu])
+  }, [cancelSpaceRename, ui])
 
   return {
     ...useWorkspaceCanvasActionBarActions({

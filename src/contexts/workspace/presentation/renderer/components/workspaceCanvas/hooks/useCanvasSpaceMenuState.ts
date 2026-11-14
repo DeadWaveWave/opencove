@@ -7,22 +7,45 @@ import { resolveWorktreeRepoRootPath } from '@contexts/worktree/presentation/ren
 import { normalizeComparablePath } from '../view/WorkspaceSpaceRegionsOverlay.helpers'
 import { useWorktreeInfoByPath } from '../../../worktreeInfo/useWorktreeInfo'
 
+interface CanvasArrangeFlags {
+  canArrangeAll: boolean
+  canArrangeCanvas: boolean
+  canArrangeActiveSpace: boolean
+}
+
+export const CLOSED_CANVAS_ARRANGE_FLAGS: CanvasArrangeFlags = {
+  canArrangeAll: false,
+  canArrangeCanvas: false,
+  canArrangeActiveSpace: false,
+}
+
+export function resolveCanvasArrangeFlags(
+  nodes: Node<TerminalNodeData>[],
+  spaces: WorkspaceSpaceState[],
+  activeMenuSpace: WorkspaceSpaceState | null,
+): CanvasArrangeFlags {
+  const ownedNodeIdSet = new Set(spaces.flatMap(space => space.nodeIds))
+  const rootNodeCount = nodes.filter(node => !ownedNodeIdSet.has(node.id)).length
+  const hasArrangeableSpace = spaces.some(space => space.nodeIds.length >= 1)
+  const canArrangeCanvas = spaces.length + rootNodeCount >= 2
+  return {
+    canArrangeAll: canArrangeCanvas || hasArrangeableSpace,
+    canArrangeCanvas,
+    canArrangeActiveSpace: Boolean(activeMenuSpace && activeMenuSpace.nodeIds.length >= 1),
+  }
+}
+
 export function useWorkspaceCanvasSpaceMenuState({
   spaceActionMenu,
   spaces,
   workspacePath,
-  nodes,
 }: {
   spaceActionMenu: SpaceActionMenuState | null
   spaces: WorkspaceSpaceState[]
   workspacePath: string
-  nodes: Node<TerminalNodeData>[]
 }): {
   activeMenuSpace: WorkspaceSpaceState | null
   canCreateWorktreeForActiveMenuSpace: boolean
-  canArrangeAll: boolean
-  canArrangeCanvas: boolean
-  canArrangeActiveSpace: boolean
 } {
   const activeMenuSpace = React.useMemo(
     () =>
@@ -82,24 +105,8 @@ export function useWorkspaceCanvasSpaceMenuState({
     [activeMenuSpace, spaces, worktreeRepoRootPath, worktrees],
   )
 
-  const ownedNodeIdSet = React.useMemo(
-    () => new Set(spaces.flatMap(space => space.nodeIds)),
-    [spaces],
-  )
-  const rootNodeCount = React.useMemo(
-    () => nodes.filter(node => !ownedNodeIdSet.has(node.id)).length,
-    [nodes, ownedNodeIdSet],
-  )
-  const hasArrangeableSpace = spaces.some(space => space.nodeIds.length >= 1)
-  const canArrangeCanvas = spaces.length + rootNodeCount >= 2
-  const canArrangeAll = canArrangeCanvas || hasArrangeableSpace
-  const canArrangeActiveSpace = Boolean(activeMenuSpace && activeMenuSpace.nodeIds.length >= 1)
-
   return {
     activeMenuSpace,
     canCreateWorktreeForActiveMenuSpace,
-    canArrangeAll,
-    canArrangeCanvas,
-    canArrangeActiveSpace,
   }
 }
