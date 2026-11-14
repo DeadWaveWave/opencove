@@ -38,19 +38,23 @@ export function createTemporaryDirectory(prefix: string): string {
   return path
 }
 
-// A repository on `main` whose `origin` is a bare repository that already holds the first commit,
-// so `origin/main` is the merge base of every later commit.
-export function createClonedRepository(files: Record<string, string> = {}) {
-  const repo = createGitRepository()
+// Commits everything on `main` and pushes it to a new bare `origin`, so `origin/main` is the
+// merge base of every later commit.
+export function publishToOrigin(repo: string) {
   git(repo, 'checkout', '-q', '-B', 'main')
-  writeRepositoryFile(repo, 'README.md', 'x\n')
-  for (const [path, content] of Object.entries(files)) {
-    writeRepositoryFile(repo, path, content)
-  }
   const first = commitAll(repo, 'base')
   const origin = createTemporaryDirectory('opencove-repo-origin-')
   runGit(['init', '-q', '--bare'], origin)
   git(repo, 'remote', 'add', 'origin', origin)
   git(repo, 'push', '-q', 'origin', 'main')
   return { repo, origin, first }
+}
+
+export function createClonedRepository(files: Record<string, string> = {}) {
+  const repo = createGitRepository()
+  writeRepositoryFile(repo, 'README.md', 'x\n')
+  for (const [path, content] of Object.entries(files)) {
+    writeRepositoryFile(repo, path, content)
+  }
+  return publishToOrigin(repo)
 }

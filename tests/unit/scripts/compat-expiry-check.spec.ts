@@ -2,15 +2,18 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { scanCompatSource } from '../../../scripts/lib/compatMarkers.mjs'
 import { readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
+import { commitAll, git, publishToOrigin, removeFixtureDirectories } from './ratchetRepoFixture'
 import {
   createGitRepository,
   removeTemporaryRepositories,
-  runGit,
   runScript,
   writeRepositoryFile,
 } from './repoFixture'
 
-afterEach(removeTemporaryRepositories)
+afterEach(() => {
+  removeTemporaryRepositories()
+  removeFixtureDirectories()
+})
 
 // Built at runtime so this file does not trip the naming check itself.
 const c = 'cove'
@@ -300,6 +303,7 @@ describe('compat expiry check: unmarked signals ratchet', () => {
     expect(result.stderr).toContain('1 unmarked keyword signal(s), baseline 3')
     expect(result.stderr).toContain('--update-ratchet')
 
+    publishToOrigin(root)
     expect(run(root, '--update-ratchet').status).toBe(0)
     expect(run(root).status).toBe(0)
   })
@@ -469,42 +473,112 @@ describe('compat expiry check: --update-ratchet', () => {
   const readBaseline = (root: string) =>
     JSON.parse(readFileSync(join(root, 'scripts/compat-ratchet.json'), 'utf8'))
 
-  it('refuses to write when a count would rise and leaves the baseline alone', () => {
-    const root = createFixture({ files, baseline: { keyword: { 'src/signal.ts': 1 } } })
+  // The baseline is committed and pushed, so it is the one at the merge base.
+  const publishedFixture = (baseline: unknown) => {
+    const root = createFixture({ files, baseline })
+    publishToOrigin(root)
+    return root
+  }
+
+  it('refuses to write when a total would rise against the merge base and leaves the baseline alone', () => {
+    const root = publishedFixture({ keyword: { 'src/signal.ts': 1 } })
     const result = run(root, '--update-ratchet')
     expect(result.status).toBe(1)
-    expect(result.stderr).toContain('src/signal.ts [keyword]')
-    expect(result.stderr).toContain('Refusing to raise the baseline')
+    expect(result.stderr).toContain('compared with merge base with origin/main (')
+    expect(result.stderr).toContain('keyword: total would rise from 1 to 2.')
+    expect(result.stderr).toContain(
+      '`scripts/compat-ratchet.json` `keyword` 1 -> 2: <category>: <reason>',
+    )
     expect(readBaseline(root)).toEqual({ keyword: { 'src/signal.ts': 1 } })
   })
 
-  it('refuses a signal in a file the baseline does not list', () => {
-    const root = createFixture({ files, baseline: { keyword: {} } })
-    expect(run(root, '--update-ratchet').status).toBe(1)
+  it('writes the rise when its rule is named, printing the section, and refuses an unused name', () => {
+    const root = publishedFixture({ keyword: { 'src/signal.ts': 1 } })
+
+    const unused = run(
+      root,
+      '--update-ratchet',
+      '--accept-rise',
+      'keyword',
+      '--accept-rise',
+      'storage-prefix',
+    )
+    expect(unused.status).toBe(1)
+    expect(unused.stderr).toContain(
+      '--accept-rise storage-prefix: this rule neither rises nor retires',
+    )
+    expect(readBaseline(root)).toEqual({ keyword: { 'src/signal.ts': 1 } })
+
+    const accepted = run(root, '--update-ratchet', '--accept-rise', 'keyword')
+    expect(accepted.status).toBe(0)
+    expect(accepted.stdout).toContain('## 📈 Ratchet rises')
+    expect(readBaseline(root).keyword).toEqual({ 'src/signal.ts': 2 })
+  })
+
+  it('accepts a signal in a file the baseline does not list when the total is unchanged', () => {
+    const root = publishedFixture({ keyword: { 'src/elsewhere.ts': 2 } })
+    const result = run(root, '--update-ratchet')
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain('rise: src/signal.ts [keyword] 0 -> 2')
+    expect(readBaseline(root).keyword).toEqual({ 'src/signal.ts': 2 })
   })
 
   it('writes when every count stays the same or goes down', () => {
-    const root = createFixture({ files, baseline: { keyword: { 'src/signal.ts': 5 } } })
+    const root = publishedFixture({ keyword: { 'src/signal.ts': 5 } })
     expect(run(root, '--update-ratchet').status).toBe(0)
     expect(readBaseline(root).keyword).toEqual({ 'src/signal.ts': 2 })
   })
 
-  it('creates a missing baseline only when it never existed in git HEAD', () => {
+  it('needs --accept-rise for every rule above 0 when the baseline is absent at the merge base', () => {
     const root = createFixture({ files })
-    const created = run(root, '--update-ratchet')
-    expect(created.stderr).toBe('')
-    expect(created.status).toBe(0)
-    expect(readBaseline(root).keyword).toEqual({ 'src/signal.ts': 2 })
+    publishToOrigin(root)
 
-    runGit(['add', '-A'], root)
-    runGit(['-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-qm', 'base'], root)
-    rmSync(join(root, 'scripts/compat-ratchet.json'))
     const refused = run(root, '--update-ratchet')
     expect(refused.status).toBe(1)
-    expect(refused.stderr).toContain('exists in git HEAD')
+    expect(refused.stderr).toContain('keyword: total would rise from 0 to 2.')
+    expect(() => readBaseline(root)).toThrow()
 
-    expect(run(root, '--update-ratchet', '--bootstrap').status).toBe(0)
+    const accepted = run(root, '--update-ratchet', '--accept-rise', 'keyword')
+    expect(accepted.status).toBe(0)
     expect(readBaseline(root).keyword).toEqual({ 'src/signal.ts': 2 })
+  })
+
+  it('refuses to regenerate a baseline that was deleted in a commit, with one more finding', () => {
+    const root = publishedFixture({ keyword: { 'src/signal.ts': 2 } })
+    git(root, 'rm', '-q', 'scripts/compat-ratchet.json')
+    commitAll(root, 'delete the baseline')
+    writeRepositoryFile(root, 'src/more.ts', 'export const legacyC = 3\n')
+
+    const result = run(root, '--update-ratchet')
+
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('keyword: total would rise from 2 to 3.')
+    expect(() => readBaseline(root)).toThrow()
+  })
+
+  it('does not write the baseline when it scanned 0 files', () => {
+    const baseline = { keyword: { 'src/signal.ts': 2 } }
+    const root = createFixture({ files: { 'README.md': 'text\n' }, baseline })
+    publishToOrigin(root)
+
+    const result = run(root, '--update-ratchet')
+
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('scanned 0 files')
+    expect(readBaseline(root)).toEqual(baseline)
+  })
+
+  it('has no flag that regenerates a missing baseline, and takes --accept-rise only with --update-ratchet', () => {
+    const root = createFixture({ files })
+    // Built at runtime so no file in the repository carries the removed flag.
+    const removed = `--${'boot'}strap`
+    const bootstrap = run(root, '--update-ratchet', removed)
+    expect(bootstrap.status).toBe(1)
+    expect(bootstrap.stderr).toContain(`Unknown argument ${removed}`)
+
+    const alone = run(root, '--accept-rise', 'keyword')
+    expect(alone.status).toBe(1)
+    expect(alone.stderr).toContain('--accept-rise only applies together with --update-ratchet')
   })
 })
 
