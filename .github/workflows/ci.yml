@@ -200,6 +200,7 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium webkit
 
       - name: Build
+        id: build
         run: pnpm build
 
       - name: Web canvas tests (chromium)
@@ -212,6 +213,7 @@ jobs:
 
       # WebKit subset: these files measure text metrics and theme colours, where WebKit differs from Chromium. The other files have never been run on WebKit.
       - name: WebKit calibration and theme tests
+        if: ${{ !cancelled() && steps.build.conclusion == 'success' }}
         timeout-minutes: 30
         env:
           OPENCOVE_E2E_SKIP_BUILD: '1'
@@ -223,6 +225,7 @@ jobs:
           --project=webkit --retries=0
 
       - name: Web shell tests (chromium)
+        if: ${{ !cancelled() && steps.build.conclusion == 'success' }}
         timeout-minutes: 10
         env:
           OPENCOVE_E2E_SKIP_BUILD: '1'
