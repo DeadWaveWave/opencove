@@ -82,14 +82,25 @@ describe('workspace document hydration entries', () => {
     expect(after[0]).toBe(before[0])
   })
 
-  it('does not reconcile Spaces even when the merged nodes no longer match them', () => {
+  it('keeps Spaces as they are when a node object is replaced', () => {
     const before = useAppStore.getState().workspaces[0]
 
-    mergeHydratedNodes('a', () => [])
+    mergeHydratedNodes('a', nodes => nodes.map(node => ({ ...node })))
 
     const after = useAppStore.getState().workspaces[0]
-    expect(after.nodes).toEqual([])
+    expect(after.nodes[0]).not.toBe(before.nodes[0])
     expect(after.spaces).toBe(before.spaces)
+  })
+
+  it('throws instead of leaving Spaces dangling when a merge removes or adds a node', () => {
+    const before = useAppStore.getState().workspaces
+    const message = 'hydration merges may only change existing nodes'
+
+    expect(() => mergeHydratedNodes('a', () => [])).toThrow(message)
+    expect(() =>
+      mergeHydratedNodes('a', nodes => [...nodes, { ...pixelNode(), id: 'terminal-2' }]),
+    ).toThrow(message)
+    expect(useAppStore.getState().workspaces).toBe(before)
   })
 
   it('writes nothing when the recipe returns the same nodes, or the workspace is missing', () => {

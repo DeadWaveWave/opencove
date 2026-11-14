@@ -199,6 +199,19 @@ export function hydrateWorkspaceList(initial: WorkspaceDocumentStoreState): void
   store.setState({ workspaces: initial.workspaces, activeWorkspaceId: initial.activeWorkspaceId })
 }
 
+// Spaces are not reconciled here, so a merge that added or dropped a node would leave them stale.
+function assertSameNodeIds(
+  previous: readonly Node<TerminalNodeData>[],
+  next: readonly Node<TerminalNodeData>[],
+): void {
+  if (
+    previous.length !== next.length ||
+    previous.some((node, index) => node.id !== next[index].id)
+  ) {
+    throw new Error('hydration merges may only change existing nodes')
+  }
+}
+
 /**
  * Merges hydrated runtime data into the nodes of one workspace, computed from the store as it is
  * now. Hydration never adds or removes nodes, so Spaces are not reconciled: a Space keeps its
@@ -228,6 +241,9 @@ export function mergeHydratedNodes(
   }
   if (nodes === workspace.nodes) {
     return { status: 'unchanged', document: toWorkspaceDocument(workspace) }
+  }
+  if (import.meta.env.DEV) {
+    assertSameNodeIds(workspace.nodes, nodes)
   }
 
   const next = { ...workspace, nodes }
