@@ -7,7 +7,7 @@ import { computeSpaceRectFromNodes, SPACE_NODE_PADDING } from '../../domain/work
 import type { NodeControlWorkspace } from './nodeControlState'
 import type { nodeNearSpaceRects } from './nodeNearSpaceRects'
 
-/** One pure growth plan, shared by candidate ranking and the creation CAS insertion. */
+/** One pure growth plan for candidate ranking and node creation/update CAS commits. */
 export function growNodeCreationSpaces(
   workspace: NodeControlWorkspace,
   spaceId: string,

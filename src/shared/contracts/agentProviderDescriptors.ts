@@ -1,4 +1,5 @@
 import { isAgentProviderId, type AgentProviderId } from './dto/agent'
+import { CLAUDE_ROOT_COMMANDS } from '../utils/claudeRootCommands.generated'
 
 // Static, process-independent facts about each agent provider. This is pure data so it is safe to
 // import from every process, renderer included. Behaviour that needs Node.js lives in the provider's
@@ -22,6 +23,14 @@ export interface AgentProviderStaticDescriptor {
   /** Authenticated hook protocol used to track conversation-scoped observations and input. */
   readonly conversationTracking: 'claude-hooks' | 'none'
   readonly capabilities: AgentProviderCapabilities
+  readonly initialPrompt: AgentProviderInitialPromptPolicy
+}
+
+export interface AgentProviderInitialPromptPolicy {
+  readonly refusedPrefixes: readonly string[]
+  readonly refusedCommands: readonly string[]
+  readonly grantCommandPrefixes: readonly string[]
+  readonly denyGrantSkillReferences: boolean
 }
 
 export const AGENT_PROVIDER_DESCRIPTORS = {
@@ -29,6 +38,12 @@ export const AGENT_PROVIDER_DESCRIPTORS = {
     label: 'Claude Code',
     titlePrefix: 'claude',
     conversationTracking: 'claude-hooks',
+    initialPrompt: {
+      refusedPrefixes: ['-'],
+      refusedCommands: CLAUDE_ROOT_COMMANDS,
+      grantCommandPrefixes: ['!', '/', '#', '&'],
+      denyGrantSkillReferences: false,
+    },
     capabilities: {
       taskTitle: true,
       worktreeNameSuggestion: true,
@@ -41,6 +56,12 @@ export const AGENT_PROVIDER_DESCRIPTORS = {
     label: 'Codex',
     titlePrefix: 'codex',
     conversationTracking: 'none',
+    initialPrompt: {
+      refusedPrefixes: [],
+      refusedCommands: [],
+      grantCommandPrefixes: ['!', '/'],
+      denyGrantSkillReferences: true,
+    },
     capabilities: {
       taskTitle: true,
       worktreeNameSuggestion: true,
@@ -53,6 +74,12 @@ export const AGENT_PROVIDER_DESCRIPTORS = {
     label: 'OpenCode',
     titlePrefix: 'opencode',
     conversationTracking: 'none',
+    initialPrompt: {
+      refusedPrefixes: [],
+      refusedCommands: [],
+      grantCommandPrefixes: ['!', '/'],
+      denyGrantSkillReferences: false,
+    },
     capabilities: {
       taskTitle: false,
       worktreeNameSuggestion: false,
@@ -65,6 +92,12 @@ export const AGENT_PROVIDER_DESCRIPTORS = {
     label: 'Gemini CLI',
     titlePrefix: 'gemini',
     conversationTracking: 'none',
+    initialPrompt: {
+      refusedPrefixes: [],
+      refusedCommands: [],
+      grantCommandPrefixes: ['!', '/'],
+      denyGrantSkillReferences: false,
+    },
     capabilities: {
       taskTitle: false,
       worktreeNameSuggestion: false,
@@ -77,6 +110,12 @@ export const AGENT_PROVIDER_DESCRIPTORS = {
     label: 'Pi',
     titlePrefix: 'pi',
     conversationTracking: 'none',
+    initialPrompt: {
+      refusedPrefixes: ['-', '@'],
+      refusedCommands: ['install', 'remove', 'uninstall', 'update', 'list', 'config'],
+      grantCommandPrefixes: ['!', '/'],
+      denyGrantSkillReferences: false,
+    },
     capabilities: {
       taskTitle: false,
       worktreeNameSuggestion: false,
@@ -89,6 +128,12 @@ export const AGENT_PROVIDER_DESCRIPTORS = {
     label: 'Kimi Code',
     titlePrefix: 'kimi',
     conversationTracking: 'none',
+    initialPrompt: {
+      refusedPrefixes: [],
+      refusedCommands: [],
+      grantCommandPrefixes: ['/'],
+      denyGrantSkillReferences: false,
+    },
     capabilities: {
       taskTitle: false,
       worktreeNameSuggestion: false,

@@ -5,6 +5,12 @@
     "decidedIn": "#642"
   },
   "entries": {
+    "cli-tree-census-peer": {
+      "kind": "peer-version",
+      "expires": { "until": "0.7.0" },
+      "reason": "Keeps whoami --tree quota counts and reports an upgrade requirement when a Worker predates the optional includeTree census rows; it must not present missing rows as an empty tree.",
+      "decidedIn": "#661"
+    },
     "storage-cove-m0-keys": {
       "kind": "user-data",
       "expires": {

@@ -1,4 +1,8 @@
 export const zhCNMessages = {
+  taskAgentAccess: '只能为你当前的 Agent 或由你启动的 Agent 领取、释放任务。',
+  taskAgentAccessHint: '请选择你当前的 Agent 或由你启动的 Agent，或请用户分配任务。',
+  taskAlreadyClaimed: '此任务已由 {{holder}} 领取。',
+  taskAlreadyClaimedHint: '请选择其他任务，或请当前领取者或用户释放此任务。',
   initialPromptCommandToken: '启动提示 {{token}} 只有一个词，可能会被智能体识别为命令。',
   initialPromptCommandTokenHint:
     '请用一句话描述任务目标，例如“解释如何在这个项目中使用 {{token}}”。已保留你的文本。',

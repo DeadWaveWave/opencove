@@ -5,7 +5,7 @@ exports[`help golden api ops 1`] = `
 
 List Control Surface operations with their kind, contract and CLI command
 
-The full JSON catalog is large (about 29 KB). Start with --domains, then narrow with --prefix or --search and --fields. Each operation includes scope (read, interact or admin); inside OpenCove, access comes from the Worker policy (allowed, denied or constrained). Offline or with an older Worker, access is unknown. The allowed flag is omitted for unknown or constrained access.
+The full JSON catalog is large (about 30 KB). Start with --domains, then narrow with --prefix or --search and --fields. Each operation includes scope (read, interact or admin); inside OpenCove, access comes from the Worker policy (allowed, denied or constrained). Offline or with an older Worker, access is unknown. The allowed flag is omitted for unknown or constrained access.
 
 With --domains, output is an array of summaries with these projectable fields:
   domain: Operation ID prefix before the first dot
@@ -160,7 +160,7 @@ Options:
   --status <todo|doing|ai_done|done>   Set the task status
   --node <id>                          Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
   --title <text>                       Set the node title
-  --frame <json>                       Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; task minimum: width 220, height 260; inspect appliedFrame and frameAdjusted for the actual applied size
+  --frame <json>                       Set x, y, width and height as a JSON object. Sizes outside a kind's range are adjusted to fit; task: width 220–360, height 260–520; inspect appliedFrame and frameAdjusted for the actual applied size
   --space <selector>                   Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>                       Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 

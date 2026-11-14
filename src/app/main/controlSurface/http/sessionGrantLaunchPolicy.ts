@@ -1,7 +1,6 @@
-import { assertSessionGrantMessagePrompt } from './sessionGrantPromptPolicy'
+import { assertSessionGrantLaunchPrompt } from '../../../../shared/utils/grantInitialPromptPolicy'
 import { createAppError } from '../../../../shared/errors/appError'
 import type { GrantCheckDeps } from './sessionGrantPolicy'
-import { initialPromptFeedback } from '../../../../shared/errors/initialPromptFeedback'
 
 const commonFields = ['prompt', 'provider', 'model', 'agentFullAccess', 'cols', 'rows']
 const localFields = new Set([...commonFields, 'spaceId', 'cwd'])
@@ -15,8 +14,6 @@ export const SESSION_GRANT_LAUNCH_REJECTED_FIELDS: Readonly<Record<string, strin
   codexReuseRunningAppServer: 'agent terminals cannot change the agent connection policy',
   mode: 'agent terminals can only start new conversations; omit mode',
 }
-
-const SINGLE_ASCII_WORD = /^[\x21-\x7e]+$/u
 
 export function checkSessionGrantLaunch(payload: unknown, deps: GrantCheckDeps): void {
   const allowedFields = deps.operationId === 'session.launchAgent' ? localFields : mountedFields
@@ -48,20 +45,5 @@ export function checkSessionGrantLaunch(payload: unknown, deps: GrantCheckDeps):
     typeof payload.prompt === 'string'
       ? payload.prompt.trim()
       : ''
-  assertSessionGrantMessagePrompt(prompt, { operationId: deps.operationId, field: 'prompt' })
-  // Provider commands, aliases and options are printable ASCII words. A prompt without spaces is
-  // refused only when it could be one; CJK and other scripts are often written without spaces.
-  if (SINGLE_ASCII_WORD.test(prompt)) {
-    const feedback = initialPromptFeedback('command_token', prompt)
-    throw createAppError('common.forbidden', {
-      params: feedback.params,
-      details: {
-        reason: 'field_denied',
-        operationId: deps.operationId,
-        field: 'prompt',
-        message: feedback.message,
-        hint: feedback.hint,
-      },
-    })
-  }
+  assertSessionGrantLaunchPrompt(prompt, deps.operationId)
 }

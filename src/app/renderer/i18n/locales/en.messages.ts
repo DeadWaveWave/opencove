@@ -1,6 +1,11 @@
 import { agentSpawnPresentations } from '../../../../shared/errors/agentSpawnError'
 import { initialPromptPresentations as prompts } from '../../../../shared/errors/initialPromptFeedback'
 export const enMessages = {
+  taskAgentAccess: 'You can claim or release tasks only for your own agents or agents you started.',
+  taskAgentAccessHint:
+    'Choose your own agent or one you started, or ask the user to assign the task.',
+  taskAlreadyClaimed: 'This task is already claimed by {{holder}}.',
+  taskAlreadyClaimedHint: 'Choose another task, or ask the holder or user to release this task.',
   initialPromptCommandToken: prompts.command_token.message,
   initialPromptCommandTokenHint: prompts.command_token.hint,
   initialPromptCommandPrefix: prompts.provider_command_prefix.message,

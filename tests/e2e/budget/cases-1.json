@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "count": 166,
+  "count": 168,
   "entries": {
     "tests/e2e/agent-hook-relay.spec.ts › codex executes Electron hooks through the real launch path and retains keyboard input": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/agent.prompt.real-codex.daemon.spec.ts › Codex orchestration beside a shared app-server daemon › default hooks complete prompts while the daemon stays healthy; delete reaps the agent tree": "Desktop: pre-restructure inventory; existing assertions retained",
@@ -24,6 +24,8 @@
     "tests/e2e/cli.session-grant.spec.ts › session grants preserve agent workflows and refuse human decisions": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/cli.space-placement.spec.ts › a note created in a full child Space grows its boundary inside its parent": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/cli.space-update.spec.ts › a granted terminal renames and adjusts a Space boundary while its members stay in place": "Desktop: pre-restructure inventory; existing assertions retained",
+    "tests/e2e/cli.task-claim-agents.spec.ts › two real OpenCove agents compete for a task and only the winner works and releases": "Desktop: two real agent PTYs with session grants race one task claim; only the winner's work and release render on the task card",
+    "tests/e2e/cli.task-workflow.spec.ts › a granted agent claims, records work and releases for review across restart": "Desktop: a granted agent's claim, notes and release render on the task card and survive renderer saves and app restart",
     "tests/e2e/command-center.spec.ts › Command Center › keeps compact themed results and hands focus to project search": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/context-bridge.app-errors.display.spec.ts › Worker Web UI adopts the failure snapshot without a fallback read": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/context-bridge.app-errors.spec.ts › direct installed global preserves upstream errors (initialized=false)": "Desktop: pre-restructure inventory; existing assertions retained",

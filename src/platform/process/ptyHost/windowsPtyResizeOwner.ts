@@ -1,5 +1,9 @@
 import type { PtyHostResizeAck } from './protocol'
 import { abortable, delayUntilNextObservation } from './abortableOperation'
+import {
+  WINDOWS_PTY_RESIZE_CONFIRMATION_TIMEOUT_MS,
+  WINDOWS_PTY_RESIZE_STARTUP_TIMEOUT_MS,
+} from '../../../shared/runtime/terminalGeometryTimeouts'
 
 export interface WindowsConsoleObserver {
   ensureReady(signal: AbortSignal): Promise<void>
@@ -16,8 +20,16 @@ export class WindowsPtyResizeOwner {
   public constructor(
     private readonly pty: { readonly pid: number; resize(cols: number, rows: number): void },
     private readonly observer: WindowsConsoleObserver,
-    private readonly options = { timeoutMs: 2_000, pollIntervalMs: 10 },
-  ) {}
+    private readonly options = {
+      startupTimeoutMs: WINDOWS_PTY_RESIZE_STARTUP_TIMEOUT_MS,
+      timeoutMs: WINDOWS_PTY_RESIZE_CONFIRMATION_TIMEOUT_MS,
+      pollIntervalMs: 10,
+    },
+  ) {
+    // Host sessions share the observer's startup promise. Begin it alongside PTY startup,
+    // without delaying spawn/input; resize still checks readiness and reports any failure.
+    void this.observer.ensureReady(this.lifetime.signal).catch(() => undefined)
+  }
 
   public markReady(): void {
     this.ready = true
@@ -33,17 +45,32 @@ export class WindowsPtyResizeOwner {
   public async resize(cols: number, rows: number): Promise<PtyHostResizeAck> {
     this.lifetime.signal.throwIfAborted()
     const deadline = new AbortController()
-    const timer = setTimeout(() => {
-      deadline.abort(new Error('[pty-host] Windows Console geometry confirmation timed out'))
-    }, this.options.timeoutMs)
+    let timer = setTimeout(() => {
+      deadline.abort(new Error('[pty-host] Windows resize startup timed out'))
+    }, this.options.startupTimeoutMs)
     const signal = AbortSignal.any([this.lifetime.signal, deadline.signal])
-    const operation = this.queue.then(() => this.applyAndObserve(cols, rows, signal))
-    // A timeout includes time spent queued. Cancelled queued work never reaches native resize.
+    const operation = this.queue.then(async () => {
+      signal.throwIfAborted()
+      await Promise.all([
+        this.waitForReady(signal),
+        abortable(this.observer.ensureReady(signal), signal),
+      ])
+      signal.throwIfAborted()
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        deadline.abort(new Error('[pty-host] Windows Console geometry confirmation timed out'))
+      }, this.options.timeoutMs)
+      return this.applyAndObserve(cols, rows, signal)
+    })
+    // Queue/readiness have a startup bound; only native resize/read-back use confirmation time.
+    // Cancelled queued work never reaches native resize, even if startup completes later.
     this.queue = operation.catch(() => undefined)
     try {
       return await abortable(operation, signal)
     } finally {
       clearTimeout(timer)
+      // Cancel the other readiness waiter if one prerequisite failed first.
+      deadline.abort(new Error('[pty-host] Windows resize request settled'))
     }
   }
 
@@ -52,9 +79,6 @@ export class WindowsPtyResizeOwner {
     rows: number,
     signal: AbortSignal,
   ): Promise<PtyHostResizeAck> {
-    signal.throwIfAborted()
-    await this.waitForReady(signal)
-    await abortable(this.observer.ensureReady(signal), signal)
     signal.throwIfAborted()
     this.pty.resize(cols, rows)
 

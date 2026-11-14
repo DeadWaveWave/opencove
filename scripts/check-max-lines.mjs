@@ -41,7 +41,7 @@ export const GENERATED_PATHS = [
   // `pnpm design:tokens`
   'src/app/renderer/styles/themes/generated/',
   // `node scripts/generate-claude-command-registry.mjs`
-  'src/contexts/agent/domain/claudeRootCommands.generated.ts',
+  'src/shared/utils/claudeRootCommands.generated.ts',
 ]
 
 // Files that are over the limit today. Each recorded count may only go down, and the list may only

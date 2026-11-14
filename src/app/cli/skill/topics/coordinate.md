@@ -1,5 +1,7 @@
 # Coordinate agents
 
+First run `opencove whoami --tree` before delegating. It shows remaining slots, the whole quota tree, work states and stop commands. Idle agents still occupy slots; inspect before stopping. Waiting (permission/question/plan) needs the user. Terminal recovery requires a fresh node.sessionId lookup, then session kill; never reuse a census session ID. Older Workers require an update for tree view; outside a canvas grant, whoami returns identity without a tree. Share a task atomically with `opencove task claim` / `task release` and record progress with `opencove note append`; see `opencove skill canvas` for the rules.
+
 ## Create and wait for a one-shot delegation
 
 When delegation is authorized, recommend `--near @self` for helpers in your current Space (or root), as below. Add `--task <nodeId>` to link an unlinked task in that Space and move it to `doing` after launch; still supply the prompt.
@@ -9,7 +11,7 @@ opencove node create agent --near @self --prompt-file ./assignment.txt --wait --
 ```
 
 This creates once, identifies the initial Claude Code/Codex turn on the new session, waits for that exact turn and returns the create result plus turnId, outcome, endedAt and reply. Check outcome and reply: all ended outcomes exit 0; missing reply is null with replyUnavailableReason. --wait requires
---prompt or --prompt-file; --read requires --wait. --timeout covers identification + waiting (default
+--prompt, --prompt-file or --prompts-file; --read requires --wait. --timeout covers identification + waiting (default
 20s, minimum 250ms); creation keeps its own 20s budget. -q prints only the ID after completion. Errors retain known nodeId/sessionId/turnId and never permit retrying creation: the node remains. Exit 10 needs the user; 11 means exited; 124 means timeout; 130 means interrupted. Unsupported
 providers return agent.wait_unsupported after creation. Resume the exact agent wait/read commands in the hint. If no first turn was observed, lifecycle telemetry may be unavailable: the agent may still be running or may already have finished. Inspect the existing session with agent get/read
 --screen and check its sessionId. Do not recreate the node or resend the prompt.
@@ -17,6 +19,14 @@ providers return agent.wait_unsupported after creation. Resume the exact agent w
 Stderr preserves IDs: `Created agent node <nodeId> (session <sessionId>).` or, before sending, `Sending prompt (delivery <id>).` even without --wait. `Waiting for turn <turnId> of node <nodeId>...` gives an interruption-only continuation; the final JSON and exit status report the result.
 
 When you need to keep working, omit --wait, save node.id and node.sessionId, inspect agent get for the matching session’s turn or lastEndedTurn, then use agent wait --turn and agent read --turn.
+
+## Launch several agents
+
+```sh
+opencove node create agent --space space-123 --prompts-file ./assignments.json --wait --read --timeout 2m
+```
+
+Use a UTF-8 JSON array: `[{"prompt":"Review the tests","title":"Tests"},{"prompt":"Review the docs"}]`. Accepts 1–10 entries, at most 1 MiB; `-` reads stdin. Unknown keys and blank prompts are refused before launch. Requires --wait; excludes --prompt/--prompt-file/--title/--task/--frame/-q/--fields/ --focus/--limit. Shared target, provider, model and Full Access choices apply to all entries. Creates run sequentially; waits start immediately and run concurrently, each with its own timeout. JSON/pipes return an ordered array: `{index,title,ok,exitCode,result}` or `{index,title,ok:false, exitCode,error}`. index is zero-based; result is the single-create result, error its ordinary error envelope. Check every entry; first nonzero exit wins, Ctrl-C overrides with 130. Failures do not stop later launches. Ctrl-C stops dispatch/observation, keeps every entry and known IDs, and leaves agents running. No launch is retried or rolled back. Resume only the exact waits/reads in hints.
 
 ## Send and wait for an existing agent
 
@@ -153,13 +163,6 @@ a root has no parent, and `parent_deleted` means the original node was removed. 
 shared note if messaging is unavailable. Do not substitute a node named `@parent` or retry a refusal.
 
 ## Observe several agents without polling
-
-Check `whoami --fields lineageQuota` before spawning: `remainingLiveInTree` uses
-admission's live/starting census. Idle agents still occupy slots. Older Workers may
-omit new fields. Quota refusals include `details.actions` with shell-safe agent stop
-commands and occupants' `sessionStartedAt` (null if unknown). Terminal actions are
-omitted: follow the hint's fresh node.sessionId lookup, then kill that session.
-Choose an authorized occupant, recheck its binding, and stop only when permitted.
 
 For known nodes, subscribe with `opencove events --until-each-turn --node A --node B
 --cursor-file ./events.cursor --timeout 2m` and consume `stream.ready` before starting

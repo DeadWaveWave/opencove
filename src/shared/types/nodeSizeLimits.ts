@@ -11,3 +11,16 @@ export const NODE_MIN_SIZE_BY_KIND = {
   website: { width: 400, height: 260 },
   plugin: { width: 400, height: 260 },
 } as const
+
+export const NODE_MAX_SIZE_BY_KIND = {
+  terminal: { width: 720, height: 520 },
+  task: { width: 360, height: 520 },
+  agent: { width: 720, height: 1040 },
+  note: { width: 360, height: 260 },
+  role: { width: 520, height: 640 },
+  image: { width: 960, height: 720 },
+  document: { width: 960, height: 900 },
+  folder: { width: 960, height: 900 },
+  website: { width: 1280, height: 1040 },
+  plugin: { width: 1040, height: 820 },
+} as const

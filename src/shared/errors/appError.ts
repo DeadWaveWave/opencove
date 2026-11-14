@@ -1,3 +1,5 @@
+import { taskMutationAccessErrorPresentation } from './taskMutationAccessError'
+import { taskClaimErrorPresentation } from './taskClaimError'
 import { agentPromptErrorPresentation } from './agentPromptError'
 import { agentSpawnErrorPresentation } from './agentSpawnError'
 import { nodeParentErrorPresentation } from './nodeParentError'
@@ -28,6 +30,7 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'agent.spawn_concurrency_limit':
       'This agent tree has reached its limit of 6 active or starting agent-created runtimes.',
     'node.parent_unavailable': 'The parent node could not be resolved.',
+    'task.already_claimed': 'This task is already claimed.',
     'node.not_found': 'Node not found.',
     'node.unsupported_operation': 'This node operation is not supported.',
     'session.transcript_not_ready': 'Session transcript is not available yet.',
@@ -243,6 +246,14 @@ export function formatAppErrorMessage(error: AppErrorDescriptor | OpenCoveAppErr
   const spawn = agentSpawnErrorPresentation(descriptor)
   if (spawn) {
     return `${spawn.message} ${spawn.hint}`
+  }
+  const taskAccess = taskMutationAccessErrorPresentation(descriptor)
+  if (taskAccess) {
+    return taskAccess.message
+  }
+  const claim = taskClaimErrorPresentation(descriptor)
+  if (claim) {
+    return claim.message
   }
   const parent = nodeParentErrorPresentation(descriptor)
   if (parent) {

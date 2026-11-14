@@ -1,8 +1,13 @@
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
-import { afterEach, describe, expect, it } from 'vitest'
-import { resolveRuntimeIconPath } from '../../../src/app/main/runtimeIcon'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { NativeImage } from 'electron'
+import {
+  DOCK_ICON_MAX_WIDTH_PX,
+  boundDockIconImage,
+  resolveRuntimeIconPath,
+} from '../../../src/app/main/runtimeIcon'
 
 describe('resolveRuntimeIconPath', () => {
   const tempDirs: string[] = []
@@ -52,5 +57,30 @@ describe('resolveRuntimeIconPath', () => {
     writeFileSync(join(buildDir, 'icon.ico'), 'ico')
 
     expect(resolveRuntimeIconPath(appMainDir, 'darwin')).toBe(join(buildDir, 'icon.png'))
+  })
+})
+
+describe('boundDockIconImage', () => {
+  function createImage(width: number, height: number) {
+    const resized = { label: 'resized' } as unknown as NativeImage
+    const image = {
+      getSize: () => ({ width, height }),
+      resize: vi.fn(() => resized),
+    }
+    return { image: image as unknown as NativeImage, resize: image.resize, resized }
+  }
+
+  it('downsizes a larger source to the Dock bound with best quality and its aspect ratio', () => {
+    const { image, resize, resized } = createImage(2048, 2048)
+
+    expect(boundDockIconImage(image)).toBe(resized)
+    expect(resize).toHaveBeenCalledWith({ width: DOCK_ICON_MAX_WIDTH_PX, quality: 'best' })
+  })
+
+  it('keeps a source that already fits the Dock bound', () => {
+    const { image, resize } = createImage(DOCK_ICON_MAX_WIDTH_PX, DOCK_ICON_MAX_WIDTH_PX)
+
+    expect(boundDockIconImage(image)).toBe(image)
+    expect(resize).not.toHaveBeenCalled()
   })
 })

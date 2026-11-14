@@ -1,3 +1,5 @@
+import { taskMutationAccessErrorPresentation } from '@shared/errors/taskMutationAccessError'
+import { taskClaimErrorPresentation } from '@shared/errors/taskClaimError'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { agentSpawnErrorPresentation } from '@shared/errors/agentSpawnError'
 import { nodeParentErrorPresentation } from '@shared/errors/nodeParentError'
@@ -93,6 +95,13 @@ export function toErrorMessage(error: unknown): string {
     const spawn = agentSpawnErrorPresentation(error)
     if (spawn) {
       return `${translate(`messages.${spawn.key}`)} ${translate(`messages.${spawn.key}Hint`)}`
+    }
+    if (taskMutationAccessErrorPresentation(error)) {
+      return `${translate('messages.taskAgentAccess')} ${translate('messages.taskAgentAccessHint')}`
+    }
+    const claim = taskClaimErrorPresentation(error)
+    if (claim) {
+      return `${translate('messages.taskAlreadyClaimed', { holder: claim.holder })} ${translate('messages.taskAlreadyClaimedHint')}`
     }
     const parent = nodeParentErrorPresentation(error)
     if (parent) {

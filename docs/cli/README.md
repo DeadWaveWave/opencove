@@ -6,6 +6,8 @@ Agent terminals cannot answer permission dialogs, read or change private setting
 
 智能体终端不能通过 API 回答权限弹窗、读取或修改私密设置或执行插件代码；这些决定由用户作出。Agent 启动默认继承 Settings，也可用 `--full-access true|false` 为该节点及其后续重启单独选择权限。目前尚未实施项目隔离。
 
+Task coordination: [claim tasks, release them and append shared results](TASK_WORKFLOWS.md).
+
 ## Commands
 
 | Group       | Commands                                                                                                                                                                                          |
@@ -105,7 +107,7 @@ See [near placement](CANVAS_NODE_CONTROL.md#near-placement-v1) for bounds and re
 CLI help golden 更新使用 `pnpm exec vitest run tests/unit/app/cliInputOutput.spec.ts tests/unit/app/cliOutputBehavior.spec.ts --update`，不要手改生成的 snapshot。 Agent 创建帮助快照使用 `pnpm exec vitest run tests/unit/app/cliNodeHelp.spec.ts --update` 更新。
 
 CLI 测试先运行 `pnpm build:cli`，再运行 `pnpm exec vitest run tests/unit/app/cli*.spec.ts`。
-更新帮助 golden snapshots：`pnpm build:cli` 后运行 `pnpm exec vitest run tests/unit/app/cliCore.spec.ts tests/unit/app/cliHelpErrors.spec.ts tests/unit/app/cliSchemaValidation.spec.ts tests/unit/app/cliAgentQueries.spec.ts tests/unit/app/cliSchemaValidation.spec.ts tests/unit/app/cliSkill.spec.ts tests/unit/app/cliEvents.spec.ts --update`；由 Vitest 生成，不手改 `.snap`。错误恢复 golden 使用 `pnpm exec vitest run tests/unit/app/cliAgentPrompt.spec.ts tests/unit/app/cliAgentScreenAndState.spec.ts tests/unit/app/cliAgentHistoryClear.spec.ts --update` 更新。Context 和 filesystem 帮助随对应测试更新：`pnpm exec vitest run tests/unit/app/cliContext.spec.ts tests/unit/app/cliOutputContracts.spec.ts tests/unit/app/cliCommandMapping.spec.ts --update`。新增命令的完整帮助 golden 由 `cliHelpErrors.spec.ts` 生成；节点 wire schema golden 使用 `pnpm exec vitest run tests/contract/controlSurface/nodeSchemas.spec.ts --update` 更新。
+更新帮助 golden snapshots：`pnpm build:cli` 后运行 `pnpm exec vitest run tests/unit/app/cliCore.spec.ts tests/unit/app/cliHelpErrors.spec.ts tests/unit/app/cliSchemaValidation.spec.ts tests/unit/app/cliAgentQueries.spec.ts tests/unit/app/cliSchemaValidation.spec.ts tests/unit/app/cliSkill.spec.ts tests/unit/app/cliEvents.spec.ts tests/unit/app/cliOutputBehavior.spec.ts tests/unit/app/cliHelpErrors.spec.ts tests/unit/app/cliCommandMapping.spec.ts tests/unit/app/cliOutputContracts.spec.ts tests/unit/app/cliNodeHelp.spec.ts --update`；由 Vitest 生成，不手改 `.snap`。错误恢复 golden 使用 `pnpm exec vitest run tests/unit/app/cliAgentPrompt.spec.ts tests/unit/app/cliAgentScreenAndState.spec.ts tests/unit/app/cliAgentHistoryClear.spec.ts --update` 更新。Context 和 filesystem 帮助随对应测试更新：`pnpm exec vitest run tests/unit/app/cliContext.spec.ts tests/unit/app/cliOutputContracts.spec.ts tests/unit/app/cliCommandMapping.spec.ts --update`。新增命令的完整帮助 golden 由 `cliHelpErrors.spec.ts` 生成；节点 wire schema golden 使用 `pnpm exec vitest run tests/contract/controlSurface/nodeSchemas.spec.ts --update` 更新。
 
 测试的 global setup 在系统临时目录重新构建并逐字节校验工作树中的 CLI 产物；产物缺失或过期时拒绝继续，不覆盖工作树，临时构建在成功或失败后都会清理。
 
@@ -153,7 +155,7 @@ opencove agent list --space @self -o table
 opencove agent get --node "Reviewer" --pretty
 opencove agent read --node "Reviewer" --screen
 opencove agent read --node "Reviewer" --node "Lead" --fields node,ok,message,error
-opencove whoami --fields lineageQuota
+opencove whoami --tree
 opencove context --fields self.lineageQuota
 opencove agent prompt --node "Reviewer" --wait --read --timeout 2m --text-file ./assignment.txt
 # To keep working meanwhile, split the same steps:
@@ -174,6 +176,16 @@ occupancy counts live/starting agent-created runtimes, excluding the user root. 
 unavailable accounting omit quota. Refusal `details.nodes` list up to six nodeId/title/kind/depth/state
 occupants with kind-aware recovery hints (agent stop, or terminal session lookup then session kill).
 Stopping frees width on runtime exit, never the caller's depth.
+
+Start delegation with `whoami --tree` for the whole quota tree, remaining slots, work states and
+stop commands. Missing observations remain unknown; idle agents still occupy slots. Old Workers
+without census rows exit 5 and preserve known counts in error.details.identity. Outside a canvas
+session grant, tree mode keeps ordinary identity output. See [tree and recovery](LINEAGE.md).
+For several assignments use `node create agent --prompts-file ./assignments.json --wait --read`.
+The file accepts 1–10 prompt/title objects; results and failures remain in input order. See
+[batch launch and exact-turn recovery](NODE_CREATE_AGENT_WAIT.md#launch-several-agents-from-a-file).
+中文：委派前先用 `whoami --tree` 检查名额与占用者；批量创建接受 JSON 文件，逐项创建、并发等待，
+完整保留结果和错误，中断不停止已创建的智能体。
 
 Give a window a stable name with `node create agent --title "Reviewer"` (also supported for terminals).
 Rename it with `node update agent --node "Reviewer" --title "Lead"`; use `terminal` for terminal windows.
@@ -466,7 +478,7 @@ erase provider transcripts, existing backups or forensic remnants.
 `opencove agent history clear --node <selector>` (`agent.history.clear`, interact scope) deletes the node’s archived and in-memory replies across retained incarnations, leaving the node, provider transcripts, backups, run state, active turns and delivery records unchanged; later ends store normally, and archive unavailability clears memory but exits 1. Unqualified reads, prompt-ID selectors and labelled transcript fallback
 retain current-incarnation semantics. Remote history is not routed across Workers.
 
-Help goldens are generated by Vitest: `pnpm exec vitest run tests/unit/app/cliCore.spec.ts tests/unit/app/cliInputOutput.spec.ts tests/unit/app/cliAgentQueries.spec.ts tests/unit/app/cliSchemaValidation.spec.ts tests/unit/app/cliSkill.spec.ts tests/unit/app/cliEvents.spec.ts --update`. Never edit generated snapshots by hand.
+Help goldens are generated by Vitest: `pnpm exec vitest run tests/unit/app/cliCore.spec.ts tests/unit/app/cliInputOutput.spec.ts tests/unit/app/cliAgentQueries.spec.ts tests/unit/app/cliSchemaValidation.spec.ts tests/unit/app/cliSkill.spec.ts tests/unit/app/cliEvents.spec.ts tests/unit/app/cliOutputBehavior.spec.ts tests/unit/app/cliHelpErrors.spec.ts tests/unit/app/cliCommandMapping.spec.ts tests/unit/app/cliOutputContracts.spec.ts tests/unit/app/cliNodeHelp.spec.ts --update`. Never edit generated snapshots by hand.
 
 An unfinished `agent read --turn` retains `agent.final_message_unavailable` and
 `details.reason: turn_not_ended`, and adds `state` and `blockedReason`. Waiting

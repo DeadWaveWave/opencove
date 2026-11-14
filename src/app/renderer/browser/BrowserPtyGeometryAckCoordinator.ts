@@ -1,4 +1,5 @@
 import type { TerminalGeometryCommitResult } from '@shared/contracts/dto'
+import { TERMINAL_GEOMETRY_ACK_TIMEOUT_MS } from '@shared/runtime/terminalGeometryTimeouts'
 
 type PendingResize = {
   sessionId: string
@@ -110,7 +111,7 @@ export class BrowserPtyGeometryAckCoordinator {
         this.take(input.sessionId, operationId)?.reject(
           new Error(`Timed out waiting for terminal geometry ACK: ${input.sessionId}`),
         )
-      }, 3_000)
+      }, TERMINAL_GEOMETRY_ACK_TIMEOUT_MS)
       pendingByOperationId.set(operationId, {
         sessionId: input.sessionId,
         operationId,

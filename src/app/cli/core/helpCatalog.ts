@@ -5,6 +5,8 @@ export const sections: [string, [string, string][]][] = [
       ['project', 'List projects and find their IDs'],
       ['space', 'List and inspect project spaces'],
       ['node', 'Create, read, update and delete canvas nodes'],
+      ['task', 'Claim and release tasks for existing agents'],
+      ['note', 'Append text to shared notes'],
       ['canvas', 'Focus nodes and spaces on the canvas'],
       ['agent', 'List, inspect, prompt, wait for and read agents'],
       ['events', 'Stream agent observations and resume from a saved cursor'],

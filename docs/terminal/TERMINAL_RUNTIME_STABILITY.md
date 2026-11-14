@@ -23,7 +23,10 @@ Invariants:
 2. The Worker commits and broadcasts only verified runtime geometry. On Windows, neither node-pty's
    cached `cols/rows` nor successful delivery to the ConPTY resize pipe proves application. The Host
    waits for node-pty readiness, resizes, then reads the actual Console until the requested grid is
-   observed. A two-second budget includes queued work and is shorter than the renderer ACK deadline.
+   observed. Queue and readiness share a five-second startup bound, with PTY readiness and observer
+   startup awaited concurrently. The two-second confirmation deadline starts only at native resize;
+   cold process startup must not consume it. Client and relay ACK deadlines cover both phases plus
+   transport delivery (eight seconds), including when a non-Windows client targets a Windows Worker.
 3. A malformed or missing remote acknowledgement is `runtime_failed`; it is distinct from the
    explicit non-failing `accepted_unverified` outcome.
 
@@ -48,8 +51,11 @@ Windows dependency installation builds node-pty from source to include the query
 observer checks that native capability before its ready handshake. Developer/CI builds need MSVC C++
 tools, Windows SDK and Spectre libraries; packaged users receive the native module. Windows CI and
 release jobs use `windows-2022` with VS 2022 because pnpm 9's bundled node-gyp cannot discover VS 2026.
-The additional observer is shared by all sessions in one Host and starts only when a Windows resize
-needs it.
+The additional observer is shared by all sessions in one Host. Creating the first Windows session
+pre-warms it alongside PTY startup without delaying spawn or input. Its own five-second startup
+bound retires a hung child; the 500 ms query bound remains unchanged. Session cancellation cancels
+that session's readiness wait without killing the shared observer. Pre-warming never resizes a PTY,
+and a failed commit is not automatically retried by the renderer.
 
 ## Attach authority and live reattach
 

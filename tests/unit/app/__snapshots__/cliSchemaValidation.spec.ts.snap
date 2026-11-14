@@ -14,9 +14,11 @@ Agent-terminal prompt rules:
 - Leading dashes: Claude Code and Pi launches refuse prompts starting with -.
 - Null characters: remove NUL from the prompt.
 
-Use --prompt or --prompt-file with --wait to wait for the initial Claude Code or Codex turn. Add --read for its exact reply; unavailable replies return reply: null with replyUnavailableReason. Check outcome: every ended outcome exits 0. Waiting for the user exits 10, an exited target 11, timeout 124 and interruption 130. Unsupported providers refuse after creation; the node remains.
+Use --prompt or --prompt-file with --wait to collect the initial Claude Code or Codex turn. Add --read for its exact reply. Check outcome: every ended outcome exits 0; unavailable replies return reply: null with replyUnavailableReason. Waiting for the user exits 10, an exited target 11, timeout 124 and interruption 130. Unsupported providers refuse after creation; the node remains.
 
---timeout covers first-turn identification and waiting (default 20s; minimum 250ms); creation keeps its own 20s budget. If no first turn is observed, lifecycle telemetry may be unavailable even if the agent is running or has finished. Inspect the existing session; do not recreate the node or resend the prompt. Errors keep known nodeId, sessionId and turnId. Never repeat creation after an error: resume agent wait/read with those IDs. With --wait, -q prints only the node ID after completion. Stderr shows "Created agent node <nodeId> (session <sessionId>)." before identification, then "Waiting for turn <turnId> of node <nodeId>..." with an interruption-only continuation command. The final JSON and exit status report the result.
+For several agents, use --prompts-file <path|-> --wait [--read]: a UTF-8 JSON array of 1–10 objects with a nonblank prompt and optional title, at most 1 MiB. All entries are validated before launch. Conflicts: --prompt, --prompt-file, --title, --task, --frame, -q, --fields, --focus and --limit. Target, provider, model and Full Access choices apply to every entry. Add --near @self to place each entry near you; each create finds its own free slot. Creates run in input order; waits run concurrently. Each result or error is retained in an ordered JSON array: {index, title, ok, exitCode, result|error}. index starts at 0; error is the ordinary error envelope. Exit is the first nonzero entry exit; Ctrl-C overrides with 130. Later entries are still attempted after a failure; no launch is retried.
+
+--timeout covers identification and waiting per agent from its creation response (default 20s; minimum 250ms); creation has its own 20s budget. Stderr prints created node/session IDs, then an exact-turn continuation. Errors retain known IDs. Missing telemetry does not prove the agent has stopped. Never repeat creation or resend: inspect the existing session and resume agent wait/read. Ctrl-C stops dispatch and observation, leaves agents running and prints every entry. With a single prompt, -q prints the ID after completion. See opencove skill coordinate for recovery.
 
 For agents creating helper nodes, recommend --near @self to place them near the caller in its current Space (or root). --near is opt-in; combine with --root-canvas to place outside Spaces. Size-only --frame (width/height) is allowed with --near; x/y are refused.
 
@@ -35,6 +37,7 @@ Target container (choose one):
 Options:
   --prompt <text>             Set the initial agent prompt
   --prompt-file <path|->      Read prompt from a UTF-8 file, or use - for stdin
+  --prompts-file <path>       Launch 1–10 prompts from a JSON file or stdin; requires --wait
   --wait                      Wait for the initial prompt turn to end
   --read                      Include the exact initial turn reply; requires --wait
   --timeout <duration>        First-turn identification and wait budget (default 20s; minimum 250ms)
@@ -43,7 +46,7 @@ Options:
   --task <nodeId>             Link to an existing task in the same Space and move it to doing
   --full-access <true|false>  Set Full Access for this agent and its restarts; omit to follow Settings
   --title <text>              Set a fixed window name; omit on creation to keep automatic titles
-  --frame <json>              Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; agent minimum: width 400, height 520; inspect appliedFrame and frameAdjusted for the actual applied size
+  --frame <json>              Set x, y, width and height as a JSON object. Sizes outside a kind's range are adjusted to fit; agent: width 400–720, height 520–1040; inspect appliedFrame and frameAdjusted for the actual applied size
   --near <selector>           Place near a reference node; recommend --near @self for helper nodes; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
   --focus                     Focus after creation
   -q, --quiet                 Print only the created object identifier followed by a newline
@@ -91,7 +94,7 @@ Options:
   --text <text>         Set the note contents
   --text-file <path|->  Read text from a UTF-8 file, or use - for stdin
   --title <text>        Set the node title
-  --frame <json>        Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; note minimum: width 220, height 140; inspect appliedFrame and frameAdjusted for the actual applied size
+  --frame <json>        Set x, y, width and height as a JSON object. Sizes outside a kind's range are adjusted to fit; note: width 220–360, height 140–260; inspect appliedFrame and frameAdjusted for the actual applied size
   --near <selector>     Place near a reference node; recommend --near @self for helper nodes; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
   --focus               Focus after creation
   -q, --quiet           Print only the created object identifier followed by a newline
@@ -142,7 +145,7 @@ Options:
   --priority <low|medium|high|urgent>  Set the task priority
   --tag <tag>                          Set task tags; repeat for each tag
   --title <text>                       Set the node title
-  --frame <json>                       Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; task minimum: width 220, height 260; inspect appliedFrame and frameAdjusted for the actual applied size
+  --frame <json>                       Set x, y, width and height as a JSON object. Sizes outside a kind's range are adjusted to fit; task: width 220–360, height 260–520; inspect appliedFrame and frameAdjusted for the actual applied size
   --near <selector>                    Place near a reference node; recommend --near @self for helper nodes; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
   --focus                              Focus after creation
   -q, --quiet                          Print only the created object identifier followed by a newline
@@ -191,7 +194,7 @@ Options:
   --command <command>  Run this command in the terminal
   --profile <id>       Select a browser or terminal profile
   --title <text>       Set a fixed window name; omit on creation to keep automatic titles
-  --frame <json>       Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; terminal minimum: width 400, height 260; inspect appliedFrame and frameAdjusted for the actual applied size
+  --frame <json>       Set x, y, width and height as a JSON object. Sizes outside a kind's range are adjusted to fit; terminal: width 400–720, height 260–520; inspect appliedFrame and frameAdjusted for the actual applied size
   --near <selector>    Place near a reference node; recommend --near @self for helper nodes; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
   --focus              Focus after creation
   -q, --quiet          Print only the created object identifier followed by a newline
@@ -241,7 +244,7 @@ Options:
   --session-mode <shared|incognito|profile>  Choose the browser session mode
   --profile <id>                             Select a browser or terminal profile
   --title <text>                             Set the node title
-  --frame <json>                             Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; website minimum: width 400, height 260; inspect appliedFrame and frameAdjusted for the actual applied size
+  --frame <json>                             Set x, y, width and height as a JSON object. Sizes outside a kind's range are adjusted to fit; website: width 400–1280, height 260–1040; inspect appliedFrame and frameAdjusted for the actual applied size
   --near <selector>                          Place near a reference node; recommend --near @self for helper nodes; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters)
   --focus                                    Focus after creation
   -q, --quiet                                Print only the created object identifier followed by a newline
@@ -276,7 +279,7 @@ Options:
   --text-file <path|->  Read text from a UTF-8 file, or use - for stdin
   --node <id>           Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
   --title <text>        Set the node title
-  --frame <json>        Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; note minimum: width 220, height 140; inspect appliedFrame and frameAdjusted for the actual applied size
+  --frame <json>        Set x, y, width and height as a JSON object. Sizes outside a kind's range are adjusted to fit; note: width 220–360, height 140–260; inspect appliedFrame and frameAdjusted for the actual applied size
   --space <selector>    Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>        Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
@@ -308,7 +311,7 @@ Options:
   --status <todo|doing|ai_done|done>   Set the task status
   --node <id>                          Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
   --title <text>                       Set the node title
-  --frame <json>                       Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; task minimum: width 220, height 260; inspect appliedFrame and frameAdjusted for the actual applied size
+  --frame <json>                       Set x, y, width and height as a JSON object. Sizes outside a kind's range are adjusted to fit; task: width 220–360, height 260–520; inspect appliedFrame and frameAdjusted for the actual applied size
   --space <selector>                   Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>                       Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
@@ -339,7 +342,7 @@ Options:
   --profile <id>                             Select a browser or terminal profile
   --node <id>                                Select a canvas node by its ID; also accepts @self, @parent, an exact name or a unique ID prefix (6+ characters) (required)
   --title <text>                             Set the node title
-  --frame <json>                             Set x, y, width and height as a JSON object. Sizes below a kind's minimum are raised; website minimum: width 400, height 260; inspect appliedFrame and frameAdjusted for the actual applied size
+  --frame <json>                             Set x, y, width and height as a JSON object. Sizes outside a kind's range are adjusted to fit; website: width 400–1280, height 260–1040; inspect appliedFrame and frameAdjusted for the actual applied size
   --space <selector>                         Require every node selector, including full IDs, to belong to this space; also accepts @self, an exact name or a unique ID prefix (6+ characters)
   --project <id>                             Narrow target lookup to a project; also accepts @self, an exact name or a unique ID prefix (6+ characters)
 
