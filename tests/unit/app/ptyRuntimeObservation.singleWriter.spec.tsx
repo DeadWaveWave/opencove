@@ -16,6 +16,12 @@ import { useWorkspaceCanvasPtyTaskCompletion } from '../../../src/contexts/works
 import type { WorkspaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { pixelNode } from '../contexts/workspacePixelLayer.fixtures'
 
+// Real nodes carry initialWidth/initialHeight; without them the canvas backfills them on its first
+// write and that extra store notification would be counted as a projection.
+function withInitialDimensions(node: ReturnType<typeof pixelNode>): ReturnType<typeof pixelNode> {
+  return { ...node, initialWidth: node.data.width, initialHeight: node.data.height }
+}
+
 function agentWorkspace(): WorkspaceState {
   return {
     id: 'workspace-1',
@@ -23,26 +29,28 @@ function agentWorkspace(): WorkspaceState {
     path: '/tmp/workspace-1',
     worktreesRoot: '/tmp/workspace-1',
     nodes: [
-      pixelNode({
-        kind: 'agent',
-        sessionId: 'session-1',
-        status: 'running',
-        agent: {
-          provider: 'codex',
-          prompt: 'Ship it',
-          model: null,
-          effectiveModel: null,
-          launchMode: 'new',
-          resumeSessionId: null,
-          resumeSessionIdVerified: false,
-          executionDirectory: '/tmp/workspace-1',
-          expectedDirectory: '/tmp/workspace-1',
-          directoryMode: 'workspace',
-          customDirectory: null,
-          shouldCreateDirectory: false,
-          taskId: null,
-        },
-      }),
+      withInitialDimensions(
+        pixelNode({
+          kind: 'agent',
+          sessionId: 'session-1',
+          status: 'running',
+          agent: {
+            provider: 'codex',
+            prompt: 'Ship it',
+            model: null,
+            effectiveModel: null,
+            launchMode: 'new',
+            resumeSessionId: null,
+            resumeSessionIdVerified: false,
+            executionDirectory: '/tmp/workspace-1',
+            expectedDirectory: '/tmp/workspace-1',
+            directoryMode: 'workspace',
+            customDirectory: null,
+            shouldCreateDirectory: false,
+            taskId: null,
+          },
+        }),
+      ),
     ],
     spaces: [],
     activeSpaceId: null,
@@ -139,7 +147,7 @@ describe('one PTY event is one store write', () => {
     expect(listener).toHaveBeenCalledTimes(1)
   })
 
-  it('notifies store listeners once for a single agent state change', () => {
+  it('notifies store listeners once and dispatches no layout sync for a single agent state change', () => {
     renderObservers()
     const listener = vi.fn()
     const unsubscribe = useAppStore.subscribe(listener)
