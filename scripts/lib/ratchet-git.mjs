@@ -205,31 +205,47 @@ function describeEntry({ rule, from, to }) {
 }
 
 /**
- * Judges the baseline `next` (an object or its serialized JSON) for `path` against M. Returns
- * `{ ok, text }`: when `ok` is false nothing may be written and `text` is the refusal; when it is
- * true `text` lists what to show the reviewer (per-file rises, accepted rises and the section).
- * `hint` says how to fix the cause, `acceptRises` are the rule ids named on the command line.
+ * Judges the baselines about to be written against M. Pass `path` and `next` (an object or its
+ * serialized JSON) for one baseline, or `updates: [{ path, next }]` for several that are written
+ * together. Returns `{ ok, text }`: when `ok` is false nothing may be written and `text` is the
+ * refusal; when it is true `text` lists what to show the reviewer (per-file rises, accepted rises
+ * and the section). `hint` says how to fix the cause; `acceptRises` are the rule ids named on the
+ * command line.
  */
-export function guardRatchetUpdate({ root, path, next, acceptRises = [], hint = '', label }) {
-  if (!isBaselinePath(path)) {
-    throw new Error(
-      `[${label}] refusing to guard ${path}: a baseline name must end in ${BASELINE_SUFFIX}.`,
-    )
+export function guardRatchetUpdate({
+  root,
+  path,
+  next,
+  updates = [{ path, next }],
+  acceptRises = [],
+  hint = '',
+  label,
+}) {
+  for (const update of updates) {
+    if (!isBaselinePath(update.path)) {
+      throw new Error(
+        `[${label}] refusing to guard ${update.path}: a baseline name must end in ${BASELINE_SUFFIX}.`,
+      )
+    }
   }
   const prefix = `[${label}]`
   const mergeBase = resolveMergeBase(root)
-  let before
-  let after
+  const entries = []
+  const fileRises = []
   try {
-    after = typeof next === 'string' ? JSON.parse(next) : next
-    assertRatchetShape(path, 'the update', after)
-    before = readBaselineAt(root, mergeBase.rev, path)
+    for (const update of updates) {
+      const after = typeof update.next === 'string' ? JSON.parse(update.next) : update.next
+      assertRatchetShape(update.path, 'the update', after)
+      const before = readBaselineAt(root, mergeBase.rev, update.path)
+      entries.push(...entriesFor(update.path, before, after))
+      if (before) {
+        fileRises.push(...perFileRises(before, after))
+      }
+    }
   } catch (error) {
     return { ok: false, text: `${error.message}\n` }
   }
-  const entries = entriesFor(path, before, after)
   const lines = []
-  const fileRises = before ? perFileRises(before, after) : []
   if (entries.length > 0 || fileRises.length > 0 || acceptRises.length > 0) {
     lines.push(`${prefix} compared with ${mergeBase.label}.`)
     if (mergeBase.hint) {

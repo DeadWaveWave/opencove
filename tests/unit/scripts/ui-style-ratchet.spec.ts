@@ -1,4 +1,18 @@
-import { describe, expect, it } from 'vitest'
+import { mkdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { afterEach, describe, expect, it } from 'vitest'
+import { runUiStyleCheck } from '../../../scripts/check-ui-styles.mjs'
+import {
+  countMarkupLiterals,
+  serializeMarkupRatchet,
+} from '../../../scripts/lib/ui-markup-ratchet.mjs'
+import { removeTemporaryRepositories, writeRepositoryFile } from './repoFixture'
+import {
+  commitAll,
+  createClonedRepository,
+  git,
+  removeFixtureDirectories,
+} from './ratchetRepoFixture'
 import {
   compareScaleRatchet,
   countScaleLiterals,
@@ -114,5 +128,136 @@ describe('UI scale ratchet', () => {
         '',
       ].join('\n'),
     )
+  })
+})
+
+describe('UI ratchet update guard', () => {
+  afterEach(() => {
+    removeTemporaryRepositories()
+    removeFixtureDirectories()
+  })
+
+  const CSS = 'src/app/renderer/styles/a.css'
+  const TSX = 'src/app/renderer/Foo.tsx'
+  const SCALE_FILE = 'scripts/ui-style-ratchet.json'
+  const MARKUP_FILE = 'scripts/ui-markup-ratchet.json'
+  const css = '.a { padding: 8px; margin: 12px; }\n'
+  const tsx = 'export const Foo = () => <button type="button">x</button>\n'
+
+  function createRepository() {
+    const sources = { [CSS]: css, [TSX]: tsx }
+    const scale = serializeScaleRatchet(countScaleLiterals([file(CSS, css)]))
+    const markup = serializeMarkupRatchet(countMarkupLiterals([file(TSX, tsx)]))
+    return createClonedRepository({ ...sources, [SCALE_FILE]: scale, [MARKUP_FILE]: markup })
+  }
+
+  function update(repo: string, acceptRises: string[] = []) {
+    let out = ''
+    let err = ''
+    const code = runUiStyleCheck({
+      repoRoot: repo,
+      updateRatchet: true,
+      acceptRises,
+      stdout: { write: (text: string) => (out += text) },
+      stderr: { write: (text: string) => (err += text) },
+    })
+    return { code, out, err }
+  }
+
+  const read = (repo: string, path: string) => readFileSync(join(repo, path), 'utf8')
+
+  it('leaves the baselines byte for byte unchanged when nothing moved', () => {
+    const { repo } = createRepository()
+    const before = [read(repo, SCALE_FILE), read(repo, MARKUP_FILE)]
+
+    expect(update(repo)).toMatchObject({ code: 0, err: '' })
+    expect([read(repo, SCALE_FILE), read(repo, MARKUP_FILE)]).toEqual(before)
+  })
+
+  it('refuses a scale rise instead of recording it, as `pnpm ui:style-ratchet` used to', () => {
+    const { repo, first } = createRepository()
+    const before = read(repo, SCALE_FILE)
+    writeRepositoryFile(repo, CSS, `${css}.b { padding: 12px; }\n`)
+
+    const { code, err } = update(repo)
+
+    expect(code).toBe(1)
+    expect(err).toContain(`compared with merge base with origin/main (${first.slice(0, 8)})`)
+    expect(err).toContain('spacing: total would rise from 2 to 3.')
+    expect(err).toContain(`- \`${SCALE_FILE}\` \`spacing\` 2 -> 3: <category>: <reason>`)
+    expect(read(repo, SCALE_FILE)).toBe(before)
+  })
+
+  it('refuses a markup rise and writes neither baseline', () => {
+    const { repo } = createRepository()
+    const before = [read(repo, SCALE_FILE), read(repo, MARKUP_FILE)]
+    writeRepositoryFile(repo, CSS, `${css}.b { padding: 12px; }\n`)
+    writeRepositoryFile(
+      repo,
+      TSX,
+      `${tsx}export const Bar = () => <button type="button">y</button>\n`,
+    )
+
+    const { code, err } = update(repo, ['spacing'])
+
+    expect(code).toBe(1)
+    expect(err).toContain('native-button: total would rise from 1 to 2.')
+    expect([read(repo, SCALE_FILE), read(repo, MARKUP_FILE)]).toEqual(before)
+  })
+
+  it('writes both baselines when every risen rule is named, and prints the section', () => {
+    const { repo } = createRepository()
+    writeRepositoryFile(repo, CSS, `${css}.b { padding: 12px; }\n`)
+    writeRepositoryFile(
+      repo,
+      TSX,
+      `${tsx}export const Bar = () => <button type="button">y</button>\n`,
+    )
+
+    const { code, out } = update(repo, ['spacing', 'native-button'])
+
+    expect(code).toBe(0)
+    expect(JSON.parse(read(repo, SCALE_FILE)).spacing).toEqual({ [CSS]: 3 })
+    expect(JSON.parse(read(repo, MARKUP_FILE))['native-button']).toEqual({ [TSX]: 2 })
+    expect(out).toContain('## 📈 Ratchet rises')
+    expect(out).toContain(`\`${SCALE_FILE}\` \`spacing\` 2 -> 3`)
+    expect(out).toContain(`\`${MARKUP_FILE}\` \`native-button\` 1 -> 2`)
+  })
+
+  it('refuses a flag for a rule that does not rise, and accepts a drop', () => {
+    const { repo } = createRepository()
+
+    const unused = update(repo, ['radius'])
+    expect(unused.code).toBe(1)
+    expect(unused.err).toContain('--accept-rise radius: this rule neither rises nor retires')
+
+    writeRepositoryFile(repo, CSS, '.a { padding: 8px; }\n')
+    expect(update(repo)).toMatchObject({ code: 0 })
+    expect(JSON.parse(read(repo, SCALE_FILE)).spacing).toEqual({ [CSS]: 1 })
+  })
+
+  it('regenerates deleted baselines with unchanged totals, which is no rise', () => {
+    const { repo } = createRepository()
+    const before = [read(repo, SCALE_FILE), read(repo, MARKUP_FILE)]
+    git(repo, 'rm', '-q', SCALE_FILE, MARKUP_FILE)
+    commitAll(repo, 'delete the baselines')
+    mkdirSync(join(repo, 'scripts'), { recursive: true })
+
+    expect(update(repo)).toMatchObject({ code: 0, err: '' })
+    expect([read(repo, SCALE_FILE), read(repo, MARKUP_FILE)]).toEqual(before)
+  })
+
+  it('refuses regenerating after the baselines were deleted in a commit, and a new finding on top', () => {
+    const { repo } = createRepository()
+    git(repo, 'rm', '-q', SCALE_FILE, MARKUP_FILE)
+    commitAll(repo, 'delete the baselines')
+    writeRepositoryFile(repo, CSS, `${css}.b { padding: 12px; }\n`)
+
+    const { code, err } = update(repo)
+
+    expect(code).toBe(1)
+    expect(err).toContain('spacing: total would rise from 2 to 3.')
+    expect(err).not.toContain('native-button')
+    expect(() => read(repo, SCALE_FILE)).toThrow()
   })
 })

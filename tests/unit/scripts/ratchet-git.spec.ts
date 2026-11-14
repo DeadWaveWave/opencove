@@ -1,7 +1,4 @@
-import { spawnSync } from 'node:child_process'
-import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   WORKING_TREE,
@@ -19,44 +16,19 @@ import {
   runGit,
   writeRepositoryFile,
 } from './repoFixture'
+import {
+  baselineJson as baseline,
+  commitAll,
+  createClonedRepository,
+  createTemporaryDirectory,
+  git,
+  removeFixtureDirectories,
+} from './ratchetRepoFixture'
 
-afterEach(removeTemporaryRepositories)
-
-const IDENTITY = ['-c', 'user.name=Test', '-c', 'user.email=test@example.com']
-
-function git(cwd: string, ...args: string[]): string {
-  const result = spawnSync('git', [...IDENTITY, ...args], { cwd, encoding: 'utf8' })
-  if (result.status !== 0) {
-    throw new Error(result.stderr || `git ${args.join(' ')} failed`)
-  }
-  return result.stdout.trim()
-}
-
-function commitAll(cwd: string, message: string): string {
-  git(cwd, 'add', '-A')
-  git(cwd, 'commit', '-q', '-m', message)
-  return git(cwd, 'rev-parse', 'HEAD')
-}
-
-function baseline(rules: Record<string, Record<string, number>>): string {
-  return `${JSON.stringify(rules, null, 2)}\n`
-}
-
-// A repository on `main` whose `origin` is a bare repository that already holds the first commit.
-function createClonedRepository(files: Record<string, string> = {}) {
-  const repo = createGitRepository()
-  git(repo, 'checkout', '-q', '-B', 'main')
-  writeRepositoryFile(repo, 'README.md', 'x\n')
-  for (const [path, content] of Object.entries(files)) {
-    writeRepositoryFile(repo, path, content)
-  }
-  const first = commitAll(repo, 'base')
-  const origin = mkdtempSync(join(tmpdir(), 'opencove-repo-origin-'))
-  runGit(['init', '-q', '--bare'], origin)
-  git(repo, 'remote', 'add', 'origin', origin)
-  git(repo, 'push', '-q', 'origin', 'main')
-  return { repo, origin, first }
-}
+afterEach(() => {
+  removeTemporaryRepositories()
+  removeFixtureDirectories()
+})
 
 describe('resolveMergeBase', () => {
   it('is the merge base with origin/main when the branch is ahead', () => {
@@ -109,7 +81,7 @@ describe('resolveMergeBase', () => {
     commitAll(repo, 'main two')
     git(repo, 'push', '-q', 'origin', 'main', 'feature')
 
-    const clone = mkdtempSync(join(tmpdir(), 'opencove-repo-shallow-'))
+    const clone = createTemporaryDirectory('opencove-repo-shallow-')
     runGit(
       ['clone', '-q', '--depth', '1', '--branch', 'feature', `file://${origin}`, clone],
       tmpdir(),
@@ -122,7 +94,6 @@ describe('resolveMergeBase', () => {
     expect(result.rev).toBe(git(clone, 'rev-parse', 'HEAD'))
     expect(result.label).toMatch(/^HEAD \(no merge base/)
     expect(result.hint).toContain('git fetch --unshallow')
-    removeDirectory(clone)
   })
 
   it('has no revision at all before the first commit or outside a repository', () => {
@@ -133,18 +104,13 @@ describe('resolveMergeBase', () => {
       fallback: false,
     })
 
-    const outside = mkdtempSync(join(tmpdir(), 'opencove-no-repo-'))
+    const outside = createTemporaryDirectory('opencove-no-repo-')
     expect(resolveMergeBase(outside, 'origin/main', 'HEAD')).toMatchObject({
       rev: null,
       label: 'none',
     })
-    removeDirectory(outside)
   })
 })
-
-function removeDirectory(path: string): void {
-  spawnSync('rm', ['-rf', path])
-}
 
 describe('baseline discovery', () => {
   it('lists tracked paths ending in ratchet.json and ignores everything else', () => {
