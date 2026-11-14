@@ -1,4 +1,5 @@
 import { CO_CHANGE_HEADING, validatePartnerSection } from './impact/partner-section.mjs'
+import { RATCHET_RISES_HEADING, validateRiseSection } from './ratchet.mjs'
 
 const REQUIRED_TOP_LEVEL_HEADINGS = [
   '## 💡 Change Scope',
@@ -27,8 +28,9 @@ function normalizeMarkdown(markdown) {
   return markdown.replace(/\r\n?/g, '\n')
 }
 
+// An unterminated comment hides everything after it, as it does when GitHub renders the body.
 function stripHtmlComments(markdown) {
-  return markdown.replace(/<!--[\s\S]*?-->/g, '')
+  return markdown.replace(/<!--[\s\S]*?(?:-->|$)/g, '')
 }
 
 function splitTopLevelSections(markdown) {
@@ -59,6 +61,59 @@ function splitTopLevelSections(markdown) {
 
   flush()
   return sections
+}
+
+const FENCE_OPEN = /^ {0,3}(`{3,}|~{3,})/
+
+// Keeps only what GitHub renders as description text: removes fenced code blocks and HTML
+// comments in one pass over the lines, so each hides the other's markers. A `<!--` inside a fence
+// is literal text and must not swallow the body after the fence, and a fence marker inside a
+// comment is not a fence. Running one removal first would get one of the two wrong.
+function stripFencesAndComments(markdown) {
+  const out = []
+  let fence = null
+  let inComment = false
+  for (const line of markdown.split('\n')) {
+    let text = line
+    if (fence) {
+      const close = new RegExp(`^ {0,3}\\${fence[0]}{${fence.length},}\\s*$`).exec(line)
+      if (close) {
+        fence = null
+      }
+      continue
+    }
+    if (inComment) {
+      const end = text.indexOf('-->')
+      if (end === -1) {
+        continue
+      }
+      inComment = false
+      text = text.slice(end + 3)
+    } else {
+      const open = FENCE_OPEN.exec(text)
+      if (open) {
+        fence = open[1]
+        continue
+      }
+    }
+    let kept = ''
+    while (text.length > 0) {
+      const start = text.indexOf('<!--')
+      if (start === -1) {
+        kept += text
+        break
+      }
+      kept += text.slice(0, start)
+      const end = text.indexOf('-->', start + 4)
+      if (end === -1) {
+        inComment = true
+        break
+      }
+      text = text.slice(end + 3)
+    }
+    out.push(kept)
+  }
+  return out.join('\n')
 }
 
 function hasMeaningfulContent(markdown) {
@@ -147,8 +202,14 @@ export function validateTemplateStructure(templateMarkdown) {
 
 // `missingPartners` are the co-change partners the diff leaves untouched, from
 // `findMissingPartners`. Without them (no diff known) the section only has to have content.
-export function validatePullRequestBody(prBody, { missingPartners = null } = {}) {
-  const normalizedBody = normalizeMarkdown(prBody ?? '')
+// `ratchetRises` are the rises and retirements of ratchet baselines from the merge base to the
+// head, from `collectRatchetRises`. Without them (no diff known) the rises section is not checked.
+export function validatePullRequestBody(
+  prBody,
+  { missingPartners = null, ratchetRises = null } = {},
+) {
+  // Only what GitHub renders counts: a section inside a comment or a code fence is not a section.
+  const normalizedBody = stripFencesAndComments(normalizeMarkdown(prBody ?? ''))
   const sections = splitTopLevelSections(normalizedBody)
   const errors = []
 
@@ -196,6 +257,16 @@ export function validatePullRequestBody(prBody, { missingPartners = null } = {})
       errors.push(...validatePartnerSection(coChangeSection, missingPartners))
     } else if (!hasMeaningfulContent(coChangeSection)) {
       errors.push(`${CO_CHANGE_HEADING} must contain content.`)
+    }
+  }
+
+  if (ratchetRises) {
+    if (sections.has(RATCHET_RISES_HEADING)) {
+      errors.push(...validateRiseSection(sections.get(RATCHET_RISES_HEADING), ratchetRises))
+    } else if (ratchetRises.length > 0) {
+      errors.push(
+        `${RATCHET_RISES_HEADING} is required: ${ratchetRises.length} rise or retirement of a ratchet baseline total against the merge base needs one line each.`,
+      )
     }
   }
 

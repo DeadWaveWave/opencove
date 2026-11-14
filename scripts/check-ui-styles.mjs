@@ -3,6 +3,7 @@
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { guardRatchetUpdate, parseAcceptRises } from './lib/ratchet-git.mjs'
 import {
   compareScaleRatchet,
   countScaleLiterals,
@@ -281,9 +282,10 @@ export function runUiStyleCheck({
   stderr = process.stderr,
   stdout = null,
   updateRatchet = false,
+  acceptRises = [],
 } = {}) {
   const files = readUiStyleFiles(repoRoot)
-  if (files.length === 0 && !updateRatchet) {
+  if (files.length === 0) {
     stderr.write('[ui-style-check] examined 0 stylesheets: this is not a pass.\n')
     return 1
   }
@@ -293,8 +295,25 @@ export function runUiStyleCheck({
   const scalePath = resolve(repoRoot, SCALE_RATCHET_FILE)
   const markupPath = resolve(repoRoot, MARKUP_RATCHET_FILE)
   if (updateRatchet) {
-    writeFileSync(scalePath, serializeScaleRatchet(scaleCounts))
-    writeFileSync(markupPath, serializeMarkupRatchet(markupCounts))
+    const scale = serializeScaleRatchet(scaleCounts)
+    const markup = serializeMarkupRatchet(markupCounts)
+    const guard = guardRatchetUpdate({
+      root: repoRoot,
+      updates: [
+        { path: SCALE_RATCHET_FILE, next: scale },
+        { path: MARKUP_RATCHET_FILE, next: markup },
+      ],
+      acceptRises,
+      hint: 'Use the --cove-* scale tokens and the shared components instead of new hard-coded values and native markup.',
+      label: 'ui-style-ratchet',
+    })
+    if (!guard.ok) {
+      stderr.write(guard.text)
+      return 1
+    }
+    writeFileSync(scalePath, scale)
+    writeFileSync(markupPath, markup)
+    stdout?.write(guard.text)
   }
   const scaleIssues = updateRatchet ? [] : compareScaleRatchet(scaleCounts, readRatchet(scalePath))
   const markupIssues = updateRatchet
@@ -315,8 +334,19 @@ export function runUiStyleCheck({
 
 const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : null
 if (invokedPath === import.meta.url) {
-  process.exitCode = runUiStyleCheck({
-    stdout: process.stdout,
-    updateRatchet: process.argv.includes('--update-ratchet'),
-  })
+  try {
+    const { rules, rest } = parseAcceptRises(process.argv.slice(2))
+    const updateRatchet = rest.includes('--update-ratchet')
+    if (rules.length > 0 && !updateRatchet) {
+      throw new Error('--accept-rise only applies together with --update-ratchet.')
+    }
+    process.exitCode = runUiStyleCheck({
+      stdout: process.stdout,
+      updateRatchet,
+      acceptRises: rules,
+    })
+  } catch (error) {
+    process.stderr.write(`[ui-style-check] ${error.message}\n`)
+    process.exitCode = 2
+  }
 }

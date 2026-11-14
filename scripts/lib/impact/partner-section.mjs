@@ -52,7 +52,7 @@ export function parsePartnerReasons(sectionBody) {
   return reasons
 }
 
-function hasRealReason(reason) {
+export function hasRealReason(reason) {
   return (
     Boolean(reason) &&
     !reason.toLowerCase().includes(REASON_PLACEHOLDER) &&

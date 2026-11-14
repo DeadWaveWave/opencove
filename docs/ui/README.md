@@ -68,7 +68,10 @@
   字重 400/500/600，间距 `--cove-spacing-*`（4px 网格），圆角 `--cove-radius-*`，页面级层级 `--cove-z-*`。
 - `pnpm ui:style-check` 按文件统计写死的字号、圆角、间距（≥ 4px）和页面级 z-index（≥ 10），
   计数只能下降，基线是 `scripts/ui-style-ratchet.json`。新增写死的值会失败；减少后运行
-  `pnpm ui:style-ratchet` 锁定新基线。基线由该命令生成，不手改。
+  `pnpm ui:style-ratchet` 锁定新基线。基线由该命令生成，不手改。该命令按规则总数与合并基线
+  （`git merge-base HEAD origin/main`）比较，总数上升或规则消失时拒绝写入；确实要记录时对每条规则加
+  `--accept-rise <规则>`，并在 PR 描述的 `## 📈 Ratchet rises` 段落写明理由（见 `DEVELOPMENT.md` 的“棘轮基线守卫”）。
+  移动或重命名文件但总数不变不需要标志。
 - 同一命令也统计被共享组件取代的原生标记（`scripts/ui-markup-ratchet.json`，同样只减不增）：
   原生元素上的 `title` 属性改用 `Tooltip`（`iframe` 的 `title` 是可访问名称，不计入）；
   共享组件目录之外的原生 `<button>` 改用 `Button`、`IconButton` 或 `MenuItem`；

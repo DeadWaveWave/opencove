@@ -11,11 +11,9 @@ import {
   compareDeadCodeRatchet,
   findInternalNamingViolations,
   formatDeadCodeReport,
-  formatMissingBaseline,
-  formatRaisedCounts,
-  raisedCounts,
   serializeDeadCodeRatchet,
 } from './lib/dead-code.mjs'
+import { guardRatchetUpdate, parseAcceptRises } from './lib/ratchet-git.mjs'
 
 const DEFAULT_REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const SOURCE_PATTERN = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
@@ -55,49 +53,50 @@ function readBaseline(path) {
   return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null
 }
 
-export function baselineExistsInGitHead(root) {
-  return (
-    spawnSync('git', ['cat-file', '-e', `HEAD:${RATCHET_FILE}`], { cwd: root, stdio: 'ignore' })
-      .status === 0
-  )
-}
-
 export function runDeadCodeCheck({
   root = DEFAULT_REPO_ROOT,
   updateRatchet = false,
-  bootstrap = false,
-  baselineInGit = baselineExistsInGitHead,
+  acceptRises = [],
   report = runKnip(root),
   stdout = process.stdout,
   stderr = process.stderr,
 } = {}) {
   const ratchetPath = resolve(root, RATCHET_FILE)
   const { findings, counts, names } = classifyKnipReport(report)
-  const baseline = readBaseline(ratchetPath)
+  const sourceFiles = listSourceFiles(root)
   const internalViolations = findInternalNamingViolations(
-    listSourceFiles(root).map(file => ({
+    sourceFiles.map(file => ({
       file,
       text: readFileSync(resolve(root, file), 'utf8'),
     })),
   )
 
   if (updateRatchet) {
-    // A missing baseline is only a first run: once committed, deleting it must not reset it.
-    if (!baseline && !bootstrap && baselineInGit(root)) {
-      stderr.write(formatMissingBaseline())
+    // An empty scan has no unused exports to record; it is a broken scan, not a clean tree.
+    if (sourceFiles.length === 0) {
+      stderr.write(`[${DEAD_CODE_LABEL}] found 0 source files: refusing to write the baseline.\n`)
       return 1
     }
-    const raised = baseline ? raisedCounts(counts, baseline, names) : []
-    if (raised.length > 0) {
-      stderr.write(formatRaisedCounts(raised))
+    const serialized = serializeDeadCodeRatchet(counts)
+    const guard = guardRatchetUpdate({
+      root,
+      path: RATCHET_FILE,
+      next: serialized,
+      acceptRises,
+      hint: 'Delete the new unused exports and types instead of recording them.',
+      label: DEAD_CODE_LABEL,
+    })
+    if (!guard.ok) {
+      stderr.write(guard.text)
       return 1
     }
-    writeFileSync(ratchetPath, serializeDeadCodeRatchet(counts))
+    writeFileSync(ratchetPath, serialized)
+    stdout.write(guard.text)
     stdout.write(`[${DEAD_CODE_LABEL}] wrote ${relative(root, ratchetPath)}\n`)
     return findings.length + internalViolations.length > 0 ? 1 : 0
   }
 
-  const ratchetIssues = compareDeadCodeRatchet(counts, baseline, names)
+  const ratchetIssues = compareDeadCodeRatchet(counts, readBaseline(ratchetPath), names)
   if (findings.length + internalViolations.length + ratchetIssues.length === 0) {
     return 0
   }
@@ -107,8 +106,15 @@ export function runDeadCodeCheck({
 
 const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : null
 if (invokedPath === import.meta.url) {
-  process.exitCode = runDeadCodeCheck({
-    updateRatchet: process.argv.includes('--update-ratchet'),
-    bootstrap: process.argv.includes('--bootstrap'),
-  })
+  try {
+    const { rules, rest } = parseAcceptRises(process.argv.slice(2))
+    const updateRatchet = rest.includes('--update-ratchet')
+    if (rules.length > 0 && !updateRatchet) {
+      throw new Error('--accept-rise only applies together with --update-ratchet.')
+    }
+    process.exitCode = runDeadCodeCheck({ updateRatchet, acceptRises: rules })
+  } catch (error) {
+    process.stderr.write(`[${DEAD_CODE_LABEL}] ${error.message}\n`)
+    process.exitCode = 2
+  }
 }

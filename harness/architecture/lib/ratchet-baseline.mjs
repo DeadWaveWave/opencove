@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { collectContextRuleSeverities } from './context-rules.mjs'
@@ -8,6 +8,9 @@ import {
   formatRatchetIssues,
   serializeRatchet,
 } from '../../../scripts/lib/ratchet.mjs'
+import { guardRatchetUpdate } from '../../../scripts/lib/ratchet-git.mjs'
+
+const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
 
 export const defaultRatchetBaselinePath = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -64,10 +67,6 @@ export function countRatchetedFindings({ report, config }) {
     byFile[violation.file] = (byFile[violation.file] ?? 0) + 1
   }
   return counts
-}
-
-function total(byFile = {}) {
-  return Object.values(byFile).reduce((sum, count) => sum + count, 0)
 }
 
 function describeCount(rule, now, before) {
@@ -138,29 +137,45 @@ export function evaluateRatchet({ report, config, baseline }) {
   }
 }
 
-// The baseline may be rewritten freely except that no rule already in it may gain findings.
-export function planRatchetUpdate({ report, config, baseline }) {
+// The counts to record. Whether they may be recorded is `updateRatchetBaseline`'s decision.
+export function planRatchetUpdate({ report, config }) {
   const counts = countRatchetedFindings({ report, config })
-  const refusals = []
-  for (const rule of ratchetedRules(config)) {
-    if (!baseline || !(rule in baseline)) {
-      continue
-    }
-    const before = total(baseline[rule])
-    const after = total(counts[rule])
-    if (after > before) {
-      refusals.push({ rule, before, after })
-    }
+  return { counts, serialized: serializeRatchet(counts, ratchetedRules(config)) }
+}
+
+// Writes the baseline unless a rule total rises or a rule disappears against the merge base with
+// origin/main, which only `--accept-rise <rule>` allows. Returns the exit code.
+export async function updateRatchetBaseline({
+  report,
+  config,
+  root = REPOSITORY_ROOT,
+  acceptRises = [],
+  stdout = process.stdout,
+  stderr = process.stderr,
+}) {
+  if (report.filesAnalyzed === 0) {
+    stderr.write(
+      '[architecture-ratchet] the audit analysed 0 files: refusing to write the baseline.\n',
+    )
+    return 1
   }
-  if (refusals.length > 0) {
-    return { ok: false, refusals, serialized: null, counts }
+  const { serialized } = planRatchetUpdate({ report, config })
+  const guard = guardRatchetUpdate({
+    root,
+    path: BASELINE_FILE,
+    next: serialized,
+    acceptRises,
+    hint: 'Fix the new violations, or add a reasoned exception to harness/architecture/rules.json.',
+    label: 'architecture-ratchet',
+  })
+  if (!guard.ok) {
+    stderr.write(guard.text)
+    return 1
   }
-  return {
-    ok: true,
-    refusals,
-    serialized: serializeRatchet(counts, ratchetedRules(config)),
-    counts,
-  }
+  await writeFile(resolve(root, BASELINE_FILE), serialized, 'utf8')
+  stdout.write(guard.text)
+  stdout.write(`Architecture ratchet written to ${BASELINE_FILE}.\n`)
+  return 0
 }
 
 export async function loadRatchetBaseline(path = defaultRatchetBaselinePath) {

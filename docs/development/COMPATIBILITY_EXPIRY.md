@@ -61,7 +61,7 @@
 | f | `oracle-unmarked` | oracle 文件没有标记 |
 | g | ratchet | 未被标记覆盖的兼容信号超过 `scripts/compat-ratchet.json` 基线（也包括低于基线但没有更新基线） |
 
-信号是匹配 `legacy`、`deprecated`、`backwards compat…`、`compat` / `compatibility`（作为词）的标识符或注释，`cove:m0:` 字符串，`clientFeatures.` 读取（`defineLegacyOperation` 和 `legacyNormalize` 本身含 `legacy`，因此也被计入）。import 语句不计。基线只会下降：某个文件的计数下降时，用 `node scripts/check-compat-expiry.mjs --update-ratchet` 在同一个改动里更新基线；只要有任何计数会上升，`--update-ratchet` 就拒绝写入。基线文件缺失时，只有它从未存在于 git HEAD 才会被创建，或者显式加 `--bootstrap`（包脚本不会传这个参数）。信号列表是安全网而不是围墙：真正的保证来自类型锚点、目录规则（`featureFlags/`、oracle）和 review。设计上“加一行标记”比“改标识符绕开关键词”更便宜。
+信号是匹配 `legacy`、`deprecated`、`backwards compat…`、`compat` / `compatibility`（作为词）的标识符或注释，`cove:m0:` 字符串，`clientFeatures.` 读取（`defineLegacyOperation` 和 `legacyNormalize` 本身含 `legacy`，因此也被计入）。import 语句不计。基线只会下降：某个文件的计数下降时，用 `node scripts/check-compat-expiry.mjs --update-ratchet` 在同一个改动里更新基线。`--update-ratchet` 按规则总数与合并基线（`git merge-base HEAD origin/main`）上的基线比较：任一规则总数上升或规则消失就拒绝写入，除非用 `--accept-rise <规则>` 点名并在 PR 描述的 `## 📈 Ratchet rises` 段落里给出理由（见 `DEVELOPMENT.md` 的“棘轮基线守卫”）；文件间移动或重命名但总数不变则允许。比较对象始终是合并基线上的文件，不是磁盘上的文件，所以删除或手改基线文件不会改变拒绝与否：基线文件在合并基线上不存在时，每条总数大于 0 的规则都是一次上升；合并基线上有文件时，删除后重新生成只要总数不超过合并基线就允许。扫描到 0 个文件时不会写入基线。信号列表是安全网而不是围墙：真正的保证来自类型锚点、目录规则（`featureFlags/`、oracle）和 review。设计上“加一行标记”比“改标识符绕开关键词”更便宜。
 
 命名检查（`scripts/check-naming.mjs`）只在 `compat:check` 扫描的文件里跳过 `cove:m0:`，该前缀在这些文件里由本检查负责；在同一行写 `legacy` 不再能让它通过。其他文件（测试、e2e 等）里出现 `cove:m0:` 仍然是命名违规。
 
@@ -69,7 +69,7 @@
 
 - `--at <version>`：按某个未来版本评估，不读取 `package.json` 的版本。
 - `--report`：列出在下一个 minor 到期的条目和所有文件级标记，不会失败。周期内用它提前看到要到期的路径。
-- `--update-ratchet`：重写基线。
+- `--update-ratchet`：重写基线；总数相对合并基线上升或规则消失时拒绝，`--accept-rise <规则>`（可重复，只能和它一起用）点名接受。
 
 ## 5. 发布前
 

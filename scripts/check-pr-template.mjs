@@ -6,6 +6,8 @@ import { validatePullRequestBody, validateTemplateStructure } from './lib/pr-tem
 import { resolveBaseChanges } from './lib/impact/changes.mjs'
 import { findMissingPartners, loadIndex } from './lib/impact/cochange.mjs'
 import { formatPrSection } from './lib/impact/partner-section.mjs'
+import { RATCHET_RISES_HEADING, formatRiseSection } from './lib/ratchet.mjs'
+import { WORKING_TREE, collectRatchetRises, resolveMergeBase } from './lib/ratchet-git.mjs'
 
 // Usage: check-pr-template.mjs [body.md] [--base <ref> [--head <ref>]]
 // The diff for the co-change check comes from --base/--head, or from the pull request event.
@@ -110,7 +112,28 @@ if (diffRange) {
   }
 }
 
-const validationErrors = validatePullRequestBody(readPullRequestBody(), { missingPartners })
+// The ratchet baseline totals this diff raises or retires: the same function `pnpm ratchet:rises`
+// and the update commands use, from the merge base of the two revisions to the head.
+let ratchetRises = null
+if (diffRange) {
+  try {
+    const mergeBase = resolveMergeBase(rootDir, diffRange.base, diffRange.head ?? 'HEAD')
+    if (mergeBase.fallback || mergeBase.rev === null) {
+      throw new Error(`no merge base of ${diffRange.base} and ${diffRange.head ?? 'HEAD'}`)
+    }
+    ratchetRises = collectRatchetRises(rootDir, mergeBase.rev, diffRange.head ?? WORKING_TREE)
+  } catch (error) {
+    process.stderr.write(
+      `Cannot compute ratchet rises: ${error instanceof Error ? error.message : String(error)}\n`,
+    )
+    process.exit(1)
+  }
+}
+
+const validationErrors = validatePullRequestBody(readPullRequestBody(), {
+  missingPartners,
+  ratchetRises,
+})
 
 if (validationErrors.length === 0) {
   process.stdout.write('PR description matches the required template structure.\n')
@@ -126,6 +149,18 @@ if (missingPartners && missingPartners.length > 0) {
     '\nPaste this section into the PR body and replace each <reason> with one line saying why the\n' +
       'partner needs no change here (or "should be extracted, follow-up #N"):\n\n' +
       `${formatPrSection(missingPartners)}\n`,
+  )
+}
+if (
+  ratchetRises?.length > 0 &&
+  validationErrors.some(error => error.includes(RATCHET_RISES_HEADING))
+) {
+  process.stderr.write(
+    '\nPaste this section into the PR body and replace each <category>: <reason> with one of\n' +
+      'merge-skew: #N (the pull requests that collided), detection: (the rule now sees more),\n' +
+      'new-rule: (a new rule or ratchet), rename: (the rule id was renamed, split or removed),\n' +
+      'debt: #N (the issue that will remove it), followed by a reason:\n\n' +
+      `${formatRiseSection(ratchetRises)}\n`,
   )
 }
 process.stderr.write(

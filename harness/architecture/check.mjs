@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { writeFile } from 'node:fs/promises'
 import {
   formatArchitectureReport,
   loadArchitectureConfig,
@@ -10,7 +9,7 @@ import {
   defaultRatchetBaselinePath,
   evaluateRatchet,
   loadRatchetBaseline,
-  planRatchetUpdate,
+  updateRatchetBaseline,
 } from './lib/ratchet-baseline.mjs'
 
 let options
@@ -27,25 +26,11 @@ const config = await loadArchitectureConfig(options.config)
 const report = await runArchitectureAudit({ config })
 
 if (updateRatchet) {
-  const plan = planRatchetUpdate({
+  process.exitCode = await updateRatchetBaseline({
     report,
     config,
-    baseline: await loadRatchetBaseline(ratchetPath),
+    acceptRises: options.acceptRises,
   })
-  if (!plan.ok) {
-    for (const { rule, before, after } of plan.refusals) {
-      process.stderr.write(
-        `[architecture-ratchet] ${rule}: total would rise from ${before} to ${after}.\n`,
-      )
-    }
-    process.stderr.write(
-      'Refusing to grow the baseline. Fix the new violations, or add a reasoned exception to harness/architecture/rules.json.\n',
-    )
-    process.exitCode = 1
-  } else {
-    await writeFile(ratchetPath, plan.serialized, 'utf8')
-    process.stdout.write(`Architecture ratchet written to ${ratchetPath}.\n`)
-  }
 } else if (mode === 'check') {
   const result = evaluateRatchet({
     report,

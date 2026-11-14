@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { loadArchitectureConfig, runArchitectureAudit } from '../lib/architecture-rules.mjs'
+import { compareRatchetTotals, ratchetTotals } from '../../../scripts/lib/ratchet.mjs'
 import { evaluateRatchet, planRatchetUpdate } from '../lib/ratchet-baseline.mjs'
 import { VARIANT_SOURCE_FILES } from './variantFixtureSupport'
 
@@ -501,7 +502,7 @@ describe('variant rules: ratchet', () => {
 
   it('fails the check, naming file and rule, when a new file gains a site', async () => {
     const first = await audit(before)
-    const plan = planRatchetUpdate({ report: first.report, config: first.config, baseline: null })
+    const plan = planRatchetUpdate({ report: first.report, config: first.config })
     const baseline = JSON.parse(plan.serialized as string)
     expect(baseline[decisionId(PROVIDER)]).toEqual({ 'src/app/a.ts': 1 })
 
@@ -531,8 +532,7 @@ describe('variant rules: ratchet', () => {
     }
     const first = await audit(files)
     const baseline = JSON.parse(
-      planRatchetUpdate({ report: first.report, config: first.config, baseline: null })
-        .serialized as string,
+      planRatchetUpdate({ report: first.report, config: first.config }).serialized as string,
     )
     expect(baseline[decisionId(PROVIDER)]).toEqual({ 'src/app/provider.ts': 1 })
     expect(baseline[decisionId(NODE)]).toEqual({ 'src/app/node.ts': 1 })
@@ -543,17 +543,17 @@ describe('variant rules: ratchet', () => {
         "export const a = (provider: string) => provider === 'codex'\nexport const c = (provider: string) => provider === 'pi'\n",
       'src/app/node.ts': 'export const b = 1\n',
     })
-    const plan = planRatchetUpdate({ report: swapped.report, config: swapped.config, baseline })
-    expect(plan.ok).toBe(false)
-    expect(plan.refusals).toEqual([{ rule: decisionId(PROVIDER), before: 1, after: 2 }])
-    expect(plan.serialized).toBeNull()
+    const plan = planRatchetUpdate({ report: swapped.report, config: swapped.config })
+    expect(
+      compareRatchetTotals(ratchetTotals(baseline), ratchetTotals(JSON.parse(plan.serialized)))
+        .rises,
+    ).toEqual([{ rule: decisionId(PROVIDER), from: 1, to: 2 }])
   })
 
-  it('refuses to record an increase and passes an allowed form', async () => {
+  it('sees an increase as a rise and passes an allowed form', async () => {
     const first = await audit(before)
     const baseline = JSON.parse(
-      planRatchetUpdate({ report: first.report, config: first.config, baseline: null })
-        .serialized as string,
+      planRatchetUpdate({ report: first.report, config: first.config }).serialized as string,
     )
 
     const grown = await audit({
@@ -561,12 +561,12 @@ describe('variant rules: ratchet', () => {
       'src/app/b.ts':
         "export function f(p: string) {\n  switch (p) {\n    case 'pi':\n      return 1\n    default:\n      return 0\n  }\n}\n",
     })
-    const plan = planRatchetUpdate({ report: grown.report, config: grown.config, baseline })
-    expect(plan.ok).toBe(false)
-    expect(plan.refusals.map(refusal => refusal.rule).sort()).toEqual([
-      decisionId(PROVIDER),
-      switchId(PROVIDER),
-    ])
+    const plan = planRatchetUpdate({ report: grown.report, config: grown.config })
+    const { rises } = compareRatchetTotals(
+      ratchetTotals(baseline),
+      ratchetTotals(JSON.parse(plan.serialized)),
+    )
+    expect(rises.map(rise => rise.rule).sort()).toEqual([decisionId(PROVIDER), switchId(PROVIDER)])
 
     const allowed = await audit({
       ...before,

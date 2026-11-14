@@ -5,8 +5,7 @@
 // is unknown or unused, and when unmarked compatibility signals grow past the baseline.
 // See docs/development/COMPATIBILITY_EXPIRY.md.
 
-import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { hasFileMarker, scanCompatSource, SIGNAL_RULES } from './lib/compatMarkers.mjs'
 import {
@@ -17,6 +16,7 @@ import {
   validateRegistry,
 } from './lib/compatRegistry.mjs'
 import { compareRatchet, formatRatchetIssues, serializeRatchet } from './lib/ratchet.mjs'
+import { guardRatchetUpdate, parseAcceptRises } from './lib/ratchet-git.mjs'
 import { isCompatScannedFile, isOracleFile, isParitySpecFile } from './lib/compatScope.mjs'
 import { listRepositoryFiles, resolveRepositoryRoot } from './lib/repo-files.mjs'
 
@@ -38,55 +38,29 @@ function readJson(root, path, fallback) {
 }
 
 function parseArguments(argv) {
-  const options = { at: null, report: false, updateRatchet: false, bootstrap: false }
-  for (let index = 0; index < argv.length; index += 1) {
-    const argument = argv[index]
+  const { rules: acceptRises, rest } = parseAcceptRises(argv)
+  const options = { at: null, report: false, updateRatchet: false, acceptRises }
+  for (let index = 0; index < rest.length; index += 1) {
+    const argument = rest[index]
     if (argument === '--at') {
-      options.at = argv[(index += 1)] ?? ''
+      options.at = rest[(index += 1)] ?? ''
     } else if (argument === '--report') {
       options.report = true
     } else if (argument === '--update-ratchet') {
       options.updateRatchet = true
-    } else if (argument === '--bootstrap') {
-      options.bootstrap = true
     } else {
       throw new Error(
-        `Unknown argument ${argument}. Use --at <version>, --report, --update-ratchet [--bootstrap].`,
+        `Unknown argument ${argument}. Use --at <version>, --report, --update-ratchet [--accept-rise <rule>].`,
       )
     }
+  }
+  if (acceptRises.length > 0 && !options.updateRatchet) {
+    throw new Error('--accept-rise only applies together with --update-ratchet.')
   }
   if (options.at !== null && parseVersion(options.at) === null) {
     throw new Error(`--at needs a version like 0.7.0 (got ${JSON.stringify(options.at)}).`)
   }
   return options
-}
-
-function existsInHead(root) {
-  return spawnSync('git', ['cat-file', '-e', `HEAD:${RATCHET_FILE}`], { cwd: root }).status === 0
-}
-
-// The baseline only goes down. A missing baseline is created only when it never existed in git
-// HEAD (or with the explicit `--bootstrap` flag, which no package script passes).
-function ratchetUpdateRefusal(root, counts, bootstrap) {
-  if (!existsSync(resolve(root, RATCHET_FILE))) {
-    return existsInHead(root) && !bootstrap
-      ? `[${LABEL}] ${RATCHET_FILE} is missing but exists in git HEAD: restore it instead of regenerating it (--bootstrap overrides).\n`
-      : null
-  }
-  const rises = compareRatchet({
-    counts,
-    baseline: readJson(root, RATCHET_FILE, {}),
-    rules: SIGNAL_RULES,
-    describe: (rule, now, before) => `${now} unmarked ${rule} signal(s), baseline ${before}`,
-  }).filter(issue => issue.current > issue.baseline)
-  if (rises.length === 0) {
-    return null
-  }
-  return `${formatRatchetIssues(rises, {
-    title: 'Rising unmarked compatibility signals',
-    label: LABEL,
-    footer: 'Refusing to raise the baseline: mark the new code with `// @compat <id>` instead.',
-  })}`
 }
 
 function describeIssue(issue) {
@@ -222,18 +196,27 @@ function run() {
     printReport({ current, support, entries, fileMarkers })
     return 0
   }
-  if (options.updateRatchet) {
-    const refusal = ratchetUpdateRefusal(root, counts, options.bootstrap)
-    if (refusal) {
-      process.stderr.write(refusal)
-      return 1
-    }
-    mkdirSync(dirname(resolve(root, RATCHET_FILE)), { recursive: true })
-    writeFileSync(resolve(root, RATCHET_FILE), serializeRatchet(counts, SIGNAL_RULES))
-  }
   if (scannedFiles === 0) {
     process.stderr.write(`[${LABEL}] scanned 0 files: this is not a pass.\n`)
     return 1
+  }
+  if (options.updateRatchet) {
+    const serialized = serializeRatchet(counts, SIGNAL_RULES)
+    const guard = guardRatchetUpdate({
+      root,
+      path: RATCHET_FILE,
+      next: serialized,
+      acceptRises: options.acceptRises,
+      hint: 'Mark the new code with `// @compat <id>` instead.',
+      label: LABEL,
+    })
+    if (!guard.ok) {
+      process.stderr.write(guard.text)
+      return 1
+    }
+    mkdirSync(dirname(resolve(root, RATCHET_FILE)), { recursive: true })
+    writeFileSync(resolve(root, RATCHET_FILE), serialized)
+    process.stdout.write(guard.text)
   }
 
   const ratchetIssues = options.updateRatchet

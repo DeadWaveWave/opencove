@@ -1,15 +1,20 @@
-import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { existsSync, readFileSync, rmSync } from 'node:fs'
+import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { baselineExistsInGitHead, runDeadCodeCheck } from '../../../scripts/check-dead-code.mjs'
+import { runDeadCodeCheck } from '../../../scripts/check-dead-code.mjs'
 import {
   classifyKnipReport,
   compareDeadCodeRatchet,
   findInternalNamingViolations,
   formatDeadCodeReport,
 } from '../../../scripts/lib/dead-code.mjs'
+import {
+  commitAll,
+  createClonedRepository,
+  git,
+  removeFixtureDirectories,
+} from './ratchetRepoFixture'
+import { removeTemporaryRepositories, writeRepositoryFile } from './repoFixture'
 
 const emptyRow = (file: string) => ({
   file,
@@ -137,28 +142,26 @@ describe('visibility tag rule', () => {
 })
 
 describe('runDeadCodeCheck', () => {
-  const roots: string[] = []
   afterEach(() => {
-    for (const root of roots.splice(0)) {
-      rmSync(root, { recursive: true, force: true })
-    }
+    removeTemporaryRepositories()
+    removeFixtureDirectories()
   })
 
-  const makeRoot = (files: Record<string, string>) => {
-    const root = mkdtempSync(join(tmpdir(), 'dead-code-'))
-    roots.push(root)
-    for (const [path, text] of Object.entries({ 'src/a.ts': 'export const a = 1\n', ...files })) {
-      mkdirSync(dirname(join(root, path)), { recursive: true })
-      writeFileSync(join(root, path), text)
-    }
-    return root
-  }
+  // A repository whose origin/main holds `files`.
+  const makeRoot = (files: Record<string, string>) =>
+    createClonedRepository({ 'src/a.ts': 'export const a = 1\n', ...files }).repo
 
   const run = (root: string, options: Record<string, unknown>) => {
     let err = ''
+    let out = ''
     const status = runDeadCodeCheck({
       root,
-      stdout: { write: () => true },
+      stdout: {
+        write: (text: string) => {
+          out += text
+          return true
+        },
+      },
       stderr: {
         write: (text: string) => {
           err += text
@@ -167,25 +170,94 @@ describe('runDeadCodeCheck', () => {
       },
       ...options,
     } as never)
-    return { status, err }
+    return { status, err, out }
   }
 
   const baselinePath = (root: string) => join(root, 'scripts/dead-code-ratchet.json')
+  const baselineOf = (counts: Record<string, Record<string, number>>) =>
+    `${JSON.stringify({ exports: {}, types: {}, ...counts }, null, 2)}\n`
 
-  it('refuses to raise a per-file count and leaves the baseline untouched', () => {
-    const baseline = `${JSON.stringify({ exports: { 'src/a.ts': 1 }, types: {} }, null, 2)}\n`
+  it('refuses to raise a rule total against the merge base and leaves the baseline untouched', () => {
+    const baseline = baselineOf({ exports: { 'src/a.ts': 1 } })
     const root = makeRoot({ 'scripts/dead-code-ratchet.json': baseline })
     const report = knipReport([{ file: 'src/a.ts', exports: [{ name: 'x' }, { name: 'y' }] }])
 
     const { status, err } = run(root, { report, updateRatchet: true })
 
     expect(status).toBe(1)
-    expect(err).toContain('src/a.ts')
+    expect(err).toContain('compared with merge base with origin/main (')
+    expect(err).toContain('exports: total would rise from 1 to 2.')
+    expect(err).toContain('`scripts/dead-code-ratchet.json` `exports` 1 -> 2: <category>: <reason>')
     expect(readFileSync(baselinePath(root), 'utf8')).toBe(baseline)
   })
 
+  it('writes the rise when its rule is named, printing the section, and refuses an unused name', () => {
+    const baseline = baselineOf({ exports: { 'src/a.ts': 1 } })
+    const root = makeRoot({ 'scripts/dead-code-ratchet.json': baseline })
+    const report = knipReport([{ file: 'src/a.ts', exports: [{ name: 'x' }, { name: 'y' }] }])
+
+    const unused = run(root, { report, updateRatchet: true, acceptRises: ['exports', 'types'] })
+    expect(unused.status).toBe(1)
+    expect(unused.err).toContain('--accept-rise types: this rule neither rises nor retires')
+    expect(readFileSync(baselinePath(root), 'utf8')).toBe(baseline)
+
+    const accepted = run(root, { report, updateRatchet: true, acceptRises: ['exports'] })
+    expect(accepted.status).toBe(0)
+    expect(accepted.out).toContain('## 📈 Ratchet rises')
+    expect(JSON.parse(readFileSync(baselinePath(root), 'utf8')).exports).toEqual({ 'src/a.ts': 2 })
+  })
+
+  it('needs --accept-rise for every rule above 0 when the baseline is absent at the merge base', () => {
+    const root = makeRoot({ 'scripts/.keep': '' })
+    const report = knipReport([
+      { file: 'src/a.ts', exports: [{ name: 'x' }], types: [{ name: 'T' }] },
+    ])
+
+    const refused = run(root, { report, updateRatchet: true })
+    expect(refused.status).toBe(1)
+    expect(refused.err).toContain('exports: total would rise from 0 to 1.')
+    expect(refused.err).toContain('types: total would rise from 0 to 1.')
+    expect(existsSync(baselinePath(root))).toBe(false)
+
+    const partly = run(root, { report, updateRatchet: true, acceptRises: ['exports'] })
+    expect(partly.status).toBe(1)
+    expect(existsSync(baselinePath(root))).toBe(false)
+
+    const accepted = run(root, { report, updateRatchet: true, acceptRises: ['exports', 'types'] })
+    expect(accepted.status).toBe(0)
+    expect(existsSync(baselinePath(root))).toBe(true)
+  })
+
+  it('refuses to regenerate a baseline that was deleted in a commit, with one more finding', () => {
+    const baseline = baselineOf({ exports: { 'src/a.ts': 1 } })
+    const root = makeRoot({ 'scripts/dead-code-ratchet.json': baseline })
+    git(root, 'rm', '-q', 'scripts/dead-code-ratchet.json')
+    commitAll(root, 'delete the baseline')
+    writeRepositoryFile(root, 'scripts/.keep', '')
+    const report = knipReport([{ file: 'src/a.ts', exports: [{ name: 'x' }, { name: 'y' }] }])
+
+    const { status, err } = run(root, { report, updateRatchet: true })
+
+    expect(status).toBe(1)
+    expect(err).toContain('exports: total would rise from 1 to 2.')
+    expect(existsSync(baselinePath(root))).toBe(false)
+  })
+
+  it('accepts a count moved between files, printing the per-file rise', () => {
+    const root = makeRoot({
+      'scripts/dead-code-ratchet.json': baselineOf({ exports: { 'src/a.ts': 1 } }),
+    })
+    const report = knipReport([{ file: 'src/b.ts', exports: [{ name: 'x' }] }])
+
+    const { status, out } = run(root, { report, updateRatchet: true })
+
+    expect(status).toBe(0)
+    expect(out).toContain('rise: src/b.ts [exports] 0 -> 1')
+    expect(JSON.parse(readFileSync(baselinePath(root), 'utf8')).exports).toEqual({ 'src/b.ts': 1 })
+  })
+
   it('lists the current unused export names when a count changed', () => {
-    const baseline = JSON.stringify({ exports: { 'src/a.ts': 1 }, types: {} })
+    const baseline = baselineOf({ exports: { 'src/a.ts': 1 } })
     const root = makeRoot({ 'scripts/dead-code-ratchet.json': baseline })
     const report = knipReport([
       { file: 'src/a.ts', exports: [{ name: 'oldOne' }, { name: 'newOne' }] },
@@ -197,35 +269,8 @@ describe('runDeadCodeCheck', () => {
     expect(err).toContain('Currently unused: oldOne, newOne.')
   })
 
-  it('refuses to recreate a baseline that exists in git HEAD unless bootstrapping', () => {
-    const root = makeRoot({ 'scripts/.keep': '' })
-    const report = knipReport([{ file: 'src/a.ts', exports: [{ name: 'x' }] }])
-
-    const refused = run(root, { report, updateRatchet: true, baselineInGit: () => true })
-    expect(refused.status).toBe(1)
-    expect(refused.err).toContain('--bootstrap')
-    expect(existsSync(baselinePath(root))).toBe(false)
-
-    const bootstrapped = run(root, {
-      report,
-      updateRatchet: true,
-      bootstrap: true,
-      baselineInGit: () => true,
-    })
-    expect(bootstrapped.status).toBe(0)
-    expect(existsSync(baselinePath(root))).toBe(true)
-  })
-
-  it('writes a first baseline when none was ever committed', () => {
-    const root = makeRoot({ 'scripts/.keep': '' })
-    const report = knipReport([{ file: 'src/a.ts', exports: [{ name: 'x' }] }])
-
-    expect(run(root, { report, updateRatchet: true, baselineInGit: () => false }).status).toBe(0)
-    expect(existsSync(baselinePath(root))).toBe(true)
-  })
-
   it('lowers the baseline when counts fall', () => {
-    const baseline = JSON.stringify({ exports: { 'src/a.ts': 2 }, types: {} })
+    const baseline = baselineOf({ exports: { 'src/a.ts': 2 } })
     const root = makeRoot({ 'scripts/dead-code-ratchet.json': baseline })
     const report = knipReport([{ file: 'src/a.ts', exports: [{ name: 'x' }] }])
 
@@ -235,6 +280,18 @@ describe('runDeadCodeCheck', () => {
       types: {},
     })
     expect(run(root, { report }).status).toBe(0)
+  })
+
+  it('refuses to update, and writes nothing, when it found 0 source files', () => {
+    const baseline = baselineOf({ exports: { 'src/a.ts': 1 } })
+    const root = makeRoot({ 'scripts/dead-code-ratchet.json': baseline })
+    rmSync(join(root, 'src/a.ts'))
+
+    const { status, err } = run(root, { report: knipReport([]), updateRatchet: true })
+
+    expect(status).toBe(1)
+    expect(err).toContain('found 0 source files')
+    expect(readFileSync(baselinePath(root), 'utf8')).toBe(baseline)
   })
 
   it('fails a check on an unused file, naming it', () => {
@@ -259,40 +316,5 @@ describe('runDeadCodeCheck', () => {
 
     expect(status).toBe(1)
     expect(err).toContain('internal: src/b.ts:1')
-  })
-})
-
-describe('baselineExistsInGitHead', () => {
-  const dirs: string[] = []
-  afterEach(() => {
-    for (const dir of dirs.splice(0)) {
-      rmSync(dir, { recursive: true, force: true })
-    }
-  })
-  const tempDir = () => {
-    const dir = mkdtempSync(join(tmpdir(), 'dead-code-git-'))
-    dirs.push(dir)
-    return dir
-  }
-  const git = (cwd: string, ...args: string[]) =>
-    execFileSync('git', args, { cwd, stdio: 'ignore' })
-
-  it('is true only for a baseline committed in HEAD, and false outside a repository', () => {
-    const repo = tempDir()
-    git(repo, 'init', '-q')
-    git(repo, 'config', 'user.name', 'Test')
-    git(repo, 'config', 'user.email', 'test@example.com')
-    mkdirSync(join(repo, 'scripts'))
-    writeFileSync(join(repo, 'scripts/dead-code-ratchet.json'), '{}\n')
-    git(repo, 'add', '-A')
-    git(repo, 'commit', '-q', '-m', 'baseline')
-
-    expect(baselineExistsInGitHead(repo)).toBe(true)
-
-    git(repo, 'rm', '-q', '--cached', 'scripts/dead-code-ratchet.json')
-    git(repo, 'commit', '-q', '-m', 'drop')
-    expect(baselineExistsInGitHead(repo)).toBe(false)
-
-    expect(baselineExistsInGitHead(tempDir())).toBe(false)
   })
 })

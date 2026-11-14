@@ -16,7 +16,7 @@
 ```bash
 pnpm arch:audit    # 打印全部发现（error 与 warn），不影响退出码
 pnpm arch:check    # 阻塞门禁：verify:quick 与 CI 运行
-pnpm arch:ratchet  # 把当前计数写入 ratchet.json；已在基线中的规则总数不能上升，基线里还没有的规则会记录首次计数
+pnpm arch:ratchet  # 把当前计数写入 ratchet.json；任一规则总数相对合并基线上升或消失都会被拒绝，除非用 --accept-rise <规则> 点名
 pnpm arch:test     # harness 自身的测试
 ```
 
@@ -31,9 +31,11 @@ ratchet 基线 `ratchet.json` 的形状是 `{ ruleId: { file: count } }`，每�
 - 任一 (规则, 文件) 的计数与基线不同：上升是新增违规；下降时提示运行 `pnpm arch:ratchet` 并提交 `ratchet.json`，让每次改进都被同一个改动锁定。
 - 基线引用了未知规则或 error 级规则。
 
-`pnpm arch:ratchet` 写入当前计数，但只要基线中已有规则的**总数**会上升就拒绝（退出 1，不写任何内容）。
-单个文件的计数可以变化，所以移动或拆分带有既有违规的文件不需要例外。基线里没有的规则会记录首次计数，这是新增 warn 规则的路径；
-没有基线文件时命令会创建一个，仅用于初始化。
+`pnpm arch:ratchet` 写入当前计数，但只要任一规则的**总数**相对合并基线（`git merge-base HEAD origin/main` 上的 `ratchet.json`）上升就拒绝（退出 1，不写任何内容）；
+M 上总数大于 0 的规则从文件里消失也同样被拒绝。缺失的规则或文件按总数 0 计，所以新增 warn 规则、或 M 上没有这个文件时，每条总数大于 0 的规则都是上升。比较对象始终是 M 上的文件，从不读磁盘上的文件：删除文件或手动删除某个规则键再运行，不会改变拒绝与否，总数不超过 M 的重新生成照常允许。
+单个文件的计数可以变化，所以移动或拆分带有既有违规的文件不需要例外。
+确实要记录上升（并行 PR 的合并偏差、检测变宽、新规则）时，对每条规则加 `--accept-rise <规则>`，并把命令打印的 `## 📈 Ratchet rises` 段落填好理由放进 PR 描述；
+PR 描述检查（`scripts/check-pr-template.mjs`）对所有基线做同样的比较，细则见根目录 `DEVELOPMENT.md` 的“棘轮基线守卫”。
 
 ## 添加有理由的例外
 
@@ -43,7 +45,7 @@ ratchet 基线 `ratchet.json` 的形状是 `{ ruleId: { file: count } }`，每�
 - 修改某条规则的 `severity`、`exclude` 或 `allowedPatterns`（例如 `window.opencoveApi` 只能经由匹配 `*Api.ts` 的边界 adapter 访问）同样等于例外，必须在 review 中写明理由。
 - 每条规则的 `severity` 必须恰好是 `warn` 或 `error`，其他值会让 `rules.json` 加载失败。
 
-`check.mjs` 不能覆盖基线路径；`--config` 只用于 `--mode audit`，在 `--mode check` 和 `--update-ratchet` 下会报错。
+`check.mjs` 不能覆盖基线路径；`--config` 只用于 `--mode audit`，在 `--mode check` 和 `--update-ratchet` 下会报错；`--accept-rise` 只能和 `--update-ratchet` 一起使用。
 
 ## 规则语义
 
