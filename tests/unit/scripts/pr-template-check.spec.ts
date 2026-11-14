@@ -277,4 +277,71 @@ describe('PR template validator', () => {
       expect(validateTemplateStructure(template)).toEqual([])
     })
   })
+
+  describe('fenced code blocks', () => {
+    const rise = {
+      path: 'scripts/x-ratchet.json',
+      rule: 'ref-write',
+      from: 485,
+      to: 487,
+    }
+    const printed = `## 📈 Ratchet rises\n\n- \`${rise.path}\` \`ref-write\` 485 -> 487: <category>: <reason>\n`
+    const real = `## 📈 Ratchet rises\n\n- \`${rise.path}\` \`ref-write\` 485 -> 487: detection: wider rule\n`
+    const fenced = (text: string, fence = '```') => `${fence}\n${text}${fence}\n`
+    const missing = validatePullRequestBody(buildSmallPrBody(), { ratchetRises: [rise] })
+
+    it('passes a body with no rise that quotes the printed section in a fence', () => {
+      const body = `${buildSmallPrBody()}\nThe command printed:\n\n${fenced(`[x] refused\n\n${printed}`)}\nMore text.\n`
+      expect(validatePullRequestBody(body, { ratchetRises: [] })).toEqual([])
+    })
+
+    it('does not count a real rise that exists only inside a fence, but counts it outside', () => {
+      const inside = `${buildSmallPrBody()}\n${fenced(real)}`
+      expect(validatePullRequestBody(inside, { ratchetRises: [rise] })).toEqual(missing)
+      const outside = `${buildSmallPrBody()}\n${fenced(printed)}\n${real}`
+      expect(validatePullRequestBody(outside, { ratchetRises: [rise] })).toEqual([])
+    })
+
+    it('does not count a co-change heading inside a fence', () => {
+      const body = buildSmallPrBody().replace(
+        /## 🔗 Co-change partners left untouched[\s\S]*?---\n/,
+        `${fenced('## 🔗 Co-change partners left untouched\n\nNone: quoted.\n')}---\n`,
+      )
+      expect(validatePullRequestBody(body)).toEqual([
+        'Pull request description is missing required section: ## 🔗 Co-change partners left untouched',
+      ])
+    })
+
+    it.each([
+      ['tilde fences', fenced(real, '~~~')],
+      [
+        'a four-backtick fence holding a three-backtick line',
+        fenced(`\`\`\`\n${real}\`\`\`\n`, '````'),
+      ],
+      ['an indented fence', `   \`\`\`\n${real}   \`\`\`\n`],
+      ['an unterminated fence', `\`\`\`\n${real}`],
+    ])('hides a section inside %s', (_name, block) => {
+      const body = `${buildSmallPrBody()}\n${block}`
+      expect(validatePullRequestBody(body, { ratchetRises: [rise] })).toEqual(missing)
+    })
+
+    it('does not close a fence on a shorter or mixed marker', () => {
+      const body = `${buildSmallPrBody()}\n\`\`\`\`\n\`\`\`\n~~~~\n${real}\`\`\`\`\n`
+      expect(validatePullRequestBody(body, { ratchetRises: [rise] })).toEqual(missing)
+    })
+
+    it('treats <!-- inside a fence as text, so a real section after the fence still counts', () => {
+      const body = `${buildSmallPrBody()}\n${fenced('<!-- not a comment\n')}\n${real}`
+      expect(validatePullRequestBody(body, { ratchetRises: [rise] })).toEqual([])
+    })
+
+    it('treats a fence marker inside an HTML comment as text', () => {
+      const body = `${buildSmallPrBody()}\n<!--\n\`\`\`\n-->\n${real}`
+      expect(validatePullRequestBody(body, { ratchetRises: [rise] })).toEqual([])
+    })
+
+    it('still validates the repository template as written', () => {
+      expect(validateTemplateStructure(readFileSync(templatePath, 'utf8'))).toEqual([])
+    })
+  })
 })
