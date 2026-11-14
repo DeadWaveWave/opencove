@@ -28,6 +28,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Sync: changes the Worker makes to an existing agent window, such as the task it is linked to, are no longer undone by the next save from an open window. (#661)
 - Agents: an agent can again start another agent with a task written in Chinese, Japanese or Korean without spaces; only a single ASCII word is refused as a possible provider command. (#637)
 - CLI: `opencove node update --frame` now grows the node's Space (and the Spaces around it) when a move or resize would leave the node sticking out, instead of leaving the Space for you to fix. Help lists each window kind's minimum and maximum size, and terminal output escapes bidirectional text controls in titles and replies. (#661)
+- Persistence: a whole-state write, from the control surface or Desktop's agent-state updates, is no longer undone by an older edit the window was still saving; settings such as the theme stay as written, and the window's own edits still land. (#634)
+- Terminal: clicking a link that a program marked with an explicit destination (OSC 8) opens its link card even while other output is arriving, instead of sometimes doing nothing. (#635)
+- Explorer: Clear filter works when clicked right after reopening a search with a query set. (#652)
+- App: when a window's renderer crashes (for example after a GPU reset or an out-of-memory kill), OpenCove reloads the window and restores the workspace instead of closing; crash details are logged. (#653)
+- Agents: a resumed agent that is idle after an app restart shows its earlier terminal output instead of an empty window. (#654)
+- Agents: an unnamed agent created through the CLI now takes its session title even when its first prompt arrives late. (#657)
+- macOS: clicking the Dock icon while the last window is still closing opens a new window once the old one is gone, instead of leaving OpenCove with no window. (#666)
+- Windows: a terminal restored after a restart no longer shows "Terminal size could not be confirmed" when the terminal process or the console observer is slow to start, for example on a busy machine or while Defender scans it. (#667)
 
 ## [0.5.0] - 2026-11-12
 

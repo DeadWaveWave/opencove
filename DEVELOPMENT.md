@@ -157,6 +157,7 @@
 - **用户可感知变化必须运行已有 E2E 旅程**：选择覆盖本次变化的路径。只有不变量依赖真实 Desktop、浏览器或 native 边界，且低层测试与已有旅程都不能覆盖时，才新增 E2E；PR 写明该边界与独有断言。
 - **终端渲染和画布交互保持 E2E-first**：xterm 几何、renderer/WebGL/DOM、raster/calibration、滚动条、透明度、链接、live reattach、缩放下终端几何，以及拖拽、resize、push-away/squash、框选、snapping、arrange、zoom/pan 的回归依赖真实 renderer。不得削弱断言、改变断言时的画布内容或改用共享 app 进程。
 - **下沉必须证明等价**：低层测试通过且断言等价性有记录后，才可替换原 E2E 断言；独有边界用例先迁移，无法等价的部分留在 E2E。移动文件时同步 `scripts/precommit-e2e-selection.mjs`。
+- **E2E 提速先削减用例本身，不共享 app 进程**：实测一次 Electron 启动、首屏、种子写入到关闭约 1.6 秒（其中进程启动约 1.0 秒），平均每个 spec 文件不到 2 个用例，按文件共享 app 进程在 macOS 上最多省约 1.5 分钟，还会引入用例间状态泄漏。提速优先把非渲染断言下沉到 unit/contract，或缩短慢用例中的等待与重复路径；用 `node scripts/report-e2e-durations.mjs` 读 CI 耗时 artifact 定位慢用例，再看慢用例的 step 时间线：单个异常 step 会藏在“种子写入”里，例如把 4 MB 图片以 `Array.from` 传给 `page.evaluate`，Playwright 逐元素序列化，每次约 7 秒；大块二进制改传 base64。
 - **主题/样式改动必须遵守 UI 规范**：新增颜色走 token，Light/Dark 都要验收可读性；优先在 E2E 中附带截图。详见 `docs/ui/README.md`。
 - **复杂交互辅以截图 / 录屏**：当行为依赖拖拽、滚动、动画、命中点或视觉反馈时，用截图或录屏帮助确认真实体验。
 - **提交前做一次 smoke 验证**：至少确认核心用户路径、关键视觉状态和交互目标没有回归。
