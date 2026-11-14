@@ -134,7 +134,6 @@ export interface WorkspaceCanvasViewProps {
   selectedNodeCount: number
   isMinimapVisible: boolean
   minimapNodeColor: (node: Node<TerminalNodeData>) => string
-  setIsMinimapVisible: React.Dispatch<React.SetStateAction<boolean>>
   onMinimapVisibilityChange: (isVisible: boolean) => void
   spaces: WorkspaceSpaceState[]
   activateSpace: (spaceId: string) => void

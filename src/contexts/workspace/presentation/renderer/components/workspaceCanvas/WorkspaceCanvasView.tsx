@@ -101,7 +101,6 @@ export function WorkspaceCanvasView({
   selectedNodeCount,
   isMinimapVisible,
   minimapNodeColor,
-  setIsMinimapVisible,
   onMinimapVisibilityChange,
   spaces,
   activateSpace,
@@ -327,7 +326,6 @@ export function WorkspaceCanvasView({
         <WorkspaceMinimapDock
           isMinimapVisible={isMinimapVisible}
           minimapNodeColor={minimapNodeColor}
-          setIsMinimapVisible={setIsMinimapVisible}
           onMinimapVisibilityChange={onMinimapVisibilityChange}
         />
         <WorkspaceCanvasControls />

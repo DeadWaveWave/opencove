@@ -24,7 +24,7 @@ export function WorkspaceCanvasInner({
   shortcutsEnabled = true,
   onAppendSpaceArchiveRecord,
   viewport,
-  isMinimapVisible: persistedMinimapVisible,
+  isMinimapVisible,
   onViewportChange,
   onMinimapVisibilityChange,
   agentSettings,
@@ -43,7 +43,6 @@ export function WorkspaceCanvasInner({
     nodes,
     spaces,
     viewport,
-    persistedMinimapVisible,
   })
   const nodePublishers = workspaceCanvasHooks.useWorkspaceCanvasNodePublishers({
     ...canvasState,
@@ -196,7 +195,7 @@ export function WorkspaceCanvasInner({
   // prettier-ignore
   const collapse = useCanvasCollapse({ workspaceId, canvasRef: canvasState.canvasRef, nodes, spaces, nodesRef: nodeStore.nodesRef, spacesRef: canvasState.spacesRef, setNodes: nodeStore.setNodes, onSpacesChange, reactFlow, focusNodeTargetZoom: agentSettings.focusNodeTargetZoom, nodeExpandBehavior: agentSettings.nodeExpandBehavior, onRequestPersistFlush })
   // prettier-ignore
-  workspaceCanvasHooks.useWorkspaceCanvasLifecycleBindings({ workspaceId, persistedMinimapVisible, canvasState, cancelSpaceRename: spacesApi.cancelSpaceRename, reactFlow, viewport, agentSettings, focusSpaceId, focusNodeId, focusNodeInput, focusSequence, expandNode: collapse.expandNode, focusSpaceInViewport: spacesApi.focusSpaceInViewport, nodes: canvasState.flowNodes, isFocusNodeTargetZoomPreviewing, nodesRef: nodeStore.nodesRef, requestNodeDeleteRef: actionRefs.requestNodeDeleteRef })
+  workspaceCanvasHooks.useWorkspaceCanvasLifecycleBindings({ workspaceId, canvasState, cancelSpaceRename: spacesApi.cancelSpaceRename, reactFlow, viewport, agentSettings, focusSpaceId, focusNodeId, focusNodeInput, focusSequence, expandNode: collapse.expandNode, focusSpaceInViewport: spacesApi.focusSpaceInViewport, nodes: canvasState.flowNodes, isFocusNodeTargetZoomPreviewing, nodesRef: nodeStore.nodesRef, requestNodeDeleteRef: actionRefs.requestNodeDeleteRef })
   // prettier-ignore
   const { canConvertSelectedNoteToTask, isConvertSelectedNoteToTaskDisabled, convertSelectedNoteToTask, convertNoteToTask, arrangeAll, arrangeCanvas, arrangeInSpace } = workspaceCanvasHooks.useWorkspaceCanvasMenuActions({ selectedNodeIds: canvasState.selectedNodeIds, selectedNodeIdsRef: canvasState.selectedNodeIdsRef, flowNodes: canvasState.flowNodes, nodesRef: nodeStore.nodesRef, setNodes: nodeStore.setNodes, onRequestPersistFlush, onShowMessage, setContextMenu: canvasState.setContextMenu, reactFlow, spacesRef: canvasState.spacesRef, onSpacesChange, standardWindowSizeBucket: agentSettings.standardWindowSizeBucket, focusNodeTargetZoom: agentSettings.focusNodeTargetZoom })
   const { nodeTypes, nodeTypesParameters } =
@@ -424,9 +423,8 @@ export function WorkspaceCanvasInner({
         activateSpaceTitle={spacesApi.activateSpaceTitle}
         setSpaceLabelColor={spacesApi.setSpaceLabelColor}
         selectedNodeCount={canvasState.selectedNodeIds.length}
-        isMinimapVisible={canvasState.isMinimapVisible}
+        isMinimapVisible={isMinimapVisible}
         minimapNodeColor={minimapNodeColor}
-        setIsMinimapVisible={canvasState.setIsMinimapVisible}
         onMinimapVisibilityChange={onMinimapVisibilityChange}
         spaces={spaces}
         activateSpace={spacesApi.activateSpace}

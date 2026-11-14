@@ -39,7 +39,6 @@ function renderSelectionOwner() {
         nodes: initialNodes,
         spaces,
         viewport: { x: 0, y: 0, zoom: 0.28 },
-        persistedMinimapVisible: false,
       })
       const nodesRef = useRef(canvas.flowNodes)
       const isNodeDraggingRef = useRef(false)

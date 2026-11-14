@@ -11,8 +11,6 @@ import type { ContextMenuState, SelectionDraftState, TrackpadGestureLockState } 
 
 interface UseWorkspaceCanvasLifecycleParams {
   workspaceId: string
-  persistedMinimapVisible: boolean
-  setIsMinimapVisible: React.Dispatch<React.SetStateAction<boolean>>
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
   setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
@@ -36,8 +34,6 @@ interface UseWorkspaceCanvasLifecycleParams {
 
 export function useWorkspaceCanvasLifecycle({
   workspaceId,
-  persistedMinimapVisible,
-  setIsMinimapVisible,
   setSelectedNodeIds,
   setSelectedSpaceIds,
   setContextMenu,
@@ -60,10 +56,6 @@ export function useWorkspaceCanvasLifecycle({
 }: UseWorkspaceCanvasLifecycleParams): void {
   const previewSequenceRef = useRef(0)
   const viewportBeforePreviewRef = useRef<Viewport | null>(null)
-
-  useEffect(() => {
-    setIsMinimapVisible(persistedMinimapVisible)
-  }, [persistedMinimapVisible, setIsMinimapVisible, workspaceId])
 
   useEffect(() => {
     setSelectedNodeIds([])

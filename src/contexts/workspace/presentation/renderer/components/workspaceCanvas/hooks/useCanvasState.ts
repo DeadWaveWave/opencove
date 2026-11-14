@@ -61,18 +61,14 @@ export function useWorkspaceCanvasState({
   nodes,
   spaces,
   viewport,
-  persistedMinimapVisible,
 }: {
   workspaceId: string
   nodes: Node<TerminalNodeData>[]
   spaces: WorkspaceSpaceState[]
   viewport: Viewport
-  persistedMinimapVisible: boolean
 }): {
   contextMenu: ContextMenuState | null
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
-  isMinimapVisible: boolean
-  setIsMinimapVisible: React.Dispatch<React.SetStateAction<boolean>>
   selectedNodeIds: string[]
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
   syncSelectedNodeIds: (nodeIds: string[]) => void
@@ -110,7 +106,6 @@ export function useWorkspaceCanvasState({
   const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
   const [canvasNodes, setCanvasNodes] = useState(nodes)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
-  const [isMinimapVisible, setIsMinimapVisible] = useState(persistedMinimapVisible)
   const [selectedNodeIds, setSelectedNodeIdsState] = useState<string[]>([])
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([])
   const [selectionDraftUi, setSelectionDraftUi] = useState<SelectionDraftUiState | null>(null)
@@ -225,8 +220,6 @@ export function useWorkspaceCanvasState({
   return {
     contextMenu,
     setContextMenu,
-    isMinimapVisible,
-    setIsMinimapVisible,
     selectedNodeIds,
     setSelectedNodeIds,
     syncSelectedNodeIds,

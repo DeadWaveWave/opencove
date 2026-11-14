@@ -204,7 +204,6 @@ function createBaseProps(
     selectedNodeCount: 0,
     isMinimapVisible: false,
     minimapNodeColor: () => '#000000',
-    setIsMinimapVisible: () => undefined,
     onMinimapVisibilityChange: () => undefined,
     spaces: [],
     activateSpace: () => undefined,
