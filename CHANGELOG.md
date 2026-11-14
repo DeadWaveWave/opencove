@@ -14,7 +14,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - CLI: `opencove events` streams agent state changes and completed turns as NDJSON, filtered by Space, node, the agents you started or a whole lineage, so agents can wait for each other without polling. Each record carries a cursor; `--after` resumes where a stream stopped and reports a gap instead of silently skipping events. (#618)
 - CLI: `whoami` and `context` show how many more agents you can start; a quota refusal includes ready-to-run recovery commands and when each occupant started; `opencove events --cursor-file <path>` resumes after an interruption without missing or repeating events, and `--until-each-turn` waits until every listed agent finishes a turn. (#633)
 - CLI: `opencove node create … --near @self` (or any node selector) places the new note, terminal or agent next to that node, clustered around it inside its Space, without overlapping anything and preferring spots that do not push the Space into its neighbours. A size-only `--frame` can be combined with it. (#636)
-- CLI: `opencove whoami --tree` shows the agents and terminals in your agent tree, how many more you can start, what each one is doing and the command that stops it. `opencove node create agent --prompts-file <file|-> --wait --read` starts up to ten agents with one command, creating each exactly once, and returns every agent's exact reply or error in input order. (#660)
+- CLI: `opencove task claim` makes an agent the holder of a task atomically (when two agents claim at once, one wins and the other is told who holds it), `opencove task release` hands it back with a status such as AI done, and `opencove note append` adds to a note without overwriting it. An agent can claim or release for the agents it started. (#661)
+- CLI: `opencove whoami --tree` shows the agents and terminals in your agent tree, how many more you can start, what each one is doing and the command that stops it. `opencove node create agent --prompts-file <file|-> --wait --read` starts up to ten agents with one command, creating each exactly once, and returns every agent's exact reply or error in input order. (#661)
 
 ### Fixed
 
@@ -23,8 +24,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Documents: typing fast in a document window, for example right after a terminal file link opens it, no longer drops characters or moves the caret. (#621)
 - Agents: after a restart, `opencove agent` and `opencove events` find a restored Claude Code agent right away, instead of only after the next change on the canvas. (#625)
 - Terminals: when the GPU drops a terminal's WebGL renderer, the terminal switches to plain rendering in place and keeps its scrollback, scroll position and selection, instead of reloading its history. (#622)
+- Sync: changes the Worker makes to an existing agent window, such as the task it is linked to, are no longer undone by the next save from an open window. (#661)
 - Agents: an agent can again start another agent with a task written in Chinese, Japanese or Korean without spaces; only a single ASCII word is refused as a possible provider command. (#637)
-- CLI: `opencove node update --frame` now grows the node's Space (and the Spaces around it) when a move or resize would leave the node sticking out, instead of leaving the Space for you to fix. Help lists each window kind's minimum and maximum size, and terminal output escapes bidirectional text controls in titles and replies. (#660)
+- CLI: `opencove node update --frame` now grows the node's Space (and the Spaces around it) when a move or resize would leave the node sticking out, instead of leaving the Space for you to fix. Help lists each window kind's minimum and maximum size, and terminal output escapes bidirectional text controls in titles and replies. (#661)
 
 ## [0.5.0] - 2026-11-12
 
