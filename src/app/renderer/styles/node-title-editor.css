@@ -14,8 +14,10 @@
 
 /*
  * The title moves its window (WindowHeader): it takes the header's free space, so the whole bar
- * between the tile and the controls is the title. A click renames and reads it as a field (pixel
- * fill on hover and while editing); a hold or a drag grabs the window.
+ * between the tile and the controls is the title. The bar is one drag surface, so the title shows
+ * the same grab cursor as the rest of it. A click still renames, and the pixel fill on hover is
+ * what says so; a hold or a drag grabs the window. Only the field being edited shows the text
+ * cursor.
  */
 .node-title-editor__display,
 .node-title-editor__editable {
@@ -30,12 +32,16 @@
   padding: 0 var(--cove-spacing-1);
   overflow: hidden;
   clip-path: var(--cove-pixel-corners);
-  cursor: text;
 }
 
 .node-title-editor__display {
   color: var(--cove-text);
   white-space: nowrap;
+  cursor: grab;
+}
+
+.node-title-editor__editable {
+  cursor: text;
 }
 
 .node-title-editor__display:hover,
