@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Themes are read in turn in one Electron window. */
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, testWorkspacePath } from './workspace-canvas.helpers'
 import { PIXEL_EFFECTS_DISABLED } from './workspace-canvas.pixel-effects.helpers'

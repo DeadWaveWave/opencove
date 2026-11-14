@@ -43,7 +43,7 @@ Before implementation, do the following when the change is non-trivial:
 - Write 1-3 invariants before relying on scenario lists.
 - If ownership, authority, or semantics are ambiguous, stop and align before patching.
 - If the problem likely has existing industry practice, study external references before specing.
-- If fixing a real bug, leave behind a reusable asset such as a test, rule, assertion, or doc update.
+- If fixing a real bug, leave the strongest asset that fits (type/structure > mechanical check > runtime assertion > scenario test) and say in the PR why a stronger one does not fit; a prose rule alone does not count.
 
 ## 4. Risk & Compliance Checklist
 
@@ -63,6 +63,7 @@ For runtime-risk or Large work, explicitly check:
 ## 6. Development Workflow
 
 1.  **Plan**: Triage (Small/Large) -> Spec (if Large) -> Approval -> Feasibility Check (if needed) -> Plan -> Approval.
+    -   **Impact**: run `pnpm impact <expected files>` while planning and `pnpm impact --staged` before commit; explain each untouched co-change partner in the pull request (`## 🔗 Co-change partners left untouched`).
 2.  **Code (TDD)**: `Red -> Green -> Refactor`.
 3.  **Verify**:
     -   **Small**: Targeted unit/integration tests OK.

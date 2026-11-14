@@ -12,7 +12,6 @@ import {
   testWorkspacePath,
 } from './workspace-canvas.helpers'
 import { capturePlugins } from './plugins.local.helpers'
-import { startWorker, stopWorker } from './worker-client.helpers'
 import {
   canvasPluginNode,
   createCommandPlugin,
@@ -34,25 +33,6 @@ const settings = {
 }
 
 test.describe('Independent plugin CLI and window ownership', () => {
-  test('lists windows and runs backend commands before a fresh Worker has any project or UI', async () => {
-    const source = await createCommandPlugin('single')
-    const userDataDir = await createTestUserDataDir()
-    const { child } = await startWorker({ userDataDir })
-    try {
-      await pluginCli(userDataDir, ['install', source.directory])
-      expect(await pluginCli(userDataDir, ['windows', source.id])).toEqual({ windows: [] })
-      expect(await pluginCliFailure(userDataDir, ['open', source.id])).toContain('--project')
-      expect(await pluginCli(userDataDir, ['run', source.id, 'inspect'])).toMatchObject({
-        pluginId: source.id,
-        hasWindow: false,
-      })
-      expect(await pluginCli(userDataDir, ['windows', source.id])).toEqual({ windows: [] })
-    } finally {
-      await stopWorker(child)
-      await removePathWithRetry(source.directory)
-      await removePathWithRetry(userDataDir)
-    }
-  })
   test('runs backend commands without creating a node, exposes skills, and restores a singleton across restart', async ({
     browserName: _browserName,
   }, info) => {

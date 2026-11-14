@@ -125,7 +125,6 @@ it.each([false, true])(
         return new Response('{}')
       })
       // These are sequential invocations with independent output/signal owners.
-      // eslint-disable-next-line no-await-in-loop
       expect(await run(args, f.io)).toBe(item.exit)
       expect(f.fetch).toHaveBeenCalledTimes(1)
       expect(f.text()).toContain(item.message)
@@ -223,7 +222,6 @@ it.each([false, true])(
         ...(code === 'agent.blocked' ? { blockedReason: null } : {}),
       }
       const f = fixture(tty, createAppError(code, { details }).toDescriptor())
-      // eslint-disable-next-line no-await-in-loop
       expect(await run(args, f.io)).toBe(code === 'agent.prompt_timeout' ? 124 : 1)
       expect(f.text()).toContain(text)
       if (reason === 'executable_override_unverified') {
@@ -289,7 +287,6 @@ it('every printed command example includes a usable text source and projection o
       .map(word => word.replace(/^['"]|['"]$/g, ''))
     if (words.includes('--wait')) {
       const combined = completedPromptFixture()
-      // eslint-disable-next-line no-await-in-loop
       expect(await run(words, combined.io), command).toBe(0)
       expect(JSON.parse(combined.out())).toMatchObject({
         outcome: 'completed',
@@ -298,7 +295,6 @@ it('every printed command example includes a usable text source and projection o
       expect(combined.requests.filter(r => r.id === 'agent.prompt')).toHaveLength(1)
       continue
     }
-    // eslint-disable-next-line no-await-in-loop
     expect(await run(words, f.io), command).toBe(0)
     expect(f.fetch).toHaveBeenCalledTimes(1)
     if (words.includes('--fields')) {
@@ -323,7 +319,6 @@ it.each([false, true])(
       },
     ]) {
       const f = fixture(tty, createAppError('common.invalid_input', { details }).toDescriptor())
-      // eslint-disable-next-line no-await-in-loop
       expect(await run(args, f.io)).toBe(2)
       expect(f.text()).toContain(
         details

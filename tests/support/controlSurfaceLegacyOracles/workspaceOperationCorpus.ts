@@ -1,3 +1,4 @@
+// @compat-file control-surface-legacy-validation
 const values: unknown[] = [
   undefined,
   null,

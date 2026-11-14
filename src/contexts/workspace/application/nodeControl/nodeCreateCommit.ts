@@ -25,6 +25,7 @@ function targetIdentity(target: ResolvedNodeCreationTarget) {
     target.endpoint.endpointId,
     target.mount?.rootUri ?? null,
     target.workingDirectory,
+    target.referenceSpaceId,
   ])
 }
 
@@ -41,7 +42,6 @@ export async function commitCreatedNode(options: {
   lineage?: NodeLineageRecord | null
   callerNodeId?: string | null
 }): Promise<CreateNodeResult> {
-  /* eslint-disable no-await-in-loop -- Each bounded CAS attempt must use a fresh snapshot. */
   for (let attempt = 0; attempt < 3; attempt++) {
     options.runtime.assertActive?.()
     const expectedRevision = await options.store.readAppStateRevision()
@@ -68,6 +68,7 @@ export async function commitCreatedNode(options: {
       bucket: normalizeAgentSettings(state.settings).standardWindowSizeBucket,
       frame: options.input.frame,
       callerNodeId: options.callerNodeId,
+      reference: current.reference,
     })
     const frame = resolveCreateFrame({
       kind: options.input.kind,
@@ -89,7 +90,12 @@ export async function commitCreatedNode(options: {
         taskNodeId: options.taskNodeId,
       })
     }
-    const inserted = workspaceWithNode(current.workspace, node, spaceId)
+    const inserted = workspaceWithNode(
+      current.workspace,
+      node,
+      spaceId,
+      Boolean(options.input.near),
+    )
     const workspace =
       options.taskNodeId === undefined
         ? inserted
@@ -125,7 +131,6 @@ export async function commitCreatedNode(options: {
       throw createAppError(result.error)
     }
   }
-  /* eslint-enable no-await-in-loop */
   throw new Error('Node creation persistence attempts exhausted.')
 }
 

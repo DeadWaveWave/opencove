@@ -1,9 +1,9 @@
 import type { PtyRuntime, StartSessionStateWatcherInput } from './ptyRuntimeTypes'
-export type { PtyRuntime, StartSessionStateWatcherInput } from './ptyRuntimeTypes'
+export type { PtyRuntime } from './ptyRuntimeTypes'
 import { ClaudeTranscriptChannel } from '../../../../shared/runtime/agentHook/claudeTranscript'
 import { webContents } from 'electron'
 import process from 'node:process'
-import type { AgentSessionDiscovery } from '../../../agent/application/ports/AgentSessionDiscovery'
+import type { AgentSessionDiscovery } from '../../../agent/application'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
   TerminalDataEvent,

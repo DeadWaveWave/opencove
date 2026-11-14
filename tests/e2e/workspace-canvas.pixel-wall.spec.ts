@@ -122,15 +122,11 @@ test.describe('Workspace Canvas - Pixel Wall', () => {
       const wall = window.getByTestId('workspace-pixel-wall')
       const cells = new Set<string>()
       for (const zoom of [0.3, 0.6, 1.4]) {
-        // eslint-disable-next-line no-await-in-loop -- Each zoom step is a real wheel gesture.
         await wheelToZoom(window, zoom)
-        // eslint-disable-next-line no-await-in-loop -- Sample the wall at the settled zoom.
         const actual = (await readCanvasViewport(window)).zoom
-        // eslint-disable-next-line no-await-in-loop -- The wall repaints on the next frame.
         await expect
           .poll(async () => Number(await wall.getAttribute('data-cove-wall-cell')))
           .toBeCloseTo(24 * 2 ** Math.ceil(Math.log2(13 / (24 * actual))) * actual, 1)
-        // eslint-disable-next-line no-await-in-loop -- Read the settled value once.
         const cell = Number(await wall.getAttribute('data-cove-wall-cell'))
         expect(cell).toBeGreaterThanOrEqual(13)
         expect(cell).toBeLessThan(26)

@@ -1,3 +1,4 @@
+import { isAgentProviderId } from '../../../../shared/contracts/dto/agent'
 import { normalizePiStateObservationMetadata } from '../../../../shared/runtime/piConversation'
 import { normalizePiAgentSnapshot } from '../../../../shared/runtime/piAgentSnapshot'
 import { isAgentHookStateSource } from '../../../../shared/runtime/agentHookStateSource'
@@ -208,15 +209,7 @@ export function createRemotePtyEndpointProxyMessageHandler(options: {
         typeof parsed.resumeSessionId === 'string' && parsed.resumeSessionId.trim().length > 0
           ? parsed.resumeSessionId.trim()
           : null
-      const agentProvider =
-        parsed.agentProvider === 'claude-code' ||
-        parsed.agentProvider === 'codex' ||
-        parsed.agentProvider === 'opencode' ||
-        parsed.agentProvider === 'gemini' ||
-        parsed.agentProvider === 'pi' ||
-        parsed.agentProvider === 'kimi'
-          ? parsed.agentProvider
-          : null
+      const agentProvider = isAgentProviderId(parsed.agentProvider) ? parsed.agentProvider : null
       const profileId =
         typeof parsed.profileId === 'string' && parsed.profileId.trim().length > 0
           ? parsed.profileId.trim()

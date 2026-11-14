@@ -36,7 +36,6 @@ export async function* sseFrames(
     await onOpen?.()
     while (!signal.aborted) {
       // Framing must consume one chunk at a time.
-      // eslint-disable-next-line no-await-in-loop
       const chunk = await reader.read()
       if (chunk.done) {
         return

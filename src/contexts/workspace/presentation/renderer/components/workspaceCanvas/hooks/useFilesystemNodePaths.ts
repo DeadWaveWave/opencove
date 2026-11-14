@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
-import { toFileUri } from '@contexts/filesystem/domain/fileUri'
+import { toFileUri } from '@contexts/filesystem/domain'
 import type { ResolveMountTargetResult } from '@shared/contracts/dto'
 import { normalizeFileUri } from '@shared/utils/fileUriScope'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'

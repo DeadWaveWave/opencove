@@ -1,5 +1,5 @@
 export interface ClaudeConversationEvent {
-  /** Normalized activity; null explicitly means passive, undefined preserves legacy input. */
+  /** Normalized activity; null explicitly means passive, undefined leaves activity inference unchanged. */
   state?: 'working' | 'waiting' | 'standby' | 'done' | null
   hookEventName: string
   claudeSessionId: string

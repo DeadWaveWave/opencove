@@ -209,13 +209,11 @@ async function runCommandAndSample(options: {
   const samples: OutputSample[] = []
   const deadline = Date.now() + 20_000
   while (Date.now() < deadline) {
-    // eslint-disable-next-line no-await-in-loop -- high-frequency real renderer/Worker sampling
     const sample = await readOutputSample(options.window, options.sessionId)
     samples.push(sample)
     if (sample.transcript.includes(options.doneMarker)) {
       return samples
     }
-    // eslint-disable-next-line no-await-in-loop -- bounded sampling interval
     await options.window.waitForTimeout(8)
   }
 

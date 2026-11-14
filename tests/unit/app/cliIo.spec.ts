@@ -37,7 +37,6 @@ it.each(['中文🙂', '{"text":"中文🙂"}'])('decodes UTF-8 split at every b
   for (const byte of Buffer.from(text)) {
     input.write(Buffer.from([byte]))
     // Force a separate read chunk instead of letting the stream coalesce writes.
-    // eslint-disable-next-line no-await-in-loop
     await nextTurn()
   }
   input.end()

@@ -33,6 +33,7 @@ export type TerminalDisplayCalibrationMetadata = {
 export type StoredTerminalDisplayCalibration = {
   calibration: TerminalClientDisplayCalibration
   metadata: TerminalDisplayCalibrationMetadata | null
+  // @compat terminal-display-calibration-legacy-storage
   proof: 'atomic' | 'legacy' | null
 }
 

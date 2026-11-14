@@ -192,7 +192,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
       }
       listeners.forEach(listener => listener(event))
     }
-    // Legacy state can publish after private IO rejection, but that does not accept
+    // State observation can publish after private IO rejection, but that does not accept
     // lifecycle identity or authorize a resident-context reply.
     if (observerAccepted === 'state_only') {
       return false
@@ -248,7 +248,7 @@ export function createAgentHookChannel<TEnvelope extends AgentHookEnvelope>(opti
     }
     const receipt = credential.replies.begin(envelope.hookEventName)
     if (!credential.sessionId) {
-      // Only complete snapshots can be coalesced; preserve legacy event ordering/identity.
+      // Only complete snapshots can be coalesced; preserve event ordering and identity.
       if (credential.observationOwner) {
         credential.pending.forEach(pending => pending.receipt.reject())
         credential.pending.length = 0

@@ -34,8 +34,7 @@ async function expectFits(surface: Locator) {
 for (const theme of ['dark', 'light']) {
   test(`quick surfaces support touch navigation in ${theme}`, async ({ page }, testInfo) => {
     const workspacePath = await createWorkspaceDir(`quick-${theme}`)
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspaceId: 'quick-surfaces',
         workspaceName: 'OpenCove',

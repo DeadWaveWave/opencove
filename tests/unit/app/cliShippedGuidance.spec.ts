@@ -134,7 +134,8 @@ it.each([
       'field_denied',
       'Full Access Mode',
       'Tell agents about OpenCove',
-      'single tokens',
+      'single ASCII words',
+      'unspaced Chinese',
       'no @ anywhere',
       'Codex skills',
       'remove NUL',
@@ -158,7 +159,6 @@ it('mirrored prompt skill explains the same correlation limits', () => {
 it('every shipped command help and skill is usable outside the repository', async () => {
   for (const command of commands) {
     const f = identityFixture(false)
-    // eslint-disable-next-line no-await-in-loop
     expect(await run([...command.path, '--help'], f.io)).toBe(0)
     expect(f.out(), command.path.join(' ')).not.toContain('docs/')
     for (const option of Object.values(command.options ?? {})) {

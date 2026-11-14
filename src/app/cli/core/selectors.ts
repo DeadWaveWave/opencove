@@ -54,7 +54,10 @@ export function applySelfDefaults(
   command: Command,
   env: CliIo['env'],
 ) {
-  if (env.OPENCOVE_ENV !== '1') {
+  if (
+    env.OPENCOVE_ENV !== '1' ||
+    (command.operation === 'node.create' && options.near !== undefined)
+  ) {
     return
   }
   const hasLocator = locatorKeys.some(key => options[key] !== undefined)
@@ -173,7 +176,6 @@ export async function resolveSelectors(
     }
     for (const other of ['space', 'node'] as const) {
       // Probe in order so a known kind avoids further diagnostic reads.
-      // eslint-disable-next-line no-await-in-loop
       if (other !== kind && (await exactTarget(other, selector, invoke))) {
         return other
       }
@@ -275,7 +277,7 @@ export async function resolveSelectors(
   ]
   for (const key of selectorKeys) {
     const kind = command.options?.[key]?.selector as 'space' | 'node'
-    const isTarget = key === kind
+    const isTarget = key === kind || key === 'near'
     if (
       (currentContainer && kind === 'space') ||
       !command.options?.[key]?.selector ||
@@ -315,10 +317,8 @@ export async function resolveSelectors(
       }
       if (selector === '@self') {
         // Resolution order matters: failure must prevent any later target lookup.
-        // eslint-disable-next-line no-await-in-loop
         const ownId = await identity.self(kind)
         if (explicitProject && isTarget) {
-          // eslint-disable-next-line no-await-in-loop
           const target = await exactTarget(kind, ownId, invoke)
           if (target) {
             checkResolvedProject(selector, target.projectId)
@@ -330,7 +330,6 @@ export async function resolveSelectors(
       // read operation so an exact ID still works across projects. A UUID-shaped
       // title may fall through to name resolution when no such ID exists.
       if (uuidPattern.test(selector)) {
-        // eslint-disable-next-line no-await-in-loop
         const target = await exactTarget(kind, selector, invoke)
         if (target) {
           checkResolvedProject(selector, target.projectId)
@@ -338,9 +337,7 @@ export async function resolveSelectors(
         }
       }
       // One list call per selector, without retries or speculative writes.
-      // eslint-disable-next-line no-await-in-loop
       const project = await (isTarget ? scopeProject() : scopeCreatorLookup())
-      // eslint-disable-next-line no-await-in-loop
       const result = (await invoke(kind === 'space' ? 'space.list' : 'node.list', {
         projectId: project,
         ...(kind === 'node' && isTarget && o.space !== undefined
@@ -349,10 +346,10 @@ export async function resolveSelectors(
       })) as ListSpacesResult | ListNodesResult
       const candidates =
         kind === 'space' ? (result as ListSpacesResult).spaces : (result as ListNodesResult).nodes
+      // @compat cli-legacy-input-handling
       // Legacy IDs need the same global exact-ID precedence as UUIDs. Only probe
       // when the list has no exact ID, before accepting a name or a prefix.
       if (!uuidPattern.test(selector) && !candidates.some(candidate => candidate.id === selector)) {
-        // eslint-disable-next-line no-await-in-loop
         const target = await exactTarget(kind, selector, invoke)
         if (target) {
           checkResolvedProject(selector, target.projectId)
@@ -371,11 +368,9 @@ export async function resolveSelectors(
       ? Promise.all((o[key] as string[]).map(resolveOne))
       : resolveOne(String(o[key]))
     // Space resolution establishes the scope before resolving node selectors.
-    // eslint-disable-next-line no-await-in-loop
     o[key] = await resolved
     // A relationship filter spans the selected creator's current project unless explicitly scoped.
     if (!isTarget && !explicitProject && !explicitSpace) {
-      // eslint-disable-next-line no-await-in-loop -- Resolve the filter before deriving its project scope.
       const target = await exactTarget('node', String(o[key]), invoke)
       if (target) {
         o.project = target.projectId
@@ -384,9 +379,8 @@ export async function resolveSelectors(
     if (kind === 'node' && isTarget && explicitSpace) {
       // All selector forms pass the same membership check before execution.
       // Exact-ID probes are reused by the per-run read cache.
-      // eslint-disable-next-line no-await-in-loop
       await Promise.all(
-        [o.node].flat().map(async id => {
+        [o[key]].flat().map(async id => {
           const target = await exactTarget('node', String(id), invoke)
           if (!target) {
             throw new CliError(
@@ -410,10 +404,12 @@ export async function resolveSelectors(
     if (
       kind === 'space' &&
       !explicitProject &&
-      Object.values(command.options ?? {}).some(option => option.selector === 'node')
+      Object.entries(command.options ?? {}).some(
+        ([optionKey, option]) =>
+          option.selector === 'node' && (optionKey !== 'near' || o.near !== undefined),
+      )
     ) {
       // An explicitly chosen space may belong to a different project than the session.
-      // eslint-disable-next-line no-await-in-loop
       const found = await exactTarget('space', String(o.space), invoke)
       projectId = found?.projectId ?? projectId
     }

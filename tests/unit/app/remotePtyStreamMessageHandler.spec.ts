@@ -198,6 +198,22 @@ describe('createRemotePtyStreamMessageHandler', () => {
     })
   })
 
+  it('keeps the agent provider of metadata only for the six known providers', () => {
+    const { handler, externalMetadataListener } = createHandler()
+    for (const provider of ['claude-code', 'codex', 'opencode', 'gemini', 'pi', 'kimi']) {
+      handler(JSON.stringify({ type: 'metadata', sessionId: 's', agentProvider: provider }))
+      expect(externalMetadataListener).toHaveBeenLastCalledWith(
+        expect.objectContaining({ agentProvider: provider }),
+      )
+    }
+    for (const provider of ['Codex', 'bash', '', null, 3]) {
+      handler(JSON.stringify({ type: 'metadata', sessionId: 's', agentProvider: provider }))
+      expect(externalMetadataListener).toHaveBeenLastCalledWith(
+        expect.not.objectContaining({ agentProvider: expect.anything() }),
+      )
+    }
+  })
+
   it('broadcasts session state and metadata to every renderer window', () => {
     const {
       handler,

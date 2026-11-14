@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable no-await-in-loop -- Compare/write generated outputs sequentially with exact provenance. */
 import { format, resolveConfig } from 'prettier'
 import { readFile, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'

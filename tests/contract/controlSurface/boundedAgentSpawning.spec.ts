@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Each creation observes the prior admission and runtime lifecycle. */
 // @vitest-environment node
 import { expect, it, vi } from 'vitest'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'

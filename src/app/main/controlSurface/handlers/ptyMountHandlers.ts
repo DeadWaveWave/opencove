@@ -2,7 +2,7 @@ import { spawnForbiddenDetails } from '../../../../shared/errors/agentSpawnError
 import { getPublicTerminalSpawnCommand } from '../../../../platform/terminal/publicTerminalSpawnCommand'
 import { ptySpawnInMountOperation } from '../../../../shared/contracts/controlSurface/operations/domains/pty'
 import { registerOperation } from '../registerOperation'
-import { fromFileUri } from '../../../../contexts/filesystem/domain/fileUri'
+import { fromFileUri } from '../../../../contexts/filesystem/domain'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createAppError, OpenCoveAppError } from '../../../../shared/errors/appError'
 import type { SpawnTerminalInput, SpawnTerminalResult } from '../../../../shared/contracts/dto'

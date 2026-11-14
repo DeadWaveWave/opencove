@@ -1,3 +1,4 @@
+import { tracksClaudeConversations } from '../../../../shared/contracts/agentProviderDescriptors'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type { TerminalSessionMetadataEvent } from '../../../../shared/contracts/dto'
 import {
@@ -63,7 +64,7 @@ export function createSessionStatePublisher({
       })
     }
     if (
-      eventPayload.agentProvider === 'claude-code' &&
+      tracksClaudeConversations(eventPayload.agentProvider) &&
       eventPayload.source === 'session_file' &&
       !options.evidence?.providerSessionId &&
       !options.evidence?.conversationCapture &&
@@ -100,7 +101,7 @@ export function captureSessionStateObservation(
       capturedIncarnation = identity
     }
   }
-  if (input.provider === 'claude-code') {
+  if (tracksClaudeConversations(input.provider)) {
     onTranscript?.({
       sessionId: input.sessionId,
       providerSessionId: providerSessionId ?? '',
@@ -116,7 +117,7 @@ export function captureSessionStateObservation(
   }
   const state: typeof publish = (sessionId, value, options = {}) => {
     if (
-      input.provider === 'claude-code' &&
+      tracksClaudeConversations(input.provider) &&
       providerSessionId &&
       !options.degraded &&
       input.discovery?.isCurrent() !== false
@@ -138,7 +139,7 @@ export function captureSessionStateObservation(
     }
     publish(sessionId, value, {
       ...options,
-      ...(input.provider === 'claude-code'
+      ...(tracksClaudeConversations(input.provider)
         ? {
             evidence: {
               providerSessionId,
@@ -158,12 +159,12 @@ export function captureSessionStateObservation(
     bind: (id: string) => {
       if (
         providerSessionId === id &&
-        (input.provider !== 'claude-code' || capturedIncarnation !== undefined)
+        (!tracksClaudeConversations(input.provider) || capturedIncarnation !== undefined)
       ) {
         return
       }
       providerSessionId = id
-      if (input.provider === 'claude-code') {
+      if (tracksClaudeConversations(input.provider)) {
         onTranscript?.({
           sessionId: input.sessionId,
           providerSessionId: id,

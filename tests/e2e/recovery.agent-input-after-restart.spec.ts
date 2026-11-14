@@ -25,13 +25,11 @@ async function expectObservedWorkingTransition(
   const samples: string[] = []
 
   while (Date.now() < deadline) {
-    // eslint-disable-next-line no-await-in-loop -- bounded UI polling
     const text = ((await status.textContent()) ?? '').trim()
     samples.push(text)
     if (text === 'Working') {
       return
     }
-    // eslint-disable-next-line no-await-in-loop -- bounded UI polling
     await status.page().waitForTimeout(intervalMs)
   }
 

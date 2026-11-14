@@ -79,6 +79,7 @@ export class SqliteTerminalRecoveryRepository implements TerminalRecoveryPersist
     if (!this.isTerminalNode(nodeId)) {
       return null
     }
+    // @compat terminal-recovery-legacy-records
     return this.readDurable(nodeId) ?? this.readLegacy(nodeId)
   }
 
@@ -91,11 +92,13 @@ export class SqliteTerminalRecoveryRepository implements TerminalRecoveryPersist
       }
       const durable = this.readDurable(input.nodeId)
       const result = reserveTerminalRecoveryRecord({
+        // @compat terminal-recovery-legacy-records
         current: durable ?? this.readLegacy(input.nodeId),
         ...input,
       })
       if (result.ok) {
         this.upsert(result.record)
+        // @compat terminal-recovery-legacy-records
         this.mirrorLegacyScrollback(result.record)
       }
       return result
@@ -145,6 +148,7 @@ export class SqliteTerminalRecoveryRepository implements TerminalRecoveryPersist
       })
       if (result.ok) {
         this.upsert(result.record)
+        // @compat terminal-recovery-legacy-records
         this.mirrorLegacyScrollback(result.record)
       }
       return result
@@ -173,6 +177,7 @@ export class SqliteTerminalRecoveryRepository implements TerminalRecoveryPersist
     return row ? decodeRecoveryRow(row) : null
   }
 
+  // @compat terminal-recovery-legacy-records
   private readLegacy(nodeId: string): TerminalRecoveryRecord | null {
     const row = this.db
       .prepare('SELECT scrollback, updated_at FROM node_scrollback WHERE node_id = ? LIMIT 1')
@@ -214,6 +219,7 @@ export class SqliteTerminalRecoveryRepository implements TerminalRecoveryPersist
       )
   }
 
+  // @compat terminal-recovery-legacy-records
   private mirrorLegacyScrollback(record: TerminalRecoveryRecord): void {
     this.db
       .prepare(
@@ -277,7 +283,8 @@ function decodeRecoveryRow(row: RecoveryRow): TerminalRecoveryRecord | null {
     const matchesPreCursorChecksum =
       !hasTrustedReplayCursor &&
       (record.checksum === recoveryChecksumWithoutReplayCursor(record) ||
-        record.checksum === legacyRecoveryChecksum(record))
+        /* @compat terminal-recovery-legacy-records */ record.checksum ===
+          legacyRecoveryChecksum(record))
     if (record.checksum !== currentChecksum && !matchesPreCursorChecksum) {
       return null
     }

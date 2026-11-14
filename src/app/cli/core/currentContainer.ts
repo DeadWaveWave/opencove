@@ -16,6 +16,7 @@ export async function resolveCurrentContainer(
 ) {
   if (
     !command.currentContainer ||
+    args.options.near !== undefined ||
     args.options['spawned-by'] !== undefined ||
     io.env.OPENCOVE_ENV !== '1' ||
     args.options['root-canvas'] ||

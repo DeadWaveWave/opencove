@@ -175,7 +175,8 @@ export async function startRemoteWorker(options: {
         ...(shouldDisableSandbox ? { ELECTRON_DISABLE_SANDBOX: '1' } : {}),
         HOME: options.homeDir,
         USERPROFILE: options.homeDir,
-        OPENCOVE_TEST_AGENT_STUB_SCRIPT: stubScriptPath,
+        OPENCOVE_TEST_AGENT_STUB_SCRIPT:
+          options.env?.OPENCOVE_TEST_AGENT_STUB_SCRIPT ?? stubScriptPath,
         OPENCOVE_TEST_AGENT_SESSION_SCENARIO: options.agentSessionScenario ?? 'codex-standby-only',
       },
       stdio: 'pipe',
@@ -285,7 +286,7 @@ export async function pollForEndpointPing(window: Page, endpointId: string): Pro
     async () =>
       await window.evaluate(async evaluatedEndpointId => {
         try {
-          const ping = await window.opencoveApi.controlSurface.invoke<{ ok: boolean }>({
+          const ping = await globalThis.window.opencoveApi.controlSurface.invoke<{ ok: boolean }>({
             kind: 'query',
             id: 'endpoint.ping',
             payload: { endpointId: evaluatedEndpointId, timeoutMs: 10_000 },

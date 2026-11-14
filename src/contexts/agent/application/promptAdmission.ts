@@ -1,3 +1,4 @@
+import { tracksClaudeConversations } from '../../../shared/contracts/agentProviderDescriptors'
 import type { RunStateFence, PromptDeliveryPorts } from './ports/PromptDeliveryPorts'
 export type PromptRefusal = {
   code:
@@ -58,7 +59,7 @@ export function promptAdmission(
   if (fence.hookInstallState !== undefined && fence.hookInstallState !== 'installed') {
     return { code: 'agent.state_unknown', reason: 'observation_degraded' }
   }
-  if (s.provider === 'claude-code' && fence.hookCoverage !== 'lifecycle') {
+  if (tracksClaudeConversations(s.provider) && fence.hookCoverage !== 'lifecycle') {
     return { code: 'agent.prompt_unsupported', reason: 'claude_hooks_missing' }
   }
   if (s.provider === 'codex' && s.source === 'session_file') {
@@ -80,7 +81,7 @@ export function promptAdmission(
     return null
   }
   if (
-    s.provider === 'claude-code' &&
+    tracksClaudeConversations(s.provider) &&
     fence.claudeClearReady &&
     s.state === 'idle' &&
     !s.turn &&

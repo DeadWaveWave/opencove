@@ -1,3 +1,4 @@
+import { AGENT_PROVIDER_DESCRIPTORS } from '../../../../../shared/contracts/agentProviderDescriptors'
 import { managedHookCoverage } from '../shared/ManagedHookCoverage'
 import { randomUUID } from 'node:crypto'
 import type { AgentHookChannel } from '../../../../../shared/runtime/agentHook/agentHookChannel'
@@ -21,7 +22,7 @@ export interface ClaudeCodeAgentProviderContributionOptions {
 export class ClaudeCodeAgentProviderContribution implements AgentProviderContribution {
   readonly prompting = { supported: true, submitDelayMs: 300 } as const
   readonly descriptor = {
-    displayName: 'Claude Code',
+    displayName: AGENT_PROVIDER_DESCRIPTORS['claude-code'].label,
     documentationUrl: 'https://docs.anthropic.com/claude/docs/claude-code',
     id: 'claude-code',
     launch: {

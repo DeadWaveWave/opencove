@@ -1,3 +1,4 @@
+import { hasNodeFrameCoordinates, NODE_NEAR_FRAME_ERROR } from '../../../utils/nodeNearFrame'
 import { createAppError } from '../../../errors/appError'
 import { assertInitialPromptText } from '../../../utils/initialPromptValidation'
 import type { CreateNodeInput, ManagedCanvasNodeKind } from '../../dto'
@@ -60,7 +61,28 @@ export function normalizeCreatePayload(payload: unknown): CreateNodeInput {
   ) {
     assertInitialPromptText(payload.data.prompt)
   }
+  let near: CreateNodeInput['near']
+  if (payload.near !== undefined) {
+    const value = payload.near
+    if (
+      !isRecord(value) ||
+      typeof value.nodeId !== 'string' ||
+      !value.nodeId.trim() ||
+      (value.target !== 'reference-container' && value.target !== 'root-canvas') ||
+      Object.keys(value).some(key => key !== 'nodeId' && key !== 'target') ||
+      (value.target === 'root-canvas' && payload.space !== undefined && payload.space !== null)
+    ) {
+      throw createAppError('common.invalid_input', {
+        debugMessage: 'Invalid near placement or conflicting frame/Space.',
+      })
+    }
+    if (hasNodeFrameCoordinates(payload.frame)) {
+      throw createAppError('common.invalid_input', { debugMessage: NODE_NEAR_FRAME_ERROR })
+    }
+    near = { nodeId: value.nodeId.trim(), target: value.target }
+  }
   return {
+    ...(near === undefined ? {} : { near }),
     kind: managedKind(payload.kind),
     space:
       payload.space === null || payload.space === undefined

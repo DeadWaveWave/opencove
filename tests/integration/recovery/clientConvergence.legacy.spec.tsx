@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Replay complete traces before comparing their recorded legacy observations. */
 import { it } from 'vitest'
 import { Client } from '../../support/convergence/client'
 import { explore } from '../../support/convergence/model'

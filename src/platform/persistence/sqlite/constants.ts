@@ -1,5 +1,6 @@
 export const DB_SCHEMA_VERSION = 15
 
+// @compat sqlite-workspace-state-kv
 export const LEGACY_WORKSPACE_STATE_KEY = 'workspace-state-raw'
 
 export const DEFAULT_MAX_WORKSPACE_STATE_RAW_BYTES = 50 * 1024 * 1024

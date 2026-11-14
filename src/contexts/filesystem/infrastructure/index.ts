@@ -1,1 +1,1 @@
-export {}
+export { createLocalFileSystemPort } from './localFileSystemPort'

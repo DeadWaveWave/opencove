@@ -1,3 +1,4 @@
+import { tracksClaudeConversations } from '../../../shared/contracts/agentProviderDescriptors'
 import type { SessionInputProvenance } from '../../../shared/runtime/sessionInputProvenance'
 import type { AgentRunObservation } from '../domain/agentRunState'
 import type { PromptSubmissionEvidence } from '../../../shared/runtime/agentHook/claudePromptEvidence'
@@ -229,7 +230,7 @@ export function readRunInputTarget(
   if (
     !entry ||
     entry.remote ||
-    entry.model.snapshot.provider !== 'claude-code' ||
+    !tracksClaudeConversations(entry.model.snapshot.provider) ||
     entry.model.snapshot.state === 'exited' ||
     entry.token !== fence.incarnation ||
     epoch !== fence.epoch ||
@@ -303,13 +304,13 @@ export function acceptsRunObservation(
     (evidence?.claudeAuxiliary ||
       (evidence?.claudeTranscriptRecord &&
         getClaudeTranscriptInput(evidence.claudeTranscriptRecord) === 'auxiliary')) &&
-    entry.model.snapshot.provider === 'claude-code'
+    tracksClaudeConversations(entry.model.snapshot.provider)
   ) {
     return false
   }
   return (
     (source !== 'claude_hook' &&
-      !(source === 'session_file' && entry.model.snapshot.provider === 'claude-code')) ||
+      !(source === 'session_file' && tracksClaudeConversations(entry.model.snapshot.provider))) ||
     (source === 'session_file'
       ? evidence?.conversationCapture
         ? entry.conversation.journal.acceptsCurrent(

@@ -1,7 +1,7 @@
 import React from 'react'
 import { useStore } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
-import { toFileUri } from '@contexts/filesystem/domain/fileUri'
+import { toFileUri } from '@contexts/filesystem/domain'
 import type { ResolveMountTargetResult } from '@shared/contracts/dto'
 import type { ShowWorkspaceCanvasMessage, WorkspaceCanvasProps } from '../types'
 import type { SpaceExplorerOpenDocumentBlock } from '../hooks/useSpaceExplorer.guards'

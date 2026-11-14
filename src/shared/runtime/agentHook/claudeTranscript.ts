@@ -74,7 +74,7 @@ export interface ClaudeTranscriptObservation {
       generation: number,
       action?: 'start' | 'end' | 'event' | 'ignore',
       /** Preserve ordinary End state projection without reviving ignored observer IO. */
-      legacyState?: boolean,
+      stateOnly?: boolean,
       /** Reconcile observer identity while retaining already-published successor state. */
       publishState?: boolean,
     ): void

@@ -59,7 +59,6 @@ async function isArchiveDirectory(directory) {
   const originalFs = createRequire(import.meta.url)('original-fs').promises
   for (const match of directory.matchAll(/\.asar(?=[\\/]|$)/giu)) {
     const candidate = directory.slice(0, match.index + '.asar'.length)
-    // eslint-disable-next-line no-await-in-loop -- Stop at the first real archive; deeper paths are virtual.
     if ((await originalFs.stat(candidate)).isFile()) {
       return true
     }

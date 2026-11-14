@@ -84,7 +84,6 @@ export class TerminalAgentTelemetryAssetStore {
     let repaired = 0
     // Serial effects: no sibling write may outlive a rejected ensure and race cleanup/retry.
     for (const file of terminalAgentAssetManifest(this.assets, this.options.runtimeExecutable)) {
-      // eslint-disable-next-line no-await-in-loop -- rejected work must leave no pending sibling writes
       if (await this.files.ensureFile(file)) {
         repaired++
       }

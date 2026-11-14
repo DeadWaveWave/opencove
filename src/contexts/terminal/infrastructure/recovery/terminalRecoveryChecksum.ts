@@ -21,6 +21,7 @@ export function recoveryChecksum(input: {
   })
 }
 
+// @compat terminal-recovery-legacy-records
 export function legacyRecoveryChecksum(record: TerminalRecoveryRecord): string {
   return hashRecoveryPayload({
     checkpoint: canonicalCheckpointWithoutReplayCursor(record.checkpoint),
@@ -63,8 +64,10 @@ function canonicalCheckpointWithoutReplayCursor(checkpoint: TerminalPresentation
   if (!canonical) {
     return null
   }
+  // @compat terminal-recovery-legacy-records
   const { downstreamReplayCursor: _downstreamReplayCursor, ...legacy } = canonical
   void _downstreamReplayCursor
+  // @compat terminal-recovery-legacy-records
   return legacy
 }
 

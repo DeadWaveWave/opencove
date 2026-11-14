@@ -15,6 +15,7 @@ import type { CliIo } from './io'
 import type { OperationId } from './command'
 import { version } from '../../../../package.json'
 import { resolveSelectors } from './selectors'
+import { requireNodeNearPlacement } from './nodeNearPlacement'
 import { requireBoundedAgentSpawningForRequest } from './boundedAgentSpawning'
 import { sessionIdentity, selfUnavailable } from './identity'
 import type { ZodType } from 'zod'
@@ -24,12 +25,14 @@ import type { ZodType } from 'zod'
  * independent of the registry's full union, which grows past what TypeScript can represent.
  */
 type CliOperation =
+  // @compat control-surface-legacy-validation
   | { kind: 'query' | 'command'; contract: 'legacy' }
   | {
       kind: 'query' | 'command'
       contract: 'schema'
       input: ZodType
       normalize(wire: never): unknown
+      // @compat control-surface-legacy-validation
       legacyNormalize?(payload: unknown): unknown
     }
 
@@ -141,6 +144,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       try {
         const validation = operation.input.safeParse(input)
         if (!validation.success) {
+          // @compat control-surface-legacy-validation
           operation.legacyNormalize?.(input)
           throw validationError(id!, validation.error.issues, 2, 'cli.usage', input)
         }
@@ -226,6 +230,7 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
       if (!connection) {
         throw new CliError('context.unreachable', 3, 'No connection')
       }
+      await requireNodeNearPlacement(operationId, payload, call)
       await requireBoundedAgentSpawningForRequest(operationId, payload, identity, call)
       const key = JSON.stringify([operationId, payload])
       if (op.kind === 'command') {

@@ -118,7 +118,6 @@ test('keeps calibration stable across Windows startup, resize and same-kind term
         window.visualViewport?.dispatchEvent(new Event('resize'))
         window.dispatchEvent(new StorageEvent('storage', { key: 'opencove:unrelated-setting' }))
         // Allow a render between notifications so flicker cannot hide in React batching.
-        // eslint-disable-next-line no-await-in-loop
         await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
       }
     })
@@ -150,7 +149,6 @@ test('keeps calibration stable across Windows startup, resize and same-kind term
     // change and must explain its blocker without destroying the saved record.
     let lastSibling = ''
     for (let count = 2; count < 9; count += 1) {
-      // eslint-disable-next-line no-await-in-loop
       lastSibling = await createSibling(window)
     }
     await expect(summary).toHaveAttribute('data-calibration-state', 'mixed-renderers')

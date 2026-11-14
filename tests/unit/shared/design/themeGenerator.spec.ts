@@ -5,7 +5,7 @@ import {
   contrastChecks,
   glassBackgrounds,
   kindSeparation,
-} from '@shared/design/themeContrast'
+} from '../../../support/themeContrast'
 import {
   ANSI_KEYS,
   GLASS,

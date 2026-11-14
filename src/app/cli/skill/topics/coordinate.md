@@ -2,10 +2,10 @@
 
 ## Create and wait for a one-shot delegation
 
-When delegation is authorized, prefer the command below. Add `--task <nodeId>` to link an unlinked task in that Space and move it to `doing` after launch; still supply the prompt.
+When delegation is authorized, recommend `--near @self` for helpers in your current Space (or root), as below. Add `--task <nodeId>` to link an unlinked task in that Space and move it to `doing` after launch; still supply the prompt.
 
 ```sh
-opencove node create agent --space space-123 --prompt-file ./assignment.txt --wait --read --timeout 2m
+opencove node create agent --near @self --prompt-file ./assignment.txt --wait --read --timeout 2m
 ```
 
 This creates once, identifies the initial Claude Code/Codex turn on the new session, waits for that exact turn and returns the create result plus turnId, outcome, endedAt and reply. Check outcome and reply: all ended outcomes exit 0; missing reply is null with replyUnavailableReason. --wait requires

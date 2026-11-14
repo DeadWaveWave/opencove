@@ -1,3 +1,4 @@
+// @compat-file control-surface-legacy-validation
 export const typical = {
   kind: 'agent',
   space: { kind: 'spaceId', spaceId: 'space-1' },

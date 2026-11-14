@@ -1,6 +1,6 @@
 import React from 'react'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { Page } from '@playwright/test'
 import { TerminalNodeHeader } from '@contexts/workspace/presentation/renderer/components/terminalNode/TerminalNodeHeader'
 import { toShellWorkspaceState } from '@app/renderer/shell/hooks/useHydrateAppState.helpers'
@@ -23,6 +23,7 @@ vi.mock('@playwright/test', async () => {
       poll: (read: () => unknown) => ({
         toBe: (value: unknown) =>
           observe(async () => assert(await read()).toBe(value), { timeout: 150 }),
+        toBeNull: () => observe(async () => assert(await read()).toBeNull(), { timeout: 150 }),
       }),
     }),
   }
@@ -38,6 +39,11 @@ class DomLocator {
   }
   async count() {
     return this.element() ? 1 : 0
+  }
+  async evaluate<T>(read: (element: Element) => T) {
+    const element = this.element()
+    expect(element).not.toBeNull()
+    return read(element!)
   }
   async click() {
     const target = await waitFor(() => {
@@ -65,8 +71,15 @@ const page = {
 } as unknown as Page
 const originalApi = window.opencoveApi
 const originalProbe = window.__opencoveWorkspaceCanvasTestApi
+beforeEach(() => {
+  // Happy DOM has no layout; real canvas hit testing is covered by the Electron regression.
+  vi.spyOn(document, 'elementFromPoint').mockImplementation(() =>
+    screen.queryByTestId('terminal-node-session-list'),
+  )
+})
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   window.opencoveApi = originalApi
   window.__opencoveWorkspaceCanvasTestApi = originalProbe
 })

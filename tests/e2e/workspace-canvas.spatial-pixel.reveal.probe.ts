@@ -376,7 +376,6 @@ export async function maskedInputPoint(page: Page) {
         }
       }
       // Observe the actual frame, without waiting for PTY hydration or terminal text readiness.
-      // eslint-disable-next-line no-await-in-loop
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
     }
     throw new Error('New node did not present a visible frame with an input hit region')

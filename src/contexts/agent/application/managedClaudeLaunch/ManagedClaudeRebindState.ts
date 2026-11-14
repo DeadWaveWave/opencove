@@ -392,7 +392,6 @@ export class ManagedClaudeRebindState {
           void this.pump(state)
         }
       })
-      // oxlint-disable-next-line no-await-in-loop
       await new Promise(resolve =>
         setTimeout(resolve, Math.min(10, Math.max(0, options.deadlineAt - performance.now()))),
       )

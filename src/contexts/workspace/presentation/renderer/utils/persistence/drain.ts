@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- The captured quit delta is repaired sequentially within its deadline. */
 import type { PersistedAppState } from '../../types'
 import { projectOwnedManagedClaudeNode } from '@shared/sync/managedClaudeResumeProjection'
 import { getPersistencePort } from './port'

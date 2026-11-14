@@ -1,3 +1,4 @@
+// @compat-file control-surface-legacy-validation
 // Frozen oracle: copied from src/app/main/controlSurface/handlers/nodeControlHandlers.ts at 90f8a89ba50d70147773c4e04ba15c31063d393c; do not edit; delete when the parity window closes.
 import { createAppError } from '../../../src/shared/errors/appError'
 import type { CreateNodeInput, ManagedCanvasNodeKind } from '../../../src/shared/contracts/dto'

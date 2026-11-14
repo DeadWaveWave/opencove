@@ -77,25 +77,20 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
           return lifecycle.checkpoint()
         },
         event: envelope,
-        publish: (
-          acceptedGeneration,
-          action = 'event',
-          legacyState = false,
-          publishState = true,
-        ) => {
+        publish: (acceptedGeneration, action = 'event', stateOnly = false, publishState = true) => {
           publication = action !== 'ignore'
           if (!publication) {
             context.rejectReply?.()
           }
-          if (this.disposed || !context.isCurrent() || (action === 'ignore' && !legacyState)) {
+          if (this.disposed || !context.isCurrent() || (action === 'ignore' && !stateOnly)) {
             return
           }
           if (action !== 'ignore') {
             this.lifecycle.accept(envelope)
           }
           if (
-            this.commit(sessionId, envelope, context, action, acceptedGeneration, legacyState) ||
-            legacyState
+            this.commit(sessionId, envelope, context, action, acceptedGeneration, stateOnly) ||
+            stateOnly
           ) {
             if (publishState) {
               context.publishState?.(acceptedGeneration)
@@ -128,7 +123,7 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
     context: PrivateHookContext,
     action: 'start' | 'end' | 'event' | 'ignore',
     acceptedGeneration?: number,
-    legacyState = false,
+    stateOnly = false,
   ): boolean {
     if (this.disposed || !context.isCurrent()) {
       return false
@@ -215,7 +210,7 @@ export class ClaudeHookTranscriptObserver implements PrivateHookObserver<ClaudeH
       this.detach()
       this.demand = false
       this.currentGeneration = ++generation
-      if ((acceptedGeneration === undefined && !delayedStart) || legacyState) {
+      if ((acceptedGeneration === undefined && !delayedStart) || stateOnly) {
         this.emit({
           sessionId,
           providerSessionId: envelope.claudeSessionId,

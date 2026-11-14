@@ -123,7 +123,7 @@ export class CodexTurnIdentity {
     const value = pair(evidence)
     if (!value) {
       return false
-    } // Legacy state evidence is not correlated content.
+    } // State evidence without a turn id is not correlated content.
     if (this.latest) {
       const switching = value.providerSessionId !== this.latest.providerSessionId
       if (

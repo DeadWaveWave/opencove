@@ -13,6 +13,7 @@ import { normalizeWriteSyncStatePayload } from '../syncStateNormalize'
 export const syncReadAgentNodePlaceholderScrollbackOperation = defineOperation({
   input: z.object({ nodeId: z.string().describe('Canvas node identifier') }),
   normalize: normalizeReadAgentNodePlaceholderScrollbackPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeReadAgentNodePlaceholderScrollbackPayload,
   errors: ['persistence.unavailable'],
   id: 'sync.readAgentNodePlaceholderScrollback',
@@ -24,6 +25,7 @@ export const syncReadAgentNodePlaceholderScrollbackOperation = defineOperation({
 export const syncReadNodeScrollbackOperation = defineOperation({
   input: z.object({ nodeId: z.string().describe('Canvas node identifier') }),
   normalize: normalizeReadNodeScrollbackPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeReadNodeScrollbackPayload,
   errors: ['persistence.unavailable'],
   id: 'sync.readNodeScrollback',
@@ -35,6 +37,7 @@ export const syncReadNodeScrollbackOperation = defineOperation({
 export const syncReadWorkspaceStateRawOperation = defineOperation({
   input: z.null().optional().describe('Send null to read persisted state'),
   normalize: normalizeReadWorkspaceStateRawPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeReadWorkspaceStateRawPayload,
   errors: ['persistence.unavailable'],
   id: 'sync.readWorkspaceStateRaw',
@@ -46,6 +49,7 @@ export const syncReadWorkspaceStateRawOperation = defineOperation({
 export const syncStateOperation = defineOperation({
   input: z.null().optional().describe('Send null to read persisted state'),
   normalize: normalizeSyncStatePayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeSyncStatePayload,
   errors: ['persistence.unavailable'],
   id: 'sync.state',
@@ -60,6 +64,7 @@ export const syncWriteAgentNodePlaceholderScrollbackOperation = defineOperation(
     scrollback: z.string().nullish().describe('Terminal output to persist; null clears it'),
   }),
   normalize: normalizeWriteAgentNodePlaceholderScrollbackPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeWriteAgentNodePlaceholderScrollbackPayload,
   errors: ['persistence.unavailable'],
   id: 'sync.writeAgentNodePlaceholderScrollback',
@@ -74,6 +79,7 @@ export const syncWriteNodeScrollbackOperation = defineOperation({
     scrollback: z.string().nullish().describe('Terminal output to persist; null clears it'),
   }),
   normalize: normalizeWriteNodeScrollbackPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeWriteNodeScrollbackPayload,
   errors: ['persistence.unavailable'],
   id: 'sync.writeNodeScrollback',
@@ -100,6 +106,7 @@ export const syncWriteStateOperation = defineOperation({
       .describe('Boolean allowing an empty workspace overwrite; other values default to null'),
   }),
   normalize: normalizeWriteSyncStatePayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeWriteSyncStatePayload,
   errors: [
     'persistence.invalid_state',
@@ -118,6 +125,7 @@ export const syncWriteWorkspaceStateRawOperation = defineOperation({
     raw: z.string().describe('Serialized workspace JSON validated by the persistence store'),
   }),
   normalize: normalizeWriteWorkspaceStateRawPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeWriteWorkspaceStateRawPayload,
   errors: ['persistence.unavailable'],
   id: 'sync.writeWorkspaceStateRaw',

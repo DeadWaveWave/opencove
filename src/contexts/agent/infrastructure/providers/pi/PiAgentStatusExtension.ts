@@ -1,3 +1,14 @@
+// @compat pi-agent-settled-fallback
+const piAgentEndFallbackSource = String.raw`  // Compatibility for releases without agent_settled: defer beyond the low-level end callback
+  // and require affirmative idle/pending evidence. Shutdown itself never emits completion.
+  pi.on('agent_end', (_event, ctx) => {
+    if (!active || stopped) return;
+    clearTimeout(idleCheck);
+    idleCheck = setTimeout(() => { if (idle(ctx)) setState('standby', ctx, 'agent_settled'); }, 0);
+    idleCheck.unref?.();
+  });
+`
+
 /** Standalone launch artifact. Only Node built-ins: no dependency on the host application's
  * module graph or a particular Pi package name. The contract suite executes this exact source.
  */
@@ -151,15 +162,7 @@ export default function (pi) {
     clearTimeout(idleCheck);
     if (idle(ctx)) setState('standby', ctx, 'agent_settled');
   });
-  // Compatibility for releases without agent_settled: defer beyond the low-level end callback
-  // and require affirmative idle/pending evidence. Shutdown itself never emits completion.
-  pi.on('agent_end', (_event, ctx) => {
-    if (!active || stopped) return;
-    clearTimeout(idleCheck);
-    idleCheck = setTimeout(() => { if (idle(ctx)) setState('standby', ctx, 'agent_settled'); }, 0);
-    idleCheck.unref?.();
-  });
-  pi.on('session_before_compact', (_event, ctx) => setState('working', ctx));
+${piAgentEndFallbackSource}  pi.on('session_before_compact', (_event, ctx) => setState('working', ctx));
   for (const event of ['session_compact', 'session_compact_failed']) {
     pi.on(event, (event, ctx) => {
       if (!event.willRetry && idle(ctx)) setState('standby', ctx);

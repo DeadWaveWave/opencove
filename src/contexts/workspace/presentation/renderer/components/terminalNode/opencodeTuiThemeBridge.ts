@@ -58,7 +58,7 @@ export function createOpenCodeTuiThemeBridge({
       appliedAppearance?.terminalScheme ?? resolveTerminalUiTheme(terminalThemeMode)
     const reportKey = appliedAppearance
       ? `revision:${appliedAppearance.revision}`
-      : `legacy:${resolvedTheme}`
+      : /* @compat opencode-tui-legacy-theme */ `legacy:${resolvedTheme}`
 
     const altScreenActive = isAltScreenActive || isTerminalInAltScreen(terminal)
     if (!altScreenActive || lastReportedKey === reportKey) {

@@ -303,6 +303,7 @@ async function removeWindowsUserPathEntry(dirPath: string): Promise<void> {
   await updateWindowsUserPath(dirPath, 'remove')
 }
 
+// @compat legacy-cli-launchers
 /** Best-effort startup migration. Ownership and the exact old target must both match. */
 export async function repairLegacyCliLaunchers(): Promise<void> {
   const cliScriptPath = resolveCliScriptPath()

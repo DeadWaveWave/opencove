@@ -25,7 +25,6 @@ describe('bracketed paste ingress parity', () => {
         }
         tracker.feed(chunk)
         // Parser fragments must be applied in order to compare intermediate modes.
-        // eslint-disable-next-line no-await-in-loop
         await new Promise<void>(resolve => terminal.write(chunk, resolve))
         expect(tracker.bracketedPaste).toBe(terminal.modes.bracketedPasteMode)
       }

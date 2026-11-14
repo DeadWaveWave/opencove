@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { isAbsolute, relative, resolve, sep } from 'node:path'
-import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
+import { IPC_CHANNELS } from '../../../src/shared/contracts/ipc'
 import { invokeHandledIpc } from './ipcTestUtils'
 
 function isPathWithinRoot(rootPath: string, targetPath: string): boolean {

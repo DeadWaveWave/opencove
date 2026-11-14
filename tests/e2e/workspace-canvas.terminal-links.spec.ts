@@ -6,6 +6,7 @@ import {
   printTerminalLinkFixture,
   terminalLinkCellPoint,
 } from './workspace-canvas.terminal-links.helpers'
+import { recordTerminalLinkEvents } from './workspace-canvas.terminal-links.diagnostics'
 
 const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
 const actionsSelector = '[data-testid="terminal-link-actions"][role="dialog"]'
@@ -254,6 +255,8 @@ test.describe('Workspace Canvas - Terminal Links', () => {
     const uri = 'https://example.com/hidden-target?source=osc8'
     const replacementUri = 'https://example.com/replaced-target?source=osc8'
     const displayedUri = 'https://example.com/displayed-label'
+    let failed = false
+    let finishDiagnostics: Awaited<ReturnType<typeof recordTerminalLinkEvents>> | undefined
     try {
       await captureExternalLinks(electronApp)
       await clearAndSeedWorkspace(window, [
@@ -265,6 +268,7 @@ test.describe('Workspace Canvas - Terminal Links', () => {
           height: 340,
         },
       ])
+      finishDiagnostics = await recordTerminalLinkEvents(window, nodeId)
       await printTerminalLinkFixture(
         window,
         nodeId,
@@ -343,10 +347,15 @@ test.describe('Workspace Canvas - Terminal Links', () => {
         .poll(() => readExternalLinks(electronApp))
         .toEqual([uri, uri, uri, replacementUri])
     } catch (error) {
+      failed = true
       await attachFailureFrame(window, test.info())
       throw error
     } finally {
-      await electronApp.close()
+      try {
+        await finishDiagnostics?.(testInfo, failed)
+      } finally {
+        await electronApp.close()
+      }
     }
   })
 

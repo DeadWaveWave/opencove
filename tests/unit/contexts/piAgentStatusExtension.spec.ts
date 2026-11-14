@@ -103,6 +103,11 @@ afterEach(() => {
 })
 
 describe('launch-scoped Pi status extension', () => {
+  it('keeps the agent_end idle-check handler for Pi releases without agent_settled', () => {
+    expect(piAgentStatusExtensionSource).toContain("pi.on('agent_end', (_event, ctx) => {")
+    expect(piAgentStatusExtensionSource).toContain("pi.on('agent_settled', (_event, ctx) => {")
+  })
+
   it('does nothing without valid loopback credentials, in nested processes, or before session_start', async () => {
     vi.useFakeTimers()
     for (const env of [

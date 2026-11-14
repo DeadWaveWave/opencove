@@ -210,7 +210,6 @@ export async function readFirstMatchingJsonlValue<T>(
 
     while (bytesReadTotal < maxBytes) {
       const bytesToRead = Math.min(buffer.length, maxBytes - bytesReadTotal)
-      // eslint-disable-next-line no-await-in-loop
       const { bytesRead } = await handle.read(buffer, 0, bytesToRead, null)
       if (bytesRead <= 0) {
         break

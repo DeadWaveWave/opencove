@@ -34,12 +34,23 @@ Please fill out the template completely to avoid delays in review.
 
 ---
 
+## 🔗 Co-change partners left untouched
+
+<!--
+Files that historically change together with files in this PR but are not in it. Get the section with
+`pnpm impact --base origin/main --pr-section`, then replace each `<reason>` with one line saying why
+the partner needs no change here (or "should be extracted, follow-up #N"). If the check fails, its log
+prints the exact section to paste.
+-->
+
+---
+
 ## ✅ Delivery & Compliance Checklist
 
 - [ ] The local quick gate passes: **`pnpm verify:quick` / `pnpm pre-commit` is green**; any additional focused tests are reported above.
 - [ ] Full CI passes on the final revision before merge; local quick checks are not reported as full regression.
 - [ ] I have signed the CLA if required (see `CLA.md`).
-- [ ] I have included new tests to lock down the behavior (or explicitly stated why it's untestable).
+- [ ] I have locked down the behavior with the strongest asset that fits, in this order: type or structure, mechanical check, runtime assertion, scenario test (or explicitly stated why none applies).
 - [ ] I have strictly adhered to the `DEVELOPMENT.md` architectural boundaries.
 - [ ] I have attached a screenshot or screen recording (if this touches the UI).
 - [ ] I have updated the documentation accordingly (if adding a feature or changing a contract).

@@ -384,6 +384,12 @@ records. Session grants cannot supply arbitrary canvas node IDs. Recovery carrie
 identity in an in-process context. This context propagates across nested spawn operations, isolated
 per asynchronous invocation. Caller environment variables never determine identity.
 
+`node.create` accepts request-only `near: {nodeId, target}` (`reference-container` or `root-canvas`).
+The workspace owner revalidates reference geometry and target identity before launch and on every CAS attempt;
+frame, membership and ancestor growth share one creation write. Runtime launch is never replayed.
+CLI dispatch requires `nodeNearPlacementV1`, including raw API calls. Near does not change authenticated
+creator identity, grants or remote routing; details: [near placement](../cli/CANVAS_NODE_CONTROL.md#near-placement-v1).
+
 For remote mounts, the Home Worker forwards its resolved identity with the existing private Worker
 bearer. The hosting Worker accepts this delegation only from bearer-authenticated callers, creates
 its local session/grant binding, and injects its own private Control Surface URL. The Home Worker does

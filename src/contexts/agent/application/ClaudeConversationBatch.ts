@@ -112,7 +112,7 @@ export function rejectConversationBatch(batch: Request[], generation: number): v
   }
 }
 
-export function legacyConversationEnd(
+export function preservesOrdinaryConversationEnd(
   action: string,
   event: Request['event'],
   pending: boolean,

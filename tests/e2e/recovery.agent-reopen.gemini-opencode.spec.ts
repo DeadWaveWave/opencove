@@ -1,5 +1,6 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import path from 'node:path'
+import type { ListSessionsResult } from '../../src/shared/contracts/dto'
 import {
   clearAndSeedWorkspace,
   createTestUserDataDir,
@@ -7,6 +8,37 @@ import {
   removePathWithRetry,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
+
+async function attachRecoveryEvidence(window: Page, testInfo: TestInfo): Promise<void> {
+  const evidence = await window
+    .evaluate(async () => {
+      const api = window.opencoveApi
+      const raw = await api.persistence.readWorkspaceStateRaw()
+      const { sessions } = await api.controlSurface.invoke<ListSessionsResult>({
+        kind: 'query',
+        id: 'session.list',
+        payload: null,
+      })
+      return {
+        persistedState: raw ? JSON.parse(raw) : null,
+        terminalText: document.querySelector('.terminal-node')?.textContent,
+        sessions: await Promise.all(
+          sessions.map(async session => ({
+            ...session,
+            rawOutput: await api.pty.snapshot({ sessionId: session.sessionId }).catch(String),
+            presentation: await api.pty
+              .presentationSnapshot({ sessionId: session.sessionId })
+              .catch(String),
+          })),
+        ),
+      }
+    })
+    .catch(String)
+  await testInfo.attach('agent-resume-recovery', {
+    body: JSON.stringify(evidence, null, 2),
+    contentType: 'application/json',
+  })
+}
 
 async function readWorkspaceStateRaw(window: Page): Promise<unknown | null> {
   const raw = await window.evaluate(async () => {
@@ -64,7 +96,6 @@ test.describe('Recovery - Agent reopen (Gemini/OpenCode)', () => {
 
     try {
       const { electronApp, window } = await launchApp({
-        windowMode: 'offscreen',
         userDataDir,
         cleanupUserDataDir: false,
         env: {
@@ -174,7 +205,6 @@ test.describe('Recovery - Agent reopen (Gemini/OpenCode)', () => {
       }
 
       const { electronApp: restartedApp, window: restartedWindow } = await launchApp({
-        windowMode: 'offscreen',
         userDataDir,
         cleanupUserDataDir: true,
       })
@@ -198,6 +228,9 @@ test.describe('Recovery - Agent reopen (Gemini/OpenCode)', () => {
             )
           })
           .toBe(true)
+      } catch (error) {
+        await attachRecoveryEvidence(restartedWindow, test.info())
+        throw error
       } finally {
         await restartedApp.close()
       }
@@ -206,13 +239,12 @@ test.describe('Recovery - Agent reopen (Gemini/OpenCode)', () => {
     }
   })
 
-  test.skip('resumes a task-linked opencode agent after app restart', async () => {
+  test('resumes a task-linked opencode agent after app restart', async () => {
     const userDataDir = await createTestUserDataDir()
     const taskDirectory = path.join(testWorkspacePath, 'docs')
 
     try {
       const { electronApp, window } = await launchApp({
-        windowMode: 'offscreen',
         userDataDir,
         cleanupUserDataDir: false,
         env: {
@@ -302,7 +334,6 @@ test.describe('Recovery - Agent reopen (Gemini/OpenCode)', () => {
       }
 
       const { electronApp: restartedApp, window: restartedWindow } = await launchApp({
-        windowMode: 'offscreen',
         userDataDir,
         cleanupUserDataDir: true,
       })
@@ -326,6 +357,9 @@ test.describe('Recovery - Agent reopen (Gemini/OpenCode)', () => {
             )
           })
           .toBe(true)
+      } catch (error) {
+        await attachRecoveryEvidence(restartedWindow, test.info())
+        throw error
       } finally {
         await restartedApp.close()
       }

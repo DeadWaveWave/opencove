@@ -6,6 +6,7 @@ import {
   parseStagedE2EChanges,
   QUICK_E2E_GROUPS,
   selectPrecommitE2E,
+  shouldRunWorkerCliContracts,
 } from '../../../scripts/precommit-e2e-selection.mjs'
 
 const root = resolve(import.meta.dirname, '../../..')
@@ -16,6 +17,7 @@ const select = (...paths: string[]) =>
 describe('local quick E2E selection', () => {
   it('keeps the invariant core for every quick selection and selects every registered group with real existing files', () => {
     const examples = {
+      workerCli: 'src/app/cli/commands/agent.ts',
       plugins: 'src/contexts/settings/presentation/renderer/settingsPanel/PluginSettingsDetail.tsx',
       pluginInteraction: 'tests/e2e/plugins.local.helpers.ts',
       liveViews: 'src/app/renderer/shell/hooks/useWorkerSyncStateUpdates.ts',
@@ -163,3 +165,37 @@ it.each([
     'tests/e2e/recovery.claude-clear.spec.ts',
   )
 })
+
+it('keeps moved contracts selected for CLI, Worker, native process and control-surface changes', () => {
+  for (const path of [
+    'src/app/cli/commands/agent.ts',
+    'src/app/worker/index.ts',
+    'src/app/main/controlSurface/handlers/nodeControlRuntime.ts',
+    'src/shared/contracts/controlSurface/operations/domains/session.ts',
+    'src/platform/process/pty/runtime.ts',
+    'tests/contract/worker-cli/fixture.ts',
+    'tests/e2e/cli.terminal-read.spec.ts',
+  ]) {
+    expect(shouldRunWorkerCliContracts([changed(path, 'D')]), path).toBe(true)
+  }
+  expect(shouldRunWorkerCliContracts([], true)).toBe(true)
+  expect(shouldRunWorkerCliContracts([changed('README.md')])).toBe(false)
+})
+
+it.each(['cliSessionGrant', 'sessionGrantCases'])(
+  'keeps the shared %s oracle covered by Worker and Desktop grant boundaries',
+  name => {
+    const path = `tests/support/${name}.ts`
+    expect(shouldRunWorkerCliContracts([changed(path)])).toBe(true)
+    expect(select(path).tests).toContain('tests/e2e/cli.session-grant.spec.ts')
+  },
+)
+
+it.each(['boundedSpawning', 'cliLineageAgent'])(
+  'keeps shared %s assertions selected in Worker contracts and Desktop boundaries',
+  name => {
+    const path = `tests/support/${name}.ts`
+    expect(shouldRunWorkerCliContracts([changed(path)])).toBe(true)
+    expect(select(path).tests).toContain('tests/e2e/cli.bounded-agent-spawning.spec.ts')
+  },
+)

@@ -29,9 +29,8 @@
   border-color: transparent;
   background: transparent;
   overflow: hidden;
+  /* Keep search controls under the pointer from press through release. */
   transition:
-    flex-basis 180ms ease,
-    flex-grow 180ms ease,
     background-color 150ms ease,
     border-color 150ms ease;
 }
@@ -119,9 +118,8 @@
   gap: 2px;
   overflow: hidden;
   opacity: 1;
-  transition:
-    max-width 180ms ease,
-    opacity 120ms ease;
+  /* Changing tool width also moves Clear in the adjacent flex item. */
+  transition: opacity 120ms ease;
 }
 
 .cove-directory-toolbar[data-tools-hidden='true'] .workspace-space-explorer__tools {

@@ -3,7 +3,6 @@ import {
   seedDirtyDocumentFixture,
 } from './workspace-canvas.collapsed-document.fixture'
 import { attachFailureFrame, isE2EDiagnosticsEnabled } from './diagnostics'
-/* eslint-disable no-await-in-loop -- User actions across window kinds intentionally run in sequence. */
 import { expect, test } from '@playwright/test'
 import { rejectDocumentWrites } from './workspace-canvas.document-save.helpers'
 import { readFile } from 'node:fs/promises'

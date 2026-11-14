@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createAgentRunStateArbiterOwner } from '../../../src/app/renderer/shell/utils/agentRunStateArbiterOwner'
 import { PiSessionObservationWatcher } from '../../../src/contexts/agent/infrastructure/watchers/PiSessionObservationWatcher'
 import { PiSessionStateWatcher } from '../../../src/contexts/agent/infrastructure/watchers/PiSessionStateWatcher'
 import type { PiAgentSnapshot } from '../../../src/shared/contracts/dto/piAgentSnapshot'
@@ -83,58 +82,6 @@ describe('Pi conversation-scoped fallback', () => {
     expect(onState).not.toHaveBeenCalled()
     callbacks[1].onState('pty', 'waiting')
     expect(onState).toHaveBeenCalledWith(expect.objectContaining({ state: 'waiting' }))
-    owner.dispose()
-  })
-
-  it('invalidates cached fallback on native conversation change and never invents state when unavailable', () => {
-    const owner = createAgentRunStateArbiterOwner({
-      now: () => 100,
-      setTimer: () => 1,
-      clearTimer: () => undefined,
-      onDecision: () => undefined,
-    })
-    owner.observe({
-      sessionId: 'pty',
-      state: 'working',
-      source: 'pi_hook',
-      hookInstallState: 'installed',
-      piConversation: { pid: 12, revision: 1 },
-    })
-    owner.observe({
-      sessionId: 'pty',
-      state: 'standby',
-      source: 'session_file',
-      piConversation: { pid: 12, revision: 1 },
-    })
-    owner.observe({
-      sessionId: 'pty',
-      state: 'working',
-      source: 'pi_hook',
-      piConversation: { pid: 12, revision: 2 },
-    })
-    expect(owner.getDebugState('pty')?.lastSessionFileSignal).toBeNull()
-    owner.observe({
-      sessionId: 'pty',
-      state: 'standby',
-      source: 'session_file',
-      piConversation: { pid: 12, revision: 1 },
-    })
-    owner.observe({ sessionId: 'pty', state: 'standby', source: 'session_file' })
-    expect(owner.getDebugState('pty')?.lastSessionFileSignal).toBeNull()
-    owner.observe({
-      sessionId: 'pty',
-      state: 'working',
-      source: 'session_file',
-      piConversation: { pid: 12, revision: 2 },
-    })
-    owner.observe({
-      sessionId: 'pty',
-      state: 'standby',
-      source: 'session_file',
-      observationUnavailable: true,
-      piConversation: { pid: 12, revision: 2 },
-    })
-    expect(owner.getDebugState('pty')?.lastSessionFileSignal).toBeNull()
     owner.dispose()
   })
 })

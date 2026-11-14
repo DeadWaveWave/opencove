@@ -1,5 +1,4 @@
 import { attachFailureFrame, isE2EDiagnosticsEnabled } from './diagnostics'
-/* eslint-disable no-await-in-loop -- Theme changes and real pointer interactions run in sequence. */
 import { expect, test, type Locator } from '@playwright/test'
 import { launchApp, selectCoveOption } from './workspace-canvas.helpers'
 import {

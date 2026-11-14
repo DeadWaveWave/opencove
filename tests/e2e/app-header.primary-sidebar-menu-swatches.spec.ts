@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Both themes share one Electron window and must settle in turn. */
 import { expect, test } from '@playwright/test'
 import { launchApp, seedWorkspaceState, testWorkspacePath } from './workspace-canvas.helpers'
 import { createRailAgent } from './sidebar-test-fixtures'

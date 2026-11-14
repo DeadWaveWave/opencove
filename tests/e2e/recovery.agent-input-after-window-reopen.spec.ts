@@ -108,9 +108,7 @@ async function sampleTranscript(
   const samples: string[] = []
 
   while (Date.now() < deadline) {
-    // eslint-disable-next-line no-await-in-loop -- bounded UI polling
     samples.push((await readTranscript(window, nodeId, transcript)).trim())
-    // eslint-disable-next-line no-await-in-loop -- bounded UI polling
     await window.waitForTimeout(intervalMs)
   }
 
@@ -127,7 +125,6 @@ async function waitForTranscriptContaining(
   const deadline = Date.now() + timeoutMs
 
   while (Date.now() < deadline) {
-    // eslint-disable-next-line no-await-in-loop -- bounded UI polling
     const transcriptText = await readTranscript(window, nodeId, transcript)
     const matches =
       typeof matcher === 'string' ? transcriptText.includes(matcher) : matcher.test(transcriptText)
@@ -136,7 +133,6 @@ async function waitForTranscriptContaining(
       return transcriptText
     }
 
-    // eslint-disable-next-line no-await-in-loop -- bounded UI polling
     await window.waitForTimeout(120)
   }
 
@@ -153,7 +149,6 @@ async function waitForLastTranscriptLineContaining(
   const deadline = Date.now() + timeoutMs
 
   while (Date.now() < deadline) {
-    // eslint-disable-next-line no-await-in-loop -- bounded UI polling
     const transcriptText = await readTranscript(window, nodeId, transcript)
     const lastLine = resolveLastNonEmptyTranscriptLine(transcriptText)
     const matches =
@@ -163,7 +158,6 @@ async function waitForLastTranscriptLineContaining(
       return lastLine
     }
 
-    // eslint-disable-next-line no-await-in-loop -- bounded UI polling
     await window.waitForTimeout(50)
   }
 
@@ -178,7 +172,6 @@ async function waitForBrowserWindowCount(
   const deadline = Date.now() + timeoutMs
 
   while (Date.now() < deadline) {
-    // eslint-disable-next-line no-await-in-loop -- bounded UI polling
     const count = await electronApp.evaluate(({ BrowserWindow }) => {
       return BrowserWindow.getAllWindows().filter(window => !window.isDestroyed()).length
     })
@@ -187,7 +180,6 @@ async function waitForBrowserWindowCount(
       return
     }
 
-    // eslint-disable-next-line no-await-in-loop -- bounded UI polling
     await new Promise(resolve => {
       setTimeout(resolve, 100)
     })
@@ -210,12 +202,10 @@ async function waitForOpenWindow(
         .find(window => !window.isClosed() && !previousWindows.includes(window)) ?? null
 
     if (nextWindow) {
-      // eslint-disable-next-line no-await-in-loop -- bounded UI polling
       await nextWindow.waitForLoadState('domcontentloaded')
       return nextWindow
     }
 
-    // eslint-disable-next-line no-await-in-loop -- bounded UI polling
     await new Promise(resolve => {
       setTimeout(resolve, 100)
     })

@@ -394,7 +394,7 @@ export class ClaudeLiveConversation {
       return
     }
     const completed = ports.completedTurnId()
-    const legacyEnd = batch.legacyConversationEnd(
+    const ordinaryEnd = batch.preservesOrdinaryConversationEnd(
       action,
       event,
       this.clearPending,
@@ -415,7 +415,7 @@ export class ClaudeLiveConversation {
       }
       this.providerSessionId = event.claudeSessionId
       this.ended = action === 'end'
-      this.endedInClear = this.ended && !legacyEnd
+      this.endedInClear = this.ended && !ordinaryEnd
       if (action === 'start') {
         this.pending = batch.discardPrestartRequests(
           this.pending,
@@ -426,13 +426,13 @@ export class ClaudeLiveConversation {
         )
         this.completedAtStart = ports.completedTurnId()
       }
-      if (!legacyEnd && !ports.preserve?.(event)) {
+      if (!ordinaryEnd && !ports.preserve?.(event)) {
         ports.reset()
       }
     } else {
       this.providerSessionId = event.claudeSessionId
     }
-    request.publish(this.generation, action, legacyEnd, !ports.preserve?.(event))
+    request.publish(this.generation, action, ordinaryEnd, !ports.preserve?.(event))
   }
   accepts(generation: number | undefined, id: string | undefined): boolean {
     return (

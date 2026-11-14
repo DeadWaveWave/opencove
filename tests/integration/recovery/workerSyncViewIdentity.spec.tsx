@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Refreshes are ordered lifecycle transitions for the same mounted views. */
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import React, { type ReactNode } from 'react'

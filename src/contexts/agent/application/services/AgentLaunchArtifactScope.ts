@@ -75,7 +75,6 @@ export class AgentLaunchArtifactScope {
     for (const entry of [...this.artifacts].reverse()) {
       try {
         // Artifact teardown is intentionally LIFO and sequential.
-        // eslint-disable-next-line no-await-in-loop
         await entry.artifact.dispose()
         this.remove(entry)
       } catch (error) {

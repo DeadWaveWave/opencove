@@ -180,6 +180,7 @@ export function getIssueReportBreadcrumbs(): IssueReportBreadcrumb[] {
   return breadcrumbs.snapshot()
 }
 
+/** @internal Test seam: only specs call this. */
 export function clearIssueReportBreadcrumbsForTests(): void {
   breadcrumbs.clear()
 }

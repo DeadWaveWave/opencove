@@ -123,6 +123,7 @@ export function projectManagedRuntimeFailure(snapshot: ManagedSshRuntimeSnapshot
   if (snapshot.failureKind === 'recovery_required') {
     return { status: 'recovery_required', recommendedAction: 'show_details' }
   }
+  // @compat endpoint-runtime-legacy-failure
   if (snapshot.failureKind === 'runtime_legacy') {
     return { status: 'update_pending', recommendedAction: 'show_details' }
   }

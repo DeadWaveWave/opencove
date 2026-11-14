@@ -1,4 +1,5 @@
 import type { AgentLaunchMode, AgentProviderId } from './agent'
+import type { TerminalAgentShimProvider } from '../agentProviderDescriptors'
 
 export interface PseudoTerminalSession {
   sessionId: string
@@ -111,6 +112,7 @@ export interface ResizeTerminalInput {
   operationId?: string
   baseGeometryRevision?: number | null
   authorityEpoch?: number | null
+  // @compat pty-geometry-legacy-revision
   /** @deprecated Compatibility only. Use operationId + baseGeometryRevision. */
   revision?: number | null
 }
@@ -242,7 +244,7 @@ export interface TerminalSessionStateEvent {
   observedAtMs?: number
 }
 
-export type TerminalAgentShimProvider = 'claude-code' | 'codex' | 'pi'
+export type { TerminalAgentShimProvider }
 
 export interface TerminalAgentActivitySnapshot {
   provider: TerminalAgentShimProvider

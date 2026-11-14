@@ -50,7 +50,6 @@ it.each(['create', 'list'])(
         `--${flag}`,
         'target',
       ]
-      // eslint-disable-next-line no-await-in-loop
       expect(await run(args, f.io)).toBe(2)
       expect(f.error().message).toContain(`Cannot use --root-canvas and --${flag} together`)
       expect(f.fetch).not.toHaveBeenCalled()

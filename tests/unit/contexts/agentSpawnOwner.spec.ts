@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Each creation observes the prior admission and runtime lifecycle. */
 import { describe, expect, it, vi } from 'vitest'
 import {
   AgentSpawnAdmissionOwner,

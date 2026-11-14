@@ -1,3 +1,4 @@
+// @compat-file control-surface-legacy-validation
 // Frozen from src/contexts/agent/presentation/main-ipc/validate.ts; provider from src/app/main/ipc/normalize.ts at 6df96903c64d6fb3c541c79815713996d3c1b186; validator bodies verbatim, imports adjusted.
 import type { ListAgentSessionsInput } from '../../../src/shared/contracts/dto'
 import { AGENT_PROVIDER_IDS, type AgentProviderId } from '../../../src/shared/contracts/dto'

@@ -5,10 +5,10 @@ exports[`documents promise and non-guarantees in help 1`] = `
 
 Send a prompt to an agent window OpenCove launched
 
-Send text to Claude Code/Codex windows OpenCove launched. Inspect agent read --screen: drafts may be submitted. Working agents accept steering; --if-busy refuse rejects them. --expect-turn requires that turn. Claude clear settles after 200 ms of quiet; normal updates remain immediate. Waiting, unknown/degraded and unsupported sessions refuse. history_saturated: restart the agent window.
+Prompt Claude Code/Codex windows OpenCove launched. Inspect agent read --screen: drafts may be submitted. Working agents accept steering; --if-busy refuse rejects them. --expect-turn requires that turn. Claude clear needs 200 ms of quiet; normal updates remain immediate. Waiting, unknown/degraded and unsupported sessions refuse. history_saturated: restart the agent window.
 
 Agent-terminal prompt rules:
-- Launches: describe a task in a sentence; single tokens and provider command names are refused.
+- Launches: describe a task in a sentence; single ASCII words and provider command names are refused; unspaced Chinese/Japanese/Korean text is fine.
 - Provider controls: no leading /; Claude also refuses ! # &; Codex, OpenCode, Pi and Gemini also refuse !.
 - Exit aliases: no exit, quit, :q, :q!, :wq or :wq!.
 - File references: no @ anywhere. Read approved content with opencove fs read --uri file:///workspace/README.md --fields content (replace the absolute URI), then paste the content.
@@ -16,9 +16,9 @@ Agent-terminal prompt rules:
 - Leading dashes: Claude Code and Pi launches refuse prompts starting with -.
 - Null characters: remove NUL from the prompt.
 
---wait confirms delivery and waits for its exact turn; --read returns the correlated reply. Check outcome and replyUnavailableReason. Stderr prints IDs and an interruption-only continuation command; final JSON reports results.
+--wait confirms delivery and awaits its exact turn; --read returns its reply. Check outcome and replyUnavailableReason. Stderr prints IDs and an interruption-only continuation command; JSON reports results.
 
---timeout: with --wait, confirmation/waiting default 20s, minimum 250ms, separate 15s send budget; otherwise sending defaults to 15s, maximum 60s.
+--timeout: with --wait, confirmation/waiting default 20s, minimum 250ms, 15s send budget; otherwise sending defaults to 15s, maximum 60s.
 
 Never resend after uncertainty, interruption or textComparison: different. Resume agent delivery or agent wait --turn with returned IDs.
 

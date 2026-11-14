@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- One host-wide scheduler must serialize process-table reads and phase waits. */
 import process from 'node:process'
 import { AGENT_RETIREMENT_BUDGET_MS } from './terminationTiming'
 import { sameProcess, AgentProcessOwnership } from './agentProcessOwnership'

@@ -1,3 +1,4 @@
+import { tracksClaudeConversations } from '../../../../shared/contracts/agentProviderDescriptors'
 import { isClaudeAuxiliaryUser } from '../../../../shared/runtime/agentHook/claudeTranscriptSemantics'
 import type { AgentProviderId, TerminalSessionState } from '@shared/contracts/dto'
 
@@ -33,7 +34,7 @@ function mayContainTurnState(provider: AgentProviderId, line: string): boolean {
     return false
   }
 
-  if (provider === 'claude-code') {
+  if (tracksClaudeConversations(provider)) {
     return line.includes('"assistant"') || line.includes('"user"')
   }
 
@@ -184,19 +185,13 @@ export function detectTurnStateFromSessionRecord(
   provider: AgentProviderId,
   parsed: unknown,
 ): TerminalSessionState | null {
-  if (provider === 'claude-code') {
+  if (tracksClaudeConversations(provider)) {
     return detectClaudeTurnState(parsed)
   }
 
   return detectCodexTurnState(parsed)
 }
 
-export function detectTurnStateFromSessionLine(
-  provider: AgentProviderId,
-  line: string,
-): TerminalSessionState | null {
-  return detectTurnObservationFromSessionLine(provider, line)?.state ?? null
-}
 export function detectTurnObservationFromSessionLine(
   provider: AgentProviderId,
   line: string,
@@ -211,7 +206,7 @@ export function detectTurnObservationFromSessionLine(
     return state
       ? {
           state,
-          ...(provider === 'claude-code' && isClaudeAuxiliaryUser(parsed)
+          ...(tracksClaudeConversations(provider) && isClaudeAuxiliaryUser(parsed)
             ? { claudeAuxiliary: true as const }
             : {}),
         }

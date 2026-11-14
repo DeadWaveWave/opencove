@@ -1,3 +1,4 @@
+import { tracksClaudeConversations } from '../../../../shared/contracts/agentProviderDescriptors'
 import type { SessionFileAccess } from './ClaudeTranscriptAccess'
 import { ClaudeTranscriptCheckpoint } from './ClaudeTranscriptCheckpoint'
 import type { ClaudeTranscriptObservation } from '../../../../shared/runtime/agentHook/claudeTranscript'
@@ -279,7 +280,6 @@ export class SessionTurnStateWatcher {
       do {
         this.hasPendingRead = false
         try {
-          // eslint-disable-next-line no-await-in-loop -- the owner must serialize filesystem reads
           await this.readFileDelta()
         } catch (error) {
           if (!this.disposed && !isFileMissingError(error)) {
@@ -355,7 +355,6 @@ export class SessionTurnStateWatcher {
       while (position < end && !this.disposed) {
         const bytesToRead = Math.min(READ_CHUNK_BYTES, end - position)
         const buffer = Buffer.allocUnsafe(bytesToRead)
-        // eslint-disable-next-line no-await-in-loop
         const { bytesRead } = await handle.read(buffer, 0, bytesToRead, position)
         if (bytesRead <= 0) {
           break
@@ -442,8 +441,10 @@ export class SessionTurnStateWatcher {
     }
     const baseline = this.readingBaseline || this.partialBaseline
     this.partialBaseline = false
-    const record = this.provider === 'claude-code' ? parseClaudeTranscript(line) : undefined
-    if (this.provider === 'claude-code') {
+    const record = tracksClaudeConversations(this.provider)
+      ? parseClaudeTranscript(line)
+      : undefined
+    if (tracksClaudeConversations(this.provider)) {
       this.checkpoint.observe(record, line)
       this.onClaudeTranscript?.({
         fileIdentity: `${this.fileIdentity}:${this.fileEpoch}`,

@@ -3,7 +3,9 @@
 import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { createBrowserPersistenceApi } from '../../../src/app/renderer/browser/browserOpenCoveApi.persistence'
+import { normalizePersistedAppStateForMerge } from '../../../src/app/renderer/browser/browserOpenCoveApi.helpers'
 import { registerControlSurfaceHttpServer } from '../../../src/app/main/controlSurface/controlSurfaceHttpServer'
 import { createApprovedWorkspaceStoreForPath } from '../../../src/contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
 import {
@@ -179,6 +181,74 @@ describe('Control Surface HTTP server (sync.writeState)', () => {
       expect(afterAllowedWrite.revision).toBeGreaterThan(current.revision)
       expect((afterAllowedWrite.state as { workspaces?: unknown[] }).workspaces).toEqual([])
     } finally {
+      await disposeAndCleanup({ server, userDataPath, connectionFilePath, baseUrl })
+    }
+  })
+
+  it('rebases a stale browser publication onto an external write through the real HTTP conflict envelope', async () => {
+    const { userDataPath, connectionFilePath, workspacePath, server, baseUrl } =
+      await createSyncWriteStateServer()
+    const fetchHttp = globalThis.fetch
+    // Use the real browser transport/error projection, pointing its relative URL at this server.
+    vi.stubGlobal('fetch', (url: string, init?: RequestInit) =>
+      fetchHttp(new URL(url, baseUrl), {
+        ...init,
+        headers: { ...init?.headers, authorization: 'Bearer test-token' },
+      }),
+    )
+    try {
+      await invoke(baseUrl, 'test-token', {
+        kind: 'command',
+        id: 'sync.writeState',
+        payload: { state: createMinimalState(workspacePath, 'workspace-1', 'space-1') },
+      })
+      const browser = createBrowserPersistenceApi()
+      const accepted = await browser.readAppState()
+      const local = normalizePersistedAppStateForMerge(accepted.state)!
+      const external = structuredClone(local)
+      external.workspaces[0].name = 'External rename'
+      const committed = await invoke(baseUrl, 'test-token', {
+        kind: 'command',
+        id: 'sync.writeState',
+        payload: { state: external, baseRevision: accepted.revision },
+      })
+      expect(committed.data).toMatchObject({ ok: true })
+
+      const stale = await invoke(baseUrl, 'test-token', {
+        kind: 'command',
+        id: 'sync.writeState',
+        payload: { state: local, baseRevision: accepted.revision },
+      })
+      expect(stale.data).toMatchObject({
+        ok: false,
+        error: {
+          code: 'persistence.invalid_state',
+          debugMessage: 'sync.writeState revision conflict (base=1, current=2)',
+        },
+      })
+
+      local.settings.releaseNotesSeenVersion = 'local-edit'
+      const publication = await browser.writeAppState({
+        state: local,
+        baseRevision: accepted.revision,
+      })
+      expect(publication, JSON.stringify(publication)).toMatchObject({
+        ok: true,
+        merged: true,
+        revision: 3,
+      })
+      const expected = {
+        revision: 3,
+        state: {
+          workspaces: [{ name: 'External rename' }],
+          settings: { releaseNotesSeenVersion: 'local-edit' },
+        },
+      }
+      expect(await readSyncState(baseUrl)).toMatchObject(expected)
+      expect(await browser.readAppState()).toMatchObject(expected)
+      expect(await createBrowserPersistenceApi().readAppState()).toMatchObject(expected)
+    } finally {
+      vi.unstubAllGlobals()
       await disposeAndCleanup({ server, userDataPath, connectionFilePath, baseUrl })
     }
   })

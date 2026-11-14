@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Each compatibility case executes sequential lifecycle effects. */
 import { act } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { workerOwnershipCompatibilityCases } from '../../support/workerOwnershipCompatibility'

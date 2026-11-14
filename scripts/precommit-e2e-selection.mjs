@@ -9,6 +9,20 @@ export const QUICK_E2E_GROUPS = {
       e2e('recovery.worker-client-input-after-restart'),
     ],
   },
+  workerCli: {
+    reason:
+      'Desktop still projects real granted terminals; backend matrices run in worker-cli contracts.',
+    tests: [
+      e2e('cli.output-boundary'),
+      e2e('cli.node-create-agent-wait'),
+      e2e('cli.session-grant'),
+      e2e('cli.bounded-agent-spawning'),
+    ],
+    matches: path =>
+      /app\/(?:cli|worker)\/|app\/main\/controlsurface\/handlers\/(?:node|session|pty)|tests\/contract\/worker-cli\/|tests\/e2e\/cli\.|tests\/support\/(?:clisessiongrant|sessiongrantcases|boundedspawning|clilineageagent)\.ts$/.test(
+        path,
+      ),
+  },
   plugins: {
     reason: 'Independent install/reload/restart, Web views, contribution preferences and details.',
     tests: [
@@ -139,7 +153,7 @@ const isConfiguration = path =>
     path,
   ) ||
   /(?:^|\/)(?:electron\.vite|vite|vitest|playwright)[^/]*\.config\./.test(path) ||
-  /^(?:scripts\/|\.github\/|\.husky\/)/.test(path)
+  /^(?:scripts\/|\.github\/)/.test(path)
 const isSource = path =>
   /^(?:src\/|tests\/|harness\/)/.test(path) && /\.(?:[cm]?[jt]sx?|css|json)$/.test(path)
 
@@ -235,4 +249,16 @@ export function selectPrecommitE2E({ changes, full = false }) {
     tests: [...new Set(groups.flatMap(group => group.tests))],
     unmatchedPaths,
   }
+}
+
+/** The headless lane retains the CLI/Worker guarantees removed from Desktop E2E. */
+export function shouldRunWorkerCliContracts(changes, full = false) {
+  return (
+    full ||
+    changes.some(({ path }) =>
+      /^(?:src\/(?:app\/(?:cli|worker|main\/controlSurface)\/|contexts\/(?:worker|agent|terminal|plugins)\/|shared\/contracts\/|platform\/process\/)|tests\/contract\/worker-cli\/|tests\/e2e\/(?:cli\.|worker-|plugins\.commands)|tests\/support\/(?:cliSessionGrant|sessionGrantCases|boundedSpawning|cliLineageAgent)\.ts$|scripts\/(?:build-cli|run-precommit-e2e|precommit-e2e-selection)|(?:package\.json|pnpm-lock\.yaml|electron\.vite\.config\.ts)$)/.test(
+        path.replaceAll('\\', '/'),
+      ),
+    )
+  )
 }

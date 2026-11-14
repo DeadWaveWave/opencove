@@ -1,3 +1,4 @@
+import { isTerminalAgentShimProvider } from '../contracts/agentProviderDescriptors'
 import type { TerminalAgentActivityMetadata, TerminalAgentActivitySnapshot } from '../contracts/dto'
 
 export function isImmutableTerminalAgentIdentityAuthority(
@@ -27,7 +28,7 @@ export function normalizeTerminalAgentActivitySnapshot(
   const sourceRevision = value.sourceRevision
   const revision = value.revision
   if (
-    (provider !== 'claude-code' && provider !== 'codex' && provider !== 'pi') ||
+    !isTerminalAgentShimProvider(provider) ||
     (value.launchMode !== undefined &&
       value.launchMode !== 'new' &&
       value.launchMode !== 'resume') ||

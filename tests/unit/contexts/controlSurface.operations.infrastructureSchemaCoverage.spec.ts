@@ -59,6 +59,7 @@ for (const id of legacyNoInputOperations) {
           input: z.strictObject({}),
           normalize: oracles[id],
           legacyNormalize: oracles[id],
+          compat: 'control-surface-legacy-validation',
           errors: [],
         }),
         { handle: () => undefined, defaultErrorCode: 'common.unexpected' },

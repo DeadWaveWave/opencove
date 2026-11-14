@@ -24,11 +24,11 @@ export function compareRatchet({ counts, baseline, rules, describe }) {
   return issues
 }
 
-export function formatRatchetIssues(issues, { title, footer }) {
+export function formatRatchetIssues(issues, { title, footer, label = 'ui-style-check' }) {
   if (issues.length === 0) {
     return ''
   }
-  const lines = [`[ui-style-check] ${title} changed for ${issues.length} file(s):`]
+  const lines = [`[${label}] ${title} changed for ${issues.length} file(s):`]
   for (const issue of issues) {
     lines.push(`- ${issue.file} [${issue.rule}]`, `  ${issue.message}`)
   }

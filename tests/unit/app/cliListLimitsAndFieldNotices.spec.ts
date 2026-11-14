@@ -151,7 +151,6 @@ it('notices missing fields on mixed node lists but ignores empty lists', async (
     const writes: string[] = []
     f.io.stderr.write = text => writes.push(text)
     f.values['node.list'] = { nodes }
-    // eslint-disable-next-line no-await-in-loop
     expect(await run(['node', 'list', '--fields', 'data.status'], f.io)).toBe(0)
     expect(writes).toHaveLength(nodes.length ? 1 : 0)
     if (nodes.length) {

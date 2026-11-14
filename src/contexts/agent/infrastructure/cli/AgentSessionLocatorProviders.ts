@@ -1,4 +1,4 @@
-export type { GeminiSessionDiscoveryCursor } from './AgentSessionLocatorProviders.gemini'
+export type { GeminiSessionDiscoveryCursor } from '../../application/ports/AgentSessionDiscovery'
 export {
   captureGeminiSessionDiscoveryCursor,
   findGeminiResumeSessionId,

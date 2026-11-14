@@ -84,7 +84,6 @@ test('a canvas terminal reads the bundled core and every skill topic through its
       const args = topic ? `skill ${topic}` : 'skill'
       // Commands share a PTY: each framed result must finish before the next starts.
       const result = jsonOutput(
-        // eslint-disable-next-line no-await-in-loop
         await terminalCommand(
           page,
           binding,

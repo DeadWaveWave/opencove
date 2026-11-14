@@ -1,6 +1,6 @@
 import type { ControlSurface } from '../controlSurface'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
-import { createLocalFileSystemPort } from '../../../../contexts/filesystem/infrastructure/localFileSystemPort'
+import { createLocalFileSystemPort } from '../../../../contexts/filesystem/infrastructure'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import { createApprovedUriAsserter } from './filesystemMountSupport'
 import { registerFilesystemMountReadHandlers } from './filesystemMountReadHandlers'

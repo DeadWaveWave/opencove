@@ -1,6 +1,6 @@
 import type { SessionRuntimeWrite } from '../../../../shared/runtime/sessionInputProvenance'
 import type { ClaudeTranscriptPort } from '../../../../shared/runtime/agentHook/claudeTranscript'
-import type { GeminiSessionDiscoveryCursor } from '../../../agent/infrastructure/cli/AgentSessionLocatorProviders'
+import type { GeminiSessionDiscoveryCursor } from '../../../agent/application'
 import type { SpawnPtyOptions } from '../../../../platform/process/pty/types'
 import type {
   AgentLaunchMode,

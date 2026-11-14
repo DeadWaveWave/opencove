@@ -13,8 +13,29 @@
     "react-hooks/rules-of-hooks": "error",
     "react-hooks/exhaustive-deps": "warn",
     "typescript/no-explicit-any": "warn",
-    "react/react-in-jsx-scope": "off"
+    "typescript/ban-ts-comment": [
+      "error",
+      { "ts-expect-error": true, "ts-ignore": true, "ts-nocheck": true, "ts-check": false }
+    ],
+    "react/react-in-jsx-scope": "off",
+    "no-await-in-loop": "off"
   },
+  "overrides": [
+    {
+      "files": ["tests/**", "**/*.spec.ts", "**/*.spec.tsx"],
+      "rules": {
+        "typescript/ban-ts-comment": [
+          "error",
+          {
+            "ts-expect-error": "allow-with-description",
+            "ts-ignore": true,
+            "ts-nocheck": true,
+            "ts-check": false
+          }
+        ]
+      }
+    }
+  ],
   "ignorePatterns": [
     "dist/**",
     "node_modules/**",

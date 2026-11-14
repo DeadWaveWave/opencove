@@ -33,7 +33,6 @@ async function fixture() {
   state.workspaces[0].spaces[0].nodeIds = nodes.map(n => n.id)
   await store.writeAppState(state)
   for (const [i, node] of nodes.slice(1).entries()) {
-    // eslint-disable-next-line no-await-in-loop
     await store.commitCreatedNodeState!(state, {
       lineage: {
         nodeId: node.id,
@@ -116,50 +115,60 @@ async function fixture() {
   }
 }
 
-it('projects admission quota for roots and depth-three callers and names width/depth blockers on stderr', async () => {
-  const f = await fixture()
-  for (const [id, depth] of [
-    ['root', 1],
-    ['child-1', 3],
-  ] as const) {
-    // eslint-disable-next-line no-await-in-loop
-    const who = await f.cli(['whoami', '--fields', 'lineageQuota'], id)
-    expect(who.code).toBe(0)
-    expect(JSON.parse(who.out)).toEqual({
-      lineageQuota: { depth, maxDepth: 3, liveInTree: 6, maxLiveInTree: 6, remainingLiveInTree: 0 },
-    })
-    // eslint-disable-next-line no-await-in-loop
-    const refusal = await f.cli(['node', 'create', 'terminal', '--space', 'space'], id)
-    expect(refusal.code).toBe(1)
-    const error = refusal.error()
-    expect(error.code).toBe(
-      id === 'root' ? 'agent.spawn_concurrency_limit' : 'agent.spawn_depth_limit',
-    )
-    expect(error.details.nodes).toHaveLength(6)
-    expect(error.details.nodes[0]).toEqual({
-      nodeId: 'child-0',
-      title: 'Delegate 0',
-      kind: 'agent',
-      depth: 2,
-      state: 'running',
-      sessionId: 's0',
-      sessionStartedAt: new Date(0).toISOString(),
-    })
-    expect(error.details.actions[0]).toEqual({
-      kind: 'stop_agent',
-      nodeId: 'child-0',
-      command: 'opencove agent stop --node child-0',
-    })
-    expect(
-      error.details.actions.every((action: { kind: string }) => action.kind === 'stop_agent'),
-    ).toBe(true)
-    expect(error.hint).toContain('Delegate 0')
-    expect(error.hint).toContain('opencove agent stop --node child-0')
-  }
-  f.exit()
-  const who = await f.cli(['whoami', '--fields', 'lineageQuota.liveInTree'])
-  expect(JSON.parse(who.out)).toEqual({ lineageQuota: { liveInTree: 5 } })
-})
+it.each([false, true])(
+  'projects admission quota for roots and depth-three callers and names width/depth blockers on stderr (near=%s)',
+  async near => {
+    const f = await fixture()
+    for (const [id, depth] of [
+      ['root', 1],
+      ['child-1', 3],
+    ] as const) {
+      const who = await f.cli(['whoami', '--fields', 'lineageQuota'], id)
+      expect(who.code).toBe(0)
+      expect(JSON.parse(who.out)).toEqual({
+        lineageQuota: {
+          depth,
+          maxDepth: 3,
+          liveInTree: 6,
+          maxLiveInTree: 6,
+          remainingLiveInTree: 0,
+        },
+      })
+      const refusal = await f.cli(
+        ['node', 'create', 'terminal', ...(near ? ['--near', 'Lead'] : ['--space', 'space'])],
+        id,
+      )
+      expect(refusal.code).toBe(1)
+      const error = refusal.error()
+      expect(error.code).toBe(
+        id === 'root' ? 'agent.spawn_concurrency_limit' : 'agent.spawn_depth_limit',
+      )
+      expect(error.details.nodes).toHaveLength(6)
+      expect(error.details.nodes[0]).toEqual({
+        nodeId: 'child-0',
+        title: 'Delegate 0',
+        kind: 'agent',
+        depth: 2,
+        state: 'running',
+        sessionId: 's0',
+        sessionStartedAt: new Date(0).toISOString(),
+      })
+      expect(error.details.actions[0]).toEqual({
+        kind: 'stop_agent',
+        nodeId: 'child-0',
+        command: 'opencove agent stop --node child-0',
+      })
+      expect(
+        error.details.actions.every((action: { kind: string }) => action.kind === 'stop_agent'),
+      ).toBe(true)
+      expect(error.hint).toContain('Delegate 0')
+      expect(error.hint).toContain('opencove agent stop --node child-0')
+    }
+    f.exit()
+    const who = await f.cli(['whoami', '--fields', 'lineageQuota.liveInTree'])
+    expect(JSON.parse(who.out)).toEqual({ lineageQuota: { liveInTree: 5 } })
+  },
+)
 it('keeps identity usable against an older Worker without the optional quota', async () => {
   const f = await fixture()
   const who = await f.cli(['whoami', '--fields', 'nodeId,lineageQuota'], 'root', true)

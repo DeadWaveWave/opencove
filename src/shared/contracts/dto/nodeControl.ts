@@ -135,6 +135,7 @@ export interface GetNodeResult {
 }
 
 export interface CreateNodeInput {
+  near?: { nodeId: string; target: 'reference-container' | 'root-canvas' }
   kind: ManagedCanvasNodeKind
   space?: SpaceLocator | null
   projectId?: string | null

@@ -28,7 +28,7 @@ export async function admitManagedClaudeLaunch(
   mountId: string | null = null,
 ): Promise<void> {
   const current = scope.getStore()
-  if (!current || current.phase === 'legacy') {
+  if (!current || /* @compat managed-claude-worker-support */ current.phase === 'legacy') {
     return
   }
   const { attempt } = current
@@ -36,6 +36,7 @@ export async function admitManagedClaudeLaunch(
     if (attempt.expected?.activationId) {
       rejectManagedLaunch(attempt.nodeId, 'identityConflict')
     }
+    // @compat managed-claude-worker-support
     current.phase = 'legacy'
     current.releasePending?.()
     return
@@ -45,6 +46,7 @@ export async function admitManagedClaudeLaunch(
   }
   current.phase = 'managed'
   current.trackPending?.()
+  // @compat managed-claude-worker-support
   if ((await current.owner.admit(attempt, { provider, cwd, mountId })) === 'legacy') {
     current.phase = 'legacy'
     current.releasePending?.()
@@ -132,7 +134,6 @@ export function createManagedClaudeLaunchRuntime(deps: {
           return
         }
         // Supersession can replace this entry while it is pending.
-        // oxlint-disable-next-line no-await-in-loop
         await pending.promise
       }
     },
@@ -230,6 +231,7 @@ export function createManagedClaudeLaunchRuntime(deps: {
       if (initial?.binding) {
         assertManagedClaudeMutationAllowed(ctx, nodeId as string, deps.writesEnabled?.() !== false)
       }
+      // @compat managed-claude-worker-support
       if (
         !initial?.binding &&
         !ctx.clientFeatures?.managedClaudeResumeBindingV1 &&
@@ -307,11 +309,13 @@ export function createManagedClaudeLaunchRuntime(deps: {
           observation.binding ||
           (deps.adoptionEnabled() &&
             deps.writesEnabled?.() !== false &&
+            // @compat managed-claude-worker-support
             ctx.clientFeatures?.managedClaudeResumeBindingV1 &&
             intent &&
             (!payload.provider || payload.provider === 'claude-code')),
         )
         if (!managed) {
+          // @compat managed-claude-worker-support
           return execute(
             guardLegacyManagedClaudeContext(
               ctx,
@@ -404,6 +408,7 @@ export function createManagedClaudeLaunchRuntime(deps: {
               },
             })
           }
+          // @compat managed-claude-worker-support
           if (executionScope.phase === 'legacy') {
             return candidate
           }

@@ -4,7 +4,6 @@ import {
   holdPrepare,
   releasePrepare,
 } from './managedClaudeContinuity.helpers'
-/* eslint-disable no-await-in-loop -- Ordered persistence repair and lifecycle transitions must run sequentially. */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
@@ -156,6 +155,52 @@ test('managed Claude stale publications retain layout and cold-resume the curren
       .poll(async () => (await getBinding(page, agent.id)).tuple)
       .toEqual({ resumeSessionId: launched.tuple.resumeSessionId, resumeSessionIdVerified: true })
     const initial = await getBinding(page, agent.id)
+    // Admission can verify the new ID before the provider has written its transcript.
+    // The menu reads the catalog once on opening, so wait for that data, not only the binding.
+    await expect
+      .poll(async () =>
+        page.evaluate(async directory => {
+          const result = await window.opencoveApi.agent.listSessions({
+            provider: 'claude-code',
+            cwd: directory,
+          })
+          return result.sessions.map(session => session.sessionId)
+        }, workspace),
+      )
+      .toContain(initial.tuple.resumeSessionId)
+    await expectConversation(page, agent.id, initial.tuple.resumeSessionId!)
+    // Reproduce a peer layout publication placing the control behind this client's sidebar.
+    await page.evaluate(async nodeId => {
+      const control = document
+        .querySelector(`[data-id="${nodeId}"] [data-testid="terminal-node-session-list"]`)!
+        .getBoundingClientRect()
+      const sidebar = document
+        .querySelector('[data-testid="workspace-sidebar"]')!
+        .getBoundingClientRect()
+      const transform = getComputedStyle(document.querySelector('.react-flow__viewport')!).transform
+      const zoom = new DOMMatrixReadOnly(transform).a
+      const snapshot = await window.opencoveApi.persistence.readAppState()
+      const state = snapshot.state as {
+        workspaces: Array<{ nodes: Array<{ id: string; position: { x: number; y: number } }> }>
+      }
+      const node = state.workspaces.flatMap(w => w.nodes).find(n => n.id === nodeId)!
+      node.position.x += (sidebar.x + sidebar.width / 2 - control.x - control.width / 2) / zoom
+      await window.opencoveApi.persistence.writeAppState({ state, baseRevision: snapshot.revision })
+    }, agent.id)
+    await expect
+      .poll(() =>
+        page
+          .locator(`[data-id="${agent.id}"] [data-testid="terminal-node-session-list"]`)
+          .evaluate(button => {
+            const r = button.getBoundingClientRect()
+            return Boolean(
+              document
+                .elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+                ?.closest('[data-testid="workspace-sidebar"]'),
+            )
+          }),
+      )
+      .toBe(true)
     await expectConversation(page, agent.id, initial.tuple.resumeSessionId!)
     const connection = await waitForControlSurfaceConnection(userDataDir)
     const webUrl = new URL(connection.endpoint)
@@ -182,7 +227,8 @@ test('managed Claude stale publications retain layout and cold-resume the curren
     // Finish hydration and prove autosave is live before freezing this client at A.
     await releasePrepare(web)
     await expectConversation(web, agent.id, initial.tuple.resumeSessionId!)
-    await web.locator('.react-flow__controls-fitview').click({ timeout: 10_000 })
+    // expectConversation has already brought the node into view. Another Fit View
+    // queues a viewport change that can invalidate the drag's sampled coordinates.
     await publishManagedLayout(web, agent.id, false)
     // Refresh the hold baseline to include the confirmed initial layout and revision.
     await web.evaluate(async () => window.opencoveApi.persistence.readAppState())
@@ -316,12 +362,19 @@ test('managed Claude stale publications retain layout and cold-resume the curren
     // Drop all invalidations while disconnected, commit C, then restart the Worker.
     const finalId = await syntheticRebind(userDataDir, home, workspace, agent.id, nextId)
     await expectConversation(page, agent.id, finalId)
+    // Desktop owns automatic local Worker recovery. Stop it before this fixture takes
+    // ownership of restarting the Worker on the Web client's existing port.
+    await app.close()
+    app = undefined
     await stopWorker(worker)
     worker = null
     worker = (await startWorker({ userDataDir, env, port: workerPort, token: connection.token }))
       .child
     worker.stdout.resume()
     worker.stderr.resume()
+    const reconnected = await launchApp({ userDataDir, cleanupUserDataDir: false, env })
+    app = reconnected.electronApp
+    page = reconnected.window
     await web.context().setOffline(false)
     // Existing EventSource reconnects to the same configured Web listener with an empty buffer.
     await expectConversation(web, agent.id, finalId)

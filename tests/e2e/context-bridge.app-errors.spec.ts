@@ -204,14 +204,33 @@ test('reinstalls after macOS closes and recreates its last window', async () => 
   })
   try {
     await ready(page)
-    const closed = page.waitForEvent('close')
-    await electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].close())
-    await closed
     const next = electronApp.waitForEvent('window')
-    await electronApp.evaluate(({ app }) => {
-      app.emit('activate')
+    const atActivation = await electronApp.evaluate(({ app, BrowserWindow }) => {
+      const closing = BrowserWindow.getAllWindows()[0]
+      return new Promise<{ windowCount: number; nativeClosed: boolean }>(resolve => {
+        let nativeClosed = false
+        closing.once('closed', () => {
+          nativeClosed = true
+        })
+        // A page close is not a native window close. Pin activation to the real teardown
+        // boundary so this covers the race without relying on cross-process scheduling.
+        closing.webContents.once('destroyed', () => {
+          const state = { windowCount: BrowserWindow.getAllWindows().length, nativeClosed }
+          app.emit('activate')
+          resolve(state)
+        })
+        closing.close()
+      })
     })
+    await test.info().attach('last-window-activation-state', {
+      body: JSON.stringify(atActivation),
+      contentType: 'application/json',
+    })
+    expect(atActivation).toEqual({ windowCount: 1, nativeClosed: false })
     await ready(await next)
+    expect(
+      await electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length),
+    ).toBe(1)
   } finally {
     await electronApp.close()
   }

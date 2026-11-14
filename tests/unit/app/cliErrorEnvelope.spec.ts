@@ -48,7 +48,6 @@ it('promotes ambiguity candidates while preserving details and renders them on T
       },
     }
     f.values['node.list'] = { nodes: [node, { ...node, id: 'other-node' }] }
-    // eslint-disable-next-line no-await-in-loop
     expect(await run(['node', 'get', '--node', 'Shell'], f.io)).toBe(6)
     if (tty) {
       expect(stderr).toContain(node.id)

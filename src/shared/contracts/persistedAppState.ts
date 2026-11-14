@@ -381,6 +381,7 @@ export interface PersistedWorkspaceContract {
    * canonical frame.
    */
   collapsedNodeIds?: string[]
+  // @compat canvas-space-collapse-legacy
   /** Legacy Space disclosure IDs; migrated to collapsedNodeIds on load. */
   collapsedSpaceIds?: string[]
 }

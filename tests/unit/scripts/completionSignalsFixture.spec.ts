@@ -13,7 +13,6 @@ const cleanups: Array<() => Promise<void>> = []
 
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) {
-    // eslint-disable-next-line no-await-in-loop -- stop the child before removing its fixture
     await cleanup()
   }
 })

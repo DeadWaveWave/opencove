@@ -18,6 +18,7 @@ export const canvasFocusOperation = defineOperation({
   summary: 'Move the canvas viewport to a node or space',
   input: focusInput,
   normalize: normalizeFocusPayload,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: withStrictInput(focusInput, normalizeFocusPayload),
   errors: [
     'node.not_found',

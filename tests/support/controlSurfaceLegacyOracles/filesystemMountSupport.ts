@@ -1,3 +1,4 @@
+// @compat-file control-surface-legacy-validation
 // Frozen from src/app/main/controlSurface/handlers/filesystemMountSupport.ts at 6df96903c64d6fb3c541c79815713996d3c1b186
 import { createAppError } from '../../../src/shared/errors/appError'
 export function isRecord(value: unknown): value is Record<string, unknown> {

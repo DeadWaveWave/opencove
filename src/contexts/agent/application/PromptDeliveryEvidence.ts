@@ -1,3 +1,4 @@
+import { tracksClaudeConversations } from '../../../shared/contracts/agentProviderDescriptors'
 import type { SessionInputProvenance } from '../../../shared/runtime/sessionInputProvenance'
 import { claudePromptId } from '../../../shared/runtime/agentHook/claudePromptEvidence'
 import type { DeliveryRecord } from './PromptDeliveryRecords'
@@ -30,7 +31,8 @@ export class PromptDeliveryEvidence {
   }
   get inputTarget(): SessionInputProvenance | undefined {
     if (
-      this.fence?.snapshot.provider !== 'claude-code' ||
+      !tracksClaudeConversations(this.fence?.snapshot.provider) ||
+      !this.fence ||
       !this.fence.invocationId ||
       !this.identity?.providerSessionId
     ) {
@@ -58,7 +60,7 @@ export class PromptDeliveryEvidence {
       return
     }
     const identity = this.identity
-    if (provider === 'claude-code') {
+    if (tracksClaudeConversations(provider)) {
       if (this.negotiated && !claudePromptId(r.promptId)) {
         return
       }

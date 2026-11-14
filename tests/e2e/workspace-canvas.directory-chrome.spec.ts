@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { expect, test, type Locator, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test'
 import { dragMouse, launchApp, readLocatorClientRect } from './workspace-canvas.helpers'
 import {
   createFilesystemNodeFixture,
@@ -162,12 +162,88 @@ async function expectHeaderAndFooter(browser: Locator) {
   await expectSingleToolbarRow(browser)
 }
 
+async function clearReopenedSearch(page: Page, browser: Locator, testInfo: TestInfo) {
+  const toolbar = browser.locator('.cove-directory-toolbar')
+  // Hold the real opening transitions halfway through, then finish them between
+  // pointerdown and pointerup. A visible Clear must not move out from under a
+  // user's stationary pointer, even when an inactive window delivers slow frames.
+  const probe = await toolbar.evaluateHandle(element => {
+    const animations: Animation[] = []
+    const events: object[] = []
+    const record = (event: Event) => {
+      const target = event.target as Element
+      const pointer = event as MouseEvent
+      events.push({
+        type: event.type,
+        target: target.tagName,
+        button: target.closest('button')?.getAttribute('aria-label'),
+        x: pointer.clientX,
+        y: pointer.clientY,
+        query: element.querySelector('input')?.value,
+        expanded: element.getAttribute('data-search-expanded'),
+      })
+    }
+    const eventTypes = ['pointerdown', 'pointerup', 'click', 'focusout']
+    eventTypes.forEach(type => element.addEventListener(type, record, true))
+    const observer = new MutationObserver(() => {
+      if (element.getAttribute('data-search-expanded') !== 'true') {
+        return
+      }
+      animations.push(...element.getAnimations({ subtree: true }))
+      for (const animation of animations) {
+        animation.pause()
+        animation.currentTime = Number(animation.effect?.getTiming().duration) / 2
+      }
+      observer.disconnect()
+    })
+    observer.observe(element, { attributes: true, attributeFilter: ['data-search-expanded'] })
+    return {
+      animations,
+      events,
+      cleanup: () => {
+        observer.disconnect()
+        eventTypes.forEach(type => element.removeEventListener(type, record, true))
+        animations.forEach(animation => animation.finish())
+      },
+    }
+  })
+  try {
+    const input = browser.getByTestId('workspace-space-explorer-filter-input')
+    await browser.getByTestId('workspace-space-explorer-filter-toggle').click()
+    await expect(input).toBeFocused()
+    await expect(input).toHaveValue('note2')
+    const clear = browser.getByRole('button', { name: 'Clear filter', exact: true })
+    const point = await clear.evaluate(element => {
+      const rect = element.getBoundingClientRect()
+      const x = rect.x + rect.width / 2
+      const y = rect.y + rect.height / 2
+      return { x, y, hit: element.contains(document.elementFromPoint(x, y)) }
+    })
+    expect(point.hit).toBe(true)
+    await page.mouse.move(point.x, point.y)
+    await page.mouse.down()
+    try {
+      await probe.evaluate(({ animations }) => animations.forEach(animation => animation.finish()))
+    } finally {
+      await page.mouse.up()
+    }
+    await testInfo.attach('reopened-search-pointer-events', {
+      body: JSON.stringify(await probe.evaluate(({ events }) => events), null, 2),
+      contentType: 'application/json',
+    })
+  } finally {
+    await probe.evaluate(({ cleanup }) => cleanup())
+    await probe.dispose()
+  }
+}
+
 async function exerciseSearch(
   page: Page,
   browser: Locator,
   ownerId: string,
   docs: string,
   hidesTools: boolean,
+  testInfo: TestInfo,
 ) {
   const toggle = browser.getByTestId('workspace-space-explorer-filter-toggle')
   const input = browser.getByTestId('workspace-space-explorer-filter-input')
@@ -194,10 +270,7 @@ async function exerciseSearch(
   await expect(tools).toHaveCSS('opacity', '1')
   await expect(tools).not.toHaveCSS('pointer-events', 'none')
   await expect(directoryEntry(page, ownerId, path.join(docs, 'note10.md'))).toHaveCount(0)
-  await toggle.click()
-  await expect(input).toBeFocused()
-  await expect(input).toHaveValue('note2')
-  await browser.getByRole('button', { name: 'Clear filter', exact: true }).click()
+  await clearReopenedSearch(page, browser, testInfo)
   await expect(input).toHaveValue('')
   await expect(directoryEntry(page, ownerId, path.join(docs, 'note10.md'))).toBeVisible()
   await browser.locator('.workspace-space-explorer__identity, .document-node__title').click()
@@ -271,7 +344,7 @@ for (const theme of ['dark', 'light'] as const) {
 
         await resizeBrowser(window, browser, kind, kind === 'explorer' ? 224 : 360)
         await expectHeaderAndFooter(browser)
-        await exerciseSearch(window, browser, ownerId, fixture.docs, kind === 'explorer')
+        await exerciseSearch(window, browser, ownerId, fixture.docs, kind === 'explorer', testInfo)
         await testInfo.attach(`${kind}-${theme}-narrow-chrome`, {
           body: await browser.screenshot({
             path: testInfo.outputPath(`${kind}-${theme}-chrome.png`),

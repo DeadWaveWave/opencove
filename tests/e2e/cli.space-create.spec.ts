@@ -143,9 +143,7 @@ test('a terminal grant creates top-level and child spaces and leaves project dec
       [checklistId, 'Check data compatibility'],
     ]) {
       const rendered = page.locator(`[data-id="${id}"]`)
-      // eslint-disable-next-line no-await-in-loop
       await expect(rendered).toBeInViewport({ timeout: 15_000 })
-      // eslint-disable-next-line no-await-in-loop
       await expect(rendered).toContainText(text)
     }
     const after = await readChildSpaceSnapshot(page)

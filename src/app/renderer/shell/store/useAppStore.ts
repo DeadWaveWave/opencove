@@ -37,6 +37,7 @@ export interface AppStoreState {
   focusRequest: FocusRequest | null
   workerConnectionError: import('@shared/contracts/dto').AppErrorDescriptor | null
   persistNotice: PersistNotice | null
+  // @compat managed-claude-worker-support
   managedClaudeCompatibilityNotice: { scope: number; notice: PersistNotice } | null
 
   setWorkspaces: (action: SetStateAction<WorkspaceState[]>) => void
@@ -81,6 +82,7 @@ export const useAppStore = create<AppStoreState>(set => ({
   settingsOpenPageId: null,
   focusRequest: null,
   persistNotice: null,
+  // @compat managed-claude-worker-support
   managedClaudeCompatibilityNotice: null,
   workerConnectionError: null,
 

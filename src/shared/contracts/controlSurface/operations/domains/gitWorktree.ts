@@ -34,6 +34,7 @@ export const gitWorktreeCreateOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeGitWorktreeCreate,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeCreate,
   errors: [
     'worktree.create_failed',
@@ -62,6 +63,7 @@ export const gitWorktreeCreateInMountOperation = defineOperation({
     ),
   }),
   normalize: normalizeGitWorktreeCreateInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeCreateInMount,
   errors: [
     'worktree.create_failed',
@@ -82,6 +84,7 @@ export const gitWorktreeGetDefaultBranchOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeGitWorktreeGetDefaultBranch,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeGetDefaultBranch,
   errors: [
     'worktree.get_default_branch_failed',
@@ -101,6 +104,7 @@ export const gitWorktreeGetDefaultBranchInMountOperation = defineOperation({
       .describe('Mount identifier to resolve before accessing the repository or file'),
   }),
   normalize: normalizeGitWorktreeGetDefaultBranchInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeGetDefaultBranchInMount,
   errors: [
     'worktree.get_default_branch_failed',
@@ -117,11 +121,13 @@ export const gitWorktreeGetDefaultBranchInMountOperation = defineOperation({
 export const gitWorktreeGraphOperation = defineOperation({
   input: z.object({
     repoPath: z.string().describe('Absolute repository path within approved roots'),
+    // @compat control-surface-legacy-validation
     limit: legacyValue.describe(
       'Commit limit; numeric values are forwarded, other values are ignored',
     ),
   }),
   normalize: normalizeGitWorktreeGraph,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeGraph,
   errors: ['worktree.status_summary_failed', 'worktree.git_unavailable', 'worktree.not_a_git_repo'],
   id: 'gitWorktree.graph',
@@ -136,11 +142,13 @@ export const gitWorktreeGraphInMountOperation = defineOperation({
       .string()
       .describe('Mount identifier to resolve before accessing the repository or file'),
     uri: z.string().describe('Repository file URI within the mount root'),
+    // @compat control-surface-legacy-validation
     limit: legacyValue.describe(
       'Commit limit; numeric values are forwarded, other values are ignored',
     ),
   }),
   normalize: normalizeGitWorktreeGraphInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeGraphInMount,
   errors: [
     'worktree.status_summary_failed',
@@ -160,6 +168,7 @@ export const gitWorktreeListBranchesOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeGitWorktreeListBranches,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeListBranches,
   errors: ['worktree.list_branches_failed', 'worktree.git_unavailable', 'worktree.not_a_git_repo'],
   id: 'gitWorktree.listBranches',
@@ -175,6 +184,7 @@ export const gitWorktreeListBranchesInMountOperation = defineOperation({
       .describe('Mount identifier to resolve before accessing the repository or file'),
   }),
   normalize: normalizeGitWorktreeListBranchesInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeListBranchesInMount,
   errors: [
     'worktree.list_branches_failed',
@@ -194,6 +204,7 @@ export const gitWorktreeListWorktreesOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeGitWorktreeListWorktrees,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeListWorktrees,
   errors: ['worktree.list_worktrees_failed', 'worktree.git_unavailable', 'worktree.not_a_git_repo'],
   id: 'gitWorktree.listWorktrees',
@@ -209,6 +220,7 @@ export const gitWorktreeListWorktreesInMountOperation = defineOperation({
       .describe('Mount identifier to resolve before accessing the repository or file'),
   }),
   normalize: normalizeGitWorktreeListWorktreesInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeListWorktreesInMount,
   errors: [
     'worktree.list_worktrees_failed',
@@ -229,12 +241,15 @@ export const gitWorktreeRemoveOperation = defineOperation({
       worktreePath: z
         .string()
         .describe('Worktree to change, as a file URI in a mount or an absolute path locally'),
+      // @compat control-surface-legacy-validation
       force: legacyValue.describe('Enabled only by literal true; other values mean false'),
+      // @compat control-surface-legacy-validation
       deleteBranch: legacyValue.describe('Enabled only by literal true; other values mean false'),
     }),
     z.array(z.unknown()),
   ]),
   normalize: normalizeGitWorktreeRemove,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeRemove,
   errors: [
     'worktree.remove_failed',
@@ -256,10 +271,13 @@ export const gitWorktreeRemoveInMountOperation = defineOperation({
     worktreeUri: z
       .string()
       .describe('Worktree to change, as a file URI in a mount or an absolute path locally'),
+    // @compat control-surface-legacy-validation
     force: legacyValue.describe('Enabled only by literal true; other values mean false'),
+    // @compat control-surface-legacy-validation
     deleteBranch: legacyValue.describe('Enabled only by literal true; other values mean false'),
   }),
   normalize: normalizeGitWorktreeRemoveInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeRemoveInMount,
   errors: [
     'worktree.remove_failed',
@@ -281,12 +299,15 @@ export const gitWorktreeRenameBranchOperation = defineOperation({
       worktreePath: z
         .string()
         .describe('Worktree to change, as a file URI in a mount or an absolute path locally'),
+      // @compat control-surface-legacy-validation
       currentName: legacyValue.describe('Branch name to rename from'),
+      // @compat control-surface-legacy-validation
       nextName: legacyValue.describe('New branch name'),
     }),
     z.array(z.unknown()),
   ]),
   normalize: normalizeGitWorktreeRenameBranch,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeRenameBranch,
   errors: ['worktree.rename_branch_failed', 'worktree.git_unavailable', 'worktree.not_a_git_repo'],
   id: 'gitWorktree.renameBranch',
@@ -307,6 +328,7 @@ export const gitWorktreeRenameBranchInMountOperation = defineOperation({
     nextName: z.string().describe('New branch name'),
   }),
   normalize: normalizeGitWorktreeRenameBranchInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeRenameBranchInMount,
   errors: [
     'worktree.rename_branch_failed',
@@ -326,6 +348,7 @@ export const gitWorktreeStatusSummaryOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeGitWorktreeStatusSummary,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeStatusSummary,
   errors: ['worktree.status_summary_failed', 'worktree.git_unavailable', 'worktree.not_a_git_repo'],
   id: 'gitWorktree.statusSummary',
@@ -342,6 +365,7 @@ export const gitWorktreeStatusSummaryInMountOperation = defineOperation({
     uri: z.string().describe('Repository file URI within the mount root'),
   }),
   normalize: normalizeGitWorktreeStatusSummaryInMount,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeStatusSummaryInMount,
   errors: [
     'worktree.status_summary_failed',
@@ -361,8 +385,11 @@ export const gitWorktreeSuggestNamesOperation = defineOperation({
       provider: z.string().describe('Agent provider supporting worktree name suggestions'),
       cwd: z.string().describe('Absolute working directory within approved roots'),
       spaceName: z.string().describe('Space name to use as suggestion context'),
+      // @compat control-surface-legacy-validation
       spaceNotes: legacyValue.describe('Optional space notes; non-strings are ignored'),
+      // @compat control-surface-legacy-validation
       model: legacyValue.describe('Optional agent model; non-strings are ignored'),
+      // @compat control-surface-legacy-validation
       tasks: legacyValue.describe(
         'Task objects with title and requirement; invalid items are ignored and at most 20 retained',
       ),
@@ -370,6 +397,7 @@ export const gitWorktreeSuggestNamesOperation = defineOperation({
     z.array(z.unknown()),
   ]),
   normalize: normalizeGitWorktreeSuggestNames,
+  compat: 'control-surface-legacy-validation',
   legacyNormalize: normalizeGitWorktreeSuggestNames,
   errors: ['worktree.suggest_names_failed'],
   id: 'gitWorktree.suggestNames',

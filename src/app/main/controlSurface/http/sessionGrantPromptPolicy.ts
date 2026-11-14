@@ -4,7 +4,7 @@ import type { GrantCheckDeps } from './sessionGrantPolicy'
 import { assertInitialPromptText } from '../../../../shared/utils/initialPromptValidation'
 import { initialPromptFeedback } from '../../../../shared/errors/initialPromptFeedback'
 
-// Native TUI command channels, including Claude's legacy quick-memory entry.
+// Native TUI command channels, including Claude's quick-memory entry.
 const commandPrefixes: Readonly<Record<AgentProviderId, readonly string[]>> = {
   'claude-code': ['!', '/', '#', '&'],
   codex: ['!', '/'],
@@ -26,7 +26,7 @@ export function assertSessionGrantMessagePrompt(
   const prefixes = options.provider ? commandPrefixes[options.provider] : commonPrefixes
   // Python C0 separators, JS whitespace and Rust NEL are inspected without rewriting input.
   const inspected = text.replace(
-    // eslint-disable-next-line no-control-regex -- Provider whitespace compatibility.
+    // eslint-disable-next-line no-control-regex -- Provider whitespace handling.
     /^[\s\p{White_Space}\u001c-\u001f]+|[\s\p{White_Space}\u001c-\u001f]+$/gu,
     '',
   )

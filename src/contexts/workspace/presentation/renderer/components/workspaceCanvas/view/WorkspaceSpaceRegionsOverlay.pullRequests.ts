@@ -11,11 +11,13 @@ import {
 } from './WorkspaceSpaceRegionsOverlay.helpers'
 
 const PULL_REQUEST_REFRESH_INTERVAL_MS = 60_000
+// @compat github-pull-requests-legacy-resolve
 const LEGACY_PULL_REQUEST_MOUNT_KEY = '__legacy__'
 const PULL_REQUEST_KEY_SEPARATOR = '\u0000'
 
 export function toPullRequestKey(mountId: string | null | undefined, branch: string): string {
   const normalizedMountId = mountId?.trim() ?? ''
+  // @compat github-pull-requests-legacy-resolve
   const mountKey = normalizedMountId.length > 0 ? normalizedMountId : LEGACY_PULL_REQUEST_MOUNT_KEY
   return `${mountKey}${PULL_REQUEST_KEY_SEPARATOR}${branch}`
 }
@@ -35,6 +37,7 @@ export function useWorkspaceSpacePullRequests(options: {
 
   const pullRequestTargets = React.useMemo(() => {
     const branchesByMountId = new Map<string, Set<string>>()
+    // @compat github-pull-requests-legacy-resolve
     const legacyBranches = new Set<string>()
 
     options.spaceVisuals.forEach(space => {
@@ -70,6 +73,7 @@ export function useWorkspaceSpacePullRequests(options: {
         return
       }
 
+      // @compat github-pull-requests-legacy-resolve
       legacyBranches.add(branch)
     })
 
@@ -80,6 +84,7 @@ export function useWorkspaceSpacePullRequests(options: {
       }))
       .sort((left, right) => left.mountId.localeCompare(right.mountId))
 
+    // @compat github-pull-requests-legacy-resolve
     const legacy = [...legacyBranches].sort((left, right) => left.localeCompare(right))
 
     const keys: string[] = []
@@ -88,12 +93,14 @@ export function useWorkspaceSpacePullRequests(options: {
         keys.push(toPullRequestKey(request.mountId, branch))
       })
     })
+    // @compat github-pull-requests-legacy-resolve
     legacy.forEach(branch => {
       keys.push(toPullRequestKey(null, branch))
     })
 
     return {
       mountRequests,
+      // @compat github-pull-requests-legacy-resolve
       legacyBranches: legacy,
       keys,
     }
@@ -110,6 +117,7 @@ export function useWorkspaceSpacePullRequests(options: {
     pullRequestTargets.mountRequests.forEach(request => {
       parts.push(`${request.mountId}:${request.branches.join(',')}`)
     })
+    // @compat github-pull-requests-legacy-resolve
     if (pullRequestTargets.legacyBranches.length > 0) {
       parts.push(`legacy:${pullRequestTargets.legacyBranches.join(',')}`)
     }
@@ -129,14 +137,19 @@ export function useWorkspaceSpacePullRequests(options: {
     }
 
     const controlSurfaceInvoke = window.opencoveApi?.controlSurface?.invoke
+    // @compat github-pull-requests-legacy-resolve
     const legacyResolvePullRequests = window.opencoveApi?.integration?.github?.resolvePullRequests
     const canResolveMountRequests =
       pullRequestTargets.mountRequests.length > 0 && typeof controlSurfaceInvoke === 'function'
+    // @compat github-pull-requests-legacy-resolve
     const canResolveLegacyRequests =
       pullRequestTargets.legacyBranches.length > 0 &&
       typeof legacyResolvePullRequests === 'function'
 
-    if (!canResolveMountRequests && !canResolveLegacyRequests) {
+    if (
+      !canResolveMountRequests &&
+      /* @compat github-pull-requests-legacy-resolve */ !canResolveLegacyRequests
+    ) {
       setPullRequestsByKey(Object.fromEntries(pullRequestTargets.keys.map(key => [key, null])))
       return
     }
@@ -170,6 +183,7 @@ export function useWorkspaceSpacePullRequests(options: {
         })
       }
 
+      // @compat github-pull-requests-legacy-resolve
       if (
         pullRequestTargets.legacyBranches.length > 0 &&
         typeof legacyResolvePullRequests === 'function'
@@ -209,6 +223,7 @@ export function useWorkspaceSpacePullRequests(options: {
           })
         }
 
+        // @compat github-pull-requests-legacy-resolve
         if (
           pullRequestTargets.legacyBranches.length > 0 &&
           typeof legacyResolvePullRequests !== 'function'

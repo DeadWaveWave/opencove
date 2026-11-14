@@ -23,12 +23,10 @@ async function waitUntil<T>(readValue: () => Promise<T | null>, timeoutMs = 10_0
   const deadline = Date.now() + timeoutMs
 
   while (Date.now() < deadline) {
-    // eslint-disable-next-line no-await-in-loop -- bounded polling waits for child-process IO
     const value = await readValue()
     if (value !== null) {
       return value
     }
-    // eslint-disable-next-line no-await-in-loop -- bounded polling waits for child-process IO
     await delay(25)
   }
 
@@ -44,7 +42,6 @@ async function findJsonlFile(directoryPath: string): Promise<string | null> {
       return entryPath
     }
     if (entry.isDirectory()) {
-      // eslint-disable-next-line no-await-in-loop -- the temporary tree contains one session file
       const nestedFile = await findJsonlFile(entryPath)
       if (nestedFile) {
         return nestedFile

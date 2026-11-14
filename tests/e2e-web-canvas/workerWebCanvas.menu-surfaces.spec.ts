@@ -41,8 +41,7 @@ for (const theme of ['dark', 'light']) {
     page,
   }, testInfo) => {
     const workspacePath = await createWorkspaceDir(`surfaces-${theme}`)
-    await writeAppState(
-      page.request,
+    await writeAppState(page.request, () =>
       buildAppState({
         workspaceId: 'surfaces',
         workspaceName: 'OpenCove',

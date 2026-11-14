@@ -1,26 +1,16 @@
 import type { Node } from '@xyflow/react'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
+import {
+  AGENT_PROVIDER_DESCRIPTORS,
+  type AgentProviderStaticDescriptor,
+} from '@shared/contracts/agentProviderDescriptors'
 import { AGENT_PROVIDER_LABEL } from '@contexts/settings/domain/agentSettings.providerMeta'
 import type { TerminalNodeData } from '../types'
 
 export function providerTitlePrefix(provider: AgentProvider): string {
-  if (provider === 'claude-code') {
-    return 'claude'
-  }
-
-  if (provider === 'opencode') {
-    return 'opencode'
-  }
-
-  if (provider === 'gemini') {
-    return 'gemini'
-  }
-
-  if (provider === 'pi' || provider === 'kimi') {
-    return provider
-  }
-
-  return 'codex'
+  // An unexpected provider id keeps the historical 'codex' prefix instead of throwing while rendering.
+  const descriptor: AgentProviderStaticDescriptor | undefined = AGENT_PROVIDER_DESCRIPTORS[provider]
+  return descriptor?.titlePrefix ?? AGENT_PROVIDER_DESCRIPTORS.codex.titlePrefix
 }
 
 export function buildAgentNodeTitle(provider: AgentProvider, label: string | null): string {

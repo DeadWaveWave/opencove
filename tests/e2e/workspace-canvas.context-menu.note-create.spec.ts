@@ -94,28 +94,6 @@ test.describe('Workspace Canvas - Context Menu Note Create', () => {
     }
   })
 
-  test('shows note creation in the blank pane menu', async () => {
-    const { electronApp, window } = await launchApp()
-
-    try {
-      await clearAndSeedWorkspace(window, [])
-
-      const pane = window.locator('.workspace-canvas .react-flow__pane')
-      await expect(pane).toBeVisible()
-
-      await pane.click({
-        button: 'right',
-        position: { x: 80, y: 80 },
-      })
-
-      await expect(window.locator('[data-testid="workspace-context-new-terminal"]')).toBeVisible()
-      await expect(window.locator('[data-testid="workspace-context-new-note"]')).toBeVisible()
-      await expect(window.locator('[data-testid="workspace-context-new-task"]')).toBeVisible()
-    } finally {
-      await electronApp.close()
-    }
-  })
-
   test('creates a note from the blank pane right-click menu', async () => {
     const { electronApp, window } = await launchApp()
 
@@ -129,6 +107,10 @@ test.describe('Workspace Canvas - Context Menu Note Create', () => {
         button: 'right',
         position: { x: 240, y: 180 },
       })
+
+      await expect(window.locator('[data-testid="workspace-context-new-terminal"]')).toBeVisible()
+      await expect(window.locator('[data-testid="workspace-context-new-note"]')).toBeVisible()
+      await expect(window.locator('[data-testid="workspace-context-new-task"]')).toBeVisible()
 
       await window.locator('[data-testid="workspace-context-new-note"]').click()
 

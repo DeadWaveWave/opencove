@@ -25,6 +25,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   workspaceSearchPanelWidth: 420,
   defaultProvider: 'codex',
   agentProviderOrder: resolveDefaultFirstAgentProviderOrder(undefined, 'codex'),
+  // @compat settings-legacy-fields
   // New installs ask before agents run commands or change files; see LEGACY_AGENT_FULL_ACCESS.
   agentFullAccess: false,
   agentResidentContext: 'suggest',

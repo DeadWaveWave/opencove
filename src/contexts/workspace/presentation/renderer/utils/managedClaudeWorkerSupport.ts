@@ -1,3 +1,4 @@
+// @compat-file managed-claude-worker-support
 import { translate } from '@app/renderer/i18n'
 import { persistenceScope } from './persistence/publicationState'
 import {
@@ -37,12 +38,18 @@ export async function negotiateManagedClaudeWorkerSupport(
   const features = (
     capabilities as { features?: { managedClaudeResumeBindingWritesEnabled?: boolean } } | undefined
   )?.features
-  if (!compatible || features?.managedClaudeResumeBindingWritesEnabled === false) {
+  if (
+    !compatible ||
+    /* @compat managed-claude-bindings-kill-switch */ features?.managedClaudeResumeBindingWritesEnabled ===
+      false
+  ) {
     updateManagedClaudeCompatibilityNotice(scope, {
       tone: 'warning',
       kind: 'compatibility',
       message: translate(
-        compatible ? 'messages.managedAgentWritesDisabled' : 'messages.managedAgentLegacyWorker',
+        compatible
+          ? /* @compat managed-claude-bindings-kill-switch */ 'messages.managedAgentWritesDisabled'
+          : 'messages.managedAgentLegacyWorker',
       ),
     })
   } else if (features?.managedClaudeResumeBindingWritesEnabled === true) {

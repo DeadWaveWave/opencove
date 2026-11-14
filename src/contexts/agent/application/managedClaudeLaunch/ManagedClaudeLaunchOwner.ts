@@ -105,11 +105,9 @@ export class ManagedClaudeLaunchOwner {
       const pending = this.obligations.get(attempt.nodeId)
       if (pending) {
         // The next obligation is known only after the current one settles.
-        // oxlint-disable-next-line no-await-in-loop
         await this.reconcile(pending)
       }
       // Cleanup may yield to another activation for this node; recheck after it finishes.
-      // oxlint-disable-next-line no-await-in-loop
       await this.effects.cleanupNode(attempt.nodeId)
       this.assertCurrent(attempt)
       if (!this.obligations.has(attempt.nodeId)) {
@@ -131,9 +129,10 @@ export class ManagedClaudeLaunchOwner {
   async admit(
     attempt: ManagedClaudeLaunchAttempt,
     execution: ManagedClaudeExecution,
-  ): Promise<'managed' | 'legacy'> {
+  ): Promise<'managed' | /* @compat managed-claude-worker-support */ 'legacy'> {
     await this.assertReady(attempt)
     const { observation, decision } = this.validateExecution(attempt, execution)
+    // @compat managed-claude-worker-support
     if (decision === 'legacy') {
       return 'legacy'
     }

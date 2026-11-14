@@ -125,7 +125,6 @@ it('queries and resumes filtered agent events over authenticated HTTP, resyncing
     let text = ''
     while (!text.includes('agent.turn_completed')) {
       // Stream reads consume one ordered cursor.
-      // eslint-disable-next-line no-await-in-loop
       text += new TextDecoder().decode((await reader.read()).value)
     }
     expect(text).toContain('"turnOutcome":"completed"')

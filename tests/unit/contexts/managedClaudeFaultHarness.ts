@@ -356,7 +356,6 @@ export async function faultHarness(config: FaultCase) {
   const turns = async (done: () => boolean) => {
     for (let turn = 0; turn < 500 && !done(); turn++) {
       // Deterministic scheduler; it neither creates requests nor invokes lifecycle helpers.
-      // oxlint-disable-next-line no-await-in-loop
       await Promise.resolve()
     }
     if (!done()) {
@@ -387,7 +386,6 @@ export async function faultHarness(config: FaultCase) {
         })
       }
       // Only execute timers scheduled by the product, including retry/reconciliation.
-      // oxlint-disable-next-line no-await-in-loop
       await vi.advanceTimersToNextTimerAsync()
     }
     models.forEach(value => {

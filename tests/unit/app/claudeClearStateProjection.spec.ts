@@ -2,7 +2,7 @@
 import { expect, it, vi } from 'vitest'
 import { clearStateProjectionFixture } from './claudeClearStateProjection.helpers'
 import { getPromptSubmissionEvidence } from '../../../src/shared/runtime/agentHook/claudePromptEvidence'
-import { detectTurnStateFromSessionLine } from '../../../src/contexts/agent/infrastructure/watchers/SessionTurnStateDetector'
+import { detectTurnObservationFromSessionLine } from '../../../src/contexts/agent/infrastructure/watchers/SessionTurnStateDetector'
 import trace from '../../fixtures/claude/clear-state-projection-2.1.322.json'
 import { promptAdmission } from '../../../src/contexts/agent/application/promptAdmission'
 
@@ -132,6 +132,6 @@ it('classifies every complete captured tail record, and the known truncated reco
     ...trace.tail,
     ...trace.truncatedRecords.map(record => JSON.stringify(record)),
   ]) {
-    expect(detectTurnStateFromSessionLine('claude-code', line)).toBeNull()
+    expect(detectTurnObservationFromSessionLine('claude-code', line)).toBeNull()
   }
 })

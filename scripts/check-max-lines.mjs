@@ -1,89 +1,83 @@
 #!/usr/bin/env node
 
 import { readFileSync } from 'node:fs'
-import { spawnSync } from 'node:child_process'
+import { relative, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import {
+  isExcludedRepositoryPath,
+  listRepositoryFiles,
+  normalizeRepositoryPath,
+  resolveRepositoryRoot,
+} from './lib/repo-files.mjs'
 
 // A file should fit in one read by the agents that work on this repository. The smallest such
 // window is about 10,000 tokens of command output, roughly 1000 lines of this code base.
-const MAX_LINES = 1000
-const CHECKED_EXTENSIONS = new Set([
+export const MAX_LINES = 1000
+
+// Hand-written code only. Prose and data (`.md`, `.json`, `.jsonl`, `.yml`, `.html`) are read in
+// pieces or by tools, and are not limited.
+export const CHECKED_EXTENSIONS = new Set([
   '.ts',
   '.tsx',
-  '.js',
-  '.jsx',
-  '.cjs',
-  '.mjs',
   '.mts',
   '.cts',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
   '.css',
   '.scss',
   '.less',
-  '.json',
-  '.jsonl',
-  '.md',
-  '.yml',
-  '.yaml',
-  '.html',
+  '.sh',
+  '.ps1',
+  '.cmd',
+  '.cs',
 ])
 
-function resolveFilesFromStaged() {
-  const result = spawnSync('git', ['diff', '--cached', '--name-only', '--diff-filter=ACMR'], {
-    encoding: 'utf8',
-  })
+// Generated files grow with their inputs and cannot be split by hand; their generators are checked
+// like any other source. Each entry is a path prefix and names the command that writes it. A file
+// is never skipped because of how it is named: add its path here together with its generator.
+export const GENERATED_PATHS = [
+  // `pnpm design:tokens`
+  'src/app/renderer/styles/themes/generated/',
+  // `node scripts/generate-claude-command-registry.mjs`
+  'src/contexts/agent/domain/claudeRootCommands.generated.ts',
+]
 
-  if (result.status !== 0) {
-    if (result.stderr) {
-      process.stderr.write(result.stderr)
-    } else {
-      process.stderr.write('Failed to list staged files.\n')
-    }
-
-    process.exit(1)
-  }
-
-  return result.stdout
-    .split(/\r\n|\r|\n/)
-    .map(line => line.trim())
-    .filter(line => line.length > 0)
+// Files that are over the limit today. Each recorded count may only go down, and the list may only
+// shrink: an exempt file fails when its count differs from the record, when it is back under the
+// limit, or when it no longer exists.
+export const LINE_LIMIT_EXEMPTIONS = {
+  'scripts/recover-opencove-db-from-sqlite-recover.mjs': {
+    lines: 1128,
+    reason: 'recovery tool; split tracked in follow-up',
+  },
+  'scripts/debug-repro-restored-agent-input.mjs': {
+    lines: 1050,
+    reason: 'debug repro script; split tracked in follow-up',
+  },
 }
 
-const files = process.argv.length > 2 ? process.argv.slice(2) : resolveFilesFromStaged()
-
-function shouldCheck(filePath) {
-  if (
-    filePath.includes('node_modules/') ||
-    filePath.includes('dist/') ||
-    filePath.includes('out/')
-  ) {
+export function shouldCheck(filePath) {
+  const normalized = normalizeRepositoryPath(filePath)
+  if (isExcludedRepositoryPath(normalized)) {
     return false
   }
 
-  // Lockfiles are generated and can be large; line limits are for authored sources.
-  if (
-    filePath === 'pnpm-lock.yaml' ||
-    filePath === 'yarn.lock' ||
-    filePath === 'package-lock.json' ||
-    filePath === 'bun.lockb'
-  ) {
+  const fileName = normalized.slice(normalized.lastIndexOf('/') + 1)
+  if (GENERATED_PATHS.some(prefix => normalized.startsWith(prefix))) {
     return false
   }
 
-  // Theme stylesheets written by `pnpm design:tokens` grow with the token set; they cannot be split
-  // by hand, and the generator they come from is checked like any other source.
-  if (filePath.includes('src/app/renderer/styles/themes/generated/')) {
-    return false
-  }
-
-  const dotIndex = filePath.lastIndexOf('.')
+  const dotIndex = fileName.lastIndexOf('.')
   if (dotIndex === -1) {
     return false
   }
 
-  const extension = filePath.slice(dotIndex).toLowerCase()
-  return CHECKED_EXTENSIONS.has(extension)
+  return CHECKED_EXTENSIONS.has(fileName.slice(dotIndex).toLowerCase())
 }
 
-function countLines(content) {
+export function countLines(content) {
   if (content.length === 0) {
     return 0
   }
@@ -93,33 +87,103 @@ function countLines(content) {
   return parts.length > 0 && parts[parts.length - 1] === '' ? parts.length - 1 : parts.length
 }
 
-const violations = []
-
-for (const file of files) {
-  if (!shouldCheck(file)) {
-    continue
-  }
-
-  let content
+function readLineCount(cwd, file) {
   try {
-    content = readFileSync(file, 'utf8')
+    return countLines(readFileSync(resolve(cwd, file), 'utf8'))
   } catch {
-    continue
-  }
-
-  const lineCount = countLines(content)
-  if (lineCount > MAX_LINES) {
-    violations.push({ file, lineCount })
+    return null
   }
 }
 
-if (violations.length === 0) {
-  process.exit(0)
+// Returns `{ checked, problems }`. `cwd` is the repository root and `files` are root-relative; with
+// `files` undefined it checks the whole repository. Exemption rules apply in both modes; only the
+// "exempt file no longer exists" check needs the whole repository.
+export function runMaxLinesCheck({
+  cwd = process.cwd(),
+  files,
+  exemptions = LINE_LIMIT_EXEMPTIONS,
+} = {}) {
+  const wholeRepository = files === undefined
+  const candidates = (wholeRepository ? listRepositoryFiles(cwd) : files).map(
+    normalizeRepositoryPath,
+  )
+  const problems = []
+  const counts = new Map()
+
+  for (const file of candidates) {
+    if (!shouldCheck(file)) {
+      continue
+    }
+    const lineCount = readLineCount(cwd, file)
+    if (lineCount !== null) {
+      counts.set(file, lineCount)
+    }
+  }
+
+  for (const [file, lineCount] of counts) {
+    const exemption = exemptions[file]
+    if (!exemption) {
+      if (lineCount > MAX_LINES) {
+        problems.push(
+          `${file}: ${lineCount} lines (limit ${MAX_LINES}). Split it before committing.`,
+        )
+      }
+      continue
+    }
+    if (lineCount <= MAX_LINES) {
+      problems.push(
+        `${file}: ${lineCount} lines is back under the ${MAX_LINES}-line limit. Remove it from LINE_LIMIT_EXEMPTIONS in scripts/check-max-lines.mjs.`,
+      )
+    } else if (lineCount > exemption.lines) {
+      problems.push(
+        `${file}: ${lineCount} lines exceeds its recorded ${exemption.lines} (exempt: ${exemption.reason}). Exempt files may only shrink; split it.`,
+      )
+    } else if (lineCount < exemption.lines) {
+      problems.push(
+        `${file}: ${lineCount} lines is below its recorded ${exemption.lines}. Record ${lineCount} in LINE_LIMIT_EXEMPTIONS in scripts/check-max-lines.mjs.`,
+      )
+    }
+  }
+
+  if (wholeRepository) {
+    for (const file of Object.keys(exemptions)) {
+      if (!counts.has(file)) {
+        problems.push(
+          `${file}: listed in LINE_LIMIT_EXEMPTIONS but no longer exists. Remove the entry in scripts/check-max-lines.mjs.`,
+        )
+      }
+    }
+  }
+
+  return { checked: counts.size, problems }
 }
 
-process.stderr.write(`Found files that exceed ${MAX_LINES} lines:\n`)
-for (const violation of violations) {
-  process.stderr.write(`- ${violation.file}: ${violation.lineCount} lines\n`)
+function main() {
+  const root = resolveRepositoryRoot()
+  const files =
+    process.argv.length > 2
+      ? process.argv.slice(2).map(argument => relative(root, resolve(argument)))
+      : undefined
+  const { checked, problems } = runMaxLinesCheck({ cwd: root, files })
+
+  if (checked === 0) {
+    process.stderr.write('[line-check] checked 0 files: this is not a pass.\n')
+    return 1
+  }
+
+  if (problems.length > 0) {
+    process.stderr.write(`[line-check] Line limit violations (${MAX_LINES} lines per file):\n`)
+    for (const problem of problems) {
+      process.stderr.write(`- ${problem}\n`)
+    }
+    return 1
+  }
+
+  process.stdout.write(`[line-check] checked ${checked} files, all within ${MAX_LINES} lines\n`)
+  return 0
 }
-process.stderr.write('Split these files before committing.\n')
-process.exit(1)
+
+const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : null
+if (invokedPath === import.meta.url) {
+  process.exitCode = main()
+}

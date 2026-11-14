@@ -320,14 +320,12 @@ test.describe('Workspace Canvas - Pixel Reveal First Paint', () => {
         // the process boundary. No synthetic DOM event or runtime readiness override.
         // Advance at most 96ms: the original onset contract is <=100ms. Stop at
         // the first positive frame so IPC latency cannot consume the input phase.
-        /* eslint-disable no-await-in-loop -- Each sample observes one controlled frame. */
         for (let frame = 0; frame < 6; frame++) {
           await page.clock.runFor(16)
           if ((await readRevealRecords(page))[0]?.firstFrameVisible) {
             break
           }
         }
-        /* eslint-enable no-await-in-loop */
         expect((await readRevealRecords(page))[0]?.firstFrameVisible).toBeTruthy()
         const point = await maskedInputPoint(page)
         await page.mouse.click(point.x, point.y)

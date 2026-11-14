@@ -97,7 +97,7 @@ for (const route of routes) {
     )
   }
 }
-it.each(['--continue', '--approve', '-p', '@input.txt', '退出', 'Refactor!', '\u00a0logout\u00a0'])(
+it.each(['--continue', '--approve', '-p', '@input.txt', 'Refactor!', '\u00a0logout\u00a0'])(
   'refuses token %j with the same policy when provider is omitted',
   async prompt => {
     const f = await createPromptWorker({ fullAccess: false })
@@ -126,6 +126,9 @@ it.each([
   'update\tproject',
   'resume\nthe task',
   'Refactor\u00a0code',
+  // Provider subcommands are ASCII words; languages written without spaces are sentences.
+  '退出',
+  '请列出当前目录中的文件，不要修改任何文件。',
   '--continue this task',
   '',
   ' \t\n ',

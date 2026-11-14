@@ -182,7 +182,6 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
       }
       try {
         // File variants are consumed in order; stdin is a single stream.
-        // eslint-disable-next-line no-await-in-loop
         values[key] = file === '-' ? await io.readStdinText() : await io.readTextFile(String(file))
       } catch (error) {
         if (error instanceof CliError && error.exitCode === 130) {
@@ -288,6 +287,7 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
     !values.help &&
     command.operation === 'node.create' &&
     values['root-canvas'] &&
+    values.near === undefined &&
     values.project === undefined &&
     io.env.OPENCOVE_ENV !== '1'
   ) {
@@ -297,6 +297,7 @@ export async function parseCommand(argv: string[], command: Command, io: CliIo) 
     !values.help &&
     !values['root-canvas'] &&
     command.targetSpace === 'required' &&
+    !(command.operation === 'node.create' && values.near !== undefined) &&
     !['space', 'space-name', 'worker', 'branch', 'path'].some(key => values[key] !== undefined)
   ) {
     usage(

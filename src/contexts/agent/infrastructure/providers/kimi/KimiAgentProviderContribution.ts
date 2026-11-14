@@ -1,3 +1,4 @@
+import { AGENT_PROVIDER_DESCRIPTORS } from '../../../../../shared/contracts/agentProviderDescriptors'
 import type {
   AgentLaunchPlan,
   AgentProviderDetector,
@@ -16,7 +17,7 @@ const kimiLaunch = {
 
 export class KimiAgentProviderContribution extends TerminalCliAgentProviderContribution {
   readonly descriptor = {
-    displayName: 'Kimi Code',
+    displayName: AGENT_PROVIDER_DESCRIPTORS['kimi'].label,
     documentationUrl: 'https://moonshotai.github.io/kimi-code/',
     id: 'kimi',
     launch: kimiLaunch,

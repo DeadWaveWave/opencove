@@ -168,7 +168,6 @@ async function findClaudeSessionFile(cwd, sessionId) {
   )
 
   for (const candidatePath of candidatePaths) {
-    // eslint-disable-next-line no-await-in-loop -- bounded compatibility lookup
     if (await pathExists(candidatePath)) {
       return candidatePath
     }

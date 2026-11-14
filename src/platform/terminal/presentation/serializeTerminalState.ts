@@ -14,7 +14,7 @@ type TerminalStateInternals = {
 /** Read synchronously inside the presentation FIFO without advancing its parser. */
 export function serializeTerminalState(terminal: Terminal, addon: SerializeAddon): string {
   // SerializeAddon owns cells, both buffers and its supported modes. It omits mouse
-  // encoding, DECTCEM and scroll margins. Keep this read-only compatibility seam
+  // encoding, DECTCEM and scroll margins. Keep this read-only seam
   // small and covered by real-xterm round trips when upgrading xterm.
   const core = (terminal as unknown as TerminalStateInternals)._core
   const visible = !core.coreService.isCursorHidden
