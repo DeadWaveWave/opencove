@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "count": 170,
+  "count": 171,
   "entries": {
     "tests/e2e/agent-hook-relay.windows.spec.ts › claude-code executes Electron hooks through the real launch path and retains keyboard input": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/agent-hook-relay.windows.spec.ts › codex executes Electron hooks through the real launch path and retains keyboard input": "Desktop: pre-restructure inventory; existing assertions retained",
@@ -19,6 +19,7 @@
     "tests/e2e/cli.task-delegation.spec.ts › a coordinator assigns and releases descendant agents while siblings and unrelated agents are refused": "Desktop: real lineage grants let a coordinator assign descendants while sibling and unrelated grants are refused; card status renders",
     "tests/e2e/context-bridge.app-errors.display.spec.ts › Run default agent displays the writes-disabled notice in en": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/context-bridge.app-errors.display.spec.ts › Run default agent displays the writes-disabled notice in zh-CN": "Desktop: pre-restructure inventory; existing assertions retained",
+    "tests/e2e/context-bridge.app-errors.mac.spec.ts › reinstalls after macOS closes and recreates its last window": "Desktop: macOS last-window lifecycle moved to a .mac spec",
     "tests/e2e/context-bridge.app-errors.spec.ts › does not repair or launch a second session after corrupted executed response": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/context-bridge.app-errors.spec.ts › does not repair or launch a second session after post-spawn cross-code marker": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/context-bridge.app-errors.spec.ts › reinstalls on reload and on a separate document": "Desktop: pre-restructure inventory; existing assertions retained",
