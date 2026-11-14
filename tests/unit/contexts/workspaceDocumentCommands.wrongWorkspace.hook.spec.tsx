@@ -1,9 +1,8 @@
 import React from 'react'
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { ReactFlowProvider } from '@xyflow/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
-import { useWorkspaceStateHandlers } from '../../../src/app/renderer/shell/hooks/useWorkspaceStateHandlers'
 import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
 import type { WorkspaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { pixelNode } from './workspacePixelLayer.fixtures'
@@ -30,16 +29,13 @@ function renderCanvasNodesStore(initialWorkspaceId: string) {
       const nodes = useAppStore(
         state => state.workspaces.find(candidate => candidate.id === workspaceId)!.nodes,
       )
-      const { handleWorkspaceNodesChange } = useWorkspaceStateHandlers({
-        requestPersistFlush: vi.fn(),
-      })
       return useWorkspaceCanvasNodesStore({
         workspaceId,
         workspacePath: `/tmp/${workspaceId}`,
         nodes,
         spacesRef: { current: [] },
-        onNodesChange: handleWorkspaceNodesChange,
-        onSpacesChange: vi.fn(),
+        onNodesCommitted: () => undefined,
+        isLiveGestureActive: () => false,
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
       })

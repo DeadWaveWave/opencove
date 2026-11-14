@@ -3,7 +3,6 @@ import { act, cleanup, renderHook } from '@testing-library/react'
 import { ReactFlowProvider } from '@xyflow/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
-import { useWorkspaceStateHandlers } from '../../../src/app/renderer/shell/hooks/useWorkspaceStateHandlers'
 import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
 import type { WorkspaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { pixelNode } from './workspacePixelLayer.fixtures'
@@ -41,16 +40,13 @@ function renderCanvasNodesStore() {
       const spaces = useAppStore(state => state.workspaces[0].spaces)
       const spacesRef = React.useRef(spaces)
       spacesRef.current = spaces
-      const { handleWorkspaceNodesChange, handleWorkspaceSpacesChange } = useWorkspaceStateHandlers(
-        { requestPersistFlush: vi.fn() },
-      )
       return useWorkspaceCanvasNodesStore({
         workspaceId: 'workspace-1',
         workspacePath: '/tmp/workspace-1',
         nodes,
         spacesRef,
-        onNodesChange: handleWorkspaceNodesChange,
-        onSpacesChange: handleWorkspaceSpacesChange,
+        onNodesCommitted: () => undefined,
+        isLiveGestureActive: () => false,
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
       })
