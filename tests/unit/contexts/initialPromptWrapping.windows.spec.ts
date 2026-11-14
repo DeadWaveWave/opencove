@@ -79,25 +79,32 @@ for (const provider of createBuiltinAgentProviderContributions({ runtimePlatform
     )
   }
 }
-it('WSL receiver preserves env and never executes command substitution', async () => {
-  const spawn = await resolver.resolveCommandSpawn({
-    profileId: 'wsl:Ubuntu',
-    cwd: 'C:\\project',
-    command: '/usr/bin/printf',
-    args: ['%s', '$(printf update)'],
-    commandEnv: { FIXTURE: '"env with spaces"' },
-  })
-  const received = parseWslCommandLine(windowsSpawnCommandLine(spawn.command, spawn.args))
-  expect(received.mode).toBe('exec')
-  const args = received.argv
-  expect(args.slice(0, 2)).toEqual(['env', 'FIXTURE="env with spaces"'])
-  expect(execFileSync(args[0], args.slice(1), { encoding: 'utf8' })).toBe('$(printf update)')
-})
-it('negative controls demonstrate the missing native/shell stages', () => {
-  // PowerShell legacy NeedQuotes treats quotes as grouping, then native CRT removes them.
-  expect(parseWindowsArguments('"update"')).toEqual(['update'])
-  expect(parseWindowsArguments('"Explain " --agent-teams " please"')).toContain('--agent-teams')
-  expect(execFileSync('/bin/sh', ['-c', 'printf %s $(printf update)'], { encoding: 'utf8' })).toBe(
-    'update',
-  )
-})
+// The two skipIf cases execute the WSL guest's command line, which needs a POSIX host.
+it.skipIf(process.platform === 'win32')(
+  'WSL receiver preserves env and never executes command substitution',
+  async () => {
+    const spawn = await resolver.resolveCommandSpawn({
+      profileId: 'wsl:Ubuntu',
+      cwd: 'C:\\project',
+      command: '/usr/bin/printf',
+      args: ['%s', '$(printf update)'],
+      commandEnv: { FIXTURE: '"env with spaces"' },
+    })
+    const received = parseWslCommandLine(windowsSpawnCommandLine(spawn.command, spawn.args))
+    expect(received.mode).toBe('exec')
+    const args = received.argv
+    expect(args.slice(0, 2)).toEqual(['env', 'FIXTURE="env with spaces"'])
+    expect(execFileSync(args[0], args.slice(1), { encoding: 'utf8' })).toBe('$(printf update)')
+  },
+)
+it.skipIf(process.platform === 'win32')(
+  'negative controls demonstrate the missing native/shell stages',
+  () => {
+    // PowerShell legacy NeedQuotes treats quotes as grouping, then native CRT removes them.
+    expect(parseWindowsArguments('"update"')).toEqual(['update'])
+    expect(parseWindowsArguments('"Explain " --agent-teams " please"')).toContain('--agent-teams')
+    expect(
+      execFileSync('/bin/sh', ['-c', 'printf %s $(printf update)'], { encoding: 'utf8' }),
+    ).toBe('update')
+  },
+)
