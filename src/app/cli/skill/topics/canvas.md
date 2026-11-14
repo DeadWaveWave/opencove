@@ -3,7 +3,7 @@
 For agents creating helper nodes, recommend `--near @self` on `node create note`, `terminal`
 or `agent`: it uses your current direct Space, or root. Omit it to keep existing placement.
 `--near <node selector>` selects another reference; `--root-canvas` overrides membership. Explicit Space/project constraints must match; `--frame` allows width/height only, without x/y. Unsupported Workers refuse.
-`node update` moves do not grow the Space; check containment after moving.
+`node update --frame` grows its Space and ancestors with padding in the same update; Spaces never shrink, other nodes stay fixed and membership stays unchanged.
 ## Select targets explicitly
 Node, space and project selectors accept a full ID, exact case-sensitive name, or a unique ID prefix (6+ characters). Ambiguity exits 6: use a full ID. `@self` uses your authenticated terminal
 identity, not your working directory. Inside OpenCove, `node create` and `node list` read your

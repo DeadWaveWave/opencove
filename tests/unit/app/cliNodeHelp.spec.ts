@@ -148,10 +148,10 @@ it.each(['create', 'update'])(
     }
   },
 )
-it('warns that node update moves need a containment check in the canvas guide', async () => {
+it('explains node frame growth and unchanged membership in the canvas guide', async () => {
   const f = identityFixture(false)
   expect(await run(['skill', 'canvas'], f.io)).toBe(0)
   expect(f.out()).toContain(
-    '`node update` moves do not grow the Space; check containment after moving.',
+    '`node update --frame` grows its Space and ancestors with padding in the same update; Spaces never shrink, other nodes stay fixed and membership stays unchanged.',
   )
 })

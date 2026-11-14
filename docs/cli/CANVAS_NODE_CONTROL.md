@@ -166,6 +166,10 @@ Usecases：
 
 ## Frame results
 
+`node update --frame` grows the node's Space and ancestors with padding in the same update, without shrinking boundaries, moving other nodes or changing membership; explicit coordinates are preserved even when Space boundaries overlap.
+
+中文：`node update --frame` 在同一次更新中扩展所属 Space 和各级祖先并保留留白，不缩小边界、不移动其它节点、不改变归属；即使 Space 边界重叠，也保留指定坐标。
+
 With `--frame`, every supported kind reports `appliedFrame` and `frameAdjusted`
 after create or update. Only explicitly requested components count as adjusted;
 automatic placement does not. Adjustments print one stderr notice naming the kind,
