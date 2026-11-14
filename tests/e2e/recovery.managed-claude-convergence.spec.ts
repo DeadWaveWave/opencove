@@ -228,7 +228,8 @@ test('managed Claude stale publications retain layout and cold-resume the curren
     // Finish hydration and prove autosave is live before freezing this client at A.
     await releasePrepare(web)
     await expectConversation(web, agent.id, initial.tuple.resumeSessionId!)
-    await web.locator('.react-flow__controls-fitview').click({ timeout: 10_000 })
+    // expectConversation has already brought the node into view. Another Fit View
+    // queues a viewport change that can invalidate the drag's sampled coordinates.
     await publishManagedLayout(web, agent.id, false)
     // Refresh the hold baseline to include the confirmed initial layout and revision.
     await web.evaluate(async () => window.opencoveApi.persistence.readAppState())
