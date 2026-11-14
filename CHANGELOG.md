@@ -36,6 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Agents: an unnamed agent created through the CLI now takes its session title even when its first prompt arrives late. (#657)
 - macOS: clicking the Dock icon while the last window is still closing opens a new window once the old one is gone, instead of leaving OpenCove with no window. (#666)
 - Windows: a terminal restored after a restart no longer shows "Terminal size could not be confirmed" when the terminal process or the console observer is slow to start, for example on a busy machine or while Defender scans it. (#667)
+- Desktop: update Electron from 41.5.1 to 41.10.7, the last 41.x release. It brings every Chromium, V8, Skia and ANGLE security and stability fix that Electron backported in between. (#679)
 
 ## [0.5.0] - 2026-11-12
 
