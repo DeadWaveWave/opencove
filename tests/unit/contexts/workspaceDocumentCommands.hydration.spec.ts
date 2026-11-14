@@ -64,6 +64,25 @@ describe('workspace document hydration entries', () => {
     expect(seen[1].active).toBe('y')
   })
 
+  it('keeps a list that a listener wrote during the first notification', () => {
+    const initial = [workspace('x'), workspace('y')]
+    const written = [workspace('x'), workspace('y')]
+    let wrote = false
+    const unsubscribe = useAppStore.subscribe(state => {
+      if (!wrote && state.workspaces === initial) {
+        wrote = true
+        useAppStore.setState({ workspaces: written })
+      }
+    })
+
+    hydrateWorkspaceList({ workspaces: initial, activeWorkspaceId: 'y' })
+    unsubscribe()
+
+    expect(wrote).toBe(true)
+    expect(useAppStore.getState().workspaces).toBe(written)
+    expect(useAppStore.getState().activeWorkspaceId).toBe('y')
+  })
+
   it('merges nodes of the named workspace only and keeps its Spaces and the other workspace', () => {
     const before = useAppStore.getState().workspaces
     const listener = vi.fn()

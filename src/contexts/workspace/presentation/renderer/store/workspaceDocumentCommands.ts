@@ -195,8 +195,12 @@ export function hydrateWorkspaceList(initial: WorkspaceDocumentStoreState): void
   }
   const store = requireStore()
   store.setState({ workspaces: initial.workspaces })
-  // Same array: this second write changes only the active workspace.
-  store.setState({ workspaces: initial.workspaces, activeWorkspaceId: initial.activeWorkspaceId })
+  // The list as the store holds it now: a listener may have written to it during the first
+  // notification, and this write must change only the active workspace.
+  store.setState({
+    workspaces: store.getState().workspaces,
+    activeWorkspaceId: initial.activeWorkspaceId,
+  })
 }
 
 // Spaces are not reconciled here, so a merge that added or dropped a node would leave them stale.
