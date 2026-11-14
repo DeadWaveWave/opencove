@@ -1,3 +1,4 @@
+import { terminalEnvironment } from '../../../../shared/runtime/terminalEnvironment.mjs'
 import type { ClaudeBindingEvidence } from '../../../../shared/runtime/agentHook/claudeBindingEvidence'
 import { claudeTranscriptLaunchRoots } from './ClaudeTranscriptLaunchRoots'
 import { ClaudeHookTranscriptObserver } from './ClaudeHookTranscriptObserver'
@@ -42,8 +43,8 @@ export function createClaudeHookChannel(options: {
     }),
     publishManagedSessionIdentity: true,
     buildReservationEnv: (endpoint, token) => ({
-      OPENCOVE_CLAUDE_HOOK_ENDPOINT: endpoint,
-      OPENCOVE_CLAUDE_HOOK_TOKEN: token,
+      [terminalEnvironment.claudeHookEndpoint]: endpoint,
+      [terminalEnvironment.claudeHookToken]: token,
     }),
   })
   return {

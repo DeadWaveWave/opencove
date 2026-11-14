@@ -1,3 +1,4 @@
+import '../../scripts/lib/isolateHostEnvironment.mjs'
 import { defineConfig } from '@playwright/test'
 
 /**

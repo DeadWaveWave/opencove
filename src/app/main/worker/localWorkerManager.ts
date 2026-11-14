@@ -1,3 +1,4 @@
+import { terminalEnvironment } from '../../../shared/runtime/terminalEnvironment.mjs'
 import {
   inspectWorkerProcess,
   legacyWorkerBlocksAcquisition,
@@ -32,9 +33,7 @@ import {
 } from './localWorkerSpawn'
 import { LOCAL_WORKER_STOP_TIMEOUT_MS } from '../../../shared/runtime/controlSurfaceShutdown'
 import { resolveLocalWorkerWebUiUrl } from './localWorkerWebUiUrl'
-
 export { buildLocalWorkerSpawnArgs, isTruthyEnv, resolveForwardedLocalWorkerDiagnosticsEnv }
-
 function resolveWorkerScriptPath(): string {
   if (app.isPackaged) {
     return resolvePackagedWorkerScriptPath(process.resourcesPath)
@@ -263,7 +262,7 @@ function spawnWorkerChild(args: string[], userDataPath: string): WorkerChildProc
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
-      OPENCOVE_USER_DATA_DIR: userDataPath,
+      [terminalEnvironment.userDataDir]: userDataPath,
       ...(isTruthyEnv(process.env['OPENCOVE_DEV_USE_SHARED_USER_DATA'])
         ? { OPENCOVE_DEV_USE_SHARED_USER_DATA: '1' }
         : {}),

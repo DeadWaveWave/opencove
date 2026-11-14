@@ -1,3 +1,4 @@
+import { terminalEnvironment } from '../../../../../shared/runtime/terminalEnvironment.mjs'
 // @compat pi-agent-settled-fallback
 const piAgentEndFallbackSource = String.raw`  // Compatibility for releases without agent_settled: defer beyond the low-level end callback
   // and require affirmative idle/pending evidence. Shutdown itself never emits completion.
@@ -144,7 +145,7 @@ export default function (pi) {
         sessionId: null, sessionFile: null, stop };
     }
     globalThis[key] = shared;
-    process.env.OPENCOVE_PI_STATUS_OWNER_PID = String(process.pid);
+    process.env.${terminalEnvironment.piStatusOwnerPid} = String(process.pid);
     active = true;
     setState(idle(ctx) ? 'standby' : 'working', ctx);
   });

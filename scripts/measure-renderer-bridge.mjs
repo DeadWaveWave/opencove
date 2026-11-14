@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import './lib/isolateHostEnvironment.mjs'
 // Run against separately built before/after worktrees; uses only public API available in both.
 import { _electron as electron } from '@playwright/test'
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'

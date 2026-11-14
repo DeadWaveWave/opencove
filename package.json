@@ -74,7 +74,7 @@
     "build": "node scripts/run-electron-vite-build.mjs && node scripts/build-cli.mjs",
     "build:cli": "node scripts/build-cli.mjs",
     "check": "tsc -b tsconfig.node.json tsconfig.web.json --noEmit",
-    "preview": "electron-vite preview",
+    "preview": "node --import ./scripts/lib/isolateHostEnvironment.mjs node_modules/electron-vite/bin/electron-vite.js preview",
     "postinstall": "electron-builder install-app-deps",
     "build:release-manifest": "node scripts/generate-release-manifest.mjs",
     "build:standalone:asset": "node scripts/build-standalone-asset.mjs",

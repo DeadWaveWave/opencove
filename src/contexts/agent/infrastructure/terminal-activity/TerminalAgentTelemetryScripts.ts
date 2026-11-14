@@ -1,3 +1,4 @@
+import { terminalEnvironment } from '../../../../shared/runtime/terminalEnvironment.mjs'
 import { posix } from 'node:path'
 
 export const terminalAgentLauncherScript = String.raw`
@@ -305,7 +306,7 @@ export const terminalAgentZshEnvScript = [
   '  _opencove_user_zdotdir=${ZDOTDIR:-${HOME:-}}',
   'fi',
   ...restoreSessionShimPaths,
-  'export OPENCOVE_TERMINAL_AGENT_USER_ZDOTDIR="$_opencove_user_zdotdir"',
+  `export ${terminalEnvironment.terminalAgentUserZdotdir}="$_opencove_user_zdotdir"`,
   'export ZDOTDIR="$_opencove_wrapper_zdotdir"',
   'unset _opencove_user_zdotdir _opencove_wrapper_zdotdir',
   '',
@@ -329,7 +330,7 @@ function createZshStartupRelay(
     `  . "${userStartupPath}"`,
     '  _opencove_user_zdotdir=${ZDOTDIR:-$_opencove_user_zdotdir}',
     'fi',
-    'export OPENCOVE_TERMINAL_AGENT_USER_ZDOTDIR="$_opencove_user_zdotdir"',
+    `export ${terminalEnvironment.terminalAgentUserZdotdir}="$_opencove_user_zdotdir"`,
     ...(prependShimPath ? restoreSessionShimPaths : []),
     ...(restoreOnlyForNonLogin
       ? [

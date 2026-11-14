@@ -1,3 +1,4 @@
+import { createIsolatedProcessEnv } from '../../scripts/lib/isolatedProcessEnvironment.mjs'
 import {
   _electron as electron,
   test,
@@ -40,7 +41,7 @@ function copyDefinedEnv(
 }
 
 const INITIAL_E2E_PROCESS_ENV = (() => {
-  const env = copyDefinedEnv(process.env)
+  const env = copyDefinedEnv(createIsolatedProcessEnv())
   // When running Playwright from inside Electron/GUI environments, macOS can inherit a
   // `__CFBundleIdentifier` override that breaks launching the Electron binary (SIGABRT in
   // `_RegisterApplication`). Ensure the child Electron uses its own bundle id.
