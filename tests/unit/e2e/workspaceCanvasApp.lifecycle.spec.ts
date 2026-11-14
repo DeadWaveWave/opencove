@@ -4,8 +4,14 @@ import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
-const { launch } = vi.hoisted(() => ({ launch: vi.fn() }))
-vi.mock('@playwright/test', () => ({ _electron: { launch } }))
+const { launch, testInfo } = vi.hoisted(() => ({
+  launch: vi.fn(),
+  testInfo: { outputPath: vi.fn(), attach: vi.fn(async () => undefined) },
+}))
+vi.mock('@playwright/test', () => ({
+  _electron: { launch },
+  test: { info: () => testInfo },
+}))
 
 import { launchApp } from '../../e2e/workspace-canvas.app'
 
@@ -29,6 +35,7 @@ function createApp(firstWindowError?: Error) {
 describe('E2E app profile lifetime', () => {
   let userDataDir: string
   let seedPath: string
+  let attachmentsDir: string
 
   beforeEach(async () => {
     launch.mockReset()
@@ -37,6 +44,9 @@ describe('E2E app profile lifetime', () => {
     const root = path.resolve('artifacts/e2e-app-lifecycle')
     await mkdir(root, { recursive: true })
     userDataDir = await mkdtemp(path.join(root, 'profile-'))
+    attachmentsDir = `${userDataDir}-attachments`
+    testInfo.outputPath.mockImplementation(name => path.join(attachmentsDir, name))
+    testInfo.attach.mockClear()
     seedPath = path.join(userDataDir, 'workspace-state.json')
     await writeFile(seedPath, 'persisted task and agent binding')
   })
@@ -44,6 +54,7 @@ describe('E2E app profile lifetime', () => {
   afterEach(async () => {
     vi.unstubAllEnvs()
     await rm(userDataDir, { recursive: true, force: true })
+    await rm(attachmentsDir, { recursive: true, force: true })
   })
 
   it('preserves restart state through failed launches until the successful app closes', async () => {
