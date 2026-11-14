@@ -75,6 +75,8 @@ export default defineConfig({
     timeout: 15_000,
   },
 
+  // A stray test.only would silently shrink a CI run to one test.
+  forbidOnly: !!process.env.CI,
   retries: resolveE2ERetries(process.env.OPENCOVE_E2E_RETRIES),
 
   // 并行 worker 数量

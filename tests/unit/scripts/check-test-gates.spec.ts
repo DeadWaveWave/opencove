@@ -380,6 +380,17 @@ describe('check-test-gates: this repository', () => {
   })
 })
 
+describe('Playwright configs forbid a focused test at run time', () => {
+  it.each([
+    'playwright.config.ts',
+    'playwright.web-canvas.config.ts',
+    'playwright.web-shell.config.ts',
+  ])('%s sets forbidOnly from CI', file => {
+    const config = readFileSync(resolve(import.meta.dirname, '../../..', file), 'utf8')
+    expect(config).toContain('forbidOnly: !!process.env.CI')
+  })
+})
+
 describe('check-test-gates: command line', () => {
   function cli(args: string[]) {
     return spawnSync(process.execPath, [SCRIPT, ...args], { encoding: 'utf8' })

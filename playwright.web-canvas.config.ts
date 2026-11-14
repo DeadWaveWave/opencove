@@ -11,6 +11,8 @@ export default defineConfig({
   expect: {
     timeout: 15_000,
   },
+  // A stray test.only would silently shrink a CI run to one test.
+  forbidOnly: !!process.env.CI,
   retries: resolveE2ERetries(process.env.OPENCOVE_E2E_RETRIES),
   workers: 1,
   projects: [
