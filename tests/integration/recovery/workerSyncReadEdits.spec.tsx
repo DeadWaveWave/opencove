@@ -110,26 +110,27 @@ it.each(
       }
       const deferredReadCount = read.mock.calls.length
       await act(async () => {
-        useAppStore.getState().setWorkspaces(workspaces =>
-          workspaces.map(workspace => ({
-            ...workspace,
-            nodes:
-              edit === 'delete'
-                ? []
-                : workspace.nodes.map(node =>
-                    edit === 'move'
-                      ? { ...node, dragging: false, position: { x: 1234, y: 5678 } }
-                      : {
-                          ...node,
-                          data: {
-                            ...node.data,
-                            title: 'Edited during connect',
-                            titlePinnedByUser: true,
+        useAppStore.setState(state => ({
+          workspaces: (workspaces =>
+            workspaces.map(workspace => ({
+              ...workspace,
+              nodes:
+                edit === 'delete'
+                  ? []
+                  : workspace.nodes.map(node =>
+                      edit === 'move'
+                        ? { ...node, dragging: false, position: { x: 1234, y: 5678 } }
+                        : {
+                            ...node,
+                            data: {
+                              ...node.data,
+                              title: 'Edited during connect',
+                              titlePinnedByUser: true,
+                            },
                           },
-                        },
-                  ),
-          })),
-        )
+                    ),
+            })))(state.workspaces),
+        }))
         schedulePersistedStateWrite(produce, { delayMs: 10000 })
         release()
         await barrier

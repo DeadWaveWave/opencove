@@ -13,14 +13,15 @@ export function editSpaceOrder(client: Client, pin: boolean) {
   if (pin) {
     client.server.model.edit('spacePinned', true)
   }
-  useAppStore.getState().setWorkspaces(ws =>
-    ws.map(w => ({
-      ...w,
-      spaces: pin
-        ? setRootSpacePinned(w.spaces, 'second', true)
-        : reorderRootSpacesWithinPinGroup(w.spaces, 'second', 'space'),
-    })),
-  )
+  useAppStore.setState(state => ({
+    workspaces: (ws =>
+      ws.map(w => ({
+        ...w,
+        spaces: pin
+          ? setRootSpacePinned(w.spaces, 'second', true)
+          : reorderRootSpacesWithinPinGroup(w.spaces, 'second', 'space'),
+      })))(state.workspaces),
+  }))
 }
 /** Check the cache's canonical representation against the actual SQLite reader, not array position in UI. */
 export function assertCanonicalSpaceOrder(cached: PersistedAppState | null | undefined) {

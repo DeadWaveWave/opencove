@@ -394,7 +394,6 @@
   },
   "workspace-writer": {
     "src/app/renderer/shell/hooks/workerSync/workerConnectionState.ts": 2,
-    "src/app/renderer/shell/store/useAppStore.ts": 2,
     "src/contexts/workspace/presentation/renderer/utils/managedClaudeCompatibilityNotice.ts": 1
   }
 }

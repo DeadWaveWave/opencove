@@ -102,18 +102,19 @@ it.each(['none', 'note', 'terminal'] as const)(
     } else {
       const guardedId = guard === 'note' ? noteId : terminalId
       guardNodeFromSyncOverwrite(guardedId)
-      useAppStore.getState().setWorkspaces(previous =>
-        previous.map(project => ({
-          ...project,
-          nodes: project.nodes.map(node =>
-            node.id !== guardedId
-              ? node
-              : guard === 'note'
-                ? { ...node, data: { ...node.data, note: { text: 'pending local text' } } }
-                : { ...node, position: { x: 100, y: 100 } },
-          ),
-        })),
-      )
+      useAppStore.setState(state => ({
+        workspaces: (previous =>
+          previous.map(project => ({
+            ...project,
+            nodes: project.nodes.map(node =>
+              node.id !== guardedId
+                ? node
+                : guard === 'note'
+                  ? { ...node, data: { ...node.data, note: { text: 'pending local text' } } }
+                  : { ...node, position: { x: 100, y: 100 } },
+            ),
+          })))(state.workspaces),
+      }))
     }
     const latestBinding = { ...binding, resumeSessionId: 'external-verified-session' }
     durable = {

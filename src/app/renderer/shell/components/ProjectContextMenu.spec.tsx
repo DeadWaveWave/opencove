@@ -86,7 +86,7 @@ function createWorkspace(): WorkspaceState {
 
 function renderMenu(target?: Parameters<typeof ProjectContextMenu>[0]['target']): void {
   const workspace = createWorkspace()
-  useAppStore.getState().setWorkspaces([workspace])
+  useAppStore.setState({ workspaces: [workspace] })
   render(
     <ProjectContextMenu
       workspaces={[workspace]}

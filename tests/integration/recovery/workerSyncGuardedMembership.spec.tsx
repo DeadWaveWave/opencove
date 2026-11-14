@@ -101,19 +101,20 @@ it.each([
       },
     })
     acceptPersistedStateSnapshot({ state: base, revision: 1, isPersisted: true })
-    useAppStore.getState().setWorkspaces(previous =>
-      previous.map(project => ({
-        ...project,
-        spaces: project.spaces.map(space => ({
-          ...space,
-          nodeIds: space.id === local ? [nodeId] : [],
-        })),
-        nodes: project.nodes.map(node => ({
-          ...node,
-          data: { ...node.data, note: { text: 'pending local text' } },
-        })),
-      })),
-    )
+    useAppStore.setState(state => ({
+      workspaces: (previous =>
+        previous.map(project => ({
+          ...project,
+          spaces: project.spaces.map(space => ({
+            ...space,
+            nodeIds: space.id === local ? [nodeId] : [],
+          })),
+          nodes: project.nodes.map(node => ({
+            ...node,
+            data: { ...node.data, note: { text: 'pending local text' } },
+          })),
+        })))(state.workspaces),
+    }))
     guardNodeFromSyncOverwrite(nodeId)
     const memberships = (state: PersistedAppState) =>
       state.workspaces[0].spaces

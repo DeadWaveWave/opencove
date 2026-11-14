@@ -41,7 +41,6 @@ export interface AppStoreState {
   // @compat managed-claude-worker-support
   managedClaudeCompatibilityNotice: { scope: number; notice: PersistNotice } | null
 
-  setWorkspaces: (action: SetStateAction<WorkspaceState[]>) => void
   setActiveWorkspaceId: (action: SetStateAction<string | null>) => void
   setProjectContextMenu: (action: SetStateAction<ProjectContextMenuState | null>) => void
   setProjectMountManager: (action: SetStateAction<ProjectMountManagerState | null>) => void
@@ -96,8 +95,6 @@ export const useAppStore = create<AppStoreState>(set => ({
   managedClaudeCompatibilityNotice: null,
   workerConnectionError: null,
 
-  setWorkspaces: action =>
-    set(state => ({ workspaces: applySetStateAction(state.workspaces, action) })),
   setActiveWorkspaceId: action =>
     set(state => ({ activeWorkspaceId: applySetStateAction(state.activeWorkspaceId, action) })),
   setProjectContextMenu: action =>

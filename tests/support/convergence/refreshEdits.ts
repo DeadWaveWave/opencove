@@ -7,22 +7,23 @@ export function editRefreshNode(client: Client, deletion: boolean) {
     deletion ? 'terminalPresent' : 'position',
     deletion ? false : '1234,5678',
   )
-  useAppStore.getState().setWorkspaces(workspaces =>
-    workspaces.map(workspace => ({
-      ...workspace,
-      nodes: deletion
-        ? workspace.nodes.filter(node => node.id !== 'terminal')
-        : workspace.nodes.map(node =>
-            node.id === 'agent'
-              ? { ...node, dragging: false, position: { x: 1234, y: 5678 } }
-              : node,
-          ),
-      spaces: deletion
-        ? workspace.spaces.map(space => ({
-            ...space,
-            nodeIds: space.nodeIds.filter(id => id !== 'terminal'),
-          }))
-        : workspace.spaces,
-    })),
-  )
+  useAppStore.setState(state => ({
+    workspaces: (workspaces =>
+      workspaces.map(workspace => ({
+        ...workspace,
+        nodes: deletion
+          ? workspace.nodes.filter(node => node.id !== 'terminal')
+          : workspace.nodes.map(node =>
+              node.id === 'agent'
+                ? { ...node, dragging: false, position: { x: 1234, y: 5678 } }
+                : node,
+            ),
+        spaces: deletion
+          ? workspace.spaces.map(space => ({
+              ...space,
+              nodeIds: space.nodeIds.filter(id => id !== 'terminal'),
+            }))
+          : workspace.spaces,
+      })))(state.workspaces),
+  }))
 }
