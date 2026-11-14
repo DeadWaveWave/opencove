@@ -3,6 +3,7 @@ import { DEFAULT_AGENT_SETTINGS, type AgentSettings } from '@contexts/settings/d
 import type { ProjectIconId } from '@shared/types/projectIcon'
 import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
 import { setRootSpacePinned } from '@contexts/workspace/domain/workspaceSpacePinning'
+import { bindWorkspaceDocumentStore } from '@contexts/workspace/presentation/renderer'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import type {
   FocusRequest,
@@ -194,3 +195,5 @@ export const useAppStore = create<AppStoreState>(set => ({
     return changed
   },
 }))
+
+bindWorkspaceDocumentStore(useAppStore)

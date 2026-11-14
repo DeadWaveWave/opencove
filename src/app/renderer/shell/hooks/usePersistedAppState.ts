@@ -1,3 +1,4 @@
+import { registerWorkspaceDocumentPersistFlush } from '@contexts/workspace/presentation/renderer'
 import { currentManagedClaudeCompatibilityNotice } from '@contexts/workspace/presentation/renderer/utils/managedClaudeCompatibilityNotice'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
@@ -118,6 +119,8 @@ export function usePersistedAppState({
       })
     }
   }, [handlePersistWriteResult, isHydrated, producePersistedState])
+
+  useEffect(() => registerWorkspaceDocumentPersistFlush(requestPersistFlush), [requestPersistFlush])
 
   useEffect(() => {
     if (window.opencoveApi?.meta?.isTest) {
