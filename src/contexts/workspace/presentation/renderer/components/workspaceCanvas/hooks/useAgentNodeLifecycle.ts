@@ -352,6 +352,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
               }
               const nextAgentData: AgentNodeData = {
                 ...launchData,
+                taskId: item.data.agent?.taskId ?? null,
                 launchMode: mode,
                 effectiveModel: launched.effectiveModel,
                 executionDirectory: launched.executionDirectory,

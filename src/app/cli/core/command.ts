@@ -93,6 +93,8 @@ export interface Command {
   targetSpace?: 'required' | 'optional'
   /** Stable identifier to print for --quiet, relative to the operation result. */
   quietIdPath?: string
+  /** Check the Worker operation catalog before sending this operation, including api call. */
+  requireOperationDiscovery?: boolean
   mutation?: boolean
   stream?: boolean
   streamProjection?: boolean

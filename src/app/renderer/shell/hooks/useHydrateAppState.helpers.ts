@@ -104,7 +104,7 @@ function mergeHydratedAgentData(
   hydratedAgent: TerminalNodeData['agent'],
 ): TerminalNodeData['agent'] {
   if (!currentAgent || !hydratedAgent) {
-    return hydratedAgent
+    return hydratedAgent ? { ...hydratedAgent, taskId: currentAgent?.taskId ?? null } : null
   }
   const preserveCurrentBinding =
     isResumeSessionBindingVerified(currentAgent) &&
@@ -135,7 +135,7 @@ function mergeHydratedAgentData(
     directoryMode: currentAgent.directoryMode,
     customDirectory: currentAgent.customDirectory,
     shouldCreateDirectory: currentAgent.shouldCreateDirectory,
-    taskId: currentAgent.taskId ?? hydratedAgent.taskId,
+    taskId: currentAgent.taskId,
   }
 }
 
@@ -177,8 +177,6 @@ export function mergeHydratedNode(
       recoveryIssue: hydratedNode.data.recoveryIssue ?? currentNode.data.recoveryIssue ?? null,
       scrollback: hydratedNode.data.kind === 'agent' ? null : preservedTerminalScrollback,
       agent: mergeHydratedAgentData(currentNode.data.agent, hydratedNode.data.agent),
-      task: hydratedNode.data.task ?? currentNode.data.task,
-      note: hydratedNode.data.note ?? currentNode.data.note,
     },
   }
   const projected = projectManagedClaudeRuntimeData(currentNode.id, merged.data)

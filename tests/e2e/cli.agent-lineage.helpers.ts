@@ -19,13 +19,15 @@ const timer = setInterval(async () => {
   if (busy) return
   busy = true
   try {
-    const args = JSON.parse(await readFile(request, 'utf8'))
+    const input = JSON.parse(await readFile(request, 'utf8'))
+    const args = Array.isArray(input) ? input : input.args
     await unlink(request)
     const child = execFile(process.execPath, [${JSON.stringify(resolve('out/cli/opencove.mjs'))}, ...args],
       { env: process.env, timeout: 45000 }, async (error, stdout, stderr) => {
         await writeFile(request + '.result', JSON.stringify({ code: error?.code ?? 0, stdout, stderr }))
         busy = false
       })
+    child.stdin?.end(Array.isArray(input) ? '' : input.stdin ?? '')
     await writeFile(request + '.pid', String(child.pid))
   } catch { busy = false }
 }, 50)
@@ -35,12 +37,17 @@ await import(${JSON.stringify(pathToFileURL(resolve('scripts/test-agent-session-
   )
   return path
 }
-export async function grantedAgentCli(root: string, nodeId: string, args: string[]) {
+export async function grantedAgentCli(
+  root: string,
+  nodeId: string,
+  args: string[],
+  stdin?: string,
+) {
   const request = join(root, nodeId + '.request.json')
   const resultPath = request + '.result'
   const { rm } = await import('node:fs/promises')
   await rm(resultPath, { force: true })
-  await writeFile(request, JSON.stringify(args))
+  await writeFile(request, JSON.stringify(stdin === undefined ? args : { args, stdin }))
   let result: { code: number; stdout: string; stderr: string } | undefined
   await expect
     .poll(

@@ -9,6 +9,8 @@ Workspace:
   project  List projects and find their IDs
   space    List and inspect project spaces
   node     Create, read, update and delete canvas nodes
+  task     Claim and release tasks for existing agents
+  note     Append text to shared notes
   canvas   Focus nodes and spaces on the canvas
   agent    List, inspect, prompt, wait for and read agents
   events   Stream agent observations and resume from a saved cursor
@@ -158,7 +160,7 @@ exports[`command help snapshots: api ops --domains 1`] = `
 
 List Control Surface operations with their kind, contract and CLI command
 
-The full JSON catalog is large (about 29 KB). Start with --domains, then narrow with --prefix or --search and --fields. Each operation includes scope (read, interact or admin); inside OpenCove, access comes from the Worker policy (allowed, denied or constrained). Offline or with an older Worker, access is unknown. The allowed flag is omitted for unknown or constrained access.
+The full JSON catalog is large (about 30 KB). Start with --domains, then narrow with --prefix or --search and --fields. Each operation includes scope (read, interact or admin); inside OpenCove, access comes from the Worker policy (allowed, denied or constrained). Offline or with an older Worker, access is unknown. The allowed flag is omitted for unknown or constrained access.
 
 With --domains, output is an array of summaries with these projectable fields:
   domain: Operation ID prefix before the first dot
@@ -197,7 +199,7 @@ exports[`command help snapshots: api ops 1`] = `
 
 List Control Surface operations with their kind, contract and CLI command
 
-The full JSON catalog is large (about 29 KB). Start with --domains, then narrow with --prefix or --search and --fields. Each operation includes scope (read, interact or admin); inside OpenCove, access comes from the Worker policy (allowed, denied or constrained). Offline or with an older Worker, access is unknown. The allowed flag is omitted for unknown or constrained access.
+The full JSON catalog is large (about 30 KB). Start with --domains, then narrow with --prefix or --search and --fields. Each operation includes scope (read, interact or admin); inside OpenCove, access comes from the Worker policy (allowed, denied or constrained). Offline or with an older Worker, access is unknown. The allowed flag is omitted for unknown or constrained access.
 
 With --domains, output is an array of summaries with these projectable fields:
   domain: Operation ID prefix before the first dot

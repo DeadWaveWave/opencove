@@ -305,3 +305,18 @@ and prefixes use your session project, or an explicit Space’s project. Without
 the selected project supplies the name lookup context. Use a full ID for a creator outside that context.
 中文：`--project` 只筛选子节点，不要求创建者属于该项目。创建者名称／前缀默认在当前会话项目中查找；
 显式 Space 提供其所属项目作为查找范围。没有会话身份时，使用选定项目查找名称。跨查找范围请用完整 ID。
+
+## Existing-agent task claims and shared notes
+
+Use `task claim --task <selector> [--agent <selector>]` to link an existing agent,
+then `task release --task <selector> --status ai_done` to return the task for
+review. These operations commit task and reciprocal agent changes together and
+never start or stop a session. Use `note append --node <selector> --text <text>`
+(or `--text-file <path|->`) for shared results. Append rechecks current text after
+each revision conflict instead of replacing a body read earlier by the CLI.
+
+The existing Worker persistence path remains the owner of these mutations. A
+genuinely stale tab can still overwrite task fields, and ordinary note
+replacement can overwrite appended text. There is no additional authority layer,
+lease or deduplication ledger. See [task workflows](TASK_WORKFLOWS.md) for holder
+rules, grant constraints, byte limits, output and uncertain-outcome recovery.

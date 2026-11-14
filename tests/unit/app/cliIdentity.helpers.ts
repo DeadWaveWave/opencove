@@ -1,3 +1,4 @@
+import { CONTROL_SURFACE_OPERATIONS } from '../../../src/shared/contracts/controlSurface/operations'
 import { encodeEventCursor } from '../../../src/shared/contracts/dto/eventStream'
 import { vi } from 'vitest'
 import type { CliIo } from '../../../src/app/cli/core/io'
@@ -28,6 +29,7 @@ export function identityFixture(inside = true) {
   let out = '',
     err = ''
   const values: Record<string, unknown> = {
+    'system.operations': { operations: CONTROL_SURFACE_OPERATIONS.map(({ id }) => ({ id })) },
     'system.capabilities': {
       features: {
         nodeLineageV1: true,

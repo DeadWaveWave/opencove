@@ -1,4 +1,5 @@
 import { abortable } from './streamLifetime'
+import { requireWorkerOperation } from './operationDiscovery'
 import { unknownOperation } from './operationErrors'
 import { validateUriInputs } from './uriInputs'
 import { nodeFieldNotice } from './nodeFields'
@@ -242,6 +243,9 @@ export async function run(argv: string[], io: CliIo): Promise<number> {
         }
         await requireNodeNearPlacement(operationId, payload, call)
         await requireBoundedAgentSpawningForRequest(operationId, payload, identity, call)
+        if (commandForOperation(operationId)?.requireOperationDiscovery) {
+          await requireWorkerOperation(call, operationId)
+        }
         const key = JSON.stringify([operationId, payload])
         if (op.kind === 'command') {
           mutationStarted = true

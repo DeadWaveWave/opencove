@@ -1,6 +1,6 @@
 # Coordinate agents
 
-First run `opencove whoami --tree` before delegating. It shows remaining slots, the whole quota tree, work states and stop commands. Idle agents still occupy slots; inspect before stopping. Waiting (permission/question/plan) needs the user. Terminal recovery requires a fresh node.sessionId lookup, then session kill; never reuse a census session ID. Older Workers require an update for tree view; outside a canvas grant, whoami returns identity without a tree.
+First run `opencove whoami --tree` before delegating. It shows remaining slots, the whole quota tree, work states and stop commands. Idle agents still occupy slots; inspect before stopping. Waiting (permission/question/plan) needs the user. Terminal recovery requires a fresh node.sessionId lookup, then session kill; never reuse a census session ID. Older Workers require an update for tree view; outside a canvas grant, whoami returns identity without a tree. Share a task atomically with `opencove task claim` / `task release` and record progress with `opencove note append`; see `opencove skill canvas` for the rules.
 
 ## Create and wait for a one-shot delegation
 
