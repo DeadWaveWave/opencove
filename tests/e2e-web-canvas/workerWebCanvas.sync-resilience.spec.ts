@@ -20,6 +20,11 @@ async function clickHeaderDragSurfaceByTestId(
 
 test.describe('Worker web canvas sync resilience', () => {
   test('does not rollback note edits when a sync update lands mid-typing', async ({ page }) => {
+    // 1,240 keystrokes at about 55 ms each: 66 to 75 s measured locally, against the suite's
+    // 90 s default. The long typing is what makes the sync land mid-edit, so the headroom goes
+    // to this test's timeout and not to a shorter draft.
+    test.setTimeout(180_000)
+
     const workspacePath = await createWorkspaceDir('note-no-rollback-mid-typing')
     await writeAppState(page.request, () =>
       buildAppState({
