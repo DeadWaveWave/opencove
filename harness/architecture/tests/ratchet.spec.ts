@@ -1,12 +1,21 @@
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import {
+  baselineJson,
+  commitAll,
+  createClonedRepository,
+  git,
+  removeFixtureDirectories,
+} from '../../../tests/unit/scripts/ratchetRepoFixture'
+import { removeTemporaryRepositories } from '../../../tests/unit/scripts/repoFixture'
 import { loadArchitectureConfig, runArchitectureAudit } from '../lib/architecture-rules.mjs'
 import {
   countRatchetedFindings,
   evaluateRatchet,
   planRatchetUpdate,
+  updateRatchetBaseline,
 } from '../lib/ratchet-baseline.mjs'
 import { VARIANT_SOURCE_FILES } from './variantFixtureSupport'
 
@@ -145,65 +154,143 @@ describe('architecture ratchet baseline', () => {
     expect(errorLevel.output).toContain('error-level')
   })
 
-  it('refuses to update when a rule total in the baseline would rise', async () => {
-    const { report, config } = await analyse({
-      ...baseFiles,
-      'src/contexts/workspace/presentation/renderer/View.ts': viewTwo,
-    })
-    const plan = planRatchetUpdate({ report, config, baseline: baselineOf })
-    expect(plan.ok).toBe(false)
-    expect(plan.refusals).toEqual([{ rule: WINDOW_API, before: 1, after: 2 }])
-    expect(plan.serialized).toBeNull()
+  it('plans the counts of every ratcheted rule, with zero-finding rules present and no stale entries', async () => {
+    const { report, config } = await analyse(baseFiles)
+    expect(JSON.parse(planRatchetUpdate({ report, config }).serialized)).toEqual(baselineOf)
+  })
+})
+
+const BASELINE_PATH = 'harness/architecture/ratchet.json'
+
+describe('architecture ratchet update guard', () => {
+  afterEach(async () => {
+    removeTemporaryRepositories()
+    removeFixtureDirectories()
+    await Promise.all(
+      tempRoots.splice(0).map(async root => await rm(root, { recursive: true, force: true })),
+    )
   })
 
-  it('updates for drops', async () => {
-    const { report, config } = await analyse({
+  // A repository whose origin/main holds `baseline` at the architecture baseline path.
+  const makeRepo = (baseline: object | null = baselineOf) =>
+    createClonedRepository(baseline ? { [BASELINE_PATH]: baselineJson(baseline as never) } : {})
+
+  async function update(root: string, files: Record<string, string>, acceptRises: string[] = []) {
+    const { report, config } = await analyse(files)
+    let stdout = ''
+    let stderr = ''
+    const code = await updateRatchetBaseline({
+      root,
+      report,
+      config,
+      acceptRises,
+      stdout: { write: (text: string) => (stdout += text) },
+      stderr: { write: (text: string) => (stderr += text) },
+    })
+    return { code, stdout, stderr }
+  }
+
+  const readBaselineFile = async (root: string) =>
+    JSON.parse(await readFile(join(root, BASELINE_PATH), 'utf8'))
+  const raised = { ...baseFiles, 'src/contexts/workspace/presentation/renderer/View.ts': viewTwo }
+
+  it('refuses to update when a rule total would rise against the merge base', async () => {
+    const { repo, first } = makeRepo()
+
+    const result = await update(repo, raised)
+
+    expect(result.code).toBe(1)
+    expect(result.stderr).toContain(
+      `compared with merge base with origin/main (${first.slice(0, 8)})`,
+    )
+    expect(result.stderr).toContain(`${WINDOW_API}: total would rise from 1 to 2.`)
+    expect(result.stderr).toContain(`\`${WINDOW_API}\` 1 -> 2: <category>: <reason>`)
+    expect(await readBaselineFile(repo)).toEqual(baselineOf)
+  })
+
+  it('writes the rise when its rule is named and prints the section', async () => {
+    const { repo } = makeRepo()
+
+    const result = await update(repo, raised, [WINDOW_API])
+
+    expect(result.code).toBe(0)
+    expect(result.stdout).toContain('## 📈 Ratchet rises')
+    expect((await readBaselineFile(repo))[WINDOW_API]).toEqual({
+      'src/contexts/workspace/presentation/renderer/View.ts': 2,
+    })
+  })
+
+  it('refuses a flag for a rule that does not rise', async () => {
+    const { repo } = makeRepo()
+
+    const result = await update(repo, baseFiles, [WINDOW_API])
+
+    expect(result.code).toBe(1)
+    expect(result.stderr).toContain(
+      `--accept-rise ${WINDOW_API}: this rule neither rises nor retires`,
+    )
+  })
+
+  it('updates for drops and for a moved file with an unchanged total', async () => {
+    const { repo } = makeRepo()
+    const dropped = await update(repo, {
       ...baseFiles,
       'src/contexts/workspace/presentation/renderer/View.ts': 'export const run = () => 1\n',
     })
-    const plan = planRatchetUpdate({ report, config, baseline: baselineOf })
-    expect(plan.ok).toBe(true)
-    expect(JSON.parse(plan.serialized)).toEqual({
-      ...baselineOf,
-      [WINDOW_API]: {},
-    })
-  })
+    expect(dropped).toMatchObject({ code: 0, stderr: '' })
+    expect((await readBaselineFile(repo))[WINDOW_API]).toEqual({})
 
-  it('updates for a moved file with an unchanged total', async () => {
-    const { report, config } = await analyse({
+    await writeFile(join(repo, BASELINE_PATH), baselineJson(baselineOf as never))
+    const moved = await update(repo, {
       ...baseFiles,
       'src/contexts/workspace/presentation/renderer/View.ts': 'export const run = () => 1\n',
       'src/contexts/workspace/presentation/renderer/Moved.ts': viewOne,
     })
-    const plan = planRatchetUpdate({ report, config, baseline: baselineOf })
-    expect(plan.ok).toBe(true)
-    expect(JSON.parse(plan.serialized)[WINDOW_API]).toEqual({
+    expect(moved.code).toBe(0)
+    expect((await readBaselineFile(repo))[WINDOW_API]).toEqual({
       'src/contexts/workspace/presentation/renderer/Moved.ts': 1,
     })
   })
 
-  it('records the first counts of a rule that is absent from the baseline', async () => {
-    const { report, config } = await analyse(baseFiles)
-    const plan = planRatchetUpdate({
-      report,
-      config,
-      baseline: { [LAYER]: baselineOf[LAYER] },
-    })
-    expect(plan.ok).toBe(true)
-    expect(JSON.parse(plan.serialized)[WINDOW_API]).toEqual(baselineOf[WINDOW_API])
+  it('refuses after a rule key was deleted from the file by hand', async () => {
+    const { repo } = makeRepo()
+    const { [WINDOW_API]: removed, ...withoutRule } = baselineOf
+    expect(removed).toBeDefined()
+    await writeFile(join(repo, BASELINE_PATH), baselineJson(withoutRule as never))
+
+    const result = await update(repo, raised)
+
+    expect(result.code).toBe(1)
+    expect(result.stderr).toContain(`${WINDOW_API}: total would rise from 1 to 2.`)
   })
 
-  it('bootstraps when no baseline exists and drops invalid baseline entries', async () => {
-    const { report, config } = await analyse(baseFiles)
-    expect(JSON.parse(planRatchetUpdate({ report, config, baseline: null }).serialized)).toEqual(
-      baselineOf,
-    )
-    const cleaned = planRatchetUpdate({
-      report,
-      config,
-      baseline: { ...baselineOf, 'architecture.noSuchRule': { 'src/a.ts': 3 } },
-    })
-    expect(JSON.parse(cleaned.serialized)).toEqual(baselineOf)
+  it('needs --accept-rise for every rule above 0 when the file is absent at the merge base', async () => {
+    const { repo } = makeRepo(null)
+    await mkdir(join(repo, 'harness/architecture'), { recursive: true })
+
+    const refused = await update(repo, baseFiles)
+    expect(refused.code).toBe(1)
+    expect(refused.stderr).toContain(`${LAYER}: total would rise from 0 to 1.`)
+    expect(refused.stderr).toContain(`${WINDOW_API}: total would rise from 0 to 1.`)
+
+    const partly = await update(repo, baseFiles, [LAYER])
+    expect(partly.code).toBe(1)
+
+    const accepted = await update(repo, baseFiles, [LAYER, WINDOW_API])
+    expect(accepted.code).toBe(0)
+    expect(await readBaselineFile(repo)).toEqual(baselineOf)
+  })
+
+  it('refuses regenerating after the file was deleted in a commit, with one more finding', async () => {
+    const { repo } = makeRepo()
+    git(repo, 'rm', '-q', BASELINE_PATH)
+    commitAll(repo, 'delete the baseline')
+    await mkdir(join(repo, 'harness/architecture'), { recursive: true })
+
+    const result = await update(repo, raised)
+
+    expect(result.code).toBe(1)
+    expect(result.stderr).toContain(`${WINDOW_API}: total would rise from 1 to 2.`)
   })
 })
 

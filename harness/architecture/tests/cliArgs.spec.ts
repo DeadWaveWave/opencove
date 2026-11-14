@@ -12,6 +12,16 @@ describe('architecture check command line', () => {
     expect(parseCheckArgs(['--update-ratchet']).updateRatchet).toBe(true)
   })
 
+  it('takes --accept-rise rules only together with --update-ratchet', () => {
+    expect(
+      parseCheckArgs(['--update-ratchet', '--accept-rise', 'a.b', '--accept-rise', 'c'])
+        .acceptRises,
+    ).toEqual(['a.b', 'c'])
+    expect(parseCheckArgs([]).acceptRises).toEqual([])
+    expect(() => parseCheckArgs(['--accept-rise', 'a.b'])).toThrow(/--update-ratchet/)
+    expect(() => parseCheckArgs(['--update-ratchet', '--accept-rise'])).toThrow(/needs a rule id/)
+  })
+
   it('allows --config only for an audit', () => {
     expect(parseCheckArgs(['--mode', 'audit', '--config', 'x.json']).config).toBe('x.json')
     expect(() => parseCheckArgs(['--mode', 'check', '--config', 'x.json'])).toThrow(/--config/)
