@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { jsonOutput, terminalCommand } from './cli.terminal.helpers'
+import { jsonOutput, terminalCommand } from './terminal'
 import { withOutputWorkspace, spaceComparisonCommand } from './cli.output.helpers'
 
 test('real Worker lists cap display without hiding context neighbors or selector targets', async () => {
@@ -13,26 +13,36 @@ test('real Worker lists cap display without hiding context neighbors or selector
     height: 180,
     task: { text: `Brief ${i}` },
   }))
-  await withOutputWorkspace(notes, async (page, shell) => {
-    const capped = await terminalCommand(page, shell, 'opencove node list --fields id', 'NODE_CAP')
+  await withOutputWorkspace(notes, async (worker, shell) => {
+    const capped = await terminalCommand(
+      worker,
+      shell,
+      'opencove node list --fields id',
+      'NODE_CAP',
+    )
     expect(capped.match(/70 omitted/g)).toHaveLength(1)
     expect(capped).toContain('--full')
     const value = jsonOutput(capped)
     expect(value).toMatchObject({ truncated: true, total: 120 })
     expect(value.nodes).toHaveLength(50)
     const full = jsonOutput(
-      await terminalCommand(page, shell, 'opencove node list --full --fields id', 'NODE_FULL'),
+      await terminalCommand(worker, shell, 'opencove node list --full --fields id', 'NODE_FULL'),
     )
     expect(full.nodes).toHaveLength(120)
     expect(full).not.toHaveProperty('truncated')
     expect(value.nodes).toEqual((full.nodes as unknown[]).slice(0, 50))
     const limited = jsonOutput(
-      await terminalCommand(page, shell, 'opencove node list --limit 2 --fields id', 'NODE_LIMIT'),
+      await terminalCommand(
+        worker,
+        shell,
+        'opencove node list --limit 2 --fields id',
+        'NODE_LIMIT',
+      ),
     )
     expect(limited).toMatchObject({ truncated: true, total: 120 })
     expect(limited.nodes).toHaveLength(2)
     const table = await terminalCommand(
-      page,
+      worker,
       shell,
       'opencove node list -o table --fields id',
       'NODE_TABLE',
@@ -49,7 +59,7 @@ test('real Worker lists cap display without hiding context neighbors or selector
     const omitted = notes.find(n => !visibleIds.has(n.id))!
     const selected = jsonOutput(
       await terminalCommand(
-        page,
+        worker,
         shell,
         `opencove node get --node "${omitted.title}" --fields id`,
         'NODE_SELECT',
@@ -57,24 +67,26 @@ test('real Worker lists cap display without hiding context neighbors or selector
     )
     expect(selected).toEqual({ node: { id: omitted.id } })
     const context = jsonOutput(
-      await terminalCommand(page, shell, 'opencove context --fields nodes.id', 'CONTEXT_FULL'),
+      await terminalCommand(worker, shell, 'opencove context --fields nodes.id', 'CONTEXT_FULL'),
     )
     expect(context.nodes).toHaveLength(119)
     const limitedContext = jsonOutput(
-      await terminalCommand(page, shell, 'opencove context --limit 1', 'CONTEXT_LIMIT'),
+      await terminalCommand(worker, shell, 'opencove context --limit 1', 'CONTEXT_LIMIT'),
     )
     expect(limitedContext.nodes).toHaveLength(1)
     expect(limitedContext.next).toHaveLength(1)
     expect(limitedContext.truncated).toMatchObject({ nodes: 119, next: 4 })
     const listedSpaces = jsonOutput(
       await terminalCommand(
-        page,
+        worker,
         shell,
         'opencove space list --fields id,name,directoryPath,boundary,nodeIds,nodeCount,projectId,nodes',
         'SPACES',
       ),
     )
-    const gotSpace = jsonOutput(await terminalCommand(page, shell, spaceComparisonCommand, 'SPACE'))
+    const gotSpace = jsonOutput(
+      await terminalCommand(worker, shell, spaceComparisonCommand, 'SPACE'),
+    )
     expect((listedSpaces.spaces as unknown[])[0]).toEqual(gotSpace.space)
   })
 })

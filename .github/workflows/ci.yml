@@ -66,6 +66,9 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Real Worker and built CLI contracts
+        run: pnpm test:contract:worker-cli
+
       - name: Upload coverage artifact
         if: github.event_name == 'push' && always()
         continue-on-error: true
@@ -231,6 +234,36 @@ jobs:
         run: |
           if [ -n "${RUNNER_TEMP:-}" ]; then rm -rf "${RUNNER_TEMP}/opencove-web-canvas" || true; fi
           rm -rf "/tmp/opencove-web-canvas" || true
+
+  worker-cli-macos:
+    name: Worker CLI contracts (macOS)
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.6.0
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm build
+      - name: Real Worker and built CLI contracts
+        run: pnpm test:contract:worker-cli
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: worker-cli-macos
+          path: test-results/worker-cli/
+          retention-days: 7
 
   ci-macos:
     strategy:

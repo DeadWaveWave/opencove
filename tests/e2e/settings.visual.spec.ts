@@ -400,6 +400,7 @@ test.describe('Settings visual shell', () => {
       await window.keyboard.press('Escape')
 
       await expect(dialog).toBeHidden()
+      await expect(dialog).toHaveCount(0)
       await expect(window.locator('.workspace-main')).toHaveJSProperty('inert', false)
       await expect(settingsTrigger).toBeFocused()
     } finally {

@@ -2,36 +2,6 @@ import { expect, test } from '@playwright/test'
 import { launchApp, selectCoveOption } from './workspace-canvas.helpers'
 
 test.describe('Settings', () => {
-  test('opens settings as a non-modal page with keyboard return to the canvas', async ({
-    browserName: _browserName,
-  }, testInfo) => {
-    const { electronApp, window } = await launchApp()
-
-    try {
-      const settingsButton = window.locator('[data-testid="app-header-settings"]')
-      await settingsButton.click()
-
-      const dialog = window.getByTestId('settings-panel')
-      await expect(dialog).toBeVisible()
-      await expect(dialog).not.toHaveAttribute('aria-modal')
-      await expect(window.locator('.app-shell')).toHaveJSProperty('inert', false)
-      await expect(window.locator('[data-testid="settings-panel-search"]')).toBeFocused()
-
-      const screenshotPath = testInfo.outputPath('settings-page-dark.png')
-      await window.screenshot({ path: screenshotPath })
-      await testInfo.attach('settings-page-dark', {
-        path: screenshotPath,
-        contentType: 'image/png',
-      })
-
-      await window.keyboard.press('Escape')
-      await expect(dialog).toHaveCount(0)
-      await expect(settingsButton).toBeFocused()
-    } finally {
-      await electronApp.close()
-    }
-  })
-
   test('persists agent provider and list-based custom model options', async ({
     browserName,
   }, testInfo) => {
