@@ -115,7 +115,7 @@ export function WorkspaceCanvasView({
   arrangeAll,
   arrangeCanvas,
   arrangeInSpace,
-  openTaskCreator,
+  createTaskFromContextMenu,
   openRoleCreator,
   openAgentLauncher,
   openAgentLauncherForProvider,
@@ -138,14 +138,9 @@ export function WorkspaceCanvasView({
   isConvertSelectedNoteToTaskDisabled,
   convertSelectedNoteToTask,
   setSelectedNodeLabelColorOverride,
-  taskCreator,
   taskTitleProviderLabel,
   taskTitleModelLabel,
   taskTagOptions,
-  setTaskCreator,
-  closeTaskCreator,
-  generateTaskTitle,
-  createTask,
   roleCreator,
   setRoleCreator,
   closeRoleCreator,
@@ -377,7 +372,7 @@ export function WorkspaceCanvasView({
         createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
         createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}
         createPluginNodeFromContextMenu={createPluginNodeFromContextMenu}
-        openTaskCreator={openTaskCreator}
+        createTaskFromContextMenu={createTaskFromContextMenu}
         openRoleCreator={openRoleCreator}
         openAgentLauncher={openAgentLauncher}
         openAgentLauncherForProvider={openAgentLauncherForProvider}
@@ -411,14 +406,9 @@ export function WorkspaceCanvasView({
         onChangePreserveWindowSizesOnArrange={onChangePreserveWindowSizesOnArrange}
       />
       <WorkspaceCanvasWindows
-        taskCreator={taskCreator}
         taskTitleProviderLabel={taskTitleProviderLabel}
         taskTitleModelLabel={taskTitleModelLabel}
         taskTagOptions={taskTagOptions}
-        setTaskCreator={setTaskCreator}
-        closeTaskCreator={closeTaskCreator}
-        generateTaskTitle={generateTaskTitle}
-        createTask={createTask}
         roleCreator={roleCreator}
         setRoleCreator={setRoleCreator}
         closeRoleCreator={closeRoleCreator}

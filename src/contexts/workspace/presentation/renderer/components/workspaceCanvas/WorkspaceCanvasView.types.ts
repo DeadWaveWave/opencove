@@ -24,7 +24,6 @@ import type {
   SpaceTargetMountPickerState,
   SpaceWorktreeOperationPhase,
   SpaceWorktreeOperationState,
-  TaskCreatorState,
   TaskEditorState,
   RoleCreatorState,
   WorkspaceCanvasQuickPreviewState,
@@ -145,7 +144,7 @@ export interface WorkspaceCanvasViewProps {
   arrangeAll: (style?: WorkspaceArrangeStyle) => void
   arrangeCanvas: (style?: WorkspaceArrangeStyle) => void
   arrangeInSpace: (spaceId: string, style?: WorkspaceArrangeStyle) => void
-  openTaskCreator: () => void
+  createTaskFromContextMenu: () => void
   openRoleCreator: () => void
   openAgentLauncher: () => void
   openAgentLauncherForProvider: (provider: AgentNodeData['provider']) => void
@@ -173,14 +172,9 @@ export interface WorkspaceCanvasViewProps {
   isConvertSelectedNoteToTaskDisabled: boolean
   convertSelectedNoteToTask: () => void
   setSelectedNodeLabelColorOverride: (labelColorOverride: NodeLabelColorOverride) => void
-  taskCreator: TaskCreatorState | null
   taskTitleProviderLabel: string
   taskTitleModelLabel: string
   taskTagOptions: string[]
-  setTaskCreator: React.Dispatch<React.SetStateAction<TaskCreatorState | null>>
-  closeTaskCreator: () => void
-  generateTaskTitle: () => Promise<void>
-  createTask: () => Promise<void>
   roleCreator: RoleCreatorState | null
   setRoleCreator: React.Dispatch<React.SetStateAction<RoleCreatorState | null>>
   closeRoleCreator: () => void

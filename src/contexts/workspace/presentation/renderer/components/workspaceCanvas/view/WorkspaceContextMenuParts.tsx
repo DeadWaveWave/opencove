@@ -34,7 +34,7 @@ export function WorkspaceContextPaneMenuContent({
   createWebsiteNodeFromContextMenu,
   createPluginNodeFromContextMenu,
   websiteWindowsEnabled,
-  openTaskCreator,
+  createTaskFromContextMenu,
   roleButtonRef,
   openProjectRolesSubmenu,
   isProjectRolesSubmenuOpen,
@@ -68,7 +68,7 @@ export function WorkspaceContextPaneMenuContent({
   createWebsiteNodeFromContextMenu: () => void
   createPluginNodeFromContextMenu: (pluginId: string) => void
   websiteWindowsEnabled: boolean
-  openTaskCreator: () => void
+  createTaskFromContextMenu: () => void
   roleButtonRef: React.RefObject<HTMLButtonElement | null>
   openProjectRolesSubmenu: () => void
   isProjectRolesSubmenuOpen: boolean
@@ -141,7 +141,7 @@ export function WorkspaceContextPaneMenuContent({
       <MenuItem
         icon={<TaskIcon />}
         data-testid="workspace-context-new-task"
-        onClick={openTaskCreator}
+        onClick={createTaskFromContextMenu}
       >
         {t('workspaceContextMenu.newTask')}
       </MenuItem>

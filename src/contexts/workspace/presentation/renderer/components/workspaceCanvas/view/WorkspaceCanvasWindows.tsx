@@ -5,18 +5,12 @@ import { SpaceWorktreeMismatchDropWarningWindow } from '../windows/SpaceWorktree
 import { SpaceTargetMountPickerWindow } from '../windows/SpaceTargetMountPickerWindow'
 import { SpaceWorktreeWindow } from '../windows/SpaceWorktreeWindow'
 import { RoleCreatorWindow } from '../windows/RoleCreatorWindow'
-import { TaskCreatorWindow } from '../windows/TaskCreatorWindow'
 import { TaskEditorWindow } from '../windows/TaskEditorWindow'
 
 export function WorkspaceCanvasWindows({
-  taskCreator,
   taskTitleProviderLabel,
   taskTitleModelLabel,
   taskTagOptions,
-  setTaskCreator,
-  closeTaskCreator,
-  generateTaskTitle,
-  createTask,
   roleCreator,
   setRoleCreator,
   closeRoleCreator,
@@ -51,14 +45,9 @@ export function WorkspaceCanvasWindows({
   closeNodesById,
 }: Pick<
   WorkspaceCanvasViewProps,
-  | 'taskCreator'
   | 'taskTitleProviderLabel'
   | 'taskTitleModelLabel'
   | 'taskTagOptions'
-  | 'setTaskCreator'
-  | 'closeTaskCreator'
-  | 'generateTaskTitle'
-  | 'createTask'
   | 'roleCreator'
   | 'setRoleCreator'
   | 'closeRoleCreator'
@@ -94,17 +83,6 @@ export function WorkspaceCanvasWindows({
 >): React.JSX.Element {
   return (
     <>
-      <TaskCreatorWindow
-        taskCreator={taskCreator}
-        taskTitleProviderLabel={taskTitleProviderLabel}
-        taskTitleModelLabel={taskTitleModelLabel}
-        taskTagOptions={taskTagOptions}
-        setTaskCreator={setTaskCreator}
-        closeTaskCreator={closeTaskCreator}
-        generateTaskTitle={generateTaskTitle}
-        createTask={createTask}
-      />
-
       <RoleCreatorWindow
         roleCreator={roleCreator}
         setRoleCreator={setRoleCreator}

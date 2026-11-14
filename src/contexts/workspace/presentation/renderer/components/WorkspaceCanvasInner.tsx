@@ -423,7 +423,7 @@ export function WorkspaceCanvasInner({
         arrangeAll={arrangeAll}
         arrangeCanvas={arrangeCanvas}
         arrangeInSpace={arrangeInSpace}
-        openTaskCreator={taskUi.openTaskCreator}
+        createTaskFromContextMenu={taskUi.createTaskFromContextMenu}
         openAgentLauncher={agentSupport.openAgentLauncher}
         openAgentLauncherForProvider={agentSupport.openAgentLauncherForProvider}
         runQuickCommand={runQuickCommand}
@@ -443,14 +443,9 @@ export function WorkspaceCanvasInner({
         setSelectedNodeLabelColorOverride={override =>
           nodeStore.setNodeLabelColorOverride(canvasState.selectedNodeIds, override)
         }
-        taskCreator={taskUi.taskCreator}
         taskTitleProviderLabel={taskTitleProviderLabel}
         taskTitleModelLabel={taskTitleModelLabel}
         taskTagOptions={taskUi.taskTagOptions}
-        setTaskCreator={taskUi.setTaskCreator}
-        closeTaskCreator={taskUi.closeTaskCreator}
-        generateTaskTitle={taskUi.generateTaskTitle}
-        createTask={taskUi.createTask}
         taskEditor={taskUi.taskEditor}
         setTaskEditor={taskUi.setTaskEditor}
         closeTaskEditor={taskUi.closeTaskEditor}

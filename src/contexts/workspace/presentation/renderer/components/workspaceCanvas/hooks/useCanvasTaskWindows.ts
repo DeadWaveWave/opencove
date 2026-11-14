@@ -4,7 +4,7 @@ import type { Point, TaskPriority, TerminalNodeData, WorkspaceSpaceState } from 
 import type { NodePlacementOptions } from '../types'
 import type { WorkspaceCanvasActionRefs } from './useActionRefs'
 import { useWorkspaceCanvasNodeDeleteConfirmation } from './useNodeDeleteConfirmation'
-import { useWorkspaceCanvasTaskCreator } from './useTaskCreator'
+import { useWorkspaceCanvasTaskNodeCreation } from './useTaskNodeCreation'
 import { useWorkspaceCanvasTaskEditor } from './useTaskEditor'
 
 type SetNodes = (
@@ -49,23 +49,13 @@ export function useWorkspaceCanvasTaskWindows({
   closeNode: (nodeId: string) => Promise<void>
   actionRefs: WorkspaceCanvasActionRefs
 }) {
-  const {
-    taskCreator,
-    setTaskCreator,
-    createTaskAtPoint,
-    openTaskCreator,
-    closeTaskCreator,
-    generateTaskTitle,
-    createTask,
-  } = useWorkspaceCanvasTaskCreator({
+  const { createTaskAtPoint, createTaskFromContextMenu } = useWorkspaceCanvasTaskNodeCreation({
     workspaceId,
-    taskTagOptions,
     nodesRef,
     setNodes,
     spacesRef,
     onSpacesChange,
     onRequestPersistFlush,
-    suggestTaskTitle,
     standardWindowSizeBucket,
     createTaskNode,
   })
@@ -89,13 +79,8 @@ export function useWorkspaceCanvasTaskWindows({
     })
 
   return {
-    taskCreator,
-    setTaskCreator,
     createTaskAtPoint,
-    openTaskCreator,
-    closeTaskCreator,
-    generateTaskTitle,
-    createTask,
+    createTaskFromContextMenu,
     taskEditor,
     setTaskEditor,
     closeTaskEditor,

@@ -30,7 +30,7 @@ export function WorkspaceContextMenu({
   createWebsiteNodeFromContextMenu,
   createPluginNodeFromContextMenu,
   websiteWindowsEnabled,
-  openTaskCreator,
+  createTaskFromContextMenu,
   openRoleCreator,
   openAgentLauncher,
   agentProviderOrder,
@@ -379,7 +379,7 @@ export function WorkspaceContextMenu({
             createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}
             createPluginNodeFromContextMenu={createPluginNodeFromContextMenu}
             websiteWindowsEnabled={websiteWindowsEnabled}
-            openTaskCreator={openTaskCreator}
+            createTaskFromContextMenu={createTaskFromContextMenu}
             roleButtonRef={roleButtonRef}
             openProjectRolesSubmenu={openProjectRolesSubmenu}
             isProjectRolesSubmenuOpen={openSubmenu === 'project-roles'}

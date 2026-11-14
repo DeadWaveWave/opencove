@@ -114,15 +114,6 @@ vi.mock(
 )
 
 vi.mock(
-  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/windows/TaskCreatorWindow',
-  () => {
-    return {
-      TaskCreatorWindow: () => null,
-    }
-  },
-)
-
-vi.mock(
   '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/windows/TaskEditorWindow',
   () => {
     return {
@@ -217,21 +208,16 @@ function createBaseProps(
     arrangeAll: () => undefined,
     arrangeCanvas: () => undefined,
     arrangeInSpace: () => undefined,
-    openTaskCreator: () => undefined,
+    createTaskFromContextMenu: () => undefined,
     openAgentLauncher: () => undefined,
     createSpaceFromSelectedNodes: () => undefined,
     clearNodeSelection: () => undefined,
     canConvertSelectedNoteToTask: false,
     isConvertSelectedNoteToTaskDisabled: false,
     convertSelectedNoteToTask: () => undefined,
-    taskCreator: null,
     taskTitleProviderLabel: '',
     taskTitleModelLabel: '',
     taskTagOptions: [],
-    setTaskCreator: () => undefined,
-    closeTaskCreator: () => undefined,
-    generateTaskTitle: async () => undefined,
-    createTask: async () => undefined,
     taskEditor: null,
     setTaskEditor: () => undefined,
     closeTaskEditor: () => undefined,
