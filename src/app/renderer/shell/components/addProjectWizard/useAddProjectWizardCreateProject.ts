@@ -171,7 +171,7 @@ export function useAddProjectWizardCreateProject(options: {
         })
 
         const store = useAppStore.getState()
-        store.setWorkspaces(prev => [...prev, nextWorkspace])
+        store.addWorkspace(nextWorkspace)
         store.setActiveWorkspaceId(nextWorkspace.id)
         store.setFocusRequest(null)
 

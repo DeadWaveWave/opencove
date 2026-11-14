@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { render, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
-import type { WorkspaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 
 const { readPersistedStateWithMeta } = vi.hoisted(() => ({
@@ -36,14 +35,12 @@ describe('useHydrateAppState recovery notice', () => {
 
     function Harness() {
       const [_agentSettings, setAgentSettings] = useState(DEFAULT_AGENT_SETTINGS)
-      const [_workspaces, setWorkspaces] = useState<WorkspaceState[]>([])
-      const [_activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null)
+      const _workspaces = useAppStore(state => state.workspaces)
+      const _activeWorkspaceId = useAppStore(state => state.activeWorkspaceId)
 
       const { isHydrated } = useHydrateAppState({
         activeWorkspaceId: _activeWorkspaceId,
         setAgentSettings,
-        setWorkspaces,
-        setActiveWorkspaceId,
       })
 
       return <div data-testid="hydrated">{String(isHydrated)}</div>

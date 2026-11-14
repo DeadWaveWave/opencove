@@ -21,11 +21,10 @@ export async function removeWorkspace(workspaceId: string): Promise<void> {
 
     await Promise.allSettled(targetWorkspace.nodes.map(node => killUnownedNodeRuntime(node)))
 
-    const nextWorkspaces = store.workspaces.filter(workspace => workspace.id !== workspaceId)
+    const nextWorkspaces = store.removeWorkspaceFromList(workspaceId)
     if (nextWorkspaces.length === 0) {
       allowNextEmptyWorkspacePersistedStateWrite()
     }
-    store.setWorkspaces(nextWorkspaces)
     store.setActiveWorkspaceId(currentActiveId =>
       currentActiveId === workspaceId ? (nextWorkspaces[0]?.id ?? null) : currentActiveId,
     )

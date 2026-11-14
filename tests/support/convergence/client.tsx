@@ -218,28 +218,29 @@ export class Client {
         const field = action === 'rename' ? 'name' : 'title',
           next = `user-${this.server.model.intents.length}`
         this.server.model.edit(field, next)
-        useAppStore.getState().setWorkspaces(ws =>
-          ws.map(w =>
-            action === 'rename'
-              ? { ...w, name: next }
-              : {
-                  ...w,
-                  nodes: w.nodes.map(n =>
-                    n.id === 'agent'
-                      ? {
-                          ...n,
-                          data: {
-                            ...n.data,
-                            title: next,
-                            titlePinnedByUser: true,
-                            titleIsLiteral: true,
-                          },
-                        }
-                      : n,
-                  ),
-                },
-          ),
-        )
+        useAppStore.setState(state => ({
+          workspaces: (ws =>
+            ws.map(w =>
+              action === 'rename'
+                ? { ...w, name: next }
+                : {
+                    ...w,
+                    nodes: w.nodes.map(n =>
+                      n.id === 'agent'
+                        ? {
+                            ...n,
+                            data: {
+                              ...n.data,
+                              title: next,
+                              titlePinnedByUser: true,
+                              titleIsLiteral: true,
+                            },
+                          }
+                        : n,
+                    ),
+                  },
+            ))(state.workspaces),
+        }))
       } else if (action === 'collapse') {
         this.server.model.edit('collapsed', true)
         useCanvasCollapseStore.getState().update('project', s => ({
@@ -384,12 +385,13 @@ export class Client {
           schedulePersistedStateWrite(this.state, { delayMs: 10000 })
         }
         if (projected) {
-          useAppStore.getState().setWorkspaces(ws =>
-            ws.map(w => ({
-              ...w,
-              nodes: w.nodes.map(n => (n.id === 'agent' ? { ...n, data: projected } : n)),
-            })),
-          )
+          useAppStore.setState(state => ({
+            workspaces: (ws =>
+              ws.map(w => ({
+                ...w,
+                nodes: w.nodes.map(n => (n.id === 'agent' ? { ...n, data: projected } : n)),
+              })))(state.workspaces),
+          }))
         }
       } else if (action === 'migration') {
         const legacy = this.state()

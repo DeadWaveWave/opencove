@@ -118,27 +118,29 @@ it.each(['edit', 'creation', 'deletion', 'renewal', 'settings'] as const)(
     acceptPersistedStateSnapshot({ state: base, revision, isPersisted: true })
     guardNodeFromSyncOverwrite(nodeId)
     if (scenario === 'edit' || scenario === 'renewal') {
-      useAppStore.getState().setWorkspaces(previous =>
-        previous.map(project => ({
-          ...project,
-          nodes: project.nodes.map(node =>
-            node.id === nodeId
-              ? { ...node, data: { ...node.data, note: { text: 'local text' } } }
-              : node,
-          ),
-        })),
-      )
+      useAppStore.setState(state => ({
+        workspaces: (previous =>
+          previous.map(project => ({
+            ...project,
+            nodes: project.nodes.map(node =>
+              node.id === nodeId
+                ? { ...node, data: { ...node.data, note: { text: 'local text' } } }
+                : node,
+            ),
+          })))(state.workspaces),
+      }))
     }
     if (scenario === 'creation') {
-      useAppStore.getState().setWorkspaces(previous =>
-        previous.map(project => ({
-          ...project,
-          nodes: [
-            ...project.nodes,
-            { ...project.nodes.find(node => node.id === nodeId)!, id: 'local-created' },
-          ],
-        })),
-      )
+      useAppStore.setState(state => ({
+        workspaces: (previous =>
+          previous.map(project => ({
+            ...project,
+            nodes: [
+              ...project.nodes,
+              { ...project.nodes.find(node => node.id === nodeId)!, id: 'local-created' },
+            ],
+          })))(state.workspaces),
+      }))
       guardNodeFromSyncOverwrite('local-created', 2500)
     }
     if (scenario === 'settings') {

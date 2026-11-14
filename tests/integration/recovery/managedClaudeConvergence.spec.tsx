@@ -82,12 +82,13 @@ it.each(['no events', 'event before response', 'edit during read'] as const)(
       value: { persistence: { readAppState: read, writeAppState: write } },
     })
     markPersistedStateAsSynced(base, 1)
-    useAppStore.getState().setWorkspaces(previous =>
-      previous.map(w => ({
-        ...w,
-        nodes: w.nodes.map(n => ({ ...n, position: { x: 90, y: 10 } })),
-      })),
-    )
+    useAppStore.setState(state => ({
+      workspaces: (previous =>
+        previous.map(w => ({
+          ...w,
+          nodes: w.nodes.map(n => ({ ...n, position: { x: 90, y: 10 } })),
+        })))(state.workspaces),
+    }))
     const request = writePersistedState(produce())
     if (ordering === 'event before response') {
       markPersistedStateAsSynced(canonical, 3)
@@ -103,12 +104,13 @@ it.each(['no events', 'event before response', 'edit during read'] as const)(
       if (ordering === 'edit during read') {
         await waitFor(() => expect(read).toHaveBeenCalled())
         act(() =>
-          useAppStore.getState().setWorkspaces(previous =>
-            previous.map(w => ({
-              ...w,
-              nodes: w.nodes.map(n => ({ ...n, position: { x: 120, y: 20 } })),
-            })),
-          ),
+          useAppStore.setState(state => ({
+            workspaces: (previous =>
+              previous.map(w => ({
+                ...w,
+                nodes: w.nodes.map(n => ({ ...n, position: { x: 120, y: 20 } })),
+              })))(state.workspaces),
+          })),
         )
         finish()
       }

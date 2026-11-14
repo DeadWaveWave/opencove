@@ -86,20 +86,21 @@ it.each(['before', 'during', 'during-with-ack', 'after-unmount'] as const)(
     })
     const hook = renderHook(() => useWorkerSyncStateUpdates({ enabled: true }))
     const edit = () => {
-      useAppStore.getState().setWorkspaces(previous =>
-        previous.map(project => ({
-          ...project,
-          name: `Local edit ${timing}`,
-          nodes: project.nodes.map(node =>
-            node.data.task
-              ? {
-                  ...node,
-                  data: { ...node.data, task: { ...node.data.task, linkedAgentNodeId: 'agent' } },
-                }
-              : node,
-          ),
-        })),
-      )
+      useAppStore.setState(state => ({
+        workspaces: (previous =>
+          previous.map(project => ({
+            ...project,
+            name: `Local edit ${timing}`,
+            nodes: project.nodes.map(node =>
+              node.data.task
+                ? {
+                    ...node,
+                    data: { ...node.data, task: { ...node.data.task, linkedAgentNodeId: 'agent' } },
+                  }
+                : node,
+            ),
+          })))(state.workspaces),
+      }))
       schedulePersistedStateWrite(produce, { delayMs: 10_000 })
     }
     try {
@@ -137,7 +138,7 @@ it.each(['before', 'during', 'during-with-ack', 'after-unmount'] as const)(
         hook.unmount()
         // An ignored stale read must not poison the write deduplication cache:
         // reverting the acknowledged edit still needs an actual durable write.
-        useAppStore.getState().setWorkspaces([workspace])
+        useAppStore.setState({ workspaces: [workspace] })
         schedulePersistedStateWrite(produce)
         await flushScheduledPersistedStateWriteAsync()
         expect(sharedState.workspaces[0]!.name).toBe('Original project')
@@ -188,15 +189,16 @@ it('applies external settings before acknowledging refresh and publishing geomet
       expect(useAppStore.getState().agentSettings.releaseNotesSeenVersion).toBe('external-review'),
     )
     await act(async () => {
-      useAppStore.getState().setWorkspaces(previous =>
-        previous.map(project => ({
-          ...project,
-          nodes: project.nodes.map(node => ({
-            ...node,
-            position: { ...node.position, x: node.position.x + 10 },
-          })),
-        })),
-      )
+      useAppStore.setState(state => ({
+        workspaces: (previous =>
+          previous.map(project => ({
+            ...project,
+            nodes: project.nodes.map(node => ({
+              ...node,
+              position: { ...node.position, x: node.position.x + 10 },
+            })),
+          })))(state.workspaces),
+      }))
       schedulePersistedStateWrite(produce)
       expect(await flushScheduledPersistedStateWriteAsync()).toBe(true)
     })

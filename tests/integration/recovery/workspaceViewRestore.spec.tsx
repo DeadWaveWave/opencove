@@ -98,12 +98,10 @@ function view(state: PersistedAppState) {
   }
 }
 function useColdClient() {
-  const { activeWorkspaceId, setAgentSettings, setWorkspaces, setActiveWorkspaceId } = useAppStore()
+  const { activeWorkspaceId, setAgentSettings } = useAppStore()
   const hydration = useHydrateAppState({
     activeWorkspaceId,
     setAgentSettings,
-    setWorkspaces,
-    setActiveWorkspaceId,
   })
   useWorkerSyncStateUpdates({ enabled: hydration.isHydrated })
   return hydration

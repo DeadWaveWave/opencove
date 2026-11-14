@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
-import type { WorkspaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void
@@ -21,14 +21,12 @@ function createHarness(
 ) {
   return function Harness() {
     const [_agentSettings, setAgentSettings] = useState(DEFAULT_AGENT_SETTINGS)
-    const [workspaces, setWorkspaces] = useState<WorkspaceState[]>([])
-    const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null)
+    const workspaces = useAppStore(state => state.workspaces)
+    const activeWorkspaceId = useAppStore(state => state.activeWorkspaceId)
 
     const { isHydrated, isPersistReady } = useHydrateAppStateHook({
       activeWorkspaceId,
       setAgentSettings,
-      setWorkspaces,
-      setActiveWorkspaceId,
     })
 
     const activeWorkspace = workspaces.find(workspace => workspace.id === activeWorkspaceId) ?? null
@@ -64,6 +62,7 @@ function createHarness(
 
 beforeEach(() => {
   vi.restoreAllMocks()
+  useAppStore.setState(useAppStore.getInitialState(), true)
 })
 
 describe('useHydrateAppState durable scrollback ownership', () => {

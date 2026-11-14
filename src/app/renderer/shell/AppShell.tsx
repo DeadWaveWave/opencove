@@ -58,8 +58,6 @@ export default function App(): React.JSX.Element {
     isSettingsOpen,
     settingsOpenPageId,
     focusRequest,
-    setWorkspaces,
-    setActiveWorkspaceId,
     setProjectContextMenu,
     setProjectMountManager,
     setProjectDeleteConfirmation,
@@ -69,8 +67,6 @@ export default function App(): React.JSX.Element {
   const { isPersistReady } = useHydrateAppState({
     activeWorkspaceId,
     setAgentSettings,
-    setWorkspaces,
-    setActiveWorkspaceId,
   })
 
   const { providerModelCatalog } = useProviderModelCatalog({

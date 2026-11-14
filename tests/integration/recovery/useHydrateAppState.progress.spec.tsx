@@ -1,8 +1,7 @@
 import React, { useState } from 'react'
 import { act, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
-import type { WorkspaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 import type {
   PrepareOrReviveSessionResult,
   PreparedRuntimeNodeResult,
@@ -16,6 +15,11 @@ import {
 } from '../../../src/app/renderer/shell/hooks/useHydrateAppState.helpers'
 import { installMockStorage } from '../../support/persistenceTestStorage'
 import { toShellWorkspaceStateForSync } from '../../../src/app/renderer/shell/hooks/workerSync/mergeWorkspaceStateForSync'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
+
+beforeEach(() => {
+  useAppStore.setState(useAppStore.getInitialState(), true)
+})
 
 function fixture() {
   return ensurePersistedWorkspace({
@@ -187,13 +191,11 @@ describe('runtime hydration progress and durable bindings', () => {
       await import('../../../src/app/renderer/shell/hooks/useHydrateAppState')
     function Harness() {
       const [settings, setAgentSettings] = useState(DEFAULT_AGENT_SETTINGS)
-      const [workspaces, setWorkspaces] = useState<WorkspaceState[]>([])
-      const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null)
+      const workspaces = useAppStore(state => state.workspaces)
+      const activeWorkspaceId = useAppStore(state => state.activeWorkspaceId)
       const { isHydrated } = useHydrateAppState({
         activeWorkspaceId,
         setAgentSettings,
-        setWorkspaces,
-        setActiveWorkspaceId,
       })
       return (
         <>

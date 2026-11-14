@@ -185,6 +185,104 @@ export function replaceFromSync(next: WorkspaceDocumentStoreState): void {
   })
 }
 
+/**
+ * Startup hydration installs the persisted list, then the active workspace, as two writes in
+ * that order: listeners that read both fields see the same intermediate state as before.
+ */
+export function hydrateWorkspaceList(initial: WorkspaceDocumentStoreState): void {
+  if (isRecipeRunning) {
+    throw new Error('workspace document command ran inside a recipe')
+  }
+  const store = requireStore()
+  store.setState({ workspaces: initial.workspaces })
+  // The list as the store holds it now: a listener may have written to it during the first
+  // notification, and this write must change only the active workspace.
+  store.setState({
+    workspaces: store.getState().workspaces,
+    activeWorkspaceId: initial.activeWorkspaceId,
+  })
+}
+
+// Spaces are not reconciled here, so a merge that added or dropped a node would leave them stale.
+function assertSameNodeIds(
+  previous: readonly Node<TerminalNodeData>[],
+  next: readonly Node<TerminalNodeData>[],
+): void {
+  if (
+    previous.length !== next.length ||
+    previous.some((node, index) => node.id !== next[index].id)
+  ) {
+    throw new Error('hydration merges may only change existing nodes')
+  }
+}
+
+/**
+ * Merges hydrated runtime data into the nodes of one workspace, computed from the store as it is
+ * now. Hydration never adds or removes nodes, so Spaces are not reconciled: a Space keeps its
+ * identity. A recipe that returns the same array writes nothing.
+ */
+export function mergeHydratedNodes(
+  workspaceId: string,
+  recipe: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
+): WorkspaceDocumentCommandResult {
+  if (isRecipeRunning) {
+    throw new Error('workspace document command ran inside a recipe')
+  }
+  const store = requireStore()
+  const state = store.getState()
+  const index = state.workspaces.findIndex(candidate => candidate.id === workspaceId)
+  if (index < 0) {
+    return { status: 'missing' }
+  }
+
+  const workspace = state.workspaces[index]
+  let nodes: Node<TerminalNodeData>[]
+  isRecipeRunning = true
+  try {
+    nodes = recipe(workspace.nodes)
+  } finally {
+    isRecipeRunning = false
+  }
+  if (nodes === workspace.nodes) {
+    return { status: 'unchanged', document: toWorkspaceDocument(workspace) }
+  }
+  if (import.meta.env.DEV) {
+    assertSameNodeIds(workspace.nodes, nodes)
+  }
+
+  const next = { ...workspace, nodes }
+  const workspaces = [...state.workspaces]
+  workspaces[index] = next
+  store.setState({ workspaces })
+  return { status: 'applied', document: toWorkspaceDocument(next) }
+}
+
+/**
+ * Mount repair resolves the Space mounts of several workspaces asynchronously and applies them
+ * together in one write, onto the workspaces as the store holds them now. The caller requests the
+ * persistence flush afterwards.
+ */
+export function repairWorkspaceSpaces(
+  repairedSpacesByWorkspaceId: ReadonlyMap<string, WorkspaceSpaceState[]>,
+): void {
+  if (isRecipeRunning) {
+    throw new Error('workspace document command ran inside a recipe')
+  }
+  const store = requireStore()
+  let didRepair = false
+  const workspaces = store.getState().workspaces.map(workspace => {
+    const spaces = repairedSpacesByWorkspaceId.get(workspace.id)
+    if (!spaces) {
+      return workspace
+    }
+    didRepair = true
+    return { ...workspace, spaces }
+  })
+  if (didRepair) {
+    store.setState({ workspaces })
+  }
+}
+
 export function replaceWorkspaceNodes(
   workspaceId: string,
   nodes: Node<TerminalNodeData>[],

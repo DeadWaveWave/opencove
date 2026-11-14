@@ -57,16 +57,18 @@ describe('workspace document commands: lost update between runtime geometry and 
 
     act(() => {
       // Runtime observation (PTY geometry) lands in the app store, as onGeometry does.
-      useAppStore.getState().setWorkspaces(previous => {
-        const result = updateWorkspacesWithTerminalGeometry({
-          workspaces: previous,
-          sessionId: 'session-1',
-          cols: 120,
-          rows: 40,
-        })
-        expect(result.didChange).toBe(true)
-        return result.nextWorkspaces
-      })
+      useAppStore.setState(state => ({
+        workspaces: (previous => {
+          const result = updateWorkspacesWithTerminalGeometry({
+            workspaces: previous,
+            sessionId: 'session-1',
+            cols: 120,
+            rows: 40,
+          })
+          expect(result.didChange).toBe(true)
+          return result.nextWorkspaces
+        })(state.workspaces),
+      }))
       // Same act, no re-render yet: the user renames the terminal through the canvas node store.
       view.result.current.renameTerminalTitle('terminal-1', 'Renamed')
     })

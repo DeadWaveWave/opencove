@@ -57,18 +57,9 @@ function views(state: PersistedAppState) {
   }
 }
 function useClient() {
-  const {
-    workspaces,
-    activeWorkspaceId,
-    agentSettings,
-    setWorkspaces,
-    setActiveWorkspaceId,
-    setAgentSettings,
-  } = useAppStore()
+  const { workspaces, activeWorkspaceId, agentSettings, setAgentSettings } = useAppStore()
   const hydration = useHydrateAppState({
     activeWorkspaceId,
-    setWorkspaces,
-    setActiveWorkspaceId,
     setAgentSettings,
   })
   const persistence = usePersistedAppState({
@@ -142,11 +133,12 @@ it('keeps captured local views through owned identity rejection, quit repair and
   const expected = views(produce())
   t.server.response = 'identity'
   await act(async () => {
-    useAppStore
-      .getState()
-      .setWorkspaces(ws =>
-        ws.map(w => (w.id === 'project' ? { ...w, name: 'Legitimate rename' } : w)),
-      )
+    useAppStore.setState(state => ({
+      workspaces: (ws =>
+        ws.map(w => (w.id === 'project' ? { ...w, name: 'Legitimate rename' } : w)))(
+        state.workspaces,
+      ),
+    }))
   })
   await act(async () => {
     client.result.current.flushPersistNow()

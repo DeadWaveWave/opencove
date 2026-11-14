@@ -146,12 +146,13 @@ function commitB(server: Server) {
   server.model.history.set(++server.model.revision, { ...server.model.value })
 }
 function move(x = 120, y = 80) {
-  useAppStore.getState().setWorkspaces(ws =>
-    ws.map(w => ({
-      ...w,
-      nodes: w.nodes.map(n => (n.id === 'agent' ? { ...n, position: { x, y } } : n)),
-    })),
-  )
+  useAppStore.setState(state => ({
+    workspaces: (ws =>
+      ws.map(w => ({
+        ...w,
+        nodes: w.nodes.map(n => (n.id === 'agent' ? { ...n, position: { x, y } } : n)),
+      })))(state.workspaces),
+  }))
 }
 it.each([false, true])(
   'publishes stale A layout through real hydration/autosave and the Browser adapter with cas=%s',
