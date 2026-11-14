@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { pathToFileURL } from 'node:url'
-import type { APIRequestContext, Page } from '@playwright/test'
+import type { APIRequestContext, Locator, Page } from '@playwright/test'
 
 export function requireEnv(name: string): string {
   const value = process.env[name]
@@ -123,6 +123,7 @@ export function buildAppState(options: {
     directoryPath: string
     nodeIds: string[]
     rect: { x: number; y: number; width: number; height: number } | null
+    pinned?: boolean
   }>
   nodes?: SeedNode[]
   settings?: Record<string, unknown>
@@ -174,6 +175,8 @@ export function buildAppState(options: {
         spaceArchiveRecords: [],
         spaces: options.spaces.map(space => ({
           ...space,
+          // Existing canvas E2E cases predate opt-in space pills.
+          pinned: space.pinned ?? true,
           labelColor: null,
         })),
         activeSpaceId: options.spaces[0]?.id ?? null,
@@ -241,4 +244,9 @@ export async function readTextFile(filePath: string): Promise<string> {
 
 export async function writeTextFile(filePath: string, content: string): Promise<void> {
   await writeFile(filePath, content, 'utf8')
+}
+
+/** Agent and terminal output, read from the test transcript mirror (renderer-independent). */
+export function terminalTranscript(node: Locator): Locator {
+  return node.locator('.terminal-node__transcript')
 }

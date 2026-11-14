@@ -58,6 +58,8 @@ async function startWorker(options) {
       env: {
         ...process.env,
         ELECTRON_RUN_AS_NODE: '1',
+        // The stub agent must run under real Node, not the Electron binary (fails as root).
+        OPENCOVE_TEST_NODE_EXECUTABLE: process.execPath,
       },
       shell: process.platform === 'win32',
       stdio: ['ignore', 'pipe', 'pipe'],
