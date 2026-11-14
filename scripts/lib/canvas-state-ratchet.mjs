@@ -226,39 +226,3 @@ export function formatCanvasStateIssues(issues) {
 export function serializeCanvasStateRatchet(counts) {
   return serializeRatchet(counts, CANVAS_STATE_RULES)
 }
-
-// The baseline may be rewritten freely except that no counter may gain occurrences in total. The
-// total is the gate, so code moved between files is allowed; `rises` lists every per-file rise
-// (including such moves) so that a reviewer sees them without reading the JSON diff.
-// `baseline` is `null` only when the file does not exist yet (first generation).
-export function planCanvasStateUpdate({ counts, baseline }) {
-  const refusals = []
-  if (baseline) {
-    for (const rule of CANVAS_STATE_RULES) {
-      const before = totalOf(baseline[rule])
-      const after = totalOf(counts[rule])
-      if (after > before) {
-        refusals.push({ rule, before, after })
-      }
-    }
-  }
-  const rises = baseline
-    ? compareRatchet({
-        counts,
-        baseline,
-        rules: CANVAS_STATE_RULES,
-        describe: () => '',
-      })
-        .filter(issue => issue.current > issue.baseline)
-        .map(({ file, rule, baseline: before, current }) => ({
-          file,
-          rule,
-          baseline: before,
-          current,
-        }))
-    : []
-  if (refusals.length > 0) {
-    return { ok: false, refusals, rises, serialized: null }
-  }
-  return { ok: true, refusals, rises, serialized: serializeCanvasStateRatchet(counts) }
-}

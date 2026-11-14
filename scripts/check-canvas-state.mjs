@@ -6,6 +6,8 @@
 //
 //   pnpm canvas:state-check     fails when any count differs from the baseline, up or down
 //   pnpm canvas:state-ratchet   rewrites the baseline, refusing when any counter's total would rise
+//                               or disappear against the merge base with origin/main, unless the
+//                               rule is named with --accept-rise <rule> (see DEVELOPMENT.md)
 //
 // The baseline path and the scanned roots are fixed here. Neither can be changed from the command
 // line, so a rise cannot be waved through by pointing the check at another file.
@@ -19,9 +21,10 @@ import {
   formatCanvasStateIssues,
   isCountedSourcePath,
   normalizeRepoPath,
-  planCanvasStateUpdate,
+  serializeCanvasStateRatchet,
   totalsOf,
 } from './lib/canvas-state-ratchet.mjs'
+import { guardRatchetUpdate, parseAcceptRises } from './lib/ratchet-git.mjs'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const DEFAULT_REPO_ROOT = resolve(SCRIPT_DIR, '..')
@@ -73,6 +76,7 @@ export function runCanvasStateCheck({
   stderr = process.stderr,
   stdout = null,
   updateRatchet = false,
+  acceptRises = [],
 } = {}) {
   const files = readCanvasStateFiles(repoRoot)
   if (files.length === 0) {
@@ -81,36 +85,26 @@ export function runCanvasStateCheck({
   }
   const counts = countCanvasState(files)
   const baselinePath = resolve(repoRoot, BASELINE_FILE)
-  const baseline = readBaseline(baselinePath)
-
   if (updateRatchet) {
-    const plan = planCanvasStateUpdate({ counts, baseline })
-    // Every per-file rise is listed, also when the totals allow the update: a rise next to a
-    // larger drop elsewhere is a move between files, and the reviewer should see it.
-    const riseLines = plan.rises.map(
-      ({ file, rule, baseline: before, current }) =>
-        `[canvas-state-ratchet] rise: ${file} [${rule}] ${before} -> ${current}\n`,
-    )
-    if (!plan.ok) {
-      stderr.write(riseLines.join(''))
-      for (const { rule, before, after } of plan.refusals) {
-        stderr.write(
-          `[canvas-state-ratchet] ${rule}: total would rise from ${before} to ${after}.\n`,
-        )
-      }
-      stderr.write(
-        'Refusing to grow the baseline. Remove the new refs, setters or workspace write mentions instead.\n',
-      )
+    const serialized = serializeCanvasStateRatchet(counts)
+    const guard = guardRatchetUpdate({
+      root: repoRoot,
+      path: BASELINE_FILE,
+      next: serialized,
+      acceptRises,
+      hint: 'Remove the new refs, setters or workspace write mentions instead.',
+      label: 'canvas-state-ratchet',
+    })
+    if (!guard.ok) {
+      stderr.write(guard.text)
       return 1
     }
-    if (riseLines.length > 0) {
-      stderr.write(riseLines.join(''))
-    }
-    writeFileSync(baselinePath, plan.serialized)
+    writeFileSync(baselinePath, serialized)
+    stdout?.write(guard.text)
     stdout?.write(`[canvas-state-ratchet] wrote ${BASELINE_FILE}: ${formatTotals(counts)}\n`)
     return 0
   }
-
+  const baseline = readBaseline(baselinePath)
   if (baseline === null) {
     stderr.write(`${LABEL} ${BASELINE_FILE} is missing. Run \`pnpm canvas:state-ratchet\`.\n`)
     return 1
@@ -128,17 +122,26 @@ export function runCanvasStateCheck({
 
 const invokedPath = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : null
 if (invokedPath === import.meta.url) {
-  const args = process.argv.slice(2)
-  const unknown = args.filter(arg => arg !== UPDATE_FLAG)
-  if (unknown.length > 0) {
-    process.stderr.write(
-      `${LABEL} unsupported argument(s): ${unknown.join(' ')}. Only ${UPDATE_FLAG} is accepted; the baseline path is fixed.\n`,
-    )
+  try {
+    const { rules, rest } = parseAcceptRises(process.argv.slice(2))
+    const unknown = rest.filter(arg => arg !== UPDATE_FLAG)
+    if (unknown.length > 0) {
+      process.stderr.write(
+        `${LABEL} unsupported argument(s): ${unknown.join(' ')}. Only ${UPDATE_FLAG} and --accept-rise <rule> are accepted; the baseline path is fixed.\n`,
+      )
+      process.exitCode = 2
+    } else if (rules.length > 0 && !rest.includes(UPDATE_FLAG)) {
+      process.stderr.write(`${LABEL} --accept-rise only applies together with ${UPDATE_FLAG}.\n`)
+      process.exitCode = 2
+    } else {
+      process.exitCode = runCanvasStateCheck({
+        stdout: process.stdout,
+        updateRatchet: rest.includes(UPDATE_FLAG),
+        acceptRises: rules,
+      })
+    }
+  } catch (error) {
+    process.stderr.write(`${LABEL} ${error.message}\n`)
     process.exitCode = 2
-  } else {
-    process.exitCode = runCanvasStateCheck({
-      stdout: process.stdout,
-      updateRatchet: args.includes(UPDATE_FLAG),
-    })
   }
 }

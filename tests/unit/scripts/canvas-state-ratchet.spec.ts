@@ -4,7 +4,6 @@ import {
   WORKSPACE_RENDERER_PREFIX,
   compareCanvasStateRatchet,
   countCanvasState,
-  planCanvasStateUpdate,
   serializeCanvasStateRatchet,
   blankNonCode,
 } from '../../../scripts/lib/canvas-state-ratchet.mjs'
@@ -245,40 +244,6 @@ describe('canvas state ratchet', () => {
     expect(issues).toHaveLength(1)
     expect(issues[0].message).toContain('pnpm canvas:state-ratchet')
     expect(compareCanvasStateRatchet(withRefType({}), baseline)).toHaveLength(1)
-  })
-
-  it('refuses to write a baseline whose total would rise, even when another file shrinks', () => {
-    const plan = planCanvasStateUpdate({
-      counts: withRefType({ 'src/a.ts': 2, 'src/b.ts': 2 }),
-      baseline,
-    })
-    expect(plan).toEqual({
-      ok: false,
-      refusals: [{ rule: 'ref-type', before: 3, after: 4 }],
-      rises: [{ file: 'src/b.ts', rule: 'ref-type', baseline: 0, current: 2 }],
-      serialized: null,
-    })
-  })
-
-  it('writes a lower or equal total, including a count moved between files', () => {
-    const lower = planCanvasStateUpdate({ counts: withRefType({ 'src/a.ts': 1 }), baseline })
-    expect(lower.ok).toBe(true)
-    expect(JSON.parse(lower.serialized!)['ref-type']).toEqual({ 'src/a.ts': 1 })
-
-    const moved = planCanvasStateUpdate({ counts: withRefType({ 'src/c.ts': 3 }), baseline })
-    expect(moved.ok).toBe(true)
-  })
-
-  it('treats a rule missing from an existing baseline as zero, and allows a first baseline', () => {
-    const partial = { 'ref-type': { 'src/a.ts': 3 } }
-    const plan = planCanvasStateUpdate({
-      counts: { ...baseline, 'setter-type': { 'src/a.ts': 1 } },
-      baseline: partial,
-    })
-    expect(plan.ok).toBe(false)
-    expect(
-      planCanvasStateUpdate({ counts: withRefType({ 'src/a.ts': 9 }), baseline: null }).ok,
-    ).toBe(true)
   })
 
   it('serializes sorted, without zero counts', () => {
