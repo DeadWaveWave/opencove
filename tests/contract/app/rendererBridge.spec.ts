@@ -90,7 +90,6 @@ describe('renderer bridge contract', () => {
       { __opencoveRendererBridge: 1, ok: true, value: 42 },
     ]) {
       const api = roundTrip({ controlSurface: { invoke: async () => value } })
-      // oxlint-disable-next-line no-await-in-loop -- each payload identity is verified before the next fixture
       expect(await api.controlSurface.invoke({} as never)).toBe(value)
     }
   })

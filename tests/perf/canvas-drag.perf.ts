@@ -29,7 +29,6 @@ test('continuous window drag with pixel wall, terminals and Space minimaps', asy
     await prepareDragScene(window, 100)
     const results = []
     for (let trial = 0; trial < 3; trial++) {
-      // eslint-disable-next-line no-await-in-loop -- separate, sequential timing trials.
       const result = await sampleContinuousDrag(window)
       results.push(result)
       // eslint-disable-next-line no-console -- retain the benchmark results in the run log.

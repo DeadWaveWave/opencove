@@ -98,7 +98,6 @@ describe('session grants', () => {
         { kind: 'session-grant', grant } as const,
       ]) {
         // Requests are sequential to observe authorization and revocation boundaries.
-        // eslint-disable-next-line no-await-in-loop
         const result = await surface.invoke(
           { ...ctx, requestAuth: auth },
           { kind: 'query', id: 'system.whoami', payload: {} },
@@ -127,7 +126,6 @@ describe('session grants', () => {
       for (const id of ['not.registered', 'worker.shutdown']) {
         expect(
           // Requests are sequential to observe authorization and revocation boundaries.
-          // eslint-disable-next-line no-await-in-loop
           await surface.invoke(
             { ...ctx, requestAuth: { kind: 'session-grant', grant } },
             { kind: 'query', id, payload: {} },

@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- OS lock acquisition uses sequential bounded backoff. */
 import Database from 'better-sqlite3'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'

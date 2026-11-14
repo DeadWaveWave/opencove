@@ -59,7 +59,6 @@ it.each(['agent', 'terminal'] as const)(
   async kind => {
     for (const title of [' Reviewer ', undefined, null, '   ']) {
       const f = fixture()
-      // eslint-disable-next-line no-await-in-loop
       await createNodeForNodeControl({
         ...f,
         now: new Date(),

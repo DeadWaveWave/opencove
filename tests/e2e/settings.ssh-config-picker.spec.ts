@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Theme and mode captures reuse one Electron window sequentially. */
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'

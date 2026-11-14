@@ -57,7 +57,6 @@ describe('Settings group hierarchy', () => {
       'experimental',
     ]
     // Each page observes the preceding panel navigation before checking its registered content.
-    /* eslint-disable no-await-in-loop */
     for (const page of pages) {
       const navTestId = `settings-section-nav-${page}`
       const nav = screen.getByTestId(navTestId)
@@ -73,7 +72,6 @@ describe('Settings group hierarchy', () => {
       // Includes every rendered primary control, without depending on jsdom geometry.
       expect(panel.querySelectorAll('.cove-button--primary'), navTestId).toHaveLength(0)
     }
-    /* eslint-enable no-await-in-loop */
   })
 
   it('uses named groups with separate headers and bodies for General settings', () => {

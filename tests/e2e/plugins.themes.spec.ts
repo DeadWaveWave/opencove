@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Theme changes and disclosure endpoints are ordered transactions. */
 import { expect, test } from '@playwright/test'
 import {
   createTestUserDataDir,

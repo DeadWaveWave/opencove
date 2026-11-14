@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Publication barriers and race rounds require sequential execution. */
 // Regression for external writes racing renderer publication.
 import { expect, test } from '@playwright/test'
 import { mkdir, mkdtemp, readFile } from 'node:fs/promises'

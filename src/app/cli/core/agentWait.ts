@@ -96,10 +96,7 @@ export async function waitForAgents(
           agents: z.array(agentRunSnapshotSchema),
           turnArchive: z.boolean().optional(),
         })
-        .parse(
-          // eslint-disable-next-line no-await-in-loop
-          await query('agent.list', {}),
-        )
+        .parse(await query('agent.list', {}))
       let cursor = { epoch: baseline.epoch, seq: baseline.seq }
       projection = new AgentWaitProjection(
         nodeIds,
@@ -112,9 +109,7 @@ export async function waitForAgents(
           ? undefined
           : new AgentWaitEvidence(options.turnId, query, baseline.turnArchive === true)
       // Only the Worker's binding-aware get resolves owners, including exited sessions.
-      // eslint-disable-next-line no-await-in-loop
       await projection.initialize(get)
-      // eslint-disable-next-line no-await-in-loop
       projection.reconciliation.defer(await watermark())
       const evaluate = async (
         event?: AgentRunEvent,
@@ -148,11 +143,9 @@ export async function waitForAgents(
         }
         return 'pending'
       }
-      // eslint-disable-next-line no-await-in-loop
       const initial = await evaluate()
       if (initial === 'done') {
         // Complete optional IO before finally aborts/cleans up this wait.
-        // eslint-disable-next-line no-await-in-loop
         return await success()
       }
       if (initial === 'resync') {
@@ -169,7 +162,6 @@ export async function waitForAgents(
       const watch = async () => {
         while (!subscription.signal.aborted) {
           try {
-            // eslint-disable-next-line no-await-in-loop
             for await (const raw of agentEvents({
               ...options,
               onOpen: async () => {
@@ -215,7 +207,6 @@ export async function waitForAgents(
               if (resolutions.length) {
                 const owner = projection.owner(nodeIds[0])
                 for (const nodeId of resolutions) {
-                  // eslint-disable-next-line no-await-in-loop
                   await projection.resolve(nodeId, get)
                 }
                 projection.reconciliation.defer(await watermark())
@@ -248,13 +239,11 @@ export async function waitForAgents(
             }
           }
           if (!subscription.signal.aborted) {
-            // eslint-disable-next-line no-await-in-loop
             await delay(100, undefined, { signal: subscription.signal }).catch(() => {})
           }
         }
       }
       try {
-        // eslint-disable-next-line no-await-in-loop
         await watch()
       } finally {
         stop()
@@ -263,7 +252,6 @@ export async function waitForAgents(
       controller.signal.throwIfAborted()
       if (!resync && satisfied()) {
         // Complete optional IO before finally aborts/cleans up this wait.
-        // eslint-disable-next-line no-await-in-loop
         return await success()
       }
     }

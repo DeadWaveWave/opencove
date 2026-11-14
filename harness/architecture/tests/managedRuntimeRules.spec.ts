@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Create each fixture parent before its source file. */
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'

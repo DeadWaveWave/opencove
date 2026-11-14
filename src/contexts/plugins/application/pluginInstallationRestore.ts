@@ -16,7 +16,6 @@ export async function restorePluginInstallations(owner: {
     return error instanceof Error ? error : new Error(String(error))
   }
   // Limit startup fan-out and observe shutdown before each plugin.
-  /* eslint-disable no-await-in-loop */
   for (const record of records) {
     if (owner.closed()) {
       return null
@@ -44,6 +43,5 @@ export async function restorePluginInstallations(owner: {
       runtime.error = error instanceof Error ? error.message : String(error)
     }
   }
-  /* eslint-enable no-await-in-loop */
   return null
 }

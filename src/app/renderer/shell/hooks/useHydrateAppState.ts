@@ -217,7 +217,6 @@ export function useHydrateAppState({
       const maxAttempts = Math.max(1, Math.floor(options?.maxAttempts ?? 1))
       const loadPromise = (async (): Promise<void> => {
         for (let attempt = 0; attempt < maxAttempts && !isCancelledRef.current; attempt += 1) {
-          // eslint-disable-next-line no-await-in-loop -- bounded retries keep startup fallback local
           const scrollbacks = await readWorkspaceScrollbacks(persistedWorkspace)
           if (scrollbacks !== null) {
             mergeWorkspaceScrollbacks(workspaceId, scrollbacks)
@@ -226,7 +225,6 @@ export function useHydrateAppState({
           }
 
           if (attempt < maxAttempts - 1) {
-            // eslint-disable-next-line no-await-in-loop -- bounded retries keep startup fallback local
             await delay(80)
           }
         }

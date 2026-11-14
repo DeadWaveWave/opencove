@@ -154,7 +154,6 @@ export function createRemotePtyOverflowRecoveryCoordinator(options: {
           return
         }
         // Recoveries may settle and remove themselves while this drain awaits the observed set.
-        // eslint-disable-next-line no-await-in-loop
         await Promise.allSettled(observed)
       }
     },

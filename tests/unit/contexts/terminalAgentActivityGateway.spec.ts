@@ -137,7 +137,6 @@ describe('TerminalAgentActivityGateway', () => {
     try {
       const statuses: Record<string, number> = {}
       for (const provider of ['claude-code', 'codex', 'opencode', 'gemini', 'pi', 'kimi']) {
-        // eslint-disable-next-line no-await-in-loop -- requests share one credential
         const response = await post(terminal.endpoint, terminal.token, {
           operation: 'prepare',
           provider,
@@ -458,7 +457,6 @@ describe('TerminalAgentActivityGateway', () => {
 
     for (let generation = 1; generation <= 9; generation += 1) {
       // Generation assignment is intentionally verified in request order.
-      // eslint-disable-next-line no-await-in-loop
       await expect(
         post(terminal.endpoint, terminal.token, {
           operation: 'prepare',
@@ -485,7 +483,6 @@ describe('TerminalAgentActivityGateway', () => {
 
     for (let generation = 1; generation <= 9; generation += 1) {
       // Completion order proves every retained live record remains addressable.
-      // eslint-disable-next-line no-await-in-loop
       await expect(
         post(terminal.endpoint, terminal.token, {
           operation: 'complete',

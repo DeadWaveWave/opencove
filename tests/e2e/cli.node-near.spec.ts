@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Each CLI creation observes the preceding committed geometry. */
 import { expect, test, type ElectronApplication } from '@playwright/test'
 import { mkdir, mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'

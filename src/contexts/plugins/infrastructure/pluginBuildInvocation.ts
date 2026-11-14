@@ -25,7 +25,6 @@ export async function resolvePluginBuildInvocation(
   let entry: string | undefined
   for (const candidate of candidates) {
     // At most two filesystem probes; preserve the documented resolution precedence.
-    // eslint-disable-next-line no-await-in-loop
     if (await exists(candidate)) {
       entry = candidate
       break

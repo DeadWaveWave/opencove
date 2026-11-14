@@ -26,7 +26,6 @@ export async function identifyInitialTurn(
   try {
     while (ctx.io.now() < deadline) {
       controller.signal.throwIfAborted()
-      // eslint-disable-next-line no-await-in-loop
       const raw = await ctx.invoke(
         'agent.get',
         { sessionId: ids.sessionId },
@@ -72,7 +71,6 @@ export async function identifyInitialTurn(
           )
         }
       }
-      // eslint-disable-next-line no-await-in-loop
       await delay(Math.min(100, Math.max(1, deadline - ctx.io.now())), undefined, {
         signal: controller.signal,
       })

@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Each creation observes the previous admission. */
 import { expect, test } from '@playwright/test'
 import { boundedWorkspace, expectSpawnRefusal, projectId, stopAndWait } from './lineage.helpers'
 

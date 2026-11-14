@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Each request observes the preceding mutation or authorization boundary. */
 import { expect, test, type ElectronApplication } from '@playwright/test'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'

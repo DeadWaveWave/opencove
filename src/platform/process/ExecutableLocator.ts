@@ -105,7 +105,6 @@ async function resolveDirectPath(command: string): Promise<string | null> {
 
   for (const candidateName of candidateNames) {
     const resolvedPath = isAbsolute(candidateName) ? candidateName : resolve(candidateName)
-    // eslint-disable-next-line no-await-in-loop -- ordered Windows extension resolution is required
     if (await isUsableExecutable(resolvedPath)) {
       return resolvedPath
     }

@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Ordered shared persistence repairs must run sequentially. */
 import { stripPersistedAppViewState } from '@shared/sync/canonicalizePersistedAppState'
 import { classifyWriteResult } from '@shared/sync/persistenceWriteOutcome'
 import { createAppErrorDescriptor } from '@shared/errors/appError'

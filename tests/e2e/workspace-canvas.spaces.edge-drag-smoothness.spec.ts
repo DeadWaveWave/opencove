@@ -134,12 +134,9 @@ test.describe('Workspace Canvas - Spaces (Edge Drag Smoothness)', () => {
 
       const samples = [edgeBaseline]
       for (let step = 1; step <= 12; step += 1) {
-        // eslint-disable-next-line no-await-in-loop -- sequential moves model adjacent drag frames
         await window.mouse.move(edgePointerX, edgePointerStartY + step * 3)
-        // eslint-disable-next-line no-await-in-loop -- each sample must observe the preceding move
         await window.waitForTimeout(24)
 
-        // eslint-disable-next-line no-await-in-loop -- geometry order is the regression assertion
         const sample = await readLocatorClientRect(rootNode)
         const previous = samples[samples.length - 1]
         samples.push(sample)

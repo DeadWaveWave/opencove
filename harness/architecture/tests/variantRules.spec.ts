@@ -464,7 +464,6 @@ describe('variant rules: configuration errors', () => {
       'export const AGENT_PROVIDER_IDS = buildIds()\n',
       'export const AGENT_PROVIDER_IDS = [] as const\n',
     ]) {
-      // eslint-disable-next-line no-await-in-loop -- each case needs its own fixture root
       await expect(auditWith({ 'src/shared/contracts/dto/agent.ts': body })).rejects.toThrow(
         /agentProvider.*found none/,
       )

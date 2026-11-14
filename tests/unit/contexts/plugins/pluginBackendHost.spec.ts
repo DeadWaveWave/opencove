@@ -17,7 +17,6 @@ const cleanups: Array<() => Promise<void>> = []
 afterEach(async () => {
   vi.useRealTimers()
   for (const cleanup of cleanups.splice(0).reverse()) {
-    // eslint-disable-next-line no-await-in-loop -- Dispose child runtimes before deleting their temporary directories.
     await cleanup()
   }
 })

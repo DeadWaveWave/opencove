@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Each request checks a separate authorization boundary. */
 import { expect, type Page } from '@playwright/test'
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'

@@ -11,7 +11,6 @@ const cleanups: Array<() => void | Promise<void>> = []
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) {
     // Dispose the channel and runtime before restoring the fake clock.
-    // eslint-disable-next-line no-await-in-loop
     await cleanup()
   }
   vi.useRealTimers()

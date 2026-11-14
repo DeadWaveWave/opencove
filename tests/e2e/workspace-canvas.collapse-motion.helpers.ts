@@ -150,7 +150,6 @@ export async function sampleAnimatedPresentation(
       await action()
       // Slow native RAF can skip most of a short transition. Preserve the production
       // keyframes/easing, but paint each selected phase before moving to the next one.
-      /* eslint-disable no-await-in-loop -- Each animation phase must be painted before advancing. */
       for (const progress of [0, 0.08, 0.16, 0.26, 0.4, 0.65, 0.9]) {
         await seekCollapseProgress(page, progress, phase)
         await page.evaluate(
@@ -160,7 +159,6 @@ export async function sampleAnimatedPresentation(
             ),
         )
       }
-      /* eslint-enable no-await-in-loop */
       await resumePresentationAnimations(page)
     },
     selector,

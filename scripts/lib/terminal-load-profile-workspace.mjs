@@ -1,5 +1,3 @@
-/* eslint-disable no-await-in-loop -- terminal sessions are spawned sequentially for stable profiling */
-
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
 

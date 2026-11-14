@@ -192,11 +192,9 @@ export async function writeAppState(
   update: (current: Awaited<ReturnType<typeof readSharedState>>['state']) => unknown,
 ): Promise<void> {
   for (let attempt = 0; attempt < 3; attempt++) {
-    // eslint-disable-next-line no-await-in-loop -- Each CAS attempt needs a fresh snapshot.
     const current = await readSharedState(request)
     const state = update(current.state)
     try {
-      // eslint-disable-next-line no-await-in-loop -- Writes must use the snapshot read above.
       await invokeValue(request, 'command', 'sync.writeState', {
         state,
         baseRevision: current.revision,

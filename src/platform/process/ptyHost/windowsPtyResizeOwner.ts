@@ -64,7 +64,6 @@ export class WindowsPtyResizeOwner {
       let geometry: { cols: number; rows: number }
       try {
         // Each observation follows the previous one within this operation's deadline.
-        // eslint-disable-next-line no-await-in-loop
         geometry = await abortable(this.observer.read(this.pty.pid, signal), signal)
       } catch (error) {
         signal.throwIfAborted()
@@ -72,7 +71,6 @@ export class WindowsPtyResizeOwner {
           throw error
         }
         recoveredObserver = true
-        // eslint-disable-next-line no-await-in-loop
         await abortable(this.observer.ensureReady(signal), signal)
         continue
       }
@@ -80,7 +78,6 @@ export class WindowsPtyResizeOwner {
       if (geometry.cols === cols && geometry.rows === rows) {
         return { status: 'applied_verified', cols: geometry.cols, rows: geometry.rows }
       }
-      // eslint-disable-next-line no-await-in-loop
       await delayUntilNextObservation(this.options.pollIntervalMs, signal)
     }
   }

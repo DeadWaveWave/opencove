@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Lifecycle probes must settle before the next probe. */
 import { spawn } from 'node:child_process'
 import { mkdir, open, readFile } from 'node:fs/promises'
 import { join } from 'node:path'

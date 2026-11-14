@@ -126,7 +126,6 @@ export async function continuousWheelGesture(window: Page, deltaY: number, react
           }),
         )
         // Let React commit each frame, including a regression on any intermediate wheel.
-        // eslint-disable-next-line no-await-in-loop
         await new Promise(resolve => setTimeout(resolve, 20))
       }
       // Retain the during-gesture sample before waiting for any outstanding Worker reply.

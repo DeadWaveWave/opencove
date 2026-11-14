@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Each page and search observes the previous panel transition. */
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { applyUiLanguage } from '../../../src/app/renderer/i18n'

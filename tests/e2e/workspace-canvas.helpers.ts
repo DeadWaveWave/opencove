@@ -389,13 +389,11 @@ export async function seedWorkspaceState(
         let ready = false
 
         while (Date.now() < deadline) {
-          // eslint-disable-next-line no-await-in-loop -- bounded UI polling
           ready = await window.evaluate(isSeededWorkspaceNavigationReady, expectedWorkspaceCount)
           if (ready) {
             break
           }
 
-          // eslint-disable-next-line no-await-in-loop -- bounded UI polling
           await window.waitForTimeout(50)
         }
 

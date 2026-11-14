@@ -60,7 +60,6 @@ test('cursor-file survives Ctrl-C, resumes two child ends and supports exact rep
     const summaries = lines(resumed.stderr)
     expect(summaries.map(s => s.nodeId)).toEqual([a.id, b.id])
     for (const summary of summaries) {
-      // eslint-disable-next-line no-await-in-loop
       const reply = await f.command(f.parent, [
         'agent',
         'read',

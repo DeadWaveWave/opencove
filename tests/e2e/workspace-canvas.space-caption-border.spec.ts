@@ -33,11 +33,8 @@ test('Space caption cutouts follow visible crossings through far-view hysteresis
       [0.3, 'near'],
       [0.2, 'far'],
     ] as const) {
-      // eslint-disable-next-line no-await-in-loop -- each transition must settle before the next.
       await wheelToZoom(page, zoom)
-      // eslint-disable-next-line no-await-in-loop
       await expectSpaceFrameHeader(page, lod)
-      // eslint-disable-next-line no-await-in-loop
       const spaces = await readSpaceIdentity(page)
       transitions.push({ zoom, lod, spaces })
       if (lod === 'far') {

@@ -1,5 +1,3 @@
-/* eslint-disable no-await-in-loop -- real Codex replies are intentionally verified sequentially */
-
 import { _electron as electron } from '@playwright/test'
 import { execFile } from 'node:child_process'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'

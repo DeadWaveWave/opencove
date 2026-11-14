@@ -15,7 +15,6 @@ it('places immediately right and creates three sequential non-overlapping helper
     before = structuredClone(f.state().workspaces[0].nodes[0])
   const frames: Rect[] = [{ ...before.position, width: before.width, height: before.height }]
   for (const kind of ['note', 'terminal', 'agent'] as const) {
-    // eslint-disable-next-line no-await-in-loop
     const result = await f.run({ kind })
     if (kind === 'note') {
       expect(result.node.frame).toMatchObject({ x: 3324, y: 2000 })
@@ -186,7 +185,6 @@ it('treats all Space locator forms as consistency constraints', async () => {
     { kind: 'spaceName', name: 'Other' },
     { kind: 'workerPath', worker: 'local', path: '/repo/other' },
   ] as const) {
-    // eslint-disable-next-line no-await-in-loop
     await expect(f.run({ kind: 'terminal', space })).rejects.toMatchObject({
       code: 'common.invalid_input',
     })

@@ -149,7 +149,6 @@ export class EndpointOverviewProjectionOwner {
         commandEpoch === this.commandEpoch
       this.publish({ isLoading: this.snapshot.overviews.length === 0 })
       try {
-        // eslint-disable-next-line no-await-in-loop -- this owner guarantees one observation stream.
         const overviews = await this.options.port.list()
         if (current()) {
           result = overviews.map(overview => this.forwardOverview(overview))

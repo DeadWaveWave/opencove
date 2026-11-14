@@ -316,7 +316,6 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
         ).toEqual(['text', 'text', expect.not.stringMatching(/^text$/)])
       }
       for (const header of headers) {
-        // eslint-disable-next-line no-await-in-loop -- one pointer presses each tile in turn
         await header.locator('[data-cove-part="kind-tile"]').click()
       }
       await expect(terminalTitleInput).toHaveCount(0)

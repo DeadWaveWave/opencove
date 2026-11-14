@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Ordered restart and publication acceptance. */
 import { expect, test } from '@playwright/test'
 import { defaultsHarness } from './recovery.managed-claude-defaults.helpers'
 import { getBinding } from './recovery.managed-claude-launch-lifecycle.helpers'

@@ -52,7 +52,6 @@ try {
         // One burst: 200 sequential input writes with an empty line reset at the end.
         let start = performance.now()
         for (let i = 0; i < 200; i += 1) {
-          // oxlint-disable-next-line no-await-in-loop -- measure ordered input writes
           await api.pty.write({ sessionId, data: 'x' })
         }
         const inputBurstMs = performance.now() - start

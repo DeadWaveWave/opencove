@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- CAS retries and timed race rounds require sequential execution. */
 import { submitPersistenceWrite, originalSubmissionError } from './persistenceWriteOutcome'
 import { canonicalContent } from './mergeValue'
 

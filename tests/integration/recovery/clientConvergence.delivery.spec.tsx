@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop -- Each model trace is an ordered delivery history. */
 import { it } from 'vitest'
 import { Client } from '../../support/convergence/client'
 import type { Action } from '../../support/convergence/model'

@@ -43,12 +43,9 @@ export class TerminalAgentAssetFiles {
   public async ensureDirectories(paths: readonly string[]): Promise<void> {
     await this.ensureParent()
     for (const path of paths) {
-      // eslint-disable-next-line no-await-in-loop -- each child requires its verified parent first
       let info = await inspect(path)
       if (!info) {
-        // eslint-disable-next-line no-await-in-loop -- creation and ownership registration must finish together
         await mkdir(path, { mode: 0o700 })
-        // eslint-disable-next-line no-await-in-loop -- capture identity before validating the next directory
         info = await lstat(path)
         this.directories.set(path, info)
       }
@@ -129,18 +126,15 @@ export class TerminalAgentAssetFiles {
     let directory = await realpath(this.trustedDirectory)
     for (const segment of route.split(sep).filter(Boolean)) {
       directory = join(directory, segment)
-      // eslint-disable-next-line no-await-in-loop -- never traverse a segment before checking its parent
       let entry = await inspect(directory)
       if (!entry) {
         try {
-          // eslint-disable-next-line no-await-in-loop -- the next segment depends on this directory
           await mkdir(directory, { mode: 0o700 })
         } catch (error) {
           if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
             throw error
           }
         }
-        // eslint-disable-next-line no-await-in-loop -- inspect the completed mkdir before continuing
         entry = await lstat(directory)
       }
       checkOwner(entry)
@@ -198,7 +192,6 @@ export class TerminalAgentAssetFiles {
       const buffer = Buffer.alloc(expected.length + 1)
       let offset = 0
       while (offset < buffer.length) {
-        // eslint-disable-next-line no-await-in-loop -- the next offset depends on the preceding short read
         const { bytesRead } = await handle.read(buffer, offset, buffer.length - offset, offset)
         if (!bytesRead) {
           break
