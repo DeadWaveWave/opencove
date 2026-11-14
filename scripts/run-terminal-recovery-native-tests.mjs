@@ -42,6 +42,7 @@ const tests = process.argv.includes('--worker-ownership')
       'tests/contract/controlSurface/controlSurfaceHttpServer.nodeWorkerBindingRecovery.spec.ts',
       'tests/contract/controlSurface/controlSurfaceHttpServer.remoteTerminalRecovery.spec.ts',
       'tests/contract/controlSurface/controlSurfaceHttpServer.terminalRecovery.spec.ts',
+      'tests/contract/controlSurface/controlSurfaceHttpServer.transcriptShutdown.spec.ts',
       'tests/contract/platform/terminalRecovery.multiEpoch.spec.ts',
     ]
 const result = spawnSync(

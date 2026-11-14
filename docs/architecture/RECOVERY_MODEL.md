@@ -293,6 +293,7 @@ conversation history.
 - `tests/contract/controlSurface/controlSurfaceHttpServer.terminalRecovery.spec.ts`
 - `tests/contract/controlSurface/controlSurfaceHttpServer.remoteTerminalRecovery.spec.ts`
 - `tests/contract/controlSurface/controlSurfaceHttpServer.nodeWorkerBindingRecovery.spec.ts`
+- `tests/contract/controlSurface/controlSurfaceHttpServer.transcriptShutdown.spec.ts`: a read-only transcript query that shutdown cancelled settles without publishing anything, and an accepted write still keeps disposal waiting until it is durable.
 - `tests/contract/controlSurface/remotePtyOverflowRecovery.loopback.spec.ts`
 - `tests/contract/platform/terminalRecovery.multiEpoch.spec.ts`
 - `tests/unit/terminalRecovery/`
