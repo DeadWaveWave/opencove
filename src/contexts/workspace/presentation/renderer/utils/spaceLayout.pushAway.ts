@@ -13,8 +13,8 @@ const PREFERRED_DIRECTION_PENALTY = 48
 
 export function pushAwayLayout(_input: {
   items: LayoutItem[]
-  pinnedGroupIds: string[]
-  sourceGroupIds: string[]
+  pinnedGroupIds: readonly string[]
+  sourceGroupIds: readonly string[]
   directions: LayoutDirection[]
   gap: number
   bounds?: { rect: WorkspaceSpaceRect; padding?: number }

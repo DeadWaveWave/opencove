@@ -8,6 +8,7 @@ import {
 } from 'react'
 import { useStore } from 'zustand'
 import { createCanvasStore, type CanvasStore } from './canvasStore'
+import type { CanvasSelectionCommands, CanvasSelectionState } from './canvasStore.selection'
 import type { CanvasUiCommands, CanvasUiState } from './canvasStore.ui'
 
 const CanvasStoreContext = createContext<CanvasStore | null>(null)
@@ -61,4 +62,20 @@ export function useReadCanvasUi(): () => CanvasUiState {
 
 export function useCanvasUiCommands(): CanvasUiCommands {
   return useCanvasStore().commands.ui
+}
+
+/** Subscribes to the `selection` slice. The selector must return a stored value or a primitive. */
+export function useCanvasSelection<T>(selector: (selection: CanvasSelectionState) => T): T {
+  const { api } = useCanvasStore()
+  return useStore(api, state => selector(state.selection))
+}
+
+/** A stable reader for handlers: it does not subscribe, so callers do not re-render. */
+export function useReadCanvasSelection(): () => CanvasSelectionState {
+  const { api } = useCanvasStore()
+  return useCallback(() => api.getState().selection, [api])
+}
+
+export function useCanvasSelectionCommands(): CanvasSelectionCommands {
+  return useCanvasStore().commands.selection
 }

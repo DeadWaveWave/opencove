@@ -28,4 +28,8 @@ export interface WorkspaceCanvasNodeDragSession {
   ) => Node<TerminalNodeData>[]
   endNodeDragSession: () => void
   clearNodeDragProjection: () => void
+  /** Copies the selected Space ids for the length of one node drag. */
+  captureDragStartSpaceSelection: () => void
+  getDragStartSpaceSelection: () => readonly string[] | null
+  clearDragStartSpaceSelection: () => void
 }

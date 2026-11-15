@@ -86,7 +86,6 @@ export interface WorkspaceCanvasViewProps {
   snapGuides: WorkspaceSnapGuide[] | null
   spaceVisuals: SpaceVisual[]
   spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
-  selectedSpaceIds: string[]
   openExplorerSpaceId: string | null
   explorerClipboard: SpaceExplorerClipboardItem | null
   quickPreview: WorkspaceCanvasQuickPreviewState | null

@@ -76,7 +76,6 @@ export function WorkspaceCanvasView({
   snapGuides,
   spaceVisuals,
   spaceFramePreview,
-  selectedSpaceIds,
   openExplorerSpaceId,
   explorerClipboard,
   quickPreview,
@@ -269,7 +268,6 @@ export function WorkspaceCanvasView({
           spaceVisuals={spaceVisuals}
           busyOperationBySpaceId={busyOperationBySpaceId}
           spaceFramePreview={spaceFramePreview}
-          selectedSpaceIds={selectedSpaceIds}
           openExplorerSpaceId={openExplorerSpaceId}
           toggleExplorer={toggleSpaceExplorer}
           handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}

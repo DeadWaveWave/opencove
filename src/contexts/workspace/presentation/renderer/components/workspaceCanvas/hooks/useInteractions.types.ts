@@ -39,9 +39,7 @@ export interface UseWorkspaceCanvasInteractionsParams {
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   setNodes: SetNodes
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
-  setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
   selectedNodeIdsRef: React.MutableRefObject<string[]>
-  selectedSpaceIdsRef: React.MutableRefObject<string[]>
   workspaceId: string
   workspacePath: string
   environmentVariables?: Record<string, string>

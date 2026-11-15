@@ -6,6 +6,7 @@ import type {
   TerminalNodeData,
   WorkspaceSpaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
+import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 
 vi.mock('@xyflow/react', () => {
   return {
@@ -97,14 +98,10 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
       const [, setSnapGuides] = useState(null)
       const magneticSnappingEnabledRef = useRef(false)
       const spacesRef = useRef<WorkspaceSpaceState[]>([])
-      const selectedSpaceIdsRef = useRef<string[]>([])
-      const dragSelectedSpaceIdsRef = useRef<string[] | null>(null)
       const isNodeDraggingRef = useRef(false)
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-live-commit',
         spacesRef,
-        selectedSpaceIdsRef,
-        dragSelectedSpaceIdsRef,
         magneticSnappingEnabledRef,
         setSnapGuides,
         onSpacesChange: () => undefined,
@@ -124,7 +121,6 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
         normalizePosition: (_nodeId, desired) => desired,
         applyPendingScrollbacks: next => next,
         isNodeDraggingRef,
-        dragSelectedSpaceIdsRef,
         nodeDragSession,
       })
 
@@ -169,7 +165,7 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
       )
     }
 
-    render(<Harness />)
+    render(<Harness />, { wrapper: CanvasStoreTestProvider })
 
     fireEvent.click(screen.getByRole('button', { name: 'Drag' }))
 
@@ -242,15 +238,11 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
 
     function Harness() {
       const spacesRef = useRef(spaces)
-      const selectedSpaceIdsRef = useRef<string[]>([])
-      const dragSelectedSpaceIdsRef = useRef<string[] | null>(null)
       const magneticSnappingEnabledRef = useRef(false)
       const [, setSnapGuides] = useState(null)
       const session = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-space-preview-retention',
         spacesRef,
-        selectedSpaceIdsRef,
-        dragSelectedSpaceIdsRef,
         magneticSnappingEnabledRef,
         setSnapGuides,
         onSpacesChange,
@@ -289,7 +281,7 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
       )
     }
 
-    render(<Harness />)
+    render(<Harness />, { wrapper: CanvasStoreTestProvider })
     fireEvent.click(screen.getByRole('button', { name: 'Secondary' }))
     await waitFor(() => {
       expect(Number(screen.getByTestId('preview-height').textContent)).toBeGreaterThan(360)

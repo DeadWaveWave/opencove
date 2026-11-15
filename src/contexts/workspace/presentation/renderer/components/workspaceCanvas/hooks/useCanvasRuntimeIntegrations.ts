@@ -79,7 +79,6 @@ export function useWorkspaceCanvasRuntimeIntegrations({
     normalizePosition: nodeStore.normalizePosition,
     applyPendingScrollbacks: nodeStore.applyPendingScrollbacks,
     isNodeDraggingRef: nodeStore.isNodeDraggingRef,
-    dragSelectedSpaceIdsRef: canvasState.dragSelectedSpaceIdsRef,
     exclusiveNodeDragAnchorIdRef,
     nodeDragSession,
   })

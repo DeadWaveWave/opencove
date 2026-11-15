@@ -30,13 +30,12 @@ import {
   type LastLiveDragSecondaryProjection,
 } from './useNodeDragSession.liveProjection'
 import type { WorkspaceCanvasNodeDragSession } from './useNodeDragSession.types'
+import { useReadCanvasSelection } from '../../../store/canvasStoreContext'
 export type { WorkspaceCanvasNodeDragSession } from './useNodeDragSession.types'
 
 export function useWorkspaceCanvasNodeDragSession({
   workspaceId,
   spacesRef,
-  selectedSpaceIdsRef,
-  dragSelectedSpaceIdsRef,
   magneticSnappingEnabledRef,
   setSnapGuides,
   onSpacesChange,
@@ -44,13 +43,14 @@ export function useWorkspaceCanvasNodeDragSession({
 }: {
   workspaceId: string
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  selectedSpaceIdsRef: React.MutableRefObject<string[]>
-  dragSelectedSpaceIdsRef: React.MutableRefObject<string[] | null>
   magneticSnappingEnabledRef: React.MutableRefObject<boolean>
   setSnapGuides: React.Dispatch<React.SetStateAction<WorkspaceSnapGuide[] | null>>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
 }): WorkspaceCanvasNodeDragSession {
+  const readSelection = useReadCanvasSelection()
+  // Private to the session: written once per drag, read per frame, never rendered.
+  const dragStartSpaceIdsRef = useRef<readonly string[] | null>(null)
   const nodeDragPointerAnchorRef = useRef<{
     nodeId: string
     offset: { x: number; y: number }
@@ -105,7 +105,7 @@ export function useWorkspaceCanvasNodeDragSession({
         : null
       const dragDx = baselineAnchor && desiredAnchor ? desiredAnchor.x - baselineAnchor.x : 0
       const dragDy = baselineAnchor && desiredAnchor ? desiredAnchor.y - baselineAnchor.y : 0
-      const activeSelectedSpaceIds = dragSelectedSpaceIdsRef.current ?? selectedSpaceIdsRef.current
+      const activeSelectedSpaceIds = dragStartSpaceIdsRef.current ?? readSelection().spaceIds
 
       const shouldUseSpaceDominantProjection =
         dragSpaceDominantRef.current &&
@@ -222,13 +222,7 @@ export function useWorkspaceCanvasNodeDragSession({
         nextSpaceFramePreview,
       }
     },
-    [
-      dragSelectedSpaceIdsRef,
-      selectedSpaceIdsRef,
-      setNodeSpaceFramePreviewState,
-      spacesRef,
-      workspaceId,
-    ],
+    [readSelection, setNodeSpaceFramePreviewState, spacesRef, workspaceId],
   )
 
   const clearNodeDragProjection = useCallback(() => {
@@ -250,14 +244,14 @@ export function useWorkspaceCanvasNodeDragSession({
           .filter(space => Boolean(space.rect))
           .map(space => [space.id, { ...space.rect! }] as const),
       )
-      const selectedSpaceIdsAtStart = dragSelectedSpaceIdsRef.current ?? selectedSpaceIdsRef.current
+      const selectedSpaceIdsAtStart = dragStartSpaceIdsRef.current ?? readSelection().spaceIds
       dragSpaceDominantRef.current = selectedSpaceIdsAtStart.length > 0
       dragSpaceFramePreviewRef.current = null
       committableSpaceFramePreviewRef.current = null
       pendingReleasePositionByIdRef.current = null
       resetLiveDragLayoutProjection()
     },
-    [dragSelectedSpaceIdsRef, resetLiveDragLayoutProjection, selectedSpaceIdsRef, spacesRef],
+    [readSelection, resetLiveDragLayoutProjection, spacesRef],
   )
 
   const projectNodeDrag = useCallback(
@@ -443,6 +437,16 @@ export function useWorkspaceCanvasNodeDragSession({
     [resolveDragLayoutProjection],
   )
 
+  const captureDragStartSpaceSelection = useCallback(() => {
+    dragStartSpaceIdsRef.current = readSelection().spaceIds
+  }, [readSelection])
+
+  const getDragStartSpaceSelection = useCallback(() => dragStartSpaceIdsRef.current, [])
+
+  const clearDragStartSpaceSelection = useCallback(() => {
+    dragStartSpaceIdsRef.current = null
+  }, [])
+
   const endNodeDragSession = useCallback(() => {
     if (dragSpaceDominantRef.current && committableSpaceFramePreviewRef.current) {
       const rectOverrideById = committableSpaceFramePreviewRef.current
@@ -493,5 +497,8 @@ export function useWorkspaceCanvasNodeDragSession({
     applyPendingReleaseProjection,
     endNodeDragSession,
     clearNodeDragProjection,
+    captureDragStartSpaceSelection,
+    getDragStartSpaceSelection,
+    clearDragStartSpaceSelection,
   }
 }

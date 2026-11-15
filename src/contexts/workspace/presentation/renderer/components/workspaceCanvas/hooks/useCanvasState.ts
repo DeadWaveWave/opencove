@@ -9,6 +9,10 @@ import { NODE_DRAG_HANDLE_SELECTOR } from '../../../utils/nodeFrameResize'
 import type { WorkspaceSnapGuide } from '../../../utils/workspaceSnap'
 import type { CanvasWheelGestureSessionState, SelectionDraftState } from '../types'
 import { selectDragSurfaceSelectionMode } from '../../terminalNode/reactFlowState'
+import {
+  useCanvasSelectionCommands,
+  useReadCanvasSelection,
+} from '../../../store/canvasStoreContext'
 
 type SelectionDraftUiState = Pick<
   SelectionDraftState,
@@ -52,6 +56,8 @@ function mergeExternalNodesIntoTransientCanvas(
   return didChange ? mergedNodes : currentNodes
 }
 
+const EMPTY_ID_SET: ReadonlySet<string> = new Set()
+
 export function useWorkspaceCanvasState({
   workspaceId,
   nodes,
@@ -66,8 +72,6 @@ export function useWorkspaceCanvasState({
   selectedNodeIds: string[]
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
   syncSelectedNodeIds: (nodeIds: string[]) => void
-  selectedSpaceIds: string[]
-  setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
   detectedCanvasInputMode: DetectedCanvasInputMode
   setDetectedCanvasInputMode: React.Dispatch<React.SetStateAction<DetectedCanvasInputMode>>
   isShiftPressed: boolean
@@ -81,8 +85,6 @@ export function useWorkspaceCanvasState({
   restoredViewportWorkspaceIdRef: React.MutableRefObject<string | null>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   selectedNodeIdsRef: React.MutableRefObject<string[]>
-  selectedSpaceIdsRef: React.MutableRefObject<string[]>
-  dragSelectedSpaceIdsRef: React.MutableRefObject<string[] | null>
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
   selectionDraftUi: SelectionDraftUiState | null
   setSelectionDraftUi: React.Dispatch<React.SetStateAction<SelectionDraftUiState | null>>
@@ -98,9 +100,10 @@ export function useWorkspaceCanvasState({
   flowNodes: Node<TerminalNodeData>[]
 } {
   const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
+  const readSelection = useReadCanvasSelection()
+  const selection = useCanvasSelectionCommands()
   const [canvasNodes, setCanvasNodes] = useState(nodes)
   const [selectedNodeIds, setSelectedNodeIdsState] = useState<string[]>([])
-  const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([])
   const [selectionDraftUi, setSelectionDraftUi] = useState<SelectionDraftUiState | null>(null)
   const [detectedCanvasInputMode, setDetectedCanvasInputMode] =
     useState<DetectedCanvasInputMode>('mouse')
@@ -115,8 +118,6 @@ export function useWorkspaceCanvasState({
   const restoredViewportWorkspaceIdRef = useRef<string | null>(null)
   const spacesRef = useRef(spaces)
   const selectedNodeIdsRef = useRef<string[]>([])
-  const selectedSpaceIdsRef = useRef<string[]>([])
-  const dragSelectedSpaceIdsRef = useRef<string[] | null>(null)
   const selectionDraftRef = useRef<SelectionDraftState | null>(null)
   const inputModalityStateRef = useRef(createCanvasInputModalityState('mouse'))
   const isShiftPressedRef = useRef(false)
@@ -178,6 +179,19 @@ export function useWorkspaceCanvasState({
     setSelectedNodeIds(resolvedSelection)
   }, [canvasNodes, selectedNodeIds, setSelectedNodeIds])
 
+  // Decision 8 of #692: the selection never names a Space that no longer exists. The store holds
+  // no node ids until node selection moves into it, so the empty node set drops nothing.
+  useLayoutEffect(() => {
+    if (readSelection().spaceIds.length === 0) {
+      return
+    }
+
+    selection.retain({
+      nodeIds: EMPTY_ID_SET,
+      spaceIds: new Set(spaces.map(space => space.id)),
+    })
+  }, [readSelection, selection, spaces])
+
   const flowNodes = useMemo(
     () =>
       canvasNodes.map(node => {
@@ -203,10 +217,6 @@ export function useWorkspaceCanvasState({
   }, [selectedNodeIds])
 
   useLayoutEffect(() => {
-    selectedSpaceIdsRef.current = selectedSpaceIds
-  }, [selectedSpaceIds])
-
-  useLayoutEffect(() => {
     magneticSnappingEnabledRef.current = magneticSnappingEnabled
   }, [magneticSnappingEnabled])
 
@@ -214,8 +224,6 @@ export function useWorkspaceCanvasState({
     selectedNodeIds,
     setSelectedNodeIds,
     syncSelectedNodeIds,
-    selectedSpaceIds,
-    setSelectedSpaceIds,
     detectedCanvasInputMode,
     setDetectedCanvasInputMode,
     isShiftPressed,
@@ -229,8 +237,6 @@ export function useWorkspaceCanvasState({
     restoredViewportWorkspaceIdRef,
     spacesRef,
     selectedNodeIdsRef,
-    selectedSpaceIdsRef,
-    dragSelectedSpaceIdsRef,
     selectionDraftRef,
     selectionDraftUi,
     setSelectionDraftUi,

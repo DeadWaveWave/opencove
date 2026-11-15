@@ -185,7 +185,6 @@ function createBaseProps(
     snapGuides: null,
     spaceVisuals: [],
     spaceFramePreview: null,
-    selectedSpaceIds: [],
     handleSpaceDragHandlePointerDown: () => undefined,
     commitSpaceRename: () => undefined,
     activateSpaceTitle: () => undefined,

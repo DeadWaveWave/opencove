@@ -25,7 +25,7 @@ export function projectWorkspaceSpaceDominantLayout({
   baselineSpaceRectById: Map<string, WorkspaceSpaceRect>
   desiredDraggedPositionById: Map<string, { x: number; y: number }>
   draggedNodeIds: string[]
-  selectedSpaceIds: string[]
+  selectedSpaceIds: readonly string[]
   dragDx: number
   dragDy: number
 }): ProjectedWorkspaceSpaceDominantLayout {

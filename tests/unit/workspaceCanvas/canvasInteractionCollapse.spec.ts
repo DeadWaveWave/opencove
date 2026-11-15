@@ -144,12 +144,17 @@ describe('displayed interaction geometry', () => {
       spaces,
       collapseState: collapsed,
       selectedNodeIdsRef,
-      selectedSpaceIdsRef: { current: [] },
+      selection: {
+        setNodeIds: vi.fn(),
+        setSpaceIds: vi.fn(),
+        select: vi.fn(),
+        clear: vi.fn(),
+        retain: vi.fn(),
+      },
       setNodes: update => {
         nodes = update(nodes)
       },
       setSelectedNodeIds: vi.fn(),
-      setSelectedSpaceIds: vi.fn(),
     })
     expect(selectedNodeIdsRef.current).toEqual([])
     expect(nodes.every(item => !item.selected)).toBe(true)

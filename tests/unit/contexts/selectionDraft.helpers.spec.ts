@@ -5,6 +5,7 @@ import type {
   WorkspaceSpaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 import type { SelectionDraftState } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
+import type { CanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStore.selection'
 import { applySelectionDraft } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSelectionDraft.helpers'
 
 function createNode(
@@ -45,6 +46,31 @@ function createStateSetter<T>(initial: T) {
   }
 }
 
+function createSelectionSpy(initialSpaceIds: string[]) {
+  let spaceIds = initialSpaceIds
+  const calls: string[][] = []
+  const commands: CanvasSelectionCommands = {
+    setNodeIds: vi.fn(),
+    setSpaceIds: nextSpaceIds => {
+      spaceIds = [...nextSpaceIds]
+      calls.push(spaceIds)
+    },
+    select: vi.fn(),
+    clear: vi.fn(),
+    retain: vi.fn(),
+  }
+
+  return {
+    commands,
+    get spaceIds() {
+      return spaceIds
+    },
+    get lastSetSpaceIds() {
+      return calls.at(-1)
+    },
+  }
+}
+
 function createDraft(overrides: Partial<SelectionDraftState> = {}): SelectionDraftState {
   return {
     startX: 0,
@@ -72,9 +98,8 @@ describe('applySelectionDraft', () => {
       createNode('node-b', { x: 160, y: 20, selected: false }),
     ]
     const selectedNodeIdsRef = { current: ['node-a'] }
-    const selectedSpaceIdsRef = { current: [] as string[] }
     const selectedNodeIdsState = createStateSetter<string[]>(['node-a'])
-    const selectedSpaceIdsState = createStateSetter<string[]>([])
+    const selection = createSelectionSpy([])
 
     applySelectionDraft({
       draft: createDraft({
@@ -84,12 +109,11 @@ describe('applySelectionDraft', () => {
       reactFlow: identityReactFlow,
       spaces: [],
       selectedNodeIdsRef,
-      selectedSpaceIdsRef,
+      selection: selection.commands,
       setNodes: updater => {
         nodes = updater(nodes)
       },
       setSelectedNodeIds: selectedNodeIdsState.set,
-      setSelectedSpaceIds: selectedSpaceIdsState.set,
     })
 
     expect(nodes.find(node => node.id === 'node-a')?.selected).toBe(false)
@@ -100,9 +124,8 @@ describe('applySelectionDraft', () => {
 
   it('toggles intersecting spaces during shift marquee selection', () => {
     const selectedNodeIdsRef = { current: [] as string[] }
-    const selectedSpaceIdsRef = { current: ['space-a'] }
     const selectedNodeIdsState = createStateSetter<string[]>([])
-    const selectedSpaceIdsState = createStateSetter<string[]>(['space-a'])
+    const selection = createSelectionSpy(['space-a'])
     const spaces: WorkspaceSpaceState[] = [
       {
         id: 'space-a',
@@ -130,16 +153,15 @@ describe('applySelectionDraft', () => {
       reactFlow: identityReactFlow,
       spaces,
       selectedNodeIdsRef,
-      selectedSpaceIdsRef,
+      selection: selection.commands,
       setNodes: updater => {
         updater([])
       },
       setSelectedNodeIds: selectedNodeIdsState.set,
-      setSelectedSpaceIds: selectedSpaceIdsState.set,
     })
 
-    expect(selectedSpaceIdsRef.current).toEqual([])
-    expect(selectedSpaceIdsState.value).toEqual([])
+    expect(selection.spaceIds).toEqual([])
+    expect(selection.lastSetSpaceIds).toEqual([])
     expect(selectedNodeIdsRef.current).toEqual([])
   })
 
@@ -149,9 +171,8 @@ describe('applySelectionDraft', () => {
       createNode('node-out', { x: 420, y: 40, selected: true }),
     ]
     const selectedNodeIdsRef = { current: ['node-out'] }
-    const selectedSpaceIdsRef = { current: [] as string[] }
     const selectedNodeIdsState = createStateSetter<string[]>(['node-out'])
-    const selectedSpaceIdsState = createStateSetter<string[]>([])
+    const selection = createSelectionSpy([])
     const spaces: WorkspaceSpaceState[] = [
       {
         id: 'space-a',
@@ -178,12 +199,11 @@ describe('applySelectionDraft', () => {
       reactFlow: identityReactFlow,
       spaces,
       selectedNodeIdsRef,
-      selectedSpaceIdsRef,
+      selection: selection.commands,
       setNodes: updater => {
         nodes = updater(nodes)
       },
       setSelectedNodeIds: selectedNodeIdsState.set,
-      setSelectedSpaceIds: selectedSpaceIdsState.set,
     })
 
     expect(nodes.find(node => node.id === 'node-in')?.selected).toBe(true)
@@ -198,9 +218,8 @@ describe('applySelectionDraft', () => {
       createNode('node-out', { x: 420, y: 40, selected: false }),
     ]
     const selectedNodeIdsRef = { current: [] as string[] }
-    const selectedSpaceIdsRef = { current: [] as string[] }
     const selectedNodeIdsState = createStateSetter<string[]>([])
-    const selectedSpaceIdsState = createStateSetter<string[]>([])
+    const selection = createSelectionSpy([])
     const spaces: WorkspaceSpaceState[] = [
       {
         id: 'space-a',
@@ -229,15 +248,14 @@ describe('applySelectionDraft', () => {
       reactFlow: identityReactFlow,
       spaces,
       selectedNodeIdsRef,
-      selectedSpaceIdsRef,
+      selection: selection.commands,
       setNodes: updater => {
         nodes = updater(nodes)
       },
       setSelectedNodeIds: selectedNodeIdsState.set,
-      setSelectedSpaceIds: selectedSpaceIdsState.set,
     })
 
-    expect(selectedSpaceIdsRef.current).toEqual([])
+    expect(selection.spaceIds).toEqual([])
     expect(nodes.find(node => node.id === 'node-in')?.selected).toBe(true)
     expect(nodes.find(node => node.id === 'node-out')?.selected).toBe(false)
     expect(selectedNodeIdsRef.current).toEqual(['node-in'])
@@ -249,9 +267,8 @@ describe('applySelectionDraft', () => {
       createNode('node-out', { x: 420, y: 40, selected: false }),
     ]
     const selectedNodeIdsRef = { current: ['node-in'] }
-    const selectedSpaceIdsRef = { current: [] as string[] }
     const selectedNodeIdsState = createStateSetter<string[]>(['node-in'])
-    const selectedSpaceIdsState = createStateSetter<string[]>([])
+    const selection = createSelectionSpy([])
     const spaces: WorkspaceSpaceState[] = [
       {
         id: 'space-a',
@@ -282,12 +299,11 @@ describe('applySelectionDraft', () => {
       reactFlow: identityReactFlow,
       spaces,
       selectedNodeIdsRef,
-      selectedSpaceIdsRef,
+      selection: selection.commands,
       setNodes: updater => {
         nodes = updater(nodes)
       },
       setSelectedNodeIds: selectedNodeIdsState.set,
-      setSelectedSpaceIds: selectedSpaceIdsState.set,
     })
 
     expect(nodes.find(node => node.id === 'node-in')?.selected).toBe(false)
