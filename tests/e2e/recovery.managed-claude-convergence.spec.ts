@@ -377,6 +377,14 @@ test('managed Claude stale publications retain layout and cold-resume the curren
     page = reconnected.window
     await web.context().setOffline(false)
     // Existing EventSource reconnects to the same configured Web listener with an empty buffer.
+    // Desktop's last layout write (x = 1300, the raw route above) may reach this client only
+    // now. Wait for it first: expectConversation brings the control into view once, and a
+    // later move takes it out again.
+    await expect(web.locator(`.react-flow__node[data-id="${agent.id}"]`)).toHaveAttribute(
+      'style',
+      /translate\(1300px,/u,
+      { timeout: 30_000 },
+    )
     await expectConversation(web, agent.id, finalId)
     await expectConversation(page, agent.id, finalId)
   } finally {
