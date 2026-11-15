@@ -3,6 +3,10 @@ import { defineConfig } from '@playwright/test'
 import { resolveE2ERetries } from './scripts/lib/e2e-retries.mjs'
 
 const baseURL = process.env['OPENCOVE_WEB_CANVAS_BASE_URL']
+// Playwright clears outputDir and rewrites the report when a run starts. A second run of this
+// config in one job (CI runs a WebKit subset after Chromium) sets a suffix, so that a failure
+// of the first run keeps its trace and its report.
+const artifactSuffix = process.env['OPENCOVE_WEB_CANVAS_ARTIFACT_SUFFIX'] ?? ''
 
 export default defineConfig({
   testDir: './tests/e2e-web-canvas',
@@ -19,8 +23,11 @@ export default defineConfig({
     { name: 'chromium', use: { browserName: 'chromium' } },
     { name: 'webkit', use: { browserName: 'webkit' } },
   ],
-  reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report-web-canvas' }]],
-  outputDir: './test-results-web-canvas',
+  reporter: [
+    ['list'],
+    ['html', { open: 'never', outputFolder: `playwright-report-web-canvas${artifactSuffix}` }],
+  ],
+  outputDir: `./test-results-web-canvas${artifactSuffix}`,
   use: {
     baseURL,
     screenshot: 'only-on-failure',
