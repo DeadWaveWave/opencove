@@ -13,6 +13,10 @@ import {
 } from '@contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import type { TerminalNodeData } from '@contexts/workspace/presentation/renderer/types'
 import {
+  createCanvasDocumentHarness,
+  renderInCanvasDocument,
+} from '../../support/canvasDocumentHarness'
+import {
   SelectionWritersWrapper,
   createNodeHolder,
   createRowNodes,
@@ -149,16 +153,18 @@ describe('convertSelectedNoteToTask in useWorkspaceCanvasNoteToTaskConversion', 
 
 describe('createSpaceFromSelectedNodes in useWorkspaceCanvasCreateSpace', () => {
   function setup(options: { nodeIds: string[]; flowFlagged?: string[] }) {
-    const holder = createNodeHolder(createRowNodes(['a', 'b']))
+    const nodes = createRowNodes(['a', 'b'])
     const spaces = [
       createSpace('parent', { x: -100, y: -100, width: 1200, height: 600 }, ['a']),
       createSpace('child', { x: -20, y: -20, width: 400, height: 300 }, ['a']),
     ]
     spaces[1] = { ...spaces[1], parentSpaceId: 'parent' }
+    // The hook reads the committed document of workspace `readers`.
+    createCanvasDocumentHarness({ workspaceId: 'readers', nodes, spaces })
     const createChildSpaceInParent = vi.fn(() => null)
     const reactFlow = {
       getNodes: () =>
-        holder.nodes.map(node => ({
+        nodes.map(node => ({
           ...node,
           selected: (options.flowFlagged ?? []).includes(node.id),
         })),
@@ -166,22 +172,19 @@ describe('createSpaceFromSelectedNodes in useWorkspaceCanvasCreateSpace', () => 
     vi.stubGlobal('opencoveApi', {
       controlSurface: { invoke: vi.fn(async () => ({ mounts: [] })) },
     })
-    const hook = renderHook(
+    const hook = renderInCanvasDocument(
       () => ({
         create: useWorkspaceCanvasCreateSpace({
           workspaceId: 'readers',
           workspacePath: '/tmp/repo',
           standardWindowSizeBucket: 'regular',
           reactFlow,
-          nodesRef: holder.nodesRef,
-          setNodes: holder.setNodes,
-          spacesRef: { current: spaces },
-          onSpacesChange: vi.fn(),
+          updateCanvasDocument: vi.fn(),
           createChildSpaceInParent,
         }),
         ...useSelectionProbe(),
       }),
-      { wrapper: SelectionWritersWrapper },
+      { workspaceId: 'readers' },
     )
     act(() => hook.result.current.selection.setNodeIds(options.nodeIds))
     return { createChildSpaceInParent, ...hook }
