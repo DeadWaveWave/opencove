@@ -2,10 +2,10 @@ import { act } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { useWorkspaceCanvasNodeDragSession } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession'
 import type { WorkspaceSpaceState } from '@contexts/workspace/presentation/renderer/types'
+import { pixelNode } from './workspacePixelLayer.fixtures'
 import { renderHookWithCanvasStore } from '../../support/canvasStoreTestHarness'
 
-function renderSession() {
-  const spaces: WorkspaceSpaceState[] = []
+function renderSession(spaces: WorkspaceSpaceState[] = []) {
   return renderHookWithCanvasStore(() =>
     useWorkspaceCanvasNodeDragSession({
       workspaceId: 'drag-session',
@@ -57,5 +57,41 @@ describe('node drag session Space selection copy', () => {
     expect(result.current.captureDragStartSpaceSelection).toBe(first.captureDragStartSpaceSelection)
     expect(result.current.getDragStartSpaceSelection).toBe(first.getDragStartSpaceSelection)
     expect(result.current.clearDragStartSpaceSelection).toBe(first.clearDragStartSpaceSelection)
+  })
+
+  it('projects a Space-dominant drag from the copy after the selection was cleared', () => {
+    const node = {
+      ...pixelNode({ kind: 'note', sessionId: '', note: { text: 'n' } }),
+      id: 'n1',
+      position: { x: 50, y: 50 },
+    }
+    const space: WorkspaceSpaceState = {
+      id: 'space-1',
+      name: 'Space 1',
+      directoryPath: '/tmp/repo',
+      targetMountId: null,
+      labelColor: null,
+      nodeIds: ['n1'],
+      rect: { x: 0, y: 0, width: 600, height: 400 },
+    }
+    const { result, selection } = renderSession([space])
+    act(() => selection.setSpaceIds([space.id]))
+    act(() => result.current.captureDragStartSpaceSelection())
+    // For example `]` clears the selection while the drag is running.
+    act(() => selection.clear())
+
+    act(() => result.current.beginNodeDragSession([node]))
+    let projected: ReturnType<typeof result.current.projectNodeDrag> | null = null
+    act(() => {
+      projected = result.current.projectNodeDrag({
+        currentNodes: [node],
+        draggedNodeIds: ['n1'],
+        desiredDraggedPositionById: new Map([['n1', { x: 150, y: 100 }]]),
+        anchorNodeId: 'n1',
+        anchorIsSelected: true,
+      })
+    })
+
+    expect(projected!.nextSpaceFramePreview?.get(space.id)).toMatchObject({ x: 100, y: 50 })
   })
 })
