@@ -359,7 +359,7 @@ export function WorkspaceSpaceRegionsOverlay({
               }
               editingSpaceId={editingSpaceId}
               spaceRenameDraft={spaceRenameDraft}
-              setSpaceRenameDraft={ui.setSpaceRenameDraft}
+              onSpaceRenameDraftChange={ui.setSpaceRenameDraft}
               commitSpaceRename={commitSpaceRename}
               cancelSpaceRename={ui.cancelSpaceRename}
               activateSpaceTitle={activateSpaceTitle}

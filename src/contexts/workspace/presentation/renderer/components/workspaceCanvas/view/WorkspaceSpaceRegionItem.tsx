@@ -27,7 +27,7 @@ export function WorkspaceSpaceRegionItem({
   busyOperationLabel,
   editingSpaceId,
   spaceRenameDraft,
-  setSpaceRenameDraft,
+  onSpaceRenameDraftChange,
   commitSpaceRename,
   cancelSpaceRename,
   activateSpaceTitle,
@@ -51,7 +51,7 @@ export function WorkspaceSpaceRegionItem({
   busyOperationLabel: string | null
   editingSpaceId: string | null
   spaceRenameDraft: string
-  setSpaceRenameDraft: (draft: string) => void
+  onSpaceRenameDraftChange: (draft: string) => void
   commitSpaceRename: (spaceId: string) => void
   cancelSpaceRename: () => void
   activateSpaceTitle: (spaceId: string, lod: CanvasLod) => void
@@ -215,7 +215,7 @@ export function WorkspaceSpaceRegionItem({
                 event.stopPropagation()
               }}
               onChange={event => {
-                setSpaceRenameDraft(event.target.value)
+                onSpaceRenameDraftChange(event.target.value)
               }}
               onBlur={() => {
                 commitSpaceRename(space.id)

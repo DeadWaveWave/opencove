@@ -107,7 +107,7 @@ export function useWorkspaceCanvasActionBar({
   createSpaceAtPoint,
   createPluginAtPoint,
   spacesRef,
-}: Omit<Parameters<typeof useWorkspaceCanvasActionBarActions>[0], 'clearTransientUi'> & {}) {
+}: Omit<Parameters<typeof useWorkspaceCanvasActionBarActions>[0], 'clearTransientUi'>) {
   const ui = useCanvasUiCommands()
 
   const clearTransientUi = useCallback(() => {
