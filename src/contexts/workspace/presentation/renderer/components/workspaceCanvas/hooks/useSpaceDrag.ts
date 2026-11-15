@@ -15,9 +15,12 @@ import {
   resolveSpaceMoveWithPresentation,
 } from './useSpaceDrag.presentation'
 import { createSpaceDragState } from './useSpaceDrag.startState'
-import { setSortedSelectedSpaceIds } from './useSelectionDraft.helpers'
 import { useCanvasCollapseStore } from '../../../store/useCanvasCollapseStore'
-import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
+import {
+  useCanvasSelectionCommands,
+  useCanvasUiCommands,
+  useReadCanvasSelection,
+} from '../../../store/canvasStoreContext'
 
 interface UseSpaceDragParams {
   workspaceId: string
@@ -25,14 +28,12 @@ interface UseSpaceDragParams {
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   selectedNodeIdsRef: React.MutableRefObject<string[]>
-  selectedSpaceIdsRef: React.MutableRefObject<string[]>
   setNodes: (
     updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
     options?: { syncLayout?: boolean },
   ) => void
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
-  setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
   magneticSnappingEnabledRef: React.MutableRefObject<boolean>
   setSnapGuides: React.Dispatch<React.SetStateAction<WorkspaceSnapGuide[] | null>>
   onRequestPersistFlush?: () => void
@@ -44,11 +45,9 @@ export function useWorkspaceCanvasSpaceDrag({
   nodesRef,
   spacesRef,
   selectedNodeIdsRef,
-  selectedSpaceIdsRef,
   setNodes,
   onSpacesChange,
   setSelectedNodeIds,
-  setSelectedSpaceIds,
   magneticSnappingEnabledRef,
   setSnapGuides,
   onRequestPersistFlush,
@@ -61,6 +60,8 @@ export function useWorkspaceCanvasSpaceDrag({
   ) => void
 } {
   const ui = useCanvasUiCommands()
+  const readSelection = useReadCanvasSelection()
+  const selection = useCanvasSelectionCommands()
 
   const reactFlowStore = useStoreApi()
   const [spaceFramePreview, setSpaceFramePreview] = useState<ReadonlyMap<
@@ -220,11 +221,12 @@ export function useWorkspaceCanvasSpaceDrag({
       const shouldToggle = options?.toggle === true
 
       if (shouldToggle) {
-        const nextSelectedSpaceIds = selectedSpaceIdsRef.current.includes(spaceId)
-          ? selectedSpaceIdsRef.current.filter(selectedSpaceId => selectedSpaceId !== spaceId)
-          : [...selectedSpaceIdsRef.current, spaceId]
+        const currentSelectedSpaceIds = readSelection().spaceIds
+        const nextSelectedSpaceIds = currentSelectedSpaceIds.includes(spaceId)
+          ? currentSelectedSpaceIds.filter(selectedSpaceId => selectedSpaceId !== spaceId)
+          : [...currentSelectedSpaceIds, spaceId]
 
-        setSortedSelectedSpaceIds(nextSelectedSpaceIds, selectedSpaceIdsRef, setSelectedSpaceIds)
+        selection.setSpaceIds(nextSelectedSpaceIds)
         const hasSelectedNodes = selectedNodeIdsRef.current.length > 0
         const hasAnySelection = hasSelectedNodes || nextSelectedSpaceIds.length > 0
         reactFlowStore.setState({
@@ -256,20 +258,13 @@ export function useWorkspaceCanvasSpaceDrag({
 
       selectedNodeIdsRef.current = []
       setSelectedNodeIds([])
-      setSortedSelectedSpaceIds([spaceId], selectedSpaceIdsRef, setSelectedSpaceIds)
+      selection.setSpaceIds([spaceId])
       reactFlowStore.setState({
         nodesSelectionActive: false,
         coveDragSurfaceSelectionMode: false,
       } as unknown as Parameters<typeof reactFlowStore.setState>[0])
     },
-    [
-      reactFlowStore,
-      selectedNodeIdsRef,
-      selectedSpaceIdsRef,
-      setNodes,
-      setSelectedNodeIds,
-      setSelectedSpaceIds,
-    ],
+    [reactFlowStore, readSelection, selectedNodeIdsRef, selection, setNodes, setSelectedNodeIds],
   )
 
   const finalizeSpaceInteraction = useCallback(
@@ -411,7 +406,7 @@ export function useWorkspaceCanvasSpaceDrag({
         return
       }
 
-      if (!event.shiftKey && !selectedSpaceIdsRef.current.includes(spaceId)) {
+      if (!event.shiftKey && !readSelection().spaceIds.includes(spaceId)) {
         applySpaceClickSelection(spaceId)
       }
 
@@ -469,8 +464,8 @@ export function useWorkspaceCanvasSpaceDrag({
       applySpaceClickSelection,
       nodesRef,
       reactFlow,
+      readSelection,
       selectedNodeIdsRef,
-      selectedSpaceIdsRef,
       ui,
       setSnapGuides,
       spacesRef,

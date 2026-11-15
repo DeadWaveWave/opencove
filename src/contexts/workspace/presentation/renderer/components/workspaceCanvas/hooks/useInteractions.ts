@@ -21,7 +21,7 @@ import { useIgnoredPaneClick } from './useIgnoredPaneClick'
 import type { UseWorkspaceCanvasInteractionsParams } from './useInteractions.types'
 import { useWebsiteNodeContextMenuCreation } from './useInteractions.websiteContextMenu'
 import { useWebsiteWindowOpenUrlNodeCreation } from './useWebsiteWindowOpenUrlNodeCreation'
-import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
+import { useCanvasSelectionCommands, useCanvasUiCommands } from '../../../store/canvasStoreContext'
 
 export function useWorkspaceCanvasInteractions({
   canvasRef,
@@ -36,9 +36,7 @@ export function useWorkspaceCanvasInteractions({
   reactFlow,
   setNodes,
   setSelectedNodeIds,
-  setSelectedSpaceIds,
   selectedNodeIdsRef,
-  selectedSpaceIdsRef,
   workspaceId,
   workspacePath,
   environmentVariables,
@@ -57,14 +55,13 @@ export function useWorkspaceCanvasInteractions({
   createWebsiteNode,
 }: UseWorkspaceCanvasInteractionsParams) {
   const ui = useCanvasUiCommands()
+  const selection = useCanvasSelectionCommands()
 
   const reactFlowStore = useStoreApi()
   const selectNode = useWorkspaceCanvasSelectNode({
     setNodes,
     setSelectedNodeIds,
-    setSelectedSpaceIds,
     selectedNodeIdsRef,
-    selectedSpaceIdsRef,
     spacesRef,
   })
 
@@ -89,12 +86,12 @@ export function useWorkspaceCanvasInteractions({
       { syncLayout: false },
     )
     setSelectedNodeIds([])
-    setSelectedSpaceIds([])
+    selection.setSpaceIds([])
     reactFlowStore.setState({
       nodesSelectionActive: false,
       coveDragSurfaceSelectionMode: false,
     } as unknown as Parameters<typeof reactFlowStore.setState>[0])
-  }, [reactFlowStore, setNodes, setSelectedNodeIds, setSelectedSpaceIds])
+  }, [reactFlowStore, selection, setNodes, setSelectedNodeIds])
 
   const openSelectionContextMenu = useCallback(
     (x: number, y: number, nodeId?: string) => {
@@ -201,10 +198,8 @@ export function useWorkspaceCanvasInteractions({
     reactFlow,
     spacesRef,
     selectedNodeIdsRef,
-    selectedSpaceIdsRef,
     setNodes,
     setSelectedNodeIds,
-    setSelectedSpaceIds,
   })
 
   const paneDragRef = useRef<{ startX: number; startY: number; didMove: boolean } | null>(null)

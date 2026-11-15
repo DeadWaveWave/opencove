@@ -8,6 +8,7 @@ import {
   getNodeDisplaySize,
   type CanvasCollapseState,
 } from '../../../utils/canvasCollapse'
+import type { CanvasSelectionCommands } from '../../../store/canvasStore.selection'
 import { projectCanvasInteractionLayout } from '../../../utils/canvasInteractionLayout'
 import {
   isPointInsideRect,
@@ -42,23 +43,6 @@ export function resolveSelectionDraftRect(
   }
 }
 
-export function setSortedSelectedSpaceIds(
-  next: string[],
-  selectedSpaceIdsRef: MutableRefObject<string[]>,
-  setSelectedSpaceIds: Dispatch<SetStateAction<string[]>>,
-): void {
-  const sorted = [...new Set(next)].sort((a, b) => a.localeCompare(b))
-  selectedSpaceIdsRef.current = sorted
-
-  setSelectedSpaceIds(prev => {
-    if (prev.length === sorted.length && prev.every((value, index) => value === sorted[index])) {
-      return prev
-    }
-
-    return sorted
-  })
-}
-
 function toggleSelectionIds(selectedAtStart: string[], intersectingIds: string[]): string[] {
   const nextSelected = new Set(selectedAtStart)
 
@@ -79,10 +63,9 @@ export function applySelectionDraft({
   reactFlow,
   spaces: canonicalSpaces,
   selectedNodeIdsRef,
-  selectedSpaceIdsRef,
+  selection,
   setNodes,
   setSelectedNodeIds,
-  setSelectedSpaceIds,
   forceDeselectIntersectingNodes = false,
   collapseState = EMPTY_CANVAS_COLLAPSE,
 }: {
@@ -90,10 +73,9 @@ export function applySelectionDraft({
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   spaces: WorkspaceSpaceState[]
   selectedNodeIdsRef: MutableRefObject<string[]>
-  selectedSpaceIdsRef: MutableRefObject<string[]>
+  selection: CanvasSelectionCommands
   setNodes: SetNodes
   setSelectedNodeIds: Dispatch<SetStateAction<string[]>>
-  setSelectedSpaceIds: Dispatch<SetStateAction<string[]>>
   forceDeselectIntersectingNodes?: boolean
   collapseState?: CanvasCollapseState
 }): void {
@@ -168,7 +150,7 @@ export function applySelectionDraft({
       ? toggleSelectionIds(draft.selectedSpaceIdsAtStart, intersectingSpaceIds)
       : intersectingSpaceIds
 
-  setSortedSelectedSpaceIds(nextSelectedSpaceIds, selectedSpaceIdsRef, setSelectedSpaceIds)
+  selection.setSpaceIds(nextSelectedSpaceIds)
 
   const selectedAtStart = draft.toggleSelection
     ? new Set(draft.selectedNodeIdsAtStart)

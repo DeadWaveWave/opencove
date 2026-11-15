@@ -7,9 +7,15 @@ import {
 import { useLayoutEffect, type ReactElement, type ReactNode } from 'react'
 import {
   CanvasStoreProvider,
+  useCanvasSelectionCommands,
   useCanvasUiCommands,
+  useReadCanvasSelection,
   useReadCanvasUi,
 } from '../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
+import type {
+  CanvasSelectionCommands,
+  CanvasSelectionState,
+} from '../../src/contexts/workspace/presentation/renderer/store/canvasStore.selection'
 import type {
   CanvasUiCommands,
   CanvasUiState,
@@ -30,13 +36,20 @@ export function CanvasStoreTestProvider({ children }: { children: ReactNode }): 
 export interface CanvasStoreProbe {
   readUi: () => CanvasUiState
   commands: CanvasUiCommands
+  readSelection: () => CanvasSelectionState
+  selection: CanvasSelectionCommands
 }
 
 function createProbe(): { Probe: () => null; capture: () => CanvasStoreProbe } {
   let probe: CanvasStoreProbe | null = null
 
   function Probe(): null {
-    probe = { readUi: useReadCanvasUi(), commands: useCanvasUiCommands() }
+    probe = {
+      readUi: useReadCanvasUi(),
+      commands: useCanvasUiCommands(),
+      readSelection: useReadCanvasSelection(),
+      selection: useCanvasSelectionCommands(),
+    }
     return null
   }
 
@@ -47,7 +60,12 @@ function createProbe(): { Probe: () => null; capture: () => CanvasStoreProbe } {
         throw new Error('canvas store probe did not render')
       }
       const captured = probe
-      return { readUi: () => captured.readUi(), commands: captured.commands }
+      return {
+        readUi: () => captured.readUi(),
+        commands: captured.commands,
+        readSelection: () => captured.readSelection(),
+        selection: captured.selection,
+      }
     },
   }
 }

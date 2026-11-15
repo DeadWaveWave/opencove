@@ -97,6 +97,8 @@ workspace 画布文档（节点、Space、活动 Space、Space 归档记录、�
 
 画布 UI 投影状态（issue #685，#647 的 S3 切片）遵守以下规则：两个画布菜单（右键菜单 `contextMenu` 与 Space 操作菜单 `spaceActionMenu`）、对话框（任务编辑 `taskEditor`、角色创建 `roleCreator`、节点删除确认 `nodeDeleteConfirmation`）、Space 挂载选择器 `spaceTargetMountPicker` 和 Space 重命名 `spaceRename` 存放在每个画布一个的 canvas store 中，代码在 `src/contexts/workspace/presentation/renderer/store/canvasStore*.ts`，不要再用 `useState` 声明一份，也不要把它们的 setter 当作参数在 hook 之间传递；`WorkspaceCanvasInner` 调用的 hook 通过 `useReadCanvasUi()` 在调用时读取、通过 `useCanvasUiCommands()` 的具名命令写入，只有叶子组件（如 `WorkspaceCanvasMenus`、`WorkspaceCanvasWindows`、`WorkspaceSpaceRegionsOverlay`）用 `useCanvasUi` 订阅（`tests/unit/contexts/canvasUi.leafSubscribers.spec.ts` 机械检查 `hooks/` 下没有 `useCanvasUi(` 调用），节点组件只用命令，这样打开菜单或在对话框里输入不会重渲染 `WorkspaceCanvasInner`；store 不暴露 `setState`（类型与运行时都没有），状态只能经命令改变，互斥关系（两个菜单不会同时打开）由命令在同一次更新里保证；异步流程在 `await` 之后只用 `updateDialog` 写对话框，它在对话框已关闭时什么也不做，所以迟到的结果不会把对话框重新打开；store 随 `workspaceId` 重建，切换 workspace 时菜单、对话框、挂载选择器和重命名都会关闭；只有单一消费者的状态（例如 Space 菜单的路径打开器列表）留在该消费者本地。
 
+画布选择状态（issue #692，#647 的 S4 切片）：选中的 Space id 存放在 canvas store 的 `selection` 切片中，目前只有 Space 覆盖层 `WorkspaceSpaceRegionsOverlay` 通过 `useCanvasSelection` 订阅（节点选择迁入后，`useCanvasState.ts` 会为 `flowNodes` 订阅节点 id），其余代码在调用时用 `useReadCanvasSelection()` 读取、用 `useCanvasSelectionCommands()` 的具名命令写入；节点拖拽期间选中 Space 的副本是 `useNodeDragSession` 的私有状态。
+
 ### 测试闸门 (Test Gates)
 
 `pnpm test-gates:check`（属于 `pnpm verify:repo`，因此在 `verify:checks` 与 CI 的 `Repository checks` 步骤中运行）扫描已跟踪的 `tests/**/*.ts(x)` 与 `src/**/*.{spec,test}.ts(x)`，用 TypeScript 解析器识别调用，字符串和注释里的 `test.only` 不算（issue #683）。三条规则：

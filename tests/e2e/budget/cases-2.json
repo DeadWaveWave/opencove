@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "count": 171,
+  "count": 172,
   "entries": {
     "tests/e2e/agent-hook-relay.windows.spec.ts › claude-code executes Electron hooks through the real launch path and retains keyboard input": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/agent-hook-relay.windows.spec.ts › codex executes Electron hooks through the real launch path and retains keyboard input": "Desktop: pre-restructure inventory; existing assertions retained",
@@ -120,6 +120,7 @@
     "tests/e2e/workspace-canvas.pointer-create-center.spec.ts › terminal creation at 60px from center with zoom 1": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/workspace-canvas.roles.spec.ts › Workspace Canvas - Roles › creates, edits, runs, and persists role metadata with stale mount repair": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/workspace-canvas.selection.node-scope.spec.ts › Workspace Canvas - Selection (Node Scope) › does not allow shift marquee multi-select across space boundaries": "Desktop: pre-restructure inventory; existing assertions retained",
+    "tests/e2e/workspace-canvas.selection.spaces.drag-selected.spec.ts › Workspace Canvas - Selection (Spaces) › clears a selected space on a blank pane click in mouse mode": "Desktop: a blank pane click clears a selected Space in mouse mode, and a Shift marquee from outside keeps the already selected Space",
     "tests/e2e/workspace-canvas.selection.spaces.marquee-outside.spec.ts › Workspace Canvas - Selection (Spaces) › does not select nodes visually inside a touched space even when not owned": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/workspace-canvas.selection.spaces.marquee-outside.spec.ts › Workspace Canvas - Selection (Spaces) › selects space (not enclosed nodes) when marquee starts outside space": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/workspace-canvas.selection.spec.ts › Workspace Canvas - Selection › keeps selection while panning and clears selection on blank pane click": "Desktop: pre-restructure inventory; existing assertions retained",

@@ -17,7 +17,6 @@ export interface UseApplyNodeChangesParams {
   ) => { x: number; y: number }
   applyPendingScrollbacks: (targetNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]
   isNodeDraggingRef: MutableRefObject<boolean>
-  dragSelectedSpaceIdsRef?: MutableRefObject<string[] | null>
   exclusiveNodeDragAnchorIdRef?: MutableRefObject<string | null>
   nodeDragSession: WorkspaceCanvasNodeDragSession
 }

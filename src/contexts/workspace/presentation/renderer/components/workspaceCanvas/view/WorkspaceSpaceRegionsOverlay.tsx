@@ -40,14 +40,17 @@ import {
 } from './WorkspaceSpaceRegionsOverlay.pullRequests'
 import { useWorktreeInfoByPath } from '../../../worktreeInfo/useWorktreeInfo'
 import type { CanvasLod } from './canvasLod'
-import { useCanvasUi, useCanvasUiCommands } from '../../../store/canvasStoreContext'
+import {
+  useCanvasSelection,
+  useCanvasUi,
+  useCanvasUiCommands,
+} from '../../../store/canvasStoreContext'
 
 interface WorkspaceSpaceRegionsOverlayProps {
   workspacePath: string
   spaceVisuals: SpaceVisual[]
   busyOperationBySpaceId?: ReadonlyMap<string, string>
   spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
-  selectedSpaceIds: string[]
   openExplorerSpaceId: string | null
   toggleExplorer: (spaceId: string) => void
   handleSpaceDragHandlePointerDown: (
@@ -65,7 +68,6 @@ export function WorkspaceSpaceRegionsOverlay({
   spaceVisuals,
   busyOperationBySpaceId = new Map(),
   spaceFramePreview,
-  selectedSpaceIds,
   openExplorerSpaceId,
   toggleExplorer,
   handleSpaceDragHandlePointerDown,
@@ -77,6 +79,7 @@ export function WorkspaceSpaceRegionsOverlay({
   const ui = useCanvasUiCommands()
   const editingSpaceId = useCanvasUi(state => state.spaceRename?.spaceId ?? null)
   const spaceRenameDraft = useCanvasUi(state => state.spaceRename?.draft ?? '')
+  const selectedSpaceIds = useCanvasSelection(selection => selection.spaceIds)
   const reactFlow = useReactFlow()
   const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
   const selectedSpaceIdSet = React.useMemo(() => new Set(selectedSpaceIds), [selectedSpaceIds])

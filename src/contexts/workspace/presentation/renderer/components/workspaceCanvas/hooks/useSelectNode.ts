@@ -2,6 +2,10 @@ import { useCallback } from 'react'
 import { useStoreApi, type Node } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { isPointInsideRect } from './useSpaceOwnership.helpers'
+import {
+  useCanvasSelectionCommands,
+  useReadCanvasSelection,
+} from '../../../store/canvasStoreContext'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -11,19 +15,17 @@ type SetNodes = (
 export function useWorkspaceCanvasSelectNode({
   setNodes,
   setSelectedNodeIds,
-  setSelectedSpaceIds,
   selectedNodeIdsRef,
-  selectedSpaceIdsRef,
   spacesRef,
 }: {
   setNodes: SetNodes
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
-  setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
   selectedNodeIdsRef: React.MutableRefObject<string[]>
-  selectedSpaceIdsRef: React.MutableRefObject<string[]>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
 }): (nodeId: string, options?: { toggle?: boolean }) => void {
   const reactFlowStore = useStoreApi()
+  const readSelection = useReadCanvasSelection()
+  const selection = useCanvasSelectionCommands()
 
   return useCallback(
     (nodeId: string, options?: { toggle?: boolean }) => {
@@ -124,18 +126,16 @@ export function useWorkspaceCanvasSelectNode({
         nextSelectedNodeIds.length === 1
       ) {
         const shouldPreserveSelectedSpaces =
-          selectedSpaceIdsRef.current.length > 0 && selectedNodeIdsRef.current.includes(nodeId)
+          readSelection().spaceIds.length > 0 && selectedNodeIdsRef.current.includes(nodeId)
 
         if (!shouldPreserveSelectedSpaces) {
-          selectedSpaceIdsRef.current = []
-          setSelectedSpaceIds([])
+          selection.setSpaceIds([])
         }
       }
 
       selectedNodeIdsRef.current = nextSelectedNodeIds
       setSelectedNodeIds(nextSelectedNodeIds)
-      const hasAnySelection =
-        nextSelectedNodeIds.length > 0 || selectedSpaceIdsRef.current.length > 0
+      const hasAnySelection = nextSelectedNodeIds.length > 0 || readSelection().spaceIds.length > 0
       reactFlowStore.setState({
         nodesSelectionActive: nextSelectedNodeIds.length > 0,
         coveDragSurfaceSelectionMode: shouldToggle && hasAnySelection,
@@ -143,12 +143,12 @@ export function useWorkspaceCanvasSelectNode({
     },
     [
       reactFlowStore,
+      readSelection,
       selectedNodeIdsRef,
-      selectedSpaceIdsRef,
+      selection,
       spacesRef,
       setNodes,
       setSelectedNodeIds,
-      setSelectedSpaceIds,
     ],
   )
 }

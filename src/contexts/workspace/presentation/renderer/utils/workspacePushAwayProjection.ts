@@ -18,8 +18,8 @@ export function projectWorkspacePushAwayLayout({
 }: {
   spaces: WorkspaceSpaceState[]
   nodes: Node<TerminalNodeData>[]
-  pinnedGroupIds: string[]
-  sourceGroupIds: string[]
+  pinnedGroupIds: readonly string[]
+  sourceGroupIds: readonly string[]
   directions: LayoutDirection[]
   gap?: number
   bounds?: { rect: WorkspaceSpaceRect; padding?: number }

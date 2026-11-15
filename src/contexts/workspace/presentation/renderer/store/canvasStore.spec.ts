@@ -8,6 +8,7 @@ import type {
   TaskEditorState,
 } from '../components/workspaceCanvas/types'
 import { createCanvasStore } from './canvasStore'
+import { createInitialCanvasSelectionState } from './canvasStore.selection'
 import { createInitialCanvasUiState } from './canvasStore.ui'
 
 const paneMenu: ContextMenuState = { kind: 'pane', x: 10, y: 20, flowX: 1, flowY: 2 }
@@ -306,6 +307,228 @@ describe('canvas store', () => {
 
       commands.ui.cancelSpaceRename()
       expect(listener).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  describe('selection', () => {
+    it('starts empty, in the state and in the initial state', () => {
+      const { api } = createCanvasStore()
+
+      expect(api.getState().selection).toEqual({ nodeIds: [], spaceIds: [] })
+      expect(api.getInitialState().selection).toEqual({ nodeIds: [], spaceIds: [] })
+      expect(createInitialCanvasSelectionState()).toEqual({ nodeIds: [], spaceIds: [] })
+    })
+
+    it('setNodeIds keeps the order it was given and leaves the Spaces alone', () => {
+      const { api, commands } = createCanvasStore()
+      const listener = vi.fn()
+      commands.selection.setSpaceIds(['s1'])
+      const spaceIds = api.getState().selection.spaceIds
+      api.subscribe(listener)
+
+      commands.selection.setNodeIds(['n2', 'n1'])
+
+      expect(api.getState().selection.nodeIds).toEqual(['n2', 'n1'])
+      expect(api.getState().selection.spaceIds).toBe(spaceIds)
+      expect(listener).toHaveBeenCalledTimes(1)
+    })
+
+    it('setSpaceIds de-duplicates and sorts, and leaves the nodes alone', () => {
+      const { api, commands } = createCanvasStore()
+      commands.selection.setNodeIds(['n1'])
+      const nodeIds = api.getState().selection.nodeIds
+      const listener = vi.fn()
+      api.subscribe(listener)
+
+      commands.selection.setSpaceIds(['b', 'a', 'b'])
+
+      expect(api.getState().selection.spaceIds).toEqual(['a', 'b'])
+      expect(api.getState().selection.nodeIds).toBe(nodeIds)
+      expect(listener).toHaveBeenCalledTimes(1)
+    })
+
+    it('stores copies, never the array a caller passed in', () => {
+      const { api, commands } = createCanvasStore()
+      const nodeIds = ['n1']
+      const spaceIds = ['s1']
+
+      commands.selection.select({ nodeIds, spaceIds })
+      nodeIds.push('n2')
+      spaceIds.push('s2')
+
+      expect(api.getState().selection).toEqual({ nodeIds: ['n1'], spaceIds: ['s1'] })
+    })
+
+    it('select writes both lists in one notification', () => {
+      const { api, commands } = createCanvasStore()
+      const listener = vi.fn()
+      api.subscribe(listener)
+
+      commands.selection.select({ nodeIds: ['n2', 'n1'], spaceIds: ['s2', 's1'] })
+
+      expect(api.getState().selection).toEqual({ nodeIds: ['n2', 'n1'], spaceIds: ['s1', 's2'] })
+      expect(listener).toHaveBeenCalledTimes(1)
+    })
+
+    it('select keeps the nodeIds reference when only the Spaces change, and the reverse', () => {
+      const { api, commands } = createCanvasStore()
+      commands.selection.select({ nodeIds: ['n1'], spaceIds: ['s1'] })
+      const first = api.getState().selection
+
+      commands.selection.select({ nodeIds: ['n1'], spaceIds: ['s2'] })
+      const second = api.getState().selection
+      expect(second.nodeIds).toBe(first.nodeIds)
+      expect(second.spaceIds).not.toBe(first.spaceIds)
+
+      commands.selection.select({ nodeIds: ['n2'], spaceIds: ['s2'] })
+      const third = api.getState().selection
+      expect(third.spaceIds).toBe(second.spaceIds)
+      expect(third.nodeIds).not.toBe(second.nodeIds)
+    })
+
+    it('an equal write keeps the state and notifies nobody', () => {
+      const { api, commands } = createCanvasStore()
+      commands.selection.select({ nodeIds: ['n1', 'n2'], spaceIds: ['a', 'b'] })
+      const before = api.getState()
+      const listener = vi.fn()
+      api.subscribe(listener)
+
+      commands.selection.setNodeIds(['n1', 'n2'])
+      commands.selection.setSpaceIds(['b', 'a', 'a'])
+      commands.selection.select({ nodeIds: ['n1', 'n2'], spaceIds: ['b', 'a'] })
+      commands.selection.retain({
+        nodeIds: new Set(['n1', 'n2', 'n3']),
+        spaceIds: new Set(['a', 'b']),
+      })
+
+      expect(listener).not.toHaveBeenCalled()
+      expect(api.getState()).toBe(before)
+    })
+
+    it('treats the same ids in a different node order as a change', () => {
+      const { api, commands } = createCanvasStore()
+      commands.selection.setNodeIds(['n1', 'n2'])
+      const listener = vi.fn()
+      api.subscribe(listener)
+
+      commands.selection.setNodeIds(['n2', 'n1'])
+
+      expect(api.getState().selection.nodeIds).toEqual(['n2', 'n1'])
+      expect(listener).toHaveBeenCalledTimes(1)
+    })
+
+    it('clear empties both lists once and is a no-op on an empty selection', () => {
+      const { api, commands } = createCanvasStore()
+      const listener = vi.fn()
+      api.subscribe(listener)
+
+      commands.selection.clear()
+      expect(listener).not.toHaveBeenCalled()
+
+      commands.selection.select({ nodeIds: ['n1'], spaceIds: ['s1'] })
+      commands.selection.clear()
+      expect(api.getState().selection).toEqual({ nodeIds: [], spaceIds: [] })
+      expect(listener).toHaveBeenCalledTimes(2)
+
+      commands.selection.clear()
+      expect(listener).toHaveBeenCalledTimes(2)
+    })
+
+    it('clear on a selection of only Spaces or only nodes clears it', () => {
+      const { api, commands } = createCanvasStore()
+
+      commands.selection.setSpaceIds(['s1'])
+      commands.selection.clear()
+      expect(api.getState().selection).toEqual({ nodeIds: [], spaceIds: [] })
+
+      commands.selection.setNodeIds(['n1'])
+      commands.selection.clear()
+      expect(api.getState().selection).toEqual({ nodeIds: [], spaceIds: [] })
+    })
+
+    it('retain drops only the ids that are missing, once, keeping order', () => {
+      const { api, commands } = createCanvasStore()
+      commands.selection.select({ nodeIds: ['n3', 'n1', 'n2'], spaceIds: ['a', 'b', 'c'] })
+      const listener = vi.fn()
+      api.subscribe(listener)
+
+      commands.selection.retain({ nodeIds: new Set(['n1', 'n3']), spaceIds: new Set(['a', 'c']) })
+
+      expect(api.getState().selection).toEqual({ nodeIds: ['n3', 'n1'], spaceIds: ['a', 'c'] })
+      expect(listener).toHaveBeenCalledTimes(1)
+    })
+
+    it('retain keeps the untouched list by reference when only one list loses ids', () => {
+      const { api, commands } = createCanvasStore()
+      commands.selection.select({ nodeIds: ['n1'], spaceIds: ['a', 'b'] })
+      const before = api.getState().selection
+
+      commands.selection.retain({ nodeIds: new Set(['n1']), spaceIds: new Set(['a']) })
+
+      expect(api.getState().selection.nodeIds).toBe(before.nodeIds)
+      expect(api.getState().selection.spaceIds).toEqual(['a'])
+    })
+
+    it('retain with an empty set drops that whole list', () => {
+      const { api, commands } = createCanvasStore()
+      commands.selection.select({ nodeIds: ['n1'], spaceIds: ['a'] })
+
+      commands.selection.retain({ nodeIds: new Set(), spaceIds: new Set(['a']) })
+
+      expect(api.getState().selection).toEqual({ nodeIds: [], spaceIds: ['a'] })
+    })
+
+    it('does not notify a subscriber of nodeIds when only the Spaces change', () => {
+      const { api, commands } = createCanvasStore()
+      commands.selection.setNodeIds(['n1'])
+      const seenNodeIds: Array<readonly string[]> = []
+      let previous = api.getState().selection.nodeIds
+      api.subscribe(state => {
+        if (state.selection.nodeIds !== previous) {
+          previous = state.selection.nodeIds
+          seenNodeIds.push(previous)
+        }
+      })
+
+      commands.selection.setSpaceIds(['s1'])
+      commands.selection.setSpaceIds([])
+
+      expect(seenNodeIds).toEqual([])
+    })
+
+    it('does not write the ui slice, and the ui commands do not write the selection', () => {
+      const { api, commands } = createCanvasStore()
+      commands.selection.select({ nodeIds: ['n1'], spaceIds: ['s1'] })
+      const { ui, selection } = api.getState()
+
+      commands.selection.clear()
+      expect(api.getState().ui).toBe(ui)
+
+      commands.selection.select({ nodeIds: ['n1'], spaceIds: ['s1'] })
+      const selectionAfter = api.getState().selection
+      commands.ui.openContextMenu(paneMenu)
+      expect(api.getState().selection).toBe(selectionAfter)
+      expect(selection).toEqual(selectionAfter)
+    })
+
+    it('keeps the selection commands stable across state changes', () => {
+      const store = createCanvasStore()
+      const { setNodeIds, retain } = store.commands.selection
+
+      store.commands.selection.setNodeIds(['n1'])
+      store.commands.selection.setSpaceIds(['s1'])
+
+      expect(store.commands.selection.setNodeIds).toBe(setNodeIds)
+      expect(store.commands.selection.retain).toBe(retain)
+    })
+
+    it('exposes the selection ids as read-only', () => {
+      const { selection } = createCanvasStore().api.getState()
+      const mutate = () => {
+        // @ts-expect-error -- selection ids are read-only; write through the selection commands (#647 S4)
+        selection.nodeIds.push('x')
+      }
+      expect(mutate).toBeTypeOf('function')
     })
   })
 })

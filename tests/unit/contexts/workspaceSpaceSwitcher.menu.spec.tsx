@@ -42,7 +42,6 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
             hasExplicitRect: true,
           },
         ]}
-        selectedSpaceIds={[]}
         spaceFramePreview={null}
         handleSpaceDragHandlePointerDown={() => undefined}
         commitSpaceRename={() => undefined}
@@ -82,7 +81,6 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
           },
         ]}
         busyOperationBySpaceId={new Map([['space-1', 'Creating worktree…']])}
-        selectedSpaceIds={[]}
         spaceFramePreview={null}
         handleSpaceDragHandlePointerDown={() => undefined}
         commitSpaceRename={() => undefined}
@@ -145,7 +143,6 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
             hasExplicitRect: true,
           },
         ]}
-        selectedSpaceIds={[]}
         spaceFramePreview={null}
         handleSpaceDragHandlePointerDown={() => undefined}
         commitSpaceRename={() => undefined}
@@ -180,7 +177,6 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
               hasExplicitRect: true,
             },
           ]}
-          selectedSpaceIds={[]}
           spaceFramePreview={null}
           handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
           commitSpaceRename={() => undefined}
@@ -236,7 +232,6 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
             hasExplicitRect: true,
           },
         ]}
-        selectedSpaceIds={[]}
         spaceFramePreview={null}
         handleSpaceDragHandlePointerDown={() => undefined}
         commitSpaceRename={() => undefined}
@@ -297,7 +292,6 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
             hasExplicitRect: true,
           },
         ]}
-        selectedSpaceIds={[]}
         spaceFramePreview={null}
         handleSpaceDragHandlePointerDown={() => undefined}
         commitSpaceRename={() => undefined}
@@ -379,7 +373,6 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
             hasExplicitRect: true,
           },
         ]}
-        selectedSpaceIds={[]}
         spaceFramePreview={null}
         handleSpaceDragHandlePointerDown={() => undefined}
         commitSpaceRename={() => undefined}
@@ -437,7 +430,6 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
               hasExplicitRect: true,
             },
           ]}
-          selectedSpaceIds={[]}
           spaceFramePreview={null}
           handleSpaceDragHandlePointerDown={() => undefined}
           commitSpaceRename={() => undefined}

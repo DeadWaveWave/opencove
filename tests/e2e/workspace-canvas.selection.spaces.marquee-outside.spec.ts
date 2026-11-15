@@ -12,7 +12,7 @@ import {
 import { findMarqueeCorner } from './workspace-canvas.pane.helpers'
 
 test.describe('Workspace Canvas - Selection (Spaces)', () => {
-  test.skip('selects space (not enclosed nodes) when marquee starts outside space', async () => {
+  test('selects space (not enclosed nodes) when marquee starts outside space', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -157,7 +157,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
     }
   })
 
-  test.skip('keeps outside windows stable when marquee selects a space', async () => {
+  test('keeps outside windows stable when marquee selects a space', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -313,7 +313,12 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       await expect(selectedSpaceTopHandle).toBeVisible()
       const selectedSpaceTopHandleBox = await readLocatorClientRect(selectedSpaceTopHandle)
 
-      const dragStartX = selectedSpaceTopHandleBox.x + selectedSpaceTopHandleBox.width * 0.75
+      // The handle is wider than the window: grab a point of it that is on screen.
+      const windowWidth = await window.evaluate(() => window.innerWidth)
+      const dragStartX = Math.min(
+        selectedSpaceTopHandleBox.x + selectedSpaceTopHandleBox.width * 0.75,
+        windowWidth - 48,
+      )
       const dragStartY = selectedSpaceTopHandleBox.y + selectedSpaceTopHandleBox.height * 0.5
       const dragEndX = dragStartX
       const dragEndY = dragStartY + 180
@@ -365,6 +370,76 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
           return after ? Math.abs(after.insideX - beforeDrag.insideX) : Number.NaN
         })
         .toBeLessThanOrEqual(10)
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('keeps a selected space selected when a shift marquee from outside touches a second space', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(window, [], {
+        spaces: [
+          {
+            id: 'shift-marquee-space-a',
+            name: 'Shift Keep A',
+            directoryPath: testWorkspacePath,
+            nodeIds: [],
+            rect: { x: 100, y: 240, width: 300, height: 240 },
+          },
+          {
+            id: 'shift-marquee-space-b',
+            name: 'Shift Add B',
+            directoryPath: testWorkspacePath,
+            nodeIds: [],
+            rect: { x: 560, y: 240, width: 300, height: 240 },
+          },
+        ],
+        activeSpaceId: null,
+        settings: {
+          canvasInputMode: 'trackpad',
+        },
+      })
+
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await expect(pane).toBeVisible()
+      const regionA = window.locator('.workspace-space-region').filter({ hasText: 'Shift Keep A' })
+      const regionB = window.locator('.workspace-space-region').filter({ hasText: 'Shift Add B' })
+      await expect(regionA).toBeVisible()
+      await expect(regionB).toBeVisible()
+      const boxA = await readLocatorClientRect(regionA)
+      const boxB = await readLocatorClientRect(regionB)
+
+      const marquee = async (
+        box: { x: number; y: number; width: number; height: number },
+        modifiers?: Array<'Shift'>,
+      ): Promise<void> => {
+        const start = { x: box.x + box.width * 0.5, y: box.y - 90 }
+        const end = { x: box.x + box.width * 0.75, y: box.y + box.height * 0.4 }
+        const drag = await beginDragMouse(window, {
+          start,
+          initialTarget: end,
+          steps: 10,
+          modifiers,
+          settleAfterPressMs: 64,
+          settleBeforeReleaseMs: 96,
+          settleAfterReleaseMs: 64,
+        })
+        await drag.moveTo(end, { settleAfterMoveMs: 48 })
+        await drag.release()
+      }
+
+      // Plain marquee from above space A into it: only A is selected.
+      await marquee(boxA)
+      await expect(regionA).toHaveClass(/workspace-space-region--selected/)
+      await expect(regionB).not.toHaveClass(/workspace-space-region--selected/)
+
+      // Shift marquee from above space B into it, not touching A: A stays, B joins.
+      await marquee(boxB, ['Shift'])
+      await expect(regionB).toHaveClass(/workspace-space-region--selected/)
+      await expect(regionA).toHaveClass(/workspace-space-region--selected/)
+      await expect(window.locator('.workspace-space-region--selected')).toHaveCount(2)
     } finally {
       await electronApp.close()
     }

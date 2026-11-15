@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useLayoutEffect, useRef, useState } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
@@ -6,6 +6,8 @@ import type {
   TerminalNodeData,
   WorkspaceSpaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
+import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
+import { useCanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 
 vi.mock('@xyflow/react', () => {
   return {
@@ -96,13 +98,9 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       const [, setSnapGuides] = useState(null)
       const magneticSnappingEnabledRef = useRef(false)
       const spacesRef = useRef<WorkspaceSpaceState[]>([])
-      const selectedSpaceIdsRef = useRef<string[]>([])
-      const dragSelectedSpaceIdsRef = useRef<string[] | null>(null)
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-remove',
         spacesRef,
-        selectedSpaceIdsRef,
-        dragSelectedSpaceIdsRef,
         magneticSnappingEnabledRef,
         setSnapGuides,
         onSpacesChange: () => undefined,
@@ -117,7 +115,6 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
         normalizePosition: (_nodeId, desired) => desired,
         applyPendingScrollbacks: next => next,
         isNodeDraggingRef: useRef(false),
-        dragSelectedSpaceIdsRef,
         nodeDragSession,
       })
 
@@ -131,7 +128,7 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       )
     }
 
-    render(<Harness />)
+    render(<Harness />, { wrapper: CanvasStoreTestProvider })
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
 
@@ -219,13 +216,13 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       const [, setSnapGuides] = useState(null)
       const magneticSnappingEnabledRef = useRef(false)
       const spacesRef = useRef<WorkspaceSpaceState[]>(initialSpaces)
-      const selectedSpaceIdsRef = useRef<string[]>(['selected-space'])
-      const dragSelectedSpaceIdsRef = useRef<string[] | null>(null)
+      const selection = useCanvasSelectionCommands()
+      useLayoutEffect(() => {
+        selection.setSpaceIds(['selected-space'])
+      }, [selection])
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-persist',
         spacesRef,
-        selectedSpaceIdsRef,
-        dragSelectedSpaceIdsRef,
         magneticSnappingEnabledRef,
         setSnapGuides,
         onSpacesChange,
@@ -241,7 +238,6 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
         normalizePosition: (_nodeId, desired) => desired,
         applyPendingScrollbacks: next => next,
         isNodeDraggingRef: useRef(false),
-        dragSelectedSpaceIdsRef,
         nodeDragSession,
       })
 
@@ -280,7 +276,7 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       )
     }
 
-    render(<Harness />)
+    render(<Harness />, { wrapper: CanvasStoreTestProvider })
 
     fireEvent.click(screen.getByRole('button', { name: 'Drag' }))
 
@@ -360,14 +356,10 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       const [snapGuides, setSnapGuides] = useState<unknown[] | null>(null)
       const magneticSnappingEnabledRef = useRef(true)
       const spacesRef = useRef<WorkspaceSpaceState[]>([])
-      const selectedSpaceIdsRef = useRef<string[]>([])
-      const dragSelectedSpaceIdsRef = useRef<string[] | null>(null)
       const isNodeDraggingRef = useRef(false)
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-snap',
         spacesRef,
-        selectedSpaceIdsRef,
-        dragSelectedSpaceIdsRef,
         magneticSnappingEnabledRef,
         setSnapGuides,
         onSpacesChange: () => undefined,
@@ -382,7 +374,6 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
         normalizePosition: (_nodeId, desired) => desired,
         applyPendingScrollbacks: next => next,
         isNodeDraggingRef,
-        dragSelectedSpaceIdsRef,
         nodeDragSession,
       })
 
@@ -428,7 +419,7 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       )
     }
 
-    render(<Harness />)
+    render(<Harness />, { wrapper: CanvasStoreTestProvider })
 
     fireEvent.click(screen.getByRole('button', { name: 'Drag' }))
     await waitFor(() => {

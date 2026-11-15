@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react'
 import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react'
 import { ReactFlowProvider, useStoreApi, useViewport, type Node } from '@xyflow/react'
 import { afterEach, expect, it, vi } from 'vitest'
+import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 import { DEFAULT_AGENT_SETTINGS } from '@contexts/settings/domain/agentSettings'
 import type {
   TerminalNodeData,
@@ -119,18 +120,14 @@ function Canvas() {
   const viewport = useViewport()
   const [tick, setTick] = useState(0)
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
-  const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([])
   const selectedNodeIdsRef = useRef(selectedNodeIds)
-  const selectedSpaceIdsRef = useRef(selectedSpaceIds)
   const spacesRef = useRef<WorkspaceSpaceState[]>([])
   const actionRefs = useWorkspaceCanvasActionRefs()
   const composed = useWorkspaceCanvasComposedNodeTypes({
     nodeStore: { ...commands },
     canvasState: {
       setSelectedNodeIds,
-      setSelectedSpaceIds,
       selectedNodeIdsRef,
-      selectedSpaceIdsRef,
       spacesRef,
     },
     actionRefs,
@@ -176,9 +173,11 @@ it.each(['unchanged parent', 'viewport pan', 'viewport zoom'])(
     })
     parentRenders = 0
     const { container } = render(
-      <ReactFlowProvider>
-        <Canvas />
-      </ReactFlowProvider>,
+      <CanvasStoreTestProvider>
+        <ReactFlowProvider>
+          <Canvas />
+        </ReactFlowProvider>
+      </CanvasStoreTestProvider>,
     )
     const initialParameters = parameters
     const initialTypes = nodeTypes
@@ -217,7 +216,13 @@ it.each(['unchanged parent', 'viewport pan', 'viewport zoom'])(
 )
 
 it('keeps every individual command, preference and ref current without changing component types', () => {
-  render(React.createElement(ReactFlowProvider, null, React.createElement(Canvas)))
+  render(
+    <CanvasStoreTestProvider>
+      <ReactFlowProvider>
+        <Canvas />
+      </ReactFlowProvider>
+    </CanvasStoreTestProvider>,
+  )
   const initial = parameters
   const { result, rerender } = renderHook(props => useWorkspaceCanvasNodeTypes({ ...props }), {
     initialProps: initial,

@@ -72,8 +72,6 @@ export function WorkspaceCanvasInner({
   const nodeDragSession = workspaceCanvasHooks.useWorkspaceCanvasNodeDragSession({
     workspaceId,
     spacesRef: canvasState.spacesRef,
-    selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
-    dragSelectedSpaceIdsRef: canvasState.dragSelectedSpaceIdsRef,
     magneticSnappingEnabledRef: canvasState.magneticSnappingEnabledRef,
     setSnapGuides: canvasState.setSnapGuides,
     onSpacesChange,
@@ -107,11 +105,9 @@ export function WorkspaceCanvasInner({
       nodesRef: nodeStore.nodesRef,
       spacesRef: canvasState.spacesRef,
       selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
-      selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
       setNodes: nodeStore.setNodes,
       onSpacesChange,
       setSelectedNodeIds: canvasState.setSelectedNodeIds,
-      setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
       magneticSnappingEnabledRef: canvasState.magneticSnappingEnabledRef,
       setSnapGuides: canvasState.setSnapGuides,
       onRequestPersistFlush,
@@ -132,9 +128,7 @@ export function WorkspaceCanvasInner({
     spacesRef: canvasState.spacesRef,
     selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
     setSelectedNodeIds: canvasState.setSelectedNodeIds,
-    selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
-    setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
-    dragSelectedSpaceIdsRef: canvasState.dragSelectedSpaceIdsRef,
+    nodeDragSession,
     exclusiveNodeDragAnchorIdRef,
     setNodes: nodeStore.setNodes,
     onSpacesChange,
@@ -236,9 +230,7 @@ export function WorkspaceCanvasInner({
     reactFlow,
     setNodes: nodeStore.setNodes,
     setSelectedNodeIds: canvasState.setSelectedNodeIds,
-    setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
     selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
-    selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
     workspaceId,
     workspacePath,
     environmentVariables,
@@ -289,9 +281,7 @@ export function WorkspaceCanvasInner({
     nodesRef: nodeStore.nodesRef,
     setNodes: nodeStore.setNodes,
     setSelectedNodeIds: canvasState.setSelectedNodeIds,
-    setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
     selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
-    selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
     onSpacesChange,
     nodeCreation: nodeStore,
     createSpaceFromSelectedNodes: spacesApi.createSpaceFromSelectedNodes,
@@ -391,7 +381,6 @@ export function WorkspaceCanvasInner({
         snapGuides={canvasState.snapGuides}
         spaceVisuals={spacesApi.spaceVisuals}
         spaceFramePreview={spaceFramePreview ?? nodeDragSession.nodeSpaceFramePreview}
-        selectedSpaceIds={canvasState.selectedSpaceIds}
         handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
         commitSpaceRename={spacesApi.commitSpaceRename}
         activateSpaceTitle={spacesApi.activateSpaceTitle}

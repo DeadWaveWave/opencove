@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from 'vitest'
 import type { CanvasUiCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStore.ui'
 import {
   CanvasStoreProvider,
+  useCanvasSelection,
+  useCanvasSelectionCommands,
   useCanvasUi,
   useCanvasUiCommands,
   useReadCanvasUi,
@@ -74,6 +76,34 @@ describe('CanvasStoreProvider', () => {
     expect(recorder.menus.length).toBeGreaterThan(rendersBeforeSwitch)
     expect(recorder.commands).not.toBe(firstCommands)
     expect(recorder.readUi?.().contextMenu).toBeNull()
+  })
+
+  it('starts a new workspace id with an empty selection in the first render', () => {
+    const spaceIdsSeen: Array<readonly string[]> = []
+    let selection: ReturnType<typeof useCanvasSelectionCommands> | null = null
+    function SelectionProbe(): null {
+      spaceIdsSeen.push(useCanvasSelection(state => state.spaceIds))
+      selection = useCanvasSelectionCommands()
+      return null
+    }
+    const tree = (workspaceId: string) => (
+      <CanvasStoreProvider workspaceId={workspaceId}>
+        <SelectionProbe />
+      </CanvasStoreProvider>
+    )
+
+    const { rerender } = render(tree('workspace-a'))
+    act(() => {
+      selection?.setSpaceIds(['s'])
+    })
+    expect(spaceIdsSeen.at(-1)).toEqual(['s'])
+
+    const rendersBeforeSwitch = spaceIdsSeen.length
+    rerender(tree('workspace-b'))
+
+    expect(spaceIdsSeen.length).toBeGreaterThan(rendersBeforeSwitch)
+    expect(spaceIdsSeen[rendersBeforeSwitch]).toEqual([])
+    expect(spaceIdsSeen.slice(rendersBeforeSwitch).every(ids => ids.length === 0)).toBe(true)
   })
 
   it('throws outside the provider', () => {

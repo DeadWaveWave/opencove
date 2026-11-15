@@ -123,9 +123,7 @@ export function useWorkspaceCanvasShortcutActions({
   nodesRef,
   setNodes,
   setSelectedNodeIds,
-  setSelectedSpaceIds,
   selectedNodeIdsRef,
-  selectedSpaceIdsRef,
   onSpacesChange,
   nodeCreation: { createNodeForSession, createNoteNode },
   launchAgentAtFlowPosition,
@@ -159,9 +157,7 @@ export function useWorkspaceCanvasShortcutActions({
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
-  setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
   selectedNodeIdsRef: React.MutableRefObject<string[]>
-  selectedSpaceIdsRef: React.MutableRefObject<string[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   nodeCreation: {
     createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
@@ -188,9 +184,7 @@ export function useWorkspaceCanvasShortcutActions({
   const selectNode = useWorkspaceCanvasSelectNode({
     setNodes,
     setSelectedNodeIds,
-    setSelectedSpaceIds,
     selectedNodeIdsRef,
-    selectedSpaceIdsRef,
     spacesRef,
   })
 

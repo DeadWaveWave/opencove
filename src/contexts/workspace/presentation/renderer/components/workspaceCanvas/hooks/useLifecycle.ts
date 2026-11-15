@@ -12,7 +12,6 @@ import type { SelectionDraftState, TrackpadGestureLockState } from '../types'
 interface UseWorkspaceCanvasLifecycleParams {
   workspaceId: string
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
-  setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
   trackpadGestureLockRef: React.MutableRefObject<TrackpadGestureLockState | null>
   setIsCanvasWheelGestureCaptureActive: React.Dispatch<React.SetStateAction<boolean>>
@@ -33,7 +32,6 @@ interface UseWorkspaceCanvasLifecycleParams {
 export function useWorkspaceCanvasLifecycle({
   workspaceId,
   setSelectedNodeIds,
-  setSelectedSpaceIds,
   selectionDraftRef,
   trackpadGestureLockRef,
   setIsCanvasWheelGestureCaptureActive,
@@ -55,7 +53,6 @@ export function useWorkspaceCanvasLifecycle({
 
   useEffect(() => {
     setSelectedNodeIds([])
-    setSelectedSpaceIds([])
     selectionDraftRef.current = null
     trackpadGestureLockRef.current = null
     setIsCanvasWheelGestureCaptureActive(false)
@@ -63,7 +60,6 @@ export function useWorkspaceCanvasLifecycle({
     selectionDraftRef,
     setIsCanvasWheelGestureCaptureActive,
     setSelectedNodeIds,
-    setSelectedSpaceIds,
     trackpadGestureLockRef,
     workspaceId,
   ])

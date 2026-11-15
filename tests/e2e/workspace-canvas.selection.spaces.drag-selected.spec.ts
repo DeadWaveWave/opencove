@@ -7,7 +7,7 @@ import {
   storageKey,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
-import { findMarqueeCorner } from './workspace-canvas.pane.helpers'
+import { findEmptyPanePoint, findMarqueeCorner } from './workspace-canvas.pane.helpers'
 
 test.describe('Workspace Canvas - Selection (Spaces)', () => {
   test('toggles selected space off with shift-click on the region', async () => {
@@ -84,7 +84,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
     }
   })
 
-  test.skip('drags selected space from the top handle', async () => {
+  test('drags selected space from the top handle', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -209,6 +209,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       await window.mouse.down()
       await window.mouse.move(selectionEndX, selectionEndY, { steps: 10 })
       await window.mouse.up()
+      await expect(spaceRegion).toHaveClass(/workspace-space-region--selected/)
 
       const selectedTopHandle = window.locator(
         '[data-testid="workspace-space-drag-marquee-drag-space-top"]',
@@ -226,6 +227,20 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
         end: { x: dragStartX + dragDx, y: dragStartY + dragDy },
         steps: 12,
       })
+
+      await expect
+        .poll(async () => {
+          const after = await readSpaceAndNode()
+          return after ? after.rectX - before.rectX : Number.NaN
+        })
+        .toBeGreaterThan(120)
+
+      await expect
+        .poll(async () => {
+          const after = await readSpaceAndNode()
+          return after ? after.rectY - before.rectY : Number.NaN
+        })
+        .toBeGreaterThan(80)
 
       await expect
         .poll(async () => {
@@ -253,20 +268,6 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
             nodeDy: expect.any(Number),
           }),
         )
-
-      await expect
-        .poll(async () => {
-          const after = await readSpaceAndNode()
-          return after ? after.rectX - before.rectX : Number.NaN
-        })
-        .toBeGreaterThan(120)
-
-      await expect
-        .poll(async () => {
-          const after = await readSpaceAndNode()
-          return after ? after.rectY - before.rectY : Number.NaN
-        })
-        .toBeGreaterThan(80)
     } finally {
       await electronApp.close()
     }
@@ -453,6 +454,45 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
           return after ? after.nodeX - before.nodeX : Number.NaN
         })
         .toBe(0)
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('clears a selected space on a blank pane click in mouse mode', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(window, [], {
+        spaces: [
+          {
+            id: 'pane-click-space',
+            name: 'Pane Click Space',
+            directoryPath: testWorkspacePath,
+            nodeIds: [],
+            rect: { x: 200, y: 160, width: 600, height: 440 },
+          },
+        ],
+        activeSpaceId: null,
+        settings: {
+          canvasInputMode: 'mouse',
+        },
+      })
+
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await expect(pane).toBeVisible()
+      const spaceRegion = window.locator('.workspace-space-region').first()
+      await expect(spaceRegion).toBeVisible({ timeout: 30_000 })
+
+      // Pointer down on the frame handle of an unselected Space selects it.
+      const topHandle = window.locator('[data-testid="workspace-space-drag-pane-click-space-top"]')
+      await expect(topHandle).toBeVisible()
+      await topHandle.click({ position: { x: 24, y: 8 } })
+      await expect(spaceRegion).toHaveClass(/workspace-space-region--selected/)
+
+      await pane.click({ position: await findEmptyPanePoint(pane) })
+
+      await expect(window.locator('.workspace-space-region--selected')).toHaveCount(0)
     } finally {
       await electronApp.close()
     }
