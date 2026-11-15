@@ -216,6 +216,30 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
       ])
     })
 
+    it('projects from the nodes the store holds when the frame runs', () => {
+      const harness = createCanvasDocumentHarness({
+        nodes: [nodeAt('n1', 50, 60)],
+        spaces: [spaceA()],
+      })
+      const view = renderDrag(harness)
+      press(view, 'space-a', INSIDE_A)
+
+      // A node the store gained since pointer down, in the way of the moved Space: the frame
+      // pushes it clear before release, which only the nodes read at the frame know.
+      act(() => {
+        replaceWorkspaceNodes(harness.workspaceId, [
+          ...harness.readStoreDocument().nodes,
+          nodeAt('n-late', 650, 100),
+        ])
+      })
+      dragTo({ x: INSIDE_A.x + 100, y: INSIDE_A.y })
+
+      expect(harness.readStoreDocument().nodes.map(node => [node.id, node.position.x])).toEqual([
+        ['n1', 150],
+        ['n-late', 700],
+      ])
+    })
+
     it('moves the nodes the store holds, not the ones React Flow holds', () => {
       const harness = createCanvasDocumentHarness({
         nodes: [nodeAt('n1', 50, 60)],
@@ -376,8 +400,9 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
       expect(stored.selected).toBe(true)
     })
 
-    // On the base a click wrote the nodes (their canvas fields) and then the Spaces, and flushed
-    // once; the content did not change. It is now one update and one flush.
+    // On the base a click wrote the nodes (they gain `dragHandle` and their initial size from the
+    // canvas view) and then the Spaces (an equal array), two store updates, and flushed once. It is
+    // now exactly one update with both, and one flush; positions and Spaces keep their content.
     it('changes no content and flushes once for a click', () => {
       const harness = createCanvasDocumentHarness({
         nodes: [nodeAt('n1', 50, 60)],
@@ -392,7 +417,7 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
 
       release({ x: INSIDE_A.x + 2, y: INSIDE_A.y + 1 })
 
-      expect(harness.notifications.mock.calls.length).toBeLessThanOrEqual(1)
+      expect(harness.notifications).toHaveBeenCalledTimes(1)
       expect(harness.flush).toHaveBeenCalledTimes(1)
       expect(harness.readStoreDocument().nodes.map(node => node.position)).toEqual(
         before.nodes.map(node => node.position),
