@@ -223,6 +223,8 @@ jobs:
         env:
           OPENCOVE_E2E_SKIP_BUILD: '1'
           OPENCOVE_E2E_RETRIES: '0'
+          # Its own result and report directories: this run must not clear the Chromium run's.
+          OPENCOVE_WEB_CANVAS_ARTIFACT_SUFFIX: '-webkit'
         run: >-
           pnpm test:e2e:web-canvas --
           tests/e2e-web-canvas/workerWebCanvas.terminal-auto-calibration.spec.ts
@@ -245,6 +247,8 @@ jobs:
           path: |
             test-results-web-canvas/
             playwright-report-web-canvas/
+            test-results-web-canvas-webkit/
+            playwright-report-web-canvas-webkit/
             test-results-web-shell/
             playwright-report-web-shell/
           retention-days: 7

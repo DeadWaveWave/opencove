@@ -232,6 +232,44 @@ describe('CI web suites', () => {
     expect(lines[stepAt - 1]).toMatch(/^ {6}# WebKit subset: /)
   })
 
+  it('keeps the artifacts of every web canvas run apart', async () => {
+    const { webJob } = await readWorkflow()
+    // Playwright clears its output directory and rewrites its report when a run starts. Two runs
+    // of one config in one job need their own directories, or a failure of the first run leaves
+    // no trace in the upload.
+    const suffixes = readSteps(webJob)
+      .filter(step => {
+        try {
+          return readRunCommand(step).startsWith('pnpm test:e2e:web-canvas ')
+        } catch {
+          return false
+        }
+      })
+      .map(
+        step =>
+          step.text.match(/^ {10}OPENCOVE_WEB_CANVAS_ARTIFACT_SUFFIX: '([^']*)'$/m)?.[1] ?? '',
+      )
+
+    expect(suffixes).toEqual(['', '-webkit'])
+
+    const upload = readStep(webJob, 'Upload Web Canvas artifacts').text
+    const ignored = (await readFile(resolve(rootDir, '.gitignore'), 'utf8')).split('\n')
+    for (const suffix of suffixes) {
+      for (const directory of [
+        `test-results-web-canvas${suffix}/`,
+        `playwright-report-web-canvas${suffix}/`,
+      ]) {
+        expect(upload, directory).toMatch(new RegExp(`^ {12}${directory}$`, 'm'))
+        expect(ignored, directory).toContain(directory)
+      }
+    }
+
+    const config = await readFile(resolve(rootDir, 'playwright.web-canvas.config.ts'), 'utf8')
+    expect(config).toContain("process.env['OPENCOVE_WEB_CANVAS_ARTIFACT_SUFFIX']")
+    expect(config).toContain('outputFolder: `playwright-report-web-canvas${artifactSuffix}`')
+    expect(config).toContain('outputDir: `./test-results-web-canvas${artifactSuffix}`')
+  })
+
   it('runs the web shell suite with retries pinned to 0 and uploads its artifacts', async () => {
     const { webJob } = await readWorkflow()
     const step = readStep(webJob, 'Web shell tests (chromium)')
