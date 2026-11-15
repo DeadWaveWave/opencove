@@ -18,6 +18,8 @@ on:
 
 permissions:
   contents: write
+  # Reads the CI runs on main to find the newest green commit.
+  actions: read
 
 concurrency:
   group: nightly-scheduled
@@ -37,6 +39,22 @@ jobs:
       tag_name: ${{ steps.tag.outputs.tag_name }}
       target_commitish: ${{ steps.sha.outputs.target_commitish }}
     steps:
+      # A scheduled nightly is built from the head commit of the newest successful push run of CI
+      # on main, never from a newer commit. Manual dispatch skips this step and builds the
+      # requested ref as before.
+      - name: Resolve newest green CI commit
+        id: green
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // ""')"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Newest green push run of CI on main: ${sha:-none}"
+
+      # The decision is made by the scripts of this workflow's own revision: the head of the
+      # default ref (main for a scheduled run) is checked out first, and the green commit only
+      # after the gate said release.
       - name: Checkout
         uses: actions/checkout@v7
         with:
@@ -48,25 +66,37 @@ jobs:
         with:
           node-version: 22
 
-      - name: Resolve target commit-ish
-        id: sha
+      - name: Resolve checked-out head
+        id: head
         run: |
-          echo "target_commitish=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Resolve nightly release gate
         id: gate
         run: |
           node scripts/resolve-nightly-release-gate.mjs \
             --event "${{ github.event_name }}" \
-            --target "${{ steps.sha.outputs.target_commitish }}" >> "$GITHUB_OUTPUT"
+            --target "${{ steps.head.outputs.sha }}" \
+            --green-commit "${{ steps.green.outputs.sha }}" \
+            --head "${{ steps.head.outputs.sha }}" >> "$GITHUB_OUTPUT"
 
       - name: Report skipped nightly release
         if: steps.gate.outputs.should_release != 'true'
         run: |
-          echo "Skipping nightly release for target ${{ steps.sha.outputs.target_commitish }}."
+          echo "Skipping nightly release; green commit: ${{ steps.green.outputs.sha || 'none' }}, head: ${{ steps.head.outputs.sha }}."
           echo "reason=${{ steps.gate.outputs.reason }}"
           echo "previous_tag=${{ steps.gate.outputs.previous_tag }}"
           echo "has_changes=${{ steps.gate.outputs.has_changes }}"
+
+      - name: Check out the green commit
+        if: github.event_name == 'schedule' && steps.gate.outputs.should_release == 'true'
+        run: git checkout --detach "${{ steps.green.outputs.sha }}"
+
+      - name: Resolve target commit-ish
+        id: sha
+        if: steps.gate.outputs.should_release == 'true'
+        run: |
+          echo "target_commitish=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Resolve nightly tag
         id: tag

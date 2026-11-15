@@ -29,6 +29,8 @@ const args = parseArgs(process.argv)
 const result = resolveNightlyReleaseGate({
   eventName: args.get('event') ?? 'schedule',
   targetRef: args.get('target') ?? 'HEAD',
+  greenCommit: args.get('green-commit') ?? null,
+  headCommit: args.get('head') ?? null,
 })
 
 process.stdout.write(`${formatNightlyReleaseGateOutput(result)}\n`)
