@@ -19,7 +19,8 @@ describe('CI E2E budget wiring', () => {
       const denominator = Number(text.match(/--shards (\d+)/)?.[1])
       expect(matrix).toEqual([1, 2, 3])
       expect(denominator).toBe(matrix?.length)
-      expect(text).toContain("OPENCOVE_E2E_RETRIES: '0'")
+      // Pull request shards never retry; the post-merge macOS shards retry once (see ci-main-flow).
+      expect(text).toContain(`OPENCOVE_E2E_RETRIES: '${name === 'ci-macos' ? 1 : 0}'`)
       expect(text).toContain("OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'")
       expect(text).toContain('OPENCOVE_E2E_WINDOW_MODE: inactive')
       expect(text).toMatch(/Upload E2E durations\n\s+if: always\(\)\n\s+continue-on-error: true/)

@@ -18,6 +18,8 @@ on:
 
 permissions:
   contents: write
+  # Reads the CI runs on main to find the newest green commit.
+  actions: read
 
 concurrency:
   group: nightly-scheduled
@@ -37,10 +39,23 @@ jobs:
       tag_name: ${{ steps.tag.outputs.tag_name }}
       target_commitish: ${{ steps.sha.outputs.target_commitish }}
     steps:
+      # A scheduled nightly is built from the head commit of the newest successful push run of CI
+      # on main, never from a newer commit. Manual dispatch skips this step and builds the
+      # requested ref as before.
+      - name: Resolve newest green CI commit
+        id: green
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // ""')"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Newest green push run of CI on main: ${sha:-none}"
+
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ env.OPENCOVE_NIGHTLY_TARGET_REF }}
+          ref: ${{ steps.green.outputs.sha || env.OPENCOVE_NIGHTLY_TARGET_REF }}
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -58,7 +73,8 @@ jobs:
         run: |
           node scripts/resolve-nightly-release-gate.mjs \
             --event "${{ github.event_name }}" \
-            --target "${{ steps.sha.outputs.target_commitish }}" >> "$GITHUB_OUTPUT"
+            --target "${{ steps.sha.outputs.target_commitish }}" \
+            --green-commit "${{ steps.green.outputs.sha }}" >> "$GITHUB_OUTPUT"
 
       - name: Report skipped nightly release
         if: steps.gate.outputs.should_release != 'true'

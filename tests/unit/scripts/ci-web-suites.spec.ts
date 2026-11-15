@@ -172,7 +172,7 @@ describe('CI web suites', () => {
     const workflow = await readFile(resolve(rootDir, '.github/workflows/ci.yml'), 'utf8')
     return {
       workflow,
-      webJob: readJob(workflow, 'web-canvas-continuity-ubuntu', 'worker-cli-macos'),
+      webJob: readJob(workflow, 'web-canvas-continuity-ubuntu', 'macos-platform'),
     }
   }
 
