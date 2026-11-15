@@ -14,21 +14,19 @@ import {
   pushAwayLayout,
   type LayoutItem,
 } from '../../../utils/spaceLayout'
-import { useCanvasUiCommands, useReadCanvasSelection } from '../../../store/canvasStoreContext'
-type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean },
-) => void
+import {
+  useCanvasUiCommands,
+  useReadCanvasDocument,
+  useReadCanvasSelection,
+} from '../../../store/canvasStoreContext'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+type UpdateCanvasDocument = UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
 export function useWorkspaceCanvasCreateSpace({
   workspaceId,
   workspacePath,
   standardWindowSizeBucket,
   reactFlow,
-  nodesRef,
-  setNodes,
-  spacesRef,
-  onSpacesChange,
-  onRequestPersistFlush,
+  updateCanvasDocument,
   onShowMessage,
   createChildSpaceInParent,
 }: {
@@ -36,11 +34,7 @@ export function useWorkspaceCanvasCreateSpace({
   workspacePath: string
   standardWindowSizeBucket: StandardWindowSizeBucket
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  setNodes: SetNodes
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
-  onRequestPersistFlush?: () => void
+  updateCanvasDocument: UpdateCanvasDocument
   onShowMessage?: ShowWorkspaceCanvasMessage
   createChildSpaceInParent: (
     parentSpaceId: string,
@@ -58,11 +52,13 @@ export function useWorkspaceCanvasCreateSpace({
 } {
   const ui = useCanvasUiCommands()
   const readSelection = useReadCanvasSelection()
+  const readDocument = useReadCanvasDocument()
 
   const { t } = useTranslation()
   const resolveDefaultSpaceName = useCallback((): string => {
-    const usedNames = new Set(spacesRef.current.map(space => space.name.toLowerCase()))
-    let nextNumber = spacesRef.current.length + 1
+    const { spaces } = readDocument()
+    const usedNames = new Set(spaces.map(space => space.name.toLowerCase()))
+    let nextNumber = spaces.length + 1
     let normalizedName = t('space.defaultName', { count: nextNumber })
     while (usedNames.has(normalizedName.toLowerCase())) {
       nextNumber += 1
@@ -70,7 +66,7 @@ export function useWorkspaceCanvasCreateSpace({
     }
 
     return normalizedName
-  }, [spacesRef, t])
+  }, [readDocument, t])
 
   const createSpace = useCallback(
     (payload: {
@@ -79,8 +75,11 @@ export function useWorkspaceCanvasCreateSpace({
       targetMountId: string
       directoryPath: string
     }) => {
+      // One read plans the whole change; the write below runs in the same call, so nothing can
+      // land between them.
+      const document = readDocument()
       const normalizedNodeIds = payload.nodeIds.filter(nodeId =>
-        nodesRef.current.some(node => node.id === nodeId),
+        document.nodes.some(node => node.id === nodeId),
       )
       if (normalizedNodeIds.length === 0) {
         onShowMessage?.(t('messages.spaceRequiresNode'), 'warning')
@@ -90,7 +89,7 @@ export function useWorkspaceCanvasCreateSpace({
 
       const validationError = validateSpaceTransfer(
         normalizedNodeIds,
-        nodesRef.current,
+        document.nodes,
         null,
         workspacePath,
         t,
@@ -104,14 +103,14 @@ export function useWorkspaceCanvasCreateSpace({
 
       const assignedNodeSet = new Set(normalizedNodeIds)
       const normalizedSpaces = sanitizeSpaces(
-        spacesRef.current.map(space => ({
+        document.spaces.map(space => ({
           ...space,
           nodeIds: space.nodeIds.filter(nodeId => !assignedNodeSet.has(nodeId)),
         })),
       )
 
       const createdNodes = normalizedNodeIds
-        .map(nodeId => nodesRef.current.find(node => node.id === nodeId))
+        .map(nodeId => document.nodes.find(node => node.id === nodeId))
         .filter((node): node is Node<TerminalNodeData> => Boolean(node))
       const rect =
         payload.rect ??
@@ -142,7 +141,7 @@ export function useWorkspaceCanvasCreateSpace({
       const ownedNodeIds = new Set(draftSpaces.flatMap(space => space.nodeIds))
       const items: LayoutItem[] = []
 
-      const nodeById = new Map(nodesRef.current.map(node => [node.id, node]))
+      const nodeById = new Map(document.nodes.map(node => [node.id, node]))
 
       for (const space of draftSpaces) {
         if (!space.rect) {
@@ -176,7 +175,7 @@ export function useWorkspaceCanvasCreateSpace({
         }
       }
 
-      for (const node of nodesRef.current) {
+      for (const node of document.nodes) {
         if (ownedNodeIds.has(node.id)) {
           continue
         }
@@ -231,8 +230,9 @@ export function useWorkspaceCanvasCreateSpace({
 
       const assignedNodeIdSet = new Set(normalizedNodeIds)
       const targetDirectoryPath = resolveSpaceWorkingDirectory(nextSpace, workspacePath)
-      setNodes(
-        prevNodes => {
+      // The positions, the directories and the Spaces are one store update.
+      updateCanvasDocument(
+        ({ nodes: prevNodes }) => {
           let hasChanged = false
 
           const nextNodes = prevNodes.map(node => {
@@ -314,26 +314,20 @@ export function useWorkspaceCanvasCreateSpace({
             }
           })
 
-          return hasChanged ? nextNodes : prevNodes
+          return { nodes: hasChanged ? nextNodes : prevNodes, spaces: nextSpaces }
         },
-        { syncLayout: false },
+        { syncLayout: false, flush: true },
       )
-
-      onSpacesChange(nextSpaces)
-      onRequestPersistFlush?.()
       ui.closeContextMenu()
       ui.closeDialog('spaceTargetMountPicker')
       ui.cancelSpaceRename()
     },
     [
-      nodesRef,
-      onRequestPersistFlush,
       onShowMessage,
-      onSpacesChange,
+      readDocument,
       resolveDefaultSpaceName,
       ui,
-      setNodes,
-      spacesRef,
+      updateCanvasDocument,
       workspacePath,
       t,
     ],
@@ -349,9 +343,10 @@ export function useWorkspaceCanvasCreateSpace({
             .filter(node => node.selected)
             .map(node => node.id)
     const selectedNodeIdSet = new Set(selectedIds)
-    const selectedNodes = nodesRef.current.filter(node => selectedNodeIdSet.has(node.id))
+    const document = readDocument()
+    const selectedNodes = document.nodes.filter(node => selectedNodeIdSet.has(node.id))
     const selectedParentSpace = resolveSelectedChildSpaceParent({
-      spaces: spacesRef.current,
+      spaces: document.spaces,
       selectedNodes,
     })
 
@@ -373,12 +368,11 @@ export function useWorkspaceCanvasCreateSpace({
   }, [
     createChildSpaceInParent,
     createSpace,
-    nodesRef,
     onShowMessage,
     reactFlow,
+    readDocument,
     readSelection,
     ui,
-    spacesRef,
     t,
     workspaceId,
     workspacePath,
@@ -388,10 +382,6 @@ export function useWorkspaceCanvasCreateSpace({
     workspaceId,
     workspacePath,
     standardWindowSizeBucket,
-    nodesRef,
-    spacesRef,
-    onSpacesChange,
-    onRequestPersistFlush,
     onShowMessage,
     resolveDefaultSpaceName,
   })

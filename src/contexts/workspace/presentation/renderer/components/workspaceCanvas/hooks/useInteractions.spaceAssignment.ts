@@ -125,7 +125,6 @@ export function assignNodeToSpaceAndExpand({
     )
   }
 
-  spacesRef.current = pushedSpaces
   onSpacesChange(pushedSpaces)
 }
 

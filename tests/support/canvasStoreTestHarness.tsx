@@ -25,12 +25,14 @@ import type { ContextMenuState } from '../../src/contexts/workspace/presentation
 export const CANVAS_STORE_TEST_WORKSPACE_ID = 'test-workspace'
 
 /** Provides a canvas store to a component under test that is rendered without `WorkspaceCanvas`. */
-export function CanvasStoreTestProvider({ children }: { children: ReactNode }): ReactElement {
-  return (
-    <CanvasStoreProvider workspaceId={CANVAS_STORE_TEST_WORKSPACE_ID}>
-      {children}
-    </CanvasStoreProvider>
-  )
+export function CanvasStoreTestProvider({
+  children,
+  workspaceId = CANVAS_STORE_TEST_WORKSPACE_ID,
+}: {
+  children: ReactNode
+  workspaceId?: string
+}): ReactElement {
+  return <CanvasStoreProvider workspaceId={workspaceId}>{children}</CanvasStoreProvider>
 }
 
 export interface CanvasStoreProbe {

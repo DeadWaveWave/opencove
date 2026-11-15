@@ -183,7 +183,7 @@ describe('WorkspaceCanvas task agent directory', () => {
       },
     ]
 
-    seedWorkspaceCanvasStore({ nodes: initialNodes })
+    seedWorkspaceCanvasStore({ nodes: initialNodes, spaces })
 
     function Harness() {
       const nodes = useWorkspaceCanvasStoreNodes()

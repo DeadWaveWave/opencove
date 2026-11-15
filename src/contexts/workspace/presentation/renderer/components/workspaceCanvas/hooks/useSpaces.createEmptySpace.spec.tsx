@@ -1,7 +1,10 @@
 import { act, renderHook } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import React from 'react'
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import type { MountDto } from '@shared/contracts/dto'
-import type { WorkspaceSpaceState } from '../../../types'
+import { useAppStore } from '@app/renderer/shell/store/useAppStore'
+import type { WorkspaceState } from '../../../types'
+import { registerWorkspaceDocumentPersistFlush } from '../../../store/workspaceDocumentCommands'
 import { useCreateEmptySpace } from './useSpaces.createEmptySpace'
 import { CanvasStoreTestProvider } from '../../../../../../../../tests/support/canvasStoreTestHarness'
 
@@ -9,7 +12,47 @@ vi.mock('@app/renderer/i18n', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }))
 
-afterEach(() => vi.unstubAllGlobals())
+let flush: Mock<() => void>
+let storeWrites: Mock<() => void>
+let disposers: Array<() => void> = []
+
+// The hook reads and writes the committed document of workspace `project`.
+beforeEach(() => {
+  useAppStore.setState({
+    workspaces: [
+      {
+        id: 'project',
+        name: 'Project',
+        path: '/local/metadata/projects/project',
+        worktreesRoot: '',
+        nodes: [],
+        spaces: [],
+        activeSpaceId: null,
+        spaceArchiveRecords: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+        isMinimapVisible: false,
+      } as WorkspaceState,
+    ],
+    activeWorkspaceId: 'project',
+  })
+  flush = vi.fn()
+  storeWrites = vi.fn()
+  disposers = [registerWorkspaceDocumentPersistFlush(flush), useAppStore.subscribe(storeWrites)]
+})
+
+afterEach(() => {
+  disposers.forEach(dispose => dispose())
+  useAppStore.setState({ workspaces: [], activeWorkspaceId: null })
+  vi.unstubAllGlobals()
+})
+
+function readStoreSpaces() {
+  return useAppStore.getState().workspaces[0].spaces
+}
+
+function ProjectStore({ children }: { children: React.ReactNode }): React.JSX.Element {
+  return <CanvasStoreTestProvider workspaceId="project">{children}</CanvasStoreTestProvider>
+}
 const remoteMount: MountDto = {
   mountId: 'remote-mount',
   projectId: 'project',
@@ -25,39 +68,34 @@ const remoteMount: MountDto = {
 
 function setup(invoke = vi.fn().mockResolvedValue({ mounts: [remoteMount] })) {
   vi.stubGlobal('opencoveApi', { controlSurface: { invoke } })
-  const spacesRef = { current: [] as WorkspaceSpaceState[] }
   const options: Parameters<typeof useCreateEmptySpace>[0] = {
     workspaceId: 'project',
     workspacePath: '/local/metadata/projects/project',
     standardWindowSizeBucket: 'regular',
-    nodesRef: { current: [] },
-    spacesRef,
-    onSpacesChange: vi.fn(),
-    onRequestPersistFlush: vi.fn(),
     onShowMessage: vi.fn(),
     resolveDefaultSpaceName: () => 'Space 1',
   }
-  return { options, invoke, spacesRef }
+  return { options, invoke }
 }
 
 describe('new empty Space location', () => {
   it.each(['remote-worker', 'local'])(
     'persists the default %s mount instead of project metadata',
     async endpointId => {
-      const { options, invoke, spacesRef } = setup(
+      const { options, invoke } = setup(
         vi.fn().mockResolvedValue({
           mounts: [{ ...remoteMount, endpointId }],
         }),
       )
       const { result } = renderHook(() => useCreateEmptySpace(options), {
-        wrapper: CanvasStoreTestProvider,
+        wrapper: ProjectStore,
       })
       let id: string | null = null
       await act(async () => {
         id = await result.current({ x: 300, y: 300 })
       })
       expect(id).toEqual(expect.any(String))
-      expect(spacesRef.current).toEqual([
+      expect(readStoreSpaces()).toEqual([
         expect.objectContaining({
           id,
           directoryPath: remoteMount.rootPath,
@@ -69,7 +107,7 @@ describe('new empty Space location', () => {
         id: 'mount.list',
         payload: { projectId: 'project' },
       })
-      expect(options.onRequestPersistFlush).toHaveBeenCalledOnce()
+      expect(flush).toHaveBeenCalledOnce()
     },
   )
 
@@ -80,15 +118,15 @@ describe('new empty Space location', () => {
         mounts === null
           ? vi.fn().mockRejectedValue(new Error('disconnected'))
           : vi.fn().mockResolvedValue({ mounts })
-      const { options, spacesRef } = setup(invoke)
+      const { options } = setup(invoke)
       const { result } = renderHook(() => useCreateEmptySpace(options), {
-        wrapper: CanvasStoreTestProvider,
+        wrapper: ProjectStore,
       })
       await act(async () => {
         expect(await result.current({ x: 0, y: 0 })).toBeNull()
       })
-      expect(spacesRef.current).toEqual([])
-      expect(options.onSpacesChange).not.toHaveBeenCalled()
+      expect(readStoreSpaces()).toEqual([])
+      expect(storeWrites).not.toHaveBeenCalled()
       expect(options.onShowMessage).toHaveBeenCalledWith('messages.mountListFailed', 'error')
     },
   )
@@ -98,10 +136,10 @@ describe('new empty Space location', () => {
     const pending = new Promise<{ mounts: MountDto[] }>(done => {
       resolve = done
     })
-    const { options, spacesRef } = setup(vi.fn().mockReturnValue(pending))
+    const { options } = setup(vi.fn().mockReturnValue(pending))
     const { result, rerender, unmount } = renderHook(props => useCreateEmptySpace(props), {
       initialProps: options,
-      wrapper: CanvasStoreTestProvider,
+      wrapper: ProjectStore,
     })
     const creation = result.current({ x: 0, y: 0 })
     if (transition === 'unmount') {
@@ -113,8 +151,8 @@ describe('new empty Space location', () => {
       resolve({ mounts: [remoteMount] })
       expect(await creation).toBeNull()
     })
-    expect(spacesRef.current).toEqual([])
-    expect(options.onSpacesChange).not.toHaveBeenCalled()
-    expect(options.onRequestPersistFlush).not.toHaveBeenCalled()
+    expect(readStoreSpaces()).toEqual([])
+    expect(storeWrites).not.toHaveBeenCalled()
+    expect(flush).not.toHaveBeenCalled()
   })
 })

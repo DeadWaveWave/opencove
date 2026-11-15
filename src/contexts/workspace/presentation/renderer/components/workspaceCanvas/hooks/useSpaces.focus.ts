@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { getViewportForBounds, useStore, type Node, type ReactFlowInstance } from '@xyflow/react'
 import type { FocusNodeTargetZoom } from '@contexts/settings/domain/agentSettings'
-import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { TerminalNodeData } from '../../../types'
 import { computeSpaceRectFromNodes } from '../../../utils/spaceLayout'
 import { resolveWorkspaceCanvasViewportAnimation } from '../helpers'
 import { useCanvasCollapseStore } from '../../../store/useCanvasCollapseStore'
 import { EMPTY_CANVAS_COLLAPSE } from '../../../utils/canvasCollapse'
 import { resolveSpaceDisplayRect } from '../collapse/spacePresentation'
 import { fitCanvasPresentation } from '../collapse/fitCanvasPresentation'
-import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
+import { useCanvasUiCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
 
 const DEFAULT_VIEWPORT_WIDTH = 1440
 const DEFAULT_VIEWPORT_HEIGHT = 900
@@ -19,16 +19,12 @@ export function useWorkspaceCanvasSpaceFocus({
   onActiveSpaceChange,
   focusNodeTargetZoom,
   reactFlow,
-  nodesRef,
-  spacesRef,
 }: {
   workspaceId: string
   activeSpaceId: string | null
   onActiveSpaceChange: (spaceId: string | null) => void
   focusNodeTargetZoom: FocusNodeTargetZoom
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
 }): {
   activateSpace: (spaceId: string) => void
   activateAllSpaces: () => void
@@ -37,6 +33,7 @@ export function useWorkspaceCanvasSpaceFocus({
   focusAllInViewport: () => void
 } {
   const ui = useCanvasUiCommands()
+  const readDocument = useReadCanvasDocument()
   const lastAppliedWorkspaceIdRef = useRef<string | null>(null)
   const lastAppliedActiveSpaceIdRef = useRef<string | null | undefined>(undefined)
   const skipNextActiveSpaceViewportFocusRef = useRef(false)
@@ -47,7 +44,8 @@ export function useWorkspaceCanvasSpaceFocus({
 
   const focusSpaceInViewport = useCallback(
     (spaceId: string): boolean => {
-      const space = spacesRef.current.find(item => item.id === spaceId) ?? null
+      const document = readDocument()
+      const space = document.spaces.find(item => item.id === spaceId) ?? null
       if (!space) {
         return false
       }
@@ -55,7 +53,7 @@ export function useWorkspaceCanvasSpaceFocus({
       const rect =
         space.rect ??
         (() => {
-          const nodeById = new Map(nodesRef.current.map(node => [node.id, node]))
+          const nodeById = new Map(document.nodes.map(node => [node.id, node]))
           const ownedNodes = space.nodeIds
             .map(nodeId => nodeById.get(nodeId))
             .filter((node): node is Node<TerminalNodeData> => Boolean(node))
@@ -83,7 +81,7 @@ export function useWorkspaceCanvasSpaceFocus({
       const maxZoom = Math.max(viewportMinZoom, Math.min(viewportMaxZoom, focusNodeTargetZoom))
       const collapse =
         useCanvasCollapseStore.getState().workspaces[workspaceId] ?? EMPTY_CANVAS_COLLAPSE
-      const bounds = resolveSpaceDisplayRect(spaceId, rect, spacesRef.current, collapse)
+      const bounds = resolveSpaceDisplayRect(spaceId, rect, document.spaces, collapse)
       const nextViewport = getViewportForBounds(
         bounds,
         width,
@@ -100,9 +98,8 @@ export function useWorkspaceCanvasSpaceFocus({
     },
     [
       focusNodeTargetZoom,
-      nodesRef,
+      readDocument,
       reactFlow,
-      spacesRef,
       viewportHeight,
       viewportMaxZoom,
       viewportMinZoom,
@@ -112,25 +109,26 @@ export function useWorkspaceCanvasSpaceFocus({
   )
 
   const focusAllInViewport = useCallback((): void => {
-    if (nodesRef.current.length === 0 && spacesRef.current.length === 0) {
+    const document = readDocument()
+    if (document.nodes.length === 0 && document.spaces.length === 0) {
       return
     }
 
     fitCanvasPresentation(
       reactFlow,
-      nodesRef.current,
-      spacesRef.current,
+      document.nodes,
+      document.spaces,
       useCanvasCollapseStore.getState().workspaces[workspaceId] ?? EMPTY_CANVAS_COLLAPSE,
       {
         padding: 0.16,
         ...resolveWorkspaceCanvasViewportAnimation(220),
       },
     )
-  }, [nodesRef, reactFlow, spacesRef, workspaceId])
+  }, [readDocument, reactFlow, workspaceId])
 
   const activateSpace = useCallback(
     (spaceId: string): void => {
-      const targetSpace = spacesRef.current.find(space => space.id === spaceId) ?? null
+      const targetSpace = readDocument().spaces.find(space => space.id === spaceId) ?? null
       if (!targetSpace || targetSpace.parentSpaceId) {
         return
       }
@@ -143,7 +141,7 @@ export function useWorkspaceCanvasSpaceFocus({
 
       onActiveSpaceChange(spaceId)
     },
-    [activeSpaceId, focusSpaceInViewport, onActiveSpaceChange, spacesRef, ui],
+    [activeSpaceId, focusSpaceInViewport, onActiveSpaceChange, readDocument, ui],
   )
 
   const activateAllSpaces = useCallback((): void => {
@@ -159,7 +157,7 @@ export function useWorkspaceCanvasSpaceFocus({
   const setActiveSpaceIdFromNodeNavigation = useCallback(
     (spaceId: string | null): void => {
       const targetSpace = spaceId
-        ? (spacesRef.current.find(space => space.id === spaceId) ?? null)
+        ? (readDocument().spaces.find(space => space.id === spaceId) ?? null)
         : null
       const nextSpaceId = targetSpace && !targetSpace.parentSpaceId ? targetSpace.id : null
       if (activeSpaceId === nextSpaceId) {
@@ -169,7 +167,7 @@ export function useWorkspaceCanvasSpaceFocus({
       skipNextActiveSpaceViewportFocusRef.current = true
       onActiveSpaceChange(nextSpaceId)
     },
-    [activeSpaceId, onActiveSpaceChange, spacesRef],
+    [activeSpaceId, onActiveSpaceChange, readDocument],
   )
 
   useEffect(() => {
@@ -203,13 +201,13 @@ export function useWorkspaceCanvasSpaceFocus({
 
     if (
       previousActiveSpaceId &&
-      !spacesRef.current.some(space => space.id === previousActiveSpaceId)
+      !readDocument().spaces.some(space => space.id === previousActiveSpaceId)
     ) {
       return
     }
 
     focusAllInViewport()
-  }, [activeSpaceId, focusAllInViewport, focusSpaceInViewport, spacesRef, workspaceId])
+  }, [activeSpaceId, focusAllInViewport, focusSpaceInViewport, readDocument, workspaceId])
 
   return {
     activateSpace,

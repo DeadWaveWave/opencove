@@ -1,8 +1,16 @@
 import { reviveRendererAppError } from '@shared/errors/rendererAppError'
 import { createAppError } from '@shared/errors/appError'
+import { act } from '@testing-library/react'
 import type { MutableRefObject } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
+import { useWorkspaceCanvasState } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasState'
+import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
+import {
+  createCanvasDocumentHarness,
+  renderInCanvasDocument,
+} from '../../support/canvasDocumentHarness'
 import {
   launchWorkspaceAgentSession,
   resolveWorkspaceAgentLaunchBinding,
@@ -61,7 +69,9 @@ describe('workspaceAgentLaunch.shared', () => {
       executionDirectory: '/project/apps/api',
     })
     expect(onSpacesChange).toHaveBeenCalledTimes(1)
-    expect(spacesRef.current[0]?.targetMountId).toBe('mount-api')
+    expect(onSpacesChange).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'space-1', targetMountId: 'mount-api' }),
+    ])
   })
 
   it('does not bind an external worktree directory to the first project mount', async () => {
@@ -328,6 +338,82 @@ describe('workspaceAgentLaunch.shared', () => {
       expect(launched.resumeSessionId).toBe('claude-a')
     },
   )
+
+  // The first defect of #703: after a switch, the binding wrote the Spaces of the workspace that
+  // was shown by then into the workspace it started in.
+  it('writes the Spaces of the workspace it started in after a switch during the mount query', async () => {
+    const spaceOf = (id: string, targetMountId: string | null): WorkspaceSpaceState => ({
+      id,
+      name: id,
+      directoryPath: '/project/apps/api',
+      targetMountId,
+      labelColor: null,
+      nodeIds: [],
+      rect: null,
+    })
+    const harness = createCanvasDocumentHarness({
+      workspaceId: 'workspace-a',
+      spaces: [spaceOf('space-a', null)],
+    })
+    useAppStore.setState(state => ({
+      workspaces: [
+        ...state.workspaces,
+        { ...state.workspaces[0], id: 'workspace-b', spaces: [spaceOf('space-b', null)] },
+      ],
+    }))
+    let shown = 'workspace-a'
+    const noNodes: never[] = []
+    const view = renderInCanvasDocument(
+      () =>
+        useWorkspaceCanvasState({
+          workspaceId: shown,
+          nodes: noNodes,
+          spaces: useAppStore.getState().workspaces.find(item => item.id === shown)?.spaces ?? [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        }),
+      { workspaceId: () => shown },
+    )
+    const spacesRefOfA = view.result.current.spacesRef
+    const invoke = vi.mocked(window.opencoveApi.controlSurface.invoke)
+    let resolveMounts!: (value: unknown) => void
+    invoke.mockReturnValueOnce(new Promise(resolve => (resolveMounts = resolve)) as never)
+
+    const binding = resolveWorkspaceAgentLaunchBinding({
+      workspaceId: 'workspace-a',
+      workspacePath: '/project',
+      currentMountId: null,
+      executionDirectory: '/project/apps/api',
+      targetSpace: spaceOf('space-a', null),
+      spacesRef: spacesRefOfA,
+      onSpacesChange: spaces => replaceWorkspaceSpaces('workspace-a', spaces),
+    })
+    // During the await another writer adds a Space to A, and the user switches to B.
+    act(() => {
+      replaceWorkspaceSpaces('workspace-a', [
+        ...harness.readStoreDocument().spaces,
+        spaceOf('space-late', null),
+      ])
+      shown = 'workspace-b'
+      useAppStore.setState({ activeWorkspaceId: 'workspace-b' })
+      view.rerender()
+    })
+    const workspaceBBefore = useAppStore.getState().workspaces[1]
+
+    resolveMounts({ mounts: [{ mountId: 'mount-api', rootPath: '/project/apps/api' }] })
+    await binding
+
+    const [workspaceA, workspaceB] = useAppStore.getState().workspaces
+    expect(workspaceA.spaces.map(item => [item.id, item.targetMountId])).toEqual([
+      ['space-a', 'mount-api'],
+      ['space-late', null],
+    ])
+    expect(workspaceB).toBe(workspaceBBefore)
+    // The launch continues after the binding and reads the Spaces again: it sees the binding.
+    expect(spacesRefOfA.current.map(item => [item.id, item.targetMountId])).toEqual([
+      ['space-a', 'mount-api'],
+      ['space-late', null],
+    ])
+  })
 })
 
 it.each(['unknown', 'superseded', 'nodeGone', 'conflict', 'afterSpawn', 'corrupted'])(

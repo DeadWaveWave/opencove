@@ -5,12 +5,10 @@ import { createChildSpace } from '@contexts/space/application/createChildSpace'
 import { resolveInnermostSpaceAtPoint } from '@contexts/space/application/spaceContainment'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { ShowWorkspaceCanvasMessage } from '../types'
-import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
+import { useCanvasUiCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 
-type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean },
-) => void
+type UpdateCanvasDocument = UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
 
 function resolveNodeCenter(node: Node<TerminalNodeData>): { x: number; y: number } {
   return {
@@ -39,21 +37,76 @@ export function resolveSelectedChildSpaceParent(options: {
   return parentIds.size === 1 ? resolvedParent : null
 }
 
+// The nodes that moved into the child Space take its directory; the same array when none changes.
+function moveNodesIntoChildSpaceDirectory(options: {
+  nodes: Node<TerminalNodeData>[]
+  movedNodeIds: readonly string[]
+  directoryPath: string
+  workspacePath: string
+}): Node<TerminalNodeData>[] {
+  const movedNodeIdSet = new Set(options.movedNodeIds)
+  let hasChanged = false
+  const nextNodes = options.nodes.map(node => {
+    if (!movedNodeIdSet.has(node.id)) {
+      return node
+    }
+
+    if (node.data.kind === 'agent' && node.data.agent) {
+      if (node.data.agent.expectedDirectory === options.directoryPath) {
+        return node
+      }
+
+      hasChanged = true
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          agent: {
+            ...node.data.agent,
+            expectedDirectory: options.directoryPath,
+          },
+        },
+      }
+    }
+
+    if (node.data.kind === 'terminal') {
+      const executionDirectory =
+        typeof node.data.executionDirectory === 'string' &&
+        node.data.executionDirectory.trim().length > 0
+          ? node.data.executionDirectory
+          : options.workspacePath
+
+      if (
+        node.data.executionDirectory === executionDirectory &&
+        node.data.expectedDirectory === options.directoryPath
+      ) {
+        return node
+      }
+
+      hasChanged = true
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          executionDirectory,
+          expectedDirectory: options.directoryPath,
+        },
+      }
+    }
+
+    return node
+  })
+
+  return hasChanged ? nextNodes : options.nodes
+}
+
 export function useWorkspaceCanvasCreateChildSpace({
   workspacePath,
-  nodesRef,
-  setNodes,
-  spacesRef,
-  onSpacesChange,
-  onRequestPersistFlush,
+  updateCanvasDocument,
   onShowMessage,
 }: {
   workspacePath: string
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  setNodes: SetNodes
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
-  onRequestPersistFlush?: () => void
+  updateCanvasDocument: UpdateCanvasDocument
   onShowMessage?: ShowWorkspaceCanvasMessage
 }): {
   createChildSpaceInParent: (
@@ -62,6 +115,7 @@ export function useWorkspaceCanvasCreateChildSpace({
   ) => string | null
 } {
   const ui = useCanvasUiCommands()
+  const readDocument = useReadCanvasDocument()
 
   const { t } = useTranslation()
 
@@ -71,10 +125,13 @@ export function useWorkspaceCanvasCreateChildSpace({
       options?: { anchor?: { x: number; y: number } | null; nodeIds?: readonly string[] },
     ): string | null => {
       const nodeIds = options?.nodeIds ?? []
+      // One read plans the whole change; the write below runs in the same call, so nothing can
+      // land between them.
+      const document = readDocument()
       const result = createChildSpace({
-        spaces: spacesRef.current,
+        spaces: document.spaces,
         workspacePath,
-        nodeFrames: nodesRef.current.map(node => ({
+        nodeFrames: document.nodes.map(node => ({
           id: node.id,
           x: node.position.x,
           y: node.position.y,
@@ -95,88 +152,27 @@ export function useWorkspaceCanvasCreateChildSpace({
         return null
       }
 
-      spacesRef.current = result.nextSpaces
-      onSpacesChange(result.nextSpaces)
-
-      if (result.movedNodeIds.length > 0) {
-        const movedNodeIdSet = new Set(result.movedNodeIds)
-        const nextDirectoryPath = result.childSpace.directoryPath
-        setNodes(
-          prevNodes => {
-            let hasChanged = false
-            const nextNodes = prevNodes.map(node => {
-              if (!movedNodeIdSet.has(node.id)) {
-                return node
-              }
-
-              if (node.data.kind === 'agent' && node.data.agent) {
-                if (node.data.agent.expectedDirectory === nextDirectoryPath) {
-                  return node
-                }
-
-                hasChanged = true
-                return {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    agent: {
-                      ...node.data.agent,
-                      expectedDirectory: nextDirectoryPath,
-                    },
-                  },
-                }
-              }
-
-              if (node.data.kind === 'terminal') {
-                const executionDirectory =
-                  typeof node.data.executionDirectory === 'string' &&
-                  node.data.executionDirectory.trim().length > 0
-                    ? node.data.executionDirectory
-                    : workspacePath
-
-                if (
-                  node.data.executionDirectory === executionDirectory &&
-                  node.data.expectedDirectory === nextDirectoryPath
-                ) {
-                  return node
-                }
-
-                hasChanged = true
-                return {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    executionDirectory,
-                    expectedDirectory: nextDirectoryPath,
-                  },
-                }
-              }
-
-              return node
-            })
-
-            return hasChanged ? nextNodes : prevNodes
-          },
-          { syncLayout: false },
-        )
-      }
-
-      onRequestPersistFlush?.()
+      // The Spaces and the directories of the moved nodes are one store update.
+      updateCanvasDocument(
+        ({ nodes }) => ({
+          nodes:
+            result.movedNodeIds.length > 0
+              ? moveNodesIntoChildSpaceDirectory({
+                  nodes,
+                  movedNodeIds: result.movedNodeIds,
+                  directoryPath: result.childSpace.directoryPath,
+                  workspacePath,
+                })
+              : nodes,
+          spaces: result.nextSpaces,
+        }),
+        { syncLayout: false, flush: true },
+      )
       ui.closeContextMenu()
       ui.cancelSpaceRename()
       return result.childSpace.id
     },
-    [
-      nodesRef,
-      onRequestPersistFlush,
-      onShowMessage,
-      onSpacesChange,
-      ui,
-      setNodes,
-      spacesRef,
-      t,
-      workspacePath,
-    ],
+    [onShowMessage, readDocument, t, ui, updateCanvasDocument, workspacePath],
   )
 
   return {

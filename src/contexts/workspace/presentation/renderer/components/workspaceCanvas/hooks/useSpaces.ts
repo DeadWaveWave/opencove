@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import type { Node, ReactFlowInstance } from '@xyflow/react'
 import type {
   FocusNodeTargetZoom,
@@ -12,7 +12,12 @@ import { computeSpaceRectFromNodes } from '../../../utils/spaceLayout'
 import { useWorkspaceCanvasCreateSpace } from './useSpaces.createSpace'
 import { useWorkspaceCanvasCreateChildSpace } from './useSpaces.createChildSpace'
 import { useWorkspaceCanvasSpaceFocus } from './useSpaces.focus'
-import { useCanvasUiCommands, useReadCanvasUi } from '../../../store/canvasStoreContext'
+import {
+  useCanvasDocumentCommands,
+  useCanvasUiCommands,
+  useReadCanvasUi,
+} from '../../../store/canvasStoreContext'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 
 interface UseWorkspaceCanvasSpacesParams {
   workspaceId: string
@@ -23,15 +28,8 @@ interface UseWorkspaceCanvasSpacesParams {
   standardWindowSizeBucket: StandardWindowSizeBucket
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   nodes: Node<TerminalNodeData>[]
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  setNodes: (
-    updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-    options?: { syncLayout?: boolean },
-  ) => void
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   spaces: WorkspaceSpaceState[]
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
-  onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
 }
 
@@ -44,12 +42,8 @@ export function useWorkspaceCanvasSpaces({
   standardWindowSizeBucket,
   reactFlow,
   nodes,
-  nodesRef,
-  setNodes,
+  updateCanvasDocument,
   spaces,
-  spacesRef,
-  onSpacesChange,
-  onRequestPersistFlush,
   onShowMessage,
 }: UseWorkspaceCanvasSpacesParams): {
   activateSpaceTitle: (spaceId: string, lod: CanvasLod) => void
@@ -72,10 +66,7 @@ export function useWorkspaceCanvasSpaces({
 } {
   const ui = useCanvasUiCommands()
   const readUi = useReadCanvasUi()
-
-  useLayoutEffect(() => {
-    spacesRef.current = spaces
-  }, [spaces, spacesRef])
+  const documentCommands = useCanvasDocumentCommands()
 
   useEffect(() => {
     const spacesNeedingRect = spaces.filter(space => !space.rect)
@@ -84,39 +75,42 @@ export function useWorkspaceCanvasSpaces({
     }
 
     const nodeById = new Map(nodes.map(node => [node.id, node]))
-    let hasUpdated = false
 
-    const nextSpaces = spaces.map(space => {
-      if (space.rect) {
-        return space
-      }
+    // The recipe fills the rect of the store's Spaces that lack one; the Spaces it returns are the
+    // ones it was given when none needs a rect, so nothing is written then.
+    documentCommands.updateSpaces(currentSpaces => {
+      let hasUpdated = false
 
-      const ownedNodes = space.nodeIds
-        .map(nodeId => nodeById.get(nodeId))
-        .filter((node): node is Node<TerminalNodeData> => Boolean(node))
+      const nextSpaces = currentSpaces.map(space => {
+        if (space.rect) {
+          return space
+        }
 
-      if (ownedNodes.length === 0) {
-        return space
-      }
+        const ownedNodes = space.nodeIds
+          .map(nodeId => nodeById.get(nodeId))
+          .filter((node): node is Node<TerminalNodeData> => Boolean(node))
 
-      hasUpdated = true
-      return {
-        ...space,
-        rect: computeSpaceRectFromNodes(
-          ownedNodes.map(node => ({
-            x: node.position.x,
-            y: node.position.y,
-            width: node.data.width,
-            height: node.data.height,
-          })),
-        ),
-      }
+        if (ownedNodes.length === 0) {
+          return space
+        }
+
+        hasUpdated = true
+        return {
+          ...space,
+          rect: computeSpaceRectFromNodes(
+            ownedNodes.map(node => ({
+              x: node.position.x,
+              y: node.position.y,
+              width: node.data.width,
+              height: node.data.height,
+            })),
+          ),
+        }
+      })
+
+      return hasUpdated ? nextSpaces : currentSpaces
     })
-
-    if (hasUpdated) {
-      onSpacesChange(nextSpaces)
-    }
-  }, [nodes, onSpacesChange, spaces])
+  }, [documentCommands, nodes, spaces])
 
   useEffect(() => {
     const editingSpaceId = readUi().spaceRename?.spaceId
@@ -127,11 +121,7 @@ export function useWorkspaceCanvasSpaces({
 
   const { createChildSpaceInParent } = useWorkspaceCanvasCreateChildSpace({
     workspacePath,
-    nodesRef,
-    setNodes,
-    spacesRef,
-    onSpacesChange,
-    onRequestPersistFlush,
+    updateCanvasDocument,
     onShowMessage,
   })
 
@@ -144,19 +134,15 @@ export function useWorkspaceCanvasSpaces({
     workspacePath,
     standardWindowSizeBucket,
     reactFlow,
-    nodesRef,
-    setNodes,
-    spacesRef,
-    onSpacesChange,
-    onRequestPersistFlush,
+    updateCanvasDocument,
     onShowMessage,
     createChildSpaceInParent,
   })
 
   const startSpaceRename = useCallback(
     (spaceId: string) => {
-      // Prefer the render-prop `spaces` snapshot. Refs can lag behind React commits just long enough
-      // for fast automated clicks (Playwright) to hit a space label before `spacesRef` updates.
+      // The label that was clicked was rendered from the render-prop `spaces`, so the rename starts
+      // from that snapshot, whatever the store holds by now.
       const space = spaces.find(item => item.id === spaceId)
       if (!space) {
         return
@@ -180,36 +166,37 @@ export function useWorkspaceCanvasSpaces({
         return
       }
 
-      const nextSpaces = spacesRef.current.map(space =>
-        space.id === spaceId
-          ? {
-              ...space,
-              name: normalizedName,
-            }
-          : space,
+      documentCommands.updateSpaces(currentSpaces =>
+        currentSpaces.map(space =>
+          space.id === spaceId
+            ? {
+                ...space,
+                name: normalizedName,
+              }
+            : space,
+        ),
       )
-
-      onSpacesChange(nextSpaces)
       ui.cancelSpaceRename()
     },
-    [onSpacesChange, readUi, spacesRef, ui],
+    [documentCommands, readUi, ui],
   )
 
   const setSpaceLabelColor = useCallback(
     (spaceId: string, labelColor: LabelColor | null) => {
-      const nextSpaces = spacesRef.current.map(space =>
-        space.id === spaceId
-          ? {
-              ...space,
-              labelColor,
-            }
-          : space,
+      documentCommands.updateSpaces(
+        currentSpaces =>
+          currentSpaces.map(space =>
+            space.id === spaceId
+              ? {
+                  ...space,
+                  labelColor,
+                }
+              : space,
+          ),
+        { flush: true },
       )
-
-      onSpacesChange(nextSpaces)
-      onRequestPersistFlush?.()
     },
-    [onRequestPersistFlush, onSpacesChange, spacesRef],
+    [documentCommands],
   )
 
   const cancelSpaceTargetMountPicker = useCallback(() => {
@@ -270,8 +257,6 @@ export function useWorkspaceCanvasSpaces({
     onActiveSpaceChange,
     focusNodeTargetZoom,
     reactFlow,
-    nodesRef,
-    spacesRef,
   })
 
   const createEmptySpaceAtPoint = useCallback(

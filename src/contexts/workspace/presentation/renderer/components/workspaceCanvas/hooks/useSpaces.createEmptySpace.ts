@@ -9,32 +9,27 @@ import {
 } from '@contexts/workspace/domain/workspaceBootstrap'
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
 import { resolveSpaceMountLaunchContext } from './spaceMountLaunchContext'
-import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
+import {
+  useCanvasDocumentCommands,
+  useCanvasUiCommands,
+  useReadCanvasDocument,
+} from '../../../store/canvasStoreContext'
 
 type Options = Pick<
   Parameters<typeof useWorkspaceCanvasCreateSpace>[0],
-  | 'workspaceId'
-  | 'workspacePath'
-  | 'standardWindowSizeBucket'
-  | 'nodesRef'
-  | 'spacesRef'
-  | 'onSpacesChange'
-  | 'onRequestPersistFlush'
-  | 'onShowMessage'
+  'workspaceId' | 'workspacePath' | 'standardWindowSizeBucket' | 'onShowMessage'
 > & { resolveDefaultSpaceName: () => string }
 
 export function useCreateEmptySpace({
   workspaceId,
   workspacePath,
   standardWindowSizeBucket,
-  nodesRef,
-  spacesRef,
-  onSpacesChange,
-  onRequestPersistFlush,
   onShowMessage,
   resolveDefaultSpaceName,
 }: Options) {
   const ui = useCanvasUiCommands()
+  const readDocument = useReadCanvasDocument()
+  const documentCommands = useCanvasDocumentCommands()
 
   const { t } = useTranslation()
   const lifetime = useMemo(
@@ -86,10 +81,10 @@ export function useCreateEmptySpace({
       const resolved = resolveNodesPlacement({
         anchor: desiredAnchor,
         size,
-        getNodes: () => nodesRef.current,
+        getNodes: () => readDocument().nodes,
         getSpaceRects: () =>
-          spacesRef.current
-            .map(space => space.rect)
+          readDocument()
+            .spaces.map(space => space.rect)
             .filter(
               (rect): rect is { x: number; y: number; width: number; height: number } =>
                 rect !== null,
@@ -118,24 +113,21 @@ export function useCreateEmptySpace({
         rect,
       })
 
-      const nextSpaces = sanitizeSpaces([...spacesRef.current, nextSpace])
-      spacesRef.current = nextSpaces
-      onSpacesChange(nextSpaces)
-      onRequestPersistFlush?.()
+      documentCommands.updateSpaces(spaces => sanitizeSpaces([...spaces, nextSpace]), {
+        flush: true,
+      })
       ui.closeContextMenu()
       ui.closeDialog('spaceTargetMountPicker')
       ui.cancelSpaceRename()
       return nextSpaceId
     },
     [
-      nodesRef,
+      documentCommands,
       lifetime,
-      onRequestPersistFlush,
       onShowMessage,
-      onSpacesChange,
+      readDocument,
       resolveDefaultSpaceName,
       ui,
-      spacesRef,
       standardWindowSizeBucket,
       workspaceId,
       workspacePath,

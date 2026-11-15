@@ -120,7 +120,6 @@ export function useCanvasCollapse({
       // must never enter the durable node store or the mounted runtime subtree.
       if (plan.nodes !== nodesRef.current) {
         setNodes(() => plan.nodes, { syncLayout: false })
-        spacesRef.current = plan.spaces
         onSpacesChange(plan.spaces)
       }
       update(workspaceId, () => plan.state)
@@ -214,7 +213,6 @@ export function useCanvasCollapse({
       setUndoHistory(previous => new Map(previous).set(spaceId, plan.snapshot))
       update(workspaceId, () => plan.state)
       setNodes(() => plan.nodes, { syncLayout: false })
-      spacesRef.current = plan.spaces
       onSpacesChange(plan.spaces)
       onRequestPersistFlush?.()
     },
@@ -246,7 +244,6 @@ export function useCanvasCollapse({
       prepareMotion('restore', restored.nodes, restored.spaces)
       update(workspaceId, () => restored.state)
       setNodes(() => restored.nodes, { syncLayout: false })
-      spacesRef.current = restored.spaces
       onSpacesChange(restored.spaces)
       onRequestPersistFlush?.()
       setUndoHistory(previous => {

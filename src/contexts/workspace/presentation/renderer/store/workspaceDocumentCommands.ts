@@ -58,6 +58,26 @@ function requireStore(): WorkspaceDocumentStore {
   return boundStore
 }
 
+/**
+ * Requests the persistence flush the shell registered; a no-op when none is registered. For a
+ * caller that changed state which is persisted but is not a document field, such as collapse.
+ */
+export function requestWorkspaceDocumentPersistFlush(): void {
+  persistFlush?.()
+}
+
+/**
+ * The committed document of `workspaceId` as the store holds it now, or null. The arrays are the
+ * store's own. Safe inside a recipe: it returns the state from before that recipe's write, as the
+ * recipe's own argument does.
+ */
+export function readWorkspaceDocument(workspaceId: string): WorkspaceDocument | null {
+  const workspace = requireStore()
+    .getState()
+    .workspaces.find(candidate => candidate.id === workspaceId)
+  return workspace ? toWorkspaceDocument(workspace) : null
+}
+
 export function isActiveWorkspace(workspaceId: string): boolean {
   return requireStore().getState().activeWorkspaceId === workspaceId
 }

@@ -88,12 +88,8 @@ export function WorkspaceCanvasInner({
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
     reactFlow,
     nodes: canvasState.flowNodes,
-    nodesRef: nodeStore.nodesRef,
-    setNodes: nodeStore.setNodes,
+    updateCanvasDocument: nodeStore.updateCanvasDocument,
     spaces,
-    spacesRef: canvasState.spacesRef,
-    onSpacesChange,
-    onRequestPersistFlush,
     onShowMessage,
   })
   const { spaceFramePreview, handleSpaceDragHandlePointerDown } =

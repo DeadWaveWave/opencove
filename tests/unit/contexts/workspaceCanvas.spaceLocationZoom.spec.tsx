@@ -1,10 +1,12 @@
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import type { Node } from '@xyflow/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import type {
   TerminalNodeData,
   WorkspaceSpaceState,
+  WorkspaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 import { useWorkspaceCanvasArrange } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useArrange'
@@ -58,6 +60,10 @@ function createTerminalNode({
 }
 
 describe('workspace canvas space location zoom', () => {
+  afterEach(() => {
+    useAppStore.setState({ workspaces: [], activeWorkspaceId: null })
+  })
+
   it('caps space focus zoom at focusNodeTargetZoom', () => {
     const setViewport = vi.fn(async () => undefined)
     const reactFlow = {
@@ -72,7 +78,6 @@ describe('workspace canvas space location zoom', () => {
         size: { width: 300, height: 200 },
       }),
     ]
-    const nodesRef = { current: nodes }
 
     const spaces: WorkspaceSpaceState[] = [
       {
@@ -84,13 +89,24 @@ describe('workspace canvas space location zoom', () => {
         rect: { x: 0, y: 0, width: 600, height: 400 },
       },
     ]
-    const spacesRef = { current: spaces }
-
-    const setNodes = vi.fn(
-      (updater: (prev: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => {
-        nodesRef.current = updater(nodesRef.current)
-      },
-    )
+    // The hook reads the committed document of workspace `workspace-1`.
+    useAppStore.setState({
+      workspaces: [
+        {
+          id: 'workspace-1',
+          name: 'Workspace',
+          path: '/tmp',
+          worktreesRoot: '',
+          nodes,
+          spaces,
+          activeSpaceId: null,
+          spaceArchiveRecords: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+          isMinimapVisible: false,
+        } as WorkspaceState,
+      ],
+      activeWorkspaceId: 'workspace-1',
+    })
 
     function Harness(): React.JSX.Element {
       const { focusSpaceInViewport } = useWorkspaceCanvasSpaces({
@@ -101,11 +117,8 @@ describe('workspace canvas space location zoom', () => {
         focusNodeTargetZoom: 0.75,
         reactFlow: reactFlow as never,
         nodes,
-        nodesRef,
-        setNodes: setNodes as never,
+        updateCanvasDocument: vi.fn(),
         spaces,
-        spacesRef,
-        onSpacesChange: () => undefined,
       })
 
       return (
@@ -120,7 +133,7 @@ describe('workspace canvas space location zoom', () => {
     }
 
     render(
-      <CanvasStoreTestProvider>
+      <CanvasStoreTestProvider workspaceId="workspace-1">
         <Harness />
       </CanvasStoreTestProvider>,
     )

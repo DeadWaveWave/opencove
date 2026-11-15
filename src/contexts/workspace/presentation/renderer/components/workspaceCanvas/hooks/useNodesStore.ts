@@ -2,7 +2,7 @@ import { killUnownedNodeRuntime } from '../../../utils/managedClaudeLifecycle'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
 import type { NodeLabelColorOverride } from '@shared/types/labelColor'
-import type { NodeFrame, Point, Size, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { NodeFrame, Point, Size, TerminalNodeData } from '../../../types'
 import { useScrollbackStore } from '../../../store/useScrollbackStore'
 import { useWebsiteWindowStore } from '../../../store/useWebsiteWindowStore'
 import { findNearestFreePosition } from '../../../utils/collision'
@@ -27,6 +27,8 @@ import { useWorkspaceCanvasRoleNodeMutations } from './useNodesStore.roleMutatio
 import { useWorkspaceCanvasWebsiteNodeMutations } from './useNodesStore.websiteMutations'
 import { resolveRenamedWorkspaceNodeTitle, shouldRenameWorkspaceNode } from './useNodesStore.title'
 import type {
+  CanvasDocumentRecipeInput,
+  CanvasDocumentWriteOptions,
   UseWorkspaceCanvasNodesStoreParams,
   UseWorkspaceCanvasNodesStoreResult,
 } from './useNodesStore.types'
@@ -120,33 +122,34 @@ export function useWorkspaceCanvasNodesStore({
   // switched away since the flow began; the canvas-local copies follow only while it is active.
   const updateCanvasDocument = useCallback(
     (
-      recipe: (document: { nodes: Node<TerminalNodeData>[]; spaces: WorkspaceSpaceState[] }) => {
-        nodes: Node<TerminalNodeData>[]
-        spaces: WorkspaceSpaceState[]
-      },
-      options: { syncLayout?: boolean } = {},
+      recipe: (document: CanvasDocumentRecipeInput) => CanvasDocumentRecipeInput,
+      options: CanvasDocumentWriteOptions = {},
     ) => {
       let previousDocumentNodes: Node<TerminalNodeData>[] | null = null
-      const result = commitCanvasDocument(workspaceId, document => {
-        previousDocumentNodes = document.nodes
-        // nodesRef shows the active workspace; a late write for another one must not inherit it.
-        const isShown = isActiveWorkspace(workspaceId)
-        const base = resolveCanvasDocumentBase(
-          document.nodes,
-          isShown ? nodesRef.current : document.nodes,
-          { includeLivePositions: isShown && isLiveGestureActive() },
-        )
-        const output = recipe({ nodes: base, spaces: document.spaces })
-        const nextNodes = ensureNodesHaveInitialDimensions(output.nodes)
-        if (nextNodes === base && output.spaces === document.spaces) {
-          return document
-        }
-        return {
-          ...document,
-          nodes: nextNodes === base ? document.nodes : nextNodes,
-          spaces: output.spaces,
-        }
-      })
+      const result = commitCanvasDocument(
+        workspaceId,
+        document => {
+          previousDocumentNodes = document.nodes
+          // nodesRef shows the active workspace; a late write for another one must not inherit it.
+          const isShown = isActiveWorkspace(workspaceId)
+          const base = resolveCanvasDocumentBase(
+            document.nodes,
+            isShown ? nodesRef.current : document.nodes,
+            { includeLivePositions: isShown && isLiveGestureActive() },
+          )
+          const output = recipe({ nodes: base, spaces: document.spaces })
+          const nextNodes = ensureNodesHaveInitialDimensions(output.nodes)
+          if (nextNodes === base && output.spaces === document.spaces) {
+            return document
+          }
+          return {
+            ...document,
+            nodes: nextNodes === base ? document.nodes : nextNodes,
+            spaces: output.spaces,
+          }
+        },
+        { flush: options.flush },
+      )
 
       if (
         result.status !== 'applied' ||
@@ -172,7 +175,7 @@ export function useWorkspaceCanvasNodesStore({
   const setNodes = useCallback(
     (
       updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-      options: { syncLayout?: boolean } = {},
+      options: CanvasDocumentWriteOptions = {},
     ) => {
       updateCanvasDocument(
         ({ nodes: prevNodes, spaces }) => ({ nodes: updater(prevNodes), spaces }),
@@ -487,6 +490,7 @@ export function useWorkspaceCanvasNodesStore({
     pendingScrollbackByNodeRef,
     isNodeDraggingRef,
     setNodes,
+    updateCanvasDocument,
     upsertNode,
     bumpAgentLaunchToken,
     clearAgentLaunchToken,
