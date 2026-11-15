@@ -214,7 +214,7 @@ test.describe('Command Center', () => {
     }
   })
 
-  test.skip('focuses a space when selecting it from search', async () => {
+  test('focuses a space when selecting it from search', async () => {
     const { electronApp, window } = await launchApp()
 
     try {

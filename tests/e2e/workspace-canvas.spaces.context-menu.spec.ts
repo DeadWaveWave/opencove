@@ -77,7 +77,7 @@ test.describe('Workspace Canvas - Spaces (Menu & Switch)', () => {
     }
   })
 
-  test.skip('renames space by clicking the region label', async () => {
+  test('renames space by clicking the region label', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -112,6 +112,12 @@ test.describe('Workspace Canvas - Spaces (Menu & Switch)', () => {
       await expect(window.locator('.workspace-space-region__label').first()).toHaveText(
         'Infra Core',
       )
+      // The switcher lists only pinned Spaces, and a Space created from a selection is not pinned.
+      await window
+        .locator('[data-testid^="workspace-space-item-"]')
+        .filter({ hasText: 'Infra Core' })
+        .click({ button: 'right' })
+      await window.locator('[data-testid^="workspace-space-context-pin-"]').click()
       await expect(
         window.locator('.workspace-space-switcher__item', { hasText: 'Infra Core' }),
       ).toBeVisible()
