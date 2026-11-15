@@ -10,12 +10,32 @@ import type { TerminalNodeData } from '../../../src/contexts/workspace/presentat
 import {
   createCanvasDocumentHarness,
   renderCanvasNodeStore,
+  type CanvasNodeStoreContext,
 } from '../../support/canvasDocumentHarness'
 import { createRowNodes } from '../../support/canvasSelectionFixtures'
 
 vi.mock('@app/renderer/i18n', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }))
+
+const reactFlow = {
+  setViewport: vi.fn(),
+  fitView: vi.fn(),
+} as unknown as ReactFlowInstance<Node<TerminalNodeData>, Edge>
+
+function useArrangeUnderTest({ workspaceId, canvasState, nodeStore }: CanvasNodeStoreContext) {
+  return {
+    arrange: useWorkspaceCanvasArrange({
+      reactFlow,
+      focusNodeTargetZoom: 1,
+      nodesRef: nodeStore.nodesRef,
+      spacesRef: canvasState.spacesRef,
+      setNodes: nodeStore.setNodes,
+      onSpacesChange: spaces => replaceWorkspaceSpaces(workspaceId, spaces),
+      standardWindowSizeBucket: 'regular',
+    }),
+  }
+}
 
 describe('workspace canvas arrange hook', () => {
   it('derives wrap width from aspect ratio instead of absolute viewport size', () => {
@@ -45,23 +65,7 @@ describe('workspace canvas arrange hook', () => {
       nodes,
       spaces: [],
     })
-    const reactFlow = {
-      setViewport: vi.fn(),
-      fitView: vi.fn(),
-    } as unknown as ReactFlowInstance<Node<TerminalNodeData>, Edge>
-    const view = renderCanvasNodeStore(harness, {
-      extend: ({ canvasState, nodeStore }) => ({
-        arrange: useWorkspaceCanvasArrange({
-          reactFlow,
-          focusNodeTargetZoom: 1,
-          nodesRef: nodeStore.nodesRef,
-          spacesRef: canvasState.spacesRef,
-          setNodes: nodeStore.setNodes,
-          onSpacesChange: spaces => replaceWorkspaceSpaces(harness.workspaceId, spaces),
-          standardWindowSizeBucket: 'regular',
-        }),
-      }),
-    })
+    const view = renderCanvasNodeStore(harness, { extend: useArrangeUnderTest })
     const spacesBefore = harness.readStoreDocument().spaces
     harness.notifications.mockClear()
 

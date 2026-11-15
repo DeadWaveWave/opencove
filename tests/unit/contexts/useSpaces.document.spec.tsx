@@ -16,6 +16,7 @@ import {
   createCanvasDocumentHarness,
   renderCanvasNodeStore,
   type CanvasDocumentHarness,
+  type CanvasNodeStoreContext,
 } from '../../support/canvasDocumentHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
 
@@ -44,31 +45,37 @@ function space(id: string, nodeIds: string[] = [], x = 0): WorkspaceSpaceState {
   }
 }
 
-function renderSpaces(harness: CanvasDocumentHarness) {
-  const reactFlow = {
-    setViewport: vi.fn(),
-    fitView: vi.fn(),
-    getNodes: () => [] as Node<TerminalNodeData>[],
+const reactFlow = {
+  setViewport: vi.fn(),
+  fitView: vi.fn(),
+  getNodes: () => [] as Node<TerminalNodeData>[],
+}
+
+function useSpacesUnderTest({ workspaceId, nodeStore, nodes, spaces }: CanvasNodeStoreContext) {
+  return {
+    spacesApi: useWorkspaceCanvasSpaces({
+      workspaceId,
+      activeSpaceId: null,
+      onActiveSpaceChange: vi.fn(),
+      workspacePath: WORKSPACE_PATH,
+      focusNodeTargetZoom: 1,
+      standardWindowSizeBucket: 'regular',
+      reactFlow: reactFlow as unknown as ReactFlowInstance<Node<TerminalNodeData>>,
+      nodes,
+      updateCanvasDocument: nodeStore.updateCanvasDocument,
+      spaces,
+      onShowMessage: vi.fn(),
+    }),
+    ui: useCanvasUiCommands(),
+    selection: useCanvasSelectionCommands(),
   }
+}
+
+function renderSpaces(harness: CanvasDocumentHarness) {
+  reactFlow.setViewport.mockClear()
   const view = renderCanvasNodeStore(harness, {
     workspacePath: WORKSPACE_PATH,
-    extend: ({ nodeStore, nodes, spaces }) => ({
-      spacesApi: useWorkspaceCanvasSpaces({
-        workspaceId: harness.workspaceId,
-        activeSpaceId: null,
-        onActiveSpaceChange: vi.fn(),
-        workspacePath: WORKSPACE_PATH,
-        focusNodeTargetZoom: 1,
-        standardWindowSizeBucket: 'regular',
-        reactFlow: reactFlow as unknown as ReactFlowInstance<Node<TerminalNodeData>>,
-        nodes,
-        updateCanvasDocument: nodeStore.updateCanvasDocument,
-        spaces,
-        onShowMessage: vi.fn(),
-      }),
-      ui: useCanvasUiCommands(),
-      selection: useCanvasSelectionCommands(),
-    }),
+    extend: useSpacesUnderTest,
   })
   return { ...view, reactFlow }
 }

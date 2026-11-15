@@ -105,6 +105,7 @@ export function renderInCanvasDocument<Result, Props = undefined>(
 const EMPTY_SPACES: WorkspaceSpaceState[] = []
 
 export interface CanvasNodeStoreContext {
+  workspaceId: string
   canvasState: ReturnType<typeof useWorkspaceCanvasState>
   nodeStore: ReturnType<typeof useWorkspaceCanvasNodesStore>
   publishers: ReturnType<typeof useWorkspaceCanvasNodePublishers>
@@ -115,7 +116,8 @@ export interface CanvasNodeStoreContext {
 /**
  * The canvas state and the node store, wired as `WorkspaceCanvasInner` wires them: the canvas view
  * comes from the store through a selector, so a store write reaches `flowNodes` after a commit.
- * `extend` runs inside the same render, for the hook under test that takes them as arguments.
+ * `extend` runs inside the same render, for the hook under test that takes them as arguments; it
+ * must be a function named `use...`, because it calls hooks.
  */
 export function renderCanvasNodeStore<Extra extends object = Record<never, never>>(
   harness: CanvasDocumentHarness,
@@ -152,7 +154,14 @@ export function renderCanvasNodeStore<Extra extends object = Record<never, never
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
       })
-      const context = { canvasState, nodeStore, publishers, nodes, spaces }
+      const context = {
+        workspaceId: harness.workspaceId,
+        canvasState,
+        nodeStore,
+        publishers,
+        nodes,
+        spaces,
+      }
       return { ...context, ...(extend ? extend(context) : ({} as Extra)) }
     },
     { workspaceId: harness.workspaceId },

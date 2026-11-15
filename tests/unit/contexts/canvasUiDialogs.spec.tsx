@@ -11,6 +11,7 @@ import { useWorkspaceCanvasSpaces } from '../../../src/contexts/workspace/presen
 import { useWorkspaceCanvasTaskEditor } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskEditor'
 import type { CanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStore.selection'
 import type { CanvasUiCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStore.ui'
+import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
 import {
   CanvasStoreProvider,
   useCanvasSelectionCommands,
@@ -128,7 +129,6 @@ function renderSpaces(
   options: {
     wrapper: ReturnType<typeof createWrapper>
     spaces?: WorkspaceSpaceState[]
-    onSpacesChange?: (spaces: WorkspaceSpaceState[]) => void
     selectedNodeIds?: string[]
   },
   workspaceId = 'workspace-a',
@@ -138,9 +138,8 @@ function renderSpaces(
     flowToScreenPosition: ({ x, y }: { x: number; y: number }) => ({ x, y }),
   } as unknown as ReactFlowInstance<Node<TerminalNodeData>>
   const spaces = options.spaces ?? [SPACE]
-  const nodesRef = { current: [NODE] }
-  const spacesRef = { current: spaces }
-  const onSpacesChange = options.onSpacesChange ?? vi.fn()
+  // The hook reads and writes the committed document of workspace A.
+  const harness = createCanvasDocumentHarness({ workspaceId: 'workspace-a', nodes: [NODE], spaces })
   const rendered = renderHook(
     (props: { workspaceId: string }) =>
       useWorkspaceCanvasSpaces({
@@ -152,11 +151,8 @@ function renderSpaces(
         standardWindowSizeBucket: 'regular',
         reactFlow,
         nodes: [NODE],
-        nodesRef,
-        setNodes: vi.fn(),
+        updateCanvasDocument: vi.fn(),
         spaces,
-        spacesRef,
-        onSpacesChange,
       }),
     { initialProps: { workspaceId }, wrapper: options.wrapper.Wrapper },
   )
@@ -164,14 +160,13 @@ function renderSpaces(
     const nodeIds = options.selectedNodeIds
     act(() => options.wrapper.recorder.current().selection.setNodeIds(nodeIds))
   }
-  return rendered
+  return { ...rendered, harness }
 }
 
 describe('Space rename through the canvas store', () => {
   it('writes the Spaces with the draft that is in the store when the rename commits', () => {
-    const onSpacesChange = vi.fn()
     const wrapper = createWrapper('workspace-a')
-    const { result } = renderSpaces({ wrapper, onSpacesChange })
+    const { result, harness } = renderSpaces({ wrapper })
 
     act(() => result.current.activateSpaceTitle('space-1', 'near'))
     expect(wrapper.recorder.current().readUi().spaceRename).toEqual({
@@ -182,14 +177,14 @@ describe('Space rename through the canvas store', () => {
     act(() => wrapper.recorder.current().commands.setSpaceRenameDraft('  Renamed  '))
     act(() => result.current.commitSpaceRename('space-1'))
 
-    expect(onSpacesChange).toHaveBeenCalledExactlyOnceWith([{ ...SPACE, name: 'Renamed' }])
+    expect(harness.notifications).toHaveBeenCalledTimes(1)
+    expect(harness.readStoreDocument().spaces).toEqual([{ ...SPACE, name: 'Renamed' }])
     expect(wrapper.recorder.current().readUi().spaceRename).toBeNull()
   })
 
   it('does nothing when the rename commits after it was cancelled, even from a stale handler', () => {
-    const onSpacesChange = vi.fn()
     const wrapper = createWrapper('workspace-a')
-    const { result } = renderSpaces({ wrapper, onSpacesChange })
+    const { result, harness } = renderSpaces({ wrapper })
 
     act(() => result.current.activateSpaceTitle('space-1', 'near'))
     const staleCommit = result.current.commitSpaceRename
@@ -198,19 +193,18 @@ describe('Space rename through the canvas store', () => {
     act(() => staleCommit('space-1'))
     act(() => result.current.commitSpaceRename('space-1'))
 
-    expect(onSpacesChange).not.toHaveBeenCalled()
+    expect(harness.notifications).not.toHaveBeenCalled()
   })
 
   it('does nothing when the commit names another Space than the one being renamed', () => {
-    const onSpacesChange = vi.fn()
     const wrapper = createWrapper('workspace-a')
     const other = { ...SPACE, id: 'space-2', name: 'Space 2' }
-    const { result } = renderSpaces({ wrapper, onSpacesChange, spaces: [SPACE, other] })
+    const { result, harness } = renderSpaces({ wrapper, spaces: [SPACE, other] })
 
     act(() => result.current.activateSpaceTitle('space-1', 'near'))
     act(() => result.current.commitSpaceRename('space-2'))
 
-    expect(onSpacesChange).not.toHaveBeenCalled()
+    expect(harness.notifications).not.toHaveBeenCalled()
   })
 
   it('cancels the rename when its Space disappears', () => {
@@ -226,11 +220,8 @@ describe('Space rename through the canvas store', () => {
           standardWindowSizeBucket: 'regular',
           reactFlow: {} as ReactFlowInstance<Node<TerminalNodeData>>,
           nodes: [NODE],
-          nodesRef: { current: [NODE] },
-          setNodes: vi.fn(),
+          updateCanvasDocument: vi.fn(),
           spaces: props.spaces,
-          spacesRef: { current: props.spaces },
-          onSpacesChange: vi.fn(),
         }),
       { initialProps: { spaces: [SPACE] }, wrapper: wrapper.Wrapper },
     )

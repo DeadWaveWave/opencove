@@ -12,7 +12,20 @@ import type {
 import {
   createCanvasDocumentHarness,
   renderCanvasNodeStore,
+  type CanvasNodeStoreContext,
 } from '../../support/canvasDocumentHarness'
+
+function useDirectoryOpsUnderTest({ workspaceId, canvasState, nodeStore }: CanvasNodeStoreContext) {
+  return useWorkspaceCanvasSpaceDirectoryOps({
+    workspacePath: '/repo',
+    spacesRef: canvasState.spacesRef,
+    nodesRef: nodeStore.nodesRef,
+    setNodes: nodeStore.setNodes,
+    onSpacesChange: nextSpaces => replaceWorkspaceSpaces(workspaceId, nextSpaces),
+    onRequestPersistFlush: vi.fn(),
+    closeNode: vi.fn(async () => undefined),
+  })
+}
 
 describe('useWorkspaceCanvasSpaceDirectoryOps renameSpaceTo', () => {
   it('has the new directory in the store when the store notifies its consumers', () => {
@@ -31,16 +44,7 @@ describe('useWorkspaceCanvasSpaceDirectoryOps renameSpaceTo', () => {
     const harness = createCanvasDocumentHarness({ spaces: initialSpaces })
     const view = renderCanvasNodeStore(harness, {
       workspacePath: '/repo',
-      extend: ({ canvasState, nodeStore }) =>
-        useWorkspaceCanvasSpaceDirectoryOps({
-          workspacePath: '/repo',
-          spacesRef: canvasState.spacesRef,
-          nodesRef: nodeStore.nodesRef,
-          setNodes: nodeStore.setNodes,
-          onSpacesChange: nextSpaces => replaceWorkspaceSpaces(harness.workspaceId, nextSpaces),
-          onRequestPersistFlush: vi.fn(),
-          closeNode: vi.fn(async () => undefined),
-        }),
+      extend: useDirectoryOpsUnderTest,
     })
     let directorySeenWhenNotified: string | null = null
     const unsubscribe = useAppStore.subscribe(() => {
