@@ -111,7 +111,7 @@ test.describe('Workspace Canvas - Task Selection Interactions', () => {
     }
   })
 
-  test.skip('keeps task requirement input focused after clearing selection', async () => {
+  test('keeps task requirement input focused after clearing selection', async () => {
     const { electronApp, window } = await launchApp()
 
     try {

@@ -12,7 +12,7 @@ import {
 import { readSeededWorkspaceLayout, rectsOverlap } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Note to Task', () => {
-  test.skip('converts selected note to task via context menu', async () => {
+  test('converts selected note to task via context menu', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
