@@ -8,6 +8,7 @@ import type {
   TaskEditorState,
 } from '../components/workspaceCanvas/types'
 import { createCanvasStore } from './canvasStore'
+import { createInitialCanvasUiState } from './canvasStore.ui'
 
 const paneMenu: ContextMenuState = { kind: 'pane', x: 10, y: 20, flowX: 1, flowY: 2 }
 const selectionMenu: ContextMenuState = { kind: 'selection', x: 30, y: 40, nodeId: 'node-1' }
@@ -137,11 +138,16 @@ describe('canvas store', () => {
 
     commands.ui.closeMenus()
     expect(listener).toHaveBeenCalledTimes(1)
-    expect(api.getState().ui).toMatchObject({ contextMenu: null, spaceActionMenu: null })
+    expect(api.getState().ui).toEqual(createInitialCanvasUiState())
 
     commands.ui.openSpaceActionMenu(spaceMenu)
     commands.ui.closeMenus()
-    expect(api.getState().ui).toMatchObject({ contextMenu: null, spaceActionMenu: null })
+    expect(api.getState().ui).toEqual(createInitialCanvasUiState())
+
+    commands.ui.openDialog('taskEditor', taskEditor)
+    commands.ui.openContextMenu(paneMenu)
+    commands.ui.closeMenus()
+    expect(api.getState().ui).toEqual({ ...createInitialCanvasUiState(), taskEditor })
   })
 
   it('keeps command and api identity stable across state changes', () => {
@@ -247,7 +253,7 @@ describe('canvas store', () => {
   })
 
   describe('space rename', () => {
-    it('starts with the draft, clears the context menu and keeps the Space menu', () => {
+    it('starts with the draft and clears the context menu', () => {
       const { api, commands } = createCanvasStore()
       commands.ui.openContextMenu(paneMenu)
       const listener = vi.fn()
@@ -258,6 +264,16 @@ describe('canvas store', () => {
       expect(listener).toHaveBeenCalledTimes(1)
       expect(api.getState().ui.spaceRename).toEqual({ spaceId: 'space-1', draft: 'Space 1' })
       expect(api.getState().ui.contextMenu).toBeNull()
+    })
+
+    it('leaves an open Space action menu open', () => {
+      const { api, commands } = createCanvasStore()
+      commands.ui.openSpaceActionMenu(spaceMenu)
+
+      commands.ui.startSpaceRename('space-1', 'Space 1')
+
+      expect(api.getState().ui.spaceActionMenu).toBe(spaceMenu)
+      expect(api.getState().ui.spaceRename).toEqual({ spaceId: 'space-1', draft: 'Space 1' })
     })
 
     it('changes the draft only while a rename is open', () => {

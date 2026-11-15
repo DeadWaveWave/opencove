@@ -187,4 +187,32 @@ describe('workspace canvas node delete confirmation', () => {
     })
     expect(closeNode).not.toHaveBeenCalled()
   })
+
+  it('closes the confirmation after the delete is confirmed', async () => {
+    const closeNode = vi.fn(async () => undefined)
+
+    render(
+      <CanvasStoreTestProvider>
+        <Harness
+          closeNode={closeNode}
+          nodes={[createNoteNode('note-1', 'First note'), createNoteNode('note-2', 'Second note')]}
+          spaces={[]}
+        />
+      </CanvasStoreTestProvider>,
+    )
+
+    fireEvent.click(screen.getByTestId('request-delete'))
+    await waitFor(() => {
+      expect(screen.getByTestId('confirmation-state').textContent).not.toBe('null')
+    })
+
+    fireEvent.click(screen.getByTestId('confirm-delete'))
+
+    await waitFor(() => {
+      expect(closeNode).toHaveBeenCalledTimes(2)
+    })
+    await waitFor(() => {
+      expect(screen.getByTestId('confirmation-state').textContent).toBe('null')
+    })
+  })
 })

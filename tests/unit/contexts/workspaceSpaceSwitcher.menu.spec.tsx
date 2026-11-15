@@ -132,6 +132,37 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
     expect(screen.queryAllByRole('status')).toHaveLength(0)
   })
 
+  it('focuses the rename input and selects its whole text when a rename starts', async () => {
+    const { commands } = renderWithCanvasStore(
+      <WorkspaceSpaceRegionsOverlay
+        workspacePath="/tmp"
+        spaceVisuals={[
+          {
+            id: 'space-1',
+            name: 'Infra',
+            directoryPath: '/tmp',
+            rect: { x: 0, y: 0, width: 200, height: 160 },
+            hasExplicitRect: true,
+          },
+        ]}
+        selectedSpaceIds={[]}
+        spaceFramePreview={null}
+        handleSpaceDragHandlePointerDown={() => undefined}
+        commitSpaceRename={() => undefined}
+        activateSpaceTitle={() => undefined}
+      />,
+    )
+
+    act(() => commands.startSpaceRename('space-1', 'Infra'))
+
+    const input = screen.getByTestId('workspace-space-label-input-space-1') as HTMLInputElement
+    await waitFor(() => {
+      expect(document.activeElement).toBe(input)
+    })
+    expect(input.selectionStart).toBe(0)
+    expect(input.selectionEnd).toBe(input.value.length)
+  })
+
   it('keeps rename input mouse placement events away from the canvas', () => {
     const handleSpaceDragHandlePointerDown = vi.fn()
     const wrapperMouseDown = vi.fn()
