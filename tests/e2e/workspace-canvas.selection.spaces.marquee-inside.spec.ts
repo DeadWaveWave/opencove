@@ -114,7 +114,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
     }
   })
 
-  test.skip('restricts marquee selection to start space contents', async () => {
+  test('restricts marquee selection to start space contents', async () => {
     const { electronApp, window } = await launchApp()
 
     try {

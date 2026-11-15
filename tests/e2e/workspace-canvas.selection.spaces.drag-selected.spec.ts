@@ -84,7 +84,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
     }
   })
 
-  test.skip('drags selected space from the top handle', async () => {
+  test('drags selected space from the top handle', async () => {
     const { electronApp, window } = await launchApp()
 
     try {

@@ -12,7 +12,7 @@ import {
 import { findMarqueeCorner } from './workspace-canvas.pane.helpers'
 
 test.describe('Workspace Canvas - Selection (Spaces)', () => {
-  test.skip('selects space (not enclosed nodes) when marquee starts outside space', async () => {
+  test('selects space (not enclosed nodes) when marquee starts outside space', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
