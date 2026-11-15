@@ -285,6 +285,7 @@ Ubuntu 四个分片、macOS 三个分片，数量只在 `scripts/lib/e2e-shards.
     - 旧数据说明（M6 mounts / locations）：若你的 profile 早于 M6，引入 mounts 后首次启动会尝试自动修复旧项目数据（为缺失 mounts 的本地项目创建一个默认本地位置，并修复 Space 的 target mount 绑定）。若项目是 remote-only 且缺失位置数据，无法凭空推断远程路径，需要在项目菜单中手动添加位置后才能正常运行相关能力。
 -   **运行 CLI**：先 `pnpm build`，再 `pnpm opencove --help`；仅 CLI 迭代可用 `pnpm build:cli`，产物为 `out/cli/opencove.mjs`，不随 dev HMR 更新。
 -   **运行单元测试**：`pnpm test -- --run`
+    - 覆盖率运行（`pnpm test:coverage`，只在 `main` 的 push run 中执行）把用例默认超时设为 30 秒，其余运行保持 Vitest 默认的 5 秒：插桩使 CPU 密集用例慢约 4 倍（CI 实测 1.0 秒变为 3.8 至 4.2 秒，慢 runner 上超过 5 秒）。因此只在覆盖率下超时的用例不要单独加超时参数；本身就需要更久的用例显式写出超时并注明实测值。该参数由 `tests/unit/scripts/coverage-timeout.spec.ts` 校验。
 -   **真实 Worker / CLI 契约**：先 `pnpm build`，再 `pnpm test:contract:worker-cli`；重复验证可加 `--repeat-each=5`。
     - 独立 Playwright runner 不启动 Desktop 或浏览器；每例隔离 userData、workspace、真实 PTY 和生产 session grant。Worker 使用 `ELECTRON_RUN_AS_NODE=1`，复用 postinstall 的 Electron ABI 原生模块，不另行构建 Node ABI。
     - 夹具拥有进程清理，退出时检查 Worker 与已观测 PTY 子进程；断言通过 HTTP 控制面和真实内置 CLI 执行。只把不依赖 UI 的断言放到这里。
