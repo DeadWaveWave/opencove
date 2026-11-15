@@ -1,8 +1,10 @@
 import { act, fireEvent } from '@testing-library/react'
+import { useMemo } from 'react'
 import type * as React from 'react'
 import { useReactFlow, type Node } from '@xyflow/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
+import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/constants'
 import { useWorkspaceCanvasSpaceDrag } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDrag'
 import type { UseWorkspaceCanvasNodesStoreResult } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.types'
 import { useCanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
@@ -12,7 +14,10 @@ import {
   replaceWorkspaceNodes,
   replaceWorkspaceSpaces,
 } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
-import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
+import type {
+  Point,
+  TerminalNodeData,
+} from '../../../src/contexts/workspace/presentation/renderer/types'
 import {
   createCanvasDocumentHarness,
   renderCanvasNodeStore,
@@ -265,6 +270,26 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
       expect(harness.readStoreDocument().nodes[0].position).toEqual({ x: 150, y: 60 })
     })
 
+    it('does not ask the terminals to sync their layout, for a frame or for the release', () => {
+      const harness = createCanvasDocumentHarness({
+        nodes: [nodeAt('n1', 50, 60)],
+        spaces: [spaceA()],
+      })
+      const view = renderDrag(harness)
+      const onLayoutSync = vi.fn()
+      window.addEventListener(TERMINAL_LAYOUT_SYNC_EVENT, onLayoutSync)
+      try {
+        press(view, 'space-a', INSIDE_A)
+        dragTo({ x: INSIDE_A.x + 40, y: INSIDE_A.y })
+        release({ x: INSIDE_A.x + 100, y: INSIDE_A.y })
+      } finally {
+        window.removeEventListener(TERMINAL_LAYOUT_SYNC_EVENT, onLayoutSync)
+      }
+
+      expect(harness.readStoreDocument().nodes[0].position.x).toBe(150)
+      expect(onLayoutSync).not.toHaveBeenCalled()
+    })
+
     it('snaps against a Space that a write added since the pointer went down', () => {
       magneticSnappingEnabledRef.current = true
       const harness = createCanvasDocumentHarness({
@@ -317,18 +342,19 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
       const view = renderDrag(harness)
       press(view, 'space-a', INSIDE_A)
 
-      // A node that the store gained since pointer down is not part of the drag, and is kept.
+      // A node that the store gained since pointer down is not part of the drag, but the moved
+      // Space pushes it clear of its new rect, which only the nodes read at pointer up know.
       act(() => {
         replaceWorkspaceNodes(harness.workspaceId, [
           ...harness.readStoreDocument().nodes,
-          nodeAt('n-late', 1500, 700),
+          nodeAt('n-late', 650, 100),
         ])
       })
       release({ x: INSIDE_A.x + 100, y: INSIDE_A.y })
 
       expect(harness.readStoreDocument().nodes.map(node => [node.id, node.position.x])).toEqual([
         ['n1', 150],
-        ['n-late', 1500],
+        ['n-late', 700],
       ])
     })
 
@@ -408,10 +434,15 @@ describe('useWorkspaceCanvasSpaceDrag reads the committed document', () => {
       const view = renderInCanvasDocument(
         () => {
           const flow = useReactFlow<Node<TerminalNodeData>>()
+          // Stable, as in the app: a changed instance would hide a dependency lost by a callback.
+          const reactFlow = useMemo(
+            () => ({ ...flow, screenToFlowPosition: (point: Point) => point, getZoom: () => 1 }),
+            [flow],
+          )
           return {
             drag: useWorkspaceCanvasSpaceDrag({
               workspaceId: shown,
-              reactFlow: { ...flow, screenToFlowPosition: point => point, getZoom: () => 1 },
+              reactFlow,
               setNodes,
               updateCanvasDocument,
               magneticSnappingEnabledRef,
