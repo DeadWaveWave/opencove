@@ -63,7 +63,8 @@ jobs:
         run: node scripts/plan-e2e-shards.mjs --check
 
       - name: Unit tests (PR)
-        if: github.event_name == 'pull_request'
+        # Pull requests and manual runs; pushes run the same files under coverage below.
+        if: github.event_name != 'push'
         run: pnpm test -- --run
 
       - name: Unit tests with coverage (main)
@@ -491,6 +492,7 @@ jobs:
       ]
     if: github.event_name == 'push' && always()
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
       actions: read
@@ -507,4 +509,6 @@ jobs:
       - name: Report the state of main to the ci-red issue
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          # The result of every job above, from the needs context: success, failure, cancelled or skipped.
+          NEEDS: ${{ toJSON(needs) }}
         run: node scripts/report-main-ci-status.mjs

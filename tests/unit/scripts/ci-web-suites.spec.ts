@@ -73,8 +73,8 @@ const RUNNER_ROWS: RunnerRow[] = [
     runsIn: workflow => /^\s+run: pnpm test -- --run\s*$/m.test(workflow),
     stepRun: /^pnpm test -- --run$/,
     // The only step that runs this command is "Unit tests (PR)", which has
-    // `if: github.event_name == 'pull_request'` because pushes run test:coverage instead.
-    gatingExemption: 'pull_request-only step; push runs the same files under pnpm test:coverage',
+    // `if: github.event_name != 'push'` because pushes run test:coverage instead.
+    gatingExemption: 'non-push step; push runs the same files under pnpm test:coverage',
   },
   {
     runner: 'Vitest, architecture harness',

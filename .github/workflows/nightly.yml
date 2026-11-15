@@ -68,13 +68,22 @@ jobs:
         run: |
           echo "target_commitish=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+      # The previous release is judged from the head of main, so that a green commit older than the
+      # last release is never published again. fetch-depth 0 above fetches origin/main.
+      - name: Resolve head of main
+        id: head
+        if: github.event_name == 'schedule'
+        run: |
+          echo "sha=$(git rev-parse origin/main)" >> "$GITHUB_OUTPUT"
+
       - name: Resolve nightly release gate
         id: gate
         run: |
           node scripts/resolve-nightly-release-gate.mjs \
             --event "${{ github.event_name }}" \
             --target "${{ steps.sha.outputs.target_commitish }}" \
-            --green-commit "${{ steps.green.outputs.sha }}" >> "$GITHUB_OUTPUT"
+            --green-commit "${{ steps.green.outputs.sha }}" \
+            --head "${{ steps.head.outputs.sha }}" >> "$GITHUB_OUTPUT"
 
       - name: Report skipped nightly release
         if: steps.gate.outputs.should_release != 'true'

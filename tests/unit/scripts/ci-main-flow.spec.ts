@@ -65,6 +65,13 @@ function triggerProblems(workflow: string): string[] {
   ) {
     problems.push('concurrency must cancel in progress only for pull requests')
   }
+  if (
+    !/- name: Unit tests \(PR\)\n(?: {8}#.*\n)* {8}if: github\.event_name != 'push'\n/.test(
+      workflow,
+    )
+  ) {
+    problems.push('the unit tests must run on every event except push')
+  }
   if (!/^on:\n(?:[ ]{2}.*\n|\n)*? {2}workflow_dispatch:\n/m.test(workflow)) {
     problems.push('workflow_dispatch is missing from on:')
   }
@@ -121,7 +128,10 @@ function macosPlatformProblems(workflow: string): string[] {
   if (job.indexOf(E2E_STEP) < job.indexOf('- name: Build')) {
     problems.push(`${E2E_STEP} must run after Build`)
   }
-  if (!ciWorkflow.includes('runs-on: macos-latest') || !/runs-on: macos-latest/.test(job)) {
+  if (/continue-on-error/.test(job)) {
+    problems.push('macos-platform must have no continue-on-error, at job or step level')
+  }
+  if (!/runs-on: macos-latest/.test(job)) {
     problems.push('macos-platform must run on macOS')
   }
   return problems
@@ -147,6 +157,21 @@ function statusProblems(workflow: string): string[] {
   }
   if (!/^ {4}permissions:\n {6}contents: read\n {6}actions: read\n {6}issues: write\n/m.test(job)) {
     problems.push('main-status permissions must be contents: read, actions: read, issues: write')
+  }
+  if (/continue-on-error/.test(job)) {
+    problems.push('main-status must have no continue-on-error, at job or step level')
+  }
+  if (!/^ {4}timeout-minutes: 5$/m.test(job)) {
+    problems.push('main-status needs timeout-minutes: 5')
+  }
+  if (!job.includes('uses: actions/checkout@')) {
+    problems.push('main-status needs its checkout')
+  }
+  if (!job.includes('GITHUB_TOKEN: ${{ github.token }}')) {
+    problems.push('main-status needs GITHUB_TOKEN: ${{ github.token }}')
+  }
+  if (!job.includes('NEEDS: ${{ toJSON(needs) }}')) {
+    problems.push('main-status needs NEEDS: ${{ toJSON(needs) }}')
   }
   if (!/^ {8}run: node scripts\/report-main-ci-status\.mjs$/m.test(job)) {
     problems.push('main-status must run node scripts/report-main-ci-status.mjs')
@@ -177,6 +202,35 @@ function nightlyProblems(workflow: string): string[] {
   ) {
     problems.push('the gate must receive the green commit')
   }
+  if (!green.includes(`--jq '.workflow_runs[0].head_sha // ""'`)) {
+    problems.push('the green commit is the head_sha of the first run')
+  }
+  if (!green.includes('&per_page=1')) {
+    problems.push('the green query asks for one run')
+  }
+  if (!stepText(resolveJob, 'Resolve target commit-ish').includes('git rev-parse HEAD')) {
+    problems.push('target_commitish must come from git rev-parse HEAD of the checkout')
+  }
+  if (!workflow.includes('target_commitish: ${{ steps.sha.outputs.target_commitish }}')) {
+    problems.push('the resolve job must output the commit of the checkout')
+  }
+  if (!workflow.includes('target_commitish: ${{ needs.resolve.outputs.target_commitish }}')) {
+    problems.push('the release job must receive needs.resolve.outputs.target_commitish')
+  }
+  const head = stepText(resolveJob, 'Resolve head of main')
+  if (
+    !head.includes('git rev-parse origin/main') ||
+    !/^ {8}if: github\.event_name == 'schedule'$/m.test(head)
+  ) {
+    problems.push('the head of main is resolved for scheduled runs')
+  }
+  if (
+    !stepText(resolveJob, 'Resolve nightly release gate').includes(
+      '--head "${{ steps.head.outputs.sha }}"',
+    )
+  ) {
+    problems.push('the gate must receive the head of main')
+  }
   return problems
 }
 
@@ -200,6 +254,15 @@ describe('ci.yml triggers', () => {
       'cancellation off for every run',
       mutate(ciWorkflow, CONCURRENCY, 'cancel-in-progress: false'),
       'only for pull requests',
+    ],
+    [
+      'unit tests only on pull requests',
+      mutate(
+        ciWorkflow,
+        "        if: github.event_name != 'push'\n        run: pnpm test -- --run",
+        "        if: github.event_name == 'pull_request'\n        run: pnpm test -- --run",
+      ),
+      'unit tests must run',
     ],
     [
       'workflow_dispatch removed',
@@ -289,6 +352,24 @@ describe('ci.yml macOS platform job', () => {
       "missing OPENCOVE_E2E_RETRIES: '0'",
     ],
     [
+      'continue-on-error on the job',
+      mutate(
+        ciWorkflow,
+        '    timeout-minutes: 40\n',
+        '    timeout-minutes: 40\n    continue-on-error: true\n',
+      ),
+      'no continue-on-error',
+    ],
+    [
+      'continue-on-error on a step of the job',
+      mutate(
+        ciWorkflow,
+        '        run: node scripts/run-macos-platform-e2e.mjs\n',
+        '        run: node scripts/run-macos-platform-e2e.mjs\n        continue-on-error: true\n',
+      ),
+      'no continue-on-error',
+    ],
+    [
       'a missing timeout',
       ciWorkflow.replace(/(macOS-only and core E2E files\n)( {8}timeout-minutes: \d+\n)/, '$1'),
       'needs its own timeout-minutes',
@@ -330,6 +411,30 @@ describe('ci.yml main-status job', () => {
       'push runs, always',
     ],
     ['a job missing from needs', replaceInJob('        ci-ubuntu,\n', ''), 'needs must be'],
+    [
+      'continue-on-error on the report step',
+      replaceInJob(
+        '        env:\n          GITHUB_TOKEN',
+        '        continue-on-error: true\n        env:\n          GITHUB_TOKEN',
+      ),
+      'no continue-on-error',
+    ],
+    [
+      'continue-on-error on the job',
+      replaceInJob(
+        '    timeout-minutes: 5\n',
+        '    timeout-minutes: 5\n    continue-on-error: true\n',
+      ),
+      'no continue-on-error',
+    ],
+    ['no timeout', replaceInJob('    timeout-minutes: 5\n', ''), 'timeout-minutes: 5'],
+    [
+      'no checkout',
+      replaceInJob('uses: actions/checkout@v7', 'uses: actions/other@v7'),
+      'its checkout',
+    ],
+    ['no token', replaceInJob('          GITHUB_TOKEN: ${{ github.token }}\n', ''), 'GITHUB_TOKEN'],
+    ['no needs context', replaceInJob('          NEEDS: ${{ toJSON(needs) }}\n', ''), 'NEEDS'],
     ['issues: write dropped', replaceInJob('      issues: write\n', ''), 'permissions must be'],
     ['actions: read dropped', replaceInJob('      actions: read\n', ''), 'permissions must be'],
     [
@@ -358,6 +463,39 @@ describe('nightly.yml', () => {
   })
 
   it.each([
+    [
+      'the wrong run picked',
+      mutate(nightlyWorkflow, '.workflow_runs[0].head_sha', '.workflow_runs[-1].head_sha'),
+      'head_sha of the first run',
+    ],
+    [
+      'target_commitish from main',
+      mutate(nightlyWorkflow, 'git rev-parse HEAD', 'git rev-parse origin/main'),
+      'target_commitish must come from',
+    ],
+    [
+      'release bound to the input ref',
+      mutate(
+        nightlyWorkflow,
+        'target_commitish: ${{ needs.resolve.outputs.target_commitish }}',
+        'target_commitish: ${{ inputs.target_ref }}',
+      ),
+      'release job must receive',
+    ],
+    [
+      'the gate without the head of main',
+      mutate(nightlyWorkflow, '--head "${{ steps.head.outputs.sha }}"', ''),
+      'the gate must receive the head',
+    ],
+    [
+      'the head of main for every event',
+      mutate(
+        nightlyWorkflow,
+        "        id: head\n        if: github.event_name == 'schedule'\n",
+        '        id: head\n',
+      ),
+      'head of main is resolved',
+    ],
     [
       'the gate without the green commit',
       mutate(nightlyWorkflow, '--green-commit "${{ steps.green.outputs.sha }}"', ''),
