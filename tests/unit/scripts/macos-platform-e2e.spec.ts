@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { QUICK_E2E_GROUPS } from '../../../scripts/precommit-e2e-selection.mjs'
-import { selectMacosPlatformE2E } from '../../../scripts/lib/macos-platform-e2e.mjs'
+import { runSelectedE2E, selectMacosPlatformE2E } from '../../../scripts/lib/macos-platform-e2e.mjs'
 
 const rootDir = resolve(import.meta.dirname, '../../..')
 
@@ -52,6 +52,36 @@ describe('selectMacosPlatformE2E', () => {
     expect(
       selectMacosPlatformE2E({ trackedFiles: [], coreTests: ['tests/e2e/smoke.spec.ts'] }),
     ).toEqual(['tests/e2e/smoke.spec.ts'])
+  })
+})
+
+describe('runSelectedE2E', () => {
+  const tests = ['tests/e2e/a.mac.spec.ts', 'tests/e2e/smoke.spec.ts']
+
+  it('passes exactly the selection to pnpm test:e2e', () => {
+    const calls: unknown[][] = []
+    const status = runSelectedE2E({
+      tests,
+      platform: 'linux',
+      env: { A: '1' },
+      spawnSyncImpl: (...args: unknown[]) => {
+        calls.push(args)
+        return { status: 0 }
+      },
+    })
+
+    expect(status).toBe(0)
+    expect(calls).toEqual([
+      ['pnpm', ['test:e2e', ...tests], { env: { A: '1' }, shell: false, stdio: 'inherit' }],
+    ])
+  })
+
+  it.each([1, 2, 130])('returns a failing status %i as is', code => {
+    expect(runSelectedE2E({ tests, spawnSyncImpl: () => ({ status: code }) })).toBe(code)
+  })
+
+  it('returns non-zero when the child did not exit with a status', () => {
+    expect(runSelectedE2E({ tests, spawnSyncImpl: () => ({ status: null }) })).not.toBe(0)
   })
 })
 

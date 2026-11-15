@@ -2,10 +2,9 @@
 import './lib/isolateHostEnvironment.mjs'
 
 import { spawnSync } from 'node:child_process'
-import { selectMacosPlatformE2E } from './lib/macos-platform-e2e.mjs'
+import { runSelectedE2E, selectMacosPlatformE2E } from './lib/macos-platform-e2e.mjs'
 import { QUICK_E2E_GROUPS } from './precommit-e2e-selection.mjs'
 
-const PNPM_COMMAND = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
 const args = process.argv.slice(2)
 if (args.some(arg => arg !== '--print') || args.length > 1) {
   process.stderr.write('Usage: node scripts/run-macos-platform-e2e.mjs [--print]\n')
@@ -31,9 +30,4 @@ if (args.includes('--print')) {
 }
 
 process.stdout.write(`[e2e:macos-platform] ${tests.length} E2E files selected.\n`)
-const result = spawnSync(PNPM_COMMAND, ['test:e2e', ...tests], {
-  env: process.env,
-  shell: process.platform === 'win32',
-  stdio: 'inherit',
-})
-process.exit(result.status ?? 1)
+process.exit(runSelectedE2E({ tests, spawnSyncImpl: spawnSync }))
