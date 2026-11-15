@@ -1,6 +1,7 @@
 import type * as React from 'react'
 import type { Node } from '@xyflow/react'
-import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
+import type { TerminalNodeData, WorkspaceSpaceRect } from '../../../types'
+import type { WorkspaceDocument } from '../../../store/workspaceDocument'
 import type { SpaceDragState } from '../types'
 import { projectWorkspaceSpaceDragLayout } from './useSpaceDrag.finalize'
 import { resolveResizedSpaceRect } from './useSpaceDrag.preview'
@@ -67,38 +68,34 @@ export function applyProjectedWorkspaceSpaceDragLayout({
   dragState,
   dx,
   dy,
-  nodesRef,
-  spacesRef,
+  readDocument,
   setNodes,
   setSpaceFramePreview,
 }: {
   dragState: SpaceDragState
   dx: number
   dy: number
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
+  readDocument: () => WorkspaceDocument
   setNodes: SetNodes
   setSpaceFramePreview: React.Dispatch<
     React.SetStateAction<ReadonlyMap<string, WorkspaceSpaceRect> | null>
   >
 }): void {
+  // Per frame: one read of the committed document, no write to it other than the node commit.
+  const { nodes, spaces } = readDocument()
   const projected = projectWorkspaceSpaceDragLayout({
     dragState,
     dx,
     dy,
-    nodes: nodesRef.current,
-    spaces: spacesRef.current,
+    nodes,
+    spaces,
     resolveResizedRect: resolveResizedSpaceRect,
   })
 
   if (!projected) {
     setResolvedSpaceFramePreview(
       setSpaceFramePreview,
-      new Map(
-        spacesRef.current
-          .filter(space => space.rect)
-          .map(space => [space.id, space.rect!] as const),
-      ),
+      new Map(spaces.filter(space => space.rect).map(space => [space.id, space.rect!] as const)),
     )
     setNodes(
       prevNodes => {

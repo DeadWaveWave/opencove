@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useStoreApi, type Node, type ReactFlowInstance } from '@xyflow/react'
-import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
+import type { TerminalNodeData, WorkspaceSpaceRect } from '../../../types'
 import type { WorkspaceSnapGuide } from '../../../utils/workspaceSnap'
 import type { SpaceDragState } from '../types'
 import {
@@ -19,34 +19,27 @@ import { useCanvasCollapseStore } from '../../../store/useCanvasCollapseStore'
 import {
   useCanvasSelectionCommands,
   useCanvasUiCommands,
+  useReadCanvasDocument,
   useReadCanvasSelection,
 } from '../../../store/canvasStoreContext'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 
 interface UseSpaceDragParams {
   workspaceId: string
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  setNodes: (
-    updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-    options?: { syncLayout?: boolean },
-  ) => void
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   magneticSnappingEnabledRef: React.MutableRefObject<boolean>
   setSnapGuides: React.Dispatch<React.SetStateAction<WorkspaceSnapGuide[] | null>>
-  onRequestPersistFlush?: () => void
 }
 
 export function useWorkspaceCanvasSpaceDrag({
   workspaceId,
   reactFlow,
-  nodesRef,
-  spacesRef,
   setNodes,
-  onSpacesChange,
+  updateCanvasDocument,
   magneticSnappingEnabledRef,
   setSnapGuides,
-  onRequestPersistFlush,
 }: UseSpaceDragParams): {
   spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
   handleSpaceDragHandlePointerDown: (
@@ -56,6 +49,7 @@ export function useWorkspaceCanvasSpaceDrag({
   ) => void
 } {
   const ui = useCanvasUiCommands()
+  const readDocument = useReadCanvasDocument()
   const readSelection = useReadCanvasSelection()
   const selection = useCanvasSelectionCommands()
 
@@ -95,13 +89,13 @@ export function useWorkspaceCanvasSpaceDrag({
         workspaceId,
         spaceId,
         desiredRect,
-        spaces: spacesRef.current,
+        spaces: readDocument().spaces,
         magneticSnappingEnabled: magneticSnappingEnabledRef.current,
         setSnapGuides,
         commit: options?.commit,
       })
     },
-    [magneticSnappingEnabledRef, setSnapGuides, spacesRef, workspaceId],
+    [magneticSnappingEnabledRef, readDocument, setSnapGuides, workspaceId],
   )
 
   const resolveProjectedDragDelta = useCallback(
@@ -140,13 +134,12 @@ export function useWorkspaceCanvasSpaceDrag({
         dragState,
         dx,
         dy,
-        nodesRef,
-        spacesRef,
+        readDocument,
         setNodes,
         setSpaceFramePreview,
       })
     },
-    [nodesRef, setNodes, setSpaceFramePreview, spacesRef],
+    [readDocument, setNodes, setSpaceFramePreview],
   )
 
   const cancelScheduledSpaceDragPreview = useCallback(() => {
@@ -201,15 +194,12 @@ export function useWorkspaceCanvasSpaceDrag({
         dragState,
         dx,
         dy,
-        nodes: nodesRef.current,
-        spaces: spacesRef.current,
+        readDocument,
         resolveResizedRect: resolveResizedSpaceRect,
-        setNodes,
-        onSpacesChange,
-        onRequestPersistFlush,
+        updateCanvasDocument,
       })
     },
-    [nodesRef, onRequestPersistFlush, onSpacesChange, setNodes, spacesRef],
+    [readDocument, updateCanvasDocument],
   )
 
   const applySpaceClickSelection = useCallback(
@@ -395,7 +385,8 @@ export function useWorkspaceCanvasSpaceDrag({
         return
       }
 
-      const targetSpace = spacesRef.current.find(space => space.id === spaceId)
+      const { nodes, spaces } = readDocument()
+      const targetSpace = spaces.find(space => space.id === spaceId)
       if (!targetSpace || !targetSpace.rect) {
         return
       }
@@ -419,12 +410,7 @@ export function useWorkspaceCanvasSpaceDrag({
       const handle: SpaceFrameHandle = isCollapsed
         ? { kind: 'move' }
         : resolveInteractiveSpaceFrameHandle({
-            rect: readSpaceDragDisplayRect(
-              workspaceId,
-              spaceId,
-              targetSpace.rect,
-              spacesRef.current,
-            ),
+            rect: readSpaceDragDisplayRect(workspaceId, spaceId, targetSpace.rect, spaces),
             point: startFlow,
             zoom,
             mode: options?.mode ?? 'auto',
@@ -441,8 +427,8 @@ export function useWorkspaceCanvasSpaceDrag({
         shiftKey: event.shiftKey,
         targetSpace,
         handle,
-        nodes: nodesRef.current,
-        spaces: spacesRef.current,
+        nodes,
+        spaces,
         selectedNodeIds: readSelection().nodeIds,
       })
       spaceDragStateRef.current.isCollapsed = isCollapsed
@@ -456,12 +442,11 @@ export function useWorkspaceCanvasSpaceDrag({
     },
     [
       applySpaceClickSelection,
-      nodesRef,
       reactFlow,
+      readDocument,
       readSelection,
       ui,
       setSnapGuides,
-      spacesRef,
       workspaceId,
     ],
   )

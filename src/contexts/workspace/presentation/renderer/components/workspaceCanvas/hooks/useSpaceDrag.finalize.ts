@@ -1,17 +1,14 @@
 import type { Node } from '@xyflow/react'
 import { clampRectInsideRect } from '@contexts/space/application/spaceContainment'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
+import type { WorkspaceDocument } from '../../../store/workspaceDocument'
 import type { SpaceDragState } from '../types'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import { type LayoutDirection } from '../../../utils/spaceLayout'
 import { projectWorkspacePushAwayLayout } from '../../../utils/workspacePushAwayProjection'
 import { projectChildSpaceWithinParent } from './useSpaceDrag.childProjection'
 import { projectSpaceDragWithCollapse, type SpaceDragLayoutInput } from './useSpaceDrag.collapse'
 import { containChildSpaceResizeLayout } from './useSpaceDrag.containment'
-
-type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean },
-) => void
 
 type ResolveResizedRect = (dragState: SpaceDragState, dx: number, dy: number) => WorkspaceSpaceRect
 
@@ -207,23 +204,20 @@ export function finalizeWorkspaceSpaceDrag({
   dragState,
   dx,
   dy,
-  nodes,
-  spaces,
+  readDocument,
   resolveResizedRect,
-  setNodes,
-  onSpacesChange,
-  onRequestPersistFlush,
+  updateCanvasDocument,
 }: {
   dragState: SpaceDragState
   dx: number
   dy: number
-  nodes: Node<TerminalNodeData>[]
-  spaces: WorkspaceSpaceState[]
+  readDocument: () => WorkspaceDocument
   resolveResizedRect: ResolveResizedRect
-  setNodes: SetNodes
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
-  onRequestPersistFlush?: () => void
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
 }): void {
+  // The layout is planned from the committed document read here, once; nothing writes between
+  // this read and the write below. A drag without a layout writes nothing and flushes nothing.
+  const { nodes, spaces } = readDocument()
   const projected = projectWorkspaceSpaceDragLayout({
     dragState,
     dx,
@@ -237,8 +231,9 @@ export function finalizeWorkspaceSpaceDrag({
     return
   }
 
-  setNodes(
-    prevNodes => {
+  // The node positions and the Spaces are one store update, and the flush rides on it.
+  updateCanvasDocument(
+    ({ nodes: prevNodes }) => {
       let hasChanged = false
       const nextNodes = prevNodes.map(node => {
         const nextPosition = projected.nextNodePositionById.get(node.id)
@@ -257,13 +252,10 @@ export function finalizeWorkspaceSpaceDrag({
         }
       })
 
-      return hasChanged ? nextNodes : prevNodes
+      return { nodes: hasChanged ? nextNodes : prevNodes, spaces: projected.nextSpaces }
     },
-    { syncLayout: false },
+    { syncLayout: false, flush: true },
   )
-
-  onSpacesChange(projected.nextSpaces)
-  onRequestPersistFlush?.()
 }
 
 function restoreBaselineNodes(
