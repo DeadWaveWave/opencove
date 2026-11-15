@@ -111,7 +111,7 @@ export interface SelectionDraftState {
 }
 
 export interface SpaceTargetMountPickerState {
-  nodeIds: string[]
+  nodeIds: readonly string[]
   rect: WorkspaceSpaceRect | null
   mounts: MountDto[]
   selectedMountId: string

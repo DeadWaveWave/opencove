@@ -27,7 +27,10 @@ export function WorkspaceCanvasNoteNodeType({
   updateNoteTextRef: MutableRefObject<(nodeId: string, text: string) => void>
   renameNoteTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
   convertNoteToTask: (nodeId: string) => boolean
-  setNodeLabelColorOverride: (nodeIds: string[], labelColorOverride: NodeLabelColorOverride) => void
+  setNodeLabelColorOverride: (
+    nodeIds: readonly string[],
+    labelColorOverride: NodeLabelColorOverride,
+  ) => void
   normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
   onShowMessage?: (message: string, tone?: 'info' | 'warning' | 'error') => void
 }): ReactElement | null {

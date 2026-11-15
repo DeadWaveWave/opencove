@@ -33,7 +33,7 @@ export function WorkspaceCanvasTaskNodeType({
   selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
   resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
   normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
-  requestNodeDeleteRef: MutableRefObject<(nodeIds: string[]) => void>
+  requestNodeDeleteRef: MutableRefObject<(nodeIds: readonly string[]) => void>
   openTaskEditorRef: MutableRefObject<(nodeId: string) => void>
   quickUpdateTaskTitleRef: MutableRefObject<QuickUpdateTaskTitle>
   quickUpdateTaskRequirementRef: MutableRefObject<QuickUpdateTaskRequirement>

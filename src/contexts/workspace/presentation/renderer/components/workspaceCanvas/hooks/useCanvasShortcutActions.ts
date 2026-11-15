@@ -19,7 +19,7 @@ import type { SpatialNavigationDirection } from './spatialNavigation'
 import { useWorkspaceCanvasSelectNode } from './useSelectNode'
 import { focusPrimaryNodeContent } from '../focusPrimaryNodeContent'
 import { useCloseSelectedNodeShortcut } from './useCloseSelectedNodeShortcut'
-import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
+import { useCanvasUiCommands, useReadCanvasSelection } from '../../../store/canvasStoreContext'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -122,8 +122,6 @@ export function useWorkspaceCanvasShortcutActions({
   spaceNavigationAnchorIdRef,
   nodesRef,
   setNodes,
-  setSelectedNodeIds,
-  selectedNodeIdsRef,
   onSpacesChange,
   nodeCreation: { createNodeForSession, createNoteNode },
   launchAgentAtFlowPosition,
@@ -156,8 +154,6 @@ export function useWorkspaceCanvasShortcutActions({
   spaceNavigationAnchorIdRef: React.MutableRefObject<string | null>
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
-  setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
-  selectedNodeIdsRef: React.MutableRefObject<string[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   nodeCreation: {
     createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
@@ -172,19 +168,17 @@ export function useWorkspaceCanvasShortcutActions({
   terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
 }): void {
   const ui = useCanvasUiCommands()
+  const readSelection = useReadCanvasSelection()
 
   useCloseSelectedNodeShortcut({
     enabled,
     canvasRef,
     nodesRef,
-    selectedNodeIdsRef,
     closeNode,
     onShowMessage,
   })
   const selectNode = useWorkspaceCanvasSelectNode({
     setNodes,
-    setSelectedNodeIds,
-    selectedNodeIdsRef,
     spacesRef,
   })
 
@@ -290,7 +284,7 @@ export function useWorkspaceCanvasShortcutActions({
 
       const canvas = canvasRef.current
       const viewportRect = resolveViewportRectInFlowCoordinates({ reactFlow, canvas })
-      const sourceNodeId = selectedNodeIdsRef.current[0] ?? null
+      const sourceNodeId = readSelection().nodeIds[0] ?? null
       const nodes = nodesRef.current.filter(node => node.hidden !== true)
       const resolvedSpaces = spacesRef.current
 
@@ -329,8 +323,8 @@ export function useWorkspaceCanvasShortcutActions({
       canvasRef,
       nodesRef,
       reactFlow,
+      readSelection,
       selectNode,
-      selectedNodeIdsRef,
       ui,
       setActiveSpaceIdFromNodeNavigation,
       spacesRef,
@@ -344,7 +338,7 @@ export function useWorkspaceCanvasShortcutActions({
 
       const canvas = canvasRef.current
       const viewportRect = resolveViewportRectInFlowCoordinates({ reactFlow, canvas })
-      const sourceNodeId = selectedNodeIdsRef.current[0] ?? null
+      const sourceNodeId = readSelection().nodeIds[0] ?? null
 
       const targetSpaceId = resolveSpaceNavigationTargetId({
         direction,
@@ -371,7 +365,7 @@ export function useWorkspaceCanvasShortcutActions({
       canvasRef,
       clearNodeSelection,
       reactFlow,
-      selectedNodeIdsRef,
+      readSelection,
       ui,
       spaceNavigationAnchorIdRef,
       spacesRef,

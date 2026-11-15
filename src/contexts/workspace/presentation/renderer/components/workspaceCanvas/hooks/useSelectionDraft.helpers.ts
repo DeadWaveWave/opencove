@@ -1,4 +1,3 @@
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import type { Node, ReactFlowInstance } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { SelectionDraftState } from '../types'
@@ -62,20 +61,16 @@ export function applySelectionDraft({
   draft,
   reactFlow,
   spaces: canonicalSpaces,
-  selectedNodeIdsRef,
   selection,
   setNodes,
-  setSelectedNodeIds,
   forceDeselectIntersectingNodes = false,
   collapseState = EMPTY_CANVAS_COLLAPSE,
 }: {
   draft: SelectionDraftState
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   spaces: WorkspaceSpaceState[]
-  selectedNodeIdsRef: MutableRefObject<string[]>
   selection: CanvasSelectionCommands
   setNodes: SetNodes
-  setSelectedNodeIds: Dispatch<SetStateAction<string[]>>
   forceDeselectIntersectingNodes?: boolean
   collapseState?: CanvasCollapseState
 }): void {
@@ -149,8 +144,6 @@ export function applySelectionDraft({
     : draft.toggleSelection
       ? toggleSelectionIds(draft.selectedSpaceIdsAtStart, intersectingSpaceIds)
       : intersectingSpaceIds
-
-  selection.setSpaceIds(nextSelectedSpaceIds)
 
   const selectedAtStart = draft.toggleSelection
     ? new Set(draft.selectedNodeIdsAtStart)
@@ -230,6 +223,5 @@ export function applySelectionDraft({
     { syncLayout: false },
   )
 
-  selectedNodeIdsRef.current = selectedIds
-  setSelectedNodeIds(selectedIds)
+  selection.select({ nodeIds: selectedIds, spaceIds: nextSelectedSpaceIds })
 }

@@ -6,7 +6,7 @@ import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { resolveDefaultTaskWindowSize } from '../constants'
 import type { ShowWorkspaceCanvasMessage } from '../types'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
-import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
+import { useCanvasUiCommands, useReadCanvasSelection } from '../../../store/canvasStoreContext'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -28,7 +28,6 @@ function resolveFallbackTaskTitle(requirement: string, fallbackTitle: string): s
 
 export function useWorkspaceCanvasNoteToTaskConversion({
   selectedNodeIds,
-  selectedNodeIdsRef,
   flowNodes,
   nodesRef,
   spacesRef,
@@ -38,8 +37,7 @@ export function useWorkspaceCanvasNoteToTaskConversion({
   onShowMessage,
   standardWindowSizeBucket,
 }: {
-  selectedNodeIds: string[]
-  selectedNodeIdsRef: React.MutableRefObject<string[]>
+  selectedNodeIds: readonly string[]
   flowNodes: Node<TerminalNodeData>[]
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
@@ -55,6 +53,7 @@ export function useWorkspaceCanvasNoteToTaskConversion({
   convertNoteToTask: (nodeId: string) => boolean
 } {
   const ui = useCanvasUiCommands()
+  const readSelection = useReadCanvasSelection()
 
   const { t } = useTranslation()
   const selectedNoteMeta = useMemo(() => {
@@ -181,7 +180,7 @@ export function useWorkspaceCanvasNoteToTaskConversion({
   )
 
   const convertSelectedNoteToTask = useCallback(() => {
-    const selectedIds = selectedNodeIdsRef.current
+    const selectedIds = readSelection().nodeIds
     if (selectedIds.length !== 1) {
       ui.closeContextMenu()
       return
@@ -189,7 +188,7 @@ export function useWorkspaceCanvasNoteToTaskConversion({
 
     convertNoteToTask(selectedIds[0])
     ui.closeContextMenu()
-  }, [convertNoteToTask, selectedNodeIdsRef, ui])
+  }, [convertNoteToTask, readSelection, ui])
 
   return {
     canConvertSelectedNoteToTask: selectedNoteMeta.canConvert,

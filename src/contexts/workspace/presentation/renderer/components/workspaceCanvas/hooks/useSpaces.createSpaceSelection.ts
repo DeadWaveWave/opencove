@@ -1,13 +1,13 @@
 import type { TranslateFn } from '@app/renderer/i18n'
 import type { ListMountsResult } from '@shared/contracts/dto'
 import type { Node, ReactFlowInstance } from '@xyflow/react'
-import type { MutableRefObject } from 'react'
 import type { TerminalNodeData, WorkspaceSpaceRect } from '../../../types'
 import type { ShowWorkspaceCanvasMessage } from '../types'
+import type { CanvasSelectionState } from '../../../store/canvasStore.selection'
 import type { CanvasUiCommands } from '../../../store/canvasStore.ui'
 
 type CreateSpacePayload = {
-  nodeIds: string[]
+  nodeIds: readonly string[]
   rect: WorkspaceSpaceRect | null
   targetMountId: string
   directoryPath: string
@@ -18,7 +18,7 @@ function isAbsolutePath(pathValue: string): boolean {
 }
 
 export function createSpaceFromSelectedNodesWithMounts({
-  selectedNodeIdsRef,
+  readSelection,
   reactFlow,
   workspaceId,
   workspacePath,
@@ -27,7 +27,7 @@ export function createSpaceFromSelectedNodesWithMounts({
   onShowMessage,
   t,
 }: {
-  selectedNodeIdsRef: MutableRefObject<string[]>
+  readSelection: () => CanvasSelectionState
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   workspaceId: string
   workspacePath: string
@@ -36,10 +36,10 @@ export function createSpaceFromSelectedNodesWithMounts({
   onShowMessage?: ShowWorkspaceCanvasMessage
   t: TranslateFn
 }): void {
-  const resolveSelectedIds = (): string[] => {
-    const selectedIdsRefValue = selectedNodeIdsRef.current
-    if (selectedIdsRefValue.length > 0) {
-      return selectedIdsRefValue
+  const resolveSelectedIds = (): readonly string[] => {
+    const selectedNodeIds = readSelection().nodeIds
+    if (selectedNodeIds.length > 0) {
+      return selectedNodeIds
     }
 
     return reactFlow

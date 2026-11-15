@@ -30,8 +30,6 @@ interface UseWorkspaceCanvasSpacesParams {
   ) => void
   spaces: WorkspaceSpaceState[]
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  selectedNodeIds: string[]
-  selectedNodeIdsRef: React.MutableRefObject<string[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
@@ -50,8 +48,6 @@ export function useWorkspaceCanvasSpaces({
   setNodes,
   spaces,
   spacesRef,
-  selectedNodeIds,
-  selectedNodeIdsRef,
   onSpacesChange,
   onRequestPersistFlush,
   onShowMessage,
@@ -62,7 +58,7 @@ export function useWorkspaceCanvasSpaces({
   createSpaceFromSelectedNodes: () => void
   createChildSpaceInParent: (
     parentSpaceId: string,
-    options?: { anchor?: { x: number; y: number } | null; nodeIds?: string[] },
+    options?: { anchor?: { x: number; y: number } | null; nodeIds?: readonly string[] },
   ) => string | null
   createEmptySpaceAtPoint: (point: { x: number; y: number }) => Promise<void>
   confirmSpaceTargetMountPicker: () => void
@@ -80,10 +76,6 @@ export function useWorkspaceCanvasSpaces({
   useLayoutEffect(() => {
     spacesRef.current = spaces
   }, [spaces, spacesRef])
-
-  useLayoutEffect(() => {
-    selectedNodeIdsRef.current = selectedNodeIds
-  }, [selectedNodeIds, selectedNodeIdsRef])
 
   useEffect(() => {
     const spacesNeedingRect = spaces.filter(space => !space.rect)
@@ -155,7 +147,6 @@ export function useWorkspaceCanvasSpaces({
     nodesRef,
     setNodes,
     spacesRef,
-    selectedNodeIdsRef,
     onSpacesChange,
     onRequestPersistFlush,
     onShowMessage,

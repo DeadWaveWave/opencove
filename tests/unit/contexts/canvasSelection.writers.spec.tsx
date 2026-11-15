@@ -450,10 +450,12 @@ describe('Space click selection in useWorkspaceCanvasSpaceDrag', () => {
   function setup(options: { flagged?: string[]; nodeIds?: string[]; spaceIds?: string[] }) {
     const holder = createNodeHolder(createRowNodes(['a', 'b', 'c', 'd'], options.flagged ?? []))
     const spaces = [
-      createSpace('s', { x: -50, y: -50, width: 450, height: 400 }, ['a']),
+      createSpace('s', { x: -50, y: -50, width: 400, height: 400 }, ['a']),
       createSpace('t', { x: 1500, y: 0, width: 400, height: 400 }, []),
     ]
     const spacesRef = { current: spaces }
+    // Stable: the hook clears a drag in progress whenever this callback changes.
+    const setSnapGuides = vi.fn()
     const hook = renderHook(
       () => {
         const flow = useReactFlow<Node<TerminalNodeData>>()
@@ -468,7 +470,7 @@ describe('Space click selection in useWorkspaceCanvasSpaceDrag', () => {
               spacesRef.current = next
             },
             magneticSnappingEnabledRef: { current: false },
-            setSnapGuides: vi.fn(),
+            setSnapGuides,
           }),
           ...useStoreProbe(),
         }
@@ -559,11 +561,11 @@ describe('Space click selection in useWorkspaceCanvasSpaceDrag', () => {
     const before = Object.fromEntries(holder.nodes.map(node => [node.id, node.position.x]))
 
     down('s', { x: 100, y: -40 })
-    up({ x: 160, y: -40 })
+    up({ x: 120, y: -40 })
 
     const moved = (id: string) => holder.nodes.find(node => node.id === id)!.position.x - before[id]
-    expect(moved('a')).toBe(60)
-    expect(moved('c')).toBe(60)
+    expect(moved('a')).toBe(20)
+    expect(moved('c')).toBe(20)
     expect(moved('b')).toBe(0)
     expect(moved('d')).toBe(0)
   })

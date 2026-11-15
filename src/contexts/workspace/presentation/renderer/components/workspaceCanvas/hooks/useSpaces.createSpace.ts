@@ -14,7 +14,7 @@ import {
   pushAwayLayout,
   type LayoutItem,
 } from '../../../utils/spaceLayout'
-import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
+import { useCanvasUiCommands, useReadCanvasSelection } from '../../../store/canvasStoreContext'
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
   options?: { syncLayout?: boolean },
@@ -27,7 +27,6 @@ export function useWorkspaceCanvasCreateSpace({
   nodesRef,
   setNodes,
   spacesRef,
-  selectedNodeIdsRef,
   onSpacesChange,
   onRequestPersistFlush,
   onShowMessage,
@@ -40,25 +39,25 @@ export function useWorkspaceCanvasCreateSpace({
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  selectedNodeIdsRef: React.MutableRefObject<string[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   createChildSpaceInParent: (
     parentSpaceId: string,
-    options?: { anchor?: { x: number; y: number } | null; nodeIds?: string[] },
+    options?: { anchor?: { x: number; y: number } | null; nodeIds?: readonly string[] },
   ) => string | null
 }): {
   createSpaceFromSelectedNodes: () => void
   createEmptySpaceAtPoint: (point: { x: number; y: number }) => Promise<string | null>
   createSpaceWithTargetMount: (payload: {
-    nodeIds: string[]
+    nodeIds: readonly string[]
     rect: WorkspaceSpaceRect | null
     targetMountId: string
     directoryPath: string
   }) => void
 } {
   const ui = useCanvasUiCommands()
+  const readSelection = useReadCanvasSelection()
 
   const { t } = useTranslation()
   const resolveDefaultSpaceName = useCallback((): string => {
@@ -75,7 +74,7 @@ export function useWorkspaceCanvasCreateSpace({
 
   const createSpace = useCallback(
     (payload: {
-      nodeIds: string[]
+      nodeIds: readonly string[]
       rect: WorkspaceSpaceRect | null
       targetMountId: string
       directoryPath: string
@@ -341,9 +340,10 @@ export function useWorkspaceCanvasCreateSpace({
   )
 
   const createSpaceFromSelectedNodes = useCallback(() => {
+    const selectedNodeIds = readSelection().nodeIds
     const selectedIds =
-      selectedNodeIdsRef.current.length > 0
-        ? selectedNodeIdsRef.current
+      selectedNodeIds.length > 0
+        ? selectedNodeIds
         : reactFlow
             .getNodes()
             .filter(node => node.selected)
@@ -361,7 +361,7 @@ export function useWorkspaceCanvasCreateSpace({
     }
 
     createSpaceFromSelectedNodesWithMounts({
-      selectedNodeIdsRef,
+      readSelection,
       reactFlow,
       workspaceId,
       workspacePath,
@@ -376,7 +376,7 @@ export function useWorkspaceCanvasCreateSpace({
     nodesRef,
     onShowMessage,
     reactFlow,
-    selectedNodeIdsRef,
+    readSelection,
     ui,
     spacesRef,
     t,

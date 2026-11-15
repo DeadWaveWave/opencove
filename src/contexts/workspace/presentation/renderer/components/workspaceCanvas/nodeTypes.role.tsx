@@ -24,7 +24,7 @@ export function WorkspaceCanvasRoleNodeType({
   data: TerminalNodeData
   id: string
   selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
-  requestNodeDeleteRef: MutableRefObject<(nodeIds: string[]) => void>
+  requestNodeDeleteRef: MutableRefObject<(nodeIds: readonly string[]) => void>
   resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
   updateRoleProviderRef: MutableRefObject<(nodeId: string, provider: AgentProvider) => void>
   updateRoleInputRef: MutableRefObject<(nodeId: string, input: string) => void>

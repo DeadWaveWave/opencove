@@ -58,7 +58,7 @@ export function useWorkspaceCanvasCreateChildSpace({
 }): {
   createChildSpaceInParent: (
     parentSpaceId: string,
-    options?: { anchor?: { x: number; y: number } | null; nodeIds?: string[] },
+    options?: { anchor?: { x: number; y: number } | null; nodeIds?: readonly string[] },
   ) => string | null
 } {
   const ui = useCanvasUiCommands()
@@ -68,7 +68,7 @@ export function useWorkspaceCanvasCreateChildSpace({
   const applyChildSpaceCreation = useCallback(
     (
       parentSpaceId: string,
-      options?: { anchor?: { x: number; y: number } | null; nodeIds?: string[] },
+      options?: { anchor?: { x: number; y: number } | null; nodeIds?: readonly string[] },
     ): string | null => {
       const nodeIds = options?.nodeIds ?? []
       const result = createChildSpace({
@@ -83,7 +83,7 @@ export function useWorkspaceCanvasCreateChildSpace({
         })),
         input: {
           parentSpaceId,
-          initialNodeIds: nodeIds,
+          initialNodeIds: [...nodeIds],
           anchor: options?.anchor ?? null,
         },
         createId: () => crypto.randomUUID(),

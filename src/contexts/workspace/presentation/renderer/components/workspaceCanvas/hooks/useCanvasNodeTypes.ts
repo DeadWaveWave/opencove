@@ -18,7 +18,7 @@ export function useWorkspaceCanvasComposedNodeTypes({
   >
   canvasState: Pick<
     ReturnType<typeof import('./useCanvasState').useWorkspaceCanvasState>,
-    'setSelectedNodeIds' | 'selectedNodeIdsRef' | 'spacesRef'
+    'spacesRef'
   >
   workspacePath: string
   onShowMessage?: Parameters<typeof useWorkspaceCanvasNodeTypes>[0]['onShowMessage']
@@ -27,12 +27,10 @@ export function useWorkspaceCanvasComposedNodeTypes({
   convertNoteToTask: (nodeId: string) => boolean
 }) {
   const { setNodes, setNodeLabelColorOverride } = nodeStore
-  const { setSelectedNodeIds, selectedNodeIdsRef, spacesRef } = canvasState
+  const { spacesRef } = canvasState
   const selectNode: (nodeId: string, options?: { toggle?: boolean }) => void =
     useWorkspaceCanvasSelectNode({
       setNodes,
-      setSelectedNodeIds,
-      selectedNodeIdsRef,
       spacesRef,
     })
 
