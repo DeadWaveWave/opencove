@@ -102,13 +102,34 @@ export function resolveHasChangesSinceTag({
   throw new Error(`git diff exited with status ${result.status}.`)
 }
 
+function isAncestor({ ancestor, descendant, cwd, spawnSyncImpl }) {
+  const result = runGitCommand({
+    args: ['merge-base', '--is-ancestor', ancestor, descendant],
+    cwd,
+    spawnSyncImpl,
+    stdio: 'ignore',
+  })
+  if (result.status === 0) {
+    return true
+  }
+  if (result.status === 1) {
+    return false
+  }
+  throw new Error(`git merge-base exited with status ${result.status}.`)
+}
+
 // A scheduled run packages `greenCommit`: the head of the newest successful push run of CI on
 // main, resolved by the workflow (this library makes no network call). With none it does not
-// release. Any other event packages `targetRef`, as before.
+// release. The previous release is the nearest tag reachable from `headCommit` (the head of main,
+// what a scheduled run packaged before the green gate; it defaults to the green commit), and the
+// green commit is released only when that tag is its ancestor: a green commit that is equal to or
+// older than the previous release is never published again under a new version. Any other event
+// packages `targetRef`, as before.
 export function resolveNightlyReleaseGate({
   eventName = 'schedule',
   targetRef: requestedRef = 'HEAD',
   greenCommit = null,
+  headCommit = null,
   cwd = process.cwd(),
   spawnSyncImpl = spawnSync,
 } = {}) {
@@ -124,7 +145,24 @@ export function resolveNightlyReleaseGate({
   }
 
   const targetRef = isScheduledRelease ? greenCommit : requestedRef
-  const previousTag = resolveNearestReachableTag({ targetRef, cwd, spawnSyncImpl })
+  const previousTag = resolveNearestReachableTag({
+    targetRef: isScheduledRelease ? headCommit || greenCommit : targetRef,
+    cwd,
+    spawnSyncImpl,
+  })
+  if (
+    isScheduledRelease &&
+    previousTag &&
+    !isAncestor({ ancestor: previousTag, descendant: greenCommit, cwd, spawnSyncImpl })
+  ) {
+    return {
+      previousTag,
+      commitCountSinceTag: 0,
+      hasChanges: false,
+      shouldRelease: false,
+      reason: 'green_commit_not_newer_than_previous_release',
+    }
+  }
   const commitCountSinceTag = resolveCommitCountSinceTag({
     previousTag,
     targetRef,
