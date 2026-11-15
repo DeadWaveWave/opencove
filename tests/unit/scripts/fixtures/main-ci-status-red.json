@@ -1,0 +1,26 @@
+{
+  "GET /repos/acme/app/actions/runs/42/jobs": {
+    "jobs": [
+      { "name": "ci-ubuntu", "status": "completed", "conclusion": "success", "steps": [] },
+      {
+        "name": "ci-macos (2)",
+        "status": "completed",
+        "conclusion": "failure",
+        "steps": [{ "name": "E2E tests (shard)", "conclusion": "failure" }]
+      },
+      { "name": "main-status", "status": "in_progress", "conclusion": null, "steps": [] }
+    ]
+  },
+  "GET /repos/acme/app/issues": [],
+  "GET /repos/acme/app/actions/workflows/ci.yml/runs": {
+    "workflow_runs": [{ "id": 41, "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }]
+  },
+  "GET /repos/acme/app/compare/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...cccccccccccccccccccccccccccccccccccccccc": {
+    "commits": [
+      {
+        "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "commit": { "message": "fix: first change" }
+      }
+    ]
+  }
+}
