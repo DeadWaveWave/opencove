@@ -8,7 +8,7 @@ import {
 } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Spaces (Empty Allowed)', () => {
-  test.skip('keeps a space when all members are unassigned (space can be empty)', async () => {
+  test('keeps a space when all members are unassigned (space can be empty)', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -29,6 +29,12 @@ test.describe('Workspace Canvas - Spaces (Empty Allowed)', () => {
       await clickHeaderDragSurface(header)
       await terminalNode.click({ button: 'right' })
       await window.locator('[data-testid="workspace-selection-create-space"]').click()
+
+      // The switcher lists only pinned Spaces, and a Space created from a selection is not pinned.
+      await window.locator('[data-testid^="workspace-space-item-"]').first().click({
+        button: 'right',
+      })
+      await window.locator('[data-testid^="workspace-space-context-pin-"]').click()
 
       await expect(window.locator('.workspace-space-switcher')).toHaveCount(1)
       await expect(window.locator('.workspace-space-region')).toHaveCount(1)

@@ -12,8 +12,6 @@
     "tests/e2e/workspace-canvas.shortcuts.spec.ts": 1,
     "tests/e2e/workspace-canvas.space-explorer.spec.ts": 1,
     "tests/e2e/workspace-canvas.space-pr-chip.spec.ts": 1,
-    "tests/e2e/workspace-canvas.spaces.anchor-mismatch.spec.ts": 2,
-    "tests/e2e/workspace-canvas.spaces.empty-allowed.spec.ts": 1,
     "tests/e2e/workspace-canvas.terminal-wheel-raw-tui.windows.spec.ts": 1,
     "tests/e2e/workspace-search.spec.ts": 1
   }
