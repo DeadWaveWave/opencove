@@ -2,19 +2,22 @@ import { act } from '@testing-library/react'
 import type { Node, ReactFlowInstance } from '@xyflow/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MountDto } from '@shared/contracts/dto'
-import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
-import { replaceWorkspaceSpaces } from '../../../store/workspaceDocumentCommands'
-import { useCanvasSelectionCommands, useCanvasUiCommands } from '../../../store/canvasStoreContext'
-import { useWorkspaceCanvasSpaces } from './useSpaces'
+import type {
+  TerminalNodeData,
+  WorkspaceSpaceState,
+} from '../../../src/contexts/workspace/presentation/renderer/types'
+import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import {
+  useCanvasSelectionCommands,
+  useCanvasUiCommands,
+} from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
+import { useWorkspaceCanvasSpaces } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaces'
 import {
   createCanvasDocumentHarness,
   renderCanvasNodeStore,
   type CanvasDocumentHarness,
-} from '../../../../../../../../tests/support/canvasDocumentHarness'
-import {
-  createRowNodes,
-  createSpace,
-} from '../../../../../../../../tests/support/canvasSelectionFixtures'
+} from '../../support/canvasDocumentHarness'
+import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
 
 vi.mock('@app/renderer/i18n', () => ({
   useTranslation: () => ({ t: (key: string) => key }),

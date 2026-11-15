@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useMemo,
   useState,
   type ReactElement,
   type ReactNode,
@@ -10,13 +11,31 @@ import { useStore } from 'zustand'
 import { createCanvasStore, type CanvasStore } from './canvasStore'
 import type { CanvasSelectionCommands, CanvasSelectionState } from './canvasStore.selection'
 import type { CanvasUiCommands, CanvasUiState } from './canvasStore.ui'
-
-const CanvasStoreContext = createContext<CanvasStore | null>(null)
+import { DEFAULT_WORKSPACE_VIEWPORT, type WorkspaceSpaceState } from '../types'
+import type { WorkspaceDocument } from './workspaceDocument'
+import {
+  commitCanvasDocument,
+  readWorkspaceDocument,
+  requestWorkspaceDocumentPersistFlush,
+  type WorkspaceDocumentCommandResult,
+} from './workspaceDocumentCommands'
 
 interface CanvasStoreEntry {
   readonly workspaceId: string
   readonly store: CanvasStore
 }
+
+const CanvasStoreContext = createContext<CanvasStoreEntry | null>(null)
+
+/** What a canvas reads when its workspace is gone. */
+const EMPTY_WORKSPACE_DOCUMENT: WorkspaceDocument = Object.freeze({
+  nodes: Object.freeze([]) as unknown as WorkspaceDocument['nodes'],
+  spaces: Object.freeze([]) as unknown as WorkspaceDocument['spaces'],
+  activeSpaceId: null,
+  spaceArchiveRecords: Object.freeze([]) as unknown as WorkspaceDocument['spaceArchiveRecords'],
+  viewport: Object.freeze({ ...DEFAULT_WORKSPACE_VIEWPORT }),
+  isMinimapVisible: false,
+})
 
 /** Owns one canvas store per workspace id; a new id gets a new store in the same render. */
 export function CanvasStoreProvider({
@@ -37,15 +56,19 @@ export function CanvasStoreProvider({
     setEntry(current)
   }
 
-  return <CanvasStoreContext value={current.store}>{children}</CanvasStoreContext>
+  return <CanvasStoreContext value={current}>{children}</CanvasStoreContext>
+}
+
+function useCanvasStoreEntry(): CanvasStoreEntry {
+  const entry = useContext(CanvasStoreContext)
+  if (!entry) {
+    throw new Error('canvas store hooks need CanvasStoreProvider')
+  }
+  return entry
 }
 
 function useCanvasStore(): CanvasStore {
-  const store = useContext(CanvasStoreContext)
-  if (!store) {
-    throw new Error('canvas store hooks need CanvasStoreProvider')
-  }
-  return store
+  return useCanvasStoreEntry().store
 }
 
 /** Subscribes to the `ui` slice. The selector must return a stored value or a primitive. */
@@ -78,4 +101,52 @@ export function useReadCanvasSelection(): () => CanvasSelectionState {
 
 export function useCanvasSelectionCommands(): CanvasSelectionCommands {
   return useCanvasStore().commands.selection
+}
+
+/**
+ * A stable reader of this canvas's committed document, as the app store holds it when it is
+ * called. It does not subscribe, so callers do not re-render. It is bound to the workspace of the
+ * render that created it: a callback made while workspace A was shown keeps reading A after a
+ * switch. An empty document when the workspace is gone.
+ */
+export function useReadCanvasDocument(): () => WorkspaceDocument {
+  const { workspaceId } = useCanvasStoreEntry()
+  return useCallback(
+    () => readWorkspaceDocument(workspaceId) ?? EMPTY_WORKSPACE_DOCUMENT,
+    [workspaceId],
+  )
+}
+
+export interface CanvasDocumentCommands {
+  /**
+   * Replaces the Spaces with the recipe's result, computed from the store's Spaces as they are
+   * when this runs. A recipe that returns the same array writes nothing. `flush` requests the
+   * persistence flush after the write, also when nothing changed.
+   */
+  updateSpaces(
+    recipe: (spaces: WorkspaceSpaceState[]) => WorkspaceSpaceState[],
+    options?: { flush?: boolean },
+  ): WorkspaceDocumentCommandResult
+  /** Persistence flush without a document write, for state persisted next to the document. */
+  requestPersistFlush(): void
+}
+
+/** Document commands of this canvas's workspace; stable until the workspace changes. */
+export function useCanvasDocumentCommands(): CanvasDocumentCommands {
+  const { workspaceId } = useCanvasStoreEntry()
+  return useMemo(
+    () => ({
+      updateSpaces: (recipe, options) =>
+        commitCanvasDocument(
+          workspaceId,
+          document => {
+            const spaces = recipe(document.spaces)
+            return spaces === document.spaces ? document : { ...document, spaces }
+          },
+          options,
+        ),
+      requestPersistFlush: requestWorkspaceDocumentPersistFlush,
+    }),
+    [workspaceId],
+  )
 }

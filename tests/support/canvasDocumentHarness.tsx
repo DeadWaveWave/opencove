@@ -1,6 +1,6 @@
 import { renderHook, type RenderHookResult } from '@testing-library/react'
 import { ReactFlowProvider, type Node } from '@xyflow/react'
-import React, { type ReactElement, type ReactNode } from 'react'
+import React, { type ReactNode } from 'react'
 import { afterEach, vi, type Mock } from 'vitest'
 import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
 import { useWorkspaceCanvasNodePublishers } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodePublishers'
@@ -75,7 +75,7 @@ export function createCanvasDocumentHarness({
 
 function createWrapper(
   workspaceId: string | (() => string),
-): (props: { children: ReactNode }) => ReactElement {
+): (props: { children: ReactNode }) => React.ReactElement {
   return function Wrapper({ children }) {
     return (
       <CanvasStoreTestProvider

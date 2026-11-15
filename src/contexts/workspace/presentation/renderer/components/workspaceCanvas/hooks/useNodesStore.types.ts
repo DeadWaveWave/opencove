@@ -60,13 +60,32 @@ export interface UseWorkspaceCanvasNodeCreationParams {
   browserDefaultMode: BrowserMode
 }
 
+export interface CanvasDocumentWriteOptions {
+  syncLayout?: boolean
+  /** Requests the persistence flush after the write, also when nothing changed. */
+  flush?: boolean
+}
+
+export interface CanvasDocumentRecipeInput {
+  nodes: Node<TerminalNodeData>[]
+  spaces: WorkspaceSpaceState[]
+}
+
 export interface UseWorkspaceCanvasNodesStoreResult {
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   pendingScrollbackByNodeRef: React.MutableRefObject<Map<string, string>>
   isNodeDraggingRef: React.MutableRefObject<boolean>
   setNodes: (
     updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-    options?: { syncLayout?: boolean },
+    options?: CanvasDocumentWriteOptions,
+  ) => void
+  /**
+   * Writes nodes and Spaces in one store update, computed from the store's document as it is when
+   * this runs. The recipe must be pure: it runs under the document module's recipe guard.
+   */
+  updateCanvasDocument: (
+    recipe: (document: CanvasDocumentRecipeInput) => CanvasDocumentRecipeInput,
+    options?: CanvasDocumentWriteOptions,
   ) => void
   upsertNode: (nextNode: Node<TerminalNodeData>) => void
   bumpAgentLaunchToken: (nodeId: string) => number
