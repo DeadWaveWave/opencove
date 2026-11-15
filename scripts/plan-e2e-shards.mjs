@@ -5,7 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 import { listCases } from './check-e2e-budget.mjs'
 import { BUDGET_DIRECTORY, readBaselineParts } from './lib/e2e-report.mjs'
-import { fileFilter, planShards } from './lib/e2e-shards.mjs'
+import { fileFilter, planShards, shardCountFor } from './lib/e2e-shards.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const OSES = ['macos', 'ubuntu']
@@ -47,7 +47,7 @@ function main() {
   const { values } = parseArgs({
     options: {
       os: { type: 'string' },
-      shards: { type: 'string', default: '3' },
+      shards: { type: 'string' },
       shard: { type: 'string' },
       run: { type: 'boolean' },
       check: { type: 'boolean' },
@@ -58,6 +58,9 @@ function main() {
   if (values.check && (values.run || values.shard || values.os)) {
     throw new Error('--check validates both OS plans; do not combine with --os/--shard/--run.')
   }
+  if (values.check && values.shards !== undefined) {
+    throw new Error('--check validates the shard counts CI runs; do not combine with --shards.')
+  }
   if (!values.check && !OSES.includes(values.os)) {
     throw new Error('Use --os macos or --os ubuntu.')
   }
@@ -67,7 +70,7 @@ function main() {
   const ids = listCases()
   for (const os of values.check ? OSES : [values.os]) {
     const baseline = readBaselineParts(resolve(ROOT, BUDGET_DIRECTORY), `duration-${os}`)
-    const plan = { os, ...planShards(ids, baseline, Number(values.shards)) }
+    const plan = { os, ...planShards(ids, baseline, shardCountFor(os, values.shards)) }
     const selected = values.shard === undefined ? null : Number(values.shard)
     if (selected !== null && (!Number.isInteger(selected) || !plan.shards[selected - 1])) {
       throw new Error('Invalid E2E shard index.')
