@@ -157,7 +157,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
     }
   })
 
-  test.skip('keeps outside windows stable when marquee selects a space', async () => {
+  test('keeps outside windows stable when marquee selects a space', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -313,7 +313,12 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       await expect(selectedSpaceTopHandle).toBeVisible()
       const selectedSpaceTopHandleBox = await readLocatorClientRect(selectedSpaceTopHandle)
 
-      const dragStartX = selectedSpaceTopHandleBox.x + selectedSpaceTopHandleBox.width * 0.75
+      // The handle is wider than the window: grab a point of it that is on screen.
+      const windowWidth = await window.evaluate(() => window.innerWidth)
+      const dragStartX = Math.min(
+        selectedSpaceTopHandleBox.x + selectedSpaceTopHandleBox.width * 0.75,
+        windowWidth - 48,
+      )
       const dragStartY = selectedSpaceTopHandleBox.y + selectedSpaceTopHandleBox.height * 0.5
       const dragEndX = dragStartX
       const dragEndY = dragStartY + 180
