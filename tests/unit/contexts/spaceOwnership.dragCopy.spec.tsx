@@ -123,6 +123,20 @@ describe('space ownership drag start writes the node selection', () => {
     expect(harness.result.current.readSelection()).toMatchObject({ nodeIds: ['n1'], spaceIds: [] })
   })
 
+  it('keeps mirroring the selected flag onto the document nodes of a replaced selection', () => {
+    const harness = renderSpaceOwnership({ nodes: [node], selectedNodeIds: ['other'] })
+    const other: Node<TerminalNodeData> = { ...node, id: 'other', selected: true }
+
+    start(harness, { ...node, selected: false })
+
+    expect(harness.setNodes).toHaveBeenCalledTimes(1)
+    const recipe = harness.setNodes.mock.calls[0][0] as (
+      previous: Node<TerminalNodeData>[],
+    ) => Node<TerminalNodeData>[]
+    const next = recipe([{ ...node, selected: false }, other])
+    expect(next.filter(item => item.selected).map(item => item.id)).toEqual(['n1'])
+  })
+
   it('replaces the selection when the flag is not set although the store already names the node', () => {
     const harness = renderSpaceOwnership({ nodes: [node], selectedNodeIds: ['n1'] })
     act(() => harness.result.current.selection.setSpaceIds(['a']))
