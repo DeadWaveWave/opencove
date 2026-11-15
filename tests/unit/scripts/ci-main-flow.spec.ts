@@ -192,8 +192,40 @@ function nightlyProblems(workflow: string): string[] {
   if (!/^ {2}actions: read$/m.test(workflow.slice(0, workflow.indexOf('\nconcurrency:')))) {
     problems.push('nightly needs actions: read')
   }
-  if (!stepText(resolveJob, 'Checkout').includes('steps.green.outputs.sha ||')) {
-    problems.push('a scheduled run must check out the green commit')
+  const checkout = stepText(resolveJob, 'Checkout')
+  if (
+    !/^ {10}ref: \$\{\{ env\.OPENCOVE_NIGHTLY_TARGET_REF \}\}$/m.test(checkout) ||
+    checkout.includes('steps.green')
+  ) {
+    problems.push('the first checkout must not use the green commit as its ref')
+  }
+  const at = (name: string) => resolveJob.indexOf(`- name: ${name}\n`)
+  const greenCheckout = stepText(resolveJob, 'Check out the green commit')
+  if (
+    !greenCheckout.includes('git checkout --detach "${{ steps.green.outputs.sha }}"') ||
+    !/^ {8}if: github\.event_name == 'schedule' && steps\.gate\.outputs\.should_release == 'true'$/m.test(
+      greenCheckout,
+    )
+  ) {
+    problems.push('the green commit is checked out only when the gate said release')
+  }
+  if (
+    !(
+      at('Checkout') < at('Resolve checked-out head') &&
+      at('Resolve checked-out head') < at('Resolve nightly release gate') &&
+      at('Resolve nightly release gate') < at('Check out the green commit') &&
+      at('Check out the green commit') < at('Resolve target commit-ish') &&
+      at('Resolve target commit-ish') < at('Resolve nightly tag')
+    )
+  ) {
+    problems.push('the order must be checkout, gate, green checkout, target commit, tag')
+  }
+  for (const name of ['Resolve target commit-ish', 'Resolve nightly tag']) {
+    if (
+      !/^ {8}if: steps\.gate\.outputs\.should_release == 'true'$/m.test(stepText(resolveJob, name))
+    ) {
+      problems.push(`${name} runs only when the gate said release`)
+    }
   }
   if (
     !stepText(resolveJob, 'Resolve nightly release gate').includes(
@@ -217,12 +249,8 @@ function nightlyProblems(workflow: string): string[] {
   if (!workflow.includes('target_commitish: ${{ needs.resolve.outputs.target_commitish }}')) {
     problems.push('the release job must receive needs.resolve.outputs.target_commitish')
   }
-  const head = stepText(resolveJob, 'Resolve head of main')
-  if (
-    !head.includes('git rev-parse origin/main') ||
-    !/^ {8}if: github\.event_name == 'schedule'$/m.test(head)
-  ) {
-    problems.push('the head of main is resolved for scheduled runs')
+  if (!stepText(resolveJob, 'Resolve checked-out head').includes('git rev-parse HEAD')) {
+    problems.push('--head must be the checked-out head of main')
   }
   if (
     !stepText(resolveJob, 'Resolve nightly release gate').includes(
@@ -469,8 +497,17 @@ describe('nightly.yml', () => {
       'head_sha of the first run',
     ],
     [
-      'target_commitish from main',
+      '--head not the checked-out head',
       mutate(nightlyWorkflow, 'git rev-parse HEAD', 'git rev-parse origin/main'),
+      '--head must be the checked-out head',
+    ],
+    [
+      'target_commitish from main',
+      mutate(
+        nightlyWorkflow,
+        'echo "target_commitish=$(git rev-parse HEAD)"',
+        'echo "target_commitish=$(git rev-parse origin/main)"',
+      ),
       'target_commitish must come from',
     ],
     [
@@ -486,15 +523,6 @@ describe('nightly.yml', () => {
       'the gate without the head of main',
       mutate(nightlyWorkflow, '--head "${{ steps.head.outputs.sha }}"', ''),
       'the gate must receive the head',
-    ],
-    [
-      'the head of main for every event',
-      mutate(
-        nightlyWorkflow,
-        "        id: head\n        if: github.event_name == 'schedule'\n",
-        '        id: head\n',
-      ),
-      'head of main is resolved',
     ],
     [
       'the gate without the green commit',
@@ -513,9 +541,45 @@ describe('nightly.yml', () => {
     ],
     ['no actions: read', mutate(nightlyWorkflow, '  actions: read\n', ''), 'actions: read'],
     [
-      'the checkout of the head of main',
-      mutate(nightlyWorkflow, 'steps.green.outputs.sha || ', ''),
-      'check out the green commit',
+      'the first checkout of the green commit',
+      mutate(
+        nightlyWorkflow,
+        'ref: ${{ env.OPENCOVE_NIGHTLY_TARGET_REF }}',
+        'ref: ${{ steps.green.outputs.sha || env.OPENCOVE_NIGHTLY_TARGET_REF }}',
+      ),
+      'first checkout must not use the green commit',
+    ],
+    [
+      'the green checkout for every decision',
+      mutate(
+        nightlyWorkflow,
+        " && steps.gate.outputs.should_release == 'true'\n        run: git checkout",
+        '\n        run: git checkout',
+      ),
+      'only when the gate said release',
+    ],
+    [
+      'the green checkout dropped',
+      mutate(nightlyWorkflow, 'git checkout --detach', 'git fetch'),
+      'only when the gate said release',
+    ],
+    [
+      'the target commit resolved before the gate',
+      mutate(
+        nightlyWorkflow,
+        '      - name: Resolve nightly release gate\n',
+        '      - name: Resolve target commit-ish\n        run: true\n\n      - name: Resolve nightly release gate\n',
+      ),
+      'the order must be',
+    ],
+    [
+      'the tag resolved whatever the gate said',
+      mutate(
+        nightlyWorkflow,
+        "        id: tag\n        if: steps.gate.outputs.should_release == 'true'\n",
+        '        id: tag\n',
+      ),
+      'Resolve nightly tag runs only when',
     ],
   ])('reports %s', (_name, workflow, expected) => {
     expect(nightlyProblems(workflow).join('\n')).toContain(expected)
