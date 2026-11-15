@@ -102,7 +102,8 @@ describe('convertSelectedNoteToTask in useWorkspaceCanvasNoteToTaskConversion', 
     const hook = renderHook(
       () => ({
         conversion: useWorkspaceCanvasNoteToTaskConversion({
-          selectedNodeIds: nodeIds,
+          // Differs from the store on purpose: the conversion must read the store at call time.
+          selectedNodeIds: [],
           flowNodes: holder.nodes,
           nodesRef: holder.nodesRef,
           spacesRef: { current: [] },

@@ -1,6 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { ReactFlowProvider, type Edge, type Node, type ReactFlowInstance } from '@xyflow/react'
-import React, { type ReactNode } from 'react'
+import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import { vi } from 'vitest'
 import { useWorkspaceCanvasNodeDragSession } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession'
 import { useWorkspaceCanvasSpaceOwnership } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceOwnership'
@@ -12,15 +11,7 @@ import {
   useCanvasSelectionCommands,
   useReadCanvasSelection,
 } from '@contexts/workspace/presentation/renderer/store/canvasStoreContext'
-import { CanvasStoreTestProvider } from './canvasStoreTestHarness'
-
-function Wrapper({ children }: { children: ReactNode }): React.ReactElement {
-  return (
-    <CanvasStoreTestProvider>
-      <ReactFlowProvider>{children}</ReactFlowProvider>
-    </CanvasStoreTestProvider>
-  )
-}
+import { SelectionWritersWrapper as Wrapper } from './canvasSelectionFixtures'
 
 export interface SpaceOwnershipHarnessOptions {
   spaces?: WorkspaceSpaceState[]

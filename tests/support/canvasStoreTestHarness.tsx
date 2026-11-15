@@ -73,12 +73,15 @@ function createProbe(): { Probe: () => null; capture: () => CanvasStoreProbe } {
 /** Renders `ui` inside a test store and returns the store's reader and commands. */
 export function renderWithCanvasStore(ui: ReactElement): RenderResult & CanvasStoreProbe {
   const { Probe, capture } = createProbe()
-  const result = render(
-    <CanvasStoreTestProvider>
-      <Probe />
-      {ui}
-    </CanvasStoreTestProvider>,
-  )
+  // The provider and probe are the wrapper, so `rerender(ui)` keeps the tree and its state.
+  const result = render(ui, {
+    wrapper: ({ children }) => (
+      <CanvasStoreTestProvider>
+        <Probe />
+        {children}
+      </CanvasStoreTestProvider>
+    ),
+  })
   return { ...result, ...capture() }
 }
 

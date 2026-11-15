@@ -3,10 +3,7 @@ import { act } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ApplicationShortcutEvent } from '../../../src/shared/contracts/applicationShortcut'
 import { useCloseSelectedNodeShortcut } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCloseSelectedNodeShortcut'
-import {
-  CanvasStoreTestProvider,
-  renderWithCanvasStore,
-} from '../../support/canvasStoreTestHarness'
+import { renderWithCanvasStore } from '../../support/canvasStoreTestHarness'
 
 vi.mock('@app/renderer/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 type Props = Parameters<typeof useCloseSelectedNodeShortcut>[0]
@@ -100,11 +97,7 @@ describe('selected node close shortcut', () => {
   it('unsubscribes when the canvas is disabled', () => {
     const f = fixture([])
     f.canvas.querySelector('input')?.focus()
-    f.result.rerender(
-      <CanvasStoreTestProvider>
-        <Harness {...f.props} enabled={false} />
-      </CanvasStoreTestProvider>,
-    )
+    f.result.rerender(<Harness {...f.props} enabled={false} />)
     expect(f.unsubscribe).toHaveBeenCalledOnce()
     expect(f.props.closeNode).not.toHaveBeenCalled()
     f.result.unmount()

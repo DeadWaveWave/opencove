@@ -5,7 +5,6 @@ import { describe, expect, it } from 'vitest'
 const CANVAS_DIR = 'src/contexts/workspace/presentation/renderer/components/workspaceCanvas/'
 const CANVAS_STATE_HOOK = 'hooks/useCanvasState.ts'
 const SPACE_OVERLAY = 'view/WorkspaceSpaceRegionsOverlay.tsx'
-const ALLOWED = new Set([CANVAS_STATE_HOOK, SPACE_OVERLAY])
 const REMOVED_NAMES = [
   'selectedSpaceIdsRef',
   'dragSelectedSpaceIdsRef',
@@ -32,17 +31,16 @@ describe('canvas UI subscriptions', () => {
 
   // Decision 5 of #692: `useCanvasState` (nodeIds, for flowNodes) and the Space overlay
   // (spaceIds) are the only subscribers of the `selection` slice.
+  // Scans every tracked source file, so a subscription in WorkspaceCanvasInner or anywhere else
+  // fails too.
   it('useCanvasSelection is called only by useCanvasState and the Space overlay', () => {
-    const files = execFileSync('git', ['ls-files', CANVAS_DIR], { encoding: 'utf8' })
+    const files = execFileSync('git', ['ls-files', 'src'], { encoding: 'utf8' })
       .split('\n')
-      .filter(file => /\.tsx?$/.test(file) && !/\.spec\./.test(file))
-    expect(files.length).toBeGreaterThan(100)
+      .filter(file => /\.tsx?$/.test(file) && !/\.(spec|test)\./.test(file))
+    expect(files.length).toBeGreaterThan(1000)
 
     const callers = files.filter(file => /\buseCanvasSelection\(/.test(readFileSync(file, 'utf8')))
 
-    expect(
-      callers.map(file => file.slice(CANVAS_DIR.length)).filter(file => !ALLOWED.has(file)),
-    ).toEqual([])
     expect(callers.map(file => file.slice(CANVAS_DIR.length)).sort()).toEqual(
       [CANVAS_STATE_HOOK, SPACE_OVERLAY].sort(),
     )

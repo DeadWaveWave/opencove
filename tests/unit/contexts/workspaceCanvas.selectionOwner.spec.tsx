@@ -226,6 +226,26 @@ describe('canvas selection owner', () => {
     expectFlagsToMatchStore(result)
   })
 
+  it('derives the flags of flowNodes from the store, not from the flag on the document nodes', () => {
+    const { result } = renderSelectionOwner()
+    // The store alone: no document write, so the mirror still says "nothing selected".
+    act(() => result.current.selection.setNodeIds(['peer']))
+    expect(result.current.canvas.flowNodes.map(node => [node.id, node.selected])).toEqual([
+      ['peer', true],
+      ['compact', false],
+    ])
+
+    // The mirror alone: a document node flagged without the store naming it shows no selection.
+    act(() => result.current.selection.clear())
+    act(() =>
+      result.current.canvas.setCanvasNodes(nodes =>
+        nodes.map(node => ({ ...node, selected: node.id === 'compact' })),
+      ),
+    )
+    expect(result.current.canvas.flowNodes.filter(node => node.selected)).toEqual([])
+    expectFlagsToMatchStore(result)
+  })
+
   // Decision 6 of #692: a node drag start decides from the `selected` flag React Flow hands it,
   // because the select batch of the same pointer down has already written the store.
   describe('node drag start after the select batch of the same pointer down', () => {
