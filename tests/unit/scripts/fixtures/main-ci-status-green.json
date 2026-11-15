@@ -1,0 +1,22 @@
+{
+  "env": {
+    "GITHUB_REPOSITORY": "acme/app",
+    "GITHUB_RUN_ID": "42",
+    "GITHUB_RUN_NUMBER": "10",
+    "GITHUB_SHA": "cccccccccccccccccccccccccccccccccccccccc",
+    "NEEDS": "{\"ci-ubuntu\": {\"result\": \"success\", \"outputs\": {}}, \"e2e-ubuntu\": {\"result\": \"success\", \"outputs\": {}}, \"web-canvas-continuity-ubuntu\": {\"result\": \"success\", \"outputs\": {}}, \"macos-platform\": {\"result\": \"success\", \"outputs\": {}}, \"ci-macos\": {\"result\": \"success\", \"outputs\": {}}, \"platform-e2e-windows\": {\"result\": \"success\", \"outputs\": {}}}"
+  },
+  "responses": {
+    "GET /repos/acme/app/actions/workflows/ci.yml/runs?status=completed": {
+      "workflow_runs": [
+        { "id": 41, "run_number": 9, "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+      ]
+    },
+    "GET /repos/acme/app/actions/workflows/ci.yml/runs?status=success": {
+      "workflow_runs": [
+        { "id": 41, "run_number": 9, "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+      ]
+    },
+    "GET /repos/acme/app/issues": [{ "number": 7, "title": "CI is red on main" }]
+  }
+}

@@ -28,7 +28,8 @@ that every legacy case belongs at the E2E layer forever.
 ## Duration evidence
 
 CI retains the list reporter and writes the complete Playwright JSON report to an artifact
-per Ubuntu/macOS shard, even on failure. `e2e-duration-summary` downloads all six artifacts
+per Ubuntu/macOS shard, even on failure. macOS duration artifacts come from push runs on
+`main` and manual runs only: pull request runs skip the macOS shards. `e2e-duration-summary` downloads the six artifacts of a push or manual run (three on a pull request run, which has no macOS shards)
 and writes the job summary. Run it locally with downloaded artifacts:
 
 ```sh

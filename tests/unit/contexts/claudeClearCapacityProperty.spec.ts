@@ -8,6 +8,10 @@ import {
   type ClearCase,
 } from '../../support/claudeClearProperty/cases'
 import { runClearCase } from '../../support/claudeClearProperty/run'
+
+// The limit per seed is 360 s. A seed needs 30 to 40 s without coverage. Under coverage on the CI
+// runner (the push run on main) it needs 66 to 102 s, and the first seed 139 to 179 s, measured in
+// three runs on 2026-11-14. The limit was 120 s, so the first seed timed out there and nowhere else.
 for (const seed of CLEAR_SEEDS) {
   it(`preserves capacity safety and liveness for seed ${seed}`, async () => {
     let failed = 0,
@@ -51,7 +55,7 @@ for (const seed of CLEAR_SEEDS) {
         2,
       ),
     ).toBe(0)
-  }, 120000)
+  }, 360_000)
 }
 it('crosses twice each journal bound with histories, receipts, unknown captures and tied Starts', () => {
   const all = CLEAR_SEEDS.flatMap(seed => [...capacityCases(seed), ...replayCases(seed)])

@@ -65,7 +65,7 @@ const MAC_COMMAND = 'pnpm exec vitest run --pool=forks --maxWorkers=1 ".mac.spec
 function platformStepProblems(workflow: string): string[] {
   const problems: string[] = []
   const windows = jobText(workflow, 'platform-e2e-windows')
-  const mac = jobText(workflow, 'worker-cli-macos')
+  const mac = jobText(workflow, 'macos-platform')
   const windowsStep = stepNamed(windows, WINDOWS_STEP)
   const macStep = stepNamed(mac, MAC_STEP)
 
