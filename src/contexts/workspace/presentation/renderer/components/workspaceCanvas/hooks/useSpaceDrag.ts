@@ -194,12 +194,11 @@ export function useWorkspaceCanvasSpaceDrag({
         dragState,
         dx,
         dy,
-        readDocument,
         resolveResizedRect: resolveResizedSpaceRect,
         updateCanvasDocument,
       })
     },
-    [readDocument, updateCanvasDocument],
+    [updateCanvasDocument],
   )
 
   const applySpaceClickSelection = useCallback(

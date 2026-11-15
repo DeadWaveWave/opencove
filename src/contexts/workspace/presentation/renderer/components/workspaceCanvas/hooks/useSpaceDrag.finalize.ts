@@ -1,7 +1,6 @@
 import type { Node } from '@xyflow/react'
 import { clampRectInsideRect } from '@contexts/space/application/spaceContainment'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
-import type { WorkspaceDocument } from '../../../store/workspaceDocument'
 import type { SpaceDragState } from '../types'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import { type LayoutDirection } from '../../../utils/spaceLayout'
@@ -21,7 +20,7 @@ export interface ProjectedSpaceDragLayout {
 
 export function projectWorkspaceSpaceDragLayout(
   input: SpaceDragLayoutInput,
-): ProjectedSpaceDragLayout | null {
+): ProjectedSpaceDragLayout {
   return projectSpaceDragWithCollapse(input, projectSpaceDragLayout)
 }
 
@@ -32,7 +31,7 @@ function projectSpaceDragLayout({
   nodes,
   spaces,
   resolveResizedRect,
-}: SpaceDragLayoutInput): ProjectedSpaceDragLayout | null {
+}: SpaceDragLayoutInput): ProjectedSpaceDragLayout {
   const baselineNodes = restoreBaselineNodes(nodes, dragState.allNodePositions)
   const handle = dragState.handle
   const targetSpace = spaces.find(space => space.id === dragState.spaceId) ?? null
@@ -204,36 +203,27 @@ export function finalizeWorkspaceSpaceDrag({
   dragState,
   dx,
   dy,
-  readDocument,
   resolveResizedRect,
   updateCanvasDocument,
 }: {
   dragState: SpaceDragState
   dx: number
   dy: number
-  readDocument: () => WorkspaceDocument
   resolveResizedRect: ResolveResizedRect
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
 }): void {
-  // The layout is planned from the committed document read here, once; nothing writes between
-  // this read and the write below. A drag without a layout writes nothing and flushes nothing.
-  const { nodes, spaces } = readDocument()
-  const projected = projectWorkspaceSpaceDragLayout({
-    dragState,
-    dx,
-    dy,
-    nodes,
-    spaces,
-    resolveResizedRect,
-  })
-
-  if (!projected) {
-    return
-  }
-
-  // The node positions and the Spaces are one store update, and the flush rides on it.
+  // The layout is planned inside the recipe, from the document the write is computed from, and
+  // the node positions and the Spaces are one store update. The flush rides on it.
   updateCanvasDocument(
-    ({ nodes: prevNodes }) => {
+    ({ nodes: prevNodes, spaces: prevSpaces }) => {
+      const projected = projectWorkspaceSpaceDragLayout({
+        dragState,
+        dx,
+        dy,
+        nodes: prevNodes,
+        spaces: prevSpaces,
+        resolveResizedRect,
+      })
       let hasChanged = false
       const nextNodes = prevNodes.map(node => {
         const nextPosition = projected.nextNodePositionById.get(node.id)
