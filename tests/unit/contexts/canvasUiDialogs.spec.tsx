@@ -9,9 +9,11 @@ import type {
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { useWorkspaceCanvasSpaces } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaces'
 import { useWorkspaceCanvasTaskEditor } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskEditor'
+import type { CanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStore.selection'
 import type { CanvasUiCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStore.ui'
 import {
   CanvasStoreProvider,
+  useCanvasSelectionCommands,
   useCanvasUiCommands,
   useReadCanvasUi,
 } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
@@ -30,6 +32,7 @@ afterEach(() => vi.unstubAllGlobals())
 interface StoreHandle {
   readUi: ReturnType<typeof useReadCanvasUi>
   commands: CanvasUiCommands
+  selection: CanvasSelectionCommands
 }
 
 /** Records the store of the latest render, and every store the provider has created so far. */
@@ -38,8 +41,9 @@ function createStoreRecorder() {
   function Probe(): null {
     const readUi = useReadCanvasUi()
     const commands = useCanvasUiCommands()
+    const selection = useCanvasSelectionCommands()
     if (stores.at(-1)?.commands !== commands) {
-      stores.push({ readUi, commands })
+      stores.push({ readUi, commands, selection })
     }
     return null
   }
@@ -136,9 +140,8 @@ function renderSpaces(
   const spaces = options.spaces ?? [SPACE]
   const nodesRef = { current: [NODE] }
   const spacesRef = { current: spaces }
-  const selectedNodeIdsRef = { current: options.selectedNodeIds ?? [] }
   const onSpacesChange = options.onSpacesChange ?? vi.fn()
-  return renderHook(
+  const rendered = renderHook(
     (props: { workspaceId: string }) =>
       useWorkspaceCanvasSpaces({
         workspaceId: props.workspaceId,
@@ -153,12 +156,15 @@ function renderSpaces(
         setNodes: vi.fn(),
         spaces,
         spacesRef,
-        selectedNodeIds: selectedNodeIdsRef.current,
-        selectedNodeIdsRef,
         onSpacesChange,
       }),
     { initialProps: { workspaceId }, wrapper: options.wrapper.Wrapper },
   )
+  if (options.selectedNodeIds) {
+    const nodeIds = options.selectedNodeIds
+    act(() => options.wrapper.recorder.current().selection.setNodeIds(nodeIds))
+  }
+  return rendered
 }
 
 describe('Space rename through the canvas store', () => {
@@ -224,8 +230,6 @@ describe('Space rename through the canvas store', () => {
           setNodes: vi.fn(),
           spaces: props.spaces,
           spacesRef: { current: props.spaces },
-          selectedNodeIds: [],
-          selectedNodeIdsRef: { current: [] },
           onSpacesChange: vi.fn(),
         }),
       { initialProps: { spaces: [SPACE] }, wrapper: wrapper.Wrapper },

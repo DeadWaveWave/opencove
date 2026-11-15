@@ -119,15 +119,11 @@ function Canvas() {
   store = useStoreApi()
   const viewport = useViewport()
   const [tick, setTick] = useState(0)
-  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
-  const selectedNodeIdsRef = useRef(selectedNodeIds)
   const spacesRef = useRef<WorkspaceSpaceState[]>([])
   const actionRefs = useWorkspaceCanvasActionRefs()
   const composed = useWorkspaceCanvasComposedNodeTypes({
     nodeStore: { ...commands },
     canvasState: {
-      setSelectedNodeIds,
-      selectedNodeIdsRef,
       spacesRef,
     },
     actionRefs,

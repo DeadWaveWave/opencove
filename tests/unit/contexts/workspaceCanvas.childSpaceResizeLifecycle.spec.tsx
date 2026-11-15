@@ -36,7 +36,6 @@ function renderNestedResize() {
       const flow = useReactFlow<Node<TerminalNodeData>>()
       const nodesRef = useRef([node])
       const spacesRef = useRef(spaces)
-      const selectedNodeIdsRef = useRef<string[]>([])
       const [, setSpaces] = useState(spaces)
       const drag = useWorkspaceCanvasSpaceDrag({
         workspaceId: 'workspace',
@@ -47,7 +46,6 @@ function renderNestedResize() {
         },
         nodesRef,
         spacesRef,
-        selectedNodeIdsRef,
         setNodes: update => {
           nodesRef.current = update(nodesRef.current)
         },
@@ -55,7 +53,6 @@ function renderNestedResize() {
           spacesRef.current = next
           setSpaces(next)
         },
-        setSelectedNodeIds: () => {},
         magneticSnappingEnabledRef: { current: false },
         setSnapGuides,
         onRequestPersistFlush: persist,

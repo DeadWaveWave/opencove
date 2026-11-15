@@ -105,8 +105,6 @@ describe('workspace canvas space location zoom', () => {
         setNodes: setNodes as never,
         spaces,
         spacesRef,
-        selectedNodeIds: [],
-        selectedNodeIdsRef: { current: [] },
         onSpacesChange: () => undefined,
       })
 

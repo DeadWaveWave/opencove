@@ -66,3 +66,20 @@ describe('toPersistedState canvas disclosure preferences', () => {
     expect(persistedWorkspace.nodes[0]).not.toHaveProperty('collapsedNodeIds')
   })
 })
+
+// #647 invariant 3 (S4): the selection is canvas UI state and never part of the saved document, so
+// the `selected` mirror on a document node does not reach the persisted workspace.
+describe('toPersistedState selection', () => {
+  it('serializes a selected node without a selected key', () => {
+    const selectedWorkspace: WorkspaceState = {
+      ...workspace(),
+      nodes: [{ ...node('terminal'), selected: true }],
+    }
+
+    const persisted = toPersistedState([selectedWorkspace], 'workspace-persisted')
+
+    expect(selectedWorkspace.nodes[0].selected).toBe(true)
+    expect(persisted.workspaces[0].nodes[0]).not.toHaveProperty('selected')
+    expect(JSON.stringify(persisted)).not.toContain('"selected"')
+  })
+})

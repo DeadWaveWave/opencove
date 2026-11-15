@@ -79,7 +79,7 @@ describe('canvas selection prune', () => {
     expect(result.current.readSelection().nodeIds).toEqual(['n1'])
   })
 
-  it('leaves the node selection to the node prune and keeps an unchanged selection', () => {
+  it('keeps an unchanged selection as the same object', () => {
     const nodes = [{ ...pixelNode({ kind: 'note', sessionId: '', note: { text: 'n' } }), id: 'n1' }]
     const spaces = [space('a')]
     const { result, rerender } = renderHook(
@@ -94,11 +94,74 @@ describe('canvas selection prune', () => {
       },
       { wrapper: Wrapper },
     )
-    act(() => result.current.selection.setSpaceIds(['a']))
+    act(() => result.current.selection.select({ nodeIds: ['n1'], spaceIds: ['a'] }))
     const before = result.current.readSelection()
 
     rerender()
 
     expect(result.current.readSelection()).toBe(before)
+  })
+})
+
+// Decision 8 and the node half of the prune: the selection names only nodes that exist.
+describe('canvas selection prune of removed nodes', () => {
+  function noteNode(id: string) {
+    return { ...pixelNode({ kind: 'note', sessionId: '', note: { text: id } }), id }
+  }
+
+  function setup(initialNodes: ReturnType<typeof noteNode>[], spaces: WorkspaceSpaceState[]) {
+    return renderHook(
+      ({ nodes }: { nodes: ReturnType<typeof noteNode>[] }) => {
+        useWorkspaceCanvasState({
+          workspaceId: 'prune',
+          nodes,
+          spaces,
+          viewport: { x: 0, y: 0, zoom: 1 },
+        })
+        return { readSelection: useReadCanvasSelection(), selection: useCanvasSelectionCommands() }
+      },
+      { wrapper: Wrapper, initialProps: { nodes: initialNodes } },
+    )
+  }
+
+  it('drops a selected node that leaves the nodes prop, and keeps the others in order', () => {
+    const { result, rerender } = setup([noteNode('n1'), noteNode('n2'), noteNode('n3')], [])
+    act(() => result.current.selection.setNodeIds(['n1', 'n2', 'n3']))
+
+    rerender({ nodes: [noteNode('n1'), noteNode('n3')] })
+    expect(result.current.readSelection().nodeIds).toEqual(['n1', 'n3'])
+
+    rerender({ nodes: [] })
+    expect(result.current.readSelection().nodeIds).toEqual([])
+  })
+
+  it('keeps the Space ids when a selected node is removed', () => {
+    const { result, rerender } = setup([noteNode('n1'), noteNode('n2')], [space('a')])
+    act(() => result.current.selection.select({ nodeIds: ['n1'], spaceIds: ['a'] }))
+
+    rerender({ nodes: [noteNode('n2')] })
+
+    expect(result.current.readSelection().nodeIds).toEqual([])
+    expect(result.current.readSelection().spaceIds).toEqual(['a'])
+  })
+
+  it('keeps node ids that exist when only Spaces change', () => {
+    const { result, rerender } = setup([noteNode('n1')], [space('a')])
+    act(() => result.current.selection.select({ nodeIds: ['n1'], spaceIds: ['a'] }))
+    const before = result.current.readSelection()
+
+    rerender({ nodes: [noteNode('n1')] })
+
+    expect(result.current.readSelection()).toBe(before)
+  })
+
+  it('does not drop a node that the store names while the nodes prop is the same', () => {
+    const nodes = [noteNode('n1')]
+    const { result, rerender } = setup(nodes, [])
+    act(() => result.current.selection.setNodeIds(['n1']))
+
+    rerender({ nodes })
+
+    expect(result.current.readSelection().nodeIds).toEqual(['n1'])
   })
 })

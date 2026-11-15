@@ -32,41 +32,24 @@ function createNode(
   } as Node<TerminalNodeData>
 }
 
-function createStateSetter<T>(initial: T) {
-  let value = initial
-  const set = vi.fn((next: T | ((previous: T) => T)) => {
-    value = typeof next === 'function' ? (next as (previous: T) => T)(value) : next
-  })
-
-  return {
-    get value() {
-      return value
-    },
-    set,
-  }
-}
-
-function createSelectionSpy(initialSpaceIds: string[]) {
-  let spaceIds = initialSpaceIds
-  const calls: string[][] = []
+// One marquee application is one `select` command: nodes and Spaces are written together.
+function createSelectionSpy() {
+  const selectCalls: { nodeIds: string[]; spaceIds: string[] }[] = []
   const commands: CanvasSelectionCommands = {
     setNodeIds: vi.fn(),
-    setSpaceIds: nextSpaceIds => {
-      spaceIds = [...nextSpaceIds]
-      calls.push(spaceIds)
+    setSpaceIds: vi.fn(),
+    select: next => {
+      selectCalls.push({ nodeIds: [...next.nodeIds], spaceIds: [...next.spaceIds] })
     },
-    select: vi.fn(),
     clear: vi.fn(),
     retain: vi.fn(),
   }
 
   return {
     commands,
-    get spaceIds() {
-      return spaceIds
-    },
-    get lastSetSpaceIds() {
-      return calls.at(-1)
+    selectCalls,
+    get last() {
+      return selectCalls.at(-1)
     },
   }
 }
@@ -97,9 +80,7 @@ describe('applySelectionDraft', () => {
       createNode('node-a', { x: 20, y: 20, selected: true }),
       createNode('node-b', { x: 160, y: 20, selected: false }),
     ]
-    const selectedNodeIdsRef = { current: ['node-a'] }
-    const selectedNodeIdsState = createStateSetter<string[]>(['node-a'])
-    const selection = createSelectionSpy([])
+    const selection = createSelectionSpy()
 
     applySelectionDraft({
       draft: createDraft({
@@ -108,24 +89,21 @@ describe('applySelectionDraft', () => {
       }),
       reactFlow: identityReactFlow,
       spaces: [],
-      selectedNodeIdsRef,
       selection: selection.commands,
       setNodes: updater => {
         nodes = updater(nodes)
       },
-      setSelectedNodeIds: selectedNodeIdsState.set,
     })
 
     expect(nodes.find(node => node.id === 'node-a')?.selected).toBe(false)
     expect(nodes.find(node => node.id === 'node-b')?.selected).toBe(true)
-    expect(selectedNodeIdsRef.current).toEqual(['node-b'])
-    expect(selectedNodeIdsState.value).toEqual(['node-b'])
+    expect(selection.selectCalls).toEqual([{ nodeIds: ['node-b'], spaceIds: [] }])
+    expect(selection.commands.setNodeIds).not.toHaveBeenCalled()
+    expect(selection.commands.setSpaceIds).not.toHaveBeenCalled()
   })
 
   it('toggles intersecting spaces during shift marquee selection', () => {
-    const selectedNodeIdsRef = { current: [] as string[] }
-    const selectedNodeIdsState = createStateSetter<string[]>([])
-    const selection = createSelectionSpy(['space-a'])
+    const selection = createSelectionSpy()
     const spaces: WorkspaceSpaceState[] = [
       {
         id: 'space-a',
@@ -152,17 +130,13 @@ describe('applySelectionDraft', () => {
       }),
       reactFlow: identityReactFlow,
       spaces,
-      selectedNodeIdsRef,
       selection: selection.commands,
       setNodes: updater => {
         updater([])
       },
-      setSelectedNodeIds: selectedNodeIdsState.set,
     })
 
-    expect(selection.spaceIds).toEqual([])
-    expect(selection.lastSetSpaceIds).toEqual([])
-    expect(selectedNodeIdsRef.current).toEqual([])
+    expect(selection.selectCalls).toEqual([{ nodeIds: [], spaceIds: [] }])
   })
 
   it('drops out-of-scope selected nodes during shift marquee selection inside a space', () => {
@@ -170,9 +144,7 @@ describe('applySelectionDraft', () => {
       createNode('node-in', { x: 40, y: 40, selected: false }),
       createNode('node-out', { x: 420, y: 40, selected: true }),
     ]
-    const selectedNodeIdsRef = { current: ['node-out'] }
-    const selectedNodeIdsState = createStateSetter<string[]>(['node-out'])
-    const selection = createSelectionSpy([])
+    const selection = createSelectionSpy()
     const spaces: WorkspaceSpaceState[] = [
       {
         id: 'space-a',
@@ -198,18 +170,15 @@ describe('applySelectionDraft', () => {
       }),
       reactFlow: identityReactFlow,
       spaces,
-      selectedNodeIdsRef,
       selection: selection.commands,
       setNodes: updater => {
         nodes = updater(nodes)
       },
-      setSelectedNodeIds: selectedNodeIdsState.set,
     })
 
     expect(nodes.find(node => node.id === 'node-in')?.selected).toBe(true)
     expect(nodes.find(node => node.id === 'node-out')?.selected).toBe(false)
-    expect(selectedNodeIdsRef.current).toEqual(['node-in'])
-    expect(selectedNodeIdsState.value).toEqual(['node-in'])
+    expect(selection.selectCalls).toEqual([{ nodeIds: ['node-in'], spaceIds: [] }])
   })
 
   it('resolves inside-space scope from current spaces when the draft start scope is stale', () => {
@@ -217,9 +186,7 @@ describe('applySelectionDraft', () => {
       createNode('node-in', { x: 40, y: 40, selected: false }),
       createNode('node-out', { x: 420, y: 40, selected: false }),
     ]
-    const selectedNodeIdsRef = { current: [] as string[] }
-    const selectedNodeIdsState = createStateSetter<string[]>([])
-    const selection = createSelectionSpy([])
+    const selection = createSelectionSpy()
     const spaces: WorkspaceSpaceState[] = [
       {
         id: 'space-a',
@@ -247,18 +214,15 @@ describe('applySelectionDraft', () => {
       }),
       reactFlow: identityReactFlow,
       spaces,
-      selectedNodeIdsRef,
       selection: selection.commands,
       setNodes: updater => {
         nodes = updater(nodes)
       },
-      setSelectedNodeIds: selectedNodeIdsState.set,
     })
 
-    expect(selection.spaceIds).toEqual([])
     expect(nodes.find(node => node.id === 'node-in')?.selected).toBe(true)
     expect(nodes.find(node => node.id === 'node-out')?.selected).toBe(false)
-    expect(selectedNodeIdsRef.current).toEqual(['node-in'])
+    expect(selection.selectCalls).toEqual([{ nodeIds: ['node-in'], spaceIds: [] }])
   })
 
   it('drops out-of-scope selected nodes during shift marquee selection outside spaces', () => {
@@ -266,9 +230,7 @@ describe('applySelectionDraft', () => {
       createNode('node-in', { x: 40, y: 40, selected: true }),
       createNode('node-out', { x: 420, y: 40, selected: false }),
     ]
-    const selectedNodeIdsRef = { current: ['node-in'] }
-    const selectedNodeIdsState = createStateSetter<string[]>(['node-in'])
-    const selection = createSelectionSpy([])
+    const selection = createSelectionSpy()
     const spaces: WorkspaceSpaceState[] = [
       {
         id: 'space-a',
@@ -298,17 +260,14 @@ describe('applySelectionDraft', () => {
       }),
       reactFlow: identityReactFlow,
       spaces,
-      selectedNodeIdsRef,
       selection: selection.commands,
       setNodes: updater => {
         nodes = updater(nodes)
       },
-      setSelectedNodeIds: selectedNodeIdsState.set,
     })
 
     expect(nodes.find(node => node.id === 'node-in')?.selected).toBe(false)
     expect(nodes.find(node => node.id === 'node-out')?.selected).toBe(true)
-    expect(selectedNodeIdsRef.current).toEqual(['node-out'])
-    expect(selectedNodeIdsState.value).toEqual(['node-out'])
+    expect(selection.selectCalls).toEqual([{ nodeIds: ['node-out'], spaceIds: [] }])
   })
 })

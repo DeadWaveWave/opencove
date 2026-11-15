@@ -123,7 +123,7 @@ describe('displayed interaction geometry', () => {
     const spaces = [
       { ...space, nodeIds: ['hidden'], rect: { x: 1000, y: 1000, width: 900, height: 800 } },
     ]
-    const selectedNodeIdsRef = { current: [] as string[] }
+    const select = vi.fn()
     applySelectionDraft({
       draft: {
         startX: 400,
@@ -143,20 +143,18 @@ describe('displayed interaction geometry', () => {
       } as ReactFlowInstance<Node<TerminalNodeData>>,
       spaces,
       collapseState: collapsed,
-      selectedNodeIdsRef,
       selection: {
         setNodeIds: vi.fn(),
         setSpaceIds: vi.fn(),
-        select: vi.fn(),
+        select,
         clear: vi.fn(),
         retain: vi.fn(),
       },
       setNodes: update => {
         nodes = update(nodes)
       },
-      setSelectedNodeIds: vi.fn(),
     })
-    expect(selectedNodeIdsRef.current).toEqual([])
+    expect(select).toHaveBeenCalledExactlyOnceWith({ nodeIds: [], spaceIds: [] })
     expect(nodes.every(item => !item.selected)).toBe(true)
     expect(nodes[0].data.width).toBe(640)
   })
