@@ -102,12 +102,28 @@ export function resolveHasChangesSinceTag({
   throw new Error(`git diff exited with status ${result.status}.`)
 }
 
+// A scheduled run packages `greenCommit`: the head of the newest successful push run of CI on
+// main, resolved by the workflow (this library makes no network call). With none it does not
+// release. Any other event packages `targetRef`, as before.
 export function resolveNightlyReleaseGate({
   eventName = 'schedule',
-  targetRef = 'HEAD',
+  targetRef: requestedRef = 'HEAD',
+  greenCommit = null,
   cwd = process.cwd(),
   spawnSyncImpl = spawnSync,
 } = {}) {
+  const isScheduledRelease = eventName === 'schedule'
+  if (isScheduledRelease && !greenCommit) {
+    return {
+      previousTag: null,
+      commitCountSinceTag: 0,
+      hasChanges: false,
+      shouldRelease: false,
+      reason: 'no_green_ci_run',
+    }
+  }
+
+  const targetRef = isScheduledRelease ? greenCommit : requestedRef
   const previousTag = resolveNearestReachableTag({ targetRef, cwd, spawnSyncImpl })
   const commitCountSinceTag = resolveCommitCountSinceTag({
     previousTag,
@@ -122,7 +138,6 @@ export function resolveNightlyReleaseGate({
     spawnSyncImpl,
   })
 
-  const isScheduledRelease = eventName === 'schedule'
   let reason = 'changed_since_tag'
 
   if (!previousTag) {

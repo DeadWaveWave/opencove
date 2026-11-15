@@ -56,7 +56,13 @@ describe('nightly release gate', () => {
     const repoPath = createRepository()
     commitFile(repoPath, 'app.txt', 'initial\n', 'initial commit')
 
-    expect(resolveNightlyReleaseGate({ cwd: repoPath, eventName: 'schedule' })).toEqual({
+    expect(
+      resolveNightlyReleaseGate({
+        cwd: repoPath,
+        eventName: 'schedule',
+        greenCommit: runGit(['rev-parse', 'HEAD'], repoPath),
+      }),
+    ).toEqual({
       previousTag: null,
       commitCountSinceTag: 0,
       hasChanges: true,
@@ -70,7 +76,13 @@ describe('nightly release gate', () => {
     commitFile(repoPath, 'app.txt', 'initial\n', 'initial commit')
     runGit(['tag', 'v0.2.0-nightly.20260520.1'], repoPath)
 
-    expect(resolveNightlyReleaseGate({ cwd: repoPath, eventName: 'schedule' })).toEqual({
+    expect(
+      resolveNightlyReleaseGate({
+        cwd: repoPath,
+        eventName: 'schedule',
+        greenCommit: runGit(['rev-parse', 'HEAD'], repoPath),
+      }),
+    ).toEqual({
       previousTag: 'v0.2.0-nightly.20260520.1',
       commitCountSinceTag: 0,
       hasChanges: false,
@@ -85,7 +97,13 @@ describe('nightly release gate', () => {
     runGit(['tag', 'v0.2.0-nightly.20260520.1'], repoPath)
     commitFile(repoPath, 'app.txt', 'initial\nnext\n', 'next commit')
 
-    expect(resolveNightlyReleaseGate({ cwd: repoPath, eventName: 'schedule' })).toEqual({
+    expect(
+      resolveNightlyReleaseGate({
+        cwd: repoPath,
+        eventName: 'schedule',
+        greenCommit: runGit(['rev-parse', 'HEAD'], repoPath),
+      }),
+    ).toEqual({
       previousTag: 'v0.2.0-nightly.20260520.1',
       commitCountSinceTag: 1,
       hasChanges: true,
@@ -101,7 +119,13 @@ describe('nightly release gate', () => {
     commitFile(repoPath, 'app.txt', 'initial\nnext\n', 'add change')
     commitFile(repoPath, 'app.txt', 'initial\n', 'revert change')
 
-    expect(resolveNightlyReleaseGate({ cwd: repoPath, eventName: 'schedule' })).toEqual({
+    expect(
+      resolveNightlyReleaseGate({
+        cwd: repoPath,
+        eventName: 'schedule',
+        greenCommit: runGit(['rev-parse', 'HEAD'], repoPath),
+      }),
+    ).toEqual({
       previousTag: 'v0.2.0-nightly.20260520.1',
       commitCountSinceTag: 2,
       hasChanges: false,
@@ -122,5 +146,90 @@ describe('nightly release gate', () => {
       shouldRelease: true,
       reason: 'manual_override',
     })
+  })
+
+  it('releases the newest green commit when it is the head', () => {
+    const repoPath = createRepository()
+    commitFile(repoPath, 'app.txt', 'initial\n', 'initial commit')
+    runGit(['tag', 'v0.2.0-nightly.20260520.1'], repoPath)
+    commitFile(repoPath, 'app.txt', 'initial\nnext\n', 'green head')
+    const head = runGit(['rev-parse', 'HEAD'], repoPath)
+
+    expect(
+      resolveNightlyReleaseGate({ cwd: repoPath, eventName: 'schedule', greenCommit: head }),
+    ).toMatchObject({ shouldRelease: true, reason: 'changed_since_tag', commitCountSinceTag: 1 })
+  })
+
+  it('releases an older green commit, not the head, and judges changes against it', () => {
+    const repoPath = createRepository()
+    commitFile(repoPath, 'app.txt', 'initial\n', 'initial commit')
+    runGit(['tag', 'v0.2.0-nightly.20260520.1'], repoPath)
+    commitFile(repoPath, 'app.txt', 'initial\nnext\n', 'green commit')
+    const green = runGit(['rev-parse', 'HEAD'], repoPath)
+    commitFile(repoPath, 'app.txt', 'initial\nnext\nbroken\n', 'red commit')
+    commitFile(repoPath, 'app.txt', 'initial\nnext\nbroken\nmore\n', 'newer head')
+
+    expect(
+      resolveNightlyReleaseGate({ cwd: repoPath, eventName: 'schedule', greenCommit: green }),
+    ).toEqual({
+      previousTag: 'v0.2.0-nightly.20260520.1',
+      commitCountSinceTag: 1,
+      hasChanges: true,
+      shouldRelease: true,
+      reason: 'changed_since_tag',
+    })
+  })
+
+  it('skips an older green commit that matches the previous tag, even when the head changed', () => {
+    const repoPath = createRepository()
+    commitFile(repoPath, 'app.txt', 'initial\n', 'initial commit')
+    runGit(['tag', 'v0.2.0-nightly.20260520.1'], repoPath)
+    const green = runGit(['rev-parse', 'HEAD'], repoPath)
+    commitFile(repoPath, 'app.txt', 'initial\nnext\n', 'newer head')
+
+    expect(
+      resolveNightlyReleaseGate({ cwd: repoPath, eventName: 'schedule', greenCommit: green }),
+    ).toMatchObject({ shouldRelease: false, reason: 'no_changes_since_tag' })
+  })
+
+  it.each([null, undefined, ''])(
+    'skips scheduled nightlies with no green run (%j)',
+    greenCommit => {
+      const repoPath = createRepository()
+      commitFile(repoPath, 'app.txt', 'initial\n', 'initial commit')
+
+      expect(
+        resolveNightlyReleaseGate({ cwd: repoPath, eventName: 'schedule', greenCommit }),
+      ).toEqual({
+        previousTag: null,
+        commitCountSinceTag: 0,
+        hasChanges: false,
+        shouldRelease: false,
+        reason: 'no_green_ci_run',
+      })
+    },
+  )
+
+  it('keeps manual dispatch on the requested target whatever the green commit is', () => {
+    const repoPath = createRepository()
+    commitFile(repoPath, 'app.txt', 'initial\n', 'initial commit')
+    const older = runGit(['rev-parse', 'HEAD'], repoPath)
+    commitFile(repoPath, 'app.txt', 'initial\nnext\n', 'head')
+
+    expect(
+      resolveNightlyReleaseGate({
+        cwd: repoPath,
+        eventName: 'workflow_dispatch',
+        targetRef: 'HEAD',
+        greenCommit: older,
+      }),
+    ).toMatchObject({ shouldRelease: true, reason: 'no_previous_tag', commitCountSinceTag: 0 })
+    expect(
+      resolveNightlyReleaseGate({
+        cwd: repoPath,
+        eventName: 'workflow_dispatch',
+        targetRef: 'HEAD',
+      }),
+    ).toMatchObject({ shouldRelease: true })
   })
 })
