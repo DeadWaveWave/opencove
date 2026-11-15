@@ -78,20 +78,35 @@ function triggerProblems(workflow: string): string[] {
   return problems
 }
 
+const WINDOWS_JOB = 'platform-e2e-windows'
+const WINDOWS_E2E_STEP = 'Windows-specific E2E tests'
+const WINDOWS_EXPRESSION = "${{ github.event_name == 'pull_request' && '0' || '1' }}"
+const WINDOWS_RETRIES = `OPENCOVE_E2E_RETRIES: ${WINDOWS_EXPRESSION}`
+
 function retryProblems(workflow: string): string[] {
   const problems: string[] = []
   const macos = jobText(workflow, 'ci-macos')
   if (jobLevel(macos, 'if') !== "github.event_name != 'pull_request'") {
     problems.push('ci-macos must run only outside pull requests')
   }
-  const withRetries = jobIds(workflow).filter(id =>
-    /OPENCOVE_E2E_RETRIES: '[1-9]/.test(jobText(workflow, id)),
-  )
-  if (withRetries.join() !== 'ci-macos') {
-    problems.push(`only ci-macos may retry (got ${withRetries.join() || 'none'})`)
+  // Retries are the exception: one retry after the merge on the macOS shards and on the Windows
+  // E2E step (#698), none on pull requests, none anywhere else.
+  for (const id of jobIds(workflow).filter(name => name !== 'ci-macos' && name !== WINDOWS_JOB)) {
+    const values = [...jobText(workflow, id).matchAll(/OPENCOVE_E2E_RETRIES: (.*)$/gm)].map(
+      m => m[1],
+    )
+    if (values.some(value => value !== "'0'")) {
+      problems.push(`only ci-macos and ${WINDOWS_JOB} may retry (got ${id}: ${values.join(', ')})`)
+    }
   }
-  if (!/OPENCOVE_E2E_RETRIES: '1'/.test(stepText(macos, 'E2E tests (shard)'))) {
+  if (!/OPENCOVE_E2E_RETRIES: '1'$/m.test(stepText(macos, 'E2E tests (shard)'))) {
     problems.push("ci-macos shards must retry once (OPENCOVE_E2E_RETRIES: '1')")
+  }
+  const windowsStep = stepText(jobText(workflow, WINDOWS_JOB), WINDOWS_E2E_STEP)
+  if (!windowsStep.split('\n').includes(`          ${WINDOWS_RETRIES}`)) {
+    problems.push(
+      `${WINDOWS_JOB} must retry once outside pull requests: OPENCOVE_E2E_RETRIES must be exactly ${WINDOWS_EXPRESSION}`,
+    )
   }
   return problems
 }
@@ -303,7 +318,7 @@ describe('ci.yml triggers', () => {
 })
 
 describe('ci.yml macOS shards', () => {
-  it('run only after the merge, and are the only jobs that retry', () => {
+  it('run only after the merge, and with the Windows E2E step are the only retries', () => {
     expect(retryProblems(ciWorkflow)).toEqual([])
   })
 
@@ -324,8 +339,31 @@ describe('ci.yml macOS shards', () => {
         "OPENCOVE_E2E_RETRIES: '0'\n          OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'\n          OPENCOVE_E2E_JSON_REPORT: artifacts/e2e-durations/ubuntu",
         "OPENCOVE_E2E_RETRIES: '1'\n          OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'\n          OPENCOVE_E2E_JSON_REPORT: artifacts/e2e-durations/ubuntu",
       ),
-      'only ci-macos may retry',
+      'only ci-macos and platform-e2e-windows may retry',
     ],
+    [
+      'an Ubuntu shard with the Windows expression',
+      mutate(
+        ciWorkflow,
+        "OPENCOVE_E2E_RETRIES: '0'\n          OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'\n          OPENCOVE_E2E_JSON_REPORT: artifacts/e2e-durations/ubuntu",
+        `${WINDOWS_RETRIES}\n          OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'\n          OPENCOVE_E2E_JSON_REPORT: artifacts/e2e-durations/ubuntu`,
+      ),
+      'only ci-macos and platform-e2e-windows may retry',
+    ],
+    ...[
+      ['a literal 1 (would retry on pull requests)', "'1'"],
+      ['a literal 0', "'0'"],
+      ['an inverted expression', "${{ github.event_name == 'pull_request' && '1' || '0' }}"],
+      ['an expression keyed on push', "${{ github.event_name == 'push' && '1' || '0' }}"],
+      [
+        'an expression that lets manual runs lose the retry',
+        "${{ github.event_name != 'workflow_dispatch' && '1' || '0' }}",
+      ],
+    ].map(([name, value]) => [
+      `the Windows E2E step with ${name}`,
+      mutate(ciWorkflow, WINDOWS_RETRIES, `OPENCOVE_E2E_RETRIES: ${value}`),
+      'must retry once outside pull requests',
+    ]),
     [
       'retries off on the shards',
       mutate(ciWorkflow, "OPENCOVE_E2E_RETRIES: '1'", "OPENCOVE_E2E_RETRIES: '0'"),

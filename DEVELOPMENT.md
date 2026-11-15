@@ -205,7 +205,7 @@ workspace 画布文档（节点、Space、活动 Space、Space 归档记录、�
 | 本地提交 | `pnpm verify:quick` 或 `pnpm pre-commit`：静态检查（含 `pnpm compat:check`：兼容路径到期门禁，规则见 `docs/development/COMPATIBILITY_EXPIRY.md`）、staged 相关测试、native recovery contracts、固定核心 E2E 与受影响模块的代表场景 |
 | 按需本地完整检查 | 暂存后运行 `pnpm verify:full`：静态检查、完整 Vitest、native contracts、完整 Electron E2E |
 | PR 合并前 | 最终提交必须通过 PR 的 CI：Ubuntu 上的完整 E2E 分片、Windows 与 Desktop/Web continuity 检查；macOS 只运行一个 `macos-platform` job（Worker CLI contracts、macOS 专属 Vitest 文件、`tests/e2e/*.mac.spec.ts` 与核心 E2E 组，文件由 `scripts/run-macos-platform-e2e.mjs` 选取，新增 `.mac.spec.ts` 无需改 workflow）。PR 的 job 不重试 |
-| 合并后 | `main` 上的 push run 运行完整 macOS E2E（`ci-macos` 三个分片），必须为绿。该 run 不会被后续 push 取消：一个在跑、最新的排队、更旧的排队项被丢弃，因此每个 run 覆盖上次以来的全部合并。红 run 由 `main-status` job 自动打开（或追加评论到）带 `ci-red` 标签的 issue，下一个绿 run 自动评论并关闭它；不要手动开关该 issue。合并者负责响应，issue 未关闭期间，下一次合并必须是修复或回滚。改动终端与 PTY 层、窗口生命周期、文件系统路径、原生菜单与快捷键、字体与渲染时，合并前先在分支上手动触发完整 run（Actions 中对 `CI` 使用 `workflow_dispatch`，选择该分支，不要选 `main`：在 `main` 上手动触发会与 push run 共用队列，可能顶替一个正在排队的 push run）。合并后的 macOS 分片失败时重试一次，重试通过的用例报告为 flaky，不使 `main` 变红。定时 nightly 发布取 `main` 上最新一个 CI push run 为绿的提交构建，不是 `main` 的最新提交；没有绿 run 时跳过并给出原因 |
+| 合并后 | `main` 上的 push run 运行完整 macOS E2E（`ci-macos` 三个分片），必须为绿。该 run 不会被后续 push 取消：一个在跑、最新的排队、更旧的排队项被丢弃，因此每个 run 覆盖上次以来的全部合并。红 run 由 `main-status` job 自动打开（或追加评论到）带 `ci-red` 标签的 issue，下一个绿 run 自动评论并关闭它；不要手动开关该 issue。合并者负责响应，issue 未关闭期间，下一次合并必须是修复或回滚。改动终端与 PTY 层、窗口生命周期、文件系统路径、原生菜单与快捷键、字体与渲染时，合并前先在分支上手动触发完整 run（Actions 中对 `CI` 使用 `workflow_dispatch`，选择该分支，不要选 `main`：在 `main` 上手动触发会与 push run 共用队列，可能顶替一个正在排队的 push run）。合并后的 macOS 分片失败时重试一次，重试通过的用例报告为 flaky，不使 `main` 变红；Windows E2E 步骤在合并后与手动 run 上同样重试一次（其在种子重载处的渲染进程崩溃与被测改动无关，#698），pull request 上不重试。定时 nightly 发布取 `main` 上最新一个 CI push run 为绿的提交构建，不是 `main` 的最新提交；没有绿 run 时跳过并给出原因 |
 
 E2E 选组规则维护在 `scripts/precommit-e2e-selection.mjs`。快速门禁输出选中组、原因和测试文件，固定覆盖启动、终端创建、重启后可输入；插件、共享窗口、Space、设置、连接、Sidebar 和文件相关改动追加对应组。删除、重命名、CSS、配置与未知源码也必须参与判断；未知范围扩大代表组并明确提示，不能静默跳过。代表组选取不等于完整依赖分析：开发者仍须为本次修改的不变量补跑直接相关用例。
 
@@ -292,7 +292,7 @@ Ubuntu 四个分片、macOS 三个分片，数量只在 `scripts/lib/e2e-shards.
     -   可通过 `OPENCOVE_E2E_WINDOW_MODE` 指定窗口模式（`inactive / offscreen / hidden`，禁止 `normal` 以避免抢占焦点）。
     -   如需关闭自动降级，可设置 `OPENCOVE_E2E_DISABLE_CRASH_FALLBACK=1`。
     -   成功路径的诊断截图与 viewport screencast 默认关闭；设置 `OPENCOVE_E2E_DIAGNOSTICS=1` 恢复采集。失败保留可用的最终截图与已采集指标，断言读取的图像和 Playwright 的 failure screenshot / trace 策略不变。
-    -   `pnpm pre-commit` 与 CI 的 required Electron/Web continuity gates 固定使用 `OPENCOVE_E2E_RETRIES=0` 且关闭 crash fallback（唯一例外：合并后 `main` 上的 `ci-macos` 分片使用 `OPENCOVE_E2E_RETRIES=1`，见“合并后”一行）；本地诊断命令可以显式覆盖，但 retry/fallback 结果不能作为合并证据。
+    -   `pnpm pre-commit` 与 CI 的 required Electron/Web continuity gates 固定使用 `OPENCOVE_E2E_RETRIES=0` 且关闭 crash fallback（例外只有两处，各重试一次：合并后 `main` 与手动 run 上的 `ci-macos` 分片，以及 pull request 之外各 run 上的 Windows E2E 步骤，因其在种子重载处的渲染进程崩溃与被测改动无关，45 次 run 中失败 10 次（#698）；pull request 上均为 0，见“合并后”一行）；本地诊断命令可以显式覆盖，但 retry/fallback 结果不能作为合并证据。
     -   若需单独执行 Playwright（如 `pnpm exec playwright test tests/e2e/xxx.spec.ts`），必须先执行 `pnpm build`，否则可能仍会使用旧的 `out/` 产物，导致结果与当前源码不一致。
 
 ## 常见问题（FAQ）

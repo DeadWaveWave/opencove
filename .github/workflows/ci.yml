@@ -466,7 +466,9 @@ jobs:
           OPENCOVE_E2E_SKIP_BUILD: '1'
           OPENCOVE_E2E_TEST_MATCH: '**/*.windows.spec.ts,**/agent.initial-prompt-argv.spec.ts,**/runtime-diagnostics.renderer-crash.spec.ts'
           OPENCOVE_E2E_WINDOW_MODE: inactive
-          OPENCOVE_E2E_RETRIES: '0'
+          # One retry after the merge and on manual runs: a renderer crash at the seed reload failed
+          # this step in 10 of 45 runs without being in the change under test (#698). Pull requests never retry.
+          OPENCOVE_E2E_RETRIES: ${{ github.event_name == 'pull_request' && '0' || '1' }}
           OPENCOVE_E2E_DISABLE_CRASH_FALLBACK: '1'
         run: pnpm exec playwright test
 
