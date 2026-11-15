@@ -34,6 +34,9 @@ function renderSelectionOwner() {
     beginNodeDragSession: vi.fn(),
     endNodeDragSession: vi.fn(),
     clearNodeDragProjection: vi.fn(),
+    captureDragStartSpaceSelection: vi.fn(),
+    getDragStartSpaceSelection: () => null,
+    clearDragStartSpaceSelection: vi.fn(),
     applyPendingReleaseProjection: nodes => nodes,
     projectNodeDrag: ({ currentNodes }) => ({
       nextNodes: currentNodes,

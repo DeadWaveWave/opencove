@@ -56,8 +56,6 @@ function mergeExternalNodesIntoTransientCanvas(
   return didChange ? mergedNodes : currentNodes
 }
 
-const EMPTY_ID_SET: ReadonlySet<string> = new Set()
-
 export function useWorkspaceCanvasState({
   workspaceId,
   nodes,
@@ -179,15 +177,15 @@ export function useWorkspaceCanvasState({
     setSelectedNodeIds(resolvedSelection)
   }, [canvasNodes, selectedNodeIds, setSelectedNodeIds])
 
-  // Decision 8 of #692: the selection never names a Space that no longer exists. The store holds
-  // no node ids until node selection moves into it, so the empty node set drops nothing.
+  // Decision 8 of #692: the selection never names a Space that no longer exists. Node ids pass
+  // through unchanged; the node prune owns them.
   useLayoutEffect(() => {
     if (readSelection().spaceIds.length === 0) {
       return
     }
 
     selection.retain({
-      nodeIds: EMPTY_ID_SET,
+      nodeIds: new Set(readSelection().nodeIds),
       spaceIds: new Set(spaces.map(space => space.id)),
     })
   }, [readSelection, selection, spaces])

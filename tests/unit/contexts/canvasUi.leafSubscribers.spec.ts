@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 const CANVAS_DIR = 'src/contexts/workspace/presentation/renderer/components/workspaceCanvas/'
-const ALLOWED = new Set(['hooks/useCanvasState.ts', 'view/WorkspaceSpaceRegionsOverlay.tsx'])
+// PR 2 adds 'hooks/useCanvasState.ts' (nodeIds, for flowNodes).
+const ALLOWED = new Set(['view/WorkspaceSpaceRegionsOverlay.tsx'])
 // PR 1 removes the Space names; PR 2 adds the node names (selectedNodeIdsRef, setSelectedNodeIds).
 const REMOVED_NAMES = [
   'selectedSpaceIdsRef',
@@ -29,7 +30,7 @@ describe('canvas UI subscriptions', () => {
 
   // Decision 5 of #692: `useCanvasState` (nodeIds, for flowNodes) and the Space overlay
   // (spaceIds) are the only subscribers of the `selection` slice.
-  it('useCanvasSelection is called only by useCanvasState and the Space overlay', () => {
+  it('useCanvasSelection is called only by the Space overlay', () => {
     const files = execFileSync('git', ['ls-files', CANVAS_DIR], { encoding: 'utf8' })
       .split('\n')
       .filter(file => /\.tsx?$/.test(file) && !/\.spec\./.test(file))

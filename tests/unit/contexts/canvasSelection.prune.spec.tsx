@@ -57,6 +57,28 @@ describe('canvas selection prune', () => {
     expect(result.current.readSelection().spaceIds).toEqual([])
   })
 
+  it('keeps the node ids in the store when a selected Space is removed', () => {
+    const nodes = [{ ...pixelNode({ kind: 'note', sessionId: '', note: { text: 'n' } }), id: 'n1' }]
+    const { result, rerender } = renderHook(
+      ({ spaces }: { spaces: WorkspaceSpaceState[] }) => {
+        useWorkspaceCanvasState({
+          workspaceId: 'prune',
+          nodes,
+          spaces,
+          viewport: { x: 0, y: 0, zoom: 1 },
+        })
+        return { readSelection: useReadCanvasSelection(), selection: useCanvasSelectionCommands() }
+      },
+      { wrapper: Wrapper, initialProps: { spaces: [space('a')] } },
+    )
+    act(() => result.current.selection.select({ nodeIds: ['n1'], spaceIds: ['a'] }))
+
+    rerender({ spaces: [] })
+
+    expect(result.current.readSelection().spaceIds).toEqual([])
+    expect(result.current.readSelection().nodeIds).toEqual(['n1'])
+  })
+
   it('leaves the node selection to the node prune and keeps an unchanged selection', () => {
     const nodes = [{ ...pixelNode({ kind: 'note', sessionId: '', note: { text: 'n' } }), id: 'n1' }]
     const spaces = [space('a')]
