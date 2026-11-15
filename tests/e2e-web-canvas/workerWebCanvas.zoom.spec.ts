@@ -198,17 +198,20 @@ test.describe('Worker web canvas zoom anchor', () => {
 
     await page.mouse.dblclick(target.clientPoint.x, target.clientPoint.y)
 
+    // The transition zooms out and back in on its way. Near its end the centre is already on
+    // the target while the zoom is still returning, so both are checked on the same sample.
     await expect
       .poll(async () => {
         const sample = await sampleViewportAt(page, canvasCenter)
-        return Math.hypot(
-          sample.flowAtAnchor.x - target.flowPosition.x,
-          sample.flowAtAnchor.y - target.flowPosition.y,
-        )
+        return {
+          centred:
+            Math.hypot(
+              sample.flowAtAnchor.x - target.flowPosition.x,
+              sample.flowAtAnchor.y - target.flowPosition.y,
+            ) < 20,
+          zoomPreserved: Math.abs(sample.viewport.zoom - before.viewport.zoom) < 0.01,
+        }
       })
-      .toBeLessThan(20)
-
-    const after = await sampleViewportAt(page, canvasCenter)
-    expect(Math.abs(after.viewport.zoom - before.viewport.zoom)).toBeLessThan(0.01)
+      .toEqual({ centred: true, zoomPreserved: true })
   })
 })
