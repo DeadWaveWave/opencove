@@ -15,8 +15,6 @@ export function useWorkspaceCanvasAgentSupport({
   onSpacesChange,
   onRequestPersistFlush,
   onShowMessage,
-  contextMenu,
-  setContextMenu,
   createNodeForSession,
   standardWindowSizeBucket,
   terminalDisplayMetrics,
@@ -39,8 +37,6 @@ export function useWorkspaceCanvasAgentSupport({
     typeof useWorkspaceCanvasAgentLauncher
   >[0]['onRequestPersistFlush']
   onShowMessage?: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['onShowMessage']
-  contextMenu: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['contextMenu']
-  setContextMenu: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['setContextMenu']
   createNodeForSession: Parameters<
     typeof useWorkspaceCanvasAgentLauncher
   >[0]['createNodeForSession']
@@ -94,8 +90,6 @@ export function useWorkspaceCanvasAgentSupport({
       onSpacesChange,
       onRequestPersistFlush,
       onShowMessage,
-      contextMenu,
-      setContextMenu,
       createNodeForSession,
       standardWindowSizeBucket,
       buildAgentNodeTitle,

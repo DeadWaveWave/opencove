@@ -9,7 +9,6 @@ import { useWorkspaceCanvasCreationActivation } from './useCreationActivation'
 
 export function useWorkspaceCanvasLifecycleBindings({
   workspaceId,
-  persistedMinimapVisible,
   canvasState,
   cancelSpaceRename,
   reactFlow,
@@ -27,7 +26,6 @@ export function useWorkspaceCanvasLifecycleBindings({
   requestNodeDeleteRef,
 }: {
   workspaceId: string
-  persistedMinimapVisible: boolean
   canvasState: ReturnType<typeof useWorkspaceCanvasState>
   cancelSpaceRename: () => void
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
@@ -64,12 +62,8 @@ export function useWorkspaceCanvasLifecycleBindings({
 
   useWorkspaceCanvasLifecycle({
     workspaceId,
-    persistedMinimapVisible,
-    setIsMinimapVisible: canvasState.setIsMinimapVisible,
     setSelectedNodeIds: canvasState.setSelectedNodeIds,
     setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
-    setContextMenu: canvasState.setContextMenu,
-    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     cancelSpaceRename,
     selectionDraftRef: canvasState.selectionDraftRef,
     trackpadGestureLockRef: canvasState.trackpadGestureLockRef,

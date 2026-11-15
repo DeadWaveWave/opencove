@@ -24,7 +24,7 @@ export function WorkspaceCanvasInner({
   shortcutsEnabled = true,
   onAppendSpaceArchiveRecord,
   viewport,
-  isMinimapVisible: persistedMinimapVisible,
+  isMinimapVisible,
   onViewportChange,
   onMinimapVisibilityChange,
   agentSettings,
@@ -43,7 +43,6 @@ export function WorkspaceCanvasInner({
     nodes,
     spaces,
     viewport,
-    persistedMinimapVisible,
   })
   const nodePublishers = workspaceCanvasHooks.useWorkspaceCanvasNodePublishers({
     ...canvasState,
@@ -99,8 +98,6 @@ export function WorkspaceCanvasInner({
     selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
     onSpacesChange,
     onRequestPersistFlush,
-    setContextMenu: canvasState.setContextMenu,
-    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     onShowMessage,
   })
   const { spaceFramePreview, handleSpaceDragHandlePointerDown } =
@@ -118,9 +115,7 @@ export function WorkspaceCanvasInner({
       magneticSnappingEnabledRef: canvasState.magneticSnappingEnabledRef,
       setSnapGuides: canvasState.setSnapGuides,
       onRequestPersistFlush,
-      setContextMenu: canvasState.setContextMenu,
       cancelSpaceRename: spacesApi.cancelSpaceRename,
-      setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     })
   const {
     finalizeDraggedNodeDrop,
@@ -162,16 +157,12 @@ export function WorkspaceCanvasInner({
     onSpacesChange,
     onRequestPersistFlush,
     onShowMessage,
-    contextMenu: canvasState.contextMenu,
-    setContextMenu: canvasState.setContextMenu,
     createNodeForSession: nodeStore.createNodeForSession,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
     terminalDisplayMetrics,
   })
   const taskUi = workspaceCanvasHooks.useWorkspaceCanvasTaskUi({
     agentTaskTagOptions: agentSettings.taskTagOptions,
-    contextMenu: canvasState.contextMenu,
-    setContextMenu: canvasState.setContextMenu,
     nodesRef: nodeStore.nodesRef,
     setNodes: nodeStore.setNodes,
     spacesRef: canvasState.spacesRef,
@@ -198,9 +189,9 @@ export function WorkspaceCanvasInner({
   // prettier-ignore
   const collapse = useCanvasCollapse({ workspaceId, canvasRef: canvasState.canvasRef, nodes, spaces, nodesRef: nodeStore.nodesRef, spacesRef: canvasState.spacesRef, setNodes: nodeStore.setNodes, onSpacesChange, reactFlow, focusNodeTargetZoom: agentSettings.focusNodeTargetZoom, nodeExpandBehavior: agentSettings.nodeExpandBehavior, onRequestPersistFlush })
   // prettier-ignore
-  workspaceCanvasHooks.useWorkspaceCanvasLifecycleBindings({ workspaceId, persistedMinimapVisible, canvasState, cancelSpaceRename: spacesApi.cancelSpaceRename, reactFlow, viewport, agentSettings, focusSpaceId, focusNodeId, focusNodeInput, focusSequence, expandNode: collapse.expandNode, focusSpaceInViewport: spacesApi.focusSpaceInViewport, nodes: canvasState.flowNodes, isFocusNodeTargetZoomPreviewing, nodesRef: nodeStore.nodesRef, requestNodeDeleteRef: actionRefs.requestNodeDeleteRef })
+  workspaceCanvasHooks.useWorkspaceCanvasLifecycleBindings({ workspaceId, canvasState, cancelSpaceRename: spacesApi.cancelSpaceRename, reactFlow, viewport, agentSettings, focusSpaceId, focusNodeId, focusNodeInput, focusSequence, expandNode: collapse.expandNode, focusSpaceInViewport: spacesApi.focusSpaceInViewport, nodes: canvasState.flowNodes, isFocusNodeTargetZoomPreviewing, nodesRef: nodeStore.nodesRef, requestNodeDeleteRef: actionRefs.requestNodeDeleteRef })
   // prettier-ignore
-  const { canConvertSelectedNoteToTask, isConvertSelectedNoteToTaskDisabled, convertSelectedNoteToTask, convertNoteToTask, arrangeAll, arrangeCanvas, arrangeInSpace } = workspaceCanvasHooks.useWorkspaceCanvasMenuActions({ selectedNodeIds: canvasState.selectedNodeIds, selectedNodeIdsRef: canvasState.selectedNodeIdsRef, flowNodes: canvasState.flowNodes, nodesRef: nodeStore.nodesRef, setNodes: nodeStore.setNodes, onRequestPersistFlush, onShowMessage, setContextMenu: canvasState.setContextMenu, reactFlow, spacesRef: canvasState.spacesRef, onSpacesChange, standardWindowSizeBucket: agentSettings.standardWindowSizeBucket, focusNodeTargetZoom: agentSettings.focusNodeTargetZoom })
+  const { canConvertSelectedNoteToTask, isConvertSelectedNoteToTaskDisabled, convertSelectedNoteToTask, convertNoteToTask, arrangeAll, arrangeCanvas, arrangeInSpace } = workspaceCanvasHooks.useWorkspaceCanvasMenuActions({ selectedNodeIds: canvasState.selectedNodeIds, selectedNodeIdsRef: canvasState.selectedNodeIdsRef, flowNodes: canvasState.flowNodes, nodesRef: nodeStore.nodesRef, setNodes: nodeStore.setNodes, onRequestPersistFlush, onShowMessage, reactFlow, spacesRef: canvasState.spacesRef, onSpacesChange, standardWindowSizeBucket: agentSettings.standardWindowSizeBucket, focusNodeTargetZoom: agentSettings.focusNodeTargetZoom })
   const { nodeTypes, nodeTypesParameters } =
     workspaceCanvasHooks.useWorkspaceCanvasComposedNodeTypes({
       nodeStore,
@@ -247,12 +238,9 @@ export function WorkspaceCanvasInner({
     setNodes: nodeStore.setNodes,
     setSelectedNodeIds: canvasState.setSelectedNodeIds,
     setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
-    setContextMenu: canvasState.setContextMenu,
-    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     cancelSpaceRename: spacesApi.cancelSpaceRename,
     selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
     selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
-    contextMenu: canvasState.contextMenu,
     workspaceId,
     workspacePath,
     environmentVariables,
@@ -282,14 +270,10 @@ export function WorkspaceCanvasInner({
     createPluginAtPoint: (anchor, pluginId) => {
       nodeStore.createPluginNode(anchor, pluginId)
     },
-    setContextMenu: canvasState.setContextMenu,
-    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     cancelSpaceRename: spacesApi.cancelSpaceRename,
     spacesRef: canvasState.spacesRef,
   })
   const createPluginNodeFromContextMenu = workspaceCanvasHooks.useWorkspaceCanvasPluginEntry({
-    contextMenu: canvasState.contextMenu,
-    setContextMenu: canvasState.setContextMenu,
     createPluginNode: nodeStore.createPluginNode,
   })
   workspaceCanvasHooks.useWorkspaceCanvasShortcutActions({
@@ -302,8 +286,6 @@ export function WorkspaceCanvasInner({
     workspacePath,
     environmentVariables,
     canvasRef: canvasState.canvasRef,
-    setContextMenu: canvasState.setContextMenu,
-    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     cancelSpaceRename: spacesApi.cancelSpaceRename,
     reactFlow,
     spacesRef: canvasState.spacesRef,
@@ -352,9 +334,6 @@ export function WorkspaceCanvasInner({
     viewportRef: canvasState.viewportRef,
     onViewportChange,
     flowNodes: canvasState.flowNodes,
-    contextMenu: canvasState.contextMenu,
-    setContextMenu: canvasState.setContextMenu,
-    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     cancelSpaceRename: spacesApi.cancelSpaceRename,
     workspacePath,
     spacesRef: canvasState.spacesRef,
@@ -378,8 +357,6 @@ export function WorkspaceCanvasInner({
       onSpacesChange={onSpacesChange}
       onRequestPersistFlush={onRequestPersistFlush}
       onShowMessage={onShowMessage}
-      setContextMenu={canvasState.setContextMenu}
-      closeOtherMenus={spaceUi.closeSpaceActionMenu}
     >
       <TerminalDisplayAlignedWorkspaceCanvasView
         workspaceId={workspaceId}
@@ -430,15 +407,13 @@ export function WorkspaceCanvasInner({
         activateSpaceTitle={spacesApi.activateSpaceTitle}
         setSpaceLabelColor={spacesApi.setSpaceLabelColor}
         selectedNodeCount={canvasState.selectedNodeIds.length}
-        isMinimapVisible={canvasState.isMinimapVisible}
+        isMinimapVisible={isMinimapVisible}
         minimapNodeColor={minimapNodeColor}
-        setIsMinimapVisible={canvasState.setIsMinimapVisible}
         onMinimapVisibilityChange={onMinimapVisibilityChange}
         spaces={spaces}
         activateSpace={spacesApi.activateSpace}
         activateAllSpaces={spacesApi.activateAllSpaces}
         onOpenSpaceContextMenu={onOpenSpaceContextMenu}
-        contextMenu={canvasState.contextMenu}
         magneticSnappingEnabled={canvasState.magneticSnappingEnabled}
         onToggleMagneticSnapping={() => canvasState.setMagneticSnappingEnabled(enabled => !enabled)}
         createTerminalNode={createTerminalNode}

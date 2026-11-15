@@ -1,11 +1,5 @@
-import {
-  createContext,
-  useCallback,
-  type Dispatch,
-  type ReactNode,
-  type SetStateAction,
-} from 'react'
-import type { ContextMenuState } from '../types'
+import { createContext, useCallback, type ReactNode } from 'react'
+import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
 
 interface WindowNodeMenuRequest {
   nodeId?: string
@@ -19,21 +13,13 @@ export const WindowNodeContextMenuContext = createContext<
 >(null)
 
 /** Compact chrome uses the canvas menu while each mounted runtime retains its close guard. */
-export function WindowNodeContextMenuProvider({
-  setContextMenu,
-  closeOtherMenus,
-  children,
-}: {
-  setContextMenu: Dispatch<SetStateAction<ContextMenuState | null>>
-  closeOtherMenus: () => void
-  children: ReactNode
-}) {
+export function WindowNodeContextMenuProvider({ children }: { children: ReactNode }) {
+  const ui = useCanvasUiCommands()
   const openMenu = useCallback(
     (request: WindowNodeMenuRequest) => {
-      closeOtherMenus()
-      setContextMenu({ kind: 'selection', ...request })
+      ui.openContextMenu({ kind: 'selection', ...request })
     },
-    [closeOtherMenus, setContextMenu],
+    [ui],
   )
   return <WindowNodeContextMenuContext value={openMenu}>{children}</WindowNodeContextMenuContext>
 }

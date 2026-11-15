@@ -4,12 +4,7 @@ import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSe
 import type { Node, ReactFlowInstance } from '@xyflow/react'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
-import type {
-  ContextMenuState,
-  EmptySelectionPromptState,
-  ShowWorkspaceCanvasMessage,
-  SpaceTargetMountPickerState,
-} from '../types'
+import type { ShowWorkspaceCanvasMessage, SpaceTargetMountPickerState } from '../types'
 import { sanitizeSpaces, validateSpaceTransfer } from '../helpers'
 import { useCreateEmptySpace } from './useSpaces.createEmptySpace'
 import { createSpaceFromSelectedNodesWithMounts } from './useSpaces.createSpaceSelection'
@@ -19,6 +14,7 @@ import {
   pushAwayLayout,
   type LayoutItem,
 } from '../../../utils/spaceLayout'
+import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
   options?: { syncLayout?: boolean },
@@ -34,8 +30,6 @@ export function useWorkspaceCanvasCreateSpace({
   selectedNodeIdsRef,
   onSpacesChange,
   onRequestPersistFlush,
-  setContextMenu,
-  setEmptySelectionPrompt,
   setSpaceTargetMountPicker,
   cancelSpaceRename,
   onShowMessage,
@@ -51,8 +45,6 @@ export function useWorkspaceCanvasCreateSpace({
   selectedNodeIdsRef: React.MutableRefObject<string[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
-  setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
-  setEmptySelectionPrompt: React.Dispatch<React.SetStateAction<EmptySelectionPromptState | null>>
   setSpaceTargetMountPicker: React.Dispatch<
     React.SetStateAction<SpaceTargetMountPickerState | null>
   >
@@ -72,6 +64,8 @@ export function useWorkspaceCanvasCreateSpace({
     directoryPath: string
   }) => void
 } {
+  const ui = useCanvasUiCommands()
+
   const { t } = useTranslation()
   const resolveDefaultSpaceName = useCallback((): string => {
     const usedNames = new Set(spacesRef.current.map(space => space.name.toLowerCase()))
@@ -97,8 +91,7 @@ export function useWorkspaceCanvasCreateSpace({
       )
       if (normalizedNodeIds.length === 0) {
         onShowMessage?.(t('messages.spaceRequiresNode'), 'warning')
-        setContextMenu(null)
-        setEmptySelectionPrompt(null)
+        ui.closeContextMenu()
         return
       }
 
@@ -335,8 +328,7 @@ export function useWorkspaceCanvasCreateSpace({
 
       onSpacesChange(nextSpaces)
       onRequestPersistFlush?.()
-      setContextMenu(null)
-      setEmptySelectionPrompt(null)
+      ui.closeContextMenu()
       setSpaceTargetMountPicker(null)
       cancelSpaceRename()
     },
@@ -347,8 +339,7 @@ export function useWorkspaceCanvasCreateSpace({
       onShowMessage,
       onSpacesChange,
       resolveDefaultSpaceName,
-      setContextMenu,
-      setEmptySelectionPrompt,
+      ui,
       setNodes,
       setSpaceTargetMountPicker,
       spacesRef,
@@ -383,8 +374,7 @@ export function useWorkspaceCanvasCreateSpace({
       workspaceId,
       workspacePath,
       createSpace,
-      setContextMenu,
-      setEmptySelectionPrompt,
+      ui,
       setSpaceTargetMountPicker,
       cancelSpaceRename,
       onShowMessage,
@@ -398,8 +388,7 @@ export function useWorkspaceCanvasCreateSpace({
     onShowMessage,
     reactFlow,
     selectedNodeIdsRef,
-    setContextMenu,
-    setEmptySelectionPrompt,
+    ui,
     setSpaceTargetMountPicker,
     spacesRef,
     t,
@@ -415,8 +404,6 @@ export function useWorkspaceCanvasCreateSpace({
     spacesRef,
     onSpacesChange,
     onRequestPersistFlush,
-    setContextMenu,
-    setEmptySelectionPrompt,
     setSpaceTargetMountPicker,
     cancelSpaceRename,
     onShowMessage,

@@ -8,14 +8,12 @@ import { centerFlowPositionInViewportPreservingZoom } from '../helpers'
 interface WorkspaceMinimapDockProps {
   isMinimapVisible: boolean
   minimapNodeColor: (node: Node<TerminalNodeData>) => string
-  setIsMinimapVisible: React.Dispatch<React.SetStateAction<boolean>>
   onMinimapVisibilityChange: (isVisible: boolean) => void
 }
 
 export function WorkspaceMinimapDock({
   isMinimapVisible,
   minimapNodeColor,
-  setIsMinimapVisible,
   onMinimapVisibilityChange,
 }: WorkspaceMinimapDockProps): React.JSX.Element {
   const { t } = useTranslation()
@@ -63,11 +61,7 @@ export function WorkspaceMinimapDock({
         }
         onClick={event => {
           event.stopPropagation()
-          setIsMinimapVisible(previous => {
-            const nextValue = !previous
-            onMinimapVisibilityChange(nextValue)
-            return nextValue
-          })
+          onMinimapVisibilityChange(!isMinimapVisible)
         }}
       >
         <MapIcon />

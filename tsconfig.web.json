@@ -9,7 +9,8 @@
     "src/contexts/**/domain/**/*",
     "src/contexts/**/application/**/*",
     "src/contexts/**/presentation/renderer/**/*",
-    "tests/support/pluginPresentationTestFixture.ts"
+    "tests/support/pluginPresentationTestFixture.ts",
+    "tests/support/canvasStoreTestHarness.tsx"
   ],
   "compilerOptions": {
     "composite": true,

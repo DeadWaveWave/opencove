@@ -11,11 +11,12 @@ import {
   resolveNodePlacementAnchorFromViewportCenter,
   toErrorMessage,
 } from '../helpers'
-import type { ContextMenuState, NodePlacementOptions, TaskCreatorState } from '../types'
+import type { NodePlacementOptions, TaskCreatorState } from '../types'
 import {
   assignNodeToSpaceAndExpand,
   findContainingSpaceByAnchor,
 } from './useInteractions.spaceAssignment'
+import { useCanvasUiCommands, useReadCanvasUi } from '../../../store/canvasStoreContext'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -24,8 +25,6 @@ type SetNodes = (
 
 interface UseTaskCreatorParams {
   workspaceId?: string
-  contextMenu: ContextMenuState | null
-  setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
   taskTagOptions: string[]
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
@@ -49,8 +48,6 @@ interface UseTaskCreatorParams {
 
 export function useWorkspaceCanvasTaskCreator({
   workspaceId,
-  contextMenu,
-  setContextMenu,
   taskTagOptions,
   nodesRef,
   setNodes,
@@ -69,6 +66,9 @@ export function useWorkspaceCanvasTaskCreator({
   generateTaskTitle: () => Promise<void>
   createTask: () => Promise<void>
 } {
+  const ui = useCanvasUiCommands()
+  const readUi = useReadCanvasUi()
+
   const { t } = useTranslation()
   const [taskCreator, setTaskCreator] = useState<TaskCreatorState | null>(null)
   const isTaskAiNamingEnabled = AI_NAMING_FEATURES.taskTitleGeneration
@@ -139,13 +139,14 @@ export function useWorkspaceCanvasTaskCreator({
   )
 
   const openTaskCreator = useCallback(() => {
+    const contextMenu = readUi().contextMenu
     if (!contextMenu || contextMenu.kind !== 'pane') {
       return
     }
 
     createTaskAtAnchor(resolvePaneNodeCreationAnchor(contextMenu))
-    setContextMenu(null)
-  }, [contextMenu, createTaskAtAnchor, setContextMenu])
+    ui.closeContextMenu()
+  }, [createTaskAtAnchor, readUi, ui])
 
   const closeTaskCreator = useCallback(() => {
     setTaskCreator(prev => {

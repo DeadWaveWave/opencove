@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, type MutableRefObject } from 'react'
 import { useStoreApi, type Node, type ReactFlowInstance } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
-import type { ContextMenuState, EmptySelectionPromptState, SelectionDraftState } from '../types'
+import type { SelectionDraftState } from '../types'
 import { isPointInsideRect } from './useSpaceOwnership.helpers'
 import { applySelectionDraft, setSortedSelectedSpaceIds } from './useSelectionDraft.helpers'
 import {
@@ -9,6 +9,7 @@ import {
   projectCanvasInteractionLayout,
 } from '../../../utils/canvasInteractionLayout'
 import { readCanvasInteractionState } from './useNodeDragSession.collapse'
+import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
 
 type SelectionDraftUiState = Pick<
   SelectionDraftState,
@@ -31,8 +32,6 @@ interface UseSelectionDraftParams {
   ) => void
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
   setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
-  setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
-  setEmptySelectionPrompt: React.Dispatch<React.SetStateAction<EmptySelectionPromptState | null>>
 }
 
 export function useWorkspaceCanvasSelectionDraft({
@@ -48,13 +47,13 @@ export function useWorkspaceCanvasSelectionDraft({
   setNodes,
   setSelectedNodeIds,
   setSelectedSpaceIds,
-  setContextMenu,
-  setEmptySelectionPrompt,
 }: UseSelectionDraftParams): {
   handleCanvasPointerDownCapture: (event: React.PointerEvent<HTMLDivElement>) => void
   handleCanvasPointerMoveCapture: (event: React.PointerEvent<HTMLDivElement>) => void
   handleCanvasPointerUpCapture: (event?: { clientX: number; clientY: number }) => boolean
 } {
+  const ui = useCanvasUiCommands()
+
   const cancelSelectionOnWindowBlur = !(
     typeof window !== 'undefined' && window.opencoveApi?.meta?.isTest === true
   )
@@ -173,7 +172,6 @@ export function useWorkspaceCanvasSelectionDraft({
         nodesSelectionActive: hasSelectedNodes,
         coveDragSurfaceSelectionMode: shouldEnableDragSurfaceSelectionMode,
       } as unknown as Parameters<typeof reactFlowStore.setState>[0])
-      setEmptySelectionPrompt(null)
 
       window.requestAnimationFrame(() => {
         if (selectionDraftRef.current === draft) {
@@ -197,7 +195,6 @@ export function useWorkspaceCanvasSelectionDraft({
       selectedNodeIdsRef,
       selectedSpaceIdsRef,
       setSelectionDraftUi,
-      setEmptySelectionPrompt,
       setNodes,
       setSelectedNodeIds,
       setSelectedSpaceIds,
@@ -412,8 +409,7 @@ export function useWorkspaceCanvasSelectionDraft({
         phase: 'active',
       })
       registerGlobalPointerListeners()
-      setContextMenu(null)
-      setEmptySelectionPrompt(null)
+      ui.closeContextMenu()
     },
     [
       detachGlobalPointerListeners,
@@ -424,8 +420,7 @@ export function useWorkspaceCanvasSelectionDraft({
       selectedSpaceIdsRef,
       selectionDraftRef,
       spacesRef,
-      setContextMenu,
-      setEmptySelectionPrompt,
+      ui,
       setSelectionDraftUi,
       workspaceId,
     ],

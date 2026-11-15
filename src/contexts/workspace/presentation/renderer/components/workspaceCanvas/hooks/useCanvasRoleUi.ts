@@ -37,10 +37,7 @@ export function useWorkspaceCanvasRoleUi({
   workspacePath: string
   environmentVariables?: Record<string, string>
   agentSettings: WorkspaceCanvasProps['agentSettings']
-  canvasState: Pick<
-    ReturnType<typeof useWorkspaceCanvasState>,
-    'contextMenu' | 'setContextMenu' | 'spacesRef'
-  >
+  canvasState: Pick<ReturnType<typeof useWorkspaceCanvasState>, 'spacesRef'>
   nodeStore: Pick<
     UseWorkspaceCanvasNodesStoreResult,
     | 'nodesRef'
@@ -62,8 +59,6 @@ export function useWorkspaceCanvasRoleUi({
     workspacePath,
     environmentVariables,
     agentSettings,
-    contextMenu: canvasState.contextMenu,
-    setContextMenu: canvasState.setContextMenu,
     nodesRef: nodeStore.nodesRef,
     spacesRef: canvasState.spacesRef,
     setNodes: nodeStore.setNodes,

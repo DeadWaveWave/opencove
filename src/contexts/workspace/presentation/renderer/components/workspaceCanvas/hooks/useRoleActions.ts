@@ -25,7 +25,6 @@ import {
   findContainingSpaceByAnchor,
 } from './useInteractions.spaceAssignment'
 import type {
-  ContextMenuState,
   CreateNodeInput,
   NodePlacementOptions,
   RoleCreatorState,
@@ -34,6 +33,7 @@ import type {
 import { resolveDefaultRoleWindowSize } from '../constants'
 import type { WorkspaceCanvasActionRefs } from './useActionRefs'
 import { runRoleNodeAction } from './useRoleActions.run'
+import { useCanvasUiCommands, useReadCanvasUi } from '../../../store/canvasStoreContext'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -49,8 +49,6 @@ export function useWorkspaceCanvasRoleActions({
   workspacePath,
   environmentVariables,
   agentSettings,
-  contextMenu,
-  setContextMenu,
   nodesRef,
   spacesRef,
   setNodes,
@@ -70,8 +68,6 @@ export function useWorkspaceCanvasRoleActions({
   workspacePath: string
   environmentVariables?: Record<string, string>
   agentSettings: AgentSettings
-  contextMenu: ContextMenuState | null
-  setContextMenu: (next: ContextMenuState | null) => void
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   setNodes: SetNodes
@@ -106,6 +102,9 @@ export function useWorkspaceCanvasRoleActions({
   openRoleEditor: (roleId: string) => void
   deleteProjectRole: (roleId: string) => void
 } {
+  const ui = useCanvasUiCommands()
+  const readUi = useReadCanvasUi()
+
   const { t } = useTranslation()
   const setAgentSettings = useAppStore(state => state.setAgentSettings)
   const projectRoles = useMemo(
@@ -158,6 +157,7 @@ export function useWorkspaceCanvasRoleActions({
   )
 
   const openRoleCreator = useCallback(() => {
+    const contextMenu = readUi().contextMenu
     if (!contextMenu || contextMenu.kind !== 'pane') {
       return
     }
@@ -174,8 +174,8 @@ export function useWorkspaceCanvasRoleActions({
       isCreating: false,
       error: null,
     })
-    setContextMenu(null)
-  }, [contextMenu, setContextMenu])
+    ui.closeContextMenu()
+  }, [readUi, ui])
 
   const closeRoleCreator = useCallback(() => {
     setRoleCreator(prev => (prev?.isCreating ? prev : null))
@@ -341,6 +341,7 @@ export function useWorkspaceCanvasRoleActions({
 
   const runProjectRoleFromContextMenu = useCallback(
     (roleId: string) => {
+      const contextMenu = readUi().contextMenu
       if (!contextMenu || contextMenu.kind !== 'pane') {
         return
       }
@@ -350,10 +351,10 @@ export function useWorkspaceCanvasRoleActions({
         return
       }
 
-      setContextMenu(null)
+      ui.closeContextMenu()
       createRoleNodeAtFlowPoint(resolvePaneNodeCreationAnchor(contextMenu), role)
     },
-    [contextMenu, createRoleNodeAtFlowPoint, projectRoles, setContextMenu],
+    [createRoleNodeAtFlowPoint, projectRoles, readUi, ui],
   )
 
   const openRoleEditor = useCallback(
@@ -363,7 +364,7 @@ export function useWorkspaceCanvasRoleActions({
         return
       }
 
-      setContextMenu(null)
+      ui.closeContextMenu()
       setRoleCreator({
         anchor: { x: 0, y: 0 },
         mode: 'edit',
@@ -377,12 +378,12 @@ export function useWorkspaceCanvasRoleActions({
         error: null,
       })
     },
-    [projectRoles, setContextMenu],
+    [projectRoles, ui],
   )
 
   const deleteProjectRole = useCallback(
     (roleId: string) => {
-      setContextMenu(null)
+      ui.closeContextMenu()
       setAgentSettings(prev => {
         const current = prev.projectRolesByWorkspaceId[workspaceId] ?? []
         const nextRoles = current.filter(role => role.id !== roleId)
@@ -402,7 +403,7 @@ export function useWorkspaceCanvasRoleActions({
       setRoleCreator(prev => (prev?.mode === 'edit' && prev.roleId === roleId ? null : prev))
       onRequestPersistFlush?.()
     },
-    [onRequestPersistFlush, setAgentSettings, setContextMenu, workspaceId],
+    [onRequestPersistFlush, setAgentSettings, ui, workspaceId],
   )
 
   return {

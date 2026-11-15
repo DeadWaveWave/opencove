@@ -12,7 +12,7 @@ import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolv
 import type { AgentNodeData, Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { resolveLaunchedAgentResumeBinding } from '../../../utils/agentResumeBinding'
 import { resolveNodePlacementAnchorFromViewportCenter, toErrorMessage } from '../helpers'
-import type { ContextMenuState, CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
+import type { CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
 import {
   assignNodeToSpaceAndExpand,
   findContainingSpaceByAnchor,
@@ -24,6 +24,7 @@ import {
   resolveAgentExecutableOverride,
   resolveWorkspaceAgentLaunchBinding,
 } from './useWorkspaceAgentLaunch.shared'
+import { useCanvasUiCommands, useReadCanvasUi } from '../../../store/canvasStoreContext'
 
 interface UseAgentLauncherParams {
   agentSettings: AgentSettings
@@ -39,8 +40,6 @@ interface UseAgentLauncherParams {
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
-  contextMenu: ContextMenuState | null
-  setContextMenu: (next: ContextMenuState | null) => void
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   standardWindowSizeBucket: StandardWindowSizeBucket
   buildAgentNodeTitle: (
@@ -60,8 +59,6 @@ export function useWorkspaceCanvasAgentLauncher({
   onSpacesChange,
   onRequestPersistFlush,
   onShowMessage,
-  contextMenu,
-  setContextMenu,
   createNodeForSession,
   standardWindowSizeBucket,
   buildAgentNodeTitle,
@@ -73,6 +70,8 @@ export function useWorkspaceCanvasAgentLauncher({
     provider?: AgentNodeData['provider'],
   ) => Promise<void>
 } {
+  const ui = useCanvasUiCommands()
+  const readUi = useReadCanvasUi()
   const { t } = useTranslation()
   const launching = useRef(false)
 
@@ -238,14 +237,15 @@ export function useWorkspaceCanvasAgentLauncher({
 
   const openAgentLauncherForProvider = useCallback(
     (provider: AgentNodeData['provider']) => {
+      const contextMenu = readUi().contextMenu
       if (!contextMenu || contextMenu.kind !== 'pane') {
         return
       }
       const anchor = resolvePaneNodeCreationAnchor(contextMenu)
-      setContextMenu(null)
+      ui.closeContextMenu()
       void launchAgentAtFlowPosition(anchor, provider)
     },
-    [contextMenu, launchAgentAtFlowPosition, setContextMenu],
+    [launchAgentAtFlowPosition, readUi, ui],
   )
 
   const openAgentLauncher = useCallback(() => {

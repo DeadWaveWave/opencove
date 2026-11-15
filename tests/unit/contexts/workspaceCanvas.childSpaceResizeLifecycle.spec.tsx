@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { act, fireEvent, renderHook } from '@testing-library/react'
 import { ReactFlowProvider, useReactFlow, type Node } from '@xyflow/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -6,6 +6,7 @@ import { useWorkspaceCanvasSpaceDrag } from '@contexts/workspace/presentation/re
 import { useCanvasCollapseStore } from '@contexts/workspace/presentation/renderer/store/useCanvasCollapseStore'
 import type { TerminalNodeData } from '@contexts/workspace/presentation/renderer/types'
 import { createNode, createSpace } from './workspaceNodeProjection.testUtils'
+import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -61,13 +62,17 @@ function renderNestedResize() {
         magneticSnappingEnabledRef: { current: false },
         setSnapGuides,
         onRequestPersistFlush: persist,
-        setContextMenu: () => {},
         cancelSpaceRename: () => {},
-        setEmptySelectionPrompt: () => {},
       })
       return { ...drag, spaces: spacesRef.current, nodes: nodesRef.current }
     },
-    { wrapper: ReactFlowProvider },
+    {
+      wrapper: ({ children }) => (
+        <CanvasStoreTestProvider>
+          <ReactFlowProvider>{children}</ReactFlowProvider>
+        </CanvasStoreTestProvider>
+      ),
+    },
   )
   return { ...hook, persist }
 }

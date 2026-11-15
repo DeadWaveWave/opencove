@@ -4,11 +4,8 @@ import type { Node } from '@xyflow/react'
 import { createChildSpace } from '@contexts/space/application/createChildSpace'
 import { resolveInnermostSpaceAtPoint } from '@contexts/space/application/spaceContainment'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
-import type {
-  ContextMenuState,
-  EmptySelectionPromptState,
-  ShowWorkspaceCanvasMessage,
-} from '../types'
+import type { ShowWorkspaceCanvasMessage } from '../types'
+import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -49,8 +46,6 @@ export function useWorkspaceCanvasCreateChildSpace({
   spacesRef,
   onSpacesChange,
   onRequestPersistFlush,
-  setContextMenu,
-  setEmptySelectionPrompt,
   cancelSpaceRename,
   onShowMessage,
 }: {
@@ -60,8 +55,6 @@ export function useWorkspaceCanvasCreateChildSpace({
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
-  setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
-  setEmptySelectionPrompt: React.Dispatch<React.SetStateAction<EmptySelectionPromptState | null>>
   cancelSpaceRename: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
 }): {
@@ -70,6 +63,8 @@ export function useWorkspaceCanvasCreateChildSpace({
     options?: { anchor?: { x: number; y: number } | null; nodeIds?: string[] },
   ) => string | null
 } {
+  const ui = useCanvasUiCommands()
+
   const { t } = useTranslation()
 
   const applyChildSpaceCreation = useCallback(
@@ -169,8 +164,7 @@ export function useWorkspaceCanvasCreateChildSpace({
       }
 
       onRequestPersistFlush?.()
-      setContextMenu(null)
-      setEmptySelectionPrompt(null)
+      ui.closeContextMenu()
       cancelSpaceRename()
       return result.childSpace.id
     },
@@ -180,8 +174,7 @@ export function useWorkspaceCanvasCreateChildSpace({
       onRequestPersistFlush,
       onShowMessage,
       onSpacesChange,
-      setContextMenu,
-      setEmptySelectionPrompt,
+      ui,
       setNodes,
       spacesRef,
       t,

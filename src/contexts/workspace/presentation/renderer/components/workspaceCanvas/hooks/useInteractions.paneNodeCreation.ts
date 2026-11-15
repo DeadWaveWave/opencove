@@ -34,6 +34,7 @@ import {
 import { translate } from '@app/renderer/i18n'
 import { createWebsiteNodeData } from '../../../utils/websiteNodeData'
 import { nodeWorkerBindingForMount } from '@shared/types/nodeWorkerBinding'
+import type { CanvasUiCommands } from '../../../store/canvasStore.ui'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -381,12 +382,12 @@ export function createWebsiteNodeAtFlowPosition({
 
 type PaneCreationOptions<T> = Omit<T, 'anchor'> & {
   contextMenu: ContextMenuState | null
-  setContextMenu: (next: ContextMenuState | null) => void
+  ui: CanvasUiCommands
 }
 
 export async function createTerminalNodeFromPaneContextMenu({
   contextMenu,
-  setContextMenu,
+  ui,
   workspaceId = '',
   ...options
 }: PaneCreationOptions<
@@ -397,7 +398,7 @@ export async function createTerminalNodeFromPaneContextMenu({
   if (!contextMenu || contextMenu.kind !== 'pane') {
     return
   }
-  setContextMenu(null)
+  ui.closeContextMenu()
   await createTerminalNodeAtFlowPosition({
     ...options,
     workspaceId,
@@ -407,13 +408,13 @@ export async function createTerminalNodeFromPaneContextMenu({
 
 export function createWebsiteNodeFromPaneContextMenu({
   contextMenu,
-  setContextMenu,
+  ui,
   ...options
 }: PaneCreationOptions<Parameters<typeof createWebsiteNodeAtFlowPosition>[0]>): void {
   if (!contextMenu || contextMenu.kind !== 'pane') {
     return
   }
-  setContextMenu(null)
+  ui.closeContextMenu()
   createWebsiteNodeAtFlowPosition({
     ...options,
     anchor: resolvePaneNodeCreationAnchor(contextMenu),
@@ -422,12 +423,12 @@ export function createWebsiteNodeFromPaneContextMenu({
 
 export function createNoteNodeFromPaneContextMenu({
   contextMenu,
-  setContextMenu,
+  ui,
   ...options
 }: PaneCreationOptions<Parameters<typeof createNoteNodeAtFlowPosition>[0]>): void {
   if (!contextMenu || contextMenu.kind !== 'pane') {
     return
   }
-  setContextMenu(null)
+  ui.closeContextMenu()
   createNoteNodeAtFlowPosition({ ...options, anchor: resolvePaneNodeCreationAnchor(contextMenu) })
 }

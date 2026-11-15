@@ -1,24 +1,24 @@
 import { useCallback } from 'react'
-import type { ContextMenuState } from '../types'
+import { useCanvasUiCommands, useReadCanvasUi } from '../../../store/canvasStoreContext'
 
 export function useWorkspaceCanvasPluginEntry({
-  contextMenu,
-  setContextMenu,
   createPluginNode,
 }: {
-  contextMenu: ContextMenuState | null
-  setContextMenu: (next: ContextMenuState | null) => void
   createPluginNode: (point: { x: number; y: number }, pluginId: string) => void
 }): (pluginId: string) => void {
+  const ui = useCanvasUiCommands()
+  const readUi = useReadCanvasUi()
+
   return useCallback(
     (pluginId: string) => {
+      const contextMenu = readUi().contextMenu
       if (!contextMenu || contextMenu.kind !== 'pane') {
         return
       }
 
-      setContextMenu(null)
+      ui.closeContextMenu()
       createPluginNode({ x: contextMenu.flowX, y: contextMenu.flowY }, pluginId)
     },
-    [contextMenu, createPluginNode, setContextMenu],
+    [createPluginNode, readUi, ui],
   )
 }

@@ -6,13 +6,11 @@ import {
   createWebsiteNodeAtFlowPosition,
 } from './useInteractions.paneNodeCreation'
 import type { UseWorkspaceCanvasInteractionsParams } from './useInteractions.types'
+import { useCanvasUiCommands, useReadCanvasUi } from '../../../store/canvasStoreContext'
 
 type FlowNodeCreationParams = Pick<
   UseWorkspaceCanvasInteractionsParams,
   | 'workspaceId'
-  | 'contextMenu'
-  | 'setContextMenu'
-  | 'setEmptySelectionPrompt'
   | 'cancelSpaceRename'
   | 'standardWindowSizeBucket'
   | 'createNoteNode'
@@ -27,9 +25,6 @@ type FlowNodeCreationParams = Pick<
 
 export function useWorkspaceCanvasFlowNodeCreation({
   workspaceId,
-  contextMenu,
-  setContextMenu,
-  setEmptySelectionPrompt,
   cancelSpaceRename,
   standardWindowSizeBucket,
   createNoteNode,
@@ -41,10 +36,12 @@ export function useWorkspaceCanvasFlowNodeCreation({
   setNodes,
   onSpacesChange,
 }: FlowNodeCreationParams) {
+  const ui = useCanvasUiCommands()
+  const readUi = useReadCanvasUi()
+
   const createNoteNodeAtFlowPoint = useCallback(
     (anchor: Point): void => {
-      setContextMenu(null)
-      setEmptySelectionPrompt(null)
+      ui.closeContextMenu()
       cancelSpaceRename()
       createNoteNodeAtFlowPosition({
         workspaceId,
@@ -62,8 +59,7 @@ export function useWorkspaceCanvasFlowNodeCreation({
       createNoteNode,
       nodesRef,
       onSpacesChange,
-      setContextMenu,
-      setEmptySelectionPrompt,
+      ui,
       setNodes,
       spacesRef,
       standardWindowSizeBucket,
@@ -76,8 +72,7 @@ export function useWorkspaceCanvasFlowNodeCreation({
         return
       }
 
-      setContextMenu(null)
-      setEmptySelectionPrompt(null)
+      ui.closeContextMenu()
       cancelSpaceRename()
       createWebsiteNodeAtFlowPosition({
         workspaceId,
@@ -98,8 +93,7 @@ export function useWorkspaceCanvasFlowNodeCreation({
       createWebsiteNode,
       nodesRef,
       onSpacesChange,
-      setContextMenu,
-      setEmptySelectionPrompt,
+      ui,
       setNodes,
       spacesRef,
       standardWindowSizeBucket,
@@ -110,22 +104,22 @@ export function useWorkspaceCanvasFlowNodeCreation({
   const createNoteNodeFromContextMenu = useCallback(() => {
     createNoteNodeFromPaneContextMenu({
       workspaceId,
-      contextMenu,
+      contextMenu: readUi().contextMenu,
+      ui,
       createNoteNode,
       standardWindowSizeBucket,
       spacesRef,
       nodesRef,
       setNodes,
       onSpacesChange,
-      setContextMenu,
     })
   }, [
     workspaceId,
-    contextMenu,
     createNoteNode,
     nodesRef,
     onSpacesChange,
-    setContextMenu,
+    readUi,
+    ui,
     setNodes,
     spacesRef,
     standardWindowSizeBucket,

@@ -1,6 +1,6 @@
 import type * as React from 'react'
 import type { Edge, Node, NodeTypes, OnNodesChange, Viewport } from '@xyflow/react'
-import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/contracts/dto'
+import type { WorkspacePathOpenerId } from '@shared/contracts/dto'
 import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
 import type {
   ProjectRoleDefinition,
@@ -17,10 +17,8 @@ import type { WorkspaceArrangeStyle } from '../../utils/workspaceArrange'
 import type { WorkspaceSnapGuide } from '../../utils/workspaceSnap'
 import type { SpaceExplorerOpenDocumentBlock } from './hooks/useSpaceExplorer.guards'
 import type {
-  ContextMenuState,
   NodeDeleteConfirmationState,
   SelectionDraftState,
-  SpaceActionMenuState,
   SpaceVisual,
   SpaceWorktreeMismatchDropWarningState,
   SpaceTargetMountPickerState,
@@ -134,14 +132,11 @@ export interface WorkspaceCanvasViewProps {
   selectedNodeCount: number
   isMinimapVisible: boolean
   minimapNodeColor: (node: Node<TerminalNodeData>) => string
-  setIsMinimapVisible: React.Dispatch<React.SetStateAction<boolean>>
   onMinimapVisibilityChange: (isVisible: boolean) => void
   spaces: WorkspaceSpaceState[]
   activateSpace: (spaceId: string) => void
   activateAllSpaces: () => void
   onOpenSpaceContextMenu?: (spaceId: string, anchor: { x: number; y: number }) => void
-  contextMenu: ContextMenuState | null
-  closeContextMenu: () => void
   magneticSnappingEnabled: boolean
   onToggleMagneticSnapping: () => void
   createTerminalNode: () => Promise<void>
@@ -206,10 +201,7 @@ export interface WorkspaceCanvasViewProps {
   agentSettings: WorkspaceCanvasProps['agentSettings']
   onChangePreserveWindowSizesOnArrange: WorkspaceCanvasProps['onChangePreserveWindowSizesOnArrange']
   workspacePath: string
-  spaceActionMenu: SpaceActionMenuState | null
-  availablePathOpeners: WorkspacePathOpener[]
   openSpaceActionMenu: (spaceId: string, anchor: { x: number; y: number }) => void
-  closeSpaceActionMenu: () => void
   copySpacePath: (spaceId: string) => Promise<void> | void
   openSpacePath: (spaceId: string, openerId: WorkspacePathOpenerId) => Promise<void> | void
   spaceWorktreeOperations: SpaceWorktreeOperationState[]

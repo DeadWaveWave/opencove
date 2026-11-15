@@ -2,7 +2,7 @@ import {
   WorkspaceCanvasNodeTypesProvider,
   type WorkspaceCanvasNodeTypesParams,
 } from './nodeTypes.context'
-import type { ReactNode, ComponentProps } from 'react'
+import type { ReactNode } from 'react'
 import { useReactFlow, type Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../types'
 import { WorkspaceCollapseContext } from './collapse/WorkspaceCollapseContext'
@@ -17,8 +17,6 @@ export function WorkspaceCanvasProviders({
   collapse,
   nodeTypesParameters,
   children,
-  setContextMenu,
-  closeOtherMenus,
   openSpaceExplorer,
   openExplorerSpaceId,
   ...filesystemParams
@@ -28,7 +26,7 @@ export function WorkspaceCanvasProviders({
   children: ReactNode
   openSpaceExplorer: (spaceId: string) => void
   openExplorerSpaceId: string | null
-} & Omit<ComponentProps<typeof WindowNodeContextMenuProvider>, 'children'>) {
+}) {
   const filesystem = useFilesystemNodes(filesystemParams)
   const reactFlow = useReactFlow<Node<TerminalNodeData>>()
   const documentNavigation = useWorkspaceDocumentNavigation({
@@ -43,10 +41,7 @@ export function WorkspaceCanvasProviders({
   })
   return (
     <WorkspaceCanvasNodeTypesProvider value={nodeTypesParameters}>
-      <WindowNodeContextMenuProvider
-        setContextMenu={setContextMenu}
-        closeOtherMenus={closeOtherMenus}
-      >
+      <WindowNodeContextMenuProvider>
         <WorkspaceCollapseContext value={collapse}>
           <FilesystemNodesContext value={filesystem.actions}>
             <div

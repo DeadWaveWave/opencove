@@ -1,6 +1,7 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
+import { renderHookWithCanvasStore } from '../../support/canvasStoreTestHarness'
 import { useWorkspaceCanvasAgentLauncher } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentLauncher'
 import {
   launchWorkspaceAgentSession,
@@ -50,8 +51,6 @@ function fixture(): LauncherParams {
     onSpacesChange: vi.fn(),
     onRequestPersistFlush: vi.fn(),
     onShowMessage: vi.fn(),
-    contextMenu: null,
-    setContextMenu: vi.fn(),
     createNodeForSession: vi.fn(async input => ({
       id: 'new-agent',
       position: input.anchor,
@@ -118,7 +117,7 @@ describe('shared Agent launcher entrypoints', () => {
       executionDirectory: '/repo',
       managedClaudeLifecycle: receipt,
     })
-    const { result } = renderHook(() => useWorkspaceCanvasAgentLauncher(params))
+    const { result } = renderHookWithCanvasStore(() => useWorkspaceCanvasAgentLauncher(params))
     await act(() => result.current.launchAgentAtFlowPosition({ x: 400, y: 300 }))
     expect(params.createNodeForSession).toHaveBeenCalledWith(
       expect.objectContaining({ managedClaudeLifecycle: receipt }),
@@ -127,7 +126,7 @@ describe('shared Agent launcher entrypoints', () => {
 
   it('uses the same default provider, mount, directory and node placement without a context menu', async () => {
     const params = fixture()
-    const { result } = renderHook(() => useWorkspaceCanvasAgentLauncher(params))
+    const { result } = renderHookWithCanvasStore(() => useWorkspaceCanvasAgentLauncher(params))
     await act(() => result.current.launchAgentAtFlowPosition({ x: 400, y: 300 }))
     expect(resolveWorkspaceAgentLaunchBinding).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -166,7 +165,6 @@ describe('shared Agent launcher entrypoints', () => {
 
   it('prevents concurrent menu and keyboard launches while mount resolution is pending', async () => {
     const params = fixture()
-    params.contextMenu = { kind: 'pane', x: 20, y: 20, flowX: 400, flowY: 300 }
     let resolveMount!: (
       value: Awaited<ReturnType<typeof resolveWorkspaceAgentLaunchBinding>>,
     ) => void
@@ -176,7 +174,11 @@ describe('shared Agent launcher entrypoints', () => {
           resolveMount = resolve
         }),
     )
-    const { result } = renderHook(() => useWorkspaceCanvasAgentLauncher(params))
+    const paneMenu = { kind: 'pane', x: 20, y: 20, flowX: 400, flowY: 300 } as const
+    const { result, readUi, commands } = renderHookWithCanvasStore(
+      () => useWorkspaceCanvasAgentLauncher(params),
+      { contextMenu: paneMenu },
+    )
     let pending!: Promise<void>
     act(() => {
       pending = result.current.launchAgentAtFlowPosition({ x: 400, y: 300 })
@@ -190,6 +192,8 @@ describe('shared Agent launcher entrypoints', () => {
     })
     expect(launchWorkspaceAgentSession).toHaveBeenCalledTimes(1)
     expect(params.createNodeForSession).toHaveBeenCalledTimes(1)
+    // The first launch closed the pane menu, so the explicit retry opens it again.
+    act(() => commands.openContextMenu(paneMenu))
     act(() => result.current.openAgentLauncherForProvider('claude-code'))
     await waitFor(() => expect(params.createNodeForSession).toHaveBeenCalledTimes(2))
     expect(launchWorkspaceAgentSession).toHaveBeenLastCalledWith(
@@ -197,13 +201,13 @@ describe('shared Agent launcher entrypoints', () => {
         provider: 'claude-code',
       }),
     )
-    expect(params.setContextMenu).toHaveBeenCalledWith(null)
+    expect(readUi().contextMenu).toBeNull()
   })
 
   it('releases the launch guard after a failure so an explicit retry can run', async () => {
     const params = fixture()
     vi.mocked(resolveWorkspaceAgentLaunchBinding).mockRejectedValueOnce(new Error('Offline'))
-    const { result } = renderHook(() => useWorkspaceCanvasAgentLauncher(params))
+    const { result } = renderHookWithCanvasStore(() => useWorkspaceCanvasAgentLauncher(params))
     await act(() => result.current.launchAgentAtFlowPosition({ x: 400, y: 300 }))
     expect(params.onShowMessage).toHaveBeenCalledWith(expect.stringContaining('Offline'), 'error')
     expect(launchWorkspaceAgentSession).not.toHaveBeenCalled()
@@ -225,7 +229,7 @@ describe('shared Agent launcher entrypoints', () => {
         executionDirectory: '/repo/worktree',
         workerBinding: { endpointId: 'local', mountId: 'mount-a' },
       })
-      const { result } = renderHook(() => useWorkspaceCanvasAgentLauncher(params))
+      const { result } = renderHookWithCanvasStore(() => useWorkspaceCanvasAgentLauncher(params))
       await act(() => result.current.launchAgentAtFlowPosition({ x: 400, y: 300 }, provider))
       expect(params.createNodeForSession).toHaveBeenCalledWith(
         expect.objectContaining({

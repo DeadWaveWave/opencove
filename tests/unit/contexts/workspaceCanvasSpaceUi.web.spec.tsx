@@ -2,12 +2,12 @@ import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useWorkspaceCanvasSpaceUi } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceUi'
+import { useSpacePathOpeners } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/useSpacePathOpeners'
+import { useCanvasUi } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
+import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 
 function HookHost(): React.JSX.Element {
-  const [contextMenu, setContextMenu] = React.useState(null)
-  const [, setEmptySelectionPrompt] = React.useState(null)
-
   const spacesRef = React.useRef<WorkspaceSpaceState[]>([
     {
       id: 'space-1',
@@ -20,10 +20,10 @@ function HookHost(): React.JSX.Element {
     },
   ])
 
+  const spaceActionMenu = useCanvasUi(state => state.spaceActionMenu)
+  const openers = useSpacePathOpeners(spaceActionMenu)
+
   const ui = useWorkspaceCanvasSpaceUi({
-    contextMenu,
-    setContextMenu,
-    setEmptySelectionPrompt,
     cancelSpaceRename: () => undefined,
     workspacePath: '/tmp/opencove-workspace',
     spacesRef,
@@ -35,7 +35,7 @@ function HookHost(): React.JSX.Element {
 
   return (
     <div>
-      <span data-testid="openers-count">{ui.availablePathOpeners.length}</span>
+      <span data-testid="openers-count">{openers.length}</span>
       <output data-testid="worktree-operations">
         {JSON.stringify(ui.spaceWorktreeOperations)}
       </output>
@@ -104,7 +104,11 @@ describe('useWorkspaceCanvasSpaceUi (web UI differences)', () => {
       value: { writeText },
     })
 
-    render(<HookHost />)
+    render(
+      <CanvasStoreTestProvider>
+        <HookHost />
+      </CanvasStoreTestProvider>,
+    )
     fireEvent.click(screen.getByTestId('copy-space-path'))
 
     await waitFor(() => {
@@ -130,7 +134,11 @@ describe('useWorkspaceCanvasSpaceUi (web UI differences)', () => {
       value: { writeText },
     })
 
-    render(<HookHost />)
+    render(
+      <CanvasStoreTestProvider>
+        <HookHost />
+      </CanvasStoreTestProvider>,
+    )
     fireEvent.click(screen.getByTestId('copy-space-path'))
 
     await waitFor(() => {
@@ -141,7 +149,11 @@ describe('useWorkspaceCanvasSpaceUi (web UI differences)', () => {
   })
 
   it('keeps the path openers empty when listPathOpeners is unavailable (web)', async () => {
-    render(<HookHost />)
+    render(
+      <CanvasStoreTestProvider>
+        <HookHost />
+      </CanvasStoreTestProvider>,
+    )
 
     fireEvent.click(screen.getByTestId('open-space-menu'))
 
@@ -167,7 +179,11 @@ describe('useWorkspaceCanvasSpaceUi (web UI differences)', () => {
       },
     })
 
-    render(<HookHost />)
+    render(
+      <CanvasStoreTestProvider>
+        <HookHost />
+      </CanvasStoreTestProvider>,
+    )
     fireEvent.click(screen.getByTestId('open-space-menu'))
 
     await waitFor(() => {
@@ -178,7 +194,11 @@ describe('useWorkspaceCanvasSpaceUi (web UI differences)', () => {
   })
 
   it('keeps a submitted operation while opening another anchored draft', () => {
-    render(<HookHost />)
+    render(
+      <CanvasStoreTestProvider>
+        <HookHost />
+      </CanvasStoreTestProvider>,
+    )
 
     fireEvent.click(screen.getByTestId('open-create-worktree'))
     expect(screen.getByTestId('worktree-operations')).toHaveTextContent('"anchor":{"x":320,"y":88}')

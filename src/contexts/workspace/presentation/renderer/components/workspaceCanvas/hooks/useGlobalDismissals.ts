@@ -1,45 +1,14 @@
 import { useEffect, type RefObject } from 'react'
-import type { ContextMenuState, SpaceActionMenuState } from '../types'
 
 export function useWorkspaceCanvasGlobalDismissals({
-  contextMenu,
-  spaceActionMenu,
-  closeContextMenu,
   canvasRef,
   selectedNodeCount,
   clearNodeSelection,
 }: {
-  contextMenu: ContextMenuState | null
-  spaceActionMenu: SpaceActionMenuState | null
-  closeContextMenu: () => void
   canvasRef: RefObject<HTMLDivElement | null>
   selectedNodeCount: number
   clearNodeSelection: () => void
 }): void {
-  useEffect(() => {
-    if (contextMenu === null && spaceActionMenu === null) {
-      return
-    }
-
-    const handleWindowPointerDown = (event: PointerEvent) => {
-      if (event.button !== 0 || !(event.target instanceof Element)) {
-        return
-      }
-
-      if (event.target.closest('.workspace-context-menu')) {
-        return
-      }
-
-      closeContextMenu()
-    }
-
-    window.addEventListener('pointerdown', handleWindowPointerDown, true)
-
-    return () => {
-      window.removeEventListener('pointerdown', handleWindowPointerDown, true)
-    }
-  }, [closeContextMenu, contextMenu, spaceActionMenu])
-
   useEffect(() => {
     if (selectedNodeCount === 0) {
       return
