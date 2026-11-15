@@ -168,6 +168,29 @@ describe('useWorkspaceCanvasSpaces reads and writes the committed document', () 
     expect(harness.flush).toHaveBeenCalledTimes(1)
   })
 
+  it('finds a child Space in the call that created it', () => {
+    const terminals = createRowNodes(['t1']).map(node => ({
+      ...node,
+      data: { ...node.data, kind: 'terminal' as const, sessionId: 'session-t1' },
+      position: { x: 40, y: 40 },
+    }))
+    const harness = createCanvasDocumentHarness({
+      nodes: terminals,
+      spaces: [space('parent', ['t1'])],
+    })
+    const view = renderSpaces(harness)
+    let focused = false
+
+    act(() => {
+      const childId = view.result.current.spacesApi.createChildSpaceInParent('parent', {
+        nodeIds: ['t1'],
+      })
+      focused = view.result.current.spacesApi.focusSpaceInViewport(childId as string)
+    })
+
+    expect(focused).toBe(true)
+  })
+
   it('flushes for a label colour and not for a rename', () => {
     const harness = createCanvasDocumentHarness({ spaces: [space('space-a')] })
     const view = renderSpaces(harness)
@@ -240,6 +263,11 @@ describe('useWorkspaceCanvasSpaces reads and writes the committed document', () 
     const [, late, empty] = rects as NonNullable<(typeof rects)[number]>[]
     expect(overlaps(late, empty)).toBe(false)
     expect(harness.flush).toHaveBeenCalledTimes(1)
+    // The new Space is focused in the next frame, by a read of the committed Spaces.
+    await act(async () => {
+      await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)))
+    })
+    expect(view.reactFlow.setViewport).toHaveBeenCalledTimes(1)
   })
 
   it('fills the rect of a Space without one from the nodes it owns, in one store update', () => {

@@ -1,5 +1,11 @@
 import type { Node } from '@xyflow/react'
+import { act } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import {
+  createCanvasDocumentHarness,
+  renderCanvasNodeStore,
+} from '../../support/canvasDocumentHarness'
 import { assignNodeToSpaceAndExpand } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.spaceAssignment'
 import type {
   TerminalNodeData,
@@ -61,5 +67,46 @@ describe('assignNodeToSpaceAndExpand', () => {
         rect: { x: -164, y: -64, width: 848, height: 608 },
       }),
     ])
+  })
+
+  // Batch creation: the second assignment reads the Spaces the first one wrote in the same call.
+  it('reads the Spaces of the previous assignment when two nodes are assigned in one call', () => {
+    const space: WorkspaceSpaceState = {
+      id: 'tiny-space',
+      name: 'Tiny Space',
+      directoryPath: '/workspace',
+      targetMountId: null,
+      labelColor: null,
+      nodeIds: ['seed-note'],
+      rect: { x: 200, y: 200, width: 480, height: 320 },
+    }
+    const seedNote = createNode('seed-note', { x: 240, y: 240 }, { width: 420, height: 280 })
+    const first = createNode('first', { x: -140, y: -40 }, { width: 720, height: 520 })
+    const second = createNode('second', { x: 900, y: 100 }, { width: 300, height: 200 })
+    const harness = createCanvasDocumentHarness({
+      nodes: [seedNote, first, second],
+      spaces: [space],
+    })
+    const view = renderCanvasNodeStore(harness)
+
+    act(() => {
+      for (const created of [first, second]) {
+        assignNodeToSpaceAndExpand({
+          workspaceId: harness.workspaceId,
+          createdNodeId: created.id,
+          createdNode: created,
+          targetSpaceId: space.id,
+          spacesRef: view.result.current.canvasState.spacesRef,
+          nodesRef: view.result.current.nodeStore.nodesRef,
+          setNodes: view.result.current.nodeStore.setNodes,
+          onSpacesChange: spaces => replaceWorkspaceSpaces(harness.workspaceId, spaces),
+        })
+      }
+    })
+
+    const [stored] = harness.readStoreDocument().spaces
+    expect(stored.nodeIds).toEqual(['seed-note', 'first', 'second'])
+    expect(stored.rect!.x + stored.rect!.width).toBeGreaterThanOrEqual(1200)
+    expect(stored.rect!.x).toBeLessThanOrEqual(-140)
   })
 })

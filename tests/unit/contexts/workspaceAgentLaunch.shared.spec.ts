@@ -408,6 +408,11 @@ describe('workspaceAgentLaunch.shared', () => {
       ['space-late', null],
     ])
     expect(workspaceB).toBe(workspaceBBefore)
+    // The launch continues after the binding and reads the Spaces again: it sees the binding.
+    expect(spacesRefOfA.current.map(item => [item.id, item.targetMountId])).toEqual([
+      ['space-a', 'mount-api'],
+      ['space-late', null],
+    ])
   })
 })
 

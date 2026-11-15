@@ -1,5 +1,5 @@
 import { act } from '@testing-library/react'
-import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
+import { getViewportForBounds, type Edge, type Node, type ReactFlowInstance } from '@xyflow/react'
 import { describe, expect, it, vi } from 'vitest'
 import {
   resolveArrangeWrapWidth,
@@ -94,5 +94,30 @@ describe('workspace canvas arrange hook', () => {
       width: 400,
       height: 300,
     })
+  })
+
+  // `arrangeInSpace` focuses the Space in the next frame, by a read of the Spaces it just stored.
+  it('focuses the arranged Space from the stored rect in the next frame', async () => {
+    const nodes = createRowNodes(['a', 'b', 'c']).map((node, index) => ({
+      ...node,
+      position: { x: index * 37, y: index * 11 },
+    }))
+    const harness = createCanvasDocumentHarness({
+      nodes,
+      spaces: [createSpace('room', { x: -50, y: -50, width: 2400, height: 1600 }, ['a', 'b', 'c'])],
+    })
+    const view = renderCanvasNodeStore(harness, { extend: useArrangeUnderTest })
+    vi.mocked(reactFlow.setViewport).mockClear()
+
+    act(() => view.result.current.arrange.arrangeInSpace('room'))
+    await act(async () => {
+      await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)))
+    })
+
+    const stored = harness.readStoreDocument().spaces[0].rect!
+    expect(stored.width).toBeLessThan(2400)
+    expect(reactFlow.setViewport).toHaveBeenCalledTimes(1)
+    const [viewport] = vi.mocked(reactFlow.setViewport).mock.calls[0]
+    expect(viewport).toEqual(getViewportForBounds(stored, 1440, 900, 0.5, 1, 0.16))
   })
 })
