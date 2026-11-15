@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react'
+import React, { useLayoutEffect, useRef, type ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { ReactFlowProvider } from '@xyflow/react'
 import { describe, expect, it, vi } from 'vitest'
@@ -8,7 +8,16 @@ import { useWorkspaceCanvasApplyNodeChanges } from '@contexts/workspace/presenta
 import type { WorkspaceCanvasNodeDragSession } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession'
 import { projectCollapsedNodes } from '@contexts/workspace/presentation/renderer/utils/canvasCollapse'
 import type { WorkspaceSpaceState } from '@contexts/workspace/presentation/renderer/types'
+import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 import { pixelNode } from './workspacePixelLayer.fixtures'
+
+function SelectionOwnerWrapper({ children }: { children: ReactNode }) {
+  return (
+    <CanvasStoreTestProvider>
+      <ReactFlowProvider>{children}</ReactFlowProvider>
+    </CanvasStoreTestProvider>
+  )
+}
 
 function renderSelectionOwner() {
   const initialNodes = ['peer', 'compact'].map(id => ({
@@ -64,14 +73,12 @@ function renderSelectionOwner() {
       const select = useWorkspaceCanvasSelectNode({
         setNodes: canvas.setCanvasNodes,
         setSelectedNodeIds: canvas.setSelectedNodeIds,
-        setSelectedSpaceIds: canvas.setSelectedSpaceIds,
         selectedNodeIdsRef: canvas.selectedNodeIdsRef,
-        selectedSpaceIdsRef: canvas.selectedSpaceIdsRef,
         spacesRef: canvas.spacesRef,
       })
       return { canvas, apply, select }
     },
-    { wrapper: ReactFlowProvider },
+    { wrapper: SelectionOwnerWrapper },
   )
   return { ...hook, order }
 }
