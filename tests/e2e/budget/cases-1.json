@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "count": 168,
+  "count": 169,
   "entries": {
     "tests/e2e/agent-hook-relay.spec.ts › codex executes Electron hooks through the real launch path and retains keyboard input": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/agent.prompt.real-codex.daemon.spec.ts › Codex orchestration beside a shared app-server daemon › default hooks complete prompts while the daemon stays healthy; delete reaps the agent tree": "Desktop: pre-restructure inventory; existing assertions retained",
@@ -115,6 +115,7 @@
     "tests/e2e/workspace-canvas.selection.spaces.drag-mixed.spec.ts › Workspace Canvas - Selection (Spaces) › does not drag out-of-scope nodes after crossing a space boundary": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/workspace-canvas.selection.spaces.drag-mixed.spec.ts › Workspace Canvas - Selection (Spaces) › drags a selected space together with selected outside windows": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/workspace-canvas.selection.spaces.drag-selected.spec.ts › Workspace Canvas - Selection (Spaces) › resizes selected space from edge hitbox": "Desktop: pre-restructure inventory; existing assertions retained",
+    "tests/e2e/workspace-canvas.selection.spaces.marquee-outside.spec.ts › Workspace Canvas - Selection (Spaces) › keeps a selected space selected when a shift marquee from outside touches a second space": "Desktop: a blank pane click clears a selected Space in mouse mode, and a Shift marquee from outside keeps the already selected Space",
     "tests/e2e/workspace-canvas.selection.spec.ts › Workspace Canvas - Selection › does not select nodes on plain drag in mouse mode": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/workspace-canvas.selection.terminal-interactions.spec.ts › Workspace Canvas - Selection › drags a selected terminal from the header after body selection": "Desktop: pre-restructure inventory; existing assertions retained",
     "tests/e2e/workspace-canvas.selection.terminal-interactions.spec.ts › Workspace Canvas - Selection › keeps header drag after shift marquee selects a single terminal": "Desktop: pre-restructure inventory; existing assertions retained",
