@@ -10,9 +10,12 @@ import type { WorkspaceSnapGuide } from '../../../utils/workspaceSnap'
 import type { CanvasWheelGestureSessionState, SelectionDraftState } from '../types'
 import { selectDragSurfaceSelectionMode } from '../../terminalNode/reactFlowState'
 import {
+  useCanvasSelection,
   useCanvasSelectionCommands,
   useReadCanvasSelection,
 } from '../../../store/canvasStoreContext'
+
+const EMPTY_ID_SET: ReadonlySet<string> = new Set()
 
 type SelectionDraftUiState = Pick<
   SelectionDraftState,
@@ -67,9 +70,8 @@ export function useWorkspaceCanvasState({
   spaces: WorkspaceSpaceState[]
   viewport: Viewport
 }): {
-  selectedNodeIds: string[]
-  setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
-  syncSelectedNodeIds: (nodeIds: string[]) => void
+  selectedNodeIds: readonly string[]
+  syncSelectedNodeIds: (nodeIds: readonly string[]) => void
   detectedCanvasInputMode: DetectedCanvasInputMode
   setDetectedCanvasInputMode: React.Dispatch<React.SetStateAction<DetectedCanvasInputMode>>
   isShiftPressed: boolean
@@ -82,7 +84,6 @@ export function useWorkspaceCanvasState({
   canvasRef: React.RefObject<HTMLDivElement | null>
   restoredViewportWorkspaceIdRef: React.MutableRefObject<string | null>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  selectedNodeIdsRef: React.MutableRefObject<string[]>
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
   selectionDraftUi: SelectionDraftUiState | null
   setSelectionDraftUi: React.Dispatch<React.SetStateAction<SelectionDraftUiState | null>>
@@ -99,9 +100,9 @@ export function useWorkspaceCanvasState({
 } {
   const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
   const readSelection = useReadCanvasSelection()
-  const selection = useCanvasSelectionCommands()
+  const selectionCommands = useCanvasSelectionCommands()
   const [canvasNodes, setCanvasNodes] = useState(nodes)
-  const [selectedNodeIds, setSelectedNodeIdsState] = useState<string[]>([])
+  const selectedNodeIds = useCanvasSelection(selection => selection.nodeIds)
   const [selectionDraftUi, setSelectionDraftUi] = useState<SelectionDraftUiState | null>(null)
   const [detectedCanvasInputMode, setDetectedCanvasInputMode] =
     useState<DetectedCanvasInputMode>('mouse')
@@ -115,7 +116,6 @@ export function useWorkspaceCanvasState({
   const hasTransientNodePositionsRef = useRef(false)
   const restoredViewportWorkspaceIdRef = useRef<string | null>(null)
   const spacesRef = useRef(spaces)
-  const selectedNodeIdsRef = useRef<string[]>([])
   const selectionDraftRef = useRef<SelectionDraftState | null>(null)
   const inputModalityStateRef = useRef(createCanvasInputModalityState('mouse'))
   const isShiftPressedRef = useRef(false)
@@ -124,26 +124,17 @@ export function useWorkspaceCanvasState({
   const viewportRef = useRef<Viewport>(viewport)
   const spaceNavigationAnchorIdRef = useRef<string | null>(null)
 
-  // Selection owns the window projection's identity. Native activation may select the
-  // active window again; equal IDs must not republish every node through collapse context.
-  const setSelectedNodeIds = useCallback((update: React.SetStateAction<string[]>) => {
-    setSelectedNodeIdsState(current => {
-      const next = typeof update === 'function' ? update(current) : update
-      return current.length === next.length && current.every((id, index) => id === next[index])
-        ? current
-        : next
-    })
-  }, [])
-
+  // The store owns the ids and keeps an equal write as the same array, so native activation that
+  // selects the active window again does not republish every node through collapse context.
   const syncSelectedNodeIds = useCallback(
-    (nodeIds: string[]) => {
+    (nodeIds: readonly string[]) => {
       if (selectionDraftRef.current !== null) {
         return
       }
 
-      setSelectedNodeIds(nodeIds)
+      selectionCommands.setNodeIds(nodeIds)
     },
-    [setSelectedNodeIds],
+    [selectionCommands],
   )
 
   const selectedNodeIdSet = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds])
@@ -163,32 +154,21 @@ export function useWorkspaceCanvasState({
     }
   }, [nodes, workspaceId])
 
+  // The selection names only nodes and Spaces that exist (Decision 8 of #692 for Spaces). The set
+  // of a list is built only when that list is not empty: during a drag `canvasNodes` changes every
+  // frame, and an empty selection costs one read.
   useLayoutEffect(() => {
-    if (!selectedNodeIds.length) {
+    const current = readSelection()
+    if (current.nodeIds.length === 0 && current.spaceIds.length === 0) {
       return
     }
 
-    const nodeIdSet = new Set(canvasNodes.map(node => node.id))
-    const resolvedSelection = selectedNodeIds.filter(nodeId => nodeIdSet.has(nodeId))
-    if (resolvedSelection.length === selectedNodeIds.length) {
-      return
-    }
-
-    setSelectedNodeIds(resolvedSelection)
-  }, [canvasNodes, selectedNodeIds, setSelectedNodeIds])
-
-  // Decision 8 of #692: the selection never names a Space that no longer exists. Node ids pass
-  // through unchanged; the node prune owns them.
-  useLayoutEffect(() => {
-    if (readSelection().spaceIds.length === 0) {
-      return
-    }
-
-    selection.retain({
-      nodeIds: new Set(readSelection().nodeIds),
-      spaceIds: new Set(spaces.map(space => space.id)),
+    selectionCommands.retain({
+      nodeIds:
+        current.nodeIds.length > 0 ? new Set(canvasNodes.map(node => node.id)) : EMPTY_ID_SET,
+      spaceIds: current.spaceIds.length > 0 ? new Set(spaces.map(space => space.id)) : EMPTY_ID_SET,
     })
-  }, [readSelection, selection, spaces])
+  }, [canvasNodes, readSelection, selectedNodeIds, selectionCommands, spaces])
 
   const flowNodes = useMemo(
     () =>
@@ -211,16 +191,11 @@ export function useWorkspaceCanvasState({
   )
 
   useLayoutEffect(() => {
-    selectedNodeIdsRef.current = selectedNodeIds
-  }, [selectedNodeIds])
-
-  useLayoutEffect(() => {
     magneticSnappingEnabledRef.current = magneticSnappingEnabled
   }, [magneticSnappingEnabled])
 
   return {
     selectedNodeIds,
-    setSelectedNodeIds,
     syncSelectedNodeIds,
     detectedCanvasInputMode,
     setDetectedCanvasInputMode,
@@ -234,7 +209,6 @@ export function useWorkspaceCanvasState({
     canvasRef,
     restoredViewportWorkspaceIdRef,
     spacesRef,
-    selectedNodeIdsRef,
     selectionDraftRef,
     selectionDraftUi,
     setSelectionDraftUi,

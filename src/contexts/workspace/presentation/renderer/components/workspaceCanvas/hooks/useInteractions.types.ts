@@ -38,8 +38,6 @@ export interface UseWorkspaceCanvasInteractionsParams {
   setSelectionDraftUi: React.Dispatch<React.SetStateAction<SelectionDraftUiState | null>>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   setNodes: SetNodes
-  setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
-  selectedNodeIdsRef: React.MutableRefObject<string[]>
   workspaceId: string
   workspacePath: string
   environmentVariables?: Record<string, string>

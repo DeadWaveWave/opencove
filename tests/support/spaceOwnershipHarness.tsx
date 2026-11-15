@@ -1,6 +1,5 @@
-import { renderHook } from '@testing-library/react'
-import { ReactFlowProvider, type Edge, type Node, type ReactFlowInstance } from '@xyflow/react'
-import React, { type ReactNode } from 'react'
+import { act, renderHook } from '@testing-library/react'
+import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import { vi } from 'vitest'
 import { useWorkspaceCanvasNodeDragSession } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession'
 import { useWorkspaceCanvasSpaceOwnership } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceOwnership'
@@ -12,15 +11,7 @@ import {
   useCanvasSelectionCommands,
   useReadCanvasSelection,
 } from '@contexts/workspace/presentation/renderer/store/canvasStoreContext'
-import { CanvasStoreTestProvider } from './canvasStoreTestHarness'
-
-function Wrapper({ children }: { children: ReactNode }): React.ReactElement {
-  return (
-    <CanvasStoreTestProvider>
-      <ReactFlowProvider>{children}</ReactFlowProvider>
-    </CanvasStoreTestProvider>
-  )
-}
+import { SelectionWritersWrapper as Wrapper } from './canvasSelectionFixtures'
 
 export interface SpaceOwnershipHarnessOptions {
   spaces?: WorkspaceSpaceState[]
@@ -31,6 +22,7 @@ export interface SpaceOwnershipHarnessOptions {
 /**
  * Renders `useWorkspaceCanvasSpaceOwnership` with the real node drag session under the canvas
  * store provider. React Flow is a stub: positions are identity and `nodes` are its only nodes.
+ * `selectedNodeIds` seeds the canvas store's node selection.
  */
 export function renderSpaceOwnership(options: SpaceOwnershipHarnessOptions = {}) {
   const spaces = options.spaces ?? []
@@ -41,7 +33,6 @@ export function renderSpaceOwnership(options: SpaceOwnershipHarnessOptions = {})
     getNode: (id: string) => nodes.find(node => node.id === id),
   } as unknown as ReactFlowInstance<Node<TerminalNodeData>, Edge>
   const spacesRef = { current: spaces }
-  const selectedNodeIdsRef = { current: options.selectedNodeIds ?? [] }
   const exclusiveNodeDragAnchorIdRef = { current: null as string | null }
   const setNodes = vi.fn()
   const onSpacesChange = vi.fn()
@@ -60,8 +51,6 @@ export function renderSpaceOwnership(options: SpaceOwnershipHarnessOptions = {})
         workspacePath: '/tmp/repo',
         reactFlow,
         spacesRef,
-        selectedNodeIdsRef,
-        setSelectedNodeIds: vi.fn(),
         nodeDragSession,
         exclusiveNodeDragAnchorIdRef,
         setNodes,
@@ -78,5 +67,9 @@ export function renderSpaceOwnership(options: SpaceOwnershipHarnessOptions = {})
     },
     { wrapper: Wrapper },
   )
+  const seededNodeIds = options.selectedNodeIds ?? []
+  if (seededNodeIds.length > 0) {
+    act(() => hook.result.current.selection.setNodeIds(seededNodeIds))
+  }
   return { ...hook, setNodes, onSpacesChange }
 }

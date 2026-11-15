@@ -14,13 +14,9 @@ type SetNodes = (
 
 export function useWorkspaceCanvasSelectNode({
   setNodes,
-  setSelectedNodeIds,
-  selectedNodeIdsRef,
   spacesRef,
 }: {
   setNodes: SetNodes
-  setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
-  selectedNodeIdsRef: React.MutableRefObject<string[]>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
 }): (nodeId: string, options?: { toggle?: boolean }) => void {
   const reactFlowStore = useStoreApi()
@@ -30,7 +26,7 @@ export function useWorkspaceCanvasSelectNode({
   return useCallback(
     (nodeId: string, options?: { toggle?: boolean }) => {
       const shouldToggle = options?.toggle === true
-      let nextSelectedNodeIds = selectedNodeIdsRef.current
+      let nextSelectedNodeIds: readonly string[] = readSelection().nodeIds
 
       const resolveContainingSpaceId = (
         node: Node<TerminalNodeData>,
@@ -120,35 +116,23 @@ export function useWorkspaceCanvasSelectNode({
         { syncLayout: false },
       )
 
-      if (
+      // `before` is the selection the click found, read before this call writes it.
+      const before = readSelection()
+      const shouldClearSpaces =
         !shouldToggle &&
         nextSelectedNodeIds.includes(nodeId) &&
-        nextSelectedNodeIds.length === 1
-      ) {
-        const shouldPreserveSelectedSpaces =
-          readSelection().spaceIds.length > 0 && selectedNodeIdsRef.current.includes(nodeId)
-
-        if (!shouldPreserveSelectedSpaces) {
-          selection.setSpaceIds([])
-        }
-      }
-
-      selectedNodeIdsRef.current = nextSelectedNodeIds
-      setSelectedNodeIds(nextSelectedNodeIds)
+        nextSelectedNodeIds.length === 1 &&
+        !(before.spaceIds.length > 0 && before.nodeIds.includes(nodeId))
+      selection.select({
+        nodeIds: nextSelectedNodeIds,
+        spaceIds: shouldClearSpaces ? [] : before.spaceIds,
+      })
       const hasAnySelection = nextSelectedNodeIds.length > 0 || readSelection().spaceIds.length > 0
       reactFlowStore.setState({
         nodesSelectionActive: nextSelectedNodeIds.length > 0,
         coveDragSurfaceSelectionMode: shouldToggle && hasAnySelection,
       } as unknown as Parameters<typeof reactFlowStore.setState>[0])
     },
-    [
-      reactFlowStore,
-      readSelection,
-      selectedNodeIdsRef,
-      selection,
-      spacesRef,
-      setNodes,
-      setSelectedNodeIds,
-    ],
+    [reactFlowStore, readSelection, selection, spacesRef, setNodes],
   )
 }

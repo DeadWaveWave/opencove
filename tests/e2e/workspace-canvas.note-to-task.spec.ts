@@ -12,7 +12,7 @@ import {
 import { readSeededWorkspaceLayout, rectsOverlap } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Note to Task', () => {
-  test.skip('converts selected note to task via context menu', async () => {
+  test('converts selected note to task via context menu', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -68,6 +68,7 @@ test.describe('Workspace Canvas - Note to Task', () => {
 
       await noteNode.click({ button: 'right', position: { x: 60, y: 16 } })
       const selectionMenu = window.locator('.workspace-context-menu').first()
+      await expect(selectionMenu).toBeVisible()
       const menuIds = await selectionMenu
         .locator('button')
         .evaluateAll(buttons => buttons.map(button => button.getAttribute('data-testid')))

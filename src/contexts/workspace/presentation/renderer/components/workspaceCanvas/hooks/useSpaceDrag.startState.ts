@@ -13,7 +13,7 @@ interface CreateSpaceDragStateParams {
   handle: SpaceFrameHandle
   nodes: Node<TerminalNodeData>[]
   spaces: WorkspaceSpaceState[]
-  selectedNodeIds: string[]
+  selectedNodeIds: readonly string[]
 }
 
 export function createSpaceDragState({

@@ -1,6 +1,6 @@
 import { act } from '@testing-library/react'
 import type { Node } from '@xyflow/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { TerminalNodeData } from '@contexts/workspace/presentation/renderer/types'
 import { renderSpaceOwnership } from '../../support/spaceOwnershipHarness'
 import { pixelNode } from './workspacePixelLayer.fixtures'
@@ -92,5 +92,94 @@ describe('space ownership drag start on an unselected node', () => {
     )
 
     expect(spaceIds()).toEqual([])
+  })
+})
+
+// Decision 6 of #692: the drag start reads `node.selected`, the flag React Flow hands it, and
+// writes the node and Space selection with one command. The store is not its source.
+describe('space ownership drag start writes the node selection', () => {
+  const plain = { clientX: 10, clientY: 10, shiftKey: false } as React.MouseEvent
+
+  function start(
+    harness: ReturnType<typeof renderSpaceOwnership>,
+    flagged: Node<TerminalNodeData>,
+    shift = false,
+  ) {
+    act(() =>
+      harness.result.current.ownership.handleNodeDragStart(
+        { ...plain, shiftKey: shift } as React.MouseEvent,
+        flagged,
+        [flagged],
+      ),
+    )
+  }
+
+  it('selects only the dragged node and clears the Spaces when its flag is not set', () => {
+    const harness = renderSpaceOwnership({ nodes: [node], selectedNodeIds: ['other'] })
+    act(() => harness.result.current.selection.setSpaceIds(['a']))
+
+    start(harness, { ...node, selected: undefined })
+
+    expect(harness.result.current.readSelection()).toMatchObject({ nodeIds: ['n1'], spaceIds: [] })
+  })
+
+  it('keeps mirroring the selected flag onto the document nodes of a replaced selection', () => {
+    const harness = renderSpaceOwnership({ nodes: [node], selectedNodeIds: ['other'] })
+    const other: Node<TerminalNodeData> = { ...node, id: 'other', selected: true }
+
+    start(harness, { ...node, selected: false })
+
+    expect(harness.setNodes).toHaveBeenCalledTimes(1)
+    const recipe = harness.setNodes.mock.calls[0][0] as (
+      previous: Node<TerminalNodeData>[],
+    ) => Node<TerminalNodeData>[]
+    const next = recipe([{ ...node, selected: false }, other])
+    expect(next.filter(item => item.selected).map(item => item.id)).toEqual(['n1'])
+  })
+
+  it('replaces the selection when the flag is not set although the store already names the node', () => {
+    const harness = renderSpaceOwnership({ nodes: [node], selectedNodeIds: ['n1'] })
+    act(() => harness.result.current.selection.setSpaceIds(['a']))
+
+    start(harness, { ...node, selected: false })
+
+    expect(harness.result.current.readSelection()).toMatchObject({ nodeIds: ['n1'], spaceIds: [] })
+  })
+
+  it('keeps the selection when the flag is set although the store does not name the node', () => {
+    const harness = renderSpaceOwnership({ nodes: [node], selectedNodeIds: ['other'] })
+    act(() => harness.result.current.selection.setSpaceIds(['a']))
+    const before = harness.result.current.readSelection()
+
+    start(harness, { ...node, selected: true })
+
+    expect(harness.result.current.readSelection()).toBe(before)
+  })
+
+  it('keeps the node and Space selection of a shift drag start', () => {
+    const harness = renderSpaceOwnership({ nodes: [node], selectedNodeIds: ['other'] })
+    act(() => harness.result.current.selection.setSpaceIds(['a']))
+    const before = harness.result.current.readSelection()
+
+    start(harness, { ...node, selected: false }, true)
+
+    expect(harness.result.current.readSelection()).toBe(before)
+  })
+
+  it('writes the node and the Space selection with one select command', () => {
+    const harness = renderSpaceOwnership({ nodes: [node], selectedNodeIds: ['other'] })
+    act(() => harness.result.current.selection.setSpaceIds(['a']))
+    const { selection } = harness.result.current
+    const select = vi.spyOn(selection, 'select')
+    const others = [
+      vi.spyOn(selection, 'setNodeIds'),
+      vi.spyOn(selection, 'setSpaceIds'),
+      vi.spyOn(selection, 'clear'),
+    ]
+
+    start(harness, { ...node, selected: false })
+
+    expect(select).toHaveBeenCalledExactlyOnceWith({ nodeIds: ['n1'], spaceIds: [] })
+    others.forEach(spy => expect(spy).not.toHaveBeenCalled())
   })
 })

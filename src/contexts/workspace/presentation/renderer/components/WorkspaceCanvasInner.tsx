@@ -92,8 +92,6 @@ export function WorkspaceCanvasInner({
     setNodes: nodeStore.setNodes,
     spaces,
     spacesRef: canvasState.spacesRef,
-    selectedNodeIds: canvasState.selectedNodeIds,
-    selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
     onSpacesChange,
     onRequestPersistFlush,
     onShowMessage,
@@ -104,10 +102,8 @@ export function WorkspaceCanvasInner({
       reactFlow,
       nodesRef: nodeStore.nodesRef,
       spacesRef: canvasState.spacesRef,
-      selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
       setNodes: nodeStore.setNodes,
       onSpacesChange,
-      setSelectedNodeIds: canvasState.setSelectedNodeIds,
       magneticSnappingEnabledRef: canvasState.magneticSnappingEnabledRef,
       setSnapGuides: canvasState.setSnapGuides,
       onRequestPersistFlush,
@@ -126,8 +122,6 @@ export function WorkspaceCanvasInner({
     workspacePath,
     reactFlow,
     spacesRef: canvasState.spacesRef,
-    selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
-    setSelectedNodeIds: canvasState.setSelectedNodeIds,
     nodeDragSession,
     exclusiveNodeDragAnchorIdRef,
     setNodes: nodeStore.setNodes,
@@ -184,7 +178,7 @@ export function WorkspaceCanvasInner({
   // prettier-ignore
   workspaceCanvasHooks.useWorkspaceCanvasLifecycleBindings({ workspaceId, canvasState, reactFlow, viewport, agentSettings, focusSpaceId, focusNodeId, focusNodeInput, focusSequence, expandNode: collapse.expandNode, focusSpaceInViewport: spacesApi.focusSpaceInViewport, nodes: canvasState.flowNodes, isFocusNodeTargetZoomPreviewing, nodesRef: nodeStore.nodesRef, requestNodeDeleteRef: actionRefs.requestNodeDeleteRef })
   // prettier-ignore
-  const { canConvertSelectedNoteToTask, isConvertSelectedNoteToTaskDisabled, convertSelectedNoteToTask, convertNoteToTask, arrangeAll, arrangeCanvas, arrangeInSpace } = workspaceCanvasHooks.useWorkspaceCanvasMenuActions({ selectedNodeIds: canvasState.selectedNodeIds, selectedNodeIdsRef: canvasState.selectedNodeIdsRef, flowNodes: canvasState.flowNodes, nodesRef: nodeStore.nodesRef, setNodes: nodeStore.setNodes, onRequestPersistFlush, onShowMessage, reactFlow, spacesRef: canvasState.spacesRef, onSpacesChange, standardWindowSizeBucket: agentSettings.standardWindowSizeBucket, focusNodeTargetZoom: agentSettings.focusNodeTargetZoom })
+  const { canConvertSelectedNoteToTask, isConvertSelectedNoteToTaskDisabled, convertSelectedNoteToTask, convertNoteToTask, arrangeAll, arrangeCanvas, arrangeInSpace } = workspaceCanvasHooks.useWorkspaceCanvasMenuActions({ selectedNodeIds: canvasState.selectedNodeIds, flowNodes: canvasState.flowNodes, nodesRef: nodeStore.nodesRef, setNodes: nodeStore.setNodes, onRequestPersistFlush, onShowMessage, reactFlow, spacesRef: canvasState.spacesRef, onSpacesChange, standardWindowSizeBucket: agentSettings.standardWindowSizeBucket, focusNodeTargetZoom: agentSettings.focusNodeTargetZoom })
   const { nodeTypes, nodeTypesParameters } =
     workspaceCanvasHooks.useWorkspaceCanvasComposedNodeTypes({
       nodeStore,
@@ -229,8 +223,6 @@ export function WorkspaceCanvasInner({
     setSelectionDraftUi: canvasState.setSelectionDraftUi,
     reactFlow,
     setNodes: nodeStore.setNodes,
-    setSelectedNodeIds: canvasState.setSelectedNodeIds,
-    selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
     workspaceId,
     workspacePath,
     environmentVariables,
@@ -280,8 +272,6 @@ export function WorkspaceCanvasInner({
     spaceNavigationAnchorIdRef: canvasState.spaceNavigationAnchorIdRef,
     nodesRef: nodeStore.nodesRef,
     setNodes: nodeStore.setNodes,
-    setSelectedNodeIds: canvasState.setSelectedNodeIds,
-    selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
     onSpacesChange,
     nodeCreation: nodeStore,
     createSpaceFromSelectedNodes: spacesApi.createSpaceFromSelectedNodes,

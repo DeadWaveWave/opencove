@@ -1,8 +1,9 @@
 import React from 'react'
-import { act, render } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ApplicationShortcutEvent } from '../../../src/shared/contracts/applicationShortcut'
 import { useCloseSelectedNodeShortcut } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCloseSelectedNodeShortcut'
+import { renderWithCanvasStore } from '../../support/canvasStoreTestHarness'
 
 vi.mock('@app/renderer/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 type Props = Parameters<typeof useCloseSelectedNodeShortcut>[0]
@@ -29,14 +30,15 @@ function fixture(selected = ['a'], kind = 'terminal') {
   const props: Props = {
     enabled: true,
     canvasRef: { current: canvas },
-    selectedNodeIdsRef: { current: selected },
     nodesRef: {
       current: ['a', 'b'].map(id => ({ id, data: { kind } })) as Props['nodesRef']['current'],
     },
     closeNode: vi.fn().mockResolvedValue(undefined),
     onShowMessage: vi.fn(),
   }
-  const result = render(<Harness {...props} />)
+  // The selection is read from the canvas store when the shortcut fires, not captured at render.
+  const result = renderWithCanvasStore(<Harness {...props} />)
+  act(() => result.selection.setNodeIds(selected))
   return {
     props,
     canvas,

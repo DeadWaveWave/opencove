@@ -21,7 +21,11 @@ import { useIgnoredPaneClick } from './useIgnoredPaneClick'
 import type { UseWorkspaceCanvasInteractionsParams } from './useInteractions.types'
 import { useWebsiteNodeContextMenuCreation } from './useInteractions.websiteContextMenu'
 import { useWebsiteWindowOpenUrlNodeCreation } from './useWebsiteWindowOpenUrlNodeCreation'
-import { useCanvasSelectionCommands, useCanvasUiCommands } from '../../../store/canvasStoreContext'
+import {
+  useCanvasSelectionCommands,
+  useCanvasUiCommands,
+  useReadCanvasSelection,
+} from '../../../store/canvasStoreContext'
 
 export function useWorkspaceCanvasInteractions({
   canvasRef,
@@ -35,8 +39,6 @@ export function useWorkspaceCanvasInteractions({
   setSelectionDraftUi,
   reactFlow,
   setNodes,
-  setSelectedNodeIds,
-  selectedNodeIdsRef,
   workspaceId,
   workspacePath,
   environmentVariables,
@@ -55,13 +57,12 @@ export function useWorkspaceCanvasInteractions({
   createWebsiteNode,
 }: UseWorkspaceCanvasInteractionsParams) {
   const ui = useCanvasUiCommands()
+  const readSelection = useReadCanvasSelection()
   const selection = useCanvasSelectionCommands()
 
   const reactFlowStore = useStoreApi()
   const selectNode = useWorkspaceCanvasSelectNode({
     setNodes,
-    setSelectedNodeIds,
-    selectedNodeIdsRef,
     spacesRef,
   })
 
@@ -85,13 +86,12 @@ export function useWorkspaceCanvasInteractions({
       },
       { syncLayout: false },
     )
-    setSelectedNodeIds([])
-    selection.setSpaceIds([])
+    selection.clear()
     reactFlowStore.setState({
       nodesSelectionActive: false,
       coveDragSurfaceSelectionMode: false,
     } as unknown as Parameters<typeof reactFlowStore.setState>[0])
-  }, [reactFlowStore, selection, setNodes, setSelectedNodeIds])
+  }, [reactFlowStore, selection, setNodes])
 
   const openSelectionContextMenu = useCallback(
     (x: number, y: number, nodeId?: string) => {
@@ -130,7 +130,7 @@ export function useWorkspaceCanvasInteractions({
 
   const handleNodeContextMenu = useCallback(
     (event: React.MouseEvent, node: Node<TerminalNodeData>) => {
-      if (!selectedNodeIdsRef.current.includes(node.id)) {
+      if (!readSelection().nodeIds.includes(node.id)) {
         // A far view tile stands for its whole window, as a document or folder body does.
         const farTile = canvasRef.current?.getAttribute(CANVAS_LOD_ATTRIBUTE) === 'far'
         if (!farTile && node.data.kind !== 'document' && node.data.kind !== 'folder') {
@@ -142,7 +142,7 @@ export function useWorkspaceCanvasInteractions({
       event.preventDefault()
       openSelectionContextMenu(event.clientX, event.clientY, node.id)
     },
-    [canvasRef, openSelectionContextMenu, selectNode, selectedNodeIdsRef],
+    [canvasRef, openSelectionContextMenu, readSelection, selectNode],
   )
 
   const { ignoreNextPaneClickRef, queueIgnoreNextPaneClick } = useIgnoredPaneClick()
@@ -197,9 +197,7 @@ export function useWorkspaceCanvasInteractions({
     setSelectionDraftUi,
     reactFlow,
     spacesRef,
-    selectedNodeIdsRef,
     setNodes,
-    setSelectedNodeIds,
   })
 
   const paneDragRef = useRef<{ startX: number; startY: number; didMove: boolean } | null>(null)

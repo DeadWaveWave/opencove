@@ -22,8 +22,6 @@ export function useWorkspaceCanvasSpaceOwnership({
   workspacePath,
   reactFlow,
   spacesRef,
-  selectedNodeIdsRef,
-  setSelectedNodeIds,
   nodeDragSession,
   exclusiveNodeDragAnchorIdRef,
   setNodes,
@@ -37,8 +35,6 @@ export function useWorkspaceCanvasSpaceOwnership({
   workspacePath: string
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  selectedNodeIdsRef: React.MutableRefObject<string[]>
-  setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
   nodeDragSession: Pick<
     WorkspaceCanvasNodeDragSession,
     'captureDragStartSpaceSelection' | 'getDragStartSpaceSelection' | 'clearDragStartSpaceSelection'
@@ -191,8 +187,9 @@ export function useWorkspaceCanvasSpaceOwnership({
         }
       }
 
-      const shouldReplaceSelection =
-        !event.shiftKey && !selectedNodeIdsRef.current.includes(node.id)
+      // The flag React Flow hands us is the answer to "was it selected before this gesture". The
+      // store cannot say: the select batch of the same pointer down has already written it.
+      const shouldReplaceSelection = !event.shiftKey && node.selected !== true
       if (shouldReplaceSelection) {
         exclusiveNodeDragAnchorIdRef.current = node.id
 
@@ -214,9 +211,7 @@ export function useWorkspaceCanvasSpaceOwnership({
           { syncLayout: false },
         )
 
-        selectedNodeIdsRef.current = [node.id]
-        setSelectedNodeIds([node.id])
-        selection.setSpaceIds([])
+        selection.select({ nodeIds: [node.id], spaceIds: [] })
         reactFlowStore.setState({
           nodesSelectionActive: true,
           coveDragSurfaceSelectionMode: false,
@@ -234,10 +229,8 @@ export function useWorkspaceCanvasSpaceOwnership({
       nodeDragPointerAnchorRef,
       reactFlow,
       reactFlowStore,
-      selectedNodeIdsRef,
       selection,
       setNodes,
-      setSelectedNodeIds,
     ],
   )
 

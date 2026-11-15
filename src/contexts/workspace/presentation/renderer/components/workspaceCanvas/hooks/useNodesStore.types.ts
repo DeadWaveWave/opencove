@@ -80,7 +80,10 @@ export interface UseWorkspaceCanvasNodesStoreResult {
   updateTerminalTitle: (nodeId: string, title: string, startedAtMs?: number) => void
   clearTerminalAgentOverlay: (nodeId: string, expectedStartedAtMs?: number) => void
   renameTerminalTitle: (nodeId: string, title: string) => void
-  setNodeLabelColorOverride: (nodeIds: string[], labelColorOverride: NodeLabelColorOverride) => void
+  setNodeLabelColorOverride: (
+    nodeIds: readonly string[],
+    labelColorOverride: NodeLabelColorOverride,
+  ) => void
   updateNoteText: (nodeId: string, text: string) => void
   renameNoteTitle: (nodeId: string, title: string) => void
   updateWebsiteUrl: (nodeId: string, url: string) => void

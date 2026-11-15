@@ -52,7 +52,7 @@ export interface WorkspaceCanvasActionRefs {
   quickUpdateTaskRequirementRef: React.MutableRefObject<
     (nodeId: string, requirement: string) => void
   >
-  requestNodeDeleteRef: React.MutableRefObject<(nodeIds: string[]) => void>
+  requestNodeDeleteRef: React.MutableRefObject<(nodeIds: readonly string[]) => void>
   updateTaskStatusRef: React.MutableRefObject<(nodeId: string, status: TaskRuntimeStatus) => void>
   updateNodeScrollbackRef: React.MutableRefObject<(nodeId: string, scrollback: string) => void>
   updateTerminalTitleRef: React.MutableRefObject<
@@ -146,7 +146,7 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
   const quickUpdateTaskRequirementRef = useRef<(nodeId: string, requirement: string) => void>(
     (_nodeId: string, _requirement: string) => undefined,
   )
-  const requestNodeDeleteRef = useRef<(nodeIds: string[]) => void>(() => undefined)
+  const requestNodeDeleteRef = useRef<(nodeIds: readonly string[]) => void>(() => undefined)
   const updateTaskStatusRef = useRef<(nodeId: string, status: TaskRuntimeStatus) => void>(
     (_nodeId: string, _status: TaskRuntimeStatus) => undefined,
   )

@@ -22,7 +22,10 @@ export interface WorkspaceCanvasNodeTypesParams {
   browserSearchEngine: BrowserSearchEngineId
   selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
   convertNoteToTask: (nodeId: string) => boolean
-  setNodeLabelColorOverride: (nodeIds: string[], labelColorOverride: NodeLabelColorOverride) => void
+  setNodeLabelColorOverride: (
+    nodeIds: readonly string[],
+    labelColorOverride: NodeLabelColorOverride,
+  ) => void
   clearNodeSelectionRef: MutableRefObject<() => void>
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
   resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
@@ -44,7 +47,7 @@ export interface WorkspaceCanvasNodeTypesParams {
   runRoleRef: MutableRefObject<(nodeId: string, inputOverride?: string) => Promise<void>>
   updateNodeScrollbackRef: MutableRefObject<UpdateNodeScrollback>
   normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
-  requestNodeDeleteRef: MutableRefObject<(nodeIds: string[]) => void>
+  requestNodeDeleteRef: MutableRefObject<(nodeIds: readonly string[]) => void>
   openTaskEditorRef: MutableRefObject<(nodeId: string) => void>
   quickUpdateTaskTitleRef: MutableRefObject<QuickUpdateTaskTitle>
   quickUpdateTaskRequirementRef: MutableRefObject<QuickUpdateTaskRequirement>

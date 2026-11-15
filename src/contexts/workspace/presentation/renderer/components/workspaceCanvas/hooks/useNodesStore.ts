@@ -417,7 +417,7 @@ export function useWorkspaceCanvasNodesStore({
   } = useWorkspaceCanvasWebsiteNodeMutations({ setNodes, onRequestPersistFlush })
 
   const setNodeLabelColorOverride = useCallback(
-    (nodeIds: string[], labelColorOverride: NodeLabelColorOverride) => {
+    (nodeIds: readonly string[], labelColorOverride: NodeLabelColorOverride) => {
       const normalizedIds = nodeIds.map(id => id.trim()).filter(id => id.length > 0)
       if (normalizedIds.length === 0) {
         return

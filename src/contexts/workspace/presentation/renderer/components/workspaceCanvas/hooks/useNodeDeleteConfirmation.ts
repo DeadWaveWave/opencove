@@ -8,10 +8,10 @@ interface UseNodeDeleteConfirmationParams {
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   closeNode: (nodeId: string) => Promise<void>
-  requestNodeDeleteRef: MutableRefObject<(nodeIds: string[]) => void>
+  requestNodeDeleteRef: MutableRefObject<(nodeIds: readonly string[]) => void>
 }
 
-function uniqNodeIds(nodeIds: string[]): string[] {
+function uniqNodeIds(nodeIds: readonly string[]): string[] {
   return [...new Set(nodeIds)]
 }
 
@@ -20,7 +20,7 @@ function resolveNodeDeleteConfirmationState({
   nodes,
   spaces,
 }: {
-  nodeIds: string[]
+  nodeIds: readonly string[]
   nodes: Node<TerminalNodeData>[]
   spaces: WorkspaceSpaceState[]
 }): NodeDeleteConfirmationState | null {
@@ -73,7 +73,7 @@ export function useWorkspaceCanvasNodeDeleteConfirmation({
   const readUi = useReadCanvasUi()
 
   const requestNodeDelete = useCallback(
-    (nodeIds: string[]) => {
+    (nodeIds: readonly string[]) => {
       const nextConfirmation = resolveNodeDeleteConfirmationState({
         nodeIds,
         nodes: nodesRef.current,

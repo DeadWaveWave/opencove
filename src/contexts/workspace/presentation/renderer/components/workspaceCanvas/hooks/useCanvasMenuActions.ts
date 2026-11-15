@@ -3,7 +3,6 @@ import { useWorkspaceCanvasNoteToTaskConversion } from './useNoteToTaskConversio
 
 export function useWorkspaceCanvasMenuActions({
   selectedNodeIds,
-  selectedNodeIdsRef,
   flowNodes,
   nodesRef,
   setNodes,
@@ -16,9 +15,6 @@ export function useWorkspaceCanvasMenuActions({
   focusNodeTargetZoom,
 }: {
   selectedNodeIds: Parameters<typeof useWorkspaceCanvasNoteToTaskConversion>[0]['selectedNodeIds']
-  selectedNodeIdsRef: Parameters<
-    typeof useWorkspaceCanvasNoteToTaskConversion
-  >[0]['selectedNodeIdsRef']
   flowNodes: Parameters<typeof useWorkspaceCanvasNoteToTaskConversion>[0]['flowNodes']
   nodesRef: Parameters<typeof useWorkspaceCanvasNoteToTaskConversion>[0]['nodesRef']
   setNodes: Parameters<typeof useWorkspaceCanvasNoteToTaskConversion>[0]['setNodes']
@@ -37,7 +33,6 @@ export function useWorkspaceCanvasMenuActions({
   ReturnType<typeof useWorkspaceCanvasArrange> {
   const noteToTask = useWorkspaceCanvasNoteToTaskConversion({
     selectedNodeIds,
-    selectedNodeIdsRef,
     flowNodes,
     nodesRef,
     spacesRef,

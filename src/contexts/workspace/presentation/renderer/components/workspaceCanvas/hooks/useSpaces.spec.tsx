@@ -57,7 +57,6 @@ function TestHarnessBody({
 }): React.JSX.Element {
   const nodesRef = useRef([NODE])
   const spacesRef = useRef(spaces)
-  const selectedNodeIdsRef = useRef<string[]>([])
 
   useWorkspaceCanvasSpaces({
     workspaceId: 'workspace-1',
@@ -72,8 +71,6 @@ function TestHarnessBody({
     setNodes: vi.fn(),
     spaces,
     spacesRef,
-    selectedNodeIds: [],
-    selectedNodeIdsRef,
     onSpacesChange: vi.fn(),
   })
 

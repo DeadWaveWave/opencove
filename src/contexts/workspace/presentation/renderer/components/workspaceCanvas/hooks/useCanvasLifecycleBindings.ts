@@ -60,7 +60,6 @@ export function useWorkspaceCanvasLifecycleBindings({
 
   useWorkspaceCanvasLifecycle({
     workspaceId,
-    setSelectedNodeIds: canvasState.setSelectedNodeIds,
     selectionDraftRef: canvasState.selectionDraftRef,
     trackpadGestureLockRef: canvasState.trackpadGestureLockRef,
     setIsCanvasWheelGestureCaptureActive: canvasState.setIsCanvasWheelGestureCaptureActive,
@@ -72,7 +71,6 @@ export function useWorkspaceCanvasLifecycleBindings({
     setDetectedCanvasInputMode: canvasState.setDetectedCanvasInputMode,
     isShiftPressedRef: canvasState.isShiftPressedRef,
     setIsShiftPressed: canvasState.setIsShiftPressed,
-    selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
     requestNodeDeleteRef,
     focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
     isFocusNodeTargetZoomPreviewing,
