@@ -204,7 +204,8 @@ workspace 画布文档（节点、Space、活动 Space、Space 归档记录、�
 | 每轮修改 | 运行能复现本轮不变量的最低层测试；用户可感知变化再跑已有对应 E2E，新增条件见上文；不要对累计暂存的整个功能反复跑全量 |
 | 本地提交 | `pnpm verify:quick` 或 `pnpm pre-commit`：静态检查（含 `pnpm compat:check`：兼容路径到期门禁，规则见 `docs/development/COMPATIBILITY_EXPIRY.md`）、staged 相关测试、native recovery contracts、固定核心 E2E 与受影响模块的代表场景 |
 | 按需本地完整检查 | 暂存后运行 `pnpm verify:full`：静态检查、完整 Vitest、native contracts、完整 Electron E2E |
-| PR 合并前 | 最终提交必须通过完整 CI，包括分片 Electron、平台专属和 Desktop/Web continuity 检查 |
+| PR 合并前 | 最终提交必须通过 PR 的 CI：Ubuntu 上的完整 E2E 分片、Windows 与 Desktop/Web continuity 检查；macOS 只运行一个 `macos-platform` job（Worker CLI contracts、macOS 专属 Vitest 文件、`tests/e2e/*.mac.spec.ts` 与核心 E2E 组，文件由 `scripts/run-macos-platform-e2e.mjs` 选取，新增 `.mac.spec.ts` 无需改 workflow）。PR 的 job 不重试 |
+| 合并后 | `main` 上的 push run 运行完整 macOS E2E（`ci-macos` 三个分片），必须为绿。该 run 不会被后续 push 取消：一个在跑、最新的排队、更旧的排队项被丢弃，因此每个 run 覆盖上次以来的全部合并。红 run 由 `main-status` job 自动打开（或追加评论到）带 `ci-red` 标签的 issue，下一个绿 run 自动评论并关闭它；不要手动开关该 issue。合并者负责响应，issue 未关闭期间，下一次合并必须是修复或回滚。改动终端与 PTY 层、窗口生命周期、文件系统路径、原生菜单与快捷键、字体与渲染时，合并前先在分支上手动触发完整 run（Actions 中对 `CI` 使用 `workflow_dispatch`）。合并后的 macOS 分片失败时重试一次，重试通过的用例报告为 flaky，不使 `main` 变红。定时 nightly 发布取 `main` 上最新一个 CI push run 为绿的提交构建，不是 `main` 的最新提交；没有绿 run 时跳过并给出原因 |
 
 E2E 选组规则维护在 `scripts/precommit-e2e-selection.mjs`。快速门禁输出选中组、原因和测试文件，固定覆盖启动、终端创建、重启后可输入；插件、共享窗口、Space、设置、连接、Sidebar 和文件相关改动追加对应组。删除、重命名、CSS、配置与未知源码也必须参与判断；未知范围扩大代表组并明确提示，不能静默跳过。代表组选取不等于完整依赖分析：开发者仍须为本次修改的不变量补跑直接相关用例。
 
@@ -285,7 +286,7 @@ Ubuntu/macOS 三个分片用 `scripts/plan-e2e-shards.mjs` 按文件内用例的
 -   **真实 Worker / CLI 契约**：先 `pnpm build`，再 `pnpm test:contract:worker-cli`；重复验证可加 `--repeat-each=5`。
     - 独立 Playwright runner 不启动 Desktop 或浏览器；每例隔离 userData、workspace、真实 PTY 和生产 session grant。Worker 使用 `ELECTRON_RUN_AS_NODE=1`，复用 postinstall 的 Electron ABI 原生模块，不另行构建 Node ABI。
     - 夹具拥有进程清理，退出时检查 Worker 与已观测 PTY 子进程；断言通过 HTTP 控制面和真实内置 CLI 执行。只把不依赖 UI 的断言放到这里。
-    - Ubuntu 在 unit job 的 Build 后运行；macOS 使用独立 `Worker CLI contracts (macOS)` job，避免挤占 E2E shard 预算。CLI、Worker、控制面和进程实现的 staged 修改会在快速门禁构建后运行此套件。
+    - Ubuntu 在 unit job 的 Build 后运行；macOS 在 `macos-platform` job 中运行（与 macOS 专属文件和核心 E2E 组同一个 job），避免挤占 E2E shard 预算。CLI、Worker、控制面和进程实现的 staged 修改会在快速门禁构建后运行此套件。
 -   **运行 E2E 测试**：`pnpm test:e2e`
     -   说明：`pnpm test:e2e` 已包含构建步骤，默认使用 `offscreen` 后台窗口模式；检测到 Electron 崩溃特征时，会按窗口模式链路自动降级并重跑失败用例（例如 `hidden -> offscreen`、`offscreen -> inactive`）。
     -   可通过 `OPENCOVE_E2E_WINDOW_MODE` 指定窗口模式（`inactive / offscreen / hidden`，禁止 `normal` 以避免抢占焦点）。

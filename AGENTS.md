@@ -57,7 +57,7 @@ For runtime-risk or Large work, explicitly check:
 ## 5. Verification & Handoff
 
 - Validate at the lowest meaningful layer first; use UI automation when UI regression risk warrants it.
-- During iteration, run targeted verification. Before a local commit, pass `pnpm verify:quick` (also `pnpm pre-commit`): code checks, related tests, native contracts, and core plus affected E2E groups. Full regression belongs to PR CI before merge; use `pnpm verify:full` when a full local run is needed. Follow `DEVELOPMENT.md` for scope and reporting.
+- During iteration, run targeted verification. Before a local commit, pass `pnpm verify:quick` (also `pnpm pre-commit`): code checks, related tests, native contracts, and core plus affected E2E groups. Full regression belongs to PR CI before merge (macOS runs a small platform job there; its full E2E runs on `main` after the merge, and a red `main` opens a `ci-red` issue to fix first); use `pnpm verify:full` when a full local run is needed. Follow `DEVELOPMENT.md` for scope and reporting.
 - Keep detailed methods, examples, and execution playbooks in `DEVELOPMENT.md` and topic docs, not here.
 
 ## 6. Development Workflow
