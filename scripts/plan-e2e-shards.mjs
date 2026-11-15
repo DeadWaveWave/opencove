@@ -73,7 +73,9 @@ function main() {
     const plan = { os, ...planShards(ids, baseline, shardCountFor(os, values.shards)) }
     const selected = values.shard === undefined ? null : Number(values.shard)
     if (selected !== null && (!Number.isInteger(selected) || !plan.shards[selected - 1])) {
-      throw new Error('Invalid E2E shard index.')
+      throw new Error(
+        `Invalid E2E shard index ${values.shard} for ${os} (1..${plan.shards.length}).`,
+      )
     }
     if (values.json) {
       process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`)

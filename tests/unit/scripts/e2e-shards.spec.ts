@@ -50,6 +50,17 @@ describe('E2E shard counts', { timeout: 60_000 }, () => {
     expect(JSON.parse(result.stdout).shards).toHaveLength(2)
   })
 
+  it('names the platform and its range when a shard index is out of range', () => {
+    const result = runPlanner('--os', 'macos', '--shard', String(E2E_SHARD_COUNTS.macos + 1))
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain(
+      `Invalid E2E shard index ${E2E_SHARD_COUNTS.macos + 1} for macos (1..${E2E_SHARD_COUNTS.macos}).`,
+    )
+    expect(runPlanner('--os', 'macos', '--shard', 'x').stderr).toContain(
+      'Invalid E2E shard index x',
+    )
+  })
+
   it('--check validates what CI runs and refuses --shards', () => {
     const refused = runPlanner('--check', '--shards', '3')
     expect(refused.status).not.toBe(0)
