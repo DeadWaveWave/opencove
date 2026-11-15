@@ -115,7 +115,6 @@ export function WorkspaceCanvasInner({
       magneticSnappingEnabledRef: canvasState.magneticSnappingEnabledRef,
       setSnapGuides: canvasState.setSnapGuides,
       onRequestPersistFlush,
-      cancelSpaceRename: spacesApi.cancelSpaceRename,
     })
   const {
     finalizeDraggedNodeDrop,
@@ -189,7 +188,7 @@ export function WorkspaceCanvasInner({
   // prettier-ignore
   const collapse = useCanvasCollapse({ workspaceId, canvasRef: canvasState.canvasRef, nodes, spaces, nodesRef: nodeStore.nodesRef, spacesRef: canvasState.spacesRef, setNodes: nodeStore.setNodes, onSpacesChange, reactFlow, focusNodeTargetZoom: agentSettings.focusNodeTargetZoom, nodeExpandBehavior: agentSettings.nodeExpandBehavior, onRequestPersistFlush })
   // prettier-ignore
-  workspaceCanvasHooks.useWorkspaceCanvasLifecycleBindings({ workspaceId, canvasState, cancelSpaceRename: spacesApi.cancelSpaceRename, reactFlow, viewport, agentSettings, focusSpaceId, focusNodeId, focusNodeInput, focusSequence, expandNode: collapse.expandNode, focusSpaceInViewport: spacesApi.focusSpaceInViewport, nodes: canvasState.flowNodes, isFocusNodeTargetZoomPreviewing, nodesRef: nodeStore.nodesRef, requestNodeDeleteRef: actionRefs.requestNodeDeleteRef })
+  workspaceCanvasHooks.useWorkspaceCanvasLifecycleBindings({ workspaceId, canvasState, reactFlow, viewport, agentSettings, focusSpaceId, focusNodeId, focusNodeInput, focusSequence, expandNode: collapse.expandNode, focusSpaceInViewport: spacesApi.focusSpaceInViewport, nodes: canvasState.flowNodes, isFocusNodeTargetZoomPreviewing, nodesRef: nodeStore.nodesRef, requestNodeDeleteRef: actionRefs.requestNodeDeleteRef })
   // prettier-ignore
   const { canConvertSelectedNoteToTask, isConvertSelectedNoteToTaskDisabled, convertSelectedNoteToTask, convertNoteToTask, arrangeAll, arrangeCanvas, arrangeInSpace } = workspaceCanvasHooks.useWorkspaceCanvasMenuActions({ selectedNodeIds: canvasState.selectedNodeIds, selectedNodeIdsRef: canvasState.selectedNodeIdsRef, flowNodes: canvasState.flowNodes, nodesRef: nodeStore.nodesRef, setNodes: nodeStore.setNodes, onRequestPersistFlush, onShowMessage, reactFlow, spacesRef: canvasState.spacesRef, onSpacesChange, standardWindowSizeBucket: agentSettings.standardWindowSizeBucket, focusNodeTargetZoom: agentSettings.focusNodeTargetZoom })
   const { nodeTypes, nodeTypesParameters } =
@@ -238,7 +237,6 @@ export function WorkspaceCanvasInner({
     setNodes: nodeStore.setNodes,
     setSelectedNodeIds: canvasState.setSelectedNodeIds,
     setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
-    cancelSpaceRename: spacesApi.cancelSpaceRename,
     selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
     selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
     workspaceId,
@@ -270,7 +268,6 @@ export function WorkspaceCanvasInner({
     createPluginAtPoint: (anchor, pluginId) => {
       nodeStore.createPluginNode(anchor, pluginId)
     },
-    cancelSpaceRename: spacesApi.cancelSpaceRename,
     spacesRef: canvasState.spacesRef,
   })
   const createPluginNodeFromContextMenu = workspaceCanvasHooks.useWorkspaceCanvasPluginEntry({
@@ -286,7 +283,6 @@ export function WorkspaceCanvasInner({
     workspacePath,
     environmentVariables,
     canvasRef: canvasState.canvasRef,
-    cancelSpaceRename: spacesApi.cancelSpaceRename,
     reactFlow,
     spacesRef: canvasState.spacesRef,
     spaceNavigationAnchorIdRef: canvasState.spaceNavigationAnchorIdRef,
@@ -334,7 +330,6 @@ export function WorkspaceCanvasInner({
     viewportRef: canvasState.viewportRef,
     onViewportChange,
     flowNodes: canvasState.flowNodes,
-    cancelSpaceRename: spacesApi.cancelSpaceRename,
     workspacePath,
     spacesRef: canvasState.spacesRef,
     handlePaneClick,
@@ -398,12 +393,7 @@ export function WorkspaceCanvasInner({
         spaceFramePreview={spaceFramePreview ?? nodeDragSession.nodeSpaceFramePreview}
         selectedSpaceIds={canvasState.selectedSpaceIds}
         handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
-        editingSpaceId={spacesApi.editingSpaceId}
-        spaceRenameInputRef={spacesApi.spaceRenameInputRef}
-        spaceRenameDraft={spacesApi.spaceRenameDraft}
-        setSpaceRenameDraft={spacesApi.setSpaceRenameDraft}
         commitSpaceRename={spacesApi.commitSpaceRename}
-        cancelSpaceRename={spacesApi.cancelSpaceRename}
         activateSpaceTitle={spacesApi.activateSpaceTitle}
         setSpaceLabelColor={spacesApi.setSpaceLabelColor}
         selectedNodeCount={canvasState.selectedNodeIds.length}
@@ -423,7 +413,7 @@ export function WorkspaceCanvasInner({
         arrangeAll={arrangeAll}
         arrangeCanvas={arrangeCanvas}
         arrangeInSpace={arrangeInSpace}
-        openTaskCreator={taskUi.openTaskCreator}
+        createTaskFromContextMenu={taskUi.createTaskFromContextMenu}
         openAgentLauncher={agentSupport.openAgentLauncher}
         openAgentLauncherForProvider={agentSupport.openAgentLauncherForProvider}
         runQuickCommand={runQuickCommand}
@@ -432,8 +422,6 @@ export function WorkspaceCanvasInner({
         createSpaceFromSelectedNodes={spacesApi.createSpaceFromSelectedNodes}
         createChildSpaceInParent={spacesApi.createChildSpaceInParent}
         createEmptySpaceAtPoint={spacesApi.createEmptySpaceAtPoint}
-        spaceTargetMountPicker={spacesApi.spaceTargetMountPicker}
-        setSpaceTargetMountPicker={spacesApi.setSpaceTargetMountPicker}
         confirmSpaceTargetMountPicker={spacesApi.confirmSpaceTargetMountPicker}
         cancelSpaceTargetMountPicker={spacesApi.cancelSpaceTargetMountPicker}
         clearNodeSelection={clearNodeSelection}
@@ -443,21 +431,12 @@ export function WorkspaceCanvasInner({
         setSelectedNodeLabelColorOverride={override =>
           nodeStore.setNodeLabelColorOverride(canvasState.selectedNodeIds, override)
         }
-        taskCreator={taskUi.taskCreator}
         taskTitleProviderLabel={taskTitleProviderLabel}
         taskTitleModelLabel={taskTitleModelLabel}
         taskTagOptions={taskUi.taskTagOptions}
-        setTaskCreator={taskUi.setTaskCreator}
-        closeTaskCreator={taskUi.closeTaskCreator}
-        generateTaskTitle={taskUi.generateTaskTitle}
-        createTask={taskUi.createTask}
-        taskEditor={taskUi.taskEditor}
-        setTaskEditor={taskUi.setTaskEditor}
         closeTaskEditor={taskUi.closeTaskEditor}
         generateTaskEditorTitle={taskUi.generateTaskEditorTitle}
         saveTaskEdits={taskUi.saveTaskEdits}
-        nodeDeleteConfirmation={taskUi.nodeDeleteConfirmation}
-        setNodeDeleteConfirmation={taskUi.setNodeDeleteConfirmation}
         confirmNodeDelete={taskUi.confirmNodeDelete}
         spaceWorktreeMismatchDropWarning={spaceWorktreeMismatchDropWarning}
         cancelSpaceWorktreeMismatchDropWarning={cancelSpaceWorktreeMismatchDropWarning}

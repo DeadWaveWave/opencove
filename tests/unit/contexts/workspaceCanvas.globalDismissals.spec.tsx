@@ -114,15 +114,6 @@ vi.mock(
 )
 
 vi.mock(
-  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/windows/TaskCreatorWindow',
-  () => {
-    return {
-      TaskCreatorWindow: () => null,
-    }
-  },
-)
-
-vi.mock(
   '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/windows/TaskEditorWindow',
   () => {
     return {
@@ -196,12 +187,7 @@ function createBaseProps(
     spaceFramePreview: null,
     selectedSpaceIds: [],
     handleSpaceDragHandlePointerDown: () => undefined,
-    editingSpaceId: null,
-    spaceRenameInputRef: React.createRef<HTMLInputElement>(),
-    spaceRenameDraft: '',
-    setSpaceRenameDraft: () => undefined,
     commitSpaceRename: () => undefined,
-    cancelSpaceRename: () => undefined,
     activateSpaceTitle: () => undefined,
     selectedNodeCount: 0,
     isMinimapVisible: false,
@@ -217,28 +203,19 @@ function createBaseProps(
     arrangeAll: () => undefined,
     arrangeCanvas: () => undefined,
     arrangeInSpace: () => undefined,
-    openTaskCreator: () => undefined,
+    createTaskFromContextMenu: () => undefined,
     openAgentLauncher: () => undefined,
     createSpaceFromSelectedNodes: () => undefined,
     clearNodeSelection: () => undefined,
     canConvertSelectedNoteToTask: false,
     isConvertSelectedNoteToTaskDisabled: false,
     convertSelectedNoteToTask: () => undefined,
-    taskCreator: null,
     taskTitleProviderLabel: '',
     taskTitleModelLabel: '',
     taskTagOptions: [],
-    setTaskCreator: () => undefined,
-    closeTaskCreator: () => undefined,
-    generateTaskTitle: async () => undefined,
-    createTask: async () => undefined,
-    taskEditor: null,
-    setTaskEditor: () => undefined,
     closeTaskEditor: () => undefined,
     generateTaskEditorTitle: async () => undefined,
     saveTaskEdits: async () => undefined,
-    nodeDeleteConfirmation: null,
-    setNodeDeleteConfirmation: () => undefined,
     confirmNodeDelete: async () => undefined,
     agentSettings: DEFAULT_AGENT_SETTINGS,
     workspacePath: '/tmp',

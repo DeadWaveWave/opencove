@@ -90,12 +90,7 @@ export function WorkspaceCanvasView({
   materializeQuickPreview,
   beginQuickPreviewDrag,
   handleSpaceDragHandlePointerDown,
-  editingSpaceId,
-  spaceRenameInputRef,
-  spaceRenameDraft,
-  setSpaceRenameDraft,
   commitSpaceRename,
-  cancelSpaceRename,
   activateSpaceTitle,
   setSpaceLabelColor,
   selectedNodeCount,
@@ -115,7 +110,7 @@ export function WorkspaceCanvasView({
   arrangeAll,
   arrangeCanvas,
   arrangeInSpace,
-  openTaskCreator,
+  createTaskFromContextMenu,
   openRoleCreator,
   openAgentLauncher,
   openAgentLauncherForProvider,
@@ -129,8 +124,6 @@ export function WorkspaceCanvasView({
   createSpaceFromSelectedNodes,
   createChildSpaceInParent,
   createEmptySpaceAtPoint,
-  spaceTargetMountPicker,
-  setSpaceTargetMountPicker,
   confirmSpaceTargetMountPicker,
   cancelSpaceTargetMountPicker,
   clearNodeSelection,
@@ -138,25 +131,14 @@ export function WorkspaceCanvasView({
   isConvertSelectedNoteToTaskDisabled,
   convertSelectedNoteToTask,
   setSelectedNodeLabelColorOverride,
-  taskCreator,
   taskTitleProviderLabel,
   taskTitleModelLabel,
   taskTagOptions,
-  setTaskCreator,
-  closeTaskCreator,
-  generateTaskTitle,
-  createTask,
-  roleCreator,
-  setRoleCreator,
   closeRoleCreator,
   createRole,
-  taskEditor,
-  setTaskEditor,
   closeTaskEditor,
   generateTaskEditorTitle,
   saveTaskEdits,
-  nodeDeleteConfirmation,
-  setNodeDeleteConfirmation,
   confirmNodeDelete,
   spaceWorktreeMismatchDropWarning,
   cancelSpaceWorktreeMismatchDropWarning,
@@ -291,12 +273,7 @@ export function WorkspaceCanvasView({
           openExplorerSpaceId={openExplorerSpaceId}
           toggleExplorer={toggleSpaceExplorer}
           handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
-          editingSpaceId={editingSpaceId}
-          spaceRenameInputRef={spaceRenameInputRef}
-          spaceRenameDraft={spaceRenameDraft}
-          setSpaceRenameDraft={setSpaceRenameDraft}
           commitSpaceRename={commitSpaceRename}
-          cancelSpaceRename={cancelSpaceRename}
           activateSpaceTitle={activateSpaceTitle}
           onOpenSpaceMenu={openSpaceActionMenu}
         />
@@ -356,7 +333,6 @@ export function WorkspaceCanvasView({
         spaces={spaces}
         activateSpace={activateSpace}
         activateAllSpaces={activateAllSpaces}
-        cancelSpaceRename={cancelSpaceRename}
         onOpenSpaceContextMenu={(spaceId, anchor) => {
           ui.closeMenus()
           onOpenSpaceContextMenu?.(spaceId, anchor)
@@ -377,7 +353,7 @@ export function WorkspaceCanvasView({
         createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
         createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}
         createPluginNodeFromContextMenu={createPluginNodeFromContextMenu}
-        openTaskCreator={openTaskCreator}
+        createTaskFromContextMenu={createTaskFromContextMenu}
         openRoleCreator={openRoleCreator}
         openAgentLauncher={openAgentLauncher}
         openAgentLauncherForProvider={openAgentLauncherForProvider}
@@ -411,29 +387,16 @@ export function WorkspaceCanvasView({
         onChangePreserveWindowSizesOnArrange={onChangePreserveWindowSizesOnArrange}
       />
       <WorkspaceCanvasWindows
-        taskCreator={taskCreator}
         taskTitleProviderLabel={taskTitleProviderLabel}
         taskTitleModelLabel={taskTitleModelLabel}
         taskTagOptions={taskTagOptions}
-        setTaskCreator={setTaskCreator}
-        closeTaskCreator={closeTaskCreator}
-        generateTaskTitle={generateTaskTitle}
-        createTask={createTask}
-        roleCreator={roleCreator}
-        setRoleCreator={setRoleCreator}
         closeRoleCreator={closeRoleCreator}
         createRole={createRole}
-        taskEditor={taskEditor}
-        setTaskEditor={setTaskEditor}
         closeTaskEditor={closeTaskEditor}
         generateTaskEditorTitle={generateTaskEditorTitle}
         saveTaskEdits={saveTaskEdits}
-        spaceTargetMountPicker={spaceTargetMountPicker}
-        setSpaceTargetMountPicker={setSpaceTargetMountPicker}
         confirmSpaceTargetMountPicker={confirmSpaceTargetMountPicker}
         cancelSpaceTargetMountPicker={cancelSpaceTargetMountPicker}
-        nodeDeleteConfirmation={nodeDeleteConfirmation}
-        setNodeDeleteConfirmation={setNodeDeleteConfirmation}
         confirmNodeDelete={confirmNodeDelete}
         spaceWorktreeMismatchDropWarning={spaceWorktreeMismatchDropWarning}
         cancelSpaceWorktreeMismatchDropWarning={cancelSpaceWorktreeMismatchDropWarning}

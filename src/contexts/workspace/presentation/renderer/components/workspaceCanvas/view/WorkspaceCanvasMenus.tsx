@@ -18,7 +18,7 @@ export function WorkspaceCanvasMenus({
   createNoteNodeFromContextMenu,
   createWebsiteNodeFromContextMenu,
   createPluginNodeFromContextMenu,
-  openTaskCreator,
+  createTaskFromContextMenu,
   openRoleCreator,
   openAgentLauncher,
   openAgentLauncherForProvider,
@@ -58,7 +58,7 @@ export function WorkspaceCanvasMenus({
   | 'createNoteNodeFromContextMenu'
   | 'createWebsiteNodeFromContextMenu'
   | 'createPluginNodeFromContextMenu'
-  | 'openTaskCreator'
+  | 'createTaskFromContextMenu'
   | 'openRoleCreator'
   | 'openAgentLauncher'
   | 'openAgentLauncherForProvider'
@@ -125,7 +125,7 @@ export function WorkspaceCanvasMenus({
         createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}
         createPluginNodeFromContextMenu={createPluginNodeFromContextMenu}
         websiteWindowsEnabled={agentSettings.websiteWindowPolicy.enabled}
-        openTaskCreator={openTaskCreator}
+        createTaskFromContextMenu={createTaskFromContextMenu}
         openRoleCreator={openRoleCreator}
         openAgentLauncher={openAgentLauncher}
         agentProviderOrder={agentSettings.agentProviderOrder}

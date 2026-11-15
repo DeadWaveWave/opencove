@@ -36,7 +36,6 @@ interface UseSpaceDragParams {
   magneticSnappingEnabledRef: React.MutableRefObject<boolean>
   setSnapGuides: React.Dispatch<React.SetStateAction<WorkspaceSnapGuide[] | null>>
   onRequestPersistFlush?: () => void
-  cancelSpaceRename: () => void
 }
 
 export function useWorkspaceCanvasSpaceDrag({
@@ -53,7 +52,6 @@ export function useWorkspaceCanvasSpaceDrag({
   magneticSnappingEnabledRef,
   setSnapGuides,
   onRequestPersistFlush,
-  cancelSpaceRename,
 }: UseSpaceDragParams): {
   spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
   handleSpaceDragHandlePointerDown: (
@@ -464,12 +462,11 @@ export function useWorkspaceCanvasSpaceDrag({
       spaceDragSawPointerMoveRef.current = false
       setSpaceFramePreview(new Map([[spaceId, targetSpace.rect]]))
       ui.closeContextMenu()
-      cancelSpaceRename()
+      ui.cancelSpaceRename()
       setSnapGuides(null)
     },
     [
       applySpaceClickSelection,
-      cancelSpaceRename,
       nodesRef,
       reactFlow,
       selectedNodeIdsRef,

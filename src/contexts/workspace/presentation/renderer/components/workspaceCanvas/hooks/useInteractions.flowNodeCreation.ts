@@ -11,7 +11,6 @@ import { useCanvasUiCommands, useReadCanvasUi } from '../../../store/canvasStore
 type FlowNodeCreationParams = Pick<
   UseWorkspaceCanvasInteractionsParams,
   | 'workspaceId'
-  | 'cancelSpaceRename'
   | 'standardWindowSizeBucket'
   | 'createNoteNode'
   | 'createWebsiteNode'
@@ -25,7 +24,6 @@ type FlowNodeCreationParams = Pick<
 
 export function useWorkspaceCanvasFlowNodeCreation({
   workspaceId,
-  cancelSpaceRename,
   standardWindowSizeBucket,
   createNoteNode,
   createWebsiteNode,
@@ -42,7 +40,7 @@ export function useWorkspaceCanvasFlowNodeCreation({
   const createNoteNodeAtFlowPoint = useCallback(
     (anchor: Point): void => {
       ui.closeContextMenu()
-      cancelSpaceRename()
+      ui.cancelSpaceRename()
       createNoteNodeAtFlowPosition({
         workspaceId,
         anchor,
@@ -55,7 +53,6 @@ export function useWorkspaceCanvasFlowNodeCreation({
       })
     },
     [
-      cancelSpaceRename,
       createNoteNode,
       nodesRef,
       onSpacesChange,
@@ -73,7 +70,7 @@ export function useWorkspaceCanvasFlowNodeCreation({
       }
 
       ui.closeContextMenu()
-      cancelSpaceRename()
+      ui.cancelSpaceRename()
       createWebsiteNodeAtFlowPosition({
         workspaceId,
         anchor,
@@ -89,7 +86,6 @@ export function useWorkspaceCanvasFlowNodeCreation({
     },
     [
       browserDefaultMode,
-      cancelSpaceRename,
       createWebsiteNode,
       nodesRef,
       onSpacesChange,

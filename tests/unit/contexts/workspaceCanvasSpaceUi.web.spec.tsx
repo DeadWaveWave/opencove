@@ -24,7 +24,6 @@ function HookHost(): React.JSX.Element {
   const openers = useSpacePathOpeners(spaceActionMenu)
 
   const ui = useWorkspaceCanvasSpaceUi({
-    cancelSpaceRename: () => undefined,
     workspacePath: '/tmp/opencove-workspace',
     spacesRef,
     handlePaneClick: () => undefined,

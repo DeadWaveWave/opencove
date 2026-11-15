@@ -1,4 +1,4 @@
-import React, { type Dispatch, type SetStateAction } from 'react'
+import React from 'react'
 import { useTranslation, type TranslateFn } from '@app/renderer/i18n'
 import type { NodeDeleteConfirmationState } from '../types'
 import { Dialog } from '@app/renderer/components/ui/Dialog'
@@ -7,7 +7,7 @@ import { TrashIcon } from '@app/renderer/components/ui/pixelIcons'
 
 interface NodeDeleteConfirmationWindowProps {
   nodeDeleteConfirmation: NodeDeleteConfirmationState | null
-  setNodeDeleteConfirmation: Dispatch<SetStateAction<NodeDeleteConfirmationState | null>>
+  close: () => void
   confirmNodeDelete: () => Promise<void>
 }
 
@@ -38,7 +38,7 @@ function renderDescription(
 
 export function NodeDeleteConfirmationWindow({
   nodeDeleteConfirmation,
-  setNodeDeleteConfirmation,
+  close,
   confirmNodeDelete,
 }: NodeDeleteConfirmationWindowProps): React.JSX.Element | null {
   const { t } = useTranslation()
@@ -61,7 +61,7 @@ export function NodeDeleteConfirmationWindow({
         className="cove-window__action cove-window__action--ghost workspace-task-creator__action workspace-task-creator__action--ghost"
         data-testid="workspace-node-delete-cancel"
         onClick={() => {
-          setNodeDeleteConfirmation(null)
+          close()
         }}
       >
         {t('common.cancel')}
@@ -89,7 +89,7 @@ export function NodeDeleteConfirmationWindow({
       aria-label={heading}
       aria-describedby="workspace-node-delete-description"
       onDismiss={() => {
-        setNodeDeleteConfirmation(null)
+        close()
       }}
     >
       <WindowHeading title={heading} icon={<TrashIcon size={18} />} />

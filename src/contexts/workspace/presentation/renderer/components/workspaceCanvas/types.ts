@@ -165,18 +165,6 @@ export interface CanvasWheelGestureSessionState {
 
 export type TrackpadGestureLockState = CanvasWheelGestureSessionState
 
-export interface TaskCreatorState {
-  anchor: Point
-  title: string
-  requirement: string
-  priority: TaskPriority
-  selectedTags: string[]
-  autoGenerateTitle: boolean
-  isGeneratingTitle: boolean
-  isCreating: boolean
-  error: string | null
-}
-
 export interface RoleCreatorState {
   anchor: Point
   mode: 'create' | 'edit'

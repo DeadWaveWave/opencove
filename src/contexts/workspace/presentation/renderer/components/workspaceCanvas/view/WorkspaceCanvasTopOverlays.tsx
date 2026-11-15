@@ -14,7 +14,6 @@ interface WorkspaceCanvasTopOverlaysProps {
   spaces: WorkspaceSpaceState[]
   activateSpace: (spaceId: string) => void
   activateAllSpaces: () => void
-  cancelSpaceRename: () => void
   onOpenSpaceContextMenu?: (spaceId: string, anchor: { x: number; y: number }) => void
   usedLabelColors: LabelColor[]
   activeLabelColorFilter: LabelColor | null
@@ -26,7 +25,6 @@ export function WorkspaceCanvasTopOverlays({
   spaces,
   activateSpace,
   activateAllSpaces,
-  cancelSpaceRename,
   onOpenSpaceContextMenu,
   usedLabelColors,
   activeLabelColorFilter,
@@ -85,7 +83,6 @@ export function WorkspaceCanvasTopOverlays({
           spaces={pinnedTopLevelSpaces}
           activateSpace={activateSpace}
           activateAllSpaces={activateAllSpaces}
-          cancelSpaceRename={cancelSpaceRename}
           onOpenSpaceContextMenu={onOpenSpaceContextMenu}
         />
       ) : null}

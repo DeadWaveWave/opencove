@@ -5,6 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
 import { useWorkspaceCanvasNodeDeleteConfirmation } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDeleteConfirmation'
 import { subscribeWorkspaceNodesClosed } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeClosureEvents'
+import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
+import {
+  useCanvasUiCommands,
+  useReadCanvasUi,
+} from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 import {
   seedWorkspaceCanvasStore,
@@ -42,11 +47,15 @@ function renderStore(
         closeNode: store.closeNode,
         requestNodeDeleteRef,
       })
-      return { ...store, confirmation, requestNodeDeleteRef }
+      const readUi = useReadCanvasUi()
+      const ui = useCanvasUiCommands()
+      return { ...store, confirmation, requestNodeDeleteRef, readUi, ui }
     },
     {
       wrapper: ({ children }): React.JSX.Element => (
-        <ReactFlowProvider>{children}</ReactFlowProvider>
+        <ReactFlowProvider>
+          <CanvasStoreTestProvider>{children}</CanvasStoreTestProvider>
+        </ReactFlowProvider>
       ),
     },
   )
@@ -181,8 +190,8 @@ describe('node store successful closure', () => {
     unsubscribe = subscribeWorkspaceNodesClosed(closed)
     await act(() => view.result.current.closeNode('missing'))
     act(() => view.result.current.requestNodeDeleteRef.current([note.id]))
-    expect(view.result.current.confirmation.nodeDeleteConfirmation).not.toBeNull()
-    act(() => view.result.current.confirmation.setNodeDeleteConfirmation(null))
+    expect(view.result.current.readUi().nodeDeleteConfirmation).not.toBeNull()
+    act(() => view.result.current.ui.closeDialog('nodeDeleteConfirmation'))
     await act(() => view.result.current.confirmation.confirmNodeDelete())
     act(() => seedWorkspaceCanvasStore({ nodes: [] }))
     expect(closed).not.toHaveBeenCalled()

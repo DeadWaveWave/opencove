@@ -92,7 +92,6 @@ export const enMessages = {
   taskTitleGenerateFailed: 'Auto-generation failed: {{message}}',
   taskCreateFailed: 'Failed to create task: {{message}}',
   taskUpdateFailed: 'Failed to update task: {{message}}',
-  taskNodePlacementFailed: 'Task node cannot be placed. Tidy the canvas and try again.',
   taskTitleOrAutoGenerateRequired: 'Enter a task title or enable auto-generation.',
   taskTitleRequired: 'Enter a task title.',
   taskPromptTemplateNameRequired: 'Template name cannot be empty.',

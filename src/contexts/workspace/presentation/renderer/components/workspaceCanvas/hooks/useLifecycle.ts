@@ -13,7 +13,6 @@ interface UseWorkspaceCanvasLifecycleParams {
   workspaceId: string
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
   setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
-  cancelSpaceRename: () => void
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
   trackpadGestureLockRef: React.MutableRefObject<TrackpadGestureLockState | null>
   setIsCanvasWheelGestureCaptureActive: React.Dispatch<React.SetStateAction<boolean>>
@@ -35,7 +34,6 @@ export function useWorkspaceCanvasLifecycle({
   workspaceId,
   setSelectedNodeIds,
   setSelectedSpaceIds,
-  cancelSpaceRename,
   selectionDraftRef,
   trackpadGestureLockRef,
   setIsCanvasWheelGestureCaptureActive,
@@ -58,12 +56,10 @@ export function useWorkspaceCanvasLifecycle({
   useEffect(() => {
     setSelectedNodeIds([])
     setSelectedSpaceIds([])
-    cancelSpaceRename()
     selectionDraftRef.current = null
     trackpadGestureLockRef.current = null
     setIsCanvasWheelGestureCaptureActive(false)
   }, [
-    cancelSpaceRename,
     selectionDraftRef,
     setIsCanvasWheelGestureCaptureActive,
     setSelectedNodeIds,

@@ -40,7 +40,6 @@ export interface UseWorkspaceCanvasInteractionsParams {
   setNodes: SetNodes
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
   setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
-  cancelSpaceRename: () => void
   selectedNodeIdsRef: React.MutableRefObject<string[]>
   selectedSpaceIdsRef: React.MutableRefObject<string[]>
   workspaceId: string

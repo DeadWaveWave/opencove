@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState, type MutableRefObject } from 'react'
+import { useCallback, useEffect, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { NodeDeleteConfirmationState } from '../types'
+import { useCanvasUiCommands, useReadCanvasUi } from '../../../store/canvasStoreContext'
 
 interface UseNodeDeleteConfirmationParams {
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
@@ -65,15 +66,11 @@ export function useWorkspaceCanvasNodeDeleteConfirmation({
   closeNode,
   requestNodeDeleteRef,
 }: UseNodeDeleteConfirmationParams): {
-  nodeDeleteConfirmation: NodeDeleteConfirmationState | null
-  setNodeDeleteConfirmation: React.Dispatch<
-    React.SetStateAction<NodeDeleteConfirmationState | null>
-  >
   confirmNodeDelete: () => Promise<void>
   requestNodeClose: (nodeId: string) => Promise<void>
 } {
-  const [nodeDeleteConfirmation, setNodeDeleteConfirmation] =
-    useState<NodeDeleteConfirmationState | null>(null)
+  const ui = useCanvasUiCommands()
+  const readUi = useReadCanvasUi()
 
   const requestNodeDelete = useCallback(
     (nodeIds: string[]) => {
@@ -86,12 +83,13 @@ export function useWorkspaceCanvasNodeDeleteConfirmation({
         return
       }
 
-      setNodeDeleteConfirmation(nextConfirmation)
+      ui.openDialog('nodeDeleteConfirmation', nextConfirmation)
     },
-    [nodesRef, spacesRef],
+    [nodesRef, spacesRef, ui],
   )
 
   const confirmNodeDelete = useCallback(async () => {
+    const nodeDeleteConfirmation = readUi().nodeDeleteConfirmation
     if (!nodeDeleteConfirmation) {
       return
     }
@@ -101,8 +99,8 @@ export function useWorkspaceCanvasNodeDeleteConfirmation({
       Promise.resolve(),
     )
 
-    setNodeDeleteConfirmation(null)
-  }, [closeNode, nodeDeleteConfirmation])
+    ui.closeDialog('nodeDeleteConfirmation')
+  }, [closeNode, readUi, ui])
 
   const requestNodeClose = useCallback(
     async (nodeId: string) => {
@@ -127,8 +125,6 @@ export function useWorkspaceCanvasNodeDeleteConfirmation({
   }, [requestNodeDelete, requestNodeDeleteRef])
 
   return {
-    nodeDeleteConfirmation,
-    setNodeDeleteConfirmation,
     confirmNodeDelete,
     requestNodeClose,
   }

@@ -106,17 +106,14 @@ export function useWorkspaceCanvasActionBar({
   createWebsiteAtPoint,
   createSpaceAtPoint,
   createPluginAtPoint,
-  cancelSpaceRename,
   spacesRef,
-}: Omit<Parameters<typeof useWorkspaceCanvasActionBarActions>[0], 'clearTransientUi'> & {
-  cancelSpaceRename: () => void
-}) {
+}: Omit<Parameters<typeof useWorkspaceCanvasActionBarActions>[0], 'clearTransientUi'>) {
   const ui = useCanvasUiCommands()
 
   const clearTransientUi = useCallback(() => {
     ui.closeContextMenu()
-    cancelSpaceRename()
-  }, [cancelSpaceRename, ui])
+    ui.cancelSpaceRename()
+  }, [ui])
 
   return {
     ...useWorkspaceCanvasActionBarActions({

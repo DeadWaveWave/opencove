@@ -17,16 +17,11 @@ import type { WorkspaceArrangeStyle } from '../../utils/workspaceArrange'
 import type { WorkspaceSnapGuide } from '../../utils/workspaceSnap'
 import type { SpaceExplorerOpenDocumentBlock } from './hooks/useSpaceExplorer.guards'
 import type {
-  NodeDeleteConfirmationState,
   SelectionDraftState,
   SpaceVisual,
   SpaceWorktreeMismatchDropWarningState,
-  SpaceTargetMountPickerState,
   SpaceWorktreeOperationPhase,
   SpaceWorktreeOperationState,
-  TaskCreatorState,
-  TaskEditorState,
-  RoleCreatorState,
   WorkspaceCanvasQuickPreviewState,
   WorkspaceCanvasProps,
 } from './types'
@@ -121,12 +116,7 @@ export interface WorkspaceCanvasViewProps {
     spaceId: string,
     options?: { mode?: 'auto' | 'region' },
   ) => void
-  editingSpaceId: string | null
-  spaceRenameInputRef: React.RefObject<HTMLInputElement | null>
-  spaceRenameDraft: string
-  setSpaceRenameDraft: React.Dispatch<React.SetStateAction<string>>
   commitSpaceRename: (spaceId: string) => void
-  cancelSpaceRename: () => void
   activateSpaceTitle: (spaceId: string, lod: CanvasLod) => void
   setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
   selectedNodeCount: number
@@ -145,7 +135,7 @@ export interface WorkspaceCanvasViewProps {
   arrangeAll: (style?: WorkspaceArrangeStyle) => void
   arrangeCanvas: (style?: WorkspaceArrangeStyle) => void
   arrangeInSpace: (spaceId: string, style?: WorkspaceArrangeStyle) => void
-  openTaskCreator: () => void
+  createTaskFromContextMenu: () => void
   openRoleCreator: () => void
   openAgentLauncher: () => void
   openAgentLauncherForProvider: (provider: AgentNodeData['provider']) => void
@@ -162,10 +152,6 @@ export interface WorkspaceCanvasViewProps {
     options?: { anchor?: { x: number; y: number } | null; nodeIds?: string[] },
   ) => string | null
   createEmptySpaceAtPoint: (point: { x: number; y: number }) => void
-  spaceTargetMountPicker: SpaceTargetMountPickerState | null
-  setSpaceTargetMountPicker: React.Dispatch<
-    React.SetStateAction<SpaceTargetMountPickerState | null>
-  >
   confirmSpaceTargetMountPicker: () => void
   cancelSpaceTargetMountPicker: () => void
   clearNodeSelection: () => void
@@ -173,27 +159,14 @@ export interface WorkspaceCanvasViewProps {
   isConvertSelectedNoteToTaskDisabled: boolean
   convertSelectedNoteToTask: () => void
   setSelectedNodeLabelColorOverride: (labelColorOverride: NodeLabelColorOverride) => void
-  taskCreator: TaskCreatorState | null
   taskTitleProviderLabel: string
   taskTitleModelLabel: string
   taskTagOptions: string[]
-  setTaskCreator: React.Dispatch<React.SetStateAction<TaskCreatorState | null>>
-  closeTaskCreator: () => void
-  generateTaskTitle: () => Promise<void>
-  createTask: () => Promise<void>
-  roleCreator: RoleCreatorState | null
-  setRoleCreator: React.Dispatch<React.SetStateAction<RoleCreatorState | null>>
   closeRoleCreator: () => void
   createRole: () => void
-  taskEditor: TaskEditorState | null
-  setTaskEditor: React.Dispatch<React.SetStateAction<TaskEditorState | null>>
   closeTaskEditor: () => void
   generateTaskEditorTitle: () => Promise<void>
   saveTaskEdits: () => Promise<void>
-  nodeDeleteConfirmation: NodeDeleteConfirmationState | null
-  setNodeDeleteConfirmation: React.Dispatch<
-    React.SetStateAction<NodeDeleteConfirmationState | null>
-  >
   confirmNodeDelete: () => Promise<void>
   spaceWorktreeMismatchDropWarning: SpaceWorktreeMismatchDropWarningState | null
   cancelSpaceWorktreeMismatchDropWarning: () => void

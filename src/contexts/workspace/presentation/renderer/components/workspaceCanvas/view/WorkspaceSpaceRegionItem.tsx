@@ -26,9 +26,8 @@ export function WorkspaceSpaceRegionItem({
   githubPullRequestsEnabled,
   busyOperationLabel,
   editingSpaceId,
-  spaceRenameInputRef,
   spaceRenameDraft,
-  setSpaceRenameDraft,
+  onSpaceRenameDraftChange,
   commitSpaceRename,
   cancelSpaceRename,
   activateSpaceTitle,
@@ -51,9 +50,8 @@ export function WorkspaceSpaceRegionItem({
   githubPullRequestsEnabled: boolean
   busyOperationLabel: string | null
   editingSpaceId: string | null
-  spaceRenameInputRef: React.RefObject<HTMLInputElement | null>
   spaceRenameDraft: string
-  setSpaceRenameDraft: React.Dispatch<React.SetStateAction<string>>
+  onSpaceRenameDraftChange: (draft: string) => void
   commitSpaceRename: (spaceId: string) => void
   cancelSpaceRename: () => void
   activateSpaceTitle: (spaceId: string, lod: CanvasLod) => void
@@ -85,6 +83,23 @@ export function WorkspaceSpaceRegionItem({
   const { t } = useTranslation()
   const regionRef = React.useRef<HTMLDivElement>(null)
   useSpaceCaptionBorder(regionRef)
+  const spaceRenameInputRef = React.useRef<HTMLInputElement>(null)
+  const isRenaming = editingSpaceId === space.id
+  React.useEffect(() => {
+    if (!isRenaming) {
+      return
+    }
+
+    window.requestAnimationFrame(() => {
+      const input = spaceRenameInputRef.current
+      if (!input) {
+        return
+      }
+
+      input.focus()
+      input.select()
+    })
+  }, [isRenaming])
   const branchName = resolvedWorktreeInfo?.branch ?? null
   const worktreePath = resolvedWorktreeInfo?.path ?? null
   const pullRequestUrl = resolvedPullRequestSummary?.ref.url ?? null
@@ -183,7 +198,7 @@ export function WorkspaceSpaceRegionItem({
           />
         ))}
         <>
-          {editingSpaceId === space.id ? (
+          {isRenaming ? (
             <input
               ref={spaceRenameInputRef}
               className="workspace-space-region__label-input nodrag nopan nowheel"
@@ -200,7 +215,7 @@ export function WorkspaceSpaceRegionItem({
                 event.stopPropagation()
               }}
               onChange={event => {
-                setSpaceRenameDraft(event.target.value)
+                onSpaceRenameDraftChange(event.target.value)
               }}
               onBlur={() => {
                 commitSpaceRename(space.id)

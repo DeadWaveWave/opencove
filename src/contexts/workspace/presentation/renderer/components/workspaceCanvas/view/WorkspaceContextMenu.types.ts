@@ -28,7 +28,7 @@ export interface WorkspaceContextMenuProps {
   createWebsiteNodeFromContextMenu: () => void
   createPluginNodeFromContextMenu: (pluginId: string) => void
   websiteWindowsEnabled: boolean
-  openTaskCreator: () => void
+  createTaskFromContextMenu: () => void
   openRoleCreator: () => void
   openAgentLauncher: () => void
   agentProviderOrder: AgentProvider[]

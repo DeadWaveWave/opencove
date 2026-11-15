@@ -83,7 +83,6 @@ export const zhCNMessages = {
   taskTitleGenerateFailed: '自动生成失败：{{message}}',
   taskCreateFailed: '创建任务失败：{{message}}',
   taskUpdateFailed: '更新任务失败：{{message}}',
-  taskNodePlacementFailed: '任务节点无法放置，请先整理画布后重试。',
   taskTitleOrAutoGenerateRequired: '请输入任务名称或开启自动生成。',
   taskTitleRequired: '请输入任务名称。',
   taskPromptTemplateNameRequired: '模板名称不能为空。',

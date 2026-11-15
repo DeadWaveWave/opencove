@@ -1,9 +1,9 @@
 import type { TranslateFn } from '@app/renderer/i18n'
 import type { ListMountsResult } from '@shared/contracts/dto'
 import type { Node, ReactFlowInstance } from '@xyflow/react'
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import type { MutableRefObject } from 'react'
 import type { TerminalNodeData, WorkspaceSpaceRect } from '../../../types'
-import type { ShowWorkspaceCanvasMessage, SpaceTargetMountPickerState } from '../types'
+import type { ShowWorkspaceCanvasMessage } from '../types'
 import type { CanvasUiCommands } from '../../../store/canvasStore.ui'
 
 type CreateSpacePayload = {
@@ -24,8 +24,6 @@ export function createSpaceFromSelectedNodesWithMounts({
   workspacePath,
   createSpace,
   ui,
-  setSpaceTargetMountPicker,
-  cancelSpaceRename,
   onShowMessage,
   t,
 }: {
@@ -35,8 +33,6 @@ export function createSpaceFromSelectedNodesWithMounts({
   workspacePath: string
   createSpace: (payload: CreateSpacePayload) => void
   ui: CanvasUiCommands
-  setSpaceTargetMountPicker: Dispatch<SetStateAction<SpaceTargetMountPickerState | null>>
-  cancelSpaceRename: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   t: TranslateFn
 }): void {
@@ -94,7 +90,7 @@ export function createSpaceFromSelectedNodesWithMounts({
         if (mountResult.mounts.length === 0) {
           onShowMessage?.(t('messages.projectHasNoMounts'), 'warning')
           ui.closeContextMenu()
-          cancelSpaceRename()
+          ui.cancelSpaceRename()
           return
         }
 
@@ -109,7 +105,7 @@ export function createSpaceFromSelectedNodesWithMounts({
           return
         }
 
-        setSpaceTargetMountPicker({
+        ui.openDialog('spaceTargetMountPicker', {
           nodeIds: selectedIds,
           rect: null,
           mounts: mountResult.mounts,
@@ -132,12 +128,12 @@ export function createSpaceFromSelectedNodesWithMounts({
           })(),
         })
         ui.closeContextMenu()
-        cancelSpaceRename()
+        ui.cancelSpaceRename()
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         onShowMessage?.(t('messages.mountListFailed', { message }), 'error')
         ui.closeContextMenu()
-        cancelSpaceRename()
+        ui.cancelSpaceRename()
       }
     })()
 

@@ -36,7 +36,7 @@ describe('anchored Space operation windows', () => {
           selectedMountId: 'mount-1',
           anchor: { x: 220, y: 96 },
         }}
-        setPicker={() => undefined}
+        updatePicker={() => undefined}
         onCancel={onCancel}
         onConfirm={() => undefined}
       />,

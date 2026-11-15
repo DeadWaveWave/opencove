@@ -1,4 +1,4 @@
-import React, { type Dispatch, type SetStateAction } from 'react'
+import React from 'react'
 import { TextAreaField, TextField } from '@app/renderer/components/ui/TextField'
 import { useTranslation } from '@app/renderer/i18n'
 import type { RoleCreatorState } from '../types'
@@ -8,14 +8,14 @@ import { UserIcon } from '@app/renderer/components/ui/pixelIcons'
 
 interface RoleCreatorWindowProps {
   roleCreator: RoleCreatorState | null
-  setRoleCreator: Dispatch<SetStateAction<RoleCreatorState | null>>
+  update: (recipe: (current: RoleCreatorState) => RoleCreatorState) => void
   closeRoleCreator: () => void
   createRole: () => void
 }
 
 export function RoleCreatorWindow({
   roleCreator,
-  setRoleCreator,
+  update,
   closeRoleCreator,
   createRole,
 }: RoleCreatorWindowProps): React.JSX.Element | null {
@@ -58,7 +58,7 @@ export function RoleCreatorWindow({
           placeholder={t('roleCreator.namePlaceholder')}
           onChange={event => {
             const name = event.target.value
-            setRoleCreator(prev => (prev ? { ...prev, name, error: null } : prev))
+            update(current => ({ ...current, name, error: null }))
           }}
         />
 
@@ -71,7 +71,7 @@ export function RoleCreatorWindow({
           placeholder={t('roleCreator.descriptionPlaceholder')}
           onChange={event => {
             const description = event.target.value
-            setRoleCreator(prev => (prev ? { ...prev, description, error: null } : prev))
+            update(current => ({ ...current, description, error: null }))
           }}
         />
 
@@ -84,7 +84,7 @@ export function RoleCreatorWindow({
           placeholder={t('roleCreator.promptTemplatePlaceholder')}
           onChange={event => {
             const promptTemplate = event.target.value
-            setRoleCreator(prev => (prev ? { ...prev, promptTemplate, error: null } : prev))
+            update(current => ({ ...current, promptTemplate, error: null }))
           }}
         />
 
@@ -97,7 +97,7 @@ export function RoleCreatorWindow({
           placeholder={t('roleCreator.inputHintPlaceholder')}
           onChange={event => {
             const inputHint = event.target.value
-            setRoleCreator(prev => (prev ? { ...prev, inputHint, error: null } : prev))
+            update(current => ({ ...current, inputHint, error: null }))
           }}
         />
 
@@ -110,7 +110,7 @@ export function RoleCreatorWindow({
           placeholder={t('roleCreator.outputFormatPlaceholder')}
           onChange={event => {
             const outputFormat = event.target.value
-            setRoleCreator(prev => (prev ? { ...prev, outputFormat, error: null } : prev))
+            update(current => ({ ...current, outputFormat, error: null }))
           }}
         />
       </div>

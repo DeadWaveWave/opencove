@@ -18,7 +18,6 @@ export function useWorkspaceCanvasViewModel({
   viewportRef,
   onViewportChange,
   flowNodes,
-  cancelSpaceRename,
   workspacePath,
   spacesRef,
   handlePaneClick,
@@ -30,7 +29,6 @@ export function useWorkspaceCanvasViewModel({
   viewportRef: MutableRefObject<Viewport>
   onViewportChange: (viewport: Viewport) => void
   flowNodes: Node<TerminalNodeData>[]
-  cancelSpaceRename: () => void
   workspacePath: string
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   handlePaneClick: (event: React.MouseEvent | MouseEvent) => void
@@ -60,7 +58,6 @@ export function useWorkspaceCanvasViewModel({
   const taskAgentEdges = useWorkspaceCanvasTaskAgentEdges(flowNodes)
 
   const spaceUi = useWorkspaceCanvasSpaceUi({
-    cancelSpaceRename,
     workspacePath,
     spacesRef,
     handlePaneClick,

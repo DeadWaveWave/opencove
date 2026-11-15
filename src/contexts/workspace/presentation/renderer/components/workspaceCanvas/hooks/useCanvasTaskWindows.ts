@@ -4,7 +4,7 @@ import type { Point, TaskPriority, TerminalNodeData, WorkspaceSpaceState } from 
 import type { NodePlacementOptions } from '../types'
 import type { WorkspaceCanvasActionRefs } from './useActionRefs'
 import { useWorkspaceCanvasNodeDeleteConfirmation } from './useNodeDeleteConfirmation'
-import { useWorkspaceCanvasTaskCreator } from './useTaskCreator'
+import { useWorkspaceCanvasTaskNodeCreation } from './useTaskNodeCreation'
 import { useWorkspaceCanvasTaskEditor } from './useTaskEditor'
 
 type SetNodes = (
@@ -49,60 +49,39 @@ export function useWorkspaceCanvasTaskWindows({
   closeNode: (nodeId: string) => Promise<void>
   actionRefs: WorkspaceCanvasActionRefs
 }) {
-  const {
-    taskCreator,
-    setTaskCreator,
-    createTaskAtPoint,
-    openTaskCreator,
-    closeTaskCreator,
-    generateTaskTitle,
-    createTask,
-  } = useWorkspaceCanvasTaskCreator({
+  const { createTaskAtPoint, createTaskFromContextMenu } = useWorkspaceCanvasTaskNodeCreation({
     workspaceId,
-    taskTagOptions,
     nodesRef,
     setNodes,
     spacesRef,
     onSpacesChange,
     onRequestPersistFlush,
-    suggestTaskTitle,
     standardWindowSizeBucket,
     createTaskNode,
   })
 
-  const { taskEditor, setTaskEditor, closeTaskEditor, generateTaskEditorTitle, saveTaskEdits } =
-    useWorkspaceCanvasTaskEditor({
-      nodesRef,
-      setNodes,
-      onRequestPersistFlush,
-      suggestTaskTitle,
-      taskTagOptions,
-      openTaskEditorRef: actionRefs.openTaskEditorRef,
-    })
+  const { closeTaskEditor, generateTaskEditorTitle, saveTaskEdits } = useWorkspaceCanvasTaskEditor({
+    nodesRef,
+    setNodes,
+    onRequestPersistFlush,
+    suggestTaskTitle,
+    taskTagOptions,
+    openTaskEditorRef: actionRefs.openTaskEditorRef,
+  })
 
-  const { nodeDeleteConfirmation, setNodeDeleteConfirmation, confirmNodeDelete, requestNodeClose } =
-    useWorkspaceCanvasNodeDeleteConfirmation({
-      nodesRef,
-      spacesRef,
-      closeNode,
-      requestNodeDeleteRef: actionRefs.requestNodeDeleteRef,
-    })
+  const { confirmNodeDelete, requestNodeClose } = useWorkspaceCanvasNodeDeleteConfirmation({
+    nodesRef,
+    spacesRef,
+    closeNode,
+    requestNodeDeleteRef: actionRefs.requestNodeDeleteRef,
+  })
 
   return {
-    taskCreator,
-    setTaskCreator,
     createTaskAtPoint,
-    openTaskCreator,
-    closeTaskCreator,
-    generateTaskTitle,
-    createTask,
-    taskEditor,
-    setTaskEditor,
+    createTaskFromContextMenu,
     closeTaskEditor,
     generateTaskEditorTitle,
     saveTaskEdits,
-    nodeDeleteConfirmation,
-    setNodeDeleteConfirmation,
     confirmNodeDelete,
     requestNodeClose,
   }

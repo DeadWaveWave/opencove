@@ -1,18 +1,18 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo } from 'react'
 import type { Node, ReactFlowInstance } from '@xyflow/react'
 import type {
   FocusNodeTargetZoom,
   StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
-import type { ShowWorkspaceCanvasMessage, SpaceVisual, SpaceTargetMountPickerState } from '../types'
+import type { ShowWorkspaceCanvasMessage, SpaceVisual } from '../types'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { CanvasLod } from '../view/canvasLod'
 import { computeSpaceRectFromNodes } from '../../../utils/spaceLayout'
 import { useWorkspaceCanvasCreateSpace } from './useSpaces.createSpace'
 import { useWorkspaceCanvasCreateChildSpace } from './useSpaces.createChildSpace'
 import { useWorkspaceCanvasSpaceFocus } from './useSpaces.focus'
-import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
+import { useCanvasUiCommands, useReadCanvasUi } from '../../../store/canvasStoreContext'
 
 interface UseWorkspaceCanvasSpacesParams {
   workspaceId: string
@@ -56,12 +56,7 @@ export function useWorkspaceCanvasSpaces({
   onRequestPersistFlush,
   onShowMessage,
 }: UseWorkspaceCanvasSpacesParams): {
-  editingSpaceId: string | null
-  spaceRenameDraft: string
-  setSpaceRenameDraft: React.Dispatch<React.SetStateAction<string>>
-  spaceRenameInputRef: React.RefObject<HTMLInputElement | null>
   activateSpaceTitle: (spaceId: string, lod: CanvasLod) => void
-  cancelSpaceRename: () => void
   commitSpaceRename: (spaceId: string) => void
   setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
   createSpaceFromSelectedNodes: () => void
@@ -70,10 +65,6 @@ export function useWorkspaceCanvasSpaces({
     options?: { anchor?: { x: number; y: number } | null; nodeIds?: string[] },
   ) => string | null
   createEmptySpaceAtPoint: (point: { x: number; y: number }) => Promise<void>
-  spaceTargetMountPicker: SpaceTargetMountPickerState | null
-  setSpaceTargetMountPicker: React.Dispatch<
-    React.SetStateAction<SpaceTargetMountPickerState | null>
-  >
   confirmSpaceTargetMountPicker: () => void
   cancelSpaceTargetMountPicker: () => void
   spaceVisuals: SpaceVisual[]
@@ -84,12 +75,7 @@ export function useWorkspaceCanvasSpaces({
   focusAllInViewport: () => void
 } {
   const ui = useCanvasUiCommands()
-
-  const [editingSpaceId, setEditingSpaceId] = useState<string | null>(null)
-  const [spaceRenameDraft, setSpaceRenameDraft] = useState('')
-  const spaceRenameInputRef = useRef<HTMLInputElement>(null)
-  const [spaceTargetMountPicker, setSpaceTargetMountPicker] =
-    useState<SpaceTargetMountPickerState | null>(null)
+  const readUi = useReadCanvasUi()
 
   useLayoutEffect(() => {
     spacesRef.current = spaces
@@ -98,12 +84,6 @@ export function useWorkspaceCanvasSpaces({
   useLayoutEffect(() => {
     selectedNodeIdsRef.current = selectedNodeIds
   }, [selectedNodeIds, selectedNodeIdsRef])
-
-  useEffect(() => {
-    setEditingSpaceId(null)
-    setSpaceRenameDraft('')
-    setSpaceTargetMountPicker(null)
-  }, [workspaceId])
 
   useEffect(() => {
     const spacesNeedingRect = spaces.filter(space => !space.rect)
@@ -147,36 +127,11 @@ export function useWorkspaceCanvasSpaces({
   }, [nodes, onSpacesChange, spaces])
 
   useEffect(() => {
-    if (!editingSpaceId) {
-      return
+    const editingSpaceId = readUi().spaceRename?.spaceId
+    if (editingSpaceId && !spaces.some(space => space.id === editingSpaceId)) {
+      ui.cancelSpaceRename()
     }
-
-    if (!spaces.some(space => space.id === editingSpaceId)) {
-      setEditingSpaceId(null)
-      setSpaceRenameDraft('')
-    }
-  }, [editingSpaceId, spaces])
-
-  useEffect(() => {
-    if (!editingSpaceId) {
-      return
-    }
-
-    window.requestAnimationFrame(() => {
-      const input = spaceRenameInputRef.current
-      if (!input) {
-        return
-      }
-
-      input.focus()
-      input.select()
-    })
-  }, [editingSpaceId])
-
-  const cancelSpaceRename = useCallback(() => {
-    setEditingSpaceId(null)
-    setSpaceRenameDraft('')
-  }, [])
+  }, [readUi, spaces, ui])
 
   const { createChildSpaceInParent } = useWorkspaceCanvasCreateChildSpace({
     workspacePath,
@@ -185,7 +140,6 @@ export function useWorkspaceCanvasSpaces({
     spacesRef,
     onSpacesChange,
     onRequestPersistFlush,
-    cancelSpaceRename,
     onShowMessage,
   })
 
@@ -204,8 +158,6 @@ export function useWorkspaceCanvasSpaces({
     selectedNodeIdsRef,
     onSpacesChange,
     onRequestPersistFlush,
-    setSpaceTargetMountPicker,
-    cancelSpaceRename,
     onShowMessage,
     createChildSpaceInParent,
   })
@@ -219,18 +171,21 @@ export function useWorkspaceCanvasSpaces({
         return
       }
 
-      setEditingSpaceId(space.id)
-      setSpaceRenameDraft(space.name)
-      ui.closeContextMenu()
+      ui.startSpaceRename(space.id, space.name)
     },
     [ui, spaces],
   )
 
   const commitSpaceRename = useCallback(
     (spaceId: string) => {
-      const normalizedName = spaceRenameDraft.trim()
+      const rename = readUi().spaceRename
+      if (!rename || rename.spaceId !== spaceId) {
+        return
+      }
+
+      const normalizedName = rename.draft.trim()
       if (normalizedName.length === 0) {
-        cancelSpaceRename()
+        ui.cancelSpaceRename()
         return
       }
 
@@ -244,9 +199,9 @@ export function useWorkspaceCanvasSpaces({
       )
 
       onSpacesChange(nextSpaces)
-      cancelSpaceRename()
+      ui.cancelSpaceRename()
     },
-    [cancelSpaceRename, onSpacesChange, spaceRenameDraft, spacesRef],
+    [onSpacesChange, readUi, spacesRef, ui],
   )
 
   const setSpaceLabelColor = useCallback(
@@ -267,11 +222,11 @@ export function useWorkspaceCanvasSpaces({
   )
 
   const cancelSpaceTargetMountPicker = useCallback(() => {
-    setSpaceTargetMountPicker(null)
-  }, [])
+    ui.closeDialog('spaceTargetMountPicker')
+  }, [ui])
 
   const confirmSpaceTargetMountPicker = useCallback(() => {
-    const picker = spaceTargetMountPicker
+    const picker = readUi().spaceTargetMountPicker
     if (!picker) {
       return
     }
@@ -285,8 +240,8 @@ export function useWorkspaceCanvasSpaces({
       targetMountId: picker.selectedMountId,
       directoryPath: selectedMount?.rootPath ?? '',
     })
-    setSpaceTargetMountPicker(null)
-  }, [createSpaceWithTargetMount, spaceTargetMountPicker])
+    ui.closeDialog('spaceTargetMountPicker')
+  }, [createSpaceWithTargetMount, readUi, ui])
 
   const spaceVisuals = useMemo<SpaceVisual[]>(() => {
     return spaces
@@ -326,7 +281,6 @@ export function useWorkspaceCanvasSpaces({
     reactFlow,
     nodesRef,
     spacesRef,
-    cancelSpaceRename,
   })
 
   const createEmptySpaceAtPoint = useCallback(
@@ -362,19 +316,12 @@ export function useWorkspaceCanvasSpaces({
   )
 
   return {
-    editingSpaceId,
-    spaceRenameDraft,
-    setSpaceRenameDraft,
-    spaceRenameInputRef,
     activateSpaceTitle,
-    cancelSpaceRename,
     commitSpaceRename,
     setSpaceLabelColor,
     createSpaceFromSelectedNodes,
     createChildSpaceInParent,
     createEmptySpaceAtPoint,
-    spaceTargetMountPicker,
-    setSpaceTargetMountPicker,
     confirmSpaceTargetMountPicker,
     cancelSpaceTargetMountPicker,
     spaceVisuals,

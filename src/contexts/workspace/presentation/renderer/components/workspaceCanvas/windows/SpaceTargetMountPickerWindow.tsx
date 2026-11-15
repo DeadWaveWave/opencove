@@ -1,4 +1,4 @@
-import React, { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { AnchoredOperationPopover } from '@app/renderer/components/AnchoredOperationPopover'
 import type { ListWorkerEndpointsResult } from '@shared/contracts/dto'
@@ -6,12 +6,14 @@ import type { SpaceTargetMountPickerState } from '../types'
 
 export function SpaceTargetMountPickerWindow({
   picker,
-  setPicker,
+  updatePicker,
   onCancel,
   onConfirm,
 }: {
   picker: SpaceTargetMountPickerState | null
-  setPicker: Dispatch<SetStateAction<SpaceTargetMountPickerState | null>>
+  updatePicker: (
+    recipe: (current: SpaceTargetMountPickerState) => SpaceTargetMountPickerState,
+  ) => void
   onCancel: () => void
   onConfirm: () => void
 }): React.JSX.Element | null {
@@ -86,9 +88,7 @@ export function SpaceTargetMountPickerWindow({
                       checked={selectedMountId === mount.mountId}
                       data-testid={`workspace-space-target-mount-${mount.mountId}`}
                       onChange={() => {
-                        setPicker(prev =>
-                          prev ? { ...prev, selectedMountId: mount.mountId } : prev,
-                        )
+                        updatePicker(current => ({ ...current, selectedMountId: mount.mountId }))
                       }}
                     />
                     <div className="workspace-space-target-mount__option-copy">

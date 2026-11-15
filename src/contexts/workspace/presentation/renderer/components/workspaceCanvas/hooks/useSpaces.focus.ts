@@ -8,6 +8,7 @@ import { useCanvasCollapseStore } from '../../../store/useCanvasCollapseStore'
 import { EMPTY_CANVAS_COLLAPSE } from '../../../utils/canvasCollapse'
 import { resolveSpaceDisplayRect } from '../collapse/spacePresentation'
 import { fitCanvasPresentation } from '../collapse/fitCanvasPresentation'
+import { useCanvasUiCommands } from '../../../store/canvasStoreContext'
 
 const DEFAULT_VIEWPORT_WIDTH = 1440
 const DEFAULT_VIEWPORT_HEIGHT = 900
@@ -20,7 +21,6 @@ export function useWorkspaceCanvasSpaceFocus({
   reactFlow,
   nodesRef,
   spacesRef,
-  cancelSpaceRename,
 }: {
   workspaceId: string
   activeSpaceId: string | null
@@ -29,7 +29,6 @@ export function useWorkspaceCanvasSpaceFocus({
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  cancelSpaceRename: () => void
 }): {
   activateSpace: (spaceId: string) => void
   activateAllSpaces: () => void
@@ -37,6 +36,7 @@ export function useWorkspaceCanvasSpaceFocus({
   focusSpaceInViewport: (spaceId: string) => boolean
   focusAllInViewport: () => void
 } {
+  const ui = useCanvasUiCommands()
   const lastAppliedWorkspaceIdRef = useRef<string | null>(null)
   const lastAppliedActiveSpaceIdRef = useRef<string | null | undefined>(undefined)
   const skipNextActiveSpaceViewportFocusRef = useRef(false)
@@ -135,7 +135,7 @@ export function useWorkspaceCanvasSpaceFocus({
         return
       }
 
-      cancelSpaceRename()
+      ui.cancelSpaceRename()
       if (activeSpaceId === spaceId) {
         focusSpaceInViewport(spaceId)
         return
@@ -143,18 +143,18 @@ export function useWorkspaceCanvasSpaceFocus({
 
       onActiveSpaceChange(spaceId)
     },
-    [activeSpaceId, cancelSpaceRename, focusSpaceInViewport, onActiveSpaceChange, spacesRef],
+    [activeSpaceId, focusSpaceInViewport, onActiveSpaceChange, spacesRef, ui],
   )
 
   const activateAllSpaces = useCallback((): void => {
-    cancelSpaceRename()
+    ui.cancelSpaceRename()
     if (activeSpaceId === null) {
       focusAllInViewport()
       return
     }
 
     onActiveSpaceChange(null)
-  }, [activeSpaceId, cancelSpaceRename, focusAllInViewport, onActiveSpaceChange])
+  }, [activeSpaceId, focusAllInViewport, onActiveSpaceChange, ui])
 
   const setActiveSpaceIdFromNodeNavigation = useCallback(
     (spaceId: string | null): void => {
