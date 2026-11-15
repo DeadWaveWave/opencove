@@ -51,12 +51,14 @@ const reactFlow = {
   getNodes: () => [] as Node<TerminalNodeData>[],
 }
 
+const onActiveSpaceChange = vi.fn()
+
 function useSpacesUnderTest({ workspaceId, nodeStore, nodes, spaces }: CanvasNodeStoreContext) {
   return {
     spacesApi: useWorkspaceCanvasSpaces({
       workspaceId,
       activeSpaceId: null,
-      onActiveSpaceChange: vi.fn(),
+      onActiveSpaceChange,
       workspacePath: WORKSPACE_PATH,
       focusNodeTargetZoom: 1,
       standardWindowSizeBucket: 'regular',
@@ -73,6 +75,7 @@ function useSpacesUnderTest({ workspaceId, nodeStore, nodes, spaces }: CanvasNod
 
 function renderSpaces(harness: CanvasDocumentHarness) {
   reactFlow.setViewport.mockClear()
+  onActiveSpaceChange.mockClear()
   const view = renderCanvasNodeStore(harness, {
     workspacePath: WORKSPACE_PATH,
     extend: useSpacesUnderTest,
@@ -197,5 +200,59 @@ describe('useWorkspaceCanvasSpaces reads and writes the committed document', () 
 
     expect(focused).toBe(true)
     expect(view.reactFlow.setViewport).toHaveBeenCalledTimes(1)
+  })
+
+  it('activates a Space that was written in the same act', () => {
+    const harness = createCanvasDocumentHarness({ spaces: [space('space-a')] })
+    const view = renderSpaces(harness)
+
+    act(() => {
+      replaceWorkspaceSpaces(harness.workspaceId, [
+        ...harness.readStoreDocument().spaces,
+        space('space-late', [], 900),
+      ])
+      view.result.current.spacesApi.activateSpace('space-late')
+    })
+
+    expect(onActiveSpaceChange).toHaveBeenCalledExactlyOnceWith('space-late')
+  })
+
+  it('places an empty Space clear of a Space that was written in the same act', async () => {
+    const harness = createCanvasDocumentHarness({ spaces: [space('space-a')] })
+    const view = renderSpaces(harness)
+
+    await act(async () => {
+      replaceWorkspaceSpaces(harness.workspaceId, [
+        ...harness.readStoreDocument().spaces,
+        space('space-late', [], 700),
+      ])
+      await view.result.current.spacesApi.createEmptySpaceAtPoint({ x: 1000, y: 200 })
+    })
+
+    const created = harness.readStoreDocument().spaces.find(item => item.id.length > 12)
+    const rects = harness.readStoreDocument().spaces.map(item => item.rect)
+    expect(created).toBeDefined()
+    expect(rects).toHaveLength(3)
+    const overlaps = (
+      a: NonNullable<(typeof rects)[number]>,
+      b: NonNullable<(typeof rects)[number]>,
+    ) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
+    const [, late, empty] = rects as NonNullable<(typeof rects)[number]>[]
+    expect(overlaps(late, empty)).toBe(false)
+    expect(harness.flush).toHaveBeenCalledTimes(1)
+  })
+
+  it('fills the rect of a Space without one from the nodes it owns, in one store update', () => {
+    const nodes = createRowNodes(['a'])
+    const harness = createCanvasDocumentHarness({
+      nodes,
+      spaces: [{ ...space('space-a', ['a']), rect: null }],
+    })
+    harness.notifications.mockClear()
+
+    renderSpaces(harness)
+
+    expect(harness.readStoreDocument().spaces[0].rect).not.toBeNull()
+    expect(harness.notifications).toHaveBeenCalledTimes(1)
   })
 })

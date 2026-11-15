@@ -12,7 +12,7 @@ import {
   renderCanvasNodeStore,
   type CanvasNodeStoreContext,
 } from '../../support/canvasDocumentHarness'
-import { createRowNodes } from '../../support/canvasSelectionFixtures'
+import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
 
 vi.mock('@app/renderer/i18n', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -76,5 +76,23 @@ describe('workspace canvas arrange hook', () => {
     // nothing wrote them afterwards.
     expect(harness.readStoreDocument().spaces).toEqual(spacesBefore)
     expect(harness.notifications).toHaveBeenCalledTimes(1)
+  })
+
+  it('stores the Spaces the layout moved', () => {
+    const nodes = createRowNodes(['a', 'b']).map(node => ({ ...node, position: { x: 13, y: 7 } }))
+    const harness = createCanvasDocumentHarness({
+      nodes,
+      spaces: [createSpace('far', { x: 9000, y: 9000, width: 400, height: 300 })],
+    })
+    const view = renderCanvasNodeStore(harness, { extend: useArrangeUnderTest })
+
+    act(() => view.result.current.arrange.arrangeCanvas())
+
+    expect(harness.readStoreDocument().spaces[0].rect).not.toEqual({
+      x: 9000,
+      y: 9000,
+      width: 400,
+      height: 300,
+    })
   })
 })
