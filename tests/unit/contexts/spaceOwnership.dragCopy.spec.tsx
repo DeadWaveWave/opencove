@@ -72,3 +72,25 @@ describe('space ownership drag copy', () => {
     },
   )
 })
+
+describe('space ownership drag start on an unselected node', () => {
+  it('clears the selected Spaces, and a shift drag start keeps them', () => {
+    const harness = renderSpaceOwnership({ nodes: [node], selectedNodeIds: [] })
+    act(() => harness.result.current.selection.setSpaceIds(['a']))
+    const { ownership } = harness.result.current
+    const spaceIds = () => harness.result.current.readSelection().spaceIds
+
+    act(() =>
+      ownership.handleNodeDragStart({ ...event, shiftKey: true } as React.MouseEvent, node, [node]),
+    )
+    expect(spaceIds()).toEqual(['a'])
+
+    act(() =>
+      ownership.handleNodeDragStart({ ...event, shiftKey: false } as React.MouseEvent, node, [
+        node,
+      ]),
+    )
+
+    expect(spaceIds()).toEqual([])
+  })
+})

@@ -8,7 +8,10 @@ import type {
   TerminalNodeData,
   WorkspaceSpaceState,
 } from '@contexts/workspace/presentation/renderer/types'
-import { useCanvasSelectionCommands } from '@contexts/workspace/presentation/renderer/store/canvasStoreContext'
+import {
+  useCanvasSelectionCommands,
+  useReadCanvasSelection,
+} from '@contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import { CanvasStoreTestProvider } from './canvasStoreTestHarness'
 
 function Wrapper({ children }: { children: ReactNode }): React.ReactElement {
@@ -66,7 +69,12 @@ export function renderSpaceOwnership(options: SpaceOwnershipHarnessOptions = {})
         hideWorktreeMismatchDropWarning: true,
         nodeDragPointerAnchorRef: nodeDragSession.nodeDragPointerAnchorRef,
       })
-      return { ownership, nodeDragSession, selection: useCanvasSelectionCommands() }
+      return {
+        ownership,
+        nodeDragSession,
+        selection: useCanvasSelectionCommands(),
+        readSelection: useReadCanvasSelection(),
+      }
     },
     { wrapper: Wrapper },
   )
