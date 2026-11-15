@@ -5,7 +5,7 @@ import { pushAwayLayout, type LayoutItem } from '../../../utils/spaceLayout'
 
 export type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean },
+  options?: { syncLayout?: boolean; flush?: boolean },
 ) => void
 
 export interface Rect {
@@ -351,11 +351,14 @@ export function applyDirectoryExpectationForDrop({
   targetSpace,
   workspacePath,
   setNodes,
+  flush,
 }: {
   nodeIds: string[]
   targetSpace: WorkspaceSpaceState | null
   workspacePath: string
   setNodes: SetNodes
+  /** Asks the persistence flush on this write, which is the last synchronous write of a drop. */
+  flush?: boolean
 }): void {
   if (nodeIds.length === 0) {
     return
@@ -425,7 +428,7 @@ export function applyDirectoryExpectationForDrop({
 
       return hasChanged ? nextNodes : prevNodes
     },
-    { syncLayout: false },
+    { syncLayout: false, flush },
   )
 }
 

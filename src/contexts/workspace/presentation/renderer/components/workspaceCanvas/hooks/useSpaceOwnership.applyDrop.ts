@@ -1,4 +1,4 @@
-import { useCallback, type MutableRefObject } from 'react'
+import { useCallback } from 'react'
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import type { TranslateFn } from '@app/renderer/i18n'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
@@ -24,6 +24,8 @@ import {
   getPresentedNodeSize,
 } from '../../../utils/canvasInteractionLayout'
 import { buildOwningSpaceIdByNodeId } from './workspaceLayoutPolicy'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 
 function rectEquals(a: WorkspaceSpaceRect | null, b: WorkspaceSpaceRect | null): boolean {
   if (a === b) {
@@ -72,10 +74,8 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
   workspaceId,
   workspacePath,
   reactFlow,
-  spacesRef,
   setNodes,
-  onSpacesChange,
-  onRequestPersistFlush,
+  updateCanvasDocument,
   onShowMessage,
   resolveSpaceAtPoint,
   t,
@@ -83,14 +83,13 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
   workspaceId?: string
   workspacePath: string
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   setNodes: SetNodes
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
-  onRequestPersistFlush?: () => void
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   onShowMessage?: ShowWorkspaceCanvasMessage
   resolveSpaceAtPoint: (point: { x: number; y: number }) => WorkspaceSpaceState | null
   t: TranslateFn
 }): (input: ApplyOwnershipForDropInput, options?: { allowDirectoryMismatch?: boolean }) => void {
+  const readDocument = useReadCanvasDocument()
   return useCallback(
     (
       {
@@ -108,14 +107,18 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
         return
       }
 
+      // The decisions that can stop the drop before it writes (the target Space, the ownership
+      // change and its validation) come from one read of the committed Spaces. What the drop
+      // writes is planned inside the recipe from the document the write is computed from.
+      const { spaces: committedSpaces } = readDocument()
       const hasSpaceRectOverride =
         Boolean(spaceRectOverrideById) && (spaceRectOverrideById?.size ?? 0) > 0
       const spacesWithRectOverride = hasSpaceRectOverride
         ? applySpaceRectOverrides({
-            spaces: spacesRef.current,
+            spaces: committedSpaces,
             rectOverrideById: spaceRectOverrideById!,
           })
-        : spacesRef.current
+        : committedSpaces
 
       const nodeIds = draggedNodeIds
       const nodeIdSet = new Set(nodeIds)
@@ -156,7 +159,7 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
       const dragDy = dragStart && dragEnd ? dragEnd.y - dragStart.y : 0
 
       const { hasSpaceChange: hasOwnershipChange } = reassignNodesAcrossSpaces({
-        spaces: spacesRef.current,
+        spaces: committedSpaces,
         nodeIds,
         targetSpaceId,
       })
@@ -208,16 +211,20 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
 
       const shouldCommitSpaceRectOverride = hasSpaceRectOverride && targetSpaceId !== null
 
-      let projectedNextSpaces: WorkspaceSpaceState[] | null = null
-      let hasProjectedSpaceChange = false
-
-      setNodes(prevNodes => {
+      // The nodes and the Spaces of the drop are one store update. The projection, and the Spaces
+      // it is projected from, come from the recipe's own arguments.
+      updateCanvasDocument(({ nodes: prevNodes, spaces: documentSpaces }) => {
         const draggedNodes = prevNodes.filter(node => nodeIdSet.has(node.id))
         if (draggedNodes.length === 0) {
-          return prevNodes
+          return { nodes: prevNodes, spaces: documentSpaces }
         }
 
-        const projectedSpaces = hasSpaceRectOverride ? spacesWithRectOverride : spacesRef.current
+        const projectedSpaces = hasSpaceRectOverride
+          ? applySpaceRectOverrides({
+              spaces: documentSpaces,
+              rectOverrideById: spaceRectOverrideById!,
+            })
+          : documentSpaces
         const currentSpaceRectById = new Map(
           projectedSpaces
             .filter(space => Boolean(space.rect))
@@ -284,9 +291,6 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
           workspaceId,
         )
 
-        projectedNextSpaces = projected.nextSpaces
-        hasProjectedSpaceChange = projected.hasSpaceChange
-
         const nextNodes = prevNodes.map(node => {
           const nextPosition = projected.nextNodePositionById.get(node.id)
           if (!nextPosition) {
@@ -303,31 +307,34 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
           }
         })
 
-        return nextNodes
+        const shouldWriteSpaces =
+          shouldCommitSpaceRectOverride || projected.hasSpaceChange || hasOwnershipChange
+
+        return {
+          nodes: nextNodes,
+          spaces: shouldWriteSpaces ? projected.nextSpaces : documentSpaces,
+        }
       })
 
-      if (
-        projectedNextSpaces &&
-        (shouldCommitSpaceRectOverride || hasProjectedSpaceChange || hasOwnershipChange)
-      ) {
-        onSpacesChange(projectedNextSpaces)
-      }
-
-      applyDirectoryExpectationForDrop({ nodeIds, targetSpace, workspacePath, setNodes })
+      // The flush rides on the directory write, the last synchronous write of the drop: it also
+      // runs when that write changes nothing, and never before it.
+      applyDirectoryExpectationForDrop({
+        nodeIds,
+        targetSpace,
+        workspacePath,
+        setNodes,
+        flush: true,
+      })
       restoreSelectionAfterDrop({ selectedNodeIds: nodeIds, setNodes })
-      if (hasOwnershipChange || nodeIds.length > 0) {
-        onRequestPersistFlush?.()
-      }
     },
     [
-      onRequestPersistFlush,
       onShowMessage,
-      onSpacesChange,
+      readDocument,
       reactFlow,
       resolveSpaceAtPoint,
       setNodes,
-      spacesRef,
       t,
+      updateCanvasDocument,
       workspacePath,
       workspaceId,
     ],

@@ -6,7 +6,11 @@ import type {
   TerminalNodeData,
   WorkspaceSpaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
-import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
+import {
+  CANVAS_STORE_TEST_WORKSPACE_ID,
+  CanvasStoreTestProvider,
+} from '../../support/canvasStoreTestHarness'
+import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
 import { useCanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 
 vi.mock('@xyflow/react', () => {
@@ -97,13 +101,10 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       nodesRef.current = nodes
       const [, setSnapGuides] = useState(null)
       const magneticSnappingEnabledRef = useRef(false)
-      const spacesRef = useRef<WorkspaceSpaceState[]>([])
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-remove',
-        spacesRef,
         magneticSnappingEnabledRef,
         setSnapGuides,
-        onSpacesChange: () => undefined,
       })
 
       const apply = useWorkspaceCanvasApplyNodeChanges({
@@ -139,9 +140,6 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
   }, 15_000)
 
   it('requests persist flush when dragging a node with selected spaces', async () => {
-    const onRequestPersistFlush = vi.fn()
-    const onSpacesChange = vi.fn()
-
     const { useWorkspaceCanvasApplyNodeChanges } =
       await import('../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useApplyNodeChanges')
     const { useWorkspaceCanvasNodeDragSession } =
@@ -209,24 +207,27 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       },
     ]
 
+    // The session reads the Spaces from the store and writes the released frame there.
+    const documentHarness = createCanvasDocumentHarness({
+      workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+      nodes: initialNodes,
+      spaces: initialSpaces,
+    })
+
     function Harness() {
       const [nodes, setNodes] = useState(initialNodes)
       const nodesRef = useRef(nodes)
       nodesRef.current = nodes
       const [, setSnapGuides] = useState(null)
       const magneticSnappingEnabledRef = useRef(false)
-      const spacesRef = useRef<WorkspaceSpaceState[]>(initialSpaces)
       const selection = useCanvasSelectionCommands()
       useLayoutEffect(() => {
         selection.setSpaceIds(['selected-space'])
       }, [selection])
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-persist',
-        spacesRef,
         magneticSnappingEnabledRef,
         setSnapGuides,
-        onSpacesChange,
-        onRequestPersistFlush,
       })
 
       const apply = useWorkspaceCanvasApplyNodeChanges({
@@ -280,7 +281,7 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Drag' }))
 
-    expect(onSpacesChange).toHaveBeenCalledWith([
+    expect(documentHarness.readStoreDocument().spaces).toEqual([
       {
         id: 'selected-space',
         name: 'Selected Space',
@@ -291,7 +292,7 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
         rect: { x: 800, y: 390, width: 540, height: 380 },
       },
     ])
-    expect(onRequestPersistFlush).toHaveBeenCalledTimes(1)
+    expect(documentHarness.flush).toHaveBeenCalledTimes(1)
   })
 
   it('keeps live guides during drag and commits snapping on release', async () => {
@@ -355,14 +356,11 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       nodesRef.current = nodes
       const [snapGuides, setSnapGuides] = useState<unknown[] | null>(null)
       const magneticSnappingEnabledRef = useRef(true)
-      const spacesRef = useRef<WorkspaceSpaceState[]>([])
       const isNodeDraggingRef = useRef(false)
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-snap',
-        spacesRef,
         magneticSnappingEnabledRef,
         setSnapGuides,
-        onSpacesChange: () => undefined,
       })
 
       const apply = useWorkspaceCanvasApplyNodeChanges({

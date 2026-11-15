@@ -3,19 +3,12 @@ import type { Node } from '@xyflow/react'
 import { describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { useWorkspaceCanvasNodeDragSession } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession'
-import {
-  useCanvasSelectionCommands,
-  useReadCanvasDocument,
-} from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
+import { useCanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import {
   readWorkspaceDocument,
   replaceWorkspaceSpaces,
-  requestWorkspaceDocumentPersistFlush,
 } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
-import type {
-  TerminalNodeData,
-  WorkspaceSpaceState,
-} from '../../../src/contexts/workspace/presentation/renderer/types'
+import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import {
   createCanvasDocumentHarness,
   renderCanvasNodeStore,
@@ -40,20 +33,13 @@ vi.mock(
 
 const setSnapGuides = vi.fn()
 
-function useSessionUnderTest({ workspaceId, canvasState }: CanvasNodeStoreContext) {
+function useSessionUnderTest({ workspaceId }: CanvasNodeStoreContext) {
   return {
     session: useWorkspaceCanvasNodeDragSession({
       workspaceId,
       magneticSnappingEnabledRef: { current: false },
       setSnapGuides,
-      // LEGACY-CHANNELS
-      ...({
-        spacesRef: canvasState.spacesRef,
-        onSpacesChange: (spaces: WorkspaceSpaceState[]) =>
-          replaceWorkspaceSpaces(workspaceId, spaces),
-        onRequestPersistFlush: requestWorkspaceDocumentPersistFlush,
-      } as object),
-    } as never),
+    }),
     selection: useCanvasSelectionCommands(),
   }
 }
@@ -184,7 +170,7 @@ describe('node drag session frames', () => {
 
   it('reads the workspace of the render that created the callbacks', () => {
     const n1 = noteAt('n1', 50, 50)
-    const harness = createCanvasDocumentHarness({
+    createCanvasDocumentHarness({
       workspaceId: 'workspace-a',
       nodes: [n1, noteAt('n2', 24, 480)],
       spaces: [createSpace('space', { x: 0, y: 0, width: 520, height: 360 }, ['n1'])],
@@ -196,25 +182,14 @@ describe('node drag session frames', () => {
     let current = 'workspace-a'
     const view = renderInCanvasDocument(
       () => {
-        const readDocument = useReadCanvasDocument()
         return useWorkspaceCanvasNodeDragSession({
           workspaceId: current,
           magneticSnappingEnabledRef: { current: false },
           setSnapGuides,
-          // LEGACY-CHANNELS
-          ...({
-            spacesRef: {
-              get current() {
-                return readDocument().spaces
-              },
-            },
-            onSpacesChange: vi.fn(),
-          } as object),
-        } as never)
+        })
       },
       { workspaceId: () => current },
     )
-    void harness
     const sessionOfA = view.result.current
     current = 'workspace-b'
     view.rerender()

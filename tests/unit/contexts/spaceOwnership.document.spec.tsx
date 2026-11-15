@@ -2,7 +2,6 @@ import { act } from '@testing-library/react'
 import type { Node } from '@xyflow/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/constants'
-import { useReadCanvasDocument } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import {
   replaceWorkspaceNodes,
   replaceWorkspaceSpaces,
@@ -585,7 +584,7 @@ describe('a node drag that pushes a Space frame', () => {
 
 describe('the workspace of a node drop', () => {
   it('reads the workspace of the render that created the handler', () => {
-    const harness = createCanvasDocumentHarness({
+    createCanvasDocumentHarness({
       workspaceId: 'workspace-a',
       nodes: [],
       spaces: [
@@ -615,7 +614,6 @@ describe('the workspace of a node drop', () => {
     const guest = terminal('g', 100, 100, { execution: REPO, expected: REPO })
     const view = renderInCanvasDocument(
       () => {
-        const readDocument = useReadCanvasDocument()
         const reactFlow = {
           screenToFlowPosition: (point: { x: number; y: number }) => point,
           flowToScreenPosition: (point: { x: number; y: number }) => point,
@@ -635,16 +633,7 @@ describe('the workspace of a node drop', () => {
           setNodes: vi.fn(),
           updateCanvasDocument: vi.fn(),
           hideWorktreeMismatchDropWarning: false,
-          // LEGACY-CHANNELS
-          ...({
-            spacesRef: {
-              get current() {
-                return readDocument().spaces
-              },
-            },
-            onSpacesChange: vi.fn(),
-          } as object),
-        } as never)
+        })
       },
       { workspaceId: () => current },
     )

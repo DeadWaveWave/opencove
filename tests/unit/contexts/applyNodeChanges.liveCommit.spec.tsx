@@ -6,7 +6,11 @@ import type {
   TerminalNodeData,
   WorkspaceSpaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
-import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
+import {
+  CANVAS_STORE_TEST_WORKSPACE_ID,
+  CanvasStoreTestProvider,
+} from '../../support/canvasStoreTestHarness'
+import { createCanvasDocumentHarness } from '../../support/canvasDocumentHarness'
 
 vi.mock('@xyflow/react', () => {
   return {
@@ -97,14 +101,11 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
       nodesRef.current = nodes
       const [, setSnapGuides] = useState(null)
       const magneticSnappingEnabledRef = useRef(false)
-      const spacesRef = useRef<WorkspaceSpaceState[]>([])
       const isNodeDraggingRef = useRef(false)
       const nodeDragSession = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-live-commit',
-        spacesRef,
         magneticSnappingEnabledRef,
         setSnapGuides,
-        onSpacesChange: () => undefined,
       })
 
       const apply = useWorkspaceCanvasApplyNodeChanges({
@@ -187,8 +188,6 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
   })
 
   it('retains a derived Space preview on primary-only frames and never commits it', async () => {
-    const onSpacesChange = vi.fn()
-    const onRequestPersistFlush = vi.fn()
     const { useWorkspaceCanvasNodeDragSession } =
       await import('../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession')
 
@@ -236,17 +235,20 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
       },
     ]
 
+    // The session reads the Spaces from the store of the canvas under test.
+    const documentHarness = createCanvasDocumentHarness({
+      workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+      nodes,
+      spaces,
+    })
+
     function Harness() {
-      const spacesRef = useRef(spaces)
       const magneticSnappingEnabledRef = useRef(false)
       const [, setSnapGuides] = useState(null)
       const session = useWorkspaceCanvasNodeDragSession({
         workspaceId: 'workspace-space-preview-retention',
-        spacesRef,
         magneticSnappingEnabledRef,
         setSnapGuides,
-        onSpacesChange,
-        onRequestPersistFlush,
       })
       const project = () =>
         session.projectNodeDrag({
@@ -291,14 +293,15 @@ describe('useWorkspaceCanvasApplyNodeChanges live and commit publishing', () => 
     await waitFor(() => {
       expect(Number(screen.getByTestId('preview-height').textContent)).toBeGreaterThan(360)
     })
-    expect(onSpacesChange).not.toHaveBeenCalled()
-    expect(onRequestPersistFlush).not.toHaveBeenCalled()
+    expect(documentHarness.notifications).not.toHaveBeenCalled()
+    expect(documentHarness.flush).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: 'End' }))
     await waitFor(() => {
       expect(screen.getByTestId('preview-height')).toHaveTextContent('none')
     })
-    expect(onSpacesChange).not.toHaveBeenCalled()
-    expect(onRequestPersistFlush).not.toHaveBeenCalled()
+    expect(documentHarness.notifications).not.toHaveBeenCalled()
+    expect(documentHarness.flush).not.toHaveBeenCalled()
+    expect(documentHarness.readStoreDocument().spaces).toEqual(spaces)
   })
 })

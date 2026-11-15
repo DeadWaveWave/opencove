@@ -107,11 +107,10 @@ function renderSelectionOwner() {
         workspaceId: 'selection-owner',
         workspacePath: '/tmp/repo',
         reactFlow,
-        spacesRef: canvas.spacesRef,
         nodeDragSession: session,
         exclusiveNodeDragAnchorIdRef,
         setNodes: canvas.setCanvasNodes,
-        onSpacesChange: vi.fn(),
+        updateCanvasDocument: vi.fn(),
         hideWorktreeMismatchDropWarning: true,
       })
       return {

@@ -16,17 +16,19 @@ import { type SetNodes } from './useSpaceOwnership.helpers'
 import { useWorkspaceCanvasApplyOwnershipForDrop } from './useSpaceOwnership.applyDrop'
 import { useWorkspaceCanvasSpaceOwnershipWorktreeWarning } from './useSpaceOwnership.worktreeWarning'
 import type { WorkspaceCanvasNodeDragSession } from './useNodeDragSession.types'
-import { useCanvasSelectionCommands } from '../../../store/canvasStoreContext'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import {
+  useCanvasSelectionCommands,
+  useReadCanvasDocument,
+} from '../../../store/canvasStoreContext'
 export function useWorkspaceCanvasSpaceOwnership({
   workspaceId,
   workspacePath,
   reactFlow,
-  spacesRef,
   nodeDragSession,
   exclusiveNodeDragAnchorIdRef,
   setNodes,
-  onSpacesChange,
-  onRequestPersistFlush,
+  updateCanvasDocument,
   onShowMessage,
   hideWorktreeMismatchDropWarning,
   nodeDragPointerAnchorRef,
@@ -34,15 +36,13 @@ export function useWorkspaceCanvasSpaceOwnership({
   workspaceId?: string
   workspacePath: string
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   nodeDragSession: Pick<
     WorkspaceCanvasNodeDragSession,
     'captureDragStartSpaceSelection' | 'getDragStartSpaceSelection' | 'clearDragStartSpaceSelection'
   >
   exclusiveNodeDragAnchorIdRef: React.MutableRefObject<string | null>
   setNodes: SetNodes
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
-  onRequestPersistFlush?: () => void
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   onShowMessage?: ShowWorkspaceCanvasMessage
   hideWorktreeMismatchDropWarning: boolean
   nodeDragPointerAnchorRef?: React.MutableRefObject<{
@@ -79,6 +79,7 @@ export function useWorkspaceCanvasSpaceOwnership({
   const { t } = useTranslation()
   const reactFlowStore = useStoreApi()
   const selection = useCanvasSelectionCommands()
+  const readDocument = useReadCanvasDocument()
   const {
     captureDragStartSpaceSelection,
     getDragStartSpaceSelection,
@@ -93,22 +94,20 @@ export function useWorkspaceCanvasSpaceOwnership({
       resolveSpaceAtPointFromHelpers(
         projectCanvasInteractionLayout(
           reactFlow.getNodes(),
-          spacesRef.current,
+          readDocument().spaces,
           readCanvasInteractionState(workspaceId),
         ).spaces,
         point,
       ),
-    [reactFlow, spacesRef, workspaceId],
+    [reactFlow, readDocument, workspaceId],
   )
 
   const applyOwnershipForDrop = useWorkspaceCanvasApplyOwnershipForDrop({
     workspaceId,
     workspacePath,
     reactFlow,
-    spacesRef,
     setNodes,
-    onSpacesChange,
-    onRequestPersistFlush,
+    updateCanvasDocument,
     onShowMessage,
     resolveSpaceAtPoint: resolveDropTargetSpaceAtPoint,
     t,
@@ -123,13 +122,13 @@ export function useWorkspaceCanvasSpaceOwnership({
       return resolveSnappedCanvasDropPositions({
         nodes: reactFlow.getNodes(),
         fallbackNodes,
-        spaces: spacesRef.current,
+        spaces: readDocument().spaces,
         workspaceId,
         draggedNodeIds,
         draggedNodePositionById,
       })
     },
-    [reactFlow, spacesRef, workspaceId],
+    [reactFlow, readDocument, workspaceId],
   )
 
   const {
@@ -141,7 +140,6 @@ export function useWorkspaceCanvasSpaceOwnership({
     applyOwnershipForDrop,
     reactFlow,
     resolveDropTargetSpaceAtPoint,
-    spacesRef,
     setNodes,
     hideWorktreeMismatchDropWarning,
     workspacePath,
@@ -158,13 +156,13 @@ export function useWorkspaceCanvasSpaceOwnership({
         reactFlow.getNodes().map(node => [node.id, { x: node.position.x, y: node.position.y }]),
       )
       dragStartSpaceRectByIdRef.current = new Map(
-        spacesRef.current
-          .filter(space => Boolean(space.rect))
+        readDocument()
+          .spaces.filter(space => Boolean(space.rect))
           .map(space => [space.id, { ...space.rect! }] as const),
       )
       captureDragStartSpaceSelection()
     },
-    [captureDragStartSpaceSelection, reactFlow, spacesRef],
+    [captureDragStartSpaceSelection, reactFlow, readDocument],
   )
 
   const handleNodeDragStart = useCallback(

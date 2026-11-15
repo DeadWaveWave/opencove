@@ -14,10 +14,6 @@ import {
   useReadCanvasSelection,
 } from '@contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import {
-  replaceWorkspaceSpaces,
-  requestWorkspaceDocumentPersistFlush,
-} from '@contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
-import {
   createCanvasDocumentHarness,
   renderCanvasNodeStore,
   type CanvasDocumentHarness,
@@ -36,15 +32,6 @@ export interface SpaceOwnershipHarnessOptions {
   hideWorktreeMismatchDropWarning?: boolean
   magneticSnapping?: boolean
   onShowMessage?: ShowWorkspaceCanvasMessage
-}
-
-// LEGACY-CHANNELS: the channels the hooks take on the base, so that the red tests run against it.
-function legacyChannels({ workspaceId, canvasState }: CanvasNodeStoreContext) {
-  return {
-    spacesRef: canvasState.spacesRef,
-    onSpacesChange: (spaces: WorkspaceSpaceState[]) => replaceWorkspaceSpaces(workspaceId, spaces),
-    onRequestPersistFlush: requestWorkspaceDocumentPersistFlush,
-  }
 }
 
 /**
@@ -79,8 +66,7 @@ export function renderSpaceOwnershipInDocument(
       workspaceId,
       magneticSnappingEnabledRef,
       setSnapGuides,
-      ...legacyChannels(context),
-    } as never)
+    })
     const ownership = useWorkspaceCanvasSpaceOwnership({
       workspaceId,
       workspacePath: options.workspacePath ?? '/tmp/repo',
@@ -92,8 +78,7 @@ export function renderSpaceOwnershipInDocument(
       onShowMessage: options.onShowMessage,
       hideWorktreeMismatchDropWarning: options.hideWorktreeMismatchDropWarning ?? true,
       nodeDragPointerAnchorRef: nodeDragSession.nodeDragPointerAnchorRef,
-      ...legacyChannels(context),
-    } as never)
+    })
     return {
       ownership,
       nodeDragSession,
