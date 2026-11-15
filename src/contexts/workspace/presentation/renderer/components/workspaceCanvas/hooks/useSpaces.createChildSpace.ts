@@ -95,7 +95,6 @@ export function useWorkspaceCanvasCreateChildSpace({
         return null
       }
 
-      spacesRef.current = result.nextSpaces
       onSpacesChange(result.nextSpaces)
 
       if (result.movedNodeIds.length > 0) {

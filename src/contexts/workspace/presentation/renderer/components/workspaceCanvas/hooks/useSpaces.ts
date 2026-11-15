@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import type { Node, ReactFlowInstance } from '@xyflow/react'
 import type {
   FocusNodeTargetZoom,
@@ -72,10 +72,6 @@ export function useWorkspaceCanvasSpaces({
 } {
   const ui = useCanvasUiCommands()
   const readUi = useReadCanvasUi()
-
-  useLayoutEffect(() => {
-    spacesRef.current = spaces
-  }, [spaces, spacesRef])
 
   useEffect(() => {
     const spacesNeedingRect = spaces.filter(space => !space.rect)

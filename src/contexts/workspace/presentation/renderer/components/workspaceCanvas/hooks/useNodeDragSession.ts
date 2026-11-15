@@ -467,7 +467,6 @@ export function useWorkspaceCanvasNodeDragSession({
       })
 
       if (hasSpaceChange) {
-        spacesRef.current = nextSpaces
         onSpacesChange(nextSpaces)
         onRequestPersistFlush?.()
       }

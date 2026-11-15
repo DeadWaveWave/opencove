@@ -1,18 +1,21 @@
 import React, { useRef, useState } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import { useWorkspaceCanvasSpaceDirectoryOps } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceDirectoryOps'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
+import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type {
   TerminalNodeData,
   WorkspaceSpaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
+import {
+  createCanvasDocumentHarness,
+  renderCanvasNodeStore,
+} from '../../support/canvasDocumentHarness'
 
 describe('useWorkspaceCanvasSpaceDirectoryOps renameSpaceTo', () => {
-  it('updates spacesRef before notifying consumers about the directory change', () => {
-    const onRequestPersistFlush = vi.fn()
-    const closeNode = vi.fn(async () => undefined)
-    const initialNodes: Node<TerminalNodeData>[] = []
+  it('has the new directory in the store when the store notifies its consumers', () => {
     const initialSpaces: WorkspaceSpaceState[] = [
       {
         id: 'space-1',
@@ -25,54 +28,34 @@ describe('useWorkspaceCanvasSpaceDirectoryOps renameSpaceTo', () => {
       },
     ]
     const nextDirectoryPath = '/repo/.opencove/worktrees/feat-inbox'
-    let directorySeenDuringOnSpacesChange: string | null = null
+    const harness = createCanvasDocumentHarness({ spaces: initialSpaces })
+    const view = renderCanvasNodeStore(harness, {
+      workspacePath: '/repo',
+      extend: ({ canvasState, nodeStore }) =>
+        useWorkspaceCanvasSpaceDirectoryOps({
+          workspacePath: '/repo',
+          spacesRef: canvasState.spacesRef,
+          nodesRef: nodeStore.nodesRef,
+          setNodes: nodeStore.setNodes,
+          onSpacesChange: nextSpaces => replaceWorkspaceSpaces(harness.workspaceId, nextSpaces),
+          onRequestPersistFlush: vi.fn(),
+          closeNode: vi.fn(async () => undefined),
+        }),
+    })
+    let directorySeenWhenNotified: string | null = null
+    const unsubscribe = useAppStore.subscribe(() => {
+      directorySeenWhenNotified =
+        view.result.current.canvasState.spacesRef.current[0]?.directoryPath ?? null
+    })
 
-    function Harness() {
-      const [nodes, setNodesState] = useState(initialNodes)
-      const [spaces, setSpacesState] = useState(initialSpaces)
-      const nodesRef = useRef(nodes)
-      const spacesRef = useRef(spaces)
-
-      nodesRef.current = nodes
-
-      const { updateSpaceDirectory } = useWorkspaceCanvasSpaceDirectoryOps({
-        workspacePath: '/repo',
-        spacesRef,
-        nodesRef,
-        setNodes: updater => {
-          setNodesState(prevNodes => {
-            const nextNodes = updater(prevNodes)
-            nodesRef.current = nextNodes
-            return nextNodes
-          })
-        },
-        onSpacesChange: nextSpaces => {
-          directorySeenDuringOnSpacesChange = spacesRef.current[0]?.directoryPath ?? null
-          setSpacesState(nextSpaces)
-        },
-        onRequestPersistFlush,
-        closeNode,
+    act(() => {
+      view.result.current.updateSpaceDirectory('space-1', nextDirectoryPath, {
+        renameSpaceTo: 'feat/inbox',
       })
+    })
+    unsubscribe()
 
-      return (
-        <button
-          type="button"
-          onClick={() => {
-            updateSpaceDirectory('space-1', nextDirectoryPath, {
-              renameSpaceTo: 'feat/inbox',
-            })
-          }}
-        >
-          Bind Worktree
-        </button>
-      )
-    }
-
-    render(<Harness />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Bind Worktree' }))
-
-    expect(directorySeenDuringOnSpacesChange).toBe(nextDirectoryPath)
+    expect(directorySeenWhenNotified).toBe(nextDirectoryPath)
   })
 
   it('updates the space name when binding a worktree directory', () => {

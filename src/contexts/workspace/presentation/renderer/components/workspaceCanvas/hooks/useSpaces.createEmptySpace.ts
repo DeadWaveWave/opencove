@@ -119,7 +119,6 @@ export function useCreateEmptySpace({
       })
 
       const nextSpaces = sanitizeSpaces([...spacesRef.current, nextSpace])
-      spacesRef.current = nextSpaces
       onSpacesChange(nextSpaces)
       onRequestPersistFlush?.()
       ui.closeContextMenu()

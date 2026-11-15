@@ -148,7 +148,6 @@ function updateSpaceTargetMountId({
   const updatedSpaces = spacesRef.current.map(space =>
     space.id === targetSpace.id ? { ...space, targetMountId: nextMountId } : space,
   )
-  spacesRef.current = updatedSpaces
   onSpacesChange(updatedSpaces)
   onRequestPersistFlush?.()
 }

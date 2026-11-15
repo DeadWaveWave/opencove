@@ -362,11 +362,12 @@ describe('workspaceAgentLaunch.shared', () => {
       ],
     }))
     let shown = 'workspace-a'
+    const noNodes: never[] = []
     const view = renderInCanvasDocument(
       () =>
         useWorkspaceCanvasState({
           workspaceId: shown,
-          nodes: [],
+          nodes: noNodes,
           spaces: useAppStore.getState().workspaces.find(item => item.id === shown)?.spaces ?? [],
           viewport: { x: 0, y: 0, zoom: 1 },
         }),

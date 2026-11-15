@@ -110,10 +110,12 @@ export function useWorkspaceCanvasArrange({
         return
       }
 
+      // Read before the write: `setNodes` stores the Spaces again (sanitized), so `spacesRef`
+      // no longer holds the array this result was computed from afterwards.
+      const spacesBefore = spacesRef.current
       setNodes(() => result.nodes, { syncLayout: false })
 
-      if (result.spaces !== spacesRef.current) {
-        spacesRef.current = result.spaces
+      if (result.spaces !== spacesBefore) {
         onSpacesChange(result.spaces)
       }
 

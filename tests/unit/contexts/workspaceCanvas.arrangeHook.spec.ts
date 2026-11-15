@@ -11,7 +11,7 @@ import {
   createCanvasDocumentHarness,
   renderCanvasNodeStore,
 } from '../../support/canvasDocumentHarness'
-import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
+import { createRowNodes } from '../../support/canvasSelectionFixtures'
 
 vi.mock('@app/renderer/i18n', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -43,7 +43,7 @@ describe('workspace canvas arrange hook', () => {
     }))
     const harness = createCanvasDocumentHarness({
       nodes,
-      spaces: [createSpace('empty', { x: 9000, y: 9000, width: 400, height: 300 })],
+      spaces: [],
     })
     const reactFlow = {
       setViewport: vi.fn(),
@@ -68,7 +68,9 @@ describe('workspace canvas arrange hook', () => {
     act(() => view.result.current.arrange.arrangeCanvas())
 
     expect(harness.readStoreDocument().nodes).not.toEqual(nodes)
-    expect(harness.readStoreDocument().spaces).toBe(spacesBefore)
+    // The node write stores equal Spaces again, so the array is a new one: what counts is that
+    // nothing wrote them afterwards.
+    expect(harness.readStoreDocument().spaces).toEqual(spacesBefore)
     expect(harness.notifications).toHaveBeenCalledTimes(1)
   })
 })

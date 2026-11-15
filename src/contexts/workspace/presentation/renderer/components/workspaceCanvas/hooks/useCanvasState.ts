@@ -12,6 +12,7 @@ import { selectDragSurfaceSelectionMode } from '../../terminalNode/reactFlowStat
 import {
   useCanvasSelection,
   useCanvasSelectionCommands,
+  useReadCanvasDocument,
   useReadCanvasSelection,
 } from '../../../store/canvasStoreContext'
 
@@ -83,7 +84,7 @@ export function useWorkspaceCanvasState({
   setSnapGuides: React.Dispatch<React.SetStateAction<WorkspaceSnapGuide[] | null>>
   canvasRef: React.RefObject<HTMLDivElement | null>
   restoredViewportWorkspaceIdRef: React.MutableRefObject<string | null>
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
+  spacesRef: { readonly current: WorkspaceSpaceState[] }
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
   selectionDraftUi: SelectionDraftUiState | null
   setSelectionDraftUi: React.Dispatch<React.SetStateAction<SelectionDraftUiState | null>>
@@ -115,7 +116,17 @@ export function useWorkspaceCanvasState({
   const workspaceIdRef = useRef(workspaceId)
   const hasTransientNodePositionsRef = useRef(false)
   const restoredViewportWorkspaceIdRef = useRef<string | null>(null)
-  const spacesRef = useRef(spaces)
+  // The committed Spaces as the store holds them when `current` is read, for the workspace of this
+  // render. Hooks that still take a ref read it; nothing may assign to it.
+  const readDocument = useReadCanvasDocument()
+  const spacesRef = useMemo(
+    () => ({
+      get current() {
+        return readDocument().spaces
+      },
+    }),
+    [readDocument],
+  )
   const selectionDraftRef = useRef<SelectionDraftState | null>(null)
   const inputModalityStateRef = useRef(createCanvasInputModalityState('mouse'))
   const isShiftPressedRef = useRef(false)
