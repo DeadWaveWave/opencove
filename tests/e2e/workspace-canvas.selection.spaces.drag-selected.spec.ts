@@ -209,6 +209,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       await window.mouse.down()
       await window.mouse.move(selectionEndX, selectionEndY, { steps: 10 })
       await window.mouse.up()
+      await expect(spaceRegion).toHaveClass(/workspace-space-region--selected/)
 
       const selectedTopHandle = window.locator(
         '[data-testid="workspace-space-drag-marquee-drag-space-top"]',
@@ -226,6 +227,20 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
         end: { x: dragStartX + dragDx, y: dragStartY + dragDy },
         steps: 12,
       })
+
+      await expect
+        .poll(async () => {
+          const after = await readSpaceAndNode()
+          return after ? after.rectX - before.rectX : Number.NaN
+        })
+        .toBeGreaterThan(120)
+
+      await expect
+        .poll(async () => {
+          const after = await readSpaceAndNode()
+          return after ? after.rectY - before.rectY : Number.NaN
+        })
+        .toBeGreaterThan(80)
 
       await expect
         .poll(async () => {
@@ -253,20 +268,6 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
             nodeDy: expect.any(Number),
           }),
         )
-
-      await expect
-        .poll(async () => {
-          const after = await readSpaceAndNode()
-          return after ? after.rectX - before.rectX : Number.NaN
-        })
-        .toBeGreaterThan(120)
-
-      await expect
-        .poll(async () => {
-          const after = await readSpaceAndNode()
-          return after ? after.rectY - before.rectY : Number.NaN
-        })
-        .toBeGreaterThan(80)
     } finally {
       await electronApp.close()
     }
