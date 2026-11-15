@@ -6,7 +6,9 @@ import {
   bindWorkspaceDocumentStore,
   commitCanvasDocument,
   isActiveWorkspace,
+  readWorkspaceDocument,
   registerWorkspaceDocumentPersistFlush,
+  requestWorkspaceDocumentPersistFlush,
   removeWorkspaceSpaceArchiveRecord,
   replaceWorkspaceNodes,
   replaceWorkspaceSpaces,
@@ -230,6 +232,46 @@ describe('workspace document commands', () => {
     expect(useAppStore.getState().workspaces[0].spaceArchiveRecords.map(r => r.id)).toEqual(['r1'])
     removeWorkspaceSpaceArchiveRecord('a', 'r1')
     expect(useAppStore.getState().workspaces[0].spaceArchiveRecords).toEqual([])
+  })
+
+  it('reads the committed document of a workspace as the store holds it now', () => {
+    const [workspaceA] = useAppStore.getState().workspaces
+
+    const document = readWorkspaceDocument('a')
+
+    expect(document).not.toBeNull()
+    expect(document?.nodes).toBe(workspaceA.nodes)
+    expect(document?.spaces).toBe(workspaceA.spaces)
+
+    replaceWorkspaceSpaces('a', [space('later', [])])
+    expect(readWorkspaceDocument('a')?.spaces.map(item => item.id)).toEqual(['later'])
+    // A document read earlier is a snapshot: it does not follow the store.
+    expect(document?.spaces).toBe(workspaceA.spaces)
+  })
+
+  it('reads null for an unknown workspace', () => {
+    expect(readWorkspaceDocument('gone')).toBeNull()
+  })
+
+  it('reads inside a recipe the state from before that recipe writes', () => {
+    let seenInside: string[] | null = null
+
+    commitCanvasDocument('a', document => {
+      seenInside = readWorkspaceDocument('a')?.spaces.map(item => item.id) ?? null
+      return { ...document, spaces: [space('written', [])] }
+    })
+
+    expect(seenInside).toEqual(['a-space'])
+    expect(readWorkspaceDocument('a')?.spaces.map(item => item.id)).toEqual(['written'])
+  })
+
+  it('requests the registered persist flush, and does nothing when none is registered', () => {
+    requestWorkspaceDocumentPersistFlush()
+    expect(flush).toHaveBeenCalledTimes(1)
+
+    unregister()
+    expect(() => requestWorkspaceDocumentPersistFlush()).not.toThrow()
+    expect(flush).toHaveBeenCalledTimes(1)
   })
 
   it('keeps the shell store bound to the module', () => {

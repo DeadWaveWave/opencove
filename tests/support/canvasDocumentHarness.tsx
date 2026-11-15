@@ -1,0 +1,160 @@
+import { renderHook, type RenderHookResult } from '@testing-library/react'
+import { ReactFlowProvider, type Node } from '@xyflow/react'
+import React, { type ReactElement, type ReactNode } from 'react'
+import { afterEach, vi, type Mock } from 'vitest'
+import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
+import { useWorkspaceCanvasNodePublishers } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasNodePublishers'
+import { useWorkspaceCanvasState } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasState'
+import { useWorkspaceCanvasNodesStore } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore'
+import {
+  readWorkspaceDocument,
+  registerWorkspaceDocumentPersistFlush,
+} from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import type { WorkspaceDocument } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocument'
+import type {
+  TerminalNodeData,
+  WorkspaceSpaceState,
+} from '../../src/contexts/workspace/presentation/renderer/types'
+import { CanvasStoreTestProvider } from './canvasStoreTestHarness'
+import {
+  seedWorkspaceCanvasStore,
+  useWorkspaceCanvasStoreNodes,
+} from './workspaceCanvasStoreHarness'
+
+export const CANVAS_DOCUMENT_WORKSPACE_ID = 'workspace-1'
+
+export interface CanvasDocumentHarness {
+  workspaceId: string
+  /** The persist flush the shell registered with the document module. */
+  flush: Mock
+  /** Called once for each write to the app store, whichever field it changes. */
+  notifications: Mock
+  /** The workspace's document as the store holds it now. */
+  readStoreDocument: () => WorkspaceDocument
+}
+
+const disposers: Array<() => void> = []
+
+afterEach(() => {
+  while (disposers.length > 0) {
+    disposers.pop()?.()
+  }
+})
+
+/**
+ * Seeds the app store with one workspace, binds a persist-flush spy through the document module
+ * and counts store notifications. Teardown runs after each test.
+ */
+export function createCanvasDocumentHarness({
+  workspaceId = CANVAS_DOCUMENT_WORKSPACE_ID,
+  nodes = [],
+  spaces = [],
+}: {
+  workspaceId?: string
+  nodes?: Node<TerminalNodeData>[]
+  spaces?: WorkspaceSpaceState[]
+} = {}): CanvasDocumentHarness {
+  seedWorkspaceCanvasStore({ workspaceId, nodes, spaces })
+  const flush = vi.fn()
+  const notifications = vi.fn()
+  disposers.push(registerWorkspaceDocumentPersistFlush(flush))
+  disposers.push(useAppStore.subscribe(notifications))
+  return {
+    workspaceId,
+    flush,
+    notifications,
+    readStoreDocument: () => {
+      const document = readWorkspaceDocument(workspaceId)
+      if (!document) {
+        throw new Error(`workspace ${workspaceId} is not in the store`)
+      }
+      return document
+    },
+  }
+}
+
+function createWrapper(
+  workspaceId: string | (() => string),
+): (props: { children: ReactNode }) => ReactElement {
+  return function Wrapper({ children }) {
+    return (
+      <CanvasStoreTestProvider
+        workspaceId={typeof workspaceId === 'function' ? workspaceId() : workspaceId}
+      >
+        <ReactFlowProvider>{children}</ReactFlowProvider>
+      </CanvasStoreTestProvider>
+    )
+  }
+}
+
+/**
+ * `renderHook` under the canvas store provider of `workspaceId` and a React Flow store. A function
+ * is read on every render, so a test switches workspace by changing what it returns and calling
+ * `rerender`.
+ */
+export function renderInCanvasDocument<Result, Props = undefined>(
+  callback: (props: Props) => Result,
+  options: { workspaceId?: string | (() => string); initialProps?: Props } = {},
+): RenderHookResult<Result, Props> {
+  return renderHook(callback, {
+    initialProps: options.initialProps,
+    wrapper: createWrapper(options.workspaceId ?? CANVAS_DOCUMENT_WORKSPACE_ID),
+  })
+}
+
+const EMPTY_SPACES: WorkspaceSpaceState[] = []
+
+export interface CanvasNodeStoreContext {
+  canvasState: ReturnType<typeof useWorkspaceCanvasState>
+  nodeStore: ReturnType<typeof useWorkspaceCanvasNodesStore>
+  publishers: ReturnType<typeof useWorkspaceCanvasNodePublishers>
+  nodes: Node<TerminalNodeData>[]
+  spaces: WorkspaceSpaceState[]
+}
+
+/**
+ * The canvas state and the node store, wired as `WorkspaceCanvasInner` wires them: the canvas view
+ * comes from the store through a selector, so a store write reaches `flowNodes` after a commit.
+ * `extend` runs inside the same render, for the hook under test that takes them as arguments.
+ */
+export function renderCanvasNodeStore<Extra extends object = Record<never, never>>(
+  harness: CanvasDocumentHarness,
+  {
+    workspacePath = `/tmp/${harness.workspaceId}`,
+    extend,
+  }: { workspacePath?: string; extend?: (context: CanvasNodeStoreContext) => Extra } = {},
+) {
+  return renderInCanvasDocument(
+    () => {
+      const nodes = useWorkspaceCanvasStoreNodes(harness.workspaceId)
+      const spaces = useAppStore(
+        state =>
+          state.workspaces.find(workspace => workspace.id === harness.workspaceId)?.spaces ??
+          EMPTY_SPACES,
+      )
+      const canvasState = useWorkspaceCanvasState({
+        workspaceId: harness.workspaceId,
+        nodes,
+        spaces,
+        viewport: { x: 0, y: 0, zoom: 1 },
+      })
+      const publishers = useWorkspaceCanvasNodePublishers({
+        ...canvasState,
+        workspaceId: harness.workspaceId,
+      })
+      const nodeStore = useWorkspaceCanvasNodesStore({
+        workspaceId: harness.workspaceId,
+        workspacePath,
+        nodes: canvasState.flowNodes,
+        spacesRef: canvasState.spacesRef,
+        onNodesCommitted: publishers.publishCommittedNodes,
+        isLiveGestureActive: publishers.isLiveGestureActive,
+        standardWindowSizeBucket: 'regular',
+        browserDefaultMode: 'iframe',
+      })
+      const context = { canvasState, nodeStore, publishers, nodes, spaces }
+      return { ...context, ...(extend ? extend(context) : ({} as Extra)) }
+    },
+    { workspaceId: harness.workspaceId },
+  )
+}
