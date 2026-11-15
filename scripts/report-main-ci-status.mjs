@@ -15,21 +15,30 @@ if (args.some(arg => !known.has(arg)) || (fixtureIndex >= 0 && !fixturePath)) {
   process.exit(1)
 }
 
-// A fixture is a map of "METHOD /path" to the JSON the API would answer; it replaces the network.
-function fixtureFetch(path) {
-  const responses = JSON.parse(readFileSync(path, 'utf8'))
-  return async (url, init = {}) => {
-    const key = `${init.method ?? 'GET'} ${new URL(url).pathname}`
+// A fixture is { env, responses }: `env` stands in for the run's environment (NEEDS included) and
+// `responses` maps "METHOD /path" (or "METHOD /path?status=<status>") to the JSON the API would
+// answer. It replaces the network.
+function loadFixture(path) {
+  const { env, responses } = JSON.parse(readFileSync(path, 'utf8'))
+  const fetchImpl = async (url, init = {}) => {
+    const { pathname, searchParams } = new URL(url)
+    const base = `${init.method ?? 'GET'} ${pathname}`
+    const key =
+      `${base}?status=${searchParams.get('status')}` in responses
+        ? `${base}?status=${searchParams.get('status')}`
+        : base
     return key in responses
       ? { ok: true, status: 200, json: async () => responses[key] }
       : { ok: false, status: 404, json: async () => ({ message: `no fixture for ${key}` }) }
   }
+  return { env, fetchImpl }
 }
+const fixture = fixturePath ? loadFixture(fixturePath) : null
 
 const summaryPath = process.env.GITHUB_STEP_SUMMARY
 const result = await runMainCiStatus({
-  fetchImpl: fixturePath ? fixtureFetch(fixturePath) : fetch,
-  env: process.env,
+  fetchImpl: fixture ? fixture.fetchImpl : fetch,
+  env: fixture ? { ...process.env, ...fixture.env } : process.env,
   dryRun: dryRun || Boolean(fixturePath),
   writeSummary: text => {
     if (summaryPath) {

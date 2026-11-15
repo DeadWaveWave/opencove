@@ -1,50 +1,87 @@
 export const CI_RED_LABEL = 'ci-red'
 export const CI_RED_TITLE = 'CI is red on main'
 
-const RED_CONCLUSIONS = new Set(['failure', 'cancelled', 'timed_out'])
+const STEP_RED_CONCLUSIONS = new Set(['failure', 'cancelled', 'timed_out'])
 const MAX_LISTED_COMMITS = 30
 const WORKFLOW_FILE = 'ci.yml'
-const STATUS_JOB = 'main-status'
+const MAX_ATTEMPTS = 3
+const RETRY_DELAYS_MS = [1000, 4000]
 
 function runUrlOf(run) {
   return `${run.serverUrl}/${run.repository}/actions/runs/${run.runId}`
 }
 
-function failedStepNames(job) {
-  return (job.steps ?? [])
-    .filter(step => RED_CONCLUSIONS.has(step.conclusion))
-    .map(step => step.name)
+// Text that comes from outside (a commit subject) goes into a code span, so that `@name` and
+// `#123` in it mention nobody and link nothing.
+function codeSpan(text) {
+  return `\`${String(text).replaceAll('`', "'")}\``
 }
 
-function describeRange({ lastGreenSha, commits, run }) {
+function failedStepLines(jobId, jobs) {
+  return jobs
+    .filter(job => job.name === jobId || job.name.startsWith(`${jobId} (`))
+    .map(job => ({
+      name: job.name,
+      steps: (job.steps ?? [])
+        .filter(step => STEP_RED_CONCLUSIONS.has(step.conclusion))
+        .map(step => step.name),
+    }))
+    .filter(job => job.steps.length > 0)
+}
+
+function describeRange({ lastGreenSha, commits, totalCommits, run }) {
   if (!lastGreenSha) {
     return ['Commits: no earlier green push run was found, so no range is available.']
   }
 
+  const total = totalCommits ?? commits.length
+  const shown = commits.slice(-MAX_LISTED_COMMITS).reverse()
   const lines = [
-    `Commits since the last green push run: ${run.serverUrl}/${run.repository}/compare/${lastGreenSha}...${run.sha}`,
+    `Commits since the last green push run (${total}): ${run.serverUrl}/${run.repository}/compare/${lastGreenSha}...${run.sha}`,
   ]
-  for (const commit of commits.slice(0, MAX_LISTED_COMMITS)) {
-    lines.push(`- ${commit.sha.slice(0, 9)} ${commit.subject}`)
+  if (shown.length > 0 && shown.length < total) {
+    lines.push(`Newest ${shown.length} of ${total} shown:`)
   }
-  if (commits.length > MAX_LISTED_COMMITS) {
-    lines.push(`- and ${commits.length - MAX_LISTED_COMMITS} more`)
+  for (const commit of shown) {
+    lines.push(`- ${codeSpan(commit.sha.slice(0, 9))} ${codeSpan(commit.subject)}`)
   }
   return lines
 }
 
-// Decides what to write to the issue tracker. Pure: every input is data read from the API.
-// jobs: the jobs of this run ({ name, status, conclusion, steps }); openIssues: open issues that
-// carry the ci-red label; lastGreenSha: head of the newest successful push run, or null;
-// commits: [{ sha, subject }] between that commit and this run's commit.
-export function decideCiRedActions({ jobs, openIssues, lastGreenSha, commits, run }) {
-  const redJobs = jobs.filter(
-    job => job.name !== STATUS_JOB && RED_CONCLUSIONS.has(job.conclusion ?? ''),
+// A re-run of an older push run must not write over the state a newer completed run has set.
+export function isSupersededRun({ runNumber, newestCompletedRunNumber }) {
+  return (
+    Number.isFinite(newestCompletedRunNumber) &&
+    Number.isFinite(runNumber) &&
+    newestCompletedRunNumber > runNumber
   )
+}
+
+// Decides what to write to the issue tracker. Pure: every input is data read from the API.
+// needs: [{ id, result }] with the `needs` context result of each job the status job waits for;
+// jobs: the jobs of this run from the Jobs API (only for the names of failed steps; may be empty);
+// openIssues: open issues that carry the ci-red label; lastGreenSha: head of the newest
+// successful push run, or null; commits: [{ sha, subject }] oldest first, with totalCommits the
+// size of the whole range; newestCompletedRunNumber: run_number of the newest completed push run.
+export function decideCiRedActions({
+  needs,
+  jobs = [],
+  openIssues,
+  lastGreenSha,
+  commits = [],
+  totalCommits,
+  run,
+  newestCompletedRunNumber = null,
+}) {
+  if (isSupersededRun({ runNumber: run.runNumber, newestCompletedRunNumber })) {
+    return []
+  }
+
+  const notGreen = needs.filter(job => job.result !== 'success')
   const issues = [...openIssues].sort((left, right) => left.number - right.number)
   const runUrl = runUrlOf(run)
 
-  if (redJobs.length === 0) {
+  if (notGreen.length === 0) {
     if (issues.length === 0) {
       return []
     }
@@ -55,14 +92,14 @@ export function decideCiRedActions({ jobs, openIssues, lastGreenSha, commits, ru
     ])
   }
 
-  const lines = [`CI failed on main at ${run.sha}: ${runUrl}`, '', 'Failed jobs:']
-  for (const job of redJobs) {
-    const steps = failedStepNames(job)
-    lines.push(
-      `- ${job.name} (${job.conclusion})${steps.length > 0 ? `: ${steps.join(', ')}` : ''}`,
-    )
+  const lines = [`CI failed on main at ${run.sha}: ${runUrl}`, '', 'Jobs that did not succeed:']
+  for (const job of notGreen) {
+    lines.push(`- ${job.id}: ${job.result}`)
+    for (const failed of failedStepLines(job.id, jobs)) {
+      lines.push(`  - ${failed.name}: ${failed.steps.join(', ')}`)
+    }
   }
-  lines.push('', ...describeRange({ lastGreenSha, commits, run }))
+  lines.push('', ...describeRange({ lastGreenSha, commits, totalCommits, run }))
   const body = lines.join('\n')
 
   if (issues.length > 0) {
@@ -74,31 +111,75 @@ export function decideCiRedActions({ jobs, openIssues, lastGreenSha, commits, ru
   ]
 }
 
-class ApiError extends Error {}
+// Reads the `needs` context ({ "<job id>": { result } }) the workflow passes in.
+export function parseNeeds(raw) {
+  let parsed
+  try {
+    parsed = JSON.parse(raw ?? '')
+  } catch {
+    throw new Error('the NEEDS environment variable is not valid JSON')
+  }
+  const needs = Object.entries(parsed ?? {}).map(([id, value]) => ({ id, result: value?.result }))
+  if (needs.length === 0 || needs.some(job => typeof job.result !== 'string')) {
+    throw new Error('the NEEDS environment variable lists no job results')
+  }
+  return needs
+}
 
-function createApi({ fetchImpl, apiUrl, token }) {
+class ApiError extends Error {
+  constructor(message, status, codes = []) {
+    super(message)
+    this.status = status
+    this.codes = codes
+  }
+}
+
+const defaultSleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+
+function createApi({ fetchImpl, apiUrl, token, sleep }) {
   const headers = {
     Accept: 'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   }
 
-  return async (method, path, body) => {
+  async function attempt(method, path, body) {
     const response = await fetchImpl(`${apiUrl}${path}`, {
       method,
       headers: body ? { ...headers, 'Content-Type': 'application/json' } : headers,
       body: body ? JSON.stringify(body) : undefined,
     })
     if (!response.ok) {
-      let detail = ''
+      let detail = {}
       try {
-        detail = (await response.json())?.message ?? ''
+        detail = (await response.json()) ?? {}
       } catch {
         // The status is enough.
       }
-      throw new ApiError(`${method} ${path} failed with ${response.status} ${detail}`.trim())
+      const codes = (detail.errors ?? []).map(error => error?.code).filter(Boolean)
+      throw new ApiError(
+        `${method} ${path} failed with ${response.status} ${detail.message ?? ''}`.trim(),
+        response.status,
+        codes,
+      )
     }
     return response.json()
+  }
+
+  // A 5xx, a 429 or a network error is tried again, up to three attempts in all.
+  return async (method, path, body) => {
+    for (let tries = 1; ; tries += 1) {
+      try {
+        return await attempt(method, path, body)
+      } catch (error) {
+        const transient =
+          !(error instanceof ApiError) || error.status >= 500 || error.status === 429
+        if (!transient || tries >= MAX_ATTEMPTS) {
+          throw error
+        }
+        await sleep(RETRY_DELAYS_MS[tries - 1] ?? 4000)
+      }
+    }
   }
 }
 
@@ -108,19 +189,32 @@ async function applyAction(call, repo, action) {
       try {
         await call('POST', `${repo}/labels`, { name: action.name, color: 'b60205' })
       } catch (error) {
-        // 422: the label already exists.
-        if (!/failed with 422/.test(String(error.message))) {
+        // Only "the label already exists" is fine.
+        if (
+          !(
+            error instanceof ApiError &&
+            error.status === 422 &&
+            error.codes.includes('already_exists')
+          )
+        ) {
           throw error
         }
       }
       return
-    case 'create_issue':
-      await call('POST', `${repo}/issues`, {
+    case 'create_issue': {
+      const created = await call('POST', `${repo}/issues`, {
         title: action.title,
         labels: action.labels,
         body: action.body,
       })
+      // Labels are dropped silently when the token may not set them: make sure they are there.
+      const present = new Set((created?.labels ?? []).map(label => label?.name ?? label))
+      const missing = action.labels.filter(label => !present.has(label))
+      if (missing.length > 0) {
+        await call('POST', `${repo}/issues/${created.number}/labels`, { labels: missing })
+      }
       return
+    }
     case 'comment':
       await call('POST', `${repo}/issues/${action.issueNumber}/comments`, { body: action.body })
       return
@@ -144,53 +238,79 @@ export async function runMainCiStatus({
   dryRun = false,
   log = line => process.stdout.write(`${line}\n`),
   writeSummary = () => {},
+  sleep = defaultSleep,
 }) {
   const repository = env.GITHUB_REPOSITORY
   const run = {
     repository,
     serverUrl: env.GITHUB_SERVER_URL ?? 'https://github.com',
     runId: env.GITHUB_RUN_ID,
+    runNumber: Number(env.GITHUB_RUN_NUMBER),
     sha: env.GITHUB_SHA,
   }
   const call = createApi({
     fetchImpl,
     apiUrl: env.GITHUB_API_URL ?? 'https://api.github.com',
     token: env.GITHUB_TOKEN,
+    sleep,
   })
   const repo = `/repos/${repository}`
+  const runs = `${repo}/actions/workflows/${WORKFLOW_FILE}/runs?branch=main&event=push`
   const failures = []
   let actions = []
 
   try {
-    const jobs = (await call('GET', `${repo}/actions/runs/${run.runId}/jobs?per_page=100`)).jobs
+    const needs = parseNeeds(env.NEEDS)
+
+    const newest = (await call('GET', `${runs}&status=completed&per_page=1`)).workflow_runs?.[0]
+    const newestCompletedRunNumber = newest?.run_number ?? null
+    if (isSupersededRun({ runNumber: run.runNumber, newestCompletedRunNumber })) {
+      log(
+        `A newer push run has completed (run ${newestCompletedRunNumber}, this is ${run.runNumber}); not reporting.`,
+      )
+      return { ok: true, actions, failures }
+    }
+
     const openIssues = (
       await call('GET', `${repo}/issues?labels=${CI_RED_LABEL}&state=open&per_page=100`)
     ).filter(issue => !issue.pull_request)
-    const lastGreen = (
-      await call(
-        'GET',
-        `${repo}/actions/workflows/${WORKFLOW_FILE}/runs?branch=main&event=push&status=success&per_page=1`,
-      )
-    ).workflow_runs?.[0]
+    const lastGreen = (await call('GET', `${runs}&status=success&per_page=1`)).workflow_runs?.[0]
     const lastGreenSha = lastGreen?.head_sha ?? null
+    const isRed = needs.some(job => job.result !== 'success')
 
+    let jobs = []
     let commits = []
-    const isRed = jobs.some(
-      job => job.name !== STATUS_JOB && RED_CONCLUSIONS.has(job.conclusion ?? ''),
-    )
-    if (isRed && lastGreenSha) {
+    let totalCommits
+    if (isRed) {
       try {
-        const compare = await call('GET', `${repo}/compare/${lastGreenSha}...${run.sha}`)
-        commits = (compare.commits ?? []).map(entry => ({
-          sha: entry.sha,
-          subject: String(entry.commit?.message ?? '').split('\n')[0],
-        }))
+        jobs = (await call('GET', `${repo}/actions/runs/${run.runId}/jobs?per_page=100`)).jobs ?? []
       } catch (error) {
-        log(`Could not list the commits in the range: ${error.message}`)
+        log(`Could not read the failed steps: ${error.message}`)
+      }
+      if (lastGreenSha) {
+        try {
+          const compare = await call('GET', `${repo}/compare/${lastGreenSha}...${run.sha}`)
+          totalCommits = compare.total_commits
+          commits = (compare.commits ?? []).map(entry => ({
+            sha: entry.sha,
+            subject: String(entry.commit?.message ?? '').split('\n')[0],
+          }))
+        } catch (error) {
+          log(`Could not list the commits in the range: ${error.message}`)
+        }
       }
     }
 
-    actions = decideCiRedActions({ jobs, openIssues, lastGreenSha, commits, run })
+    actions = decideCiRedActions({
+      needs,
+      jobs,
+      openIssues,
+      lastGreenSha,
+      commits,
+      totalCommits,
+      run,
+      newestCompletedRunNumber,
+    })
     log(`Planned ${actions.length} action(s)${dryRun ? ' (dry run, nothing is written)' : ''}.`)
     for (const action of actions) {
       log(JSON.stringify(action, null, 2))

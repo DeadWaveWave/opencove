@@ -1,26 +1,42 @@
 {
-  "GET /repos/acme/app/actions/runs/42/jobs": {
-    "jobs": [
-      { "name": "ci-ubuntu", "status": "completed", "conclusion": "success", "steps": [] },
-      {
-        "name": "ci-macos (2)",
-        "status": "completed",
-        "conclusion": "failure",
-        "steps": [{ "name": "E2E tests (shard)", "conclusion": "failure" }]
-      },
-      { "name": "main-status", "status": "in_progress", "conclusion": null, "steps": [] }
-    ]
+  "env": {
+    "GITHUB_REPOSITORY": "acme/app",
+    "GITHUB_RUN_ID": "42",
+    "GITHUB_RUN_NUMBER": "10",
+    "GITHUB_SHA": "cccccccccccccccccccccccccccccccccccccccc",
+    "NEEDS": "{\"ci-ubuntu\": {\"result\": \"success\", \"outputs\": {}}, \"e2e-ubuntu\": {\"result\": \"success\", \"outputs\": {}}, \"web-canvas-continuity-ubuntu\": {\"result\": \"success\", \"outputs\": {}}, \"macos-platform\": {\"result\": \"success\", \"outputs\": {}}, \"ci-macos\": {\"result\": \"failure\", \"outputs\": {}}, \"platform-e2e-windows\": {\"result\": \"success\", \"outputs\": {}}}"
   },
-  "GET /repos/acme/app/issues": [],
-  "GET /repos/acme/app/actions/workflows/ci.yml/runs": {
-    "workflow_runs": [{ "id": 41, "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }]
-  },
-  "GET /repos/acme/app/compare/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...cccccccccccccccccccccccccccccccccccccccc": {
-    "commits": [
-      {
-        "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-        "commit": { "message": "fix: first change" }
-      }
-    ]
+  "responses": {
+    "GET /repos/acme/app/actions/workflows/ci.yml/runs?status=completed": {
+      "workflow_runs": [
+        { "id": 41, "run_number": 9, "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+      ]
+    },
+    "GET /repos/acme/app/actions/workflows/ci.yml/runs?status=success": {
+      "workflow_runs": [
+        { "id": 41, "run_number": 9, "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+      ]
+    },
+    "GET /repos/acme/app/issues": [],
+    "GET /repos/acme/app/actions/runs/42/jobs": {
+      "jobs": [
+        { "name": "ci-ubuntu", "status": "completed", "conclusion": "success", "steps": [] },
+        {
+          "name": "ci-macos (2)",
+          "status": "completed",
+          "conclusion": "failure",
+          "steps": [{ "name": "E2E tests (shard)", "conclusion": "failure" }]
+        }
+      ]
+    },
+    "GET /repos/acme/app/compare/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...cccccccccccccccccccccccccccccccccccccccc": {
+      "total_commits": 1,
+      "commits": [
+        {
+          "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "commit": { "message": "fix: first change" }
+        }
+      ]
+    }
   }
 }
