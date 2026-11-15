@@ -215,9 +215,9 @@ E2E 数量门禁：`pnpm e2e:budget` 用 Playwright `--list` 检查全部 Electr
 
 Ubuntu/macOS 每个 Electron 分片保留 list 日志并上传 `e2e-durations-<OS>-<shard>` JSON artifact（成功或失败均上传）。CI 的 `e2e-duration-summary` job summary 展示总串行/分片耗时、最慢 20 例、新增超过 15 秒的用例和相对 `tests/e2e/budget/duration-*.json` 中位数基线的增长。计时仅供观察；缺失、损坏或中断报告显示警告，不阻断 CI，也不视为节省。基线来源和更新方法见该目录的 `README.md`。
 
-Ubuntu/macOS 三个分片用 `scripts/plan-e2e-shards.mjs` 按文件内用例的 OS 基线耗时之和做 LPT 分配（最长文件先放入最轻分片；文件同分按路径，分片同分按文件数和编号），不拆文件。新文件/未计时用例采用该 OS 正数基线的中位数，无样本时为 10 秒；只有显式零值计为未运行，缺失记录不能当作 skip。刷新耗时基线即重新平衡分片。静态 job 与每个分片执行前均校验完整、互斥、无非必要空分片，文件列表仍通过 `pnpm test:e2e` 运行；JSON summary 并列展示计划与实测分钟数。
+Ubuntu 四个分片、macOS 三个分片，数量只在 `scripts/lib/e2e-shards.mjs` 的 `E2E_SHARD_COUNTS` 定义；规划器、耗时报告和 CI 接线测试都读它，workflow 的 matrix 必须与之相等（`tests/unit/scripts/ci-e2e-budget.spec.ts` 校验），运行行不再带 `--shards`。分片用 `scripts/plan-e2e-shards.mjs` 按文件内用例的 OS 基线耗时之和做 LPT 分配（最长文件先放入最轻分片；文件同分按路径，分片同分按文件数和编号），不拆文件。新文件/未计时用例采用该 OS 正数基线的中位数，无样本时为 10 秒；只有显式零值计为未运行，缺失记录不能当作 skip。刷新耗时基线即重新平衡分片。`e2e-duration-summary` 通过 `--expect` 得知本次 run 含哪些平台（pull request 为 `ubuntu`，其余为 `ubuntu,macos`），不含的平台不读取、不告警，summary 标注 not in this run。静态 job 与每个分片执行前均校验完整、互斥、无非必要空分片，文件列表仍通过 `pnpm test:e2e` 运行；JSON summary 并列展示计划与实测分钟数。
 
-本地查看计划：`node scripts/plan-e2e-shards.mjs --os macos --shards 3`（也支持 `ubuntu`，加 `--shard 1 --run` 执行该分片）。原有 `pnpm test:e2e -- --shard=1/3` 和 pre-commit 选组保持不变。
+本地查看计划：`node scripts/plan-e2e-shards.mjs --os ubuntu`（也支持 `macos`，按各自的分片数；加 `--shard 1 --run` 执行该分片）。`--shards <n>` 仅作本地查看其他分法的覆盖，`--check` 不接受它。原有 `pnpm test:e2e -- --shard=1/3` 和 pre-commit 选组保持不变。
 
 快速 E2E 首个失败即停止，保留 trace 后先定向修复。一次代码版本的一组定向 E2E 只构建一次；只有确认源码与构建产物一致时才可复用，代码改动后重新构建。完整 CI 保留现有分片策略；本地快速通过不代表完整回归通过，汇报必须分别列出通过、跳过与尚未执行的范围。
 
