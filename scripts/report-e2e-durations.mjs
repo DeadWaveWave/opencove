@@ -2,10 +2,12 @@
 import { appendFileSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { parseArgs } from 'node:util'
 import { BUDGET_DIRECTORY, collectCases, median, readBaselineParts } from './lib/e2e-report.mjs'
+import { E2E_SHARD_COUNTS } from './lib/e2e-shards.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
-const OSES = ['ubuntu', 'macos']
+const OSES = Object.keys(E2E_SHARD_COUNTS)
 const minute = ms => (ms / 60000).toFixed(2)
 const second = ms => (ms / 1000).toFixed(2)
 const escape = value =>
@@ -22,10 +24,28 @@ const duration = value => {
   return value
 }
 
-export function readShardReports(directory, shardCount = 3) {
+// `--expect ubuntu,macos` names the platforms a run has; without it every platform is expected.
+// Returns { platform: shardCount } for exactly those platforms, in the owner's order.
+export function parseExpect(value) {
+  if (value === undefined) {
+    return { ...E2E_SHARD_COUNTS }
+  }
+  const names = value.split(',').map(name => name.trim())
+  if (names.some(name => !OSES.includes(name))) {
+    throw new Error(
+      `Invalid --expect "${value}"; use a comma-separated list of: ${OSES.join(', ')}.`,
+    )
+  }
+  return Object.fromEntries(
+    OSES.filter(os => names.includes(os)).map(os => [os, E2E_SHARD_COUNTS[os]]),
+  )
+}
+
+// `expected` maps each platform of this run to its shard count; other platforms are not read.
+export function readShardReports(directory, expected = E2E_SHARD_COUNTS) {
   const reports = [],
     warnings = []
-  for (const os of OSES) {
+  for (const [os, shardCount] of Object.entries(expected)) {
     for (let shard = 1; shard <= shardCount; shard++) {
       const name = `${os}-${shard}.json`
       try {
@@ -99,7 +119,14 @@ export function durationBaseline(reports) {
   )
 }
 
-export function summarizeDurations(reports, baseline, inputWarnings = []) {
+export function summarizeDurations(
+  reports,
+  baseline,
+  inputWarnings = [],
+  expected = E2E_SHARD_COUNTS,
+) {
+  const inRun = OSES.filter(os => Object.hasOwn(expected, os))
+  const absent = OSES.filter(os => !inRun.includes(os))
   const warnings = [...inputWarnings],
     shards = [],
     rows = []
@@ -142,6 +169,8 @@ export function summarizeDurations(reports, baseline, inputWarnings = []) {
   const lines = [
     '# Electron E2E durations (informational)',
     '',
+    `Platforms in this run: ${inRun.map(os => `${os} (${expected[os]} shards)`).join(', ')}.${absent.length ? ` Not in this run: ${absent.join(', ')}.` : ''}`,
+    '',
     'Serial = sum of all test attempts, including failures/retries. Wall = Playwright run duration, including shared hooks/runner overhead. Skipped/not-run cases contribute no measured cost. Interrupted timings are censored; partial runs are not savings.',
     '',
     '## Per-shard minutes',
@@ -170,9 +199,13 @@ export function summarizeDurations(reports, baseline, inputWarnings = []) {
     '| --- | ---: | ---: | ---: |',
   )
   for (const os of OSES) {
+    if (!inRun.includes(os)) {
+      lines.push(`| ${os} | not in this run | n/a | n/a |`)
+      continue
+    }
     const subset = shards.filter(s => s.os === os)
     lines.push(
-      `| ${os} | ${subset.length}/3 | ${minute(subset.reduce((sum, s) => sum + s.total, 0))} | ${minute(subset.reduce((sum, s) => sum + s.wall, 0))} |`,
+      `| ${os} | ${subset.length}/${expected[os]} | ${minute(subset.reduce((sum, s) => sum + s.total, 0))} | ${minute(subset.reduce((sum, s) => sum + s.wall, 0))} |`,
     )
   }
   lines.push(
@@ -184,7 +217,7 @@ export function summarizeDurations(reports, baseline, inputWarnings = []) {
     '| OS | Matched/baseline | Current min | Baseline min | Growth |',
     '| --- | ---: | ---: | ---: | --- |',
   )
-  for (const os of OSES) {
+  for (const os of inRun) {
     const old = baseline[os] ?? {}
     const passed = new Map()
     for (const row of rows.filter(
@@ -242,17 +275,22 @@ export function summarizeDurations(reports, baseline, inputWarnings = []) {
 }
 
 function main() {
-  const directory = resolve(process.argv[2] ?? 'artifacts/e2e-durations')
-  const { reports, warnings } = readShardReports(directory)
+  const { values, positionals } = parseArgs({
+    allowPositionals: true,
+    options: { expect: { type: 'string' } },
+  })
+  const directory = resolve(positionals[0] ?? 'artifacts/e2e-durations')
+  const expected = parseExpect(values.expect)
+  const { reports, warnings } = readShardReports(directory, expected)
   const baseline = {}
-  for (const os of OSES) {
+  for (const os of Object.keys(expected)) {
     try {
       baseline[os] = readBaselineParts(resolve(ROOT, BUDGET_DIRECTORY), `duration-${os}`)
     } catch (error) {
       warnings.push(`${os}: cannot read duration baseline (${error.message})`)
     }
   }
-  const summary = summarizeDurations(reports, baseline, warnings)
+  const summary = summarizeDurations(reports, baseline, warnings, expected)
   if (process.env.GITHUB_STEP_SUMMARY) {
     appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary)
   } else {

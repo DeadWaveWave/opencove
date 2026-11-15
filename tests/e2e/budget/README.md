@@ -29,14 +29,20 @@ that every legacy case belongs at the E2E layer forever.
 
 CI retains the list reporter and writes the complete Playwright JSON report to an artifact
 per Ubuntu/macOS shard, even on failure. macOS duration artifacts come from push runs on
-`main` and manual runs only: pull request runs skip the macOS shards. `e2e-duration-summary` downloads the six artifacts of a push or manual run (three on a pull request run, which has no macOS shards)
-and writes the job summary. Run it locally with downloaded artifacts:
+`main` and manual runs only: pull request runs skip the macOS shards. `e2e-duration-summary` downloads the
+seven artifacts of a push or manual run (four Ubuntu and three macOS) and the four Ubuntu artifacts of a
+pull request run, which has no macOS shards, and writes the job summary. The shard counts live in
+`E2E_SHARD_COUNTS` in `scripts/lib/e2e-shards.mjs`. Run it locally with downloaded artifacts:
 
 ```sh
 node scripts/report-e2e-durations.mjs artifacts/e2e-durations
+node scripts/report-e2e-durations.mjs artifacts/e2e-durations --expect ubuntu
 ```
 
-The script expects `ubuntu-1.json` through `ubuntu-3.json` and `macos-1.json` through
+`--expect` lists the platforms the run has (CI passes `ubuntu` on a pull request run and
+`ubuntu,macos` otherwise); a platform that is not listed is not read, raises no warning and is
+shown as not in this run. Without it every platform is expected. The script expects
+`ubuntu-1.json` through `ubuntu-4.json` and, when macOS is expected, `macos-1.json` through
 `macos-3.json`. It sums all attempts for serial cost and separately reports Playwright's
 wall time, including shared hooks and runner overhead. It includes skipped, failed,
 timed-out, interrupted and not-started cases. Hard runner termination may prevent JSON
@@ -94,7 +100,7 @@ the earlier run's passing observations despite its overall failed conclusion:
 
 Review recent runs with `gh run list --repo DeadWaveWave/opencove --workflow CI` and
 `gh api repos/DeadWaveWave/opencove/actions/runs/<run>/artifacts --paginate`. Include main
-pushes and PR revisions based on the current shard workflow when all six non-expired
+pushes and PR revisions based on the current shard workflow when all seven non-expired
 artifacts exist. Download into fresh directories and flatten them to match CI's
 `merge-multiple` download layout:
 

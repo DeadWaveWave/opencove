@@ -1,16 +1,22 @@
 // @vitest-environment node
+import { spawnSync } from 'node:child_process'
 import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { E2E_SHARD_COUNTS } from '../../../scripts/lib/e2e-shards.mjs'
 import {
   summarizeDurations,
   readShardReports,
   durationBaseline,
+  parseExpect,
 } from '../../../scripts/report-e2e-durations.mjs'
 
 const fixture = () =>
   JSON.parse(readFileSync(new URL('./fixtures/e2e-duration.json', import.meta.url), 'utf8'))
+const reportScript = resolve(import.meta.dirname, '../../../scripts/report-e2e-durations.mjs')
+const totalShards = Object.values(E2E_SHARD_COUNTS).reduce((sum, count) => sum + count, 0)
+const { ubuntu, macos } = E2E_SHARD_COUNTS
 const id = (title: string) => `tests/e2e/timing.spec.ts › nested › ${title}`
 
 describe('informational E2E duration report', () => {
@@ -106,9 +112,9 @@ describe('informational E2E duration report', () => {
     try {
       writeFileSync(join(dir, 'macos-1.json'), JSON.stringify(fixture()))
       writeFileSync(join(dir, 'ubuntu-1.json'), '{broken')
-      const { reports, warnings } = readShardReports(dir, 3)
+      const { reports, warnings } = readShardReports(dir, E2E_SHARD_COUNTS)
       expect(reports).toHaveLength(1)
-      expect(warnings).toHaveLength(5)
+      expect(warnings).toHaveLength(totalShards - 1)
       expect(summarizeDurations(reports, {}, warnings)).toContain('WARNING')
     } finally {
       rmSync(dir, { recursive: true, force: true })
@@ -116,8 +122,8 @@ describe('informational E2E duration report', () => {
   })
 
   it('handles a missing report directory and empty data without pretending it is a saving', () => {
-    const { reports, warnings } = readShardReports('/does-not-exist', 3)
-    expect(warnings).toHaveLength(6)
+    const { reports, warnings } = readShardReports('/does-not-exist', E2E_SHARD_COUNTS)
+    expect(warnings).toHaveLength(totalShards)
     const summary = summarizeDurations(reports, { macos: { [id('passed')]: 10000 } }, warnings)
     expect(summary).toContain('No usable shard reports')
     expect(summary).not.toContain('-100%')
@@ -138,9 +144,9 @@ describe('informational E2E duration report', () => {
         },
       }
       writeFileSync(join(dir, 'macos-1.json'), JSON.stringify(report))
-      const { reports, warnings } = readShardReports(dir, 3)
+      const { reports, warnings } = readShardReports(dir, E2E_SHARD_COUNTS)
       expect(reports).toHaveLength(1)
-      expect(warnings).toHaveLength(5)
+      expect(warnings).toHaveLength(totalShards - 1)
       const summary = summarizeDurations(reports, {}, [])
       expect(summary).toContain('| macos | 1 | 1.50 | 2.00 | 3.00 |')
       expect(summary).toContain('Estimated min')
@@ -173,10 +179,12 @@ describe('informational E2E duration report', () => {
         },
       }
       writeFileSync(join(dir, 'macos-1.json'), JSON.stringify(report))
-      const { reports, warnings } = readShardReports(dir, 3)
+      const { reports, warnings } = readShardReports(dir, E2E_SHARD_COUNTS)
       expect(reports).toHaveLength(0)
-      expect(warnings).toHaveLength(6)
-      expect(warnings[3]).toContain('macos-1.json: missing or broken report')
+      expect(warnings).toHaveLength(totalShards)
+      expect(warnings.find((w: string) => w.startsWith('macos-1.json'))).toContain(
+        'missing or broken report',
+      )
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
@@ -193,5 +201,164 @@ describe('informational E2E duration report', () => {
     expect(summarizeDurations([{ os: 'macos', shard: 1, report: errors }], {}, [])).toContain(
       'worker crashed',
     )
+  })
+
+  describe('platforms of the run', () => {
+    const write = (dir: string, os: string, shard: number, total?: number) => {
+      const report = fixture()
+      // A finished shard: the fixture's interrupted and not-started cases would be partial-run warnings.
+      const specs = report.suites[0].suites[0].specs
+      report.suites[0].suites[0].specs = specs.filter(
+        (spec: { title: string }) => !['interrupted', 'not started'].includes(spec.title),
+      )
+      report.config.shard = null
+      report.config.metadata = {
+        opencoveShardPlan: {
+          os,
+          current: shard,
+          total: total ?? E2E_SHARD_COUNTS[os as 'ubuntu' | 'macos'],
+          estimatedMs: 180000,
+          files: ['tests/e2e/timing.spec.ts'],
+        },
+      }
+      writeFileSync(join(dir, `${os}-${shard}.json`), JSON.stringify(report))
+    }
+    const withDirectory = (run: (dir: string) => void) => {
+      const dir = mkdtempSync(join(tmpdir(), 'opencove-expect-report-'))
+      try {
+        run(dir)
+      } finally {
+        rmSync(dir, { recursive: true, force: true })
+      }
+    }
+    const writeAll = (dir: string, platforms = ['ubuntu', 'macos']) => {
+      for (const os of platforms) {
+        for (let shard = 1; shard <= E2E_SHARD_COUNTS[os as 'ubuntu' | 'macos']; shard++) {
+          write(dir, os, shard)
+        }
+      }
+    }
+
+    it('reads four Ubuntu and three macOS reports without a warning and totals them', () => {
+      withDirectory(dir => {
+        writeAll(dir)
+        const { reports, warnings } = readShardReports(dir, E2E_SHARD_COUNTS)
+        expect(reports).toHaveLength(7)
+        expect(warnings).toEqual([])
+        const summary = summarizeDurations(reports, {}, warnings, E2E_SHARD_COUNTS)
+        expect(summary).toContain(`| ubuntu | ${ubuntu}/${ubuntu} |`)
+        expect(summary).toContain(`| macos | ${macos}/${macos} |`)
+        expect(summary).not.toContain('missing or broken report')
+        expect(summary).not.toContain('## Warnings')
+        expect(summary).toContain(
+          `Platforms in this run: ubuntu (${ubuntu} shards), macos (${macos} shards).`,
+        )
+      })
+    })
+
+    it('does not read or warn about a platform the run does not have, and says so', () => {
+      withDirectory(dir => {
+        writeAll(dir, ['ubuntu'])
+        const expected = { ubuntu: E2E_SHARD_COUNTS.ubuntu }
+        const { reports, warnings } = readShardReports(dir, expected)
+        expect(reports).toHaveLength(4)
+        expect(warnings).toEqual([])
+        const summary = summarizeDurations(reports, {}, warnings, expected)
+        expect(summary).not.toContain('missing or broken report')
+        expect(summary).not.toContain('## Warnings')
+        expect(summary).toContain(
+          `Platforms in this run: ubuntu (${ubuntu} shards). Not in this run: macos.`,
+        )
+        expect(summary).toContain(`| ubuntu | ${ubuntu}/${ubuntu} |`)
+        expect(summary).toMatch(/\| macos \| not in this run \|/)
+        expect(summary).not.toContain('0/3')
+        const growth = summary.split('## Growth against baseline')[1].split('## 20 slowest')[0]
+        expect(growth).toContain('| ubuntu |')
+        expect(growth).not.toContain('| macos |')
+      })
+    })
+
+    it('ignores a macOS file in a run that does not expect macOS', () => {
+      withDirectory(dir => {
+        writeAll(dir)
+        const { reports } = readShardReports(dir, { ubuntu: 4 })
+        expect(reports.map((r: { os: string }) => r.os)).not.toContain('macos')
+      })
+    })
+
+    it('still warns about a missing shard of an expected platform', () => {
+      withDirectory(dir => {
+        writeAll(dir)
+        rmSync(join(dir, 'ubuntu-3.json'))
+        const { reports, warnings } = readShardReports(dir, E2E_SHARD_COUNTS)
+        expect(reports).toHaveLength(6)
+        expect(warnings).toHaveLength(1)
+        expect(warnings[0]).toContain('ubuntu-3.json: missing or broken report')
+      })
+    })
+
+    it('still warns when a report total disagrees with the count of its platform', () => {
+      withDirectory(dir => {
+        writeAll(dir)
+        write(dir, 'ubuntu', 2, 3)
+        write(dir, 'macos', 2, 4)
+        const { reports, warnings } = readShardReports(dir, E2E_SHARD_COUNTS)
+        expect(reports).toHaveLength(5)
+        expect(warnings.map((w: string) => w.split(':')[0]).sort()).toEqual([
+          'macos-2.json',
+          'ubuntu-2.json',
+        ])
+      })
+    })
+
+    const runReport = (dir: string, ...args: string[]) => {
+      const env = { ...process.env }
+      delete env.GITHUB_STEP_SUMMARY
+      return spawnSync(process.execPath, [reportScript, dir, ...args], { encoding: 'utf8', env })
+    }
+
+    it('the script honours --expect end to end: Ubuntu only, no macOS warning, exit 0', () => {
+      withDirectory(dir => {
+        writeAll(dir, ['ubuntu'])
+        const result = runReport(dir, '--expect', 'ubuntu')
+        expect(result.status).toBe(0)
+        expect(result.stderr).toBe('')
+        expect(result.stdout).toContain('Not in this run: macos')
+        expect(result.stdout).toMatch(/\| macos \| not in this run \|/)
+        expect(result.stdout).not.toContain('macos-1.json')
+        expect(result.stdout).not.toContain('## Warnings')
+      })
+    })
+
+    it('the script without --expect still expects every platform', () => {
+      withDirectory(dir => {
+        writeAll(dir, ['ubuntu'])
+        const result = runReport(dir)
+        expect(result.status).toBe(0)
+        expect(result.stdout).toContain('macos-1.json: missing or broken report')
+        expect(result.stdout).toContain(`| macos | 0/${macos} |`)
+      })
+    })
+
+    it('the script turns an unknown --expect platform into a warning with exit 0', () => {
+      withDirectory(dir => {
+        writeAll(dir, ['ubuntu'])
+        const result = runReport(dir, '--expect', 'windows')
+        expect(result.status).toBe(0)
+        expect(result.stderr).toContain('WARNING: E2E duration reporting failed')
+        expect(result.stderr).toContain('--expect')
+        expect(result.stdout).toBe('')
+      })
+    })
+
+    it('parses --expect: absent means every platform, a list narrows, unknown names are refused', () => {
+      expect(parseExpect(undefined)).toEqual(E2E_SHARD_COUNTS)
+      expect(parseExpect('ubuntu')).toEqual({ ubuntu: 4 })
+      expect(parseExpect('ubuntu,macos')).toEqual({ ubuntu: 4, macos: 3 })
+      expect(parseExpect(' macos , ubuntu ')).toEqual({ ubuntu: 4, macos: 3 })
+      for (const bad of ['windows', 'ubuntu,windows', '', 'ubuntu,,macos']) {
+        expect(() => parseExpect(bad)).toThrow(/--expect.*ubuntu, macos/)
+      }
+    })
   })
 })

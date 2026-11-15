@@ -1,5 +1,24 @@
 import { median } from './e2e-report.mjs'
 
+// The only place that holds a shard count. The workflow matrices, the planner, the duration
+// report and their tests all read it; a matrix that disagrees fails ci-e2e-budget.spec.ts.
+export const E2E_SHARD_COUNTS = Object.freeze({ ubuntu: 4, macos: 3 })
+
+// `override` is the optional local `--shards` value (a string); CI never passes it.
+export function shardCountFor(os, override) {
+  if (!Object.hasOwn(E2E_SHARD_COUNTS, os)) {
+    throw new Error(`Unknown E2E platform: ${os}`)
+  }
+  if (override === undefined) {
+    return E2E_SHARD_COUNTS[os]
+  }
+  const count = Number(override)
+  if (override === '' || !Number.isSafeInteger(count) || count < 1) {
+    throw new Error('E2E shard count must be a positive integer.')
+  }
+  return count
+}
+
 const comparePath = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
 
 function caseFiles(ids) {

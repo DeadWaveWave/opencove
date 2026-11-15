@@ -1,11 +1,83 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { planShards, validatePlan, fileFilter } from '../../../scripts/lib/e2e-shards.mjs'
+import { spawnSync } from 'node:child_process'
+import { resolve } from 'node:path'
+import {
+  E2E_SHARD_COUNTS,
+  fileFilter,
+  planShards,
+  shardCountFor,
+  validatePlan,
+} from '../../../scripts/lib/e2e-shards.mjs'
 import { shardBaselineFixture } from './fixtures/e2e-shard-baseline'
 import { shardInvocation } from '../../../scripts/plan-e2e-shards.mjs'
 
 const id = (file: string, title = 'case') => `tests/e2e/${file}.spec.ts › ${title}`
 const file = (name: string) => `tests/e2e/${name}.spec.ts`
+const planner = resolve(import.meta.dirname, '../../../scripts/plan-e2e-shards.mjs')
+const runPlanner = (...args: string[]) =>
+  spawnSync(process.execPath, [planner, ...args], { encoding: 'utf8' })
+
+// Each planner run lists the whole Playwright inventory, which takes seconds on a loaded machine.
+describe('E2E shard counts', { timeout: 60_000 }, () => {
+  it('has one frozen owner: four Ubuntu shards, three macOS shards', () => {
+    expect(E2E_SHARD_COUNTS).toEqual({ ubuntu: 4, macos: 3 })
+    expect(Object.isFrozen(E2E_SHARD_COUNTS)).toBe(true)
+  })
+
+  it('resolves the count per platform; an explicit override wins; unknown input is refused', () => {
+    expect(shardCountFor('ubuntu')).toBe(E2E_SHARD_COUNTS.ubuntu)
+    expect(shardCountFor('macos')).toBe(E2E_SHARD_COUNTS.macos)
+    expect(shardCountFor('ubuntu', '2')).toBe(2)
+    for (const bad of ['0', '-1', '1.5', 'x', '']) {
+      expect(() => shardCountFor('ubuntu', bad)).toThrow(/positive integer/)
+    }
+    expect(() => shardCountFor('windows')).toThrow(/platform/)
+  })
+
+  it.each(Object.entries(E2E_SHARD_COUNTS))(
+    'plans %s with its own count when --shards is absent',
+    (os, count) => {
+      const result = runPlanner('--os', os, '--json')
+      expect(result.status).toBe(0)
+      expect(JSON.parse(result.stdout).shards).toHaveLength(count)
+    },
+  )
+
+  it('keeps --shards as a local override', () => {
+    const result = runPlanner('--os', 'ubuntu', '--shards', '2', '--json')
+    expect(result.status).toBe(0)
+    expect(JSON.parse(result.stdout).shards).toHaveLength(2)
+  })
+
+  it('names the platform and its range when a shard index is out of range', () => {
+    const result = runPlanner('--os', 'macos', '--shard', String(E2E_SHARD_COUNTS.macos + 1))
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain(
+      `Invalid E2E shard index ${E2E_SHARD_COUNTS.macos + 1} for macos (1..${E2E_SHARD_COUNTS.macos}).`,
+    )
+    expect(runPlanner('--os', 'macos', '--shard', 'x').stderr).toContain(
+      'Invalid E2E shard index x',
+    )
+  })
+
+  it('--check validates what CI runs and refuses --shards', () => {
+    const refused = runPlanner('--check', '--shards', '3')
+    expect(refused.status).not.toBe(0)
+    expect(refused.stderr).toMatch(/--check.*--shards/)
+    const checked = runPlanner('--check')
+    expect(checked.status).toBe(0)
+    const blocks = Object.fromEntries(
+      checked.stdout
+        .split('[e2e-shards] ')
+        .filter(Boolean)
+        .map((block: string) => [block.split(':')[0], block]),
+    )
+    expect(blocks.ubuntu).toContain('shard 4/4')
+    expect(blocks.macos).toContain('shard 3/3')
+    expect(blocks.macos).not.toContain('shard 4/4')
+  })
+})
 
 describe('duration-weighted E2E shards', () => {
   it('uses LPT on whole files, with stable path and shard-index tie breaks', () => {
@@ -123,14 +195,15 @@ describe('duration-weighted E2E shards', () => {
 
   it.each(['macos', 'ubuntu'])('balances the real %s baseline fixture within 10%%', os => {
     const { ids, baseline } = shardBaselineFixture(os)
-    const plan = planShards(ids, baseline, 3)
+    const count = E2E_SHARD_COUNTS[os as 'ubuntu' | 'macos']
+    const plan = planShards(ids, baseline, count)
     expect(ids.some(caseId => Object.hasOwn(baseline, caseId))).toBe(true)
     expect(plan.shards.flatMap(s => s.files)).toHaveLength(
       new Set(ids.map(caseId => caseId.split(' › ')[0])).size,
     )
     const costs = plan.shards.map(s => s.estimatedMs)
     expect(Math.max(...costs) / Math.min(...costs)).toBeLessThan(1.1)
-    expect(planShards([...ids].reverse(), baseline, 3)).toEqual(plan)
-    expect(() => validatePlan(ids, plan.shards, 3)).not.toThrow()
+    expect(planShards([...ids].reverse(), baseline, count)).toEqual(plan)
+    expect(() => validatePlan(ids, plan.shards, count)).not.toThrow()
   })
 })
