@@ -266,10 +266,11 @@ describe('Home Worker configuration lease under Windows error codes', () => {
     })
   }, 10_000)
 
-  it('8 leaves a replacement owner in place when a retried release finds the lease replaced', async () => {
+  it('8 leaves a replacement owner in place when a retried release captures the replaced lease', async () => {
     const userDataPath = await createUserDataPath()
     const lockPath = resolve(userDataPath, HOME_WORKER_CONFIG_LEASE_FILE)
     const clock = createFakeClock()
+    let releaseRenames = 0
     let swapped = false
     const first = await acquireHomeWorkerConfigLease(userDataPath, {
       dependencies: {
@@ -278,14 +279,18 @@ describe('Home Worker configuration lease under Windows error codes', () => {
         now: clock.now,
         wait: clock.wait,
         rename: async (from, to) => {
-          if (from === lockPath && !swapped) {
+          if (from === lockPath) {
+            releaseRenames += 1
+            if (releaseRenames === 1) {
+              throw fsError('EPERM')
+            }
+            // The retried rename captures whatever is at the lease path by then: a replacement
+            // that took over after the release last looked.
             swapped = true
             await rm(lockPath, { recursive: true })
-            const replacement = await acquireHomeWorkerConfigLease(userDataPath, {
+            await acquireHomeWorkerConfigLease(userDataPath, {
               dependencies: { token: () => 'second-owner' },
             })
-            expect(replacement).toBeDefined()
-            throw fsError('EPERM')
           }
           await rename(from, to)
         },
@@ -434,6 +439,14 @@ describe('Worker start-up under the configuration lease', () => {
     expect(stderr).toHaveLength(1)
     expect(stderr[0]).toContain('[opencove-worker] Home Worker configuration lease release failed')
   }, 10_000)
+
+  it('10 keeps the Worker entry reporting a release failure instead of throwing it', async () => {
+    const entry = await readFile(resolve('src/app/worker/index.ts'), 'utf8')
+
+    expect(entry).toMatch(
+      /withHomeWorkerConfigLease\(userDataPath, startServer, \{\s*onReleaseError: createLeaseReleaseErrorReporter\('opencove-worker'/,
+    )
+  })
 })
 
 describe('Home Worker configuration lease file system access', () => {
