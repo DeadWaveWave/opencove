@@ -108,6 +108,15 @@ const overlapsBlocked = (name: string, node: Node<TerminalNodeData>) =>
   overlaps(node, BLOCKED, COLLAPSED_CREATIONS.has(name) ? getCollapsedNodeSize() : node.data)
 
 const BLOCKED = { position: { x: 0, y: 0 }, width: 1200, height: 900 }
+const LATE_SPACE: WorkspaceSpaceState = {
+  id: 'space-late',
+  name: 'Late',
+  directoryPath: '/late',
+  targetMountId: null,
+  labelColor: null,
+  nodeIds: [],
+  rect: { ...BLOCKED.position, width: BLOCKED.width, height: BLOCKED.height },
+}
 
 describe('closeNode', () => {
   it('kills the runtime of a node that was added to the store in the same act', async () => {
@@ -219,6 +228,20 @@ describe('updateNodeScrollback', () => {
     expect(scrollbackOf('terminal-1')).toBeUndefined()
   })
 
+  it('reads the workspace that is shown after a switch', () => {
+    const { view, showB } = renderStore({
+      a: { nodes: [pixelNode()] },
+      b: { nodes: [{ ...taskNode('terminal-1', 'x') }] },
+    })
+    showB()
+
+    act(() => {
+      store(view).updateNodeScrollback('terminal-1', 'output of b')
+    })
+
+    expect(scrollbackOf('terminal-1')).toBeUndefined()
+  })
+
   it('reads the workspace of its render while another workspace is displayed', () => {
     const { view } = renderStore({
       a: { nodes: [] },
@@ -307,24 +330,32 @@ describe.each(Object.keys(CREATIONS))('creating %s', name => {
 
   it('places it away from a Space that was added to the store in the same act', async () => {
     const { view } = renderStore({ a: { nodes: [] } })
-    const space: WorkspaceSpaceState = {
-      id: 'space-late',
-      name: 'Late',
-      directoryPath: '/late',
-      targetMountId: null,
-      labelColor: null,
-      nodeIds: [],
-      rect: { x: 0, y: 0, width: 1200, height: 900 },
-    }
-
     let created: Node<TerminalNodeData> | null = null
     await act(async () => {
-      replaceWorkspaceSpaces(A, [space])
+      replaceWorkspaceSpaces(A, [LATE_SPACE])
       created = (await CREATIONS[name](view.result.current)) as Node<TerminalNodeData>
     })
 
     expect(created).not.toBeNull()
     expect(overlapsBlocked(name, created!)).toBe(false)
+  })
+
+  it('places it away from a Space of its render while another workspace is displayed', async () => {
+    const { view } = renderStore({ a: { spaces: [LATE_SPACE] }, b: {} })
+    displayB()
+
+    const created = await create(view, name)
+
+    expect(overlapsBlocked(name, created)).toBe(false)
+  })
+
+  it('places it against the workspace that is shown after a switch', async () => {
+    const { view, showB } = renderStore({ a: {}, b: { nodes: [blockerNode()] } })
+    showB()
+
+    const created = await create(view, name)
+
+    expect(overlapsBlocked(name, created)).toBe(false)
   })
 
   it('places it against the workspace of its render while another workspace is displayed', async () => {
@@ -366,18 +397,8 @@ describe('the plugin window creation', () => {
 
   it('opens the window in a Space that was added to the store in the same act', async () => {
     const { view } = renderStore({ a: { nodes: [] } })
-    const space: WorkspaceSpaceState = {
-      id: 'space-late',
-      name: 'Late',
-      directoryPath: '/late',
-      targetMountId: null,
-      labelColor: null,
-      nodeIds: [],
-      rect: { x: 0, y: 0, width: 1200, height: 900 },
-    }
-
     act(() => {
-      replaceWorkspaceSpaces(A, [space])
+      replaceWorkspaceSpaces(A, [LATE_SPACE])
       store(view).createPluginNode(ANCHOR, 'plugin-1')
     })
 
