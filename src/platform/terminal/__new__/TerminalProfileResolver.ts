@@ -1,0 +1,368 @@
+import { assertSpawnEnvironment } from '../process/spawnEnvironment'
+import { assertSpawnArguments } from '../process/spawnArguments'
+import { serializeWslArguments } from '../process/wslCommandLine'
+import { mergePowerShellLaunchEnv } from './windowsNativeLaunch'
+import { execFile } from 'node:child_process'
+import os from 'node:os'
+import process from 'node:process'
+import type { ListTerminalProfilesResult, SpawnTerminalInput } from '../../shared/contracts/dto'
+import { stripParentAgentSessionEnv } from '../../shared/runtime/stripParentAgentSessionEnv'
+import { removeElectronRunAsNode } from '../os/ElectronControlEnvironment'
+import type { CommandFileArgument } from '../../shared/types/commandFileArgument'
+import { createTerminalSpawnApplicationError } from '../../shared/errors/terminalSpawnError'
+import {
+  buildPowerShellExecLaunch,
+  findProfileById,
+  inferLegacyRuntimeKind,
+  isBashLikeWindowsCommand,
+  isPowerShellCommand,
+  loadWindowsProfiles,
+  resolveWindowsHostCwd,
+  convertWindowsPathToWslPath,
+  type ResolvedTerminalSpawn,
+  type TerminalProfileResolverDeps,
+} from './TerminalProfileResolver.windows'
+
+const WINDOWS_COMMAND_DISCOVERY_TIMEOUT_MS = 2_000
+
+export interface ResolveCommandSpawnInput {
+  cwd: string
+  command: string
+  args: string[]
+  fileArguments?: readonly CommandFileArgument[]
+  profileId?: string | null
+  env?: NodeJS.ProcessEnv
+  commandEnv?: NodeJS.ProcessEnv
+  useProfile?: boolean
+}
+
+function execFileText(command: string, args: string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile(command, args, { encoding: 'utf8', windowsHide: true }, (error, stdout) => {
+      if (error) {
+        reject(error)
+        return
+      }
+
+      resolve(typeof stdout === 'string' ? stdout : '')
+    })
+  })
+}
+
+function dedupeStrings(values: string[]): string[] {
+  const deduped: string[] = []
+  const seen = new Set<string>()
+
+  for (const value of values) {
+    const normalized = value.trim()
+    if (normalized.length === 0) {
+      continue
+    }
+
+    const key = normalized.toLowerCase()
+    if (seen.has(key)) {
+      continue
+    }
+
+    seen.add(key)
+    deduped.push(normalized)
+  }
+
+  return deduped
+}
+
+async function locateWindowsCommands(commands: readonly string[]): Promise<string[]> {
+  const resolved = (
+    await Promise.all(
+      commands.map(async command => {
+        try {
+          const stdout = await execFileText('where.exe', [command])
+          return stdout
+            .split(/\r?\n/)
+            .map(line => line.trim())
+            .filter(line => line.length > 0)
+        } catch {
+          return []
+        }
+      }),
+    )
+  ).flat()
+
+  return dedupeStrings(resolved)
+}
+
+async function listWslDistros(): Promise<string[]> {
+  try {
+    const stdout = await execFileText('wsl.exe', ['--list', '--quiet'])
+    return dedupeStrings(
+      stdout
+        .split(/\r?\n/)
+        .map(line => line.replaceAll('\u0000', '').trim())
+        .filter(line => line.length > 0),
+    )
+  } catch {
+    return []
+  }
+}
+
+function resolvePosixShell(shell: string | undefined): string {
+  const normalized = typeof shell === 'string' ? shell.trim() : ''
+  if (normalized.length > 0) {
+    return normalized
+  }
+
+  return process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash'
+}
+
+function hasMeaningfulEnvValue(value: string | undefined): boolean {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+function resolveSpawnEnvironment(
+  inheritedEnv: NodeJS.ProcessEnv,
+  explicitEnv: NodeJS.ProcessEnv | undefined,
+): NodeJS.ProcessEnv {
+  const env = removeElectronRunAsNode({ ...inheritedEnv, ...(explicitEnv ?? {}) })
+  // The app uses ELECTRON_RUN_AS_NODE to run bundled CLI/worker entrypoints via
+  // Electron. Strip it from the inherited environment so it cannot leak into
+  // interactive shells, but keep an explicit opt-in (same rule as
+  // resolvePtyHostSpawnEnv): test stubs launch the Electron binary as Node
+  // through this flag.
+  if (explicitEnv?.ELECTRON_RUN_AS_NODE === '1') {
+    env.ELECTRON_RUN_AS_NODE = '1'
+  }
+  return env
+}
+
+function withTerminalCapabilityEnv(
+  env: NodeJS.ProcessEnv,
+  platform: NodeJS.Platform,
+): NodeJS.ProcessEnv {
+  if (platform !== 'win32') {
+    return env
+  }
+
+  const nextEnv = { ...env }
+
+  if (!hasMeaningfulEnvValue(nextEnv.TERM)) {
+    nextEnv.TERM = 'xterm-256color'
+  }
+
+  if (!hasMeaningfulEnvValue(nextEnv.COLORTERM)) {
+    nextEnv.COLORTERM = 'truecolor'
+  }
+
+  if (!hasMeaningfulEnvValue(nextEnv.TERM_PROGRAM)) {
+    nextEnv.TERM_PROGRAM = 'OpenCove'
+  }
+
+  if (!hasMeaningfulEnvValue(nextEnv.CLICOLOR) && !hasMeaningfulEnvValue(nextEnv.NO_COLOR)) {
+    nextEnv.CLICOLOR = '1'
+  }
+
+  return nextEnv
+}
+
+export class TerminalProfileResolver {
+  private readonly deps: TerminalProfileResolverDeps
+
+  public constructor(overrides: Partial<TerminalProfileResolverDeps> = {}) {
+    this.deps = {
+      platform: overrides.platform ?? process.platform,
+      env: overrides.env ?? (() => process.env),
+      homeDir: overrides.homeDir ?? (() => os.homedir()),
+      processCwd: overrides.processCwd ?? (() => process.cwd()),
+      locateWindowsCommands: overrides.locateWindowsCommands ?? locateWindowsCommands,
+      listWslDistros: overrides.listWslDistros ?? listWslDistros,
+      commandDiscoveryTimeoutMs:
+        overrides.commandDiscoveryTimeoutMs ?? WINDOWS_COMMAND_DISCOVERY_TIMEOUT_MS,
+    }
+  }
+
+  public async listProfiles(): Promise<ListTerminalProfilesResult> {
+    if (this.deps.platform !== 'win32') {
+      return { profiles: [], defaultProfileId: null }
+    }
+
+    const snapshot = await loadWindowsProfiles(this.deps)
+    return {
+      profiles: snapshot.profiles.map(({ id, label, runtimeKind }) => ({
+        id,
+        label,
+        runtimeKind,
+      })),
+      defaultProfileId: snapshot.defaultProfileId,
+    }
+  }
+
+  public async resolveTerminalSpawn(input: SpawnTerminalInput): Promise<ResolvedTerminalSpawn> {
+    const env = withTerminalCapabilityEnv(
+      resolveSpawnEnvironment(this.deps.env(), input.env),
+      this.deps.platform,
+    )
+    stripParentAgentSessionEnv(env)
+
+    if (this.deps.platform !== 'win32') {
+      const shell = input.shell ?? resolvePosixShell(this.deps.env().SHELL)
+      return {
+        command: shell,
+        args: [],
+        cwd: input.cwd,
+        env,
+        profileId: null,
+        runtimeKind: 'posix',
+      }
+    }
+
+    if (typeof input.shell === 'string' && input.shell.trim().length > 0) {
+      return {
+        command: input.shell.trim(),
+        args: [],
+        cwd: resolveWindowsHostCwd(input.cwd, this.deps.homeDir().trim(), this.deps.processCwd()),
+        env,
+        profileId: null,
+        // @compat terminal-profile-legacy-runtime-kind
+        runtimeKind: inferLegacyRuntimeKind(input.shell, this.deps.platform),
+      }
+    }
+
+    const snapshot = await loadWindowsProfiles(this.deps)
+    const selectedProfile =
+      findProfileById(snapshot.profiles, input.profileId) ??
+      findProfileById(snapshot.profiles, snapshot.defaultProfileId) ??
+      null
+
+    if (selectedProfile) {
+      const spawn = selectedProfile.resolveSpawn(input.cwd, env)
+      if (spawn.runtimeKind === 'wsl') {
+        serializeWslArguments(spawn.args)
+      }
+      return spawn
+    }
+
+    return {
+      command: 'powershell.exe',
+      args: [],
+      cwd: resolveWindowsHostCwd(input.cwd, this.deps.homeDir().trim(), this.deps.processCwd()),
+      env,
+      profileId: null,
+      runtimeKind: 'windows',
+    }
+  }
+
+  public async resolveCommandSpawn(
+    input: ResolveCommandSpawnInput,
+  ): Promise<ResolvedTerminalSpawn> {
+    assertSpawnArguments(input.command, input.args, input.cwd)
+    const command = input.command.trim()
+    const args = [...input.args]
+    const env = resolveSpawnEnvironment(this.deps.env(), input.env)
+    stripParentAgentSessionEnv(env)
+    const resolvedEnv = withTerminalCapabilityEnv(env, this.deps.platform)
+    assertSpawnEnvironment(resolvedEnv)
+
+    if (this.deps.platform !== 'win32') {
+      return {
+        command,
+        args,
+        cwd: input.cwd,
+        env: resolvedEnv,
+        profileId: input.profileId?.trim() || null,
+        runtimeKind: 'posix',
+      }
+    }
+
+    const snapshot = input.useProfile === false ? null : await loadWindowsProfiles(this.deps)
+    const profile = snapshot
+      ? (findProfileById(snapshot.profiles, input.profileId) ??
+        findProfileById(snapshot.profiles, snapshot.defaultProfileId) ??
+        null)
+      : null
+
+    if (!profile) {
+      return {
+        command,
+        args,
+        cwd: resolveWindowsHostCwd(input.cwd, this.deps.homeDir().trim(), this.deps.processCwd()),
+        env: resolvedEnv,
+        profileId: null,
+        runtimeKind: 'windows',
+      }
+    }
+
+    const shellSpawn = profile.resolveSpawn(input.cwd, resolvedEnv)
+    const profileId = profile.id
+
+    if (profile.runtimeKind === 'wsl') {
+      for (const file of input.fileArguments ?? []) {
+        const argument = args[file.index]
+        if (typeof argument !== 'string' || !argument.startsWith(file.prefix)) {
+          throw new Error('Invalid command file argument.')
+        }
+        const path = argument.slice(file.prefix.length)
+        const translated = convertWindowsPathToWslPath(path, profile.id.slice(4))
+        if (!translated) {
+          throw createTerminalSpawnApplicationError('wsl_input_file_unavailable')
+        }
+        args[file.index] = `${file.prefix}${translated}`
+      }
+      const commandEnv = { ...(input.commandEnv ?? input.env ?? {}) }
+      stripParentAgentSessionEnv(commandEnv)
+      assertSpawnEnvironment(commandEnv)
+      const envPairs = Object.entries(commandEnv).flatMap(([key, value]) =>
+        typeof value === 'string' ? [`${key}=${value}`] : [],
+      )
+      const wslArgs = [
+        ...shellSpawn.args,
+        '--exec',
+        ...(envPairs.length > 0 ? ['env', ...envPairs] : []),
+        command,
+        ...args,
+      ]
+      // Refuse here to retain public recovery guidance; PTY host validates again at dispatch.
+      serializeWslArguments(wslArgs)
+      return {
+        command: shellSpawn.command,
+        args: wslArgs,
+        cwd: shellSpawn.cwd,
+        env: shellSpawn.env,
+        profileId,
+        runtimeKind: 'wsl',
+        publicCommand: { command, args: [...args] },
+      }
+    }
+
+    if (isBashLikeWindowsCommand(shellSpawn.command)) {
+      return {
+        command: shellSpawn.command,
+        args: ['--login', '-c', 'exec "$@"', 'bash', command, ...args],
+        cwd: shellSpawn.cwd,
+        env: shellSpawn.env,
+        profileId,
+        runtimeKind: profile.runtimeKind,
+      }
+    }
+
+    if (isPowerShellCommand(shellSpawn.command)) {
+      const launch = buildPowerShellExecLaunch(command, args, shellSpawn.cwd)
+      return {
+        command: shellSpawn.command,
+        args: launch.args,
+        publicCommand: { command, args: [...args] },
+        cwd: shellSpawn.cwd,
+        env: mergePowerShellLaunchEnv(shellSpawn.env, launch.env),
+        profileId,
+        runtimeKind: profile.runtimeKind,
+      }
+    }
+
+    return {
+      command,
+      args,
+      cwd: shellSpawn.cwd,
+      env: shellSpawn.env,
+      profileId,
+      runtimeKind: profile.runtimeKind,
+    }
+  }
+}
