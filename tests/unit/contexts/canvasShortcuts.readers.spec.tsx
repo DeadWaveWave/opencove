@@ -384,6 +384,9 @@ describe('the shortcut actions', () => {
       expect(closeNode).toHaveBeenCalledExactlyOnceWith('node')
     })
 
+    // The selection is written before the switch and read after it, so this case depends on the
+    // selection reader being frozen to the first render. In the app a switch also gives B its own
+    // selection; the case pins only that the close reads B's nodes.
     it('finds the node in the workspace shown after a switch', () => {
       seedTwoWorkspaces({}, { nodes: [noteAt('node')] })
       const { closeSelected, selection, closeNode, show } = mount()
@@ -512,13 +515,18 @@ describe('the creation activation', () => {
   })
 
   it('waits for the element of a node of an inactive workspace and gives up after a second', () => {
-    // The node is committed for workspace A, whose canvas holds no element for it here: the
-    // request is accepted and cancelled when the wait is over.
-    seedTwoWorkspaces({ nodes: [noteAt('node')] }, {})
-    const { request, textarea } = mount()
+    // Workspace A is still shown but no longer active when its node is committed and announced,
+    // so the canvas view never held the node: the request is accepted from the store, finds no
+    // element and is cancelled when the wait is over.
+    seedTwoWorkspaces({}, {})
+    const { textarea } = mount()
     textarea.parentElement?.remove()
 
-    request()
+    act(() => {
+      useAppStore.setState({ activeWorkspaceId: WORKSPACE_B })
+      replaceWorkspaceNodes(WORKSPACE_A, [noteAt('node')])
+      publishWorkspaceNodeCreated('node')
+    })
     expect(vi.getTimerCount()).toBeGreaterThan(0)
     act(() => void vi.advanceTimersByTime(1001))
 
