@@ -413,6 +413,45 @@ describe('marquee in useWorkspaceCanvasSelectionDraft', () => {
     })
   })
 
+  it('reads the Spaces once for each frame of the marquee, and subscribes to nothing', () => {
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      frames.push(callback)
+      return frames.length
+    })
+    const { result, pointerDown } = setup({})
+    pointerDown(-50, -50)
+    frames.length = 0
+    const subscribe = vi.spyOn(useAppStore, 'subscribe')
+    const getState = vi.spyOn(useAppStore, 'getState')
+
+    act(() =>
+      result.current.draft.handleCanvasPointerMoveCapture({
+        buttons: 1,
+        clientX: 200,
+        clientY: 150,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as React.PointerEvent<HTMLDivElement>),
+    )
+    // The move schedules the box frame and the selection frame; running both reads once.
+    act(() => frames.splice(0).forEach(frame => frame(0)))
+    expect(getState).toHaveBeenCalledTimes(1)
+
+    act(() =>
+      result.current.draft.handleCanvasPointerMoveCapture({
+        buttons: 1,
+        clientX: 250,
+        clientY: 180,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as React.PointerEvent<HTMLDivElement>),
+    )
+    act(() => frames.splice(0).forEach(frame => frame(0)))
+    expect(getState).toHaveBeenCalledTimes(2)
+    expect(subscribe).not.toHaveBeenCalled()
+  })
+
   it('captures the selected Spaces from the store when the marquee starts', () => {
     const { result, selectionDraftRef, pointerDown } = setup({ spaceIds: ['s'] })
 

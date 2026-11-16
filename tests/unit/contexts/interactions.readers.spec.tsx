@@ -1,5 +1,6 @@
 import type { Mock } from 'vitest'
 import { act } from '@testing-library/react'
+import type { Node, ReactFlowInstance } from '@xyflow/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
@@ -8,18 +9,29 @@ import { assignNodeToSpaceAndExpand } from '../../../src/contexts/workspace/pres
 import { useWorkspaceCanvasActionBar } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasActionBarActions'
 import { useWorkspaceCanvasInteractions } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions'
 import { useWorkspaceCanvasShortcutActions } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasShortcutActions'
+import { useWorkspaceCanvasSelectionDraft } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSelectionDraft'
+import { useWorkspaceCanvasSelectNode } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSelectNode'
 import { useWorkspaceCanvasShortcuts } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useShortcuts'
 import {
   useCanvasUiCommands,
+  useReadCanvasSelection,
   useReadCanvasUi,
 } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
-import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
+import type {
+  TerminalNodeData,
+  WorkspaceSpaceState,
+} from '../../../src/contexts/workspace/presentation/renderer/types'
+import type { SelectionDraftState } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
 import {
   createCanvasDocumentHarness,
   renderInCanvasDocument,
 } from '../../support/canvasDocumentHarness'
-import { createSpace } from '../../support/canvasSelectionFixtures'
+import {
+  createNodeHolder,
+  createRowNodes,
+  createSpace,
+} from '../../support/canvasSelectionFixtures'
 import { CREATED, lastCall } from '../../support/pushAwayCallerHarness'
 
 // Every callback that creates a node from the pane reads the Spaces of the workspace whose render
@@ -362,5 +374,97 @@ describe('the shortcuts that create a node', () => {
     await expectsTargetOfTheRender(useShortcutsUnderTest, () =>
       shortcutArgs().createTerminalAtViewportCenter(),
     )
+  })
+})
+
+describe('the selection hooks', () => {
+  // The canvas store's commands keep the value of the first render, so only the reader of the
+  // render can make a callback follow the workspace shown.
+  it('scopes a toggle by the Spaces of the workspace of the render', async () => {
+    const holder = createNodeHolder(createRowNodes(['a', 'b', 'c'], ['a']))
+    const found = await observeInBothWorkspaces({
+      useHook: () => useWorkspaceCanvasSelectNode({ setNodes: holder.setNodes }),
+      invoke: async ({ hook }) => {
+        holder.setNodes(nodes => nodes.map(node => ({ ...node, selected: node.id === 'a' })))
+        hook('c', { toggle: true })
+        return holder.selectedIds
+      },
+      // Notes a and b are 300 wide at x 0 and 400; c is at x 800.
+      spaces: [
+        createSpace('space-a', { x: -50, y: -50, width: 700, height: 400 }, ['a', 'b']),
+        createSpace('space-b', { x: -50, y: -50, width: 1400, height: 400 }, ['a', 'b', 'c']),
+      ],
+    })
+    // In A the Space holds a and b but not c, so a leaves c's scope. In B it holds all three.
+    expect(found).toEqual([['c'], ['a', 'c']])
+  })
+
+  // Built once: a callback that is rebuilt only for another reason would hide a missing reader.
+  const marqueeNodes = createNodeHolder(createRowNodes(['a', 'b', 'c']))
+  const marqueeFlow = {
+    screenToFlowPosition: (point: { x: number; y: number }) => point,
+    getNodes: () => marqueeNodes.nodes as Node<TerminalNodeData>[],
+  } as unknown as ReactFlowInstance<Node<TerminalNodeData>>
+  const marqueeShift = { current: false }
+  const marqueeUi = vi.fn()
+  function useMarquee(draftRef: { current: SelectionDraftState | null }) {
+    return {
+      draft: useWorkspaceCanvasSelectionDraft({
+        workspaceId: 'writers',
+        isTrackpadCanvasMode: true,
+        isShiftPressedRef: marqueeShift,
+        selectionDraftRef: draftRef,
+        setSelectionDraftUi: marqueeUi,
+        reactFlow: marqueeFlow,
+        setNodes: marqueeNodes.setNodes,
+      }),
+      readSelection: useReadCanvasSelection(),
+    }
+  }
+  const marqueePane = document.createElement('div')
+  marqueePane.className = 'react-flow__pane'
+  const pointerDown = (x: number, y: number) =>
+    ({
+      button: 0,
+      shiftKey: false,
+      target: marqueePane,
+      clientX: x,
+      clientY: y,
+      pointerId: 1,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    }) as unknown as React.PointerEvent<HTMLDivElement>
+
+  it('starts a marquee inside the Space of the workspace of the render', async () => {
+    document.body.append(marqueePane)
+    const draftRef: { current: SelectionDraftState | null } = { current: null }
+    const found = await observeInBothWorkspaces({
+      useHook: () => useMarquee(draftRef),
+      invoke: async ({ hook }) => {
+        draftRef.current = null
+        hook.draft.handleCanvasPointerDownCapture(pointerDown(400, 300))
+        return draftRef.current?.startSpaceId
+      },
+    })
+    expect(found).toEqual(['space-a', 'space-b'])
+    document.body.innerHTML = ''
+  })
+
+  it('selects the Space a marquee touches in the workspace of the render', async () => {
+    document.body.append(marqueePane)
+    const draftRef: { current: SelectionDraftState | null } = { current: null }
+    const touched = (id: string) => createSpace(id, { x: 0, y: 0, width: 360, height: 260 }, ['a'])
+    const found = await observeInBothWorkspaces({
+      useHook: () => useMarquee(draftRef),
+      invoke: async ({ hook }) => {
+        draftRef.current = null
+        hook.draft.handleCanvasPointerDownCapture(pointerDown(-50, -50))
+        hook.draft.handleCanvasPointerUpCapture({ clientX: 350, clientY: 250 })
+        return hook.readSelection().spaceIds
+      },
+      spaces: [touched('space-a'), touched('space-b')],
+    })
+    expect(found).toEqual([['space-a'], ['space-b']])
+    document.body.innerHTML = ''
   })
 })
