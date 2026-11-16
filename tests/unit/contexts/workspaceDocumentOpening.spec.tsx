@@ -73,7 +73,7 @@ function fixture() {
     setNodes: update => {
       options.nodesRef.current = update(options.nodesRef.current)
     },
-    onSpacesChange: vi.fn(),
+    updateCanvasDocument: vi.fn(),
     onRequestPersistFlush: vi.fn(),
     createDocumentNode: vi.fn((_anchor, _document, _placement, workerBinding) => {
       const created = documentNode('new-document', workerBinding)
@@ -113,8 +113,15 @@ describe('shared document opening', () => {
       binding,
     )
     expect(mocks.assign).toHaveBeenCalledWith(
-      expect.objectContaining({ workspaceId: 'workspace', targetSpaceId: 'space' }),
+      expect.objectContaining({
+        workspaceId: 'workspace',
+        targetSpaceId: 'space',
+        updateCanvasDocument: options.updateCanvasDocument,
+      }),
     )
+    for (const channel of ['spacesRef', 'nodesRef', 'setNodes', 'onSpacesChange']) {
+      expect(mocks.assign.mock.calls[0][0]).not.toHaveProperty(channel)
+    }
     expect(options.onRequestPersistFlush).toHaveBeenCalledOnce()
   })
 

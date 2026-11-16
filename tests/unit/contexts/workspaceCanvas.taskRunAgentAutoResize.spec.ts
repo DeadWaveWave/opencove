@@ -1,3 +1,4 @@
+import { act } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
@@ -6,7 +7,14 @@ import type {
   TerminalNodeData,
   WorkspaceSpaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
-import { runTaskAgentAction } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskActions.agentSession'
+import {
+  resumeTaskAgentSessionAction,
+  runTaskAgentAction,
+} from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskActions.agentSession'
+import {
+  createCanvasDocumentHarness,
+  renderCanvasNodeStore,
+} from '../../support/canvasDocumentHarness'
 
 describe('WorkspaceCanvas task run agent auto resize', () => {
   const terminalDisplayMetrics = {
@@ -94,60 +102,60 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
         },
       ]
 
-      const nodesRef = { current: [taskNode] }
-      const spacesRef = { current: spaces }
-
-      const onSpacesChange = vi.fn((nextSpaces: WorkspaceSpaceState[]) => {
-        spacesRef.current = nextSpaces
+      // The push-away writes the same store that the node is added to.
+      const harness = createCanvasDocumentHarness({ nodes: [taskNode], spaces })
+      const { result } = renderCanvasNodeStore(harness)
+      const { nodeStore, canvasState } = result.current
+      const { setNodes } = nodeStore
+      // The run flushes once, after the push-away: the Space holds the agent by then.
+      let spacesAtFlush: WorkspaceSpaceState[] = []
+      const onRequestPersistFlush = vi.fn(() => {
+        spacesAtFlush = harness.readStoreDocument().spaces
       })
 
-      const setNodes = (
-        updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-      ) => {
-        nodesRef.current = updater(nodesRef.current)
-      }
+      await act(async () => {
+        await runTaskAgentAction(taskNode.id, {
+          nodesRef: nodeStore.nodesRef,
+          spacesRef: canvasState.spacesRef,
+          updateCanvasDocument: nodeStore.updateCanvasDocument,
+          updateSpaces: vi.fn(),
+          setNodes,
+          createNodeForSession: async input => {
+            const created: Node<TerminalNodeData> = {
+              id: 'agent-1',
+              type: 'terminalNode',
+              position: input.anchor,
+              data: {
+                sessionId: input.sessionId,
+                title: input.title,
+                width: 520,
+                height: 400,
+                kind: 'agent',
+                status: 'running',
+                startedAt: now,
+                endedAt: null,
+                exitCode: null,
+                lastError: null,
+                scrollback: null,
+                agent: input.agent ?? null,
+                task: null,
+                note: null,
+              },
+              draggable: true,
+              selectable: true,
+            }
 
-      await runTaskAgentAction(taskNode.id, {
-        nodesRef,
-        spacesRef,
-        onSpacesChange,
-        updateSpaces: vi.fn(),
-        setNodes,
-        createNodeForSession: async input => {
-          const created: Node<TerminalNodeData> = {
-            id: 'agent-1',
-            type: 'terminalNode',
-            position: input.anchor,
-            data: {
-              sessionId: input.sessionId,
-              title: input.title,
-              width: 520,
-              height: 400,
-              kind: 'agent',
-              status: 'running',
-              startedAt: now,
-              endedAt: null,
-              exitCode: null,
-              lastError: null,
-              scrollback: null,
-              agent: input.agent ?? null,
-              task: null,
-              note: null,
-            },
-            draggable: true,
-            selectable: true,
-          }
-
-          setNodes(prev => [...prev, created])
-          return created
-        },
-        buildAgentNodeTitle: () => 'codex · model',
-        launchAgentInNode: vi.fn(async () => undefined),
-        agentSettings: { ...DEFAULT_AGENT_SETTINGS, defaultProvider: provider },
-        terminalDisplayMetrics,
-        workspaceId: 'workspace-1',
-        workspacePath: '/tmp',
-        onRequestPersistFlush: vi.fn(),
+            setNodes(prev => [...prev, created])
+            return created
+          },
+          buildAgentNodeTitle: () => 'codex · model',
+          launchAgentInNode: vi.fn(async () => undefined),
+          agentSettings: { ...DEFAULT_AGENT_SETTINGS, defaultProvider: provider },
+          terminalDisplayMetrics,
+          workspaceId: 'workspace-1',
+          workspacePath: '/tmp',
+          onRequestPersistFlush,
+        })
       })
       const geometry = resolveDefaultAgentLaunchGeometry({
         bucket: DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,
@@ -156,13 +164,16 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
       }).terminalGeometry
 
       expect(launch).toHaveBeenCalledWith(expect.objectContaining(geometry))
-      expect(onSpacesChange).toHaveBeenCalled()
-      expect(nodesRef.current.find(node => node.id === 'agent-1')?.data.agent).toMatchObject({
+      const stored = harness.readStoreDocument()
+      expect(onRequestPersistFlush).toHaveBeenCalledTimes(1)
+      expect(spacesAtFlush[0].nodeIds).toContain('agent-1')
+      expect(stored.spaces).not.toEqual(spaces)
+      expect(stored.nodes.find(node => node.id === 'agent-1')?.data.agent).toMatchObject({
         resumeSessionId: provider === 'claude-code' ? 'assigned-task-session' : null,
         resumeSessionIdVerified: provider === 'claude-code',
       })
 
-      const nextSpace = spacesRef.current.find(space => space.id === 'space-1')
+      const nextSpace = stored.spaces.find(space => space.id === 'space-1')
       expect(nextSpace).toBeTruthy()
       expect(nextSpace?.nodeIds).toEqual(expect.arrayContaining(['task-1', 'agent-1']))
       expect(nextSpace?.rect?.width).toBeGreaterThan(initialRect.width)
@@ -314,7 +325,7 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
     await runTaskAgentAction(taskNode.id, {
       nodesRef,
       spacesRef,
-      onSpacesChange: vi.fn(),
+      updateCanvasDocument: vi.fn(),
       updateSpaces: vi.fn(),
       setNodes,
       createNodeForSession,
@@ -345,5 +356,136 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
         terminalGeometry: geometry,
       }),
     )
+  })
+
+  it('flushes once after the push-away when a task resumes a recorded session', async () => {
+    const launch = vi.fn(async () => ({
+      sessionId: 'agent-session-2',
+      provider: 'codex',
+      command: 'codex',
+      args: [],
+      launchMode: 'resume' as const,
+      effectiveModel: 'model',
+      resumeSessionId: 'recorded-session',
+    }))
+    Object.defineProperty(window, 'opencoveApi', {
+      configurable: true,
+      writable: true,
+      value: { agent: { launch } },
+    })
+    const now = new Date().toISOString()
+    const taskNode = {
+      id: 'task-1',
+      type: 'taskNode',
+      position: { x: 0, y: 0 },
+      data: {
+        sessionId: '',
+        title: 'Task',
+        width: 460,
+        height: 280,
+        kind: 'task',
+        status: null,
+        startedAt: null,
+        endedAt: null,
+        exitCode: null,
+        lastError: null,
+        scrollback: null,
+        agent: null,
+        task: {
+          requirement: 'Implement feature',
+          status: 'todo',
+          priority: 'medium',
+          tags: [],
+          linkedAgentNodeId: null,
+          agentSessions: [
+            {
+              id: 'record-1',
+              provider: 'codex',
+              resumeSessionId: 'recorded-session',
+              resumeSessionIdVerified: true,
+              prompt: 'Implement feature',
+              model: null,
+              effectiveModel: null,
+              boundDirectory: '/tmp',
+              lastDirectory: '/tmp',
+              createdAt: now,
+              lastRunAt: now,
+              endedAt: null,
+              exitCode: null,
+              status: 'exited',
+            },
+          ],
+          lastRunAt: null,
+          autoGeneratedTitle: false,
+          createdAt: now,
+          updatedAt: now,
+        },
+      },
+    } as unknown as Node<TerminalNodeData>
+    const spaces: WorkspaceSpaceState[] = [
+      {
+        id: 'space-1',
+        name: 'Space',
+        directoryPath: '/tmp',
+        targetMountId: null,
+        labelColor: null,
+        nodeIds: [taskNode.id],
+        rect: { x: -24, y: -24, width: 508, height: 328 },
+      },
+    ]
+    const harness = createCanvasDocumentHarness({ nodes: [taskNode], spaces })
+    const { result } = renderCanvasNodeStore(harness)
+    const { nodeStore, canvasState } = result.current
+    // The resume flushes once, after the push-away: the Space holds the agent by then.
+    let spacesAtFlush: WorkspaceSpaceState[] = []
+    const onRequestPersistFlush = vi.fn(() => {
+      spacesAtFlush = harness.readStoreDocument().spaces
+    })
+
+    await act(async () => {
+      await resumeTaskAgentSessionAction('task-1', 'record-1', {
+        nodesRef: nodeStore.nodesRef,
+        spacesRef: canvasState.spacesRef,
+        updateCanvasDocument: nodeStore.updateCanvasDocument,
+        updateSpaces: vi.fn(),
+        setNodes: nodeStore.setNodes,
+        createNodeForSession: async input => {
+          const created = {
+            id: 'agent-2',
+            type: 'terminalNode',
+            position: input.anchor,
+            data: {
+              sessionId: input.sessionId,
+              title: input.title,
+              width: 520,
+              height: 400,
+              kind: 'agent',
+              status: 'running',
+              startedAt: now,
+              endedAt: null,
+              exitCode: null,
+              lastError: null,
+              scrollback: null,
+              agent: input.agent ?? null,
+              task: null,
+              note: null,
+            },
+          } as unknown as Node<TerminalNodeData>
+          nodeStore.setNodes(prev => [...prev, created])
+          return created
+        },
+        buildAgentNodeTitle: () => 'codex · model',
+        agentSettings: { ...DEFAULT_AGENT_SETTINGS, defaultProvider: 'codex' },
+        terminalDisplayMetrics,
+        workspaceId: 'workspace-1',
+        workspacePath: '/tmp',
+        t: (key: string) => key,
+        onRequestPersistFlush,
+      })
+    })
+
+    expect(launch).toHaveBeenCalled()
+    expect(onRequestPersistFlush).toHaveBeenCalledTimes(1)
+    expect(spacesAtFlush[0].nodeIds).toContain('agent-2')
   })
 })

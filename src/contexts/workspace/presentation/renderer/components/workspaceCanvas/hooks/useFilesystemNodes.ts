@@ -43,10 +43,9 @@ export interface FilesystemNodesParams {
   workspacePath?: string
   nodeStore: Pick<
     UseWorkspaceCanvasNodesStoreResult,
-    'nodesRef' | 'setNodes' | 'createDocumentNode' | 'createFolderNode'
+    'nodesRef' | 'setNodes' | 'updateCanvasDocument' | 'createDocumentNode' | 'createFolderNode'
   >
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
 }
@@ -56,13 +55,13 @@ export function useFilesystemNodes({
   workspacePath,
   nodeStore,
   spacesRef,
-  onSpacesChange,
   onRequestPersistFlush,
   onShowMessage,
 }: FilesystemNodesParams) {
   const { t } = useTranslation()
   const reactFlow = useReactFlow()
-  const { nodesRef, setNodes, createDocumentNode, createFolderNode } = nodeStore
+  const { nodesRef, setNodes, updateCanvasDocument, createDocumentNode, createFolderNode } =
+    nodeStore
   const { getNodePathUri, copyNodePath } = useFilesystemNodePaths({
     workspaceId,
     workspacePath,
@@ -148,10 +147,7 @@ export function useFilesystemNodes({
             createdNodeId: node.id,
             createdNode: node,
             targetSpaceId: target.id,
-            spacesRef,
-            nodesRef,
-            setNodes,
-            onSpacesChange,
+            updateCanvasDocument,
           })
         }
         onRequestPersistFlush?.()
@@ -167,13 +163,11 @@ export function useFilesystemNodes({
     [
       createDocumentNode,
       createFolderNode,
-      nodesRef,
       onRequestPersistFlush,
       onShowMessage,
-      onSpacesChange,
-      setNodes,
       spacesRef,
       t,
+      updateCanvasDocument,
       workspaceId,
     ],
   )

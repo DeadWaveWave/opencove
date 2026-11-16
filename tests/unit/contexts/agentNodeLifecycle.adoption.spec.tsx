@@ -108,7 +108,7 @@ describe('existing unowned Claude renderer launches', () => {
       workspaceId: 'workspace',
       workspacePath: '/repo',
       agentSettings: DEFAULT_AGENT_SETTINGS,
-      onSpacesChange: vi.fn(),
+      updateCanvasDocument: vi.fn(),
       onRequestPersistFlush: vi.fn(),
       buildAgentNodeTitle: () => 'Agent',
       launchAgentInNode: f.result.current.launchAgentInNode,

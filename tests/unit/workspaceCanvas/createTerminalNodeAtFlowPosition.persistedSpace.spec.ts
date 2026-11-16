@@ -6,6 +6,7 @@ import { createTerminalNodeAtFlowPosition } from '../../../src/contexts/workspac
 import {
   createCanvasDocumentHarness,
   renderCanvasDocumentCommands,
+  renderCanvasNodeStore,
 } from '../../support/canvasDocumentHarness'
 import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 
@@ -26,11 +27,16 @@ describe('createTerminalNodeAtFlowPosition persisted space launch', () => {
     vi.unstubAllGlobals()
   })
 
-  // The mount repair writes through the store. None of these launches needs a repair, so the store
-  // must see no write: the `onSpacesChange` stub only receives the node's Space assignment.
+  // The mount repair writes through the store. None of these launches needs a repair, so the only
+  // write the store sees is the push-away that assigns the node to its Space.
   function seedStore(spaces: WorkspaceSpaceState[] = []) {
     const harness = createCanvasDocumentHarness({ spaces })
-    return { harness, updateSpaces: renderCanvasDocumentCommands(harness.workspaceId).updateSpaces }
+    return {
+      harness,
+      updateSpaces: renderCanvasDocumentCommands(harness.workspaceId).updateSpaces,
+      updateCanvasDocument:
+        renderCanvasNodeStore(harness).result.current.nodeStore.updateCanvasDocument,
+    }
   }
 
   it('uses a persisted containing space when local spaces are not hydrated yet', async () => {
@@ -65,9 +71,8 @@ describe('createTerminalNodeAtFlowPosition persisted space launch', () => {
     const createNodeForSession = vi.fn(
       async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
     )
-    const onSpacesChange = vi.fn()
 
-    const { harness, updateSpaces } = seedStore([])
+    const { harness, updateSpaces, updateCanvasDocument } = seedStore([])
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -123,8 +128,7 @@ describe('createTerminalNodeAtFlowPosition persisted space launch', () => {
       workspacePath: '/repo',
       spacesRef: { current: [] },
       nodesRef: { current: [] },
-      setNodes: vi.fn(),
-      onSpacesChange,
+      updateCanvasDocument,
       updateSpaces,
       createNodeForSession,
     })
@@ -157,7 +161,7 @@ describe('createTerminalNodeAtFlowPosition persisted space launch', () => {
         expectedDirectory: '/repo/.opencove/worktrees/feature-a',
       }),
     )
-    const nextSpaces = onSpacesChange.mock.calls[0]?.[0]
+    const nextSpaces = harness.readStoreDocument().spaces
     expect(nextSpaces).toEqual([
       expect.objectContaining({
         id: 'space-1',
@@ -174,7 +178,7 @@ describe('createTerminalNodeAtFlowPosition persisted space launch', () => {
         nodeIds: ['existing-node'],
       }),
     ])
-    expect(harness.notifications).not.toHaveBeenCalled()
+    expect(harness.notifications).toHaveBeenCalledTimes(1)
     expect(harness.flush).not.toHaveBeenCalled()
   })
 
@@ -187,7 +191,6 @@ describe('createTerminalNodeAtFlowPosition persisted space launch', () => {
     const createNodeForSession = vi.fn(
       async () => ({ id: '00000000-0000-4000-8000-000000000001' }) as never,
     )
-    const onSpacesChange = vi.fn()
     const localSpace: WorkspaceSpaceState = {
       id: 'space-local',
       name: 'Scratch',
@@ -198,7 +201,7 @@ describe('createTerminalNodeAtFlowPosition persisted space launch', () => {
       rect: { x: 1400, y: 0, width: 800, height: 600 },
     }
 
-    const { harness, updateSpaces } = seedStore([localSpace])
+    const { harness, updateSpaces, updateCanvasDocument } = seedStore([localSpace])
 
     vi.stubGlobal('window', {
       opencoveApi: {
@@ -251,8 +254,7 @@ describe('createTerminalNodeAtFlowPosition persisted space launch', () => {
       workspacePath: '/repo',
       spacesRef: { current: [localSpace] },
       nodesRef: { current: [] },
-      setNodes: vi.fn(),
-      onSpacesChange,
+      updateCanvasDocument,
       updateSpaces,
       createNodeForSession,
     })
@@ -262,7 +264,7 @@ describe('createTerminalNodeAtFlowPosition persisted space launch', () => {
         cwd: '/repo/.opencove/worktrees/feature-a',
       }),
     )
-    const nextSpaces = onSpacesChange.mock.calls[0]?.[0]
+    const nextSpaces = harness.readStoreDocument().spaces
     expect(nextSpaces).toEqual([
       expect.objectContaining({
         id: 'space-local',
@@ -284,7 +286,7 @@ describe('createTerminalNodeAtFlowPosition persisted space launch', () => {
         nodeIds: ['existing-node'],
       }),
     ])
-    expect(harness.notifications).not.toHaveBeenCalled()
+    expect(harness.notifications).toHaveBeenCalledTimes(1)
     expect(harness.flush).not.toHaveBeenCalled()
   })
 })

@@ -5,11 +5,7 @@ import {
   assignNodeToSpaceAndExpand,
   findContainingSpaceByAnchor,
 } from './useInteractions.spaceAssignment'
-
-type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean },
-) => void
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 
 export function createNoteNodeAtAnchor({
   workspaceId,
@@ -17,9 +13,7 @@ export function createNoteNodeAtAnchor({
   spaceAnchor = anchor,
   createNoteNode,
   spacesRef,
-  nodesRef,
-  setNodes,
-  onSpacesChange,
+  updateCanvasDocument,
 }: {
   workspaceId?: string
   anchor: Point
@@ -33,9 +27,7 @@ export function createNoteNodeAtAnchor({
     },
   ) => Node<TerminalNodeData> | null
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
-  setNodes: SetNodes
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
 }): void {
   const targetSpace = findContainingSpaceByAnchor(spacesRef.current, spaceAnchor)
   const created = createNoteNode(anchor, {
@@ -56,9 +48,6 @@ export function createNoteNodeAtAnchor({
     createdNodeId: created.id,
     createdNode: created,
     targetSpaceId: targetSpace.id,
-    spacesRef,
-    nodesRef,
-    setNodes,
-    onSpacesChange,
+    updateCanvasDocument,
   })
 }

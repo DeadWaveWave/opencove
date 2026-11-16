@@ -7,6 +7,7 @@ import type { CreateNodeInput } from '../types'
 import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
 import type { AgentNodeLaunchOverrides } from './useAgentNodeLifecycle.support'
 import type { CanvasDocumentCommands } from '../../../store/canvasStoreContext'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 
 type TaskRuntimeNode = Node<TerminalNodeData> & {
   data: TerminalNodeData & {
@@ -18,7 +19,7 @@ type TaskRuntimeNode = Node<TerminalNodeData> & {
 export interface TaskActionContext {
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   updateSpaces: CanvasDocumentCommands['updateSpaces']
   setNodes: (
     updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -72,7 +73,7 @@ export function assignAgentNodeToTaskSpace({
   assignedNode: Node<TerminalNodeData>
   context: Pick<
     TaskActionContext | ResumeTaskAgentSessionContext,
-    'workspaceId' | 'spacesRef' | 'nodesRef' | 'setNodes' | 'onSpacesChange'
+    'workspaceId' | 'spacesRef' | 'updateCanvasDocument'
   >
 }): void {
   const taskSpaceId = findTaskSpace(taskNodeId, context.spacesRef)?.id
@@ -85,10 +86,7 @@ export function assignAgentNodeToTaskSpace({
     createdNodeId: assignedNodeId,
     createdNode: assignedNode,
     targetSpaceId: taskSpaceId,
-    spacesRef: context.spacesRef,
-    nodesRef: context.nodesRef,
-    setNodes: context.setNodes,
-    onSpacesChange: context.onSpacesChange,
+    updateCanvasDocument: context.updateCanvasDocument,
   })
 }
 

@@ -18,6 +18,7 @@ import { resolveDefaultAgentLaunchGeometry } from './agentLaunchGeometry'
 import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
 import { composeProjectRolePrompt } from './useRolePrompt'
 import type { CanvasDocumentCommands } from '../../../store/canvasStoreContext'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import {
   buildMergedAgentLaunchEnv,
   launchWorkspaceAgentSession,
@@ -39,7 +40,7 @@ export interface RoleRunActionContext {
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   setNodes: SetNodes
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   updateSpaces: CanvasDocumentCommands['updateSpaces']
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
@@ -230,10 +231,7 @@ export async function runRoleNodeAction(
         createdNodeId: createdAgentNode.id,
         createdNode: createdAgentNode,
         targetSpaceId: owningSpace.id,
-        spacesRef: context.spacesRef,
-        nodesRef: context.nodesRef,
-        setNodes: context.setNodes,
-        onSpacesChange: context.onSpacesChange,
+        updateCanvasDocument: context.updateCanvasDocument,
       })
     }
 

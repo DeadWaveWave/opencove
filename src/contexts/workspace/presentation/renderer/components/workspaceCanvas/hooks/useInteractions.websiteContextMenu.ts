@@ -8,11 +8,9 @@ type WebsiteContextMenuParams = Pick<
   | 'workspaceId'
   | 'browserDefaultMode'
   | 'createWebsiteNode'
-  | 'nodesRef'
-  | 'onSpacesChange'
-  | 'setNodes'
   | 'spacesRef'
   | 'standardWindowSizeBucket'
+  | 'updateCanvasDocument'
   | 'websiteWindowsEnabled'
 >
 
@@ -20,11 +18,9 @@ export function useWebsiteNodeContextMenuCreation({
   workspaceId,
   browserDefaultMode,
   createWebsiteNode,
-  nodesRef,
-  onSpacesChange,
-  setNodes,
   spacesRef,
   standardWindowSizeBucket,
+  updateCanvasDocument,
   websiteWindowsEnabled,
 }: WebsiteContextMenuParams): () => void {
   const ui = useCanvasUiCommands()
@@ -41,24 +37,20 @@ export function useWebsiteNodeContextMenuCreation({
       contextMenu: readUi().contextMenu,
       ui,
       createWebsiteNode,
-      nodesRef,
-      onSpacesChange,
-      setNodes,
       spacesRef,
       standardWindowSizeBucket,
+      updateCanvasDocument,
       url: '',
     })
   }, [
     workspaceId,
     browserDefaultMode,
     createWebsiteNode,
-    nodesRef,
-    onSpacesChange,
     readUi,
     ui,
-    setNodes,
     spacesRef,
     standardWindowSizeBucket,
+    updateCanvasDocument,
     websiteWindowsEnabled,
   ])
 }

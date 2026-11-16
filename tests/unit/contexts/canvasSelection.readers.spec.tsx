@@ -256,7 +256,7 @@ describe('spatial navigation in useWorkspaceCanvasShortcutActions', () => {
           spaceNavigationAnchorIdRef: { current: null },
           nodesRef: holder.nodesRef,
           setNodes: holder.setNodes,
-          onSpacesChange: vi.fn(),
+          updateCanvasDocument: vi.fn(),
           nodeCreation: {
             createNodeForSession: vi.fn(async () => null),
             createNoteNode: vi.fn(() => null),

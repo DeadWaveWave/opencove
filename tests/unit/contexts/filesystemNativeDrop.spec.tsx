@@ -38,6 +38,7 @@ function setup() {
     nodeStore: {
       nodesRef: { current: [] },
       setNodes: vi.fn(),
+      updateCanvasDocument: vi.fn(),
       createDocumentNode,
       createFolderNode,
     },
@@ -53,7 +54,6 @@ function setup() {
         },
       ],
     } as FilesystemNodesParams['spacesRef'],
-    onSpacesChange: vi.fn(),
     onShowMessage,
   }
   const hook = renderHook(({ workspaceId }) => useFilesystemNodes({ ...params, workspaceId }), {

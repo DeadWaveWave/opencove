@@ -36,11 +36,10 @@ import { createWebsiteNodeData } from '../../../utils/websiteNodeData'
 import { nodeWorkerBindingForMount } from '@shared/types/nodeWorkerBinding'
 import type { CanvasUiCommands } from '../../../store/canvasStore.ui'
 import type { CanvasDocumentCommands } from '../../../store/canvasStoreContext'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 
-type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean },
-) => void
+type UpdateCanvasDocument = UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
+
 export async function createTerminalNodeAtFlowPosition({
   anchor,
   workspaceId,
@@ -52,8 +51,7 @@ export async function createTerminalNodeAtFlowPosition({
   environmentVariables,
   spacesRef,
   nodesRef,
-  setNodes,
-  onSpacesChange,
+  updateCanvasDocument,
   updateSpaces,
   createNodeForSession,
   onShowMessage,
@@ -69,8 +67,7 @@ export async function createTerminalNodeAtFlowPosition({
   environmentVariables?: Record<string, string>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
-  setNodes: SetNodes
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  updateCanvasDocument: UpdateCanvasDocument
   updateSpaces: CanvasDocumentCommands['updateSpaces']
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   onShowMessage?: (message: string, level: 'info' | 'warning' | 'error') => void
@@ -244,10 +241,7 @@ export async function createTerminalNodeAtFlowPosition({
       targetSpaceSnapshot: targetSpace,
       targetSpaceBaseline,
       workspaceSpacesSnapshot,
-      spacesRef,
-      nodesRef,
-      setNodes,
-      onSpacesChange,
+      updateCanvasDocument,
     })
   }
 
@@ -277,9 +271,7 @@ export function createNoteNodeAtFlowPosition({
   standardWindowSizeBucket,
   createNoteNode,
   spacesRef,
-  nodesRef,
-  setNodes,
-  onSpacesChange,
+  updateCanvasDocument,
 }: {
   workspaceId?: string
   anchor: Point
@@ -293,9 +285,7 @@ export function createNoteNodeAtFlowPosition({
     },
   ) => Node<TerminalNodeData> | null
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
-  setNodes: SetNodes
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  updateCanvasDocument: UpdateCanvasDocument
 }): void {
   const cursorAnchor = {
     x: anchor.x,
@@ -312,9 +302,7 @@ export function createNoteNodeAtFlowPosition({
     spaceAnchor: cursorAnchor,
     createNoteNode,
     spacesRef,
-    nodesRef,
-    setNodes,
-    onSpacesChange,
+    updateCanvasDocument,
   })
 }
 
@@ -326,9 +314,7 @@ export function createWebsiteNodeAtFlowPosition({
   url,
   createWebsiteNode,
   spacesRef,
-  nodesRef,
-  setNodes,
-  onSpacesChange,
+  updateCanvasDocument,
 }: {
   workspaceId?: string
   anchor: Point
@@ -341,9 +327,7 @@ export function createWebsiteNodeAtFlowPosition({
     placement?: NodePlacementOptions,
   ) => Node<TerminalNodeData> | null
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
-  setNodes: SetNodes
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  updateCanvasDocument: UpdateCanvasDocument
 }): void {
   const cursorAnchor = {
     x: anchor.x,
@@ -379,10 +363,7 @@ export function createWebsiteNodeAtFlowPosition({
     createdNodeId: created.id,
     createdNode: created,
     targetSpaceId: targetSpace.id,
-    spacesRef,
-    nodesRef,
-    setNodes,
-    onSpacesChange,
+    updateCanvasDocument,
   })
 }
 

@@ -24,7 +24,7 @@ export type WorkspaceCanvasSpaceExplorerArgs = {
     updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
     options?: { syncLayout?: boolean },
   ) => void
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   onRequestPersistFlush?: () => void
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   nodeDragSession: WorkspaceCanvasNodeDragSession

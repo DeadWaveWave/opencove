@@ -70,8 +70,11 @@ function fixture() {
     setNodes: updater => {
       nodesRef.current = updater(nodesRef.current)
     },
-    onSpacesChange: spaces => {
-      spacesRef.current = spaces
+    // The push-away writes one recipe over the nodes and the Spaces, as the node store runs it.
+    updateCanvasDocument: recipe => {
+      const next = recipe({ nodes: nodesRef.current, spaces: spacesRef.current })
+      nodesRef.current = next.nodes
+      spacesRef.current = next.spaces
     },
     createDocumentNode,
     reactFlow: {

@@ -17,7 +17,7 @@ export type WorkspaceDocumentOpeningArgs = Pick<
   | 'spacesRef'
   | 'nodesRef'
   | 'setNodes'
-  | 'onSpacesChange'
+  | 'updateCanvasDocument'
   | 'onRequestPersistFlush'
   | 'reactFlow'
   | 'createDocumentNode'
@@ -38,7 +38,7 @@ export function useWorkspaceDocumentOpening({
   spacesRef,
   nodesRef,
   setNodes,
-  onSpacesChange,
+  updateCanvasDocument,
   onRequestPersistFlush,
   reactFlow,
   createDocumentNode,
@@ -129,10 +129,7 @@ export function useWorkspaceDocumentOpening({
           createdNodeId: created.id,
           createdNode: created,
           targetSpaceId: space.id,
-          spacesRef,
-          nodesRef,
-          setNodes,
-          onSpacesChange,
+          updateCanvasDocument,
         })
       }
       onRequestPersistFlush?.()
@@ -144,10 +141,10 @@ export function useWorkspaceDocumentOpening({
       expandNode,
       nodesRef,
       onRequestPersistFlush,
-      onSpacesChange,
       reactFlow,
       setNodes,
       spacesRef,
+      updateCanvasDocument,
     ],
   )
 }

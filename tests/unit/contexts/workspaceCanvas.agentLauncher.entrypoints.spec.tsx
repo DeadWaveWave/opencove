@@ -33,8 +33,7 @@ function fixture(): LauncherParams {
     agentSettings: { ...DEFAULT_AGENT_SETTINGS, defaultProvider: 'codex' },
     workspaceId: 'project-a',
     workspacePath: '/repo',
-    nodesRef: { current: [] },
-    setNodes: vi.fn(),
+    updateCanvasDocument: vi.fn(),
     spacesRef: {
       current: [
         {
@@ -48,7 +47,6 @@ function fixture(): LauncherParams {
         },
       ],
     },
-    onSpacesChange: vi.fn(),
     onRequestPersistFlush: vi.fn(),
     onShowMessage: vi.fn(),
     createNodeForSession: vi.fn(async input => ({
@@ -164,8 +162,13 @@ describe('shared Agent launcher entrypoints', () => {
       expect.objectContaining({
         createdNodeId: 'new-agent',
         targetSpaceId: 'space-a',
+        updateCanvasDocument: params.updateCanvasDocument,
       }),
     )
+    const assignOptions = vi.mocked(assignNodeToSpaceAndExpand).mock.calls[0][0]
+    for (const channel of ['spacesRef', 'nodesRef', 'setNodes', 'onSpacesChange']) {
+      expect(assignOptions).not.toHaveProperty(channel)
+    }
   })
 
   it('requests no flush of its own between the binding and the node add', async () => {

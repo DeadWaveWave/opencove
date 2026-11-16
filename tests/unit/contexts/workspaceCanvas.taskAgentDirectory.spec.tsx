@@ -9,6 +9,7 @@ import type {
   WorkspaceSpaceState,
   WorkspaceViewport,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
+import { readWorkspaceDocument } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import { WorkspaceCanvas } from '../../../src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
 import {
   seedWorkspaceCanvasStore,
@@ -234,6 +235,8 @@ describe('WorkspaceCanvas task agent directory', () => {
     const createdAgentNode = latestNodes.find(node => node.data.kind === 'agent')
     const expectedSize = resolveDefaultAgentWindowSize('large')
     expect(createdAgentNode?.data.width).toBe(expectedSize.width)
+    // The run's push-away reached the store through the writer that Inner hands the task UI.
+    expect(readWorkspaceDocument('workspace-1')!.spaces[0].nodeIds).toContain(createdAgentNode!.id)
     expect(createdAgentNode?.data.height).toBe(expectedSize.height)
   })
 })

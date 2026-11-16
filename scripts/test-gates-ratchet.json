@@ -8,7 +8,6 @@
     "tests/e2e/workspace-canvas.agent-sidebar.spec.ts": 1,
     "tests/e2e/workspace-canvas.agent-standby-banner-context.spec.ts": 1,
     "tests/e2e/workspace-canvas.agent-status-submit.windows.spec.ts": 1,
-    "tests/e2e/workspace-canvas.nodes.spaces.policy.spec.ts": 1,
     "tests/e2e/workspace-canvas.shortcuts.spec.ts": 1,
     "tests/e2e/workspace-canvas.space-explorer.spec.ts": 1,
     "tests/e2e/workspace-canvas.space-pr-chip.spec.ts": 1,

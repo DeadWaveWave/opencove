@@ -26,8 +26,7 @@ export function useWorkspaceCanvasQuickMenuActions(
     | 'createNoteNode'
     | 'spacesRef'
     | 'nodesRef'
-    | 'setNodes'
-    | 'onSpacesChange'
+    | 'updateCanvasDocument'
     | 'defaultTerminalProfileId'
     | 'terminalFontSize'
     | 'terminalDisplayMetrics'
@@ -52,8 +51,7 @@ export function useWorkspaceCanvasQuickMenuActions(
     createNoteNode,
     spacesRef,
     nodesRef,
-    setNodes,
-    onSpacesChange,
+    updateCanvasDocument,
     defaultTerminalProfileId,
     terminalFontSize,
     terminalDisplayMetrics,
@@ -95,9 +93,7 @@ export function useWorkspaceCanvasQuickMenuActions(
           url: command.url,
           createWebsiteNode,
           spacesRef,
-          nodesRef,
-          setNodes,
-          onSpacesChange,
+          updateCanvasDocument,
         })
 
         return
@@ -118,8 +114,7 @@ export function useWorkspaceCanvasQuickMenuActions(
         workspacePath,
         spacesRef,
         nodesRef,
-        setNodes,
-        onSpacesChange,
+        updateCanvasDocument,
         updateSpaces: documentCommands.updateSpaces,
         createNodeForSession,
         onShowMessage,
@@ -163,14 +158,13 @@ export function useWorkspaceCanvasQuickMenuActions(
       terminalFontSize,
       terminalDisplayMetrics,
       nodesRef,
-      onSpacesChange,
       onShowMessage,
       readUi,
       ui,
-      setNodes,
       spacesRef,
       standardWindowSizeBucket,
       browserDefaultMode,
+      updateCanvasDocument,
       websiteWindowsEnabled,
       workspacePath,
       workspaceId,
@@ -193,9 +187,7 @@ export function useWorkspaceCanvasQuickMenuActions(
               initialText: phrase.content,
             }),
           spacesRef,
-          nodesRef,
-          setNodes,
-          onSpacesChange,
+          updateCanvasDocument,
         })
         return
       }
@@ -220,13 +212,11 @@ export function useWorkspaceCanvasQuickMenuActions(
     [
       workspaceId,
       createNoteNode,
-      nodesRef,
-      onSpacesChange,
       readUi,
       ui,
-      setNodes,
       spacesRef,
       standardWindowSizeBucket,
+      updateCanvasDocument,
     ],
   )
 

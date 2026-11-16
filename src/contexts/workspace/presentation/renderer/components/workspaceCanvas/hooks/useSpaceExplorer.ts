@@ -28,7 +28,7 @@ export function useWorkspaceCanvasSpaceExplorer({
   spacesRef,
   nodesRef,
   setNodes,
-  onSpacesChange,
+  updateCanvasDocument,
   onRequestPersistFlush,
   reactFlow,
   nodeDragSession,
@@ -44,7 +44,7 @@ export function useWorkspaceCanvasSpaceExplorer({
     spacesRef,
     nodesRef,
     setNodes,
-    onSpacesChange,
+    updateCanvasDocument,
     onRequestPersistFlush,
     reactFlow,
     createDocumentNode,
@@ -315,10 +315,7 @@ export function useWorkspaceCanvasSpaceExplorer({
           createdNodeId: created.id,
           createdNode: created,
           targetSpaceId: space.id,
-          spacesRef,
-          nodesRef,
-          setNodes,
-          onSpacesChange,
+          updateCanvasDocument,
         })
 
         onRequestPersistFlush?.()
@@ -333,9 +330,9 @@ export function useWorkspaceCanvasSpaceExplorer({
       createImageNode,
       nodesRef,
       onRequestPersistFlush,
-      onSpacesChange,
       setNodes,
       spacesRef,
+      updateCanvasDocument,
     ],
   )
 

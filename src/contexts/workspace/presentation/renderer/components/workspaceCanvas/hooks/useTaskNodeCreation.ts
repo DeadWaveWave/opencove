@@ -11,19 +11,13 @@ import {
   assignNodeToSpaceAndExpand,
   findContainingSpaceByAnchor,
 } from './useInteractions.spaceAssignment'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import { useCanvasUiCommands, useReadCanvasUi } from '../../../store/canvasStoreContext'
-
-type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean },
-) => void
 
 interface UseTaskNodeCreationParams {
   workspaceId?: string
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  setNodes: SetNodes
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   onRequestPersistFlush?: () => void
   standardWindowSizeBucket: StandardWindowSizeBucket
   createTaskNode: (
@@ -39,10 +33,8 @@ interface UseTaskNodeCreationParams {
 
 export function useWorkspaceCanvasTaskNodeCreation({
   workspaceId,
-  nodesRef,
-  setNodes,
   spacesRef,
-  onSpacesChange,
+  updateCanvasDocument,
   onRequestPersistFlush,
   standardWindowSizeBucket,
   createTaskNode,
@@ -81,10 +73,7 @@ export function useWorkspaceCanvasTaskNodeCreation({
           createdNodeId: created.id,
           createdNode: created,
           targetSpaceId: targetSpace.id,
-          spacesRef,
-          nodesRef,
-          setNodes,
-          onSpacesChange,
+          updateCanvasDocument,
         })
       }
 
@@ -93,13 +82,11 @@ export function useWorkspaceCanvasTaskNodeCreation({
     [
       workspaceId,
       createTaskNode,
-      nodesRef,
       onRequestPersistFlush,
-      onSpacesChange,
-      setNodes,
       spacesRef,
       standardWindowSizeBucket,
       t,
+      updateCanvasDocument,
     ],
   )
 

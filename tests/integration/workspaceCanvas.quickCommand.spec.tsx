@@ -3,7 +3,10 @@ import type { Node } from '@xyflow/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import WebSocket from 'ws'
 import type { QuickCommand } from '../../src/contexts/settings/domain/agentSettings'
-import type { TerminalNodeData } from '../../src/contexts/workspace/presentation/renderer/types'
+import type {
+  TerminalNodeData,
+  WorkspaceSpaceState,
+} from '../../src/contexts/workspace/presentation/renderer/types'
 import { renderHookWithCanvasStore } from '../support/canvasStoreTestHarness'
 import { useWorkspaceCanvasQuickMenuActions } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.quickMenuActions'
 import { useWorkspaceCanvasNodeCreation } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.createNodes'
@@ -88,6 +91,30 @@ function setup() {
     controlSurface: { invoke },
   })
   const nodesRef = { current: [] as Node<TerminalNodeData>[] }
+  const spacesRef: { current: WorkspaceSpaceState[] } = {
+    current: [
+      {
+        id: 'space',
+        name: 'Worktree',
+        directoryPath: '/worktree',
+        targetMountId: null,
+        labelColor: null,
+        nodeIds: [],
+        rect: { x: 0, y: 0, width: 2000, height: 1500 },
+      },
+    ],
+  }
+  // The push-away of the created node writes through one recipe, as the node store runs it.
+  const updateCanvasDocument = (
+    recipe: (document: { nodes: Node<TerminalNodeData>[]; spaces: WorkspaceSpaceState[] }) => {
+      nodes: Node<TerminalNodeData>[]
+      spaces: WorkspaceSpaceState[]
+    },
+  ) => {
+    const next = recipe({ nodes: nodesRef.current, spaces: spacesRef.current })
+    nodesRef.current = next.nodes
+    spacesRef.current = next.spaces
+  }
   const onShowMessage = vi.fn()
   const hook = renderHookWithCanvasStore(
     ({ workspaceId }) => {
@@ -108,24 +135,12 @@ function setup() {
         workspaceId,
         // A detached worktree uses Control Surface spawn, outside the workspace root.
         workspacePath: '/workspace',
-        spacesRef: {
-          current: [
-            {
-              id: 'space',
-              name: 'Worktree',
-              directoryPath: '/worktree',
-              targetMountId: null,
-              labelColor: null,
-              nodeIds: [],
-              rect: { x: 0, y: 0, width: 2000, height: 1500 },
-            },
-          ],
-        },
+        spacesRef,
+        updateCanvasDocument,
         websiteWindowsEnabled: true,
         defaultTerminalProfileId: null,
         terminalFontSize: 13,
         terminalDisplayMetrics: { fontSize: 13 },
-        onSpacesChange: vi.fn(),
       })
     },
     {

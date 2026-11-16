@@ -10,6 +10,7 @@ import type {
   WorkspaceViewport,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { WorkspaceCanvas } from '../../../src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
+import { readWorkspaceDocument } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import { createMountAwareAgentControlSurface } from './workspaceCanvas.mountTestSupport'
 import {
   seedWorkspaceCanvasStore,
@@ -166,10 +167,21 @@ describe('WorkspaceCanvas run default agent', () => {
     })
 
     const viewport: WorkspaceViewport = { x: 0, y: 0, zoom: 1 }
-    const spaces: WorkspaceSpaceState[] = []
+    // The click lands inside this Space, so the launch ends in the push-away.
+    const spaces: WorkspaceSpaceState[] = [
+      {
+        id: 'space-under-click',
+        name: 'Space',
+        directoryPath: '/tmp/repo',
+        targetMountId: null,
+        labelColor: null,
+        nodeIds: [],
+        rect: { x: -5000, y: -5000, width: 10000, height: 10000 },
+      },
+    ]
     let latestNodes: Node<TerminalNodeData>[] = []
 
-    seedWorkspaceCanvasStore()
+    seedWorkspaceCanvasStore({ spaces })
 
     function Harness() {
       const nodes = useWorkspaceCanvasStoreNodes()
@@ -254,6 +266,8 @@ describe('WorkspaceCanvas run default agent', () => {
     expect(latestNodes[0]?.data.width).toBe(expectedSize.width)
     expect(latestNodes[0]?.data.height).toBe(expectedSize.height)
     expect(screen.queryByTestId('workspace-agent-launcher')).toBeNull()
+    // The push-away reached the store through the writer that Inner hands the agent support.
+    expect(readWorkspaceDocument('workspace-1')!.spaces[0].nodeIds).toContain(latestNodes[0]!.id)
   })
 
   it('can expand the pane context menu to launch a specific installed agent CLI', async () => {

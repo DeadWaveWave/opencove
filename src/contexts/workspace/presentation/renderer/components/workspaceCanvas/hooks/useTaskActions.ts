@@ -27,7 +27,7 @@ import type { TaskActionContext } from './useTaskActions.agentSession.shared'
 interface UseTaskActionsParams {
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  updateCanvasDocument: TaskActionContext['updateCanvasDocument']
   setNodes: (
     updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
     options?: { syncLayout?: boolean },
@@ -58,7 +58,7 @@ interface UseTaskActionsParams {
 export function useWorkspaceCanvasTaskActions({
   nodesRef,
   spacesRef,
-  onSpacesChange,
+  updateCanvasDocument,
   setNodes,
   createNodeForSession,
   buildAgentNodeTitle,
@@ -89,7 +89,7 @@ export function useWorkspaceCanvasTaskActions({
       await runTaskAgentAction(taskNodeId, {
         nodesRef,
         spacesRef,
-        onSpacesChange,
+        updateCanvasDocument,
         updateSpaces: documentCommands.updateSpaces,
         setNodes,
         createNodeForSession,
@@ -112,12 +112,12 @@ export function useWorkspaceCanvasTaskActions({
       environmentVariables,
       launchAgentInNode,
       nodesRef,
-      onSpacesChange,
       onRequestPersistFlush,
       setNodes,
       spacesRef,
       t,
       terminalDisplayMetrics,
+      updateCanvasDocument,
       workspaceId,
       workspacePath,
     ],
@@ -159,7 +159,7 @@ export function useWorkspaceCanvasTaskActions({
       await resumeTaskAgentSessionAction(taskNodeId, recordId, {
         nodesRef,
         spacesRef,
-        onSpacesChange,
+        updateCanvasDocument,
         updateSpaces: documentCommands.updateSpaces,
         setNodes,
         createNodeForSession,
@@ -181,11 +181,11 @@ export function useWorkspaceCanvasTaskActions({
       environmentVariables,
       nodesRef,
       onRequestPersistFlush,
-      onSpacesChange,
       setNodes,
       spacesRef,
       t,
       terminalDisplayMetrics,
+      updateCanvasDocument,
       workspaceId,
       workspacePath,
     ],

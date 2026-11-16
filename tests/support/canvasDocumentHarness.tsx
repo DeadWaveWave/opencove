@@ -135,8 +135,22 @@ export function renderCanvasNodeStore<Extra extends object = Record<never, never
   harness: CanvasDocumentHarness,
   {
     workspacePath = `/tmp/${harness.workspaceId}`,
+    nodeStoreOptions,
     extend,
-  }: { workspacePath?: string; extend?: (context: CanvasNodeStoreContext) => Extra } = {},
+  }: {
+    workspacePath?: string
+    /** Further parameters of the node store, such as `onShowMessage`. */
+    nodeStoreOptions?: Partial<
+      Pick<
+        Parameters<typeof useWorkspaceCanvasNodesStore>[0],
+        | 'onShowMessage'
+        | 'browserDefaultMode'
+        | 'standardWindowSizeBucket'
+        | 'onRequestPersistFlush'
+      >
+    >
+    extend?: (context: CanvasNodeStoreContext) => Extra
+  } = {},
 ) {
   return renderInCanvasDocument(
     () => {
@@ -165,6 +179,7 @@ export function renderCanvasNodeStore<Extra extends object = Record<never, never
         isLiveGestureActive: publishers.isLiveGestureActive,
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
+        ...nodeStoreOptions,
       })
       const context = {
         workspaceId: harness.workspaceId,

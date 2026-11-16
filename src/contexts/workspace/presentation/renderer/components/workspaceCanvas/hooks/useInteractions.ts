@@ -39,6 +39,7 @@ export function useWorkspaceCanvasInteractions({
   setSelectionDraftUi,
   reactFlow,
   setNodes,
+  updateCanvasDocument,
   workspaceId,
   workspacePath,
   environmentVariables,
@@ -46,7 +47,6 @@ export function useWorkspaceCanvasInteractions({
   terminalFontSize,
   terminalDisplayMetrics,
   spacesRef,
-  onSpacesChange,
   nodesRef,
   standardWindowSizeBucket,
   browserDefaultMode,
@@ -300,22 +300,18 @@ export function useWorkspaceCanvasInteractions({
         standardWindowSizeBucket,
         createNoteNode,
         spacesRef,
-        nodesRef,
-        setNodes,
-        onSpacesChange,
+        updateCanvasDocument,
       })
     },
     [
       workspaceId,
       clearNodeSelection,
       createNoteNode,
-      nodesRef,
-      onSpacesChange,
       resolveCreationAnchor,
       ui,
-      setNodes,
       spacesRef,
       standardWindowSizeBucket,
+      updateCanvasDocument,
     ],
   )
   const handlePaneClick = useCallback(
@@ -345,8 +341,7 @@ export function useWorkspaceCanvasInteractions({
     terminalDisplayMetrics,
     standardWindowSizeBucket,
     createNodeForSession,
-    setNodes,
-    onSpacesChange,
+    updateCanvasDocument,
     onShowMessage,
   })
   const { createNoteNodeAtFlowPoint, createWebsiteNodeAtFlowPoint, createNoteNodeFromContextMenu } =
@@ -358,19 +353,15 @@ export function useWorkspaceCanvasInteractions({
       browserDefaultMode,
       websiteWindowsEnabled,
       spacesRef,
-      nodesRef,
-      setNodes,
-      onSpacesChange,
+      updateCanvasDocument,
     })
   const createWebsiteNodeFromContextMenu = useWebsiteNodeContextMenuCreation({
     workspaceId,
     browserDefaultMode,
     createWebsiteNode,
-    nodesRef,
-    onSpacesChange,
-    setNodes,
     spacesRef,
     standardWindowSizeBucket,
+    updateCanvasDocument,
     websiteWindowsEnabled,
   })
   const { runQuickCommand, insertQuickPhrase } = useWorkspaceCanvasQuickMenuActions({
@@ -384,8 +375,7 @@ export function useWorkspaceCanvasInteractions({
     createNoteNode,
     spacesRef,
     nodesRef,
-    setNodes,
-    onSpacesChange,
+    updateCanvasDocument,
     defaultTerminalProfileId,
     workspacePath,
     createNodeForSession,
@@ -396,9 +386,7 @@ export function useWorkspaceCanvasInteractions({
     canvasRef,
     reactFlow,
     spacesRef,
-    nodesRef,
-    setNodes,
-    onSpacesChange,
+    updateCanvasDocument,
     onShowMessage,
     createImageNode,
     createWebsiteNode,
@@ -414,12 +402,11 @@ export function useWorkspaceCanvasInteractions({
     createWebsiteNode,
     enabled: websiteWindowsEnabled,
     nodesRef,
-    onSpacesChange,
     reactFlow,
-    setNodes,
     spacesRef,
     standardWindowSizeBucket,
     browserDefaultMode,
+    updateCanvasDocument,
   })
 
   return {
