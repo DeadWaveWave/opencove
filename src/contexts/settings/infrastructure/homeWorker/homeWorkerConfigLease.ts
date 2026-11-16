@@ -13,6 +13,9 @@ export const HOME_WORKER_CONFIG_LEASE_OWNER_FILE = 'owner.json'
 const DEFAULT_LEASE_TIMEOUT_MS = 5_000
 const DEFAULT_RETRY_DELAY_MS = 25
 const DEFAULT_MALFORMED_STALE_MS = 5_000
+const RELEASE_TIMEOUT_MS = 5_000
+// Node retries EBUSY, EMFILE, ENFILE, ENOTEMPTY and EPERM in recursive mode.
+const RM_RETRY_OPTIONS = { recursive: true, force: true, maxRetries: 5, retryDelay: 50 } as const
 
 type LeaseRecord = { pid: number; token: string; createdAt: string }
 type LeaseObservation = {
@@ -24,6 +27,12 @@ type LeaseFileSystem = {
   platform: NodeJS.Platform
   rename: (from: string, to: string) => Promise<void>
   rm: (path: string, options?: RmOptions) => Promise<void>
+}
+type LeaseTiming = {
+  now: () => number
+  wait: (delayMs: number) => Promise<void>
+  retryDelayMs: number
+  timeoutMs: number
 }
 type LeaseDependencies = {
   now?: () => number
@@ -92,6 +101,24 @@ function fatalLeaseError(operation: LeaseOperation, error: unknown): Error {
   })
 }
 
+class HomeWorkerConfigLeaseReleaseError extends Error {
+  constructor(cause: unknown) {
+    const detail = cause instanceof Error ? cause.message : String(cause)
+    super(`Home Worker configuration lease release failed: ${detail}`, { cause })
+    this.name = 'HomeWorkerConfigLeaseReleaseError'
+  }
+}
+
+async function removeTree(fs: LeaseFileSystem, path: string): Promise<void> {
+  await fs.rm(path, RM_RETRY_OPTIONS)
+}
+
+// Authority has already moved when this runs, and the leftover sits under a unique name, so a
+// failure here must not fail the operation or mask an earlier error.
+async function removeTreeQuietly(fs: LeaseFileSystem, path: string): Promise<void> {
+  await removeTree(fs, path).catch(() => undefined)
+}
+
 // Starts at the configured delay and grows by 10 ms to 100 ms, as graceful-fs and VS Code do.
 function nextBackoffMs(currentMs: number): number {
   return Math.min(100, currentMs + 10)
@@ -130,18 +157,36 @@ async function observeLease(lockPath: string): Promise<LeaseObservation | null> 
 
 async function restoreCapturedLease(
   fs: LeaseFileSystem,
+  timing: LeaseTiming,
   capturedPath: string,
   lockPath: string,
 ): Promise<void> {
-  await fs.rename(capturedPath, lockPath).catch(async restoreError => {
-    throw new Error('Home Worker configuration lease changed during ownership verification.', {
-      cause: restoreError,
-    })
-  })
+  // The window is at least the acquisition deadline: the captured owner's directory is stranded if
+  // the restore gives up.
+  const deadline = timing.now() + Math.max(timing.timeoutMs, DEFAULT_LEASE_TIMEOUT_MS)
+  let backoffMs = timing.retryDelayMs
+  for (;;) {
+    try {
+      await fs.rename(capturedPath, lockPath)
+      return
+    } catch (restoreError) {
+      const kind = classifyLeaseFsError('restore', readFsErrorCode(restoreError), fs.platform)
+      const lockIsFree = kind === 'ambiguous' && (await observeLease(lockPath)) === null
+      if (!lockIsFree || timing.now() >= deadline) {
+        throw new Error(
+          'Home Worker configuration lease restore failed: changed during ownership verification.',
+          { cause: restoreError },
+        )
+      }
+      await timing.wait(backoffMs)
+      backoffMs = nextBackoffMs(backoffMs)
+    }
+  }
 }
 
 async function reclaimObservedLease(options: {
   fs: LeaseFileSystem
+  timing: LeaseTiming
   lockPath: string
   observed: LeaseObservation
   quarantinePath: string
@@ -157,10 +202,10 @@ async function reclaimObservedLease(options: {
   }
   const captured = await observeLease(options.quarantinePath)
   if (captured?.identity !== options.observed.identity) {
-    await restoreCapturedLease(options.fs, options.quarantinePath, options.lockPath)
+    await restoreCapturedLease(options.fs, options.timing, options.quarantinePath, options.lockPath)
     return false
   }
-  await options.fs.rm(options.quarantinePath, { recursive: true, force: true })
+  await removeTreeQuietly(options.fs, options.quarantinePath)
   return true
 }
 
@@ -186,12 +231,18 @@ export async function acquireHomeWorkerConfigLease(
   const deadline = now() + (options.timeoutMs ?? DEFAULT_LEASE_TIMEOUT_MS)
   const retryDelayMs = options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS
   const malformedStaleMs = options.malformedStaleMs ?? DEFAULT_MALFORMED_STALE_MS
+  const timing: LeaseTiming = {
+    now,
+    wait,
+    retryDelayMs,
+    timeoutMs: options.timeoutMs ?? DEFAULT_LEASE_TIMEOUT_MS,
+  }
   const token = createToken()
   const owner: LeaseRecord = { pid: process.pid, token, createdAt: new Date(now()).toISOString() }
   const claimPath = `${lockPath}.claim-${process.pid}-${token}`
 
   await mkdir(userDataPath, { recursive: true })
-  await fs.rm(claimPath, { recursive: true, force: true })
+  await removeTree(fs, claimPath)
   await mkdir(claimPath)
   await writeFile(
     resolve(claimPath, HOME_WORKER_CONFIG_LEASE_OWNER_FILE),
@@ -201,22 +252,41 @@ export async function acquireHomeWorkerConfigLease(
 
   const createHandle = (): { release: () => Promise<void> } => ({
     release: async () => {
-      const observed = await observeLease(lockPath)
-      if (observed?.record?.token !== token) {
-        return
-      }
+      const releaseDeadline = now() + RELEASE_TIMEOUT_MS
       const releasePath = `${lockPath}.release-${process.pid}-${token}`
-      await fs.rm(releasePath, { recursive: true, force: true })
+      let backoffMs = retryDelayMs
       try {
-        await fs.rename(lockPath, releasePath)
-      } catch {
-        return
+        await removeTree(fs, releasePath)
+      } catch (error) {
+        throw new HomeWorkerConfigLeaseReleaseError(error)
       }
-      const captured = await observeLease(releasePath)
-      if (captured?.record?.token === token) {
-        await fs.rm(releasePath, { recursive: true, force: true })
-      } else {
-        await restoreCapturedLease(fs, releasePath, lockPath)
+      for (;;) {
+        // Every pass looks again, so a lease that was reclaimed or replaced meanwhile is left alone.
+        const observed = await observeLease(lockPath)
+        if (observed?.record?.token !== token) {
+          return
+        }
+        try {
+          await fs.rename(lockPath, releasePath)
+        } catch (error) {
+          const kind = classifyLeaseFsError('release', readFsErrorCode(error), fs.platform)
+          if (kind === 'absent') {
+            return
+          }
+          if (kind !== 'ambiguous' || now() >= releaseDeadline) {
+            throw new HomeWorkerConfigLeaseReleaseError(error)
+          }
+          await wait(backoffMs)
+          backoffMs = nextBackoffMs(backoffMs)
+          continue
+        }
+        const captured = await observeLease(releasePath)
+        if (captured?.record?.token === token) {
+          await removeTreeQuietly(fs, releasePath)
+        } else {
+          await restoreCapturedLease(fs, timing, releasePath, lockPath)
+        }
+        return
       }
     },
   })
@@ -264,7 +334,7 @@ export async function acquireHomeWorkerConfigLease(
         }
         if (ownerAlive === false || malformedIsStale) {
           const quarantinePath = `${lockPath}.stale-${process.pid}-${randomUUID()}`
-          if (await reclaimObservedLease({ fs, lockPath, observed, quarantinePath })) {
+          if (await reclaimObservedLease({ fs, timing, lockPath, observed, quarantinePath })) {
             continue
           }
         }
@@ -286,7 +356,7 @@ export async function acquireHomeWorkerConfigLease(
   try {
     return await acquire()
   } catch (error) {
-    await fs.rm(claimPath, { recursive: true, force: true })
+    await removeTreeQuietly(fs, claimPath)
     throw error
   }
 }
