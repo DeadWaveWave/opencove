@@ -1,4 +1,5 @@
 import type { Node } from '@xyflow/react'
+import type { UpdateTaskStatus } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
 import { vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../src/contexts/settings/domain/agentSettings'
 import { useWorkspaceCanvasNodeDeleteConfirmation } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDeleteConfirmation'
@@ -200,7 +201,7 @@ export function taskRefs() {
     run: recordingRef<(nodeId: string) => Promise<void>>(),
     resume: recordingRef<(taskNodeId: string, recordId: string) => Promise<void>>(),
     remove: recordingRef<(taskNodeId: string, recordId: string) => void>(),
-    status: recordingRef<(nodeId: string, status: never) => void>(),
+    status: recordingRef<UpdateTaskStatus>(),
     title: recordingRef<(nodeId: string, title: string) => void>(),
     requirement: recordingRef<(nodeId: string, requirement: string) => void>(),
   }

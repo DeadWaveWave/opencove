@@ -83,7 +83,7 @@ describe('the task actions', () => {
     {
       name: 'changing the status',
       call: (refs: ReturnType<typeof renderTaskActions>['refs']) =>
-        refs.status.ref.current('task-a', 'done' as never),
+        refs.status.ref.current('task-a', 'done'),
       seen: (document: ReturnType<typeof documentOf>) => document.nodes[0].data.task?.status,
       expected: 'done',
     },
@@ -125,14 +125,14 @@ describe('the task actions', () => {
     settle(rendered)
 
     act(() => {
-      madeInA('task-a', 'done' as never)
+      madeInA('task-a', 'done')
     })
     expect(taskOf(A, 'task-a').status).toBe('done')
     expect(taskOf(B, 'task-b').status).toBe('doing')
 
     // The callback of the render that shows B writes B: it was rebuilt for the new writer.
     act(() => {
-      rendered.refs.status.ref.current('task-b', 'done' as never)
+      rendered.refs.status.ref.current('task-b', 'done')
     })
     expect(taskOf(B, 'task-b').status).toBe('done')
     expect(rendered.flushes).toHaveLength(2)
