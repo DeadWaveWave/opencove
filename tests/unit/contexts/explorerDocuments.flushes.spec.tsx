@@ -1,6 +1,7 @@
 import { act } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { documentOf, stubOpencoveApi, WORKSPACE_A as A } from '../../support/agentRuntimeHarness'
+import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import {
   documentNodeAt,
   folderNodeAt,
@@ -73,6 +74,7 @@ afterEach(() => {
 const FOLDER_URI = 'file:///repo/docs'
 const FILE_URI = `${FOLDER_URI}/a.md`
 const folder = () => folderNodeAt('folder', FOLDER_URI, 'file:///repo', { x: 50, y: 50 })
+const documentCount = () => documentOf(A).nodes.length
 const kinds = (workspaceId: string) => documentOf(workspaceId).nodes.map(node => node.data.kind)
 const created = (workspaceId: string, kind: string) =>
   documentOf(workspaceId).nodes.find(node => node.data.kind === kind)
@@ -246,6 +248,22 @@ describe('the document opening', () => {
     expect(flushes).toHaveLength(0)
   })
 
+  it('flushes nothing when another opening finished while the binding resolved', async () => {
+    let finish!: (value: unknown) => void
+    mocks.binding.mockReturnValue(new Promise(resolve => (finish = resolve)))
+    const { view, flushes } = renderOpening({ a: {} })
+
+    await act(async () => {
+      const pending = view.result.current(request(null))
+      replaceWorkspaceNodes(A, [documentNodeAt('concurrent', FILE_URI)])
+      finish(LOCAL)
+      await pending
+    })
+
+    expect(documentCount()).toBe(1)
+    expect(flushes).toHaveLength(0)
+  })
+
   it('flushes nothing when no binding can be resolved', async () => {
     mocks.binding.mockResolvedValue(null)
     const { view, flushes } = renderOpening({ a: {} })
@@ -307,5 +325,39 @@ describe('the image materialized by the explorer', () => {
 
     expect(flushes[0].document.spaces[0].nodeIds).toHaveLength(1)
     expect(flushes[0].document.nodes[0].data.kind).toBe('document')
+  })
+
+  it('flushes nothing when the node store makes no image node', async () => {
+    const createImageNode = vi.fn(() => null)
+    const { view, flushes } = renderExplorer(
+      { a: { spaces: [spaceAt('space-a')] } },
+      { createImageNode },
+    )
+
+    await act(async () => {
+      view.result.current.openFileInSpace('space-a', IMAGE_URI)
+      await vi.waitFor(() => expect(createImageNode).toHaveBeenCalled())
+    })
+
+    expect(kinds(A)).toEqual([])
+    expect(flushes).toHaveLength(0)
+  })
+
+  it('flushes nothing when the request went stale while the image was read', async () => {
+    let finish!: (value: unknown) => void
+    const readFileBytes = vi.fn(() => new Promise(resolve => (finish = resolve)))
+    mocks.filesystem.mockReturnValue({ readFileBytes })
+    const { view, flushes } = renderExplorer({ a: { spaces: [spaceAt('space-a')] } })
+
+    await act(async () => {
+      view.result.current.openFileInSpace('space-a', IMAGE_URI)
+      await vi.waitFor(() => expect(readFileBytes).toHaveBeenCalled())
+      view.result.current.dismissQuickPreview()
+      finish({ bytes: new Uint8Array(3) })
+      await new Promise(resolve => setTimeout(resolve, 20))
+    })
+
+    expect(kinds(A)).toEqual([])
+    expect(flushes).toHaveLength(0)
   })
 })

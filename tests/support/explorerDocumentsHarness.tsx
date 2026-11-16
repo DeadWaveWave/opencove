@@ -137,6 +137,8 @@ export interface ExplorerRenderOptions {
   fixedWorkspaceId?: boolean
   /** Stands in for the node store's creator, for a case in which no node is created. */
   createDocumentNode?: WorkspaceDocumentOpeningArgs['createDocumentNode']
+  /** The same for the image creator of the explorer. */
+  createImageNode?: () => Node<TerminalNodeData> | null
 }
 
 function shownId(context: RuntimeCanvasContext, { fixedWorkspaceId }: ExplorerRenderOptions) {
@@ -256,7 +258,7 @@ export function renderExplorer(documents?: Documents, options: ExplorerRenderOpt
     const createDocumentNode = useStable(
       options.createDocumentNode ?? context.nodeStore.createDocumentNode,
     )
-    const createImageNode = useStable(context.nodeStore.createImageNode)
+    const createImageNode = useStable(options.createImageNode ?? context.nodeStore.createImageNode)
     return useWorkspaceCanvasSpaceExplorer({
       workspaceId,
       canvasRef,
