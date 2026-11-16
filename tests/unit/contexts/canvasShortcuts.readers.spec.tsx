@@ -6,6 +6,7 @@ import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/ag
 import type { ApplicationShortcutEvent } from '../../../src/shared/contracts/applicationShortcut'
 import { publishWorkspaceNodeCreated } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeCreationEvents'
 import { useWorkspaceCanvasShortcutActions } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasShortcutActions'
+import { useWorkspaceCanvasShortcuts } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useShortcuts'
 import { useWorkspaceCanvasCreationActivation } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCreationActivation'
 import { useCanvasSelectionCommands } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
 import {
@@ -20,11 +21,7 @@ import {
   createCanvasDocumentHarness,
   renderInCanvasDocument,
 } from '../../support/canvasDocumentHarness'
-import {
-  createNodeHolder,
-  createRowNodes,
-  createSpace,
-} from '../../support/canvasSelectionFixtures'
+import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
 import { pixelNode } from './workspacePixelLayer.fixtures'
 
 // The shortcuts, the close-selected-node shortcut and the creation activation read the committed
@@ -60,7 +57,18 @@ vi.mock(
     }
   },
 )
-vi.mock('@app/renderer/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
+// `t` must keep its identity: a new one on every render would re-subscribe the close shortcut and
+// hide a reader that is missing from its dependency list.
+const translation = vi.hoisted(() => ({ t: (key: string) => key }))
+vi.mock('@app/renderer/i18n', () => ({ useTranslation: () => translation }))
+// The selection write of the node navigation has its own reader, which changes with the workspace
+// and would rebuild `navigateNode` on a switch. It is replaced by a stable function so that only
+// the reader of the navigation itself can make the callback follow the switch.
+const selectNode = vi.hoisted(() => vi.fn())
+vi.mock(
+  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSelectNode',
+  () => ({ useWorkspaceCanvasSelectNode: () => selectNode }),
+)
 
 const WORKSPACE_A = 'workspace-a'
 const WORKSPACE_B = 'workspace-b'
@@ -108,6 +116,7 @@ let listener: (event: ApplicationShortcutEvent) => void = () => undefined
 
 beforeEach(() => {
   firstRender.values.clear()
+  selectNode.mockClear()
   shown = WORKSPACE_A
   listener = () => undefined
   vi.stubGlobal('opencoveApi', {
@@ -139,7 +148,6 @@ describe('the shortcut actions', () => {
   }: { spaces?: WorkspaceSpaceState[]; activeSpaceId?: string | null } = {}) {
     const canvas = document.createElement('div')
     document.body.append(canvas)
-    const holder = createNodeHolder(createRowNodes(['a-node', 'b-node', 'node']))
     const calls = {
       closeNode: vi.fn(async () => undefined),
       activateSpace: vi.fn(),
@@ -162,7 +170,7 @@ describe('the shortcut actions', () => {
         setViewport: vi.fn(),
       },
       spaceNavigationAnchorIdRef: { current: null },
-      setNodes: holder.setNodes,
+      setNodes: vi.fn(),
       updateCanvasDocument: vi.fn(),
       nodeCreation: { createNodeForSession: vi.fn(), createNoteNode: vi.fn() },
       launchAgentAtFlowPosition: vi.fn(),
@@ -194,7 +202,6 @@ describe('the shortcut actions', () => {
       })
     return {
       ...calls,
-      holder,
       view,
       press,
       selection: view.result,
@@ -209,7 +216,7 @@ describe('the shortcut actions', () => {
   describe('node navigation', () => {
     it('moves to a node that only the store holds, in a Space that only the store holds', () => {
       seedTwoWorkspaces({}, {})
-      const { navigateNodeRight, setActiveSpaceIdFromNodeNavigation, holder } = mount()
+      const { navigateNodeRight, setActiveSpaceIdFromNodeNavigation } = mount()
 
       act(() => {
         replaceWorkspaceNodes(WORKSPACE_A, [noteAt('node')])
@@ -217,13 +224,13 @@ describe('the shortcut actions', () => {
       })
       navigateNodeRight()
 
-      expect(holder.selectedIds).toEqual(['node'])
+      expect(selectNode).toHaveBeenCalledExactlyOnceWith('node')
       expect(setActiveSpaceIdFromNodeNavigation).toHaveBeenCalledExactlyOnceWith('space')
     })
 
     it('ignores a hidden node', () => {
       seedTwoWorkspaces({}, {})
-      const { navigateNodeRight, holder } = mount()
+      const { navigateNodeRight } = mount()
 
       act(() => {
         replaceWorkspaceNodes(WORKSPACE_A, [
@@ -233,27 +240,27 @@ describe('the shortcut actions', () => {
       })
       navigateNodeRight()
 
-      expect(holder.selectedIds).toEqual(['b-node'])
+      expect(selectNode).toHaveBeenCalledExactlyOnceWith('b-node')
     })
 
     it('reads the nodes of the workspace of the render and not the one shown', () => {
       seedTwoWorkspaces({ nodes: [noteAt('a-node')] }, { nodes: [noteAt('b-node')] })
-      const { navigateNodeRight, holder } = mount()
+      const { navigateNodeRight } = mount()
 
       act(() => useAppStore.setState({ activeWorkspaceId: WORKSPACE_B }))
       navigateNodeRight()
 
-      expect(holder.selectedIds).toEqual(['a-node'])
+      expect(selectNode).toHaveBeenCalledExactlyOnceWith('a-node')
     })
 
     it('follows a switch of workspace', () => {
       seedTwoWorkspaces({ nodes: [noteAt('a-node')] }, { nodes: [noteAt('b-node')] })
-      const { navigateNodeRight, holder, show } = mount()
+      const { navigateNodeRight, show } = mount()
 
       show(WORKSPACE_B)
       navigateNodeRight()
 
-      expect(holder.selectedIds).toEqual(['b-node'])
+      expect(selectNode).toHaveBeenCalledExactlyOnceWith('b-node')
     })
   })
 
@@ -398,6 +405,61 @@ describe('the shortcut actions', () => {
 
       expect(closeNode).not.toHaveBeenCalled()
     })
+  })
+})
+
+describe('the shortcuts hook on its own', () => {
+  // Its callbacks are stable here, so only its own reader can make the key handler follow a switch
+  // (inside the shortcut actions the navigation callbacks change with the workspace as well).
+  const spaces = [createSpace('s1', RIGHT_OF_CENTER, ['agent']), createSpace('s2', RIGHT_OF_CENTER)]
+  const callbacks = {
+    createSpaceFromSelectedNodes: vi.fn(),
+    createNoteAtViewportCenter: vi.fn(),
+    createTerminalAtViewportCenter: vi.fn(async () => undefined),
+    createAgentAtViewportCenter: vi.fn(async () => undefined),
+    activateSpace: vi.fn(),
+    navigateNode: vi.fn(),
+    navigateSpace: vi.fn(),
+  }
+  const canvasRef = { current: null }
+  const keybindings = {}
+
+  it('cycles the idle Spaces of the workspace shown after a switch', () => {
+    seedTwoWorkspaces(
+      { nodes: [agentNode('agent', 'standby')] },
+      { nodes: [agentNode('agent', 'running')] },
+    )
+    callbacks.activateSpace.mockClear()
+    const view = renderInCanvasDocument(
+      () =>
+        useWorkspaceCanvasShortcuts({
+          enabled: true,
+          platform: 'darwin',
+          keybindings,
+          disableWhenTerminalFocused: false,
+          activeSpaceId: null,
+          spaces,
+          canvasRef,
+          ...callbacks,
+        }),
+      { workspaceId: () => shown },
+    )
+
+    showWorkspace(view.rerender, WORKSPACE_B)
+    act(() => {
+      document.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'BracketRight',
+          code: 'BracketRight',
+          metaKey: true,
+          shiftKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      )
+    })
+
+    expect(callbacks.activateSpace).toHaveBeenCalledExactlyOnceWith('s2')
   })
 })
 

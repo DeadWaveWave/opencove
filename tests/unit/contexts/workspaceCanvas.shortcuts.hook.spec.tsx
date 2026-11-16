@@ -57,12 +57,12 @@ function createNode(
   }
 }
 
-function ShortcutHarnessBody(props: React.ComponentProps<typeof useWorkspaceCanvasShortcuts>) {
+function ShortcutHarnessBody(props: Parameters<typeof useWorkspaceCanvasShortcuts>[0]) {
   useWorkspaceCanvasShortcuts(props)
   return <div />
 }
 
-function ShortcutHarness(props: React.ComponentProps<typeof useWorkspaceCanvasShortcuts>) {
+function ShortcutHarness(props: Parameters<typeof useWorkspaceCanvasShortcuts>[0]) {
   return (
     <CanvasStoreTestProvider>
       <ShortcutHarnessBody {...props} />

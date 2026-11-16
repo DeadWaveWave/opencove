@@ -48,7 +48,7 @@ function HarnessBody({
   )
 }
 
-function Harness(props: React.ComponentProps<typeof HarnessBody>) {
+function Harness(props: Parameters<typeof HarnessBody>[0]) {
   return (
     <CanvasStoreTestProvider>
       <HarnessBody {...props} />
