@@ -1,10 +1,9 @@
 // @vitest-environment happy-dom
 import { DEFAULT_AGENT_ENV_BY_PROVIDER } from '../../../src/contexts/settings/domain/agentEnv'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { createElement, useCallback, useMemo, useRef, useState } from 'react'
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
-
 import { describeWithElectronNativeModules } from '../electronNativeSuite'
 import { snapshotFixture, type SnapshotFixture } from './managedClaudeSnapshotFixture'
 import { toShellWorkspaceState } from '../../../src/app/renderer/shell/hooks/useHydrateAppState.helpers'
@@ -242,9 +241,9 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
           }
         },
         {
-          wrapper: ({ children }) => (
-            <CanvasStoreTestProvider workspaceId={workspace.id}>{children}</CanvasStoreTestProvider>
-          ),
+          // The native suite compiles without the automatic JSX runtime, so no JSX here.
+          wrapper: ({ children }) =>
+            createElement(CanvasStoreTestProvider, { workspaceId: workspace.id }, children),
         },
       )
       let launch!: ReturnType<typeof hook.result.current.launchAgentInNode>
