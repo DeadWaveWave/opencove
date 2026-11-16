@@ -6,6 +6,7 @@ import {
   resolveNodeRoleDefinition,
   runRoleNodeAction,
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useRoleActions.run'
+import { createStoreBackedChannels } from '../../support/workspaceCanvasStoreHarness'
 
 function createRoleNode(): Node<TerminalNodeData> {
   return {
@@ -104,8 +105,8 @@ describe('resolveNodeRoleDefinition', () => {
             updatedAt: '',
           },
         ],
-        nodesRef: { current: [node] },
-        spacesRef: { current: [] },
+        readDocument: createStoreBackedChannels({ workspaceId: 'workspace', nodes: [node] })
+          .readDocument,
         setNodes: vi.fn(),
         updateCanvasDocument: vi.fn(),
         updateSpaces: vi.fn(),

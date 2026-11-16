@@ -1,5 +1,4 @@
 import { assertProviderInitialPrompt } from '@contexts/agent/domain/providerInitialPromptPolicy'
-import type { MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { TranslateFn } from '@app/renderer/i18n'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
@@ -10,7 +9,7 @@ import {
   type AgentSettings,
   type ProjectRoleDefinition,
 } from '@contexts/settings/domain/agentSettings'
-import type { RoleNodeData, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { RoleNodeData, TerminalNodeData } from '../../../types'
 import { resolveLaunchedAgentResumeBinding } from '../../../utils/agentResumeBinding'
 import { toErrorMessage } from '../helpers'
 import type { CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
@@ -18,6 +17,7 @@ import { resolveDefaultAgentLaunchGeometry } from './agentLaunchGeometry'
 import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
 import { composeProjectRolePrompt } from './useRolePrompt'
 import type { CanvasDocumentCommands } from '../../../store/canvasStoreContext'
+import type { WorkspaceDocument } from '../../../store/workspaceDocument'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import {
   buildMergedAgentLaunchEnv,
@@ -26,10 +26,7 @@ import {
   resolveWorkspaceAgentLaunchBinding,
 } from './useWorkspaceAgentLaunch.shared'
 
-type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean },
-) => void
+type SetNodes = UseWorkspaceCanvasNodesStoreResult['setNodes']
 
 export interface RoleRunActionContext {
   workspaceId: string
@@ -37,12 +34,14 @@ export interface RoleRunActionContext {
   environmentVariables?: Record<string, string>
   agentSettings: AgentSettings
   projectRoles: ProjectRoleDefinition[]
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
+  /**
+   * The document reader of the render that started the run: it keeps reading the workspace that
+   * started it, whichever workspace is shown by the time the run awaits.
+   */
+  readDocument: () => WorkspaceDocument
   setNodes: SetNodes
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   updateSpaces: CanvasDocumentCommands['updateSpaces']
-  onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   updateRoleInput: (nodeId: string, input: string) => void
@@ -70,14 +69,17 @@ export function resolveNodeRoleDefinition(
   return fromProject ? { ...fromProject } : null
 }
 
+/** `flush` requests the persistence flush on the write itself, for a caller that persists it. */
 function setRoleNodeLastError({
   nodeId,
   message,
   setNodes,
+  flush,
 }: {
   nodeId: string
   message: string
   setNodes: SetNodes
+  flush?: boolean
 }): void {
   setNodes(
     prevNodes =>
@@ -92,7 +94,7 @@ function setRoleNodeLastError({
             }
           : node,
       ),
-    { syncLayout: false },
+    { syncLayout: false, flush },
   )
 }
 
@@ -101,7 +103,7 @@ export async function runRoleNodeAction(
   inputOverride: string | undefined,
   context: RoleRunActionContext,
 ): Promise<void> {
-  const roleNode = context.nodesRef.current.find(node => node.id === nodeId)
+  const roleNode = context.readDocument().nodes.find(node => node.id === nodeId)
   if (!roleNode || roleNode.data.kind !== 'role' || !roleNode.data.role) {
     return
   }
@@ -117,8 +119,8 @@ export async function runRoleNodeAction(
       nodeId,
       message: context.t('roleNode.missingRoleDefinition'),
       setNodes: context.setNodes,
+      flush: true,
     })
-    context.onRequestPersistFlush?.()
     return
   }
 
@@ -140,7 +142,7 @@ export async function runRoleNodeAction(
     return
   }
   const owningSpace =
-    context.spacesRef.current.find(space => space.nodeIds.includes(nodeId)) ?? null
+    context.readDocument().spaces.find(space => space.nodeIds.includes(nodeId)) ?? null
   const initialBinding = await resolveWorkspaceAgentLaunchBinding({
     workspaceId: context.workspaceId,
     workspacePath: context.workspacePath,
@@ -277,15 +279,13 @@ export async function runRoleNodeAction(
               }
             : node,
         ),
-      { syncLayout: false },
+      { syncLayout: false, flush: true },
     )
-    context.onRequestPersistFlush?.()
   } catch (error) {
     const message = context.t('messages.agentLaunchFailed', {
       message: toErrorMessage(error),
     })
-    setRoleNodeLastError({ nodeId, message, setNodes: context.setNodes })
-    context.onRequestPersistFlush?.()
+    setRoleNodeLastError({ nodeId, message, setNodes: context.setNodes, flush: true })
     context.onShowMessage?.(message, 'error')
   }
 }

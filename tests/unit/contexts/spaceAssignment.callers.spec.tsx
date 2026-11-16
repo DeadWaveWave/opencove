@@ -43,6 +43,7 @@ import {
   spacesRef,
   type Updater,
 } from '../../support/pushAwayCallerHarness'
+import { createStoreBackedChannels } from '../../support/workspaceCanvasStoreHarness'
 
 // Every caller of the push-away takes the document writer of the node store of the render that made
 // its callback, and hands the push-away that writer and none of the old channels (#702, PR 6). A
@@ -642,8 +643,6 @@ describe('the push-away of the task and role callers', () => {
       refs: ReturnType<typeof taskRefs>,
     ) {
       return useWorkspaceCanvasTaskActions({
-        nodesRef,
-        spacesRef,
         setNodes,
         onSpacesChange,
         createNodeForSession,
@@ -691,8 +690,10 @@ describe('the push-away of the task and role callers', () => {
         assignedNode: CREATED,
         context: {
           workspaceId: 'workspace',
-          spacesRef: { current: [{ ...TARGET, nodeIds: [taskNode.id] }] },
-          nodesRef,
+          readDocument: createStoreBackedChannels({
+            workspaceId: 'workspace',
+            spaces: [{ ...TARGET, nodeIds: [taskNode.id] }],
+          }).readDocument,
           updateCanvasDocument,
         } as never,
       })
@@ -726,12 +727,9 @@ describe('the push-away of the task and role callers', () => {
         workspaceId: 'workspace',
         workspacePath: '/repo',
         agentSettings: roleSettings,
-        nodesRef,
-        spacesRef,
         setNodes,
         onSpacesChange,
         onShowMessage,
-        onRequestPersistFlush,
         standardWindowSizeBucket: 'regular',
         createRoleNode,
         createNodeForSession,
@@ -754,7 +752,7 @@ describe('the push-away of the task and role callers', () => {
           return hook.runProjectRoleFromContextMenu('role')
         },
         argsOf: assignArgs,
-        flush: onRequestPersistFlush,
+        flush: 'document',
       })
     })
 
@@ -791,12 +789,19 @@ describe('the push-away of the task and role callers', () => {
         workspacePath: '/repo',
         agentSettings: DEFAULT_AGENT_SETTINGS,
         projectRoles: [{ id: 'role', name: 'Role', promptTemplate: 'x', outputFormat: '' }],
-        nodesRef: { current: [roleNode] },
-        spacesRef: { current: [{ ...TARGET, nodeIds: ['role-node'] }] },
-        setNodes,
+        readDocument: createStoreBackedChannels({
+          workspaceId: 'workspace',
+          nodes: [roleNode],
+          spaces: [{ ...TARGET, nodeIds: ['role-node'] }],
+        }).readDocument,
+        // The flush rides on the write that records the run, as the node store takes it.
+        setNodes: vi.fn((_updater, options) => {
+          if (options?.flush) {
+            onRequestPersistFlush()
+          }
+        }),
         updateCanvasDocument,
         updateSpaces: vi.fn(),
-        onRequestPersistFlush,
         createNodeForSession,
         updateRoleInput: vi.fn(),
         appendRoleRunRecord: vi.fn(),
@@ -829,7 +834,6 @@ describe('the push-away through the carriers of the canvas', () => {
         },
       },
     )
-    const canvasState = { spacesRef }
     const agentSupport = { buildAgentNodeTitle }
     await expectsWriterOfTheRender({
       assign: assignMock,
@@ -838,9 +842,7 @@ describe('the push-away through the carriers of the canvas', () => {
           workspaceId: 'workspace',
           workspacePath: '/repo',
           agentSettings: roleSettings,
-          canvasState,
           nodeStore: {
-            nodesRef,
             setNodes,
             updateCanvasDocument,
             createRoleNode,
@@ -851,7 +853,6 @@ describe('the push-away through the carriers of the canvas', () => {
           },
           agentSupport,
           onShowMessage,
-          onRequestPersistFlush,
           actionRefs,
         } as never),
       invoke: ({ hook, ui }) => {
@@ -859,7 +860,7 @@ describe('the push-away through the carriers of the canvas', () => {
         return hook.runProjectRoleFromContextMenu('role')
       },
       argsOf: assignArgs,
-      flush: onRequestPersistFlush,
+      flush: 'document',
     })
   })
 

@@ -11,6 +11,7 @@ import {
 import { runTaskAgentAction } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskActions.agentSession.run'
 import type { TaskActionContext } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskActions.agentSession.shared'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
+import { createStoreBackedChannels } from '../../support/workspaceCanvasStoreHarness'
 import { readManagedClaudeExecutionContext } from '../../../src/contexts/workspace/presentation/renderer/utils/managedClaudeLifecycle'
 import {
   launchWorkspaceAgentSession,
@@ -61,52 +62,63 @@ beforeEach(() => {
     executionDirectory: '/repo',
   })
 })
-function taskContext(): TaskActionContext {
+
+// The actions read the document and write nodes through the node store, which takes the flush on
+// the write: the nodes are seeded into the store, and `onRequestPersistFlush` counts the flushes
+// that the writes ask for.
+function storeContext(nodes: unknown[], onRequestPersistFlush = vi.fn()) {
+  const channels = createStoreBackedChannels({
+    workspaceId: 'workspace',
+    nodes: nodes as never,
+    onFlush: onRequestPersistFlush,
+  })
+  return {
+    nodesRef: channels.nodesRef,
+    readDocument: channels.readDocument,
+    setNodes: channels.setNodes,
+    onRequestPersistFlush,
+  }
+}
+type StoreContext = ReturnType<typeof storeContext>
+function taskContext(): TaskActionContext & StoreContext {
   const context = {
-    nodesRef: {
-      current: [
-        {
-          id: 'task',
-          position: { x: 0, y: 0 },
-          data: {
-            kind: 'task',
-            title: 'Task',
-            width: 300,
-            height: 200,
-            task: { requirement: 'Next task', linkedAgentNodeId: 'agent' },
+    ...storeContext([
+      {
+        id: 'task',
+        position: { x: 0, y: 0 },
+        data: {
+          kind: 'task',
+          title: 'Task',
+          width: 300,
+          height: 200,
+          task: { requirement: 'Next task', linkedAgentNodeId: 'agent' },
+        },
+      },
+      {
+        id: 'agent',
+        data: {
+          kind: 'agent',
+          title: 'Agent',
+          agent: {
+            provider: 'claude-code',
+            prompt: 'Previous task',
+            executionDirectory: '/repo',
+            expectedDirectory: '/repo',
+            directoryMode: 'workspace',
+            ...tuple,
           },
         },
-        {
-          id: 'agent',
-          data: {
-            kind: 'agent',
-            title: 'Agent',
-            agent: {
-              provider: 'claude-code',
-              prompt: 'Previous task',
-              executionDirectory: '/repo',
-              expectedDirectory: '/repo',
-              directoryMode: 'workspace',
-              ...tuple,
-            },
-          },
-        },
-      ],
-    },
-    spacesRef: { current: [] },
+      },
+    ]),
     workspaceId: 'workspace',
     workspacePath: '/repo',
     agentSettings: DEFAULT_AGENT_SETTINGS,
     updateCanvasDocument: vi.fn(),
     updateSpaces: vi.fn(),
-    onRequestPersistFlush: vi.fn(),
     launchAgentInNode: vi.fn(async () => {}),
     buildAgentNodeTitle: () => 'Agent',
     t: (key: string) => key,
-  } as unknown as TaskActionContext
-  context.setNodes = updater => {
-    context.nodesRef.current = updater(context.nodesRef.current)
-  }
+  } as unknown as TaskActionContext & StoreContext
   return context
 }
 const REMOVED_BINDING_CHANNELS = ['spacesRef', 'onSpacesChange', 'onRequestPersistFlush']
@@ -168,29 +180,24 @@ describe('managed Claude task and role actions', () => {
       workspaceId: 'workspace',
       workspacePath: '/repo',
       agentSettings: DEFAULT_AGENT_SETTINGS,
-      nodesRef: {
-        current: [
-          {
-            id: 'role-node',
-            position: { x: 0, y: 0 },
-            data: {
-              kind: 'role',
-              width: 300,
-              role: { roleId: 'reviewer', input: '', selectedProvider: 'codex' },
-            },
+      ...storeContext([
+        {
+          id: 'role-node',
+          position: { x: 0, y: 0 },
+          data: {
+            kind: 'role',
+            width: 300,
+            role: { roleId: 'reviewer', input: '', selectedProvider: 'codex' },
           },
-        ],
-      },
-      spacesRef: { current: [] },
+        },
+      ]),
       projectRoles: [
         { id: 'reviewer', name: 'Reviewer', promptTemplate: 'Review the task', outputFormat: '' },
       ],
       createNodeForSession: vi.fn(async () => null),
       appendRoleRunRecord: vi.fn(),
-      setNodes: vi.fn(),
       updateCanvasDocument: vi.fn(),
       updateSpaces: vi.fn(),
-      onRequestPersistFlush: vi.fn(),
       updateRoleInput: vi.fn(),
       buildAgentNodeTitle: () => 'Reviewer',
       t: (key: string) => key,
@@ -236,8 +243,8 @@ describe('managed Claude task and role actions', () => {
       workspaceId: 'workspace',
       workspacePath: '/repo',
       agentSettings: DEFAULT_AGENT_SETTINGS,
-      nodesRef: {
-        current: [
+      ...storeContext(
+        [
           {
             id: 'role-node',
             position: { x: 0, y: 0 },
@@ -248,8 +255,8 @@ describe('managed Claude task and role actions', () => {
             },
           },
         ],
-      },
-      spacesRef: { current: [] },
+        onRequestPersistFlush,
+      ),
       projectRoles: [
         { id: 'reviewer', name: 'Reviewer', promptTemplate: 'Review the task', outputFormat: '' },
       ],
@@ -258,10 +265,8 @@ describe('managed Claude task and role actions', () => {
         return null
       }),
       appendRoleRunRecord: vi.fn(),
-      setNodes: vi.fn(),
       updateCanvasDocument: vi.fn(),
       updateSpaces: vi.fn(),
-      onRequestPersistFlush,
       updateRoleInput: vi.fn(),
       buildAgentNodeTitle: () => 'Reviewer',
       t: (key: string) => key,
@@ -495,29 +500,24 @@ describe('managed Claude task and role actions', () => {
       workspaceId: 'workspace',
       workspacePath: '/repo',
       agentSettings: DEFAULT_AGENT_SETTINGS,
-      nodesRef: {
-        current: [
-          {
-            id: 'role-node',
-            position: { x: 0, y: 0 },
-            data: {
-              kind: 'role',
-              width: 300,
-              role: { roleId: 'reviewer', input: '', selectedProvider: 'claude-code' },
-            },
+      ...storeContext([
+        {
+          id: 'role-node',
+          position: { x: 0, y: 0 },
+          data: {
+            kind: 'role',
+            width: 300,
+            role: { roleId: 'reviewer', input: '', selectedProvider: 'claude-code' },
           },
-        ],
-      },
-      spacesRef: { current: [] },
+        },
+      ]),
       projectRoles: [
         { id: 'reviewer', name: 'Reviewer', promptTemplate: 'Review the task', outputFormat: '' },
       ],
       createNodeForSession,
       appendRoleRunRecord: vi.fn(),
-      setNodes: vi.fn(),
       updateCanvasDocument: vi.fn(),
       updateSpaces: vi.fn(),
-      onRequestPersistFlush: vi.fn(),
       updateRoleInput: vi.fn(),
       buildAgentNodeTitle: () => 'Reviewer',
       t: (key: string) => key,

@@ -171,9 +171,9 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
         await fixture.store.readAppStateRevision(),
       )
       vi.useFakeTimers()
-      // The lifecycle reads the canvas document from the store; the task run still takes refs, so
-      // both see the nodes and Spaces through these views of the one workspace the store holds.
-      const { nodesRef, spacesRef } = createStoreBackedChannels({
+      // The lifecycle and the task run read the canvas document from the store; the persisted
+      // state below is produced from these views of the one workspace the store holds.
+      const { nodesRef, spacesRef, readDocument } = createStoreBackedChannels({
         workspaceId: workspace.id,
         nodes: workspace.nodes,
         spaces: workspace.spaces,
@@ -202,10 +202,14 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
             isHydrated: true,
             producePersistedState: produce,
           })
-          const setCanvasNodes: TaskActionContext['setNodes'] = update => {
+          // The flush rides on the node write that asks for it, as the node store runs it.
+          const setCanvasNodes: TaskActionContext['setNodes'] = (update, options) => {
             const next = update(nodesRef.current)
             nodesRef.current = next
             setNodes(next)
+            if (options?.flush) {
+              persistence.requestPersistFlush()
+            }
           }
           // The push-away is one recipe over the nodes and the Spaces, as the node store runs it.
           const updateCanvasDocument: TaskActionContext['updateCanvasDocument'] = recipe => {
@@ -233,8 +237,7 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
             nodesRef,
             runTask: () =>
               runTaskAgentAction('task', {
-                nodesRef,
-                spacesRef,
+                readDocument,
                 updateCanvasDocument,
                 updateSpaces: vi.fn(),
                 setNodes: setCanvasNodes,
@@ -246,7 +249,6 @@ describeWithElectronNativeModules('UI Claude relaunch during normal persistence'
                 workspacePath: workspace.path,
                 terminalDisplayMetrics: { fontSize: 13 },
                 t: translate,
-                onRequestPersistFlush: persistence.requestPersistFlush,
               }),
           }
         },

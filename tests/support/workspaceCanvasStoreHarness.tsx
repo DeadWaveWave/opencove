@@ -1,6 +1,7 @@
 import type { Node } from '@xyflow/react'
 import { afterEach } from 'vitest'
 import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
+import type { WorkspaceDocument } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocument'
 import {
   bindWorkspaceDocumentStore,
   readWorkspaceDocument,
@@ -62,8 +63,16 @@ export interface StoreBackedChannels {
   nodesRef: { current: Node<TerminalNodeData>[] }
   /** The store's Spaces of the workspace. */
   spacesRef: { current: WorkspaceSpaceState[] }
-  /** Writes the store's nodes of the workspace, as the canvas's node store does. */
-  setNodes: (updater: (previous: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => void
+  /** The document reader a canvas of the workspace holds: it reads the store when it is called. */
+  readDocument: () => WorkspaceDocument
+  /**
+   * Writes the store's nodes of the workspace, as the canvas's node store does. `flush` is what
+   * the node store takes to request the persistence flush on the write: `onFlush` receives it.
+   */
+  setNodes: (
+    updater: (previous: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
+    options?: { syncLayout?: boolean; flush?: boolean },
+  ) => void
 }
 
 /**
@@ -76,17 +85,22 @@ export function createStoreBackedChannels({
   workspaceId,
   nodes = [],
   spaces = [],
+  onFlush,
 }: {
   workspaceId: string
   nodes?: Node<TerminalNodeData>[]
   spaces?: WorkspaceSpaceState[]
+  onFlush?: () => void
 }): StoreBackedChannels {
   seedWorkspaceCanvasStore({ workspaceId, nodes, spaces })
-  return storeBackedChannelsOf(workspaceId)
+  return storeBackedChannelsOf(workspaceId, onFlush)
 }
 
 /** The same objects over a workspace that the spec has already seeded. */
-export function storeBackedChannelsOf(workspaceId: string): StoreBackedChannels {
+export function storeBackedChannelsOf(
+  workspaceId: string,
+  onFlush?: () => void,
+): StoreBackedChannels {
   const read = () => {
     const document = readWorkspaceDocument(workspaceId)
     if (!document) {
@@ -113,8 +127,12 @@ export function storeBackedChannelsOf(workspaceId: string): StoreBackedChannels 
   return {
     nodesRef,
     spacesRef,
-    setNodes: updater => {
+    readDocument: read,
+    setNodes: (updater, options) => {
       nodesRef.current = updater(nodesRef.current)
+      if (options?.flush) {
+        onFlush?.()
+      }
     },
   }
 }

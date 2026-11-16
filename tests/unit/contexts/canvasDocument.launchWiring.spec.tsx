@@ -212,8 +212,6 @@ describe('the writer that launch callers hand to the mount repair and the bindin
 
   const taskParams = () =>
     ({
-      nodesRef,
-      spacesRef,
       onSpacesChange,
       setNodes,
       createNodeForSession,
@@ -252,8 +250,6 @@ describe('the writer that launch callers hand to the mount repair and the bindin
       workspaceId: 'workspace',
       workspacePath: '/repo',
       agentSettings: DEFAULT_AGENT_SETTINGS,
-      nodesRef,
-      spacesRef,
       setNodes,
       onSpacesChange,
       onShowMessage,
