@@ -227,6 +227,28 @@ describe('the task run and the task resume', () => {
       expect(nodeOf(A, 'task-a').data.lastError).toEqual(expect.any(String))
     })
 
+    it('does not reuse a linked agent that the store lost during the binding await', async () => {
+      const held = deferred<typeof BOUND>()
+      launch.binding.mockReturnValueOnce(held.promise)
+      const { refs, launchAgentInNode } = renderTaskActions({
+        a: { nodes: [linkedTask('task-a', 'agent-a'), agentNode('agent-a')] },
+      })
+      let pending!: Promise<void>
+      act(() => {
+        pending = refs.run.ref.current('task-a')
+      })
+
+      await act(async () => {
+        replaceWorkspaceNodes(A, [linkedTask('task-a', 'agent-a')])
+        held.resolve(BOUND)
+        await pending
+      })
+
+      expect(launchAgentInNode).not.toHaveBeenCalled()
+      expect(nodeOf(A, 'task-a').data.task?.linkedAgentNodeId).toBeNull()
+      expect(launch.session).toHaveBeenCalledWith(expect.objectContaining({ mode: 'new' }))
+    })
+
     it('judges the linked agent after the binding await in the workspace that started the run when the user switched during it', async () => {
       const held = deferred<typeof BOUND>()
       launch.binding.mockReturnValueOnce(held.promise)
@@ -259,6 +281,8 @@ describe('the task run and the task resume', () => {
       })
 
       expect(launchAgentInNode).not.toHaveBeenCalled()
+      // A refusal in A, not a launch after a failed lookup in B.
+      expect(launch.session).not.toHaveBeenCalled()
       expect(nodeOf(A, 'task-a').data.lastError).toEqual(expect.any(String))
     })
 

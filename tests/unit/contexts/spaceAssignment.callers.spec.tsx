@@ -713,6 +713,10 @@ describe('the push-away of the task and role callers', () => {
   })
 
   describe('the role', () => {
+    // Built once, as the canvas's reader is: a new reader on every render would rebuild every
+    // callback that lists it, and hide a writer missing from the same list.
+    const readRoleDocument = () => ({ ...EMPTY_DOCUMENT, spaces: [TARGET] })
+
     function makeActionRefs() {
       return new Proxy(
         {},
@@ -732,7 +736,7 @@ describe('the push-away of the task and role callers', () => {
         workspaceId: 'workspace',
         workspacePath: '/repo',
         agentSettings: roleSettings,
-        readDocument: () => ({ ...EMPTY_DOCUMENT, spaces: [TARGET] }),
+        readDocument: readRoleDocument,
         setNodes,
         onSpacesChange,
         onShowMessage,

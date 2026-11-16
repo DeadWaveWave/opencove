@@ -106,6 +106,7 @@ function expand(files: readonly string[]): string[] {
 describe('canvas document channels', () => {
   const files = trackedSourceFiles()
   const sources = new Map(files.map(file => [file, readFileSync(file, 'utf8')]))
+  const source = (file: string) => sources.get(file) ?? ''
 
   it('scans the whole source tree', () => {
     expect(files.length).toBeGreaterThan(1000)
@@ -145,5 +146,26 @@ describe('canvas document channels', () => {
     )
 
     expect(offenders).toEqual([])
+  })
+
+  // A hook that is handed a reader instead of calling `useReadCanvasDocument()` is outside the
+  // check above, so an app store subscription added there would go unseen. The only such file with
+  // an app store import is the role actions, which select the settings setter and nothing else.
+  it('files handed a document reader subscribe to nothing in the app store but the role settings setter', () => {
+    const handed = files.filter(file =>
+      /\breadDocument\??:\s*\(\)\s*=>\s*WorkspaceDocument\b/.test(source(file)),
+    )
+    expect(handed.length).toBeGreaterThan(2)
+    const appStoreUses = Object.fromEntries(
+      handed
+        .filter(file => /\/useAppStore['"]|\buseSyncExternalStore\b/.test(source(file)))
+        .map(file => [
+          file,
+          [...source(file).matchAll(/\buseAppStore\(([^)]*)\)/g)].map(match => match[1].trim()),
+        ]),
+    )
+    expect(appStoreUses).toEqual({
+      [`${CANVAS_DIR}hooks/useRoleActions.ts`]: ['state => state.setAgentSettings'],
+    })
   })
 })
