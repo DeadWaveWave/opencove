@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useMemo, type MutableRefObject } from 'react'
+import { useCallback, useLayoutEffect, useMemo } from 'react'
 import { resolvePaneNodeCreationAnchor } from './useInteractions.creationAnchor'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
@@ -10,7 +10,7 @@ import {
   type ProjectRoleDefinition,
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
-import type { Point, RoleNodeData, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { Point, RoleNodeData, TerminalNodeData } from '../../../types'
 import { resolveNodePlacementAnchorFromViewportCenter } from '../helpers'
 import {
   assignNodeToSpaceAndExpand,
@@ -26,11 +26,7 @@ import {
   useCanvasUiCommands,
   useReadCanvasUi,
 } from '../../../store/canvasStoreContext'
-
-type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean },
-) => void
+import type { WorkspaceDocument } from '../../../store/workspaceDocument'
 
 function toRoleNameKey(name: string): string {
   return name.trim().toLowerCase()
@@ -41,11 +37,9 @@ export function useWorkspaceCanvasRoleActions({
   workspacePath,
   environmentVariables,
   agentSettings,
-  nodesRef,
-  spacesRef,
+  readDocument,
   setNodes,
   updateCanvasDocument,
-  onRequestPersistFlush,
   onShowMessage,
   standardWindowSizeBucket,
   createRoleNode,
@@ -60,11 +54,14 @@ export function useWorkspaceCanvasRoleActions({
   workspacePath: string
   environmentVariables?: Record<string, string>
   agentSettings: AgentSettings
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
-  setNodes: SetNodes
+  /**
+   * The document reader of the render that made these actions. The role UI makes it: this file
+   * subscribes to the app store for the settings, and a file that reads the document through its
+   * own reader does not also subscribe to that store.
+   */
+  readDocument: () => WorkspaceDocument
+  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
-  onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   standardWindowSizeBucket: StandardWindowSizeBucket
   createRoleNode: (
@@ -110,7 +107,7 @@ export function useWorkspaceCanvasRoleActions({
         cursorAnchor,
         resolveDefaultRoleWindowSize(standardWindowSizeBucket),
       )
-      const targetSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
+      const targetSpace = findContainingSpaceByAnchor(readDocument().spaces, cursorAnchor)
       const created = createRoleNode(nodeAnchor, role, {
         targetSpaceRect: targetSpace?.rect ?? null,
         selectedProvider: resolveSelectableAgentProvider(agentSettings.defaultProvider),
@@ -127,15 +124,16 @@ export function useWorkspaceCanvasRoleActions({
         targetSpaceId: targetSpace.id,
         updateCanvasDocument,
       })
-      onRequestPersistFlush?.()
+      // The assignment is one write of the nodes and the Spaces; the flush follows it.
+      documentCommands.requestPersistFlush()
       return created
     },
     [
       workspaceId,
       agentSettings.defaultProvider,
       createRoleNode,
-      onRequestPersistFlush,
-      spacesRef,
+      documentCommands,
+      readDocument,
       standardWindowSizeBucket,
       updateCanvasDocument,
     ],
@@ -268,16 +266,17 @@ export function useWorkspaceCanvasRoleActions({
                 }
               : node,
           ),
-        { syncLayout: false },
+        { syncLayout: false, flush: true },
       )
     } else {
       createRoleNodeAtFlowPoint(roleCreator.anchor, role)
+      // The new role node and its Space were written by the creation above; the flush follows.
+      documentCommands.requestPersistFlush()
     }
     ui.closeDialog('roleCreator')
-    onRequestPersistFlush?.()
   }, [
     createRoleNodeAtFlowPoint,
-    onRequestPersistFlush,
+    documentCommands,
     projectRoles,
     readUi,
     setAgentSettings,
@@ -295,12 +294,10 @@ export function useWorkspaceCanvasRoleActions({
         environmentVariables,
         agentSettings,
         projectRoles,
-        nodesRef,
-        spacesRef,
+        readDocument,
         setNodes,
         updateCanvasDocument,
         updateSpaces: documentCommands.updateSpaces,
-        onRequestPersistFlush,
         onShowMessage,
         createNodeForSession,
         updateRoleInput,
@@ -316,12 +313,10 @@ export function useWorkspaceCanvasRoleActions({
       createNodeForSession,
       documentCommands,
       environmentVariables,
-      nodesRef,
-      onRequestPersistFlush,
       onShowMessage,
       projectRoles,
+      readDocument,
       setNodes,
-      spacesRef,
       t,
       updateCanvasDocument,
       updateRoleInput,
@@ -407,9 +402,10 @@ export function useWorkspaceCanvasRoleActions({
       if (roleCreator?.mode === 'edit' && roleCreator.roleId === roleId) {
         ui.closeDialog('roleCreator')
       }
-      onRequestPersistFlush?.()
+      // The role definitions are settings; no node write comes before this flush.
+      documentCommands.requestPersistFlush()
     },
-    [onRequestPersistFlush, readUi, setAgentSettings, ui, workspaceId],
+    [documentCommands, readUi, setAgentSettings, ui, workspaceId],
   )
 
   return {

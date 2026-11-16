@@ -116,7 +116,7 @@ export function rendererLifecycleFixture(mounted: boolean, persisted = true) {
     pty: { kill: vi.fn(async () => {}) },
   } as unknown as typeof window.opencoveApi
   // The lifecycle reads the document; the specs keep their assertions on these views of it.
-  const { nodesRef, spacesRef, setNodes } = createStoreBackedChannels({
+  const { nodesRef, spacesRef, readDocument, setNodes } = createStoreBackedChannels({
     workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
     nodes: [node],
     spaces: mounted
@@ -150,5 +150,5 @@ export function rendererLifecycleFixture(mounted: boolean, persisted = true) {
       }),
     { wrapper: CanvasStoreTestProvider },
   )
-  return { ...hook, nodesRef, spacesRef, setNodes, launch, invoke, response }
+  return { ...hook, nodesRef, spacesRef, readDocument, setNodes, launch, invoke, response }
 }

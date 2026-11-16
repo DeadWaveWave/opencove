@@ -1,6 +1,6 @@
 import type { Node } from '@xyflow/react'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
-import type { Point, TaskPriority, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { Point, TaskPriority, TerminalNodeData } from '../../../types'
 import type { NodePlacementOptions } from '../types'
 import type { WorkspaceCanvasActionRefs } from './useActionRefs'
 import { useWorkspaceCanvasNodeDeleteConfirmation } from './useNodeDeleteConfirmation'
@@ -8,19 +8,11 @@ import { useWorkspaceCanvasTaskNodeCreation } from './useTaskNodeCreation'
 import { useWorkspaceCanvasTaskEditor } from './useTaskEditor'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 
-type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean },
-) => void
-
 export function useWorkspaceCanvasTaskWindows({
   workspaceId,
   taskTagOptions,
-  nodesRef,
   setNodes,
-  spacesRef,
   updateCanvasDocument,
-  onRequestPersistFlush,
   suggestTaskTitle,
   standardWindowSizeBucket,
   createTaskNode,
@@ -29,11 +21,8 @@ export function useWorkspaceCanvasTaskWindows({
 }: {
   workspaceId?: string
   taskTagOptions: string[]
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  setNodes: SetNodes
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
+  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
-  onRequestPersistFlush?: () => void
   suggestTaskTitle: (
     requirement: string,
   ) => Promise<{ title: string; priority: TaskPriority; tags: string[] }>
@@ -52,25 +41,19 @@ export function useWorkspaceCanvasTaskWindows({
 }) {
   const { createTaskAtPoint, createTaskFromContextMenu } = useWorkspaceCanvasTaskNodeCreation({
     workspaceId,
-    spacesRef,
     updateCanvasDocument,
-    onRequestPersistFlush,
     standardWindowSizeBucket,
     createTaskNode,
   })
 
   const { closeTaskEditor, generateTaskEditorTitle, saveTaskEdits } = useWorkspaceCanvasTaskEditor({
-    nodesRef,
     setNodes,
-    onRequestPersistFlush,
     suggestTaskTitle,
     taskTagOptions,
     openTaskEditorRef: actionRefs.openTaskEditorRef,
   })
 
   const { confirmNodeDelete, requestNodeClose } = useWorkspaceCanvasNodeDeleteConfirmation({
-    nodesRef,
-    spacesRef,
     closeNode,
     requestNodeDeleteRef: actionRefs.requestNodeDeleteRef,
   })

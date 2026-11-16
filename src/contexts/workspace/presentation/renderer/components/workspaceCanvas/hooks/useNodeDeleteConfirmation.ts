@@ -2,11 +2,13 @@ import { useCallback, useEffect, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { NodeDeleteConfirmationState } from '../types'
-import { useCanvasUiCommands, useReadCanvasUi } from '../../../store/canvasStoreContext'
+import {
+  useCanvasUiCommands,
+  useReadCanvasDocument,
+  useReadCanvasUi,
+} from '../../../store/canvasStoreContext'
 
 interface UseNodeDeleteConfirmationParams {
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   closeNode: (nodeId: string) => Promise<void>
   requestNodeDeleteRef: MutableRefObject<(nodeIds: readonly string[]) => void>
 }
@@ -61,8 +63,6 @@ function resolveNodeDeleteConfirmationState({
 }
 
 export function useWorkspaceCanvasNodeDeleteConfirmation({
-  nodesRef,
-  spacesRef,
   closeNode,
   requestNodeDeleteRef,
 }: UseNodeDeleteConfirmationParams): {
@@ -71,21 +71,21 @@ export function useWorkspaceCanvasNodeDeleteConfirmation({
 } {
   const ui = useCanvasUiCommands()
   const readUi = useReadCanvasUi()
+  const readDocument = useReadCanvasDocument()
 
+  // The nodes and the Spaces are read when a request is made, not subscribed to: the list is the
+  // one the user sees at the moment they ask.
   const requestNodeDelete = useCallback(
     (nodeIds: readonly string[]) => {
-      const nextConfirmation = resolveNodeDeleteConfirmationState({
-        nodeIds,
-        nodes: nodesRef.current,
-        spaces: spacesRef.current,
-      })
+      const { nodes, spaces } = readDocument()
+      const nextConfirmation = resolveNodeDeleteConfirmationState({ nodeIds, nodes, spaces })
       if (!nextConfirmation) {
         return
       }
 
       ui.openDialog('nodeDeleteConfirmation', nextConfirmation)
     },
-    [nodesRef, spacesRef, ui],
+    [readDocument, ui],
   )
 
   const confirmNodeDelete = useCallback(async () => {
@@ -104,10 +104,11 @@ export function useWorkspaceCanvasNodeDeleteConfirmation({
 
   const requestNodeClose = useCallback(
     async (nodeId: string) => {
+      const { nodes, spaces } = readDocument()
       const nextConfirmation = resolveNodeDeleteConfirmationState({
         nodeIds: [nodeId],
-        nodes: nodesRef.current,
-        spaces: spacesRef.current,
+        nodes,
+        spaces,
       })
       if (!nextConfirmation) {
         return
@@ -115,7 +116,7 @@ export function useWorkspaceCanvasNodeDeleteConfirmation({
 
       await closeNode(nodeId)
     },
-    [closeNode, nodesRef, spacesRef],
+    [closeNode, readDocument],
   )
 
   useEffect(() => {

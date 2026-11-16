@@ -7,6 +7,7 @@ import type { CreateNodeInput } from '../types'
 import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
 import type { AgentNodeLaunchOverrides } from './useAgentNodeLifecycle.support'
 import type { CanvasDocumentCommands } from '../../../store/canvasStoreContext'
+import type { WorkspaceDocument } from '../../../store/workspaceDocument'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 
 type TaskRuntimeNode = Node<TerminalNodeData> & {
@@ -17,14 +18,14 @@ type TaskRuntimeNode = Node<TerminalNodeData> & {
 }
 
 export interface TaskActionContext {
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
+  /**
+   * The document reader of the render that started the action: it keeps reading the workspace
+   * that started it, however long the action awaits and whichever workspace is shown by then.
+   */
+  readDocument: () => WorkspaceDocument
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   updateSpaces: CanvasDocumentCommands['updateSpaces']
-  setNodes: (
-    updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-    options?: { syncLayout?: boolean },
-  ) => void
+  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   buildAgentNodeTitle: (provider: AgentSettings['defaultProvider'], label: string | null) => string
   launchAgentInNode: (
@@ -38,16 +39,15 @@ export interface TaskActionContext {
   environmentVariables?: Record<string, string>
   terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
   t: TranslateFn
-  onRequestPersistFlush?: () => void
 }
 
 export type ResumeTaskAgentSessionContext = Omit<TaskActionContext, 'launchAgentInNode'>
 
 export function findTaskNode(
   taskNodeId: string,
-  nodesRef: TaskActionContext['nodesRef'] | ResumeTaskAgentSessionContext['nodesRef'],
+  readDocument: TaskActionContext['readDocument'],
 ): TaskRuntimeNode | null {
-  const taskNode = nodesRef.current.find(node => node.id === taskNodeId)
+  const taskNode = readDocument().nodes.find(node => node.id === taskNodeId)
   if (!taskNode || taskNode.data.kind !== 'task' || !taskNode.data.task) {
     return null
   }
@@ -57,9 +57,9 @@ export function findTaskNode(
 
 export function findTaskSpace(
   taskNodeId: string,
-  spacesRef: TaskActionContext['spacesRef'] | ResumeTaskAgentSessionContext['spacesRef'],
+  readDocument: TaskActionContext['readDocument'],
 ): WorkspaceSpaceState | null {
-  return spacesRef.current.find(space => space.nodeIds.includes(taskNodeId)) ?? null
+  return readDocument().spaces.find(space => space.nodeIds.includes(taskNodeId)) ?? null
 }
 
 export function assignAgentNodeToTaskSpace({
@@ -73,10 +73,10 @@ export function assignAgentNodeToTaskSpace({
   assignedNode: Node<TerminalNodeData>
   context: Pick<
     TaskActionContext | ResumeTaskAgentSessionContext,
-    'workspaceId' | 'spacesRef' | 'updateCanvasDocument'
+    'workspaceId' | 'readDocument' | 'updateCanvasDocument'
   >
 }): void {
-  const taskSpaceId = findTaskSpace(taskNodeId, context.spacesRef)?.id
+  const taskSpaceId = findTaskSpace(taskNodeId, context.readDocument)?.id
   if (!taskSpaceId) {
     return
   }
@@ -90,57 +90,67 @@ export function assignAgentNodeToTaskSpace({
   })
 }
 
+/** `flush` requests the persistence flush on the write itself, for a caller that persists it. */
 export function setTaskLastError({
   taskNodeId,
   message,
   setNodes,
+  flush,
 }: {
   taskNodeId: string
   message: string
-  setNodes: TaskActionContext['setNodes'] | ResumeTaskAgentSessionContext['setNodes']
+  setNodes: TaskActionContext['setNodes']
+  flush?: boolean
 }): void {
-  setNodes(prevNodes =>
-    prevNodes.map(node => {
-      if (node.id !== taskNodeId) {
-        return node
-      }
+  setNodes(
+    prevNodes =>
+      prevNodes.map(node => {
+        if (node.id !== taskNodeId) {
+          return node
+        }
 
-      return {
-        ...node,
-        data: {
-          ...node.data,
-          lastError: message,
-        },
-      }
-    }),
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            lastError: message,
+          },
+        }
+      }),
+    flush ? { flush: true } : undefined,
   )
 }
 
+/** `flush` requests the persistence flush on the write itself, for a caller that persists it. */
 export function clearStaleTaskLinkedAgent({
   taskNodeId,
   setNodes,
+  flush,
 }: {
   taskNodeId: string
   setNodes: TaskActionContext['setNodes']
+  flush?: boolean
 }): void {
-  setNodes(prevNodes =>
-    prevNodes.map(node => {
-      if (node.id !== taskNodeId || node.data.kind !== 'task' || !node.data.task) {
-        return node
-      }
+  setNodes(
+    prevNodes =>
+      prevNodes.map(node => {
+        if (node.id !== taskNodeId || node.data.kind !== 'task' || !node.data.task) {
+          return node
+        }
 
-      return {
-        ...node,
-        data: {
-          ...node.data,
-          task: {
-            ...node.data.task,
-            linkedAgentNodeId: null,
-            updatedAt: new Date().toISOString(),
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            task: {
+              ...node.data.task,
+              linkedAgentNodeId: null,
+              updatedAt: new Date().toISOString(),
+            },
           },
-        },
-      }
-    }),
+        }
+      }),
+    flush ? { flush: true } : undefined,
   )
 }
 

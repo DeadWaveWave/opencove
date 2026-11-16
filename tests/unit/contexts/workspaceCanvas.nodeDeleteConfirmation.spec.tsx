@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useRef, useState } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
@@ -8,7 +8,11 @@ import type {
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { useWorkspaceCanvasNodeDeleteConfirmation } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDeleteConfirmation'
 import { useCanvasUi } from '../../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
-import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
+import {
+  CANVAS_STORE_TEST_WORKSPACE_ID,
+  CanvasStoreTestProvider,
+} from '../../support/canvasStoreTestHarness'
+import { seedWorkspaceCanvasStore } from '../../support/workspaceCanvasStoreHarness'
 
 function createNoteNode(id: string, title: string): Node<TerminalNodeData> {
   return {
@@ -40,21 +44,9 @@ function createNoteNode(id: string, title: string): Node<TerminalNodeData> {
   }
 }
 
-function Harness({
-  nodes,
-  spaces,
-  closeNode,
-}: {
-  nodes: Node<TerminalNodeData>[]
-  spaces: WorkspaceSpaceState[]
-  closeNode: (nodeId: string) => Promise<void>
-}) {
-  const nodesRef = useRef(nodes)
-  const spacesRef = useRef(spaces)
+function Harness({ closeNode }: { closeNode: (nodeId: string) => Promise<void> }) {
   const requestNodeDeleteRef = useRef<(nodeIds: string[]) => void>(() => undefined)
   const { confirmNodeDelete, requestNodeClose } = useWorkspaceCanvasNodeDeleteConfirmation({
-    nodesRef,
-    spacesRef,
     closeNode,
     requestNodeDeleteRef,
   })
@@ -94,13 +86,31 @@ function Harness({
   )
 }
 
+// The confirmation reads the document, so the nodes and the Spaces are seeded into the store
+// before the hook first renders.
+function SeededHarness({
+  nodes,
+  spaces,
+  closeNode,
+}: {
+  nodes: Node<TerminalNodeData>[]
+  spaces: WorkspaceSpaceState[]
+  closeNode: (nodeId: string) => Promise<void>
+}) {
+  useState(() => {
+    seedWorkspaceCanvasStore({ workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID, nodes, spaces })
+    return null
+  })
+  return <Harness closeNode={closeNode} />
+}
+
 describe('workspace canvas node delete confirmation', () => {
   it('closes the last node in a space without prompting', async () => {
     const closeNode = vi.fn(async () => undefined)
 
     render(
       <CanvasStoreTestProvider>
-        <Harness
+        <SeededHarness
           closeNode={closeNode}
           nodes={[createNoteNode('note-1', 'Lonely note')]}
           spaces={[
@@ -131,7 +141,7 @@ describe('workspace canvas node delete confirmation', () => {
 
     render(
       <CanvasStoreTestProvider>
-        <Harness
+        <SeededHarness
           closeNode={closeNode}
           nodes={[createNoteNode('note-1', 'First note'), createNoteNode('note-2', 'Second note')]}
           spaces={[
@@ -162,7 +172,7 @@ describe('workspace canvas node delete confirmation', () => {
 
     render(
       <CanvasStoreTestProvider>
-        <Harness
+        <SeededHarness
           closeNode={closeNode}
           nodes={[createNoteNode('note-1', 'First note'), createNoteNode('note-2', 'Second note')]}
           spaces={[
@@ -193,7 +203,7 @@ describe('workspace canvas node delete confirmation', () => {
 
     render(
       <CanvasStoreTestProvider>
-        <Harness
+        <SeededHarness
           closeNode={closeNode}
           nodes={[createNoteNode('note-1', 'First note'), createNoteNode('note-2', 'Second note')]}
           spaces={[]}

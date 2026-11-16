@@ -40,8 +40,7 @@ it.each(['update', 'plugins\0 explain this project'])(
       runTaskAgentAction('task', {
         workspaceId: 'workspace',
         workspacePath: '/repo',
-        nodesRef: f.nodesRef,
-        spacesRef: f.spacesRef,
+        readDocument: f.readDocument,
         agentSettings: DEFAULT_AGENT_SETTINGS,
         setNodes: updater => {
           f.nodesRef.current = updater(f.nodesRef.current)
@@ -80,8 +79,7 @@ it('refused new task keeps editable requirements before any launch or space chan
     runTaskAgentAction('task', {
       workspaceId: 'workspace',
       workspacePath: '/repo',
-      nodesRef: f.nodesRef,
-      spacesRef: f.spacesRef,
+      readDocument: f.readDocument,
       agentSettings: { ...DEFAULT_AGENT_SETTINGS, defaultProvider: 'pi' },
       setNodes: updater => {
         f.nodesRef.current = updater(f.nodesRef.current)

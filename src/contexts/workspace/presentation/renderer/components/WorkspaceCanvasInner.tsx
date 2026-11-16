@@ -135,11 +135,8 @@ export function WorkspaceCanvasInner({
   })
   const taskUi = workspaceCanvasHooks.useWorkspaceCanvasTaskUi({
     agentTaskTagOptions: agentSettings.taskTagOptions,
-    nodesRef: nodeStore.nodesRef,
     setNodes: nodeStore.setNodes,
-    spacesRef: canvasState.spacesRef,
     updateCanvasDocument: nodeStore.updateCanvasDocument,
-    onRequestPersistFlush,
     createNodeForSession: nodeStore.createNodeForSession,
     buildAgentNodeTitle: agentSupport.buildAgentNodeTitle,
     launchAgentInNode: agentSupport.launchAgentInNode,
@@ -154,7 +151,7 @@ export function WorkspaceCanvasInner({
     terminalDisplayMetrics,
   })
   // prettier-ignore
-  const roleUiProps = workspaceCanvasHooks.useWorkspaceCanvasRoleUi({ workspaceId, workspacePath, environmentVariables, agentSettings, canvasState, nodeStore, agentSupport, onRequestPersistFlush, onShowMessage, actionRefs })
+  const roleUiProps = workspaceCanvasHooks.useWorkspaceCanvasRoleUi({ workspaceId, workspacePath, environmentVariables, agentSettings, nodeStore, agentSupport, onShowMessage, actionRefs })
   // prettier-ignore
   const inputMode = workspaceCanvasHooks.useWorkspaceCanvasInputMode({ canvasInputModeSetting: agentSettings.canvasInputMode, canvasWheelBehaviorSetting: agentSettings.canvasWheelBehavior, canvasWheelZoomModifierSetting: agentSettings.canvasWheelZoomModifier, detectedCanvasInputMode: canvasState.detectedCanvasInputMode, inputModalityStateRef: canvasState.inputModalityStateRef, setDetectedCanvasInputMode: canvasState.setDetectedCanvasInputMode, canvasRef: canvasState.canvasRef, trackpadGestureLockRef: canvasState.trackpadGestureLockRef, setIsCanvasWheelGestureCaptureActive: canvasState.setIsCanvasWheelGestureCaptureActive, viewportRef: canvasState.viewportRef, reactFlow, onViewportChange })
   // Committed nodes feed collapse read models; the actions plan from the committed document.

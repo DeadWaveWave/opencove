@@ -99,7 +99,7 @@ test.describe('Recovery - Agent reopen', () => {
     }
   })
 
-  test.skip('resumes a task-linked agent after app restart', async () => {
+  test('resumes a task-linked agent after app restart', async () => {
     const userDataDir = await createTestUserDataDir()
     const taskDirectory = path.join(testWorkspacePath, 'docs')
 

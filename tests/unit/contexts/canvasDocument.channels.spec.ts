@@ -16,34 +16,22 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     '~/hooks/useApplyNodeChanges.helpers.ts',
     '~/hooks/useApplyNodeChanges.ts',
     '~/hooks/useCanvasNodePublishers.ts',
-    '~/hooks/useCanvasRoleUi.ts',
     '~/hooks/useCanvasRuntimeIntegrations.ts',
     '~/hooks/useCanvasSpaceExplorer.ts',
-    '~/hooks/useCanvasTaskSupport.ts',
-    '~/hooks/useCanvasTaskUi.ts',
-    '~/hooks/useCanvasTaskWindows.ts',
     '~/hooks/useFilesystemNodePaths.ts',
     '~/hooks/useFilesystemNodes.ts',
-    '~/hooks/useNodeDeleteConfirmation.ts',
     '~/hooks/useNodesStore.createFilesystemNodes.ts',
     '~/hooks/useNodesStore.createNodes.ts',
     '~/hooks/useNodesStore.createRoleNode.ts',
     '~/hooks/useNodesStore.createWebsiteNode.ts',
     '~/hooks/useNodesStore.ts',
     '~/hooks/useNodesStore.types.ts',
-    '~/hooks/useRoleActions.run.ts',
-    '~/hooks/useRoleActions.ts',
     '~/hooks/useSpaceDirectoryOps.ts',
     '~/hooks/useSpaceExplorer.materializePlacement.ts',
     '~/hooks/useSpaceExplorer.placement.ts',
     '~/hooks/useSpaceExplorer.quickPreviewActions.ts',
     '~/hooks/useSpaceExplorer.ts',
     '~/hooks/useSpaceExplorer.types.ts',
-    '~/hooks/useTaskActions.agentSession.resume.ts',
-    '~/hooks/useTaskActions.agentSession.run.ts',
-    '~/hooks/useTaskActions.agentSession.shared.ts',
-    '~/hooks/useTaskActions.ts',
-    '~/hooks/useTaskEditor.ts',
     '~/hooks/useWorkspaceDocumentNavigation.ts',
     '~/hooks/useWorkspaceDocumentOpening.ts',
     '~/view/WorkspacePixelLayer.tsx',
@@ -51,16 +39,11 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
   spacesRef: [
     'src/contexts/workspace/presentation/renderer/components/WorkspaceCanvasInner.tsx',
     '~/hooks/useCanvasNodeTypes.ts',
-    '~/hooks/useCanvasRoleUi.ts',
     '~/hooks/useCanvasSpaceExplorer.ts',
     '~/hooks/useCanvasState.ts',
-    '~/hooks/useCanvasTaskSupport.ts',
-    '~/hooks/useCanvasTaskUi.ts',
-    '~/hooks/useCanvasTaskWindows.ts',
     '~/hooks/useFilesystemNodePaths.ts',
     '~/hooks/useFilesystemNodes.ts',
     '~/hooks/useNativeFilesystemDrop.ts',
-    '~/hooks/useNodeDeleteConfirmation.ts',
     '~/hooks/useNodesStore.createFilesystemNodes.ts',
     '~/hooks/useNodesStore.createNodes.ts',
     '~/hooks/useNodesStore.createPluginNode.ts',
@@ -68,17 +51,10 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     '~/hooks/useNodesStore.createWebsiteNode.ts',
     '~/hooks/useNodesStore.ts',
     '~/hooks/useNodesStore.types.ts',
-    '~/hooks/useRoleActions.run.ts',
-    '~/hooks/useRoleActions.ts',
     '~/hooks/useSpaceDirectoryOps.ts',
     '~/hooks/useSpaceExplorer.placement.ts',
     '~/hooks/useSpaceExplorer.ts',
     '~/hooks/useSpaceExplorer.types.ts',
-    '~/hooks/useTaskActions.agentSession.resume.ts',
-    '~/hooks/useTaskActions.agentSession.run.ts',
-    '~/hooks/useTaskActions.agentSession.shared.ts',
-    '~/hooks/useTaskActions.ts',
-    '~/hooks/useTaskNodeCreation.ts',
     '~/hooks/useWorkspaceDocumentNavigation.ts',
     '~/hooks/useWorkspaceDocumentOpening.ts',
     '~/nodeTypes.context.ts',
@@ -98,11 +74,7 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     'src/app/renderer/shell/hooks/useAppQuitPersistenceFlush.ts',
     'src/contexts/task/presentation/renderer/components/promptTemplates/TaskPromptTemplatesMenu.tsx',
     'src/contexts/workspace/presentation/renderer/components/WorkspaceCanvasInner.tsx',
-    '~/hooks/useCanvasRoleUi.ts',
     '~/hooks/useCanvasSpaceExplorer.ts',
-    '~/hooks/useCanvasTaskSupport.ts',
-    '~/hooks/useCanvasTaskUi.ts',
-    '~/hooks/useCanvasTaskWindows.ts',
     '~/hooks/useFilesystemNodes.ts',
     '~/hooks/useNodesStore.createFilesystemNodes.ts',
     '~/hooks/useNodesStore.createNodes.ts',
@@ -113,17 +85,9 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     '~/hooks/useNodesStore.ts',
     '~/hooks/useNodesStore.types.ts',
     '~/hooks/useNodesStore.websiteMutations.ts',
-    '~/hooks/useRoleActions.run.ts',
-    '~/hooks/useRoleActions.ts',
     '~/hooks/useSpaceDirectoryOps.ts',
     '~/hooks/useSpaceExplorer.ts',
     '~/hooks/useSpaceExplorer.types.ts',
-    '~/hooks/useTaskActions.agentSession.resume.ts',
-    '~/hooks/useTaskActions.agentSession.run.ts',
-    '~/hooks/useTaskActions.agentSession.shared.ts',
-    '~/hooks/useTaskActions.ts',
-    '~/hooks/useTaskEditor.ts',
-    '~/hooks/useTaskNodeCreation.ts',
     '~/hooks/useWorkspaceDocumentOpening.ts',
     '~/types.ts',
   ],
@@ -142,6 +106,7 @@ function expand(files: readonly string[]): string[] {
 describe('canvas document channels', () => {
   const files = trackedSourceFiles()
   const sources = new Map(files.map(file => [file, readFileSync(file, 'utf8')]))
+  const source = (file: string) => sources.get(file) ?? ''
 
   it('scans the whole source tree', () => {
     expect(files.length).toBeGreaterThan(1000)
@@ -181,5 +146,26 @@ describe('canvas document channels', () => {
     )
 
     expect(offenders).toEqual([])
+  })
+
+  // A hook that is handed a reader instead of calling `useReadCanvasDocument()` is outside the
+  // check above, so an app store subscription added there would go unseen. The only such file with
+  // an app store import is the role actions, which select the settings setter and nothing else.
+  it('files handed a document reader subscribe to nothing in the app store but the role settings setter', () => {
+    const handed = files.filter(file =>
+      /\breadDocument\??:\s*\(\)\s*=>\s*WorkspaceDocument\b/.test(source(file)),
+    )
+    expect(handed.length).toBeGreaterThan(2)
+    const appStoreUses = Object.fromEntries(
+      handed
+        .filter(file => /\/useAppStore['"]|\buseSyncExternalStore\b/.test(source(file)))
+        .map(file => [
+          file,
+          [...source(file).matchAll(/\buseAppStore\(([^)]*)\)/g)].map(match => match[1].trim()),
+        ]),
+    )
+    expect(appStoreUses).toEqual({
+      [`${CANVAS_DIR}hooks/useRoleActions.ts`]: ['state => state.setAgentSettings'],
+    })
   })
 })

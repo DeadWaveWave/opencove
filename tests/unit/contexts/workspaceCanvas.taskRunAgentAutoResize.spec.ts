@@ -15,6 +15,7 @@ import {
   createCanvasDocumentHarness,
   renderCanvasNodeStore,
 } from '../../support/canvasDocumentHarness'
+import { createStoreBackedChannels } from '../../support/workspaceCanvasStoreHarness'
 
 describe('WorkspaceCanvas task run agent auto resize', () => {
   const terminalDisplayMetrics = {
@@ -105,18 +106,18 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
       // The push-away writes the same store that the node is added to.
       const harness = createCanvasDocumentHarness({ nodes: [taskNode], spaces })
       const { result } = renderCanvasNodeStore(harness)
-      const { nodeStore, canvasState } = result.current
+      const { nodeStore } = result.current
       const { setNodes } = nodeStore
-      // The run flushes once, after the push-away: the Space holds the agent by then.
+      // The run flushes once, after the push-away: the Space holds the agent by then. The flush
+      // rides on the write of the task node, so it reaches the shell's registered flush.
       let spacesAtFlush: WorkspaceSpaceState[] = []
-      const onRequestPersistFlush = vi.fn(() => {
+      const onRequestPersistFlush = harness.flush.mockImplementation(() => {
         spacesAtFlush = harness.readStoreDocument().spaces
       })
 
       await act(async () => {
         await runTaskAgentAction(taskNode.id, {
-          nodesRef: nodeStore.nodesRef,
-          spacesRef: canvasState.spacesRef,
+          readDocument: harness.readStoreDocument,
           updateCanvasDocument: nodeStore.updateCanvasDocument,
           updateSpaces: vi.fn(),
           setNodes,
@@ -154,7 +155,6 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
           terminalDisplayMetrics,
           workspaceId: 'workspace-1',
           workspacePath: '/tmp',
-          onRequestPersistFlush,
         })
       })
       const geometry = resolveDefaultAgentLaunchGeometry({
@@ -280,16 +280,10 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
       selectable: true,
     }
 
-    const nodesRef = { current: [taskNode] }
-    const spacesRef = {
-      current: [] as WorkspaceSpaceState[],
-    }
-
-    const setNodes = (
-      updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-    ) => {
-      nodesRef.current = updater(nodesRef.current)
-    }
+    const { setNodes, readDocument } = createStoreBackedChannels({
+      workspaceId: 'workspace-1',
+      nodes: [taskNode],
+    })
 
     const createNodeForSession = vi.fn(async input => {
       const created: Node<TerminalNodeData> = {
@@ -323,8 +317,7 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
     })
 
     await runTaskAgentAction(taskNode.id, {
-      nodesRef,
-      spacesRef,
+      readDocument,
       updateCanvasDocument: vi.fn(),
       updateSpaces: vi.fn(),
       setNodes,
@@ -338,7 +331,6 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
       terminalDisplayMetrics,
       workspaceId: 'workspace-1',
       workspacePath: '/tmp',
-      onRequestPersistFlush: vi.fn(),
     })
     const geometry = expectedAgentGeometry()
 
@@ -435,17 +427,17 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
     ]
     const harness = createCanvasDocumentHarness({ nodes: [taskNode], spaces })
     const { result } = renderCanvasNodeStore(harness)
-    const { nodeStore, canvasState } = result.current
-    // The resume flushes once, after the push-away: the Space holds the agent by then.
+    const { nodeStore } = result.current
+    // The resume flushes once, after the push-away: the Space holds the agent by then. The flush
+    // rides on the write of the task node, so it reaches the shell's registered flush.
     let spacesAtFlush: WorkspaceSpaceState[] = []
-    const onRequestPersistFlush = vi.fn(() => {
+    const onRequestPersistFlush = harness.flush.mockImplementation(() => {
       spacesAtFlush = harness.readStoreDocument().spaces
     })
 
     await act(async () => {
       await resumeTaskAgentSessionAction('task-1', 'record-1', {
-        nodesRef: nodeStore.nodesRef,
-        spacesRef: canvasState.spacesRef,
+        readDocument: harness.readStoreDocument,
         updateCanvasDocument: nodeStore.updateCanvasDocument,
         updateSpaces: vi.fn(),
         setNodes: nodeStore.setNodes,
@@ -480,7 +472,6 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
         workspaceId: 'workspace-1',
         workspacePath: '/tmp',
         t: (key: string) => key,
-        onRequestPersistFlush,
       })
     })
 

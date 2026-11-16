@@ -21,7 +21,7 @@ export async function resumeTaskAgentSessionAction(
   recordId: string,
   context: ResumeTaskAgentSessionContext,
 ): Promise<void> {
-  const taskNode = findTaskNode(taskNodeId, context.nodesRef)
+  const taskNode = findTaskNode(taskNodeId, context.readDocument)
   if (!taskNode) {
     return
   }
@@ -31,8 +31,8 @@ export async function resumeTaskAgentSessionAction(
       taskNodeId,
       message: context.t('messages.taskLinkedAgentWindowOpen'),
       setNodes: context.setNodes,
+      flush: true,
     })
-    context.onRequestPersistFlush?.()
     return
   }
 
@@ -46,12 +46,12 @@ export async function resumeTaskAgentSessionAction(
       taskNodeId,
       message: context.t('messages.taskResumeSessionMissing'),
       setNodes: context.setNodes,
+      flush: true,
     })
-    context.onRequestPersistFlush?.()
     return
   }
 
-  const taskSpace = findTaskSpace(taskNodeId, context.spacesRef)
+  const taskSpace = findTaskSpace(taskNodeId, context.readDocument)
   const taskDirectory =
     taskSpace && taskSpace.directoryPath.trim().length > 0
       ? taskSpace.directoryPath.trim()
@@ -75,8 +75,8 @@ export async function resumeTaskAgentSessionAction(
       taskNodeId,
       message: context.t('messages.mountListFailed', { message: toErrorMessage(error) }),
       setNodes: context.setNodes,
+      flush: true,
     })
-    context.onRequestPersistFlush?.()
     return
   }
 
@@ -176,50 +176,51 @@ export async function resumeTaskAgentSessionAction(
     })
 
     const now = new Date().toISOString()
-    context.setNodes(prevNodes =>
-      prevNodes.map(node => {
-        if (node.id !== taskNodeId || node.data.kind !== 'task' || !node.data.task) {
-          return node
-        }
+    context.setNodes(
+      prevNodes =>
+        prevNodes.map(node => {
+          if (node.id !== taskNodeId || node.data.kind !== 'task' || !node.data.task) {
+            return node
+          }
 
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            lastError: null,
-            task: {
-              ...node.data.task,
-              status: 'doing',
-              linkedAgentNodeId: createdAgentNode.id,
-              lastRunAt: now,
-              agentSessions: (node.data.task.agentSessions ?? []).map(session =>
-                session.id === recordId
-                  ? {
-                      ...session,
-                      lastRunAt: now,
-                      lastDirectory: launched.managedClaudeLifecycle
-                        ? launched.executionDirectory
-                        : taskDirectory,
-                      ...(launched.managedClaudeLifecycle?.binding.tuple ?? {
-                        resumeSessionId: session.resumeSessionId,
-                        resumeSessionIdVerified: true,
-                      }),
-                    }
-                  : session,
-              ),
-              updatedAt: now,
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              lastError: null,
+              task: {
+                ...node.data.task,
+                status: 'doing',
+                linkedAgentNodeId: createdAgentNode.id,
+                lastRunAt: now,
+                agentSessions: (node.data.task.agentSessions ?? []).map(session =>
+                  session.id === recordId
+                    ? {
+                        ...session,
+                        lastRunAt: now,
+                        lastDirectory: launched.managedClaudeLifecycle
+                          ? launched.executionDirectory
+                          : taskDirectory,
+                        ...(launched.managedClaudeLifecycle?.binding.tuple ?? {
+                          resumeSessionId: session.resumeSessionId,
+                          resumeSessionIdVerified: true,
+                        }),
+                      }
+                    : session,
+                ),
+                updatedAt: now,
+              },
             },
-          },
-        }
-      }),
+          }
+        }),
+      { flush: true },
     )
-    context.onRequestPersistFlush?.()
   } catch (error) {
     setTaskLastError({
       taskNodeId,
       message: context.t('messages.agentResumeFailed', { message: toErrorMessage(error) }),
       setNodes: context.setNodes,
+      flush: true,
     })
-    context.onRequestPersistFlush?.()
   }
 }

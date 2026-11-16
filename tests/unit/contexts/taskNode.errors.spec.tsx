@@ -7,6 +7,7 @@ import { runTaskAgentAction } from '../../../src/contexts/workspace/presentation
 import type { TaskActionContext } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskActions.agentSession.shared'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
+import { createStoreBackedChannels } from '../../support/workspaceCanvasStoreHarness'
 
 const flow = vi.hoisted(() => ({ nodes: [] as Node<TerminalNodeData>[] }))
 afterEach(() => vi.unstubAllGlobals())
@@ -87,15 +88,15 @@ it('shows a refused Pi config run in the actual canvas task card while preservin
   const kill = vi.fn()
   vi.stubGlobal('opencoveApi', { pty: { kill } })
   const observed = { current: [] as Node<TerminalNodeData>[] }
+  // The run reads the document: the nodes are seeded into the store, and the card follows them.
+  const channels = createStoreBackedChannels({ workspaceId: 'workspace', nodes: initialNodes() })
   function Harness() {
-    const nodesRef = useRef(initialNodes())
-    const [nodes, setNodes] = useState(nodesRef.current)
+    const [nodes, setNodes] = useState(channels.nodesRef.current)
     flow.nodes = nodes
     observed.current = nodes
     const spacesRef = useRef([])
     const context = {
-      nodesRef,
-      spacesRef,
+      readDocument: channels.readDocument,
       workspaceId: 'workspace',
       workspacePath: '/repo',
       agentSettings: { ...DEFAULT_AGENT_SETTINGS, defaultProvider: 'codex' },
@@ -104,8 +105,8 @@ it('shows a refused Pi config run in the actual canvas task card while preservin
       updateSpaces,
       t: (key: string) => key,
       setNodes: (update: (previous: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => {
-        nodesRef.current = update(nodesRef.current)
-        setNodes(nodesRef.current)
+        channels.nodesRef.current = update(channels.nodesRef.current)
+        setNodes(channels.nodesRef.current)
       },
     } as TaskActionContext
     return (

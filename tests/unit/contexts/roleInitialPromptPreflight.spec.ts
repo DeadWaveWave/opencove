@@ -6,12 +6,14 @@ import {
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useRoleActions.run'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
+import { createStoreBackedChannels } from '../../support/workspaceCanvasStoreHarness'
 
 it.each(['update', 'plugins\0 explain this project'])(
   'refused role preserves input and history before mount resolution or launch (%j)',
   async prompt => {
-    const nodesRef = {
-      current: [
+    const { nodesRef, readDocument, setNodes } = createStoreBackedChannels({
+      workspaceId: 'workspace',
+      nodes: [
         {
           id: 'role',
           data: {
@@ -26,18 +28,15 @@ it.each(['update', 'plugins\0 explain this project'])(
           },
         },
       ] as unknown as Node<TerminalNodeData>[],
-    }
+    })
     const updateCanvasDocument = vi.fn()
     const updateSpaces = vi.fn()
     const createNodeForSession = vi.fn()
     await runRoleNodeAction('role', undefined, {
-      nodesRef,
-      spacesRef: { current: [] },
+      readDocument,
       agentSettings: DEFAULT_AGENT_SETTINGS,
       projectRoles: [{ id: 'definition', promptTemplate: prompt }],
-      setNodes: updater => {
-        nodesRef.current = updater(nodesRef.current)
-      },
+      setNodes,
       updateCanvasDocument,
       updateSpaces,
       createNodeForSession,
