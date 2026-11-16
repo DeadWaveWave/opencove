@@ -158,8 +158,6 @@ const terminalMock = createTerminalNodeAtFlowPosition as unknown as Mock
 
 const assignArgs = () => lastCall(assignMock)[0] as Record<string, unknown> | undefined
 const terminalArgs = () => lastCall(terminalMock)[0] as Record<string, unknown> | undefined
-// The terminal creator still reads `spacesRef` and `nodesRef` itself; only the writes are gone.
-const TERMINAL_ABSENT = ['setNodes', 'onSpacesChange']
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -200,8 +198,6 @@ describe('the push-away of the interactions as the canvas composes them', () => 
     defaultTerminalProfileId: null,
     terminalFontSize: 13,
     terminalDisplayMetrics: metrics,
-    spacesRef,
-    nodesRef,
     standardWindowSizeBucket: 'regular',
     browserDefaultMode: 'iframe',
     createNodeForSession,
@@ -286,7 +282,6 @@ describe('the push-away of the interactions as the canvas composes them', () => 
       useHook: useInteractionsUnderTest,
       invoke: ({ hook }) => hook.createTerminalNodeAtFlowPoint({ x: 1, y: 2 }),
       argsOf: terminalArgs,
-      absent: TERMINAL_ABSENT,
     })
   })
 })
@@ -299,8 +294,6 @@ describe('the push-away of the interaction callers', () => {
     createWebsiteNode,
     browserDefaultMode: 'iframe',
     websiteWindowsEnabled: true,
-    spacesRef,
-    nodesRef,
     setNodes,
     onSpacesChange,
   }
@@ -401,7 +394,6 @@ describe('the push-away of the interaction callers', () => {
         return hook.runQuickCommand({ kind: 'command', command: 'ls', title: 'ls' } as never)
       },
       argsOf: terminalArgs,
-      absent: TERMINAL_ABSENT,
     })
   })
 
@@ -421,7 +413,6 @@ describe('the push-away of the interaction callers', () => {
         } as never),
       invoke: ({ hook }) => hook.createTerminalNodeAtFlowPoint({ x: 1, y: 2 }),
       argsOf: terminalArgs,
-      absent: TERMINAL_ABSENT,
     })
   })
 
@@ -499,8 +490,6 @@ describe('the push-away of the interaction callers', () => {
             workspaceId: 'workspace',
             canvasRef,
             reactFlow,
-            spacesRef,
-            nodesRef,
             setNodes,
             onSpacesChange,
             createImageNode,
@@ -612,7 +601,6 @@ describe('the push-away of the interaction callers', () => {
           useWorkspaceCanvasShortcutActions(shortcutParams(updateCanvasDocument)),
         invoke: () => shortcutArgs().createTerminalAtViewportCenter(),
         argsOf: terminalArgs,
-        absent: TERMINAL_ABSENT,
       })
     })
   })

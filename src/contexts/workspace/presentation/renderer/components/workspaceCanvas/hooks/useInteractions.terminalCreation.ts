@@ -1,10 +1,10 @@
-import { useCallback, useLayoutEffect, type MutableRefObject } from 'react'
+import { useCallback, useLayoutEffect } from 'react'
 import { resolvePaneNodeCreationAnchor } from './useInteractions.creationAnchor'
 import type { Node } from '@xyflow/react'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { TerminalPtyGeometryDisplayMetrics } from '@contexts/workspace/domain/terminalPtyGeometry'
 import type { Point } from '../../../types'
-import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { TerminalNodeData } from '../../../types'
 import type { CreateNodeInput } from '../types'
 import { createTerminalNodeAtFlowPosition } from './useInteractions.paneNodeCreation'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
@@ -12,16 +12,15 @@ import { bindWorkspaceCanvasCreateTerminalAtFlowPointTestAction } from '../testH
 import {
   useCanvasDocumentCommands,
   useCanvasUiCommands,
+  useReadCanvasDocument,
   useReadCanvasUi,
 } from '../../../store/canvasStoreContext'
 
 export function useWorkspaceCanvasTerminalCreation({
   workspaceId,
-  spacesRef,
   workspacePath,
   environmentVariables,
   defaultTerminalProfileId,
-  nodesRef,
   standardWindowSizeBucket,
   terminalFontSize,
   terminalDisplayMetrics,
@@ -30,11 +29,9 @@ export function useWorkspaceCanvasTerminalCreation({
   onShowMessage,
 }: {
   workspaceId: string
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   workspacePath: string
   environmentVariables?: Record<string, string>
   defaultTerminalProfileId: string | null
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   standardWindowSizeBucket: StandardWindowSizeBucket
   terminalFontSize: number
   terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
@@ -47,6 +44,7 @@ export function useWorkspaceCanvasTerminalCreation({
 } {
   const ui = useCanvasUiCommands()
   const documentCommands = useCanvasDocumentCommands()
+  const readDocument = useReadCanvasDocument()
   const readUi = useReadCanvasUi()
 
   const createTerminalAtFlowPoint = useCallback(
@@ -61,8 +59,7 @@ export function useWorkspaceCanvasTerminalCreation({
         terminalDisplayMetrics,
         workspacePath,
         environmentVariables,
-        spacesRef,
-        nodesRef,
+        readDocument,
         updateCanvasDocument,
         updateSpaces: documentCommands.updateSpaces,
         createNodeForSession,
@@ -74,10 +71,9 @@ export function useWorkspaceCanvasTerminalCreation({
       defaultTerminalProfileId,
       documentCommands,
       environmentVariables,
-      nodesRef,
       onShowMessage,
+      readDocument,
       ui,
-      spacesRef,
       standardWindowSizeBucket,
       terminalFontSize,
       terminalDisplayMetrics,

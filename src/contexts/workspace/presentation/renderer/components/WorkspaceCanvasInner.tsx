@@ -218,8 +218,6 @@ export function WorkspaceCanvasInner({
     defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
     terminalFontSize: agentSettings.terminalFontSize,
     terminalDisplayMetrics,
-    spacesRef: canvasState.spacesRef,
-    nodesRef: nodeStore.nodesRef,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
     browserDefaultMode: agentSettings.browserDefaultMode,
     createNodeForSession: nodeStore.createNodeForSession,
@@ -240,7 +238,6 @@ export function WorkspaceCanvasInner({
     createPluginAtPoint: (anchor, pluginId) => {
       nodeStore.createPluginNode(anchor, pluginId)
     },
-    spacesRef: canvasState.spacesRef,
   })
   const createPluginNodeFromContextMenu = workspaceCanvasHooks.useWorkspaceCanvasPluginEntry({
     createPluginNode: nodeStore.createPluginNode,

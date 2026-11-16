@@ -12,6 +12,7 @@ import type { UseWorkspaceCanvasInteractionsParams } from './useInteractions.typ
 import {
   useCanvasDocumentCommands,
   useCanvasUiCommands,
+  useReadCanvasDocument,
   useReadCanvasUi,
 } from '../../../store/canvasStoreContext'
 
@@ -24,8 +25,6 @@ export function useWorkspaceCanvasQuickMenuActions(
     | 'browserDefaultMode'
     | 'createWebsiteNode'
     | 'createNoteNode'
-    | 'spacesRef'
-    | 'nodesRef'
     | 'updateCanvasDocument'
     | 'defaultTerminalProfileId'
     | 'terminalFontSize'
@@ -40,6 +39,7 @@ export function useWorkspaceCanvasQuickMenuActions(
 } {
   const ui = useCanvasUiCommands()
   const documentCommands = useCanvasDocumentCommands()
+  const readDocument = useReadCanvasDocument()
   const readUi = useReadCanvasUi()
 
   const {
@@ -49,8 +49,6 @@ export function useWorkspaceCanvasQuickMenuActions(
     browserDefaultMode,
     createWebsiteNode,
     createNoteNode,
-    spacesRef,
-    nodesRef,
     updateCanvasDocument,
     defaultTerminalProfileId,
     terminalFontSize,
@@ -92,7 +90,7 @@ export function useWorkspaceCanvasQuickMenuActions(
           browserDefaultMode,
           url: command.url,
           createWebsiteNode,
-          spacesRef,
+          readDocument,
           updateCanvasDocument,
         })
 
@@ -112,8 +110,7 @@ export function useWorkspaceCanvasQuickMenuActions(
         terminalDisplayMetrics,
         standardWindowSizeBucket,
         workspacePath,
-        spacesRef,
-        nodesRef,
+        readDocument,
         updateCanvasDocument,
         updateSpaces: documentCommands.updateSpaces,
         createNodeForSession,
@@ -130,7 +127,7 @@ export function useWorkspaceCanvasQuickMenuActions(
         await window.opencoveApi.pty.attach({ sessionId: created.sessionId })
         if (
           !launchScope.active ||
-          !nodesRef.current.some(
+          !readDocument().nodes.some(
             node => node.id === created.nodeId && node.data.sessionId === created.sessionId,
           )
         ) {
@@ -157,11 +154,10 @@ export function useWorkspaceCanvasQuickMenuActions(
       documentCommands,
       terminalFontSize,
       terminalDisplayMetrics,
-      nodesRef,
       onShowMessage,
+      readDocument,
       readUi,
       ui,
-      spacesRef,
       standardWindowSizeBucket,
       browserDefaultMode,
       updateCanvasDocument,
@@ -186,7 +182,7 @@ export function useWorkspaceCanvasQuickMenuActions(
               ...placementOptions,
               initialText: phrase.content,
             }),
-          spacesRef,
+          readDocument,
           updateCanvasDocument,
         })
         return
@@ -212,9 +208,9 @@ export function useWorkspaceCanvasQuickMenuActions(
     [
       workspaceId,
       createNoteNode,
+      readDocument,
       readUi,
       ui,
-      spacesRef,
       standardWindowSizeBucket,
       updateCanvasDocument,
     ],

@@ -23,6 +23,7 @@ import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import {
   useCanvasDocumentCommands,
   useCanvasUiCommands,
+  useReadCanvasDocument,
   useReadCanvasSelection,
 } from '../../../store/canvasStoreContext'
 
@@ -174,6 +175,7 @@ export function useWorkspaceCanvasShortcutActions({
 }): void {
   const ui = useCanvasUiCommands()
   const documentCommands = useCanvasDocumentCommands()
+  const readDocument = useReadCanvasDocument()
   const readSelection = useReadCanvasSelection()
 
   useCloseSelectedNodeShortcut({
@@ -204,7 +206,7 @@ export function useWorkspaceCanvasShortcutActions({
       anchor,
       standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
       createNoteNode,
-      spacesRef,
+      readDocument,
       updateCanvasDocument,
     })
   }, [
@@ -213,8 +215,8 @@ export function useWorkspaceCanvasShortcutActions({
     canvasRef,
     createNoteNode,
     reactFlow,
+    readDocument,
     ui,
-    spacesRef,
     updateCanvasDocument,
   ])
 
@@ -239,8 +241,7 @@ export function useWorkspaceCanvasShortcutActions({
       terminalDisplayMetrics,
       workspacePath,
       environmentVariables,
-      spacesRef,
-      nodesRef,
+      readDocument,
       updateCanvasDocument,
       updateSpaces: documentCommands.updateSpaces,
       createNodeForSession,
@@ -255,10 +256,9 @@ export function useWorkspaceCanvasShortcutActions({
     createNodeForSession,
     documentCommands,
     environmentVariables,
-    nodesRef,
     reactFlow,
+    readDocument,
     ui,
-    spacesRef,
     updateCanvasDocument,
     workspacePath,
     workspaceId,

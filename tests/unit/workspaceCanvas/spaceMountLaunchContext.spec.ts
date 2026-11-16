@@ -8,6 +8,7 @@ import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presen
 import {
   createCanvasDocumentHarness,
   renderCanvasDocumentCommands,
+  renderCanvasDocumentReader,
   renderCanvasNodeStore,
   type CanvasDocumentHarness,
 } from '../../support/canvasDocumentHarness'
@@ -209,6 +210,7 @@ describe('the mount repair of a terminal created from the pane', () => {
   // The launch writes the store twice at most: the repair after `mount.list`, and the push-away
   // that assigns the created node to its Space.
   function launchOnPane(harness: CanvasDocumentHarness, persistedSpaces: WorkspaceSpaceState[]) {
+    const readDocument = renderCanvasDocumentReader(harness.workspaceId)
     const updateSpaces = renderCanvasDocumentCommands(harness.workspaceId).updateSpaces
     const updateCanvasDocument =
       renderCanvasNodeStore(harness).result.current.nodeStore.updateCanvasDocument
@@ -235,12 +237,7 @@ describe('the mount repair of a terminal created from the pane', () => {
       defaultTerminalProfileId: null,
       standardWindowSizeBucket: 'regular',
       workspacePath: ROOT,
-      spacesRef: {
-        get current() {
-          return harness.readStoreDocument().spaces
-        },
-      },
-      nodesRef: { current: [] },
+      readDocument,
       updateCanvasDocument,
       updateSpaces,
       createNodeForSession: vi.fn(

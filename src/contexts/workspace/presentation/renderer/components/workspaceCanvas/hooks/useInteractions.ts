@@ -24,6 +24,7 @@ import { useWebsiteWindowOpenUrlNodeCreation } from './useWebsiteWindowOpenUrlNo
 import {
   useCanvasSelectionCommands,
   useCanvasUiCommands,
+  useReadCanvasDocument,
   useReadCanvasSelection,
 } from '../../../store/canvasStoreContext'
 
@@ -46,8 +47,6 @@ export function useWorkspaceCanvasInteractions({
   defaultTerminalProfileId,
   terminalFontSize,
   terminalDisplayMetrics,
-  spacesRef,
-  nodesRef,
   standardWindowSizeBucket,
   browserDefaultMode,
   createNodeForSession,
@@ -59,6 +58,7 @@ export function useWorkspaceCanvasInteractions({
   const ui = useCanvasUiCommands()
   const readSelection = useReadCanvasSelection()
   const selection = useCanvasSelectionCommands()
+  const readDocument = useReadCanvasDocument()
 
   const reactFlowStore = useStoreApi()
   const selectNode = useWorkspaceCanvasSelectNode({
@@ -152,9 +152,9 @@ export function useWorkspaceCanvasInteractions({
         clientPoint,
         canvasRect: canvasRef.current?.getBoundingClientRect() ?? null,
         screenToFlowPosition: point => reactFlow.screenToFlowPosition(point),
-        spaces: spacesRef.current,
+        spaces: readDocument().spaces,
       }),
-    [canvasRef, reactFlow, spacesRef],
+    [canvasRef, reactFlow, readDocument],
   )
 
   const handlePaneContextMenu = useCallback(
@@ -297,7 +297,7 @@ export function useWorkspaceCanvasInteractions({
         anchor: resolveCreationAnchor({ x: event.clientX, y: event.clientY }),
         standardWindowSizeBucket,
         createNoteNode,
-        spacesRef,
+        readDocument,
         updateCanvasDocument,
       })
     },
@@ -305,9 +305,9 @@ export function useWorkspaceCanvasInteractions({
       workspaceId,
       clearNodeSelection,
       createNoteNode,
+      readDocument,
       resolveCreationAnchor,
       ui,
-      spacesRef,
       standardWindowSizeBucket,
       updateCanvasDocument,
     ],
@@ -330,10 +330,8 @@ export function useWorkspaceCanvasInteractions({
   )
   const { createTerminalNode, createTerminalNodeAtFlowPoint } = useWorkspaceCanvasTerminalCreation({
     workspaceId,
-    spacesRef,
     workspacePath,
     environmentVariables,
-    nodesRef,
     defaultTerminalProfileId,
     terminalFontSize,
     terminalDisplayMetrics,
@@ -350,14 +348,12 @@ export function useWorkspaceCanvasInteractions({
       createWebsiteNode,
       browserDefaultMode,
       websiteWindowsEnabled,
-      spacesRef,
       updateCanvasDocument,
     })
   const createWebsiteNodeFromContextMenu = useWebsiteNodeContextMenuCreation({
     workspaceId,
     browserDefaultMode,
     createWebsiteNode,
-    spacesRef,
     standardWindowSizeBucket,
     updateCanvasDocument,
     websiteWindowsEnabled,
@@ -371,8 +367,6 @@ export function useWorkspaceCanvasInteractions({
     terminalDisplayMetrics,
     createWebsiteNode,
     createNoteNode,
-    spacesRef,
-    nodesRef,
     updateCanvasDocument,
     defaultTerminalProfileId,
     workspacePath,
@@ -383,7 +377,6 @@ export function useWorkspaceCanvasInteractions({
     workspaceId,
     canvasRef,
     reactFlow,
-    spacesRef,
     updateCanvasDocument,
     onShowMessage,
     createImageNode,
@@ -399,9 +392,7 @@ export function useWorkspaceCanvasInteractions({
     canvasRef,
     createWebsiteNode,
     enabled: websiteWindowsEnabled,
-    nodesRef,
     reactFlow,
-    spacesRef,
     standardWindowSizeBucket,
     browserDefaultMode,
     updateCanvasDocument,

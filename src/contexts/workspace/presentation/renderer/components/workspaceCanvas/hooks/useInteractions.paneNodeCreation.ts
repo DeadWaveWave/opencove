@@ -1,4 +1,3 @@
-import type { MutableRefObject } from 'react'
 import { resolvePaneNodeCreationAnchor } from './useInteractions.creationAnchor'
 import type { Node } from '@xyflow/react'
 import {
@@ -36,6 +35,7 @@ import { createWebsiteNodeData } from '../../../utils/websiteNodeData'
 import { nodeWorkerBindingForMount } from '@shared/types/nodeWorkerBinding'
 import type { CanvasUiCommands } from '../../../store/canvasStore.ui'
 import type { CanvasDocumentCommands } from '../../../store/canvasStoreContext'
+import type { WorkspaceDocument } from '../../../store/workspaceDocument'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 
 type UpdateCanvasDocument = UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
@@ -49,8 +49,7 @@ export async function createTerminalNodeAtFlowPosition({
   terminalDisplayMetrics,
   workspacePath,
   environmentVariables,
-  spacesRef,
-  nodesRef,
+  readDocument,
   updateCanvasDocument,
   updateSpaces,
   createNodeForSession,
@@ -65,8 +64,7 @@ export async function createTerminalNodeAtFlowPosition({
   terminalDisplayMetrics?: TerminalPtyGeometryDisplayMetrics | null
   workspacePath: string
   environmentVariables?: Record<string, string>
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
+  readDocument: () => WorkspaceDocument
   updateCanvasDocument: UpdateCanvasDocument
   updateSpaces: CanvasDocumentCommands['updateSpaces']
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
@@ -87,7 +85,7 @@ export async function createTerminalNodeAtFlowPosition({
     displayMetrics: terminalDisplayMetrics,
   })
 
-  let targetSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
+  let targetSpace = findContainingSpaceByAnchor(readDocument().spaces, cursorAnchor)
   const targetSpaceBaseline = targetSpace
   const launchWorkspaceContext = await resolveTerminalLaunchWorkspaceContext({
     anchor: cursorAnchor,
@@ -209,7 +207,7 @@ export async function createTerminalNodeAtFlowPosition({
   const resolvedTitle =
     typeof title === 'string' && title.trim().length > 0
       ? title.trim()
-      : `terminal-${nodesRef.current.length + 1}`
+      : `terminal-${readDocument().nodes.length + 1}`
 
   const created = await createNodeForSession({
     nodeId: canvasNodeId,
@@ -270,7 +268,7 @@ export function createNoteNodeAtFlowPosition({
   anchor,
   standardWindowSizeBucket,
   createNoteNode,
-  spacesRef,
+  readDocument,
   updateCanvasDocument,
 }: {
   workspaceId?: string
@@ -284,7 +282,7 @@ export function createNoteNodeAtFlowPosition({
       }
     },
   ) => Node<TerminalNodeData> | null
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
+  readDocument: () => WorkspaceDocument
   updateCanvasDocument: UpdateCanvasDocument
 }): void {
   const cursorAnchor = {
@@ -301,7 +299,7 @@ export function createNoteNodeAtFlowPosition({
     anchor: nodeAnchor,
     spaceAnchor: cursorAnchor,
     createNoteNode,
-    spacesRef,
+    readDocument,
     updateCanvasDocument,
   })
 }
@@ -313,7 +311,7 @@ export function createWebsiteNodeAtFlowPosition({
   browserDefaultMode,
   url,
   createWebsiteNode,
-  spacesRef,
+  readDocument,
   updateCanvasDocument,
 }: {
   workspaceId?: string
@@ -326,7 +324,7 @@ export function createWebsiteNodeAtFlowPosition({
     website: WebsiteNodeData,
     placement?: NodePlacementOptions,
   ) => Node<TerminalNodeData> | null
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
+  readDocument: () => WorkspaceDocument
   updateCanvasDocument: UpdateCanvasDocument
 }): void {
   const cursorAnchor = {
@@ -338,7 +336,7 @@ export function createWebsiteNodeAtFlowPosition({
     resolveDefaultWebsiteWindowSize(standardWindowSizeBucket),
   )
 
-  const targetSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
+  const targetSpace = findContainingSpaceByAnchor(readDocument().spaces, cursorAnchor)
 
   const created = createWebsiteNode(
     nodeAnchor,

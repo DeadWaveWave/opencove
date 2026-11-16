@@ -26,6 +26,7 @@ import {
   renderInCanvasDocument,
   type CanvasNodeStoreContext,
 } from '../../support/canvasDocumentHarness'
+import { CANVAS_STORE_TEST_WORKSPACE_ID } from '../../support/canvasStoreTestHarness'
 import {
   SelectionWritersWrapper,
   createNodeHolder,
@@ -79,10 +80,9 @@ afterEach(() => {
 describe('selectNode', () => {
   function setup(options: { flagged?: string[]; nodeIds?: string[]; spaceIds?: string[] }) {
     const holder = createNodeHolder(createRowNodes(['a', 'b', 'c'], options.flagged ?? []))
-    const spacesRef = { current: [] }
     const hook = renderHook(
       () => ({
-        select: useWorkspaceCanvasSelectNode({ setNodes: holder.setNodes, spacesRef }),
+        select: useWorkspaceCanvasSelectNode({ setNodes: holder.setNodes }),
         ...useStoreProbe(),
       }),
       { wrapper: SelectionWritersWrapper },
@@ -180,7 +180,6 @@ describe('node selection writers in useWorkspaceCanvasInteractions', () => {
   function setup(options: { flagged?: string[]; nodeIds?: string[]; spaceIds?: string[] }) {
     const holder = createNodeHolder(createRowNodes(['a', 'b', 'c'], options.flagged ?? []))
     const canvas = document.createElement('div')
-    const spacesRef = { current: [] }
     const reactFlow = {
       screenToFlowPosition: ({ x, y }: { x: number; y: number }) => ({ x, y }),
       getNodes: () => holder.nodes,
@@ -205,9 +204,7 @@ describe('node selection writers in useWorkspaceCanvasInteractions', () => {
           defaultTerminalProfileId: null,
           terminalFontSize: 13,
           terminalDisplayMetrics: {} as never,
-          spacesRef,
           updateCanvasDocument: vi.fn(),
-          nodesRef: holder.nodesRef,
           standardWindowSizeBucket: 'regular',
           browserDefaultMode: 'headless' as never,
           createNodeForSession: vi.fn(async () => null),
@@ -300,12 +297,16 @@ describe('marquee in useWorkspaceCanvasSelectionDraft', () => {
     spaceIds?: string[]
     spaces?: ReturnType<typeof createSpace>[]
   }) {
+    // The Spaces the marquee reads are the store's.
+    createCanvasDocumentHarness({
+      workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+      spaces: options.spaces ?? [],
+    })
     const holder = createNodeHolder(createRowNodes(['a', 'b', 'c'], options.flagged ?? []))
     const pane = document.createElement('div')
     pane.className = 'react-flow__pane'
     document.body.append(pane)
     const selectionDraftRef: { current: SelectionDraftState | null } = { current: null }
-    const spacesRef = { current: options.spaces ?? [] }
     const reactFlow = {
       screenToFlowPosition: ({ x, y }: { x: number; y: number }) => ({ x, y }),
       getNodes: () => holder.nodes,
@@ -319,7 +320,6 @@ describe('marquee in useWorkspaceCanvasSelectionDraft', () => {
           selectionDraftRef,
           setSelectionDraftUi: vi.fn(),
           reactFlow,
-          spacesRef,
           setNodes: holder.setNodes,
         }),
         ...useStoreProbe(),

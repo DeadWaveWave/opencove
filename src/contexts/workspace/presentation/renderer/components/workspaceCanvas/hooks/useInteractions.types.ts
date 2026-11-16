@@ -46,8 +46,6 @@ export interface UseWorkspaceCanvasInteractionsParams {
   defaultTerminalProfileId: string | null
   terminalFontSize: number
   terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   standardWindowSizeBucket: StandardWindowSizeBucket
   browserDefaultMode: BrowserMode
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
