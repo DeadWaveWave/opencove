@@ -281,6 +281,8 @@ export function renderRoleActions(documents?: Documents, { stable = true }: Rend
     return created
   })
   const onShowMessage = vi.fn()
+  const updateRoleProvider = vi.fn()
+  const updateRoleInput = vi.fn()
   const actionRefs = {
     runRoleRef: run.ref,
     updateRoleProviderRef: { current: vi.fn() },
@@ -306,8 +308,8 @@ export function renderRoleActions(documents?: Documents, { stable = true }: Rend
           standardWindowSizeBucket: 'regular',
           createRoleNode,
           createNodeForSession,
-          updateRoleProvider: vi.fn(),
-          updateRoleInput: vi.fn(),
+          updateRoleProvider,
+          updateRoleInput,
           appendRoleRunRecord,
           actionRefs,
           buildAgentNodeTitle: buildRoleAgentTitle,
