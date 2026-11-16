@@ -1,7 +1,9 @@
 import React from 'react'
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceRect } from '../../../types'
+import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import type { WorkspaceCanvasQuickPreviewState } from '../types'
+import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import type { ExplorerPlacementPx } from './useSpaceExplorer.placement'
 import type { WorkspaceCanvasNodeDragSession } from './useNodeDragSession'
 
@@ -27,11 +29,7 @@ export function useWorkspaceCanvasSpaceExplorerQuickPreviewActions(options: {
   materializePreviewState: MaterializePreviewState
   quickPreview: WorkspaceCanvasQuickPreviewState | null
   setQuickPreview: (next: WorkspaceCanvasQuickPreviewState | null) => void
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  setNodes: (
-    updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-    options?: { syncLayout?: boolean },
-  ) => void
+  setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   nodeDragSession: WorkspaceCanvasNodeDragSession
   finalizeDraggedNodeDrop: (input: {
@@ -58,6 +56,7 @@ export function useWorkspaceCanvasSpaceExplorerQuickPreviewActions(options: {
   materializeQuickPreview: () => void
   beginQuickPreviewDrag: (event: React.MouseEvent<HTMLElement>) => void
 } {
+  const readDocument = useReadCanvasDocument()
   const previewFileInSpace = React.useCallback(
     (
       spaceId: string,
@@ -204,7 +203,7 @@ export function useWorkspaceCanvasSpaceExplorerQuickPreviewActions(options: {
         }
 
         const fallbackNode =
-          options.nodesRef.current.find(node => node.id === materializedNodeId) ?? null
+          readDocument().nodes.find(node => node.id === materializedNodeId) ?? null
 
         options.finalizeDraggedNodeDrop({
           draggedNodeIds: [materializedNodeId],
@@ -232,9 +231,9 @@ export function useWorkspaceCanvasSpaceExplorerQuickPreviewActions(options: {
         }
 
         materializedNodeId = created.id
-        const materializedNode =
-          options.nodesRef.current.find(node => node.id === created.id) ?? created
-        options.nodeDragSession.beginNodeDragSession(options.nodesRef.current)
+        const { nodes } = readDocument()
+        const materializedNode = nodes.find(node => node.id === created.id) ?? created
+        options.nodeDragSession.beginNodeDragSession(nodes)
         latestDraggedNodePositionById = new Map([
           [
             materializedNode.id,
@@ -294,7 +293,7 @@ export function useWorkspaceCanvasSpaceExplorerQuickPreviewActions(options: {
       window.addEventListener('mousemove', handleMouseMove, true)
       window.addEventListener('mouseup', handleMouseUp, true)
     },
-    [options],
+    [options, readDocument],
   )
 
   return {

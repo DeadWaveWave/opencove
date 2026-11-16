@@ -4,6 +4,7 @@ import type { Point, TerminalNodeData } from '../../../types'
 import type { NodeCreationPlacementOptions } from '../types'
 import type { WorkspaceCanvasSpaceExplorerArgs } from './useSpaceExplorer.types'
 import { focusNodeInViewport } from '../helpers'
+import { useCanvasDocumentCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
 import { repositionCreatedExplorerNode } from './useSpaceExplorer.materializePlacement'
 import {
@@ -13,14 +14,7 @@ import {
 
 export type WorkspaceDocumentOpeningArgs = Pick<
   WorkspaceCanvasSpaceExplorerArgs,
-  | 'workspaceId'
-  | 'spacesRef'
-  | 'nodesRef'
-  | 'setNodes'
-  | 'updateCanvasDocument'
-  | 'onRequestPersistFlush'
-  | 'reactFlow'
-  | 'createDocumentNode'
+  'workspaceId' | 'setNodes' | 'updateCanvasDocument' | 'reactFlow' | 'createDocumentNode'
 > & { expandNode?: (id: string) => Node<TerminalNodeData> | undefined }
 
 export interface WorkspaceDocumentOpenRequest {
@@ -35,15 +29,14 @@ export interface WorkspaceDocumentOpenRequest {
 /** Shared materialization route for Explorer and terminal navigation. */
 export function useWorkspaceDocumentOpening({
   workspaceId,
-  spacesRef,
-  nodesRef,
   setNodes,
   updateCanvasDocument,
-  onRequestPersistFlush,
   reactFlow,
   createDocumentNode,
   expandNode,
 }: WorkspaceDocumentOpeningArgs) {
+  const readDocument = useReadCanvasDocument()
+  const { requestPersistFlush } = useCanvasDocumentCommands()
   const activeWorkspaceRef = useRef(workspaceId)
   activeWorkspaceRef.current = workspaceId
   const aliveRef = useRef(true)
@@ -59,7 +52,7 @@ export function useWorkspaceDocumentOpening({
     async (request: WorkspaceDocumentOpenRequest): Promise<Node<TerminalNodeData> | null> => {
       const lifecycle = lifecycleRef.current
       const resolveSpace = () =>
-        spacesRef.current.find(candidate => candidate.id === request.spaceId) ?? null
+        readDocument().spaces.find(candidate => candidate.id === request.spaceId) ?? null
       const isCurrent = () => {
         const space = resolveSpace()
         return (
@@ -74,19 +67,19 @@ export function useWorkspaceDocumentOpening({
       if (!isCurrent()) {
         return null
       }
-      const findExisting = () =>
-        nodesRef.current.find(node => {
+      const findExisting = () => {
+        const { nodes, spaces } = readDocument()
+        return nodes.find(node => {
           if (node.data.kind !== 'document' || node.data.document?.uri !== request.uri) {
             return false
           }
-          const ownerSpace = spacesRef.current.find(candidate =>
-            candidate.nodeIds.includes(node.id),
-          )
+          const ownerSpace = spaces.find(candidate => candidate.nodeIds.includes(node.id))
           return (
             (ownerSpace?.id ?? null) === request.spaceId &&
-            resolveFilesystemNodeMountId(node.id, node.data, spacesRef.current) === request.mountId
+            resolveFilesystemNodeMountId(node.id, node.data, spaces) === request.mountId
           )
         })
+      }
       const reveal = (node: Node<TerminalNodeData>) => {
         const expanded = expandNode ? expandNode(node.id) : node
         if (!expanded) {
@@ -120,7 +113,7 @@ export function useWorkspaceDocumentOpening({
         created,
         creationAnchor: request.anchor,
         creationPlacement: placement,
-        nodesRef,
+        readDocument,
         setNodes,
       })
       if (space) {
@@ -132,18 +125,17 @@ export function useWorkspaceDocumentOpening({
           updateCanvasDocument,
         })
       }
-      onRequestPersistFlush?.()
+      requestPersistFlush()
       return created
     },
     [
       createDocumentNode,
       workspaceId,
       expandNode,
-      nodesRef,
-      onRequestPersistFlush,
       reactFlow,
+      readDocument,
+      requestPersistFlush,
       setNodes,
-      spacesRef,
       updateCanvasDocument,
     ],
   )
