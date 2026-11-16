@@ -268,7 +268,6 @@ describe('the focus of a created node when no handler is given', () => {
           workspaceId: A,
           workspacePath: `/tmp/${A}`,
           nodes: NO_NODES,
-          spacesRef: { current: [] },
           onNodesCommitted: vi.fn(),
           isLiveGestureActive: () => false,
           standardWindowSizeBucket: 'regular',
@@ -384,6 +383,29 @@ describe('placement during a node drag', () => {
     const created = await create(view, 'a note')
 
     expect(overlaps(created, { position: { x: 0, y: 0 }, width: 400, height: 300 })).toBe(false)
+  })
+
+  // Decision 7 of #702 keeps the nearest free position on the canvas view until S6: a window that
+  // is being moved snaps against the other windows where the canvas shows them now.
+  it('keeps the nearest free position on the canvas view, where the dragged node is now', () => {
+    const dragged = blockerNode('dragged', { width: 400, height: 300 })
+    const { view } = renderStore({ a: { nodes: [dragged] } })
+
+    act(() => {
+      const { canvasState } = view.result.current
+      canvasState.hasTransientNodePositionsRef.current = true
+      canvasState.setCanvasNodes([{ ...dragged, position: { x: 4000, y: 0 } }])
+    })
+    expect(documentOf(A).nodes[0].position.x).toBe(0)
+
+    // The store still holds `dragged` at the origin; the view does not, so the origin is free.
+    const position = store(view).normalizePosition(
+      'moving',
+      { x: 0, y: 0 },
+      { width: 400, height: 300 },
+    )
+
+    expect(position).toEqual({ x: 0, y: 0 })
   })
 })
 

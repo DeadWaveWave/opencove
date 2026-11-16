@@ -6,7 +6,12 @@ import { pixelNode } from '../unit/contexts/workspacePixelLayer.fixtures'
 // The node store's creators, one call each, for the specs that place and flush them.
 
 export const ANCHOR = { x: 20, y: 20 }
-export const FOLDER = { uri: 'file:///root/dir', rootUri: 'file:///root' }
+export const FOLDER = {
+  uri: 'file:///root/dir',
+  rootUri: 'file:///root',
+  viewMode: 'icons' as const,
+  expandedDirectoryUris: [] as string[],
+}
 export const LOCAL = { endpointId: 'local', mountId: null }
 
 export function blockerNode(id = 'blocker', overrides: Partial<TerminalNodeData> = {}) {
