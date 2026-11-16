@@ -2,6 +2,7 @@ import { act, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_ENV_BY_PROVIDER } from '../../../src/contexts/settings/domain/agentEnv'
 import { useWorkspaceCanvasAgentNodeLifecycle } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeLifecycle'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import {
   agentNode,
@@ -171,6 +172,23 @@ describe('the agent lifecycle in two workspaces', () => {
 
     expect(nodeOf(B, 'agent-b').data.sessionId).toBe('runtime-b')
     expect(nodeOf(A, 'agent-a').data.sessionId).toBe('')
+    expect(launched.api.kill).not.toHaveBeenCalled()
+  })
+
+  it('launches a node of its own workspace while another is displayed', async () => {
+    const launched = stubLaunch('runtime-a')
+    launched.resolve()
+    const { view } = renderLifecycle({
+      a: { nodes: [agentNode('agent-a', { sessionId: '' })] },
+      b: { nodes: [agentNode('agent-b')] },
+    })
+    act(() => useAppStore.setState({ activeWorkspaceId: B }))
+
+    await act(async () => {
+      await view.result.current.launchAgentInNode('agent-a', 'new')
+    })
+
+    expect(nodeOf(A, 'agent-a').data.sessionId).toBe('runtime-a')
     expect(launched.api.kill).not.toHaveBeenCalled()
   })
 

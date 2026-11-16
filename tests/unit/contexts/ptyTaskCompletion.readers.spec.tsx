@@ -9,6 +9,7 @@ import {
   type PtyEventHub,
 } from '../../../src/app/renderer/shell/utils/ptyEventHub'
 import { useWorkspaceCanvasPtyTaskCompletion } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/usePtyTaskCompletion'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import {
   agentNode,
@@ -146,6 +147,19 @@ describe('the PTY task completion in two workspaces', () => {
     expect(query).toHaveBeenLastCalledWith('agent-b', 20)
     expect(nodeOf(B, 'agent-b').data.title).toBe('codex · Title of agent-b')
     expect(nodeOf(A, 'agent-a').data.title).toBe('codex · Title of agent-a')
+  })
+
+  it('starts the title sync of its own workspace while another is displayed', async () => {
+    const query = vi.fn(async () => [summaryOf('agent-a-resume', 'Review persistence')])
+    renderCompletion({ a: { nodes: [watched('agent-a')] } }, query)
+    act(() => useAppStore.setState({ activeWorkspaceId: B }))
+
+    await act(async () => {
+      emitMetadata(metadataOf('agent-a'))
+    })
+
+    expect(query).toHaveBeenCalledWith('agent-a', 20)
+    expect(nodeOf(A, 'agent-a').data.title).toBe('codex · Review persistence')
   })
 
   it('ignores an event for a node that only the other workspace holds', async () => {

@@ -10,6 +10,7 @@ import { useWorkspaceCanvasAgentLastMessageCopy } from '../../../src/contexts/wo
 import { useAgentNodeSessionControls } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeSessionControls'
 import { useAgentNodeSessionSwitch } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeSessionSwitch'
 import { useTerminalAgentSessionActions } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTerminalAgentSessionActions'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import {
@@ -404,40 +405,48 @@ describe('the terminal agent session actions', () => {
   })
 })
 
+const noopCallback = vi.fn()
+
+function renderViewportRefs(
+  setCenter: () => void,
+  documents?: Parameters<typeof renderInTwoWorkspaces>[1],
+) {
+  return renderInTwoWorkspaces(() => {
+    const actionRefs = useWorkspaceCanvasActionRefs()
+    useWorkspaceCanvasSyncActionRefs({
+      actionRefs,
+      clearNodeSelection: noopCallback,
+      closeNode: noopCallback,
+      resizeNode: noopCallback,
+      copyAgentLastMessage: noopCallback,
+      reloadAgentSession: noopCallback,
+      listAgentSessions: noopCallback,
+      switchAgentSession: noopCallback,
+      updateNoteText: noopCallback,
+      renameNoteTitle: noopCallback,
+      updateWebsiteUrl: noopCallback,
+      setWebsitePinned: noopCallback,
+      setWebsiteSession: noopCallback,
+      setWebsiteMode: noopCallback,
+      setWebsiteFullscreen: noopCallback,
+      updateNodeScrollback: noopCallback,
+      updateTerminalTitle: noopCallback,
+      clearTerminalAgentOverlay: noopCallback,
+      renameTerminalTitle: noopCallback,
+      focusNodeOnClick: true,
+      focusNodeTargetZoom: 1,
+      reactFlow: { setCenter } as never,
+    } as never)
+    return actionRefs
+  }, documents)
+}
+
 describe('the viewport normalisation of a terminal interaction', () => {
-  const noop = vi.fn()
+  const at = (x: number, y: number) => ({ ...agentNode('agent'), position: { x, y } })
 
   it('centres on a node the store gained in the same call, in the shown workspace', () => {
     const setCenter = vi.fn()
-    const { view, showB } = renderInTwoWorkspaces(() => {
-      const actionRefs = useWorkspaceCanvasActionRefs()
-      useWorkspaceCanvasSyncActionRefs({
-        actionRefs,
-        clearNodeSelection: noop,
-        closeNode: noop,
-        resizeNode: noop,
-        copyAgentLastMessage: noop,
-        reloadAgentSession: noop,
-        listAgentSessions: noop,
-        switchAgentSession: noop,
-        updateNoteText: noop,
-        renameNoteTitle: noop,
-        updateWebsiteUrl: noop,
-        setWebsitePinned: noop,
-        setWebsiteSession: noop,
-        setWebsiteMode: noop,
-        setWebsiteFullscreen: noop,
-        updateNodeScrollback: noop,
-        updateTerminalTitle: noop,
-        clearTerminalAgentOverlay: noop,
-        renameTerminalTitle: noop,
-        focusNodeOnClick: true,
-        focusNodeTargetZoom: 1,
-        reactFlow: { setCenter } as never,
-      } as never)
-      return actionRefs
-    })
-    const at = (x: number, y: number) => ({ ...agentNode('agent'), position: { x, y } })
+    const { view, showB } = renderViewportRefs(setCenter)
 
     act(() => {
       replaceWorkspaceNodes(A, [at(100, 200)])
@@ -452,5 +461,121 @@ describe('the viewport normalisation of a terminal interaction', () => {
     })
     expect(setCenter).toHaveBeenLastCalledWith(1000 + 260, 2000 + 180, expect.anything())
     expect(setCenter).toHaveBeenCalledTimes(2)
+  })
+
+  it('centres on a node of its own workspace while another is displayed', () => {
+    const setCenter = vi.fn()
+    const { view } = renderViewportRefs(setCenter, { a: { nodes: [at(100, 200)] } })
+    act(() => useAppStore.setState({ activeWorkspaceId: B }))
+
+    act(() => {
+      view.result.current.normalizeViewportForTerminalInteractionRef.current('agent')
+    })
+
+    expect(setCenter).toHaveBeenCalledWith(100 + 260, 200 + 180, expect.anything())
+  })
+})
+
+// The reader belongs to the workspace of the render, not to the one on display: here the app
+// store shows B while every hook is rendered under A, and each still reads A.
+describe('a render of workspace A while workspace B is displayed', () => {
+  const displayB = () => act(() => useAppStore.setState({ activeWorkspaceId: B }))
+  const inA = { a: { nodes: [agentNode('agent-a', {}, { executionDirectory: '/dir-a' })] } }
+
+  it('lists the sessions of an agent of A', async () => {
+    const listSessions = vi.fn(async () => ({ sessions: [] }))
+    stubOpencoveApi({ agent: { listSessions } })
+    const { view } = renderInTwoWorkspaces(
+      ({ nodeStore }) =>
+        useAgentNodeSessionControls({
+          setNodes: nodeStore.setNodes,
+          bumpAgentLaunchToken: nodeStore.bumpAgentLaunchToken,
+        }),
+      inA,
+    )
+    displayB()
+
+    await act(async () => {
+      await view.result.current.listAgentSessionsForNode('agent-a')
+    })
+
+    expect(listSessions).toHaveBeenCalledWith({ provider: 'codex', cwd: '/dir-a', limit: 20 })
+  })
+
+  it('relaunches an agent of A through the session switch', async () => {
+    const relaunch = vi.fn(async () => undefined)
+    const { view } = renderInTwoWorkspaces(
+      ({ nodeStore }) =>
+        useAgentNodeSessionSwitch({ setNodes: nodeStore.setNodes, relaunchAgentNode: relaunch }),
+      inA,
+    )
+    displayB()
+
+    await act(async () => {
+      await view.result.current('agent-a', {
+        sessionId: 'resume-next',
+        provider: 'codex',
+        cwd: '/dir-a',
+        title: null,
+        preview: null,
+        startedAt: null,
+        updatedAt: null,
+        source: 'codex-file',
+      })
+    })
+
+    expect(relaunch).toHaveBeenCalledWith(expect.objectContaining({ nodeId: 'agent-a' }))
+  })
+
+  it('copies the last message of an agent of A', async () => {
+    const readLastMessage = vi.fn(async () => ({ message: 'Done.' }))
+    stubOpencoveApi({
+      agent: { readLastMessage },
+      clipboard: { writeText: vi.fn(async () => undefined) },
+    })
+    const { view } = renderInTwoWorkspaces(
+      () => useWorkspaceCanvasAgentLastMessageCopy({ onShowMessage: vi.fn() }),
+      inA,
+    )
+    displayB()
+
+    await act(async () => {
+      await view.result.current('agent-a')
+    })
+
+    expect(readLastMessage).toHaveBeenCalledWith(expect.objectContaining({ cwd: '/dir-a' }))
+  })
+
+  it('lists the sessions of a terminal of A', async () => {
+    const listSessions = vi.fn(async () => ({ provider: 'codex', cwd: '', sessions: [] }))
+    stubOpencoveApi({ agent: { listSessions } })
+    const { view } = renderInTwoWorkspaces(
+      ({ nodeStore }) => useTerminalAgentSessionActions({ setNodes: nodeStore.setNodes }),
+      {
+        a: {
+          nodes: [
+            sized({
+              ...pixelNode({
+                kind: 'terminal',
+                executionDirectory: '/dir-a',
+                agentOverlay: {
+                  provider: 'codex',
+                  status: 'standby',
+                  startedAtMs: Date.parse('2026-08-12T00:00:00.000Z'),
+                },
+              }),
+              id: 'terminal-a',
+            }),
+          ],
+        },
+      },
+    )
+    displayB()
+
+    await act(async () => {
+      await view.result.current.listOverlayAgentSessions('terminal-a')
+    })
+
+    expect(listSessions).toHaveBeenCalledWith({ provider: 'codex', cwd: '/dir-a', limit: 20 })
   })
 })

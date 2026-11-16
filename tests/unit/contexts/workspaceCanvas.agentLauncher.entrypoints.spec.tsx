@@ -11,6 +11,7 @@ import {
   launchWorkspaceAgentSession,
   resolveWorkspaceAgentLaunchBinding,
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useWorkspaceAgentLaunch.shared'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { replaceWorkspaceSpaces } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import { assignNodeToSpaceAndExpand } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.spaceAssignment'
 
@@ -227,6 +228,19 @@ describe('shared Agent launcher entrypoints', () => {
     })
     expect(resolveWorkspaceAgentLaunchBinding).toHaveBeenCalledWith(
       expect.objectContaining({ targetSpace: expect.objectContaining({ id: 'space-late' }) }),
+    )
+  })
+
+  it('reads the Space under the anchor from its own workspace while another is displayed', async () => {
+    const params = fixture()
+    useAppStore.setState(state => ({
+      workspaces: [...state.workspaces, { ...state.workspaces[0], id: 'other', spaces: [] }],
+      activeWorkspaceId: 'other',
+    }))
+    const { result } = renderHookWithCanvasStore(() => useWorkspaceCanvasAgentLauncher(params))
+    await act(() => result.current.launchAgentAtFlowPosition({ x: 400, y: 300 }))
+    expect(resolveWorkspaceAgentLaunchBinding).toHaveBeenCalledWith(
+      expect.objectContaining({ targetSpace: SPACE }),
     )
   })
 
