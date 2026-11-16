@@ -6,6 +6,11 @@ import type {
   TerminalNodeData,
   WorkspaceSpaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
+import {
+  CANVAS_STORE_TEST_WORKSPACE_ID,
+  CanvasStoreTestProvider,
+} from '../../support/canvasStoreTestHarness'
+import { seedWorkspaceCanvasStore } from '../../support/workspaceCanvasStoreHarness'
 import { useWorkspaceCanvasShortcuts } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useShortcuts'
 
 function createNode(
@@ -52,9 +57,17 @@ function createNode(
   }
 }
 
-function ShortcutHarness(props: React.ComponentProps<typeof useWorkspaceCanvasShortcuts>) {
+function ShortcutHarnessBody(props: React.ComponentProps<typeof useWorkspaceCanvasShortcuts>) {
   useWorkspaceCanvasShortcuts(props)
   return <div />
+}
+
+function ShortcutHarness(props: React.ComponentProps<typeof useWorkspaceCanvasShortcuts>) {
+  return (
+    <CanvasStoreTestProvider>
+      <ShortcutHarnessBody {...props} />
+    </CanvasStoreTestProvider>
+  )
 }
 
 describe('useWorkspaceCanvasShortcuts', () => {
@@ -93,13 +106,14 @@ describe('useWorkspaceCanvasShortcuts', () => {
         rect: null,
       },
     ]
-    const nodesRef = {
-      current: [
+    seedWorkspaceCanvasStore({
+      workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+      nodes: [
         createNode('note-1', 'note'),
         createNode('agent-1', 'agent', 'running'),
         createNode('agent-2', 'agent', 'standby'),
       ],
-    }
+    })
 
     const activateSpace = vi.fn()
 
@@ -111,7 +125,6 @@ describe('useWorkspaceCanvasShortcuts', () => {
         disableWhenTerminalFocused={false}
         activeSpaceId={null}
         spaces={spaces}
-        nodesRef={nodesRef}
         createSpaceFromSelectedNodes={() => undefined}
         createNoteAtViewportCenter={() => undefined}
         createTerminalAtViewportCenter={async () => undefined}
@@ -143,7 +156,6 @@ describe('useWorkspaceCanvasShortcuts', () => {
         disableWhenTerminalFocused={false}
         activeSpaceId="space-idle-a"
         spaces={spaces}
-        nodesRef={nodesRef}
         createSpaceFromSelectedNodes={() => undefined}
         createNoteAtViewportCenter={() => undefined}
         createTerminalAtViewportCenter={async () => undefined}
@@ -179,7 +191,6 @@ describe('useWorkspaceCanvasShortcuts', () => {
         disableWhenTerminalFocused
         activeSpaceId={null}
         spaces={[]}
-        nodesRef={{ current: [] }}
         createSpaceFromSelectedNodes={() => undefined}
         createNoteAtViewportCenter={() => undefined}
         createTerminalAtViewportCenter={async () => undefined}

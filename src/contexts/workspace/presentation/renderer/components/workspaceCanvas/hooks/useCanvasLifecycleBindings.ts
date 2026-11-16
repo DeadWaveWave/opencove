@@ -21,7 +21,6 @@ export function useWorkspaceCanvasLifecycleBindings({
   focusSpaceInViewport,
   nodes,
   isFocusNodeTargetZoomPreviewing,
-  nodesRef,
   requestNodeDeleteRef,
 }: {
   workspaceId: string
@@ -37,10 +36,9 @@ export function useWorkspaceCanvasLifecycleBindings({
   focusSpaceInViewport: (spaceId: string) => boolean
   nodes: Node<TerminalNodeData>[]
   isFocusNodeTargetZoomPreviewing: boolean
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   requestNodeDeleteRef: WorkspaceCanvasActionRefs['requestNodeDeleteRef']
 }): void {
-  useWorkspaceCanvasCreationActivation({ workspaceId, canvasRef: canvasState.canvasRef, nodesRef })
+  useWorkspaceCanvasCreationActivation({ workspaceId, canvasRef: canvasState.canvasRef })
   useWorkspaceCanvasViewportNavigation({
     canvasRef: canvasState.canvasRef,
     workspaceId,

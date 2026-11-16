@@ -133,9 +133,6 @@ describe('the shortcut actions', () => {
     disableAppShortcutsWhenTerminalFocused: false,
     keybindings: {},
   }
-  // The refs the hook used to take. They stay empty: the hook must not read them.
-  const staleRefs = { spacesRef: { current: [] }, nodesRef: { current: [] } }
-
   function mount({
     spaces = [],
     activeSpaceId = null,
@@ -150,7 +147,6 @@ describe('the shortcut actions', () => {
       clearNodeSelection: vi.fn(),
     }
     const params = {
-      ...staleRefs,
       closeNode: calls.closeNode,
       enabled: true,
       workspaceId: 'workspace',
@@ -414,11 +410,9 @@ describe('the creation activation', () => {
     const canvas = document.createElement('div')
     canvas.innerHTML = CANVAS_SCOPE_NODE
     document.body.append(canvas)
-    // The ref the hook used to take. It stays empty: the hook must not read it.
     const params = {
       workspaceId: 'workspace',
       canvasRef: { current: canvas },
-      nodesRef: { current: [] },
     }
     const view = renderInCanvasDocument(
       () => useWorkspaceCanvasCreationActivation(params as never),

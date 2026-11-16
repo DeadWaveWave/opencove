@@ -1,5 +1,4 @@
 import { useEffect, useMemo } from 'react'
-import type { Node } from '@xyflow/react'
 import type {
   KeybindingOverrides,
   WorkspaceCanvasCommandId,
@@ -11,7 +10,8 @@ import {
   serializeKeyChord,
   toKeyChord,
 } from '@contexts/settings/domain/keybindings'
-import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { WorkspaceSpaceState } from '../../../types'
+import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import type { SpatialNavigationDirection } from './spatialNavigation'
 import { resolveCycledSpaceId, resolveIdleSpaceIds } from './useShortcuts.helpers'
 import { ownsCanvasAgentShortcut } from './useShortcuts.scope'
@@ -47,7 +47,6 @@ export function useWorkspaceCanvasShortcuts({
   disableWhenTerminalFocused,
   activeSpaceId,
   spaces,
-  nodesRef,
   canvasRef,
   createSpaceFromSelectedNodes,
   createNoteAtViewportCenter,
@@ -63,7 +62,6 @@ export function useWorkspaceCanvasShortcuts({
   disableWhenTerminalFocused: boolean
   activeSpaceId: string | null
   spaces: WorkspaceSpaceState[]
-  nodesRef: React.MutableRefObject<Array<Node<TerminalNodeData>>>
   canvasRef: React.RefObject<HTMLDivElement | null>
   createSpaceFromSelectedNodes: () => void
   createNoteAtViewportCenter: () => void
@@ -73,6 +71,7 @@ export function useWorkspaceCanvasShortcuts({
   navigateNode: (direction: SpatialNavigationDirection) => void
   navigateSpace: (direction: SpatialNavigationDirection) => void
 }): void {
+  const readDocument = useReadCanvasDocument()
   const topLevelSpaces = useMemo(() => spaces.filter(space => !space.parentSpaceId), [spaces])
   const spaceIds = useMemo(() => topLevelSpaces.map(space => space.id), [topLevelSpaces])
   const chordToCommand = useMemo(
@@ -184,7 +183,7 @@ export function useWorkspaceCanvasShortcuts({
             spaceIds:
               commandId === 'workspaceCanvas.cycleIdleSpacesForward' ||
               commandId === 'workspaceCanvas.cycleIdleSpacesBackward'
-                ? resolveIdleSpaceIds({ spaces: topLevelSpaces, nodes: nodesRef.current })
+                ? resolveIdleSpaceIds({ spaces: topLevelSpaces, nodes: readDocument().nodes })
                 : spaceIds,
           })
 
@@ -219,7 +218,7 @@ export function useWorkspaceCanvasShortcuts({
     keybindings,
     navigateNode,
     navigateSpace,
-    nodesRef,
+    readDocument,
     chordToCommand,
     spaceIds,
     topLevelSpaces,

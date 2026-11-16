@@ -99,7 +99,6 @@ const reactFlow = {
   getNodes: () => [],
   getNode: () => undefined,
 }
-const staleRefs = { spacesRef: { current: [] }, nodesRef: { current: [] } }
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -344,7 +343,6 @@ describe('the shortcuts that create a node', () => {
     workspacePath: '/repo',
     canvasRef,
     reactFlow,
-    ...staleRefs,
     spaceNavigationAnchorIdRef: { current: null },
     setNodes,
     updateCanvasDocument,
