@@ -46,7 +46,7 @@ export async function listProjectMounts(workspaceId: string): Promise<MountDto[]
  * Writes the Spaces as a recipe over the Spaces the store holds when the recipe runs. The repair
  * resolves after `mount.list` answers, so the Spaces the caller read before the await are stale.
  */
-export type SpaceRepairCommitter = (
+type SpaceRepairCommitter = (
   recipe: (spaces: WorkspaceSpaceState[]) => WorkspaceSpaceState[],
 ) => void
 
