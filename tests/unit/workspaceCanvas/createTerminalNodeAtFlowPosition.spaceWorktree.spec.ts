@@ -3,6 +3,10 @@ import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/ag
 import { resolveTerminalPtyGeometryForNodeFrame } from '../../../src/contexts/workspace/domain/terminalPtyGeometry'
 import { resolveDefaultTerminalWindowSize } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
 import { createTerminalNodeAtFlowPosition } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.paneNodeCreation'
+import {
+  createCanvasDocumentHarness,
+  renderCanvasDocumentCommands,
+} from '../../support/canvasDocumentHarness'
 import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 
 function regularTerminalLaunchGeometry() {
@@ -21,6 +25,13 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
   })
+
+  // The mount repair writes through the store. None of these launches needs a repair, so the store
+  // must see no write: the `onSpacesChange` stub only receives the node's Space assignment.
+  function seedStore(spaces: WorkspaceSpaceState[] = []) {
+    const harness = createCanvasDocumentHarness({ spaces })
+    return { harness, updateSpaces: renderCanvasDocumentCommands(harness.workspaceId).updateSpaces }
+  }
 
   it('refreshes a matched space from persisted state before launching a terminal', async () => {
     const ptySpawn = vi.fn()
@@ -65,6 +76,8 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
       rect: { x: 0, y: 0, width: 1200, height: 800 },
     }
 
+    const { harness, updateSpaces } = seedStore([staleSpace])
+
     vi.stubGlobal('window', {
       opencoveApi: {
         pty: {
@@ -108,6 +121,7 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
       nodesRef: { current: [] },
       setNodes: vi.fn(),
       onSpacesChange,
+      updateSpaces,
       createNodeForSession,
     })
     const expectedGeometry = regularTerminalLaunchGeometry()
@@ -154,6 +168,8 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
         nodeIds: ['00000000-0000-4000-8000-000000000001'],
       }),
     ])
+    expect(harness.notifications).not.toHaveBeenCalled()
+    expect(harness.flush).not.toHaveBeenCalled()
   })
 
   it('does not overwrite local space metadata changed while a terminal launch is in flight', async () => {
@@ -201,6 +217,8 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
       return { id: '00000000-0000-4000-8000-000000000001' } as never
     })
 
+    const { harness, updateSpaces } = seedStore([originalSpace])
+
     vi.stubGlobal('window', {
       opencoveApi: {
         pty: {
@@ -244,6 +262,7 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
       nodesRef: { current: [] },
       setNodes: vi.fn(),
       onSpacesChange,
+      updateSpaces,
       createNodeForSession,
     })
 
@@ -264,5 +283,7 @@ describe('createTerminalNodeAtFlowPosition space worktree launch', () => {
         nodeIds: ['00000000-0000-4000-8000-000000000001'],
       }),
     ])
+    expect(harness.notifications).not.toHaveBeenCalled()
+    expect(harness.flush).not.toHaveBeenCalled()
   })
 })

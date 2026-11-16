@@ -67,9 +67,7 @@ export async function resumeTaskAgentSessionAction(
       currentMountId: taskSpace?.targetMountId ?? null,
       executionDirectory: resumeExecutionDirectory,
       targetSpace: taskSpace,
-      spacesRef: context.spacesRef,
-      onSpacesChange: context.onSpacesChange,
-      onRequestPersistFlush: context.onRequestPersistFlush,
+      updateSpaces: context.updateSpaces,
       mountQueryFailurePolicy: 'throw',
     })
   } catch (error) {
@@ -123,9 +121,7 @@ export async function resumeTaskAgentSessionAction(
           currentMountId: null,
           executionDirectory: resumeExecutionDirectory,
           targetSpace: taskSpace,
-          spacesRef: context.spacesRef,
-          onSpacesChange: context.onSpacesChange,
-          onRequestPersistFlush: context.onRequestPersistFlush,
+          updateSpaces: context.updateSpaces,
           mountQueryFailurePolicy: 'throw',
         })
         return nextBinding.mountId && nextBinding.mountId !== failedMountId ? nextBinding : null

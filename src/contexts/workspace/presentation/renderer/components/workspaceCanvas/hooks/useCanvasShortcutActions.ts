@@ -19,7 +19,11 @@ import type { SpatialNavigationDirection } from './spatialNavigation'
 import { useWorkspaceCanvasSelectNode } from './useSelectNode'
 import { focusPrimaryNodeContent } from '../focusPrimaryNodeContent'
 import { useCloseSelectedNodeShortcut } from './useCloseSelectedNodeShortcut'
-import { useCanvasUiCommands, useReadCanvasSelection } from '../../../store/canvasStoreContext'
+import {
+  useCanvasDocumentCommands,
+  useCanvasUiCommands,
+  useReadCanvasSelection,
+} from '../../../store/canvasStoreContext'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -168,6 +172,7 @@ export function useWorkspaceCanvasShortcutActions({
   terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
 }): void {
   const ui = useCanvasUiCommands()
+  const documentCommands = useCanvasDocumentCommands()
   const readSelection = useReadCanvasSelection()
 
   useCloseSelectedNodeShortcut({
@@ -242,6 +247,7 @@ export function useWorkspaceCanvasShortcutActions({
       nodesRef,
       setNodes,
       onSpacesChange,
+      updateSpaces: documentCommands.updateSpaces,
       createNodeForSession,
       onShowMessage,
     })
@@ -252,6 +258,7 @@ export function useWorkspaceCanvasShortcutActions({
     terminalDisplayMetrics,
     canvasRef,
     createNodeForSession,
+    documentCommands,
     environmentVariables,
     nodesRef,
     onSpacesChange,

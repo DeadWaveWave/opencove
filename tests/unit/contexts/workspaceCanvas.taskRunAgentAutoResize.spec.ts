@@ -111,6 +111,7 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
         nodesRef,
         spacesRef,
         onSpacesChange,
+        updateSpaces: vi.fn(),
         setNodes,
         createNodeForSession: async input => {
           const created: Node<TerminalNodeData> = {
@@ -314,6 +315,7 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
       nodesRef,
       spacesRef,
       onSpacesChange: vi.fn(),
+      updateSpaces: vi.fn(),
       setNodes,
       createNodeForSession,
       buildAgentNodeTitle: () => 'codex · gpt-5.2-codex',

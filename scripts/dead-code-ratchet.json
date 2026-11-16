@@ -55,7 +55,6 @@
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCanvasDerivedConfig.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCreatedNodeViewportCenter.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.paneNodeCreation.terminalLaunch.ts": 1,
-    "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.paneNodeCreation.ts": 1,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceExplorer.placement.ts": 2,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceOwnership.helpers.ts": 3,
     "src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useSpaceOwnership.projectLayout.ts": 1,

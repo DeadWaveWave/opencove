@@ -163,6 +163,7 @@ it.each(
       workspacePath: '/repo',
       agentSettings: DEFAULT_AGENT_SETTINGS,
       onSpacesChange: vi.fn(),
+      updateSpaces: vi.fn(),
       onRequestPersistFlush: vi.fn(),
       buildAgentNodeTitle: () => 'Agent',
       launchAgentInNode: f.result.current.launchAgentInNode,
@@ -238,6 +239,7 @@ it.each(
         expect(window.opencoveApi.pty.kill).not.toHaveBeenCalled()
         expect(calls).not.toContain('session.prepareOrRevive')
         expect(taskContext.onSpacesChange).not.toHaveBeenCalled()
+        expect(taskContext.updateSpaces).not.toHaveBeenCalled()
         expect(taskContext.onRequestPersistFlush).not.toHaveBeenCalled()
         expect(f.nodesRef.current[0].data.agent?.prompt).toBe('fixture')
         if (action === 'relaunch' || action === 'switch') {

@@ -35,6 +35,7 @@ import { translate } from '@app/renderer/i18n'
 import { createWebsiteNodeData } from '../../../utils/websiteNodeData'
 import { nodeWorkerBindingForMount } from '@shared/types/nodeWorkerBinding'
 import type { CanvasUiCommands } from '../../../store/canvasStore.ui'
+import type { CanvasDocumentCommands } from '../../../store/canvasStoreContext'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -53,7 +54,7 @@ export async function createTerminalNodeAtFlowPosition({
   nodesRef,
   setNodes,
   onSpacesChange,
-  onRequestPersistFlush,
+  updateSpaces,
   createNodeForSession,
   onShowMessage,
   title,
@@ -70,7 +71,7 @@ export async function createTerminalNodeAtFlowPosition({
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
-  onRequestPersistFlush?: () => void
+  updateSpaces: CanvasDocumentCommands['updateSpaces']
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   onShowMessage?: (message: string, level: 'info' | 'warning' | 'error') => void
   title?: string | null
@@ -102,9 +103,10 @@ export async function createTerminalNodeAtFlowPosition({
   const resolvedWorkspacePath = launchWorkspaceContext.workspacePath
   const shouldFallbackToFirstMount =
     !targetSpace && isAllocateProjectPlaceholderPath(resolvedWorkspacePath, workspaceId)
-  const launchSpaces = targetSpace
-    ? mergeMissingWorkspaceSpaces(spacesRef.current, workspaceSpacesSnapshot, targetSpace.id)
-    : spacesRef.current
+  // The repair writes after `mount.list` answers, onto the Spaces the store holds then. A target
+  // that only the persisted snapshot holds is added by the same write. It does not flush: the node
+  // add after the spawn does.
+  const repairSpaceId = targetSpace?.id
   let mountId: string | null = null
   let workerBinding = nodeWorkerBindingForMount(null)
   let resolvedCwd = resolvedWorkspacePath
@@ -114,9 +116,13 @@ export async function createTerminalNodeAtFlowPosition({
       workspaceId,
       workspacePath: resolvedWorkspacePath,
       space: targetSpace,
-      spaces: launchSpaces,
-      onSpacesChange,
-      onRequestPersistFlush,
+      commitSpaceRepair:
+        repairSpaceId === undefined
+          ? undefined
+          : recipe =>
+              updateSpaces(spaces =>
+                recipe(mergeMissingWorkspaceSpaces(spaces, workspaceSpacesSnapshot, repairSpaceId)),
+              ),
       fallbackToFirstMount: shouldFallbackToFirstMount,
     })
     targetSpace = mountContext.space
@@ -383,27 +389,6 @@ export function createWebsiteNodeAtFlowPosition({
 type PaneCreationOptions<T> = Omit<T, 'anchor'> & {
   contextMenu: ContextMenuState | null
   ui: CanvasUiCommands
-}
-
-export async function createTerminalNodeFromPaneContextMenu({
-  contextMenu,
-  ui,
-  workspaceId = '',
-  ...options
-}: PaneCreationOptions<
-  Omit<Parameters<typeof createTerminalNodeAtFlowPosition>[0], 'workspaceId'> & {
-    workspaceId?: string
-  }
->): Promise<void> {
-  if (!contextMenu || contextMenu.kind !== 'pane') {
-    return
-  }
-  ui.closeContextMenu()
-  await createTerminalNodeAtFlowPosition({
-    ...options,
-    workspaceId,
-    anchor: resolvePaneNodeCreationAnchor(contextMenu),
-  })
 }
 
 export function createWebsiteNodeFromPaneContextMenu({

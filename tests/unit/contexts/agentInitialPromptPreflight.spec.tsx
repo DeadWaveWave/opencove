@@ -48,6 +48,7 @@ it.each(['update', 'plugins\0 explain this project'])(
         },
         launchAgentInNode,
         onSpacesChange: vi.fn(),
+        updateSpaces: vi.fn(),
         t: (key: string) => key,
       } as unknown as TaskActionContext),
     )
@@ -74,6 +75,7 @@ it('refused new task keeps editable requirements before any launch or space chan
     },
   }
   const onSpacesChange = vi.fn()
+  const updateSpaces = vi.fn()
   await act(() =>
     runTaskAgentAction('task', {
       workspaceId: 'workspace',
@@ -85,9 +87,11 @@ it('refused new task keeps editable requirements before any launch or space chan
         f.nodesRef.current = updater(f.nodesRef.current)
       },
       onSpacesChange,
+      updateSpaces,
     } as unknown as TaskActionContext),
   )
   expect(f.launch).not.toHaveBeenCalled()
   expect(onSpacesChange).not.toHaveBeenCalled()
+  expect(updateSpaces).not.toHaveBeenCalled()
   expect(f.nodesRef.current[0].data.task).toMatchObject({ requirement: 'config', status: 'todo' })
 })

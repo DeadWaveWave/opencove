@@ -8,7 +8,11 @@ import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { CreateNodeInput } from '../types'
 import { createTerminalNodeAtFlowPosition } from './useInteractions.paneNodeCreation'
 import { bindWorkspaceCanvasCreateTerminalAtFlowPointTestAction } from '../testHarness'
-import { useCanvasUiCommands, useReadCanvasUi } from '../../../store/canvasStoreContext'
+import {
+  useCanvasDocumentCommands,
+  useCanvasUiCommands,
+  useReadCanvasUi,
+} from '../../../store/canvasStoreContext'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -48,6 +52,7 @@ export function useWorkspaceCanvasTerminalCreation({
   createTerminalNodeAtFlowPoint: (anchor: Point) => Promise<void>
 } {
   const ui = useCanvasUiCommands()
+  const documentCommands = useCanvasDocumentCommands()
   const readUi = useReadCanvasUi()
 
   const createTerminalAtFlowPoint = useCallback(
@@ -66,6 +71,7 @@ export function useWorkspaceCanvasTerminalCreation({
         nodesRef,
         setNodes,
         onSpacesChange,
+        updateSpaces: documentCommands.updateSpaces,
         createNodeForSession,
         onShowMessage,
       })
@@ -73,6 +79,7 @@ export function useWorkspaceCanvasTerminalCreation({
     [
       createNodeForSession,
       defaultTerminalProfileId,
+      documentCommands,
       environmentVariables,
       nodesRef,
       onSpacesChange,

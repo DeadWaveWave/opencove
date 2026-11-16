@@ -9,7 +9,11 @@ import {
   createWebsiteNodeAtFlowPosition,
 } from './useInteractions.paneNodeCreation'
 import type { UseWorkspaceCanvasInteractionsParams } from './useInteractions.types'
-import { useCanvasUiCommands, useReadCanvasUi } from '../../../store/canvasStoreContext'
+import {
+  useCanvasDocumentCommands,
+  useCanvasUiCommands,
+  useReadCanvasUi,
+} from '../../../store/canvasStoreContext'
 
 export function useWorkspaceCanvasQuickMenuActions(
   options: Pick<
@@ -36,6 +40,7 @@ export function useWorkspaceCanvasQuickMenuActions(
   insertQuickPhrase: (phrase: QuickPhrase) => void
 } {
   const ui = useCanvasUiCommands()
+  const documentCommands = useCanvasDocumentCommands()
   const readUi = useReadCanvasUi()
 
   const {
@@ -115,6 +120,7 @@ export function useWorkspaceCanvasQuickMenuActions(
         nodesRef,
         setNodes,
         onSpacesChange,
+        updateSpaces: documentCommands.updateSpaces,
         createNodeForSession,
         onShowMessage,
         title: command.title,
@@ -153,6 +159,7 @@ export function useWorkspaceCanvasQuickMenuActions(
       createNodeForSession,
       createWebsiteNode,
       defaultTerminalProfileId,
+      documentCommands,
       terminalFontSize,
       terminalDisplayMetrics,
       nodesRef,

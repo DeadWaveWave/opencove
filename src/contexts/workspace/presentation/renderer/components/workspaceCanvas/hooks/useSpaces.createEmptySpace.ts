@@ -51,7 +51,6 @@ export function useCreateEmptySpace({
           workspaceId,
           workspacePath,
           space: null,
-          spaces: [],
           fallbackToFirstMount: true,
         })
       } catch (error) {

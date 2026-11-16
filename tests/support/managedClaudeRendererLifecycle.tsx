@@ -2,6 +2,7 @@ import { renderHook } from '@testing-library/react'
 import { vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../src/contexts/workspace/presentation/renderer/types'
+import { CanvasStoreTestProvider } from './canvasStoreTestHarness'
 import { DEFAULT_AGENT_ENV_BY_PROVIDER } from '../../src/contexts/settings/domain/agentEnv'
 import { useWorkspaceCanvasAgentNodeLifecycle } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeLifecycle'
 import { createAppError } from '../../src/shared/errors/appError'
@@ -132,23 +133,24 @@ export function rendererLifecycleFixture(mounted: boolean, persisted = true) {
         ]
       : [],
   }
-  const hook = renderHook(() =>
-    useWorkspaceCanvasAgentNodeLifecycle({
-      workspaceId: 'workspace',
-      workspacePath: '/repo',
-      nodesRef,
-      spacesRef,
-      onSpacesChange: vi.fn(),
-      setNodes,
-      bumpAgentLaunchToken: () => 1,
-      isAgentLaunchTokenCurrent: () => true,
-      agentFullAccess: false,
-      codexReuseRunningAppServer: false,
-      defaultTerminalProfileId: null,
-      terminalFontSize: 13,
-      terminalDisplayMetrics: { fontSize: 13 },
-      agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
-    }),
+  const hook = renderHook(
+    () =>
+      useWorkspaceCanvasAgentNodeLifecycle({
+        workspaceId: 'workspace',
+        workspacePath: '/repo',
+        nodesRef,
+        spacesRef,
+        setNodes,
+        bumpAgentLaunchToken: () => 1,
+        isAgentLaunchTokenCurrent: () => true,
+        agentFullAccess: false,
+        codexReuseRunningAppServer: false,
+        defaultTerminalProfileId: null,
+        terminalFontSize: 13,
+        terminalDisplayMetrics: { fontSize: 13 },
+        agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
+      }),
+    { wrapper: CanvasStoreTestProvider },
   )
   return { ...hook, nodesRef, spacesRef, setNodes, launch, invoke, response }
 }
