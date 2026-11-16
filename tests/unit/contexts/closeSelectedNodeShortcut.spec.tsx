@@ -1,9 +1,16 @@
 import React from 'react'
 import { act } from '@testing-library/react'
+import type { Node } from '@xyflow/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ApplicationShortcutEvent } from '../../../src/shared/contracts/applicationShortcut'
 import { useCloseSelectedNodeShortcut } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useCloseSelectedNodeShortcut'
-import { renderWithCanvasStore } from '../../support/canvasStoreTestHarness'
+import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
+import { replaceWorkspaceNodes } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+import {
+  CANVAS_STORE_TEST_WORKSPACE_ID,
+  renderWithCanvasStore,
+} from '../../support/canvasStoreTestHarness'
+import { seedWorkspaceCanvasStore } from '../../support/workspaceCanvasStoreHarness'
 
 vi.mock('@app/renderer/i18n', () => ({ useTranslation: () => ({ t: (key: string) => key }) }))
 type Props = Parameters<typeof useCloseSelectedNodeShortcut>[0]
@@ -27,12 +34,11 @@ function fixture(selected = ['a'], kind = 'terminal') {
   canvas.innerHTML =
     '<div class="react-flow__node" data-id="a"><input /></div><div class="react-flow__node" data-id="b"><input /></div>'
   document.body.append(canvas)
+  const nodes = ['a', 'b'].map(id => ({ id, data: { kind } })) as Node<TerminalNodeData>[]
+  seedWorkspaceCanvasStore({ workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID, nodes })
   const props: Props = {
     enabled: true,
     canvasRef: { current: canvas },
-    nodesRef: {
-      current: ['a', 'b'].map(id => ({ id, data: { kind } })) as Props['nodesRef']['current'],
-    },
     closeNode: vi.fn().mockResolvedValue(undefined),
     onShowMessage: vi.fn(),
   }
@@ -41,6 +47,7 @@ function fixture(selected = ['a'], kind = 'terminal') {
   act(() => result.selection.setNodeIds(selected))
   return {
     props,
+    nodes,
     canvas,
     result,
     unsubscribe,
@@ -52,6 +59,18 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 describe('selected node close shortcut', () => {
+  it('closes a selected node that only the store holds', () => {
+    const f = fixture([])
+    // The canvas view has not seen the node: the shortcut reads the committed document.
+    const stored = { id: 'stored', data: { kind: 'terminal' } } as Node<TerminalNodeData>
+    act(() => {
+      replaceWorkspaceNodes(CANVAS_STORE_TEST_WORKSPACE_ID, [stored])
+      f.result.selection.setNodeIds(['stored'])
+    })
+    f.send()
+    expect(f.props.closeNode).toHaveBeenCalledExactlyOnceWith('stored')
+    f.result.unmount()
+  })
   it('closes the focused input node without canvas selection', () => {
     const f = fixture([])
     f.canvas.querySelector('input')?.focus()
@@ -88,7 +107,12 @@ describe('selected node close shortcut', () => {
   })
   it('does not close a hidden focused node', () => {
     const f = fixture([])
-    f.props.nodesRef.current[0].hidden = true
+    act(() =>
+      replaceWorkspaceNodes(CANVAS_STORE_TEST_WORKSPACE_ID, [
+        { ...f.nodes[0], hidden: true },
+        f.nodes[1],
+      ]),
+    )
     f.canvas.querySelector('input')?.focus()
     f.send()
     expect(f.props.closeNode).not.toHaveBeenCalled()

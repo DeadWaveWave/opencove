@@ -4,9 +4,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ReactFlowProvider } from '@xyflow/react'
 import type { KeybindingOverrides } from '../../../src/contexts/settings/domain/keybindings'
 import { FolderNode } from '../../../src/contexts/workspace/presentation/renderer/components/FolderNode'
+import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 import { useWorkspaceCanvasShortcuts } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useShortcuts'
 
-function Harness({
+function HarnessBody({
   createAgent,
   platform = 'darwin',
   enabled = true,
@@ -27,7 +28,6 @@ function Harness({
     disableWhenTerminalFocused: false,
     activeSpaceId: null,
     spaces: [],
-    nodesRef: useRef([]),
     canvasRef,
     createSpaceFromSelectedNodes: vi.fn(),
     createNoteAtViewportCenter: vi.fn(),
@@ -45,6 +45,14 @@ function Harness({
         {children}
       </div>
     </div>
+  )
+}
+
+function Harness(props: Parameters<typeof HarnessBody>[0]) {
+  return (
+    <CanvasStoreTestProvider>
+      <HarnessBody {...props} />
+    </CanvasStoreTestProvider>
   )
 }
 

@@ -124,9 +124,7 @@ export function useWorkspaceCanvasShortcutActions({
   environmentVariables,
   canvasRef,
   reactFlow,
-  spacesRef,
   spaceNavigationAnchorIdRef,
-  nodesRef,
   setNodes,
   updateCanvasDocument,
   nodeCreation: { createNodeForSession, createNoteNode },
@@ -156,9 +154,7 @@ export function useWorkspaceCanvasShortcutActions({
   environmentVariables?: Record<string, string>
   canvasRef: React.RefObject<HTMLDivElement | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   spaceNavigationAnchorIdRef: React.MutableRefObject<string | null>
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
   updateCanvasDocument: UseWorkspaceCanvasNodesStoreResult['updateCanvasDocument']
   nodeCreation: {
@@ -181,7 +177,6 @@ export function useWorkspaceCanvasShortcutActions({
   useCloseSelectedNodeShortcut({
     enabled,
     canvasRef,
-    nodesRef,
     closeNode,
     onShowMessage,
   })
@@ -286,8 +281,9 @@ export function useWorkspaceCanvasShortcutActions({
       const canvas = canvasRef.current
       const viewportRect = resolveViewportRectInFlowCoordinates({ reactFlow, canvas })
       const sourceNodeId = readSelection().nodeIds[0] ?? null
-      const nodes = nodesRef.current.filter(node => node.hidden !== true)
-      const resolvedSpaces = spacesRef.current
+      const committed = readDocument()
+      const nodes = committed.nodes.filter(node => node.hidden !== true)
+      const resolvedSpaces = committed.spaces
 
       const resolvedTarget = resolveNodeNavigationTargetId({
         direction,
@@ -322,13 +318,12 @@ export function useWorkspaceCanvasShortcutActions({
       activeSpaceId,
       agentSettings.focusNodeTargetZoom,
       canvasRef,
-      nodesRef,
       reactFlow,
+      readDocument,
       readSelection,
       selectNode,
       ui,
       setActiveSpaceIdFromNodeNavigation,
-      spacesRef,
     ],
   )
 
@@ -345,7 +340,7 @@ export function useWorkspaceCanvasShortcutActions({
         direction,
         sourceNodeId,
         spaceNavigationAnchorId: spaceNavigationAnchorIdRef.current,
-        spaces: spacesRef.current.filter(space => !space.parentSpaceId),
+        spaces: readDocument().spaces.filter(space => !space.parentSpaceId),
         viewportRect,
       })
 
@@ -366,10 +361,10 @@ export function useWorkspaceCanvasShortcutActions({
       canvasRef,
       clearNodeSelection,
       reactFlow,
+      readDocument,
       readSelection,
       ui,
       spaceNavigationAnchorIdRef,
-      spacesRef,
     ],
   )
 
@@ -383,7 +378,6 @@ export function useWorkspaceCanvasShortcutActions({
     keybindings: agentSettings.keybindings,
     activeSpaceId,
     spaces,
-    nodesRef,
     createSpaceFromSelectedNodes,
     createNoteAtViewportCenter,
     createTerminalAtViewportCenter,

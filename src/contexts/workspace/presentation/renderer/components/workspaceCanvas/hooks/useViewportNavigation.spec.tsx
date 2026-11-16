@@ -73,7 +73,6 @@ function ViewportNavigationHarness({
     focusSpaceId,
     focusSequence,
     nodes,
-    nodesRef,
     expandNode: id => nodesRef.current.find(node => node.id === id),
     focusSpaceInViewport,
     focusNodeTargetZoom: 1,

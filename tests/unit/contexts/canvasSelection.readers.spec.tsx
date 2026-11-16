@@ -16,6 +16,7 @@ import {
   createCanvasDocumentHarness,
   renderInCanvasDocument,
 } from '../../support/canvasDocumentHarness'
+import { CANVAS_STORE_TEST_WORKSPACE_ID } from '../../support/canvasStoreTestHarness'
 import {
   SelectionWritersWrapper,
   createNodeHolder,
@@ -228,6 +229,12 @@ describe('spatial navigation in useWorkspaceCanvasShortcutActions', () => {
           createSpace('s3', { x: 750, y: -50, width: 450, height: 300 }, ['c']),
         ]
       : []
+    // The shortcuts read the committed document of the workspace of the provider.
+    createCanvasDocumentHarness({
+      workspaceId: CANVAS_STORE_TEST_WORKSPACE_ID,
+      nodes: holder.nodes,
+      spaces,
+    })
     const activateSpace = vi.fn()
     const clearNodeSelection = vi.fn()
     const reactFlow = {
@@ -252,9 +259,7 @@ describe('spatial navigation in useWorkspaceCanvasShortcutActions', () => {
           workspacePath: '/tmp/repo',
           canvasRef: { current: canvas },
           reactFlow,
-          spacesRef: { current: spaces },
           spaceNavigationAnchorIdRef: { current: null },
-          nodesRef: holder.nodesRef,
           setNodes: holder.setNodes,
           updateCanvasDocument: vi.fn(),
           nodeCreation: {

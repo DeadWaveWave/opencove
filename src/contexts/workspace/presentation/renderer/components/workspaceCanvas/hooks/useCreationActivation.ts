@@ -1,27 +1,25 @@
-import { useLayoutEffect, type MutableRefObject, type RefObject } from 'react'
-import type { Node } from '@xyflow/react'
-import type { TerminalNodeData } from '../../../types'
+import { useLayoutEffect, type RefObject } from 'react'
+import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { subscribeWorkspaceNodeCreated } from '../nodeCreationEvents'
 import { createWorkspaceCreationActivation } from '../creationActivation'
 
 export function useWorkspaceCanvasCreationActivation({
   workspaceId,
   canvasRef,
-  nodesRef,
 }: {
   workspaceId: string
   canvasRef: RefObject<HTMLDivElement | null>
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
 }): void {
+  const readDocument = useReadCanvasDocument()
   useLayoutEffect(() => {
     const activation = createWorkspaceCreationActivation({
       getScope: () => canvasRef.current,
-      getNodes: () => nodesRef.current,
+      getNodes: () => readDocument().nodes,
     })
     const unsubscribe = subscribeWorkspaceNodeCreated(activation.request)
     return () => {
       unsubscribe()
       activation.dispose()
     }
-  }, [canvasRef, nodesRef, workspaceId])
+  }, [canvasRef, readDocument, workspaceId])
 }

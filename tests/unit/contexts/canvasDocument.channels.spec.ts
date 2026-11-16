@@ -23,19 +23,15 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     '~/hooks/useApplyNodeChanges.ts',
     '~/hooks/useArrange.ts',
     '~/hooks/useCanvasAgentSupport.ts',
-    '~/hooks/useCanvasLifecycleBindings.ts',
     '~/hooks/useCanvasMenuActions.ts',
     '~/hooks/useCanvasNodePublishers.ts',
     '~/hooks/useCanvasRoleUi.ts',
     '~/hooks/useCanvasRuntimeBindings.ts',
     '~/hooks/useCanvasRuntimeIntegrations.ts',
-    '~/hooks/useCanvasShortcutActions.ts',
     '~/hooks/useCanvasSpaceExplorer.ts',
     '~/hooks/useCanvasTaskSupport.ts',
     '~/hooks/useCanvasTaskUi.ts',
     '~/hooks/useCanvasTaskWindows.ts',
-    '~/hooks/useCloseSelectedNodeShortcut.ts',
-    '~/hooks/useCreationActivation.ts',
     '~/hooks/useFilesystemNodePaths.ts',
     '~/hooks/useFilesystemNodes.ts',
     '~/hooks/useNodeDeleteConfirmation.ts',
@@ -49,7 +45,6 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     '~/hooks/usePtyTaskCompletion.ts',
     '~/hooks/useRoleActions.run.ts',
     '~/hooks/useRoleActions.ts',
-    '~/hooks/useShortcuts.ts',
     '~/hooks/useSpaceDirectoryOps.ts',
     '~/hooks/useSpaceExplorer.materializePlacement.ts',
     '~/hooks/useSpaceExplorer.placement.ts',
@@ -62,7 +57,6 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     '~/hooks/useTaskActions.ts',
     '~/hooks/useTaskEditor.ts',
     '~/hooks/useTerminalAgentSessionActions.ts',
-    '~/hooks/useViewportNavigation.ts',
     '~/hooks/useWorkspaceDocumentNavigation.ts',
     '~/hooks/useWorkspaceDocumentOpening.ts',
     '~/view/WorkspacePixelLayer.tsx',
@@ -77,7 +71,6 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     '~/hooks/useCanvasMenuActions.ts',
     '~/hooks/useCanvasNodeTypes.ts',
     '~/hooks/useCanvasRoleUi.ts',
-    '~/hooks/useCanvasShortcutActions.ts',
     '~/hooks/useCanvasSpaceExplorer.ts',
     '~/hooks/useCanvasState.ts',
     '~/hooks/useCanvasTaskSupport.ts',
@@ -212,15 +205,17 @@ describe('canvas document channels', () => {
   // The reader lets a hook read the committed document when it runs, without subscribing. A file
   // that reads through it and also subscribes to the app store would render with every store
   // change, which the move from the refs must not bring. A render-time test cannot see it: the
-  // subscription is made at mount.
-  it('no file that reads through useReadCanvasDocument subscribes to the app store', () => {
+  // subscription is made at mount. The check looks at the import, so an alias or a store read
+  // through `useStore` or `useSyncExternalStore` cannot slip past it; such a file has no reason to
+  // import the app store at all.
+  it('no file that reads through useReadCanvasDocument imports the app store or subscribes', () => {
     const readers = files.filter(file =>
       /\buseReadCanvasDocument\(\)/.test(sources.get(file) ?? ''),
     )
     expect(readers.length).toBeGreaterThan(20)
 
     const offenders = readers.filter(file =>
-      /\buseAppStore\(|\buseStore\(\s*useAppStore\b/.test(sources.get(file) ?? ''),
+      /from\s+['"][^'"]*\/useAppStore['"]|\buseSyncExternalStore\b/.test(sources.get(file) ?? ''),
     )
 
     expect(offenders).toEqual([])

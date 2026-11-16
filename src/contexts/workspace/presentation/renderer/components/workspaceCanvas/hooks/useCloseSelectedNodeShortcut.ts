@@ -1,23 +1,20 @@
-import { useEffect, useRef, type MutableRefObject, type RefObject } from 'react'
-import type { Node } from '@xyflow/react'
-import type { TerminalNodeData } from '../../../types'
+import { useEffect, useRef, type RefObject } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import { useReadCanvasSelection } from '../../../store/canvasStoreContext'
+import { useReadCanvasDocument, useReadCanvasSelection } from '../../../store/canvasStoreContext'
 
 export function useCloseSelectedNodeShortcut({
   enabled,
   canvasRef,
-  nodesRef,
   closeNode,
   onShowMessage,
 }: {
   enabled: boolean
   canvasRef: RefObject<HTMLDivElement | null>
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   closeNode: (nodeId: string) => Promise<void>
   onShowMessage?: (message: string, level: 'info' | 'warning' | 'error') => void
 }): void {
   const { t } = useTranslation()
+  const readDocument = useReadCanvasDocument()
   const readSelection = useReadCanvasSelection()
   const closing = useRef(new Set<string>())
   useEffect(() => {
@@ -42,7 +39,7 @@ export function useCloseSelectedNodeShortcut({
         }
         return
       }
-      const node = nodesRef.current.find(item => item.id === nodeId && !item.hidden)
+      const node = readDocument().nodes.find(item => item.id === nodeId && !item.hidden)
       if (!node || closing.current.has(nodeId)) {
         return
       }
@@ -68,5 +65,5 @@ export function useCloseSelectedNodeShortcut({
       active = false
       unsubscribe?.()
     }
-  }, [enabled, canvasRef, nodesRef, readSelection, closeNode, onShowMessage, t])
+  }, [enabled, canvasRef, readDocument, readSelection, closeNode, onShowMessage, t])
 }
