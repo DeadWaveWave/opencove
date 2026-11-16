@@ -156,22 +156,26 @@ describe('agent relaunch mount repair', () => {
     } as unknown as typeof window.opencoveApi
   })
 
-  function renderLifecycle() {
+  function renderLifecycle(options: { hookWorkspaceId?: string } = {}) {
+    // Stable between renders, as the canvas's are, so that a callback is rebuilt only when its own
+    // dependencies change.
+    const spacesRef = {
+      get current() {
+        return spacesOf(shown)
+      },
+    }
+    const setNodes = (updater: (prev: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => {
+      nodes.current = updater(nodes.current)
+    }
     return renderInCanvasDocument(
       () =>
         useWorkspaceCanvasAgentNodeLifecycle({
-          workspaceId: shown,
+          workspaceId: options.hookWorkspaceId ?? shown,
           workspacePath: '/repo',
           nodesRef: nodes,
           // The real getter reads the store; this one reads the workspace that is shown.
-          spacesRef: {
-            get current() {
-              return spacesOf(shown)
-            },
-          },
-          setNodes: updater => {
-            nodes.current = updater(nodes.current)
-          },
+          spacesRef,
+          setNodes,
           bumpAgentLaunchToken: () => 1,
           isAgentLaunchTokenCurrent: () => true,
           agentFullAccess: true,
@@ -240,6 +244,32 @@ describe('agent relaunch mount repair', () => {
 
     expect(spacesOf('workspace-b').map(item => [item.id, item.targetMountId])).toEqual([
       ['space-b', 'mount-of-workspace-b'],
+    ])
+    expect(workspaceOf('workspace-a')).toBe(workspaceABefore)
+  })
+
+  // Nothing else in the hook's arguments changes with the workspace here, so only the commands
+  // in the dependency list can make the callback follow the switch.
+  it('takes the commands of the render that made the callback, whatever else changed', async () => {
+    const view = renderLifecycle({ hookWorkspaceId: 'workspace-a' })
+    act(() => {
+      shown = 'workspace-b'
+      useAppStore.setState({ activeWorkspaceId: 'workspace-b' })
+      view.rerender()
+    })
+    const workspaceABefore = workspaceOf('workspace-a')
+
+    let launched!: Promise<void>
+    act(() => {
+      launched = view.result.current.launchAgentInNode(NODE_ID, 'new')
+    })
+    await answerMountList()
+    await act(async () => {
+      await launched
+    })
+
+    expect(spacesOf('workspace-b').map(item => item.targetMountId)).toEqual([
+      'mount-of-workspace-a',
     ])
     expect(workspaceOf('workspace-a')).toBe(workspaceABefore)
   })
