@@ -213,6 +213,8 @@ describe('workspace canvas arrange hook', () => {
       expect(harness.flush).not.toHaveBeenCalled()
       expect(reactFlow.fitView).not.toHaveBeenCalled()
       expect(reactFlow.setViewport).not.toHaveBeenCalled()
+      // The Space has room, so no arrange warns: the warnings are read from the recorded layout.
+      expect(onShowMessage).not.toHaveBeenCalled()
     })
 
     it('arranges a node that another writer added to the store in the same call', () => {

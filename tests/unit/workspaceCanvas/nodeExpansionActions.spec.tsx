@@ -186,10 +186,13 @@ describe('collapsed window expansion actions', () => {
 
   it('reveals into nearby free space and focuses the relocated target rather than its old position', () => {
     const actions = renderActions({ expandBehavior: 'find-space' })
+    // The write runs on the canvas's copy of each node; a peer that does not move keeps it.
+    const canvasPeer = actions.view.result.current.nodeStore.nodesRef.current[1]
     act(() => actions.collapse().revealNode('target'))
     const [target, peer] = actions.stored().nodes
     expect(target.position).not.toEqual(actions.originalNodes[0].position)
     expectUnmoved(peer, actions.originalNodes[1])
+    expect(peer).toBe(canvasPeer)
     expect(target.data).toBe(actions.originalNodes[0].data)
     expect(setCenter).toHaveBeenCalledWith(
       target.position.x + target.data.width / 2,
@@ -229,10 +232,12 @@ describe('collapsed window expansion actions', () => {
     const actions = renderActions()
     behavior = 'find-space'
     actions.view.rerender()
+    const canvasPeer = actions.view.result.current.nodeStore.nodesRef.current[1]
     act(() => actions.collapse().toggleNode('target'))
     const [target, peer] = actions.stored().nodes
     expect(target.position).not.toEqual(actions.originalNodes[0].position)
     expectUnmoved(peer, actions.originalNodes[1])
+    expect(peer).toBe(canvasPeer)
     expect(setCenter).toHaveBeenCalledWith(
       target.position.x + target.data.width / 2,
       target.position.y + target.data.height / 2,
