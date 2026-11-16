@@ -80,7 +80,18 @@ vi.mock(
   }),
 )
 
+// The run asks which provider owns the linked agent: the answer shows which workspace it read.
+const managed = vi.hoisted(() => ({ read: vi.fn() }))
+vi.mock(
+  '../../../src/contexts/workspace/presentation/renderer/utils/managedClaudeLifecycle',
+  async importOriginal => ({
+    ...(await importOriginal<object>()),
+    readManagedClaudeExecutionContext: (...args: unknown[]) => managed.read(...args),
+  }),
+)
+
 beforeEach(() => {
+  managed.read.mockReset().mockResolvedValue(null)
   firstRender.values.clear()
   launch.binding.mockReset().mockResolvedValue(BOUND)
   launch.session.mockReset().mockRejectedValue(new Error('stop after the binding'))
@@ -123,7 +134,12 @@ describe('the task run and the task resume', () => {
 
     it('runs the task of the workspace of the render that made the callback, not the one on display', async () => {
       const { refs, launchAgentInNode, showB } = renderTaskActions(
-        { a: { nodes: [linkedTask('task-a', 'agent-a'), agentNode('agent-a')] } },
+        {
+          a: {
+            nodes: [linkedTask('task-a', 'agent-a'), agentNode('agent-a')],
+            spaces: [spaceOf('space-a', ['task-a'])],
+          },
+        },
         { stable: false },
       )
       const madeInA = refs.run.assigned[0]
@@ -133,6 +149,10 @@ describe('the task run and the task resume', () => {
         await madeInA('task-a')
       })
 
+      expect(managed.read).toHaveBeenCalledWith('agent-a', 'codex')
+      expect(launch.binding).toHaveBeenCalledWith(
+        expect.objectContaining({ targetSpace: expect.objectContaining({ id: 'space-a' }) }),
+      )
       expect(launchAgentInNode).toHaveBeenCalledWith('agent-a', 'new', expect.anything())
       expect(nodeOf(A, 'task-a').data.task?.status).toBe('doing')
       expect(documentOf(B).nodes).toEqual([])
@@ -207,6 +227,41 @@ describe('the task run and the task resume', () => {
       expect(nodeOf(A, 'task-a').data.lastError).toEqual(expect.any(String))
     })
 
+    it('judges the linked agent after the binding await in the workspace that started the run when the user switched during it', async () => {
+      const held = deferred<typeof BOUND>()
+      launch.binding.mockReturnValueOnce(held.promise)
+      const { refs, launchAgentInNode, showB } = renderTaskActions(
+        {
+          a: {
+            nodes: [
+              taskNodeWith('task-a', { linkedAgentNodeId: 'agent-a', requirement: 'update' }),
+              agentNode('agent-a'),
+            ],
+          },
+        },
+        { stable: false },
+      )
+      let pending!: Promise<void>
+      act(() => {
+        pending = refs.run.ref.current('task-a')
+      })
+      act(() => {
+        replaceWorkspaceNodes(A, [
+          taskNodeWith('task-a', { linkedAgentNodeId: 'agent-a', requirement: 'update' }),
+          agentNode('agent-a', {}, { provider: 'claude-code' }),
+        ])
+      })
+      showB()
+
+      await act(async () => {
+        held.resolve(BOUND)
+        await pending
+      })
+
+      expect(launchAgentInNode).not.toHaveBeenCalled()
+      expect(nodeOf(A, 'task-a').data.lastError).toEqual(expect.any(String))
+    })
+
     it('stops at a task the store does not hold', async () => {
       const { refs, launchAgentInNode, flushes } = renderTaskActions()
 
@@ -245,7 +300,7 @@ describe('the task run and the task resume', () => {
 
     it('resumes the task of the workspace of the render that made the callback, not the one on display', async () => {
       const { refs, showB } = renderTaskActions(
-        { a: { nodes: [withRecord('task-a')] } },
+        { a: { nodes: [withRecord('task-a')], spaces: [spaceOf('space-a', ['task-a'])] } },
         { stable: false },
       )
       const madeInA = refs.resume.assigned[0]
@@ -255,6 +310,9 @@ describe('the task run and the task resume', () => {
         await madeInA('task-a', 'record-1')
       })
 
+      expect(launch.binding).toHaveBeenCalledWith(
+        expect.objectContaining({ targetSpace: expect.objectContaining({ id: 'space-a' }) }),
+      )
       expect(launch.session).toHaveBeenCalledWith(expect.objectContaining({ mode: 'resume' }))
     })
 
@@ -314,7 +372,7 @@ describe('the role run', () => {
 
   it('runs the role node of the workspace of the render that made the callback, not the one on display', async () => {
     const { run, showB } = renderRoleActions(
-      { a: { nodes: [roleNode('role-a')] } },
+      { a: { nodes: [roleNode('role-a')], spaces: [spaceOf('space-a', ['role-a'])] } },
       { stable: false },
     )
     const madeInA = run.assigned[0]
@@ -324,6 +382,9 @@ describe('the role run', () => {
       await madeInA('role-a')
     })
 
+    expect(launch.binding).toHaveBeenCalledWith(
+      expect.objectContaining({ targetSpace: expect.objectContaining({ id: 'space-a' }) }),
+    )
     expect(launch.session).toHaveBeenCalledTimes(1)
   })
 

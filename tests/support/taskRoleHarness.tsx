@@ -267,11 +267,19 @@ const ROLE_SETTINGS = {
   projectRolesByWorkspaceId: { workspace: [ROLE] },
 }
 
+// One function for every render: a callback that lists it is rebuilt only for its own reasons.
+const buildRoleAgentTitle = (provider: string, label: string | null) => `${provider}:${label}`
+
 export function renderRoleActions(documents?: Documents, { stable = true }: RenderOptions = {}) {
   const run = recordingRef<(nodeId: string, input?: string) => Promise<void>>()
   const createNodeForSession = createAgentNodeInA()
   const appendRoleRunRecord = vi.fn()
-  const createRoleNode = vi.fn(() => roleNode('created-role'))
+  // As the node store's creator does: the role node joins the nodes of workspace A.
+  const createRoleNode = vi.fn(() => {
+    const created = roleNode('created-role')
+    replaceWorkspaceNodes(WORKSPACE_A, [...documentOf(WORKSPACE_A).nodes, created])
+    return created
+  })
   const onShowMessage = vi.fn()
   const actionRefs = {
     runRoleRef: run.ref,
@@ -302,7 +310,7 @@ export function renderRoleActions(documents?: Documents, { stable = true }: Rend
           updateRoleInput: vi.fn(),
           appendRoleRunRecord,
           actionRefs,
-          buildAgentNodeTitle: (provider, label) => `${provider}:${label}`,
+          buildAgentNodeTitle: buildRoleAgentTitle,
         }),
       }
     },

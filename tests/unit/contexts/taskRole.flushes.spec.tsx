@@ -5,6 +5,7 @@ import {
   documentOf,
   nodeOf,
   WORKSPACE_A as A,
+  WORKSPACE_B as B,
   type TwoWorkspaces,
 } from '../../support/agentRuntimeHarness'
 import {
@@ -112,6 +113,29 @@ describe('the task actions', () => {
     expect(rendered.flushes).toHaveLength(1)
     expect(rendered.flushes[0].notificationsBefore).toBe(1)
     expect(seen(rendered.flushes[0].document)).toEqual(expected)
+  })
+
+  it('writes, and flushes, in the workspace of the render that made the callback', () => {
+    const rendered = renderTaskActions(
+      { a: { nodes: [task()] }, b: { nodes: [taskNodeWith('task-b', { status: 'doing' })] } },
+      { stable: false },
+    )
+    const madeInA = rendered.refs.status.assigned[0]
+    rendered.showB()
+    settle(rendered)
+
+    act(() => {
+      madeInA('task-a', 'done' as never)
+    })
+    expect(taskOf(A, 'task-a').status).toBe('done')
+    expect(taskOf(B, 'task-b').status).toBe('doing')
+
+    // The callback of the render that shows B writes B: it was rebuilt for the new writer.
+    act(() => {
+      rendered.refs.status.ref.current('task-b', 'done' as never)
+    })
+    expect(taskOf(B, 'task-b').status).toBe('done')
+    expect(rendered.flushes).toHaveLength(2)
   })
 
   it('does not flush for a requirement that is empty', () => {
@@ -450,9 +474,11 @@ describe('the role node creation and the role dialog flush', () => {
       rendered.view.result.current.roles.runProjectRoleFromContextMenu('role-1')
     })
 
+    // The creator's own write of the role node comes first, then the assignment to the Space.
     expect(rendered.flushes).toHaveLength(1)
-    expect(rendered.flushes[0].notificationsBefore).toBe(1)
+    expect(rendered.flushes[0].notificationsBefore).toBe(2)
     expect(rendered.flushes[0].document.spaces[0].nodeIds).toEqual(['created-role'])
+    expect(rendered.flushes[0].document.nodes.map(node => node.id)).toContain('created-role')
   })
 
   it('does not flush for a role node created outside every Space', () => {
@@ -528,6 +554,10 @@ describe('the role node creation and the role dialog flush', () => {
 
     expect(rendered.createRoleNode).toHaveBeenCalledTimes(1)
     expect(rendered.flushes).toHaveLength(flushes)
+    // Every flush follows the creation: the document it sees already holds the new role node.
+    for (const flush of rendered.flushes) {
+      expect(flush.document.nodes.map(node => node.id)).toContain('created-role')
+    }
     expect(rendered.view.result.current.readUi().roleCreator).toBeNull()
   })
 
