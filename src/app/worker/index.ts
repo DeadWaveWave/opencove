@@ -22,6 +22,7 @@ import { resolveLocalWorkerReusePolicy } from '../../shared/runtime/localWorkerR
 import { readHomeWorkerConfigFile } from '../../contexts/settings/infrastructure/homeWorker/homeWorkerConfig'
 import {
   createLeaseReleaseErrorReporter,
+  WORKER_LEASE_RELEASE_TIMEOUT_MS,
   withHomeWorkerConfigLease,
 } from '../../contexts/settings/infrastructure/homeWorker/homeWorkerConfigLease'
 import { createClaudeHookChannel } from '../main/controlSurface/agentHook/claudeHookChannel'
@@ -243,6 +244,7 @@ async function main(): Promise<void> {
     startedBy === 'desktop'
       ? // A release failure is logged and start-up continues: the control surface is ready by then.
         await withHomeWorkerConfigLease(userDataPath, startServer, {
+          releaseTimeoutMs: WORKER_LEASE_RELEASE_TIMEOUT_MS,
           onReleaseError: createLeaseReleaseErrorReporter('opencove-worker', text =>
             process.stderr.write(text),
           ),

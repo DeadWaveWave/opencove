@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -34,6 +34,31 @@ export function registerLeaseTempDirCleanup(): void {
       cleanupPaths.splice(0).map(async path => await rm(path, { recursive: true, force: true })),
     )
   })
+}
+
+export function fsError(code: string): NodeJS.ErrnoException {
+  return Object.assign(new Error(`${code}: injected filesystem error`), { code })
+}
+
+export async function exists(path: string): Promise<boolean> {
+  return await stat(path).then(
+    () => true,
+    () => false,
+  )
+}
+
+// A clock that only moves when the lease waits, so a retry loop without a wait cannot pass time.
+export function createFakeClock() {
+  let current = 1_000_000
+  const waits: number[] = []
+  return {
+    waits,
+    now: () => current,
+    wait: async (delayMs: number) => {
+      waits.push(delayMs)
+      current += delayMs
+    },
+  }
 }
 
 // The cases hold on every platform, so the Linux spec and the Windows spec register the same set.

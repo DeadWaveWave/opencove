@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { mkdir, readFile, rename as fsRename, rm as fsRm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import type { RmOptions } from 'node:fs'
 import { resolve } from 'node:path'
 import {
@@ -7,13 +7,17 @@ import {
   readFsErrorCode,
   type LeaseOperation,
 } from './homeWorkerConfigLeaseErrors'
+import { defaultLeaseFileSystemOperations } from './homeWorkerConfigLeaseFileSystem'
 
 export const HOME_WORKER_CONFIG_LEASE_FILE = 'home-worker-config.lease'
 export const HOME_WORKER_CONFIG_LEASE_OWNER_FILE = 'owner.json'
 export const DEFAULT_LEASE_TIMEOUT_MS = 5_000
 const DEFAULT_RETRY_DELAY_MS = 25
 const DEFAULT_MALFORMED_STALE_MS = 5_000
-const RELEASE_TIMEOUT_MS = 5_000
+const DEFAULT_RELEASE_TIMEOUT_MS = 5_000
+// The Worker releases before it prints its ready line, which main waits for. The release must fit
+// in the margin that localWorkerReadyTimeout.spec.ts keeps next to the acquisition deadline.
+export const WORKER_LEASE_RELEASE_TIMEOUT_MS = 500
 // Node retries EBUSY, EMFILE, ENFILE, ENOTEMPTY and EPERM in recursive mode.
 const RM_RETRY_OPTIONS = { recursive: true, force: true, maxRetries: 5, retryDelay: 50 } as const
 
@@ -22,6 +26,11 @@ type LeaseObservation = {
   identity: string
   mtimeMs: number
   record: LeaseRecord | null
+  // The record could not be read at all (as opposed to being read and found malformed).
+  unreadable: boolean
+}
+type HomeWorkerConfigLease = {
+  release: (options?: { timeoutMs?: number }) => Promise<void>
 }
 type LeaseFileSystem = {
   platform: NodeJS.Platform
@@ -32,7 +41,6 @@ type LeaseTiming = {
   now: () => number
   wait: (delayMs: number) => Promise<void>
   retryDelayMs: number
-  timeoutMs: number
 }
 export type HomeWorkerConfigLeaseDependencies = {
   now?: () => number
@@ -84,11 +92,23 @@ type LeaseAcquireDetails = {
   lastObservation: 'absent' | { pid: number | null; alive: boolean | null; malformed: boolean }
 }
 
+function describeDetails(details: LeaseAcquireDetails): string {
+  const observation =
+    details.lastObservation === 'absent'
+      ? 'absent'
+      : details.lastObservation.malformed
+        ? 'malformed'
+        : `holder pid=${details.lastObservation.pid} alive=${details.lastObservation.alive}`
+  return `attempts=${details.attempts}, lastCode=${details.lastCode ?? 'none'}, lastObservation=${observation}`
+}
+
 class HomeWorkerConfigLeaseTimeoutError extends Error {
   readonly details: LeaseAcquireDetails
 
   constructor(cause: unknown, details: LeaseAcquireDetails) {
-    super('Timed out acquiring Home Worker configuration lease.', { cause })
+    super(`Timed out acquiring Home Worker configuration lease (${describeDetails(details)}).`, {
+      cause,
+    })
     this.name = 'HomeWorkerConfigLeaseTimeoutError'
     this.details = details
   }
@@ -149,6 +169,7 @@ async function observeLease(lockPath: string): Promise<LeaseObservation | null> 
       ].join(':'),
       mtimeMs: metadata.mtimeMs,
       record: parseLeaseRecord(raw),
+      unreadable: raw === null,
     }
   } catch {
     return null
@@ -158,12 +179,11 @@ async function observeLease(lockPath: string): Promise<LeaseObservation | null> 
 async function restoreCapturedLease(
   fs: LeaseFileSystem,
   timing: LeaseTiming,
+  deadline: number,
   capturedPath: string,
   lockPath: string,
 ): Promise<void> {
-  // The window is at least the acquisition deadline: the captured owner's directory is stranded if
-  // the restore gives up.
-  const deadline = timing.now() + Math.max(timing.timeoutMs, DEFAULT_LEASE_TIMEOUT_MS)
+  // The deadline is the one of the operation the restore runs in, so that waiting stays bounded.
   let backoffMs = timing.retryDelayMs
   for (;;) {
     try {
@@ -187,6 +207,7 @@ async function restoreCapturedLease(
 async function reclaimObservedLease(options: {
   fs: LeaseFileSystem
   timing: LeaseTiming
+  deadline: number
   lockPath: string
   observed: LeaseObservation
   quarantinePath: string
@@ -202,7 +223,13 @@ async function reclaimObservedLease(options: {
   }
   const captured = await observeLease(options.quarantinePath)
   if (captured?.identity !== options.observed.identity) {
-    await restoreCapturedLease(options.fs, options.timing, options.quarantinePath, options.lockPath)
+    await restoreCapturedLease(
+      options.fs,
+      options.timing,
+      options.deadline,
+      options.quarantinePath,
+      options.lockPath,
+    )
     return false
   }
   await removeTreeQuietly(options.fs, options.quarantinePath)
@@ -217,26 +244,21 @@ export async function acquireHomeWorkerConfigLease(
     malformedStaleMs?: number
     dependencies?: HomeWorkerConfigLeaseDependencies
   } = {},
-): Promise<{ release: () => Promise<void> }> {
+): Promise<HomeWorkerConfigLease> {
   const lockPath = resolve(userDataPath, HOME_WORKER_CONFIG_LEASE_FILE)
   const now = options.dependencies?.now ?? Date.now
   const wait = options.dependencies?.wait ?? defaultWait
   const fs: LeaseFileSystem = {
     platform: options.dependencies?.platform ?? process.platform,
-    rename: options.dependencies?.rename ?? fsRename,
-    rm: options.dependencies?.rm ?? fsRm,
+    rename: options.dependencies?.rename ?? defaultLeaseFileSystemOperations.rename,
+    rm: options.dependencies?.rm ?? defaultLeaseFileSystemOperations.rm,
   }
   const isProcessAlive = options.dependencies?.isProcessAlive ?? defaultIsProcessAlive
   const createToken = options.dependencies?.token ?? randomUUID
   const deadline = now() + (options.timeoutMs ?? DEFAULT_LEASE_TIMEOUT_MS)
   const retryDelayMs = options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS
   const malformedStaleMs = options.malformedStaleMs ?? DEFAULT_MALFORMED_STALE_MS
-  const timing: LeaseTiming = {
-    now,
-    wait,
-    retryDelayMs,
-    timeoutMs: options.timeoutMs ?? DEFAULT_LEASE_TIMEOUT_MS,
-  }
+  const timing: LeaseTiming = { now, wait, retryDelayMs }
   const token = createToken()
   const owner: LeaseRecord = { pid: process.pid, token, createdAt: new Date(now()).toISOString() }
   const claimPath = `${lockPath}.claim-${process.pid}-${token}`
@@ -250,11 +272,18 @@ export async function acquireHomeWorkerConfigLease(
     { encoding: 'utf8', mode: 0o600 },
   )
 
-  const createHandle = (): { release: () => Promise<void> } => ({
-    release: async () => {
-      const releaseDeadline = now() + RELEASE_TIMEOUT_MS
+  const createHandle = (): HomeWorkerConfigLease => ({
+    release: async releaseOptions => {
+      const releaseDeadline = now() + (releaseOptions?.timeoutMs ?? DEFAULT_RELEASE_TIMEOUT_MS)
       const releasePath = `${lockPath}.release-${process.pid}-${token}`
       let backoffMs = retryDelayMs
+      const retryOrReject = async (cause: unknown): Promise<void> => {
+        if (now() >= releaseDeadline) {
+          throw new HomeWorkerConfigLeaseReleaseError(cause)
+        }
+        await wait(backoffMs)
+        backoffMs = nextBackoffMs(backoffMs)
+      }
       try {
         await removeTree(fs, releasePath)
       } catch (error) {
@@ -262,8 +291,17 @@ export async function acquireHomeWorkerConfigLease(
       }
       for (;;) {
         // Every pass looks again, so a lease that was reclaimed or replaced meanwhile is left alone.
+        // Only an absent lease or a readable record with another token means there is nothing of
+        // ours to release; a record that cannot be read might still be ours, so it is retried.
         const observed = await observeLease(lockPath)
-        if (observed?.record?.token !== token) {
+        if (!observed) {
+          return
+        }
+        if (observed.unreadable) {
+          await retryOrReject(new Error('The lease record could not be read.'))
+          continue
+        }
+        if (observed.record?.token !== token) {
           return
         }
         try {
@@ -273,25 +311,33 @@ export async function acquireHomeWorkerConfigLease(
           if (kind === 'absent') {
             return
           }
-          if (kind !== 'ambiguous' || now() >= releaseDeadline) {
+          if (kind !== 'ambiguous') {
             throw new HomeWorkerConfigLeaseReleaseError(error)
           }
-          await wait(backoffMs)
-          backoffMs = nextBackoffMs(backoffMs)
+          await retryOrReject(error)
           continue
         }
         const captured = await observeLease(releasePath)
         if (captured?.record?.token === token) {
           await removeTreeQuietly(fs, releasePath)
-        } else {
-          await restoreCapturedLease(fs, timing, releasePath, lockPath)
+          return
         }
-        return
+        try {
+          await restoreCapturedLease(fs, timing, releaseDeadline, releasePath, lockPath)
+        } catch (error) {
+          throw new HomeWorkerConfigLeaseReleaseError(error)
+        }
+        if (captured && !captured.unreadable) {
+          // A readable record with another token: the lease was replaced and is back in place.
+          return
+        }
+        // The captured record could not be read, so it may have been ours: look again.
+        await retryOrReject(new Error('The captured lease record could not be read.'))
       }
     },
   })
 
-  const acquire = async (): Promise<{ release: () => Promise<void> }> => {
+  const acquire = async (): Promise<HomeWorkerConfigLease> => {
     let attempts = 0
     let lastError: unknown = null
     let lastCode: string | null = null
@@ -335,7 +381,16 @@ export async function acquireHomeWorkerConfigLease(
         }
         if (ownerAlive === false || malformedIsStale) {
           const quarantinePath = `${lockPath}.stale-${process.pid}-${randomUUID()}`
-          if (await reclaimObservedLease({ fs, timing, lockPath, observed, quarantinePath })) {
+          if (
+            await reclaimObservedLease({ fs, timing, deadline, lockPath, observed, quarantinePath })
+          ) {
+            if (now() >= deadline) {
+              throw new HomeWorkerConfigLeaseTimeoutError(lastError, {
+                attempts,
+                lastCode,
+                lastObservation,
+              })
+            }
             continue
           }
         }
@@ -366,30 +421,32 @@ export async function withHomeWorkerConfigLease<T>(
   userDataPath: string,
   operation: () => Promise<T>,
   options: {
-    // Called with a release failure. The operation's own outcome never changes because of it.
-    onReleaseError?: (error: unknown) => void
+    // Called with a release failure. The operation's own outcome never changes because of it, so
+    // every caller must say where the failure goes.
+    onReleaseError: (error: unknown) => void
+    releaseTimeoutMs?: number
     dependencies?: HomeWorkerConfigLeaseDependencies
-  } = {},
+  },
 ): Promise<T> {
   const lease = await acquireHomeWorkerConfigLease(userDataPath, {
     dependencies: options.dependencies,
   })
+  const release = async (): Promise<void> => {
+    try {
+      await lease.release({ timeoutMs: options.releaseTimeoutMs })
+    } catch (releaseError) {
+      options.onReleaseError(releaseError)
+    }
+  }
   let result: T
   try {
     result = await operation()
   } catch (error) {
     // The operation's error wins; a release failure is reported, not allowed to replace it.
-    await lease.release().catch((releaseError: unknown) => options.onReleaseError?.(releaseError))
+    await release()
     throw error
   }
-  try {
-    await lease.release()
-  } catch (releaseError) {
-    if (!options.onReleaseError) {
-      throw releaseError
-    }
-    options.onReleaseError(releaseError)
-  }
+  await release()
   return result
 }
 

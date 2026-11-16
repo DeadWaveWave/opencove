@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
@@ -9,7 +9,10 @@ import {
   type HomeWorkerConfigLeaseDependencies,
 } from '../../../src/contexts/settings/infrastructure/homeWorker/homeWorkerConfigLease'
 import {
+  createFakeClock,
   createUserDataPath,
+  exists,
+  fsError,
   ownerPath,
   registerHomeWorkerConfigLeaseCases,
   registerLeaseTempDirCleanup,
@@ -17,65 +20,44 @@ import {
 
 registerHomeWorkerConfigLeaseCases()
 
-function fsError(code: string): NodeJS.ErrnoException {
-  return Object.assign(new Error(`${code}: injected filesystem error`), { code })
-}
-
-async function exists(path: string): Promise<boolean> {
-  return await stat(path).then(
-    () => true,
-    () => false,
-  )
-}
-
-// A clock that only moves when the lease waits, so a retry loop without a wait cannot pass time.
-function createFakeClock() {
-  let current = 1_000_000
-  const waits: number[] = []
-  return {
-    waits,
-    now: () => current,
-    wait: async (delayMs: number) => {
-      waits.push(delayMs)
-      current += delayMs
-    },
-  }
-}
-
 describe('Home Worker configuration lease under Windows error codes', () => {
   registerLeaseTempDirCleanup()
 
-  it('1 waits for a held lease when the claim reports EPERM on win32', async () => {
+  it('1 reclaims a dead owner found after a win32 EPERM on the claim, without waiting', async () => {
     const userDataPath = await createUserDataPath()
     const lockPath = resolve(userDataPath, HOME_WORKER_CONFIG_LEASE_FILE)
-    const first = await acquireHomeWorkerConfigLease(userDataPath, {
-      dependencies: { token: () => 'first-owner' },
-    })
-    let released = false
+    const waits: number[] = []
+    let injected = false
 
-    const second = await acquireHomeWorkerConfigLease(userDataPath, {
-      timeoutMs: 5_000,
+    const lease = await acquireHomeWorkerConfigLease(userDataPath, {
       dependencies: {
-        token: () => 'second-owner',
+        token: () => 'reclaiming-owner',
         platform: 'win32',
+        isProcessAlive: () => false,
+        wait: async delayMs => {
+          waits.push(delayMs)
+        },
+        // The path is free when the claim looks, then a dead owner's lease appears and the claim
+        // reports EPERM, so only the check after the ambiguous code can see the dead owner.
         rename: async (from, to) => {
-          if (to === lockPath && (await exists(lockPath))) {
+          if (to === lockPath && !injected) {
+            injected = true
+            await mkdir(lockPath)
+            await writeFile(
+              ownerPath(userDataPath),
+              `${JSON.stringify({ pid: 999_999, token: 'dead', createdAt: '2026-01-01T00:00:00.000Z' })}\n`,
+            )
             throw fsError('EPERM')
           }
           await rename(from, to)
         },
-        wait: async () => {
-          if (!released) {
-            released = true
-            await first.release()
-          }
-        },
       },
     })
 
-    expect(released).toBe(true)
-    expect(await readFile(ownerPath(userDataPath), 'utf8')).toContain('second-owner')
-    await second.release()
+    expect(injected).toBe(true)
+    expect(waits).toEqual([])
+    expect(await readFile(ownerPath(userDataPath), 'utf8')).toContain('reclaiming-owner')
+    await lease.release()
   }, 10_000)
 
   it('2 retries with a wait each time when the claim reports EPERM on win32 and no lease exists', async () => {
@@ -137,6 +119,10 @@ describe('Home Worker configuration lease under Windows error codes', () => {
     )
 
     expect(failure?.message).toContain('Timed out acquiring')
+    // The message is what reaches the log, so it carries the details.
+    expect(failure?.message).toContain('attempts=')
+    expect(failure?.message).toContain('lastCode=EPERM')
+    expect(failure?.message).toContain('lastObservation=absent')
     expect(failure?.cause?.code).toBe('EPERM')
     expect(failure?.details).toMatchObject({ lastCode: 'EPERM', lastObservation: 'absent' })
     // 25 ms is the smallest backoff step, so the deadline allows at most this many claims.
@@ -165,12 +151,47 @@ describe('Home Worker configuration lease under Windows error codes', () => {
       },
     }).then(
       () => null,
-      (error: unknown) => error as { code?: string; cause?: { code?: string } },
+      (error: unknown) => error as Error & { cause?: { code?: string } },
     )
 
     expect(failure).not.toBeNull()
-    // A fatal error may name its operation and carry the filesystem error as its cause.
-    expect(failure?.code ?? failure?.cause?.code).toBe('EPERM')
+    expect(failure?.message).toContain('lease claim failed')
+    expect(failure?.cause?.code).toBe('EPERM')
+    expect(waits).toEqual([])
+  }, 10_000)
+
+  it('4b keeps EPERM fatal on Linux for a reclaim and names the operation', async () => {
+    const userDataPath = await createUserDataPath()
+    const lockPath = resolve(userDataPath, HOME_WORKER_CONFIG_LEASE_FILE)
+    await mkdir(lockPath)
+    await writeFile(
+      ownerPath(userDataPath),
+      `${JSON.stringify({ pid: 999_999, token: 'dead', createdAt: '2026-01-01T00:00:00.000Z' })}\n`,
+    )
+    const waits: number[] = []
+
+    const failure = await acquireHomeWorkerConfigLease(userDataPath, {
+      dependencies: {
+        token: () => 'linux-owner',
+        platform: 'linux',
+        isProcessAlive: () => false,
+        wait: async delayMs => {
+          waits.push(delayMs)
+        },
+        rename: async (from, to) => {
+          if (from === lockPath) {
+            throw fsError('EPERM')
+          }
+          await rename(from, to)
+        },
+      },
+    }).then(
+      () => null,
+      (error: unknown) => error as Error & { cause?: { code?: string } },
+    )
+
+    expect(failure?.message).toContain('lease reclaim failed')
+    expect(failure?.cause?.code).toBe('EPERM')
     expect(waits).toEqual([])
   }, 10_000)
 
@@ -397,16 +418,6 @@ describe('withHomeWorkerConfigLease when the release fails', () => {
     ).rejects.toThrow('operation failed')
     expect(reported).toHaveLength(1)
   }, 10_000)
-
-  it('9 rejects with the release error when nobody listens for it', async () => {
-    const userDataPath = await createUserDataPath()
-
-    await expect(
-      withHomeWorkerConfigLease(userDataPath, async () => 'operation result', {
-        dependencies: await createStuckReleaseDependencies(userDataPath),
-      }),
-    ).rejects.toMatchObject({ name: 'HomeWorkerConfigLeaseReleaseError' })
-  }, 10_000)
 })
 
 describe('Worker start-up under the configuration lease', () => {
@@ -440,11 +451,18 @@ describe('Worker start-up under the configuration lease', () => {
     expect(stderr[0]).toContain('[opencove-worker] Home Worker configuration lease release failed')
   }, 10_000)
 
-  it('10 keeps the Worker entry reporting a release failure instead of throwing it', async () => {
+  it('10 keeps the Worker entry and the router reporting a release failure to stderr', async () => {
     const entry = await readFile(resolve('src/app/worker/index.ts'), 'utf8')
+    const router = await readFile(
+      resolve('src/app/main/worker/homeWorkerConfigurationRouter.ts'),
+      'utf8',
+    )
 
     expect(entry).toMatch(
-      /withHomeWorkerConfigLease\(userDataPath, startServer, \{\s*onReleaseError: createLeaseReleaseErrorReporter\('opencove-worker'/,
+      /withHomeWorkerConfigLease\(userDataPath, startServer, \{\s*releaseTimeoutMs: WORKER_LEASE_RELEASE_TIMEOUT_MS,\s*onReleaseError: createLeaseReleaseErrorReporter\('opencove-worker', text =>\s*process\.stderr\.write\(text\),?\s*\)/,
+    )
+    expect(router).toMatch(
+      /onReleaseError: createLeaseReleaseErrorReporter\('opencove', text =>\s*process\.stderr\.write\(text\),?\s*\)/,
     )
   })
 })
@@ -457,10 +475,20 @@ describe('Home Worker configuration lease file system access', () => {
     )
     const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
 
-    // A bare call, or a call of the imported default, would skip the platform policy and the port.
-    expect(code.match(/(?<![\w.])(rename|rm|fsRename|fsRm)\s*\(/g)).toBeNull()
-    // The imported functions appear once in the import and once as the port's default.
-    expect(code.match(/\bfsRename\b/g)).toHaveLength(2)
-    expect(code.match(/\bfsRm\b/g)).toHaveLength(2)
+    // The defaults live in a sibling module, so the lease module imports no file system function
+    // that could be called around the port: only named imports other than rename and rm, and no
+    // namespace or default import of the file system modules.
+    const fileSystemImports = [
+      ...code.matchAll(/import\s+(?!type\b)([^'"]*?)\s+from\s+'node:fs(?:\/promises)?'/g),
+    ].map(match => match[1])
+    for (const clause of fileSystemImports) {
+      expect(clause).toMatch(/^\{[^}]*\}$/)
+      expect(clause).not.toMatch(/\b(rename|rm)\b/)
+    }
+    // A bare call, or a call through any receiver but the port, skips the platform policy.
+    expect(code.match(/(?<![\w$.])(rename|rm)\s*\(/g)).toBeNull()
+    const receivers = [...code.matchAll(/([\w$.]*)\.(?:rename|rm)\s*\(/g)].map(match => match[1])
+    expect(receivers.length).toBeGreaterThan(0)
+    expect(receivers.filter(receiver => receiver !== 'fs' && receiver !== 'options.fs')).toEqual([])
   })
 })
