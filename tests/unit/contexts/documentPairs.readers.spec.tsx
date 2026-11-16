@@ -18,9 +18,10 @@ import {
 } from '../../support/canvasDocumentHarness'
 import { createRowNodes, createSpace } from '../../support/canvasSelectionFixtures'
 
-vi.mock('@app/renderer/i18n', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}))
+// `t` is stable, as it is in the app: a callback that lists it must not be rebuilt on every render,
+// or it could hide a writer or a reader that is missing from the same list.
+const translation = vi.hoisted(() => ({ t: (key: string) => key }))
+vi.mock('@app/renderer/i18n', () => ({ useTranslation: () => translation }))
 
 // The hooks that write a pair of nodes and Spaces, and the one that reads a Space, belong to the
 // workspace of the render that made them (#702, PR 9): the writer they are given and the reader
@@ -202,8 +203,13 @@ describe('useCanvasCollapse in two workspaces', () => {
 })
 
 describe('the menu actions in two workspaces', () => {
-  const room = (width: number) =>
-    createSpace('room', { x: -50, y: -50, width, height: 1600 }, ['a', 'b', 'c'])
+  const room = (origin: number, width: number) =>
+    createSpace('room', { x: origin, y: origin, width, height: 1600 }, ['a', 'b', 'c'])
+  const shifted = (nodes: Node<TerminalNodeData>[]) =>
+    nodes.map(node => ({
+      ...node,
+      position: { x: node.position.x + 500, y: node.position.y + 500 },
+    }))
 
   function renderMenuActions(documents: Parameters<typeof renderInTwoWorkspaces>[1]) {
     return renderInTwoWorkspaces(
@@ -240,8 +246,9 @@ describe('the menu actions in two workspaces', () => {
 
   it('focuses the Space of the shown workspace after arranging it', async () => {
     const { view, showB } = renderMenuActions({
-      a: { nodes: scattered(['a', 'b', 'c']), spaces: [room(2400)] },
-      b: { nodes: scattered(['a', 'b', 'c']), spaces: [room(2000)] },
+      a: { nodes: scattered(['a', 'b', 'c']), spaces: [room(-50, 2400)] },
+      // Arranged where it stands, so the two Spaces end up in different places.
+      b: { nodes: shifted(scattered(['a', 'b', 'c'])), spaces: [room(450, 2000)] },
     })
     const focusedRect = async (workspaceId: string) => {
       setViewport.mockClear()
