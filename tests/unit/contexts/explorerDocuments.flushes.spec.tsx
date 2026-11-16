@@ -146,6 +146,22 @@ describe('the file opened from a folder node', () => {
     expect(flushes[0].document.nodes.map(node => node.data.kind)).toEqual(['folder', 'document'])
   })
 
+  it('flushes nothing when the node store makes no node', async () => {
+    const createDocumentNode = vi.fn(() => null)
+    const { view, flushes } = renderFilesystemNodes(
+      { a: { nodes: [folder()] } },
+      { createDocumentNode },
+    )
+
+    await act(async () => {
+      view.result.current.actions.openFile('folder', FILE_URI)
+      await vi.waitFor(() => expect(createDocumentNode).toHaveBeenCalled())
+    })
+
+    expect(kinds(A)).toEqual(['folder'])
+    expect(flushes).toHaveLength(0)
+  })
+
   it.each([
     {
       name: 'the entry is another kind than the stat says',
@@ -215,6 +231,18 @@ describe('the document opening', () => {
     })
 
     expect(harness.notifications).not.toHaveBeenCalled()
+    expect(flushes).toHaveLength(0)
+  })
+
+  it('flushes nothing when the node store makes no node', async () => {
+    const createDocumentNode = vi.fn(() => null)
+    const { view, flushes } = renderOpening({ a: {} }, { createDocumentNode })
+
+    await act(async () => {
+      await view.result.current(request(null))
+    })
+
+    expect(createDocumentNode).toHaveBeenCalledOnce()
     expect(flushes).toHaveLength(0)
   })
 

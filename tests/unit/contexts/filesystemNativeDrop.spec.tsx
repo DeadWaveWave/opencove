@@ -79,9 +79,13 @@ function setup({ twoSpaces = [] as WorkspaceSpaceState[] } = {}) {
     onShowMessage,
   }
   let shown = 'one'
-  const hook = renderInCanvasDocument(() => useFilesystemNodes({ ...params, workspaceId: shown }), {
-    workspaceId: () => shown,
-  })
+  let hookWorkspace = 'one'
+  const hook = renderInCanvasDocument(
+    () => useFilesystemNodes({ ...params, workspaceId: hookWorkspace }),
+    {
+      workspaceId: () => shown,
+    },
+  )
   return {
     ...hook,
     harness,
@@ -90,6 +94,14 @@ function setup({ twoSpaces = [] as WorkspaceSpaceState[] } = {}) {
     onShowMessage,
     spacesRef: storeBackedChannelsOf('one').spacesRef,
     show: (workspaceId: string) =>
+      act(() => {
+        shown = workspaceId
+        hookWorkspace = workspaceId
+        useAppStore.setState({ activeWorkspaceId: workspaceId })
+        hook.rerender()
+      }),
+    /** Moves the provider and the active workspace but keeps the hook's own workspace id. */
+    showKeepingHookWorkspace: (workspaceId: string) =>
       act(() => {
         shown = workspaceId
         useAppStore.setState({ activeWorkspaceId: workspaceId })
@@ -268,6 +280,17 @@ describe('native filesystem drops', () => {
       })
       expect(view.createDocumentNode).toHaveBeenCalledTimes(2)
     })
+  })
+
+  it('drops onto the Spaces of the workspace the render shows, not of the first one', async () => {
+    const file = new File([], 'note.md')
+    nativePaths.set(file, '/external/note.md')
+    const view = setup()
+    view.showKeepingHookWorkspace('two')
+    await act(async () => {
+      view.result.current.handleNativeDrop(nativeDrop([file]))
+    })
+    expect(view.createDocumentNode.mock.calls[0][2]).toMatchObject({ targetSpaceRect: null })
   })
 
   it('ends the batch when a store write in the same act removes its Space after the first approval', async () => {

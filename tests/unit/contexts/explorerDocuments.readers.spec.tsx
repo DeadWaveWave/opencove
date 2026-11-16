@@ -418,8 +418,9 @@ describe('the explorer', () => {
     await vi.waitFor(() => expect(view.result.current.quickPreview?.rect).not.toEqual(free))
   })
 
-  it('materializes a preview with the document the store holds, found through its own id', async () => {
-    const rendered = renderExplorer({ a: { spaces: [spaceAt('space-a')] } })
+  // Drags the preview of `space-a` past the threshold, so that it is materialized, and returns the
+  // nodes the drag session began with and the document the store then holds.
+  async function dragPreview(rendered: ReturnType<typeof renderExplorer>, showB = false) {
     const { view, nodeDragSession } = rendered
     openExplorerOf(view)
     await act(async () => {
@@ -428,6 +429,9 @@ describe('the explorer', () => {
     await vi.waitFor(() => expect(view.result.current.quickPreview).not.toBeNull())
     nodeDragSession.dragBaselinePositionByIdRef.current = new Map()
     nodeDragSession.dragBaselineSpaceRectByIdRef.current = new Map()
+    if (showB) {
+      displayBWhileRenderingA(rendered)
+    }
 
     await act(async () => {
       view.result.current.beginQuickPreviewDrag({
@@ -439,18 +443,34 @@ describe('the explorer', () => {
       window.dispatchEvent(new MouseEvent('mousemove', { clientX: 40, clientY: 40 }))
       await vi.waitFor(() => expect(nodeDragSession.beginNodeDragSession).toHaveBeenCalled())
     })
-
+    act(() => {
+      window.dispatchEvent(new MouseEvent('mouseup', { clientX: 40, clientY: 40 }))
+    })
     const created = documentOf(A).nodes.find(node => node.data.kind === 'document')!
     const sessionNodes = nodeDragSession.beginNodeDragSession.mock.calls[0][0] as Array<{
       id: string
     }>
-    expect(sessionNodes.map(node => node.id)).toContain(created.id)
-    act(() => {
-      window.dispatchEvent(new MouseEvent('mouseup', { clientX: 40, clientY: 40 }))
-    })
+    return { created, sessionNodeIds: sessionNodes.map(node => node.id) }
+  }
+
+  it('materializes a preview with the document the store holds, found through its own id', async () => {
+    const { created, sessionNodeIds } = await dragPreview(
+      renderExplorer({ a: { spaces: [spaceAt('space-a')] } }),
+    )
+
+    expect(sessionNodeIds).toContain(created.id)
   })
 
   describe('a render of workspace A while workspace B is displayed', () => {
+    it('materializes a preview with the document of A', async () => {
+      const { created, sessionNodeIds } = await dragPreview(
+        renderExplorer({ a: { spaces: [spaceAt('space-a')] } }),
+        true,
+      )
+
+      expect(sessionNodeIds).toContain(created.id)
+    })
+
     it('previews against a Space of A', async () => {
       const rendered = renderExplorer({
         a: { spaces: [spaceAt('space-a', [], { targetMountId: 'remote-mount' })] },
@@ -481,6 +501,26 @@ describe('the explorer', () => {
   })
 
   describe('the render that shows workspace B', () => {
+    it('previews against a Space that only B holds', async () => {
+      const rendered = renderExplorer(
+        { a: {}, b: { spaces: [spaceAt('space-b', [], { targetMountId: 'remote-mount' })] } },
+        { fixedWorkspaceId: true },
+      )
+      rendered.showB()
+      openExplorerOf(rendered.view, 'space-b')
+
+      await act(async () => {
+        rendered.view.result.current.previewFileInSpace('space-b', URI)
+      })
+
+      await vi.waitFor(() =>
+        expect(rendered.view.result.current.quickPreview).toMatchObject({
+          spaceId: 'space-b',
+          mountId: 'remote-mount',
+        }),
+      )
+    })
+
     it('reads B for the blocking open document', () => {
       const rendered = renderExplorer({
         a: { nodes: [documentNodeAt('doc-a', 'file:///a.md')] },
@@ -607,9 +647,9 @@ describe('the filesystem nodes', () => {
   })
 
   describe('the render that shows workspace B', () => {
-    it('updates the folder of B, not of the workspace the first render read', () => {
+    it('updates a folder that only B holds', () => {
       const rendered = renderFilesystemNodes(
-        { a: { nodes: [folder()] }, b: { nodes: [folder()] } },
+        { a: { nodes: [] }, b: { nodes: [folder()] } },
         { fixedWorkspaceId: true },
       )
       rendered.showB()
@@ -619,7 +659,31 @@ describe('the filesystem nodes', () => {
       })
 
       expect(documentOf(B).nodes[0].data.folder?.viewMode).toBe('list')
-      expect(documentOf(A).nodes[0].data.folder?.viewMode).toBe('icons')
+    })
+
+    it('finds the blocking open document that only B holds', () => {
+      const rendered = renderFilesystemNodes(
+        { a: { nodes: [] }, b: { nodes: [folder(), documentNodeAt('doc', `${folderUri}/a.md`)] } },
+        { fixedWorkspaceId: true },
+      )
+      rendered.showB()
+
+      expect(
+        rendered.view.result.current.actions.findBlockingOpenDocument(
+          'folder',
+          `${folderUri}/a.md`,
+        ),
+      ).toMatchObject({ uri: `${folderUri}/a.md` })
+    })
+
+    it('reads the path of a node that only B holds', () => {
+      const rendered = renderFilesystemNodes(
+        { a: { nodes: [] }, b: { nodes: [documentNodeAt('doc', URI)] } },
+        { fixedWorkspaceId: true },
+      )
+      rendered.showB()
+
+      expect(rendered.view.result.current.actions.getNodePathUri('doc')).toBe(URI)
     })
   })
 })

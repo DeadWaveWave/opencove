@@ -1,4 +1,5 @@
 import { act } from '@testing-library/react'
+import { useCallback, useRef } from 'react'
 import type { Node } from '@xyflow/react'
 import { vi } from 'vitest'
 import { useAppStore } from '../../src/app/renderer/shell/store/useAppStore'
@@ -134,10 +135,21 @@ export interface ExplorerRenderOptions {
    * among their dependencies, so a case that has to see the reader change on its own keeps it fixed.
    */
   fixedWorkspaceId?: boolean
+  /** Stands in for the node store's creator, for a case in which no node is created. */
+  createDocumentNode?: WorkspaceDocumentOpeningArgs['createDocumentNode']
 }
 
 function shownId(context: RuntimeCanvasContext, { fixedWorkspaceId }: ExplorerRenderOptions) {
   return fixedWorkspaceId ? A : context.workspaceId
+}
+
+/** A function that keeps its identity and calls the latest one, so that it cannot rebuild a callback. */
+function useStable<Args extends unknown[], Result>(
+  fn: (...args: Args) => Result,
+): (...args: Args) => Result {
+  const latest = useRef(fn)
+  latest.current = fn
+  return useCallback((...args: Args) => latest.current(...args), [])
 }
 
 /**
@@ -155,12 +167,16 @@ export function renderOpening(documents?: Documents, options: ExplorerRenderOpti
   const expandNode = stableExpandNode()
   const rendered = renderInTwoWorkspaces(context => {
     const workspaceId = shownId(context, options)
+    // The creators change with the workspace; a case that pins a reader keeps them still.
+    const createDocumentNode = useStable(
+      options.createDocumentNode ?? context.nodeStore.createDocumentNode,
+    )
     return useWorkspaceDocumentOpening({
       workspaceId,
       setNodes: context.stableSetNodes,
       updateCanvasDocument: context.stableUpdateCanvasDocument,
       reactFlow,
-      createDocumentNode: context.nodeStore.createDocumentNode,
+      createDocumentNode: createDocumentNode,
       expandNode,
     })
   }, documents)
@@ -176,12 +192,16 @@ export function renderNavigation(
   const openSpaceExplorer = vi.fn()
   const rendered = renderInTwoWorkspaces(context => {
     const workspaceId = shownId(context, options)
+    // The creators change with the workspace; a case that pins a reader keeps them still.
+    const createDocumentNode = useStable(
+      options.createDocumentNode ?? context.nodeStore.createDocumentNode,
+    )
     return useWorkspaceDocumentNavigation({
       workspaceId,
       setNodes: context.stableSetNodes,
       updateCanvasDocument: context.stableUpdateCanvasDocument,
       reactFlow,
-      createDocumentNode: context.nodeStore.createDocumentNode,
+      createDocumentNode: createDocumentNode,
       expandNode,
       openSpaceExplorer,
       openExplorerSpaceId: options.openExplorerSpaceId ?? null,
@@ -194,14 +214,19 @@ export function renderFilesystemNodes(documents?: Documents, options: ExplorerRe
   const onShowMessage = vi.fn()
   const rendered = renderInTwoWorkspaces(context => {
     const workspaceId = shownId(context, options)
+    // The creators change with the workspace; a case that pins a reader keeps them still.
+    const createDocumentNode = useStable(
+      options.createDocumentNode ?? context.nodeStore.createDocumentNode,
+    )
+    const createFolderNode = useStable(context.nodeStore.createFolderNode)
     return useFilesystemNodes({
       workspaceId,
       workspacePath: `/tmp/${workspaceId}`,
       nodeStore: {
         setNodes: context.stableSetNodes,
         updateCanvasDocument: context.stableUpdateCanvasDocument,
-        createDocumentNode: context.nodeStore.createDocumentNode,
-        createFolderNode: context.nodeStore.createFolderNode,
+        createDocumentNode: createDocumentNode,
+        createFolderNode,
       },
       onShowMessage,
     })
@@ -227,6 +252,11 @@ export function renderExplorer(documents?: Documents, options: ExplorerRenderOpt
   const expandNode = stableExpandNode()
   const rendered = renderInTwoWorkspaces(context => {
     const workspaceId = shownId(context, options)
+    // The creators change with the workspace; a case that pins a reader keeps them still.
+    const createDocumentNode = useStable(
+      options.createDocumentNode ?? context.nodeStore.createDocumentNode,
+    )
+    const createImageNode = useStable(context.nodeStore.createImageNode)
     return useWorkspaceCanvasSpaceExplorer({
       workspaceId,
       canvasRef,
@@ -236,8 +266,8 @@ export function renderExplorer(documents?: Documents, options: ExplorerRenderOpt
       reactFlow: reactFlow as never,
       nodeDragSession: nodeDragSession as never,
       finalizeDraggedNodeDrop,
-      createDocumentNode: context.nodeStore.createDocumentNode,
-      createImageNode: context.nodeStore.createImageNode,
+      createDocumentNode: createDocumentNode,
+      createImageNode,
       expandNode,
       standardWindowSizeBucket: 'regular',
     })
