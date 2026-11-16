@@ -191,7 +191,7 @@ describe('the PTY task completion in two workspaces', () => {
     expect(query).toHaveBeenCalledTimes(1)
     writes.mockClear()
 
-    // The runtime of the node is replaced while the scan runs; the canvas view has not seen it.
+    // The runtime of the node is replaced in the store while the scan runs; the scan re-reads it.
     await act(async () => {
       replaceWorkspaceNodes(A, [
         { ...watched('agent-a'), data: { ...watched('agent-a').data, sessionId: 'replacement' } },

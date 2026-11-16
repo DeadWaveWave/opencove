@@ -22,6 +22,9 @@ import {
 } from './canvasDocumentHarness'
 import { useWorkspaceCanvasStoreNodes } from './workspaceCanvasStoreHarness'
 
+// A selector must return the same array while the store holds none.
+const EMPTY_SPACES: WorkspaceSpaceState[] = []
+
 export const WORKSPACE_A = 'workspace-a'
 export const WORKSPACE_B = 'workspace-b'
 
@@ -182,7 +185,8 @@ export function renderInTwoWorkspaces<Result>(
       const workspaceId = shown
       const nodes = useWorkspaceCanvasStoreNodes(workspaceId)
       const spaces = useAppStore(
-        state => state.workspaces.find(workspace => workspace.id === workspaceId)?.spaces ?? [],
+        state =>
+          state.workspaces.find(workspace => workspace.id === workspaceId)?.spaces ?? EMPTY_SPACES,
       )
       const canvasState = useWorkspaceCanvasState({
         workspaceId,

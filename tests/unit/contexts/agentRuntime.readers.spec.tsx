@@ -198,7 +198,8 @@ describe('the agent session switch', () => {
     expect(relaunch).toHaveBeenCalledTimes(2)
   })
 
-  // The relaunch lands in the store; the canvas view and its ref have not caught up yet.
+  // The relaunch writes the store while the switch is awaiting it: the node is read again after
+  // the await, from the store, and that second read decides whether the switch committed.
   const linked = (resumeSessionId: string) =>
     agentNode('agent-1', {}, { taskId: 'task-1', resumeSessionId, executionDirectory: '/dir' })
   const landRelaunch = () =>
@@ -208,7 +209,7 @@ describe('the agent session switch', () => {
     })
   const beforeRelaunch = { a: { nodes: [linked('resume-old'), taskNode('task-1', 'agent-1')] } }
 
-  it('judges the switch by the node the store holds after the relaunch, and records the old session on its task', async () => {
+  it('re-reads the node after the relaunch, and records the old session on its task if the switch committed', async () => {
     const { view } = renderSwitch(landRelaunch(), beforeRelaunch)
 
     await act(async () => {
@@ -596,5 +597,92 @@ describe('a render of workspace A while workspace B is displayed', () => {
     })
 
     expect(listSessions).toHaveBeenCalledWith({ provider: 'codex', cwd: '/dir-a', limit: 20 })
+  })
+
+  const overlayA = () =>
+    sized({
+      ...pixelNode({
+        kind: 'terminal',
+        sessionId: 'pty-a',
+        executionDirectory: '/dir-a',
+        terminalAgentBinding: {
+          provider: 'codex',
+          resumeSessionId: 'resume-current',
+          resumeSessionIdVerified: true,
+        },
+        agentOverlay: {
+          provider: 'codex',
+          status: 'standby',
+          startedAtMs: Date.parse('2026-08-12T00:00:00.000Z'),
+        },
+      }),
+      id: 'terminal-a',
+    })
+  const reexecuted = vi.fn(async (input: { sessionId: string }) => ({
+    sessionId: input.sessionId,
+    operationId: 'operation-1',
+    status: 'reexecuted' as const,
+  }))
+
+  it('stops an agent of A', async () => {
+    const kill = vi.fn(async () => undefined)
+    stubOpencoveApi({ pty: { kill } })
+    const { view } = renderInTwoWorkspaces(
+      ({ nodeStore, stableSetNodes }) =>
+        useAgentNodeSessionControls({
+          setNodes: stableSetNodes,
+          bumpAgentLaunchToken: nodeStore.bumpAgentLaunchToken,
+        }),
+      { a: { nodes: [agentNode('agent-a')] } },
+    )
+    displayB()
+    await act(async () => {
+      await view.result.current.stopAgentNode('agent-a')
+    })
+    expect(kill).toHaveBeenCalledWith({ sessionId: 'agent-a-runtime' })
+    expect(nodeOf(A, 'agent-a').data.status).toBe('stopped')
+  })
+
+  it('reloads a terminal of A', async () => {
+    reexecuted.mockClear()
+    stubOpencoveApi({ pty: { reexecAgent: reexecuted } })
+    const { view } = renderInTwoWorkspaces(
+      ({ stableSetNodes }) => useTerminalAgentSessionActions({ setNodes: stableSetNodes }),
+      { a: { nodes: [overlayA()] } },
+    )
+    displayB()
+    let handled = false
+    await act(async () => {
+      handled = await view.result.current.reloadOverlayAgent('terminal-a')
+    })
+    expect(handled).toBe(true)
+    expect(reexecuted).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 'pty-a' }))
+  })
+
+  it('switches the session of a terminal of A', async () => {
+    reexecuted.mockClear()
+    stubOpencoveApi({ pty: { reexecAgent: reexecuted } })
+    const { view } = renderInTwoWorkspaces(
+      ({ stableSetNodes }) => useTerminalAgentSessionActions({ setNodes: stableSetNodes }),
+      { a: { nodes: [overlayA()] } },
+    )
+    displayB()
+    let handled = false
+    await act(async () => {
+      handled = await view.result.current.switchOverlayAgentSession('terminal-a', {
+        sessionId: 'resume-next',
+        provider: 'codex',
+        cwd: '/dir-a',
+        title: null,
+        preview: null,
+        startedAt: null,
+        updatedAt: null,
+        source: 'codex-file',
+      })
+    })
+    expect(handled).toBe(true)
+    expect(reexecuted).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: 'pty-a', resumeSessionId: 'resume-next' }),
+    )
   })
 })

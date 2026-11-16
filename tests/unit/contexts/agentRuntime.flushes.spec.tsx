@@ -289,4 +289,39 @@ describe('the PTY task completion flush', () => {
     expect(flushes[0].notificationsBefore).toBe(1)
     expect(flushes[0].document.nodes[0].data.title).toBe('codex · Review persistence')
   })
+
+  it('does not flush when the session title is already the node title', async () => {
+    const query = vi.fn(async () => [
+      {
+        sessionId: 'agent-1-resume',
+        provider: 'codex' as const,
+        cwd: '/dir',
+        title: 'Review persistence',
+        preview: null,
+        startedAt: null,
+        updatedAt: null,
+        source: 'codex-file' as const,
+      },
+    ])
+    const { flushes, harness } = renderInTwoWorkspaces(
+      ({ canvasState, nodeStore }) => {
+        useWorkspaceCanvasPtyTaskCompletion({
+          nodes: canvasState.flowNodes,
+          setNodes: nodeStore.setNodes,
+          listAgentSessions: query,
+        })
+      },
+      { a: { nodes: [agentNode('agent-1', { title: 'codex · Review persistence' })] } },
+    )
+    harness.notifications.mockClear()
+
+    await act(async () => {
+      emitMetadata({ sessionId: 'agent-1-runtime', resumeSessionId: 'agent-1-resume' })
+    })
+
+    expect(query).toHaveBeenCalledWith('agent-1', 20)
+    expect(nodeOf(A, 'agent-1').data.title).toBe('codex · Review persistence')
+    expect(harness.notifications).not.toHaveBeenCalled()
+    expect(flushes).toHaveLength(0)
+  })
 })

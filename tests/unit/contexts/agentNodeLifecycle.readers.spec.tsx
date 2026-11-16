@@ -9,6 +9,7 @@ import {
   nodeOf,
   renderInTwoWorkspaces,
   stubOpencoveApi,
+  taskNode,
   WORKSPACE_A as A,
   WORKSPACE_B as B,
 } from '../../support/agentRuntimeHarness'
@@ -213,5 +214,134 @@ describe('the agent lifecycle in two workspaces', () => {
 
     expect(launched.api.launch).toHaveBeenCalledTimes(1)
     expect(nodeOf(B, 'agent-b').data.sessionId).toBe('runtime-reloaded')
+  })
+
+  it('reloads a node of its own workspace while another is displayed', async () => {
+    const launch = vi.fn(async () => ({
+      sessionId: 'runtime-reloaded',
+      profileId: null,
+      runtimeKind: 'posix',
+      effectiveModel: 'gpt-5.2-codex',
+      resumeSessionId: null,
+    }))
+    stubOpencoveApi({
+      agent: { launch },
+      pty: { kill: vi.fn(async () => undefined) },
+      workspace: { ensureDirectory: vi.fn(async () => undefined) },
+    })
+    const { view } = renderLifecycle({
+      a: {
+        nodes: [
+          agentNode(
+            'agent-a',
+            { sessionId: '' },
+            { resumeSessionId: null, resumeSessionIdVerified: false },
+          ),
+        ],
+      },
+      b: { nodes: [agentNode('agent-b')] },
+    })
+    act(() => useAppStore.setState({ activeWorkspaceId: B }))
+
+    await act(async () => {
+      await view.result.current.reloadAgentNode('agent-a')
+    })
+
+    expect(launch).toHaveBeenCalledTimes(1)
+    expect(nodeOf(A, 'agent-a').data.sessionId).toBe('runtime-reloaded')
+  })
+
+  it('binds a managed Claude launch, titled by its task, in the workspace that started it after a switch', async () => {
+    let releaseBinding!: () => void
+    const bindingGate = new Promise<void>(resolve => {
+      releaseBinding = resolve
+    })
+    let releaseLaunch!: () => void
+    const launchGate = new Promise<void>(resolve => {
+      releaseLaunch = resolve
+    })
+    const binding = {
+      nodeId: 'agent-a',
+      activationId: 'adopted',
+      runtimeSessionId: 'new',
+      tuple: { resumeSessionId: 'effective', resumeSessionIdVerified: true },
+      nodeSeen: true,
+      bindingRevision: 1,
+      observedRevision: 1,
+    }
+    const launch = vi.fn(async () => {
+      await launchGate
+      return {
+        sessionId: 'new',
+        profileId: null,
+        effectiveModel: null,
+        resumeSessionId: 'effective',
+        startedAt: '2026-11-11T00:00:00Z',
+        managedClaudeLifecycle: { binding, commitRevision: 1 },
+        executionContext: {
+          workingDirectory: '/tmp/agent-a',
+          endpoint: { endpointId: 'local' },
+          mountId: null,
+        },
+      }
+    })
+    let bindingReads = 0
+    const invoke = vi.fn(async (request: { id: string }) => {
+      if (request.id === 'system.capabilities') {
+        return { features: { managedClaudeResumeBindingDeliveryV1: true } }
+      }
+      if (request.id === 'node.get') {
+        return { node: { data: { kind: 'agent', executionDirectory: '/tmp/agent-a' } } }
+      }
+      if (request.id === 'node.managedClaudeBinding') {
+        bindingReads += 1
+        if (bindingReads === 1) {
+          await bindingGate
+        }
+        return {
+          managedClaudeBinding: launch.mock.calls.length ? binding : null,
+          retired: false,
+          executionDirectory: null,
+        }
+      }
+      if (request.id === 'mount.list') {
+        return { mounts: [] }
+      }
+      throw new Error(`Unexpected request ${request.id}`)
+    })
+    const kill = vi.fn(async () => undefined)
+    stubOpencoveApi({ controlSurface: { invoke }, agent: { launch }, pty: { kill } })
+    const claude = agentNode(
+      'agent-a',
+      { sessionId: '' },
+      {
+        provider: 'claude-code',
+        resumeSessionId: null,
+        resumeSessionIdVerified: false,
+        taskId: 'task-1',
+      },
+    )
+    const { view, showB } = renderLifecycle({
+      a: { nodes: [claude, taskNode('task-1', 'agent-a')] },
+      b: { nodes: [agentNode('agent-b')] },
+    })
+
+    let launching!: Promise<void>
+    act(() => {
+      launching = view.result.current.launchAgentInNode('agent-a', 'new')
+    })
+    await waitFor(() => expect(bindingReads).toBe(1))
+    showB()
+    await act(async () => {
+      releaseBinding()
+      await waitFor(() => expect(launch).toHaveBeenCalledTimes(1))
+      releaseLaunch()
+      await launching
+    })
+
+    expect(kill).not.toHaveBeenCalled()
+    expect(nodeOf(A, 'agent-a').data.sessionId).toBe('new')
+    expect(nodeOf(A, 'agent-a').data.title).toContain('Task')
+    expect(nodeOf(B, 'agent-b').data.sessionId).toBe('agent-b-runtime')
   })
 })
