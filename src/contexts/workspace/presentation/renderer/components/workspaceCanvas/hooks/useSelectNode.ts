@@ -4,6 +4,7 @@ import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { isPointInsideRect } from './useSpaceOwnership.helpers'
 import {
   useCanvasSelectionCommands,
+  useReadCanvasDocument,
   useReadCanvasSelection,
 } from '../../../store/canvasStoreContext'
 
@@ -14,12 +15,11 @@ type SetNodes = (
 
 export function useWorkspaceCanvasSelectNode({
   setNodes,
-  spacesRef,
 }: {
   setNodes: SetNodes
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
 }): (nodeId: string, options?: { toggle?: boolean }) => void {
   const reactFlowStore = useStoreApi()
+  const readDocument = useReadCanvasDocument()
   const readSelection = useReadCanvasSelection()
   const selection = useCanvasSelectionCommands()
 
@@ -56,7 +56,7 @@ export function useWorkspaceCanvasSelectNode({
 
           if (shouldToggle) {
             const toggledSelectedIds: string[] = []
-            const spaces = spacesRef.current
+            const spaces = readDocument().spaces
             const targetNode = prevNodes.find(node => node.id === nodeId) ?? null
             const targetScope = targetNode ? resolveContainingSpaceId(targetNode, spaces) : null
 
@@ -133,6 +133,6 @@ export function useWorkspaceCanvasSelectNode({
         coveDragSurfaceSelectionMode: shouldToggle && hasAnySelection,
       } as unknown as Parameters<typeof reactFlowStore.setState>[0])
     },
-    [reactFlowStore, readSelection, selection, spacesRef, setNodes],
+    [reactFlowStore, readDocument, readSelection, selection, setNodes],
   )
 }

@@ -185,7 +185,6 @@ export function useWorkspaceCanvasShortcutActions({
   })
   const selectNode = useWorkspaceCanvasSelectNode({
     setNodes,
-    spacesRef,
   })
 
   const createNoteAtViewportCenter = useCallback((): void => {

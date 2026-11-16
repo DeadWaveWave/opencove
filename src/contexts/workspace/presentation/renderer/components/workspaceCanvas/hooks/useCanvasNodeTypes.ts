@@ -31,7 +31,6 @@ export function useWorkspaceCanvasComposedNodeTypes({
   const selectNode: (nodeId: string, options?: { toggle?: boolean }) => void =
     useWorkspaceCanvasSelectNode({
       setNodes,
-      spacesRef,
     })
 
   return useWorkspaceCanvasNodeTypes({

@@ -63,7 +63,6 @@ export function useWorkspaceCanvasInteractions({
   const reactFlowStore = useStoreApi()
   const selectNode = useWorkspaceCanvasSelectNode({
     setNodes,
-    spacesRef,
   })
 
   const clearNodeSelection = useCallback(() => {
@@ -196,7 +195,6 @@ export function useWorkspaceCanvasInteractions({
     selectionDraftRef,
     setSelectionDraftUi,
     reactFlow,
-    spacesRef,
     setNodes,
   })
 
