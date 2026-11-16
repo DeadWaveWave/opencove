@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import type { Node } from '@xyflow/react'
 import { describe, expect, it, vi } from 'vitest'
 import { useWorkspaceDocumentNavigation } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useWorkspaceDocumentNavigation'
@@ -7,6 +7,12 @@ import type {
   TerminalNodeData,
   WorkspaceSpaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
+import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
+import {
+  createCanvasDocumentHarness,
+  renderInCanvasDocument,
+} from '../../support/canvasDocumentHarness'
+import { storeBackedChannelsOf } from '../../support/workspaceCanvasStoreHarness'
 
 function node(id: string, uri?: string): Node<TerminalNodeData> {
   return {
@@ -35,41 +41,42 @@ function node(id: string, uri?: string): Node<TerminalNodeData> {
   }
 }
 
-function fixture() {
+// The document is in the app store; `nodesRef` and `spacesRef` are its arrays, for the test to seed
+// and read back, and the hook reads the store through the canvas store's reader.
+function fixture(workspaceId = 'workspace') {
   const uri = 'file:///repo/main.ts'
   const terminal = node('terminal')
   const remoteDocument = node('remote-document', uri)
   const localDocument = node('local-document', uri)
   localDocument.data.workerBinding = { endpointId: 'local', mountId: 'local-mount' }
-  const nodesRef = { current: [terminal, remoteDocument, localDocument] }
-  const spacesRef = {
-    current: [
-      {
-        id: 'local-space',
-        targetMountId: 'local-mount',
-        nodeIds: ['terminal', 'local-document'],
-        rect: { x: 0, y: 0, width: 600, height: 600 },
-      },
-      {
-        id: 'remote-space',
-        targetMountId: 'remote-mount',
-        nodeIds: ['remote-document'],
-        rect: { x: 800, y: 0, width: 600, height: 600 },
-      },
-    ] as WorkspaceSpaceState[],
-  }
+  const spaces = [
+    {
+      id: 'local-space',
+      targetMountId: 'local-mount',
+      nodeIds: ['terminal', 'local-document'],
+      rect: { x: 0, y: 0, width: 600, height: 600 },
+    },
+    {
+      id: 'remote-space',
+      targetMountId: 'remote-mount',
+      nodeIds: ['remote-document'],
+      rect: { x: 800, y: 0, width: 600, height: 600 },
+    },
+  ] as WorkspaceSpaceState[]
+  createCanvasDocumentHarness({
+    workspaceId,
+    nodes: [terminal, remoteDocument, localDocument],
+    spaces,
+  })
+  const { nodesRef, spacesRef, setNodes } = storeBackedChannelsOf(workspaceId)
   const createDocumentNode = vi.fn<WorkspaceDocumentOpeningArgs['createDocumentNode']>(() => null)
   const options: WorkspaceDocumentOpeningArgs & {
     workspaceId: string
     openSpaceExplorer: (spaceId: string) => void
     openExplorerSpaceId: string | null
   } = {
-    workspaceId: 'workspace',
-    nodesRef,
-    spacesRef,
-    setNodes: updater => {
-      nodesRef.current = updater(nodesRef.current)
-    },
+    workspaceId,
+    setNodes,
     // The push-away writes one recipe over the nodes and the Spaces, as the node store runs it.
     updateCanvasDocument: recipe => {
       const next = recipe({ nodes: nodesRef.current, spaces: spacesRef.current })
@@ -85,7 +92,12 @@ function fixture() {
     openSpaceExplorer: vi.fn(),
     openExplorerSpaceId: null,
   }
-  return { options, uri, createDocumentNode, terminal }
+  return {
+    options: Object.assign(options, { nodesRef, spacesRef }),
+    uri,
+    createDocumentNode,
+    terminal,
+  }
 }
 
 describe('workspace document navigation', () => {
@@ -101,7 +113,9 @@ describe('workspace document navigation', () => {
       options.nodesRef.current = [...options.nodesRef.current, created]
       return created
     })
-    const { result } = renderHook(() => useWorkspaceDocumentNavigation(options))
+    const { result } = renderInCanvasDocument(() => useWorkspaceDocumentNavigation(options), {
+      workspaceId: options.workspaceId,
+    })
     await act(async () => {
       expect(await result.current.openFileLink('terminal', { uri, mountId: null, line: 9 })).toBe(
         true,
@@ -137,7 +151,9 @@ describe('workspace document navigation', () => {
     }))
     vi.stubGlobal('opencoveApi', { controlSurface: { invoke } })
     try {
-      const { result } = renderHook(() => useWorkspaceDocumentNavigation(options))
+      const { result } = renderInCanvasDocument(() => useWorkspaceDocumentNavigation(options), {
+        workspaceId: options.workspaceId,
+      })
       await act(async () => {
         expect(
           await result.current.openFileLink('terminal', { uri, mountId: 'project-mount', line: 4 }),
@@ -164,7 +180,9 @@ describe('workspace document navigation', () => {
 
   it('reuses the document in the source mount and preserves line ranges outside node data', async () => {
     const { options, uri, createDocumentNode } = fixture()
-    const { result } = renderHook(() => useWorkspaceDocumentNavigation(options))
+    const { result } = renderInCanvasDocument(() => useWorkspaceDocumentNavigation(options), {
+      workspaceId: options.workspaceId,
+    })
     await act(async () => {
       expect(
         await result.current.openFileLink('terminal', {
@@ -195,7 +213,12 @@ describe('workspace document navigation', () => {
 
   it('rejects stale source mount requests and requests after the canvas has unmounted', async () => {
     const { options, uri } = fixture()
-    const { result, unmount } = renderHook(() => useWorkspaceDocumentNavigation(options))
+    const { result, unmount } = renderInCanvasDocument(
+      () => useWorkspaceDocumentNavigation(options),
+      {
+        workspaceId: options.workspaceId,
+      },
+    )
     expect(await result.current.openFileLink('terminal', { uri, mountId: 'local-mount' })).toBe(
       false,
     )
@@ -205,13 +228,21 @@ describe('workspace document navigation', () => {
   })
 
   it('rejects a delayed callback from the previous workspace even when node ids are reused', async () => {
-    const { options, uri } = fixture()
-    const { result, rerender } = renderHook(
-      ({ workspaceId }) => useWorkspaceDocumentNavigation({ ...options, workspaceId }),
-      { initialProps: { workspaceId: 'first' } },
+    const { options, uri } = fixture('first')
+    useAppStore.setState(state => ({
+      workspaces: [...state.workspaces, { ...state.workspaces[0], id: 'second' }],
+    }))
+    let shown = 'first'
+    const { result, rerender } = renderInCanvasDocument(
+      () => useWorkspaceDocumentNavigation({ ...options, workspaceId: shown }),
+      { workspaceId: () => shown },
     )
     const previousOpen = result.current.openFileLink
-    rerender({ workspaceId: 'second' })
+    act(() => {
+      shown = 'second'
+      useAppStore.setState({ activeWorkspaceId: 'second' })
+      rerender()
+    })
     await act(async () => {
       expect(await previousOpen('terminal', { uri, mountId: 'remote-mount' })).toBe(false)
     })
@@ -219,7 +250,12 @@ describe('workspace document navigation', () => {
 
   it('removes pending jumps when the document closes', async () => {
     const { options, uri } = fixture()
-    const { result, rerender } = renderHook(() => useWorkspaceDocumentNavigation(options))
+    const { result, rerender } = renderInCanvasDocument(
+      () => useWorkspaceDocumentNavigation(options),
+      {
+        workspaceId: options.workspaceId,
+      },
+    )
     await act(async () => {
       await result.current.openFileLink('terminal', { uri, mountId: 'remote-mount', line: 12 })
     })
@@ -233,7 +269,9 @@ describe('workspace document navigation', () => {
   it('opens the exact directory in the source Space Explorer without creating a document', async () => {
     const { options, createDocumentNode } = fixture()
     options.openExplorerSpaceId = 'remote-space'
-    const { result } = renderHook(() => useWorkspaceDocumentNavigation(options))
+    const { result } = renderInCanvasDocument(() => useWorkspaceDocumentNavigation(options), {
+      workspaceId: options.workspaceId,
+    })
     await act(async () => {
       expect(
         await result.current.openFileLink('terminal', {
@@ -255,7 +293,12 @@ describe('workspace document navigation', () => {
   it('preserves the bound document jump but discards directory navigation when its Space changes mounts', async () => {
     const { options, uri } = fixture()
     options.openExplorerSpaceId = 'remote-space'
-    const { result, rerender } = renderHook(() => useWorkspaceDocumentNavigation(options))
+    const { result, rerender } = renderInCanvasDocument(
+      () => useWorkspaceDocumentNavigation(options),
+      {
+        workspaceId: options.workspaceId,
+      },
+    )
     await act(async () => {
       await result.current.openFileLink('terminal', { uri, mountId: 'remote-mount', line: 12 })
       await result.current.openFileLink('terminal', {
@@ -279,7 +322,9 @@ describe('workspace document navigation', () => {
     const document = options.nodesRef.current[1]
     const expanded = { ...document, position: { x: 400, y: 200 } }
     options.expandNode = vi.fn(() => expanded)
-    const { result } = renderHook(() => useWorkspaceDocumentNavigation(options))
+    const { result } = renderInCanvasDocument(() => useWorkspaceDocumentNavigation(options), {
+      workspaceId: options.workspaceId,
+    })
     await act(async () => {
       const first = result.current.openFileLink('terminal', {
         uri,

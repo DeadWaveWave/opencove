@@ -79,6 +79,21 @@ describe('Inner hands the document writer of its node store to the hooks that ne
     expect(callOf('useWorkspaceCanvasRoleUi')).not.toMatch(/\bcanvasState\b/)
   })
 
+  // The explorer, the filesystem nodes and the document navigation read the document through their
+  // own readers and flush on their writes or through the document commands (#702, PR 12). Inner
+  // hands them the node store for the writers and no ref or flush callback.
+  it('passes none of the retired channels to the explorer', () => {
+    expect(callOf('useCanvasSpaceExplorer')).not.toMatch(
+      /\b(nodesRef|spacesRef|onSpacesChange|onRequestPersistFlush)\b/,
+    )
+  })
+
+  it('passes none of the retired channels to the Providers', () => {
+    expect(propsOf('WorkspaceCanvasProviders')).not.toMatch(
+      /\b(nodesRef|spacesRef|onSpacesChange|onRequestPersistFlush)\b/,
+    )
+  })
+
   it('hands the whole node store to the explorer', () => {
     expect(callOf('useCanvasSpaceExplorer')).toMatch(/[{,\s]nodeStore[,\s}]/)
   })

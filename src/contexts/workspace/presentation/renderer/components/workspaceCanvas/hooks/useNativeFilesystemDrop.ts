@@ -1,14 +1,9 @@
-import {
-  useCallback,
-  useLayoutEffect,
-  useRef,
-  type DragEventHandler,
-  type MutableRefObject,
-} from 'react'
+import { useCallback, useLayoutEffect, useRef, type DragEventHandler } from 'react'
 import { useReactFlow } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import { CANVAS_IMAGE_MIME_TYPES } from '@shared/contracts/dto'
-import type { Point, WorkspaceSpaceState } from '../../../types'
+import type { Point } from '../../../types'
+import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { getCollapsedNodeSize } from '../../../utils/canvasCollapse'
 import {
   hasFilesystemEntryDragData,
@@ -32,12 +27,10 @@ export interface FilesystemMaterializeOptions {
 
 export function useNativeFilesystemDrop({
   workspaceId,
-  spacesRef,
   materialize,
   onShowMessage,
 }: {
   workspaceId: string
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   materialize: (
     entry: FilesystemEntryDragData,
     anchor: Point,
@@ -48,6 +41,7 @@ export function useNativeFilesystemDrop({
 }) {
   const { t } = useTranslation()
   const reactFlow = useReactFlow()
+  const readDocument = useReadCanvasDocument()
   const lifetime = useRef<object | null>(null)
   useLayoutEffect(() => {
     lifetime.current = {}
@@ -91,12 +85,12 @@ export function useNativeFilesystemDrop({
       event.preventDefault()
       event.stopPropagation()
       const anchor = reactFlow.screenToFlowPosition({ x: event.clientX, y: event.clientY })
-      const targetSpaceId = findContainingSpaceByAnchor(spacesRef.current, anchor)?.id ?? null
+      const targetSpaceId = findContainingSpaceByAnchor(readDocument().spaces, anchor)?.id ?? null
       const epoch = lifetime.current
       const isCurrent = () =>
         epoch !== null &&
         lifetime.current === epoch &&
-        (targetSpaceId === null || spacesRef.current.some(space => space.id === targetSpaceId))
+        (targetSpaceId === null || readDocument().spaces.some(space => space.id === targetSpaceId))
       const resolveDroppedFile = window.opencoveApi.filesystem.resolveDroppedFile!
       void (async () => {
         for (const [index, file] of files.entries()) {
@@ -133,7 +127,7 @@ export function useNativeFilesystemDrop({
         }
       })()
     },
-    [materialize, onShowMessage, reactFlow, spacesRef, t],
+    [materialize, onShowMessage, reactFlow, readDocument, t],
   )
 
   return { handleNativeDragOver, handleNativeDrop }

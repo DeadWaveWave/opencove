@@ -19,8 +19,6 @@ import {
   TARGET,
   expectsWriterOfTheRender,
   lastCall,
-  nodesRef,
-  spacesRef,
 } from '../../support/pushAwayCallerHarness'
 
 // The callers in the explorer, the document opening and the filesystem nodes hand the push-away the
@@ -51,6 +49,10 @@ vi.mock(
       useCanvasDocumentCommands: stable('useCanvasDocumentCommands'),
       useReadCanvasUi: stable('useReadCanvasUi'),
       useReadCanvasSelection: stable('useReadCanvasSelection'),
+      // The document reader changes with the workspace too; frozen here, so that only the writer
+      // of the render can rebuild a callback, and one missing from a dependency list writes the
+      // first workspace after the switch.
+      useReadCanvasDocument: stable('useReadCanvasDocument'),
     }
   },
 )
@@ -104,9 +106,7 @@ const assignMock = assignNodeToSpaceAndExpand as unknown as Mock
 const assignArgs = () => lastCall(assignMock)[0] as Record<string, unknown> | undefined
 
 const setNodes = vi.fn()
-const onSpacesChange = vi.fn()
 const onShowMessage = vi.fn()
-const onRequestPersistFlush = vi.fn()
 const createDocumentNode = vi.fn(() => CREATED)
 const createImageNode = vi.fn(() => CREATED)
 const createFolderNode = vi.fn(() => CREATED)
@@ -138,18 +138,14 @@ describe('the push-away of the document opening', () => {
       useHook: updateCanvasDocument =>
         useWorkspaceDocumentOpening({
           workspaceId: 'workspace',
-          spacesRef,
-          nodesRef,
           setNodes,
-          onSpacesChange,
-          onRequestPersistFlush,
           reactFlow,
           createDocumentNode,
           updateCanvasDocument,
         } as never),
       invoke: ({ hook }) => hook(request),
       argsOf: assignArgs,
-      flush: onRequestPersistFlush,
+      flush: 'document',
     })
   })
 })
@@ -168,11 +164,7 @@ describe('the push-away of the explorer', () => {
           workspaceId: 'workspace',
           canvasRef,
           spaces: [TARGET],
-          spacesRef,
-          nodesRef,
           setNodes,
-          onSpacesChange,
-          onRequestPersistFlush,
           reactFlow,
           nodeDragSession: {},
           finalizeDraggedNodeDrop: vi.fn(),
@@ -187,7 +179,7 @@ describe('the push-away of the explorer', () => {
         await vi.waitFor(() => expect(assignMock.mock.calls.length).toBeGreaterThan(before))
       },
       argsOf: assignArgs,
-      flush: onRequestPersistFlush,
+      flush: 'document',
     })
   })
 })
@@ -207,11 +199,7 @@ describe('the push-away of a text file opened from the explorer', () => {
           workspaceId: 'workspace',
           canvasRef,
           spaces: [TARGET],
-          spacesRef,
-          nodesRef,
           setNodes,
-          onSpacesChange,
-          onRequestPersistFlush,
           reactFlow,
           nodeDragSession: {},
           finalizeDraggedNodeDrop: vi.fn(),
@@ -227,7 +215,7 @@ describe('the push-away of a text file opened from the explorer', () => {
         await vi.waitFor(() => expect(assignMock.mock.calls.length).toBeGreaterThan(before))
       },
       argsOf: assignArgs,
-      flush: onRequestPersistFlush,
+      flush: 'document',
     })
   })
 })
@@ -249,7 +237,6 @@ describe('the push-away of a document opened from a terminal link, through the P
   }
 
   const sourceSpace = { ...TARGET, nodeIds: ['source'] }
-  const sourceSpacesRef = { current: [sourceSpace] }
 
   it('gives the opened document its workspace writer', async () => {
     await expectsWriterOfTheRender<WorkspaceDocumentNavigation>({
@@ -264,8 +251,6 @@ describe('the push-away of a document opened from a terminal link, through the P
           workspaceId="workspace"
           workspacePath="/repo"
           nodeStore={{ ...store, updateCanvasDocument, createDocumentNode, createFolderNode }}
-          spacesRef={sourceSpacesRef}
-          onRequestPersistFlush={onRequestPersistFlush}
           onShowMessage={onShowMessage}
         >
           <NavigationProbe capture={capture} />
@@ -281,7 +266,7 @@ describe('the push-away of a document opened from a terminal link, through the P
         expect(assignMock.mock.calls.length).toBeGreaterThan(before)
       },
       argsOf: assignArgs,
-      flush: onRequestPersistFlush,
+      flush: 'document',
     })
   })
 })
@@ -293,7 +278,7 @@ describe('the push-away through the explorer carrier of the canvas', () => {
     mocks.resolveFilesystem.mockReturnValue({
       readFileBytes: vi.fn(async () => ({ bytes: new Uint8Array(3) })),
     })
-    const canvasState = { canvasRef, spacesRef }
+    const canvasState = { canvasRef }
     const agentSettings = { standardWindowSizeBucket: 'regular' }
     await expectsWriterOfTheRender({
       assign: assignMock,
@@ -302,7 +287,6 @@ describe('the push-away through the explorer carrier of the canvas', () => {
           workspaceId: 'workspace',
           canvasState,
           nodeStore: {
-            nodesRef,
             setNodes,
             updateCanvasDocument,
             createDocumentNode,
@@ -310,7 +294,6 @@ describe('the push-away through the explorer carrier of the canvas', () => {
           },
           agentSettings,
           spaces: [TARGET],
-          onRequestPersistFlush,
           reactFlow,
           nodeDragSession: {},
           finalizeDraggedNodeDrop: vi.fn(),
@@ -321,7 +304,7 @@ describe('the push-away through the explorer carrier of the canvas', () => {
         await vi.waitFor(() => expect(assignMock.mock.calls.length).toBeGreaterThan(before))
       },
       argsOf: assignArgs,
-      flush: onRequestPersistFlush,
+      flush: 'document',
     })
   })
 })
@@ -340,36 +323,23 @@ describe('the push-away of the filesystem nodes', () => {
 
   it('gives the opened file its workspace writer and flushes once after it', async () => {
     mocks.resolveFilesystem.mockReturnValue({ stat: vi.fn(async () => ({ kind: 'file' })) })
-    nodesRef.current = [folder]
-    try {
-      await expectsWriterOfTheRender({
-        assign: assignMock,
-        useHook: updateCanvasDocument =>
-          useFilesystemNodes({
-            workspaceId: 'workspace',
-            workspacePath: '/repo',
-            nodeStore: {
-              nodesRef,
-              setNodes,
-              createDocumentNode,
-              createFolderNode,
-              updateCanvasDocument,
-            },
-            spacesRef,
-            onSpacesChange,
-            onRequestPersistFlush,
-            onShowMessage,
-          } as never),
-        invoke: async ({ hook }) => {
-          const before = assignMock.mock.calls.length
-          hook.actions.openFile('folder', 'file:///repo/readme.md')
-          await vi.waitFor(() => expect(assignMock.mock.calls.length).toBeGreaterThan(before))
-        },
-        argsOf: assignArgs,
-        flush: onRequestPersistFlush,
-      })
-    } finally {
-      nodesRef.current = []
-    }
+    await expectsWriterOfTheRender({
+      assign: assignMock,
+      seed: { nodes: [folder], spaces: [TARGET] },
+      useHook: updateCanvasDocument =>
+        useFilesystemNodes({
+          workspaceId: 'workspace',
+          workspacePath: '/repo',
+          nodeStore: { setNodes, createDocumentNode, createFolderNode, updateCanvasDocument },
+          onShowMessage,
+        } as never),
+      invoke: async ({ hook }) => {
+        const before = assignMock.mock.calls.length
+        hook.actions.openFile('folder', 'file:///repo/readme.md')
+        await vi.waitFor(() => expect(assignMock.mock.calls.length).toBeGreaterThan(before))
+      },
+      argsOf: assignArgs,
+      flush: 'document',
+    })
   })
 })

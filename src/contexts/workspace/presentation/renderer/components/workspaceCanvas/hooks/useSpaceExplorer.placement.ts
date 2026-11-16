@@ -1,6 +1,7 @@
 import React from 'react'
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { WorkspaceDocument } from '../../../store/workspaceDocument'
 import { findNearestFreePositionOnRight, type Rect } from '../../../utils/collision'
 import type { NodePlacementOptions, WorkspaceCanvasQuickPreviewState } from '../types'
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
@@ -45,10 +46,9 @@ export function resolveFlowRectPlacement(options: {
   placementPx?: ExplorerPlacementPx
   spaceRect: WorkspaceSpaceState['rect']
   size: { width: number; height: number }
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
+  readDocument: () => WorkspaceDocument
 }): ResolvedExplorerPlacement & { rect: WorkspaceCanvasQuickPreviewState['rect'] } {
-  const { canvasRef, reactFlow, placementPx, spaceRect, size, nodesRef, spacesRef } = options
+  const { canvasRef, reactFlow, placementPx, spaceRect, size, readDocument } = options
 
   const baseAnchor = {
     x: spaceRect!.x + 24,
@@ -123,10 +123,10 @@ export function resolveFlowRectPlacement(options: {
     const fallbackPlacement = resolveNodesPlacement({
       anchor: baseAnchor,
       size,
-      getNodes: () => nodesRef.current,
+      getNodes: () => readDocument().nodes,
       getSpaceRects: () =>
-        spacesRef.current
-          .map(space => space.rect)
+        readDocument()
+          .spaces.map(space => space.rect)
           .filter(
             (rect): rect is { x: number; y: number; width: number; height: number } =>
               rect !== null,

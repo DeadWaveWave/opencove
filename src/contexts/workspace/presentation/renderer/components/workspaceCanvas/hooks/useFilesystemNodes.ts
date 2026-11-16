@@ -1,16 +1,10 @@
-import {
-  useCallback,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  type MutableRefObject,
-  type DragEventHandler,
-} from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, type DragEventHandler } from 'react'
 import { useReactFlow } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import { isFileUriWithinRoot, resolveFileUriName } from '@shared/utils/fileUriScope'
 import { normalizeFolderNodeData } from '@shared/utils/folderNodeData'
-import type { FolderNodeData, Point, WorkspaceSpaceState } from '../../../types'
+import type { FolderNodeData, Point } from '../../../types'
+import { useCanvasDocumentCommands, useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { guardNodeFromSyncOverwrite } from '../../../utils/syncNodeGuards'
 import { getCollapsedNodeSize } from '../../../utils/canvasCollapse'
 import { resolveFilesystemApiForMount } from '../../../utils/mountAwareFilesystemApi'
@@ -43,10 +37,8 @@ export interface FilesystemNodesParams {
   workspacePath?: string
   nodeStore: Pick<
     UseWorkspaceCanvasNodesStoreResult,
-    'nodesRef' | 'setNodes' | 'updateCanvasDocument' | 'createDocumentNode' | 'createFolderNode'
+    'setNodes' | 'updateCanvasDocument' | 'createDocumentNode' | 'createFolderNode'
   >
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
-  onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
 }
 
@@ -54,19 +46,16 @@ export function useFilesystemNodes({
   workspaceId,
   workspacePath,
   nodeStore,
-  spacesRef,
-  onRequestPersistFlush,
   onShowMessage,
 }: FilesystemNodesParams) {
   const { t } = useTranslation()
   const reactFlow = useReactFlow()
-  const { nodesRef, setNodes, updateCanvasDocument, createDocumentNode, createFolderNode } =
-    nodeStore
+  const { setNodes, updateCanvasDocument, createDocumentNode, createFolderNode } = nodeStore
+  const readDocument = useReadCanvasDocument()
+  const { requestPersistFlush } = useCanvasDocumentCommands()
   const { getNodePathUri, copyNodePath } = useFilesystemNodePaths({
     workspaceId,
     workspacePath,
-    nodesRef,
-    spacesRef,
     onShowMessage,
   })
   const lifetime = useRef<object | null>(null)
@@ -105,10 +94,11 @@ export function useFilesystemNodes({
         if (stat.kind !== entry.kind) {
           return
         }
+        const { spaces } = readDocument()
         const target =
           options.targetSpaceId === undefined
-            ? findContainingSpaceByAnchor(spacesRef.current, anchor)
-            : (spacesRef.current.find(space => space.id === options.targetSpaceId) ?? null)
+            ? findContainingSpaceByAnchor(spaces, anchor)
+            : (spaces.find(space => space.id === options.targetSpaceId) ?? null)
         if (options.targetSpaceId && !target) {
           return
         }
@@ -150,7 +140,7 @@ export function useFilesystemNodes({
             updateCanvasDocument,
           })
         }
-        onRequestPersistFlush?.()
+        requestPersistFlush()
       } catch (error) {
         if (isCurrent()) {
           onShowMessage?.(
@@ -163,9 +153,9 @@ export function useFilesystemNodes({
     [
       createDocumentNode,
       createFolderNode,
-      onRequestPersistFlush,
       onShowMessage,
-      spacesRef,
+      readDocument,
+      requestPersistFlush,
       t,
       updateCanvasDocument,
       workspaceId,
@@ -175,7 +165,7 @@ export function useFilesystemNodes({
   const updateFolder = useCallback(
     (id: string, next: FolderNodeData) => {
       const normalized = normalizeFolderNodeData(next)
-      const current = nodesRef.current.find(node => node.id === id)
+      const current = readDocument().nodes.find(node => node.id === id)
       if (
         !normalized ||
         current?.data.kind !== 'folder' ||
@@ -199,21 +189,21 @@ export function useFilesystemNodes({
               data: { ...node.data, folder: normalized, title: resolveFileUriName(normalized.uri) },
             }
           }),
-        { syncLayout: false },
+        { syncLayout: false, flush: true },
       )
-      onRequestPersistFlush?.()
     },
-    [nodesRef, onRequestPersistFlush, setNodes],
+    [readDocument, setNodes],
   )
 
   const openFile = useCallback(
     (id: string, uri: string) => {
-      const node = nodesRef.current.find(item => item.id === id)
+      const { nodes, spaces } = readDocument()
+      const node = nodes.find(item => item.id === id)
       const folder = node?.data.folder
       if (!node || !folder || !isFileUriWithinRoot(folder.rootUri, uri)) {
         return
       }
-      const mountId = resolveFilesystemNodeMountId(id, node.data, spacesRef.current)
+      const mountId = resolveFilesystemNodeMountId(id, node.data, spaces)
       if (mountId === undefined) {
         return
       }
@@ -228,32 +218,32 @@ export function useFilesystemNodes({
         entry,
         { x: node.position.x + node.data.width + 24, y: node.position.y },
         () => {
-          const current = nodesRef.current.find(item => item.id === id)
+          const document = readDocument()
+          const current = document.nodes.find(item => item.id === id)
           return (
             current?.data.folder?.uri === folder.uri &&
-            resolveFilesystemNodeMountId(id, current.data, spacesRef.current) === mountId
+            resolveFilesystemNodeMountId(id, current.data, document.spaces) === mountId
           )
         },
       )
     },
-    [materialize, nodesRef, spacesRef],
+    [materialize, readDocument],
   )
 
   const findBlockingOpenDocument = useCallback(
     (id: string, uri: string) => {
-      const folder = nodesRef.current.find(item => item.id === id)
+      const { nodes, spaces } = readDocument()
+      const folder = nodes.find(item => item.id === id)
       if (!folder) {
         return null
       }
-      const mountId = resolveFilesystemNodeMountId(id, folder.data, spacesRef.current)
+      const mountId = resolveFilesystemNodeMountId(id, folder.data, spaces)
       return findBlockingOpenDocumentForMutation(
-        nodesRef.current.filter(
-          node => resolveFilesystemNodeMountId(node.id, node.data, spacesRef.current) === mountId,
-        ),
+        nodes.filter(node => resolveFilesystemNodeMountId(node.id, node.data, spaces) === mountId),
         uri,
       )
     },
-    [nodesRef, spacesRef],
+    [readDocument],
   )
 
   const handleDragOver = useCallback<DragEventHandler<HTMLDivElement>>(event => {
@@ -295,6 +285,6 @@ export function useFilesystemNodes({
     }),
     [updateFolder, openFile, findBlockingOpenDocument, onShowMessage, getNodePathUri, copyNodePath],
   )
-  const nativeDrop = useNativeFilesystemDrop({ workspaceId, spacesRef, materialize, onShowMessage })
+  const nativeDrop = useNativeFilesystemDrop({ workspaceId, materialize, onShowMessage })
   return { actions, handleDragOver, handleDrop, ...nativeDrop }
 }

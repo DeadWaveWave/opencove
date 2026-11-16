@@ -10,6 +10,7 @@ import {
 } from './useSpaceExplorer.guards'
 // prettier-ignore
 import { readImageNaturalDimensions, resolveCanvasImageMimeType, resolveFileNameFromFileUri, resolveSpaceExplorerPreviewDisplay } from './useSpaceExplorer.helpers'
+import { useReadCanvasDocument, useCanvasDocumentCommands } from '../../../store/canvasStoreContext'
 import type { SpaceExplorerClipboardItem } from '../view/WorkspaceSpaceExplorerOverlay.operations'
 import { resolveFlowRectPlacement, type ExplorerPlacementPx } from './useSpaceExplorer.placement'
 import type {
@@ -25,11 +26,8 @@ export function useWorkspaceCanvasSpaceExplorer({
   workspaceId,
   canvasRef,
   spaces,
-  spacesRef,
-  nodesRef,
   setNodes,
   updateCanvasDocument,
-  onRequestPersistFlush,
   reactFlow,
   nodeDragSession,
   finalizeDraggedNodeDrop,
@@ -38,14 +36,13 @@ export function useWorkspaceCanvasSpaceExplorer({
   createImageNode,
   standardWindowSizeBucket,
 }: WorkspaceCanvasSpaceExplorerArgs): WorkspaceCanvasSpaceExplorerResult {
+  const readDocument = useReadCanvasDocument()
+  const { requestPersistFlush } = useCanvasDocumentCommands()
   const openDocument = useWorkspaceDocumentOpening({
     workspaceId,
     expandNode,
-    spacesRef,
-    nodesRef,
     setNodes,
     updateCanvasDocument,
-    onRequestPersistFlush,
     reactFlow,
     createDocumentNode,
   })
@@ -134,8 +131,8 @@ export function useWorkspaceCanvasSpaceExplorer({
 
   const findBlockingOpenDocument = React.useCallback(
     (uri: string): SpaceExplorerOpenDocumentBlock | null =>
-      findBlockingOpenDocumentForMutation(nodesRef.current, uri),
-    [nodesRef],
+      findBlockingOpenDocumentForMutation(readDocument().nodes, uri),
+    [readDocument],
   )
 
   const resolveQuickPreviewState = React.useCallback(
@@ -160,7 +157,7 @@ export function useWorkspaceCanvasSpaceExplorer({
         return null
       }
 
-      const space = spacesRef.current.find(candidate => candidate.id === spaceId) ?? null
+      const space = readDocument().spaces.find(candidate => candidate.id === spaceId) ?? null
       const spaceRect = space?.rect ?? null
       if (!space || !spaceRect) {
         return null
@@ -178,8 +175,7 @@ export function useWorkspaceCanvasSpaceExplorer({
         placementPx: options?.explorerPlacementPx,
         spaceRect,
         size,
-        nodesRef,
-        spacesRef,
+        readDocument,
       })
 
       return {
@@ -199,7 +195,7 @@ export function useWorkspaceCanvasSpaceExplorer({
         naturalHeight,
       }
     },
-    [canvasRef, nodesRef, reactFlow, spacesRef, standardWindowSizeBucket],
+    [canvasRef, reactFlow, readDocument, standardWindowSizeBucket],
   )
 
   const materializePreviewState = React.useCallback(
@@ -215,7 +211,8 @@ export function useWorkspaceCanvasSpaceExplorer({
         return null
       }
 
-      const space = spacesRef.current.find(candidate => candidate.id === preview.spaceId) ?? null
+      const space =
+        readDocument().spaces.find(candidate => candidate.id === preview.spaceId) ?? null
       const rect = space?.rect ?? null
       if (!space || !rect) {
         return null
@@ -306,7 +303,7 @@ export function useWorkspaceCanvasSpaceExplorer({
           created,
           creationAnchor,
           creationPlacement,
-          nodesRef,
+          readDocument,
           setNodes,
         })
 
@@ -318,7 +315,7 @@ export function useWorkspaceCanvasSpaceExplorer({
           updateCanvasDocument,
         })
 
-        onRequestPersistFlush?.()
+        requestPersistFlush()
         return created
       } catch {
         return null
@@ -328,10 +325,9 @@ export function useWorkspaceCanvasSpaceExplorer({
       workspaceId,
       openDocument,
       createImageNode,
-      nodesRef,
-      onRequestPersistFlush,
+      readDocument,
+      requestPersistFlush,
       setNodes,
-      spacesRef,
       updateCanvasDocument,
     ],
   )
@@ -344,7 +340,6 @@ export function useWorkspaceCanvasSpaceExplorer({
       materializePreviewState,
       quickPreview,
       setQuickPreview,
-      nodesRef,
       setNodes,
       reactFlow,
       nodeDragSession,

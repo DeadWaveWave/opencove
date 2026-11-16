@@ -5,6 +5,7 @@ import {
   type DocumentNavigationIntent,
 } from '../../../../../domain/documentNavigation'
 import type { WorkspaceDocumentNavigation } from '../WorkspaceDocumentNavigationContext'
+import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { resolveFilesystemNodeMountId } from '../filesystemNodeBinding'
 import {
   useWorkspaceDocumentOpening,
@@ -18,7 +19,8 @@ export function useWorkspaceDocumentNavigation(
     openExplorerSpaceId: string | null
   },
 ): WorkspaceDocumentNavigation {
-  const { nodesRef, spacesRef, openSpaceExplorer, openExplorerSpaceId, workspaceId } = options
+  const { openSpaceExplorer, openExplorerSpaceId, workspaceId } = options
+  const readDocument = useReadCanvasDocument()
   const openDocument = useWorkspaceDocumentOpening(options)
   const [navigationByNode, setNavigationByNode] = useState<
     ReadonlyMap<string, DocumentNavigationIntent>
@@ -30,8 +32,9 @@ export function useWorkspaceDocumentNavigation(
   const aliveRef = useRef(true)
   const activeWorkspaceRef = useRef(workspaceId)
   activeWorkspaceRef.current = workspaceId
-  const nodes = nodesRef.current
-  const spaces = spacesRef.current
+  // Read at render for the two effects that prune what the canvas no longer holds: the canvas
+  // renders again when its document changes, and the arrays keep their identity until it does.
+  const { nodes, spaces } = readDocument()
   useEffect(() => {
     aliveRef.current = true
     setNavigationByNode(new Map())
@@ -90,7 +93,7 @@ export function useWorkspaceDocumentNavigation(
 
   const openFileLink = useCallback(
     async (sourceNodeId: string, request: TerminalFileLinkOpenRequest): Promise<boolean> => {
-      const source = nodesRef.current.find(node => node.id === sourceNodeId)
+      const source = readDocument().nodes.find(node => node.id === sourceNodeId)
       if (
         !aliveRef.current ||
         activeWorkspaceRef.current !== workspaceId ||
@@ -103,7 +106,7 @@ export function useWorkspaceDocumentNavigation(
         return false
       }
       const destination = resolveDocumentNavigationDestination(
-        spacesRef.current,
+        readDocument().spaces,
         sourceNodeId,
         request.mountId,
       )
@@ -115,9 +118,10 @@ export function useWorkspaceDocumentNavigation(
       const sourceEndpointId = source.data.workerBinding?.endpointId ?? 'local'
       requestsBySource.current.set(sourceNodeId, requestId)
       const isRequestCurrent = () => {
-        const current = nodesRef.current.find(node => node.id === sourceNodeId)
+        const document = readDocument()
+        const current = document.nodes.find(node => node.id === sourceNodeId)
         const currentDestination = resolveDocumentNavigationDestination(
-          spacesRef.current,
+          document.spaces,
           sourceNodeId,
           request.mountId,
         )
@@ -143,7 +147,7 @@ export function useWorkspaceDocumentNavigation(
         openSpaceExplorer(destination.spaceId)
         return true
       }
-      const space = spacesRef.current.find(candidate => candidate.id === destination.spaceId)
+      const space = readDocument().spaces.find(candidate => candidate.id === destination.spaceId)
       const opened = await openDocument({
         ...destination,
         uri: request.uri,
@@ -157,15 +161,13 @@ export function useWorkspaceDocumentNavigation(
       if (!opened || !isRequestCurrent()) {
         return false
       }
-      const currentDocument = nodesRef.current.find(node => node.id === opened.id)
+      const document = readDocument()
+      const currentDocument = document.nodes.find(node => node.id === opened.id)
       if (
         currentDocument?.data.document?.uri !== request.uri ||
         !currentDocument ||
-        resolveFilesystemNodeMountId(
-          currentDocument.id,
-          currentDocument.data,
-          spacesRef.current,
-        ) !== request.mountId
+        resolveFilesystemNodeMountId(currentDocument.id, currentDocument.data, document.spaces) !==
+          request.mountId
       ) {
         return false
       }
@@ -185,7 +187,7 @@ export function useWorkspaceDocumentNavigation(
       )
       return true
     },
-    [openDocument, nodesRef, openSpaceExplorer, spacesRef, workspaceId],
+    [openDocument, openSpaceExplorer, readDocument, workspaceId],
   )
 
   return useMemo(

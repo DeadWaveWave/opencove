@@ -293,7 +293,7 @@ export function WorkspaceCanvasInner({
     handleSelectionContextMenu,
   })
   // prettier-ignore
-  const spaceExplorer = useCanvasSpaceExplorer({ workspaceId, canvasState, nodeStore, spaces, onRequestPersistFlush, reactFlow, nodeDragSession, finalizeDraggedNodeDrop, agentSettings, expandNode: collapse.expandNode })
+  const spaceExplorer = useCanvasSpaceExplorer({ workspaceId, canvasState, nodeStore, spaces, reactFlow, nodeDragSession, finalizeDraggedNodeDrop, agentSettings, expandNode: collapse.expandNode })
   return (
     <WorkspaceCanvasProviders
       nodeTypesParameters={nodeTypesParameters}
@@ -303,8 +303,6 @@ export function WorkspaceCanvasInner({
       workspaceId={workspaceId}
       workspacePath={workspacePath}
       nodeStore={nodeStore}
-      spacesRef={canvasState.spacesRef}
-      onRequestPersistFlush={onRequestPersistFlush}
       onShowMessage={onShowMessage}
     >
       <TerminalDisplayAlignedWorkspaceCanvasView

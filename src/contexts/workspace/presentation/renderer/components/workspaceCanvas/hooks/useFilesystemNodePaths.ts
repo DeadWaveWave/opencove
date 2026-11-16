@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, type MutableRefObject } from 'react'
+import { useCallback, useLayoutEffect, useRef } from 'react'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import { toFileUri } from '@contexts/filesystem/domain'
@@ -6,6 +6,7 @@ import type { ResolveMountTargetResult } from '@shared/contracts/dto'
 import { normalizeFileUri } from '@shared/utils/fileUriScope'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { ShowWorkspaceCanvasMessage } from '../types'
+import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { resolveFilesystemNodeMountId } from '../filesystemNodeBinding'
 import { toErrorMessage } from '../helpers'
 import {
@@ -58,17 +59,14 @@ export async function resolveFilesystemNodeRootUri({
 export function useFilesystemNodePaths({
   workspaceId,
   workspacePath = '',
-  nodesRef,
-  spacesRef,
   onShowMessage,
 }: {
   workspaceId: string
   workspacePath?: string
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   onShowMessage?: ShowWorkspaceCanvasMessage
 }) {
   const { t } = useTranslation()
+  const readDocument = useReadCanvasDocument()
   const lifetime = useRef<object | null>(null)
   useLayoutEffect(() => {
     lifetime.current = {}
@@ -78,14 +76,15 @@ export function useFilesystemNodePaths({
   }, [workspaceId])
   const getNodePathUri = useCallback(
     (id: string) => {
-      const node = nodesRef.current.find(item => item.id === id)
+      const node = readDocument().nodes.find(item => item.id === id)
       return node ? getFilesystemNodeUri(node.data) : null
     },
-    [nodesRef],
+    [readDocument],
   )
   const copyNodePath = useCallback(
     async (id: string, relative: boolean) => {
-      const node = nodesRef.current.find(item => item.id === id)
+      const { nodes, spaces } = readDocument()
+      const node = nodes.find(item => item.id === id)
       const uri = node ? getFilesystemNodeUri(node.data) : null
       if (!node || !uri) {
         return
@@ -94,7 +93,7 @@ export function useFilesystemNodePaths({
       const isCurrent = () => epoch !== null && epoch === lifetime.current
       try {
         const rootUri = relative
-          ? await resolveFilesystemNodeRootUri({ node, spaces: spacesRef.current, workspacePath })
+          ? await resolveFilesystemNodeRootUri({ node, spaces, workspacePath })
           : uri
         if (!isCurrent()) {
           return
@@ -123,7 +122,7 @@ export function useFilesystemNodePaths({
         }
       }
     },
-    [nodesRef, onShowMessage, spacesRef, t, workspacePath],
+    [onShowMessage, readDocument, t, workspacePath],
   )
   return { getNodePathUri, copyNodePath }
 }

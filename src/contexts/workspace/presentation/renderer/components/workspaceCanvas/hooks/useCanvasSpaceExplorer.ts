@@ -9,7 +9,6 @@ type Params = Pick<
   | 'workspaceId'
   | 'expandNode'
   | 'spaces'
-  | 'onRequestPersistFlush'
   | 'reactFlow'
   | 'nodeDragSession'
   | 'finalizeDraggedNodeDrop'
@@ -28,8 +27,6 @@ export function useCanvasSpaceExplorer({
   return useWorkspaceCanvasSpaceExplorer({
     ...params,
     canvasRef: canvasState.canvasRef,
-    spacesRef: canvasState.spacesRef,
-    nodesRef: nodeStore.nodesRef,
     setNodes: nodeStore.setNodes,
     updateCanvasDocument: nodeStore.updateCanvasDocument,
     createDocumentNode: nodeStore.createDocumentNode,
