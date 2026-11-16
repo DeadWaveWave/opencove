@@ -1,0 +1,359 @@
+import type { Node } from '@xyflow/react'
+import { vi } from 'vitest'
+import { DEFAULT_AGENT_SETTINGS } from '../../src/contexts/settings/domain/agentSettings'
+import { useWorkspaceCanvasNodeDeleteConfirmation } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDeleteConfirmation'
+import { useWorkspaceCanvasRoleActions } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useRoleActions'
+import { useWorkspaceCanvasTaskActions } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskActions'
+import { useWorkspaceCanvasTaskEditor } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskEditor'
+import { useWorkspaceCanvasTaskNodeCreation } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskNodeCreation'
+import {
+  useCanvasUiCommands,
+  useReadCanvasUi,
+} from '../../src/contexts/workspace/presentation/renderer/store/canvasStoreContext'
+import type {
+  TaskAgentSessionRecord,
+  TerminalNodeData,
+  WorkspaceSpaceState,
+} from '../../src/contexts/workspace/presentation/renderer/types'
+import {
+  agentNode,
+  documentOf,
+  renderInTwoWorkspaces,
+  sized,
+  taskNode,
+  WORKSPACE_A,
+} from './agentRuntimeHarness'
+import { replaceWorkspaceNodes } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
+
+export interface TaskPatch {
+  title?: string
+  requirement?: string
+  status?: NonNullable<TerminalNodeData['task']>['status']
+  linkedAgentNodeId?: string | null
+  agentSessions?: TaskAgentSessionRecord[]
+}
+
+/** A task node with the given task fields; linked to no agent unless it says so. */
+export function taskNodeWith(id: string, patch: TaskPatch = {}): Node<TerminalNodeData> {
+  const base = taskNode(id, '')
+  const { title, ...task } = patch
+  return {
+    ...base,
+    data: {
+      ...base.data,
+      title: title ?? base.data.title,
+      task: {
+        ...base.data.task!,
+        status: 'todo',
+        linkedAgentNodeId: null,
+        ...task,
+      },
+    },
+  }
+}
+
+export function sessionRecord(id: string, overrides: Partial<TaskAgentSessionRecord> = {}) {
+  return {
+    id,
+    provider: 'codex',
+    resumeSessionId: `${id}-resume`,
+    resumeSessionIdVerified: true,
+    prompt: 'resume me',
+    model: 'gpt-5.2-codex',
+    effectiveModel: 'gpt-5.2-codex',
+    boundDirectory: '/tmp/bound',
+    lastDirectory: '/tmp/bound',
+    createdAt: '2026-03-15T00:00:00.000Z',
+    lastRunAt: '2026-03-15T00:00:00.000Z',
+    endedAt: null,
+    exitCode: null,
+    status: 'standby',
+    ...overrides,
+  } satisfies TaskAgentSessionRecord
+}
+
+/** A role node whose definition is `roleId` and whose last error is empty. */
+export function roleNode(
+  id: string,
+  { roleId = 'role-1', input = 'do it' }: { roleId?: string; input?: string } = {},
+): Node<TerminalNodeData> {
+  return sized({
+    id,
+    type: 'roleNode',
+    position: { x: 700, y: 0 },
+    data: {
+      sessionId: '',
+      title: 'Role',
+      width: 400,
+      height: 300,
+      kind: 'role',
+      status: null,
+      startedAt: null,
+      endedAt: null,
+      exitCode: null,
+      lastError: null,
+      scrollback: null,
+      agent: null,
+      task: null,
+      note: null,
+      image: null,
+      document: null,
+      website: null,
+      role: {
+        roleId,
+        roleName: 'Role',
+        roleDescription: '',
+        promptTemplate: 'Do: {{input}}',
+        inputHint: '',
+        outputFormat: '',
+        input,
+        selectedProvider: 'codex',
+        linkedAgentNodeId: null,
+        runHistory: [],
+        createdAt: null,
+        updatedAt: null,
+      },
+    },
+  })
+}
+
+export function spaceOf(
+  id: string,
+  nodeIds: string[],
+  overrides: Partial<WorkspaceSpaceState> = {},
+): WorkspaceSpaceState {
+  return {
+    id,
+    name: id,
+    directoryPath: `/tmp/${id}`,
+    targetMountId: null,
+    labelColor: null,
+    nodeIds,
+    rect: { x: 0, y: 0, width: 2000, height: 1200 },
+    ...overrides,
+  }
+}
+
+/**
+ * A ref whose every assignment is recorded. A hook that keeps its latest callback in a ref
+ * assigns it again on each render, so `assigned[0]` is the one the first render made, and a case
+ * can call it after a switch.
+ */
+export function recordingRef<T>(): { ref: { current: T }; assigned: T[] } {
+  const assigned: T[] = []
+  const ref = {
+    get current(): T {
+      return assigned[assigned.length - 1]
+    },
+    set current(next: T) {
+      assigned.push(next)
+    },
+  }
+  return { ref, assigned }
+}
+
+/** A promise that a case settles by hand, for an await a switch has to land in. */
+export function deferred<T>(): {
+  promise: Promise<T>
+  resolve: (value: T) => void
+  reject: (error: unknown) => void
+} {
+  let resolve!: (value: T) => void
+  let reject!: (error: unknown) => void
+  const promise = new Promise<T>((onResolve, onReject) => {
+    resolve = onResolve
+    reject = onReject
+  })
+  return { promise, resolve, reject }
+}
+
+export const BOUND = { mountId: null, executionDirectory: '/tmp/dir' }
+export const LAUNCHED = {
+  sessionId: 'launched-session',
+  profileId: null,
+  runtimeKind: 'pty',
+  workerBinding: null,
+  effectiveModel: null,
+  resumeSessionId: null,
+  executionDirectory: '/tmp/dir',
+  managedClaudeLifecycle: undefined,
+}
+const EMPTY_TAGS: string[] = []
+const METRICS = { fontSize: 13 }
+
+type Documents = Parameters<typeof renderInTwoWorkspaces>[1]
+
+/**
+ * `stable` hands the hook writers that keep their identity across a switch, and write through the
+ * node store of the latest render: only the reader then changes with the workspace, so a reader
+ * missing from a dependency list shows. A case that follows a write across a switch passes `false`:
+ * the writers of the render that made the callback write the workspace of that render.
+ */
+export interface RenderOptions {
+  stable?: boolean
+}
+
+export function taskRefs() {
+  return {
+    run: recordingRef<(nodeId: string) => Promise<void>>(),
+    resume: recordingRef<(taskNodeId: string, recordId: string) => Promise<void>>(),
+    remove: recordingRef<(taskNodeId: string, recordId: string) => void>(),
+    status: recordingRef<(nodeId: string, status: never) => void>(),
+    title: recordingRef<(nodeId: string, title: string) => void>(),
+    requirement: recordingRef<(nodeId: string, requirement: string) => void>(),
+  }
+}
+
+/**
+ * What the node store's creator does for a session: the agent node joins the nodes of workspace A,
+ * where every case creates it, and the creator returns it.
+ */
+function createAgentNodeInA() {
+  return vi.fn(async () => {
+    const created = agentNode('created-agent')
+    replaceWorkspaceNodes(WORKSPACE_A, [...documentOf(WORKSPACE_A).nodes, created])
+    return created
+  })
+}
+
+/**
+ * The task actions, wired as the canvas wires them. Every callback the hook is called with keeps
+ * its identity across a switch, so the reader's place in the dependency lists is observable.
+ */
+export function renderTaskActions(documents?: Documents, { stable = true }: RenderOptions = {}) {
+  const refs = taskRefs()
+  const launchAgentInNode = vi.fn(async () => undefined)
+  const createNodeForSession = createAgentNodeInA()
+  const buildAgentNodeTitle = (provider: string, label: string | null) => `${provider}:${label}`
+  const rendered = renderInTwoWorkspaces(
+    ({ nodeStore, stableSetNodes, stableUpdateCanvasDocument }) =>
+      useWorkspaceCanvasTaskActions({
+        updateCanvasDocument: stable ? stableUpdateCanvasDocument : nodeStore.updateCanvasDocument,
+        setNodes: stable ? stableSetNodes : nodeStore.setNodes,
+        createNodeForSession,
+        buildAgentNodeTitle,
+        launchAgentInNode,
+        agentSettings: DEFAULT_AGENT_SETTINGS,
+        workspaceId: 'workspace',
+        workspacePath: '/repo',
+        taskTagOptions: EMPTY_TAGS,
+        terminalDisplayMetrics: METRICS,
+        runTaskAgentRef: refs.run.ref,
+        resumeTaskAgentSessionRef: refs.resume.ref,
+        removeTaskAgentSessionRecordRef: refs.remove.ref,
+        updateTaskStatusRef: refs.status.ref,
+        quickUpdateTaskTitleRef: refs.title.ref,
+        quickUpdateTaskRequirementRef: refs.requirement.ref,
+      }),
+    documents,
+  )
+  return { ...rendered, refs, launchAgentInNode, createNodeForSession }
+}
+
+export const ROLE = {
+  id: 'role-1',
+  name: 'Reviewer',
+  description: '',
+  promptTemplate: 'Review: {{input}}',
+  inputHint: '',
+  outputFormat: '',
+  createdAt: '2026-03-15T00:00:00.000Z',
+  updatedAt: '2026-03-15T00:00:00.000Z',
+}
+const ROLE_SETTINGS = {
+  ...DEFAULT_AGENT_SETTINGS,
+  projectRolesByWorkspaceId: { workspace: [ROLE] },
+}
+
+export function renderRoleActions(documents?: Documents, { stable = true }: RenderOptions = {}) {
+  const run = recordingRef<(nodeId: string, input?: string) => Promise<void>>()
+  const createNodeForSession = createAgentNodeInA()
+  const appendRoleRunRecord = vi.fn()
+  const createRoleNode = vi.fn(() => roleNode('created-role'))
+  const onShowMessage = vi.fn()
+  const actionRefs = {
+    runRoleRef: run.ref,
+    updateRoleProviderRef: { current: vi.fn() },
+    updateRoleInputRef: { current: vi.fn() },
+  } as never
+  const rendered = renderInTwoWorkspaces(
+    ({ nodeStore, stableSetNodes, stableUpdateCanvasDocument }) => ({
+      ui: useCanvasUiCommands(),
+      readUi: useReadCanvasUi(),
+      roles: useWorkspaceCanvasRoleActions({
+        workspaceId: 'workspace',
+        workspacePath: '/repo',
+        agentSettings: ROLE_SETTINGS,
+        setNodes: stable ? stableSetNodes : nodeStore.setNodes,
+        updateCanvasDocument: stable ? stableUpdateCanvasDocument : nodeStore.updateCanvasDocument,
+        onShowMessage,
+        standardWindowSizeBucket: 'regular',
+        createRoleNode,
+        createNodeForSession,
+        updateRoleProvider: vi.fn(),
+        updateRoleInput: vi.fn(),
+        appendRoleRunRecord,
+        actionRefs,
+        buildAgentNodeTitle: (provider, label) => `${provider}:${label}`,
+      }),
+    }),
+    documents,
+  )
+  return {
+    ...rendered,
+    run,
+    createNodeForSession,
+    appendRoleRunRecord,
+    createRoleNode,
+    onShowMessage,
+  }
+}
+
+export function renderEditor(documents?: Documents, { stable = true }: RenderOptions = {}) {
+  const open = recordingRef<(nodeId: string) => void>()
+  const rendered = renderInTwoWorkspaces(
+    ({ nodeStore, stableSetNodes }) => ({
+      readUi: useReadCanvasUi(),
+      ui: useCanvasUiCommands(),
+      editor: useWorkspaceCanvasTaskEditor({
+        setNodes: stable ? stableSetNodes : nodeStore.setNodes,
+        suggestTaskTitle: vi.fn(),
+        taskTagOptions: EMPTY_TAGS,
+        openTaskEditorRef: open.ref,
+      }),
+    }),
+    documents,
+  )
+  return { ...rendered, open }
+}
+
+export function renderCreation(documents?: Documents, { stable = true }: RenderOptions = {}) {
+  const createTaskNode = vi.fn(() => taskNodeWith('created-task'))
+  const rendered = renderInTwoWorkspaces(
+    ({ nodeStore, stableUpdateCanvasDocument }) =>
+      useWorkspaceCanvasTaskNodeCreation({
+        workspaceId: 'workspace',
+        updateCanvasDocument: stable ? stableUpdateCanvasDocument : nodeStore.updateCanvasDocument,
+        standardWindowSizeBucket: 'regular',
+        createTaskNode,
+      }),
+    documents,
+  )
+  return { ...rendered, createTaskNode }
+}
+
+export function renderConfirmation(documents?: Documents) {
+  const requestNodeDelete = recordingRef<(nodeIds: readonly string[]) => void>()
+  const closeNode = vi.fn(async () => undefined)
+  const rendered = renderInTwoWorkspaces(
+    () => ({
+      readUi: useReadCanvasUi(),
+      confirmation: useWorkspaceCanvasNodeDeleteConfirmation({
+        closeNode,
+        requestNodeDeleteRef: requestNodeDelete.ref,
+      }),
+    }),
+    documents,
+  )
+  return { ...rendered, requestNodeDelete, closeNode }
+}

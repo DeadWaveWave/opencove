@@ -136,6 +136,10 @@ export interface RuntimeCanvasContext {
    * changing with the workspace cannot rebuild the callback and hide a missing reader.
    */
   stableSetNodes: ReturnType<typeof useWorkspaceCanvasNodesStore>['setNodes']
+  /** The same for `updateCanvasDocument`. */
+  stableUpdateCanvasDocument: ReturnType<
+    typeof useWorkspaceCanvasNodesStore
+  >['updateCanvasDocument']
 }
 
 export interface FlushRecord {
@@ -211,7 +215,19 @@ export function renderInTwoWorkspaces<Result>(
         (updater, options) => latestSetNodes.current(updater, options),
         [],
       )
-      return useHook({ workspaceId, canvasState, nodeStore, stableSetNodes })
+      const latestUpdateCanvasDocument = useRef(nodeStore.updateCanvasDocument)
+      latestUpdateCanvasDocument.current = nodeStore.updateCanvasDocument
+      const stableUpdateCanvasDocument = useCallback<typeof nodeStore.updateCanvasDocument>(
+        (recipe, options) => latestUpdateCanvasDocument.current(recipe, options),
+        [],
+      )
+      return useHook({
+        workspaceId,
+        canvasState,
+        nodeStore,
+        stableSetNodes,
+        stableUpdateCanvasDocument,
+      })
     },
     { workspaceId: () => shown },
   )
