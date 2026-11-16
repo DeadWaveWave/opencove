@@ -16,10 +16,6 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     '~/hooks/useApplyNodeChanges.ts',
     '~/hooks/useCanvasNodePublishers.ts',
     '~/hooks/useCanvasRuntimeIntegrations.ts',
-    '~/hooks/useNodesStore.createFilesystemNodes.ts',
-    '~/hooks/useNodesStore.createNodes.ts',
-    '~/hooks/useNodesStore.createRoleNode.ts',
-    '~/hooks/useNodesStore.createWebsiteNode.ts',
     '~/hooks/useNodesStore.ts',
     '~/hooks/useNodesStore.types.ts',
     '~/hooks/useSpaceDirectoryOps.ts',
@@ -29,13 +25,6 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     'src/contexts/workspace/presentation/renderer/components/WorkspaceCanvasInner.tsx',
     '~/hooks/useCanvasNodeTypes.ts',
     '~/hooks/useCanvasState.ts',
-    '~/hooks/useNodesStore.createFilesystemNodes.ts',
-    '~/hooks/useNodesStore.createNodes.ts',
-    '~/hooks/useNodesStore.createPluginNode.ts',
-    '~/hooks/useNodesStore.createRoleNode.ts',
-    '~/hooks/useNodesStore.createWebsiteNode.ts',
-    '~/hooks/useNodesStore.ts',
-    '~/hooks/useNodesStore.types.ts',
     '~/hooks/useSpaceDirectoryOps.ts',
     '~/nodeTypes.context.ts',
     '~/nodeTypes.task.tsx',
@@ -54,15 +43,6 @@ const ALLOWED_FILES: Record<string, readonly string[]> = {
     'src/app/renderer/shell/hooks/useAppQuitPersistenceFlush.ts',
     'src/contexts/task/presentation/renderer/components/promptTemplates/TaskPromptTemplatesMenu.tsx',
     'src/contexts/workspace/presentation/renderer/components/WorkspaceCanvasInner.tsx',
-    '~/hooks/useNodesStore.createFilesystemNodes.ts',
-    '~/hooks/useNodesStore.createNodes.ts',
-    '~/hooks/useNodesStore.createRoleNode.ts',
-    '~/hooks/useNodesStore.createWebsiteNode.ts',
-    '~/hooks/useNodesStore.noteMutations.ts',
-    '~/hooks/useNodesStore.roleMutations.ts',
-    '~/hooks/useNodesStore.ts',
-    '~/hooks/useNodesStore.types.ts',
-    '~/hooks/useNodesStore.websiteMutations.ts',
     '~/hooks/useSpaceDirectoryOps.ts',
     '~/types.ts',
   ],
@@ -124,8 +104,10 @@ describe('canvas document channels', () => {
   })
 
   // A hook that is handed a reader instead of calling `useReadCanvasDocument()` is outside the
-  // check above, so an app store subscription added there would go unseen. The only such file with
-  // an app store import is the role actions, which select the settings setter and nothing else.
+  // check above, so an app store subscription added there would go unseen. The only such files with
+  // an app store import are the role actions, which select the settings setter and nothing else,
+  // and the plugin window creation, which only calls `useAppStore.getState()` in a handler and is
+  // handed the reader by the node creation hook because this check bars it from creating one.
   it('files handed a document reader subscribe to nothing in the app store but the role settings setter', () => {
     const handed = files.filter(file =>
       /\breadDocument\??:\s*\(\)\s*=>\s*WorkspaceDocument\b/.test(source(file)),
@@ -140,6 +122,7 @@ describe('canvas document channels', () => {
         ]),
     )
     expect(appStoreUses).toEqual({
+      [`${CANVAS_DIR}hooks/useNodesStore.createPluginNode.ts`]: [],
       [`${CANVAS_DIR}hooks/useRoleActions.ts`]: ['state => state.setAgentSettings'],
     })
   })

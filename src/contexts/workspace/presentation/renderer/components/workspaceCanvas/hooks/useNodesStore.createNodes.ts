@@ -10,6 +10,7 @@ import type {
   WorkspaceSpaceRect,
   WorkspaceSpaceState,
 } from '../../../types'
+import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
 import { cleanupFailedNodePlacement } from '../../../utils/managedClaudeLifecycle'
 import { findNearestFreePositionOnRight, inflateRect, type Rect } from '../../../utils/collision'
@@ -43,9 +44,6 @@ function resolveSpaceRects(spaces: WorkspaceSpaceState[]): WorkspaceSpaceRect[] 
 }
 export function useWorkspaceCanvasNodeCreation({
   workspaceId,
-  nodesRef,
-  spacesRef,
-  onRequestPersistFlush,
   onShowMessage,
   onNodeCreated,
   setNodes,
@@ -53,6 +51,8 @@ export function useWorkspaceCanvasNodeCreation({
   browserDefaultMode,
 }: UseWorkspaceCanvasNodeCreationParams) {
   const { t } = useTranslation()
+  // Placement reads the committed document when a creator runs, for the workspace of this render.
+  const readDocument = useReadCanvasDocument()
   const notifyNodeCreated = useCallback(
     (nodeId: string, focusViewportOnCreate: boolean | undefined) => {
       if (focusViewportOnCreate === false) {
@@ -86,10 +86,10 @@ export function useWorkspaceCanvasNodeCreation({
           : resolveDefaultTerminalWindowSize(standardWindowSizeBucket)
       const resolvedPlacement = resolveNodesPlacement({
         workspaceId,
-        getSpaces: () => spacesRef.current,
+        getSpaces: () => readDocument().spaces,
         anchor,
         size: defaultSize,
-        getNodes: () => nodesRef.current,
+        getNodes: () => readDocument().nodes,
         targetSpaceRect: placement?.targetSpaceRect ?? null,
         preferredDirection: placement?.preferredDirection,
         avoidRects: placement?.avoidRects,
@@ -158,18 +158,15 @@ export function useWorkspaceCanvasNodeCreation({
         nextNode.data = projected
       }
       guardNodeFromSyncOverwrite(nextNode.id, 2_500)
-      setNodes(prevNodes => [...prevNodes, nextNode])
+      setNodes(prevNodes => [...prevNodes, nextNode], { flush: true })
       onNodeCreated?.(nextNode.id)
-      onRequestPersistFlush?.()
       return nextNode
     },
     [
-      nodesRef,
       onNodeCreated,
-      onRequestPersistFlush,
       onShowMessage,
+      readDocument,
       setNodes,
-      spacesRef,
       standardWindowSizeBucket,
       workspaceId,
       t,
@@ -178,11 +175,8 @@ export function useWorkspaceCanvasNodeCreation({
   const createNoteNode = useCallback(
     (anchor: Point, options: CreateNoteNodeOptions = {}): Node<TerminalNodeData> | null => {
       const noteSize = resolveDefaultNoteWindowSize(standardWindowSizeBucket)
-      const layout = resolveCreationInteractionLayout(
-        workspaceId,
-        nodesRef.current,
-        spacesRef.current,
-      )
+      const current = readDocument()
+      const layout = resolveCreationInteractionLayout(workspaceId, current.nodes, current.spaces)
       const spaceObstacles: Rect[] = resolveSpaceRects(layout.spaces).map(rect =>
         inflateRect(
           {
@@ -212,10 +206,10 @@ export function useWorkspaceCanvasNodeCreation({
             })()
           : resolveNodesPlacement({
               workspaceId,
-              getSpaces: () => spacesRef.current,
+              getSpaces: () => current.spaces,
               anchor,
               size: noteSize,
-              getNodes: () => nodesRef.current,
+              getNodes: () => current.nodes,
               targetSpaceRect: options.placement?.targetSpaceRect ?? null,
               preferredDirection: options.placement?.preferredDirection,
               avoidRects: options.placement?.avoidRects,
@@ -260,18 +254,15 @@ export function useWorkspaceCanvasNodeCreation({
       }
 
       guardNodeFromSyncOverwrite(nextNode.id, 2_500)
-      setNodes(prevNodes => [...prevNodes, nextNode])
+      setNodes(prevNodes => [...prevNodes, nextNode], { flush: true })
       onNodeCreated?.(nextNode.id)
-      onRequestPersistFlush?.()
       return nextNode
     },
     [
-      nodesRef,
       onNodeCreated,
-      onRequestPersistFlush,
       onShowMessage,
+      readDocument,
       setNodes,
-      spacesRef,
       standardWindowSizeBucket,
       workspaceId,
       t,
@@ -292,10 +283,10 @@ export function useWorkspaceCanvasNodeCreation({
 
       const resolvedPlacement = resolveNodesPlacement({
         workspaceId,
-        getSpaces: () => spacesRef.current,
+        getSpaces: () => readDocument().spaces,
         anchor,
         size: defaultTaskSize,
-        getNodes: () => nodesRef.current,
+        getNodes: () => readDocument().nodes,
         targetSpaceRect: placementOptions?.targetSpaceRect ?? null,
         preferredDirection: placementOptions?.preferredDirection,
         avoidRects: placementOptions?.avoidRects,
@@ -344,18 +335,15 @@ export function useWorkspaceCanvasNodeCreation({
       }
 
       guardNodeFromSyncOverwrite(nextNode.id, 2_500)
-      setNodes(prevNodes => [...prevNodes, nextNode])
+      setNodes(prevNodes => [...prevNodes, nextNode], { flush: true })
       onNodeCreated?.(nextNode.id)
-      onRequestPersistFlush?.()
       return nextNode
     },
     [
-      nodesRef,
       onNodeCreated,
-      onRequestPersistFlush,
       onShowMessage,
+      readDocument,
       setNodes,
-      spacesRef,
       standardWindowSizeBucket,
       workspaceId,
       t,
@@ -364,9 +352,6 @@ export function useWorkspaceCanvasNodeCreation({
 
   const { createRoleNode } = useWorkspaceCanvasRoleNodeCreation({
     workspaceId,
-    nodesRef,
-    spacesRef,
-    onRequestPersistFlush,
     onShowMessage,
     onNodeCreated,
     setNodes,
@@ -384,10 +369,10 @@ export function useWorkspaceCanvasNodeCreation({
       })
       const resolvedPlacement = resolveNodesPlacement({
         workspaceId,
-        getSpaces: () => spacesRef.current,
+        getSpaces: () => readDocument().spaces,
         anchor,
         size: desiredSize,
-        getNodes: () => nodesRef.current,
+        getNodes: () => readDocument().nodes,
         targetSpaceRect: placementOptions?.targetSpaceRect ?? null,
         preferredDirection: placementOptions?.preferredDirection,
         avoidRects: placementOptions?.avoidRects,
@@ -423,18 +408,15 @@ export function useWorkspaceCanvasNodeCreation({
       }
 
       guardNodeFromSyncOverwrite(nextNode.id, 2_500)
-      setNodes(prevNodes => [...prevNodes, nextNode])
+      setNodes(prevNodes => [...prevNodes, nextNode], { flush: true })
       notifyNodeCreated(nextNode.id, placementOptions?.focusViewportOnCreate)
-      onRequestPersistFlush?.()
       return nextNode
     },
     [
-      nodesRef,
       notifyNodeCreated,
-      onRequestPersistFlush,
       onShowMessage,
+      readDocument,
       setNodes,
-      spacesRef,
       standardWindowSizeBucket,
       workspaceId,
       t,
@@ -443,10 +425,7 @@ export function useWorkspaceCanvasNodeCreation({
 
   const { createDocumentNode, createFolderNode } = useWorkspaceCanvasFilesystemNodeCreation({
     workspaceId,
-    nodesRef,
-    spacesRef,
     setNodes,
-    onRequestPersistFlush,
     onShowMessage,
     onNodeCreated,
     standardWindowSizeBucket,
@@ -454,9 +433,6 @@ export function useWorkspaceCanvasNodeCreation({
 
   const createWebsiteNode = useWorkspaceCanvasWebsiteNodeCreation({
     workspaceId,
-    nodesRef,
-    spacesRef,
-    onRequestPersistFlush,
     onShowMessage,
     onNodeCreated,
     setNodes,
@@ -467,7 +443,7 @@ export function useWorkspaceCanvasNodeCreation({
   const createPluginNode = useWorkspaceCanvasPluginNodeCreation({
     onShowMessage,
     workspaceId,
-    spacesRef,
+    readDocument,
     onNodeCreated,
   })
 

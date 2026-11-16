@@ -9,7 +9,6 @@ import { useWorkspaceCanvasNodesStore } from '../../src/contexts/workspace/prese
 import {
   readWorkspaceDocument,
   registerWorkspaceDocumentPersistFlush,
-  requestWorkspaceDocumentPersistFlush,
 } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import type { WorkspaceDocument } from '../../src/contexts/workspace/presentation/renderer/store/workspaceDocument'
 import type {
@@ -204,8 +203,6 @@ export function renderInTwoWorkspaces<Result>(
         workspaceId,
         workspacePath: `/tmp/${workspaceId}`,
         nodes: canvasState.flowNodes,
-        spacesRef: canvasState.spacesRef,
-        onRequestPersistFlush: requestWorkspaceDocumentPersistFlush,
         onNodesCommitted: publishers.publishCommittedNodes,
         isLiveGestureActive: publishers.isLiveGestureActive,
         standardWindowSizeBucket: 'regular',

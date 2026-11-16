@@ -54,7 +54,6 @@ export function useShownNodeStore(shown: string) {
     workspaceId: shown,
     workspacePath: `/tmp/${shown}`,
     nodes,
-    spacesRef,
     onNodesCommitted,
     isLiveGestureActive: () => false,
     standardWindowSizeBucket: 'regular',

@@ -299,7 +299,6 @@ describe('assignNodeToSpaceAndExpand after a workspace switch', () => {
           workspaceId: shown,
           workspacePath: `/tmp/${shown}`,
           nodes,
-          spacesRef: { current: [] },
           onNodesCommitted: vi.fn(),
           isLiveGestureActive: () => false,
           standardWindowSizeBucket: 'regular',

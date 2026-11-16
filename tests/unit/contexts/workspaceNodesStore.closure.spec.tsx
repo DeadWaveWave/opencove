@@ -6,6 +6,7 @@ import { useWorkspaceCanvasNodesStore } from '../../../src/contexts/workspace/pr
 import { useWorkspaceCanvasNodeDeleteConfirmation } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDeleteConfirmation'
 import { subscribeWorkspaceNodesClosed } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/nodeClosureEvents'
 import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
+import { registerWorkspaceDocumentPersistFlush } from '../../../src/contexts/workspace/presentation/renderer/store/workspaceDocumentCommands'
 import {
   useCanvasUiCommands,
   useReadCanvasUi,
@@ -21,23 +22,21 @@ vi.mock('../../../src/contexts/workspace/presentation/renderer/utils/nodeRuntime
   cleanupNodeRuntimeArtifacts: mocks.cleanup,
 }))
 
-function renderStore(
-  nodes = [pixelNode()],
-  onNodesCommitted = vi.fn(),
-  onRequestPersistFlush = vi.fn(),
-) {
+const disposers: Array<() => void> = []
+
+function renderStore(nodes = [pixelNode()], onNodesCommitted = vi.fn(), onFlush = vi.fn()) {
   const requestNodeDeleteRef = { current: (_nodeIds: string[]) => undefined }
   seedWorkspaceCanvasStore({ nodes })
+  // The store flushes through the persist flush the shell registered with the document module.
+  disposers.push(registerWorkspaceDocumentPersistFlush(onFlush))
   return renderHook(
     () => {
       const store = useWorkspaceCanvasNodesStore({
         workspaceId: 'workspace-1',
         workspacePath: '',
         nodes: useWorkspaceCanvasStoreNodes(),
-        spacesRef: { current: [] },
         onNodesCommitted,
         isLiveGestureActive: () => false,
-        onRequestPersistFlush,
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
       })
@@ -67,6 +66,9 @@ describe('node store successful closure', () => {
   })
   afterEach(() => {
     unsubscribe()
+    while (disposers.length > 0) {
+      disposers.pop()?.()
+    }
     cleanup()
     vi.restoreAllMocks()
   })

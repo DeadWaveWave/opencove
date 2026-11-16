@@ -101,7 +101,6 @@ function renderObservers() {
         workspaceId: 'workspace-1',
         workspacePath: '/tmp/workspace-1',
         nodes,
-        spacesRef: { current: [] },
         onNodesCommitted: () => undefined,
         isLiveGestureActive: () => false,
         standardWindowSizeBucket: 'regular',

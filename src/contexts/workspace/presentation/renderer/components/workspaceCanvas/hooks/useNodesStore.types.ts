@@ -37,10 +37,8 @@ export interface UseWorkspaceCanvasNodesStoreParams {
   workspaceId: string
   workspacePath: string
   nodes: Node<TerminalNodeData>[]
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   onNodesCommitted: (nodes: Node<TerminalNodeData>[]) => void
   isLiveGestureActive: () => boolean
-  onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   onNodeCreated?: (nodeId: string) => void
   standardWindowSizeBucket: StandardWindowSizeBucket
@@ -50,9 +48,6 @@ export interface UseWorkspaceCanvasNodesStoreParams {
 export interface UseWorkspaceCanvasNodeCreationParams {
   workspaceId?: string
   workspacePath?: string
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   onNodeCreated?: (nodeId: string) => void
   setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']

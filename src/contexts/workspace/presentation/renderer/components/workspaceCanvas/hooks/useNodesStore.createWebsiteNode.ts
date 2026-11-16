@@ -1,10 +1,10 @@
 import { useCallback } from 'react'
 import type { Node } from '@xyflow/react'
-import type { MutableRefObject } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { BrowserMode } from '@shared/contracts/dto'
-import type { Point, TerminalNodeData, WebsiteNodeData, WorkspaceSpaceState } from '../../../types'
+import type { Point, TerminalNodeData, WebsiteNodeData } from '../../../types'
+import { useReadCanvasDocument } from '../../../store/canvasStoreContext'
 import { resolveDefaultWebsiteWindowSize } from '../constants'
 import type { NodePlacementOptions, ShowWorkspaceCanvasMessage } from '../types'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
@@ -15,9 +15,6 @@ import { createWebsiteNodeData } from '../../../utils/websiteNodeData'
 
 export function useWorkspaceCanvasWebsiteNodeCreation({
   workspaceId,
-  nodesRef,
-  spacesRef,
-  onRequestPersistFlush,
   onShowMessage,
   onNodeCreated,
   setNodes,
@@ -25,9 +22,6 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
   browserDefaultMode,
 }: {
   workspaceId?: string
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
-  onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   onNodeCreated?: (nodeId: string) => void
   setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
@@ -39,6 +33,7 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
   placementOptions?: NodePlacementOptions,
 ) => Node<TerminalNodeData> | null {
   const { t } = useTranslation()
+  const readDocument = useReadCanvasDocument()
 
   return useCallback(
     (anchor: Point, website: WebsiteNodeData, placementOptions?: NodePlacementOptions) => {
@@ -49,10 +44,10 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
       const defaultSize = resolveDefaultWebsiteWindowSize(standardWindowSizeBucket)
       const resolvedPlacement = resolveNodesPlacement({
         workspaceId,
-        getSpaces: () => spacesRef.current,
+        getSpaces: () => readDocument().spaces,
         anchor,
         size: defaultSize,
-        getNodes: () => nodesRef.current,
+        getNodes: () => readDocument().nodes,
         targetSpaceRect: placementOptions?.targetSpaceRect ?? null,
         preferredDirection: placementOptions?.preferredDirection,
         avoidRects: placementOptions?.avoidRects,
@@ -87,9 +82,8 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
         selectable: true,
       }
 
-      setNodes(prevNodes => [...prevNodes, nextNode])
+      setNodes(prevNodes => [...prevNodes, nextNode], { flush: true })
       onNodeCreated?.(nextNode.id)
-      onRequestPersistFlush?.()
 
       const normalizedUrl = websiteData.url.trim()
       if (websiteData.browserMode === 'native' && normalizedUrl.length > 0) {
@@ -108,12 +102,10 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
       return nextNode
     },
     [
-      nodesRef,
       onNodeCreated,
-      onRequestPersistFlush,
       onShowMessage,
+      readDocument,
       setNodes,
-      spacesRef,
       standardWindowSizeBucket,
       workspaceId,
       browserDefaultMode,

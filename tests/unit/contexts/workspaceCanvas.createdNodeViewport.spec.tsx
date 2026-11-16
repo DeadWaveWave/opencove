@@ -1,8 +1,7 @@
-import { act, renderHook } from '@testing-library/react'
-import { useRef } from 'react'
+import { act } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
-import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
+import { renderInCanvasDocument } from '../../support/canvasDocumentHarness'
 import {
   seedWorkspaceCanvasStore,
   useWorkspaceCanvasStoreNodes,
@@ -21,12 +20,11 @@ afterEach(() => vi.useRealTimers())
 
 function renderNodesStore() {
   seedWorkspaceCanvasStore()
-  return renderHook(() => {
+  return renderInCanvasDocument(() => {
     return useWorkspaceCanvasNodesStore({
       workspaceId: 'workspace-1',
       workspacePath: '',
       nodes: useWorkspaceCanvasStoreNodes(),
-      spacesRef: useRef<WorkspaceSpaceState[]>([]),
       onNodesCommitted: vi.fn(),
       isLiveGestureActive: () => false,
       standardWindowSizeBucket: DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,

@@ -1,6 +1,7 @@
 import React from 'react'
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { ReactFlowProvider } from '@xyflow/react'
+import { CanvasStoreTestProvider } from '../../support/canvasStoreTestHarness'
 import { afterEach, describe, expect, it } from 'vitest'
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 import { updateWorkspacesWithTerminalGeometry } from '../../../src/app/renderer/shell/hooks/usePtyWorkspaceRuntimeSync'
@@ -33,14 +34,19 @@ function renderCanvasNodesStore() {
         workspaceId: 'workspace-1',
         workspacePath: '/tmp/workspace-1',
         nodes,
-        spacesRef: { current: [] },
         onNodesCommitted: () => undefined,
         isLiveGestureActive: () => false,
         standardWindowSizeBucket: 'regular',
         browserDefaultMode: 'iframe',
       })
     },
-    { wrapper: ({ children }) => <ReactFlowProvider>{children}</ReactFlowProvider> },
+    {
+      wrapper: ({ children }) => (
+        <CanvasStoreTestProvider workspaceId="workspace-1">
+          <ReactFlowProvider>{children}</ReactFlowProvider>
+        </CanvasStoreTestProvider>
+      ),
+    },
   )
 }
 

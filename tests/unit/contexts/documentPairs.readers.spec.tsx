@@ -119,7 +119,6 @@ function renderInTwoWorkspaces<Result>(
         workspaceId: shown,
         workspacePath: `/tmp/${shown}`,
         nodes: [],
-        spacesRef: { current: [] } as never,
         onNodesCommitted: vi.fn(),
         isLiveGestureActive: () => false,
         standardWindowSizeBucket: 'regular',

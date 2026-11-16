@@ -114,12 +114,6 @@ function setup() {
     ],
   })
   const readNodes = (): Node<TerminalNodeData>[] => document.readStoreDocument().nodes
-  // The node creation hook below still takes the node ref: this one shows the store's nodes.
-  const nodesRef = {
-    get current(): Node<TerminalNodeData>[] {
-      return readNodes()
-    },
-  }
   // The push-away of the created node writes through one recipe, as the node store runs it.
   const updateCanvasDocument = (
     recipe: (document: { nodes: Node<TerminalNodeData>[]; spaces: WorkspaceSpaceState[] }) => {
@@ -136,8 +130,6 @@ function setup() {
   const hook = renderHookWithCanvasStore(
     ({ workspaceId }) => {
       const creationOptions = {
-        nodesRef,
-        spacesRef: { current: [] },
         setNodes: (updater: (nodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]) => {
           replaceWorkspaceNodes(CANVAS_STORE_TEST_WORKSPACE_ID, updater(readNodes()))
         },
