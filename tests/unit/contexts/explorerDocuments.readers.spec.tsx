@@ -497,13 +497,6 @@ describe('the explorer', () => {
 describe('the filesystem nodes', () => {
   const folderUri = 'file:///repo/docs'
   const folder = () => folderNodeAt('folder', folderUri, 'file:///repo', { x: 50, y: 50 })
-  const entry = (uri = `${folderUri}/a.md`) => ({
-    version: 1 as const,
-    kind: 'file' as const,
-    uri,
-    rootUri: 'file:///repo',
-    mountId: null,
-  })
   const folderData = () => ({ ...folder().data.folder!, viewMode: 'list' as const })
 
   it('updates a folder that a store write added in the same act', () => {

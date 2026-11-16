@@ -65,6 +65,8 @@ const remoteSpace = (): WorkspaceSpaceState =>
   ({
     id: 'space',
     name: 'Remote',
+    directoryPath: '/remote',
+    labelColor: null,
     targetMountId: 'remote-mount',
     nodeIds: [],
     rect: { x: 0, y: 0, width: 800, height: 600 },
